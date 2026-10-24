@@ -1,0 +1,5 @@
+#!/bin/sh
+# The browser host's stand-in rclone makes the Dropbox entry's tool present.
+# No browser case connects a Dropbox account, so it runs nothing.
+echo "fixture rclone runs nothing" >&2
+exit 1

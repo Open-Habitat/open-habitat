@@ -11,7 +11,8 @@ test.use({
 // The synthetic host's integrations file starts with Google and Microsoft
 // set by root; its Dropbox entry is the production one, whose rclone the
 // host lacks. /fixture/integration-apps clears an app, delays the broker's
-// writes so the wait shows, or loses the next write's reply.
+// writes so the wait shows, loses the next write's reply, or installs a
+// stand-in rclone.
 
 const googleID =
   "915508263417-a8d2kq0zr7m3vh1ts9pe5wybc6lfnjxu.apps.googleusercontent.com";
@@ -267,4 +268,83 @@ test("@server-integrations @a11y an administrator sets Microsoft's single-tenant
     .click();
   await expect(row).toHaveAttribute("data-status", "needs_app");
   expect(await available(page, "microsoft")).toBe(false);
+});
+
+test("@server-integrations @a11y an administrator sets Dropbox's app through the App Console guide and removes it; people's catalog follows", async ({
+  page,
+}) => {
+  await signIn(page);
+  await fixture(page, "rclone=1&delay=600");
+  await page.goto("/settings/server-integrations");
+  const row = page.getByTestId("si-row-dropbox");
+  await expect(row).toHaveAttribute("data-status", "needs_app");
+  expect(await available(page, "dropbox")).toBe(false);
+
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("si-setup-dropbox"))
+    .click();
+  const dialog = page.getByTestId("si-setup-dialog");
+  await expect(dialog.getByTestId("si-dropbox-link")).toHaveAttribute(
+    "href",
+    "https://www.dropbox.com/developers/apps/create",
+  );
+  for (const step of ["create", "settings", "permissions"]) {
+    await expect(dialog.getByTestId("si-stepname")).toHaveAttribute(
+      "data-step",
+      step,
+    );
+    if (step === "create") {
+      await page.setViewportSize({ width: 390, height: 844 });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth - innerWidth,
+        ),
+      ).toBeLessThanOrEqual(0);
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .include("[data-testid=si-setup-dialog]")
+            .analyze()
+        ).violations,
+      ).toEqual([]);
+      await page.setViewportSize({ width: 1280, height: 900 });
+    }
+    await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
+  }
+  await dialog.getByTestId("si-field-client_id").fill("p3n8vq1zt6ka0rw");
+  // The App key pasted twice is refused in its field, before the broker.
+  await dialog.getByTestId("si-field-client_secret").fill("p3n8vq1zt6ka0rw");
+  await dialog.getByRole("button").and(dialog.getByTestId("si-save")).click();
+  await expect(dialog.getByTestId("si-field-client_secret")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await dialog.getByTestId("si-field-client_secret").fill("h2m5c9xj4ub7ye1");
+  const reply = page.waitForResponse("**/api/v1/server/integrations/set");
+  await dialog.getByRole("button").and(dialog.getByTestId("si-save")).click();
+  await expect(row).toHaveAttribute("data-status", "set");
+  // Only the App key comes back; the secret never leaves root's file.
+  const body = await (await reply).text();
+  expect(body).toContain("p3n8vq1zt6ka0rw");
+  expect(body).not.toContain("h2m5c9xj4ub7ye1");
+  await expect(dialog).toHaveCount(0);
+  await expect(row).toHaveAttribute("data-status", "ready");
+  expect(await available(page, "dropbox")).toBe(true);
+
+  // Dropbox renews no secret on request: removal is the only change, and the
+  // menu keeps the Development-status rule.
+  await page.getByTestId("si-menu-dropbox").getByRole("button").click();
+  await expect(page.getByTestId("menu-remove")).toBeVisible();
+  await expect(page.getByTestId("si-limit-note")).toBeVisible();
+  await expect(page.getByTestId("menu-replace")).toHaveCount(0);
+  await page.getByTestId("menu-remove").click();
+  await expect(page.getByTestId("si-sync-stops")).toBeVisible();
+  await page
+    .getByRole("dialog")
+    .getByRole("button")
+    .and(page.getByTestId("si-remove-confirm"))
+    .click();
+  await expect(row).toHaveAttribute("data-status", "needs_app");
+  expect(await available(page, "dropbox")).toBe(false);
 });

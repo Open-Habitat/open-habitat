@@ -5,8 +5,8 @@ import { AppSetupDialog, ServerIntegrations } from "./ServerIntegrations";
 
 // Synthetic states of the production Palvelimen ylläpito › Integraatiot tab
 // (proto-server-integrations-setup, round 2 direction 2, Google's round 3
-// direction 2 and Microsoft's round 4 direction 1). No host, broker or
-// provider is involved.
+// direction 2, Microsoft's round 4 direction 1 and Dropbox's round 5
+// direction 2). No host, broker or provider is involved.
 const provider = (
   id: ProviderId,
   available: boolean,
@@ -78,6 +78,23 @@ const googleAndMicrosoft: IntegrationApps = {
     },
   ],
 };
+const allSet: Provider[] = microsoftSet.map((p) =>
+  p.id === "dropbox" ? provider("dropbox", true) : p,
+);
+const allApps: IntegrationApps = {
+  ...googleAndMicrosoft,
+  apps: [
+    ...googleAndMicrosoft.apps,
+    {
+      provider: "dropbox",
+      client_id: "p3n8vq1zt6ka0rw",
+      usable: true,
+      source: "site_admin",
+      actor: "51234000",
+      at: "2026-10-24T12:00:00Z",
+    },
+  ],
+};
 const save = async () => ({ kind: "changed" as const, view: google });
 
 function Tab(props: Partial<Parameters<typeof ServerIntegrations>[0]>) {
@@ -130,6 +147,11 @@ export const MicrosoftAudienceKeyword: Story = {
       ],
     },
   },
+};
+/** Dropbox set too: its Tunnukset menu offers only removal and keeps the
+ * Development-status rule (open the menu). */
+export const DropboxSet: Story = {
+  args: { providers: allSet, apps: allApps },
 };
 export const NewInstallation: Story = {
   args: { providers: fresh, apps: none },
@@ -212,8 +234,22 @@ export const MicrosoftStepPhone: StoryObj<typeof Setup> = {
   render: () => <Setup provider="microsoft" step={3} />,
   globals: { viewport: { value: "mobile1" } },
 };
-export const DropboxFields: StoryObj<typeof Setup> = {
-  render: () => <Setup provider="dropbox" />,
+/** Dropbox's guided setup: one App Console page per step, the keys last. */
+export const DropboxStepCreate: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="dropbox" step={0} />,
+};
+export const DropboxStepSettings: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="dropbox" step={1} />,
+};
+export const DropboxStepPermissions: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="dropbox" step={2} />,
+};
+export const DropboxStepCredentials: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="dropbox" step={3} />,
+};
+export const DropboxStepPhone: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="dropbox" step={0} />,
+  globals: { viewport: { value: "mobile1" } },
 };
 export const GoogleStepPhone: StoryObj<typeof Setup> = {
   render: () => <Setup step={2} />,

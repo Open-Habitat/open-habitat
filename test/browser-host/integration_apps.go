@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"errors"
+	"maps"
 	"net/url"
 	"slices"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"github.com/Open-Habitat/open-habitat/internal/gateway"
 	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
 )
@@ -17,24 +19,27 @@ import (
 // Microsoft start set by root, so every other spec finds them in use, and
 // Dropbox is the production entry, whose rclone the host lacks. The fixture
 // Google and Microsoft entries are available exactly while their app is set,
-// as the daemon reads the real file. /fixture/integration-apps switches
-// root's browser_setup, delays the broker's writes so the waiting state can
-// be seen, loses the next write's reply after committing it, or refuses the
-// next write as host maintenance would.
+// and the Dropbox entry reads its app from what this broker wrote, as the
+// daemon reads the real file. /fixture/integration-apps switches root's
+// browser_setup, delays the broker's writes so the waiting state can be seen,
+// loses the next write's reply after committing it, refuses the next write as
+// host maintenance would, or installs a stand-in rclone.
 type fixtureApps struct {
-	mu    sync.Mutex
-	apps  map[string]gateway.IntegrationApp
-	off   bool
-	delay time.Duration
-	lose  bool
-	busy  bool
+	mu     sync.Mutex
+	apps   map[string]gateway.IntegrationApp
+	secret map[string]string // what root's file holds and the list never returns
+	off    bool
+	delay  time.Duration
+	lose   bool
+	busy   bool
+	rclone bool
 }
 
 func newFixtureApps() *fixtureApps {
 	return &fixtureApps{apps: map[string]gateway.IntegrationApp{
 		"google":    {Provider: "google", ClientID: "704213598812-k3v9q2mfa0b7s1dn5e8rjhtc4lpu6xwo.apps.googleusercontent.com", Usable: true, Source: "operator"},
 		"microsoft": {Provider: "microsoft", ClientID: "5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3", TenantID: "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903", Usable: true, Source: "operator"},
-	}}
+	}, secret: map[string]string{}}
 }
 
 var appFixture = newFixtureApps()
@@ -65,6 +70,8 @@ func (f *fixtureApps) fixture(q url.Values) error {
 			f.lose = true
 		case key == "busy" && v == "1":
 			f.busy = true
+		case key == "rclone" && v == "1":
+			f.rclone = true
 		case key == "clear" && slices.Contains(integrationapps.Providers, v):
 			delete(f.apps, v)
 		default:
@@ -82,6 +89,22 @@ func (f *fixtureApps) pageLocked() gateway.IntegrationApps {
 		}
 	}
 	return page
+}
+
+// config is the integrations file as the person's daemon would read it:
+// tools from the host's fixtures, rclone only when installed, and the
+// Dropbox section the broker wrote.
+func (f *fixtureApps) config(tools map[string]string, rclone string) integrations.Config {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c := integrations.Config{Tools: maps.Clone(tools)}
+	if f.rclone {
+		c.Tools["rclone"] = rclone
+	}
+	if a, ok := f.apps["dropbox"]; ok {
+		c.Dropbox = &integrations.DropboxApp{ClientID: a.ClientID, ClientSecret: f.secret["dropbox"]}
+	}
+	return c
 }
 
 func (b *fixtureBroker) IntegrationList(context.Context) (gateway.IntegrationApps, error) {
@@ -112,7 +135,9 @@ func (b *fixtureBroker) writeApp(ctx context.Context, provider string, fields ma
 	}
 	if fields == nil {
 		delete(appFixture.apps, provider)
+		delete(appFixture.secret, provider)
 	} else {
+		appFixture.secret[provider] = fields["client_secret"]
 		appFixture.apps[provider] = gateway.IntegrationApp{Provider: provider, ClientID: fields["client_id"], TenantID: fields["tenant_id"], Usable: true, Source: "site_admin", Actor: actor, At: time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)}
 	}
 	if appFixture.lose {

@@ -96,6 +96,11 @@
   display: block;
   max-width: 280px;
 }
+/* Dropbox's Development-status rule, kept where the administrator returns. */
+.si-menunote {
+  display: block;
+  margin-top: var(--ah-s1);
+}
 
 /* Dialogs */
 .si-modal {

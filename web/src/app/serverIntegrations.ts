@@ -157,12 +157,14 @@ export function appErrors(
     if (!guid.test(b))
       e[second] = "Tarkista Directory (tenant) ID: muoto 8-4-4-4-12.";
   }
-  // Microsoft's two ids sit on the same Overview page.
+  // Both values sit on the same console page, so the same one pasted twice
+  // is the likeliest mistake; the broker compares them without case.
   if (!e[first] && !e[second] && a.toLowerCase() === b.toLowerCase())
-    e[second] =
-      provider === "microsoft"
-        ? "Tämä on sama kuin client id."
-        : "Tämä on sama kuin ensimmäinen kenttä.";
+    e[second] = {
+      google: "Tämä on sama kuin Client ID.",
+      microsoft: "Tämä on sama kuin client id.",
+      dropbox: "Tämä on sama kuin App key.",
+    }[provider];
   return e;
 }
 
@@ -187,7 +189,8 @@ export function appRefusal(code: string): string {
 }
 
 /** The client id's recognisable start: a Google id always ends in the same
- * domain, so its project number is what the console also shows. */
+ * domain, so its project number is what the console also shows; a Dropbox
+ * App key has no structure, so four characters. */
 export function shortClientID(provider: AppProvider, id?: string): string {
   if (!id) return "";
   if (provider === "google") return `${id.split("-")[0]}-…`;

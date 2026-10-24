@@ -60,7 +60,12 @@ func (c *integrationControl) set(q url.Values) bool {
 }
 
 func fixtureIntegrations(home, repoRoot string) *integrations.Catalog {
-	env := integrations.Env{Home: home, Config: integrations.Config{Tools: map[string]string{"himalaya": filepath.Join(repoRoot, "test/fixtures/integrations/himalaya"), "curl": filepath.Join(repoRoot, "test/fixtures/integrations/curl")}}, FixtureTools: true,
+	tools := map[string]string{"himalaya": filepath.Join(repoRoot, "test/fixtures/integrations/himalaya"), "curl": filepath.Join(repoRoot, "test/fixtures/integrations/curl")}
+	rclone := filepath.Join(repoRoot, "test/fixtures/integrations/rclone")
+	env := integrations.Env{Home: home, FixtureTools: true,
+		// The production Dropbox entry observes the broker's file on demand,
+		// as the daemon does.
+		LoadConfig: func() (integrations.Config, error) { return appFixture.config(tools, rclone), nil },
 		// Synthetic DAV names resolve to a documentation address the fixture
 		// curl never dials.
 		Resolve: func(context.Context, string) ([]netip.Addr, error) {

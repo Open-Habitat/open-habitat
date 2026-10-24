@@ -25,7 +25,8 @@ import "./ServerIntegrations.css";
 
 // Asetukset › Palvelimen ylläpito › Integraatiot (proto-server-integrations-
 // setup, round 2 direction 2 "Käytössä vai ei", Google's round 3 direction 2
-// "Vaiheittain", Microsoft's round 4 direction 1 "Tunnukset lopussa").
+// "Vaiheittain", Microsoft's round 4 direction 1 "Tunnukset lopussa",
+// Dropbox's round 5 direction 2 "Sivu kerrallaan").
 // Whether a provider is in use is the administrator's own daemon's catalog;
 // the app credentials and who set them are the broker's. A change shows as
 // waiting until the broker's reply, and as uncertain when no definite reply
@@ -77,6 +78,25 @@ export const entraAppRegistrations =
 // can consent is shown as a template.
 const microsoftConsent =
   "https://login.microsoftonline.com/{Directory (tenant) ID}/adminconsent?client_id={Application (client) ID}";
+// What the daemon's Dropbox entry needs (internal/daemon/integrations/
+// dropbox_linux.go): dropboxScopes, all requested by name at sign-in, and
+// dropboxRedirect, matched exactly. It syncs the root dropbox:, so the app
+// needs Full Dropbox rather than an app folder.
+const dropboxScopes = [
+  "account_info.read",
+  "files.metadata.read",
+  "files.metadata.write",
+  "files.content.read",
+  "files.content.write",
+  "sharing.read",
+  "sharing.write",
+];
+const dropboxRedirect = "http://localhost:53682/";
+export const dropboxCreate = "https://www.dropbox.com/developers/apps/create";
+// The server cannot see how many people have connected nor the app's status,
+// so the rule stays where an administrator returns to: the row's menu.
+const dropboxLimit =
+  "Kehitystila: kun 50 henkilöä on yhdistänyt, hae tuotantotilaa kahden viikon kuluessa.";
 export const fixCommand =
   "sudo open-habitat host apply --site /etc/open-habitat/site.json";
 
@@ -84,6 +104,12 @@ const where: Record<AppProvider, string> = {
   google: "Google Cloud",
   microsoft: "Microsoft Entra",
   dropbox: "Dropbox App Console",
+};
+/** How the console names the first value, in the row's menu. */
+const idName: Record<AppProvider, string> = {
+  google: "client id",
+  microsoft: "client id",
+  dropbox: "app key",
 };
 const labels: Record<AppProvider, [string, string]> = {
   google: ["Client ID", "Client secret"],
@@ -202,12 +228,17 @@ function AppLine({
       {where[app.provider]}
       {app.client_id && (
         <>
-          {" · client id "}
+          {` · ${idName[app.provider]} `}
           <code>{shortClientID(app.provider, app.client_id)}</code>
         </>
       )}
       {" · "}
       {by}
+      {app.provider === "dropbox" && (
+        <span className="si-menunote" data-testid="si-limit-note">
+          {dropboxLimit}
+        </span>
+      )}
     </span>
   );
 }
@@ -291,7 +322,7 @@ function Modalish({
   );
 }
 
-/** The Entra role a step needs. */
+/** Who can do a step: the Entra role it needs, or whose account owns it. */
 const Role = ({ children }: { children: ReactNode }) => (
   <p className="si-quiet si-role" data-testid="si-role">
     <Icon name="user" />
@@ -469,14 +500,94 @@ const microsoftSteps: Step[] = [
   },
 ];
 
+// One App Console page per step; Enable additional users sits on the Settings
+// page beside the redirect.
+const dropboxSteps: Step[] = [
+  {
+    id: "create",
+    title: "Luo sovellus",
+    body: (
+      <>
+        <ExternalLink
+          href={dropboxCreate}
+          target="_blank"
+          rel="noreferrer"
+          data-testid="si-dropbox-link"
+        >
+          Avaa Dropbox App Console <Icon name="external" />
+        </ExternalLink>
+        <Val k="Choose an API" v="Scoped access" copy={false} />
+        <Val
+          k="Choose the type of access you need"
+          v="Full Dropbox"
+          copy={false}
+        />
+        <p className="si-effect" data-testid="si-full-dropbox">
+          Henkilöt synkronoivat koko Dropboxinsa, joten App folder ei riitä.
+        </p>
+        <Val k="Name your app" v="Open Habitat <organisaatio>" copy={false} />
+        <p className="si-quiet">
+          Nimen on oltava yksilöllinen, eikä siinä saa olla sanaa Dropbox.
+          Valitse <em>Create app</em>.
+        </p>
+        <Role>
+          Sovellus kuuluu tilille, jolla luot sen. Käytä organisaation yhteistä
+          Dropbox-tiliä.
+        </Role>
+      </>
+    ),
+  },
+  {
+    id: "settings",
+    title: "Asetukset",
+    body: (
+      <>
+        <Path p="Settings › OAuth 2 › Redirect URIs" />
+        <Val k="Redirect URI" v={dropboxRedirect} />
+        <p className="si-quiet">
+          Valitse <em>Add</em>. Osoitteen on oltava täsmälleen tämä, kauttaviiva
+          mukaan.
+        </p>
+        <Path p="Settings › Development users › Enable additional users" />
+        <p className="si-effect" data-testid="si-additional-users">
+          Uusi sovellus on kehitystilassa (Development), ja ilman tätä vain
+          sovelluksen omistaja voi yhdistää.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "permissions",
+    title: "Käyttöoikeudet",
+    body: (
+      <>
+        <Path p="Permissions" />
+        <div className="si-block" data-testid="si-permissions">
+          <pre className="si-cmd">{dropboxScopes.join("\n")}</pre>
+          <Copy value={dropboxScopes.join(" ")} label="käyttöoikeudet" />
+        </div>
+        <p className="si-quiet">
+          account_info.read on valmiina. Löydät muut selaimen haulla (Ctrl+F tai
+          ⌘F). Valitse lopuksi <em>Submit</em>.
+        </p>
+        <p className="si-quiet">
+          Myöhempi muutos ei koske jo yhdistettyjä tilejä.
+        </p>
+      </>
+    ),
+  },
+];
+
 /** Each guided provider's console steps before its values. */
-const guides: Partial<Record<AppProvider, Step[]>> = {
+const guides: Record<AppProvider, Step[]> = {
   google: googleSteps,
   microsoft: microsoftSteps,
+  dropbox: dropboxSteps,
 };
-const skipLabel: Partial<Record<AppProvider, string>> = {
+const skipLabel: Record<AppProvider, string> = {
   google: "Minulla on jo asiakas",
   microsoft: "Minulla on jo sovellus",
+  dropbox: "Minulla on jo sovellus",
 };
 
 /** The provider's two fields; a replace keeps the client id and asks only
@@ -547,10 +658,9 @@ function Fields({
   );
 }
 
-/** Aseta tunnukset… and Vaihda tunnukset…: one step at a time for Google
- * and Microsoft, the values last; Dropbox takes its two values without a
- * guide until its own setup lands. The dialog stays open until the broker answers, so a
- * refusal keeps what was typed. */
+/** Aseta tunnukset… and Vaihda tunnukset…: one console step at a time, the
+ * values last. The dialog stays open until the broker answers, so a refusal
+ * keeps what was typed. */
 export function AppSetupDialog({
   provider,
   replace,
@@ -647,10 +757,8 @@ export function AppSetupDialog({
               </>
             ) : provider === "microsoft" ? (
               <Path p="Overview" />
-            ) : provider !== "google" ? (
-              <p className="si-quiet">
-                Arvot löytyvät palvelusta {where[provider]}.
-              </p>
+            ) : provider === "dropbox" ? (
+              <Path p="Settings › App key, App secret (Show)" />
             ) : null}
             <Fields
               provider={provider}
@@ -755,9 +863,15 @@ function RemoveDialog({
       <ul className="si-consequences">
         <li>Uusia tilejä ei voi yhdistää.</li>
         <li>Yhdistetyt tilit eivät voi kirjautua uudelleen.</li>
+        {/* The daemon supervises sync only while the integration is usable. */}
+        {provider === "dropbox" && (
+          <li data-testid="si-sync-stops">
+            Yhdistettyjen tilien synkronointi pysähtyy.
+          </li>
+        )}
         {step && <li>Käyttöönoton vaihe piilotetaan.</li>}
       </ul>
-      {provider === "microsoft" && (
+      {provider !== "google" && (
         <p className="si-quiet" data-testid="si-remove-other">
           Toisen sovelluksen voi asettaa poiston jälkeen.
         </p>

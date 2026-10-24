@@ -316,6 +316,85 @@ it("offers only removal for Microsoft's app, which has no secret to replace", as
   expect(calls.onRemove).toHaveBeenCalledWith("microsoft");
 });
 
+const dropboxNeedsApp = providers.map((p) =>
+  p.id === "dropbox"
+    ? provider("dropbox", false, {
+        unavailable_reason: "app_credentials_required",
+      })
+    : p,
+);
+
+it("walks Dropbox's App Console pages with the keys last and sends nothing the broker would refuse", async () => {
+  const calls = setup({ providers: dropboxNeedsApp });
+  fireEvent.click(screen.getByTestId("si-setup-dropbox"));
+  const steps: string[] = [];
+  for (;;) {
+    steps.push(within(dialog()).getByTestId("si-stepname").dataset.step ?? "");
+    const next = within(dialog()).queryByTestId("si-next");
+    if (!next) break;
+    fireEvent.click(next);
+  }
+  expect(steps).toEqual(["create", "settings", "permissions", "enter"]);
+  expect(
+    within(dialog()).getByTestId("si-field-client_secret").getAttribute("type"),
+  ).toBe("password");
+
+  // A secret outside the broker's alphabet, or the App key pasted twice in
+  // another case, stays in its field.
+  type("si-field-client_id", "p3n8vq1zt6ka0rw");
+  for (const secret of [
+    "h2m5 c9xj4ub7ye1",
+    "h2m5.c9xj4ub7ye1",
+    "P3N8VQ1ZT6KA0RW",
+  ]) {
+    type("si-field-client_secret", secret);
+    fireEvent.click(within(dialog()).getByTestId("si-save"));
+    await waitFor(() => expect(invalid("si-field-client_secret")).toBe(true));
+  }
+  expect(calls.onSave).not.toHaveBeenCalled();
+  type("si-field-client_secret", " h2m5c9xj4ub7ye1 ");
+  fireEvent.click(within(dialog()).getByTestId("si-save"));
+  await waitFor(() =>
+    expect(calls.onSave).toHaveBeenCalledWith("dropbox", {
+      client_id: "p3n8vq1zt6ka0rw",
+      client_secret: "h2m5c9xj4ub7ye1",
+    }),
+  );
+});
+
+it("offers only removal for Dropbox's app and keeps the Development-status rule in its menu", async () => {
+  const calls = setup({
+    providers: providers.map((p) =>
+      p.id === "dropbox" ? provider("dropbox", true) : p,
+    ),
+    apps: {
+      ...apps,
+      apps: [
+        ...apps.apps,
+        {
+          provider: "dropbox",
+          client_id: "p3n8vq1zt6ka0rw",
+          usable: true,
+          source: "site_admin",
+          actor: "42",
+          at: "2026-10-24T12:00:00Z",
+        },
+      ],
+    },
+  });
+  fireEvent.click(
+    within(screen.getByTestId("si-menu-dropbox")).getByRole("button"),
+  );
+  await screen.findByTestId("menu-remove");
+  expect(screen.queryByTestId("menu-replace")).toBeNull();
+  expect(screen.getByTestId("si-limit-note")).toBeTruthy();
+  fireEvent.click(screen.getByTestId("menu-remove"));
+  const confirm = screen.getByTestId("si-remove-dialog");
+  expect(within(confirm).getByTestId("si-sync-stops")).toBeTruthy();
+  fireEvent.click(within(confirm).getByTestId("si-remove-confirm"));
+  expect(calls.onRemove).toHaveBeenCalledWith("dropbox");
+});
+
 it("replaces only Google's secret, for the same client", async () => {
   const calls = setup();
   fireEvent.click(
