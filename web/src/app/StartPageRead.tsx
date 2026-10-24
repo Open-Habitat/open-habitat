@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { goalDraft, StartHere } from "../components/StartHere";
 import { readCommands, readStartPage, type StartPage } from "./composerReads";
 import type { ConversationStore } from "./conversationStore";
@@ -27,6 +27,26 @@ export function StartPageRead({
   // biome-ignore lint/correctness/useExhaustiveDependencies: preparation belongs to this exact target.
   useEffect(() => () => preparation.current?.abort(), [workspaceId, agentId]);
   const root = useRef<HTMLDivElement>(null);
+  const [preparedDraft, setPreparedDraft] = useState<ReturnType<
+    typeof goalDraft
+  > | null>(null);
+  useLayoutEffect(() => {
+    if (!preparedDraft || draft !== preparedDraft.text) return;
+    const field = root.current
+      ?.closest(".ah-conversation-frame")
+      ?.querySelector("textarea");
+    // A frame can precede React's controlled-input commit under load. Focus
+    // and select only once that commit has put the prepared text in the DOM.
+    if (field && field.value === preparedDraft.text) {
+      field.focus();
+      field.setSelectionRange(
+        preparedDraft.selectionStart,
+        preparedDraft.selectionEnd,
+      );
+      field.scrollTop = field.scrollHeight;
+    }
+    setPreparedDraft(null);
+  }, [draft, preparedDraft]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: attempt retries a failed read.
   useEffect(() => {
     const controller = new AbortController();
@@ -89,20 +109,8 @@ export function StartPageRead({
             if (!controller.signal.aborted) setPreparing(false);
           }
           const prepared = goalDraft(effective, latest.current.draft);
+          setPreparedDraft(prepared);
           latest.current.onChange(prepared.text);
-          requestAnimationFrame(() => {
-            const field = root.current
-              ?.closest(".ah-conversation-frame")
-              ?.querySelector("textarea");
-            if (field && field.value === prepared.text) {
-              field.focus();
-              field.setSelectionRange(
-                prepared.selectionStart,
-                prepared.selectionEnd,
-              );
-              field.scrollTop = field.scrollHeight;
-            }
-          });
         }}
       />
       {prepareError && (

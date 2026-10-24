@@ -28,6 +28,9 @@ for (const width of [1440, 390]) {
         .getByRole("navigation")
         .getByTestId("workspace-start-aurinkokello")
         .click();
+      // The authored page is also shown during creation. Wait for the durable
+      // conversation before testing focus: the handoff replaces the composer.
+      await expect(page).toHaveURL(/\?conversation=pi:/);
       const field = page.getByTestId("message-input");
       // Compare the old combined endpoint with the file-only path on the same
       // synthetic host. These are observations, not a flaky speed threshold.
@@ -245,6 +248,9 @@ for (const width of [1440, 390]) {
         .getByRole("navigation")
         .getByTestId("workspace-start-muistiinpanot")
         .click();
+      // Reload below must reopen a confirmed conversation, not abandon an
+      // in-flight creation route whose page already happens to be visible.
+      await expect(page).toHaveURL(/\?conversation=pi:/);
       await expect(page.getByTestId("start-page-hint")).toBeVisible();
       await expect(
         page.getByTestId("start-page-hint").locator("code"),

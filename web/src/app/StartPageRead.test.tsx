@@ -138,6 +138,57 @@ describe("start page lifetime", () => {
   });
 });
 
+it("focuses and selects the prepared draft after a delayed controlled-input commit", async () => {
+  if (!("goals" in authored)) throw new Error("fixture");
+  vi.mocked(readStartPage).mockResolvedValue({
+    ...authored,
+    goals: [{ ...authored.goals[0], prompt: "Investigate [observation]" }],
+  });
+  const onChange = vi.fn();
+  const content = (draft: string) => (
+    <div className="ah-conversation-frame">
+      <StartPageRead
+        workspaceId="workspace"
+        draft={draft}
+        onChange={onChange}
+      />
+      <textarea data-testid="draft" value={draft} onChange={() => {}} />
+    </div>
+  );
+  const view = render(content("Original"));
+  await waitFor(() =>
+    expect(screen.queryByTestId("starting-goal")).not.toBeNull(),
+  );
+  fireEvent.click(screen.getByTestId("starting-goal"));
+  // Let any frame callback run before the parent commits the controlled value,
+  // as can happen under load. A single-frame focus attempt loses the intent.
+  const frame = vi
+    .spyOn(window, "requestAnimationFrame")
+    .mockImplementation((callback) => {
+      callback(0);
+      return 0;
+    });
+  try {
+    fireEvent.click(screen.getByTestId("guide-start-top"));
+  } finally {
+    frame.mockRestore();
+  }
+  const field = screen.getByTestId("draft") as HTMLTextAreaElement;
+  expect(document.activeElement).not.toBe(field);
+  const prepared = "Investigate\n\nOriginal\n\n[observation]";
+  expect(onChange).toHaveBeenCalledWith(prepared);
+  expect(field.value).toBe("Original");
+  view.rerender(content(prepared));
+  expect(document.activeElement).toBe(field);
+  expect(field.value.slice(field.selectionStart, field.selectionEnd)).toBe(
+    "[observation]",
+  );
+  // Later typing must not reapply the selection or steal focus back.
+  screen.getByTestId("guide-start-top").focus();
+  view.rerender(content("Edited"));
+  expect(document.activeElement).not.toBe(field);
+});
+
 it("reads prose without Pi and resolves an authored skill only when preparing a draft", async () => {
   if (!("goals" in authored)) throw new Error("fixture");
   vi.mocked(readStartPage).mockResolvedValue({
