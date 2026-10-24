@@ -34,3 +34,7 @@ Jari 2026-10-24, round 1: riff the Aloitus direction. The onboarding step asks '
 ### 2026-10-24T09:40:51Z · @jari
 
 Jari 2026-10-24, round 2: if Microsoft 365 was already connected (its OneDrive), the question is not asked. On the folder: no separate 'Open Habitat' folder; instead the bridge is the person's existing backups of Documents and Downloads (e.g. OneDrive's folder backup / Dropbox Backup syncing those folders), so screenshots and downloads are naturally there.
+
+### 2026-10-24T11:57:50Z · @jari
+
+Jari 2026-10-24, round 3: chose Desktop (Työpöytä) over Downloads, then tested Dropbox Backup himself (needed a paid plan; 14-day trial): Desktop/Documents/Downloads backups appear at dropbox.com/backups/Mac, a space separate from the ordinary Dropbox files, and the test server's agent does not see them. Conclusion (Jari): return to the concept of a separate 'Open Habitat' folder in the person's cloud as the bridge.
