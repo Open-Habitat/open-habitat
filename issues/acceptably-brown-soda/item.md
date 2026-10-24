@@ -2,13 +2,15 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: gate run in taskfleet worker
 source_ref: taskfleet:01m5phrd9kn11x3wa2mz8qcdqk/gate-flake:lab-slow-creation-body
 originating_run: 01m5phrd9kn11x3wa2mz8qcdqk
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Gate flake: lab-slow-creation reads the create response after navigation drops its body

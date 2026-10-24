@@ -2,12 +2,14 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5pfjq0ssjxhqjrrkwcbqas8/gate:402379a3-title-dots
 originating_run: 01m5pfjq0ssjxhqjrrkwcbqas8
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # browser-conversation title-dots case fails the gate when a snapshot route is in flight at test end
