@@ -2,12 +2,13 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 provenance: chat
 lane: unlaned
 collision: [internal/provision, systemd/]
+closed: 2026-10-24
 ---
 
 # Broker stops on a slow boot because each startup probe has a fixed 3 s budget
@@ -24,6 +25,6 @@ A slow boot no longer leaves the broker stopped. Keep fail-closed semantics for 
 
 ## Acceptance Criteria
 
-- [ ] A startup probe that is slow but eventually answers correctly lets the broker start (unit test with an injected slow `run`).
-- [ ] A probe that answers with a refusing state still refuses; the boundary is not loosened.
-- [ ] If the systemd unit template changes, the change is noted for the Fleetrepo installation in result.md (the release watcher refuses unit changes Fleetrepo does not know about).
+- [x] A startup probe that is slow but eventually answers correctly lets the broker start (unit test with an injected slow `run`).
+- [x] A probe that answers with a refusing state still refuses; the boundary is not loosened.
+- [x] If the systemd unit template changes, the change is noted for the Fleetrepo installation in result.md (the release watcher refuses unit changes Fleetrepo does not know about).
