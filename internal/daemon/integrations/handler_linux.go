@@ -164,16 +164,16 @@ type accountRequest struct {
 }
 
 type changeView struct {
-	SchemaVersion      int        `json:"schema_version"`
-	Account            *Account   `json:"account,omitempty"`
+	SchemaVersion int      `json:"schema_version"`
+	Account       *Account `json:"account,omitempty"`
 	// Accounts and Failed answer an Apple write: the services it
 	// connected or renewed, and why the others were not.
-	Accounts []Account     `json:"accounts,omitempty"`
-	Failed   []appleFailure `json:"failed,omitempty"`
-	Removed            *removed   `json:"removed,omitempty"`
-	KeptDirectories    []string   `json:"kept_directories,omitempty"`
-	TrashedDirectories []string   `json:"trashed_directories,omitempty"`
-	Skill              SkillState `json:"skill"`
+	Accounts           []Account      `json:"accounts,omitempty"`
+	Failed             []appleFailure `json:"failed,omitempty"`
+	Removed            *removed       `json:"removed,omitempty"`
+	KeptDirectories    []string       `json:"kept_directories,omitempty"`
+	TrashedDirectories []string       `json:"trashed_directories,omitempty"`
+	Skill              SkillState     `json:"skill"`
 }
 
 type removed struct {

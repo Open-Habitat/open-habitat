@@ -115,6 +115,18 @@ func TestAppleConnectsChosenServicesAndReusesThePassword(t *testing.T) {
 		t.Fatalf("a Nextcloud account joined the Apple card: %v", acc)
 	}
 
+	// Apple's IMAP with another provider's SMTP relay is no Apple account:
+	// the Apple card's renewal must never send the password to the relay.
+	relay := map[string]any{"action": "connect", "provider": "imap", "address": "relay@icloud.com", "server": "imap.mail.me.localhost", "port": 993, "security": "tls", "username": "relay", "password": secret, "smtp_server": "smtp.relay.example", "smtp_port": 587, "smtp_security": "starttls"}
+	if code, out, _ := call(t, h, "POST", AccountsPath, "", relay); code != 200 {
+		t.Fatalf("relay: %d %v", code, out)
+	} else if acc := out["account"].(map[string]any); acc["apple_id"] != nil {
+		t.Fatalf("a mixed-provider mail account joined the Apple card: %v", acc)
+	}
+	if code, out, _ := call(t, h, "DELETE", AccountsPath, "", map[string]any{"action": "remove", "provider": "imap", "address": "relay@icloud.com", "delete_directories": false}); code != 200 {
+		t.Fatalf("relay remove: %d %v", code, out)
+	}
+
 	// Later: calendar and mail with the same password, which the browser
 	// never sends; the daemon takes it from the stored contacts account.
 	add := map[string]any{"action": "add", "provider": "apple", "address": "person@icloud.test", "services": []string{"mail", "calendar"}, "mail_address": "person@icloud.com"}

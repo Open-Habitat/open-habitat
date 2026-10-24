@@ -92,8 +92,10 @@ func (c *Catalog) appleSite(host string) bool {
 func (c *Catalog) appleMember(e Entry, address string) (string, bool) {
 	switch t := e.(type) {
 	case *himalaya:
+		// Every stored server must be Apple's: an Apple renewal must not
+		// hand the new password to another provider's SMTP relay.
 		a, err := t.read(c.env, address)
-		if err != nil || a.Server != c.apple.IMAP {
+		if err != nil || a.Server != c.apple.IMAP || a.SMTPServer != "" && a.SMTPServer != c.apple.SMTP {
 			return "", false
 		}
 		if a.AppleID != "" {
