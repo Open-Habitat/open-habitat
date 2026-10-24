@@ -2,13 +2,16 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed in a worker's full gate run
 source_ref: taskfleet:01m5pmjem2rha0jsyngvvntyft/observed:integrations-gate-flakes
 originating_run: 01m5pmjem2rha0jsyngvvntyft
 originating_run_kind: spinoff
+lane: unlaned
+collision: [internal/daemon/integrations]
+preparation: ready
 ---
 
 # integrations: relay TempDir cleanup and resume health flake in the gate

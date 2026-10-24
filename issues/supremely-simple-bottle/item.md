@@ -2,13 +2,16 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed while running focused tests in a worker
 source_ref: taskfleet:01m5p6fgxv7gxg515cm3xew9ww/observed:microsoft-removal-fence-flake
 originating_run: 01m5p6fgxv7gxg515cm3xew9ww
 originating_run_kind: spinoff
+lane: unlaned
+collision: [internal/daemon/integrations]
+preparation: ready
 ---
 
 # Microsoft removal-fence test races the pending cache directory
