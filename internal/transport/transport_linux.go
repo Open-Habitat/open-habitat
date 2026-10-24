@@ -229,6 +229,11 @@ func ValidateConfig(c Config) error { return validate(c, false) }
 
 func NewSink() gateway.TokenSink { return Sink{} }
 
+// NewFixtureSink is the offline distinct-UID fixture seam: it hands off to a
+// daemon that bound its own socket, so the kernel peer it requires is that
+// daemon's UID rather than PID 1's. Production uses NewSink.
+func NewFixtureSink() gateway.TokenSink { return Sink{testPath: true} }
+
 type Sink struct {
 	dial     func(context.Context, string) (net.Conn, error)
 	testPath bool

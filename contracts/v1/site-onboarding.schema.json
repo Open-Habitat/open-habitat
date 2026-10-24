@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/site-onboarding.schema.json",
   "title": "What the site's onboarding offers a signed-in person",
-  "description": "GET /api/v1/onboarding/site for any signed-in person: the repository mode, the integration steps in route order and the AI offer. It never carries the site's default repositories, their names or their number. A person who has signed in for the first time since the configuration existed gets the mode of that sign-in, and in auto and skip mode the names the site fetches for them: only defaults the gateway's check found they can read, never the rest.",
+  "description": "GET /api/v1/onboarding/site for any signed-in person: the repository mode, the integration steps in route order and the AI offer. It never carries the site's default repositories, their names or their number. A person whose account was created in auto or skip mode also gets the names the site fetches for them: only defaults the gateway's check found they can read at that sign-in, never the rest.",
   "type": "object", "additionalProperties": false,
   "required": ["schema_version", "repositories", "integrations", "ai_account"],
   "properties": {

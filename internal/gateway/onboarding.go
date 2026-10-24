@@ -282,18 +282,15 @@ type siteOnboarding struct {
 	AIAccount    onboardingAIAccount     `json:"ai_account"`
 }
 
-// personOnboarding is what one person's route shows. A person whose account
-// was created since the configuration existed keeps the mode of that
-// sign-in and sees the names the site fetches for them, only their own
-// readable ones (onboarding_plan.go).
+// personOnboarding is what one person's route shows: the site's current
+// steps, and the names the site fetches for this person, only their own
+// readable ones from the sign-in that created their account
+// (onboarding_plan.go).
 func personOnboarding(c onboardingConfig, r *onboardingReceipt) siteOnboarding {
 	v := siteOnboarding{SchemaVersion: 1, Integrations: c.Integrations, AIAccount: c.AIAccount}
 	v.Repositories.Mode = c.Repositories.Mode
-	if r != nil {
-		v.Repositories.Mode = r.Mode
-		if r.Mode != "preselected" {
-			v.Repositories.Imports = r.readable()
-		}
+	if r != nil && r.Mode != "preselected" {
+		v.Repositories.Imports = r.readable()
 	}
 	return v
 }

@@ -265,6 +265,7 @@ systemd or first-login provisioning therefore need additional scenarios:
 | Two precreated user routes | `./scripts/vm-test.sh two-user-routing --json` |
 | Root broker / first-login account creation | `./scripts/vm-test.sh <scenario> --json`: choose `broker-guest`, `jit-provision`, `jit-login` or `jit-concurrent`; the last needs a clean committed release tree |
 | Native gh catalog with separate kernel UIDs | `./scripts/test-repo-catalog-uids.sh` |
+| A site default a person cannot read never reaches their daemon, `gh`, home or browser replies, while the readable ones are handed off with the token over the real transport and cloned (gateway, two daemons, three kernel UIDs) | `./scripts/test-onboarding-defaults-uids.sh` (networkless disposable container; broker and GitHub are fixtures) |
 | Fixed-path shared Pi selector with distinct UIDs | `./scripts/test-shared-pi-selector.sh` |
 | Agent socket own-UID/root/gateway denials, gateway-only route absence and two-socket broker readiness | `./scripts/test-agent-uids.sh` |
 | Pi attempt and integration account peer/UID/socket denials | `./scripts/test-pi-attempt-uids.sh` |
