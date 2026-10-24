@@ -2,10 +2,11 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: task
-status: in-progress
+status: done
 priority: normal
 preparation: pending
 lane: unlaned
+closed: 2026-10-24
 ---
 
 # Prototype: Apple (iCloud) integration tile with app-specific password guidance

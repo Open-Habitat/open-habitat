@@ -3,10 +3,11 @@ created: 2026-10-24
 updated: 2026-10-24
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 preparation: pending
 lane: unlaned
+closed: 2026-10-24
 ---
 
 # Prototype: server admin integrations setup, step by step
