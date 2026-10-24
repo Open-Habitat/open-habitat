@@ -2,13 +2,15 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Observed in the full gate during onboarding-ai-offer
 source_ref: taskfleet:01m5pqte7cwfv3mv41k8j4jf77/gate-flake:pi-rpc-native-abort
 originating_run: 01m5pqte7cwfv3mv41k8j4jf77
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Gate flake: TestPiRPCNativeAbortDuringToolSettlesFirst sees the abort acknowledged before the run settles under load
