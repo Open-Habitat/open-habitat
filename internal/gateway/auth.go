@@ -72,11 +72,26 @@ type PlanOutcome struct {
 	FullName, Outcome string
 }
 
-// PlanSink delivers the token and the plan in the same one-time handoff. The
-// outcomes are in the plan's order; an error means the handoff's effect is
-// unknown, exactly as for Deliver.
-type PlanSink interface {
-	DeliverPlan(context.Context, Identity, string, string, RepositoryPlan) ([]PlanOutcome, error)
+// FirstLogin is what the binding-creating login hands over with the token,
+// in the same one-time handoff (ADR 0030): the repository plan, the site AI
+// key, or both.
+type FirstLogin struct {
+	Plan *RepositoryPlan
+	Seed *SiteKeySeed
+}
+
+// FirstLoginReply answers a FirstLogin. Defaults are in the plan's order;
+// AIKey is seeded, already_present (the person's Pi had a credential for
+// that provider, which stays) or failed.
+type FirstLoginReply struct {
+	Defaults []PlanOutcome
+	AIKey    string
+}
+
+// FirstLoginSink delivers the token and the first login's parts. An error
+// means the handoff's effect is unknown, exactly as for Deliver.
+type FirstLoginSink interface {
+	DeliverFirst(context.Context, Identity, string, string, FirstLogin) (FirstLoginReply, error)
 }
 
 // ErrBrokerUnavailable identifies a broker outage during login or an explicit
@@ -140,6 +155,7 @@ type AuthOptions struct {
 	Commit      string // 40-hex source commit of the running binary; empty when unknown
 	Broker      Broker
 	AdminFile   string // gateway-private name and browser roles; empty only in synthetic tests
+	SiteKeyFile string // gateway-private site AI key (site_key.go); empty: the site holds none
 	SessionFile string // gateway-private persistent state; empty only in synthetic tests
 	Provider    Provider
 	Sink        TokenSink
@@ -201,6 +217,8 @@ type Auth struct {
 	adminFile        string
 	adminEstablished bool
 	settings         serverSettings
+	siteKeyFile      string
+	siteKey          *siteKeyRecord
 	admission        map[string]admission
 	unmatchedLog     admission // process-wide budget; never keyed by request input
 	accessLog        admission // bound anonymous Access denials independently
@@ -253,6 +271,9 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	}
 	a := &Auth{version: opts.Version, commit: opts.Commit, sessionFile: opts.SessionFile, cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, links: map[string]*linkGrant{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID, access: access}
 	if err := a.loadAdministration(opts.AdminFile); err != nil {
+		return nil, err
+	}
+	if err := a.loadSiteKey(opts.SiteKeyFile); err != nil {
 		return nil, err
 	}
 	if err := a.loadSessions(); err != nil {
@@ -629,10 +650,12 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	// The token is handed off exactly once. A lost acknowledgement is terminal.
 	// Only the login that created the binding carries the site's repository
-	// plan, and keeps its record even when the handoff's answer is lost.
+	// plan and the site AI key, and keeps its record even when the
+	// handoff's answer is lost. Nothing is retried: a later login never
+	// carries either.
 	var delivered error
 	if ensured.Created {
-		receipt, keep, err := a.deliverWithPlan(r.Context(), target, id, token)
+		receipt, keep, err := a.deliverFirstLogin(r.Context(), target, id, token)
 		delivered = err
 		if keep && a.recordReceipt(id, receipt) != nil {
 			a.authEvent(attempt, "degraded", "onboarding_record_failed")

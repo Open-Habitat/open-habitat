@@ -98,6 +98,12 @@ type sink struct {
 	scenario *atomic.Value
 	// The synthetic daemons' clone jobs, by subject, for the first-login plan.
 	plans map[string]*daemon.CloneJobs
+	// The synthetic daemons' native Pi credential helpers, by subject, for
+	// the site AI key; seeded marks the fake Pi status usable, as native Pi
+	// reports a literal key.
+	seeds    map[string]*daemon.PiDevice
+	piState  string
+	seedFail *atomic.Bool
 }
 
 func (s sink) Deliver(context.Context, gateway.Identity, string, string) error {
@@ -107,21 +113,39 @@ func (s sink) Deliver(context.Context, gateway.Identity, string, string) error {
 	return nil
 }
 
-// DeliverPlan answers the plan as the person's daemon does after installing
-// the token: through that synthetic daemon's own clone jobs.
-func (s sink) DeliverPlan(ctx context.Context, m gateway.Identity, subject, token string, plan gateway.RepositoryPlan) ([]gateway.PlanOutcome, error) {
+// DeliverFirst answers the plan and the seed as the person's daemon does after
+// installing the token: through that synthetic daemon's own clone jobs and
+// its native Pi credential helper.
+func (s sink) DeliverFirst(ctx context.Context, m gateway.Identity, subject, token string, first gateway.FirstLogin) (gateway.FirstLoginReply, error) {
 	if err := s.Deliver(ctx, m, subject, token); err != nil {
-		return nil, err
+		return gateway.FirstLoginReply{}, err
 	}
-	jobs := s.plans[subject]
-	if jobs == nil {
-		return nil, errors.New("no synthetic daemon")
+	var reply gateway.FirstLoginReply
+	if plan := first.Plan; plan != nil {
+		jobs := s.plans[subject]
+		if jobs == nil {
+			return reply, errors.New("no synthetic daemon")
+		}
+		for _, o := range jobs.Plan(ctx, transport.Plan{Mode: plan.Mode, Defaults: plan.Defaults}) {
+			reply.Defaults = append(reply.Defaults, gateway.PlanOutcome{FullName: o.FullName, Outcome: o.Outcome})
+		}
 	}
-	out := []gateway.PlanOutcome{}
-	for _, o := range jobs.Plan(ctx, transport.Plan{Mode: plan.Mode, Defaults: plan.Defaults}) {
-		out = append(out, gateway.PlanOutcome{FullName: o.FullName, Outcome: o.Outcome})
+	if seed := first.Seed; seed != nil {
+		device := s.seeds[subject]
+		if device == nil {
+			return reply, errors.New("no synthetic daemon")
+		}
+		reply.AIKey = "failed"
+		if !s.seedFail.Load() {
+			reply.AIKey = device.SeedSiteKey(ctx, seed.Provider, seed.Key)
+		}
+		if reply.AIKey == "seeded" {
+			if err := os.WriteFile(s.piState, []byte("usable"), 0600); err != nil {
+				return reply, err
+			}
+		}
 	}
-	return out, nil
+	return reply, nil
 }
 func main() {
 	// Native Pi creates settings using the inherited umask. Keep invented
@@ -238,6 +262,8 @@ esac
 	}()
 	var cloneCalls atomic.Int64
 	planTargets := map[string]*daemon.CloneJobs{}
+	seedTargets := map[string]*daemon.PiDevice{}
+	var seedFail atomic.Bool
 	var busyMu sync.Mutex
 	var busy []*exec.Cmd
 	defer func() {
@@ -446,6 +472,7 @@ esac
 		nativePkg, _ := filepath.Abs(filepath.Join(os.Args[1], "../..", "internal/daemon/pi-device-test/node_modules/@earendil-works/pi-coding-agent"))
 		nativeNode, _ := exec.LookPath("node")
 		credentialDevice := &daemon.PiDevice{Home: home, Node: nativeNode, Entry: filepath.Join(nativePkg, "dist/index.js"), Manifest: filepath.Join(nativePkg, "package.json"), FixtureHome: true}
+		seedTargets[m.Subject] = credentialDevice
 		attachmentCfg := cfg
 		attachmentCfg.Home = home
 		attachments := daemon.AttachmentsHandler(attachmentCfg, trusted)
@@ -603,7 +630,7 @@ esac
 		if n := release.Load(); n > 0 {
 			version += "." + strconv.Itoa(int(n))
 		}
-		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, EditorOrigin: editorOrigin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: version, Commit: strings.Repeat(strconv.Itoa(int(release.Load())%10), 40), Provider: fixtureProvider, Sink: sink{&scenario, planTargets}, Broker: broker, AdminFile: adminPath, SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
+		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, EditorOrigin: editorOrigin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: version, Commit: strings.Repeat(strconv.Itoa(int(release.Load())%10), 40), Provider: fixtureProvider, Sink: sink{&scenario, planTargets, seedTargets, piStateFile, &seedFail}, Broker: broker, AdminFile: adminPath, SiteKeyFile: filepath.Join(tmp, "site-ai-key.json"), SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
 		}, SnapshotPeerUID: func(c *net.UnixConn) int { return peers[c.RemoteAddr().String()] }})
 		if err != nil {
@@ -938,6 +965,12 @@ esac
 					http.Error(w, "fixture refused", 400)
 					return
 				}
+				w.WriteHeader(204)
+				return
+			case "/fixture/seed-fail":
+				// The next seeds answer failed, as a daemon whose native Pi
+				// write did not succeed.
+				seedFail.Store(r.URL.Query().Get("value") != "0")
 				w.WriteHeader(204)
 				return
 			case "/fixture/profile-missing-email":

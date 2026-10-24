@@ -29,11 +29,23 @@ try {
   // Pi keeps Anthropic's Claude Pro/Max sign-in under the same id as its key.
   // A key change must never replace or delete a credential of another kind; the
   // check runs under Pi's file lock, since a native login may write meanwhile.
+  // seed is the site AI key (ADR 0030): written only where the person's Pi
+  // has no credential of any kind for this provider, decided under the same
+  // lock, so a key the person saved meanwhile always stays.
+  let seeded = false;
   if (action === 'save') {
     const key = readFileSync(0, 'utf8');
     if (!literal.test(key)) throw Error('literal');
     await AuthStorage.create(path).modify(provider, async current => {
       if (current && current.type !== 'api_key') throw Error('kind');
+      return { type: 'api_key', key };
+    });
+  } else if (action === 'seed') {
+    const key = readFileSync(0, 'utf8');
+    if (!literal.test(key)) throw Error('literal');
+    await AuthStorage.create(path).modify(provider, async current => {
+      if (current) return undefined;
+      seeded = true;
       return { type: 'api_key', key };
     });
   } else if (action === 'remove') {
@@ -53,18 +65,21 @@ try {
     const key = readStoredCredential(id, path); // raw entry; never resolve !commands or environment references
     keys[id] = {present: key?.type === 'api_key', suffix: key?.type === 'api_key' && literal.test(key.key) ? key.key.slice(-4) : null};
   }
-  if ((action === 'save' && old?.type !== 'api_key') || action === 'remove') {
+  if ((action === 'save' && old?.type !== 'api_key') || action === 'remove' || seeded) {
     const settings = SettingsManager.create(process.env.HOME, join(process.env.HOME, '.pi/agent'), {projectTrusted:false});
     for (const failure of settings.drainErrors()) { reportStorage(failure.error); throw Error('settings'); }
     // A provider's first key becomes the default for new conversations. Removing
     // the default's key falls back to the subscription, then to another key.
+    // A seed becomes the default only for a person who has none yet, so it
+    // never moves anyone's conversations onto the site's bill.
     const target = action === 'save' ? provider
+      : action === 'seed' ? (settings.getDefaultProvider() ? null : provider)
       : settings.getDefaultProvider() !== provider ? null
       : subscription ? 'openai-codex' : providers.find(id => keys[id].present) ?? null;
     if (target) {
       const runtime = await ModelRuntime.create({allowModelNetwork:false, refreshOnCreate:false, modelsPath:null});
       const models = runtime.getModels(target).filter(m => m.input?.includes('text'));
-      const preferred = action === 'save' ? settings.getDefaultModel() : defaultModelPerProvider[target];
+      const preferred = action === 'remove' ? defaultModelPerProvider[target] : settings.getDefaultModel();
       const model = models.find(m => m.id === preferred) ?? models.find(m => m.id === defaultModelPerProvider[target]) ?? models[0];
       if (!model) throw Error('model');
       settings.setDefaultModelAndProvider(target, model.id);
@@ -72,7 +87,8 @@ try {
       for (const failure of settings.drainErrors()) { reportStorage(failure.error); throw Error('settings'); }
     }
   }
-  process.stdout.write(JSON.stringify({schema_version:1, ...keys, subscription:{present:subscription}}) + '\n');
+  const outcome = action === 'seed' ? {seed: seeded ? 'seeded' : 'already_present'} : {};
+  process.stdout.write(JSON.stringify({schema_version:1, ...keys, subscription:{present:subscription}, ...outcome}) + '\n');
 } catch (error) {
   reportStorage(error);
   process.stdout.write('{"error":"native_unavailable"}\n');

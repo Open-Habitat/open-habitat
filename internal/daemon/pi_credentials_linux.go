@@ -56,19 +56,38 @@ type piCredentials struct {
 }
 
 func (p *PiDevice) credentials(parent context.Context, action, provider, key string) (piCredentials, error) {
+	result, _, err := p.credentialsHelper(parent, action, provider, key)
+	return result, err
+}
+
+// SeedSiteKey writes the site AI key (ADR 0030) into the person's Pi only
+// where it has no credential of any kind for the provider, deciding under
+// Pi's own file lock, so a key the person saved meanwhile, or a Claude
+// sign-in kept under the same id, always stays. It answers seeded,
+// already_present or failed. The helper writes the key before its settings
+// step, so failed may still have left a usable key.
+func (p *PiDevice) SeedSiteKey(ctx context.Context, provider, key string) string {
+	_, outcome, err := p.credentialsHelper(ctx, "seed", provider, key)
+	if err != nil || outcome != "seeded" && outcome != "already_present" {
+		return "failed"
+	}
+	return outcome
+}
+
+func (p *PiDevice) credentialsHelper(parent context.Context, action, provider, key string) (piCredentials, string, error) {
 	var result piCredentials
 	fail := errors.New("native Pi credentials unavailable")
-	if action != "read" && action != "save" && action != "remove" {
-		return result, fail
+	if action != "read" && action != "save" && action != "remove" && action != "seed" {
+		return result, "", fail
 	}
 	if (action == "read") != (provider == "") || (action != "read" && !piKeyProvider(provider)) {
-		return result, fail
+		return result, "", fail
 	}
-	if action == "save" && !literalProviderKey.MatchString(key) {
-		return result, fail
+	if (action == "save" || action == "seed") && !literalProviderKey.MatchString(key) {
+		return result, "", fail
 	}
 	if p.validateConfiguration() != nil || p.validateCredentials() != nil || p.validateSettings() != nil {
-		return result, fail
+		return result, "", fail
 	}
 	ctx, cancel := context.WithTimeout(parent, 12*time.Second)
 	defer cancel()
@@ -85,15 +104,18 @@ func (p *PiDevice) credentials(parent context.Context, action, provider, key str
 	cmd.Stderr = &storageDiagnostics{operation: "pi_credentials"}
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
-	if err != nil || len(out) > 1024 || json.Unmarshal(out, &result) != nil || result.SchemaVersion != 1 {
-		return piCredentials{}, fail
+	var seed struct {
+		Seed string `json:"seed"`
+	}
+	if err != nil || len(out) > 1024 || json.Unmarshal(out, &result) != nil || json.Unmarshal(out, &seed) != nil || result.SchemaVersion != 1 {
+		return piCredentials{}, "", fail
 	}
 	for _, state := range []piKeyState{result.OpenAI, result.Anthropic, result.DeepSeek} {
 		if state.Suffix != nil && !keySuffix.MatchString(*state.Suffix) {
-			return piCredentials{}, fail
+			return piCredentials{}, "", fail
 		}
 	}
-	return result, nil
+	return result, seed.Seed, nil
 }
 
 func PiCredentialsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi *PiDevice) http.Handler {

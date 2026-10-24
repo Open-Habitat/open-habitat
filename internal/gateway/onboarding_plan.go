@@ -10,7 +10,8 @@ import (
 	"time"
 )
 
-// Default repositories are imported once (ADR 0030). In the login in which
+// Default repositories are imported once (ADR 0030), and the site AI key
+// is seeded in the same handoff (site_key.go). In the login in which
 // the broker created the binding, the gateway checks each site default with
 // the person's transient sign-in token, hands the person's daemon only the
 // readable ones with the token, and keeps a per-subject record of what that
@@ -40,11 +41,18 @@ type onboardingReceipt struct {
 	At       string           `json:"at"`
 	Mode     string           `json:"mode"`
 	Defaults []receiptDefault `json:"defaults"`
+	// AIKey is what the sign-in did with the site AI key: not_offered,
+	// seeded, already_present (the person's own credential stayed), failed,
+	// or unknown when the handoff's answer is missing. A failure may still
+	// have left a usable key; native Pi status, not this, decides the step.
+	AIKey string `json:"ai_key,omitempty"`
 }
+
+var receiptAIKeys = []string{"not_offered", "seeded", "already_present", "failed", "unknown"}
 
 func validReceipt(subject string, r onboardingReceipt) bool {
 	at, e := time.Parse(time.RFC3339, r.At)
-	if !canonicalSubject(subject) || e != nil || at.UTC().Format(time.RFC3339) != r.At || !slices.Contains(onboardingModes, r.Mode) || r.Defaults == nil || len(r.Defaults) > maxOnboardingDefaults {
+	if !canonicalSubject(subject) || e != nil || at.UTC().Format(time.RFC3339) != r.At || !slices.Contains(onboardingModes, r.Mode) || r.Defaults == nil || len(r.Defaults) > maxOnboardingDefaults || r.AIKey != "" && !slices.Contains(receiptAIKeys, r.AIKey) {
 		return false
 	}
 	seen := map[string]bool{}
@@ -91,41 +99,68 @@ func checkDefaults(ctx context.Context, checker RepositoryChecker, token string,
 	return out
 }
 
-// deliverWithPlan is the handoff of the binding-creating login. It returns
+// deliverFirstLogin is the handoff of the binding-creating login. It returns
 // the record to keep for the subject; the error is the handoff's.
-func (a *Auth) deliverWithPlan(ctx context.Context, target Identity, id, token string) (onboardingReceipt, bool, error) {
+func (a *Auth) deliverFirstLogin(ctx context.Context, target Identity, id, token string) (onboardingReceipt, bool, error) {
 	c, ok := a.onboardingView()
 	checker, canCheck := a.provider.(RepositoryChecker)
-	if !ok || !canCheck {
-		// Without the configuration or a check nothing is imported; the
-		// login itself goes on as before.
+	seed := a.siteKeySeed()
+	if !ok || !canCheck && seed == nil {
+		// Without the configuration, or with nothing to hand over, nothing
+		// is imported or seeded; the login itself goes on as before.
 		return onboardingReceipt{}, false, a.sink.Deliver(ctx, target, id, token)
 	}
-	receipt := onboardingReceipt{At: a.now().UTC().Format(time.RFC3339), Mode: c.Repositories.Mode, Defaults: []receiptDefault{}}
-	checked := checkDefaults(ctx, checker, token, c.Repositories.Defaults)
+	receipt := onboardingReceipt{At: a.now().UTC().Format(time.RFC3339), Mode: c.Repositories.Mode, Defaults: []receiptDefault{}, AIKey: "not_offered"}
+	checked := make([]string, len(c.Repositories.Defaults))
+	if canCheck {
+		checked = checkDefaults(ctx, checker, token, c.Repositories.Defaults)
+	}
 	plan := RepositoryPlan{Mode: c.Repositories.Mode}
 	for i, name := range c.Repositories.Defaults {
 		outcome := checked[i]
-		if outcome == "readable" {
+		switch outcome {
+		case "readable":
 			outcome = "unknown"
 			if c.Repositories.Mode == "preselected" {
 				outcome = "preselected"
 			} else {
 				plan.Defaults = append(plan.Defaults, name)
 			}
+		case "":
+			outcome = "check_failed"
 		}
 		receipt.Defaults = append(receipt.Defaults, receiptDefault{Repository: name, Outcome: outcome})
 	}
-	sink, planned := a.sink.(PlanSink)
-	if len(plan.Defaults) == 0 || !planned {
+	var first FirstLogin
+	if len(plan.Defaults) > 0 {
+		first.Plan = &plan
+	}
+	if seed != nil {
+		first.Seed = seed
+		receipt.AIKey = "unknown"
+	}
+	sink, capable := a.sink.(FirstLoginSink)
+	if first.Plan == nil && first.Seed == nil || !capable {
+		if seed != nil {
+			receipt.AIKey = "failed"
+		}
 		return receipt, true, a.sink.Deliver(ctx, target, id, token)
 	}
-	outcomes, err := sink.DeliverPlan(ctx, target, id, token, plan)
-	if err != nil || len(outcomes) != len(plan.Defaults) {
+	reply, err := sink.DeliverFirst(ctx, target, id, token, first)
+	if err != nil {
 		// The answer is missing: every daemon-side entry stays unknown.
 		return receipt, true, err
 	}
-	for i, o := range outcomes {
+	if first.Seed != nil && slices.Contains([]string{"seeded", "already_present", "failed"}, reply.AIKey) {
+		receipt.AIKey = reply.AIKey
+	}
+	if first.Seed != nil {
+		a.log.Info("site_ai_key_seed", "outcome", receipt.AIKey)
+	}
+	if first.Plan == nil || len(reply.Defaults) != len(plan.Defaults) {
+		return receipt, true, nil
+	}
+	for i, o := range reply.Defaults {
 		for j := range receipt.Defaults {
 			if receipt.Defaults[j].Repository == plan.Defaults[i] && o.FullName == plan.Defaults[i] && (o.Outcome == "queued" || o.Outcome == "already_present") {
 				receipt.Defaults[j].Outcome = o.Outcome

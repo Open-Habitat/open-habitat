@@ -73,6 +73,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(GitIdentityPath, GitIdentityHandler(cfg, server.TrustedPeer))
 	clones := NewCloneJobs(ctx, cfg, server.TrustedPeer)
 	server.SetPlanConsumer(clones.Plan)
+	server.SetSeedConsumer(func(ctx context.Context, s transport.Seed) string { return pi.SeedSiteKey(ctx, s.Provider, s.Key) })
 	mux.Handle(RepoClonesPath, clones.Handler())
 	mux.Handle(RepoCloneEventsPath, clones.Events())
 	mux.Handle(RepoObservePath, RepoObserveHandler(cfg, server.TrustedPeer, clones))

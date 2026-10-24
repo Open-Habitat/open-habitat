@@ -42,15 +42,41 @@ func (p *planProvider) CheckRepository(ctx context.Context, token, name string) 
 type planSink struct {
 	fakeSink
 	plans  []RepositoryPlan
+	seeds  []SiteKeySeed
 	answer func(RepositoryPlan) ([]PlanOutcome, error)
+	// seed answers a seed; nil answers seeded.
+	seed func(SiteKeySeed) (string, error)
 }
 
-func (s *planSink) DeliverPlan(ctx context.Context, m Identity, id, token string, plan RepositoryPlan) ([]PlanOutcome, error) {
-	s.plans = append(s.plans, plan)
-	if err := s.Deliver(ctx, m, id, token); err != nil {
-		return nil, err
+func (s *planSink) DeliverFirst(ctx context.Context, m Identity, id, token string, first FirstLogin) (FirstLoginReply, error) {
+	if first.Plan != nil {
+		s.plans = append(s.plans, *first.Plan)
 	}
-	return s.answer(plan)
+	if first.Seed != nil {
+		s.seeds = append(s.seeds, *first.Seed)
+	}
+	if err := s.Deliver(ctx, m, id, token); err != nil {
+		return FirstLoginReply{}, err
+	}
+	var reply FirstLoginReply
+	if first.Plan != nil {
+		out, err := s.answer(*first.Plan)
+		if err != nil {
+			return FirstLoginReply{}, err
+		}
+		reply.Defaults = out
+	}
+	if first.Seed != nil {
+		reply.AIKey = "seeded"
+		if s.seed != nil {
+			got, err := s.seed(*first.Seed)
+			if err != nil {
+				return FirstLoginReply{}, err
+			}
+			reply.AIKey = got
+		}
+	}
+	return reply, nil
 }
 
 func planFixture(t *testing.T, mode string, defaults ...string) (http.Handler, *Auth, *planProvider, *planSink, *bytes.Buffer, string) {
@@ -75,7 +101,7 @@ func planFixture(t *testing.T, mode string, defaults ...string) (http.Handler, *
 	if e := a.changeDefaultLimitFor("", 1<<30); e != nil {
 		t.Fatal(e)
 	}
-	if _, e := a.updateOnboardingFor("", 0, onboardingDocument{Repositories: onboardingRepositories{Mode: mode, Defaults: defaults}, Integrations: []onboardingIntegration{}, AIAccount: onboardingAIAccount{Offer: "all"}}); e != nil {
+	if _, e := a.updateOnboardingFor("", 0, onboardingDocument{Repositories: onboardingRepositories{Mode: mode, Defaults: append([]string{}, defaults...)}, Integrations: []onboardingIntegration{}, AIAccount: onboardingAIAccount{Offer: "all"}}); e != nil {
 		t.Fatal(e)
 	}
 	return NewWithAuth("", a), a, p, s, &logs, admin

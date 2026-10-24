@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/server-onboarding.schema.json",
   "title": "The site onboarding configuration an administrator reads and replaces",
-  "description": "GET /api/v1/server/onboarding returns the configuration with its version; PUT replaces the whole document when expected_version is the current version (409 version_conflict otherwise) and returns the new configuration. Administrator, session and CSRF are required. Rejections are fixed codes shared with root's admin onboarding CLI: invalid_document, invalid_mode, invalid_repository_name, too_many_defaults, duplicate_default, duplicate_destination, unknown_provider, duplicate_provider, invalid_offer, site_key_unavailable. Integrations come back in the integrations catalog's order. A change applies only to onboardings that start afterwards.",
-  "oneOf": [{"$ref": "#/$defs/configuration"}, {"$ref": "#/$defs/change"}],
+  "description": "GET /api/v1/server/onboarding returns the configuration with its version; PUT replaces the whole document when expected_version is the current version (409 version_conflict otherwise) and returns the new configuration. Administrator, session and CSRF are required. Rejections are fixed codes shared with root's admin onboarding CLI: invalid_document, invalid_mode, invalid_repository_name, too_many_defaults, duplicate_default, duplicate_destination, unknown_provider, duplicate_provider, invalid_offer, site_key_unavailable (offer site_key without a stored key), site_key_stored (offer changed while one is stored). Integrations come back in the integrations catalog's order. A change applies only to onboardings that start afterwards. The site AI key has its own writes, each answered with the configuration: POST /api/v1/server/onboarding/ai-key/set {provider, key} stores it and makes offer site_key; POST /api/v1/server/onboarding/ai-key/delete {offer} removes it and sets that offer. Their rejections are invalid_key, invalid_offer and site_key_unavailable (nothing to delete); a 503 may or may not have written, and nothing is retried. The key is read back only as site_key {provider, suffix, set_at}; it is copied into a new person's own Pi credentials once, at the sign-in that created their account, never over a credential they have.",
+  "oneOf": [{"$ref": "#/$defs/configuration"}, {"$ref": "#/$defs/change"}, {"$ref": "#/$defs/site_key_set"}, {"$ref": "#/$defs/site_key_delete"}],
   "$defs": {
     "repository_name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$", "not": {"pattern": "/\\.{1,2}$"}},
     "repositories": {
@@ -39,7 +39,34 @@
         "version": {"description": "Revision of the stored document; 0 until the first save.", "type": "integer", "minimum": 0, "maximum": 1073741824},
         "repositories": {"$ref": "#/$defs/repositories"},
         "integrations": {"$ref": "#/$defs/integrations"},
-        "ai_account": {"$ref": "#/$defs/ai_account"}
+        "ai_account": {"$ref": "#/$defs/ai_account"},
+        "site_key": {"$ref": "#/$defs/site_key"}
+      }
+    },
+    "key_provider": {"enum": ["openai", "anthropic", "deepseek"]},
+    "site_key": {
+      "description": "The stored site AI key as it is ever read back; present exactly while one is stored.",
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "suffix", "set_at"],
+      "properties": {
+        "provider": {"$ref": "#/$defs/key_provider"},
+        "suffix": {"description": "The key's last four characters.", "type": "string", "pattern": "^[A-Za-z0-9_-]{4}$"},
+        "set_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "site_key_set": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "key"],
+      "properties": {
+        "provider": {"$ref": "#/$defs/key_provider"},
+        "key": {"description": "One literal key, sent once and never returned: Pi runs !… values and expands $NAME references. sk-ant-… exactly for anthropic.", "type": "string", "pattern": "^sk-[A-Za-z0-9_-]{20,200}$"}
+      }
+    },
+    "site_key_delete": {
+      "type": "object", "additionalProperties": false,
+      "required": ["offer"],
+      "properties": {
+        "offer": {"description": "What new people are offered instead.", "enum": ["all", "chatgpt", "claude", "openai_key", "anthropic_key", "deepseek_key"]}
       }
     },
     "change": {

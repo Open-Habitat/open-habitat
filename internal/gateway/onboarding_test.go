@@ -269,7 +269,6 @@ func TestStoredOnboardingMustBeCanonical(t *testing.T) {
 	for _, record := range []string{
 		`{"version":1,"name":"","administrators":[],"onboarding":{"version":1,"repositories":{"mode":"auto","defaults":[]},"integrations":[{"provider":"dropbox","required":false},{"provider":"google","required":false}],"ai_account":{"offer":"all"}}}`,
 		`{"version":1,"name":"","administrators":[],"onboarding":{"version":0,"repositories":{"mode":"auto","defaults":[]},"integrations":[],"ai_account":{"offer":"all"}}}`,
-		`{"version":1,"name":"","administrators":[],"onboarding":{"version":1,"repositories":{"mode":"auto","defaults":[]},"integrations":[],"ai_account":{"offer":"site_key"}}}`,
 	} {
 		if e := os.WriteFile(path, []byte(record), 0600); e != nil {
 			t.Fatal(e)

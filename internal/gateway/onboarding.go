@@ -136,11 +136,6 @@ func normalizeOnboarding(d onboardingDocument) (onboardingDocument, error) {
 	if !slices.Contains(onboardingOffers, d.AIAccount.Offer) {
 		return d, onboardingInvalid("invalid_offer")
 	}
-	// offer is site_key exactly while a site key is stored, and the gateway
-	// stores none yet.
-	if d.AIAccount.Offer == "site_key" {
-		return d, onboardingInvalid("site_key_unavailable")
-	}
 	out := onboardingDocument{
 		Repositories: onboardingRepositories{Mode: d.Repositories.Mode, Defaults: append([]string{}, d.Repositories.Defaults...)},
 		Integrations: make([]onboardingIntegration, 0, len(d.Integrations)),
@@ -208,6 +203,14 @@ func (a *Auth) checkOnboardingLocked(caller string, expected int, d onboardingDo
 	if expected != current.Version {
 		return onboardingConfig{}, errOnboardingConflict
 	}
+	// offer is site_key exactly while a site key is stored (site_key.go): a
+	// replacement keeps it, and only ai-key set and delete change it.
+	if n.AIAccount.Offer == "site_key" && a.siteKey == nil {
+		return onboardingConfig{}, errSiteKeyUnavailable
+	}
+	if n.AIAccount.Offer != "site_key" && a.siteKey != nil {
+		return onboardingConfig{}, onboardingInvalid("site_key_stored")
+	}
 	return onboardingConfig{Version: current.Version + 1, onboardingDocument: n}, nil
 }
 
@@ -268,6 +271,14 @@ func decodeOnboardingDocument(r io.Reader, limit int64) (d onboardingDocument, e
 type onboardingReply struct {
 	SchemaVersion int `json:"schema_version"`
 	onboardingConfig
+	// SiteKey is the stored site AI key as it is ever read back.
+	SiteKey *siteKeyView `json:"site_key,omitempty"`
+}
+
+func (a *Auth) replyOnboarding(w http.ResponseWriter, c onboardingConfig) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(onboardingReply{1, c, a.siteKeyView()})
 }
 
 // siteOnboarding is the person-side read: the steps and the offer, never the
@@ -288,6 +299,12 @@ type siteOnboarding struct {
 // (onboarding_plan.go).
 func personOnboarding(c onboardingConfig, r *onboardingReceipt) siteOnboarding {
 	v := siteOnboarding{SchemaVersion: 1, Integrations: c.Integrations, AIAccount: c.AIAccount}
+	// The site key is seeded at the sign-in that created the account, and
+	// native Pi status decides whether the step shows at all. When it does
+	// the seed did not give a usable key, so every option is offered.
+	if v.AIAccount.Offer == "site_key" {
+		v.AIAccount.Offer = "all"
+	}
 	v.Repositories.Mode = c.Repositories.Mode
 	if r != nil && r.Mode != "preselected" {
 		v.Repositories.Imports = r.readable()
@@ -361,11 +378,7 @@ func (a *Auth) serverOnboardingHTTP(w http.ResponseWriter, r *http.Request) {
 		safe(w, 403, "admin_required")
 		return
 	}
-	reply := func(c onboardingConfig) {
-		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(onboardingReply{1, c})
-	}
+	reply := func(c onboardingConfig) { a.replyOnboarding(w, c) }
 	if r.Method == http.MethodGet {
 		c, ok := a.onboardingView()
 		if !ok {

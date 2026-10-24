@@ -87,6 +87,8 @@ checks = {
     "server-integrations-clear.json": "server-integrations.schema.json",
     "server-onboarding.json": "server-onboarding.schema.json",
     "server-onboarding-change.json": "server-onboarding.schema.json",
+    "server-onboarding-site-key.json": "server-onboarding.schema.json",
+    "server-onboarding-site-key-delete.json": "server-onboarding.schema.json",
     "site-onboarding.json": "site-onboarding.schema.json",
     "server-storage-change.json": "server-storage-change.schema.json",
     "command-request.json": "command.schema.json",
@@ -221,6 +223,15 @@ site_onboarding = json.loads((BASE / "examples" / "site-onboarding.json").read_t
 must_reject("site-onboarding.schema.json", {**site_onboarding, "repositories": {"mode": "auto", "defaults": ["example-org/infra"]}})
 must_reject("site-onboarding.schema.json", {**site_onboarding, "repositories": {"mode": "auto", "default_count": 2}})
 must_reject("site-onboarding.schema.json", {**site_onboarding, "defaults": ["example-org/infra"]})
+# The site AI key is read back only as provider, suffix and time, is set
+# only as one literal key, and delete names the replacement offer.
+site_key = json.loads((BASE / "examples" / "server-onboarding-site-key.json").read_text())
+must_reject("server-onboarding.schema.json", {**site_key, "site_key": {**site_key["site_key"], "key": "sk-" + "a" * 30}})
+must_reject("server-onboarding.schema.json", {**site_key, "site_key": {**site_key["site_key"], "suffix": "sk-ant-a"}})
+must_reject("server-onboarding.schema.json", {"provider": "openai", "key": "!cat ~/.ssh/id_ed25519"})
+must_reject("server-onboarding.schema.json", {"provider": "openai", "key": "$OPENAI_API_KEY"})
+must_reject("server-onboarding.schema.json", {"offer": "site_key"})
+must_reject("site-onboarding.schema.json", {**site_onboarding, "site_key": site_key["site_key"]})
 must_reject("server-access.schema.json", {"id": "43", "login": "example-person"})
 must_reject("server-access.schema.json", {"login": "-bad"})
 must_reject("server-access.schema.json", {"subject": "43", "administrator": True})

@@ -5,6 +5,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -348,3 +349,118 @@ func TestPiCredentialsKeepsAnthropicSubscription(t *testing.T) {
 		}
 	}
 }
+
+// The site AI key is seeded only where the person's Pi has no credential of
+// any kind for that provider. A first seed sets the default for a person who
+// has none; a seed beside another provider's credential leaves their default
+// where it was, so the site's key never becomes what they use by accident.
+func TestSeedSiteKeyWritesOnlyWhereAbsent(t *testing.T) {
+	p, home := piFixture(t)
+	ctx := context.Background()
+	key := "sk-ant-api03-" + strings.Repeat("S", 40) + "seed"
+	for _, bad := range []string{"!id", "$ANTHROPIC_API_KEY", "sk-short"} {
+		if got := p.SeedSiteKey(ctx, "anthropic", bad); got != "failed" {
+			t.Fatal("seeded a nonliteral key", got)
+		}
+	}
+	if got := p.SeedSiteKey(ctx, "anthropic", key); got != "seeded" {
+		t.Fatal(got)
+	}
+	models, err := p.catalog(ctx, "")
+	if err != nil || models.DefaultProvider == nil || *models.DefaultProvider != "anthropic" || p.Status() != "usable" {
+		t.Fatal("a first seed did not make Pi usable with the key's provider")
+	}
+	// A second seed, of another key, keeps the first.
+	if got := p.SeedSiteKey(ctx, "anthropic", "sk-ant-api03-"+strings.Repeat("T", 40)); got != "already_present" {
+		t.Fatal(got)
+	}
+	raw, _ := os.ReadFile(filepath.Join(home, ".pi/agent/auth.json"))
+	if !strings.Contains(string(raw), key) {
+		t.Fatal("seed replaced a present key")
+	}
+	// Beside the person's own default, a seed of another provider is written
+	// but not made the default.
+	settings := filepath.Join(home, ".pi/agent/settings.json")
+	before, _ := os.ReadFile(settings)
+	if got := p.SeedSiteKey(ctx, "deepseek", "sk-"+strings.Repeat("d", 32)); got != "seeded" {
+		t.Fatal(got)
+	}
+	if after, _ := os.ReadFile(settings); string(after) != string(before) {
+		t.Fatal("a seed moved the person's default")
+	}
+
+	// A Claude sign-in kept under the same id stays byte for byte.
+	p2, home2 := piFixture(t)
+	path := filepath.Join(home2, ".pi/agent/auth.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	oauth := []byte(`{"anthropic":{"type":"oauth","access":"synthetic-access","refresh":"synthetic-refresh","expires":4102444800000}}`)
+	if err := os.WriteFile(path, oauth, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := p2.SeedSiteKey(ctx, "anthropic", key); got != "already_present" {
+		t.Fatal(got)
+	}
+	if raw, _ := os.ReadFile(path); string(raw) != string(oauth) {
+		t.Fatal("seed changed the Claude sign-in")
+	}
+}
+
+// The decision is made under Pi's own file lock: a person's own key saved by
+// a concurrent second login while the creating login's seed waits always
+// stays. A check outside the lock would read the empty file and overwrite it.
+func TestSeedSiteKeyKeepsAKeySavedUnderTheLock(t *testing.T) {
+	p, home := piFixture(t)
+	path := filepath.Join(home, ".pi/agent/auth.json")
+	own := "sk-" + strings.Repeat("o", 30) + "mine"
+	storage, _ := filepath.Abs(filepath.Join("pi-device-test", "node_modules", "@earendil-works", "pi-coding-agent", "dist", "core", "auth-storage.js"))
+	holder := `import { AuthStorage } from ` + strconvQuote(storage) + `;
+import { createInterface } from 'node:readline';
+const lines = createInterface({ input: process.stdin });
+await AuthStorage.create(process.argv[1]).storage.withLockAsync(async () => {
+  process.stdout.write('locked\n');
+  for await (const _ of lines) break;
+  return { result: undefined, next: JSON.stringify({ openai: { type: 'api_key', key: process.argv[2] } }) };
+});
+process.stdout.write('released\n');
+`
+	node, _ := exec.LookPath("node")
+	cmd := exec.Command(node, "--input-type=module", "--eval", holder, path, own)
+	cmd.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + home}
+	in, _ := cmd.StdinPipe()
+	out, _ := cmd.StdoutPipe()
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer cmd.Process.Kill()
+	buf := make([]byte, 7)
+	if _, err := io.ReadFull(out, buf); err != nil || string(buf) != "locked\n" {
+		t.Fatal("holder did not take the lock", err, string(buf))
+	}
+	result := make(chan string, 1)
+	go func() { result <- p.SeedSiteKey(context.Background(), "openai", "sk-"+strings.Repeat("s", 30)+"site") }()
+	select {
+	case got := <-result:
+		t.Fatal("seed did not wait for the lock", got)
+	case <-time.After(1500 * time.Millisecond):
+	}
+	_, _ = io.WriteString(in, "save\n")
+	_ = in.Close()
+	select {
+	case got := <-result:
+		if got != "already_present" {
+			t.Fatal("seed answered", got)
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("seed never finished")
+	}
+	_ = cmd.Wait()
+	raw, _ := os.ReadFile(path)
+	var stored map[string]struct{ Type, Key string }
+	if json.Unmarshal(raw, &stored) != nil || stored["openai"].Key != own {
+		t.Fatalf("the person's own key was replaced: %s", raw)
+	}
+}
+
+func strconvQuote(s string) string { b, _ := json.Marshal(s); return string(b) }

@@ -84,7 +84,7 @@ func raw(t *testing.T, path, method, uri, headers string, body []byte) int {
 	return res.StatusCode
 }
 func payload(m gateway.Identity, nonce string) []byte {
-	b, _ := json.Marshal(request{1, nonce, "github", "42", m.UID, m.Username, "sentinel-secret", nil})
+	b, _ := json.Marshal(request{1, nonce, "github", "42", m.UID, m.Username, "sentinel-secret", nil, nil})
 	return b
 }
 func send(t *testing.T, m gateway.Identity, b []byte) int {
@@ -445,7 +445,7 @@ func TestHandoffPlan(t *testing.T) {
 	s, _, m, calls := fixture(t)
 	sink := Sink{testPath: true}
 	plan := gateway.RepositoryPlan{Mode: "auto", Defaults: []string{"northstar-demo/product", "northstar-demo/infra"}}
-	if _, e := sink.DeliverPlan(context.Background(), m, "42", "sentinel-secret", plan); e == nil || calls.Load() != 0 {
+	if _, e := deliverPlan(sink, m, plan); e == nil || calls.Load() != 0 {
 		t.Fatal("plan accepted without a consumer", e, calls.Load())
 	}
 	var got []Plan
@@ -455,7 +455,7 @@ func TestHandoffPlan(t *testing.T) {
 		got = append(got, p)
 		return []PlanOutcome{{p.Defaults[0], "queued"}, {p.Defaults[1], "already_present"}}
 	})
-	out, e := sink.DeliverPlan(context.Background(), m, "42", "sentinel-secret", plan)
+	out, e := deliverPlan(sink, m, plan)
 	if e != nil || len(out) != 2 || out[0] != (gateway.PlanOutcome{FullName: "northstar-demo/product", Outcome: "queued"}) || out[1].Outcome != "already_present" || !tokenFirst {
 		t.Fatal(out, e, tokenFirst)
 	}
@@ -480,11 +480,11 @@ func TestHandoffPlan(t *testing.T) {
 		{Mode: "skip", Defaults: []string{"o/.."}},
 		{Mode: "skip", Defaults: []string{"o/r/x"}},
 	} {
-		b, _ := json.Marshal(request{1, fmt.Sprintf("%032x", 1000+i), "github", "42", m.UID, m.Username, "sentinel-secret", &bad})
+		b, _ := json.Marshal(request{1, fmt.Sprintf("%032x", 1000+i), "github", "42", m.UID, m.Username, "sentinel-secret", &bad, nil})
 		if code := send(t, m, b); code == 200 || code == 204 {
 			t.Fatalf("invalid plan accepted: %+v", bad)
 		}
-		if _, e := sink.DeliverPlan(context.Background(), m, "42", "sentinel-secret", gateway.RepositoryPlan{Mode: bad.Mode, Defaults: bad.Defaults}); e == nil {
+		if _, e := deliverPlan(sink, m, gateway.RepositoryPlan{Mode: bad.Mode, Defaults: bad.Defaults}); e == nil {
 			t.Fatalf("sink sent invalid plan: %+v", bad)
 		}
 	}
@@ -532,8 +532,118 @@ func TestPlanReplyMustAnswerThePlan(t *testing.T) {
 		sink := Sink{testPath: true, dial: func(ctx context.Context, _ string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", path)
 		}}
-		if _, e := sink.DeliverPlan(context.Background(), m, "42", "sentinel-secret", plan); e == nil {
+		if _, e := deliverPlan(sink, m, plan); e == nil {
 			t.Fatalf("accepted %s", body)
+		}
+		_ = ln.Close()
+		<-done
+	}
+}
+
+// deliverPlan is DeliverFirst with only a plan, as a site without a key sends.
+func deliverPlan(sink Sink, m gateway.Identity, plan gateway.RepositoryPlan) ([]gateway.PlanOutcome, error) {
+	reply, e := sink.DeliverFirst(context.Background(), m, "42", "sentinel-secret", gateway.FirstLogin{Plan: &plan})
+	return reply.Defaults, e
+}
+
+// The site AI key travels in the same one-time handoff: the daemon installs
+// the token first, then answers the plan, then the seed. A seed the daemon
+// has no consumer for, or that is not a literal key of a known provider, is
+// refused before the token is consumed. A seed that cannot be written is an
+// answer, not a failed handoff.
+func TestHandoffSeed(t *testing.T) {
+	s, _, m, calls := fixture(t)
+	sink := Sink{testPath: true}
+	key := "sk-ant-" + strings.Repeat("K", 30)
+	seed := gateway.FirstLogin{Seed: &gateway.SiteKeySeed{Provider: "anthropic", Key: key}}
+	if _, e := sink.DeliverFirst(context.Background(), m, "42", "sentinel-secret", seed); e == nil || calls.Load() != 0 {
+		t.Fatal("seed accepted without a consumer", e, calls.Load())
+	}
+	var order []string
+	s.SetPlanConsumer(func(_ context.Context, p Plan) []PlanOutcome {
+		order = append(order, "plan")
+		return []PlanOutcome{{p.Defaults[0], "queued"}}
+	})
+	answer := "seeded"
+	s.SetSeedConsumer(func(_ context.Context, got Seed) string {
+		if calls.Load() != 1 || got.Provider != "anthropic" || got.Key != key {
+			t.Errorf("seed %+v before token: %d", got, calls.Load())
+		}
+		order = append(order, "seed")
+		return answer
+	})
+	both := gateway.FirstLogin{Plan: &gateway.RepositoryPlan{Mode: "skip", Defaults: []string{"o/r"}}, Seed: seed.Seed}
+	reply, e := sink.DeliverFirst(context.Background(), m, "42", "sentinel-secret", both)
+	if e != nil || reply.AIKey != "seeded" || len(reply.Defaults) != 1 || strings.Join(order, ",") != "plan,seed" {
+		t.Fatal(reply, e, order)
+	}
+	answer = "written somewhere"
+	calls.Store(0)
+	if reply, e = sink.DeliverFirst(context.Background(), m, "42", "sentinel-secret", seed); e != nil || reply.AIKey != "failed" || reply.Defaults != nil {
+		t.Fatal("an unknown seed answer is not failed", reply, e)
+	}
+	before := calls.Load()
+	for i, bad := range []Seed{
+		{Provider: "mistral", Key: key},
+		{Provider: "openai", Key: "!cat ~/.ssh/id_ed25519"},
+		{Provider: "openai", Key: "$OPENAI_API_KEY"},
+		{Provider: "openai", Key: "sk-short"},
+	} {
+		b, _ := json.Marshal(request{1, fmt.Sprintf("%032x", 2000+i), "github", "42", m.UID, m.Username, "sentinel-secret", nil, &bad})
+		if code := send(t, m, b); code == 200 || code == 204 {
+			t.Fatalf("invalid seed accepted: %+v", bad)
+		}
+		if _, e := sink.DeliverFirst(context.Background(), m, "42", "sentinel-secret", gateway.FirstLogin{Seed: &gateway.SiteKeySeed{Provider: bad.Provider, Key: bad.Key}}); e == nil {
+			t.Fatalf("sink sent invalid seed: %+v", bad)
+		}
+	}
+	if calls.Load() != before {
+		t.Fatal("invalid seed consumed a token")
+	}
+}
+
+// A same-UID peer cannot pass off a seed answer that was not asked for, or
+// omit one that was.
+func TestSeedReplyMustAnswerTheSeed(t *testing.T) {
+	_, _, m, _ := fixture(t)
+	seed := &gateway.SiteKeySeed{Provider: "openai", Key: "sk-" + strings.Repeat("K", 30)}
+	plan := &gateway.RepositoryPlan{Mode: "skip", Defaults: []string{"o/a"}}
+	for _, c := range []struct {
+		first gateway.FirstLogin
+		body  string
+	}{
+		{gateway.FirstLogin{Seed: seed}, `{"schema_version":1}`},
+		{gateway.FirstLogin{Seed: seed}, `{"schema_version":1,"ai_key":"stolen"}`},
+		{gateway.FirstLogin{Seed: seed}, `{"schema_version":1,"ai_key":"seeded","defaults":[{"full_name":"o/a","outcome":"queued"}]}`},
+		{gateway.FirstLogin{Plan: plan}, `{"schema_version":1,"defaults":[{"full_name":"o/a","outcome":"queued"}],"ai_key":"seeded"}`},
+		{gateway.FirstLogin{Plan: plan, Seed: seed}, `{"schema_version":1,"defaults":[{"full_name":"o/a","outcome":"queued"}]}`},
+	} {
+		reply := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", len(c.body), c.body)
+		path := filepath.Join(shortDir(t), "fake")
+		ln, e := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+		if e != nil {
+			t.Fatal(e)
+		}
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			conn, e := ln.AcceptUnix()
+			if e != nil {
+				return
+			}
+			defer conn.Close()
+			r, e := http.ReadRequest(bufio.NewReader(conn))
+			if e != nil {
+				return
+			}
+			_, _ = io.Copy(io.Discard, r.Body)
+			_, _ = io.WriteString(conn, reply)
+		}()
+		sink := Sink{testPath: true, dial: func(ctx context.Context, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", path)
+		}}
+		if _, e := sink.DeliverFirst(context.Background(), m, "42", "sentinel-secret", c.first); e == nil {
+			t.Fatalf("accepted %s", c.body)
 		}
 		_ = ln.Close()
 		<-done
