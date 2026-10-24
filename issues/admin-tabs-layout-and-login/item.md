@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [web/src/app/Settings]
+closed: 2026-10-24
 ---
 
 # Integraatiot admin rows overlap; access list shows GitHub id instead of username
