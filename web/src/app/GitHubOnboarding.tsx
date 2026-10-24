@@ -435,10 +435,14 @@ export function GitHubOnboarding({
   const finish = () => {
     const csrf = bound.current;
     if (!seeded || !csrf) return onUsable();
-    // A lost or refused mark shows the route again on the next load.
+    // A lost or refused mark shows the route again on the next load. A
+    // session change while it is written belongs to the next person.
+    const n = generation.current;
     void finishFirstRoute(csrf)
       .catch(() => undefined)
-      .then(onUsable);
+      .then(() => {
+        if (current(n) && bound.current === csrf) onUsable();
+      });
   };
   const finishRef = useRef(finish);
   finishRef.current = finish;

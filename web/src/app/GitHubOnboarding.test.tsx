@@ -268,3 +268,18 @@ it("a seeded Pi that is no longer usable brings the AI step back", async () => {
   expect(onUsable).not.toHaveBeenCalled();
   expect(finishFirstRoute).not.toHaveBeenCalled();
 });
+
+it("a mark still being written when the session ends does not end the next person's route", async () => {
+  let settle = () => {};
+  vi.mocked(finishFirstRoute).mockImplementationOnce(
+    () => new Promise<void>((done) => (settle = done)),
+  );
+  const onUsable = vi.fn();
+  start([], undefined, { seeded: true, onUsable });
+  await passRepositories();
+  await waitFor(() => expect(finishFirstRoute).toHaveBeenCalled());
+  cleanup();
+  settle();
+  await new Promise((r) => setTimeout(r, 0));
+  expect(onUsable).not.toHaveBeenCalled();
+});
