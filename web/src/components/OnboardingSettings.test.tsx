@@ -2,13 +2,14 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { expect, it, vi } from "vitest";
-import type { OnboardingDocument } from "../app/onboardingConfig";
+import type { OnboardingDocument, SiteKey } from "../app/onboardingConfig";
 import {
   OnboardingSettings,
   type OnboardingStep,
   type ProviderAvailability,
   previewSteps,
 } from "./OnboardingSettings";
+import type { SiteKeyActions } from "./SiteKeySettings";
 
 const base: OnboardingDocument = {
   repositories: {
@@ -156,8 +157,113 @@ it("chooses between the person choosing and one default AI option", () => {
   fireEvent.click(segment("onboarding-ai-way", "default"));
   // The last default comes back when the way is flipped back.
   expect(doc().ai_account.offer).toBe("deepseek_key");
-  // site_key is not offered until the site holds a key.
-  expect(screen.queryByText(/Sivuston avain/)).toBeNull();
+});
+
+// The host as the page sees it: set and remove resolve once it answers, and
+// only then does the configuration change.
+function KeyHarness({ refuse = false }: { refuse?: boolean }) {
+  const [doc, setDoc] = useState<OnboardingDocument>(base);
+  const [siteKey, setSiteKey] = useState<SiteKey>();
+  const [step, setStep] = useState<OnboardingStep>("ai");
+  const actions: SiteKeyActions = {
+    set: async (provider, key) => {
+      sent.push(`set ${provider} ${key}`);
+      if (refuse) return false;
+      setSiteKey({
+        provider,
+        suffix: key.slice(-4),
+        set_at: "2026-10-24T09:00:00Z",
+      });
+      setDoc((d) => ({ ...d, ai_account: { offer: "site_key" } }));
+      return true;
+    },
+    remove: async (offer) => {
+      sent.push(`remove ${offer}`);
+      setSiteKey(undefined);
+      setDoc((d) => ({ ...d, ai_account: { offer } }));
+      return true;
+    },
+  };
+  return (
+    <MemoryRouter>
+      <OnboardingSettings
+        doc={doc}
+        availability={{ google: true }}
+        step={step}
+        onStep={setStep}
+        onChange={setDoc}
+        onAddRepository={() => {}}
+        save={{ kind: "idle" }}
+        onReload={() => {}}
+        preview={false}
+        onPreview={() => {}}
+        host="habitat.example.test"
+        siteKey={siteKey}
+        keyActions={actions}
+      />
+      <output data-testid="doc">{JSON.stringify(doc)}</output>
+    </MemoryRouter>
+  );
+}
+let sent: string[] = [];
+const anthropic = `sk-ant-${"a".repeat(30)}Wxyz`;
+
+it("Sivuston avain: stores the key by its own action, then leaves it only by removing it", async () => {
+  sent = [];
+  render(<KeyHarness />);
+  // Choosing the way opens the form; the offer does not change until the
+  // host has the key.
+  fireEvent.click(segment("onboarding-ai-way", "key"));
+  expect(doc().ai_account.offer).toBe("all");
+  const input = screen.getByTestId("site-key-input");
+  const save = () => screen.getByTestId("site-key-save");
+  // An OpenAI-shaped key is not Anthropic's, and the reverse.
+  fireEvent.click(segment("site-key-provider", "anthropic"));
+  fireEvent.change(input, { target: { value: `sk-${"o".repeat(30)}` } });
+  expect((save() as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByTestId("site-key-error")).toBeTruthy();
+  fireEvent.change(input, { target: { value: anthropic } });
+  expect((save() as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(save());
+  await screen.findByTestId("site-key-present");
+  expect(sent).toEqual([`set anthropic ${anthropic}`]);
+  expect(doc().ai_account.offer).toBe("site_key");
+  expect(screen.getByTestId("site-key-suffix").textContent).toContain("Wxyz");
+  expect(screen.queryByTestId("site-key-input")).toBeNull();
+  expect(
+    screen.getByTestId("onboarding-route-ai").getAttribute("data-shown"),
+  ).toBe("false");
+
+  // Another way asks first; cancelling keeps the key.
+  fireEvent.click(segment("onboarding-ai-way", "default"));
+  fireEvent.click(await screen.findByTestId("site-key-remove-cancel"));
+  expect(sent).toHaveLength(1);
+  expect(doc().ai_account.offer).toBe("site_key");
+  fireEvent.click(segment("onboarding-ai-way", "all"));
+  fireEvent.click(await screen.findByTestId("site-key-remove-confirm"));
+  await vi.waitFor(() => expect(doc().ai_account.offer).toBe("all"));
+  expect(sent[1]).toBe("remove all");
+  expect(screen.queryByTestId("site-key")).toBeNull();
+});
+
+it("a refused key leaves the way and the offer as they were", async () => {
+  sent = [];
+  render(<KeyHarness refuse />);
+  fireEvent.click(segment("onboarding-ai-way", "key"));
+  fireEvent.change(screen.getByTestId("site-key-input"), {
+    target: { value: `sk-${"o".repeat(30)}` },
+  });
+  fireEvent.click(screen.getByTestId("site-key-save"));
+  // The key does not stay in the field after the host answered.
+  await vi.waitFor(() =>
+    expect(
+      (screen.getByTestId("site-key-input") as HTMLInputElement).value,
+    ).toBe(""),
+  );
+  expect(sent).toHaveLength(1);
+  expect(doc().ai_account.offer).toBe("all");
+  fireEvent.click(screen.getByTestId("site-key-cancel"));
+  expect(screen.queryByTestId("site-key")).toBeNull();
 });
 
 it("previews the person's route with the settings docked beside it", () => {

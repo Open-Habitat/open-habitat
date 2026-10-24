@@ -1,10 +1,14 @@
 import { afterEach, expect, it, vi } from "vitest";
+import withKey from "../../../contracts/v1/examples/server-onboarding-site-key.json";
 import example from "../../../contracts/v1/examples/site-onboarding.json";
 import {
+  deleteSiteKey,
   documentOf,
   readServerOnboarding,
   readSiteOnboarding,
   saveServerOnboarding,
+  setSiteKey,
+  validSiteKey,
 } from "./onboardingConfig";
 
 afterEach(() => vi.restoreAllMocks());
@@ -79,4 +83,49 @@ it("sends the whole document under its expected version and reads the outcome", 
   expect((await saveServerOnboarding("csrf", 4, doc)).kind).toBe("uncertain");
   fetch.mockRejectedValueOnce(new TypeError("network"));
   expect((await saveServerOnboarding("csrf", 4, doc)).kind).toBe("uncertain");
+});
+
+it("keeps a key off the wrong provider: sk-ant- is Anthropic's alone, and only literal keys", () => {
+  const body = "a".repeat(24);
+  expect(validSiteKey("anthropic", `sk-ant-${body}`)).toBe(true);
+  expect(validSiteKey("openai", `sk-ant-${body}`)).toBe(false);
+  expect(validSiteKey("anthropic", `sk-${body}`)).toBe(false);
+  expect(validSiteKey("deepseek", `sk-${body}`)).toBe(true);
+  expect(validSiteKey("openai", `!cat ~/.key${body}`)).toBe(false);
+  expect(validSiteKey("openai", `sk-${body} `)).toBe(false);
+});
+
+it("sends the key once to its own write and reads back only the configuration", async () => {
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(reply(withKey));
+  const key = `sk-ant-${"k".repeat(30)}`;
+  const saved = await setSiteKey("csrf", "anthropic", key);
+  expect(saved.kind === "saved" && saved.config.site_key?.suffix).toBe("Xa1b");
+  const [url, init] = fetch.mock.calls[0];
+  expect(url).toBe("/api/v1/server/onboarding/ai-key/set");
+  expect(JSON.parse(String(init?.body))).toEqual({
+    provider: "anthropic",
+    key,
+  });
+  // A reply that would carry the key back is outside the contract.
+  fetch.mockResolvedValueOnce(
+    reply({ ...withKey, site_key: { ...withKey.site_key, key } }),
+  );
+  expect((await setSiteKey("csrf", "anthropic", key)).kind).toBe("uncertain");
+  fetch.mockResolvedValueOnce(
+    reply({ schema_version: 1, error: { code: "invalid_key" } }, 400),
+  );
+  expect(await setSiteKey("csrf", "anthropic", key)).toEqual({
+    kind: "refused",
+    code: "invalid_key",
+  });
+  const { site_key: _, ...without } = withKey;
+  fetch.mockResolvedValueOnce(
+    reply({ ...without, ai_account: { offer: "claude" } }),
+  );
+  expect((await deleteSiteKey("csrf", "claude")).kind).toBe("saved");
+  const [deleteURL, deleteInit] = fetch.mock.calls[3];
+  expect(deleteURL).toBe("/api/v1/server/onboarding/ai-key/delete");
+  expect(JSON.parse(String(deleteInit?.body))).toEqual({ offer: "claude" });
 });

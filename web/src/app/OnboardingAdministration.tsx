@@ -22,15 +22,20 @@ import {
 import { catalog, lookup, type Repo } from "./github";
 import { readIntegrations } from "./integrations";
 import {
+  deleteSiteKey,
   documentOf,
+  type KeyProvider,
   maxDefaults,
   type OnboardingConfig,
   type OnboardingDocument,
   readinessOf,
   readServerOnboarding,
   refusalText,
+  type SaveResult,
+  type SiteKey,
   sameDocument,
   saveServerOnboarding,
+  setSiteKey,
 } from "./onboardingConfig";
 import { settingsHref } from "./settingsRoute";
 
@@ -202,6 +207,7 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [doc, setDoc] = useState<OnboardingDocument>();
+  const [siteKey, setSiteKeyView] = useState<SiteKey>();
   const [loadError, setLoadError] = useState(false);
   const [availability, setAvailability] = useState<ProviderAvailability>({});
   const [facts, setFacts] = useState<Record<string, Repo>>({});
@@ -221,6 +227,7 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
     latest.current = documentOf(config);
     stopped.current = false;
     setDoc(latest.current);
+    setSiteKeyView(config.site_key);
   }, []);
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -268,6 +275,7 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
       writing.current = false;
       if (result.kind === "saved") {
         base.current = result.config;
+        setSiteKeyView(result.config.site_key);
         if (latest.current && sameDocument(latest.current, sent)) {
           // The host's canonical form of what was sent.
           latest.current = documentOf(result.config);
@@ -301,6 +309,38 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
     },
     [flush],
   );
+
+  // The site AI key is stored and removed by its own writes, never inside the
+  // autosaved document. One runs only between document writes, and its reply
+  // is the host's whole configuration, which the page then starts from.
+  const keyWrite = useCallback(
+    async (write: (csrf: string) => Promise<SaveResult>) => {
+      if (writing.current || stopped.current || !csrf) return false;
+      writing.current = true;
+      setSave({ kind: "saving" });
+      const result = await write(csrf);
+      writing.current = false;
+      if (result.kind === "saved") {
+        adopt(result.config);
+        setSave({ kind: "saved" });
+        return true;
+      }
+      if (result.kind === "refused" && result.code !== "version_conflict") {
+        setSave({ kind: "refused", text: refusalText(result.code) });
+        return false;
+      }
+      stopped.current = true;
+      setSave({ kind: "uncertain" });
+      return false;
+    },
+    [csrf, adopt],
+  );
+  const keyActions = {
+    set: (provider: KeyProvider, key: string) =>
+      keyWrite((c) => setSiteKey(c, provider, key)),
+    remove: (offer: Parameters<typeof deleteSiteKey>[1]) =>
+      keyWrite((c) => deleteSiteKey(c, offer)),
+  };
 
   // A finder row was picked: add or remove it, then drop the parameter.
   const search = new URLSearchParams(location.search);
@@ -371,6 +411,8 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
         preview={preview}
         onPreview={setPreview}
         host={window.location.host}
+        siteKey={siteKey}
+        keyActions={csrf ? keyActions : undefined}
       />
       {finder ? (
         <DefaultRepositoryFinder

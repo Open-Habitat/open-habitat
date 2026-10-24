@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
-import type { OnboardingDocument } from "../app/onboardingConfig";
+import type { OnboardingDocument, SiteKey } from "../app/onboardingConfig";
 import {
   OnboardingSettings,
   type OnboardingStep,
   type ProviderAvailability,
   type SaveState,
 } from "./OnboardingSettings";
+import type { SiteKeyActions } from "./SiteKeySettings";
 
 // Synthetic states of the production Asetukset › Käyttöönotto tab
 // (proto-admin-server-onboarding rounds 2–5). Dropbox is not ready here, so
@@ -48,13 +49,34 @@ function Tab({
   step: firstStep,
   save = { kind: "idle" },
   preview: initialPreview = false,
+  siteKey: initialKey,
 }: {
   initial: OnboardingDocument;
   step: OnboardingStep;
   save?: SaveState;
   preview?: boolean;
+  siteKey?: SiteKey;
 }) {
   const [doc, setDoc] = useState(initial);
+  // The story stands in for the host: a key is accepted as given and only
+  // its suffix is kept.
+  const [siteKey, setSiteKey] = useState(initialKey);
+  const keyActions: SiteKeyActions = {
+    set: async (provider, key) => {
+      setSiteKey({
+        provider,
+        suffix: key.slice(-4),
+        set_at: "2026-10-24T09:00:00Z",
+      });
+      setDoc((d) => ({ ...d, ai_account: { offer: "site_key" } }));
+      return true;
+    },
+    remove: async (offer) => {
+      setSiteKey(undefined);
+      setDoc((d) => ({ ...d, ai_account: { offer } }));
+      return true;
+    },
+  };
   const [step, setStep] = useState(firstStep);
   const [preview, setPreview] = useState(initialPreview);
   return (
@@ -73,6 +95,8 @@ function Tab({
         preview={preview}
         onPreview={setPreview}
         host="habitat.example.test"
+        siteKey={siteKey}
+        keyActions={keyActions}
       />
     </div>
   );
@@ -107,6 +131,17 @@ export const AddIntegration: Story = { args: { step: "add-integration" } };
 export const AIAccountDefault: Story = { args: { step: "ai" } };
 export const AIAccountPersonChooses: Story = {
   args: { step: "ai", initial: { ...saved, ai_account: { offer: "all" } } },
+};
+export const AIAccountSiteKey: Story = {
+  args: {
+    step: "ai",
+    initial: { ...saved, ai_account: { offer: "site_key" } },
+    siteKey: {
+      provider: "anthropic",
+      suffix: "Xa1b",
+      set_at: "2026-10-24T09:00:00Z",
+    },
+  },
 };
 export const Saving: Story = { args: { save: { kind: "saving" } } };
 export const Saved: Story = { args: { save: { kind: "saved" } } };

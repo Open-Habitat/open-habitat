@@ -56,6 +56,7 @@ export const mutationClasses = {
   "server.access": "confirmed",
   "server.integrations": "confirmed",
   "server.onboarding": "confirmed",
+  "server.onboarding.ai-key": "confirmed",
   "editor.handoff": "confirmed",
   "editor.open": "confirmed",
   "editor.save": "confirmed",

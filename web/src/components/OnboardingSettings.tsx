@@ -11,6 +11,7 @@ import {
   providerOrder,
   type RepositoryMode,
   routeIntegrations,
+  type SiteKey,
 } from "../app/onboardingConfig";
 import {
   AIOfferList,
@@ -27,6 +28,12 @@ import {
   OnboardingRoute,
   type OnboardingRouteStep,
 } from "./OnboardingFrame";
+import {
+  keyNames,
+  type SiteKeyActions,
+  SiteKeyEditor,
+  SiteKeyRemoval,
+} from "./SiteKeySettings";
 import "./OnboardingSettings.css";
 
 // Asetukset › Käyttöönotto, as agreed in proto-admin-server-onboarding: the
@@ -113,11 +120,11 @@ const adminHow: Record<AIOption, string> = {
 const aiOptions = aiOptionCatalog.map((o) => ({ ...o, how: adminHow[o.id] }));
 const optionName = (id: AIOffer) =>
   aiOptions.find((o) => o.id === id)?.name ?? "";
-function aiHint(offer: AIOffer) {
+function aiHint(offer: AIOffer, siteKey?: SiteKey) {
   return offer === "all"
     ? "Henkilö valitsee"
     : offer === "site_key"
-      ? "Ohitetaan · sivuston avain"
+      ? `Ohitetaan · sivuston ${siteKey ? `${keyNames[siteKey.provider]}-` : ""}avain`
       : `Oletus: ${optionName(offer)}`;
 }
 
@@ -143,11 +150,13 @@ function RouteList({
   availability,
   step,
   onStep,
+  siteKey,
 }: {
   doc: OnboardingDocument;
   availability: ProviderAvailability;
   step: OnboardingStep;
   onStep: (step: OnboardingStep) => void;
+  siteKey?: SiteKey;
 }) {
   let n = 0;
   const row = (
@@ -210,7 +219,7 @@ function RouteList({
           row("add-integration", "Uusi vaihe ennen AI-tiliä", false, "ob-add")}
         {row(
           "ai",
-          aiHint(doc.ai_account.offer),
+          aiHint(doc.ai_account.offer, siteKey),
           doc.ai_account.offer !== "site_key",
         )}
       </ol>
@@ -515,18 +524,37 @@ function AISettings({
   doc,
   onChange,
   disabled,
+  siteKey,
+  keyActions,
 }: {
   doc: OnboardingDocument;
   onChange: (doc: OnboardingDocument) => void;
   disabled: boolean;
+  siteKey?: SiteKey;
+  keyActions?: SiteKeyActions;
 }) {
   const offer = doc.ai_account.offer;
   // The last default stays in hand while the administrator flips the way.
   const [remembered, setRemembered] = useState<AIOption>(
     offer === "all" || offer === "site_key" ? "chatgpt" : offer,
   );
+  // Sivuston avain before a key is stored: the form is open, nothing changed.
+  const [keyOpen, setKeyOpen] = useState(false);
+  const [leaving, setLeaving] = useState<"all" | "default">();
+  const keyWay = offer === "site_key" || keyOpen;
+  const way = keyWay ? "key" : offer === "all" ? "all" : "default";
   const set = (next: AIOffer) =>
     onChange({ ...doc, ai_account: { offer: next } });
+  const pick = (next: "all" | "default" | "key") => {
+    if (next === way) return;
+    if (offer === "site_key") {
+      // Leaving the key removes it; that is asked first.
+      if (next !== "key") setLeaving(next);
+      return;
+    }
+    setKeyOpen(next === "key");
+    if (next !== "key") set(next === "all" ? "all" : remembered);
+  };
   return (
     <>
       <p className="ob-lbl">Tapa</p>
@@ -538,11 +566,12 @@ function AISettings({
         options={[
           { id: "all", label: "Henkilö valitsee" },
           { id: "default", label: "Oletus" },
+          { id: "key", label: "Sivuston avain" },
         ]}
-        value={offer === "all" ? "all" : "default"}
-        onChange={(v) => set(v === "all" ? "all" : remembered)}
+        value={way}
+        onChange={pick}
       />
-      {offer !== "all" && offer !== "site_key" ? (
+      {way === "default" ? (
         <fieldset
           className="ob-choices"
           aria-label="Oletus uudelle henkilölle"
@@ -568,15 +597,46 @@ function AISettings({
           ))}
         </fieldset>
       ) : null}
+      {way === "key" ? (
+        <>
+          <p className="ob-muted" data-testid="site-key-terms">
+            Uusi henkilö saa avaimesta kopion omiin tunnuksiinsa, jos hänellä ei
+            ole omaa. Käyttö laskutetaan avaimen tililtä. Jo liittyneet eivät
+            muutu, eikä jaettua kopiota voi perua.
+          </p>
+          <SiteKeyEditor
+            key={siteKey ? `${siteKey.provider}${siteKey.suffix}` : "new"}
+            siteKey={siteKey}
+            actions={keyActions}
+            disabled={disabled}
+            onCancel={() => setKeyOpen(false)}
+          />
+        </>
+      ) : null}
       <Effect>
-        {offer === "all"
-          ? "Kaikki AI-vaihtoehdot rinnakkain, ja henkilö valitsee niistä."
-          : `Vain ${optionName(offer)}. Muut vaihtoehdot ovat linkin › Käytä muuta AI-palvelua takana.`}
+        {offer === "site_key"
+          ? `Ei AI-vaihetta: agentit käyttävät sivuston ${siteKey ? keyNames[siteKey.provider] : ""}-avainta.`
+          : keyWay
+            ? "Kunnes avain on tallennettu, henkilö näkee vaiheen kuten ennen."
+            : offer === "all"
+              ? "Kaikki AI-vaihtoehdot rinnakkain, ja henkilö valitsee niistä."
+              : `Vain ${optionName(offer)}. Muut vaihtoehdot ovat linkin › Käytä muuta AI-palvelua takana.`}
       </Effect>
       <p className="ob-muted">
         Henkilö voi lisätä muita tilejä myöhemmin asetuksissa. AI-vaihe
         ohitetaan, jos henkilöllä on jo toimivat tunnukset.
       </p>
+      <SiteKeyRemoval
+        siteKey={siteKey}
+        open={leaving !== undefined}
+        onCancel={() => setLeaving(undefined)}
+        onConfirm={() => {
+          const next = leaving === "all" ? "all" : remembered;
+          setLeaving(undefined);
+          setKeyOpen(false);
+          void keyActions?.remove(next);
+        }}
+      />
     </>
   );
 }
@@ -592,6 +652,8 @@ export function OnboardingStepSettings({
   onAddRepository,
   facts,
   disabled = false,
+  siteKey,
+  keyActions,
 }: {
   doc: OnboardingDocument;
   step: OnboardingStep;
@@ -601,6 +663,9 @@ export function OnboardingStepSettings({
   onAddRepository: () => void;
   facts: (name: string) => RepositoryFacts | undefined;
   disabled?: boolean;
+  /** The stored site AI key, as it is ever read back. */
+  siteKey?: SiteKey;
+  keyActions?: SiteKeyActions;
 }) {
   const provider = step.startsWith("integration:")
     ? (step.slice("integration:".length) as ProviderId)
@@ -636,7 +701,13 @@ export function OnboardingStepSettings({
           disabled={disabled}
         />
       ) : step === "ai" ? (
-        <AISettings doc={doc} onChange={onChange} disabled={disabled} />
+        <AISettings
+          doc={doc}
+          onChange={onChange}
+          disabled={disabled}
+          siteKey={siteKey}
+          keyActions={keyActions}
+        />
       ) : provider && doc.integrations.some((i) => i.provider === provider) ? (
         <IntegrationSettings
           doc={doc}
@@ -737,6 +808,8 @@ export function OnboardingSettings({
   preview,
   onPreview,
   host,
+  siteKey,
+  keyActions,
 }: {
   doc: OnboardingDocument;
   availability: ProviderAvailability;
@@ -753,6 +826,8 @@ export function OnboardingSettings({
   onPreview: (open: boolean) => void;
   /** The site's host, for the preview's address bar. */
   host: string;
+  siteKey?: SiteKey;
+  keyActions?: SiteKeyActions;
 }) {
   const settings = (
     <OnboardingStepSettings
@@ -764,6 +839,8 @@ export function OnboardingSettings({
       onAddRepository={onAddRepository}
       facts={facts}
       disabled={disabled}
+      siteKey={siteKey}
+      keyActions={keyActions}
     />
   );
   const status = <SaveStatus save={save} onReload={onReload} />;
@@ -792,6 +869,7 @@ export function OnboardingSettings({
           availability={availability}
           step={step}
           onStep={onStep}
+          siteKey={siteKey}
         />
         <div className="s-card ob-cfg-card">
           {preview ? (

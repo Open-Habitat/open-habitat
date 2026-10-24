@@ -39,9 +39,14 @@ export type OnboardingDocument = {
   integrations: OnboardingIntegration[];
   ai_account: { offer: AIOffer };
 };
+export type KeyProvider = "openai" | "anthropic" | "deepseek";
+/** The stored site AI key as it is ever read back. */
+export type SiteKey = { provider: KeyProvider; suffix: string; set_at: string };
 export type OnboardingConfig = OnboardingDocument & {
   schema_version: 1;
   version: number;
+  /** Present exactly while the site holds an AI key (offer site_key). */
+  site_key?: SiteKey;
 };
 export type SiteOnboarding = {
   schema_version: 1;
@@ -181,6 +186,59 @@ export async function saveServerOnboarding(
   return { kind: "uncertain" };
 }
 
+/** The gateway's literal-key rule: Pi runs `!…` values and expands `$NAME`,
+ * so only sk-… is stored, and sk-ant-… is Anthropic's alone. */
+export const validSiteKey = (provider: KeyProvider, key: string) =>
+  /^sk-[A-Za-z0-9_-]{20,200}$/.test(key) &&
+  key.startsWith("sk-ant-") === (provider === "anthropic");
+
+async function siteKeyWrite(
+  csrf: string,
+  verb: "set" | "delete",
+  body: object,
+): Promise<SaveResult> {
+  let response: Response | undefined;
+  try {
+    response = await mutationFetch(
+      "server.onboarding.ai-key",
+      `/api/v1/server/onboarding/ai-key/${verb}`,
+      {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Agent-Host-CSRF": csrf,
+        },
+        body: JSON.stringify(body),
+      },
+    );
+  } catch {
+    return { kind: "uncertain" };
+  }
+  const outcome = await writeOutcome(response);
+  if (outcome.kind === "refused")
+    return { kind: "refused", code: outcome.code };
+  if (outcome.kind !== "ok") return outcome;
+  try {
+    const value = await bounded(outcome.response, 16384);
+    if (validServer(value))
+      return { kind: "saved", config: value as OnboardingConfig };
+  } catch {}
+  return { kind: "uncertain" };
+}
+
+/** Stores the site AI key and makes the offer site_key. The key is sent once
+ * and never comes back. */
+export const setSiteKey = (csrf: string, provider: KeyProvider, key: string) =>
+  siteKeyWrite(csrf, "set", { provider, key });
+
+/** Removes the site AI key; offer is what new people get instead. */
+export const deleteSiteKey = (
+  csrf: string,
+  offer: Exclude<AIOffer, "site_key">,
+) => siteKeyWrite(csrf, "delete", { offer });
+
 /** A refusal in words the administrator can act on. */
 export function refusalText(code: string): string {
   switch (code) {
@@ -199,6 +257,10 @@ export function refusalText(code: string): string {
       return "Integraatioiden lista ei kelpaa palvelimelle.";
     case "site_key_unavailable":
       return "Sivuston avainta ei ole tallennettu.";
+    case "site_key_stored":
+      return "Sivuston avain on käytössä. Poista avain ennen kuin vaihdat tapaa.";
+    case "invalid_key":
+      return "Avain ei kelpaa valitulle palvelulle.";
     case "admin_required":
       return "Ylläpito-oikeutesi on poistettu.";
     case "csrf_denied":
