@@ -849,6 +849,17 @@ function BrowserConversationContent({
     }
   }, [live, reportTool, id, workspace.workspace_id]);
   const replaceNotes = useReplaceNotes(workspace.workspace_id, id);
+  // The note's buttons go with it; focus moves on to the field, not the page.
+  const closeReplaceNote = (noteId: number) => {
+    replaceNotes.dismiss(noteId);
+    requestAnimationFrame(() =>
+      document
+        .querySelector<HTMLTextAreaElement>(
+          ".ah-conversation-frame .ah-composer textarea",
+        )
+        ?.focus(),
+    );
+  };
   // A tool already joined into native history still owns live activity until
   // its result arrives. Filtering its duplicate row must not imply an answer.
   const activeToolName = liveItems.find(
@@ -1705,9 +1716,9 @@ function BrowserConversationContent({
                 tellBlocked={tellBlocked}
                 onTell={() => {
                   tell(messageFor(note));
-                  replaceNotes.dismiss(note.id);
+                  closeReplaceNote(note.id);
                 }}
-                onDismiss={() => replaceNotes.dismiss(note.id)}
+                onDismiss={() => closeReplaceNote(note.id)}
               />
             ))}
           </ConversationStream>

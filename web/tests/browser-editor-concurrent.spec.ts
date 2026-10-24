@@ -237,6 +237,7 @@ for (const width of [1366, 390])
       // Closing sends nothing.
       await note.getByTestId("replace-note-dismiss").click();
       await expect(note).toHaveCount(0);
+      await expect(page.getByTestId("message-input")).toBeFocused();
       expect(sent).toEqual([]);
       return;
     }
@@ -250,6 +251,7 @@ for (const width of [1366, 390])
     expect(sent[0]).toContain("Lue tiedosto uudelleen");
     expect(sent[0]).not.toContain("agentti");
     await expect(input).toHaveValue("oma luonnos");
+    await expect(input).toBeFocused();
     // The message reaches the conversation; the note for this save stays gone.
     await expect(page.getByText(/Lue tiedosto uudelleen/).first()).toBeVisible({
       timeout: 20000,
