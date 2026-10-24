@@ -34,6 +34,7 @@ const providers: Provider[] = [
   provider("microsoft", false, {
     unavailable_reason: "app_credentials_required",
   }),
+  provider("apple", true),
   provider("imap", true),
   provider("caldav", true),
   provider("carddav", true),
@@ -84,7 +85,7 @@ const dialog = () => screen.getByTestId("si-setup-dialog");
 const type = (testId: string, value: string) =>
   fireEvent.change(screen.getByTestId(testId), { target: { value } });
 
-it("orders the catalog's six rows and offers each state's one action", () => {
+it("orders the catalog's seven rows and offers each state's one action", () => {
   setup();
   expect(
     screen
@@ -93,6 +94,7 @@ it("orders the catalog's six rows and offers each state's one action", () => {
   ).toEqual([
     ["si-row-google", "ready"],
     ["si-row-microsoft", "needs_app"],
+    ["si-row-apple", "ready"],
     ["si-row-imap", "ready"],
     ["si-row-caldav", "ready"],
     ["si-row-carddav", "ready"],
