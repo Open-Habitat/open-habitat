@@ -2,13 +2,15 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: worker gate run
 source_ref: taskfleet:01m5pe2kb30cvfwmdhccd3k9pd/test-run:starthere-lazy-markdown
 originating_run: 01m5pe2kb30cvfwmdhccd3k9pd
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # StartHere unit test flakes on lazy Markdown under load and fails the gate
