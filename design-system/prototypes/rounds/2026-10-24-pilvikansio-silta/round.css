@@ -1,0 +1,112 @@
+/* Review chrome */
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--ah-font);color:var(--ah-ink);background:var(--ah-bg)}
+button,input,select{font:inherit}
+.review{background:var(--ah-bg);color:var(--ah-ink);min-height:100vh;padding:var(--ah-s4) var(--ah-s4) 120px}
+.reviewbar{display:flex;gap:var(--ah-s4);align-items:center;flex-wrap:wrap;margin-bottom:var(--ah-s3)}
+.reviewbar label{display:flex;align-items:center;gap:var(--ah-s2)}
+.reviewbar select{background:var(--ah-surface);color:var(--ah-ink);border:1px solid var(--ah-control-line);border-radius:var(--ah-r-sm);padding:var(--ah-s1) var(--ah-s2)}
+.reviewbar p{font-size:var(--ah-size-meta);margin:0;color:var(--ah-muted)}
+.scenario{display:flex;gap:var(--ah-s3);align-items:center;flex-wrap:wrap;margin-bottom:var(--ah-s3)}
+.hb-left{font-size:var(--ah-size-meta);padding:var(--ah-s1) var(--ah-s3);border-left:3px solid var(--ah-accent);background:var(--ah-accent-soft)}
+.axis{color:var(--ah-muted);font-size:var(--ah-size-meta);margin:0 0 var(--ah-s4);max-width:72ch}
+.shell{max-width:1280px;margin:auto;border:1px solid var(--ah-line);border-radius:var(--ah-r-lg);background:var(--ah-bg);overflow:hidden}
+.phone .shell{width:390px;max-width:100%}
+[data-theme=dark]{color-scheme:dark}
+
+/* What production lost when browser folder sharing was removed (22c53a9b):
+   the Liitä popover's rules lived in LocalFolder.css. Restored here so every
+   direction shows the menu as it was designed. */
+.ah-attachment-popover{width:min(440px,calc(100vw - 24px));max-height:min(560px,calc(100dvh - 32px));overflow-y:auto;border:1px solid var(--ah-line-strong);border-radius:var(--ah-r-md);background:var(--ah-surface);color:var(--ah-ink);box-shadow:var(--ah-shadow-menu)}
+.ah-attachment-dialog{outline:none;position:relative;padding:var(--ah-s4)}
+.ah-attachment-close{position:sticky;top:0;margin-left:auto;display:flex}
+.ah-attachment-choices{display:flex;flex-direction:column;gap:var(--ah-s2)}
+.ah-attachment-choices p{font-size:var(--ah-size-meta);color:var(--ah-muted);margin:0}
+
+/* Shared pieces */
+.hb-line{display:flex;flex-wrap:wrap;align-items:center;gap:var(--ah-s2);font-size:var(--ah-size-meta);color:var(--ah-ink)}
+.hb-node{display:inline-flex;align-items:center;gap:var(--ah-s2);padding:var(--ah-s1) var(--ah-s3);border:1px solid var(--ah-line);border-radius:var(--ah-r-pill);background:var(--ah-surface)}
+.hb-node svg{width:16px;height:16px}
+.hb-arrow{display:inline-flex;color:var(--ah-accent-ink)}.hb-arrow svg{width:16px;height:16px}
+.hb-line[data-state=off] .hb-arrow{color:var(--ah-faint)}
+.hb-line[data-state=off] .hb-node:nth-child(3){border-style:dashed;color:var(--ah-muted)}
+.hb-howto{display:grid;gap:var(--ah-s3);min-width:0}
+.hb-howto ol{margin:0;padding-left:1.4em;display:grid;gap:var(--ah-s2);line-height:1.5}
+.hb-howto.compact{padding:var(--ah-s3);border-radius:var(--ah-r-md);background:var(--ah-sunken);font-size:var(--ah-size-meta)}
+.hb-shot{color:var(--ah-muted)}
+kbd{font-family:var(--ah-mono);font-size:.92em;padding:0 .3em;border:1px solid var(--ah-line-strong);border-radius:4px;background:var(--ah-surface)}
+.hb-connect{display:flex;flex-wrap:wrap;gap:var(--ah-s2)}
+.hb-ok{display:flex;gap:var(--ah-s2);align-items:flex-start;color:var(--ah-ink);margin:0}
+.hb-ok svg{color:var(--ah-ok);width:18px;height:18px;flex:none;margin-top:2px}
+.hb-wait{display:flex;gap:var(--ah-s2);align-items:center;color:var(--ah-muted);font-size:var(--ah-size-meta);margin:0}
+.hb-row{display:flex;gap:var(--ah-s2);flex-wrap:wrap}
+code{font-family:var(--ah-mono);overflow-wrap:anywhere}
+
+/* Direction Aloitus */
+.hb-step{display:grid;gap:var(--ah-s5)}
+.hb-step h2{font-size:var(--ah-size-ui);font-weight:600;margin:0}
+.hb-block{display:grid;gap:var(--ah-s3)}
+.hb-try{padding:var(--ah-s4);border:1px solid var(--ah-line);border-radius:var(--ah-r-md)}
+.hb-try p{margin:0}
+.hb-try[data-arrived=true]{border-color:var(--ah-ok);background:var(--ah-ok-soft)}
+.proto-sim{display:flex;align-items:center;gap:var(--ah-s2);padding:var(--ah-s1) var(--ah-s2);border:1px dashed var(--ah-line-strong);border-radius:var(--ah-r-sm);width:max-content;max-width:100%}
+.proto-sim>span{font-size:var(--ah-size-label);text-transform:uppercase;letter-spacing:.05em;color:var(--ah-muted)}
+
+/* Conversation directions */
+.hb-convo{min-height:640px;display:flex;flex-direction:column}
+.hb-convo .ah-conversation-stream{flex:1}
+.hb-composer-notice{display:grid;gap:var(--ah-s3);max-width:760px;margin:var(--ah-s3) auto 0;padding:0 var(--ah-s4)}
+.hb-menu-folder{display:grid;gap:var(--ah-s2);margin-top:var(--ah-s4);padding-top:var(--ah-s4);border-top:1px solid var(--ah-line-soft)}
+.hb-menu-folder h3{margin:0;font-size:var(--ah-size-label);text-transform:uppercase;letter-spacing:.05em;color:var(--ah-muted);font-weight:600}
+.hb-menu-folder p{margin:0;font-size:var(--ah-size-meta);color:var(--ah-muted)}
+.hb-menu-folder .hb-menu-path{display:flex;align-items:center;gap:var(--ah-s2);color:var(--ah-ink);font-size:var(--ah-size-ui)}
+.hb-menu-actions{display:flex;gap:var(--ah-s2);flex-wrap:wrap}
+
+/* Direction Kortti */
+.hb-settings .hostbar{padding:var(--ah-s4) var(--ah-s5);display:flex;align-items:center;gap:var(--ah-s4);border-bottom:1px solid var(--ah-line);background:var(--ah-surface)}
+.hb-settings .hostbar span{flex:1;color:var(--ah-muted)}
+.hb-settings .ah-account-settings.s-page{padding:var(--ah-s5);max-width:none}
+.hb-settings .s-nav-i{display:flex;align-items:center}
+.hb-settings h2{font-size:var(--ah-size-h2,1.35rem);margin:0 0 var(--ah-s3)}
+.hb-card{display:grid;gap:var(--ah-s3);padding:var(--ah-s4);margin:var(--ah-s4) 0 var(--ah-s5);border:1px solid var(--ah-accent-line);border-radius:var(--ah-r-lg);background:var(--ah-surface)}
+.hb-card>header{display:flex;flex-wrap:wrap;gap:var(--ah-s3);align-items:center;justify-content:space-between}
+.hb-card>header h3{margin:0;font-size:var(--ah-size-ui)}
+.hb-card>p{margin:0}
+.hb-card .ig-card{margin:0}
+.hb-panel{display:grid;gap:var(--ah-s4);padding:var(--ah-s4);border-radius:var(--ah-r-md);background:var(--ah-sunken)}
+.hb-facts{display:grid;gap:var(--ah-s2);margin:0}
+.hb-facts>div{display:grid;grid-template-columns:9rem minmax(0,1fr);gap:var(--ah-s3)}
+.hb-facts dt{color:var(--ah-muted);font-size:var(--ah-size-meta)}
+.hb-facts dd{margin:0;min-width:0}
+.hb-test{display:grid;gap:var(--ah-s2);justify-items:start}
+.hb-test p{margin:0}
+.hb-help{margin:0;padding-left:1.2em;display:grid;gap:var(--ah-s1);font-size:var(--ah-size-meta)}
+
+/* Direction Agentti */
+.hb-delivery{display:grid;gap:var(--ah-s2);margin-top:var(--ah-s3);padding:var(--ah-s3) var(--ah-s4);border:1px solid var(--ah-line);border-radius:var(--ah-r-md);background:var(--ah-surface);max-width:520px}
+.hb-delivery>header{display:flex;align-items:center;gap:var(--ah-s2)}
+.hb-delivery p{margin:0}
+.hb-delivery .hb-path{font-size:var(--ah-size-meta);color:var(--ah-muted)}
+.hb-delivery>ul{list-style:none;margin:0;padding:0;display:grid;gap:var(--ah-s1)}
+.hb-delivery>ul>li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:var(--ah-s2);align-items:center;font-family:var(--ah-mono);font-size:var(--ah-size-code)}
+.hb-delivery>ul>li svg{width:16px;height:16px;color:var(--ah-muted)}
+.hb-delivery>ul>li span{overflow-wrap:anywhere}
+.hb-delivery>ul>li small{color:var(--ah-muted)}
+.hb-delivery .hb-meta{display:flex;gap:var(--ah-s2);align-items:flex-start;font-size:var(--ah-size-meta);color:var(--ah-muted)}
+.hb-delivery .hb-meta svg{color:var(--ah-ok);width:16px;height:16px;flex:none;margin-top:2px}
+.hb-delivery>button{justify-self:start}
+.hb-delivery.off{border-style:dashed}
+.hb-inbound{display:flex;align-items:center;gap:var(--ah-s2);margin:0 0 var(--ah-s2);font-size:var(--ah-size-meta);color:var(--ah-muted)}
+.hb-inbound b{font-family:var(--ah-mono);font-weight:500;color:var(--ah-ink);overflow-wrap:anywhere}
+
+/* Narrow review */
+@media(max-width:800px){
+ .review{padding:var(--ah-s2) var(--ah-s2) 120px}
+ .hb-settings .s-nav{display:none}
+ .hb-settings .ah-account-settings.s-page{padding:var(--ah-s3)}
+ .hb-facts>div{grid-template-columns:minmax(0,1fr);gap:0}
+ .hb-composer-notice{padding:0 var(--ah-s2)}
+}
+.phone .hb-settings .s-nav{display:none}
+.phone .hb-facts>div{grid-template-columns:minmax(0,1fr);gap:0}
+.hb-connect .ig-mark{margin-right:var(--ah-s2)}

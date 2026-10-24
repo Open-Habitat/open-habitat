@@ -2,9 +2,9 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: task
-status: open
+status: in-progress
 priority: normal
-preparation: ready
+preparation: pending
 lane: unlaned
 ---
 
@@ -23,4 +23,4 @@ Prototype round: where and when a person learns that the cloud folder is the bri
 
 ## Acceptance Criteria
 
-- [ ] Round published on a new glasspad page with a Finnish summary, recommendation and questions in result.md; KOKEILTAVAA prototype line.
+- [x] Round published on a new glasspad page with a Finnish summary, recommendation and questions in result.md; KOKEILTAVAA prototype line.
