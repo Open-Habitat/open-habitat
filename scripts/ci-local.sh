@@ -53,11 +53,16 @@ trap cleanup EXIT
 # Every non-system tool is fetched into disposable storage and checksum/version checked.
 # CI requires the pinned issuectl even when a newer machine CLI is present.
 # Never install into a persistent machine path.
+# The gate runs on either supported architecture.
+case $(uname -m) in
+x86_64)issue_triple=x86_64-unknown-linux-musl issue_sha=75d5fa1b1c20cae557ab90948788f19af88bf14dfa215a538abc6096673976ef;;
+aarch64)issue_triple=aarch64-unknown-linux-musl issue_sha=b1679f610cde8b6d889bff820627222b0675e0ac57b16566b72aac49695564c1;;
+*)echo "error: unsupported gate host architecture $(uname -m)" >&2;exit 1;;esac
 issue_archive="$tmp/issuectl.tar.xz"
-curl -fsSL --retry 3 --retry-all-errors https://github.com/jarimustonen/issuectl/releases/download/v0.19.0/issuectl-x86_64-unknown-linux-musl.tar.xz -o "$issue_archive"
-echo '75d5fa1b1c20cae557ab90948788f19af88bf14dfa215a538abc6096673976ef  '"$issue_archive" | sha256sum -c -
+curl -fsSL --retry 3 --retry-all-errors "https://github.com/jarimustonen/issuectl/releases/download/v0.19.0/issuectl-$issue_triple.tar.xz" -o "$issue_archive"
+echo "$issue_sha  $issue_archive" | sha256sum -c -
 tar -xJf "$issue_archive" -C "$tmp"
-cp "$tmp/issuectl-x86_64-unknown-linux-musl/issuectl" "$tmp/bin/issuectl"
+cp "$tmp/issuectl-$issue_triple/issuectl" "$tmp/bin/issuectl"
 export PATH="$tmp/bin:$PATH"
 python3 -m venv "$tmp/venv"
 "$tmp/venv/bin/pip" install --disable-pip-version-check --no-input -r requirements-ci.txt
