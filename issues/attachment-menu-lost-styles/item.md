@@ -2,13 +2,16 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: agent observation during prototype round
 source_ref: taskfleet:01m5pehp8ctt4ajq7e7dx6sfje/observation:attachment-menu-styles
 originating_run: 01m5pehp8ctt4ajq7e7dx6sfje
 originating_run_kind: spinoff
+lane: unlaned
+collision: [web/src/components/composer]
+preparation: ready
 ---
 
 # Liitä menu popover lost its styles with browser folder sharing removal
