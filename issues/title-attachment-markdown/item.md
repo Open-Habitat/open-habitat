@@ -2,13 +2,15 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: worker observation in the synthetic lab
 source_ref: taskfleet:01m5p82se1b3tv01fgfqw9xccz/observation:title-attachment-markdown
 originating_run: 01m5p82se1b3tv01fgfqw9xccz
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Conversation title shows attachment Markdown when it falls back to the first message
