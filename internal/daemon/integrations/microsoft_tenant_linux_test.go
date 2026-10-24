@@ -101,9 +101,9 @@ func TestMicrosoftAccountFollowsTheTenantWithoutSigningIn(t *testing.T) {
 	// OneDrive syncs: its client reads the file being rewritten.
 	k := syncingOneDrive(t, c, env, address)
 	before := c.sync.children[k]
-	// The pinned Outlook tool says the same for a refusal and an outage; the
-	// remotes' accepted grant decides its registration.
-	if err := os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), []byte(`{"success":false,"message":"Login failed: Silent token acquisition failed"}`), 0600); err != nil {
+	// The remotes' accepted grant decides the Outlook registration; the
+	// Outlook grant is not asked through the tenant.
+	if err := os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), []byte(`{"state":"unreachable"}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -242,5 +242,49 @@ func TestMicrosoftUnreachableTenantIsAskedAgain(t *testing.T) {
 	data, _ := os.ReadFile(filepath.Join(env.Home, ".pi/agent/mcp.json"))
 	if json.Unmarshal(data, &registration) != nil || !strings.Contains(string(data), `"common"`) {
 		t.Fatal("registration changed", string(data))
+	}
+}
+
+// A mail-only account has no remotes' grant to redeem: the Outlook tool's
+// MSAL grant, asked through the tenant, decides, and an outage decides nothing.
+func TestMicrosoftMailOnlyAccountFollowsTheTenantByItsOutlookGrant(t *testing.T) {
+	for _, tc := range []struct {
+		reply, want string
+		follows     bool
+	}{
+		{`{"state":"refused"}`, TenantChanged, false},
+		{`{"state":"outside_tenant"}`, OutsideTenant, false},
+		{`{"state":"unreachable"}`, "", false},
+		{`{"state":"ok"}`, "", true},
+	} {
+		t.Run(tc.reply, func(t *testing.T) {
+			env := microsoftEnv(t)
+			address := connectedWithCommon(t, env, "00000000-0000-0000-0000-000000000001")
+			if err := os.Remove(filepath.Join(env.Home, microsoftDir, address+".conf")); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), []byte(tc.reply), 0600); err != nil {
+				t.Fatal(err)
+			}
+			m, calls := tokenEndpoint(t, 500, "")
+			c := New(env, []Entry{m}, nil)
+			account := c.check(context.Background(), m, address)
+			if len(account.Services) == 0 {
+				t.Fatal("no services")
+			}
+			for _, s := range account.Services {
+				if s.Failure != tc.want || (tc.want != "" && s.State != StateLoginExpired) {
+					t.Fatal("wrong reason", account.Services)
+				}
+			}
+			pi, _ := os.ReadFile(filepath.Join(env.Home, "pi-commands"))
+			if registered := strings.Contains(string(pi), "add\n"+microsoftServerName(address)+"\n"); registered != tc.follows {
+				t.Fatal("registration followed", registered, string(pi))
+			}
+			// Only an outage leaves it to be asked again.
+			if m.Misaligned(env, address) != (tc.want == "" && !tc.follows) || calls.Load() != 0 {
+				t.Fatal("misaligned after check", m.Misaligned(env, address), calls.Load())
+			}
+		})
 	}
 }

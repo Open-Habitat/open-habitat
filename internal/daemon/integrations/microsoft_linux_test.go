@@ -37,10 +37,13 @@ case " $* " in
  printf 'native selection' >"$MS365_MCP_SELECTED_ACCOUNT_PATH"
  echo '{"success":true}';;
  *' --list-accounts '*) printf '{"accounts":[{"username":"%s"}]}' "$MS365_MCP_EXPECTED_USERNAME";;
- *' --verify-login '*)
+ ' verify ')
+ read -r payload || :
+ case "$payload" in *refresh*) exit 83;; esac
+ case "$payload" in *"\"tenant_id\":\"$MS365_MCP_TENANT_ID\""*) :;; *) exit 82;; esac
  test -f "$MS365_MCP_TOKEN_CACHE_PATH"
  touch "$HOME/mcp-checked"
- if [ -f "$HOME/mcp-status-result" ]; then cat "$HOME/mcp-status-result"; else echo '{"success":true}'; fi;;
+ if [ -f "$HOME/mcp-status-result" ]; then cat "$HOME/mcp-status-result"; else echo '{"state":"ok"}'; fi;;
  *) exit 81;;
 esac
 `
@@ -427,7 +430,7 @@ func TestMicrosoftNativeRefreshUsesTheTenant(t *testing.T) {
 		t.Fatal("wrong rclone refresh authority", err)
 	}
 	app, _ := env.microsoftApp()
-	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, "--verify-login")
+	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address)
 	if !ok || !strings.Contains(strings.Join(cmd.Env, "\n"), "MS365_MCP_TENANT_ID="+testTenant) {
 		t.Fatal("restart lost the tenant")
 	}
@@ -563,14 +566,18 @@ func TestMicrosoftOutageIsNotARejectedLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		message string
-		state   ServiceState
+		reply string
+		state ServiceState
 	}{
-		{"Login successful but Graph API access failed: fetch failed", StateUnreachable},
-		{"Login failed: No valid token found", StateLoginExpired},
+		{`{"state":"unreachable"}`, StateUnreachable},
+		{`{"state":"refused"}`, StateLoginExpired},
+		{`{"state":"outside_tenant"}`, StateLoginExpired},
+		{`{"state":"ok"}`, StateOK},
+		// Anything the adapter did not decide is asked again, never a refusal.
+		{`{"success":false,"reason":"native_failed"}`, StateUnreachable},
+		{`{"state":"Login failed: invalid_grant"}`, StateUnreachable},
 	} {
-		data, _ := json.Marshal(map[string]any{"success": false, "message": test.message})
-		if err := os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), data, 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), []byte(test.reply), 0600); err != nil {
 			t.Fatal(err)
 		}
 		if services := m.Check(context.Background(), env, address); services[2].State != test.state {

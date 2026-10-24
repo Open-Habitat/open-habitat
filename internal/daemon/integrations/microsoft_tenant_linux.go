@@ -225,15 +225,15 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 	if n.mcpStale(app) {
 		// The remotes' grant, from the same sign-in as MSAL's, now works at
 		// the tenant: the tenant accepts this person. Without remotes, MSAL's
-		// own tool is asked through the tenant. Its failure text does not
-		// tell a refused grant from an outage (the pinned tool reports
-		// "Silent token acquisition failed" for both), so only the phrases
-		// that do decide a refusal and anything else is asked again.
+		// own grant is asked through the tenant; an outage is asked again.
 		if len(n.clients) == 0 {
-			switch microsoftMCPState(ctx, env, address) {
-			case StateOK:
-			case StateLoginExpired:
+			switch microsoftVerify(ctx, env, address) {
+			case "ok":
+			case "refused":
 				m.refuse(address, app, TenantChanged)
+				return nil
+			case "outside_tenant":
+				m.refuse(address, app, OutsideTenant)
 				return nil
 			default:
 				return ServerUnreachable

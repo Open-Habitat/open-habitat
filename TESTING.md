@@ -613,15 +613,18 @@ The test sets a synthetic HOME/log directory before importing the native modules
 It exercises the pinned MCP AuthManager's encrypted-cache reload/silent refresh
 for an organisation account through its tenant, including account mismatch,
 provider refusal, transport cancellation preserving existing bytes, and refusal
-of the `common`, `organizations` and `consumers` audiences. No fixture endpoint override
-exists in the production helper.
+of the `common`, `organizations` and `consumers` audiences. It also runs the
+adapter's `verify` over the same store: a working grant reads `ok` and persists
+its rotation, tenant refusals by error code read `refused` or `outside_tenant`,
+and an outage, a 503 or a failing Graph read `unreachable`. No fixture endpoint
+override exists in the production helper.
 
 Set `OH_TEST_MICROSOFT_RUNTIME` to that disposable `payload/runtime` directory and
 `OH_TEST_RCLONE` to the pinned **1.71.2** executable, then run
 `go test -v -count=1 ./internal/daemon/integrations -run TestMicrosoftSingleGrantNativeRuntime`.
 This connects the catalog's one union-scope request to real MSAL/MCP native stores
 and rclone config reload/refresh/rotation against loopback-only OAuth/Graph
-fixtures. The ordinary integration tests cover pending/backoff, expiry, native
+fixtures, and checks that the real adapter accepts the daemon's `verify` request. The ordinary integration tests cover pending/backoff, expiry, native
 import cancellation, expected-account refusal and replacement rollback.
 Neither test proves Microsoft consent/policy behavior; a real person's next
 browser connect is the live acceptance.

@@ -69,6 +69,13 @@ func TestMicrosoftSingleGrantNativeRuntime(t *testing.T) {
 	if err != nil || json.Unmarshal(data, &accounts) != nil || len(accounts.Accounts) != 1 || accounts.Accounts[0].Username != address {
 		t.Fatal("native MCP reload", err)
 	}
+	// The real adapter takes the daemon's verify request: an address without
+	// a store is refused before any network, a request it rejects would not be.
+	env.Config.Tools["microsoft-native"] = filepath.Join(runtime, "bin/microsoft-native")
+	if state := microsoftVerify(context.Background(), env, "nobody@example.test"); state != "refused" {
+		t.Fatal("native verify protocol", state)
+	}
+	env.Config.Tools["microsoft-native"] = adapter
 
 	// rclone refreshes from the catalog's config. Both OAuth and Graph are
 	// loopback-only fixtures; a CONNECT proxy never forwards to the Internet.

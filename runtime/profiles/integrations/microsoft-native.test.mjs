@@ -11,7 +11,7 @@ const root = await fs.mkdtemp(path.join(process.env.TMPDIR || '/var/tmp', 'oh-ms
 process.env.HOME = root;
 process.env.MS365_MCP_LOG_DIR = path.join(root, 'logs');
 process.env.MS365_MCP_USE_KEYTAR = 'false';
-const { importGrant, scopes } = await import('./microsoft-native.mjs');
+const { importGrant, verifyGrant, scopes } = await import('./microsoft-native.mjs');
 const { default: AuthManager } = await import('@softeria/ms-365-mcp-server/dist/auth.js');
 const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softeria/ms-365-mcp-server/dist/token-cache-storage.js');
 
@@ -53,5 +53,42 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
   assert.ok((await reloaded.getToken()).startsWith('synthetic-access-'));
   for (const audience of ['common', 'organizations', 'consumers']) await assert.rejects(importGrant({...request, tenant_id: audience}, {networkClient}), /invalid_input/);
   console.log('PASS work native import/reload/rotation/refusal');
+
+  // verify: the tenant's answer becomes a fixed state from MSAL's codes.
+  const graph = status => async (url, options) => {
+    assert.equal(url, 'https://graph.microsoft.com/v1.0/me');
+    assert.match(options.headers.Authorization, /^Bearer synthetic-access-/);
+    return new Response('{}', {status});
+  };
+  const stored = await fs.readFile(process.env.MS365_MCP_TOKEN_CACHE_PATH, 'utf8');
+  const polls = state.polls;
+  assert.equal(await verifyGrant(request, {networkClient}, graph(200)), 'ok');
+  assert.equal(state.polls, polls + 1, 'verify did not ask the tenant');
+  assert.notEqual(await fs.readFile(process.env.MS365_MCP_TOKEN_CACHE_PATH, 'utf8'), stored, 'rotated grant not persisted in the native store');
+  assert.equal(await verifyGrant(request, {networkClient}, graph(503)), 'unreachable');
+  assert.equal(await verifyGrant(request, {networkClient}, async () => { throw Error('offline'); }), 'unreachable');
+  const cases = [
+    [{refuse: true}, 'refused'],
+    [{refuse: true, codes: [700082]}, 'refused'],
+    [{refuse: 'interaction_required', codes: [50076]}, 'refused'],
+    [{refuse: 'invalid_client', codes: [700016]}, 'refused'],
+    [{refuse: true, codes: [50020]}, 'outside_tenant'],
+    [{refuse: true, codes: [90072]}, 'outside_tenant'],
+    [{unavailable: true}, 'unreachable'],
+    [{cancelled: true}, 'unreachable'],
+  ];
+  for (const [answer, expected] of cases) {
+    Object.assign(state, answer);
+    assert.equal(await verifyGrant(request, {networkClient}, graph(200)), expected, JSON.stringify(answer));
+    for (const key of Object.keys(answer)) delete state[key];
+  }
+  // The grant still works once the tenant answers again.
+  assert.equal(await verifyGrant(request, {networkClient}, graph(200)), 'ok');
+  assert.equal(await verifyGrant({...request, address: 'other@example.test'}, {networkClient}, graph(200)), 'refused');
+  await assert.rejects(verifyGrant({...request, tenant_id: 'common'}, {networkClient}, graph(200)), /invalid_input/);
+  process.env.MS365_MCP_TOKEN_CACHE_PATH = path.join(root, 'missing', '.token-cache.json');
+  process.env.MS365_MCP_SELECTED_ACCOUNT_PATH = path.join(root, 'missing', '.selected-account.json');
+  assert.equal(await verifyGrant(request, {networkClient}, graph(200)), 'refused');
+  console.log('PASS work native verify states');
 }
 await fs.rm(root, {recursive: true});

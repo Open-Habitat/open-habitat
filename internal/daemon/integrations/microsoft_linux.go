@@ -770,29 +770,47 @@ func (m *microsoft) Check(ctx context.Context, env Env, address string) []Servic
 	return out
 }
 func microsoftMCPState(ctx context.Context, env Env, address string) ServiceState {
-	app, ok := env.microsoftApp()
-	if !ok {
-		return StateUnknown
-	}
-	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, "--verify-login")
-	if !ok {
-		return StateUnknown
-	}
-	data, err := env.run(ctx, cmd, nil)
-	var result struct {
-		Success bool   `json:"success"`
-		Message string `json:"message"`
-	}
-	if err != nil || json.Unmarshal(data, &result) != nil {
-		return StateUnreachable
-	}
-	if result.Success {
+	switch microsoftVerify(ctx, env, address) {
+	case "ok":
 		return StateOK
-	}
-	if strings.Contains(result.Message, "No valid token found") || strings.Contains(result.Message, "no token received") || strings.Contains(result.Message, "invalid_grant") {
+	case "refused", "outside_tenant":
 		return StateLoginExpired
+	case "":
+		return StateUnknown
 	}
 	return StateUnreachable
+}
+
+// microsoftVerify asks the native adapter whether the Outlook tool's MSAL
+// grant still works at the current tenant. The pinned tool's own
+// --verify-login reports a refused grant and an outage with the same text;
+// the adapter decides from MSAL's error codes and answers ok, refused,
+// outside_tenant or unreachable. It returns "" when the app or tools are
+// not configured.
+func microsoftVerify(ctx context.Context, env Env, address string) string {
+	app, ok := env.microsoftApp()
+	if !ok {
+		return ""
+	}
+	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address)
+	adapter, found := env.Tool("microsoft-native")
+	if !ok || !found {
+		return ""
+	}
+	cmd.Path, cmd.Args = adapter, []string{"verify"}
+	payload, _ := json.Marshal(map[string]string{"client_id": app.ClientID, "tenant_id": app.TenantID, "address": address})
+	data, err := env.run(ctx, cmd, bytes.NewReader(payload))
+	var result struct {
+		State string `json:"state"`
+	}
+	if err != nil || json.Unmarshal(data, &result) != nil {
+		return "unreachable"
+	}
+	switch result.State {
+	case "ok", "refused", "outside_tenant":
+		return result.State
+	}
+	return "unreachable"
 }
 
 func (m *microsoft) Skill(env Env, address string) SkillAccount {

@@ -25,7 +25,8 @@ export function network(tenant, state = {polls: 0}) {
       assert.equal(form.get('client_id'), client);
       assert.ok(["refresh-secret", "synthetic-refresh-original"].includes(form.get("refresh_token")) || form.get("refresh_token").startsWith("synthetic-refresh"));
       for (const scope of scopes) assert.ok(form.get('scope').includes(scope));
-      if (state.refuse) return {headers: {}, status: 400, body: {error: 'invalid_grant', error_description: 'synthetic refusal'}};
+      if (state.unavailable) return {headers: {}, status: 503, body: {error: 'temporarily_unavailable', error_description: 'synthetic outage'}};
+      if (state.refuse) return {headers: {}, status: 400, body: {error: state.refuse === true ? 'invalid_grant' : state.refuse, error_description: 'synthetic refusal', error_codes: state.codes ?? [70008]}};
       const now = Math.floor(Date.now()/1000);
       return {headers: {}, status: 200, body: {
         token_type: 'Bearer', scope: scopes.filter(scope => scope !== state.omitScope).join(' '), expires_in: 1,
