@@ -410,11 +410,26 @@ bad_gitea["connection"]["base_url"] = "https://person:secret@git.example.test"
 must_reject("gitea-connection-change.schema.json", bad_gitea)
 must_reject("gitea-connection-change.schema.json", {"schema_version": 1, "outcome": "written", "removed": {"id": "gitea_0123456789abcdef01234567"}, "api": "ok"})
 bad_gitea = json.loads((BASE / "examples" / "gitea-repos.json").read_text())
-bad_gitea["sources"][1]["repositories"] = bad_gitea["sources"][0]["repositories"]
+bad_gitea["sources"][2]["repositories"] = bad_gitea["sources"][0]["repositories"]
 must_reject("gitea-repos.schema.json", bad_gitea)
 bad_gitea = json.loads((BASE / "examples" / "gitea-repos.json").read_text())
-del bad_gitea["sources"][1]["failure"]
+del bad_gitea["sources"][2]["failure"]
 must_reject("gitea-repos.schema.json", bad_gitea)
+# An incomplete list says why; a complete or failed one carries no reason.
+bad_gitea = json.loads((BASE / "examples" / "gitea-repos.json").read_text())
+del bad_gitea["sources"][1]["incomplete"]
+must_reject("gitea-repos.schema.json", bad_gitea)
+bad_gitea = json.loads((BASE / "examples" / "gitea-repos.json").read_text())
+bad_gitea["sources"][0]["incomplete"] = "limit"
+must_reject("gitea-repos.schema.json", bad_gitea)
+bad_gitea = json.loads((BASE / "examples" / "gitea-repos.json").read_text())
+bad_gitea["sources"][2]["incomplete"] = "interrupted"
+must_reject("gitea-repos.schema.json", bad_gitea)
+# A workspace's Gitea origin is a base and owner/name, never the address.
+for origin in ({"base_url": "https://person:secret@git.example.test", "full_name": "example-person/notes"}, {"base_url": "https://git.example.test", "full_name": "example-person/notes", "url": "https://git.example.test/example-person/notes.git"}):
+    bad_snapshot = json.loads((BASE / "examples" / "snapshot.json").read_text())
+    bad_snapshot["workspaces"][0]["gitea_origin"] = origin
+    must_reject("snapshot.schema.json", bad_snapshot)
 must_reject("github-clone.schema.json", {"action": "start", "source": "gitea", "connection_id": "gitea_0123456789abcdef01234567", "repository_id": 42, "mode": "blobless"})
 # A Gitea restart is the same full start of one repository id; a Gitea
 # remove names only the owner/name the directory records, never a

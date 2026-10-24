@@ -236,6 +236,23 @@
             "unknown"
           ]
         },
+        "gitea_origin": {
+          "description": "For a main worktree whose origin is exactly the credential-free HTTPS address https://<base>/<owner>/<name>[.git] under the base of one of the person's tea logins: that base and owner/name, as the daemon matched them. It names a repository on a server, not an account: two accounts of one Gitea see the same clone, and which account the clone uses stays in its own Git configuration. Absent for every other origin, including SSH, which is never assumed equivalent. The address itself is never returned.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "base_url",
+            "full_name"
+          ],
+          "properties": {
+            "base_url": {
+              "$ref": "integrations.schema.json#/$defs/gitea_base_url"
+            },
+            "full_name": {
+              "$ref": "gitea-repos.schema.json#/$defs/fullName"
+            }
+          }
+        },
         "visibility": {
           "enum": [
             "visible",

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
 	"net"
 	"net/http"
 	"net/netip"
@@ -102,21 +103,25 @@ func (c *Client) transport(b Base) *http.Transport {
 // get performs one bounded GET of base+/api/v1+path with the PAT. The token
 // lives only in this request's header.
 func (c *Client) get(ctx context.Context, b Base, path, token string, out any) error {
-	return c.getLimited(ctx, b, path, token, maxBody, out)
+	_, err := c.getLimited(ctx, b, path, token, maxBody, out)
+	return err
 }
 
-func (c *Client) getLimited(ctx context.Context, b Base, path, token string, limit int, out any) error {
+// getLimited is get with its own body bound; it also returns the answer's
+// headers. Only a JSON answer is Gitea's: a login page or another service
+// behind the address answers HTML, which is never parsed as an empty list.
+func (c *Client) getLimited(ctx context.Context, b Base, path, token string, limit int, out any) (http.Header, error) {
 	if !b.valid() {
-		return ErrInvalidAddress
+		return nil, ErrInvalidAddress
 	}
 	if !validToken(token) {
-		return ErrInvalidToken
+		return nil, ErrInvalidToken
 	}
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, b.String()+"/api/v1"+path, nil)
 	if err != nil {
-		return ErrInvalidAddress
+		return nil, ErrInvalidAddress
 	}
 	req.Header.Set("Authorization", "token "+token)
 	req.Header.Set("Accept", "application/json")
@@ -128,28 +133,31 @@ func (c *Client) getLimited(ctx context.Context, b Base, path, token string, lim
 	}
 	resp, err := hc.Do(req)
 	if err != nil {
-		return classifyTransport(err)
+		return nil, classifyTransport(err)
 	}
 	defer resp.Body.Close()
 	switch {
 	case resp.StatusCode == http.StatusOK:
 	case resp.StatusCode >= 300 && resp.StatusCode < 400:
-		return ErrRedirect
+		return nil, ErrRedirect
 	case resp.StatusCode == http.StatusUnauthorized:
-		return ErrRejected
+		return nil, ErrRejected
 	case resp.StatusCode == http.StatusForbidden:
-		return ErrScope
+		return nil, ErrScope
 	default:
-		return ErrProtocol
+		return nil, ErrProtocol
+	}
+	if media, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type")); err != nil || media != "application/json" {
+		return nil, ErrProtocol
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, int64(limit)+1))
 	if err != nil {
-		return ErrUnreachable
+		return nil, classifyTransport(err)
 	}
 	if len(body) > limit || json.Unmarshal(body, out) != nil {
-		return ErrProtocol
+		return nil, ErrProtocol
 	}
-	return nil
+	return resp.Header, nil
 }
 
 func classifyTransport(err error) error {

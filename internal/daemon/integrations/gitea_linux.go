@@ -389,6 +389,7 @@ type giteaRepository struct {
 	DefaultBranch *string `json:"default_branch"`
 	Empty         bool    `json:"empty"`
 	Archived      bool    `json:"archived"`
+	Owned         bool    `json:"owned"`
 }
 
 type giteaSource struct {
@@ -398,6 +399,7 @@ type giteaSource struct {
 	State        string            `json:"state"`
 	Failure      string            `json:"failure,omitempty"`
 	Complete     bool              `json:"complete"`
+	Incomplete   string            `json:"incomplete,omitempty"`
 	Repositories []giteaRepository `json:"repositories"`
 }
 
@@ -444,7 +446,7 @@ func (c *Catalog) giteaRepos(w http.ResponseWriter, r *http.Request) {
 	total := 0
 	for i := range sources {
 		if room := giteaReposLimit - total; len(sources[i].Repositories) > room {
-			sources[i].Repositories, sources[i].Complete = sources[i].Repositories[:room], false
+			sources[i].Repositories, sources[i].Complete, sources[i].Incomplete = sources[i].Repositories[:room], false, string(nativegitea.IncompleteLimit)
 		}
 		total += len(sources[i].Repositories)
 	}
@@ -458,6 +460,21 @@ func (g *GiteaAdapter) source(ctx context.Context, l nativegitea.Login) giteaSou
 		s.Failure = "native_unavailable"
 		return s
 	}
+	// The list is this connection's only while its token still
+	// authenticates the account tea's entry names: a PAT replaced by hand
+	// with another account's would otherwise list that account's
+	// repositories under this one.
+	account, err := g.API.User(ctx, l.Base, token)
+	if err == nil && (!strings.EqualFold(account.Login, l.User) || (l.Owned && account.ID != l.OwnedID)) {
+		err = nativegitea.ErrAccountMismatch
+	}
+	if err != nil {
+		s.Failure = apiState(err)
+		if s.Failure == "" {
+			s.Failure = "native_unavailable"
+		}
+		return s
+	}
 	list, err := g.API.Repos(ctx, l.Base, token)
 	if err != nil {
 		s.Failure = apiState(err)
@@ -467,8 +484,14 @@ func (g *GiteaAdapter) source(ctx context.Context, l nativegitea.Login) giteaSou
 		return s
 	}
 	s.State, s.Complete = "ok", list.Complete
+	if !list.Complete {
+		s.Incomplete = string(list.Incomplete)
+		if s.Incomplete == "" {
+			s.Incomplete = string(nativegitea.IncompleteInterrupted)
+		}
+	}
 	for _, repo := range list.Repositories {
-		v := giteaRepository{ID: repo.ID, FullName: repo.FullName(), Private: repo.Private, Description: repo.Description, HTMLURL: repo.HTMLURL(l.Base), SizeKiB: repo.SizeKiB, Empty: repo.Empty, Archived: repo.Archived}
+		v := giteaRepository{ID: repo.ID, FullName: repo.FullName(), Private: repo.Private, Description: repo.Description, HTMLURL: repo.HTMLURL(l.Base), SizeKiB: repo.SizeKiB, Empty: repo.Empty, Archived: repo.Archived, Owned: repo.OwnerID != 0 && repo.OwnerID == account.ID}
 		if repo.UpdatedAt != "" {
 			v.UpdatedAt = &repo.UpdatedAt
 		}

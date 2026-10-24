@@ -21,6 +21,8 @@
     {
       "workspace_id": "ws_example123",
       "name": "sample-project",
+      "git_remote": "other",
+      "gitea_origin": {"base_url": "https://git.example.test/gitea", "full_name": "example-person/sample-project"},
       "display_name": "Sample project",
       "kind": "git_main_worktree",
       "visibility": "visible",

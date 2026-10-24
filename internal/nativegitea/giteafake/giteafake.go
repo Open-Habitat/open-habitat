@@ -280,7 +280,7 @@ func (s *Server) readable(a Account, r Repo) bool {
 	return false
 }
 
-func (s *Server) view(r Repo) map[string]any {
+func (s *Server) view(r Repo, accounts []Account) map[string]any {
 	full := r.Owner + "/" + r.Name
 	branch := "main"
 	if r.Empty {
@@ -290,8 +290,15 @@ func (s *Server) view(r Repo) map[string]any {
 	if r.CloneURL != "" {
 		clone = r.CloneURL
 	}
+	// An owner that is no account here stands for an organisation.
+	ownerID := int64(1000) + r.ID
+	for _, a := range accounts {
+		if a.Login == r.Owner {
+			ownerID = a.ID
+		}
+	}
 	return map[string]any{
-		"id": r.ID, "name": r.Name, "full_name": full, "owner": map[string]any{"id": 1, "login": r.Owner},
+		"id": r.ID, "name": r.Name, "full_name": full, "owner": map[string]any{"id": ownerID, "login": r.Owner},
 		"private": r.Private, "empty": r.Empty, "archived": false, "description": r.Description,
 		"default_branch": branch, "updated_at": "2026-10-20T10:00:00+03:00", "size": 24,
 		"html_url": s.URL + "/" + full, "clone_url": clone, "ssh_url": "git@127.0.0.1:" + full + ".git",
@@ -318,6 +325,7 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 	a, ok := s.account(token)
 	failing := s.failing[token]
 	repos := append([]Repo(nil), s.repos...)
+	accounts := append([]Account(nil), s.accounts...)
 	s.mu.Unlock()
 	if r.Method != http.MethodGet {
 		http.Error(w, "", http.StatusMethodNotAllowed)
@@ -348,18 +356,24 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		mine := []map[string]any{}
 		for _, repo := range repos {
 			if s.readable(a, repo) {
-				mine = append(mine, s.view(repo))
+				mine = append(mine, s.view(repo, accounts))
 			}
 		}
 		start := min((page-1)*limit, len(mine))
 		end := min(start+limit, len(mine))
 		w.Header().Set("X-Total-Count", strconv.Itoa(len(mine)))
+		// Gitea links the next page from its configured root URL.
+		if end < len(mine) {
+			q := r.URL.Query()
+			q.Set("page", strconv.Itoa(page+1))
+			w.Header().Set("Link", "<"+s.URL+"/api/v1/user/repos?"+q.Encode()+`>; rel="next"`)
+		}
 		_ = json.NewEncoder(w).Encode(mine[start:end])
 	case strings.HasPrefix(r.URL.Path, "/api/v1/repositories/"):
 		id, err := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/repositories/"), 10, 64)
 		for _, repo := range repos {
 			if err == nil && repo.ID == id && s.readable(a, repo) {
-				_ = json.NewEncoder(w).Encode(s.view(repo))
+				_ = json.NewEncoder(w).Encode(s.view(repo, accounts))
 				return
 			}
 		}

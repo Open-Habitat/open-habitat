@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"net/http"
 	"os"
 	"strconv"
@@ -76,6 +77,12 @@ func snapshotHandlerWithJournal(cfg transport.Config, trusted func(*http.Request
 	return snapshotHandlerWithController(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, journal, nil)
 }
 func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string, journal *eventJournal, controller *ConversationController) http.Handler {
+	return snapshotHandlerWithGitea(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, journal, controller, nil)
+}
+
+// snapshotHandlerWithGitea also matches each workspace's origin to the
+// person's connected Gitea bases; gitea may be nil.
+func snapshotHandlerWithGitea(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string, journal *eventJournal, controller *ConversationController, gitea *integrations.GiteaAdapter) http.Handler {
 	instance, ok := uuid()
 	if journal != nil {
 		instance, ok = journal.instance, journal.instance != ""
@@ -300,6 +307,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		defer stopSummary()
 		started = time.Now()
 		global := gitGlobalStamp(nativeHome)
+		bases := giteaBases(gitea)
 		var gitWork sync.WaitGroup
 		gitSlots := make(chan struct{}, 4)
 		for i, entry := range gitEntries {
@@ -315,7 +323,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				observe := func() (gitFacts, bool) {
 					var f gitFacts
 					if entry.Kind == "git_main_worktree" {
-						f.remote, f.continuation = workspaceRemote(remoteCtx, nativeHome, entry)
+						f.remote, f.continuation, f.origin = workspaceRemote(remoteCtx, nativeHome, entry)
 					}
 					f.summary, f.summaryOK = workspaceGitSummary(summaryCtx, nativeHome, entry)
 					// A budget that ran out made "unknown" a timeout, not a fact.
@@ -329,6 +337,9 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				}
 				if entry.Kind == "git_main_worktree" {
 					ws["git_remote"] = f.remote
+					if match := giteaOriginMatch(f.origin, bases); match != nil {
+						ws["gitea_origin"] = match
+					}
 					if f.continuation {
 						ws["publish_continuation"] = true
 					}

@@ -31,6 +31,7 @@ func startGitea(t *testing.T, addr string) *fakeGitea {
 	f.srv = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.hits.Add(1)
 		tok := strings.TrimPrefix(r.Header.Get("Authorization"), "token ")
+		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.URL.Path != "/api/v1/user" || r.Method != http.MethodGet:
 			http.NotFound(w, r)

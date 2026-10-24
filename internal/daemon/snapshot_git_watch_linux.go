@@ -22,6 +22,7 @@ import (
 type gitFacts struct {
 	remote       string
 	continuation bool
+	origin       string         // never leaves the daemon
 	summary      map[string]any // never modified after it is stored
 	summaryOK    bool
 }
