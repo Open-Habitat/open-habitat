@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: agent
 originating_run: 01m5pv1gskbkcp2fqjmcjgm4gt
@@ -10,6 +10,7 @@ originating_run_kind: spinoff
 lane: unlaned
 collision: [tests/lab]
 preparation: ready
+closed: 2026-10-24
 ---
 
 # Lab paging-and-recovery spec times out on send under the full gate
@@ -29,3 +30,9 @@ The clean gate is the precondition of a production release and the per-round hea
 ## Likely direction
 
 The send button probably stays in another mode (or the lab host is slow to accept the next message) while the previous turn is still finishing under full-suite load; the test should wait for the observable ready state rather than for the click to succeed within the test timeout. Unverified.
+
+## Acceptance Criteria
+
+- [x] Wait explicitly for idle composer/send readiness rather than textarea availability.
+- [x] Paging/recovery journey passes ten repeated browser runs.
+- [x] Record validation and the limits of reproducing the original gate-only timeout.

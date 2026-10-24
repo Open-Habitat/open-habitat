@@ -891,6 +891,18 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
 }) => {
   test.setTimeout(90000);
   const older = page.getByTestId("older-history");
+  const send = page.getByTestId("send");
+  const expectIdleComposer = async () => {
+    // The textarea is intentionally writable during a turn. Native answer text
+    // can also arrive before agent_end/status reconciliation: neither proves
+    // that the next message will be a new turn rather than a queued follow-up.
+    await expect(send).toHaveAttribute("data-mode", "send", {
+      timeout: 30000,
+    });
+    await expect(send).not.toHaveAttribute("aria-busy", "true", {
+      timeout: 30000,
+    });
+  };
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
@@ -901,11 +913,12 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const editor = page.getByTestId("message-input");
   for (let i = 1; i <= 8; i++) {
-    await editor.fill(`Kierros ${i}`);
-    await page
-      .getByTestId("send")
-      .and(page.locator('[data-mode="send"]'))
-      .click();
+    await test.step(`Send round ${i} from an idle composer`, async () => {
+      await expectIdleComposer();
+      await editor.fill(`Kierros ${i}`);
+      await expect(send).toBeEnabled({ timeout: 30000 });
+      await send.click();
+    });
     await expectNativeContent(
       page.getByTestId("conversation-timeline"),
       `Kierros ${i}`,
@@ -914,13 +927,13 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
     await expectNativeContent(page, `Selvä. Kysyit: "Kierros ${i}".`, {
       timeout: 30000,
     });
-    await expect(editor).toBeEnabled({ timeout: 30000 });
+    await expectIdleComposer();
     // Every native entry is already in this live window, even after it grows
     // past a tail page. An absent cursor is a known exhausted boundary.
     await expect(older).toHaveCount(0);
     if (i === 1) {
       await page.reload();
-      await expect(editor).toBeEnabled();
+      await expectIdleComposer();
       await expect(older).toHaveCount(0);
     }
   }
@@ -979,15 +992,14 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
   await page.getByTestId("conversation-recheck").click();
   await refreshed;
   await expect(older).toHaveCount(0);
+  await expectIdleComposer();
   await editor.fill("Kierros 9");
-  await page
-    .getByTestId("send")
-    .and(page.locator('[data-mode="send"]'))
-    .click();
+  await expect(send).toBeEnabled({ timeout: 30000 });
+  await send.click();
   await expectNativeContent(page, 'Selvä. Kysyit: "Kierros 9".', {
     timeout: 30000,
   });
-  await expect(editor).toBeEnabled({ timeout: 30000 });
+  await expectIdleComposer();
   await expect(older).toHaveCount(0);
   // A new daemon incarnation forces snapshot reseeding and history reconnect.
   const reconnected = page.waitForResponse((response) =>
