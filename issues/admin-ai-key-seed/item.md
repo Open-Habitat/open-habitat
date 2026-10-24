@@ -31,9 +31,9 @@ Scheduling proposal: deferred, no lane, until Jari asks for it.
 
 ## Acceptance Criteria
 
-- [ ] Write-if-absent / replace-only-site-seeded semantics tested under Pi's lock; the person's own key is never overwritten.
-- [ ] `CONFORMANCE.md` row; `--dry-run` reports the exact effect.
-- [ ] Review: independent `/llm-review` at high-risk level.
+- [x] Write-if-absent / replace-only-site-seeded semantics tested under Pi's lock; the person's own key is never overwritten.
+- [x] `CONFORMANCE.md` row; `--dry-run` reports the exact effect.
+- [x] Review: independent `/llm-review` at high-risk level.
 
 ## Decisions
 
