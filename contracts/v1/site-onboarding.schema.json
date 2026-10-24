@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/site-onboarding.schema.json",
+  "title": "What the site's onboarding offers a signed-in person",
+  "description": "GET /api/v1/onboarding/site for any signed-in person: the repository mode, the integration steps in route order and the AI offer. It never carries the site's default repositories, their names or their number; the repositories a person can read reach them only through gateway-built requests.",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "repositories", "integrations", "ai_account"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "repositories": {
+      "type": "object", "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {"mode": {"$ref": "server-onboarding.schema.json#/$defs/mode"}}
+    },
+    "integrations": {"$ref": "server-onboarding.schema.json#/$defs/integrations"},
+    "ai_account": {"$ref": "server-onboarding.schema.json#/$defs/ai_account"}
+  }
+}

@@ -171,6 +171,15 @@ exit 130/143. System/native action failures exit 2; inspect before retrying.
     open-habitat admin settings show --json
     open-habitat admin users list --json
 
+The site onboarding (default repositories and their mode, integration steps,
+AI offer) is gateway administration state, not site.json: host apply never
+sets or resets it, and a browser administrator edits the same record. Read it
+with `admin onboarding show --json`, change the data, then replace the whole
+document with `admin onboarding update --file FILE|- --expected-version N`,
+first with `--dry-run`. version_conflict means someone saved in between: read
+again and merge rather than reusing the old version. A change applies only to
+onboardings that start afterwards.
+
 A journal phase is durable intent, not proof of completion. Runtime process
 liveness is not readiness. Generated gateway config and TLS copies are under
 /etc/open-habitat/gateway/; per-user bindings remain separately under

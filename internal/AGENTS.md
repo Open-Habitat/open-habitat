@@ -160,6 +160,14 @@ Identity and authority:
   credential access or host-owned state.
 - `admission: "any"` exists for the disposable test installation only (ADR
   0014); it is not a production admission design.
+- The site onboarding configuration (default repositories, integration steps,
+  AI offer) is gateway administration state, written only by a current
+  administrator's browser session or root's control socket under one version,
+  never by `host apply` and never world-readable. A daemon receives only the
+  part a request needs, inside requests the gateway builds itself, and that
+  part can only select among the person's own native actions. The
+  person-side read never carries the default repositories. `required` removes
+  a step's skip action and gates no access.
 - The GitHub token is held transiently by the gateway and handed once to the
   daemon. It is never persisted, logged or returned to the browser. A
   partial or uncertain native setup creates no web session, a later login

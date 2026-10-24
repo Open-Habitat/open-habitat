@@ -12,6 +12,7 @@ import { ClaudeSignIn } from "../app/ClaudeSignIn";
 import { Devices } from "../app/Devices";
 import { GitIdentity } from "../app/GitIdentity";
 import { IntegrationsSettings } from "../app/IntegrationsSettings";
+import { OnboardingAdministration } from "../app/OnboardingAdministration";
 import { PersonalStorage } from "../app/PersonalStorage";
 import { PiCredentials } from "../app/PiCredentials";
 import type { AccountProfile, PiState } from "../app/pi";
@@ -345,6 +346,7 @@ export function AccountSettings({
   ];
   const adminSections = [
     ["palvelin", "Palvelin"],
+    ["kayttoonotto", "Käyttöönotto"],
     ["kayttajat", "Käyttäjät"],
     ["levy", "Levytila"],
   ];
@@ -361,6 +363,7 @@ export function AccountSettings({
     editori: "editor",
     tila: "disk",
     palvelin: "server",
+    kayttoonotto: "forward",
     kayttajat: "users",
     levy: "disk",
   };
@@ -408,7 +411,12 @@ export function AccountSettings({
       );
     });
   return (
-    <section className={`ah-account-settings s-page${detail ? " detail" : ""}`}>
+    <section
+      className={`ah-account-settings s-page${detail ? " detail" : ""}${
+        // Käyttöönotto puts the route beside the step's settings.
+        section === "kayttoonotto" && admin ? " wide" : ""
+      }`}
+    >
       <nav
         data-testid="settings-navigation"
         className="s-nav"
@@ -632,7 +640,9 @@ export function AccountSettings({
           />
         )}
         {adminSections.some(([id]) => id === section) &&
-          (admin ? (
+          (admin && section === "kayttoonotto" ? (
+            <OnboardingAdministration csrf={csrf} />
+          ) : admin ? (
             <ServerAdministration
               csrf={csrf}
               section={section as "palvelin" | "kayttajat" | "levy"}

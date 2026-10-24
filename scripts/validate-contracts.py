@@ -78,6 +78,9 @@ checks = {
     "account-sessions.json": "device-link.schema.json",
     "device-link-status.json": "device-link.schema.json",
     "server-storage.json": "server-storage.schema.json",
+    "server-onboarding.json": "server-onboarding.schema.json",
+    "server-onboarding-change.json": "server-onboarding.schema.json",
+    "site-onboarding.json": "site-onboarding.schema.json",
     "server-storage-change.json": "server-storage-change.schema.json",
     "command-request.json": "command.schema.json",
     "command-result.json": "command.schema.json",
@@ -203,6 +206,21 @@ must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "wo
 must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "workspace_id": "ws_example123", "entry": "x", "observation_token": "wt_" + "A" * 24, "disposal": "force"})
 must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "workspace_id": "ws_example123", "entry": "x", "observation_token": "wt_" + "A" * 24, "disposal": "remove", "confirmation": "x"})
 must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "workspace_id": "ws_example123", "entry": "x", "observation_token": "wt_" + "A" * 24, "disposal": "remove", "path": "/home/x"})
+
+# The person-side onboarding read never carries the site's default
+# repositories or their number; the administrator's read and change are
+# bounded by GitHub's name grammar and at most 20 defaults.
+site_onboarding = json.loads((BASE / "examples" / "site-onboarding.json").read_text())
+must_reject("site-onboarding.schema.json", {**site_onboarding, "repositories": {"mode": "auto", "defaults": ["example-org/infra"]}})
+must_reject("site-onboarding.schema.json", {**site_onboarding, "repositories": {"mode": "auto", "default_count": 2}})
+must_reject("site-onboarding.schema.json", {**site_onboarding, "defaults": ["example-org/infra"]})
+onboarding_change = json.loads((BASE / "examples" / "server-onboarding-change.json").read_text())
+must_reject("server-onboarding.schema.json", {**onboarding_change, "repositories": {"mode": "skip", "defaults": [f"example-org/r{i}" for i in range(21)]}})
+must_reject("server-onboarding.schema.json", {**onboarding_change, "repositories": {"mode": "skip", "defaults": ["example-org/.."]}})
+must_reject("server-onboarding.schema.json", {**onboarding_change, "repositories": {"mode": "skip", "defaults": ["https://github.com/example-org/x"]}})
+must_reject("server-onboarding.schema.json", {**onboarding_change, "integrations": [{"provider": "slack", "required": False}]})
+must_reject("server-onboarding.schema.json", {**onboarding_change, "ai_account": {"offer": "gemini"}})
+must_reject("server-onboarding.schema.json", {k: v for k, v in onboarding_change.items() if k != "expected_version"})
 
 terminal_validator = Draft202012Validator(schemas["terminal.schema.json"], registry=registry, format_checker=format_checker)
 for message in json.loads((BASE / "examples" / "terminal-messages.json").read_text()):

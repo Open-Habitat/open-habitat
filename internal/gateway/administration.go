@@ -34,6 +34,8 @@ type serverSettings struct {
 	Name              string   `json:"name"`
 	Administrators    []string `json:"administrators"`
 	DefaultLimitBytes uint64   `json:"default_limit_bytes,omitempty"`
+	// Onboarding is absent until the first write; defaultOnboarding stands in.
+	Onboarding *onboardingConfig `json:"onboarding,omitempty"`
 }
 
 func emptySettings() serverSettings { return serverSettings{Version: 1, Administrators: []string{}} }
@@ -53,7 +55,7 @@ func validName(name string) bool {
 	return true
 }
 func validSettings(s serverSettings) bool {
-	if s.Version != 1 || !validName(s.Name) || s.Administrators == nil || len(s.Administrators) > 1024 || (s.DefaultLimitBytes != 0 && !validQuotaLimit(s.DefaultLimitBytes)) {
+	if s.Version != 1 || !validName(s.Name) || s.Administrators == nil || len(s.Administrators) > 1024 || (s.DefaultLimitBytes != 0 && !validQuotaLimit(s.DefaultLimitBytes)) || !validStoredOnboarding(s.Onboarding) {
 		return false
 	}
 	seen := map[string]bool{}
@@ -393,6 +395,10 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// maxControlPayload bounds one root control request; an onboarding document
+// with 20 default repositories is the largest.
+const maxControlPayload = 8192
+
 // AdminControl is called only after the private control listener verifies root
 // peer credentials. The CLI client belongs to server-administration-cli.
 func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error) {
@@ -404,9 +410,18 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 		DefaultLimitBytes *uint64 `json:"default_limit_bytes"`
 		LimitBytes        *uint64 `json:"limit_bytes"`
 	}
+	if len(payload) > maxControlPayload {
+		return nil, errors.New("invalid control request")
+	}
+	var op struct {
+		Operation string `json:"operation"`
+	}
+	if json.Unmarshal(payload, &op) == nil && strings.HasPrefix(op.Operation, "onboarding_") {
+		return a.onboardingControl(payload)
+	}
 	dec := json.NewDecoder(strings.NewReader(string(payload)))
 	dec.DisallowUnknownFields()
-	if len(payload) > 1024 || dec.Decode(&r) != nil || dec.Decode(new(any)) != io.EOF {
+	if dec.Decode(&r) != nil || dec.Decode(new(any)) != io.EOF {
 		return nil, errors.New("invalid control request")
 	}
 	switch r.Operation {
@@ -433,7 +448,10 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 		if !a.administrationAvailable() {
 			return nil, ErrAdministrationState
 		}
-		return json.Marshal(a.settingsView())
+		// The settings record without onboarding, which has its own operations.
+		v := a.settingsView()
+		v.Onboarding = nil
+		return json.Marshal(v)
 	case "name":
 		if r.Subject != "" || r.Administrator != nil || r.DefaultLimitBytes != nil || r.LimitBytes != nil || !validName(r.Name) {
 			break
@@ -477,7 +495,10 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 
 // AdminControlError maps private control failures to a fixed, non-sensitive wire vocabulary.
 func AdminControlError(err error) string {
+	var oe *OnboardingError
 	switch {
+	case errors.As(err, &oe):
+		return oe.Reason
 	case errors.Is(err, errBindingNotFound):
 		return "not_found"
 	case errors.Is(err, errBrokerRead):

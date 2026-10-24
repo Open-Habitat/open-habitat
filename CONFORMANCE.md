@@ -690,3 +690,23 @@ actual executable adoption, fenced dead-lease reboot, accepted-state recovery
 and healthy successor cold boot. Final mechanical doctor had no failures;
 advisory review retains 10 inherited gaps (8 must, 2 should) and 9 manual rows.
 This does not promote inherited partial rows to whole-CLI conformance.
+
+## Admin onboarding batch
+
+`admin onboarding show` and `admin onboarding update --file <path|->
+--expected-version <n> [--dry-run]` read and replace the site onboarding
+configuration over root's gateway control socket, through the same writer
+and validation as the browser (§§1, 7). Input is one strict JSON document from
+a file or stdin, and a `show` reply, enveloped or not, can be edited and
+written back; its version must equal `--expected-version` (§§4, 6). A newer
+stored version is the typed `version_conflict` (exit 1), and every gateway
+rejection is the same fixed code the browser receives (§§9–10). `--dry-run` has
+the gateway check the document and version without writing and reports
+`known_effects` (previous, next, changed parts, who it affects) with
+`version_at_commit` unknown until apply (§11). Drill-down help lists both
+flags (§14), and the operator skill says how to edit the record (§16).
+`TestAdminOnboarding*` covers round trips through the real control handler,
+dry-run without writes, stale versions, rejections and strict flags; gateway
+`TestOnboarding*` proves browser and control reject identically. Mechanical
+review of the built binary reports the same 10 inherited gaps (8 must,
+2 should) and 9 manual rows as before; none is new here.

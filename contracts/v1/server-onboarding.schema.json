@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/server-onboarding.schema.json",
+  "title": "The site onboarding configuration an administrator reads and replaces",
+  "description": "GET /api/v1/server/onboarding returns the configuration with its version; PUT replaces the whole document when expected_version is the current version (409 version_conflict otherwise) and returns the new configuration. Administrator, session and CSRF are required. Rejections are fixed codes shared with root's admin onboarding CLI: invalid_document, invalid_mode, invalid_repository_name, too_many_defaults, duplicate_default, unknown_provider, duplicate_provider, invalid_offer, site_key_unavailable. Integrations come back in the integrations catalog's order. A change applies only to onboardings that start afterwards.",
+  "oneOf": [{"$ref": "#/$defs/configuration"}, {"$ref": "#/$defs/change"}],
+  "$defs": {
+    "repository_name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$", "not": {"pattern": "/\\.{1,2}$"}},
+    "repositories": {
+      "type": "object", "additionalProperties": false,
+      "required": ["mode", "defaults"],
+      "properties": {
+        "mode": {"$ref": "#/$defs/mode"},
+        "defaults": {"description": "The site's default repositories; the same list in every mode. Never sent to a person's browser.", "type": "array", "maxItems": 20, "uniqueItems": true, "items": {"$ref": "#/$defs/repository_name"}}
+      }
+    },
+    "mode": {"description": "preselected: the chooser starts with the defaults chosen; auto: the defaults are fetched right after GitHub sign-in; skip: no repository step, the defaults are imported in the background.", "enum": ["preselected", "auto", "skip"]},
+    "integration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "required"],
+      "properties": {
+        "provider": {"$ref": "integrations.schema.json#/$defs/provider_id"},
+        "required": {"description": "True removes the step's skip action; it gates no access.", "type": "boolean"}
+      }
+    },
+    "integrations": {"type": "array", "maxItems": 6, "items": {"$ref": "#/$defs/integration"}},
+    "ai_account": {
+      "type": "object", "additionalProperties": false,
+      "required": ["offer"],
+      "properties": {
+        "offer": {"description": "all: every option; one option: suggested first with the rest behind a link; site_key: exactly while the site holds an AI key, which skips the step.", "enum": ["all", "chatgpt", "claude", "openai_key", "anthropic_key", "deepseek_key", "site_key"]}
+      }
+    },
+    "configuration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "version", "repositories", "integrations", "ai_account"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "version": {"description": "Revision of the stored document; 0 until the first save.", "type": "integer", "minimum": 0, "maximum": 1073741824},
+        "repositories": {"$ref": "#/$defs/repositories"},
+        "integrations": {"$ref": "#/$defs/integrations"},
+        "ai_account": {"$ref": "#/$defs/ai_account"}
+      }
+    },
+    "change": {
+      "type": "object", "additionalProperties": false,
+      "required": ["expected_version", "repositories", "integrations", "ai_account"],
+      "properties": {
+        "expected_version": {"type": "integer", "minimum": 0, "maximum": 1073741824},
+        "repositories": {"$ref": "#/$defs/repositories"},
+        "integrations": {"$ref": "#/$defs/integrations"},
+        "ai_account": {"$ref": "#/$defs/ai_account"}
+      }
+    }
+  }
+}

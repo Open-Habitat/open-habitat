@@ -110,8 +110,9 @@ func serveRevocations(ctx context.Context, ln net.Listener, auth *gateway.Auth) 
 			if err != nil || uid != 0 {
 				return
 			}
-			line, err := bufio.NewReader(io.LimitReader(c, 1100)).ReadString('\n')
-			if err != nil || len(line) > 1090 {
+			// An ADMIN line carries at most an 8192-byte request.
+			line, err := bufio.NewReader(io.LimitReader(c, 8210)).ReadString('\n')
+			if err != nil || len(line) > 8200 {
 				return
 			}
 			if strings.HasPrefix(line, "ADMIN ") {

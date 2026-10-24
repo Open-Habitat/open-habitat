@@ -136,7 +136,10 @@ export type LoginView = {
   consent_url?: string;
 };
 
-async function bounded(response: Response, limit: number): Promise<unknown> {
+export async function bounded(
+  response: Response,
+  limit: number,
+): Promise<unknown> {
   if (
     response.headers.get("content-type")?.split(";")[0] !== "application/json"
   )

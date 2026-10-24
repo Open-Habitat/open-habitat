@@ -8,6 +8,7 @@
   "editori": "editor",
   "tila": "storage",
   "palvelin": "server",
+  "kayttoonotto": "onboarding",
   "kayttajat": "users",
   "levy": "disk"
 }

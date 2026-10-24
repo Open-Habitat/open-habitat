@@ -40,6 +40,8 @@ func (s *Server) routes() http.Handler {
 		s.auth.routes(mux)
 		mux.HandleFunc("/api/v1/server", s.auth.adminHTTP)
 		mux.HandleFunc("/api/v1/server/administration", s.auth.adminHTTP)
+		mux.HandleFunc("/api/v1/server/onboarding", s.auth.serverOnboardingHTTP)
+		mux.HandleFunc("/api/v1/onboarding/site", s.auth.siteOnboardingHTTP)
 		mux.HandleFunc("/api/v1/server/storage", s.auth.quotaHTTP)
 		mux.HandleFunc("/api/v1/account/storage", s.auth.quotaHTTP)
 		mux.HandleFunc("/api/v1/snapshot", s.auth.snapshot)

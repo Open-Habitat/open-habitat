@@ -1,0 +1,1 @@
+{"schema_version":1,"version":3,"repositories":{"mode":"auto","defaults":["example-org/product","example-org/infra"]},"integrations":[{"provider":"google","required":false},{"provider":"dropbox","required":true}],"ai_account":{"offer":"chatgpt"}}

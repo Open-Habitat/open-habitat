@@ -13,6 +13,7 @@ describe("settings URL contract", () => {
       "disk",
       "editor",
       "integrations",
+      "onboarding",
       "server",
       "storage",
       "users",

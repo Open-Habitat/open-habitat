@@ -77,6 +77,8 @@ var helpSpecs = []helpSpec{
 	{"admin readiness show", "Inspect privileged readiness", "admin readiness show --json", nil},
 	{"admin settings show", "Inspect host settings", "admin settings show --json", nil},
 	{"admin settings update", "Update host name or default quota", "admin settings update --name Example --dry-run --json", []string{"--name", "--default-limit-bytes", "--dry-run"}},
+	{"admin onboarding show", "Read the site onboarding configuration and its version: repositories {mode, defaults}, integrations [{provider, required}], ai_account {offer}", "admin onboarding show --json", nil},
+	{"admin onboarding update", "Replace the whole site onboarding configuration when --expected-version is current; affects only onboardings that start afterwards", "admin onboarding update --file onboarding.json --expected-version 3 --dry-run --json", []string{"--file", "--expected-version", "--dry-run"}},
 	{"admin users list", "List bound host users", "admin users list --json", nil},
 	{"admin role update", "Update a subject's administrator role", "admin role update 123 --administrator true --dry-run --json", []string{"--administrator", "--dry-run"}},
 	{"admin storage list", "Inspect host user quotas", "admin storage list --json", nil},
@@ -302,6 +304,10 @@ func helpFlag(name string) map[string]any {
 		v["description"] = "Resolve inherited OPEN_HABITAT_CONVERSATION_ID, OPEN_HABITAT_WORKSPACE_ID and OPEN_HABITAT_LAUNCH_GENERATION against the daemon"
 	case "--administrator":
 		v["possible_values"] = []string{"true", "false"}
+	case "--file":
+		v["description"] = "Onboarding JSON from FILE or - for stdin, at most 7680 bytes; admin onboarding show output (envelope or data) is accepted, its version must equal --expected-version"
+	case "--expected-version":
+		v["description"] = "Required version printed by admin onboarding show (0 before the first save); a newer stored version refuses the write with version_conflict"
 	case "--json", "--verbose", "--dry-run", "--force", "--finished-only":
 		v["default"] = false
 	}
