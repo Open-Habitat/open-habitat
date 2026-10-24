@@ -2,13 +2,15 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Observed by a worker's full gate run
 source_ref: taskfleet:01m5pdaxhnzkt2588efze04vaj/observed:codemirror-getclientrects
 originating_run: 01m5pdaxhnzkt2588efze04vaj
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # CodeMirrorEditor.test leaves an unhandled jsdom getClientRects error that fails the gate's web checks
