@@ -5,6 +5,7 @@ import schema from "../../../contracts/v1/pi-credentials.schema.json";
 import { ControlButton } from "../components/ControlElements";
 import { StatusMark } from "../components/Status";
 import { mutationFetch } from "./mutations";
+import { readSiteOnboarding, type SiteOnboarding } from "./onboardingConfig";
 
 const valid = new Ajv({ strict: false }).compile(schema);
 /** Pi's providers whose API key a person manages here. */
@@ -24,6 +25,10 @@ const keyFits = (provider: KeyProvider, key: string) =>
   (provider === "anthropic"
     ? key.startsWith("sk-ant-")
     : !key.startsWith("sk-ant-"));
+const givenDay = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : `${d.getDate()}.${d.getMonth() + 1}.`;
+};
 const keyHint: Record<KeyProvider, string> = {
   openai: "alkaa sk-",
   anthropic: "alkaa sk-ant-",
@@ -82,6 +87,19 @@ export function PiCredentials({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
+  // The site's own record of a key it gave this person: their row is marked
+  // as the site's only while its last four characters are the stored key's.
+  const [given, setGiven] = useState<SiteOnboarding["site_key_copy"]>();
+  useEffect(() => {
+    if (embedded) return;
+    const controller = new AbortController();
+    void readSiteOnboarding(controller.signal)
+      .then((site) => {
+        if (!controller.signal.aborted) setGiven(site.site_key_copy);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [embedded]);
   useEffect(() => {
     void revision;
     const controller = new AbortController();
@@ -229,17 +247,38 @@ export function PiCredentials({
     <>
       {providers.map((provider) => {
         const stored = data?.[provider];
+        const site =
+          given?.provider === provider &&
+          stored?.present &&
+          stored.suffix === given.suffix
+            ? given
+            : undefined;
         return (
           <div
             className="s-row"
             key={provider}
             data-testid={`api-key-row-${provider}`}
+            data-site={
+              site ? (site.current ? "current" : "earlier") : undefined
+            }
           >
             <div className="s-lbl">
               <strong>{names[provider]} API-avain</strong>
-              <span className="s-desc">
-                Pi:n omat tunnukset tällä palvelimella. {names[provider]}{" "}
-                laskuttaa käytöstä.
+              <span className="s-desc" data-testid="api-key-desc">
+                {site ? (
+                  <>
+                    Sivuston avain. Sivusto antoi sen {givenDay(site.at)} Käyttö
+                    laskutetaan sivuston tililtä.{" "}
+                    {site.current
+                      ? "Voit vaihtaa sen omaan avaimeesi."
+                      : "Sivusto on sittemmin vaihtanut avaimensa, joten tämä kopio voi lakata toimimasta."}
+                  </>
+                ) : (
+                  <>
+                    Pi:n omat tunnukset tällä palvelimella. {names[provider]}{" "}
+                    laskuttaa käytöstä.
+                  </>
+                )}
               </span>
             </div>
             <div
@@ -256,6 +295,15 @@ export function PiCredentials({
                     : "Ei avainta"
                   : "Avaimen tilaa ei tiedetä"}
               </span>
+              {site && (
+                <StatusMark
+                  data-testid="api-key-site"
+                  tone={site.current ? "info" : "warning"}
+                  label={
+                    site.current ? "Sivuston avain" : "Sivuston aiempi avain"
+                  }
+                />
+              )}
               {stored && (
                 <ControlButton
                   size="row"
@@ -266,7 +314,11 @@ export function PiCredentials({
                   }}
                   data-testid="api-key-add"
                 >
-                  {stored.present ? "Vaihda" : "Lisää avain"}
+                  {site
+                    ? "Vaihda omaan…"
+                    : stored.present
+                      ? "Vaihda"
+                      : "Lisää avain"}
                 </ControlButton>
               )}
               {stored?.present && (

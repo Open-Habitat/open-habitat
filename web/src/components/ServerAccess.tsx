@@ -601,6 +601,15 @@ export function ServerAccess({
               </span>
               <Facts r={r} />
               {r.onboarding && <Receipt id={r.id} r={r.onboarding} />}
+              {r.site_key_copy && (
+                <span
+                  className="sa-receipt"
+                  data-testid={`access-ai-given-${r.id}`}
+                >
+                  AI-avain annettu {day(r.site_key_copy.at)}
+                  {!r.site_key_copy.current && " (aiempi avain)"}
+                </span>
+              )}
               {r.state === "withdrawn" && r.username && !r.pending && (
                 <span className="sa-muted">
                   Unix-tili <code>{r.username}</code> jää palvelimelle.

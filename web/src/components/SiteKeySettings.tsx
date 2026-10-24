@@ -217,13 +217,17 @@ export function SiteKeyRemoval({
   onCancel,
   onConfirm,
   disabled = false,
+  holders,
 }: {
   siteKey?: SiteKey;
   open: boolean;
   disabled?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  /** Who the site has given a copy, when known: they keep it. */
+  holders?: string[];
 }) {
+  const name = siteKey ? ` ${keyNames[siteKey.provider]}` : "";
   return (
     <ModalOverlay
       className="ah-overlay"
@@ -240,10 +244,13 @@ export function SiteKeyRemoval({
           data-testid="site-key-remove-dialog"
         >
           <Heading slot="title">Poistetaanko sivuston avain?</Heading>
-          <p>
-            Uudet henkilöt valitsevat AI-tilin taas itse. Jo jaetut kopiot
-            jäävät. Niiden käytön estää vain avaimen mitätöinti palvelussa
-            {siteKey ? ` ${keyNames[siteKey.provider]}` : ""}.
+          <p>Uudet henkilöt valitsevat AI-tilin taas itse.</p>
+          <p data-testid="remove-holders">
+            {holders === undefined
+              ? `Jo jaetut kopiot jäävät. Niiden käytön estää vain avaimen mitätöinti palvelussa${name}.`
+              : holders.length > 0
+                ? `Sivusto on antanut avaimen ${holders.length} henkilölle: ${holders.length < 2 ? holders.join("") : `${holders.slice(0, -1).join(", ")} ja ${holders[holders.length - 1]}`}. Kopiot jäävät heille. Niiden käytön estää vain avaimen mitätöinti palvelussa${name}. Seuraava avain vaihtaa ne.`
+                : "Avainta ei ole annettu kenellekään jo liittyneelle."}
           </p>
           <div className="ah-dialog-actions">
             <ControlButton
@@ -275,11 +282,14 @@ export function SiteKeyPage({
   siteKey,
   actions,
   disabled = false,
+  holders,
   children,
 }: {
   siteKey?: SiteKey;
   actions?: SiteKeyActions;
   disabled?: boolean;
+  /** Who keeps a copy if the key is removed, when known. */
+  holders?: string[];
   /** The page's own status: a refusal, an unknown outcome. */
   children?: ReactNode;
 }) {
@@ -289,7 +299,8 @@ export function SiteKeyPage({
       <p className="sk-terms" data-testid="site-key-terms">
         Uusi henkilö saa avaimesta kopion omiin tunnuksiinsa, jos hänellä ei ole
         omaa, eikä näe AI-vaihetta. Käyttö laskutetaan avaimen tililtä. Jo
-        liittyneet eivät muutu, eikä jaettua kopiota voi perua.
+        liittyneille annat avaimen alta. Kun vaihdat avaimen, sivuston antamat
+        kopiot vaihtuvat uuteen. Jaettua kopiota ei voi perua.
       </p>
       <SiteKeyEditor
         key={siteKey ? `${siteKey.provider}${siteKey.suffix}` : "new"}
@@ -303,6 +314,7 @@ export function SiteKeyPage({
       <SiteKeyRemoval
         siteKey={siteKey}
         open={removing}
+        holders={holders}
         disabled={disabled || !actions}
         onCancel={() => setRemoving(false)}
         onConfirm={() => {

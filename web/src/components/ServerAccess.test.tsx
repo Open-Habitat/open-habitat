@@ -296,3 +296,35 @@ it("names only the defaults a sign-in did not hand over", () => {
   // A person who joined without a receipt shows none.
   expect(screen.queryByTestId("access-onboarding-42")).toBeNull();
 });
+
+it("names a site key copy the site gave, and whether it is an earlier key", () => {
+  const view: AccessView = {
+    ...base,
+    entries: entries.map((e) =>
+      e.id === "43"
+        ? {
+            ...e,
+            site_key_copy: {
+              provider: "anthropic",
+              suffix: "m4Pz",
+              at: "2026-10-21T12:00:00Z",
+              current: false,
+            },
+          }
+        : e,
+    ),
+  };
+  render(
+    <ServerAccess
+      view={view}
+      lookup={vi.fn()}
+      onAdd={vi.fn()}
+      onRemove={vi.fn()}
+      onRefresh={vi.fn()}
+    />,
+  );
+  expect(screen.getByTestId("access-ai-given-43").textContent).toBe(
+    "AI-avain annettu 21.10. (aiempi avain)",
+  );
+  expect(screen.queryByTestId("access-ai-given-42")).toBeNull();
+});

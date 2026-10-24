@@ -49,6 +49,8 @@ export type OnboardingConfig = OnboardingDocument & {
   version: number;
   /** Present exactly while the site holds an AI key (offer site_key). */
   site_key?: SiteKey;
+  /** Only in a set's reply: each earlier copy the new key replaced. */
+  rotation?: { subject: string; outcome: string }[];
 };
 export type SiteOnboarding = {
   schema_version: 1;
@@ -60,6 +62,13 @@ export type SiteOnboarding = {
   /** The sign-in that created this person's account seeded the site AI
    * key: usable Pi credentials then do not end the route. */
   ai_key_seeded?: true;
+  /** The site key copy the site gave this person, from its own record. */
+  site_key_copy?: {
+    provider: KeyProvider;
+    suffix: string;
+    at: string;
+    current: boolean;
+  };
 };
 
 export const maxDefaults = 20;

@@ -50,6 +50,13 @@ export type AccessEntry = {
   administrator: boolean;
   denied: boolean;
   onboarding?: OnboardingReceipt;
+  /** The site AI key copy the site gave this person, from its own record. */
+  site_key_copy?: {
+    provider: "openai" | "anthropic" | "deepseek";
+    suffix: string;
+    at: string;
+    current: boolean;
+  };
 };
 export type AccessView = {
   schema_version: 1;
