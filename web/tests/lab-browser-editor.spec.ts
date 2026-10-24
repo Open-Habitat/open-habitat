@@ -17,11 +17,11 @@ for (const width of [1440, 390])
       await page.getByTestId("toggle-editor").click();
       await page
         .getByTestId("editor-file-entry")
-        .filter({ hasText: "cmd" })
+        .and(page.locator('[data-path="cmd"]'))
         .click();
       await page
         .getByTestId("editor-file-entry")
-        .filter({ hasText: "main.go" })
+        .and(page.locator('[data-path="cmd/main.go"]'))
         .click();
       await expect(page.getByTestId("editor-document")).toBeVisible();
       await page.locator("html").evaluate((el, theme) => {
