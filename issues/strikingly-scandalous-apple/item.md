@@ -2,11 +2,14 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: agent
 originating_run: 01m5pv1gskbkcp2fqjmcjgm4gt
 originating_run_kind: spinoff
+lane: unlaned
+collision: [tests/lab]
+preparation: ready
 ---
 
 # Lab paging-and-recovery spec times out on send under the full gate
