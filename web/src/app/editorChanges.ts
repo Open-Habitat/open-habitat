@@ -65,15 +65,7 @@ export function attribution(
     : "other";
 }
 
-const quote = (lines: string[]) => lines.filter(Boolean).join(" / ");
-
-/** The message *Kerro agentille* drafts; the person edits it before sending. */
-export const draftFor = (note: ReplaceNote) =>
-  [
-    `Korvasin tallentaessani muutoksesi tiedostossa ${note.path}. Nämä eivät ole enää tiedostossa:`,
-    ...note.changes.map(
-      (change) =>
-        `- rivi ${change.line}: \`${quote(change.theirs) || "(poisto)"}\``,
-    ),
-    "Tiedostossa on nyt minun versioni. Älä palauta näitä kysymättä.",
-  ].join("\n");
+/** What *Kerro agentille* sends: short, since the agent reads the file again
+ * itself rather than trusting a quote of it. */
+export const messageFor = (note: ReplaceNote) =>
+  `Tallensin tiedoston ${note.path} ja korvasin samalla muutoksesi. Lue tiedosto uudelleen ennen kuin jatkat.`;

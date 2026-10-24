@@ -84,7 +84,7 @@ import {
   useEditorToolReport,
   useReplaceNotes,
 } from "./WorkspaceEditor";
-import { draftFor, toolPath } from "./editorChanges";
+import { messageFor, toolPath } from "./editorChanges";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
 
 function bashCommand(value: string) {
@@ -623,6 +623,35 @@ function BrowserConversationContent({
       current.state === "rejected" ||
       current.state === "accepted" ||
       notStarted);
+  const sendBlocked =
+    archive?.archive === "archived"
+      ? "Palauta keskustelu arkistosta ennen viestin lähettämistä."
+      : archive?.archive === "unknown"
+        ? "Arkiston tila on epävarma. Päivitä tiedot."
+        : modelBlocked
+          ? "Valitse toinen malli uuden keskustelun kentän valitsimesta."
+          : serverUnavailable
+            ? "Palvelinyhteys katkesi. Luonnos säilyy."
+            : statusStale
+              ? "Tila on vanhentunut. Tarkista keskustelun tila ennen lähettämistä."
+              : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.";
+  // *Kerro agentille* sends at once, the way the composer's send button would
+  // now: during a turn in the selected working mode, otherwise directly or
+  // held until Pi starts. The person's draft stays as it is.
+  const tellWorking =
+    !notStarted && (current?.run_active ?? current?.state === "accepted");
+  const tellBlocked = !canSend
+    ? sendBlocked
+    : !notStarted && !tellWorking && current?.state === "accepted"
+      ? "Odota vahvistettua joutotilaa."
+      : undefined;
+  const tell = (text: string) => {
+    dismissRecapOnSend();
+    if (notStarted)
+      held.submit(text, canChooseFirstModel ? modelChoice : undefined, true);
+    else if (tellWorking) void submitQueue(workingMode, text);
+    else void submit(text);
+  };
   // Stop is immediate and asks nothing (Jari 13.10.). Pi keeps its queue over
   // an abort, so the queued messages are first taken back into the field, as
   // Pi's TUI does on Esc, instead of waiting for the next turn.
@@ -1667,30 +1696,18 @@ function BrowserConversationContent({
                 Agentin tapahtumia vastaanotettu; historiaa odotetaan.
               </p>
             ) : null}
-            {replaceNotes.map((note) => (
+            {replaceNotes.notes.map((note) => (
               <EditorReplaceNote
                 key={note.id}
                 path={note.path}
                 at={note.at}
                 changes={note.changes}
+                tellBlocked={tellBlocked}
                 onTell={() => {
-                  const message = draftFor(note);
-                  changeDraft(
-                    draft.trim()
-                      ? `${draft.replace(/\s*$/, "\n\n")}${message}`
-                      : message,
-                  );
-                  requestAnimationFrame(() => {
-                    const field = document.querySelector<HTMLTextAreaElement>(
-                      ".ah-conversation-frame .ah-composer textarea",
-                    );
-                    field?.focus();
-                    field?.setSelectionRange(
-                      field.value.length,
-                      field.value.length,
-                    );
-                  });
+                  tell(messageFor(note));
+                  replaceNotes.dismiss(note.id);
                 }}
+                onDismiss={() => replaceNotes.dismiss(note.id)}
               />
             ))}
           </ConversationStream>
@@ -2003,21 +2020,7 @@ function BrowserConversationContent({
                 availability={
                   canSend
                     ? { state: "enabled" }
-                    : {
-                        state: "unknown",
-                        reason:
-                          archive?.archive === "archived"
-                            ? "Palauta keskustelu arkistosta ennen viestin lähettämistä."
-                            : archive?.archive === "unknown"
-                              ? "Arkiston tila on epävarma. Päivitä tiedot."
-                              : modelBlocked
-                                ? "Valitse toinen malli uuden keskustelun kentän valitsimesta."
-                                : serverUnavailable
-                                  ? "Palvelinyhteys katkesi. Luonnos säilyy."
-                                  : statusStale
-                                    ? "Tila on vanhentunut. Tarkista keskustelun tila ennen lähettämistä."
-                                    : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
-                      }
+                    : { state: "unknown", reason: sendBlocked }
                 }
                 onSendNow={(text = draft) => {
                   if (text !== draft) changeDraft(text);

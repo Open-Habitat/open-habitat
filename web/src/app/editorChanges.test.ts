@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { attribution, draftFor, toolPath } from "./editorChanges";
+import { attribution, messageFor, toolPath } from "./editorChanges";
 
 const report = (tool: string, path?: string) => ({
   workspace: "w",
@@ -36,8 +36,8 @@ it("names the agent only for its file tools on the open file", () => {
   expect(attribution(report("read", "docs/a.md"), "docs/a.md")).toBe("other");
 });
 
-it("drafts the path and replaced lines unchanged, as the agent wrote them", () => {
-  const draft = draftFor({
+it("tells the agent the path and to read the file again, in one line", () => {
+  const message = messageFor({
     id: 1,
     workspace: "w",
     conversation: "c",
@@ -48,7 +48,7 @@ it("drafts the path and replaced lines unchanged, as the agent wrote them", () =
       { line: 9, theirs: [] },
     ],
   });
-  expect(draft).toContain("docs/a.md");
-  expect(draft).toContain("`new line`");
-  expect(draft.split("\n")).toHaveLength(4);
+  expect(message).toContain("docs/a.md");
+  expect(message).not.toContain("new line");
+  expect(message.split("\n")).toHaveLength(1);
 });

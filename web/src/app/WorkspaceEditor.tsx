@@ -61,6 +61,8 @@ const EditorContext = createContext<EditorControls | null>(null);
 interface EditorChannel {
   report: (report: ToolReport) => void;
   notes: ReplaceNote[];
+  /** A told or closed note is gone for good: a later save makes a new one. */
+  dismiss: (id: number) => void;
 }
 const EditorChannelContext = createContext<EditorChannel | null>(null);
 
@@ -121,10 +123,14 @@ function WorkspaceEditorInner({
   );
   const [pi, setPi] = useState({ working: false, label: "Odottaa sinua" });
   const [notes, setNotes] = useState<ReplaceNote[]>([]);
+  // Not derived from the list: a dismissed note's id must not come back.
+  const noteId = useRef(0);
   const channel = useMemo<EditorChannel>(
     () => ({
       report: (report) => browserDocument.current?.observe(report),
       notes,
+      dismiss: (id) =>
+        setNotes((before) => before.filter((note) => note.id !== id)),
     }),
     [notes],
   );
@@ -600,7 +606,7 @@ function WorkspaceEditorInner({
               onReplaced={(note) =>
                 setNotes((before) => [
                   ...before,
-                  { ...note, id: (before.at(-1)?.id ?? 0) + 1 },
+                  { ...note, id: ++noteId.current },
                 ])
               }
             />
@@ -738,13 +744,17 @@ export function useEditorToolReport() {
 
 /** Notes for one conversation about agent changes a save replaced. */
 export function useReplaceNotes(workspace: string, conversation?: string) {
-  const notes = useContext(EditorChannelContext)?.notes;
+  const channel = useContext(EditorChannelContext);
+  const notes = channel?.notes;
+  const dismiss = channel?.dismiss;
   return useMemo(
-    () =>
-      (notes ?? []).filter(
+    () => ({
+      notes: (notes ?? []).filter(
         (note) =>
           note.workspace === workspace && note.conversation === conversation,
       ),
-    [notes, workspace, conversation],
+      dismiss: dismiss ?? (() => {}),
+    }),
+    [notes, dismiss, workspace, conversation],
   );
 }

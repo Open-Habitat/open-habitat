@@ -218,11 +218,6 @@ for (const width of [1366, 390])
     await expect(note.getByTestId("replace-note-line")).toContainText(
       'println("agentti")',
     );
-    await note.getByTestId("tell-agent").click();
-    const input = page.getByTestId("message-input");
-    await expect(input).toBeFocused();
-    await expect(input).toHaveValue(/cmd\/main\.go/);
-    await expect(input).toHaveValue(/println\("agentti"\)/);
     expect(
       (
         await new AxeBuilder({ page })
@@ -230,4 +225,35 @@ for (const width of [1366, 390])
           .analyze()
       ).violations,
     ).toEqual([]);
+    const sent: string[] = [];
+    page.on("request", (request) => {
+      if (
+        request.method() === "POST" &&
+        /\/(send|steer|follow_up)$/.test(new URL(request.url()).pathname)
+      )
+        sent.push(request.postDataJSON().message);
+    });
+    if (width === 390) {
+      // Closing sends nothing.
+      await note.getByTestId("replace-note-dismiss").click();
+      await expect(note).toHaveCount(0);
+      expect(sent).toEqual([]);
+      return;
+    }
+    // Telling sends a short message at once and leaves the draft alone.
+    const input = page.getByTestId("message-input");
+    await input.fill("oma luonnos");
+    await note.getByTestId("tell-agent").click();
+    await expect(note).toHaveCount(0);
+    await expect.poll(() => sent.length).toBe(1);
+    expect(sent[0]).toContain("cmd/main.go");
+    expect(sent[0]).toContain("Lue tiedosto uudelleen");
+    expect(sent[0]).not.toContain("agentti");
+    await expect(input).toHaveValue("oma luonnos");
+    // The message reaches the conversation; the note for this save stays gone.
+    await expect(page.getByText(/Lue tiedosto uudelleen/).first()).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(page.getByTestId("replace-note")).toHaveCount(0);
+    expect(sent).toHaveLength(1);
   });

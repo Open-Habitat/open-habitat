@@ -205,7 +205,8 @@ export function useHeldMessages({
     return chain.current;
   }, [update, giveBack, onLogin]);
   const submit = useCallback(
-    (text: string, choice?: LocalHeld["choice"]) => {
+    // A message not typed in the field (the editor's note) keeps the draft.
+    (text: string, choice?: LocalHeld["choice"], keepDraft = false) => {
       if (!text.trim() || !id) return;
       const entry: LocalHeld = {
         command_id: crypto.randomUUID(),
@@ -217,7 +218,7 @@ export function useHeldMessages({
         ...(choice && !readHeld(key).length ? { choice } : {}),
       };
       update(key, (old) => [...old, entry]);
-      changeDraft("");
+      if (!keepDraft) changeDraft("");
       setNotice("");
       void flush();
     },
