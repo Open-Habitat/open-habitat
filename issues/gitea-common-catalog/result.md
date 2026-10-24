@@ -112,7 +112,7 @@ homes, tokens and loopback TLS Giteas running real `git http-backend`.
   directory. Rule 1a dropped the other, which was incorrect: Gitea's
   unit-access filter is on `/users/{u}/repos`, not `/user/repos`. The
   verifier found no path for a PAT to another destination, a reply or a log.
-- The full gate is recorded below.
+- Full gate (`ci-local.sh --clean --json`) on `e3dd387b` passed clean in one run: web checks, Storybook, Go/contracts, packaging, the ordinary browser suite (370 passed, 3 skipped) and the lab suite (131). Receipt written for tree `5b018e23`.
 
 Not run or not proven: no real Gitea, real tea, distinct kernel UIDs or
 installed release.
