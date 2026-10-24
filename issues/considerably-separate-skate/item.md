@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: chore
-status: open
+status: done
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5p7mej1stazmymdtcwze1nk/gate:biome-format-capture-onboarding
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: unlaned
 collision: [web/lab]
 preparation: ready
+closed: 2026-10-24
 ---
 
 # Clean gate fails: biome format on web/lab/capture-onboarding-ai-step-layout.mjs
@@ -27,3 +28,9 @@ web/lab/capture-onboarding-ai-step-layout.mjs:77
 Biome wants the call chain split over three lines (line too long). Impact: the clean gate cannot pass on main, so no gate receipt and no gated production release until it is reformatted. Fix: `npx biome format --write web/lab/capture-onboarding-ai-step-layout.mjs` (or `npm run format --prefix web`) and commit.
 
 Found by the gitea-native-owner worker's full-gate run; that worker did not touch web/.
+
+## Resolution
+
+### 2026-10-24T06:31:19Z · @issuectl
+
+Formatted only web/lab/capture-onboarding-ai-step-layout.mjs with the repository-pinned Biome. npm run format:check --prefix web and npm run lint --prefix web both pass. No behavior changes; full clean gate not run for this formatting-only fix.

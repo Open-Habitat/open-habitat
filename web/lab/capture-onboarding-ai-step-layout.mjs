@@ -74,7 +74,9 @@ try {
   await page.getByTestId("claude-code-input").waitFor();
   await every("ai-claude");
   await page.getByTestId("ai-option-key-anthropic-choose").click();
-  await page.getByTestId("api-key-input").fill("sk-proj-synthetic0000000000000");
+  await page
+    .getByTestId("api-key-input")
+    .fill("sk-proj-synthetic0000000000000");
   await page.getByRole("alert").waitFor();
   await every("ai-key-anthropic");
 } finally {
