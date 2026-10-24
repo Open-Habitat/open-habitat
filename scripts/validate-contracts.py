@@ -93,6 +93,10 @@ checks = {
     "server-onboarding-change.json": "server-onboarding.schema.json",
     "server-onboarding-site-key.json": "server-onboarding.schema.json",
     "server-onboarding-site-key-delete.json": "server-onboarding.schema.json",
+    "server-onboarding-site-key-copies.json": "server-onboarding.schema.json",
+    "server-onboarding-site-key-check.json": "server-onboarding.schema.json",
+    "server-onboarding-site-key-seed.json": "server-onboarding.schema.json",
+    "server-onboarding-site-key-rotation.json": "server-onboarding.schema.json",
     "site-onboarding.json": "site-onboarding.schema.json",
     "server-storage-change.json": "server-storage-change.schema.json",
     "command-request.json": "command.schema.json",
@@ -242,6 +246,21 @@ must_reject("server-onboarding.schema.json", {"provider": "openai", "key": "!cat
 must_reject("server-onboarding.schema.json", {"provider": "openai", "key": "$OPENAI_API_KEY"})
 must_reject("server-onboarding.schema.json", {"offer": "site_key"})
 must_reject("site-onboarding.schema.json", {**site_onboarding, "site_key": site_key["site_key"]})
+# Giving the key to joined people: the administrator sees one word about a
+# person's Pi, never the kind or a part of their own credential; the copies
+# record and every reply name a given key only as provider and suffix; a
+# write names the reviewed key, never carries one.
+copies = json.loads((BASE / "examples" / "server-onboarding-site-key-copies.json").read_text())
+given = copies["people"][1]
+must_reject("server-onboarding.schema.json", {**copies, "people": [{**given, "copy": {**given["copy"], "fingerprint": "0" * 64}}]})
+must_reject("server-onboarding.schema.json", {**copies, "people": [{**given, "credential": "subscription"}]})
+must_reject("server-onboarding.schema.json", {"schema_version": 1, "subject": "1002", "state": "subscription"})
+must_reject("server-onboarding.schema.json", {"schema_version": 1, "subject": "1002", "state": "own", "suffix": "k9Lw"})
+must_reject("server-onboarding.schema.json", {"subject": "1002", "provider": "anthropic", "suffix": "Xa1b", "set_at": "2026-10-24T09:00:00Z", "key": "sk-ant-" + "a" * 30})
+must_reject("server-onboarding.schema.json", {"subject": "1002", "provider": "anthropic", "key": "sk-ant-" + "a" * 30})
+must_reject("server-onboarding.schema.json", {"subject": "example-person"})
+must_reject("server-onboarding.schema.json", {"schema_version": 1, "subject": "1002", "outcome": "overwritten"})
+must_reject("site-onboarding.schema.json", {**site_onboarding, "site_key_copy": {**given["copy"], "key": "sk-ant-" + "a" * 30}})
 # The seed is a fact of the creating sign-in, never a negative or a value to choose.
 must_reject("site-onboarding.schema.json", {**site_onboarding, "ai_key_seeded": False})
 must_reject("site-onboarding.schema.json", {**site_onboarding, "ai_key_seeded": "seeded"})

@@ -17,6 +17,7 @@
     },
     "integrations": {"$ref": "server-onboarding.schema.json#/$defs/integrations"},
     "ai_account": {"$ref": "server-onboarding.schema.json#/$defs/ai_account"},
+    "site_key_copy": {"description": "The site key copy the site gave this person, from the site's own record (at the sign-in that created the account or later by an administrator): its provider and last four characters, when, and whether it is still the key the site stores. It says what was given, not what their Pi holds now; the browser marks their key row as the site's only while its suffix matches.", "$ref": "server-onboarding.schema.json#/$defs/copy"},
     "ai_key_seeded": {"description": "Present only when the sign-in that created this person's account seeded the site AI key into their own Pi credentials (its receipt). Their Pi status is then usable without the route having been walked, so the browser walks the route until the person's own first-route mark exists (first-route.schema.json). Never derived from the site's current offer.", "const": true}
   }
 }

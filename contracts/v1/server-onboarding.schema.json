@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/server-onboarding.schema.json",
   "title": "The site onboarding configuration an administrator reads and replaces",
-  "description": "GET /api/v1/server/onboarding returns the configuration with its version; PUT replaces the whole document when expected_version is the current version (409 version_conflict otherwise) and returns the new configuration. Administrator, session and CSRF are required. Rejections are fixed codes shared with root's admin onboarding CLI: invalid_document, invalid_mode, invalid_repository_name, too_many_defaults, duplicate_default, duplicate_destination, unknown_provider, duplicate_provider, invalid_offer, site_key_unavailable (offer site_key without a stored key), site_key_stored (offer changed while one is stored). Integrations come back in the integrations catalog's order. A change applies only to onboardings that start afterwards. The site AI key has its own writes, each answered with the configuration: POST /api/v1/server/onboarding/ai-key/set {provider, key} stores it and makes offer site_key; POST /api/v1/server/onboarding/ai-key/delete {offer} removes it and sets that offer. Their rejections are invalid_key, invalid_offer and site_key_unavailable (nothing to delete); a 503 may or may not have written, and nothing is retried. The key is read back only as site_key {provider, suffix, set_at}; it is copied into a new person's own Pi credentials once, at the sign-in that created their account, never over a credential they have.",
-  "oneOf": [{"$ref": "#/$defs/configuration"}, {"$ref": "#/$defs/change"}, {"$ref": "#/$defs/site_key_set"}, {"$ref": "#/$defs/site_key_delete"}],
+  "description": "GET /api/v1/server/onboarding returns the configuration with its version; PUT replaces the whole document when expected_version is the current version (409 version_conflict otherwise) and returns the new configuration. Administrator, session and CSRF are required. Rejections are fixed codes shared with root's admin onboarding CLI: invalid_document, invalid_mode, invalid_repository_name, too_many_defaults, duplicate_default, duplicate_destination, unknown_provider, duplicate_provider, invalid_offer, site_key_unavailable (offer site_key without a stored key), site_key_stored (offer changed while one is stored). Integrations come back in the integrations catalog's order. A change applies only to onboardings that start afterwards. The site AI key has its own writes, each answered with the configuration: POST /api/v1/server/onboarding/ai-key/set {provider, key} stores it and makes offer site_key; POST /api/v1/server/onboarding/ai-key/delete {offer} removes it and sets that offer. Their rejections are invalid_key, invalid_offer and site_key_unavailable (nothing to delete); a 503 may or may not have written, and nothing is retried. The key is read back only as site_key {provider, suffix, set_at}; it is copied into a new person's own Pi credentials at the sign-in that created their account, never over a credential they have. People who joined earlier are given it by an administrator: GET /api/v1/server/onboarding/ai-key/copies lists joined people with the copy the site gave each (the site's own record, not what their Pi holds); POST …/ai-key/check {subject} asks that person's own daemon for one word about their Pi and writes nothing; POST …/ai-key/seed {subject, provider, suffix, set_at} has their daemon write the key under Pi's lock where the provider has no entry or exactly an earlier site copy, never over their own credential. Their rejections are subject_unavailable (404: not a joined, admitted person), site_key_unavailable, site_key_changed (409: the stored key is not the one named) and site_key_busy (409: another key change is running). A set that replaces a key also replaces every recorded copy of an earlier key of the same provider and answers each in rotation; a delete leaves copies with their people.",
+  "oneOf": [{"$ref": "#/$defs/configuration"}, {"$ref": "#/$defs/change"}, {"$ref": "#/$defs/site_key_set"}, {"$ref": "#/$defs/site_key_delete"}, {"$ref": "#/$defs/copies"}, {"$ref": "#/$defs/check_request"}, {"$ref": "#/$defs/check_reply"}, {"$ref": "#/$defs/seed_request"}, {"$ref": "#/$defs/seed_reply"}],
   "$defs": {
     "repository_name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$", "not": {"pattern": "/\\.{1,2}$"}},
     "repositories": {
@@ -40,7 +40,8 @@
         "repositories": {"$ref": "#/$defs/repositories"},
         "integrations": {"$ref": "#/$defs/integrations"},
         "ai_account": {"$ref": "#/$defs/ai_account"},
-        "site_key": {"$ref": "#/$defs/site_key"}
+        "site_key": {"$ref": "#/$defs/site_key"},
+        "rotation": {"description": "Only in the reply of a set that replaced the site key: each person whose recorded copy was of an earlier key of the same provider, with their daemon's answer.", "type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/rotation_result"}}
       }
     },
     "key_provider": {"enum": ["openai", "anthropic", "deepseek"]},
@@ -68,6 +69,72 @@
       "properties": {
         "offer": {"description": "What new people are offered instead.", "enum": ["all", "chatgpt", "claude", "openai_key", "anthropic_key", "deepseek_key"]}
       }
+    },
+    "subject": {"description": "A person's numeric GitHub id.", "type": "string", "pattern": "^[1-9][0-9]{0,19}$"},
+    "give_outcome": {"description": "seeded: written where the provider had no entry; replaced: an earlier site copy replaced; already_current: holds this key; kept: the person's own credential, untouched; not_reached: nothing was sent; unknown: no answer, so it may or may not have written.", "enum": ["seeded", "replaced", "already_current", "kept", "not_reached", "unknown"]},
+    "rotation_result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["subject", "outcome"],
+      "properties": {"subject": {"$ref": "#/$defs/subject"}, "outcome": {"$ref": "#/$defs/give_outcome"}}
+    },
+    "copy": {
+      "description": "The site key copy the site gave a person, from its own record.",
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "suffix", "at", "current"],
+      "properties": {
+        "provider": {"$ref": "#/$defs/key_provider"},
+        "suffix": {"description": "The given key's last four characters.", "type": "string", "pattern": "^[A-Za-z0-9_-]{4}$"},
+        "at": {"description": "When it was given.", "type": "string", "format": "date-time"},
+        "current": {"description": "The copy is of the key the site stores now.", "type": "boolean"}
+      }
+    },
+    "copies": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "people", "waiting"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "site_key": {"$ref": "#/$defs/site_key"},
+        "people": {
+          "description": "Joined people who are not withdrawn, in the access list's order.",
+          "type": "array", "maxItems": 4096,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["id"],
+            "properties": {
+              "id": {"$ref": "#/$defs/subject"},
+              "login_hint": {"$ref": "server-access.schema.json#/$defs/login"},
+              "username": {"type": "string", "maxLength": 32},
+              "copy": {"$ref": "#/$defs/copy"}
+            }
+          }
+        },
+        "waiting": {"description": "Allowed people who have not signed in yet; they get the key at their first sign-in.", "type": "integer", "minimum": 0}
+      }
+    },
+    "check_request": {"type": "object", "additionalProperties": false, "required": ["subject"], "properties": {"subject": {"$ref": "#/$defs/subject"}}},
+    "check_reply": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "subject", "state"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "subject": {"$ref": "#/$defs/subject"},
+        "state": {"description": "What the person's Pi holds for the site key's provider: absent, exactly the current or an earlier site key, or own (anything else, a subscription included; its kind is never told); unknown when their daemon did not answer.", "enum": ["absent", "current", "earlier", "own", "unknown"]}
+      }
+    },
+    "seed_request": {
+      "type": "object", "additionalProperties": false,
+      "required": ["subject", "provider", "suffix", "set_at"],
+      "properties": {
+        "subject": {"$ref": "#/$defs/subject"},
+        "provider": {"$ref": "#/$defs/key_provider"},
+        "suffix": {"description": "The stored key the administrator reviewed, as site_key names it.", "type": "string", "pattern": "^[A-Za-z0-9_-]{4}$"},
+        "set_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "seed_reply": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "subject", "outcome"],
+      "properties": {"schema_version": {"const": 1}, "subject": {"$ref": "#/$defs/subject"}, "outcome": {"$ref": "#/$defs/give_outcome"}}
     },
     "change": {
       "type": "object", "additionalProperties": false,
