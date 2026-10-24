@@ -135,6 +135,39 @@ export const ExpiredAndFailing: Story = {
     },
   },
 };
+/** The server's Microsoft app went out of use under a connected account. */
+export const ProviderOutOfUse: Story = {
+  args: {
+    list: {
+      ...connected,
+      providers: connected.providers.map((p) =>
+        p.id === "microsoft"
+          ? {
+              ...p,
+              available: false,
+              unavailable_reason: "app_credentials_required" as const,
+            }
+          : p,
+      ),
+      accounts: [
+        ...connected.accounts,
+        {
+          provider: "microsoft",
+          address: "person@example.test",
+          checked_at: checked,
+          services: [
+            {
+              id: "onedrive",
+              state: "unknown",
+              directory: "~/cloud/onedrive/person@example.test",
+            },
+            { id: "mail", state: "unknown" },
+          ],
+        },
+      ],
+    },
+  },
+};
 export const ForeignSkill: Story = {
   args: { list: { ...connected, skill: "blocked" } },
 };

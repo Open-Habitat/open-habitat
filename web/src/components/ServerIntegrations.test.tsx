@@ -8,7 +8,11 @@ import {
 } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import type { Provider, ProviderId } from "../app/integrations";
-import type { AppChange, IntegrationApps } from "../app/serverIntegrations";
+import {
+  type AppChange,
+  type IntegrationApps,
+  invalidApp,
+} from "../app/serverIntegrations";
 import { fixCommand, ServerIntegrations } from "./ServerIntegrations";
 
 const googleID =
@@ -214,6 +218,59 @@ it("walks Microsoft's single-tenant guide with the ids last and no secret", asyn
   expect(
     (screen.getByTestId("si-field-client_id") as HTMLInputElement).value,
   ).toBe(clientID);
+});
+
+it("names why root's existing section is ignored and replaces it through the guide", () => {
+  setup({
+    apps: {
+      ...apps,
+      apps: [
+        ...apps.apps,
+        // Written for the multi-tenant app before it became single tenant.
+        {
+          provider: "microsoft",
+          client_id: clientID,
+          tenant_id: "common",
+          usable: false,
+          source: "operator",
+        },
+      ],
+    },
+  });
+  expect(
+    within(row("microsoft")).getByTestId("si-invalid-microsoft"),
+  ).toBeTruthy();
+  expect(screen.queryByTestId("si-invalid-google")).toBeNull();
+  fireEvent.click(screen.getByTestId("si-setup-microsoft"));
+  expect(within(dialog()).getByTestId("si-stepname").dataset.step).toBe(
+    "register",
+  );
+});
+
+it("tells an audience keyword from a malformed id in an ignored section", () => {
+  const ms = (tenant_id?: string, client_id = clientID) => ({
+    provider: "microsoft" as const,
+    client_id,
+    tenant_id,
+    usable: false,
+    source: "operator" as const,
+  });
+  expect(
+    ["Common", "organizations", "consumers"].map((t) => invalidApp(ms(t))),
+  ).toEqual(["audience", "audience", "audience"]);
+  expect(invalidApp(ms(undefined))).toBe("tenant");
+  expect(invalidApp(ms("contoso.onmicrosoft.com"))).toBe("tenant");
+  expect(invalidApp(ms(tenantID, "not-a-guid"))).toBe("client");
+  expect(invalidApp({ ...ms(tenantID), usable: true })).toBeUndefined();
+  // A Google section whose secret the browser never sees.
+  expect(
+    invalidApp({
+      provider: "google",
+      client_id: googleID,
+      usable: false,
+      source: "operator",
+    }),
+  ).toBe("other");
 });
 
 it("skips Microsoft's guide straight to the ids for an existing app", () => {

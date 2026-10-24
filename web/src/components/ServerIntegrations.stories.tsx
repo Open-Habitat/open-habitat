@@ -112,6 +112,25 @@ export const GoogleSet: Story = {};
 export const MicrosoftSet: Story = {
   args: { providers: microsoftSet, apps: googleAndMicrosoft },
 };
+/** Root's section from before the single-tenant app: common is ignored. */
+export const MicrosoftAudienceKeyword: Story = {
+  args: {
+    providers: googleSet,
+    apps: {
+      ...google,
+      apps: [
+        ...google.apps,
+        {
+          provider: "microsoft",
+          client_id: "3f2a91c4-7d0e-4b6a-9c15-e8a4b2d7f031",
+          tenant_id: "common",
+          usable: false,
+          source: "operator",
+        },
+      ],
+    },
+  },
+};
 export const NewInstallation: Story = {
   args: { providers: fresh, apps: none },
 };

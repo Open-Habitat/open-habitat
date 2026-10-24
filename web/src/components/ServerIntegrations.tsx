@@ -11,6 +11,7 @@ import {
   appRefusal,
   type IntegrationApp,
   type IntegrationApps,
+  invalidApp,
   isAppProvider,
   shortClientID,
 } from "../app/serverIntegrations";
@@ -156,6 +157,21 @@ function Mark({ p, s }: { p: ProviderId; s: Status }) {
       return (
         <StatusMark data-testid={id} kind="unknown" label="Tila ei tiedossa" />
       );
+  }
+}
+
+/** What is wrong with root's existing section, in words that lead to
+ * Aseta tunnukset…, which replaces it. */
+function invalidText(app: IntegrationApp): string {
+  switch (invalidApp(app)) {
+    case "audience":
+      return `kirjautujiksi on asetettu ${app.tenant_id}, mutta sovellus on nyt yhden organisaation. Anna organisaation Directory (tenant) ID.`;
+    case "tenant":
+      return "Directory (tenant) ID puuttuu tai on väärän muotoinen.";
+    case "client":
+      return "client id puuttuu tai on väärän muotoinen.";
+    default:
+      return "palvelimelle kirjoitetut arvot ovat väärän muotoiset.";
   }
 }
 
@@ -894,6 +910,12 @@ export function ServerIntegrations({
                       tone={hidden ? "warning" : "neutral"}
                     />
                   </a>
+                )}
+                {app && !pending[p] && invalidApp(app) && (
+                  <span className="si-bad" data-testid={`si-invalid-${p}`}>
+                    <Icon name="warning" />
+                    Tunnukset eivät kelpaa: {invalidText(app)}
+                  </span>
                 )}
                 {problem?.provider === p && !pending[p] && (
                   <span className="si-bad" role="alert">

@@ -345,8 +345,12 @@ export function AccountCard({
   onSignInAgain,
   onStopSync,
   onRemove,
+  unavailable,
 }: {
   account: Account;
+  /** Why the provider is out of use on this server; the account's own
+   * native login is kept, but nothing reaches or refreshes it meanwhile. */
+  unavailable?: Provider["unavailable_reason"];
   checking: boolean;
   onCheck: () => void;
   onSignInAgain?: () => void;
@@ -395,6 +399,20 @@ export function AccountCard({
           Poista…
         </ControlButton>
       </div>
+      {unavailable ? (
+        <p
+          className="ig-notice"
+          role="status"
+          data-testid="integration-account-unavailable"
+        >
+          <Icon name="warning" />
+          <span>
+            {unavailable === "app_credentials_required"
+              ? `Palvelimen ${copy.name}-sovellusasetukset puuttuvat tai eivät enää kelpaa, joten agentit eivät nyt pääse tähän tiliin eikä synkronointi etene. Kirjautumisesi on tallessa. Pyydä palvelimen ylläpitäjää asettamaan tunnukset (Asetukset › Palvelimen ylläpito › Integraatiot); sen jälkeen tili jatkaa.`
+              : `${copy.name} ei ole käytettävissä tällä palvelimella, koska työkalu puuttuu. Kirjautumisesi on tallessa; tili jatkaa, kun ylläpitäjä on korjannut asennuksen.`}
+          </span>
+        </p>
+      ) : null}
       {account.services.map((s) => (
         <div
           data-testid={`integration-service-${s.id}`}
@@ -539,6 +557,11 @@ export function IntegrationsOverview({
                   <AccountCard
                     key={key(a)}
                     account={a}
+                    unavailable={
+                      p.available
+                        ? undefined
+                        : (p.unavailable_reason ?? "tool_unavailable")
+                    }
                     checking={isChecking(a)}
                     onCheck={() => onCheck(a)}
                     onSignInAgain={

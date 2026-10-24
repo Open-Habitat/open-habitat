@@ -115,6 +115,23 @@ export const appFields: Record<AppProvider, [string, string]> = {
   dropbox: ["client_id", "client_secret"],
 };
 
+/** Why every daemon ignores root's existing section, judged from its public
+ * ids (the list never carries a secret): "audience" is a Microsoft section
+ * written before the app became single tenant (common, organizations or
+ * consumers), "tenant" and "client" a missing or malformed id, "other"
+ * anything the browser cannot see, such as a secret. Undefined when usable. */
+export type InvalidApp = "audience" | "tenant" | "client" | "other";
+export function invalidApp(app: IntegrationApp): InvalidApp | undefined {
+  if (app.usable) return undefined;
+  if (app.provider === "microsoft") {
+    const t = app.tenant_id?.toLowerCase() ?? "";
+    if (["common", "organizations", "consumers"].includes(t)) return "audience";
+    if (!guid.test(app.client_id ?? "")) return "client";
+    if (!guid.test(t)) return "tenant";
+  } else if (!app.client_id) return "client";
+  return "other";
+}
+
 /** Field errors for a section, keyed by field; empty when the broker would
  * accept it. Values are trimmed by the caller. */
 export function appErrors(

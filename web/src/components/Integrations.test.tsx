@@ -58,6 +58,48 @@ describe("Integraatiot overview", () => {
     // Google has no account yet: it is a tile to connect, not "another".
   });
 
+  it("says a connected account is on hold while the server's app is out of use, and offers no sign-in", () => {
+    const account = {
+      provider: "microsoft" as const,
+      address: "person@example.test",
+      checked_at: "2026-10-24T12:00:00Z",
+      services: [{ id: "mail" as const, state: "login_expired" as const }],
+    };
+    const microsoft = (available: boolean): Provider => ({
+      id: "microsoft",
+      available,
+      login: "device_code",
+      services: ["onedrive", "mail"],
+      ...(available ? {} : { unavailable_reason: "app_credentials_required" }),
+    });
+    const show = (available: boolean) =>
+      render(
+        <IntegrationsOverview
+          list={{
+            ...list,
+            providers: [microsoft(available)],
+            accounts: [account],
+          }}
+          checking={new Set()}
+          onCheck={noop}
+          onConnect={noop}
+          onSignInAgain={noop}
+          onRemove={noop}
+        />,
+      );
+    const off = show(false);
+    const card = off.getByTestId("integration-account-microsoft");
+    expect(
+      within(card).getByTestId("integration-account-unavailable"),
+    ).toBeTruthy();
+    expect(within(card).queryByTestId("integration-reauth")).toBeNull();
+    expect(within(card).getByTestId("integration-remove-open")).toBeTruthy();
+    off.unmount();
+    const on = show(true);
+    expect(on.queryByTestId("integration-account-unavailable")).toBeNull();
+    expect(on.getByTestId("integration-reauth")).toBeTruthy();
+  });
+
   it.each(["initial_sync_incomplete", "initial_sync_resume_failed"] as const)(
     "says a first sync stopped midway (%s) and offers the sign-in that resumes it",
     async (failure) => {
