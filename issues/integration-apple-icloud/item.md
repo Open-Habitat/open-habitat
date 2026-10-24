@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: feature
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [internal/daemon/integrations, web/src/components/Integrations]
+closed: 2026-10-24
 ---
 
 # Apple (iCloud) integration: choose services, one app-specific password, onboarding step
@@ -24,5 +25,11 @@ Implement the Apple (iCloud) integration Jari chose in `proto-apple-icloud-integ
 
 ## Acceptance Criteria
 
-- [ ] Fake-server tests for each service with Apple's hosts (DAV discovery from `dav-icloud-discovery`), password reuse confined to the person's own config, stories and a browser spec (choose services, add one later with the same password, remove), onboarding step spec.
-- [ ] KOKEILTAVAA.md line for Jari with his real Apple ID. Review: independent `/llm-review` (credential reuse).
+- [x] Fake-server tests for each service with Apple's hosts (DAV discovery from `dav-icloud-discovery`), password reuse confined to the person's own config, stories and a browser spec (choose services, add one later with the same password, remove), onboarding step spec.
+- [x] KOKEILTAVAA.md line for Jari with his real Apple ID. Review: independent `/llm-review` (credential reuse).
+
+## Resolution
+
+### 2026-10-24T14:11:11Z · @issuectl
+
+Valitse palvelut delivered: Apple card composed from imap/caldav/carddav accounts by stored server, password reuse confined to Apple-hosted accounts in the person's own configs and Apple's endpoints, separate SMTP username for iCloud Mail, onboarding step. Review: one confirmed must-fix (foreign SMTP relay on renewal) fixed in aab25ec3; result.md lists decisions for later review.
