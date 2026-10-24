@@ -235,13 +235,14 @@ func TestResumeRetriesUnreachableAndNamesItsFailure(t *testing.T) {
 	c.Start(ctx)
 	defer c.sync.stopAll()
 
-	waitFor(t, "a retry", func() bool {
+	// The fake records a pass when it starts, before it exits and the
+	// catalog releases the active attempt. A retry in flight correctly
+	// shows syncing; observe unreachable after a retry, not just its start.
+	waitFor(t, "unreachable provider after a retry", func() bool {
 		data, _ := os.ReadFile(filepath.Join(env.Home, "resyncs"))
-		return strings.Count(string(data), "\n") >= 2
+		return strings.Count(string(data), "\n") >= 2 &&
+			dropboxService(t, c)["state"] == string(StateUnreachable)
 	})
-	if s := dropboxService(t, c); s["state"] != string(StateUnreachable) {
-		t.Fatalf("unreachable provider: %v", s)
-	}
 	os.Remove(status)
 	waitFor(t, "the named failure", func() bool {
 		s := dropboxService(t, c)
