@@ -43,6 +43,12 @@ Each architecture has its own product package (`open-habitat-VERSION-linux-amd64
 or `-linux-arm64`) and its own signed runtime release, whose manifest names its
 platform (`ubuntu-24.04-amd64` or `ubuntu-24.04-arm64`); the operator refuses a
 release for another architecture with `release_platform_mismatch`.
+A published release that carries both architectures names every
+architecture-specific asset after its architecture: the manifest and
+signature are `release-linux-<arch>.json` and `release-linux-<arch>.sig`, and
+the archives are `<profile>-linux-<arch>.tar.gz`. Save the manifest and
+signature as `release.json` and `release.sig`, the names the operator reads;
+keep the archives' names, because the signed manifest names them.
 Separately obtain the signed runtime release (`release.json`, `release.sig`,
 selected `.tar.gz` archives) and its independently approved Ed25519 public key.
 A key delivered by the same untrusted bundle is not a trust root. Before root
