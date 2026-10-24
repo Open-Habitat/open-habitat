@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [web/src/components/composer]
+closed: 2026-10-24
 ---
 
 # Pysäytä: slow stop with banners, state-check button and flicker before the text returns
@@ -19,6 +20,6 @@ Goal: stopping is one calm, fast transition. After the person confirms the stop,
 
 ## Acceptance Criteria
 
-- [ ] Measured stop-to-idle time before/after in result.md (host-backed browser test against a real Pi turn or the existing slow-turn fixture).
-- [ ] Browser spec asserting no intermediate banner/state-check button on a successful stop, text restored, and a failure path still reported.
-- [ ] KOKEILTAVAA.md line.
+- [x] Measured stop-to-idle time before/after in result.md (host-backed browser test against a real Pi turn or the existing slow-turn fixture).
+- [x] Browser spec asserting no intermediate banner/state-check button on a successful stop, text restored, and a failure path still reported.
+- [x] KOKEILTAVAA.md line.

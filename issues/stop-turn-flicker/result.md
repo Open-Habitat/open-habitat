@@ -111,8 +111,14 @@ into this directory on every suite run, and re-ran the checks:
   same spec against the old UI code (this fixture) fails on a receipt
   banner present in every frame after the click.
 - `browser-conversation.spec.ts` stop cases green (refused and unknown stop).
-- Full gate `./scripts/ci-local.sh --clean --json`: see the commit that
-  closes this issue.
+- Full gate `./scripts/ci-local.sh --clean --json`, twice. The first run
+  caught `lab-composer-area`'s Esc case still waiting for the old stop
+  notice; it now asserts the turn ends with no message. Otherwise each run
+  had one different failure in an untouched spec, each green when rerun
+  alone and filed as an intake item: a start-here focus race
+  (`relatively-foamy-back`) and lab-slow-creation reading a response body
+  after navigation (`acceptably-brown-soda`). Second run: ordinary suite 353 passed, lab 130/131, Go,
+  contracts, Storybook and packaging green; no receipt written.
 
 Not verified: a live stop against a real model on the test server (the
 KOKEILTAVAA line asks Jari to try it), and real network latency; the
