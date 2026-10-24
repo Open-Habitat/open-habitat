@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -16,6 +16,7 @@ collision: [web/src/app/GitHubOnboarding]
 preparation: ready
 lane: site-onboarding
 lane_seq: 3
+closed: 2026-10-24
 ---
 
 # Onboarding integration steps from the site configuration (required/optional)
