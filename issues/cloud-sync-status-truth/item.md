@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [web/src/components/Integrations]
+closed: 2026-10-24
 ---
 
 # File-service card does not show whether sync actually works (only the check time moves)

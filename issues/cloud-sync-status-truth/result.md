@@ -110,7 +110,11 @@ it was reloaded.
 - Checks run: focused Go (`internal/daemon/integrations`), contracts,
   `--area web`, browser specs `integrations`, `lab-integration-progress`,
   `lab-integration-inventory` and `lab-integration-trash`, and one
-  whole-browser-suite run.
+  whole-browser-suite run (352 passed). The full `ci-local.sh --clean` gate
+  passed every phase except one browser case, `start-here.spec.ts` at
+  1440 light, which is a focus race in code this change does not touch. That
+  case passed 4/4 in three reruns. It is the same flake as `relatively-foamy-back` (occurrence noted there),
+  and because of it the gate wrote no receipt.
 
 ## Review
 

@@ -25,3 +25,9 @@ field held the expected start-page draft but was not focused within 5 s
 
 Likely a focus race under the gate's parallel load. It makes the gate red
 without a product change, so the gate needs a rerun.
+
+## Comments
+
+### 2026-10-24T09:26:26Z · @agent
+
+Not width-specific: the same assertion (start-here.spec.ts:149, message-input not focused after guide-start-bottom) failed once at 1440 light in the cloud-sync-status-truth gate the same day, with the field still holding the previous guide text (/skill:pytest-debug), i.e. the click's insertion had not landed. It passed 4/4 in three reruns on that tree.
