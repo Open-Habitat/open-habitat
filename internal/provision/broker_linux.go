@@ -208,6 +208,7 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 	if ctx == nil || !w.valid() {
 		return nil, ErrBrokerStartup
 	}
+	ctx = withStartupProbes(ctx)
 	fd, err := lockedDir(ctx, w.Dir, w.owner)
 	if err != nil {
 		return nil, ErrBrokerStartup
@@ -297,8 +298,10 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 // systemd job must stop all further starts until its outcome is diagnosed. Once a
 // person's socket is active, their daemon is started too if they have a
 // syncing integration, so sync resumes without waiting for a sign-in; synced
-// reports each such check.
+// reports each such check. Restore still runs in the busy boot, so its probes
+// get startup budgets inside each activation's own bound.
 func (w Writer) restoreSockets(ctx context.Context, bindings []ExecutorIdentity, report func(string, error), synced func(string, bool, error)) {
+	ctx = withStartupProbes(ctx)
 	for _, b := range bindings {
 		if ctx.Err() != nil {
 			return

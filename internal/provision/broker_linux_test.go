@@ -398,3 +398,47 @@ func TestBrokerSocketSafeRejectsMissingAndSymlink(t *testing.T) {
 		t.Fatal("host has broker symlink")
 	}
 }
+
+// budgetHost records whether each host probe ran with startup budgets.
+type budgetHost struct {
+	*fakeHost
+	seen []string
+}
+
+func (h *budgetHost) mark(ctx context.Context, op string) {
+	startup, _ := ctx.Value(startupProbes{}).(bool)
+	h.seen = append(h.seen, op+":"+map[bool]string{true: "startup", false: "request"}[startup])
+}
+func (h *budgetHost) Verify(ctx context.Context, i ExecutorIdentity) error {
+	h.mark(ctx, "verify")
+	return h.fakeHost.Verify(ctx, i)
+}
+func (h *budgetHost) Ready(ctx context.Context, i ExecutorIdentity) error {
+	h.mark(ctx, "ready")
+	return h.fakeHost.Ready(ctx, i)
+}
+
+// Only boot verification and restore get startup budgets; a person's
+// request keeps the short request-time budget.
+func TestStartupBudgetsOnlyAtBoot(t *testing.T) {
+	w, h := writerFixture(t)
+	host := &budgetHost{fakeHost: h}
+	w.Executor = host
+	if r := handle(w, "ensure", "42", "carol"); r.Route == nil {
+		t.Fatal(r)
+	}
+	for _, s := range host.seen {
+		if strings.HasSuffix(s, ":startup") {
+			t.Fatal("request probe got startup budget", host.seen)
+		}
+	}
+	host.seen = nil
+	bindings, err := w.startupBindings(context.Background())
+	if err != nil || len(bindings) != 1 {
+		t.Fatal(err, bindings)
+	}
+	w.restoreSockets(context.Background(), bindings, func(string, error) {}, func(string, bool, error) {})
+	if strings.Join(host.seen, ",") != "verify:startup,ready:startup" {
+		t.Fatal(host.seen)
+	}
+}

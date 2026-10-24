@@ -404,3 +404,48 @@ func TestAgentSocketRouteDistinctUIDs(t *testing.T) {
 		t.Fatalf("safe pair refused: %v starts %d", err, starts)
 	}
 }
+
+// A boot can make systemd answer far slower than the request-time budget.
+// Startup probes wait longer for the answer, but judge it exactly as before:
+// a slow safe answer starts the broker and a slow unsafe one still refuses.
+func TestStartupProbesTolerateOnlySlowness(t *testing.T) {
+	e := NewLinuxHostExecutor(21003, 21003)
+	i := ExecutorIdentity{username: "carol", uid: 21001}
+	good := "SocketMode=0600\nDirectoryMode=0710\nSocketUser=carol\nSocketGroup=carol\nRemoveOnStop=yes\nFileDescriptorName=agent\nTriggers=open-habitat-daemon@carol.service\nListen=/run/open-habitat/users/carol/agent.sock (Stream)\n"
+	answer := good
+	// Each answer takes 4 s to arrive; a command whose budget is shorter
+	// times out as linuxCommand would.
+	e.run = func(ctx context.Context, path string, args ...string) ([]byte, error) {
+		if commandBudget(ctx, path, args...) < 4*time.Second {
+			return nil, context.DeadlineExceeded
+		}
+		return []byte(answer), nil
+	}
+	if e.agentUnit(context.Background(), i) == nil {
+		t.Fatal("request-time probe outlived its budget")
+	}
+	boot := withStartupProbes(context.Background())
+	if err := e.agentUnit(boot, i); err != nil {
+		t.Fatal("slow but safe startup probe refused", err)
+	}
+	answer = strings.Replace(good, "0600", "0666", 1)
+	if e.agentUnit(boot, i) == nil {
+		t.Fatal("slow unsafe startup probe accepted")
+	}
+	// Startup raises short budgets only; longer ones are kept.
+	for _, c := range []struct {
+		args          []string
+		plain, atBoot time.Duration
+	}{
+		{[]string{"show", "open-habitat-daemon@carol.socket"}, 3 * time.Second, startupProbeBudget},
+		{[]string{"start", "open-habitat-daemon@carol.service"}, 15 * time.Second, startupProbeBudget},
+		{[]string{"start", "open-habitat-daemon@carol.socket"}, 45 * time.Second, 45 * time.Second},
+	} {
+		if got := commandBudget(context.Background(), systemctl, c.args...); got != c.plain {
+			t.Fatal("request budget", c.args, got)
+		}
+		if got := commandBudget(boot, systemctl, c.args...); got != c.atBoot {
+			t.Fatal("startup budget", c.args, got)
+		}
+	}
+}

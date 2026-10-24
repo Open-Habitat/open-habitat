@@ -32,21 +32,23 @@ type LinuxHostExecutor struct {
 func NewLinuxHostExecutor(gatewayUID, gatewayGID uint32) *LinuxHostExecutor {
 	return &LinuxHostExecutor{GatewayUID: gatewayUID, GatewayGID: gatewayGID, run: linuxCommand}
 }
+
+// startupProbes marks the context of broker startup verification. Startup runs
+// once per boot, before the broker serves anyone, and fails closed without a
+// restart, so a probe that merely times out leaves every person's listener
+// unrestored until an operator intervenes. Boot is also when systemd and NSS
+// are busiest. Only time is relaxed: each answer is judged by the same checks,
+// and an unsafe or unexpected one still refuses.
+type startupProbes struct{}
+
+const startupProbeBudget = 30 * time.Second
+
+func withStartupProbes(ctx context.Context) context.Context {
+	return context.WithValue(ctx, startupProbes{}, true)
+}
+
 func linuxCommand(ctx context.Context, path string, args ...string) ([]byte, error) {
-	budget := 3 * time.Second
-	// Starting a socket waits for the broker-owned root binding gate, which
-	// may itself wait briefly for a concurrent broker authorize lock holder.
-	if path == systemctl && len(args) == 2 && args[0] == "start" && (strings.HasPrefix(args[1], "open-habitat-daemon@") || strings.HasPrefix(args[1], "open-habitat-agent@")) && strings.HasSuffix(args[1], ".socket") {
-		// The binding gate may wait up to 30s for the committed-ledger lock.
-		// Leave time for its checks and for systemd to finish binding.
-		budget = 45 * time.Second
-	}
-	// A boot start of a syncing person's daemon finds its socket already
-	// active, but the job may queue behind other boot work.
-	if path == systemctl && len(args) == 2 && args[0] == "start" && strings.HasPrefix(args[1], "open-habitat-daemon@") && strings.HasSuffix(args[1], ".service") {
-		budget = 15 * time.Second
-	}
-	bounded, cancel := context.WithTimeout(ctx, budget)
+	bounded, cancel := context.WithTimeout(ctx, commandBudget(ctx, path, args...))
 	defer cancel()
 	cmd := exec.CommandContext(bounded, path, args...)
 	cmd.Stdin = nil
@@ -62,6 +64,26 @@ func linuxCommand(ctx context.Context, path string, args ...string) ([]byte, err
 		return nil, ErrInvalid
 	}
 	return output.Bytes(), err
+}
+
+func commandBudget(ctx context.Context, path string, args ...string) time.Duration {
+	budget := 3 * time.Second
+	// Starting a socket waits for the broker-owned root binding gate, which
+	// may itself wait briefly for a concurrent broker authorize lock holder.
+	if path == systemctl && len(args) == 2 && args[0] == "start" && (strings.HasPrefix(args[1], "open-habitat-daemon@") || strings.HasPrefix(args[1], "open-habitat-agent@")) && strings.HasSuffix(args[1], ".socket") {
+		// The binding gate may wait up to 30s for the committed-ledger lock.
+		// Leave time for its checks and for systemd to finish binding.
+		budget = 45 * time.Second
+	}
+	// A boot start of a syncing person's daemon finds its socket already
+	// active, but the job may queue behind other boot work.
+	if path == systemctl && len(args) == 2 && args[0] == "start" && strings.HasPrefix(args[1], "open-habitat-daemon@") && strings.HasSuffix(args[1], ".service") {
+		budget = 15 * time.Second
+	}
+	if startup, _ := ctx.Value(startupProbes{}).(bool); startup && budget < startupProbeBudget {
+		budget = startupProbeBudget
+	}
+	return budget
 }
 
 // Keep root command output bounded even when a helper emits indefinitely.
