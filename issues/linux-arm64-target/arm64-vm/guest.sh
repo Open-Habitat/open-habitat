@@ -18,8 +18,11 @@ python3 - <<'PY'
 import json
 pub = open('id.pub').read().strip()
 host_priv, host_pub = open('hostkey').read(), open('hostkey.pub').read().strip()
+# Root login and no default user, as on a cloud provider's stock image: the
+# harness requires an empty /home on the root filesystem before its volume.
 user_data = '#cloud-config\n' + json.dumps({
-    'ssh_authorized_keys': [pub],
+    'users': [{'name': 'root', 'ssh_authorized_keys': [pub]}],
+    'disable_root': False,
     'ssh_deletekeys': True,
     'ssh_keys': {'ed25519_private': host_priv, 'ed25519_public': host_pub},
     'ssh_pwauth': False,
@@ -27,7 +30,7 @@ user_data = '#cloud-config\n' + json.dumps({
 open('user-data', 'w').write(user_data)
 open('meta-data', 'w').write('instance-id: oh-arm64-qualification\nlocal-hostname: oh-arm64-qualification\n')
 open('target.json', 'w').write(json.dumps({
-    'host': '127.0.0.1', 'port': 2222, 'user': 'ubuntu', 'identity_file': '/work/id',
+    'host': '127.0.0.1', 'port': 2222, 'user': 'root', 'identity_file': '/work/id',
     'known_hosts': '[127.0.0.1]:2222 ' + ' '.join(host_pub.split()[:2]),
     'home_device': '/dev/disk/by-id/virtio-ohhome', 'expect_apt_mirror': 'ports.ubuntu.com'}))
 PY
