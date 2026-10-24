@@ -157,6 +157,16 @@ func (a *Auth) deliverFirstLogin(ctx context.Context, target Identity, id, token
 	if first.Seed != nil {
 		a.log.Info("site_ai_key_seed", "outcome", receipt.AIKey)
 	}
+	if receipt.AIKey == "seeded" {
+		// The copy joins the site's record of copies, so a later key
+		// replaces it like any other.
+		a.mu.Lock()
+		e := a.recordCopyLocked(id, first.Seed.record, true)
+		a.mu.Unlock()
+		if e != nil {
+			a.log.Warn("site_ai_key_copies", "outcome", "degraded", "reason", "record_failed")
+		}
+	}
 	if first.Plan == nil || len(reply.Defaults) != len(plan.Defaults) {
 		return receipt, true, nil
 	}

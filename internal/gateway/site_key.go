@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -69,7 +70,11 @@ func (k *siteKeyRecord) view() *siteKeyView {
 
 // SiteKeySeed is the copy the binding-creating login hands to the person's
 // daemon with the token.
-type SiteKeySeed struct{ Provider, Key string }
+type SiteKeySeed struct {
+	Provider, Key string
+	// record is the stored key the copy is of, for the copies record.
+	record siteKeyRecord
+}
 
 var errSiteKeyUnavailable = &OnboardingError{"site_key_unavailable"}
 
@@ -180,7 +185,7 @@ func (a *Auth) siteKeySeed() *SiteKeySeed {
 	if a.siteKey == nil || !a.administrationHealthy() || a.onboardingLocked().AIAccount.Offer != "site_key" {
 		return nil
 	}
-	return &SiteKeySeed{Provider: a.siteKey.Provider, Key: a.siteKey.Key}
+	return &SiteKeySeed{Provider: a.siteKey.Provider, Key: a.siteKey.Key, record: *a.siteKey}
 }
 
 func (a *Auth) siteKeyView() *siteKeyView {
@@ -216,6 +221,12 @@ func (a *Auth) setSiteKey(caller, provider, key string, dry bool) (onboardingCon
 		return next, &siteKeyView{Provider: provider, Suffix: key[len(key)-4:]}, nil
 	}
 	record := siteKeyRecord{Version: 1, Provider: provider, Key: key, SetAt: a.now().UTC().Format(time.RFC3339)}
+	// The key's fingerprint is known before the key is stored, so a copy of
+	// it can always be recognised later; a known key that was never stored
+	// matches nobody's copy.
+	if e := a.recordKeyLocked(record); e != nil {
+		return onboardingConfig{}, nil, e
+	}
 	if e := a.writeSiteKeyFile(record); e != nil {
 		return onboardingConfig{}, nil, e
 	}
@@ -332,15 +343,25 @@ func (a *Auth) siteKeyHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var next onboardingConfig
 	var k *siteKeyView
+	var rotation []rotationResult
 	var e error
 	if set {
-		next, k, e = a.setSiteKey(s.identity.Subject, *body.Provider, *body.Key, false)
+		next, k, rotation, e = a.setSiteKeyAndReplace(r.Context(), s.identity.Subject, *body.Provider, *body.Key)
 	} else {
 		next, k, e = a.deleteSiteKey(s.identity.Subject, *body.Offer, false)
 	}
 	if e != nil {
-		status, code := onboardingStatus(e)
+		status, code := siteKeyGiveStatus(e)
 		safe(w, status, code)
+		return
+	}
+	if rotation != nil {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(struct {
+			onboardingReply
+			Rotation []rotationResult `json:"rotation"`
+		}{onboardingReply{1, next, k}, rotation})
 		return
 	}
 	replyOnboarding(w, next, k)
@@ -348,7 +369,7 @@ func (a *Auth) siteKeyHTTP(w http.ResponseWriter, r *http.Request) {
 
 // siteKeyControl serves root's admin ai-key commands. The *_check operations
 // are the dry run: the same checks, nothing written.
-func (a *Auth) siteKeyControl(payload []byte) ([]byte, error) {
+func (a *Auth) siteKeyControl(ctx context.Context, payload []byte) ([]byte, error) {
 	var r struct {
 		Operation string  `json:"operation"`
 		Provider  *string `json:"provider"`
@@ -366,6 +387,12 @@ func (a *Auth) siteKeyControl(payload []byte) ([]byte, error) {
 		Version  int          `json:"version"`
 		SiteKey  *siteKeyView `json:"site_key,omitempty"`
 		Previous *siteKeyView `json:"previous,omitempty"`
+		// Rotation is each earlier copy a set replaced; Replaces is who a
+		// dry run's set would give the new key to; Holders is who keeps a
+		// copy after a delete.
+		Rotation []rotationResult `json:"rotation,omitempty"`
+		Replaces []string         `json:"replaces,omitempty"`
+		Holders  []string         `json:"holders,omitempty"`
 	}
 	answer := func(c onboardingConfig, k, previous *siteKeyView) ([]byte, error) {
 		return json.Marshal(reply{Stored: k != nil, Offer: c.AIAccount.Offer, Version: c.Version, SiteKey: k, Previous: previous})
@@ -385,11 +412,18 @@ func (a *Auth) siteKeyControl(payload []byte) ([]byte, error) {
 			break
 		}
 		previous := a.siteKeyView()
-		next, k, e := a.setSiteKey("", *r.Provider, *r.Key, r.Operation == "ai_key_set_check")
+		if r.Operation == "ai_key_set_check" {
+			next, k, e := a.setSiteKey("", *r.Provider, *r.Key, true)
+			if e != nil {
+				return nil, e
+			}
+			return json.Marshal(reply{Stored: true, Offer: next.AIAccount.Offer, Version: next.Version, SiteKey: k, Previous: previous, Replaces: a.replacedBy(*r.Provider, *r.Key)})
+		}
+		next, k, rotation, e := a.setSiteKeyAndReplace(ctx, "", *r.Provider, *r.Key)
 		if e != nil {
 			return nil, e
 		}
-		return answer(next, k, previous)
+		return json.Marshal(reply{Stored: true, Offer: next.AIAccount.Offer, Version: next.Version, SiteKey: k, Previous: previous, Rotation: rotation})
 	case "ai_key_delete", "ai_key_delete_check":
 		if r.Provider != nil || r.Key != nil || r.Offer == nil {
 			break
@@ -399,7 +433,7 @@ func (a *Auth) siteKeyControl(payload []byte) ([]byte, error) {
 		if e != nil {
 			return nil, e
 		}
-		return answer(next, nil, previous)
+		return json.Marshal(reply{Offer: next.AIAccount.Offer, Version: next.Version, Previous: previous, Holders: a.copyHolders()})
 	}
 	return nil, errors.New("invalid control request")
 }

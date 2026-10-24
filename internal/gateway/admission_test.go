@@ -194,7 +194,7 @@ func (x *accessHarness) restart() {
 	x.t.Helper()
 	now := time.Date(2026, 10, 24, 9, 0, 0, 0, time.UTC)
 	provider := directoryProvider{x.provider, map[string]GitHubUser{"42": {ID: "42", Login: "alice", Type: "User"}, "43": {ID: "43", Login: "bob", Type: "User"}, "44": {ID: "44", Login: "carol", Type: "User"}, "45": {ID: "45", Login: "acme", Type: "Organization"}}}
-	a, e := NewAuth(OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}, AuthOptions{Provider: provider, Sink: x.sink, Broker: x.broker, Now: func() time.Time { return now }, SessionFile: filepath.Join(x.dir, "sessions.json"), AdminFile: filepath.Join(x.dir, "administration.json")})
+	a, e := NewAuth(OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}, AuthOptions{Provider: provider, Sink: x.sink, Broker: x.broker, Now: func() time.Time { return now }, SessionFile: filepath.Join(x.dir, "sessions.json"), AdminFile: filepath.Join(x.dir, "administration.json"), SiteKeyFile: filepath.Join(x.dir, "site-ai-key.json")})
 	if e != nil {
 		x.t.Fatal(e)
 	}

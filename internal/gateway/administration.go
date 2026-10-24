@@ -447,8 +447,11 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 	if strings.HasPrefix(op.Operation, "integration_") {
 		return a.integrationControl(ctx, payload)
 	}
+	if op.Operation == "ai_key_copies" || strings.HasPrefix(op.Operation, "ai_key_seed") {
+		return a.siteKeyGiveControl(ctx, payload)
+	}
 	if strings.HasPrefix(op.Operation, "ai_key_") {
-		return a.siteKeyControl(payload)
+		return a.siteKeyControl(ctx, payload)
 	}
 	dec := json.NewDecoder(strings.NewReader(string(payload)))
 	dec.DisallowUnknownFields()

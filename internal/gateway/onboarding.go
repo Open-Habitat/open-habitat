@@ -313,6 +313,9 @@ type siteOnboarding struct {
 	Integrations []onboardingIntegration `json:"integrations"`
 	AIAccount    onboardingAIAccount     `json:"ai_account"`
 	AIKeySeeded  bool                    `json:"ai_key_seeded,omitempty"`
+	// SiteKeyCopy is the site key copy the site gave this person, from the
+	// site's own record: it says what was given, not what their Pi holds.
+	SiteKeyCopy *copyView `json:"site_key_copy,omitempty"`
 }
 
 // personOnboarding is what one person's route shows: the site's current
@@ -379,7 +382,9 @@ func (a *Auth) siteOnboardingHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(personOnboarding(c, receipt))
+	v := personOnboarding(c, receipt)
+	v.SiteKeyCopy = a.copyView(s.identity.Subject)
+	json.NewEncoder(w).Encode(v)
 }
 
 // serverOnboardingHTTP is GET and PUT /api/v1/server/onboarding for a current

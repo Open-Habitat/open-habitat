@@ -257,7 +257,7 @@ func TestSiteKeySeededOnlyInTheCreatingLogin(t *testing.T) {
 	if w, _ := login(t, h); w.Code == 303 {
 		t.Fatal("lost handoff answer issued a session")
 	}
-	if len(s.seeds) != 1 || s.seeds[0] != (SiteKeySeed{"anthropic", anthropicKey}) || len(s.plans) != 0 {
+	if len(s.seeds) != 1 || s.seeds[0].Provider != "anthropic" || s.seeds[0].Key != anthropicKey || len(s.plans) != 0 {
 		t.Fatalf("first login handed over %+v %+v", s.seeds, s.plans)
 	}
 	if r, _ := a.receiptFor("42"); r.AIKey != "unknown" {
@@ -310,6 +310,11 @@ func TestSiteKeyReceiptRecordsTheAnswer(t *testing.T) {
 		}
 		if seededRead(h, cookie) != (answer == "seeded") {
 			t.Fatal(answer, "person read misstates the seed")
+		}
+		// A seeded copy joins the site's record of copies, which a later
+		// key replaces; any other answer records none.
+		if v := a.copyView("42"); (v != nil) != (answer == "seeded") || v != nil && (!v.Current || v.Suffix != "abcd") {
+			t.Fatal(answer, "copies record", v)
 		}
 	}
 	h, a, _, s, _, admin := planFixture(t, "preselected")

@@ -219,6 +219,11 @@ type Auth struct {
 	settings         serverSettings
 	siteKeyFile      string
 	siteKey          *siteKeyRecord
+	ledger           siteKeyLedger
+	// siteKeyOps runs one site key change at a time across the daemon calls
+	// that give or replace copies, so no write hands over a key that a
+	// concurrent change has already replaced.
+	siteKeyOps chan struct{}
 	admission        map[string]admission
 	unmatchedLog     admission // process-wide budget; never keyed by request input
 	accessLog        admission // bound anonymous Access denials independently
@@ -276,6 +281,10 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if err := a.loadSiteKey(opts.SiteKeyFile); err != nil {
 		return nil, err
 	}
+	if err := a.loadSiteKeyLedger(); err != nil {
+		return nil, err
+	}
+	a.siteKeyOps = make(chan struct{}, 1)
 	if err := a.loadSessions(); err != nil {
 		// Unusable state cannot authenticate any cookie. Permit a new OAuth
 		// login to replace it, without trusting or copying its old contents.
