@@ -2,10 +2,9 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: task
-status: in-progress
+status: deferred
 priority: normal
 preparation: pending
-lane: unlaned
 ---
 
 # Prototype: where people learn the OneDrive/Dropbox folder bridge (onboarding, moment of need, card)
