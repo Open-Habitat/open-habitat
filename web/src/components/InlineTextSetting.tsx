@@ -84,6 +84,7 @@ export function InlineTextSetting({
         <span className="s-inline-field">
           <input
             data-testid={testId}
+            autoComplete="off"
             id={id}
             value={draft}
             inputMode={inputMode}

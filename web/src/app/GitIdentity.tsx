@@ -163,6 +163,7 @@ export function GitIdentity({
               Gitissä näkyvä nimi
               <input
                 data-testid="git-name-input"
+                autoComplete="name"
                 value={name}
                 maxLength={200}
                 onChange={(e) => setName(e.target.value)}
@@ -173,6 +174,7 @@ export function GitIdentity({
               <input
                 data-testid="git-email-input"
                 type="email"
+                autoComplete="email"
                 value={email}
                 maxLength={254}
                 onChange={(e) => setEmail(e.target.value)}
@@ -241,6 +243,7 @@ export function GitIdentity({
             Gitissä näkyvä nimi{" "}
             <input
               data-testid="git-name-input"
+              autoComplete="name"
               value={name}
               maxLength={200}
               onChange={(e) => setName(e.target.value)}

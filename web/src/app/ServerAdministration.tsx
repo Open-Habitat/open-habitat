@@ -288,6 +288,7 @@ export function ServerAdministration({
                                     <input
                                       inputMode="decimal"
                                       data-testid="storage-limit-input"
+                                      autoComplete="off"
                                       value={limits[user.id] ?? ""}
                                       onChange={(e) =>
                                         setLimits((v) => ({

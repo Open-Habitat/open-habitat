@@ -134,6 +134,7 @@ export function GitHubRepoChooser({
               <input
                 type="search"
                 data-testid="repository-search"
+                autoComplete="off"
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
               />

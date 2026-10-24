@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [web/src/components/Integrations]
+closed: 2026-10-24
 ---
 
 # Brave crashes while typing the email in the CardDAV (and IMAP) connect form
@@ -19,6 +20,6 @@ Find what the integration email fields do differently on every keystroke (derive
 
 ## Acceptance Criteria
 
-- [ ] Cause with evidence (crash report signature, or a reproduction in Brave/Chromium), in result.md.
-- [ ] Fix so typing the email in the IMAP, CalDAV and CardDAV forms does not crash Brave; regression test for the triggering behaviour.
-- [ ] KOKEILTAVAA.md line for Jari to retry in Brave.
+- [x] Cause with evidence (crash report signature, or a reproduction in Brave/Chromium), in result.md.
+- [x] Fix so typing the email in the IMAP, CalDAV and CardDAV forms does not crash Brave; regression test for the triggering behaviour.
+- [x] KOKEILTAVAA.md line for Jari to retry in Brave.

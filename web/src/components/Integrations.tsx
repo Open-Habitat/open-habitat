@@ -1281,6 +1281,7 @@ function PasswordForm({
           <TextField
             data-testid="integration-address"
             label="Sähköpostiosoite"
+            autoComplete="email"
             value={a.address}
             onChange={(v) => {
               const lower = v.trim().toLowerCase();

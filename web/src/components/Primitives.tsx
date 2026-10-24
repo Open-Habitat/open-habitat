@@ -150,6 +150,11 @@ interface FieldProps {
   mono?: boolean;
   availability?: Availability;
   name?: string;
+  // A field without a token is one Chromium cannot classify, and Brave
+  // 1.96 (Chromium 154) then offers saved addresses on typing next to its
+  // own email-alias entry, which fails a browser-process CHECK on the third
+  // matching character. Every field therefore names what it holds.
+  autoComplete?: string;
 }
 export function TextField({
   "data-testid": testId,
@@ -162,6 +167,7 @@ export function TextField({
   mono,
   availability = enabled,
   name,
+  autoComplete = "off",
 }: FieldProps) {
   const reason = unavailableReason(availability);
   const readOnly = availability.state === "read_only";
@@ -173,6 +179,7 @@ export function TextField({
       isInvalid={Boolean(error)}
       isRequired={required}
       name={name}
+      autoComplete={autoComplete}
       value={value}
       onChange={onChange}
     >
@@ -208,6 +215,7 @@ export function TextArea({
   availability = enabled,
   rows = 5,
   onCommit,
+  autoComplete = "off",
 }: FieldProps & { rows?: number; onCommit?: () => void }) {
   const reason = unavailableReason(availability);
   const readOnly = availability.state === "read_only";
@@ -218,6 +226,7 @@ export function TextArea({
       isReadOnly={readOnly}
       isInvalid={Boolean(error)}
       isRequired={required}
+      autoComplete={autoComplete}
       value={value}
       onChange={onChange}
     >

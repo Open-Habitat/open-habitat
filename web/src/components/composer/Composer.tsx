@@ -1186,6 +1186,7 @@ export function Composer({
       >
         <textarea
           data-testid="message-input"
+          autoComplete="off"
           data-working={working}
           ref={field}
           className="ah-cbox-field"

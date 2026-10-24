@@ -101,6 +101,7 @@ export function EditorFileTree({
         Suodata nimellä
         <input
           data-testid="editor-file-filter"
+          autoComplete="off"
           type="search"
           value={filter}
           onChange={(event) => setFilter(event.target.value)}

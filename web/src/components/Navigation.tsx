@@ -717,7 +717,11 @@ export function WorkspaceRail({
                 onChange={onFilter}
               >
                 <Label className="ah-visually-hidden">Suodata työtiloja</Label>
-                <Input data-testid="workspace-filter" placeholder="Suodata" />
+                <Input
+                  data-testid="workspace-filter"
+                  placeholder="Suodata"
+                  autoComplete="off"
+                />
               </TextField>
               {filterValue ? (
                 <Button

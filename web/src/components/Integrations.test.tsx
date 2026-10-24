@@ -314,6 +314,45 @@ describe("sign-in dialog", () => {
   });
 });
 
+describe("app password form", () => {
+  // Brave 1.96 kills the whole browser on the third typed character of a
+  // field Chromium cannot classify, once a saved address matches it and
+  // Brave adds its email-alias entry. Every text field must name what it
+  // holds, including the SMTP fields that appear only after typing a server.
+  it.each(["imap", "caldav", "carddav"] as const)(
+    "gives every %s text field an autocomplete token",
+    async (id) => {
+      const view = render(
+        <ConnectDialog
+          provider={{ ...imap, id }}
+          stage={{ stage: "password" }}
+          onContinue={noop}
+          onPassword={noop}
+          onPaste={noop}
+          onFolders={noop}
+          onRestart={noop}
+          onClose={noop}
+        />,
+      );
+      if (id === "imap")
+        await userEvent.type(
+          view.getByTestId("integration-smtp-host"),
+          "smtp.example.test",
+        );
+      const fields = [
+        ...view.baseElement.querySelectorAll<
+          HTMLInputElement | HTMLTextAreaElement
+        >("input, textarea"),
+      ].filter((f) => !["checkbox", "radio", "hidden"].includes(f.type));
+      expect(fields.length).toBeGreaterThan(id === "imap" ? 6 : 3);
+      for (const field of fields)
+        expect(field.getAttribute("autocomplete"), field.outerHTML).toMatch(
+          /\S/,
+        );
+    },
+  );
+});
+
 describe("removal", () => {
   it("offers the Trash only for synced folders and keeps them by default", async () => {
     const onConfirm = vi.fn();
