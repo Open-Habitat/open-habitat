@@ -2,13 +2,16 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Observed while running the required VM checks for onboarding-default-repositories
 source_ref: taskfleet:01m5p7md6jc61z9ze0cfam1pve/observed:vm-scenarios-broken
 originating_run: 01m5p7md6jc61z9ze0cfam1pve
 originating_run_kind: spinoff
+lane: unlaned
+collision: [test/vm]
+preparation: ready
 ---
 
 # VM scenarios two-user-routing and host-boot-binding fail on main
