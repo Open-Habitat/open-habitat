@@ -87,21 +87,20 @@ func dropboxCommand(env Env, address string, args ...string) (Command, bool) {
 func (d *dropbox) Check(ctx context.Context, env Env, address string) []Service {
 	d.native.Lock()
 	defer d.native.Unlock()
-	state := StateUnknown
+	service := Service{ID: "dropbox", State: StateUnknown}
 	if cmd, ok := dropboxCommand(env, address, "about", "dropbox:", "--json"); ok {
 		if err, expired := dropboxStatus(ctx, env, cmd); err == nil {
 			// A saved login without initial bisync listings is not a
 			// healthy sync (e.g. daemon stopped at the folder choice).
-			if _, ready := d.SyncCommand(env, address); ready {
-				state = StateOK
-			}
+			_, ready := d.SyncCommand(env, address)
+			service.State, service.Failure = signedInState(ready)
 		} else if expired {
-			state = StateLoginExpired
+			service.State = StateLoginExpired
 		} else {
-			state = StateUnreachable
+			service.State = StateUnreachable
 		}
 	}
-	return []Service{{ID: "dropbox", State: state}}
+	return []Service{service}
 }
 
 // rclone exit codes do not distinguish OAuth rejection from network failures.

@@ -391,6 +391,10 @@ echo '{}'
 			if s.ID != "drive" && s.State != StateOK {
 				t.Errorf("service %v", s)
 			}
+			// Signed in, no initial bisync listings: name it, never "unknown".
+			if s.ID == "drive" && (s.State != StateSyncFailed || s.Failure != InitialSyncIncomplete) {
+				t.Errorf("drive without first sync %v", s)
+			}
 		}
 	}
 	if !started || !driveStarted {

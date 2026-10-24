@@ -68,7 +68,10 @@ export type Service = {
   state: ServiceState;
   directory?: string;
   progress?: SyncProgress;
-  failure?: "quota_insufficient" | "quota_unavailable";
+  failure?:
+    | "quota_insufficient"
+    | "quota_unavailable"
+    | "initial_sync_incomplete";
 };
 export type Account = {
   provider: ProviderId;

@@ -63,6 +63,20 @@ const (
 	StateUnknown             ServiceState = "unknown"
 )
 
+// InitialSyncIncomplete is a sync_failed service whose login works but whose
+// first native pass never finished, for example because a daemon restart
+// stopped it. Ordinary sync never resyncs on its own; signing in again offers
+// the initial choice once more.
+const InitialSyncIncomplete = "initial_sync_incomplete"
+
+// signedInState is a file service's state after its tool accepted the login.
+func signedInState(ready bool) (ServiceState, string) {
+	if ready {
+		return StateOK, ""
+	}
+	return StateSyncFailed, InitialSyncIncomplete
+}
+
 // Service is one service of an account as its tool reports it. Directory is
 // home-relative ("~/cloud/…") and only set for synced files.
 type Service struct {
@@ -650,9 +664,11 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 		}
 	}
 
-	for i := range services {
-		if services[i].State == StateSyncFailed {
-			services[i].Failure = failure
+	if initial {
+		for i := range services {
+			if services[i].State == StateSyncFailed {
+				services[i].Failure = failure
+			}
 		}
 	}
 	return Account{Provider: e.Provider(), Address: address, Services: services, CheckedAt: c.now().UTC().Format(time.RFC3339)}

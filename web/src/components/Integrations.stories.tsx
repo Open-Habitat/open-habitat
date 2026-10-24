@@ -372,6 +372,30 @@ export const InitialSyncFailed: Story = {
   },
 };
 
+// A working login whose first sync a daemon restart stopped.
+export const InitialSyncIncomplete: Story = {
+  args: {
+    list: {
+      ...connected,
+      accounts: [
+        {
+          provider: "dropbox",
+          address: "person@example.test",
+          checked_at: checked,
+          services: [
+            {
+              id: "dropbox",
+              state: "sync_failed",
+              failure: "initial_sync_incomplete",
+              directory: "~/cloud/dropbox/person@example.test",
+            },
+          ],
+        },
+      ],
+    },
+  },
+};
+
 export const FolderSizesPending: Story = {
   render: dialog(google, {
     stage: "login",

@@ -114,19 +114,18 @@ func (g *google) Check(ctx context.Context, env Env, address string) []Service {
 	check := lock.(*sync.Mutex)
 	check.Lock()
 	defer check.Unlock()
-	drive, expired := StateUnknown, false
+	drive, driveFailure, expired := StateUnknown, "", false
 	if c, ok := googleCommand(env, address, "about", "google:", "--json"); ok {
 		if err, rejected := dropboxStatus(ctx, env, c); err == nil {
-			if _, ready := g.SyncCommand(env, address); ready {
-				drive = StateOK
-			}
+			_, ready := g.SyncCommand(env, address)
+			drive, driveFailure = signedInState(ready)
 		} else if rejected {
 			drive, expired = StateLoginExpired, true
 		} else {
 			drive = StateUnreachable
 		}
 	}
-	out := []Service{{ID: "drive", State: drive}, {ID: "mail", State: StateUnknown}, {ID: "calendar", State: StateUnknown}, {ID: "contacts", State: StateUnknown}}
+	out := []Service{{ID: "drive", State: drive, Failure: driveFailure}, {ID: "mail", State: StateUnknown}, {ID: "calendar", State: StateUnknown}, {ID: "contacts", State: StateUnknown}}
 	if expired {
 		// Both native stores received the same grant. Its rejection is not a
 		// network outage in the other three services (Testing tokens expire weekly).

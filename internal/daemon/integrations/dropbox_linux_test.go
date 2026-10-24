@@ -562,6 +562,39 @@ func TestDropboxPartialListingsAreNotInitializedSync(t *testing.T) {
 	}
 }
 
+// The test server's interrupted first pass: a release restart killed the
+// initial resync, leaving only bisync's "-new" listings and a stale lock. The
+// login still works, so the card must say why sync is not running, never
+// "unknown", and the browser contract carries the reason.
+func TestDropboxInterruptedInitialSyncIsNamed(t *testing.T) {
+	env := dropboxEnv(t)
+	d := &dropbox{}
+	address := "p@example.test"
+	work := filepath.Join(env.Home, dropboxWork(address))
+	if err := os.MkdirAll(work, 0700); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(env.Home, dropboxDir, address+".conf"), []byte("[dropbox]\ntype = dropbox\n"), 0600)
+	for _, name := range []string{"pair.path1.lst-new", "pair.path2.lst-new", "pair.lck"} {
+		os.WriteFile(filepath.Join(work, name), nil, 0600)
+	}
+	c := New(env, []Entry{d}, nil, WithQuota(func() Room { return Room{Free: 2048, OK: true} }))
+	code, out, _ := call(t, c.Handler(allow), "GET", ListPath, "", nil)
+	if code != 200 {
+		t.Fatalf("list: %d %v", code, out)
+	}
+	service := out["accounts"].([]any)[0].(map[string]any)["services"].([]any)[0].(map[string]any)
+	if service["state"] != string(StateSyncFailed) || service["failure"] != InitialSyncIncomplete {
+		t.Fatalf("interrupted first sync not named: %v", service)
+	}
+	for _, side := range []string{"1", "2"} {
+		os.WriteFile(filepath.Join(work, "pair.path"+side+".lst"), nil, 0600)
+	}
+	if s := d.Check(context.Background(), env, address)[0]; s.State != StateOK || s.Failure != "" {
+		t.Fatalf("completed first sync not healthy: %+v", s)
+	}
+}
+
 func TestDropboxRejectedGrantIsNotANetworkOutage(t *testing.T) {
 	env := dropboxEnv(t)
 	d := &dropbox{}

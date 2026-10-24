@@ -34,7 +34,7 @@
         "id": {"$ref": "#/$defs/service_id"},
         "state": {"enum": ["ok", "syncing", "sync_failed", "credentials_rejected", "login_expired", "unreachable", "sync_restarting", "quota_full", "unknown"]},
         "directory": {"$ref": "#/$defs/home_directory"},
-        "failure": {"description": "Transient initial-inventory admission refusal; the native login is retained.", "enum": ["quota_insufficient", "quota_unavailable"]},
+        "failure": {"description": "Why a sync_failed service stopped; the native login is retained. quota_insufficient and quota_unavailable are a transient initial-inventory admission refusal; initial_sync_incomplete is a working login whose first sync never finished (signing in again offers the initial choice).", "enum": ["quota_insufficient", "quota_unavailable", "initial_sync_incomplete"]},
         "progress": {"$ref": "#/$defs/sync_progress"}
       }
     },

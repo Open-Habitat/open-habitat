@@ -290,9 +290,11 @@ function ServiceStatus({
       ? "Valitut tiedostot eivät mahdu kiintiöön"
       : service.failure === "quota_unavailable"
         ? "Vapaata tilaa ei voitu tarkistaa"
-        : service.state === "ok" && service.directory
-          ? "Synkronoi jatkuvasti"
-          : stateText[service.state];
+        : service.failure === "initial_sync_incomplete"
+          ? "Ensimmäinen synkronointi jäi kesken"
+          : service.state === "ok" && service.directory
+            ? "Synkronoi jatkuvasti"
+            : stateText[service.state];
   return (
     <span
       data-testid="integration-service-state"
@@ -399,9 +401,11 @@ export function AccountCard({
             )}
             {s.state === "sync_failed" && (
               <span className="ig-meta">
-                {s.failure
-                  ? "Vapauta tilaa tai pyydä ylläpitäjältä lisää tilaa ja yritä uudelleen. Mitään ei kopioitu."
-                  : "Kirjaudu uudelleen ja yritä synkronointia uudelleen. Jo kopioidut tiedostot säilyvät."}
+                {s.failure === "initial_sync_incomplete"
+                  ? "Kirjaudu uudelleen ja valitse synkronointi, niin ensimmäinen synkronointi tehdään loppuun. Jo kopioidut tiedostot säilyvät."
+                  : s.failure
+                    ? "Vapauta tilaa tai pyydä ylläpitäjältä lisää tilaa ja yritä uudelleen. Mitään ei kopioitu."
+                    : "Kirjaudu uudelleen ja yritä synkronointia uudelleen. Jo kopioidut tiedostot säilyvät."}
               </span>
             )}
           </div>
