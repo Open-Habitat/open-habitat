@@ -220,8 +220,12 @@ func (*dropbox) interruptedPasses(env Env, address string) []string {
 	return nil
 }
 func (d *dropbox) resumeInitial(ctx context.Context, env Env, address string, _ []string) error {
+	if !interruptedResync(env, dropboxWork(address)) {
+		return nil
+	}
 	return d.ChooseFolders(ctx, env, address, []string{"all"})
 }
+func (*dropbox) passService(string) string { return "dropbox" }
 func (d *dropbox) SyncCommand(env Env, address string) (Command, bool) {
 	names, fd, err := listHomeDir(env.Home, dropboxWork(address))
 	if err != nil || fd < 0 {

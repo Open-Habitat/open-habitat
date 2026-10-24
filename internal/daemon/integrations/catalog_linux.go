@@ -534,8 +534,9 @@ func kernelQuota() Room {
 func (c *Catalog) Start(ctx context.Context) {
 	c.write.Lock()
 	c.reconcile()
+	queue := c.interruptedQueue()
 	c.write.Unlock()
-	go c.resumeInterrupted(ctx)
+	go c.resumeInterrupted(ctx, queue)
 	go func() {
 		<-ctx.Done()
 		c.relay.cancelAll()
@@ -639,16 +640,7 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 		services = e.Check(ctx, c.env, address)
 		// The tool sees only that the first pass never finished; the daemon
 		// knows whether it is about to resume it or tried and failed.
-		for i := range services {
-			if services[i].State == StateSyncFailed && services[i].Failure == InitialSyncIncomplete {
-				switch resume {
-				case resumeQueued:
-					services[i].State, services[i].Failure = StateSyncing, ""
-				case resumeFailed:
-					services[i].Failure = InitialSyncResumeFailed
-				}
-			}
-		}
+		resumeView(resume, services)
 	}
 	if s, ok := e.(SyncEntry); ok {
 		full := c.quota().Full

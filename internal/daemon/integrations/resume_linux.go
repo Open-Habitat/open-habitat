@@ -36,12 +36,22 @@ type resumableEntry interface {
 	// interruptedPasses lists the home-relative bisync work directories of
 	// the account whose chosen first pass was stopped before committing.
 	interruptedPasses(env Env, address string) []string
-	// resumeInitial runs those first passes again with the original choice.
+	// resumeInitial runs those first passes again with the original choice,
+	// each only while its work directory still shows the stopped pass.
 	resumeInitial(ctx context.Context, env Env, address string, works []string) error
+	// passService is the service whose files a work directory syncs.
+	passService(work string) string
 }
 
 // resumeMark is the daemon's transient view of a resume, never persisted.
 type resumeMark int
+
+// resumeNote is the mark of one account and the services whose first pass
+// was stopped.
+type resumeNote struct {
+	mark     resumeMark
+	services map[string]bool
+}
 
 const (
 	resumeQueued resumeMark = iota + 1
@@ -81,45 +91,57 @@ func interruptedResync(env Env, work string) bool {
 type lockState int
 
 const (
-	lockAbsent lockState = iota
-	lockStale
-	lockHeld
+	lockAbsent  lockState = iota
+	lockStale             // nobody holds it, and no other rclone could take it over
+	lockExpired           // nobody holds it; rclone itself takes over an expired lock
+	lockHeld              // a process uses the pair, or it cannot be proved otherwise
 	lockForeign
 )
 
-// bisyncLock decides whether the lock in an interrupted work directory may be
-// removed. Only our own session's lock is considered, and it is stale only
-// when no running process refers to the work directory and the PID it names
-// is not a process that could be rclone. Anything that cannot be proved is
-// held: a live lock is never removed. data is the lock as read, so removal
-// can refuse a lock that changed since.
-func bisyncLock(env Env, work string) (name string, data []byte, state lockState) {
+// lockMargin keeps a lock that is about to expire from being judged either
+// way: rclone might take it over during the decision.
+const lockMargin = 15 * time.Second
+
+// bisyncLock decides what may be done with the lock of an interrupted work
+// directory. Any visible process that names the work directory, or a live
+// process at the lock's PID that could be rclone, holds the pair even when no
+// lock file is there. A lock nobody holds may be removed only while no other
+// rclone could take it over, which rclone does only for an expired lock: an
+// unexpired or unreadable lock is stale, an expired one is left to rclone. A
+// live lock is never removed. data is the lock as read, so removal can refuse
+// a lock that changed since.
+func bisyncLock(env Env, work string, now time.Time) (name string, data []byte, state lockState) {
 	names, fd, err := listHomeDir(env.Home, work)
 	if err != nil || fd < 0 {
 		return "", nil, lockAbsent
 	}
 	defer unix.Close(fd)
+	abs := filepath.Join(env.Home, work)
 	for _, n := range names {
 		if strings.HasSuffix(n, ".lck") {
 			name = n
 		}
 	}
 	if name == "" {
+		if processUses(abs, 0) {
+			return "", nil, lockHeld
+		}
 		return "", nil, lockAbsent
 	}
 	data, err = readFileAt(fd, name, 4096)
 	if err != nil {
 		return name, nil, lockForeign
 	}
-	abs := filepath.Join(env.Home, work)
 	pid := 0
 	var lock struct {
-		Session string `json:"Session"`
-		PID     string `json:"PID"`
+		Session     string    `json:"Session"`
+		PID         string    `json:"PID"`
+		TimeExpires time.Time `json:"TimeExpires"`
 	}
-	// A pass killed while writing its lock leaves it empty or truncated; the
-	// process scan alone then decides. A readable lock must be this session's.
-	if json.Unmarshal(data, &lock) == nil {
+	// A pass killed while writing its lock leaves it empty or truncated;
+	// rclone never takes such a lock over. A readable lock must be ours.
+	parsed := json.Unmarshal(data, &lock) == nil
+	if parsed {
 		if lock.Session != filepath.Join(abs, strings.TrimSuffix(name, ".lck")) {
 			return name, nil, lockForeign
 		}
@@ -130,7 +152,13 @@ func bisyncLock(env Env, work string) (name string, data []byte, state lockState
 	if processUses(abs, pid) {
 		return name, data, lockHeld
 	}
-	return name, data, lockStale
+	switch {
+	case !parsed || lock.TimeExpires.IsZero() || lock.TimeExpires.After(now.Add(lockMargin)):
+		return name, data, lockStale
+	case lock.TimeExpires.Before(now.Add(-lockMargin)):
+		return name, data, lockExpired
+	}
+	return name, data, lockHeld
 }
 
 // processUses reports whether any visible process names dir in its command
@@ -183,8 +211,8 @@ func mentions(arg, dir string) bool {
 	return false
 }
 
-// removeStaleLock unlinks a lock bisyncLock proved stale, unless it changed.
-func removeStaleLock(env Env, work, name string, data []byte) error {
+// removeLock unlinks a lock bisyncLock judged, unless it changed since.
+func removeLock(env Env, work, name string, data []byte) error {
 	fd, err := openHomeDir(env.Home, false, splitPath(work)...)
 	if err != nil {
 		return err
@@ -199,24 +227,103 @@ func removeStaleLock(env Env, work, name string, data []byte) error {
 
 var errLockChanged = errors.New("lock_changed")
 
-// resumeInterrupted resumes, one at a time, every account's interrupted first
-// pass. It runs once per daemon start; ctx ends with the daemon.
-func (c *Catalog) resumeInterrupted(ctx context.Context) {
-	type pending struct {
-		entry   resumableEntry
-		address string
+// forgetInterruptedPasses makes the account's stopped first passes
+// unresumable. A pass the person cancelled, or one that failed on its own,
+// waits for the person's next choice; only a daemon stop leaves a pass to
+// resume. The uncommitted new listings go, and a lock nobody holds with them.
+func forgetInterruptedPasses(env Env, e resumableEntry, address string) {
+	for _, work := range e.interruptedPasses(env, address) {
+		name, data, state := bisyncLock(env, work, time.Now())
+		if state == lockHeld || state == lockForeign {
+			continue
+		}
+		if name != "" && removeLock(env, work, name, data) != nil {
+			continue
+		}
+		names, fd, err := listHomeDir(env.Home, work)
+		if err != nil || fd < 0 {
+			continue
+		}
+		for _, n := range names {
+			if strings.HasSuffix(n, ".lst-new") {
+				_ = unix.Unlinkat(fd, n, 0)
+			}
+		}
+		unix.Close(fd)
 	}
-	var queue []pending
+}
+
+type pendingResume struct {
+	entry     resumableEntry
+	address   string
+	delay     time.Duration
+	notBefore time.Time
+}
+
+// interruptedQueue lists, once per daemon start, the accounts whose first
+// pass a stop interrupted, and marks them queued. The caller holds c.write.
+func (c *Catalog) interruptedQueue() []*pendingResume {
+	var queue []*pendingResume
 	accounts, _ := c.accounts()
 	for _, a := range accounts {
 		if e, ok := a.entry.(resumableEntry); ok && e.Available(c.env) && len(e.interruptedPasses(c.env, a.address)) > 0 {
-			queue = append(queue, pending{e, a.address})
-			c.markResume(key{e.Provider(), a.address}, resumeQueued)
+			queue = append(queue, &pendingResume{entry: e, address: a.address, delay: c.resumeFirst})
+			services := map[string]bool{}
+			for _, w := range e.interruptedPasses(c.env, a.address) {
+				services[e.passService(w)] = true
+			}
+			c.relay.mu.Lock()
+			if c.relay.resume == nil {
+				c.relay.resume = map[key]resumeNote{}
+			}
+			c.relay.resume[key{e.Provider(), a.address}] = resumeNote{resumeQueued, services}
+			c.relay.mu.Unlock()
 		}
 	}
-	for _, p := range queue {
-		c.resumeAccount(ctx, p.entry, p.address)
+	return queue
+}
+
+// resumeInterrupted resumes the queued first passes, one pass at a time. An
+// account that must wait does not hold up the others. ctx ends with the
+// daemon.
+func (c *Catalog) resumeInterrupted(ctx context.Context, queue []*pendingResume) {
+	for len(queue) > 0 && ctx.Err() == nil {
+		next := queue[:0]
+		wake := time.Now().Add(c.resumeMax)
+		for _, p := range queue {
+			if now := time.Now(); now.Before(p.notBefore) {
+				next = append(next, p)
+				wake = minTime(wake, p.notBefore)
+				continue
+			}
+			switch c.tryResume(ctx, p.entry, p.address) {
+			case resumeDone:
+				continue
+			case resumeWait:
+				p.notBefore = time.Now().Add(c.resumePoll)
+			case resumeRetry:
+				p.notBefore = time.Now().Add(p.delay)
+				p.delay = min(2*p.delay, c.resumeMax)
+			}
+			next = append(next, p)
+			wake = minTime(wake, p.notBefore)
+		}
+		queue = next
+		if len(queue) == 0 {
+			return
+		}
+		select {
+		case <-ctx.Done():
+		case <-time.After(time.Until(wake)):
+		}
 	}
+}
+
+func minTime(a, b time.Time) time.Time {
+	if b.Before(a) {
+		return b
+	}
+	return a
 }
 
 func (c *Catalog) markResume(k key, mark resumeMark) {
@@ -226,10 +333,10 @@ func (c *Catalog) markResume(k key, mark resumeMark) {
 		delete(c.relay.resume, k)
 		return
 	}
-	if c.relay.resume == nil {
-		c.relay.resume = map[key]resumeMark{}
+	if note, ok := c.relay.resume[k]; ok {
+		note.mark = mark
+		c.relay.resume[k] = note
 	}
-	c.relay.resume[k] = mark
 }
 
 type resumeOutcome int
@@ -240,23 +347,21 @@ const (
 	resumeRetry               // the provider or the home could not take it yet
 )
 
-// resumeAccount waits while something else holds the account's pass, backs
-// off while the provider is unreachable or the home is full, and otherwise
-// resumes once. A failed resume stays failed until the person signs in again.
-func (c *Catalog) resumeAccount(ctx context.Context, e resumableEntry, address string) {
-	delay := c.resumeFirst
-	for ctx.Err() == nil {
-		wait := c.resumePoll
-		switch c.tryResume(ctx, e, address) {
-		case resumeDone:
-			return
-		case resumeRetry:
-			wait, delay = delay, min(2*delay, c.resumeMax)
-		}
-		select {
-		case <-ctx.Done():
-		case <-time.After(wait):
-		}
+// slotFree reports whether the relay may take a new attempt: none is running
+// and the last one's worker has finished its cleanup. The caller holds
+// relay.mu.
+func (r *relay) slotFree() bool {
+	if r.a == nil {
+		return true
+	}
+	if !finished(r.a.state) {
+		return false
+	}
+	select {
+	case <-r.a.done:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -283,7 +388,7 @@ func (c *Catalog) tryResume(ctx context.Context, e resumableEntry, address strin
 		return resumeDone
 	}
 	c.relay.mu.Lock()
-	busy := c.relay.a != nil && !finished(c.relay.a.state)
+	busy := !c.relay.slotFree()
 	c.relay.mu.Unlock()
 	if busy {
 		c.write.Unlock()
@@ -299,7 +404,7 @@ func (c *Catalog) tryResume(ctx context.Context, e resumableEntry, address strin
 	}
 	var locks []stale
 	for _, w := range works {
-		switch name, data, state := bisyncLock(c.env, w); state {
+		switch name, data, state := bisyncLock(c.env, w, c.now()); state {
 		case lockHeld:
 			c.write.Unlock()
 			log("waiting", "lock_held")
@@ -313,16 +418,31 @@ func (c *Catalog) tryResume(ctx context.Context, e resumableEntry, address strin
 			locks = append(locks, stale{w, name, data})
 		}
 	}
+	// A process that finished the pass between the first look and the lock
+	// check has committed its listings: that pair is no longer a first pass.
+	for _, w := range works {
+		if !interruptedResync(c.env, w) {
+			c.write.Unlock()
+			return resumeWait
+		}
+	}
 	runCtx, cancel := context.WithCancel(ctx)
 	a := &attempt{id: c.now().UTC().Format("20060102T150405.000000000"), provider: k.provider, address: address, relogin: true, resume: true, state: "completing", syncing: true, cancel: cancel, until: c.now().Add(100 * 365 * 24 * time.Hour), existing: map[string]bool{address: true}, done: make(chan struct{})}
+	// startLogin does not take c.write: claim the slot only if it is still free.
 	c.relay.mu.Lock()
+	if !c.relay.slotFree() {
+		c.relay.mu.Unlock()
+		c.write.Unlock()
+		cancel()
+		return resumeWait
+	}
 	c.relay.a = a
 	c.relay.mu.Unlock()
 	// A library already syncing shares the account's native config; its
 	// client stops until the resumed pass ends, as for a chosen first pass.
 	c.sync.stop(k)
 	for _, l := range locks {
-		if err := removeStaleLock(c.env, l.work, l.name, l.data); err != nil {
+		if err := removeLock(c.env, l.work, l.name, l.data); err != nil {
 			c.finishResume(a, err)
 			c.reconcile()
 			c.write.Unlock()
@@ -349,7 +469,8 @@ func (c *Catalog) tryResume(ctx context.Context, e resumableEntry, address strin
 		return resumeDone
 	}
 	// A provider that was unreachable (a boot before the network) is retried;
-	// any other failure is the resume's own and is shown to the person.
+	// any other failure is the resume's own and is shown to the person. Like
+	// a chosen pass that failed, it then waits for the person's next choice.
 	for _, s := range e.Check(ctx, c.env, address) {
 		if s.State == StateUnreachable {
 			c.markResume(k, resumeQueued)
@@ -357,6 +478,9 @@ func (c *Catalog) tryResume(ctx context.Context, e resumableEntry, address strin
 			return resumeRetry
 		}
 	}
+	c.write.Lock()
+	forgetInterruptedPasses(c.env, e, address)
+	c.write.Unlock()
 	c.markResume(k, resumeFailed)
 	log("failed", "tool_failed")
 	return resumeDone
@@ -381,4 +505,25 @@ func (c *Catalog) finishResume(a *attempt, err error) bool {
 	a.stop()
 	close(a.done)
 	return removed
+}
+
+// resumeView applies the daemon's resume outcome to the services whose first
+// pass was stopped. The tool alone sees only an unready or unknown pair.
+// Concrete states (rejected login, unreachable, full) stand.
+func resumeView(note resumeNote, services []Service) {
+	if note.mark == 0 {
+		return
+	}
+	for i := range services {
+		s := &services[i]
+		open := s.State == StateUnknown || s.State == StateOK || (s.State == StateSyncFailed && s.Failure == InitialSyncIncomplete)
+		if !note.services[s.ID] || !open {
+			continue
+		}
+		if note.mark == resumeQueued {
+			s.State, s.Failure = StateSyncing, ""
+		} else {
+			s.State, s.Failure = StateSyncFailed, InitialSyncResumeFailed
+		}
+	}
 }

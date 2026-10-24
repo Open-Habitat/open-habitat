@@ -431,7 +431,8 @@ func (m *microsoft) resumeInitial(ctx context.Context, env Env, address string, 
 		return err
 	}
 	for _, r := range remotes {
-		if !slices.Contains(works, microsoftWork(address, r.Name)) || microsoftReady(env, address, r.Name) {
+		work := microsoftWork(address, r.Name)
+		if !slices.Contains(works, work) || !interruptedResync(env, work) {
 			continue
 		}
 		if err := microsoftInitialPass(ctx, env, address, r); err != nil {
@@ -439,6 +440,13 @@ func (m *microsoft) resumeInitial(ctx context.Context, env Env, address string, 
 		}
 	}
 	return nil
+}
+
+func (*microsoft) passService(work string) string {
+	if filepath.Base(work) == "onedrive" {
+		return "onedrive"
+	}
+	return "sharepoint"
 }
 
 func (m *microsoft) SyncCommand(env Env, address string) (Command, bool) {

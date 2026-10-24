@@ -20,7 +20,7 @@ type relay struct {
 	a  *attempt
 	// resume marks accounts whose interrupted first pass the daemon queued
 	// or failed to resume since it started.
-	resume map[key]resumeMark
+	resume map[key]resumeNote
 }
 
 type attempt struct {
@@ -562,6 +562,11 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			if syncErr != nil {
 				// Keep the native login and partial files visible after failure.
 				// No automatic resync: another initial choice must be explicit.
+				// Only a daemon stop (the attempt still live, its context ended)
+				// leaves the pass for the daemon to resume at its next start.
+				if r, ok := fe.(resumableEntry); ok && (!c.live(a) || ctx.Err() == nil) {
+					forgetInterruptedPasses(c.env, r, address)
+				}
 				c.reconcile()
 				c.write.Unlock()
 				c.failAttempt(a, syncErr)

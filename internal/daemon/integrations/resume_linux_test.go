@@ -4,12 +4,14 @@ package integrations
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -243,6 +245,9 @@ func TestResumeRetriesUnreachableAndNamesItsFailure(t *testing.T) {
 		s := dropboxService(t, c)
 		return s["state"] == string(StateSyncFailed) && s["failure"] == InitialSyncResumeFailed
 	})
+	if interruptedResync(env, dropboxWork(address)) {
+		t.Fatal("a failed resume was left for the next daemon start")
+	}
 	data, _ := os.ReadFile(filepath.Join(env.Home, "resyncs"))
 	time.Sleep(200 * time.Millisecond)
 	if again, _ := os.ReadFile(filepath.Join(env.Home, "resyncs")); string(again) != string(data) {
@@ -288,6 +293,14 @@ func TestResumeWithNativeRclone(t *testing.T) {
 	if rclone == "" {
 		t.Skip("set OH_TEST_RCLONE to the pinned rclone 1.71.2")
 	}
+	// A restart right after the kill finds an unexpired lock, which the
+	// daemon removes; a later one finds it expired, and rclone takes it over.
+	for _, expired := range []bool{false, true} {
+		t.Run(fmt.Sprint("expired=", expired), func(t *testing.T) { resumeWithNativeRclone(t, rclone, expired) })
+	}
+}
+
+func resumeWithNativeRclone(t *testing.T, rclone string, expired bool) {
 	env := dropboxEnv(t)
 	env.Config.Tools["rclone"] = rclone
 	address := "p@example.test"
@@ -319,6 +332,20 @@ func TestResumeWithNativeRclone(t *testing.T) {
 	if !interruptedResync(env, dropboxWork(address)) {
 		entries, _ := os.ReadDir(work)
 		t.Fatal("killed pass did not leave the live state", entries)
+	}
+	if expired {
+		locks, _ := filepath.Glob(filepath.Join(work, "*.lck"))
+		if len(locks) != 1 {
+			t.Fatal("killed pass left no lock", locks)
+		}
+		data, _ := os.ReadFile(locks[0])
+		var lock map[string]any
+		if err := json.Unmarshal(data, &lock); err != nil {
+			t.Fatal(err)
+		}
+		lock["TimeExpires"] = time.Now().Add(-time.Hour).UTC().Format(time.RFC3339Nano)
+		data, _ = json.Marshal(lock)
+		os.WriteFile(locks[0], data, 0600)
 	}
 
 	c := New(env, []Entry{&dropbox{}}, nil, WithQuota(func() Room { return Room{Free: 1 << 30, OK: true} }), WithResumeTiming(20*time.Millisecond, 20*time.Millisecond, 80*time.Millisecond))
@@ -381,5 +408,174 @@ func TestMicrosoftResumesOnlyTheInterruptedLibrary(t *testing.T) {
 	data, _ := os.ReadFile(filepath.Join(env.Home, "resyncs"))
 	if strings.TrimSpace(string(data)) != filepath.Join(env.Home, microsoftWork(address, "onedrive")) {
 		t.Fatalf("resynced %q", data)
+	}
+}
+
+func TestBisyncLockJudgement(t *testing.T) {
+	env := Env{Home: newHome(t)}
+	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
+	holder := exec.Command("/bin/sh", "-c", "sleep 600; :")
+	holder.Args[0] = "/opt/tools/rclone"
+	if err := holder.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { holder.Process.Kill(); holder.Wait() }()
+	dead := deadPID(t)
+	for _, tc := range []struct {
+		name string
+		lock func(abs string) string
+		want lockState
+	}{
+		{"none", nil, lockAbsent},
+		// Nobody can take an unexpired lock over: removing it is safe.
+		{"unexpired, dead holder", func(abs string) string { return lockAt(abs, dead, now.Add(time.Minute)) }, lockStale},
+		// rclone takes an expired lock over itself; removing it could race that.
+		{"expired, dead holder", func(abs string) string { return lockAt(abs, dead, now.Add(-time.Minute)) }, lockExpired},
+		{"about to expire", func(abs string) string { return lockAt(abs, dead, now.Add(5*time.Second)) }, lockHeld},
+		{"unreadable", func(string) string { return "{\"Sess" }, lockStale},
+		{"live rclone", func(abs string) string { return lockAt(abs, holder.Process.Pid, now.Add(time.Minute)) }, lockHeld},
+		{"another pair", func(abs string) string { return lockAt(abs+"-other", dead, now.Add(time.Minute)) }, lockForeign},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			work := ".config/test-lock/" + strings.ReplaceAll(tc.name, " ", "-")
+			abs := filepath.Join(env.Home, work)
+			os.MkdirAll(abs, 0700)
+			if tc.lock != nil {
+				os.WriteFile(filepath.Join(abs, "pair.lck"), []byte(tc.lock(abs)), 0600)
+			}
+			if _, _, got := bisyncLock(env, work, now); got != tc.want {
+				t.Fatalf("bisyncLock = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func lockAt(work string, pid int, expires time.Time) string {
+	return fmt.Sprintf(`{"Session":%q,"PID":"%d","TimeRenewed":"2026-10-23T04:27:48Z","TimeExpires":%q}`, filepath.Join(work, "pair"), pid, expires.Format(time.RFC3339Nano))
+}
+
+// A first pass the person stopped, or one that failed on its own, is not
+// resumed by the next daemon start: only a daemon stop leaves one to resume.
+func TestStoppedFirstPassIsNotResumed(t *testing.T) {
+	for _, how := range []string{"cancelled", "failed"} {
+		t.Run(how, func(t *testing.T) {
+			env := dropboxEnv(t)
+			email := "p@example.test"
+			var exchanges atomic.Int32
+			d := syntheticDropbox(t, &email, &exchanges)
+			c := New(env, []Entry{d}, nil, WithQuota(func() Room { return Room{Free: 2048, OK: true} }), WithResumeTiming(20*time.Millisecond, 20*time.Millisecond, 80*time.Millisecond))
+			ctx, cancel := context.WithCancel(context.Background())
+			c.Start(ctx)
+			h := c.Handler(allow)
+			call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "dropbox"})
+			view := waitState(t, h, ownerA, "open_url")
+			id := view["attempt_id"].(string)
+			call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "redirect", "attempt_id": id, "redirect_url": dropboxPaste(t, view)})
+			waitState(t, h, ownerA, "choose_folders")
+			work := filepath.Join(env.Home, dropboxWork(email))
+			// The pass has listed both sides when it stops, as a real one has.
+			os.MkdirAll(work, 0700)
+			for _, name := range []string{"pair.path1.lst-new", "pair.path2.lst-new"} {
+				os.WriteFile(filepath.Join(work, name), nil, 0600)
+			}
+			if how == "cancelled" {
+				os.WriteFile(filepath.Join(env.Home, "hold-resync"), nil, 0600)
+			} else {
+				os.WriteFile(filepath.Join(env.Home, "resync-fail"), nil, 0600)
+			}
+			call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"all"}})
+			if how == "cancelled" {
+				waitFor(t, "first pass", func() bool { return exists(filepath.Join(env.Home, "resyncs")) })
+				call(t, h, "DELETE", LoginPath, ownerA, map[string]any{"action": "cancel", "attempt_id": id})
+			}
+			waitState(t, h, ownerA, "failed")
+			c.relay.mu.Lock()
+			done := c.relay.a.done
+			c.relay.mu.Unlock()
+			<-done
+			cancel()
+			c.sync.stopAll()
+			if interruptedResync(env, dropboxWork(email)) {
+				t.Fatal("a stopped pass was left resumable")
+			}
+			os.Remove(filepath.Join(env.Home, "hold-resync"))
+			os.Remove(filepath.Join(env.Home, "resync-fail"))
+			before, _ := os.ReadFile(filepath.Join(env.Home, "resyncs"))
+
+			// The next daemon start.
+			next := New(env, []Entry{d}, nil, WithQuota(func() Room { return Room{Free: 2048, OK: true} }), WithResumeTiming(20*time.Millisecond, 20*time.Millisecond, 80*time.Millisecond))
+			ctx, cancel = context.WithCancel(context.Background())
+			defer cancel()
+			next.Start(ctx)
+			defer next.sync.stopAll()
+			time.Sleep(200 * time.Millisecond)
+			if after, _ := os.ReadFile(filepath.Join(env.Home, "resyncs")); string(after) != string(before) {
+				t.Fatal("a stopped first pass was resumed")
+			}
+			if s := dropboxService(t, next); s["failure"] != InitialSyncIncomplete {
+				t.Fatalf("card: %v", s)
+			}
+		})
+	}
+}
+
+// An account that must wait does not hold up another account's resume.
+func TestWaitingAccountDoesNotBlockOthers(t *testing.T) {
+	env := dropboxEnv(t)
+	os.MkdirAll(filepath.Join(env.Home, dropboxDir), 0700)
+	held := filepath.Join(env.Home, dropboxWork("a@example.test"))
+	holder := exec.Command("/bin/sh", "-c", "sleep 600; :", "holder", "--workdir", held)
+	if err := holder.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { holder.Process.Kill(); holder.Wait() }()
+	interruptedDropbox(t, env, "a@example.test", lockJSON(held, holder.Process.Pid))
+	interruptedDropbox(t, env, "b@example.test", "")
+	c := New(env, []Entry{&dropbox{}}, nil, WithQuota(func() Room { return Room{Free: 2048, OK: true} }), WithResumeTiming(20*time.Millisecond, 20*time.Millisecond, 80*time.Millisecond))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c.Start(ctx)
+	defer c.sync.stopAll()
+	waitFor(t, "the free account's resume", func() bool {
+		_, ready := (&dropbox{}).SyncCommand(env, "b@example.test")
+		return ready
+	})
+	if _, ready := (&dropbox{}).SyncCommand(env, "a@example.test"); ready {
+		t.Fatal("held pair resumed")
+	}
+}
+
+// A Microsoft library whose resume failed shows it, though the service's
+// status probe alone reports an unready library as unknown or hides it
+// behind a ready sibling.
+func TestMicrosoftResumeOutcomeIsShownPerService(t *testing.T) {
+	env := microsoftEnv(t)
+	address := "person@example.test"
+	sp := "sp-" + strings.Repeat("ab", 12)
+	os.MkdirAll(filepath.Join(env.Home, microsoftDir), 0700)
+	config := fmt.Sprintf("[onedrive]\ndescription = cloud/onedrive/%[1]s\n\n[%[2]s]\ndescription = cloud/sharepoint/t--%[1]s/site/docs\n", address, sp)
+	os.WriteFile(filepath.Join(env.Home, microsoftDir, address+".conf"), []byte(config), 0600)
+	work := filepath.Join(env.Home, microsoftWork(address, "onedrive"))
+	os.MkdirAll(work, 0700)
+	os.WriteFile(filepath.Join(work, "s.path1.lst-new"), nil, 0600)
+	m := &microsoft{}
+	affected := map[string]bool{}
+	for _, w := range m.interruptedPasses(env, address) {
+		affected[m.passService(w)] = true
+	}
+	for _, mark := range []resumeMark{resumeQueued, resumeFailed} {
+		services := []Service{{ID: "onedrive", State: StateUnknown}, {ID: "sharepoint", State: StateOK}, {ID: "mail", State: StateOK}}
+		resumeView(resumeNote{mark, affected}, services)
+		want := Service{ID: "onedrive", State: StateSyncing}
+		if mark == resumeFailed {
+			want = Service{ID: "onedrive", State: StateSyncFailed, Failure: InitialSyncResumeFailed}
+		}
+		if services[0] != want || services[1].State != StateOK || services[2].State != StateOK {
+			t.Fatalf("mark %v: %+v", mark, services)
+		}
+	}
+	services := []Service{{ID: "onedrive", State: StateLoginExpired}}
+	if resumeView(resumeNote{resumeFailed, affected}, services); services[0].State != StateLoginExpired {
+		t.Fatal("a rejected login was hidden", services)
 	}
 }

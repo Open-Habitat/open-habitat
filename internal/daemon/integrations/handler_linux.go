@@ -260,6 +260,15 @@ func (c *Catalog) remove(w http.ResponseWriter, r *http.Request, e Entry, addres
 		fail(w, 409, string(AccountMissing))
 		return
 	}
+	// A resumed first pass runs without c.write but may hold the provider's
+	// native lock for hours; never queue a sibling's removal behind it.
+	c.relay.mu.Lock()
+	sibling := c.relay.a != nil && c.relay.a.resume && !finished(c.relay.a.state) && c.relay.a.provider == e.Provider() && c.relay.a.address != address
+	c.relay.mu.Unlock()
+	if sibling {
+		fail(w, 503, "native_unavailable")
+		return
+	}
 	if !c.abandonFor(e.Provider(), address) {
 		fail(w, 503, "native_unavailable")
 		return

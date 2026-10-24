@@ -129,8 +129,12 @@ func (*google) interruptedPasses(env Env, address string) []string {
 	return nil
 }
 func (d *google) resumeInitial(ctx context.Context, env Env, address string, _ []string) error {
+	if !interruptedResync(env, googleWork(address)) {
+		return nil
+	}
 	return d.ChooseFolders(ctx, env, address, []string{"all"})
 }
+func (*google) passService(string) string { return "drive" }
 func (d *google) SyncCommand(env Env, address string) (Command, bool) {
 	names, fd, err := listHomeDir(env.Home, googleWork(address))
 	if err != nil || fd < 0 {
