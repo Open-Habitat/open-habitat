@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: worker observation in the synthetic lab
@@ -11,6 +11,7 @@ originating_run: 01m5p82se1b3tv01fgfqw9xccz
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-10-24
 ---
 
 # Conversation title shows attachment Markdown when it falls back to the first message
@@ -28,3 +29,7 @@ The composer and the sent message no longer show these (`composer-attachment-chi
 ## Expected
 
 A title derived from the message text leaves out attachment reference lines and the host's `Attachment path:` lines, the way the sent bubble does (`messageText` in `web/src/components/AttachmentChips.tsx`). Whether this belongs in the browser's display of the fallback title or in the daemon's fallback/title excerpt (`internal/daemon/title_linux.go`) is open; a generated title may also echo file names, which is fine.
+
+## Acceptance Criteria
+
+- [x] First-message fallback titles omit whole-line attachment references and their matching host paths before truncation, without removing ordinary message content.

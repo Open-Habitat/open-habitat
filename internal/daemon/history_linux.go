@@ -741,11 +741,7 @@ func firstPrompt(s nativeSession, uid int) string {
 					text += " · " + skill.arguments
 				}
 			}
-			runes := []rune(strings.TrimSpace(text))
-			if len(runes) > 80 {
-				runes = runes[:80]
-			}
-			return prefixBytes(string(runes), 160)
+			return fallbackTitle(text)
 		}
 	}
 	return ""

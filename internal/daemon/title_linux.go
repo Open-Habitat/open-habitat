@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -109,6 +110,36 @@ func validTitle(title string) bool {
 		}
 	}
 	return true
+}
+
+// Match messageText in web/src/components/AttachmentChips.tsx: only whole
+// reference lines and paths paired with those references are attachment metadata.
+var titleAttachmentReference = regexp.MustCompile(`^!?\[[^\]\n]*\]\(/api/v1/attachments/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\)$`)
+var titleAttachmentPath = regexp.MustCompile(`^Attachment path: /.*/attachments/([0-9a-f-]{36})$`)
+
+func fallbackTitle(text string) string {
+	lines := strings.Split(text, "\n")
+	ids := make(map[string]bool)
+	kept := lines[:0]
+	for _, line := range lines {
+		if match := titleAttachmentReference.FindStringSubmatch(line); match != nil {
+			ids[match[1]] = true
+		} else {
+			kept = append(kept, line)
+		}
+	}
+	lines = kept
+	kept = lines[:0]
+	for _, line := range lines {
+		if match := titleAttachmentPath.FindStringSubmatch(line); match == nil || !ids[match[1]] {
+			kept = append(kept, line)
+		}
+	}
+	runes := []rune(strings.TrimSpace(strings.Join(kept, "\n")))
+	if len(runes) > 80 {
+		runes = runes[:80]
+	}
+	return prefixBytes(string(runes), 160)
 }
 
 // Keep the original topic for context, but let the latest user message set

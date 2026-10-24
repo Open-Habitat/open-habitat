@@ -88,15 +88,43 @@ func TestFirstPromptFitsSnapshotTitle(t *testing.T) {
 	}
 	for _, row := range []any{
 		map[string]any{"type": "session", "version": 3, "id": id, "cwd": home},
-		map[string]any{"type": "message", "id": "abc1", "message": map[string]any{"role": "user", "content": strings.Repeat("🙂", 80)}},
+		map[string]any{"type": "message", "id": "abc1", "message": map[string]any{"role": "user", "content": "![" + strings.Repeat("screenshot", 30) + "](/api/v1/attachments/11111111-1111-4111-8111-111111111111)\n" + strings.Repeat("🙂", 80) + "\nAttachment path: /home/person/attachments/11111111-1111-4111-8111-111111111111"}},
 	} {
 		b, _ := json.Marshal(row)
 		fmt.Fprintln(f, string(b))
 	}
 	f.Close()
 	prompt := firstPrompt(readNativeHeader(path, os.Getuid()), os.Getuid())
-	if prompt == "" || len(prompt) > 160 || !utf8.ValidString(prompt) {
+	if prompt != strings.Repeat("🙂", 40) || !utf8.ValidString(prompt) {
 		t.Fatalf("invalid fallback: %q", prompt)
+	}
+}
+
+func TestFallbackTitleStripsAttachmentMetadata(t *testing.T) {
+	const id = "11111111-1111-4111-8111-111111111111"
+	const other = "22222222-2222-4222-8222-222222222222"
+	const image = "![shot.png](/api/v1/attachments/" + id + ")"
+	const file = "[data.csv](/api/v1/attachments/" + other + ")"
+	const path = "Attachment path: /home/person/attachments/" + id
+	const otherPath = "Attachment path: /home/person/attachments/" + other
+	for _, tc := range []struct{ name, text, want string }{
+		{"image and file", "Mikä tässä on vialla?\n" + image + "\n" + file + "\n" + path + "\n" + otherPath, "Mikä tässä on vialla?"},
+		{"path before reference", path + "\n" + image + "\nInspect this", "Inspect this"},
+		{"attachments only", image + "\n" + path, ""},
+		{"empty", "", ""},
+		{"ordinary markdown", "[manual](https://example.org)\nKeep **this**", "[manual](https://example.org)\nKeep **this**"},
+		{"inline reference", "See " + image, "See " + image},
+		{"unpaired path", path, path},
+		{"other attachment path", image + "\n" + otherPath, otherPath},
+		{"relative path", image + "\nAttachment path: attachments/" + id, "Attachment path: attachments/" + id},
+		{"malformed reference", "![shot](/api/v1/attachments/not-an-id)", "![shot](/api/v1/attachments/not-an-id)"},
+		{"line breaks", "First\n" + image + "\n\nSecond\n" + path, "First\n\nSecond"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := fallbackTitle(tc.text); got != tc.want {
+				t.Fatalf("fallback = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 
