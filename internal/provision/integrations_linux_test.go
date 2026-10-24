@@ -315,14 +315,20 @@ func TestIntegrationSecretNeverLeaves(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// A Dropbox app set from the browser returns its App key only.
+	const dropboxSecret = "h2m5c9xj4ub7ye1"
+	dropboxReply, _ := EncodeReply(handler(context.Background(), Request{Version: 1, Operation: OpIntegrationSet, Provider: "dropbox", ID: "0", Actor: "42", Fields: map[string]string{"client_id": "k7c2r9wq4mz1xa0", "client_secret": dropboxSecret}}))
+	if !bytes.Contains(dropboxReply, []byte("k7c2r9wq4mz1xa0")) || !strings.Contains(fileText(t, w.IntegrationsFile), dropboxSecret) {
+		t.Fatalf("dropbox set: %s\n%s", dropboxReply, fileText(t, w.IntegrationsFile))
+	}
 	list, _ := EncodeReply(handler(context.Background(), Request{Version: 1, Operation: OpIntegrationList, Provider: "all", ID: "0"}))
 	record, _ := os.ReadFile(filepath.Join(w.Dir, integrationState))
-	for name, b := range map[string][]byte{"reply": reply, "list": list, "record": record, "log": logged.Bytes(), "events": []byte(strings.Join(events, "\n"))} {
-		if bytes.Contains(b, []byte(testGoogleSecret)) || bytes.Contains(b, []byte("dropbox-secret")) {
+	for name, b := range map[string][]byte{"reply": reply, "dropbox reply": dropboxReply, "list": list, "record": record, "log": logged.Bytes(), "events": []byte(strings.Join(events, "\n"))} {
+		if bytes.Contains(b, []byte(testGoogleSecret)) || bytes.Contains(b, []byte("dropbox-secret")) || bytes.Contains(b, []byte(dropboxSecret)) {
 			t.Fatalf("%s carries a secret: %s", name, b)
 		}
 	}
-	if len(events) != 1 || events[0] != "set_integration_app google 42" || !strings.Contains(logged.String(), `"outcome":"accepted"`) {
+	if len(events) != 2 || events[0] != "set_integration_app google 42" || events[1] != "set_integration_app dropbox 42" || !strings.Contains(logged.String(), `"outcome":"accepted"`) {
 		t.Fatalf("events %v log %s", events, logged.String())
 	}
 	leak := strings.Replace(string(reply), `"usable":true`, `"usable":true,"client_secret":"x"`, 1)

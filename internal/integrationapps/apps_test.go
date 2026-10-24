@@ -26,6 +26,11 @@ func TestValidIsTheDaemonRuleAndTheProviderFormat(t *testing.T) {
 		{"dropbox", map[string]string{"client_id": "p3n8vq1zt6ka0rw", "client_secret": "h2m5c9xj4ub7ye1"}, true, true},
 		{"dropbox", map[string]string{"client_id": "p3n8vq1zt6ka0rw", "client_secret": "a.b"}, false, false},
 		{"dropbox", map[string]string{"client_id": "same", "client_secret": "same"}, true, false},
+		// The App key and App secret share one Settings page; the key pasted
+		// twice is refused whatever its case.
+		{"dropbox", map[string]string{"client_id": "p3n8vq1zt6ka0rw", "client_secret": "P3N8VQ1ZT6KA0RW"}, true, false},
+		{"dropbox", map[string]string{"client_id": "p3n8vq1zt6ka0rw"}, false, false},
+		{"dropbox", map[string]string{"client_id": "p3n8vq1zt6ka0rw", "client_secret": "h2m5c9xj4ub7ye1", "tenant_id": "x"}, true, false},
 		{"dropbox", map[string]string{"client_id": strings.Repeat("a", 257), "client_secret": "b"}, false, false},
 		{"microsoft", map[string]string{"client_id": guid, "tenant_id": other}, true, true},
 		// Single tenant only: no audience keyword, not even by hand.
