@@ -33,7 +33,7 @@ type controlIntegrations struct {
 var integrationRejections = map[string]string{
 	"browser_setup_disabled":    "site.json integrations.browser_setup is false, so app credentials are root's to edit in integrations.json; set it to true and run host apply to allow this",
 	"host_busy":                 "a host operation (apply, prepare or upgrade) holds the maintenance lock; nothing was changed, run this again after it ends",
-	"integrations_file_invalid": "/opt/open-habitat/integrations.json is absent, not root's, or not one JSON object; run host apply or repair the file as root",
+	"integrations_file_invalid": "/opt/open-habitat/integrations.json is absent, not root's, or not one JSON object, or /var/lib/open-habitat/host is not root's private directory; run host apply or repair it as root",
 	"integration_refused":       "the broker refused the change; nothing was written",
 }
 

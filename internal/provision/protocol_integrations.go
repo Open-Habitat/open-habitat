@@ -25,7 +25,10 @@ const (
 	// HostBusy means host apply, prepare or upgrade holds the operation lock.
 	HostBusy Failure = "host_busy"
 	// IntegrationsFile means the file is absent, not root's, or not one JSON
-	// object the change could be spliced into; only root can repair it.
+	// object the change could be spliced into, or the host operation lock
+	// directory is not root's private directory; only root can repair it. A
+	// section the current rules call unusable is not a broken file: the
+	// broker replaces or removes it like any other.
 	IntegrationsFile Failure = "integrations_file_invalid"
 )
 

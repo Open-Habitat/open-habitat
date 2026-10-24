@@ -249,10 +249,63 @@ func TestIntegrationWritesShareTheHostOperationLock(t *testing.T) {
 	if r := googleSet(w, "42"); r.Failure != "" {
 		t.Fatalf("after maintenance: %+v", r)
 	}
-	// The broker never creates the host's lock directory.
+	// An installation that never ran host apply has no lock directory yet;
+	// the broker creates it private, as host apply would, and writes.
 	os.Remove(w.HostLock)
-	if r := googleSet(w, "42"); r.Failure != IntegrationsFile || !fileAbsent(w.HostLock) {
+	if r := integrationClear(w, "google", "42"); r.Failure != "" {
 		t.Fatalf("missing host lock: %+v", r)
+	}
+	var st unix.Stat_t
+	if unix.Lstat(w.HostLock, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Mode&0777 != 0700 {
+		t.Fatalf("created lock directory mode %o", st.Mode)
+	}
+	// One it did not make private, or a link in its place, still refuses.
+	for _, c := range []struct {
+		name    string
+		prepare func()
+	}{
+		{"open", func() { os.Chmod(w.HostLock, 0755) }},
+		{"symlink", func() { os.Remove(w.HostLock); os.Symlink(filepath.Dir(w.IntegrationsFile), w.HostLock) }},
+	} {
+		c.prepare()
+		if r := googleSet(w, "42"); r.Failure != IntegrationsFile || fileText(t, w.IntegrationsFile) != operatorFile {
+			t.Fatalf("%s host lock: %+v", c.name, r)
+		}
+	}
+}
+
+// Jari's test server carried a Microsoft section written before the single
+// tenant rule (tenant common). The section is unusable, and the tab asks the
+// administrator to replace it: the broker replaces or clears it like any
+// other, keeping every other byte, and only a broken file needs root.
+func TestIntegrationReplacesASectionInvalidUnderCurrentRules(t *testing.T) {
+	const client, tenant = "5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3", "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903"
+	old := `{"client_id":"9e5f0a2b-7c41-4d3e-b8a6-1f2e3d4c5b6a", "tenant_id":"common"}`
+	legacy := strings.Replace(operatorFile, "\n}\n", ",\n  \"microsoft\": "+old+"\n}\n", 1)
+	set := Request{Version: 1, Operation: OpIntegrationSet, Provider: "microsoft", ID: "0", Actor: "42", Fields: map[string]string{"client_id": client, "tenant_id": tenant}}
+	section := integrationapps.Section("microsoft", set.Fields)
+
+	w := integrationWriter(t)
+	writeOperatorFile(t, w, legacy)
+	if a := appOf(t, w.Handle(context.Background(), set), "microsoft"); a == nil || !a.Usable || a.TenantID != tenant || a.Source != AppSourceSiteAdmin {
+		t.Fatalf("replace: %+v", a)
+	}
+	if got := fileText(t, w.IntegrationsFile); got != strings.Replace(legacy, old, string(section), 1) {
+		t.Fatalf("replace changed other bytes:\n%s", got)
+	}
+
+	writeOperatorFile(t, w, legacy)
+	if r := integrationClear(w, "microsoft", "42"); r.Failure != "" || appOf(t, r, "microsoft") != nil {
+		t.Fatalf("clear: %+v", r)
+	}
+	if got := fileText(t, w.IntegrationsFile); got != operatorFile {
+		t.Fatalf("clear changed other bytes:\n%q\nwant\n%q", got, operatorFile)
+	}
+
+	broken := legacy[:len(legacy)-3]
+	writeOperatorFile(t, w, broken)
+	if r := w.Handle(context.Background(), set); r.Failure != IntegrationsFile || fileText(t, w.IntegrationsFile) != broken {
+		t.Fatalf("malformed file: %+v", r)
 	}
 }
 

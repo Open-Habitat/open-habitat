@@ -201,15 +201,26 @@ func publishIntegrations(dir int, name string, b []byte) error {
 	return unix.Fsync(dir)
 }
 
-// hostLock takes the host operation lock without creating its directory. A
-// held lock is a maintenance window: wait briefly, then refuse.
+// hostLock takes the host operation lock. A held lock is a maintenance
+// window: wait briefly, then refuse. Like host apply, the broker creates the
+// private lock directory inside its trusted parent when it is missing: an
+// installation that never ran host apply has no maintenance to wait for, and
+// refusing there would lock the browser out of every write.
 func hostLock(ctx context.Context, path string, owner uint32) (int, error) {
 	fd, e := trustedParent(path, owner)
 	if e != nil {
 		return -1, e
 	}
 	defer unix.Close(fd)
-	l, e := unix.Openat(fd, filepath.Base(path), unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	name := filepath.Base(path)
+	e = unix.Mkdirat(fd, name, 0700)
+	if e == nil && unix.Fsync(fd) != nil {
+		return -1, errIntegrationFile
+	}
+	if e != nil && e != unix.EEXIST {
+		return -1, errIntegrationFile
+	}
+	l, e := unix.Openat(fd, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
 	if e != nil {
 		return -1, errIntegrationFile
 	}
