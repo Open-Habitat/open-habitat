@@ -159,7 +159,7 @@ try:
   s['stage']+=1;record.write_text(json.dumps(s));unit('reboot','--no-block')
 except Exception as e:
  print('VM_PROOF='+json.dumps({'status':'failed','scope':'host-boot-binding-session','reason':str(e)}),flush=True)
- subprocess.run(['journalctl','-b','-u','open-habitat-broker.service','-u','open-habitat-binding@guestone.service','-u','open-habitat-binding@guesttwo.service','-u','polkit.service','--no-pager','-o','cat'])
+ subprocess.run(['journalctl','-b','-u','open-habitat-broker.service','-u','open-habitat-binding@guestone.service','-u','open-habitat-binding@guesttwo.service','-u','polkit.service','--no-pager','-o','short-monotonic'])
  for n in names:
   subprocess.run(['getfacl','-cpn','/run/open-habitat','/run/open-habitat/users','/run/open-habitat/users/'+n])
   subprocess.run(['/opt/open-habitat/current/open-habitat','binding-activation-check',n])

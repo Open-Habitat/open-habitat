@@ -28,6 +28,11 @@ for f in seed['write_files']:
  checked(['systemd-tmpfiles','--create','/etc/tmpfiles.d/open-habitat.conf'])
  checked(['systemctl','daemon-reload'])
  checked(['systemctl','enable','open-habitat-broker.service','open-habitat-broker.socket','host-boot-binding-proof.service'])
+ # Under TCG, cloud-init and snapd keep later boots so busy that a broker
+ # NSS probe outlives its fixed 3s budget and startup refuses. The proof
+ # boots need neither; keep the product budgets and quiet the guest instead.
+ with open('/etc/cloud/cloud-init.disabled','w') as f:f.write('fixture proof boots\\n')
+ checked(['systemctl','mask','snapd.service','snapd.socket','snapd.seeded.service'])
  checked(['systemctl','start','open-habitat-broker.service'])
  checked(['/usr/local/sbin/host-boot-binding-proof','initialize'])
 '''+program[end:]

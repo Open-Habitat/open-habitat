@@ -49,9 +49,15 @@ add(state+'/broker.json',json.dumps({'version':1,'gateway_uid':21003,'gateway_gi
 add(state+'/allowlist.json',json.dumps({'version':1,'epoch':2,'ids':[{'id':'31001'},{'id':'31002'}]}), '0600')
 add(state+'/bindings.json',json.dumps({'version':1,'generation':2,'bindings':[{'id':'31001','uid':21001,'username':'agent-a'},{'id':'31002','uid':21002,'username':'agent-b'}]}), '0600')
 add(state+'/head.json',json.dumps({'version':1,'epoch':2,'generation':2}), '0600')
-for unit in ('open-habitat-broker.socket','open-habitat-broker.service','open-habitat-daemon@.socket','open-habitat-daemon@.service','open-habitat-agent@.socket','open-habitat-proc.service'):
-    content=(repo/'systemd'/unit).read_text()
-    add('/etc/systemd/system/'+unit,content)
+# Storage, proc, broker, binding-gate and listener units, the proc group and
+# the storage policy come from production `host prepare` inside the guest
+# (product-proof), after the quota home exists. Only the daemon service, which
+# apply installs, is copied here.
+add('/etc/systemd/system/open-habitat-daemon@.service',(repo/'systemd/open-habitat-daemon@.service').read_text())
+site=json.loads((repo/'site/example.json').read_text())
+for key in ('oauth_secret_file','tls_cert_file','tls_key_file'):site['gateway'][key]='/etc/open-habitat/prepare-unused'
+add('/etc/open-habitat/site.json',json.dumps(site),'0600')
+add('/etc/open-habitat/prepare-unused','synthetic-unused','0600')
 add('/etc/open-habitat/gateway.json',json.dumps({'component':'gateway','listen':'127.0.0.1:8443','tls_cert':'/etc/open-habitat/tls.crt','tls_key':'/etc/open-habitat/tls.key','gateway_uid':21003,'oauth':{'client_id':'fixture-client','client_secret':'fixture-secret','callback_url':'https://host.fixture:8443/auth/github/callback','origin':'https://host.fixture:8443'}}))
 add('/etc/systemd/system/open-habitat-revoke.socket',(repo/'systemd/open-habitat-revoke.socket').read_text().replace('Service=open-habitat-gateway.service','Service=product-gateway.service'))
 add('/etc/systemd/system/product-gateway.service','[Service]\nSockets=open-habitat-revoke.socket\nStateDirectory=open-habitat-gateway\nStateDirectoryMode=0700\nUser=open-habitat-gateway\nGroup=open-habitat-gateway\nEnvironment=SSL_CERT_FILE=/etc/open-habitat/fixture-ca.crt\nExecStart=/opt/open-habitat/current/open-habitat gateway exec --config /etc/open-habitat/gateway.json\nNoNewPrivileges=yes\nUMask=0077\n')
@@ -60,7 +66,7 @@ add('/usr/local/sbin/product-fake-provider', (repo/'test/vm/fake-provider.py').r
 add('/usr/local/sbin/product-proof', (repo/'test/vm/product-proof.py').read_bytes(),'0755')
 add('/usr/bin/gh', (repo/'test/vm/fake-gh.py').read_bytes(),'0755')
 add('/usr/bin/git', (repo/'test/vm/fake-git.py').read_bytes(),'0755')
-seed={'groups':['open-habitat-proc'],'users':users,'write_files':files,'runcmd':[
+seed={'users':users,'write_files':files,'runcmd':[
     ['mkdir','-p','/mnt/product','/opt/open-habitat/current'],
     ['mount','-o','ro','/dev/disk/by-label/PRODUCT','/mnt/product'],
     ['install','-m','0755','/mnt/product/open-habitat','/opt/open-habitat/current/open-habitat'],
@@ -80,7 +86,6 @@ seed={'groups':['open-habitat-proc'],'users':users,'write_files':files,'runcmd':
     ['chmod','0711','/etc/open-habitat-daemon','/etc/open-habitat-daemon/daemon','/etc/open-habitat-daemon/daemon/user-mappings'],
     ['chown','root:open-habitat-gateway','/etc/open-habitat'],
     ['chmod','0750','/etc/open-habitat'],
-    ['/bin/sh','-ec','gid=$(getent group open-habitat-proc | cut -d: -f3); case $gid in \"\"|*[!0-9]*) exit 1;; esac; sed -i \"s/@PROC_GID@/$gid/g\" /etc/systemd/system/open-habitat-proc.service'],
     ['/usr/bin/python3','/usr/local/sbin/product-proof']]}
 (run/'product-cloud-init.yaml').write_text('#cloud-config\n'+json.dumps(seed, separators=(',',':'))+'\n')
 (run/'product-cloud-init.yaml').chmod(0o600)

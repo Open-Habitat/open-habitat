@@ -264,13 +264,15 @@ assert any(cmd[:2]==['install','-m'] and cmd[-1]=='/opt/open-habitat/current/ope
 assert all(any(cmd[:2]==['install','-m'] and cmd[-1]=='/usr/bin/'+tool for cmd in c['runcmd']) for tool in ('setfacl','getfacl'))
 assert len([p for p in files if p.endswith('daemon.sock')])==0
 assert all(base64.b64decode(f['content']).find(b'PRODUCT_VM_TOKEN')==-1 for p,f in files.items() if p.startswith('/etc/open-habitat/'))
-assert '/etc/systemd/system/open-habitat-broker.socket' in files
+# Production host prepare owns the boot-guarded units; a hand copy would
+# bypass the storage and binding gates the sockets require.
+assert not any(p.startswith('/etc/systemd/system/open-habitat-'+u) for u in ('broker','storage','binding','proc','daemon@.socket','agent@') for p in files)
+assert '/etc/systemd/system/open-habitat-daemon@.service' in files and '/etc/open-habitat/site.json' in files
 # The routing guest explicitly uses a synthetic status adapter, not real Pi.
 selector=json.loads(base64.b64decode(files['/opt/open-habitat/pi-runtime.json']['content']))
 assert selector['node']=='/opt/open-habitat/fixture-pi/bin/node'
 assert b'"state":"usable"' in base64.b64decode(files[selector['node']]['content'])
 assert selector['entry'] in files and selector['manifest'] in files
-assert '/etc/systemd/system/open-habitat-daemon@.socket' in files
 assert '/var/lib/open-habitat/broker/bindings.json' in files
 assert 'identities' not in json.loads(base64.b64decode(files['/etc/open-habitat/gateway.json']['content']))['oauth']
 assert c['runcmd'][-1]==['/usr/bin/python3','/usr/local/sbin/product-proof']

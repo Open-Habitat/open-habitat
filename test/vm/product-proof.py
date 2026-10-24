@@ -41,6 +41,22 @@ try:
             block=Dqblk(hard=64*1024,valid=1)
             check(ctypes.CDLL(None,use_errno=True).syscall(ctypes.c_long(443),ctypes.c_int(home_fd),ctypes.c_uint(0x800008<<8),ctypes.c_uint(uid),ctypes.byref(block))==0,'fixture native quota setup')
     finally:os.close(home_fd)
+    # Production preparation publishes the storage policy for this home, the
+    # proc exemption group and the storage, binding-gate, broker and listener
+    # units. Socket units require that boot guard; never hand-install them.
+    uuid=subprocess.check_output(['blkid','-s','UUID','-o','value',quota_image],text=True).strip()
+    site_path='/etc/open-habitat/site.json'
+    site=json.loads(pathlib.Path(site_path).read_text());site['storage']['home_uuid']=uuid
+    pathlib.Path(site_path).write_text(json.dumps(site))
+    def prepare(*args):
+        p=subprocess.run(['/opt/open-habitat/current/open-habitat','host','prepare','--site',site_path,*args],capture_output=True,text=True,timeout=300)
+        check(p.returncode==0,'host prepare '+(p.stderr or p.stdout)[-300:].replace(':',' '))
+        return p.stdout
+    plan=json.loads(prepare('--dry-run','--json'))['data']['plan']
+    check(plan['approvable'],'host prepare plan not approvable')
+    outcome=json.loads(prepare('--approved-plan',plan['plan_id'],'--approve-disruption','--output=jsonl').splitlines()[-1])
+    check(outcome.get('event')=='result' and outcome['data']['outcome']=='prepared','host prepare outcome')
+    subprocess.run(['systemd-tmpfiles','--create','/etc/tmpfiles.d/open-habitat.conf'],check=True)
     for name,uid in zip(names,uids):
         home=pathlib.Path('/home')/name
         check(pwd.getpwnam(name).pw_uid==uid and home.stat().st_uid==uid and stat.S_IMODE(home.stat().st_mode)==0o700,'home identity')
@@ -55,31 +71,21 @@ try:
         (home/'SYNTHETIC-IDENTITY').chmod(0o600)
     check(pwd.getpwnam('open-habitat-gateway').pw_uid==gateway_uid,'gateway UID')
     # These are PRE-PROVISIONED static bindings, not a browser-driven JIT test.
-    runtime=pathlib.Path('/run/open-habitat');runtime.mkdir(exist_ok=True)
-    os.chown(runtime,0,gateway_uid);runtime.chmod(0o750)
-    root=runtime/'users';root.mkdir(exist_ok=True)
-    os.chown(root,0,gateway_uid);root.chmod(0o710)
-    for uid in uids:
-        subprocess.run(['setfacl','-n','-m',f'u:{uid}:--x,m::r-x',str(runtime)],check=True)
-        subprocess.run(['setfacl','-m',f'u:{uid}:--x',str(root)],check=True)
-    for name,uid in zip(names,uids):
-        p=root/name;p.mkdir();os.chown(p,0,0);p.chmod(0o710)
-        for allowed_uid in (gateway_uid,uid):
-            subprocess.run(['setfacl','-m',f'u:{allowed_uid}:--x',str(p)],check=True)
-        # Only the two named principals may search this directory. The mask
-        # still supplies the effective 0710 mode; the group entry grants none.
-        subprocess.run(['setfacl','-m','g::---',str(p)],check=True)
-    subprocess.run(['systemctl','daemon-reload'],check=True,stdout=subprocess.DEVNULL)
-    subprocess.run(['systemctl','start','open-habitat-broker.socket'],check=True,stdout=subprocess.DEVNULL)
-    broker=runtime/'broker.sock';st=broker.stat()
-    check(stat.S_ISSOCK(st.st_mode) and st.st_uid==0 and st.st_gid==gateway_uid and stat.S_IMODE(st.st_mode)==0o660,'broker socket ACL')
-    check(denied('agent-a',"import socket;s=socket.socket(socket.AF_UNIX);s.connect('/run/open-habitat/broker.sock')"),'cross user broker socket')
+    # The broker and its binding gate build the per-user runtime directories
+    # and named search ACLs, as on a production boot.
+    runtime=pathlib.Path('/run/open-habitat');root=runtime/'users'
+    # The broker and gate verify these exact files before restoring a listener.
     for name in names+['gateway']:
         config=(pathlib.Path('/etc/open-habitat/gateway.json') if name=='gateway'
                 else pathlib.Path('/etc/open-habitat-daemon/daemon/user-mappings')/('daemon-'+name+'.json'))
         gid=pwd.getpwnam('open-habitat-gateway' if name=='gateway' else name).pw_gid
         os.chown(config,0,gid);config.chmod(0o640)
         check(config.stat().st_uid==0 and config.stat().st_gid==gid and stat.S_IMODE(config.stat().st_mode)==0o640,'trusted config owner/mode')
+    subprocess.run(['systemctl','daemon-reload'],check=True,stdout=subprocess.DEVNULL)
+    subprocess.run(['systemctl','start','open-habitat-broker.socket'],check=True,stdout=subprocess.DEVNULL)
+    broker=runtime/'broker.sock';st=broker.stat()
+    check(stat.S_ISSOCK(st.st_mode) and st.st_uid==0 and st.st_gid==gateway_uid and stat.S_IMODE(st.st_mode)==0o660,'broker socket ACL')
+    check(denied('agent-a',"import socket;s=socket.socket(socket.AF_UNIX);s.connect('/run/open-habitat/broker.sock')"),'cross user broker socket')
     with open('/etc/hosts','a') as f:f.write('\n127.0.0.1 github.com api.github.com host.fixture\n')
     for name in names:
         subprocess.run(['systemctl','start','open-habitat-daemon@'+name+'.socket'],check=True,stdout=subprocess.DEVNULL)
