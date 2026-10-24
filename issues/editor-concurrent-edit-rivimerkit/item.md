@@ -8,6 +8,7 @@ priority: normal
 related: ['@proto-concurrent-file-edit']
 preparation: ready
 lane: unlaned
+collision: [internal/gateway/editor, web/src/components/BrowserEditor]
 ---
 
 # Editor: concurrent agent edits with line marks and a typing pause
