@@ -159,8 +159,8 @@ func TestGiteaCloneInterruptedAfterRestartAndExplicitActions(t *testing.T) {
 	}
 	// Each action acts only on the clone the directory records.
 	for body, want := range map[string]string{
-		`{"action":"remove","full_name":"ada/notes"}`:                                                         "not_interrupted", // not a GitHub clone
-		`{"action":"remove","source":"gitea","full_name":"bob/notes"}`:                                       "not_interrupted",
+		`{"action":"remove","full_name":"ada/notes"}`:                                                           "not_interrupted", // not a GitHub clone
+		`{"action":"remove","source":"gitea","full_name":"bob/notes"}`:                                          "not_interrupted",
 		`{"action":"restart","source":"gitea","connection_id":"` + bob + `","repository_id":103,"mode":"full"}`: "not_interrupted",
 	} {
 		if status, out := w.clones.action(body); status != 409 || code(out) != want {
