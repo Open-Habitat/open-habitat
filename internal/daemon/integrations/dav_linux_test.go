@@ -459,3 +459,40 @@ func TestDAVDiscoveryRefusesOtherSites(t *testing.T) {
 		}
 	})
 }
+
+// A provider path with brackets is one request, not a curl URL glob that
+// would multiply credentialed requests past discovery's bounds.
+func TestDAVBracketPathIsOneRequest(t *testing.T) {
+	binary, err := exec.LookPath("curl")
+	if err != nil {
+		t.Fatal("native curl test prerequisite missing")
+	}
+	ca, cert := syntheticTLS(t, t.TempDir())
+	var requests atomic.Int32
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		if r.URL.Path != "/dav/[1-3]/" {
+			w.WriteHeader(404)
+			return
+		}
+		w.WriteHeader(207)
+		fmt.Fprint(w, `<d:multistatus xmlns:d="DAV:"/>`)
+	}))
+	srv.TLS = &tls.Config{Certificates: []tls.Certificate{cert}}
+	srv.StartTLS()
+	defer srv.Close()
+	extraToolEnv = []string{"CURL_CA_BUNDLE=" + ca}
+	defer func() { extraToolEnv = nil }()
+	env := Env{Home: newHome(t), Config: Config{Tools: map[string]string{"curl": binary}}, FixtureTools: true}
+	d := &dav{CardDAV}
+	url := strings.Replace(srv.URL, "127.0.0.1", "localhost", 1) + "/dav/[1-3]/"
+	if err := d.Connect(t.Context(), env, PasswordAccount{Address: "person@example.test", URL: url, Username: "person", Password: "secret"}); err != nil {
+		t.Fatal(err)
+	}
+	if requests.Load() != 1 {
+		t.Fatalf("discovery sent %d requests", requests.Load())
+	}
+	if got := d.Check(t.Context(), env, "person@example.test"); got[0].State != StateOK || requests.Load() != 2 {
+		t.Fatalf("status %v after %d requests", got, requests.Load())
+	}
+}

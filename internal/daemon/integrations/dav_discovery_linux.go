@@ -236,7 +236,7 @@ func (d *dav) propfind(ctx context.Context, env Env, tool string, a PasswordAcco
 	}
 	ns, resource := davNamespace(d.provider)
 	body := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:" xmlns:x="%s"><d:prop><d:current-user-principal/><x:%s-home-set/></d:prop></d:propfind>`, ns, resource)
-	out, err := env.run(ctx, Command{Path: tool, Args: []string{"--disable", "--config", "-", "--silent", "--max-time", "10", "--resolve", pin, "--request", "PROPFIND", "--header", "Depth: 0", "--header", "Content-Type: application/xml; charset=utf-8", "--data-binary", body, "--write-out", `\n` + davStatusMark + ` %{http_code} %header{location}`}}, bytesReader(davConfig(a)))
+	out, err := env.run(ctx, Command{Path: tool, Args: []string{"--disable", "--config", "-", "--globoff", "--silent", "--max-time", "10", "--resolve", pin, "--request", "PROPFIND", "--header", "Depth: 0", "--header", "Content-Type: application/xml; charset=utf-8", "--data-binary", body, "--write-out", `\n` + davStatusMark + ` %{http_code} %header{location}`}}, bytesReader(davConfig(a)))
 	if errors.Is(err, ToolFailed) {
 		return 0, "", nil, ToolFailed
 	}

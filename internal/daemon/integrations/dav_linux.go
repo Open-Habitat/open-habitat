@@ -211,7 +211,8 @@ func (d *dav) probe(ctx context.Context, env Env, a PasswordAccount) (ServiceSta
 	}
 	// -q must be first: never read a user's default .curlrc. No redirects, URL
 	// credentials, verbose output or response bodies; secrets go only to stdin.
-	out, err := env.run(ctx, Command{Path: tool, Args: []string{"--disable", "--config", "-", "--silent", "--max-time", "10", "--resolve", pin, "--request", "PROPFIND", "--header", "Depth: 0", "--output", "/dev/null", "--write-out", "%{http_code}"}}, bytesReader(davConfig(a)))
+	// --globoff keeps a URL with brackets one request.
+	out, err := env.run(ctx, Command{Path: tool, Args: []string{"--disable", "--config", "-", "--globoff", "--silent", "--max-time", "10", "--resolve", pin, "--request", "PROPFIND", "--header", "Depth: 0", "--output", "/dev/null", "--write-out", "%{http_code}"}}, bytesReader(davConfig(a)))
 	if ctx.Err() != nil || err != nil {
 		return StateUnreachable, false
 	}
@@ -259,7 +260,7 @@ func (d *dav) Skill(env Env, address string) SkillAccount {
 	if !ok {
 		tool = "curl"
 	}
-	cmd := fmt.Sprintf("%s --disable --config ~/%s/%s.conf --silent --show-error", tool, d.dir(), address)
+	cmd := fmt.Sprintf("%s --disable --config ~/%s/%s.conf --globoff --silent --show-error", tool, d.dir(), address)
 	namespace, resource, mime := "urn:ietf:params:xml:ns:caldav", "calendar", "text/calendar"
 	if d.provider == CardDAV {
 		namespace, resource, mime = "urn:ietf:params:xml:ns:carddav", "addressbook", "text/vcard"
