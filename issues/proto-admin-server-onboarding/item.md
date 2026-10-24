@@ -1,6 +1,6 @@
 ---
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-24
 type: task
 reporter: jari
 status: in-progress
@@ -58,3 +58,7 @@ Jari 2026-10-23 on r4: the person's view is shown through the preview mode of di
 ### 2026-10-23T17:58:08Z · @jari
 
 Jari 2026-10-23 confirmed: the person's AI step uses 'Ehdotus ja lista' (r4 direction 1's step layout) inside the preview mode.
+
+### 2026-10-24T04:21:22Z · @jari
+
+Jari 2026-10-24 on r5 (repositories): 'Tapa ja lista' with names on the route is the form. A default repo the person cannot access is silently left out and only the admin sees it — e.g. team-workspace and management-workspace as defaults, the latter appearing only for people with access. In automatic checkout the already-fetching defaults stay visible in the chooser as locked 'forced selections' (requires a new chooser state). Skip mode with no defaults: the step is skipped and the Repot row disappears from the route.
