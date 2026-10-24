@@ -32,9 +32,12 @@ type applyStep struct {
 	phase string
 	run   func(context.Context) error
 }
+// An apply intent names the approval it belongs to: a rolled-forward binding
+// must never be accepted under the approval it replaced.
 type applyIntent struct {
 	Binding     string `json:"binding"`
 	OperationID string `json:"operation_id"`
+	PlanID      string `json:"plan_id"`
 }
 
 func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (r ApplyResult, resultErr error) {
@@ -338,7 +341,7 @@ func (l *Lock) rollApplyForward(o Operation, plan string, target Release, bindin
 	if e != nil || decodeOperation(b, &current) != nil || current != o || o.Kind != "apply" || o.Status != "running" || !earlyApplyPhase(o.Phase) || l.matchReceipt(o) != nil {
 		return Operation{}, ErrRecovery
 	}
-	intent, _ := json.Marshal(applyIntent{binding, o.ID})
+	intent, _ := json.Marshal(applyIntent{binding, o.ID, plan})
 	if e = replacePrivateAt(l.fd, o.ID+"-apply.json", intent); e != nil {
 		return Operation{}, e
 	}
@@ -351,7 +354,7 @@ func (l *Lock) rollApplyForward(o Operation, plan string, target Release, bindin
 func (l *Lock) applyIntentMatches(o Operation, binding string) bool {
 	b, e := readPrivateAt(l.fd, o.ID+"-apply.json", l.owner)
 	var intent applyIntent
-	return e == nil && strictJSON(b) == nil && json.Unmarshal(b, &intent) == nil && intent.Binding == binding && intent.OperationID == o.ID
+	return e == nil && strictJSON(b) == nil && json.Unmarshal(b, &intent) == nil && intent.Binding == binding && intent.OperationID == o.ID && intent.PlanID == o.PlanID
 }
 
 func (l *Lock) publishRecoveredFence(o Operation) error {
@@ -382,7 +385,17 @@ func applyCandidate(dir string, owner uint32, approval string) bool {
 	for _, name := range []string{"active.json", "active.json.next"} {
 		b, e := readPrivateAt(fd, name, owner)
 		var o Operation
-		if e == nil && decodeOperation(b, &o) == nil && o.Kind == "apply" && o.PlanID == approval {
+		if e != nil || decodeOperation(b, &o) != nil || o.Kind != "apply" {
+			continue
+		}
+		if o.PlanID == approval {
+			return true
+		}
+		// A rolled-forward receipt can precede its fence; the locked
+		// resumeApply decides whether that split is recoverable.
+		b, e = readPrivateAt(fd, o.ID+".json", owner)
+		var receipt Operation
+		if e == nil && decodeOperation(b, &receipt) == nil && receipt.ID == o.ID && receipt.Kind == "apply" && receipt.PlanID == approval {
 			return true
 		}
 	}

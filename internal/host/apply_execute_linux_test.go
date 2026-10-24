@@ -79,7 +79,7 @@ func TestApplyResumeReceiptFirstPublication(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			b, _ := json.Marshal(applyIntent{"binding", o.ID})
+			b, _ := json.Marshal(applyIntent{"binding", o.ID, o.PlanID})
 			if e = replacePrivateAt(l.fd, o.ID+"-apply.json", b); e != nil {
 				t.Fatal(e)
 			}

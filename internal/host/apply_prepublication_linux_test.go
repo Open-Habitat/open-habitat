@@ -144,7 +144,7 @@ func TestApplyPlanBindsPrepublicationContinuation(t *testing.T) {
 }
 
 func TestApplyPrepublicationRollForwardCompletesSameOperation(t *testing.T) {
-	for _, bad := range []string{"", "no_continuation", "other_record", "original_approval", "intent_written", "receipt_split"} {
+	for _, bad := range []string{"", "no_continuation", "other_record", "original_approval", "intent_written", "intent_written_original_approval", "receipt_split"} {
 		t.Run(bad, func(t *testing.T) {
 			dir, owner := operationFixture(t)
 			ctx := context.Background()
@@ -161,9 +161,14 @@ func TestApplyPrepublicationRollForwardCompletesSameOperation(t *testing.T) {
 				plan.Continuation = nil
 			}
 			req := ApplyRequest{SitePath: "/site.json", ApprovedPlan: approval}
-			if bad == "original_approval" {
+			if bad == "original_approval" || bad == "intent_written_original_approval" {
 				req.ApprovedPlan = original
 				plan.PlanID = original
+			}
+			if bad == "receipt_split" {
+				// The real observation cannot verify a split journal: the plan
+				// is neither this approval nor approvable.
+				plan = Plan{Inspection: Inspection{Target: successor, Checks: []Check{{"operation.fence", "fail", "recovery_required"}}}, PlanID: strings.Repeat("c", 64)}
 			}
 			phases := []string{}
 			done := false
@@ -187,14 +192,14 @@ func TestApplyPrepublicationRollForwardCompletesSameOperation(t *testing.T) {
 				return d.steps, nil
 			}
 			journalBefore := snapshot(t, dir)
-			if bad == "intent_written" || bad == "receipt_split" {
+			if bad == "intent_written" || bad == "intent_written_original_approval" || bad == "receipt_split" {
 				// An interrupted roll-forward: the new intent is durable, and for
 				// a split also the new receipt, but the fence still names the old.
 				l, e := openOperationLock(ctx, dir, owner, time.Now)
 				if e != nil {
 					t.Fatal(e)
 				}
-				b, _ := json.Marshal(applyIntent{"pilot9-site-and-product", fenced.ID})
+				b, _ := json.Marshal(applyIntent{"pilot9-site-and-product", fenced.ID, approval})
 				if e = replacePrivateAt(l.fd, fenced.ID+"-apply.json", b); e != nil {
 					t.Fatal(e)
 				}
@@ -207,11 +212,18 @@ func TestApplyPrepublicationRollForwardCompletesSameOperation(t *testing.T) {
 				}
 				l.Close()
 			}
+			journalInterrupted := snapshot(t, dir)
 			r, e := executeApply(ctx, req, d)
 			switch bad {
 			case "no_continuation", "other_record", "original_approval":
 				if !errors.Is(e, ErrRecovery) || len(phases) != 0 || snapshot(t, dir) != journalBefore {
 					t.Fatal("unproven takeover", r, e, phases)
+				}
+				return
+			case "intent_written_original_approval":
+				// The successor's inputs never run under the approval they replaced.
+				if !errors.Is(e, ErrRecovery) || len(phases) != 0 || snapshot(t, dir) != journalInterrupted {
+					t.Fatal("old approval accepted rolled intent", r, e, phases)
 				}
 				return
 			}

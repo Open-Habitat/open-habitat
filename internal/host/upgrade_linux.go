@@ -308,7 +308,7 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 			return r, ErrWorkBusy
 		}
 		o, e = l.begin("upgrade", p.PlanID, p.Target, func(o Operation) error {
-			b, _ := json.Marshal(applyIntent{binding, o.ID})
+			b, _ := json.Marshal(applyIntent{binding, o.ID, p.PlanID})
 			return replacePrivateAt(l.fd, o.ID+"-upgrade.json", b)
 		})
 		if e != nil {

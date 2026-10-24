@@ -132,7 +132,7 @@ func (l *Lock) Begin(kind, plan string, target Release) (Operation, error) {
 }
 func (l *Lock) BeginApply(plan string, target Release, binding string) (Operation, error) {
 	return l.begin("apply", plan, target, func(o Operation) error {
-		b, _ := json.Marshal(applyIntent{binding, o.ID})
+		b, _ := json.Marshal(applyIntent{binding, o.ID, plan})
 		return replacePrivateAt(l.fd, o.ID+"-apply.json", b)
 	})
 }
