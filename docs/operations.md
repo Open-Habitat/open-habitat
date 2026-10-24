@@ -55,9 +55,9 @@ are refused rather than adopted: they can add root hooks, ambient capabilities
 or extra groups despite correct base template bytes. Put resource budgets on
 user slices. Keep the declaration and referenced secret inputs unchanged while
 maintenance runs; external delivery that changes them is an input drift refusal.
-Site `integrations` declarations (app files) are not supported yet and remain
-typed blockers; app registrations go in the operator file described under
-Integrations.
+App registrations go in the operator file described under Integrations; the
+site's `integrations.browser_setup` only decides whether a browser
+administrator may write them.
 
 Inspect effective inputs and the fixed installation paths:
 
@@ -548,7 +548,26 @@ world write (`installation.integrations_config`) rather than replacing it. IMAP,
 completes. Google, Microsoft and Dropbox show as waiting for the administrator's
 app settings until their app section below is added; the daemon reads the file
 on demand, so no restart is needed. Keep actual app values out of git and shell
-arguments. Every person still connects their own accounts in Settings →
+arguments.
+
+An administrator normally adds the app sections in the browser, under Settings
+→ Palvelimen ylläpito → Integraatiot, which guides the Google setup step by
+step. The root broker writes the one section asked for, keeps every other byte
+of the file, and does so under the same operation lock as apply, so a request
+during maintenance is refused (`host_busy`) and nothing is written. Root can do
+the same with `open-habitat admin integrations set|clear --provider P`, giving
+the secret on stdin (`--client-secret-file -`). `admin integrations list` and
+`host plan`'s `integrations` show each section's client id and who set it when;
+a section edited by hand shows as root's. Secrets are never shown. To keep the
+file root's alone, set
+
+```json
+"integrations": {"browser_setup": false}
+```
+
+in site.json and run apply; the broker then refuses browser and CLI writes, and
+hand edits work as before. The broker's service needs `/opt/open-habitat`
+writable for this, which the shipped unit declares. Every person still connects their own accounts in Settings →
 Integrations; the operator configures no one's connection.
 
 ### Dropbox app registration
@@ -607,18 +626,19 @@ Add this section to `/opt/open-habitat/integrations.json` beside `tools`:
 ```
 
 Agents use gog through the absolute path the generated personal-data skill
-names. Use an **installed/Desktop** OAuth client, with redirect `http://localhost`
-(no port). Enable Drive API, Gmail API, Google Calendar API and People API in
+names. Use an **installed/Desktop** OAuth client; no redirect URI is registered, the
+daemon uses `http://localhost` (no port) and the person pastes it back. Enable Drive API, Gmail API, Google Calendar API and People API in
 its Google Cloud project. The requested permissions are `openid`, `email`,
 `https://www.googleapis.com/auth/drive`,
 `https://www.googleapis.com/auth/gmail.modify`,
 `https://www.googleapis.com/auth/calendar`, and
 `https://www.googleapis.com/auth/contacts`. No Gmail settings/sharing or
-Workspace domain-wide delegation is requested. Configure the consent screen
-and add every tester (including additional accounts) while the app is in
-Testing. Testing-mode refresh tokens for these scopes expire after seven days;
-production needs Google's applicable app verification/approval, not a host-side
-workaround. Partial consent is rejected. No incoming port, shared localhost
+Workspace domain-wide delegation is requested. The browser setup configures the
+consent screen as **Internal**, which requires Google Workspace: only the
+organisation's accounts can connect, and Google's verification is not needed.
+An External app in Testing needs every tester added and its refresh tokens for
+these scopes expire after seven days; in production it needs Google's
+verification, not a host-side workaround. Partial consent is rejected. No incoming port, shared localhost
 listener, public callback or gateway credential handling is involved.
 
 Each person connects their own accounts in Settings → Integrations. Ordinary
