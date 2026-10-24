@@ -100,6 +100,54 @@ describe("Integraatiot overview", () => {
     expect(on.getByTestId("integration-reauth")).toBeTruthy();
   });
 
+  it.each([
+    ["tenant_changed", true],
+    ["app_changed", true],
+    ["outside_tenant", false],
+  ] as const)(
+    "says once why an account could not follow the server's app (%s); sign-in offered: %s",
+    (failure, signIn) => {
+      const view = render(
+        <IntegrationsOverview
+          list={{
+            ...list,
+            providers: [
+              {
+                id: "microsoft",
+                available: true,
+                login: "device_code",
+                services: ["onedrive", "mail"],
+              },
+            ],
+            accounts: [
+              {
+                provider: "microsoft",
+                address: "person@example.test",
+                checked_at: "2026-10-24T12:00:00Z",
+                services: [
+                  { id: "onedrive", state: "login_expired", failure },
+                  { id: "mail", state: "login_expired", failure },
+                ],
+              },
+            ],
+          }}
+          checking={new Set()}
+          onCheck={noop}
+          onConnect={noop}
+          onSignInAgain={noop}
+          onRemove={noop}
+        />,
+      );
+      const card = view.getByTestId("integration-account-microsoft");
+      const notices = within(card).getAllByTestId(
+        "integration-account-alignment",
+      );
+      expect(notices).toHaveLength(1);
+      expect(notices[0].dataset.reason).toBe(failure);
+      expect(!!within(card).queryByTestId("integration-reauth")).toBe(signIn);
+    },
+  );
+
   it.each(["initial_sync_incomplete", "initial_sync_resume_failed"] as const)(
     "says a first sync stopped midway (%s) and offers the sign-in that resumes it",
     async (failure) => {

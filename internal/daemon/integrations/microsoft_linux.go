@@ -57,6 +57,9 @@ const microsoftMCPScopes = "User.Read Mail.ReadWrite Mail.Send Calendars.ReadWri
 type microsoft struct {
 	native sync.Mutex
 	client *http.Client
+
+	alignMu sync.Mutex
+	refused map[string]microsoftRefusal // by address; see Align
 }
 
 func (*microsoft) Provider() Provider { return Microsoft }
@@ -617,19 +620,8 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 	}
 	published = true
 
-	pi, ok := l.env.Tool("pi")
-	if !ok {
-		return ToolFailed
-	}
-	mcp, _ := microsoftMCPCommand(l.env, l.app, microsoftMCPDir+"/"+address, address)
-	args := []string{"mcp", "add", microsoftServerName(address)}
-	for _, e := range mcp.Env {
-		args = append(args, "--env", e)
-	}
-	args = append(args, "--", mcp.Path)
-	args = append(args, mcp.Args...)
-	if _, err := l.env.run(ctx, Command{Path: pi, Args: args}, nil); err != nil {
-		return ToolFailed
+	if err := microsoftRegister(ctx, l.env, l.app, address); err != nil {
+		return err
 	}
 	return writeFileAt(fd, address+".conf", l.config, 0600)
 }
@@ -768,6 +760,7 @@ func (m *microsoft) Check(ctx context.Context, env Env, address string) []Servic
 		}
 	}
 	probes.Wait()
+	m.alignedView(env, address, out)
 	if inventoryErr == nil && len(remotes) == 0 {
 		return out[2:]
 	}

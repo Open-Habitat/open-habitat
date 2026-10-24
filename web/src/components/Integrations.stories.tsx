@@ -168,6 +168,36 @@ export const ProviderOutOfUse: Story = {
     },
   },
 };
+/** The server's Microsoft tenant refused the account's earlier sign-in. */
+export const TenantRefused: Story = {
+  args: {
+    list: {
+      ...connected,
+      accounts: [
+        ...connected.accounts,
+        {
+          provider: "microsoft",
+          address: "person@example.test",
+          checked_at: checked,
+          services: [
+            {
+              id: "onedrive",
+              state: "login_expired",
+              failure: "tenant_changed",
+              directory: "~/cloud/onedrive/person@example.test",
+            },
+            { id: "mail", state: "login_expired", failure: "tenant_changed" },
+            {
+              id: "calendar",
+              state: "login_expired",
+              failure: "tenant_changed",
+            },
+          ],
+        },
+      ],
+    },
+  },
+};
 export const ForeignSkill: Story = {
   args: { list: { ...connected, skill: "blocked" } },
 };

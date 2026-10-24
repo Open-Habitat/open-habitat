@@ -567,6 +567,7 @@ func (c *Catalog) Start(ctx context.Context) {
 	queue := c.interruptedQueue()
 	c.write.Unlock()
 	go c.resumeInterrupted(ctx, queue)
+	go c.alignAll(ctx)
 	go func() {
 		<-ctx.Done()
 		c.relay.cancelAll()
@@ -635,10 +636,52 @@ func (c *Catalog) has(e Entry, address string) (bool, error) {
 	return false, nil
 }
 
+// alignAll brings every account whose native configuration names an earlier
+// application of the operator to the current one, once per daemon start.
+func (c *Catalog) alignAll(ctx context.Context) {
+	accounts, _ := c.accounts()
+	for _, a := range accounts {
+		if e, ok := a.entry.(AlignEntry); ok && e.Misaligned(c.env, a.address) {
+			c.write.Lock()
+			c.align(ctx, e, a.address)
+			c.write.Unlock()
+		}
+	}
+}
+
+// align runs one account's Align with its sync client stopped only while a
+// file it reads changes. The caller holds c.write.
+func (c *Catalog) align(ctx context.Context, e AlignEntry, address string) {
+	if c.stopping || ctx.Err() != nil || !e.Misaligned(c.env, address) {
+		return
+	}
+	k := key{e.Provider(), address}
+	stopped := false
+	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
+	err := e.Align(ctx, c.env, address, func() { c.sync.stop(k); stopped = true })
+	cancel()
+	if stopped {
+		c.reconcile()
+	}
+	outcome := "aligned"
+	if err != nil {
+		outcome = "deferred"
+	} else if e.Misaligned(c.env, address) {
+		outcome = "incomplete"
+	}
+	c.log.Info("integration_align", "provider", string(e.Provider()), "outcome", outcome)
+}
+
 // check reads one account's state live. Sync supervision and a full quota
 // override what the tool says about its files, since the client is not
 // running then whatever the tool last recorded.
 func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
+	// A configuration left on an earlier application follows the current
+	// one first. A busy catalog leaves that to the next check.
+	if al, ok := e.(AlignEntry); ok && al.Misaligned(c.env, address) && c.write.TryLock() {
+		c.align(ctx, al, address)
+		c.write.Unlock()
+	}
 	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
 	// A native initial pass may hold the provider's mutex for hours. Never

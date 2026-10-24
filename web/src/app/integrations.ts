@@ -20,12 +20,7 @@ const validChange = ajv.compile(changeSchema);
 const validLogin = ajv.compile(loginSchema);
 
 export type ProviderId =
-  | "imap"
-  | "caldav"
-  | "carddav"
-  | "google"
-  | "microsoft"
-  | "dropbox";
+  "imap" | "caldav" | "carddav" | "google" | "microsoft" | "dropbox";
 export type ServiceId =
   | "mail"
   | "calendar"
@@ -82,7 +77,12 @@ export type SyncFailure =
   | "delete_limit"
   | "needs_resync"
   | "remote_unreachable"
-  | "pass_failed";
+  | "pass_failed"
+  // login_expired on every service: the account's native configuration could
+  // not follow the server's current application.
+  | "app_changed"
+  | "tenant_changed"
+  | "outside_tenant";
 export type Account = {
   provider: ProviderId;
   address: string;
@@ -412,7 +412,8 @@ export function needsSignIn(account: Account): boolean {
   return account.services.some(
     (s) =>
       s.state === "credentials_rejected" ||
-      s.state === "login_expired" ||
+      // An account outside the application's tenant cannot sign in to it.
+      (s.state === "login_expired" && s.failure !== "outside_tenant") ||
       // A critical abort is not a sign-in problem: signing in again would
       // resync, which can bring back files deleted meanwhile.
       (s.state === "sync_failed" && s.failure !== "needs_resync"),

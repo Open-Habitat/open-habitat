@@ -234,6 +234,20 @@ const failureText: Record<SyncFailure, string> = {
   needs_resync: "Pysähtyi eikä jatku itsestään",
   remote_unreachable: "Palveluun ei saada yhteyttä, yritetään uudelleen",
   pass_failed: "Viimeisin synkronointi epäonnistui, yritetään uudelleen",
+  app_changed: "Kirjaudu uudelleen",
+  tenant_changed: "Kirjaudu uudelleen",
+  outside_tenant: "Ei palvelimen organisaatiossa",
+};
+
+// Why an account could not follow the server's current application. Every
+// service carries the same reason; the card says it once.
+const alignmentHelp: Partial<Record<SyncFailure, (name: string) => string>> = {
+  app_changed: (name) =>
+    `Palvelimen ${name}-sovellus on vaihtunut, eikä aiempi kirjautumisesi kelpaa uudelle sovellukselle. Kirjaudu uudelleen; synkronoitavat kansiot säilyvät.`,
+  tenant_changed: (name) =>
+    `Palvelimen ${name}-asetuksissa on nyt organisaatio, joka ei hyväksynyt aiempaa kirjautumistasi (se on voinut vanhentua tai vaatia uuden hyväksynnän). Kirjaudu uudelleen; synkronoitavat kansiot säilyvät.`,
+  outside_tenant: (name) =>
+    `Tämä tili ei kuulu organisaatioon, jonka ${name}-sovellusta palvelin käyttää, joten uusi kirjautuminenkaan ei auta. Käytä organisaation tiliä tai kysy palvelimen ylläpitäjältä.`,
 };
 
 // What a failed ordinary pass asks of the person. Retried failures need
@@ -413,6 +427,25 @@ export function AccountCard({
           </span>
         </p>
       ) : null}
+      {(() => {
+        const reason = account.services.find(
+          (s) =>
+            s.state === "login_expired" &&
+            s.failure &&
+            alignmentHelp[s.failure],
+        )?.failure;
+        return reason ? (
+          <p
+            className="ig-notice"
+            role="status"
+            data-testid="integration-account-alignment"
+            data-reason={reason}
+          >
+            <Icon name="warning" />
+            <span>{alignmentHelp[reason]?.(copy.name)}</span>
+          </p>
+        ) : null;
+      })()}
       {account.services.map((s) => (
         <div
           data-testid={`integration-service-${s.id}`}

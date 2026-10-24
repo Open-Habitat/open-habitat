@@ -97,7 +97,9 @@ type listView struct {
 }
 
 // list reads the catalog and asks every tool for its accounts' state now. A
-// read writes nothing in the home, not even a stale skill.
+// read writes nothing of the host's in the home, not even a stale skill; the
+// one native write is an account's config following the operator's current
+// application (AlignEntry), since its state is only true after that.
 func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(30 * time.Second))
 	view := listView{SchemaVersion: 1, Providers: []providerView{}, Accounts: []Account{}}
