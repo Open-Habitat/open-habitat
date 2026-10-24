@@ -37,8 +37,7 @@
 - Browser: `web/tests/site-ai-key.spec.ts` (seeded Bob walks Git identity,
   Repot and a Google step without the AI step, lands in Työtilat, his mark
   reads finished and a reload goes straight to Työtilat; a failed seed still
-  shows the AI step with every option). Whole browser suite: see the run note
-  below.
+  shows the AI step with every option). Whole browser suite: 362 passed, 3 skipped.
 - Review: `/llm-review` routine rigor on a high-risk surface. Finder
   gpt-6-astra found one should-fix (the stale completion above), confirmed
   locally and fixed with a test. Verifier claude-fable-5-1, asked one focused
