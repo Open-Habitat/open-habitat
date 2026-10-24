@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef, useState } from "react";
 import { BrowserEditor, type BrowserEditorProps } from "./BrowserEditor";
-import type { EditorMergeApi } from "./CodeMirrorEditor";
+import type { EditorMergeApi } from "./editorMerge";
 import { landing, threeWay } from "./editorMerge";
 
 function Example({

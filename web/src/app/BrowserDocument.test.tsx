@@ -3,10 +3,7 @@ import { createRef, StrictMode, useLayoutEffect } from "react";
 import { createMemoryRouter, RouterProvider, useLocation } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
 import type { BrowserEditorProps } from "../components/BrowserEditor";
-import type {
-  EditorMergeApi,
-  MergeState,
-} from "../components/CodeMirrorEditor";
+import type { EditorMergeApi, MergeState } from "../components/editorMerge";
 import BrowserDocument, { type BrowserDocumentHandle } from "./BrowserDocument";
 import type { EditorDocument } from "./editorFiles";
 import {

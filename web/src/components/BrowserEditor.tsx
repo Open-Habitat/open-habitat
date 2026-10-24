@@ -1,6 +1,5 @@
 import { lazy, type RefObject, Suspense, useRef } from "react";
-import type { EditorChange, EditorMergeApi } from "./CodeMirrorEditor";
-import type { MergeSource } from "./EditorConflict";
+import type { EditorChange, EditorMergeApi, MergeSource } from "./editorMerge";
 import { EditorFileTree } from "./EditorFileTree";
 import type { TreeDirectories } from "./editorTree";
 import { ControlButton } from "./ControlElements";

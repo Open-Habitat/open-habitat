@@ -1,7 +1,8 @@
 import { ControlButton } from "./ControlElements";
+import type { MergeSource } from "./editorMerge";
 import { Icon } from "./Icon";
 
-export type MergeSource = "agent" | "disk";
+export type { MergeSource };
 export type ConflictPick = "mine" | "theirs" | "both";
 
 /** The card above lines both the person and the disk changed. The person's

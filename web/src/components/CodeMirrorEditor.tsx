@@ -36,66 +36,20 @@ import {
 import { tags } from "@lezer/highlight";
 import { type RefObject, useEffect, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import {
-  type ConflictPick,
-  EditorConflict,
-  type MergeSource,
-} from "./EditorConflict";
+import { type ConflictPick, EditorConflict } from "./EditorConflict";
 import { editorGrammar } from "./editorGrammar";
-import { lineChanges, type Merged } from "./editorMerge";
-import type { FileRef } from "./fileRefs";
+import {
+  type ConflictMark,
+  type EditorChange,
+  type EditorMergeApi,
+  emptyMerge,
+  lineChanges,
+  type MergeSource,
+  type MergeState,
+} from "./editorMerge";
 
-export interface ConflictMark {
-  id: number;
-  from: number;
-  to: number;
-  mine: string[];
-  theirs: string[];
-}
-export interface MergeState {
-  source: MergeSource;
-  /** An import is in the text (not undone). */
-  imported: boolean;
-  /** Separate changes the import brought in. */
-  count: number;
-  /** History depth right after the import, to tell whether it is the latest
-   * change (and so what Ctrl+Z would undo). */
-  depth: number;
-  incoming: { from: number; to: number }[];
-  conflicts: ConflictMark[];
-  /** Line starts where waiting changes will land. */
-  pending: number[];
-}
-export const emptyMerge: MergeState = {
-  source: "agent",
-  imported: false,
-  count: 0,
-  depth: 0,
-  incoming: [],
-  conflicts: [],
-  pending: [],
-};
-export interface EditorChange {
-  merge: MergeState;
-  /** The person typed or deleted (not an import, a pick or undo). */
-  typed: boolean;
-  /** The import is the latest change in history. */
-  importLatest: boolean;
-}
-/** What the controller asks of the engine for changes from disk. */
-export interface EditorMergeApi {
-  text: () => string;
-  merge: () => MergeState;
-  /** Brings a merge into the text as one undoable history event. */
-  bring: (merged: Merged, source: MergeSource) => void;
-  /** Marks where waiting changes will land (not history). */
-  showPending: (lines: number[], source: MergeSource) => void;
-  /** An unedited document follows the disk without a history event. */
-  follow: (text: string) => void;
-  /** After a save the highlights have done their job. */
-  clear: () => void;
-  undo: () => void;
-}
+export type { EditorChange, EditorMergeApi, MergeState };
+import type { FileRef } from "./fileRefs";
 
 const mapState = (s: MergeState, ch: ChangeSet): MergeState => ({
   ...s,

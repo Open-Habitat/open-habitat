@@ -126,3 +126,58 @@ export function lineChanges(now: string, next: string): LineChange[] {
     return { from: starts[from], to: now.length, insert: ins.join("\n") };
   });
 }
+
+// The engine's state for changes from disk. It is defined here, apart from
+// the engine, so the controller can use it without loading CodeMirror.
+export type MergeSource = "agent" | "disk";
+export interface ConflictMark {
+  id: number;
+  from: number;
+  to: number;
+  mine: string[];
+  theirs: string[];
+}
+export interface MergeState {
+  source: MergeSource;
+  /** An import is in the text (not undone). */
+  imported: boolean;
+  /** Separate changes the import brought in. */
+  count: number;
+  /** History depth right after the import, to tell whether it is the latest
+   * change (and so what Ctrl+Z would undo). */
+  depth: number;
+  incoming: { from: number; to: number }[];
+  conflicts: ConflictMark[];
+  /** Line starts where waiting changes will land. */
+  pending: number[];
+}
+export const emptyMerge: MergeState = {
+  source: "agent",
+  imported: false,
+  count: 0,
+  depth: 0,
+  incoming: [],
+  conflicts: [],
+  pending: [],
+};
+export interface EditorChange {
+  merge: MergeState;
+  /** The person typed or deleted (not an import, a pick or undo). */
+  typed: boolean;
+  /** The import is the latest change in history. */
+  importLatest: boolean;
+}
+/** What the controller asks of the engine for changes from disk. */
+export interface EditorMergeApi {
+  text: () => string;
+  merge: () => MergeState;
+  /** Brings a merge into the text as one undoable history event. */
+  bring: (merged: Merged, source: MergeSource) => void;
+  /** Marks where waiting changes will land (not history). */
+  showPending: (lines: number[], source: MergeSource) => void;
+  /** An unedited document follows the disk without a history event. */
+  follow: (text: string) => void;
+  /** After a save the highlights have done their job. */
+  clear: () => void;
+  undo: () => void;
+}

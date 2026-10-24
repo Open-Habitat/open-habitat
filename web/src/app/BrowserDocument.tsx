@@ -10,16 +10,14 @@ import {
 import { useBlocker, useLocation } from "react-router";
 import { BrowserEditor, type DiskChanges } from "../components/BrowserEditor";
 import {
+  changeCount,
   type EditorChange,
   type EditorMergeApi,
   emptyMerge,
-  type MergeState,
-} from "../components/CodeMirrorEditor";
-import type { MergeSource } from "../components/EditorConflict";
-import {
-  changeCount,
   landing,
   type Merged,
+  type MergeSource,
+  type MergeState,
   replaced,
   threeWay,
 } from "../components/editorMerge";
