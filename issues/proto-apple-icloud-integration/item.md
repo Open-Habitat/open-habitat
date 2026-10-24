@@ -19,3 +19,9 @@ Prototype round: an **Apple (iCloud)** integration of its own in Asetukset › I
 ## Acceptance Criteria
 
 - [ ] Round published on a new glasspad page with a Finnish summary, recommendation and questions in result.md; KOKEILTAVAA prototype line.
+
+## Decisions
+
+### 2026-10-24T12:16:14Z · @jari
+
+Jari 2026-10-24, round 1 verdicts: direction 2 'Valitse palvelut' (the person chooses which of mail, calendar and contacts to connect). 'Yhdistä samalla salasanalla' may reuse the stored app-specific password if that works. Apple also becomes an onboarding integration step like Google. The generic CalDAV/CardDAV form does not need to point to the Apple tile.
