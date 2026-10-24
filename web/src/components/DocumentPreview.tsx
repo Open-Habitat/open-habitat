@@ -10,6 +10,7 @@ import {
   readWorkbook,
   type Sheet,
   type Slide,
+  type SlideBlock,
   zipWithinLimits,
 } from "../app/documentPreview";
 import { Markdown } from "./Markdown";
@@ -382,32 +383,23 @@ function Slides({ bytes }: { bytes: Uint8Array }) {
     }
   }, [bytes]);
   // Pictures are shown from object URLs that live as long as the preview.
-  const pictures = useMemo(
-    () =>
-      new Map(
-        (slides ?? []).flatMap((slide) =>
-          slide.blocks.flatMap((block) =>
-            block.kind === "image"
-              ? [
-                  [
-                    block,
-                    URL.createObjectURL(
-                      new Blob([block.bytes as BlobPart], { type: block.type }),
-                    ),
-                  ] as const,
-                ]
-              : [],
-          ),
-        ),
-      ),
-    [slides],
-  );
-  useEffect(
-    () => () => {
-      for (const url of pictures.values()) URL.revokeObjectURL(url);
-    },
-    [pictures],
-  );
+  const [pictures, setPictures] = useState(() => new Map<SlideBlock, string>());
+  useEffect(() => {
+    const urls = new Map<SlideBlock, string>();
+    for (const slide of slides ?? [])
+      for (const block of slide.blocks)
+        if (block.kind === "image")
+          urls.set(
+            block,
+            URL.createObjectURL(
+              new Blob([block.bytes as BlobPart], { type: block.type }),
+            ),
+          );
+    setPictures(urls);
+    return () => {
+      for (const url of urls.values()) URL.revokeObjectURL(url);
+    };
+  }, [slides]);
   if (!slides?.length) return <Unavailable />;
   return (
     <ol className="ah-attachment-slides">
