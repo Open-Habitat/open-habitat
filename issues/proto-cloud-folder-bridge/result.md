@@ -86,3 +86,55 @@ PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright node r2/check.mjs <html-tai-
 ```
 
 `r2/check.mjs` käy läpi kolme suuntaa kolmella leveydellä (1440, 820 ja 390 px) vaaleana ja tummana, molemmat lähtötilanteet ja ylläpitäjän näkymän. Se klikkaa vuorovaikutukset ja tarkistaa, että konsoli on puhdas: 96 tarkistuspistettä, sekä paikallinen tiedosto että julkaistu sivu. Komponentit ovat tuotannon omia: `IntegrationsOverview`, `AccountCard`, `ProviderMark`, `ControlButton`, `Segmented`, `UserMessage`, `AssistantMessage`, `Markdown`, Kartta-kehyksen ja Käyttöönotto-välilehden tyylit. Kierroksen omia ovat kehyksen kopio Oma kone -vaiheella (`r2/frame.tsx`) ja ylläpitäjän näkymän rivit. Kumpikin `build.mjs` ohittaa nyt Viten `?url`-tuonnin, koska `DocumentPreview`n PDF-worker katkaisi kierroksen 1 rakennuksen 24.10.
+
+# Kierros 3: Lataukset ja Dokumentit
+
+**[Avaa kierros 3](https://glasspad.example.test/p/cq2icm5ioc7vfvrfzpave6iou4/).** Suunnat ovat alareunassa (myös näppäimet 1–2). *Näkymä* vaihtaa käyttöönoton vaiheen ja keskustelun välillä. Keskustelussa *Pilvi* valitsee Dropboxin tai OneDriven, ja *Varmuuskopio* valitsee, onko varmuuskopio jo päällä. Tiedot ovat keksittyjä.
+
+Jarin päätös 24.10.: erillistä Open Habitat -kansiota ei tehdä. Silta on ihmisen oma varmuuskopio Latauksista ja Dokumenteista. Pohjana on kierroksen 2 *Kolme vastausta* ylläpitäjän lisäämänä vaiheena, ja Dropbox- tai Microsoft 365 -yhteyden jälkeen sitä ei kysytä.
+
+## Mitä palvelut oikeasti tekevät
+
+Tämä ratkaisee suunnat, koska palvelut eroavat toisistaan:
+
+- **OneDriven kansiovarmuuskopio** siirtää Windowsilla Työpöydän, Tiedostot, Kuvat, Musiikin ja Videot ja Macilla Työpöydän ja Dokumentit OneDriveen. Ne ovat tavallisia OneDrive-kansioita, joihin voi kirjoittaa kumpaankin suuntaan. **Latauksia OneDrive ei varmuuskopioi kummallakaan koneella.** Macilla tarvitaan Microsoftin sivulta ladattava OneDrive, koska App Storen versio ei varmuuskopioi. Polku on Asetukset › Varmuuskopio (Windowsilla Synkronointi ja varmuuskopiointi) › Hallitse varmuuskopiota. ([Microsoft: Back up your folders with OneDrive](https://support.microsoft.com/en-us/office/back-up-your-folders-with-onedrive-d61a7930-a6fb-4b95-b28a-6552e77c3057), [macOS](https://learn.microsoft.com/en-us/sharepoint/redirect-known-folders-macos), [Windows](https://learn.microsoft.com/en-us/sharepoint/redirect-known-folders))
+- **Dropbox Backup** varmuuskopioi minkä tahansa kotikansion, myös Lataukset. Se kulkee vain koneelta pilveen, eivätkä varmuuskopiot näy koneen Dropbox-kansiossa. Ne ovat dropbox.comissa varmuuskopion nimen alla (*Mac* tai *PC*). Polku on Asetukset › Varmuuskopiot › Hallitse varmuuskopioita. ([Dropbox Backup: overview](https://help.dropbox.com/organize/dropbox-backup-overview), [FAQ](https://help.dropbox.com/organize/dropbox-backup-faq))
+- **Kuvakaappaukset:** Mac tallentaa ne Työpöydälle, ja sijainnin voi vaihtaa kohdasta `⇧⌘5` › Valinnat. Windowsin `Win`+`PrtScn` tallentaa ne Kuviin (Kuvat › Näyttökuvat).
+
+## Mistä agentti löytää kansiot
+
+- **OneDrive:** `~/cloud/onedrive/<tili>/Documents/` ja `…/Desktop/`. Nimi voi olla käännetty. Graph-rajapinta tarjoaa siksi Dokumenteille aliaksen `special/documents`, ja sitä käytettäessä nimeä ei tarvitse tietää ([Graph: Get special folders](https://learn.microsoft.com/en-us/graph/api/drive-get-specialfolder)). Työpöydälle aliasta ei ole, joten se löytyy vain nimellä.
+- **Dropbox:** Dropboxin API-tuen mukaan varmuuskopio luetaan polusta `/Mac/Downloads` (varmuuskopion nimi ja kansio). Varmuuskopio voi kuitenkin olla omassa nimiavaruudessaan juuren ulkopuolella ([Dropbox-foorumi: using API to access file/folders in Backups](https://community.dropbox.com/en/discussion/638365/using-api-to-access-file-folders-in-backups)). Prototyyppi näyttää polun `~/cloud/dropbox/<tili>/Mac/Downloads/`. Sitä ei ole kokeiltu oikealla tilillä.
+
+## Suunnat
+
+1. **Lataukset.** Ehdotuksesi sellaisenaan: varmuuskopioi Lataukset ja Dokumentit. Dropboxilla molemmat toimivat. OneDrivella silta on vain Dokumentit, ja ohjeessa lukee "OneDrive ei varmuuskopioi Latauksia". Macin kuvakaappaukset ohjataan Latauksiin (Dropbox) tai Dokumentteihin (OneDrive). Kokeilussa ihminen tallentaa tiedoston Latauksiin, ja vaihe odottaa, että agentti näkee sen. Liitä-valikossa lukee *Lataukset koneellasi* ja *Dokumentit koneellasi*, ja *Kerro agentille* kirjoittaa kenttään "Katso uusin tiedosto Latauksistani."
+2. **Työpöytä.** Työpöytä ja Dokumentit. Kumpikin palvelu varmuuskopioi ne sekä Macilla että Windowsilla, joten ohje on sama molemmille. Mac tallentaa kuvakaappaukset Työpöydälle valmiiksi. Kokeilu on kuvakaappaus (`⇧⌘3`). Lataukset jäävät sillan ulkopuolelle.
+
+Kummassakin suunnassa agentti toimittaa tiedostot eri paikkaan kuin mistä se lukee. OneDrivella toimitus menee Dokumentteihin, ja OneDrive tuo ne koneelle. Dropbox Backup kulkee vain koneelta pilveen, joten toimitus menee tavalliseen Dropbox-kansioon (*Koneellasi: Dropbox › Laskut 10-2026*). **"Lataukset koneellasi" ei siis ole kummallakaan palvelulla mahdollinen toimituspaikka.** Ilman varmuuskopiota agentti kertoo, ettei näe kansioita, ja Liitä-valikko tarjoaa ohjeen *Laita varmuuskopio päälle*.
+
+## Suositus
+
+**Suunta 2, Työpöytä ja Dokumentit.** Se toimii molemmilla palveluilla ja molemmilla koneilla samalla ohjeella, ja kuvakaappaukset ovat siellä ilman asetusmuutosta. Lataukset ovat hyvä idea, mutta OneDrive ei tue niitä. Dropbox taas edellyttää, että host lukee varmuuskopiota, joka on mahdollisesti eri nimiavaruudessa ja vain luettavissa, ja se on hostille uusi asia. Jos Lataukset halutaan, ne kannattaa lisätä Dropbox-käyttäjille vasta, kun nimiavaruus on kokeiltu oikealla tilillä.
+
+## Mitä näkymät olettavat hostilta
+
+- Daemon tunnistaa varmuuskopioidut kansiot pilvikansiosta ja kertoo kunkin uusimman tiedoston (*Lataukset · myynti-q3.csv · 10.41*). Rivi *Koneeltasi* johdetaan agentin lukupolusta, ei agentin väitteestä.
+- Dropboxissa daemonin pitää lukea varmuuskopion nimiavaruutta (rclonen `--dropbox-root-namespace` tai API:n `Dropbox-API-Path-Root`), eikä se saa yrittää kirjoittaa sinne kaksisuuntaisella bisyncillä.
+- OneDrivessa Dokumentit haetaan aliaksella `special/documents`, ei nimellä.
+- Host ei tiedä, mikä käyttöjärjestelmä ihmisellä on, joten ohjeessa on Mac/Windows-valinta.
+
+## Kysymykset Jarille
+
+1. Työpöytä ja Dokumentit (suositus) vai Lataukset ja Dokumentit, vaikka OneDrive ei varmuuskopioi Latauksia?
+2. Kelpaako, että agentti toimittaa Dropbox-käyttäjälle tavalliseen Dropbox-kansioon, vaikka se lukee varmuuskopiosta? Toinen vaihtoehto on, että Dropboxin silta on tavallinen Dropbox-kansio ja Macin selaimen latauskansio ohjataan sinne.
+3. Kokeillaanko Dropbox Backupin lukemista testitilillä ennen kuin Lataukset lupaillaan käyttöönotossa?
+
+## Rakentaminen ja tarkistus
+
+```
+node design-system/prototypes/rounds/2026-10-24-pilvikansio-silta/r3/build.mjs   # dist/cloud-folder-bridge-r3/{index,offline}.html
+PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright node design-system/prototypes/rounds/2026-10-24-pilvikansio-silta/r3/check.mjs <html-tai-url> <kuvakansio>
+```
+
+`r3/check.mjs` käy läpi molemmat suunnat kolmella leveydellä (1440, 820 ja 390 px) vaaleana ja tummana. Se tarkistaa käyttöönoton vaiheen Dropboxilla ja OneDrivella, Mac- ja Windows-ohjeen ja kokeilun sekä keskustelun eli Liitä-valikon, lukurivin, toimituksen ja puuttuvan varmuuskopion. Konsolin pitää olla puhdas. Tarkistuspisteitä on 108, ja ne ajettiin sekä paikalliselle tiedostolle että julkaistulle sivulle. Komponentit ovat tuotannon omia: `IntegrationsOverview`, `AccountCard`, `ProviderMark`, `Composer`, `ConversationTimeline`, `UserMessage`, `AssistantMessage`, `Markdown`, `Segmented` ja kierroksen 2 Kartta-kehys. Kierroksen omia ovat Liitä-valikko (`r3/menu.tsx`) ja ohje (`r3/bridge.tsx`).

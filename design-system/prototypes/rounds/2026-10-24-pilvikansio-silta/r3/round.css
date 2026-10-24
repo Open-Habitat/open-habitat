@@ -1,0 +1,10 @@
+/* Round 3 additions on top of ../round.css and ../r2/round.css */
+.hb-gap{margin:0;font-size:var(--ah-size-meta);color:var(--ah-ink);padding-left:var(--ah-s2);border-left:3px solid var(--ah-line-strong)}
+.hb-menu-folder h3{display:flex;align-items:center;gap:var(--ah-s2)}
+.hb-menu-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--ah-s1)}
+.hb-menu-list li{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:var(--ah-s2);align-items:center;color:var(--ah-ink)}
+.hb-menu-list li svg{width:16px;height:16px;color:var(--ah-muted)}
+.hb-menu-list li small{grid-column:2;font-size:var(--ah-size-meta);color:var(--ah-muted);overflow-wrap:anywhere}
+.hb-delivery>header svg{width:16px;height:16px;color:var(--ah-muted)}
+.hb-delivery.off>button{justify-self:start}
+.hb-try code{font-size:var(--ah-size-code)}
