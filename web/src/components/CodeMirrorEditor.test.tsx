@@ -1,11 +1,32 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { createRef } from "react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import CodeMirrorEditor from "./CodeMirrorEditor";
 import { type EditorMergeApi, threeWay } from "./editorMerge";
 
-afterEach(cleanup);
+beforeEach(() => {
+  // These tests exercise merge state, not layout. Keep CodeMirror's measures
+  // from racing the assertions in jsdom, which has no Range geometry API.
+  vi.useFakeTimers({
+    toFake: ["requestAnimationFrame", "cancelAnimationFrame"],
+  });
+});
+
+afterEach(async () => {
+  try {
+    // Unmount destroys each EditorView and cancels its scheduled measures.
+    // Flush anything left (including conflict widgets' deferred unmounts)
+    // before returning control to jsdom's real animation frames.
+    cleanup();
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(vi.getTimerCount()).toBe(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
 
 async function engine(content: string) {
   const api = createRef<EditorMergeApi | undefined>() as {
