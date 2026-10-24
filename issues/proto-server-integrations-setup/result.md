@@ -1,5 +1,118 @@
 # Palvelimen ylläpito › integraatiot
 
+## Kierros 5 · Dropboxin ohjattu asetus
+
+**Suositus: Sivu kerrallaan.** *Aseta tunnukset…* Dropboxin rivillä avaa saman Vaiheittain-dialogin kuin Googlella ja Microsoftilla. Vaiheita on neljä, yksi kutakin Dropbox App Consolen sivua kohti: *Luo sovellus*, *Asetukset*, *Käyttöoikeudet* ja *Tunnukset*. App key ja App secret kysytään lopussa, kuten kierroksen 4 päätöksessä. Ensimmäisessä vaiheessa on suora linkki konsolin sivulle, jolla sovellus luodaan. Kehitystilan *Enable additional users* on Asetukset-vaiheessa, koska se on samalla Settings-sivulla kuin uudelleenohjausosoite. 50 henkilön sääntö näkyy myöhemmin rivin *Tunnukset*-valikossa. Sääntö tulee vastaan kuukausien päästä, joten valikko on paikka, jonne ylläpitäjä silloin katsoo.
+
+**[Avaa kierros 5](https://glasspad.example.test/p/f3cv5ap6h4r6y6qbcz3rue5f2a/).** Suunta vaihdetaan alareunan valitsimesta (myös 1–2, nuolet ja R). Integraatiot-välilehti on kierroksen 2 suunta *Käytössä vai ei* sellaisenaan. Esimerkkipalvelimet ovat *Microsoft asetettu* (lähtötilanne, Dropbox puuttuu), *Kaikki asetettu* ja *Vajaa asennus* (rclone puuttuu). Kaikki tiedot ovat keksittyjä.
+
+### Mitä koodi vaatii
+
+Lähteet: `internal/daemon/integrations/dropbox_linux.go` ja `catalog_linux.go`.
+
+- **Scoped access, Full Dropbox.** Synkronointi käsittelee juurta `dropbox:` ja kansiovalinta on koko Dropbox (`Folders()` → *Dropbox*). App folder -sovelluksella henkilö näkisi vain sovelluksen oman kansion. Muita sovellustyyppejä Dropbox ei enää tarjoa.
+- **Käyttöoikeudet:** `dropboxScopes` pyytää seitsemää käyttäjätason oikeutta: `account_info.read`, `files.metadata.read`, `files.metadata.write`, `files.content.read`, `files.content.write`, `sharing.read` ja `sharing.write`. Kirjautumisosoite pyytää ne kaikki nimeltä, joten jokaisen on oltava sovelluksessa päällä. Tiimioikeuksia (`team_data.*`, `members.*`) ei pyydetä. Tiimisovellusta ei tarvita, ja Dropbox Businessin jäsen yhdistää oman tilinsä samalla sovelluksella.
+- **Uudelleenohjaus:** täsmälleen `http://localhost:53682/` (`dropboxRedirect`). Henkilö liittää selaimen lopullisen osoitteen dialogiin, joten palvelimelle ei tarvita kuuntelijaa eikä julkista osoitetta.
+- **PKCE ja salaisuus:** valtuutus käyttää PKCE:tä (S256), mutta koodin vaihto ja rclonen myöhemmät token-päivitykset lähettävät myös `client_secret`in. App secret tarvitaan siis aina. *Allow public clients* -asetukseen ei kosketa.
+- **Kehitystila:** uuteen sovellukseen voi yhdistää vain sen omistaja, kunnes valitaan *Enable additional users*. Ilman tätä jokaisen muun henkilön yhdistäminen epäonnistuu. Kehitystilassa voi olla enintään 500 käyttäjää. Kun 50 on yhdistänyt, tuotantotila on haettava ja saatava kahdessa viikossa, muuten uudet yhdistämiset jäädytetään. Dropbox ei käsittele hakemusta ennen kuin 50 käyttäjää on yhdistänyt.
+- **Tunnukset:** App key ja App secret. `dropboxApp()` hyväksyy kummallekin 1–256 merkkiä `[A-Za-z0-9_-]`, ja prototyyppi tarkistaa saman. Lisäksi se huomaa, jos sama arvo on liitetty molempiin kenttiin (*Tämä on sama kuin App key.*). Salaisuuskenttä on salasanakenttä, ja palvelin palauttaa vain App keyn alun.
+- **Ei vaihtoa:** Dropbox ei anna ylläpitäjän luoda uutta App secretiä itse. Avaimet vaihtaa vain Dropboxin tuki. Kierroksen 3 sääntö (vaihto = uusi salaisuus, tai vaihdettavaa ei ole) tarkoittaa siis, että valikossa on vain *Poista tunnukset…*, kuten Microsoftilla. Poistodialogi lisää rivin *Yhdistettyjen tilien synkronointi pysähtyy.*, koska synkronointi ajetaan vain, kun integraatio on käytettävissä (`catalog_linux.go`, `SyncEntry`).
+- **Organisaatio:** Dropbox-sovellus kuuluu aina sille tilille, jolla se luodaan. Tiimi ei voi omistaa sovellusta, ja omistajan vaihtaa vain Dropboxin tuki. Ohje pyytää luomaan sovelluksen organisaation Dropbox-tilillä.
+
+### Vaiheet ja konsolin sanat
+
+| Vaihe | App Consolessa (englanniksi) |
+| --- | --- |
+| Luo sovellus | Linkki `https://www.dropbox.com/developers/apps/create`. *Choose an API: Scoped access*, *Choose the type of access you need: Full Dropbox*, *Name your app: Open Habitat &lt;organisaatio&gt;* (yksilöllinen, ei sanaa Dropbox eikä alkua "drop"), *Create app* |
+| Asetukset (suunta 2) / Uudelleenohjaus (suunta 1) | *Settings › OAuth 2 › Redirect URIs*: `http://localhost:53682/` › *Add*; suunnassa 2 myös *Development users › Enable additional users* |
+| Käyttöoikeudet | *Permissions*: seitsemän oikeutta yhtenä kopioitavana lohkona, *Submit*. `account_info.read` on valmiina. |
+| Käyttäjät (vain suunta 1) | *Settings › Development users › Enable additional users*, rajat 500 ja 50 sekä kaksi viikkoa |
+| Tunnukset | *Settings*: App key, App secret (*Show*) |
+
+**Haku:** App Consolessa ei ole hakukenttää kuten Entrassa. Permissions-sivu on pitkä luettelo valintaruutuja, joten ohje neuvoo etsimään oikeuksien nimet selaimen haulla (Ctrl+F tai ⌘F). Muuten suora linkki vie perille: luonnin jälkeen Dropbox avaa sovelluksen Settings-sivun, jonka välilehtiä vaiheet käyttävät.
+
+**Järjestys:** oikeudet asetetaan ennen tallennusta. Dropbox ei lisää myöhemmin päälle laitettua oikeutta jo yhdistettyihin tileihin, joten jälkikäteen korjattu puuttuva oikeus vaatisi jokaiselta uuden yhdistämisen. Ohje sanoo tämän yhdellä rivillä.
+
+En pystynyt tarkistamaan konsolia itse. Polut ja painikkeiden nimet ovat Dropboxin dokumentaatiosta (lähteet alla). *Development users* -rivin otsikko ja tuotantotilan hakupainikkeen tarkka nimi ovat dokumentaatiossa vain kuvailtuja (*app's info page*, *Enable additional users*), joten ohje ei nimeä hakupainiketta.
+
+### Suunnat
+
+Akseli: missä Dropboxin kehitystila hoidetaan. Tämä on ainoa aidosti Dropboxille ominainen valinta. Sovellustyyppi, pääsy, oikeudet ja osoite tulevat koodista, ja tunnukset kysytään lopussa kierroksen 4 päätöksen mukaan.
+
+| Suunta | Vaiheet | Hyöty | Hinta |
+| --- | --- | --- | --- |
+| **1. Käyttäjävaihe** | Luo sovellus → Uudelleenohjaus → Käyttöoikeudet → Käyttäjät → Tunnukset | Kehitystila ja sen rajat (500, 50, kaksi viikkoa) sanotaan kerran ja selvästi. | Viisi vaihetta, joista kaksi samalla Settings-sivulla. Raja unohtuu, kun dialogi suljetaan. |
+| **2. Sivu kerrallaan** (suositus) | Luo sovellus → Asetukset → Käyttöoikeudet → Tunnukset | Neljä vaihetta, yksi konsolisivu kerrallaan. 50 henkilön sääntö pysyy rivin *Tunnukset*-valikossa. | Rajat eivät näy ohjeessa. Valikon rivi on kiinteä muistutus, koska palvelin ei tiedä Dropboxin tilaa tai yhdistäjien määrää. |
+
+Kummassakin *Minulla on jo sovellus* vie suoraan kenttiin (1/1 Tunnukset), ja *Takaisin* palaa ensimmäiseen vaiheeseen.
+
+### Kokeile
+
+1. Suunta 2: *Aseta tunnukset…* Dropboxille. Avaa konsolilinkki ja kulje vaiheet. Syötä *Tunnukset*-vaiheessa sama arvo molempiin kenttiin, tai App secretiksi välilyönnin sisältävä arvo. Esimerkiksi `p3n8vq1zt6ka0rw` ja `h2m5c9xj4ub7ye1` kelpaavat.
+2. *Tallenna* → *Odottaa palvelinta* → *Käytössä*. Avaa *Tunnukset*-valikko: siinä on App keyn alku, 50 henkilön muistutus ja vain *Poista tunnukset…*.
+3. Suunta 1: *Käyttäjät*-vaihe ja rajat. Valikossa ei ole muistutusta.
+4. *Kaikki asetettu*, *Vajaa asennus* (rclone puuttuu, joten myös Google ja Microsoft ovat poissa käytöstä) ja 390 px.
+
+### Kysymykset Jarille
+
+1. **Käyttäjävaihe vai Sivu kerrallaan?**
+2. **Vain *Poista tunnukset…*:** Dropbox ei anna vaihtaa salaisuutta itse, joten Vaihda-toimintoa ei ole. Riittääkö tämä, kuten Microsoftilla?
+3. **Sovelluksen omistaja:** Dropbox-sovellus kuuluu aina yhdelle tilille, ei tiimille. Sopiiko ohjeen neuvo luoda sovellus organisaation Dropbox-tilillä? Jos tili myöhemmin suljetaan, sovellus menee mukana, ja omistajan vaihtaa vain Dropboxin tuki.
+
+### Toteutukselle (`server-integrations-admin`)
+
+- Broker tarkistaa App keyn ja App secretin samalla säännöllä kuin `dropboxApp()` ja lisäksi, että ne eroavat. Palvelin palauttaa selaimelle vain App keyn.
+- `Commit()` kopioi App keyn ja App secretin jokaisen henkilön rclone-asetukseen (`~/.config/rclone/open-habitat-dropbox/<tili>.conf`). Kun sovellus poistetaan ja tilalle asetetaan toinen, vanhat yhdistämiset käyttävät edelleen vanhaa sovellusta, ja henkilöiden on yhdistettävä uudelleen. Poistodialogi ja käyttöönoton ohje voisivat sanoa tämän, jos Jari haluaa toisen sovelluksen polun tueksi.
+- `docs/operations.md`:n *Dropbox app registration* vastaa jo tätä ohjetta (Full Dropbox, seitsemän oikeutta, osoite, Enable additional users). Muutosta ei tarvita, ennen kuin selainasetus korvaa käsin muokattavan `integrations.json`in.
+
+### Oletukset, ei toteutuspäätöksiä
+
+- App key on julkinen, koska se on jokaisessa kirjautumisosoitteessa. Valikko näyttää sen neljä ensimmäistä merkkiä. Esimerkkiavaimet ovat keksittyjä 15 merkin merkkijonoja. Dropbox ei dokumentoi avainten muotoa.
+- Palvelimen vahvistus on edelleen 0,9 sekunnin viive. Palvelin ei tiedä, onko *Enable additional users* valittu, onko oikeudet asetettu tai onko sovellus tuotantotilassa. Puuttuva asetus näkyy vasta, kun henkilö yhdistää.
+- Tarkistamatta: Dropbox Businessin tiimitilassa (*team space*) rclone näkee ilman `root_namespace`-asetusta todennäköisesti vain henkilön oman kansion, ei tiimin yhteisiä kansioita. Tämä koskee synkronointia eikä ylläpitäjän asetusta, joten se jää tämän kierroksen ulkopuolelle.
+- Googlen ja Microsoftin *Aseta tunnukset…* ovat tällä kierroksella paikkamerkkejä.
+
+### Lähteet
+
+- Sovelluksen luonti App Consolessa, *Scoped access*, App folder vs. Full Dropbox, kehitys- ja tuotantotila, *Enable additional users*, 500/50 käyttäjää ja kaksi viikkoa, Permissions-välilehti: https://docs.dropboxapi.com/dropbox-api/docs/developer-resources/developer-guide
+- App Consolen kentät (App key, App secret, *Show*, *OAuth 2 Redirect URIs*, *Add*, *Development users*, *Allow public clients*, Permissions ja Submit): https://docs.dropboxapi.com/dropbox-api/docs/get-started/tutorial/app-console
+- OAuth: täsmälleen rekisteröity `redirect_uri`, App folder ja Full Dropbox, PKCE, `token_access_type=offline`: https://docs.dropboxapi.com/dropbox-api/docs/oauth
+- Sovelluksen oikeudet ovat pyydettävien oikeuksien yläraja, ja myöhemmin lisätty oikeus ei tule jo yhdistettyihin tileihin: https://dropbox.tech/developers/customizing-scopes-in-oauth-flow
+- Avainten vaihto ja omistajan siirto vain tukipyynnöllä ("open an API support ticket"); vaihto ei mitätöi olemassa olevia tokeneita: https://www.dropbox.com/developers/support
+- Sovelluksen nimi: ei sanaa Dropbox, ei alkua "drop": https://docs.dropboxapi.com/dropbox-api/docs/developer-resources/branding-guide
+- rclonen oma Dropbox-sovellus: luontisivu `https://www.dropbox.com/developers/apps/create`, Full Dropbox, yksilöllinen nimi, `http://localhost:53682/`, App key = `client_id`, App secret = `client_secret`: https://rclone.org/dropbox/
+- Vaiheiden nimet *Choose an API: Scoped access*, *Choose the type of access you need* ja *Name your app*: https://docs.n8n.io/integrations/builtin/credentials/dropbox
+
+### Näyttö
+
+[evidence](evidence/) sisältää `r5-`-alkuiset kuvakaappaus/staattinen HTML -parit: `create-1`, `users-1`, `settings-2` ja `menu-2` (1440/390, vaalea/tumma), `permissions-1`, `enter-1`, `enter-2`, `saved-2`, `menu-1`, `remove-1` ja `partial-1`.
+
+Tarkistukset:
+
+- `check.mjs`: 44 tarkistuspistettä kahdella suunnalla, 1440 ja 390 px, vaalea ja tumma. Mukana:
+  - yhteinen `picker-check.mjs`, valitsimen näppäimet, URL ja R
+  - oikeudet ja uudelleenohjausosoite luettuina suoraan `dropbox_linux.go`:sta ja verrattuina ohjeeseen sekä PKCE + salaisuus ja juuren `dropbox:` synkronointi koodista
+  - konsolilinkki, Scoped access, Full Dropbox, nimisääntö, *Enable additional users* ja suunnan 1 rajat
+  - vaiheiden järjestys kummassakin suunnassa
+  - muotovirheet ja sama arvo kahdesti ilman lähetystä, ja virheen poistuminen korjattaessa
+  - *Odottaa palvelinta* → *Käytössä* ja käyttöönoton merkki
+  - valikossa vain Poista, 50 henkilön muistutus vain suunnassa 2, poiston teksti, *Minulla on jo sovellus*, puuttuva rclone
+
+  Ei konsolivirheitä eikä vaakaylivuotoa. Tulos `evidence/r5-checks.json`, julkaistulla sivulla `evidence/r5-hosted-checks.json`.
+- Yhteinen `design-system/prototypes/check.mjs` hyväksyi sivun (6 kuvaa, ei virheitä), ja `picker-check.test.mjs` meni läpi.
+
+Synteettinen selainprototyyppi. Se ei testaa daemonia, brokeria, Dropboxia eikä oikeaa `integrations.json`ia. Tuotantotiedostoja ei muutettu.
+
+Lähde: `design-system/prototypes/rounds/2026-10-24-palvelin-integraatiot-5/`:
+
+```sh
+node design-system/prototypes/rounds/2026-10-24-palvelin-integraatiot-5/build.mjs
+node design-system/prototypes/rounds/2026-10-24-palvelin-integraatiot-5/check.mjs \
+  design-system/prototypes/dist/server-integrations-r5-space/offline.html /var/tmp/server-integrations-r5-evidence
+```
+
+Julkaise vain rakennettu `index.html`.
+
 ## Kierros 4 · Microsoft 365:n ohjattu asetus
 
 **Suositus: Tunnukset heti.** *Aseta tunnukset…* Microsoft 365:n rivillä avaa kierroksen 3 Vaiheittain-dialogin. Viisi vaihetta: *Rekisteröi sovellus*, *Tunnukset*, *Julkinen asiakas*, *Käyttöoikeudet* ja *Hyväksyntä*, jonka lopussa on *Tallenna*. Entra avaa sovelluksen Overview-sivun heti, kun ylläpitäjä valitsee *Register*, ja molemmat tarvittavat arvot ovat siinä. Siksi ne kysytään toisena vaiheena, kun sivu on jo auki. Hyväksyntävaihe voi silloin näyttää valmiin linkin ylläpitäjälle, jolla on oikeus hyväksyä. Tallennus on silti viimeisenä, joten kukaan ei yritä yhdistää puoliksi asetettuun sovellukseen.
