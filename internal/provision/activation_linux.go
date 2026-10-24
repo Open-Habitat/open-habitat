@@ -73,12 +73,7 @@ func activationAt(ctx context.Context, fd int, owner uint32, name string) (broke
 		if b.Username != name {
 			continue
 		}
-		admitted := cfg.Admission == "any"
-		for _, entry := range a.IDs {
-			if entry.ID == b.ID {
-				admitted = true
-			}
-		}
+		admitted := cfg.Admission == "any" || a.admits(b.ID)
 		if !admitted {
 			return cfg, i, ErrInvalid
 		}

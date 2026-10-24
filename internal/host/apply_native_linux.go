@@ -485,7 +485,7 @@ func (n *nativeApply) initialize(ctx context.Context) error {
 		}
 	}
 	if _, e := os.Lstat("/var/lib/open-habitat/broker/allowlist.json.next"); e == nil {
-		if e = provision.CompleteAdmissionPublication(ctx, provision.Initialization{GatewayUID: s.Gateway.UID, GatewayGID: s.Gateway.GID, UIDMin: s.Identities.UIDMin, UIDMax: s.Identities.UIDMax}, s.Identities.Admission); e != nil {
+		if e = provision.CompleteAdmissionPublication(ctx, provision.Initialization{GatewayUID: s.Gateway.UID, GatewayGID: s.Gateway.GID, UIDMin: s.Identities.UIDMin, UIDMax: s.Identities.UIDMax}, s.Identities.Admission, s.Identities.RuntimeAdmission); e != nil {
 			return e
 		}
 	} else if !errors.Is(e, os.ErrNotExist) {
@@ -715,7 +715,7 @@ func (n *nativeApply) verifyStructure(ctx context.Context, settings bool) error 
 		return ErrNativeApply
 	}
 	state, e := provision.InspectInstallation(ctx)
-	if e != nil || !slices.Equal(state.Admission, s.Identities.Admission) || state.Epoch != state.ObservedEpoch {
+	if e != nil || !admissionPublished(state, s) || state.Epoch != state.ObservedEpoch {
 		return ErrNativeApply
 	}
 	policies, policyErr := nativePreparePolicies(ctx, s)

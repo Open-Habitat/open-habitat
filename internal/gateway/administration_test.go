@@ -85,8 +85,15 @@ func TestAdministrationAuthorizationAndPersistence(t *testing.T) {
 	if code := adminPut(h, cookie, session.CSRF, `{"name":"Test host"}`); code != 204 {
 		t.Fatalf("name update: %d", code)
 	}
-	if code := adminPut(h, cookie, session.CSRF, `{"subject":"43","administrator":true}`); code != 204 {
-		t.Fatalf("role update: %d", code)
+	// Administrators come only from site.json: the browser has no role write.
+	if code := adminPut(h, cookie, session.CSRF, `{"subject":"43","administrator":true}`); code != 400 {
+		t.Fatalf("browser role write accepted: %d", code)
+	}
+	if a.isAdministrator("43") {
+		t.Fatal("browser granted a role")
+	}
+	if e := a.changeRole(context.Background(), "43", true); e != nil {
+		t.Fatal(e)
 	}
 	if e := a.changeRole(context.Background(), "44", true); e == nil {
 		t.Fatal("unbound subject assigned")
@@ -99,12 +106,12 @@ func TestAdministrationAuthorizationAndPersistence(t *testing.T) {
 		t.Fatal("new admin denied")
 	}
 	broker.down = true
-	if code := adminPut(h, cookie, session.CSRF, `{"subject":"43","administrator":true}`); code != 503 {
-		t.Fatalf("broker failure: %d", code)
+	if e := a.changeRole(context.Background(), "43", true); e == nil {
+		t.Fatal("grant without broker lookup")
 	}
 	broker.down = false
-	if code := adminPut(h, cookie, session.CSRF, `{"subject":"42","administrator":false}`); code != 204 {
-		t.Fatalf("self removal: %d", code)
+	if e := a.changeRole(context.Background(), "42", false); e != nil {
+		t.Fatal(e)
 	}
 	if code := adminPut(h, cookie, session.CSRF, `{"name":"Denied"}`); code != 403 {
 		t.Fatalf("removal not immediate: %d", code)
@@ -219,7 +226,7 @@ func (b *delayedBody) Read(p []byte) (int, error) {
 	b.bytes = b.bytes[n:]
 	return n, nil
 }
-func TestRemovedAdministratorCannotRegrantFromInflightRequest(t *testing.T) {
+func TestRemovedAdministratorCannotWriteFromInflightRequest(t *testing.T) {
 	h, a, _, _, _ := fixture(t)
 	a.broker = &adminBroker{Broker: a.broker}
 	if e := a.changeRole(context.Background(), "42", true); e != nil {
@@ -233,7 +240,7 @@ func TestRemovedAdministratorCannotRegrantFromInflightRequest(t *testing.T) {
 	if e := json.Unmarshal(request(h, "GET", "/auth/session", cookie).Body.Bytes(), &session); e != nil {
 		t.Fatal(e)
 	}
-	body := &delayedBody{entered: make(chan struct{}), release: make(chan struct{}), bytes: []byte(`{"subject":"42","administrator":true}`)}
+	body := &delayedBody{entered: make(chan struct{}), release: make(chan struct{}), bytes: []byte(`{"name":"Inflight"}`)}
 	r := httptest.NewRequest("PUT", "https://host.test/api/v1/server/administration", nil)
 	r.Body = io.NopCloser(body)
 	r.AddCookie(cookie)
@@ -250,7 +257,7 @@ func TestRemovedAdministratorCannotRegrantFromInflightRequest(t *testing.T) {
 	if status := <-done; status != 403 {
 		t.Fatalf("inflight write after role removal: %d", status)
 	}
-	if a.isAdministrator("42") {
-		t.Fatal("role restored by inflight request")
+	if a.isAdministrator("42") || a.settingsView().Name == "Inflight" {
+		t.Fatal("inflight request wrote after role removal")
 	}
 }

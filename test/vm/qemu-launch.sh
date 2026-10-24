@@ -13,7 +13,7 @@ if test "$scenario" = core-runtime || test "$scenario" = host-apply; then
 fi
 set -- -drive "file=$run/overlay.qcow2,if=virtio,format=qcow2" \
   -drive "file=$run/seed.img,if=virtio,format=raw,readonly=on"
-if test "$scenario" = host-apply || test "$scenario" = two-user-routing || test "$scenario" = host-boot-binding || test "$scenario" = host-boot-storage || test "$scenario" = host-prepare || test "$scenario" = host-prepare-probe; then
+if test "$scenario" = host-apply || test "$scenario" = two-user-routing || test "$scenario" = host-boot-binding || test "$scenario" = host-runtime-admission || test "$scenario" = host-boot-storage || test "$scenario" = host-prepare || test "$scenario" = host-prepare-probe; then
   # Explicit devices can be realized before legacy -drive devices. Pin the
   # OS boot priority so SeaBIOS cannot choose the blank home disk first.
   set -- -drive "file=$run/overlay.qcow2,if=none,format=qcow2,id=oh-root" \

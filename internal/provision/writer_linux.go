@@ -112,7 +112,9 @@ type Writer struct {
 	LingerEvent func(string, bool)
 	// Published is called only after the binding and head are durable. It is
 	// diagnostic only and must not affect the result of an ensure.
-	Published  func(string)
+	Published func(string)
+	// Now stamps runtime admission changes; nil is the system clock.
+	Now        func() time.Time
 	owner      uint32
 	activation *activationState
 }
@@ -200,7 +202,7 @@ func readAt(fd int, name string, owner uint32) ([]byte, error) {
 	}
 	defer unix.Close(f)
 	var st unix.Stat_t
-	if unix.Fstat(f, &st) != nil || st.Uid != owner || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0077 != 0 || st.Nlink != 1 || st.Size < 1 || st.Size > MaxMessage {
+	if unix.Fstat(f, &st) != nil || st.Uid != owner || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0077 != 0 || st.Nlink != 1 || st.Size < 1 || st.Size > fileLimit(name) {
 		return nil, ErrInvalid
 	}
 	b := make([]byte, st.Size)
@@ -220,7 +222,7 @@ func absent(fd int, name string) bool {
 }
 func durable(fd int) error { return unix.Fsync(fd) }
 func writeNew(fd int, name string, b []byte) error {
-	if len(b) == 0 || len(b) > MaxMessage {
+	if len(b) == 0 || int64(len(b)) > fileLimit(name) {
 		return ErrInvalid
 	}
 	f, e := unix.Openat(fd, name, unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0600)
@@ -276,8 +278,11 @@ func stateAt(ctx context.Context, fd int, owner uint32) (allowFile, ledgerFile, 
 	if e != nil {
 		return a, l, nil, nil, e
 	}
-	ar, e := object(ab, "version", "epoch", "ids")
+	ar, e := objectSized(ab, maxAllowlist, allowFields...)
 	if e != nil {
+		return a, l, nil, nil, e
+	}
+	if e = validRuntime(ar["runtime"]); e != nil {
 		return a, l, nil, nil, e
 	}
 	lr, e := object(lb, "version", "generation", "bindings")
@@ -332,6 +337,9 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	// Authorize remains a read-only, short-deadline check. Ensure may start
 	// a socket, but only after the durable publish and release of the ledger
 	// lock (the native pre-start gate itself takes that lock).
+	if accessOperation(r.Operation) {
+		return w.handleAccess(ctx, r)
+	}
 	if r.Operation != "ensure" {
 		return w.handleLocked(ctx, r)
 	}
@@ -544,6 +552,9 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 	// Admission governs login, not administration of an account that already
 	// exists. A revoked binding still owns blocks and must remain visible to
 	// an administrator; quota operations below can only target the ledger UID.
+	if entry == nil && a.runtimeAdmits(r.ID) {
+		entry = &allowed{ID: r.ID}
+	}
 	if entry == nil && r.Operation != "quota_read" && r.Operation != "quota_set" {
 		if !w.AdmitAny {
 			return failure(Denied)

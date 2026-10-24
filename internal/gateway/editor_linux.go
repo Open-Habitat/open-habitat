@@ -162,7 +162,7 @@ func (a *Auth) isEditorHost(host string) bool {
 func (a *Auth) editorParentValid(parent, parentID string, identity Identity) bool {
 	s, ok := a.sessions[parent]
 	now := a.now()
-	return ok && s.id == parentID && s.identity == identity && now.Before(s.idle) && now.Before(s.absolute) && a.sessionStoreHealthy()
+	return ok && s.id == parentID && s.identity == identity && now.Before(s.idle) && now.Before(s.absolute) && a.sessionStoreHealthy() && !a.deniedLocked(identity.Subject)
 }
 
 // pruneEditorSessions drops grants and editor sessions whose app session has

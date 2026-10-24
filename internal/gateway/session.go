@@ -26,7 +26,7 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 		return session{}, false
 	}
 	s, ok := a.sessions[key]
-	if !ok {
+	if !ok || a.deniedLocked(s.identity.Subject) {
 		return session{}, false
 	}
 	now := a.now()

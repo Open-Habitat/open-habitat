@@ -85,10 +85,10 @@ func TestCompleteAdmissionPreservesCommittedHead(t *testing.T) {
 	}
 	unix.Close(fd)
 	before := installationSnapshot(t, parent)
-	if e = completeAdmissionPublication(ctx, dir, p, []string{"43"}, owner); e == nil || installationSnapshot(t, parent) != before {
+	if e = completeAdmissionPublication(ctx, dir, p, []string{"43"}, false, owner); e == nil || installationSnapshot(t, parent) != before {
 		t.Fatal("different desired set accepted", e)
 	}
-	if e = completeAdmissionPublication(ctx, dir, p, []string{"42"}, owner); e != nil {
+	if e = completeAdmissionPublication(ctx, dir, p, []string{"42"}, false, owner); e != nil {
 		t.Fatal(e)
 	}
 	state, e := inspectInstallation(ctx, dir, owner)

@@ -1,10 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/server-administration-change.schema.json",
-  "title": "Update one shared server setting or bound user's browser role",
+  "title": "Update one shared server setting; administrators come only from site.json",
   "oneOf": [
     {"type": "object", "additionalProperties": false, "required": ["name"], "properties": {"name": {"type": "string", "maxLength": 80}}},
-    {"type": "object", "additionalProperties": false, "required": ["default_limit_bytes"], "properties": {"default_limit_bytes": {"type": "integer", "minimum": 1048576, "maximum": 1125899906842624, "multipleOf": 1024}}},
-    {"type": "object", "additionalProperties": false, "required": ["subject", "administrator"], "properties": {"subject": {"type": "string", "pattern": "^[1-9][0-9]*$"}, "administrator": {"type": "boolean"}}}
+    {"type": "object", "additionalProperties": false, "required": ["default_limit_bytes"], "properties": {"default_limit_bytes": {"type": "integer", "minimum": 1048576, "maximum": 1125899906842624, "multipleOf": 1024}}}
   ]
 }

@@ -734,3 +734,27 @@ No secret enters argv: Git passes the request on stdin and the token stays in
 tea's file. The helper calls no daemon or gateway and keeps no state.
 `project-canon review` was not rerun for this leaf; the rows above are source
 and test judgment.
+
+## Admin access batch
+
+`admin access list [--state allowed|joined|withdrawn]`, `admin access lookup
+--login <login>`, `admin access add --github-id <id> [--dry-run]` and
+`admin access remove --github-id <id> [--dry-run]` go over root's gateway
+control socket to the same withdrawal and restore sequence the browser uses
+(§§1, 7). `add` and `remove` take only the canonical numeric id; a login is
+resolved separately by the read-only `lookup`, so the id being admitted is
+always explicit (§§4, 6). `remove` on a site.json id is a usage error naming
+site.json as the owner (exit 1). Every broker or GitHub refusal is a fixed
+code with exit 1 (`runtime_admission_disabled`, `runtime_admission_full`,
+`admission_open`, `binding_drift`, `github_user_not_found`,
+`github_not_user`); an unconfirmed broker reply is `outcome_uncertain` and an
+unreachable GitHub is `github_lookup_unavailable`, both exit 2, never an
+empty result or a success, and nothing retries them (§§9–10). `--dry-run`
+reads the current list and reports `known_effects` (current entry, effect,
+`restore_to` with the bound username, ended sessions) and what stays unknown
+until commit; with the switch off it refuses as the write would (§11).
+Drill-down help lists every flag and its values (§14); the operator skill says
+how the two admission sources relate (§16). `TestAdminAccessCommands` runs the
+commands through the real control handler, including dry runs that write
+nothing, refusals, the uncertain exit and strict flags;
+`TestAccessWriteClassification` pins which broker replies are uncertain.

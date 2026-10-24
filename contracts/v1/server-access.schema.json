@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/server-access.schema.json",
+  "title": "Who may sign in, and an administrator's admission changes",
+  "description": "GET /api/v1/server/access lists both admission sources: operator (root's site.json, never removable here) and site_admin (runtime entries the broker keeps). POST /api/v1/server/access/lookup {login} resolves a GitHub login to its numeric id through GitHub's public users API; organisations and bots are refused (github_not_user), unknown names are github_user_not_found. POST /api/v1/server/access/add {id} admits the id, or restores a withdrawn one to its same account; POST /api/v1/server/access/remove {id} withdraws web access only. A change is in effect only when the reply arrives; 503 outcome_uncertain means it may or may not have been committed, and nothing is retried. Refusals are fixed codes shared with root's admin access CLI: runtime_admission_disabled, runtime_admission_full, admission_open, operator_owned, binding_drift, github_user_not_found, github_not_user, github_lookup_unavailable, broker_unavailable. Administrator, session and CSRF are required.",
+  "oneOf": [{"$ref": "#/$defs/list"}, {"$ref": "#/$defs/lookup_request"}, {"$ref": "#/$defs/change_request"}, {"$ref": "#/$defs/lookup"}, {"$ref": "#/$defs/changed"}],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[1-9][0-9]{0,19}$"},
+    "login": {"type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$"},
+    "entry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "source", "state", "administrator", "denied"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "source": {"description": "operator: site.json; site_admin: a runtime entry; none: only the gateway's deny remains.", "enum": ["operator", "site_admin", "none"]},
+        "state": {"description": "allowed: admitted, not yet signed in; joined: admitted with an account; withdrawn: web access removed, the account stays; removed: a never-used admission was deleted (change reply only); denied: an unconfirmed withdrawal or leftover deny with no admission row.", "enum": ["allowed", "joined", "withdrawn", "removed", "denied"]},
+        "username": {"type": "string", "maxLength": 32},
+        "login_hint": {"$ref": "#/$defs/login"},
+        "actor": {"description": "The administrator's GitHub id or root, as the gateway reported it; provenance, not proof.", "type": "string", "pattern": "^(?:root|[1-9][0-9]{0,19})$"},
+        "at": {"type": "string", "format": "date-time"},
+        "administrator": {"type": "boolean"},
+        "denied": {"description": "The gateway refuses this subject. True on a row that is not withdrawn means a withdrawal was not confirmed.", "type": "boolean"}
+      }
+    },
+    "list": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "mode", "runtime_admission", "entries"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "mode": {"description": "any: the installation admits anyone and the list is read-only.", "enum": ["allowlist", "any"]},
+        "runtime_admission": {"description": "Root's switch; while false, add is refused and remove still works.", "type": "boolean"},
+        "entries": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/entry"}}
+      }
+    },
+    "lookup_request": {"type": "object", "additionalProperties": false, "required": ["login"], "properties": {"login": {"$ref": "#/$defs/login"}}},
+    "change_request": {"type": "object", "additionalProperties": false, "required": ["id"], "properties": {"id": {"$ref": "#/$defs/id"}}},
+    "lookup": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "id", "login", "name"],
+      "properties": {"schema_version": {"const": 1}, "id": {"$ref": "#/$defs/id"}, "login": {"$ref": "#/$defs/login"}, "name": {"type": "string", "maxLength": 255}}
+    },
+    "changed": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "entry"],
+      "properties": {"schema_version": {"const": 1}, "entry": {"$ref": "#/$defs/entry"}}
+    }
+  }
+}

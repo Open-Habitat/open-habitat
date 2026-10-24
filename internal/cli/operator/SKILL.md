@@ -184,6 +184,20 @@ first with `--dry-run`. version_conflict means someone saved in between: read
 again and merge rather than reusing the old version. A change applies only to
 onboardings that start afterwards.
 
+Who may sign in has two sources, both kept by the broker. site.json
+`identities.admission` is root's (host apply converges it, as before).
+Runtime entries are admitted and withdrawn by a browser administrator or
+`admin access add|remove --github-id ID`, only while site.json sets
+`identities.runtime_admission: true`; host apply never removes them, and host
+plan reports them with actor and time under `runtime_admission`. Resolve a
+login first with `admin access lookup --login LOGIN`, then pass the id; run
+each change with `--dry-run` first. `remove` ends web access only (the Unix
+account, files, SSH and processes stay) and refuses a site.json id: edit
+site.json instead. `add` on a withdrawn id returns the person to the same
+account. outcome_uncertain (exit 2) means the change may have committed: read
+`admin access list` and decide; nothing retries it. A `denied` entry that is
+not withdrawn is such an unconfirmed withdrawal; repeat remove or add.
+
 A journal phase is durable intent, not proof of completion. Runtime process
 liveness is not readiness. Generated gateway config and TLS copies are under
 /etc/open-habitat/gateway/; per-user bindings remain separately under

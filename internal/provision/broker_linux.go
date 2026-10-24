@@ -168,7 +168,7 @@ func loggedBrokerHandler(handle Handler, log *slog.Logger) Handler {
 			log.Warn("broker_exchange", "outcome", "rejected", "operation", r.Operation, "reason", string(reply.Failure))
 		case reply.Route != nil:
 			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation, "user", reply.Route.Username)
-		case reply.Quota != nil || reply.Quotas != nil:
+		case reply.Quota != nil || reply.Quotas != nil || reply.Access != nil:
 			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation)
 		case reply.Users != nil:
 			// list and lookup return Users, not a route; even an empty list
@@ -230,9 +230,14 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 		return nil, ErrBrokerStartup
 	}
 	bindings := make([]ExecutorIdentity, 0, len(l.Bindings))
-	admitted := make(map[string]bool, len(a.IDs))
+	admitted := make(map[string]bool, len(a.IDs)+len(a.Runtime))
 	for _, entry := range a.IDs {
 		admitted[entry.ID] = true
+	}
+	for _, entry := range a.Runtime {
+		if entry.State == "admitted" {
+			admitted[entry.ID] = true
+		}
 	}
 	for _, b := range l.Bindings {
 		if ctx.Err() != nil || b.UID < w.UIDMin || b.UID > w.UIDMax {

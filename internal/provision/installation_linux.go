@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
+	"slices"
 	"sort"
 
 	"golang.org/x/sys/unix"
@@ -32,6 +33,38 @@ type InstallationState struct {
 	ObservedEpoch uint64         `json:"observed_epoch"`
 	Generation    uint64         `json:"generation"`
 	Token         string         `json:"token"`
+	// RuntimeAdmission is the switch as published; Runtime is the site_admin
+	// source, which host apply reports but never converges.
+	RuntimeAdmission bool           `json:"runtime_admission"`
+	Runtime          []RuntimeEntry `json:"runtime"`
+}
+
+// RuntimeEntry is a site_admin admission as host plan reports it.
+type RuntimeEntry struct {
+	ID        string `json:"id"`
+	State     string `json:"state"`
+	Bound     bool   `json:"bound"`
+	LoginHint string `json:"login_hint"`
+	Actor     string `json:"actor"`
+	At        string `json:"at"`
+}
+
+// Admits is the effective admission, the union of both sources.
+func (s InstallationState) Admits(id string) bool {
+	if slices.Contains(s.Admission, id) {
+		return true
+	}
+	return s.RuntimeAdmits(id)
+}
+
+// RuntimeAdmits reports whether the site_admin source admits id.
+func (s InstallationState) RuntimeAdmits(id string) bool {
+	for _, x := range s.Runtime {
+		if x.ID == id && x.State == "admitted" {
+			return true
+		}
+	}
+	return false
 }
 
 // InspectInstallation is root-local and read-only, including on failure. It
@@ -92,6 +125,11 @@ func installationAt(ctx context.Context, fd int, owner uint32) (InstallationStat
 	}
 	sort.Strings(s.Admission)
 	sort.Strings(s.BoundSubjects)
+	s.RuntimeAdmission = a.RuntimeAdmission
+	s.Runtime = []RuntimeEntry{}
+	for _, x := range a.Runtime {
+		s.Runtime = append(s.Runtime, RuntimeEntry{ID: x.ID, State: x.State, Bound: slices.Contains(s.BoundSubjects, x.ID), LoginHint: x.LoginHint, Actor: x.Actor, At: x.At})
+	}
 	s.Epoch = a.Epoch
 	s.ObservedEpoch = h.Epoch
 	s.Generation = l.Generation
@@ -221,16 +259,30 @@ func initializeBroker(ctx context.Context, parent, name string, p Initialization
 func equalStrings(a, b []string) bool { return bytes.Equal(marshal(a), marshal(b)) }
 
 // PublishAdmission is a compare-and-publish transaction, not an admission API on
-// the broker listener. The caller must keep entry points closed and revoke
-// removed subjects *before* this call. It must then wait for ObservedEpoch;
-// this function deliberately never advances the broker's head on its behalf.
-func PublishAdmission(ctx context.Context, expectedToken string, ids []string) (InstallationState, error) {
+// the broker listener. It replaces only the operator source and root's
+// runtime-admission switch; the site_admin entries are carried over unchanged.
+// The caller must keep entry points closed and revoke subjects the new
+// effective admission drops *before* this call. It must then wait for
+// ObservedEpoch; this function never advances the broker's head on its behalf.
+func PublishAdmission(ctx context.Context, expectedToken string, ids []string, runtimeAdmission bool) (InstallationState, error) {
 	if os.Geteuid() != 0 {
 		return InstallationState{}, ErrInvalid
 	}
-	return publishAdmission(ctx, brokerState, 0, expectedToken, ids)
+	return publishAdmission(ctx, brokerState, 0, expectedToken, ids, runtimeAdmission)
 }
-func publishAdmission(ctx context.Context, dir string, owner uint32, token string, ids []string) (InstallationState, error) {
+
+// operatorPublication is the admission file host apply stages: the given
+// operator ids and switch, with the current site_admin entries and epoch+1.
+func operatorPublication(current allowFile, ids []string, runtimeAdmission bool) allowFile {
+	want := append([]string{}, ids...)
+	sort.Strings(want)
+	next := allowFile{Version: 1, Epoch: current.Epoch + 1, IDs: []allowed{}, RuntimeAdmission: runtimeAdmission, Runtime: current.Runtime}
+	for _, id := range want {
+		next.IDs = append(next.IDs, allowed{ID: id})
+	}
+	return next
+}
+func publishAdmission(ctx context.Context, dir string, owner uint32, token string, ids []string, runtimeAdmission bool) (InstallationState, error) {
 	if !validAdmission(ids) {
 		return InstallationState{}, ErrInvalid
 	}
@@ -248,16 +300,17 @@ func publishAdmission(ctx context.Context, dir string, owner uint32, token strin
 	}
 	want := append([]string{}, ids...)
 	sort.Strings(want)
-	if equalStrings(s.Admission, want) {
+	if equalStrings(s.Admission, want) && s.RuntimeAdmission == runtimeAdmission {
 		return s, nil
 	}
 	if s.Epoch == ^uint64(0) {
 		return InstallationState{}, ErrInvalid
 	}
-	a := allowFile{Version: 1, Epoch: s.Epoch + 1, IDs: []allowed{}}
-	for _, id := range want {
-		a.IDs = append(a.IDs, allowed{ID: id})
+	current, _, _, _, e := stateAt(ctx, fd, owner)
+	if e != nil || current.Epoch != s.Epoch {
+		return InstallationState{}, ErrInvalid
 	}
+	a := operatorPublication(current, ids, runtimeAdmission)
 	if ctx.Err() != nil {
 		return InstallationState{}, ctx.Err()
 	}

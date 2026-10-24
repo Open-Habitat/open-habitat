@@ -24,7 +24,7 @@ func (a *Auth) liveRequest(r *http.Request, authenticated session) (context.Cont
 	}
 	ctx, release := a.registerLive(r.Context(), key, func() bool {
 		current, exists := a.sessions[key]
-		return exists && a.now().Before(current.idle) && a.now().Before(current.absolute) && a.sessionStoreHealthy()
+		return exists && a.now().Before(current.idle) && a.now().Before(current.absolute) && a.sessionStoreHealthy() && !a.deniedLocked(current.identity.Subject)
 	})
 	return ctx, release, true
 }

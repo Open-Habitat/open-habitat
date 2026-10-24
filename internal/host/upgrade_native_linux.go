@@ -392,7 +392,7 @@ func (n *nativeUpgrade) acceptedRecoveryPrerequisites(ctx context.Context) error
 		return ErrUpgradeTarget
 	}
 	state, e := provision.InspectInstallation(ctx)
-	if e != nil || !slices.Equal(state.Admission, n.site.Identities.Admission) || state.Epoch != state.ObservedEpoch {
+	if e != nil || !admissionPublished(state, n.site) || state.Epoch != state.ObservedEpoch {
 		return ErrRecovery
 	}
 	return nil
@@ -408,7 +408,7 @@ func (n *nativeUpgrade) startAcceptedConsumers(ctx context.Context) error {
 	}
 	units := []string{"open-habitat-broker.service", "open-habitat-gateway.service"}
 	for _, i := range ids {
-		if slices.Contains(state.Admission, i.ID()) {
+		if state.Admits(i.ID()) {
 			units = append(units, "open-habitat-daemon@"+i.Username()+".socket", "open-habitat-agent@"+i.Username()+".socket", "open-habitat-daemon@"+i.Username()+".service")
 		}
 	}
@@ -687,7 +687,7 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 	}
 	out := []upgradeUser{}
 	for _, i := range ids {
-		u := upgradeUser{Name: i.Username(), UID: i.UID(), GID: i.UID(), Services: []string{}, Admitted: slices.Contains(state.Admission, i.ID())}
+		u := upgradeUser{Name: i.Username(), UID: i.UID(), GID: i.UID(), Services: []string{}, Admitted: state.Admits(i.ID())}
 		b, e := nativeCommand(ctx, "/usr/bin/systemctl", "show", "--value", "--property=ActiveState", "open-habitat-daemon@"+u.Name+".service")
 		if e != nil {
 			return nil, e

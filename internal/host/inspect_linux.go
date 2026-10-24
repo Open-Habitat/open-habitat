@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -51,6 +50,18 @@ type Plan struct {
 	PlanID     string   `json:"plan_id"`
 	Approvable bool     `json:"approvable"`
 	Actions    []Action `json:"actions"`
+	// RuntimeAdmission is information, never an action: host apply converges
+	// only the switch and the operator source, and reports the site_admin
+	// entries with their actor and time so root can see what was admitted.
+	RuntimeAdmission *RuntimeAdmissionReport `json:"runtime_admission,omitempty"`
+}
+
+// RuntimeAdmissionReport is the broker's switch and site_admin source as
+// observed; Site is the switch the site file asks for.
+type RuntimeAdmissionReport struct {
+	Site    bool                     `json:"site"`
+	Broker  bool                     `json:"broker"`
+	Entries []provision.RuntimeEntry `json:"entries"`
 }
 
 type inspectSources struct {
@@ -246,6 +257,7 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 	return buildPlanMode(ctx, sitePath, src, false)
 }
 func buildPlanMode(ctx context.Context, sitePath string, src inspectSources, preparation bool) (Plan, error) {
+	var runtime *RuntimeAdmissionReport
 	capture := func() (Inspection, []Action, []byte, error) {
 		r, e := inspect(ctx, sitePath, src)
 		if e != nil {
@@ -271,8 +283,10 @@ func buildPlanMode(ctx context.Context, sitePath string, src inspectSources, pre
 		}
 		state, e := src.broker(ctx)
 		token := ""
+		runtime = nil
 		if e == nil {
 			token = state.Token
+			runtime = &RuntimeAdmissionReport{Site: s.Identities.RuntimeAdmission, Broker: state.RuntimeAdmission, Entries: state.Runtime}
 		}
 		actions := []Action{{"installation.apply", "blocked", "apply_qualification_required"}, {"broker.admission", "blocked", "broker_state_unavailable"}, {"settings.reconcile", "blocked", "control_observation_required"}, {"administrators.reconcile", "blocked", "control_observation_required"}}
 		if e == nil {
@@ -282,7 +296,7 @@ func buildPlanMode(ctx context.Context, sitePath string, src inspectSources, pre
 				actions[1].Reason = "immutable_identity_changed"
 			case state.Epoch != state.ObservedEpoch:
 				actions[1].Reason = "admission_not_observed"
-			case slices.Equal(state.Admission, s.Identities.Admission):
+			case admissionPublished(state, s):
 				actions[1] = Action{"broker.admission", "no_change", "admission_matches"}
 			default:
 				actions[1].Reason = "admission_change_required"
@@ -326,7 +340,7 @@ func buildPlanMode(ctx context.Context, sitePath string, src inspectSources, pre
 	sum := sha256.Sum256(b)
 	// An observation fingerprint is not authenticated release/preparation evidence.
 	// Keep plans non-approvable until those postconditions and the executor exist.
-	return Plan{Inspection: r, Protocol: ApplyProtocol, PlanID: hex.EncodeToString(sum[:]), Approvable: r.Ready, Actions: actions}, nil
+	return Plan{Inspection: r, Protocol: ApplyProtocol, PlanID: hex.EncodeToString(sum[:]), Approvable: r.Ready, Actions: actions, RuntimeAdmission: runtime}, nil
 }
 
 // Bind this observation to the machine and boot without disclosing machine IDs.

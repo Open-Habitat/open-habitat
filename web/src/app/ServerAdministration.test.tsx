@@ -59,42 +59,29 @@ it("renders quota usage, capacity and the bound user's limit", async () => {
     "75%",
   );
 });
-it("lists only bound identities and refreshes after a role update", async () => {
-  let admin = false;
-  const fetchMock = vi
-    .spyOn(globalThis, "fetch")
-    .mockImplementation(async (_input, init) => {
-      if (init?.method === "PUT") {
-        expect(init.headers).toMatchObject({ "X-Agent-Host-CSRF": "csrf" });
-        expect(JSON.parse(String(init.body))).toEqual({
-          subject: "42",
-          administrator: true,
-        });
-        admin = true;
-        return new Response(null, { status: 204 });
-      }
-      return new Response(
+it("lists bound identities and offers no administrator-role write", async () => {
+  const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+    async () =>
+      new Response(
         JSON.stringify({
           schema_version: 1,
           default_limit_bytes: 1073741824,
           name: "Example host",
-          users: [{ id: "42", username: "alice", administrator: admin }],
+          users: [{ id: "42", username: "alice", administrator: false }],
         }),
         { status: 200 },
-      );
-    });
+      ),
+  );
   render(
     <MemoryRouter>
       <ServerAdministration csrf="csrf" section="kayttajat" />
     </MemoryRouter>,
   );
-  fireEvent.click(await screen.findByTestId("account-role-toggle"));
-  await waitFor(() =>
-    expect(
-      screen.getByTestId("account-role-toggle").getAttribute("aria-pressed"),
-    ).toBe("true"),
-  );
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+  await screen.findByText("alice");
+  expect(screen.queryByTestId("account-role-toggle")).toBeNull();
+  expect(
+    fetchMock.mock.calls.every(([, init]) => (init?.method ?? "GET") === "GET"),
+  ).toBe(true);
   expect(document.body.textContent).not.toMatch(/credentials|home path/i);
 });
 it("saves a trimmed name on blur and keeps the typed text when the save fails", async () => {

@@ -7,20 +7,21 @@ import (
 	"context"
 	"golang.org/x/sys/unix"
 	"os"
-	"sort"
 )
 
 // CompleteAdmissionPublication finishes only a fully durable same-input root
 // admission stage. The operator must retain closed entry points and the same
 // approved apply fence proving revocation preceded staging. This never writes
 // bindings, a pending account transaction or the broker's observed head.
-func CompleteAdmissionPublication(ctx context.Context, p Initialization, ids []string) error {
+// A staging file the broker's own admit or withdraw left behind never matches
+// this site's operator publication, so it stays closed for the operator.
+func CompleteAdmissionPublication(ctx context.Context, p Initialization, ids []string, runtimeAdmission bool) error {
 	if os.Geteuid() != 0 {
 		return ErrInvalid
 	}
-	return completeAdmissionPublication(ctx, brokerState, p, ids, 0)
+	return completeAdmissionPublication(ctx, brokerState, p, ids, runtimeAdmission, 0)
 }
-func completeAdmissionPublication(ctx context.Context, dir string, p Initialization, ids []string, owner uint32) error {
+func completeAdmissionPublication(ctx context.Context, dir string, p Initialization, ids []string, runtimeAdmission bool, owner uint32) error {
 	if !validAdmission(ids) {
 		return ErrInvalid
 	}
@@ -51,12 +52,7 @@ func completeAdmissionPublication(ctx context.Context, dir string, p Initializat
 	if e != nil || decode(hb, &h, "version", "epoch", "generation") != nil || h.Version != 1 || h.Epoch != a.Epoch || h.Generation != l.Generation {
 		return ErrInvalid
 	}
-	wanted := append([]string{}, ids...)
-	sort.Strings(wanted)
-	next := allowFile{Version: 1, Epoch: a.Epoch + 1, IDs: []allowed{}}
-	for _, id := range wanted {
-		next.IDs = append(next.IDs, allowed{ID: id})
-	}
+	next := operatorPublication(a, ids, runtimeAdmission)
 	staged, e := readAt(fd, "allowlist.json.next", owner)
 	if e != nil || !bytes.Equal(staged, marshal(next)) {
 		return ErrInvalid

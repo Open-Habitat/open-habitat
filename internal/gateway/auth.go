@@ -161,6 +161,9 @@ type Auth struct {
 	random   io.Reader
 	log      *slog.Logger
 	mu       sync.Mutex
+	// accessMu serializes admission changes, which span broker exchanges
+	// and so cannot hold mu throughout.
+	accessMu sync.Mutex
 	pending  map[string]pending
 	serial   uint64
 	revoked  map[string]uint64
@@ -569,7 +572,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.mu.Lock()
-	revoked := p.serial <= a.revoked[id]
+	revoked := a.subjectClosedLocked(id, p.serial)
 	a.mu.Unlock()
 	if revoked {
 		a.authEvent(attempt, "rejected", "subject_revoked")
@@ -594,7 +597,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	// Old anonymous flows are identified only after the provider exchange.
 	a.mu.Lock()
-	revoked = p.serial <= a.revoked[id]
+	revoked = a.subjectClosedLocked(id, p.serial)
 	a.mu.Unlock()
 	if revoked {
 		a.authEvent(attempt, "rejected", "subject_revoked")
@@ -635,7 +638,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.mu.Lock()
-	if p.serial <= a.revoked[id] {
+	if a.subjectClosedLocked(id, p.serial) {
 		a.mu.Unlock()
 		a.authEvent(attempt, "rejected", "subject_revoked")
 		a.callbackFailure(w, r, 403, "authentication_required")

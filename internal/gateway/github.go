@@ -157,3 +157,76 @@ func githubUser(body io.Reader) (struct {
 	}
 	return user, true
 }
+
+// githubAPI is the fixed REST origin; tests replace the transport, not the URL.
+const githubAPI = "https://api.github.com"
+
+// LookupLogin resolves a login through the public users API, authenticated as
+// the OAuth app only for its rate limit. No person's token is used.
+func (g GitHubProvider) LookupLogin(ctx context.Context, login string) (GitHubUser, error) {
+	if !githubLoginName(login) {
+		return GitHubUser{}, ErrGitHubUserNotFound
+	}
+	u, err := g.lookup(ctx, "/users/"+login)
+	if err == nil && !strings.EqualFold(u.Login, login) {
+		return GitHubUser{}, ErrGitHubLookup
+	}
+	return u, err
+}
+
+// LookupID resolves a numeric account id the same way.
+func (g GitHubProvider) LookupID(ctx context.Context, id string) (GitHubUser, error) {
+	if !canonicalSubject(id) {
+		return GitHubUser{}, ErrGitHubUserNotFound
+	}
+	u, err := g.lookup(ctx, "/user/"+id)
+	if err == nil && u.ID != id {
+		return GitHubUser{}, ErrGitHubLookup
+	}
+	return u, err
+}
+
+func (g GitHubProvider) lookup(ctx context.Context, path string) (GitHubUser, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", githubAPI+path, nil)
+	if err != nil {
+		return GitHubUser{}, ErrGitHubLookup
+	}
+	req.SetBasicAuth(g.ClientID, g.ClientSecret)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	resp, err := g.client().Do(req)
+	if err != nil {
+		return GitHubUser{}, ErrGitHubLookup
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return GitHubUser{}, ErrGitHubUserNotFound
+	}
+	if resp.StatusCode != http.StatusOK {
+		return GitHubUser{}, ErrGitHubLookup
+	}
+	var body struct {
+		ID    json.Number `json:"id"`
+		Login string      `json:"login"`
+		Name  string      `json:"name"`
+		Type  string      `json:"type"`
+	}
+	d := json.NewDecoder(io.LimitReader(resp.Body, 65536))
+	d.UseNumber()
+	if d.Decode(&body) != nil {
+		return GitHubUser{}, ErrGitHubLookup
+	}
+	// Organisations and bots cannot sign in as a person.
+	if body.Type != "User" {
+		return GitHubUser{}, ErrGitHubNotUser
+	}
+	if !canonicalSubject(body.ID.String()) || !githubLoginName(body.Login) {
+		return GitHubUser{}, ErrGitHubLookup
+	}
+	name := body.Name
+	if len(name) > 255 {
+		name = ""
+	}
+	return GitHubUser{ID: body.ID.String(), Login: body.Login, Name: name, Type: body.Type}, nil
+}

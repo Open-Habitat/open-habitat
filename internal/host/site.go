@@ -53,6 +53,10 @@ type Identities struct {
 	UIDMax         uint32   `json:"uid_max"`
 	Admission      []string `json:"admission"`
 	Administrators []string `json:"administrators"`
+	// RuntimeAdmission lets a browser administrator admit and withdraw
+	// people beside admission (ADR 0030). Off by default; host apply
+	// converges only the switch and admission, never the runtime entries.
+	RuntimeAdmission bool `json:"runtime_admission,omitempty"`
 }
 type Storage struct {
 	HomeUUID          string `json:"home_uuid"`

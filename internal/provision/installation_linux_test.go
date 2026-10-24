@@ -104,17 +104,17 @@ func TestPublishAdmissionWatermarkAndStalePlan(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	n, e := publishAdmission(ctx, dir, owner, s.Token, []string{"456"})
+	n, e := publishAdmission(ctx, dir, owner, s.Token, []string{"456"}, false)
 	if e != nil {
 		t.Fatal(e)
 	}
 	if n.Epoch != 2 || n.ObservedEpoch != 1 || n.Generation != 1 {
 		t.Fatalf("false broker observation: %+v", n)
 	}
-	if _, e = publishAdmission(ctx, dir, owner, s.Token, []string{"789"}); e == nil {
+	if _, e = publishAdmission(ctx, dir, owner, s.Token, []string{"789"}, false); e == nil {
 		t.Fatal("stale token accepted")
 	}
-	if _, e = publishAdmission(ctx, dir, owner, n.Token, []string{"789"}); e == nil {
+	if _, e = publishAdmission(ctx, dir, owner, n.Token, []string{"789"}, false); e == nil {
 		t.Fatal("unobserved epoch accepted")
 	}
 	// Only the broker advances its observed epoch. Simulate that observation,
@@ -126,7 +126,7 @@ func TestPublishAdmissionWatermarkAndStalePlan(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	same, e := publishAdmission(ctx, dir, owner, n.Token, []string{"456"})
+	same, e := publishAdmission(ctx, dir, owner, n.Token, []string{"456"}, false)
 	if e != nil || same.Token != n.Token {
 		t.Fatal("non-idempotent admission", e)
 	}

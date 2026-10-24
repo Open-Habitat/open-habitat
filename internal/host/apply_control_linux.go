@@ -81,6 +81,13 @@ func waitControl(ctx context.Context) error {
 		}
 	}
 }
+
+// admissionPublished reports whether the broker's operator source and switch
+// are exactly this site's. Runtime entries are the broker's, not the site's.
+func admissionPublished(state provision.InstallationState, s Site) bool {
+	return slices.Equal(state.Admission, s.Identities.Admission) && state.RuntimeAdmission == s.Identities.RuntimeAdmission
+}
+
 func (n *nativeApply) converge(ctx context.Context) error {
 	if e := waitControl(ctx); e != nil {
 		return e
@@ -91,19 +98,21 @@ func (n *nativeApply) converge(ctx context.Context) error {
 	}
 	// Revocations occur under the old admission, while the root-owned entry
 	// gate denies new HTTP requests. A failed removal never opens that gate.
+	// An id the site_admin source still admits stays admitted and keeps its
+	// sessions: host apply converges only the operator source.
 	for _, id := range state.Admission {
-		if !slices.Contains(n.site.Identities.Admission, id) && slices.Contains(state.BoundSubjects, id) {
+		if !slices.Contains(n.site.Identities.Admission, id) && !state.RuntimeAdmits(id) && slices.Contains(state.BoundSubjects, id) {
 			if e = revokeSubject(ctx, id); e != nil {
 				return e
 			}
 		}
 	}
-	if !slices.Equal(state.Admission, n.site.Identities.Admission) {
+	if !admissionPublished(state, n.site) {
 		state, e = provision.InspectInstallation(ctx)
 		if e != nil {
 			return e
 		}
-		if _, e = provision.PublishAdmission(ctx, state.Token, n.site.Identities.Admission); e != nil {
+		if _, e = provision.PublishAdmission(ctx, state.Token, n.site.Identities.Admission, n.site.Identities.RuntimeAdmission); e != nil {
 			return e
 		}
 	}
@@ -119,6 +128,9 @@ func (n *nativeApply) converge(ctx context.Context) error {
 	state, e = provision.InspectInstallation(ctx)
 	if e != nil || state.Epoch != state.ObservedEpoch {
 		return ErrNativeApply
+	}
+	if e = liftOperatorDenies(ctx, control); e != nil {
+		return e
 	}
 	var settings applySettings
 	if e = control(ctx, map[string]any{"operation": "show"}, &settings); e != nil {
@@ -180,6 +192,37 @@ func (n *nativeApply) verifySettings(ctx context.Context) error {
 	slices.Sort(want)
 	if !slices.Equal(settings.Administrators, want) {
 		return ErrNativeApply
+	}
+	return nil
+}
+
+// liftOperatorDenies restores web access for ids site.json now admits but a
+// browser withdrawal left denied in the gateway: root's admission is the
+// operator source's, and the gateway deny must not silently reduce it. The
+// gateway's own restore removes leftover sessions before lifting the deny.
+func liftOperatorDenies(ctx context.Context, exchange func(context.Context, any, any) error) error {
+	var view struct {
+		SchemaVersion int `json:"schema_version"`
+		Entries       []struct {
+			ID     string `json:"id"`
+			Source string `json:"source"`
+			Denied bool   `json:"denied"`
+		} `json:"entries"`
+	}
+	if e := exchange(ctx, map[string]any{"operation": "access_list"}, &view); e != nil || view.SchemaVersion != 1 {
+		return ErrNativeApply
+	}
+	for _, entry := range view.Entries {
+		if entry.Source != "operator" || !entry.Denied {
+			continue
+		}
+		var row struct {
+			ID     string `json:"id"`
+			Denied bool   `json:"denied"`
+		}
+		if e := exchange(ctx, map[string]any{"operation": "access_add", "subject": entry.ID}, &row); e != nil || row.ID != entry.ID || row.Denied {
+			return ErrNativeApply
+		}
 	}
 	return nil
 }

@@ -59,30 +59,6 @@ export function ServerAdministration({
     });
     return () => controller.abort();
   }, [reload, reloadStorage]);
-  const save = async (
-    change:
-      | { name: string }
-      | { subject: string; administrator: boolean }
-      | { default_limit_bytes: number },
-  ) => {
-    if (!csrf || saving) return;
-    setSaving(true);
-    setError("");
-    try {
-      await changeAdministration(csrf, change);
-      await reload();
-      setEditing("");
-    } catch {
-      setError(
-        "Muutosta ei voitu vahvistaa. Päivitä tiedot ennen uutta yritystä.",
-      );
-      // Preserve the form. A failed response can mean a lost acknowledgement;
-      // reload to determine the server state before another write.
-      setData(undefined);
-    } finally {
-      setSaving(false);
-    }
-  };
   // An inline field keeps its own text and failure; a write is idempotent,
   // so trying again needs no reload first.
   const saveField = async (
@@ -289,22 +265,6 @@ export function ServerAdministration({
                           {user.administrator ? "Ylläpitäjä" : "Käyttäjä"}
                         </td>
                         <td>
-                          <ControlButton
-                            size="row"
-                            isDisabled={!csrf || saving}
-                            data-testid="account-role-toggle"
-                            aria-pressed={user.administrator}
-                            onPress={() =>
-                              void save({
-                                subject: user.id,
-                                administrator: !user.administrator,
-                              })
-                            }
-                          >
-                            {user.administrator
-                              ? "Poista ylläpitäjärooli"
-                              : "Anna ylläpitäjärooli"}
-                          </ControlButton>
                           {quota && (
                             <>
                               <ControlButton

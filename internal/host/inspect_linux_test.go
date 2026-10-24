@@ -6,9 +6,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"golang.org/x/sys/unix"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -223,6 +225,19 @@ func TestPlanAdmissionDifferencesWithoutInventingInitialization(t *testing.T) {
 	if e != nil || p.Actions[1].Status != "no_change" {
 		t.Fatal(p, e)
 	}
+	// Runtime entries are the broker's and only reported; the switch is the
+	// site's and converges.
+	state.Runtime = []provision.RuntimeEntry{{ID: "777", State: "admitted", LoginHint: "newcomer", Actor: "123456", At: "2026-10-24T09:30:00Z"}}
+	p, e = buildPlan(context.Background(), site, src)
+	if e != nil || p.Actions[1].Status != "no_change" || p.RuntimeAdmission == nil || len(p.RuntimeAdmission.Entries) != 1 || p.RuntimeAdmission.Entries[0].ID != "777" {
+		t.Fatal(p, e)
+	}
+	state.RuntimeAdmission = true
+	p, e = buildPlan(context.Background(), site, src)
+	if e != nil || p.Actions[1].Reason != "admission_change_required" || p.RuntimeAdmission.Site || !p.RuntimeAdmission.Broker {
+		t.Fatal(p, e)
+	}
+	state.RuntimeAdmission = false
 	state.Admission = []string{"987654321"}
 	p, e = buildPlan(context.Background(), site, src)
 	if e != nil || p.Actions[1].Status != "blocked" || p.Actions[1].Reason != "admission_change_required" {
@@ -311,5 +326,24 @@ func TestInspectionRequiresRootBeforeFileAccess(t *testing.T) {
 	}
 	if _, e := BuildPlan(context.Background(), "/unreadable/site.json"); !errors.Is(e, ErrTrust) {
 		t.Fatal(e)
+	}
+}
+
+func TestApplyLiftsGatewayDenyOnlyForOperatorIDs(t *testing.T) {
+	var calls []string
+	exchange := func(_ context.Context, request any, reply any) error {
+		r := request.(map[string]any)
+		calls = append(calls, fmt.Sprint(r["operation"], r["subject"]))
+		body := `{"schema_version":1,"entries":[{"id":"1","source":"operator","denied":true},{"id":"2","source":"site_admin","denied":true},{"id":"3","source":"operator","denied":false},{"id":"4","source":"none","denied":true}]}`
+		if r["operation"] == "access_add" {
+			body = fmt.Sprintf(`{"id":%q,"denied":false}`, r["subject"])
+		}
+		return json.Unmarshal([]byte(body), reply)
+	}
+	if e := liftOperatorDenies(context.Background(), exchange); e != nil {
+		t.Fatal(e)
+	}
+	if !slices.Equal(calls, []string{"access_list<nil>", "access_add1"}) {
+		t.Fatal(calls)
 	}
 }

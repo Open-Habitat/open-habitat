@@ -243,7 +243,7 @@ func (a *Auth) liveGrant(r *http.Request, token string, now time.Time) (string, 
 			return key, g, "link_expired"
 		case !ok || parent.id != g.parentID || parent.identity != g.identity || !now.Before(parent.idle) || !now.Before(parent.absolute):
 			return key, g, "parent_ended"
-		case g.serial <= a.revoked[g.identity.Subject]:
+		case a.subjectClosedLocked(g.identity.Subject, g.serial):
 			return key, g, "subject_revoked"
 		case g.accessEmail != accessEmail(r):
 			return key, g, "access_mismatch"
@@ -327,7 +327,7 @@ func (a *Auth) redeemLink(w http.ResponseWriter, r *http.Request) {
 	a.mu.Lock()
 	now := a.now()
 	parent, alive := a.sessions[key]
-	if !alive || parent.id != g.parentID || !now.Before(parent.idle) || !now.Before(parent.absolute) || g.serial <= a.revoked[g.identity.Subject] {
+	if !alive || parent.id != g.parentID || !now.Before(parent.idle) || !now.Before(parent.absolute) || a.subjectClosedLocked(g.identity.Subject, g.serial) {
 		if g.state == "redeeming" {
 			g.state = "failed"
 		}

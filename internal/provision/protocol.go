@@ -24,6 +24,12 @@ const (
 	StateUnavailable Failure = "state_unavailable"
 	NameCollision    Failure = "name_collision"
 	Drift            Failure = "drift"
+	// Runtime admission refusals: the switch is off, the runtime set is full,
+	// the installation admits anyone, or the id belongs to the operator source.
+	RuntimeDisabled Failure = "runtime_admission_disabled"
+	RuntimeFull     Failure = "runtime_admission_full"
+	AdmissionOpen   Failure = "admission_open"
+	OperatorOwned   Failure = "operator_owned"
 )
 
 type Request struct {
@@ -34,6 +40,8 @@ type Request struct {
 	Candidate         string  `json:"candidate,omitempty"`
 	DefaultLimitBytes *uint64 `json:"default_limit_bytes,omitempty"`
 	LimitBytes        *uint64 `json:"limit_bytes,omitempty"`
+	LoginHint         string  `json:"login_hint,omitempty"`
+	Actor             string  `json:"actor,omitempty"`
 }
 type Route struct {
 	UID      uint32 `json:"uid"`
@@ -68,6 +76,7 @@ type QuotaPage struct {
 const QuotaPageSize = 15
 
 type Reply struct {
+	Access     *AccessPage  `json:"access,omitempty"`
 	Quotas     *QuotaPage   `json:"quotas,omitempty"`
 	Quota      *QuotaReply  `json:"quota,omitempty"`
 	Users      *[]BoundUser `json:"users,omitempty"`
@@ -119,7 +128,10 @@ func socketFor(name string) string { return "/run/open-habitat/users/" + name + 
 
 // object rejects duplicate and unknown fields before any typed decode.
 func object(b []byte, fields ...string) (map[string]json.RawMessage, error) {
-	if len(b) == 0 || len(b) > MaxMessage {
+	return objectSized(b, MaxMessage, fields...)
+}
+func objectSized(b []byte, limit int, fields ...string) (map[string]json.RawMessage, error) {
+	if len(b) == 0 || len(b) > limit {
 		return nil, ErrInvalid
 	}
 	allowed := make(map[string]bool, len(fields))
@@ -173,7 +185,7 @@ func validLimit(n uint64) bool { return n >= 1<<20 && n <= 1<<50 && n%1024 == 0 
 
 func ParseRequest(b []byte) (Request, error) {
 	var r Request
-	raw, err := object(b, "version", "operation", "provider", "id", "candidate", "default_limit_bytes", "limit_bytes")
+	raw, err := object(b, "version", "operation", "provider", "id", "candidate", "default_limit_bytes", "limit_bytes", "login_hint", "actor")
 	if err != nil {
 		return Request{}, err
 	}
@@ -183,6 +195,15 @@ func ParseRequest(b []byte) (Request, error) {
 		}
 	}
 	if err := json.Unmarshal(b, &r); err != nil {
+		return Request{}, ErrInvalid
+	}
+	if accessOperation(r.Operation) {
+		return parseAccessRequest(raw, r)
+	}
+	if _, ok := raw["login_hint"]; ok {
+		return Request{}, ErrInvalid
+	}
+	if _, ok := raw["actor"]; ok {
 		return Request{}, ErrInvalid
 	}
 	_, candidatePresent := raw["candidate"]
@@ -205,13 +226,13 @@ func ParseRequest(b []byte) (Request, error) {
 }
 func ParseReply(b []byte) (Reply, error) {
 	var r Reply
-	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas"); err != nil {
+	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access"); err != nil {
 		return Reply{}, err
 	}
 	if r.Version != 1 {
 		return Reply{}, ErrInvalid
 	}
-	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas")
+	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access")
 	if len(raw["version"]) == 0 {
 		return Reply{}, ErrInvalid
 	}
@@ -220,14 +241,17 @@ func ParseReply(b []byte) (Reply, error) {
 	}
 	if r.Failure != "" {
 		switch r.Failure {
-		case Denied, Invalid, StateUnavailable, NameCollision, Drift:
+		case Denied, Invalid, StateUnavailable, NameCollision, Drift, RuntimeDisabled, RuntimeFull, AdmissionOpen, OperatorOwned:
 		default:
 			return Reply{}, ErrInvalid
 		}
-		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || r.Users != nil || r.Next != "" || (len(raw["quota"]) != 0 || len(raw["quotas"]) != 0) {
+		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || r.Users != nil || r.Next != "" || (len(raw["quota"]) != 0 || len(raw["quotas"]) != 0 || len(raw["access"]) != 0) {
 			return Reply{}, ErrInvalid
 		}
 		return r, nil
+	}
+	if len(raw["access"]) != 0 {
+		return parseAccessReply(raw, r)
 	}
 	if len(raw["quotas"]) != 0 {
 		if r.Quotas == nil || r.Quota != nil || r.Route != nil || r.Users != nil || r.Generation == 0 || r.Epoch == 0 || r.Next != "" && !numericOffset(r.Next) {

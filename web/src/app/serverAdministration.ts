@@ -86,10 +86,8 @@ export async function administration(
 }
 export async function changeAdministration(
   csrf: string,
-  change:
-    | { name: string }
-    | { subject: string; administrator: boolean }
-    | { default_limit_bytes: number },
+  // Administrators come only from site.json; the browser has no role write.
+  change: { name: string } | { default_limit_bytes: number },
 ): Promise<void> {
   const r = await mutationFetch(
     "server.administration",

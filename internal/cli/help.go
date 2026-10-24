@@ -79,6 +79,10 @@ var helpSpecs = []helpSpec{
 	{"admin settings update", "Update host name or default quota", "admin settings update --name Example --dry-run --json", []string{"--name", "--default-limit-bytes", "--dry-run"}},
 	{"admin onboarding show", "Read the site onboarding configuration and its version: repositories {mode, defaults}, integrations [{provider, required}], ai_account {offer}", "admin onboarding show --json", nil},
 	{"admin onboarding update", "Replace the whole site onboarding configuration when --expected-version is current; affects only onboardings that start afterwards", "admin onboarding update --file onboarding.json --expected-version 3 --dry-run --json", []string{"--file", "--expected-version", "--dry-run"}},
+	{"admin access list", "List who may sign in: site.json (operator) and runtime (site_admin) admissions with state, actor and time, administrators and unconfirmed withdrawals", "admin access list --state joined --json", []string{"--state"}},
+	{"admin access lookup", "Resolve a GitHub login to its numeric id through GitHub's public users API; organisations and bots are refused", "admin access lookup --login octocat --json", []string{"--login"}},
+	{"admin access add", "Admit a GitHub id at runtime, or restore a withdrawn one to the same Unix account; refused while site.json identities.runtime_admission is false", "admin access add --github-id 583231 --dry-run --json", []string{"--github-id", "--dry-run"}},
+	{"admin access remove", "Withdraw a runtime-admitted id's web access; its Unix account, files, SSH and processes stay; site.json admissions are refused", "admin access remove --github-id 583231 --dry-run --json", []string{"--github-id", "--dry-run"}},
 	{"admin users list", "List bound host users", "admin users list --json", nil},
 	{"admin role update", "Update a subject's administrator role", "admin role update 123 --administrator true --dry-run --json", []string{"--administrator", "--dry-run"}},
 	{"admin storage list", "Inspect host user quotas", "admin storage list --json", nil},
@@ -311,6 +315,13 @@ func helpFlag(name string) map[string]any {
 		v["possible_values"] = []string{"true", "false"}
 	case "--file":
 		v["description"] = "Onboarding JSON from FILE or - for stdin, at most 7680 bytes; admin onboarding show output (envelope or data) is accepted, its version must equal --expected-version"
+	case "--github-id":
+		v["description"] = "Required canonical numeric GitHub id, as admin access lookup prints it; a login is never accepted here"
+	case "--login":
+		v["description"] = "GitHub login to resolve; read-only"
+	case "--state":
+		v["description"] = "Show only entries in this state"
+		v["possible_values"] = []string{"allowed", "joined", "withdrawn"}
 	case "--expected-version":
 		v["description"] = "Required version printed by admin onboarding show (0 before the first save); a newer stored version refuses the write with version_conflict"
 	case "--json", "--verbose", "--dry-run", "--force", "--finished-only":

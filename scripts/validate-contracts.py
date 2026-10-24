@@ -78,6 +78,10 @@ checks = {
     "account-sessions.json": "device-link.schema.json",
     "device-link-status.json": "device-link.schema.json",
     "server-storage.json": "server-storage.schema.json",
+    "server-access.json": "server-access.schema.json",
+    "server-access-change.json": "server-access.schema.json",
+    "server-access-changed.json": "server-access.schema.json",
+    "server-access-lookup.json": "server-access.schema.json",
     "server-onboarding.json": "server-onboarding.schema.json",
     "server-onboarding-change.json": "server-onboarding.schema.json",
     "site-onboarding.json": "site-onboarding.schema.json",
@@ -214,6 +218,10 @@ site_onboarding = json.loads((BASE / "examples" / "site-onboarding.json").read_t
 must_reject("site-onboarding.schema.json", {**site_onboarding, "repositories": {"mode": "auto", "defaults": ["example-org/infra"]}})
 must_reject("site-onboarding.schema.json", {**site_onboarding, "repositories": {"mode": "auto", "default_count": 2}})
 must_reject("site-onboarding.schema.json", {**site_onboarding, "defaults": ["example-org/infra"]})
+must_reject("server-access.schema.json", {"id": "43", "login": "example-person"})
+must_reject("server-access.schema.json", {"login": "-bad"})
+must_reject("server-access.schema.json", {"subject": "43", "administrator": True})
+must_reject("server-administration-change.schema.json", {"subject": "43", "administrator": True})
 onboarding_change = json.loads((BASE / "examples" / "server-onboarding-change.json").read_text())
 must_reject("server-onboarding.schema.json", {**onboarding_change, "repositories": {"mode": "skip", "defaults": [f"example-org/r{i}" for i in range(21)]}})
 must_reject("server-onboarding.schema.json", {**onboarding_change, "repositories": {"mode": "skip", "defaults": ["example-org/.."]}})

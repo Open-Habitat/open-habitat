@@ -29,7 +29,76 @@ type allowFile struct {
 	Version int       `json:"version"`
 	Epoch   uint64    `json:"epoch"`
 	IDs     []allowed `json:"ids"`
+	// RuntimeAdmission is root's switch from site.json; Runtime is the
+	// site_admin source. Both share this file's epoch and lock with the
+	// operator source, so every admission change advances one watermark.
+	RuntimeAdmission bool           `json:"runtime_admission,omitempty"`
+	Runtime          []runtimeEntry `json:"runtime,omitempty"`
 }
+
+// runtimeEntry is one site_admin admission. A withdrawn entry is kept only
+// while its id has a committed binding, so that restore returns the person
+// to the same account; a never-bound withdrawal is deleted.
+type runtimeEntry struct {
+	ID        string `json:"id"`
+	State     string `json:"state"`
+	LoginHint string `json:"login_hint"`
+	Actor     string `json:"actor"`
+	At        string `json:"at"`
+}
+
+// admits is the effective admission: the union of both sources.
+func (a allowFile) admits(id string) bool {
+	for _, x := range a.IDs {
+		if x.ID == id {
+			return true
+		}
+	}
+	return a.runtimeAdmits(id)
+}
+func (a allowFile) runtimeAdmits(id string) bool {
+	for _, x := range a.Runtime {
+		if x.ID == id && x.State == "admitted" {
+			return true
+		}
+	}
+	return false
+}
+
+// maxAllowlist bounds the admission file, which holds both sources; every
+// other broker file stays within one protocol message.
+const maxAllowlist = 65536
+
+func fileLimit(name string) int64 {
+	if strings.HasPrefix(name, "allowlist.json") {
+		return maxAllowlist
+	}
+	return MaxMessage
+}
+
+// allowFields are the admission file's keys, checked before any typed decode.
+var allowFields = []string{"version", "epoch", "ids", "runtime_admission", "runtime"}
+
+// validRuntime checks the site_admin source as strictly as the operator ids.
+func validRuntime(raw json.RawMessage) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	entries, err := checkArray(raw, "runtime")
+	if err != nil || len(entries) > MaxRuntimeAdmission {
+		return ErrInvalid
+	}
+	seen := map[string]bool{}
+	for _, entry := range entries {
+		var x runtimeEntry
+		if decode(entry, &x, "id", "state", "login_hint", "actor", "at") != nil || !numericID(x.ID) || seen[x.ID] || x.State != "admitted" && x.State != "withdrawn" || !githubLogin(x.LoginHint) || !validActor(x.Actor) || !validStamp(x.At) {
+			return ErrInvalid
+		}
+		seen[x.ID] = true
+	}
+	return nil
+}
+
 type ledgerFile struct {
 	Version    int       `json:"version"`
 	Generation uint64    `json:"generation"`
@@ -80,7 +149,7 @@ func secureFile(dir, name string, owner uint32) ([]byte, error) {
 	if err != nil {
 		return nil, ErrInvalid
 	}
-	if unix.Fstat(f, &st) != nil || st.Uid != owner || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0077 != 0 || st.Nlink != 1 || st.Size < 1 || st.Size > MaxMessage {
+	if unix.Fstat(f, &st) != nil || st.Uid != owner || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0077 != 0 || st.Nlink != 1 || st.Size < 1 || st.Size > fileLimit(name) {
 		unix.Close(f)
 		return nil, ErrInvalid
 	}
@@ -108,8 +177,11 @@ func readState(dir string, owner uint32) (allowFile, ledgerFile, error) {
 	if err != nil {
 		return a, l, err
 	}
-	ar, err := object(ab, "version", "epoch", "ids")
+	ar, err := objectSized(ab, maxAllowlist, allowFields...)
 	if err != nil {
+		return a, l, err
+	}
+	if err = validRuntime(ar["runtime"]); err != nil {
 		return a, l, err
 	}
 	lr, err := object(lb, "version", "generation", "bindings")
@@ -175,6 +247,9 @@ func evaluate(dir string, owner uint32, r Request) Reply {
 			entry = &a.IDs[i]
 			break
 		}
+	}
+	if entry == nil && a.runtimeAdmits(r.ID) {
+		entry = &allowed{ID: r.ID}
 	}
 	if entry == nil {
 		return fail(Denied)

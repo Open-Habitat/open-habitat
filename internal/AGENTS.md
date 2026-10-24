@@ -166,6 +166,17 @@ Identity and authority:
   credential access or host-owned state.
 - `admission: "any"` exists for the disposable test installation only (ADR
   0014); it is not a production admission design.
+- The broker owns both admission sources: root's site.json (`operator`,
+  published by host apply) and runtime entries (`site_admin`); admission is
+  their union. The gateway may only `admit` and `withdraw` runtime entries,
+  never an operator id, and `admit` only while root's `runtime_admission`
+  switch is on. Host apply converges only the operator source and the
+  switch, never runtime entries. Administrators come only from site.json;
+  the browser has no role write. Withdrawal first records a durable deny in
+  the gateway and removes the subject's sessions, then asks the broker;
+  restore removes leftover sessions, asks the broker, and lifts the deny only
+  on its confirmed reply. The deny only refuses. Withdrawal ends web access,
+  not the account, home, credentials or processes.
 - The site onboarding configuration (default repositories, integration steps,
   AI offer) is gateway administration state, written only by a current
   administrator's browser session or root's control socket under one version,

@@ -197,7 +197,9 @@ func (s Server) exchange(parent, admission context.Context, conn *net.UnixConn, 
 	if err != nil || ctx.Err() != nil {
 		return
 	}
-	if r.Operation == "ensure" {
+	// Admit may rebuild a restored binding's runtime directory with the same
+	// bounded host commands, so it shares ensure's mutation budget and slots.
+	if r.Operation == "ensure" || r.Operation == "admit" {
 		// Never allow slow framing to buy a long-lived worker or FD. Reject
 		// excess valid ensures instead of queueing behind a stalled mutation.
 		select {
@@ -248,7 +250,7 @@ func (c Client) Exchange(ctx context.Context, r Request) (Reply, error) {
 		return Reply{}, ErrInvalid
 	}
 	budget := exchangeTimeout
-	if r.Operation == "ensure" {
+	if r.Operation == "ensure" || r.Operation == "admit" {
 		budget = ensureClientTimeout
 	}
 	deadline := time.Now().Add(budget)

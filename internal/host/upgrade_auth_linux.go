@@ -118,7 +118,7 @@ func upgradeDeclarationSame(a, b Site) bool {
 
 func verifyServingPredecessor(ctx context.Context, s Site, r AuthenticatedRelease) error {
 	state, e := provision.InspectInstallation(ctx)
-	if e != nil || !slices.Equal(state.Admission, s.Identities.Admission) || state.Epoch != state.ObservedEpoch {
+	if e != nil || !admissionPublished(state, s) || state.Epoch != state.ObservedEpoch {
 		return ErrUpgradeTarget
 	}
 	if !gatewayConfigurationMatches(s) {

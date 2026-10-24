@@ -36,6 +36,18 @@ func (a *Auth) RevokeSubject(ctx context.Context, subject string) error {
 	defer a.mu.Unlock()
 	// The broker verification precedes the lock. Revocation removes sessions
 	// synchronously; a later broker policy edit alone does not end them.
+	removed, err := a.revokeSessionsLocked(subject)
+	if err != nil {
+		return err
+	}
+	a.log.Info("subject_revoked", "outcome", "accepted", "actor", "root_peer", "subject", subject, "sessions_removed", removed)
+	return nil
+}
+
+// revokeSessionsLocked durably removes every session of subject, which ends
+// its relays and editor sessions, and fences login flows started before now.
+// Call under mu.
+func (a *Auth) revokeSessionsLocked(subject string) (int, error) {
 	if a.revoked == nil {
 		a.revoked = make(map[string]uint64)
 	}
@@ -48,9 +60,8 @@ func (a *Auth) RevokeSubject(ctx context.Context, subject string) error {
 			}
 		}
 	}); err != nil {
-		return errors.New("session store unavailable")
+		return 0, errors.New("session store unavailable")
 	}
 	a.revoked[subject] = a.serial
-	a.log.Info("subject_revoked", "outcome", "accepted", "actor", "root_peer", "subject", subject, "sessions_removed", removed)
-	return nil
+	return removed, nil
 }

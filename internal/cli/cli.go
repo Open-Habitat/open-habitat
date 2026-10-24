@@ -541,7 +541,7 @@ func skillInstall(args []string) (any, error) {
 	return envelope(map[string]any{"dry_run": dry, "would": would}), nil
 }
 func helpOutput() any {
-	return envelope(map[string]any{"name": "open-habitat", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "admin settings show|update", "admin onboarding show|update", "admin users list", "admin role update", "admin storage list|update", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
+	return envelope(map[string]any{"name": "open-habitat", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "admin settings show|update", "admin onboarding show|update", "admin access list|lookup|add|remove", "admin users list", "admin role update", "admin storage list|update", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
 }
 
 type gatewayBroker struct{}
@@ -681,4 +681,96 @@ func (gatewayBroker) SetQuota(ctx context.Context, subject string, limit uint64)
 		return gateway.ErrBrokerUnavailable
 	}
 	return nil
+}
+
+// Admission operations (ADR 0030). A reply that does not arrive, or a
+// state_unavailable after which the broker may already have committed, is
+// uncertain; only the broker's fixed refusals are definite.
+func (gatewayBroker) brokerAccess(ctx context.Context, r provision.Request) (provision.Reply, error) {
+	return (provision.Client{SocketPath: provision.BrokerSocket, SocketOwnerUID: 0}).Exchange(ctx, r)
+}
+func (b gatewayBroker) AccessList(ctx context.Context) (gateway.AccessPage, error) {
+	return collectAccessPages(ctx, b.brokerAccess)
+}
+func (b gatewayBroker) AccessRead(ctx context.Context, id string) (gateway.AccessPage, error) {
+	r, err := b.brokerAccess(ctx, provision.Request{Version: 1, Operation: "access_read", Provider: "github", ID: id})
+	if err != nil || r.Failure != "" || r.Access == nil || len(r.Access.Rows) > 1 || len(r.Access.Rows) == 1 && r.Access.Rows[0].ID != id {
+		return gateway.AccessPage{}, gateway.ErrBrokerUnavailable
+	}
+	return accessPage(*r.Access), nil
+}
+func (b gatewayBroker) Admit(ctx context.Context, id, loginHint, actor string) (gateway.AccessRow, error) {
+	return accessWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: "admit", Provider: "github", ID: id, LoginHint: loginHint, Actor: actor}))
+}
+func (b gatewayBroker) Withdraw(ctx context.Context, id, actor string) (gateway.AccessRow, error) {
+	return accessWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: "withdraw", Provider: "github", ID: id, Actor: actor}))
+}
+
+func accessWrite(r provision.Reply, err error) (gateway.AccessRow, error) {
+	if err != nil {
+		return gateway.AccessRow{}, gateway.ErrAccessUncertain
+	}
+	switch r.Failure {
+	case "":
+	case provision.RuntimeDisabled:
+		return gateway.AccessRow{}, gateway.ErrAccessDisabled
+	case provision.RuntimeFull:
+		return gateway.AccessRow{}, gateway.ErrAccessFull
+	case provision.AdmissionOpen:
+		return gateway.AccessRow{}, gateway.ErrAccessOpen
+	case provision.OperatorOwned:
+		return gateway.AccessRow{}, gateway.ErrOperatorOwned
+	case provision.Drift:
+		return gateway.AccessRow{}, gateway.ErrAccessDrift
+	case provision.StateUnavailable:
+		return gateway.AccessRow{}, gateway.ErrAccessUncertain
+	default:
+		return gateway.AccessRow{}, gateway.ErrAccessRefused
+	}
+	if r.Access == nil || len(r.Access.Rows) != 1 {
+		return gateway.AccessRow{}, gateway.ErrAccessUncertain
+	}
+	return accessPage(*r.Access).Rows[0], nil
+}
+
+func accessPage(p provision.AccessPage) gateway.AccessPage {
+	out := gateway.AccessPage{Mode: p.Mode, RuntimeAdmission: p.RuntimeAdmission, Rows: make([]gateway.AccessRow, 0, len(p.Rows))}
+	for _, x := range p.Rows {
+		out.Rows = append(out.Rows, gateway.AccessRow{ID: x.ID, Source: x.Source, State: x.State, Username: x.Username, LoginHint: x.LoginHint, Actor: x.Actor, At: x.At})
+	}
+	return out
+}
+
+// collectAccessPages reads the whole admission list at one epoch.
+func collectAccessPages(ctx context.Context, exchange func(context.Context, provision.Request) (provision.Reply, error)) (gateway.AccessPage, error) {
+	var out gateway.AccessPage
+	next := ""
+	var epoch, generation uint64
+	seen := map[string]bool{}
+	for {
+		r, err := exchange(ctx, provision.Request{Version: 1, Operation: "access_list", Provider: "github", ID: "0", Candidate: next})
+		if err != nil || r.Failure != "" || r.Access == nil || epoch != 0 && (r.Epoch != epoch || r.Generation != generation || r.Access.Mode != out.Mode || r.Access.RuntimeAdmission != out.RuntimeAdmission) {
+			return gateway.AccessPage{}, gateway.ErrBrokerUnavailable
+		}
+		page := accessPage(*r.Access)
+		if epoch == 0 {
+			out = gateway.AccessPage{Mode: page.Mode, RuntimeAdmission: page.RuntimeAdmission, Rows: []gateway.AccessRow{}}
+		}
+		epoch, generation = r.Epoch, r.Generation
+		for _, row := range page.Rows {
+			if seen[row.ID] || len(out.Rows) >= 1024 {
+				return gateway.AccessPage{}, gateway.ErrBrokerUnavailable
+			}
+			seen[row.ID] = true
+			out.Rows = append(out.Rows, row)
+		}
+		if r.Next == "" {
+			return out, nil
+		}
+		offset, err := strconv.Atoi(r.Next)
+		if err != nil || offset != len(out.Rows) || len(page.Rows) == 0 {
+			return gateway.AccessPage{}, gateway.ErrBrokerUnavailable
+		}
+		next = r.Next
+	}
 }

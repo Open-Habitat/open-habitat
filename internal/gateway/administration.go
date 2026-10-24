@@ -36,6 +36,11 @@ type serverSettings struct {
 	DefaultLimitBytes uint64   `json:"default_limit_bytes,omitempty"`
 	// Onboarding is absent until the first write; defaultOnboarding stands in.
 	Onboarding *onboardingConfig `json:"onboarding,omitempty"`
+	// Denied holds the subjects whose web access a runtime withdrawal is
+	// ending or has ended (ADR 0030). The login callback and every session
+	// lookup refuse them. A deny only refuses; it is cleared only after the
+	// broker confirms a restore, or confirms that nothing was withdrawn.
+	Denied []string `json:"denied,omitempty"`
 }
 
 func emptySettings() serverSettings { return serverSettings{Version: 1, Administrators: []string{}} }
@@ -60,6 +65,16 @@ func validSettings(s serverSettings) bool {
 	}
 	seen := map[string]bool{}
 	for _, id := range s.Administrators {
+		if !canonicalSubject(id) || seen[id] {
+			return false
+		}
+		seen[id] = true
+	}
+	if len(s.Denied) > maxDenied {
+		return false
+	}
+	seen = map[string]bool{}
+	for _, id := range s.Denied {
 		if !canonicalSubject(id) || seen[id] {
 			return false
 		}
@@ -226,10 +241,10 @@ func (a *Auth) changeNameFor(caller, name string) error {
 	next.Name = name
 	return a.commitAdministration(next)
 }
+
+// changeRole is root's role operation, used by host apply to converge the
+// administrators to site.json. No browser path reaches it.
 func (a *Auth) changeRole(ctx context.Context, id string, administrator bool) error {
-	return a.changeRoleFor(ctx, "", id, administrator)
-}
-func (a *Auth) changeRoleFor(ctx context.Context, caller, id string, administrator bool) error {
 	if !canonicalSubject(id) {
 		return errors.New("invalid subject")
 	}
@@ -252,9 +267,6 @@ func (a *Auth) changeRoleFor(ctx context.Context, caller, id string, administrat
 	defer a.mu.Unlock()
 	if !a.administrationHealthy() {
 		return ErrAdministrationState
-	}
-	if caller != "" && !a.isAdministratorLocked(caller) {
-		return errAdminDenied
 	}
 	next := a.settings
 	next.Administrators = append([]string{}, next.Administrators...)
@@ -360,15 +372,15 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 		safe(w, 400, "invalid_request")
 		return
 	}
+	// Administrators come only from site.json (ADR 0030): the browser has no
+	// role write, and host apply converges roles over the control socket.
 	var request struct {
 		Name              *string `json:"name"`
-		Subject           string  `json:"subject"`
-		Administrator     *bool   `json:"administrator"`
 		DefaultLimitBytes *uint64 `json:"default_limit_bytes"`
 	}
 	dec := json.NewDecoder(io.LimitReader(r.Body, 1025))
 	dec.DisallowUnknownFields()
-	if dec.Decode(&request) != nil || dec.Decode(new(any)) != io.EOF || (boolInt(request.Name != nil)+boolInt(request.Administrator != nil)+boolInt(request.DefaultLimitBytes != nil) != 1) || request.Name != nil && request.Subject != "" || request.DefaultLimitBytes != nil && (request.Subject != "" || !validQuotaLimit(*request.DefaultLimitBytes)) || request.Administrator != nil && !canonicalSubject(request.Subject) {
+	if dec.Decode(&request) != nil || dec.Decode(new(any)) != io.EOF || (boolInt(request.Name != nil)+boolInt(request.DefaultLimitBytes != nil) != 1) || request.DefaultLimitBytes != nil && !validQuotaLimit(*request.DefaultLimitBytes) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -379,10 +391,8 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		e = a.changeNameFor(s.identity.Subject, *request.Name)
-	} else if request.DefaultLimitBytes != nil {
-		e = a.changeDefaultLimitFor(s.identity.Subject, *request.DefaultLimitBytes)
 	} else {
-		e = a.changeRoleFor(r.Context(), s.identity.Subject, request.Subject, *request.Administrator)
+		e = a.changeDefaultLimitFor(s.identity.Subject, *request.DefaultLimitBytes)
 	}
 	if errors.Is(e, errAdminDenied) {
 		safe(w, 403, "admin_required")
@@ -419,6 +429,9 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 	if json.Unmarshal(payload, &op) == nil && strings.HasPrefix(op.Operation, "onboarding_") {
 		return a.onboardingControl(payload)
 	}
+	if strings.HasPrefix(op.Operation, "access_") {
+		return a.accessControl(ctx, payload)
+	}
 	dec := json.NewDecoder(strings.NewReader(string(payload)))
 	dec.DisallowUnknownFields()
 	if dec.Decode(&r) != nil || dec.Decode(new(any)) != io.EOF {
@@ -448,9 +461,11 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 		if !a.administrationAvailable() {
 			return nil, ErrAdministrationState
 		}
-		// The settings record without onboarding, which has its own operations.
+		// The settings record without onboarding and access, which have
+		// their own operations.
 		v := a.settingsView()
 		v.Onboarding = nil
+		v.Denied = nil
 		return json.Marshal(v)
 	case "name":
 		if r.Subject != "" || r.Administrator != nil || r.DefaultLimitBytes != nil || r.LimitBytes != nil || !validName(r.Name) {
@@ -496,6 +511,9 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 // AdminControlError maps private control failures to a fixed, non-sensitive wire vocabulary.
 func AdminControlError(err error) string {
 	var oe *OnboardingError
+	if code, ok := accessControlError(err); ok {
+		return code
+	}
 	switch {
 	case errors.As(err, &oe):
 		return oe.Reason
