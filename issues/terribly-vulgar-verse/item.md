@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed in a taskfleet worker's focused browser run
@@ -11,6 +11,7 @@ originating_run: 01m5pzvqy96808zcq0tc7pegxk
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-10-24
 ---
 
 # Browser case 'auto: the readable defaults are locked rows' fails when run alone
@@ -24,3 +25,8 @@ Observed 2026-10-24 three times running it alone with `./scripts/test-focused.sh
 Failure: `expect(getByRole('heading').and(getByTestId('repository-chooser-title'))).toBeVisible()` times out at line 63 after `newPerson(page, "auto")`. A body dump at that point in a sibling case with the same steps showed the person still on the Git identity step ("Vahvista Git-identiteetti"), with the route listing both readable defaults as `valmis`. So `confirmGitIdentity`'s click did not move the route to the chooser within 5 s. One reading is that the auto defaults finish cloning before the chooser renders, and the route then no longer shows it. Not investigated further.
 
 Impact: a focused run of this case gives a false red. The clean gate runs the whole spec and is unaffected so far.
+
+## Acceptance Criteria
+
+- [x] The isolated automatic-defaults case has an explicit native-write prerequisite and passes ten fresh invocations.
+- [x] The entire default-repositories spec passes five fresh invocations.

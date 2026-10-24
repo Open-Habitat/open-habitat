@@ -32,6 +32,22 @@ async function newPerson(page: Page, mode: string, names = defaults) {
     .click();
   // The second synthetic identity has never signed in on this host.
   await page.getByRole("link").nth(1).click();
+  if (mode === "auto") {
+    // Auto clones start at login and share the daemon's native-write lock
+    // with Git identity confirmation. Do not let a fast isolated run submit
+    // that unrelated write while a default is still cloning (409 workspace_busy).
+    await expect
+      .poll(async () => {
+        const list = await (
+          await page.request.get("/api/v1/onboarding/github/clones")
+        ).json();
+        return list.jobs
+          .filter((job: { state: string }) => job.state === "confirmed")
+          .map((job: { full_name: string }) => job.full_name)
+          .sort();
+      })
+      .toEqual(["fixture/bob-only", "fixture/team-default"]);
+  }
   await confirmGitIdentity(page);
 }
 const step = (page: Page, id: string) =>
