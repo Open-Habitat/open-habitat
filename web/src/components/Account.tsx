@@ -363,7 +363,8 @@ export function AccountSettings({
     editori: "editor",
     tila: "disk",
     palvelin: "server",
-    kayttoonotto: "forward",
+    // A turn on a route, not the chevron that marks a menu (Jari 24.10.2026).
+    kayttoonotto: "steer",
     kayttajat: "users",
     levy: "disk",
   };

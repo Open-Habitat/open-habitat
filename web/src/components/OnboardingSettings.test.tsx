@@ -37,15 +37,12 @@ function Harness({
     <MemoryRouter>
       <OnboardingSettings
         doc={doc}
-        dirty={JSON.stringify(doc) !== JSON.stringify(initial)}
         availability={availability}
         step={step}
         onStep={setStep}
         onChange={setDoc}
         onAddRepository={onAdd}
         save={{ kind: "idle" }}
-        onSave={() => {}}
-        onDiscard={() => setDoc(initial)}
         onReload={() => {}}
         preview={preview}
         onPreview={setPreview}
@@ -83,11 +80,6 @@ it("edits the repository mode and the default list; the route follows", () => {
   expect(screen.getByTestId("onboarding-effect").textContent).toContain(
     "Repovaihetta ei näytetä eikä mitään haeta",
   );
-  expect(screen.getByTestId("onboarding-dirty").textContent).toBe(
-    "Tallentamattomia muutoksia",
-  );
-  fireEvent.click(screen.getByTestId("onboarding-discard"));
-  expect(doc()).toEqual(base);
 });
 
 it("stops adding defaults at twenty", () => {

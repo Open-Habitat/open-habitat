@@ -275,40 +275,74 @@
   font-weight: 500;
 }
 .ob-save {
+  display: grid;
+  gap: var(--ah-s2);
+}
+.ob-save-state {
   display: flex;
   align-items: center;
-  gap: var(--ah-s3);
-  flex-wrap: wrap;
-  border-top: 1px solid var(--ah-line);
-  padding-top: var(--ah-s4);
-}
-.ob-save > span {
-  flex: 1;
+  gap: var(--ah-s1);
+  margin: 0;
   font-size: var(--ah-size-meta);
   color: var(--ah-muted);
 }
+.ob-save-state[data-state="saved"] {
+  color: var(--ah-ok);
+}
+.ob-notice-error {
+  display: grid;
+  justify-items: start;
+  gap: var(--ah-s2);
+}
+.ob-notice-error > p {
+  margin: 0;
+}
 
-/* The default-repository finder dialog */
+/* The default-repository finder dialog: the list scrolls, the footer with
+   Valmis stays in view however long the list is (Jari 24.10.2026). */
 .ob-finder-modal {
+  display: flex;
   width: min(720px, calc(100vw - 24px));
-  max-height: calc(100vh - 24px);
-  overflow: auto;
+  max-height: calc(100dvh - 2 * var(--ah-s5));
+  overflow: hidden;
 }
 .ob-finder {
-  display: grid;
-  gap: var(--ah-s3);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
 }
 .ob-finder p {
   margin: 0;
 }
+/* The clone page resets its lists under .ah-clone-page, which the dialog is
+   not inside. */
+.ob-finder ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ob-finder-body {
+  display: grid;
+  align-content: start;
+  gap: var(--ah-s3);
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--ah-s7) var(--ah-s7) var(--ah-s3);
+}
 .ob-finder-foot {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
   gap: var(--ah-s3);
   flex-wrap: wrap;
   border-top: 1px solid var(--ah-line);
-  padding-top: var(--ah-s3);
+  padding: var(--ah-s3) var(--ah-s7);
 }
 
 /* Preview mode: a full-screen stage with the settings docked. */
@@ -641,6 +675,12 @@
 }
 /* At phone width the preview fills the screen and scrolls as one page. */
 @media (max-width: 800px) {
+  .ob-finder-body {
+    padding: var(--ah-s5) var(--ah-s4) var(--ah-s3);
+  }
+  .ob-finder-foot {
+    padding: var(--ah-s3) var(--ah-s4);
+  }
   .ob-head > button {
     width: 100%;
     justify-content: center;
@@ -669,9 +709,5 @@
   }
   .ob-pm-bar {
     gap: var(--ah-s2);
-  }
-  .ob-save {
-    flex-direction: column;
-    align-items: stretch;
   }
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { useLocation, useNavigate } from "react-router";
 import {
@@ -33,10 +33,11 @@ import {
 } from "./onboardingConfig";
 import { settingsHref } from "./settingsRoute";
 
-// The finder's rows are links (production RepoFinder); picking one routes
-// here with ?lisaa=owner/repo, which adds it to the draft and is replaced
-// straight away, as the prototype did with its in-memory router.
+// The finder's rows are links (production RepoFinder): picking one routes here
+// with ?lisaa=owner/repo, picking a chosen one again with ?pois=owner/repo.
+// The page applies it, saves, and replaces the route straight away.
 const addParam = "lisaa";
+const removeParam = "pois";
 
 function DefaultRepositoryFinder({
   added,
@@ -74,11 +75,13 @@ function DefaultRepositoryFinder({
   }, []);
   const isAdded = (name: string) =>
     added.some((a) => a.toLocaleLowerCase() === name.toLocaleLowerCase());
+  // A chosen row stays where it was picked, marked, and picking it again
+  // takes it off (Jari 24.10.2026).
   const choice = (r: CatalogRepo): RepoChoice => ({
     ...r,
-    href: `${settingsHref("kayttoonotto")}?${addParam}=${encodeURIComponent(r.full_name)}`,
+    href: `${settingsHref("kayttoonotto")}?${isAdded(r.full_name) ? removeParam : addParam}=${encodeURIComponent(r.full_name)}`,
     selected: isAdded(r.full_name),
-    mark: isAdded(r.full_name) ? { label: "oletus", tone: "ok" } : undefined,
+    mark: isAdded(r.full_name) ? { label: "✓ valittu", tone: "ok" } : undefined,
   });
   const typed = exactName(query);
   const inCatalog = (name: string) =>
@@ -145,28 +148,31 @@ function DefaultRepositoryFinder({
           aria-label="Lisää oletusrepo"
           data-testid="onboarding-repository-finder"
         >
-          <Heading slot="title">Lisää oletusrepo</Heading>
-          <p className="ob-muted">
-            Näet omat GitHub-repojesi. Uuden henkilön pääsy tarkistetaan hänen
-            omalla tilillään.
-          </p>
-          <RepoFinder
-            arrangement={arrange(repos.list.map(choice), {
-              login: repos.login,
-              query,
-              since,
-              now,
-              taken: (r) => isAdded(r.full_name),
-            })}
-            query={query}
-            onQuery={setQuery}
-            since={since}
-            onSince={setSince}
-            now={now}
-            lookup={typedLookup}
-            incomplete={!repos.complete}
-            state={repos.state}
-          />
+          <div className="ob-finder-body">
+            <Heading slot="title">Lisää oletusrepo</Heading>
+            <p className="ob-muted">
+              Näet omat GitHub-repojesi. Uuden henkilön pääsy tarkistetaan hänen
+              omalla tilillään. Valitun repon voi poistaa valitsemalla sen
+              uudelleen.
+            </p>
+            <RepoFinder
+              arrangement={arrange(repos.list.map(choice), {
+                login: repos.login,
+                query,
+                since,
+                now,
+                taken: () => false,
+              })}
+              query={query}
+              onQuery={setQuery}
+              since={since}
+              onSince={setSince}
+              now={now}
+              lookup={typedLookup}
+              incomplete={!repos.complete}
+              state={repos.state}
+            />
+          </div>
           <div className="ob-finder-foot">
             <span role="status" className="ob-muted">
               {added.length} / {maxDefaults} oletusrepoa
@@ -185,12 +191,16 @@ function DefaultRepositoryFinder({
   );
 }
 
-/** Asetukset › Käyttöönotto for a signed-in administrator. */
+/** Asetukset › Käyttöönotto for a signed-in administrator. Every change is
+ * saved as it is made (Jari 24.10.2026), each under the version this page last
+ * read or wrote. One write is in flight at a time; changes made meanwhile are
+ * sent together after it under the version it returned. A conflict or an
+ * unconfirmed write stops editing until the host is read again, so nothing is
+ * ever overwritten on a guess. */
 export function OnboardingAdministration({ csrf }: { csrf?: string }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [saved, setSaved] = useState<OnboardingConfig>();
-  const [draft, setDraft] = useState<OnboardingDocument>();
+  const [doc, setDoc] = useState<OnboardingDocument>();
   const [loadError, setLoadError] = useState(false);
   const [availability, setAvailability] = useState<ProviderAvailability>({});
   const [facts, setFacts] = useState<Record<string, Repo>>({});
@@ -198,13 +208,28 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
   const [save, setSave] = useState<SaveState>({ kind: "idle" });
   const [preview, setPreview] = useState(false);
   const [finder, setFinder] = useState(false);
+  // The host's version the next write is based on, the document the
+  // administrator last made, and whether a write is on its way.
+  const base = useRef<OnboardingConfig>(undefined);
+  const latest = useRef<OnboardingDocument>(undefined);
+  const writing = useRef(false);
+  const stopped = useRef(false);
 
-  const load = useCallback(async (signal?: AbortSignal) => {
-    const config = await readServerOnboarding(signal);
-    setSaved(config);
-    setDraft(documentOf(config));
-    setLoadError(false);
+  const adopt = useCallback((config: OnboardingConfig) => {
+    base.current = config;
+    latest.current = documentOf(config);
+    stopped.current = false;
+    setDoc(latest.current);
   }, []);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      const config = await readServerOnboarding(signal);
+      if (writing.current) return;
+      adopt(config);
+      setLoadError(false);
+    },
+    [adopt],
+  );
   useEffect(() => {
     const controller = new AbortController();
     void load(controller.signal).catch(() => {
@@ -231,30 +256,79 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
     return () => controller.abort();
   }, [load]);
 
-  // A finder row was picked: add it, then drop the parameter from the route.
-  const picked = new URLSearchParams(location.search).get(addParam);
-  const loaded = draft !== undefined;
-  useEffect(() => {
-    if (picked === null || !loaded) return;
-    const name = exactName(picked);
-    if (name)
-      setDraft((d) =>
-        !d ||
-        d.repositories.defaults.length >= maxDefaults ||
-        d.repositories.defaults.some(
-          (x) => x.toLocaleLowerCase() === name.toLocaleLowerCase(),
-        )
-          ? d
-          : {
-              ...d,
-              repositories: {
-                ...d.repositories,
-                defaults: [...d.repositories.defaults, name],
-              },
-            },
+  const flush = useCallback(() => {
+    const from = base.current;
+    const sent = latest.current;
+    if (writing.current || stopped.current || !csrf || !from || !sent) return;
+    if (sameDocument(sent, from)) {
+      setSave((s) => (s.kind === "saving" ? { kind: "saved" } : s));
+      return;
+    }
+    writing.current = true;
+    setSave({ kind: "saving" });
+    void saveServerOnboarding(csrf, from.version, sent).then((result) => {
+      writing.current = false;
+      if (result.kind === "saved") {
+        base.current = result.config;
+        if (latest.current && sameDocument(latest.current, sent)) {
+          // The host's canonical form of what was sent.
+          latest.current = documentOf(result.config);
+          setDoc(latest.current);
+          setSave({ kind: "saved" });
+        } else flush();
+        return;
+      }
+      if (result.kind === "refused" && result.code !== "version_conflict") {
+        // Nothing was written: the page shows the host's version again.
+        latest.current = documentOf(from);
+        setDoc(latest.current);
+        setSave({ kind: "refused", text: refusalText(result.code) });
+        return;
+      }
+      stopped.current = true;
+      setSave(
+        result.kind === "refused"
+          ? { kind: "conflict" }
+          : { kind: "uncertain" },
       );
+    });
+  }, [csrf]);
+  const change = useCallback(
+    (next: OnboardingDocument) => {
+      if (stopped.current || !latest.current) return;
+      latest.current = next;
+      setDoc(next);
+      setSave((s) => (s.kind === "refused" ? { kind: "idle" } : s));
+      flush();
+    },
+    [flush],
+  );
+
+  // A finder row was picked: add or remove it, then drop the parameter.
+  const search = new URLSearchParams(location.search);
+  const picked = search.get(addParam);
+  const unpicked = search.get(removeParam);
+  const loaded = doc !== undefined;
+  useEffect(() => {
+    if ((picked === null && unpicked === null) || !loaded) return;
+    const d = latest.current;
+    const same = (a: string, b: string) =>
+      a.toLocaleLowerCase() === b.toLocaleLowerCase();
+    const name = exactName(picked ?? unpicked ?? "");
+    if (d && name) {
+      const defaults = d.repositories.defaults;
+      const has = defaults.some((x) => same(x, name));
+      const next =
+        picked !== null
+          ? has || defaults.length >= maxDefaults
+            ? defaults
+            : [...defaults, name]
+          : defaults.filter((x) => !same(x, name));
+      if (next.length !== defaults.length)
+        change({ ...d, repositories: { ...d.repositories, defaults: next } });
+    }
     navigate(settingsHref("kayttoonotto"), { replace: true });
-  }, [picked, loaded, navigate]);
+  }, [picked, unpicked, loaded, navigate, change]);
 
   if (loadError)
     return (
@@ -270,61 +344,31 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
         </div>
       </div>
     );
-  if (!saved || !draft)
-    return <p role="status">Ladataan käyttöönoton asetuksia…</p>;
-  const dirty = !sameDocument(draft, saved);
+  if (!doc) return <p role="status">Ladataan käyttöönoton asetuksia…</p>;
   return (
     <>
       <OnboardingSettings
-        doc={draft}
-        dirty={dirty}
+        doc={doc}
         availability={availability}
         step={step}
         onStep={setStep}
-        onChange={(next) => {
-          setDraft(next);
-          if (save.kind === "refused" || save.kind === "saved")
-            setSave({ kind: "idle" });
-        }}
+        onChange={change}
         onAddRepository={() => setFinder(true)}
         facts={(name) => facts[name.toLocaleLowerCase()]}
         save={save}
-        disabled={!csrf}
-        onDiscard={() => {
-          setDraft(documentOf(saved));
-          // An unresolved save stays unresolved until the host is read again.
-          if (save.kind !== "uncertain" && save.kind !== "conflict")
-            setSave({ kind: "idle" });
-        }}
+        disabled={
+          !csrf || save.kind === "conflict" || save.kind === "uncertain"
+        }
         onReload={() => {
-          // Whatever happened to the save, the host's version is the truth:
-          // the draft starts again from it.
+          // Whatever happened to the write, the host's version is the truth:
+          // the page starts again from it.
           void readServerOnboarding()
             .then((config) => {
-              setSaved(config);
-              setDraft(documentOf(config));
+              if (writing.current) return;
+              adopt(config);
               setSave({ kind: "idle" });
             })
             .catch(() => {});
-        }}
-        onSave={() => {
-          if (!csrf) return;
-          setSave({ kind: "saving" });
-          void saveServerOnboarding(csrf, saved.version, draft).then(
-            (result) => {
-              if (result.kind === "saved") {
-                setSaved(result.config);
-                setDraft(documentOf(result.config));
-                setSave({ kind: "saved" });
-              } else if (result.kind === "refused")
-                setSave(
-                  result.code === "version_conflict"
-                    ? { kind: "conflict" }
-                    : { kind: "refused", text: refusalText(result.code) },
-                );
-              else setSave({ kind: "uncertain" });
-            },
-          );
         }}
         preview={preview}
         onPreview={setPreview}
@@ -332,7 +376,7 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
       />
       {finder ? (
         <DefaultRepositoryFinder
-          added={draft.repositories.defaults}
+          added={doc.repositories.defaults}
           onClose={() => setFinder(false)}
         />
       ) : null}

@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: improvement
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [web/src/app/OnboardingAdministration, web/src/components/OnboardingSettings]
+closed: 2026-10-24
 ---
 
 # Käyttöönotto tab: icon, dialog footer, visible repo selection, no preselected Google, autosave
@@ -25,5 +26,5 @@ Code: `web/src/app/OnboardingAdministration.tsx`, `web/src/components/Onboarding
 
 ## Acceptance Criteria
 
-- [ ] Items 1–5 in production with tests/stories; autosave covers success, failure and a two-tab conflict (browser spec); mobile layout.
-- [ ] KOKEILTAVAA.md line replaced.
+- [x] Items 1–5 in production with tests/stories; autosave covers success, failure and a two-tab conflict (browser spec); mobile layout.
+- [x] KOKEILTAVAA.md line replaced.

@@ -9,8 +9,8 @@ import {
 } from "./OnboardingSettings";
 
 // Synthetic states of the production Asetukset › Käyttöönotto tab
-// (proto-admin-server-onboarding rounds 2–5). The draft lives in the story;
-// nothing is saved and no host is involved.
+// (proto-admin-server-onboarding rounds 2–5). The document lives in the
+// story; the save state is fixed per story and no host is involved.
 const saved: OnboardingDocument = {
   repositories: {
     mode: "preselected",
@@ -59,7 +59,6 @@ function Tab({
     <div style={{ padding: 24, maxWidth: 1000 }}>
       <OnboardingSettings
         doc={doc}
-        dirty={JSON.stringify(doc) !== JSON.stringify(initial)}
         availability={availability}
         step={step}
         onStep={setStep}
@@ -67,8 +66,7 @@ function Tab({
         onAddRepository={() => {}}
         facts={facts}
         save={save}
-        onSave={() => {}}
-        onDiscard={() => setDoc(initial)}
+        disabled={save.kind === "conflict" || save.kind === "uncertain"}
         onReload={() => {}}
         preview={preview}
         onPreview={setPreview}
@@ -102,6 +100,13 @@ export const AddIntegration: Story = { args: { step: "add-integration" } };
 export const AIAccountDefault: Story = { args: { step: "ai" } };
 export const AIAccountPersonChooses: Story = {
   args: { step: "ai", initial: { ...saved, ai_account: { offer: "all" } } },
+};
+export const Saving: Story = { args: { save: { kind: "saving" } } };
+export const Saved: Story = { args: { save: { kind: "saved" } } };
+export const Refused: Story = {
+  args: {
+    save: { kind: "refused", text: "Ylläpito-oikeutesi on poistettu." },
+  },
 };
 export const Conflict: Story = { args: { save: { kind: "conflict" } } };
 export const Uncertain: Story = { args: { save: { kind: "uncertain" } } };

@@ -19,7 +19,7 @@ import "./OnboardingSettings.css";
 // the repositories as a mode and one list ("Tapa ja lista", r5), the AI
 // account as "Kolme tapaa" (r3) and the person's view behind "Näytä henkilön
 // näkymä" in a full preview with the settings docked (r4, r5). The order of
-// the steps is fixed. Display only: the app owns the draft and every write.
+// the steps is fixed. Display only: the app saves every change as it is made.
 
 export type OnboardingStep =
   | "github"
@@ -642,16 +642,74 @@ export type SaveState =
   | { kind: "idle" }
   | { kind: "saving" }
   | { kind: "saved" }
+  /** The host refused the change; nothing was written. */
   | { kind: "refused"; text: string }
   /** Someone saved in between; nothing was written. */
   | { kind: "conflict" }
   /** The save may or may not have happened. */
   | { kind: "uncertain" };
 
+/** Where the automatic save stands, and what to do when it failed. */
+function SaveStatus({
+  save,
+  onReload,
+}: {
+  save: SaveState;
+  onReload: () => void;
+}) {
+  return (
+    <div className="ob-save">
+      <p
+        role="status"
+        className="ob-save-state"
+        data-testid="onboarding-save-state"
+        data-state={save.kind}
+      >
+        {save.kind === "saving" ? (
+          "Tallennetaan…"
+        ) : save.kind === "saved" ? (
+          <>
+            <Icon name="check" width={14} height={14} />
+            Tallennettu
+          </>
+        ) : save.kind === "idle" ? (
+          "Muutokset tallentuvat heti."
+        ) : (
+          "Ei tallennettu"
+        )}
+      </p>
+      {save.kind === "refused" ? (
+        <p role="alert" className="ob-notice ob-notice-error">
+          Muutosta ei tallennettu. {save.text}
+        </p>
+      ) : save.kind === "uncertain" || save.kind === "conflict" ? (
+        <div
+          role="alert"
+          className="ob-notice ob-notice-error"
+          data-testid="onboarding-save-failure"
+          data-state={save.kind}
+        >
+          <p>
+            {save.kind === "conflict"
+              ? "Käyttöönottoa on muutettu toisaalla sen jälkeen, kun avasit sen. Viimeisintä muutostasi ei tallennettu. Lataa nykyinen versio ja tee muutos uudelleen."
+              : "Tallennusta ei voitu vahvistaa. Muutos on voinut tallentua. Lataa nykyinen versio ennen kuin jatkat."}
+          </p>
+          <ControlButton
+            size="row"
+            data-testid="onboarding-reload"
+            onPress={onReload}
+          >
+            Lataa nykyinen versio
+          </ControlButton>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** The whole Käyttöönotto tab. */
 export function OnboardingSettings({
   doc,
-  dirty,
   availability,
   step,
   onStep,
@@ -659,8 +717,6 @@ export function OnboardingSettings({
   onAddRepository,
   facts = () => undefined,
   save,
-  onSave,
-  onDiscard,
   onReload,
   disabled = false,
   preview,
@@ -668,16 +724,14 @@ export function OnboardingSettings({
   host,
 }: {
   doc: OnboardingDocument;
-  dirty: boolean;
   availability: ProviderAvailability;
   step: OnboardingStep;
   onStep: (step: OnboardingStep) => void;
+  /** Each change, saved by the app as it is made. */
   onChange: (doc: OnboardingDocument) => void;
   onAddRepository: () => void;
   facts?: (name: string) => RepositoryFacts | undefined;
   save: SaveState;
-  onSave: () => void;
-  onDiscard: () => void;
   onReload: () => void;
   disabled?: boolean;
   preview: boolean;
@@ -694,16 +748,17 @@ export function OnboardingSettings({
       onStep={onStep}
       onAddRepository={onAddRepository}
       facts={facts}
-      disabled={disabled || save.kind === "saving"}
+      disabled={disabled}
     />
   );
+  const status = <SaveStatus save={save} onReload={onReload} />;
   return (
     <div className="ob-page" data-testid="onboarding-settings">
       <div className="ob-head">
         <p className="ob-lede">
           Mitä uusi henkilö käy läpi ensimmäisellä kirjautumisella. Vaiheiden
-          järjestys on kiinteä. Muutos koskee seuraavaa uutta käyttöönottoa; jo
-          liittyneet eivät muutu.
+          järjestys on kiinteä. Muutos tallentuu heti ja koskee seuraavaa uutta
+          käyttöönottoa; jo liittyneet eivät muutu.
         </p>
         <ControlButton
           data-testid="onboarding-preview-open"
@@ -715,30 +770,7 @@ export function OnboardingSettings({
           Näytä henkilön näkymä
         </ControlButton>
       </div>
-      {save.kind === "refused" ? (
-        <p role="alert" className="ob-notice ob-notice-error">
-          {save.text}
-        </p>
-      ) : save.kind === "uncertain" || save.kind === "conflict" ? (
-        <div role="alert" className="ob-notice ob-notice-error">
-          <p>
-            {save.kind === "conflict"
-              ? "Käyttöönottoa on muutettu toisaalla sen jälkeen, kun avasit sen. Muutostasi ei tallennettu. Lataa nykyinen versio ja tee muutoksesi uudelleen."
-              : "Tallennusta ei voitu vahvistaa. Muutos on voinut tallentua. Lataa nykyinen versio ennen uutta yritystä."}
-          </p>
-          <ControlButton
-            size="row"
-            data-testid="onboarding-reload"
-            onPress={onReload}
-          >
-            Lataa nykyinen versio
-          </ControlButton>
-        </div>
-      ) : save.kind === "saved" && !dirty ? (
-        <p role="status" className="ob-notice">
-          Käyttöönotto tallennettu. Se koskee seuraavia uusia henkilöitä.
-        </p>
-      ) : null}
+      {preview ? null : status}
       <div className="ob-layout">
         <RouteList
           doc={doc}
@@ -756,37 +788,6 @@ export function OnboardingSettings({
           )}
         </div>
       </div>
-      <div className="ob-save">
-        <span data-testid="onboarding-dirty">
-          {dirty
-            ? "Tallentamattomia muutoksia"
-            : "Ei tallentamattomia muutoksia"}
-        </span>
-        <ControlButton
-          data-testid="onboarding-discard"
-          size="row"
-          variant="secondary"
-          isDisabled={!dirty || save.kind === "saving"}
-          onPress={onDiscard}
-        >
-          Peru muutokset
-        </ControlButton>
-        <ControlButton
-          data-testid="onboarding-save"
-          size="page"
-          variant="primary"
-          isDisabled={
-            disabled ||
-            !dirty ||
-            save.kind === "saving" ||
-            save.kind === "uncertain" ||
-            save.kind === "conflict"
-          }
-          onPress={onSave}
-        >
-          {save.kind === "saving" ? "Tallennetaan…" : "Tallenna käyttöönotto"}
-        </ControlButton>
-      </div>
       <OnboardingPreview
         open={preview}
         onClose={() => onPreview(false)}
@@ -794,10 +795,11 @@ export function OnboardingSettings({
         availability={availability}
         host={host}
       >
+        {status}
         {settings}
         <p className="ob-muted">
-          Muutos näkyy esikatselussa heti ja aloittaa sen alusta. Tallenna
-          käyttöönotto -painike on asetussivulla.
+          Muutos näkyy esikatselussa heti ja aloittaa sen alusta. Se myös
+          tallentuu heti.
         </p>
       </OnboardingPreview>
     </div>
@@ -1157,7 +1159,8 @@ export function OnboardingPreview({
               <Icon name="eye" width={16} height={16} />
               <strong className="ob-pm-name">Esikatselu</strong>
               <span>
-                Näin uusi henkilö näkee käyttöönoton. Mitään ei tallenneta.
+                Näin uusi henkilö näkee käyttöönoton. Esikatselussa painetut
+                eivät tallennu.
               </span>
             </span>
             <Segmented
