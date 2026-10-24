@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed in a worker's full gate run
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: unlaned
 collision: [internal/daemon/integrations]
 preparation: ready
+closed: 2026-10-24
 ---
 
 # integrations: relay TempDir cleanup and resume health flake in the gate
@@ -38,3 +39,8 @@ The first looks like a child process (the relay or a sync client) still
 writing into the test home when `t.TempDir` cleanup runs. The second reads
 `state: syncing` after a resume reported complete, perhaps a status read
 racing the supervisor. Either one fails the gate and blocks a receipt.
+
+## Acceptance Criteria
+
+- [x] Relay test joins the attempt's cleanup before its synthetic home is removed.
+- [x] Resume test waits for observed healthy status instead of a subprocess marker.

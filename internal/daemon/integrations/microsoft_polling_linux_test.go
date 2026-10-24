@@ -125,7 +125,23 @@ func TestMicrosoftRelayHidesApprovedCodeDuringDiscovery(t *testing.T) {
 	c := New(env, []Entry{m}, nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	c.Start(ctx)
-	defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
+	defer func() {
+		cancel()
+		c.relay.cancelAll()
+		c.relay.mu.Lock()
+		a := c.relay.a
+		c.relay.mu.Unlock()
+		if a != nil {
+			// Cancellation only signals the worker; its native cleanup can
+			// still write to HOME until done closes.
+			select {
+			case <-a.done:
+			case <-time.After(5 * time.Second):
+				t.Error("relay cleanup did not finish")
+			}
+		}
+		c.sync.stopAll()
+	}()
 	h := c.Handler(allow)
 	code, _, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "microsoft"})
 	if code != 200 {

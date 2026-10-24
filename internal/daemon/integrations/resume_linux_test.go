@@ -139,9 +139,11 @@ func TestDaemonStartResumesInterruptedFirstPass(t *testing.T) {
 	}
 	os.Remove(filepath.Join(env.Home, "hold-resync"))
 	waitFor(t, "steady sync", func() bool { return exists(filepath.Join(env.Home, "passes")) })
-	if s := dropboxService(t, c); s["state"] != string(StateOK) {
-		t.Fatalf("completed resume not healthy: %v", s)
-	}
+	// Steady sync can start before the catalog clears its queued resume
+	// outcome. Observe the card, not that earlier subprocess side effect.
+	waitFor(t, "healthy card after resume", func() bool {
+		return dropboxService(t, c)["state"] == string(StateOK)
+	})
 }
 
 // The resumed command is the chosen one, not an ordinary pass with --resync.
