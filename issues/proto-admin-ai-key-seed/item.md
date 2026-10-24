@@ -2,9 +2,9 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: task
-status: open
+status: testing
 priority: normal
-preparation: ready
+preparation: pending
 lane: proto-ai-key
 lane_seq: 1
 ---
@@ -17,4 +17,4 @@ Jari, 2026-10-24: before implementing `admin-ai-key-seed` (root or the browser a
 
 ## Acceptance Criteria
 
-- [ ] Round published on a new glasspad page with a Finnish summary, recommendation and questions in result.md; KOKEILTAVAA prototype line.
+- [x] Round published on a new glasspad page with a Finnish summary, recommendation and questions in result.md; KOKEILTAVAA prototype line.
