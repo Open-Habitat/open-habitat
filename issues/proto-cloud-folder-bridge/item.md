@@ -38,3 +38,7 @@ Jari 2026-10-24, round 2: if Microsoft 365 was already connected (its OneDrive),
 ### 2026-10-24T11:57:50Z · @jari
 
 Jari 2026-10-24, round 3: chose Desktop (Työpöytä) over Downloads, then tested Dropbox Backup himself (needed a paid plan; 14-day trial): Desktop/Documents/Downloads backups appear at dropbox.com/backups/Mac, a space separate from the ordinary Dropbox files, and the test server's agent does not see them. Conclusion (Jari): return to the concept of a separate 'Open Habitat' folder in the person's cloud as the bridge.
+
+### 2026-10-24T14:27:52Z · @jari
+
+Jari 2026-10-24: doubts the cloud-folder bridge altogether — 'Musta tää on vain niin vaikea tapa', especially for Downloads. He has considered replacing the web interface with native software at some point, where own-computer files need no such workaround and computer use could pass through it. Conductor: the bridge is parked (deferred) in favour of that direction; ordinary attachments and the existing OneDrive/Dropbox integrations stay as they are. The rounds 1–3 results remain the record if it is revived.
