@@ -28,4 +28,15 @@
 
 - The three specs pass with `./scripts/test-focused.sh --area browser --lab
   --spec <spec>` (5, 1 and 12 cases).
-- Full clean gate: see below.
+- Full clean gate (`./scripts/ci-local.sh --clean --json`) on the tree of
+  caa48b08:
+  - run 1 (on 71a7294b): every heavy phase passed; final check failed only
+    because I had edited this file and KOKEILTAVAA.md while it ran;
+  - run 2: Go/contracts and the ordinary browser suite passed;
+    `lab-browser-editor.spec.ts:9` 390 light/dark failed with a strict-mode
+    clash (`main.go` matched both `cmd/main.go` and the root file). The
+    spec passed alone twice, so this is the load flake the issue already
+    named; filed as `singularly-habitual-kitten`, not chased;
+  - run 3: green, receipt
+    `a9f76f49609cab5aa58bff0a96587e857435277a.json`.
+- `start-here.spec.ts` did not fail in these runs.
