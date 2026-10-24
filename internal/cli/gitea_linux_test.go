@@ -60,6 +60,7 @@ func newGitHome(t *testing.T, bases ...string) gitHome {
 		t.Skip("git unavailable")
 	}
 	home := t.TempDir()
+	os.Chmod(home, 0o700) // a group-writable home is refused, as it should be
 	tea := filepath.Join(home, ".config", "tea", "config.yml")
 	os.MkdirAll(filepath.Dir(tea), 0o700)
 	if err := os.WriteFile(tea, []byte(giteaTea), 0o600); err != nil {
@@ -208,6 +209,7 @@ func TestGiteaCredentialHelperExplicitLoginNeverCrossesHost(t *testing.T) {
 
 func TestGiteaCredentialCommandSurface(t *testing.T) {
 	home := t.TempDir()
+	os.Chmod(home, 0o700) // a group-writable home is refused, as it should be
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", "")
 	run := func(stdin string, args ...string) (int, string, string) {

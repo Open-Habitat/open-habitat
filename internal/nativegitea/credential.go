@@ -98,13 +98,20 @@ func requestPath(p string) (string, bool) {
 	return "/" + p, true
 }
 
-func underBase(path string, b Base) bool {
-	return b.Path == "" || path == b.Path || strings.HasPrefix(path, b.Path+"/")
+// repoUnder: path is exactly /owner/repository[.git] below b's base path.
+// Requiring Gitea's repository shape, rather than any descendant, keeps a
+// root instance from claiming a base-path instance's repositories once that
+// instance's own login is gone.
+func repoUnder(path string, b Base) bool {
+	if !strings.HasPrefix(path, b.Path+"/") {
+		return false
+	}
+	return strings.Count(path[len(b.Path)+1:], "/") == 1
 }
 
 // match selects the one login for a Git request. The request must be HTTPS
-// to exactly the login's host and port, under its base path at a segment
-// boundary, with no other Gitea on that host claiming a longer base. Within
+// to exactly the login's host and port, for an owner/repository path under
+// its base path, with no other Gitea on that host claiming a longer base. Within
 // that base the requested username selects the account; without one, only a
 // base with exactly one entry of any kind matches. Duplicates, unsupported
 // entries and mismatches yield ErrNoMatch or ErrAmbiguous, never the first
@@ -123,7 +130,7 @@ func match(entries []entry, req CredentialRequest, explicit string) (Credential,
 	}
 	longest := -1
 	for _, e := range entries {
-		if e.Base.valid() && e.Base.Host == host && e.Base.Port == port && underBase(path, e.Base) && len(e.Base.Path) > longest {
+		if e.Base.valid() && e.Base.Host == host && e.Base.Port == port && repoUnder(path, e.Base) && len(e.Base.Path) > longest {
 			longest = len(e.Base.Path)
 		}
 	}
@@ -133,7 +140,7 @@ func match(entries []entry, req CredentialRequest, explicit string) (Credential,
 	var instance []*entry
 	for i := range entries {
 		e := &entries[i]
-		if e.Base.valid() && e.Base.Host == host && e.Base.Port == port && underBase(path, e.Base) && len(e.Base.Path) == longest {
+		if e.Base.valid() && e.Base.Host == host && e.Base.Port == port && repoUnder(path, e.Base) && len(e.Base.Path) == longest {
 			instance = append(instance, e)
 		}
 	}

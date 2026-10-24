@@ -73,7 +73,8 @@ func (g GitConfig) run(ctx context.Context, args ...string) ([]byte, error) {
 }
 
 func (g GitConfig) values(ctx context.Context, key string) ([]string, error) {
-	out, err := g.run(ctx, "config", "--get-all", "--global", key)
+	// Git loads included files during credential operations; so must we.
+	out, err := g.run(ctx, "config", "--get-all", "--global", "--includes", key)
 	if errors.Is(err, errAbsent) {
 		return nil, nil
 	}
@@ -109,7 +110,7 @@ type helperEntry struct{ scope, value string }
 
 // helperEntries lists every global credential helper value in file order.
 func (g GitConfig) helperEntries(ctx context.Context) ([]helperEntry, error) {
-	out, err := g.run(ctx, "config", "--get-regexp", "--global", "--null", `^credential\.(.*\.)?helper$`)
+	out, err := g.run(ctx, "config", "--get-regexp", "--global", "--includes", "--null", `^credential\.(.*\.)?helper$`)
 	if errors.Is(err, errAbsent) {
 		return nil, nil
 	}
@@ -148,7 +149,9 @@ func mayApply(scope string, b Base) bool {
 }
 
 // shadowed: after our scope's last chain reset, Git would also ask a helper
-// other than ours.
+// other than ours, or a later applicable reset drops ours from the chain. A
+// reset followed again by our command (another of our base registrations)
+// leaves ours in place.
 func shadowed(es []helperEntry, b Base, command string) bool {
 	reset := -1
 	for i, e := range es {
@@ -156,12 +159,19 @@ func shadowed(es []helperEntry, b Base, command string) bool {
 			reset = i
 		}
 	}
+	ours := false
 	for _, e := range es[reset+1:] {
-		if e.value != "" && e.value != command && mayApply(e.scope, b) {
+		switch {
+		case !mayApply(e.scope, b):
+		case e.value == command:
+			ours = true
+		case e.value == "":
+			ours = false
+		default:
 			return true
 		}
 	}
-	return false
+	return !ours
 }
 
 func (g GitConfig) state(ctx context.Context, b Base, command string) (HelperState, [3][]string, error) {

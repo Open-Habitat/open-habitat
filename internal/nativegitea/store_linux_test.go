@@ -83,6 +83,7 @@ func (f fakeVerifier) User(_ context.Context, _ Base, token string) (Account, er
 func newStore(t *testing.T) (*Store, string) {
 	t.Helper()
 	home := t.TempDir()
+	os.Chmod(home, 0o700) // a group-writable home is refused, as it should be
 	s, err := NewStore(home, filepath.Join(home, ".config"))
 	if err != nil {
 		t.Fatal(err)

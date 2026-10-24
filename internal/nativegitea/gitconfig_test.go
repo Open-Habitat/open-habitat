@@ -32,7 +32,7 @@ func gitHome(t *testing.T) (GitConfig, string) {
 
 func gitGet(t *testing.T, g GitConfig, key string) string {
 	t.Helper()
-	out, _ := g.run(context.Background(), "config", "--get-all", "--global", key)
+	out, _ := g.run(context.Background(), "config", "--get-all", "--global", "--includes", key)
 	return string(out)
 }
 
@@ -163,7 +163,35 @@ func TestGitHelperShadowedByLaterEntry(t *testing.T) {
 			t.Fatalf("after repair: %s %v", st, err)
 		}
 	}
-	if got := gitGet(t, g, "credential.helper"); got != "store\ncache\n" {
+	// A later applicable reset drops our helper from the chain.
+	appendGitconfig(t, g, "[credential]\n\thelper =\n")
+	if st, err := g.State(ctx, b, exe); err != nil || st != HelperShadowed {
+		t.Fatalf("later reset: %s %v", st, err)
+	}
+	if err := g.Register(ctx, b, exe); err != nil {
+		t.Fatal(err)
+	}
+	// Another of our base registrations (reset, then ours) is not shadowing.
+	if err := g.Register(ctx, mustBase(t, "git.example.org/gitea"), exe); err != nil {
+		t.Fatal(err)
+	}
+	if st, err := g.State(ctx, b, exe); err != nil || st != HelperRegistered {
+		t.Fatalf("sibling registration: %s %v", st, err)
+	}
+	// Git loads included files during credential operations; so do we.
+	inc := filepath.Join(g.Home, "extra.inc")
+	os.WriteFile(inc, []byte("[credential]\n\thelper = store\n"), 0o600)
+	appendGitconfig(t, g, "[include]\n\tpath = "+inc+"\n")
+	if st, err := g.State(ctx, b, exe); err != nil || st != HelperShadowed {
+		t.Fatalf("included helper: %s %v", st, err)
+	}
+	if err := g.Register(ctx, b, exe); err != nil {
+		t.Fatal(err)
+	}
+	if st, err := g.State(ctx, b, exe); err != nil || st != HelperRegistered {
+		t.Fatalf("after moving past the include: %s %v", st, err)
+	}
+	if got := gitGet(t, g, "credential.helper"); got != "store\ncache\n\nstore\n" {
 		t.Fatalf("foreign helpers changed by the move: %q", got)
 	}
 	// A foreign key in our section keeps it in place: refuse, do not move it.

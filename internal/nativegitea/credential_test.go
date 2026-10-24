@@ -61,6 +61,8 @@ func TestMatchCredential(t *testing.T) {
 		{"explicit cannot cross port", r("https", "git.example.org:3000", "o/r.git", "alice"), "work", "", ErrNoMatch},
 		{"explicit cannot cross base", r("https", "git.example.org", "gitea/o/r.git", "alice"), "work", "", ErrNoMatch},
 		{"explicit cannot change user", r("https", "git.example.org", "o/r.git", "bob"), "work", "", ErrNoMatch},
+		{"nested path is not a root repository", r("https", "git.example.org", "a/b/c.git", "alice"), "", "", ErrNoMatch},
+		{"single segment is not a repository", r("https", "git.example.org", "r.git", "alice"), "", "", ErrNoMatch},
 		{"explicit unknown", r("https", "git.example.org", "o/r.git", "alice"), "nope", "", ErrNoMatch},
 	} {
 		got, err := match(es, tc.req, tc.explicit)
@@ -86,6 +88,29 @@ func TestMatchCredential(t *testing.T) {
 	claim := fixtureEntries(t, "    - name: subauth\n      url: https://git.example.org/gitea\n      user: ken\n      auth_method: oauth\n")
 	if _, err := match(claim, r("https", "git.example.org", "gitea/o/r.git", ""), ""); err != ErrAmbiguous {
 		t.Fatalf("sole-account selection with another entry: %v", err)
+	}
+}
+
+// After the base-path instance's own login is removed, its repositories
+// must not receive the root instance's token.
+func TestRemovedSubInstanceNotLentRootToken(t *testing.T) {
+	doc, err := parseDocument([]byte("logins:\n    - name: root\n      url: https://git.example.org\n      token: tok-root\n      user: alice\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := CredentialRequest{Protocol: "https", Host: "git.example.org", Path: "gitea/team/repo.git", Username: "alice"}
+	if c, err := match(doc.entries, req, ""); err != ErrNoMatch || c.Password != "" {
+		t.Fatalf("%q %v", c.Password, err)
+	}
+}
+
+func TestProjectionDropsInvalidURL(t *testing.T) {
+	doc, err := parseDocument([]byte("logins:\n    - name: x\n      url: https://alice:SECRET@git.example.org/?q=1\n      token: tok\n      user: alice\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l := doc.projection()[0]; l.Kind != KindInvalid || l.URL != "" || strings.Contains(l.ConnectionID()+l.URL, "SECRET") {
+		t.Fatalf("%+v", l)
 	}
 }
 

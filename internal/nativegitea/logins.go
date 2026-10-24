@@ -34,8 +34,9 @@ const (
 // Login is the token-free projection of one tea entry.
 type Login struct {
 	Name string
-	// URL is tea's url field as written; Base is set only when it is a
-	// canonical HTTPS address.
+	// URL is the canonical base URL, and Base its parts, only when tea's url
+	// field is a valid HTTPS address; otherwise both are empty, because an
+	// invalid url may carry userinfo or a query.
 	URL     string
 	Base    Base
 	User    string
@@ -191,7 +192,7 @@ func hasAlias(n *yaml.Node) bool {
 }
 
 func classify(t teaLogin, n *yaml.Node) entry {
-	e := entry{Login: Login{Name: t.Name, URL: t.URL, User: t.User, Default: t.Default}, token: t.Token, node: n}
+	e := entry{Login: Login{Name: t.Name, User: t.User, Default: t.Default}, token: t.Token, node: n}
 	base, err := ParseBase(t.URL)
 	// tea stores what the person typed after its own normalisation; an
 	// explicit https:// URL that ParseBase accepts has exactly one meaning.
@@ -209,7 +210,7 @@ func classify(t teaLogin, n *yaml.Node) entry {
 		e.Kind = KindPAT
 	}
 	if canonical {
-		e.Base = base
+		e.Base, e.URL = base, base.String()
 	}
 	if m := ownedName.FindStringSubmatch(t.Name); m != nil && canonical && m[1] == base.Digest() {
 		if id, err := strconv.ParseInt(m[2], 10, 64); err == nil {
