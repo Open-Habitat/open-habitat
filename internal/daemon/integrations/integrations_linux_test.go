@@ -555,6 +555,24 @@ func waitState(t *testing.T, h http.Handler, owner string, want ...string) map[s
 	}
 }
 
+// Login completion commits the native account before reconciliation so a late
+// cancellation cannot undo it. Tests inspecting the derived skill, boot signal
+// or supervised clients must wait for the worker, not just the browser state.
+func waitLoginWorker(t *testing.T, c *Catalog) {
+	t.Helper()
+	c.relay.mu.Lock()
+	a := c.relay.a
+	c.relay.mu.Unlock()
+	if a == nil {
+		t.Fatal("no login attempt")
+	}
+	select {
+	case <-a.done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("login worker did not finish reconciliation")
+	}
+}
+
 func TestDeviceCodeRelayBelongsToItsSession(t *testing.T) {
 	home := newHome(t)
 	e := &scriptEntry{provider: Microsoft, kind: DeviceCode, signsIn: "person@work.example.test"}
@@ -585,6 +603,7 @@ func TestDeviceCodeRelayBelongsToItsSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	out = waitState(t, h, ownerA, "completed")
+	waitLoginWorker(t, c)
 	if out["address"] != "person@work.example.test" {
 		t.Fatalf("completed: %v", out)
 	}
@@ -1070,20 +1089,16 @@ func TestCompletionWinsCancellationDuringReconciliation(t *testing.T) {
 			}
 			state := c.relay.view(ownerA, time.Now()).State
 			close(e.release)
-			c.relay.mu.Lock()
-			done := c.relay.a.done
-			c.relay.mu.Unlock()
-			select {
-			case <-done:
-			case <-time.After(3 * time.Second):
-				t.Fatal("completion did not finish")
-			}
+			waitLoginWorker(t, c)
 			if state != "completed" {
 				t.Fatalf("late cancellation reported %s while retaining credentials", state)
 			}
 			accounts, err := s.Accounts(c.env)
 			if err != nil || len(accounts) != 1 {
 				t.Fatal(accounts, err)
+			}
+			if b, err := os.ReadFile(filepath.Join(c.env.Home, SkillDir, "SKILL.md")); err != nil || !bytes.Contains(b, []byte(s.signsIn)) {
+				t.Fatalf("skill after reconciliation: %v", err)
 			}
 			if folders && !c.sync.supervised(key{Google, s.signsIn}) {
 				t.Fatal("completed account not supervised")

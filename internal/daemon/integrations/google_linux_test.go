@@ -132,6 +132,7 @@ func TestGoogleConnectSyncRestartAndRemove(t *testing.T) {
 	c.quota = func() Room { return Room{Free: 2048, OK: true} }
 	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"all"}})
 	waitState(t, h, ownerA, "completed")
+	waitLoginWorker(t, c)
 	k := key{Google, "person@example.test"}
 	if !c.sync.supervised(k) {
 		t.Fatal("not supervised")
