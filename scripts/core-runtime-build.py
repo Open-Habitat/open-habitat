@@ -21,8 +21,8 @@ def digest(p):
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def build(work, out, target):
-    node_pin = profiles.target_pin(json.loads(Path('/inputs/artifact-lock.json').read_text())['node'], target)
+def build(work, out, release_target):
+    node_pin = profiles.target_pin(json.loads(Path('/inputs/artifact-lock.json').read_text())['node'], release_target)
     root = out / 'payload'
     root.mkdir()
     components = []
@@ -72,7 +72,7 @@ def build(work, out, target):
     put(work / 'npm/package.json', 'runtime/package.json', 'npm-lock')
     components.append(dict(name='npm-lock', version='1.0.0', kind='lock', license_files=['runtime/package.json']))
     deb_lock_path = Path('/inputs/ubuntu-packages.json')
-    packages = profiles.ubuntu_requirements(deb_lock_path, target)
+    packages = profiles.ubuntu_requirements(deb_lock_path, release_target)
     put(deb_lock_path, 'ubuntu-packages.json', 'ubuntu-requirements')
     components.append(dict(name='ubuntu-requirements', version='24.04', kind='lock', license_files=['ubuntu-packages.json']))
     files = [dict(path=p, sha256=digest(root / p), component=owners[p], mode=(root / p).stat().st_mode & 0o777) for p in sorted(owners)]

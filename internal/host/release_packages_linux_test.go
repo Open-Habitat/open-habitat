@@ -100,9 +100,11 @@ type zeroPackageReader struct{}
 func (zeroPackageReader) Read(p []byte) (int, error) { clear(p); return len(p), nil }
 
 func TestReleaseNativePackageQuery(t *testing.T) {
-	if runtime.GOARCH != "amd64" {
-		t.Skip("native Ubuntu runtime target is amd64")
+	platform := HostPlatform()
+	if platform == "" {
+		t.Skip("unsupported native Ubuntu architecture " + runtime.GOARCH)
 	}
+	dpkg := "dpkg:" + platformArchitecture(platform)
 	if _, err := os.Stat("/usr/bin/dpkg-query"); os.IsNotExist(err) {
 		t.Skip("requires native dpkg-query")
 	}
@@ -119,18 +121,22 @@ func TestReleaseNativePackageQuery(t *testing.T) {
 		t.Fatal(err)
 	}
 	observed, err := parseRuntimePackages(output)
-	if err != nil || observed["dpkg:amd64"] == "" || observed["fake-package:all"] != "" {
+	if err != nil || observed[dpkg] == "" || observed["fake-package:all"] != "" {
 		t.Fatalf("native observation failed: %v", err)
 	}
 	a, _ := releaseFixture(t)
-	a.Packages = []RuntimePackage{{"dpkg", "amd64", observed["dpkg:amd64"]}}
-	r := authenticatedFixture(t, releaseManifest(a))
+	a.Packages = []RuntimePackage{{"dpkg", platformArchitecture(platform), observed[dpkg]}}
+	m := releaseManifest(a)
+	m.Platform = platform
+	r := authenticatedFixture(t, m)
 	check, err := r.ObserveRuntimePackages(context.Background(), nil)
 	if err != nil || check.Status != "pass" {
 		t.Fatalf("%+v %v", check, err)
 	}
 	a.Packages[0].Version = "0.0.0-test"
-	check, err = authenticatedFixture(t, releaseManifest(a)).ObserveRuntimePackages(context.Background(), nil)
+	m = releaseManifest(a)
+	m.Platform = platform
+	check, err = authenticatedFixture(t, m).ObserveRuntimePackages(context.Background(), nil)
 	if err != nil || check.Reason != "runtime_packages_match" {
 		t.Fatalf("%+v %v", check, err)
 	}
