@@ -240,6 +240,10 @@
   display: grid;
   min-width: 0;
 }
+/* Not ready: listed for the reason only, never offered. */
+.ob-unready {
+  color: var(--ah-muted);
+}
 .ob-choices {
   border: 0;
   padding: 0;
@@ -478,83 +482,15 @@
 .ob-dev-phone .ob-dev-screen {
   padding: var(--ah-s3);
 }
+/* The person's screen is the production Kartta frame (OnboardingFrame),
+   whose own container query lays it out for the phone frame. */
 .ob-pv-screen {
-  display: grid;
-  grid-template-columns: 184px minmax(0, 1fr);
-  gap: var(--ah-s6);
-  align-items: start;
   min-width: 0;
-}
-@container (max-width: 560px) {
-  .ob-pv-screen {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--ah-s4);
-  }
-  .ob-pv-route ol {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .ob-pv-route li:not(:last-child)::after {
-    display: none;
-  }
-}
-.ob-pv-route ol {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.ob-pv-route li {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--ah-s3);
-  padding: var(--ah-s3) 0;
-  color: var(--ah-ink-2);
-}
-.ob-pv-route li:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  left: 13px;
-  bottom: -10px;
-  width: 1px;
-  height: 20px;
-  background: var(--ah-line-strong);
-}
-.ob-pv-dot {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--ah-line-strong);
-  border-radius: 50%;
-  background: var(--ah-bg);
-  font-size: 12px;
-}
-.ob-pv-route li[data-state="done"] .ob-pv-dot {
-  border-color: var(--ah-accent-line);
-  color: var(--ah-accent-ink);
-}
-.ob-pv-route li[data-state="auto"] .ob-pv-dot {
-  border-style: dashed;
-  color: var(--ah-accent-ink);
-}
-.ob-pv-route li[aria-current="step"] {
-  color: var(--ah-ink);
-}
-.ob-pv-route li[aria-current="step"] .ob-pv-dot {
-  background: var(--ah-accent-soft);
-  border-color: var(--ah-accent-line);
-  color: var(--ah-accent-ink);
 }
 .ob-pv-card {
   display: grid;
   gap: var(--ah-s4);
   min-width: 0;
-  padding: var(--ah-s5);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-lg);
-  background: var(--ah-surface);
 }
 .ob-pv-card h1 {
   margin: 0;

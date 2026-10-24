@@ -1,5 +1,5 @@
 import { hostOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, type Page, test } from "./worker-host";
 
 const host = hostOrigin;
@@ -19,7 +19,6 @@ async function login(page: Page, name: "Alice" | "Bob" = "Alice") {
     .getByRole("button")
     .and(page.getByTestId("repository-proceed"))
     .click();
-  await passGoogle(page);
 }
 async function scenario(page: Page, value: string) {
   expect(

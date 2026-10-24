@@ -5,7 +5,7 @@ import cloneProgressSchema from "../../../contracts/v1/github-clone-progress.sch
 import integrationsSchema from "../../../contracts/v1/integrations.schema.json";
 import serverSchema from "../../../contracts/v1/server-onboarding.schema.json";
 import siteSchema from "../../../contracts/v1/site-onboarding.schema.json";
-import { bounded, type ProviderId } from "./integrations";
+import { bounded, type IntegrationList, type ProviderId } from "./integrations";
 import { mutationFetch, writeOutcome } from "./mutations";
 
 // The site onboarding configuration (ADR 0030) lives in the gateway's
@@ -81,6 +81,32 @@ export function documentOf(c: OnboardingDocument): OnboardingDocument {
     ai_account: { offer: c.ai_account.offer },
   };
 }
+/** Whether this installation has each provider ready (its catalog entry is
+ * Available); a provider missing here is not known to be ready. */
+export type ProviderReadiness = Partial<Record<ProviderId, boolean>>;
+export const readinessOf = (list: IntegrationList): ProviderReadiness =>
+  Object.fromEntries(list.providers.map((p) => [p.id, p.available]));
+
+/** The integration steps of a person's route: each integration the site
+ * added whose provider is ready, in the catalog's order. One that is not
+ * ready, or whose readiness is unknown, is hidden but stays in the
+ * configuration, so it returns when the provider is ready again (Jari
+ * 2026-10-24). The person's route and the administrator's preview both
+ * take their steps from here. */
+export function routeIntegrations(
+  integrations: OnboardingIntegration[],
+  ready: ProviderReadiness,
+): OnboardingIntegration[] {
+  return providerOrder.flatMap((p) =>
+    integrations.filter((i) => i.provider === p && ready[p] === true),
+  );
+}
+
+/** Whether the person's route has a Repot step: not when the site fetches
+ * nothing and shows no chooser. */
+export const hasRepositoryStep = (mode: RepositoryMode, siteRepos: number) =>
+  mode !== "skip" || siteRepos > 0;
+
 export const sameDocument = (a: OnboardingDocument, b: OnboardingDocument) =>
   JSON.stringify(documentOf(a)) === JSON.stringify(documentOf(b));
 

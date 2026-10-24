@@ -104,14 +104,17 @@ test("@site-onboarding an administrator's every change saves itself, and the pre
   await expect(page.getByTestId(`onboarding-default-${picked}`)).toBeVisible();
   await expect(page).toHaveURL(/\/settings\/onboarding$/);
 
-  // Integrations: one the installation lacks is shown as not installed.
+  // Integrations: only a ready one can be added (Jari 24.10.2026).
   const catalog = await (await page.request.get("/api/v1/integrations")).json();
   await route(page, "add-integration").click();
+  await expect(page.getByTestId("onboarding-add-microsoft")).toBeVisible();
   for (const p of catalog.providers as { id: string; available: boolean }[])
-    if (!p.available)
+    if (!p.available) {
       await expect(
-        page.getByTestId("onboarding-integration-choices"),
-      ).toContainText("Ei asennettu");
+        page.getByTestId(`onboarding-unready-${p.id}`),
+      ).toBeVisible();
+      await expect(page.getByTestId(`onboarding-add-${p.id}`)).toHaveCount(0);
+    }
   await page
     .getByRole("button")
     .and(page.getByTestId("onboarding-add-microsoft"))
@@ -144,6 +147,10 @@ test("@site-onboarding an administrator's every change saves itself, and the pre
   await expect(preview.getByTestId("onboarding-preview-card")).toContainText(
     picked,
   );
+  // The person's own route component, the required step marked on it.
+  await expect(
+    preview.getByTestId("onboarding-step-microsoft"),
+  ).toHaveAttribute("data-required", "true");
   for (const next of ["microsoft", "ai"]) {
     await preview
       .getByRole("button")

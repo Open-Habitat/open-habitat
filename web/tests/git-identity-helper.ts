@@ -19,15 +19,3 @@ export async function confirmGitIdentity(page: Page) {
   }
   await action.click();
 }
-
-/** Continue past onboarding's Google step without connecting: the
- * synthetic host offers Google, as a server whose operator configured it. */
-export async function passGoogle(page: Page) {
-  await expect(
-    page.getByRole("heading").and(page.getByTestId("google-onboarding-title")),
-  ).toBeVisible();
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("google-onboarding-continue"))
-    .click();
-}

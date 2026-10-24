@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
+import { confirmGitIdentity } from "./git-identity-helper";
 import { createHostTest, expect } from "./worker-host";
 
 // Preserve the real helper's code through every option's layout/axe checks.
@@ -37,7 +37,6 @@ async function aiStep(page: Page) {
     .getByRole("button")
     .and(page.getByTestId("repository-proceed"))
     .click();
-  await passGoogle(page);
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();

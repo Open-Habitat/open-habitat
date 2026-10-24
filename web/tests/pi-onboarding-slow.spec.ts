@@ -1,5 +1,5 @@
 import { hostOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
@@ -23,7 +23,6 @@ test("@pi-onboarding slow native reads finish across multiple poll intervals wit
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
-    await passGoogle(page);
     await expect(page.getByTestId("connection-loading")).toHaveCount(0);
     await expect(page.getByTestId("onboarding-steps")).toBeVisible();
     // Each reply is from the real synthetic gateway/daemon. Only delivery to
@@ -111,7 +110,6 @@ test("@pi-onboarding lost write reply is uncertain and read-only recheck recover
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
-    await passGoogle(page);
     await expect(
       page.getByRole("button").and(page.getByTestId("pi-attempt-start")),
     ).toBeVisible();

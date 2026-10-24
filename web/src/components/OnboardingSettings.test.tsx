@@ -21,7 +21,7 @@ const base: OnboardingDocument = {
 
 function Harness({
   initial = base,
-  availability = { google: true, dropbox: false },
+  availability = { google: true, microsoft: true, dropbox: false },
   onAdd = () => {},
   first = "repositories",
 }: {
@@ -100,27 +100,37 @@ it("stops adding defaults at twenty", () => {
   expect(onAdd).toHaveBeenCalledOnce();
 });
 
-it("adds integrations in catalog order, marks them required and removes them", () => {
-  render(<Harness />);
+it("adds only ready integrations, in catalog order, marks them required and removes them", () => {
+  render(
+    <Harness
+      initial={{
+        ...base,
+        integrations: [{ provider: "dropbox", required: false }],
+      }}
+    />,
+  );
+  // A configured integration that is not ready stays, hidden from new people.
+  const dropbox = screen.getByTestId("onboarding-route-integration:dropbox");
+  expect(dropbox.dataset.shown).toBe("false");
+  fireEvent.click(dropbox);
+  expect(screen.getByTestId("onboarding-step-hidden")).toBeTruthy();
   fireEvent.click(screen.getByTestId("onboarding-route-add-integration"));
-  fireEvent.click(screen.getByTestId("onboarding-add-dropbox"));
-  // An integration this installation does not offer is shown as not installed.
-  expect(screen.getByTestId("onboarding-not-installed")).toBeTruthy();
-  expect(
-    screen.getByTestId("onboarding-route-integration:dropbox-hint").textContent,
-  ).toBe("Ei asennettu · jätetään pois");
-  fireEvent.click(screen.getByTestId("onboarding-route-add-integration"));
+  // IMAP's readiness is unknown here, so it is not offered.
+  expect(screen.queryByTestId("onboarding-add-imap")).toBeNull();
+  expect(screen.getByTestId("onboarding-unready-imap")).toBeTruthy();
   fireEvent.click(screen.getByTestId("onboarding-add-microsoft"));
+  fireEvent.click(screen.getByTestId("onboarding-route-add-integration"));
+  fireEvent.click(screen.getByTestId("onboarding-add-google"));
   expect(doc().integrations.map((i) => i.provider)).toEqual([
     "google",
     "microsoft",
     "dropbox",
   ]);
-  fireEvent.click(segment("onboarding-integration-required", "required"));
+  fireEvent.click(screen.getByTestId("onboarding-route-integration:microsoft"));
   expect(
-    screen.getByTestId("onboarding-route-integration:microsoft-hint")
-      .textContent,
-  ).toBe("Pakollinen");
+    screen.getByTestId("onboarding-route-integration:microsoft").dataset.shown,
+  ).toBe("true");
+  fireEvent.click(segment("onboarding-integration-required", "required"));
   expect(doc().integrations[1]).toEqual({
     provider: "microsoft",
     required: true,
@@ -165,17 +175,20 @@ it("previews the person's route with the settings docked beside it", () => {
   );
   fireEvent.click(screen.getByTestId("onboarding-preview-open"));
   const preview = screen.getByTestId("onboarding-preview");
-  // Dropbox is not installed: it is not on the person's route.
+  // The production route: Dropbox is not ready, so it is not on it.
   expect(
-    within(preview)
-      .getAllByTestId(/^onboarding-preview-step-/)
+    within(within(preview).getByTestId("onboarding-steps"))
+      .getAllByRole("listitem")
       .map((e) => e.dataset.testid),
   ).toEqual([
-    "onboarding-preview-step-github",
-    "onboarding-preview-step-repositories",
-    "onboarding-preview-step-google",
-    "onboarding-preview-step-ai",
+    "onboarding-step-github",
+    "onboarding-step-repositories",
+    "onboarding-step-google",
+    "onboarding-step-ai",
   ]);
+  expect(
+    within(preview).getByTestId("onboarding-step-google").dataset.required,
+  ).toBe("true");
   expect(screen.getByTestId("onboarding-preview-screen").dataset.at).toBe(
     "repositories",
   );
@@ -200,23 +213,25 @@ it("previews the person's route with the settings docked beside it", () => {
   expect(screen.getByTestId("onboarding-preview-screen").dataset.at).toBe(
     "google",
   );
+  // The site fetches without a chooser: Repot stays on the route, passed.
   expect(
-    screen.getByTestId("onboarding-preview-step-repositories-auto").textContent,
-  ).toContain("Sivusto hakee 2 repoa");
+    within(preview).getByTestId("onboarding-step-repositories").dataset.state,
+  ).toBe("done");
   fireEvent.click(screen.getByTestId("onboarding-preview-close"));
   expect(screen.queryByTestId("onboarding-preview")).toBeNull();
 });
 
 it("derives the preview route from the configuration", () => {
-  const steps = (d: OnboardingDocument, a: ProviderAvailability = {}) =>
+  const steps = (
+    d: OnboardingDocument,
+    a: ProviderAvailability = { google: true },
+  ) =>
     previewSteps(d, a).map((s) => (s.id === "integration" ? s.provider : s.id));
   expect(steps(base)).toEqual(["repositories", "google", "ai", "done"]);
   expect(
     steps({ ...base, repositories: { mode: "skip", defaults: [] } }),
   ).toEqual(["google", "ai", "done"]);
-  expect(steps(base, { google: false })).toEqual([
-    "repositories",
-    "ai",
-    "done",
-  ]);
+  // Hidden while not ready, and while readiness is unknown.
+  for (const a of [{ google: false }, {}])
+    expect(steps(base, a)).toEqual(["repositories", "ai", "done"]);
 });

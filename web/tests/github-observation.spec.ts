@@ -1,5 +1,5 @@
 import { hostOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 
 const host = hostOrigin;
@@ -35,7 +35,6 @@ test("@github-first existing checkout advances without duplicate POST", async ({
     .getByRole("button")
     .and(page.getByTestId("repository-proceed"))
     .click();
-  await passGoogle(page);
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
@@ -63,7 +62,6 @@ test("@github-first a conflicting directory is reported while the other clone co
     .getByRole("button")
     .and(page.getByTestId("repository-proceed"))
     .click();
-  await passGoogle(page);
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
@@ -101,7 +99,6 @@ test("@github-first lost response reconciles by read without another POST", asyn
     .getByRole("button")
     .and(page.getByTestId("repository-proceed"))
     .click();
-  await passGoogle(page);
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();

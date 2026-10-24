@@ -9,7 +9,8 @@ import {
 } from "./OnboardingSettings";
 
 // Synthetic states of the production Asetukset › Käyttöönotto tab
-// (proto-admin-server-onboarding rounds 2–5). The document lives in the
+// (proto-admin-server-onboarding rounds 2–5). Dropbox is not ready here, so
+// it is not offered for adding and its configured step is hidden. The document lives in the
 // story; the save state is fixed per story and no host is involved.
 const saved: OnboardingDocument = {
   repositories: {
@@ -22,7 +23,8 @@ const saved: OnboardingDocument = {
   },
   integrations: [
     { provider: "google", required: false },
-    { provider: "dropbox", required: true },
+    { provider: "microsoft", required: true },
+    { provider: "dropbox", required: false },
   ],
   ai_account: { offer: "chatgpt" },
 };
@@ -94,6 +96,11 @@ export const SkipWithoutDefaults: Story = {
   },
 };
 export const RequiredIntegration: Story = {
+  args: { step: "integration:microsoft" },
+};
+/** Configured, but the installation does not have Dropbox ready: the step
+ * stays in the configuration, hidden from new people. */
+export const HiddenIntegration: Story = {
   args: { step: "integration:dropbox" },
 };
 export const AddIntegration: Story = { args: { step: "add-integration" } };

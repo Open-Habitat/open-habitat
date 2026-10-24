@@ -26,6 +26,8 @@ async function every(name) {
   await page.emulateMedia({ colorScheme: "light" });
 }
 try {
+  // The site's Google step, as root's admin CLI adds it.
+  await fixture("onboarding?integrations=google");
   await fixture("scenario?value=pi-onboarding");
   await fixture("pi-state?value=missing");
   await page.goto(`${origin}/workspaces`);
@@ -42,7 +44,7 @@ try {
   await page.getByTestId("repository-proceed").click();
   await page.getByTestId("integration-tile-google").waitFor();
   await every("google");
-  await page.getByTestId("google-onboarding-continue").click();
+  await page.getByTestId("integration-onboarding-continue").click();
   await page.getByTestId("pi-sign-in-title").waitFor();
   await page.getByTestId("onboarding-clones").waitFor();
   await every("ai-after-google-skipped");

@@ -1,5 +1,5 @@
 import { hostOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
@@ -72,7 +72,6 @@ test("@first-use pending code keeps attempt cancellation separate from sign-out"
     await confirmGitIdentity(page);
     await expect(page.getByTestId("repository-chooser-title")).toBeVisible();
     await page.getByTestId("repository-proceed").click();
-    await passGoogle(page);
     await page.getByTestId("pi-attempt-start").click();
     await expect(page.getByTestId("pi-attempt-cancel")).toHaveClass(
       /ah-button-quiet/,

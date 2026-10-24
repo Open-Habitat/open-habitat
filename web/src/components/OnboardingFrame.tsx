@@ -1,14 +1,19 @@
 import { createContext, type ReactNode, useContext } from "react";
+import type { ProviderId } from "../app/integrations";
 import { Icon } from "./Icon";
+import { providerCopy } from "./Integrations";
 import styles from "./OnboardingFrame.module.css";
 
-export type OnboardingStepId = "github" | "repositories" | "google" | "ai";
+/** The route's steps; an integration step is named by its provider. */
+export type OnboardingStepId = "github" | "repositories" | ProviderId | "ai";
 
 /** One step of this person's route and, once passed, how it ended. */
 export type OnboardingRouteStep = {
   id: OnboardingStepId;
   /** A passed step that was left without its result, such as Google. */
   skipped?: boolean;
+  /** An integration step the site made required: it has no skip action. */
+  required?: boolean;
   /** What the passed step left behind, in a word or two. */
   note?: string;
   /** Work the step started that is still visible from the route, such as
@@ -16,12 +21,14 @@ export type OnboardingRouteStep = {
   detail?: ReactNode;
 };
 
-const labels: Record<OnboardingStepId, string> = {
-  github: "GitHub",
-  repositories: "Repot",
-  google: "Google",
-  ai: "AI-tili",
-};
+const label = (id: OnboardingStepId) =>
+  id === "github"
+    ? "GitHub"
+    : id === "repositories"
+      ? "Repot"
+      : id === "ai"
+        ? "AI-tili"
+        : providerCopy[id].name;
 const plainRoute: OnboardingRouteStep[] = [
   { id: "github" },
   { id: "repositories" },
@@ -32,8 +39,9 @@ const RouteContext = createContext<OnboardingRouteStep[] | undefined>(
   undefined,
 );
 
-/** The journey that owns onboarding names its route here, Google included
- * when it is part of it; the frames inside it draw that route. */
+/** The journey that owns onboarding names its route here, the site's
+ * integration steps included; the frames inside it draw that route. The
+ * administrator's preview names its route here too, so it draws the same. */
 export function OnboardingRoute({
   steps,
   children,
@@ -47,18 +55,20 @@ export function OnboardingRoute({
 }
 
 /** The Kartta frame: the whole route beside the current step. Presentation
- * only: the current step comes from the owning journey, never from the URL. */
+ * only: the current step comes from the owning journey, never from the URL.
+ * "done" is past the last step, where only the preview stops. */
 export function OnboardingFrame({
   step,
   children,
   notice,
 }: {
-  step: OnboardingStepId;
+  step: OnboardingStepId | "done";
   children: ReactNode;
   notice?: ReactNode;
 }) {
   const route = useContext(RouteContext) ?? plainRoute;
-  const at = route.findIndex((s) => s.id === step);
+  const at =
+    step === "done" ? route.length : route.findIndex((s) => s.id === step);
   return (
     <div className={`ah-onboarding-frame ${styles.frame}`} data-step={step}>
       <div className={styles.identity}>
@@ -84,18 +94,21 @@ export function OnboardingFrame({
                   key={s.id}
                   data-testid={`onboarding-step-${s.id}`}
                   data-state={state}
+                  data-required={s.required ? "true" : undefined}
                   aria-current={state === "current" ? "step" : undefined}
                 >
                   <span className={styles.dot} aria-hidden="true">
                     {state === "done" ? <Icon name="check" /> : i + 1}
                   </span>
                   <span className={styles.label}>
-                    <strong>{labels[s.id]}</strong>
+                    <strong>{label(s.id)}</strong>
                     <small>
                       {state === "current"
                         ? "Nyt"
                         : state === "next"
-                          ? "Seuraavaksi"
+                          ? s.required
+                            ? "Pakollinen"
+                            : "Seuraavaksi"
                           : (s.note ?? (s.skipped ? "Ohitettu" : "Valmis"))}
                     </small>
                     {s.detail}

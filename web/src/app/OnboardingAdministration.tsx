@@ -26,6 +26,7 @@ import {
   maxDefaults,
   type OnboardingConfig,
   type OnboardingDocument,
+  readinessOf,
   readServerOnboarding,
   refusalText,
   sameDocument,
@@ -235,14 +236,11 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
     void load(controller.signal).catch(() => {
       if (!controller.signal.aborted) setLoadError(true);
     });
-    // Whether this installation offers each integration, read from the
-    // administrator's own catalog; unknown when it cannot be read.
+    // Whether this installation has each integration ready, read from the
+    // administrator's own catalog; unknown, and so not offered, when it
+    // cannot be read.
     void readIntegrations(controller.signal)
-      .then((list) =>
-        setAvailability(
-          Object.fromEntries(list.providers.map((p) => [p.id, p.available])),
-        ),
-      )
+      .then((list) => setAvailability(readinessOf(list)))
       .catch(() => {});
     void catalog(controller.signal)
       .then((c) =>

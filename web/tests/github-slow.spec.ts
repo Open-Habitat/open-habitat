@@ -1,5 +1,5 @@
 import { hostOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
@@ -40,7 +40,6 @@ test("@github-first a slow start reply neither holds Continue nor starts another
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
-    await passGoogle(page);
     await reached;
     try {
       // Continue moved on before the daemon answered.

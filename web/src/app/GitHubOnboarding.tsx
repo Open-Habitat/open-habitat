@@ -19,16 +19,33 @@ import { Button } from "../components/Primitives";
 import { InlineNotice } from "../components/Status";
 import { type CloneJobs, cloneRows, useCloneView } from "./cloneJobs";
 import { GitIdentity } from "./GitIdentity";
-import { GoogleOnboarding, hasGoogle, offersGoogle } from "./GoogleOnboarding";
 import { catalog, GitHubError, type Observation, observe } from "./github";
-import { type IntegrationList, readIntegrations } from "./integrations";
-import { readSiteOnboarding, type SiteOnboarding } from "./onboardingConfig";
+import { connectedTo, IntegrationOnboarding } from "./IntegrationOnboarding";
+import {
+  type IntegrationList,
+  type ProviderId,
+  readIntegrations,
+} from "./integrations";
+import {
+  hasRepositoryStep,
+  readinessOf,
+  readSiteOnboarding,
+  routeIntegrations,
+  type SiteOnboarding,
+} from "./onboardingConfig";
 import { PiOnboarding } from "./PiOnboarding";
 import { sessionCSRF } from "./pi";
 
 const marker = "nah:github-step";
-// Google passed, connected or not, in this session.
-const googleMarker = "nah:google-step";
+// The integration steps passed, connected or not, in this session.
+const integrationMarker = "nah:integration-steps";
+function passedIn(key: string): ProviderId[] {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(integrationMarker) ?? "{}");
+    if (v.key === key && Array.isArray(v.passed)) return v.passed;
+  } catch {}
+  return [];
+}
 const message = (e: unknown) =>
   e instanceof GitHubError
     ? {
@@ -76,11 +93,14 @@ export function GitHubOnboarding({
   const [exitOpen, setExitOpen] = useState(false);
   const cloneView = useCloneView(clones);
   const [step, setStep] = useState<
-    "loading" | "identity" | "github" | "google" | "pi"
+    "loading" | "identity" | "github" | "integrations" | "pi"
   >("loading");
   // This session's integration catalog: undefined until read, null when it
-  // could not be read. Google is a step when the catalog offers it.
+  // could not be read. The site's integrations whose provider it has ready
+  // are steps; without it, none is.
   const [integrations, setIntegrations] = useState<IntegrationList | null>();
+  // The integration steps passed in this session, in route order.
+  const [passed, setPassed] = useState<ProviderId[]>([]);
   // The site's repository mode for this person and the defaults it fetches
   // for them (ADR 0030): undefined until read, null when it could not be
   // read, which leaves the ordinary chooser.
@@ -93,6 +113,7 @@ export function GitHubOnboarding({
   const [observed, setObserved] = useState<
     Record<string, Observation["state"]>
   >({});
+  // biome-ignore lint/correctness/useExhaustiveDependencies: passing one integration step opens the next under the same step.
   useEffect(() => {
     if (step === "loading") return;
     // Returning from settings puts focus back on the frame's own control
@@ -114,12 +135,12 @@ export function GitHubOnboarding({
         ? "git-identity-title"
         : step === "github"
           ? "github-chooser-title"
-          : step === "google"
-            ? "google-onboarding-title"
+          : step === "integrations"
+            ? "integration-onboarding-title"
             : "pi-device-title",
     );
     heading?.focus({ preventScroll: true });
-  }, [step]);
+  }, [step, passed]);
   const [view, setView] = useState<GitHubRepoChooserView>({ phase: "loading" });
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
@@ -143,18 +164,17 @@ export function GitHubOnboarding({
     setView({ phase: "loading" });
     setError("");
     setIntegrations(undefined);
+    setPassed([]);
     setSite(undefined);
     setRepoOutcome(undefined);
     setLockedNames([]);
     setObserved({});
     setStep("loading");
   }, []);
-  // After the repositories: Google unless it was passed in this session.
+  // After the repositories: the site's integration steps, which go on to
+  // the AI account once each is passed.
   const afterRepos = useCallback(
-    () =>
-      skipChooser || sessionStorage.getItem(googleMarker) === key.current
-        ? "pi"
-        : "google",
+    () => (skipChooser ? "pi" : "integrations"),
     [skipChooser],
   );
   const load = useCallback(
@@ -253,6 +273,7 @@ export function GitHubOnboarding({
         if (!alive || !current(n)) return;
         bound.current = csrf;
         key.current = digest;
+        setPassed(passedIn(digest));
         if (!skipChooser)
           void readSiteOnboarding()
             .then((plan) => {
@@ -275,7 +296,8 @@ export function GitHubOnboarding({
           return;
         }
         sessionStorage.removeItem(marker);
-        sessionStorage.removeItem(googleMarker);
+        sessionStorage.removeItem(integrationMarker);
+        setPassed([]);
         setStep("github");
         void load(n);
       } catch {
@@ -376,7 +398,8 @@ export function GitHubOnboarding({
     locked.current = false;
     setBusy(false);
     sessionStorage.removeItem(marker);
-    sessionStorage.removeItem(googleMarker);
+    sessionStorage.removeItem(integrationMarker);
+    setPassed([]);
     if (skipRepos) {
       // There is no chooser to return to; the Git identity is the step before.
       identityDone.current = false;
@@ -386,13 +409,27 @@ export function GitHubOnboarding({
     setStep("github");
     void load(generation.current);
   };
-  const google = integrations ? offersGoogle(integrations) : false;
-  // Google waits for the catalog; without it on offer the step is not there.
+  // The site's integration steps wait for both the site's configuration and
+  // the catalog; without either there are none.
+  const stepsKnown = site !== undefined && integrations !== undefined;
+  const integrationSteps =
+    site && integrations
+      ? routeIntegrations(site.integrations, readinessOf(integrations))
+      : [];
+  const nextIntegration = integrationSteps.find(
+    (i) => !passed.includes(i.provider),
+  );
   useEffect(() => {
-    if (step === "google" && integrations !== undefined && !google)
+    if (step === "integrations" && stepsKnown && !nextIntegration)
       setStep("pi");
-  }, [step, integrations, google]);
-  const connected = integrations ? hasGoogle(integrations) : false;
+  }, [step, stepsKnown, nextIntegration]);
+  const pass = (list: ProviderId[]) => {
+    sessionStorage.setItem(
+      integrationMarker,
+      JSON.stringify({ key: key.current, passed: list }),
+    );
+    setPassed(list);
+  };
   const cloneList: CloneRowView[] = cloneRows(cloneView).map((r) => ({
     ...r,
     problem: r.problem ? message(new GitHubError(r.problem)) : undefined,
@@ -491,7 +528,7 @@ export function GitHubOnboarding({
   const repoWord = (n: number) => (n === 1 ? "repo" : "repoa");
   const route: OnboardingRouteStep[] = [
     { id: "github", note: "Kirjautunut" },
-    ...(skipRepos && !imports.length
+    ...(site && !hasRepositoryStep(site.repositories.mode, imports.length)
       ? []
       : [
           {
@@ -521,15 +558,17 @@ export function GitHubOnboarding({
             detail: <OnboardingClones rows={routeRows} />,
           },
         ]),
-    ...(google
-      ? [
-          {
-            id: "google" as const,
-            skipped: !connected,
-            note: connected ? "Yhdistetty" : "Ohitettu",
-          },
-        ]
-      : []),
+    ...integrationSteps.map((i): OnboardingRouteStep => {
+      const connected = integrations
+        ? connectedTo(integrations, i.provider)
+        : false;
+      return {
+        id: i.provider,
+        required: i.required,
+        skipped: !connected,
+        note: connected ? "Yhdistetty" : "Ohitettu",
+      };
+    }),
     { id: "ai" },
   ];
   const exit = (
@@ -605,18 +644,29 @@ export function GitHubOnboarding({
         </OnboardingFrame>
         {exit}
       </>
-    ) : step === "google" ? (
+    ) : step === "integrations" ? (
       <>
-        {integrations && google ? (
-          <GoogleOnboarding
+        {integrations && nextIntegration ? (
+          <IntegrationOnboarding
+            key={nextIntegration.provider}
+            provider={nextIntegration.provider}
+            required={nextIntegration.required}
             csrf={bound.current}
             initial={integrations}
             onList={setIntegrations}
-            onBack={backToPicker}
-            onContinue={() => {
-              sessionStorage.setItem(googleMarker, key.current);
-              setStep("pi");
+            backLabel={
+              integrationSteps[0] === nextIntegration
+                ? "Takaisin repoihin"
+                : "Takaisin"
+            }
+            onBack={() => {
+              // One step back: the previous integration, or the repositories.
+              const at = integrationSteps.indexOf(nextIntegration);
+              if (at === 0) backToPicker();
+              else
+                pass(integrationSteps.slice(0, at - 1).map((i) => i.provider));
             }}
+            onContinue={() => pass([...passed, nextIntegration.provider])}
           />
         ) : (
           <p role="status">Tarkistetaan integraatioita…</p>

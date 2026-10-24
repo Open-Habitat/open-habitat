@@ -199,15 +199,36 @@ it("adds and removes a default picked in the finder through the route, saving ea
   ]);
 });
 
-it("shows an integration this installation lacks as not installed", async () => {
-  mockHost(() => json({}, 500));
+it("offers only ready integrations and shows a configured unready one as hidden", async () => {
+  const host = mockHost(() => json({}, 500));
+  host.replace({
+    ...config(2, ["example-org/product"]),
+    integrations: [
+      { provider: "google", required: false },
+      { provider: "dropbox", required: true },
+    ],
+  });
+  page();
+  // Dropbox stays in the configuration but is not on the person's route.
+  const google = await screen.findByTestId(
+    "onboarding-route-integration:google",
+  );
+  await waitFor(() => expect(google.dataset.shown).toBe("true"));
+  const dropbox = screen.getByTestId("onboarding-route-integration:dropbox");
+  expect(dropbox.dataset.shown).toBe("false");
+  fireEvent.click(dropbox);
+  expect(screen.getByTestId("onboarding-step-hidden")).toBeTruthy();
+  cleanup();
+  host.replace({ ...config(3, []), integrations: [] });
   page();
   fireEvent.click(
     await screen.findByTestId("onboarding-route-add-integration"),
   );
-  await waitFor(() =>
-    expect(
-      screen.getByTestId("onboarding-integration-choices").textContent,
-    ).toContain("Ei asennettu"),
-  );
+  // Only a ready integration can be added; one that is not ready is listed
+  // without an add action, and one the catalog does not mention is not ready.
+  await screen.findByTestId("onboarding-add-google");
+  expect(screen.queryByTestId("onboarding-add-dropbox")).toBeNull();
+  expect(screen.queryByTestId("onboarding-add-microsoft")).toBeNull();
+  expect(screen.getByTestId("onboarding-unready-dropbox")).toBeTruthy();
+  expect(screen.getByTestId("onboarding-unready-microsoft")).toBeTruthy();
 });

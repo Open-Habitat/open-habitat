@@ -3,15 +3,23 @@ import { Dialog, Modal, ModalOverlay } from "react-aria-components";
 import type { ProviderId } from "../app/integrations";
 import {
   type AIOffer,
+  hasRepositoryStep,
   maxDefaults,
   type OnboardingDocument,
   type OnboardingIntegration,
+  type ProviderReadiness,
   providerOrder,
   type RepositoryMode,
+  routeIntegrations,
 } from "../app/onboardingConfig";
 import { ControlButton, Segmented } from "./ControlElements";
 import { Icon } from "./Icon";
 import { ProviderMark, providerCopy } from "./Integrations";
+import {
+  OnboardingFrame,
+  OnboardingRoute,
+  type OnboardingRouteStep,
+} from "./OnboardingFrame";
 import "./OnboardingSettings.css";
 
 // Asetukset › Käyttöönotto, as agreed in proto-admin-server-onboarding: the
@@ -28,8 +36,10 @@ export type OnboardingStep =
   | "ai"
   | `integration:${ProviderId}`;
 
-/** Whether this installation offers a provider; undefined when unknown. */
-export type ProviderAvailability = Partial<Record<ProviderId, boolean>>;
+/** Whether this installation has a provider ready; undefined when unknown.
+ * Only a ready integration can be added as a step, and only a ready one
+ * shows to new people (Jari 2026-10-24). */
+export type ProviderAvailability = ProviderReadiness;
 
 /** What the admin's own GitHub catalog says about a default, when it knows. */
 export type RepositoryFacts = { private: boolean; description: string };
@@ -137,7 +147,7 @@ function aiHint(offer: AIOffer) {
 }
 
 function integrationHint(i: OnboardingIntegration, available?: boolean) {
-  if (available === false) return "Ei asennettu · jätetään pois";
+  if (available !== true) return "Piilotettu · ei käytössä";
   return i.required ? "Pakollinen" : "Voi ohittaa";
 }
 
@@ -177,6 +187,8 @@ function RouteList({
         <button
           type="button"
           data-testid={`onboarding-route-${id}`}
+          // Whether a new person sees this step.
+          data-shown={id === "add-integration" ? undefined : counted}
           aria-current={step === id ? "step" : undefined}
           onClick={() => onStep(id)}
         >
@@ -215,8 +227,8 @@ function RouteList({
           row(
             `integration:${i.provider}`,
             integrationHint(i, availability[i.provider]),
-            availability[i.provider] !== false,
-            availability[i.provider] === false ? "ob-skipped" : undefined,
+            availability[i.provider] === true,
+            availability[i.provider] === true ? undefined : "ob-skipped",
           ),
         )}
         {doc.integrations.length < providerOrder.length &&
@@ -373,9 +385,9 @@ function IntegrationSettings({
         <ProviderMark provider={provider} />
         <div>
           <span className="ig-rn">{copy.name}</span>
-          {available === false ? (
-            <span className="ig-meta" data-testid="onboarding-not-installed">
-              Ei asennettu tälle palvelimelle
+          {available !== true ? (
+            <span className="ig-meta" data-testid="onboarding-step-hidden">
+              {available === false ? "Ei käytössä" : "Tila ei tiedossa"}
             </span>
           ) : null}
         </div>
@@ -420,14 +432,15 @@ function IntegrationSettings({
           Poista
         </ControlButton>
       </div>
-      {available === false ? (
+      {available !== true ? (
         <p className="ob-muted ob-access">
-          Palvelimelle ei ole asennettu tätä integraatiota, joten vaihe jätetään
-          pois henkilön reitiltä, kunnes se asennetaan.
+          {available === false
+            ? "Integraatio ei ole käytössä tällä palvelimella, joten vaihe on piilotettu uusilta henkilöiltä. Se näkyy taas, kun integraatio on valmis käyttöön."
+            : "Integraatioiden tilaa ei voitu lukea. Vaihe näkyy uusille henkilöille vain, kun integraatio on valmis käyttöön."}
         </p>
       ) : null}
       <Effect>
-        {available === false
+        {available !== true
           ? "Ei mitään. Vaihetta ei näytetä."
           : item.required
             ? `${copy.name} on oma vaiheensa, eikä sitä voi ohittaa. Vaihe ei estä työtilojen käyttöä.`
@@ -453,22 +466,28 @@ function AddIntegration({
   const left = providerOrder.filter(
     (p) => !doc.integrations.some((i) => i.provider === p),
   );
+  // Only a ready integration can be added; the others are listed so the
+  // administrator sees why they are not offered.
+  const ready = left.filter((p) => availability[p] === true);
+  const unready = left.filter((p) => availability[p] !== true);
   return (
     <>
       <p className="ob-muted">
         Jokainen lisätty integraatio on oma vaiheensa ennen AI-tiliä.
         Integraatiot ovat reitillä samassa järjestyksessä kuin Integraatiot-
-        sivulla.
+        sivulla. Vain käyttöön valmiin integraation voi lisätä.
       </p>
       <div className="ob-tiles" data-testid="onboarding-integration-choices">
-        {left.map((p) => (
+        {ready.length === 0 ? (
+          <p className="ob-muted" data-testid="onboarding-no-ready">
+            Yksikään lisäämätön integraatio ei ole valmis käyttöön.
+          </p>
+        ) : null}
+        {ready.map((p) => (
           <div className="ig-tile ob-tile" key={p}>
             <ProviderMark provider={p} />
             <div>
               <span className="ig-rn">{providerCopy[p].name}</span>
-              {availability[p] === false ? (
-                <span className="ig-meta">Ei asennettu tälle palvelimelle</span>
-              ) : null}
             </div>
             <ControlButton
               data-testid={`onboarding-add-${p}`}
@@ -492,6 +511,27 @@ function AddIntegration({
           </div>
         ))}
       </div>
+      {unready.length ? (
+        <div className="ob-tiles" data-testid="onboarding-integration-unready">
+          {unready.map((p) => (
+            <div
+              className="ig-tile ob-tile ob-unready"
+              key={p}
+              data-testid={`onboarding-unready-${p}`}
+            >
+              <ProviderMark provider={p} />
+              <div>
+                <span className="ig-rn">{providerCopy[p].name}</span>
+                <span className="ig-meta">
+                  {availability[p] === false
+                    ? "Ei käytössä"
+                    : "Tila ei tiedossa"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </>
   );
 }
@@ -814,7 +854,8 @@ type PreviewStep =
   | { id: "ai" }
   | { id: "done" };
 
-/** The person's route as this configuration makes it. */
+/** The steps the person stops at, as this configuration makes them. The
+ * integration steps come from the same rule as the person's own route. */
 export function previewSteps(
   doc: OnboardingDocument,
   availability: ProviderAvailability,
@@ -823,94 +864,48 @@ export function previewSteps(
     ...(doc.repositories.mode === "skip"
       ? []
       : [{ id: "repositories" } as const]),
-    ...doc.integrations
-      .filter((i) => availability[i.provider] !== false)
-      .map((i) => ({
-        id: "integration" as const,
-        provider: i.provider,
-        required: i.required,
-      })),
+    ...routeIntegrations(doc.integrations, availability).map((i) => ({
+      id: "integration" as const,
+      provider: i.provider,
+      required: i.required,
+    })),
     ...(doc.ai_account.offer === "site_key" ? [] : [{ id: "ai" } as const]),
     { id: "done" },
   ];
 }
-const previewName = (s: PreviewStep) =>
-  s.id === "repositories"
-    ? "Repot"
-    : s.id === "integration"
-      ? providerCopy[s.provider].name
-      : s.id === "ai"
-        ? "AI-tili"
-        : "Työtilat";
 
-function PreviewRoute({
-  doc,
-  steps,
-  at,
-}: {
-  doc: OnboardingDocument;
-  steps: PreviewStep[];
-  at: number;
-}) {
-  const site = doc.repositories.defaults.length;
-  const auto = doc.repositories.mode === "skip" && site > 0;
-  const rows: { key: string; name: string; state: string; note: string }[] = [
-    { key: "github", name: "GitHub", state: "done", note: "Kirjautunut" },
-    ...(auto
+/** The person's route for the shared Kartta frame: GitHub passed, the Repot
+ * row also when the site fetches without a chooser, and the integrations
+ * the preview passed without connecting marked skipped. */
+function previewRoute(
+  doc: OnboardingDocument,
+  availability: ProviderAvailability,
+  skipped: ProviderId[],
+): OnboardingRouteStep[] {
+  const { mode, defaults } = doc.repositories;
+  const n = defaults.length;
+  return [
+    { id: "github", note: "Kirjautunut" },
+    ...(hasRepositoryStep(mode, n)
       ? [
           {
-            key: "repositories-auto",
-            name: "Repot",
-            state: "auto",
-            note: `Sivusto hakee ${site} ${site === 1 ? "repon" : "repoa"}`,
+            id: "repositories" as const,
+            note:
+              mode === "skip"
+                ? `Sivusto hakee ${n} ${n === 1 ? "repon" : "repoa"}`
+                : undefined,
           },
         ]
       : []),
-    ...steps
-      .filter((s) => s.id !== "done")
-      .map((s, i) => ({
-        key: s.id === "integration" ? s.provider : s.id,
-        name: previewName(s),
-        state: i < at ? "done" : i === at ? "current" : "next",
-        note:
-          i < at
-            ? "Valmis"
-            : i === at
-              ? "Nyt"
-              : s.id === "integration" && s.required
-                ? "Pakollinen"
-                : "Seuraavaksi",
-      })),
+    ...routeIntegrations(doc.integrations, availability).map(
+      (i): OnboardingRouteStep => ({
+        id: i.provider,
+        required: i.required,
+        skipped: skipped.includes(i.provider),
+      }),
+    ),
+    ...(doc.ai_account.offer === "site_key" ? [] : [{ id: "ai" as const }]),
   ];
-  return (
-    <nav className="ob-pv-route" aria-label="Henkilön reitti">
-      <p className="ob-eyebrow">Oma reittisi</p>
-      <ol data-testid="onboarding-preview-route">
-        {rows.map((r, i) => (
-          <li
-            key={r.key}
-            data-state={r.state}
-            data-testid={`onboarding-preview-step-${r.key}`}
-            aria-current={r.state === "current" ? "step" : undefined}
-          >
-            <span className="ob-pv-dot" aria-hidden="true">
-              {r.state === "done" ? (
-                <Icon name="check" width={14} height={14} />
-              ) : r.state === "auto" ? (
-                <Icon name="refresh" width={13} height={13} />
-              ) : (
-                i + 1
-              )}
-            </span>
-            <span className="ob-txt">
-              <strong>{r.name}</strong>
-              <small>{r.note}</small>
-            </span>
-          </li>
-        ))}
-      </ol>
-    </nav>
-  );
 }
 
 function PreviewStepCard({
@@ -920,7 +915,7 @@ function PreviewStepCard({
 }: {
   doc: OnboardingDocument;
   step: PreviewStep;
-  onNext: () => void;
+  onNext: (skipped?: boolean) => void;
 }) {
   const [others, setOthers] = useState(false);
   const { mode, defaults } = doc.repositories;
@@ -973,7 +968,7 @@ function PreviewStepCard({
             data-testid="onboarding-preview-next"
             size="page"
             variant="primary"
-            onPress={onNext}
+            onPress={() => onNext()}
           >
             Jatka
           </ControlButton>
@@ -1005,7 +1000,7 @@ function PreviewStepCard({
               data-testid="onboarding-preview-next"
               size="page"
               variant="primary"
-              onPress={onNext}
+              onPress={() => onNext()}
             >
               Jatka (esikatselu)
             </ControlButton>
@@ -1014,9 +1009,9 @@ function PreviewStepCard({
               data-testid="onboarding-preview-next"
               size="page"
               variant="secondary"
-              onPress={onNext}
+              onPress={() => onNext(true)}
             >
-              Jatka ilman: {copy.name}
+              Jatka ilman tiliä
             </ControlButton>
           )}
         </div>
@@ -1076,7 +1071,7 @@ function PreviewStepCard({
             data-testid="onboarding-preview-next"
             size="page"
             variant="secondary"
-            onPress={onNext}
+            onPress={() => onNext()}
           >
             Jatka (esikatselu)
           </ControlButton>
@@ -1092,7 +1087,8 @@ function PreviewStepCard({
   );
 }
 
-/** The person's screen, restarted whenever the configuration changes. */
+/** The person's screen, restarted whenever the configuration changes: the
+ * production Kartta frame with a stand-in card for each step. */
 function PreviewScreen({
   doc,
   availability,
@@ -1102,6 +1098,7 @@ function PreviewScreen({
 }) {
   const steps = previewSteps(doc, availability);
   const [at, setAt] = useState(0);
+  const [skipped, setSkipped] = useState<ProviderId[]>([]);
   const step = steps[Math.min(at, steps.length - 1)];
   return (
     <div
@@ -1109,13 +1106,22 @@ function PreviewScreen({
       data-testid="onboarding-preview-screen"
       data-at={step.id === "integration" ? step.provider : step.id}
     >
-      <PreviewRoute doc={doc} steps={steps} at={at} />
-      <PreviewStepCard
-        key={at}
-        doc={doc}
-        step={step}
-        onNext={() => setAt((n) => Math.min(n + 1, steps.length - 1))}
-      />
+      <OnboardingRoute steps={previewRoute(doc, availability, skipped)}>
+        <OnboardingFrame
+          step={step.id === "integration" ? step.provider : step.id}
+        >
+          <PreviewStepCard
+            key={at}
+            doc={doc}
+            step={step}
+            onNext={(skip) => {
+              if (skip && step.id === "integration")
+                setSkipped((old) => [...old, step.provider]);
+              setAt((n) => Math.min(n + 1, steps.length - 1));
+            }}
+          />
+        </OnboardingFrame>
+      </OnboardingRoute>
     </div>
   );
 }

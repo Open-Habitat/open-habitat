@@ -1,5 +1,5 @@
 import { hostOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
+import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
@@ -20,7 +20,6 @@ test("@pi-onboarding switching sessions drops device instructions and native fac
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
-    await passGoogle(page);
     await page
       .getByRole("button")
       .and(page.getByTestId("pi-attempt-start"))
@@ -46,7 +45,6 @@ test("@pi-onboarding switching sessions drops device instructions and native fac
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
-    await passGoogle(page);
     await expect(
       page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();

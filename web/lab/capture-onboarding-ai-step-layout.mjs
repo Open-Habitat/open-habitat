@@ -60,7 +60,7 @@ try {
   await page.getByTestId("repository-list").waitFor();
   await page.getByTestId("repository-fixture/first").check();
   await page.getByTestId("repository-proceed").click();
-  const google = page.getByTestId("google-onboarding-continue");
+  const google = page.getByTestId("integration-onboarding-continue");
   await google.or(page.getByTestId("pi-sign-in-title")).first().waitFor();
   if (await google.isVisible()) await google.click();
   await page.getByTestId("pi-sign-in-title").waitFor();

@@ -1,6 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
-import { passGoogle } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 
 const host = hostOrigin;
@@ -113,7 +112,6 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
     .getByRole("button")
     .and(page.getByTestId("repository-proceed"))
     .click();
-  await passGoogle(page);
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
@@ -138,7 +136,6 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
     .getByRole("button")
     .and(page.getByTestId("repository-proceed"))
     .click();
-  await passGoogle(page);
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
@@ -168,7 +165,6 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
     .getByRole("button")
     .and(page.getByTestId("repository-proceed"))
     .click();
-  await passGoogle(page);
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
@@ -187,7 +183,6 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
     .getByRole("button")
     .and(page.getByTestId("repository-proceed"))
     .click();
-  await passGoogle(page);
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
@@ -296,7 +291,6 @@ test("@github-first narrow catalog keeps count and action reachable by keyboard 
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
-    await passGoogle(page);
     await expect(
       page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();
@@ -316,7 +310,6 @@ test("@github-first empty selection goes on without repositories", async ({
     .getByRole("button")
     .and(page.getByTestId("repository-proceed"))
     .click();
-  await passGoogle(page);
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
@@ -355,7 +348,6 @@ test("@github-first unavailable catalog continues without repos and can be read 
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
-    await passGoogle(page);
     await expect(
       page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();
