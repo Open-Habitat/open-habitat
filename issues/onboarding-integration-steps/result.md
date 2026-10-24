@@ -49,7 +49,9 @@ itsearvio (esitys olemassa olevan luvun päällä, ei auktoriteetin siirtoa).
 | vitest `OnboardingSettings.test.tsx`, `OnboardingAdministration.test.tsx`: vain valmiit lisättävissä, ei-valmis piilotettuna, esikatselun reitti tuotannon kehyksestä | Läpi |
 | Koko vitest (102 tiedostoa, 619 testiä), `typecheck`, `lint` | Läpi |
 | Selain: `onboarding-route-map.spec.ts` (uusi tapaus: pakollinen Google yhdistetään oikealla dialogilla, ohitettava Microsoft, axe), `site-onboarding.spec.ts`, `onboarding-default-repos.spec.ts`, `github-first-onboarding.spec.ts` | Läpi |
-| Koko selainsarja | ks. alla |
+| Koko selainsarja (`test-focused.sh --area browser`) | 348 läpi, 3 ohitettu, 3 kaatui. `shell-accessibility.spec.ts` (AI-vaiheen otsikko ei saanut fokusta) oli tämän työn virhe: reitin fokuskohde nimesi vanhan `pi-device-title`-otsikon, minkä aina näkyvä Google-vaihe peitti. Korjattu ja testattu `GitHubOnboarding.test.tsx`:ssä, speksi uudelleen läpi. `browser-conversation.spec.ts` (identiteetin vaihto) ja `start-here.spec.ts` (lab) menivät läpi uudelleen ajettuina: kuorman alla heiluvia, koskemattomia. |
+| `go vet ./test/browser-host`, `gofmt` | Läpi |
+| Täysi portti `ci-local.sh --clean --json` | Pysähtyi `web-checks`-vaiheeseen: `CodeMirrorEditor.test.tsx` jättää käsittelemättömän jsdom-virheen (`getClientRects`), joka toistuu `main`issa 3/3. Kirjattu intakeen `fully-wrathful-trip`. Go/sopimus- ja selainvaiheet eivät siksi ajautuneet portissa; selainsarja ajettiin erikseen (yllä). Kuittia ei kirjoitettu. |
 | Kuvakaappaukset (synteettinen lab, `web/lab/capture-onboarding-integration-steps.mjs`) | `person-required-*`, `tab-hidden-*`, `tab-add-*`, `preview-required-*` tässä kansiossa; työpöytä ja puhelin, vaalea ja tumma |
 
 ## Päätöksiä myöhempään tarkistukseen
