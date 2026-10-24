@@ -1,0 +1,1 @@
+{"schema_version": 1, "accounts": [{"provider": "caldav", "address": "person@example.test", "apple_id": "person@example.test", "checked_at": "2026-10-24T09:40:00Z", "services": [{"id": "calendar", "state": "ok"}]}], "failed": [{"service": "mail", "failure": "credentials_rejected"}], "skill": "current"}

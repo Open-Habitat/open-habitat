@@ -39,7 +39,7 @@ var onboardingReasons = map[string]string{
 	"too_many_defaults":       "at most 20 default repositories",
 	"duplicate_default":       "a default repository is listed twice (names compare case-insensitively)",
 	"duplicate_destination":   "two defaults share a repository name under different owners; each is cloned into ~/src/<name>, so only one can be",
-	"unknown_provider":        "integration provider must be google, microsoft, imap, caldav, carddav or dropbox",
+	"unknown_provider":        "integration provider must be google, microsoft, apple, imap, caldav, carddav or dropbox",
 	"duplicate_provider":      "an integration provider is listed twice",
 	"invalid_offer":           "ai_account.offer must be all, chatgpt, claude, openai_key, anthropic_key or deepseek_key",
 	"site_key_unavailable":    "offer site_key needs a stored site AI key, and this server has none; store one with admin ai-key set",

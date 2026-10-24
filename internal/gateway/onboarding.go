@@ -22,9 +22,10 @@ var onboardingModes = []string{"preselected", "auto", "skip"}
 var onboardingOffers = []string{"all", "chatgpt", "claude", "openai_key", "anthropic_key", "deepseek_key", "site_key"}
 
 // onboardingProviders is the integrations catalog's provider order
-// (internal/daemon/integrations providerOrder). Integration steps follow it,
+// (internal/daemon/integrations providerOrder, with the Apple tile after
+// Microsoft as the page shows it). Integration steps follow it,
 // so a stored list is kept in this order whatever order it was given in.
-var onboardingProviders = []string{"google", "microsoft", "imap", "caldav", "carddav", "dropbox"}
+var onboardingProviders = []string{"google", "microsoft", "apple", "imap", "caldav", "carddav", "dropbox"}
 
 type onboardingRepositories struct {
 	Mode     string   `json:"mode"`

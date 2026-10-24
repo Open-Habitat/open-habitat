@@ -119,6 +119,8 @@ checks = {
     "integration-connect.json": "integration-account.schema.json",
     "integration-connected.json": "integration-change.schema.json",
     "integration-removed.json": "integration-change.schema.json",
+    "integration-apple-add.json": "integration-account.schema.json",
+    "integration-apple-added.json": "integration-change.schema.json",
     "integration-login-device.json": "integration-login.schema.json",
     "integration-login-paste.json": "integration-login.schema.json",
     "integration-login-folders.json": "integration-login.schema.json",
@@ -358,6 +360,10 @@ must_reject("integration-login-control.schema.json", {"action":"redirect","attem
 bad_connect = json.loads((BASE / "examples" / "integration-connect.json").read_text())
 bad_connect["password"] = "secret\n[accounts.x]"
 must_reject("integration-account.schema.json", bad_connect)
+# The browser never sends a password to reuse, and an Apple write carries no server.
+must_reject("integration-account.schema.json", {"action": "add", "provider": "apple", "address": "person@example.test", "services": ["calendar"], "password": "x"})
+must_reject("integration-account.schema.json", {"action": "connect", "provider": "apple", "address": "person@example.test", "services": ["contacts"], "password": "x", "url": "https://elsewhere.example.test/"})
+must_reject("integration-account.schema.json", {"action": "connect", "provider": "apple", "address": "person@example.test", "services": [], "password": "x"})
 must_reject("integration-login.schema.json", {"schema_version":1,"state":"failed","attempt_id":"20261019T094000.000000001","provider":"microsoft","failure":"tool_failed","consent_url":"https://login.example.test/adminconsent"})
 
 

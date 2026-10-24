@@ -162,6 +162,14 @@ func syntheticTLS(t *testing.T, dir string, names ...string) (string, tls.Certif
 	return caFile, tls.Certificate{Certificate: [][]byte{leafDER}, PrivateKey: leafKey}
 }
 
+// signsIn accepts the password, or with "user\x00password" only that user.
+func signsIn(user, password, want string) bool {
+	if u, p, ok := strings.Cut(want, "\x00"); ok {
+		return user == u && password == p
+	}
+	return password == want
+}
+
 // serveIMAP answers just enough IMAP4rev1 for a sign-in check: a greeting,
 // CAPABILITY, AUTHENTICATE PLAIN with or without an initial response, and
 // LOGOUT.
@@ -201,7 +209,7 @@ func serveIMAP(ln net.Listener, password string) {
 					}
 					decoded, _ := base64.StdEncoding.DecodeString(strings.TrimSpace(response))
 					fields := strings.Split(string(decoded), "\x00")
-					if len(fields) == 3 && fields[2] == password {
+					if len(fields) == 3 && signsIn(fields[1], fields[2], password) {
 						write(tag + " OK [CAPABILITY IMAP4rev1] signed in")
 					} else {
 						write(tag + " NO [AUTHENTICATIONFAILED] synthetic refusal")
@@ -283,7 +291,7 @@ func serveSMTP(ln net.Listener, password string, sent *atomic.Int32, upgrade *tl
 					}
 					decoded, _ := base64.StdEncoding.DecodeString(strings.TrimSpace(response))
 					fields := strings.Split(string(decoded), "\x00")
-					if len(fields) == 3 && fields[2] == password {
+					if len(fields) == 3 && signsIn(fields[1], fields[2], password) {
 						write("235 authenticated")
 					} else {
 						write("535 authentication failed")

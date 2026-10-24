@@ -13,10 +13,16 @@
     }},
     "kept_directories": {"type": "array", "maxItems": 16, "items": {"$ref": "integrations.schema.json#/$defs/home_directory"}},
     "trashed_directories": {"type": "array", "maxItems": 16, "items": {"$ref": "integrations.schema.json#/$defs/home_directory"}},
+    "accounts": {"description": "An Apple write: the accounts it connected or renewed.", "type": "array", "minItems": 1, "maxItems": 3, "items": {"$ref": "integrations.schema.json#/$defs/account"}},
+    "failed": {"description": "An Apple write: the chosen services it could not connect or renew, with a fixed reason; the others stand.", "type": "array", "maxItems": 3, "items": {"type": "object", "additionalProperties": false, "required": ["service", "failure"], "properties": {
+      "service": {"enum": ["mail", "calendar", "contacts"]},
+      "failure": {"enum": ["credentials_rejected", "server_unreachable", "endpoint_rejected", "account_exists", "account_missing", "native_unavailable"]}
+    }}},
     "skill": {"$ref": "integrations.schema.json#/$defs/skill"}
   },
   "oneOf": [
-    {"required": ["account"], "not": {"anyOf": [{"required": ["removed"]}, {"required": ["kept_directories"]}, {"required": ["trashed_directories"]}]}},
-    {"required": ["removed"], "not": {"required": ["account"]}}
+    {"required": ["account"], "not": {"anyOf": [{"required": ["removed"]}, {"required": ["kept_directories"]}, {"required": ["trashed_directories"]}, {"required": ["accounts"]}, {"required": ["failed"]}]}},
+    {"required": ["removed"], "not": {"anyOf": [{"required": ["account"]}, {"required": ["accounts"]}, {"required": ["failed"]}]}},
+    {"required": ["accounts"], "not": {"anyOf": [{"required": ["account"]}, {"required": ["removed"]}, {"required": ["kept_directories"]}, {"required": ["trashed_directories"]}]}}
   ]
 }

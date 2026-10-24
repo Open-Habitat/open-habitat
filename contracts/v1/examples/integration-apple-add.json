@@ -1,0 +1,1 @@
+{"action": "add", "provider": "apple", "address": "person@example.test", "services": ["mail", "calendar"], "mail_address": "person@icloud.com"}

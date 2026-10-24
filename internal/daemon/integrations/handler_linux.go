@@ -112,6 +112,12 @@ func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 			}
 			view.Providers = append(view.Providers, providerView{p, reason == "", reason, missing, e.Login(), e.Services()})
 		}
+		// The Apple tile follows Microsoft's, before the generic forms.
+		if p == Microsoft {
+			if apple, ok := c.appleView(); ok {
+				view.Providers = append(view.Providers, apple)
+			}
+		}
 	}
 	accounts, unread := c.accounts()
 	if len(unread) > 0 {
@@ -152,11 +158,18 @@ type accountRequest struct {
 	SMTPSecurity      string   `json:"smtp_security"`
 	URL               string   `json:"url"`
 	DeleteDirectories *bool    `json:"delete_directories"`
+	// Services and MailAddress belong to the Apple connection only.
+	Services    []string `json:"services"`
+	MailAddress string   `json:"mail_address"`
 }
 
 type changeView struct {
 	SchemaVersion      int        `json:"schema_version"`
 	Account            *Account   `json:"account,omitempty"`
+	// Accounts and Failed answer an Apple write: the services it
+	// connected or renewed, and why the others were not.
+	Accounts []Account     `json:"accounts,omitempty"`
+	Failed   []appleFailure `json:"failed,omitempty"`
 	Removed            *removed   `json:"removed,omitempty"`
 	KeptDirectories    []string   `json:"kept_directories,omitempty"`
 	TrashedDirectories []string   `json:"trashed_directories,omitempty"`
@@ -174,8 +187,12 @@ func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "invalid_request")
 		return
 	}
+	if in.Provider == Apple {
+		c.appleRequest(w, r, in)
+		return
+	}
 	e := c.entry(in.Provider)
-	if e == nil {
+	if e == nil || in.Services != nil || in.MailAddress != "" {
 		fail(w, 400, "invalid_request")
 		return
 	}
@@ -230,16 +247,7 @@ func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
 func (c *Catalog) finishPassword(w http.ResponseWriter, r *http.Request, e Entry, address string, err error) {
 	if err != nil {
 		c.write.Unlock()
-		var f Failure
-		switch {
-		case errors.As(err, &f) && (f == CredentialsRejected || f == ServerUnreachable || f == EndpointRejected):
-			fail(w, 422, string(f))
-		case errors.As(err, &f) && (f == AccountExists || f == AccountMissing):
-			fail(w, 409, string(f))
-		default:
-			c.log.Warn("integration_connect", "provider", string(e.Provider()), "outcome", "failed", "reason", "native_failure")
-			fail(w, 503, "native_unavailable")
-		}
+		c.refuse(w, e.Provider(), err)
 		return
 	}
 	skill := c.reconcile()
@@ -247,6 +255,20 @@ func (c *Catalog) finishPassword(w http.ResponseWriter, r *http.Request, e Entry
 	c.log.Info("integration_connect", "provider", string(e.Provider()), "outcome", "connected")
 	account := c.check(r.Context(), e, address)
 	reply(w, changeView{SchemaVersion: 1, Account: &account, Skill: skill})
+}
+
+// refuse answers a connect or password change that wrote nothing.
+func (c *Catalog) refuse(w http.ResponseWriter, p Provider, err error) {
+	var f Failure
+	switch {
+	case errors.As(err, &f) && (f == CredentialsRejected || f == ServerUnreachable || f == EndpointRejected):
+		fail(w, 422, string(f))
+	case errors.As(err, &f) && (f == AccountExists || f == AccountMissing):
+		fail(w, 409, string(f))
+	default:
+		c.log.Warn("integration_connect", "provider", string(p), "outcome", "failed", "reason", "native_failure")
+		fail(w, 503, "native_unavailable")
+	}
 }
 
 // remove deletes the tool's login and configuration, stops sync and moves

@@ -55,7 +55,7 @@ func (d *dav) Accounts(env Env) ([]string, error) {
 func (*dav) ValidAccount(a PasswordAccount) bool {
 	// A colon in a Basic username is ambiguous. Mail server fields do not
 	// belong in a DAV request.
-	if a.Server != "" || a.Port != 0 || a.Security != "" || a.SMTPServer != "" || a.SMTPPort != 0 || a.SMTPSecurity != "" || strings.Contains(a.Username, ":") {
+	if a.Server != "" || a.Port != 0 || a.Security != "" || a.SMTPServer != "" || a.SMTPPort != 0 || a.SMTPSecurity != "" || a.SMTPUsername != "" || a.AppleID != "" || strings.Contains(a.Username, ":") {
 		return false
 	}
 	if !ValidAddress(a.Address) || !printableCredential(a.Username, 254) || !printableCredential(a.Password, 1024) {

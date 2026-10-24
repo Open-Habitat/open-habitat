@@ -98,6 +98,9 @@ type Account struct {
 	Address   string    `json:"address"`
 	Services  []Service `json:"services"`
 	CheckedAt string    `json:"checked_at"`
+	// AppleID is set when the account's stored server is Apple's
+	// (apple_linux.go): the page shows it in that Apple ID's card.
+	AppleID string `json:"apple_id,omitempty"`
 }
 
 // Env is everything an entry may use: the person's home and the operator's
@@ -185,6 +188,13 @@ type PasswordAccount struct {
 	Port                                          int
 	SMTPServer, SMTPSecurity, URL                 string
 	SMTPPort                                      int
+	// SMTPUsername is set only where the provider signs SMTP in under
+	// another name than IMAP: iCloud Mail takes the address's name part
+	// for IMAP and the full address for SMTP.
+	SMTPUsername string
+	// AppleID names the Apple account an iCloud Mail account was connected
+	// with, which may be another address than the mail address.
+	AppleID string
 }
 
 // PasswordEntry connects an account from an app password the person types;
@@ -496,6 +506,9 @@ type Catalog struct {
 	// process or login holds; resumeFirst..resumeMax back off a provider
 	// that could not be reached.
 	resumePoll, resumeFirst, resumeMax time.Duration
+
+	// apple are the endpoints of the Apple (iCloud) connection.
+	apple AppleHosts
 }
 
 type Option func(*Catalog)
@@ -535,7 +548,7 @@ func New(env Env, entries []Entry, log *slog.Logger, opts ...Option) *Catalog {
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)
 	}
-	c := &Catalog{env: env, entries: entries, log: log, now: time.Now, signInWait: 60 * time.Second, quota: kernelQuota, resumePoll: 30 * time.Second, resumeFirst: time.Minute, resumeMax: 30 * time.Minute}
+	c := &Catalog{env: env, entries: entries, log: log, now: time.Now, signInWait: 60 * time.Second, quota: kernelQuota, resumePoll: 30 * time.Second, resumeFirst: time.Minute, resumeMax: 30 * time.Minute, apple: appleHosts}
 	c.trash = func(string) error { return errors.New("trash unavailable") }
 	c.sync = newSupervisor(env, log)
 	for _, o := range opts {
@@ -808,7 +821,9 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 			}
 		}
 	}
-	return Account{Provider: e.Provider(), Address: address, Services: services, CheckedAt: c.now().UTC().Format(time.RFC3339)}
+	out := Account{Provider: e.Provider(), Address: address, Services: services, CheckedAt: c.now().UTC().Format(time.RFC3339)}
+	out.AppleID, _ = c.appleMember(e, address)
+	return out
 }
 
 // reconcile makes the supervised sync clients, the boot signal and the

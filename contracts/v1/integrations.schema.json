@@ -11,7 +11,7 @@
     "skill": {"$ref": "#/$defs/skill"}
   },
   "$defs": {
-    "provider_id": {"enum": ["imap", "caldav", "carddav", "google", "microsoft", "dropbox"]},
+    "provider_id": {"description": "apple is the Apple (iCloud) tile: its services are ordinary imap, caldav and carddav accounts, which carry apple_id.", "enum": ["imap", "caldav", "carddav", "google", "microsoft", "dropbox", "apple"]},
     "service_id": {"enum": ["mail", "calendar", "contacts", "drive", "onedrive", "sharepoint", "dropbox"]},
     "address": {"type": "string", "minLength": 3, "maxLength": 254, "pattern": "^[a-z0-9._%+-]{1,64}@[a-z0-9-]{1,63}(\\.[a-z0-9-]{1,63})+$"},
     "home_directory": {"type": "string", "maxLength": 512, "pattern": "^~/cloud/[a-z0-9][a-z0-9-]*(/(?!\\.\\.?(/|$))[^/\\u0000-\\u001f]+)+$"},
@@ -61,7 +61,8 @@
         "provider": {"$ref": "#/$defs/provider_id"},
         "address": {"$ref": "#/$defs/address"},
         "services": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "#/$defs/service"}},
-        "checked_at": {"type": "string", "format": "date-time"}
+        "checked_at": {"type": "string", "format": "date-time"},
+        "apple_id": {"description": "Present when the account's stored server is Apple's iCloud: the Apple ID whose card shows it. A mail account's address is its iCloud Mail address, which may differ.", "$ref": "#/$defs/address"}
       }
     }
   }

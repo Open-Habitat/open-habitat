@@ -121,6 +121,9 @@ func himalayaConfig(a PasswordAccount) []byte {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Written by open-habitat for %s. Removing the account in\n# Asetukset › Integraatiot deletes this file.\n", a.Address)
+	if a.AppleID != "" {
+		fmt.Fprintf(&b, "%s%s\n", appleIDComment, a.AppleID)
+	}
 	fmt.Fprintf(&b, "[accounts.%s]\n", tomlString(a.Address))
 	b.WriteString("default = true\n")
 	fmt.Fprintf(&b, "email = %s\n", tomlString(a.Address))
@@ -139,7 +142,11 @@ func himalayaConfig(a PasswordAccount) []byte {
 		if a.SMTPSecurity == "starttls" {
 			b.WriteString("smtp.starttls = true\n")
 		}
-		fmt.Fprintf(&b, "smtp.sasl.plain.username = %s\n", tomlString(a.Username))
+		user := a.Username
+		if a.SMTPUsername != "" {
+			user = a.SMTPUsername
+		}
+		fmt.Fprintf(&b, "smtp.sasl.plain.username = %s\n", tomlString(user))
 		fmt.Fprintf(&b, "smtp.sasl.plain.password.raw = %s\n", tomlString(a.Password))
 	}
 	return []byte(b.String())
@@ -151,6 +158,10 @@ func parseHimalayaConfig(address string, data []byte) (PasswordAccount, bool) {
 	a := PasswordAccount{Address: address, Security: "tls"}
 	values := map[string]string{}
 	for _, line := range strings.Split(string(data), "\n") {
+		if id, ok := strings.CutPrefix(line, appleIDComment); ok && ValidAddress(id) {
+			a.AppleID = id
+			continue
+		}
 		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "[accounts.") || line == "default = true" {
 			continue
 		}
@@ -193,10 +204,13 @@ func parseHimalayaConfig(address string, data []byte) (PasswordAccount, bool) {
 		}
 		host, port, ok := strings.Cut(strings.TrimPrefix(smtp, scheme), ":")
 		n, err := strconv.Atoi(port)
-		if !strings.HasPrefix(smtp, scheme) || !ok || err != nil || n < 1 || n > 65535 || !hostPattern.MatchString(host) || values["smtp.sasl.plain.username"] != a.Username || values["smtp.sasl.plain.password.raw"] != a.Password {
+		if !strings.HasPrefix(smtp, scheme) || !ok || err != nil || n < 1 || n > 65535 || !hostPattern.MatchString(host) || values["smtp.sasl.plain.username"] == "" || values["smtp.sasl.plain.password.raw"] != a.Password {
 			return a, false
 		}
 		a.SMTPServer, a.SMTPPort = host, n
+		if u := values["smtp.sasl.plain.username"]; u != a.Username {
+			a.SMTPUsername = u
+		}
 	}
 	return a, a.Username != "" && a.Password != ""
 }
@@ -214,9 +228,10 @@ func printableCredential(s string, max int) bool {
 }
 
 func validPasswordAccount(a PasswordAccount) bool {
-	smtpOK := a.SMTPServer == "" && a.SMTPPort == 0 && a.SMTPSecurity == "" ||
-		len(a.SMTPServer) <= 253 && hostPattern.MatchString(a.SMTPServer) && a.SMTPPort > 0 && a.SMTPPort <= 65535 && (a.SMTPSecurity == "tls" || a.SMTPSecurity == "starttls")
-	return smtpOK && a.URL == "" && ValidAddress(a.Address) && len(a.Server) <= 253 && hostPattern.MatchString(a.Server) && a.Port >= 1 && a.Port <= 65535 &&
+	smtpOK := a.SMTPServer == "" && a.SMTPPort == 0 && a.SMTPSecurity == "" && a.SMTPUsername == "" ||
+		len(a.SMTPServer) <= 253 && hostPattern.MatchString(a.SMTPServer) && a.SMTPPort > 0 && a.SMTPPort <= 65535 && (a.SMTPSecurity == "tls" || a.SMTPSecurity == "starttls") &&
+			(a.SMTPUsername == "" || printableCredential(a.SMTPUsername, 254))
+	return smtpOK && (a.AppleID == "" || ValidAddress(a.AppleID)) && a.URL == "" && ValidAddress(a.Address) && len(a.Server) <= 253 && hostPattern.MatchString(a.Server) && a.Port >= 1 && a.Port <= 65535 &&
 		(a.Security == "tls" || a.Security == "starttls") && printableCredential(a.Username, 254) && printableCredential(a.Password, 1024)
 }
 
@@ -238,26 +253,41 @@ func (h *himalaya) Connect(ctx context.Context, env Env, a PasswordAccount) erro
 	return h.install(ctx, env, dir, a, false)
 }
 
-func (h *himalaya) ChangePassword(ctx context.Context, env Env, address, password string) error {
+// read returns the account the catalog wrote, password included. Only the
+// daemon, as the person, reads it; it never leaves the daemon.
+func (h *himalaya) read(env Env, address string) (PasswordAccount, error) {
 	dir, err := openHomeDir(env.Home, false, splitPath(himalayaDir)...)
 	if errors.Is(err, os.ErrNotExist) {
-		return AccountMissing
+		return PasswordAccount{}, AccountMissing
 	}
 	if err != nil {
-		return err
+		return PasswordAccount{}, err
 	}
 	defer unix.Close(dir)
 	data, err := readFileAt(dir, address+".toml", 16384)
 	if errors.Is(err, unix.ENOENT) {
-		return AccountMissing
+		return PasswordAccount{}, AccountMissing
 	}
 	if err != nil {
-		return err
+		return PasswordAccount{}, err
 	}
 	a, ok := parseHimalayaConfig(address, data)
 	if !ok {
-		return ToolFailed
+		return PasswordAccount{}, ToolFailed
 	}
+	return a, nil
+}
+
+func (h *himalaya) ChangePassword(ctx context.Context, env Env, address, password string) error {
+	a, err := h.read(env, address)
+	if err != nil {
+		return err
+	}
+	dir, err := openHomeDir(env.Home, false, splitPath(himalayaDir)...)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(dir)
 	a.Password = password
 	if !validPasswordAccount(a) {
 		return errors.New("invalid account")
