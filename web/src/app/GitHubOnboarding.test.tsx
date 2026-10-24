@@ -49,7 +49,9 @@ vi.mock("./PiOnboarding", async () => {
   return {
     PiOnboarding: () => (
       <OnboardingFrame step="ai">
-        <p data-testid="pi-stub">AI</p>
+        <h1 id="pi-sign-in-title" data-testid="pi-stub" tabIndex={-1}>
+          AI
+        </h1>
       </OnboardingFrame>
     ),
   };
@@ -144,7 +146,10 @@ afterEach(() => {
 it("without configured integrations goes from the repositories to the AI account", async () => {
   start([]);
   await passRepositories();
-  await screen.findByTestId("pi-stub");
+  // The AI step's heading takes focus straight from the chooser.
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByTestId("pi-stub")),
+  );
   expect(screen.queryByTestId("integration-onboarding")).toBeNull();
 });
 

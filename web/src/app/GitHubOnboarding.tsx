@@ -137,7 +137,7 @@ export function GitHubOnboarding({
           ? "github-chooser-title"
           : step === "integrations"
             ? "integration-onboarding-title"
-            : "pi-device-title",
+            : "pi-sign-in-title",
     );
     heading?.focus({ preventScroll: true });
   }, [step, passed]);
