@@ -374,21 +374,18 @@ export function NewWorkspacePage({
     mode: CloneMode,
     restart = false,
     source?: GiteaCloneSource,
+    key = source ? `gitea:${giteaKey(source)}` : name,
   ) =>
-    act(
-      source ? `gitea:${giteaKey(source)}` : name,
-      restart ? "Uusi yritys" : "Kloonauksen aloitus",
-      async () => {
-        if (!csrf || !store) return;
-        if (source) await store.startGitea(source, csrf, restart);
-        else await store.start(name, mode, csrf, restart);
-        // The job's card at the top is now where this clone is followed.
-        navigate(route(), { replace: false });
-        document
-          .getElementById("main")
-          ?.scrollTo?.({ top: 0, behavior: "smooth" });
-      },
-    );
+    act(key, restart ? "Uusi yritys" : "Kloonauksen aloitus", async () => {
+      if (!csrf || !store) return;
+      if (source) await store.startGitea(source, csrf, restart);
+      else await store.start(name, mode, csrf, restart);
+      // The job's card at the top is now where this clone is followed.
+      navigate(route(), { replace: false });
+      document
+        .getElementById("main")
+        ?.scrollTo?.({ top: 0, behavior: "smooth" });
+    });
 
   const details: DetailsState = (() => {
     if (!selected) return { kind: "ready" };
@@ -622,6 +619,9 @@ export function NewWorkspacePage({
                             "full",
                             true,
                             restartAs,
+                            // The card shows its own action's progress and
+                            // refusal.
+                            cardKey,
                           )
                       : undefined
                     : (mode) => void startClone(card.full_name, mode, true)

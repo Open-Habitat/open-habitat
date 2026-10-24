@@ -5,6 +5,7 @@ package daemon
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,7 +33,7 @@ func giteaTransferPins(remote, helperScope, helper string) []string {
 		"-c", "protocol.allow=never", "-c", "protocol.https.allow=always",
 		"-c", "http.followRedirects=false", "-c", "http." + remote + ".followRedirects=false",
 		"-c", "http." + remote + ".sslVerify=true", "-c", "http." + remote + ".saveCookies=false",
-		"-c", "http.curloptResolve=", "-c", "submodule.recurse=false",
+		"-c", "http.curloptResolve=", "-c", "http." + remote + ".curloptResolve=", "-c", "submodule.recurse=false",
 	}
 	if helperScope != "" {
 		pins = append(pins, "-c", "credential."+helperScope+".helper=", "-c", "credential."+helperScope+".helper="+helper, "-c", "credential."+helperScope+".useHttpPath=true")
@@ -75,7 +76,10 @@ func remoteRewritten(read func(args ...string) ([]byte, error), remote string) (
 // place: gitdir: and hasconfig:remote.*.url: conditions then match as they
 // will once git clone has written them. git config does not evaluate gitdir:
 // for a directory that is not a repository yet, while ls-remote --get-url
-// does, so the effective fetch address is compared as well as the rules.
+// does, so the effective fetch address is compared as well as the rules. A
+// pushInsteadOf, or a rewrite to the same address, that only a gitdir: or
+// onbranch: include holds is first visible in the finished repository;
+// clonedRewritten reads it there before the clone is confirmed.
 func (c *CloneJobs) cloneRewritten(ctx context.Context, git, name, remote string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -93,11 +97,25 @@ func (c *CloneJobs) cloneRewritten(ctx context.Context, git, name, remote string
 	return remoteRewritten(read, remote)
 }
 
+// clonedRewritten reads the rewrite rules in the cloned repository itself,
+// where every conditional include is evaluated as the later fetch will see
+// it. A rule found there fails the clone's verification; the download stays.
+func clonedRewritten(ctx context.Context, run cloneRunner, git, home string, child int, remote string) bool {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	rewritten, err := remoteRewritten(func(args ...string) ([]byte, error) {
+		return run(ctx, git, home, strconv.Itoa(child), append([]string{"-c", "core.fsmonitor=false"}, args...)...)
+	}, remote)
+	return err != nil || rewritten
+}
+
 // giteaFetchPolicy decides how the workspace fetch of remote runs. A remote
 // whose configured or effective address is on the server of a connected
 // Gitea login is a managed transfer: it must have one address, no rewrite
 // rule may apply to it, and it runs with giteaTransferPins, the helper chain
-// pinned too while the registration for that server is ours. Every other
+// for that server always reset to the registered helper alone: a personal
+// helper added beside ours, in its scope or anywhere else, would otherwise be
+// handed the token to store. Every other
 // remote is the person's ordinary remote and is fetched as before. A tea file
 // that cannot be read makes no remote managed; the helper reads the same file
 // and then gives Git nothing.
@@ -147,17 +165,9 @@ func giteaFetchPolicy(ctx context.Context, g *integrations.GiteaAdapter, read fu
 	} else if rewritten {
 		return nil, "remote_rewritten"
 	}
-	scope, helper := "", ""
-	if command, err := nativegitea.HelperCommand(g.Executable); err == nil {
-		for _, l := range logins {
-			if l.URL == "" || !l.Base.SameServer(server) {
-				continue
-			}
-			if st, err := g.Git.State(ctx, l.Base, g.Executable); err == nil && (st == nativegitea.HelperRegistered || st == nativegitea.HelperShadowed) {
-				scope, helper = "https://"+server.Authority(), command
-				break
-			}
-		}
+	helper, err := nativegitea.HelperCommand(g.Executable)
+	if err != nil {
+		return nil, "fetch_failed"
 	}
-	return giteaTransferPins(target, scope, helper), ""
+	return giteaTransferPins(target, "https://"+server.Authority(), helper), ""
 }

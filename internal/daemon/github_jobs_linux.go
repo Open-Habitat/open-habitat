@@ -529,7 +529,7 @@ func (c *CloneJobs) clone(ctx context.Context, job *cloneJob, src, child int, sr
 		// Git finished; what it wrote may be a whole repository that only
 		// fails the checks (an empty repository, a dirty checkout after
 		// line-ending conversion). It is kept for the person to inspect.
-		if !c.verify(ctx, t.git, src, child, srcInitial, name, t.cloneURL) && ctx.Err() == nil {
+		if (!c.verify(ctx, t.git, src, child, srcInitial, name, t.cloneURL) || t.source != nil && clonedRewritten(ctx, c.run, t.git, c.home, child, t.cloneURL)) && ctx.Err() == nil {
 			return "failed", "verification_failed", "kept"
 		}
 	}
