@@ -238,11 +238,14 @@ func (a *Auth) giveLocked(ctx context.Context, caller string, target Identity, k
 	switch {
 	case errors.Is(err, errNotSent):
 		outcome = "not_reached"
-	case err != nil:
-		// The daemon may have written before it failed to answer: the
-		// record keeps what it said before, and nothing is retried.
-		outcome = "unknown"
 	default:
+		if err != nil {
+			// The daemon may have written before it failed to answer, and
+			// nothing is retried. The copy is recorded as given, so a later
+			// key still reaches it; a give that finds the person's own
+			// credential removes the record again.
+			outcome = "unknown"
+		}
 		a.mu.Lock()
 		e := a.recordCopyLocked(target.Subject, k, outcome != "kept")
 		a.mu.Unlock()

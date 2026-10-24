@@ -116,9 +116,8 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
     const replaced = rotation.filter(
       (x) => x.outcome === "replaced" || x.outcome === "already_current",
     );
-    const missed = rotation.filter(
-      (x) => x.outcome === "not_reached" || x.outcome === "unknown",
-    );
+    const missed = rotation.filter((x) => x.outcome === "not_reached");
+    const unconfirmed = rotation.filter((x) => x.outcome === "unknown");
     if (rotation.length > 0) {
       setNotice(
         <span data-testid="replaced-notice">
@@ -126,7 +125,9 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
           {replaced.length > 0 &&
             ` Sivuston aiempi kopio vaihdettiin uuteen ${replaced.length} henkilöltä: ${list(replaced.map((x) => nameOf(x.subject)))}.`}
           {missed.length > 0 &&
-            ` Ei tavoitettu: ${list(missed.map((x) => nameOf(x.subject)))}. Heillä on yhä aiempi avain, kunnes annat uuden.`}
+            ` Ei tavoitettu: ${list(missed.map((x) => nameOf(x.subject)))}. Heille ei kirjoitettu nyt mitään; anna uusi avain, kun heidän palvelunsa vastaa.`}
+          {unconfirmed.length > 0 &&
+            ` Tulos ei varmistunut: ${list(unconfirmed.map((x) => nameOf(x.subject)))}. Kopio on voinut vaihtua; tarkista antamalla avain uudelleen.`}
         </span>,
       );
       return;

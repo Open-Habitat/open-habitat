@@ -148,7 +148,9 @@ func (a *Auth) deliverFirstLogin(ctx context.Context, target Identity, id, token
 	}
 	reply, err := sink.DeliverFirst(ctx, target, id, token, first)
 	if err != nil {
-		// The answer is missing: every daemon-side entry stays unknown.
+		// The answer is missing: every daemon-side entry stays unknown, and
+		// a seed that may have been written is recorded as a copy.
+		a.recordFirstCopy(id, first.Seed)
 		return receipt, true, err
 	}
 	if first.Seed != nil && slices.Contains([]string{"seeded", "already_present", "failed"}, reply.AIKey) {
@@ -157,15 +159,10 @@ func (a *Auth) deliverFirstLogin(ctx context.Context, target Identity, id, token
 	if first.Seed != nil {
 		a.log.Info("site_ai_key_seed", "outcome", receipt.AIKey)
 	}
-	if receipt.AIKey == "seeded" {
-		// The copy joins the site's record of copies, so a later key
-		// replaces it like any other.
-		a.mu.Lock()
-		e := a.recordCopyLocked(id, first.Seed.record, true)
-		a.mu.Unlock()
-		if e != nil {
-			a.log.Warn("site_ai_key_copies", "outcome", "degraded", "reason", "record_failed")
-		}
+	// The copy joins the site's record of copies, so a later key replaces it
+	// like any other. failed may have written before its settings step.
+	if receipt.AIKey == "seeded" || receipt.AIKey == "failed" {
+		a.recordFirstCopy(id, first.Seed)
 	}
 	if first.Plan == nil || len(reply.Defaults) != len(plan.Defaults) {
 		return receipt, true, nil
@@ -235,4 +232,16 @@ func (a *Auth) catalogQuery(subject string) string {
 		return ""
 	}
 	return url.Values{"mode": {r.Mode}, "default": names}.Encode()
+}
+
+func (a *Auth) recordFirstCopy(id string, seed *SiteKeySeed) {
+	if seed == nil {
+		return
+	}
+	a.mu.Lock()
+	e := a.recordCopyLocked(id, seed.record, true)
+	a.mu.Unlock()
+	if e != nil {
+		a.log.Warn("site_ai_key_copies", "outcome", "degraded", "reason", "record_failed")
+	}
 }

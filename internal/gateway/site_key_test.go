@@ -312,8 +312,9 @@ func TestSiteKeyReceiptRecordsTheAnswer(t *testing.T) {
 			t.Fatal(answer, "person read misstates the seed")
 		}
 		// A seeded copy joins the site's record of copies, which a later
-		// key replaces; any other answer records none.
-		if v := a.copyView("42"); (v != nil) != (answer == "seeded") || v != nil && (!v.Current || v.Suffix != "abcd") {
+		// key replaces; so does a failed one, which may have written.
+		recorded := answer == "seeded" || answer == "failed"
+		if v := a.copyView("42"); (v != nil) != recorded || v != nil && (!v.Current || v.Suffix != "abcd") {
 			t.Fatal(answer, "copies record", v)
 		}
 	}

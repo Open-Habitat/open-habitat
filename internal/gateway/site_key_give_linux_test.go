@@ -26,6 +26,7 @@ import (
 type fakePi struct {
 	mu       sync.Mutex
 	entry    string // "" none, "oauth", or a literal key
+	fail     bool   // answer 503 after deciding, as a failed settings step does
 	requests []map[string]any
 	ln       net.Listener
 }
@@ -80,6 +81,10 @@ func (f *fakePi) serve(t *testing.T, path string) {
 		}
 		if state == "absent" || state == "earlier" {
 			f.entry = body["key"].(string)
+		}
+		if f.fail {
+			w.WriteHeader(503)
+			return
 		}
 		json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "outcome": map[string]string{"absent": "seeded", "earlier": "replaced", "current": "already_current", "own": "kept"}[state]})
 	})}
@@ -261,6 +266,24 @@ func TestSiteKeyGiveAndReplaceCopies(t *testing.T) {
 		if p.ID == "43" && (p.Copy == nil || p.Copy.Current || p.Copy.Suffix != "7Q2x") {
 			t.Fatalf("bob's earlier copy %+v", p.Copy)
 		}
+	}
+	// An unanswered write may have written: it is recorded, so the next key
+	// reaches the person, and a give that finds their own credential removes
+	// the record again.
+	pi["42"].mu.Lock()
+	pi["42"].fail = true
+	pi["42"].mu.Unlock()
+	k3view := decodeInto[onboardingReply](t, w.Body.Bytes()).SiteKey
+	if code, got := give("42", k3view); code != 200 || got != "unknown" || x.auth.copyView("42") == nil {
+		t.Fatal("unanswered write", code, got)
+	}
+	pi["42"].mu.Lock()
+	pi["42"].fail = false
+	pi["42"].mu.Unlock()
+	k4 := "sk-ant-" + strings.Repeat("V", 30) + "k4k4"
+	w = siteKeyPost(x.h, alice, csrf, "set", `{"provider":"anthropic","key":"`+k4+`"}`)
+	if !strings.Contains(w.Body.String(), `{"subject":"42","outcome":"kept"}`) || x.auth.copyView("42") != nil || pi["42"].holds() != "oauth" {
+		t.Fatal("own credential after an unanswered write", w.Body.String())
 	}
 	// Removing the key leaves the copies with their people.
 	if w := siteKeyPost(x.h, alice, csrf, "delete", `{"offer":"all"}`); w.Code != 200 {
