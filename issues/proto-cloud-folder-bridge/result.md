@@ -45,3 +45,44 @@ PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright node check.mjs <html-tai-url
 ```
 
 `check.mjs` käy läpi neljä suuntaa kolmella leveydellä (1440, 820 ja 390 px) vaaleana ja tummana, klikkaa vuorovaikutukset ja tarkistaa, että konsoli on puhdas: 66 tarkistuspistettä, sekä paikallinen tiedosto että julkaistu sivu. Komponentit ovat tuotannon omia (`Composer`, `ConversationTimeline`, `UserMessage`, `AssistantMessage`, `AccountCard`, `IntegrationsOverview`, `InlineNotice`, `Segmented`, Kartta-kehyksen tyylit). Kierroksen omia ovat Liitä-valikko (`menu.tsx`, korvaa tuotannon `AttachmentMenu`n rakennuksessa), kehys *Oma kone* -vaiheella (`frame.tsx`) ja yhteiset palat (`bridge.tsx`).
+
+# Kierros 2: käyttöönoton kysymys
+
+**[Avaa kierros 2](https://glasspad.example.test/p/2i3f4jdrwyetfa6tvef2impfse/).** Suunnat ovat alareunassa (myös näppäimet 1–3). Yläreunan *Näkymä* vaihtaa henkilön ja ylläpitäjän *Käyttöönotto*-välilehden välillä. *Lähtötilanne* vaihtaa tilanteiden *Ei pilveä* (henkilö ohitti sivuston Microsoft 365 -vaiheen) ja *OneDrive jo yhdistetty* (hän yhdisti sen) välillä. *Alusta* aloittaa vaiheen alusta. Tiedot ovat keksittyjä.
+
+Jarin päätös 24.10. rajasi kierroksen: vaihe kysyy *Onko sinulla henkilökohtainen Dropbox tai OneDrive?*, eikä sitä kysytä, jos jompikumpi yhdistettiin jo aiemmassa integraatiovaiheessa. Kaikissa suunnissa yhdistäminen käyttää tuotannon Integraatiot-listaa (`IntegrationsOverview` ja tilikortti) kuten nykyinen integraatiovaihe, ohje omalle koneelle on kierroksen 1 Mac/Windows/Puhelin-ohje, ja kokeilussa odotetaan, että kansioon tulee tiedosto.
+
+## Suunnat
+
+1. **Kolme vastausta.** Kortti ennen AI-tiliä. Vastauksia on kolme: *Dropbox*, *OneDrive* ja *Ei ole*. Ohituspainiketta ei ole, koska *Ei ole* on ohitus. Valinnan jälkeen samalla kortilla ovat yhdistäminen, *Avaa kansio koneellasi* ja *Kokeile*. *Ei ole* näyttää yhden rivin: "Voit yhdistää sen myöhemmin: Asetukset › Integraatiot." Reitillä lukee lopuksi *Dropbox · kokeiltu*, *Dropbox* tai *Ei pilveä*. Jos pilvi on jo yhdistetty, reitillä ei ole Oma kone -vaihetta. Sivusto ei aseta vaihetta: se kysytään aina, kun Dropbox tai Microsoft 365 on palvelimella valmis. Ratkaisee: lyhin polku, sillä yksi napautus vastaa ja valitsee.
+2. **Kyllä / Ei.** Ylläpitäjä lisää vaiheen reitille kuten integraation. Sitä ei voi tehdä pakolliseksi. *Kyllä* kysyy vielä, kumpi palvelu, ja reitti kasvaa Oma kone -kohdan alle kolmeksi alavaiheeksi: *Yhdistä OneDrive*, *Koneellesi*, *Kokeile*. Jokainen alavaihe on oma sivunsa, ja kokeilun voi ohittaa. *Ei* jatkaa heti. Kysymyksen alla lukee etukäteen, mistä asian löytää myöhemmin. Jos pilvi on jo yhdistetty, vaihe näkyy reitillä valmiina (*OneDrive · yhdistetty*), mutta siinä ei pysähdytä. Ratkaisee: noudattaa samaa sivustomallia kuin muut integraatiovaiheet, ja reitti näyttää koko asennuksen.
+3. **Lopuksi.** Viimeinen, valinnainen vaihe AI-tilin jälkeen. Vastaukset ovat *Dropbox* ja *OneDrive*, ja ohitus on *Ei nyt, aloita työ*. Silta kokeillaan agentin kanssa: kun tiedosto tulee kansioon, agentti kertoo, mitä siinä on. Jos pilvi on jo yhdistetty, kysymystä ei esitetä, mutta vaihe tarjoaa ohjeen omalle koneelle ja kokeilun (*Kokeile OneDrive-kansiota*). Sivustolla on kytkin *Kysy / Älä kysy*. *Ei nyt* ohjaa Liitä-valikkoon ja Integraatioihin. Ratkaisee: kokeilu näyttää heti sen, mitä silta tekee, ja kysymys tulee vasta, kun työ voi alkaa.
+
+## Suositus
+
+**Kolme vastausta, mutta sivuston lisäämänä vaiheena kuten suunnassa 2.** Yksi kortti ja kolme vastausta pitävät tekstin lyhyenä ja säästävät yhden kysymyksen. Kun vaiheen lisää ylläpitäjä, se toimii kuten Google ja Microsoft 365 (`onboarding-integration-steps`), eikä uutta automaattista sääntöä tarvita. Jos pilvi on jo yhdistetty, vaihe jätetään pois reitiltä niin kuin päätit. Kokeilun voi ohittaa (*Jatka kokeilematta*), koska tiedoston odottaminen keskellä käyttöönottoa voi jumittaa sen, joka on puhelimella. Agentin kanssa kokeilu (suunta 3) on hyvä idea, mutta se käyttää henkilön AI-tiliä jo käyttöönotossa. Se sopii paremmin ensimmäiseen keskusteluun (kierroksen 1 suunta Agentti).
+
+## Mitä näkymät olettavat hostilta
+
+- *OneDrive* yhdistää koko Microsoft 365 -tilin, siis myös postin ja kalenterin, koska OneDrive on tuotannossa Microsoftin palvelu. Suunta 2 sanoo sen yhdistämissivulla. Erillistä pelkkä OneDrive -kirjautumista ei ole.
+- *Jo yhdistetty* päätellään integraatiolistasta: tilillä on palvelu `dropbox` tai `onedrive`. Host ei tiedä, onko OneDrive henkilökohtainen vai työpaikan.
+- Kokeilu odottaa tiedostoa kansiossa `Open Habitat` (kierroksen 1 ehdotus). Daemonin pitää kertoa kansion uusin tiedosto, kuten kierroksessa 1.
+- Suunta 2 käyttää Kartta-kehyksen `detail`-paikkaa alavaiheille, samaa paikkaa, jossa reitti näyttää repojen haun. Kierroksen kehys on tuotannon kopio, koska tuotanto nimeää jokaisen tuntemattoman vaiheen palveluntarjoajan mukaan.
+- Suunta 3 ajaa agentin kehotteen käyttöönotossa, ja siitä tulee henkilölle kustannus.
+
+## Kysymykset Jarille
+
+1. Lisääkö ylläpitäjä Oma kone -vaiheen reitille (suositus), vai kysytäänkö se automaattisesti aina, kun Dropbox tai Microsoft 365 on valmis?
+2. Riittääkö työpaikan Microsoft 365 -vaiheessa yhdistetty OneDrive siihen, ettei kysymystä esitetä, vaikka kysymys koskee henkilökohtaista pilveä?
+3. Kuuluuko kokeilu tiedostolla käyttöönottoon, vai riittääkö yhdistäminen ja ohje omalle koneelle?
+4. Tuleeko vaihe ennen AI-tiliä (suunnat 1 ja 2) vai viimeiseksi (suunta 3)?
+
+## Rakentaminen ja tarkistus
+
+```
+cd design-system/prototypes/rounds/2026-10-24-pilvikansio-silta
+node r2/build.mjs                   # dist/cloud-folder-bridge-r2/{index,offline}.html
+PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright node r2/check.mjs <html-tai-url> <kuvakansio>
+```
+
+`r2/check.mjs` käy läpi kolme suuntaa kolmella leveydellä (1440, 820 ja 390 px) vaaleana ja tummana, molemmat lähtötilanteet ja ylläpitäjän näkymän. Se klikkaa vuorovaikutukset ja tarkistaa, että konsoli on puhdas: 96 tarkistuspistettä, sekä paikallinen tiedosto että julkaistu sivu. Komponentit ovat tuotannon omia: `IntegrationsOverview`, `AccountCard`, `ProviderMark`, `ControlButton`, `Segmented`, `UserMessage`, `AssistantMessage`, `Markdown`, Kartta-kehyksen ja Käyttöönotto-välilehden tyylit. Kierroksen omia ovat kehyksen kopio Oma kone -vaiheella (`r2/frame.tsx`) ja ylläpitäjän näkymän rivit. Kumpikin `build.mjs` ohittaa nyt Viten `?url`-tuonnin, koska `DocumentPreview`n PDF-worker katkaisi kierroksen 1 rakennuksen 24.10.

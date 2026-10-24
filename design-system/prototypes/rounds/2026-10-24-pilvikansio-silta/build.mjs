@@ -19,7 +19,12 @@ const rawPicker={name:'raw-picker',setup(b){
 const menu={name:'proposed-attachment-menu',setup(b){
  b.onResolve({filter:/^\.\/AttachmentMenu$/},a=>a.resolveDir.endsWith('/components/composer')?{path:join(here,'menu.tsx')}:undefined);
 }};
-const result=await build({plugins:[rawPicker,menu],entryPoints:[join(here,'round.tsx')],bundle:true,write:false,outfile:'prototype.js',platform:'browser',format:'iife',jsx:'automatic',nodePaths:[join(root,'web/node_modules')],loader:{'.module.css':'local-css','.woff2':'dataurl','.woff':'dataurl','.svg':'dataurl'},define:{'process.env.NODE_ENV':'"production"','import.meta.env.VITE_SYNTHETIC_DEMO':'"false"'},minify:true,metafile:true});
+// Vite's ?url imports (the PDF worker) have no meaning in one offline page.
+const viteUrl={name:'vite-url',setup(b){
+ b.onResolve({filter:/\?url$/},a=>({path:a.path,namespace:'vite-url'}));
+ b.onLoad({filter:/.*/,namespace:'vite-url'},()=>({contents:'export default ""',loader:'js'}));
+}};
+const result=await build({plugins:[rawPicker,menu,viteUrl],entryPoints:[join(here,'round.tsx')],bundle:true,write:false,outfile:'prototype.js',platform:'browser',format:'iife',jsx:'automatic',nodePaths:[join(root,'web/node_modules')],loader:{'.module.css':'local-css','.woff2':'dataurl','.woff':'dataurl','.svg':'dataurl'},define:{'process.env.NODE_ENV':'"production"','import.meta.env.VITE_SYNTHETIC_DEMO':'"false"'},minify:true,metafile:true});
 const js=result.outputFiles.find(f=>f.path.endsWith('.js')).text;
 const css=result.outputFiles.find(f=>f.path.endsWith('.css')).text;
 const html=styles=>`<!doctype html><html lang="fi" data-theme="light"><head><meta charset="utf-8"><meta name="prototype-round" content="2026-10-24-pilvikansio-silta"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pilvikansio siltana</title><style>${styles}</style></head><body><div id="root"></div><script>${js.replace(/<\/script/gi,'<\\/script')}</script></body></html>`;

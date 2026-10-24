@@ -1,0 +1,21 @@
+/* Round 2 additions on top of ../round.css */
+.hb-answers{display:flex;flex-wrap:wrap;gap:var(--ah-s2)}
+.hb-answers .ig-mark{margin-right:var(--ah-s2)}
+.hb-later{margin:0;font-size:var(--ah-size-meta);color:var(--ah-muted)}
+.hb-connect-step .ig-main{gap:var(--ah-s3)}
+.proto-note{margin:0;font-size:var(--ah-size-meta);color:var(--ah-muted);padding:var(--ah-s1) var(--ah-s2);border:1px dashed var(--ah-line-strong);border-radius:var(--ah-r-sm)}
+.hb-sub{list-style:none;margin:var(--ah-s1) 0 0;padding:0;display:grid;gap:2px;font-size:var(--ah-size-meta);color:var(--ah-muted)}
+.hb-sub li{display:flex;gap:var(--ah-s2);align-items:center}
+.hb-sub li>span{display:inline-flex;width:14px;justify-content:center}
+.hb-sub li svg{width:12px;height:12px;color:var(--ah-ok)}
+.hb-sub li[data-state=current]{color:var(--ah-ink);font-weight:600}
+.hb-how summary{cursor:pointer;font-size:var(--ah-size-meta);color:var(--ah-accent-ink);margin-bottom:var(--ah-s2)}
+.hb-agent-try{display:grid;gap:var(--ah-s3);margin-top:var(--ah-s3);padding-top:var(--ah-s3);border-top:1px solid var(--ah-line-soft)}
+.hb-admin .hostbar{padding:var(--ah-s4) var(--ah-s5);display:flex;align-items:center;gap:var(--ah-s4);border-bottom:1px solid var(--ah-line);background:var(--ah-surface)}
+.hb-admin .hostbar span{flex:1;color:var(--ah-muted)}
+.hb-admin-body{padding:var(--ah-s5)}
+.hb-admin-body h2{margin:0 0 var(--ah-s4)}
+.hb-admin .ob-row{display:flex;gap:var(--ah-s2)}
+@media(max-width:800px){.hb-admin-body{padding:var(--ah-s3)}}
+.phone .hb-admin-body{padding:var(--ah-s3)}
+.phone .ob-layout{grid-template-columns:minmax(0,1fr)}
