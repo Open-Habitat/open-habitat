@@ -321,15 +321,16 @@ test("@server-integrations @a11y an administrator sets Dropbox's app through the
     "true",
   );
   await dialog.getByTestId("si-field-client_secret").fill("h2m5c9xj4ub7ye1");
-  const reply = page.waitForResponse("**/api/v1/server/integrations/set");
   await dialog.getByRole("button").and(dialog.getByTestId("si-save")).click();
   await expect(row).toHaveAttribute("data-status", "set");
-  // Only the App key comes back; the secret never leaves root's file.
-  const body = await (await reply).text();
-  expect(body).toContain("p3n8vq1zt6ka0rw");
-  expect(body).not.toContain("h2m5c9xj4ub7ye1");
   await expect(dialog).toHaveCount(0);
   await expect(row).toHaveAttribute("data-status", "ready");
+  // Only the App key comes back; the secret never leaves root's file.
+  const list = await (
+    await page.request.get("/api/v1/server/integrations")
+  ).text();
+  expect(list).toContain("p3n8vq1zt6ka0rw");
+  expect(list).not.toContain("h2m5c9xj4ub7ye1");
   expect(await available(page, "dropbox")).toBe(true);
 
   // Dropbox renews no secret on request: removal is the only change, and the
