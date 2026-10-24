@@ -102,7 +102,7 @@ func installedRelease(ctx context.Context) (Site, AuthenticatedRelease, error) {
 	if e != nil {
 		return s, AuthenticatedRelease{}, e
 	}
-	r, e := AuthenticateRelease(b, sig, key, s.Release)
+	r, e := authenticateHostRelease(b, sig, key, s.Release)
 	if e != nil {
 		return s, r, e
 	}

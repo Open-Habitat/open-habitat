@@ -3,6 +3,7 @@
   "profile": "browser",
   "inputs": [
     {
+      "target": "linux-amd64",
       "name": "playwright",
       "version": "1.58.0",
       "filename": "playwright-1.58.0-py3-none-manylinux1_x86_64.whl",
@@ -11,11 +12,30 @@
       "kind": "wheel"
     },
     {
+      "target": "linux-arm64",
+      "name": "playwright",
+      "version": "1.58.0",
+      "filename": "playwright-1.58.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
+      "url": "https://files.pythonhosted.org/packages/d9/a6/0e66ad04b6d3440dae73efb39540c5685c5fc95b17c8b29340b62abbd952/playwright-1.58.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
+      "sha256": "8f9999948f1ab541d98812de25e3a8c410776aa516d948807140aff797b4bffa",
+      "kind": "wheel"
+    },
+    {
+      "target": "linux-amd64",
       "name": "greenlet",
       "version": "3.4.0",
       "filename": "greenlet-3.4.0-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl",
       "url": "https://files.pythonhosted.org/packages/07/49/d4cad6e5381a50947bb973d2f6cf6592621451b09368b8c20d9b8af49c5b/greenlet-3.4.0-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl",
       "sha256": "4df3b0b2289ec686d3c821a5fee44259c05cfe824dd5e6e12c8e5f5df23085cf",
+      "kind": "wheel"
+    },
+    {
+      "target": "linux-arm64",
+      "name": "greenlet",
+      "version": "3.4.0",
+      "filename": "greenlet-3.4.0-cp314-cp314-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl",
+      "url": "https://files.pythonhosted.org/packages/05/1f/39da1c336a87d47c58352fb8a78541ce63d63ae57c5b9dae1fe02801bbc2/greenlet-3.4.0-cp314-cp314-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl",
+      "sha256": "076e21040b3a917d3ce4ad68fb5c3c6b32f1405616c4a57aa83120979649bd3d",
       "kind": "wheel"
     },
     {
@@ -35,6 +55,7 @@
       "kind": "wheel"
     },
     {
+      "target": "linux-amd64",
       "name": "chromium-headless-shell",
       "version": "145.0.7632.6",
       "filename": "headless.zip",
@@ -43,6 +64,27 @@
       "kind": "browser",
       "prefix": "chrome-headless-shell-linux64",
       "revision": "1208"
+    },
+    {
+      "target": "linux-arm64",
+      "name": "chromium-headless-shell",
+      "version": "145.0.7632.6",
+      "filename": "headless.zip",
+      "url": "https://cdn.playwright.dev/dbazure/download/playwright/builds/chromium/1208/chromium-headless-shell-linux-arm64.zip",
+      "sha256": "6bdb4349429ec33e7c0267e0eaa039c2131fa0b3b2997dec0ec96b0d40f579fd",
+      "kind": "browser",
+      "prefix": "chrome-linux",
+      "revision": "1208"
+    },
+    {
+      "target": "linux-arm64",
+      "name": "chromium-headless-shell-notice",
+      "version": "145.0.7632.6",
+      "filename": "headless-notice.zip",
+      "url": "https://cdn.playwright.dev/chrome-for-testing-public/145.0.7632.6/linux64/chrome-headless-shell-linux64.zip",
+      "sha256": "2536e97d8f410df0394b3e7c4252e88ce9f239f04f3af4e247a26caf45baf49e",
+      "kind": "notice",
+      "member": "chrome-headless-shell-linux64/LICENSE.headless_shell"
     }
   ],
   "common_license_sha256": {

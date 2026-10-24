@@ -1,24 +1,24 @@
 {
-  "platform": "ubuntu-24.04-amd64",
+  "platform": "ubuntu-24.04",
   "packages": [
     {
       "name": "dbus-user-session",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "1.14.10-4ubuntu4.1"
     },
     {
       "name": "fuse-overlayfs",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "1.13-1"
     },
     {
       "name": "gir1.2-glib-2.0",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "2.80.0-6ubuntu3.10"
     },
     {
       "name": "libglib2.0-bin",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "2.80.0-6ubuntu3.10"
     },
     {
@@ -28,7 +28,7 @@
     },
     {
       "name": "podman",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "4.9.3+ds1-1ubuntu0.2"
     },
     {
@@ -38,17 +38,17 @@
     },
     {
       "name": "python3-yaml",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "6.0.1-2build2"
     },
     {
       "name": "slirp4netns",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "1.2.1-1build2"
     },
     {
       "name": "uidmap",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "1:4.13+dfsg1-4ubuntu3.2"
     }
   ]

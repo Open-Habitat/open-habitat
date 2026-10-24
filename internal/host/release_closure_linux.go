@@ -187,7 +187,7 @@ func (r AuthenticatedRelease) VerifyArchives(ctx context.Context, profiles []str
 			if ce != nil {
 				return ErrReleaseStage
 			}
-			return walkReleaseTar(ctx, f, a, nil)
+			return walkReleaseTar(ctx, f, a, r.manifest.Platform, nil)
 		}(); err != nil {
 			return err
 		}
@@ -196,11 +196,12 @@ func (r AuthenticatedRelease) VerifyArchives(ctx context.Context, profiles []str
 }
 
 // The npm lock is checked independently of the builder's enumeration. Optional
-// explicit OS/CPU/libc restrictions are enforced for Ubuntu Linux/x64/glibc.
+// explicit OS/CPU/libc restrictions are enforced for Ubuntu Linux/glibc on
+// the release's CPU (npm's name, e.g. x64).
 // Locks that omit a restriction retain that package, as npm ci does; we do not
 // infer a missing restriction from a package name. Every applicable locked
 // package must have exactly one component, including nested dependencies.
-func verifyNPMLock(b []byte, c *RuntimeClosure) bool {
+func verifyNPMLock(b []byte, c *RuntimeClosure, cpu string) bool {
 	var lock struct {
 		Packages map[string]struct {
 			Version string   `json:"version"`
@@ -233,7 +234,7 @@ func verifyNPMLock(b []byte, c *RuntimeClosure) bool {
 	}
 	expected := map[string]string{}
 	for path, p := range lock.Packages {
-		if path != "" && matches(p.OS, "linux") && matches(p.CPU, "x64") && matches(p.Libc, "glibc") {
+		if path != "" && matches(p.OS, "linux") && matches(p.CPU, cpu) && matches(p.Libc, "glibc") {
 			expected["npm:"+path] = p.Version
 		}
 	}

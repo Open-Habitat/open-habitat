@@ -3,7 +3,8 @@
 
 Native binaries (himalaya, rclone, gog) come from their upstream release
 archives and the Microsoft tools from the locked npm tree with their own Node.
-Every input is pinned by digest in artifact-lock.json; nothing is resolved here.
+Every input is pinned by digest in artifact-lock.json, per release target where
+upstream builds per architecture; nothing is resolved here.
 """
 import hashlib
 import importlib.util
@@ -31,22 +32,13 @@ PI_WRAPPER = (
 )
 
 
-def ubuntu_requirements(path):
-    lock = json.loads(path.read_text())
-    packages, seen = lock['packages'], set()
-    if set(lock) != {'platform', 'packages'} or lock['platform'] != 'ubuntu-24.04-amd64':
-        raise ValueError('invalid Ubuntu requirement')
-    for p in packages:
-        if set(p) != {'name', 'architecture', 'version'} or not re.fullmatch(r'[a-z0-9][a-z0-9+.-]{0,127}', p['name']) or p['architecture'] not in ('amd64', 'all') or not re.fullmatch(r'[0-9][a-zA-Z0-9.+:~_-]{0,199}', p['version']) or p['name'] in seen:
-            raise ValueError('invalid Ubuntu requirement')
-        seen.add(p['name'])
-    return packages
-
-
-def add_tools(lock, inputs, put_bytes, components):
+def add_tools(lock, inputs, put_bytes, components, target):
     """Extract each pinned upstream executable and its licence texts."""
-    blobs = {i['filename']: i for i in lock['inputs']}
-    for tool in lock['tools']:
+    blobs = {i['filename']: i for i in profiles.for_target(lock['inputs'], target)}
+    tools = profiles.for_target(lock['tools'], target)
+    if len({t['name'] for t in tools}) != len(tools) or {t['name'] for t in tools} != {t['name'] for t in lock['tools']}:
+        raise ValueError('every tool needs exactly one pin per target')
+    for tool in tools:
         if not re.fullmatch('[a-z][a-z0-9-]{0,31}', tool['name']) or not tool['license_files']:
             raise ValueError('invalid tool lock')
         for name in [tool['archive']] + tool['license_files']:
@@ -74,10 +66,11 @@ def add_tools(lock, inputs, put_bytes, components):
         components.append(dict(name=tool['name'], version=tool['version'], kind='native', license_files=licenses))
 
 
-def build(inputs, installed, node_archive, out):
+def build(inputs, installed, node_archive, out, target):
     lock = json.loads((inputs / 'artifact-lock.json').read_text())
-    packages = ubuntu_requirements(inputs / 'ubuntu-packages.json')
-    if profiles.digest(node_archive) != lock['node']['sha256']:
+    packages = profiles.ubuntu_requirements(inputs / 'ubuntu-packages.json', target)
+    node_pin = profiles.target_pin(lock['node'], target)
+    if profiles.digest(node_archive) != node_pin['sha256']:
         raise ValueError('Node digest mismatch')
     npm = json.loads((inputs / 'package-lock.json').read_text())
     if (installed / 'package-lock.json').read_bytes() != (inputs / 'package-lock.json').read_bytes():
@@ -102,16 +95,18 @@ def build(inputs, installed, node_archive, out):
     extracted = out / 'extract'
     with tarfile.open(node_archive) as archive:
         archive.extractall(extracted, filter='data')
-    node = extracted / lock['node']['prefix']
+    node = extracted / node_pin['prefix']
     put(node / 'bin/node', 'runtime/bin/node', 'node', True)
     put(node / 'LICENSE', 'licenses/node.txt', 'node')
     components.append(dict(name='node', version=lock['node']['version'], kind='node', license_files=['licenses/node.txt']))
-    # This closure targets Linux/x64/glibc. An applicable optional dependency is
-    # still part of the lock, even when it is never loaded (e.g. keytar).
+    # This closure targets Linux/glibc on the target's CPU (npm spells amd64
+    # x64). An applicable optional dependency is still part of the lock, even
+    # when it is never loaded (e.g. keytar).
+    cpu = {'amd64': 'x64'}.get(profiles.TARGETS[target], profiles.TARGETS[target])
     def matches(values, target):
         return not values or ('!' + target not in values and (all(v.startswith('!') for v in values) or target in values))
     for rel, expected in sorted(npm['packages'].items()):
-        if not rel or not all(matches(expected.get(key), value) for key, value in [('os', 'linux'), ('cpu', 'x64'), ('libc', 'glibc')]):
+        if not rel or not all(matches(expected.get(key), value) for key, value in [('os', 'linux'), ('cpu', cpu), ('libc', 'glibc')]):
             continue
         source = installed / rel
         meta = json.loads((source / 'package.json').read_text())
@@ -136,7 +131,7 @@ def build(inputs, installed, node_archive, out):
     for name in ['package.json', 'package-lock.json']:
         put(inputs / name, 'runtime/' + name, 'npm-lock')
     components.append(dict(name='npm-lock', version='1.0.0', kind='lock', license_files=['runtime/package.json']))
-    add_tools(lock, inputs, put_bytes, components)
+    add_tools(lock, inputs, put_bytes, components, target)
     put(inputs / 'artifact-lock.json', 'runtime/artifact-lock.json', 'integrations-lock')
     components.append(dict(name='integrations-lock', version='1.0.0', kind='lock', license_files=['runtime/artifact-lock.json']))
     put(inputs / 'ubuntu-packages.json', 'ubuntu-packages.json', 'ubuntu-requirements')
@@ -156,4 +151,4 @@ def build(inputs, installed, node_archive, out):
 
 
 if __name__ == '__main__':
-    build(*(Path(p) for p in sys.argv[1:]))
+    build(*(Path(p) for p in sys.argv[1:5]), sys.argv[5])

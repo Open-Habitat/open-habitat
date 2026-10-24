@@ -2,22 +2,27 @@
 """Build-only fetch: exact URLs/digests, no solver or customer authorization."""
 import concurrent.futures
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import shutil
 import sys
 import urllib.request
 
+spec = importlib.util.spec_from_file_location('profiles', Path(__file__).with_name('profile-runtime-build.py'))
+profiles = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(profiles)
 
-def fetch_inputs(lock_path, out):
+
+def fetch_inputs(lock_path, out, target):
     lock = json.loads(lock_path.read_text())
     if 'inputs' in lock:
-        blobs = [(p['filename'], p) for p in lock['inputs']]
+        blobs = [(p['filename'], p) for p in profiles.for_target(lock['inputs'], target)]
     elif 'crates' in lock:
-        blobs = [('uv.tar.gz', lock['archive']), ('source.tar.gz', lock['source'])]
+        blobs = [('uv.tar.gz', profiles.target_pin(lock, target)), ('source.tar.gz', lock['source'])]
         blobs += [(p['filename'], p) for p in lock['crates']]
     else:
-        blobs = [('editor.tar.gz', lock)]
+        blobs = [('editor.tar.gz', profiles.target_pin(lock, target))]
     if len({name for name, _ in blobs}) != len(blobs):
         raise ValueError('duplicate input filename')
 
@@ -46,4 +51,4 @@ def fetch_inputs(lock_path, out):
 
 
 if __name__ == '__main__':
-    fetch_inputs(Path(sys.argv[1]), Path(sys.argv[2]))
+    fetch_inputs(Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3])

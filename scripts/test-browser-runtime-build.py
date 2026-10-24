@@ -43,14 +43,14 @@ class BrowserBuild(unittest.TestCase):
                 z.writestr(name, data)
         p['sha256'] = digest(self.inputs / p['filename'])
 
-    def build(self):
+    def build(self, target='linux-amd64'):
         lock = self.inputs / 'artifact-lock.json'
         lock.write_text(json.dumps(dict(inputs=self.records, common_license_sha256={'MIT': hashlib.sha256(b'notice').hexdigest()})))
         root = self.base / 'payload'
         (root / 'licenses/common').mkdir(parents=True)
         (root / 'licenses/common/MIT').write_bytes(self.common_notice)
         owners, components = {'licenses/common/MIT': 'common-licenses'}, []
-        browser.add_browser(lock, self.inputs, root, owners, components, digest)
+        browser.add_browser(lock, self.inputs, root, owners, components, digest, target)
         return root, owners, components
 
     def test_complete_notice_inventory_and_modes(self):
@@ -94,6 +94,44 @@ class BrowserBuild(unittest.TestCase):
         self.write_zip(self.records[-1], {'shell/chrome-headless-shell': b'native', 'shell/ABOUT': b'terms reference'})
         with self.assertRaisesRegex(ValueError, 'license_unverified'):
             self.build()
+
+    def arm64_records(self):
+        """The arm64 shell has Playwright's layout and no notice of its own."""
+        for p in self.records:
+            p['target'] = 'linux-amd64'
+        arm = dict(name='chromium-headless-shell', version='1', kind='browser', filename='arm.zip', prefix='chrome-linux', revision='123', target='linux-arm64')
+        self.write_zip(arm, {'chrome-linux/headless_shell': b'native'})
+        notice = dict(name='chromium-headless-shell-notice', version='1', kind='notice', filename='notice.zip', member='shell/LICENSE.headless_shell', target='linux-arm64')
+        self.write_zip(notice, {'shell/LICENSE.headless_shell': b'chromium notice'})
+        shared = [dict(p, target='linux-arm64', filename=p['filename']) for p in self.records if p['kind'] == 'wheel']
+        self.records += shared + [arm, notice]
+        return arm, notice
+
+    def test_arm64_selects_its_own_inputs_and_notice(self):
+        self.arm64_records()
+        root, owners, components = self.build('linux-arm64')
+        shell = 'runtime/browsers/chromium_headless_shell-123/chrome-linux/'
+        self.assertEqual((root / shell / 'headless_shell').stat().st_mode & 0o777, 0o755)
+        self.assertEqual((root / shell / 'LICENSE.headless_shell').read_bytes(), b'chromium notice')
+        self.assertIn(shell + 'LICENSE.headless_shell', components[-1]['license_files'])
+        # Nothing of the amd64 shell reaches the arm64 payload.
+        self.assertFalse(any('/shell/' in p for p in owners))
+
+    def test_arm64_notice_must_match_browser_version(self):
+        _, notice = self.arm64_records()
+        notice['version'] = '2'
+        with self.assertRaisesRegex(ValueError, 'notice input mismatch'):
+            self.build('linux-arm64')
+
+    def test_arm64_without_notice(self):
+        _, notice = self.arm64_records()
+        self.records.remove(notice)
+        with self.assertRaisesRegex(ValueError, 'license_unverified'):
+            self.build('linux-arm64')
+
+    def test_unknown_target(self):
+        with self.assertRaisesRegex(ValueError, 'unsupported target'):
+            self.build('linux-armhf')
 
 if __name__ == '__main__':
     unittest.main()

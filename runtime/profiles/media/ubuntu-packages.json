@@ -1,24 +1,24 @@
 {
-  "platform": "ubuntu-24.04-amd64",
+  "platform": "ubuntu-24.04",
   "packages": [
     {
       "name": "ffmpeg",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "7:6.1.1-3ubuntu5"
     },
     {
       "name": "gir1.2-glib-2.0",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "2.80.0-6ubuntu3.10"
     },
     {
       "name": "imagemagick",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "8:6.9.12.98+dfsg1-5.2build2"
     },
     {
       "name": "libglib2.0-bin",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "2.80.0-6ubuntu3.10"
     },
     {
@@ -28,12 +28,12 @@
     },
     {
       "name": "librsvg2-bin",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "2.58.0+dfsg-1ubuntu0.1"
     },
     {
       "name": "poppler-utils",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "24.02.0-1ubuntu9.11"
     }
   ]

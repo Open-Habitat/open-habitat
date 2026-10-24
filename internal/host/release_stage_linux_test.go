@@ -251,7 +251,7 @@ func TestReleaseCancellationAndSpoolIOClassification(t *testing.T) {
 	if _, err = f.Write(b); err != nil {
 		t.Fatal(err)
 	}
-	if err = walkReleaseTar(ctx, f, a, nil); !errors.Is(err, context.Canceled) {
+	if err = walkReleaseTar(ctx, f, a, "ubuntu-24.04-amd64", nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("tar cancellation lost: %v", err)
 	}
 	if err = spoolReleaseArchive(context.Background(), releaseFailWriter{}, bytes.NewReader(b), a); !errors.Is(err, ErrReleaseStage) {

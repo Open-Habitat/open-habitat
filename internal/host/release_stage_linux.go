@@ -109,7 +109,7 @@ func (r AuthenticatedRelease) stageRelease(ctx context.Context, profiles []strin
 		}
 	}
 	for _, a := range artifacts {
-		if e := walkReleaseTar(ctx, files[a.Profile], a, nil); e != nil {
+		if e := walkReleaseTar(ctx, files[a.Profile], a, r.manifest.Platform, nil); e != nil {
 			return name, e
 		}
 	}
@@ -126,7 +126,7 @@ func (r AuthenticatedRelease) stageRelease(ctx context.Context, profiles []strin
 			_ = root.Close()
 			return name, ErrReleaseStage
 		}
-		e = walkReleaseTar(ctx, files[a.Profile], a, root)
+		e = walkReleaseTar(ctx, files[a.Profile], a, r.manifest.Platform, root)
 		_ = root.Close()
 		if e != nil {
 			return name, e
@@ -156,7 +156,9 @@ func (r contextReader) Read(b []byte) (int, error) {
 	return r.r.Read(b)
 }
 
-func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os.Root) (err error) {
+// platform selects the architecture that executable ELF payloads and npm's
+// optional native packages must match.
+func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, platform string, dest *os.Root) (err error) {
 	// Cancellation can happen in the gzip header, tar body or trailer, not only
 	// between archives. Preserve its identity across all read/extraction errors.
 	defer func() {
@@ -246,11 +248,15 @@ func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os
 		var content bytes.Buffer
 		hash := sha256.New()
 		var capture io.Writer = hash
+		head := &headBuffer{}
+		if h.Mode == 0755 {
+			capture = io.MultiWriter(hash, head)
+		}
 		if a.Closure != nil && name == "runtime/package-lock.json" {
 			if h.Size > MaxReleaseManifestBytes {
 				return ErrReleaseArchive
 			}
-			capture = io.MultiWriter(hash, &content)
+			capture = io.MultiWriter(capture, &content)
 		}
 		var payload io.Reader = tr
 		if a.Closure != nil {
@@ -286,7 +292,7 @@ func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os
 			return ErrReleaseArchive
 		}
 		if a.Closure != nil {
-			if hex.EncodeToString(hash.Sum(nil)) != expected.SHA256 {
+			if hex.EncodeToString(hash.Sum(nil)) != expected.SHA256 || !elfMatches(head.b, platform) {
 				return ErrReleaseArchive
 			}
 			if name == "runtime/package-lock.json" {
@@ -299,7 +305,7 @@ func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os
 		for _, c := range a.Closure.Components {
 			needsNPM = needsNPM || c.Kind == "npm"
 		}
-		if len(inventory) != 0 || (needsNPM && !verifyNPMLock(npmLock, a.Closure)) {
+		if len(inventory) != 0 || (needsNPM && !verifyNPMLock(npmLock, a.Closure, npmCPU(platform))) {
 			return ErrReleaseArchive
 		}
 	}
@@ -316,6 +322,17 @@ func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os
 		return ErrReleaseArchive
 	}
 	return nil
+}
+
+// headBuffer keeps the first bytes of a payload: enough for an ELF header's
+// class, byte order and machine.
+type headBuffer struct{ b []byte }
+
+func (h *headBuffer) Write(p []byte) (int, error) {
+	if n := 20 - len(h.b); n > 0 {
+		h.b = append(h.b, p[:min(n, len(p))]...)
+	}
+	return len(p), nil
 }
 
 type zeroPadding struct{}

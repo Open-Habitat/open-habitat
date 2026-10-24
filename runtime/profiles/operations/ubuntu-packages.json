@@ -1,9 +1,9 @@
 {
-  "platform": "ubuntu-24.04-amd64",
+  "platform": "ubuntu-24.04",
   "packages": [
     {
       "name": "age",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "1.1.1-1ubuntu0.24.04.3"
     },
     {
@@ -13,7 +13,7 @@
     },
     {
       "name": "rsync",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "3.2.7-1ubuntu1.5"
     }
   ]

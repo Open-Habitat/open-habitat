@@ -32,8 +32,10 @@ def archive(path, files, links=None):
 
 
 class PythonBuilderTests(unittest.TestCase):
-    def fixture(self, d, missing_notice=False, escape=False, empty_notice=False, unlocked=False, missing_source_notice=False):
+    def fixture(self, d, missing_notice=False, escape=False, empty_notice=False, unlocked=False, missing_source_notice=False, target='linux-amd64', triple=None):
         lock = copy.deepcopy(json.loads(LOCK.read_text()))
+        # The fixture writes one target's upstream archives under their lock names.
+        lock['inputs'] = builder.profiles.for_target(lock['inputs'], target)
         # Small synthetic wheels exercise licence ownership without executing code.
         for a in lock['inputs']:
             if a.get('kind') == 'wheel':
@@ -53,7 +55,7 @@ class PythonBuilderTests(unittest.TestCase):
         build = records['build-source']
         prefix = 'python-build-standalone-' + build['version'] + '/'
         archive(d / build['filename'], {prefix + 'pythonbuild/downloads.py': ('DOWNLOADS = ' + repr(downloads)).encode(), prefix + 'LICENSE': b'build-source licence'})
-        metadata = dict(python_version='3.14.4', target_triple='x86_64-unknown-linux-gnu', license_path='licenses/LICENSE.cpython.txt', build_info={'extensions': [{'license_paths': ['licenses/LICENSE.zstd.txt', 'licenses/LICENSE.zlib-ng.txt']}]})
+        metadata = dict(python_version='3.14.4', target_triple=triple or builder.TRIPLES[target], license_path='licenses/LICENSE.cpython.txt', build_info={'extensions': [{'license_paths': ['licenses/LICENSE.zstd.txt', 'licenses/LICENSE.zlib-ng.txt']}]})
         if unlocked:
             metadata['build_info']['extensions'].append({'license_paths': ['licenses/LICENSE.new-library.txt']})
         files = {'python/PYTHON.json': json.dumps(metadata).encode()}
@@ -79,7 +81,7 @@ class PythonBuilderTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
             d = Path(temp)
             p, lock = self.fixture(d)
-            builder.build(p, d, d / 'out')
+            builder.build(p, d, d / 'out', 'linux-amd64')
             a = json.loads((d / 'out/artifact.json').read_text())
             self.assertEqual(a['requires'], ['uv'])
             components = {c['name']: c for c in a['closure']['components']}
@@ -102,7 +104,7 @@ class PythonBuilderTests(unittest.TestCase):
             d = Path(temp)
             p, _ = self.fixture(d, missing_notice=True)
             with self.assertRaisesRegex(ValueError, 'native notice missing|missing Python licences'):
-                builder.build(p, d, d / 'out')
+                builder.build(p, d, d / 'out', 'linux-amd64')
 
     def test_missing_native_source(self):
         with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
@@ -111,28 +113,28 @@ class PythonBuilderTests(unittest.TestCase):
             lock['inputs'] = [a for a in lock['inputs'] if a['name'] != 'bdb']
             p.write_text(json.dumps(lock))
             with self.assertRaises(KeyError):
-                builder.build(p, d, d / 'out')
+                builder.build(p, d, d / 'out', 'linux-amd64')
 
     def test_upstream_reference_cannot_omit_source(self):
         with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
             d = Path(temp)
             p, _ = self.fixture(d, unlocked=True)
             with self.assertRaisesRegex(ValueError, 'unlocked native source'):
-                builder.build(p, d, d / 'out')
+                builder.build(p, d, d / 'out', 'linux-amd64')
 
     def test_source_notice_even_when_metadata_omits_it(self):
         with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
             d = Path(temp)
             p, _ = self.fixture(d, missing_source_notice=True)
             with self.assertRaisesRegex(ValueError, 'native notice missing: bzip2'):
-                builder.build(p, d, d / 'out')
+                builder.build(p, d, d / 'out', 'linux-amd64')
 
     def test_empty_runtime_notice(self):
         with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
             d = Path(temp)
             p, _ = self.fixture(d, empty_notice=True)
             with self.assertRaisesRegex(ValueError, 'empty Python notice'):
-                builder.build(p, d, d / 'out')
+                builder.build(p, d, d / 'out', 'linux-amd64')
 
     def test_tampered_input(self):
         with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
@@ -140,14 +142,29 @@ class PythonBuilderTests(unittest.TestCase):
             p, lock = self.fixture(d)
             (d / lock['inputs'][0]['filename']).write_bytes(b'tampered')
             with self.assertRaisesRegex(ValueError, 'locked input mismatch'):
-                builder.build(p, d, d / 'out')
+                builder.build(p, d, d / 'out', 'linux-amd64')
 
     def test_escaping_runtime_alias(self):
         with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
             d = Path(temp)
             p, _ = self.fixture(d, escape=True)
             with self.assertRaises((ValueError, tarfile.FilterError)):
-                builder.build(p, d, d / 'out')
+                builder.build(p, d, d / 'out', 'linux-amd64')
+
+
+    def test_arm64_target(self):
+        with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
+            d = Path(temp)
+            p, _ = self.fixture(d, target='linux-arm64')
+            builder.build(p, d, d / 'out', 'linux-arm64')
+            self.assertEqual(json.loads((d / 'out/artifact.json').read_text())['profile'], 'python')
+
+    def test_runtime_for_another_target(self):
+        with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
+            d = Path(temp)
+            p, _ = self.fixture(d, target='linux-arm64', triple='x86_64-unknown-linux-gnu')
+            with self.assertRaisesRegex(ValueError, 'wrong Python target'):
+                builder.build(p, d, d / 'out', 'linux-arm64')
 
 
 if __name__ == '__main__':

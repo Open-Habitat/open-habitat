@@ -1,9 +1,9 @@
 {
-  "platform": "ubuntu-24.04-amd64",
+  "platform": "ubuntu-24.04",
   "packages": [
     {
       "name": "curl",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "8.5.0-2ubuntu10.13"
     }
   ]

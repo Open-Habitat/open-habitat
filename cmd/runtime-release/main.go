@@ -40,6 +40,7 @@ func run() error {
 	commit := fs.String("commit", "", "full source commit (sign only)")
 	artifactsFile := fs.String("artifacts-file", "", "JSON artifact descriptor array (sign only; default artifact.json is one core descriptor)")
 	upgradeFile := fs.String("upgrade-file", "", "authenticated transition/product descriptor JSON (sign only)")
+	platform := fs.String("platform", "", "ubuntu-24.04-amd64 or ubuntu-24.04-arm64, the architecture every archive was built for (sign only)")
 	digest := fs.String("manifest-sha256", "", "independently approved manifest digest (verify/stage)")
 	parent := fs.String("stage-parent", "", "existing trusted root-owned 0700 directory (stage only)")
 	if err := fs.Parse(os.Args[2:]); err != nil {
@@ -73,8 +74,8 @@ func run() error {
 		return errors.New("key file unavailable")
 	}
 	if command == "sign" {
-		if *commit == "" || len(keyBytes) != ed25519.PrivateKeySize {
-			return errors.New("commit and raw private key required")
+		if *commit == "" || *platform == "" || len(keyBytes) != ed25519.PrivateKeySize {
+			return errors.New("commit, platform and raw private key required")
 		}
 		input := *artifactsFile
 		if input == "" {
@@ -84,7 +85,7 @@ func run() error {
 		if e != nil {
 			return e
 		}
-		m := host.ReleaseManifest{SchemaVersion: 2, Version: *version, Commit: *commit, Platform: "ubuntu-24.04-amd64", Artifacts: artifacts}
+		m := host.ReleaseManifest{SchemaVersion: 2, Version: *version, Commit: *commit, Platform: *platform, Artifacts: artifacts}
 		if *upgradeFile != "" {
 			b, e := readInput(*upgradeFile, host.MaxReleaseManifestBytes)
 			if e != nil {
@@ -140,8 +141,8 @@ func run() error {
 	if e != nil {
 		return e
 	}
-	if *artifactsFile != "" || *upgradeFile != "" {
-		return errors.New("artifacts-file is sign-only")
+	if *artifactsFile != "" || *upgradeFile != "" || *platform != "" {
+		return errors.New("artifacts-file, upgrade-file and platform are sign-only")
 	}
 	// Never label a release verified while silently selecting only implicit core.
 	var manifest host.ReleaseManifest

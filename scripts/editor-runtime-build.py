@@ -13,16 +13,17 @@ profiles = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(profiles)
 
 
-def build(lock_path, archive, out):
+def build(lock_path, archive, out, target):
     lock = json.loads(lock_path.read_text())
-    if profiles.digest(archive) != lock['sha256']:
+    pin = profiles.target_pin(lock, target)
+    if profiles.digest(archive) != pin['sha256']:
         raise ValueError('editor digest mismatch')
     out.mkdir(mode=0o700)
     extracted = out / 'extract'
     extracted.mkdir()
     with tarfile.open(archive) as tar:
         tar.extractall(extracted, filter='data')
-    source = extracted / lock['prefix']
+    source = extracted / pin['prefix']
     root = out / 'payload'
     root.mkdir()
     owners = {}
@@ -69,4 +70,4 @@ def build(lock_path, archive, out):
 
 
 if __name__ == '__main__':
-    build(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]))
+    build(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4])

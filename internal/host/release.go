@@ -31,6 +31,7 @@ var (
 	ErrReleaseSignature = errors.New("release_signature_invalid: verify the independently trusted release key")
 	ErrReleaseTarget    = errors.New("release_target_mismatch: manifest does not match the declared release")
 	ErrReleaseProfile   = errors.New("release_profile_unavailable: selected profile or dependency is absent or conflicting")
+	ErrReleasePlatform  = errors.New("release_platform_mismatch: release targets a different Ubuntu architecture than this host")
 )
 
 // ReleaseManifest is build input, not an installation readiness certificate.
@@ -128,7 +129,7 @@ var packageRE = regexp.MustCompile(`^[a-z0-9][a-z0-9+.-]{0,127}$`)
 var packageVersionRE = regexp.MustCompile(`^[0-9][a-zA-Z0-9.+:~_-]{0,199}$`)
 
 func validRelease(m ReleaseManifest) bool {
-	if m.SchemaVersion != 2 || !versionRE.MatchString(m.Version) || !commitRE.MatchString(m.Commit) || m.Platform != "ubuntu-24.04-amd64" || len(m.Artifacts) == 0 || len(m.Artifacts) > 64 {
+	if m.SchemaVersion != 2 || !versionRE.MatchString(m.Version) || !commitRE.MatchString(m.Commit) || platformArchitecture(m.Platform) == "" || len(m.Artifacts) == 0 || len(m.Artifacts) > 64 {
 		return false
 	}
 	if m.Upgrade != nil && !validUpgrade(m.Upgrade, m.Version) {
@@ -153,7 +154,7 @@ func validRelease(m ReleaseManifest) bool {
 		}
 		for _, p := range a.Packages {
 			id := p.Name + ":" + p.Architecture
-			if !packageRE.MatchString(p.Name) || (p.Architecture != "amd64" && p.Architecture != "all") || !packageVersionRE.MatchString(p.Version) || packages[id] {
+			if !packageRE.MatchString(p.Name) || (p.Architecture != platformArchitecture(m.Platform) && p.Architecture != "all") || !packageVersionRE.MatchString(p.Version) || packages[id] {
 				return false
 			}
 			packages[id] = true

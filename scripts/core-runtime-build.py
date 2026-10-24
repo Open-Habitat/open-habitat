@@ -9,13 +9,20 @@ import subprocess
 import sys
 import tarfile
 import gzip
+import importlib.util
+
+
+spec = importlib.util.spec_from_file_location('profiles', Path(__file__).with_name('profile-runtime-build.py'))
+profiles = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(profiles)
 
 
 def digest(p):
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def build(work, out):
+def build(work, out, target):
+    node_pin = profiles.target_pin(json.loads(Path('/inputs/artifact-lock.json').read_text())['node'], target)
     root = out / 'payload'
     root.mkdir()
     components = []
@@ -28,7 +35,7 @@ def build(work, out):
         dest.chmod(0o755 if src.stat().st_mode & 0o111 else 0o644)
         owners[dest.relative_to(root).as_posix()] = owner
 
-    node = work / 'node-v22.21.1-linux-x64'
+    node = work / node_pin['prefix']
     put(node / 'bin/node', 'runtime/bin/node', 'node')
     put(node / 'LICENSE', 'licenses/node.txt', 'node')
     components.append(dict(name='node', version='22.21.1', kind='node', license_files=['licenses/node.txt']))
@@ -65,8 +72,7 @@ def build(work, out):
     put(work / 'npm/package.json', 'runtime/package.json', 'npm-lock')
     components.append(dict(name='npm-lock', version='1.0.0', kind='lock', license_files=['runtime/package.json']))
     deb_lock_path = Path('/inputs/ubuntu-packages.json')
-    deb_lock = json.loads(deb_lock_path.read_text())
-    packages = deb_lock['packages']
+    packages = profiles.ubuntu_requirements(deb_lock_path, target)
     put(deb_lock_path, 'ubuntu-packages.json', 'ubuntu-requirements')
     components.append(dict(name='ubuntu-requirements', version='24.04', kind='lock', license_files=['ubuntu-packages.json']))
     files = [dict(path=p, sha256=digest(root / p), component=owners[p], mode=(root / p).stat().st_mode & 0o777) for p in sorted(owners)]
@@ -89,4 +95,4 @@ def build(work, out):
 
 
 if __name__ == '__main__':
-    build(Path(sys.argv[1]), Path(sys.argv[2]))
+    build(Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3])

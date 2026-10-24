@@ -70,6 +70,19 @@ for name, digest in expected.items():
     if hashlib.sha256((root / name).read_bytes()).hexdigest() != digest:
         sys.exit('error: package checksum mismatch: ' + name)
 PY
+# The package name promises an architecture; both executables must keep it.
+python3 - "$root" <<'PY'
+import pathlib, re, struct, sys
+root = pathlib.Path(sys.argv[1])
+match = re.fullmatch(r'open-habitat-.+-linux-(amd64|arm64)', root.name)
+if not match:
+    sys.exit('error: package name lacks a supported linux target')
+machine = {'amd64': 62, 'arm64': 183}[match.group(1)]
+for name in ('bin/open-habitat', 'bin/runtime-release'):
+    head = (root / name).read_bytes()[:20]
+    if len(head) < 20 or head[:6] != b'\x7fELF\x02\x01' or struct.unpack('<H', head[18:20])[0] != machine:
+        sys.exit(f'error: {name} is not a 64-bit little-endian linux-{match.group(1)} executable')
+PY
 # Pin the root-only control socket and gateway dependency as one authority change.
 python3 - "$root/systemd/open-habitat-revoke.socket" "$root/systemd/open-habitat-gateway.service" <<'PY'
 import pathlib, sys
@@ -293,5 +306,14 @@ for values, expected in [(socket, {'Service':'open-habitat-broker.service'}), (s
             sys.exit(f'error: packaged broker {key} differs or duplicates')
 PY
 if find "$root/web" -type f -name '*.map' | grep -q . || grep -R -E 'Alder-testifixture|Deterministinen testi: daemon|VITE_ENABLE_TEST_FIXTURES' "$root/web" >/dev/null;then echo 'error: test fixture content, control or source map in packaged web assets' >&2;exit 1;fi
-version=$($root/bin/open-habitat --json version);python3 -c 'import json,sys;x=json.load(sys.stdin);assert x["data"]["commit"] and len(x["data"]["commit"])==40'<<<"$version"
-sha=$(sha256sum "$archive"|cut -d' ' -f1);if $json;then printf '{"schema_version":1,"data":{"status":"verified","archive":"%s","sha256":"%s"},"warnings":[]}\n' "$archive" "$sha";else echo "verified $archive $sha";fi
+case $(uname -m) in x86_64) host=amd64;; aarch64) host=arm64;; *) host=;; esac
+warnings='[]'
+if [[ $root == *-linux-$host ]]; then
+  version=$($root/bin/open-habitat --json version);python3 -c 'import json,sys;x=json.load(sys.stdin);assert x["data"]["commit"] and len(x["data"]["commit"])==40'<<<"$version"
+else
+  # A binary for another architecture cannot run here, and -trimpath keeps Go
+  # from recording the link flags that set its commit. Verify it on its own
+  # architecture to cover its embedded identity.
+  warnings='["embedded_identity_unverified: the package targets another architecture than this host"]'
+fi
+sha=$(sha256sum "$archive"|cut -d' ' -f1);if $json;then printf '{"schema_version":1,"data":{"status":"verified","archive":"%s","sha256":"%s"},"warnings":%s}\n' "$archive" "$sha" "$warnings";else echo "verified $archive $sha";fi

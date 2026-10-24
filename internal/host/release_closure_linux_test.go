@@ -50,7 +50,7 @@ func TestReleaseClosureInventory(t *testing.T) {
 	}
 	defer f.Close()
 	_, _ = f.Write(b)
-	if e = walkReleaseTar(context.Background(), f, a, nil); e != nil {
+	if e = walkReleaseTar(context.Background(), f, a, "ubuntu-24.04-amd64", nil); e != nil {
 		t.Fatal(e)
 	}
 	for _, name := range []string{"renamed", "digest", "mode"} {
@@ -65,7 +65,7 @@ func TestReleaseClosureInventory(t *testing.T) {
 			case "mode":
 				copy.Closure.Files[0].Mode = 0755
 			}
-			if e := walkReleaseTar(context.Background(), f, copy, nil); e == nil {
+			if e := walkReleaseTar(context.Background(), f, copy, "ubuntu-24.04-amd64", nil); e == nil {
 				t.Fatal("accepted mismatched signed file record")
 			}
 		})
@@ -89,7 +89,7 @@ func TestReleaseClosureInventory(t *testing.T) {
 func TestReleaseClosureNPMLock(t *testing.T) {
 	lock := []byte(`{"packages":{"":{},"node_modules/a":{"version":"1.2.3"},"node_modules/a/node_modules/b":{"version":"2.0.0"},"node_modules/mac":{"version":"1.0.0","os":["darwin"]},"node_modules/musl":{"version":"1.0.0","os":["linux"],"cpu":["x64"],"libc":["musl"]}}}`)
 	c := &RuntimeClosure{Components: []RuntimeComponent{{Name: "npm:node_modules/a", Version: "1.2.3", Kind: "npm"}, {Name: "npm:node_modules/a/node_modules/b", Version: "2.0.0", Kind: "npm"}}}
-	if !verifyNPMLock(lock, c) {
+	if !verifyNPMLock(lock, c, "x64") {
 		t.Fatal("valid graph")
 	}
 	for _, change := range []string{"missing", "extra", "wrong-version", "foreign-platform"} {
@@ -105,7 +105,7 @@ func TestReleaseClosureNPMLock(t *testing.T) {
 			case "foreign-platform":
 				copy.Components = append(copy.Components, RuntimeComponent{Name: "npm:node_modules/mac", Version: "1.0.0", Kind: "npm"})
 			}
-			if verifyNPMLock(lock, copy) {
+			if verifyNPMLock(lock, copy, "x64") {
 				t.Fatal("accepted incorrect lock membership")
 			}
 		})
@@ -125,7 +125,7 @@ func TestReleaseOptionalClosureRequiresLocks(t *testing.T) {
 			if _, e = f.Write(b); e != nil {
 				t.Fatal(e)
 			}
-			if e = walkReleaseTar(context.Background(), f, a, nil); e == nil {
+			if e = walkReleaseTar(context.Background(), f, a, "ubuntu-24.04-amd64", nil); e == nil {
 				t.Fatal("optional package closure accepted without native lock")
 			}
 		})

@@ -163,8 +163,15 @@ func TestUbuntuNativeAptContainer(t *testing.T) {
 			Platform string           `json:"platform"`
 			Packages []RuntimePackage `json:"packages"`
 		}
-		if err = json.Unmarshal(b, &declaration); err != nil || declaration.Platform != "ubuntu-24.04-amd64" {
+		if err = json.Unmarshal(b, &declaration); err != nil || declaration.Platform != "ubuntu-24.04" {
 			t.Fatal("invalid requirements", path, err)
+		}
+		// Declarations are architecture-neutral; the builder resolves
+		// "native" to the release's architecture as this does to the host's.
+		for i, p := range declaration.Packages {
+			if p.Architecture == "native" {
+				declaration.Packages[i].Architecture = platformArchitecture(HostPlatform())
+			}
 		}
 		a, _ := releaseFixture(t)
 		a.Profile = filepath.Base(filepath.Dir(path))
@@ -173,7 +180,9 @@ func TestUbuntuNativeAptContainer(t *testing.T) {
 		artifacts = append(artifacts, a)
 		profiles = append(profiles, a.Profile)
 	}
-	r := authenticatedFixture(t, releaseManifest(artifacts...))
+	m := releaseManifest(artifacts...)
+	m.Platform = HostPlatform()
+	r := authenticatedFixture(t, m)
 	b, err = queryRuntimePackages(context.Background())
 	if err != nil {
 		t.Fatal(err)

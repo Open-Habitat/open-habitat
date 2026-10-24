@@ -1,24 +1,24 @@
 {
-  "platform": "ubuntu-24.04-amd64",
+  "platform": "ubuntu-24.04",
   "packages": [
     {
       "name": "build-essential",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "12.10ubuntu1"
     },
     {
       "name": "pkg-config",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "1.8.1-2build1"
     },
     {
       "name": "python3-dev",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "3.12.3-0ubuntu2.1"
     },
     {
       "name": "python3-venv",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "3.12.3-0ubuntu2.1"
     }
   ]

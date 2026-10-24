@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -55,7 +56,15 @@ func (a *claudeLogin) binary() string {
 	if a.executable != "" && a.device.FixtureHome {
 		return a.executable
 	}
-	return filepath.Join(filepath.Dir(filepath.Dir(a.device.Node)), "node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude")
+	return filepath.Join(filepath.Dir(filepath.Dir(a.device.Node)), "node_modules/@anthropic-ai/claude-agent-sdk-linux-"+claudeCPU()+"/claude")
+}
+// npm installs only the SDK binary package for the runtime's own CPU, named
+// with npm's spelling (x64, arm64).
+func claudeCPU() string {
+	if runtime.GOARCH == "amd64" {
+		return "x64"
+	}
+	return runtime.GOARCH
 }
 func (a *claudeLogin) validate() error {
 	if err := a.device.validateConfiguration(); err != nil {

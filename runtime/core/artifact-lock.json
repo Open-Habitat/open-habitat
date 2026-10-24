@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "profile": "core",
+  "node": {
+    "version": "22.21.1",
+    "targets": {
+      "linux-amd64": {
+        "url": "https://nodejs.org/dist/v22.21.1/node-v22.21.1-linux-x64.tar.xz",
+        "sha256": "680d3f30b24a7ff24b98db5e96f294c0070f8f9078df658da1bce1b9c9873c88",
+        "prefix": "node-v22.21.1-linux-x64"
+      },
+      "linux-arm64": {
+        "url": "https://nodejs.org/dist/v22.21.1/node-v22.21.1-linux-arm64.tar.xz",
+        "sha256": "e660365729b434af422bcd2e8e14228637ecf24a1de2cd7c916ad48f2a0521e1",
+        "prefix": "node-v22.21.1-linux-arm64"
+      }
+    }
+  }
+}

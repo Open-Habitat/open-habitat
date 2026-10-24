@@ -13,8 +13,9 @@ profiles = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(profiles)
 
 
-def build(lock_path, inputs, out):
+def build(lock_path, inputs, out, target):
     lock = json.loads(lock_path.read_text())
+    pin = profiles.target_pin(lock, target)
     out.mkdir(mode=0o700)
     root = out / 'payload'
     root.mkdir()
@@ -51,10 +52,10 @@ def build(lock_path, inputs, out):
                         notices.append(path)
 
     archive = inputs / 'uv.tar.gz'
-    checked(archive, lock['archive']['sha256'])
+    checked(archive, pin['sha256'])
     with tarfile.open(archive) as tar:
         for name in ('uv', 'uvx'):
-            f = tar.getmember('uv-x86_64-unknown-linux-gnu/' + name)
+            f = tar.getmember(pin['prefix'] + '/' + name)
             if not f.isfile():
                 raise ValueError('regular native binary required')
             put_bytes(tar.extractfile(f).read(), 'runtime/bin/' + name, 0o755)
@@ -86,4 +87,4 @@ def build(lock_path, inputs, out):
 
 
 if __name__ == '__main__':
-    build(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]))
+    build(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4])

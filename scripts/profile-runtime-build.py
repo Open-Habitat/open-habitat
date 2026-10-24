@@ -5,11 +5,45 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
 import tarfile
 import zipfile
+
+
+# Release targets and the Debian architecture each one's Ubuntu requirements
+# resolve "native" to. Locks pin one upstream artifact per target: a list record
+# with a "target" applies only to that target, one without applies to all, and
+# a "targets" object maps each target to its own pin.
+TARGETS = {'linux-amd64': 'amd64', 'linux-arm64': 'arm64'}
+
+
+def for_target(records, target):
+    if target not in TARGETS:
+        raise ValueError('unsupported target: ' + str(target))
+    return [r for r in records if r.get('target', target) == target]
+
+
+def target_pin(record, target):
+    if target not in TARGETS or set(record['targets']) != set(TARGETS):
+        raise ValueError('lock must pin every target: ' + str(target))
+    return record['targets'][target]
+
+
+def ubuntu_requirements(path, target):
+    """Validate an architecture-neutral declaration; resolve it for one target."""
+    lock = json.loads(path.read_text())
+    if set(lock) != {'platform', 'packages'} or lock['platform'] != 'ubuntu-24.04' or target not in TARGETS:
+        raise ValueError('invalid Ubuntu requirement')
+    packages, seen = [], set()
+    for p in lock['packages']:
+        if set(p) != {'name', 'architecture', 'version'} or not re.fullmatch(r'[a-z0-9][a-z0-9+.-]{0,127}', p['name']) or p['architecture'] not in ('native', 'all') or not re.fullmatch(r'[0-9][a-zA-Z0-9.+:~_-]{0,199}', p['version']) or p['name'] in seen:
+            raise ValueError('invalid Ubuntu requirement')
+        seen.add(p['name'])
+        packages.append(dict(p, architecture=TARGETS[target] if p['architecture'] == 'native' else 'all'))
+    return packages
 
 
 def digest(p):
@@ -40,9 +74,8 @@ def seal(root, out, profile, owners, components, packages, requires=None):
     return artifact
 
 
-def build(profile, inputs, out):
+def build(profile, inputs, out, target):
     # Site profile grammar is deliberately narrower than arbitrary path input.
-    import re
     if not re.fullmatch('[a-z][a-z0-9-]{0,62}', profile):
         raise ValueError('invalid profile')
     out.mkdir(mode=0o700)
@@ -59,14 +92,7 @@ def build(profile, inputs, out):
         owners[path] = owner
 
     lock_path = inputs / 'ubuntu-packages.json'
-    lock = json.loads(lock_path.read_text())
-    packages = lock['packages']
-    import re
-    seen = set()
-    for p in packages:
-        if set(p) != {'name', 'architecture', 'version'} or not re.fullmatch(r'[a-z0-9][a-z0-9+.-]{0,127}', p['name']) or p['architecture'] not in ('amd64', 'all') or not re.fullmatch(r'[0-9][a-zA-Z0-9.+:~_-]{0,199}', p['version']) or p['name'] in seen:
-            raise ValueError('invalid Ubuntu requirement')
-        seen.add(p['name'])
+    packages = ubuntu_requirements(lock_path, target)
     put(lock_path, 'ubuntu-packages.json', 'ubuntu-requirements')
     components.append(dict(name='ubuntu-requirements', version='24.04', kind='lock', license_files=['ubuntu-packages.json']))
     if profile == 'containers':
@@ -121,7 +147,7 @@ def build(profile, inputs, out):
         spec = importlib.util.spec_from_file_location('browser_builder', Path(__file__).with_name('browser-runtime-build.py'))
         browser_builder = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(browser_builder)
-        browser_builder.add_browser(inputs / 'artifact-lock.json', inputs, root, owners, components, digest)
+        browser_builder.add_browser(inputs / 'artifact-lock.json', inputs, root, owners, components, digest, target)
     requires = ['media'] if profile == 'documents' else ['python'] if profile == 'browser' else []
     artifact = seal(root, out, profile, owners, components, packages, requires=requires)
     shutil.rmtree(root)
@@ -129,4 +155,4 @@ def build(profile, inputs, out):
 
 
 if __name__ == '__main__':
-    build(sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3]))
+    build(sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4])

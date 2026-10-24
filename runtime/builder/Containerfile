@@ -1,0 +1,8 @@
+# Disposable runtime archive builder. The base is the multi-architecture
+# Ubuntu 24.04 index, so the same recipe builds on amd64 and arm64 hosts.
+# Builds only fetch digest-pinned inputs and inventory them; tool versions
+# here do not reach an archive except Ubuntu's common licence texts, which the
+# browser lock pins by digest.
+FROM docker.io/library/ubuntu@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends python3 curl ca-certificates && apt-get clean && rm -rf /var/lib/apt/lists/*

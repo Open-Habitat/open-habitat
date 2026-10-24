@@ -99,3 +99,17 @@ for executable in open-habitat runtime-release; do
   fi
   grep -q 'noncanonical permissions' "$tmp/private-$executable/err"
 done
+# A re-signed package renamed to the other architecture must not pass as one.
+stage="$tmp/foreign-arch/stage"
+mkdir -p "$stage"
+tar --same-permissions -xzf "$archive" -C "$stage"
+root=$(find "$stage" -mindepth 1 -maxdepth 1 -type d)
+case $root in *-linux-amd64) other=${root%-linux-amd64}-linux-arm64;; *-linux-arm64) other=${root%-linux-arm64}-linux-amd64;; *) echo 'error: unexpected package target' >&2; exit 1;; esac
+mv "$root" "$other"
+unsafe="$tmp/foreign-arch/unsafe.tar.gz"
+tar --owner=0 --group=0 --numeric-owner -czf "$unsafe" -C "$stage" "$(basename "$other")"
+(cd "$(dirname "$unsafe")"; sha256sum unsafe.tar.gz > unsafe.tar.gz.sha256)
+if "$repo/scripts/verify-release.sh" --archive "$unsafe" --json >"$tmp/foreign-arch/out" 2>"$tmp/foreign-arch/err"; then
+  echo "error: verifier accepted executables of another architecture" >&2; exit 1
+fi
+grep -q 'is not a 64-bit little-endian' "$tmp/foreign-arch/err" || { cat "$tmp/foreign-arch/err" >&2; exit 1; }

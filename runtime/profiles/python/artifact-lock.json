@@ -5,16 +5,32 @@
   "version": "3.14.4+20260414",
   "inputs": [
     {
+      "target": "linux-amd64",
       "name": "runtime",
       "filename": "python.tar.gz",
       "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4%2B20260414-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
       "sha256": "fe9a9c32d13870af632cbac3dfc7528ae53597e94472aa4c7d6a42e8166136cd"
     },
     {
+      "target": "linux-arm64",
+      "name": "runtime",
+      "filename": "python.tar.gz",
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4%2B20260414-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz",
+      "sha256": "b8b597fdb2f8dccdc502c11947b60a4b65eb6bce79cfa60c7ccf9b6e8352c60a"
+    },
+    {
+      "target": "linux-amd64",
       "name": "full",
       "filename": "python-full.tar.zst",
       "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4%2B20260414-x86_64-unknown-linux-gnu-pgo%2Blto-full.tar.zst",
       "sha256": "fe3c06110450ec03eec298b69dfb888baf746ad17b8fd83916ee3ebab7d04621"
+    },
+    {
+      "target": "linux-arm64",
+      "name": "full",
+      "filename": "python-full.tar.zst",
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4%2B20260414-aarch64-unknown-linux-gnu-pgo%2Blto-full.tar.zst",
+      "sha256": "a0c26fb1d73c4dde874c70fba4610814e3d7ec6b56b3336f31547c48debbc5ca"
     },
     {
       "name": "bdb",

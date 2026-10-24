@@ -49,7 +49,9 @@ INTEGRATIONS_INSTALLED = {'imap': [True, None], 'caldav': [True, None], 'carddav
                           'google': [False, 'app_credentials_required'],
                           'microsoft': [False, 'app_credentials_required'],
                           'dropbox': [False, 'app_credentials_required']}
-PACKAGE_RE = re.compile(r'^open-habitat-[0-9A-Za-z.+-]+-linux-amd64\.tar\.gz$')
+PACKAGE_RE = re.compile(r'^open-habitat-[0-9A-Za-z.+-]+-linux-(amd64|arm64)\.tar\.gz$')
+# What uname -m reports for each package architecture.
+MACHINES = {'amd64': 'x86_64', 'arm64': 'aarch64'}
 NOT_COVERED = [
     'browser GitHub OAuth sign-in and callback',
     'model-provider authorization and a real conversation',
@@ -95,7 +97,7 @@ def release_bundle(directory):
         raise Usage('release_directory_missing', f'{directory} is not a directory')
     packages = sorted(p.name for p in root.iterdir() if PACKAGE_RE.match(p.name))
     if len(packages) != 1:
-        raise Usage('release_package_ambiguous', f'{directory} must hold exactly one open-habitat-*-linux-amd64.tar.gz package, found {len(packages)}')
+        raise Usage('release_package_ambiguous', f'{directory} must hold exactly one open-habitat-*-linux-<amd64|arm64>.tar.gz package, found {len(packages)}')
     for name in ('release.json', 'release.sig'):
         if not (root / name).is_file():
             raise Usage('release_manifest_missing', f'{directory} lacks {name}')
@@ -105,12 +107,16 @@ def release_bundle(directory):
         archives = [a['archive'] for a in artifacts]
         profiles = sorted({a['profile'] for a in artifacts})
         version = manifest['version']
+        platform = manifest['platform']
     except (OSError, ValueError, KeyError, TypeError):
         raise Usage('release_manifest_invalid', f'{directory}/release.json is not a release manifest') from None
     for name in archives:
         if '/' in name or not (root / name).is_file():
             raise Usage('release_archive_missing', f'{directory} lacks runtime archive {name}')
     package = root / packages[0]
+    arch = PACKAGE_RE.match(package.name).group(1)
+    if platform != 'ubuntu-24.04-' + arch:
+        raise Usage('release_platform_mismatch', f'{package.name} does not match the runtime manifest platform {platform}')
     try:
         with tarfile.open(package, 'r:gz') as tar:
             tops = {m.name.split('/', 1)[0] for m in tar.getmembers()}
@@ -130,6 +136,7 @@ def release_bundle(directory):
         'package': package.name,
         'package_sha256': sha256(package),
         'package_top': top,
+        'arch': arch,
         'binary_sha256': binary,
         'files': ['release.json', 'release.sig', *archives],
         'archive_sha256': {a['archive']: a.get('sha256') for a in artifacts},
@@ -144,6 +151,8 @@ def inputs(args):
         raise Usage('release_key_invalid', 'release key must be the raw 32-byte Ed25519 public key file')
     pred = release_bundle(args.predecessor)
     succ = release_bundle(args.successor) if args.successor else None
+    if succ and succ['arch'] != pred['arch']:
+        raise Usage('release_platform_mismatch', 'an upgrade keeps the architecture: predecessor and successor must target the same platform')
     if succ:
         prior = (succ['upgrade'] or {}).get('predecessor') or {}
         if prior.get('version') != pred['version'] or prior.get('manifest_sha256') != pred['manifest_sha256']:
@@ -566,8 +575,9 @@ class Qualification:
         self.r.run(['cloud-init', 'status', '--wait'], check=False, timeout=900)
         p = self.r.run(['sh', '-c', '. /etc/os-release; echo "$ID $VERSION_ID"; uname -m; cat /proc/1/comm; cat /proc/sys/kernel/random/boot_id'])
         os_id, arch, pid1, boot = p.stdout.split('\n')[:4]
-        if os_id != 'ubuntu 24.04' or arch != 'x86_64' or pid1 != 'systemd':
-            raise Failure('target_not_supported_baseline', f'target is {os_id} {arch} pid1={pid1}; qualification needs Ubuntu 24.04 amd64 with systemd')
+        want = self.spec['predecessor']['arch']
+        if os_id != 'ubuntu 24.04' or arch != MACHINES[want] or pid1 != 'systemd':
+            raise Failure('target_not_supported_baseline', f'target is {os_id} {arch} pid1={pid1}; this release needs Ubuntu 24.04 {want} with systemd')
         if self.r.run(['test', '-e', '/etc/open-habitat'], check=False).returncode == 0:
             raise Failure('target_not_fresh', 'target already has /etc/open-habitat; use a freshly booted stock image')
         return {'os': os_id, 'arch': arch, 'pid1': pid1, 'boot_id': boot}

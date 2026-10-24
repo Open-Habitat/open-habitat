@@ -8,7 +8,9 @@ predecessor's release directory and the successor's product package and writes
 `artifacts.json` (the predecessor's descriptors, unchanged) and `upgrade.json`
 (protocol 1, the predecessor's version, manifest and executable digests, and
 every successor product file) into OUT, for
-`runtime-release sign --artifacts-file OUT/artifacts.json --upgrade-file OUT/upgrade.json`.
+`runtime-release sign --platform PLATFORM --artifacts-file OUT/artifacts.json
+--upgrade-file OUT/upgrade.json`, where PLATFORM is the predecessor's, printed
+in the result: an upgrade never changes the host's architecture.
 It signs nothing and never sees a key.
 """
 import argparse
@@ -43,15 +45,18 @@ def package_files(path):
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--predecessor', required=True, help='published release directory of the installed release')
-    p.add_argument('--package', required=True, help='successor open-habitat-*-linux-amd64.tar.gz')
+    p.add_argument('--package', required=True, help="successor open-habitat-*-linux-<arch>.tar.gz for the predecessor's architecture")
     p.add_argument('--output', required=True, help='existing directory for artifacts.json and upgrade.json')
     args = p.parse_args(argv)
     pred, out = Path(args.predecessor), Path(args.output)
     raw = (pred / 'release.json').read_bytes()
     manifest = json.loads(raw)
-    packages = sorted(pred.glob('open-habitat-*-linux-amd64.tar.gz'))
-    if len(packages) != 1:
-        sys.exit(f'error: {pred} must hold exactly one product package')
+    arch = manifest['platform'].removeprefix('ubuntu-24.04-')
+    packages = sorted(pred.glob('open-habitat-*-linux-*.tar.gz'))
+    if len(packages) != 1 or not packages[0].name.endswith('-linux-' + arch + '.tar.gz'):
+        sys.exit(f'error: {pred} must hold exactly one product package for its platform {manifest["platform"]}')
+    if not Path(args.package).name.endswith('-linux-' + arch + '.tar.gz'):
+        sys.exit(f'error: the successor package must target the predecessor platform {manifest["platform"]}')
     previous = next(f for f in package_files(packages[0]) if f['path'] == 'open-habitat')
     upgrade = {'protocol': 1, 'predecessor_binary_sha256': previous['sha256'],
                'predecessor': {'version': manifest['version'], 'manifest_sha256': hashlib.sha256(raw).hexdigest()},
@@ -59,7 +64,7 @@ def main(argv=None):
     for name, doc in (('artifacts.json', manifest['artifacts']), ('upgrade.json', upgrade)):
         with open(out / name, 'x') as f:
             json.dump(doc, f)
-    print(json.dumps({'predecessor': upgrade['predecessor'], 'product_files': len(upgrade['product'])}))
+    print(json.dumps({'predecessor': upgrade['predecessor'], 'platform': manifest['platform'], 'product_files': len(upgrade['product'])}))
 
 
 if __name__ == '__main__':

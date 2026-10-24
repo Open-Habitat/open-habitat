@@ -6,7 +6,18 @@ import stat
 import zipfile
 
 
-def add_browser(lock_path, inputs, root, owners, components, digest):
+def records_for(lock, target):
+    if target not in ('linux-amd64', 'linux-arm64'):
+        raise ValueError('unsupported target: ' + str(target))
+    return [r for r in lock['inputs'] if r.get('target', target) == target]
+
+
+# Chrome for Testing publishes no Linux arm64 build; Playwright's own arm64
+# headless shell is laid out differently and carries no notice file.
+EXECUTABLES = ('chrome-headless-shell', 'headless_shell', 'chrome_crashpad_handler')
+
+
+def add_browser(lock_path, inputs, root, owners, components, digest, target):
     lock = json.loads(lock_path.read_text())
     # Shared Debian notices come from the builder OS, not a downloaded tool.
     # Bind their exact bytes too: a non-Ubuntu builder must refuse, not silently
@@ -14,10 +25,24 @@ def add_browser(lock_path, inputs, root, owners, components, digest):
     common = {p.name: digest(p) for p in (root / 'licenses/common').iterdir() if p.is_file()}
     if not common or common != lock['common_license_sha256']:
         raise ValueError('builder common licence bytes differ from lock')
-    records = lock['inputs']
+    # A notice record supplies the browser's licence from the same Chromium
+    # version's official archive when the browser archive itself lacks one.
+    selected = records_for(lock, target)
+    records = [p for p in selected if p['kind'] != 'notice']
     expected = {'playwright', 'greenlet', 'pyee', 'typing-extensions', 'chromium-headless-shell'}
     if {p['name'] for p in records} != expected or len(records) != len(expected):
         raise ValueError('incomplete browser/wheel closure')
+    notice = None
+    for p in selected:
+        if p['kind'] == 'notice':
+            archive = inputs / p['filename']
+            browser = next(r for r in records if r['kind'] == 'browser')
+            if notice is not None or archive.parent != inputs or digest(archive) != p['sha256'] or p['name'] != 'chromium-headless-shell-notice' or p['version'] != browser['version']:
+                raise ValueError('browser notice input mismatch')
+            with zipfile.ZipFile(archive) as z:
+                notice = z.read(p['member'])
+            if not notice.strip():
+                raise ValueError('browser license_unverified: empty notice')
 
     def put(data, path, owner, mode=0o644):
         if path in owners:
@@ -39,7 +64,11 @@ def add_browser(lock_path, inputs, root, owners, components, digest):
             if len(set(names)) != len(names):
                 raise ValueError('duplicate ZIP member')
             required_notice = p.get('prefix', '') + '/LICENSE.headless_shell'
-            if p['kind'] == 'browser' and (required_notice not in names or not z.read(required_notice).strip()):
+            if p['kind'] == 'browser' and required_notice not in names and notice is not None:
+                path = 'runtime/browsers/chromium_headless_shell-' + p['revision'] + '/' + required_notice
+                put(notice, path, ident)
+                notices.append(path)
+            elif p['kind'] == 'browser' and (required_notice not in names or not z.read(required_notice).strip() or notice is not None):
                 raise ValueError('browser license_unverified: ' + ident)
             for f in z.infolist():
                 name = PurePosixPath(f.filename)
@@ -51,7 +80,7 @@ def add_browser(lock_path, inputs, root, owners, components, digest):
                     if name.parts[0] != p['prefix']:
                         raise ValueError('unexpected browser prefix')
                     path = 'runtime/browsers/chromium_headless_shell-' + p['revision'] + '/' + name.as_posix()
-                    mode = 0o755 if name.name in ('chrome-headless-shell', 'chrome_crashpad_handler') else 0o644
+                    mode = 0o755 if name.name in EXECUTABLES else 0o644
                     put(z.read(f), path, ident, mode)
                     if name.name in ('LICENSE.headless_shell', 'ABOUT'):
                         notices.append(path)

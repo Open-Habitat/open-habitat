@@ -1,9 +1,9 @@
 {
-  "platform": "ubuntu-24.04-amd64",
+  "platform": "ubuntu-24.04",
   "packages": [
     {
       "name": "acl",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "2.3.2-1build1.1"
     },
     {
@@ -13,27 +13,27 @@
     },
     {
       "name": "gh",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "2.45.0-1ubuntu0.3"
     },
     {
       "name": "git",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "1:2.43.0-1ubuntu7.4"
     },
     {
       "name": "passwd",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "1:4.13+dfsg1-4ubuntu3.2"
     },
     {
       "name": "quota",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "4.06-1build6"
     },
     {
       "name": "tmux",
-      "architecture": "amd64",
+      "architecture": "native",
       "version": "3.4-1ubuntu0.2"
     }
   ]

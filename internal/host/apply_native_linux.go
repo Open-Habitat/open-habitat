@@ -4,7 +4,6 @@ package host
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -108,7 +107,7 @@ func loadRelease(s Site) (AuthenticatedRelease, error) {
 	if e != nil {
 		return AuthenticatedRelease{}, e
 	}
-	r, e := AuthenticateRelease(b, sig, ed25519.PublicKey(key), s.Release)
+	r, e := authenticateHostRelease(b, sig, key, s.Release)
 	if e != nil {
 		return r, e
 	}

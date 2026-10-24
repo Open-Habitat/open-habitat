@@ -175,6 +175,12 @@ mkdir -p "$tmp/relocated";cp dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz
 ./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json
 printf 'tampered' >> "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz"
 if ./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json >/dev/null 2>&1;then echo 'error: tampered relocated archive verified' >&2;exit 1;fi
+# The arm64 package is cross-built from the same tree and must be as reproducible.
+mkdir -p dist/arm64-one dist/arm64-two
+./scripts/package-release.sh --version 0.0.0-test --target linux-arm64 --web-dir web/dist --output dist/arm64-one
+./scripts/package-release.sh --version 0.0.0-test --target linux-arm64 --web-dir web/dist --output dist/arm64-two
+cmp dist/arm64-one/open-habitat-0.0.0-test-linux-arm64.tar.gz dist/arm64-two/open-habitat-0.0.0-test-linux-arm64.tar.gz
+bash scripts/test-package-socket.sh dist/arm64-one/open-habitat-0.0.0-test-linux-arm64.tar.gz
 phase final-checks
 issuectl doctor --json
 git diff --check

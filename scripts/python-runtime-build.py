@@ -18,10 +18,15 @@ profiles = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(profiles)
 
 
-def build(lock_path, inputs, out):
+# python-build-standalone names each release target by its LLVM triple.
+TRIPLES = {'linux-amd64': 'x86_64-unknown-linux-gnu', 'linux-arm64': 'aarch64-unknown-linux-gnu'}
+
+
+def build(lock_path, inputs, out, target):
     lock = json.loads(lock_path.read_text())
-    records = {a['name']: a for a in lock['inputs']}
-    if len(records) != len(lock['inputs']):
+    selected = profiles.for_target(lock['inputs'], target)
+    records = {a['name']: a for a in selected}
+    if len(records) != len(selected) or not {'runtime', 'full'} <= records.keys():
         raise ValueError('duplicate input identity')
     for a in records.values():
         if Path(a['filename']).name != a['filename'] or profiles.digest(inputs / a['filename']) != a['sha256']:
@@ -59,7 +64,7 @@ def build(lock_path, inputs, out):
     with tarfile.open(inputs / records['full']['filename']) as tar:
         metadata = tar.extractfile('python/PYTHON.json').read()
         meta = json.loads(metadata)
-        if meta['python_version'] != '3.14.4' or meta['target_triple'] != 'x86_64-unknown-linux-gnu':
+        if meta['python_version'] != '3.14.4' or meta['target_triple'] != TRIPLES[target]:
             raise ValueError('wrong Python target')
         required = {meta['license_path']}
         def walk(value):
@@ -165,4 +170,4 @@ def build(lock_path, inputs, out):
 
 
 if __name__ == '__main__':
-    build(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]))
+    build(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4])

@@ -26,8 +26,8 @@ OS_TOOLS = {'cloud-init', 'sh', 'test', 'env', 'uname', 'readlink', 'blkid', 'fi
             'mkfs.ext4', 'udevadm', 'systemctl', 'mount', 'install', 'sha256sum', 'python3', 'kill', 'cat'}
 
 
-def package(root, version, binary):
-    top = f'open-habitat-{version}-linux-amd64'
+def package(root, version, binary, arch='amd64'):
+    top = f'open-habitat-{version}-linux-{arch}'
     path = root / f'{top}.tar.gz'
     with tarfile.open(path, 'w:gz') as tar:
         for name, data in ((f'{top}/bin/open-habitat', binary), (f'{top}/web/index.html', b'<!doctype html>')):
@@ -37,13 +37,13 @@ def package(root, version, binary):
     return top
 
 
-def release(root, version, binary, predecessor=None):
+def release(root, version, binary, predecessor=None, arch='amd64'):
     root.mkdir()
-    top = package(root, version, binary)
+    top = package(root, version, binary, arch)
     # Core bytes are shared across releases, as in a product-only successor.
     archives = {'core.tar.gz': b'core archive', 'integrations.tar.gz': b'integrations archive',
                 'editor.tar.gz': version.encode() + b'editor.tar.gz'}
-    manifest = {'schema_version': 2, 'version': version, 'artifacts': [
+    manifest = {'schema_version': 2, 'version': version, 'platform': 'ubuntu-24.04-' + arch, 'artifacts': [
         {'profile': name.split('.')[0], 'archive': name, 'sha256': hashlib.sha256(data).hexdigest()}
         for name, data in archives.items()]}
     if predecessor:
@@ -122,7 +122,7 @@ class FakeTarget:
     def answer(self, a):
         joined = ' '.join(a)
         if a[0] == 'sh' and 'os-release' in a[2]:
-            return 0, f'ubuntu 24.04\nx86_64\nsystemd\nboot-{self.boot}\n'
+            return 0, f'ubuntu 24.04\n{self.faults.get("machine", "x86_64")}\nsystemd\nboot-{self.boot}\n'
         if a[:2] == ['test', '-e']:
             if a[2] == '/var/run/reboot-required':
                 return (0 if self.faults.get('reboot_required') and self.boot == 1 else 1), ''
@@ -341,6 +341,17 @@ class Harness(unittest.TestCase):
             fake, q, failure, doc = self.journey(**{fault: True})
             self.assertEqual((failure.code, doc['failed_stage']), (code, stage), fault)
 
+    def test_arm64_release_needs_an_arm64_target(self):
+        root = self.root / 'arm64'
+        root.mkdir()
+        self.pred_top, pred = release(root / 'pred', '0.1.0-q.1', b'old-binary', arch='arm64')
+        self.succ_top, _ = release(root / 'succ', '0.1.0-q.2', b'new-binary', predecessor=pred, arch='arm64')
+        self.args = ['--predecessor', str(root / 'pred'), '--successor', str(root / 'succ'), '--release-key', str(self.key)]
+        fake, q, failure, doc = self.journey(machine='aarch64')
+        self.assertIsNone(failure, doc)
+        fake, q, failure, doc = self.journey()
+        self.assertEqual(failure.code, 'target_not_supported_baseline')
+
     def test_customer_reboot_after_security_updates(self):
         fake, q, failure, doc = self.journey(successor=False, interrupt=False, reboot_required=True)
         self.assertIsNone(failure)
@@ -431,6 +442,15 @@ class Commands(unittest.TestCase):
         code, out, err = self.main('plan', *self.h.args, '--json')
         self.assertEqual(code, 2)
         self.assertEqual(json.loads(err)['error']['code'], 'successor_not_for_predecessor')
+
+    def test_plan_rejects_mixed_architectures(self):
+        release(self.h.root / 'arm-succ', '0.1.0-q.3', b'arm', predecessor={'version': '0.1.0-q.1', 'manifest_sha256': hashlib.sha256((self.h.root / 'pred' / 'release.json').read_bytes()).hexdigest()}, arch='arm64')
+        code, out, err = self.main('plan', '--predecessor', str(self.h.root / 'pred'), '--successor', str(self.h.root / 'arm-succ'), '--release-key', str(self.h.key), '--json')
+        self.assertEqual((code, json.loads(err)['error']['code']), (2, 'release_platform_mismatch'))
+        manifest = self.h.root / 'pred' / 'release.json'
+        manifest.write_text(manifest.read_text().replace('ubuntu-24.04-amd64', 'ubuntu-24.04-arm64'))
+        code, out, err = self.main('plan', '--predecessor', str(self.h.root / 'pred'), '--release-key', str(self.h.key), '--json')
+        self.assertEqual((code, json.loads(err)['error']['code']), (2, 'release_platform_mismatch'))
 
     def test_usage_errors_are_json(self):
         code, out, err = self.main('target', *self.h.args)

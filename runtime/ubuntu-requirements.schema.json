@@ -5,7 +5,7 @@
   "additionalProperties": false,
   "required": ["platform", "packages"],
   "properties": {
-    "platform": {"const": "ubuntu-24.04-amd64"},
+    "platform": {"const": "ubuntu-24.04", "description": "Ubuntu release; the same declaration serves every supported architecture."},
     "packages": {
       "type": "array", "maxItems": 10000,
       "items": {
@@ -13,7 +13,7 @@
         "required": ["name", "architecture", "version"],
         "properties": {
           "name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9+.-]{0,127}$"},
-          "architecture": {"enum": ["amd64", "all"]},
+          "architecture": {"enum": ["native", "all"], "description": "native: the package built for the release target's architecture (amd64 or arm64); all: architecture-independent."},
           "version": {"type": "string", "description": "Qualified minimum, ordered by Debian policy; newer Ubuntu security updates are accepted.", "pattern": "^[0-9][a-zA-Z0-9.+:~_-]{0,199}$"}
         }
       }

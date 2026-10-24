@@ -2,9 +2,17 @@
   "schema_version": 1,
   "name": "uv",
   "version": "0.12.13",
-  "archive": {
-    "url": "https://github.com/astral-sh/uv/releases/download/0.12.13/uv-x86_64-unknown-linux-gnu.tar.gz",
-    "sha256": "745765a3b6e360ad76743599ae5c42e9278c7edf8bbff9fc76d05bf2623a04dd"
+  "targets": {
+    "linux-amd64": {
+      "url": "https://github.com/astral-sh/uv/releases/download/0.12.13/uv-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "745765a3b6e360ad76743599ae5c42e9278c7edf8bbff9fc76d05bf2623a04dd",
+      "prefix": "uv-x86_64-unknown-linux-gnu"
+    },
+    "linux-arm64": {
+      "url": "https://github.com/astral-sh/uv/releases/download/0.12.13/uv-aarch64-unknown-linux-gnu.tar.gz",
+      "sha256": "2eaa5d94f5db7b3a1a092156b9420459e42ab0217d917fe74a876309cef9b5e9",
+      "prefix": "uv-aarch64-unknown-linux-gnu"
+    }
   },
   "source": {
     "url": "https://github.com/astral-sh/uv/releases/download/0.12.13/source.tar.gz",

@@ -44,7 +44,7 @@ class BuilderTests(unittest.TestCase):
                 deb = inputs / 'debs' / (name + '.deb')
                 subprocess.run(['dpkg-deb', '--build', str(root), str(deb)], check=True, capture_output=True)
                 packages.append(dict(name=name, version='1.0', architecture='all', role='tool', filename=deb.name, sha256=profiles.digest(deb)))
-            (inputs / 'ubuntu-packages.json').write_text(json.dumps(dict(packages=[{k: p[k] for k in ('name', 'version', 'architecture')} for p in packages])))
+            (inputs / 'ubuntu-packages.json').write_text(json.dumps(dict(platform='ubuntu-24.04', packages=[{k: p[k] for k in ('name', 'version', 'architecture')} for p in packages])))
             wheel = inputs / 'compose.whl'
             with zipfile.ZipFile(wheel, 'w') as z:
                 z.writestr('podman_compose.py', 'import sys\nassert sys.argv[1] == "--in-pod=false"\nprint("synthetic-compose")')
@@ -53,7 +53,7 @@ class BuilderTests(unittest.TestCase):
             lock = dict(version='1.5.0', filename=wheel.name, sha256=profiles.digest(wheel), deb_dependencies={p['name']: p['version'] for p in packages})
             (inputs / 'artifact-lock.json').write_text(json.dumps(lock))
             with contextlib.redirect_stdout(io.StringIO()):
-                profiles.build('containers', inputs, d / 'out')
+                profiles.build('containers', inputs, d / 'out', 'linux-amd64')
             artifact = json.loads((d / 'out/artifact.json').read_text())
             files = {f['path']: f for f in artifact['closure']['files']}
             for name in ('initialize-netns', 'podman-compose'):
@@ -71,10 +71,10 @@ class BuilderTests(unittest.TestCase):
             lock['deb_dependencies']['python3-yaml'] = 'wrong'
             (inputs / 'artifact-lock.json').write_text(json.dumps(lock))
             with self.assertRaisesRegex(ValueError, 'dependency lock mismatch'):
-                profiles.build('containers', inputs, d / 'missing-dependency')
+                profiles.build('containers', inputs, d / 'missing-dependency', 'linux-amd64')
             wheel.write_bytes(b'tampered')
             with self.assertRaisesRegex(ValueError, 'compose digest mismatch'):
-                profiles.build('containers', inputs, d / 'tampered')
+                profiles.build('containers', inputs, d / 'tampered', 'linux-amd64')
 
     def test_seal_reproducible_and_modes(self):
         with tempfile.TemporaryDirectory(dir="/var/tmp") as d:
@@ -109,13 +109,16 @@ class BuilderTests(unittest.TestCase):
                         info = tarfile.TarInfo(name)
                         info.size = len(data)
                         tar.addfile(info, io.BytesIO(data))
-            tar_file(inputs / 'uv.tar.gz', {'uv-x86_64-unknown-linux-gnu/uv': 'binary', 'uv-x86_64-unknown-linux-gnu/uvx': 'binary'})
+            tar_file(inputs / 'uv.tar.gz', {'uv-aarch64-unknown-linux-gnu/uv': 'binary', 'uv-aarch64-unknown-linux-gnu/uvx': 'binary'})
             cargo = '[[package]]\nname="omitted"\nversion="1.0"\nsource="registry+https://github.com/rust-lang/crates.io-index"\nchecksum="' + 'a' * 64 + '"\n'
             tar_file(inputs / 'source.tar.gz', {'uv-1.0/Cargo.lock': cargo})
             lock = d / 'lock.json'
-            lock.write_text(json.dumps(dict(version='1.0', archive=dict(sha256=profiles.digest(inputs / 'uv.tar.gz')), source=dict(sha256=profiles.digest(inputs / 'source.tar.gz')), crates=[])))
+            arm = dict(sha256=profiles.digest(inputs / 'uv.tar.gz'), prefix='uv-aarch64-unknown-linux-gnu')
+            lock.write_text(json.dumps(dict(version='1.0', targets={'linux-amd64': dict(sha256='0' * 64, prefix='uv-x86_64-unknown-linux-gnu'), 'linux-arm64': arm}, source=dict(sha256=profiles.digest(inputs / 'source.tar.gz')), crates=[])))
+            with self.assertRaisesRegex(ValueError, 'digest mismatch'):
+                uv.build(lock, inputs, d / 'amd64', 'linux-amd64')
             with self.assertRaisesRegex(ValueError, 'incomplete Rust source lock'):
-                uv.build(lock, inputs, d / 'out')
+                uv.build(lock, inputs, d / 'out', 'linux-arm64')
             self.assertFalse((d / 'out/artifact.json').exists())
 
     def test_editor_alias_uses_real_target_and_bundled_node(self):
@@ -139,8 +142,9 @@ class BuilderTests(unittest.TestCase):
             with tarfile.open(archive, 'w:gz') as tar:
                 tar.add(source, arcname='pkg')
             lock = d / 'lock.json'
-            lock.write_text(json.dumps(dict(name='editor', version='1.0', profile='editor', prefix='pkg', sha256=profiles.digest(archive), licenses=['LICENSE'])))
-            editor.build(lock, archive, d / 'out')
+            pin = dict(prefix='pkg', sha256=profiles.digest(archive))
+            lock.write_text(json.dumps(dict(name='editor', version='1.0', profile='editor', targets={'linux-amd64': pin, 'linux-arm64': pin}, licenses=['LICENSE'])))
+            editor.build(lock, archive, d / 'out', 'linux-arm64')
             with tarfile.open(d / 'out/editor.tar.gz') as tar:
                 tar.extractall(d / 'installed', filter='data')
             result = subprocess.check_output([str(d / 'installed/runtime/node_modules/.bin/tool')], env={'PATH': '/usr/bin:/bin'}, text=True)
@@ -163,7 +167,48 @@ class BuilderTests(unittest.TestCase):
                     (inputs / 'debs/extra.deb').write_bytes(b'extra')
                 (inputs / 'ubuntu-packages.json').write_text(json.dumps(dict(packages=[p])))
                 with self.assertRaises(ValueError):
-                    profiles.build('test', inputs, d / 'out')
+                    profiles.build('test', inputs, d / 'out', 'linux-amd64')
+
+
+    def test_ubuntu_requirements_resolve_per_target(self):
+        with tempfile.TemporaryDirectory(dir='/var/tmp') as d:
+            path = Path(d) / 'ubuntu-packages.json'
+            declaration = dict(platform='ubuntu-24.04', packages=[dict(name='git', architecture='native', version='1'), dict(name='adduser', architecture='all', version='2')])
+            path.write_text(json.dumps(declaration))
+            for target, arch in (('linux-amd64', 'amd64'), ('linux-arm64', 'arm64')):
+                self.assertEqual(profiles.ubuntu_requirements(path, target), [dict(name='git', architecture=arch, version='1'), dict(name='adduser', architecture='all', version='2')])
+            for bad in (dict(declaration, platform='ubuntu-24.04-amd64'), dict(declaration, packages=[dict(name='git', architecture='amd64', version='1')])):
+                path.write_text(json.dumps(bad))
+                with self.assertRaisesRegex(ValueError, 'invalid Ubuntu requirement'):
+                    profiles.ubuntu_requirements(path, 'linux-arm64')
+            path.write_text(json.dumps(declaration))
+            with self.assertRaisesRegex(ValueError, 'invalid Ubuntu requirement'):
+                profiles.ubuntu_requirements(path, 'linux-armhf')
+
+    def test_target_selection(self):
+        records = [dict(name='shared'), dict(name='x', target='linux-amd64'), dict(name='a', target='linux-arm64')]
+        self.assertEqual([r['name'] for r in profiles.for_target(records, 'linux-arm64')], ['shared', 'a'])
+        with self.assertRaisesRegex(ValueError, 'unsupported target'):
+            profiles.for_target(records, 'linux-riscv64')
+        with self.assertRaisesRegex(ValueError, 'every target'):
+            profiles.target_pin(dict(targets={'linux-amd64': {}}), 'linux-amd64')
+
+    def test_checked_in_locks_pin_every_target_at_one_version(self):
+        """Both targets of a profile ship the same upstream versions."""
+        runtime = Path(__file__).resolve().parent.parent / 'runtime'
+        core = json.loads((runtime / 'core/artifact-lock.json').read_text())
+        integrations = json.loads((runtime / 'profiles/integrations/artifact-lock.json').read_text())
+        self.assertEqual(core['node'], integrations['node'])
+        for profile in ('integrations', 'browser', 'python'):
+            lock = json.loads((runtime / 'profiles' / profile / 'artifact-lock.json').read_text())
+            for key in ('inputs', 'tools'):
+                # Integrations inputs are named by upstream file; count them.
+                versions = {t: sorted((r.get('name', ''), r.get('version', '')) for r in profiles.for_target(lock.get(key, []), t) if r.get('kind') != 'notice') for t in profiles.TARGETS}
+                self.assertEqual(versions['linux-amd64'], versions['linux-arm64'], profile + ' ' + key)
+        for profile in ('editor', 'uv'):
+            lock = json.loads((runtime / 'profiles' / profile / 'artifact-lock.json').read_text())
+            for target in profiles.TARGETS:
+                self.assertIn(lock['version'], profiles.target_pin(lock, target)['url'])
 
 
 if __name__ == '__main__':

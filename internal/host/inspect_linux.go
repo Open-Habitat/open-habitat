@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 
 	"github.com/Open-Habitat/open-habitat/internal/provision"
@@ -124,7 +123,7 @@ func inspect(ctx context.Context, sitePath string, src inspectSources) (Inspecti
 	b, e := os.ReadFile(src.osRelease)
 	if e != nil {
 		add("platform.os", "unavailable", "observation_unavailable")
-	} else if osField(string(b), "ID") == "ubuntu" && osField(string(b), "VERSION_ID") == "24.04" && runtime.GOARCH == "amd64" {
+	} else if osField(string(b), "ID") == "ubuntu" && osField(string(b), "VERSION_ID") == "24.04" && HostPlatform() != "" {
 		add("platform.os", "pass", "supported_platform")
 	} else {
 		add("platform.os", "fail", "unsupported_platform")
