@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
@@ -33,12 +34,14 @@ var gitRemoteName = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9._-]{0,99}$`)
 // updates remote-tracking refs and FETCH_HEAD, never a local branch or the
 // working tree, and answers with the workspace's Git observation read again.
 // The daemon has no SSH agent, so an SSH remote whose key needs one fails;
-// that failure is classified, never passed on as Git's own text.
-func WorkspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
-	return workspaceGitFetchHandler(cfg, trusted, "/usr/bin/git", gitFetchLimit)
+// that failure is classified, never passed on as Git's own text. A remote on
+// a connected Gitea's server runs under that adapter's transfer policy
+// (gitea_transfer_linux.go); gitea may be nil.
+func WorkspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) bool, gitea *integrations.GiteaAdapter) http.Handler {
+	return workspaceGitFetchHandler(cfg, trusted, "/usr/bin/git", gitFetchLimit, gitea)
 }
 
-func workspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) bool, git string, limit time.Duration) http.Handler {
+func workspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) bool, git string, limit time.Duration, gitea *integrations.GiteaAdapter) http.Handler {
 	var mu sync.Mutex
 	running := map[string]bool{}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +87,7 @@ func workspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) 
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), limit+3*time.Second)
 		defer cancel()
-		if code := fetchWorkspaceGit(ctx, cfg, *target, git, limit); code != "" {
+		if code := fetchWorkspaceGit(ctx, cfg, *target, git, limit, gitea); code != "" {
 			snapshotError(w, 409, code)
 			return
 		}
@@ -105,7 +108,7 @@ func workspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) 
 
 // fetchWorkspaceGit fetches the remote of the current branch's upstream, or
 // origin, or the only remote. It returns "" on success or a fixed code.
-func fetchWorkspaceGit(ctx context.Context, cfg transport.Config, target gitTarget, git string, limit time.Duration) string {
+func fetchWorkspaceGit(ctx context.Context, cfg transport.Config, target gitTarget, git string, limit time.Duration, gitea *integrations.GiteaAdapter) string {
 	fd, still, done, err := target.open()
 	if err != nil {
 		return "workspace_changed"
@@ -151,6 +154,10 @@ func fetchWorkspaceGit(ctx context.Context, cfg transport.Config, target gitTarg
 	if !gitRemoteName.MatchString(remote) {
 		return "fetch_failed"
 	}
+	pins, code := giteaFetchPolicy(ctx, gitea, read, remote)
+	if code != "" {
+		return code
+	}
 	ssh := false
 	if url, e := read("remote", "get-url", remote); e == nil {
 		ssh = gitURLIsSSH(strings.TrimSpace(string(url)))
@@ -159,7 +166,7 @@ func fetchWorkspaceGit(ctx context.Context, cfg transport.Config, target gitTarg
 	// bounded command (ADR 0019 made the same choice for its fetch).
 	stderr := &capped{n: 16 << 10}
 	started := time.Now()
-	_, err = nativeCommand(ctx, limit, stderr, git, cfg.Home, strconv.Itoa(fd), append(base, "-c", "maintenance.auto=false", "-c", "gc.auto=0", "fetch", "--quiet", "--no-recurse-submodules", "--", remote)...)
+	_, err = nativeCommand(ctx, limit, stderr, git, cfg.Home, strconv.Itoa(fd), append(append(base, pins...), "-c", "maintenance.auto=false", "-c", "gc.auto=0", "fetch", "--quiet", "--no-recurse-submodules", "--", remote)...)
 	if err == nil {
 		return ""
 	}

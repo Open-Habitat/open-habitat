@@ -221,3 +221,30 @@ func (b Base) explicitLoopback() bool {
 }
 
 func (b Base) valid() bool { return b.Host != "" && b.Port > 0 }
+
+// RemoteAuthority is the host and port of an HTTPS Git remote address as
+// the credential helper matches them: Git sends the URL's host and the
+// helper canonicalises it, so "https://GITEA.example:443/x" reaches the same
+// login as "https://gitea.example/x". Userinfo is skipped. Any other scheme,
+// or an authority the helper would refuse, is not ok.
+func RemoteAuthority(raw string) (Base, bool) {
+	i := strings.Index(raw, "://")
+	if i < 0 || !strings.EqualFold(raw[:i], "https") {
+		return Base{}, false
+	}
+	rest := raw[i+3:]
+	if j := strings.IndexAny(rest, "/?#"); j >= 0 {
+		rest = rest[:j]
+	}
+	if k := strings.LastIndexByte(rest, '@'); k >= 0 {
+		rest = rest[k+1:]
+	}
+	host, port, ok := parseAuthority(rest)
+	if !ok {
+		return Base{}, false
+	}
+	return Base{Host: host, Port: port}, true
+}
+
+// SameServer: a and b are the same host and port, whatever their paths.
+func (b Base) SameServer(o Base) bool { return b.Host == o.Host && b.Port == o.Port }

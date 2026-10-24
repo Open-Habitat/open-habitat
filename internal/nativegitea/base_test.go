@@ -35,3 +35,25 @@ func TestParseBase(t *testing.T) {
 		}
 	}
 }
+
+// A remote reaches a login when the helper would match its host and port,
+// whatever case or default port the remote spells.
+func TestRemoteAuthority(t *testing.T) {
+	for in, want := range map[string]string{
+		"https://git.example.org/a/b.git":        "https://git.example.org",
+		"HTTPS://GIT.example.org:443/a/b":        "https://git.example.org",
+		"https://ada@git.example.org:3000/g/a/b": "https://git.example.org:3000",
+		"https://[fd00::5]:3000/a/b.git":         "https://[fd00::5]:3000",
+		"https://git.example.org?x":              "https://git.example.org",
+	} {
+		b, ok := RemoteAuthority(in)
+		if !ok || b.String() != want {
+			t.Errorf("%q: %v %q, want %q", in, ok, b.String(), want)
+		}
+	}
+	for _, in := range []string{"http://git.example.org/a/b", "ssh://git.example.org/a/b", "git@git.example.org:a/b.git", "file:///srv/a.git", "https://127.1/a/b", "https://git.example.org:0/a", "/srv/a.git"} {
+		if b, ok := RemoteAuthority(in); ok {
+			t.Errorf("%q accepted as %q", in, b.String())
+		}
+	}
+}

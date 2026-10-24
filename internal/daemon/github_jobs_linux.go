@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
+	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
 	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
@@ -252,11 +253,16 @@ func (c *CloneJobs) handlerAt(path string, trusted func(*http.Request) bool) htt
 				RepositoryID int64  `json:"repository_id"`
 			}
 			if err == nil && int64(len(body)) == r.ContentLength && catalogNoDuplicates(body) && strictCloneJSON(body, &in) == nil && in.Source != "" {
-				if !validGiteaStart(body, in.Action, in.Source, in.ConnectionID, in.RepositoryID, in.Mode) {
+				g := giteaCloneRequest{Action: in.Action, ConnectionID: in.ConnectionID, FullName: in.FullName, Mode: in.Mode, RepositoryID: in.RepositoryID}
+				if in.Source != "gitea" || in.JobID != "" || !validGiteaRequest(body, g) {
 					snapshotError(w, 400, "invalid_request")
 					return
 				}
-				c.startGitea(w, r, in.ConnectionID, in.RepositoryID)
+				if g.Action == "remove" {
+					c.remove(w, g.FullName, true)
+				} else {
+					c.startGitea(w, r, g.ConnectionID, g.RepositoryID, g.Action == "restart")
+				}
 				return
 			}
 			if err != nil || int64(len(body)) != r.ContentLength || !catalogNoDuplicates(body) || strictCloneJSON(body, &in) != nil || in.ConnectionID != "" || in.RepositoryID != 0 || !validCloneAction(body, in.Action, in.FullName, in.Mode, in.JobID) {
@@ -267,7 +273,7 @@ func (c *CloneJobs) handlerAt(path string, trusted func(*http.Request) bool) htt
 			case "start", "restart":
 				c.start(w, r, in.FullName, in.Mode, in.Action == "restart")
 			case "remove":
-				c.remove(w, in.FullName)
+				c.remove(w, in.FullName, false)
 			case "cancel":
 				c.cancelJob(w, in.JobID)
 			case "dismiss":
@@ -334,6 +340,9 @@ type cloneTarget struct {
 	source      *giteaCloneSource
 	// release ends the job's hold on native state when it settles.
 	release func()
+	// check, when set, runs once the destination exists and before the job
+	// starts; a refusal removes the directory again and answers its code.
+	check func(context.Context) (int, string)
 }
 
 // admit runs with cloneWriter held. A refusal releases it; an admitted job
@@ -407,7 +416,10 @@ func (c *CloneJobs) reserve(ctx context.Context, t cloneTarget) (*cloneJob, int,
 		if e != nil {
 			return nil, 409, "not_interrupted"
 		}
-		_, interrupted := interruptedClone(ctx, c.home, t.git, c.run, c.cfg.UID, child, parts[1], fullName)
+		// Only an unfinished download of this very address is replaced.
+		_, _, interrupted := interruptedClone(ctx, c.home, t.git, c.run, c.cfg.UID, child, parts[1], func(o cloneOrigin) bool {
+			return o.URL == t.cloneURL && o.Gitea == (t.source != nil)
+		})
 		removed := interrupted && removeCreated(c.ctx, src, child, parts[1])
 		unix.Close(child)
 		if !interrupted {
@@ -458,6 +470,13 @@ func (c *CloneJobs) reserve(ctx context.Context, t cloneTarget) (*cloneJob, int,
 		return nil, 409, "checkout_uncertain"
 	}
 	srcInitial, _ := stat(src)
+	if t.check != nil {
+		if status, code := t.check(ctx); status != 0 {
+			removeCreated(c.ctx, src, child, parts[1])
+			unix.Close(child)
+			return nil, status, code
+		}
+	}
 	id := make([]byte, 16)
 	if _, err := rand.Read(id); err != nil {
 		removeCreated(c.ctx, src, child, parts[1])
@@ -614,14 +633,16 @@ func (c *CloneJobs) dismiss(w http.ResponseWriter, id string) {
 }
 
 // remove deletes the interrupted clone of fullName: the daemon itself
-// recognises ~/src/<name> as one before touching it.
-func (c *CloneJobs) remove(w http.ResponseWriter, fullName string) {
+// recognises ~/src/<name> as one before touching it. A Gitea one is named by
+// the owner and name its own origin records, so it can be removed after its
+// connection is gone; nothing else about it comes from the browser.
+func (c *CloneJobs) remove(w http.ResponseWriter, fullName string, gitea bool) {
 	if !cloneWriter.TryLock("workspace_clone_running") {
 		c.busy(w)
 		return
 	}
 	defer cloneWriter.Unlock()
-	name := strings.Split(fullName, "/")[1]
+	owner, name, _ := strings.Cut(fullName, "/")
 	src, err := cloneSource(c.cfg, c.home, false)
 	if err != nil {
 		snapshotError(w, 409, "not_interrupted")
@@ -636,7 +657,11 @@ func (c *CloneJobs) remove(w http.ResponseWriter, fullName string) {
 	defer unix.Close(child)
 	ctx, cancel := context.WithTimeout(c.ctx, 30*time.Second)
 	defer cancel()
-	if _, ok := interruptedClone(ctx, c.home, c.git, c.run, c.cfg.UID, child, name, fullName); !ok {
+	expect := githubOrigin(fullName)
+	if gitea {
+		expect = func(o cloneOrigin) bool { return o.Gitea && o.Owner == owner }
+	}
+	if _, _, ok := interruptedClone(ctx, c.home, c.git, c.run, c.cfg.UID, child, name, expect); !ok {
 		snapshotError(w, 409, "not_interrupted")
 		return
 	}
@@ -674,6 +699,7 @@ func (c *CloneJobs) list(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 	defer cancel()
 	names := []string{}
+	var logins *[]nativegitea.Login
 	if eachSourceEntry(src, func(entry os.DirEntry) {
 		if entry.IsDir() || entry.Type() == 0 {
 			names = append(names, entry.Name())
@@ -689,7 +715,7 @@ func (c *CloneJobs) list(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		owner, ok := interruptedCloneOwner(unix.Openat2, child, name)
+		found, ok := interruptedCloneOwner(unix.Openat2, child, name)
 		if ok {
 			if len(interrupted) == 64 || ctx.Err() != nil {
 				complete = false
@@ -708,8 +734,12 @@ func (c *CloneJobs) list(w http.ResponseWriter, r *http.Request) {
 					// absent. Explicit writes still require the strict native scan.
 					return nil, nil, true
 				}
-				if size, ok := interruptedCloneWithScan(ctx, c.home, c.git, c.run, c.cfg.UID, child, name, owner+"/"+name, observe); ok {
-					interrupted = append(interrupted, map[string]any{"full_name": owner + "/" + name, "size_bytes": size})
+				if size, origin, ok := interruptedCloneWithScan(ctx, c.home, c.git, c.run, c.cfg.UID, child, name, func(o cloneOrigin) bool { return o == found }, observe); ok {
+					item := map[string]any{"full_name": origin.Owner + "/" + name, "size_bytes": size}
+					if origin.Gitea {
+						item["source"] = c.giteaInterruptedSource(origin, name, &logins)
+					}
+					interrupted = append(interrupted, item)
 				}
 			}
 		}

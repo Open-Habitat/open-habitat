@@ -6,6 +6,6 @@
     {"job_id": "00112233445566778899aabbccddeeff", "full_name": "example_person/notes.v2", "source": {"provider": "gitea", "connection_id": "gitea_0123456789abcdef01234567", "repository_id": 42}, "mode": "full", "state": "confirmed", "started_at": "2026-10-17T11:55:00Z", "finished_at": "2026-10-17T11:56:00Z"}
   ],
   "planned": [{"full_name": "example-org/product", "state": "waiting"}, {"full_name": "example-org/infra", "state": "refused", "reason": "quota_full"}],
-  "interrupted": [{"full_name": "example-org/monorepo", "size_bytes": 954204160}],
+  "interrupted": [{"full_name": "example-org/monorepo", "size_bytes": 954204160}, {"full_name": "example_person/notes.v2", "size_bytes": 4096, "source": {"provider": "gitea", "connection_id": "gitea_0123456789abcdef01234567"}}, {"full_name": "former_account/drafts", "size_bytes": 2048, "source": {"provider": "gitea"}}],
   "interrupted_complete": true
 }

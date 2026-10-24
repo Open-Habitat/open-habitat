@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
@@ -19,8 +20,9 @@ import (
 // HTTPS address under the connected base, and the new repository's own
 // credential.<remote>.username selects that connection's account, so the
 // native helper answers it again on every later fetch without a mapping of
-// ours. Restart and remove of an interrupted Gitea clone are not offered yet:
-// its leftover directory stays an ordinary directory.
+// ours. An interrupted Gitea clone is recognised from that same configuration
+// (github_interrupted_linux.go); restart resolves the repository again by
+// its id, and remove needs only the name the directory itself records.
 
 var giteaConnection = regexp.MustCompile(`^gitea_[0-9a-f]{24}$`)
 
@@ -29,23 +31,44 @@ type giteaCloneSource struct {
 	RepositoryID int64
 }
 
-// validGiteaStart admits exactly github-clone.schema.json's Gitea start.
-func validGiteaStart(body []byte, action, source, connection string, id int64, mode string) bool {
+// giteaCloneRequest is a github-clone.schema.json request with a gitea source.
+type giteaCloneRequest struct {
+	Action, ConnectionID, FullName, Mode string
+	RepositoryID                         int64
+}
+
+// validGiteaRequest admits exactly github-clone.schema.json's Gitea start,
+// restart and remove.
+func validGiteaRequest(body []byte, in giteaCloneRequest) bool {
 	var keys map[string]json.RawMessage
 	if json.Unmarshal(body, &keys) != nil {
 		return false
 	}
-	return len(keys) == 5 && action == "start" && source == "gitea" && giteaConnection.MatchString(connection) && id > 0 && id <= 1<<53-1 && mode == "full"
+	switch in.Action {
+	case "start", "restart":
+		return len(keys) == 5 && giteaConnection.MatchString(in.ConnectionID) && in.RepositoryID > 0 && in.RepositoryID <= 1<<53-1 && in.Mode == "full" && in.FullName == ""
+	case "remove":
+		return len(keys) == 3 && validGiteaFullName(in.FullName) && in.ConnectionID == "" && in.RepositoryID == 0 && in.Mode == ""
+	}
+	return false
 }
 
-func (c *CloneJobs) startGitea(w http.ResponseWriter, r *http.Request, connection string, id int64) {
+// validGiteaFullName is a Gitea owner/name whose name is a clone destination.
+func validGiteaFullName(s string) bool {
+	owner, name, ok := strings.Cut(s, "/")
+	return ok && giteaOwnerName.MatchString(owner) && owner != "." && owner != ".." && validGiteaCloneName(name)
+}
+
+var giteaOwnerName = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,40}$`)
+
+func (c *CloneJobs) startGitea(w http.ResponseWriter, r *http.Request, connection string, id int64, restart bool) {
 	if !cloneWriter.TryLock("workspace_clone_running") {
 		c.busy(w)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
-	t, status, code := c.resolveGitea(ctx, connection, id)
+	t, status, code := c.resolveGitea(ctx, connection, id, restart)
 	if status != 0 {
 		cloneWriter.Unlock()
 		snapshotError(w, status, code)
@@ -63,7 +86,7 @@ func (c *CloneJobs) startGitea(w http.ResponseWriter, r *http.Request, connectio
 // resolveGitea rereads the connection and the repository at Gitea with the
 // connection's own token, and holds the login so that a disconnect waits
 // for the job. A refusal releases the hold.
-func (c *CloneJobs) resolveGitea(ctx context.Context, connection string, id int64) (cloneTarget, int, string) {
+func (c *CloneJobs) resolveGitea(ctx context.Context, connection string, id int64, restart bool) (cloneTarget, int, string) {
 	g := c.gitea
 	if !g.Available() {
 		return cloneTarget{}, 409, "provider_unavailable"
@@ -111,18 +134,28 @@ func (c *CloneJobs) resolveGitea(ctx context.Context, connection string, id int6
 	}
 	held = false
 	return cloneTarget{
-		fullName: repo.FullName(), requested: repo.FullName(), cloneURL: url, mode: "full", git: c.giteaGit,
-		// Only HTTPS, verified TLS, no redirects, no submodule recursion.
-		// The exact remote URL is the most specific HTTP scope, so a broader
-		// personal setting cannot loosen it; the clone's own configuration
-		// keeps the same for later fetches and names the account.
+		fullName: repo.FullName(), requested: repo.FullName(), cloneURL: url, mode: "full", restart: restart, git: c.giteaGit,
 		// The helper chain for the base is pinned at the command line, which
 		// Git reads last: a conditional include that applies only inside
-		// ~/src cannot add a second helper that stores the token.
-		pre:     []string{"-c", "credential." + login.Base.String() + ".helper=", "-c", "credential." + login.Base.String() + ".helper=" + helper, "-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "http.followRedirects=false", "-c", "http." + url + ".followRedirects=false", "-c", "http." + url + ".sslVerify=true", "-c", "submodule.recurse=false"},
+		// ~/src cannot add a second helper that stores the token. The clone's
+		// own configuration keeps the HTTP policy for later fetches and names
+		// the account.
+		pre:     giteaTransferPins(url, login.Base.String(), helper),
 		config:  []string{"http." + url + ".followRedirects=false", "http." + url + ".sslVerify=true", "credential." + url + ".username=" + login.User},
 		source:  &giteaCloneSource{ConnectionID: connection, RepositoryID: repo.ID},
 		release: release,
+		// A rewrite rule would send the clone, and the token the helper
+		// gives for it, somewhere the daemon did not just validate. Git
+		// evaluates the new repository's conditional includes only once its
+		// directory exists, so this runs after the reservation.
+		check: func(ctx context.Context) (int, string) {
+			if rewritten, err := c.cloneRewritten(ctx, c.giteaGit, repo.Name, url); err != nil {
+				return 503, "native_source_unavailable"
+			} else if rewritten {
+				return 409, "remote_rewritten"
+			}
+			return 0, ""
+		},
 	}, 0, ""
 }
 
@@ -130,4 +163,33 @@ func (c *CloneJobs) resolveGitea(ctx context.Context, connection string, id int6
 // clone list and discovery accept.
 func validGiteaCloneName(name string) bool {
 	return repoName.MatchString(name) && name != "." && name != ".."
+}
+
+// giteaInterruptedSource is the source of an interrupted Gitea clone in the
+// list. It names a connection only when exactly one usable login in tea's
+// file has the base and account the directory records; without one the
+// directory can still be removed, but not restarted. logins is read from
+// tea's file once per list.
+func (c *CloneJobs) giteaInterruptedSource(o cloneOrigin, name string, logins **[]nativegitea.Login) map[string]any {
+	source := map[string]any{"provider": "gitea"}
+	if c.gitea == nil {
+		return source
+	}
+	if *logins == nil {
+		read, err := c.gitea.Store.Logins()
+		if err != nil {
+			read = nil
+		}
+		*logins = &read
+	}
+	var matched []nativegitea.Login
+	for _, l := range **logins {
+		if l.URL != "" && l.Usable() && o.URL == l.URL+"/"+o.Owner+"/"+name+".git" && strings.EqualFold(l.User, o.User) {
+			matched = append(matched, l)
+		}
+	}
+	if len(matched) == 1 {
+		source["connection_id"] = matched[0].ConnectionID()
+	}
+	return source
 }

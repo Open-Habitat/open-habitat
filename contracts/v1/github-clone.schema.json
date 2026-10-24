@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/github-clone.schema.json",
   "title": "GitHub clone jobs",
-  "description": "GET /api/v1/onboarding/github/clones lists the mapped user's daemon's clone jobs and the interrupted clones it recognises in ~/src. POST to the same path sends one action. A job lives in that daemon's memory only: leaving the page or losing the progress stream does not cancel it, and a daemon restart loses it, after which the directory is recognised as interrupted from the filesystem. Nothing is ever restarted automatically; restart and remove act only on a directory the daemon itself recognises as an interrupted clone of full_name, never on a path from the browser.",
+  "description": "GET /api/v1/onboarding/github/clones lists the mapped user's daemon's clone jobs and the interrupted clones it recognises in ~/src. POST to the same path sends one action. A job lives in that daemon's memory only: leaving the page or losing the progress stream does not cancel it, and a daemon restart loses it, after which the directory is recognised as interrupted from the filesystem. Nothing is ever restarted automatically; restart and remove act only on a directory the daemon itself recognises as an interrupted clone of full_name, never on a path from the browser. A Gitea clone, or its later workspace fetch, is refused with remote_rewritten when the person's Git configuration would rewrite its address.",
   "oneOf": [
     {"$ref": "#/$defs/request"},
     {"$ref": "#/$defs/list"},
@@ -13,6 +13,7 @@
   "$defs": {
     "fullName": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"},
     "jobFullName": {"description": "A GitHub owner/repo, or a Gitea one for a job with a gitea source.", "type": "string", "maxLength": 141, "pattern": "^[A-Za-z0-9_.-]{1,40}/[A-Za-z0-9_.-]{1,100}$"},
+    "giteaFullName": {"type": "string", "maxLength": 141, "pattern": "^[A-Za-z0-9_.-]{1,40}/[A-Za-z0-9_.-]{1,100}$", "not": {"pattern": "^(\\.\\.?/|[^/]*/\\.\\.?$)"}},
     "giteaRepositoryId": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
     "jobId": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
     "mode": {"description": "full clones the whole history; blobless is git clone --filter=blob:none, which fetches older file contents from GitHub later with the user's own credentials.", "enum": ["full", "blobless"]},
@@ -23,7 +24,9 @@
         {"type": "object", "additionalProperties": false, "required": ["action", "full_name", "mode"],
          "properties": {"action": {"enum": ["start", "restart"], "description": "start requires an absent destination. restart first removes the interrupted clone of full_name, then starts again."}, "full_name": {"$ref": "#/$defs/fullName"}, "mode": {"$ref": "#/$defs/mode"}}},
         {"type": "object", "additionalProperties": false, "required": ["action", "source", "connection_id", "repository_id", "mode"],
-         "properties": {"action": {"const": "start", "description": "Starts a clone of one repository of a Gitea connection, which the daemon looks up again by its id with that connection's own token. Only a full clone; restart and remove of an interrupted Gitea clone are not offered."}, "source": {"const": "gitea"}, "connection_id": {"$ref": "integrations.schema.json#/$defs/gitea_connection_id"}, "repository_id": {"$ref": "#/$defs/giteaRepositoryId"}, "mode": {"const": "full"}}},
+         "properties": {"action": {"enum": ["start", "restart"], "description": "Starts a clone of one repository of a Gitea connection, which the daemon looks up again by its id with that connection's own token. Only a full clone. restart first removes the interrupted clone of exactly that repository's address."}, "source": {"const": "gitea"}, "connection_id": {"$ref": "integrations.schema.json#/$defs/gitea_connection_id"}, "repository_id": {"$ref": "#/$defs/giteaRepositoryId"}, "mode": {"const": "full"}}},
+        {"type": "object", "additionalProperties": false, "required": ["action", "source", "full_name"],
+         "properties": {"action": {"const": "remove", "description": "Removes the interrupted Gitea clone whose own origin records this owner and name. It needs no connection, so a clone of a removed connection can still be removed."}, "source": {"const": "gitea"}, "full_name": {"$ref": "#/$defs/giteaFullName"}}},
         {"type": "object", "additionalProperties": false, "required": ["action", "full_name"],
          "properties": {"action": {"const": "remove", "description": "Removes the interrupted clone of full_name."}, "full_name": {"$ref": "#/$defs/fullName"}}},
         {"type": "object", "additionalProperties": false, "required": ["action", "job_id"],
@@ -68,7 +71,12 @@
     "interrupted": {
       "type": "object", "additionalProperties": false,
       "required": ["full_name", "size_bytes"],
-      "properties": {"full_name": {"$ref": "#/$defs/fullName"}, "size_bytes": {"$ref": "#/$defs/bytes"}}
+      "properties": {
+        "full_name": {"$ref": "#/$defs/jobFullName"},
+        "size_bytes": {"$ref": "#/$defs/bytes"},
+        "source": {"description": "Absent for a GitHub clone. A Gitea clone names the connection whose base and account its configuration records, only while exactly one usable connection matches; without one it can be removed but not restarted.", "type": "object", "additionalProperties": false, "required": ["provider"], "properties": {"provider": {"const": "gitea"}, "connection_id": {"$ref": "integrations.schema.json#/$defs/gitea_connection_id"}}}
+      },
+      "if": {"not": {"required": ["source"]}}, "then": {"properties": {"full_name": {"$ref": "#/$defs/fullName"}}}, "else": {"properties": {"full_name": {"$ref": "#/$defs/giteaFullName"}}}
     },
     "list": {
       "type": "object", "additionalProperties": false,
@@ -94,7 +102,7 @@
     "removed": {
       "type": "object", "additionalProperties": false,
       "required": ["schema_version", "state", "full_name"],
-      "properties": {"schema_version": {"const": 1}, "state": {"enum": ["removed", "partial"], "description": "partial: some entries could not be removed; the rest stays and the person can try again."}, "full_name": {"$ref": "#/$defs/fullName"}}
+      "properties": {"schema_version": {"const": 1}, "state": {"enum": ["removed", "partial"], "description": "partial: some entries could not be removed; the rest stays and the person can try again."}, "full_name": {"$ref": "#/$defs/jobFullName"}}
     }
   }
 }

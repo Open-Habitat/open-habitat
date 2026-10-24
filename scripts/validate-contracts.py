@@ -416,6 +416,20 @@ bad_gitea = json.loads((BASE / "examples" / "gitea-repos.json").read_text())
 del bad_gitea["sources"][1]["failure"]
 must_reject("gitea-repos.schema.json", bad_gitea)
 must_reject("github-clone.schema.json", {"action": "start", "source": "gitea", "connection_id": "gitea_0123456789abcdef01234567", "repository_id": 42, "mode": "blobless"})
+# A Gitea restart is the same full start of one repository id; a Gitea
+# remove names only the owner/name the directory records, never a
+# connection, id or path, and a GitHub interrupted clone keeps GitHub's names.
+must_reject("github-clone.schema.json", {"action": "restart", "source": "gitea", "connection_id": "gitea_0123456789abcdef01234567", "repository_id": 42, "mode": "blobless"})
+must_reject("github-clone.schema.json", {"action": "remove", "source": "gitea", "full_name": "example_person/notes", "connection_id": "gitea_0123456789abcdef01234567"})
+must_reject("github-clone.schema.json", {"action": "remove", "source": "gitea", "full_name": "example_person/.."})
+must_reject("github-clone.schema.json", {"action": "remove", "source": "gitea", "full_name": "../notes"})
+must_reject("github-clone.schema.json", {"action": "dismiss", "source": "gitea", "job_id": "0123456789abcdef0123456789abcdef"})
+bad_clones = json.loads((BASE / "examples" / "github-clones.json").read_text())
+bad_clones["interrupted"][0]["full_name"] = "example_org/monorepo"
+must_reject("github-clone.schema.json", bad_clones)
+bad_clones = json.loads((BASE / "examples" / "github-clones.json").read_text())
+bad_clones["interrupted"][1]["source"]["repository_id"] = 42
+must_reject("github-clone.schema.json", bad_clones)
 must_reject("github-clone.schema.json", {"action": "start", "source": "gitea", "connection_id": "gitea_0123456789abcdef01234567", "full_name": "example-person/notes", "mode": "full"})
 must_reject("github-clone.schema.json", {"action": "start", "full_name": "example_person/notes", "mode": "full"})
 print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, negative checks including Microsoft login phases.")

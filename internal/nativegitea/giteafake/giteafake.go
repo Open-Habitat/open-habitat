@@ -40,6 +40,19 @@ type Repo struct {
 	Empty       bool
 	Description string
 	Readers     []int64
+	// CloneURL replaces the clone_url the API reports, as a Gitea whose
+	// configured root URL names another host would.
+	CloneURL string
+	// RedirectTo answers an authenticated Git request with a redirect to
+	// this URL plus the request's path below the repository.
+	RedirectTo string
+}
+
+// GitRequest is one Git request the server received.
+type GitRequest struct {
+	Path string
+	// User is the Basic username, "" when the request carried none.
+	User string
 }
 
 // Server is a running synthetic Gitea.
@@ -63,6 +76,7 @@ type Server struct {
 	repos    []Repo
 	// GitUsers records the Basic usernames of authorized Git requests.
 	gitUsers []string
+	requests []GitRequest
 	apiHits  int
 	failing  map[string]bool // tokens whose API reads answer 500
 	gate     chan struct{}   // while set, Git requests wait for it to close
@@ -130,6 +144,25 @@ func (s *Server) GitUsers() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]string(nil), s.gitUsers...)
+}
+
+// GitRequests returns every Git request in order, whatever its answer.
+func (s *Server) GitRequests() []GitRequest {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]GitRequest(nil), s.requests...)
+}
+
+// SetRedirect makes owner/name's authenticated Git requests redirect to
+// target ("" stops it).
+func (s *Server) SetRedirect(owner, name, target string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.repos {
+		if s.repos[i].Owner == owner && s.repos[i].Name == name {
+			s.repos[i].RedirectTo = target
+		}
+	}
 }
 
 // APIHits counts API requests.
@@ -253,11 +286,15 @@ func (s *Server) view(r Repo) map[string]any {
 	if r.Empty {
 		branch = ""
 	}
+	clone := s.URL + "/" + full + ".git"
+	if r.CloneURL != "" {
+		clone = r.CloneURL
+	}
 	return map[string]any{
 		"id": r.ID, "name": r.Name, "full_name": full, "owner": map[string]any{"id": 1, "login": r.Owner},
 		"private": r.Private, "empty": r.Empty, "archived": false, "description": r.Description,
 		"default_branch": branch, "updated_at": "2026-10-20T10:00:00+03:00", "size": 24,
-		"html_url": s.URL + "/" + full, "clone_url": s.URL + "/" + full + ".git", "ssh_url": "git@127.0.0.1:" + full + ".git",
+		"html_url": s.URL + "/" + full, "clone_url": clone, "ssh_url": "git@127.0.0.1:" + full + ".git",
 		"permissions": map[string]bool{"admin": false, "push": false, "pull": true},
 	}
 }
@@ -341,10 +378,15 @@ func (s *Server) smartHTTP(w http.ResponseWriter, r *http.Request, owner, name, 
 		}
 	}
 	user, pass, basic := r.BasicAuth()
+	s.requests = append(s.requests, GitRequest{Path: r.URL.Path, User: user})
 	a, ok := s.account(pass)
 	allowed := repo != nil && ok && basic && s.readable(a, *repo)
 	if allowed {
 		s.gitUsers = append(s.gitUsers, user)
+	}
+	redirect := ""
+	if allowed {
+		redirect = repo.RedirectTo
 	}
 	gate := s.gate
 	s.mu.Unlock()
@@ -362,6 +404,14 @@ func (s *Server) smartHTTP(w http.ResponseWriter, r *http.Request, owner, name, 
 	if !allowed {
 		w.Header().Set("WWW-Authenticate", `Basic realm="Gitea"`)
 		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	if redirect != "" {
+		target := redirect + rest
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusFound)
 		return
 	}
 	// A read-only grant: Gitea refuses receive-pack for read:repository.

@@ -139,7 +139,7 @@ func observeCheckout(parent context.Context, cfg transport.Config, home, git str
 	if e != nil || cs.Uid != uint32(cfg.UID) {
 		return "conflict", 0
 	}
-	if size, ok := interruptedClone(parent, home, git, run, cfg.UID, child, target, name); ok {
+	if size, _, ok := interruptedClone(parent, home, git, run, cfg.UID, child, target, githubOrigin(name)); ok {
 		if !cloneSourceStillNamed(home, ss) {
 			return unavailable, 0
 		}

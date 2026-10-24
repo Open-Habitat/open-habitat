@@ -526,7 +526,7 @@ func TestCloneListInconclusiveProcessScan(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, idle := interruptedCloneWithScan(context.Background(), home, "/usr/bin/git", cloneCommand, f.cfg.UID, child, "repo", "org/repo", f.jobs.listProcessScan)
+			_, _, idle := interruptedCloneWithScan(context.Background(), home, "/usr/bin/git", cloneCommand, f.cfg.UID, child, "repo", githubOrigin("org/repo"), f.jobs.listProcessScan)
 			unix.Close(child)
 			if idle != tc.wantComplete {
 				t.Fatalf("strict eligibility: %v", idle)

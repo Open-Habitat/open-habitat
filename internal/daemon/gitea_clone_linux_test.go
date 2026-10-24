@@ -179,7 +179,7 @@ func (w *giteaWalk) fetch(name string) string {
 		if entry.Name == name {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			return fetchWorkspaceGit(ctx, cfg, workspaceGitTarget(cfg, entry), "/usr/bin/git", 20*time.Second)
+			return fetchWorkspaceGit(ctx, cfg, workspaceGitTarget(cfg, entry), "/usr/bin/git", 20*time.Second, w.adapter)
 		}
 	}
 	w.t.Fatalf("workspace %s not discovered", name)
@@ -326,11 +326,7 @@ func TestGiteaConnectListCloneFetch(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(w.home, ".git-credentials")); !os.IsNotExist(err) {
 		t.Fatal("a second credential store appeared")
 	}
-	// Fetch hardening against personal configuration is a later unit; the
-	// include stays out of the fetches below.
-	if err := os.Remove(include); err != nil {
-		t.Fatal(err)
-	}
+	// The include stays for the fetches below, which are pinned the same way.
 	// The same name from the other account is a name conflict, never an
 	// overwrite.
 	if status, out := w.clone(bob, 103); status != 409 || code(out) != "checkout_exists" {
@@ -373,6 +369,9 @@ func TestGiteaConnectListCloneFetch(t *testing.T) {
 	}
 	if got := w.fetch("notes"); got != "" {
 		t.Fatalf("fetch after replacement: %q", got)
+	}
+	if _, err := os.Stat(filepath.Join(w.home, ".git-credentials")); !os.IsNotExist(err) {
+		t.Fatal("a fetch gave the storing helper a copy")
 	}
 
 	// Disconnect removes the local entry only: the clone stays, the helper

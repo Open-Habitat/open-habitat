@@ -89,7 +89,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	controller.journal = journal
 	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi, controller.ClearPiAuthFailures))
 	mux.Handle(WorkspaceGitPath, WorkspaceGitHandler(cfg, server.TrustedPeer))
-	mux.Handle(WorkspaceGitFetchPath, WorkspaceGitFetchHandler(cfg, server.TrustedPeer))
+	mux.Handle(WorkspaceGitFetchPath, WorkspaceGitFetchHandler(cfg, server.TrustedPeer, gitea))
 	mux.Handle(EditorFilesPrefix, controller.EditorFiles())
 	mux.Handle(EditorPreferencePath, EditorPreferenceHandler(cfg, server.TrustedPeer))
 	mux.Handle(FirstRoutePath, FirstRouteHandler(cfg, server.TrustedPeer))
