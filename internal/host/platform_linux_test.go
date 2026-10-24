@@ -132,6 +132,7 @@ func TestReleaseExecutableArchitecture(t *testing.T) {
 		// addons, ripgrep in code-server) and pick one at run time.
 		{"vendored foreign prebuild", "runtime/node_modules/x/prebuilds/linux-x64/x.node", x86, 0755, "ubuntu-24.04-arm64", true},
 		{"nested bin directory", "runtime/bin/sub/tool", x86, 0755, "ubuntu-24.04-arm64", true},
+		{"editor Node for another platform", "runtime/lib/node", x86, 0755, "ubuntu-24.04-arm64", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			a, f := build(tc.path, tc.content, tc.mode)

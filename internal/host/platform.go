@@ -50,10 +50,14 @@ func npmCPU(platform string) string {
 }
 
 // entryPoint reports whether a payload path is one of a profile's runtime/bin
-// executables, which the installation runs or puts on PATH. Upstream trees
-// below them may vendor prebuilds for every platform and pick one at run
-// time, so only entry points are bound to the release architecture.
+// executables, which the installation runs or puts on PATH, or the editor's
+// bundled Node that its runtime/bin launcher executes. Upstream trees below
+// them may vendor prebuilds for every platform and pick one at run time, so
+// only entry points are bound to the release architecture.
 func entryPoint(name string) bool {
+	if name == "runtime/lib/node" {
+		return true
+	}
 	rest, ok := strings.CutPrefix(name, "runtime/bin/")
 	return ok && rest != "" && !strings.Contains(rest, "/")
 }

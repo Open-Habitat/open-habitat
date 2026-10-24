@@ -26,8 +26,14 @@ OS_TOOLS = {'cloud-init', 'sh', 'test', 'env', 'uname', 'readlink', 'blkid', 'fi
             'mkfs.ext4', 'udevadm', 'systemctl', 'mount', 'install', 'sha256sum', 'python3', 'kill', 'cat'}
 
 
-def package(root, version, binary, arch='amd64'):
+def elf(arch):
+    """The identifying header of a 64-bit little-endian executable for arch."""
+    return b'\x7fELF\x02\x01' + bytes(12) + {'amd64': 62, 'arm64': 183}[arch].to_bytes(2, 'little')
+
+
+def package(root, version, binary, arch='amd64', machine=None):
     top = f'open-habitat-{version}-linux-{arch}'
+    binary = elf(machine or arch) + binary
     path = root / f'{top}.tar.gz'
     with tarfile.open(path, 'w:gz') as tar:
         for name, data in ((f'{top}/bin/open-habitat', binary), (f'{top}/web/index.html', b'<!doctype html>')):
@@ -412,18 +418,28 @@ class Commands(unittest.TestCase):
     def test_successor_descriptors_name_the_exact_predecessor(self):
         out = self.h.root / 'descriptors'
         out.mkdir()
-        package = next((self.h.root / 'succ').glob('open-habitat-*.tar.gz'))
+        succ_package = next((self.h.root / 'succ').glob('open-habitat-*.tar.gz'))
         subprocess.run(['python3', str(HERE / 'successor-descriptors.py'), '--predecessor', str(self.h.root / 'pred'),
-                        '--package', str(package), '--output', str(out)], check=True, capture_output=True)
+                        '--package', str(succ_package), '--output', str(out)], check=True, capture_output=True)
         upgrade = json.loads((out / 'upgrade.json').read_text())
         pred = json.loads((self.h.root / 'pred' / 'release.json').read_text())
         self.assertEqual(upgrade['predecessor'], {'version': '0.1.0-q.1', 'manifest_sha256':
                          hashlib.sha256((self.h.root / 'pred' / 'release.json').read_bytes()).hexdigest()})
-        self.assertEqual(upgrade['predecessor_binary_sha256'], hashlib.sha256(b'old-binary').hexdigest())
+        self.assertEqual(upgrade['predecessor_binary_sha256'], hashlib.sha256(elf('amd64') + b'old-binary').hexdigest())
         self.assertEqual(upgrade['product'], [
-            {'path': 'open-habitat', 'sha256': hashlib.sha256(b'new-binary').hexdigest(), 'mode': 0o755},
+            {'path': 'open-habitat', 'sha256': hashlib.sha256(elf('amd64') + b'new-binary').hexdigest(), 'mode': 0o755},
             {'path': 'web/index.html', 'sha256': hashlib.sha256(b'<!doctype html>').hexdigest(), 'mode': 0o644}])
         self.assertEqual(json.loads((out / 'artifacts.json').read_text()), pred['artifacts'])
+        # A package named for the predecessor's architecture must also contain it.
+        mislabeled = self.h.root / 'mislabeled'
+        mislabeled.mkdir()
+        top = package(mislabeled, '0.1.0-q.9', b'arm', machine='arm64')
+        other = self.h.root / 'descriptors-mislabeled'
+        other.mkdir()
+        p = subprocess.run(['python3', str(HERE / 'successor-descriptors.py'), '--predecessor', str(self.h.root / 'pred'),
+                            '--package', str(mislabeled / (top + '.tar.gz')), '--output', str(other)], capture_output=True, text=True)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('not a linux-amd64 executable', p.stderr)
 
     def test_plan_is_offline_and_rejects_foreign_successor(self):
         with mock.patch.object(cq.subprocess, 'run', side_effect=AssertionError('no process')), \

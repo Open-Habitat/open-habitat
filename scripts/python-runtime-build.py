@@ -99,6 +99,10 @@ def build(lock_path, inputs, out, target):
             versions[owner] = a['version']
         notices.setdefault(owner, [])
         if a.get('kind') == 'wheel':
+            # A binary wheel must be built for this target; pure wheels serve both.
+            tags = source.name.removesuffix('.whl').split('-')[-1]
+            if tags != 'any' and not all(t.endswith('_' + TRIPLES[target].split('-')[0]) for t in tags.split('.')):
+                raise ValueError('wheel for another platform: ' + source.name)
             put(source.read_bytes(), 'qualification/wheels/' + source.name, owner=owner)
             with zipfile.ZipFile(source) as wheel:
                 found = []

@@ -167,5 +167,19 @@ class PythonBuilderTests(unittest.TestCase):
                 builder.build(p, d, d / 'out', 'linux-arm64')
 
 
+    def test_wheel_for_another_platform(self):
+        with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
+            d = Path(temp)
+            p, lock = self.fixture(d, target='linux-arm64')
+            wheel = next(a for a in lock['inputs'] if a.get('kind') == 'wheel' and a['name'] == 'PyYAML')
+            # The amd64 wheel's name under the arm64 lock.
+            wrong = wheel['filename'].replace('aarch64', 'x86_64')
+            (d / wheel['filename']).rename(d / wrong)
+            wheel['filename'] = wrong
+            p.write_text(json.dumps(lock))
+            with self.assertRaisesRegex(ValueError, 'wheel for another platform'):
+                builder.build(p, d, d / 'out', 'linux-arm64')
+
+
 if __name__ == '__main__':
     unittest.main()

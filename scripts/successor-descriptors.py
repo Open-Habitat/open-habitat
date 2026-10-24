@@ -21,7 +21,11 @@ import tarfile
 from pathlib import Path
 
 
-def package_files(path):
+# ELF machine of each package architecture's executable.
+MACHINES = {'amd64': 62, 'arm64': 183}
+
+
+def package_files(path, arch):
     """Product files the upgrade authenticates: the executable and the web assets."""
     files, top = [], None
     with tarfile.open(path, 'r:gz') as tar:
@@ -31,7 +35,11 @@ def package_files(path):
             if not member.isfile():
                 continue
             if rel == 'bin/open-habitat':
-                digest = hashlib.sha256(tar.extractfile(member).read()).hexdigest()
+                data = tar.extractfile(member).read()
+                # The name is only a label; the upgrade must execute on the predecessor's host.
+                if data[:6] != b'\x7fELF\x02\x01' or int.from_bytes(data[18:20], 'little') != MACHINES[arch]:
+                    sys.exit(f'error: {path} bin/open-habitat is not a linux-{arch} executable')
+                digest = hashlib.sha256(data).hexdigest()
                 files.append({'path': 'open-habitat', 'sha256': digest, 'mode': 0o755})
             elif rel.startswith('web/'):
                 digest = hashlib.sha256(tar.extractfile(member).read()).hexdigest()
@@ -57,10 +65,10 @@ def main(argv=None):
         sys.exit(f'error: {pred} must hold exactly one product package for its platform {manifest["platform"]}')
     if not Path(args.package).name.endswith('-linux-' + arch + '.tar.gz'):
         sys.exit(f'error: the successor package must target the predecessor platform {manifest["platform"]}')
-    previous = next(f for f in package_files(packages[0]) if f['path'] == 'open-habitat')
+    previous = next(f for f in package_files(packages[0], arch) if f['path'] == 'open-habitat')
     upgrade = {'protocol': 1, 'predecessor_binary_sha256': previous['sha256'],
                'predecessor': {'version': manifest['version'], 'manifest_sha256': hashlib.sha256(raw).hexdigest()},
-               'product': package_files(args.package)}
+               'product': package_files(args.package, arch)}
     for name, doc in (('artifacts.json', manifest['artifacts']), ('upgrade.json', upgrade)):
         with open(out / name, 'x') as f:
             json.dump(doc, f)
