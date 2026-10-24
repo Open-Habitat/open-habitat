@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-connect-slice
@@ -13,6 +13,8 @@ preparation: ready
 related: ['@fleetrepo-gitea-habitat']
 blocked_by: ['@gitea-native-owner']
 collision: [contracts/v1/, internal/nativegitea/, internal/daemon/github_jobs_linux.go, web/src/app/NewWorkspacePage, web/src/components/ClonePage, web/src/app/GitHubOnboarding, web/src/app/, web/src/components/]
+lane: gitea
+lane_seq: 2
 ---
 
 # Gitea typed contracts and first connect-to-workspace slice

@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-runtime-qualification
@@ -13,6 +13,8 @@ preparation: ready
 related: ['@fleetrepo-gitea-habitat']
 blocked_by: ['@gitea-native-owner']
 collision: [internal/nativegitea/, release/manifest, internal/hostop]
+lane: gitea
+lane_seq: 6
 ---
 
 # Qualify tea runtime and stable Git helper across releases

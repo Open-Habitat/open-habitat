@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-clone-jobs
@@ -13,6 +13,8 @@ preparation: ready
 related: ['@fleetrepo-gitea-habitat']
 blocked_by: ['@gitea-connect-slice']
 collision: [internal/daemon/github_jobs_linux.go, internal/nativegitea/, contracts/v1/]
+lane: gitea
+lane_seq: 3
 ---
 
 # Gitea clone and fetch hardening in the existing daemon jobs

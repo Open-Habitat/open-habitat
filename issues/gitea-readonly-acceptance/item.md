@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-readonly-acceptance
@@ -13,6 +13,8 @@ preparation: ready
 related: ['@fleetrepo-gitea-habitat']
 blocked_by: ['@gitea-production-ui', '@gitea-runtime-qualification']
 collision: [contracts/v1/, internal/nativegitea/, internal/daemon/github_jobs_linux.go]
+lane: gitea
+lane_seq: 7
 ---
 
 # Gitea two-UID isolation and installed read-only acceptance

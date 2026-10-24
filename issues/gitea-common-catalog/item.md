@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-common-catalog
@@ -13,6 +13,8 @@ preparation: ready
 related: ['@fleetrepo-gitea-habitat']
 blocked_by: ['@gitea-clone-jobs']
 collision: [contracts/v1/, internal/nativegitea/, web/src/app/NewWorkspacePage, web/src/components/ClonePage, web/src/app/GitHubOnboarding, web/src/app/, web/src/components/]
+lane: gitea
+lane_seq: 4
 ---
 
 # Gitea common catalog, source identities and existing clone matching

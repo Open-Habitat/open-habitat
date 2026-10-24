@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-production-ui
@@ -13,6 +13,8 @@ preparation: ready
 related: ['@fleetrepo-gitea-habitat']
 blocked_by: ['@gitea-common-catalog']
 collision: [web/src/app/NewWorkspacePage, web/src/components/ClonePage, web/src/app/GitHubOnboarding, contracts/v1/, design-system/, web/src/app/, web/src/components/]
+lane: gitea
+lane_seq: 5
 ---
 
 # Gitea production component coverage and fixture acceptance

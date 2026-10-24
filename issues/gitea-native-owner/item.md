@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-native-owner
@@ -12,6 +12,8 @@ originating_run_kind: spinoff
 preparation: ready
 related: ['@fleetrepo-gitea-habitat']
 collision: [internal/nativegitea/, internal/cli/]
+lane: gitea
+lane_seq: 1
 ---
 
 # Gitea native tea owner, credential helper and safe lifecycle
