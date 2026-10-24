@@ -2,11 +2,13 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: feature
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [web/src/components/AttachmentPreview]
+closed: 2026-10-24
+closed_by: claude-opus-5-5
 ---
 
 # Attachment preview for PDF, Markdown and Office documents
@@ -27,3 +29,9 @@ Goal: the in-app attachment preview dialog shows the content of PDF, Markdown an
 - [ ] PDF, .md, .docx, .xlsx, .pptx previews in the dialog (or a recorded, reasoned fallback for a format), unit tests and a browser spec with fixtures, story per type, phone layout.
 - [ ] No script execution from previewed documents (test for a PDF with JavaScript and HTML in Markdown).
 - [ ] KOKEILTAVAA.md line.
+
+## Resolution
+
+### 2026-10-24T08:11:46Z · @claude-opus-5-5
+
+Implemented: PDF (pdf.js), Markdown (app renderer), .docx (docx-preview in sandboxed frame), .xlsx/.pptx (own fflate readers; pptx as outline). result.md lists decisions for later review.
