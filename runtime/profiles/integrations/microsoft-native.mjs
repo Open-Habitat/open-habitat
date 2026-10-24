@@ -1,6 +1,6 @@
 // Same-UID private protocol adapter, not a credential broker. The caller owns
 // staging/publication; only the pinned tool's native encrypted stores are written.
-import { AuthError, InteractionRequiredAuthError, PublicClientApplication } from '@azure/msal-node';
+import { AuthError, PublicClientApplication } from '@azure/msal-node';
 import AuthManager from '@softeria/ms-365-mcp-server/dist/auth.js';
 import { DefaultTokenCacheStorage, wrapCache, unwrapCache } from '@softeria/ms-365-mcp-server/dist/token-cache-storage.js';
 
@@ -44,23 +44,28 @@ export async function importGrant({client_id, tenant_id, address, refresh_token}
 }
 
 // The tenant refused the grant: these codes, never the error's text, decide.
-// The user is not in the tenant's directory (AADSTS50020, 50034) or must
-// first be invited into it as a guest (90072); a new sign-in cannot help.
+// (MSAL's InteractionRequiredAuthError class is also chosen by matching the
+// error description, so the class alone is not a code.) The user is not in
+// the tenant's directory (AADSTS50020, 50034) or must first be invited into
+// it as a guest (90072); a new sign-in cannot help.
 const outsideTenant = new Set(['50020', '50034', '90072']);
-const refusals = new Set(['invalid_grant', 'invalid_client', 'unauthorized_client', 'access_denied']);
+const refusals = new Set([
+  'invalid_grant', 'interaction_required', 'consent_required', 'login_required', 'bad_token',
+  'invalid_client', 'unauthorized_client', 'access_denied',
+  // MSAL's own: the store holds no usable refresh token.
+  'no_tokens_found', 'refresh_token_expired',
+]);
 
 function classify(error) {
   if (!(error instanceof AuthError)) return 'unreachable';
   if (outsideTenant.has(String(error.errorNo ?? ''))) return 'outside_tenant';
-  // MSAL's interaction-required family covers interaction/consent/login
-  // required, a bad or expired refresh token and a cache without one.
-  if (error instanceof InteractionRequiredAuthError || refusals.has(error.errorCode)) return 'refused';
+  if (refusals.has(error.errorCode)) return 'refused';
   // Network, discovery, temporarily_unavailable and 5xx decide nothing.
   return 'unreachable';
 }
 
 // The pinned tool's --verify-login reports every silent-acquisition failure
-// as the same text. This runs the same acquisition through the tool's own
+// as the same text. This runs a refresh through the tool's own
 // AuthManager and store, so a rotated refresh token is persisted exactly as
 // the tool would, and answers with a fixed code: ok, refused, outside_tenant
 // or unreachable.
@@ -82,7 +87,9 @@ export async function verifyGrant({client_id, tenant_id, address}, system = {}, 
   if (!account) return 'refused';
   let token;
   try {
-    token = (await manager.msalApp.acquireTokenSilent({account, scopes})).accessToken;
+    // Always asked of the tenant: a cached access token proves nothing about
+    // the grant, and after a tenant change it is the previous tenant's.
+    token = (await manager.msalApp.acquireTokenSilent({account, scopes, forceRefresh: true})).accessToken;
   } catch (error) {
     return classify(error);
   }

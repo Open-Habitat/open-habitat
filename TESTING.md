@@ -614,8 +614,8 @@ It exercises the pinned MCP AuthManager's encrypted-cache reload/silent refresh
 for an organisation account through its tenant, including account mismatch,
 provider refusal, transport cancellation preserving existing bytes, and refusal
 of the `common`, `organizations` and `consumers` audiences. It also runs the
-adapter's `verify` over the same store: a working grant reads `ok` and persists
-its rotation, tenant refusals by error code read `refused` or `outside_tenant`,
+adapter's `verify` over the same store: a working grant, asked of the tenant
+even with a cached access token, reads `ok` and persists its rotation, tenant refusals by error code read `refused` or `outside_tenant`,
 and an outage, a 503 or a failing Graph read `unreachable`. No fixture endpoint
 override exists in the production helper.
 

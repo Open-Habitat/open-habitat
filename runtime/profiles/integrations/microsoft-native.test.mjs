@@ -60,10 +60,13 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
     assert.match(options.headers.Authorization, /^Bearer synthetic-access-/);
     return new Response('{}', {status});
   };
+  // Access tokens now outlive the checks: a cached one must not answer.
+  state.expiresIn = 3600;
   const stored = await fs.readFile(process.env.MS365_MCP_TOKEN_CACHE_PATH, 'utf8');
   const polls = state.polls;
   assert.equal(await verifyGrant(request, {networkClient}, graph(200)), 'ok');
-  assert.equal(state.polls, polls + 1, 'verify did not ask the tenant');
+  assert.equal(await verifyGrant(request, {networkClient}, graph(200)), 'ok');
+  assert.equal(state.polls, polls + 2, 'verify did not ask the tenant');
   assert.notEqual(await fs.readFile(process.env.MS365_MCP_TOKEN_CACHE_PATH, 'utf8'), stored, 'rotated grant not persisted in the native store');
   assert.equal(await verifyGrant(request, {networkClient}, graph(503)), 'unreachable');
   assert.equal(await verifyGrant(request, {networkClient}, async () => { throw Error('offline'); }), 'unreachable');
@@ -75,6 +78,8 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
     [{refuse: true, codes: [50020]}, 'outside_tenant'],
     [{refuse: true, codes: [90072]}, 'outside_tenant'],
     [{unavailable: true}, 'unreachable'],
+    // MSAL picks its interaction-required class from description text too.
+    [{unavailable: true, description: 'synthetic outage; login_required'}, 'unreachable'],
     [{cancelled: true}, 'unreachable'],
   ];
   for (const [answer, expected] of cases) {
