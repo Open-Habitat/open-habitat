@@ -46,8 +46,34 @@ limit, and an earlier installed immutable-identity file stays byte-identical
 
 ## Evidence
 
-See the commit trailers for the change set. Checks run in this worktree are
-listed in the run's final report and below as they complete.
+- `./scripts/vm-test.sh host-shared-home --json` passed (358 s, product
+  commit 7911be11, guest receipt with every field true): `/home` on the ext4
+  root filesystem of a guest without a second disk; host check storage passes
+  as `home_on_root_filesystem_observed` / `user_quota_not_declared`; a quota
+  site on the same host is refused (`separate_home_required`,
+  `home_mount_required`); prepare runs no probe, installs the policy without
+  quota and reruns as `no_change`; the production broker creates two accounts
+  at first login with no default limit as the gateway UID; quota reads answer
+  `not_in_use`, a limit change `quota_not_in_use`; an 80 MiB write needs no
+  limit; after a cold boot the real storage gate, broker restoration, named
+  ACLs and cross-UID denials hold, and a policy naming another filesystem is
+  refused.
+- Quota mode: existing host, provision, gateway, cli, bootguard and daemon
+  tests pass unchanged; new unit tests cover the no-quota broker, gateway,
+  host check/prepare, proof binding, daemon policy fallback and web views.
+- Full gate `./scripts/ci-local.sh --clean` passed at baf8f767 (whole
+  browser suite included); only this result file changed after it.
+- Review (`/llm-review`, finder gpt-6-astra, verifier claude-fable-5-1): one
+  must-fix finding, confirmed and fixed in 07bfb616 — preparation ignored a
+  failed `installation.identity`, so a lost or untrusted
+  `installation.json` could let prepare republish the storage policy in the
+  other mode. No other candidates.
+- **Not covered:** `host apply` itself in the no-quota mode (default-limit
+  convergence skipped, preparation proof accepted) has no VM or cloud run;
+  apply needs a signed runtime release and the cloud qualification still
+  formats a quota volume. The birch installation (`habitat-birch-install`) is
+  the first real apply; a shared-storage option for `scripts/cloud-qualify.py`
+  is proposed as follow-up work.
 
 ## Decisions for later review
 
