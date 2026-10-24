@@ -8,6 +8,13 @@ const (
 	integrationsPath        = "/api/v1/integrations"
 	integrationAccountsPath = "/api/v1/integrations/accounts"
 	integrationLoginPath    = "/api/v1/integrations/login"
+	integrationGiteaPath    = "/api/v1/integrations/gitea"
+	integrationGiteaRepos   = "/api/v1/integrations/gitea/repos"
+	// A Gitea write carries at most an address and a token; its reply and
+	// the repository list are bounded far below the general proxy cap.
+	giteaRequestLimit = 4096
+	giteaChangeLimit  = 64 << 10
+	giteaReposLimit   = 4 << 20
 )
 
 // integrations routes the person's integration requests to their daemon. The
@@ -20,10 +27,26 @@ func (a *Auth) integrations(w http.ResponseWriter, r *http.Request) {
 		integrationsPath:        {http.MethodGet: true},
 		integrationAccountsPath: {http.MethodPost: true, http.MethodDelete: true},
 		integrationLoginPath:    {http.MethodGet: true, http.MethodPost: true, http.MethodPut: true, http.MethodDelete: true},
+		integrationGiteaPath:    {http.MethodPost: true, http.MethodDelete: true},
+		integrationGiteaRepos:   {http.MethodGet: true},
 	}
 	if !allowed[r.URL.Path][r.Method] || !a.exact(r, r.URL.Path) {
 		safe(w, 400, "invalid_request")
 		return
+	}
+	// A Gitea token passes through unread: the gateway checks only the
+	// framing, never parses, logs or keeps the body, and never calls Gitea.
+	switch r.URL.Path {
+	case integrationGiteaPath:
+		if r.ContentLength < 1 || r.ContentLength > giteaRequestLimit || len(r.TransferEncoding) != 0 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 {
+			safe(w, 400, "invalid_request")
+			return
+		}
+	case integrationGiteaRepos:
+		if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+			safe(w, 400, "invalid_request")
+			return
+		}
 	}
 	s, ok := a.authenticated(r)
 	if !ok {

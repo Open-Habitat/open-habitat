@@ -43,6 +43,11 @@ type Client struct {
 // NewClient returns the production client.
 func NewClient() *Client { return &Client{} }
 
+// NewClientWithRoots trusts roots instead of the system store. Only same-UID
+// tests and the synthetic browser host use it, for their own fixture CA; the
+// product never does.
+func NewClientWithRoots(roots *x509.CertPool) *Client { return &Client{roots: roots} }
+
 func (c *Client) lookup(ctx context.Context, host string) ([]netip.Addr, error) {
 	if ip, err := netip.ParseAddr(host); err == nil {
 		return []netip.Addr{ip}, nil
@@ -97,6 +102,10 @@ func (c *Client) transport(b Base) *http.Transport {
 // get performs one bounded GET of base+/api/v1+path with the PAT. The token
 // lives only in this request's header.
 func (c *Client) get(ctx context.Context, b Base, path, token string, out any) error {
+	return c.getLimited(ctx, b, path, token, maxBody, out)
+}
+
+func (c *Client) getLimited(ctx context.Context, b Base, path, token string, limit int, out any) error {
 	if !b.valid() {
 		return ErrInvalidAddress
 	}
@@ -133,11 +142,11 @@ func (c *Client) get(ctx context.Context, b Base, path, token string, out any) e
 	default:
 		return ErrProtocol
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBody+1))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, int64(limit)+1))
 	if err != nil {
 		return ErrUnreachable
 	}
-	if len(body) > maxBody || json.Unmarshal(body, out) != nil {
+	if len(body) > limit || json.Unmarshal(body, out) != nil {
 		return ErrProtocol
 	}
 	return nil

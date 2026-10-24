@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "fd1f8e58e3df1d10e328682aa7b7845afdc9660db6a1ba3a392a4f67b288f95b"
+const V1SchemaFingerprint = "f822ba9518331fe2aa841b6778ab67fc01e91a5b4f44845e72eb30d98d85a526"
 
 var V1SchemaFiles = []string{
 	"account-profile-update.schema.json",
@@ -29,6 +29,9 @@ var V1SchemaFiles = []string{
 	"first-route.schema.json",
 	"git-identity-update.schema.json",
 	"git-identity.schema.json",
+	"gitea-connection-change.schema.json",
+	"gitea-connection.schema.json",
+	"gitea-repos.schema.json",
 	"github-checkout.schema.json",
 	"github-clone-progress.schema.json",
 	"github-clone.schema.json",
@@ -100,6 +103,9 @@ type Exchange = json.RawMessage
 type FirstRoute = json.RawMessage
 type GitIdentityUpdate = json.RawMessage
 type GitIdentity = json.RawMessage
+type GiteaConnectionChange = json.RawMessage
+type GiteaConnection = json.RawMessage
+type GiteaRepos = json.RawMessage
 type GithubCheckout = json.RawMessage
 type GithubCloneProgress = json.RawMessage
 type GithubClone = json.RawMessage

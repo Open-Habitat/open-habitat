@@ -85,6 +85,8 @@ func proxyOperation(path string) string {
 		return "github_repos"
 	case githubClonesPath, githubCloneEventsPath:
 		return "github_clones"
+	case integrationGiteaPath, integrationGiteaRepos:
+		return "integrations_gitea"
 	default:
 		// Classify the route, never log the browser-supplied session ID.
 		if strings.HasSuffix(path, "/regenerate_title") && conversationPath.MatchString(path) {
@@ -154,6 +156,9 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	}
 	if r.URL.Path == "/api/v1/attachments" && r.Method == http.MethodPost {
 		requestLimit = 20 << 20
+	}
+	if r.URL.Path == integrationGiteaPath {
+		requestLimit = giteaRequestLimit
 	}
 	if r.ContentLength < 0 || r.ContentLength > requestLimit {
 		safe(w, 400, "invalid_request")
@@ -248,8 +253,13 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	// Buffer finite responses before writing headers: an oversized or broken
 	// daemon response must not leave a successful but truncated JSON document.
 	responseLimit := proxyBodyLimit
-	if strings.HasPrefix(r.URL.Path, editorFilesPrefix) {
+	switch {
+	case strings.HasPrefix(r.URL.Path, editorFilesPrefix):
 		responseLimit = 8 << 20
+	case r.URL.Path == integrationGiteaPath:
+		responseLimit = giteaChangeLimit
+	case r.URL.Path == integrationGiteaRepos:
+		responseLimit = giteaReposLimit
 	}
 	data, err := io.ReadAll(io.LimitReader(res.Body, responseLimit+1))
 	if err != nil || int64(len(data)) > responseLimit {

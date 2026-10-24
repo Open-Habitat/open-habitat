@@ -73,7 +73,7 @@ func TestCloneNativeDeadlineKillsSlowProcessGroup(t *testing.T) {
 	emit := &recordedProgress{}
 	result := make(chan error, 1)
 	go func() {
-		result <- cloneProgressCommand(ctx, script, home, int(fd.Fd()), "https://github.com/fixture/repo.git", "full", emit)
+		result <- cloneProgressCommand(ctx, script, home, int(fd.Fd()), "https://github.com/fixture/repo.git", "full", emit, nil, nil)
 	}()
 	wait := time.NewTicker(10 * time.Millisecond)
 	defer wait.Stop()

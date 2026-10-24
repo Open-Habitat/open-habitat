@@ -2,7 +2,8 @@
   "schema_version": 1,
   "providers": [
     {"id": "imap", "available": true, "login": "app_password", "services": ["mail"]},
-    {"id": "google", "available": false, "unavailable_reason": "app_credentials_required", "login": "pasted_redirect", "services": ["mail", "calendar", "contacts", "drive"]}
+    {"id": "google", "available": false, "unavailable_reason": "app_credentials_required", "login": "pasted_redirect", "services": ["mail", "calendar", "contacts", "drive"]},
+    {"id": "gitea", "available": true, "login": "personal_token", "services": ["git"]}
   ],
   "accounts": [
     {"provider": "imap", "address": "person@example.test", "checked_at": "2026-10-19T09:38:00Z", "services": [{"id": "mail", "state": "ok"}]},
@@ -11,5 +12,9 @@
       {"id": "drive", "state": "sync_restarting", "failure": "delete_limit", "last_synced_at": "2026-10-19T09:12:41Z", "directory": "~/cloud/google-drive/person.home@example.test", "progress": {"service": "drive", "phase": "preparing", "elapsed_seconds": 3, "bytes": 0, "total_bytes": 0, "files": 0, "total_files": 0}}
     ]}
   ],
+  "gitea": {"state": "ok", "connections": [
+    {"id": "gitea_0123456789abcdef01234567", "base_url": "https://git.example.test/gitea", "user": "example-person", "kind": "pat", "owned": true, "ambiguous": false, "git": "registered"},
+    {"id": "gitea_89abcdef0123456789abcdef", "base_url": "https://code.example.test:8443", "user": "example-person", "kind": "oauth", "owned": false, "ambiguous": false, "git": "absent"}
+  ]},
   "skill": "current"
 }

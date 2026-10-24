@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
@@ -64,6 +65,11 @@ type CloneJobs struct {
 	budget          func(int) bool
 	now             func() time.Time
 	listProcessScan cloneProcessScan // nil uses the native scan; list-only test seam
+	// gitea is the shared native adapter for Gitea sources; nil offers none.
+	// giteaGit is the real Git a Gitea clone runs, even beside fixture
+	// programs, because its credential comes from the native helper.
+	gitea    *integrations.GiteaAdapter
+	giteaGit string
 
 	mu          sync.Mutex
 	jobs        []*cloneJob // newest first
@@ -73,14 +79,22 @@ type CloneJobs struct {
 
 // NewCloneJobs runs every gh and git as this daemon's own user in cfg.Home.
 func NewCloneJobs(ctx context.Context, cfg transport.Config, trusted func(*http.Request) bool) *CloneJobs {
-	return &CloneJobs{ctx: ctx, cfg: cfg, trusted: trusted, home: cfg.Home, gh: "/usr/bin/gh", git: "/usr/bin/git", run: cloneCommand, budget: boundedCloneVolume, now: time.Now}
+	return &CloneJobs{ctx: ctx, cfg: cfg, trusted: trusted, home: cfg.Home, gh: "/usr/bin/gh", git: "/usr/bin/git", giteaGit: "/usr/bin/git", run: cloneCommand, budget: boundedCloneVolume, now: time.Now}
+}
+
+// WithGitea offers the connections of the shared Gitea adapter as clone
+// sources. It is the same adapter the integrations routes use, so a clone's
+// hold on a login refuses that connection's disconnect.
+func (c *CloneJobs) WithGitea(g *integrations.GiteaAdapter) *CloneJobs {
+	c.gitea = g
+	return c
 }
 
 // NewCloneJobsWithFixturePrograms is the offline integration seam. All
 // filesystem and command homes belong to the disposable fixture, never cfg.Home,
 // and quota admission is not consulted.
 func NewCloneJobsWithFixturePrograms(ctx context.Context, cfg transport.Config, trusted func(*http.Request) bool, home, gh, git string) *CloneJobs {
-	return &CloneJobs{ctx: ctx, cfg: cfg, trusted: trusted, home: home, gh: gh, git: git, run: func(ctx context.Context, program, _, fd string, args ...string) ([]byte, error) {
+	return &CloneJobs{ctx: ctx, cfg: cfg, trusted: trusted, home: home, gh: gh, git: git, giteaGit: "/usr/bin/git", run: func(ctx context.Context, program, _, fd string, args ...string) ([]byte, error) {
 		return cloneCommand(ctx, program, home, fd, args...)
 	}, budget: func(int) bool { return true }, now: time.Now}
 }
@@ -90,6 +104,9 @@ type cloneJob struct {
 	started            time.Time
 	cancel             context.CancelFunc
 	userCancel         atomic.Bool
+	// git is the program this job runs; source is set for a Gitea clone.
+	git    string
+	source *giteaCloneSource
 
 	mu      sync.Mutex
 	state   cloneJobState
@@ -149,6 +166,9 @@ func (j *cloneJob) progressMeasured(stage string, percent int, received *uint64)
 
 func (j *cloneJob) view(now cloneJobState) map[string]any {
 	v := map[string]any{"job_id": j.id, "full_name": j.fullName, "mode": j.mode, "state": now.State, "started_at": j.started.UTC().Format(time.RFC3339)}
+	if j.source != nil {
+		v["source"] = map[string]any{"provider": "gitea", "connection_id": j.source.ConnectionID, "repository_id": j.source.RepositoryID}
+	}
 	if now.State == "running" {
 		v["stage"] = now.Stage
 		if now.Percent != nil {
@@ -223,12 +243,23 @@ func (c *CloneJobs) handlerAt(path string, trusted func(*http.Request) bool) htt
 			// server's short default write deadline.
 			extendReply(w, 3*time.Minute+30*time.Second)
 			var in struct {
-				Action   string `json:"action"`
-				FullName string `json:"full_name"`
-				Mode     string `json:"mode"`
-				JobID    string `json:"job_id"`
+				Action       string `json:"action"`
+				FullName     string `json:"full_name"`
+				Mode         string `json:"mode"`
+				JobID        string `json:"job_id"`
+				Source       string `json:"source"`
+				ConnectionID string `json:"connection_id"`
+				RepositoryID int64  `json:"repository_id"`
 			}
-			if err != nil || int64(len(body)) != r.ContentLength || !catalogNoDuplicates(body) || strictCloneJSON(body, &in) != nil || !validCloneAction(body, in.Action, in.FullName, in.Mode, in.JobID) {
+			if err == nil && int64(len(body)) == r.ContentLength && catalogNoDuplicates(body) && strictCloneJSON(body, &in) == nil && in.Source != "" {
+				if !validGiteaStart(body, in.Action, in.Source, in.ConnectionID, in.RepositoryID, in.Mode) {
+					snapshotError(w, 400, "invalid_request")
+					return
+				}
+				c.startGitea(w, r, in.ConnectionID, in.RepositoryID)
+				return
+			}
+			if err != nil || int64(len(body)) != r.ContentLength || !catalogNoDuplicates(body) || strictCloneJSON(body, &in) != nil || in.ConnectionID != "" || in.RepositoryID != 0 || !validCloneAction(body, in.Action, in.FullName, in.Mode, in.JobID) {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
@@ -291,24 +322,43 @@ func (c *CloneJobs) start(w http.ResponseWriter, r *http.Request, fullName, mode
 	historyJSON(w, map[string]any{"schema_version": 1, "job": job.view(now)})
 }
 
+// cloneTarget is a repository a provider resolved for one job.
+type cloneTarget struct {
+	// fullName is the provider's own spelling; requested is what was asked.
+	fullName, requested, cloneURL, mode string
+	restart                             bool
+	git                                 string
+	// pre are Git options before the clone command, config the values the
+	// new repository is created with (git clone --config).
+	pre, config []string
+	source      *giteaCloneSource
+	// release ends the job's hold on native state when it settles.
+	release func()
+}
+
 // admit runs with cloneWriter held. A refusal releases it; an admitted job
 // owns it from then on.
 func (c *CloneJobs) admit(parent context.Context, fullName, mode string, restart bool) (*cloneJob, int, string) {
-	handedOff := false
-	defer func() {
-		if !handedOff {
-			cloneWriter.Unlock()
-		}
-	}()
-	parts := strings.Split(fullName, "/")
 	ctx, cancel := context.WithTimeout(parent, 60*time.Second)
 	defer cancel()
+	t, status, code := c.resolveGitHub(ctx, fullName, mode, restart)
+	if status != 0 {
+		cloneWriter.Unlock()
+		return nil, status, code
+	}
+	return c.reserve(ctx, t)
+}
+
+// resolveGitHub binds the job to the person's own GitHub subject and reads
+// the repository with their gh.
+func (c *CloneJobs) resolveGitHub(ctx context.Context, fullName, mode string, restart bool) (cloneTarget, int, string) {
+	parts := strings.Split(fullName, "/")
 	identity, err := c.run(ctx, c.gh, c.home, "", "api", "--method", "GET", "/user")
 	var user struct {
 		ID json.Number `json:"id"`
 	}
 	if err != nil || strictRepoJSON(identity, &user) != nil || string(user.ID) != c.cfg.Subject {
-		return nil, 409, "github_auth_unavailable"
+		return cloneTarget{}, 409, "github_auth_unavailable"
 	}
 	raw, err := c.run(ctx, c.gh, c.home, "", "api", "--method", "GET", "/repos/"+fullName)
 	var repo struct {
@@ -322,10 +372,26 @@ func (c *CloneJobs) admit(parent context.Context, fullName, mode string, restart
 	// GitHub names compare case-insensitively; the job and its destination
 	// take GitHub's own spelling, whichever spelling was asked for.
 	if err != nil || strictRepoJSON(raw, &repo) != nil || !strings.EqualFold(repo.Owner.Login, parts[0]) || !strings.EqualFold(repo.Name, parts[1]) || repo.FullName != repo.Owner.Login+"/"+repo.Name || !validCloneName(repo.FullName) || repo.CloneURL != "https://github.com/"+repo.FullName+".git" {
-		return nil, 503, "native_source_unavailable"
+		return cloneTarget{}, 503, "native_source_unavailable"
 	}
-	requested := fullName
-	fullName, parts = repo.FullName, []string{repo.Owner.Login, repo.Name}
+	return cloneTarget{fullName: repo.FullName, requested: fullName, cloneURL: repo.CloneURL, mode: mode, restart: restart, git: c.git}, 0, ""
+}
+
+// reserve admits a resolved target: it reserves ~/src/<name> and hands the
+// writer lock, the descriptors and t.release to the job. A refusal releases
+// both.
+func (c *CloneJobs) reserve(ctx context.Context, t cloneTarget) (*cloneJob, int, string) {
+	handedOff := false
+	defer func() {
+		if !handedOff {
+			cloneWriter.Unlock()
+			if t.release != nil {
+				t.release()
+			}
+		}
+	}()
+	fullName, requested, mode, restart := t.fullName, t.requested, t.mode, t.restart
+	parts := strings.Split(fullName, "/")
 	src, err := cloneSource(c.cfg, c.home, true)
 	if err != nil {
 		return nil, 409, "checkout_unavailable"
@@ -341,7 +407,7 @@ func (c *CloneJobs) admit(parent context.Context, fullName, mode string, restart
 		if e != nil {
 			return nil, 409, "not_interrupted"
 		}
-		_, interrupted := interruptedClone(ctx, c.home, c.git, c.run, c.cfg.UID, child, parts[1], fullName)
+		_, interrupted := interruptedClone(ctx, c.home, t.git, c.run, c.cfg.UID, child, parts[1], fullName)
 		removed := interrupted && removeCreated(c.ctx, src, child, parts[1])
 		unix.Close(child)
 		if !interrupted {
@@ -399,7 +465,7 @@ func (c *CloneJobs) admit(parent context.Context, fullName, mode string, restart
 		return nil, 503, "checkout_unavailable"
 	}
 	jobCtx, jobCancel := context.WithTimeout(c.ctx, cloneJobCeiling)
-	job := &cloneJob{id: hex.EncodeToString(id), fullName: fullName, mode: mode, started: c.now(), cancel: jobCancel, state: cloneJobState{State: "running", Stage: "reserving"}, changed: make(chan struct{})}
+	job := &cloneJob{id: hex.EncodeToString(id), fullName: fullName, mode: mode, started: c.now(), cancel: jobCancel, git: t.git, source: t.source, state: cloneJobState{State: "running", Stage: "reserving"}, changed: make(chan struct{})}
 	c.mu.Lock()
 	kept := []*cloneJob{job}
 	for _, old := range c.jobs {
@@ -412,33 +478,36 @@ func (c *CloneJobs) admit(parent context.Context, fullName, mode string, restart
 	c.dropPlannedLocked(requested)
 	c.mu.Unlock()
 	handedOff, srcOwned = true, false
-	go c.runJob(jobCtx, job, src, child, srcInitial, parts[1], repo.CloneURL)
+	go c.runJob(jobCtx, job, src, child, srcInitial, parts[1], t)
 	return job, 0, ""
 }
 
-// runJob owns cloneWriter, src and child from start until it settles. The
-// final state is published only after they are released, so a terminal job
-// never refuses the next start as busy.
-func (c *CloneJobs) runJob(ctx context.Context, job *cloneJob, src, child int, srcInitial unix.Stat_t, name, cloneURL string) {
-	state, reason, leftover := c.clone(ctx, job, src, child, srcInitial, name, cloneURL)
+// runJob owns cloneWriter, src, child and t.release from start until it
+// settles. The final state is published only after they are released, so a
+// terminal job never refuses the next start as busy or a disconnect as in use.
+func (c *CloneJobs) runJob(ctx context.Context, job *cloneJob, src, child int, srcInitial unix.Stat_t, name string, t cloneTarget) {
+	state, reason, leftover := c.clone(ctx, job, src, child, srcInitial, name, t)
 	job.cancel()
 	unix.Close(child)
 	unix.Close(src)
 	cloneWriter.Unlock()
+	if t.release != nil {
+		t.release()
+	}
 	c.finish(job, state, reason, leftover)
 }
 
-func (c *CloneJobs) clone(ctx context.Context, job *cloneJob, src, child int, srcInitial unix.Stat_t, name, cloneURL string) (string, string, string) {
+func (c *CloneJobs) clone(ctx context.Context, job *cloneJob, src, child int, srcInitial unix.Stat_t, name string, t cloneTarget) (string, string, string) {
 	job.stage("connecting")
 	// An open cwd, not a pathname, pins Git inside the reserved destination.
-	err := cloneProgressCommand(ctx, c.git, c.home, child, cloneURL, job.mode, job)
+	err := cloneProgressCommand(ctx, t.git, c.home, child, t.cloneURL, job.mode, job, t.pre, t.config)
 	reason := cloneReason(err)
 	if err == nil {
 		job.stage("verifying")
 		// Git finished; what it wrote may be a whole repository that only
 		// fails the checks (an empty repository, a dirty checkout after
 		// line-ending conversion). It is kept for the person to inspect.
-		if !c.verify(ctx, src, child, srcInitial, name, cloneURL) && ctx.Err() == nil {
+		if !c.verify(ctx, t.git, src, child, srcInitial, name, t.cloneURL) && ctx.Err() == nil {
 			return "failed", "verification_failed", "kept"
 		}
 	}
@@ -472,7 +541,7 @@ func (c *CloneJobs) finish(job *cloneJob, state, reason, leftover string) {
 
 // verify establishes the checkout natively: the expected repository and
 // origin, a clean work tree and a HEAD commit, still at the reserved name.
-func (c *CloneJobs) verify(ctx context.Context, src, child int, srcInitial unix.Stat_t, name, cloneURL string) bool {
+func (c *CloneJobs) verify(ctx context.Context, git string, src, child int, srcInitial unix.Stat_t, name, cloneURL string) bool {
 	initial, e := stat(child)
 	if e != nil {
 		return false
@@ -483,10 +552,10 @@ func (c *CloneJobs) verify(ctx context.Context, src, child int, srcInitial unix.
 	}
 	unix.Close(gd)
 	fd := strconv.Itoa(child)
-	top, e1 := c.run(ctx, c.git, c.home, fd, "rev-parse", "--is-inside-work-tree")
-	remote, e2 := c.run(ctx, c.git, c.home, fd, "remote", "get-url", "origin")
-	status, e3 := c.run(ctx, c.git, c.home, fd, "status", "--porcelain")
-	head, e5 := c.run(ctx, c.git, c.home, fd, "rev-parse", "--verify", "HEAD^{commit}")
+	top, e1 := c.run(ctx, git, c.home, fd, "rev-parse", "--is-inside-work-tree")
+	remote, e2 := c.run(ctx, git, c.home, fd, "remote", "get-url", "origin")
+	status, e3 := c.run(ctx, git, c.home, fd, "status", "--porcelain")
+	head, e5 := c.run(ctx, git, c.home, fd, "rev-parse", "--verify", "HEAD^{commit}")
 	named, e4 := dir(unix.Openat2, src, name, true)
 	var now unix.Stat_t
 	if e4 == nil {

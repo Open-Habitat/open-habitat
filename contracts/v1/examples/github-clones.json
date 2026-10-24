@@ -2,7 +2,8 @@
   "schema_version": 1,
   "jobs": [
     {"job_id": "0123456789abcdef0123456789abcdef", "full_name": "example-org/large-repo", "mode": "blobless", "state": "running", "stage": "receiving", "percent": 14, "received_bytes": 104857600, "started_at": "2026-10-17T12:00:00Z"},
-    {"job_id": "fedcba9876543210fedcba9876543210", "full_name": "example-org/archive", "mode": "full", "state": "failed", "reason": "native_failure", "leftover": "removed", "started_at": "2026-10-17T11:50:00Z", "finished_at": "2026-10-17T11:52:00Z"}
+    {"job_id": "fedcba9876543210fedcba9876543210", "full_name": "example-org/archive", "mode": "full", "state": "failed", "reason": "native_failure", "leftover": "removed", "started_at": "2026-10-17T11:50:00Z", "finished_at": "2026-10-17T11:52:00Z"},
+    {"job_id": "00112233445566778899aabbccddeeff", "full_name": "example_person/notes.v2", "source": {"provider": "gitea", "connection_id": "gitea_0123456789abcdef01234567", "repository_id": 42}, "mode": "full", "state": "confirmed", "started_at": "2026-10-17T11:55:00Z", "finished_at": "2026-10-17T11:56:00Z"}
   ],
   "planned": [{"full_name": "example-org/product", "state": "waiting"}, {"full_name": "example-org/infra", "state": "refused", "reason": "quota_full"}],
   "interrupted": [{"full_name": "example-org/monorepo", "size_bytes": 954204160}],

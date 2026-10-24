@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/gitea-connection-change.schema.json",
+  "title": "Outcome of a Gitea connection write or check",
+  "description": "outcome: written (tea's file now holds the change), unchanged (it already did; a repeated request after a lost reply is observed, not replayed), absent (the entry to remove was already gone) or checked. api is the base's /user answer for this token now, given only by connect, replace and check; it is never Git readiness, which connection.git observes separately. A connect whose helper registration failed still answers with the connection and its git state, so the page offers repair rather than a working connection. Refusals are fixed error codes in the error shape: nothing was written.",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "outcome"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "outcome": {"enum": ["written", "unchanged", "absent", "checked"]},
+    "connection": {"$ref": "integrations.schema.json#/$defs/gitea_connection"},
+    "api": {"enum": ["ok", "token_rejected", "insufficient_scope", "account_mismatch", "unreachable", "tls_untrusted", "redirect_refused", "forbidden_destination", "not_gitea"]},
+    "removed": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id"],
+      "properties": {"id": {"$ref": "integrations.schema.json#/$defs/gitea_connection_id"}}
+    }
+  },
+  "oneOf": [
+    {"required": ["connection"], "not": {"required": ["removed"]}},
+    {"required": ["removed"], "not": {"anyOf": [{"required": ["connection"]}, {"required": ["api"]}]}}
+  ]
+}

@@ -509,6 +509,11 @@ type Catalog struct {
 
 	// apple are the endpoints of the Apple (iCloud) connection.
 	apple AppleHosts
+
+	// gitea is the native adapter for tea's logins (gitea_linux.go); nil
+	// leaves Gitea out of the catalog. giteaWrite serializes its writes.
+	gitea      *GiteaAdapter
+	giteaWrite sync.Mutex
 }
 
 type Option func(*Catalog)

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/gitea-connection.schema.json",
+  "title": "Connect, change, check, repair or disconnect a Gitea connection",
+  "description": "POST /api/v1/integrations/gitea sends connect, replace, check or repair; DELETE sends disconnect. The token travels only in connect and replace, goes once to the mapped daemon, which validates it against the base's /user and writes it into tea's own login file, and is never returned, logged or kept anywhere else. connect infers https:// only when no scheme is given and never corrects a host. connection_id is one the daemon derived from tea's file; it selects nothing else. check reads /user now; the list never touches the network. repair registers the secretless Git credential helper for the connection's base again. disconnect removes the local tea entry only: it revokes nothing at Gitea and leaves every clone in place, and it is refused while one of this daemon's clones uses the connection.",
+  "oneOf": [
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["action", "base_url", "token"],
+      "properties": {
+        "action": {"const": "connect"},
+        "base_url": {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[!-~]+$"},
+        "token": {"$ref": "#/$defs/token"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["action", "connection_id", "token"],
+      "properties": {
+        "action": {"const": "replace"},
+        "connection_id": {"$ref": "integrations.schema.json#/$defs/gitea_connection_id"},
+        "token": {"$ref": "#/$defs/token"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["action", "connection_id"],
+      "properties": {
+        "action": {"enum": ["check", "repair", "disconnect"]},
+        "connection_id": {"$ref": "integrations.schema.json#/$defs/gitea_connection_id"}
+      }
+    }
+  ],
+  "$defs": {
+    "token": {"description": "A Gitea personal access token: printable ASCII without spaces.", "type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^[!-~]+$"}
+  }
+}

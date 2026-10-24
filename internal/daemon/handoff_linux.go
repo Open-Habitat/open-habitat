@@ -15,6 +15,7 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"github.com/Open-Habitat/open-habitat/internal/nativegh"
+	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
@@ -71,7 +72,9 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(RepoCatalogPath, RepoCatalogHandler(cfg, server.TrustedPeer))
 	mux.Handle(RepoLookupPath, RepoLookupHandler(cfg, server.TrustedPeer))
 	mux.Handle(GitIdentityPath, GitIdentityHandler(cfg, server.TrustedPeer))
-	clones := NewCloneJobs(ctx, cfg, server.TrustedPeer)
+	integrationEnv := newIntegrationEnv(cfg)
+	gitea := newGitea(cfg, integrationEnv)
+	clones := NewCloneJobs(ctx, cfg, server.TrustedPeer).WithGitea(gitea)
 	server.SetPlanConsumer(clones.Plan)
 	server.SetSeedConsumer(func(ctx context.Context, s transport.Seed) string { return pi.SeedSiteKey(ctx, s.Provider, s.Key) })
 	mux.Handle(RepoClonesPath, clones.Handler())
@@ -109,9 +112,9 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		})
 	}))
 	mux.Handle("/api/v1/agents/", HistoryHandler(cfg, server.TrustedPeer))
-	catalog := newIntegrations(ctx, cfg)
+	catalog := newIntegrations(ctx, cfg, integrationEnv, gitea)
 	integrationRoutes := catalog.Handler(func(r *http.Request) bool { return historyAuthorized(cfg, server.TrustedPeer, r) })
-	for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath} {
+	for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath, integrations.GiteaPath, integrations.GiteaReposPath} {
 		mux.Handle(path, integrationRoutes)
 	}
 	mux.Handle("/api/v1/conversations", controller)
@@ -153,7 +156,18 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 // operator's pinned tools, run as this user, with sync clients supervised for
 // the daemon's lifetime. An untrusted or malformed operator configuration
 // leaves every entry unavailable rather than stopping the daemon.
-func newIntegrations(ctx context.Context, cfg transport.Config) *integrations.Catalog {
+func newIntegrations(ctx context.Context, cfg transport.Config, env integrations.Env, gitea *integrations.GiteaAdapter) *integrations.Catalog {
+	log := diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "integrations")
+	opts := []integrations.Option{integrations.WithTrash(func(rel string) error { return TrashCloudDirectory(cfg.Home, rel) })}
+	if gitea != nil {
+		opts = append(opts, integrations.WithGitea(gitea))
+	}
+	catalog := integrations.New(env, integrations.Production(), log, opts...)
+	catalog.Start(ctx)
+	return catalog
+}
+
+func newIntegrationEnv(cfg transport.Config) integrations.Env {
 	log := diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "integrations")
 	load := func() (integrations.Config, error) {
 		cfg, err := integrations.LoadConfig(log)
@@ -162,10 +176,22 @@ func newIntegrations(ctx context.Context, cfg transport.Config) *integrations.Ca
 		}
 		return cfg, err
 	}
-	catalog := integrations.New(integrations.Env{Home: cfg.Home, LoadConfig: load}, integrations.Production(), log,
-		integrations.WithTrash(func(rel string) error { return TrashCloudDirectory(cfg.Home, rel) }))
-	catalog.Start(ctx)
-	return catalog
+	return integrations.Env{Home: cfg.Home, LoadConfig: load}
+}
+
+// newGitea is the one Gitea adapter the integrations routes and the clone
+// jobs share (ADR 0031). Git runs this binary as the credential helper; a
+// daemon that cannot name its own executable offers no Gitea.
+func newGitea(cfg transport.Config, env integrations.Env) *integrations.GiteaAdapter {
+	executable, err := os.Executable()
+	if err != nil {
+		return nil
+	}
+	g, err := integrations.NewGitea(env, nativegitea.NewClient(), "/usr/bin/git", executable)
+	if err != nil {
+		return nil
+	}
+	return g
 }
 
 // RequestLog records the daemon's side of slow, failed and mutating requests.

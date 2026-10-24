@@ -45,6 +45,14 @@ func (c *Catalog) Handler(authorized func(*http.Request) bool) http.Handler {
 			c.accountsRequest(w, r)
 		case LoginPath:
 			c.loginRequest(w, r)
+		case GiteaPath:
+			c.giteaRequest(w, r)
+		case GiteaReposPath:
+			if c.gitea == nil {
+				fail(w, 404, "not_found")
+				return
+			}
+			c.giteaRepos(w, r)
 		default:
 			fail(w, 404, "not_found")
 		}
@@ -93,6 +101,7 @@ type listView struct {
 	SchemaVersion int            `json:"schema_version"`
 	Providers     []providerView `json:"providers"`
 	Accounts      []Account      `json:"accounts"`
+	Gitea         *giteaList     `json:"gitea,omitempty"`
 	Skill         SkillState     `json:"skill"`
 }
 
@@ -118,6 +127,17 @@ func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 				view.Providers = append(view.Providers, apple)
 			}
 		}
+	}
+	if c.gitea != nil {
+		p := providerView{ID: Gitea, Available: c.gitea.Available(), Login: PersonalToken, Services: []string{"git"}}
+		if !p.Available {
+			p.UnavailableReason, p.MissingTools = "tool_unavailable", []string{"tea"}
+		}
+		view.Providers = append(view.Providers, p)
+		// tea's file alone, read independently of the other tools: its
+		// failure is its own state, not the whole list's.
+		gitea := c.gitea.list(r.Context())
+		view.Gitea = &gitea
 	}
 	accounts, unread := c.accounts()
 	if len(unread) > 0 {

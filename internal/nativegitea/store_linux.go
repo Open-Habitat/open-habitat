@@ -427,6 +427,35 @@ func (s *Store) Logins() ([]Login, error) {
 	return ss.doc.projection(), nil
 }
 
+// Token returns the PAT of the targeted login for one of the fixed API reads.
+// The entry must still have the observed name, base and user and be a usable
+// PAT login. The token is the caller's to use once and drop; nothing here
+// keeps it.
+func (s *Store) Token(t Target) (string, error) {
+	ss, err := s.open(false)
+	if err != nil {
+		return "", err
+	}
+	if ss == nil {
+		return "", ErrNotFound
+	}
+	defer ss.close()
+	e, err := ss.doc.byName(t.Name)
+	if err != nil {
+		return "", err
+	}
+	if e.Base != t.Base || !strings.EqualFold(e.User, t.User) {
+		return "", ErrChanged
+	}
+	if e.Ambiguous {
+		return "", ErrAmbiguous
+	}
+	if !e.Usable() || !validToken(e.token) {
+		return "", ErrUnsupported
+	}
+	return e.token, nil
+}
+
 // Credential returns the PAT for a Git request that matches exactly one
 // usable login; see match. explicit, when set, narrows to that login name
 // and never widens what matches.

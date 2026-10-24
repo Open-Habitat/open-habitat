@@ -149,14 +149,19 @@ func (p *gitProgressWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func cloneProgressCommand(ctx context.Context, program, home string, child int, url, mode string, emit cloneProgressSink) error {
+// pre are Git options before "clone"; config are values the new repository
+// is created with (git clone --config), which also apply to its first fetch.
+func cloneProgressCommand(ctx context.Context, program, home string, child int, url, mode string, emit cloneProgressSink, pre, config []string) error {
 	copyFD, err := unix.Dup(child)
 	if err != nil {
 		return err
 	}
 	file := os.NewFile(uintptr(copyFD), "checkout")
 	defer file.Close()
-	args := []string{"clone", "--progress"}
+	args := append(append([]string{}, pre...), "clone", "--progress")
+	for _, v := range config {
+		args = append(args, "--config", v)
+	}
 	if mode == "blobless" {
 		args = append(args, "--filter=blob:none")
 	}

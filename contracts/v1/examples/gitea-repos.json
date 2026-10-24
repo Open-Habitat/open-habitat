@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {"connection_id": "gitea_0123456789abcdef01234567", "base_url": "https://git.example.test/gitea", "user": "example-person", "state": "ok", "complete": true, "repositories": [
+      {"id": 42, "full_name": "example-person/notes", "private": true, "description": "Synthetic notes", "html_url": "https://git.example.test/gitea/example-person/notes", "updated_at": "2026-10-20T08:00:00Z", "size_kib": 120, "default_branch": "main", "empty": false, "archived": false},
+      {"id": 43, "full_name": "example-person/empty", "private": true, "description": "", "html_url": "https://git.example.test/gitea/example-person/empty", "updated_at": null, "size_kib": 0, "default_branch": null, "empty": true, "archived": false}
+    ]},
+    {"connection_id": "gitea_89abcdef0123456789abcdef", "base_url": "https://code.example.test:8443", "user": "example-person", "state": "failed", "failure": "unreachable", "complete": false, "repositories": []}
+  ]
+}

@@ -8,11 +8,12 @@
     "schema_version": {"const": 1},
     "providers": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/provider"}},
     "accounts": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/account"}},
+    "gitea": {"$ref": "#/$defs/gitea"},
     "skill": {"$ref": "#/$defs/skill"}
   },
   "$defs": {
-    "provider_id": {"description": "apple is the Apple (iCloud) tile: its services are ordinary imap, caldav and carddav accounts, which carry apple_id.", "enum": ["imap", "caldav", "carddav", "google", "microsoft", "dropbox", "apple"]},
-    "service_id": {"enum": ["mail", "calendar", "contacts", "drive", "onedrive", "sharepoint", "dropbox"]},
+    "provider_id": {"description": "apple is the Apple (iCloud) tile: its services are ordinary imap, caldav and carddav accounts, which carry apple_id. gitea is the Gitea tile: its connections are tea's native logins, listed under gitea, never under accounts.", "enum": ["imap", "caldav", "carddav", "google", "microsoft", "dropbox", "apple", "gitea"]},
+    "service_id": {"enum": ["mail", "calendar", "contacts", "drive", "onedrive", "sharepoint", "dropbox", "git"]},
     "address": {"type": "string", "minLength": 3, "maxLength": 254, "pattern": "^[a-z0-9._%+-]{1,64}@[a-z0-9-]{1,63}(\\.[a-z0-9-]{1,63})+$"},
     "home_directory": {"type": "string", "maxLength": 512, "pattern": "^~/cloud/[a-z0-9][a-z0-9-]*(/(?!\\.\\.?(/|$))[^/\\u0000-\\u001f]+)+$"},
     "skill": {"description": "The generated personal-data skill: current, none (no accounts), blocked (a file the host did not write occupies its path) or failed (could not be written).", "enum": ["current", "none", "blocked", "failed"]},
@@ -23,8 +24,8 @@
         "id": {"$ref": "#/$defs/provider_id"},
         "available": {"description": "False when the tool is not installed or the operator has not configured the application.", "type": "boolean"},
         "unavailable_reason": {"description": "Present only when unavailable: app_credentials_required when the tools are installed and only the operator's application registration is missing, tool_unavailable otherwise.", "enum": ["app_credentials_required", "tool_unavailable"]},
-        "missing_tools": {"description": "With tool_unavailable only: the catalog's tools this installation does not provide as trusted executables, in the entry's order.", "type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"enum": ["curl", "himalaya", "rclone", "gog", "ms-365-mcp-server", "pi", "microsoft-native"]}},
-        "login": {"enum": ["app_password", "pasted_redirect", "device_code"]},
+        "missing_tools": {"description": "With tool_unavailable only: the catalog's tools this installation does not provide as trusted executables, in the entry's order.", "type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"enum": ["curl", "himalaya", "rclone", "gog", "ms-365-mcp-server", "pi", "microsoft-native", "tea"]}},
+        "login": {"description": "personal_token is the Gitea form: an address and a personal access token the daemon validates and writes only into tea's own login file.", "enum": ["app_password", "pasted_redirect", "device_code", "personal_token"]},
         "services": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"$ref": "#/$defs/service_id"}}
       }
     },
@@ -52,6 +53,33 @@
         "total_bytes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
         "files": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
         "total_files": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
+      }
+    },
+    "gitea_connection_id": {"description": "Derived by the daemon from tea's login name, canonical base and user; it carries no token material and selects nothing the daemon did not observe itself.", "type": "string", "pattern": "^gitea_[0-9a-f]{24}$"},
+    "gitea_base_url": {"description": "A canonical HTTPS Gitea base: lowercase host, port only when not 443, base path without a trailing slash. Never userinfo, query or fragment.", "type": "string", "minLength": 9, "maxLength": 2048, "pattern": "^https://[^\\s/?#@%\\\\]+(/[^\\s?#@%\\\\]+)*$"},
+    "gitea_user": {"type": "string", "pattern": "^[A-Za-z0-9_.-]{1,40}$"},
+    "gitea_git": {"description": "Git readiness, observed from the person's own Git configuration without the network: registered (the credential helper answers for this base), absent, foreign (another helper or setting owns the scope), shadowed (a later helper entry answers first) or unknown (Git could not be asked).", "enum": ["registered", "absent", "foreign", "shadowed", "unknown"]},
+    "gitea_connection": {
+      "description": "One of tea's native logins, read from its file alone. base_url and user are present only when tea's entry carries a valid HTTPS address and user. Only a pat that is not ambiguous can be used.",
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "owned", "ambiguous", "git"],
+      "properties": {
+        "id": {"$ref": "#/$defs/gitea_connection_id"},
+        "base_url": {"$ref": "#/$defs/gitea_base_url"},
+        "user": {"$ref": "#/$defs/gitea_user"},
+        "kind": {"description": "pat is a token login the connector can use; oauth, ssh, insecure and invalid entries are shown, never used or rewritten.", "enum": ["pat", "oauth", "ssh", "insecure", "invalid"]},
+        "owned": {"description": "The connector created this entry; otherwise the person made it with tea or by hand.", "type": "boolean"},
+        "ambiguous": {"description": "Another entry has the same name or the same base and user; neither is used until the person resolves it in tea.", "type": "boolean"},
+        "git": {"$ref": "#/$defs/gitea_git"}
+      }
+    },
+    "gitea": {
+      "description": "tea's native logins as the daemon read them now. unavailable: tea's file is unsafe, malformed or unreadable, which is never an empty list.",
+      "type": "object", "additionalProperties": false,
+      "required": ["state", "connections"],
+      "properties": {
+        "state": {"enum": ["ok", "unavailable"]},
+        "connections": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/gitea_connection"}}
       }
     },
     "account": {

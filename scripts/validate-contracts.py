@@ -116,6 +116,10 @@ checks = {
     "github-repository.json": "github-repository.schema.json",
     "github-clones.json": "github-clone.schema.json",
     "integrations.json": "integrations.schema.json",
+    "gitea-connect.json": "gitea-connection.schema.json",
+    "gitea-connected.json": "gitea-connection-change.schema.json",
+    "gitea-disconnected.json": "gitea-connection-change.schema.json",
+    "gitea-repos.json": "gitea-repos.schema.json",
     "integration-connect.json": "integration-account.schema.json",
     "integration-connected.json": "integration-change.schema.json",
     "integration-removed.json": "integration-change.schema.json",
@@ -372,4 +376,27 @@ for state, phase, provider in [("completed", "files", "microsoft"), ("completing
     must_reject("integration-login.schema.json", {"schema_version": 1, "state": state, "attempt_id": "20261023T120000.000000001", "provider": provider, "login_phase": phase})
 must_reject("integration-login.schema.json", {"schema_version": 1, "state": "device_code", "attempt_id": "20261023T120000.000000001", "provider": "microsoft", "login_phase": "files_discovery", "verification_uri": "https://login.microsoft.com/device", "user_code": "FIRST1234", "expires_at": "2026-10-23T12:15:00Z"})
 
+# Gitea: the token travels only in connect and replace and never in a reply;
+# a connection is named by the daemon's derived id, never by URL or user; a
+# failed source is never an empty success; a GitHub start keeps GitHub's names.
+must_reject("gitea-connection.schema.json", {"action": "check", "connection_id": "gitea_0123456789abcdef01234567", "token": "x"})
+must_reject("gitea-connection.schema.json", {"action": "disconnect", "base_url": "https://git.example.test", "user": "example-person"})
+must_reject("gitea-connection.schema.json", {"action": "connect", "base_url": "https://git.example.test", "token": "has space"})
+must_reject("gitea-connection.schema.json", {"action": "replace", "connection_id": "gitea_0123456789abcdef01234567", "token": "x", "base_url": "https://elsewhere.example.test"})
+bad_gitea = json.loads((BASE / "examples" / "gitea-connected.json").read_text())
+bad_gitea["connection"]["token"] = "x"
+must_reject("gitea-connection-change.schema.json", bad_gitea)
+bad_gitea = json.loads((BASE / "examples" / "gitea-connected.json").read_text())
+bad_gitea["connection"]["base_url"] = "https://person:secret@git.example.test"
+must_reject("gitea-connection-change.schema.json", bad_gitea)
+must_reject("gitea-connection-change.schema.json", {"schema_version": 1, "outcome": "written", "removed": {"id": "gitea_0123456789abcdef01234567"}, "api": "ok"})
+bad_gitea = json.loads((BASE / "examples" / "gitea-repos.json").read_text())
+bad_gitea["sources"][1]["repositories"] = bad_gitea["sources"][0]["repositories"]
+must_reject("gitea-repos.schema.json", bad_gitea)
+bad_gitea = json.loads((BASE / "examples" / "gitea-repos.json").read_text())
+del bad_gitea["sources"][1]["failure"]
+must_reject("gitea-repos.schema.json", bad_gitea)
+must_reject("github-clone.schema.json", {"action": "start", "source": "gitea", "connection_id": "gitea_0123456789abcdef01234567", "repository_id": 42, "mode": "blobless"})
+must_reject("github-clone.schema.json", {"action": "start", "source": "gitea", "connection_id": "gitea_0123456789abcdef01234567", "full_name": "example-person/notes", "mode": "full"})
+must_reject("github-clone.schema.json", {"action": "start", "full_name": "example_person/notes", "mode": "full"})
 print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, negative checks including Microsoft login phases.")

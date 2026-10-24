@@ -92,6 +92,8 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(integrationsPath, s.auth.integrations)
 		mux.HandleFunc(integrationAccountsPath, s.auth.integrations)
 		mux.HandleFunc(integrationLoginPath, s.auth.integrations)
+		mux.HandleFunc(integrationGiteaPath, s.auth.integrations)
+		mux.HandleFunc(integrationGiteaRepos, s.auth.integrations)
 		mux.HandleFunc(editorPath, s.auth.editorStatus)
 		mux.HandleFunc(editorOpenPath, s.auth.editorOpen)
 		mux.HandleFunc(editorStopPath, s.auth.editorStop)
