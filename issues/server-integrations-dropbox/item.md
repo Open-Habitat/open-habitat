@@ -2,13 +2,14 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: feature
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: site-admission
 lane_seq: 5
 collision: [internal/provision, web/src/app/Settings, contracts/v1/]
 blocked_by: ['@server-integrations-microsoft']
+closed: 2026-10-24
 ---
 
 # Administration Integraatiot: Dropbox app setup
@@ -23,5 +24,5 @@ Implement the Dropbox app setup in the administration Integraatiot tab as Jari c
 
 ## Acceptance Criteria
 
-- [ ] Stories for each step and the saved row; browser spec set → Käytössä → remove; broker validation tests.
-- [ ] KOKEILTAVAA.md line. Review: focused self-review plus one targeted reviewer (credential validation path).
+- [x] Stories for each step and the saved row; browser spec set → Käytössä → remove; broker validation tests.
+- [x] KOKEILTAVAA.md line. Review: focused self-review plus one targeted reviewer (credential validation path).
