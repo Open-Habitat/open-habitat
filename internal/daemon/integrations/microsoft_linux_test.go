@@ -978,6 +978,9 @@ func TestMicrosoftRemovalFencesAnAttemptBeforeItsIdentityIsPublished(t *testing.
 		time.Sleep(time.Millisecond)
 	}
 	address := "person@example.test"
+	// files_discovery is published before staging exists. The native import
+	// starts only after staging is ready, and hold-mcp keeps identity private.
+	waitFor(t, "native import", func() bool { return exists(filepath.Join(env.Home, "import-started")) })
 	// Model the instant after MSAL persists, before Wait has returned identity.
 	if err := os.WriteFile(filepath.Join(env.Home, microsoftMCPDir, ".pending", address, ".token-cache.json"), []byte("native pending grant"), 0600); err != nil {
 		t.Fatal(err)

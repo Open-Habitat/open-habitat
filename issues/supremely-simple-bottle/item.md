@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed while running focused tests in a worker
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: unlaned
 collision: [internal/daemon/integrations]
 preparation: ready
+closed: 2026-10-24
 ---
 
 # Microsoft removal-fence test races the pending cache directory
@@ -45,3 +46,7 @@ and the gate fail randomly, which costs reruns and hides real failures.
 
 Wait for the pending directory itself (or have the fixture create it the way
 the native writer does) before writing, instead of relying on the phase alone.
+
+## Acceptance Criteria
+
+- [x] Removal-fence fixture waits for the native import to start before writing its pending grant, while identity remains unpublished.
