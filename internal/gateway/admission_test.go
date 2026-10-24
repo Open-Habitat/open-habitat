@@ -473,3 +473,37 @@ func TestAccessBrowserAPI(t *testing.T) {
 		t.Fatal(string(b), err)
 	}
 }
+
+// Last-seen comes from live sessions only: an ended session, even a recently
+// used one, says nothing, and the newest renewal wins.
+func TestAccessListLastSeen(t *testing.T) {
+	x := newAccessHarness(t)
+	alice := x.login("42", "alice")
+	now := time.Date(2026, 10, 24, 9, 0, 0, 0, time.UTC)
+	day := 24 * time.Hour
+	bob := Identity{Provider: "github", Subject: "43", Username: "bob"}
+	x.auth.mu.Lock()
+	x.auth.sessions["older"] = session{identity: bob, created: now.Add(-30 * day), idle: now.Add(-20*day + sessionIdle), absolute: now.Add(300 * day)}
+	x.auth.sessions["newer"] = session{identity: bob, created: now.Add(-30 * day), idle: now.Add(-2*day + sessionIdle), absolute: now.Add(300 * day)}
+	x.auth.sessions["ended"] = session{identity: bob, created: now.Add(-time.Hour), idle: now.Add(-time.Hour + sessionIdle), absolute: now.Add(-time.Minute)}
+	x.auth.mu.Unlock()
+	w := request(x.h, "GET", accessPath, alice)
+	var view struct {
+		Entries []struct {
+			ID       string  `json:"id"`
+			LastSeen *string `json:"last_seen"`
+		} `json:"entries"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &view) != nil {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	seen := map[string]string{}
+	for _, e := range view.Entries {
+		if e.LastSeen != nil {
+			seen[e.ID] = *e.LastSeen
+		}
+	}
+	if seen["42"] != "2026-10-24T09:00:00Z" || seen["43"] != "2026-10-22T09:00:00Z" {
+		t.Fatal(seen)
+	}
+}

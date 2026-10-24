@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 )
 
 // Runtime admission (ADR 0030). The broker owns both admission sources; the
@@ -294,6 +295,7 @@ type accessEntry struct {
 	LoginHint     string `json:"login_hint,omitempty"`
 	Actor         string `json:"actor,omitempty"`
 	At            string `json:"at,omitempty"`
+	LastSeen      string `json:"last_seen,omitempty"`
 	Administrator bool   `json:"administrator"`
 	Denied        bool   `json:"denied"`
 }
@@ -314,11 +316,12 @@ func (a *Auth) accessList(ctx context.Context) (accessView, error) {
 		return accessView{}, errBrokerRead
 	}
 	v := a.settingsView()
+	seen := a.lastSeen()
 	view := accessView{SchemaVersion: 1, Mode: page.Mode, RuntimeAdmission: page.RuntimeAdmission, Entries: []accessEntry{}}
 	listed := map[string]bool{}
 	for _, r := range page.Rows {
 		listed[r.ID] = true
-		view.Entries = append(view.Entries, accessEntry{r.ID, r.Source, r.State, r.Username, r.LoginHint, r.Actor, r.At, slices.Contains(v.Administrators, r.ID), slices.Contains(v.Denied, r.ID)})
+		view.Entries = append(view.Entries, accessEntry{r.ID, r.Source, r.State, r.Username, r.LoginHint, r.Actor, r.At, seen[r.ID], slices.Contains(v.Administrators, r.ID), slices.Contains(v.Denied, r.ID)})
 	}
 	for _, id := range v.Denied {
 		if !listed[id] {
@@ -330,7 +333,39 @@ func (a *Auth) accessList(ctx context.Context) (accessView, error) {
 
 func entryFor(row AccessRow, a *Auth) accessEntry {
 	v := a.settingsView()
-	return accessEntry{row.ID, row.Source, row.State, row.Username, row.LoginHint, row.Actor, row.At, slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID)}
+	return accessEntry{row.ID, row.Source, row.State, row.Username, row.LoginHint, row.Actor, row.At, a.lastSeen()[row.ID], slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID)}
+}
+
+// lastSeen is each subject's newest use of a live session. A session's idle
+// deadline moves at most once per renewalInterval, so this is accurate to a
+// day; once it is capped at the absolute deadline it only bounds the use from
+// below. A signed-out or expired session leaves nothing: the gateway keeps no
+// sign-in history beside its sessions.
+func (a *Auth) lastSeen() map[string]string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	seen := map[string]time.Time{}
+	if !a.sessionStoreHealthy() {
+		return map[string]string{}
+	}
+	now := a.now()
+	for _, s := range a.sessions {
+		if !now.Before(s.idle) || !now.Before(s.absolute) {
+			continue
+		}
+		used := s.idle.Add(-sessionIdle)
+		if used.Before(s.created) {
+			used = s.created
+		}
+		if used.After(seen[s.identity.Subject]) {
+			seen[s.identity.Subject] = used
+		}
+	}
+	out := make(map[string]string, len(seen))
+	for subject, t := range seen {
+		out[subject] = t.UTC().Format(time.RFC3339)
+	}
+	return out
 }
 
 // accessReason maps an access failure to the fixed wire vocabulary shared by

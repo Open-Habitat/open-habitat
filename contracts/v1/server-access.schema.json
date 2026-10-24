@@ -18,6 +18,7 @@
         "login_hint": {"$ref": "#/$defs/login"},
         "actor": {"description": "The administrator's GitHub id or root, as the gateway reported it; provenance, not proof.", "type": "string", "pattern": "^(?:root|[1-9][0-9]{0,19})$"},
         "at": {"type": "string", "format": "date-time"},
+        "last_seen": {"description": "The newest use of any live session, accurate to a day: the gateway renews a session's idle deadline at most daily. Absent when the person has no live session.", "type": "string", "format": "date-time"},
         "administrator": {"type": "boolean"},
         "denied": {"description": "The gateway refuses this subject. True on a row that is not withdrawn means a withdrawal was not confirmed.", "type": "boolean"}
       }
