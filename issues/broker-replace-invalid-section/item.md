@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [internal/provision]
+closed: 2026-10-24
 ---
 
 # Broker refuses to replace an invalid integration section (integrations_file_invalid)
