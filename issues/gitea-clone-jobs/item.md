@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-clone-jobs
@@ -15,6 +15,7 @@ blocked_by: ['@gitea-connect-slice']
 collision: [internal/daemon/github_jobs_linux.go, internal/nativegitea/, contracts/v1/]
 lane: gitea
 lane_seq: 3
+closed: 2026-10-24
 ---
 
 # Gitea clone and fetch hardening in the existing daemon jobs
@@ -47,9 +48,9 @@ The shared `contracts/v1/` and `web/src/app/GitHubOnboarding` tokens use the cur
 
 ## Acceptance Criteria
 
-- [ ] Extend TestCloneJobOutlivesItsStream, TestCloneInterruptedAfterRestartAndExplicitActions and TestCloneJobVerificationFailureKeepsTheDownload for Gitea; include quota/name/link/mount conflicts, cancellation and empty-repo refusal.
-- [ ] Actual Git tests exercise helper under nativeCommandInput, cloneProgressCommand, agentPath and terminalHost.env; reject cross-host clone_url, redirects and effective URL rewrites with no token leakage.
-- [ ] Focused daemon/contract tests and clone-page browser cases pass; independent /llm-review covers native credentials, job state and transfer endpoint policy.
+- [x] Extend TestCloneJobOutlivesItsStream, TestCloneInterruptedAfterRestartAndExplicitActions and TestCloneJobVerificationFailureKeepsTheDownload for Gitea; include quota/name/link/mount conflicts, cancellation and empty-repo refusal.
+- [x] Actual Git tests exercise helper under nativeCommandInput, cloneProgressCommand, agentPath and terminalHost.env; reject cross-host clone_url, redirects and effective URL rewrites with no token leakage.
+- [x] Focused daemon/contract tests and clone-page browser cases pass; independent /llm-review covers native credentials, job state and transfer endpoint policy.
 
 ## Validation and review
 
