@@ -147,6 +147,8 @@ func TestOnboardingRejectionsIdenticalOnBothPaths(t *testing.T) {
 		{"unknown offer", doc("auto", "", "", "gemini"), 0, "invalid_offer", 400},
 		{"site key without a key", doc("auto", "", "", "site_key"), 0, "site_key_unavailable", 400},
 		{"missing defaults", `{"repositories":{"mode":"auto"},"integrations":[],"ai_account":{"offer":"all"}}`, 0, "invalid_document", 400},
+		{"missing required", doc("auto", "", `{"provider":"google"}`, "all"), 0, "invalid_document", 400},
+		{"null required", doc("auto", "", `{"provider":"google","required":null}`, "all"), 0, "invalid_document", 400},
 		{"unknown field", `{"repositories":{"mode":"auto","defaults":[]},"integrations":[],"ai_account":{"offer":"all"},"steps":[]}`, 0, "invalid_document", 400},
 	}
 	for _, c := range cases {

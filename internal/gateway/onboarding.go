@@ -229,19 +229,32 @@ func (a *Auth) checkOnboarding(expected int, d onboardingDocument) (onboardingCo
 // decodeOnboardingDocument reads one strict JSON object. version is the
 // optional revision a show reply carried; the caller compares it.
 func decodeOnboardingDocument(r io.Reader, limit int64) (d onboardingDocument, expected *int, version *int, err error) {
+	// required is a boolean whose zero value is legal, so its absence is
+	// checked rather than read as false.
+	type integration struct {
+		Provider string `json:"provider"`
+		Required *bool  `json:"required"`
+	}
 	var raw struct {
-		ExpectedVersion *int                     `json:"expected_version"`
-		Version         *int                     `json:"version"`
-		Repositories    *onboardingRepositories  `json:"repositories"`
-		Integrations    *[]onboardingIntegration `json:"integrations"`
-		AIAccount       *onboardingAIAccount     `json:"ai_account"`
+		ExpectedVersion *int                    `json:"expected_version"`
+		Version         *int                    `json:"version"`
+		Repositories    *onboardingRepositories `json:"repositories"`
+		Integrations    *[]integration          `json:"integrations"`
+		AIAccount       *onboardingAIAccount    `json:"ai_account"`
 	}
 	dec := json.NewDecoder(io.LimitReader(r, limit+1))
 	dec.DisallowUnknownFields()
 	if dec.Decode(&raw) != nil || dec.Decode(new(any)) != io.EOF || raw.Repositories == nil || raw.Integrations == nil || raw.AIAccount == nil {
 		return d, nil, nil, onboardingInvalid("invalid_document")
 	}
-	return onboardingDocument{Repositories: *raw.Repositories, Integrations: *raw.Integrations, AIAccount: *raw.AIAccount}, raw.ExpectedVersion, raw.Version, nil
+	integrations := make([]onboardingIntegration, 0, len(*raw.Integrations))
+	for _, i := range *raw.Integrations {
+		if i.Required == nil {
+			return d, nil, nil, onboardingInvalid("invalid_document")
+		}
+		integrations = append(integrations, onboardingIntegration{Provider: i.Provider, Required: *i.Required})
+	}
+	return onboardingDocument{Repositories: *raw.Repositories, Integrations: integrations, AIAccount: *raw.AIAccount}, raw.ExpectedVersion, raw.Version, nil
 }
 
 type onboardingReply struct {

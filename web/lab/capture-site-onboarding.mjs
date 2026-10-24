@@ -44,7 +44,11 @@ try {
       expected_version: current.version,
       repositories: {
         mode: "preselected",
-        defaults: ["example-org/product", "example-org/design-system", "example-org/infra"],
+        defaults: [
+          "example-org/product",
+          "example-org/design-system",
+          "example-org/infra",
+        ],
       },
       integrations: [
         { provider: "google", required: false },

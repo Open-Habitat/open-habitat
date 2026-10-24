@@ -118,6 +118,12 @@ it("keeps nothing of a conflicting save and reloads the host's version", async (
   expect(
     screen.getByTestId("onboarding-save").getAttribute("data-disabled"),
   ).toBe("true");
+  // Discarding the draft does not resolve the conflict: the warning stays
+  // until the host is read again.
+  fireEvent.click(screen.getByTestId("onboarding-discard"));
+  expect((await screen.findByRole("alert")).textContent).toContain(
+    "muutettu toisaalla",
+  );
   host.replace(config(3, ["example-org/product", "example-org/docs"]));
   fireEvent.click(screen.getByTestId("onboarding-reload"));
   await screen.findByTestId("onboarding-default-example-org/docs");

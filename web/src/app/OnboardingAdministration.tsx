@@ -292,7 +292,9 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
         disabled={!csrf}
         onDiscard={() => {
           setDraft(documentOf(saved));
-          setSave({ kind: "idle" });
+          // An unresolved save stays unresolved until the host is read again.
+          if (save.kind !== "uncertain" && save.kind !== "conflict")
+            setSave({ kind: "idle" });
         }}
         onReload={() => {
           // Whatever happened to the save, the host's version is the truth:
