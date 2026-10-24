@@ -1,6 +1,6 @@
 ---
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-24
 type: task
 reporter: jari
 status: in-progress
@@ -11,19 +11,16 @@ lane: plan-site-onboarding-authority
 lane_seq: 1
 ---
 
-# Plan: where site onboarding config lives, its CLI, and who may invite
+# Plan: who holds the site onboarding, admission and site AI-key authority
 
 ## Description
 
-Jari 2026-10-23 (see `proto-site-onboarding-and-invites`, the parent request): A planning document (ADR proposal, not accepted) for Jari: where the site's onboarding configuration lives (site declaration applied by host apply vs runtime admin settings vs both), the CLI surface (host vs admin) so an installing agent can configure it, and who holds the authority to admit/invite (today the root broker owns admission; browser and gateway hold none). Options with reasoning, one recommendation. No implementation.
-
-Shared vocabulary for all three units (keep it consistent; it is a design assumption, not a decision): a site may define an onboarding with ordered steps — GitHub sign-in (always), repositories (default repositories: auto-checkout or pre-selected; staleness filter in days; or skip), integrations (e.g. Google; required/optional/off), AI account — plus who may join (admitted GitHub users, invitations). Use these names: `onboarding.steps`, `onboarding.repositories.defaults`, `onboarding.repositories.stale_after_days`, `onboarding.integrations`, `invitations`.
-
-Prototype/plan only; production unchanged until Jari chooses.
+Jari 2026-10-23 (parent `proto-site-onboarding-and-invites`), rewritten 2026-10-24 after `proto-admin-server-onboarding` rounds 2–6: one decision proposal (ADR draft, not accepted; no implementation) for the settled product. It covers where the onboarding configuration lives (repositories `{mode, defaults[]}`, integrations `{provider, required}`, AI account `{offer}`), who writes it, and how a person's daemon receives it without trusting the browser; admission without invitations (allowed numeric GitHub ids, browser request + server confirmation, withdrawal ending sessions, restore to the same Unix account, administrators only from `site.json`); the site AI key (storage, readers, seeding only new onboardings, rotation and removal, checked against "no own credential broker"); auto-import of default repositories with the person's own GitHub identity; and the administrator's cross-user view of onboarding outcomes. Each part gives options, one recommendation, the explicit authority changes and the CLI surface.
 
 ## Acceptance Criteria
 
 - [x] Published for review with a Finnish summary, recommendation and the question for Jari.
+- [x] Rewritten after prototype rounds 2–6 as one ADR draft covering configuration, admission, site AI key, default-repo import and the onboarding receipt, reviewed with `/llm-review`, with numbered questions for Jari in result.md.
 
 ## Comments
 
