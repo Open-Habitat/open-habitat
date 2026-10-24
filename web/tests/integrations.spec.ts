@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
+import type { Locator } from "@playwright/test";
 import { expect, type Page, test } from "./worker-host";
 
 // Asetukset › Integraatiot against the synthetic host: the real gateway and
@@ -628,6 +629,62 @@ test("@a11y Integraatiot and its sign-in dialog have no axe violations at deskto
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
+/** Where any part of an element's rectangle is not seen: outside the
+ * viewport, cut by a clipping ancestor, or covered by something drawn over
+ * it. isVisible() sees none of these. */
+const unseen = (element: Locator) =>
+  element.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const out: string[] = [];
+    if (r.width === 0 || r.height === 0) out.push("empty");
+    if (
+      r.top < 0 ||
+      r.left < 0 ||
+      r.bottom > window.innerHeight ||
+      r.right > window.innerWidth
+    )
+      out.push("viewport");
+    // The root's and body's clip is the viewport, checked above.
+    for (
+      let a = el.parentElement;
+      a && a !== document.body && a !== document.documentElement;
+      a = a.parentElement
+    ) {
+      const style = getComputedStyle(a);
+      if (!/hidden|auto|scroll|clip/.test(style.overflowX + style.overflowY))
+        continue;
+      const b = a.getBoundingClientRect();
+      if (
+        r.top < b.top - 0.5 ||
+        r.left < b.left - 0.5 ||
+        r.bottom > b.bottom + 0.5 ||
+        r.right > b.right + 0.5
+      )
+        out.push(`clipped by ${a.className || a.tagName}`);
+    }
+    // Corners are sampled inside the border radius, where the element itself
+    // paints; a point there that hits anything else is drawn over.
+    const inset =
+      Math.max(
+        2,
+        Number.parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0,
+      ) + 1;
+    for (const [x, y] of [
+      [r.left + inset, r.top + inset],
+      [r.right - inset, r.top + inset],
+      [r.left + inset, r.bottom - inset],
+      [r.right - inset, r.bottom - inset],
+      [(r.left + r.right) / 2, (r.top + r.bottom) / 2],
+    ]) {
+      const hit = document.elementFromPoint(x, y);
+      if (!hit || !el.contains(hit))
+        out.push(
+          `covered at ${Math.round(x)},${Math.round(y)} by ${hit ? `${hit.tagName}.${hit.className}` : "nothing"}`,
+        );
+    }
+    return out;
+  });
+
 // Gitea (ADR 0031): the approved form against a synthetic HTTPS Gitea. The
 // token goes once to the person's daemon, which writes it only into tea's
 // file in that person's home; a refusal keeps the form and is seen whole
@@ -670,15 +727,8 @@ test("a Gitea connection is made from the form, refusals stay in view, and it is
     .and(dialog.getByTestId("gitea-error"));
   await expect(error).toHaveAttribute("data-field", "token");
   await expect(error).toBeFocused();
-  // The whole message is inside the viewport and not under the scrolled body.
-  const box = await error.boundingBox();
-  const body = await dialog.locator(".ig-gitea-body").boundingBox();
-  expect(box && body).toBeTruthy();
-  if (box && body) {
-    expect(box.y).toBeGreaterThanOrEqual(0);
-    expect(box.y + box.height).toBeLessThanOrEqual(568);
-    expect(box.y + box.height).toBeLessThanOrEqual(body.y + 1);
-  }
+  // The whole message is seen without scrolling: nothing clips or covers it.
+  expect(await unseen(error)).toEqual([]);
   // https:// was added on submit; both fields are kept for a correction.
   await expect(address).toHaveValue(url);
   await expect(pat).toHaveValue("not-the-token");
@@ -739,4 +789,143 @@ test("a Gitea connection is made from the form, refusals stay in view, and it is
     (await (await page.request.get("/api/v1/integrations")).json()).gitea
       .connections,
   ).toEqual([]);
+});
+
+async function openGitea(page: Page) {
+  const giteaTile = tile(page, "gitea");
+  await giteaTile
+    .getByRole("button")
+    .and(giteaTile.getByTestId("integration-connect-open"))
+    .click();
+  return page.getByRole("dialog").and(page.getByTestId("gitea-dialog"));
+}
+
+// A connect whose reply is lost after the daemon wrote tea's file: the page
+// says it does not know, reads tea's state and shows the connection that was
+// made, and the token is never sent a second time.
+test("an uncertain Gitea connect is observed from tea's state and never resent", async ({
+  page,
+}) => {
+  const { url, token } = await (
+    await page.request.get("/fixture/gitea?action=enable")
+  ).json();
+  await signIn(page);
+  let posts = 0;
+  await page.route("**/api/v1/integrations/gitea", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    posts++;
+    // The write reaches the person's daemon; only its answer is lost.
+    await route.fetch();
+    await route.abort("connectionreset");
+  });
+  const dialog = await openGitea(page);
+  await dialog.getByTestId("gitea-address").fill(url);
+  await dialog.getByTestId("gitea-token").fill(token);
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("gitea-submit"))
+    .click();
+  await expect(dialog).toHaveAttribute("data-stage", "uncertain");
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  await expect(dialog.getByTestId("gitea-token")).toHaveCount(0);
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("dialog-close"))
+    .first()
+    .click();
+  const connection = page
+    .getByRole("article")
+    .and(page.getByTestId("gitea-connection"));
+  await expect(connection).toHaveAttribute("data-git", "registered");
+  expect(posts).toBe(1);
+  // The page holds no copy of the token after the uncertain write.
+  expect(
+    await page.evaluate(
+      (t) => document.documentElement.outerHTML.includes(t),
+      token,
+    ),
+  ).toBe(false);
+});
+
+// The form by keyboard alone, in the dark theme with reduced motion: Enter in
+// the address field connects (https:// added), each refusal takes focus and
+// is seen whole, Escape closes and returns focus to the opener, and nothing
+// in it animates.
+test("@a11y the Gitea form works by keyboard in dark with reduced motion and passes axe", async ({
+  page,
+}) => {
+  const { url } = await (
+    await page.request.get("/fixture/gitea?action=enable")
+  ).json();
+  await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+  await signIn(page);
+  expect(
+    await page.evaluate(() => document.documentElement.dataset.theme),
+  ).toBe("dark");
+  const opener = tile(page, "gitea").getByTestId("integration-connect-open");
+  await opener.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog").and(page.getByTestId("gitea-dialog"));
+  await expect(dialog).toBeVisible();
+  const address = dialog.getByTestId("gitea-address");
+  const pat = dialog.getByTestId("gitea-token");
+  for (
+    let i = 0;
+    i < 6 && !(await address.evaluate((e) => e === document.activeElement));
+    i++
+  )
+    await page.keyboard.press("Tab");
+  await expect(address).toBeFocused();
+  await page.keyboard.type(url.replace(/^https:\/\//, ""));
+  await page.keyboard.press("Enter");
+  const error = dialog
+    .getByRole("alert")
+    .and(dialog.getByTestId("gitea-error"));
+  await expect(error).toHaveAttribute("data-field", "token");
+  await expect(error).toBeFocused();
+  await expect(address).toHaveValue(url);
+  await pat.focus();
+  await page.keyboard.type("not-the-token");
+  await dialog.getByTestId("gitea-token-help").focus();
+  await page.keyboard.press("Enter");
+  await expect(dialog.getByTestId("gitea-token-instructions")).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 568 });
+  await pat.focus();
+  await page.keyboard.press("Enter");
+  await expect(error).toHaveAttribute("data-field", "token");
+  await expect(error).toBeFocused();
+  await expect(pat).toHaveValue("not-the-token");
+  expect(await unseen(error)).toEqual([]);
+  // Literal characters wherever an address, token or code is drawn.
+  for (const literal of [
+    address,
+    pat,
+    dialog.getByTestId("gitea-token-instructions").locator("code").first(),
+  ])
+    expect(
+      await literal.evaluate((e) => getComputedStyle(e).fontVariantLigatures),
+    ).toBe("none");
+  const moving = await dialog.evaluate(
+    (d) =>
+      document
+        .getAnimations()
+        .filter(
+          (a) =>
+            a.playState === "running" &&
+            a.effect instanceof KeyframeEffect &&
+            a.effect.target instanceof Node &&
+            d.contains(a.effect.target),
+        ).length,
+  );
+  expect(moving).toBe(0);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid="gitea-dialog"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(opener).toBeFocused();
 });

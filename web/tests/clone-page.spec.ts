@@ -566,6 +566,153 @@ test("@lab a Gitea repository is cloned from the common list into a workspace an
   );
 });
 
+const giteaRow = (page: Page, name: string) =>
+  page
+    .locator("main")
+    .getByRole("link")
+    .and(page.getByTestId(`repository-option-${name}`))
+    .and(page.locator('[data-source="gitea"]'));
+const githubRow = (page: Page, name: string) =>
+  page
+    .locator("main")
+    .getByRole("link")
+    .and(page.getByTestId(`repository-option-${name}`))
+    .and(page.locator('[data-source="github"]'));
+async function search(page: Page, name: string) {
+  await page
+    .getByRole("searchbox")
+    .and(page.getByTestId("repository-search"))
+    .fill(name);
+}
+
+// A Gitea clone is the daemon's job like a GitHub one: it goes on while the
+// person is elsewhere, is cancelled only after confirmation, and a start the
+// daemon refused (the server was unwell) can simply be asked for again.
+test("@lab a Gitea clone outlives leaving the page, is cancelled on confirmation and retried", async ({
+  page,
+}) => {
+  await connectGitea(page);
+  await page.request.get("/fixture/gitea?action=hold");
+  await page.goto("/workspaces/new");
+  await search(page, "fixture/notes");
+  await giteaRow(page, "fixture/notes").click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-clone"))
+    .click();
+  const job = card(page, "fixture/notes");
+  await expect(job).toHaveAttribute("data-state", "running");
+  // Elsewhere and back through the rail, after a reload: the job is still
+  // the same running clone.
+  const elsewhere = page.locator(".ah-rail-content .ah-workspace-link").first();
+  await elsewhere.click();
+  await expect(railBlock(page)).toHaveAttribute("data-live", "true");
+  await page.reload();
+  await railBlock(page).click();
+  await expect(page).toHaveURL(/\/workspaces\/new$/);
+  await expect(card(page, "fixture/notes")).toHaveAttribute(
+    "data-state",
+    "running",
+  );
+  await job.getByRole("button").and(page.getByTestId("cancel-clone")).click();
+  await job.getByRole("button").and(page.getByTestId("continue-clone")).click();
+  await expect(job).toHaveAttribute("data-state", "running");
+  await job.getByRole("button").and(page.getByTestId("cancel-clone")).click();
+  await job.getByRole("button").and(page.getByTestId("cancel-clone")).click();
+  await expect(job).toHaveCount(0, { timeout: 15000 });
+  await page.request.get("/fixture/gitea?action=release");
+  await expect(
+    page
+      .getByRole("navigation")
+      .getByRole("link")
+      .and(page.getByTestId("workspace-notes")),
+  ).toHaveCount(0);
+
+  // The server is unwell: the start is refused before anything is written.
+  await page.request.get("/fixture/gitea?action=fail");
+  await search(page, "fixture/notes");
+  await giteaRow(page, "fixture/notes").click();
+  const clone = page
+    .getByRole("button")
+    .and(page.getByTestId("repository-clone"));
+  await clone.click();
+  const details = page
+    .getByRole("complementary")
+    .and(page.getByTestId("repo-details"));
+  await expect(details.getByRole("alert")).toBeVisible();
+  await expect(card(page, "fixture/notes")).toHaveCount(0);
+  await page.request.get("/fixture/gitea?action=recover");
+  await clone.click();
+  await expect(card(page, "fixture/notes")).toHaveAttribute(
+    "data-state",
+    "confirmed",
+    { timeout: 20000 },
+  );
+});
+
+// The same fixture/first on GitHub and on the Gitea are two repositories:
+// each has its own route and details, a clone of one makes ~/src/first a name
+// conflict for the other, and a Gitea that stops answering is reported on
+// its own while GitHub's list stays.
+test("@lab namesakes stay apart by route and by workspace, and a failing Gitea hides no other list", async ({
+  page,
+}) => {
+  await connectGitea(page);
+  await page.goto("/workspaces/new");
+  await search(page, "fixture/first");
+  await githubRow(page, "fixture/first").click();
+  await expect(page).toHaveURL(/repo=fixture%2Ffirst/);
+  await expect(page.getByTestId("repo-details-source")).toHaveCount(0);
+  await expect(githubRow(page, "fixture/first")).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await giteaRow(page, "fixture/first").click();
+  await expect(page).toHaveURL(/gitea=gitea_[0-9a-f]{24}%2F2002/);
+  await expect(page.getByTestId("repo-details-source")).toBeVisible();
+  await expect(githubRow(page, "fixture/first")).not.toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-clone"))
+    .click();
+  await expect(card(page, "fixture/first")).toHaveAttribute(
+    "data-state",
+    "confirmed",
+    { timeout: 20000 },
+  );
+  await page.goto("/workspaces/new");
+  await search(page, "fixture/first");
+  await expect(giteaRow(page, "fixture/first")).toHaveAttribute(
+    "data-workspace",
+    "same",
+    { timeout: 15000 },
+  );
+  await expect(githubRow(page, "fixture/first")).toHaveAttribute(
+    "data-workspace",
+    "taken",
+  );
+  await githubRow(page, "fixture/first").click();
+  await expect(page.getByTestId("repo-details")).toHaveAttribute(
+    "data-state",
+    "taken",
+  );
+  // Nothing offers to clone over the other repository's directory.
+  await expect(
+    page.getByRole("button").and(page.getByTestId("repository-clone")),
+  ).toHaveCount(0);
+
+  await page.request.get("/fixture/gitea?action=fail");
+  await page.goto("/workspaces/new");
+  const note = page.getByTestId("repository-source-note");
+  await expect(note).toHaveAttribute("data-failed", "");
+  await search(page, "fixture/first");
+  await expect(githubRow(page, "fixture/first")).toBeVisible();
+  await expect(giteaRow(page, "fixture/first")).toHaveCount(0);
+});
+
 // A Gitea clone cut by a daemon restart is an interrupted clone like
 // GitHub's: shown, never restarted by itself, restarted as its connection's
 // repository or removed only when the person asks.

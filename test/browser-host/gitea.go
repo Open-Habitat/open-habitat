@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 
 	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
@@ -24,6 +25,14 @@ import (
 const giteaFixtureToken = "gitea-pat-synthetic-0001"
 
 var giteaEnabled atomic.Bool
+
+// giteaHold is the fixture's hold on Git transfers. One lock covers placing
+// a new gate and releasing the old one, so overlapping holds and releases
+// never leave transfers unheld after a hold has answered.
+var giteaHold struct {
+	sync.Mutex
+	release func()
+}
 
 func startGiteaFixture(tmp string) *giteafake.Server {
 	dir := filepath.Join(tmp, "gitea")
@@ -66,8 +75,10 @@ func giteaFixtureAdapter(env integrations.Env, srv *giteafake.Server, self strin
 }
 
 // giteaFixtureControl serves /fixture/gitea: enable or disable the provider,
-// or push one more upstream commit to fixture/notes. Each answer names the
-// address and the synthetic token a test types into the form.
+// push one more upstream commit to fixture/notes, hold or release every Git
+// transfer (a slow clone), or make the API answer 500 to the fixture's token
+// and recover (an unwell server, so its source fails alone). Each answer names
+// the address and the synthetic token a test types into the form.
 func giteaFixtureControl(srv *giteafake.Server, w http.ResponseWriter, r *http.Request) {
 	if srv == nil {
 		http.Error(w, "gitea fixture unavailable", 503)
@@ -78,6 +89,25 @@ func giteaFixtureControl(srv *giteafake.Server, w http.ResponseWriter, r *http.R
 		giteaEnabled.Store(true)
 	case "disable":
 		giteaEnabled.Store(false)
+	case "hold":
+		giteaHold.Lock()
+		release := srv.Block()
+		if giteaHold.release != nil {
+			giteaHold.release()
+		}
+		giteaHold.release = release
+		giteaHold.Unlock()
+	case "release":
+		giteaHold.Lock()
+		if giteaHold.release != nil {
+			giteaHold.release()
+			giteaHold.release = nil
+		}
+		giteaHold.Unlock()
+	case "fail":
+		srv.FailAPI(giteaFixtureToken, true)
+	case "recover":
+		srv.FailAPI(giteaFixtureToken, false)
 	case "commit":
 		if err := srv.AddCommit("fixture", "notes", "UPSTREAM.md", "upstream change\n"); err != nil {
 			http.Error(w, "commit failed", 500)
