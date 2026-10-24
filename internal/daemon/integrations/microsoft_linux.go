@@ -25,8 +25,9 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
 )
 
-// MicrosoftApp is a public Entra client. TenantID is the login audience (common
-// for both work and personal accounts), not the operator's home tenant.
+// MicrosoftApp is a public, single-tenant Entra client. TenantID is the
+// organisation's Directory (tenant) ID and the only login audience: personal
+// Microsoft accounts and other organisations cannot sign in.
 type MicrosoftApp struct {
 	ClientID string `json:"client_id"`
 	TenantID string `json:"tenant_id"`
@@ -45,11 +46,7 @@ func (env Env) microsoftApp() (MicrosoftApp, bool) {
 		return MicrosoftApp{}, false
 	}
 	a := *cfg.Microsoft
-	usable := integrationapps.Usable("microsoft", map[string]string{"client_id": a.ClientID, "tenant_id": a.TenantID})
-	if a.TenantID == "" {
-		a.TenantID = "common"
-	}
-	return a, usable
+	return a, integrationapps.Usable("microsoft", map[string]string{"client_id": a.ClientID, "tenant_id": a.TenantID})
 }
 
 const microsoftDir = ".config/rclone/open-habitat-microsoft"
@@ -137,15 +134,6 @@ func (*microsoft) Accounts(env Env) ([]string, error) {
 }
 
 func microsoftMCPCommand(env Env, app MicrosoftApp, rel, address string, args ...string) (Command, bool) {
-	// Derive the personal-account authority from rclone's native drive type;
-	// never create a second account/audience record.
-	if remotes, err := microsoftRemotes(env, address); err == nil {
-		for _, r := range remotes {
-			if r.Name == "onedrive" && r.DriveType == "personal" {
-				app.TenantID = "consumers"
-			}
-		}
-	}
 	tool, ok := env.Tool("ms-365-mcp-server")
 	if !ok {
 		return Command{}, false
@@ -221,7 +209,9 @@ func microsoftAuthority(app MicrosoftApp) string {
 	return "https://login.microsoftonline.com/" + app.TenantID + "/oauth2/v2.0/"
 }
 func microsoftConsent(app MicrosoftApp) ConsentRequired {
-	return ConsentRequired{URL: "https://login.microsoftonline.com/organizations/v2.0/adminconsent?" + url.Values{"client_id": {app.ClientID}, "scope": {microsoftScopes + " " + microsoftMCPScopes}, "redirect_uri": {"https://login.microsoftonline.com/common/oauth2/nativeclient"}}.Encode()}
+	// The application's own tenant: its administrator is the only one who
+	// can consent to a single-tenant app.
+	return ConsentRequired{URL: "https://login.microsoftonline.com/" + url.PathEscape(app.TenantID) + "/v2.0/adminconsent?" + url.Values{"client_id": {app.ClientID}, "scope": {microsoftScopes + " " + microsoftMCPScopes}, "redirect_uri": {"https://login.microsoftonline.com/common/oauth2/nativeclient"}}.Encode()}
 }
 func microsoftAuthFailure(app MicrosoftApp, code string, numbers []int) error {
 	for _, n := range numbers {

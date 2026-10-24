@@ -134,6 +134,48 @@ func TestIntegrationSetAndClearTouchOnlyTheirSection(t *testing.T) {
 	}
 }
 
+// Microsoft's app is single tenant: the broker writes the organisation's
+// Directory (tenant) ID and refuses an audience keyword, a domain or the
+// client id pasted twice, whether the request arrives encoded or not.
+func TestIntegrationMicrosoftSingleTenant(t *testing.T) {
+	const client, tenant = "5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3", "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903"
+	set := func(f map[string]string) Request {
+		return Request{Version: 1, Operation: OpIntegrationSet, Provider: "microsoft", ID: "0", Actor: "42", Fields: f}
+	}
+	w := integrationWriter(t)
+	for name, f := range map[string]map[string]string{
+		"common":          {"client_id": client, "tenant_id": "common"},
+		"organizations":   {"client_id": client, "tenant_id": "organizations"},
+		"consumers":       {"client_id": client, "tenant_id": "consumers"},
+		"domain":          {"client_id": client, "tenant_id": "contoso.onmicrosoft.com"},
+		"no tenant":       {"client_id": client},
+		"empty tenant":    {"client_id": client, "tenant_id": ""},
+		"client twice":    {"client_id": client, "tenant_id": strings.ToUpper(client)},
+		"client not guid": {"client_id": "open-habitat", "tenant_id": tenant},
+		"secret":          {"client_id": client, "tenant_id": tenant, "client_secret": "x"},
+	} {
+		if _, err := EncodeRequest(set(f)); err == nil {
+			t.Errorf("%s encoded", name)
+		}
+		if r := w.Handle(context.Background(), set(f)); r.Failure != Invalid || fileText(t, w.IntegrationsFile) != operatorFile {
+			t.Errorf("%s: %+v", name, r)
+		}
+	}
+	r := w.Handle(context.Background(), set(map[string]string{"client_id": client, "tenant_id": tenant}))
+	if a := appOf(t, r, "microsoft"); a == nil || a.ClientID != client || a.TenantID != tenant || !a.Usable || a.Source != AppSourceSiteAdmin {
+		t.Fatalf("set: %+v", r.Integrations)
+	}
+	if !strings.Contains(fileText(t, w.IntegrationsFile), `"microsoft":{"client_id":"`+client+`","tenant_id":"`+tenant+`"}`) {
+		t.Fatal(fileText(t, w.IntegrationsFile))
+	}
+	// An operator's hand-written audience keyword is listed as present but
+	// not usable, so the tab offers removal rather than calling it in use.
+	writeOperatorFile(t, w, `{"microsoft":{"client_id":"`+client+`","tenant_id":"common"}}`)
+	if a := appOf(t, integrationList(w), "microsoft"); a == nil || a.Usable || a.TenantID != "common" || a.Source != AppSourceOperator {
+		t.Fatalf("hand-written common: %+v", a)
+	}
+}
+
 // A section root edits by hand after the broker wrote it is root's, not the
 // administrator's: the record names exact bytes, not just a provider.
 func TestIntegrationProvenanceFollowsTheBytes(t *testing.T) {

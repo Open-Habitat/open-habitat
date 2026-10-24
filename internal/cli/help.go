@@ -330,7 +330,7 @@ func helpFlag(name string) map[string]any {
 	case "--client-secret-file":
 		v["description"] = "Required for google and dropbox: FILE or - for stdin holding the client secret (Dropbox App secret); one trailing newline is ignored; never passed in argv"
 	case "--tenant-id":
-		v["description"] = "Required for microsoft: the Directory (tenant) ID GUID, or organizations, common or consumers"
+		v["description"] = "Required for microsoft: the organisation's Directory (tenant) ID GUID; the app is single tenant, so common, organizations and consumers are refused"
 	case "--github-id":
 		v["description"] = "Required canonical numeric GitHub id, as admin access lookup prints it; a login is never accepted here"
 	case "--state":

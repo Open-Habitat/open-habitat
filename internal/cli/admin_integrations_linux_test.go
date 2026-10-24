@@ -112,8 +112,8 @@ func TestAdminIntegrationsCommands(t *testing.T) {
 	if code != 0 || app["actor"] != "root" || len(b.relayed) != 1 || b.relayed[0].Fields["client_secret"] != "GOCSPX-cli-sentinel" || strings.Contains(stderr+toJSON(out), "sentinel") {
 		t.Fatalf("set: %d %v %s", code, out, stderr)
 	}
-	code, out, _ = call(t, "--json", "admin", "integrations", "set", "--provider", "microsoft", "--client-id", "5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3", "--tenant-id", "organizations")
-	if code != 0 || out["data"].(map[string]any)["app"].(map[string]any)["tenant_id"] != "organizations" {
+	code, out, _ = call(t, "--json", "admin", "integrations", "set", "--provider", "microsoft", "--client-id", "5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3", "--tenant-id", "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903")
+	if code != 0 || out["data"].(map[string]any)["app"].(map[string]any)["tenant_id"] != "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903" {
 		t.Fatalf("microsoft: %d %v", code, out)
 	}
 	if code, out, _ = call(t, "--json", "admin", "integrations", "clear", "--provider", "dropbox", "--dry-run"); code != 0 || len(b.relayed) != 2 {

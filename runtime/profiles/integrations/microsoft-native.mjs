@@ -14,7 +14,8 @@ export function application(clientId, tenant, system = {}) {
 
 export async function importGrant({client_id, tenant_id, address, refresh_token}, system = {}) {
   if (!/^[0-9a-f-]{36}$/i.test(client_id) ||
-      !/^(common|consumers|organizations|[0-9a-f-]{36})$/i.test(tenant_id) ||
+      // Single tenant: the organisation's Directory (tenant) ID, never an audience keyword.
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenant_id) ||
       typeof address !== 'string' || !address || typeof refresh_token !== 'string' || !refresh_token) throw Error('invalid_input');
   const app = application(client_id, tenant_id, system);
   // MSAL, not host code, creates the account/refresh records and owns rotation.

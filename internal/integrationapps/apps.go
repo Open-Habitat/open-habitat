@@ -57,7 +57,10 @@ var (
 
 // Usable is the daemon's rule: whether the person's daemon uses a section.
 // An operator may hand-edit the file, so it is no stricter than the tools
-// themselves need. An empty Microsoft tenant means common.
+// themselves need. The Microsoft application is single tenant: personal
+// Microsoft accounts are out, and a single-tenant app cannot sign in through
+// common or organizations (AADSTS50194), so the tenant is always the
+// organisation's Directory (tenant) ID.
 func Usable(provider string, f map[string]string) bool {
 	switch provider {
 	case "google":
@@ -65,15 +68,15 @@ func Usable(provider string, f map[string]string) bool {
 	case "dropbox":
 		return dropboxValue.MatchString(f["client_id"]) && dropboxValue.MatchString(f["client_secret"])
 	case "microsoft":
-		t := f["tenant_id"]
-		return microsoftGUID.MatchString(f["client_id"]) && (t == "" || t == "common" || t == "consumers" || t == "organizations" || microsoftGUID.MatchString(t))
+		return microsoftGUID.MatchString(f["client_id"]) && microsoftGUID.MatchString(f["tenant_id"])
 	}
 	return false
 }
 
 // Valid is what the broker writes: exactly the provider's fields, usable by
-// the daemon, in the provider's own format, and no value pasted twice. The
-// Microsoft tenant is written explicitly rather than left to default.
+// the daemon, in the provider's own format, and no value pasted twice. Both
+// Microsoft ids sit on the same Entra Overview page, so the same GUID in
+// either case is refused as the likeliest paste mistake.
 func Valid(provider string, f map[string]string) bool {
 	want := Fields(provider)
 	if want == nil || len(f) != len(want) || !Usable(provider, f) {
@@ -84,14 +87,11 @@ func Valid(provider string, f map[string]string) bool {
 			return false
 		}
 	}
-	if f[want[0]] == f[want[1]] {
+	if strings.EqualFold(f[want[0]], f[want[1]]) {
 		return false
 	}
-	switch provider {
-	case "google":
+	if provider == "google" {
 		return googleClientID.MatchString(f["client_id"])
-	case "microsoft":
-		return f["tenant_id"] != ""
 	}
 	return true
 }

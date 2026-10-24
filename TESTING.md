@@ -595,8 +595,9 @@ files beside the adapter in that disposable profile's `payload/runtime/` (never
 into an installed runtime). Run its `bin/node microsoft-native.test.mjs` there.
 The test sets a synthetic HOME/log directory before importing the native modules.
 It exercises the pinned MCP AuthManager's encrypted-cache reload/silent refresh
-for work and personal accounts, including account mismatch, provider refusal and
-transport cancellation preserving existing bytes. No fixture endpoint override
+for an organisation account through its tenant, including account mismatch,
+provider refusal, transport cancellation preserving existing bytes, and refusal
+of the `common`, `organizations` and `consumers` audiences. No fixture endpoint override
 exists in the production helper.
 
 Set `OH_TEST_MICROSOFT_RUNTIME` to that disposable `payload/runtime` directory and

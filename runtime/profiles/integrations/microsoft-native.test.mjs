@@ -6,8 +6,7 @@ import path from 'node:path';
 // All transport is synthetic; the pinned MSAL and MCP AuthManager/storage are
 // real. Never accept a provider endpoint override in the production helper.
 const client = '00000000-0000-0000-0000-000000000001';
-const work = '00000000-0000-0000-0000-000000000002';
-const personal = '9188040d-6c67-4c5b-b112-36a304b66dad';
+const tenant = '00000000-0000-0000-0000-000000000002';
 const root = await fs.mkdtemp(path.join(process.env.TMPDIR || '/var/tmp', 'oh-msal-'));
 process.env.HOME = root;
 process.env.MS365_MCP_LOG_DIR = path.join(root, 'logs');
@@ -16,15 +15,15 @@ const { importGrant, scopes } = await import('./microsoft-native.mjs');
 const { default: AuthManager } = await import('@softeria/ms-365-mcp-server/dist/auth.js');
 const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softeria/ms-365-mcp-server/dist/token-cache-storage.js');
 
-for (const tenant of [work, personal]) {
-  const directory = path.join(root, tenant === work ? 'work' : 'personal');
+{
+  const directory = path.join(root, 'work');
   await fs.mkdir(directory, {mode: 0o700});
   process.env.MS365_MCP_TOKEN_CACHE_PATH = path.join(directory, '.token-cache.json');
   process.env.MS365_MCP_SELECTED_ACCOUNT_PATH = path.join(directory, '.selected-account.json');
   resetCacheKeyForTests();
   const state = {polls: 0, refuse: false};
   const networkClient = network(tenant, state);
-  const request = {client_id: client, tenant_id: tenant === personal ? 'consumers' : 'common', address: 'person@example.test', refresh_token: 'synthetic-refresh-original'};
+  const request = {client_id: client, tenant_id: tenant, address: 'person@example.test', refresh_token: 'synthetic-refresh-original'};
   await importGrant(request, {networkClient});
   const before = new Map();
   for (const name of ['.token-cache.json', '.cache-key', '.selected-account.json']) {
@@ -52,6 +51,7 @@ for (const tenant of [work, personal]) {
   const reloaded = new AuthManager(manager.config, scopes, {expectedUsername: request.address}, new DefaultTokenCacheStorage());
   await reloaded.loadTokenCache();
   assert.ok((await reloaded.getToken()).startsWith('synthetic-access-'));
-  console.log(tenant === work ? 'PASS work native import/reload/rotation/refusal' : 'PASS personal native import/reload/rotation/refusal');
+  for (const audience of ['common', 'organizations', 'consumers']) await assert.rejects(importGrant({...request, tenant_id: audience}, {networkClient}), /invalid_input/);
+  console.log('PASS work native import/reload/rotation/refusal');
 }
 await fs.rm(root, {recursive: true});

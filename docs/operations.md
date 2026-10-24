@@ -671,49 +671,64 @@ operator secret management, never in this repository or command arguments.
 
 ### Microsoft app registration
 
-Use a **public client** Entra app supporting work/school tenants **and personal
-Microsoft accounts**, with device-code flow enabled. For the shared app use
-`common`, not the operator's home tenant ID, as the login audience. The native
-redirect registration is
-`https://login.microsoftonline.com/common/oauth2/nativeclient`. Grant delegated
-Graph permissions `User.Read`, `offline_access`, `Files.ReadWrite.All`,
-`Sites.ReadWrite.All`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.ReadWrite`, and
-`Contacts.ReadWrite`. No client secret is used. Home-tenant admin consent does
-**not** approve the app in other organisations.
+Microsoft 365 uses one **single-tenant public client** registered in the
+organisation's own Microsoft Entra tenant. Only that organisation's work
+accounts can connect; personal Microsoft accounts (Outlook.com, OneDrive
+Personal) and other organisations cannot. A single-tenant app cannot sign in
+through `common` or `organizations`, so the daemon, the root broker and the
+native adapter accept only the tenant's GUID.
 
-Add this section to `/opt/open-habitat/integrations.json` beside `tools`:
+An administrator normally sets it in the browser: Asetukset › Palvelimen
+ylläpito › Integraatiot › Microsoft 365 › *Aseta tunnukset…* walks through the
+Entra admin center (`https://entra.microsoft.com`, App registrations) step by
+step. By hand, in the Entra admin center:
+
+1. *Entra ID › App registrations › New registration*: any name, *Supported
+   account types: Single tenant only*, no redirect URI, *Register*.
+2. *Authentication*: *Allow public client flows* enabled (device code), and
+   the *Mobile and desktop applications* redirect URI
+   `https://login.microsoftonline.com/common/oauth2/nativeclient`, which the
+   consent link names. No client secret is created.
+3. *API permissions › Add a permission › Microsoft Graph › Delegated
+   permissions*: `openid`, `profile`, `User.Read`, `offline_access`,
+   `Files.ReadWrite.All`, `Sites.ReadWrite.All`, `Mail.ReadWrite`,
+   `Mail.Send`, `Calendars.ReadWrite` and `Contacts.ReadWrite`.
+4. *Grant admin consent for <organisation>* (Cloud Application Administrator,
+   Application Administrator or Privileged Role Administrator), so nobody is
+   asked to consent and the tenant's user-consent policy cannot block a person.
+
+The application's *Overview* shows both values. `admin integrations set
+--provider microsoft --client-id <Application (client) ID> --tenant-id
+<Directory (tenant) ID>` writes them through the broker; by hand the section
+of `/opt/open-habitat/integrations.json` beside `tools` is:
 
 ```json
 "microsoft": {
-  "client_id": "<public Entra application client ID>",
-  "tenant_id": "common"
+  "client_id": "<Application (client) ID>",
+  "tenant_id": "<Directory (tenant) ID>"
 }
 ```
 
-Supply the existing public app ID from the operator's secret management; the
-home tenant ID is not the audience for a multi-tenant app. Files sync through
-rclone; abraunegg/onedrive is not used. The MCP tool and adapter run on the
-profile's own Node and modules, never `npx`, a global install or ambient `node`.
+Files sync through rclone; abraunegg/onedrive is not used. The MCP tool and
+adapter run on the profile's own Node and modules, never `npx`, a global
+install or ambient `node`.
 
 The page shows **one device code** for the combined file/Outlook scopes.
 After approval, the adapter redeems the grant's refresh token through MSAL and
 writes only the MCP tool's native encrypted cache in an unpublished staging
 directory. rclone receives its own native token configuration. No host cache or
-credential copy is retained. Personal OneDrive accounts use the native
-`consumers` refresh authority after initial `common` discovery; work accounts
-retain the configured audience. The MCP cache is private to that account, uses the native
+credential copy is retained. Every native refresh uses the tenant as its
+authority. The MCP cache is private to that account, uses the native
 headless file-encryption backend, and is pinned by username. Pi's own
 `~/.pi/agent/mcp.json` holds the server entry; no host connection registry exists.
 New agent conversations discover it and the generated personal-data skill;
 existing conversations may need a reload.
 
-For a consent-required failure the page shows an administrator link plainly.
-Send it to an administrator **of the connecting person's tenant**, not merely
-the operator's home tenant. The administrator must select that tenant when
-using the organisations endpoint. The equivalent link is:
+If consent is still missing when a person connects, the page shows an
+administrator link plainly. It goes to the tenant's own administrator:
 
 ```text
-https://login.microsoftonline.com/organizations/v2.0/adminconsent?client_id=<APP_CLIENT_ID>&redirect_uri=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fnativeclient&scope=User.Read%20offline_access%20Files.ReadWrite.All%20Sites.ReadWrite.All%20Mail.ReadWrite%20Mail.Send%20Calendars.ReadWrite%20Contacts.ReadWrite
+https://login.microsoftonline.com/<TENANT_ID>/v2.0/adminconsent?client_id=<APP_CLIENT_ID>&redirect_uri=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fnativeclient&scope=openid%20profile%20User.Read%20offline_access%20Files.ReadWrite.All%20Sites.ReadWrite.All%20Mail.ReadWrite%20Mail.Send%20Calendars.ReadWrite%20Contacts.ReadWrite
 ```
 
 A Conditional Access policy blocking device code is a different failure; an
@@ -739,8 +754,9 @@ and the Entra app grant is not revoked.
 After deployment, verify with a consenting person: both device codes, folder
 choice/quota, OneDrive and followed SharePoint upload/download, Outlook drafts,
 calendar/contacts reads, a second account, daemon restart, and removal. Also
-verify a non-home work tenant's consent-required link and any applicable device
-policy. Synthetic tests cannot establish real tenant consent or token refresh.
+verify the consent-required link before admin consent and any applicable
+device policy. Synthetic tests cannot establish real tenant consent or token
+refresh.
 
 ## Agent command search path
 

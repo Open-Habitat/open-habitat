@@ -30,7 +30,7 @@ func TestMergeIntegrationToolsKeepsAppSections(t *testing.T) {
 	// An operator's sections, including formatting inside their values and
 	// unknown future keys, survive exactly; a stale tools section does not.
 	google := "{\n  \"client_id\": \"id.apps.example\",\n  \"client_secret\": \"s\\u0065cret\"\n}"
-	microsoft := `{"client_id":"00000000-0000-4000-8000-000000000000","tenant_id":"common"}`
+	microsoft := `{"client_id":"00000000-0000-4000-8000-000000000000","tenant_id":"00000000-0000-4000-8000-0000000000aa"}`
 	existing := "{\n \"google\": " + google + ",\n \"tools\": {\"rclone\": \"/opt/old/rclone\", \"extra\": \"/opt/x\"},\n \"microsoft\":" + microsoft + ",\n \"future\": [1, 2]\n}\n"
 	merged, err := mergeIntegrationTools([]byte(existing), tools)
 	if err != nil {

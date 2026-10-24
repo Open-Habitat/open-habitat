@@ -33,7 +33,7 @@ type fixtureApps struct {
 func newFixtureApps() *fixtureApps {
 	return &fixtureApps{apps: map[string]gateway.IntegrationApp{
 		"google":    {Provider: "google", ClientID: "704213598812-k3v9q2mfa0b7s1dn5e8rjhtc4lpu6xwo.apps.googleusercontent.com", Usable: true, Source: "operator"},
-		"microsoft": {Provider: "microsoft", ClientID: "5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3", TenantID: "organizations", Usable: true, Source: "operator"},
+		"microsoft": {Provider: "microsoft", ClientID: "5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3", TenantID: "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903", Usable: true, Source: "operator"},
 	}}
 }
 

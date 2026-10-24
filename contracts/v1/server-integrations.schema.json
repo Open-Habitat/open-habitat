@@ -36,7 +36,7 @@
       "properties": {
         "provider": {"$ref": "#/$defs/provider"},
         "fields": {
-          "description": "Exactly the provider's fields: google and dropbox client_id and client_secret; microsoft client_id and tenant_id. A Google client id ends in .apps.googleusercontent.com, Microsoft ids are GUIDs (the tenant may also be common, organizations or consumers), and no value may be given twice.",
+          "description": "Exactly the provider's fields: google and dropbox client_id and client_secret; microsoft client_id and tenant_id. A Google client id ends in .apps.googleusercontent.com, both Microsoft ids are GUIDs (a single-tenant app: the tenant is the organisation's Directory (tenant) ID, never common, organizations or consumers), and no value may be given twice.",
           "type": "object", "additionalProperties": false, "minProperties": 2, "maxProperties": 2,
           "properties": {"client_id": {"$ref": "#/$defs/public_id"}, "client_secret": {"$ref": "#/$defs/secret"}, "tenant_id": {"$ref": "#/$defs/public_id"}}
         }

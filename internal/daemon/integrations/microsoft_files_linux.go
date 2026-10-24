@@ -69,11 +69,6 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 	if personal.Type == "personal" || personal.Type == "business" {
 		tenantKind = personal.Type
 	}
-	if personal.Type == "personal" {
-		// Personal accounts refresh through consumers, not common. Keep the
-		// initial multi-audience discovery while pinning native refreshes.
-		l.app.TenantID = "consumers"
-	}
 	var remotes []microsoftRemote
 	if personal.ID != "" {
 		remotes = append(remotes, microsoftRemote{Name: "onedrive", Directory: "cloud/onedrive/" + l.address, DriveID: personal.ID, DriveType: personal.Type})

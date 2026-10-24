@@ -190,7 +190,7 @@ func adminIntegrationsCommand(args []string) (any, error) {
 // the rejected values: one of them may be a secret.
 var integrationFormat = map[string]string{
 	"google":    "invalid Google OAuth client: --client-id is the Desktop app client's id ending in .apps.googleusercontent.com, the secret is its Client secret, and the two differ",
-	"microsoft": "invalid Microsoft app: --client-id is the Application (client) ID and --tenant-id the Directory (tenant) ID (GUIDs), or organizations, common or consumers; the two differ",
+	"microsoft": "invalid Microsoft app: --client-id is the Application (client) ID and --tenant-id the organisation's Directory (tenant) ID, both GUIDs from the single-tenant app's Overview page, and the two differ",
 	"dropbox":   "invalid Dropbox app: --client-id is the App key and the secret the App secret, each 1–256 letters, digits, _ or -, and the two differ",
 }
 

@@ -87,8 +87,8 @@ The scope now is:
 |---|---|---|---|
 | Google | Gmail, Calendar, Contacts | `gog` | Pasted redirect (`gog`'s two-step login) |
 | Google | Drive files, continuous two-way sync | rclone, given the account's `gog` token so one consent serves both | Same consent as above |
-| Microsoft 365 and personal Microsoft accounts | OneDrive and SharePoint files, continuous sync | abraunegg/onedrive; rclone if onedrive's device login does not hold for SharePoint | Device code |
-| Microsoft 365 and personal Microsoft accounts | Outlook mail, calendar, contacts | Softeria ms-365-mcp-server, pinned, with narrowed `--allowed-scopes` | Device code |
+| Microsoft 365 work accounts of the organisation (single tenant) | OneDrive and SharePoint files, continuous sync | abraunegg/onedrive; rclone if onedrive's device login does not hold for SharePoint | Device code |
+| Microsoft 365 work accounts of the organisation (single tenant) | Outlook mail, calendar, contacts | Softeria ms-365-mcp-server, pinned, with narrowed `--allowed-scopes` | Device code |
 | Any mail provider (for example iki.fi, Nextcloud) | IMAP and SMTP mail, CalDAV calendars, CardDAV contacts | `himalaya` for mail; a CalDAV/CardDAV client chosen in implementation | App password |
 | Dropbox | Files, continuous two-way sync | rclone | Pasted redirect |
 

@@ -64,8 +64,12 @@ esac
 `), 0700); err != nil {
 		t.Fatal(err)
 	}
-	return Env{Home: newHome(t), FixtureTools: true, Config: Config{Tools: map[string]string{"rclone": fakeRclone(t), "ms-365-mcp-server": tool, "microsoft-native": tool, "pi": pi}, Microsoft: &MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000001", TenantID: "common"}}}
+	return Env{Home: newHome(t), FixtureTools: true, Config: Config{Tools: map[string]string{"rclone": fakeRclone(t), "ms-365-mcp-server": tool, "microsoft-native": tool, "pi": pi}, Microsoft: &MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000001", TenantID: testTenant}}}
 }
+
+// testTenant is the organisation's Directory (tenant) ID, the only audience.
+const testTenant = "00000000-0000-4000-8000-0000000000aa"
+
 func syntheticMicrosoft(t *testing.T, upn, failure string) *microsoft {
 	t.Helper()
 	return &microsoft{client: &http.Client{Transport: dropboxTransport(func(r *http.Request) (*http.Response, error) {
@@ -80,9 +84,9 @@ func syntheticMicrosoft(t *testing.T, upn, failure string) *microsoft {
 				t.Error("public client credentials")
 			}
 			switch r.URL.Path {
-			case "/common/oauth2/v2.0/devicecode":
+			case "/" + testTenant + "/oauth2/v2.0/devicecode":
 				body = `{"device_code":"device-secret","user_code":"FIRST1234","verification_uri":"https://microsoft.com/devicelogin","expires_in":900,"interval":1}`
-			case "/common/oauth2/v2.0/token":
+			case "/" + testTenant + "/oauth2/v2.0/token":
 				if r.Form.Get("device_code") != "device-secret" || r.Form.Get("grant_type") != "urn:ietf:params:oauth:grant-type:device_code" {
 					t.Error("device exchange")
 				}
@@ -239,7 +243,7 @@ func TestMicrosoftConsentBlockedMismatchAndCancel(t *testing.T) {
 			_, err := l.Wait(context.Background())
 			if test.name == "consent" {
 				var c ConsentRequired
-				if !errors.As(err, &c) || !strings.Contains(c.URL, "/organizations/v2.0/adminconsent?") {
+				if !errors.As(err, &c) || !strings.HasPrefix(c.URL, "https://login.microsoftonline.com/"+testTenant+"/v2.0/adminconsent?") {
 					t.Fatal(err)
 				}
 			} else if !errors.Is(err, test.want) {
@@ -319,7 +323,7 @@ func TestMicrosoftConfigIsolation(t *testing.T) {
 	if (&microsoft{}).Available(env) {
 		t.Fatal("invalid app available")
 	}
-	data, _ := json.Marshal(Config{Tools: map[string]string{}, Microsoft: &MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000001", TenantID: "common"}})
+	data, _ := json.Marshal(Config{Tools: map[string]string{}, Microsoft: &MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000001", TenantID: testTenant}})
 	var cfg Config
 	if err := decodeStrict(data, &cfg); err != nil {
 		t.Fatal("new known config rejected", err)
@@ -405,38 +409,39 @@ func TestMicrosoftCatalogRelaysOneCodeAndSupervisesChoice(t *testing.T) {
 	}
 }
 
-func TestMicrosoftPersonalAccountUsesConsumersAndNoSharePointDiscovery(t *testing.T) {
+// The organisation's tenant is the authority of every native refresh: rclone's
+// configuration and the MCP server's environment after a restart.
+func TestMicrosoftNativeRefreshUsesTheTenant(t *testing.T) {
 	env := microsoftEnv(t)
-	m := syntheticMicrosoft(t, "person@outlook.test", "")
-	base := m.client.Transport
-	m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
-		if r.URL.Path == "/v1.0/me/drive" {
-			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"id":"personal-drive","name":"OneDrive","driveType":"personal"}`))}, nil
-		}
-		if strings.Contains(r.URL.Path, "followedSites") {
-			t.Fatal("consumer SharePoint discovery")
-		}
-		return base.RoundTrip(r)
-	})
+	m := syntheticMicrosoft(t, "person@example.test", "")
 	l := msLogin(t, m, env, "")
 	address, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if l.app.TenantID != "consumers" {
-		t.Fatal("wrong native authority")
-	}
 	if err := l.Commit(context.Background(), address); err != nil {
 		t.Fatal(err)
 	}
 	config, err := os.ReadFile(filepath.Join(env.Home, microsoftDir, address+".conf"))
-	if err != nil || !strings.Contains(string(config), "tenant = consumers\n") {
+	if err != nil || !strings.Contains(string(config), "tenant = "+testTenant+"\n") {
 		t.Fatal("wrong rclone refresh authority", err)
 	}
 	app, _ := env.microsoftApp()
 	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, "--verify-login")
-	if !ok || !strings.Contains(strings.Join(cmd.Env, "\n"), "MS365_MCP_TENANT_ID=consumers") {
-		t.Fatal("restart lost consumer authority")
+	if !ok || !strings.Contains(strings.Join(cmd.Env, "\n"), "MS365_MCP_TENANT_ID="+testTenant) {
+		t.Fatal("restart lost the tenant")
+	}
+}
+
+// A hand-written audience keyword is not a single-tenant application: the
+// daemon does not offer Microsoft rather than sign people in through it.
+func TestMicrosoftAudienceKeywordIsNotConfigured(t *testing.T) {
+	for _, tenant := range []string{"", "common", "organizations", "consumers"} {
+		env := microsoftEnv(t)
+		env.Config.Microsoft.TenantID = tenant
+		if (&microsoft{}).AppConfigured(env) {
+			t.Errorf("tenant %q configured", tenant)
+		}
 	}
 }
 
