@@ -183,7 +183,9 @@ func parseAgentConversation(r *http.Request) (agentConversationQuery, bool) {
 }
 func agentEnvironment(version, commit string, now time.Time) map[string]any {
 	quota := map[string]any{"state": "unavailable", "reason": "quota_unavailable", "source": "linux_quotactl_fd"}
-	if q, err := storagequota.Read(uint32(os.Geteuid())); err == nil {
+	if noUserQuota() {
+		quota = map[string]any{"state": "not_in_use", "source": "storage_policy"}
+	} else if q, err := storagequota.Read(uint32(os.Geteuid())); err == nil {
 		quota = map[string]any{"state": "available", "usage_bytes": q.Usage, "hard_limit_bytes": q.Limit, "enforced": true, "source": "linux_quotactl_fd"}
 	}
 	fs := map[string]any{"state": "unavailable", "reason": "filesystem_unavailable", "source": "linux_statfs"}

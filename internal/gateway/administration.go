@@ -540,6 +540,8 @@ func AdminControlError(err error) string {
 		return oe.Reason
 	case errors.Is(err, errBindingNotFound):
 		return "not_found"
+	case errors.Is(err, ErrQuotaNotInUse):
+		return "storage_limits_not_in_use"
 	case errors.Is(err, errBrokerRead):
 		return "broker_unavailable"
 	case errors.Is(err, ErrAdministrationState):

@@ -627,14 +627,22 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	defaultLimit := a.settings.DefaultLimitBytes
 	ready := a.administrationHealthy()
 	a.mu.Unlock()
-	if a.adminFile != "" && (!ready || !validQuotaLimit(defaultLimit)) {
-		a.authEvent(attempt, "rejected", "quota_default_missing")
+	if a.adminFile != "" && !ready {
+		a.authEvent(attempt, "rejected", "administration_unavailable")
 		a.callbackFailure(w, r, 503, "identity_mapping_denied")
 		return
 	}
+	// The broker owns the storage mode: under user quotas it refuses to create
+	// an account without this default, and without them it sets no limit.
 	ensured, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "ensure", ID: id, Candidate: login, DefaultLimitBytes: defaultLimit})
 	target, valid := brokerIdentity(id, ensured)
 	if err != nil || !valid {
+		if a.adminFile != "" && defaultLimit == 0 && errors.Is(err, BrokerInvalidReply) {
+			// Installation configuration, not this person's identity.
+			a.authEvent(attempt, "rejected", "quota_default_missing")
+			a.callbackFailure(w, r, 503, "identity_mapping_denied")
+			return
+		}
 		a.brokerEvent(attempt, "ensure", brokerReason(err, valid))
 		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return

@@ -30,6 +30,8 @@ const (
 	RuntimeFull     Failure = "runtime_admission_full"
 	AdmissionOpen   Failure = "admission_open"
 	OperatorOwned   Failure = "operator_owned"
+	// QuotaNotInUse refuses a limit change on an installation without user quotas.
+	QuotaNotInUse Failure = "quota_not_in_use"
 )
 
 type Request struct {
@@ -54,11 +56,15 @@ type BoundUser struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
 }
+
+// NotInUse marks an installation without user quotas: usage and limit are
+// then zero, not an observation, and only the filesystem figures are real.
 type QuotaReply struct {
 	UsageBytes    uint64 `json:"usage_bytes"`
 	LimitBytes    uint64 `json:"limit_bytes"`
 	CapacityBytes uint64 `json:"capacity_bytes"`
 	FreeBytes     uint64 `json:"free_bytes"`
+	NotInUse      bool   `json:"not_in_use,omitempty"`
 }
 
 // Quota pages contain only committed bindings and native quota observations.
@@ -73,6 +79,8 @@ type QuotaPage struct {
 	Rows          []QuotaRow `json:"rows"`
 	CapacityBytes uint64     `json:"capacity_bytes"`
 	FreeBytes     uint64     `json:"free_bytes"`
+	// NotInUse pages carry no rows: there are no per-user limits to list.
+	NotInUse bool `json:"not_in_use,omitempty"`
 }
 
 const QuotaPageSize = 15
@@ -258,7 +266,7 @@ func ParseReply(b []byte) (Reply, error) {
 	}
 	if r.Failure != "" {
 		switch r.Failure {
-		case Denied, Invalid, StateUnavailable, NameCollision, Drift, RuntimeDisabled, RuntimeFull, AdmissionOpen, OperatorOwned, BrowserSetupOff, HostBusy, IntegrationsFile:
+		case Denied, Invalid, StateUnavailable, NameCollision, Drift, RuntimeDisabled, RuntimeFull, AdmissionOpen, OperatorOwned, BrowserSetupOff, HostBusy, IntegrationsFile, QuotaNotInUse:
 		default:
 			return Reply{}, ErrInvalid
 		}
@@ -280,8 +288,11 @@ func ParseReply(b []byte) (Reply, error) {
 		if r.Quotas == nil || r.Quota != nil || r.Route != nil || r.Users != nil || r.Generation == 0 || r.Epoch == 0 || r.Next != "" && !numericOffset(r.Next) {
 			return Reply{}, ErrInvalid
 		}
-		page, err := object(raw["quotas"], "rows", "capacity_bytes", "free_bytes")
+		page, err := object(raw["quotas"], "rows", "capacity_bytes", "free_bytes", "not_in_use")
 		if err != nil || r.Quotas.CapacityBytes == 0 || r.Quotas.FreeBytes > r.Quotas.CapacityBytes || len(page["capacity_bytes"]) == 0 || string(page["free_bytes"]) == "null" || len(page["free_bytes"]) == 0 {
+			return Reply{}, ErrInvalid
+		}
+		if _, present := page["not_in_use"]; present && (!r.Quotas.NotInUse || len(r.Quotas.Rows) != 0 || r.Next != "") {
 			return Reply{}, ErrInvalid
 		}
 		rows, err := checkArray(page["rows"], "rows")
@@ -312,8 +323,12 @@ func ParseReply(b []byte) (Reply, error) {
 		if r.Quota == nil || r.Route != nil || r.Users != nil || r.Next != "" || r.Generation == 0 || r.Epoch == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 {
 			return Reply{}, ErrInvalid
 		}
-		qraw, err := object(raw["quota"], "usage_bytes", "limit_bytes", "capacity_bytes", "free_bytes")
-		if err != nil || len(qraw["usage_bytes"]) == 0 || string(qraw["usage_bytes"]) == "null" || len(qraw["limit_bytes"]) == 0 || string(qraw["limit_bytes"]) == "null" || len(qraw["capacity_bytes"]) == 0 || string(qraw["capacity_bytes"]) == "null" || len(qraw["free_bytes"]) == 0 || string(qraw["free_bytes"]) == "null" || r.Quota.CapacityBytes == 0 || r.Quota.FreeBytes > r.Quota.CapacityBytes || !validLimit(r.Quota.LimitBytes) {
+		qraw, err := object(raw["quota"], "usage_bytes", "limit_bytes", "capacity_bytes", "free_bytes", "not_in_use")
+		if err != nil || len(qraw["usage_bytes"]) == 0 || string(qraw["usage_bytes"]) == "null" || len(qraw["limit_bytes"]) == 0 || string(qraw["limit_bytes"]) == "null" || len(qraw["capacity_bytes"]) == 0 || string(qraw["capacity_bytes"]) == "null" || len(qraw["free_bytes"]) == 0 || string(qraw["free_bytes"]) == "null" || r.Quota.CapacityBytes == 0 || r.Quota.FreeBytes > r.Quota.CapacityBytes {
+			return Reply{}, ErrInvalid
+		}
+		_, notInUse := qraw["not_in_use"]
+		if notInUse && (!r.Quota.NotInUse || r.Quota.UsageBytes != 0 || r.Quota.LimitBytes != 0) || !notInUse && !validLimit(r.Quota.LimitBytes) {
 			return Reply{}, ErrInvalid
 		}
 		return r, nil

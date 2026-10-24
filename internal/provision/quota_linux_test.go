@@ -248,3 +248,89 @@ func TestQuotaPageReplyRejectsMalformedRows(t *testing.T) {
 		t.Fatal("unavailable-only quota page", err)
 	}
 }
+
+// Root's policy without user quotas: the broker creates and restores accounts
+// without limits on a filesystem without quota accounting, and quota reads say
+// that limits are not in use rather than failing or inventing numbers.
+func TestNoUserQuotaInstallation(t *testing.T) {
+	w, _ := writerFixture(t)
+	w.NoUserQuota = true
+	q := w.Quota.(*fakeQuota)
+	q.fail = true
+	w.QuotaEnabled = func() error { return storagequota.ErrUnavailable }
+	if err := w.Startup(context.Background()); err != nil {
+		t.Fatalf("broker without user quotas refused to start: %v", err)
+	}
+	missing := request("ensure", "42", "carol")
+	missing.DefaultLimitBytes = nil
+	got := w.Handle(context.Background(), missing)
+	if got.Route == nil || !got.Created {
+		t.Fatalf("ensure without a default limit: %+v", got)
+	}
+	if q.calls != 0 {
+		t.Fatalf("quota touched %d times without user quotas", q.calls)
+	}
+	if got := handle(w, "ensure", "42", "carol"); got.Route == nil || got.Created {
+		t.Fatalf("existing binding without a limit: %+v", got)
+	}
+	if got := w.Handle(context.Background(), Request{Version: 1, Operation: "authorize", Provider: "github", ID: "42"}); got.Route == nil {
+		t.Fatalf("authorize without a limit: %+v", got)
+	}
+	if err := w.Startup(context.Background()); err != nil {
+		t.Fatalf("restart with a binding without a limit: %v", err)
+	}
+	read := w.Handle(context.Background(), Request{Version: 1, Operation: "quota_read", Provider: "github", ID: "42"})
+	if read.Quota == nil || !read.Quota.NotInUse || read.Quota.LimitBytes != 0 || read.Quota.UsageBytes != 0 || read.Quota.CapacityBytes == 0 {
+		t.Fatalf("quota read: %+v", read)
+	}
+	if _, err := EncodeReply(read); err != nil {
+		t.Fatalf("not-in-use read does not round-trip: %v", err)
+	}
+	limit := uint64(1 << 20)
+	if got := w.Handle(context.Background(), Request{Version: 1, Operation: "quota_set", Provider: "github", ID: "42", LimitBytes: &limit}); got.Failure != QuotaNotInUse {
+		t.Fatalf("quota set: %+v", got)
+	}
+	if got := w.Handle(context.Background(), Request{Version: 1, Operation: "quota_read", Provider: "github", ID: "43"}); got.Failure != Denied {
+		t.Fatalf("unbound read: %+v", got)
+	}
+	list := w.Handle(context.Background(), Request{Version: 1, Operation: "quota_list", Provider: "github", ID: "0"})
+	if list.Quotas == nil || !list.Quotas.NotInUse || len(list.Quotas.Rows) != 0 || list.Next != "" {
+		t.Fatalf("quota list: %+v", list)
+	}
+	if _, err := EncodeReply(list); err != nil {
+		t.Fatalf("not-in-use list does not round-trip: %v", err)
+	}
+	if q.calls != 0 {
+		t.Fatalf("quota touched %d times without user quotas", q.calls)
+	}
+	// The quota mode is unchanged: the same binding without a limit is refused.
+	w.NoUserQuota = false
+	w.QuotaEnabled = func() error { return nil }
+	if err := w.Startup(context.Background()); err == nil {
+		t.Fatal("quota broker accepted a binding without a limit")
+	}
+}
+
+func TestNotInUseRepliesStrict(t *testing.T) {
+	for _, raw := range []string{
+		`{"version":1,"quota":{"usage_bytes":0,"limit_bytes":0,"capacity_bytes":100,"free_bytes":50,"not_in_use":true},"generation":1,"epoch":1}`,
+		`{"version":1,"quotas":{"rows":[],"capacity_bytes":100,"free_bytes":50,"not_in_use":true},"generation":1,"epoch":1}`,
+		`{"version":1,"failure":"quota_not_in_use"}`,
+	} {
+		if _, err := ParseReply([]byte(raw)); err != nil {
+			t.Fatalf("rejected %s: %v", raw, err)
+		}
+	}
+	for _, raw := range []string{
+		`{"version":1,"quota":{"usage_bytes":1,"limit_bytes":0,"capacity_bytes":100,"free_bytes":50,"not_in_use":true},"generation":1,"epoch":1}`,
+		`{"version":1,"quota":{"usage_bytes":0,"limit_bytes":1048576,"capacity_bytes":100,"free_bytes":50,"not_in_use":true},"generation":1,"epoch":1}`,
+		`{"version":1,"quota":{"usage_bytes":0,"limit_bytes":0,"capacity_bytes":100,"free_bytes":50,"not_in_use":false},"generation":1,"epoch":1}`,
+		`{"version":1,"quota":{"usage_bytes":0,"limit_bytes":0,"capacity_bytes":100,"free_bytes":50},"generation":1,"epoch":1}`,
+		`{"version":1,"quotas":{"rows":[{"id":"42","username":"alice","usage_bytes":1,"limit_bytes":1048576,"unavailable":false}],"capacity_bytes":100,"free_bytes":50,"not_in_use":true},"generation":1,"epoch":1}`,
+		`{"version":1,"quotas":{"rows":[],"capacity_bytes":100,"free_bytes":50,"not_in_use":true},"generation":1,"epoch":1,"next":"15"}`,
+	} {
+		if _, err := ParseReply([]byte(raw)); err == nil {
+			t.Fatalf("accepted %s", raw)
+		}
+	}
+}

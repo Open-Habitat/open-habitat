@@ -14,6 +14,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/Open-Habitat/open-habitat/internal/storagebaseline"
 )
 
 // BrokerSocket is the only production listener. The installation transport owns its directory,
@@ -107,7 +108,14 @@ func ServeBroker(ctx context.Context) error {
 	defer fd.Close()
 	// Refuse unsafe state, including pending writes, rollback, NSS/ACL/unit
 	// drift, even when there are no incoming clients. Restart is not repair.
+	// The boot gate has just verified home storage against this same policy;
+	// an unreadable one is a deployment fault, not an installation without quotas.
+	storage, err := storagebaseline.Installed()
+	if err != nil {
+		return ErrBrokerStartup
+	}
 	writer := NewWriter(cfg.StateDir, cfg.UIDMin, cfg.UIDMax, NewLinuxHostExecutor(cfg.GatewayUID, cfg.GatewayGID))
+	writer.NoUserQuota = !storage.UserQuota
 	writer.AdmitAny = cfg.Admission == "any"
 	log := diagnostic.New(os.Stderr, "broker")
 	writer.Published = func(user string) {
@@ -225,7 +233,7 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 	if ctx.Err() != nil {
 		return nil, ErrBrokerStartup
 	}
-	if w.QuotaEnabled() != nil {
+	if !w.NoUserQuota && w.QuotaEnabled() != nil {
 		if w.GuardEvent != nil {
 			w.GuardEvent("quota_not_enforced")
 		}
@@ -250,12 +258,14 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 		}
 		// A binding on a filesystem that lost quota accounting must not be
 		// authorized just because its NSS identity and socket still exist.
-		q, err := w.Quota.Read(b.UID)
-		if err != nil || !validLimit(q.Limit) {
-			if w.GuardEvent != nil {
-				w.GuardEvent("binding_quota_missing")
+		if !w.NoUserQuota {
+			q, err := w.Quota.Read(b.UID)
+			if err != nil || !validLimit(q.Limit) {
+				if w.GuardEvent != nil {
+					w.GuardEvent("binding_quota_missing")
+				}
+				return nil, ErrBrokerStartup
 			}
-			return nil, ErrBrokerStartup
 		}
 		i := ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}
 		var verifyErr error

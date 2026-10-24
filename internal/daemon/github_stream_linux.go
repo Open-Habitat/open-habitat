@@ -14,12 +14,25 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/storagebaseline"
 	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"golang.org/x/sys/unix"
 )
 
+// installedStorage is root's installed storage policy; tests replace it.
+var installedStorage = storagebaseline.Installed
+
+// noUserQuota is true only when root's policy positively declares an
+// installation without per-user limits. An unreadable policy keeps the
+// quota requirements: it is never permission to skip them.
+func noUserQuota() bool {
+	p, err := installedStorage()
+	return err == nil && !p.UserQuota
+}
+
 // Admission is a current-state check, not a prediction of the eventual
-// remote repository size. Kernel EDQUOT remains the final enforcement point.
+// remote repository size. Kernel EDQUOT (or, without user quotas, ENOSPC)
+// remains the final enforcement point.
 func quotaCloneAdmission(src int, uid uint32) bool {
 	var st unix.Stat_t
 	var fs unix.Statfs_t
@@ -29,6 +42,9 @@ func quotaCloneAdmission(src int, uid uint32) bool {
 	var home unix.Stat_t
 	if unix.Stat("/home", &home) != nil || st.Dev != home.Dev {
 		return false // a per-user image or bind of another filesystem is not quota-covered
+	}
+	if noUserQuota() {
+		return true // only the shared filesystem's free space, checked above
 	}
 	q, err := storagequota.Read(uid)
 	return err == nil && q.Usage < q.Limit

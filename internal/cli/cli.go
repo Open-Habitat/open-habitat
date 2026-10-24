@@ -628,6 +628,9 @@ func (gatewayBroker) ReadQuota(ctx context.Context, subject string) (gateway.Quo
 	if err != nil || r.Failure != "" || r.Quota == nil {
 		return gateway.Quota{}, gateway.QuotaFilesystem{}, gateway.ErrBrokerUnavailable
 	}
+	if r.Quota.NotInUse {
+		return gateway.Quota{}, gateway.QuotaFilesystem{CapacityBytes: r.Quota.CapacityBytes, FreeBytes: r.Quota.FreeBytes}, gateway.ErrQuotaNotInUse
+	}
 	return gateway.Quota{UsageBytes: r.Quota.UsageBytes, LimitBytes: r.Quota.LimitBytes}, gateway.QuotaFilesystem{CapacityBytes: r.Quota.CapacityBytes, FreeBytes: r.Quota.FreeBytes}, nil
 }
 func (gatewayBroker) ListQuotas(ctx context.Context) ([]gateway.QuotaRow, gateway.QuotaFilesystem, error) {
@@ -649,6 +652,12 @@ func collectQuotaPages(ctx context.Context, exchange func(context.Context, provi
 		}
 		if generation == 0 {
 			fs = gateway.QuotaFilesystem{CapacityBytes: r.Quotas.CapacityBytes, FreeBytes: r.Quotas.FreeBytes}
+			if r.Quotas.NotInUse {
+				return rows, fs, gateway.ErrQuotaNotInUse
+			}
+		}
+		if r.Quotas.NotInUse {
+			return nil, fs, gateway.ErrBrokerUnavailable
 		}
 		generation, epoch = r.Generation, r.Epoch
 		if r.Quotas.CapacityBytes != fs.CapacityBytes {
@@ -676,6 +685,9 @@ func (gatewayBroker) SetQuota(ctx context.Context, subject string, limit uint64)
 	r, err := (provision.Client{SocketPath: provision.BrokerSocket, SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: "quota_set", Provider: "github", ID: subject, LimitBytes: &limit})
 	if err == nil && r.Failure == provision.Denied {
 		return gateway.ErrBoundUserNotFound
+	}
+	if err == nil && r.Failure == provision.QuotaNotInUse {
+		return gateway.ErrQuotaNotInUse
 	}
 	if err != nil || r.Failure != "" || r.Quota == nil || r.Quota.LimitBytes != limit {
 		return gateway.ErrBrokerUnavailable

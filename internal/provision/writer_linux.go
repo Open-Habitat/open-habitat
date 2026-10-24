@@ -102,6 +102,11 @@ type Writer struct {
 	Quota          QuotaOperations
 	QuotaEnabled   func() error
 	Capacity       func() (storagequota.Filesystem, error)
+	// NoUserQuota is root's installed storage policy without per-user limits:
+	// accounts get no quota, none is checked, and quota reads report that
+	// limits are not in use. Production sets it only from the policy file
+	// preparation wrote; the zero value is the user-quota installation.
+	NoUserQuota bool
 	// AdmitAny is an explicit root-only test-installation policy. The gateway
 	// must enforce signed Access assertions before the operator enables it.
 	AdmitAny bool
@@ -462,8 +467,15 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 			return failure(Invalid)
 		}
 		fs, err := w.Capacity()
-		if err != nil || fs.Capacity == 0 || fs.Free > fs.Capacity || w.QuotaEnabled() != nil {
+		if err != nil || fs.Capacity == 0 || fs.Free > fs.Capacity || !w.NoUserQuota && w.QuotaEnabled() != nil {
 			return failure(StateUnavailable)
+		}
+		if w.NoUserQuota {
+			// No per-user rows exist to page: only the shared filesystem.
+			if offset != 0 || ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {
+				return failure(StateUnavailable)
+			}
+			return Reply{Version: 1, Quotas: &QuotaPage{Rows: []QuotaRow{}, CapacityBytes: fs.Capacity, FreeBytes: fs.Free, NotInUse: true}, Generation: l.Generation, Epoch: a.Epoch}
 		}
 		end := offset + QuotaPageSize
 		if end > len(l.Bindings) {
@@ -587,11 +599,21 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 			if e := w.Executor.Verify(ctx, identity); e != nil {
 				return failure(Drift)
 			}
-			if r.Operation == "authorize" || r.Operation == "ensure" {
+			if (r.Operation == "authorize" || r.Operation == "ensure") && !w.NoUserQuota {
 				q, err := w.Quota.Read(b.UID)
 				if err != nil || !validLimit(q.Limit) {
 					return failure(StateUnavailable)
 				}
+			}
+			if (r.Operation == "quota_read" || r.Operation == "quota_set") && w.NoUserQuota {
+				if r.Operation == "quota_set" {
+					return failure(QuotaNotInUse)
+				}
+				fs, err := w.Capacity()
+				if err != nil || fs.Capacity == 0 || fs.Free > fs.Capacity || ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {
+					return failure(StateUnavailable)
+				}
+				return Reply{Version: 1, Quota: &QuotaReply{CapacityBytes: fs.Capacity, FreeBytes: fs.Free, NotInUse: true}, Generation: l.Generation, Epoch: a.Epoch}
 			}
 			if r.Operation == "quota_read" || r.Operation == "quota_set" {
 				if r.Operation == "quota_set" && w.Quota.Set(b.UID, *r.LimitBytes) != nil {
@@ -623,7 +645,9 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 	if r.Operation != "ensure" {
 		return failure(Denied)
 	}
-	if r.DefaultLimitBytes == nil {
+	// Under user quotas no account exists without its limit. Without them a
+	// gateway's remaining administrative default is ignored, never applied.
+	if r.DefaultLimitBytes == nil && !w.NoUserQuota {
 		return failure(Invalid)
 	}
 	name := strings.ToLower(r.Candidate)
@@ -699,7 +723,7 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 	// Do not leave an account and pending journal merely because the home
 	// filesystem never had user-quota accounting enabled. The final Set and
 	// readback remain authoritative if support disappears after this probe.
-	if w.QuotaEnabled() != nil || ctx.Err() != nil {
+	if !w.NoUserQuota && w.QuotaEnabled() != nil || ctx.Err() != nil {
 		return failure(StateUnavailable)
 	}
 	identity := ExecutorIdentity{provider: "github", id: entry.ID, username: name, uid: uid}
@@ -720,6 +744,9 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 			return failure(StateUnavailable)
 		}
 		if phase == "quota" {
+			if w.NoUserQuota {
+				continue
+			}
 			if e := w.Quota.Set(uid, *r.DefaultLimitBytes); e != nil {
 				return failure(Drift)
 			}

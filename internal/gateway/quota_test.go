@@ -15,13 +15,28 @@ type quotaBroker struct {
 	lastSubject string
 	lastLimit   uint64
 	missing     bool
+	notInUse    bool
 }
 
+// Exchange refuses an ensure without a default limit, as the broker does under
+// user quotas; the gateway itself no longer decides the storage mode.
+func (b *quotaBroker) Exchange(ctx context.Context, r BrokerRequest) (BrokerReply, error) {
+	if r.Operation == "ensure" && r.DefaultLimitBytes == 0 && !b.notInUse {
+		return BrokerReply{}, BrokerInvalidReply
+	}
+	return b.adminBroker.Exchange(ctx, r)
+}
 func (b *quotaBroker) ReadQuota(_ context.Context, id string) (Quota, QuotaFilesystem, error) {
 	b.lastSubject = id
+	if b.notInUse {
+		return Quota{}, QuotaFilesystem{CapacityBytes: 8 << 30, FreeBytes: 3 << 30}, ErrQuotaNotInUse
+	}
 	return Quota{UsageBytes: 2 * 1024 * 1024, LimitBytes: 1024 * 1024}, QuotaFilesystem{CapacityBytes: 1024 * 1024, FreeBytes: 512 * 1024}, nil
 }
 func (b *quotaBroker) SetQuota(_ context.Context, id string, limit uint64) error {
+	if b.notInUse {
+		return ErrQuotaNotInUse
+	}
 	if b.missing {
 		return ErrBoundUserNotFound
 	}
@@ -102,6 +117,9 @@ func TestQuotaAuthorizationAndDefault(t *testing.T) {
 }
 
 func (b *quotaBroker) ListQuotas(ctx context.Context) ([]QuotaRow, QuotaFilesystem, error) {
+	if b.notInUse {
+		return []QuotaRow{}, QuotaFilesystem{CapacityBytes: 8 << 30, FreeBytes: 3 << 30}, ErrQuotaNotInUse
+	}
 	users, err := b.ListBound(ctx)
 	if err != nil {
 		return nil, QuotaFilesystem{}, err
@@ -143,5 +161,52 @@ func TestQuotaPartialListKeepsHealthyRowsAndUnknownOvercommit(t *testing.T) {
 	}
 	if err := json.Unmarshal(raw, &result); err != nil || len(result.Users) != 2 || result.Users[0].UsageBytes != 123 || !result.Users[1].Unavailable || result.Overcommitted != nil {
 		t.Fatalf("partial quota list: %s %v", raw, err)
+	}
+}
+
+// Without user quotas the broker accepts a login with no default, and every
+// storage surface says that limits are not in use instead of failing.
+func TestQuotaNotInUse(t *testing.T) {
+	h, a, _, _, _ := fixture(t)
+	if e := a.loadAdministration(filepath.Join(t.TempDir(), "admin.json")); e != nil {
+		t.Fatal(e)
+	}
+	b := &quotaBroker{adminBroker: &adminBroker{Broker: a.broker}, notInUse: true}
+	a.broker = b
+	state, flow := start(t, h)
+	login := callback(h, state, flow)
+	if login.Code != 303 {
+		t.Fatalf("login without quotas: %d %s", login.Code, login.Body.String())
+	}
+	cookie := login.Result().Cookies()[1]
+	personal := request(h, "GET", "/api/v1/account/storage", cookie)
+	if personal.Code != 200 || strings.TrimSpace(personal.Body.String()) != `{"schema_version":1,"limits":"not_in_use","filesystem":{"capacity_bytes":8589934592,"free_bytes":3221225472}}` {
+		t.Fatalf("personal read: %d %s", personal.Code, personal.Body.String())
+	}
+	if e := a.changeRole(context.Background(), "42", true); e != nil {
+		t.Fatal(e)
+	}
+	listed := request(h, "GET", "/api/v1/server/storage", cookie)
+	if listed.Code != 200 || strings.TrimSpace(listed.Body.String()) != `{"schema_version":1,"limits":"not_in_use","users":[],"filesystem":{"capacity_bytes":8589934592,"free_bytes":3221225472},"overcommitted":null}` {
+		t.Fatalf("server read: %d %s", listed.Code, listed.Body.String())
+	}
+	var sess struct {
+		CSRF string `json:"csrf"`
+	}
+	if e := json.Unmarshal(request(h, "GET", "/auth/session", cookie).Body.Bytes(), &sess); e != nil {
+		t.Fatal(e)
+	}
+	r := httptest.NewRequest("PUT", "https://host.test/api/v1/server/storage", strings.NewReader(`{"subject":"42","limit_bytes":1048576}`))
+	r.AddCookie(cookie)
+	r.Header.Set("Origin", "https://host.test")
+	r.Header.Set("X-Agent-Host-CSRF", sess.CSRF)
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 409 || !strings.Contains(w.Body.String(), "storage_limits_not_in_use") {
+		t.Fatalf("limit write without quotas: %d %s", w.Code, w.Body.String())
+	}
+	if _, e := a.AdminControl(context.Background(), []byte(`{"operation":"quota_set","subject":"42","limit_bytes":1048576}`)); AdminControlError(e) != "storage_limits_not_in_use" {
+		t.Fatalf("CLI limit write without quotas: %v", e)
 	}
 }

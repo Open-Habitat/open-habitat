@@ -76,6 +76,8 @@ func parseAdminReply(line []byte, reply any) error {
 		switch code {
 		case "invalid_request":
 			return usage("the gateway refused the request as invalid; nothing was changed")
+		case "storage_limits_not_in_use":
+			return &cliError{code: "storage_limits_not_in_use", message: "this installation has no per-user storage limits (site storage.enforce_user_quota is false); nothing was changed", exit: 1}
 		case "not_found":
 			return &cliError{code: "not_found", message: "GitHub subject is not bound; sign in and bind the user before granting a role", exit: 1}
 		case "broker_unavailable":
@@ -218,7 +220,8 @@ func adminServerCommand(args []string) (any, error) {
 	case "storage":
 		if args[1] == "list" && len(args) == 2 {
 			var result struct {
-				SchemaVersion int `json:"schema_version"`
+				SchemaVersion int    `json:"schema_version"`
+				Limits        string `json:"limits"`
 				Users         []struct {
 					ID            string `json:"id"`
 					Username      string `json:"username"`
@@ -236,7 +239,7 @@ func adminServerCommand(args []string) (any, error) {
 			if e := adminOperation("quota_users", nil, &result); e != nil {
 				return nil, e
 			}
-			if result.SchemaVersion != 1 || result.Users == nil || result.Filesystem.CapacityBytes == 0 {
+			if result.SchemaVersion != 1 || result.Users == nil || result.Filesystem.CapacityBytes == 0 || result.Limits != "enforced" && result.Limits != "not_in_use" {
 				return nil, system("invalid_control_response", "gateway returned invalid storage information")
 			}
 			return envelope(result), nil

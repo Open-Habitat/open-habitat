@@ -19,6 +19,11 @@ type QuotaFilesystem struct {
 	FreeBytes     uint64 `json:"free_bytes"`
 }
 
+// ErrQuotaNotInUse is the broker's answer on an installation without user
+// quotas, where root's storage policy sets no per-user limits. Readers return
+// it with the real filesystem figures; it is never an unavailable or zero quota.
+var ErrQuotaNotInUse = errors.New("user quotas not in use")
+
 // BrokerQuota accepts only authenticated provider subjects. The broker resolves
 // the binding to a UID; the gateway never sends a UID or a home path.
 type BrokerQuota interface {
@@ -60,6 +65,15 @@ func (a *Auth) quotaUsers(ctx context.Context) ([]byte, error) {
 		return nil, errBrokerRead
 	}
 	users, fs, err := reader.ListQuotas(ctx)
+	if errors.Is(err, ErrQuotaNotInUse) && fs.CapacityBytes != 0 && fs.CapacityBytes <= maxJSONQuota && fs.FreeBytes <= fs.CapacityBytes {
+		return json.Marshal(struct {
+			SchemaVersion int             `json:"schema_version"`
+			Limits        string          `json:"limits"`
+			Users         []quotaUser     `json:"users"`
+			Filesystem    QuotaFilesystem `json:"filesystem"`
+			Overcommitted *bool           `json:"overcommitted"`
+		}{1, "not_in_use", []quotaUser{}, fs, nil})
+	}
 	if err != nil || fs.CapacityBytes == 0 || fs.CapacityBytes > maxJSONQuota || fs.FreeBytes > fs.CapacityBytes {
 		return nil, errBrokerRead
 	}
@@ -96,10 +110,11 @@ func (a *Auth) quotaUsers(ctx context.Context) ([]byte, error) {
 	}
 	return json.Marshal(struct {
 		SchemaVersion int             `json:"schema_version"`
+		Limits        string          `json:"limits"`
 		Users         []quotaUser     `json:"users"`
 		Filesystem    QuotaFilesystem `json:"filesystem"`
 		Overcommitted *bool           `json:"overcommitted"`
-	}{1, rows, fs, overcommitted})
+	}{1, "enforced", rows, fs, overcommitted})
 }
 func (a *Auth) setQuota(ctx context.Context, caller, subject string, limit uint64) error {
 	if !canonicalSubject(subject) || !validQuotaLimit(limit) {
@@ -122,6 +137,9 @@ func (a *Auth) setQuota(ctx context.Context, caller, subject string, limit uint6
 	if err := broker.SetQuota(ctx, subject, limit); err != nil {
 		if errors.Is(err, ErrBoundUserNotFound) {
 			return errBindingNotFound
+		}
+		if errors.Is(err, ErrQuotaNotInUse) {
+			return ErrQuotaNotInUse
 		}
 		return errBrokerRead
 	}
@@ -148,16 +166,27 @@ func (a *Auth) quotaHTTP(w http.ResponseWriter, r *http.Request) {
 			safe(w, 503, "broker_unavailable")
 			return
 		}
-		q, _, err := broker.ReadQuota(r.Context(), s.identity.Subject)
+		q, fs, err := broker.ReadQuota(r.Context(), s.identity.Subject)
+		if errors.Is(err, ErrQuotaNotInUse) && fs.CapacityBytes != 0 && fs.CapacityBytes <= maxJSONQuota && fs.FreeBytes <= fs.CapacityBytes {
+			// Only the shared filesystem bounds this person's files.
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(struct {
+				SchemaVersion int             `json:"schema_version"`
+				Limits        string          `json:"limits"`
+				Filesystem    QuotaFilesystem `json:"filesystem"`
+			}{1, "not_in_use", fs})
+			return
+		}
 		if err != nil || !validQuotaLimit(q.LimitBytes) || q.UsageBytes > maxJSONQuota {
 			safe(w, 503, "broker_unavailable")
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(struct {
-			SchemaVersion int `json:"schema_version"`
+			SchemaVersion int    `json:"schema_version"`
+			Limits        string `json:"limits"`
 			Quota
-		}{1, q})
+		}{1, "enforced", q})
 		return
 	}
 	if !a.isAdministrator(s.identity.Subject) {
@@ -203,6 +232,10 @@ func (a *Auth) quotaHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if errors.Is(err, errBindingNotFound) {
 		safe(w, 404, "not_found")
+		return
+	}
+	if errors.Is(err, ErrQuotaNotInUse) {
+		safe(w, 409, "storage_limits_not_in_use")
 		return
 	}
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Open-Habitat/open-habitat/internal/storagebaseline"
 	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"golang.org/x/sys/unix"
 )
@@ -29,12 +30,18 @@ func CheckActivation(ctx context.Context, name string) error {
 		return ErrInvalid
 	}
 	e := NewLinuxHostExecutor(cfg.GatewayUID, cfg.GatewayGID)
-	if storagequota.Enabled() != nil {
+	storage, err := storagebaseline.Installed()
+	if err != nil {
 		return ErrInvalid
 	}
-	q, err := (nativeQuota{}).Read(i.uid)
-	if err != nil || !validLimit(q.Limit) {
-		return ErrInvalid
+	if storage.UserQuota {
+		if storagequota.Enabled() != nil {
+			return ErrInvalid
+		}
+		q, err := (nativeQuota{}).Read(i.uid)
+		if err != nil || !validLimit(q.Limit) {
+			return ErrInvalid
+		}
 	}
 	return e.startupIdentity(ctx, i, true)
 }
