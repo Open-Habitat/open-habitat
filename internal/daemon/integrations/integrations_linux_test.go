@@ -814,22 +814,28 @@ func (brokenEntry) Accounts(Env) ([]string, error) { return nil, errors.New("unr
 // accounts", and the skill keeps the accounts the other tools still hold.
 func TestUnreadableInventoryChangesNothing(t *testing.T) {
 	home := newHome(t)
-	c := testCatalog(t, home, []Entry{&himalaya{}})
-	h := c.Handler(allow)
-	if code, _, _ := call(t, h, "POST", AccountsPath, "", imapAccount("person@example.test", "x-secret")); code != 200 {
+	// Seed the native account and skill without starting background work.
+	env := Env{Home: home, Config: Config{Tools: map[string]string{"himalaya": fakeHimalaya(t)}}, FixtureTools: true}
+	seed := New(env, []Entry{&himalaya{}}, nil)
+	if code, _, _ := call(t, seed.Handler(allow), "POST", AccountsPath, "", imapAccount("person@example.test", "x-secret")); code != 200 {
 		t.Fatal("connect failed")
 	}
-	before, _ := os.ReadFile(filepath.Join(home, SkillDir, "SKILL.md"))
-	c.entries = append(c.entries, brokenEntry{&scriptEntry{provider: Google, kind: PastedRedirect}})
+	before, err := os.ReadFile(filepath.Join(home, SkillDir, "SKILL.md"))
+	if err != nil || !bytes.Contains(before, []byte("person@example.test")) {
+		t.Fatalf("initial skill missing the connected account: %s %v", before, err)
+	}
+	// Entries stay fixed after construction, including while Start reconciles.
+	c := testCatalog(t, home, []Entry{&himalaya{}, brokenEntry{&scriptEntry{provider: Google, kind: PastedRedirect}}})
+	h := c.Handler(allow)
 	if code, out, _ := call(t, h, "GET", ListPath, "", nil); code != 503 {
 		t.Fatalf("list with an unreadable tool: %d %v", code, out)
 	}
 	c.write.Lock()
 	state := c.reconcile()
 	c.write.Unlock()
-	after, _ := os.ReadFile(filepath.Join(home, SkillDir, "SKILL.md"))
-	if state != SkillFailed || !bytes.Equal(before, after) {
-		t.Fatalf("reconcile from a partial inventory: %s", state)
+	after, err := os.ReadFile(filepath.Join(home, SkillDir, "SKILL.md"))
+	if err != nil || state != SkillFailed || !bytes.Equal(before, after) {
+		t.Fatalf("reconcile from a partial inventory: %s, skill read: %v", state, err)
 	}
 }
 
