@@ -1,5 +1,68 @@
 # Palvelimen ylläpito › integraatiot
 
+## Kierros 2 · Rivi
+
+**Suositus: Käytössä vai ei.** Rivillä on vain palvelun nimi, tila ja yksi toiminto. Tila on kirjoitettu henkilön kannalta: *Käytössä* tai *Ei käytössä*, ja puuttuva työkalu nimetään tilassa (*Ei käytössä · rclone puuttuu*). Valmiilla DAV-riveillä ei ole muuta kuin *Käytössä*, joten ne eivät toista mitään. Käyttöönotto näkyy vain, kun palvelulla on vaihe: merkki *Käyttöönotossa* tai *Käyttöönotossa · piilossa*, ja merkki vie Käyttöönotto-välilehdelle. *Aseta tunnukset…* on rivillä. *Vaihda* ja *Poista* ovat harvinaisia, joten ne ovat *Tunnukset*-valikossa, jonka otsikossa näkyy client id:n loppu, asettaja ja päivä. Puuttuvan työkalun korjaus on *Korjaa…*-dialogissa: yksi komento ja kopiointipainike.
+
+**[Avaa kierros 2](https://glasspad.example.test/p/frv6jdpbbcpq74spkwo5a724f4/).** Suunta vaihdetaan alareunan valitsimesta (myös 1–3, nuolet ja R). Teema ja 390 px:n kehys vaihtuvat yläreunasta, esimerkkipalvelimet ovat samat kuin kierroksella 1. Kaikki tiedot ovat keksittyjä.
+
+Kierroksen 1 suunnasta 1 on poistettu kaikista suunnista *Näytä henkilön näkymä*, johdanto, selitys tunnusten tallennuksesta ja yhteenvetorivi. Sivulla on vain otsikko *Integraatiot* ja kuusi riviä katalogin järjestyksessä.
+
+### Suunnat
+
+Akseli: miten rivi kertoo tilan ja seuraukset ja missä sen toiminnot ovat.
+
+| Suunta | Tila | Seuraus henkilöille ja käyttöönotolle | Toiminnot | Työkalu puuttuu |
+| --- | --- | --- | --- | --- |
+| **1. Tila ja lause** | Kierroksen 1 sanat: *Valmiina käyttöön*, *Tarvitsee sovellustunnukset*, *Työkalu puuttuu* | Yksi lause vain, kun jokin on pielessä (*Henkilöt eivät voi vielä yhdistää.*). Käyttöönoton merkki, kun vaihe on olemassa. | *Aseta tunnukset…* sekä *Vaihda…* ja *Poista* suoraan rivillä | Yksi ilmoitus listan yllä komennon kanssa, koska korjaus on koko palvelimelle sama. Rivit nimeävät puuttuvan työkalun. |
+| **2. Käytössä vai ei** (suositus) | *Käytössä* / *Ei käytössä* / *Ei käytössä · rclone puuttuu* omassa sarakkeessaan | Tila on itse seuraus, ei lausetta. Käyttöönoton merkki, kun vaihe on olemassa. | *Aseta tunnukset…* rivillä; *Vaihda* ja *Poista* *Tunnukset*-valikossa | *Korjaa…* avaa komennon dialogiin |
+| **3. Avattava rivi** | Kierroksen 1 sanat tasattuna oikealle | Avattavassa osassa: lause, sovelluksen tiedot ja *Käyttöönoton vaihe, piilossa · Käyttöönotto* | Kaikki avattavassa osassa; valmiit DAV-rivit eivät avaudu | Komento avattavassa osassa |
+
+Suunta 1 kertoo eniten, mutta vaihda- ja poista-painikkeet ovat aina näkyvissä, vaikka niitä käytetään harvoin. Suunta 3 on rauhallisin suljettuna, mutta ylläpitäjän pitää avata rivi nähdäkseen, mitä tehdä, ja yksi painallus lisää jokaiseen asetukseen. Suunta 2 on lyhyin ja silti näyttää tehtävän työn heti: jokainen *Ei käytössä* -rivi on myös rivi, jolla on painike.
+
+### Kokeile
+
+1. Suunta 2, *Uusi asennus*: kolme *Ei käytössä* -riviä painikkeineen, kolme *Käytössä*-riviä ilman mitään muuta.
+2. *Aseta tunnukset…* Googlelle → *Simuloi: tallennettu*. Rivi näyttää *Odottaa palvelinta* ja sitten *Käytössä*. Käyttöönoton merkistä katoaa *piilossa*.
+3. *Tunnukset*-valikko Googlen riviltä: client id:n loppu ja asettaja otsikossa, *Vaihda tunnukset…* ja *Poista tunnukset…*.
+4. *Vajaa asennus*: *Ei käytössä · rclone puuttuu* ja *Korjaa…*. Vertaa suunnan 1 yhteen ilmoitukseen listan yllä.
+5. Klikkaa *Käyttöönotossa · piilossa*: avautuu Käyttöönotto-välilehti, jossa kierroksen 1 säännöt pätevät.
+6. Suunnat 1 ja 3 samoilla esimerkkipalvelimilla.
+
+### Kysymykset Jarille
+
+1. **Tila ja lause, Käytössä vai ei vai Avattava rivi?** Tai yhdistelmä, esimerkiksi suunta 2 ja suunnan 1 yksi ilmoitus listan yllä, kun työkalu puuttuu.
+2. **Riittääkö *Käytössä / Ei käytössä*?** Vaihtoehto on *Ei käytössä · tarvitsee tunnukset*, joka kertoo syyn, mutta painike *Aseta tunnukset…* on jo samalla rivillä.
+3. **Käyttöönotto merkkinä:** riittääkö merkki vain silloin, kun vaihe on olemassa, ilman mitään tekstiä muille riveille?
+4. **Kierros 3:** Googlen ohjattu asetus, kuten issue ehdottaa?
+
+### Oletukset, ei toteutuspäätöksiä
+
+- Palvelimen vahvistus on edelleen 0,9 sekunnin viive, ja asettajan nimi ja aika ovat option B kirjanpitoa, jota ei vielä ole.
+- Poiston vahvistus on lyhennetty kolmeen seuraukseen: uusia tilejä ei voi yhdistää, yhdistetyt tilit eivät voi kirjautua uudelleen ja käyttöönoton vaihe piilotetaan.
+- *Aseta tunnukset…* on yhä paikkamerkki, joka nimeää kysyttävät kentät.
+
+### Näyttö
+
+[evidence](evidence/) sisältää `r2-`-alkuiset kuvakaappaus/staattinen HTML -parit: `overview-1…3`, `partial-1…3` (vajaa asennus), `menu-2` (Tunnukset-valikko), `fix-2` (Korjaa-dialogi), `setup-1` ja `remove-1`.
+
+Tarkistukset:
+
+- `check.mjs`: 44 tarkistuspistettä kolmella suunnalla, 1440 ja 390 px, vaalea ja tumma. Mukana yhteinen `picker-check.mjs`, valitsimen näppäimet, URL-valinta ja R, katalogin järjestys, kierroksen 1 poistojen pysyminen poissa, tilat ja välitila, valmiiden DAV-rivien hiljaisuus, käyttöönoton merkki ja sen linkki, valikko, poiston seuraukset, puuttuvan työkalun korjaus kerran sanottuna (suunta 1) ja suljettuna (suunta 3). Ei konsolivirheitä eikä vaakaylivuotoa. Tulos `evidence/r2-checks.json`, julkaistulla sivulla `evidence/r2-hosted-checks.json`.
+- Yhteinen `design-system/prototypes/check.mjs` hyväksyi sivun (9 kuvaa, ei virheitä), ja `picker-check.test.mjs` meni läpi.
+
+Synteettinen selainprototyyppi; ei testaa daemonia, brokeria eikä oikeaa `integrations.json`ia. Tuotantotiedostoja ei muutettu.
+
+Lähde: `design-system/prototypes/rounds/2026-10-24-palvelin-integraatiot-2/`:
+
+```sh
+node design-system/prototypes/rounds/2026-10-24-palvelin-integraatiot-2/build.mjs
+node design-system/prototypes/rounds/2026-10-24-palvelin-integraatiot-2/check.mjs \
+  design-system/prototypes/dist/server-integrations-r2-space/offline.html /var/tmp/server-integrations-r2-evidence
+```
+
+Julkaise vain rakennettu `index.html`.
+
 ## Kierros 1 · Yleiskuva
 
 **Suositus: Oma välilehti.** *Palvelimen ylläpito* -ryhmään tulee välilehti *Integraatiot* Palvelimen ja Käyttöönoton väliin. Siinä on yksi rivi kullekin kuudelle palvelulle samassa järjestyksessä ja samoilla merkeillä kuin henkilön Asetukset › Integraatiot -sivulla. Rivillä on tila, ja sen alla kerrotaan, mitä tila tarkoittaa henkilöille ja käyttöönotolle. Tunnuksia tarvitsevilla riveillä on painike *Aseta tunnukset…*. Suosittelen omaa välilehteä, koska jokaisella palvelulla on kaksi seurausta, jotka ylläpitäjän pitää nähdä, eikä niille ole tilaa Palvelin-välilehden osiossa. Lisäksi Käyttöönotto-välilehti viittaa tähän näkymään. Kiinteä järjestys pitää rivit paikallaan, kun tila muuttuu.
