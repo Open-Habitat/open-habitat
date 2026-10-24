@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -16,6 +16,8 @@ collision: [internal/gateway/administration, contracts/v1/, web/src/app/Settings
 preparation: ready
 lane: site-onboarding
 lane_seq: 5
+closed: 2026-10-24
+closed_by: agent
 ---
 
 # Site AI key: gateway-held key seeded once into a new person's Pi credentials
