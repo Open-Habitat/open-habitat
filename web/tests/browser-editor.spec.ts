@@ -610,3 +610,64 @@ for (const width of [1366, 390])
       }
     });
   }
+
+for (const width of [1366, 390])
+  test(`@browser-editor directory links reveal files without navigation or buffer loss ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await openFile(page, width === 390);
+    await page.getByTestId("close-editor").click();
+    const conversationURL = page.url();
+    const historyLength = await page.evaluate(() => history.length);
+    const navigations: string[] = [];
+    page.on("request", (request) => {
+      if (request.isNavigationRequest()) navigations.push(request.url());
+    });
+    await page.getByTestId("message-input").fill("kansiolinkki");
+    await page.getByTestId("send").click();
+    const link = page
+      .locator(".ah-markdown a")
+      .filter({ hasText: /^Directory$/ });
+    await expect(link).toBeVisible({ timeout: 20000 });
+    await link.click();
+    const file = page
+      .getByTestId("editor-file-entry")
+      .and(page.locator('[data-path="cmd/main.go"]'));
+    await expect(file).toBeVisible();
+    await file.click();
+    await edit(page, "directory opening keeps my buffer");
+    const picker = page.getByTestId("editor-file-picker");
+    if (!(await picker.isVisible()))
+      await page.getByTestId("editor-picker").click();
+    const folder = page
+      .getByTestId("editor-file-entry")
+      .and(page.locator('[data-path="cmd"]'));
+    await folder.click();
+    await page.getByTestId("editor-file-filter").fill("not-a-loaded-file");
+    // A directory is a tree operation, not permission to discard a document.
+    let dialogs = 0;
+    page.on("dialog", async (dialog) => {
+      dialogs++;
+      await dialog.dismiss();
+    });
+    await page.locator('a[href="#cmd%2F"]').click();
+    await expect(page.getByTestId("editor-file-picker")).toBeVisible();
+    await expect(file).toBeVisible();
+    await expect(page.getByTestId("editor-document")).toContainText(
+      "directory opening keeps my buffer",
+    );
+    await expect(folder).toBeFocused();
+    expect(dialogs).toBe(0);
+    expect(navigations).toEqual([]);
+    expect(page.context().pages()).toHaveLength(1);
+    expect(await page.evaluate(() => history.length)).toBe(historyLength);
+    await expect(page).toHaveURL(conversationURL);
+    await page.getByTestId("editor-save").click();
+    await expect(page.getByTestId("editor-dirty")).toBeEmpty();
+    await page.goBack();
+    await expect(page).not.toHaveURL(conversationURL);
+    await page.goForward();
+    await expect(page).toHaveURL(conversationURL);
+    await expect(page.getByTestId("message-input")).toBeVisible();
+  });

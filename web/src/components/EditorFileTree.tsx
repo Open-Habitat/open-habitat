@@ -1,12 +1,14 @@
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { ControlButton } from "./ControlElements";
 import { type TreeDirectories, type TreeRow, treeRows } from "./editorTree";
+import type { FileRef } from "./fileRefs";
 import { Icon } from "./Icon";
 
 export function EditorFileTree({
   visible,
   directories,
   openPath,
+  reveal,
   dirty,
   onLoad,
   onOpen,
@@ -15,6 +17,7 @@ export function EditorFileTree({
   visible: boolean;
   directories: TreeDirectories;
   openPath?: string;
+  reveal?: FileRef;
   dirty: boolean;
   onLoad: (path: string) => void;
   onOpen: (path: string) => void;
@@ -24,17 +27,39 @@ export function EditorFileTree({
   const [filter, setFilter] = useState("");
   const [focused, setFocused] = useState<string>();
   const buttons = useRef(new Map<string, HTMLButtonElement>());
+  const focusedReveal = useRef<FileRef | undefined>(undefined);
   useEffect(() => {
-    if (!openPath) return;
-    const parts = openPath.split("/");
+    const path = reveal?.path ?? openPath;
+    if (!path) return;
+    if (reveal) setFilter("");
+    const parts = path.split("/");
     setExpanded((before) => {
       const next = new Set(before);
       for (let i = 1; i < parts.length; i++)
         next.add(parts.slice(0, i).join("/"));
       return next;
     });
-  }, [openPath]);
+  }, [openPath, reveal]);
   const rows = treeRows(directories, expanded, filter);
+  useEffect(() => {
+    if (
+      !visible ||
+      !reveal?.path.endsWith("/") ||
+      focusedReveal.current === reveal
+    )
+      return;
+    const path = reveal.path.slice(0, -1);
+    // A loaded single-child chain can represent the target on a combined row.
+    const row = rows.find(
+      (row) => row.path === path || row.path.startsWith(`${path}/`),
+    );
+    const button = row && buttons.current.get(row.key);
+    if (!button) return;
+    focusedReveal.current = reveal;
+    setFocused(row.key);
+    button.focus({ preventScroll: true });
+    button.scrollIntoView({ block: "nearest" });
+  }, [visible, reveal, rows]);
   const available = rows.filter((row) => row.kind !== "unsupported");
   const tabKey = available.some((row) => row.key === focused)
     ? focused

@@ -15,6 +15,7 @@ export interface BrowserEditorProps {
     selection?: FileRef;
   };
   directories: TreeDirectories;
+  reveal?: FileRef;
   onLoadDirectory: (path: string) => void;
   picker: boolean;
   dirty: boolean;
@@ -69,6 +70,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
         <EditorFileTree
           visible={p.picker}
           directories={p.directories}
+          reveal={p.reveal}
           openPath={p.document?.path}
           dirty={p.dirty}
           onLoad={p.onLoadDirectory}

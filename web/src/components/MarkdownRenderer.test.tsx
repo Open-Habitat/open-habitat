@@ -7,6 +7,9 @@ afterEach(cleanup);
 
 // Representative model reply syntax, not transcripts from the live server.
 const samples = [
+  ["See [folder](./src/components/).", "folder", { path: "src/components/" }],
+  ["See `src/components/`.", "src/components/", { path: "src/components/" }],
+  ["See src/components/.", "src/components/", { path: "src/components/" }],
   [
     "Changed `src/main.ts:42-48`.",
     "src/main.ts:42-48",
@@ -89,7 +92,7 @@ describe("file links in rendered Markdown", () => {
 
   it("leaves file references inert without an editor", () => {
     const { container } = render(
-      <MarkdownRenderer text="`src/main.ts:42`, src/main.ts:42 and [source](src/main.ts:42)" />,
+      <MarkdownRenderer text="`src/main.ts:42`, src/main.ts:42 and [source](src/main.ts:42), `src/` and [folder](./src/)" />,
     );
     expect(container.querySelectorAll("a")).toHaveLength(0);
     expect(container.textContent).toContain("and source");

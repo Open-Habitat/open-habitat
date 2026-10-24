@@ -484,6 +484,9 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		// editor fixture's git-project); the second name does not exist.
 		answer += "\n\nMuutos on kohdassa `cmd/main.go:3-4`. Vanha nimi oli `cmd/old.go`."
 	}
+	if strings.Contains(prompt, "kansiolinkki") {
+		answer += "\n\n[Directory](./cmd/) and `cmd/`."
+	}
 	if strings.Contains(prompt, "pitkä") {
 		answer += "\n\n## Yhteenveto\n\n- Ensimmäinen kohta\n- Toinen kohta\n\n```go\nfunc main() {\n\tfmt.Println(\"hei\")\n}\n```\n\n" + strings.Repeat("Pitkä kappale synteettistä tekstiä. ", 80)
 	}

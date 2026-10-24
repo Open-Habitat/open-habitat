@@ -1,20 +1,25 @@
 import { createContext } from "react";
 
-/** A workspace-relative file a message names, with an optional line range. */
+/** A workspace-relative file or trailing-slash directory a message names, with an optional line range. */
 export interface FileRef {
   path: string;
   line?: number;
   end?: number;
 }
 
-// A relative path whose last part has a file extension, optionally followed
+// A relative directory ends in a slash; a file has an extension, optionally followed
 // by :line, :line-end or :line:column. Absolute paths, home paths, URLs and
 // paths that climb out (..) stay text: the browser never names anything
 // outside the workspace, and the daemon checks again.
 const token =
   /^(?:\.\/)?((?:[A-Za-z0-9_@+-][A-Za-z0-9_.@+-]*\/)*[A-Za-z0-9_@+-][A-Za-z0-9_.@+-]*\.[A-Za-z][A-Za-z0-9]{0,9})(?::([1-9][0-9]{0,6})(?:([-:])([1-9][0-9]{0,6}))?)?$/;
 
+const directoryToken = /^(?:[A-Za-z0-9_@+-][A-Za-z0-9_.@+-]*\/)+$/;
+
 export function parseFileRef(text: string): FileRef | null {
+  const directory = text.trim().replace(/^\.\//, "");
+  if (directory.length <= 1024 && directoryToken.test(directory))
+    return { path: directory };
   // GitHub-style Markdown anchors are another common model output form.
   const normalized = text
     .trim()

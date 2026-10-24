@@ -30,9 +30,27 @@ describe("file references in messages", () => {
       "git diff",
       "1.2.3",
       "v1.2",
-      "src/",
       "Makefile",
       "e.g.",
+    ])
+      expect(parseFileRef(text), text).toBeNull();
+  });
+  it("recognises explicit directories but refuses traversal and non-workspace links", () => {
+    expect(parseFileRef("src/components/")).toEqual({
+      path: "src/components/",
+    });
+    expect(parseFileRef("./src/")).toEqual({ path: "src/" });
+    for (const text of [
+      "../src/",
+      "src/../private/",
+      "/src/",
+      "~/src/",
+      "//host/src/",
+      "https://example.com/src/",
+      "src/\\private/",
+      "src//child/",
+      "./",
+      "src/:3",
     ])
       expect(parseFileRef(text), text).toBeNull();
   });

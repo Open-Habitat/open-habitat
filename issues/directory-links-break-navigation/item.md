@@ -3,10 +3,11 @@ created: 2026-10-24
 updated: 2026-10-24
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: unlaned
+closed: 2026-10-24
 ---
 
 # Directory links in conversations break the browser navigation
@@ -17,4 +18,4 @@ Jari 2026-10-24 on the test server (TARKASTETAVAA.md): file links in a conversat
 
 ## Acceptance Criteria
 
-- [ ] Directory links open in the editor/file tree; browser history and the app stay intact; browser test covering a directory link and back-navigation.
+- [x] Directory links open in the editor/file tree; browser history and the app stay intact; browser test covering a directory link and back-navigation.

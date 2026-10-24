@@ -41,6 +41,7 @@ export default function BrowserDocument({
   const [content, setContent] = useState("");
   const [revision, setRevision] = useState(0);
   const [selection, setSelection] = useState<FileRef>();
+  const [reveal, setReveal] = useState<FileRef>();
   const [directories, setDirectories] = useState<TreeDirectories>({});
   const pendingDirectories = useRef(new Map<string, AbortSignal>());
   const [picker, setPicker] = useState(true);
@@ -132,6 +133,16 @@ export default function BrowserDocument({
   }, [loadDirectory]);
   const open = useCallback(
     async (target: FileRef) => {
+      if (target.path.endsWith("/")) {
+        // Revealing a directory never replaces (or asks to discard) a buffer.
+        // Load only this path and its ancestors, not a recursive workspace scan.
+        const parts = target.path.split("/");
+        setPicker(true);
+        setReveal({ ...target });
+        for (let i = 1; i < parts.length; i++)
+          void loadDirectory(parts.slice(0, i).join("/"));
+        return true;
+      }
       if (!leave()) return false;
       // Do not discard the current buffer until the candidate was read safely.
       const before = current.current.content;
@@ -155,6 +166,7 @@ export default function BrowserDocument({
         setContent(next.content);
         setRevision((n) => n + 1);
         setSelection(target);
+        setReveal({ path: next.path });
         setRemote(undefined);
         setProblem(undefined);
         setSaveBlocked(false);
@@ -257,6 +269,7 @@ export default function BrowserDocument({
           : undefined
       }
       directories={directories}
+      reveal={reveal}
       onLoadDirectory={(path) => void loadDirectory(path)}
       picker={picker}
       dirty={dirty}
