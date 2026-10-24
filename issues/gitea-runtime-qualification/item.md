@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-runtime-qualification
@@ -15,6 +15,7 @@ blocked_by: ['@gitea-native-owner']
 collision: [internal/nativegitea/, release/manifest, internal/hostop]
 lane: gitea
 lane_seq: 6
+closed: 2026-10-24
 ---
 
 # Qualify tea runtime and stable Git helper across releases
@@ -45,9 +46,9 @@ The shared `contracts/v1/` and `web/src/app/GitHubOnboarding` tokens use the cur
 
 ## Acceptance Criteria
 
-- [ ] Installed CLI/config compatibility, architecture/checksum/license closure and minimal mapped-user HOME/XDG/PATH tests pass; shared tea/native adapter reads/writes interoperate.
-- [ ] Exercise release switch and old-release removal with an existing clone: helper still runs and next clone/fetch works without a second token store or token argv/logs.
-- [ ] Focused runtime/host/build-profile tests pass; independent /llm-review covers installed credential helper and release/state boundary. Record exact artifacts and limits; no global installation drift.
+- [x] Installed CLI/config compatibility, architecture/checksum/license closure and minimal mapped-user HOME/XDG/PATH tests pass; shared tea/native adapter reads/writes interoperate.
+- [x] Exercise release switch and old-release removal with an existing clone: helper still runs and next clone/fetch works without a second token store or token argv/logs.
+- [x] Focused runtime/host/build-profile tests pass; independent /llm-review covers installed credential helper and release/state boundary. Record exact artifacts and limits; no global installation drift.
 
 ## Validation and review
 
