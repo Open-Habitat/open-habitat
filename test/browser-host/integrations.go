@@ -102,10 +102,17 @@ func (f *fixtureEntry) store(env integrations.Env) string {
 	return filepath.Join(env.Home, ".config/fixture-integrations", string(f.provider))
 }
 
-func (f *fixtureEntry) Provider() integrations.Provider { return f.provider }
-func (f *fixtureEntry) Login() integrations.LoginKind   { return f.login }
-func (f *fixtureEntry) Services() []string              { return f.services }
-func (f *fixtureEntry) Available(integrations.Env) bool { return true }
+func (f *fixtureEntry) Provider() integrations.Provider     { return f.provider }
+func (f *fixtureEntry) Login() integrations.LoginKind       { return f.login }
+func (f *fixtureEntry) Services() []string                  { return f.services }
+func (f *fixtureEntry) Available(env integrations.Env) bool { return f.AppConfigured(env) }
+
+// The stand-ins need the operator's app as the native entries do; their
+// "tools" are always there.
+func (f *fixtureEntry) ToolsInstalled(integrations.Env) bool { return true }
+func (f *fixtureEntry) AppConfigured(integrations.Env) bool {
+	return appFixture.set(string(f.provider))
+}
 func (f *fixtureEntry) Accounts(env integrations.Env) ([]string, error) {
 	entries, err := os.ReadDir(f.store(env))
 	if errors.Is(err, os.ErrNotExist) {

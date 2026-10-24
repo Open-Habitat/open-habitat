@@ -8,6 +8,7 @@
   "editori": "editor",
   "tila": "storage",
   "palvelin": "server",
+  "palvelinintegraatiot": "server-integrations",
   "kayttoonotto": "onboarding",
   "kayttajat": "users",
   "levy": "disk"

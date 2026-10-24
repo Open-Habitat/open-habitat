@@ -13,6 +13,7 @@ import { Devices } from "../app/Devices";
 import { GitIdentity } from "../app/GitIdentity";
 import { IntegrationsSettings } from "../app/IntegrationsSettings";
 import { OnboardingAdministration } from "../app/OnboardingAdministration";
+import { ServerIntegrationsSettings } from "../app/ServerIntegrationsSettings";
 import { PersonalStorage } from "../app/PersonalStorage";
 import { PiCredentials } from "../app/PiCredentials";
 import type { AccountProfile, PiState } from "../app/pi";
@@ -346,6 +347,7 @@ export function AccountSettings({
   ];
   const adminSections = [
     ["palvelin", "Palvelin"],
+    ["palvelinintegraatiot", "Integraatiot"],
     ["kayttoonotto", "Käyttöönotto"],
     ["kayttajat", "Käyttäjät ja pääsy"],
     ["levy", "Levytila"],
@@ -363,6 +365,7 @@ export function AccountSettings({
     editori: "editor",
     tila: "disk",
     palvelin: "server",
+    palvelinintegraatiot: "plug",
     // A turn on a route, not the chevron that marks a menu (Jari 24.10.2026).
     kayttoonotto: "steer",
     kayttajat: "users",
@@ -643,6 +646,10 @@ export function AccountSettings({
         {adminSections.some(([id]) => id === section) &&
           (admin && section === "kayttoonotto" ? (
             <OnboardingAdministration csrf={csrf} />
+          ) : admin && section === "palvelinintegraatiot" ? (
+            <div className="s-card ah-administration">
+              <ServerIntegrationsSettings csrf={csrf} />
+            </div>
           ) : admin ? (
             <ServerAdministration
               csrf={csrf}

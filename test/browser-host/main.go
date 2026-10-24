@@ -1123,6 +1123,12 @@ esac
 				}
 				w.WriteHeader(204)
 				return
+			case "/fixture/integration-apps":
+				if err := appFixture.fixture(r.URL.Query()); err != nil {
+					http.Error(w, err.Error(), 400)
+					return
+				}
+				w.WriteHeader(204)
 			case "/fixture/access":
 				if err := broker.fixture(r.URL.Query()); err != nil {
 					http.Error(w, err.Error(), 400)

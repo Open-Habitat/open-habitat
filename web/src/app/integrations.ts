@@ -51,6 +51,8 @@ export type Provider = {
   id: ProviderId;
   available: boolean;
   unavailable_reason?: "app_credentials_required" | "tool_unavailable";
+  /** With tool_unavailable: the catalog's tools the installation lacks. */
+  missing_tools?: string[];
   login: LoginKind;
   services: ServiceId[];
 };

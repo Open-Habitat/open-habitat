@@ -1,0 +1,244 @@
+/* Palvelimen ylläpito › Integraatiot (proto-server-integrations-setup,
+   round 2 direction 2 and Google's round 3 direction 2). */
+.si-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.si-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 240px) 150px;
+  gap: var(--ah-s2) var(--ah-s4);
+  align-items: center;
+  min-height: 52px;
+  padding: var(--ah-s3) var(--ah-s4);
+}
+.si-row + .si-row {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.si-main {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2) var(--ah-s3);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.si-name {
+  font-weight: 600;
+}
+.si-state {
+  min-width: 0;
+}
+.si-act {
+  display: flex;
+  justify-content: flex-end;
+}
+.si-step {
+  border-radius: var(--ah-r-pill);
+  text-decoration: none;
+}
+.si-step:focus-visible {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: 2px;
+}
+.si-step .ah-status {
+  font-size: 11px;
+}
+.si-note,
+.si-bad,
+.si-warn,
+.si-path {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s1);
+}
+.si-note svg,
+.si-bad svg,
+.si-warn svg,
+.si-path svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.si-note,
+.si-quiet,
+.si-path,
+.si-muted,
+.si-app {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+}
+.si-muted,
+.si-app,
+.si-path {
+  color: var(--ah-muted);
+}
+.si-bad,
+.si-err {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-err);
+}
+.si-app code,
+.si-quiet code {
+  font-size: 12px;
+}
+.ah-menu-heading .si-app {
+  display: block;
+  max-width: 280px;
+}
+
+/* Dialogs */
+.si-modal {
+  width: min(560px, 100%);
+}
+.si-modal.si-wide {
+  width: min(600px, 100%);
+}
+.si-dialog {
+  display: grid;
+  gap: var(--ah-s4);
+}
+.si-dialog p {
+  margin: 0;
+}
+.si-stepbody {
+  display: grid;
+  gap: var(--ah-s2);
+  justify-items: start;
+  align-content: start;
+  min-width: 0;
+}
+.si-wide .si-stepbody {
+  min-height: 180px;
+}
+.si-progress {
+  display: flex;
+  gap: 4px;
+}
+.si-progress span {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ah-line);
+}
+.si-progress [data-done] {
+  background: var(--ah-accent-line, var(--ah-accent));
+}
+.si-progress [data-current] {
+  background: var(--ah-accent);
+}
+.si-stepname {
+  font-weight: 600;
+}
+.si-stepname .si-muted {
+  font-weight: 400;
+  margin-right: var(--ah-s1);
+}
+.si-list {
+  margin: 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: 2px;
+}
+.si-val {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+.si-val code {
+  font-size: 13px;
+  padding: 2px 6px;
+  background: var(--ah-sunken, var(--ah-surface-2));
+  border-radius: var(--ah-r-sm);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.si-k {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+  min-width: 120px;
+}
+.si-effect {
+  padding: var(--ah-s2) var(--ah-s3);
+  border-left: 2px solid var(--ah-line-strong);
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+}
+.si-block {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ah-s2);
+  max-width: 100%;
+  min-width: 0;
+}
+.si-cmd {
+  font-family: var(--ah-mono);
+  font-size: 12px;
+  background: var(--ah-sunken);
+  border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-md);
+  min-width: 0;
+  margin: 0;
+  padding: var(--ah-s2) var(--ah-s3);
+  white-space: pre;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.si-fields {
+  display: grid;
+  gap: var(--ah-s3);
+  width: 100%;
+}
+.si-fields .ah-field {
+  width: 100%;
+}
+.si-secret {
+  display: grid;
+  gap: var(--ah-s1);
+}
+.si-secret input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: inherit;
+}
+.si-secret input[aria-invalid] {
+  border-color: var(--ah-err);
+}
+.si-consequences {
+  margin: 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: var(--ah-s1);
+}
+.si-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  flex-wrap: wrap;
+}
+.si-grow {
+  flex: 1;
+}
+
+@media (max-width: 800px) {
+  .si-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .si-state {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .si-act {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+}
