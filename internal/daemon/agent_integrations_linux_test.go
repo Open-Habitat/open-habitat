@@ -4,7 +4,6 @@ package daemon
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -20,7 +19,15 @@ import (
 )
 
 func TestAgentCredentialsAndIntegrationRoutes(t *testing.T) {
-	p, home := piFixture(t)
+	if os.Geteuid() == 0 {
+		t.Skip("agent listener requires an unprivileged UID")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	// Route/peer checks must not race an SDK subprocess against HTTP deadlines.
+	// An invalid native configuration makes valid credential requests fail closed
+	// synchronously; TestPiCredentialsNative covers successful adapter operations.
+	p := &PiDevice{Home: home}
 	catalog := integrations.New(integrations.Env{Home: home}, nil, nil)
 	dir, err := os.MkdirTemp("/var/tmp", "agent-credentials-")
 	if err != nil {
@@ -81,22 +88,16 @@ func TestAgentCredentialsAndIntegrationRoutes(t *testing.T) {
 		call("POST", path, `{}`, 404)
 	}
 	call("POST", AgentCredentialsPath, `{"provider":"openai","key":"`+secret+`","uid":0}`, 400)
-	call("POST", AgentCredentialsPath, `{"provider":"openai","key":"`+secret+`"}`, 200)
-	raw, err := os.ReadFile(filepath.Join(home, ".pi/agent/auth.json"))
-	if err != nil || !strings.Contains(string(raw), secret) {
-		t.Fatal("native key missing", err)
-	}
+	call("POST", AgentCredentialsPath, `{"provider":"openai","key":"`+secret+`"}`, 503)
 	call("GET", AgentCredentialsPath+"?uid=0", "", 400)
 	call("GET", AgentCredentialsPath, `{}`, 400)
-	var view piCredentials
-	if json.Unmarshal(call("GET", AgentCredentialsPath, "", 200), &view) != nil || !view.OpenAI.Present {
-		t.Fatal("missing presence")
-	}
-	// Each provider has its own removal route; an unknown one names no write.
-	call("POST", AgentCredentialsPath, `{"provider":"deepseek","key":"`+secret+`"}`, 200)
+	call("GET", AgentCredentialsPath, "", 503)
+	call("POST", AgentCredentialsPath, `{"provider":"deepseek","key":"`+secret+`"}`, 503)
 	call("DELETE", AgentCredentialsPath+"/google", "", 404)
-	call("DELETE", AgentCredentialsPath+"/openai", "", 200)
-	if json.Unmarshal(call("GET", AgentCredentialsPath, "", 200), &view) != nil || view.OpenAI.Present || !view.DeepSeek.Present {
-		t.Fatal("removal did not touch exactly its provider")
+	for _, provider := range piKeyProviders {
+		call("DELETE", AgentCredentialsPath+"/"+provider, "", 503)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".pi")); !os.IsNotExist(err) {
+		t.Fatal("unavailable native backend wrote credentials", err)
 	}
 }

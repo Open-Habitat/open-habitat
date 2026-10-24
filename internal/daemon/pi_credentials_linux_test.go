@@ -16,6 +16,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 func TestPiCredentialsNative(t *testing.T) {
@@ -29,6 +31,22 @@ func TestPiCredentialsNative(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(home, ".pi")); !os.IsNotExist(err) {
 		t.Fatal("invalid input wrote native files")
 	}
+	// Exercise the agent credential adapter's successful native writes/reads
+	// here, without a socket/client deadline competing with SDK startup. The
+	// route test separately proves own-UID transport, denial and exact paths.
+	handler := piCredentialsHandlerAt(transport.Config{}, func(*http.Request) bool { return true }, p, AgentCredentialsPath)
+	call := func(method, path, body string) piCredentials {
+		t.Helper()
+		req := httptest.NewRequest(method, "http://unix"+path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		var result piCredentials
+		if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &result) != nil {
+			t.Fatalf("%s %s: %d %s", method, path, w.Code, w.Body)
+		}
+		return result
+	}
 	// A real native OAuth record is preserved byte-for-byte through key changes.
 	_, events, err := p.Start()
 	if err != nil {
@@ -41,10 +59,7 @@ func TestPiCredentialsNative(t *testing.T) {
 	var original map[string]json.RawMessage
 	_ = json.Unmarshal(before, &original)
 	key := "sk-" + strings.Repeat("a", 24) + "abcd"
-	result, err := p.credentials(ctx, "save", "openai", key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	result := call("POST", AgentCredentialsPath, `{"provider":"openai","key":"`+key+`"}`)
 	reply, _ := json.Marshal(result)
 	if !result.OpenAI.Present || result.OpenAI.Suffix == nil || *result.OpenAI.Suffix != "abcd" || strings.Contains(string(reply), key) {
 		t.Fatal("unsafe or incomplete credential reply")
@@ -59,6 +74,12 @@ func TestPiCredentialsNative(t *testing.T) {
 	raw, _ := os.ReadFile(path)
 	var stored map[string]json.RawMessage
 	_ = json.Unmarshal(raw, &stored)
+	var saved struct {
+		Key string `json:"key"`
+	}
+	if json.Unmarshal(stored["openai"], &saved) != nil || saved.Key != key {
+		t.Fatal("native key missing or changed")
+	}
 	if string(stored["openai-codex"]) != string(original["openai-codex"]) {
 		t.Fatal("OAuth entry changed")
 	}
@@ -79,9 +100,16 @@ func TestPiCredentialsNative(t *testing.T) {
 	if _, err = p.catalog(ctx, apiModel, "", "openai"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = p.credentials(ctx, "remove", "openai", ""); err != nil {
-		t.Fatal(err)
+	deepseek := "sk-" + strings.Repeat("d", 24)
+	call("POST", AgentCredentialsPath, `{"provider":"deepseek","key":"`+deepseek+`"}`)
+	if view := call("GET", AgentCredentialsPath, ""); !view.OpenAI.Present || !view.DeepSeek.Present {
+		t.Fatal("missing provider presence")
 	}
+	call("DELETE", AgentCredentialsPath+"/openai", "")
+	if view := call("GET", AgentCredentialsPath, ""); view.OpenAI.Present || !view.DeepSeek.Present {
+		t.Fatal("removal did not touch exactly its provider")
+	}
+	call("DELETE", AgentCredentialsPath+"/deepseek", "")
 	raw, _ = os.ReadFile(path)
 	_ = json.Unmarshal(raw, &stored)
 	var after map[string]json.RawMessage
