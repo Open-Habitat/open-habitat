@@ -84,7 +84,9 @@ test("Apple: chosen services connect with one password, another is added with th
   await expect(guide.getByTestId("apple-password")).toHaveCount(0);
   await expect(guide.getByTestId("apple-reuse")).toBeVisible();
   const sent = page.waitForRequest(
-    (r) => r.url().endsWith("/api/v1/integrations/accounts") && r.method() === "POST",
+    (r) =>
+      r.url().endsWith("/api/v1/integrations/accounts") &&
+      r.method() === "POST",
   );
   await button(guide, "apple-connect").click();
   expect((await sent).postDataJSON()).toEqual({
@@ -106,7 +108,9 @@ test("Apple: chosen services connect with one password, another is added with th
     await expect(card.getByTestId(`integration-service-${s}`)).toBeVisible();
   await expect(card.getByTestId("integration-apple-missing")).toHaveCount(0);
   expect(
-    (await accounts(page)).map((a) => [a.provider, a.address, a.apple_id]).sort(),
+    (await accounts(page))
+      .map((a) => [a.provider, a.address, a.apple_id])
+      .sort(),
   ).toEqual([
     ["caldav", "person@icloud.com", "person@icloud.com"],
     ["carddav", "person@icloud.com", "person@icloud.com"],
@@ -127,8 +131,9 @@ test("@github-first Apple is an onboarding step of its own, shown with the same 
 }) => {
   try {
     expect(
-      (await page.request.get("/fixture/onboarding?integrations=apple"))
-        .status(),
+      (
+        await page.request.get("/fixture/onboarding?integrations=apple")
+      ).status(),
     ).toBe(204);
     await page.request.get("/fixture/scenario?value=pi-onboarding");
     await page.request.get("/fixture/pi-state?value=missing");
@@ -164,7 +169,8 @@ test("@github-first Apple is an onboarding step of its own, shown with the same 
     await expect(go).toHaveAttribute("data-connected", "true");
     await go.click();
     await expect(
-      page.getByRole("navigation", { name: "Käyttöönoton vaiheet" })
+      page
+        .getByRole("navigation", { name: "Käyttöönoton vaiheet" })
         .getByTestId("onboarding-step-apple"),
     ).toHaveAttribute("data-state", "done");
   } finally {
