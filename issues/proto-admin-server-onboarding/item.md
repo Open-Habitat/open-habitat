@@ -63,3 +63,7 @@ Jari 2026-10-23 confirmed: the person's AI step uses 'Ehdotus ja lista' (r4 dire
 ### 2026-10-24T04:21:22Z · @jari
 
 Jari 2026-10-24 on r5 (repositories): 'Tapa ja lista' with names on the route is the form. A default repo the person cannot access is silently left out and only the admin sees it — e.g. team-workspace and management-workspace as defaults, the latter appearing only for people with access. In automatic checkout the already-fetching defaults stay visible in the chooser as locked 'forced selections' (requires a new chooser state). Skip mode with no defaults: the step is skipped and the Repot row disappears from the route.
+
+### 2026-10-24T04:55:22Z · @jari
+
+Jari 2026-10-24 on r6 (Käyttäjät ja pääsy): 'Yksi lista'. The shared rules all hold (browser requests, server confirms; GitHub check before adding; duplicates under the field; removal ends sign-in and sessions while the Unix account and files stay, row stays as 'Pääsy poistettu', account deletion via CLI; admins not removable in the browser). A restored person returns to the same Unix account. Show the numeric GitHub id when adding. Locked forced selections and the proposed 'locked' prop are fine. Fix: the GitHub usernames in the list are far too large.
