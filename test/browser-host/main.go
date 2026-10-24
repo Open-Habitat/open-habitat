@@ -592,7 +592,7 @@ esac
 	if err := os.WriteFile(adminPath, []byte(`{"version":1,"name":"Synthetic lab","administrators":["42"],"default_limit_bytes":8589934592}`), 0600); err != nil {
 		log.Fatal(err)
 	}
-	broker := &fixtureBroker{identities: identities, created: map[string]bool{}}
+	broker := &fixtureBroker{identities: identities, created: map[string]bool{}, access: newFixtureAccess()}
 	var currentAuth atomic.Pointer[gateway.Auth]
 	// /fixture/upgrade replaces the served bundle and the gateway's version, as
 	// a release switch does; the main loop reads both only when it restarts.
@@ -1118,6 +1118,12 @@ esac
 				}
 				w.WriteHeader(204)
 				return
+			case "/fixture/access":
+				if err := broker.fixture(r.URL.Query()); err != nil {
+					http.Error(w, err.Error(), 400)
+					return
+				}
+				w.WriteHeader(204)
 			case "/fixture/expire":
 				// Cross the browser session's renewable 90-day idle deadline.
 				clock.Add(90*24 + 1)
@@ -1228,6 +1234,7 @@ func upgradedWeb(source, dir string, n int) (string, error) {
 }
 
 type fixtureBroker struct {
+	access     *fixtureAccess
 	identities []gateway.Identity
 	limits     sync.Map
 	mu         sync.Mutex
@@ -1237,6 +1244,9 @@ type fixtureBroker struct {
 // Exchange binds each synthetic person at their first ensure on this host,
 // as the broker reports it, so that login carries the site's plan.
 func (b *fixtureBroker) Exchange(_ context.Context, r gateway.BrokerRequest) (gateway.BrokerReply, error) {
+	if !b.admitted(r.ID) {
+		return gateway.BrokerReply{}, errors.New("not allowlisted")
+	}
 	for _, m := range b.identities {
 		if m.Subject == r.ID {
 			b.mu.Lock()
