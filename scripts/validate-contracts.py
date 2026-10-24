@@ -44,6 +44,7 @@ for path in SCHEMA_FILES:
 
 checks = {
     "editor-preference.json": "editor-preference.schema.json",
+    "first-route.json": "first-route.schema.json",
     "editor-file-read.json": "workspace-editor-files.schema.json",
     "editor-file-save.json": "workspace-editor-files.schema.json",
     "editor-file-list.json": "workspace-editor-files.schema.json",
@@ -232,6 +233,11 @@ must_reject("server-onboarding.schema.json", {"provider": "openai", "key": "!cat
 must_reject("server-onboarding.schema.json", {"provider": "openai", "key": "$OPENAI_API_KEY"})
 must_reject("server-onboarding.schema.json", {"offer": "site_key"})
 must_reject("site-onboarding.schema.json", {**site_onboarding, "site_key": site_key["site_key"]})
+# The seed is a fact of the creating sign-in, never a negative or a value to choose.
+must_reject("site-onboarding.schema.json", {**site_onboarding, "ai_key_seeded": False})
+must_reject("site-onboarding.schema.json", {**site_onboarding, "ai_key_seeded": "seeded"})
+# The first-route mark is only ever finished, and names no path or other person.
+must_reject("first-route.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "finished": True, "path": "/home/x"})
 must_reject("server-access.schema.json", {"id": "43", "login": "example-person"})
 must_reject("server-access.schema.json", {"login": "-bad"})
 must_reject("server-access.schema.json", {"subject": "43", "administrator": True})

@@ -275,8 +275,21 @@ func TestSiteKeySeededOnlyInTheCreatingLogin(t *testing.T) {
 
 // The receipt keeps the daemon's word: seeded, or already_present when the
 // person's own credential stayed. A site without a key records not_offered
-// and hands nothing over.
+// and hands nothing over. Only a seeded receipt tells the person's read that
+// their usable Pi credentials came from the seed, so the browser still walks
+// the route; the offer the site has now says nothing about this person.
 func TestSiteKeyReceiptRecordsTheAnswer(t *testing.T) {
+	seededRead := func(h http.Handler, cookie *http.Cookie) bool {
+		t.Helper()
+		w := request(h, "GET", "/api/v1/onboarding/site", cookie)
+		var view struct {
+			AIKeySeeded *bool `json:"ai_key_seeded"`
+		}
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &view) != nil || view.AIKeySeeded != nil && !*view.AIKeySeeded {
+			t.Fatal(w.Code, w.Body.String())
+		}
+		return view.AIKeySeeded != nil
+	}
 	for _, answer := range []string{"seeded", "already_present", "failed", "unexpected"} {
 		h, a, _, s, _, admin := planFixture(t, "preselected")
 		withSiteKeyFile(t, a, admin)
@@ -284,7 +297,8 @@ func TestSiteKeyReceiptRecordsTheAnswer(t *testing.T) {
 			t.Fatal(e)
 		}
 		s.seed = func(SiteKeySeed) (string, error) { return answer, nil }
-		if w, _ := login(t, h); w.Code != 303 {
+		w, cookie := login(t, h)
+		if w.Code != 303 {
 			t.Fatal(answer, w.Code)
 		}
 		want := answer
@@ -294,12 +308,24 @@ func TestSiteKeyReceiptRecordsTheAnswer(t *testing.T) {
 		if r, _ := a.receiptFor("42"); r.AIKey != want {
 			t.Fatal(answer, r.AIKey)
 		}
+		if seededRead(h, cookie) != (answer == "seeded") {
+			t.Fatal(answer, "person read misstates the seed")
+		}
 	}
-	h, a, _, s, _, _ := planFixture(t, "preselected")
-	if w, _ := login(t, h); w.Code != 303 || len(s.seeds) != 0 {
+	h, a, _, s, _, admin := planFixture(t, "preselected")
+	w, cookie := login(t, h)
+	if w.Code != 303 || len(s.seeds) != 0 {
 		t.Fatal("seeded without a key")
 	}
 	if r, _ := a.receiptFor("42"); r.AIKey != "not_offered" {
 		t.Fatal(r.AIKey)
+	}
+	// A key stored after this person's account was created seeded nothing.
+	withSiteKeyFile(t, a, admin)
+	if _, _, e := a.setSiteKey("", "openai", openaiKey, false); e != nil {
+		t.Fatal(e)
+	}
+	if seededRead(h, cookie) {
+		t.Fatal("the current offer marked an earlier person seeded")
 	}
 }

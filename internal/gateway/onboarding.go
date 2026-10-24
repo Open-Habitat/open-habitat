@@ -311,6 +311,7 @@ type siteOnboarding struct {
 	} `json:"repositories"`
 	Integrations []onboardingIntegration `json:"integrations"`
 	AIAccount    onboardingAIAccount     `json:"ai_account"`
+	AIKeySeeded  bool                    `json:"ai_key_seeded,omitempty"`
 }
 
 // personOnboarding is what one person's route shows: the site's current
@@ -325,6 +326,12 @@ func personOnboarding(c onboardingConfig, r *onboardingReceipt) siteOnboarding {
 	if v.AIAccount.Offer == "site_key" {
 		v.AIAccount.Offer = "all"
 	}
+	// Usable Pi credentials then come from that seed, not from the person
+	// finishing the route, so the browser walks the route until the
+	// person's own daemon holds their first-route mark. Only the receipt
+	// says this, never the current offer: a key set after the account was
+	// created seeded nothing.
+	v.AIKeySeeded = r != nil && r.AIKey == "seeded"
 	v.Repositories.Mode = c.Repositories.Mode
 	if r != nil && r.Mode != "preselected" {
 		v.Repositories.Imports = r.readable()

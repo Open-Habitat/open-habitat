@@ -16,6 +16,7 @@
       }
     },
     "integrations": {"$ref": "server-onboarding.schema.json#/$defs/integrations"},
-    "ai_account": {"$ref": "server-onboarding.schema.json#/$defs/ai_account"}
+    "ai_account": {"$ref": "server-onboarding.schema.json#/$defs/ai_account"},
+    "ai_key_seeded": {"description": "Present only when the sign-in that created this person's account seeded the site AI key into their own Pi credentials (its receipt). Their Pi status is then usable without the route having been walked, so the browser walks the route until the person's own first-route mark exists (first-route.schema.json). Never derived from the site's current offer.", "const": true}
   }
 }

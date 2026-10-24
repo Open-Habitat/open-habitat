@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "ed29c1ecfaac5a1aff502781af058e047aabb37207187336c54b85736eb8481c"
+const V1SchemaFingerprint = "d6e91680c0f38211a2e5f6e75e217fb77a6dfe390aa53e59fac6a3b4a5a5e181"
 
 var V1SchemaFiles = []string{
 	"account-profile-update.schema.json",
@@ -26,6 +26,7 @@ var V1SchemaFiles = []string{
 	"error.schema.json",
 	"event.schema.json",
 	"exchange.schema.json",
+	"first-route.schema.json",
 	"git-identity-update.schema.json",
 	"git-identity.schema.json",
 	"github-checkout.schema.json",
@@ -96,6 +97,7 @@ type Editor = json.RawMessage
 type Error = json.RawMessage
 type Event = json.RawMessage
 type Exchange = json.RawMessage
+type FirstRoute = json.RawMessage
 type GitIdentityUpdate = json.RawMessage
 type GitIdentity = json.RawMessage
 type GithubCheckout = json.RawMessage

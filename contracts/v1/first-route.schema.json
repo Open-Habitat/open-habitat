@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/first-route.schema.json",
+  "title": "Whether the person has walked their first-login route",
+  "description": "GET and PUT /api/v1/account/first-route. The mark is the person's own state, kept in their home and read and written only by their daemon; the host keeps no onboarding record. The only write finishes the route, and nothing takes the mark back.",
+  "$defs": {
+    "write": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finished"
+      ],
+      "properties": {
+        "finished": {
+          "const": true
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "web_identity_id",
+        "finished"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "web_identity_id": {
+          "type": "string",
+          "pattern": "^wid_[A-Za-z0-9_-]+$",
+          "maxLength": 128
+        },
+        "finished": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/result"
+}

@@ -24,14 +24,19 @@ type editorPreference struct {
 
 func validEditorEngine(engine string) bool { return engine == "codemirror6" || engine == "vscode" }
 
-// Use the mapped home, not the gateway's environment or a browser-supplied path.
-// Open each directory without following symlinks and hold it across rename.
 func editorPreferenceDir(home string, create bool) (*os.File, error) {
+	return personalDir(home, create, ".config", "open-habitat")
+}
+
+// personalDir opens home/<parts...>. Use the mapped home, not the gateway's
+// environment or a browser-supplied path. Open each directory without
+// following symlinks and hold it across rename.
+func personalDir(home string, create bool, parts ...string) (*os.File, error) {
 	fd, err := unix.Open(home, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return nil, err
 	}
-	for _, part := range []string{".config", "open-habitat"} {
+	for _, part := range parts {
 		if create {
 			if err = unix.Mkdirat(fd, part, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
 				unix.Close(fd)
