@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go.yaml.in/yaml/v3"
 	"golang.org/x/sys/unix"
 	"io"
 	"os"
@@ -693,6 +694,7 @@ func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
 	// replacing it loses nothing, and keeping it would refuse every later
 	// sign-in. A login that cannot be classified (network, keyring, unknown
 	// output) is left alone.
+	stamp, stamped := credentialStamp(a.home)
 	switch login, kind := a.classify(ctx); {
 	case ctx.Err() != nil:
 		return result, denied
@@ -701,23 +703,78 @@ func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
 			return Result{Phase: Reobserved, Storage: storage}, nil
 		}
 		return result, denied
-	case kind != absent && kind != revoked:
+	case kind == revoked:
+		// gh auth login writes the incoming account's entry, which may be
+		// another stored account than the rejected active one; only GitHub's
+		// verdict on the active token was observed. So replace only the sole
+		// account, and only while gh's files are still those just classified
+		// (gh rewrites them on every login, including one made natively).
+		sole := soleAccount(a.home)
+		now, still := credentialStamp(a.home)
+		if !sole || !stamped || !still || now != stamp {
+			return result, denied
+		}
+	case kind != absent:
 		return result, denied
 	}
 	_, err := a.gh(ctx, false, strings.NewReader(token), "auth", "login", "--hostname", "github.com", "--with-token", "--git-protocol", "https")
 	token = "" // drop reference before subsequent commands
+	loggedIn := err == nil
 	if err == nil {
 		_, err = a.gh(ctx, false, nil, "auth", "setup-git", "--hostname", "github.com")
 	}
+	installed, installedStamped := credentialStamp(a.home)
 	login, storage, ok := a.observe(ctx)
 	if err == nil && ok {
 		return Result{Phase: Installed, Storage: storage}, nil
 	}
 	result.Storage = storage
-	// Only a login returned by gh status + validated API may be used for logout;
-	// identity mismatch is still a valid observed login to clean up.
-	result.CleanupOK = a.cleanup(ctx, login)
+	// A failed gh auth login installed nothing, so whatever login gh shows
+	// now is not ours to remove. After our login, only a login returned by gh
+	// status + validated API may be used for logout; identity mismatch is
+	// still a valid observed login to clean up, unless gh's files moved after
+	// ours were written: then the observed login may be a native one.
+	if now, still := credentialStamp(a.home); loggedIn && installedStamped && still && now == installed {
+		result.CleanupOK = a.cleanup(ctx, login)
+	}
 	return result, denied
+}
+
+// soleAccount reports whether gh's hosts.yml names exactly one github.com
+// account and it is the active one. Anything unreadable or unexpected is not.
+func soleAccount(home string) bool {
+	fd, err := unix.Open(filepath.Join(home, ".config", "gh", "hosts.yml"), unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
+	if err != nil {
+		return false
+	}
+	defer unix.Close(fd)
+	var st unix.Stat_t
+	if !validFD(fd, false, -1) || unix.Fstat(fd, &st) != nil || st.Size <= 0 || st.Size > 65536 {
+		return false
+	}
+	// The file may hold tokens: read, parse and wipe, never return its bytes.
+	b := make([]byte, st.Size)
+	defer func() {
+		for i := range b {
+			b[i] = 0
+		}
+	}()
+	if n, e := unix.Read(fd, b); e != nil || n != len(b) {
+		return false
+	}
+	var hosts map[string]struct {
+		User  string               `yaml:"user"`
+		Users map[string]yaml.Node `yaml:"users"`
+	}
+	if yaml.Unmarshal(b, &hosts) != nil {
+		return false
+	}
+	h, ok := hosts["github.com"]
+	if !ok || len(h.Users) != 1 {
+		return false
+	}
+	_, active := h.Users[h.User]
+	return active
 }
 
 // Disconnect is not web logout. The caller must have independently enforced

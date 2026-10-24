@@ -28,6 +28,8 @@ type fake struct {
 	// apiErr is what gh api user returns while logged in, before any login
 	// this test installs: rejected for a revoked token, denied for others.
 	apiErr error
+	// probed runs once when gh api user is asked, as a native change would.
+	probed func()
 }
 
 func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
@@ -56,6 +58,10 @@ func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
 			return nil, noAuth
 		}
 	case "gh api --hostname github.com user --jq {id: .id, login: .login}":
+		if probed := f.probed; probed != nil {
+			f.probed = nil
+			probed()
+		}
 		if f.apiErr != nil {
 			return nil, f.apiErr
 		}
@@ -477,21 +483,88 @@ func TestExistingWrongOrPartialAuthIsNeverOverwritten(t *testing.T) {
 	}
 }
 
-// A token GitHub rejects is replaced by the fresh one, and a failed
-// replacement still never logs out an account it did not install.
+const staleHosts = "github.com:\n    users:\n        alice:\n            oauth_token: stale\n    git_protocol: https\n    oauth_token: stale\n    user: alice\n"
+
+// A token GitHub rejects is replaced by the fresh one when it is gh's only
+// github.com account and nothing changed gh's files since it was rejected.
 func TestRevokedLoginIsReplaced(t *testing.T) {
-	a, f, _ := fixture(t, false)
-	f.logged = true
-	f.apiErr = rejected
+	revokedFixture := func(t *testing.T, hosts string) (*Adapter, *fake, string) {
+		a, f, home := fixture(t, false)
+		if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte(hosts), 0600); err != nil {
+			t.Fatal(err)
+		}
+		f.logged = true
+		f.apiErr = rejected
+		return a, f, home
+	}
+	a, f, _ := revokedFixture(t, staleHosts)
 	r, e := a.Install(context.Background(), f.token)
 	if e != nil || r.Phase != Installed || r.Storage != ProtectedFile {
 		t.Fatal(r, e, f.log)
 	}
-	a, f, _ = fixture(t, false)
+	for name, setup := range map[string]func(*fake, string){
+		// gh auth login would overwrite bob's working entry if he signed in.
+		"another-stored-account": func(f *fake, home string) {
+			if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte(strings.Replace(staleHosts, "    users:\n", "    users:\n        bob:\n            oauth_token: works\n", 1)), 0600); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"legacy-single-token": func(f *fake, home string) {
+			if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte("github.com:\n    oauth_token: stale\n    user: alice\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+		},
+		// The person logs in natively while GitHub answers about the old token.
+		"native-login-meanwhile": func(f *fake, home string) {
+			f.probed = func() {
+				if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte(strings.ReplaceAll(staleHosts, "stale", "fresh-native")), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			a, f, home := revokedFixture(t, staleHosts)
+			setup(f, home)
+			if r, e := a.Install(context.Background(), f.token); e == nil || r.Phase != Partial {
+				t.Fatal(r, e)
+			}
+			for _, cmd := range f.log {
+				if strings.Contains(cmd, "auth login") || strings.Contains(cmd, "auth logout") {
+					t.Fatal("mutated a login it could not attribute", f.log)
+				}
+			}
+		})
+	}
+}
+
+// A login made natively after ours (gh's files moved) is not ours to remove,
+// even when the observation then sees another account.
+func TestNativeChangeAfterInstallBlocksCleanup(t *testing.T) {
+	a, f, home := fixture(t, false)
+	f.id = "43"
+	f.probed = func() {
+		if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte(strings.ReplaceAll(staleHosts, "stale", "native")), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if r, e := a.Install(context.Background(), f.token); e == nil || r.CleanupOK || !f.logged {
+		t.Fatal(r, e, f.log)
+	}
+}
+
+// A failed gh auth login installed nothing: the login gh shows afterwards,
+// even the person's own, was made by someone else and is never logged out.
+func TestFailedLoginNeverCleansUp(t *testing.T) {
+	a, f, home := fixture(t, false)
+	if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte(staleHosts), 0600); err != nil {
+		t.Fatal(err)
+	}
 	f.logged = true
 	f.apiErr = rejected
 	f.fail = "gh auth login --hostname github.com --with-token --git-protocol https"
-	if r, e = a.Install(context.Background(), f.token); e == nil || r.Phase != Partial {
+	f.probed = func() { f.probed = func() { f.apiErr = nil } } // works when observed afterwards
+	if r, e := a.Install(context.Background(), f.token); e == nil || r.Phase != Partial || r.CleanupOK {
 		t.Fatal(r, e)
 	}
 	for _, cmd := range f.log {
@@ -850,24 +923,32 @@ func TestExecutorReplacesOnlyARevokedLogin(t *testing.T) {
 	}
 	t.Setenv("PATH", bin)
 	for _, tc := range []struct {
-		state   string
-		install bool
+		name, state string
+		install     bool
 	}{
-		{"revoked", true},
-		{"offline", false},
-		{"locked", false},
-		{"foreign", false},
+		{"revoked", "revoked", true},
+		{"revoked-beside-another-account", "revoked", false},
+		{"offline", "offline", false},
+		{"locked", "locked", false},
+		{"foreign", "foreign", false},
 	} {
-		t.Run(tc.state, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			a, _, home := fixture(t, false)
 			a.run = Executor{Home: home}
 			if err := os.WriteFile(filepath.Join(home, "state"), []byte(tc.state+"\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
 			hosts := filepath.Join(home, ".config", "gh", "hosts.yml")
+			stale := staleHosts
+			if tc.name == "revoked-beside-another-account" {
+				stale = strings.Replace(stale, "    users:\n", "    users:\n        bob:\n", 1)
+			}
+			if err := os.WriteFile(hosts, []byte(stale), 0600); err != nil {
+				t.Fatal(err)
+			}
 			before, _ := os.ReadFile(hosts)
 			want := "disconnected"
-			if tc.state == "offline" || tc.state == "locked" {
+			if tc.name == "offline" || tc.name == "locked" {
 				want = "unknown"
 			}
 			if got := a.Status(context.Background()); got != want {
