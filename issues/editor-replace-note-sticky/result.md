@@ -21,6 +21,10 @@ browser spec at 1366 and 390, the whole browser suite (350 passed, 3 skipped).
 The web unit run reports one unhandled jsdom error from the untouched
 `CodeMirrorEditor.test.tsx`; it also happens on main and is filed as
 `utterly-damaging-balls`.
+The full gate (`ci-local.sh --clean`) failed only in web-checks, on that
+error and on the load flake in the untouched `StartHere.test.tsx`
+(`start-here-test-lazy-markdown-flake`); Go, contracts and Storybook passed.
+No receipt was written.
 
 ## Decisions for later review
 
