@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: task
-status: testing
+status: done
 priority: normal
 preparation: pending
 lane: proto-ai-key
 lane_seq: 1
+closed: 2026-10-24
 ---
 
 # Prototype: giving the site AI key to an already-joined person
@@ -18,3 +19,9 @@ Jari, 2026-10-24: before implementing `admin-ai-key-seed` (root or the browser a
 ## Acceptance Criteria
 
 - [x] Round published on a new glasspad page with a Finnish summary, recommendation and questions in result.md; KOKEILTAVAA prototype line.
+
+## Decisions
+
+### 2026-10-24T16:34:04Z · @jari
+
+Jari 2026-10-24: AI-avain page direction accepted; admin sees the check; rotation replaces all site-given copies; no separate notification. Implementation in admin-ai-key-seed.

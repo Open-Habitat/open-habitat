@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: deferred
+status: open
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -11,8 +11,11 @@ source_ref: taskfleet:01m5p58hc8f6gyd5zad5gxx136/split:admin-ai-key-seed
 originating_run: 01m5p58hc8f6gyd5zad5gxx136
 originating_run_kind: spinoff
 related: ['@plan-site-onboarding-authority', '@proto-admin-server-onboarding']
-blocked_by: ['@site-ai-key', '@proto-admin-ai-key-seed']
-collision: [internal/gateway/administration, internal/daemon/pi]
+blocked_by: ['@site-ai-key']
+collision: [internal/gateway/administration, internal/daemon/pi, contracts/v1/, web/src/app/, web/src/components/]
+lane: proto-ai-key
+lane_seq: 2
+preparation: ready
 ---
 
 # admin ai-key seed: give an already-joined person the site AI key
@@ -36,3 +39,7 @@ Scheduling proposal: deferred, no lane, until Jari asks for it.
 ### 2026-10-24T15:43:17Z · @jari
 
 Jari 2026-10-24: prototype first how giving an already-joined person the site key should go (proto-admin-ai-key-seed); implementation after the verdict.
+
+### 2026-10-24T16:34:04Z · @jari
+
+Jari 2026-10-24, verdict on proto-admin-ai-key-seed: implement now. (1) The browser administrator gives the key on the AI-avain page (the prototype's batch direction), alongside the root CLI. (2) The administrator may see the one-word per-person check (own credential / none); the credential's kind stays hidden. (3) Rotating the site key replaces every site-given copy everywhere, so no one is left on an old site key; this supersedes ADR 0030's 'rotation changes only future joiners', which was only the easier first implementation. A person's own key or subscription is still never overwritten. (4) No separate notification: the person's settings (Yhteydet row) show the key is site-given. Removal was not addressed: keep the prototype's choice (removal does not revoke copies) unless rotation-everywhere makes revocation the natural symmetric behaviour, and record the choice under Decisions for later review.
