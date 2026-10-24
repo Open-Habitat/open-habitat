@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "limits": "not_in_use",
+  "users": [],
+  "filesystem": {
+    "capacity_bytes": 42949672960,
+    "free_bytes": 32212254720
+  },
+  "overcommitted": null
+}

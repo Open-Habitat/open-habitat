@@ -29,6 +29,7 @@ it("validates administrator capacity and writes via CSRF", async () => {
       new Response(
         JSON.stringify({
           schema_version: 1,
+          limits: "enforced",
           users: [
             {
               id: "42",
@@ -73,6 +74,7 @@ it("keeps partial rows and an explicitly unknown overcommit assessment", async (
     new Response(
       JSON.stringify({
         schema_version: 1,
+        limits: "enforced",
         users: [
           {
             id: "42",
@@ -100,4 +102,42 @@ it("keeps partial rows and an explicitly unknown overcommit assessment", async (
   expect(result.users[0].usage_bytes).toBe(1024);
   expect(result.users[1].unavailable).toBe(true);
   expect(result.overcommitted).toBeNull();
+});
+it("reads an installation without per-user limits as the shared disk", async () => {
+  vi.spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          schema_version: 1,
+          limits: "not_in_use",
+          filesystem: { capacity_bytes: 4096, free_bytes: 1024 },
+        }),
+      ),
+    )
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          schema_version: 1,
+          limits: "not_in_use",
+          users: [],
+          filesystem: { capacity_bytes: 4096, free_bytes: 1024 },
+          overcommitted: null,
+        }),
+      ),
+    )
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          schema_version: 1,
+          limits: "not_in_use",
+          filesystem: { capacity_bytes: 4096, free_bytes: 8192 },
+        }),
+      ),
+    );
+  expect(await ownStorage()).toEqual({
+    limits: "not_in_use",
+    filesystem: { capacity_bytes: 4096, free_bytes: 1024 },
+  });
+  expect((await storageAdministration()).limits).toBe("not_in_use");
+  await expect(ownStorage()).rejects.toThrow("Invalid storage response");
 });

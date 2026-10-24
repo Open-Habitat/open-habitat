@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "limits": "enforced",
   "users": [
     {
       "id": "42",

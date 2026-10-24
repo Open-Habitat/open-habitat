@@ -7,7 +7,7 @@ import {
   TrashPurgeDialog,
   type TrashRow,
 } from "../components/WorkspaceTrash";
-import { ownStorage, type Quota } from "./storageQuota";
+import { type OwnStorage, ownStorage } from "./storageQuota";
 import { blockerText, bytes, refusalText } from "./trashText";
 import { WorktreeCleanup } from "./WorktreeCleanup";
 import {
@@ -41,7 +41,7 @@ export function PersonalStorage({
   csrf?: string;
   onWorkspacesChanged?: () => void;
 }) {
-  const [quota, setQuota] = useState<Quota>();
+  const [quota, setQuota] = useState<OwnStorage>();
   const [error, setError] = useState(false);
   const [quotaRead, setQuotaRead] = useState(0);
   const [trashBytes, setTrashBytes] = useState<number>();
@@ -61,7 +61,12 @@ export function PersonalStorage({
     <>
       <div className="s-card">
         <section aria-label="Käyttö">
-          {quota ? (
+          {quota?.limits === "not_in_use" ? (
+            <SharedDisk
+              capacity={quota.filesystem.capacity_bytes}
+              free={quota.filesystem.free_bytes}
+            />
+          ) : quota ? (
             <StorageUsage
               usage={quota.usage_bytes}
               limit={quota.limit_bytes}
@@ -92,6 +97,23 @@ export function PersonalStorage({
         />
       ) : null}
     </>
+  );
+}
+
+// Without per-user limits the only bound is the disk everyone's homes share.
+function SharedDisk({ capacity, free }: { capacity: number; free: number }) {
+  return (
+    <div data-testid="storage-limits-not-in-use">
+      <p>
+        <strong>{bytes(free)}</strong> vapaana palvelimen levyllä (
+        {bytes(capacity)}).
+      </p>
+      <p className="ah-trash-intro">
+        Tällä palvelimella ei ole käyttäjäkohtaisia tallennusrajoja. Kaikkien
+        kotihakemistot ovat samalla levyllä, joten kenen tahansa tiedostot
+        voivat täyttää sen.
+      </p>
+    </div>
   );
 }
 

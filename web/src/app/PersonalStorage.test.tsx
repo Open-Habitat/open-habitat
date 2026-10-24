@@ -22,3 +22,20 @@ it("shows only the signed-in person's quota", async () => {
   );
   expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/account/storage");
 });
+
+it("says when the installation has no per-user limits", async () => {
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        schema_version: 1,
+        limits: "not_in_use",
+        filesystem: { capacity_bytes: 64 * 2 ** 30, free_bytes: 16 * 2 ** 30 },
+      }),
+      { status: 200 },
+    ),
+  );
+  render(<PersonalStorage />);
+  const shared = await screen.findByTestId("storage-limits-not-in-use");
+  expect(shared.textContent).toContain("ei ole käyttäjäkohtaisia");
+  expect(screen.queryByRole("img")).toBeNull();
+});

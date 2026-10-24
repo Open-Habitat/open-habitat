@@ -812,5 +812,31 @@
       "no failed durability is acknowledged; 5xx/lost replies retain the dirty buffer without retry; identity changes dispose live buffers and stale responses",
       "compact layout uses CodeMirror without overwriting identity-local desktop preference; no browser engine starts code-server"
     ]
+  },
+  {
+    "id": "CT-043",
+    "covers": [
+      "installation without user quotas",
+      "shared home filesystem"
+    ],
+    "given": [
+      "root's installed storage policy declares no per-user limits; homes share one filesystem, possibly the root filesystem"
+    ],
+    "when": [
+      "a person signs in for the first time, reads their storage, starts a clone or an integration sync, or an agent reads its environment",
+      "an administrator lists storage or tries to change a person's limit"
+    ],
+    "then": [
+      "the broker creates the account without a limit and accepts the login without a default limit",
+      "storage reads report limits not_in_use with the shared filesystem's capacity and free space, never an unavailable or zero quota",
+      "a limit change is refused as storage_limits_not_in_use and nothing is written",
+      "clone admission requires free filesystem space instead of a quota; ENOSPC stays storage_full",
+      "an unreadable storage policy is treated as the user-quota installation, never as permission to skip limits"
+    ],
+    "fixtures": [
+      "examples/account-storage-not-in-use.json",
+      "examples/server-storage-not-in-use.json",
+      "examples/agent-environment-not-in-use.json"
+    ]
   }
 ]

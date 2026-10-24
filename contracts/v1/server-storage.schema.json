@@ -6,6 +6,7 @@
   "required": ["schema_version", "users", "filesystem", "overcommitted"],
   "properties": {
     "schema_version": {"const": 1},
+    "limits": {"enum": ["enforced", "not_in_use"], "description": "not_in_use: the installation sets no per-user limits; users is then empty and overcommitted null."},
     "users": {"type": "array", "maxItems": 1024, "items": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "username", "administrator", "usage_bytes", "limit_bytes", "unavailable"],
@@ -31,5 +32,7 @@
       }
     },
     "overcommitted": {"type": ["boolean", "null"], "description": "Null when any user quota is unavailable; not a claim of no overcommit."}
-  }
+  },
+  "if": {"required": ["limits"], "properties": {"limits": {"const": "not_in_use"}}},
+  "then": {"properties": {"users": {"maxItems": 0}, "overcommitted": {"const": null}}}
 }

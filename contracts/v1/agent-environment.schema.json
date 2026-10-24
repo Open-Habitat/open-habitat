@@ -91,6 +91,23 @@
               "const": true
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "source"
+          ],
+          "description": "Root's storage policy sets no per-user limits: only the filesystem bounds this UID's files.",
+          "properties": {
+            "state": {
+              "const": "not_in_use"
+            },
+            "source": {
+              "const": "storage_policy"
+            }
+          }
         }
       ]
     },

@@ -1,7 +1,14 @@
 import { mutationFetch } from "./mutations";
 export type Quota = { usage_bytes: number; limit_bytes: number };
+export type Disk = { capacity_bytes: number; free_bytes: number };
+/** The person's own storage: a native quota, or on an installation without
+ * per-user limits only the home filesystem everyone shares. */
+export type OwnStorage =
+  | ({ limits: "enforced" } & Quota)
+  | { limits: "not_in_use"; filesystem: Disk };
 export type StorageAdministration = {
   schema_version: 1;
+  limits: "enforced" | "not_in_use";
   users: (Quota & {
     id: string;
     username: string;
@@ -21,11 +28,20 @@ const quota = (v: unknown): v is Quota =>
   "limit_bytes" in v &&
   size(v.limit_bytes) &&
   v.limit_bytes > 0;
+const disk = (v: unknown): v is Disk =>
+  !!v &&
+  typeof v === "object" &&
+  "capacity_bytes" in v &&
+  size(v.capacity_bytes) &&
+  v.capacity_bytes > 0 &&
+  "free_bytes" in v &&
+  size(v.free_bytes) &&
+  v.free_bytes <= v.capacity_bytes;
 export const bytes = (n: number) =>
   n < 1024 ** 3
     ? `${(n / 1024 ** 2).toLocaleString("fi-FI", { maximumFractionDigits: 2 })} MiB`
     : `${(n / 1024 ** 3).toLocaleString("fi-FI", { maximumFractionDigits: 2 })} GiB`;
-export async function ownStorage(signal?: AbortSignal): Promise<Quota> {
+export async function ownStorage(signal?: AbortSignal): Promise<OwnStorage> {
   const r = await fetch("/api/v1/account/storage", {
     credentials: "same-origin",
     cache: "no-store",
@@ -33,15 +49,21 @@ export async function ownStorage(signal?: AbortSignal): Promise<Quota> {
   });
   if (!r.ok) throw new Error("Storage unavailable");
   const v: unknown = await r.json();
-  if (
-    !v ||
-    typeof v !== "object" ||
-    !("schema_version" in v) ||
-    v.schema_version !== 1 ||
-    !quota(v)
-  )
+  if (!v || typeof v !== "object" || !("schema_version" in v))
     throw new Error("Invalid storage response");
-  return v;
+  if (v.schema_version !== 1) throw new Error("Invalid storage response");
+  if ("limits" in v && v.limits === "not_in_use") {
+    if (!("filesystem" in v) || !disk(v.filesystem))
+      throw new Error("Invalid storage response");
+    return { limits: "not_in_use", filesystem: v.filesystem };
+  }
+  if (("limits" in v && v.limits !== "enforced") || !quota(v))
+    throw new Error("Invalid storage response");
+  return {
+    limits: "enforced",
+    usage_bytes: v.usage_bytes,
+    limit_bytes: v.limit_bytes,
+  };
 }
 export async function storageAdministration(
   signal?: AbortSignal,
@@ -58,6 +80,8 @@ export async function storageAdministration(
     typeof v !== "object" ||
     !("schema_version" in v) ||
     v.schema_version !== 1 ||
+    !("limits" in v) ||
+    (v.limits !== "enforced" && v.limits !== "not_in_use") ||
     !("users" in v) ||
     !Array.isArray(v.users) ||
     !v.users.every(
@@ -88,7 +112,9 @@ export async function storageAdministration(
     !size(v.filesystem.free_bytes) ||
     v.filesystem.free_bytes > v.filesystem.capacity_bytes ||
     !("overcommitted" in v) ||
-    (v.overcommitted !== null && typeof v.overcommitted !== "boolean")
+    (v.overcommitted !== null && typeof v.overcommitted !== "boolean") ||
+    (v.limits === "not_in_use" &&
+      (v.users.length !== 0 || v.overcommitted !== null))
   )
     throw new Error("Invalid storage response");
   return v as StorageAdministration;

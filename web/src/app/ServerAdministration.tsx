@@ -173,15 +173,18 @@ export function ServerAdministration({
                   <div className="s-lbl">
                     <strong>Levy</strong>
                     <span className="s-desc">
-                      {storage.overcommitted === null
-                        ? "Kaikkia rajoja ei tiedetä. Levyn ylivarausta ei voida arvioida."
-                        : storage.overcommitted
-                          ? "Rajojen summa ylittää levyn koon. Se on sallittua, mutta levy voi täyttyä."
-                          : "Kotihakemistojen levy."}
+                      {storage.limits === "not_in_use"
+                        ? "Käyttäjäkohtaisia rajoja ei ole käytössä. Kotihakemistot jakavat tämän levyn, ja kuka tahansa voi täyttää sen."
+                        : storage.overcommitted === null
+                          ? "Kaikkia rajoja ei tiedetä. Levyn ylivarausta ei voida arvioida."
+                          : storage.overcommitted
+                            ? "Rajojen summa ylittää levyn koon. Se on sallittua, mutta levy voi täyttyä."
+                            : "Kotihakemistojen levy."}
                     </span>
                   </div>
                   <div
                     data-testid="server-storage"
+                    data-limits={storage.limits}
                     data-overcommitted={
                       storage.overcommitted === null
                         ? "unknown"
@@ -198,29 +201,31 @@ export function ServerAdministration({
                   </div>
                 </div>
               )}
-              <InlineTextSetting
-                label="Oletusraja"
-                description="Uusien käyttäjien raja. Ei muuta nykyisiä."
-                value={String(data.default_limit_bytes / 1024 ** 3)}
-                unit="GiB"
-                inputMode="decimal"
-                disabled={!csrf}
-                normalize={(draft) => {
-                  const text = draft.trim().replace(",", ".");
-                  // "8,0" and "8.0" are the saved "8", not a change.
-                  return gigabytes(text) === undefined
-                    ? text
-                    : String(Number(text));
-                }}
-                invalid={(draft) =>
-                  gigabytes(draft.trim().replace(",", ".")) === undefined
-                    ? "anna raja gigatavuina, esim. 8."
-                    : undefined
-                }
-                onSave={(next) =>
-                  saveField({ default_limit_bytes: gigabytes(next) ?? 0 })
-                }
-              />
+              {storage?.limits !== "not_in_use" && (
+                <InlineTextSetting
+                  label="Oletusraja"
+                  description="Uusien käyttäjien raja. Ei muuta nykyisiä."
+                  value={String(data.default_limit_bytes / 1024 ** 3)}
+                  unit="GiB"
+                  inputMode="decimal"
+                  disabled={!csrf}
+                  normalize={(draft) => {
+                    const text = draft.trim().replace(",", ".");
+                    // "8,0" and "8.0" are the saved "8", not a change.
+                    return gigabytes(text) === undefined
+                      ? text
+                      : String(Number(text));
+                  }}
+                  invalid={(draft) =>
+                    gigabytes(draft.trim().replace(",", ".")) === undefined
+                      ? "anna raja gigatavuina, esim. 8."
+                      : undefined
+                  }
+                  onSave={(next) =>
+                    saveField({ default_limit_bytes: gigabytes(next) ?? 0 })
+                  }
+                />
+              )}
             </>
           )}
           {section === "levy" && (
@@ -247,9 +252,17 @@ export function ServerAdministration({
                       </td>
                       <td
                         className="s-storage"
-                        data-storage-state={quota ? "known" : "unknown"}
+                        data-storage-state={
+                          storage?.limits === "not_in_use"
+                            ? "not_in_use"
+                            : quota
+                              ? "known"
+                              : "unknown"
+                        }
                       >
-                        {quota ? (
+                        {storage?.limits === "not_in_use" ? (
+                          "Ei rajaa"
+                        ) : quota ? (
                           <>
                             <span className="s-storage-value">
                               {bytes(quota.usage_bytes)} /{" "}

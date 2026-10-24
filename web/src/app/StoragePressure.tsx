@@ -9,11 +9,22 @@ import {
 import { useNavigate } from "react-router";
 import { InlineNotice } from "../components/Status";
 import { settingsHref } from "./settingsRoute";
-import { bytes, ownStorage, type Quota } from "./storageQuota";
+import { bytes, type OwnStorage, ownStorage } from "./storageQuota";
+
+// Room left and its bound: the person's quota, or without per-user limits the
+// shared home disk, which anyone's files can fill.
+const room = (s: OwnStorage) =>
+  s.limits === "not_in_use"
+    ? {
+        used: s.filesystem.capacity_bytes - s.filesystem.free_bytes,
+        bound: s.filesystem.capacity_bytes,
+        shared: true,
+      }
+    : { used: s.usage_bytes, bound: s.limit_bytes, shared: false };
 
 const Pressure = createContext<{
   full: boolean;
-  quota?: Quota;
+  quota?: OwnStorage;
   unavailable: boolean;
   check: number;
   retry: () => void;
@@ -29,7 +40,7 @@ export function StoragePressureProvider({
   enabled: boolean;
   children: ReactNode;
 }) {
-  const [quota, setQuota] = useState<Quota>();
+  const [quota, setQuota] = useState<OwnStorage>();
   const [request, setRequest] = useState(0);
   const [check, setCheck] = useState(0);
   const [unavailable, setUnavailable] = useState(false);
@@ -58,7 +69,7 @@ export function StoragePressureProvider({
     };
   }, [enabled, request]);
   // ext4 allocates whole blocks: a final partial block is not writable space.
-  const full = !!quota && quota.limit_bytes - quota.usage_bytes < 4096;
+  const full = !!quota && room(quota).bound - room(quota).used < 4096;
   const wasFull = useRef(false);
   useEffect(() => {
     if (wasFull.current && !full) setCheck((n) => n + 1);
@@ -85,22 +96,26 @@ export function StoragePressureProvider({
 export function StoragePressureNotice() {
   const { full, quota, unavailable, retry } = useStoragePressure();
   const navigate = useNavigate();
-  if (!quota || quota.usage_bytes < quota.limit_bytes * 0.9) return null;
+  if (!quota) return null;
+  const { used, bound, shared } = room(quota);
+  if (used < bound * 0.9) return null;
+  const what = shared ? "Palvelimen levy" : "Tallennustilasi";
   return (
     <div
       data-unavailable={unavailable}
       data-testid="quota-state"
       data-full={full}
+      data-shared={shared}
       role="status"
     >
       <InlineNotice
         data-testid="quota-pressure"
         title={
           full
-            ? `Tallennustilasi on täynnä (${bytes(quota.usage_bytes)} / ${bytes(quota.limit_bytes)})`
-            : `Tallennustilasi on lähes täynnä (${bytes(quota.usage_bytes)} / ${bytes(quota.limit_bytes)})`
+            ? `${what} on täynnä (${bytes(used)} / ${bytes(bound)})`
+            : `${what} on lähes täynnä (${bytes(used)} / ${bytes(bound)})`
         }
-        description={`Vapauta tilaa roskakorista tai pyydä agenttia siivoamaan tarpeettomia tiedostoja. Roskakoriin siirtäminen ei vapauta tilaa ennen sen tyhjentämistä.${full ? " Tallennus on voinut epäonnistua. Viestejä ei lähetetä uudelleen automaattisesti." : ""}${unavailable ? " Tallennustilaa ei voitu tarkistaa; tämä on viimeisin tieto." : ""}`}
+        description={`${shared ? "Levy on kaikkien käyttäjien yhteinen; myös muiden tiedostot täyttävät sitä. " : ""}Vapauta tilaa roskakorista tai pyydä agenttia siivoamaan tarpeettomia tiedostoja. Roskakoriin siirtäminen ei vapauta tilaa ennen sen tyhjentämistä.${full ? " Tallennus on voinut epäonnistua. Viestejä ei lähetetä uudelleen automaattisesti." : ""}${unavailable ? " Tallennustilaa ei voitu tarkistaa; tämä on viimeisin tieto." : ""}`}
         tone={full ? "danger" : "warning"}
         actions={[
           {

@@ -112,7 +112,7 @@ export function NewWorkspacePage({
   const [modes, setModes] = useState<Record<string, CloneMode>>({});
   const [quota, setQuota] = useState<{
     free_bytes: number;
-    limit_bytes: number;
+    limit_bytes?: number;
   }>();
   const [busy, setBusy] = useState<string>();
   const [problems, setProblems] = useState<Record<string, string>>({});
@@ -134,10 +134,14 @@ export function NewWorkspacePage({
       });
     void ownStorage(controller.signal)
       .then((q) =>
-        setQuota({
-          free_bytes: Math.max(0, q.limit_bytes - q.usage_bytes),
-          limit_bytes: q.limit_bytes,
-        }),
+        setQuota(
+          q.limits === "not_in_use"
+            ? { free_bytes: q.filesystem.free_bytes }
+            : {
+                free_bytes: Math.max(0, q.limit_bytes - q.usage_bytes),
+                limit_bytes: q.limit_bytes,
+              },
+        ),
       )
       .catch(() => {});
     void store?.refresh();

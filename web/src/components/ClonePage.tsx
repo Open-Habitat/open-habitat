@@ -323,7 +323,8 @@ export function RepoDetails({
   now: number;
   /** On a phone the list and the details are shown one at a time. */
   back?: string;
-  free?: { free_bytes: number; limit_bytes: number };
+  /** limit_bytes is absent when the installation has no per-user limits. */
+  free?: { free_bytes: number; limit_bytes?: number };
   state: DetailsState;
   mode: "full" | "blobless";
   onMode: (mode: "full" | "blobless") => void;
@@ -409,7 +410,9 @@ export function RepoDetails({
             <dd>
               {size(free.free_bytes)}{" "}
               <span className="ah-clone-sub">
-                kiintiöstä {size(free.limit_bytes)}
+                {free.limit_bytes === undefined
+                  ? "palvelimen yhteisellä levyllä"
+                  : `kiintiöstä ${size(free.limit_bytes)}`}
               </span>
             </dd>
           </>
