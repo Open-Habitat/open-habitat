@@ -642,7 +642,7 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 							services[i].State = StateSyncFailed
 						}
 					} else if full {
-						services[i].State = StateQuotaFull
+						services[i].State, services[i].Failure = StateQuotaFull, ""
 					} else if restarting && services[i].State == StateOK {
 						services[i].State = StateSyncRestarting
 					}
