@@ -1,5 +1,96 @@
 # Palvelimen ylläpito › integraatiot
 
+## Kierros 3 · Googlen ohjattu asetus
+
+**Suositus: Sivupaneeli.** *Aseta tunnukset…* avaa paneelin rivien viereen. Ylimpänä ovat Client ID, Client secret ja *Tallenna*, joten ylläpitäjä, jolla on jo asiakas, ei lue ohjetta lainkaan. Ohje on niiden alla neljänä avattavana kohtana, ja kopioitavat arvot ovat siinä. Rivi näkyy paneelin vieressä koko ajan, joten tila *Odottaa palvelinta* → *Käytössä* näkyy samalla, kun paneeli sulkeutuu. Puhelimessa paneeli korvaa listan, ja *‹ Integraatiot* palaa listaan.
+
+**[Avaa kierros 3](https://glasspad.example.test/p/h5jrjw3ub7sxmdedylv42nyqnu/).** Suunta vaihdetaan alareunan valitsimesta (myös 1–3, nuolet ja R). Integraatiot-välilehti on kierroksen 2 suunta *Käytössä vai ei* sellaisenaan. Kaikki tiedot ovat keksittyjä.
+
+### Mitä kaikissa suunnissa on samaa
+
+Sisältö tulee daemonin koodista (`internal/daemon/integrations/google_linux.go`), ja konsolin sanat tulevat Googlen ohjeista (lähteet alla):
+
+1. **API:t:** Gmail API, Google Calendar API, Google Drive API ja People API. Linkki *Ota käyttöön Google Cloudissa* avaa Googlen enableflow-sivun, jossa kaikki neljä ovat valmiina.
+2. **Kohdeyleisö** (*Google Auth platform › Branding › Get started*): App name ja valinta *Internal* / *External*. Internal: vain organisaation Workspace-tilit, eikä Googlen vahvistusta tarvita. External: *Testing*-tilassa jokainen tili lisätään kohtaan *Audience › Test users* (enintään 100), ja kirjautuminen vanhenee 7 päivässä. *In production* -tilassa Gmail ja Drive ovat rajoitettuja käyttöoikeuksia, joten ne vaativat Googlen vahvistuksen ja vuosittaisen tietoturva-arvion.
+3. **Käyttöoikeudet** (*Data Access › Add or Remove Scopes*): koodin kuusi scopea yhtenä kopioitavana lohkona.
+4. **OAuth-asiakas** (*Clients › Create Client*): *Desktop app*, nimi *Open Habitat*. **Uudelleenohjausosoitetta ei lisätä.** Daemon käyttää osoitetta `http://localhost`, jonka henkilö liittää takaisin. Desktop-asiakkaalle konsoli kysyy vain nimeä, eikä palvelin tarvitse julkista callbackia. Varoitus: Google näyttää Client secretin vain kerran.
+5. **Tunnukset:** Client ID (päättyy `.apps.googleusercontent.com`) ja Client secret. Väärä muoto kerrotaan kentässä, eikä mitään lähetetä. Tallennuksen jälkeen painike näyttää *Odottaa palvelinta…*, rivi *Odottaa palvelinta*, ja palvelimen vahvistuksen jälkeen ohje sulkeutuu, rivi näyttää *Käytössä* ja käyttöönoton merkistä poistuu *piilossa*.
+
+**Vaihda tunnukset** (*Tunnukset*-valikosta) kysyy ensin, mitä vaihdetaan:
+
+- *Uusi salaisuus samalle asiakkaalle* (*Clients › Open Habitat › Add secret*): Client ID pysyy ja kysytään vain salaisuus. Ohjetta ei näytetä.
+- *Uusi asiakas*: koko ohje.
+
+Kummassakin lukee: *Yhdistetyt tilit käyttävät vanhaa salaisuutta / asiakasta, kunnes poistat sen Googlessa. Sen jälkeen niiden täytyy kirjautua uudelleen.* Tämä vastaa kierroksen 1 avoimeen oletukseen. Kun henkilö yhdistää tilin, daemon kirjoittaa asiakkaan ja salaisuuden hänen omaan rclone-konfiguraatioonsa ja gogin tunnuksiin (`googleLogin.Commit`). Vaihto koskee siis vain uusia kirjautumisia, ja vanhat yhteydet katkeavat vasta, kun vanha salaisuus tai asiakas poistetaan Googlessa.
+
+**Korjaus kierroksiin 1–2:** Tunnukset-valikon otsikko näyttää nyt client id:n alun (`704213598812-…`, projektin numero), ei neljää viimeistä merkkiä. Googlen client id päättyy aina `.apps.googleusercontent.com`, joten loppu olisi aina `.com`.
+
+### Suunnat
+
+Akseli: miten ohje asettuu konsolityön rinnalle.
+
+| Suunta | Muoto | Hyöty | Hinta |
+| --- | --- | --- | --- |
+| **1. Tarkistuslista** | Dialogi, jossa kaikki viisi kohtaa numeroituna ja kentät lopussa | Kaikki näkyy kerralla, ja sivua voi selata konsolin rinnalla | Pitkä. Kentät ovat alimpana, joten valmiin asiakkaan omistaja vierittää ohjeen ohi. Dialogi peittää rivin. |
+| **2. Vaiheittain** | Dialogi, jossa yksi kohta kerrallaan, edistymispalkki (1/5…5/5), *Takaisin* / *Seuraava* sekä ensimmäisellä sivulla *Minulla on jo asiakas* | Vähiten tekstiä kerrallaan | Neljä painallusta kenttiin. Edellisen vaiheen arvo ei näy, kun konsolissa tarvitaan kahta kohtaa yhtä aikaa. |
+| **3. Sivupaneeli** (suositus) | Avoin paneeli rivien vieressä. Ensin kentät, sitten avattava ohje. | Kentät ensin. Rivi ja sen tila pysyvät näkyvissä. Ei modaalia. | Leveällä näytöllä rivit kapenevat. Puhelimessa paneeli on oma näkymänsä. |
+
+### Kokeile
+
+1. Suunta 1, *Uusi asennus*: *Aseta tunnukset…* Googlelle. Vaihda *Internal* → *External* ja lue ero.
+2. Kirjoita Client ID:ksi `abc` ja tallenna: virheet näkyvät kentissä. Kokeile oikealla muodolla, esimerkiksi `915508263417-a8d2kq0zr7m3vh1ts9pe5wybc6lfnjxu.apps.googleusercontent.com` ja salaisuus `GOCSPX-x`.
+3. *Tunnukset* › *Vaihda tunnukset…*: oletuksena uusi salaisuus. Vaihda *Uusi asiakas* -vaihtoehtoon.
+4. Suunta 2: kulje vaiheet läpi ja kokeile *Minulla on jo asiakas*.
+5. Suunta 3: rivi näkyy paneelin vieressä tallennuksen ajan. 390 px:n leveydellä paneeli korvaa listan.
+
+### Kysymykset Jarille
+
+1. **Tarkistuslista, Vaiheittain vai Sivupaneeli?**
+2. **Internal vai External:** riittääkö, että ohje kertoo molempien seuraukset, vai pitäisikö se suositella Internalia suoraan ja näyttää External vain, jos organisaatiolla ei ole Workspacea?
+3. **Vaihda:** tarvitaanko valinta *uusi salaisuus / uusi asiakas*, vai riittääkö pelkkä uusi salaisuus? Toisen asiakkaan voi asettaa myös poistamalla tunnukset ja asettamalla ne uudelleen.
+4. **Konsolin sanat englanniksi** (*Google Auth platform › Clients › Create Client*), kuten Googlen ohjeissa: kelpaako? Suomenkielistä konsolia en pystynyt tarkistamaan dokumentaatiosta.
+
+### Oletukset, ei toteutuspäätöksiä
+
+- Palvelin palauttaa client id:n kokonaan, koska se ei ole salaisuus: se näkyy jokaisessa kirjautumisosoitteessa. Salaisuus ei palaa koskaan.
+- Internal/External on vain ohjeen valinta. Palvelin ei tallenna sitä eikä voi tietää sitä.
+- Palvelimen vahvistus on edelleen 0,9 sekunnin viive. Palvelimen hylkäystä (esim. `integrations.browser_setup` pois päältä) ei ole tällä kierroksella.
+- Selaimen muototarkistus on tiukempi kuin daemonin (`googleApp()` sallii `[A-Za-z0-9._-]`). Brokerin pitää tarkistaa sama muoto itse.
+- Microsoft ja Dropbox ovat yhä paikkamerkkejä.
+
+### Lähteet
+
+- Suostumusnäkymän asetus, Internal/External, Test users ja Data Access: https://developers.google.com/workspace/guides/configure-oauth-consent
+- OAuth-asiakas (*Clients › Create Client › Desktop app*): https://developers.google.com/workspace/guides/create-credentials
+- API:en käyttöönotto ja enableflow-tunnisteet (`gmail.googleapis.com`, `calendar-json.googleapis.com`, `drive.googleapis.com`, `people.googleapis.com`): https://developers.google.com/workspace/guides/enable-apis
+- Testing-tila: 100 testikäyttäjää, 7 päivän vanheneminen, *Publish app*: https://support.google.com/cloud/answer/15549945 ja https://developers.google.com/identity/protocols/oauth2 (refresh token -vanheneminen)
+- Client secret näkyy vain luotaessa, *Add Secret*, *Disable*: https://support.google.com/cloud/answer/15549257
+- Vahvistuksen poikkeukset (sisäinen käyttö, testaus, alle 100 käyttäjää): https://support.google.com/cloud/answer/13464323
+- Rajoitettujen käyttöoikeuksien vuosittainen tietoturva-arvio: https://support.google.com/cloud/answer/13464321
+- Rajoitetut scopet: `gmail.modify` https://developers.google.com/workspace/gmail/api/auth/scopes ja `drive` https://developers.google.com/workspace/drive/api/guides/api-specific-auth
+- Desktop-asiakkaan loopback-osoite ja OOB-kopioinnin poisto: https://developers.google.com/identity/protocols/oauth2/native-app ja https://developers.google.com/identity/protocols/oauth2/resources/loopback-migration
+
+### Näyttö
+
+[evidence](evidence/) sisältää `r3-`-alkuiset kuvakaappaus/staattinen HTML -parit: `guide-1…3` (kaikki suunnat 1440/390, vaalea/tumma), `external-1`, `enter-2`, `replace-1`, `replace-3`, `menu-1` ja `saved-3`.
+
+Tarkistukset:
+
+- `check.mjs`: 36 tarkistuspistettä kolmella suunnalla, 1440 ja 390 px, vaalea ja tumma. Mukana yhteinen `picker-check.mjs`, valitsimen näppäimet, URL ja R. Ohjeen API:t, enableflow-linkki ja scopet verrataan koodin arvoihin, ja tarkistetaan uudelleenohjausosoitteen puuttuminen ja localhost, Internal/External-seuraukset, muotovirheet ilman lähetystä, tila *Odottaa palvelinta* → *Käytössä*, valikon client id:n alku ilman `.com`ia, vaihdon kaksi tapaa, vaiheiden järjestys ja *Minulla on jo asiakas*, paneelin kentät ennen ohjetta, rivien näkyvyys leveällä näytöllä ja paneelin oma näkymä puhelimessa sekä poisto ja puuttuva työkalu. Ei konsolivirheitä eikä vaakaylivuotoa. Tulos `evidence/r3-checks.json`, julkaistulla sivulla `evidence/r3-hosted-checks.json`.
+- Yhteinen `design-system/prototypes/check.mjs` hyväksyi sivun (9 kuvaa, ei virheitä), ja `picker-check.test.mjs` meni läpi.
+
+Synteettinen selainprototyyppi; ei testaa daemonia, brokeria, Googlea eikä oikeaa `integrations.json`ia. Tuotantotiedostoja ei muutettu.
+
+Lähde: `design-system/prototypes/rounds/2026-10-24-palvelin-integraatiot-3/`:
+
+```sh
+node design-system/prototypes/rounds/2026-10-24-palvelin-integraatiot-3/build.mjs
+node design-system/prototypes/rounds/2026-10-24-palvelin-integraatiot-3/check.mjs \
+  design-system/prototypes/dist/server-integrations-r3-space/offline.html /var/tmp/server-integrations-r3-evidence
+```
+
+Julkaise vain rakennettu `index.html`.
+
 ## Kierros 2 · Rivi
 
 **Suositus: Käytössä vai ei.** Rivillä on vain palvelun nimi, tila ja yksi toiminto. Tila on kirjoitettu henkilön kannalta: *Käytössä* tai *Ei käytössä*, ja puuttuva työkalu nimetään tilassa (*Ei käytössä · rclone puuttuu*). Valmiilla DAV-riveillä ei ole muuta kuin *Käytössä*, joten ne eivät toista mitään. Käyttöönotto näkyy vain, kun palvelulla on vaihe: merkki *Käyttöönotossa* tai *Käyttöönotossa · piilossa*, ja merkki vie Käyttöönotto-välilehdelle. *Aseta tunnukset…* on rivillä. *Vaihda* ja *Poista* ovat harvinaisia, joten ne ovat *Tunnukset*-valikossa, jonka otsikossa näkyy client id:n loppu, asettaja ja päivä. Puuttuvan työkalun korjaus on *Korjaa…*-dialogissa: yksi komento ja kopiointipainike.
