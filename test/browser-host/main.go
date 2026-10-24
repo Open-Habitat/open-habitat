@@ -503,6 +503,9 @@ esac
 		for _, path := range daemon.PiCredentialPaths(daemon.PiCredentialsPath) {
 			mux.Handle(path, credentialHandler)
 		}
+		// The gateway's own request giving the site key to a joined person,
+		// decided by the same native Pi helper under Pi's lock.
+		mux.Handle(daemon.SiteKeyPath, daemon.SiteKeyHandler(cfg, trusted, credentialDevice))
 		// Exercise native Claude availability through the same handler as the daemon.
 		// This synthetic host intentionally has no installed Claude runtime.
 		mux.Handle("/api/v1/pi/claude-login", daemon.ClaudeLoginHandler(cfg, trusted, credentialDevice))

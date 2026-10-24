@@ -189,3 +189,117 @@ test("@site-ai-key a failed seed shows the AI step with every option", async ({
   await page.request.get("/fixture/scenario?value=ready");
   await page.request.get("/fixture/pi-state?value=usable");
 });
+
+const ownKey = `sk-ant-api03-${"M".repeat(40)}k9Lw`;
+const nextKey = `sk-ant-api03-${"N".repeat(40)}7Q2x`;
+
+/** A write as the signed-in person, with their session's CSRF proof. */
+async function asPerson(page: Page, path: string, body: unknown) {
+  const { csrf } = await (await page.request.get("/auth/session")).json();
+  return page.request.post(path, {
+    headers: { Origin: hostOrigin, "X-Agent-Host-CSRF": csrf },
+    data: body,
+  });
+}
+
+test("@site-ai-key @a11y an administrator gives the key to people who joined earlier, and a new key replaces the copies", async ({
+  page,
+  browser,
+}) => {
+  // Bob joins before the site has a key; Alice has her own Anthropic key.
+  const bob = await newPerson(browser);
+  await expect(
+    bob.getByRole("button").and(bob.getByTestId("account-menu-trigger")),
+  ).toBeVisible();
+  await storeKey(page);
+  expect(
+    (
+      await asPerson(page, "/api/v1/pi/credentials", {
+        provider: "anthropic",
+        key: ownKey,
+      })
+    ).status(),
+  ).toBe(200);
+  await page.goto("/settings/ai-key");
+  const card = page.getByTestId("joined-card");
+  await expect(card.getByTestId("given-43")).toContainText("Ei annettu");
+
+  await page.getByRole("button").and(page.getByTestId("give-all")).click();
+  const dialog = page.getByTestId("give-dialog");
+  await expect(dialog).toHaveAttribute("data-phase", "review");
+  // One word per person: Alice's own credential is never offered.
+  await expect(dialog.getByTestId("give-42")).toHaveAttribute(
+    "data-check",
+    "own",
+  );
+  await expect(dialog.getByTestId("give-42")).toContainText(
+    "Ei koskaan korvata",
+  );
+  await expect(dialog.getByTestId("give-43")).toHaveAttribute(
+    "data-check",
+    "absent",
+  );
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include("[data-testid=give-dialog]")
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.getByRole("button").and(page.getByTestId("give-confirm")).click();
+  await expect(dialog.getByTestId("give-43")).toHaveAttribute(
+    "data-outcome",
+    "seeded",
+  );
+  await page.getByRole("button").and(page.getByTestId("give-cancel")).click();
+  await expect(card.getByTestId("given-43")).toContainText("Annettu");
+
+  // The copy is in Bob's own native credentials, and his settings say it is
+  // the site's.
+  const seeded = await (await bob.request.get("/api/v1/pi/credentials")).json();
+  expect(seeded).toMatchObject({
+    anthropic: { present: true, suffix: "Xa1b" },
+  });
+  await bob.goto("/settings/connections");
+  const row = bob.getByTestId("api-key-row-anthropic");
+  await expect(row).toHaveAttribute("data-site", "current");
+  await expect(row.getByTestId("api-key-site")).toHaveText("Sivuston avain");
+
+  // A new key replaces Bob's copy, and never Alice's own key.
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("site-key-replace"))
+    .click();
+  await page.getByTestId("site-key-input").fill(nextKey);
+  await page.getByRole("button").and(page.getByTestId("site-key-save")).click();
+  await expect(page.getByTestId("replaced-notice")).toContainText(
+    "vaihdettiin",
+  );
+  const replaced = await (
+    await bob.request.get("/api/v1/pi/credentials")
+  ).json();
+  expect(replaced).toMatchObject({ anthropic: { suffix: "7Q2x" } });
+  const alice = await (await page.request.get("/api/v1/pi/credentials")).json();
+  expect(alice).toMatchObject({ anthropic: { suffix: "k9Lw" } });
+  await bob.reload();
+  await expect(bob.getByTestId("api-key-row-anthropic")).toHaveAttribute(
+    "data-site",
+    "current",
+  );
+
+  // Käyttäjät ja pääsy shows only that the key was given.
+  await page.goto("/settings/users");
+  await expect(page.getByTestId("access-ai-given-43")).toContainText(
+    "AI-avain annettu",
+  );
+  // The AI-avain page with its Jo liittyneet card fits a phone.
+  await page.goto("/settings/ai-key");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(card).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth - innerWidth,
+    ),
+  ).toBeLessThanOrEqual(0);
+  await bob.context().close();
+});
