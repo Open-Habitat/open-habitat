@@ -399,6 +399,33 @@ it("does not write while a conflict waits for the person's choice", async () => 
   expect(model.changes).toMatchObject({ kind: "imported", conflicts: 1 });
 });
 
+it("keeps a newer disk version waiting while a conflict is open", async () => {
+  const { ref, type, text } = await openWithEngine();
+  type("one\ntwo mine\nthree");
+  vi.mocked(readEditorFile).mockResolvedValueOnce(
+    file("one\ntwo disk\nthree", "b"),
+  );
+  await act(async () => model.onSave());
+  expect(model.changes).toMatchObject({ kind: "imported", conflicts: 1 });
+  vi.mocked(readEditorFile).mockResolvedValueOnce(
+    file("one\ntwo disk\nthree\nfour", "c"),
+  );
+  await act(async () => {
+    ref.current?.observe({
+      workspace: "ws_example123",
+      conversation: "conv_example",
+      tool: "edit",
+      path: "notes.md",
+    });
+  });
+  act(() => model.onImportNow());
+  await act(async () => model.onSave());
+  // Neither the import nor a write happened behind the open conflict.
+  expect(text()).toBe("one\ntwo mine\nthree");
+  expect(model.changes).toMatchObject({ kind: "imported", conflicts: 1 });
+  expect(saveEditorFile).not.toHaveBeenCalled();
+});
+
 it("names the agent only for its file tool on this file and imports on request", async () => {
   const { ref, type, text } = await openWithEngine();
   type("one\ntwo mine\nthree");

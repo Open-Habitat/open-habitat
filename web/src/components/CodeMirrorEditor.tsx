@@ -67,9 +67,10 @@ const mapState = (s: MergeState, ch: ChangeSet): MergeState => ({
 const setMerge = StateEffect.define<MergeState>({
   map: (value, changes) => mapState(value, changes as ChangeSet),
 });
-// Marks cover whole lines. An import replaces whole lines with their line
-// breaks, which maps a mark's end past the break; this puts it back at the end
-// of its last line. Empty marks (an insertion point) stay where they are.
+// Incoming marks cover whole lines. An import replaces whole lines with their
+// line breaks, which maps a mark's end past the break; this puts it back at
+// the end of its last line. Conflicts need no such repair: nothing edits
+// their lines while they are open (see lockConflicts).
 function lineSpan<T extends { from: number; to: number }>(r: T, doc: Text): T {
   if (r.to <= r.from) return r;
   const from = doc.lineAt(r.from).from;
@@ -86,11 +87,25 @@ const mergeField = StateField.define<MergeState>({
     return {
       ...next,
       incoming: next.incoming.map((r) => lineSpan(r, tr.newDoc)),
-      conflicts: next.conflicts.map((c) =>
-        c.atEnd ? c : lineSpan(c, tr.newDoc),
-      ),
     };
   },
+});
+// The person's lines in an open conflict are what Sinun keeps and what the
+// card sits on, so typing into them waits until a side is chosen. Imports,
+// picks and undo/redo are not typing and pass.
+const lockConflicts = EditorState.changeFilter.of((tr) => {
+  if (
+    !tr.isUserEvent("input") &&
+    !tr.isUserEvent("delete") &&
+    !tr.isUserEvent("move")
+  )
+    return true;
+  const open = tr.startState.field(mergeField).conflicts;
+  let free = true;
+  tr.changes.iterChangedRanges((from, to) => {
+    if (open.some((c) => from <= c.to && c.from <= to)) free = false;
+  });
+  return free;
 });
 // Undo restores the merge state from before the event, and redo the one from
 // before the undo. An import that only opens conflicts, or a pick that keeps
@@ -192,7 +207,7 @@ function resolve(view: EditorView, id: number, pick: ConflictPick) {
   if (!c) return;
   const doc = view.state.doc;
   const theirs = c.theirs.join("\n");
-  const own = c.to > c.from || c.mine.length > 0;
+  const own = c.mine.length > 0;
   let spec: { from: number; to?: number; insert: string } | undefined;
   let landed: number | undefined;
   if (pick === "theirs" && own) {
@@ -320,6 +335,7 @@ export default function CodeMirrorEditor({
           syntax,
           mergeField,
           mergeDecorations,
+          lockConflicts,
           lineNumbers(),
           highlightActiveLine(),
           history(),
@@ -387,18 +403,9 @@ export default function CodeMirrorEditor({
               atEnd,
             };
           });
-          // A conflict still open from an earlier import stays open: the
-          // base has moved past it, so the new merge cannot see it again.
+          // The controller imports nothing while a conflict is open, so an
+          // import starts the conflicts afresh; earlier highlights stay.
           const before = editor.state.field(mergeField);
-          const open = before.conflicts
-            .map((c) => ({
-              ...c,
-              from: changes.mapPos(c.from, -1),
-              to: changes.mapPos(c.to, 1),
-            }))
-            .filter(
-              (c) => !conflicts.some((n) => n.from <= c.to && c.from <= n.to),
-            );
           editor.dispatch({
             changes,
             effects: setMerge.of({
@@ -423,9 +430,7 @@ export default function CodeMirrorEditor({
                     to: line(b).to,
                   })),
               ],
-              conflicts: [...open, ...conflicts].sort(
-                (x, y) => x.from - y.from,
-              ),
+              conflicts,
               pending: [],
             }),
             annotations: [

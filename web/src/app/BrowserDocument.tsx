@@ -291,7 +291,9 @@ export default function BrowserDocument({
     window.clearTimeout(timer.current);
     const waiting = pendingRef.current;
     const api = mergeApi.current;
-    if (!waiting || !api) return undefined;
+    // A newer version waits while a conflict is open: merging it against the
+    // base the open conflict already moved past would hide that conflict.
+    if (!waiting || !api || api.merge().conflicts.length) return undefined;
     setPending(undefined);
     const before = writtenRef.current;
     const write: Written = {
@@ -586,19 +588,20 @@ export default function BrowserDocument({
       }
     }
   };
-  const changes: DiskChanges | undefined = pending
-    ? { kind: "pending", source: pending.source, count: pending.count }
-    : merge.state.imported
-      ? {
-          kind: "imported",
-          source: merge.state.source,
-          count: merge.state.count,
-          conflicts: merge.state.conflicts.length,
-          latest: merge.latest,
-        }
-      : written && dirty
-        ? { kind: "undone", source: written.source }
-        : undefined;
+  const changes: DiskChanges | undefined =
+    pending && !merge.state.conflicts.length
+      ? { kind: "pending", source: pending.source, count: pending.count }
+      : merge.state.imported
+        ? {
+            kind: "imported",
+            source: merge.state.source,
+            count: merge.state.count,
+            conflicts: merge.state.conflicts.length,
+            latest: merge.latest,
+          }
+        : written && dirty
+          ? { kind: "undone", source: written.source }
+          : undefined;
   return (
     <BrowserEditor
       engine={engine}
@@ -629,8 +632,10 @@ export default function BrowserDocument({
         if (change.typed) {
           lastTyped.current = Date.now();
           setNotice(undefined);
-          schedule();
         }
+        // Typing restarts the pause; resolving the last conflict lets a
+        // version that waited behind it come in.
+        if (change.typed || !change.merge.conflicts.length) schedule();
       }}
       onSave={() => void save()}
       onReload={() => {

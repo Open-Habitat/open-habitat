@@ -1,6 +1,7 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { createRef } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { EditorView } from "@codemirror/view";
 import CodeMirrorEditor from "./CodeMirrorEditor";
 import { type EditorMergeApi, threeWay } from "./editorMerge";
 
@@ -44,24 +45,33 @@ it("undoes an import that only opened a conflict as its own step", async () => {
   expect(api.merge().imported).toBe(false);
 });
 
-it("keeps a conflict open through a later import, and resolves it against the line as it is now", async () => {
+it("refuses typing into an open conflict but not elsewhere, and keeps the person's lines on Sinun", async () => {
   const { api } = await engine("a\nMINE\nc");
   await act(async () =>
     api.bring(threeWay("a\nMINE\nc", "a\nb\nc", "a\nDISK\nc"), "agent"),
   );
-  // The conflicted line changes again before the person chooses.
-  await act(async () =>
-    api.bring(threeWay("a\nMINE\nc", "a\nMINE\nc", "a\nMINE more\nc"), "disk"),
-  );
-  expect(api.text()).toBe("a\nMINE more\nc");
-  // The earlier conflict is still open and still names the agent's line.
-  expect(api.merge().conflicts.map((c) => c.theirs)).toEqual([["DISK"]]);
+  const editor = document.querySelector<HTMLElement>(".cm-editor");
+  const view = editor && EditorView.findFromDOM(editor);
+  if (!view) throw new Error("no view");
+  const type = (at: number, insert: string) =>
+    act(() =>
+      view.dispatch({ changes: { from: at, insert }, userEvent: "input.type" }),
+    );
+  type(6, "!"); // the end of MINE
+  type(2, "?"); // the start of MINE
+  expect(api.text()).toBe("a\nMINE\nc");
+  type(8, "c"); // the next line
+  expect(api.text()).toBe("a\nMINE\ncc");
   await pick("pick-both");
-  expect(api.text()).toBe("a\nMINE more\nDISK\nc");
+  expect(api.text()).toBe("a\nMINE\nDISK\ncc");
   act(() => api.undo());
+  expect(api.merge().conflicts).toHaveLength(1);
   await pick("pick-mine");
-  expect(api.text()).toBe("a\nMINE more\nc");
+  expect(api.text()).toBe("a\nMINE\ncc");
   expect(api.merge().conflicts).toHaveLength(0);
+  // Once chosen, the line is the person's to edit again.
+  type(6, "!");
+  expect(api.text()).toBe("a\nMINE!\ncc");
 });
 
 it("removes a line the disk deleted and appends a line the disk added at the end", async () => {
