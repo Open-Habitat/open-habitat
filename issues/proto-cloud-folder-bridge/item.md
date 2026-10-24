@@ -30,3 +30,7 @@ Prototype round: where and when a person learns that the cloud folder is the bri
 ### 2026-10-24T08:44:48Z · @jari
 
 Jari 2026-10-24, round 1: riff the Aloitus direction. The onboarding step asks 'Onko sinulla henkilökohtainen Dropbox tai OneDrive?' and is of course not asked if one of these was already connected through an integration step earlier on the route. Next: round 2 riffing this step.
+
+### 2026-10-24T09:40:51Z · @jari
+
+Jari 2026-10-24, round 2: if Microsoft 365 was already connected (its OneDrive), the question is not asked. On the folder: no separate 'Open Habitat' folder; instead the bridge is the person's existing backups of Documents and Downloads (e.g. OneDrive's folder backup / Dropbox Backup syncing those folders), so screenshots and downloads are naturally there.
