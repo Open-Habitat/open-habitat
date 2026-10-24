@@ -614,7 +614,7 @@ it("keeps consecutive native replies as separate foldable threads", () => {
   const items = timelineItems([one, two]);
   expect(items).toHaveLength(2);
   render(items.map((item) => <div key={item.id}>{item.content}</div>));
-  expect(screen.getAllByRole("region")).toHaveLength(2);
+  expect(screen.getAllByTestId("agent-turn")).toHaveLength(2);
 });
 
 it("reads a call's arguments only when its stage and row are opened", async () => {
@@ -854,7 +854,7 @@ it("continues the saved part of a running turn with its live tail", () => {
   ]);
   const view = render(items[1].content);
   // One turn: the saved interim reply, then the running stage and its text.
-  expect(view.getAllByRole("region")).toHaveLength(1);
+  expect(view.getAllByTestId("agent-turn")).toHaveLength(1);
   expect(view.container.querySelector(".ah-turn-interim")).toBeTruthy();
   expect(view.getByText("Katson ensin.")).toBeTruthy();
   expect(

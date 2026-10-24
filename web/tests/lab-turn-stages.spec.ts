@@ -154,14 +154,9 @@ test("@lab history turn reads as stages: summary rows, interim cards, final answ
     node.nextElementSibling?.getAttribute("data-reply-role"),
   );
   expect(following).toBe("final");
-  expect(
-    (
-      await new AxeBuilder({ page })
-        .include(".ah-agent-turn")
-        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-        .analyze()
-    ).violations,
-  ).toEqual([]);
+  // The whole page, not only one turn: this conversation has several agent
+  // turns, and rules such as landmark-unique only fail across them.
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
 test("@lab stage turns fit a phone in light and dark", async ({ page }) => {

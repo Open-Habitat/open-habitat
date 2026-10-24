@@ -370,11 +370,10 @@ export function AgentTurn({
   const lastStage = stages.at(-1);
   const finalStep = !working ? lastStage?.end : undefined;
   return (
-    <section
-      data-testid="agent-turn"
-      className="ah-agent-turn"
-      aria-label="Agentin vuoro"
-    >
+    // Unnamed, so not a landmark: a conversation holds many turns, and
+    // landmark navigation would list them as identical entries. The
+    // conversation list item is how a screen reader moves between turns.
+    <section data-testid="agent-turn" className="ah-agent-turn">
       {stages.map((stage, index) => {
         const running = index === current;
         const open = running ? live : (opened[index] ?? false);
