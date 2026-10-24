@@ -3,10 +3,11 @@ created: 2026-10-24
 updated: 2026-10-24
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: unlaned
+closed: 2026-10-24
 ---
 
 # Editor: 'keep my text' after a concurrent agent save silently drops the agent's changes
@@ -19,4 +20,4 @@ Interim fix until Jari picks the conflict design: the action must say what it do
 
 ## Acceptance Criteria
 
-- [ ] The action and the following Save state that the disk version will be replaced and require explicit confirmation; browser test proving the agent's version is not replaced without that confirmation.
+- [x] The action and the following Save state that the disk version will be replaced and require explicit confirmation; browser test proving the agent's version is not replaced without that confirmation.

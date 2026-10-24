@@ -21,6 +21,7 @@ export interface BrowserEditorProps {
   dirty: boolean;
   saving: boolean;
   saveBlocked?: boolean;
+  replacingDisk?: boolean;
   loading: boolean;
   problem?: string;
   remote?: string;
@@ -63,7 +64,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
           onPress={p.onSave}
           isDisabled={!p.dirty || p.saving || p.loading || p.saveBlocked}
         >
-          Tallenna
+          {p.replacingDisk ? "Tallenna ja korvaa levyn versio…" : "Tallenna"}
         </ControlButton>
       </div>
       <div className="ah-browser-body">
@@ -137,7 +138,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
             size="row"
             onPress={p.onReconcile}
           >
-            Käytä luettua versiota pohjana, säilytä oma teksti
+            Säilytä oma teksti — seuraava tallennus korvaa levyn muutokset
           </ControlButton>
         </section>
       )}

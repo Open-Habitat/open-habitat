@@ -258,3 +258,64 @@ it("keeps simultaneous directory observations separate and offers retry without 
   expect(model.directories.a.error).toBeUndefined();
   expect(model.directories.a.entries).toEqual([]);
 });
+
+it("requires overwrite consent on every save attempt until a successful save", async () => {
+  const ref = createRef<BrowserDocumentHandle>();
+  const router = createMemoryRouter([
+    {
+      path: "/",
+      element: (
+        <BrowserDocument workspace="ws_example123" csrf="synthetic" ref={ref} />
+      ),
+    },
+  ]);
+  render(<RouterProvider router={router} />);
+  await act(async () => {
+    await ref.current?.open({ path: "text.txt" });
+  });
+  act(() => model.onChange("local"));
+  vi.mocked(saveEditorFile).mockResolvedValueOnce({
+    kind: "refused",
+    status: 409,
+    code: "file_changed",
+  });
+  await act(async () => model.onSave());
+  await act(async () => model.onCompare());
+  act(() => model.onReconcile());
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  try {
+    await act(async () => model.onSave());
+    expect(saveEditorFile).toHaveBeenCalledTimes(1);
+    expect(model.dirty).toBe(true);
+    confirm.mockReturnValue(true);
+    vi.mocked(saveEditorFile).mockResolvedValueOnce({
+      kind: "refused",
+      status: 403,
+      code: "permission_denied",
+    });
+    await act(async () => model.onSave());
+    confirm.mockReturnValue(false);
+    await act(async () => model.onSave());
+    expect(confirm).toHaveBeenCalledTimes(3);
+    expect(saveEditorFile).toHaveBeenCalledTimes(2);
+    confirm.mockReturnValue(true);
+    const base = vi.mocked(readEditorFile).mock.results[0];
+    const document = await base.value;
+    vi.mocked(saveEditorFile).mockResolvedValueOnce({
+      kind: "ok",
+      document: { ...document, content: "local" },
+    });
+    await act(async () => model.onSave());
+    expect(model.dirty).toBe(false);
+    confirm.mockClear();
+    act(() => model.onChange("another edit"));
+    vi.mocked(saveEditorFile).mockResolvedValueOnce({
+      kind: "ok",
+      document: { ...document, content: "another edit" },
+    });
+    await act(async () => model.onSave());
+    expect(confirm).not.toHaveBeenCalled();
+  } finally {
+    confirm.mockRestore();
+  }
+});

@@ -47,12 +47,20 @@ export default function BrowserDocument({
   const [picker, setPicker] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveBlocked, setSaveBlocked] = useState(false);
+  const [replacingDisk, setReplacingDisk] = useState(false);
   const [loading, setLoading] = useState(false);
   const [problem, setProblem] = useState<string>();
   const [remote, setRemote] = useState<EditorDocument>();
   const dirty = !!doc && doc.content !== content;
-  const current = useRef({ doc, content, dirty, saving, saveBlocked });
-  current.current = { doc, content, dirty, saving, saveBlocked };
+  const current = useRef({
+    doc,
+    content,
+    dirty,
+    saving,
+    saveBlocked,
+    replacingDisk,
+  });
+  current.current = { doc, content, dirty, saving, saveBlocked, replacingDisk };
   const abort = useRef(new AbortController());
   const generation = useRef(0);
   useLayoutEffect(() => {
@@ -162,6 +170,7 @@ export default function BrowserDocument({
         const parts = next.path.split("/");
         for (let i = 1; i < parts.length; i++)
           void loadDirectory(parts.slice(0, i).join("/"));
+        setReplacingDisk(false);
         setDoc(next);
         setContent(next.content);
         setRevision((n) => n + 1);
@@ -214,6 +223,13 @@ export default function BrowserDocument({
   const save = async () => {
     const state = current.current;
     if (!state.doc || state.saving || state.saveBlocked || !state.dirty) return;
+    if (
+      state.replacingDisk &&
+      !window.confirm(
+        "Korvataanko levyllä oleva versio omalla tekstilläsi? Levylle tulleet muutokset, myös agentin muutokset, korvataan editorissa näkyvällä tekstillä.",
+      )
+    )
+      return;
     current.current.saving = true;
     setSaving(true);
     const token = generation.current;
@@ -222,6 +238,7 @@ export default function BrowserDocument({
     setSaving(false);
     if (result.kind === "ok") {
       // The changed resource is this document reply, not a workspace snapshot.
+      setReplacingDisk(false);
       setDoc(result.document);
       setProblem(undefined);
       setRemote(undefined);
@@ -274,6 +291,7 @@ export default function BrowserDocument({
       picker={picker}
       dirty={dirty}
       saveBlocked={saveBlocked}
+      replacingDisk={replacingDisk}
       saving={saving}
       loading={loading}
       problem={problem}
@@ -291,6 +309,8 @@ export default function BrowserDocument({
       }}
       onReconcile={() => {
         if (remote) {
+          // Accepting a new base is not a merge or permission to overwrite it.
+          setReplacingDisk(true);
           setDoc(remote);
           setRemote(undefined);
           setProblem(undefined);

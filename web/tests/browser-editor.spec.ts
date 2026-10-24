@@ -170,6 +170,34 @@ for (const engine of ["codemirror6"])
           "external",
         );
         await page.getByTestId("editor-reconcile").click();
+        // Rebasing the buffer is not consent to overwrite the external edit.
+        expect((await (await page.request.get(url)).json()).content).toBe(
+          "external\n",
+        );
+        let writes = 0;
+        page.on("request", (request) => {
+          if (
+            request.method() === "PUT" &&
+            request.url().includes("/editor/file")
+          )
+            writes++;
+        });
+        for (const shortcut of [false, true]) {
+          const dismissed = page.waitForEvent("dialog").then((dialog) => {
+            expect(dialog.type()).toBe("confirm");
+            return dialog.dismiss();
+          });
+          if (shortcut) await doc.press("ControlOrMeta+s");
+          else await page.getByTestId("editor-save").click();
+          await dismissed;
+          expect(writes).toBe(0);
+          expect((await (await page.request.get(url)).json()).content).toBe(
+            "external\n",
+          );
+          await expect(doc).toContainText("reconciled local");
+          await expect(page.getByTestId("editor-save")).toBeEnabled();
+        }
+        page.once("dialog", (dialog) => dialog.accept());
         await page.getByTestId("editor-save").click();
         await expect(page.getByTestId("editor-dirty")).toBeEmpty();
         expect((await (await page.request.get(url)).json()).content).toBe(
