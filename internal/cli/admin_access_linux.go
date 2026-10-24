@@ -19,6 +19,7 @@ type controlAccessEntry struct {
 	Administrator bool            `json:"administrator"`
 	Denied        bool            `json:"denied"`
 	Onboarding    *controlReceipt `json:"onboarding,omitempty"`
+	SiteKeyCopy   *controlCopy    `json:"site_key_copy,omitempty"`
 }
 type controlAccess struct {
 	SchemaVersion    int                  `json:"schema_version"`
