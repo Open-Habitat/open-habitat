@@ -15,8 +15,8 @@ PY
   else printf 'error: %s\n' "$2" >&2; fi
   exit "$3"
 }
-[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest|jit-provision|jit-login|jit-concurrent|jit-broker-crash|jit-reboot-diagnostic|host-boot-binding|host-runtime-admission|host-boot-storage|host-prepare|host-prepare-probe [--json]' 1
-[[ $scenario == host-boot-binding || $scenario == host-runtime-admission || $scenario == host-boot-storage || $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest, jit-provision or jit-login or jit-concurrent or jit-broker-crash or jit-reboot-diagnostic or host-boot-binding or host-runtime-admission or host-boot-storage or host-prepare or host-prepare-probe' 1
+[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest|jit-provision|jit-login|jit-concurrent|jit-broker-crash|jit-reboot-diagnostic|host-boot-binding|host-runtime-admission|host-boot-storage|host-prepare|host-prepare-probe|host-shared-home [--json]' 1
+[[ $scenario == host-boot-binding || $scenario == host-runtime-admission || $scenario == host-boot-storage || $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == host-shared-home || $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest, jit-provision or jit-login or jit-concurrent or jit-broker-crash or jit-reboot-diagnostic or host-boot-binding or host-runtime-admission or host-boot-storage or host-prepare or host-prepare-probe or host-shared-home' 1
 # Treat the recipe as data, never source executable text.
 image_url= image_sha= image_arch=
 while IFS= read -r line || [[ -n $line ]]; do
@@ -81,11 +81,11 @@ echo "$image_sha  $image" | sha256sum -c --status || fail image_checksum_mismatc
 printf 'instance-id: synthetic-systemd-fixture\nlocal-hostname: fixture-vm\n' > "$run/meta-data"
 seed_file=/fixture/cloud-init.yaml
 binary_sha= product_commit= archive_sha= embedded_commit=
-if [[ $scenario == host-boot-binding || $scenario == host-runtime-admission || $scenario == host-boot-storage || $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
+if [[ $scenario == host-boot-binding || $scenario == host-runtime-admission || $scenario == host-boot-storage || $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == host-shared-home || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
   command -v go >/dev/null || fail missing_go 'Go is required to build product fixture' 2
   command -v openssl >/dev/null || fail missing_openssl 'OpenSSL is required for fixture TLS' 2
   product_commit=$(git -C "$repo" rev-parse HEAD)
-  if [[ $scenario == host-boot-binding || $scenario == host-runtime-admission || $scenario == host-boot-storage || $scenario == host-prepare ]]; then
+  if [[ $scenario == host-boot-binding || $scenario == host-runtime-admission || $scenario == host-boot-storage || $scenario == host-prepare || $scenario == host-shared-home ]]; then
     (cd "$repo" && CGO_ENABLED=0 go build -trimpath -o "$run/open-habitat" ./cmd/open-habitat) || fail product_build_failed 'Could not build host operator' 2
   elif [[ $scenario == host-prepare-probe ]]; then
     (cd "$repo" && CGO_ENABLED=0 go test -c -trimpath -o "$run/open-habitat" ./internal/host) || fail product_build_failed 'Could not build host probe test binary' 2
@@ -141,6 +141,9 @@ if [[ $scenario == host-boot-binding || $scenario == host-runtime-admission || $
   elif [[ $scenario == host-prepare ]]; then
     python3 "$repo/test/vm/host-prepare-fixture.py" "$run" "$repo" || fail invalid_product_fixture 'Could not render prepare guest' 2
     seed_file=/run-data/host-prepare-cloud-init.yaml
+  elif [[ $scenario == host-shared-home ]]; then
+    python3 "$repo/test/vm/host-shared-home-fixture.py" "$run" "$repo" || fail invalid_product_fixture 'Could not render single-filesystem guest' 2
+    seed_file=/run-data/host-shared-home-cloud-init.yaml
   elif [[ $scenario == host-prepare-probe ]]; then
     python3 "$repo/test/vm/host-prepare-probe-fixture.py" "$run" || fail invalid_product_fixture 'Could not render probe guest' 2
     seed_file=/run-data/host-prepare-probe-cloud-init.yaml
@@ -151,7 +154,7 @@ if [[ $scenario == host-boot-binding || $scenario == host-runtime-admission || $
     python3 "$repo/test/vm/product-fixture.py" "$run" "$run/open-habitat" || fail invalid_product_fixture 'Could not render private product seed' 2
     seed_file=/run-data/product-cloud-init.yaml
   fi
-  if [[ $scenario == host-boot-binding || $scenario == host-runtime-admission || $scenario == host-boot-storage || $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == two-user-routing || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
+  if [[ $scenario == host-boot-binding || $scenario == host-runtime-admission || $scenario == host-boot-storage || $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == host-shared-home || $scenario == two-user-routing || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
     # The pinned noble cloud image lacks the ACL utilities required by the
     # broker's existing-binding verifier. Carry guest-local tools from the
     # disposable pinned image; never install a host package or relax ACLs.
@@ -185,7 +188,7 @@ start=$(date +%s)
 # Serial is capped at 2 MiB; bounded process lifetime and overlay allocation.
 set +e
 vm_limit=600
-[[ $scenario == host-boot-storage ]] && vm_limit=900
+[[ $scenario == host-boot-storage || $scenario == host-shared-home ]] && vm_limit=900
 [[ $scenario == host-boot-binding ]] && vm_limit=1200
 [[ $scenario == jit-reboot-diagnostic ]] && vm_limit=430
 timeout -k 10s "${vm_limit}s" podman run --rm --name "vm-fixture-$$" --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --pids-limit=256 --memory=4g --cpus=2 --mount "type=bind,src=$cache,dst=/cache,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh /run-data/qemu-launch.sh "$scenario" /run-data 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
@@ -235,6 +238,20 @@ except Exception:sys.exit(1)
 BOOT_BINDING_CHECK
   then fail binding_proof_failed "Binding/session guest failed (VM exit $vm_status; serial=$cache/last-host-boot-binding.log)" 2; fi
   if $json; then printf '{"schema_version":1,"data":{"status":"passed","scope":"host-boot-binding-session","product_commit":"%s","binary_sha256":"%s","duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$duration" "$proof"; else echo 'Production binding and session boot proof passed'; fi
+  exit 0
+fi
+if [[ $scenario == host-shared-home ]]; then
+  cp "$run/serial.log" "$cache/last-host-shared-home.log"
+  chmod 0600 "$cache/last-host-shared-home.log"
+  if [[ $vm_status -ne 0 ]] || ! python3 - "$proof" <<'SHARED_HOME_CHECK'
+import json,sys
+try:
+ p=json.loads(sys.argv[1])
+ if p != {'status':'passed','scope':'host-shared-home','home_on_root':True,'quota_site_refused':True,'prepared_without_probe':True,'policy_without_quota':True,'no_change':True,'first_login_without_limit':True,'limits_not_in_use':True,'cold_boot_gate':True,'broker_restore':True,'named_acl':True,'wrong_uuid_refused':True,'pid1':'systemd'}:sys.exit(1)
+except Exception:sys.exit(1)
+SHARED_HOME_CHECK
+  then fail shared_home_proof_failed "Single-filesystem guest failed (VM exit $vm_status; serial=$cache/last-host-shared-home.log)" 2; fi
+  if $json; then printf '{"schema_version":1,"data":{"status":"passed","scope":"host-shared-home","product_commit":"%s","binary_sha256":"%s","duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$duration" "$proof"; else echo 'Single-filesystem installation without user quotas passed (no apply, runtime or browser)'; fi
   exit 0
 fi
 if [[ $scenario == host-runtime-admission ]]; then

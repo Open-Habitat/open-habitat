@@ -26,7 +26,7 @@ fi
 if test -f "$run/product.iso"; then
   set -- "$@" -drive "file=$run/product.iso,media=cdrom,readonly=on"
 fi
-if test "$scenario" != host-apply && test "$scenario" != jit-reboot-diagnostic && test "$scenario" != host-boot-storage && test "$scenario" != host-boot-binding; then
+if test "$scenario" != host-apply && test "$scenario" != jit-reboot-diagnostic && test "$scenario" != host-boot-storage && test "$scenario" != host-boot-binding && test "$scenario" != host-shared-home; then
   set -- -no-reboot "$@"
 fi
 exec qemu-system-x86_64 -accel tcg -machine q35 -m "$memory" -smp 2 \
