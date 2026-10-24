@@ -2,12 +2,15 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5pcndra4xva0rrv9ffww7vj/gate:caa48b08-lab-browser-editor
 originating_run: 01m5pcndra4xva0rrv9ffww7vj
 originating_run_kind: spinoff
+lane: unlaned
+collision: [tests/lab]
+preparation: ready
 ---
 
 # lab-browser-editor 390 cases flake in the gate: ambiguous main.go locator
