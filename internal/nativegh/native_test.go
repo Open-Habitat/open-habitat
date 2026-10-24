@@ -25,6 +25,9 @@ type fake struct {
 	helper string
 	fail   string
 	huge   bool
+	// apiErr is what gh api user returns while logged in, before any login
+	// this test installs: rejected for a revoked token, denied for others.
+	apiErr error
 }
 
 func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
@@ -52,7 +55,10 @@ func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
 		if !f.logged {
 			return nil, noAuth
 		}
-	case "gh api user --jq {id: .id, login: .login}":
+	case "gh api --hostname github.com user --jq {id: .id, login: .login}":
+		if f.apiErr != nil {
+			return nil, f.apiErr
+		}
 		return []byte(fmt.Sprintf(`{"id":%s,"login":"alice"}`, f.id)), nil
 	case "gh config get git_protocol --host github.com":
 		return []byte("https\n"), nil
@@ -70,6 +76,7 @@ func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
 		}
 	case "gh auth login --hostname github.com --with-token --git-protocol https":
 		f.logged = true
+		f.apiErr = nil
 	case "gh auth logout --hostname github.com --user alice":
 		f.logged = false
 	}
@@ -111,9 +118,31 @@ func TestAbsentDiagnosticStrict(t *testing.T) {
 		{"authentication failed", false},
 		{"You are not logged into any GitHub hosts. To log in, run: gh auth login\nsecret", false},
 		{"You are not logged into any GitHub hosts. To log in, run: gh auth login\nnetwork error", false},
+		{"You are not logged into any accounts on github.com\n", true},
+		{"You are not logged into any accounts on ghe.example.com\n", false},
 	} {
 		if got := absentDiagnostic([]byte(tc.text)); got != tc.absent {
 			t.Fatalf("unexpected absence signal: %q", tc.text)
+		}
+	}
+}
+
+// The texts are gh 2.45.0's and 2.46.0's own stderr for gh api user against
+// a revoked token, an unreadable keyring token and two network failures.
+func TestRejectedDiagnosticStrict(t *testing.T) {
+	for _, tc := range []struct {
+		text     string
+		rejected bool
+	}{
+		{"gh: Bad credentials (HTTP 401)\n", true},
+		{"gh: Requires authentication (HTTP 401)\n", false},
+		{"error connecting to api.github.com\ncheck your internet connection or https://githubstatus.com\n", false},
+		{`Get "https://api.github.com/user": proxyconnect tcp: dial tcp 127.0.0.1:9: connect: connection refused` + "\n", false},
+		{"gh: Bad credentials (HTTP 401)\nsecret", false},
+		{"gh: Bad credentials (HTTP 403)\n", false},
+	} {
+		if got := rejectedDiagnostic([]byte(tc.text)); got != tc.rejected {
+			t.Fatalf("unexpected rejection signal: %q", tc.text)
 		}
 	}
 }
@@ -133,10 +162,17 @@ func TestStatusFreshSyntheticIdentityAndErrors(t *testing.T) {
 		t.Fatal(got)
 	}
 	f.id = "42"
-	f.fail = "gh api user --jq {id: .id, login: .login}"
+	f.fail = "gh api --hostname github.com user --jq {id: .id, login: .login}"
 	if got := a.Status(context.Background()); got != "unknown" {
 		t.Fatal(got)
 	}
+	f.fail = ""
+	f.apiErr = rejected
+	if got := a.Status(context.Background()); got != "disconnected" {
+		t.Fatal(got)
+	}
+	f.apiErr = nil
+	f.fail = "gh api --hostname github.com user --jq {id: .id, login: .login}"
 	f.fail = "gh config get git_protocol --host github.com"
 	if got := a.Status(context.Background()); got != "partial" {
 		t.Fatal(got)
@@ -281,7 +317,7 @@ func TestInstallReobserveAndDisconnect(t *testing.T) {
 			if e != nil || r.Phase != Installed {
 				t.Fatalf("%+v %v", r, e)
 			}
-			if !reflect.DeepEqual(f.log[len(f.log)-7:], []string{"gh auth login --hostname github.com --with-token --git-protocol https", "gh auth setup-git --hostname github.com", "gh auth status --hostname github.com", "gh api user --jq {id: .id, login: .login}", "gh config get git_protocol --host github.com", "git config --global --get credential.https://github.com.helper", "git credential fill"}) {
+			if !reflect.DeepEqual(f.log[len(f.log)-7:], []string{"gh auth login --hostname github.com --with-token --git-protocol https", "gh auth setup-git --hostname github.com", "gh auth status --hostname github.com", "gh api --hostname github.com user --jq {id: .id, login: .login}", "gh config get git_protocol --host github.com", "git config --global --get credential.https://github.com.helper", "git credential fill"}) {
 				t.Fatal(f.log)
 			}
 			r, e = a.Install(context.Background(), f.token)
@@ -411,7 +447,7 @@ func TestConcurrentSameIDSerializes(t *testing.T) {
 }
 
 func TestExistingWrongOrPartialAuthIsNeverOverwritten(t *testing.T) {
-	for _, tc := range []string{"wrong-id", "partial-helper", "api-unavailable"} {
+	for _, tc := range []string{"wrong-id", "partial-helper", "api-unavailable", "api-denied"} {
 		t.Run(tc, func(t *testing.T) {
 			a, f, _ := fixture(t, true)
 			f.logged = true
@@ -421,7 +457,10 @@ func TestExistingWrongOrPartialAuthIsNeverOverwritten(t *testing.T) {
 			case "partial-helper":
 				f.fail = "git config --global --get credential.https://github.com.helper"
 			case "api-unavailable":
-				f.fail = "gh api user --jq {id: .id, login: .login}"
+				f.fail = "gh api --hostname github.com user --jq {id: .id, login: .login}"
+			case "api-denied":
+				// Network failure, unreadable keyring or unknown wording.
+				f.apiErr = denied
 			}
 			if _, err := a.Install(context.Background(), f.token); err == nil {
 				t.Fatal("accepted existing invalid login")
@@ -438,8 +477,32 @@ func TestExistingWrongOrPartialAuthIsNeverOverwritten(t *testing.T) {
 	}
 }
 
+// A token GitHub rejects is replaced by the fresh one, and a failed
+// replacement still never logs out an account it did not install.
+func TestRevokedLoginIsReplaced(t *testing.T) {
+	a, f, _ := fixture(t, false)
+	f.logged = true
+	f.apiErr = rejected
+	r, e := a.Install(context.Background(), f.token)
+	if e != nil || r.Phase != Installed || r.Storage != ProtectedFile {
+		t.Fatal(r, e, f.log)
+	}
+	a, f, _ = fixture(t, false)
+	f.logged = true
+	f.apiErr = rejected
+	f.fail = "gh auth login --hostname github.com --with-token --git-protocol https"
+	if r, e = a.Install(context.Background(), f.token); e == nil || r.Phase != Partial {
+		t.Fatal(r, e)
+	}
+	for _, cmd := range f.log {
+		if strings.Contains(cmd, "auth logout") {
+			t.Fatal("removed a login it did not install", f.log)
+		}
+	}
+}
+
 func TestFailures(t *testing.T) {
-	for _, failed := range []string{"gh auth login --hostname github.com --with-token --git-protocol https", "gh auth setup-git --hostname github.com", "gh auth status --hostname github.com", "gh api user --jq {id: .id, login: .login}", "gh config get git_protocol --host github.com", "git config --global --get credential.https://github.com.helper", "git credential fill"} {
+	for _, failed := range []string{"gh auth login --hostname github.com --with-token --git-protocol https", "gh auth setup-git --hostname github.com", "gh auth status --hostname github.com", "gh api --hostname github.com user --jq {id: .id, login: .login}", "gh config get git_protocol --host github.com", "git config --global --get credential.https://github.com.helper", "git credential fill"} {
 		t.Run(failed, func(t *testing.T) {
 			a, f, _ := fixture(t, false)
 			f.fail = failed
@@ -557,7 +620,7 @@ func TestObservedStatusFollowsNativeInputs(t *testing.T) {
 	calls := func() int {
 		n := 0
 		for _, c := range f.log {
-			if c == "gh api user --jq {id: .id, login: .login}" {
+			if c == "gh api --hostname github.com user --jq {id: .id, login: .login}" {
 				n++
 			}
 		}
@@ -673,7 +736,7 @@ func TestObservedStatusDoesNotKeepKeyringAnswers(t *testing.T) {
 	}
 	n := 0
 	for _, c := range f.log {
-		if strings.HasPrefix(c, "gh api user") {
+		if strings.HasPrefix(c, "gh api --hostname github.com user") {
 			n++
 		}
 	}
@@ -729,4 +792,102 @@ func (s *blockAfterIdentity) Run(ctx context.Context, c Command) ([]byte, error)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.fake.Run(ctx, c)
+}
+
+// fakeGH reproduces gh 2.45.0's observable behaviour for a stale login: auth
+// status exits 0 and prints "token is invalid" whatever GitHub would answer,
+// and only gh api user's stderr tells a revoked token from a working login
+// of another account, a network failure or an unreadable keyring token.
+const fakeGH = `#!/bin/sh
+state=$(cat "$HOME/state" 2>/dev/null)
+case "$*" in
+"auth status --hostname github.com")
+	if [ -z "$state" ]; then
+		echo "You are not logged into any GitHub hosts. To log in, run: gh auth login" >&2
+		exit 1
+	fi
+	echo github.com
+	echo "  X Failed to log in to github.com account alice ($HOME/.config/gh/hosts.yml)"
+	echo "  - The token in $HOME/.config/gh/hosts.yml is invalid."
+	exit 0 ;;
+"api --hostname github.com user --jq {id: .id, login: .login}")
+	case "$state" in
+	fresh) echo '{"id":42,"login":"alice"}' ;;
+	foreign) echo '{"id":43,"login":"mallory"}' ;;
+	revoked) echo '{"message":"Bad credentials","status":"401"}'; echo "gh: Bad credentials (HTTP 401)" >&2; exit 1 ;;
+	locked) echo '{"message":"Requires authentication","status":"401"}'; echo "gh: Requires authentication (HTTP 401)" >&2; exit 1 ;;
+	*) printf 'error connecting to api.github.com\ncheck your internet connection or https://githubstatus.com\n' >&2; exit 1 ;;
+	esac ;;
+"auth login --hostname github.com --with-token --git-protocol https")
+	echo login >>"$HOME/log"
+	[ "$(cat)" = unique-synthetic-sentinel ] || exit 1
+	[ "$state" = offline ] && exit 1
+	printf 'github.com:\n    oauth_token: fresh\n    user: alice\n' >"$HOME/.config/gh/hosts.yml"
+	echo fresh >"$HOME/state" ;;
+"auth logout --hostname github.com --user "*)
+	echo logout >>"$HOME/log"
+	rm -f "$HOME/state" ;;
+"auth setup-git --hostname github.com") ;;
+"config get git_protocol --host github.com") echo https ;;
+*) exit 1 ;;
+esac
+`
+
+const fakeGit = `#!/bin/sh
+case "$*" in
+"config --global --get credential.https://github.com.helper") echo '!gh auth git-credential' ;;
+"credential fill") cat >/dev/null; [ "$(cat "$HOME/state" 2>/dev/null)" = fresh ] ;;
+*) exit 1 ;;
+esac
+`
+
+func TestExecutorReplacesOnlyARevokedLogin(t *testing.T) {
+	bin := t.TempDir()
+	for name, script := range map[string]string{"gh": fakeGH, "git": fakeGit} {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte(script), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PATH", bin)
+	for _, tc := range []struct {
+		state   string
+		install bool
+	}{
+		{"revoked", true},
+		{"offline", false},
+		{"locked", false},
+		{"foreign", false},
+	} {
+		t.Run(tc.state, func(t *testing.T) {
+			a, _, home := fixture(t, false)
+			a.run = Executor{Home: home}
+			if err := os.WriteFile(filepath.Join(home, "state"), []byte(tc.state+"\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			hosts := filepath.Join(home, ".config", "gh", "hosts.yml")
+			before, _ := os.ReadFile(hosts)
+			want := "disconnected"
+			if tc.state == "offline" || tc.state == "locked" {
+				want = "unknown"
+			}
+			if got := a.Status(context.Background()); got != want {
+				t.Fatalf("status %s, want %s", got, want)
+			}
+			r, err := a.Install(context.Background(), "unique-synthetic-sentinel")
+			log, _ := os.ReadFile(filepath.Join(home, "log"))
+			after, _ := os.ReadFile(hosts)
+			if tc.install {
+				if err != nil || r.Phase != Installed || r.Storage != ProtectedFile || string(log) != "login\n" {
+					t.Fatal(r, err, string(log))
+				}
+				if got := a.Status(context.Background()); got != "connected" {
+					t.Fatal(got)
+				}
+				return
+			}
+			if err == nil || r.Phase != Partial || len(log) != 0 || string(after) != string(before) {
+				t.Fatal("touched a login it could not classify", r, err, string(log))
+			}
+		})
+	}
 }

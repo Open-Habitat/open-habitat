@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -31,6 +32,10 @@ const timeout = 4 * time.Second
 
 var denied = errors.New("native GitHub credentials unavailable")
 var noAuth = errors.New("gh reports no known GitHub hosts")
+
+// rejected is GitHub's own answer that the active github.com token is no
+// longer valid (revoked or deleted). It is not a network or keyring failure.
+var rejected = errors.New("GitHub rejects the active gh token")
 var loginPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}$`)
 
 type Command struct {
@@ -62,11 +67,12 @@ func (e Executor) Run(ctx context.Context, c Command) ([]byte, error) {
 	} else {
 		cmd.Stdout = io.Discard
 	}
-	// Capture only auth-status diagnostics, returning solely a recognized
-	// absence signal. Never return or log raw child output.
-	statusProbe := c.Program == "gh" && len(c.Args) == 4 && c.Args[0] == "auth" && c.Args[1] == "status" && c.Args[2] == "--hostname" && c.Args[3] == "github.com"
+	// Capture only the diagnostics of the two identity probes, returning
+	// solely a recognized signal. Never return or log raw child output.
+	statusProbe := c.Program == "gh" && slices.Equal(c.Args, statusArgs)
+	userProbe := c.Program == "gh" && slices.Equal(c.Args, userArgs)
 	var diagnostic bounded
-	if statusProbe {
+	if statusProbe || userProbe {
 		cmd.Stderr = &diagnostic
 	} else {
 		cmd.Stderr = io.Discard
@@ -88,18 +94,41 @@ func (e Executor) Run(ctx context.Context, c Command) ([]byte, error) {
 	// Kill surviving helper descendants while the process group still exists.
 	_ = syscall.Kill(-pid, syscall.SIGKILL)
 	if err != nil || out.overflow || diagnostic.overflow {
-		if statusProbe && err != nil && ctx.Err() == nil && !diagnostic.overflow && absentDiagnostic(diagnostic.Bytes()) {
-			return nil, noAuth
+		if err != nil && ctx.Err() == nil && !diagnostic.overflow {
+			if statusProbe && absentDiagnostic(diagnostic.Bytes()) {
+				return nil, noAuth
+			}
+			if userProbe && rejectedDiagnostic(diagnostic.Bytes()) {
+				return nil, rejected
+			}
 		}
 		return nil, denied
 	}
 	return out.Bytes(), nil
 }
 
+var (
+	statusArgs = []string{"auth", "status", "--hostname", "github.com"}
+	// --hostname: without it gh asks whichever host it is logged into, so a
+	// person with only an Enterprise login would be identified there.
+	userArgs = []string{"api", "--hostname", "github.com", "user", "--jq", "{id: .id, login: .login}"}
+)
+
 func absentDiagnostic(b []byte) bool {
-	// gh 2.46's complete no-hosts diagnostic. Unknown/new wording fails
-	// closed; never infer absence merely from a nonzero exit code.
-	return strings.TrimSpace(string(b)) == "You are not logged into any GitHub hosts. To log in, run: gh auth login"
+	// gh 2.45/2.46's complete diagnostics for no hosts at all and for logins
+	// only on other hosts. Unknown/new wording fails closed; never infer
+	// absence merely from a nonzero exit code.
+	d := strings.TrimSpace(string(b))
+	return d == "You are not logged into any GitHub hosts. To log in, run: gh auth login" || d == "You are not logged into any accounts on github.com"
+}
+
+func rejectedDiagnostic(b []byte) bool {
+	// gh 2.45/2.46 print GitHub's 401 message for a revoked or deleted token
+	// as exactly this. A token gh cannot read (a locked keyring) is sent as no
+	// token and answered "Requires authentication (HTTP 401)"; a network
+	// failure names the connection. Both, and any other wording, fail closed:
+	// only GitHub's rejection of the token itself makes a login replaceable.
+	return strings.TrimSpace(string(b)) == "gh: Bad credentials (HTTP 401)"
 }
 
 type bounded struct {
@@ -196,17 +225,40 @@ func (a *Adapter) gh(ctx context.Context, output bool, in io.Reader, args ...str
 func (a *Adapter) git(ctx context.Context, output bool, in io.Reader, args ...string) ([]byte, error) {
 	return a.call(ctx, "git", output, in, args...)
 }
+
+// account is what gh's active github.com login positively is. Anything the
+// adapter cannot classify is unclassified and is never overwritten or removed.
+type account int
+
+const (
+	unclassified account = iota
+	own                  // GitHub answers with the mapped subject's ID
+	foreign              // GitHub answers with another account's ID
+	absent               // gh's explicit diagnostic: no github.com login
+	revoked              // GitHub rejects the active token itself
+)
+
 func (a *Adapter) identity(ctx context.Context) (string, bool) {
-	login, match, _, _ := a.identityDetail(ctx)
-	return login, match
+	login, kind := a.classify(ctx)
+	return login, kind == own
 }
-func (a *Adapter) identityDetail(ctx context.Context) (string, bool, bool, bool) {
-	if _, e := a.gh(ctx, false, nil, "auth", "status", "--hostname", "github.com"); e != nil {
-		return "", false, false, errors.Is(e, noAuth)
+
+// classify asks gh, then GitHub. gh auth status alone proves only absence: gh
+// 2.45/2.46 exit 0 for an invalid token and print the same "token is invalid"
+// for an unreachable network, and newer gh exit 1 for either. Identity, and
+// whether the token is dead, come from GitHub's answer to gh api user.
+func (a *Adapter) classify(ctx context.Context) (string, account) {
+	if _, e := a.gh(ctx, false, nil, statusArgs...); errors.Is(e, noAuth) {
+		return "", absent
+	} else if ctx.Err() != nil {
+		return "", unclassified
 	}
-	b, e := a.gh(ctx, true, nil, "api", "user", "--jq", "{id: .id, login: .login}")
+	b, e := a.gh(ctx, true, nil, userArgs...)
+	if errors.Is(e, rejected) {
+		return "", revoked
+	}
 	if e != nil {
-		return "", false, false, false
+		return "", unclassified
 	}
 	var v struct {
 		ID    json.Number `json:"id"`
@@ -215,14 +267,16 @@ func (a *Adapter) identityDetail(ctx context.Context) (string, bool, bool, bool)
 	d := json.NewDecoder(strings.NewReader(string(b)))
 	d.UseNumber()
 	if d.Decode(&v) != nil || d.Decode(new(any)) != io.EOF || !loginPattern.MatchString(v.Login) {
-		return "", false, false, false
+		return "", unclassified
 	}
 	id, e := strconv.ParseUint(string(v.ID), 10, 64)
 	if e != nil || id == 0 || strconv.FormatUint(id, 10) != string(v.ID) {
-		return "", false, false, false
+		return "", unclassified
 	}
-	match := string(v.ID) == a.subject
-	return v.Login, match, !match, false
+	if string(v.ID) != a.subject {
+		return v.Login, foreign
+	}
+	return v.Login, own
 }
 
 type statusFlight struct {
@@ -458,14 +512,15 @@ func (a *Adapter) checkStatus(ctx context.Context) (string, bool, bool) {
 		return "unknown", true, false // mutation in progress; cannot infer its eventual outcome
 	}
 	defer a.mu.Unlock()
-	login, match, mismatch, absent := a.identityDetail(ctx)
+	login, kind := a.classify(ctx)
 	if ctx.Err() != nil {
 		return "unknown", false, true
 	}
-	if absent || mismatch {
+	// A revoked token connects nothing; the next sign-in replaces it.
+	if kind == absent || kind == foreign || kind == revoked {
 		return "disconnected", false, true
 	}
-	if !match {
+	if kind != own {
 		return "unknown", false, true
 	}
 	_, _, ok := a.observeWithLogin(ctx, login)
@@ -618,8 +673,10 @@ func (a *Adapter) cleanup(ctx context.Context, login string) bool {
 	if e != nil {
 		return false
 	}
-	_, e = a.gh(ctx, false, nil, "auth", "status", "--hostname", "github.com")
-	return e != nil
+	// Only gh's own absence diagnostic proves the login is gone: newer gh
+	// also exit nonzero while a broken account remains.
+	_, e = a.gh(ctx, false, nil, statusArgs...)
+	return errors.Is(e, noAuth)
 }
 func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
 	a.mu.Lock()
@@ -631,13 +688,20 @@ func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
 		return result, denied
 	}
 	// A pre-existing gh login may belong to someone else or be partial.
-	// Never overwrite or clean up credentials we did not just install.
-	if _, err := a.gh(ctx, false, nil, "auth", "status", "--hostname", "github.com"); err == nil {
-		if _, storage, ok := a.observe(ctx); ok {
+	// Never overwrite or clean up credentials we did not just install. The
+	// one exception is a token GitHub itself rejects: it works for nobody, so
+	// replacing it loses nothing, and keeping it would refuse every later
+	// sign-in. A login that cannot be classified (network, keyring, unknown
+	// output) is left alone.
+	switch login, kind := a.classify(ctx); {
+	case ctx.Err() != nil:
+		return result, denied
+	case kind == own:
+		if _, storage, ok := a.observeWithLogin(ctx, login); ok {
 			return Result{Phase: Reobserved, Storage: storage}, nil
 		}
 		return result, denied
-	} else if ctx.Err() != nil {
+	case kind != absent && kind != revoked:
 		return result, denied
 	}
 	_, err := a.gh(ctx, false, strings.NewReader(token), "auth", "login", "--hostname", "github.com", "--with-token", "--git-protocol", "https")
