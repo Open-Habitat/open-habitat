@@ -2,13 +2,15 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed in a taskfleet worker's focused browser run
 source_ref: taskfleet:01m5pzvqy96808zcq0tc7pegxk/observed:auto-defaults-alone
 originating_run: 01m5pzvqy96808zcq0tc7pegxk
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Browser case 'auto: the readable defaults are locked rows' fails when run alone
