@@ -615,10 +615,24 @@ func ViewExportHandler(cfg transport.Config, trusted func(*http.Request) bool) h
 func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == AgentViewRemovePath {
 		var req struct {
-			ID string `json:"view_id"`
+			ID     string `json:"view_id"`
+			DryRun bool   `json:"dry_run"`
 		}
 		if r.Method != http.MethodPost || r.URL.RawQuery != "" || !strictViewBody(w, r, &req) || !viewIDPattern.MatchString(req.ID) {
 			snapshotError(w, 400, "invalid_arguments")
+			return
+		}
+		if req.DryRun {
+			views, err := openViews(c.viewCfg().Home)
+			if err == nil {
+				_, err = readViewManifest(int(views.Fd()), req.ID)
+				views.Close()
+			}
+			if err != nil {
+				snapshotError(w, 404, "view_not_found")
+				return
+			}
+			historyJSON(w, map[string]any{"schema_version": 1, "view_id": req.ID, "removed": false, "dry_run": true})
 			return
 		}
 		if err := removeView(c.viewCfg().Home, req.ID); err != nil {
@@ -629,7 +643,7 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 			}
 			return
 		}
-		historyJSON(w, map[string]any{"schema_version": 1, "view_id": req.ID, "removed": true})
+		historyJSON(w, map[string]any{"schema_version": 1, "view_id": req.ID, "removed": true, "dry_run": false})
 		return
 	}
 	if r.Method == http.MethodGet {
@@ -717,6 +731,11 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 			if req.Path == "." || !validViewTitle(title) {
 				title = path.Base(plan.entry)
 			}
+			// A file name may be longer than a title; keep whole characters.
+			for len(title) > maxViewTitle {
+				_, size := utf8.DecodeLastRuneInString(title)
+				title = title[:len(title)-size]
+			}
 		}
 		summary = viewSummary{Title: title, Entry: plan.entry, Files: len(plan.files), Bytes: plan.bytes, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), ConversationID: q.id}
 		skipped = plan.skipped
@@ -726,6 +745,11 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 		}
 		if summary.ID, err = newViewID(); err != nil {
 			snapshotError(w, 503, "view_store_unavailable")
+			return
+		}
+		// Publish only what the reader will accept back.
+		if !validViewSummary(summary) {
+			snapshotError(w, 400, "invalid_view_title")
 			return
 		}
 		if err := exportView(c.viewCfg().Home, root, req, plan, summary); err != nil {

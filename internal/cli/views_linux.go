@@ -87,27 +87,7 @@ func agentViewCommand(args []string) (any, error) {
 		if !viewIDArgPattern.MatchString(id) {
 			return nil, usage(fmt.Sprintf("invalid --view %q; expected a view_id from agent view list", id))
 		}
-		if dry {
-			data, err := exchangeAgent(daemon.AgentViewsPath)
-			if err != nil {
-				return nil, err
-			}
-			var wire struct {
-				Views []struct {
-					ID string `json:"view_id"`
-				} `json:"views"`
-			}
-			if json.Unmarshal(data, &wire) != nil {
-				return nil, system("invalid_agent_response", "invalid view list")
-			}
-			for _, v := range wire.Views {
-				if v.ID == id {
-					return envelope(map[string]any{"cli_version": version, "dry_run": true, "would_remove": id}), nil
-				}
-			}
-			return nil, &cliError{code: "view_not_found", message: "no such view; inspect agent view list", exit: 1}
-		}
-		body, _ := json.Marshal(map[string]any{"view_id": id})
+		body, _ := json.Marshal(map[string]any{"view_id": id, "dry_run": dry})
 		data, err := exchangeAgentBody("POST", daemon.AgentViewRemovePath, body)
 		if err != nil {
 			return nil, err

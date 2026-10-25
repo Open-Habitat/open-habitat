@@ -371,7 +371,11 @@ func (a *Auth) viewAuthenticated(r *http.Request) (viewSession, bool) {
 // "dir/" means "dir/index.html", as a static host would serve it.
 func viewRelPath(r *http.Request) (string, bool) {
 	p := r.URL.Path
-	if r.URL.RawPath != "" || !strings.HasPrefix(p, "/") || len(p) > viewMaxPath || !utf8.ValidString(p) {
+	// Browsers leave ( ) ! ' [ ] unescaped where Go would escape them, so
+	// RawPath alone is no refusal; an encoded separator is. The decoded path
+	// is checked below either way.
+	raw := strings.ToUpper(r.URL.RawPath)
+	if strings.Contains(raw, "%2F") || strings.Contains(raw, "%5C") || !strings.HasPrefix(p, "/") || len(p) > viewMaxPath || !utf8.ValidString(p) {
 		return "", false
 	}
 	rel := strings.TrimPrefix(p, "/")

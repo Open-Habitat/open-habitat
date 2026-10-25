@@ -292,3 +292,21 @@ func TestViewOfferInConversationIsANativeNotice(t *testing.T) {
 		t.Fatalf("replay: %d %+v calls=%d", code, again, calls.Load())
 	}
 }
+
+// A file name may be longer than a title: the derived title is shortened,
+// and what the offer publishes is what the list and reader accept.
+func TestViewOfferWithLongNameStaysReadable(t *testing.T) {
+	h, c, ws := viewFixture(t)
+	name := strings.Repeat("ä", 120) + ".html"
+	if err := os.WriteFile(filepath.Join(h.root, "src", "project", name), []byte("x"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	code, v := offerView(t, c, "", map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000021", "workspace_id": ws, "path": name})
+	if code != 200 || len(v.View.Title) > maxViewTitle || !strings.HasPrefix(name, v.View.Title) {
+		t.Fatalf("offer: %d %+v", code, v)
+	}
+	list, err := listViews(h.root)
+	if err != nil || len(list) != 1 || list[0].ID != v.View.ID {
+		t.Fatalf("list: %v %+v", err, list)
+	}
+}

@@ -105,8 +105,9 @@ export function ViewHost({
   useEffect(
     () =>
       store?.onViewOffered((view) => {
+        // Only the list says whether this installation offers views; a
+        // daemon publishes offers without knowing.
         if (view.conversation_id) return;
-        setEnabled(true);
         setAccount((before) =>
           [view, ...before.filter((v) => v.view_id !== view.view_id)].slice(
             0,

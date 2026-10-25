@@ -36,6 +36,7 @@ func newViewDesk(t *testing.T) *viewDesk {
 		"/view-export/" + viewTestA + "/site/app.js":       "1",
 		"/view-export/" + viewTestA + "/site/data.bin":     "\x00",
 		"/view-export/" + viewTestA + "/site/index.svg":    "<svg/>",
+		"/view-export/" + viewTestA + "/site/kuva (1).png": "png",
 		"/view-export/" + viewTestB + "/secret/index.html": "other view",
 	}
 	daemon := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +206,8 @@ func TestViewHostServesOnlyItsExportWithSandboxEverywhere(t *testing.T) {
 	if csp := res.Header.Get("Content-Security-Policy"); !strings.Contains(csp, "script-src https://"+host+" 'unsafe-inline'") || strings.Contains(csp, "*") {
 		t.Fatalf("sources must name exactly this view host: %q", csp)
 	}
-	for path, want := range map[string]string{"/site/data.bin": "application/octet-stream", "/site/index.svg": "image/svg+xml"} {
+	// Names as browsers send them, with characters Go would have escaped.
+	for path, want := range map[string]string{"/site/data.bin": "application/octet-stream", "/site/index.svg": "image/svg+xml", "/site/kuva%20(1).png": "image/png"} {
 		res := d.do("GET", host, path, "", withCookie(cookie))
 		assertViewCSP(t, res, path)
 		if res.StatusCode != 200 || res.Header.Get("Content-Type") != want {
