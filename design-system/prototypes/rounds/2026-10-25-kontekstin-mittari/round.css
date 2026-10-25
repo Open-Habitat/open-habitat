@@ -1,0 +1,98 @@
+[hidden] {display:none!important;}
+.frame {height:680px; min-height:520px;}
+.frame-wrap.phone .frame {height:760px;}
+.ctx-controls {max-width:1280px; margin:0 auto; padding:8px 20px; display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; font-size:var(--ah-size-ui);}
+.ctx-controls label {display:flex; align-items:center; gap:6px;}
+.ctx-controls select, .ctx-controls button {font:inherit; color:var(--ah-ink); background:var(--ah-surface); border:1px solid var(--ah-line-strong); border-radius:var(--ah-r-md); padding:6px 8px;}
+.ctx-controls p {flex-basis:100%; margin:0; color:var(--ah-muted); font-size:var(--ah-size-meta);}
+.ctx-controls .ctx-announce {min-height:1.5em; color:var(--ah-ink-2);}
+.ctx-controls :focus-visible {outline:2px solid var(--ah-focus); outline-offset:2px;}
+
+/* Shared level colours. There is no warning token: near the limit uses the accent
+   (attention), only the critical level uses the error colour. */
+[data-level] {--ctx:var(--ah-muted); --ctx-ink:var(--ah-muted); --ctx-soft:var(--ah-sunken);}
+[data-level="near"] {--ctx:var(--ah-accent); --ctx-ink:var(--ah-accent-ink); --ctx-soft:var(--ah-accent-soft);}
+[data-level="critical"] {--ctx:var(--ah-err); --ctx-ink:var(--ah-err); --ctx-soft:var(--ah-err-soft);}
+[data-level="compacting"] {--ctx:var(--ah-accent); --ctx-ink:var(--ah-accent-ink); --ctx-soft:var(--ah-accent-soft);}
+.ctx-ind {font-variant-numeric:tabular-nums; cursor:pointer;}
+.ctx-ind:focus-visible {outline:2px solid var(--ah-focus); outline-offset:2px;}
+
+/* 1 Rengas */
+.ctx-ringbtn {display:inline-flex; align-items:center; gap:5px; min-height:28px; padding:0 8px 0 5px; border:0; border-radius:var(--ah-r-pill); background:transparent; color:var(--ah-ink-2); font:500 12.5px var(--ah-font); white-space:nowrap;}
+.ctx-ringbtn:hover {background:var(--ah-hover);}
+.ctx-ringbtn .ctx-val {color:var(--ctx-ink);}
+.ctx-ringbtn[data-level="ok"] .ctx-val, .ctx-ringbtn[data-level="nowindow"] .ctx-val {color:var(--ah-ink-2);}
+.ctx-ringbtn[data-level="critical"] .ctx-val {font-weight:600;}
+.ctx-ring {width:18px; height:18px; flex:none; overflow:visible;}
+.ctx-ring circle {fill:none; stroke-width:2.4;}
+.ctx-ring .trk {stroke:var(--ah-line-strong);}
+.ctx-ring .arc {stroke:var(--ctx); stroke-linecap:round;}
+[data-level="ok"] .ctx-ring .arc {stroke:var(--ah-ink-2);}
+.ctx-ring .tick {stroke:var(--ah-ink); stroke-width:1.4; stroke-linecap:round; opacity:.55;}
+[data-level="after"] .ctx-ring .trk, [data-level="nowindow"] .ctx-ring .trk {stroke-dasharray:2.2 2.2; stroke:var(--ah-muted);}
+.ctx-ring .spin {transform-origin:10px 10px; animation:ctx-spin 1.1s linear infinite;}
+@keyframes ctx-spin {to {transform:rotate(360deg);}}
+
+/* 2 Sirussa: the chip itself is the meter. */
+.ctx-chip {background:linear-gradient(90deg, var(--ctx-soft) var(--fill), var(--ah-surface) var(--fill)); font-variant-numeric:tabular-nums;}
+.ctx-chip[data-level="ok"], .ctx-chip[data-level="nowindow"] {background:linear-gradient(90deg, var(--ah-sunken) var(--fill), var(--ah-surface) var(--fill));}
+.ctx-chip[data-level="after"] {background:var(--ah-surface); border-style:dashed;}
+.ctx-chip .ctx-val {color:var(--ctx-ink);}
+.ctx-chip[data-level="ok"] .ctx-val, .ctx-chip[data-level="nowindow"] .ctx-val {color:var(--ah-ink-2);}
+.ctx-chip[data-level="near"], .ctx-chip[data-level="critical"] {border-color:var(--ctx);}
+.ctx-chip[data-level="critical"] .ctx-val {font-weight:600;}
+.ctx-chip[data-level="compacting"] .ctx-val {animation:ctx-breathe 1.4s ease-in-out infinite;}
+@keyframes ctx-breathe {50% {opacity:.55;}}
+
+/* 3 Kentässä and 4 Sanoin: a row under the field. */
+.composer .cwrap {grid-template-areas:"queue queue" "box side" "below ." "ctx .";}
+.composer .cwrap .ctx-row {grid-area:ctx; display:flex; min-width:0; margin-top:-2px;}
+.composer .cwrap .ctx-row[data-variant="field"] {justify-content:flex-end; padding-right:14px;}
+.composer .cwrap .ctx-row[data-variant="words"] {justify-content:flex-start; padding-left:14px;}
+.composer .cwrap .ctx-text {min-height:20px; padding:0 4px; border-radius:6px; color:var(--ah-muted); font:400 12px/1.4 var(--ah-font); font-variant-numeric:tabular-nums; text-align:left;}
+.composer .cwrap .ctx-text:hover {background:var(--ah-hover); color:var(--ah-ink-2);}
+.composer .cwrap .ctx-row[data-variant="field"] .ctx-text {font-family:var(--ah-mono); font-size:11.5px;}
+.composer .cwrap .ctx-text[data-level="near"], .composer .cwrap .ctx-text[data-level="critical"], .composer .cwrap .ctx-text[data-level="compacting"] {color:var(--ctx-ink);}
+.composer .cwrap .ctx-text[data-level="critical"] {font-weight:600;}
+.composer .cwrap .ctx-row[data-variant="words"] .ctx-text[data-level="ok"] {color:var(--ah-faint, var(--ah-muted));}
+.composer .cwrap .ctx-row[data-variant="words"] .ctx-text[data-level="after"] {color:var(--ah-ink-2);}
+.composer .cwrap .ctx-text[data-level="compacting"] {animation:ctx-breathe 1.4s ease-in-out infinite;}
+.composer .cwrap .cbox {position:relative; overflow:hidden;}
+.ctx-line {position:absolute; inset:0 0 auto 0; height:3px; background:var(--ah-line-soft); pointer-events:none;}
+.ctx-line i {display:block; height:100%; width:var(--fill); background:var(--ctx); opacity:.9;}
+.ctx-line[data-level="ok"] i, .ctx-line[data-level="nowindow"] i {background:var(--ah-line-strong);}
+.ctx-line b {position:absolute; top:0; bottom:0; left:var(--at); width:2px; background:var(--ah-ink); opacity:.35;}
+.ctx-line[data-level="after"] {background:repeating-linear-gradient(90deg, var(--ah-line-strong) 0 6px, transparent 6px 10px);}
+.ctx-line[data-level="compacting"] i {width:30%; animation:ctx-sweep 1.4s ease-in-out infinite alternate;}
+@keyframes ctx-sweep {from {transform:translateX(0);} to {transform:translateX(233%);}}
+
+/* Popover: entry point of the detailed status. */
+.ctx-pop {width:330px;}
+.ctx-pop h3:focus {outline:none;}
+.ctx-pop .ctx-big {margin:0 0 8px; font:600 20px var(--ah-font); font-variant-numeric:tabular-nums; color:var(--ctx-ink);}
+.ctx-pop[data-level="ok"] .ctx-big, .ctx-pop[data-level="nowindow"] .ctx-big, .ctx-pop[data-level="after"] .ctx-big {color:var(--ah-ink);}
+.ctx-pop .ctx-big span {font:400 12.5px var(--ah-font); color:var(--ah-muted); margin-left:6px;}
+.ctx-meter {position:relative; height:6px; border-radius:var(--ah-r-pill); background:var(--ah-sunken); box-shadow:inset 0 0 0 1px var(--ah-line-soft); overflow:hidden; margin-bottom:10px;}
+.ctx-meter i {display:block; height:100%; width:var(--fill); background:var(--ctx);}
+.ctx-meter[data-level="ok"] i {background:var(--ah-ink-2);}
+.ctx-meter b {position:absolute; top:0; bottom:0; left:var(--at); width:2px; background:var(--ah-ink); opacity:.45;}
+.ctx-pop .ctx-lead {margin:0 0 10px; font-size:12.5px; line-height:1.5; color:var(--ah-ink-2);}
+.ctx-pop .facts {margin-bottom:10px;}
+.ctx-pop .ctx-next {margin:0; padding:8px 10px; border:1px dashed var(--ah-line-strong); border-radius:var(--ah-r-md); color:var(--ah-muted); font-size:12px; line-height:1.45;}
+
+/* Phone: production hides the model name in the chip and keeps the thinking level. */
+@container (max-width:760px) {
+  .set-chip > .mono, .set-chip > .mono + .dot {display:none;}
+  .set-chip {padding:0 8px; margin-right:2px;}
+  .ctx-ringbtn {padding:0 4px;}
+  .ctx-ringbtn[data-level="ok"] .ctx-val {display:none;}
+  .tb-right {gap:4px;}
+  .composer .cwrap .ctx-row[data-variant="field"] {padding-right:6px;}
+  .composer .cwrap .ctx-row[data-variant="words"] {padding-left:6px;}
+  .composer .cwrap .ctx-text .long {display:none;}
+  .ctx-pop {left:12px; right:12px; width:auto;}
+}
+@media (prefers-reduced-motion:reduce) {
+  .ctx-ring .spin, .ctx-chip .ctx-val, .composer .cwrap .ctx-text, .ctx-line i {animation:none!important;}
+  .ctx-line[data-level="compacting"] i {width:100%; opacity:.45;}
+}

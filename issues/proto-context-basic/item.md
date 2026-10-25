@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-context
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype the basic indicator of an agent's context use
