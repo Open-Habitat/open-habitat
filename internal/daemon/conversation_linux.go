@@ -26,6 +26,7 @@ import (
 // not a gateway route or a durable command ledger. Native history and the
 // browser-origin owner lock permit explicit continuation after daemon restart.
 type ConversationController struct {
+	viewMu   sync.Mutex // serialize view offer idempotency observation and export
 	noticeMu sync.Mutex // serialize native notice idempotency observation and append
 
 	mu       sync.Mutex

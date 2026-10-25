@@ -36,6 +36,9 @@
             "not_persisted",
             "unknown"
           ]
+        },
+        "view": {
+          "$ref": "view.schema.json#/$defs/view"
         }
       }
     }

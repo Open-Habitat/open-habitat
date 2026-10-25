@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/view.schema.json",
+  "title": "Agent HTML views (ADR 0032)",
+  "description": "An agent offers a frozen export of a workspace HTML file or directory; the person opens it in a panel or an own tab on the view's own origin. App-origin messages: GET /api/v1/views (the person's views; 404 when the installation has no view origin, which means views are not offered) and POST /auth/view (a one-time URL that opens one view on its own host). A view in a conversation arrives as a notice's view; an account offer arrives as a view.offered event.",
+  "oneOf": [
+    {"$ref": "#/$defs/list"},
+    {"$ref": "#/$defs/handoffRequest"},
+    {"$ref": "#/$defs/handoff"}
+  ],
+  "$defs": {
+    "view": {
+      "description": "One frozen export. The title is agent text, shown as data. Files and bytes describe what the export holds; nothing says the person has seen it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["view_id", "title", "entry", "files", "bytes", "created_at"],
+      "properties": {
+        "view_id": {"type": "string", "pattern": "^v[a-z2-7]{26}$"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "entry": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^(?!\\.)(?!.*/\\.)(?!.*//)[^/\\\\]+(/[^/\\\\]+)*\\.[hH][tT][mM][lL]?$"},
+        "files": {"type": "integer", "minimum": 1, "maximum": 500},
+        "bytes": {"type": "integer", "minimum": 0, "maximum": 52428800},
+        "created_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+        "conversation_id": {"$ref": "common.schema.json#/$defs/agentId"}
+      }
+    },
+    "list": {
+      "description": "GET /api/v1/views: the person's views, newest first, at most 200.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "views"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "views": {"type": "array", "maxItems": 200, "items": {"$ref": "#/$defs/view"}}
+      }
+    },
+    "handoffRequest": {
+      "description": "POST /auth/view: the view to open. The gateway checks who asks; the person's daemon answers whether the view exists when its host reads it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["view_id"],
+      "properties": {
+        "view_id": {"type": "string", "pattern": "^v[a-z2-7]{26}$"}
+      }
+    },
+    "handoff": {
+      "description": "A one-minute, single-use URL on the view's own host; opening it sets that host's view cookie and goes to the view's entry.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "url"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "url": {"type": "string", "maxLength": 400, "pattern": "^https://[a-z0-9.-]+(:[0-9]{1,5})?/_open-habitat/handoff\\?token=[A-Za-z0-9_-]{43}$"}
+      }
+    }
+  }
+}

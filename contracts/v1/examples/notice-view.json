@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "agent_id": "pi:11111111-1111-4111-8111-111111111111",
+  "notice": {
+    "notice_id": "33333333-3333-4333-8333-333333333333",
+    "origin": "agent",
+    "timestamp": "2026-10-21T10:00:00Z",
+    "text": "Myyntiraportti",
+    "persistence": "persisted",
+    "view": {
+      "view_id": "vabcdefghijklmnopqrstuvwxyz",
+      "title": "Myyntiraportti",
+      "entry": "index.html",
+      "files": 3,
+      "bytes": 24576,
+      "created_at": "2026-10-25T12:00:00Z",
+      "conversation_id": "pi:11111111-1111-4111-8111-111111111111"
+    }
+  },
+  "dry_run": false
+}

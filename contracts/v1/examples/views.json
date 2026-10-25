@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "views": [
+    {
+      "view_id": "vabcdefghijklmnopqrstuvwxyz",
+      "title": "Myyntiraportti",
+      "entry": "index.html",
+      "files": 3,
+      "bytes": 24576,
+      "created_at": "2026-10-25T12:00:00Z",
+      "conversation_id": "pi:11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "view_id": "vbcdefghijklmnopqrstuvwxyza",
+      "title": "Tilannekuva",
+      "entry": "site/index.html",
+      "files": 3,
+      "bytes": 24576,
+      "created_at": "2026-10-25T12:00:00Z"
+    }
+  ]
+}

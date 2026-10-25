@@ -95,6 +95,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(FirstRoutePath, FirstRouteHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilesPath, WorkspaceFilesHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilePreviewPath, WorkspaceFilePreviewHandler(cfg, server.TrustedPeer))
+	mux.Handle(ViewsPath, ViewsHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceCommandsPath, controller.WorkspaceCommands())
 	mux.Handle(WorkspaceStartPagePath, controller.WorkspaceStartPage())
 	terminals := newTerminalHost(ctx, cfg, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "terminal"))
@@ -132,6 +133,9 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	// included, with paths that are not fixed routes: it is not logged per
 	// request.
 	outer.Handle(EditorRelayPrefix, editor)
+	// View files are read per request like the editor relay, with paths that
+	// are the person's file names: not logged per request either.
+	outer.Handle(ViewExportPrefix, ViewExportHandler(cfg, server.TrustedPeer))
 	// Share this controller, not the browser mux or its trusted-peer capability.
 	if len(agents) > 0 {
 		agent := agents[0]

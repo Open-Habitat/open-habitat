@@ -21,6 +21,7 @@ func TestSiteSchemaDrift(t *testing.T) {
 	base["identities"].(map[string]any)["login_shell"] = map[string]any{"shell": "/bin/bash", "subjects": []any{"123456"}}
 	base["profiles"] = []any{"core", "editor", "integrations"}
 	base["editor"] = map[string]any{"origin_template": "https://oh-code-*.example.org"}
+	base["views"] = map[string]any{"origin_template": "https://oh-view-*.example.org"}
 	var cases []json.RawMessage
 	add := func(v any) {
 		b, e := json.Marshal(v)
@@ -102,6 +103,9 @@ func TestSiteSchemaDrift(t *testing.T) {
 	for _, v := range []string{"https://oh-code-*.example.org", "https://*.example.org", "https://code-{identity}.example.org", "https://code.example.org", "https://code-*.example.org/", "https://code-*.example.org:443", "https://verylongcode-*.example.org", "https://code.*.example.org", "http://code-*.example.org", "https://code-*.example.org?", "https://code-*.example.org\n"} {
 		change("editor.origin_template", v)
 	}
+	for _, v := range []string{"https://oh-view-*.example.org", "https://*.example.org", "https://view.example.org", "https://view-*.example.org:443", "https://verylongview-*.example.org", "http://view-*.example.org"} {
+		change("views.origin_template", v)
+	}
 	for _, v := range []string{"/bin/bash", "/usr/bin/zsh", "/opt/fish-3.7/bin/fish", "bin/bash", "/bin/bash/", "//bin/bash", "/bin/../bin/bash", "/bin/./bash", "/usr/sbin/nologin", "/sbin/nologin", "/bin/false", "/usr/bin/false", "/bin/nologin.sh", "/bin/ba sh", "/bin/ba:sh", "/bin/bash\n", "/" + strings.Repeat("a", 127), "/" + strings.Repeat("a", 128)} {
 		change("identities.login_shell.shell", v)
 	}
@@ -128,6 +132,7 @@ func TestSiteSchemaDrift(t *testing.T) {
 	change("identities.uid_max", 37000)
 	change("gateway.uid", 32000)
 	change("identities.login_shell.subjects", []any{"654321"})
+	change("views.origin_template", "https://oh-code-*.example.org")
 	payload, _ := json.Marshal(cases)
 	cmd := exec.Command("python3", "-c", `
 import json,sys
@@ -152,7 +157,7 @@ print(json.dumps([v.is_valid(c) for c in json.load(sys.stdin)]))
 	for i, b := range cases {
 		_, e := ParseSite(b)
 		if i >= runtimeOnlyStart {
-			wantPaths := []string{"$.gateway.uid", "$.gateway.uid", "$.identities.admission[0]", "$.gateway.origin", "$.gateway.origin", "$.gateway.oauth_callback", "$.gateway.oauth_secret_file", "$.identities.uid_max", "$.gateway.uid", "$.identities.login_shell.subjects[0]"}
+			wantPaths := []string{"$.gateway.uid", "$.gateway.uid", "$.identities.admission[0]", "$.gateway.origin", "$.gateway.origin", "$.gateway.oauth_callback", "$.gateway.oauth_secret_file", "$.identities.uid_max", "$.gateway.uid", "$.identities.login_shell.subjects[0]", "$.views.origin_template"}
 			se, ok := e.(*SiteError)
 			if !accepted[i] || !ok || se.Path != wantPaths[i-runtimeOnlyStart] {
 				t.Errorf("declared runtime-only boundary changed case %d: schema=%v parser=%v", i, accepted[i], e)

@@ -23,11 +23,13 @@ type agentNotice struct {
 	Timestamp   string `json:"timestamp"`
 	Text        string `json:"text"`
 	Persistence string `json:"persistence"`
+	// View is set when the notice offers an HTML view (ADR 0032).
+	View *viewSummary `json:"view,omitempty"`
 }
 
 func validNotice(n agentNotice) bool {
 	t, e := time.Parse(time.RFC3339Nano, n.Timestamp)
-	return sessionIDPattern.MatchString(n.ID) && n.Origin == "agent" && e == nil && !t.IsZero() && utf8.ValidString(n.Text) && strings.TrimSpace(n.Text) != "" && len(n.Text) <= 4096 && (n.Persistence == "persisted" || n.Persistence == "not_persisted" || n.Persistence == "unknown")
+	return sessionIDPattern.MatchString(n.ID) && n.Origin == "agent" && e == nil && !t.IsZero() && utf8.ValidString(n.Text) && strings.TrimSpace(n.Text) != "" && len(n.Text) <= 4096 && (n.View == nil || validViewSummary(*n.View)) && (n.Persistence == "persisted" || n.Persistence == "not_persisted" || n.Persistence == "unknown")
 }
 func nativeNotice(e nativeEntry) (agentNotice, bool) {
 	var v struct {
@@ -130,40 +132,21 @@ func (c *ConversationController) noticeSource(id string) (*nativeSession, error)
 	return match, nil
 }
 func (c *ConversationController) agentNotices(w http.ResponseWriter, r *http.Request) {
-	c.noticeMu.Lock()
-	defer c.noticeMu.Unlock()
 	q, bad := parseAgentConversation(r)
 	if bad {
 		snapshotError(w, 400, "invalid_arguments")
 		return
 	}
-	id := strings.TrimPrefix(q.id, "pi:")
-	c.mu.Lock()
-	s := c.sessions[id]
-	if q.current && (s == nil || s.dead || s.rpc == nil || s.workspace != q.workspace || s.rpc.processGeneration != q.generation || s.rpc.closing.Load() || channelClosed(s.rpc.exited)) {
-		c.mu.Unlock()
-		snapshotError(w, 409, "current_context_stale")
-		return
-	}
-	live := s != nil && !s.dead && s.rpc != nil && !s.rpc.closing.Load() && !channelClosed(s.rpc.exited)
-	c.mu.Unlock()
-	source, err := c.noticeSource(id)
-	if err != nil {
-		snapshotError(w, 503, "native_source_unavailable")
-		return
-	}
-	if source == nil {
-		snapshotError(w, 404, "conversation_not_found")
-		return
-	}
-	notices, err := readNativeNotices(source.path, c.cfg.UID, id, source.cwd)
-	if err != nil {
-		snapshotError(w, 503, "native_source_unavailable")
-		return
-	}
 	if r.Method == "GET" {
 		if r.ContentLength > 0 || len(r.TransferEncoding) > 0 {
 			snapshotError(w, 400, "invalid_arguments")
+			return
+		}
+		c.noticeMu.Lock()
+		defer c.noticeMu.Unlock()
+		_, _, source, notices, status, code := c.noticeTarget(q)
+		if source == nil {
+			snapshotError(w, status, code)
 			return
 		}
 		hasMore := len(notices) > 200
@@ -184,38 +167,79 @@ func (c *ConversationController) agentNotices(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 400, "invalid_arguments")
 		return
 	}
+	n, status, code := c.createNotice(r.Context(), q, req.ID, req.Text, nil, req.DryRun)
+	if status != 0 {
+		snapshotError(w, status, code)
+		return
+	}
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": q.id, "notice": n, "dry_run": req.DryRun})
+}
+
+// noticeTarget observes the conversation a notice names: its live session,
+// whether it runs, and its native source and notices. A nil source comes with
+// the refusal's status and code. Call under noticeMu.
+func (c *ConversationController) noticeTarget(q agentConversationQuery) (*conversation, bool, *nativeSession, []agentNotice, int, string) {
+	id := strings.TrimPrefix(q.id, "pi:")
+	c.mu.Lock()
+	s := c.sessions[id]
+	if q.current && (s == nil || s.dead || s.rpc == nil || s.workspace != q.workspace || s.rpc.processGeneration != q.generation || s.rpc.closing.Load() || channelClosed(s.rpc.exited)) {
+		c.mu.Unlock()
+		return nil, false, nil, nil, 409, "current_context_stale"
+	}
+	live := s != nil && !s.dead && s.rpc != nil && !s.rpc.closing.Load() && !channelClosed(s.rpc.exited)
+	c.mu.Unlock()
+	source, err := c.noticeSource(id)
+	if err != nil {
+		return nil, false, nil, nil, 503, "native_source_unavailable"
+	}
+	if source == nil {
+		return nil, false, nil, nil, 404, "conversation_not_found"
+	}
+	notices, err := readNativeNotices(source.path, c.cfg.UID, id, source.cwd)
+	if err != nil {
+		return nil, false, nil, nil, 503, "native_source_unavailable"
+	}
+	return s, live, source, notices, 0, ""
+}
+
+// createNotice appends one notice, optionally carrying a view offer, through
+// Pi's native writer. A nonzero status is a refusal with its code; nothing was
+// written then.
+func (c *ConversationController) createNotice(parent context.Context, q agentConversationQuery, key, text string, view *viewSummary, dry bool) (agentNotice, int, string) {
+	c.noticeMu.Lock()
+	defer c.noticeMu.Unlock()
+	s, live, source, notices, status, code := c.noticeTarget(q)
+	if source == nil {
+		return agentNotice{}, status, code
+	}
+	id := strings.TrimPrefix(q.id, "pi:")
 	for _, n := range notices {
-		if n.ID == req.ID {
-			if n.Text != req.Text {
-				snapshotError(w, 409, "idempotency_conflict")
-				return
+		if n.ID == key {
+			if n.Text != text || !sameView(n.View, view) {
+				return agentNotice{}, 409, "idempotency_conflict"
 			}
-			historyJSON(w, map[string]any{"schema_version": 1, "agent_id": q.id, "notice": n, "dry_run": req.DryRun})
-			return
+			return n, 0, ""
 		}
 	}
 	if !live || s.cwd != source.cwd {
-		snapshotError(w, 409, "conversation_not_running")
-		return
+		return agentNotice{}, 409, "conversation_not_running"
 	}
-	n := agentNotice{ID: req.ID, Origin: "agent", Timestamp: time.Now().UTC().Format(time.RFC3339Nano), Text: req.Text, Persistence: "unknown"}
-	if req.DryRun {
-		historyJSON(w, map[string]any{"schema_version": 1, "agent_id": q.id, "notice": n, "dry_run": true})
-		return
+	n := agentNotice{ID: key, Origin: "agent", Timestamp: time.Now().UTC().Format(time.RFC3339Nano), Text: text, Persistence: "unknown", View: view}
+	if dry {
+		return n, 0, ""
 	}
 	// The Pi bridge never prompts the model. It calls Pi's own native writer,
 	// even during a tool call. Neither an RPC acknowledgement nor Pi's in-memory
 	// branch proves that quota allowed the append to reach the native file.
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(parent, 3*time.Second)
 	defer cancel()
 	var outcome struct {
 		Written bool   `json:"written"`
 		Reason  string `json:"reason"`
 	}
-	err = s.rpc.processRequest(ctx, map[string]any{"op": "notice", "notice": n, "session_id": id, "generation": s.rpc.processGeneration}, &outcome)
+	err := s.rpc.processRequest(ctx, map[string]any{"op": "notice", "notice": n, "session_id": id, "generation": s.rpc.processGeneration}, &outcome)
 	if err == nil && outcome.Reason == "conversation_mismatch" {
-		snapshotError(w, 409, "current_context_stale")
-		return
+		return agentNotice{}, 409, "current_context_stale"
 	}
 	after, readErr := readNativeNotices(source.path, c.cfg.UID, id, source.cwd)
 	// A concurrent native append can move the file under the first observation.
@@ -225,7 +249,7 @@ func (c *ConversationController) agentNotices(w http.ResponseWriter, r *http.Req
 	}
 	if readErr == nil {
 		for _, found := range after {
-			if found.ID == n.ID && found.Text == n.Text {
+			if found.ID == n.ID && found.Text == n.Text && sameView(found.View, n.View) {
 				n = found
 				break
 			}
@@ -243,7 +267,7 @@ func (c *ConversationController) agentNotices(w http.ResponseWriter, r *http.Req
 			c.journal.appendInvalidation(q.id)
 		}
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": q.id, "notice": n, "dry_run": false})
+	return n, 0, ""
 }
 
 // FixtureNotice publishes an explicitly synthetic transient notice. It is not

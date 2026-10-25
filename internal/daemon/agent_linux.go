@@ -78,6 +78,10 @@ func agentHandlerWithLogins(cfg transport.Config, controller *ConversationContro
 				return
 			}
 
+			if r.URL.Path == AgentViewsPath || r.URL.Path == AgentViewRemovePath {
+				controller.agentViews(w, r)
+				return
+			}
 			if handler, ok := routes[r.URL.Path]; ok {
 				extendAgentWorkspaceReply(w)
 				handler.ServeHTTP(w, r)

@@ -45,6 +45,28 @@ key to retry the same notice; the same key/text can recover a persisted outcome.
 Lists cover the latest 200 notices on the current native branch; use
 `--output FILE.jsonl` for a file export, which refuses overwrite.
 
+To show the person an HTML report or a small static prototype you made (this is
+Habitat's `tw browser-open`; you cannot open their browser or a dev server):
+
+    open-habitat agent view offer --current --workspace ws_ID --source report.html --idempotency-key UUID --json
+    open-habitat agent view offer --current --workspace ws_ID --source site --entry-file index.html --title "Prototype" --idempotency-key UUID --json
+    open-habitat agent view list --json
+    open-habitat agent view remove --view VIEW_ID --json
+
+The offer copies the file, or the directory's files, into a frozen view: later
+edits do not change it, so offer again (new key) after a change. The person sees
+a card with two buttons and chooses a side panel or an own browser tab; nothing
+opens by itself. The view runs sandboxed on its own origin with scripts but no
+network: inline everything or ship it in the directory (relative paths; no CDN,
+`fetch`, forms, popups, storage or ES modules from elsewhere). A directory needs
+`--entry-file`; symlinks and special files refuse the offer, names starting with
+a dot are skipped and counted, and the limit is 500 files and 50 MiB. Without
+`--current` or `--conversation pi:UUID` the offer is an account card, for SSH
+workers with no conversation. Use `--dry-run` to see what would be exported. The
+reply says the offer was published, not that anyone saw it; an installation
+without a view origin shows no cards. Reuse a key only for the same offer.
+Views stay in `~/.local/state/open-habitat/views/` until removed.
+
 To inspect models and change defaults for future conversations:
 
     open-habitat agent model list --json

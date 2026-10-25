@@ -41,9 +41,12 @@ type OAuthConfig struct {
 	// EditorOrigin is a per-person DNS template (https://code-*.example.org)
 	// or a base namespace (https://code.example.org).
 	// Identity-specific subdomains require wildcard routing and TLS. Empty disables it.
-	EditorOrigin string        `json:"editor_origin,omitempty"`
-	Identities   []Identity    `json:"identities"`
-	Access       *AccessConfig `json:"access,omitempty"`
+	EditorOrigin string `json:"editor_origin,omitempty"`
+	// ViewOrigin is the per-view DNS template for agent HTML views
+	// (https://oh-view-*.example.org, ADR 0032). Empty offers no views.
+	ViewOrigin string        `json:"view_origin,omitempty"`
+	Identities []Identity    `json:"identities"`
+	Access     *AccessConfig `json:"access,omitempty"`
 }
 
 // Provider must validate the authorization code and obtain an authenticated account ID.
@@ -213,6 +216,8 @@ type Auth struct {
 	links            map[string]*linkGrant // keyed by the minting session's store key
 	editorGrants     map[string]editorGrant
 	editors          map[string]editorSession
+	viewGrants       map[string]viewGrant
+	views            map[string]viewSession
 	sessionFile      string
 	adminFile        string
 	adminEstablished bool
@@ -254,6 +259,9 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	}
 	if cfg.EditorOrigin != "" && !validEditorOrigin(cfg.Origin, cfg.EditorOrigin) {
 		return nil, errors.New("invalid editor origin")
+	}
+	if cfg.ViewOrigin != "" && !validViewOrigin(cfg.Origin, cfg.EditorOrigin, cfg.ViewOrigin) {
+		return nil, errors.New("invalid view origin")
 	}
 	if len(cfg.Identities) != 0 {
 		return nil, errors.New("fixed identity mappings are not supported")
@@ -384,6 +392,7 @@ func (a *Auth) routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /auth/link/describe", a.describeLink)
 	mux.HandleFunc("POST /auth/link/redeem", a.redeemLink)
 	mux.HandleFunc("POST "+editorHandoffPath, a.mintEditorHandoff)
+	mux.HandleFunc("POST "+viewHandoffPath, a.mintViewHandoff)
 }
 func (a *Auth) exact(r *http.Request, path string, params ...string) bool {
 	if r.URL.Path != path || r.URL.Fragment != "" || r.Host != strings.TrimPrefix(a.cfg.Origin, "https://") || r.TLS == nil {

@@ -820,6 +820,9 @@ func gatewayDesired(s Site) (map[string][]byte, error) {
 	if s.Editor != nil {
 		oauth["editor_origin"] = s.Editor.OriginTemplate
 	}
+	if s.Views != nil {
+		oauth["view_origin"] = s.Views.OriginTemplate
+	}
 	cfg := map[string]any{"component": "gateway", "listen": s.Gateway.Listen, "gateway_uid": s.Gateway.UID, "static_dir": generationPath(s) + "/web", "oauth": oauth, "tls_cert": "/etc/open-habitat/gateway/tls.crt", "tls_key": "/etc/open-habitat/gateway/tls.key", "entry_gate": "/etc/open-habitat/maintenance"}
 	b, _ := json.Marshal(cfg)
 	result["gateway.json"] = b

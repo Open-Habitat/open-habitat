@@ -100,6 +100,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(editorPath, s.auth.editorStatus)
 		mux.HandleFunc(editorOpenPath, s.auth.editorOpen)
 		mux.HandleFunc(editorStopPath, s.auth.editorStop)
+		mux.HandleFunc(viewsPath, s.auth.viewList)
 	}
 	mux.HandleFunc("/", s.ui)
 	if s.auth != nil {
@@ -111,6 +112,7 @@ func (s *Server) routes() http.Handler {
 		// Unknown tunnel hosts must never reach app UI, cookies or OAuth redirects.
 		// Health probes remain available independently of the public host routing.
 		editor := s.auth.accessIngress(http.HandlerFunc(s.auth.editorServe))
+		view := s.auth.viewHeaders(s.auth.accessIngress(http.HandlerFunc(s.auth.viewServe)))
 		appHost := strings.TrimPrefix(s.auth.cfg.Origin, "https://")
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Host == appHost || (r.Method == http.MethodGet || r.Method == http.MethodHead) && (r.URL.Path == "/healthz" || r.URL.Path == "/readyz") {
@@ -119,6 +121,10 @@ func (s *Server) routes() http.Handler {
 			}
 			if s.auth.cfg.EditorOrigin != "" && s.auth.isEditorHost(r.Host) {
 				editor.ServeHTTP(w, r)
+				return
+			}
+			if s.auth.isViewHost(r.Host) {
+				view.ServeHTTP(w, r)
 				return
 			}
 			http.Error(w, "misdirected request", http.StatusMisdirectedRequest)

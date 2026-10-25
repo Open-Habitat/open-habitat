@@ -135,6 +135,9 @@ checks = {
     "editor-status.json": "editor.schema.json",
     "editor-handoff.json": "editor.schema.json",
     "editor-open.json": "editor.schema.json",
+    "views.json": "view.schema.json",
+    "view-handoff.json": "view.schema.json",
+    "notice-view.json": "notice.schema.json",
     "composer-start-page.json": "composer.schema.json",
     "composer-commands.json": "composer.schema.json",
     "composer-start-page-unavailable.json": "composer.schema.json",
@@ -206,6 +209,15 @@ def must_reject(schema: str, instance: object) -> None:
 # Editor settings carry only a supported enum and the mapped web identity.
 must_reject("editor-preference.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "monaco"})
 must_reject("editor-preference.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "uid": 123})
+
+# A view names its entry inside the export, never a path outside it or a
+# hidden file, and its open URL is the fixed handoff on an HTTPS view host.
+view = json.loads((BASE / "examples" / "views.json").read_text())["views"][1]
+for entry in ["../index.html", "/index.html", ".hidden/index.html", "site/.x.html", "a//b.html", "report.js", "a\\b.html"]:
+    must_reject("view.schema.json", {"schema_version": 1, "views": [{**view, "entry": entry}]})
+must_reject("view.schema.json", {"schema_version": 1, "views": [{**view, "path": "/home/x/report.html"}]})
+must_reject("view.schema.json", {"schema_version": 1, "url": "http://oh-view-a.example.invalid/_open-habitat/handoff?token=" + "A" * 43})
+must_reject("view.schema.json", {"schema_version": 1, "url": "https://oh-view-a.example.invalid/index.html"})
 
 # A deletion request names an entry, never a path.
 must_reject("workspace-deletion.schema.json", {"action": "trash_restore", "entry": "../x"})

@@ -104,6 +104,12 @@ type Editor struct {
 	OriginTemplate string `json:"origin_template"`
 }
 
+// Views is the per-view origin of agent HTML views (ADR 0032); absent means
+// the installation offers no views.
+type Views struct {
+	OriginTemplate string `json:"origin_template"`
+}
+
 // IntegrationSettings is root's control over the browser's part in the
 // integrations file.
 type IntegrationSettings struct {
@@ -121,6 +127,7 @@ type Site struct {
 	Storage       Storage              `json:"storage"`
 	Profiles      []string             `json:"profiles"`
 	Editor        *Editor              `json:"editor,omitempty"`
+	Views         *Views               `json:"views,omitempty"`
 	Integrations  *IntegrationSettings `json:"integrations,omitempty"`
 }
 
@@ -434,6 +441,9 @@ func (s Site) Validate() error {
 	if s.Editor != nil && !validSiteEditorOrigin(g.Origin, s.Editor.OriginTemplate) {
 		return siteError("$.editor.origin_template", "require separate HTTPS DNS origin with one * in the first label, no port, and room for a 52-character identity")
 	}
+	if s.Views != nil && (!validSiteEditorOrigin(g.Origin, s.Views.OriginTemplate) || s.Editor != nil && siteOriginsOverlap(s.Editor.OriginTemplate, s.Views.OriginTemplate)) {
+		return siteError("$.views.origin_template", "require separate HTTPS DNS origin with one * in the first label, no port, room for a 52-character view label, and no overlap with the editor origin")
+	}
 	return nil
 }
 
@@ -468,6 +478,14 @@ func validSiteEditorOrigin(app, editor string) bool {
 	}
 	prefix, suffix, _ := strings.Cut(host, "*")
 	return !(strings.HasPrefix(appURL.Hostname(), prefix) && strings.HasSuffix(appURL.Hostname(), suffix))
+}
+
+// siteOriginsOverlap reports whether two '*' templates could name one host
+// with 52-character labels, as the gateway refuses at startup.
+func siteOriginsOverlap(a, b string) bool {
+	ap, as, _ := strings.Cut(strings.TrimPrefix(a, "https://"), "*")
+	bp, bs, _ := strings.Cut(strings.TrimPrefix(b, "https://"), "*")
+	return len(ap)+len(as) == len(bp)+len(bs) && (strings.HasPrefix(ap, bp) || strings.HasPrefix(bp, ap)) && (strings.HasSuffix(as, bs) || strings.HasSuffix(bs, as))
 }
 
 // Immutable is the only persisted site policy needed to reject a migration.
