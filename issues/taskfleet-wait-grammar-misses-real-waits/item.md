@@ -2,13 +2,16 @@
 created: 2026-10-25
 updated: 2026-10-25
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed in conductor session history
 source_ref: taskfleet:01m5tae9rjsc7kq2pxfear0e66/observed:taskfleet-wait-grammar
 originating_run: 01m5tae9rjsc7kq2pxfear0e66
 originating_run_kind: spinoff
+lane: unlaned
+collision: [internal/daemon/processes_linux.go]
+preparation: ready
 ---
 
 # Real taskfleet run wait commands are not recognised as waits (cd &&, --check-in, --terminal)
@@ -54,3 +57,9 @@ since agents run waits from the repository whose runs they wait on.
 - [ ] Exit 4 of a recognised wait reads as a check-in, not as a crash.
 
 Related design round: `proto-background-waits` (how waits are shown).
+
+## Comments
+
+### 2026-10-25T20:12:53Z · @conductor
+
+Accepted for a fix by the conductor: it is the cause of Jari's 2026-10-25 observation (proto-background-waits), a defect against existing intent, not a design choice. The presentation question stays with proto-background-waits.
