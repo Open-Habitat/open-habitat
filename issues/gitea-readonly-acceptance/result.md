@@ -44,14 +44,18 @@ The four levels are separate claims. A lower level does not prove a higher one.
    - clones belong to their person's UID, authenticate as their person's Gitea
      account, and hold no token in `.git/config`;
    - fetch takes the same grant through the browser route and through the
-     person's own shell (`git pull`). agent-b's fetch of agent-a's workspace ID
-     is refused. agent-b's own Git, asking for ada's private repository,
+     person's own shell (`git pull`). agent-b's own Git, asking for ada's private repository,
      presents bob's grant and is refused by Gitea;
    - the helper refuses agent-b with agent-a's `HOME`. It also refuses agent-b
-     with a readable home and tea file owned by another UID (exit 2, no
-     `password=`). agent-b cannot `cat` agent-a's home, tea file or clone;
-   - agent-b cannot reach agent-a's socket at all. agent-a itself and root can
-     connect to that socket file, but the daemon does not serve them;
+     with a readable home owned by agent-a, even when the tea directory and
+     file inside are agent-b's own (exit 2, no `password=`); the same layout
+     with agent-b's own home succeeds. agent-b's `ls` of agent-a's home and
+     clone and `cat` of the tea file and the clone's config are denied, and the
+     same reads work as agent-a;
+   - agent-b's dial of agent-a's socket fails with permission denied. agent-a
+     itself and root can connect to that socket file, but the daemon does not
+     serve them; the foreign workspace fetch is exactly `404
+     workspace_unavailable`;
    - after revocation at Gitea, check reports `token_rejected`, the source
      fails with `token_rejected`, and shell fetch fails, while agent-b is
      unaffected. Replace rewrites only agent-a's file, and the existing clone
@@ -146,6 +150,18 @@ home was put back as it was before: the tea directory and the
 and cancel while it runs, because the small repositories finish at once. This
 is proved under real UIDs in level 3 only. Push was not attempted, as the issue
 requires.
+
+## Review
+
+Independent `/llm-review` of the test, script, operator note and this file
+(finder GPT-6 Astra, one call; report in `history/review-gitea-readonly-acceptance.md`,
+local only). Its four findings were all confirmed locally and fixed: directory
+reads that failed with `EISDIR` regardless of permissions, an exposed-home
+fixture that failed on lock creation and file mode before the owner check, a
+socket probe that could not tell a refused dial from a closed connection, and a
+foreign fetch check that accepted any non-200. No verifier was called because
+each finding was settled by reading the code and rerunning the test. Production
+code did not change, so no credential or daemon code needed review.
 
 ## Decisions for later review
 

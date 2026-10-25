@@ -365,8 +365,8 @@ func TestGiteaDistinctUIDs(t *testing.T) {
 	if out, err := gitAs("agent-a", "-C", filepath.Join(homes["agent-a"], "src", "notes"), "rev-list", "--count", "origin/HEAD"); err != nil || strings.TrimSpace(string(out)) != "2" {
 		t.Fatalf("fetched history: %s %v", out, err)
 	}
-	if status, _, _ = call("agent-b", "POST", WorkspaceGitFetchPath, `{"workspace_id":"`+workspace+`"}`); status == 200 {
-		t.Fatal("agent-b fetched agent-a's workspace")
+	if status, out, raw = call("agent-b", "POST", WorkspaceGitFetchPath, `{"workspace_id":"`+workspace+`"}`); status != 404 || code(out) != "workspace_unavailable" {
+		t.Fatalf("agent-b fetched agent-a's workspace: %d %s", status, raw)
 	}
 	must(srv.AddCommit("ada", "notes", "third.txt", "three\n"))
 	if out, err := gitAs("agent-a", "-C", filepath.Join(homes["agent-a"], "src", "notes"), "pull", "-q", "--ff-only"); err != nil {
@@ -382,7 +382,8 @@ func TestGiteaDistinctUIDs(t *testing.T) {
 	}
 
 	// The helper as the wrong UID: another person's home is unreadable, and
-	// a readable home or tea file of another owner is still refused.
+	// a readable home of another owner is refused even when the tea file in
+	// it is the caller's own.
 	request := "protocol=https\nhost=" + strings.TrimPrefix(srv.URL, "https://") + "\npath=ada/notes.git\n\n"
 	helper := func(uid int, home string) (string, error) {
 		cmd := as(uid, []string{"HOME=" + home}, exe, "gitea", "git-credential", "get")
@@ -396,28 +397,43 @@ func TestGiteaDistinctUIDs(t *testing.T) {
 	if out, err := helper(21002, homes["agent-a"]); err == nil || strings.Contains(out, "password") {
 		t.Fatalf("agent-b's helper read agent-a's home: %q %v", out, err)
 	}
+	// Everything below the home is agent-b's and usable by agent-b; only
+	// the home's owner differs, and the control with agent-b's own home
+	// succeeds.
 	exposed := filepath.Join(work, "exposed-home")
-	must(os.MkdirAll(filepath.Join(exposed, ".config", "tea"), 0755))
-	must(os.WriteFile(filepath.Join(exposed, ".config", "tea", "config.yml"), snapshot("agent-a"), 0644))
-	must(exec.Command("chown", "-R", "21001:21001", exposed).Run())
+	must(os.MkdirAll(filepath.Join(exposed, ".config", "tea"), 0700))
+	must(os.WriteFile(filepath.Join(exposed, ".config", "tea", "config.yml"), snapshot("agent-a"), 0600))
+	must(exec.Command("chown", "-R", "21002:21002", exposed).Run())
+	must(os.Chown(exposed, 21001, 21001))
+	must(os.Chmod(exposed, 0755))
 	must(os.Chmod(work, 0755))
 	if out, err := helper(21002, exposed); err == nil || strings.Contains(out, "password") {
-		t.Fatalf("agent-b's helper accepted another owner's tea file: %q %v", out, err)
+		t.Fatalf("agent-b's helper accepted a home of another owner: %q %v", out, err)
 	}
-	for _, path := range []string{homes["agent-a"], teaFile("agent-a"), filepath.Join(homes["agent-a"], "src", "notes")} {
-		if out, err := as(21002, nil, "/bin/cat", path).CombinedOutput(); err == nil {
-			t.Fatalf("agent-b read %s: %s", path, out)
+	must(os.Chown(exposed, 21002, 21002))
+	if out, err := helper(21002, exposed); err != nil || !strings.Contains(out, "password=") {
+		t.Fatalf("control with agent-b's own home: %q %v", out, err)
+	}
+	// Each read works as agent-a and is denied to agent-b.
+	checkout := filepath.Join(homes["agent-a"], "src", "notes")
+	for _, read := range [][]string{{"/bin/ls", homes["agent-a"]}, {"/bin/ls", checkout}, {"/bin/cat", teaFile("agent-a")}, {"/bin/cat", filepath.Join(checkout, ".git", "config")}} {
+		if out, err := as(21001, nil, read[0], read[1]).CombinedOutput(); err != nil {
+			t.Fatalf("agent-a control %v: %s %v", read, out, err)
+		}
+		if out, err := as(21002, nil, read[0], read[1]).CombinedOutput(); err == nil || !strings.Contains(string(out), "Permission denied") {
+			t.Fatalf("agent-b %v: %s %v", read, out, err)
 		}
 	}
 
 	// Only the gateway's kernel peer is served. agent-a may connect to its
-	// own socket file and root may connect to any, yet neither is answered.
+	// own socket file and root may connect to any, yet neither is answered;
+	// agent-b cannot even connect.
 	for _, uid := range []int{21001, 0} {
-		if status, _, raw = callAs(uid, "agent-a", "GET", integrations.ListPath, ""); status == 200 {
-			t.Fatalf("UID %d was served on agent-a's socket: %s", uid, raw)
+		if status, _, raw = callAs(uid, "agent-a", "GET", integrations.ListPath, ""); status == 200 || strings.Contains(raw, "GITEA_PROBE_DIAL=") {
+			t.Fatalf("UID %d on agent-a's socket: %d %s", uid, status, raw)
 		}
 	}
-	if status, _, raw = callAs(21002, "agent-a", "GET", integrations.ListPath, ""); status != 0 {
+	if status, _, raw = callAs(21002, "agent-a", "GET", integrations.ListPath, ""); status != 0 || !strings.Contains(raw, "GITEA_PROBE_DIAL=") || !strings.Contains(raw, "permission denied") {
 		t.Fatalf("agent-b reached agent-a's socket: %d %s", status, raw)
 	}
 
@@ -537,7 +553,9 @@ func TestGiteaUIDProbe(t *testing.T) {
 	}
 	conn, err := net.DialTimeout("unix", os.Getenv("GITEA_PROBE_SOCKET"), 2*time.Second)
 	if err != nil {
-		t.Fatal(err)
+		// Distinguishes a connection never made from one refused after it.
+		fmt.Printf("GITEA_PROBE_DIAL=%v\n", err)
+		return
 	}
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(45 * time.Second))
