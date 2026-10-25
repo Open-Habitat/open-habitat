@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-25
 type: improvement
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-push-permission
@@ -13,6 +13,8 @@ preparation: ready
 related: ['@fleetrepo-gitea-habitat']
 lane: gitea
 collision: [internal/nativegitea/]
+closed: 2026-10-25
+closed_by: claude
 ---
 
 # Qualify Gitea read-only push denial and separately authorized write PAT
