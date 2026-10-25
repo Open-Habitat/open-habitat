@@ -58,12 +58,12 @@ test("@a11y unread rail link opens replies by keyboard, then clears only the ope
     .toBe(new URL(urls[0], hostOrigin).searchParams.get("conversation"));
   await expect(link).toHaveAttribute("href", urls[1]);
   await expect(link).toHaveAccessibleName(/1/);
-  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+  await expect(page.getByTestId("message-input")).toBeFocused();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByTestId("navigation-open").click();
   await expect(link).toBeVisible();
   await link.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("unread-replies")).toHaveCount(0);
-  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+  await expect(page.getByTestId("message-input")).toBeFocused();
 });
