@@ -3,13 +3,14 @@ created: 2026-10-25
 updated: 2026-10-25
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@habitat-seat-commands']
 lane: html-views
 lane_seq: 1
 collision: [web/src/app/]
 preparation: ready
+closed: 2026-10-25
 ---
 
 # Agent HTML artifacts and web views: show, open, share
@@ -33,8 +34,8 @@ This overlaps with `habitat-seat-commands` ("open/show" on the person's browser)
 
 ## Acceptance Criteria
 
-- [ ] Research with a recommendation (options, authority model, origin isolation, sharing and public links, reuse) and Jari's decision recorded as an ADR.
-- [ ] A prototype round of the accepted direction (showing, opening and sharing an artifact in the Habitat UI), with Jari's verdict.
+- [x] Research with a recommendation (options, authority model, origin isolation, sharing and public links, reuse) and Jari's decision recorded as an ADR.
+- [x] A prototype round of the accepted direction (showing, opening and sharing an artifact in the Habitat UI), with Jari's verdict.
 
 ## Decisions
 
