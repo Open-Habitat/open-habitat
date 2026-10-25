@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-sidebar
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype what the sidebar should hold instead of the workspace list
@@ -40,3 +40,8 @@ any production change.
 
 - [ ] Prototype variants with notes, and Jari's verdict recorded.
 
+## Decisions
+
+### 2026-10-25T18:04:11Z · @jari
+
+Jari 2026-10-25 on round 1: 'Nyt' is the direction (clearest). The Käynnissä block also includes agents waiting on background work (processes/workers). Agents need not be listed under workspaces any more; a workspace's agents are reached through that workspace's front page. Next: a riff round on how the workspaces are shown under Nyt.

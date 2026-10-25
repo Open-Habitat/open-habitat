@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-settings
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype grouping of AI, code-host and data integrations in settings
@@ -30,3 +30,9 @@ Compare at least two or three groupings, including where onboarding and the mode
 ## Acceptance Criteria
 
 - [ ] Prototype variants with notes, and Jari's verdict recorded.
+
+## Decisions
+
+### 2026-10-25T18:04:11Z · @jari
+
+Jari 2026-10-25 on round 1: 'Kolme sivua' (Tekoäly, Koodipalvelut, Tiedot agenteille), definitely. The default model shown on the Tekoäly page is clear; clicking it could open the current model selector — riff on that. The API keys part is still thin — riff on it. The GitHub and Gitea logos are neat and should be used. Next: a riff round on the default model and API keys within 'Kolme sivua'.
