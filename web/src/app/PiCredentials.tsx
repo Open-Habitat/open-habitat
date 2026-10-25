@@ -34,6 +34,14 @@ const keyHint: Record<KeyProvider, string> = {
   anthropic: "alkaa sk-ant-",
   deepseek: "alkaa sk-",
 };
+/** OpenAI's own credential in Pi, never another provider's (subscription is
+ * Pi's openai-codex sign-in). */
+export type OpenAIState =
+  | "signed_in"
+  | "api_key"
+  | "missing"
+  | "checking"
+  | "unknown";
 type Key = { present: boolean; suffix: string | null };
 type Credentials = {
   schema_version: 1;
@@ -69,11 +77,14 @@ async function read(response: Response): Promise<Credentials> {
 export function PiCredentials({
   csrf,
   onSaved,
+  onOpenAI,
   providers = keyProviders,
   embedded = false,
 }: {
   csrf?: string;
   onSaved?: () => void;
+  /** The same native read, as the settings' OpenAI sign-in row needs it. */
+  onOpenAI?: (state: OpenAIState) => void;
   /** Inside the onboarding AI step's key row, which owns the heading: one
    * field with Tallenna on the same line. Settings keeps its rows. */
   embedded?: boolean;
@@ -121,6 +132,16 @@ export function PiCredentials({
       });
     return () => controller.abort();
   }, [revision]);
+  const openAI: OpenAIState = data
+    ? data.subscription.present
+      ? "signed_in"
+      : data.openai.present
+        ? "api_key"
+        : "missing"
+    : error
+      ? "unknown"
+      : "checking";
+  useEffect(() => onOpenAI?.(openAI), [openAI, onOpenAI]);
   const change = async (provider: KeyProvider, remove = false) => {
     if (!csrf || busy) return;
     setBusy(true);

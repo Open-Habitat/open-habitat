@@ -154,39 +154,55 @@ describe("account presentation", () => {
     expect(onClose).toHaveBeenCalledOnce();
     expect(onConfirm).not.toHaveBeenCalled();
   });
-  it("allows explicit Pi sign-in across native credential states", () => {
+  it("shows OpenAI's own sign-in, not another provider's, and always offers it", async () => {
+    const native = (openai: boolean, subscription: boolean) => ({
+      schema_version: 1,
+      openai: { present: openai, suffix: null },
+      // Claude-only: Anthropic's key and Claude subscription, nothing of OpenAI's.
+      anthropic: { present: true, suffix: null },
+      deepseek: { present: false, suffix: null },
+      subscription: { present: subscription },
+    });
+    let credentials: object | undefined = native(false, false);
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      const json = (body: unknown) =>
+        new Response(JSON.stringify(body), {
+          headers: { "Content-Type": "application/json" },
+        });
+      if (url === "/api/v1/pi/claude-login")
+        return json({ schema_version: 1, state: "completed" });
+      if (url === "/api/v1/pi/credentials" && credentials)
+        return json(credentials);
+      return new Response("", { status: 503 });
+    });
     const signIn = vi.fn();
-    const { rerender } = render(
+    const show = () => (
       <AccountSettings
-        piState="usable"
+        routeSection="yhteydet"
+        onNavigate={() => {}}
         onPiSignIn={signIn}
         onBack={() => {}}
-      />,
+      />
     );
-    fireEvent.click(screen.getByTestId("settings-yhteydet"));
-
+    const { unmount } = render(show());
+    const state = () => screen.getByTestId("openai-credential-state");
+    await waitFor(() => expect(state().dataset.state).toBe("missing"));
     fireEvent.click(screen.getByTestId("pi-sign-in"));
     expect(signIn).toHaveBeenCalledOnce();
-    rerender(
-      <AccountSettings
-        piState="missing"
-        onPiSignIn={signIn}
-        onBack={() => {}}
-      />,
-    );
-
-    fireEvent.click(screen.getByTestId("pi-sign-in"));
-    expect(signIn).toHaveBeenCalledTimes(2);
-    for (const piState of ["unknown", "unavailable", "checking"] as const) {
-      rerender(
-        <AccountSettings
-          piState={piState}
-          onPiSignIn={signIn}
-          onBack={() => {}}
-        />,
-      );
+    unmount();
+    for (const [next, expected] of [
+      [native(true, false), "api_key"],
+      [native(false, true), "signed_in"],
+      [undefined, "unknown"],
+    ] as const) {
+      credentials = next;
+      const view = render(show());
+      await waitFor(() => expect(state().dataset.state).toBe(expected));
       expect(screen.getByTestId("pi-sign-in")).toBeTruthy();
+      view.unmount();
     }
+    vi.restoreAllMocks();
   });
   it("never presents a provider subject number as a name", () => {
     expect(accountLabel("GitHub user 42")).not.toMatch(/GitHub user|42/);

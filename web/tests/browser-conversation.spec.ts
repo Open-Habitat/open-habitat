@@ -928,7 +928,7 @@ test("@browser-conversation malformed host status fails closed without rendering
   await expect(page.locator("main script")).toHaveCount(0);
 });
 
-test("@browser-conversation settings checks Pi once; returning and foreground clicks do not revalidate", async ({
+test("@browser-conversation settings does not recheck the Pi gate; returning and foreground clicks do not revalidate", async ({
   page,
 }) => {
   await open(page);
@@ -947,16 +947,17 @@ test("@browser-conversation settings checks Pi once; returning and foreground cl
     .getByRole("link")
     .and(page.locator('a[href="/settings/connections"]'))
     .click();
-  await expect(page.getByTestId("pi-credential-state")).toHaveAttribute(
+  // The OpenAI row reads its own native credentials, not the gate's status.
+  await expect(page.getByTestId("openai-credential-state")).toHaveAttribute(
     "data-state",
-    "usable",
+    /^(signed_in|api_key|missing)$/,
   );
-  expect(checks).toBe(1);
+  expect(checks).toBe(0);
   await page.getByTestId("settings-back").click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "ordinary-dir",
   );
-  expect(checks).toBe(1);
+  expect(checks).toBe(0);
   await expect(page.getByTestId("open-conversations")).toBeVisible();
   await page.setViewportSize({ width: 750, height: 720 });
   await expect(

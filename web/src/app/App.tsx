@@ -80,7 +80,6 @@ import { PiModelsProvider } from "./PiModels";
 import {
   type AccountProfile,
   accountSession,
-  type PiState,
   piStatus,
   sessionCSRF,
 } from "./pi";
@@ -179,9 +178,6 @@ export function App() {
   );
   const [refreshKey, setRefreshKey] = useState(0);
   const [piCheckFailed, setPiCheckFailed] = useState(false);
-  const [settingsPiState, setSettingsPiState] = useState<
-    PiState | "checking" | "unavailable"
-  >("checking");
   // Daemon catalog distinguishes browser-started Pi sessions from read-only
   // terminal history; it is not a cookie-scoped conversation lease.
   const [daemonSessions, setDaemonSessions] = useState<Session[]>([]);
@@ -370,7 +366,6 @@ export function App() {
   }, [identity, clearPerson]);
   const openSettings = () => {
     setSettingsFromMenu(true);
-    setSettingsPiState("checking");
     setSettingsReturn(
       isSettingsRoute(location.pathname)
         ? "/workspaces"
@@ -399,28 +394,6 @@ export function App() {
     sessionBinding.current = undefined;
     dispatch(authenticationRequired());
   }, [clearPerson, dispatch]);
-  // Separate from the first-load gate: report the current native credential
-  // state, not the state observed when this browser first authenticated.
-  useEffect(() => {
-    if (
-      !defaultSettingsOpen ||
-      !identity ||
-      (phase !== "authenticated" && phase !== "stale")
-    )
-      return;
-    const controller = new AbortController();
-    setSettingsPiState("checking");
-    void piStatus(controller.signal)
-      .then((state) => {
-        if (controller.signal.aborted) return;
-        if (state === "login") requireLogin();
-        else setSettingsPiState(state);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setSettingsPiState("unavailable");
-      });
-    return () => controller.abort();
-  }, [defaultSettingsOpen, phase, identity, requireLogin]);
   const sessionChanged = useCallback(() => {
     clearPerson(priorIdentity.current);
     sessionBinding.current = undefined;
@@ -1749,7 +1722,6 @@ export function App() {
         onLogout={() => setLogoutPrompt(true)}
         nativeState={snapshot?.auth?.native_github.state}
         nativeLogin={snapshot?.auth?.native_github.login}
-        piState={settingsPiState}
         onPiSignIn={() => navigate("/settings?pi_sign_in=1")}
         modelSelector={
           <PiModelSelector

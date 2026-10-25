@@ -3,11 +3,12 @@ created: 2026-10-25
 updated: 2026-10-25
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 collision: [web/src/components/Account.tsx]
 preparation: ready
+closed: 2026-10-25
 ---
 
 # OpenAI (Pi) settings row says credentials usable when only Claude is signed in
@@ -31,7 +32,7 @@ fact, add it from Pi's native auth state; do not add a separate store.
 
 ## Acceptance Criteria
 
-- [ ] OpenAI row reflects only OpenAI credentials; regression test with a
+- [x] OpenAI row reflects only OpenAI credentials; regression test with a
   Claude-only account.
 
 ## Comments
@@ -39,3 +40,9 @@ fact, add it from Pi's native auth state; do not add a separate store.
 ### 2026-10-25T17:23:00Z · @jari
 
 Jari 2026-10-25 (screenshot ~/attachments/ea8b665e-5c87-4570-b16b-4f9c3b5e08e7, after signing in to OpenAI): the row speaks of Pi ('Pi:n kirjautuminen', 'Pi-tunnukset käytettävissä', 'Kirjaudu Pi:hin uudelleen'); it should speak of the OpenAI / ChatGPT (Codex) sign-in, as the Claude row speaks of the Claude subscription. Pi is the tool, not the account the person signs in to.
+
+## Resolution
+
+### 2026-10-25T17:27:38Z · @issuectl
+
+OpenAI row derived from Pi's own openai-codex/openai credentials; see result.md.

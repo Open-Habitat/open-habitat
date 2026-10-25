@@ -118,11 +118,12 @@ test("@account-settings verified native state, route return and explicit disconn
       .getByRole("heading")
       .and(page.getByTestId("settings-section-yhteydet")),
   ).toBeVisible();
-  await expect(page.getByTestId("pi-credential-state")).toHaveAttribute(
+  // The synthetic native Pi home holds no OpenAI credential.
+  await expect(page.getByTestId("openai-credential-state")).toHaveAttribute(
     "data-state",
-    "usable",
+    "missing",
   );
-  await expect(page.getByTestId("pi-credential-state")).toBeVisible();
+  await expect(page.getByTestId("openai-credential-state")).toBeVisible();
   await page
     .getByRole("link")
     .and(page.getByTestId("settings-ulkoasu"))
@@ -277,19 +278,16 @@ test("@account-settings Pi default model is read from native models and saved", 
   ).toBeVisible();
 });
 
-test("@account-settings Pi credentials change while the page is open; uncertainty is not success", async ({
+test("@account-settings OpenAI sign-in state is read again on each visit; uncertainty is not success", async ({
   page,
 }) => {
   await login(page);
-  await page.route("**/api/v1/onboarding/pi/status", (route) =>
-    route.fulfill({ json: { schema_version: 1, pi: { state: "missing" } } }),
-  );
   await settings(page);
-  await expect(page.getByTestId("pi-credential-state")).toHaveAttribute(
+  await expect(page.getByTestId("openai-credential-state")).toHaveAttribute(
     "data-state",
     "missing",
   );
-  await expect(page.getByTestId("pi-credential-state")).toBeVisible();
+  await expect(page.getByTestId("openai-credential-state")).toBeVisible();
   await page.getByRole("button").and(page.getByTestId("pi-sign-in")).click();
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
@@ -297,62 +295,46 @@ test("@account-settings Pi credentials change while the page is open; uncertaint
   await expect(
     page.getByRole("button").and(page.getByTestId("pi-attempt-start")),
   ).toBeVisible();
-  await page.unrouteAll();
   await page.goto("/workspaces");
   await expect(
     page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
   ).toBeVisible();
-  await page.route("**/api/v1/onboarding/pi/status", (route) =>
-    route.fulfill({ json: { schema_version: 1, pi: { state: "unknown" } } }),
-  );
-  // Client navigation, not a new first-load check: the gate remains intact.
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("account-menu-trigger"))
-    .click();
-  await page
-    .getByRole("menuitem")
-    .and(page.getByTestId("menu-settings"))
-    .click();
-  await page
-    .getByRole("navigation")
-    .and(page.getByTestId("settings-navigation"))
-    .getByRole("link")
-    .and(page.getByTestId("settings-yhteydet"))
-    .click();
-  await expect(page.getByTestId("pi-credential-state")).toHaveAttribute(
-    "data-state",
-    /^(unknown|unavailable)$/,
-  );
-  await expect(page.getByTestId("pi-credential-state")).toBeVisible();
-  await expect(
-    page.getByRole("button").and(page.getByTestId("pi-sign-in")),
-  ).toBeVisible();
-  await page.getByRole("button").and(page.getByTestId("settings-back")).click();
-  await page.unrouteAll();
-  await page.route("**/api/v1/onboarding/pi/status", (route) =>
-    route.fulfill({ status: 502, body: "bad gateway" }),
-  );
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("account-menu-trigger"))
-    .click();
-  await page
-    .getByRole("menuitem")
-    .and(page.getByTestId("menu-settings"))
-    .click();
-  await page
-    .getByRole("navigation")
-    .and(page.getByTestId("settings-navigation"))
-    .getByRole("link")
-    .and(page.getByTestId("settings-yhteydet"))
-    .click();
-  await expect(page.getByTestId("pi-credential-state")).toHaveAttribute(
-    "data-state",
-    /^(unknown|unavailable)$/,
-  );
-  await expect(page.getByTestId("pi-credential-state")).toBeVisible();
-  await expect(page.getByTestId("pi-credential-state")).toBeVisible();
+  for (const failure of [
+    // Outside the contract: a claimed sign-in is not believed.
+    { json: { schema_version: 1, subscription: { present: true } } },
+    { status: 502, body: "bad gateway" },
+  ]) {
+    await page.route("**/api/v1/pi/credentials", (route) =>
+      route.fulfill(failure),
+    );
+    // Client navigation, not a new first-load check.
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("account-menu-trigger"))
+      .click();
+    await page
+      .getByRole("menuitem")
+      .and(page.getByTestId("menu-settings"))
+      .click();
+    await page
+      .getByRole("navigation")
+      .and(page.getByTestId("settings-navigation"))
+      .getByRole("link")
+      .and(page.getByTestId("settings-yhteydet"))
+      .click();
+    await expect(page.getByTestId("openai-credential-state")).toHaveAttribute(
+      "data-state",
+      "unknown",
+    );
+    await expect(
+      page.getByRole("button").and(page.getByTestId("pi-sign-in")),
+    ).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("settings-back"))
+      .click();
+    await page.unrouteAll();
+  }
 });
 
 test("@account-settings direct settings subpage URL cannot bypass initial Pi gate", async ({
@@ -684,10 +666,15 @@ test.describe("credential settings", () => {
     };
     const anthropicKey = `sk-ant-api03-${"A".repeat(86)}_x-AA`;
     const anthropic = await add("anthropic", anthropicKey);
-    // Each provider's row reports only its own key.
+    // Each provider's row reports only its own key. A Claude-only Pi is usable
+    // as a whole, yet its OpenAI sign-in row still says OpenAI is missing.
     await expect(
       page.getByTestId("api-key-row-openai").getByTestId("api-key-state"),
     ).toHaveAttribute("data-present", "false");
+    await expect(page.getByTestId("openai-credential-state")).toHaveAttribute(
+      "data-state",
+      "missing",
+    );
     // Pi's own write made Anthropic the default; the chooser offers its models.
     await page
       .getByRole("link")

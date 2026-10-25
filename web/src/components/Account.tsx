@@ -14,8 +14,8 @@ import { GitIdentity } from "../app/GitIdentity";
 import { IntegrationsSettings } from "../app/IntegrationsSettings";
 import { OnboardingAdministration } from "../app/OnboardingAdministration";
 import { PersonalStorage } from "../app/PersonalStorage";
-import { PiCredentials } from "../app/PiCredentials";
-import type { AccountProfile, PiState } from "../app/pi";
+import { type OpenAIState, PiCredentials } from "../app/PiCredentials";
+import type { AccountProfile } from "../app/pi";
 import { ServerAdministration } from "../app/ServerAdministration";
 import { ServerIntegrationsSettings } from "../app/ServerIntegrationsSettings";
 import { ServerVersionLine } from "../app/ServerVersion";
@@ -254,7 +254,6 @@ export function AccountSettings({
   name,
   nativeState,
   nativeLogin,
-  piState = "checking",
   onPiSignIn,
   modelSelector,
   onBack,
@@ -275,7 +274,6 @@ export function AccountSettings({
   onWorkspacesChanged?: () => void;
   nativeState?: NativeState;
   nativeLogin?: string;
-  piState?: PiState | "checking" | "unavailable";
   onPiSignIn?: () => void;
   modelSelector?: React.ReactNode;
   onBack: () => void;
@@ -314,6 +312,7 @@ export function AccountSettings({
   const [admin, setAdmin] = useState<boolean | null>();
   const [work, setWork] = useState(getWorkPreference);
   const [disconnectNotice, setDisconnectNotice] = useState(false);
+  const [openAI, setOpenAI] = useState<OpenAIState>("checking");
   const heading = useRef<HTMLHeadingElement>(null);
   const navHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -579,28 +578,30 @@ export function AccountSettings({
               <div className="s-lbl">
                 <strong>OpenAI (Pi)</strong>
                 <span className="s-desc">
-                  Pi:n kirjautuminen tai API-avain tällä palvelimella. Tämä ei
-                  vahvista käyttöoikeutta malliin.
+                  Käytä omaa ChatGPT-tilaustasi (Codex). Kirjautuminen tallentuu
+                  vain omalle käyttäjällesi tällä palvelimella.
                 </span>
               </div>
               <div className="s-val">
-                <span data-testid="pi-credential-state" data-state={piState}>
-                  {piState === "usable"
-                    ? "Pi-tunnukset käytettävissä"
-                    : piState === "missing"
-                      ? "Pi-kirjautuminen puuttuu"
-                      : piState === "checking"
-                        ? "Tarkistetaan Pi-tilaa"
-                        : "Pi-tilaa ei voitu vahvistaa"}
+                <span data-testid="openai-credential-state" data-state={openAI}>
+                  {openAI === "signed_in"
+                    ? "ChatGPT-tilaus yhdistetty"
+                    : openAI === "api_key"
+                      ? "Käytössä OpenAI API-avain, ei ChatGPT-tilausta"
+                      : openAI === "missing"
+                        ? "ChatGPT-tilausta ei ole yhdistetty"
+                        : openAI === "checking"
+                          ? "Tarkistetaan OpenAI-kirjautumista"
+                          : "OpenAI-kirjautumista ei voitu vahvistaa"}
                 </span>
                 {onPiSignIn && (
                   <Button
                     size="row"
                     data-testid="pi-sign-in"
                     label={
-                      piState === "missing"
-                        ? "Kirjaudu Pi:hin"
-                        : "Kirjaudu Pi:hin uudelleen"
+                      openAI === "signed_in"
+                        ? "Kirjaudu ChatGPT:hen uudelleen"
+                        : "Kirjaudu ChatGPT:hen"
                     }
                     variant="secondary"
                     onPress={onPiSignIn}
@@ -609,7 +610,7 @@ export function AccountSettings({
               </div>
             </div>
             <ClaudeSignIn csrf={csrf} />
-            <PiCredentials csrf={csrf} />
+            <PiCredentials csrf={csrf} onOpenAI={setOpenAI} />
           </div>
         )}
         {section === "integraatiot" && <IntegrationsSettings csrf={csrf} />}
