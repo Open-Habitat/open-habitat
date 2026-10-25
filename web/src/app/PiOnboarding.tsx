@@ -57,7 +57,9 @@ export function PiOnboarding({
 }: {
   /** What the site offers (ADR 0030); null while it is still being read. */
   offer?: AIOffer | null;
-  onUsable: () => void;
+  /** `claude` when the Claude row signed in; otherwise the ChatGPT sign-in
+   * or a status read made Pi usable. */
+  onUsable: (signedIn?: "claude") => void;
   onLogin: () => void;
   onLogout: () => Promise<void>;
   onBack?: () => void;
@@ -384,7 +386,7 @@ export function PiOnboarding({
                   return (
                     <ClaudeSignIn
                       csrf={bound.current}
-                      onSignedIn={onUsable}
+                      onSignedIn={() => onUsable("claude")}
                       onboarding
                     />
                   );

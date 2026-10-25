@@ -3,11 +3,12 @@ created: 2026-10-25
 updated: 2026-10-25
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 collision: [web/src/components/Account.tsx]
 preparation: ready
+closed: 2026-10-25
 ---
 
 # Focus the signed-in provider's row; start page working dot matches the sidebar

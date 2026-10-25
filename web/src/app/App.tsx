@@ -396,12 +396,22 @@ export function App() {
     dispatch(authenticationRequired());
   }, [clearPerson, dispatch]);
   // Settings focuses its heading on mount; a return from its Pi sign-in puts
-  // focus back on the row that opened it, which now shows the result.
-  const piSignInFocus = useRef(false);
+  // focus on the row that now shows the result: Claude's row when Claude
+  // signed in, otherwise the OpenAI row's button that opened the flow.
+  // Claude's own button stays disabled until its state is read, so its row
+  // takes the focus.
+  const piSignInFocus = useRef<"openai" | "claude">(undefined);
   useEffect(() => {
     if (!piSignInFocus.current || piSignInOpen) return;
-    piSignInFocus.current = false;
-    document.querySelector<HTMLElement>("[data-testid='pi-sign-in']")?.focus();
+    const row = piSignInFocus.current;
+    piSignInFocus.current = undefined;
+    document
+      .querySelector<HTMLElement>(
+        row === "claude"
+          ? "[data-testid='claude-sign-in']"
+          : "[data-testid='pi-sign-in']",
+      )
+      ?.focus();
   }, [piSignInOpen]);
   const sessionChanged = useCallback(() => {
     clearPerson(priorIdentity.current);
@@ -1631,9 +1641,9 @@ export function App() {
       />
     ) : null;
   // A forced Pi sign-in returns to the view that opened it, whether it
-  // finished or the person went back: the settings section with focus on its
-  // OpenAI row, or the conversation whose model sign-in failed.
-  const returnFromPiSignIn = () => {
+  // finished or the person went back: the settings section with focus on the
+  // signed-in provider's row, or the conversation whose model sign-in failed.
+  const returnFromPiSignIn = (signedIn?: "claude") => {
     const conversation = new URLSearchParams(location.search).get(
       "conversation",
     );
@@ -1641,7 +1651,7 @@ export function App() {
       isSettingsRoute(location.pathname) &&
       settingsSection(location.pathname) !== undefined
     ) {
-      piSignInFocus.current = true;
+      piSignInFocus.current = signedIn === "claude" ? "claude" : "openai";
       navigate(location.pathname, { replace: true });
     } else
       navigate(
@@ -1673,15 +1683,15 @@ export function App() {
         skipChooser
         forceSignIn
         onSessionChanged={sessionChanged}
-        onUsable={() => {
+        onUsable={(signedIn) => {
           const conversation = new URLSearchParams(location.search).get(
             "conversation",
           );
           if (conversation) conversationStore?.discardStatus(conversation);
-          returnFromPiSignIn();
+          returnFromPiSignIn(signedIn);
           refresh();
         }}
-        onReturn={returnFromPiSignIn}
+        onReturn={() => returnFromPiSignIn()}
         onLogin={requireLogin}
         onLogout={logout}
       />

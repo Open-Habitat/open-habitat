@@ -316,6 +316,8 @@ export function ClaudeSignIn({
       data-testid="claude-sign-in"
       aria-label="Claude (Pi)"
       className="s-row"
+      // A return from a Claude sign-in opened in Settings focuses this row.
+      tabIndex={-1}
     >
       <div className="s-lbl">
         <strong>Claude (Pi)</strong>

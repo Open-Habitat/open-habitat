@@ -1503,10 +1503,6 @@ details[open] > summary:not([class])::before {
 .ah-status-read-only .ah-status-dot {
   border-style: dashed;
 }
-.ah-status-working .ah-status-dot {
-  background: currentColor;
-  border: 0;
-}
 .ah-status-pill {
   padding: 2px var(--ah-s2);
   border: 1px solid currentColor;
@@ -3456,8 +3452,10 @@ details[open] > summary:not([class])::before {
   text-align: center;
   color: var(--ah-muted);
 }
-/* Working is the draft's accent dot that pulses; with reduced motion it
-   stands still inside a ring, so it still differs from Uusi vastaus. */
+/* Työskentelee is the draft's accent dot that pulses: one look for the
+   sidebar, start page, return view and conversation. With reduced motion it
+   stands still inside a ring, so it still differs from Uusi vastaus. A new
+   reply's mark wins on the start page. */
 .ah-sidebar-agent-row .ah-nav-working {
   display: inline-grid;
   place-items: center;
@@ -3467,11 +3465,19 @@ details[open] > summary:not([class])::before {
   content: "";
   width: 8px;
   height: 8px;
+}
+.ah-status-working .ah-status-dot,
+.ah-home-dot-working:not(.ah-home-0),
+.ah-sidebar-agent-row .ah-nav-working::before {
+  box-sizing: border-box;
+  border: 0;
   border-radius: 50%;
   background: var(--ah-accent);
   animation: ah-pulse var(--ah-pulse);
 }
 @media (prefers-reduced-motion: reduce) {
+  .ah-status-working .ah-status-dot,
+  .ah-home-dot-working:not(.ah-home-0),
   .ah-sidebar-agent-row .ah-nav-working::before {
     box-shadow: 0 0 0 2px var(--ah-accent-line);
   }

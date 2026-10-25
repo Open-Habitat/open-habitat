@@ -90,7 +90,8 @@ export function GitHubOnboarding({
   onReturn,
   clones,
 }: {
-  onUsable: () => void;
+  /** `claude` when Pi's Claude row signed in (see PiOnboarding). */
+  onUsable: (signedIn?: "claude") => void;
   /** A forced sign-in's way back to the view that opened it. */
   onReturn?: () => void;
   /** This session's clone jobs and queue; Continue adds the selection to it. */
@@ -444,16 +445,16 @@ export function GitHubOnboarding({
   // the route was walked; passing the route's last step finishes it in the
   // person's own state, so later loads go straight to the workspaces.
   const seeded = !skipChooser && site?.ai_key_seeded === true;
-  const finish = () => {
+  const finish = (signedIn?: "claude") => {
     const csrf = bound.current;
-    if (!seeded || !csrf) return onUsable();
+    if (!seeded || !csrf) return onUsable(signedIn);
     // A lost or refused mark shows the route again on the next load. A
     // session change while it is written belongs to the next person.
     const n = generation.current;
     void finishFirstRoute(csrf)
       .catch(() => undefined)
       .then(() => {
-        if (current(n) && bound.current === csrf) onUsable();
+        if (current(n) && bound.current === csrf) onUsable(signedIn);
       });
   };
   const finishRef = useRef(finish);

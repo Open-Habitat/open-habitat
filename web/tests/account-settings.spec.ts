@@ -380,6 +380,60 @@ test("@account-settings Pi sign-in from settings returns to the row that opened 
   await expect(row).toBeFocused();
 });
 
+test("@account-settings Claude sign-in from settings returns to Claude's row", async ({
+  page,
+}) => {
+  await login(page);
+  const attempt = "20261025T120000.000000001";
+  let phase: "missing" | "code" | "completed" = "missing";
+  await page.route("**/api/v1/pi/claude-login", async (route) => {
+    const method = route.request().method();
+    if (method === "POST") phase = "code";
+    if (method === "PUT") phase = "completed";
+    await route.fulfill({
+      json: {
+        schema_version: 1,
+        state: phase,
+        ...(phase !== "missing" ? { attempt_id: attempt } : {}),
+        ...(phase === "code"
+          ? {
+              verification_uri:
+                "https://claude.com/cai/oauth/authorize?code=true&state=synthetic",
+            }
+          : {}),
+      },
+    });
+  });
+  await settings(page);
+  await expect(page).toHaveURL(/\/settings\/connections$/);
+  // The OpenAI row opens the forced sign-in; the person chooses Claude there.
+  await page.getByRole("button").and(page.getByTestId("pi-sign-in")).click();
+  await expect(
+    page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
+  ).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("ai-option-claude-choose"))
+    .click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("claude-sign-in-start"))
+    .click();
+  await page.getByTestId("claude-code-input").fill("synthetic-code#state");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("claude-code-confirm"))
+    .click();
+  await expect(page).toHaveURL(/\/settings\/connections$/);
+  await expect(
+    page.getByRole("region").and(page.getByTestId("claude-sign-in")),
+  ).toBeFocused();
+  await expect(page.getByTestId("claude-login-state")).toHaveAttribute(
+    "data-state",
+    "completed",
+  );
+});
+
 test("@account-settings direct settings subpage URL cannot bypass initial Pi gate", async ({
   page,
 }) => {

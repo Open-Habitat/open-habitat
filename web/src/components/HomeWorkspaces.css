@@ -231,11 +231,8 @@
   border-left: 3px solid var(--ah-accent);
   padding-left: 12px;
 }
-.ah-home-dot-working {
-  border-color: var(--ah-accent);
-  animation: ah-home-blink 1.4s ease-in-out infinite;
-}
-/* The shared background-wait dot (components.css); new reply still wins. */
+/* The shared background-wait dot (components.css); new reply still wins.
+   The working dot is components.css's own. */
 .ah-home-dot-waiting_background:not(.ah-home-0) {
   border: 1.5px solid var(--ah-accent);
   background: radial-gradient(
@@ -253,16 +250,6 @@
 .ah-home-card-waiting_background .ah-home-live {
   background: var(--ah-accent-soft);
   color: var(--ah-accent-ink);
-}
-@keyframes ah-home-blink {
-  50% {
-    opacity: 0.2;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ah-home-dot-working {
-    animation: none;
-  }
 }
 .ah-home-card-head .ah-home-archive:disabled {
   background: transparent;
