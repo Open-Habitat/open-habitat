@@ -2,12 +2,13 @@
 created: 2026-10-25
 updated: 2026-10-25
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 provenance: other
 lane: unlaned
 collision: [internal/gateway/administration]
+closed: 2026-10-25
 ---
 
 # Declared administrator is not an administrator after first sign-in
@@ -22,5 +23,5 @@ A declared administrator gets the role when their account is bound at first sign
 
 ## Acceptance Criteria
 
-- [ ] Fresh install: the declared administrator's first sign-in shows Palvelimen ylläpito.
-- [ ] An undeclared person never gains the role; existing installations unaffected.
+- [x] Fresh install: the declared administrator's first sign-in shows Palvelimen ylläpito.
+- [x] An undeclared person never gains the role; existing installations unaffected.
