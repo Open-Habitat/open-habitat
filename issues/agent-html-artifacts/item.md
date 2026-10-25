@@ -6,6 +6,9 @@ reporter: jari
 status: open
 priority: normal
 related: ['@habitat-seat-commands']
+lane: html-views
+lane_seq: 1
+collision: [web/src/app/]
 ---
 
 # Agent HTML artifacts and web views: show, open, share

@@ -5,6 +5,8 @@ type: improvement
 reporter: jari
 status: open
 priority: normal
+lane: proto-settings
+lane_seq: 1
 ---
 
 # Prototype grouping of AI, code-host and data integrations in settings
