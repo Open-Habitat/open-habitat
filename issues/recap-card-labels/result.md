@@ -20,6 +20,13 @@ Evidence: `./scripts/test-focused.sh --area web` (742 tests), the daemon's
 recap tests under `-race -count=5`, and the touched browser specs
 (`lab-conversation`, `lab-workspace-page`, `lab-composer-focus`,
 `process-tray`, `browser-conversation`, `phone-composer-keyboard`) green.
+One whole browser-suite run: 374 passed. The full clean gate
+(`ci-local.sh --clean`) failed only on `browser-conversation.spec.ts`'s
+"a receipt lost on daemon restart remains unknown" at load average 20; that
+untouched send-receipt case passed in the whole-suite run and twice more on
+its own, so no receipt was written. Review: a focused self-review, because
+the change is browser presentation only, with no contract, session or
+daemon-state change.
 Not covered by a host test: the manual recap's request card (below), because
 the synthetic host always produces an automatic recap first.
 

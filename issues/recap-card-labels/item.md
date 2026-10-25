@@ -2,12 +2,13 @@
 created: 2026-10-25
 updated: 2026-10-25
 type: improvement
-status: open
+status: done
 priority: normal
 preparation: ready
 provenance: chat
 lane: unlaned
 collision: [web/src/components/RecapCard]
+closed: 2026-10-25
 ---
 
 # Recap card: drop the 'luotu automaattisesti' and 'uusia viestejä' labels; refresh outdated automatic recaps
