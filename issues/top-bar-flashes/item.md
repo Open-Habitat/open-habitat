@@ -2,12 +2,18 @@
 created: 2026-10-25
 updated: 2026-10-25
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 provenance: chat
 lane: unlaned
 collision: [web/src/app/]
+closed: 2026-10-25
+commits:
+- hash: 73cd268f
+  summary: Keep idle event streams open over HTTP/2 and stop reconnect flashes
+- hash: a952eb0d
+  summary: Announce only dropped streams the probe cannot recover
 ---
 
 # A top bar flashes a couple of times a minute on Birch
