@@ -35,7 +35,7 @@ function Example({
               connectionLabel="Yhdistetty"
               connectionTone="success"
               runningCount={0}
-              attentionCount={0}
+              unreadReplyHrefs={[]}
               filterValue=""
               resultSummary="1 työtila"
               listState="ready"

@@ -102,7 +102,11 @@ function CatalogContents({
       connectionLabel={
         scenario === "unhappy" ? "Tieto vanhentunut" : "Yhteys toimii"
       }
-      attentionCount={scenario === "unhappy" ? 2 : 0}
+      unreadReplyHrefs={
+        scenario === "unhappy"
+          ? ["/agents/ag_example01", "/agents/ag_example02"]
+          : []
+      }
       filterValue={filter}
       resultSummary="2 agenttia"
       listState={scenario === "unhappy" ? "stale" : "ready"}

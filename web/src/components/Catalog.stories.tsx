@@ -236,7 +236,7 @@ function NavigationFixture() {
       collapsed={false}
       serverLabel="alder.example — Open Habitat"
       connectionLabel="Yhteys toimii"
-      attentionCount={2}
+      unreadReplyHrefs={["/agents/ag_example01", "/agents/ag_example02"]}
       filterValue={filter}
       resultSummary="2 agenttia"
       listState="ready"

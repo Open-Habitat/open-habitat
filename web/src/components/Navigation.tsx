@@ -613,7 +613,7 @@ export function WorkspaceRail({
   serverLabel,
   connectionLabel,
   connectionTone,
-  attentionCount,
+  unreadReplyHrefs = [],
   homeCurrent = false,
   runningCount,
   filterValue,
@@ -633,7 +633,7 @@ export function WorkspaceRail({
   serverLabel: string;
   connectionLabel: string;
   connectionTone?: Tone;
-  attentionCount?: number;
+  unreadReplyHrefs?: string[];
   homeCurrent?: boolean;
   runningCount?: number;
   filterValue: string;
@@ -705,8 +705,23 @@ export function WorkspaceRail({
             <Badge label={`${runningCount} käynnissä`} tone="info" />
           ) : null}
         </LinkRow>
-        {attentionCount ? (
-          <Badge label="Uutta" tone="warning" count={attentionCount} />
+        {unreadReplyHrefs.length ? (
+          <LinkRow
+            href={unreadReplyHrefs[0]}
+            data-testid="unread-replies"
+            aria-label={`${unreadReplyHrefs.length} ${unreadReplyHrefs.length === 1 ? "uusi vastaus" : "uutta vastausta"}`}
+            kind="home"
+          >
+            <span aria-hidden="true">●</span>
+            <span>
+              {collapsed
+                ? unreadReplyHrefs.length
+                : unreadReplyHrefs.length === 1
+                  ? "1 uusi vastaus"
+                  : `${unreadReplyHrefs.length} uutta vastausta`}
+            </span>
+            <Icon name="forward" />
+          </LinkRow>
         ) : null}
         {collapsed ? null : (
           <>

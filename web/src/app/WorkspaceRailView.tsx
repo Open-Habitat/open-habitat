@@ -25,6 +25,7 @@ import {
   worktreeMerged,
 } from "./snapshot";
 import type { RootState } from "./store";
+import { unreadReplies } from "./unreadReplies";
 
 export function sourceLabel(state: string) {
   return (
@@ -205,9 +206,12 @@ export function WorkspaceRailView({
             ).length
           : undefined
       }
-      attentionCount={
-        [...metadata.attention.values()].filter((v) => v === "new").length
-      }
+      unreadReplyHrefs={unreadReplies(
+        agents,
+        metadata.attention,
+        daemonSessions,
+        snapshot.agents,
+      )}
       filterValue={filter}
       resultSummary={`${matches.length} ${source === "confirmed" ? "työtilaa" : "löydettyä työtilaa"}`}
       summaryAction={undefined}

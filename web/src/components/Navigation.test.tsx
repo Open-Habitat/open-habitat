@@ -2,7 +2,12 @@ import { fireEvent, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { agentPresentation } from "./agentPresentation";
-import { AgentHeader, AgentNavItem, WorkspaceSection } from "./Navigation";
+import {
+  AgentHeader,
+  AgentNavItem,
+  WorkspaceRail,
+  WorkspaceSection,
+} from "./Navigation";
 
 const longTitle =
   "Keskustelu pitkästä aiheesta ja sen eri vaiheista sekä kaikista tähän liittyvistä muutoksista";
@@ -272,5 +277,36 @@ describe("rail activity marks", () => {
     expect(
       mark?.querySelectorAll(":scope > path, :scope > circle"),
     ).toHaveLength(2);
+  });
+});
+
+describe("unread reply link", () => {
+  it("opens the next unread destination and disappears when all are seen", () => {
+    const draw = (hrefs: string[]) => (
+      <MemoryRouter>
+        <WorkspaceRail
+          collapsed={false}
+          serverLabel="example.test"
+          connectionLabel="Yhdistetty"
+          unreadReplyHrefs={hrefs}
+          filterValue=""
+          resultSummary=""
+          listState="ready"
+          onToggle={() => {}}
+          onFilter={() => {}}
+          onRefresh={() => {}}
+        />
+      </MemoryRouter>
+    );
+    const view = render(draw(["/agents/first", "/agents/second"]));
+    expect(view.getByTestId("unread-replies").getAttribute("href")).toBe(
+      "/agents/first",
+    );
+    view.rerender(draw(["/agents/second"]));
+    expect(view.getByTestId("unread-replies").getAttribute("href")).toBe(
+      "/agents/second",
+    );
+    view.rerender(draw([]));
+    expect(view.queryByTestId("unread-replies")).toBeNull();
   });
 });

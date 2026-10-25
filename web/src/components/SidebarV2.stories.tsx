@@ -64,7 +64,7 @@ function Example({
               connectionTone="success"
               homeCurrent
               runningCount={1}
-              attentionCount={1}
+              unreadReplyHrefs={["/agents/ag_example01"]}
               filterValue=""
               resultSummary="1 työtila"
               listState="ready"
