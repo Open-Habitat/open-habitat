@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: unlaned
-preparation: ready
+preparation: pending
 ---
 
 # Upgrades that do not kill running agent processes
@@ -29,5 +29,5 @@ Verify the current behaviour first: start a long-lived child from a conversation
 
 ## Acceptance Criteria
 
-- [ ] The current behaviour is verified on the test server (which processes die on upgrade, with evidence).
+- [x] The current behaviour is verified on the test server (which processes die on upgrade, with evidence): [research.md](research.md), section 2.
 - [ ] A recommendation with options, decided by Jari (ADR), followed by implementation issues.
