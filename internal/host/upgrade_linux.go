@@ -98,6 +98,12 @@ func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error)
 			p.Approvable = false
 		}
 	}
+	// A release upgrade publishes no login shells; a changed declaration is
+	// host apply's, before or after the transition.
+	if shell, subjects := s.LoginShellPolicy(); !provision.LoginShellsPublished(ctx, shell, subjects) {
+		p.Checks = append(p.Checks, Check{"upgrade.login_shell", "fail", "login_shell_not_applied"})
+		p.Approvable = false
+	}
 	serving := s
 	serving.Release = old.Release
 	if e = verifyServingPredecessor(ctx, serving, predecessor); e != nil {

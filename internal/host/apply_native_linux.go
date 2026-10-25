@@ -718,6 +718,9 @@ func (n *nativeApply) verifyStructure(ctx context.Context, settings bool) error 
 	if !provision.IntegrationSetupPublished(ctx, s.BrowserSetup()) {
 		return ErrNativeApply
 	}
+	if shell, subjects := s.LoginShellPolicy(); !provision.LoginShellsPublished(ctx, shell, subjects) {
+		return ErrNativeApply
+	}
 	policies, policyErr := nativePreparePolicies(ctx, s)
 	if policyErr != nil || !policiesMatch("/", policies, 0) || sessionPolicyReady(ctx) != nil {
 		return ErrNativeApply

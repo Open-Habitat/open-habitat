@@ -18,6 +18,7 @@ func TestSiteSchemaDrift(t *testing.T) {
 	base["gateway"].(map[string]any)["oauth_callback"] = "https://habitat.other.test/auth/github/callback"
 	base["gateway"].(map[string]any)["origin_ca_file"] = "/etc/open-habitat/ca.pem"
 	base["integrations"] = map[string]any{"browser_setup": false}
+	base["identities"].(map[string]any)["login_shell"] = map[string]any{"shell": "/bin/bash", "subjects": []any{"123456"}}
 	base["profiles"] = []any{"core", "editor", "integrations"}
 	base["editor"] = map[string]any{"origin_template": "https://oh-code-*.example.org"}
 	var cases []json.RawMessage
@@ -101,6 +102,12 @@ func TestSiteSchemaDrift(t *testing.T) {
 	for _, v := range []string{"https://oh-code-*.example.org", "https://*.example.org", "https://code-{identity}.example.org", "https://code.example.org", "https://code-*.example.org/", "https://code-*.example.org:443", "https://verylongcode-*.example.org", "https://code.*.example.org", "http://code-*.example.org", "https://code-*.example.org?", "https://code-*.example.org\n"} {
 		change("editor.origin_template", v)
 	}
+	for _, v := range []string{"/bin/bash", "/usr/bin/zsh", "/opt/fish-3.7/bin/fish", "bin/bash", "/bin/bash/", "//bin/bash", "/bin/../bin/bash", "/bin/./bash", "/usr/sbin/nologin", "/sbin/nologin", "/bin/false", "/usr/bin/false", "/bin/nologin.sh", "/bin/ba sh", "/bin/ba:sh", "/bin/bash\n", "/" + strings.Repeat("a", 127), "/" + strings.Repeat("a", 128)} {
+		change("identities.login_shell.shell", v)
+	}
+	for _, v := range [][]any{{}, {"123456", "123456"}, {"0123456"}} {
+		change("identities.login_shell.subjects", v)
+	}
 	for _, v := range [][]any{{"core", "editor"}, {"integrations", "editor"}, {"editor", "integrations", "core"}} {
 		change("profiles", v)
 	}
@@ -120,6 +127,7 @@ func TestSiteSchemaDrift(t *testing.T) {
 	change("gateway.oauth_secret_file", "/etc/../secret")
 	change("identities.uid_max", 37000)
 	change("gateway.uid", 32000)
+	change("identities.login_shell.subjects", []any{"654321"})
 	payload, _ := json.Marshal(cases)
 	cmd := exec.Command("python3", "-c", `
 import json,sys
@@ -144,11 +152,16 @@ print(json.dumps([v.is_valid(c) for c in json.load(sys.stdin)]))
 	for i, b := range cases {
 		_, e := ParseSite(b)
 		if i >= runtimeOnlyStart {
-			wantPaths := []string{"$.gateway.uid", "$.gateway.uid", "$.identities.admission[0]", "$.gateway.origin", "$.gateway.origin", "$.gateway.oauth_callback", "$.gateway.oauth_secret_file", "$.identities.uid_max", "$.gateway.uid"}
+			wantPaths := []string{"$.gateway.uid", "$.gateway.uid", "$.identities.admission[0]", "$.gateway.origin", "$.gateway.origin", "$.gateway.oauth_callback", "$.gateway.oauth_secret_file", "$.identities.uid_max", "$.gateway.uid", "$.identities.login_shell.subjects[0]"}
 			se, ok := e.(*SiteError)
 			if !accepted[i] || !ok || se.Path != wantPaths[i-runtimeOnlyStart] {
 				t.Errorf("declared runtime-only boundary changed case %d: schema=%v parser=%v", i, accepted[i], e)
 			}
+			continue
+		}
+		// The schema cannot relate login_shell.subjects to admission, so a
+		// mutation that empties admission is refused only by the parser.
+		if se, ok := e.(*SiteError); ok && accepted[i] && strings.HasPrefix(se.Path, "$.identities.login_shell.subjects[") && se.Rule == "must also be listed in identities.admission" {
 			continue
 		}
 		if (e == nil) != accepted[i] {

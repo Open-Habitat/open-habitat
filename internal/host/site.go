@@ -13,10 +13,13 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/Open-Habitat/open-habitat/internal/provision"
 )
 
 var ErrSite = errors.New("invalid_site")
@@ -57,6 +60,25 @@ type Identities struct {
 	// people beside admission (ADR 0030). Off by default; host apply
 	// converges only the switch and admission, never the runtime entries.
 	RuntimeAdmission bool `json:"runtime_admission,omitempty"`
+	// LoginShell gives the named people's accounts an interactive shell, so
+	// SSH reaches the same Unix user as the browser. Omitted, every account
+	// keeps nologin. Host apply publishes it to the broker.
+	LoginShell *LoginShell `json:"login_shell,omitempty"`
+}
+
+// LoginShell names operator-admitted GitHub subjects whose accounts get Shell.
+type LoginShell struct {
+	Shell    string   `json:"shell"`
+	Subjects []string `json:"subjects"`
+}
+
+// LoginShellPolicy is the declaration as the broker takes it: no shell and
+// no subjects when the site declares none.
+func (s Site) LoginShellPolicy() (string, []string) {
+	if s.Identities.LoginShell == nil {
+		return "", []string{}
+	}
+	return s.Identities.LoginShell.Shell, s.Identities.LoginShell.Subjects
 }
 
 // Storage declares the ext4 filesystem holding /home. With EnforceUserQuota
@@ -133,6 +155,9 @@ func ParseSite(b []byte) (Site, error) {
 	}
 	sort.Strings(s.Identities.Admission)
 	sort.Strings(s.Identities.Administrators)
+	if s.Identities.LoginShell != nil {
+		sort.Strings(s.Identities.LoginShell.Subjects)
+	}
 	sort.Strings(s.Profiles)
 	return s, nil
 }
@@ -356,6 +381,27 @@ func (s Site) Validate() error {
 			n, e := strconv.ParseUint(id, 10, 64)
 			if !subjectRE.MatchString(id) || e != nil || n == 0 || seen[id] {
 				return siteError(fmt.Sprintf("%s[%d]", ids.path, i), "require unique canonical nonzero uint64 subject")
+			}
+			seen[id] = true
+		}
+	}
+	if ls := p.LoginShell; ls != nil {
+		if !provision.ValidLoginShell(ls.Shell) {
+			return siteError("$.identities.login_shell.shell", "require canonical absolute path of at most 128 characters from [A-Za-z0-9._+-] components, not nologin or false")
+		}
+		if ls.Subjects == nil || len(ls.Subjects) == 0 || len(ls.Subjects) > 128 {
+			return siteError("$.identities.login_shell.subjects", "require array of 1..128 subjects")
+		}
+		seen := map[string]bool{}
+		for i, id := range ls.Subjects {
+			n, e := strconv.ParseUint(id, 10, 64)
+			if !subjectRE.MatchString(id) || e != nil || n == 0 || seen[id] {
+				return siteError(fmt.Sprintf("$.identities.login_shell.subjects[%d]", i), "require unique canonical nonzero uint64 subject")
+			}
+			// Withdrawing admission must also close SSH, so only an
+			// operator-admitted person can have a login shell.
+			if !slices.Contains(p.Admission, id) {
+				return siteError(fmt.Sprintf("$.identities.login_shell.subjects[%d]", i), "must also be listed in identities.admission")
 			}
 			seen[id] = true
 		}

@@ -107,6 +107,10 @@ The packages divide the work as follows.
   The broker learns the storage mode only from root's installed storage
   policy, never from the gateway or a request; an unreadable policy stops it
   rather than dropping limits.
+  Likewise an account's login shell comes only from root's login-shell
+  declaration, which host apply publishes; no request field, gateway or
+  daemon may choose or change it, and a shell that differs from the
+  declaration is drift, not something to adopt.
   Existing or partial per-user drift is refused, never repaired; the installer
   must never keep a separate binding/ACL identity ledger.
 - `transport/` carries the one-time GitHub token from gateway to daemon over

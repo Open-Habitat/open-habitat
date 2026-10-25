@@ -9,7 +9,7 @@ with tempfile.TemporaryDirectory(prefix='oh-admission-',dir='/var/tmp') as d:
  if len(programs)!=2:raise RuntimeError('missing guest program')
  for f in programs:compile(base64.b64decode(f['content']).decode(),f['path'],'exec')
 validator=(repo/'scripts/vm-test.sh').read_text().split("<<'RUNTIME_ADMISSION_CHECK'\n",1)[1].split('\nRUNTIME_ADMISSION_CHECK',1)[0]
-proof={'status':'passed','scope':'host-runtime-admission','distinct_uids':True,'gateway_uid_only':True,'operator_protected':True,'withdraw_keeps_account':True,'restart_closed':True,'restore_rebuilds_runtime':True,'restore_same_uid':True,'never_bound_clean':True,'switch_off_refused':True,'pid1':'systemd'}
+proof={'status':'passed','scope':'host-runtime-admission','login_shell':True,'distinct_uids':True,'gateway_uid_only':True,'operator_protected':True,'withdraw_keeps_account':True,'restart_closed':True,'restore_rebuilds_runtime':True,'restore_same_uid':True,'never_bound_clean':True,'switch_off_refused':True,'pid1':'systemd'}
 for opt in ([],['-O']):
  def accepts(p):return subprocess.run(['python3']+opt+['-c',validator,json.dumps(p)]).returncode==0
  if not accepts(proof):raise RuntimeError('valid proof rejected')

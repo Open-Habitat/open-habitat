@@ -26,7 +26,7 @@ podman run --rm --network none \
     /opt/bootguard.test -test.v
     HOST_INIT_UID_CONTAINER=1 /opt/host-installation.test -test.run "^Test(Release.*|Upgrade.*|Operation(DistinctUIDs|LockAndInterruptedPhase|IncompleteAtomicWrite|InterruptedBeginDoesNotCreateReceipts|SplitPublicationAtEveryPhase)|Apply.*|Gateway.*|Prepare.*|Inspection.*|HomeObservation.*|Storage.*|PlanAdmission.*|ReferenceCodes.*)$" -test.v
     HOST_INIT_UID_CONTAINER=1 /opt/cli-installation.test -test.run "^TestHost" -test.v
-    /opt/provision-installation.test -test.run "^Test(Initialize|PublishAdmission|CompleteOnly|CompleteAdmission)" -test.v
+    HOST_INIT_UID_CONTAINER=1 /opt/provision-installation.test -test.run "^Test(Initialize|PublishAdmission|CompleteOnly|CompleteAdmission|LoginShell)" -test.v
   '
 # A server with a separate /var (birch's layout): /var/lib/open-habitat is its
 # own filesystem, so generations must stage and publish within /opt.

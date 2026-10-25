@@ -27,10 +27,25 @@ import (
 type LinuxHostExecutor struct {
 	GatewayUID, GatewayGID uint32
 	run                    func(context.Context, string, ...string) ([]byte, error)
+	// shells is root's login-shell declaration, read afresh for every
+	// account check so a host apply takes effect without a broker restart.
+	shells func() (loginShellFile, error)
 }
 
 func NewLinuxHostExecutor(gatewayUID, gatewayGID uint32) *LinuxHostExecutor {
-	return &LinuxHostExecutor{GatewayUID: gatewayUID, GatewayGID: gatewayGID, run: linuxCommand}
+	return &LinuxHostExecutor{GatewayUID: gatewayUID, GatewayGID: gatewayGID, run: linuxCommand, shells: func() (loginShellFile, error) { return readLoginShells(brokerState, 0) }}
+}
+
+// loginShell is the passwd shell subject id's account must have.
+func (e *LinuxHostExecutor) loginShell(id string) (string, error) {
+	if e == nil || e.shells == nil {
+		return "", ErrInvalid
+	}
+	f, err := e.shells()
+	if err != nil || !f.valid() {
+		return "", ErrInvalid
+	}
+	return f.shellFor(id), nil
 }
 
 // startupProbes marks the context of broker startup verification. Startup runs
@@ -327,6 +342,10 @@ func (e *LinuxHostExecutor) account(ctx context.Context, i ExecutorIdentity) err
 	if err != nil || !ok {
 		return ErrInvalid
 	}
+	shell, err := e.loginShell(i.id)
+	if err != nil {
+		return ErrInvalid
+	}
 	if _, err = e.command(ctx, groupadd, "--gid", number(i.uid), "--", i.username); err != nil {
 		return ErrInvalid
 	}
@@ -334,41 +353,58 @@ func (e *LinuxHostExecutor) account(ctx context.Context, i ExecutorIdentity) err
 		return ErrInvalid
 	}
 	// Never let useradd create the home: it is a separate journal phase.
-	_, err = e.command(ctx, useradd, "--no-create-home", "--no-user-group", "--gid", number(i.uid), "--uid", number(i.uid), "--home-dir", filepath.Join(homeBase, i.username), "--shell", "/usr/sbin/nologin", "--", i.username)
+	_, err = e.command(ctx, useradd, "--no-create-home", "--no-user-group", "--gid", number(i.uid), "--uid", number(i.uid), "--home-dir", filepath.Join(homeBase, i.username), "--shell", shell, "--", i.username)
 	if err != nil {
 		return ErrInvalid
 	}
 	return ctx.Err()
 }
 func (e *LinuxHostExecutor) identity(ctx context.Context, i ExecutorIdentity) error {
-	if i.provider != "github" || !numericID(i.id) || !username(i.username) || i.uid < 1000 || i.uid > 60000 || e == nil || e.GatewayUID == 0 || e.GatewayGID == 0 || i.uid == e.GatewayUID || i.uid == e.GatewayGID {
+	want, err := e.loginShell(i.id)
+	if err != nil {
 		return ErrInvalid
+	}
+	have, err := e.accountRecord(ctx, i)
+	if err != nil || have != want {
+		return ErrInvalid
+	}
+	return nil
+}
+
+// accountRecord checks every NSS field of the committed identity except the
+// login shell, and returns that shell for the caller to judge.
+func (e *LinuxHostExecutor) accountRecord(ctx context.Context, i ExecutorIdentity) (string, error) {
+	if i.provider != "github" || !numericID(i.id) || !username(i.username) || i.uid < 1000 || i.uid > 60000 || e == nil || e.GatewayUID == 0 || e.GatewayGID == 0 || i.uid == e.GatewayUID || i.uid == e.GatewayGID {
+		return "", ErrInvalid
 	}
 	u, ok, err := e.lookup(ctx, "passwd", i.username)
 	if err != nil || !ok {
-		return ErrInvalid
+		return "", ErrInvalid
 	}
 	parts := strings.Split(u, ":")
-	if len(parts) != 7 || parts[0] != i.username || parts[2] != number(i.uid) || parts[3] != number(i.uid) || parts[5] != filepath.Join(homeBase, i.username) || parts[6] != "/usr/sbin/nologin" {
-		return ErrInvalid
+	if len(parts) != 7 || parts[0] != i.username || parts[2] != number(i.uid) || parts[3] != number(i.uid) || parts[5] != filepath.Join(homeBase, i.username) {
+		return "", ErrInvalid
 	}
 	byID, ok, err := e.lookup(ctx, "passwd", number(i.uid))
 	if err != nil || !ok || byID != u {
-		return ErrInvalid
+		return "", ErrInvalid
 	}
 	g, ok, err := e.lookup(ctx, "group", i.username)
 	if err != nil || !ok {
-		return ErrInvalid
+		return "", ErrInvalid
 	}
 	fields := strings.Split(g, ":")
 	if len(fields) != 4 || fields[0] != i.username || fields[2] != number(i.uid) || fields[3] != "" {
-		return ErrInvalid
+		return "", ErrInvalid
 	}
 	byID, ok, err = e.lookup(ctx, "group", number(i.uid))
 	if err != nil || !ok || byID != g {
-		return ErrInvalid
+		return "", ErrInvalid
 	}
-	return e.noSupplementaryGroups(ctx, i.username)
+	if e.noSupplementaryGroups(ctx, i.username) != nil {
+		return "", ErrInvalid
+	}
+	return parts[6], nil
 }
 func (e *LinuxHostExecutor) config(i ExecutorIdentity) ([]byte, error) {
 	if e.GatewayUID == 0 || e.GatewayGID == 0 || uint64(i.uid) > uint64(^uint(0)>>1) {

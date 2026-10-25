@@ -261,7 +261,7 @@ if [[ $scenario == host-runtime-admission ]]; then
 import json,sys
 try:
  p=json.loads(sys.argv[1])
- if p != {'status':'passed','scope':'host-runtime-admission','distinct_uids':True,'gateway_uid_only':True,'operator_protected':True,'withdraw_keeps_account':True,'restart_closed':True,'restore_rebuilds_runtime':True,'restore_same_uid':True,'never_bound_clean':True,'switch_off_refused':True,'pid1':'systemd'}:sys.exit(1)
+ if p != {'status':'passed','scope':'host-runtime-admission','login_shell':True,'distinct_uids':True,'gateway_uid_only':True,'operator_protected':True,'withdraw_keeps_account':True,'restart_closed':True,'restore_rebuilds_runtime':True,'restore_same_uid':True,'never_bound_clean':True,'switch_off_refused':True,'pid1':'systemd'}:sys.exit(1)
 except Exception:sys.exit(1)
 RUNTIME_ADMISSION_CHECK
   then fail runtime_admission_proof_failed "Runtime admission guest failed (VM exit $vm_status; serial=$cache/last-host-runtime-admission.log)" 2; fi

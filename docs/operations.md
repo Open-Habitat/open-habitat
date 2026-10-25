@@ -885,6 +885,53 @@ A deferred administrator holds the role from that first sign-in. The person's
 native Pi/provider authorization remains a separate first-use step. A redirect
 from `/auth/github/start` alone proves neither callback nor sign-in.
 
+### SSH login into a Habitat account
+
+Every account the broker creates has the shell `/usr/sbin/nologin`, so the
+browser is the only way in. When a person should also reach the same Unix
+user over SSH, for example the owner of a personal installation, name them
+in the site:
+
+```json
+"identities": {
+  "admission": ["123456"],
+  "login_shell": {"shell": "/bin/bash", "subjects": ["123456"]}
+}
+```
+
+Each subject must also be in `identities.admission`, so that removing
+someone's admission in the same file also removes their shell. The shell
+must be listed in `/etc/shells` and be a root-owned executable. Host apply
+publishes the declaration to the broker and then changes existing accounts
+with `usermod`: a newly named person's account gets the shell, and an
+account whose subject is removed goes back to `nologin`. That holds once
+apply has completed: an apply that fails or is interrupted on the way may
+leave a removed person's shell in place, so rerun it until it succeeds
+before relying on SSH being closed. A person who signs
+in for the first time afterwards is created with the shell their entry
+says. The broker accepts exactly the declared shell for a named account and
+`nologin` for every other; a shell changed by hand, or by `chsh`, is account
+drift that stops broker startup until apply or root puts it back.
+
+The product sets only the shell. SSH keys, `sshd` access rules and `sudo`
+are root's to manage outside Open Habitat. Grant `sudo` with a rule that
+names the user in `/etc/sudoers.d/`, not by adding the account to the
+`sudo` group: the broker refuses any Habitat account with a supplementary
+group, and such an account stops broker startup. The accounts have no
+password; `sshd` with `UsePAM yes` (Ubuntu's default) accepts key login
+for them, while `UsePAM no` treats them as locked. Know
+what that combination means: browser sessions, the browser shell and every
+agent run as that same Unix user, so if that account can use `sudo`, anyone
+or anything that reaches it through the browser can become root, exactly as
+an SSH session as that user could. Declare it only for a person whose
+browser access you would trust with that.
+
+A release upgrade publishes no declaration. Change `login_shell` with host
+apply, before or after the upgrade; an upgrade plan whose site declares a
+change that apply has not published reports `upgrade.login_shell` as
+`login_shell_not_applied`. An operator binary older than this field refuses
+a site that contains it, so upgrade first and add the field afterwards.
+
 `/healthz` shows a responding service, not a fully functional installation. `/readyz`, `admin readiness show` and `doctor --component gateway|daemon --json` do not prove provider access, quota enforcement or user isolation. Do not treat their foundation responses as deployment approval.
 
 ## Daily operation and recovery

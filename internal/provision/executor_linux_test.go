@@ -67,6 +67,7 @@ func TestLinuxExecutorNSSCollisionAndFailure(t *testing.T) {
 }
 func TestLinuxExecutorExactNSSIdentity(t *testing.T) {
 	e := NewLinuxHostExecutor(1001, 1002)
+	e.shells = noLoginShells
 	i := ExecutorIdentity{provider: "github", id: "42", username: "carol", uid: 21000}
 	rows := map[string]string{
 		"passwd carol":     "carol:x:21000:21000::/home/carol:/usr/sbin/nologin\n",

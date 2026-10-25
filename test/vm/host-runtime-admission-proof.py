@@ -59,6 +59,15 @@ def restart_broker():
  unit('reset-failed',*units,check=False)
  unit('start','open-habitat-broker.service')
  wait(lambda:active('open-habitat-broker.service'),'broker inactive after restart')
+def publish(declaration):
+ fd=os.open(state,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+ try:
+  fcntl.flock(fd,fcntl.LOCK_EX)
+  nxt=state/'login_shells.json.next'
+  with os.fdopen(os.open(nxt,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600),'w') as f:
+   json.dump(declaration,f,separators=(',',':'));f.flush();os.fsync(f.fileno())
+  nxt.replace(state/'login_shells.json');os.fsync(fd)
+ finally:os.close(fd)
 def restored(name):wait(lambda:all(active(u) for u in listeners(name)),'admitted binding not restored '+name)
 def refused(name):
  time.sleep(3)
@@ -69,6 +78,9 @@ def refused(name):
 try:
  wait(lambda:active('open-habitat-broker.service'),'production broker inactive')
  require(pathlib.Path('/proc/1/comm').read_text().strip()=='systemd','pid1')
+ # host apply declares a login shell for guestone (simulated under the
+ # broker lock): first login creates that account with it, guesttwo's not.
+ publish({'version':1,'shell':'/bin/bash','subjects':[OP]})
  # The operator source admits guestone; the gateway cannot withdraw it.
  r=ensure(OP,'guestone');require('route' in r and r['route']['uid']==21032,'operator ensure '+str(r))
  require(withdraw(OP).get('failure')=='operator_owned','operator id withdrawn')
@@ -78,6 +90,7 @@ try:
  a=row(admit(RT,'GuestTwo'),'admit');require(a['source']=='site_admin' and a['state']=='allowed','admit row '+str(a))
  require(not any(u.pw_name=='guesttwo' for u in pwd.getpwall()),'account before login')
  r=ensure(RT,'guesttwo');require('route' in r and r['route']['uid']==21033 and r['route']['username']=='guesttwo','runtime ensure '+str(r))
+ require(pwd.getpwnam('guestone').pw_shell=='/bin/bash' and pwd.getpwnam('guesttwo').pw_shell=='/usr/sbin/nologin','created login shells')
  restored('guestone');restored('guesttwo')
  # Withdrawal ends admission only: account, home and binding stay.
  w=row(withdraw(RT),'withdraw');require(w['state']=='withdrawn' and w['username']=='guesttwo','withdraw row '+str(w))
@@ -120,7 +133,19 @@ try:
  require(row(withdraw(RT),'withdraw switch off')['state']=='withdrawn','withdraw with the switch off')
  listing=broker({'operation':'access_list','id':'0'})
  require(not listing['access']['runtime_admission'] and [x['id'] for x in listing['access']['rows']]==[OP,RT],'list '+str(listing))
- print('VM_PROOF='+json.dumps({'status':'passed','scope':'host-runtime-admission','distinct_uids':True,'gateway_uid_only':True,'operator_protected':True,'withdraw_keeps_account':True,'restart_closed':True,'restore_rebuilds_runtime':True,'restore_same_uid':True,'never_bound_clean':True,'switch_off_refused':True,'pid1':'systemd'}),flush=True)
+ # Startup verification takes exactly the declared shell: once the
+ # declaration no longer names guestone, its bash account is drift and the
+ # broker refuses to start until the account matches again.
+ publish({'version':1,'shell':'','subjects':[]})
+ units=[u for n in names.values() for u in listeners(n)+['open-habitat-daemon@'+n+'.service']]
+ unit('stop','open-habitat-broker.service','open-habitat-broker.socket',*units)
+ unit('reset-failed','open-habitat-broker.service',*units,check=False)
+ unit('start','open-habitat-broker.service',check=False);time.sleep(3)
+ require(not active('open-habitat-broker.service'),'broker started with an undeclared login shell')
+ cmd('usermod','--shell','/usr/sbin/nologin','--','guestone')
+ unit('reset-failed','open-habitat-broker.service',check=False)
+ restart_broker();restored('guestone')
+ print('VM_PROOF='+json.dumps({'status':'passed','scope':'host-runtime-admission','login_shell':True,'distinct_uids':True,'gateway_uid_only':True,'operator_protected':True,'withdraw_keeps_account':True,'restart_closed':True,'restore_rebuilds_runtime':True,'restore_same_uid':True,'never_bound_clean':True,'switch_off_refused':True,'pid1':'systemd'}),flush=True)
  cmd('systemd-run','--on-active=5s','--unit=fixture-shutdown','/usr/bin/systemctl','poweroff','--no-block')
 except Exception as e:
  print('VM_PROOF='+json.dumps({'status':'failed','scope':'host-runtime-admission','reason':str(e)[:400]}),flush=True)

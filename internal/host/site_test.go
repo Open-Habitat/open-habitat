@@ -66,3 +66,39 @@ func TestSiteCanonicalSetsAndImmutable(t *testing.T) {
 		t.Fatal("mount migration hidden")
 	}
 }
+
+func TestSiteLoginShell(t *testing.T) {
+	s, e := ParseSite(example(t))
+	if e != nil {
+		t.Fatal(e)
+	}
+	if shell, subjects := s.LoginShellPolicy(); shell != "" || subjects == nil || len(subjects) != 0 {
+		t.Fatal("absent login_shell is not the empty declaration", shell, subjects)
+	}
+	with := func(v string) string {
+		return strings.Replace(string(example(t)), `"admission": [`, `"login_shell": `+v+`, "admission": ["777",`, 1)
+	}
+	s, e = ParseSite([]byte(with(`{"shell": "/bin/bash", "subjects": ["777", "123456"]}`)))
+	if e != nil {
+		t.Fatal(e)
+	}
+	if shell, subjects := s.LoginShellPolicy(); shell != "/bin/bash" || strings.Join(subjects, ",") != "123456,777" {
+		t.Fatal(shell, subjects)
+	}
+	for v, path := range map[string]string{
+		`{"shell": "/bin/bash", "subjects": ["888"]}`:         "$.identities.login_shell.subjects[0]",
+		`{"shell": "/bin/bash", "subjects": []}`:              "$.identities.login_shell.subjects",
+		`{"shell": "/usr/sbin/nologin", "subjects": ["777"]}`: "$.identities.login_shell.shell",
+		`{"shell": "bash", "subjects": ["777"]}`:              "$.identities.login_shell.shell",
+		`{"shell": "/bin/bash", "subjects": ["777", "777"]}`:  "$.identities.login_shell.subjects[1]",
+		`{"shell": "/bin/bash"}`:                              "$.identities.login_shell.subjects",
+		`{"shell": "/bin/bash", "subjects": ["777"], "x": 1}`: "$.identities.login_shell",
+		`null`: "$.identities.login_shell",
+	} {
+		_, e := ParseSite([]byte(with(v)))
+		se, ok := e.(*SiteError)
+		if !ok || se.Path != path {
+			t.Errorf("%s: want %s, got %v", v, path, e)
+		}
+	}
+}

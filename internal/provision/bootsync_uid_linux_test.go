@@ -21,6 +21,7 @@ type bootUIDHost struct {
 
 func (h *bootUIDHost) EnableLinger(ctx context.Context, i ExecutorIdentity) error {
 	e := NewLinuxHostExecutor(1001, 1002)
+	e.shells = noLoginShells
 	e.run = func(ctx context.Context, path string, args ...string) ([]byte, error) {
 		if path == loginctl {
 			if !reflect.DeepEqual(args, []string{"enable-linger", i.Username()}) {

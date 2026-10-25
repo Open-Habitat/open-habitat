@@ -2,12 +2,14 @@
 created: 2026-10-25
 updated: 2026-10-25
 type: feature
-status: open
+status: done
 priority: normal
 preparation: ready
 provenance: chat
 lane: unlaned
 collision: [internal/provision, internal/host]
+closed: 2026-10-25
+closed_by: claude
 ---
 
 # Optional SSH login shell for named Habitat accounts

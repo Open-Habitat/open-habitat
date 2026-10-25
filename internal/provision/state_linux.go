@@ -105,41 +105,62 @@ type ledgerFile struct {
 	Bindings   []binding `json:"bindings"`
 }
 
-// secureFile opens each path component without following links, then reads a
-// bounded regular root-owned single-link file from its fd, not its path.
-func secureFile(dir, name string, owner uint32) ([]byte, error) {
-	if !filepath.IsAbs(dir) || filepath.Clean(dir) != dir || name == "" || strings.ContainsAny(name, "/\\") {
-		return nil, ErrInvalid
+// privateDir opens the private state directory dir, each component without
+// following links and none writable by others, and returns its descriptor.
+func privateDir(dir string, owner uint32) (int, error) {
+	if !filepath.IsAbs(dir) || filepath.Clean(dir) != dir {
+		return -1, ErrInvalid
 	}
 	fd, err := unix.Open("/", unix.O_DIRECTORY|unix.O_RDONLY|unix.O_CLOEXEC, 0)
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
-	defer unix.Close(fd)
+	ok := false
+	defer func() {
+		if !ok {
+			unix.Close(fd)
+		}
+	}()
 	parts := strings.Split(strings.TrimPrefix(dir, "/"), "/")
 	if dir == "/" {
 		parts = nil
 	}
 	for _, p := range parts {
 		if p == "" || p == "." || p == ".." {
-			return nil, ErrInvalid
+			return -1, ErrInvalid
 		}
 		next, e := unix.Openat(fd, p, unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_RDONLY|unix.O_CLOEXEC, 0)
 		if e != nil {
-			return nil, ErrInvalid
+			return -1, ErrInvalid
 		}
 		unix.Close(fd)
 		fd = next
 		var st unix.Stat_t
 		if unix.Fstat(fd, &st) != nil || (st.Uid != owner && st.Uid != 0) || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Mode&0022 != 0 {
-			return nil, ErrInvalid
+			return -1, ErrInvalid
 		}
 	}
 	// The state directory is private even when its ancestors are traversable.
 	var st unix.Stat_t
 	if unix.Fstat(fd, &st) != nil || st.Uid != owner || st.Mode&unix.S_IFMT != unix.S_IFDIR || st.Mode&0077 != 0 {
+		return -1, ErrInvalid
+	}
+	ok = true
+	return fd, nil
+}
+
+// secureFile opens each path component without following links, then reads a
+// bounded regular root-owned single-link file from its fd, not its path.
+func secureFile(dir, name string, owner uint32) ([]byte, error) {
+	if name == "" || strings.ContainsAny(name, "/\\") {
 		return nil, ErrInvalid
 	}
+	fd, err := privateDir(dir, owner)
+	if err != nil {
+		return nil, err
+	}
+	defer unix.Close(fd)
+	var st unix.Stat_t
 	// A pending mutation is never a committed binding. The future writer must
 	// hold its lock across this check and publication of a new ledger.
 	if e := unix.Fstatat(fd, "pending.json", &st, unix.AT_SYMLINK_NOFOLLOW); e != unix.ENOENT {

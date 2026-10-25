@@ -126,6 +126,14 @@ func (n *nativeApply) converge(ctx context.Context) error {
 	if e = provision.PublishIntegrationSetup(ctx, n.site.BrowserSetup()); e != nil {
 		return e
 	}
+	// Root's login-shell declaration. Publication moves existing accounts
+	// to their required shell, including back to nologin, under the broker
+	// lock while entries are closed. Admission is already published: a
+	// declared subject must be operator-admitted.
+	shell, subjects := n.site.LoginShellPolicy()
+	if e = provision.PublishLoginShells(ctx, shell, subjects); e != nil {
+		return e
+	}
 	// The gateway's existing read asks the broker to observe admission. Only the
 	// broker may advance its high-water mark, never the installation operator.
 	var users []struct {
