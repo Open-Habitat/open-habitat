@@ -506,12 +506,11 @@ customer installation found (site validation, OS package drift, the proc group
 ID, the provider's apt mirror, configuration-parent mode, port 443), and they
 loaded the shared development servers.
 
-Run it before a release goes to a new customer, and before an upgrade whose
-changes can plausibly alter installation or upgrade behaviour on a fresh
-host: host prepare/apply/upgrade, runtime closure or Ubuntu requirements,
-systemd units, filesystem layout, TLS or the release format. A release that
-changes only product behaviour inside an existing installation is
-qualified by its real upgrade on the pilot and Birch (Jari, 2026-10-25).
+Run it before a release goes to a new customer. An upgrade of an existing
+installation is qualified on Birch instead, which serves as the staging
+installation: Birch is upgraded first, and the pilot and other production
+installations follow once Birch's upgrade has passed its host checks and live
+use (Jari, 2026-10-25).
 
 ```sh
 python3 scripts/cloud-qualify.py run --predecessor RELEASE_DIR \
