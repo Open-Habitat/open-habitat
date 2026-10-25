@@ -28,6 +28,8 @@ In Open Habitat the browser is the seat. An agent in a Habitat account has no wa
 
 Research and propose, as a recommendation for Jari, which of these the product should offer to an agent running in a person's own account, and through which authority. The daemon runs as the user and must trust no identity claim. Candidates: an agent-initiated "offer to clipboard" or "open this file/HTML/link" request that the person's open browser shows and the person accepts; opening a path in Habitat's own editor; uploads standing in for `fetch`; and probably no `client-exec`. Cover agents in browser Pi conversations as well as Claude Code or Taskfleet workers run in the same account over SSH or tmux. Keep the Unix-user boundary and the "reuse native components" rule. This is an architecture decision, so it ends in an ADR with Jari, and a prototype round follows if accepted.
 
+Research and the shared recommendation are in [agent-to-browser surfaces](../agent-html-artifacts/research.md), including the `tw` mapping and proposed prototype round; Jari's architecture decision is still pending.
+
 ## Acceptance Criteria
 
 - [ ] Research with a recommendation, covering what each tw function maps to (or why it is dropped), and the authority and security model.
