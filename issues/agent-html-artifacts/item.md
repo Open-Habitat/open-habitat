@@ -37,3 +37,7 @@ This overlaps with `habitat-seat-commands` ("open/show" on the person's browser)
 ### 2026-10-25T12:20:37Z · @jari
 
 Jari 2026-10-25 on research.md: (1) option C approved: the agent offers, Habitat shows the content in an isolated origin in a side panel; whether the panel works like the editor panel or opens on the right is to be prototyped. (2) Sharing with other people (named or public) is deferred until everything else works. (3) Live dev servers are never shared. Prototypes open on their own page in a separate browser tab/window (owner-only, isolated origin), not inside the panel. (4) Next: a prototype round of the panel placement and the separate-tab prototype opening; ADR when the accepted prototype fixes the shape.
+
+### 2026-10-25T12:35:58Z · @jari
+
+Jari 2026-10-25 on round 1: the right-hand panel (variant 'Oikealla') is the direction. The person chooses with a button whether a view opens in the panel or on its own browser tab; the agent cannot know, so there are no separate card types for reports and prototypes. A riff round follows on that basis (conductor recommendation adopted: a Laajenna/expand option borrowing round 1's viewing mode).
