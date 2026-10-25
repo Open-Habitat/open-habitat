@@ -5,6 +5,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -50,7 +51,13 @@ func giteaHelperForTest(op string) int {
 	}
 	c, err := store.Credential(req, "")
 	if err != nil {
-		return 0
+		// As the CLI: no match is an ordinary empty answer, an unreadable
+		// tea state a failure.
+		var ge *nativegitea.Error
+		if errors.As(err, &ge) && (ge.Code() == "no_match" || ge.Code() == "ambiguous") {
+			return 0
+		}
+		return 2
 	}
 	if nativegitea.WriteCredential(os.Stdout, c) != nil {
 		return 2

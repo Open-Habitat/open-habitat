@@ -265,7 +265,7 @@ systemd or first-login provisioning therefore need additional scenarios:
 | Two precreated user routes | `./scripts/vm-test.sh two-user-routing --json` |
 | Root broker / first-login account creation | `./scripts/vm-test.sh <scenario> --json`: choose `broker-guest`, `jit-provision`, `jit-login` or `jit-concurrent`; the last needs a clean committed release tree |
 | Preparation, storage gate and first-login account creation without user quotas, `/home` on the root filesystem | `./scripts/vm-test.sh host-shared-home --json` |
-| Native gh catalog with separate kernel UIDs | `./scripts/test-repo-catalog-uids.sh` |
+| Native gh catalog with separate kernel UIDs; the read-only Gitea connector under two UIDs with distinct PATs: tea state, connection IDs, clone/cancel/stream jobs, fetch, helper, shell Git, PAT replacement/revocation and disconnect stay each person's, clones survive disconnect, and only the gateway peer is served | `./scripts/test-repo-catalog-uids.sh` (networkless disposable container; synthetic Gitea with its CA in the container's system trust, real Git; not a real Gitea or installed host) |
 | A site default a person cannot read never reaches their daemon, `gh`, home or browser replies, while the readable ones are handed off with the token over the real transport and cloned (gateway, two daemons, three kernel UIDs) | `./scripts/test-onboarding-defaults-uids.sh` (networkless disposable container; broker and GitHub are fixtures) |
 | Fixed-path shared Pi selector with distinct UIDs | `./scripts/test-shared-pi-selector.sh` |
 | Agent socket own-UID/root/gateway denials, gateway-only route absence and two-socket broker readiness | `./scripts/test-agent-uids.sh` |
