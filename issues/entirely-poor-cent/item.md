@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-25
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 originating_run: 01m5pxrv6n5tjszbnwkmy321fg
@@ -10,6 +10,7 @@ originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
 collision: [web/e2e/browser-conversation]
+closed: 2026-10-25
 ---
 
 # Flaky browser spec: title dots route handler reads a disposed snapshot response
@@ -28,3 +29,9 @@ Error: apiResponse.json: Response has been disposed
 ```
 
 The test's route handler reads the fetched snapshot body after Playwright has disposed the response, which looks like a race in the test (for example a page navigation or route teardown while a snapshot fetch is in flight), not a product defect. The change under test touched no web or conversation code. Impact: an intermittent red clean gate, which blocks gated releases and costs a rerun.
+
+## Resolution
+
+### 2026-10-25T02:01:24Z · @issuectl
+
+Recurrence on a tree before fe46148a; current test 300/300 under load, pre-fix shape 7/150 failing.
