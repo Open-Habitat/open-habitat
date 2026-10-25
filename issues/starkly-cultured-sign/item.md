@@ -2,13 +2,16 @@
 created: 2026-10-25
 updated: 2026-10-25
 type: improvement
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: acceptance observation on a real Gitea
 source_ref: taskfleet:01m5r5ajhk37actg18n36pnazy/observation:gitea-connect-scope
 originating_run: 01m5r5ajhk37actg18n36pnazy
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
+collision: [internal/nativegitea/]
 ---
 
 # Gitea connect accepts a PAT without read:repository and reports it working

@@ -2,13 +2,16 @@
 created: 2026-10-25
 updated: 2026-10-25
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed in taskfleet run clean gate
 source_ref: taskfleet:01m5r5ajhk37actg18n36pnazy/observed:conversation-recheck-flake
 originating_run: 01m5r5ajhk37actg18n36pnazy
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
+collision: [web/e2e/browser-conversation]
 ---
 
 # browser-conversation 'changed snapshot identity discards late previous status' still flakes under load

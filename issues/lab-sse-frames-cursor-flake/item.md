@@ -1,14 +1,17 @@
 ---
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-25
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed in the pilot.9 release clean gate
 source_ref: taskfleet:01m5qt189k90vzv4rdarz82zbw/gate-flake:lab-conversation-591
 originating_run: 01m5qt189k90vzv4rdarz82zbw
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
+collision: [web/e2e/lab-conversation]
 ---
 
 # Lab SSE-frames spec times out on the event cursor under the full gate
