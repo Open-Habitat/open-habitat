@@ -248,6 +248,12 @@ class BuilderTests(unittest.TestCase):
         self.assertTrue(go_notices.is_go(binary))
         self.assertFalse(go_notices.is_go(elf([('.text', b'code')])))
         self.assertFalse(go_notices.is_go(b'#!/bin/sh\n'))
+        # A stripped section table must not pass a Go executable off as non-Go.
+        sectionless = bytearray(binary)
+        sectionless[0x28:0x30] = bytes(8)
+        sectionless[0x3c:0x40] = bytes(4)
+        with self.assertRaisesRegex(ValueError, 'go_buildinfo_unreadable'):
+            go_notices.is_go(bytes(sectionless))
 
     def test_raw_go_tool_is_digest_and_notice_checked(self):
         deps = [('golang.org/x/net', 'v0.57.0', 'h1:aaa=')]

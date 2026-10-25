@@ -69,6 +69,10 @@ def _buildinfo_sections(data):
         else:
             shoff, = struct.unpack_from(order + 'I', data, 0x20)
             shentsize, shnum, shstrndx = struct.unpack_from(order + 'HHH', data, 0x2e)
+        # Without a section table nothing could tell a stripped Go executable
+        # from any other, so it is not classified at all.
+        if not shoff or not shnum or shstrndx >= shnum:
+            raise ValueError('go_buildinfo_unreadable')
 
         def section(i):
             at = shoff + i * shentsize
@@ -97,7 +101,7 @@ def _buildinfo_sections(data):
 
 def is_go(data):
     """Whether an executable was linked by the Go toolchain; a script or
-    other non-ELF file is not."""
+    other non-ELF file is not, and an ELF without a section table is refused."""
     return data[:4] == b'\x7fELF' and bool(_buildinfo_sections(data))
 
 
