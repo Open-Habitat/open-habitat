@@ -52,11 +52,6 @@
       "sha256": "e2e2efc7ed143026352d60216ef0d46d3fa4fe9d647eff1bd929e6fea498e6f1"
     },
     {
-      "filename": "rclone-COPYING",
-      "url": "https://raw.githubusercontent.com/rclone/rclone/v1.71.2/COPYING",
-      "sha256": "8cd2e9e750b90a04b7d82dbbca3930c696ae0309d7c10464f90a44f45754cd04"
-    },
-    {
       "target": "linux-amd64",
       "filename": "gogcli_0.39.1_linux_amd64.tar.gz",
       "url": "https://github.com/openclaw/gogcli/releases/download/v0.39.1/gogcli_0.39.1_linux_amd64.tar.gz",
@@ -67,11 +62,6 @@
       "filename": "gogcli_0.39.1_linux_arm64.tar.gz",
       "url": "https://github.com/openclaw/gogcli/releases/download/v0.39.1/gogcli_0.39.1_linux_arm64.tar.gz",
       "sha256": "7c23b402c9234ba476e84b39ac6d875444b47ec516312a99e877e1386ba28295"
-    },
-    {
-      "filename": "gogcli-LICENSE",
-      "url": "https://raw.githubusercontent.com/openclaw/gogcli/v0.39.1/LICENSE",
-      "sha256": "14293556b79940745123d0160c71d27ed0e9fe9b8a848093f3ed78f4853caafe"
     },
     {
       "target": "linux-amd64",
@@ -125,8 +115,9 @@
       "member": "rclone-v1.71.2-linux-amd64/rclone",
       "sha256": "0e8ba506e078ab702c54abaa94b4bd3d172640a4c260acb76100cdcbda0aadf7",
       "license_files": [
-        "rclone-COPYING"
-      ]
+        "rclone-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "rclone-THIRD-PARTY-NOTICES"
     },
     {
       "target": "linux-arm64",
@@ -138,8 +129,9 @@
       "member": "rclone-v1.71.2-linux-arm64/rclone",
       "sha256": "5b21758de3131a9c46330ab00ecd42eecba364d4568e45054691102442b0ba40",
       "license_files": [
-        "rclone-COPYING"
-      ]
+        "rclone-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "rclone-THIRD-PARTY-NOTICES"
     },
     {
       "target": "linux-amd64",
@@ -151,8 +143,9 @@
       "member": "./gog",
       "sha256": "1ae3040550d1da183838200dbe03ea764475e687284194e519d936c81c708ed4",
       "license_files": [
-        "gogcli-LICENSE"
-      ]
+        "gog-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "gog-THIRD-PARTY-NOTICES"
     },
     {
       "target": "linux-arm64",
@@ -164,8 +157,9 @@
       "member": "./gog",
       "sha256": "520285202d8022a662c28f6e55291f978c75eba51fc8e9ea04a71f53c1462bd1",
       "license_files": [
-        "gogcli-LICENSE"
-      ]
+        "gog-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "gog-THIRD-PARTY-NOTICES"
     },
     {
       "target": "linux-amd64",

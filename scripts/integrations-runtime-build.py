@@ -69,6 +69,10 @@ def add_tools(lock, inputs, put_bytes, components, target):
             if notices not in tool['license_files']:
                 raise ValueError('invalid tool lock')
             go_notices.check((inputs / notices).read_text(), data)
+        elif go_notices.is_go(data):
+            # A Go executable links its modules in; its top-level licence alone
+            # is not the whole notice.
+            raise ValueError('go_notices_required: ' + tool['name'])
         put_bytes(data, 'runtime/bin/' + tool['name'], tool['name'], True)
         licenses = []
         for name in tool['license_files']:

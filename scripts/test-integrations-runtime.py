@@ -57,12 +57,16 @@ with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir='/var/tmp') as dir
         assert components[name]['kind'] == 'native' and components[name]['version'] == version
         assert records['runtime/bin/' + name]['component'] == name and records['runtime/bin/' + name]['mode'] == 0o755
         assert all(f.startswith('licenses/' + name + '/') for f in components[name]['license_files'])
-    # tea's notice covers every Go module its executable embeds.
+    # Each Go tool's notice covers every module its executable embeds.
     spec = importlib.util.spec_from_file_location('go_notices', Path(__file__).with_name('go-binary-notices.py'))
     go_notices = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(go_notices)
-    assert components['tea']['license_files'] == ['licenses/tea/THIRD-PARTY-NOTICES']
-    go_notices.check((root / 'licenses/tea/THIRD-PARTY-NOTICES').read_text(), (runtime / 'bin/tea').read_bytes())
+    for name in pins:
+        data = (runtime / 'bin' / name).read_bytes()
+        assert go_notices.is_go(data) == (name != 'himalaya'), name
+        if name != 'himalaya':
+            assert components[name]['license_files'] == ['licenses/' + name + '/THIRD-PARTY-NOTICES']
+            go_notices.check((root / 'licenses' / name / 'THIRD-PARTY-NOTICES').read_text(), data)
     tool_env = {'HOME': str(root / 'home'), 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8'}
     (root / 'home').mkdir()
     for argv, expected in [(['himalaya', '--version'], 'v2.2.1'), (['rclone', 'version'], 'v1.71.2'), (['gog', '--version'], '0.39.1'), (['tea', '--version'], '0.16.0')]:

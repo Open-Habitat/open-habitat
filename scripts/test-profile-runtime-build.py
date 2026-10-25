@@ -2,6 +2,7 @@
 import contextlib
 import importlib.util
 import shutil
+import struct
 import subprocess
 import tarfile
 import io
@@ -22,8 +23,21 @@ integrations_build = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(integrations_build)
 
 
-def go_binary(deps, version='go1.26.6'):
-    """Bytes with Go 1.18+'s inline build information, as the linker writes it."""
+def elf(sections):
+    """A minimal little-endian ELF64 file with the given (name, data) sections."""
+    names = b'\0' + b''.join(n.encode() + b'\0' for n, _ in sections) + b'.shstrtab\0'
+    body, headers, offset, name_at = b'', [b'\0' * 64], 64, 1
+    for name, data in sections + [('.shstrtab', names)]:
+        headers.append(struct.pack('<IIQQQQIIQQ', name_at, 1, 0, 0, offset, len(data), 0, 0, 1, 0))
+        name_at += len(name) + 1
+        body += data
+        offset += len(data)
+    header = b'\x7fELF' + bytes([2, 1, 1]) + b'\0' * 9 + struct.pack('<HHIQQQIHHHHHH', 2, 62, 1, 0, 0, offset, 0, 64, 0, 0, 64, len(headers), len(headers) - 1)
+    return header + body + b''.join(headers)
+
+
+def go_binary(deps, version='go1.26.6', extra=()):
+    """An ELF executable with Go 1.18+'s inline build information, as the linker writes it."""
     def varint(n):
         out = b''
         while n >= 0x80:
@@ -33,8 +47,8 @@ def go_binary(deps, version='go1.26.6'):
     info = 'path\tgitea.dev/tea\nmod\tgitea.dev/tea\tv0.16.0\t\n' + ''.join('dep\t%s\t%s\t%s\n' % d for d in deps) + 'build\tGOOS=linux\n'
     mod = b'0' * 16 + info.encode() + b'1' * 16
     header = go_notices.MAGIC + bytes([8, 2])
-    return b'\x7fELF padding' + header + b'\0' * (32 - len(header)) + varint(len(version)) + version.encode() + varint(len(mod)) + mod + b'tail'
-
+    section = header + b'\0' * (32 - len(header)) + varint(len(version)) + version.encode() + varint(len(mod)) + mod
+    return elf([('.text', b'code'), ('.go.buildinfo', section), *extra])
 
 
 class BuilderTests(unittest.TestCase):
@@ -223,9 +237,17 @@ class BuilderTests(unittest.TestCase):
         for other in (go_binary([deps[0], ('gopkg.in/yaml.v3', 'v3.0.2', 'h1:ccc=')]), go_binary(deps[:1]), go_binary(deps, 'go1.26.7')):
             with self.assertRaisesRegex(ValueError, 'notice_module_mismatch'):
                 go_notices.check(notice, other)
-        for unreadable in (b'no build information', binary + binary):
+        # The section table locates the information; the magic elsewhere, as
+        # rclone carries it, is ordinary data.
+        decoy = go_binary(deps, extra=[('.noptrdata', go_notices.MAGIC + b'\0\0Authorization: ')])
+        go_notices.check(notice, decoy)
+        twice = go_binary(deps, extra=[('.go.buildinfo', b'')])
+        for unreadable in (b'no build information', elf([('.text', b'code')]), twice, binary[:-64]):
             with self.assertRaisesRegex(ValueError, 'go_buildinfo_unreadable'):
                 go_notices.check(notice, unreadable)
+        self.assertTrue(go_notices.is_go(binary))
+        self.assertFalse(go_notices.is_go(elf([('.text', b'code')])))
+        self.assertFalse(go_notices.is_go(b'#!/bin/sh\n'))
 
     def test_raw_go_tool_is_digest_and_notice_checked(self):
         deps = [('golang.org/x/net', 'v0.57.0', 'h1:aaa=')]
@@ -247,6 +269,17 @@ class BuilderTests(unittest.TestCase):
             (inputs / 'tea-NOTICES').write_text(notice.replace('v0.57.0', 'v0.56.0'))
             with self.assertRaisesRegex(ValueError, 'notice_module_mismatch'):
                 integrations_build.add_tools(lock, inputs, put, [], 'linux-amd64')
+            # A Go tool cannot ship with only its top-level licence.
+            (inputs / 'tea-LICENSE').write_text('MIT')
+            lock['inputs'].append(dict(filename='tea-LICENSE', sha256=profiles.digest(inputs / 'tea-LICENSE')))
+            tool.update(license_files=['tea-LICENSE'])
+            del tool['go_notices']
+            with self.assertRaisesRegex(ValueError, 'go_notices_required: tea'):
+                integrations_build.add_tools(lock, inputs, put, [], 'linux-amd64')
+            # A tool the Go toolchain did not link needs none.
+            (inputs / 'tea-bin').write_bytes(elf([('.text', b'code')]))
+            tool['sha256'] = lock['inputs'][0]['sha256'] = profiles.digest(inputs / 'tea-bin')
+            integrations_build.add_tools(lock, inputs, put, [], 'linux-amd64')
 
     def test_checked_in_locks_pin_every_target_at_one_version(self):
         """Both targets of a profile ship the same upstream versions."""
