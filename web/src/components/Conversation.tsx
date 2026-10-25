@@ -229,8 +229,10 @@ export function UserMessage({
         {children ?? (
           <span className="ah-user-text">{messageText(sourceText)}</span>
         )}
-        <AttachmentChips attachments={attachmentsIn(sourceText ?? "")} />
       </div>
+      {/* Outside the collapsed text: a long message must not hide its
+          attachments below the cut. */}
+      <AttachmentChips attachments={attachmentsIn(sourceText ?? "")} />
       {!skill && (long || expanded) ? (
         <Button
           data-testid="expand-message"

@@ -3,11 +3,13 @@ created: 2026-10-25
 updated: 2026-10-25
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 collision: [web/src/app/]
 preparation: ready
+closed: 2026-10-25
+closed_by: agent
 ---
 
 # Attachment missing from the bubble of a message sent while the agent works
@@ -28,5 +30,5 @@ for both Pi and Claude Code conversations.
 
 ## Acceptance Criteria
 
-- [ ] Cause found and fixed; a regression test at the layer where it broke.
+- [x] Cause found and fixed; a regression test at the layer where it broke.
 

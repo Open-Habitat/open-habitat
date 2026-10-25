@@ -118,16 +118,14 @@ test("picker, image paste and conversation drop persist authenticated attachment
   await expect(chips).toHaveCount(0);
   // The agent received the references: the sent message shows the same two
   // attachments, and its text is what the person wrote.
-  const sent = page.locator(".ah-user-content");
+  const sent = page.locator('.ah-feed > li[data-kind="user"]');
   await expect(sent.getByTestId("attachment-chip")).toHaveCount(2);
   await expect(sent.getByTestId("attachment-chip").first()).toHaveAttribute(
     "data-attachment-url",
     url ?? "",
   );
   await page.reload();
-  await expect(
-    page.locator(".ah-user-content .ah-attachment-chips img").first(),
-  ).toBeVisible();
+  await expect(sent.locator(".ah-attachment-chips img").first()).toBeVisible();
   await expectNativeContent(
     page.locator(".ah-user-content"),
     "Katso liitteet",
@@ -137,9 +135,8 @@ test("picker, image paste and conversation drop persist authenticated attachment
     },
   );
   // Neither the reference nor the host's path line shows in the bubble.
-  const own = page.locator('.ah-feed > li[data-kind="user"]');
-  await expectNativeContent(own, "/api/v1/attachments/", { count: 0 });
-  await expectNativeContent(own, "Attachment path:", { count: 0 });
+  await expectNativeContent(sent, "/api/v1/attachments/", { count: 0 });
+  await expectNativeContent(sent, "Attachment path:", { count: 0 });
 
   // A sent thumbnail opens the same dialog, also at phone width.
   await page.setViewportSize({ width: 390, height: 844 });
@@ -157,6 +154,17 @@ test("picker, image paste and conversation drop persist authenticated attachment
 
   // Exercise bubble alignment with persisted thumbnails and long literal code,
   // not just short text: intrinsic content must not push a phone-width row out.
+  // The long message carries an attachment too: collapsing its text must not
+  // hide the attachment below the cut.
+  const again = page.waitForEvent("filechooser");
+  await page.getByTestId("attach-file").click();
+  await page.getByTestId("attachment-single").click();
+  await (await again).setFiles({
+    name: "long.png",
+    mimeType: "image/png",
+    buffer: png,
+  });
+  await expect(chips).toHaveCount(1);
   await field.fill(
     `${"Pitkä viesti rivinvaihtoineen.\n".repeat(20)}\n\`\`\`\n${"unbroken_code_".repeat(100)}\n\`\`\``,
   );
@@ -208,17 +216,42 @@ test("picker, image paste and conversation drop persist authenticated attachment
         expect(startsOnLeft).toBe(true);
       };
       await expectAligned();
+      await expectUnclipped(rows.last().getByTestId("attachment-open"));
       const expand = rows.last().getByTestId("expand-message");
       await expand.click();
       await expect(rows.last()).toContainText("unbroken_code_".repeat(100));
       await expectAligned();
       await rows.last().getByTestId("expand-message").click();
       await expect(
-        page.locator(".ah-user-content .ah-attachment-chips img").first(),
+        sent.locator(".ah-attachment-chips img").first(),
       ).toBeVisible();
     }
   }
 });
+
+// An element the person can see and press: the point at its centre hits it,
+// rather than whatever lies under a clipping ancestor. Visibility checks alone
+// pass for an element cut off by `overflow: hidden`.
+async function expectUnclipped(target: import("@playwright/test").Locator) {
+  await expect
+    .poll(() =>
+      target.evaluate((node) => {
+        // Scroll its feed row, not the element: scrolling the element would
+        // also scroll a clipping ancestor and reveal it. Centred, so the
+        // fixed composer cannot be what covers it.
+        (node.closest(".ah-feed > li") ?? node).scrollIntoView({
+          block: "center",
+        });
+        const box = node.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+          box.left + box.width / 2,
+          box.top + box.height / 2,
+        );
+        return !!hit && node.contains(hit);
+      }),
+    )
+    .toBe(true);
+}
 
 // Native content is asserted independently of translated controls. This helper
 // only reads rendered content; it never finds an element for an interaction.
