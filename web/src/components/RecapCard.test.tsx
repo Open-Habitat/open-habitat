@@ -16,40 +16,31 @@ const base = {
   now: recap.generated_at + 10 * 60000,
 };
 describe("native conversation recap", () => {
-  it("keeps the suggestion separate from transcript and marks a newer turn stale", () => {
-    const view = render(<RecapCard {...base} recap={recap} stale={true} />);
+  it("keeps the suggestion separate from transcript and requests a refresh", () => {
+    const view = render(<RecapCard {...base} recap={recap} />);
 
     expect(view.getByRole("complementary").textContent).toContain(
       "Työ etenee.",
     );
     expect(view.getByText("Tarkista testit")).toBeTruthy();
-    expect(view.getByTestId("recap-card").getAttribute("data-stale")).toBe(
-      "true",
-    );
 
     fireEvent.click(view.getByTestId("recap-refresh"));
     expect(base.onRequest).toHaveBeenCalledOnce();
   });
   it("keeps the last known recap visible when its native freshness cannot be checked", () => {
     const view = render(
-      <RecapCard {...base} recap={recap} stale={false} unverifiable={true} />,
+      <RecapCard {...base} recap={recap} unverifiable={true} />,
     );
     expect(view.getByText("Työ etenee.")).toBeTruthy();
     expect(view.getByRole("alert")).toBeTruthy();
 
-    view.rerender(
-      <RecapCard {...base} recap={recap} stale={false} uncertain={true} />,
-    );
+    view.rerender(<RecapCard {...base} recap={recap} uncertain={true} />);
     expect(view.getByRole("alert")).toBeTruthy();
   });
   it("shows generation and failure without duplicating the recap", () => {
-    const view = render(
-      <RecapCard {...base} recap={null} stale={false} pending={true} />,
-    );
+    const view = render(<RecapCard {...base} recap={null} pending={true} />);
     expect(view.getByRole("status")).toBeTruthy();
-    view.rerender(
-      <RecapCard {...base} recap={recap} stale={false} error={true} />,
-    );
+    view.rerender(<RecapCard {...base} recap={recap} error={true} />);
     expect(view.getAllByRole("alert")).toHaveLength(1);
     expect(view.getByText("Työ etenee.")).toBeTruthy();
   });
@@ -59,7 +50,6 @@ describe("native conversation recap", () => {
       <RecapCard
         {...base}
         recap={{ ...recap, trigger: "automatic" }}
-        stale={false}
         unavailable
         unavailableReason="Odota agentin vuoron päättymistä."
         onDismiss={close}

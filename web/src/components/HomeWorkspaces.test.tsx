@@ -183,7 +183,7 @@ describe("workspace home", () => {
     );
     await waitFor(() => expect(screen.getByText("New recap")).toBeTruthy());
   });
-  it("shows the native recap and next line verbatim, including whitespace, with stale marker", async () => {
+  it("shows the native recap and next line verbatim, including whitespace", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -197,7 +197,7 @@ describe("workspace home", () => {
                 through: "one",
                 generated_at: 1750000000000,
               },
-              latest_message: "two",
+              latest_message: "one",
             }),
             { headers: { "Content-Type": "application/json" } },
           ),
@@ -229,5 +229,40 @@ describe("workspace home", () => {
     ).toBeTruthy();
 
     expect(screen.getByText(/main \+2/)).toBeTruthy();
+  });
+  it("does not present a recap that later native messages outdated", async () => {
+    const read = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            schema_version: 1,
+            recap: {
+              recap: "Outdated recap",
+              next: "Old next",
+              through: "one",
+              generated_at: 1750000000000,
+            },
+            latest_message: "two",
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        ),
+    );
+    vi.stubGlobal("fetch", read);
+    const view = render(
+      <MemoryRouter>
+        <HomeWorkspaces
+          workspaces={[workspace("one")]}
+          conversations={[conversation("example", "one", { attention: "new" })]}
+        />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(read).toHaveBeenCalled());
+    const card = await screen.findByTestId("conversation-card-example");
+    await waitFor(() =>
+      expect(card.querySelector(".ah-home-pending")).toBeTruthy(),
+    );
+    expect(card.querySelector(".ah-home-recap")).toBeNull();
+    expect(card.querySelector("time")).toBeNull();
+    view.unmount();
   });
 });

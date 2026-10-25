@@ -207,8 +207,12 @@ spinoffinsa kellona eikä koskaan prosessina, ja *Poista päättyneet* poistaa
 vain prosesseja. Selaimen sulkemisesta ei luvata mitään.
 
 Tilannekatsaus on oma korttinsa suoraan kirjoituskentän yllä: otsakkeessa
-ikä ja merkki uusista viesteistä, oikealla päivitys ja sulkeminen. Suljettu
-katsaus pysyy kiinni, kunnes syntyy uudempi (Jari 13.10.2026).
+ikä, oikealla päivitys ja sulkeminen. Suljettu katsaus pysyy kiinni, kunnes
+syntyy uudempi (Jari 13.10.2026). Kortti ei kerro, miten katsaus syntyi, eikä
+näytä vanhentunutta katsausta: kun katsauksen jälkeen tulee uusia viestejä,
+automaattinen katsaus poistuu näkyvistä, kunnes uusi syntyy keskustelun
+oltua taas toimettomana. Itse pyydetystä katsauksesta jää tilalle pelkkä
+pyyntö luoda uusi (Jari 25.10.2026).
 
 Levossa kirjoituskenttä on yksirivinen ja Lähetä-ikoni on sen vieressä;
 kenttä kasvaa tekstin mukana noin kahteentoista riviin ja vierittyy sitten.

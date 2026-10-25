@@ -44,6 +44,7 @@ import type { ConversationStore } from "./conversationStore";
 import { useAgentNotices } from "./conversationStore";
 import {
   abortBash,
+  currentRecap,
   NotAdmitted,
   type Recap,
   readRecap,
@@ -560,6 +561,25 @@ function BrowserConversationContent({
       /* Keep it dismissed in this tab. */
     }
   };
+  const shownRecap = recapCurrent
+    ? currentRecap(
+        recapCurrent.recap,
+        recapCurrent.latest,
+        controlled &&
+          current?.state !== "idle" &&
+          current?.state !== "rejected",
+      )
+    : null;
+  // An outdated automatic recap simply waits for the daemon's next idle
+  // recap. One the person asked for keeps its card as a quiet request, so
+  // they need not wait for that idle interval.
+  const outdatedRequest =
+    !shownRecap &&
+    !!recapCurrent?.recap &&
+    recapCurrent.recap.trigger !== "automatic" &&
+    controlled &&
+    !!csrf &&
+    !!id;
   const recapBusy = recapAction?.key === recapKey && recapAction.pending;
   const recapError = recapAction?.key === recapKey && recapAction.error;
   const recapUncertain = recapAction?.key === recapKey && recapAction.uncertain;
@@ -1857,22 +1877,16 @@ function BrowserConversationContent({
             ) : null}
           </div>
           {!recapDismissed &&
-            (recapCurrent?.recap ||
+            (shownRecap ||
+              outdatedRequest ||
               recapBusy ||
               recapError ||
               recapUncertain) && (
               <RecapCard
                 // Only "Tilannekatsaus": the header and sidebar already say
                 // who is waiting (Jari 16.10.2026).
-                recap={recapCurrent?.recap ?? null}
+                recap={shownRecap}
                 now={recapNow}
-                stale={
-                  !!recapCurrent?.recap &&
-                  (recapCurrent.recap.through !== recapCurrent.latest ||
-                    (controlled &&
-                      current?.state !== "idle" &&
-                      current?.state !== "rejected"))
-                }
                 pending={!!recapBusy}
                 onDismiss={
                   recapFingerprint

@@ -172,7 +172,7 @@ for (const viewport of [
         .and(page.locator('[data-mode="send"]'))
         .click();
       const card = page.getByTestId("recap-card");
-      await expect(card.getByTestId("recap-generated")).toBeVisible({
+      await expect(card).toHaveAttribute("data-trigger", "automatic", {
         timeout: 20000,
       });
       await expectWholeRing(page, "recap above the composer");

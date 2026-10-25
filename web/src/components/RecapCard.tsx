@@ -13,7 +13,6 @@ export function relativeRecapAge(timestamp: number, now: number): string {
 
 export function RecapCard({
   recap,
-  stale,
   pending,
   error,
   uncertain = false,
@@ -25,7 +24,6 @@ export function RecapCard({
   now = Date.now(),
 }: {
   recap: Recap | null;
-  stale: boolean;
   pending: boolean;
   error: boolean;
   uncertain?: boolean;
@@ -44,7 +42,7 @@ export function RecapCard({
   return (
     <aside
       data-testid="recap-card"
-      data-stale={stale}
+      data-trigger={recap?.trigger}
       className="ah-recap"
       aria-label="Keskustelun yhteenveto"
     >
@@ -54,15 +52,6 @@ export function RecapCard({
           <time dateTime={new Date(recap.generated_at).toISOString()}>
             {relativeRecapAge(recap.generated_at, now)}
           </time>
-        ) : null}
-        {stale ? <span className="ah-recap-stale">uusia viestejä</span> : null}
-        {unverifiable ? (
-          <span className="ah-recap-stale">ajantasaisuus ei tiedossa</span>
-        ) : null}
-        {recap?.trigger === "automatic" ? (
-          <span data-testid="recap-generated" className="ah-recap-auto">
-            luotu automaattisesti
-          </span>
         ) : null}
         <span className="ah-recap-grow" />
         {onRequest ? (

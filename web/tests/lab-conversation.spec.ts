@@ -50,7 +50,7 @@ test("@lab browser Pi resolves the user's own executable", async ({ page }) => {
   await expectNativeContent(page, "agent-probe: alice", {});
 });
 
-test("@lab recap is separate, persisted and becomes stale after a new turn", async ({
+test("@lab recap is separate, persisted, hidden once outdated and regenerated after the next turn", async ({
   page,
 }) => {
   test.setTimeout(90000);
@@ -83,7 +83,7 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
     // A browser-only draft does not reach Pi and must not defer native idle.
     await editor.fill("Luonnos, jota ei lähetetä");
     const card = page.getByTestId("recap-card");
-    await expect(card.getByTestId("recap-generated")).toBeVisible({
+    await expect(card).toHaveAttribute("data-trigger", "automatic", {
       timeout: 20000,
     });
     await expect(editor).toHaveValue("Luonnos, jota ei lähetetä");
@@ -207,9 +207,28 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
     await page.setViewportSize({ width: 1440, height: 900 });
     const other = await page.context().newPage();
     await other.goto(page.url());
-    await expect(
-      other.getByTestId("recap-card").getByTestId("recap-generated"),
-    ).toBeVisible();
+    await expect(other.getByTestId("recap-card")).toHaveAttribute(
+      "data-trigger",
+      "automatic",
+    );
+    // Another browser never dismissed this recap, so only its being outdated
+    // can keep it off the card while the next turn runs.
+    const browser = page.context().browser();
+    if (!browser) throw new Error("Missing browser");
+    const elsewhere = await browser.newContext({
+      baseURL: labOrigin,
+      ignoreHTTPSErrors: true,
+    });
+    const away = await elsewhere.newPage();
+    await away.goto("/workspaces");
+    await away.getByTestId("github-sign-in").click();
+    await away
+      .getByRole("link")
+      .and(away.locator('a[href*="code=42"]'))
+      .click();
+    await away.goto(page.url());
+    const awayCard = away.getByTestId("recap-card");
+    await expect(awayCard).toHaveAttribute("data-trigger", "automatic");
     await page.reload();
     await expectNativeContent(
       card,
@@ -229,16 +248,22 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
     await expect(card).toHaveCount(0);
     await expect(page.getByTestId("older-history")).toHaveCount(0);
     await expect(other.getByTestId("recap-card")).toHaveCount(0);
+    await expect(awayCard).toHaveCount(0);
     await other.close();
     await page.reload();
     await expect(card).toHaveCount(0);
-    await expect(card.getByTestId("recap-generated")).toBeVisible({
+    // The daemon replaces the outdated automatic recap once Pi is idle again,
+    // and every open view shows the new one without a reload.
+    await expect(card).toHaveAttribute("data-trigger", "automatic", {
       timeout: 30000,
     });
+    await expect(awayCard).toHaveAttribute("data-trigger", "automatic");
+    await elsewhere.close();
     const newer = await (
       await page.request.get(`/api/v1/agents/${id}/recap`)
     ).json();
     expect(newer.recap.through).not.toBe(native.recap.through);
+    expect(newer.recap.through).toBe(newer.latest_message);
   } finally {
     expect(
       (await page.request.get("/fixture/scenario?value=ready")).status(),

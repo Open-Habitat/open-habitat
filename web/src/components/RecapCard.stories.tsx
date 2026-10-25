@@ -17,7 +17,6 @@ const recap = {
 export const Current: Story = {
   args: {
     recap,
-    stale: false,
     pending: false,
     error: false,
     unavailable: false,
@@ -31,8 +30,9 @@ export const Automatic: Story = {
     onDismiss: () => {},
   },
 };
-export const Stale: Story = {
-  args: { ...Current.args, stale: true, onDismiss: () => {} },
+// An outdated recap the person asked for: its text is gone, the request stays.
+export const Outdated: Story = {
+  args: { ...Current.args, recap: null, onDismiss: () => {} },
 };
 export const Working: Story = {
   args: {

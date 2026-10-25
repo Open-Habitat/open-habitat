@@ -40,7 +40,12 @@ import { SkillInvocation } from "../components/SkillInvocation";
 import { useBrowserShell } from "./BrowserShell";
 import { type BashFailure, toolStopped } from "./bashFailure";
 import { type ConversationStore, useWindow } from "./conversationStore";
-import { historyEligibility, readRecap, retitleHistory } from "./conversations";
+import {
+  currentRecap,
+  historyEligibility,
+  readRecap,
+  retitleHistory,
+} from "./conversations";
 import {
   type BlockChunk,
   type HistoryBlock,
@@ -1458,6 +1463,11 @@ function HistoryViewContent({
       active = false;
     };
   }, [agent.agent_id, agent.history]);
+  // Nothing here regenerates a terminal history's recap, and an outdated one
+  // is not the current situation.
+  const shownRecap = recap
+    ? currentRecap(recap.recap, recap.latest_message)
+    : null;
   const entries = window?.entries ?? [];
   const settings = latestSettings(entries);
   const stream = useRef<HTMLElement>(null);
@@ -1740,11 +1750,10 @@ function HistoryViewContent({
           tone="warning"
         />
       )}
-      {!recapDismissed && recap?.latest_message ? (
+      {!recapDismissed && shownRecap ? (
         <RecapCard
-          recap={recap.recap}
+          recap={shownRecap}
           now={Date.now()}
-          stale={!!recap.recap && recap.recap.through !== recap.latest_message}
           pending={false}
           error={false}
           unavailable

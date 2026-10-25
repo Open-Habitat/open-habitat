@@ -299,7 +299,7 @@ test("@workspace-page archive stays at the card's top right on home and workspac
     await page.goto(route);
     const card = page
       .locator(".ah-home-card")
-      .filter({ has: page.getByTestId("unread-messages") })
+      .filter({ has: page.getByTestId("card-read-only") })
       .first();
     await expect(card).toBeVisible();
     await expect(card.getByTestId("card-read-only")).toBeVisible();
@@ -311,8 +311,8 @@ test("@workspace-page archive stays at the card's top right on home and workspac
         const archive = node.querySelector(
           'button[data-testid="archive-conversation"]',
         );
-        const stale = node.querySelector(".ah-home-stale");
-        if (!title || !archive || !stale)
+        const meta = node.querySelector(".ah-home-card-meta");
+        if (!title || !archive || !meta)
           throw new Error("card geometry fixture missing");
         const rect = (el: Element) => {
           const r = el.getBoundingClientRect();
@@ -328,7 +328,7 @@ test("@workspace-page archive stays at the card's top right on home and workspac
           card: rect(node),
           title: rect(title),
           archive: rect(archive),
-          stale: rect(stale),
+          meta: rect(meta),
         };
       });
       expect(boxes.archive.top).toBeLessThanOrEqual(boxes.title.top + 2);
@@ -337,7 +337,7 @@ test("@workspace-page archive stays at the card's top right on home and workspac
         boxes.card.left + boxes.card.width * 0.75,
       );
       expect(boxes.archive.right).toBeLessThanOrEqual(boxes.card.right);
-      expect(boxes.archive.bottom).toBeLessThanOrEqual(boxes.stale.top + 1);
+      expect(boxes.archive.bottom).toBeLessThanOrEqual(boxes.meta.top + 1);
       const widths = await page.evaluate(() => ({
         scroll: document.documentElement.scrollWidth,
         client: document.documentElement.clientWidth,

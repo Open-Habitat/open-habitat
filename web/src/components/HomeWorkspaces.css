@@ -129,12 +129,6 @@
 .ah-home-0 {
   background: var(--ah-accent-ink);
 }
-.ah-home-stale {
-  border: 1px dashed var(--ah-line-strong);
-  border-radius: var(--ah-r-pill);
-  padding: 1px 6px;
-  font-size: 11px;
-}
 .ah-home-card p {
   margin: 0;
 }

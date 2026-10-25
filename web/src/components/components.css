@@ -3562,26 +3562,12 @@ details[open] > summary:not([class])::before {
   font-size: var(--ah-size-meta);
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Recap time does not share the reply's layout. */
-.ah-recap-heading time,
-.ah-recap-auto {
+.ah-recap-heading time {
   color: var(--ah-muted);
-  font-size: var(--ah-size-meta);
-}
-.ah-recap-stale {
-  border: 1px dashed var(--ah-line-strong);
-  border-radius: var(--ah-r-pill);
-  padding: 1px var(--ah-s2);
-  color: var(--ah-ink-2);
   font-size: var(--ah-size-meta);
 }
 .ah-recap-grow {
   flex: 1;
-}
-@media (max-width: 440px) {
-  .ah-recap-auto {
-    order: 10;
-    width: 100%;
-  }
 }
 .ah-recap .ah-recap-next strong {
   margin-right: var(--ah-s2);

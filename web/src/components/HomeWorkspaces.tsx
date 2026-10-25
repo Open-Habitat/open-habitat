@@ -4,7 +4,7 @@ import {
   useConversationMetadata,
 } from "../app/conversationStore";
 import type { Recap } from "../app/conversations";
-import { readRecap } from "../app/conversations";
+import { currentRecap, readRecap } from "../app/conversations";
 import type { Workspace } from "../app/snapshot";
 import { agentPresentation, waitingName } from "./agentPresentation";
 import { ControlButton, LinkRow } from "./ControlElements";
@@ -92,6 +92,11 @@ export function HomeCard({
     };
   }, [conversation.id, conversation.revision]);
   const activity = agentPresentation(conversation).activity;
+  // An outdated recap is not shown as the current situation; the daemon
+  // writes a new one once the conversation has been idle.
+  const recap = state
+    ? currentRecap(state.recap, state.latest_message, activity === "working")
+    : null;
   const label =
     conversation.attention === "new"
       ? "Lue vastaus"
@@ -132,15 +137,10 @@ export function HomeCard({
               kind="read-only"
             />
           )}
-          {state?.recap && (
-            <time dateTime={new Date(state.recap.generated_at).toISOString()}>
-              {relativeRecapAge(state.recap.generated_at, Date.now())}
+          {recap && (
+            <time dateTime={new Date(recap.generated_at).toISOString()}>
+              {relativeRecapAge(recap.generated_at, Date.now())}
             </time>
-          )}
-          {state?.recap && state.recap.through !== state.latest_message && (
-            <span data-testid="unread-messages" className="ah-home-stale">
-              uusia viestejä
-            </span>
           )}
         </div>
         <span
@@ -187,12 +187,12 @@ export function HomeCard({
               : ""}
         </p>
       )}
-      {state?.recap ? (
+      {recap ? (
         <>
-          <p className="ah-home-recap">{state.recap.recap}</p>
+          <p className="ah-home-recap">{recap.recap}</p>
           <p className="ah-home-next">
             <strong>Seuraavaksi</strong>
-            <span>{state.recap.next}</span>
+            <span>{recap.next}</span>
           </p>
         </>
       ) : error ? (
@@ -205,10 +205,7 @@ export function HomeCard({
           Arkistointia ei tehty. Keskustelu palautettiin listaan.
         </p>
       )}
-      {(state?.recap ||
-        !state ||
-        error ||
-        conversation.attention !== "new") && (
+      {(recap || !state || error || conversation.attention !== "new") && (
         <LinkRow
           data-testid="open-conversation"
           className="ah-home-open"

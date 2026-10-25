@@ -266,6 +266,17 @@ export type Recap = {
   generated_at: number;
   trigger?: "manual" | "automatic";
 };
+// A recap describes the native branch only up to the message it was made
+// through. A later message or a running turn makes it a description of the
+// past, so it is not shown as the current situation; the daemon writes a new
+// one once the conversation has been idle (Jari 25.10.2026).
+export function currentRecap(
+  recap: Recap | null,
+  latest: string,
+  running = false,
+): Recap | null {
+  return recap && !running && recap.through === latest ? recap : null;
+}
 export async function readRecap(
   id: string,
 ): Promise<{ recap: Recap | null; latest_message: string }> {

@@ -64,6 +64,46 @@ func TestAutomaticRecapIdleGateAcrossTabsAndActivity(t *testing.T) {
 	}
 }
 
+// The browser hides a recap that later messages outdated and relies on this
+// daemon to replace it: each later settled turn earns one more idle recap.
+func TestOutdatedAutomaticRecapIsRegeneratedAfterNextIdle(t *testing.T) {
+	s := &conversation{id: "11111111-1111-4111-8111-111111111111", state: "idle", settled: true, rpc: &piRPC{}}
+	c := &ConversationController{sessions: map[string]*conversation{s.id: s}, recapIdleDelay: 20 * time.Millisecond}
+	called := make(chan string, 4)
+	c.recapGenerator = func(_ *conversation, trigger string, _ uint64) bool { called <- trigger; return true }
+	wait := func(what string) {
+		t.Helper()
+		select {
+		case trigger := <-called:
+			if trigger != "automatic" {
+				t.Fatalf("%s: trigger %q", what, trigger)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("%s: no automatic recap", what)
+		}
+	}
+	c.mu.Lock()
+	c.scheduleAutomaticRecap(s)
+	c.mu.Unlock()
+	wait("first idle period")
+	// The agent continues on its own (a process wake), then settles again.
+	c.mu.Lock()
+	s.state, s.settled = "accepted", false
+	c.noteRecapActivity(s)
+	c.mu.Unlock()
+	select {
+	case <-called:
+		t.Fatal("recap during the later turn")
+	case <-time.After(60 * time.Millisecond):
+	}
+	c.mu.Lock()
+	s.state, s.settled = "idle", true
+	s.recapLastActivity = time.Now()
+	c.scheduleAutomaticRecap(s)
+	c.mu.Unlock()
+	wait("idle period after the later turn")
+}
+
 func TestRejectedCommandDoesNotRestartNativeIdleClock(t *testing.T) {
 	s := &conversation{id: "11111111-1111-4111-8111-111111111111", state: "rejected", settled: true, rpc: &piRPC{}}
 	c := &ConversationController{sessions: map[string]*conversation{s.id: s}, recapIdleDelay: 50 * time.Millisecond}
