@@ -373,7 +373,7 @@ func TestApplyDeclaresUnboundAdministratorsForSignIn(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if !slices.Equal(calls, []string{"role 3 false", "role_declared 4 false", "role_declared 2 true"}) {
+	if !slices.Equal(calls, []string{"role 3 false", "role 4 false", "role_declared 2 true"}) {
 		t.Fatal(calls)
 	}
 	if !slices.Equal(roles, []AdministratorOutcome{{"1", "granted"}, {"2", "deferred_until_bound"}}) {

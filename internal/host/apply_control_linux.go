@@ -222,9 +222,11 @@ func convergeRoles(ctx context.Context, exchange func(context.Context, any, any)
 			}
 		}
 	}
+	// An obsolete declaration is withdrawn with a role removal, which drops the
+	// pending entry and any grant a sign-in made from it since settings was read.
 	for _, id := range settings.Pending {
 		if !slices.Contains(declared, id) {
-			if e := set("role_declared", id, false); e != nil {
+			if e := set("role", id, false); e != nil {
 				return nil, e
 			}
 		}

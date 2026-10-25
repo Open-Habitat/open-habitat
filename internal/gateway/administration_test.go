@@ -341,22 +341,19 @@ func TestDeclaredAdministratorGrantedAtBindingSignIn(t *testing.T) {
 	fb.routes["44"] = BrokerRoute{UID: 1003, Username: "carol", Socket: "/run/open-habitat/users/carol/daemon.sock"}
 	fb.unbound["44"] = true
 	control(`{"operation":"role_declared","subject":"44","administrator":true}`)
-	control(`{"operation":"role_declared","subject":"44","administrator":false}`)
+	control(`{"operation":"role","subject":"44","administrator":false}`)
 	p.id, p.login = "44", "carol"
 	state, flow = start(t, h)
 	third := callback(h, state, flow).Result().Cookies()[1]
 	if serverAdministrator(t, h, third) {
 		t.Fatal("withdrawn declaration granted")
 	}
-	// A root role removal also withdraws a pending declaration.
-	fb.routes["45"] = BrokerRoute{UID: 1004, Username: "dave", Socket: "/run/open-habitat/users/dave/daemon.sock"}
-	fb.unbound["45"] = true
-	control(`{"operation":"role_declared","subject":"45","administrator":true}`)
-	control(`{"operation":"role","subject":"45","administrator":false}`)
 	if len(a.settingsView().PendingAdministrators) != 0 {
 		t.Fatal("role removal kept the pending declaration")
 	}
-	if _, e := a.AdminControl(context.Background(), []byte(`{"operation":"role_declared","subject":"x","administrator":true}`)); e == nil {
-		t.Fatal("invalid subject declared")
+	for _, body := range []string{`{"operation":"role_declared","subject":"x","administrator":true}`, `{"operation":"role_declared","subject":"45","administrator":false}`} {
+		if _, e := a.AdminControl(context.Background(), []byte(body)); e == nil {
+			t.Fatalf("accepted %s", body)
+		}
 	}
 }

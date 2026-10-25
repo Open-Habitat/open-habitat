@@ -318,9 +318,9 @@ func (a *Auth) changeRole(ctx context.Context, id string, administrator bool) er
 // binding host apply did not observe. The declaration is recorded before the
 // binding is looked up, and the login callback grants a pending subject
 // after its broker recheck, so a binding created concurrently is granted by
-// one of the two. Withdrawing a declaration removes only the pending entry;
-// an existing grant is removed through changeRole.
-func (a *Auth) declareRole(ctx context.Context, id string, declared bool) error {
+// one of the two. A declaration is withdrawn through changeRole, which also
+// removes a grant a concurrent sign-in made from it.
+func (a *Auth) declareRole(ctx context.Context, id string) error {
 	if !canonicalSubject(id) {
 		return errors.New("invalid subject")
 	}
@@ -329,15 +329,10 @@ func (a *Auth) declareRole(ctx context.Context, id string, declared bool) error 
 		a.mu.Unlock()
 		return ErrAdministrationState
 	}
-	was := slices.Contains(a.settings.PendingAdministrators, id)
-	want := declared && !slices.Contains(a.settings.Administrators, id)
 	var e error
-	if was != want {
+	if !slices.Contains(a.settings.PendingAdministrators, id) && !slices.Contains(a.settings.Administrators, id) {
 		next := a.settings
-		next.PendingAdministrators = withoutSubject(next.PendingAdministrators, id)
-		if want {
-			next.PendingAdministrators = append(next.PendingAdministrators, id)
-		}
+		next.PendingAdministrators = append(append([]string{}, next.PendingAdministrators...), id)
 		e = a.commitAdministration(next)
 	}
 	pending := slices.Contains(a.settings.PendingAdministrators, id)
@@ -615,10 +610,10 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 		}
 		return []byte(`{"ok":true}`), nil
 	case "role_declared":
-		if r.Name != "" || r.Administrator == nil || r.DefaultLimitBytes != nil || r.LimitBytes != nil {
+		if r.Name != "" || r.Administrator == nil || !*r.Administrator || r.DefaultLimitBytes != nil || r.LimitBytes != nil {
 			break
 		}
-		if e := a.declareRole(ctx, r.Subject, *r.Administrator); e != nil {
+		if e := a.declareRole(ctx, r.Subject); e != nil {
 			return nil, e
 		}
 		return []byte(`{"ok":true}`), nil
