@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-sidebar
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype what the sidebar should hold instead of the workspace list
