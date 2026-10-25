@@ -2380,6 +2380,15 @@ export function App() {
   // The workspace editor sits beside a workspace's conversation; the wrapper
   // is there on every conversation route, so opening it remounts nothing.
   const editorRoute = !!(selectedId && openConversation) || !!selectedAgentId;
+  // An account editor offer names its workspace by ID; its card shows the name.
+  const workspaceName = (id: string) => {
+    for (const w of snapshot?.workspaces ?? []) {
+      if (w.workspace_id === id) return w.display_name ?? w.name;
+      const place = w.worktrees?.find((p) => p.worktree_id === id);
+      if (place) return `${w.display_name ?? w.name} · ${place.name}`;
+    }
+    return undefined;
+  };
   const editorWorkspaceId = selectedAgentId
     ? agentWorkspace &&
       (selectedAgent?.worktree_id ?? agentWorkspace.workspace_id)
@@ -2666,6 +2675,7 @@ export function App() {
                     : undefined
                 }
                 store={conversationStore}
+                workspaceName={workspaceName}
               >
                 {editorRoute ? (
                   <WorkspaceEditor

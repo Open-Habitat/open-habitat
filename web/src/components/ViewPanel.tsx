@@ -254,7 +254,7 @@ export function ViewTray({ children }: { children: ReactNode }) {
   return (
     <section
       className="ah-view-tray"
-      aria-label="Agenttien tarjoamat näkymät"
+      aria-label="Agenttien tarjoukset"
       data-testid="view-tray"
     >
       {children}

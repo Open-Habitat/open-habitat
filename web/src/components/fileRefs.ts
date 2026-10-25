@@ -44,5 +44,7 @@ export function parseFileRef(text: string): FileRef | null {
 export interface FileLinks {
   open: (ref: FileRef, text: string) => void;
   opened?: string;
+  /** The workspace whose files these links open. */
+  workspace?: string;
 }
 export const FileLinkContext = createContext<FileLinks | null>(null);

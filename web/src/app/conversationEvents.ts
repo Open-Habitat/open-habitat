@@ -3,6 +3,7 @@ import addFormats from "ajv-formats";
 import annotations from "../../../contracts/v1/annotations.schema.json";
 import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
+import editorSchema from "../../../contracts/v1/editor.schema.json";
 import eventSchema from "../../../contracts/v1/event.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
 import noticeSchema from "../../../contracts/v1/notice.schema.json";
@@ -19,6 +20,7 @@ const ajv = new Ajv({ strict: false });
 ajv.addSchema(processEventSchema);
 ajv.addSchema(noticeSchema);
 ajv.addSchema(viewSchema);
+ajv.addSchema(editorSchema);
 addFormats(ajv);
 for (const schema of [
   common,

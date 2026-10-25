@@ -1,6 +1,7 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
+import editorSchema from "../../../contracts/v1/editor.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
 import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
@@ -12,6 +13,7 @@ const ajv = addFormats(new Ajv({ strict: false }));
 ajv.addSchema(processEventSchema);
 ajv.addSchema(noticeSchema);
 ajv.addSchema(viewSchema);
+ajv.addSchema(editorSchema);
 ajv.addSchema(common);
 ajv.addSchema(historySchema);
 const validate = ajv.getSchema(historySchema.$id);
