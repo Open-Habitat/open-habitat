@@ -49,6 +49,9 @@ option C as accepted. This issue implements its first, owner-only part.
   Switching the view cookie to Lax makes it fail (the page's own script
   never loads), which is why the cookie is `SameSite=None`.
 - Whole suite `npm run test:browser --prefix web`: see "Whole browser suite".
+- The spec also passes with Chromium's `--test-third-party-cookie-phaseout`
+  flag; whether that flag is effective in Playwright's headless build was not
+  verified, and Safari and Firefox were not tried.
 
 All of this is same-UID synthetic evidence. Real hostnames, wildcard TLS and
 two distinct Unix users are not exercised; the test server is the first place.
@@ -60,6 +63,36 @@ wrapper changed those pages' layout (an onboarding footer covered its
 buttons). Fixed by making the wrappers `display: contents` while no view is
 open, and by resetting the host's own state on a new identity instead of
 remounting the page. `first-use-ux.spec.ts` passes on main and again here.
+The second run showed `loading-landing` (the app's 404 for the view list
+logged a console error; the list is now an empty 204 without a view origin)
+and `native-history` title (fixture history lines put the type later, so the
+title-scanner guard keeps its old refusal for untyped long lines). The third
+run had one failure, in the untouched `browser-editor-concurrent.spec.ts`
+(an agent change shown as imported rather than pending), which passed twice
+alone: a timing flake under full load, not filed. The final run, after
+the review fixes, passed all 377 cases (3 skipped).
+
+## Review
+
+Independent `/llm-review` at critical rigor on the final diff. The finder was
+claude-opus-5-5: gpt-6-astra (codex 401 on Birch) and claude-fable-5-1 (CLI
+exit 1) were unavailable, deepseek-v4-pro and gemini failed on the payload, so
+no second-provider verifier ran and every finding was confirmed locally.
+`/assess-findings`: 4 FIX, 1 DROP. All four fixes are in the branch:
+
+- a view host refused file names browsers send unescaped (`kuva (1).png`);
+  now only encoded separators are refused;
+- a daemon `view.offered` event enabled offers in the browser even without a
+  view origin; now only the list does;
+- a derived title over 200 bytes published an export its own reader rejects;
+  now the title is shortened and an invalid summary is refused before export;
+- `agent view remove --dry-run` searched a list capped at 200; the daemon now
+  answers the dry run.
+
+Dropped: `/healthz` and `/readyz` on a view host lack the view CSP (fixed
+JSON, not content). The cookie-blocking question above stays open. The
+isolation, confinement, CSP and authority paths held in the finder's own
+tracing and in the tests.
 
 ## Found on the way
 

@@ -3,7 +3,7 @@ created: 2026-10-25
 updated: 2026-10-25
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@agent-html-artifacts']
 lane: html-views
@@ -11,6 +11,7 @@ lane_seq: 2
 collision: [web/src/app/, contracts/v1/, internal/gateway/, docs/]
 blocked_by: ['@agent-html-artifacts']
 preparation: ready
+closed: 2026-10-25
 ---
 
 # Show an agent's HTML view to its owner: offer card, side panel and own tab
@@ -31,16 +32,16 @@ live dev-server previews, clipboard and file-open offers. The prototypes in
 
 ## Acceptance Criteria
 
-- [ ] ADR recording option C's authority split and the shape the prototype
+- [x] ADR recording option C's authority split and the shape the prototype
   fixed (written under `agent-html-artifacts`, which closes with it).
-- [ ] An own-UID agent command offers a workspace file or directory entry as a
+- [x] An own-UID agent command offers a workspace file or directory entry as a
   frozen view; the offer reaches the person's open browsers as a card in the
   conversation (or an account-level place when no conversation is known).
-- [ ] Both buttons work; the content runs sandboxed on a per-view origin with
+- [x] Both buttons work; the content runs sandboxed on a per-view origin with
   the response CSP that also protects a direct open; app and editor cookies
   never reach it.
-- [ ] Without a configured view origin the feature is not offered (as with the
+- [x] Without a configured view origin the feature is not offered (as with the
   editor), so existing installations keep working.
-- [ ] Focused Go, contract and browser checks; a live check line in
+- [x] Focused Go, contract and browser checks; a live check line in
   `KOKEILTAVAA.md` for the test server once the origin is configured there.
 

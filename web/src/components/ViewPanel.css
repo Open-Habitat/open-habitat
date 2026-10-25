@@ -49,14 +49,7 @@
   flex: none;
 }
 
-/* The split: the conversation keeps the left, the panel takes the right.
-   Without an open view both wrappers are layout-transparent, so every page
-   keeps the layout it has without views; they stay in the tree so opening a
-   view never remounts the page. */
-.ah-view-split:not(.ah-view-open),
-.ah-view-split:not(.ah-view-open) > .ah-view-conversation {
-  display: contents;
-}
+/* The split: the conversation keeps the left, the panel takes the right. */
 .ah-view-split {
   position: relative;
   display: flex;
@@ -209,4 +202,12 @@
   .ah-view-open [data-testid="expand-view"] {
     display: none;
   }
+}
+
+/* Without an open view both wrappers are layout-transparent, so every page
+   keeps the layout it has without views; they stay in the tree so opening a
+   view never remounts the page. */
+.ah-view-split:not(.ah-view-open),
+.ah-view-split:not(.ah-view-open) > .ah-view-conversation {
+  display: contents;
 }

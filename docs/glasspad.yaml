@@ -46,3 +46,6 @@ groups:
       - slug: decisions/adr-0031-native-gitea-connections
         title: ADR 0031 — Native Gitea connections
         desc: Proposed — tea-owned per-user PAT connections with a bounded native-format and Git adapter; approval and implementation pending.
+      - slug: decisions/adr-0032-agent-html-views
+        title: ADR 0032 — Agent HTML views
+        desc: Accepted — agents offer HTML views the person opens in a side panel or own tab, on an isolated per-view origin from frozen exports; owner only first.
