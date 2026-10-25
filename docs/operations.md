@@ -585,7 +585,7 @@ Second, a pinned code-server release (4.141.0 is the verified one) unpacked into
 Every installation ships the integration tools in the required `integrations`
 profile, so a site's `profiles` always lists `core` and `integrations`. The
 signed profile carries **himalaya 2.2.1** (IMAP), **rclone 1.71.2**, **gog
-0.39.1**, **@softeria/ms-365-mcp-server 0.170.1** with the `microsoft-native`
+0.39.1**, **tea 0.16.0** (Gitea), **@softeria/ms-365-mcp-server 0.170.1** with the `microsoft-native`
 adapter, **MSAL 5.6.0** and their own **Node 22.21.1**, and a Pi wrapper that
 runs the same release's core **Pi 1.3.0** for native `pi mcp add/remove`. Each
 upstream executable is pinned by archive and file SHA-256 with its upstream
@@ -625,6 +625,22 @@ in site.json and run apply; the broker then refuses browser and CLI writes, and
 hand edits work as before. The broker's service needs `/opt/open-habitat`
 writable for this, which the shipped unit declares. Every person still connects their own accounts in Settings →
 Integrations; the operator configures no one's connection.
+
+### Gitea servers
+
+A Gitea connection needs no app section: each person pastes their server's
+address and a personal access token in Settings → Integrations, and the token
+lives only in their own tea file. What the operator provides is the route and
+the trust. The host must reach the Gitea's HTTPS address by DNS or IP over the
+network, LAN or VPN the operator has set up; the connector refuses link-local,
+metadata, unspecified and multicast destinations, and dials loopback only when
+the person typed a loopback address. A certificate from a private CA is trusted
+through the OS store (`/usr/local/share/ca-certificates/` and
+`update-ca-certificates`), never through the connector. Each person's daemon
+reads that store once when it starts, so after adding a CA restart the daemons
+that should use it (`systemctl restart open-habitat-daemon@<user>.service`);
+Git and tea read it on every run. Without the route or the trust a connection
+attempt answers `unreachable` or `tls_untrusted`, and nothing is written.
 
 ### Dropbox app registration
 

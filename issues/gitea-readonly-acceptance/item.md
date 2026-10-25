@@ -1,9 +1,9 @@
 ---
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-25
 type: improvement
 reporter: jari
-status: open
+status: testing
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-readonly-acceptance
@@ -47,7 +47,7 @@ The shared `contracts/v1/` and `web/src/app/GitHubOnboarding` tokens use the cur
 
 ## Acceptance Criteria
 
-- [ ] Two real UIDs with distinct PATs cannot read each other's tea state, select connection IDs, clone/cancel/disconnect jobs or route a foreign session socket; wrong owner/peer is refused.
+- [x] Two real UIDs with distinct PATs cannot read each other's tea state, select connection IDs, clone/cancel/disconnect jobs or route a foreign session socket; wrong owner/peer is refused.
 - [ ] Installed CLI/browser/Pi/shell read-only paths pass against the harmless private repo; record exact server/version/scopes/CA and observed pagination, rotation/revocation and clone retention.
 - [ ] Keep four proof levels separate in result.md: unit fixture, host-backed browser, real UID/runtime, real provider + Jari review. Run focused UID/runtime/provider checks and round clean gate per TESTING.md; independent /llm-review covers all credential/daemon isolation changes before release.
 
