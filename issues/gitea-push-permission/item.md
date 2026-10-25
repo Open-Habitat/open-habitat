@@ -66,3 +66,7 @@ Jari 2026-10-24: the push test is done on birch once Open Habitat runs there; th
 ### 2026-10-25T09:59:49Z · @jari
 
 Jari 2026-10-25: authorizes the push test now ('Pistä tekeytymään'). On Birch against Alder's Gitea (https://alder.example-tailnet.ts.net, 1.25.4) with a disposable private test repository under Jari's account and test PATs (read-only and write:repository + read:user) created through Gitea's admin CLI by the agent. Jari's own read-only connection on Birch stays as it is. Blockers: Birch runs Open Habitat (pilot.11), so habitat-birch-install's condition holds; the real-provider read-only proof of gitea-readonly-acceptance is done in the same run first.
+
+### 2026-10-25T10:08:46Z · @jari
+
+Jari 2026-10-25: the test may replace, rotate, revoke and disconnect his own Gitea connection on Birch freely; clones can be recloned later. End with a working read-only connection for him on a fresh token.
