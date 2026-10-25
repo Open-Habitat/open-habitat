@@ -41,3 +41,7 @@ Jari 2026-10-25 on research.md: (1) option C approved: the agent offers, Habitat
 ### 2026-10-25T12:35:58Z · @jari
 
 Jari 2026-10-25 on round 1: the right-hand panel (variant 'Oikealla') is the direction. The person chooses with a button whether a view opens in the panel or on its own browser tab; the agent cannot know, so there are no separate card types for reports and prototypes. A riff round follows on that basis (conductor recommendation adopted: a Laajenna/expand option borrowing round 1's viewing mode).
+
+### 2026-10-25T15:10:26Z · @jari
+
+Jari 2026-10-25 on round 2: 'Suora' is chosen: every offer card has two buttons, Avaa (right-hand panel) and Avaa omalle välilehdelle, with no remembered choice or setting. The panel's controls (close etc.) follow the editor panel's header (EditorHeader). Next: ADR, then a thin owner-only first implementation; sharing stays deferred.
