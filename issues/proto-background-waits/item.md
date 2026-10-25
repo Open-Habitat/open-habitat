@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-waits
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype how an agent's background waits on its workers are shown
