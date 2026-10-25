@@ -2,7 +2,7 @@
 created: 2026-10-25
 updated: 2026-10-25
 type: improvement
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: acceptance observation on a real Gitea
@@ -12,6 +12,10 @@ originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
 collision: [internal/nativegitea/]
+closed: 2026-10-25
+commits:
+- hash: c1f94545
+  summary: 'gitea: connect, replace and check need read:user and read:repository'
 ---
 
 # Gitea connect accepts a PAT without read:repository and reports it working
