@@ -1,11 +1,9 @@
 # Result: Gitea two-UID isolation and installed read-only acceptance
 
-Everything that can be proved without Jari is done. The two-kernel-UID proof is
-now part of `scripts/test-repo-catalog-uids.sh`, and the installed read-only
-path has passed against a real Gitea server set up for this test. Two things
-remain for Jari: the product verdict on the installed UI, and acceptance
-against Alder's real Gitea. The issue stays open in `testing` until he has done
-both.
+The two-kernel-UID proof is part of `scripts/test-repo-catalog-uids.sh`.
+Installed read-only paths have passed both against the disposable real Gitea
+and, separately, Alder's household Gitea through Birch. Jari's product verdict
+on the installed UI remains open; this issue stays `testing`.
 
 ## Proof levels
 
@@ -218,14 +216,11 @@ connected to it.
 
    Judge the connect dialog and the common list as the accepted connect-riff
    and workspace-import round 3 designs.
-2. **Alder's real Gitea.** This needs a route from the test server to Alder's
-   Gitea, and possibly its CA in the OS trust. Both are operator prerequisites
-   that this run did not set up. On a host that has the route, create a PAT on
-   your own account with `read:user` + `read:repository`, connect it in the
-   same dialog, and clone and fetch a harmless private repository (not the
-   Fleetrepo repository). Check that the list's own, organisation and
-   collaborator rows are complete. Then replace the token, revoke it in
-   Gitea's settings, and disconnect.
+2. **Alder's real Gitea technical proof is now complete**, through Birch as
+   recorded below. Jari need not repeat the lifecycle test to supply his UI
+   verdict. The real account has no org/collaborator repositories: completeness
+   here includes those empty categories; nonempty category coverage remains
+   the disposable real-provider proof above.
 
 **Teardown afterwards** (root on the test server):
 `systemctl stop oh-gitea-accept; userdel oh-gitea-accept; rm -r /var/lib/oh-gitea-accept /opt/oh-gitea-accept /root/oh-gitea-accept.Ryx25bnV; rm /usr/local/share/ca-certificates/oh-gitea-accept.crt; update-ca-certificates --fresh; systemctl restart open-habitat-daemon@maintainer.service`.
@@ -234,26 +229,77 @@ with the `systemd-run` line from `setup.sh` in that directory.
 
 ## Real provider (Alder Gitea via Birch)
 
-2026-10-25, run `01m5s82fmtj4a48ee0c0ab34tc`: **blocked before provider
-qualification**, not an additional passing proof level. Birch runs installed
-`0.1.0-pilot.11`, revision `8019de3c4f98c6e9a696b703efca339adc2d47a2`,
-with tea 0.16.0. The real Habitat UID is `maintainer` (32000).
+**Passed 2026-10-25**, run `01m5s8hzd1rp5jcx8vypqhce3h`. This is an
+additional installed real-provider proof, not a replacement for two-UID
+isolation or Jari's UI verdict. The earlier run
+`01m5s82fmtj4a48ee0c0ab34tc` stopped before mutation under its then-current
+connection-preservation restriction; Jari subsequently authorized replacement,
+rotation, revocation and disconnect. Its unchanged-state receipts remain in
+`/var/tmp/agent-keep/gitea-birch-push-01m5s82fmtj4a48ee0c0ab34tc/` on Alder.
 
-The installed daemon and native tea both already show Jari's owned PAT connection
-for `jari` at `https://alder.example-tailnet.ts.net`. The adapter permits only one
-connection per canonical base/account. A second test PAT would require replacing
-that connection; manual duplicate entries are ambiguous. The brief forbids
-reading/replacing/removing his secret and explicitly requires escalation if a
-separate test connection is impossible. No mutation was attempted.
+**Installed product:** Birch Open Habitat **0.1.0-pilot.11**, revision
+`8019de3c4f98c6e9a696b703efca339adc2d47a2`, real Habitat person
+`maintainer`, UID **32000**. Installed tea **0.16.0** (Go **1.26.6**,
+SDK **v1.2.0**), Git **2.43.0**, Pi **1.3.0**. The native login is
+`habitat-adb949f41a55-1`, connection `gitea_ab9f4bb6f66c6964fd0ca424`, account
+`jari`. The actual daemon socket was called as gateway UID **31000**, with
+Host `unix` and HTTP/1.1; no isolated HOME or substitute daemon was used.
 
-Before/after secret-free daemon and tea projections compare equal, as do tea
-and Git config ownership, mode, size, inode and modification/change timestamps.
-No test tokens or test repository were created; the final server query found
-zero `habitat-test-%` tokens for account UID 1. Jari's connection remains intact.
+**Provider/TLS:** Alder Gitea **1.25.4**, confirmed by `/api/v1/version` and
+its admin CLI, at `https://alder.example-tailnet.ts.net`. Birch curl reported TLS
+verify **0**, HTTP **200**, using the existing OS trust. Certificate subject
+`alder.example-tailnet.ts.net`, issuer Let's Encrypt **YE1**, validity
+2026-10-25 08:50:02 UTC to 2027-01-23 08:50:01 UTC, SHA-256 fingerprint
+`9D:13:C9:C2:DF:77:2D:0C:92:4E:C4:5E:FF:EA:83:74:0C:14:4C:5A:D3:CE:7F:AB:F6:9A:96:00:68:0B:F2:8E`.
+No CA installation, insecure flag, networking repair or service restart.
 
-TLS/CA, server version, own/org/collaborator completeness, clone/fetch,
-rotation, revocation and disconnect/clone retention were **not proved** in this
-attempt. Existing acceptance checkboxes and this issue's `testing` status stay
-unchanged. The product verdict is still Jari's. The blocking evidence, exact
-versions, recovered tool errors and proposed next authorization are recorded in
-[gitea-push-permission/result.md](../gitea-push-permission/result.md).
+**Harmless target:** private `jari/habitat-access-test`, repository ID **6**,
+created for this test only. Clone retained at
+`/home/maintainer/src/habitat-access-test`. No other repository was cloned,
+fetched or pushed by this worker. Catalog enumeration necessarily observed
+metadata of other accessible repositories; their inventory is not committed.
+
+| Installed operation | Observation |
+|---|---|
+| replace existing connection with `habitat-test-ro1` (`read:user,read:repository`) | 200 `written`, API `ok`, Git `registered` |
+| daemon repository list | `state: ok`, `complete: true`, exactly **5** own repositories; IDs match independent SQLite owner/access inventory |
+| organisation/collaborator completeness | **0** memberships, **0** non-owned accessible repositories in database; neither category omitted from the list. No nonempty org/collaborator coverage is claimed on Alder |
+| installed tea `repos ls --login habitat-adb949f41a55-1 --output json` | same 5 rows (tea's first page; not itself a full-pagination proof) |
+| installed daemon clone job | private HTTPS clone `confirmed`, job `dcfa8f420b29f7c51c8cf2e498b4fc19` |
+| installed daemon workspace fetch | 200 through `/api/v1/workspaces/git/fetch` |
+| shell Git under minimal native environment | fetch exit 0, mapped HOME/XDG, `/usr/bin:/bin`, prompts disabled, no token environment/SSH agent |
+| installed Pi's bash tool | `git fetch origin`, tool result exit **0**, `isError: false`; structured events captured for this newly generated test only |
+| replace with `habitat-test-ro2` (same read-only scopes) | 200 `written`, API `ok`; existing clone fetch exit 0 without reconfiguration |
+| revoke ro2 at Gitea | check `token_rejected`; source failed `token_rejected`; fetch exit 128 authentication failure |
+| disconnect | 200; ordinary clone and commit history remain; fetch exit 128 because no credential remains |
+| reconnect read-only | 200 API `ok`; used for separately authorized denied push test |
+| final read-only restoration | `habitat-birch-readonly-3`, `read:user,read:repository`: replace/check API `ok`, complete 5-row catalog, shell/Pi/daemon fetch pass |
+
+Catalog completeness is the adapter's terminal-empty-page result on a small
+real account, independently checked against database IDs. This is not forced
+multi-page evidence; the disposable Gitea proof above supplies that (and
+nonempty org/collaborator rows). Browser-facing daemon routes were exercised
+here, not a new end-to-end browser UI journey. Accordingly the broader
+installed-browser acceptance box stays unchecked for Jari's product verdict.
+
+**Final state:** `habitat-birch-readonly-2` and every `habitat-test-%` PAT are
+revoked, confirmed by SQLite readback. Final tea config is UID **32000**, mode
+**0600**, with the fresh read-only grant. The clone is retained, working, on
+`push-test` after the separately authorized harmless empty commit. The
+write-PAT test did not create a second secret store or browser push surface.
+
+**Review/limits:** focused helper/provider/credential regressions passed after
+installing their local SDK fixture; self-review compared actual responses,
+server refs, scopes, independent inventory IDs, cleanup readback and leak
+scan receipts. No product code changed; no clean gate, release or independent
+LLM review was needed for these evidence edits. The earlier two-UID, synthetic
+browser and disposable-provider proof levels are not rerun or promoted here.
+Jari's UI verdict is still his; this issue remains `testing`.
+
+Nonsecret receipts are on Alder under
+`/var/tmp/agent-keep/gitea-birch-push-01m5s8hzd1rp5jcx8vypqhce3h/`.
+[Push qualification](../gitea-push-permission/result.md) records exact scopes,
+branch policy, credential-leak scanning and all recovered tool/provider
+failures (including a transient final-list `unreachable`, followed by a
+complete list and successful fetch). No active PAT remains in the evidence
+directory after the final audit.

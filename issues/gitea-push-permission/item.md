@@ -43,9 +43,9 @@ The shared `contracts/v1/` and `web/src/app/GitHubOnboarding` tokens use the cur
 
 ## Acceptance Criteria
 
-- [ ] Explicit authorization, disposable private target and branch are recorded before executing any push test.
-- [ ] On the qualified server, read-only push is denied and separately authorized write-PAT push succeeds only as permitted; clone/fetch and replacement remain correct without leaked credentials.
-- [ ] Focused helper/provider regressions pass; independent /llm-review covers any credential/write-boundary changes. Result names exact scopes, version, branch policy and permission limits.
+- [x] Explicit authorization, disposable private target and branch are recorded before executing any push test.
+- [x] On the qualified server, read-only push is denied and separately authorized write-PAT push succeeds only as permitted; clone/fetch and replacement remain correct without leaked credentials.
+- [x] Focused helper/provider regressions pass; independent /llm-review covers any credential/write-boundary changes. Result names exact scopes, version, branch policy and permission limits.
 
 ## Validation and review
 
