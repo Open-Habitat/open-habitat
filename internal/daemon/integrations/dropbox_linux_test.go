@@ -453,6 +453,7 @@ func TestDropboxInterruptedFirstChoiceCanBeRetried(t *testing.T) {
 	}
 	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"all"}})
 	waitState(t, h, ownerA, "completed")
+	waitLoginWorker(t, c)
 	if !c.sync.supervised(key{Dropbox, email}) {
 		t.Fatal("retry did not initialize sync")
 	}

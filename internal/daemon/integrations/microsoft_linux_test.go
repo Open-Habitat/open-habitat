@@ -394,6 +394,10 @@ func TestMicrosoftCatalogRelaysOneCodeAndSupervisesChoice(t *testing.T) {
 		t.Fatal(code)
 	}
 	waitState(t, h, ownerA, "completed")
+	// Completion is published before the worker's reconciliation, which starts
+	// sync and then writes the skill with an fsync under c.write. A removal sent
+	// in that window is refused as busy, not queued.
+	waitLoginWorker(t, c)
 	if !c.sync.supervised(key{Microsoft, "person@example.test"}) {
 		t.Fatal("chosen sync not supervised")
 	}
