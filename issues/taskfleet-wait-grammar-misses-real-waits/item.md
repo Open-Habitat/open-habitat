@@ -2,7 +2,7 @@
 created: 2026-10-25
 updated: 2026-10-25
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed in conductor session history
@@ -12,6 +12,10 @@ originating_run_kind: spinoff
 lane: unlaned
 collision: [internal/daemon/processes_linux.go]
 preparation: ready
+closed: 2026-10-25
+commits:
+- hash: 4ef0ef3f
+  summary: recognise real run wait shapes; exit 4 reads as check-in
 ---
 
 # Real taskfleet run wait commands are not recognised as waits (cd &&, --check-in, --terminal)
