@@ -50,10 +50,14 @@ function panelBounds(total: number) {
 }
 
 export function ViewHost({
+  identity,
   csrf,
   store,
   children,
 }: {
+  /** A new person drops the previous person's offers and open view. The
+   * children are never remounted for it: they own their own state. */
+  identity?: string;
   csrf?: string;
   store?: ConversationStore;
   children: ReactNode;
@@ -70,6 +74,17 @@ export function ViewHost({
   const [width, setWidth] = useState(() => Math.round(window.innerWidth * 0.5));
   const title = useRef<HTMLHeadingElement>(null);
   const mintSeq = useRef(0);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: identity is the trigger, not an input.
+  useEffect(() => {
+    mintSeq.current++;
+    setEnabled(false);
+    setAccount([]);
+    setHidden(new Set());
+    setStates({});
+    setOpened(undefined);
+    setExpanded(false);
+  }, [identity]);
 
   useEffect(() => {
     if (!csrf) return;

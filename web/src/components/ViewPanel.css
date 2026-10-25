@@ -49,7 +49,14 @@
   flex: none;
 }
 
-/* The split: the conversation keeps the left, the panel takes the right. */
+/* The split: the conversation keeps the left, the panel takes the right.
+   Without an open view both wrappers are layout-transparent, so every page
+   keeps the layout it has without views; they stay in the tree so opening a
+   view never remounts the page. */
+.ah-view-split:not(.ah-view-open),
+.ah-view-split:not(.ah-view-open) > .ah-view-conversation {
+  display: contents;
+}
 .ah-view-split {
   position: relative;
   display: flex;
@@ -65,9 +72,26 @@
   min-width: 0;
   min-height: 0;
 }
-.ah-view-conversation > * {
+.ah-view-open > .ah-view-conversation {
+  overflow: hidden;
+}
+.ah-view-open > .ah-view-conversation > * {
   flex: 1;
   min-height: 0;
+}
+/* The conversation header in the narrowed column: the narrow arrangement,
+   as beside the editor. */
+.ah-view-open .ah-agent-topline {
+  flex-wrap: wrap;
+  row-gap: var(--ah-s1);
+}
+.ah-view-open .ah-agent-topline .ah-title-row {
+  flex: 1 1 90px;
+  min-width: 85px;
+}
+.ah-view-open .ah-agent-topline .ah-header-workspace {
+  order: 10;
+  width: 100%;
 }
 .ah-view-pane {
   display: flex;

@@ -2659,7 +2659,7 @@ export function App() {
                 />
               ) : null}
               <ViewHost
-                key={identity ?? ""}
+                identity={identity}
                 csrf={
                   phase === "authenticated" || phase === "stale"
                     ? csrf
