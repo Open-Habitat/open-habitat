@@ -3,7 +3,7 @@ created: 2026-10-25
 updated: 2026-10-25
 type: bug
 reporter: claude
-status: open
+status: in-progress
 priority: normal
 lane: unlaned
 collision: [internal/daemon]
