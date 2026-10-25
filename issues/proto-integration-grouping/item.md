@@ -7,6 +7,7 @@ status: open
 priority: normal
 lane: proto-settings
 lane_seq: 1
+preparation: ready
 ---
 
 # Prototype grouping of AI, code-host and data integrations in settings

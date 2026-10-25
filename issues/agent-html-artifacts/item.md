@@ -9,6 +9,7 @@ related: ['@habitat-seat-commands']
 lane: html-views
 lane_seq: 1
 collision: [web/src/app/]
+preparation: ready
 ---
 
 # Agent HTML artifacts and web views: show, open, share
