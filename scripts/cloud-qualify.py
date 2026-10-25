@@ -48,7 +48,7 @@ INTEGRATION_TOOLS = {'curl', 'gog', 'himalaya', 'microsoft-native', 'ms-365-mcp-
 # tea arrived with a later release: a predecessor that predates it publishes
 # the other tools, and its daemon offers no usable Gitea until tea is there.
 PRE_TEA_TOOLS = INTEGRATION_TOOLS - {'tea'}
-INTEGRATIONS_INSTALLED = {'imap': [True, None], 'caldav': [True, None], 'carddav': [True, None],
+INTEGRATIONS_INSTALLED = {'imap': [True, None], 'caldav': [True, None], 'carddav': [True, None], 'apple': [True, None],
                           'google': [False, 'app_credentials_required'],
                           'microsoft': [False, 'app_credentials_required'],
                           'dropbox': [False, 'app_credentials_required'],

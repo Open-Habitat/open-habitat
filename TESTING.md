@@ -586,7 +586,7 @@ repeat; first use through the broker socket as the gateway UID for two
 synthetic people, each own-UID agent environment answering 200 while the other
 UID is refused, the bound administrator granted on re-apply and a quota
 override, and each person's integration catalog read through the daemon socket
-as the gateway (IMAP, CalDAV and CardDAV available, Google, Microsoft and
+as the gateway (IMAP, CalDAV, CardDAV and Apple available, Google, Microsoft and
 Dropbox waiting for app credentials, every shipped tool root-owned in
 `integrations.json`); a cold boot with host check, CA-validated public HTTPS,
 agents, quotas, home state, the unchanged integrations file and catalog and a
