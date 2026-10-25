@@ -871,16 +871,22 @@ export async function queueMessage(
   )
     throw new Error("invalid queue send");
 }
+/** Takes Pi's queued messages back. A Stop also asks for the queued messages
+ * Pi delivered that the model has not answered yet: the stopped turn never
+ * will, so they go back to the person too. */
 export async function clearQueue(
   id: string,
   commandId: string,
   csrf: string,
-): Promise<{ steering: string[]; follow_up: string[] }> {
+  stop = false,
+): Promise<{ steering: string[]; follow_up: string[]; unanswered: string[] }> {
   if (!uuid.test(commandId)) throw new Error("invalid command");
   const v = await request(
     `${path(id)}/clear_queue`,
     undefined,
-    { command_id: commandId },
+    stop
+      ? { command_id: commandId, unanswered: true }
+      : { command_id: commandId },
     csrf,
   );
   if (
@@ -892,11 +898,14 @@ export async function clearQueue(
   )
     throw new Error("invalid clear");
   const q = v.removed_queue;
+  const unanswered = stop ? v.unanswered : [];
   if (
     !Array.isArray(q.steering) ||
     !Array.isArray(q.follow_up) ||
+    !Array.isArray(unanswered) ||
     q.steering.length + q.follow_up.length > 128 ||
-    ![...q.steering, ...q.follow_up].every(
+    unanswered.length > 128 ||
+    ![...q.steering, ...q.follow_up, ...unanswered].every(
       (t: unknown) =>
         typeof t === "string" && new TextEncoder().encode(t).length <= 65536,
     )
@@ -905,6 +914,7 @@ export async function clearQueue(
   return {
     steering: q.steering as string[],
     follow_up: q.follow_up as string[],
+    unanswered: unanswered as string[],
   };
 }
 

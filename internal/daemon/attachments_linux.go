@@ -195,6 +195,24 @@ type piAttachmentImage struct {
 
 // Attachment references survive held messages and native history without a
 // parallel message store. Resolve only generated IDs within this person's root.
+// writtenText undoes promptAttachments' path lines on a text Pi gives back, so
+// the person gets the message as written, its attachment references intact; a
+// new send expands them again.
+func writtenText(home, text string) string {
+	suffix := ""
+	seen := make(map[string]bool)
+	for _, match := range attachmentRef.FindAllStringSubmatch(text, -1) {
+		if !seen[match[1]] {
+			seen[match[1]] = true
+			suffix += "\nAttachment path: " + filepath.Join(home, "attachments", match[1])
+		}
+	}
+	if suffix == "" {
+		return text
+	}
+	return strings.TrimSuffix(text, suffix)
+}
+
 func promptAttachments(home, message string, includeImages bool) (string, []piAttachmentImage, error) {
 	matches := attachmentRef.FindAllStringSubmatch(message, -1)
 	refs := make([]string, 0, len(matches))

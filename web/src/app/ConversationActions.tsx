@@ -265,8 +265,8 @@ export function useConversationActions({
       if (alive.current) setBusy(false);
     }
   };
-  // quiet (Stop): the restored texts in the field are the whole outcome.
-  const clearNativeQueue = async (quiet = false) => {
+  // stop: the restored texts in the field are the whole outcome.
+  const clearNativeQueue = async (stop = false) => {
     if (
       busy ||
       !current ||
@@ -287,11 +287,18 @@ export function useConversationActions({
         current.agent_id,
         crypto.randomUUID(),
         token,
+        stop,
       );
       if (!alive.current) return;
-      // The two groups are restored in Pi's reported order, never from an
-      // earlier observation of the queue. Do not overwrite an edited draft.
-      const restored = [...removed.steering, ...removed.follow_up].join("\n\n");
+      // Restored in Pi's reported order, never from an earlier observation
+      // of the queue: first what Pi delivered and the stopped turn left
+      // unanswered, then what was still queued. Do not overwrite an edited
+      // draft.
+      const restored = [
+        ...removed.unanswered,
+        ...removed.steering,
+        ...removed.follow_up,
+      ].join("\n\n");
       if (restored) changeDraft(draft ? `${draft}\n\n${restored}` : restored);
       if (current.queue)
         setRestoredQueue({
@@ -300,7 +307,7 @@ export function useConversationActions({
         });
       // Stop reads status after its abort; an earlier read here would only
       // hold that one back.
-      if (!quiet) {
+      if (!stop) {
         setReceipt(
           restored
             ? "Jonosta poistetut viestit palautettiin kirjoituskenttään."
@@ -322,7 +329,10 @@ export function useConversationActions({
   };
   // Stop is immediate and asks nothing (Jari 13.10.). Pi keeps its queue over
   // an abort, so the queued messages are first taken back into the field, as
-  // Pi's TUI does on Esc, instead of waiting for the next turn. The composer
+  // Pi's TUI does on Esc, instead of waiting for the next turn. Pi is asked
+  // even when this view shows no queue: a message queued a moment ago, or one
+  // Pi just delivered that the stopped turn will never answer, is only in
+  // Pi's answer (Jari 25.10.2026). The composer
   // shows the stop in progress until status shows the turn ended; only a
   // refused or unknown outcome gets a message, and only while the turn
   // still runs (a turn that ended on its own needs no stop).
@@ -335,11 +345,7 @@ export function useConversationActions({
         attempt?.command === command ? { ...attempt, phase } : attempt,
       );
     setStopAttempt({ id, command, phase: "pending" });
-    if (
-      (current.queue?.steering.length ?? 0) +
-      (current.queue?.follow_up.length ?? 0)
-    )
-      await clearNativeQueue(true);
+    await clearNativeQueue(true);
     if (!alive.current) return;
     setBusy(true);
     try {

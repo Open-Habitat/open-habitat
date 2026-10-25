@@ -544,6 +544,120 @@ test("@lazy-resume a stopped conversation resumes on send without a process pill
   ).toBeLessThanOrEqual(50);
 });
 
+// Stop while messages are queued (Jari 25.10.2026): what the agent has not
+// acted on goes back to the field, once, and nothing is sent until the person
+// sends it. The fake Pi delivers a queued message only at a turn boundary, and
+// a "hidas" message waits two seconds before any model output, as a real
+// model request can; Pi's own events decide what was delivered.
+async function workingTurn(page: Page) {
+  await openWorkspace(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi:/);
+  const id = conversationId(page);
+  await editor(page).fill("hidas päätyö");
+  await send(page).click();
+  await expect(stopAgent(page)).toBeVisible();
+  return id;
+}
+const stopAgent = (page: Page) =>
+  page
+    .getByTestId("composer-stop")
+    .and(page.locator('[data-stop-target="agent"]'));
+async function steer(page: Page, text: string) {
+  await editor(page).fill(text);
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="steer"]'))
+    .click();
+  await expect(editor(page)).toHaveValue("");
+}
+/** Native history entries after the person's message: has the model acted? */
+async function answeredAfter(page: Page, id: string, text: string) {
+  const reply = await page.request.get(
+    `/api/v1/agents/${id}/history?limit=100&after=`,
+  );
+  const entries = (await reply.json()).entries as {
+    kind: string;
+    content?: { text?: string };
+  }[];
+  const at = entries.findIndex(
+    (e) => e.kind === "user" && e.content?.text === text,
+  );
+  return at >= 0 && entries.slice(at + 1).some((e) => e.kind === "assistant");
+}
+async function stoppedQuietly(page: Page, id: string, text: string) {
+  await expect(stopAgent(page)).toHaveCount(0, { timeout: 20000 });
+  await expect.poll(async () => (await status(page, id)).state).toBe("idle");
+  // Nothing comes back later from Pi's queue either.
+  await page.waitForTimeout(1500);
+  return (await nativeUserTexts(page, id)).filter((t) => t === text).length;
+}
+
+test("@queued-send Stop returns a still-queued message to the field and sends nothing", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const id = await workingTurn(page);
+  const posts = countSends(page);
+  await steer(page, "jonossa oleva ohjaus");
+  await expect(
+    page.getByTestId("composer-queue").getByRole("listitem"),
+  ).toHaveCount(1);
+  await stopAgent(page).click();
+  await expect(editor(page)).toHaveValue("jonossa oleva ohjaus");
+  await expect(page.getByTestId("composer-queue")).toHaveCount(0);
+  expect(await stoppedQuietly(page, id, "jonossa oleva ohjaus")).toBe(0);
+  await expect(editor(page)).toHaveValue("jonossa oleva ohjaus");
+  expect(posts).toHaveLength(0);
+});
+
+test("@queued-send Stop just after Pi delivered a queued message, before any answer, returns it once", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const id = await workingTurn(page);
+  const posts = countSends(page);
+  const text = "hidas ohjaus ehti perille";
+  await steer(page, text);
+  const queue = page.getByTestId("composer-queue");
+  await expect(queue.getByRole("listitem")).toHaveCount(1);
+  // Pi takes it at the turn boundary: it leaves the queue and is in history.
+  await expect(queue).toHaveCount(0, { timeout: 20000 });
+  await stopAgent(page).click();
+  await expect(editor(page)).toHaveValue(text);
+  // Pi's history keeps its one copy; the turn ended without an answer to it.
+  expect(await stoppedQuietly(page, id, text)).toBe(1);
+  await expect(editor(page)).toHaveValue(text);
+  expect(posts).toHaveLength(0);
+  await page.reload();
+  await expectNativeContent(page.getByTestId("conversation-timeline"), text, {
+    exact: true,
+    count: 1,
+    timeout: 20000,
+  });
+});
+
+test("@queued-send Stop after the agent began acting on a queued message keeps it where it is", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const id = await workingTurn(page);
+  const posts = countSends(page);
+  const text = "hidas ohjaus jota agentti jo käsittelee";
+  await steer(page, text);
+  await expect
+    .poll(() => answeredAfter(page, id, text), { timeout: 20000 })
+    .toBe(true);
+  await stopAgent(page).click();
+  expect(await stoppedQuietly(page, id, text)).toBe(1);
+  await expect(editor(page)).toHaveValue("");
+  expect(posts).toHaveLength(0);
+  await expectNativeContent(page.getByTestId("conversation-timeline"), text, {
+    exact: true,
+    count: 1,
+  });
+});
+
 // Resolve native conversation identity from the host, not translated link copy.
 async function nativeConversationLink(
   page: import("@playwright/test").Page,

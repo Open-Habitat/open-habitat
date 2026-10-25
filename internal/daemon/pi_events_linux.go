@@ -172,6 +172,10 @@ func (c *ConversationController) drain(s *conversation) {
 			reply <- e // preceding deltas have reached the journal
 			continue
 		}
+		if isClearReply(e) {
+			c.reconcileClear(s, e)
+			continue
+		}
 		c.mu.Lock()
 		if s.dead || (c.sessions[s.id] != nil && c.sessions[s.id] != s) {
 			c.mu.Unlock()
@@ -210,6 +214,7 @@ func (c *ConversationController) drain(s *conversation) {
 		if frame.Type == "message_start" && callFrame.Message.Role == "assistant" {
 			s.runInitial = false
 		}
+		noteQueueDelivery(s, frame.Type, raw)
 		if frame.Type == "message_update" && callFrame.Assistant.Type == "toolcall_start" && callFrame.Assistant.Index >= 0 && callFrame.Assistant.Index < 128 {
 			toolNames[callFrame.Assistant.Index] = callFrame.Assistant.Name
 		}
@@ -275,6 +280,7 @@ func (c *ConversationController) drain(s *conversation) {
 					}
 				}
 				if valid {
+					noteQueueTaken(s, q.Steering, q.FollowUp)
 					s.queueSteering, s.queueFollowUp = q.Steering, q.FollowUp
 					s.queueRevision++
 					if c.journal != nil {

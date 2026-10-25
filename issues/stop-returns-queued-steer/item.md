@@ -3,11 +3,12 @@ created: 2026-10-25
 updated: 2026-10-25
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 collision: [web/src/app/]
 preparation: ready
+closed: 2026-10-25
 ---
 
 # Stop returns undelivered queued messages to the composer for editing
@@ -35,6 +36,6 @@ Expected:
 
 ## Acceptance Criteria
 
-- [ ] Behavior as above, with browser regression tests for both the
+- [x] Behavior as above, with browser regression tests for both the
   undelivered and the already-delivered case.
 

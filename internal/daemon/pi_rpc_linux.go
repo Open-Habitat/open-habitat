@@ -244,6 +244,10 @@ func (p *piRPC) read() {
 					ToolCallID string `json:"toolCallId"`
 					ToolName   string `json:"toolName"`
 					IsError    bool   `json:"isError"`
+					Content    []struct {
+						Type string `json:"type"`
+						Text string `json:"text"`
+					} `json:"content"`
 				} `json:"message"`
 				ToolCallID string `json:"toolCallId"`
 				ToolName   string `json:"toolName"`
@@ -254,6 +258,19 @@ func (p *piRPC) read() {
 				break
 			}
 			switch {
+			case echo.Type == "message_start" && echo.Message.Role == "user":
+				// An image-bearing steer: its text still tells which queued
+				// message Pi delivered (pi_unanswered_linux.go).
+				text := []map[string]string{}
+				for _, block := range echo.Message.Content {
+					if block.Type == "text" {
+						text = append(text, map[string]string{"type": "text", "text": block.Text})
+					}
+				}
+				line, _ = json.Marshal(map[string]any{"type": echo.Type, "message": map[string]any{"role": echo.Message.Role, "content": text}})
+				if len(line) > 1<<20 {
+					line, _ = json.Marshal(map[string]any{"type": echo.Type, "message": map[string]any{"role": echo.Message.Role}})
+				}
 			case (echo.Type == "message_start" || echo.Type == "message_end") && (echo.Message.Role == "user" || echo.Message.Role == "toolResult"):
 				line, _ = json.Marshal(map[string]any{"type": echo.Type, "message": map[string]any{"role": echo.Message.Role, "toolCallId": echo.Message.ToolCallID, "toolName": echo.Message.ToolName, "isError": echo.Message.IsError}})
 			case echo.Type == "tool_execution_end" || echo.Type == "tool_execution_update":
@@ -295,10 +312,11 @@ func (p *piRPC) read() {
 		queue := p.events
 		if envelope.Type == "response" {
 			queue = p.frames
-			if p.isBashReply(frame) {
+			if p.isBashReply(frame) || isClearReply(frame) {
 				// Completion follows its output through the same ordered queue.
 				// Otherwise runBash can publish history before drain consumes
-				// the last delta, resurrecting an already-saved live card.
+				// the last delta, resurrecting an already-saved live card. A
+				// clear is reconciled at its place among Pi's queue events.
 				queue = p.events
 			}
 		}

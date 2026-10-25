@@ -91,6 +91,9 @@ type conversation struct {
 	startupCancelled                                        bool // per-child fence: stop/cancel wins over late readiness publication
 	queueSteering, queueFollowUp                            []string
 	queueRevision                                           uint64
+	queueTaken, queueCleared, unanswered                    []string // pi_unanswered_linux.go
+	clearStop                                               bool     // the clear in flight is a Stop's
+	clearReturn                                             []string // what that Stop gives back, set by the drain
 	commands                                                map[string]bool
 	command                                                 string
 	events                                                  []json.RawMessage
@@ -1186,9 +1189,12 @@ func (c *ConversationController) answerQuestion(w http.ResponseWriter, r *http.R
 
 // clearQueue returns only Pi's correlated clear_queue response. No local queue
 // snapshot is interpreted as proof of removal: delivery may race the clear.
+// A Stop also asks for the queued messages Pi delivered that the model has not
+// answered (pi_unanswered_linux.go); the turn it stops will never answer them.
 func (c *ConversationController) clearQueue(w http.ResponseWriter, r *http.Request, id string) {
 	var body struct {
-		CommandID string `json:"command_id"`
+		CommandID  string `json:"command_id"`
+		Unanswered bool   `json:"unanswered"`
 	}
 	if decodeControl(r, &body, 1024) != nil || !sessionIDPattern.MatchString(body.CommandID) {
 		snapshotError(w, 400, "invalid_request")
@@ -1211,6 +1217,7 @@ func (c *ConversationController) clearQueue(w http.ResponseWriter, r *http.Reque
 	s.state = "pending"
 	s.ack = "pending"
 	s.command = body.CommandID
+	s.clearStop, s.clearReturn = body.Unanswered, nil
 	if c.journal != nil {
 		c.journal.appendInvalidation("pi:" + id)
 	}
@@ -1236,6 +1243,8 @@ func (c *ConversationController) clearQueue(w http.ResponseWriter, r *http.Reque
 		c.journal.appendInvalidation("pi:" + id)
 	}
 	accepted := err == nil && reply.Accepted
+	unanswered := s.clearReturn
+	s.clearStop, s.clearReturn = false, nil
 	// A correlated clear receipt remains valid even if Pi exits or a stop races
 	// after the native removal. Never discard the only copy of these texts.
 	c.mu.Unlock()
@@ -1243,7 +1252,18 @@ func (c *ConversationController) clearQueue(w http.ResponseWriter, r *http.Reque
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "accepted", "removed_queue": map[string]any{"steering": reply.Steering, "follow_up": reply.FollowUp}})
+	written := func(texts []string) []string {
+		out := make([]string, len(texts))
+		for i, text := range texts {
+			out[i] = writtenText(c.home, text)
+		}
+		return out
+	}
+	result := map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "accepted", "removed_queue": map[string]any{"steering": written(reply.Steering), "follow_up": written(reply.FollowUp)}}
+	if body.Unanswered {
+		result["unanswered"] = written(unanswered)
+	}
+	historyJSON(w, result)
 }
 
 // abort interrupts the current Pi turn, not the Pi process or its detached tools.

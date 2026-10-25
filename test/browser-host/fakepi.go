@@ -419,6 +419,9 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 			recordedPrompt += "\n\n" + arguments
 		}
 	}
+	// As Pi's, the user message starts in the conversation with its text:
+	// the daemon tells a delivered queued message from it.
+	emit(map[string]any{"type": "message_start", "message": map[string]any{"role": "user", "content": []map[string]any{{"type": "text", "text": prompt}}}})
 	s.append(message("user", []map[string]any{{"type": "text", "text": recordedPrompt}}, nil))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "user"}})
 	// An abort ends the run as Pi's does: a streaming reply is saved with
