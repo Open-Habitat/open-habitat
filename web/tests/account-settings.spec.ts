@@ -337,6 +337,49 @@ test("@account-settings OpenAI sign-in state is read again on each visit; uncert
   }
 });
 
+test("@account-settings Pi sign-in from settings returns to the row that opened it", async ({
+  page,
+}) => {
+  await login(page);
+  await settings(page);
+  await expect(page).toHaveURL(/\/settings\/connections$/);
+  const state = page.getByTestId("openai-credential-state");
+  await expect(state).toHaveAttribute("data-state", "missing");
+  const row = page.getByRole("button").and(page.getByTestId("pi-sign-in"));
+  const title = page
+    .getByRole("heading")
+    .and(page.getByTestId("pi-sign-in-title"));
+  // Going back without signing in.
+  await row.click();
+  await expect(title).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("pi-sign-in-return"))
+    .click();
+  await expect(page).toHaveURL(/\/settings\/connections$/);
+  await expect(row).toBeFocused();
+  // A completed sign-in: settings stays open and its row reads the result.
+  // The synthetic device login writes no credential; native Pi now holding
+  // the subscription is the credentials read's part.
+  await row.click();
+  await expect(title).toBeVisible();
+  await page.route("**/api/v1/pi/credentials", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.subscription.present = true;
+    await route.fulfill({ response, json: body });
+  });
+  await page.request.get("/fixture/pi-state?value=usable");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("pi-attempt-start"))
+    .click();
+  await expect(title).toHaveCount(0, { timeout: 12000 });
+  await expect(page).toHaveURL(/\/settings\/connections$/);
+  await expect(state).toHaveAttribute("data-state", "signed_in");
+  await expect(row).toBeFocused();
+});
+
 test("@account-settings direct settings subpage URL cannot bypass initial Pi gate", async ({
   page,
 }) => {

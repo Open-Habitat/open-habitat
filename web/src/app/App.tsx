@@ -164,6 +164,7 @@ export function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const defaultSettingsOpen = isSettingsRoute(location.pathname);
+  const piSignInOpen = new URLSearchParams(location.search).has("pi_sign_in");
   const {
     phase,
     snapshot: hostSnapshot,
@@ -394,6 +395,14 @@ export function App() {
     sessionBinding.current = undefined;
     dispatch(authenticationRequired());
   }, [clearPerson, dispatch]);
+  // Settings focuses its heading on mount; a return from its Pi sign-in puts
+  // focus back on the row that opened it, which now shows the result.
+  const piSignInFocus = useRef(false);
+  useEffect(() => {
+    if (!piSignInFocus.current || piSignInOpen) return;
+    piSignInFocus.current = false;
+    document.querySelector<HTMLElement>("[data-testid='pi-sign-in']")?.focus();
+  }, [piSignInOpen]);
   const sessionChanged = useCallback(() => {
     clearPerson(priorIdentity.current);
     sessionBinding.current = undefined;
@@ -1621,6 +1630,31 @@ export function App() {
         }}
       />
     ) : null;
+  // A forced Pi sign-in returns to the view that opened it, whether it
+  // finished or the person went back: the settings section with focus on its
+  // OpenAI row, or the conversation whose model sign-in failed.
+  const returnFromPiSignIn = () => {
+    const conversation = new URLSearchParams(location.search).get(
+      "conversation",
+    );
+    if (
+      isSettingsRoute(location.pathname) &&
+      settingsSection(location.pathname) !== undefined
+    ) {
+      piSignInFocus.current = true;
+      navigate(location.pathname, { replace: true });
+    } else
+      navigate(
+        conversation &&
+          /^\/workspaces\/ws_[A-Za-z0-9_-]{8,64}$/.test(location.pathname) &&
+          /^pi:[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/.test(
+            conversation,
+          )
+          ? `${location.pathname}?conversation=${encodeURIComponent(conversation)}`
+          : "/workspaces",
+        { replace: true },
+      );
+  };
   const main =
     landing.show && phase !== "daemon_unavailable" ? (
       <Landing
@@ -1640,23 +1674,14 @@ export function App() {
         forceSignIn
         onSessionChanged={sessionChanged}
         onUsable={() => {
-          const params = new URLSearchParams(location.search);
-          const conversation = params.get("conversation");
-          if (conversation) conversationStore?.discardStatus(conversation);
-          navigate(
-            conversation &&
-              /^\/workspaces\/ws_[A-Za-z0-9_-]{8,64}$/.test(
-                location.pathname,
-              ) &&
-              /^pi:[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/.test(
-                conversation,
-              )
-              ? `${location.pathname}?conversation=${encodeURIComponent(conversation)}`
-              : "/workspaces",
-            { replace: true },
+          const conversation = new URLSearchParams(location.search).get(
+            "conversation",
           );
+          if (conversation) conversationStore?.discardStatus(conversation);
+          returnFromPiSignIn();
           refresh();
         }}
+        onReturn={returnFromPiSignIn}
         onLogin={requireLogin}
         onLogout={logout}
       />
@@ -1722,7 +1747,7 @@ export function App() {
         onLogout={() => setLogoutPrompt(true)}
         nativeState={snapshot?.auth?.native_github.state}
         nativeLogin={snapshot?.auth?.native_github.login}
-        onPiSignIn={() => navigate("/settings?pi_sign_in=1")}
+        onPiSignIn={() => navigate(`${location.pathname}?pi_sign_in=1`)}
         modelSelector={
           <PiModelSelector
             csrf={csrf}

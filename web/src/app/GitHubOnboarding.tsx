@@ -87,9 +87,12 @@ export function GitHubOnboarding({
   preferredEmail,
   skipChooser = false,
   forceSignIn = false,
+  onReturn,
   clones,
 }: {
   onUsable: () => void;
+  /** A forced sign-in's way back to the view that opened it. */
+  onReturn?: () => void;
   /** This session's clone jobs and queue; Continue adds the selection to it. */
   clones?: CloneJobs;
   preferredName?: string;
@@ -672,6 +675,7 @@ export function GitHubOnboarding({
         onLogin={onLogin}
         onLogout={onLogout}
         onBack={backToPicker}
+        onReturn={onReturn}
       />
     ) : step === "identity" ? (
       <>

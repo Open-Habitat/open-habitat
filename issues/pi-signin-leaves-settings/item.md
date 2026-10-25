@@ -3,11 +3,12 @@ created: 2026-10-25
 updated: 2026-10-25
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 collision: [web/src/components/Account.tsx]
 preparation: ready
+closed: 2026-10-25
 ---
 
 # Signing in to OpenAI from settings closes settings instead of showing the result
@@ -26,6 +27,6 @@ result (success or a clear failure).
 
 ## Acceptance Criteria
 
-- [ ] Cause found and fixed for every entry point of the provider sign-in;
+- [x] Cause found and fixed for every entry point of the provider sign-in;
   browser regression test that the person returns to the starting view.
 

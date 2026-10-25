@@ -51,6 +51,7 @@ export function PiOnboarding({
   onLogin,
   onLogout,
   onBack,
+  onReturn,
   forceSignIn = false,
   notice,
 }: {
@@ -60,6 +61,8 @@ export function PiOnboarding({
   onLogin: () => void;
   onLogout: () => Promise<void>;
   onBack?: () => void;
+  /** A sign-in opened from another view goes back there instead. */
+  onReturn?: () => void;
   forceSignIn?: boolean;
   /** Under the step card, such as the background clones that failed. */
   notice?: ReactNode;
@@ -426,14 +429,24 @@ export function PiOnboarding({
         </section>
       </OnboardingFrame>
       <div className="ah-onboarding-exit">
-        {onBack && (
+        {onReturn ? (
           <Button
-            data-testid="pi-back-to-repositories"
+            data-testid="pi-sign-in-return"
             size="row"
-            label="Takaisin repojen valintaan"
+            label="Takaisin"
             variant="quiet"
-            onPress={onBack}
+            onPress={onReturn}
           />
+        ) : (
+          onBack && (
+            <Button
+              data-testid="pi-back-to-repositories"
+              size="row"
+              label="Takaisin repojen valintaan"
+              variant="quiet"
+              onPress={onBack}
+            />
+          )
         )}
         <Button
           data-testid="onboarding-abort"
