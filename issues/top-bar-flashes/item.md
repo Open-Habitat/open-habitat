@@ -26,3 +26,9 @@ Find which bar flashes and why (likely the connection/reconnect banner on event-
 
 - [ ] The flashing element and its trigger identified with evidence.
 - [ ] No sub-second banner flashes on transient reconnects (test with injected short stream drops); a real outage still shows a readable banner.
+
+## Decisions
+
+### 2026-10-25T04:10:29Z · @jari
+
+Jari 2026-10-25: the fix is needed on Birch specifically, where the problem occurs. Once landed: cut a release, upgrade Birch first and confirm the fix there, then upgrade the Northwind pilot.
