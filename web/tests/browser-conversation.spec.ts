@@ -42,8 +42,16 @@ async function expectPhoneComposerWithinViewport(
 }
 async function readyConversation(page: import("@playwright/test").Page) {
   // The optimistic creation view has an enabled editor and command palette
-  // too. Only the native route proves that those belong to its controller.
+  // too, and so does the loading view the native route shows until its cold
+  // status read returns. Both have their own Tiedot toggle that the opened
+  // header replaces. Only the opened native conversation has archive controls
+  // (close while it is still empty).
   await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  await expect(
+    page
+      .locator(".ah-agent-header")
+      .getByTestId(/^(archive-conversation|dialog-close)$/),
+  ).toBeVisible();
   await expect(page.getByTestId("message-input")).toBeEnabled();
 }
 async function refreshConversation(
