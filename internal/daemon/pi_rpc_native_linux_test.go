@@ -270,11 +270,11 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 }
 
 func TestPiRPCNativeState(t *testing.T) {
-	binary, err := filepath.Abs(filepath.Join("pi-device-test", "node_modules", ".bin", "pi"))
+	cli, err := filepath.Abs(filepath.Join("pi-device-test", "node_modules", "@earendil-works", "pi-coding-agent", "dist", "bundle", "cli.js"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(binary); err != nil {
+	if _, err := os.Stat(cli); err != nil {
 		t.Skip("pinned Pi test dependency not installed")
 	}
 	home := t.TempDir()
@@ -282,7 +282,7 @@ func TestPiRPCNativeState(t *testing.T) {
 	if err := os.MkdirAll(cwd, 0700); err != nil {
 		t.Fatal(err)
 	}
-	p, err := launchPiRPC(binary, home, cwd, "", []string{"PATH=/usr/bin:/bin"})
+	p, err := launchPiRPCCommand(nativeNodePath(t), []string{cli}, home, cwd, []string{"PATH=/usr/bin:/bin"}, nil, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}
