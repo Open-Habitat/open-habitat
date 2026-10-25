@@ -1,0 +1,33 @@
+---
+created: 2026-10-25
+updated: 2026-10-25
+type: feature
+reporter: jari
+status: open
+priority: normal
+related: ['@habitat-seat-commands']
+---
+
+# Agent HTML artifacts and web views: show, open, share
+
+## Description
+
+Jari, 2026-10-25: "miten me näytetään html-sisältöä ja miten me voidaan avata verkkosivuja (esim. prototyyppaus-skilliä varten) ... voisi olla ihan kiva et on sellaisia html artefakteja joita se habitat agentti voisi näyttää ja joita voisi jakaa samalla serverillä asuville ja/tai julkisesti. ... mikä olisi hyvä tapa ja miten sitä voisi prototyypata." (In short: how does Habitat show HTML content and open web pages, for example for the prototyping skill? Agents should be able to show HTML artifacts and share them with people on the same server and/or publicly. What would a good way be, and how should it be prototyped?)
+
+Today, on Jari's own machines, agents show HTML through `tw browser-open` and glasspad (loopback or hosted links), and prototypes are viewed as local files or dev servers. A Habitat agent has none of these: its browser is the Habitat page itself.
+
+## Goal
+
+1. Decide, with Jari, how an agent in a person's Habitat account:
+   - shows a self-contained HTML artifact, or a multi-file prototype, to that person in their Habitat browser view;
+   - opens a page the agent's workspace serves, such as a dev server or prototype, without a public port;
+   - shares an artifact with named people on the same server, and optionally publicly, with revocation.
+2. Authority and security under the Unix-user boundary decide the design. The daemon serves only its own user's files. A share to another person must not let that person's daemon or browser read the owner's home directly. A public link is an unauthenticated route, a new attack surface, and needs its own decision. Scripts in artifacts need origin isolation from the Habitat app (a separate sandboxed origin or `sandbox` iframe), because Habitat's session cookies are an obvious target.
+3. Reuse what exists before building: the editor host routes, glasspad, and the workspace preview.
+
+This overlaps with `habitat-seat-commands` ("open/show" on the person's browser) and should be decided together with it.
+
+## Acceptance Criteria
+
+- [ ] Research with a recommendation (options, authority model, origin isolation, sharing and public links, reuse) and Jari's decision recorded as an ADR.
+- [ ] A prototype round of the accepted direction (showing, opening and sharing an artifact in the Habitat UI), with Jari's verdict.
