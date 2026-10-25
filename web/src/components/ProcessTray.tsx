@@ -605,7 +605,9 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
       ? "odotus aikakatkaistiin"
       : event.run_ids.length && event.exit_code === 3
         ? "ajo epäonnistui"
-        : ordinaryLabel;
+        : event.run_ids.length && event.exit_code === 4
+          ? "odotuksen välitilanne"
+          : ordinaryLabel;
   return (
     <div
       data-testid="process-completion"
@@ -657,6 +659,11 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
             <p>Odotus aikakatkaistiin. Workerit voivat yhä työskennellä.</p>
           ) : event.run_ids.length && event.exit_code === 3 ? (
             <p>Odotusehto päättyi epäonnistuneeseen ajoon.</p>
+          ) : event.run_ids.length && event.exit_code === 4 ? (
+            <p>
+              Odotus palautti välitilanteen. Ajot jatkuvat, ja agentti voi
+              jatkaa odotusta.
+            </p>
           ) : null}
           {context ? (
             <ControlButton

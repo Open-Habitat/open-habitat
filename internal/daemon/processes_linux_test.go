@@ -42,6 +42,42 @@ func TestProcessCommandHintsAndWaitGrammar(t *testing.T) {
 	}
 }
 
+func TestTaskfleetWaitRealCommandShapes(t *testing.T) {
+	id, other := "01m51veyk0hsa1br34epkr2rpg", "01m5tae9rjsc7kq2pxfear0e66"
+	for _, tc := range []struct {
+		command string
+		want    []string
+	}{
+		// The shapes a conductor ran in Habitat on 2026-10-25.
+		{"cd ~/src/open-habitat && taskfleet run wait " + id + " --check-in 45m --output json", []string{id}},
+		{"cd ~/src/open-habitat && taskfleet run wait " + id + " --terminal --check-in 45m --output json", []string{id}},
+		{"cd /home/a/src/x && /usr/local/bin/taskfleet run wait " + id + " " + other + " --any --fail-on-error --progress --json --poll-interval 2s --timeout 2400", []string{id, other}},
+		{"taskfleet run wait " + id + " --terminal", []string{id}},
+		{"cd ~/src/open-habitat && taskfleet run wait " + id + " --check-in", nil},
+		{"cd ~/src/open-habitat && taskfleet run wait " + id + " --check-in 0", nil},
+		{"cd ~/src/open-habitat && taskfleet run wait " + id + " --check-in soon", nil},
+		{"cd ~/src/open-habitat && taskfleet run wait " + id + " && echo done", nil},
+		{"cd ~/src/open-habitat & taskfleet run wait " + id, nil},
+		{"cd ~/src/open-habitat || taskfleet run wait " + id, nil},
+		{"cd ~/src/open-habitat; taskfleet run wait " + id, nil},
+		{"cd a && cd b && taskfleet run wait " + id, nil},
+		{"cd $HOME && taskfleet run wait " + id, nil},
+		{"cd 'my dir' && taskfleet run wait " + id, nil},
+		{"cd ~/src/* && taskfleet run wait " + id, nil},
+		{"cd a&&taskfleet run wait " + id, nil},
+		{"cd && taskfleet run wait " + id, nil},
+		{"pushd x && taskfleet run wait " + id, nil},
+		{"cd x &&\ntaskfleet run wait " + id, nil},
+		{"taskfleet run wait " + id + " --output ./out.json", nil},
+		{"taskfleet run wait " + id + " --check-in=45m", nil},
+	} {
+		got := taskfleetWait(tc.command)
+		if strings.Join(got, ",") != strings.Join(tc.want, ",") || (got == nil) != (tc.want == nil) {
+			t.Errorf("%q: got %v, want %v", tc.command, got, tc.want)
+		}
+	}
+}
+
 func testProcessPeer(t *testing.T, pid int, handler func(net.Conn)) *piRPC {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "p.sock")

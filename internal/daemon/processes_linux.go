@@ -45,11 +45,23 @@ func commandPreview(command string) string {
 
 // Recognition is presentation only; shell commands outside this deliberately
 // narrow grammar stay ordinary processes. No browser text is ever executed.
+// Agents usually wait from the repository whose runs they wait on, so one
+// literal leading `cd <path> &&` is allowed; any other shell syntax is not.
 func taskfleetWait(command string) []string {
-	if strings.ContainsAny(command, "|&;<>($`\\\"'\n\r)") {
+	const refused = "|&;<>($`\\\"'\n\r)"
+	if strings.ContainsAny(command, "\n\r") {
 		return nil
 	}
 	words := strings.Fields(command)
+	if len(words) > 3 && words[0] == "cd" && words[2] == "&&" {
+		if strings.ContainsAny(words[1], refused+"#*?[]{}=") {
+			return nil
+		}
+		words = words[3:]
+	}
+	if strings.ContainsAny(strings.Join(words, " "), refused) {
+		return nil
+	}
 	if len(words) < 4 || filepath.Base(words[0]) != "taskfleet" || (words[0] != "taskfleet" && !filepath.IsAbs(words[0])) || words[1] != "run" || words[2] != "wait" {
 		return nil
 	}
@@ -57,8 +69,8 @@ func taskfleetWait(command string) []string {
 	for i := 3; i < len(words); i++ {
 		w := words[i]
 		switch w {
-		case "--all", "--any", "--fail-on-error", "--progress", "--json":
-		case "--timeout", "--poll-interval", "--output":
+		case "--all", "--any", "--fail-on-error", "--progress", "--json", "--terminal":
+		case "--timeout", "--check-in", "--poll-interval", "--output":
 			i++
 			if i >= len(words) {
 				return nil

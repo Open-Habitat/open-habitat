@@ -164,6 +164,35 @@ it("shows typed completions without raw command previews and does not join recyc
   ui.unmount();
 });
 
+it("reads a recognised wait's check-in exit as a check-in rather than a crash", () => {
+  const event: ProcessEvent = {
+    kind: "crash",
+    process_id: "proc_example",
+    process_name: "odota",
+    command_preview: "",
+    exit_code: 4,
+    signal: null,
+    end_reason: null,
+    delivery: null,
+    run_ids: ["01m531x6y92ggdqcmb1exzmnya"],
+  };
+  const ui = view(
+    <>
+      <ProcessCompletion event={event} />
+      <ProcessCompletion
+        event={{ ...event, process_name: "muu", run_ids: [] }}
+      />
+    </>,
+  );
+  const [wait, other] = screen.getAllByTestId("process-completion");
+  expect(wait.textContent).toContain("odotuksen välitilanne");
+  expect(wait.textContent).not.toContain("kaatui");
+  expect(other.textContent).toContain("kaatui");
+  fireEvent.click(within(wait).getByTestId("process-completion-toggle"));
+  expect(within(wait).getByText(/välitilanteen/)).toBeTruthy();
+  ui.unmount();
+});
+
 it("a fenced start receipt follows the running process rather than presenting start success as completion", async () => {
   vi.stubGlobal(
     "fetch",
