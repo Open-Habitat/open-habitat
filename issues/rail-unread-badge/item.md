@@ -3,10 +3,12 @@ created: 2026-10-25
 updated: 2026-10-25
 type: bug
 reporter: jari
-status: in-progress
+status: fixed
 priority: normal
 lane: unlaned
 collision: [web/src/components/Navigation]
+closed: 2026-10-25
+closed_by: claude
 ---
 
 # Sidebar 'Uutta 1' badge is cryptic and not actionable
