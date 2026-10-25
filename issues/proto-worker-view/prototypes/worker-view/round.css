@@ -1,0 +1,133 @@
+/* Round-local rules. Everything not here is production CSS (captured/production.css). */
+
+/* ---- comparison harness: lab bar on top, picker band at the bottom ---- */
+.lab { position: fixed; top: 0; left: 0; right: 0; height: 44px; z-index: 50; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: #16181b; color: #e8e8e8; font: 500 12.5px system-ui, sans-serif; overflow-x: auto; white-space: nowrap; }
+.lab strong { font-weight: 600; }
+.lab span { color: #a9adb3; }
+.lab label { display: inline-flex; gap: 6px; align-items: center; }
+.lab select, .lab button { font: inherit; background: #2a2d31; color: #fff; border: 1px solid #3b3f45; border-radius: 6px; padding: 3px 6px; }
+.lab-grow { flex: 1; }
+#stage { position: fixed; top: 44px; bottom: 64px; left: 0; right: 0; overflow: hidden; }
+.picker-band { position: fixed; left: 0; right: 0; bottom: 0; height: 64px; background: #16181b; }
+#stage .ah-app-shell:has(.ah-rail, .ah-single-bar) { position: absolute; inset: 0; height: 100%; }
+#toast { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 60; background: var(--ah-ink); color: var(--ah-bg); padding: 8px 14px; border-radius: 999px; font: 500 13px var(--ah-font); }
+@media (max-width: 640px) { .lab-hint { display: none; } }
+
+/* ---- shared worker pieces ---- */
+.wv-tool-target { font: 400 12.5px var(--ah-mono); color: var(--ah-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ah-tool-row .ah-disclosure-button { min-width: 0; }
+.wv-brief { border-style: dashed; }
+.wv-worker-mark { color: var(--ah-ink-2); }
+.wv-btn { display: inline-flex; gap: 6px; align-items: center; }
+.wv-btn svg { width: 15px; height: 15px; }
+.ah-conversation-frame > .wv-details, .wv-details { position: absolute; margin: 0 !important; top: 56px; right: 16px; z-index: 5; width: min(440px, calc(100% - 32px)) !important; box-sizing: border-box; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); box-shadow: var(--ah-shadow-menu); padding: 14px 16px !important; }
+.wv-dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: var(--ah-size-ui); }
+.wv-dl dt { color: var(--ah-muted); }
+.wv-dl dd { margin: 0; overflow-wrap: anywhere; }
+.wv-dl code { font: 400 12px var(--ah-mono); }
+.wv-prompt { grid-column: 1 / -1; margin: 6px 0 4px 26px; border: 1px solid var(--ah-line-strong); border-left: 3px solid var(--ah-ink-2); background: var(--ah-surface-2); border-radius: var(--ah-r-md); padding: 10px 12px; display: grid; gap: 8px; font-size: var(--ah-size-ui); }
+.wv-prompt-head { display: flex; gap: 8px; align-items: center; }
+.wv-prompt-head svg { width: 16px; height: 16px; }
+.wv-prompt pre { margin: 0; padding: 8px 10px; background: var(--ah-sunken); border-radius: 6px; font: 400 12px/1.5 var(--ah-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.wv-prompt small { color: var(--ah-muted); }
+.wv-prompt-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.wv-result { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); padding: 12px 14px; margin-top: 12px; font-size: var(--ah-size-ui); }
+.wv-result[data-tone="ok"] { border-color: var(--ah-ok); background: var(--ah-ok-soft); }
+.wv-result[data-tone="err"] { border-color: var(--ah-err-line); background: var(--ah-err-soft); }
+.wv-result header { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.wv-result header svg { width: 16px; height: 16px; }
+.wv-result header span { color: var(--ah-muted); margin-left: auto; }
+.wv-result p { margin: 6px 0 0; }
+.wv-unavailable { margin: auto; max-width: 440px; text-align: center; color: var(--ah-muted); padding: 24px; }
+.wv-unavailable p { margin: 0 0 6px; }
+.wv-unavailable strong { color: var(--ah-ink); }
+.wv-terminal .ah-terminal-tab > [role="tab"] { display: inline-flex; gap: 6px; align-items: center; padding: 0 10px; }
+.wv-terminal .ah-terminal-mark svg { width: 13px; height: 13px; }
+.wv-terminal .ah-terminal-tools svg { width: 15px; height: 15px; }
+.wv-term { margin: 0; font: 400 12.5px/1.5 var(--ah-mono); color: var(--ah-ink); white-space: pre; }
+.wv-ro p a { color: var(--ah-accent-ink); }
+
+/* ---- 1 Hiljainen ---- */
+.wv-quiet .ah-read-only-footer { flex-wrap: wrap; }
+
+/* ---- 2 Kehys ---- */
+/* Production gives every other frame child the column width with a six-class :not() chain. */
+.ah-conversation-frame > .wv-band, .ah-conversation-frame > .wv-crumb { width: 100% !important; margin: 0 !important; box-sizing: border-box; }
+.wv-framed { box-shadow: inset 3px 0 0 var(--ah-accent); }
+.wv-band { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 16px 8px 19px; background: var(--ah-accent-soft); border-bottom: 1px solid var(--ah-accent-line); font-size: var(--ah-size-meta); color: var(--ah-accent-ink); }
+.wv-band svg { width: 15px; height: 15px; }
+.wv-band-kind { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 11.5px; }
+.wv-band-parent { display: inline-flex; gap: 2px; align-items: center; color: var(--ah-accent-ink); text-decoration: none; min-width: 0; max-width: 40ch; }
+.wv-band-parent span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline; }
+.wv-band-meta { display: inline-flex; gap: 10px; color: var(--ah-ink-2); }
+.wv-band-meta code { font: 500 12px var(--ah-mono); }
+.wv-seg { margin-left: auto; display: inline-flex; border: 1px solid var(--ah-accent-line); border-radius: 8px; overflow: hidden; background: var(--ah-surface); }
+.wv-seg button { font: 500 12.5px var(--ah-font); border: 0; background: none; color: var(--ah-ink-2); padding: 4px 10px; cursor: pointer; }
+.wv-seg button[aria-selected="true"] { background: var(--ah-accent); color: var(--ah-on-accent); }
+.wv-seg button:disabled { opacity: .45; cursor: default; }
+.wv-framed .ah-agent-header { padding-left: 19px; }
+.wv-foot { text-align: center; padding: 10px 16px 14px; color: var(--ah-muted); font-size: var(--ah-size-meta); border-top: 1px solid var(--ah-line-soft); }
+.wv-foot a { color: var(--ah-accent-ink); }
+.wv-rail-worker .ah-nav-link { padding-left: 22px; }
+.wv-rail-ic { width: 14px; height: 14px; flex: 0 0 auto; color: var(--ah-accent-ink); margin-right: 6px; }
+.wv-rail-worker .ah-nav-link { display: flex; align-items: center; }
+.wv-rail-state { width: 7px; height: 7px; border-radius: 50%; margin-left: auto; flex: 0 0 auto; background: var(--ah-accent); }
+.wv-rail-state[data-state="waiting"] { background: none; border: 1.5px solid var(--ah-ink-2); }
+.wv-rail-state[data-state="landed"] { background: var(--ah-ok); }
+.wv-rail-state[data-state="failed"] { background: var(--ah-err); }
+
+/* ---- 3 Sivupaneeli ---- */
+.wv-split { display: flex; height: 100%; min-height: 0; }
+.wv-split > .wv-parent { flex: 1 1 0; min-width: 0; }
+.wv-side { flex: 0 0 min(560px, 48%); display: flex; flex-direction: column; min-width: 0; min-height: 0; border-left: 1px solid var(--ah-line); background: var(--ah-bg); position: relative; }
+.wv-side-head { display: flex; align-items: center; gap: 6px; padding: 8px 8px 8px 12px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); min-height: 56px; }
+.wv-side-back { display: none; }
+.wv-side-title { display: grid; min-width: 0; flex: 1; }
+.wv-side-title small { display: inline-flex; gap: 5px; align-items: center; color: var(--ah-accent-ink); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.wv-side-title small svg { width: 13px; height: 13px; }
+.wv-side-title strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
+.wv-side .ah-conversation-stream { --ah-conversation-width: 560px; }
+.wv-side .ah-terminal-dock { width: 100%; }
+.wv-side-foot { padding: 8px 12px; border-top: 1px solid var(--ah-line); color: var(--ah-muted); font-size: var(--ah-size-meta); text-align: center; }
+.wv-side .wv-details { top: 60px; }
+@media (width <= 800px) {
+  .wv-split { position: relative; }
+  .wv-side { position: absolute; inset: 0; z-index: 3; border-left: 0; }
+  .wv-side-back { display: inline-flex; }
+  .wv-side-x { display: none; }
+  .wv-side-head .wv-state { display: none; }
+}
+
+/* ---- 4 Keskustelun sisällä ---- */
+.wv-card { border: 1px solid var(--ah-accent-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); overflow: hidden; }
+.wv-card[data-state="failed"] { border-color: var(--ah-err-line); }
+.wv-card[data-state="landed"] { border-color: var(--ah-line); }
+.wv-card-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; background: none; border: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.wv-card-head:hover { background: var(--ah-hover); }
+.wv-card-ic { width: 18px; height: 18px; color: var(--ah-accent-ink); flex: 0 0 auto; }
+.wv-card-name { display: grid; flex: 1; min-width: 0; }
+.wv-card-name small { color: var(--ah-accent-ink); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.wv-card-name strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wv-card-time { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.wv-card-body { border-top: 1px solid var(--ah-line-soft); padding: 10px 12px 12px 40px; display: grid; gap: 10px; font-size: var(--ah-size-ui); }
+.wv-card-tail { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; color: var(--ah-ink-2); }
+.wv-card-tail li { display: flex; gap: 8px; align-items: baseline; }
+.wv-card-tail li > svg { width: 14px; height: 14px; flex: 0 0 auto; color: var(--ah-ok); position: relative; top: 2px; }
+.wv-card-tail li[data-wait] > svg { color: var(--ah-ink-2); }
+.wv-card-tail code, .wv-card-final code { font: 400 12px var(--ah-mono); overflow-wrap: anywhere; }
+.wv-card-final, .wv-card-none { margin: 0; }
+.wv-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.wv-crumb { display: flex; gap: 6px; align-items: center; padding: 8px 20px 0; font-size: var(--ah-size-meta); color: var(--ah-muted); }
+.wv-crumb a { display: inline-flex; gap: 2px; align-items: center; color: var(--ah-accent-ink); }
+.wv-crumb svg { width: 14px; height: 14px; }
+@media (width <= 800px) { .wv-card-body { padding-left: 12px; } .wv-card-time { display: none; } }
+
+/* The phone's floating navigation buttons sit at the frame's top-left corner. */
+@media (width <= 800px) {
+  .wv-band, .wv-crumb { padding-left: 96px; min-height: 52px; }
+  .wv-band-meta { display: none; }
+}
+@media (width <= 640px) { .wv-tool-target { display: none; } }
+.wv-term-why { margin: 0; padding: 6px 12px; font-size: var(--ah-size-meta); color: var(--ah-ink-2); background: var(--ah-surface-2); border-bottom: 1px solid var(--ah-line); }
+/* On a phone the profile chip moves into Tiedot; the header has room for state only. */
+@media (width <= 640px) { .wv-profile-chip { display: none !important; } }
