@@ -643,14 +643,24 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
       (agent: { agent_id: string }) => agent.agent_id === agentId,
     ),
   ).toBe(true);
+  // The stand-in stream never delivers the controller's own events, so the
+  // page would not learn about anything journalled after its last snapshot
+  // and could keep an older cursor than ours forever. A manual refresh reads
+  // a snapshot no older than ours; the journal reconnects from it.
+  const [, instance, sequence] =
+    /^ev1:([0-9a-f-]{36}):(\d+)$/.exec(newSnapshot.event_cursor) ?? [];
+  await page.getByTestId("snapshot-refresh").click();
   await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          (window as unknown as { testStream?: EventSource }).testStream?.url,
-      ),
-    )
-    .toContain(encodeURIComponent(newSnapshot.event_cursor));
+    .poll(async () => {
+      const after = await page.evaluate(() => {
+        const url = (window as unknown as { testStream?: EventSource })
+          .testStream?.url;
+        return url && new URL(url, location.href).searchParams.get("after");
+      });
+      const [, i, n] = /^ev1:([0-9a-f-]{36}):(\d+)$/.exec(after ?? "") ?? [];
+      return i === instance && Number(n) >= Number(sequence);
+    })
+    .toBe(true);
   await page.evaluate(async () => {
     const source = (window as unknown as { testStream: EventSource })
       .testStream;
