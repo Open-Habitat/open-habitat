@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-25
 type: improvement
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-push-permission
