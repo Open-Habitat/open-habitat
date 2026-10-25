@@ -1750,7 +1750,7 @@ function HistoryViewContent({
           tone="warning"
         />
       )}
-      {!recapDismissed && shownRecap ? (
+      {!recapDismissed && recap?.latest_message ? (
         <RecapCard
           recap={shownRecap}
           now={Date.now()}
