@@ -593,7 +593,10 @@ agents, quotas, home state, the unchanged integrations file and catalog and a
 `no_change` apply; then the upgrade staged by the
 successor package and run by its owner, killed at `activating`, booted while
 fenced (public HTTPS must not serve), continued to `upgraded` with the running
-gateway executable equal to the successor binary and the operator's app
+gateway executable equal to the successor binary, a transient user service of
+one person (the browser shell's and Taskfleet's shape) started before the
+quiescence and another before the continuation both still running with the
+same PID and the operator's app
 section kept byte for byte (Dropbox now available), and a final cold boot with
 the same checks. Progress is JSONL on stderr; the result document on stdout
 (and `--receipt FILE`, never overwritten) records input digests, each stage's

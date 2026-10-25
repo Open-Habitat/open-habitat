@@ -105,6 +105,7 @@ class FakeTarget:
         self.boot = 1
         self.fenced = self.applied = self.bound = self.granted = self.upgraded = self.app = False
         self.pid = 4000
+        self.user_units = {}
 
     # transport API
     def put(self, source, remote, mode):
@@ -155,6 +156,7 @@ class FakeTarget:
             return 0, f'boot-{self.boot}\n'
         if a[:2] == ['systemctl', 'reboot']:
             self.boot += 1
+            self.user_units = {}
             return 255, ''
         if a[0] == 'kill':
             self.kills.append(a[2])
@@ -187,6 +189,11 @@ class FakeTarget:
             rewritten = (self.faults.get('config_rewritten') or self.faults.get('pre_tea')) and self.upgraded
             sha = ('d' if rewritten else 'c' if self.app else 'b') * 64
             return {'sha256': sha, 'owner': 0, 'mode': 0o644, 'links': 1, 'sections': ['tools'] + (['dropbox'] if self.app else []), 'tools': tools}
+        if a[0] == 'user-unit':
+            if a[1] == 'start':
+                self.pid += 1
+                self.user_units[a[3]] = {'unit': a[3], 'active': 'active', 'pid': self.pid}
+            return self.user_units.get(a[3], {'unit': a[3], 'active': 'inactive', 'pid': 0})
         if a[0] == 'add-app':
             self.app = True
             return {'sha256': 'c' * 64}
@@ -226,6 +233,8 @@ class FakeTarget:
         a = list(argv)
         self.streams.append(a)
         binary, kind, plan = a[0], a[2], a[a.index('--approved-plan') + 1]
+        if kind == 'upgrade' and binary == OWNER and self.faults.get('stops_user_units'):
+            self.user_units = {}
         if plan == '0' * 64:
             return Proc([str(self.pid), json.dumps({'event': 'error', 'seq': 1, 'code': 'stale_plan'})], 1)
         phases = {'prepare': ['probe_armed', 'policy_installing'],
@@ -341,6 +350,16 @@ class Harness(unittest.TestCase):
         self.assertEqual(upgrade['fenced_public_statuses'], [503, None])
         self.assertTrue(any(c[:2] == ['systemctl', 'is-system-running'] for c in fake.calls))
         self.assertEqual(upgrade['gateway_exe_sha256'], self.spec()['successor']['binary_sha256'])
+
+    def test_upgrade_must_leave_transient_user_units_running(self):
+        for interrupt, phases in [(True, ['quiesce', 'activate']), (False, ['activate'])]:
+            fake, q, failure, doc = self.journey(interrupt=interrupt)
+            self.assertIsNone(failure, doc)
+            upgrade = next(s for s in doc['stages'] if s['name'] == 'upgrade')['observations']
+            self.assertEqual([u['unit'] for u in upgrade['user_units_survived']],
+                             [f'qualification-survivor-{p}.service' for p in phases])
+            fake, q, failure, doc = self.journey(interrupt=interrupt, stops_user_units=True)
+            self.assertEqual((failure.code, doc['failed_stage']), ('user_unit_interrupted', 'upgrade'))
 
     def test_integrations_available_after_install_and_kept_across_upgrade(self):
         fake, q, failure, doc = self.journey()

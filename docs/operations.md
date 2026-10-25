@@ -303,16 +303,23 @@ generation and binary; an older journal parser must not rewrite unfamiliar
 records. Upgrade journals use schema 2 and name their owner.
 
 Schedule the maintenance window explicitly. Add `--approve-interruption` only
-when interruption of daemon work and enumerated persistent user services is
-approved. A live daemon is conservatively unobservable work: an idle list cannot
-exclude a previously admitted in-flight request. Without that approval the
-operator refuses rather than assuming drain. The old `maintenance enter`
+when interruption of daemon work is approved; the preview's `work` lists each
+live daemon and its active turns. A live daemon is conservatively unobservable
+work: an idle list cannot exclude a previously admitted in-flight request.
+Without that approval the operator refuses rather than assuming drain. The old `maintenance enter`
 marker is unrelated. Root's upgrade fence denies new native agent mutations;
 HTTP entry and product socket activation close independently. Unpublished
 `.next` deny markers also close entry; they grant no startup permission, even
 with a live lease. Opening/completion refuses an unresolved publication instead
-of deleting it or claiming readiness. Native SSH/tmux
-sessions outside the product daemon and recorded user services are not killed.
+of deleting it or claiming readiness.
+
+The upgrade stops only the product's system units. Native SSH/tmux sessions and everything in a
+person's user manager (the browser shell, the editor, Taskfleet runs, timers)
+keep running on the generation they started with; the preview lists those units
+under `user_units_left_running`. Browser Pi conversations are daemon children
+and are cut. A later command through `current`, the profile links or `PATH`
+runs the new generation; a security fix that must reach a long-running user
+process needs that process restarted deliberately.
 
 After quiescence, any failure remains closed for diagnosis and same-input
 fix-forward. Do not remove fences, restore a ledger, hand-switch selectors or

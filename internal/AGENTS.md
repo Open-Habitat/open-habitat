@@ -98,6 +98,11 @@ The packages divide the work as follows.
   another host command holding the shared operation lock grants no such authority.
   An unpublished deny marker is denial, not absence or readiness; an interrupted
   publication must not reopen entry merely because its final name is missing.
+  Upgrade stops and restarts only the product's system units. It never stops,
+  restarts or requires an exact set of a person's user-manager units: shells,
+  editors and Taskfleet runs there are the person's work, outlive the upgrade on
+  the generation they started with, and start or stop units of their own
+  meanwhile; a transient unit that was stopped cannot be started again.
 - `provision/`: the root-only broker, its wire protocol, state and the Linux
   executor that creates accounts. It refuses to create or repair its own
   base directories, socket permissions or units: a root process quietly fixing

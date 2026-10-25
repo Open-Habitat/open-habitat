@@ -34,14 +34,18 @@ type upgradeProof struct {
 	Users        []upgradeUser     `json:"users"`
 }
 type upgradeUser struct {
-	Name            string   `json:"name"`
-	UID             uint32   `json:"uid"`
-	GID             uint32   `json:"gid"`
-	Services        []string `json:"services"`
-	Daemon          bool     `json:"daemon"`
-	Admitted        bool     `json:"admitted"`
-	ActiveTurns     int      `json:"active_turns"`
-	TurnsObservable bool     `json:"turns_observable"`
+	Name string `json:"name"`
+	UID  uint32 `json:"uid"`
+	GID  uint32 `json:"gid"`
+	// User-manager units are reported, never stopped, restarted or compared:
+	// shells, editors and Taskfleet runs outlive the upgrade on the generation
+	// they started with, and start or stop units of their own meanwhile.
+	UserUnits           []string `json:"user_units_left_running"`
+	UserUnitsObservable bool     `json:"user_units_observable"`
+	Daemon              bool     `json:"daemon"`
+	Admitted            bool     `json:"admitted"`
+	ActiveTurns         int      `json:"active_turns"`
+	TurnsObservable     bool     `json:"turns_observable"`
 }
 type nativeUpgrade struct {
 	site    Site
@@ -122,10 +126,8 @@ func (n *nativeUpgrade) quiesce(ctx context.Context, l *Lock, o Operation) error
 			return e
 		}
 		proof := upgradeProof{SchemaVersion: 1, OperationID: o.ID, BrokerToken: state.Token, GatewayState: map[string]string{}, Users: users}
-		for _, u := range users {
-			if (u.Daemon || len(u.Services) > 0) && !n.request.ApproveInterruption {
-				return ErrWorkBusy
-			}
+		if interruptionRequired(users) && !n.request.ApproveInterruption {
+			return ErrWorkBusy
 		}
 
 		for _, name := range []string{"sessions.json", "administration.json"} {
@@ -141,23 +143,12 @@ func (n *nativeUpgrade) quiesce(ctx context.Context, l *Lock, o Operation) error
 		}
 		n.proof = proof
 	}
-	// Snapshot is durable before any user service interruption. Native unrelated
-	// sessions/tmux are never signalled; only recorded units and product daemons.
+	// Snapshot is durable before any daemon interruption. Only product system
+	// units stop; user managers, SSH sessions and their tmux are never signalled.
 	for _, u := range n.proof.Users {
 		units := []string{"open-habitat-daemon@" + u.Name + ".service", "open-habitat-daemon@" + u.Name + ".socket", "open-habitat-agent@" + u.Name + ".socket"}
 		if _, e := nativeCommand(ctx, "/usr/bin/systemctl", append([]string{"stop"}, units...)...); e != nil {
 			return e
-		}
-		if len(u.Services) > 0 {
-			if _, e := userCommand(ctx, u, "/usr/bin/systemctl", append([]string{"--user", "stop", "--"}, u.Services...)...); e != nil {
-				return e
-			}
-		}
-	}
-	for _, u := range n.proof.Users {
-		active, e := userServices(ctx, u)
-		if e != nil || len(active) != 0 {
-			return ErrWorkBusy
 		}
 	}
 	return n.preserved(ctx)
@@ -216,13 +207,7 @@ func (n *nativeUpgrade) activate(ctx context.Context, l *Lock, o Operation) erro
 				}
 			}
 		}
-		if len(u.Services) > 0 {
-			if _, e = userCommand(ctx, u, "/usr/bin/systemctl", append([]string{"--user", "start", "--"}, u.Services...)...); e != nil {
-				return e
-			}
-		}
 	}
-
 	return nil
 }
 func (n *nativeUpgrade) verify(ctx context.Context, l *Lock, o Operation) error {
@@ -261,13 +246,6 @@ func (n *nativeUpgrade) verify(ctx context.Context, l *Lock, o Operation) error 
 	}
 	if e := n.currentAdoption(ctx); e != nil {
 		return e
-	}
-
-	for _, u := range n.proof.Users {
-		actual, e := userServices(ctx, u)
-		if e != nil || !slices.Equal(actual, u.Services) {
-			return ErrNativeApply
-		}
 	}
 	return n.preserved(ctx)
 }
@@ -517,54 +495,41 @@ func userCommand(ctx context.Context, u upgradeUser, path string, args ...string
 	}
 	return b.data.Bytes(), nil
 }
-func userServices(ctx context.Context, u upgradeUser) ([]string, error) {
+
+// userUnits lists what a user manager is running, for the operator's preview
+// only. The upgrade acts on none of it, so an unobservable manager is reported
+// as such rather than refusing the upgrade.
+func userUnits(ctx context.Context, u upgradeUser) ([]string, bool) {
 	b, e := nativeCommand(ctx, "/usr/bin/systemctl", "show", "--value", "--property=ActiveState", "user@"+uintString(uint64(u.UID))+".service")
 	if e != nil {
-		return nil, e
+		return []string{}, false
 	}
 	switch strings.TrimSpace(string(b)) {
 	case "inactive", "failed":
-		return []string{}, nil
+		return []string{}, true
 	case "active":
 	default:
-		return nil, ErrWorkBusy
+		return []string{}, false
 	}
-
-	b, e = userCommand(ctx, u, "/usr/bin/systemctl", "--user", "list-units", "--type=service,socket,timer,path", "--state=active,activating,reloading,deactivating", "--output=json", "--no-pager")
+	b, e = userCommand(ctx, u, "/usr/bin/systemctl", "--user", "list-units", "--type=service,socket,timer,path", "--state=active,activating,reloading", "--output=json", "--no-pager")
 	if e != nil {
-		return nil, e
+		return []string{}, false
 	}
+	return parseUserUnits(b)
+}
+func parseUserUnits(b []byte) ([]string, bool) {
 	var rows []struct {
-		Unit   string `json:"unit"`
-		Active string `json:"active"`
+		Unit string `json:"unit"`
 	}
 	if json.Unmarshal(b, &rows) != nil || rows == nil {
-		return nil, ErrWorkBusy
+		return []string{}, false
 	}
 	out := []string{}
 	for _, r := range rows {
-		// Native user-manager infrastructure does not consume the product runtime.
-		if r.Unit == "dbus.service" || r.Unit == "dbus-broker.service" || r.Unit == "dbus.socket" {
-			continue
-		}
-		if !safeUserUnit(r.Unit) || r.Active != "active" {
-			return nil, ErrWorkBusy
-		}
 		out = append(out, r.Unit)
 	}
 	slices.Sort(out)
-	return out, nil
-}
-func safeUserUnit(s string) bool {
-	if len(s) > 255 || !(strings.HasSuffix(s, ".service") || strings.HasSuffix(s, ".socket") || strings.HasSuffix(s, ".timer") || strings.HasSuffix(s, ".path")) {
-		return false
-	}
-	for _, c := range s {
-		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || strings.ContainsRune("-_.@", c)) {
-			return false
-		}
-	}
-	return true
+	return out, true
 }
 func switchUpgradeSelectors(s Site, predecessor string) error {
 	old := generationParent + "/" + predecessor
@@ -687,7 +652,7 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 	}
 	out := []upgradeUser{}
 	for _, i := range ids {
-		u := upgradeUser{Name: i.Username(), UID: i.UID(), GID: i.UID(), Services: []string{}, Admitted: state.Admits(i.ID())}
+		u := upgradeUser{Name: i.Username(), UID: i.UID(), GID: i.UID(), Admitted: state.Admits(i.ID())}
 		b, e := nativeCommand(ctx, "/usr/bin/systemctl", "show", "--value", "--property=ActiveState", "open-habitat-daemon@"+u.Name+".service")
 		if e != nil {
 			return nil, e
@@ -699,10 +664,7 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 		default:
 			return nil, ErrWorkBusy
 		}
-		u.Services, e = userServices(ctx, u)
-		if e != nil {
-			return nil, e
-		}
+		u.UserUnits, u.UserUnitsObservable = userUnits(ctx, u)
 		if u.Daemon {
 			// Inventory is observational, not an in-flight mutation barrier. A live
 			// daemon always needs interruption consent even if this list says idle.
@@ -728,6 +690,12 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 		out = append(out, u)
 	}
 	return out, nil
+}
+
+// A live daemon is conservatively busy: an idle conversation list cannot
+// exclude an admitted in-flight request. User-manager units are left running.
+func interruptionRequired(users []upgradeUser) bool {
+	return slices.ContainsFunc(users, func(u upgradeUser) bool { return u.Daemon })
 }
 
 func upgradePublicationsClear() error {

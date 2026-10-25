@@ -407,12 +407,32 @@ def units(*names):
             time.sleep(2)
     print(json.dumps({'active': list(names)}))
 
+def user_unit(action, name, unit):
+    # A transient user service, the shape of the browser shell's tmux and of a
+    # Taskfleet supervisor. The person's lingering manager is never started here.
+    u = pwd.getpwnam(name)
+    env = {'PATH': '/usr/bin:/bin', 'HOME': u.pw_dir, 'XDG_RUNTIME_DIR': '/run/user/%d' % u.pw_uid}
+    def user(*argv):
+        return subprocess.run(argv, preexec_fn=drop(u.pw_uid, u.pw_gid), env=env, cwd='/', capture_output=True, text=True, timeout=30)
+    if action == 'start':
+        end = time.monotonic() + 180
+        while subprocess.run(['systemctl', 'is-active', '--quiet', 'user@%d.service' % u.pw_uid]).returncode != 0:
+            if time.monotonic() > end:
+                sys.exit('user manager never ran for ' + name)
+            time.sleep(1)
+        p = user('systemd-run', '--user', '--collect', '--quiet', '--unit=' + unit, '--', '/bin/sleep', 'infinity')
+        if p.returncode != 0:
+            sys.exit('transient user unit did not start: ' + p.stderr[-300:])
+    p = user('systemctl', '--user', 'show', '--property=ActiveState,MainPID', '--', unit)
+    props = dict(line.split('=', 1) for line in p.stdout.splitlines() if '=' in line)
+    print(json.dumps({'unit': unit, 'active': props.get('ActiveState'), 'pid': int(props.get('MainPID') or 0)}))
+
 def gateway_exe():
     pid = subprocess.run(['systemctl', 'show', '--value', '--property=MainPID', 'open-habitat-gateway.service'], capture_output=True, text=True, check=True).stdout.strip()
     data = open('/proc/' + pid + '/exe', 'rb').read()
     print(json.dumps({'pid': int(pid), 'sha256': hashlib.sha256(data).hexdigest()}))
 
-{'ensure': ensure, 'agent': agent, 'state': state, 'units': units, 'gateway-exe': gateway_exe,
+{'ensure': ensure, 'agent': agent, 'state': state, 'units': units, 'gateway-exe': gateway_exe, 'user-unit': user_unit,
  'integrations': integrations, 'integrations-config': integrations_config, 'add-app': add_app}[sys.argv[1]](*sys.argv[2:])
 '''
 
@@ -731,6 +751,20 @@ class Qualification:
         return {'public_https': status, 'agents': agents, 'native_state_preserved': True,
                 'integrations': self.integrations()}
 
+    def survivor(self, phase):
+        unit = self.probe('user-unit', 'start', PEOPLE[0][1], f'qualification-survivor-{phase}.service')
+        if unit['active'] != 'active' or not unit['pid']:
+            raise Failure('user_unit_not_started', f'transient user unit {unit["unit"]} did not run', {'unit': unit})
+        return unit
+
+    def survived(self, unit):
+        # The upgrade must leave a person's user manager alone; a stopped
+        # transient unit cannot be started again.
+        now = self.probe('user-unit', 'show', PEOPLE[0][1], unit['unit'])
+        if now != unit:
+            raise Failure('user_unit_interrupted', f'upgrade interrupted transient user unit {unit["unit"]}', {'before': unit, 'after': now})
+        return now
+
     def reboot_installed(self):
         boot = self.reboot()
         obs = self.healthy(self.bin)
@@ -755,9 +789,12 @@ class Qualification:
         if staged.get('outcome') != 'staged':
             raise Failure('upgrade_not_staged', f'first upgrade invocation returned {staged.get("outcome")}')
         obs = {'plan_id': plan['plan_id'], 'owner_binary': owner}
+        survivors = []
         if self.interrupt:
             # Writer dies while switching; a cold boot must keep public entry closed.
+            unit = self.survivor('quiesce')
             self.live(owner, 'upgrade', plan['plan_id'], interrupt_at='activating')
+            survivors.append(self.survived(unit))
             obs['fenced_boot_id'] = self.reboot()
             # SSH can answer before the gateway starts; let boot jobs settle, then
             # sample a window so a gateway that opens late is still caught.
@@ -769,9 +806,12 @@ class Qualification:
                     raise Failure('fenced_entry_open', 'public HTTPS served 200 after an interrupted upgrade boot')
                 self.r.sleep(3)
             obs['fenced_public_statuses'] = sorted(set(statuses), key=str)
+        unit = self.survivor('activate')
         result = self.live(owner, 'upgrade', plan['plan_id'])
         if result.get('outcome') != 'upgraded':
             raise Failure('upgrade_outcome_unexpected', f'upgrade returned {result.get("outcome")}')
+        survivors.append(self.survived(unit))
+        obs['user_units_survived'] = survivors
         if self.live(owner, 'upgrade', plan['plan_id']).get('outcome') != 'no_change':
             raise Failure('upgrade_repeat_changed', 'an exact repeat of the accepted upgrade was not no_change')
         self.bin = owner

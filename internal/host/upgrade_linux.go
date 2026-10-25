@@ -116,11 +116,7 @@ func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error)
 		p.Approvable = false
 	} else {
 		p.Work = work
-		for _, u := range work {
-			if u.Daemon || len(u.Services) > 0 {
-				p.InterruptionRequired = true
-			}
-		}
+		p.InterruptionRequired = interruptionRequired(work)
 	}
 	binding, e := inputBinding(ctx, sitePath)
 	if e != nil {

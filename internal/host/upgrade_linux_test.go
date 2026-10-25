@@ -9,6 +9,7 @@ import (
 	"golang.org/x/sys/unix"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -158,15 +159,33 @@ func TestUpgradeLinkRejectsForeignTarget(t *testing.T) {
 	}
 }
 
-func TestUpgradeUserActivationUnitSelectors(t *testing.T) {
-	for _, unit := range []string{"sync.service", "sync.socket", "sync.timer", "sync.path", "work@one.service"} {
-		if !safeUserUnit(unit) {
-			t.Fatal(unit)
-		}
+// Shells, editors and Taskfleet runs in a user manager survive an upgrade, so
+// only a live product daemon asks for interruption approval.
+func TestUpgradeInterruptionFollowsDaemonsOnly(t *testing.T) {
+	units := upgradeUser{Name: "one", UserUnits: []string{"open-habitat-tmux.service", "taskfleet-supervise-r-n.service"}, UserUnitsObservable: true}
+	blind := upgradeUser{Name: "two", UserUnits: []string{}}
+	if interruptionRequired([]upgradeUser{units, blind}) {
+		t.Fatal("user units required interruption approval")
 	}
-	for _, unit := range []string{"--all", "../root.service", "unit.service\nroot.service", "unqualified.target"} {
-		if safeUserUnit(unit) {
-			t.Fatal(unit)
+	if !interruptionRequired([]upgradeUser{units, {Name: "three", Daemon: true}}) {
+		t.Fatal("live daemon did not require interruption approval")
+	}
+}
+
+// The user-unit inventory is a report: units that are starting, carry escaped
+// names or belong to the bus are listed, and a garbled answer is unobservable
+// rather than a refusal, because the upgrade acts on none of them.
+func TestUpgradeUserUnitInventoryIsReportOnly(t *testing.T) {
+	rows := `[{"unit":"taskfleet-tmux-1.service","active":"active"},{"unit":"open-habitat-tmux.service","active":"activating"},` +
+		`{"unit":"app-x\\x2dy.service","active":"reloading"},{"unit":"dbus.socket","active":"active"}]`
+	got, ok := parseUserUnits([]byte(rows))
+	want := []string{`app-x\x2dy.service`, "dbus.socket", "open-habitat-tmux.service", "taskfleet-tmux-1.service"}
+	if !ok || !slices.Equal(got, want) {
+		t.Fatal(got, ok)
+	}
+	for _, bad := range []string{"", "null", "{}", "not json"} {
+		if got, ok := parseUserUnits([]byte(bad)); ok || got == nil || len(got) != 0 {
+			t.Fatal(bad, got, ok)
 		}
 	}
 }
