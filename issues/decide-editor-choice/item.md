@@ -1,6 +1,6 @@
 ---
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-25
 type: task
 reporter: jari
 status: done
@@ -41,3 +41,9 @@ Jari 2026-10-21: make a technical decision first and proceed per its recommendat
 - [x] ADR 0028 records the delegated decision, daemon file contract, save guarantees and limits, browser-local preference, engine integration and rejected alternatives.
 - [x] Independent critical review completed; confirmed Unicode and alias-lock findings resolved, with disposition in [review.md](review.md).
 - [x] Implementation phases filed through intake as @implement-editor-files-codemirror and @implement-editor-monaco, untriaged and unlaned.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

@@ -1,6 +1,6 @@
 ---
 created: 2026-10-16
-updated: 2026-10-21
+updated: 2026-10-25
 type: bug
 reporter: jari
 status: cannot-reproduce
@@ -32,6 +32,10 @@ Jari 18:11 local, live after 12471b59 (vanhempi-alussa.png): at the very top of 
 ### 2026-10-16T15:14:54Z · @jari
 
 Jari 18:12 local (seuraava-sivu-yha.png): at the end of the same conversation, the big 'Lataa seuraava sivu' button is still there, full thread width and shifted left by that same width, outside the column. Both pagers must be fixed: the older one at the top and the next one at the bottom.
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.
 
 ## Reopen Notes — 2026-10-16
 

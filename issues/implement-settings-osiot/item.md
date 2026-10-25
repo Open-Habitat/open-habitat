@@ -1,6 +1,6 @@
 ---
 created: 2026-10-16
-updated: 2026-10-18
+updated: 2026-10-25
 type: feature
 reporter: jari
 status: done
@@ -30,3 +30,9 @@ The API key itself is `provider-api-keys`, whose accepted architecture is `issue
 - [x] Leaving actions (sign-out, detaching GitHub, removing the key) are confirmed as in the prototype.
 - [x] Browser tests for the section navigation, the key row and the administration authorization.
 - [x] Deployed, with live checks for Jari in KOKEILTAVAA.md.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

@@ -1,6 +1,6 @@
 ---
 created: 2026-10-20
-updated: 2026-10-21
+updated: 2026-10-25
 type: bug
 status: fixed
 priority: normal
@@ -49,3 +49,9 @@ Validated base `2d81ff0dee972fd2a0852c8181ea370dddb4ec56` plus the helper diff, 
 - `git diff --check`: passed.
 
 Host-backed synthetic evidence only; no live-server, UID-isolation or full-gate claim. No production UI changed, so visual captures are not applicable. No test-server access or push performed. Both required checks completed successfully; an initial skill read at a guessed location returned ENOENT, resolved by reading the supplied installed path before running validation.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

@@ -1,6 +1,6 @@
 ---
 created: 2026-10-17
-updated: 2026-10-21
+updated: 2026-10-25
 type: improvement
 status: done
 priority: normal
@@ -68,3 +68,9 @@ every page is joined" invariant.
 - [x] History pages preserve newer streamed entries without treating new appends as overlap witnesses.
 - [x] A gap or history notification crossing a read retains one follow-up recovery, with cancellation and read ownership preserved.
 - [x] The delayed-history long-stream browser regression rejects a history-length streaming stall.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

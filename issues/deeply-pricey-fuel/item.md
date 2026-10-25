@@ -1,6 +1,6 @@
 ---
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-25
 type: bug
 status: cannot-reproduce
 priority: normal
@@ -37,3 +37,9 @@ Unchanged focused spec with `--repeat-each 10 --trace on` subsequently passed al
 ### 2026-10-21T16:09:48Z · @jari
 
 Jari 2026-10-21: close as cannot-reproduce — single untraced failure; later 30/30 focused repeats and lab ×5 (310 runs, f4db6e69) passed. Reopen with a failing trace if it recurs.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

@@ -1,6 +1,6 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-25
 type: bug
 reporter: jari
 status: fixed
@@ -42,3 +42,9 @@ Focused self-review is proportionate: CSS shaping and browser assertions only; n
 Failure inventory: initial web run failed CSS formatting; the next failed lint because a multiline declaration's suppression was attached to the wrong line. Simplified to the necessary `calt` feature (ligatures are already disabled by the variant property); final web and both browser checks all pass. The first chained browser command never ran after web failed; final specs were each invoked separately. Exploratory reads of absent component instructions/spec filenames were harmless discovery misses; the relevant existing files were read instead. No required check remains failing or incomplete.
 
 Before/after captures deferred: Alder's focused remote policy disallows lab/capture runs. No live server, personal data, or provider was used; visual review on the deployed server remains with the conductor. Full gate was intentionally not run for this narrow browser change. Nothing needs changing in Fleetrepo; no push or deployment was performed.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

@@ -1,6 +1,6 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-25
 type: bug
 reporter: jari
 status: fixed
@@ -24,6 +24,10 @@ Jari 2026-10-20 ~12:19 local (pilot.247): Työtila open-habitat › Uusi worktre
 ### 2026-10-20T09:37:26Z · @agent
 
 Reproduced locally before the fix: TestWorktreeCreationWaitsForWorkspaceWriter fails with 409 workspace_busy while a simulated checkout observation holds cloneWriter for only 25 ms. Root cause: worktree creation uses an immediate TryLock on the daemon-wide workspace writer; read-only GitHub checkout observations hold that same lock across native Git checks, while imports hold it for the entire job. Thus even a brief overlap refuses a single first-message create before any work; the refusal contains no holder information. No double-submit or stale-lock mechanism is needed to reproduce it. The quoted live log proves this refusal path but cannot identify its holder: inspect requests overlapping 09:19:16Z, especially GET onboarding/github/checkout, clone job start/terminal events, archive, workspace delete/restore/settings and worktree cleanup. No server was accessed.
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.
 
 ## Acceptance Criteria
 

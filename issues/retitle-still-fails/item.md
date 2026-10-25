@@ -1,6 +1,6 @@
 ---
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-25
 type: bug
 reporter: jari
 status: fixed
@@ -25,3 +25,9 @@ Jari 2026-10-21 ~20:33 on the test server: tried to regenerate a conversation's 
 - [x] Establish the live failure from daemon/gateway logs and reproduce it with synthetic data.
 - [x] Keep both title operation replies deliverable after bounded model work, without changing ownership proofs or retrying writes.
 - [x] Preserve safe known model failures for an actionable notice without testing UI wording.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

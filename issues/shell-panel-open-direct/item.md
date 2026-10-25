@@ -1,6 +1,6 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-25
 type: bug
 reporter: jari
 status: fixed
@@ -24,6 +24,10 @@ Jari 2026-10-20 (pilot.247): pressing Pääte opens the panel showing another 'A
 ### 2026-10-20T12:03:40Z · @conductor
 
 Server evidence (Fleetrepo infra/open-habitat-test/evidence/terminal-tmux-20261020.md): maintainer daemon logged shell create_failed at 08:12:06, 08:24:17, 08:24:20, 08:39:07 UTC 2026-10-20, ~8 min after a release restart, not during it. tmux 3.4 present, PATH resolves /usr/local/bin/tmux, user tmux service active, socket 0600 under 0700 dirs. Failure is at new-session creation; the daemon does not log tmux's stderr, so the cause is unproved — log it.
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.
 
 ## Result
 

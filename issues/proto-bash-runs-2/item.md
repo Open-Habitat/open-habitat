@@ -1,6 +1,6 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-25
 type: task
 reporter: jari
 status: done
@@ -24,3 +24,9 @@ Jari's feedback 2026-10-20 on proto-bash-runs (https://glasspad.example.test/p/c
 - [x] Three directions show command history inside the production-sized conversation, with full-width composer, work rows, process overview and notices.
 - [x] Published round replaces round 1 in KOKEILTAVAA.
 - [x] Final remote browser checks pass at 1440, 1366 and 390px in both themes; focused web checks pass.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

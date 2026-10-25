@@ -1,6 +1,6 @@
 ---
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-25
 type: bug
 reporter: jari
 status: fixed
@@ -25,3 +25,9 @@ Jari 2026-10-21 on the test server (version 6992efc6, which moved folder access 
 - [x] Reproduce missing `local_files` in an older native Pi loadout and restore it without changing personal tools or browser grants.
 - [x] Verify list and fetch in the same synthetic browser conversation after granting a folder following the first turn.
 - [x] Pass affected Go, native-tool, fast web, browser and contract checks; record limits and review in result.md.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

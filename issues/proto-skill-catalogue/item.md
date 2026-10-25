@@ -1,6 +1,6 @@
 ---
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-25
 type: task
 reporter: jari
 status: done
@@ -41,3 +41,9 @@ Jari 2026-10-21 clarification: the 'Aloita tästä' page content should be gener
 ### 2026-10-21T17:00:49Z · @jari
 
 Jari 2026-10-21, second clarification: the whole 'Aloita tästä' view is defined by hand in the repository in one start-page file (Markdown + YAML frontmatter preferred, HTML the alternative). Skills appear on it only when written into it. A skill helps write the content; one user maintains the page for others. No automatic skill listing on the start view.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

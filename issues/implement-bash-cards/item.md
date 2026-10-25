@@ -1,6 +1,6 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-25
 type: feature
 reporter: jari
 status: done
@@ -27,3 +27,9 @@ Jari's changes to the prototype: do not repeat 'Pi näkee tulosteen seuraavan vi
 - [x] Context visibility appears in the composer hint while typing, without repeating the explanation on each command card.
 - [x] Another command is refused without losing the draft; interruption remains pending until host confirmation or an explicitly unknown outcome.
 - [x] Focused web and ordinary host-backed browser checks pass, including keyboard disclosure and affected accessibility/layout behavior.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

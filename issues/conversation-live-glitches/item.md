@@ -1,6 +1,6 @@
 ---
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-25
 type: bug
 reporter: jari
 status: fixed
@@ -23,3 +23,9 @@ Jari on the test server, 2026-10-17 ~17.45, three live observations in conversat
 
 ## Acceptance Criteria
 - [x] Each item has its cause with evidence in result.md (live where available, lab reproduction otherwise) and a fix with a browser test; item 1 says plainly if the live cause could not be attributed.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

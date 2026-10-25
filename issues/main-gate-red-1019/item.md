@@ -1,6 +1,6 @@
 ---
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-25
 type: bug
 status: fixed
 priority: high
@@ -20,3 +20,9 @@ Full clean gate on main `47cf99ac` (2026-10-19, after the day's landings) failed
 - [x] Explain the expiry expectation change and clone/deletion test races; keep intended product semantics.
 - [x] Browser targets pass five repetitions each; busy-deletion test passes ten repetitions.
 - [x] Run the full clean gate once on committed work and report its result, including unrelated load-sensitive failures, in result.md.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

@@ -1,6 +1,6 @@
 ---
 created: 2026-10-12
-updated: 2026-10-21
+updated: 2026-10-25
 type: bug
 reporter: agent
 status: fixed
@@ -51,3 +51,9 @@ Related: @implement-user-storage-quotas
 - [x] Only broker-verified committed ledger UIDs select native quotas; malformed bulk requests are rejected and raw failures do not cross the wire.
 - [x] CLI and browser preserve partial rows and show an unknown overcommit assessment rather than a false all-clear.
 - [x] The root control deadline also cancels outstanding broker page collection.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

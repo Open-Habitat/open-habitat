@@ -1,6 +1,6 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-25
 type: bug
 reporter: jari
 status: fixed
@@ -29,3 +29,9 @@ Preserved quota work is integrated with current main; [result and validation](re
 - [x] Show proactive quota pressure, one full-storage explanation, cleanup actions and explicit recovery without message replay.
 - [x] Classify daemon/native Pi storage errors as fixed redacted diagnostics; test a synthetic tiny write budget and recovery.
 - [x] Focused web, daemon, contracts and quota-browser checks pass; unrelated conversation failure is independently reproduced unchanged and filed.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

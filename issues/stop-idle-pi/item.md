@@ -1,6 +1,6 @@
 ---
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-25
 type: improvement
 reporter: jari
 status: done
@@ -23,3 +23,9 @@ The daemon should stop a conversation's Pi process after it has been idle for a 
 - [x] A ten-minute idle period stops Pi gracefully and logs the stop; busy and unknown states keep it running.
 - [x] Injected-time Go tests cover the timeout boundary, every busy reason, background work and one-time lazy-resume delivery.
 - [x] Daemon/caller checks and independent review completed; results recorded in result.md.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

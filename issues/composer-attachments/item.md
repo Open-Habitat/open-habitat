@@ -1,6 +1,6 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-25
 type: feature
 reporter: jari
 status: done
@@ -95,3 +95,9 @@ before/after screenshot+HTML captures and a lab image-answer journey were deferr
 without bypassing that policy. No clean-gate receipt was produced. Review corpus
 logging was disabled because this run forbids Fleetrepo edits and pushes. No test
 server, Fleetrepo installation or persistent application binary was changed.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

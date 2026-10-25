@@ -1,6 +1,6 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-25
 type: task
 reporter: jari
 status: done
@@ -24,3 +24,9 @@ Jari 2026-10-20 asked for a prototype round. Today the latest ! command shows in
 - [x] Three directions cover single/multiple commands, long runs, failures and !! context exclusion.
 - [x] Rivillä-based composer shows field-adjacent refusal and pending interruption with confirmed/unknown outcomes.
 - [x] Desktop/phone and light/dark focused browser checks pass; result, recommendation, published link and KOKEILTAVAA checks are recorded.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

@@ -1,6 +1,6 @@
 ---
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-25
 type: bug
 status: fixed
 priority: normal
@@ -43,3 +43,9 @@ Tab arrows retain focus on the selected tab even after its socket becomes ready.
 
 - [x] Attachment readiness does not steal focus from a shell tab selected with Left/Right.
 - [x] The existing browser-shell journey passes under concurrent suite load, retaining opening, hiding/reattachment, busy-close and terminal-focus assertions.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

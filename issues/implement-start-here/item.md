@@ -1,6 +1,6 @@
 ---
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-25
 type: feature
 reporter: jari
 status: done
@@ -34,3 +34,9 @@ Done: daemon reads the facts natively as the person (contract in contracts/v1, g
 - [x] Repository-marked starting goals and the use-case catalogue use Pi's effective native skills, with bounded metadata and honest Git-addition provenance.
 - [x] Catalogue search, topic/source/new shelves, detail, explicit identity/repository acknowledgement and native draft-only skill insertion work without sending or losing existing text.
 - [x] Production stories, desktop/390 px light/dark keyboard/Axe browser coverage, native trust/confinement tests and the required focused checks are recorded in result.md.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

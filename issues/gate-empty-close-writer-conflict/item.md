@@ -1,6 +1,6 @@
 ---
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-25
 type: bug
 status: fixed
 priority: normal
@@ -36,3 +36,9 @@ Run `go test -race -count=1 ./...` concurrently with an eight-worker repeated ho
 
 - [x] Explain whether the refusal is a competing writer or uncertain census.
 - [x] Verify close, competing-writer refusal and unknown-process refusal repeatedly under load without weakening production admission.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

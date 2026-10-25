@@ -1,6 +1,6 @@
 ---
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-25
 type: bug
 status: fixed
 priority: high
@@ -20,3 +20,9 @@ The ordinary Playwright suite (302 cases) fails 22–29 cases on main (e411415b,
 - [x] Measure two full ordinary-suite runs and file each isolated remaining failure with its observed cause and run provenance.
 
 See [result](result.md) for measured outcomes and the two isolated residuals.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

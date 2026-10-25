@@ -1,6 +1,6 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-25
 type: bug
 reporter: jari
 status: fixed
@@ -33,6 +33,10 @@ Validation progress: TMPDIR=/var/tmp ./scripts/test-focused.sh --area web passes
 ### 2026-10-20T10:29:01Z · @agent
 
 Reproduction confirmed: the pre-fix immutable browser capture (snapshot 9c7f3b80236dcc53753bcc6aab9bd91e4e7d4871ec49cf55fc2b7d542e4590ca; job c8fd245a3f01d77bb3fd2daa7157de53d5328dc5b30c25f2b6b340830731a0b4) reached the real controller, created/sent a synthetic conversation, restarted the daemon and reopened the same URL. Clicking regenerate returned HTTP 404 where the regression expected 200. This matches the reported instant live failure. Terminal result test-exit is the expected failing baseline, not a runner failure. Full synthetic trace and logs are retained under /var/tmp/oh-browser-723haj9z.
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.
 
 ## Result
 

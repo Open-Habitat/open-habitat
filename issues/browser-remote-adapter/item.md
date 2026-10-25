@@ -1,6 +1,6 @@
 ---
 created: 2026-10-19
-updated: 2026-10-20
+updated: 2026-10-25
 type: task
 reporter: jari
 status: done
@@ -64,3 +64,9 @@ Implementation authorized by Jari on 2026-10-20 (Taskfleet 01m5c4f8gst5h9x1rq7jw
 ### 2026-10-20T08:02:13Z · @agent
 
 Delivered narrow adapter: 24 cheap fixtures passed; final npm routed ARM64 job 992423b86a98bdb8c5e0a53dc4917eafefe499f9d0d8fcea7146aa35ef532b3d passed 2/2. All 2484 captured files unchanged; same-job reconnect surfaced deliberate staleness. Native credential evidence remains 11 passed/1 failed, not green. No full-gate/amd64/deployment claim; parent owns push/publication.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

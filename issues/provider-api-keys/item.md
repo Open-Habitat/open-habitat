@@ -1,6 +1,6 @@
 ---
 created: 2026-10-15
-updated: 2026-10-16
+updated: 2026-10-25
 type: feature
 reporter: jari
 status: done
@@ -40,3 +40,9 @@ lets the person replace or remove it. No host-level key store or broker.
 ### 2026-10-16T04:09:18Z · @jari
 
 Jari 2026-10-16: architecture.md accepted. The key is Pi's own auth.json entry, written by the daemon as the mapped user, with no host store. The UI shows sk-…abcd.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

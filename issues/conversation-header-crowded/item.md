@@ -1,6 +1,6 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-25
 type: improvement
 reporter: jari
 status: done
@@ -44,3 +44,9 @@ Runner responses and fetched receipts remain outside source in `/var/tmp/oh-brow
 Before/after lab captures remain deferred under Alder policy, as instructed. Focused self-review is proportionate for presentation-only changes: checked native model/provider fallback, information-only semantics, keyboard handling, title allocation, summary clipping without clipping menus, and editor naming. The previous result recorded self-review, not an independent review; no independent security review is required for this surface.
 
 Failure inventory: the previous worker's quota-blocked checks were superseded by passing runs. This run's first title spec failed its fixed 300px assumption (276px available); the next browser spec failed wrapping, attachment tab order and a route-focus race. All were repaired and the complete focused set passed, then passed twice more after main integration. A diagnostic `git show` for a nonexistent separate result file and an ambiguous trace glob failed; the result was read from `item.md` and specific traces were successfully inspected. Exploratory searches for wrongly guessed component paths were corrected. No required step remains failing. Issue doctor, project-view validation and `git diff --check` also passed; doctor retains repository-wide legacy-image advisories unrelated to this issue.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

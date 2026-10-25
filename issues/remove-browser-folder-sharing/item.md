@@ -1,6 +1,6 @@
 ---
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-25
 type: task
 reporter: jari
 status: done
@@ -37,3 +37,9 @@ Jari 2026-10-21: remove the browser folder-sharing feature completely; own-compu
 - [x] Browser folder sharing removed through UI, tool, routes, CLI, contracts and fixtures; ordinary attachments verified.
 - [x] OneDrive/Dropbox guidance added for people and agents, and Finnish test notes updated.
 - [x] Focused web/browser/Go/contracts/packaging checks and final diff review passed.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

@@ -1,6 +1,6 @@
 ---
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-25
 type: feature
 reporter: jari
 status: done
@@ -41,3 +41,9 @@ Done: contract/daemon/web changes with tests per TESTING.md, the skill with a us
 - [x] Every daemon-launched Open Habitat Pi receives the proposing-only authoring skill without personal settings writes; no skill commit/push action.
 - [x] Catalogue removal, format/delivery choices, Finnish trial entry and synthetic evidence are recorded in result.md.
 - [x] Fast web, affected browser/native tests, contract drift and independent final-diff review pass; the review finding is fixed.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

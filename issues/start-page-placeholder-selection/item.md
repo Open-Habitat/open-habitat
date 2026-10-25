@@ -1,6 +1,6 @@
 ---
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-25
 type: improvement
 reporter: jari
 status: done
@@ -21,3 +21,9 @@ Jari 2026-10-23: a start-page goal's request may contain a placeholder, e.g. 4dc
 ## Acceptance Criteria
 
 - [x] Aloita with a placeholder: text, blank line, placeholder selected; typing replaces it; without placeholder unchanged; browser test; skill and format docs updated.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.

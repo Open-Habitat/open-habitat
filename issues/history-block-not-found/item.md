@@ -1,6 +1,6 @@
 ---
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-25
 type: bug
 status: fixed
 priority: high
@@ -20,3 +20,9 @@ Live smoke on the test server (pilot.295, c770b0e2), Fleetrepo evidence issues/n
 - [x] Native SessionManager-seeded history reproduces the agent block-read failure.
 - [x] Requests above 64 KiB return bounded text chunks with continuation instead of false not-found errors.
 - [x] Cover agent and browser daemon routes, native user/assistant/bash content, stale revisions and over-budget refusal.
+
+## Comments
+
+### 2026-10-25T03:26:10Z · @agent
+
+Legacy scratch retirement (2026-10-25): the eligible closed-issue paths cited here have been copied to rowan:/Volumes/BACKUP-EXT/backup/alder-var-tmp-retirement-20261025/<same-basename>, with a clean rsync checksum verification. Source-to-backup mapping and retained exceptions: Fleetrepo issues/alder-root-disk-growth/retirement-20261025.md. Local removal is guarded by a final live-run/open-file/reference/age recheck; the action log is /var/tmp/agent-keep/alder-root-disk-growth/retirement-20261025/actions.jsonl.
