@@ -398,9 +398,18 @@ describe("one tab-wide journal", () => {
         "failed",
         expect.anything(),
       );
-      // A host the probe cannot reach is announced at once.
-      fetch.mockRejectedValue(new TypeError("network"));
+      // A stream that never opens is announced even when the probe answers.
       FakeSource.all[3].onerror?.();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(onOffline).not.toHaveBeenCalled();
+      FakeSource.all[4].onerror?.();
+      expect(onOffline).toHaveBeenLastCalledWith(true);
+      await vi.advanceTimersByTimeAsync(0);
+      FakeSource.all[5].onopen?.();
+      expect(onOffline).toHaveBeenLastCalledWith(false);
+      // A host the probe cannot reach is announced once it fails.
+      fetch.mockRejectedValue(new TypeError("network"));
+      FakeSource.all[5].onerror?.();
       await vi.advanceTimersByTimeAsync(0);
       expect(onOffline).toHaveBeenLastCalledWith(true);
       expect(onConnection).toHaveBeenLastCalledWith(

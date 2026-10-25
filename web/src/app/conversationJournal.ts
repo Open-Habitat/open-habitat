@@ -316,9 +316,11 @@ export class ConversationJournal {
       `/api/v1/events?after=${encodeURIComponent(this.cursor)}`,
     );
     this.source = source;
+    let opened = false;
     source.onopen = () => {
       if (this.stopped || epoch !== this.generation || this.source !== source)
         return;
+      opened = true;
       clearTimeout(this.connectTimer);
       reconnectDiagnostic({
         event: "stream",
@@ -352,16 +354,19 @@ export class ConversationJournal {
       });
       source.close();
       this.source = undefined;
-      // A dropped stream is announced only once the probe shows the host
-      // unreachable or refusing. A reconnect the probe clears would otherwise
-      // flash the offline banner for one round trip (on a slow relay, every
-      // time a proxy or an HTTP/2 hop ends an idle stream).
+      // A stream that had opened and then dropped is announced only once
+      // the probe shows the host unreachable or refusing. A reconnect the
+      // probe clears would otherwise flash the offline banner for one round
+      // trip (on a slow relay, every time a proxy or an HTTP/2 hop ends an
+      // idle stream). A stream that never opened is a failure at once: a
+      // probe can succeed where the stream itself cannot get through.
       const unreachable = (
         reason = "Tapahtumayhteyttä ei saatu. Tarkista verkkoyhteys tai yritä uudelleen.",
       ) => {
         this.setOffline(true);
         this.callbacks.onConnection?.("failed", reason);
       };
+      if (!opened) unreachable();
       const probe = new AbortController();
       this.probe = probe;
       const timeout = setTimeout(() => probe.abort(), 5000);
