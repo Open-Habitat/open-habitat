@@ -2,7 +2,7 @@
 created: 2026-10-25
 updated: 2026-10-25
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed in taskfleet run clean gate
@@ -12,6 +12,10 @@ originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
 collision: [web/e2e/browser-conversation]
+closed: 2026-10-25
+commits:
+- hash: 127a2ed5
+  summary: 'test: wait for the opened conversation header before using Tiedot'
 ---
 
 # browser-conversation 'changed snapshot identity discards late previous status' still flakes under load

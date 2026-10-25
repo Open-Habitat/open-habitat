@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-25
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed in the pilot.9 release clean gate
@@ -12,6 +12,10 @@ originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
 collision: [web/e2e/lab-conversation]
+closed: 2026-10-25
+commits:
+- hash: 8cd073f5
+  summary: 'test: bring the lab stand-in stream past the test''s own snapshot'
 ---
 
 # Lab SSE-frames spec times out on the event cursor under the full gate
