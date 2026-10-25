@@ -3,10 +3,12 @@ created: 2026-10-25
 updated: 2026-10-25
 type: bug
 reporter: claude
-status: in-progress
+status: fixed
 priority: normal
 lane: unlaned
 collision: [internal/daemon]
+closed: 2026-10-25
+closed_by: claude
 ---
 
 # Daemon native Pi tests hard-code /usr/bin/node
@@ -17,5 +19,5 @@ On Birch (2026-10-25), the full gate failed `internal/daemon` because eight nati
 
 ## Acceptance Criteria
 
-- [ ] The tests resolve node the same way the gate provides it (one shared test helper, for example `exec.LookPath("node")` with a clear failure if it is absent), not through a fixed system path.
-- [ ] The tests still pass on Alder, and they pass on a host whose node is only on PATH.
+- [x] The tests resolve node the same way the gate provides it (one shared test helper, for example `exec.LookPath("node")` with a clear failure if it is absent), not through a fixed system path.
+- [x] The tests still pass on Alder, and they pass on a host whose node is only on PATH.
