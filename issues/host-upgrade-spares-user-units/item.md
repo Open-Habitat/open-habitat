@@ -3,12 +3,13 @@ created: 2026-10-25
 updated: 2026-10-25
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: normal
 related: ['@upgrade-keeps-agent-processes']
 lane: unlaned
 collision: [internal/hostop]
 preparation: ready
+closed: 2026-10-25
 ---
 
 # host upgrade stops every user unit and can get stuck closed
@@ -35,8 +36,8 @@ browser-Pi turns alive across a daemon restart (option B, Jari's decision).
 
 ## Acceptance Criteria
 
-- [ ] `host upgrade` leaves user units running; a live transient user unit
+- [x] `host upgrade` leaves user units running; a live transient user unit
   (tmux, Taskfleet supervisor) survives an upgrade and the upgrade completes.
-- [ ] Tests at the operator boundary, and a real-systemd check (qualification
+- [x] Tests at the operator boundary, and a real-systemd check (qualification
   VM or disposable test host), with evidence in `result.md`.
 
