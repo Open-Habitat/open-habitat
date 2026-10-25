@@ -22,3 +22,9 @@ The rail shows `<Badge label="Uutta" tone="warning" count={attentionCount} />` u
 - [x] The rail item says what it means in plain Finnish, for example "1 uusi vastaus" / "3 uutta vastausta" (or a better wording that matches the rest of the UI's vocabulary for unread agent replies), and looks like an action rather than a field.
 - [x] Activating it takes the person to the unread reply: with one, straight to that conversation; with several, to a view that lists them (for example Etusivu's attention section, if that exists, or the first one, with the others still marked in the rail). Opening the conversation clears the count as today.
 - [x] Keyboard and screen-reader accessible, with an accessible name that includes the count. Covered by unit/browser tests.
+
+## Comments
+
+### 2026-10-25T12:05:17Z · @claude
+
+Conductor reran the full clean gate on tree 6745a17bc3b8 (commit 4d286400) at a lower Alder load: passed, tree clean. The run's earlier gate failures (clone-page, single-workspace, lab idle-slot/trash/worktree-cleanup) were load-induced; the two browser specs passed 11/11 in isolation on this branch.
