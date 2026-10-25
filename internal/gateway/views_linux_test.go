@@ -269,14 +269,11 @@ func TestViewOriginConfigurationAndAbsence(t *testing.T) {
 	h, a := proxyFixture(t, http.NotFoundHandler())
 	a.random = rand.Reader
 	a.log = CallbackLogger(io.Discard)
-	for _, path := range []string{"/api/v1/views", "/auth/view"} {
-		method := "GET"
-		if path == "/auth/view" {
-			method = "POST"
-		}
-		if w := proxyCall(h, method, path, `{"view_id":"`+viewTestA+`"}`); w.Code != 404 {
-			t.Fatalf("%s without a view origin: %d", path, w.Code)
-		}
+	if w := proxyCall(h, "GET", "/api/v1/views", ""); w.Code != 204 {
+		t.Fatalf("view list without a view origin: %d", w.Code)
+	}
+	if w := proxyCall(h, "POST", "/auth/view", `{"view_id":"`+viewTestA+`"}`); w.Code != 404 {
+		t.Fatalf("handoff without a view origin: %d", w.Code)
 	}
 	r := httptest.NewRequest("GET", "https://oh-view-"+strings.Repeat("a", 52)+".test/", nil)
 	w := httptest.NewRecorder()

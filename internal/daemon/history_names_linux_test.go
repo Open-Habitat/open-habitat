@@ -20,7 +20,8 @@ func TestNativeNameSurvivesLongSystemPromptLines(t *testing.T) {
 	}{
 		{"long prompt then title", long + "\n" + `{"type":"session_info","id":"s1","parentId":"m0","name":"Otsikko"}` + "\n", "Otsikko", true},
 		{"overlong title", `{"type":"session_info","id":"s1","parentId":null,"name":"` + strings.Repeat("y", 20<<10) + `"}` + "\n", "", false},
-		{"unrecognized overlong line", `{"name":"` + strings.Repeat("z", 20<<10) + `"}` + "\n", "", false},
+		{"untyped overlong line that may name", `{"name":"` + strings.Repeat("z", 20<<10) + `"}` + "\n", "", false},
+		{"untyped overlong line without a name", `{"id":"m0","message":"` + strings.Repeat("z", 20<<10) + `"}` + "\n" + `{"type":"session_info","id":"s1","parentId":"m0","name":"Otsikko"}` + "\n", "Otsikko", true},
 	} {
 		path := filepath.Join(t.TempDir(), "s.jsonl")
 		if err := os.WriteFile(path, []byte(tc.lines), 0600); err != nil {

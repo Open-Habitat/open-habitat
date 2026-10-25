@@ -56,7 +56,7 @@ describe("agent HTML view offers", () => {
   it("shows no offer where the installation has no view origin", async () => {
     const fetch = vi
       .fn()
-      .mockResolvedValue(new Response(null, { status: 404 }));
+      .mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetch);
     const page = render(
       <ViewHost csrf="csrf">

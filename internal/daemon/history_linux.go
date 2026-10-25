@@ -854,11 +854,12 @@ func scanNativeNames(f *os.File) (string, bool) {
 		line, readErr := reader.ReadSlice('\n')
 		// Pi tool output and the stored system prompt can be much larger than a
 		// title entry. Discard their fragments rather than allocating the whole
-		// line or losing later names. Pi writes an entry's type first, so only
-		// an overlong session_info, or a line whose type cannot be seen, makes
-		// the name unknowable.
+		// line or losing later names. Pi writes an entry's type first, so an
+		// overlong line of another type is skipped; an overlong session_info,
+		// or a line of unseen type that might be one, makes the name unknowable.
 		if readErr == bufio.ErrBufferFull {
-			if !bytes.HasPrefix(line, []byte(`{"type":"`)) || bytes.HasPrefix(line, []byte(`{"type":"session_info"`)) {
+			typed := bytes.HasPrefix(line, []byte(`{"type":"`))
+			if bytes.HasPrefix(line, []byte(`{"type":"session_info"`)) || !typed && (bytes.Contains(line, []byte(`"session_info"`)) || bytes.Contains(line, []byte(`"name":`))) {
 				return "", false
 			}
 			for readErr == bufio.ErrBufferFull {

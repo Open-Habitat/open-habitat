@@ -209,13 +209,10 @@ func (a *Auth) mintViewHandoff(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"schema_version": 1, "url": a.viewOrigin(s.identity, body.ViewID) + viewHandoffRoute + "?token=" + token})
 }
 
-// viewList is the app origin's list of the person's views; nothing where no
-// view origin is configured, so the browser offers nothing.
+// viewList is the app origin's list of the person's views. Where no view
+// origin is configured it is an empty 204, so the browser offers nothing
+// (and an ordinary page load logs no failed request).
 func (a *Auth) viewList(w http.ResponseWriter, r *http.Request) {
-	if a.cfg.ViewOrigin == "" {
-		http.NotFound(w, r)
-		return
-	}
 	if r.Method != http.MethodGet || !a.exact(r, viewsPath) || r.ContentLength > 0 {
 		safe(w, 400, "invalid_request")
 		return
@@ -223,6 +220,11 @@ func (a *Auth) viewList(w http.ResponseWriter, r *http.Request) {
 	s, ok := a.authenticated(r)
 	if !ok {
 		safe(w, 401, "authentication_required")
+		return
+	}
+	if a.cfg.ViewOrigin == "" {
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	a.proxy(w, r, s, false)

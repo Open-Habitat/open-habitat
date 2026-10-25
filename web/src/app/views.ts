@@ -29,7 +29,7 @@ async function boundedJSON(response: Response, max: number): Promise<unknown> {
 }
 
 /** The person's views, newest first; null when the installation has no view
- * origin, which means views are not offered at all. */
+ * origin (an empty 204), which means views are not offered at all. */
 export async function listViews(
   signal?: AbortSignal,
 ): Promise<ViewSummary[] | null> {
@@ -38,7 +38,7 @@ export async function listViews(
     cache: "no-store",
     signal,
   });
-  if (response.status === 404) return null;
+  if (response.status === 204) return null;
   if (!response.ok) throw new Error("views unavailable");
   const value = await boundedJSON(response, limit);
   if (!validList?.(value)) throw new Error("unexpected view reply");

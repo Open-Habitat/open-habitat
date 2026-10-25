@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/view.schema.json",
   "title": "Agent HTML views (ADR 0032)",
-  "description": "An agent offers a frozen export of a workspace HTML file or directory; the person opens it in a panel or an own tab on the view's own origin. App-origin messages: GET /api/v1/views (the person's views; 404 when the installation has no view origin, which means views are not offered) and POST /auth/view (a one-time URL that opens one view on its own host). A view in a conversation arrives as a notice's view; an account offer arrives as a view.offered event.",
+  "description": "An agent offers a frozen export of a workspace HTML file or directory; the person opens it in a panel or an own tab on the view's own origin. App-origin messages: GET /api/v1/views (the person's views; an empty 204 when the installation has no view origin, which means views are not offered) and POST /auth/view (a one-time URL that opens one view on its own host). A view in a conversation arrives as a notice's view; an account offer arrives as a view.offered event.",
   "oneOf": [
     {"$ref": "#/$defs/list"},
     {"$ref": "#/$defs/handoffRequest"},
