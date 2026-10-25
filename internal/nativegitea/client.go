@@ -190,6 +190,27 @@ func (c *Client) User(ctx context.Context, b Base, token string) (Account, error
 	return Account{ID: u.ID, Login: u.Login}, nil
 }
 
+// Verify is what a connection needs before tea's file holds a PAT and
+// what a check reports: the account the PAT authenticates (/user, which
+// needs read:user) and one page of the repository list (/user/repos, which
+// needs read:repository). Gitea shows a token none of its own scopes, so only
+// the two reads the connector makes can show that both are granted; a PAT
+// lacking either is ErrScope.
+func (c *Client) Verify(ctx context.Context, b Base, token string) (Account, error) {
+	account, err := c.User(ctx, b, token)
+	if err != nil {
+		return Account{}, err
+	}
+	var page []json.RawMessage
+	if _, err := c.getLimited(ctx, b, "/user/repos?page=1&limit=1", token, repoPageBytes, &page); err != nil {
+		return Account{}, err
+	}
+	if page == nil {
+		return Account{}, ErrProtocol
+	}
+	return account, nil
+}
+
 // validToken bounds a PAT to printable ASCII without spaces, so it can never
 // split a Git credential protocol line or an HTTP header.
 func validToken(t string) bool {

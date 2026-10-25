@@ -33,6 +33,7 @@ const (
 // production one.
 type GiteaAPI interface {
 	nativegitea.Verifier
+	User(ctx context.Context, b nativegitea.Base, token string) (nativegitea.Account, error)
 	Repos(ctx context.Context, b nativegitea.Base, token string) (nativegitea.RepoList, error)
 	Repository(ctx context.Context, b nativegitea.Base, token string, id int64) (nativegitea.Repository, error)
 }
@@ -324,7 +325,9 @@ func (c *Catalog) giteaRequest(w http.ResponseWriter, r *http.Request) {
 			c.giteaRefuse(w, in.Action, err)
 			return
 		}
-		account, err := g.API.User(ctx, login.Base, token)
+		// The same two reads as connect: a PAT tea holds without the
+		// repository scope (added with tea itself, say) is no working grant.
+		account, err := g.API.Verify(ctx, login.Base, token)
 		if err == nil && (!strings.EqualFold(account.Login, login.User) || (login.Owned && account.ID != login.OwnedID)) {
 			err = nativegitea.ErrAccountMismatch
 		}

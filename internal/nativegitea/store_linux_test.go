@@ -73,7 +73,7 @@ preferences:
 
 type fakeVerifier map[string]Account
 
-func (f fakeVerifier) User(_ context.Context, _ Base, token string) (Account, error) {
+func (f fakeVerifier) Verify(_ context.Context, _ Base, token string) (Account, error) {
 	if a, ok := f[token]; ok {
 		return a, nil
 	}

@@ -8,10 +8,10 @@ import (
 	"time"
 )
 
-// Verifier reads the account a PAT authenticates; Client is the production
-// one.
+// Verifier reads the account a PAT authenticates and proves it can read
+// the repository list; Client.Verify is the production one.
 type Verifier interface {
-	User(ctx context.Context, b Base, token string) (Account, error)
+	Verify(ctx context.Context, b Base, token string) (Account, error)
 }
 
 // Outcome is what a lifecycle call observed or did.
@@ -27,7 +27,8 @@ const (
 	Absent Outcome = "absent"
 )
 
-// Connect validates a PAT against base's /user and adds tea's entry for that
+// Connect validates a PAT against base (the account it authenticates and
+// its repository read, see Client.Verify) and adds tea's entry for that
 // account under the owned name. It never sets a default, never takes over an
 // existing entry, and refuses an account or PAT tea already has: the person
 // may already use that external entry, and a second one would make both
@@ -39,7 +40,7 @@ func (s *Store) Connect(ctx context.Context, v Verifier, b Base, token string) (
 	if !validToken(token) {
 		return Login{}, "", ErrInvalidToken
 	}
-	account, err := v.User(ctx, b, token)
+	account, err := v.Verify(ctx, b, token)
 	if err != nil {
 		return Login{}, "", err
 	}
@@ -97,8 +98,8 @@ func (s *Store) Connect(ctx context.Context, v Verifier, b Base, token string) (
 }
 
 // Replace swaps the PAT of the targeted PAT entry after validating that the
-// new PAT authenticates the same account: the entry's user, and for an owned
-// entry also the Gitea user ID in its name. A refusal at any point leaves the
+// new PAT authenticates the same account (the entry's user, and for an owned
+// entry also the Gitea user ID in its name) and can read the repository list. A refusal at any point leaves the
 // previous bytes intact. Only the token scalar changes.
 func (s *Store) Replace(ctx context.Context, v Verifier, t Target, token string) (Login, Outcome, error) {
 	if !t.Base.valid() || t.Name == "" {
@@ -107,7 +108,7 @@ func (s *Store) Replace(ctx context.Context, v Verifier, t Target, token string)
 	if !validToken(token) {
 		return Login{}, "", ErrInvalidToken
 	}
-	account, err := v.User(ctx, t.Base, token)
+	account, err := v.Verify(ctx, t.Base, token)
 	if err != nil {
 		return Login{}, "", err
 	}

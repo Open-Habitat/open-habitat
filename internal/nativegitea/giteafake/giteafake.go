@@ -29,6 +29,26 @@ type Account struct {
 	ID    int64
 	Login string
 	Token string
+	// Scopes are the token's scopes, as Gitea's scope picker sets them. nil
+	// means the read-only connector's own pair, read:user and
+	// read:repository. A read the scopes do not cover answers 403, as Gitea
+	// does: /user needs read:user, the repository reads and Git need
+	// read:repository. A write scope implies its read scope.
+	Scopes []string
+}
+
+// has reports whether the token's scopes cover category ("user" or
+// "repository") for reading.
+func (a Account) has(category string) bool {
+	if a.Scopes == nil {
+		return true
+	}
+	for _, s := range a.Scopes {
+		if s == "all" || s == "read:"+category || s == "write:"+category {
+			return true
+		}
+	}
+	return false
 }
 
 // Repo is a repository owned by an account; Readers lists further account
@@ -177,6 +197,18 @@ func (s *Server) FailAPI(token string, fail bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.failing[token] = fail
+}
+
+// SetScopes replaces an account's token scopes (nil restores the default
+// pair), as a token created anew with other scopes would have.
+func (s *Server) SetScopes(id int64, scopes []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.accounts {
+		if s.accounts[i].ID == id {
+			s.accounts[i].Scopes = scopes
+		}
+	}
 }
 
 // SetToken replaces an account's token, as rotating a PAT at Gitea does.
@@ -339,6 +371,16 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	scope := "repository"
+	if r.URL.Path == "/api/v1/user" {
+		scope = "user"
+	}
+	if !a.has(scope) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"message":"token does not have at least one of required scope(s): [read:` + scope + `]"}`))
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	switch {
 	case r.URL.Path == "/api/v1/user":
@@ -394,7 +436,7 @@ func (s *Server) smartHTTP(w http.ResponseWriter, r *http.Request, owner, name, 
 	user, pass, basic := r.BasicAuth()
 	s.requests = append(s.requests, GitRequest{Path: r.URL.Path, User: user})
 	a, ok := s.account(pass)
-	allowed := repo != nil && ok && basic && s.readable(a, *repo)
+	allowed := repo != nil && ok && basic && a.has("repository") && s.readable(a, *repo)
 	if allowed {
 		s.gitUsers = append(s.gitUsers, user)
 	}

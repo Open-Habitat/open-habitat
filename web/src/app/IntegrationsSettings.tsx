@@ -103,7 +103,7 @@ const giteaRefusals: Record<string, [GiteaField, string]> = {
   ],
   insufficient_scope: [
     "token",
-    "Tunnukselta puuttuu oikeus lukea käyttäjätietoja. Anna sille read:user ja read:repository.",
+    "Tunnukselta puuttuu lukuoikeus käyttäjätietoihin tai repoihin. Anna sille read:user ja read:repository.",
   ],
   account_mismatch: [
     "token",
