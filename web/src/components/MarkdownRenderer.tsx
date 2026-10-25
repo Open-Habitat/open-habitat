@@ -7,6 +7,7 @@ import { AttachmentPreview } from "./AttachmentPreview";
 import { ControlButton, ExternalLink } from "./ControlElements";
 import { FileLinkContext, parseFileRef } from "./fileRefs";
 import { OutputBox } from "./OutputBox";
+import remarkBreaks from "./remarkBreaks";
 import remarkFileRefs from "./remarkFileRefs";
 
 // Do not broaden this with the sanitizer's default schema: host content is untrusted.
@@ -225,11 +226,21 @@ function AttachmentImage({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-export default function MarkdownRenderer({ text }: { text: string }) {
+export default function MarkdownRenderer({
+  text,
+  breaks = false,
+}: {
+  text: string;
+  breaks?: boolean;
+}) {
   return (
     <div className="ah-markdown">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkFileRefs]}
+        remarkPlugins={
+          breaks
+            ? [remarkGfm, remarkBreaks, remarkFileRefs]
+            : [remarkGfm, remarkFileRefs]
+        }
         rehypePlugins={[[rehypeSanitize, schema]]}
         skipHtml
         urlTransform={safeUrl}

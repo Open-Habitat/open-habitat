@@ -255,7 +255,7 @@ function ReadableBlock({
           ) : null}
           {plainText === "user" && !toolName ? (
             // The message's attachments show as chips below it.
-            <span className="ah-user-text">{messageText(text)}</span>
+            <Markdown text={messageText(text)} breaks />
           ) : plainText === "command" ? (
             <OutputBox text={text} complete={whole} />
           ) : toolName || plainText ? (

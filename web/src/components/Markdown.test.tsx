@@ -38,23 +38,38 @@ describe("untrusted conversation Markdown", () => {
     expect(screen.getByText("Työkalun tulos")).toBeTruthy();
     expect(screen.getByText("Tuntematon tapahtuma")).toBeTruthy();
   });
-  it("keeps user lines, blank lines and pasted Markdown literal", () => {
-    const text =
-      "First\nSecond\n\n- item\n```js\n  const x = 1;\n```\n[site](https://example.org) <script>bad()</script>";
-    const { container } = render(
-      <UserMessage sourceText={text} onCopy={() => {}} />,
-    );
-    expect(container.querySelector(".ah-user-content")?.textContent).toBe(text);
-    expect(container.querySelector("a, ul, code, script")).toBeNull();
-  });
-  it("keeps held user messages literal before delivery too", () => {
-    const text = "First\nSecond\n- third";
-    const { container } = render(
-      <WaitingMessage text={text} state="waiting" onCopy={() => {}} />,
-    );
-    expect(container.querySelector(".ah-user-content")?.textContent).toBe(text);
-    expect(container.querySelector("ul")).toBeNull();
-  });
+  it.each([
+    [
+      "sent",
+      (text: string) => <UserMessage sourceText={text} onCopy={() => {}} />,
+    ],
+    [
+      "held",
+      (text: string) => (
+        <WaitingMessage text={text} state="waiting" onCopy={() => {}} />
+      ),
+    ],
+  ])(
+    "formats the person's %s message as safe Markdown, one line per typed line",
+    async (_, view) => {
+      const text =
+        "**worker** First\nSecond\nThird\n\n- item\n\n<script>bad()</script>";
+      const { container } = render(view(text));
+      const content = screen.getByTestId("user-content");
+      await waitFor(
+        () =>
+          expect(content.querySelector("strong")?.textContent).toBe("worker"),
+        { timeout: 10000 },
+      );
+      expect(content.querySelector("ul > li")?.textContent).toBe("item");
+      // A typed newline must stay a line break, not a soft break that joins
+      // the lines into one paragraph.
+      const lines = content.querySelector("p");
+      expect(lines?.querySelectorAll("br")).toHaveLength(2);
+      expect(lines?.textContent).toBe("worker First\nSecond\nThird");
+      expect(container.querySelector("script")).toBeNull();
+    },
+  );
   it("formats GFM, code and copy controls without interpreting raw HTML", async () => {
     const { container } = render(
       <Markdown

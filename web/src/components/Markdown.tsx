@@ -2,7 +2,15 @@ import { lazy, Suspense } from "react";
 
 const Renderer = lazy(() => import("./MarkdownRenderer"));
 
-export function Markdown({ text }: { text: string }) {
+/** `breaks` keeps every typed newline as a line break, for the person's own
+ * messages; agent replies use ordinary Markdown soft breaks. */
+export function Markdown({
+  text,
+  breaks = false,
+}: {
+  text: string;
+  breaks?: boolean;
+}) {
   return (
     <Suspense
       fallback={
@@ -11,7 +19,7 @@ export function Markdown({ text }: { text: string }) {
         </div>
       }
     >
-      <Renderer text={text} />
+      <Renderer text={text} breaks={breaks} />
     </Suspense>
   );
 }

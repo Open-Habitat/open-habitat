@@ -3,6 +3,7 @@ import { AttachmentChips, attachmentsIn, messageText } from "./AttachmentChips";
 import { DisclosureButton } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
 import { Icon } from "./Icon";
+import { Markdown } from "./Markdown";
 import { Disclosure } from "./Overlays";
 import { Button, RadioGroup, TextField } from "./Primitives";
 import type { StatusKind } from "./Status";
@@ -220,15 +221,14 @@ export function UserMessage({
       {skill}
       <div
         ref={body}
+        data-testid="user-content"
         className={
           expanded || skill
             ? "ah-user-content"
             : `ah-user-content ah-user-collapsed${long ? " ah-user-clipped" : ""}`
         }
       >
-        {children ?? (
-          <span className="ah-user-text">{messageText(sourceText)}</span>
-        )}
+        {children ?? <Markdown text={messageText(sourceText)} breaks />}
       </div>
       {/* Outside the collapsed text: a long message must not hide its
           attachments below the cut. */}
@@ -379,7 +379,7 @@ export function WaitingMessage({
       </header>
       <div className="ah-prose">
         <div data-testid="user-content" className="ah-user-content">
-          <span className="ah-user-text">{messageText(text)}</span>
+          <Markdown text={messageText(text)} breaks />
           <AttachmentChips attachments={attachmentsIn(text)} />
         </div>
       </div>

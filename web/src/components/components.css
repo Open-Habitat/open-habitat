@@ -2391,11 +2391,6 @@ details[open] > summary:not([class])::before {
 }
 
 /* Pi blocks share a quiet, readable surface in live and saved turns. */
-.ah-user-text {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font: inherit;
-}
 .ah-user-content.ah-user-collapsed {
   max-height: 12.8em; /* eight lines at the body line height */
   overflow: hidden;

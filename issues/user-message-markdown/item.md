@@ -3,11 +3,12 @@ created: 2026-10-25
 updated: 2026-10-25
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 collision: [web/src/components/Conversation.tsx]
 preparation: ready
+closed: 2026-10-25
 ---
 
 # Render the person's own sent messages as Markdown
@@ -25,6 +26,6 @@ Applies live and after reload, Pi and Claude Code conversations.
 
 ## Acceptance Criteria
 
-- [ ] Sent user messages render Markdown; copy still yields the original
+- [x] Sent user messages render Markdown; copy still yields the original
   text; regression test.
 

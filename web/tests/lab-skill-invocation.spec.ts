@@ -155,7 +155,8 @@ for (const width of [1440, 1366, 390]) {
         await expect(large).toContainText("ARGUMENT END");
         expect(
           await large
-            .locator(".ah-user-text")
+            .getByTestId("user-content")
+            .locator(".ah-markdown")
             .evaluate(
               (node, value) => node.textContent === value,
               argumentsText,

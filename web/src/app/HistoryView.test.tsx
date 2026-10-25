@@ -16,21 +16,35 @@ const entry: HistoryEntry = {
 
 afterEach(() => vi.unstubAllGlobals());
 
-it.each([{ blocks: undefined }, { blocks: [] }])(
-  "preserves plain user text when typed blocks are $blocks",
-  ({ blocks }) => {
-    const text = "Native prompt <script>not executable</script>\nSecond line";
+it.each([
+  { blocks: undefined },
+  { blocks: [] },
+  { blocks: [{ type: "text" as const, text: "" }] },
+])(
+  "formats the person's own message as Markdown and copies it unchanged when blocks are $blocks",
+  async ({ blocks }) => {
+    const copy = vi.fn();
+    vi.stubGlobal("navigator", { clipboard: { writeText: copy } });
+    const text =
+      "**worker** valmis\nToinen rivi <script>not executable</script>";
     const { container } = render(
       <Entry
         entry={{
           ...entry,
-          blocks,
+          blocks: blocks?.map((b) => ({ ...b, text })),
           content: { media_type: "text/plain", text, complete: true },
         }}
       />,
     );
-    expect(container.querySelector(".ah-user-content")?.textContent).toBe(text);
+    const content = screen.getByTestId("user-content");
+    await waitFor(
+      () => expect(content.querySelector("strong")?.textContent).toBe("worker"),
+      { timeout: 10000 },
+    );
+    expect(content.querySelectorAll("p br")).toHaveLength(1);
     expect(container.querySelector("script")).toBeNull();
+    fireEvent.click(screen.getByTestId("message-copy"));
+    expect(copy).toHaveBeenLastCalledWith(text);
   },
 );
 
