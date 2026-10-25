@@ -5,6 +5,8 @@ type: feature
 reporter: jari
 status: open
 priority: normal
+lane: unlaned
+preparation: ready
 ---
 
 # Seat-style agent commands (clipboard, open, show) for Open Habitat accounts
@@ -34,3 +36,9 @@ Research and the shared recommendation are in [agent-to-browser surfaces](../age
 
 - [ ] Research with a recommendation, covering what each tw function maps to (or why it is dropped), and the authority and security model.
 - [ ] Jari's decision recorded (ADR).
+
+## Decisions
+
+### 2026-10-25T16:07:43Z · @jari
+
+Jari 2026-10-25: showing and opening HTML is covered by agent-html-artifacts. This issue is narrowed to two things: (1) a Habitat agent can open a file in the person's Habitat editor when asked; (2) research whether Habitat can write to the person's clipboard without a native client (browser clipboard API rules: user activation, focus, permissions per browser) and what the agent-side offer would look like. The other tw functions are dropped.

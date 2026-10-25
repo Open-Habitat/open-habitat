@@ -2,12 +2,14 @@
 created: 2026-10-25
 updated: 2026-10-25
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5sda3wz2tmj1z7jgagc811p/gate-source-evidence-writes
 originating_run: 01m5sda3wz2tmj1z7jgagc811p
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Clean gate lab cases rewrite committed issue evidence

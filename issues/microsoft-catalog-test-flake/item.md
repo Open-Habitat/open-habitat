@@ -2,12 +2,14 @@
 created: 2026-10-25
 updated: 2026-10-25
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5rmvd1wntb0jpmf5n99p992/gate-flake:microsoft-catalog-remove
 originating_run: 01m5rmvd1wntb0jpmf5n99p992
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Microsoft catalog removal test flakes with native_unavailable under gate load

@@ -1,10 +1,11 @@
 ---
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-25
 type: task
-status: deferred
+status: obsolete
 priority: normal
 preparation: pending
+closed: 2026-10-25
 ---
 
 # Prototype: where people learn the OneDrive/Dropbox folder bridge (onboarding, moment of need, card)
@@ -41,3 +42,7 @@ Jari 2026-10-24, round 3: chose Desktop (Työpöytä) over Downloads, then teste
 ### 2026-10-24T14:27:52Z · @jari
 
 Jari 2026-10-24: doubts the cloud-folder bridge altogether — 'Musta tää on vain niin vaikea tapa', especially for Downloads. He has considered replacing the web interface with native software at some point, where own-computer files need no such workaround and computer use could pass through it. Conductor: the bridge is parked (deferred) in favour of that direction; ordinary attachments and the existing OneDrive/Dropbox integrations stay as they are. The rounds 1–3 results remain the record if it is revived.
+
+### 2026-10-25T16:07:43Z · @jari
+
+Jari 2026-10-25: closed; the own-computer file bridge will be solved another way.
