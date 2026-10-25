@@ -1,8 +1,8 @@
 ---
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-25
 type: improvement
-status: open
+status: done
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5r2vy6bvn62cjb3tzngm2d2/wrap-up:go-notices
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: unlaned
 collision: [release/manifest]
 preparation: ready
+closed: 2026-10-25
 ---
 
 # gog and rclone ship without transitive Go module licence notices

@@ -66,7 +66,7 @@ new reader.
   The module lists equal `go version -m` output for each of them.
 - `test-profile-runtime-build.py`: 11 tests, on Alder and birch. Mutation: the
   stripped-section-table case fails against the pre-fix reader.
-- Full gate: see the closing line below.
+- Full gate (`ci-local.sh --clean --json`) on `fbbe8938` passed clean in one run, now including `test-profile-runtime-build.py` (receipt for tree `7af9d80c`). Only this result and the issue closing changed after it.
 
 **Review**, focused but independent, because verification logic changed:
 `/llm-review` with gpt-6-astra as finder, then `/assess-findings`. One finding
