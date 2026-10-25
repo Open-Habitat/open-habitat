@@ -1,10 +1,11 @@
 ---
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-25
 type: feature
 status: deferred
 priority: normal
 provenance: other
+related: ['@proto-cloud-folder-bridge']
 ---
 
 # Native client on the person's computer: local files and computer use without cloud sync

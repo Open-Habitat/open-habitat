@@ -46,3 +46,7 @@ Jari 2026-10-24: doubts the cloud-folder bridge altogether — 'Musta tää on v
 ### 2026-10-25T16:07:43Z · @jari
 
 Jari 2026-10-25: closed; the own-computer file bridge will be solved another way.
+
+### 2026-10-25T16:08:05Z · @jari
+
+Jari 2026-10-25: 'another way' means the native client (native-client-local-files): own-computer files reach agents through it, not through a synced cloud folder.
