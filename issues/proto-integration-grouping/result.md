@@ -80,3 +80,64 @@ link lands on the page it names and marks the row; connect, fix and disconnect
 work; error dots follow the scenario; picker keys work and a switch keeps the
 subject; no console errors and no network requests (CSP `default-src 'none'`).
 Screens cover desktop and phone in light and dark.
+
+## Kierros 2 · Tekoäly page: default model and API keys
+
+Prototype: `issues/proto-integration-grouping/prototypes/settings-riff/index.html`
+(offline, one file). Notes for Jari: [NOTES.md](prototypes/settings-riff/NOTES.md).
+Screens: `prototypes/settings-riff/evidence/`.
+
+### For Jari
+
+**Suosittelen vaihtoehtoa 2, Ponnahdus.** Oletusmallin rivi on sama pilleri ja
+ponnahdusvalikko kuin kirjoituskentässä (puhelimessa alhaalta nouseva arkki),
+joten oletus ja keskustelun malli valitaan samalla kontrollilla. API-avaimet
+ovat oma listansa, ja jokaisella rivillä on palvelu, `sk-…loppu`, *Oma* tai
+*Ylläpitäjän antama*, tila (toimii, hylätty tai kiintiö täynnä) ja avattavat
+mallit. *Lisää API-avain* avaa dialogin, jossa valitaan ensin palvelu.
+Vaihtoehto 1 (*Paikallaan*) ryhmittelee tilaukset ja avaimet
+palveluntarjoajittain ja avaa kaiken rivin sisään. Vaihtoehto 3
+(*Mallit edellä*) tekee mallilistasta oman alisivun, jossa jokainen reitti
+malliin on painike. Valitaanko 2? Kokeile ainakin Virheitä-tilannetta ja
+puhelinleveyttä.
+
+### What was compared
+
+The axis is **where the default-model chooser opens and how keys are organised**:
+in place with keys per provider company (1); the composer's popover/sheet with
+keys as their own list (2); a models subpage where each route to a model is a
+choice (3). All three use production's `ModelPicker` behaviour (provider tabs,
+radio rows, older models, thinking levels, optimistic save with Pi's
+confirmation) except variant 3's subpage, which is a new list. Scenarios: all
+working; errors (ChatGPT fine, Claude sign-in unverified, OpenAI key quota
+exhausted, Anthropic site copy rejected after the site changed its key, and the
+default on that key); a new person with only the administrator's Anthropic key.
+
+### Grounding
+
+Read `app/PiModelSelector.tsx`, `components/ModelPicker.tsx`,
+`ComposerModelPicker.tsx`, `ModelChip.tsx`, `ConversationModelDetails.tsx`,
+`app/NewConversationModelDialog.tsx`, `app/PiCredentials.tsx`,
+`components/AIOfferList.tsx` (the Ch/Cl/OA/An/DS tiles already exist there),
+`SiteKeyCopies.tsx` and the Agentit/Yhteydet sections of `Account.tsx`.
+
+Facts the prototype relies on: Pi holds one key per provider, so the
+administrator's key is a copy in the person's own slot ("Vaihda omaan…"
+replaces it); the browser knows presence, last four characters, the site
+copy's current/earlier state, the models per provider and per-model refusals.
+**Proposals, not current behaviour:** splitting a refusal into
+rejected (401) / quota (429) on the key row (probably derivable from the
+per-model refusal record; to be confirmed), and a provider check before a key
+is stored ("Tarkista ja tallenna"), which would be a new daemon call made as
+the person. No authority moves; the gateway and provisioning are untouched.
+
+### Verification
+
+`check.mjs` (repository Playwright, Chromium, on Birch) passed: 18 renders
+(3 variants × 390/1440 × 3 scenarios) fit without horizontal overflow with the
+default chooser open; choosing a default confirms and shows on the page; the
+error scenario's default row leads to a working choice; a wrong-provider key is
+caught, a rejected key is not stored, a good one is and makes its first model
+the default; removal confirms and names the default it breaks; the site key is
+replaced by one's own; Escape closes the popover and returns focus; Koodipalvelut
+shows the GitHub/Gitea tiles; no console errors and no network requests.
