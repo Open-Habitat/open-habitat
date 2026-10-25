@@ -2380,12 +2380,16 @@ export function App() {
   // The workspace editor sits beside a workspace's conversation; the wrapper
   // is there on every conversation route, so opening it remounts nothing.
   const editorRoute = !!(selectedId && openConversation) || !!selectedAgentId;
-  // An account editor offer names its workspace by ID; its card shows the name.
-  const workspaceName = (id: string) => {
+  // An account editor offer names its workspace or worktree place by ID; the
+  // card shows its name and leads to the workspace page that lists it.
+  const workspaceOf = (id: string) => {
     for (const w of snapshot?.workspaces ?? []) {
-      if (w.workspace_id === id) return w.display_name ?? w.name;
+      const route = `/workspaces/${encodeURIComponent(w.workspace_id)}`;
+      if (w.workspace_id === id)
+        return { name: w.display_name ?? w.name, route };
       const place = w.worktrees?.find((p) => p.worktree_id === id);
-      if (place) return `${w.display_name ?? w.name} · ${place.name}`;
+      if (place)
+        return { name: `${w.display_name ?? w.name} · ${place.name}`, route };
     }
     return undefined;
   };
@@ -2675,7 +2679,7 @@ export function App() {
                     : undefined
                 }
                 store={conversationStore}
-                workspaceName={workspaceName}
+                workspaceOf={workspaceOf}
               >
                 {editorRoute ? (
                   <WorkspaceEditor

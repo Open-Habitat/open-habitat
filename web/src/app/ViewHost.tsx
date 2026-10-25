@@ -21,6 +21,7 @@ import {
   type EditorLinks,
   EditorLinksProvider,
   EditorOfferEntry,
+  type OfferWorkspace,
   useAccountEditorOffers,
 } from "./EditorOffers";
 import {
@@ -60,7 +61,7 @@ export function ViewHost({
   identity,
   csrf,
   store,
-  workspaceName = () => undefined,
+  workspaceOf = () => undefined,
   children,
 }: {
   /** A new person drops the previous person's offers and open view. The
@@ -68,8 +69,8 @@ export function ViewHost({
   identity?: string;
   csrf?: string;
   store?: ConversationStore;
-  /** A workspace's name for an account editor offer's card. */
-  workspaceName?: (id: string) => string | undefined;
+  /** An account editor offer's workspace as the person knows it. */
+  workspaceOf?: (id: string) => OfferWorkspace | undefined;
   children: ReactNode;
 }) {
   // Views exist only where the installation configures a view origin; until
@@ -253,7 +254,7 @@ export function ViewHost({
             <AccountEditorOffers
               offers={editorOffers.offers}
               editor={editor}
-              workspaceName={workspaceName}
+              workspaceOf={workspaceOf}
               onDismiss={editorOffers.dismiss}
             />
           ) : null}

@@ -61,7 +61,8 @@ func validEditorOfferPath(p string) bool {
 			return false
 		}
 	}
-	return path.Clean(p) == p && p != "." && p != ".." && !strings.HasPrefix(p, "../")
+	// The browser editor's own path rule refuses .git and .agent-host too.
+	return path.Clean(p) == p && p != "." && p != ".." && !strings.HasPrefix(p, "../") && validEditorPath(p, false)
 }
 
 func validEditorOffer(o editorOffer) bool {

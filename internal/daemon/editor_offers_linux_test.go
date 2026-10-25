@@ -66,7 +66,7 @@ func editorOfferFixture(t *testing.T) (*heldHarness, *ConversationController, st
 	h := newHeldHarness(t)
 	ws := filepath.Join(h.root, "src", "project")
 	secret := filepath.Join(h.root, "secret")
-	for _, d := range []string{secret, filepath.Join(ws, "cmd"), filepath.Join(ws, ".github")} {
+	for _, d := range []string{secret, filepath.Join(ws, "cmd"), filepath.Join(ws, ".github"), filepath.Join(ws, ".git")} {
 		if err := os.MkdirAll(d, 0700); err != nil {
 			t.Fatal(err)
 		}
@@ -75,6 +75,7 @@ func editorOfferFixture(t *testing.T) (*heldHarness, *ConversationController, st
 		filepath.Join(secret, "token.go"):       "salaisuus",
 		filepath.Join(ws, "cmd", "main.go"):     "package main\n",
 		filepath.Join(ws, ".github", "ci.yml"):  "on: push\n",
+		filepath.Join(ws, ".git", "config"):     "[core]\n",
 		filepath.Join(h.root, "src", "sib.txt"): "sibling",
 	} {
 		if err := os.WriteFile(path, []byte(text), 0600); err != nil {
@@ -111,6 +112,7 @@ func TestEditorOfferIsConfinedToAWorkspaceFile(t *testing.T) {
 		{"./cmd/main.go", ws, 400, "invalid_arguments"},
 		{"cmd//main.go", ws, 400, "invalid_arguments"},
 		{"cmd/main.go\n", ws, 400, "invalid_arguments"},
+		{".git/config", ws, 400, "invalid_arguments"},
 		{"cmd", ws, 404, "file_unavailable"},
 		{"leak.go", ws, 404, "file_unavailable"},
 		// The browser editor follows no symlink, even one that stays inside.

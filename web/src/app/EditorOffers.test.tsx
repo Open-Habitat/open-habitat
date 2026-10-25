@@ -109,7 +109,19 @@ describe("agent editor offers", () => {
     const open = vi.fn();
     let editorWorkspace = "ws_otherworkspace";
     const Page = () => (
-      <ViewHost csrf="csrf" store={store}>
+      <ViewHost
+        csrf="csrf"
+        store={store}
+        // The offer names a worktree place; its page is the main checkout's.
+        workspaceOf={(id) =>
+          id === offer.workspace_id
+            ? {
+                name: "projekti · haara",
+                route: "/workspaces/ws_parentworkspace",
+              }
+            : undefined
+        }
+      >
         <Editor workspace={editorWorkspace} links={{ open }} />
       </ViewHost>
     );
@@ -133,7 +145,7 @@ describe("agent editor offers", () => {
       fireEvent.click(page.getByTestId("editor-offer-workspace"));
     });
     expect(router.state.location.pathname).toBe(
-      `/workspaces/${offer.workspace_id}`,
+      "/workspaces/ws_parentworkspace",
     );
     expect(open).not.toHaveBeenCalled();
 

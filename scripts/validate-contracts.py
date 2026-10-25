@@ -223,7 +223,7 @@ must_reject("view.schema.json", {"schema_version": 1, "url": "https://oh-view-a.
 # An editor offer names a canonical workspace-relative file, never a path
 # outside it, and a notice carries at most one kind of offer.
 editor_notice = json.loads((BASE / "examples" / "notice-editor.json").read_text())
-for bad in ["/etc/passwd", "../x.go", "a/../x.go", "./x.go", "a//b.go", "a/./b.go", "a/", ".", "..", "a\\b.go", "a\nb.go", ""]:
+for bad in ["/etc/passwd", "../x.go", "a/../x.go", "./x.go", "a//b.go", "a/./b.go", "a/", ".", "..", "a\\b.go", "a\nb.go", "", ".git/config", "sub/.agent-host/x"]:
     must_reject("notice.schema.json", {**editor_notice, "notice": {**editor_notice["notice"], "editor": {**editor_notice["notice"]["editor"], "path": bad}}})
 must_reject("notice.schema.json", {**editor_notice, "notice": {**editor_notice["notice"], "editor": {**editor_notice["notice"]["editor"], "line": 0}}})
 must_reject("notice.schema.json", {**editor_notice, "notice": {**editor_notice["notice"], "view": view}})

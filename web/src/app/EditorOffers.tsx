@@ -108,17 +108,21 @@ export function recentEditorOffers(
     .slice(0, 5);
 }
 
+/** Where the person knows an offer's workspace from: its name, and the page
+ * that lists its conversations (a worktree's is its main checkout's). */
+export type OfferWorkspace = { name: string; route: string };
+
 /** The account's editor offers in the tray. An offer for another workspace
  * first takes the person there; its editor opens with a conversation. */
 export function AccountEditorOffers({
   offers,
   editor,
-  workspaceName,
+  workspaceOf,
   onDismiss,
 }: {
   offers: EditorOffer[];
   editor: EditorLinks | undefined;
-  workspaceName: (id: string) => string | undefined;
+  workspaceOf: (id: string) => OfferWorkspace | undefined;
   onDismiss: (id: string) => void;
 }) {
   const navigate = useNavigate();
@@ -127,12 +131,15 @@ export function AccountEditorOffers({
       key={offer.offer_id}
       offer={offer}
       state={offerState(offer, editor)}
-      workspaceName={workspaceName(offer.workspace_id)}
+      workspaceName={workspaceOf(offer.workspace_id)?.name}
       onOpen={() => {
         if (editor?.links) openOffer(editor.links, offer);
       }}
       onGoToWorkspace={() =>
-        navigate(`/workspaces/${encodeURIComponent(offer.workspace_id)}`)
+        navigate(
+          workspaceOf(offer.workspace_id)?.route ??
+            `/workspaces/${encodeURIComponent(offer.workspace_id)}`,
+        )
       }
       onDismiss={() => onDismiss(offer.offer_id)}
     />
