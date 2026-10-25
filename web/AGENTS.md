@@ -111,8 +111,9 @@ The root `TESTING.md` gives the commands, scope and full-gate policy; the
 host-backed evidence. On Alder add `--writers-paused` after pausing cooperating
 writers, or use a closed disposable copy; select new inputs with `--untracked`.
 The maintained npm `test:browser` routes through this same entrypoint. Every
-host, Alder and Birch included, runs focused checks and the full gate locally;
-there is no remote runner to route them through.
+host, Alder and Birch included, runs focused checks and the full gate with
+these ordinary commands; where Fleetrepo places the browser suite (on Alder,
+possibly Cedar) is its choice, not something a worker routes by hand.
 Focused evidence skips Go/contracts/packaging and never produces a clean-gate
 receipt; `TESTING.md` owns commands, capture cooperation and reconnect/cancel
 semantics. The supported local full gate runs browser and Go/contracts checks
