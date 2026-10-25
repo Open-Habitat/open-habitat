@@ -137,6 +137,10 @@ func (c *ConversationController) agentNotices(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 400, "invalid_arguments")
 		return
 	}
+	if c.staleLaunch(q) {
+		snapshotError(w, 409, "current_context_stale")
+		return
+	}
 	if r.Method == "GET" {
 		if r.ContentLength > 0 || len(r.TransferEncoding) > 0 {
 			snapshotError(w, 400, "invalid_arguments")
@@ -175,17 +179,28 @@ func (c *ConversationController) agentNotices(w http.ResponseWriter, r *http.Req
 	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": q.id, "notice": n, "dry_run": req.DryRun})
 }
 
+// staleLaunch reports a --current context that no longer names this
+// daemon's live launch; it is decided before any native read or body.
+func (c *ConversationController) staleLaunch(q agentConversationQuery) bool {
+	if !q.current {
+		return false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	s := c.sessions[strings.TrimPrefix(q.id, "pi:")]
+	return s == nil || s.dead || s.rpc == nil || s.workspace != q.workspace || s.rpc.processGeneration != q.generation || s.rpc.closing.Load() || channelClosed(s.rpc.exited)
+}
+
 // noticeTarget observes the conversation a notice names: its live session,
 // whether it runs, and its native source and notices. A nil source comes with
 // the refusal's status and code. Call under noticeMu.
 func (c *ConversationController) noticeTarget(q agentConversationQuery) (*conversation, bool, *nativeSession, []agentNotice, int, string) {
+	if c.staleLaunch(q) {
+		return nil, false, nil, nil, 409, "current_context_stale"
+	}
 	id := strings.TrimPrefix(q.id, "pi:")
 	c.mu.Lock()
 	s := c.sessions[id]
-	if q.current && (s == nil || s.dead || s.rpc == nil || s.workspace != q.workspace || s.rpc.processGeneration != q.generation || s.rpc.closing.Load() || channelClosed(s.rpc.exited)) {
-		c.mu.Unlock()
-		return nil, false, nil, nil, 409, "current_context_stale"
-	}
 	live := s != nil && !s.dead && s.rpc != nil && !s.rpc.closing.Load() && !channelClosed(s.rpc.exited)
 	c.mu.Unlock()
 	source, err := c.noticeSource(id)

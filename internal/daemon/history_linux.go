@@ -852,10 +852,13 @@ func scanNativeNames(f *os.File) (string, bool) {
 	var name string
 	for {
 		line, readErr := reader.ReadSlice('\n')
-		// Pi tool output can be much larger than a title entry. Discard its
-		// fragments rather than allocating the whole line or losing later names.
+		// Pi tool output and the stored system prompt can be much larger than a
+		// title entry. Discard their fragments rather than allocating the whole
+		// line or losing later names. Pi writes an entry's type first, so only
+		// an overlong session_info, or a line whose type cannot be seen, makes
+		// the name unknowable.
 		if readErr == bufio.ErrBufferFull {
-			if bytes.Contains(line, []byte(`"session_info"`)) || bytes.Contains(line, []byte(`"name":`)) {
+			if !bytes.HasPrefix(line, []byte(`{"type":"`)) || bytes.HasPrefix(line, []byte(`{"type":"session_info"`)) {
 				return "", false
 			}
 			for readErr == bufio.ErrBufferFull {
