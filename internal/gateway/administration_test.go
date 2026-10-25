@@ -261,3 +261,102 @@ func TestRemovedAdministratorCannotWriteFromInflightRequest(t *testing.T) {
 		t.Fatal("inflight request wrote after role removal")
 	}
 }
+
+// bindingBroker answers LookupBound from the fake broker's own bindings, so a
+// subject becomes bound exactly when its first ensure creates the binding.
+type bindingBroker struct{ *fakeBroker }
+
+func (b bindingBroker) ListBound(context.Context) ([]BoundUser, error) { return nil, nil }
+func (b bindingBroker) LookupBound(_ context.Context, id string) (bool, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	_, ok := b.routes[id]
+	return ok && !b.unbound[id], nil
+}
+func serverAdministrator(t *testing.T, h http.Handler, c *http.Cookie) bool {
+	t.Helper()
+	w := request(h, "GET", "/api/v1/server", c)
+	var v struct {
+		Administrator bool `json:"administrator"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &v) != nil {
+		t.Fatalf("server read: %d %s", w.Code, w.Body.String())
+	}
+	return v.Administrator
+}
+
+func TestDeclaredAdministratorGrantedAtBindingSignIn(t *testing.T) {
+	h, a, p, _, _ := fixture(t)
+	path := filepath.Join(t.TempDir(), "administration.json")
+	if e := a.loadAdministration(path); e != nil {
+		t.Fatal(e)
+	}
+	fb := newFakeBroker()
+	fb.unbound = map[string]bool{"42": true, "43": true}
+	a.broker = bindingBroker{fb}
+	control := func(body string) {
+		t.Helper()
+		if _, e := a.AdminControl(context.Background(), []byte(body)); e != nil {
+			t.Fatalf("%s: %v", body, e)
+		}
+	}
+	// Root declares 42 before any binding exists: no role yet.
+	control(`{"operation":"role_declared","subject":"42","administrator":true}`)
+	if a.isAdministrator("42") {
+		t.Fatal("declaration granted before binding")
+	}
+	var shown struct {
+		Pending []string `json:"pending_administrators"`
+	}
+	b, _ := a.AdminControl(context.Background(), []byte(`{"operation":"show"}`))
+	if json.Unmarshal(b, &shown) != nil || len(shown.Pending) != 1 || shown.Pending[0] != "42" {
+		t.Fatalf("pending not shown: %s", b)
+	}
+	// The sign-in that creates 42's binding grants the role at once.
+	state, flow := start(t, h)
+	cookie := callback(h, state, flow).Result().Cookies()[1]
+	if !serverAdministrator(t, h, cookie) {
+		t.Fatal("declared administrator not granted at first sign-in")
+	}
+	// An undeclared person signing in never gains it.
+	p.id, p.login = "43", "bob"
+	state, flow = start(t, h)
+	other := callback(h, state, flow).Result().Cookies()[1]
+	if serverAdministrator(t, h, other) || a.isAdministrator("43") {
+		t.Fatal("undeclared subject became administrator")
+	}
+	fresh := &Auth{}
+	if e := fresh.loadAdministration(path); e != nil {
+		t.Fatal(e)
+	}
+	if len(fresh.settings.Administrators) != 1 || fresh.settings.Administrators[0] != "42" || len(fresh.settings.PendingAdministrators) != 0 {
+		t.Fatalf("grant not persisted: %+v", fresh.settings)
+	}
+	// Declaring a subject that is already bound grants it immediately.
+	control(`{"operation":"role_declared","subject":"43","administrator":true}`)
+	if !a.isAdministrator("43") || len(a.settingsView().PendingAdministrators) != 0 {
+		t.Fatal("declaration of a bound subject not granted")
+	}
+	// Withdrawing a pending declaration before the binding means no grant.
+	fb.routes["44"] = BrokerRoute{UID: 1003, Username: "carol", Socket: "/run/open-habitat/users/carol/daemon.sock"}
+	fb.unbound["44"] = true
+	control(`{"operation":"role_declared","subject":"44","administrator":true}`)
+	control(`{"operation":"role_declared","subject":"44","administrator":false}`)
+	p.id, p.login = "44", "carol"
+	state, flow = start(t, h)
+	third := callback(h, state, flow).Result().Cookies()[1]
+	if serverAdministrator(t, h, third) {
+		t.Fatal("withdrawn declaration granted")
+	}
+	// A root role removal also withdraws a pending declaration.
+	fb.routes["45"] = BrokerRoute{UID: 1004, Username: "dave", Socket: "/run/open-habitat/users/dave/daemon.sock"}
+	fb.unbound["45"] = true
+	control(`{"operation":"role_declared","subject":"45","administrator":true}`)
+	control(`{"operation":"role","subject":"45","administrator":false}`)
+	if len(a.settingsView().PendingAdministrators) != 0 {
+		t.Fatal("role removal kept the pending declaration")
+	}
+	if _, e := a.AdminControl(context.Background(), []byte(`{"operation":"role_declared","subject":"x","administrator":true}`)); e == nil {
+		t.Fatal("invalid subject declared")
+	}
+}

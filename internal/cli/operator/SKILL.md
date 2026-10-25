@@ -143,9 +143,10 @@ root-owned fence while the gateway starts. Default quota and roles use the
 private gateway administrative API with readback; root never edits its settings.
 Admission removals revoke under the old admission before monotonic publication;
 the broker alone observes its high-water mark. No committed binding or personal
-file is reset. Requested unbound administrator grants are deferred_until_bound;
-rerun apply after that person's binding to grant the role. Per-user quota
-overrides are preserved.
+file is reset. Requested unbound administrator grants are deferred_until_bound:
+apply records them as pending in the gateway, which grants the role at the
+sign-in that creates that person's binding, with no further apply. Per-user
+quota overrides are preserved.
 
 An exact repeat verifies native postconditions and returns no_change without
 rewriting a receipt or restarting services. Before an operation starts,

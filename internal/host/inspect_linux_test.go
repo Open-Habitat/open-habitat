@@ -358,3 +358,29 @@ func TestApplyLiftsGatewayDenyOnlyForOperatorIDs(t *testing.T) {
 		t.Fatal(calls)
 	}
 }
+
+func TestApplyDeclaresUnboundAdministratorsForSignIn(t *testing.T) {
+	var calls []string
+	exchange := func(_ context.Context, request any, reply any) error {
+		r := request.(map[string]any)
+		calls = append(calls, fmt.Sprint(r["operation"], " ", r["subject"], " ", r["administrator"]))
+		return json.Unmarshal([]byte(`{"ok":true}`), reply)
+	}
+	// 1 is declared and bound, 2 declared and unbound; 3 holds a role and 4 a
+	// pending declaration that site.json no longer makes.
+	settings := applySettings{Version: 1, Administrators: []string{"1", "3"}, Pending: []string{"2", "4"}}
+	roles, e := convergeRoles(context.Background(), exchange, []string{"1", "2"}, []string{"1", "3", "4"}, settings)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if !slices.Equal(calls, []string{"role 3 false", "role_declared 4 false", "role_declared 2 true"}) {
+		t.Fatal(calls)
+	}
+	if !slices.Equal(roles, []AdministratorOutcome{{"1", "granted"}, {"2", "deferred_until_bound"}}) {
+		t.Fatal(roles)
+	}
+	refused := func(context.Context, any, any) error { return nil }
+	if _, e := convergeRoles(context.Background(), refused, []string{"2"}, nil, applySettings{Version: 1}); !errors.Is(e, ErrNativeApply) {
+		t.Fatal("unacknowledged declaration accepted")
+	}
+}

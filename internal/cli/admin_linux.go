@@ -23,6 +23,8 @@ type controlSettings struct {
 	Name              string   `json:"name"`
 	Administrators    []string `json:"administrators"`
 	DefaultLimitBytes uint64   `json:"default_limit_bytes"`
+	// Declared administrators the gateway grants at the sign-in that binds them.
+	PendingAdministrators []string `json:"pending_administrators,omitempty"`
 }
 type controlUser struct {
 	ID         string          `json:"id"`

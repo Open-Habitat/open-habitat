@@ -19,6 +19,9 @@ type applySettings struct {
 	Name              string   `json:"name"`
 	Administrators    []string `json:"administrators"`
 	DefaultLimitBytes uint64   `json:"default_limit_bytes"`
+	// Pending are declared administrators the gateway grants at the
+	// sign-in that binds them.
+	Pending []string `json:"pending_administrators"`
 }
 
 func control(ctx context.Context, request any, reply any) error {
@@ -153,25 +156,8 @@ func (n *nativeApply) converge(ctx context.Context) error {
 			return ErrNativeApply
 		}
 	}
-	for _, id := range settings.Administrators {
-		if !slices.Contains(n.site.Identities.Administrators, id) {
-			if e = control(ctx, map[string]any{"operation": "role", "subject": id, "administrator": false}, &ack); e != nil || !ack.OK {
-				return ErrNativeApply
-			}
-		}
-	}
-	n.roles = []AdministratorOutcome{}
-	for _, id := range n.site.Identities.Administrators {
-		if !slices.Contains(state.BoundSubjects, id) {
-			n.roles = append(n.roles, AdministratorOutcome{id, "deferred_until_bound"})
-			continue
-		}
-		if !slices.Contains(settings.Administrators, id) {
-			if e = control(ctx, map[string]any{"operation": "role", "subject": id, "administrator": true}, &ack); e != nil || !ack.OK {
-				return ErrNativeApply
-			}
-		}
-		n.roles = append(n.roles, AdministratorOutcome{id, "granted"})
+	if n.roles, e = convergeRoles(ctx, control, n.site.Identities.Administrators, state.BoundSubjects, settings); e != nil {
+		return e
 	}
 	return n.verifySettings(ctx)
 }
@@ -202,7 +188,64 @@ func (n *nativeApply) verifySettings(ctx context.Context) error {
 	if !slices.Equal(settings.Administrators, want) {
 		return ErrNativeApply
 	}
+	// A pending declaration is authority the gateway will grant on its own,
+	// so it must be one site.json still makes. A declaration missing from an
+	// installation that predates pending declarations is not required: such
+	// a person is granted by the next deliberate apply after binding.
+	for _, id := range settings.Pending {
+		if !slices.Contains(n.site.Identities.Administrators, id) {
+			return ErrNativeApply
+		}
+	}
 	return nil
+}
+
+// convergeRoles makes the gateway's administrators exactly site.json's
+// declared ones that are bound, and records each declared but unbound one as
+// pending, which the gateway grants at the sign-in that creates its binding.
+// Roles and pending declarations site.json no longer makes are removed.
+func convergeRoles(ctx context.Context, exchange func(context.Context, any, any) error, declared, bound []string, settings applySettings) ([]AdministratorOutcome, error) {
+	var ack struct {
+		OK bool `json:"ok"`
+	}
+	set := func(operation, id string, administrator bool) error {
+		ack.OK = false
+		if e := exchange(ctx, map[string]any{"operation": operation, "subject": id, "administrator": administrator}, &ack); e != nil || !ack.OK {
+			return ErrNativeApply
+		}
+		return nil
+	}
+	for _, id := range settings.Administrators {
+		if !slices.Contains(declared, id) {
+			if e := set("role", id, false); e != nil {
+				return nil, e
+			}
+		}
+	}
+	for _, id := range settings.Pending {
+		if !slices.Contains(declared, id) {
+			if e := set("role_declared", id, false); e != nil {
+				return nil, e
+			}
+		}
+	}
+	roles := []AdministratorOutcome{}
+	for _, id := range declared {
+		if !slices.Contains(bound, id) {
+			if e := set("role_declared", id, true); e != nil {
+				return nil, e
+			}
+			roles = append(roles, AdministratorOutcome{id, "deferred_until_bound"})
+			continue
+		}
+		if !slices.Contains(settings.Administrators, id) {
+			if e := set("role", id, true); e != nil {
+				return nil, e
+			}
+		}
+		roles = append(roles, AdministratorOutcome{id, "granted"})
+	}
+	return roles, nil
 }
 
 // liftOperatorDenies restores web access for ids site.json now admits but a

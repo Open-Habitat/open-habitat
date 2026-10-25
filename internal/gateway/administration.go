@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -45,6 +46,12 @@ type serverSettings struct {
 	// OnboardingReceipts holds, per subject, what the binding-creating
 	// sign-in did with the site's defaults (onboarding_plan.go).
 	OnboardingReceipts map[string]onboardingReceipt `json:"onboarding_receipts,omitempty"`
+	// PendingAdministrators are subjects site.json declares as administrators
+	// but whose binding did not exist when host apply converged roles. Only
+	// root's control socket adds one; the sign-in that finds the subject
+	// bound moves it to Administrators, so the declaration takes effect at
+	// first sign-in without the gateway reading root's site file.
+	PendingAdministrators []string `json:"pending_administrators,omitempty"`
 }
 
 // The record is read whole at startup and rewritten whole on each change;
@@ -73,6 +80,16 @@ func validSettings(s serverSettings) bool {
 	}
 	seen := map[string]bool{}
 	for _, id := range s.Administrators {
+		if !canonicalSubject(id) || seen[id] {
+			return false
+		}
+		seen[id] = true
+	}
+	if len(s.PendingAdministrators) > 1024 {
+		return false
+	}
+	seen = map[string]bool{}
+	for _, id := range s.PendingAdministrators {
 		if !canonicalSubject(id) || seen[id] {
 			return false
 		}
@@ -282,24 +299,85 @@ func (a *Auth) changeRole(ctx context.Context, id string, administrator bool) er
 		return ErrAdministrationState
 	}
 	next := a.settings
-	next.Administrators = append([]string{}, next.Administrators...)
-	found := false
-	out := next.Administrators[:0]
-	for _, v := range next.Administrators {
-		if v == id {
-			found = true
-			continue
-		}
-		out = append(out, v)
-	}
-	next.Administrators = out
+	next.Administrators = withoutSubject(next.Administrators, id)
+	found := len(next.Administrators) != len(a.settings.Administrators)
 	if administrator {
 		next.Administrators = append(next.Administrators, id)
 	}
-	if found == administrator {
+	// Either way the subject's declaration is no longer waiting: a grant
+	// fulfils it, and a removal withdraws it.
+	next.PendingAdministrators = withoutSubject(next.PendingAdministrators, id)
+	pending := len(next.PendingAdministrators) != len(a.settings.PendingAdministrators)
+	if found == administrator && !pending {
 		return nil
 	}
 	return a.commitAdministration(next)
+}
+
+// declareRole is root's operation for a site.json administrator whose
+// binding host apply did not observe. The declaration is recorded before the
+// binding is looked up, and the login callback grants a pending subject
+// after its broker recheck, so a binding created concurrently is granted by
+// one of the two. Withdrawing a declaration removes only the pending entry;
+// an existing grant is removed through changeRole.
+func (a *Auth) declareRole(ctx context.Context, id string, declared bool) error {
+	if !canonicalSubject(id) {
+		return errors.New("invalid subject")
+	}
+	a.mu.Lock()
+	if !a.administrationHealthy() {
+		a.mu.Unlock()
+		return ErrAdministrationState
+	}
+	was := slices.Contains(a.settings.PendingAdministrators, id)
+	want := declared && !slices.Contains(a.settings.Administrators, id)
+	var e error
+	if was != want {
+		next := a.settings
+		next.PendingAdministrators = withoutSubject(next.PendingAdministrators, id)
+		if want {
+			next.PendingAdministrators = append(next.PendingAdministrators, id)
+		}
+		e = a.commitAdministration(next)
+	}
+	pending := slices.Contains(a.settings.PendingAdministrators, id)
+	a.mu.Unlock()
+	if e != nil || !pending {
+		return e
+	}
+	reader, ok := a.broker.(BrokerReader)
+	if !ok {
+		return nil
+	}
+	if bound, e := reader.LookupBound(ctx, id); e != nil || !bound {
+		// Still pending: the next sign-in, or the next apply, grants it.
+		return nil
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.grantPendingLocked(id)
+}
+
+// grantPendingLocked moves a declared subject, now known to be bound, from
+// PendingAdministrators to Administrators. A subject root never declared is
+// never granted here.
+func (a *Auth) grantPendingLocked(id string) error {
+	if !a.administrationHealthy() || !slices.Contains(a.settings.PendingAdministrators, id) {
+		return nil
+	}
+	next := a.settings
+	next.PendingAdministrators = withoutSubject(next.PendingAdministrators, id)
+	next.Administrators = append(withoutSubject(next.Administrators, id), id)
+	return a.commitAdministration(next)
+}
+func withoutSubject(ids []string, id string) []string {
+	out := make([]string, 0, len(ids))
+	for _, v := range ids {
+		if v != id {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 	s, ok := a.authenticated(r)
@@ -533,6 +611,14 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 			break
 		}
 		if e := a.changeRole(ctx, r.Subject, *r.Administrator); e != nil {
+			return nil, e
+		}
+		return []byte(`{"ok":true}`), nil
+	case "role_declared":
+		if r.Name != "" || r.Administrator == nil || r.DefaultLimitBytes != nil || r.LimitBytes != nil {
+			break
+		}
+		if e := a.declareRole(ctx, r.Subject, *r.Administrator); e != nil {
 			return nil, e
 		}
 		return []byte(`{"ok":true}`), nil

@@ -197,7 +197,10 @@ Identity and authority:
   never an operator id, and `admit` only while root's `runtime_admission`
   switch is on. Host apply converges only the operator source and the
   switch, never runtime entries. Administrators come only from site.json;
-  the browser has no role write. Withdrawal first records a durable deny in
+  the browser has no role write. A declared administrator not yet bound is
+  recorded by host apply as pending through root's control socket, and the
+  gateway grants exactly that subject at the sign-in whose broker recheck
+  confirms the binding; the gateway never reads site.json itself. Withdrawal first records a durable deny in
   the gateway and removes the subject's sessions, then asks the broker;
   restore removes leftover sessions, asks the broker, and lifts the deny only
   on its confirmed reply. The deny only refuses. Withdrawal ends web access,

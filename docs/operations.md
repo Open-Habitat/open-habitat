@@ -185,8 +185,9 @@ configuration and TLS copies live under `/etc/open-habitat/gateway/`; per-user
 bindings stay separate under `/etc/open-habitat-daemon/daemon/user-mappings/`.
 Use the installed unit's explicit ExecStart configuration path for component
 inspection, not an assumed global default. Unbound requested
-administrators return `deferred_until_bound`; after their first successful
-binding, rerun apply to grant their role. Per-user quota overrides, committed
+administrators return `deferred_until_bound`: apply records them as pending
+(`admin settings show` lists `pending_administrators`), and the gateway grants
+the role at the sign-in that creates the binding, without another apply. Per-user quota overrides, committed
 bindings, native credentials and personal files are never reseeded or reset.
 
 ### Rotating the TLS certificate and key
@@ -880,7 +881,7 @@ those values in the site if using declarative convergence. Optionally set the
 unmanaged displayed name with `admin settings update --name <name> --json`.
 Check the real HTTPS ingress with certificate validation, then sign in as an
 admitted identity and inspect the new account, quota, home and daemon socket.
-After binding, rerun apply for any deferred administrator grant. The person's
+A deferred administrator holds the role from that first sign-in. The person's
 native Pi/provider authorization remains a separate first-use step. A redirect
 from `/auth/github/start` alone proves neither callback nor sign-in.
 
