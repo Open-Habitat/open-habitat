@@ -56,12 +56,13 @@ const setup = (activeId?: string) => {
   const onSnapshotNeeded = vi.fn();
   const onStatusChange = vi.fn();
   const onConnection = vi.fn();
+  const onOffline = vi.fn();
   const journal = new ConversationJournal(store, {
     activeId: () => activeId,
     onSnapshotNeeded,
     onStatusChange,
     onLogin: vi.fn(),
-    onOffline: vi.fn(),
+    onOffline,
     onConnection,
   });
   return {
@@ -70,6 +71,7 @@ const setup = (activeId?: string) => {
     onSnapshotNeeded,
     onStatusChange,
     onConnection,
+    onOffline,
   };
 };
 afterEach(() => {
@@ -367,6 +369,45 @@ describe("one tab-wide journal", () => {
       journal.stop();
       journal.retry();
       expect(FakeSource.all).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("reconnects a dropped stream silently when the probe answers, and goes offline only when it fails", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      const fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        ok: true,
+        body: { cancel: () => Promise.resolve() },
+      });
+      vi.stubGlobal("fetch", fetch);
+      const { journal, onOffline, onConnection } = setup();
+      journal.start(snapshot(0));
+      FakeSource.all[0].onopen?.();
+      // An idle stream reset by an HTTP/2 hop, three times in a row.
+      for (let i = 0; i < 3; i++) {
+        FakeSource.all[i].onerror?.();
+        await vi.advanceTimersByTimeAsync(0);
+        FakeSource.all[i + 1].onopen?.();
+      }
+      expect(FakeSource.all).toHaveLength(4);
+      expect(onOffline).not.toHaveBeenCalled();
+      expect(onConnection).not.toHaveBeenCalledWith(
+        "failed",
+        expect.anything(),
+      );
+      // A host the probe cannot reach is announced at once.
+      fetch.mockRejectedValue(new TypeError("network"));
+      FakeSource.all[3].onerror?.();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(onOffline).toHaveBeenLastCalledWith(true);
+      expect(onConnection).toHaveBeenLastCalledWith(
+        "failed",
+        expect.any(String),
+      );
+      journal.stop();
     } finally {
       vi.useRealTimers();
     }

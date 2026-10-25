@@ -204,6 +204,39 @@ func TestProxyStreamCancellationClosesDaemonConnection(t *testing.T) {
 	}
 }
 
+// On HTTP/2 a stream write deadline left armed resets the idle stream when it
+// passes, so a quiet daemon between heartbeats must not end the browser's
+// stream (Birch's browsers reconnected every few seconds).
+func TestProxyStreamSurvivesQuietDaemonOverHTTP2(t *testing.T) {
+	old := streamWriteTimeout
+	streamWriteTimeout = 100 * time.Millisecond
+	t.Cleanup(func() { streamWriteTimeout = old })
+	h, _ := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, ": open\n\n")
+		w.(http.Flusher).Flush()
+		time.Sleep(4 * streamWriteTimeout)
+		_, _ = io.WriteString(w, ": heartbeat\n\n")
+		w.(http.Flusher).Flush()
+	}))
+	srv := httptest.NewUnstartedServer(h)
+	srv.EnableHTTP2 = true
+	srv.StartTLS()
+	t.Cleanup(srv.Close)
+	r, _ := http.NewRequest("GET", srv.URL+"/api/v1/events?after=ev1:12345678-1234-4123-8123-123456789abc:1", nil)
+	r.Host = "host.test"
+	r.AddCookie(&http.Cookie{Name: cookieName, Value: "browser"})
+	res, err := srv.Client().Do(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	if res.ProtoMajor != 2 || res.StatusCode != 200 || err != nil || string(body) != ": open\n\n: heartbeat\n\n" {
+		t.Fatalf("%s %d %q %v", res.Proto, res.StatusCode, body, err)
+	}
+}
+
 // The gateway and daemon records of one proxied request share a gateway-made
 // ID; a browser cannot choose it, because only selected headers are forwarded.
 func TestProxyJoinsGatewayAndDaemonRecords(t *testing.T) {

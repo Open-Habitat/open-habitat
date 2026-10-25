@@ -1333,6 +1333,7 @@ export function HistoryView(props: Parameters<typeof HistoryViewContent>[0]) {
     <SpinoffProvider
       key={`${props.store.identity}:${props.agent.agent_id}`}
       parent={props.agent.agent_id}
+      recheck={props.agent.history}
       onLogin={props.onLogin}
     >
       <ProcessProvider

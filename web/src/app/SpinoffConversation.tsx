@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { SpinoffContext, SpinoffReadOnly } from "../components/Spinoffs";
 import { readSpinoffs, type Spinoffs } from "./spinoffs";
@@ -17,10 +17,15 @@ export function keepKnownRuns(previous: Spinoffs | undefined, next: Spinoffs) {
 }
 export function SpinoffProvider({
   parent,
+  recheck,
   onLogin,
   children,
 }: {
   parent?: string;
+  /** Native-session readability as the page knows it. While the daemon
+   * has no readable session for the parent, polling waits for this to
+   * change instead of collecting a 404 every few seconds. */
+  recheck?: string;
   onLogin?: () => void;
   children: ReactNode;
 }) {
@@ -29,13 +34,16 @@ export function SpinoffProvider({
   const run = new URLSearchParams(location.search).get("spinoff");
   const [data, setData] = useState<Spinoffs>();
   const [stale, setStale] = useState(false);
+  const resume = useRef<() => void>(undefined);
   useEffect(() => {
+    resume.current = undefined;
     setData(undefined);
     setStale(false);
     if (!parent) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     const load = async () => {
+      let missing = false;
       try {
         const next = await readSpinoffs(parent, run, controller.signal);
         if (!controller.signal.aborted) {
@@ -43,7 +51,15 @@ export function SpinoffProvider({
           setStale(false);
         }
       } catch (e) {
-        if (!controller.signal.aborted) {
+        missing = e instanceof Error && e.message === "parent_missing";
+        if (missing) {
+          // Nothing can be attributed to a session that does not exist.
+          if (!controller.signal.aborted)
+            resume.current = () => {
+              clearTimeout(timer);
+              void load();
+            };
+        } else if (!controller.signal.aborted) {
           setStale(true);
           if (e instanceof Error && e.message === "identity_lost") {
             setData(undefined);
@@ -51,7 +67,9 @@ export function SpinoffProvider({
           }
         }
       } finally {
-        if (!controller.signal.aborted) timer = setTimeout(load, 3000);
+        // A missed signal must not hide spinoffs for good: reread slowly.
+        if (!controller.signal.aborted)
+          timer = setTimeout(load, missing ? 60000 : 3000);
       }
     };
     void load();
@@ -60,6 +78,12 @@ export function SpinoffProvider({
       clearTimeout(timer);
     };
   }, [parent, run, onLogin]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: recheck is the trigger, not read inside the effect.
+  useEffect(() => {
+    const again = resume.current;
+    resume.current = undefined;
+    again?.();
+  }, [recheck]);
   const route = (id?: string) => {
     const q = new URLSearchParams(location.search);
     if (id) q.set("spinoff", id);

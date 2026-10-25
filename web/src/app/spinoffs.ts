@@ -42,6 +42,8 @@ export async function readSpinoffs(
     { signal },
   );
   if (response.status === 401) throw new Error("identity_lost");
+  // No readable native session (yet): a new conversation before its first turn.
+  if (response.status === 404) throw new Error("parent_missing");
   if (
     !response.ok ||
     response.headers.get("content-type")?.split(";")[0] !== "application/json"

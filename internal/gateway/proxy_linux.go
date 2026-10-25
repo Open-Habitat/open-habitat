@@ -22,6 +22,9 @@ import (
 const proxyBodyLimit int64 = 32 << 20
 const proxyRequestLimit int64 = 66000
 
+// streamWriteTimeout bounds one write of a proxied stream to the browser.
+var streamWriteTimeout = 10 * time.Second
+
 type idleReadConn struct{ net.Conn }
 
 func (c idleReadConn) Read(p []byte) (int, error) {
@@ -216,7 +219,20 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 			safe(w, 503, "daemon_unavailable")
 			return
 		}
-		if err := controller.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil && !errors.Is(err, http.ErrNotSupported) {
+		// The deadline bounds each write to a stalled browser and is cleared
+		// while the daemon is quiet. Left armed, HTTP/2 resets an idle stream
+		// when it passes even with no write pending (HTTP/1.1 only fails the
+		// next write), so a browser on h2 lost its event stream between
+		// heartbeats and reconnected every few seconds.
+		armed := func() bool {
+			err := controller.SetWriteDeadline(time.Now().Add(streamWriteTimeout))
+			return err == nil || errors.Is(err, http.ErrNotSupported)
+		}
+		idle := func() bool {
+			err := controller.SetWriteDeadline(time.Time{})
+			return err == nil || errors.Is(err, http.ErrNotSupported)
+		}
+		if !armed() {
 			safe(w, 503, "daemon_unavailable")
 			return
 		}
@@ -225,6 +241,9 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(res.StatusCode)
 		flusher.Flush()
+		if !idle() {
+			return
+		}
 		buf := make([]byte, 32<<10)
 		var forwarded int64
 		for {
@@ -237,13 +256,16 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 				return
 			}
 			if n > 0 {
-				if err := controller.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil && !errors.Is(err, http.ErrNotSupported) {
+				if !armed() {
 					return
 				}
 				if _, err := w.Write(buf[:n]); err != nil {
 					return
 				}
 				flusher.Flush()
+				if !idle() {
+					return
+				}
 			}
 			if readErr != nil {
 				return

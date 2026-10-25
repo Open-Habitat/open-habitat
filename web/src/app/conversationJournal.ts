@@ -352,11 +352,16 @@ export class ConversationJournal {
       });
       source.close();
       this.source = undefined;
-      this.setOffline(true);
-      this.callbacks.onConnection?.(
-        "failed",
-        "Tapahtumayhteyttä ei saatu. Tarkista verkkoyhteys tai yritä uudelleen.",
-      );
+      // A dropped stream is announced only once the probe shows the host
+      // unreachable or refusing. A reconnect the probe clears would otherwise
+      // flash the offline banner for one round trip (on a slow relay, every
+      // time a proxy or an HTTP/2 hop ends an idle stream).
+      const unreachable = (
+        reason = "Tapahtumayhteyttä ei saatu. Tarkista verkkoyhteys tai yritä uudelleen.",
+      ) => {
+        this.setOffline(true);
+        this.callbacks.onConnection?.("failed", reason);
+      };
       const probe = new AbortController();
       this.probe = probe;
       const timeout = setTimeout(() => probe.abort(), 5000);
@@ -377,17 +382,6 @@ export class ConversationJournal {
             this.callbacks.onLogin();
             return;
           }
-          if (response.status === 403) {
-            this.callbacks.onConnection?.(
-              "failed",
-              "Palvelin ei sallinut tapahtumayhteyttä.",
-            );
-          } else if (response.status >= 500) {
-            this.callbacks.onConnection?.(
-              "failed",
-              "Palvelimen tapahtumayhteys ei ole käytettävissä. Yritä uudelleen.",
-            );
-          }
           if (response.status === 409) {
             this.recover(this.sequence + 1);
             return;
@@ -397,8 +391,17 @@ export class ConversationJournal {
             this.connect();
             return;
           }
+          if (response.status === 403)
+            unreachable("Palvelin ei sallinut tapahtumayhteyttä.");
+          else if (response.status >= 500)
+            unreachable(
+              "Palvelimen tapahtumayhteys ei ole käytettävissä. Yritä uudelleen.",
+            );
+          else unreachable();
         } catch {
-          /* offline: retry with the last validated cursor */
+          // Offline, or the probe's own timeout; retry with the last
+          // validated cursor.
+          if (!this.stopped && epoch === this.generation) unreachable();
         } finally {
           clearTimeout(timeout);
           if (this.probe === probe) this.probe = undefined;

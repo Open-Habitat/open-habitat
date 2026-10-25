@@ -122,10 +122,16 @@ export function showMissedEvents(liveTruncated: boolean, current?: Status) {
 export function BrowserConversation(
   props: Parameters<typeof BrowserConversationContent>[0],
 ) {
+  // Status and snapshot each learn when the native session becomes readable.
+  const [nativeHistory, setNativeHistory] = useState<string>();
+  const snapshotHistory = props.recoverySnapshot?.agents.find(
+    (agent) => agent.agent_id === props.id,
+  )?.history;
   return (
     <SpinoffProvider
       key={`${props.identity}:${props.id}`}
       parent={props.id}
+      recheck={`${snapshotHistory}:${nativeHistory}`}
       onLogin={props.onLogin}
     >
       <ProcessProvider
@@ -135,7 +141,10 @@ export function BrowserConversation(
         onLogin={props.onLogin}
         onStatusEvent={props.onStatusEvent}
       >
-        <BrowserConversationContent {...props} />
+        <BrowserConversationContent
+          {...props}
+          onNativeHistory={setNativeHistory}
+        />
       </ProcessProvider>
     </SpinoffProvider>
   );
@@ -159,6 +168,7 @@ function BrowserConversationContent({
   csrf,
   onLogin,
   onSessionCreated,
+  onNativeHistory,
 }: {
   workspace: Workspace;
   archive?: Agent;
@@ -184,6 +194,7 @@ function BrowserConversationContent({
   csrf?: string;
   onLogin: () => void;
   onSessionCreated: (session: Session) => void;
+  onNativeHistory?: (history?: string) => void;
 }) {
   const transientNotices = useAgentNotices(store, id ?? "");
   const {
@@ -247,6 +258,10 @@ function BrowserConversationContent({
     onLogin,
   });
   const storagePressure = useStoragePressure();
+  const nativeHistory = current?.native_history;
+  useEffect(() => {
+    onNativeHistory?.(nativeHistory);
+  }, [nativeHistory, onNativeHistory]);
   useEffect(() => {
     if (storagePressure.check) void refresh(true, true);
   }, [storagePressure.check, refresh]);
