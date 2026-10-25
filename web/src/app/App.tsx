@@ -1511,7 +1511,7 @@ export function App() {
     if (conversation.process === "terminal_observed_live")
       return "Kirjoittaja on käynnissä.";
     if (conversation.waitingOn?.length || agent.waiting_on?.length)
-      return "Odota prosessin tai spinoffin valmistumista ja agentin vuoron päättymistä.";
+      return "Odota taustatyön valmistumista ja agentin vuoron päättymistä.";
     if (
       conversation.runActive ||
       agent.run_active ||

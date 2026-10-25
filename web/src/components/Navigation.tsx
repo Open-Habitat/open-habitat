@@ -256,6 +256,14 @@ export function NavLink({
                     aria-hidden="true"
                     title={activityLabelForMark(displayStatusText)}
                   />
+                ) : compactMark && displayStatusText === "◉" ? (
+                  // Background wait: a still ring around a core, so it is
+                  // neither the pulsing working dot nor the open ring.
+                  <span
+                    className="ah-nav-mark ah-nav-background"
+                    aria-hidden="true"
+                    title={activityLabelForMark(displayStatusText)}
+                  />
                 ) : compactMark ? (
                   <span
                     className="ah-nav-mark"
@@ -326,6 +334,7 @@ function activityLabelForMark(mark: string) {
         "●": "Uusi vastaus",
         "◌": "Agentti työskentelee",
         "○": "Odottaa",
+        "◉": "Odottaa taustatyötä",
         "✓": "Valmis",
         "–": "Tila ei tiedossa",
       } as Record<string, string>
@@ -383,9 +392,7 @@ export function AgentNavItem({
         ? "Worktree-agentti, työ yhdistetty"
         : "Worktree-agentti"
       : null,
-    spinoffWorking && !/odottaa spinoffia/i.test(activityLabel)
-      ? "Spinoff työskentelee"
-      : null,
+    spinoffWorking ? "Worker työskentelee" : null,
     controlLabel,
     operationLabel,
     historyLabel,
@@ -405,8 +412,7 @@ export function AgentNavItem({
             {
               working: "◌",
               waiting: "○",
-              waiting_process: "○",
-              waiting_spinoff: "○",
+              waiting_background: "◉",
               closed: "✓",
               unknown: "–",
             } as const
@@ -421,7 +427,7 @@ export function AgentNavItem({
   return (
     <li
       data-testid={`agent-item-${agentId}`}
-      data-waiting={activity === "waiting_spinoff"}
+      data-waiting={activity === "waiting_background"}
       data-has-history-warning={Boolean(historyLabel)}
       className={`ah-agent-item${spinoffWorking ? " ah-waiting-spinoff" : ""}${pendingLabel ? " ah-pending-item" : ""}`}
       style={{ "--ah-depth": depth } as React.CSSProperties}

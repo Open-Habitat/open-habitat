@@ -1360,8 +1360,7 @@ function BrowserConversationContent({
                 : (presentation.operationLabel ?? presentation.activityLabel)
             }
             activityControl={
-              presentation.activity === "waiting_process" ||
-              presentation.activity === "waiting_spinoff" ? (
+              presentation.activity === "waiting_background" ? (
                 <ProcessWaitingChip label={presentation.activityLabel} />
               ) : undefined
             }
@@ -2001,11 +2000,10 @@ function BrowserConversationContent({
           {controlled ? (
             <>
               {/* The bell is the strip's only waiting cue; the top bar
-                  already says Odottaa spinoffia (Jari 16.10.2026). */}
+                  already says Odottaa taustatyötä (Jari 16.10.2026). */}
               <BackgroundStrip
                 agentIdle={
-                  presentation.activity === "waiting_spinoff" ||
-                  presentation.activity === "waiting_process" ||
+                  presentation.activity === "waiting_background" ||
                   presentation.activity === "waiting"
                 }
                 piNotRunning={bridgeExpected}

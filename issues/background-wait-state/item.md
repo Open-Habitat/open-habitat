@@ -3,11 +3,13 @@ created: 2026-10-25
 updated: 2026-10-25
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 collision: [web/src/components/agentPresentation.ts]
 preparation: ready
+closed: 2026-10-25
+closed_by: claude
 ---
 
 # One 'waiting on background work' state with its own status dot
@@ -32,10 +34,10 @@ top status.
 
 ## Acceptance Criteria
 
-- [ ] One background-wait activity and label; shown in the conversation's top
+- [x] One background-wait activity and label; shown in the conversation's top
   status without process names.
-- [ ] A distinct status dot for it from design tokens, used consistently in
+- [x] A distinct status dot for it from design tokens, used consistently in
   the sidebar, start page, rail and conversation; screenshots light/dark for
   Jari's review.
-- [ ] Tests at the presentation layer (state, not wording).
+- [x] Tests at the presentation layer (state, not wording).
 

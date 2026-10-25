@@ -32,12 +32,12 @@ export function SpinoffReadOnly({
           label="← Pääagentille"
           onPress={onParent}
         />
-        <span>Spinoff · Vain luku</span>
-        <h2>{run?.title ?? "Spinoff"}</h2>
+        <span>Worker · Vain luku</span>
+        <h2>{run?.title ?? "Worker"}</h2>
         {run && <p>{spinoffStateLabel(run)}</p>}
       </header>
       {stale ? (
-        <p role="status">Spinoffin ajantasaista tilaa ei saada.</p>
+        <p role="status">Workerin ajantasaista tilaa ei saada.</p>
       ) : null}
       {run && (
         <>
@@ -74,18 +74,18 @@ export function SpinoffReadOnly({
       )}
       <div className="ah-spinoff-transcript">
         {run && !transcripts.length ? (
-          <p>Spinoffin historia ei ole saatavilla.</p>
+          <p>Workerin historia ei ole saatavilla.</p>
         ) : null}
         {transcripts.map((t) => (
           <section
             key={t.node_id}
-            aria-label={`Spinoffin historia ${t.node_id}`}
+            aria-label={`Workerin historia ${t.node_id}`}
           >
             {t.availability !== "available" ? (
               <p>
                 {t.availability === "unsupported"
                   ? "Tämän agentin historiaa ei vielä tueta selaimessa."
-                  : "Spinoffin historia ei ole saatavilla."}
+                  : "Workerin historia ei ole saatavilla."}
               </p>
             ) : null}
             {t.truncated && <p>Näytetään historian viimeisin osa.</p>}
@@ -96,7 +96,7 @@ export function SpinoffReadOnly({
                     ? "Pääagentti"
                     : m.kind === "tool"
                       ? "Työkalu"
-                      : "Spinoff-agentti"}
+                      : "Worker-agentti"}
                 </strong>
                 <Markdown text={m.text} />
               </article>
@@ -105,7 +105,7 @@ export function SpinoffReadOnly({
         ))}
       </div>
       <footer data-testid="spinoff-read-only">
-        Spinoffille ei kirjoiteta: sitä ohjaa agentti, joka käynnisti sen.{" "}
+        Workerille ei kirjoiteta: sitä ohjaa agentti, joka käynnisti sen.{" "}
         <Button
           data-testid="parent-bottom"
           size="row"

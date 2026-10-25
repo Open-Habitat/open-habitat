@@ -111,7 +111,10 @@ function ConversationGroup({
                           ? "working"
                           : presentation(conversation).activity === "waiting"
                             ? "neutral"
-                            : "unknown"
+                            : presentation(conversation).activity ===
+                                "waiting_background"
+                              ? "background"
+                              : "unknown"
                       }
                     />
                     {conversation.history &&
@@ -191,7 +194,7 @@ export function ReturnView({
   const ongoing = remaining.filter(
     (conversation) =>
       presentation(conversation).activity === "working" ||
-      ["waiting", "waiting_process", "waiting_spinoff"].includes(
+      ["waiting", "waiting_background"].includes(
         presentation(conversation).activity,
       ),
   );

@@ -264,6 +264,20 @@ describe("rail activity marks", () => {
     expect(mark?.classList.contains("ah-nav-working")).toBe(false);
     expect(mark?.textContent).toBe("○");
   });
+  it("gives a background wait its own still dot", () => {
+    const view = row({
+      process: "daemon_managed_live",
+      command: "idle",
+      waitingOn: [
+        { process_id: "p", name: "testit", kind: "process", run_ids: [] },
+      ],
+    });
+    const mark = view.container.querySelector(".ah-nav-mark");
+    expect(mark?.classList.contains("ah-nav-background")).toBe(true);
+    expect(mark?.classList.contains("ah-nav-working")).toBe(false);
+    expect(mark?.textContent).toBe("");
+    expect(view.container.querySelector('[data-waiting="true"]')).toBeTruthy();
+  });
   it("pulses only the branch of a working spinoff's mark", () => {
     const view = row(
       { process: "daemon_managed_live", runActive: false },

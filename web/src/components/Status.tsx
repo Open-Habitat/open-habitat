@@ -9,6 +9,7 @@ export type StatusKind =
   | "success"
   | "error"
   | "unknown"
+  | "background"
   | "pill"
   | "neutral";
 export function StatusMark({

@@ -155,7 +155,7 @@ export function WorkspacePage({
   ).length;
   const working = activities.filter((a) => a === "working").length;
   const background = activities.filter(
-    (a) => a === "waiting_process" || a === "waiting_spinoff",
+    (a) => a === "waiting_background",
   ).length;
   const summary = !gitStatus.readError ? gitStatus.facts : undefined;
   const label = summary
@@ -164,7 +164,7 @@ export function WorkspacePage({
   const summaryText = [
     waiting ? `${waiting} odottaa sinua` : "",
     working ? `${working} työskentelee` : "",
-    background ? `${background} odottaa prosessia tai spinoffia` : "",
+    background ? `${background} odottaa taustatyötä` : "",
   ]
     .filter(Boolean)
     .join(" · ");

@@ -5,7 +5,10 @@ import {
   WorkspaceRail,
   WorkspaceSection,
 } from "../components";
-import { agentPresentation } from "../components/agentPresentation";
+import {
+  agentPresentation,
+  waitsOnWorker,
+} from "../components/agentPresentation";
 import { RailClones } from "../components/ClonePage";
 import type { Tone } from "../components/types";
 import { WorkspaceActions } from "../components/WorkspaceActions";
@@ -403,7 +406,8 @@ export function WorkspaceRailView({
                   spinoffWorking:
                     phase !== "stale" &&
                     ((a.spinoffs_working ?? 0) > 0 ||
-                      presentation.activity === "waiting_spinoff"),
+                      (presentation.activity === "waiting_background" &&
+                        waitsOnWorker(a.waiting_on))),
                 };
               })(),
               selected:

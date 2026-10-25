@@ -83,7 +83,11 @@ voimassa samanaikaisesti. Merkki, sana ja väri tekevät tilasta tunnistettavan
 myös ilman liikettä tai värien erottamista.
 
 Odottaa tarkoittaa avointa agenttia, joka odottaa käyttäjän vastausta; sen
-merkki on ontto rengas. Keskustelussa käynti poistaa huomiomerkinnän mutta
+merkki on ontto rengas. Odottaa taustatyötä tarkoittaa, että agentti odottaa
+omaa taustaprosessiaan tai workeriaan eikä käyttäjältä tarvita mitään; sen
+merkki on liikkumaton aksenttirengas, jonka keskellä on piste, ja yläpalkki
+kertoo vain tilan, odotettavat nimet ovat vihjeessä ja taustatyön paneelissa.
+Keskustelussa käynti poistaa huomiomerkinnän mutta
 jättää agentin odottamaan. Valmis tarkoittaa suljettua agenttia. Jos sulkemista
 ei tiedetä, esitetään tuntematon tila. Vain luku näkyy omana katkoviivatagina
 tai kentän katkoviivareunana. Palveluvirhe näytetään vain raportoidun virheen
@@ -193,7 +197,7 @@ vain kuvakkeella ja luvulla, onko lajia käynnissä; kello merkin kulmassa
 kertoo, että agentin päättynyt vuoro odottaa sitä, ja punainen piste, että
 spinoff päättyi mergeämättä ja sen haara on yhä olemassa. Piste pysyy, kunnes
 haara on poistettu tai mergetty; katsominen ei sitä poista. Kello on palkin
-ainoa odotusmerkki, koska yläpalkki sanoo jo *Odottaa spinoffia*, ja
+ainoa odotusmerkki, koska yläpalkki sanoo jo *Odottaa taustatyötä*, ja
 odotusmerkki sykkii vain sivupalkissa: haaramerkistä sykkii vain haara ja sen
 pää, runko pysyy (Jari 17.10.2026). Työskentelevän keskustelun merkki on
 sykkivä aksenttipiste kuten [vedoksessa](drafts/Kontrollitilat%20ja%20agentin%20tila.dc.html).

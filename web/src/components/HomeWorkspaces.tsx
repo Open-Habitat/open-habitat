@@ -46,16 +46,14 @@ function rank(c: HomeConversation): number {
   const activity = agentPresentation(c).activity;
   return activity === "working"
     ? 1
-    : activity === "waiting_process"
+    : activity === "waiting_background"
       ? 2
-      : activity === "waiting_spinoff"
+      : activity === "waiting"
         ? 3
-        : activity === "waiting"
-          ? 4
-          : 5;
+        : 4;
 }
 function score(items: HomeConversation[]) {
-  return items.reduce((sum, c) => sum + [100, 10, 2, 2, 1, 0][rank(c)], 0);
+  return items.reduce((sum, c) => sum + [100, 10, 2, 1, 0][rank(c)], 0);
 }
 
 export function HomeCard({
@@ -169,9 +167,9 @@ export function HomeCard({
       {conversation.worktree ? (
         <WorktreeCardLine worktree={conversation.worktree} />
       ) : null}
-      {activity === "waiting_process" || activity === "waiting_spinoff" ? (
+      {activity === "waiting_background" ? (
         <p className="ah-home-live">
-          {activity === "waiting_spinoff" ? "Odotan spinoffia" : "Odotan:"}
+          Odotan taustatyötä{conversation.waitingOn?.length ? ":" : ""}
           {conversation.waitingOn?.length
             ? ` ${conversation.waitingOn.map(waitingName).join(", ")} · jatkan itse, kun odotus päättyy.`
             : ""}
@@ -359,10 +357,8 @@ export function HomeWorkspaces({
   const working = conversations.filter(
     (c) => agentPresentation(c).activity === "working",
   ).length;
-  const background = conversations.filter((c) =>
-    ["waiting_process", "waiting_spinoff"].includes(
-      agentPresentation(c).activity,
-    ),
+  const background = conversations.filter(
+    (c) => agentPresentation(c).activity === "waiting_background",
   ).length;
   return (
     <div className="ah-home">
@@ -372,9 +368,7 @@ export function HomeWorkspaces({
           <p>
             {workspaces.length} työtilaa · {waiting} odottaa sinua · {working}{" "}
             käynnissä
-            {background
-              ? ` · ${background} odottaa prosessia tai spinoffia`
-              : ""}
+            {background ? ` · ${background} odottaa taustatyötä` : ""}
           </p>
         </div>
         <ControlButton

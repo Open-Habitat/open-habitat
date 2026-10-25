@@ -170,7 +170,7 @@ export function ProcessProvider({
           : result === "terminate_timeout"
             ? "Prosessi ei pysähtynyt. Voit pakottaa lopetuksen."
             : p?.run_ids.length
-              ? "Odotus lopetettiin. Spinoff jatkaa työtään, eikä agentti saa ilmoitusta."
+              ? "Odotus lopetettiin. Worker jatkaa työtään, eikä agentti saa ilmoitusta."
               : p
                 ? "Prosessi pysäytettiin. Agentti ei saa tästä ilmoitusta."
                 : "Päättyneet prosessit ja niiden lokit poistettiin. Historia säilyy.",
@@ -519,8 +519,8 @@ function ProcessOutputView({
       <div className="ah-process-output-head">
         {process.run_ids.length ? (
           <p>
-            Spinoff-ajot: {process.run_ids.join(", ")}. Odotuksen lopettaminen
-            ei pysäytä ajoja.
+            Worker-ajot: {process.run_ids.join(", ")}. Odotuksen lopettaminen ei
+            pysäytä ajoja.
           </p>
         ) : null}
         <ControlButton
@@ -651,10 +651,10 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
               ))}
             </ul>
           ) : event.run_ids.length ? (
-            <p>Spinoff-ajot: nykytilaa ei saatu.</p>
+            <p>Worker-ajot: nykytilaa ei saatu.</p>
           ) : null}
           {event.run_ids.length && event.exit_code === 2 ? (
-            <p>Odotus aikakatkaistiin. Spinoffit voivat yhä työskennellä.</p>
+            <p>Odotus aikakatkaistiin. Workerit voivat yhä työskennellä.</p>
           ) : event.run_ids.length && event.exit_code === 3 ? (
             <p>Odotusehto päättyi epäonnistuneeseen ajoon.</p>
           ) : null}
@@ -825,7 +825,13 @@ export function ProcessWaitingChip({ label }: { label: string }) {
       }
       size="row"
       variant="quiet"
-      title="Näytä mitä agentti odottaa"
+      // The top status names the state only; what is awaited is in the
+      // tooltip and in the window this opens.
+      title={
+        name
+          ? `${name}${awaited && awaited.length > 1 ? ` +${awaited.length - 1}` : ""}`
+          : "Näytä mitä agentti odottaa"
+      }
       onPress={() =>
         first
           ? first.run_ids.some((id) => openSpinoff(id))
@@ -834,9 +840,8 @@ export function ProcessWaitingChip({ label }: { label: string }) {
           : context?.showInventory()
       }
     >
+      <span aria-hidden="true" className="ah-status-dot ah-background-dot" />
       {label}
-      {name ? ` · ${name}` : ""}
-      {awaited && awaited.length > 1 ? ` +${awaited.length - 1}` : ""}
     </ControlButton>
   );
 }

@@ -213,7 +213,7 @@ export function BackgroundStrip({
     if (kind === "spin") {
       const f = facts.spin;
       return [
-        `Spinoffit: ${f.working ? `${f.working} työskentelee` : "ei työskentele"}`,
+        `Workerit: ${f.working ? `${f.working} työskentelee` : "ei työskentele"}`,
         f.live.length > f.working
           ? `${f.live.length - f.working} muussa tilassa`
           : "",
@@ -255,7 +255,7 @@ export function BackgroundStrip({
     proc: "terminal",
   };
   const label: Record<BackgroundKind, string> = {
-    spin: "Spinoffit",
+    spin: "Workerit",
     proc: "Prosessit",
   };
   const number = (kind: BackgroundKind) =>
@@ -294,7 +294,7 @@ export function BackgroundStrip({
               className="ah-bg-clear"
               isDisabled={!view.canControl || view.pending}
               onPress={() => void view.control()}
-              title="Poistaa päättyneet prosessit ja niiden lokit. Päättyneet spinoffit jäävät: ne ovat Taskfleetin ajoja."
+              title="Poistaa päättyneet prosessit ja niiden lokit. Päättyneet workerit jäävät: ne ovat Taskfleetin ajoja."
             >
               <Icon name="trash" />
               <span>Poista päättyneet</span>
@@ -334,7 +334,7 @@ export function BackgroundStrip({
           type="button"
           className="ah-bg-main"
           onClick={() => spinoffs?.open(r)}
-          title="Avaa spinoffin vain luku -näkymä"
+          title="Avaa workerin vain luku -näkymä"
         >
           <span className="ah-bg-mark" aria-hidden="true">
             {i.live ? (
@@ -353,7 +353,7 @@ export function BackgroundStrip({
             className="ah-bg-wake"
             role="img"
             aria-label="Agentti odottaa tätä"
-            title="Agentti jatkaa, kun spinoff valmistuu"
+            title="Agentti jatkaa, kun worker valmistuu"
           >
             <Icon name="bell" />
           </span>
@@ -365,7 +365,7 @@ export function BackgroundStrip({
             size="inline"
             variant="quiet"
             aria-label={`Lopeta odotus: ${r.title || r.run_id}`}
-            title="Lopettaa agentin odotuksen. Spinoff jatkaa työtään, eikä agentti saa ilmoitusta."
+            title="Lopettaa agentin odotuksen. Worker jatkaa työtään, eikä agentti saa ilmoitusta."
             isDisabled={!view.canControl || view.pending}
             onPress={() => i.wait && void view.control(i.wait)}
           >
@@ -459,7 +459,7 @@ export function BackgroundStrip({
         <div
           className="ah-bg-group"
           role="group"
-          aria-label="Spinoffit: käynnissä"
+          aria-label="Workerit: käynnissä"
         >
           {facts.spin.live.map(spinRow)}
         </div>
@@ -468,7 +468,7 @@ export function BackgroundStrip({
       )}
       {ended("spin", facts.spin.ended.length, facts.spin.ended.map(spinRow))}
       <p className="ah-bg-life">
-        Spinoffit ovat Taskfleetin ajoja; selain vain näyttää ne.
+        Workerit ovat Taskfleetin ajoja; selain vain näyttää ne.
       </p>
     </>
   );

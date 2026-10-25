@@ -22,13 +22,7 @@ export interface AgentFacts {
 }
 
 export interface AgentPresentation {
-  activity:
-    | "working"
-    | "waiting"
-    | "waiting_process"
-    | "waiting_spinoff"
-    | "closed"
-    | "unknown";
+  activity: "working" | "waiting" | "waiting_background" | "closed" | "unknown";
   activityLabel: string;
   activityShortLabel: string;
   controlLabel: string;
@@ -52,27 +46,22 @@ export function agentPresentation(facts: AgentFacts): AgentPresentation {
     (facts.pendingQuestion ||
       facts.runActive === false ||
       facts.command === "idle");
+  // A background process and a Taskfleet worker are one state for the
+  // person: the agent continues by itself, nothing is asked of them.
   const background =
     running &&
     !working &&
     !facts.pendingQuestion &&
     !facts.connectionLost &&
     facts.runActive !== true &&
-    facts.waitingOn?.length
-      ? facts.waitingOn.some((p) => p.kind === "taskfleet_wait")
-        ? "waiting_spinoff"
-        : "waiting_process"
-      : undefined;
-  const backgroundLabel =
-    background === "waiting_spinoff"
-      ? "Odottaa spinoffia"
-      : "Odottaa prosessia";
+    !!facts.waitingOn?.length;
+  const backgroundLabel = "Odottaa taustatyötä";
   const activity = facts.intentionallyClosed
     ? "closed"
     : working
       ? "working"
       : background
-        ? background
+        ? "waiting_background"
         : waiting
           ? "waiting"
           : "unknown";
@@ -126,4 +115,9 @@ export function waitingName(item: WaitingOn): string {
   return item.kind === "taskfleet_wait" && item.spinoff?.length
     ? item.spinoff.map((run) => run.title || run.run_id).join(", ")
     : item.name;
+}
+
+/** Whether a background wait includes a Taskfleet worker (`run wait`). */
+export function waitsOnWorker(waitingOn: WaitingOn[] | undefined): boolean {
+  return !!waitingOn?.some((item) => item.kind === "taskfleet_wait");
 }

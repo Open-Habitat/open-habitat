@@ -344,11 +344,7 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
       .getByTestId("agent-link")
       .and(page.locator(`a[href*="conversation=${agentId ?? ""}"]`)),
   ).toBeVisible();
-  await expect(
-    page.locator(
-      ".ah-home-card-waiting_spinoff, .ah-home-card-waiting_process",
-    ),
-  ).toHaveCount(0);
+  await expect(page.locator(".ah-home-card-waiting_background")).toHaveCount(0);
   phase = "working";
   await page.goto(agentUrl);
   await page.getByRole("navigation").getByTestId("snapshot-refresh").click();
@@ -590,9 +586,9 @@ test("@process-tray recognised waits stay out of the process list, and clearing 
   inventory.processes = inventory.processes.filter((p) => p.run_ids.length);
   await expect(pill).toHaveCount(0);
   const spin = strip.getByTestId("background-spinoffs");
-  await expect(spin).toHaveAccessibleName(
-    "Spinoffit: 1 työskentelee, agentti odottaa: UI hidas spinoff",
-  );
+  // The count is a fact; the run title is native content and stays as is.
+  await expect(spin).toHaveAttribute("data-working", "1");
+  await expect(spin).toHaveAccessibleName(/UI hidas spinoff$/);
   await spin.click();
   await expect(strip.getByTestId("spinoff-UI hidas spinoff")).toBeVisible();
   await expect(strip.getByTestId("stop-wait")).toBeVisible();

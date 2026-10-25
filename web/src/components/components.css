@@ -3476,6 +3476,38 @@ details[open] > summary:not([class])::before {
     box-shadow: 0 0 0 2px var(--ah-accent-line);
   }
 }
+/* Odottaa taustatyötä: the agent is busy in the background and asks nothing
+   of the person. A still accent ring around a core: not the pulsing working
+   dot, not the open waiting ring, not the unknown dash. One look for the
+   sidebar, start page, return view and the conversation's top status. */
+.ah-sidebar-agent-row .ah-nav-background {
+  display: inline-grid;
+  place-items: center;
+  height: 14px;
+}
+.ah-sidebar-agent-row .ah-nav-background::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+}
+.ah-background-dot,
+.ah-status-background .ah-status-dot,
+.ah-sidebar-agent-row .ah-nav-background::before {
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  border: 1.5px solid var(--ah-accent);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle closest-side,
+    var(--ah-accent) 0 48%,
+    transparent 58%
+  );
+  animation: none;
+}
+.ah-agent-topline .ah-background-dot {
+  margin-inline-end: var(--ah-s2);
+}
 @media (max-width: 800px) {
   .ah-agent-topline {
     flex-wrap: nowrap;
