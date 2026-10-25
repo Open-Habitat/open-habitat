@@ -97,7 +97,7 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agent, "models.json"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	c := &ConversationController{home: home, cfg: transport.Config{Username: "synthetic"}, runtime: &core.PiRuntimeConfig{Node: "/usr/bin/node", Entry: entry}}
+	c := &ConversationController{home: home, cfg: transport.Config{Username: "synthetic"}, runtime: &core.PiRuntimeConfig{Node: nativeNodePath(t), Entry: entry}}
 	for _, tc := range []struct {
 		name, input, raw, retry, want string
 		calls                         int32

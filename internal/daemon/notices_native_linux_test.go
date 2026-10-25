@@ -136,7 +136,7 @@ func TestNativePiNoticeOneToolCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "fixture", "--model", "fake", "--thinking", "off", "--extension", extension}, home, cwd, []string{agentPath(home)}, owner, ws, "ws_example123")
+	p, err := launchPiRPCCommand(nativeNodePath(t), []string{cli, "--provider", "fixture", "--model", "fake", "--thinking", "off", "--extension", extension}, home, cwd, []string{agentPath(home)}, owner, ws, "ws_example123")
 	if err != nil {
 		t.Fatal(err)
 	}

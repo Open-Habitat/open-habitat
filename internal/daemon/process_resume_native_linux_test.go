@@ -134,7 +134,7 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	// The fixture runtime passes only cli.js; this launcher adds the product's
 	// extensions the way piArgs does for the installed runtime.
 	launcher := filepath.Join(h.root, "node")
-	script := fmt.Sprintf("#!/bin/sh\nshift\nexec /usr/bin/node %q --provider fixture --model fake --extension %q --extension %q \"$@\"\n", cli, core, companion)
+	script := fmt.Sprintf("#!/bin/sh\nshift\nexec %s %q --provider fixture --model fake --extension %q --extension %q \"$@\"\n", "'"+strings.ReplaceAll(nativeNodePath(t), "'", "'\"'\"'")+"'", cli, core, companion)
 	if err := os.WriteFile(launcher, []byte(script), 0700); err != nil {
 		t.Fatal(err)
 	}
