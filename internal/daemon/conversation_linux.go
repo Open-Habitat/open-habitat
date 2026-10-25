@@ -28,6 +28,12 @@ import (
 type ConversationController struct {
 	viewMu   sync.Mutex // serialize view offer idempotency observation and export
 	noticeMu sync.Mutex // serialize native notice idempotency observation and append
+	// Account editor offers this daemon published, newest last, so a retried
+	// key is answered rather than shown twice (editor_offers_linux.go).
+	editorOfferMu   sync.Mutex
+	editorOfferMemo []editorOffer
+	// codeServerOffered replaces the operator editor configuration in tests.
+	codeServerOffered func() bool
 
 	mu       sync.Mutex
 	sessions map[string]*conversation

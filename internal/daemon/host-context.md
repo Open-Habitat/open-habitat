@@ -95,6 +95,13 @@ conversation or in a new tab. The view is a frozen copy that runs sandboxed
 without network access, so inline or bundle its assets. You cannot open their
 browser, and a dev server is not something you can show them this way.
 
+When the person asks you to open a file in their editor, a file reference in
+your reply is usually enough. To leave a card they can press instead, run
+`open-habitat agent editor offer --current --path src/main.ts --line 42
+--idempotency-key UUID --json`; the press opens their editor at that line. It
+refuses with `editor_unavailable` when their chosen editor is not installed
+here; say so rather than retrying.
+
 ## Integrations
 
 The person connects accounts in Settings → Integrations. For mail, calendars,

@@ -107,6 +107,7 @@ var helpSpecs = []helpSpec{
 	{"agent view offer", "Offer a workspace HTML file, or a directory with --entry-file, as a frozen view the person opens in a side panel or own tab; publishes a card, never opens anything", "agent view offer --current --workspace ws_example123 --source report.html --idempotency-key 00000000-0000-4000-8000-000000000002 --json", []string{"--workspace", "--source", "--entry-file", "--title", "--conversation", "--current", "--idempotency-key", "--dry-run"}},
 	{"agent view list", "List the person's frozen views, newest first", "agent view list --json", []string{"--output"}},
 	{"agent view remove", "Remove one frozen view's export; open cards say it is gone", "agent view remove --view vabcdefghijklmnopqrstuvwxyz --dry-run --json", []string{"--view", "--dry-run"}},
+	{"agent editor offer", "Offer to show a workspace file, optionally at a line, in the person's Habitat editor; publishes a card the person presses, never opens anything; refuses when the person's editor is not installed", "agent editor offer --current --path cmd/main.go --line 42 --idempotency-key 00000000-0000-4000-8000-000000000003 --json", []string{"--workspace", "--path", "--line", "--conversation", "--current", "--idempotency-key", "--dry-run"}},
 	{"agent environment show", "Read own quota, capacity and daemon version", "agent environment show --json", nil},
 	{"agent workspace list", "Discover native workspaces", "agent workspace list --json", []string{"--output"}},
 	{"agent conversation show", "Read an explicit live record or verified inherited context", "agent conversation show --current --json", []string{"--current", "--conversation"}},
@@ -242,6 +243,10 @@ func helpFlag(name string) map[string]any {
 		v["description"] = "The .html file the view opens, relative to a --source directory; for a file it may only repeat the file's name"
 	case "--title":
 		v["description"] = "Card title shown to the person as plain text, 1–200 bytes; defaults to the source name"
+	case "--path":
+		v["description"] = "Workspace-relative path of a regular file in canonical form (no ./, .., // or trailing slash); a symlink must stay inside the workspace"
+	case "--line":
+		v["description"] = "Line to show, from 1; without it the editor opens the file at its start"
 	case "--view":
 		v["description"] = "Exact view_id from agent view list"
 	case "--workspace":
@@ -321,7 +326,7 @@ func helpFlag(name string) map[string]any {
 	case "--login":
 		v["description"] = "Optional tea login name that narrows the match; never selects a login whose HTTPS host:port, base path or username differs from Git's request"
 	case "--idempotency-key":
-		v["description"] = "Explicit UUID for notice/view-offer/control intent; spent message/control IDs are refused, never replayed; never use a new key to retry uncertain work"
+		v["description"] = "Explicit UUID for notice/view-offer/editor-offer/control intent; spent message/control IDs are refused, never replayed; never use a new key to retry uncertain work"
 	case "--output":
 		v["description"] = "Export result rows to a new FILE.jsonl (refuses overwrite); stdout reports path and count"
 	case "--component":

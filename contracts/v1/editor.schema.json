@@ -10,6 +10,20 @@
     {"$ref": "#/$defs/openResult"}
   ],
   "$defs": {
+    "offer": {
+      "description": "An agent's offer to show a workspace file, optionally at a line, in the person's editor. It arrives as a notice's editor in a conversation or as an editor.offered event for the account; the person's press opens it through POST /api/v1/editor/open or the browser editor, which check the path again. The path is agent text, shown as data; nothing says the person has seen the offer.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offer_id", "workspace_id", "path", "created_at"],
+      "properties": {
+        "offer_id": {"type": "string", "pattern": "^[0-9a-fA-F-]{36}$"},
+        "workspace_id": {"$ref": "common.schema.json#/$defs/workspaceId"},
+        "path": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^(?!/)(?!.*//)(?!(?:.*/)?\\.\\.?(?:/|$))(?!.*/$)[^\\\\\\u0000-\\u001f\\u007f]+$"},
+        "line": {"type": "integer", "minimum": 1, "maximum": 10000000},
+        "created_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+        "conversation_id": {"$ref": "common.schema.json#/$defs/agentId"}
+      }
+    },
     "status": {
       "description": "GET /api/v1/editor (also the result of the empty POST /api/v1/editor/stop): whether this person's daemon offers an editor and whether it runs. Reading never starts it.",
       "type": "object",

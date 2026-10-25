@@ -892,6 +892,17 @@ esac
 				w.Header().Set("Content-Type", "application/json")
 				fmt.Fprintf(w, `{"view_id":%q}`, id)
 				return
+			case "/fixture/editor-offer":
+				q := r.URL.Query()
+				line, _ := strconv.Atoi(q.Get("line"))
+				id, ok := conversationHandlers[0].Load().(*daemon.ConversationController).FixtureEditorOffer(q.Get("target"), q.Get("workspace"), q.Get("path"), line)
+				if !ok {
+					http.Error(w, "fixture failed", 400)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintf(w, `{"offer_id":%q}`, id)
+				return
 			case "/fixture/notice":
 				if !conversationHandlers[0].Load().(*daemon.ConversationController).FixtureNotice(r.URL.Query().Get("id"), r.URL.Query().Get("text")) {
 					http.Error(w, "fixture failed", 400)

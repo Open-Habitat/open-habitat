@@ -23,13 +23,21 @@ type agentNotice struct {
 	Timestamp   string `json:"timestamp"`
 	Text        string `json:"text"`
 	Persistence string `json:"persistence"`
-	// View is set when the notice offers an HTML view (ADR 0032).
-	View *viewSummary `json:"view,omitempty"`
+	// View is set when the notice offers an HTML view (ADR 0032), Editor when
+	// it offers to show a workspace file in the person's editor; never both.
+	View   *viewSummary `json:"view,omitempty"`
+	Editor *editorOffer `json:"editor,omitempty"`
+}
+
+// noticeOffer is what a notice may carry besides its text.
+type noticeOffer struct {
+	view   *viewSummary
+	editor *editorOffer
 }
 
 func validNotice(n agentNotice) bool {
 	t, e := time.Parse(time.RFC3339Nano, n.Timestamp)
-	return sessionIDPattern.MatchString(n.ID) && n.Origin == "agent" && e == nil && !t.IsZero() && utf8.ValidString(n.Text) && strings.TrimSpace(n.Text) != "" && len(n.Text) <= 4096 && (n.View == nil || validViewSummary(*n.View)) && (n.Persistence == "persisted" || n.Persistence == "not_persisted" || n.Persistence == "unknown")
+	return sessionIDPattern.MatchString(n.ID) && n.Origin == "agent" && e == nil && !t.IsZero() && utf8.ValidString(n.Text) && strings.TrimSpace(n.Text) != "" && len(n.Text) <= 4096 && (n.View == nil || validViewSummary(*n.View)) && (n.Editor == nil || n.View == nil && validEditorOffer(*n.Editor)) && (n.Persistence == "persisted" || n.Persistence == "not_persisted" || n.Persistence == "unknown")
 }
 func nativeNotice(e nativeEntry) (agentNotice, bool) {
 	var v struct {
@@ -171,7 +179,7 @@ func (c *ConversationController) agentNotices(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 400, "invalid_arguments")
 		return
 	}
-	n, status, code := c.createNotice(r.Context(), q, req.ID, req.Text, nil, req.DryRun)
+	n, status, code := c.createNotice(r.Context(), q, req.ID, req.Text, noticeOffer{}, req.DryRun)
 	if status != 0 {
 		snapshotError(w, status, code)
 		return
@@ -217,10 +225,10 @@ func (c *ConversationController) noticeTarget(q agentConversationQuery) (*conver
 	return s, live, source, notices, 0, ""
 }
 
-// createNotice appends one notice, optionally carrying a view offer, through
+// createNotice appends one notice, optionally carrying an offer, through
 // Pi's native writer. A nonzero status is a refusal with its code; nothing was
 // written then.
-func (c *ConversationController) createNotice(parent context.Context, q agentConversationQuery, key, text string, view *viewSummary, dry bool) (agentNotice, int, string) {
+func (c *ConversationController) createNotice(parent context.Context, q agentConversationQuery, key, text string, offer noticeOffer, dry bool) (agentNotice, int, string) {
 	c.noticeMu.Lock()
 	defer c.noticeMu.Unlock()
 	s, live, source, notices, status, code := c.noticeTarget(q)
@@ -230,7 +238,7 @@ func (c *ConversationController) createNotice(parent context.Context, q agentCon
 	id := strings.TrimPrefix(q.id, "pi:")
 	for _, n := range notices {
 		if n.ID == key {
-			if n.Text != text || !sameView(n.View, view) {
+			if n.Text != text || !sameView(n.View, offer.view) || !sameEditorOffer(n.Editor, offer.editor) {
 				return agentNotice{}, 409, "idempotency_conflict"
 			}
 			return n, 0, ""
@@ -239,7 +247,7 @@ func (c *ConversationController) createNotice(parent context.Context, q agentCon
 	if !live || s.cwd != source.cwd {
 		return agentNotice{}, 409, "conversation_not_running"
 	}
-	n := agentNotice{ID: key, Origin: "agent", Timestamp: time.Now().UTC().Format(time.RFC3339Nano), Text: text, Persistence: "unknown", View: view}
+	n := agentNotice{ID: key, Origin: "agent", Timestamp: time.Now().UTC().Format(time.RFC3339Nano), Text: text, Persistence: "unknown", View: offer.view, Editor: offer.editor}
 	if dry {
 		return n, 0, ""
 	}
@@ -264,7 +272,7 @@ func (c *ConversationController) createNotice(parent context.Context, q agentCon
 	}
 	if readErr == nil {
 		for _, found := range after {
-			if found.ID == n.ID && found.Text == n.Text && sameView(found.View, n.View) {
+			if found.ID == n.ID && found.Text == n.Text && sameView(found.View, n.View) && sameEditorOffer(found.Editor, n.Editor) {
 				n = found
 				break
 			}

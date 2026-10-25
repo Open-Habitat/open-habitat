@@ -832,3 +832,20 @@ warnings say the offer was published, never that anyone saw it, and name a
 nonpersistent conversation card (§§10, 12). Lists export to a new JSONL file
 (§13); help and the agent skill carry the workflow (§§14, 16). Daemon
 `TestViewOffer*`/`TestViewExport*` and gateway `TestView*` cover the boundary.
+
+## Agent editor offer
+
+`agent editor offer --path <workspace path> [--line N] [--workspace <ws_>]
+[--conversation pi:UUID | --current] --idempotency-key <UUID> [--dry-run]` goes
+to the own-UID agent listener (§§1, 6–7). Flags are strict; the workspace is
+explicit or the checked launch context's, the path is workspace-relative and
+canonical, and the line is a plain positive integer (§§4, 9). The daemon refuses
+traversal, symlinks, directories and other workspaces with fixed codes, and says
+`editor_unavailable` when the person's chosen editor is not installed rather than
+publishing a card nobody can open (§10). The same key and request recover the
+same offer without a second card; a different request is `idempotency_conflict`
+(§11). `--dry-run` checks everything and publishes nothing. The reply and
+warnings say the offer was published, never that anyone saw it, and that an
+account offer lasts only in browsers open now (§§10, 12). Help and the agent
+skill carry the workflow (§§14, 16). Daemon `TestEditorOffer*` and CLI
+`TestEditorOfferArguments*` cover the boundary.

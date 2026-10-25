@@ -67,6 +67,24 @@ reply says the offer was published, not that anyone saw it; an installation
 without a view origin shows no cards. Reuse a key only for the same offer.
 Views stay in `~/.local/state/open-habitat/views/` until removed.
 
+To show the person a file at a line in their Habitat editor when they ask
+(Habitat's `code <path>`; you cannot open or drive the editor yourself):
+
+    open-habitat agent editor offer --current --path src/main.ts --line 42 --idempotency-key UUID --json
+    open-habitat agent editor offer --workspace ws_ID --path src/main.ts --idempotency-key UUID --json
+
+The person sees a card and one press opens the editor beside the conversation at
+that file and line. With `--current` the workspace is the conversation's; the
+path is workspace-relative in canonical form and must be a regular file in that
+workspace. The command refuses with `editor_unavailable` when the person chose
+VS Code and this server has no code-server; tell them so instead of retrying.
+Without `--current` or `--conversation pi:UUID` the offer is an account card for
+SSH or tmux workers: only browsers open at that moment show it, and in another
+workspace the card first takes the person there. In a conversation, a plain
+`src/main.ts:42` in your reply is already a link; the offer is for when you want
+a card the person can press later, or have no conversation. Reuse a key only for
+the same offer.
+
 To inspect models and change defaults for future conversations:
 
     open-habitat agent model list --json

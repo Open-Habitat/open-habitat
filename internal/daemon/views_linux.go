@@ -770,7 +770,7 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 	if q.id != "" {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
-		n, status, code := c.createNotice(ctx, q, req.Key, summary.Title, &summary, false)
+		n, status, code := c.createNotice(ctx, q, req.Key, summary.Title, noticeOffer{view: &summary}, false)
 		if status != 0 {
 			if existing == nil {
 				_ = removeView(c.viewCfg().Home, summary.ID)

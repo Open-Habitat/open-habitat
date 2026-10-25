@@ -138,6 +138,7 @@ checks = {
     "views.json": "view.schema.json",
     "view-handoff.json": "view.schema.json",
     "notice-view.json": "notice.schema.json",
+    "notice-editor.json": "notice.schema.json",
     "composer-start-page.json": "composer.schema.json",
     "composer-commands.json": "composer.schema.json",
     "composer-start-page-unavailable.json": "composer.schema.json",
@@ -218,6 +219,14 @@ for entry in ["../index.html", "/index.html", ".hidden/index.html", "site/.x.htm
 must_reject("view.schema.json", {"schema_version": 1, "views": [{**view, "path": "/home/x/report.html"}]})
 must_reject("view.schema.json", {"schema_version": 1, "url": "http://oh-view-a.example.invalid/_open-habitat/handoff?token=" + "A" * 43})
 must_reject("view.schema.json", {"schema_version": 1, "url": "https://oh-view-a.example.invalid/index.html"})
+
+# An editor offer names a canonical workspace-relative file, never a path
+# outside it, and a notice carries at most one kind of offer.
+editor_notice = json.loads((BASE / "examples" / "notice-editor.json").read_text())
+for bad in ["/etc/passwd", "../x.go", "a/../x.go", "./x.go", "a//b.go", "a/./b.go", "a/", ".", "..", "a\\b.go", "a\nb.go", ""]:
+    must_reject("notice.schema.json", {**editor_notice, "notice": {**editor_notice["notice"], "editor": {**editor_notice["notice"]["editor"], "path": bad}}})
+must_reject("notice.schema.json", {**editor_notice, "notice": {**editor_notice["notice"], "editor": {**editor_notice["notice"]["editor"], "line": 0}}})
+must_reject("notice.schema.json", {**editor_notice, "notice": {**editor_notice["notice"], "view": view}})
 
 # A deletion request names an entry, never a path.
 must_reject("workspace-deletion.schema.json", {"action": "trash_restore", "entry": "../x"})

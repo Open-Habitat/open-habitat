@@ -82,6 +82,10 @@ func agentHandlerWithLogins(cfg transport.Config, controller *ConversationContro
 				controller.agentViews(w, r)
 				return
 			}
+			if r.URL.Path == AgentEditorOffersPath {
+				controller.agentEditorOffers(w, r)
+				return
+			}
 			if handler, ok := routes[r.URL.Path]; ok {
 				extendAgentWorkspaceReply(w)
 				handler.ServeHTTP(w, r)
