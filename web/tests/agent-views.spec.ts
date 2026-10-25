@@ -89,9 +89,11 @@ test("a conversation offer opens sandboxed in the panel, isolated from the app s
   }
 
   await expect(
+    // The agent's own content is not Habitat's markup.
     (
       await new AxeBuilder({ page })
         .include('[data-testid="view-panel"]')
+        .exclude('[data-testid="view-frame"]')
         .analyze()
     ).violations,
   ).toEqual([]);

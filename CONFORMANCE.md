@@ -815,3 +815,20 @@ how the two admission sources relate (§16). `TestAdminAccessCommands` runs the
 commands through the real control handler, including dry runs that write
 nothing, refusals, the uncertain exit and strict flags;
 `TestAccessWriteClassification` pins which broker replies are uncertain.
+
+## Agent view batch
+
+`agent view offer --workspace <ws_> --source <path> [--entry-file <html>]
+[--title <text>] [--conversation pi:UUID | --current] --idempotency-key <UUID>
+[--dry-run]`, `agent view list [--output FILE.jsonl]` and `agent view remove
+--view <id> [--dry-run]` go to the own-UID agent listener (§§1, 6–7). Flags are
+strict per verb, the workspace and view are explicit IDs and the source is
+workspace-relative; the daemon refuses traversal, symlinks and special files
+with fixed codes (§§4, 9–10). An offer with the same key and request recovers
+the same view without a second export or notice, and a different request is
+`idempotency_conflict` (§11). `--dry-run` reports what would be exported
+(files, bytes, skipped hidden entries) and writes nothing. The reply and
+warnings say the offer was published, never that anyone saw it, and name a
+nonpersistent conversation card (§§10, 12). Lists export to a new JSONL file
+(§13); help and the agent skill carry the workflow (§§14, 16). Daemon
+`TestViewOffer*`/`TestViewExport*` and gateway `TestView*` cover the boundary.
