@@ -1,12 +1,15 @@
 ---
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-25
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 originating_run: 01m5pxrv6n5tjszbnwkmy321fg
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
+collision: [web/e2e/browser-conversation]
 ---
 
 # Flaky browser spec: title dots route handler reads a disposed snapshot response
