@@ -12,6 +12,9 @@ web/storybook-static/
 web/test-results/
 web/playwright-report/
 *.test
+# `go build ./test/browser-host` from the root writes here; the test harness
+# and lab build to .cache/browser-host instead.
+/browser-host
 
 # Design packages are built under .cache/ and copied to the seat; neither the
 # package nor its zip is tracked.

@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-25
 type: chore
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: observed by a worker
@@ -11,6 +11,7 @@ originating_run: 01m5qg5nb45c22m8d90ggtd546
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-10-25
 ---
 
 # A 22 MB browser-host build output is tracked at the repository root
