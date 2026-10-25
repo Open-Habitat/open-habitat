@@ -34,3 +34,8 @@ fact, add it from Pi's native auth state; do not add a separate store.
 - [ ] OpenAI row reflects only OpenAI credentials; regression test with a
   Claude-only account.
 
+## Comments
+
+### 2026-10-25T17:23:00Z · @jari
+
+Jari 2026-10-25 (screenshot ~/attachments/ea8b665e-5c87-4570-b16b-4f9c3b5e08e7, after signing in to OpenAI): the row speaks of Pi ('Pi:n kirjautuminen', 'Pi-tunnukset käytettävissä', 'Kirjaudu Pi:hin uudelleen'); it should speak of the OpenAI / ChatGPT (Codex) sign-in, as the Claude row speaks of the Claude subscription. Pi is the tool, not the account the person signs in to.
