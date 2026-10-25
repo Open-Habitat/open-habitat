@@ -18,7 +18,9 @@ holds without either scope.
   before, and already reported the failure.
 - `giteafake.Account.Scopes` adds a scope model to the synthetic Gitea: nil
   means the connector's pair. `/user` needs `read:user`; the repository
-  reads and Git need `read:repository`; a write scope covers its read scope.
+  list `/user/repos` needs both (Gitea 1.25.4 groups it under `/user`); the
+  other repository reads and Git need `read:repository`; a write scope covers
+  its read scope.
   `SetScopes` changes them at run time.
 - The connect/replace form's `insufficient_scope` text now names both
   scopes instead of only user data.
@@ -54,6 +56,19 @@ holds without either scope.
   `/root/oh-gitea-accept.Ryx25bnV/tokens/scope-{u,r,ur,uw}`. The teardown in
   `issues/gitea-readonly-acceptance/result.md` removes them with the rest of
   the server.
+
+## Review
+
+Independent `/llm-review`, at the credential-path level. The finder was GPT-6
+Astra (one call). It found no defects. It noted from Gitea 1.25.4's route
+source that `/user/repos` also needs `read:user`. The connector reads
+`/user` first, so this hid no bypass, but the fake now matches. A focused
+verifier call (Claude Fable 5.1) asked whether any connect, replace, check,
+repair or disconnect route writes a PAT, or answers `api: ok`, without
+`Verify` in the same request. Its answer was "no route", with file:line
+evidence for each path. The daemon package, the integrations, CLI and
+gateway packages, and `scripts/test-repo-catalog-uids.sh` (two kernel UIDs)
+all pass.
 
 ## Decisions for later review
 

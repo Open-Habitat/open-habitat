@@ -32,8 +32,8 @@ type Account struct {
 	// Scopes are the token's scopes, as Gitea's scope picker sets them. nil
 	// means the read-only connector's own pair, read:user and
 	// read:repository. A read the scopes do not cover answers 403, as Gitea
-	// does: /user needs read:user, the repository reads and Git need
-	// read:repository. A write scope implies its read scope.
+	// does: /user needs read:user, /user/repos both, the other repository
+	// reads and Git read:repository. A write scope implies its read scope.
 	Scopes []string
 }
 
@@ -371,8 +371,9 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	// Gitea 1.25.4 groups /user/repos under /user too, so it needs both.
 	scope := "repository"
-	if r.URL.Path == "/api/v1/user" {
+	if r.URL.Path == "/api/v1/user" || (r.URL.Path == "/api/v1/user/repos" && !a.has("user")) {
 		scope = "user"
 	}
 	if !a.has(scope) {
