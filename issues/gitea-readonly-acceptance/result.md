@@ -231,3 +231,29 @@ connected to it.
 `systemctl stop oh-gitea-accept; userdel oh-gitea-accept; rm -r /var/lib/oh-gitea-accept /opt/oh-gitea-accept /root/oh-gitea-accept.Ryx25bnV; rm /usr/local/share/ca-certificates/oh-gitea-accept.crt; update-ca-certificates --fresh; systemctl restart open-habitat-daemon@maintainer.service`.
 The transient unit does not survive a reboot. After a reboot, start it again
 with the `systemd-run` line from `setup.sh` in that directory.
+
+## Real provider (Alder Gitea via Birch)
+
+2026-10-25, run `01m5s82fmtj4a48ee0c0ab34tc`: **blocked before provider
+qualification**, not an additional passing proof level. Birch runs installed
+`0.1.0-pilot.11`, revision `8019de3c4f98c6e9a696b703efca339adc2d47a2`,
+with tea 0.16.0. The real Habitat UID is `maintainer` (32000).
+
+The installed daemon and native tea both already show Jari's owned PAT connection
+for `jari` at `https://alder.example-tailnet.ts.net`. The adapter permits only one
+connection per canonical base/account. A second test PAT would require replacing
+that connection; manual duplicate entries are ambiguous. The brief forbids
+reading/replacing/removing his secret and explicitly requires escalation if a
+separate test connection is impossible. No mutation was attempted.
+
+Before/after secret-free daemon and tea projections compare equal, as do tea
+and Git config ownership, mode, size, inode and modification/change timestamps.
+No test tokens or test repository were created; the final server query found
+zero `habitat-test-%` tokens for account UID 1. Jari's connection remains intact.
+
+TLS/CA, server version, own/org/collaborator completeness, clone/fetch,
+rotation, revocation and disconnect/clone retention were **not proved** in this
+attempt. Existing acceptance checkboxes and this issue's `testing` status stay
+unchanged. The product verdict is still Jari's. The blocking evidence, exact
+versions, recovered tool errors and proposed next authorization are recorded in
+[gitea-push-permission/result.md](../gitea-push-permission/result.md).
