@@ -163,6 +163,15 @@ foreign fetch check that accepted any non-200. No verifier was called because
 each finding was settled by reading the code and rerunning the test. Production
 code did not change, so no credential or daemon code needed review.
 
+## Gate
+
+The clean gate (`./scripts/ci-local.sh --clean --json`) on tree `6ad204ed`
+passed Go, contracts, web checks and packaging. The browser phase had one
+failure out of 377: `browser-conversation.spec.ts:2036`, a spec this change
+does not touch, while the host load average was about 9. Run alone, that spec
+passed 4 times out of 4. The recurrence is filed as `massively-teeny-education`.
+No gate receipt was written.
+
 ## Decisions for later review
 
 - **Upstream binary instead of a container.** The test server has no container
