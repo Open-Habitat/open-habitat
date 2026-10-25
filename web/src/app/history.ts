@@ -4,12 +4,14 @@ import common from "../../../contracts/v1/common.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
 import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
+import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { AgentNotice } from "../components/AgentNotice";
 import type { BashFailure } from "./bashFailure";
 
 const ajv = addFormats(new Ajv({ strict: false }));
 ajv.addSchema(processEventSchema);
 ajv.addSchema(noticeSchema);
+ajv.addSchema(viewSchema);
 ajv.addSchema(common);
 ajv.addSchema(historySchema);
 const validate = ajv.getSchema(historySchema.$id);

@@ -114,6 +114,7 @@ import {
   unavailable,
 } from "./store";
 import { TrashNotice } from "./TrashNotice";
+import { ViewHost } from "./ViewHost";
 import type { DeletionOutcome } from "./WorkspaceDeletion";
 import { WorkspaceEditor } from "./WorkspaceEditor";
 import { WorkspacePage } from "./WorkspacePage";
@@ -2657,21 +2658,31 @@ export function App() {
                   tone="warning"
                 />
               ) : null}
-              {editorRoute ? (
-                <WorkspaceEditor
-                  workspaceId={editorWorkspaceId}
-                  identity={identity}
-                  csrf={
-                    phase === "authenticated" || phase === "stale"
-                      ? csrf
-                      : undefined
-                  }
-                >
-                  {main}
-                </WorkspaceEditor>
-              ) : (
-                main
-              )}
+              <ViewHost
+                key={identity ?? ""}
+                csrf={
+                  phase === "authenticated" || phase === "stale"
+                    ? csrf
+                    : undefined
+                }
+                store={conversationStore}
+              >
+                {editorRoute ? (
+                  <WorkspaceEditor
+                    workspaceId={editorWorkspaceId}
+                    identity={identity}
+                    csrf={
+                      phase === "authenticated" || phase === "stale"
+                        ? csrf
+                        : undefined
+                    }
+                  >
+                    {main}
+                  </WorkspaceEditor>
+                ) : (
+                  main
+                )}
+              </ViewHost>
             </div>
           }
         />

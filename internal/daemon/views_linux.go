@@ -621,7 +621,7 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 			snapshotError(w, 400, "invalid_arguments")
 			return
 		}
-		if err := removeView(c.cfg.Home, req.ID); err != nil {
+		if err := removeView(c.viewCfg().Home, req.ID); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				snapshotError(w, 404, "view_not_found")
 			} else {
@@ -637,7 +637,7 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 			snapshotError(w, 400, "invalid_arguments")
 			return
 		}
-		list, err := listViews(c.cfg.Home)
+		list, err := listViews(c.viewCfg().Home)
 		if err != nil {
 			snapshotError(w, 503, "view_store_unavailable")
 			return
@@ -667,7 +667,7 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 	}
 	c.viewMu.Lock()
 	defer c.viewMu.Unlock()
-	existing, err := findViewByKey(c.cfg.Home, req.Key)
+	existing, err := findViewByKey(c.viewCfg().Home, req.Key)
 	if err != nil {
 		snapshotError(w, 503, "view_store_unavailable")
 		return
@@ -695,7 +695,7 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 	if existing != nil {
 		summary, skipped = existing.viewSummary, existing.SkippedHidden
 	} else {
-		target, _, status, code := composerTarget(c.cfg, req.WorkspaceID)
+		target, _, status, code := composerTarget(c.viewCfg(), req.WorkspaceID)
 		if target == nil {
 			snapshotError(w, status, code)
 			return
@@ -728,12 +728,12 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 			snapshotError(w, 503, "view_store_unavailable")
 			return
 		}
-		if err := exportView(c.cfg.Home, root, req, plan, summary); err != nil {
+		if err := exportView(c.viewCfg().Home, root, req, plan, summary); err != nil {
 			viewErrorReply(w, err)
 			return
 		}
 		if !still() {
-			_ = removeView(c.cfg.Home, summary.ID)
+			_ = removeView(c.viewCfg().Home, summary.ID)
 			snapshotError(w, 409, "view_source_changed")
 			return
 		}
@@ -749,7 +749,7 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 		n, status, code := c.createNotice(ctx, q, req.Key, summary.Title, &summary, false)
 		if status != 0 {
 			if existing == nil {
-				_ = removeView(c.cfg.Home, summary.ID)
+				_ = removeView(c.viewCfg().Home, summary.ID)
 			}
 			snapshotError(w, status, code)
 			return
@@ -760,6 +760,78 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 	}
 	historyJSON(w, map[string]any{"schema_version": 1, "dry_run": false, "reused": existing != nil, "view": summary, "skipped_hidden": skipped, "offer": offer})
 }
+
+// viewCfg is the person's configuration with the home the controller reads;
+// the browser host gives its controller a disposable home.
+func (c *ConversationController) viewCfg() transport.Config {
+	cfg := c.cfg
+	if c.home != "" {
+		cfg.Home = c.home
+	}
+	return cfg
+}
+
+// FixtureView exports a synthetic multi-file site from the controller's home
+// through the real plan and export, and offers it to a conversation as a
+// transient notice or to the account. It is not mounted by the product and is
+// unavailable outside the browser-host controller.
+func (c *ConversationController) FixtureView(target string) (string, bool) {
+	if !c.fixture || c.journal == nil || target != "account" && !viewConversationPattern.MatchString(target) {
+		return "", false
+	}
+	home := c.viewCfg().Home
+	site := filepath.Join(home, "src", "view-fixture", "site")
+	if os.MkdirAll(filepath.Join(site, "assets"), 0700) != nil {
+		return "", false
+	}
+	for name, text := range map[string]string{
+		"index.html":       viewFixturePage,
+		"assets/app.js":    viewFixtureScript,
+		"assets/style.css": "body{color:rgb(1, 2, 3)}\n",
+		".secret":          "hidden",
+	} {
+		if os.WriteFile(filepath.Join(site, name), []byte(text), 0600) != nil {
+			return "", false
+		}
+	}
+	root, err := unix.Open(filepath.Join(home, "src", "view-fixture"), unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return "", false
+	}
+	defer unix.Close(root)
+	key, _ := uuid()
+	req := viewRequest{Key: key, WorkspaceID: "ws_viewfixture", Path: "site", Entry: "index.html"}
+	plan, err := planView(root, req)
+	if err != nil {
+		return "", false
+	}
+	summary := viewSummary{Title: "Synteettinen näkymä", Entry: plan.entry, Files: len(plan.files), Bytes: plan.bytes, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano)}
+	if target != "account" {
+		summary.ConversationID = target
+	}
+	if summary.ID, err = newViewID(); err != nil || exportView(home, root, req, plan, summary) != nil {
+		return "", false
+	}
+	if target == "account" {
+		c.journal.appendEvent("view.offered", "", map[string]any{"view": summary})
+		return summary.ID, true
+	}
+	n := agentNotice{ID: key, Origin: "agent", Timestamp: time.Now().UTC().Format(time.RFC3339Nano), Text: summary.Title, Persistence: "not_persisted", View: &summary}
+	c.journal.appendEvent("notice.created", target, map[string]any{"notice": n})
+	return summary.ID, true
+}
+
+// The fixture page reports what its sandbox allowed as data attributes.
+const viewFixturePage = `<!doctype html><html><head><meta charset="utf-8"><title>Fixture</title><link rel="stylesheet" href="assets/style.css"></head><body data-script="no"><h1 id="heading">Synteettinen näkymä</h1><script src="assets/app.js"></script></body></html>
+`
+
+const viewFixtureScript = `document.body.dataset.script = "yes";
+try { document.body.dataset.cookie = "readable:" + document.cookie; } catch (e) { document.body.dataset.cookie = "denied"; }
+try { document.body.dataset.parent = String(window.parent.location.href); } catch (e) { document.body.dataset.parent = "denied"; }
+try { localStorage.setItem("x", "1"); document.body.dataset.storage = "yes"; } catch (e) { document.body.dataset.storage = "denied"; }
+document.body.dataset.style = getComputedStyle(document.body).color;
+fetch("assets/style.css").then(function () { document.body.dataset.fetch = "allowed"; }, function () { document.body.dataset.fetch = "denied"; });
+`
 
 func viewErrorReply(w http.ResponseWriter, err error) {
 	var v viewError

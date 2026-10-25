@@ -13,7 +13,6 @@ import {
   WaitingMessage,
   WorkingProgress,
 } from "../components";
-import { AgentNoticeCard } from "../components/AgentNotice";
 import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
@@ -82,6 +81,7 @@ import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
 import { isReadingIntro, useReadingPositionLayout } from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
+import { NoticeEntry } from "./ViewHost";
 import {
   EditorHeaderControls,
   useEditorActivity,
@@ -1525,7 +1525,7 @@ function BrowserConversationContent({
               </div>
             ) : null}
             {transientNotices.map((notice) => (
-              <AgentNoticeCard key={notice.notice_id} notice={notice} />
+              <NoticeEntry key={notice.notice_id} notice={notice} />
             ))}
             {storagePressure.full ? null : (
               <UnpresentedEvents events={events} liveEvents={live?.fragments} />

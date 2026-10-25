@@ -1,0 +1,188 @@
+/* Agent HTML views (ADR 0032): the offer card, the right-hand panel beside
+   the conversation and the account tray. Shared header and strip styles come
+   from EditorSplit.css. */
+.ah-view-offer {
+  max-width: min(var(--ah-measure), 100%);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ah-s3);
+  padding: var(--ah-s4);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+}
+.ah-view-offer-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--ah-accent-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+  font: var(--ah-size-meta) var(--ah-mono);
+}
+.ah-view-offer-body {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: var(--ah-s1);
+}
+.ah-view-offer-label,
+.ah-view-offer-meta,
+.ah-view-offer-status {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-view-offer-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ah-view-offer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+  margin-top: var(--ah-s2);
+}
+.ah-view-offer > button {
+  flex: none;
+}
+
+/* The split: the conversation keeps the left, the panel takes the right. */
+.ah-view-split {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+.ah-view-conversation {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.ah-view-conversation > * {
+  flex: 1;
+  min-height: 0;
+}
+.ah-view-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 var(--ah-view-width);
+  width: var(--ah-view-width);
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--ah-line);
+  background: var(--ah-surface);
+}
+.ah-view-expanded > .ah-view-conversation {
+  display: none;
+}
+.ah-view-expanded > .ah-view-pane {
+  flex: 1;
+  width: auto;
+}
+.ah-view-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ah-view-title:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-accent);
+  outline-offset: 2px;
+}
+.ah-view-frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.ah-view-frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--ah-content-canvas);
+}
+.ah-view-frame-status {
+  margin: 0;
+  padding: var(--ah-s6);
+  color: var(--ah-muted);
+}
+.ah-view-note {
+  margin: 0;
+  padding: var(--ah-s2) var(--ah-s4);
+  border-top: 1px solid var(--ah-line);
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-view-divider {
+  flex: none;
+  width: 7px;
+  margin-inline: -3px;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+.ah-view-divider:hover,
+.ah-view-dragging .ah-view-divider {
+  background: linear-gradient(
+    to right,
+    transparent 2px,
+    var(--ah-accent-line) 2px,
+    var(--ah-accent-line) 5px,
+    transparent 5px
+  );
+}
+.ah-view-divider:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-accent);
+  outline-offset: 0;
+}
+/* A frame takes every pointer event over it; while the divider is dragged
+   the content must not swallow the move. */
+.ah-view-dragging iframe {
+  pointer-events: none;
+}
+.ah-view-dragging {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.ah-view-tray {
+  position: fixed;
+  inset: auto var(--ah-s4) var(--ah-s4) auto;
+  z-index: 30;
+  display: grid;
+  gap: var(--ah-s2);
+  width: min(26rem, calc(100vw - 2 * var(--ah-s4)));
+  max-height: 60vh;
+  overflow: auto;
+}
+.ah-view-tray .ah-view-offer {
+  max-width: none;
+  background: var(--ah-surface);
+  box-shadow: var(--ah-shadow-float);
+}
+
+@media (max-width: 800px) {
+  /* A phone is not a small desktop: the panel covers the conversation and
+     Close returns to it. */
+  .ah-view-open > .ah-view-pane {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    width: auto;
+    border-left: 0;
+  }
+  .ah-view-open > .ah-view-conversation {
+    visibility: hidden;
+  }
+  .ah-view-open > .ah-view-divider,
+  .ah-view-open > .ah-editor-strip,
+  .ah-view-open [data-testid="expand-view"] {
+    display: none;
+  }
+}

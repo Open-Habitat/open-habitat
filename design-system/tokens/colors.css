@@ -19,6 +19,9 @@
   --ah-bg: #f6f7f8;
   --ah-surface: #ffffff;
   --ah-surface-2: #fbfcfd;
+  /* Agent HTML views draw their own page on a browser tab's canvas, in both
+     themes, so content that assumes a white page stays legible. */
+  --ah-content-canvas: #ffffff;
   --ah-rail: #f1f3f5;
   --ah-line: #e2e6e9;
   --ah-line-soft: #eef0f3;

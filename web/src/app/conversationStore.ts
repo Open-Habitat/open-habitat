@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { AgentNotice } from "../components/AgentNotice";
+import type { ViewSummary } from "../components/ViewOffer";
 import { readStartPage, type StartPage } from "./composerReads";
 import {
   applyTurnEvent,
@@ -93,6 +94,14 @@ export class ConversationStore {
     attention: new Map(),
   };
   private metaListeners = new Set<() => void>();
+  private viewListeners = new Set<(view: ViewSummary) => void>();
+  /** Account view offers (ADR 0032) arrive as user-scoped events. */
+  onViewOffered(listener: (view: ViewSummary) => void): () => void {
+    this.viewListeners.add(listener);
+    return () => {
+      this.viewListeners.delete(listener);
+    };
+  }
   private attentionKeys = new Map<string, string>();
   private visibleId?: string;
   setVisible = (id?: string) => {
@@ -688,6 +697,12 @@ export class ConversationStore {
   }
   routeEvent(event: ConversationEvent, activeId?: string) {
     if (this.disposed) return;
+    if (event.kind === "view.offered" && !event.resource.agent_id) {
+      const view = event.payload.view as ViewSummary;
+      this.viewListeners.forEach((listener) => {
+        listener(view);
+      });
+    }
     if (
       event.kind === "history.entry" &&
       event.resource.agent_id &&

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ControlButton } from "./ControlElements";
+import type { ViewSummary } from "./ViewOffer";
 
 export type AgentNotice = {
   notice_id: string;
@@ -7,6 +8,8 @@ export type AgentNotice = {
   timestamp: string;
   text: string;
   persistence: "persisted" | "not_persisted" | "unknown";
+  /** Set when the notice offers an HTML view (ADR 0032). */
+  view?: ViewSummary;
 };
 
 // Agent text is data, not markup, a link, or a system instruction.

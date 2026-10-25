@@ -193,6 +193,9 @@ func main() {
 	// names, with a stand-in code-server unless BROWSER_HOST_CODE_SERVER names
 	// a real one.
 	editorMode := os.Getenv("BROWSER_HOST_EDITOR") == "1"
+	// Views mode adds the per-view origin of agent HTML views (ADR 0032) on
+	// the same sibling-host domain.
+	viewsMode := os.Getenv("BROWSER_HOST_VIEWS") == "1"
 	// Ending the host stops a real code-server's process group.
 	editorCtx, editorStop := context.WithCancel(context.Background())
 	defer func() {
@@ -570,6 +573,10 @@ esac
 			}
 			current.Load().(*daemon.ConversationController).FixtureEvents().ServeHTTP(w, r)
 		}))
+		if viewsMode {
+			mux.Handle(daemon.ViewsPath, daemon.ViewsHandler(fixtureWorkspaceCfg, trusted))
+			mux.Handle(daemon.ViewExportPrefix, daemon.ViewExportHandler(fixtureWorkspaceCfg, trusted))
+		}
 		if editorMode {
 			editorDir := filepath.Join(tmp, "editor-"+filepath.Base(home))
 			daemon.MountEditorFixture(editorCtx, mux, fixtureWorkspaceCfg, trusted, editorDir, os.Getenv("BROWSER_HOST_CODE_SERVER"), startFakeEditor, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username))
@@ -627,8 +634,8 @@ esac
 		log.Fatal(e)
 	}
 	origin := "https://" + ts.Listener.Addr().String()
-	editorOrigin := ""
-	if editorMode {
+	editorOrigin, viewOrigin := "", ""
+	if editorMode || viewsMode {
 		// Same-site sibling hosts, as the installation's app and editor
 		// hosts are; browsers resolve *.localhost to the loopback listener.
 		domain := "oh.localhost"
@@ -636,7 +643,12 @@ esac
 			domain = d // for browsers that resolve *.localhost differently
 		}
 		origin = "https://app." + domain + ":" + strconv.Itoa(port)
-		editorOrigin = "https://oh-code-*." + domain
+		if editorMode {
+			editorOrigin = "https://oh-code-*." + domain
+		}
+		if viewsMode {
+			viewOrigin = "https://oh-view-*." + domain
+		}
 	}
 	fixtureProvider := &provider{origin: origin}
 	adminPath := filepath.Join(tmp, "administration.json")
@@ -654,7 +666,7 @@ esac
 		if n := release.Load(); n > 0 {
 			version += "." + strconv.Itoa(int(n))
 		}
-		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, EditorOrigin: editorOrigin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: version, Commit: strings.Repeat(strconv.Itoa(int(release.Load())%10), 40), Provider: fixtureProvider, Sink: sink{&scenario, planTargets, seedTargets, piStateFile, &seedFail}, Broker: broker, AdminFile: adminPath, SiteKeyFile: filepath.Join(tmp, "site-ai-key.json"), SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
+		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, EditorOrigin: editorOrigin, ViewOrigin: viewOrigin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: version, Commit: strings.Repeat(strconv.Itoa(int(release.Load())%10), 40), Provider: fixtureProvider, Sink: sink{&scenario, planTargets, seedTargets, piStateFile, &seedFail}, Broker: broker, AdminFile: adminPath, SiteKeyFile: filepath.Join(tmp, "site-ai-key.json"), SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
 		}, SnapshotPeerUID: func(c *net.UnixConn) int { return peers[c.RemoteAddr().String()] }})
 		if err != nil {
@@ -870,6 +882,15 @@ esac
 					return
 				}
 				w.WriteHeader(204)
+				return
+			case "/fixture/view":
+				id, ok := conversationHandlers[0].Load().(*daemon.ConversationController).FixtureView(r.URL.Query().Get("target"))
+				if !ok {
+					http.Error(w, "fixture failed", 400)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintf(w, `{"view_id":%q}`, id)
 				return
 			case "/fixture/notice":
 				if !conversationHandlers[0].Load().(*daemon.ConversationController).FixtureNotice(r.URL.Query().Get("id"), r.URL.Query().Get("text")) {

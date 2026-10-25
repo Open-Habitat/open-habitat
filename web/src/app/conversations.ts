@@ -7,6 +7,7 @@ import heldSchema from "../../../contracts/v1/pi-held.schema.json";
 import startupChoiceSchema from "../../../contracts/v1/pi-startup-choice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import recapSchema from "../../../contracts/v1/recap.schema.json";
+import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { PiProvider } from "../components/ModelPicker";
 import { validBashReply, validBashStatus } from "./composerContract";
 import {
@@ -32,6 +33,7 @@ const recapValidator = addFormats(new Ajv({ strict: false }));
 recapValidator.addSchema(processEventSchema);
 recapValidator.addSchema(common);
 recapValidator.addSchema(noticeSchema);
+recapValidator.addSchema(viewSchema);
 recapValidator.addSchema(historySchema);
 recapValidator.addSchema(recapSchema);
 
