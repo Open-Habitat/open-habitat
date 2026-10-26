@@ -12,19 +12,40 @@
       "preserved": false,
       "branch": "",
       "worktree": "",
-      "source_branch": "main"
+      "source_branch": "main",
+      "harness": "pi",
+      "awaiting_input": false,
+      "profile": "example-profile",
+      "brief": "Update the README examples."
     }
   ],
   "transcripts": [
     {
       "node_id": "n-0001",
+      "harness": "pi",
       "availability": "available",
       "truncated": false,
-      "messages": [
+      "entries": [
         {
-          "key": "fixture:one",
+          "entry_key": "fixture-one",
           "kind": "assistant",
-          "text": "Updated the examples."
+          "content": {
+            "media_type": "text/plain",
+            "text": "",
+            "complete": true
+          },
+          "blocks": [
+            {
+              "type": "text",
+              "text": "Updated the examples."
+            },
+            {
+              "type": "toolCall",
+              "tool_call_id": "call-1",
+              "tool_name": "bash",
+              "text": "{\"command\":\"npm test\"}"
+            }
+          ]
         }
       ]
     }

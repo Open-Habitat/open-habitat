@@ -11,7 +11,7 @@
     "recap": {
       "oneOf": [
         { "type": "null" },
-        { "$ref": "history.schema.json#/$defs/historyPage/properties/entries/items/properties/recap" }
+        { "$ref": "history.schema.json#/$defs/entry/properties/recap" }
       ]
     }
   }

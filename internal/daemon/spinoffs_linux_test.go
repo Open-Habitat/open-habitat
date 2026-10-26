@@ -84,7 +84,7 @@ func TestSpinoffTranscriptConfinement(t *testing.T) {
 			if got.Availability != expected {
 				t.Fatalf("%s: %+v", mode, got)
 			}
-			if expected == "available" && (len(got.Messages) != 1 || got.Messages[0].Text != "Archived answer") {
+			if expected == "available" && (len(got.Entries) != 1 || got.Entries[0].Blocks[0].Text != "Archived answer") {
 				t.Fatalf("lost native content: %+v", got)
 			}
 		})

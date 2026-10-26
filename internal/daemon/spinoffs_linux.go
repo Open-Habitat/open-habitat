@@ -15,10 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
-	"golang.org/x/sys/unix"
 )
 
 var taskfleetCreatorSessionIDPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
@@ -73,28 +71,43 @@ type nativeSpinoff struct {
 		Summary string `json:"summary"`
 		Reason  string `json:"reason"`
 	} `json:"report"`
+	Harness       string `json:"harness"`
+	AwaitingInput bool   `json:"awaiting_input"`
+	Manifest      struct {
+		Selection struct {
+			Profile string `json:"profile"`
+		} `json:"selection"`
+	} `json:"manifest"`
+	Attach struct {
+		State    string `json:"state"`
+		Identity struct {
+			Socket   string `json:"socket"`
+			WindowID string `json:"window_id"`
+		} `json:"identity"`
+	} `json:"attach"`
 }
 type spinoffRow struct {
-	Preserved    bool   `json:"preserved"`
-	Branch       string `json:"branch"`
-	Worktree     string `json:"worktree"`
-	SourceBranch string `json:"source_branch"`
-	ID           string `json:"run_id"`
-	Title        string `json:"title"`
-	CreatedAt    string `json:"created_at"`
-	State        string `json:"state"`
-	Summary      string `json:"summary"`
-}
-type spinoffMessage struct {
-	Key  string `json:"key"`
-	Kind string `json:"kind"`
-	Text string `json:"text"`
+	Harness       string `json:"harness"`
+	Profile       string `json:"profile,omitempty"`
+	AwaitingInput bool   `json:"awaiting_input"`
+	Terminal      string `json:"terminal,omitempty"`
+	Brief         string `json:"brief,omitempty"`
+	Preserved     bool   `json:"preserved"`
+	Branch        string `json:"branch"`
+	Worktree      string `json:"worktree"`
+	SourceBranch  string `json:"source_branch"`
+	ID            string `json:"run_id"`
+	Title         string `json:"title"`
+	CreatedAt     string `json:"created_at"`
+	State         string `json:"state"`
+	Summary       string `json:"summary"`
 }
 type spinoffView struct {
-	NodeID       string           `json:"node_id"`
-	Availability string           `json:"availability"`
-	Messages     []spinoffMessage `json:"messages"`
-	Truncated    bool             `json:"truncated"`
+	NodeID       string         `json:"node_id"`
+	Harness      string         `json:"harness"`
+	Availability string         `json:"availability"`
+	Entries      []historyEntry `json:"entries"`
+	Truncated    bool           `json:"truncated"`
 }
 
 // Fixed argv, fresh native reads as the daemon UID. No inherited TASKFLEET_HOME,
@@ -216,7 +229,7 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 				availability = "partial"
 				break
 			}
-			row := spinoffRow{ID: r.ID, Title: prefixBytes(r.Title, 200), CreatedAt: nativeTimestamp(r.CreatedAt), State: "unknown"}
+			row := spinoffRow{ID: r.ID, Title: prefixBytes(r.Title, 200), CreatedAt: nativeTimestamp(r.CreatedAt), State: "unknown", Harness: workerHarness(r.Harness), AwaitingInput: r.AwaitingInput}
 			if runID == "" && (r.Status == "pending" || r.Status == "running") {
 				row.State = spinoffState(r)
 				row.SourceBranch = prefixBytes(r.SourceBranch, 200)
@@ -231,6 +244,8 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 			}
 			if taskfleetRead(ctx, cfg.Home, []string{"run", "show", r.ID, "--output", "json"}, &detail) && detail.Schema == 1 && detail.Data.ID == r.ID && belongsSpinoff(detail.Data, *parent) {
 				row.State = spinoffState(detail.Data)
+				row.Harness = workerHarness(detail.Data.Harness)
+				row.AwaitingInput = detail.Data.AwaitingInput
 				row.SourceBranch = prefixBytes(detail.Data.SourceBranch, 200)
 				row.Worktree = prefixBytes(detail.Data.WorktreePath, 1024)
 				for _, p := range detail.Data.Preserved {
@@ -252,23 +267,13 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 						summary += reason
 					}
 					row.Summary = prefixBytes(summary, 16000)
-					budget := 256 * 1024
-					messagesLeft := 500
-					for _, n := range detail.Data.Nodes {
-						if len(views) >= 20 {
-							break
-						}
-						v := readSpinoffTranscript(cfg, r.ID, n)
-						for i := range v.Messages {
-							if len(v.Messages[i].Text) > budget || messagesLeft == 0 {
-								v.Messages = v.Messages[:i]
-								v.Truncated = true
-								break
-							}
-							budget -= len(v.Messages[i].Text)
-							messagesLeft--
-						}
-						views = append(views, v)
+					row.Profile = prefixBytes(detail.Data.Manifest.Selection.Profile, 64)
+					row.Terminal = workerTerminal(detail.Data)
+					row.Brief = readRunBrief(cfg, r.ID)
+					// One node's conversation is the view; a later node (a
+					// retried attempt) replaces an earlier one.
+					for i := len(detail.Data.Nodes) - 1; i >= 0 && len(views) == 0; i-- {
+						views = append(views, readSpinoffTranscript(cfg, r.ID, detail.Data.Nodes[i]))
 					}
 				}
 			} else {
@@ -304,12 +309,9 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 // openat2 resolves the entire native path beneath the trusted mapped home;
 // symlinks (including intermediate components), devices and foreign owners fail.
 func readSpinoffTranscript(cfg transport.Config, runID string, n spinoffNode) spinoffView {
-	v := spinoffView{NodeID: prefixBytes(n.NodeID, 128), Availability: "unavailable", Messages: []spinoffMessage{}}
-	if n.Support != "supported" || n.Harness != "pi" {
+	v := spinoffView{NodeID: prefixBytes(n.NodeID, 128), Harness: workerHarness(n.Harness), Availability: "unavailable", Entries: []historyEntry{}}
+	if n.Harness != "pi" && n.Harness != "claude" {
 		v.Availability = "unsupported"
-		return v
-	}
-	if !taskfleetIDPattern.MatchString(runID) || !sessionIDPattern.MatchString(n.SessionID) || n.Attempt == nil || *n.Attempt < 0 {
 		return v
 	}
 	home, err := os.Open(cfg.Home)
@@ -317,6 +319,16 @@ func readSpinoffTranscript(cfg transport.Config, runID string, n spinoffNode) sp
 		return v
 	}
 	defer home.Close()
+	if n.Harness == "claude" {
+		return readClaudeWorker(cfg, n, int(home.Fd()))
+	}
+	if n.Support != "supported" {
+		v.Availability = "unsupported"
+		return v
+	}
+	if !taskfleetIDPattern.MatchString(runID) || !sessionIDPattern.MatchString(n.SessionID) || n.Attempt == nil || *n.Attempt < 0 {
+		return v
+	}
 	for _, archived := range []bool{true, false} {
 		p := n.Live
 		cwd := n.Worktree
@@ -334,63 +346,15 @@ func readSpinoffTranscript(cfg transport.Config, runID string, n spinoffNode) sp
 		if p.Availability != "available" || p.Path == nil || *p.Path == "" || filepath.IsAbs(*p.Path) || filepath.Clean(*p.Path) == ".." || strings.HasPrefix(filepath.Clean(*p.Path), "../") || !filepath.IsAbs(cwd) {
 			continue
 		}
-		fd, e := open(unix.Openat2, int(home.Fd()), filepath.Join(base, *p.Path), unix.O_RDONLY|unix.O_NONBLOCK, false)
-		if e != nil {
+		b, _, ok := readHomeFile(int(home.Fd()), filepath.Join(base, *p.Path), cfg.UID, workerFileLimit, false)
+		if !ok {
 			continue
-		}
-		f := os.NewFile(uintptr(fd), "spinoff")
-		st, e := f.Stat()
-		if e != nil || !st.Mode().IsRegular() || st.Size() > 8<<20 {
-			f.Close()
-			continue
-		}
-		uid, ok := fileOwner(st)
-		if !ok || uid != cfg.UID {
-			f.Close()
-			continue
-		}
-		b, e := io.ReadAll(io.LimitReader(f, 8<<20+1))
-		f.Close()
-		if e != nil || len(b) > 8<<20 || !utf8.Valid(b) {
-			continue
-		}
-		// A live append can end mid-record: only complete lines are displayable.
-		if len(b) > 0 && b[len(b)-1] != '\n' {
-			at := strings.LastIndexByte(string(b), '\n')
-			if at < 0 {
-				continue
-			}
-			b = b[:at+1]
 		}
 		s := decodeNative(b, "")
 		if s.state != "readable" || s.id != n.SessionID || s.cwd != cwd {
 			continue
 		}
-		if len(s.entries) > 200 {
-			s.entries = s.entries[len(s.entries)-200:]
-			v.Truncated = true
-		}
-		for _, e := range s.entries {
-			if e.Kind != "user" && e.Kind != "assistant" && e.Kind != "tool" {
-				continue
-			}
-			text := e.Content.Text
-			if len(e.Blocks) > 0 {
-				texts := []string{}
-				for _, block := range e.Blocks {
-					if block.Type == "text" {
-						texts = append(texts, block.Text)
-					}
-				}
-				text = strings.Join(texts, "\n")
-			}
-			if text != "" {
-				if len(text) > 4000 {
-					v.Truncated = true
-				}
-				v.Messages = append(v.Messages, spinoffMessage{s.id + ":" + e.Key, e.Kind, prefixBytes(text, 4000)})
-			}
-		}
+		v.Entries, v.Truncated = boundWorkerEntries(piWorkerEntries(b, s))
 		v.Availability = "available"
 		return v
 	}

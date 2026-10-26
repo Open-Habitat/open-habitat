@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/spinoffs.schema.json",
-  "title": "Read-only native Taskfleet children",
+  "title": "Read-only native Taskfleet children and the selected worker's conversation",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -83,28 +83,64 @@
           "source_branch": {
             "type": "string",
             "maxLength": 200
+          },
+          "harness": {
+            "description": "The worker's agent: Pi, Claude Code, or another Taskfleet harness.",
+            "enum": [
+              "pi",
+              "claude",
+              "unknown"
+            ]
+          },
+          "profile": {
+            "description": "Taskfleet's selection profile; only for the selected run.",
+            "type": "string",
+            "maxLength": 64
+          },
+          "awaiting_input": {
+            "description": "Taskfleet reads the worker as waiting for input at its own terminal prompt.",
+            "type": "boolean"
+          },
+          "terminal": {
+            "description": "The live worker's Taskfleet window as the browser shell's read-only token (terminal.schema.json); only for the selected run, and only a pointer the terminal route checks again.",
+            "type": "string",
+            "pattern": "^[0-9a-f]{8,64}-[0-9]{1,6}$"
+          },
+          "brief": {
+            "description": "The task Taskfleet gave the worker (its run's prompt); only for the selected run.",
+            "type": "string",
+            "maxLength": 16000
           }
         }
       }
     },
     "transcripts": {
       "type": "array",
-      "maxItems": 20,
+      "maxItems": 1,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": [
           "node_id",
+          "harness",
           "availability",
           "truncated",
-          "messages"
+          "entries"
         ],
         "properties": {
           "node_id": {
             "type": "string",
             "maxLength": 128
           },
+          "harness": {
+            "enum": [
+              "pi",
+              "claude",
+              "unknown"
+            ]
+          },
           "availability": {
+            "description": "available: the worker's native session was read. unavailable: not found (yet) or not readable. unsupported: Habitat reads no history of this harness.",
             "enum": [
               "available",
               "unavailable",
@@ -114,34 +150,12 @@
           "truncated": {
             "type": "boolean"
           },
-          "messages": {
+          "entries": {
+            "description": "The newest part of the worker's native conversation as history entries. Tool-call arguments are inline (bounded); no block is read on demand.",
             "type": "array",
             "maxItems": 200,
             "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "kind",
-                "text",
-                "key"
-              ],
-              "properties": {
-                "kind": {
-                  "enum": [
-                    "user",
-                    "assistant",
-                    "tool"
-                  ]
-                },
-                "text": {
-                  "type": "string",
-                  "maxLength": 4000
-                },
-                "key": {
-                  "type": "string",
-                  "maxLength": 200
-                }
-              }
+              "$ref": "history.schema.json#/$defs/entry"
             }
           }
         }

@@ -39,140 +39,7 @@
           "type": "array",
           "maxItems": 201,
           "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "entry_key",
-              "kind",
-              "content"
-            ],
-            "properties": {
-              "entry_key": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 300
-              },
-              "kind": {
-                "enum": [
-                  "user",
-                  "assistant",
-                  "tool",
-                  "model_change",
-                  "unknown",
-                  "bash",
-                  "recap"
-                ]
-              },
-              "content": {
-                "$ref": "common.schema.json#/$defs/content"
-              },
-              "skill": {
-                "$ref": "#/$defs/recordedSkill"
-              },
-              "recap": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "recap",
-                  "next",
-                  "through",
-                  "generated_at"
-                ],
-                "properties": {
-                  "recap": {
-                    "type": "string",
-                    "maxLength": 1280
-                  },
-                  "next": {
-                    "type": "string",
-                    "maxLength": 640
-                  },
-                  "through": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 128
-                  },
-                  "generated_at": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 8640000000000000
-                  },
-                  "trigger": {
-                    "type": "string",
-                    "enum": [
-                      "manual",
-                      "automatic"
-                    ]
-                  }
-                }
-              },
-              "blocks": {
-                "type": "array",
-                "maxItems": 128,
-                "items": {
-                  "$ref": "#/$defs/block"
-                }
-              },
-              "tool_call_id": {
-                "type": "string",
-                "maxLength": 200
-              },
-              "is_error": {
-                "type": "boolean"
-              },
-              "stop_reason": {
-                "type": "string",
-                "maxLength": 40
-              },
-              "model": {
-                "type": "string",
-                "maxLength": 200
-              },
-              "context_tokens": {
-                "description": "Context size Pi recorded with this assistant reply (usage.totalTokens, else the sum of its input, output and cache counters), as Pi's own context-usage reading counts it. Omitted for an aborted or failed reply and for zero usage.",
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 100000000
-              },
-              "truncated_blocks": {
-                "type": "boolean"
-              },
-              "entry_type": {
-                "enum": [
-                  "model_change",
-                  "thinking_level_change",
-                  "session_info",
-                  "label",
-                  "compaction",
-                  "branch_summary",
-                  "context_edit"
-                ]
-              },
-              "exit_code": {
-                "type": "integer"
-              },
-              "cancelled": {
-                "type": "boolean"
-              },
-              "output_truncated": {
-                "type": "boolean"
-              },
-              "exclude_from_context": {
-                "type": "boolean"
-              },
-              "timestamp": {
-                "$ref": "common.schema.json#/$defs/timestamp"
-              },
-              "failure_cause": {
-                "$ref": "history.schema.json#/$defs/bashFailure"
-              },
-              "notice": {
-                "$ref": "notice.schema.json#/$defs/notice"
-              },
-              "restart": {
-                "$ref": "#/$defs/restart"
-              }
-            }
+            "$ref": "#/$defs/entry"
           }
         },
         "complete": {
@@ -206,6 +73,142 @@
           ]
         }
       ]
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_key",
+        "kind",
+        "content"
+      ],
+      "properties": {
+        "entry_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "kind": {
+          "enum": [
+            "user",
+            "assistant",
+            "tool",
+            "model_change",
+            "unknown",
+            "bash",
+            "recap"
+          ]
+        },
+        "content": {
+          "$ref": "common.schema.json#/$defs/content"
+        },
+        "skill": {
+          "$ref": "#/$defs/recordedSkill"
+        },
+        "recap": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "recap",
+            "next",
+            "through",
+            "generated_at"
+          ],
+          "properties": {
+            "recap": {
+              "type": "string",
+              "maxLength": 1280
+            },
+            "next": {
+              "type": "string",
+              "maxLength": 640
+            },
+            "through": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "generated_at": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8640000000000000
+            },
+            "trigger": {
+              "type": "string",
+              "enum": [
+                "manual",
+                "automatic"
+              ]
+            }
+          }
+        },
+        "blocks": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        },
+        "tool_call_id": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "is_error": {
+          "type": "boolean"
+        },
+        "stop_reason": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "context_tokens": {
+          "description": "Context size Pi recorded with this assistant reply (usage.totalTokens, else the sum of its input, output and cache counters), as Pi's own context-usage reading counts it. Omitted for an aborted or failed reply and for zero usage.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000000
+        },
+        "truncated_blocks": {
+          "type": "boolean"
+        },
+        "entry_type": {
+          "enum": [
+            "model_change",
+            "thinking_level_change",
+            "session_info",
+            "label",
+            "compaction",
+            "branch_summary",
+            "context_edit"
+          ]
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "cancelled": {
+          "type": "boolean"
+        },
+        "output_truncated": {
+          "type": "boolean"
+        },
+        "exclude_from_context": {
+          "type": "boolean"
+        },
+        "timestamp": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "failure_cause": {
+          "$ref": "history.schema.json#/$defs/bashFailure"
+        },
+        "notice": {
+          "$ref": "notice.schema.json#/$defs/notice"
+        },
+        "restart": {
+          "$ref": "#/$defs/restart"
+        }
+      }
     },
     "block": {
       "type": "object",
