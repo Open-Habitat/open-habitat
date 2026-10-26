@@ -76,7 +76,8 @@ export type IconName =
   | "swap"
   | "restore"
   | "run"
-  | "key";
+  | "key"
+  | "updown";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -348,6 +349,7 @@ export function Icon({
     ),
     plus: <path d="M12 5v14M5 12h14" />,
     down: <path d="m5 9 7 7 7-7" />,
+    updown: <path d="m8 9 4-4 4 4M8 15l4 4 4-4" />,
     refresh: <path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7" />,
     copy: (
       <>

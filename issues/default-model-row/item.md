@@ -3,12 +3,13 @@ created: 2026-10-26
 updated: 2026-10-26
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: ui-impl
 lane_seq: 4
 collision: [web/src/app/, web/src/components/Account.tsx]
 preparation: ready
+closed: 2026-10-26
 ---
 
 # Tekoäly page: default-model row as Asetusrivi with a compact select button
@@ -19,5 +20,5 @@ Implement Jari's verdict on proto-integration-grouping round 3 (Decisions there;
 
 ## Acceptance Criteria
 
-- [ ] Row and popover as accepted on desktop and phone; browser test for opening, choosing and focus return.
+- [x] Row and popover as accepted on desktop and phone; browser test for opening, choosing and focus return.
 

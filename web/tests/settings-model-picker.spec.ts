@@ -14,8 +14,19 @@ async function settings(page: Page) {
     .getByRole("link")
     .and(page.getByTestId("settings-tekoaly"))
     .click();
+  await openDefault(page);
   await expect(
     page.getByRole("radio").and(page.getByTestId("model-gpt-6.1-sol")),
+  ).toBeVisible();
+}
+/** The default model's chooser opens from its settings row. */
+async function openDefault(page: Page) {
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("default-model-trigger"))
+    .click();
+  await expect(
+    page.getByRole("dialog").and(page.getByTestId("default-model-menu")),
   ).toBeVisible();
 }
 
@@ -82,6 +93,7 @@ test("provider browsing never chooses or saves, even with an older first catalog
     .getByRole("link")
     .and(page.getByTestId("settings-tekoaly"))
     .click();
+  await openDefault(page);
   await expect(
     page.getByRole("radio").and(page.getByTestId("model-gpt-5.4")),
   ).toBeChecked();
@@ -131,10 +143,18 @@ test("a model choice shows at once with its thinking levels, Pi confirms in the 
   // Only one write is outstanding; the newer choice waits and supersedes.
   expect(writes).toBe(1);
   // The rest of settings stays responsive while the host is outstanding.
+  // The chooser closes; reopened, it still shows the wait.
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("default-model-menu")).toBeHidden();
   await page
     .getByRole("button")
     .and(page.getByTestId("segment-visible"))
     .click();
+  await expect(page.getByTestId("default-model-trigger")).toHaveAttribute(
+    "data-thinking",
+    "high",
+  );
+  await openDefault(page);
   await expect(page.getByTestId("model-save-state")).toHaveAttribute(
     "data-pending",
     "true",
@@ -166,6 +186,7 @@ test("a model choice shows at once with its thinking levels, Pi confirms in the 
     .getByRole("link")
     .and(page.getByTestId("settings-tekoaly"))
     .click();
+  await openDefault(page);
   await expect(sol).toBeChecked();
   await expect(high).toHaveAttribute("aria-pressed", "true");
 });
@@ -203,3 +224,97 @@ test("unsigned Claude is unavailable despite catalog entries; connections link",
     page.getByRole("region").and(page.getByTestId("claude-sign-in")),
   ).toBeFocused();
 });
+
+for (const [device, viewport] of [
+  ["desktop", { width: 1440, height: 900 }],
+  ["phone", { width: 390, height: 844 }],
+] as const)
+  test(`${device}: the default-model row opens its chooser, a choice shows on the row, and closing returns focus`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize(viewport);
+    await page.route("**/api/v1/pi/claude-login", (route) =>
+      route.fulfill({ json: { schema_version: 1, state: "completed" } }),
+    );
+    await page.goto("/workspaces");
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page.getByRole("link").nth(0).click();
+    await page.goto("/settings/ai");
+    const row = page.locator('[data-settings-row="default-model"]');
+    const trigger = row
+      .getByRole("button")
+      .and(page.getByTestId("default-model-trigger"));
+    const menu = page
+      .getByRole("dialog")
+      .and(page.getByTestId("default-model-menu"));
+    // The synthetic host starts with no default.
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await expect(trigger).toContainText("Ei valittu");
+    await expect(menu).toBeHidden();
+    // The value is a control at the row's size, not a page-size field.
+    const box = await trigger.boundingBox();
+    expect(box?.height).toBeLessThanOrEqual(40);
+    await trigger.click();
+    await expect(menu).toBeVisible();
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const menuBox = await menu.boundingBox();
+    expect(menuBox).not.toBeNull();
+    if (menuBox) {
+      expect(menuBox.x).toBeGreaterThanOrEqual(0);
+      expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(viewport.width);
+      if (device === "phone")
+        // A bottom sheet on phones.
+        expect(Math.round(menuBox.y + menuBox.height)).toBeGreaterThanOrEqual(
+          viewport.height - 1,
+        );
+      else expect(menuBox.y).toBeGreaterThan(box?.y ?? 0);
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    // Without a default, focus starts in the chooser itself.
+    await expect(menu).toBeFocused();
+    await page.screenshot({
+      path: testInfo.outputPath(`evidence/default-model-${device}-open.png`),
+    });
+    const nova = menu
+      .getByRole("radio")
+      .and(page.getByTestId("model-gpt-6-nova"));
+    await nova.click();
+    await expect(nova).toBeChecked();
+    await expect(trigger).toHaveAttribute("data-model", "gpt-6-nova");
+    // The row names the model, its route and the thinking level.
+    await expect(trigger).toContainText("Nova");
+    await expect(trigger).toContainText("ChatGPT-tilaus");
+    await expect(trigger).toHaveAttribute("data-thinking", /.+/);
+    // Escape closes and returns focus to the row's control.
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    await expect(trigger).toBeFocused();
+    // Reopened, focus starts on the current default, as in a select.
+    await trigger.click();
+    await expect(nova).toBeFocused();
+    // The close button closes as Escape does.
+    await menu
+      .getByRole("button")
+      .and(page.getByTestId("default-model-close"))
+      .click();
+    await expect(menu).toBeHidden();
+    await expect(trigger).toBeFocused();
+    // An outside pointer closes without taking the focus back.
+    await trigger.click();
+    await expect(menu).toBeVisible();
+    await page.mouse.click(5, 5);
+    await expect(menu).toBeHidden();
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    const saved = await (await page.request.get("/api/v1/pi/models")).json();
+    expect(saved.default_model).toBe("gpt-6-nova");
+    await page.screenshot({
+      path: testInfo.outputPath(`evidence/default-model-${device}-row.png`),
+    });
+  });

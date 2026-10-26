@@ -11,6 +11,13 @@ test.use({
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 720 },
 });
+/** The default model's chooser opens from its Tekoäly row. */
+async function openDefaultModel(page: Page) {
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("default-model-trigger"))
+    .click();
+}
 async function login(page: Page, name: "Alice" | "Bob" = "Alice") {
   await page.goto("/");
   await page
@@ -261,6 +268,7 @@ test("@account-settings Pi default model is read from native models and saved", 
     .getByRole("link")
     .and(page.getByTestId("settings-tekoaly"))
     .click();
+  await openDefaultModel(page);
   const older = page.getByTestId("older-models-toggle");
   await expect(
     page.getByRole("radio").and(page.getByTestId("model-gpt-5.4")),
@@ -275,6 +283,7 @@ test("@account-settings Pi default model is read from native models and saved", 
     .getByRole("link")
     .and(page.getByTestId("settings-tekoaly"))
     .click();
+  await openDefaultModel(page);
   await expect(
     page.getByRole("radio").and(page.getByTestId("model-gpt-5.4")),
   ).toBeChecked();
@@ -584,6 +593,7 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
     .getByRole("link")
     .and(page.getByTestId("settings-tekoaly"))
     .click();
+  await openDefaultModel(page);
   await expect(
     page.getByRole("radio").and(page.getByTestId("model-gpt-5.5")),
   ).toBeChecked();
@@ -652,6 +662,7 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
     .getByRole("link")
     .and(page.getByTestId("settings-tekoaly"))
     .click();
+  await openDefaultModel(page);
   await expect(
     page.getByRole("radio").and(page.getByTestId("model-gpt-6-astra")),
   ).toBeDisabled();
@@ -706,6 +717,7 @@ test.describe("credential settings", () => {
       .getByRole("link")
       .and(page.getByTestId("settings-tekoaly"))
       .click();
+    await openDefaultModel(page);
     await expect(
       page.getByRole("button").and(page.getByTestId("segment-openai")),
     ).toHaveAttribute("aria-pressed", "true");
@@ -775,6 +787,7 @@ test.describe("credential settings", () => {
       .getByRole("link")
       .and(page.getByTestId("settings-tekoaly"))
       .click();
+    await openDefaultModel(page);
     await expect(
       page.getByRole("button").and(page.getByTestId("segment-anthropic")),
     ).toHaveAttribute("aria-pressed", "true");
@@ -1006,6 +1019,7 @@ test("@account-settings Claude native code sign-in and provider-qualified picker
   });
   // The catalog above is mocked from here on: read the page again.
   await page.reload();
+  await openDefaultModel(page);
   await page
     .getByRole("button")
     .and(page.getByTestId("segment-claude-bridge"))

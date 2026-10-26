@@ -33,6 +33,7 @@ import type { Workspace } from "../app/snapshot";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
 import { ControlButton, Segmented } from "./ControlElements";
+import { DefaultModelRow } from "./DefaultModelRow";
 import { Icon, type IconName } from "./Icon";
 import { LetterMark } from "./Integrations";
 import { Menu } from "./Overlays";
@@ -511,16 +512,15 @@ export function AccountSettings({
               ne saadaan.
             </p>
             <div className="s-card">
-              {/* Today's default-model selector; its row awaits round 3 of
-                  proto-integration-grouping and is replaced as one piece. */}
-              <div
-                className="s-model"
-                data-settings-row="default-model"
-                tabIndex={-1}
+              <DefaultModelRow
+                provider={piModels?.default_provider}
+                model={piModels?.default_model}
+                thinking={piModels?.default_thinking}
+                models={piModels?.models}
+                loading={!piModels}
               >
-                <h3>Oletusmalli</h3>
                 {modelSelector}
-              </div>
+              </DefaultModelRow>
               <div className="s-row">
                 <div className="s-lbl">
                   <strong>Agentin työ</strong>

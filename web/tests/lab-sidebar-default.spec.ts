@@ -45,6 +45,10 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
       .getByRole("link")
       .and(page.getByTestId("settings-tekoaly"))
       .click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("default-model-trigger"))
+      .click();
     const saved = page.waitForResponse(
       (r) =>
         r.url().endsWith("/api/v1/pi/models") &&
