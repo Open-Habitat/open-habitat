@@ -257,7 +257,8 @@
                   "session_info",
                   "label",
                   "compaction",
-                  "branch_summary"
+                  "branch_summary",
+                  "context_edit"
                 ]
               },
               "exit_code": {

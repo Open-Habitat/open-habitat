@@ -71,6 +71,14 @@ describe("contextUsage", () => {
       phase: "known",
       tokens: 31600,
     });
+    // Pi does not trust usage from before a context edit either.
+    entries.push({ ...compaction("e1"), entry_type: "context_edit" });
+    expect(contextUsage({ entries, catalog })?.phase).toBe("edited");
+    entries.push(reply("a4", 31600));
+    expect(contextUsage({ entries, catalog })).toMatchObject({
+      phase: "known",
+      tokens: 31600,
+    });
   });
 
   it("is compacting only between Pi's compaction start and end", () => {
@@ -104,6 +112,11 @@ describe("contextUsage", () => {
     });
     expect(
       contextUsage({ entries, catalog, model: "deepseek/gpt-5.5" })?.window,
+    ).toBeUndefined();
+    // A history tail without the model change cannot tell the providers apart.
+    expect(
+      contextUsage({ entries: entries.slice(1), catalog, model: "gpt-5.5" })
+        ?.window,
     ).toBeUndefined();
   });
 });

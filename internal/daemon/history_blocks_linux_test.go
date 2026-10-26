@@ -124,6 +124,11 @@ func TestAssistantContextTokensFollowPi(t *testing.T) {
 			t.Errorf("%s: wire %s", c.message, wire)
 		}
 	}
+	// A context edit invalidates earlier usage in Pi; the browser must see it.
+	edit := nativeBlocks(nativeEntry{ID: "entry_3", Type: "context_edit", Raw: json.RawMessage(`{"type":"context_edit","targetId":"entry_1","replacement":{"content":"secret"}}`)})
+	if wire, _ := json.Marshal(nativeEntryPayload(edit)); edit.EntryType != "context_edit" || strings.Contains(string(wire), "secret") {
+		t.Fatalf("context edit: %+v %s", edit, wire)
+	}
 	user := nativeBlocks(nativeEntry{ID: "entry_2", Type: "message", Message: json.RawMessage(`{"role":"user","content":"Hei","usage":{"totalTokens":5127}}`)})
 	if user.ContextTokens != 0 {
 		t.Fatalf("user message carries usage: %+v", user)

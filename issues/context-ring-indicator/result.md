@@ -49,6 +49,15 @@ catalog).
   (`capture.spec.ts` produced them; copy it to `web/tests/` to rerun).
   `desktop-compacting` and `desktop-nowindow` are light only.
 
+## Review
+
+Independent review (finder GPT-6 Astra; the Fable verifier was blocked, its
+CLI failed to start) raised two findings, both confirmed against Pi's source
+and fixed: the ambiguous-provider window and the `context_edit` invalidation
+above. Focused web, Go daemon, contract and browser checks (`context-ring`,
+`native-history`) were rerun green after the fixes; the whole suites ran
+before them.
+
 ## Decisions for later review
 
 - **Browser derives the number from history instead of asking Pi
@@ -71,7 +80,17 @@ catalog).
 - **The window comes from the conversation's model in the catalog.** A model
   not in the catalog (e.g. observed-only when the catalog is unavailable)
   shows tokens without a share. A bare model id is matched to the provider of
-  the newest native model change naming it, else the first catalog row.
+  the newest native model change naming it; when the loaded history tail has
+  none and several providers offer the id (an OpenAI key and a Codex
+  subscription), the window is unknown rather than guessed. Forwarding the
+  provider Pi records on each reply would remove that gap at the cost of one
+  more contract field.
+- **A context edit makes the size unknown.** Pi distrusts usage recorded
+  before a later `context_edit` (extension edits, recovery) and falls back to
+  an estimate the browser cannot make. `context_edit` is now a history
+  `entry_type`; the ring shows "?" with its own sentence until the next reply,
+  and the history shows the edit as a quiet marker row ("Kontekstia
+  muokattiin") instead of an unknown Pi event.
 - **No `tokensBefore` in the "after" state.** The prototype's sentence
   mentioned the size before compaction; it is left out to avoid another
   contract field before `proto-context-detail` decides what the detail level

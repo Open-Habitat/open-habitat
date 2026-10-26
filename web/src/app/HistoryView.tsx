@@ -998,6 +998,7 @@ export function Entry({
               {(
                 {
                   compaction: "Keskustelu tiivistettiin",
+                  context_edit: "Kontekstia muokattiin",
                   branch_summary: "Haaran tiivistelmä",
                   label: "Merkintä",
                 } as Record<string, string>

@@ -23,17 +23,21 @@ function catalogModel(
       provider = entry.content.text.slice(0, -id.length - 1);
   }
   const same = models.filter((m) => m.id === id);
-  return (
-    same.find((m) => (m.provider ?? "openai-codex") === provider) ??
-    (provider ? undefined : same[0])
-  );
+  // Without a provider an id offered by several providers has no one window.
+  return provider
+    ? same.find((m) => (m.provider ?? "openai-codex") === provider)
+    : same.length === 1
+      ? same[0]
+      : undefined;
 }
 
 /**
  * Pi's own context-usage reading over the native history the browser holds:
- * the newest assistant usage after the latest compaction; a compaction after
- * it leaves the size unknown until Pi's next reply. Nothing before Pi's first
- * reply. The live journal says whether Pi is compacting now.
+ * the newest assistant usage after the latest compaction or context edit. A
+ * compaction after it leaves the size unknown until Pi's next reply; after a
+ * context edit Pi falls back to an estimate the browser cannot make, so it is
+ * unknown here too. Nothing before Pi's first reply. The live journal says
+ * whether Pi is compacting now.
  */
 export function contextUsage({
   entries,
@@ -47,11 +51,14 @@ export function contextUsage({
   catalog?: Models;
 }): ContextUsage | undefined {
   let tokens: number | undefined;
-  let compacted = false;
+  let invalidated: "after" | "edited" | undefined;
   for (let i = entries.length - 1; i >= 0; i--) {
     const entry = entries[i];
-    if (entry.entry_type === "compaction") {
-      compacted = true;
+    if (
+      entry.entry_type === "compaction" ||
+      entry.entry_type === "context_edit"
+    ) {
+      invalidated = entry.entry_type === "compaction" ? "after" : "edited";
       break;
     }
     if (entry.kind === "assistant" && entry.context_tokens) {
@@ -67,10 +74,10 @@ export function contextUsage({
       break;
     }
   }
-  if (!compacting && !compacted && tokens === undefined) return undefined;
+  if (!compacting && !invalidated && tokens === undefined) return undefined;
   const choice = catalogModel(model, entries, catalog?.models ?? []);
   return {
-    phase: compacting ? "compacting" : compacted ? "after" : "known",
+    phase: compacting ? "compacting" : (invalidated ?? "known"),
     tokens,
     window: choice?.context_window,
     autoCompaction: catalog?.auto_compaction,

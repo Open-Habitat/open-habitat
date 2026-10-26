@@ -77,7 +77,8 @@ export interface HistoryEntry {
     | "session_info"
     | "label"
     | "compaction"
-    | "branch_summary";
+    | "branch_summary"
+    | "context_edit";
   truncated_blocks?: boolean;
   native_revision?: string;
 }

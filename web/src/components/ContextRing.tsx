@@ -18,8 +18,9 @@ import "./ContextRing.css";
 /** What the application layer read from Pi's native session and catalog. */
 export type ContextUsage = {
   /** known: Pi's last recorded usage; compacting: Pi is summarizing;
-   * after: compacted, unknown until Pi's next reply records usage. */
-  phase: "known" | "compacting" | "after";
+   * after: compacted, edited: the context was edited; both unknown until
+   * Pi's next reply records usage. */
+  phase: "known" | "compacting" | "after" | "edited";
   tokens?: number;
   /** The model's window in Pi's registry; unknown omits the percentage. */
   window?: number;
@@ -51,15 +52,17 @@ export function contextFacts(usage: ContextUsage) {
       ? Math.max(0, window - usage.reserve)
       : undefined;
   const level: ContextLevel =
-    usage.phase !== "known"
-      ? usage.phase
-      : percent === undefined
-        ? "nowindow"
-        : percent >= 90
-          ? "critical"
-          : percent >= 70
-            ? "near"
-            : "ok";
+    usage.phase === "edited"
+      ? "after"
+      : usage.phase !== "known"
+        ? usage.phase
+        : percent === undefined
+          ? "nowindow"
+          : percent >= 90
+            ? "critical"
+            : percent >= 70
+              ? "near"
+              : "ok";
   return { window, percent, threshold, level };
 }
 
@@ -77,6 +80,8 @@ export function contextSentence(usage: ContextUsage) {
   const { window, percent, threshold, level } = contextFacts(usage);
   if (level === "compacting")
     return "Pi tiivistää vanhempaa historiaa yhteenvedoksi. Keskustelu jatkuu, kun tiivistys valmistuu.";
+  if (usage.phase === "edited")
+    return "Pi muokkasi keskustelun kontekstia. Uusi luku tulee Pi:n seuraavasta vastauksesta.";
   if (level === "after")
     return "Historia tiivistettiin. Uusi luku tulee Pi:n seuraavasta vastauksesta.";
   const tokens = usage.tokens ?? 0;

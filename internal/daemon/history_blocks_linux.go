@@ -54,7 +54,7 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		return
 	}
 	switch e.Type {
-	case "model_change", "thinking_level_change", "session_info", "label", "compaction", "branch_summary":
+	case "model_change", "thinking_level_change", "session_info", "label", "compaction", "branch_summary", "context_edit":
 		out.EntryType = e.Type
 	}
 	out.Kind, out.full = nativeText(e)
