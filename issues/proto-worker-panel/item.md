@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-10-26/proto-worker-panel
 lane: proto-worker-panel
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: the Workerit panel and its row details
