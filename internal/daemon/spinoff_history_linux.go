@@ -26,7 +26,7 @@ import (
 // them the same way. Everything is read fresh from native files per request.
 const (
 	workerEntryLimit   = 200
-	workerTextBudget   = 768 * 1024
+	workerWireBudget   = 2 << 20
 	workerArgumentText = 8 * 1024
 	workerResultText   = 8 * 1024
 	workerFileLimit    = 8 << 20
@@ -86,18 +86,17 @@ func readHomeFile(parent int, name string, uid int, max int64, lines, tail bool)
 	return b, cut, true
 }
 
-// boundWorkerEntries keeps the newest entries within the count and text
-// budget: the end of a worker's work is what its view is for.
+// boundWorkerEntries keeps the newest entries within the count and the
+// encoded-size budget: the end of a worker's work is what its view is for.
+// The budget counts each entry as it goes on the wire, escaping included, so
+// the whole reply stays well within the browser's read cap.
 func boundWorkerEntries(entries []historyEntry) ([]historyEntry, bool) {
-	budget := workerTextBudget
+	budget := workerWireBudget
 	start := len(entries)
 	for start > 0 && len(entries)-start < workerEntryLimit {
-		e := entries[start-1]
-		size := len(e.Content.Text)
-		for _, b := range e.Blocks {
-			size += len(b.Text)
-		}
-		if size > budget {
+		b, err := json.Marshal(entries[start-1])
+		size := len(b)
+		if err != nil || size > budget {
 			break
 		}
 		budget -= size
@@ -138,6 +137,9 @@ func piWorkerEntries(b []byte, s nativeSession) []historyEntry {
 	}
 	out := make([]historyEntry, 0, len(s.entries))
 	for _, e := range s.entries {
+		// A recorded skill's current description would be read from a path
+		// the transcript names; a worker's view shows the recorded call only.
+		e.skillLocation = ""
 		inline(&s, &e)
 		blocks := make([]historyBlock, len(e.Blocks))
 		copy(blocks, e.Blocks)
@@ -483,6 +485,26 @@ func workerTerminal(r nativeSpinoff) string {
 		return ""
 	}
 	return m[1] + "-" + w[1]
+}
+
+// workerTerminalWorkspace is the workspace whose terminal route lists the
+// worker's window: the one whose checkout or worktree container holds the
+// run's worktree. A worker may work in another repository than its parent.
+func workerTerminalWorkspace(cfg transport.Config, worktree string) string {
+	if !filepath.IsAbs(worktree) {
+		return ""
+	}
+	worktree = filepath.Clean(worktree)
+	for _, entry := range Discover(cfg).Entries {
+		if entry.Error != "" || entry.Kind == "unknown" || entry.Metadata == "error" {
+			continue
+		}
+		dir := filepath.Join(cfg.Home, "src", entry.Name)
+		if worktree == dir || strings.HasPrefix(worktree, dir+"/") || strings.HasPrefix(worktree, dir+"__worktrees/") {
+			return workspaceIDOf(cfg, entry)
+		}
+	}
+	return ""
 }
 
 func workerHarness(h string) string {

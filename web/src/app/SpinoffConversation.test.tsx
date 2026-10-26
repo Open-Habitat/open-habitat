@@ -32,7 +32,10 @@ it("waits for the native session instead of polling a missing parent", async () 
 
 const runID = "01m521vczarx5bkx086n64t1t2";
 const parentID = "pi:12345678-1234-4123-8123-123456789abc";
-function workerReply(availability: "available" | "unavailable") {
+function workerReply(
+  availability: "available" | "unavailable",
+  more: { type: "text"; text: string }[] = [],
+) {
   return {
     schema_version: 1,
     parent_id: parentID,
@@ -79,7 +82,7 @@ function workerReply(availability: "available" | "unavailable") {
                     text: "",
                     complete: true,
                   },
-                  blocks: [{ type: "text", text: "Luen testit." }],
+                  blocks: [{ type: "text", text: "Luen testit." }, ...more],
                 },
               ]
             : [],
@@ -94,9 +97,10 @@ function workerReply(availability: "available" | "unavailable") {
 it("worker view: the brief and terminal before history, the conversation once it arrives, never a composer", async () => {
   vi.useFakeTimers();
   let availability: "available" | "unavailable" = "unavailable";
+  let more: { type: "text"; text: string }[] = [];
   const fetch = vi.fn().mockImplementation(async () => {
     const body = new TextEncoder().encode(
-      JSON.stringify(workerReply(availability)),
+      JSON.stringify(workerReply(availability, more)),
     );
     return new Response(body, {
       status: 200,
@@ -134,9 +138,11 @@ it("worker view: the brief and terminal before history, the conversation once it
   expect(view.container.querySelectorAll('[data-voice="brief"]')).toHaveLength(
     1,
   );
-  expect(
-    view.container.querySelector('[role="status"].ah-worker-arrived'),
-  ).not.toBeNull();
   expect(q("message-input")).toBeNull();
+  // Claude Code writes a reply's next block as a record of the same message:
+  // the newest entry grows without a new key or count.
+  more = [{ type: "text", text: "Lisään kolme tapausta." }];
+  await act(() => vi.advanceTimersByTimeAsync(3100));
+  expect(view.container.textContent).toContain("Lisään kolme tapausta.");
   view.unmount();
 });

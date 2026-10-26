@@ -17,6 +17,8 @@ export interface Spinoff {
   awaiting_input?: boolean;
   /** The live worker's Taskfleet window (browser shell token). */
   terminal?: string;
+  /** The workspace whose terminal route lists that window. */
+  terminal_workspace?: string;
   /** The task Taskfleet gave the worker; only for the selected run. */
   brief?: string;
   preserved: boolean;

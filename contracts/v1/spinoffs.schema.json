@@ -110,7 +110,20 @@
             "description": "The task Taskfleet gave the worker (its run's prompt); only for the selected run.",
             "type": "string",
             "maxLength": 16000
+          },
+          "terminal_workspace": {
+            "description": "The workspace whose terminal route lists that window: the one holding the worker's worktree, which may be another than the parent's. Present exactly with terminal.",
+            "type": "string",
+            "pattern": "^ws_[A-Za-z0-9_-]{8,64}$"
           }
+        },
+        "dependentRequired": {
+          "terminal": [
+            "terminal_workspace"
+          ],
+          "terminal_workspace": [
+            "terminal"
+          ]
         }
       }
     },

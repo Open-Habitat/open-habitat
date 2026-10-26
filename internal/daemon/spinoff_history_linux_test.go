@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -212,9 +213,16 @@ func TestWorkerEntriesKeepTheNewest(t *testing.T) {
 	if len(kept) != workerEntryLimit || !cut || &kept[len(kept)-1] != &entries[299] {
 		t.Fatal("count bound must keep the newest entries")
 	}
-	big := []historyEntry{{Key: "old", Content: historyContent{Text: strings.Repeat("o", workerTextBudget)}}, {Key: "new", Content: historyContent{Text: "n"}}}
-	if kept, cut := boundWorkerEntries(big); len(kept) != 1 || kept[0].Key != "new" || !cut {
-		t.Fatalf("text budget: %d %v", len(kept), cut)
+	// Escaping, not text length, is what reaches the browser's read cap:
+	// json.Marshal writes each '<' as six bytes.
+	escaped := []historyEntry{}
+	for i := 0; i < 48; i++ {
+		escaped = append(escaped, historyEntry{Key: fmt.Sprint(i), Kind: "assistant", Blocks: []historyBlock{{Type: "text", Text: strings.Repeat("<", 16384)}}})
+	}
+	kept, cut = boundWorkerEntries(escaped)
+	wire, _ := json.Marshal(kept)
+	if !cut || len(wire) > workerWireBudget+1024 || kept[len(kept)-1].Key != "47" {
+		t.Fatalf("wire budget: %d entries, %d bytes, cut %v", len(kept), len(wire), cut)
 	}
 }
 
@@ -252,6 +260,7 @@ func TestSpinoffDetailCarriesWorkerFacts(t *testing.T) {
 	home := t.TempDir()
 	cfg := transport.Config{Home: home, UID: os.Getuid()}
 	worktree := filepath.Join(home, "src", "project__worktrees", "wt-one")
+	_ = os.MkdirAll(filepath.Join(home, "src", "project"), 0700)
 	claudeWorkerFile(t, home, worktree, claudeWorkerSession, claudeWorkerSession, worktree)
 	runDir := filepath.Join(home, ".taskfleet", "runs", spinoffFixtureID)
 	_ = os.MkdirAll(runDir, 0700)
@@ -286,7 +295,7 @@ func TestSpinoffDetailCarriesWorkerFacts(t *testing.T) {
 		t.Fatalf("%d %s", w.Code, w.Body.String())
 	}
 	r := body.Runs[0]
-	if r.Harness != "claude" || r.Profile != "prototype-opus" || !r.AwaitingInput || r.Terminal != "30c4a765d13e401ef01f-1" || r.Brief != "# Tehtävä\n\nLisää testit." {
+	if r.Harness != "claude" || r.Profile != "prototype-opus" || !r.AwaitingInput || r.Terminal != "30c4a765d13e401ef01f-1" || !strings.HasPrefix(r.TerminalSpace, "ws_") || r.Brief != "# Tehtävä\n\nLisää testit." {
 		t.Fatalf("worker facts lost: %+v", r)
 	}
 	if tr := body.Transcripts[0]; tr.Harness != "claude" || tr.Availability != "available" || len(tr.Entries) != 6 {
@@ -297,5 +306,23 @@ func TestSpinoffDetailCarriesWorkerFacts(t *testing.T) {
 	h.ServeHTTP(w, httptest.NewRequest("GET", "http://unix/api/v1/agents/pi:"+spinoffParent+"/spinoffs", nil))
 	if strings.Contains(w.Body.String(), "Lisää testit") || strings.Contains(w.Body.String(), "30c4a765") || !strings.Contains(w.Body.String(), `"harness":"claude"`) {
 		t.Fatalf("list read the worker's files: %s", w.Body.String())
+	}
+}
+
+// A worker in another repository than its parent is watched through its own
+// workspace: the terminal route lists only windows under the one it is asked.
+func TestWorkerTerminalWorkspaceIsTheWorktreesOwn(t *testing.T) {
+	home := t.TempDir()
+	cfg := transport.Config{Home: home, UID: os.Getuid(), Provider: "github", Subject: "42"}
+	for _, name := range []string{"parent-repo", "other-repo"} {
+		_ = os.MkdirAll(filepath.Join(home, "src", name), 0700)
+	}
+	other := workerTerminalWorkspace(cfg, filepath.Join(home, "src", "other-repo__worktrees", "wt-x"))
+	parent := workerTerminalWorkspace(cfg, filepath.Join(home, "src", "parent-repo"))
+	if other == "" || parent == "" || other == parent {
+		t.Fatalf("%q %q", other, parent)
+	}
+	if got := workerTerminalWorkspace(cfg, filepath.Join(home, "Sources", "elsewhere__worktrees", "wt-x")); got != "" {
+		t.Fatalf("a worktree outside ~/src has no workspace: %q", got)
 	}
 }

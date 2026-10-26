@@ -7,7 +7,6 @@ import {
   workerLive,
 } from "../components/Spinoffs";
 import type { timelineItems } from "./HistoryView";
-import type { HistoryEntry } from "./history";
 import {
   readSpinoffs,
   type Spinoff,
@@ -140,9 +139,6 @@ export function SpinoffProvider({
   );
 }
 
-// The newest history entry, for noticing that the worker moved on.
-const lastKey = (entries: HistoryEntry[]) => entries.at(-1)?.entry_key;
-
 function WorkerConversation({
   run,
   transcript,
@@ -174,7 +170,6 @@ function WorkerConversation({
   }, [availability]);
   const working = run?.state === "working";
   const entries = transcript?.entries;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new poll with the same newest entry draws the same timeline.
   const items = useMemo(() => {
     if (!timeline || !entries || availability !== "available") return [];
     const list = timeline(
@@ -195,18 +190,18 @@ function WorkerConversation({
     return list;
   }, [
     timeline,
-    entries && lastKey(entries),
-    entries?.length,
+    entries,
     availability,
     working,
     transcript?.truncated,
     onLogin,
   ]);
   const token = run?.terminal;
+  const space = run?.terminal_workspace;
   const terminal =
-    token && place.csrf && place.workspaceId && workerLive(run) ? (
+    token && space && place.csrf && workerLive(run) ? (
       <WorkerTerminal
-        workspaceId={place.workspaceId}
+        workspaceId={space}
         token={token}
         csrf={place.csrf}
         onLogin={onLogin}

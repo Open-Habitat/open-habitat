@@ -91,6 +91,7 @@ type spinoffRow struct {
 	Profile       string `json:"profile,omitempty"`
 	AwaitingInput bool   `json:"awaiting_input"`
 	Terminal      string `json:"terminal,omitempty"`
+	TerminalSpace string `json:"terminal_workspace,omitempty"`
 	Brief         string `json:"brief,omitempty"`
 	Preserved     bool   `json:"preserved"`
 	Branch        string `json:"branch"`
@@ -268,7 +269,11 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 					}
 					row.Summary = prefixBytes(summary, 16000)
 					row.Profile = prefixBytes(detail.Data.Manifest.Selection.Profile, 64)
-					row.Terminal = workerTerminal(detail.Data)
+					if token := workerTerminal(detail.Data); token != "" {
+						if space := workerTerminalWorkspace(cfg, detail.Data.WorktreePath); space != "" {
+							row.Terminal, row.TerminalSpace = token, space
+						}
+					}
 					row.Brief = readRunBrief(cfg, r.ID)
 					// One node's conversation is the view; a later node (a
 					// retried attempt) replaces an earlier one.
