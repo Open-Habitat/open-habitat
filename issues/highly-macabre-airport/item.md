@@ -2,12 +2,13 @@
 created: 2026-10-26
 updated: 2026-10-26
 type: bug
-status: untriaged
+status: duplicate
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5vrvfw4560n02dsx2eewy4a/observed:lab-suite-writes-evidence
 originating_run: 01m5vrvfw4560n02dsx2eewy4a
 originating_run_kind: spinoff
+closed: 2026-10-26
 ---
 
 # Lab browser suite rewrites other issues' committed evidence
