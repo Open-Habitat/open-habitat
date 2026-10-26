@@ -8,7 +8,7 @@ priority: normal
 lane: context-impl
 lane_seq: 2
 blocked_by: ['@proto-context-basic']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype the detailed context status of an agent and where it lives
