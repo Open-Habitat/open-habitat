@@ -131,7 +131,7 @@ test("@github-first the route shows every step, Google included, and marks progr
       ai: "next",
     });
     await expect(step(page, "repositories")).toContainText("1 repo haussa");
-    // The same view as Asetukset › Integraatiot, limited to Google.
+    // The same view as Asetukset › Tiedot agenteille, limited to Google.
     await expect(page.getByTestId("integration-tile-google")).toBeVisible();
     await expect(page.getByTestId("integration-tile-microsoft")).toHaveCount(0);
     await expect(page.getByTestId("integration-tile-imap")).toHaveCount(0);

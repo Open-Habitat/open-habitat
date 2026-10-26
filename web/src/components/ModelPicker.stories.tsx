@@ -74,7 +74,7 @@ export const Composer: Story = {
                 onThinking={setThinking}
               />
               <div className="md-picker-actions">
-                <a href="/settings/agents">Muuta oletusmallia</a>
+                <a href="/settings/ai#default-model">Muuta oletusmallia</a>
                 <ControlButton variant="primary" size="page" onPress={close}>
                   Valitse
                 </ControlButton>

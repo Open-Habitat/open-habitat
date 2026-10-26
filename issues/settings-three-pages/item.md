@@ -3,13 +3,14 @@ created: 2026-10-26
 updated: 2026-10-26
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: ui-impl
 lane_seq: 2
 collision: [web/src/app/, web/src/components/Account.tsx, docs/]
 preparation: ready
 blocked_by: ['@sidebar-now-aakkoset']
+closed: 2026-10-26
 ---
 
 # Settings: Tekoäly, Koodipalvelut and Tiedot agenteille pages
@@ -20,5 +21,5 @@ Implement Jari's accepted settings grouping (proto-integration-grouping, round 1
 
 ## Acceptance Criteria
 
-- [ ] Three pages as accepted; every entry point lands on the right page/row; browser tests; screenshots for Jari.
+- [x] Three pages as accepted; every entry point lands on the right page/row; browser tests; screenshots for Jari.
 

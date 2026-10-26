@@ -1761,7 +1761,10 @@ export function App() {
       <AccountSettings
         editorIdentity={identity}
         routeSection={settingsSection(location.pathname)}
+        routeRow={location.hash.slice(1) || undefined}
         onNavigate={navigate}
+        workspaces={snapshot?.workspaces}
+        onNewWorkspace={() => navigate("/workspaces/new")}
         profile={
           profile ?? {
             name: accountLabel(snapshot?.identity.display_name ?? ""),

@@ -7,7 +7,7 @@ import listSchema from "../../../contracts/v1/integrations.schema.json";
 import type { GiteaConnections } from "./gitea";
 import { mutationFetch } from "./mutations";
 
-// Asetukset › Integraatiot reads and writes through the person's daemon
+// Asetukset › Tiedot agenteille reads and writes through the person's daemon
 // (ADR 0026). Every reply is validated against the contract before the page
 // sees it, under a size cap, and any failure is a generic error: native text
 // never reaches the page.

@@ -11,7 +11,7 @@ import { IntegrationsOverview } from "./Integrations";
 
 // Synthetic states of the production Gitea components (ADR 0031): the
 // approved "Lomake" connect form with its error at the top (connect-riff
-// round 2) and tea's connections in Asetukset › Integraatiot. No daemon, tea
+// round 2) and tea's connections in Asetukset › Koodipalvelut. No daemon, tea
 // or Gitea is involved, and no token is ever typed: the fields hold made-up
 // placeholders only.
 

@@ -6,6 +6,7 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 import "./Integrations.css";
+import type { GiteaAPI, GiteaConnection } from "../app/gitea";
 import {
   type Account,
   type AppleService,
@@ -33,13 +34,12 @@ import {
   selectedBytes,
   syncedTime,
 } from "../app/integrations";
-import type { GiteaAPI, GiteaConnection } from "../app/gitea";
 import { ControlButton, controlClassName, Segmented } from "./ControlElements";
 import { GiteaCard } from "./GiteaConnection";
 import { Icon, type IconName } from "./Icon";
 import { Checkbox, TextField } from "./Primitives";
 
-// Asetukset › Integraatiot in the accepted "Tili" direction (ADR 0026,
+// Asetukset › Tiedot agenteille (formerly Integraatiot) in the accepted "Tili" direction (ADR 0026,
 // proto-integrations): one card per provider account with its services
 // inside, sign-in in a dialog whose steps each take their own row, and the
 // agent-exposure warning both before sign-in and beside the accounts. These
@@ -214,12 +214,32 @@ export function ProviderMark({
   small?: boolean;
 }) {
   const copy = providerCopy[provider];
+  return <LetterMark mark={copy.mark} tone={copy.tone} small={small} />;
+}
+
+/** The settings page a provider's accounts are on, as a person reads it
+ * (Asetukset › …). */
+export const settingsPlace = (provider: ProviderId) =>
+  provider === "gitea" ? "Koodipalvelut" : "Tiedot agenteille";
+
+/** A service's letter tile, shared by every settings page that lists
+ * outside accounts (GitHub, AI subscriptions and keys, data sources). Tone 0
+ * is the neutral tile. */
+export function LetterMark({
+  mark,
+  tone,
+  small,
+}: {
+  mark: string;
+  tone: 0 | 1 | 2 | 3;
+  small?: boolean;
+}) {
   return (
     <span
-      className={`ig-mark ig-tone-${copy.tone}${small ? " sm" : ""}`}
+      className={`ig-mark ig-tone-${tone}${small ? " sm" : ""}`}
       aria-hidden="true"
     >
-      {copy.mark}
+      {mark}
     </span>
   );
 }
@@ -793,7 +813,9 @@ export function IntegrationsOverview({
           <AgentWarning />
         </>
       )}
-      {skillNotice[list.skill] ? (
+      {/* The personal-data skill maps mail, calendars and files, not Gitea. */}
+      {skillNotice[list.skill] &&
+      list.providers.some((p) => p.id !== "gitea") ? (
         <p className="ig-notice" role="status">
           <Icon name="warning" />
           <span>{skillNotice[list.skill]}</span>

@@ -74,7 +74,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Asetukset › Integraatiot synteettisillä tiloilla. Ei daemonia, työkaluja eikä palveluntarjoajia; tila on annettu näyttömalli.",
+          "Asetukset › Tiedot agenteille synteettisillä tiloilla. Ei daemonia, työkaluja eikä palveluntarjoajia; tila on annettu näyttömalli.",
       },
     },
   },

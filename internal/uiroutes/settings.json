@@ -1,9 +1,9 @@
 {
   "tili": "account",
   "laitteet": "devices",
-  "agentti": "agents",
-  "yhteydet": "connections",
-  "integraatiot": "integrations",
+  "tekoaly": "ai",
+  "koodipalvelut": "code-hosts",
+  "tiedot": "agent-data",
   "ulkoasu": "appearance",
   "editori": "editor",
   "tila": "storage",

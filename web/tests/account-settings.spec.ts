@@ -37,7 +37,10 @@ async function state(page: Page, native: string) {
     await route.fulfill({ response, json: body });
   });
 }
-async function settings(page: Page) {
+async function settings(
+  page: Page,
+  section: "tekoaly" | "koodipalvelut" = "tekoaly",
+) {
   await page
     .getByRole("button")
     .and(page.getByTestId("account-menu-trigger"))
@@ -67,7 +70,7 @@ async function settings(page: Page) {
     .getByRole("navigation")
     .and(page.getByTestId("settings-navigation"))
     .getByRole("link")
-    .and(page.getByTestId("settings-yhteydet"))
+    .and(page.getByTestId(`settings-${section}`))
     .click();
 }
 test("@account-settings verified native state, route return and explicit disconnect", async ({
@@ -95,7 +98,7 @@ test("@account-settings verified native state, route return and explicit disconn
   await expect(page.locator("main h1")).toHaveText("git-project");
   await expect(page.locator("main h1")).toBeVisible();
   const returnPath = new URL(page.url()).pathname;
-  await settings(page);
+  await settings(page, "koodipalvelut");
   await expect(
     page.locator("#main").getByTestId("github-native-state"),
   ).toHaveAttribute("data-state", "connected");
@@ -116,8 +119,12 @@ test("@account-settings verified native state, route return and explicit disconn
   await expect(
     page
       .getByRole("heading")
-      .and(page.getByTestId("settings-section-yhteydet")),
+      .and(page.getByTestId("settings-section-koodipalvelut")),
   ).toBeVisible();
+  await page
+    .getByRole("link")
+    .and(page.getByTestId("settings-tekoaly"))
+    .click();
   // The synthetic native Pi home holds no OpenAI credential.
   await expect(page.getByTestId("openai-credential-state")).toHaveAttribute(
     "data-state",
@@ -130,11 +137,9 @@ test("@account-settings verified native state, route return and explicit disconn
     .click();
   await expect(page).toHaveURL(/\/settings\/appearance$/);
   await page.goBack();
-  await expect(page).toHaveURL(/\/settings\/connections$/);
+  await expect(page).toHaveURL(/\/settings\/ai$/);
   await expect(
-    page
-      .getByRole("heading")
-      .and(page.getByTestId("settings-section-yhteydet")),
+    page.getByRole("heading").and(page.getByTestId("settings-section-tekoaly")),
   ).toBeVisible();
   await page.goForward();
   await expect(
@@ -158,13 +163,13 @@ test("@account-settings verified native state, route return and explicit disconn
   await expect(
     page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
   ).toBeFocused();
-  await settings(page);
+  await settings(page, "koodipalvelut");
   await page.reload();
-  await expect(page).toHaveURL(/\/settings\/connections$/);
+  await expect(page).toHaveURL(/\/settings\/code-hosts$/);
   await expect(
     page
       .getByRole("heading")
-      .and(page.getByTestId("settings-section-yhteydet")),
+      .and(page.getByTestId("settings-section-koodipalvelut")),
   ).toBeVisible();
   await expect(
     page.locator("#main").getByTestId("github-native-state"),
@@ -183,7 +188,7 @@ test("@account-settings partial, unknown and logout/user switch", async ({
 }) => {
   await state(page, "partial");
   await login(page);
-  await settings(page);
+  await settings(page, "koodipalvelut");
   await expect(page.getByTestId("github-native-state")).toHaveAttribute(
     "data-state",
     "partial",
@@ -200,7 +205,7 @@ test("@account-settings partial, unknown and logout/user switch", async ({
     .getByRole("navigation")
     .and(page.getByTestId("settings-navigation"))
     .getByRole("link")
-    .and(page.getByTestId("settings-yhteydet"))
+    .and(page.getByTestId("settings-koodipalvelut"))
     .click();
   await expect(page.getByTestId("github-native-state")).toHaveAttribute(
     "data-state",
@@ -240,7 +245,7 @@ test("@account-settings partial, unknown and logout/user switch", async ({
   await expect(page.getByRole("navigation")).not.toContainText(
     "GitHub user 42",
   );
-  await page.goto("/settings/connections");
+  await page.goto("/settings/code-hosts");
   await expect(page.getByTestId("github-native-state")).toHaveAttribute(
     "data-state",
     "unknown",
@@ -254,7 +259,7 @@ test("@account-settings Pi default model is read from native models and saved", 
   await settings(page);
   await page
     .getByRole("link")
-    .and(page.getByTestId("settings-agentti"))
+    .and(page.getByTestId("settings-tekoaly"))
     .click();
   const older = page.getByTestId("older-models-toggle");
   await expect(
@@ -268,7 +273,7 @@ test("@account-settings Pi default model is read from native models and saved", 
   await page.reload();
   await page
     .getByRole("link")
-    .and(page.getByTestId("settings-agentti"))
+    .and(page.getByTestId("settings-tekoaly"))
     .click();
   await expect(
     page.getByRole("radio").and(page.getByTestId("model-gpt-5.4")),
@@ -320,7 +325,7 @@ test("@account-settings OpenAI sign-in state is read again on each visit; uncert
       .getByRole("navigation")
       .and(page.getByTestId("settings-navigation"))
       .getByRole("link")
-      .and(page.getByTestId("settings-yhteydet"))
+      .and(page.getByTestId("settings-tekoaly"))
       .click();
     await expect(page.getByTestId("openai-credential-state")).toHaveAttribute(
       "data-state",
@@ -342,7 +347,7 @@ test("@account-settings Pi sign-in from settings returns to the row that opened 
 }) => {
   await login(page);
   await settings(page);
-  await expect(page).toHaveURL(/\/settings\/connections$/);
+  await expect(page).toHaveURL(/\/settings\/ai$/);
   const state = page.getByTestId("openai-credential-state");
   await expect(state).toHaveAttribute("data-state", "missing");
   const row = page.getByRole("button").and(page.getByTestId("pi-sign-in"));
@@ -356,7 +361,7 @@ test("@account-settings Pi sign-in from settings returns to the row that opened 
     .getByRole("button")
     .and(page.getByTestId("pi-sign-in-return"))
     .click();
-  await expect(page).toHaveURL(/\/settings\/connections$/);
+  await expect(page).toHaveURL(/\/settings\/ai$/);
   await expect(row).toBeFocused();
   // A completed sign-in: settings stays open and its row reads the result.
   // The synthetic device login writes no credential; native Pi now holding
@@ -375,7 +380,7 @@ test("@account-settings Pi sign-in from settings returns to the row that opened 
     .and(page.getByTestId("pi-attempt-start"))
     .click();
   await expect(title).toHaveCount(0, { timeout: 12000 });
-  await expect(page).toHaveURL(/\/settings\/connections$/);
+  await expect(page).toHaveURL(/\/settings\/ai$/);
   await expect(state).toHaveAttribute("data-state", "signed_in");
   await expect(row).toBeFocused();
 });
@@ -405,7 +410,7 @@ test("@account-settings Claude sign-in from settings returns to Claude's row", a
     });
   });
   await settings(page);
-  await expect(page).toHaveURL(/\/settings\/connections$/);
+  await expect(page).toHaveURL(/\/settings\/ai$/);
   // The OpenAI row opens the forced sign-in; the person chooses Claude there.
   await page.getByRole("button").and(page.getByTestId("pi-sign-in")).click();
   await expect(
@@ -424,7 +429,7 @@ test("@account-settings Claude sign-in from settings returns to Claude's row", a
     .getByRole("button")
     .and(page.getByTestId("claude-code-confirm"))
     .click();
-  await expect(page).toHaveURL(/\/settings\/connections$/);
+  await expect(page).toHaveURL(/\/settings\/ai$/);
   await expect(
     page.getByRole("region").and(page.getByTestId("claude-sign-in")),
   ).toBeFocused();
@@ -437,17 +442,17 @@ test("@account-settings Claude sign-in from settings returns to Claude's row", a
 test("@account-settings direct settings subpage URL cannot bypass initial Pi gate", async ({
   page,
 }) => {
-  await page.goto("/settings/agents");
+  await page.goto("/settings/ai");
   await page
     .getByRole("button")
     .and(page.getByTestId("github-sign-in"))
     .click();
   await page.getByRole("link").nth(0).click();
-  await expect(page).toHaveURL(/\/settings\/agents$/);
+  await expect(page).toHaveURL(/\/settings\/ai$/);
   await page.route("**/api/v1/onboarding/pi/status", (route) =>
     route.fulfill({ json: { schema_version: 1, pi: { state: "missing" } } }),
   );
-  await page.goto("/settings/agents");
+  await page.goto("/settings/ai");
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
@@ -577,7 +582,7 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
   await settings(page);
   await page
     .getByRole("link")
-    .and(page.getByTestId("settings-agentti"))
+    .and(page.getByTestId("settings-tekoaly"))
     .click();
   await expect(
     page.getByRole("radio").and(page.getByTestId("model-gpt-5.5")),
@@ -645,7 +650,7 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
   await page.goto("/settings");
   await page
     .getByRole("link")
-    .and(page.getByTestId("settings-agentti"))
+    .and(page.getByTestId("settings-tekoaly"))
     .click();
   await expect(
     page.getByRole("radio").and(page.getByTestId("model-gpt-6-astra")),
@@ -653,6 +658,30 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
   await expect(page.getByTestId("model-catalog-unavailable")).toBeVisible();
 });
 
+/** Tekoäly's "Lisää API-avain" dialog: provider first, then the key. */
+async function addKey(page: Page, provider: string, key: string) {
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("api-key-add-open"))
+    .click();
+  const dialog = page
+    .getByRole("dialog")
+    .and(page.getByTestId("api-key-dialog"));
+  await dialog
+    .getByRole("button")
+    .and(page.getByTestId(`api-key-provider-${provider}`))
+    .click();
+  await dialog.getByTestId("api-key-input").fill(key);
+  await dialog
+    .getByRole("button")
+    .and(page.getByTestId("api-key-save"))
+    .click();
+  const row = page.getByTestId(`api-key-row-${provider}`);
+  await expect(row.getByTestId("api-key-suffix")).toHaveText(
+    `${provider === "anthropic" ? "sk-ant-" : "sk-"}…${key.slice(-4)}`,
+  );
+  return row;
+}
 test.describe("credential settings", () => {
   // Request bodies must not enter trace artifacts, even with synthetic keys.
   test("@account-settings native key add, suffix, provider switch and confirmed removal", async ({
@@ -660,18 +689,8 @@ test.describe("credential settings", () => {
   }) => {
     await login(page);
     await settings(page);
-    const openai = page.getByTestId("api-key-row-openai");
-    await openai
-      .getByRole("button")
-      .and(page.getByTestId("api-key-add"))
-      .click();
     const key = `sk-${"s".repeat(24)}abcd`;
-    await openai.getByTestId("api-key-input").fill(key);
-    await openai
-      .getByRole("button")
-      .and(page.getByTestId("api-key-save"))
-      .click();
-    await expect(openai.getByTestId("api-key-suffix")).toHaveText("sk-…abcd");
+    const openai = await addKey(page, "openai", key);
     await expect(openai.getByTestId("api-key-suffix")).toBeVisible();
     expect(
       await page
@@ -685,7 +704,7 @@ test.describe("credential settings", () => {
     expect(JSON.stringify(credentials).includes(key)).toBe(false);
     await page
       .getByRole("link")
-      .and(page.getByTestId("settings-agentti"))
+      .and(page.getByTestId("settings-tekoaly"))
       .click();
     await expect(
       page.getByRole("button").and(page.getByTestId("segment-openai")),
@@ -709,7 +728,7 @@ test.describe("credential settings", () => {
       .getByRole("navigation")
       .and(page.getByTestId("settings-navigation"))
       .getByRole("link")
-      .and(page.getByTestId("settings-yhteydet"))
+      .and(page.getByTestId("settings-tekoaly"))
       .click();
     await openai
       .getByRole("button")
@@ -732,11 +751,8 @@ test.describe("credential settings", () => {
       .getByRole("button")
       .and(page.getByTestId("api-key-remove-confirm"))
       .click();
-    await expect(openai.getByTestId("api-key-state")).toHaveAttribute(
-      "data-present",
-      "false",
-    );
-    await expect(openai.getByTestId("api-key-state")).toBeVisible();
+    await expect(openai).toHaveCount(0);
+    await expect(page.getByTestId("api-key-missing")).toBeVisible();
   });
 
   test("@account-settings Anthropic and DeepSeek keys are separate native credentials with their own models", async ({
@@ -744,29 +760,12 @@ test.describe("credential settings", () => {
   }) => {
     await login(page);
     await settings(page);
-    const add = async (provider: string, key: string) => {
-      const row = page.getByTestId(`api-key-row-${provider}`);
-      await row
-        .getByRole("button")
-        .and(page.getByTestId("api-key-add"))
-        .click();
-      await row.getByTestId("api-key-input").fill(key);
-      await row
-        .getByRole("button")
-        .and(page.getByTestId("api-key-save"))
-        .click();
-      await expect(row.getByTestId("api-key-suffix")).toHaveText(
-        `sk-…${key.slice(-4)}`,
-      );
-      return row;
-    };
+    const add = (provider: string, key: string) => addKey(page, provider, key);
     const anthropicKey = `sk-ant-api03-${"A".repeat(86)}_x-AA`;
     const anthropic = await add("anthropic", anthropicKey);
     // Each provider's row reports only its own key. A Claude-only Pi is usable
     // as a whole, yet its OpenAI sign-in row still says OpenAI is missing.
-    await expect(
-      page.getByTestId("api-key-row-openai").getByTestId("api-key-state"),
-    ).toHaveAttribute("data-present", "false");
+    await expect(page.getByTestId("api-key-row-openai")).toHaveCount(0);
     await expect(page.getByTestId("openai-credential-state")).toHaveAttribute(
       "data-state",
       "missing",
@@ -774,7 +773,7 @@ test.describe("credential settings", () => {
     // Pi's own write made Anthropic the default; the chooser offers its models.
     await page
       .getByRole("link")
-      .and(page.getByTestId("settings-agentti"))
+      .and(page.getByTestId("settings-tekoaly"))
       .click();
     await expect(
       page.getByRole("button").and(page.getByTestId("segment-anthropic")),
@@ -798,7 +797,7 @@ test.describe("credential settings", () => {
       .getByRole("navigation")
       .and(page.getByTestId("settings-navigation"))
       .getByRole("link")
-      .and(page.getByTestId("settings-yhteydet"))
+      .and(page.getByTestId("settings-tekoaly"))
       .click();
     const deepseekKey = `sk-${"0f".repeat(16)}beef`;
     const deepseek = await add("deepseek", deepseekKey);
@@ -816,10 +815,7 @@ test.describe("credential settings", () => {
       .getByRole("button")
       .and(page.getByTestId("api-key-remove-confirm"))
       .click();
-    await expect(anthropic.getByTestId("api-key-state")).toHaveAttribute(
-      "data-present",
-      "false",
-    );
+    await expect(anthropic).toHaveCount(0);
     await expect(deepseek.getByTestId("api-key-state")).toHaveAttribute(
       "data-present",
       "true",
@@ -949,19 +945,6 @@ test("@account-settings Claude native code sign-in and provider-qualified picker
     page.getByRole("region").and(page.getByTestId("claude-sign-in")),
   ).toBeVisible();
   await page
-    .getByRole("link")
-    .and(page.getByTestId("settings-agentti"))
-    .click();
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("manage-credentials"))
-    .click();
-  await expect(
-    page
-      .getByRole("heading")
-      .and(page.getByTestId("settings-section-yhteydet")),
-  ).toBeFocused();
-  await page
     .getByRole("button")
     .and(page.getByTestId("claude-sign-in-start"))
     .click();
@@ -1021,10 +1004,8 @@ test("@account-settings Claude native code sign-in and provider-qualified picker
       },
     });
   });
-  await page
-    .getByRole("link")
-    .and(page.getByTestId("settings-agentti"))
-    .click();
+  // The catalog above is mocked from here on: read the page again.
+  await page.reload();
   await page
     .getByRole("button")
     .and(page.getByTestId("segment-claude-bridge"))
@@ -1070,17 +1051,12 @@ test("@account-settings Claude sign-in remains findable without a native runtime
     .click();
   await page
     .getByRole("link")
-    .and(page.getByTestId("settings-agentti"))
+    .and(page.getByTestId("settings-tekoaly"))
     .click();
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("manage-credentials"))
-    .click();
+  // Subscriptions and the default model share Tekoäly: no detour.
   await expect(claude).toBeVisible();
   await expect(
-    page
-      .getByRole("heading")
-      .and(page.getByTestId("settings-section-yhteydet")),
+    page.getByRole("heading").and(page.getByTestId("settings-section-tekoaly")),
   ).toBeFocused();
 });
 
@@ -1107,7 +1083,7 @@ test.describe("expired GitHub connection", () => {
   }) => {
     await state(page, "expired");
     await login(page);
-    await page.goto("/settings/connections");
+    await page.goto("/settings/code-hosts");
     const row = page.locator("#main").getByTestId("github-native-state");
     await expect(row).toHaveAttribute("data-state", "expired");
     await expect(row).toContainText("Vanhentunut");
@@ -1142,7 +1118,7 @@ test.describe("expired GitHub connection", () => {
     await reconnect.click();
     await expect(page).toHaveURL(/\/fixture\/provider\?/);
     await page.getByRole("link").nth(0).click();
-    await expect(page).toHaveURL(/\/settings\/connections$/);
+    await expect(page).toHaveURL(/\/settings\/code-hosts$/);
     await expect(row).toHaveAttribute("data-state", "connected");
     await expect(page.getByTestId("github-reconnect")).toHaveCount(0);
   });

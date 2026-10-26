@@ -30,7 +30,7 @@ async function signIn(page: Page) {
   await page.goto("/settings");
   await button(page, "github-sign-in").click();
   await page.getByRole("link").nth(0).click();
-  await page.goto("/settings/integrations");
+  await page.goto("/settings/agent-data");
   await expect(page.getByTestId("integrations-loading")).toHaveCount(0);
 }
 

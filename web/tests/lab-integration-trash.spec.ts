@@ -15,7 +15,7 @@ for (const width of [1280, 390]) {
       await page.goto("/settings");
       await page.getByTestId("github-sign-in").click();
       await page.locator('a[href*="code=42"]').click();
-      await page.goto("/settings/integrations");
+      await page.goto("/settings/agent-data");
       await page.locator("html").evaluate((el, value) => {
         el.dataset.theme = value;
       }, theme);

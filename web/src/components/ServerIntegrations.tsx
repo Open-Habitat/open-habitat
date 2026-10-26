@@ -974,8 +974,8 @@ export function ServerIntegrations({
       data-browser-setup={apps.browser_setup}
     >
       <p className="s-row s-desc" data-testid="si-connect-note">
-        Tarjolla olevat palvelut jokainen yhdistää itse omasta
-        Integraatiot-listastaan.
+        Tarjolla olevat palvelut jokainen yhdistää itse kohdassa Asetukset ›
+        Tiedot agenteille.
       </p>
       {!apps.browser_setup && (
         <p className="s-row si-note" data-testid="si-setup-off">

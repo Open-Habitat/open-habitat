@@ -179,7 +179,7 @@ describe("account presentation", () => {
     const signIn = vi.fn();
     const show = () => (
       <AccountSettings
-        routeSection="yhteydet"
+        routeSection="tekoaly"
         onNavigate={() => {}}
         onPiSignIn={signIn}
         onBack={() => {}}
@@ -218,7 +218,7 @@ describe("account presentation", () => {
       />
     );
     const { rerender } = render(show());
-    fireEvent.click(screen.getByTestId("settings-yhteydet"));
+    fireEvent.click(screen.getByTestId("settings-koodipalvelut"));
     expect(screen.queryByTestId("github-disconnect-inspect")).toBeNull();
     for (const state of ["disconnected", "partial"] as const) {
       rerender(show(state));
@@ -240,7 +240,7 @@ describe("account presentation", () => {
       />
     );
     const { rerender } = render(show("expired"));
-    fireEvent.click(screen.getByTestId("settings-yhteydet"));
+    fireEvent.click(screen.getByTestId("settings-koodipalvelut"));
     const row = screen.getByTestId("github-native-state");
     expect(row.dataset.state).toBe("expired");
     expect(row.textContent).toContain("Vanhentunut");

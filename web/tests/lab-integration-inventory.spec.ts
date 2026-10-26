@@ -109,7 +109,7 @@ for (const width of [1280, 390]) {
           json: active ? view() : { schema_version: 1, state: "none" },
         });
       });
-      await page.goto("/settings/integrations");
+      await page.goto("/settings/agent-data");
       await page.locator("html").evaluate((el, value) => {
         el.dataset.theme = value;
       }, theme);

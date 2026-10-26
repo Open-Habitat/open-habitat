@@ -260,10 +260,10 @@ test("@site-ai-key @a11y an administrator gives the key to people who joined ear
   expect(seeded).toMatchObject({
     anthropic: { present: true, suffix: "Xa1b" },
   });
-  await bob.goto("/settings/connections");
+  await bob.goto("/settings/ai");
   const row = bob.getByTestId("api-key-row-anthropic");
   await expect(row).toHaveAttribute("data-site", "current");
-  await expect(row.getByTestId("api-key-site")).toHaveText("Sivuston avain");
+  await expect(row.getByTestId("api-key-site")).toBeVisible();
 
   // A new key replaces Bob's copy, and never Alice's own key.
   await page

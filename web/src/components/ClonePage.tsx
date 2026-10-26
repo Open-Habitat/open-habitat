@@ -134,7 +134,13 @@ export function RepoFinder({
   state: "loading" | "failed" | "ready";
   /** What each connected Gitea's own list says beside GitHub's: a failed or
    * incomplete source, already in words. */
-  sourceNotes?: { key: string; text: string; failed: boolean }[];
+  sourceNotes?: {
+    key: string;
+    text: string;
+    failed: boolean;
+    /** Where the source's connection is checked (Asetukset › Koodipalvelut). */
+    fix?: { href: string; label: string };
+  }[];
   /** A Gitea is connected: GitHub's rows name their source too. */
   mixed?: boolean;
 }) {
@@ -186,6 +192,14 @@ export function RepoFinder({
           role={n.failed ? "alert" : undefined}
         >
           {n.text}
+          {n.fix ? (
+            <>
+              {" "}
+              <a data-testid="repository-source-fix" href={n.fix.href}>
+                {n.fix.label}
+              </a>
+            </>
+          ) : null}
         </p>
       ))}
       {lookup ? (

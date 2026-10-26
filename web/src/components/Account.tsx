@@ -9,12 +9,19 @@ import { EditorSettings } from "../app/EditorSettings";
 import "./Settings.css";
 import { bundleChecks } from "../app/bundleRelease";
 import { ClaudeSignIn } from "../app/ClaudeSignIn";
+import { CodeHostSettings, type NativeState } from "../app/CodeHostSettings";
 import { Devices } from "../app/Devices";
 import { GitIdentity } from "../app/GitIdentity";
 import { IntegrationsSettings } from "../app/IntegrationsSettings";
+import type { ProviderId } from "../app/integrations";
 import { OnboardingAdministration } from "../app/OnboardingAdministration";
 import { PersonalStorage } from "../app/PersonalStorage";
-import { type OpenAIState, PiCredentials } from "../app/PiCredentials";
+import {
+  modelsLine,
+  type OpenAIState,
+  PiCredentials,
+} from "../app/PiCredentials";
+import { usePiModels } from "../app/PiModels";
 import type { AccountProfile } from "../app/pi";
 import { ServerAdministration } from "../app/ServerAdministration";
 import { ServerIntegrationsSettings } from "../app/ServerIntegrationsSettings";
@@ -22,15 +29,19 @@ import { ServerVersionLine } from "../app/ServerVersion";
 import { SiteKeyAdministration } from "../app/SiteKeyAdministration";
 import { type ServerInfo, serverInfo } from "../app/serverAdministration";
 import { settingsHref } from "../app/settingsRoute";
+import type { Workspace } from "../app/snapshot";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
 import { ControlButton, Segmented } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
-import { NativeDisconnect } from "./NativeDisconnect";
+import { LetterMark } from "./Integrations";
 import { Menu } from "./Overlays";
 import { Button } from "./Primitives";
 import { StatusMark } from "./Status";
 import type { Tone } from "./types";
+
+// Gitea is a code host: Koodipalvelut shows it beside GitHub.
+const codeHosts: ProviderId[] = ["gitea"];
 
 /** Provider subject numbers are not a useful person-facing name. */
 export function accountLabel(displayName: string): string {
@@ -217,38 +228,6 @@ export function AccountShelf({
   );
 }
 
-type NativeState =
-  "connected" | "disconnected" | "expired" | "pending" | "partial" | "unknown";
-const states: Record<NativeState, { label: string; description: string }> = {
-  connected: {
-    label: "Yhdistetty",
-    description: "GitHub-yhteys toimii tällä hetkellä.",
-  },
-  disconnected: {
-    label: "Ei yhdistetty",
-    description:
-      "GitHub-yhteyttä ei löytynyt, joten git push ja gh eivät toimi. Yhdistä kirjautumalla GitHubilla.",
-  },
-  expired: {
-    label: "Vanhentunut",
-    description:
-      "GitHub ei enää hyväksy palvelimelle tallennettua valtuutusta, joten git push ja gh eivät toimi. Yhdistä uudelleen kirjautumalla GitHubilla.",
-  },
-  pending: {
-    label: "Yhdistäminen kesken",
-    description:
-      "GitHub-yhteyttä valmistellaan. Odota ennen Git-toimintojen käyttöä.",
-  },
-  partial: {
-    label: "Osittainen yhteys",
-    description:
-      "GitHub-yhteys ei ole vielä kokonaan valmis. Git-toiminnot eivät välttämättä onnistu.",
-  },
-  unknown: {
-    label: "Tilaa ei tiedetä",
-    description: "GitHub-yhteyden tilaa ei juuri nyt voitu vahvistaa.",
-  },
-};
 export function AccountSettings({
   editorIdentity,
   profile,
@@ -265,7 +244,10 @@ export function AccountSettings({
   onWorkspacesChanged,
   administration = false,
   routeSection,
+  routeRow,
   onNavigate,
+  workspaces,
+  onNewWorkspace,
 }: {
   editorIdentity?: string;
   profile?: AccountProfile;
@@ -284,11 +266,16 @@ export function AccountSettings({
   onLogout?: () => void;
   administration?: boolean;
   routeSection?: string | null;
+  /** The row a link named (the URL fragment): scrolled to and marked. */
+  routeRow?: string;
   onNavigate?: (path: string) => void;
+  /** The snapshot's workspaces, for Koodipalvelut's imported list. */
+  workspaces?: readonly Workspace[];
+  onNewWorkspace?: () => void;
 }) {
   const theme = useThemeChoice();
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
-  const state = states[nativeState ?? "unknown"];
+  const { data: piModels, refresh: refreshModels } = usePiModels();
   const [localSection, setLocalSection] = useState(
     administration ? "palvelin" : "tili",
   );
@@ -315,7 +302,6 @@ export function AccountSettings({
   }, []);
   const [admin, setAdmin] = useState<boolean | null>();
   const [work, setWork] = useState(getWorkPreference);
-  const [disconnectNotice, setDisconnectNotice] = useState(false);
   const [openAI, setOpenAI] = useState<OpenAIState>("checking");
   const heading = useRef<HTMLHeadingElement>(null);
   const navHeading = useRef<HTMLHeadingElement>(null);
@@ -339,19 +325,45 @@ export function AccountSettings({
     if (detail) heading.current?.focus();
     else navHeading.current?.focus();
   }, [section, detail]);
+  const main = useRef<HTMLDivElement>(null);
+  // A link to a row (the model selector's Claude link, the new-workspace
+  // page's Gitea error, …) lands on it: the row is scrolled into view, takes
+  // focus and is marked for a moment. Rows read by the daemon appear later,
+  // so the page waits for the row a short while.
+  useEffect(() => {
+    void section;
+    if (!detail || !routeRow) return;
+    let tries = 0;
+    let unmark: number | undefined;
+    const timer = window.setInterval(() => {
+      const row = main.current?.querySelector<HTMLElement>(
+        `[data-settings-row="${CSS.escape(routeRow)}"]`,
+      );
+      if (!row && ++tries < 50) return;
+      window.clearInterval(timer);
+      if (!row) return;
+      row.scrollIntoView({ block: "center" });
+      row.focus({ preventScroll: true });
+      row.dataset.landed = "";
+      unmark = window.setTimeout(() => delete row.dataset.landed, 2400);
+    }, 100);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(unmark);
+    };
+  }, [section, detail, routeRow]);
   const sections = [
     ["tili", "Tili"],
     ["laitteet", "Laitteet"],
-    ["agentti", "Agentit"],
-    ["yhteydet", "Yhteydet"],
-    ["integraatiot", "Integraatiot"],
+    ["tekoaly", "Tekoäly"],
+    ["koodipalvelut", "Koodipalvelut"],
+    ["tiedot", "Tiedot agenteille"],
     ["ulkoasu", "Ulkoasu"],
     ["editori", "Editori"],
     ["tila", "Tallennustila"],
   ];
   const adminSections = [
     ["palvelin", "Palvelin"],
-    // Not "Integraatiot": that is the person's own tab (Jari 24.10.2026).
     ["palvelinintegraatiot", "Palvelinintegraatiot"],
     ["aiavain", "AI-avain"],
     ["kayttoonotto", "Käyttöönotto"],
@@ -364,9 +376,9 @@ export function AccountSettings({
   const sectionIcons: Record<string, IconName> = {
     tili: "user",
     laitteet: "devices",
-    agentti: "agent",
-    yhteydet: "link",
-    integraatiot: "plug",
+    tekoaly: "agent",
+    koodipalvelut: "code",
+    tiedot: "plug",
     ulkoasu: "eye",
     editori: "editor",
     tila: "disk",
@@ -452,7 +464,7 @@ export function AccountSettings({
           </>
         )}
       </nav>
-      <div className="s-main">
+      <div className="s-main" ref={main}>
         <ControlButton
           data-testid="settings-list-back"
           className="s-back"
@@ -492,160 +504,116 @@ export function AccountSettings({
           </div>
         )}
         {section === "laitteet" && <Devices csrf={csrf} onLogout={onLogout} />}
-        {section === "agentti" && (
-          <div className="s-card">
-            <div className="s-row">
-              <div className="s-lbl">
-                <strong>Kirjautumiset</strong>
-                <span className="s-desc">
-                  ChatGPT- ja Claude-tilaukset sekä API-avain ovat
-                  Yhteydet-osiossa.
-                </span>
-              </div>
-              <div className="s-val">
-                <Button
-                  data-testid="manage-credentials"
-                  size="row"
-                  label="Hallitse kirjautumisia"
-                  variant="secondary"
-                  onPress={() => openSection("yhteydet")}
-                />
-              </div>
-            </div>
-            <div className="s-model">
-              <h3>Oletusmalli</h3>
-              {modelSelector}
-            </div>
-            <div className="s-row">
-              <div className="s-lbl">
-                <strong>Agentin työ</strong>
-                <span className="s-desc">
-                  Ajattelu ja työkalut keskustelussa oletuksena.
-                </span>
-              </div>
-              <Segmented
-                label="Agentin työ"
-                options={[
-                  { id: "hidden", label: "Piilossa" },
-                  { id: "visible", label: "Näkyvissä" },
-                ]}
-                value={work}
-                onChange={(value) => {
-                  setWork(value);
-                  setWorkPreference(value);
-                }}
-              />
-            </div>
-          </div>
-        )}
-        {section === "yhteydet" && (
-          <div className="s-card">
-            <div className="s-row">
-              <div className="s-lbl">
-                <strong>GitHub</strong>
-                <span className="s-desc">
-                  {state.description} Selaimesta uloskirjautuminen ei poista
-                  palvelimen valtuutusta.
-                </span>
-              </div>
+        {section === "tekoaly" && (
+          <div className="s-stack">
+            <p className="s-intro">
+              Mallit, joita agentit käyttävät, ja tilaukset tai avaimet, joilla
+              ne saadaan.
+            </p>
+            <div className="s-card">
+              {/* Today's default-model selector; its row awaits round 3 of
+                  proto-integration-grouping and is replaced as one piece. */}
               <div
-                className="s-val"
-                data-testid="github-native-state"
-                data-state={nativeState ?? "unknown"}
+                className="s-model"
+                data-settings-row="default-model"
+                tabIndex={-1}
               >
-                <code>{nativeLogin}</code>
-                <StatusMark
-                  label={state.label}
-                  kind={
-                    nativeState === "connected"
-                      ? "success"
-                      : nativeState === "expired"
-                        ? "error"
-                        : "unknown"
-                  }
-                  tone={
-                    nativeState === "connected"
-                      ? "success"
-                      : nativeState === "expired"
-                        ? "danger"
-                        : "warning"
-                  }
+                <h3>Oletusmalli</h3>
+                {modelSelector}
+              </div>
+              <div className="s-row">
+                <div className="s-lbl">
+                  <strong>Agentin työ</strong>
+                  <span className="s-desc">
+                    Ajattelu ja työkalut keskustelussa oletuksena.
+                  </span>
+                </div>
+                <Segmented
+                  label="Agentin työ"
+                  options={[
+                    { id: "hidden", label: "Piilossa" },
+                    { id: "visible", label: "Näkyvissä" },
+                  ]}
+                  value={work}
+                  onChange={(value) => {
+                    setWork(value);
+                    setWorkPreference(value);
+                  }}
                 />
-                {/* Every GitHub sign-in hands its token to the person's gh,
-                    so the same sign-in also connects a missing login. */}
-                {(nativeState === "expired" ||
-                  nativeState === "disconnected") &&
-                  onReconnect && (
+              </div>
+            </div>
+            <h3 className="s-h3">Tilaukset</h3>
+            <div className="s-card">
+              <div
+                className="s-row s-marked"
+                data-settings-row="chatgpt"
+                tabIndex={-1}
+              >
+                <LetterMark mark="Ch" tone={1} />
+                <div className="s-lbl">
+                  <strong>ChatGPT-tilaus</strong>
+                  <span
+                    className="s-desc"
+                    data-testid="openai-credential-state"
+                    data-state={openAI}
+                  >
+                    {openAI === "signed_in"
+                      ? `Kirjautunut. ${modelsLine(piModels?.models, "openai-codex")}`
+                      : openAI === "checking"
+                        ? "Tarkistetaan ChatGPT-kirjautumista…"
+                        : openAI === "unknown"
+                          ? "ChatGPT-kirjautumista ei voitu vahvistaa."
+                          : "Kirjaudu ChatGPT-tilauksella (Codex), niin sen mallit tulevat mallivalitsimeen. Kirjautuminen tallentuu vain omalle käyttäjällesi tällä palvelimella."}
+                  </span>
+                </div>
+                <div className="s-val">
+                  {openAI === "signed_in" ? (
+                    <StatusMark
+                      kind="success"
+                      tone="success"
+                      label="Kirjautunut"
+                    />
+                  ) : null}
+                  {onPiSignIn && (
                     <Button
                       size="row"
-                      data-testid="github-reconnect"
+                      data-testid="pi-sign-in"
                       label={
-                        nativeState === "expired"
-                          ? "Yhdistä GitHub uudelleen"
-                          : "Yhdistä GitHub"
+                        openAI === "signed_in"
+                          ? "Kirjaudu uudelleen"
+                          : "Kirjaudu ChatGPT:hen"
                       }
-                      onPress={onReconnect}
+                      variant="secondary"
+                      onPress={onPiSignIn}
                     />
                   )}
-              </div>
-              {csrf && nativeState === "connected" && (
-                <div className="s-editor">
-                  <NativeDisconnect
-                    csrf={csrf}
-                    onDisconnected={() => {
-                      setDisconnectNotice(true);
-                      onDisconnect?.();
-                    }}
-                  />
                 </div>
-              )}
-              {disconnectNotice && (
-                <p role="status">
-                  Paikallinen gh-valtuutus poistettu. GitHubin OAuth-lupaa ei
-                  peruttu.
-                </p>
-              )}
-            </div>
-            <div className="s-row">
-              <div className="s-lbl">
-                <strong>OpenAI (Pi)</strong>
-                <span className="s-desc">
-                  Käytä omaa ChatGPT-tilaustasi (Codex). Kirjautuminen tallentuu
-                  vain omalle käyttäjällesi tällä palvelimella.
-                </span>
               </div>
-              <div className="s-val">
-                <span data-testid="openai-credential-state" data-state={openAI}>
-                  {openAI === "signed_in"
-                    ? "ChatGPT-tilaus yhdistetty"
-                    : openAI === "api_key"
-                      ? "Käytössä OpenAI API-avain, ei ChatGPT-tilausta"
-                      : openAI === "missing"
-                        ? "ChatGPT-tilausta ei ole yhdistetty"
-                        : openAI === "checking"
-                          ? "Tarkistetaan OpenAI-kirjautumista"
-                          : "OpenAI-kirjautumista ei voitu vahvistaa"}
-                </span>
-                {onPiSignIn && (
-                  <Button
-                    size="row"
-                    data-testid="pi-sign-in"
-                    label={
-                      openAI === "signed_in"
-                        ? "Kirjaudu ChatGPT:hen uudelleen"
-                        : "Kirjaudu ChatGPT:hen"
-                    }
-                    variant="secondary"
-                    onPress={onPiSignIn}
-                  />
-                )}
-              </div>
+              <ClaudeSignIn csrf={csrf} onSignedIn={refreshModels} />
             </div>
-            <ClaudeSignIn csrf={csrf} />
-            <PiCredentials csrf={csrf} onOpenAI={setOpenAI} />
+            {/* A provider's first key makes its model Pi's default: the
+                selector above reads Pi again after every key change. */}
+            <PiCredentials
+              csrf={csrf}
+              onOpenAI={setOpenAI}
+              onSaved={refreshModels}
+            />
           </div>
         )}
-        {section === "integraatiot" && <IntegrationsSettings csrf={csrf} />}
+        {section === "koodipalvelut" && (
+          <CodeHostSettings
+            csrf={csrf}
+            nativeState={nativeState}
+            nativeLogin={nativeLogin}
+            onReconnect={onReconnect}
+            onDisconnect={onDisconnect}
+            workspaces={workspaces}
+            onNewWorkspace={onNewWorkspace}
+          />
+        )}
+        {section === "tiedot" && (
+          <IntegrationsSettings csrf={csrf} except={codeHosts} />
+        )}
         {section === "editori" && (
           <EditorSettings identity={editorIdentity} csrf={csrf} />
         )}

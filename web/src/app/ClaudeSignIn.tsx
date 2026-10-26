@@ -2,9 +2,12 @@ import Ajv from "ajv/dist/2020.js";
 import { useEffect, useRef, useState } from "react";
 import schema from "../../../contracts/v1/claude-login.schema.json";
 import { ControlButton, ExternalLink } from "../components/ControlElements";
+import { LetterMark } from "../components/Integrations";
 import { SignInStep, SignInSteps } from "../components/PiDeviceSignIn";
 import { StatusMark } from "../components/Status";
 import { hostRequest } from "./mutations";
+import { modelsLine } from "./PiCredentials";
+import { usePiModels } from "./PiModels";
 
 const valid = new Ajv({ strict: false }).compile(schema);
 type Login = {
@@ -62,6 +65,7 @@ export function ClaudeSignIn({
   onSignedIn?: () => void;
 }) {
   const [login, setLogin] = useState<Login>();
+  const models = modelsLine(usePiModels().data?.models, "claude-bridge");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -314,81 +318,35 @@ export function ClaudeSignIn({
   return (
     <section
       data-testid="claude-sign-in"
-      aria-label="Claude (Pi)"
-      className="s-row"
+      aria-label="Claude-tilaus"
+      className="s-row s-marked"
+      data-settings-row="claude"
       // A return from a Claude sign-in opened in Settings focuses this row.
       tabIndex={-1}
     >
+      <LetterMark mark="Cl" tone={2} />
       <div className="s-lbl">
-        <strong>Claude (Pi)</strong>
-        <span className="s-desc">
-          Käytä omaa Claude-tilaustasi. Kirjautuminen tallentuu vain omalle
-          käyttäjällesi tällä palvelimella.
-        </span>
-      </div>
-      <div className="s-val">
-        <p
+        <strong>Claude-tilaus</strong>
+        <span
+          className="s-desc"
           role="status"
           data-testid="claude-login-state"
           data-state={login?.state}
         >
           {login?.state === "completed"
-            ? "Claude-tilaus on kirjautunut. Mallin käyttöoikeus selviää ensimmäisessä viestissä."
+            ? `Kirjautunut. ${models ? `${models} ` : ""}Mallin käyttöoikeus selviää ensimmäisessä viestissä.`
             : login?.state === "unavailable"
               ? "Claude-kirjautuminen ei ole käytettävissä. Tarkista palvelimen runtime ja oman ~/.claude-hakemiston oikeudet."
               : active
                 ? "Claude-kirjautuminen kesken."
-                : "Claude-kirjautumista ei ole vahvistettu."}
-        </p>
-        {login?.state === "code" && login.verification_uri ? (
-          <>
-            <p>
-              1. Avaa Clauden sivu ja kirjaudu sisään. Salasanaa ei syötetä
-              tänne.
-            </p>
-            <a
-              data-testid="claude-sign-in-link"
-              href={login.verification_uri}
-              target="_blank"
-              rel="noopener noreferrer"
-              referrerPolicy="no-referrer"
-            >
-              Avaa Claude-kirjautuminen
-            </a>
-            {!submitted ? (
-              <form
-                className="s-editor"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void action("PUT");
-                }}
-              >
-                <label className="s-field">
-                  Clauden palauttama koodi
-                  <input
-                    type="password"
-                    data-testid="claude-code-input"
-                    autoComplete="off"
-                    value={code}
-                    maxLength={2048}
-                    onChange={(event) => setCode(event.target.value)}
-                  />
-                </label>
-                <ControlButton
-                  data-testid="claude-code-confirm"
-                  size="row"
-                  type="submit"
-                  isDisabled={busy || !csrf || !codeValid}
-                >
-                  Vahvista Claude-koodi
-                </ControlButton>
-              </form>
-            ) : (
-              <p>
-                Odotetaan Clauden vahvistusta. Koodia ei lähetetä uudelleen.
-              </p>
-            )}
-          </>
+                : "Kirjaudu Claude-tilauksella, niin sen mallit tulevat mallivalitsimeen. Kirjautuminen tallentuu vain omalle käyttäjällesi tällä palvelimella."}
+        </span>
+      </div>
+      <div className="s-val">
+        {login?.state === "completed" ? (
+          <StatusMark kind="success" tone="success" label="Kirjautunut" />
+        ) : login?.state === "unavailable" ? (
+          <StatusMark kind="error" tone="danger" label="Ei käytettävissä" />
         ) : null}
         {active ? (
           <ControlButton
@@ -410,7 +368,7 @@ export function ClaudeSignIn({
             onPress={() => void action("POST")}
           >
             {login?.state === "completed"
-              ? "Kirjaudu Claudeen uudelleen"
+              ? "Kirjaudu uudelleen"
               : "Kirjaudu Claudeen"}
           </ControlButton>
         )}
@@ -424,13 +382,62 @@ export function ClaudeSignIn({
             Tarkista Claude-kirjautuminen
           </ControlButton>
         ) : null}
-        {failed ? (
-          <p role="alert">
-            Claude-yhteyden tarkistus epäonnistui. Tarkistetaan tila uudelleen;
-            koodia ei toisteta.
-          </p>
-        ) : null}
       </div>
+      {login?.state === "code" && login.verification_uri ? (
+        <div className="s-editor">
+          <p>
+            1. Avaa Clauden sivu ja kirjaudu sisään. Salasanaa ei syötetä tänne.
+          </p>
+          <a
+            data-testid="claude-sign-in-link"
+            href={login.verification_uri}
+            target="_blank"
+            rel="noopener noreferrer"
+            referrerPolicy="no-referrer"
+          >
+            Avaa Claude-kirjautuminen
+          </a>
+          {!submitted ? (
+            <form
+              className="s-editor"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void action("PUT");
+              }}
+            >
+              <label className="s-field">
+                2. Clauden palauttama koodi
+                <input
+                  type="password"
+                  data-testid="claude-code-input"
+                  autoComplete="off"
+                  value={code}
+                  maxLength={2048}
+                  onChange={(event) => setCode(event.target.value)}
+                />
+              </label>
+              <div className="s-actions">
+                <ControlButton
+                  data-testid="claude-code-confirm"
+                  size="row"
+                  type="submit"
+                  isDisabled={busy || !csrf || !codeValid}
+                >
+                  Vahvista Claude-koodi
+                </ControlButton>
+              </div>
+            </form>
+          ) : (
+            <p>Odotetaan Clauden vahvistusta. Koodia ei lähetetä uudelleen.</p>
+          )}
+        </div>
+      ) : null}
+      {failed ? (
+        <p className="s-editor" role="alert">
+          Claude-yhteyden tarkistus epäonnistui. Tarkistetaan tila uudelleen;
+          koodia ei toisteta.
+        </p>
+      ) : null}
     </section>
   );
 }

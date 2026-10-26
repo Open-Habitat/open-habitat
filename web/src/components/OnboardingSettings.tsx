@@ -22,7 +22,7 @@ import {
 } from "./AIOfferList";
 import { ControlButton, Segmented } from "./ControlElements";
 import { Icon } from "./Icon";
-import { ProviderMark, providerCopy } from "./Integrations";
+import { ProviderMark, providerCopy, settingsPlace } from "./Integrations";
 import {
   OnboardingFrame,
   OnboardingRoute,
@@ -627,8 +627,8 @@ function AISettings({
               : `Vain ${optionName(offer)}. Muut vaihtoehdot ovat linkin › Käytä muuta AI-palvelua takana.`}
       </Effect>
       <p className="ob-muted">
-        Henkilö voi lisätä muita tilejä myöhemmin asetuksissa. AI-vaihe
-        ohitetaan, jos henkilöllä on jo toimivat tunnukset.
+        Henkilö voi lisätä muita tilejä myöhemmin kohdassa Asetukset › Tekoäly.
+        AI-vaihe ohitetaan, jos henkilöllä on jo toimivat tunnukset.
       </p>
       <SiteKeyRemoval
         siteKey={siteKey}
@@ -1048,7 +1048,9 @@ function PreviewStepCard({
         <p>
           Yhdistä oma {copy.name}-tilisi, jos agenttisi pitää käyttää sen
           tietoja.
-          {step.required ? "" : " Voit tehdä tämän myöhemmin asetuksissa."}
+          {step.required
+            ? ""
+            : ` Voit tehdä tämän myöhemmin kohdassa Asetukset › ${settingsPlace(step.provider)}.`}
         </p>
         <div className="ig-tile ob-tile">
           <ProviderMark provider={step.provider} />

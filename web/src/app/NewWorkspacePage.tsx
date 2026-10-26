@@ -30,6 +30,7 @@ import {
   type Repo,
 } from "./github";
 import { mutationFetch } from "./mutations";
+import { settingsHref } from "./settingsRoute";
 import type { Workspace } from "./snapshot";
 import { ownStorage } from "./storageQuota";
 import { workspaceFor } from "./workspaceMatch";
@@ -53,11 +54,11 @@ const refusal = (e: unknown, what: string) =>
             : e.code === "empty"
               ? "Repo on tyhjä, joten sitä ei voi vielä kloonata työtilaksi."
               : e.code === "gitea"
-                ? "Gitea-yhteys ei ole nyt käytettävissä. Tarkista se Integraatioista."
+                ? "Gitea-yhteys ei ole nyt käytettävissä. Tarkista se kohdassa Asetukset › Koodipalvelut."
                 : e.code === "rewritten"
                   ? "Git-asetuksesi (url.insteadOf) ohjaavat tämän repon osoitteen muualle, joten kloonausta ei aloitettu. Poista ohjaus Gitean osoitteelta ja yritä uudelleen."
                   : e.code === "auth"
-                    ? "GitHub-tunnukset eivät ole käytettävissä. Yhdistä GitHub asetuksista."
+                    ? "GitHub-tunnukset eivät ole käytettävissä. Yhdistä GitHub kohdassa Asetukset › Koodipalvelut."
                     : e.code === "login"
                       ? "Kirjaudu uudelleen ja yritä sitten."
                       : `${what} ei onnistunut. Tarkista tilanne yltä ennen uutta yritystä.`
@@ -426,6 +427,10 @@ export function NewWorkspacePage({
           : undefined);
   const problemKey = (r?: ListedRepo) =>
     r?.gitea ? `gitea:${giteaKey(r.gitea)}` : r?.full_name;
+  const giteaFix = {
+    href: settingsHref("koodipalvelut", "gitea"),
+    label: "Tarkista yhteys",
+  };
   const sourceNotes =
     gitea.state === "failed"
       ? [
@@ -433,6 +438,7 @@ export function NewWorkspacePage({
             key: "gitea",
             text: "Gitea-repoja ei saatu juuri nyt. Muut repot näkyvät silti.",
             failed: true,
+            fix: giteaFix,
           },
         ]
       : gitea.sources.flatMap((s) =>
@@ -442,6 +448,7 @@ export function NewWorkspacePage({
                   key: s.connection_id,
                   text: `Gitean ${host(s.base_url)} (${s.user}) repoja ei saatu: ${giteaFailure[s.failure ?? ""] ?? "tuntematon syy"}.`,
                   failed: true,
+                  fix: giteaFix,
                 },
               ]
             : s.complete

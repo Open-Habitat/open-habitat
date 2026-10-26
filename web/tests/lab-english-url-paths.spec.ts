@@ -26,9 +26,9 @@ test("@a11y English settings links survive OAuth, reload and browser history", a
   const slugs = [
     "account",
     "devices",
-    "agents",
-    "connections",
-    "integrations",
+    "ai",
+    "code-hosts",
+    "agent-data",
     "appearance",
     "editor",
     "storage",
@@ -57,6 +57,10 @@ test("@a11y English settings links survive OAuth, reload and browser history", a
     "aria-current",
     "page",
   );
+  for (const old of ["/settings/integraatiot", "/settings/connections"]) {
+    await page.goto(old);
+    await expect(page).toHaveURL(/\/settings$/);
+  }
   await page.goto("/settings/integraatiot");
   await expect(page).toHaveURL(/\/settings$/);
   await page.goto("/settings/account");

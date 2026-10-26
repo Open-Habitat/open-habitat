@@ -10,7 +10,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { IntegrationsSettings } from "./IntegrationsSettings";
 
-// The Gitea half of Asetukset › Integraatiot against a stubbed host: what the
+// Gitea in Asetukset › Koodipalvelut against a stubbed host: what the
 // page does with a write whose outcome it cannot know, and with a reply that
 // arrives for a session that is no longer this tab's.
 

@@ -358,8 +358,8 @@ export function GiveDialog({
               <li>
                 <Icon name="info" />
                 <span>
-                  {one ? "Hän näkee" : "He näkevät"} Asetukset › Yhteydet
-                  -osiossa, että avain on sivuston antama, ja{" "}
+                  {one ? "Hän näkee" : "He näkevät"} kohdassa Asetukset ›
+                  Tekoäly, että avain on ylläpitäjän antama, ja{" "}
                   {one ? "voi" : "voivat"} vaihtaa sen omaansa.
                 </span>
               </li>

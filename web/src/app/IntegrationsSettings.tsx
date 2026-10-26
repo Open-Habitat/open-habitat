@@ -170,12 +170,14 @@ const live = (v?: LoginView) =>
 
 type Flow = { provider: Provider; stage: ConnectStage };
 
-/** Asetukset › Integraatiot: reads the catalog and the accounts live from
- * the person's tools through their daemon, and relays sign-ins. Onboarding
- * shows the same view limited to the providers of its step. */
+/** The person's outside accounts: reads the catalog and the accounts live
+ * from the person's tools through their daemon, and relays sign-ins.
+ * Asetukset › Tiedot agenteille shows every data source, Koodipalvelut only
+ * Gitea, and an onboarding step only the providers of that step. */
 export function IntegrationsSettings({
   csrf,
   only,
+  except,
   initial,
   compact = false,
   onList,
@@ -183,6 +185,8 @@ export function IntegrationsSettings({
   csrf?: string;
   /** Show only these providers and their accounts (an onboarding step). */
   only?: ProviderId[];
+  /** Leave these providers out (they have a settings page of their own). */
+  except?: ProviderId[];
   /** A catalog the caller has just read; it is shown instead of reading
    * again, and the next change reads afresh as usual. */
   initial?: IntegrationList;
@@ -275,8 +279,13 @@ export function IntegrationsSettings({
         if (view.address && view.state === "completing") return;
         if (!alive.current || (!live(view) && view.state !== "choose_folders"))
           return;
-        // Onboarding's step resumes only its own provider's sign-in.
-        if (view.provider && only && !only.includes(view.provider)) return;
+        // A page resumes only the sign-in of a provider it shows.
+        if (
+          view.provider &&
+          ((only && !only.includes(view.provider)) ||
+            except?.includes(view.provider))
+        )
+          return;
         void readIntegrations().then((l) => {
           const provider = l.providers.find((p) => p.id === view.provider);
           if (alive.current && provider)
@@ -284,7 +293,7 @@ export function IntegrationsSettings({
         });
       })
       .catch(() => {});
-  }, [load, only]);
+  }, [load, only, except]);
 
   // While the tool waits, ask the daemon how far it got.
   // A failed read schedules the next one: a lost poll must not strand the
@@ -812,6 +821,8 @@ export function IntegrationsSettings({
     }
   };
 
+  const shows = (id: ProviderId) =>
+    (!only || only.includes(id)) && !except?.includes(id);
   if (!list)
     return failed ? (
       <p role="alert">
@@ -836,14 +847,12 @@ export function IntegrationsSettings({
       <IntegrationsOverview
         compact={compact}
         list={
-          only
+          only || except
             ? {
                 ...list,
-                providers: list.providers.filter((p) => only.includes(p.id)),
-                accounts: list.accounts.filter((a) =>
-                  only.includes(listedProvider(a)),
-                ),
-                gitea: only.includes("gitea") ? list.gitea : undefined,
+                providers: list.providers.filter((p) => shows(p.id)),
+                accounts: list.accounts.filter((a) => shows(listedProvider(a))),
+                gitea: shows("gitea") ? list.gitea : undefined,
               }
             : list
         }

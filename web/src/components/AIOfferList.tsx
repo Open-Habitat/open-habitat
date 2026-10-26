@@ -62,8 +62,8 @@ export function suggestionOf(
 /** The step's lead under its heading. */
 export const aiStepLead = (suggested?: AIOptionInfo) =>
   suggested
-    ? `Sivusto ehdottaa: ${suggested.name}. Voit lisätä muita tilejä myöhemmin asetuksissa.`
-    : "Valitse yksi tapa. Voit lisätä muita tilejä myöhemmin asetuksissa.";
+    ? `Sivusto ehdottaa: ${suggested.name}. Voit lisätä muita tilejä myöhemmin kohdassa Asetukset › Tekoäly.`
+    : "Valitse yksi tapa. Voit lisätä muita tilejä myöhemmin kohdassa Asetukset › Tekoäly.";
 
 export function AIOfferList({
   offer,

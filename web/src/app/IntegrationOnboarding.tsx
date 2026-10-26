@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
-import { providerCopy } from "../components/Integrations";
+import { providerCopy, settingsPlace } from "../components/Integrations";
 import { OnboardingFrame } from "../components/OnboardingFrame";
 import { IntegrationsSettings } from "./IntegrationsSettings";
 import {
@@ -12,7 +12,7 @@ import {
 export const connectedTo = (list: IntegrationList, provider: ProviderId) =>
   list.accounts.some((a) => listedProvider(a) === provider);
 
-/** One integration step of onboarding: Asetukset › Integraatiot limited to
+/** One integration step of onboarding: Asetukset › Tiedot agenteille limited to
  * the provider the site added. An optional step can be passed without
  * connecting; a required one has no skip action, only Continue once an
  * account is connected. Required gates nothing else: the person's
@@ -61,7 +61,7 @@ export function IntegrationOnboarding({
           <p>
             {required
               ? `Ylläpitäjä pyytää yhdistämään ${providerCopy[provider].gen} tilin ennen jatkamista, jotta agenttisi voivat käyttää sen tietoja.`
-              : `Agenttisi voivat käyttää ${providerCopy[provider].gen} tietoja. Voit myös jatkaa ilman ja yhdistää tilin myöhemmin asetuksissa.`}
+              : `Agenttisi voivat käyttää ${providerCopy[provider].gen} tietoja. Voit myös jatkaa ilman ja yhdistää tilin myöhemmin kohdassa Asetukset › ${settingsPlace(provider)}.`}
           </p>
         </header>
         <IntegrationsSettings

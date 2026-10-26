@@ -337,7 +337,7 @@ export function AppleGuide({
         <Icon name="warning" />
         <span>
           Yhteys palvelimeen katkesi, eikä tiedetä, tallentuiko muutos. Tarkista
-          tilanne Integraatiot-sivulta ennen kuin yrität uudelleen.
+          tilanne Tiedot agenteille -sivulta ennen kuin yrität uudelleen.
         </span>
       </p>
     );

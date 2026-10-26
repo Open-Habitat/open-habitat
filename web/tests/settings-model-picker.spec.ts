@@ -12,7 +12,7 @@ async function settings(page: Page) {
   await page.goto("/settings");
   await page
     .getByRole("link")
-    .and(page.getByTestId("settings-agentti"))
+    .and(page.getByTestId("settings-tekoaly"))
     .click();
   await expect(
     page.getByRole("radio").and(page.getByTestId("model-gpt-6.1-sol")),
@@ -80,7 +80,7 @@ test("provider browsing never chooses or saves, even with an older first catalog
   await page.reload();
   await page
     .getByRole("link")
-    .and(page.getByTestId("settings-agentti"))
+    .and(page.getByTestId("settings-tekoaly"))
     .click();
   await expect(
     page.getByRole("radio").and(page.getByTestId("model-gpt-5.4")),
@@ -164,7 +164,7 @@ test("a model choice shows at once with its thinking levels, Pi confirms in the 
   await page.reload();
   await page
     .getByRole("link")
-    .and(page.getByTestId("settings-agentti"))
+    .and(page.getByTestId("settings-tekoaly"))
     .click();
   await expect(sol).toBeChecked();
   await expect(high).toHaveAttribute("aria-pressed", "true");
@@ -192,15 +192,14 @@ test("unsigned Claude is unavailable despite catalog entries; connections link",
     page.getByRole("button").and(page.getByTestId("segment-claude-bridge")),
   ).toBeDisabled();
   await expect(page.getByTestId("claude-provider-unavailable")).toBeVisible();
+  // The link lands on the Claude row itself, which takes focus.
   await page
-    .getByRole("navigation")
-    .and(page.getByTestId("settings-navigation"))
+    .getByTestId("claude-provider-unavailable")
     .getByRole("link")
-    .and(page.getByTestId("settings-yhteydet"))
+    .and(page.getByTestId("settings-claude"))
     .click();
+  await expect(page).toHaveURL(/\/settings\/ai#claude$/);
   await expect(
-    page
-      .getByRole("heading")
-      .and(page.getByTestId("settings-section-yhteydet")),
-  ).toBeVisible();
+    page.getByRole("region").and(page.getByTestId("claude-sign-in")),
+  ).toBeFocused();
 });

@@ -186,5 +186,5 @@ test("@a11y new conversation picker fits, dismisses without saving, and commits 
   expect(writes).toBe(0);
   await trigger.click();
   await menu.getByTestId("model-default-settings").click();
-  await expect(page).toHaveURL(/\/settings\/agents$/);
+  await expect(page).toHaveURL(/\/settings\/ai#default-model$/);
 });

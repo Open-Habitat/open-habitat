@@ -457,7 +457,7 @@ async function connectGitea(page: Page) {
     await page.request.get("/fixture/gitea?action=enable")
   ).json();
   await signIn(page);
-  await page.goto("/settings/integrations");
+  await page.goto("/settings/code-hosts");
   const giteaTile = page.getByTestId("integration-tile-gitea");
   await giteaTile
     .getByRole("button")

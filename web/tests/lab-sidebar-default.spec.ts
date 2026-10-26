@@ -43,7 +43,7 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
       .click();
     await page
       .getByRole("link")
-      .and(page.getByTestId("settings-agentti"))
+      .and(page.getByTestId("settings-tekoaly"))
       .click();
     const saved = page.waitForResponse(
       (r) =>

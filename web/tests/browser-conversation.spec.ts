@@ -945,7 +945,7 @@ test("@browser-conversation settings does not recheck the Pi gate; returning and
   await page
     .getByTestId("settings-navigation")
     .getByRole("link")
-    .and(page.locator('a[href="/settings/connections"]'))
+    .and(page.locator('a[href="/settings/ai"]'))
     .click();
   // The OpenAI row reads its own native credentials, not the gate's status.
   await expect(page.getByTestId("openai-credential-state")).toHaveAttribute(

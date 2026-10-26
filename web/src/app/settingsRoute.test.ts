@@ -6,14 +6,14 @@ describe("settings URL contract", () => {
   it("uses only the agreed English slugs, including ASCII-only Finnish regressions", () => {
     expect(Object.values(paths).sort()).toEqual([
       "account",
-      "agents",
+      "agent-data",
+      "ai",
       "ai-key",
       "appearance",
-      "connections",
+      "code-hosts",
       "devices",
       "disk",
       "editor",
-      "integrations",
       "onboarding",
       "server",
       "server-integrations",
@@ -31,6 +31,7 @@ describe("settings URL contract", () => {
     expect(settingsSection("/settings")).toBeNull();
     for (const path of [
       "/settings/integraatiot",
+      "/settings/connections",
       "/settings/storage/",
       "/settings/account?x=1",
       "/settings/unknown",

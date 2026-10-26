@@ -3,9 +3,14 @@ import { useEffect, useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import schema from "../../../contracts/v1/pi-credentials.schema.json";
 import { ControlButton } from "../components/ControlElements";
-import { StatusMark } from "../components/Status";
+import { Icon } from "../components/Icon";
+import { LetterMark } from "../components/Integrations";
+import { type ModelChoice, refused } from "../components/ModelPicker";
+import { modelDisplayName } from "../components/modelPresentation";
+import { Badge, StatusMark } from "../components/Status";
 import { mutationFetch } from "./mutations";
 import { readSiteOnboarding, type SiteOnboarding } from "./onboardingConfig";
+import { usePiModels } from "./PiModels";
 
 const valid = new Ajv({ strict: false }).compile(schema);
 /** Pi's providers whose API key a person manages here. */
@@ -28,6 +33,13 @@ const keyFits = (provider: KeyProvider, key: string) =>
 const givenDay = (iso: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : `${d.getDate()}.${d.getMonth() + 1}.`;
+};
+/** The letter tiles of round 2 of proto-integration-grouping; the
+ * subscriptions' tiles (Ch, Cl) are in Account. */
+const marks: Record<KeyProvider, [string, 1 | 2 | 3]> = {
+  openai: ["OA", 1],
+  anthropic: ["An", 2],
+  deepseek: ["DS", 3],
 };
 const keyHint: Record<KeyProvider, string> = {
   openai: "alkaa sk-",
@@ -93,7 +105,11 @@ export function PiCredentials({
 }) {
   const [data, setData] = useState<Credentials>();
   const [key, setKey] = useState("");
-  const [editing, setEditing] = useState<KeyProvider>();
+  // The add/replace dialog: null while it asks which provider.
+  const [adding, setAdding] = useState<KeyProvider | null>();
+  const { data: catalog } = usePiModels();
+  const models = catalog?.models ?? [];
+  const defaultProvider = catalog?.default_provider;
   const [confirm, setConfirm] = useState<KeyProvider>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -116,7 +132,7 @@ export function PiCredentials({
     const controller = new AbortController();
     setData(undefined);
     setKey("");
-    setEditing(undefined);
+    setAdding(undefined);
     void fetch("/api/v1/pi/credentials", {
       credentials: "same-origin",
       cache: "no-store",
@@ -149,7 +165,7 @@ export function PiCredentials({
     setConfirm(undefined);
     const body = remove ? undefined : JSON.stringify({ provider, key });
     setKey("");
-    setEditing(undefined);
+    setAdding(undefined);
     try {
       const response = await mutationFetch(
         "pi.credentials",
@@ -264,85 +280,114 @@ export function PiCredentials({
         })}
       </>
     );
+  const present = data
+    ? keyProviders.filter((p) => providers.includes(p) && data[p].present)
+    : [];
+  const missing = data
+    ? keyProviders.filter((p) => providers.includes(p) && !data[p].present)
+    : [];
+  const siteOf = (provider: KeyProvider) => {
+    const stored = data?.[provider];
+    return given?.provider === provider &&
+      stored?.present &&
+      stored.suffix === given.suffix
+      ? given
+      : undefined;
+  };
+  const keyText = (provider: KeyProvider) => {
+    const stored = data?.[provider];
+    return stored?.suffix
+      ? `${provider === "anthropic" ? "sk-ant-" : "sk-"}…${stored.suffix}`
+      : "ei kirjaimellinen avain";
+  };
+  const close = () => {
+    setKey("");
+    setAdding(undefined);
+  };
+  const chosen = adding ?? undefined;
+  const wrong = !!chosen && key !== "" && !keyFits(chosen, key);
   return (
-    <>
-      {providers.map((provider) => {
-        const stored = data?.[provider];
-        const site =
-          given?.provider === provider &&
-          stored?.present &&
-          stored.suffix === given.suffix
-            ? given
-            : undefined;
-        return (
-          <div
-            className="s-row"
-            key={provider}
-            data-testid={`api-key-row-${provider}`}
-            data-site={
-              site ? (site.current ? "current" : "earlier") : undefined
-            }
-          >
-            <div className="s-lbl">
-              <strong>{names[provider]} API-avain</strong>
-              <span className="s-desc" data-testid="api-key-desc">
-                {site ? (
-                  <>
-                    Sivuston avain. Sivusto antoi sen {givenDay(site.at)} Käyttö
-                    laskutetaan sivuston tililtä.{" "}
-                    {site.current
-                      ? "Voit vaihtaa sen omaan avaimeesi."
-                      : "Sivusto on sittemmin vaihtanut avaimensa, joten tämä kopio voi lakata toimimasta."}
-                  </>
-                ) : (
-                  <>
-                    Pi:n omat tunnukset tällä palvelimella. {names[provider]}{" "}
-                    laskuttaa käytöstä.
-                  </>
-                )}
-              </span>
-            </div>
+    <section
+      className="s-keys"
+      data-settings-row="api-keys"
+      tabIndex={-1}
+      aria-labelledby="api-keys-heading"
+    >
+      <h3 className="s-h3" id="api-keys-heading">
+        API-avaimet
+        {present.length ? (
+          <span className="s-count">{present.length}</span>
+        ) : null}
+      </h3>
+      <div className="s-card">
+        {present.map((provider) => {
+          const site = siteOf(provider);
+          const offered = models.filter(
+            (m) => m.provider === provider && !m.older,
+          );
+          // Pi refused every model of this key on its latest attempt: the
+          // provider no longer takes the key, whatever the reason.
+          const refusedAll =
+            offered.length > 0 && offered.every((m) => refused(m));
+          return (
             <div
-              className="s-val"
-              data-testid="api-key-state"
-              data-present={stored?.present}
+              className="s-row s-marked"
+              key={provider}
+              data-testid={`api-key-row-${provider}`}
+              data-site={
+                site ? (site.current ? "current" : "earlier") : undefined
+              }
             >
-              <span data-testid="api-key-suffix">
-                {stored
-                  ? stored.present
-                    ? stored.suffix
-                      ? `sk-…${stored.suffix}`
-                      : "Avain tallennettu (ei kirjaimellinen avain)"
-                    : "Ei avainta"
-                  : "Avaimen tilaa ei tiedetä"}
-              </span>
-              {site && (
-                <StatusMark
-                  data-testid="api-key-site"
-                  tone={site.current ? "info" : "warning"}
-                  label={
-                    site.current ? "Sivuston avain" : "Sivuston aiempi avain"
-                  }
-                />
-              )}
-              {stored && (
+              <LetterMark mark={marks[provider][0]} tone={marks[provider][1]} />
+              <div className="s-lbl">
+                <strong className="s-key-name">
+                  {names[provider]}{" "}
+                  <code data-testid="api-key-suffix">{keyText(provider)}</code>{" "}
+                  {site ? (
+                    <StatusMark
+                      data-testid="api-key-site"
+                      kind="pill"
+                      tone={site.current ? "info" : "warning"}
+                      label="Ylläpitäjän antama"
+                    />
+                  ) : (
+                    <Badge label="Oma" />
+                  )}
+                </strong>
+                <span
+                  className={`s-desc${refusedAll ? " s-bad" : ""}`}
+                  data-testid="api-key-desc"
+                >
+                  {refusedAll
+                    ? `${names[provider]} torjui tämän avaimen mallit viimeksi kokeiltaessa. Avain on ehkä peruttu, väärin kirjoitettu tai sen kiintiö on täynnä. `
+                    : null}
+                  {site
+                    ? site.current
+                      ? `Ylläpitäjä antoi avaimen ${givenDay(site.at)} Käyttö laskutetaan palvelimen tililtä.`
+                      : `Ylläpitäjä antoi avaimen ${givenDay(site.at)} Palvelin on sittemmin vaihtanut avaimensa, joten tämä kopio voi lakata toimimasta.`
+                    : `Oma avain. ${names[provider]} laskuttaa käytöstä.`}
+                </span>
+              </div>
+              <div
+                className="s-val"
+                data-testid="api-key-state"
+                data-present="true"
+              >
+                {refusedAll ? (
+                  <StatusMark tone="danger" kind="error" label="Ei vastaa" />
+                ) : null}
                 <ControlButton
                   size="row"
+                  variant={refusedAll ? "primary" : "secondary"}
                   isDisabled={busy || !csrf}
                   onPress={() => {
                     setKey("");
-                    setEditing(provider);
+                    setAdding(provider);
                   }}
                   data-testid="api-key-add"
                 >
-                  {site
-                    ? "Vaihda omaan…"
-                    : stored.present
-                      ? "Vaihda"
-                      : "Lisää avain"}
+                  {site ? "Vaihda omaan…" : "Vaihda…"}
                 </ControlButton>
-              )}
-              {stored?.present && (
                 <ControlButton
                   data-testid="api-key-remove-open"
                   size="row"
@@ -350,75 +395,195 @@ export function PiCredentials({
                   variant="quiet"
                   onPress={() => setConfirm(provider)}
                 >
-                  Poista avain…
+                  Poista…
                 </ControlButton>
-              )}
+              </div>
+              {offered.length ? (
+                <div className="s-key-models">
+                  <span className="s-desc">Avaa:</span>
+                  <ModelChips models={offered} />
+                </div>
+              ) : null}
             </div>
-            {editing === provider && (
+          );
+        })}
+        <div className="s-row s-key-add">
+          <p className="s-desc" data-testid="api-key-missing">
+            {!data
+              ? error
+                ? ""
+                : "Tarkistetaan avaimia…"
+              : present.length
+                ? missing.length
+                  ? `Ei avainta: ${missing.map((p) => names[p]).join(", ")}.`
+                  : "Jokaisella palvelulla on avain."
+                : "Ei API-avaimia. Avaimella voi käyttää palveluntarjoajan malleja ilman tilausta; palveluntarjoaja laskuttaa käytöstä."}
+          </p>
+          <div className="s-val">
+            <ControlButton
+              data-testid="api-key-add-open"
+              size="row"
+              isDisabled={busy || !csrf || !data || !missing.length}
+              onPress={() => {
+                setKey("");
+                setAdding(missing.length === 1 ? missing[0] : null);
+              }}
+            >
+              <Icon name="plus" />
+              Lisää API-avain
+            </ControlButton>
+          </div>
+        </div>
+        {error && (
+          <div className="s-row">
+            <div className="s-editor" role="alert">
+              {error}
+              <ControlButton
+                size="row"
+                onPress={() => {
+                  setError("");
+                  setRevision((r) => r + 1);
+                }}
+              >
+                Tarkista tunnukset
+              </ControlButton>
+            </div>
+          </div>
+        )}
+      </div>
+      <ModalOverlay
+        className="ah-overlay"
+        isOpen={adding !== undefined}
+        onOpenChange={(open) => {
+          if (!open) close();
+        }}
+        isDismissable
+      >
+        <Modal className="ah-modal s-key-dialog">
+          <Dialog
+            className="ah-dialog"
+            data-testid="api-key-dialog"
+            aria-label={
+              chosen && data?.[chosen].present
+                ? `Vaihda ${names[chosen]} API-avain`
+                : "Lisää API-avain"
+            }
+          >
+            <Heading slot="title">
+              {chosen && data?.[chosen].present
+                ? `Vaihda ${names[chosen]} API-avain`
+                : "Lisää API-avain"}
+            </Heading>
+            <p className="s-desc">
+              Avaimella voi käyttää palveluntarjoajan malleja ilman tilausta.
+              Kullekin palvelulle tallentuu yksi avain.
+            </p>
+            <fieldset className="s-prov-opts">
+              <legend className="ah-visually-hidden">Palveluntarjoaja</legend>
+              {providers.map((provider) => {
+                const stored = data?.[provider];
+                const count = models.filter(
+                  (m) => m.provider === provider && !m.older,
+                ).length;
+                return (
+                  <button
+                    type="button"
+                    key={provider}
+                    className="s-prov-opt"
+                    data-testid={`api-key-provider-${provider}`}
+                    aria-pressed={chosen === provider}
+                    onClick={() => {
+                      setKey("");
+                      setAdding(provider);
+                    }}
+                  >
+                    <LetterMark
+                      mark={marks[provider][0]}
+                      tone={marks[provider][1]}
+                    />
+                    <span className="s-lbl">
+                      <strong>{names[provider]}</strong>
+                      <span className="s-desc">
+                        {stored?.present
+                          ? siteOf(provider)
+                            ? `Korvaa ylläpitäjän antaman avaimen ${keyText(provider)}`
+                            : `Korvaa avaimen ${keyText(provider)}`
+                          : count
+                            ? `${count} mallia`
+                            : "Ei avainta"}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </fieldset>
+            {chosen ? (
               <form
                 className="s-editor"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  void change(provider);
+                  if (keyFits(chosen, key)) void change(chosen);
                 }}
               >
                 <label className="s-field">
-                  API-avain
+                  {names[chosen]} API-avain
                   <input
                     data-testid="api-key-input"
                     type="password"
                     autoComplete="off"
+                    spellCheck={false}
                     value={key}
                     maxLength={203}
+                    placeholder={chosen === "anthropic" ? "sk-ant-…" : "sk-…"}
+                    aria-invalid={wrong || undefined}
                     onChange={(e) => setKey(e.target.value)}
                   />
                 </label>
-                <p className="s-desc">
-                  Avain lähetetään kerran eikä sitä palauteta. Palvelun
-                  ensimmäinen avain vaihtaa uusien keskustelujen oletukseksi sen
-                  mallin; avoimet keskustelut eivät muutu.
+                <p className={`s-desc${wrong ? " s-bad" : ""}`}>
+                  {wrong ? (
+                    <span role="alert">
+                      Tämä ei näytä {names[chosen]}-avaimelta ({keyHint[chosen]}
+                      ).
+                    </span>
+                  ) : data?.[chosen].present ? (
+                    siteOf(chosen) ? (
+                      `Oma avaimesi korvaa ylläpitäjän antaman kopion. Käyttö laskutetaan sen jälkeen sinulta. Avain lähetetään kerran eikä sitä näytetä uudelleen.`
+                    ) : (
+                      `Uusi avain korvaa nykyisen (${keyText(chosen)}). Avain lähetetään kerran eikä sitä näytetä uudelleen.`
+                    )
+                  ) : (
+                    `Avain lähetetään kerran eikä sitä näytetä uudelleen. Palvelun ensimmäinen avain vaihtaa uusien keskustelujen oletukseksi sen mallin; avoimet keskustelut eivät muutu.`
+                  )}
                 </p>
-                <div className="s-actions">
+                <div className="ah-dialog-actions">
                   <ControlButton
                     data-testid="cancel"
                     size="row"
-                    onPress={() => {
-                      setKey("");
-                      setEditing(undefined);
-                    }}
+                    onPress={close}
                   >
                     Peruuta
                   </ControlButton>
                   <ControlButton
                     data-testid="api-key-save"
                     size="row"
+                    variant="primary"
                     type="submit"
-                    isDisabled={busy || !keyFits(provider, key)}
+                    isDisabled={busy || !csrf || !keyFits(chosen, key)}
                   >
                     Tallenna avain
                   </ControlButton>
                 </div>
               </form>
+            ) : (
+              <div className="ah-dialog-actions">
+                <ControlButton data-testid="cancel" size="row" onPress={close}>
+                  Peruuta
+                </ControlButton>
+              </div>
             )}
-          </div>
-        );
-      })}
-      {error && (
-        <div className="s-row">
-          <div className="s-editor" role="alert">
-            {error}
-            <ControlButton
-              size="row"
-              onPress={() => {
-                setError("");
-                setRevision((r) => r + 1);
-              }}
-            >
-              Tarkista tunnukset
-            </ControlButton>
-          </div>
-        </div>
-      )}
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
       <ModalOverlay
         className="ah-overlay"
         isOpen={!!confirm}
@@ -435,6 +600,9 @@ export function PiCredentials({
               peruta palvelussa {confirm && names[confirm]}. Avainta käyttävät
               keskustelut eivät voi jatkaa ennen uuden avaimen lisäämistä.
               Tilauskirjautumiset säilyvät.
+              {confirm && defaultProvider === confirm
+                ? " Uusien keskustelujen oletusmalli käyttää tätä avainta, joten valitse sen jälkeen toinen oletus."
+                : ""}
             </p>
             <div className="ah-dialog-actions">
               <ControlButton
@@ -458,6 +626,35 @@ export function PiCredentials({
           </Dialog>
         </Modal>
       </ModalOverlay>
-    </>
+    </section>
   );
+}
+
+/** The models a key or subscription opens, as Pi's catalog lists them; one
+ * Pi refused on its latest attempt is struck through. */
+export function ModelChips({ models }: { models: ModelChoice[] }) {
+  return (
+    <ul className="s-model-chips">
+      {models.map((m) => (
+        <li key={m.id} data-refused={refused(m) || undefined}>
+          {modelDisplayName(`${m.provider ?? "openai-codex"}/${m.id}`, [m])}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** "3 mallia: A, B, C." for a subscription row; empty while unknown. */
+export function modelsLine(
+  models: ModelChoice[] | undefined,
+  provider: NonNullable<ModelChoice["provider"]>,
+) {
+  const offered = (models ?? []).filter(
+    (m) => (m.provider ?? "openai-codex") === provider && !m.older,
+  );
+  return offered.length
+    ? `${offered.length} ${offered.length === 1 ? "malli" : "mallia"}: ${offered
+        .map((m) => modelDisplayName(`${provider}/${m.id}`, [m]))
+        .join(", ")}.`
+    : "";
 }

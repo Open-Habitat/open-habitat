@@ -14,6 +14,7 @@ export type IconName =
   | "home"
   | "folderPlus"
   | "repo"
+  | "code"
   | "paperclip"
   | "plus"
   | "back"
@@ -324,6 +325,13 @@ export function Icon({
       <>
         <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
         <path d="M12 11v5m-2.5-2.5h5" />
+      </>
+    ),
+    code: (
+      <>
+        <path d="M8 8l-4 4 4 4" />
+        <path d="M16 8l4 4-4 4" />
+        <path d="M13.5 5l-3 14" />
       </>
     ),
     repo: (

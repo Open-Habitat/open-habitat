@@ -66,6 +66,9 @@ export function PiModelSelector({
     (model) => model.provider === "claude-bridge",
   );
   useEffect(() => {
+    // Each catalog read also re-reads Claude's sign-in: a sign-in finished on
+    // the same settings page refreshes the catalog, not this selector.
+    void data;
     if (!hasClaudeModels) return;
     const controller = new AbortController();
     void fetch("/api/v1/pi/claude-login", {
@@ -80,7 +83,7 @@ export function PiModelSelector({
       })
       .catch(() => {});
     return () => controller.abort();
-  }, [hasClaudeModels]);
+  }, [hasClaudeModels, data]);
   // Initialize before the preloaded rows become interactive.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only defaults initialize selection, not observations.
   useLayoutEffect(() => {
@@ -195,7 +198,8 @@ export function PiModelSelector({
           {data.catalog_status === "unavailable" ? (
             <p role="alert" data-testid="model-catalog-unavailable">
               Agentin malliluetteloa ei saatu. Alla ovat vain keskusteluista
-              tutut mallit. Tarkista Pi:n kirjautuminen asetuksista.
+              tutut mallit. Tarkista kirjautumiset kohdassa{" "}
+              <a href={settingsHref("tekoaly")}>Tekoäly</a>.
             </p>
           ) : null}
           <div className="s-row">
@@ -240,10 +244,10 @@ export function PiModelSelector({
               Claude-tilaus ei ole käytettävissä: kirjautumista ei ole
               vahvistettu.{" "}
               <a
-                data-testid="settings-yhteydet"
-                href={settingsHref("yhteydet")}
+                data-testid="settings-claude"
+                href={settingsHref("tekoaly", "claude")}
               >
-                Yhteydet
+                Tekoäly-asetukset
               </a>
             </p>
           ) : null}
@@ -300,7 +304,7 @@ export function PiModelSelector({
                 <a
                   className="md-note"
                   data-testid="model-default-settings"
-                  href={settingsHref("agentti")}
+                  href={settingsHref("tekoaly", "default-model")}
                 >
                   Muuta oletusmallia
                 </a>
@@ -341,7 +345,7 @@ export function PiModelSelector({
             <a
               className="md-note"
               data-testid="model-default-settings"
-              href={settingsHref("agentti")}
+              href={settingsHref("tekoaly", "default-model")}
             >
               Muuta oletusmallia
             </a>

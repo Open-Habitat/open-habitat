@@ -1,4 +1,4 @@
-/* Asetukset › Integraatiot, the accepted "Tili" direction of the
+/* Asetukset › Tiedot agenteille (and Gitea under Koodipalvelut), the accepted "Tili" direction of the
    2026-10-18 prototype round, on production tokens. */
 .ig-main {
   display: flex;
@@ -82,6 +82,11 @@
   height: 22px;
   border-radius: 6px;
   font-size: 11px;
+}
+.ig-tone-0 {
+  background: var(--ah-sunken);
+  color: var(--ah-ink-2);
+  box-shadow: inset 0 0 0 1px var(--ah-line);
 }
 .ig-tone-1 {
   background: var(--ah-source-1);

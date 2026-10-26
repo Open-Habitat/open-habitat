@@ -17,7 +17,7 @@ import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import "./Integrations.css";
 
-// Gitea in Asetukset › Integraatiot (ADR 0031). The connect form is the
+// Gitea in Asetukset › Koodipalvelut (ADR 0031). The connect form is the
 // approved "Lomake" with its error at the top (connect-riff round 2): the
 // error sits under the title, outside the scrolling body, and takes focus;
 // https:// is added only on leaving the address field or connecting, and the

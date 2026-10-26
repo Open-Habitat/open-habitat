@@ -6,8 +6,20 @@ export function isSettingsRoute(path: string) {
   return path === "/settings" || path.startsWith("/settings/");
 }
 
-export function settingsHref(section: string) {
-  return `/settings/${settingsPaths[section]}`;
+/** A row the settings page scrolls to and marks when a link names it. The
+ * fragment never reaches the server, so the gateway's exact allowlist of
+ * settings paths is unchanged. */
+export type SettingsRow =
+  | "default-model"
+  | "chatgpt"
+  | "claude"
+  | "api-keys"
+  | "github"
+  | "gitea"
+  | "workspaces";
+
+export function settingsHref(section: string, row?: SettingsRow) {
+  return `/settings/${settingsPaths[section]}${row ? `#${row}` : ""}`;
 }
 
 /** null is the settings index; undefined is an unknown section. */

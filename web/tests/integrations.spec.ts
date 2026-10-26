@@ -1,9 +1,9 @@
 import AxeBuilder from "@axe-core/playwright";
-import { hostOrigin } from "../test-ports.mjs";
 import type { Locator } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
-// Asetukset › Integraatiot against the synthetic host: the real gateway and
+// Asetukset › Tiedot agenteille (and Gitea under Koodipalvelut) against the synthetic host: the real gateway and
 // daemon handlers, the product's IMAP entry run against the fake himalaya,
 // and stand-in Google (pasted redirect) and Microsoft (device code) entries
 // steered through /fixture/integrations. Same-UID synthetic evidence: it
@@ -16,7 +16,11 @@ test.use({
   viewport: { width: 1280, height: 900 },
 });
 
-async function signIn(page: Page, who = "Alice") {
+async function signIn(
+  page: Page,
+  who = "Alice",
+  section: "tiedot" | "koodipalvelut" = "tiedot",
+) {
   await page.goto("/settings");
   await page
     .getByRole("button")
@@ -26,11 +30,13 @@ async function signIn(page: Page, who = "Alice") {
     .getByRole("link")
     .nth(who === "Alice" ? 0 : 1)
     .click();
-  await page.goto("/settings/integrations");
+  await page.goto(
+    section === "tiedot" ? "/settings/agent-data" : "/settings/code-hosts",
+  );
   await expect(
     page
       .getByRole("heading")
-      .and(page.getByTestId("settings-section-integraatiot")),
+      .and(page.getByTestId(`settings-section-${section}`)),
   ).toBeVisible();
   await expect(page.getByTestId("integrations-loading")).toHaveCount(0);
 }
@@ -582,7 +588,7 @@ test("tenant refusals are said plainly, and leaving the dialog cancels the sign-
   await expect(page.getByRole("article")).toHaveCount(0);
 });
 
-test("@a11y Integraatiot and its sign-in dialog have no axe violations at desktop and phone width", async ({
+test("@a11y Tiedot agenteille and its sign-in dialog have no axe violations at desktop and phone width", async ({
   page,
 }) => {
   await signIn(page);
@@ -613,11 +619,9 @@ test("@a11y Integraatiot and its sign-in dialog have no axe violations at deskto
   ).toEqual([]);
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/settings/integrations");
+  await page.goto("/settings/agent-data");
   await expect(
-    page
-      .getByRole("heading")
-      .and(page.getByTestId("settings-section-integraatiot")),
+    page.getByRole("heading").and(page.getByTestId("settings-section-tiedot")),
   ).toBeVisible();
   expect(
     (await new AxeBuilder({ page }).analyze()).violations,
@@ -696,7 +700,7 @@ test("a Gitea connection is made from the form, refusals stay in view, and it is
   const { url, token } = await (
     await page.request.get("/fixture/gitea?action=enable")
   ).json();
-  await signIn(page);
+  await signIn(page, "Alice", "koodipalvelut");
   const giteaTile = tile(page, "gitea");
   await giteaTile
     .getByRole("button")
@@ -771,7 +775,7 @@ test("a Gitea connection is made from the form, refusals stay in view, and it is
     ignoreHTTPSErrors: true,
   });
   const bob = await other.newPage();
-  await signIn(bob, "Bob");
+  await signIn(bob, "Bob", "koodipalvelut");
   await expect(bob.getByTestId("gitea-connection")).toHaveCount(0);
   await other.close();
 
@@ -809,7 +813,7 @@ test("an uncertain Gitea connect is observed from tea's state and never resent",
   const { url, token } = await (
     await page.request.get("/fixture/gitea?action=enable")
   ).json();
-  await signIn(page);
+  await signIn(page, "Alice", "koodipalvelut");
   let posts = 0;
   await page.route("**/api/v1/integrations/gitea", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
@@ -858,7 +862,7 @@ test("@a11y the Gitea form works by keyboard in dark with reduced motion and pas
     await page.request.get("/fixture/gitea?action=enable")
   ).json();
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
-  await signIn(page);
+  await signIn(page, "Alice", "koodipalvelut");
   expect(
     await page.evaluate(() => document.documentElement.dataset.theme),
   ).toBe("dark");
