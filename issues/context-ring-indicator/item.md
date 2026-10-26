@@ -3,12 +3,13 @@ created: 2026-10-26
 updated: 2026-10-26
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: context-impl
 lane_seq: 1
 collision: [contracts/v1/]
 preparation: ready
+closed: 2026-10-26
 ---
 
 # Context-use ring with percentage in the conversation top bar
@@ -19,5 +20,5 @@ Implement Jari's accepted 'Rengas' (proto-context-basic; prototype in issues/pro
 
 ## Acceptance Criteria
 
-- [ ] Indicator live for Pi and Claude Code conversations, after reload too; Go and browser tests; screenshots for Jari.
+- [x] Indicator live for Pi and Claude Code conversations, after reload too; Go and browser tests; screenshots for Jari.
 
