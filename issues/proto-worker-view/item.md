@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-worker
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype a worker's view as a read-only conversation instead of terminal output

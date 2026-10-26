@@ -111,3 +111,107 @@ PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright node issues/proto-worker-vie
   phone header; tool targets overlapped tool names on a phone; and the parent
   composer showed Stop and Steer from the captured busy turn.
 - No production code changed, so the gate was not run.
+
+# Worker view — round 2
+
+Prototype: `issues/proto-worker-view/prototypes/worker-view-2/index.html`
+(one offline file). [NOTES.md](prototypes/worker-view-2/NOTES.md) is Jari's
+guide, in Finnish: what each variant is, how to try it, and the host facts.
+
+Built on Kehys, per Jari's verdict of 2026-10-26. Workers are not nested in
+the rail; the parent's row keeps production's working-worker mark.
+
+## For Jari
+
+**Recommendation: Välilehti (1).** It is the Kehys you accepted with two
+additions. First, a Claude Code worker opens on the Pääte tab. A line above
+the terminal says why: Habitat cannot read Claude Code history yet, or the
+session has not been found. When the history becomes readable, the
+Keskustelu tab gets a dot and the line offers **Näytä keskustelu**. Nothing
+moves under the reader, and a worker whose history is already readable opens
+straight in the conversation. Second, the composer's place holds a fixed
+notice: **Workerille ei kirjoiteta suoraan**, then what the main agent can
+do, and **Kysy pääkeskustelussa ›**.
+
+Vaihtuu itse (2) switches to the conversation by itself, which saves a
+click. Its question box, which drafts into the parent's composer, is the
+most direct way to ask. But the box looks like the composer you asked to
+remove, and for a Claude worker it suggests more than the parent can do.
+Pääte keskustelussa (3) has no mode switch at all and fits the most
+conversation on screen. Its band-only "Kysy" is too easy to miss to answer
+"why can't I type here". Its brief-first idea could be added to 1 later.
+
+**What preparing the round found:**
+
+- **The main agent can message only a live Pi worker.** `taskfleet run
+  message` reaches only a Taskfleet-launched Pi worker with the message
+  adapter. Acceptance does not prove the worker read the message. A Claude
+  Code worker, or one that has finished, cannot be messaged.
+- **The notice depends on the worker.** It has three versions: a live Pi
+  worker (the main agent can message it), a live Claude worker (the main
+  agent sees its state), and a finished worker (the main agent has its
+  report).
+- **A steering message cannot answer a terminal prompt.** Round 1's prompt
+  card said the main agent could answer the prompt. That was wrong, and
+  the card is corrected here.
+
+**Questions:**
+
+- Should the view switch by itself (2), or only when the person chooses (1)?
+- Is the band's "Kysy" (3) enough, or does the notice need to be visible?
+
+## Host facts
+
+- **Claude Code session file:** it exists from the worker's start at
+  `~/.claude/projects/<worktree path with / and . as ->/<uuid>.jsonl`.
+  This round's own Claude worker is an example: its file appeared in the
+  same minute as its worktree. Taskfleet does not record it: the handshake
+  holds only `pi_session_*`, and `node_transcripts` says
+  `support: unsupported`. The worktree path is per run, so the directory
+  identifies the run. A restarted worker can leave several files.
+- **Claude Code history reader:** Habitat has none. `readSpinoffTranscript`
+  returns `unsupported` for anything but Pi. So "Habitat ei lue" is today's
+  state, and "Ei vielä löytynyt" is a short start-up gap once a reader
+  exists.
+- **The brief:** it is in `~/.taskfleet/runs/<run>/prompt.md`. Neither
+  `run show` nor the daemon exposes it. Variant 3 needs it before history
+  exists.
+- **Whether the parent can message the worker:** this follows from facts
+  the spinoffs contract already carries, harness and state.
+- **A finished worker's terminal:** `run merge` tears the window down. For a
+  failed run this was not verified; the prototype assumes the window is
+  closed too.
+
+## Verification
+
+From the repository root:
+
+```sh
+node issues/proto-worker-view/prototypes/worker-view-2/build.mjs
+PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright node issues/proto-worker-view/prototypes/worker-view-2/check.mjs
+```
+
+- **Renders:** `check.mjs` passed 38 renders at 1440 px light and 390 px
+  dark, with device scale factor 2. Each of the 3 variants was rendered
+  with Claude history pending, unreadable and just arrived, with a Pi
+  worker, and as a landed worker. Variants 1 and 3 were also rendered with a
+  Pi worker waiting at a terminal prompt and with a failed Claude worker
+  whose history is unreadable.
+- **Interactions it clicked:** history arriving live through the lab button
+  in each variant. Variant 1 must not switch by itself. Variant 2's
+  **Takaisin päätteeseen**, and its question carried into the parent's
+  composer and back. Variant 3's terminal row. The details popover and the
+  keyboard variant switch.
+- **What it checked for:** no console errors, no network requests, no
+  horizontal overflow, no composer in a worker view, and an
+  ask-the-parent notice in every render. Results are in
+  `prototypes/worker-view-2/evidence/checks.json`. The 40 AVIF screenshots
+  are beside it.
+- **What was reused:** round 1's captured production DOM and CSS
+  (`prototypes/worker-view/captured/`); the lab was not rerun.
+- **Self-review:** looked at every variant's screenshots at both widths and
+  fixed four problems. Production's frame rule collapsed the terminal body.
+  The back-to-worker crumb had lost its styles. Variant 2 hid its
+  explanation on a phone. Finished workers offered a terminal that no longer
+  exists.
+- **Gate:** no production code changed, so the gate was not run.
