@@ -61,6 +61,28 @@ goals:
 
       [tarkistettava muutos]
     skill: review
+  - title: Luonnostele viesti
+    what: Saat viestiluonnoksen, jota voit muokata ennen lähettämistä.
+    steps:
+      - Kerro, kenelle kirjoitat ja mitä haluat sanoa.
+      - Lue luonnos ja pyydä tarvittavat muutokset.
+      - Kopioi valmis teksti ja lähetä se itse.
+    when: Kun tarvitset pohjan sähköpostille tai tiedotteelle.
+    prompt: |-
+      Kirjoita lyhyt viestiluonnos tämän repon aineiston pohjalta. Älä lähetä mitään, vaan näytä luonnos minulle.
+
+      [vastaanottaja ja asia]
+  - title: Tee pieni korjaus
+    what: Saat rajatun muutoksen ja sen testitulokset tarkistettavaksi.
+    steps:
+      - Kuvaa korjattava asia yhdellä tai kahdella lauseella.
+      - Katso agentin tekemä muutos ja testien tulos.
+      - Hyväksy muutos tai pyydä tarkennuksia.
+    when: Kun tiedät, mikä yksittäinen asia pitää korjata.
+    prompt: |-
+      Tee tähän repoon pieni, rajattu korjaus. Aja muutetun osan testit ja jätä muutos minulle tarkistettavaksi.
+
+      [korjattava asia]
 ---
 Aloita **pienestä muutoksesta**, jonka voit tarkistaa itse.
 
@@ -106,4 +128,8 @@ creation hint instead of guessed goals. The start view never
 automatically lists skills; a skill appears here only through a maintainer-authored
 goal.
 
-Example request: `/skill:open-habitat-start-page Ehdota tälle repolle kolme aloitustavoitetta.`
+Example requests:
+
+- `/skill:open-habitat-start-page Ehdota tälle repolle kolme aloitustavoitetta.`
+- `/skill:open-habitat-start-page Päivitä aloitussivu vastaamaan nykyisiä taitoja.`
+- `/skill:open-habitat-start-page Tee aloitussivu uudelle tiimiläiselle, joka ei ohjelmoi.`
