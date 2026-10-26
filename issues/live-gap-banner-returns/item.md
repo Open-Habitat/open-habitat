@@ -26,6 +26,10 @@ Vuorossa oli useita lyhyitä välivastauksia, ja agentti teki git pushin
 ja issuectl-kutsuja. Jari kirjoitti kaksi viestiä kesken vuoron
 ("Ja etkö tiedä omaa palvelinosoitettasi?" ja "Se redirectaa tänne: …").
 Ohjausviestit kesken vuoron ovat siis ehdokas laukaisijaksi.
+Toinen ehdokas on, että Jari avasi samaan aikaan toisessa välilehdessä
+muutaman kerran `/auth/github/start`-kirjautumisen. Jokainen kirjautuminen
+uusii selainistunnon, ja se voi katkaista tai vaihtaa live-tapahtumavirran
+kesken vuoron.
 
 Sama oire korjattiin `conversation-live-glitches`-issuessa (suljettu
 17.10., mukana `pilot.11`:ssä), ja `composer-and-new-conversation`
