@@ -1,4 +1,11 @@
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { AttachmentChips, attachmentsIn, messageText } from "./AttachmentChips";
 import { DisclosureButton } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
@@ -120,8 +127,17 @@ export function ConversationTimeline({
     </section>
   );
 }
+/**
+ * Whose conversation the messages belong to. A worker's conversation is not
+ * the person's: its prompts come from the main agent, and the first is the
+ * task the main agent gave (worker view, Kehys).
+ */
+export const ConversationVoice = createContext<"person" | "worker" | "brief">(
+  "person",
+);
 function Message({
   speaker,
+  person = false,
   children,
   time,
   state,
@@ -133,6 +149,8 @@ function Message({
   onCopy,
 }: {
   speaker: string;
+  /** The person's own message, which a worker's view gives to the main agent. */
+  person?: boolean;
   interim?: boolean;
   replyComplete?: boolean;
   children: ReactNode;
@@ -143,11 +161,19 @@ function Message({
   stateKind?: StatusKind;
   onCopy: () => void;
 }) {
+  const voice = useContext(ConversationVoice);
+  if (voice !== "person")
+    speaker = person
+      ? voice === "brief"
+        ? "Pääagentti · tehtävä"
+        : "Pääagentti"
+      : `Worker · ${speaker === "Agentti" || speaker === "Vastaus valmis" ? "vastaus" : speaker.toLocaleLowerCase("fi")}`;
   return (
     <article
       data-testid="message"
       data-reply-complete={replyComplete || undefined}
       data-interim={interim || undefined}
+      data-voice={voice === "person" ? undefined : voice}
       className={`ah-message${replyComplete ? " ah-message-reply" : ""}${interim ? " ah-message-reply ah-message-interim" : ""}${stateTone === "danger" || stateTone === "warning" || stateAnimated ? " ah-message-alert" : ""}`}
     >
       <header>
@@ -213,6 +239,7 @@ export function UserMessage({
   return (
     <Message
       speaker="Sinä"
+      person
       time={time}
       state={deliveryState}
       stateTone={deliveryTone}

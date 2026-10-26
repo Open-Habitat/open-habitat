@@ -1,13 +1,18 @@
 import {
   Fragment,
   type ReactNode,
+  useContext,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import { getWorkPreference } from "../workPreference";
 import { ControlButton } from "./ControlElements";
-import { AssistantMessage, InterimMessage } from "./Conversation";
+import {
+  AssistantMessage,
+  ConversationVoice,
+  InterimMessage,
+} from "./Conversation";
 import { Markdown } from "./Markdown";
 import { StatusMark } from "./Status";
 
@@ -331,6 +336,7 @@ export function AgentTurn({
   activity?: string;
   duration?: string;
 }) {
+  const voice = useContext(ConversationVoice);
   const stages = turnStages(steps);
   const current = working ? stages.length - 1 : -1;
   const [live, setLive] = useState(
@@ -435,7 +441,11 @@ export function AgentTurn({
                     <StatusMark
                       kind="working"
                       animated="running"
-                      label="Agentti työskentelee"
+                      label={
+                        voice === "person"
+                          ? "Agentti työskentelee"
+                          : "Worker työskentelee"
+                      }
                     />
                   </span>
                   <WorkClock activity={activity} duration={duration} />

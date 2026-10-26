@@ -1,6 +1,24 @@
 import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
+import common from "../../../contracts/v1/common.schema.json";
+import editorSchema from "../../../contracts/v1/editor.schema.json";
+import historySchema from "../../../contracts/v1/history.schema.json";
+import noticeSchema from "../../../contracts/v1/notice.schema.json";
+import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/spinoffs.schema.json";
+import viewSchema from "../../../contracts/v1/view.schema.json";
+import type { HistoryEntry } from "./history";
+export type WorkerHarness = "pi" | "claude" | "unknown";
 export interface Spinoff {
+  harness?: WorkerHarness;
+  /** Taskfleet's selection profile; only for the selected run. */
+  profile?: string;
+  /** Waiting for input at the worker's own terminal prompt. */
+  awaiting_input?: boolean;
+  /** The live worker's Taskfleet window (browser shell token). */
+  terminal?: string;
+  /** The task Taskfleet gave the worker; only for the selected run. */
+  brief?: string;
   preserved: boolean;
   branch: string;
   worktree: string;
@@ -16,18 +34,26 @@ export interface Spinoffs {
   parent_id: string;
   availability: "available" | "unavailable" | "partial";
   runs: Spinoff[];
-  transcripts: {
-    node_id: string;
-    availability: "available" | "unavailable" | "unsupported";
-    truncated: boolean;
-    messages: {
-      key: string;
-      kind: "user" | "assistant" | "tool";
-      text: string;
-    }[];
-  }[];
+  transcripts: WorkerTranscript[];
 }
-const validate = new Ajv({ strict: false }).compile(schema);
+export interface WorkerTranscript {
+  node_id: string;
+  harness: WorkerHarness;
+  availability: "available" | "unavailable" | "unsupported";
+  truncated: boolean;
+  entries: HistoryEntry[];
+}
+const ajv = addFormats(new Ajv({ strict: false }));
+for (const s of [
+  processEventSchema,
+  noticeSchema,
+  viewSchema,
+  editorSchema,
+  common,
+  historySchema,
+])
+  ajv.addSchema(s);
+const validate = ajv.compile(schema);
 export function parseSpinoffs(value: unknown): Spinoffs {
   if (!validate(value)) throw new Error("spinoffs_unavailable");
   return value as unknown as Spinoffs;
@@ -58,7 +84,8 @@ export async function readSpinoffs(
       const { done, value } = await reader.read();
       if (done) break;
       size += value.length;
-      if (size > 2 * 1024 * 1024) {
+      // A selected run carries the worker's conversation.
+      if (size > 4 * 1024 * 1024) {
         await reader.cancel();
         throw new Error("spinoffs_unavailable");
       }

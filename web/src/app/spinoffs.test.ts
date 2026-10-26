@@ -12,14 +12,19 @@ describe("native spinoff wire boundary", () => {
         transcripts: [
           {
             ...fixture.transcripts[0],
-            messages: [
+            entries: [
               {
-                ...fixture.transcripts[0].messages[0],
+                ...fixture.transcripts[0].entries[0],
                 raw: { secret: "native metadata" },
               },
             ],
           },
         ],
+      },
+      // The window pointer is the terminal route's token form, never a path.
+      {
+        ...fixture,
+        runs: [{ ...fixture.runs[0], terminal: "/run/user/1/taskfleet" }],
       },
       { ...fixture, runs: [{ ...fixture.runs[0], state: "finished-ish" }] },
       { ...fixture, runs: [{ ...fixture.runs[0], preserved: undefined }] },

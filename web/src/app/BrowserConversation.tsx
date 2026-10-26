@@ -139,6 +139,13 @@ export function BrowserConversation(
       parent={props.id}
       recheck={`${snapshotHistory}:${nativeHistory}`}
       onLogin={props.onLogin}
+      timeline={timelineItems}
+      place={{
+        parentTitle: props.title,
+        workspaceId: props.workspace.workspace_id,
+        workspaceName: props.workspace.display_name ?? props.workspace.name,
+        csrf: props.csrf,
+      }}
     >
       <ProcessProvider
         key={`${props.identity}:${props.id}`}

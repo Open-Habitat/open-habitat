@@ -1257,7 +1257,9 @@ details[open] > summary:not([class])::before {
 .ah-conversation-frame
   > :not(.ah-conversation-stream):not(.ah-agent-header):not(.ah-recap):not(
     .ah-conversation-notices
-  ):not(.ah-floating-controls):not(.ah-terminal-dock) {
+  ):not(.ah-floating-controls):not(.ah-terminal-dock):not(.ah-worker-band):not(
+    .ah-worker-termview
+  ) {
   flex: none;
   width: min(100%, var(--ah-conversation-width));
   margin-inline: auto;

@@ -11,7 +11,13 @@ import { createPortal } from "react-dom";
 const FloatingControls = createContext<HTMLElement | null>(null);
 
 /** Viewport-height conversation composition. The caller owns history anchoring and focus. */
-export function ConversationFrame({ children }: { children: ReactNode }) {
+export function ConversationFrame({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   const frame = useRef<HTMLElement>(null);
   const [floating, setFloating] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
@@ -51,7 +57,10 @@ export function ConversationFrame({ children }: { children: ReactNode }) {
     };
   }, []);
   return (
-    <section className="ah-conversation-frame ah-reading-view" ref={frame}>
+    <section
+      className={`ah-conversation-frame ah-reading-view${className ? ` ${className}` : ""}`}
+      ref={frame}
+    >
       <FloatingControls.Provider value={floating}>
         {children}
       </FloatingControls.Provider>
@@ -75,8 +84,10 @@ export function ConversationStream({
   children,
   streamRef,
   onScroll,
+  label = "Keskustelu",
 }: {
   children: ReactNode;
+  label?: string;
   streamRef?: React.Ref<HTMLElement>;
   onScroll?: () => void;
 }) {
@@ -85,7 +96,7 @@ export function ConversationStream({
       data-testid="conversation-stream"
       className="ah-conversation-stream"
       tabIndex={-1}
-      aria-label="Keskustelu"
+      aria-label={label}
       ref={streamRef}
       onScroll={onScroll}
     >

@@ -49,14 +49,27 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
         ? [
             {
               node_id: "n-0001",
+              harness: "pi",
               availability: "available",
               truncated: false,
-              messages: [
-                { key: "worker:one", kind: "user", text: "Päivitä README." },
+              entries: [
                 {
-                  key: "worker:two",
+                  entry_key: "worker-one",
+                  kind: "user",
+                  content: {
+                    media_type: "text/plain",
+                    text: "Päivitä README.",
+                    complete: true,
+                  },
+                },
+                {
+                  entry_key: "worker-two",
                   kind: "assistant",
-                  text: "Esimerkit päivitetty.",
+                  content: {
+                    media_type: "text/plain",
+                    text: "Esimerkit päivitetty.",
+                    complete: true,
+                  },
                 },
               ],
             },
@@ -187,10 +200,12 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
   await expect(
     page.getByRole("region").and(page.getByTestId("spinoff-result")),
   ).toContainText("Päivitettiin esimerkit.");
-  await expect(page.getByTestId("spinoff-read-only")).toBeVisible();
-  await expect(page.locator(".ah-spinoff-view script")).toHaveCount(0);
+  await expect(
+    page.getByRole("button").and(page.getByTestId("worker-ask")),
+  ).toBeVisible();
+  await expect(page.locator(".ah-worker-frame script")).toHaveCount(0);
   const axe = await new AxeBuilder({ page })
-    .include(".ah-spinoff-view")
+    .include(".ah-worker-frame")
     .analyze();
   expect(axe.violations).toEqual([]);
   // Synthetic visual evidence, never a real account/home/provider.
@@ -209,11 +224,16 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
       );
     }
     await expect(
-      page.getByRole("button").and(page.getByTestId("parent-bottom")),
+      page.getByRole("button").and(page.getByTestId("worker-ask")),
     ).toBeVisible();
   }
   const readsBeforeReturn = parentReads;
-  await page.getByRole("button").and(page.getByTestId("parent-bottom")).click();
+  // Asking goes through the main agent: the notice leads back to it.
+  await page.getByRole("button").and(page.getByTestId("worker-ask")).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("worker-ask-parent"))
+    .click();
   await expect(page).not.toHaveURL(/spinoff=/);
   await expect.poll(() => parentReads).toBeGreaterThan(readsBeforeReturn);
   await expect(pill).toBeVisible();

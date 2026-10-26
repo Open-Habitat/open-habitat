@@ -1343,6 +1343,13 @@ export function HistoryView(props: Parameters<typeof HistoryViewContent>[0]) {
       parent={props.agent.agent_id}
       recheck={props.agent.history}
       onLogin={props.onLogin}
+      timeline={timelineItems}
+      place={{
+        parentTitle: props.agent.title.display,
+        workspaceId: props.workspaceId,
+        workspaceName: props.workspaceName,
+        csrf: props.csrf,
+      }}
     >
       <ProcessProvider
         key={props.agent.agent_id}

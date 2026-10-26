@@ -1,7 +1,7 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import accessSchema from "../../../contracts/v1/server-access.schema.json";
 import integrationsSchema from "../../../contracts/v1/integrations.schema.json";
+import accessSchema from "../../../contracts/v1/server-access.schema.json";
 import serverSchema from "../../../contracts/v1/server-onboarding.schema.json";
 import { bounded } from "./integrations";
 import { mutationFetch, writeOutcome } from "./mutations";

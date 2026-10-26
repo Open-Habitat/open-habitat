@@ -25,8 +25,8 @@ import {
   setSiteKey,
 } from "./onboardingConfig";
 import {
-  checkCopy,
   type CopyCheck,
+  checkCopy,
   type GiveOutcome,
   giveCopy,
   type JoinedPerson,

@@ -1,40 +1,299 @@
-.ah-spinoff-view {
+/* A worker's view (proto-worker-view: Kehys with Pääte keskustelussa, Jari
+   26.10.2026). The accent edge and band say whose conversation this is; the
+   conversation itself is production's. */
+.ah-worker-frame {
+  box-shadow: inset 3px 0 0 var(--ah-accent);
+}
+.ah-worker-frame > .ah-agent-header {
+  padding-inline-start: calc(var(--ah-topbar-pad-inline) + 3px);
+}
+.ah-worker-band {
   display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  padding: 24px;
-  gap: 16px;
-  overflow: auto;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s1) var(--ah-s4);
+  padding: var(--ah-s2) var(--ah-topbar-pad-inline) var(--ah-s2)
+    calc(var(--ah-topbar-pad-inline) + 3px);
+  background: var(--ah-accent-soft);
+  border-bottom: 1px solid var(--ah-accent-line);
+  font-size: var(--ah-size-meta);
+  color: var(--ah-accent-ink);
 }
-.ah-spinoff-view header {
+.ah-worker-band svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.ah-worker-kind {
+  display: inline-flex;
+  gap: var(--ah-s1);
+  align-items: center;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: var(--ah-size-label);
+}
+.ah-worker-band .ah-worker-parent {
+  min-width: 0;
+  max-width: 40ch;
+  color: var(--ah-accent-ink);
+}
+.ah-worker-parent span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: underline;
+}
+.ah-worker-meta {
+  display: inline-flex;
+  gap: var(--ah-s3);
+  color: var(--ah-ink-2);
+}
+.ah-worker-band .ah-worker-ask {
+  margin-inline-start: auto;
+  color: var(--ah-accent-ink);
+  border-color: var(--ah-accent-line);
+}
+.ah-worker-ask-short {
+  display: none;
+}
+.ah-worker-ask-dialog {
+  display: grid;
+  gap: var(--ah-s2);
+  max-width: min(360px, calc(100vw - 32px));
+  padding: var(--ah-s4);
+  font-size: var(--ah-size-ui);
+}
+.ah-worker-ask-dialog h2 {
+  margin: 0;
+  font-size: var(--ah-size-ui);
+}
+.ah-worker-ask-dialog p {
+  margin: 0;
+  color: var(--ah-ink-2);
+}
+.ah-worker-ask-dialog [data-ah-primitive] {
+  justify-self: start;
+}
+
+/* The brief the main agent gave: dashed, so it does not read as yours. */
+.ah-reading-view
+  .ah-feed
+  > li[data-kind="user"]
+  .ah-message[data-voice="brief"] {
+  border-style: dashed;
+}
+
+/* The worker's terminal inside its conversation: a card under the task
+   while the history cannot be read, then one row at the end. */
+.ah-worker-termcard {
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  overflow: hidden;
+}
+.ah-worker-termcard > header,
+.ah-worker-termview > header {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  padding: var(--ah-s1) var(--ah-s1) var(--ah-s1) var(--ah-s3);
   border-bottom: 1px solid var(--ah-line);
-  padding-bottom: 16px;
+  font-size: var(--ah-size-meta);
+  min-height: var(--ah-control-row);
 }
-.ah-spinoff-view header > span {
-  margin-left: 20px;
-  opacity: 0.65;
+.ah-worker-termcard > header > svg,
+.ah-worker-termview > header > svg {
+  width: 15px;
+  height: 15px;
+  color: var(--ah-ink-2);
 }
-.ah-spinoff-transcript {
+.ah-worker-grow {
   flex: 1;
 }
-.ah-spinoff-transcript article {
-  margin: 16px auto;
-  max-width: 760px;
-  padding: 12px;
+.ah-worker-termcard-body {
+  max-height: 300px;
+  overflow: auto;
+  background: var(--ah-sunken);
 }
-.ah-spinoff-transcript article[data-kind="user"] {
-  border-inline-start: 2px solid var(--ah-line);
+.ah-worker-termcard-body .ah-terminal-surface,
+.ah-worker-termview-body .ah-terminal-surface {
+  height: 100%;
 }
-.ah-spinoff-transcript article[data-kind="tool"] {
-  font-size: 0.85em;
-  opacity: 0.7;
+.ah-worker-termcard-body .ah-terminal-surface {
+  min-height: 160px;
 }
-.ah-spinoff-view footer {
-  border: 1px dashed var(--ah-line);
-  border-radius: 8px;
-  padding: 16px;
+.ah-worker-termcard-none,
+.ah-worker-terminal-problem {
+  margin: 0;
+  padding: var(--ah-s3);
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
 }
+.ah-worker-termcard-why {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin: 0;
+  padding: var(--ah-s2) var(--ah-s3);
+  border-top: 1px solid var(--ah-line);
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+  background: var(--ah-surface-2);
+}
+.ah-worker-wait {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  animation: ah-worker-spin 1.2s linear infinite;
+}
+@keyframes ah-worker-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-worker-wait {
+    animation: none;
+    border-right-color: currentColor;
+    opacity: 0.5;
+  }
+}
+.ah-feed .ah-worker-termrow {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  gap: var(--ah-s2);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink-2);
+}
+.ah-worker-termrow-tail {
+  flex: 1;
+  min-width: 0;
+  text-align: start;
+  color: var(--ah-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The terminal opened to the whole view, under the band and header. */
+.ah-conversation-frame > .ah-worker-termview {
+  flex: 1 1 0;
+  width: 100%;
+  margin: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ah-surface);
+}
+.ah-worker-termview-body {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  background: var(--ah-sunken);
+}
+.ah-worker-prompt {
+  display: grid;
+  gap: var(--ah-s2);
+  padding: var(--ah-s3);
+  border: 1px solid var(--ah-line-strong);
+  border-inline-start: 3px solid var(--ah-ink-2);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  font-size: var(--ah-size-ui);
+}
+.ah-worker-prompt > span {
+  display: flex;
+  gap: var(--ah-s2);
+  align-items: center;
+}
+.ah-worker-prompt [data-ah-primitive] {
+  justify-self: start;
+}
+.ah-worker-prompt small {
+  color: var(--ah-muted);
+}
+.ah-worker-closed {
+  display: flex;
+  gap: var(--ah-s3);
+  margin: 0;
+  font-size: var(--ah-size-ui);
+  color: var(--ah-ink-2);
+}
+.ah-worker-closed strong {
+  color: var(--ah-ink);
+}
+.ah-worker-arrived {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin: 0;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-accent-ink);
+}
+.ah-worker-result {
+  width: min(100%, var(--ah-conversation-width));
+  box-sizing: border-box;
+  margin: var(--ah-s3) auto var(--ah-s5);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  padding: var(--ah-s3) var(--ah-s4);
+  font-size: var(--ah-size-ui);
+}
+.ah-worker-result[data-tone="ok"] {
+  border-color: var(--ah-ok);
+  background: var(--ah-ok-soft);
+}
+.ah-worker-result[data-tone="err"] {
+  border-color: var(--ah-err-line);
+  background: var(--ah-err-soft);
+}
+.ah-worker-result header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s1) var(--ah-s2);
+  align-items: center;
+}
+.ah-worker-result header svg {
+  width: 16px;
+  height: 16px;
+}
+.ah-worker-result header code {
+  margin-inline-start: auto;
+  font: 400 var(--ah-size-meta) var(--ah-mono);
+  color: var(--ah-muted);
+}
+.ah-worker-recover {
+  margin: var(--ah-s2) 0 0;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  overflow-wrap: anywhere;
+}
+/* The phone's floating navigation buttons sit at the frame's top-left
+   corner, so the band leaves them room; the profile moves to Tiedot. */
+@media (width <= 800px) {
+  .ah-worker-band {
+    padding-inline-start: 96px;
+    min-height: 52px;
+  }
+  .ah-worker-meta {
+    display: none;
+  }
+  .ah-worker-ask-long {
+    display: none;
+  }
+  .ah-worker-ask-short {
+    display: inline;
+  }
+}
+
 /* A sub-agent of this conversation is at work: the branch mark sits in the
    sidebar only (proto-spinoff-agents), and only its branch and end dot pulse
    (rail-mark-pulse, Jari 17.10.2026); the trunk stays steady. */
@@ -46,9 +305,4 @@
 }
 .ah-nav-spinoff-branch {
   animation: ah-pulse var(--ah-pulse);
-}
-@media (max-width: 600px) {
-  .ah-spinoff-view {
-    padding: 12px;
-  }
 }
