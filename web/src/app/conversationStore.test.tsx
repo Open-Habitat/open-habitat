@@ -582,6 +582,57 @@ describe("recent conversation windows", () => {
     expect(store.read(id(1))?.state).toBe("stale");
     expect(store.read(id(1))?.entries.map((e) => e.entry_key)).toEqual(["a"]);
   });
+  it("a journal gap is missed until a native read begun after it joins", async () => {
+    const agent = id(1);
+    const reads: ((value: { pages: HistoryPage[]; met: boolean }) => void)[] =
+      [];
+    const pager = {
+      tail: vi.fn().mockResolvedValue(page(agent, ["a"])),
+      older: vi.fn(),
+      reconnect: vi.fn(
+        () =>
+          new Promise((resolve) => {
+            reads.push(resolve);
+          }),
+      ),
+      cancelAll: vi.fn(),
+    } as unknown as ConversationPager;
+    const store = new ConversationStore("person", pager);
+    store.view(agent);
+    await flush();
+    const instance = "11111111-1111-4111-8111-111111111111";
+    store.setLive(agent, {
+      cursor: `ev1:${instance}:0`,
+      instance,
+      sequence: 0,
+      fragments: [],
+      truncated: false,
+    });
+    // A read already under way cannot hold what the gap's events carried.
+    void store.reconnect(agent);
+    store.routeEvent({
+      resource: { agent_id: agent },
+      kind: "assistant.delta",
+      payload: { text: "missed" },
+      cursor: `ev1:${instance}:2`,
+      server_instance_id: instance,
+      sequence: 2,
+      event_id: "gap",
+    } as never);
+    expect(store.read(agent)?.live?.missed).toBe(true);
+    reads[0]({ pages: [page(agent, ["a", "b"])], met: true });
+    await flush();
+    expect(store.read(agent)?.live?.missed).toBe(true);
+    expect(reads).toHaveLength(2);
+    reads[1]({ pages: [page(agent, ["a", "b", "c"])], met: true });
+    await flush();
+    expect(store.read(agent)?.live?.missed).toBe(false);
+    expect(store.read(agent)?.entries.map((e) => e.entry_key)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+  });
   it("bounded reconnect finds a shared key through newer pages", async () => {
     const agent = id(1);
     const pager = {

@@ -344,6 +344,32 @@ describe("long live turns", () => {
       fragments: [],
       truncated: true,
     });
+    // The stream stayed contiguous: giving up the tail is no missed event.
+    expect(result.turn.missed).toBeFalsy();
+    // A long run continues. Its tool results are not shown mid-message, but
+    // the next model turn starts a message whole and is shown again.
+    let next = applyTurnEvent(
+      result.turn,
+      parse(130, "tool.finished", {
+        tool_call_id: "late",
+        tool_name: "bash",
+        state: "succeeded",
+      }),
+      agent,
+    ).turn;
+    expect(provisionalItems(next)).toEqual([]);
+    next = applyTurnEvent(
+      next,
+      parse(131, "pi.lifecycle", { signal: "turn_start" }),
+      agent,
+    ).turn;
+    next = applyTurnEvent(
+      next,
+      parse(132, "assistant.delta", { text: "Jatkan", content_index: 0 }),
+      agent,
+    ).turn;
+    expect(next.truncated).toBe(false);
+    expect(provisionalItems(next).map((item) => item.text)).toEqual(["Jatkan"]);
   });
 });
 describe("typed live Pi projection", () => {

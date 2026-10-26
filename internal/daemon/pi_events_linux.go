@@ -55,7 +55,7 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 		c.journal.reset(agent, "running")
 		c.journal.progress(agent, "pi.lifecycle", map[string]any{"signal": e.Type})
 	case "turn_start":
-		c.journal.activity(agent, "running")
+		c.journal.turnStart(agent)
 		c.journal.progress(agent, "pi.lifecycle", map[string]any{"signal": e.Type})
 	case "turn_end", "agent_end", "agent_settled":
 		c.journal.progress(agent, "pi.lifecycle", map[string]any{"signal": e.Type, "will_retry": e.WillRetry})

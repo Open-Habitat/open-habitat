@@ -110,14 +110,17 @@ function bashCommand(value: string) {
 // The status RPC retains only 64 diagnostic native events. Its loss bit is
 // expected in long sessions even when the journal and native history are intact.
 // Only a live turn is drawn from the event tail: a fresh or settled
-// conversation reads native history, from which nothing can be missed.
-export function showMissedEvents(liveTruncated: boolean, current?: Status) {
+// conversation reads native history, from which nothing can be missed. A live
+// tail given up at its bound is no gap either: the stream stayed contiguous
+// and native history holds everything saved. Only events the browser missed
+// are, until a native read begun after them has joined.
+export function showMissedEvents(liveMissed: boolean, current?: Status) {
   const live =
     current?.run_active ??
     (current?.state === "accepted" || current?.state === "pending");
   return (
     !!live &&
-    (liveTruncated ||
+    (liveMissed ||
       !!(current?.event_loss && current.native_history !== "present"))
   );
 }
@@ -1771,7 +1774,7 @@ function BrowserConversationContent({
             ) : null}
             {!statusStale &&
             !serverUnavailable &&
-            showMissedEvents(!!live?.truncated, current) ? (
+            showMissedEvents(!!live?.missed, current) ? (
               <InlineNotice
                 data-testid="event-gap"
                 title="Tapahtumia jäi väliin"
@@ -2089,7 +2092,7 @@ function BrowserConversationContent({
                   (serverUnavailable ||
                     statusStale ||
                     journalOffline ||
-                    showMissedEvents(!!live?.truncated, current) ||
+                    showMissedEvents(!!live?.missed, current) ||
                     Boolean(
                       ambiguous && sendObservation?.state === "uncertain",
                     ))

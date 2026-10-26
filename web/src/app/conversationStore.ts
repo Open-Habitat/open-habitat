@@ -36,6 +36,9 @@ type WindowRecord = {
   // Native history changed under a contiguous stream: one quiet read is owed
   // after the snapshot that answers the invalidation.
   sourceChanged?: boolean;
+  // The newest read begun before this window's events were missed. Only a
+  // later read can show the native entries the missed events carried.
+  missedBefore?: number;
 };
 // Status proved the native history unwritten and nothing has arrived since.
 const confirmedEmpty = (record: WindowRecord) =>
@@ -248,7 +251,13 @@ export class ConversationStore {
       this.routed?.instance === live.instance &&
       this.routed.sequence > live.sequence
     )
-      live = { ...live, ...this.routed, fragments: [], truncated: true };
+      live = {
+        ...live,
+        ...this.routed,
+        fragments: [],
+        truncated: true,
+        missed: true,
+      };
     return live;
   }
   applySnapshot(snapshot: Snapshot) {
@@ -282,6 +291,7 @@ export class ConversationStore {
         try {
           const agent = snapshot.agents.find((a) => a.agent_id === id);
           const live = this.seedLive(cursor, agent?.live_tail ?? []);
+          if (live.missed) record.missedBefore = this.readSeq;
           this.publish(id, {
             ...record.value,
             live,
@@ -336,6 +346,10 @@ export class ConversationStore {
         try {
           const live = this.seedLive(snapshot.event_cursor, agent.live_tail);
           this.publish(agent.agent_id, { ...record.value, live });
+          // A deferred window reads once its status proves the history.
+          if (live.missed && record.deferred)
+            record.missedBefore = this.readSeq;
+          else if (live.missed) this.readMissed(agent.agent_id, record);
         } catch {
           this.markStale(agent.agent_id);
         }
@@ -383,6 +397,7 @@ export class ConversationStore {
         loading: false,
         deferred: deferLoad,
         readEntries: new Map(),
+        missedBefore: live?.missed ? this.readSeq : undefined,
       };
       this.windows.set(id, record);
       if (!confirmedMissing && !deferLoad) void this.loadTail(id);
@@ -627,7 +642,7 @@ export class ConversationStore {
     const settledKey = this.statusStale(id)
       ? undefined
       : this.metadata.statuses.get(id)?.turn_settled?.native_key;
-    const live =
+    let live =
       old.live &&
       settledKey &&
       incoming.some((entry) => entry.entry_key === settledKey)
@@ -637,6 +652,17 @@ export class ConversationStore {
             truncated: false,
           }
         : old.live;
+    // A read begun after events were missed has joined what they carried.
+    if (
+      live?.missed &&
+      mode !== "older" &&
+      record.loading !== false &&
+      record.missedBefore !== undefined &&
+      record.loading > record.missedBefore
+    ) {
+      live = { ...live, missed: false };
+      record.missedBefore = undefined;
+    }
     this.noteHistoryRead(id, false);
     this.publish(id, {
       entries,
@@ -959,9 +985,16 @@ export class ConversationStore {
         sequence: event.sequence,
         fragments: [],
         truncated: true,
+        missed: true,
       },
       state: confirmedEmpty(record) ? "empty" : unsettled(record),
     });
+    this.readMissed(id, record);
+  }
+  // Events for this window were missed. Only a native read begun after that
+  // can show what they carried; until it joins, the turn is not complete.
+  private readMissed(id: string, record: WindowRecord) {
+    record.missedBefore = this.readSeq;
     if (record.loading) record.readAgain = true;
     else void this.reconnect(id);
   }

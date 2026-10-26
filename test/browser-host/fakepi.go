@@ -450,6 +450,10 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	emit(map[string]any{"type": "message_start", "message": map[string]any{"role": "user", "content": []map[string]any{{"type": "text", "text": prompt}}}})
 	s.append(message("user", []map[string]any{{"type": "text", "text": recordedPrompt}}, nil))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "user"}})
+	if strings.Contains(prompt, "pitkä ajo") {
+		s.longRun(run, emit)
+		return
+	}
 	// An abort ends the run as Pi's does: a streaming reply is saved with
 	// stopReason "aborted"; a running tool returns an error result, and the
 	// model request that follows it is saved empty as the pinned Pi saves it,
@@ -670,6 +674,40 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 		s.compacted = true
 		emit(map[string]any{"type": "compaction_end", "reason": "threshold", "aborted": false, "willRetry": false})
 	}
+}
+
+// longRun is one native agent run of many model turns, each calling a tool,
+// as a long task with git and issue calls is: Pi starts the agent once, saves
+// each message as it ends, and settles only after the last answer.
+func (s *fakeSession) longRun(run chan struct{}, emit func(any)) {
+	for n := 0; n < 40; n++ {
+		if s.pause(run, 60*time.Millisecond) {
+			emit(map[string]any{"type": "agent_end"})
+			return
+		}
+		callID := fmt.Sprintf("call_run_%02d", n)
+		args := map[string]any{"command": fmt.Sprintf("echo vaihe %d", n)}
+		emit(map[string]any{"type": "turn_start"})
+		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "thinking_delta", "contentIndex": 0, "delta": fmt.Sprintf("Vaihe %d", n)}})
+		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "toolcall_delta", "contentIndex": 1, "delta": `{"command":`}})
+		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "toolcall_end", "contentIndex": 1, "toolCall": map[string]any{"id": callID, "name": "bash", "arguments": args}}})
+		s.append(message("assistant", []map[string]any{{"type": "thinking", "thinking": fmt.Sprintf("Vaihe %d", n)}, {"type": "toolCall", "id": callID, "name": "bash", "arguments": args}}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "toolUse"}))
+		emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "toolUse"}})
+		emit(map[string]any{"type": "tool_execution_start", "toolName": "bash", "toolCallId": callID, "args": args})
+		result := map[string]any{"content": []map[string]any{{"type": "text", "text": fmt.Sprintf("vaihe %d", n)}}}
+		emit(map[string]any{"type": "tool_execution_update", "toolName": "bash", "toolCallId": callID, "args": args, "partialResult": result})
+		s.append(message("toolResult", []map[string]any{{"type": "text", "text": fmt.Sprintf("vaihe %d", n)}}, map[string]any{"toolCallId": callID, "toolName": "bash", "isError": false}))
+		emit(map[string]any{"type": "tool_execution_end", "toolName": "bash", "toolCallId": callID, "isError": false, "result": result})
+		emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "toolResult"}})
+		emit(map[string]any{"type": "turn_end"})
+	}
+	emit(map[string]any{"type": "turn_start"})
+	answer := "Pitkä ajo valmis."
+	emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "text_delta", "contentIndex": 0, "delta": answer}})
+	s.append(message("assistant", []map[string]any{{"type": "text", "text": answer}}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "stop", "usage": s.replyUsage("pitkä ajo")}))
+	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant"}})
+	emit(map[string]any{"type": "turn_end"})
+	emit(map[string]any{"type": "agent_end"})
 }
 
 // fakeGitAction runs the native Git an agent would run when asked to commit

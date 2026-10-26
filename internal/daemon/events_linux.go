@@ -264,7 +264,7 @@ func (j *eventJournal) appendTailLocked(agent string, t *turnTail, kind string, 
 }
 
 // admitTailLocked keeps the frame just published in the snapshot tail, or
-// gives up the tail for the rest of this assistant message.
+// gives up the tail for the rest of this model turn.
 func (j *eventJournal) admitTailLocked(agent string, t *turnTail) bool {
 	t.textOpen = false
 	frame := j.frames[len(j.frames)-1]
@@ -405,6 +405,19 @@ func (j *eventJournal) reset(agent, state string) {
 		t.timer.Stop()
 		t.timer = nil
 	}
+}
+
+// turnStart begins a model turn. Pi saves each message as it ends but a run
+// settles, and publishes its history entries, only after its last turn; a
+// tail given up at its bound earlier in a long run resumes here, where a new
+// assistant message starts from its beginning.
+func (j *eventJournal) turnStart(agent string) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	t := j.tail(agent)
+	j.flushTextLocked(agent, t)
+	t.activity = "running"
+	t.overflow = false
 }
 func (j *eventJournal) activity(agent, state string) {
 	j.mu.Lock()

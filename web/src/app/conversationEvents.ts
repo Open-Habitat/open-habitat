@@ -88,7 +88,10 @@ export type LiveTurn = {
   instance: string;
   sequence: number;
   fragments: ConversationEvent[];
+  // The provisional fragments are incomplete and are not shown.
   truncated: boolean;
+  // Events for this agent were missed; native history is read again.
+  missed?: boolean;
 };
 export function initialTurn(
   cursor: string,
@@ -197,6 +200,14 @@ export function applyTurnEvent(
       "unknown.native",
     ].includes(event.kind)
   ) {
+    // A new model turn starts a provisional message from its beginning, so a
+    // tail given up earlier in a long run is complete again from here.
+    if (
+      turn.truncated &&
+      event.kind === "pi.lifecycle" &&
+      event.payload.signal === "turn_start"
+    )
+      return { turn: { ...next, fragments: [event], truncated: false } };
     const fragments =
       event.kind === "tool.updated"
         ? turn.fragments.filter(

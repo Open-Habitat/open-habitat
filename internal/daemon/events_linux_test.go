@@ -349,3 +349,31 @@ func TestJournalOverflowResetAndWriterExit(t *testing.T) {
 		t.Fatal("new writer could not publish after overflow")
 	}
 }
+
+// A long run's tool calls are saved one model turn at a time but published as
+// history only when the run settles. A tail given up at its frame bound must
+// resume at the next model turn, not stay silent until the run ends.
+func TestJournalOverflowResumesAtNextModelTurn(t *testing.T) {
+	j := newEventJournal()
+	agent := "pi:12345678-1234-1234-1234-123456789012"
+	j.reset(agent, "running")
+	for n := 0; n <= tailFrames; n++ {
+		j.progress(agent, "tool.finished", map[string]string{"tool_call_id": "call_" + strconv.Itoa(n), "tool_name": "bash", "state": "succeeded"})
+	}
+	_, _, _, views := j.turnView()
+	if !views[agent].overflow {
+		t.Fatal("structural bound did not give up the tail")
+	}
+	before := j.seq
+	j.progress(agent, "tool.started", map[string]string{"tool_call_id": "late", "tool_name": "bash", "state": "running"})
+	if j.seq != before {
+		t.Fatal("given-up tail kept publishing within its turn")
+	}
+	j.turnStart(agent)
+	j.progress(agent, "pi.lifecycle", map[string]any{"signal": "turn_start"})
+	j.progress(agent, "tool.started", map[string]string{"tool_call_id": "next", "tool_name": "bash", "state": "running"})
+	_, _, _, views = j.turnView()
+	if j.seq != before+2 || views[agent].overflow || len(views[agent].frames) != 2 || views[agent].activity != "running" {
+		t.Fatal("next model turn did not resume the tail", j.seq-before, len(views[agent].frames))
+	}
+}
