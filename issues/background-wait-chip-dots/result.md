@@ -32,14 +32,8 @@ unchanged.
 
 ## Evidence
 
-`evidence/` holds synthetic-lab screenshots at device scale factor 2, desktop
-(1440 px) and phone (390 px), light and dark: the closed pills with three
-completion notes (`<size>-<theme>.png` plus inert `.html`), the worker panel
-(`-workerit`) and the process panel with its ended rows (`-prosessit`).
-`web/lab/capture-background-waits.mjs` reproduces them (routed spinoff,
-process and history replies on a lab conversation; see its header). The lab
-conversation is read-only, so the top status is the lab's, not
-*Odottaa taustatyötä*.
+The screenshots were reviewed and removed (Jari, 2026-10-26); `scripts/from-history.sh`
+retrieves them from history if needed.
 
 ## Checks
 
