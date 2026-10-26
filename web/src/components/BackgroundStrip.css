@@ -351,18 +351,12 @@
   transform: rotate(90deg);
 }
 .ah-bg-empty,
-.ah-bg-life,
 .ah-bg-unavail,
 .ah-bg-notice {
   margin: 6px 8px;
   font-size: 12px;
   line-height: 1.45;
   color: var(--ah-muted);
-}
-.ah-bg-life {
-  margin-top: 8px;
-  font-size: 11.5px;
-  color: var(--ah-faint);
 }
 .ah-bg-unavail {
   margin: 4px 4px 6px;

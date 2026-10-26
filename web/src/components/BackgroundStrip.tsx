@@ -526,9 +526,6 @@ export function BackgroundStrip({
         <p className="ah-bg-empty">Ei työskenteleviä spinoffeja.</p>
       )}
       {ended("spin", facts.spin.ended.length, facts.spin.ended.map(spinRow))}
-      <p className="ah-bg-life">
-        Workerit ovat Taskfleetin ajoja; selain vain näyttää ne.
-      </p>
     </>
   );
   const procPanel = (

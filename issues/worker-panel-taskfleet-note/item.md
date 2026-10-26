@@ -3,13 +3,14 @@ created: 2026-10-26
 updated: 2026-10-26
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-26/worker-panel-note
 lane: unlaned
 collision: [web/src/components/BackgroundStrip.tsx]
 preparation: ready
+closed: 2026-10-26
 ---
 
 # Workerit-paneelin selite 'Workerit ovat Taskfleetin ajoja; selain vain näyttää ne.' pois
