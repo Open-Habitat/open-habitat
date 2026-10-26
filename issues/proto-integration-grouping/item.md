@@ -3,11 +3,12 @@ created: 2026-10-25
 updated: 2026-10-26
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-settings
 lane_seq: 1
 preparation: pending
+closed: 2026-10-26
 ---
 
 # Prototype grouping of AI, code-host and data integrations in settings
@@ -40,3 +41,7 @@ Jari 2026-10-25 on round 1: 'Kolme sivua' (Tekoäly, Koodipalvelut, Tiedot agent
 ### 2026-10-26T09:31:11Z · @jari
 
 Jari 2026-10-26 on round 2: 'Ponnahdus' is right (Kolme sivua from round 1). The default-model display row from which the popover opens looks odd: riff on it (round 3). The three-page split and API keys per provider are accepted for implementation: settings-three-pages.
+
+### 2026-10-26T12:30:52Z · @jari
+
+Jari 2026-10-26 on round 3: Asetusrivi, but with Valintakenttä's button (select-field look) at the size of Asetusrivi's interactive part; today's Valintakenttä is far too big. Accepted for implementation: the replaceable default-model block on the Tekoäly page (settings-three-pages).

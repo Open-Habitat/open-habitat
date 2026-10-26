@@ -3,12 +3,13 @@ created: 2026-10-25
 updated: 2026-10-26
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: context-impl
 lane_seq: 2
 blocked_by: ['@proto-context-basic']
 preparation: pending
+closed: 2026-10-26
 ---
 
 # Prototype the detailed context status of an agent and where it lives
@@ -37,3 +38,7 @@ Code expose natively and what the host would have to read.
 ### 2026-10-26T12:10:19Z · @jari
 
 Jari 2026-10-26: a measured total with estimated parts (Pi chars/4), labelled as an estimate, is enough for now. Claude Code reports its own breakdown when sent '/context' as a message; check whether OpenAI/Codex (or Pi) has an equivalent and prefer such native breakdowns where they exist. Variant verdict pending.
+
+### 2026-10-26T12:30:52Z · @jari
+
+Jari 2026-10-26: Ponnahdus would be stylistically easiest, but with this much information Sivu is best; he likes how it structures the facts. Make a draft (vedos) of Sivu in production; he will look at it and continue piece by piece, asking for prototypes himself when he wants one (no further prototype rounds unless asked).
