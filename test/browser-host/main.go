@@ -1196,6 +1196,12 @@ esac
 					http.Error(w, "fixture failed", 400)
 					return
 				}
+				if q.Get("harness") == "claude" {
+					if e := writeFakeClaudeWorker(filepath.Join(tmp, "alice"), q.Get("workspace"), q.Get("history"), q.Get("landed") == "1"); e != nil {
+						http.Error(w, "fixture failed", 400)
+						return
+					}
+				}
 				w.WriteHeader(204)
 			case "/fixture/pi-restart":
 				// Replace ephemeral leases as if each synthetic daemon restarted.

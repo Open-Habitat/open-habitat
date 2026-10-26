@@ -330,7 +330,7 @@ export function WorkerView({
         </p>
       ),
     });
-  if (historyArrived && readable && live)
+  if (historyArrived && readable && live && terminal)
     feed.push({
       id: "worker-history-arrived",
       kind: "marker",
@@ -340,6 +340,12 @@ export function WorkerView({
           Historia tuli luettavaksi: pääte on nyt keskustelun lopussa.
         </p>
       ),
+    });
+  if (run && (run.state === "merged" || run.state === "unmerged"))
+    feed.push({
+      id: "worker-result",
+      kind: "marker",
+      content: <WorkerResult run={run} />,
     });
   const last = feed.at(-1)?.id;
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new last item or a returned stream is the trigger.
@@ -487,7 +493,6 @@ export function WorkerView({
               }}
             />
           </WorkerVoice>
-          {run ? <WorkerResult run={run} /> : null}
         </ConversationStream>
       )}
     </ConversationFrame>

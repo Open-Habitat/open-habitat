@@ -53,6 +53,7 @@
 .ah-worker-band .ah-worker-ask {
   margin-inline-start: auto;
   color: var(--ah-accent-ink);
+  background: var(--ah-surface);
   border-color: var(--ah-accent-line);
 }
 .ah-worker-ask-short {
@@ -238,9 +239,7 @@
   color: var(--ah-accent-ink);
 }
 .ah-worker-result {
-  width: min(100%, var(--ah-conversation-width));
-  box-sizing: border-box;
-  margin: var(--ah-s3) auto var(--ah-s5);
+  margin: var(--ah-s2) 0 0;
   border: 1px solid var(--ah-line);
   border-radius: var(--ah-r-lg);
   background: var(--ah-surface);

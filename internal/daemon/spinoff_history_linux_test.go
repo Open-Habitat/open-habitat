@@ -49,8 +49,8 @@ func claudeWorkerFile(t *testing.T, home, worktree, session, recordSession, cwd 
 	body := claudeRecord(t, map[string]any{"type": "permission-mode", "permissionMode": "bypassPermissions", "sessionId": recordSession}) +
 		rec("aaaaaaaa-0000-4000-8000-000000000001", "user", "Lisää testit kesäajalle.", nil) +
 		rec("aaaaaaaa-0000-4000-8000-000000000002", "user", "<local-command-caveat>meta</local-command-caveat>", map[string]any{"isMeta": true}) +
-		rec("aaaaaaaa-0000-4000-8000-000000000003", "assistant", []any{map[string]any{"type": "thinking", "thinking": "", "signature": "opaque"}}, nil) +
-		rec("aaaaaaaa-0000-4000-8000-000000000004", "assistant", []any{map[string]any{"type": "tool_use", "id": "toolu_1", "name": "Bash", "input": map[string]any{"command": "npm test -- clock"}}}, nil) +
+		rec("aaaaaaaa-0000-4000-8000-000000000003", "assistant", []any{map[string]any{"type": "thinking", "thinking": "", "signature": "opaque"}}, map[string]any{"message": map[string]any{"id": "msg_1", "role": "assistant", "content": []any{map[string]any{"type": "thinking", "thinking": "", "signature": "opaque"}}}}) +
+		rec("aaaaaaaa-0000-4000-8000-000000000004", "assistant", nil, map[string]any{"message": map[string]any{"id": "msg_1", "role": "assistant", "content": []any{map[string]any{"type": "tool_use", "id": "toolu_1", "name": "Bash", "input": map[string]any{"command": "npm test -- clock"}}}}}) +
 		rec("aaaaaaaa-0000-4000-8000-000000000005", "user", []any{map[string]any{"type": "tool_result", "tool_use_id": "toolu_1", "content": "15 passed", "is_error": false}}, nil) +
 		rec("aaaaaaaa-0000-4000-8000-000000000006", "assistant", []any{map[string]any{"type": "tool_use", "id": "toolu_2", "name": "Edit", "input": map[string]any{"file_path": "tests/clock.test.ts", "old_string": "a", "new_string": "b"}}}, nil) +
 		rec("aaaaaaaa-0000-4000-8000-000000000007", "user", []any{map[string]any{"type": "tool_result", "tool_use_id": "toolu_2", "content": []any{map[string]any{"type": "text", "text": "edited"}}, "is_error": true}}, nil) +
@@ -83,7 +83,8 @@ func TestClaudeWorkerConversation(t *testing.T) {
 	for _, e := range got.Entries {
 		kinds = append(kinds, e.Kind)
 	}
-	if strings.Join(kinds, ",") != "user,assistant,assistant,tool,assistant,tool,assistant" {
+	// One reply's blocks arrive as separate records of the same message.
+	if strings.Join(kinds, ",") != "user,assistant,tool,assistant,tool,assistant" {
 		t.Fatalf("sidechain or meta records leaked, or turns lost: %v", kinds)
 	}
 	if got.Entries[0].Content.Text != "Lisää testit kesäajalle." {
@@ -92,18 +93,18 @@ func TestClaudeWorkerConversation(t *testing.T) {
 	if th := got.Entries[1].Blocks[0]; th.Type != "thinking" || !th.Redacted {
 		t.Fatalf("withheld thinking shown as empty text: %+v", th)
 	}
-	bash := got.Entries[2].Blocks[0]
+	bash := got.Entries[1].Blocks[1]
 	if bash.Type != "toolCall" || bash.ToolName != "bash" || bash.ToolCallID != "toolu_1" || !strings.Contains(bash.Text, `"command":"npm test -- clock"`) {
 		t.Fatalf("Bash call not in the conversation's tool form: %+v", bash)
 	}
-	if r := got.Entries[3]; r.ToolCallID != "toolu_1" || r.IsError == nil || *r.IsError || r.Blocks[0].Text != "15 passed" {
+	if r := got.Entries[2]; r.ToolCallID != "toolu_1" || r.IsError == nil || *r.IsError || r.Blocks[0].Text != "15 passed" {
 		t.Fatalf("tool result not placed under its call: %+v", r)
 	}
 	var edit map[string]string
-	if err := json.Unmarshal([]byte(got.Entries[4].Blocks[0].Text), &edit); err != nil || got.Entries[4].Blocks[0].ToolName != "edit" || edit["path"] != "tests/clock.test.ts" || edit["oldText"] != "a" || edit["newText"] != "b" {
-		t.Fatalf("Edit arguments not mapped: %v %+v", err, got.Entries[4].Blocks[0])
+	if err := json.Unmarshal([]byte(got.Entries[3].Blocks[0].Text), &edit); err != nil || got.Entries[3].Blocks[0].ToolName != "edit" || edit["path"] != "tests/clock.test.ts" || edit["oldText"] != "a" || edit["newText"] != "b" {
+		t.Fatalf("Edit arguments not mapped: %v %+v", err, got.Entries[3].Blocks[0])
 	}
-	if r := got.Entries[5]; r.IsError == nil || !*r.IsError || r.Blocks[0].Text != "edited" {
+	if r := got.Entries[4]; r.IsError == nil || !*r.IsError || r.Blocks[0].Text != "edited" {
 		t.Fatalf("failed result lost: %+v", r)
 	}
 }
@@ -254,7 +255,7 @@ func TestSpinoffDetailCarriesWorkerFacts(t *testing.T) {
 	claudeWorkerFile(t, home, worktree, claudeWorkerSession, claudeWorkerSession, worktree)
 	runDir := filepath.Join(home, ".taskfleet", "runs", spinoffFixtureID)
 	_ = os.MkdirAll(runDir, 0700)
-	_ = os.WriteFile(filepath.Join(runDir, "prompt.md"), []byte("# Tehtävä\n\nLisää testit.\n"), 0600)
+	_ = os.WriteFile(filepath.Join(runDir, "prompt.md"), []byte("# Tehtävä\n\nLisää testit."), 0600)
 	native := `{"run_id":"` + spinoffFixtureID + `","kind":"spinoff","lifecycle":"interactive","status":"pending","title":"kello-dst",
 	"created_at":"2026-10-26T17:46:54Z","source_repo":"` + filepath.Join(home, "src", "project") + `","source_branch":"main","worktree_path":"` + worktree + `",
 	"harness":"claude","awaiting_input":true,"node_transcripts":[{"node_id":"n-0001","harness":"claude","attempt":null,"session_id":null,"worktree_path":"` + worktree + `","support":"unsupported",
@@ -285,10 +286,10 @@ func TestSpinoffDetailCarriesWorkerFacts(t *testing.T) {
 		t.Fatalf("%d %s", w.Code, w.Body.String())
 	}
 	r := body.Runs[0]
-	if r.Harness != "claude" || r.Profile != "prototype-opus" || !r.AwaitingInput || r.Terminal != "30c4a765d13e401ef01f-1" || r.Brief != "# Tehtävä\n\nLisää testit.\n" {
+	if r.Harness != "claude" || r.Profile != "prototype-opus" || !r.AwaitingInput || r.Terminal != "30c4a765d13e401ef01f-1" || r.Brief != "# Tehtävä\n\nLisää testit." {
 		t.Fatalf("worker facts lost: %+v", r)
 	}
-	if tr := body.Transcripts[0]; tr.Harness != "claude" || tr.Availability != "available" || len(tr.Entries) != 7 {
+	if tr := body.Transcripts[0]; tr.Harness != "claude" || tr.Availability != "available" || len(tr.Entries) != 6 {
 		t.Fatalf("Claude conversation not served: %+v", tr)
 	}
 	// The list carries no brief, window or history: only the selected run.

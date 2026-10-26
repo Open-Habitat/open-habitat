@@ -37,9 +37,10 @@ var claudeRecordID = regexp.MustCompile(`^[0-9a-f-]{36}$`)
 var taskfleetWindowID = regexp.MustCompile(`^@([0-9]{1,6})$`)
 
 // readHomeFile reads a regular file of the daemon's own UID beneath home,
-// without following any symlink. A file larger than max yields its last max
-// bytes from a line start (tail) or nothing.
-func readHomeFile(parent int, name string, uid int, max int64, tail bool) ([]byte, bool, bool) {
+// without following any symlink. With lines, only complete lines are
+// returned, and a file larger than max yields its last max bytes from a
+// line start (tail); otherwise a larger file yields nothing.
+func readHomeFile(parent int, name string, uid int, max int64, lines, tail bool) ([]byte, bool, bool) {
 	fd, err := open(unix.Openat2, parent, name, unix.O_RDONLY|unix.O_NONBLOCK, false)
 	if err != nil {
 		return nil, false, false
@@ -75,7 +76,7 @@ func readHomeFile(parent int, name string, uid int, max int64, tail bool) ([]byt
 		b = b[at+1:]
 	}
 	// A live append can end mid-record: only complete lines are displayable.
-	if len(b) > 0 && b[len(b)-1] != '\n' {
+	if lines && len(b) > 0 && b[len(b)-1] != '\n' {
 		at := bytes.LastIndexByte(b, '\n')
 		b = b[:at+1]
 	}
@@ -233,7 +234,7 @@ func readClaudeWorker(cfg transport.Config, n spinoffNode, home int) spinoffView
 		if i == 4 {
 			break
 		}
-		b, cut, ok := readHomeFile(int(d.Fd()), c.name, cfg.UID, workerFileLimit, true)
+		b, cut, ok := readHomeFile(int(d.Fd()), c.name, cfg.UID, workerFileLimit, true, true)
 		if !ok {
 			continue
 		}
@@ -328,6 +329,7 @@ func decodeClaudeWorker(b []byte, session, worktree string) ([]historyEntry, boo
 	scanner := bufio.NewScanner(bytes.NewReader(b))
 	scanner.Buffer(make([]byte, 4096), workerFileLimit+1)
 	placed := false
+	reply := ""
 	for scanner.Scan() {
 		var r struct {
 			Type      string `json:"type"`
@@ -338,6 +340,7 @@ func decodeClaudeWorker(b []byte, session, worktree string) ([]historyEntry, boo
 			Sidechain bool   `json:"isSidechain"`
 			Meta      bool   `json:"isMeta"`
 			Message   struct {
+				ID      string          `json:"id"`
 				Model   string          `json:"model"`
 				Content json.RawMessage `json:"content"`
 			} `json:"message"`
@@ -358,6 +361,9 @@ func decodeClaudeWorker(b []byte, session, worktree string) ([]historyEntry, boo
 			continue
 		}
 		at := nativeTimestamp(r.Timestamp)
+		if r.Type == "user" {
+			reply = ""
+		}
 		var plain string
 		if json.Unmarshal(r.Message.Content, &plain) == nil {
 			if r.Type == "user" {
@@ -393,10 +399,18 @@ func decodeClaudeWorker(b []byte, session, worktree string) ([]historyEntry, boo
 			}
 			continue
 		}
+		// Claude Code writes each content block of one reply as its own
+		// record; the reply is one entry, as Pi stores it.
 		e := historyEntry{Key: r.UUID, Kind: "assistant", Timestamp: at, Content: historyContent{MediaType: "text/plain", Complete: true}}
 		if len(r.Message.Model) <= 200 {
 			e.Model = r.Message.Model
 		}
+		merged := r.Message.ID != "" && r.Message.ID == reply && len(entries) > 0 && entries[len(entries)-1].Kind == "assistant"
+		if merged {
+			e = entries[len(entries)-1]
+			entries = entries[:len(entries)-1]
+		}
+		reply = r.Message.ID
 		for _, block := range blocks {
 			if len(e.Blocks) == 128 {
 				e.TruncatedBlocks = true
@@ -448,7 +462,7 @@ func readRunBrief(cfg transport.Config, runID string) string {
 		return ""
 	}
 	defer home.Close()
-	b, _, ok := readHomeFile(int(home.Fd()), filepath.Join(".taskfleet", "runs", runID, "prompt.md"), cfg.UID, 64*1024, false)
+	b, _, ok := readHomeFile(int(home.Fd()), filepath.Join(".taskfleet", "runs", runID, "prompt.md"), cfg.UID, 64*1024, false, false)
 	if !ok {
 		return ""
 	}

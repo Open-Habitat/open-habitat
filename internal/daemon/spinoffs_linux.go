@@ -346,7 +346,7 @@ func readSpinoffTranscript(cfg transport.Config, runID string, n spinoffNode) sp
 		if p.Availability != "available" || p.Path == nil || *p.Path == "" || filepath.IsAbs(*p.Path) || filepath.Clean(*p.Path) == ".." || strings.HasPrefix(filepath.Clean(*p.Path), "../") || !filepath.IsAbs(cwd) {
 			continue
 		}
-		b, _, ok := readHomeFile(int(home.Fd()), filepath.Join(base, *p.Path), cfg.UID, workerFileLimit, false)
+		b, _, ok := readHomeFile(int(home.Fd()), filepath.Join(base, *p.Path), cfg.UID, workerFileLimit, true, false)
 		if !ok {
 			continue
 		}

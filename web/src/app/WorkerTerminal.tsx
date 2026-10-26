@@ -88,7 +88,11 @@ export function WorkerTerminal({
   }, [workspaceId, token, csrf, onLogin]);
   if (problem)
     return (
-      <p className="ah-worker-terminal-problem" role="status">
+      <p
+        className="ah-worker-terminal-problem"
+        data-testid="worker-terminal-problem"
+        role="status"
+      >
         {problem}
       </p>
     );
