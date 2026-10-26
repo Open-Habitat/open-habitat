@@ -218,12 +218,7 @@ export function AccountShelf({
 }
 
 type NativeState =
-  | "connected"
-  | "disconnected"
-  | "expired"
-  | "pending"
-  | "partial"
-  | "unknown";
+  "connected" | "disconnected" | "expired" | "pending" | "partial" | "unknown";
 const states: Record<NativeState, { label: string; description: string }> = {
   connected: {
     label: "Yhdistetty",
@@ -232,7 +227,7 @@ const states: Record<NativeState, { label: string; description: string }> = {
   disconnected: {
     label: "Ei yhdistetty",
     description:
-      "GitHub-yhteyttä ei löytynyt. Git-toiminnot voivat vaatia uuden kirjautumisen.",
+      "GitHub-yhteyttä ei löytynyt, joten git push ja gh eivät toimi. Yhdistä kirjautumalla GitHubilla.",
   },
   expired: {
     label: "Vanhentunut",
@@ -576,14 +571,22 @@ export function AccountSettings({
                         : "warning"
                   }
                 />
-                {nativeState === "expired" && onReconnect && (
-                  <Button
-                    size="row"
-                    data-testid="github-reconnect"
-                    label="Yhdistä GitHub uudelleen"
-                    onPress={onReconnect}
-                  />
-                )}
+                {/* Every GitHub sign-in hands its token to the person's gh,
+                    so the same sign-in also connects a missing login. */}
+                {(nativeState === "expired" ||
+                  nativeState === "disconnected") &&
+                  onReconnect && (
+                    <Button
+                      size="row"
+                      data-testid="github-reconnect"
+                      label={
+                        nativeState === "expired"
+                          ? "Yhdistä GitHub uudelleen"
+                          : "Yhdistä GitHub"
+                      }
+                      onPress={onReconnect}
+                    />
+                  )}
               </div>
               {csrf && nativeState === "connected" && (
                 <div className="s-editor">
