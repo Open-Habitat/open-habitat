@@ -40,10 +40,12 @@ for (const width of [1280, 390]) {
       const confirm = page.getByRole("alertdialog");
       await confirm.getByTestId("integration-remove-files").click();
       const out = resolve("../issues/trash-view-misses-integration-files");
-      const capture = async (state: string) =>
-        snapshot(page, `${out}/${state}-${width}-${theme}`, {
+      const capture = async (state: string) => {
+        if (process.env.OH_VISUAL_CAPTURE !== "1") return;
+        await snapshot(page, `${out}/${state}-${width}-${theme}`, {
           labOrigin: new URL(page.url()).origin,
         });
+      };
       await capture("removal");
       expect(
         (

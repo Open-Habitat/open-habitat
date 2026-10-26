@@ -303,6 +303,9 @@ environment.
 
 Visual evidence belongs in the issue folder as adjacent screenshot and static
 HTML from the synthetic lab (`web/lab/session.mjs` `snapshot`); never use live data.
+A Playwright spec that writes such evidence does so only when
+`OH_VISUAL_CAPTURE=1` (or its own named capture switch) is set, so the ordinary
+suite and the clean gate never rewrite tracked files under `issues/`.
 
 The installation foundation's `./scripts/test-host-initialization-uids.sh` runs
 broker seed/admission and operation journal filesystem tests as actual root in

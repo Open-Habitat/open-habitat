@@ -82,16 +82,17 @@ for (const width of [1440, 390]) {
             (await new AxeBuilder({ page }).exclude(".ah-feed").analyze())
               .violations,
           ).toEqual([]);
-          await snapshot(
-            page,
-            fileURLToPath(
-              new URL(
-                `../../issues/title-regenerate-arrow-spin/evidence/pending-${width}-${colorScheme}`,
-                import.meta.url,
+          if (process.env.OH_VISUAL_CAPTURE === "1")
+            await snapshot(
+              page,
+              fileURLToPath(
+                new URL(
+                  `../../issues/title-regenerate-arrow-spin/evidence/pending-${width}-${colorScheme}`,
+                  import.meta.url,
+                ),
               ),
-            ),
-            { labOrigin: new URL(page.url()).origin },
-          );
+              { labOrigin: new URL(page.url()).origin },
+            );
         }
         release();
         await expect(row).toHaveAttribute("aria-busy", "false");

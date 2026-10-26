@@ -43,13 +43,17 @@ for (const width of [1440, 390])
             .locator(".cm-line")
             .filter({ hasText: /^\/\/ synthetic line 250$/ }),
         ).toBeInViewport();
-        const out = fileURLToPath(
-          new URL(
-            `../../issues/editor-long-file-cannot-scroll/evidence/editor-${width}-${theme}-${mode}`,
-            import.meta.url,
-          ),
-        );
-        await snapshot(page, out, { labOrigin: new URL(page.url()).origin });
+        // Committed issue evidence is refreshed only on request, so the
+        // ordinary suite and the clean gate leave the tree untouched.
+        if (process.env.OH_VISUAL_CAPTURE === "1") {
+          const out = fileURLToPath(
+            new URL(
+              `../../issues/editor-long-file-cannot-scroll/evidence/editor-${width}-${theme}-${mode}`,
+              import.meta.url,
+            ),
+          );
+          await snapshot(page, out, { labOrigin: new URL(page.url()).origin });
+        }
         await expect(page.getByTestId("editor-save")).toBeInViewport();
       }
       expect(
