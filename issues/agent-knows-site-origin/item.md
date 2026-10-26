@@ -2,11 +2,13 @@
 created: 2026-10-26
 updated: 2026-10-26
 type: bug
-status: open
+status: fixed
 priority: normal
 lane: agent-context
 collision: [internal/daemon/host-context.md, internal/cli/agent_linux.go]
 preparation: ready
+closed: 2026-10-26
+closed_by: agent
 ---
 
 # Agentti ei tiedä oman palvelimensa julkista osoitetta
@@ -33,6 +35,6 @@ pelkkä näytettävä osoite.
 
 ## Acceptance Criteria
 
-- [ ] `open-habitat agent environment show --json` kertoo palvelimen julkisen originin
-- [ ] Agentin host-konteksti kertoo, mistä osoitteen saa, jotta agentti osaa antaa siitä linkin
+- [x] `open-habitat agent environment show --json` kertoo palvelimen julkisen originin
+- [x] Agentin host-konteksti kertoo, mistä osoitteen saa, jotta agentti osaa antaa siitä linkin
 
