@@ -141,3 +141,51 @@ caught, a rejected key is not stored, a good one is and makes its first model
 the default; removal confirms and names the default it breaks; the site key is
 replaced by one's own; Escape closes the popover and returns focus; Koodipalvelut
 shows the GitHub/Gitea tiles; no console errors and no network requests.
+
+## Kierros 3 · The default-model row
+
+Prototype: `issues/proto-integration-grouping/prototypes/settings-riff-3/index.html`
+(offline, one file). Notes for Jari: [NOTES.md](prototypes/settings-riff-3/NOTES.md).
+Screens (device scale factor 2): `prototypes/settings-riff-3/evidence/`.
+
+Jari accepted Ponnahdus but found the row it opens from odd: round 2 put the
+composer pill, with a provider tile and a focus halo, at the far right of a
+two-line explanation. Round 3 varies only that row; the popover/sheet content
+and the rest of the page are round 2's. Every form names the model, the route
+(`Claude-tilaus`, `Anthropic API · ylläpitäjän avain` …) and the thinking level,
+because production's `ModelChip` omits the route, and the route is usually
+where a broken default is broken.
+
+| Variant | Form | How it reads as clickable | Relation to a conversation's model |
+| --- | --- | --- | --- |
+| 1 · Valintakenttä | Form field under a label: tile, model, route, thinking, ⇕ | A select-like bordered field | Helper line under the field |
+| 2 · Asetusrivi | Whole row is the button; value right-aligned (model, then route · thinking) | ⇕ and row hover | "Uusille keskusteluille" only |
+| 3 · Peili | Sketch of a new conversation's composer with production's exact chip | The chip itself, as in the composer | Shown by the mirror, plus one line |
+| 4 · Erittely | Three labelled cells (Malli, Palvelu with status, Ajattelutaso) and **Vaihda…** | An explicit button | ⓘ line under the cells |
+
+### Conductor's recommendation
+
+**Asetusrivi (2).** The oddity in round 2 was a control sitting in the middle
+of a settings page. Asetusrivi shows the default as a value, like every other
+setting, makes the whole row the target, and adds the route the pill lacked.
+In the error state the model turns red with a warning icon and the reason sits
+under the row, so a broken default stays visible. Its cost is a subtle
+affordance (⇕ and hover only), which an implementation can strengthen without
+changing the form. Peili explains the default-versus-conversation relation
+best; its one sentence can move into the popover footer if Jari wants that
+said. Valintakenttä is the safe fallback if clickability matters more than
+calm. Erittely is the heaviest, and its three boxes compete for attention.
+
+**Which row form does Jari want?** Issue stays open, preparation=pending.
+
+### Verification
+
+`check.mjs` (repository Playwright, Chromium, on Birch) passed: all four
+variants in all three scenarios at 390 and 1440 px render without horizontal
+overflow, with the chooser open too, and with the popover inside the viewport.
+Every row names the model and the route. Choosing a model is confirmed and
+shown on the row; Escape and an outside click close the chooser, and Escape
+returns focus to the trigger. The error scenario's row leads to a working
+choice, and a first API key changes the row at once. Picker keys work, there
+are no console errors, and the page makes no network requests
+(CSP `default-src 'none'`). No production code changed.
