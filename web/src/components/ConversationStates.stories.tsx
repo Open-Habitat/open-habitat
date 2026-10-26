@@ -5,6 +5,7 @@ import { StreamingActivityPreview } from "../test/StreamingActivityPreview";
 import { AgentTurn, ThinkingRow } from "./AgentTurn";
 import { ArchiveControls } from "./ArchiveControls";
 import { BashToolCard } from "./BashToolCard";
+import { ConversationFrame } from "./ConversationFrame";
 import {
   AssistantMessage,
   Composer,
@@ -464,6 +465,41 @@ export const UncertainDelivery: Story = {
       </li>
     </ol>
   ),
+};
+// The floating jump-to-latest chip in its three forms: idle, a new reply,
+// and an agent still working with its duration and unread count.
+const jumpForms = [
+  { id: "idle", count: 0 },
+  { id: "reply", count: 2 },
+  { id: "working", count: 3, working: true, duration: "3 min" },
+];
+const jumpToLatest = () => (
+  <div style={{ display: "grid", gap: 8 }}>
+    {jumpForms.map((form) => (
+      <div key={form.id} data-jump-form={form.id} style={{ height: 120 }}>
+        <ConversationFrame>
+          <ConversationTimeline
+            state="ready"
+            items={[]}
+            showJumpToLatest
+            newContentCount={form.count}
+            latestWorking={form.working}
+            latestDuration={form.duration}
+            historyMode="virtualized"
+            onJumpToLatest={noop}
+          />
+        </ConversationFrame>
+      </div>
+    ))}
+  </div>
+);
+export const JumpToLatestLight: Story = {
+  render: jumpToLatest,
+  globals: { theme: "light" },
+};
+export const JumpToLatestDark: Story = {
+  render: jumpToLatest,
+  globals: { theme: "dark" },
 };
 // Every story uses the production components and the Storybook light/dark toolbar.
 export const CompletedTurn: Story = {

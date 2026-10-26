@@ -3080,6 +3080,15 @@ test("@conversation-details latest pill names working and unread reply with its 
   await expect(reply).toHaveAttribute("data-unread-count", "2", {
     timeout: 25000,
   });
+  // jump-latest-chip-layout: the arrow once wrapped below the label. It sits
+  // on the label's line, on the chip's vertical centre.
+  const offset = await reply.evaluate((chip) => {
+    const own = chip.getBoundingClientRect();
+    const icon = chip.querySelector("svg")?.getBoundingClientRect();
+    if (!icon) return Number.NaN;
+    return icon.top + icon.height / 2 - (own.top + own.height / 2);
+  });
+  expect(Math.abs(offset)).toBeLessThan(1);
   await reply.press("Enter");
   await expect(reply).toHaveCount(0);
   await expect(stream).toBeFocused();

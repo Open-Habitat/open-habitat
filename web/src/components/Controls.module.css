@@ -67,7 +67,8 @@
    the role's fixed gap. */
 .text:has(> svg),
 .pill,
-.segment {
+.segment,
+.floating {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -200,9 +201,13 @@ span.button {
   --i-bg: transparent;
   --i-fg: var(--ah-muted);
 }
+/* A chip floating over the conversation keeps its label and trailing icon on
+   one line; the pill's rounded ends need more inline room than a row button. */
 .floating {
+  padding-inline: calc(var(--b-pad) + var(--ah-s1));
   border-radius: var(--ah-r-pill);
   box-shadow: 0 2px 8px var(--ah-scrim);
+  white-space: nowrap;
 }
 .messageIcon {
   font-size: 0;

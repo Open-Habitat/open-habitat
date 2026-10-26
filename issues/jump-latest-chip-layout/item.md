@@ -3,13 +3,14 @@ created: 2026-10-26
 updated: 2026-10-26
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-26/jump-latest-chip
 lane: unlaned
 collision: [web/src/components/Conversation.tsx]
 preparation: ready
+closed: 2026-10-26
 ---
 
 # Viimeisimpään-siru: teksti ylälaidassa, nuoli rivin alla, liian ahdas
@@ -20,5 +21,5 @@ Jari 2026-10-26 testatessa (kuvakaappaus: attachments/jump-latest.png): keskuste
 
 ## Acceptance Criteria
 
-- [ ] Teksti ja nuoli ovat samalla rivillä ja pystysuunnassa keskellä, ja sirussa on riittävästi sisätilaa kaikissa kolmessa muodossa
-- [ ] Selaintesti tai visuaalinen tarkistus kattaa kaikki kolme muotoa; kuvat skaalalla 2
+- [x] Teksti ja nuoli ovat samalla rivillä ja pystysuunnassa keskellä, ja sirussa on riittävästi sisätilaa kaikissa kolmessa muodossa
+- [x] Selaintesti tai visuaalinen tarkistus kattaa kaikki kolme muotoa; kuvat skaalalla 2
