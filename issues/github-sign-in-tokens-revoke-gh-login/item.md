@@ -2,13 +2,16 @@
 created: 2026-10-26
 updated: 2026-10-26
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: found while implementing github-token-expires-silently
 source_ref: taskfleet:01m5vrvh57ezey9qxnfszmg6nx/finding:oauth-ten-token-limit
 originating_run: 01m5vrvh57ezey9qxnfszmg6nx
 originating_run_kind: spinoff
+lane: unlaned
+collision: [internal/gateway/]
+preparation: ready
 ---
 
 # Each GitHub sign-in mints a token; after ten, GitHub revokes the one gh uses
@@ -42,3 +45,9 @@ reobserves native state instead of replaying a token"):
 2. Daemon replaces the person's own-account `gh` token with the newer one.
    Simpler, but overwrites a native login that may carry extra scopes
    (e.g. `workflow` from `gh auth refresh`).
+
+## Decisions
+
+### 2026-10-26T09:56:53Z · @conductor
+
+Conductor 2026-10-26: fix 1 (gateway revokes the surplus token it minted when the daemon kept an existing login). It moves no authority: the gateway only revokes a token it just obtained and never holds; native credentials stay untouched. Listed for Jari's later review.
