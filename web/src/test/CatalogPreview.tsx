@@ -17,8 +17,9 @@ import {
   AgentFacts,
   AgentHeader,
   AppShell,
+  NowSections,
+  WorkspaceNavRow,
   WorkspaceRail,
-  WorkspaceSection,
 } from "../components/Navigation";
 import { OperationProgress } from "../components/Operations";
 import { ConnectionBanner } from "../components/Status";
@@ -94,7 +95,6 @@ function CatalogContents({
   const [value, setValue] = useState(
     "Tarkista vielä saavutettavuus ja pitkät suomenkieliset arvot.",
   );
-  const [expanded, setExpanded] = useState(true);
   const rail = (
     <WorkspaceRail
       collapsed={false}
@@ -102,46 +102,46 @@ function CatalogContents({
       connectionLabel={
         scenario === "unhappy" ? "Tieto vanhentunut" : "Yhteys toimii"
       }
-      unreadReplyHrefs={
-        scenario === "unhappy"
-          ? ["/agents/ag_example01", "/agents/ag_example02"]
-          : []
-      }
       filterValue={filter}
-      resultSummary="2 agenttia"
+      resultSummary="1"
+      now={
+        <NowSections
+          yours={[]}
+          running={[
+            {
+              agentId: "agent-1",
+              href: "/workspaces/workspace-1/agents/agent-1",
+              title: "Rakenna saavutettava komponenttikirjasto",
+              activityLabel:
+                scenario === "unhappy" ? "Tila ei tiedossa" : "Työskentelee",
+              controlLabel:
+                scenario === "unhappy" ? "Vain luku" : "Selain ohjaa",
+              attentionLabel:
+                scenario === "unhappy" ? "Odottaa vastaustasi" : undefined,
+              selected: true,
+            },
+            {
+              agentId: "agent-2",
+              href: "/workspaces/workspace-1/agents/agent-2",
+              title: "Selvitä hyvin pitkän historian suorituskyky",
+              activityLabel: "Ei käynnissä",
+              controlLabel: "Vain luku",
+              stale: scenario === "unhappy",
+            },
+          ]}
+        />
+      }
       listState={scenario === "unhappy" ? "stale" : "ready"}
       onToggle={noop}
       onFilter={setFilter}
       onRefresh={noop}
     >
-      <WorkspaceSection
-        workspaceId="workspace-1"
+      <WorkspaceNavRow
         name="erittäin-pitkä-suomenkielinen-asiakasworkspace-joka-ei-saa-rikkoa-asettelua"
         href="/workspaces/workspace-1"
-        expanded={expanded}
+        selected
         summary="Git-workspace"
-        agents={[
-          {
-            agentId: "agent-1",
-            href: "/workspaces/workspace-1/agents/agent-1",
-            title: "Rakenna saavutettava komponenttikirjasto",
-            activityLabel:
-              scenario === "unhappy" ? "Tila ei tiedossa" : "Työskentelee",
-            controlLabel: scenario === "unhappy" ? "Vain luku" : "Selain ohjaa",
-            attentionLabel:
-              scenario === "unhappy" ? "Odottaa vastaustasi" : undefined,
-            selected: true,
-          },
-          {
-            agentId: "agent-2",
-            href: "/workspaces/workspace-1/agents/agent-2",
-            title: "Selvitä hyvin pitkän historian suorituskyky",
-            activityLabel: "Ei käynnissä",
-            controlLabel: "Vain luku",
-            stale: scenario === "unhappy",
-          },
-        ]}
-        onToggle={() => setExpanded(!expanded)}
+        hint={{ kind: "attention", count: 1, text: "1 odottaa sinua" }}
       />
     </WorkspaceRail>
   );

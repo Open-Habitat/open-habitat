@@ -118,7 +118,7 @@ import { ViewHost } from "./ViewHost";
 import type { DeletionOutcome } from "./WorkspaceDeletion";
 import { WorkspaceEditor } from "./WorkspaceEditor";
 import { WorkspacePage } from "./WorkspacePage";
-import { WorkspaceRailView } from "./WorkspaceRailView";
+import { useRailNow, WorkspaceRailView } from "./WorkspaceRailView";
 import {
   readWorkspaceResult,
   sendWorkspace,
@@ -201,7 +201,6 @@ export function App() {
     query.addEventListener("change", change);
     return () => query.removeEventListener("change", change);
   }, []);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [logoutError, setLogoutError] = useState(false);
   const [archiveProblem, setArchiveProblem] = useState("");
   const archiveFocusPending = useRef<string | undefined>(undefined);
@@ -352,7 +351,6 @@ export function App() {
     setSettingsReturn("/workspaces");
     setSettingsFromMenu(false);
     returningFromSettings.current = false;
-    setExpanded({});
     setDaemonSessions([]);
     setCSRF(undefined);
     setProfile(undefined);
@@ -979,9 +977,25 @@ export function App() {
             ? "unknown"
             : visible.length === 0
               ? "empty"
-              : matches.length === 0
+              : matches.length === 0 &&
+                  !archivedWorkspaces.some((w) =>
+                    (w.display_name ?? w.name)
+                      .toLocaleLowerCase()
+                      .includes(filter.toLocaleLowerCase()),
+                  )
                 ? "filtered-empty"
                 : "ready";
+  const now = useRailNow({
+    store: conversationStore,
+    snapshot,
+    workspaces: visible,
+    daemonSessions,
+    phase,
+    closing,
+    selectedAgentId,
+    selectedId,
+    search: location.search,
+  });
   // Single-workspace mode (Yläpalkissa, Jari 18.10.2026) follows the number
   // of visible native workspaces in the snapshot; nothing is stored, and
   // hidden workspaces do not count. An unconfirmed listing keeps the sidebar,
@@ -2407,6 +2421,7 @@ export function App() {
     <PiModelsProvider key={identity} enabled={!!identity}>
       <StoragePressureProvider enabled={!!identity}>
         <AppShell
+          navigationBadge={now.yours.length}
           className={
             [
               landing.entering ? "ah-landing-enter" : "",
@@ -2537,11 +2552,10 @@ export function App() {
               <WorkspaceRailView
                 phase={phase}
                 snapshot={snapshot}
-                closing={closing}
                 profile={profile}
-                store={conversationStore}
                 source={source}
                 collapsed={collapsed && !mobileLayout}
+                now={now}
                 matches={matches}
                 archived={archivedWorkspaces}
                 onRestoreWorkspace={
@@ -2559,10 +2573,6 @@ export function App() {
                 filter={filter}
                 railState={railState}
                 selectedId={selectedId}
-                selectedAgentId={selectedAgentId}
-                daemonSessions={daemonSessions}
-                expanded={expanded}
-                onExpand={setExpanded}
                 newReason={createReason}
                 onNewConversation={
                   csrf &&
@@ -2587,7 +2597,6 @@ export function App() {
                 onLogout={() => setLogoutPrompt(true)}
                 onAdministration={() => navigate(settingsHref("palvelin"))}
                 pathname={location.pathname}
-                search={location.search}
                 clones={cloneJobs}
               />
             ) : undefined

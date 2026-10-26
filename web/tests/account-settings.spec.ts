@@ -503,11 +503,10 @@ test("@account-settings @a11y compact phone drawer and settings separate list/de
   const nav = page
     .getByRole("navigation")
     .and(page.getByTestId("workspace-navigation"));
-  const firstAgent = nav.locator(".ah-agent-item .ah-nav-link").first();
-  await expect(firstAgent).toHaveAttribute("aria-describedby", /.+/);
-  await expect(firstAgent).toHaveAccessibleDescription(/.+/);
-  await expect(firstAgent).toBeVisible();
-  await expect(firstAgent.locator(".ah-nav-mark")).toBeVisible();
+  const firstWorkspace = nav.locator(".ah-workspace-row a").first();
+  await expect(firstWorkspace).toHaveAttribute("aria-describedby", /.+/);
+  await expect(firstWorkspace).toHaveAccessibleDescription(/.+/);
+  await expect(firstWorkspace).toBeVisible();
   await page
     .getByRole("button")
     .and(page.getByTestId("account-menu-trigger"))

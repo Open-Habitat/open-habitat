@@ -34,8 +34,6 @@ function Example({
               serverLabel="esimerkki.test"
               connectionLabel="Yhdistetty"
               connectionTone="success"
-              runningCount={0}
-              unreadReplyHrefs={[]}
               filterValue=""
               resultSummary="1 työtila"
               listState="ready"

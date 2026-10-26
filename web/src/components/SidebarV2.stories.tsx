@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MemoryRouter } from "react-router";
 import { AccountShelf } from "./Account";
-import { AppShell, WorkspaceRail, WorkspaceSection } from "./Navigation";
+import {
+  AppShell,
+  NowSections,
+  WorkspaceNavRow,
+  WorkspaceRail,
+} from "./Navigation";
 import { ReturnView } from "./ReturnView";
 
 const noop = () => {};
@@ -63,11 +68,60 @@ function Example({
               connectionLabel="Yhdistetty"
               connectionTone="success"
               homeCurrent
-              runningCount={1}
-              unreadReplyHrefs={["/agents/ag_example01"]}
               filterValue=""
               resultSummary="1 työtila"
               listState="ready"
+              now={
+                <NowSections
+                  collapsed={collapsed}
+                  yours={[
+                    {
+                      agentId: "pi:asks",
+                      title: "Etusivun kuvagalleria",
+                      href: "/agents/pi:asks",
+                      activityLabel: "Kysyy sinulta",
+                      controlLabel: "",
+                      question: true,
+                      workspaceName: "kotisivu",
+                      detail: "kotisivu · Kysyy sinulta",
+                    },
+                    {
+                      agentId: "pi:example",
+                      title: "Lokakuun kuukausiraportti",
+                      href: "/agents/pi:example",
+                      activityLabel: "Uusi vastaus",
+                      controlLabel: "",
+                      attentionLabel: "Uusi",
+                      workspaceName: "budjetti-2027",
+                      detail: "budjetti-2027 · Uusi vastaus",
+                    },
+                  ]}
+                  running={[
+                    {
+                      agentId: "pi:waits",
+                      title: "Lainojen eräpäivämuistutus",
+                      href: "/agents/pi:waits",
+                      activity: "waiting_background",
+                      activityLabel: "Odottaa taustatyötä",
+                      controlLabel: "",
+                      spinoffWorking: true,
+                      workspaceName: "kirjasto-api",
+                      detail:
+                        "kirjasto-api · Odottaa taustatyötä · Muistutusten sähköpostipohja",
+                    },
+                    {
+                      agentId: "pi:working",
+                      title: "Laskutusnäkymän taulukko",
+                      href: "/agents/pi:working",
+                      activity: "working",
+                      activityLabel: "Työskentelee",
+                      controlLabel: "",
+                      workspaceName: "asiakasportaali",
+                      detail: "asiakasportaali · Työskentelee",
+                    },
+                  ]}
+                />
+              }
               onToggle={noop}
               onFilter={noop}
               onRefresh={noop}
@@ -79,22 +133,9 @@ function Example({
                 />
               }
             >
-              <WorkspaceSection
-                workspaceId="ws_example00"
+              <WorkspaceNavRow
                 name="esimerkki"
                 href="/workspaces/ws_example00"
-                expanded
-                onToggle={noop}
-                agents={[
-                  {
-                    agentId: "pi:example",
-                    title: "Keskustelu odottaa vastausta",
-                    href: "/agents/pi:example",
-                    activityLabel: "Odottaa",
-                    controlLabel: "",
-                    attentionLabel: "Uusi",
-                  },
-                ]}
               />
             </WorkspaceRail>
           }

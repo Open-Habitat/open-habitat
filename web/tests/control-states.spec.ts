@@ -59,7 +59,7 @@ test("@control-states migrated rail, drawer and text links retain their layout",
     await row.evaluate((node) => node.getBoundingClientRect().height),
   ).toBeLessThanOrEqual(36);
   const workspace = row.locator(".ah-workspace-link");
-  await expect(workspace).toHaveCSS("display", "block");
+  await expect(workspace).toHaveCSS("display", "flex");
   expect(
     await workspace.evaluate((node) => {
       const label = node as HTMLElement;

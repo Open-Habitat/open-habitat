@@ -113,14 +113,12 @@ test("@lazy-resume after a daemon restart the conversation stays writable, openi
   await expect(
     page.locator(".ah-conversation-frame").getByTestId("read-only-indicator"),
   ).toHaveCount(0);
-  // In the sidebar only terminal-origin history remains read-only.
+  // The conversation's workspace stays the sidebar's current place.
   await expect(
-    await nativeConversationLink(
-      page,
-      page.getByRole("navigation"),
-      /ennen uudelleenkäynnistystä/,
-    ),
-  ).toHaveAttribute("aria-current", "page");
+    page
+      .getByRole("navigation")
+      .locator('.ah-workspace-row a[aria-current="page"]'),
+  ).toHaveCount(1);
   await expect(page.getByTestId("continue-conversation")).toHaveCount(0);
   await expectNativeContent(
     page.getByTestId("conversation-timeline"),
@@ -657,28 +655,6 @@ test("@queued-send Stop after the agent began acting on a queued message keeps i
     count: 1,
   });
 });
-
-// Resolve native conversation identity from the host, not translated link copy.
-async function nativeConversationLink(
-  page: import("@playwright/test").Page,
-  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
-  title: string | RegExp,
-) {
-  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
-  const agent = snapshot.agents.find((entry: { title: { display: string } }) =>
-    typeof title === "string"
-      ? entry.title.display.includes(title)
-      : title.test(entry.title.display),
-  );
-  if (!agent) throw new Error("Missing native conversation identity");
-  return scope
-    .getByTestId(/^(agent-link|home-conversation-.*)$/)
-    .and(
-      page.locator(
-        `a[href*="conversation=${encodeURIComponent(agent.agent_id)}"], a[href*="conversation=${agent.agent_id}"], a[href="/agents/${agent.agent_id}"]`,
-      ),
-    );
-}
 
 // Native content is asserted independently of translated controls. This helper
 // only reads rendered content; it never finds an element for an interaction.

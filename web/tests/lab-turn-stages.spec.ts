@@ -18,7 +18,7 @@ async function openStagedHistory(page: Page) {
   await (
     await nativeConversationLink(
       page,
-      page.getByTestId("workspace-navigation"),
+      page.locator("main"),
       "Miksi CI epäonnistuu macOS:llä?",
     )
   )

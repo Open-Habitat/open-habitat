@@ -2,12 +2,7 @@ import { fireEvent, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { agentPresentation } from "./agentPresentation";
-import {
-  AgentHeader,
-  AgentNavItem,
-  WorkspaceRail,
-  WorkspaceSection,
-} from "./Navigation";
+import { AgentHeader, AgentNavItem } from "./Navigation";
 
 const longTitle =
   "Keskustelu pitkästä aiheesta ja sen eri vaiheista sekä kaikista tähän liittyvistä muutoksista";
@@ -132,69 +127,6 @@ describe("conversation title", () => {
   });
 });
 
-describe("workspace conversation rows", () => {
-  it("orders new and attention before work and folds finished rows", () => {
-    const agent = (
-      name: string,
-      priority: number,
-      finished = false,
-      selected = false,
-    ) => ({
-      agentId: name,
-      href: `/agents/${name}`,
-      title: name,
-      activityLabel: finished ? "Valmis" : "Odottaa",
-      controlLabel: "Vain luku",
-      priority,
-      finished,
-      selected,
-    });
-    const view = render(
-      <MemoryRouter>
-        <WorkspaceSection
-          workspaceId="ws_example00"
-          name="source"
-          href="/workspaces/ws_example00"
-          expanded
-          agents={[
-            agent("waiting", 3),
-            agent("finished", 4, true),
-            agent("attention", 1),
-            agent("new", 0),
-            agent("working", 2),
-          ]}
-          onToggle={() => {}}
-          workspaceMenu={
-            <button data-testid="workspace-menu" type="button">
-              Työtilan toiminnot
-            </button>
-          }
-        />
-      </MemoryRouter>,
-    );
-    expect(
-      view.getAllByTestId("agent-link").map((row) => row.getAttribute("href")),
-    ).toEqual([
-      "/agents/new",
-      "/agents/attention",
-      "/agents/working",
-      "/agents/waiting",
-    ]);
-    expect(
-      view
-        .getAllByTestId("agent-link")
-        .some((link) => link.getAttribute("href") === "/agents/finished"),
-    ).toBe(false);
-    fireEvent.click(view.getByTestId("conversations-finished"));
-    expect(
-      view
-        .getAllByTestId("agent-link")
-        .some((link) => link.getAttribute("href") === "/agents/finished"),
-    ).toBe(true);
-    expect(view.getByTestId("workspace-menu")).toBeTruthy();
-  });
-});
-
 it("shows native settings in a chip and aligned facts without loose disabled reasons", () => {
   const view = render(
     <MemoryRouter>
@@ -291,36 +223,5 @@ describe("rail activity marks", () => {
     expect(
       mark?.querySelectorAll(":scope > path, :scope > circle"),
     ).toHaveLength(2);
-  });
-});
-
-describe("unread reply link", () => {
-  it("opens the next unread destination and disappears when all are seen", () => {
-    const draw = (hrefs: string[]) => (
-      <MemoryRouter>
-        <WorkspaceRail
-          collapsed={false}
-          serverLabel="example.test"
-          connectionLabel="Yhdistetty"
-          unreadReplyHrefs={hrefs}
-          filterValue=""
-          resultSummary=""
-          listState="ready"
-          onToggle={() => {}}
-          onFilter={() => {}}
-          onRefresh={() => {}}
-        />
-      </MemoryRouter>
-    );
-    const view = render(draw(["/agents/first", "/agents/second"]));
-    expect(view.getByTestId("unread-replies").getAttribute("href")).toBe(
-      "/agents/first",
-    );
-    view.rerender(draw(["/agents/second"]));
-    expect(view.getByTestId("unread-replies").getAttribute("href")).toBe(
-      "/agents/second",
-    );
-    view.rerender(draw([]));
-    expect(view.queryByTestId("unread-replies")).toBeNull();
   });
 });

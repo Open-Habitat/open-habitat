@@ -29,11 +29,10 @@ test("quota warning, full storage and recovery keep the conversation mounted wit
     "false",
   );
   await expect(page.getByTestId("quota-state")).toBeVisible();
+  // A terminal history that has ended is reached through the start page.
   await page
-    .getByRole("navigation")
-    .and(page.getByTestId("workspace-navigation"))
-    .getByTestId("agent-item-pi:11111111-1111-4111-8111-111111111111")
-    .getByRole("link")
+    .locator("main")
+    .getByTestId("home-conversation-pi:11111111-1111-4111-8111-111111111111")
     .click();
   await expect(page.locator(".ah-feed li")).toHaveCount(25);
   const conversationURL = page.url();

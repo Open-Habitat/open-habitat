@@ -20,8 +20,9 @@ import {
   AgentFacts,
   AgentHeader,
   AppShell,
+  NowSections,
+  WorkspaceNavRow,
   WorkspaceRail,
-  WorkspaceSection,
 } from "./Navigation";
 import { CapabilityNotice, OperationProgress } from "./Operations";
 import { AlertDialog, Dialog, Menu, Tabs } from "./Overlays";
@@ -229,48 +230,50 @@ function OverlayFixture() {
 export const Overlays: Story = { render: () => <OverlayFixture /> };
 
 function NavigationFixture() {
-  const [expanded, setExpanded] = useState(true);
   const [filter, setFilter] = useState("");
   const rail = (
     <WorkspaceRail
       collapsed={false}
       serverLabel="alder.example — Open Habitat"
       connectionLabel="Yhteys toimii"
-      unreadReplyHrefs={["/agents/ag_example01", "/agents/ag_example02"]}
       filterValue={filter}
-      resultSummary="2 agenttia"
+      resultSummary="1"
+      now={
+        <NowSections
+          yours={[]}
+          running={[
+            {
+              agentId: "a-1",
+              href: "/workspaces/w-1/agents/a-1",
+              title:
+                "Korjaa kirjautumisen epävarma paluu erittäin pitkällä otsikolla joka rivittyy saavutettavasti",
+              activityLabel: "Työskentelee",
+              controlLabel: "Selain ohjaa",
+              attentionLabel: "Odottaa vastaustasi",
+              selected: true,
+            },
+            {
+              agentId: "a-2",
+              href: "/workspaces/w-1/agents/a-2",
+              title: "Vanha tutkimus",
+              activityLabel: "Ei käynnissä",
+              controlLabel: "Vain luku",
+              stale: true,
+            },
+          ]}
+        />
+      }
       listState="ready"
       onToggle={noop}
       onFilter={setFilter}
       onRefresh={noop}
     >
-      <WorkspaceSection
-        workspaceId="w-1"
+      <WorkspaceNavRow
         name={`asiakkaan-${hostile}`}
         href="/workspaces/w-1"
-        expanded={expanded}
+        selected
         summary="Git-workspace"
-        agents={[
-          {
-            agentId: "a-1",
-            href: "/workspaces/w-1/agents/a-1",
-            title:
-              "Korjaa kirjautumisen epävarma paluu erittäin pitkällä otsikolla joka rivittyy saavutettavasti",
-            activityLabel: "Työskentelee",
-            controlLabel: "Selain ohjaa",
-            attentionLabel: "Odottaa vastaustasi",
-            selected: true,
-          },
-          {
-            agentId: "a-2",
-            href: "/workspaces/w-1/agents/a-2",
-            title: "Vanha tutkimus",
-            activityLabel: "Ei käynnissä",
-            controlLabel: "Vain luku",
-            stale: true,
-          },
-        ]}
-        onToggle={() => setExpanded(!expanded)}
+        hint={{ kind: "attention", count: 1, text: "1 odottaa sinua" }}
       />
     </WorkspaceRail>
   );

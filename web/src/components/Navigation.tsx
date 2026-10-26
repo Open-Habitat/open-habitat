@@ -7,7 +7,7 @@ import { Icon } from "./Icon";
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
 import type { StatusKind } from "./Status";
 import { Badge, StatusMark } from "./Status";
-import type { Action, AsyncState, Availability, Tone } from "./types";
+import type { AsyncState, Availability, Tone } from "./types";
 
 export function AppShell({
   className,
@@ -19,8 +19,12 @@ export function AppShell({
   mobileTitle,
   fallbackAccount,
   topBar,
+  navigationBadge = 0,
 }: {
   className?: string;
+  /** How many conversations wait for the person (Sinun vuorosi), on the
+   * phone's menu button while the rail is out of sight. */
+  navigationBadge?: number;
   connection?: ReactNode;
   /** Single-workspace mode's top bar, in place of the sidebar. */
   topBar?: ReactNode;
@@ -173,14 +177,28 @@ export function AppShell({
                   size="row"
                   variant="quiet"
                   ref={mobileTrigger}
-                  aria-label="Avaa navigaatio"
+                  aria-label={
+                    navigationBadge
+                      ? `Avaa navigaatio, ${navigationBadge} odottaa sinua`
+                      : "Avaa navigaatio"
+                  }
                   aria-expanded={drawerActive}
+                  className="ah-navigation-open"
                   onPress={() => {
                     setOpenedAtKey(location.key);
                     setMobileOpen(true);
                   }}
                 >
                   <Icon name="menu" />
+                  {navigationBadge ? (
+                    <span
+                      data-testid="navigation-badge"
+                      className="ah-navigation-badge"
+                      aria-hidden="true"
+                    >
+                      {navigationBadge}
+                    </span>
+                  ) : null}
                 </ControlButton>
               ) : null}
               <span className="ah-mobile-title" title={mobileTitle}>
@@ -218,6 +236,7 @@ export function NavLink({
   statusLabels,
   compactMark,
   leading,
+  detail,
 }: {
   label: string;
   href: string;
@@ -229,49 +248,44 @@ export function NavLink({
   compactMark?: boolean;
   /** A decorative mark before the label; its meaning is in statusText. */
   leading?: ReactNode;
+  /** A second line under the label: where the row lives and what it waits for. */
+  detail?: string;
 }) {
   const statusId = useId();
+  const detailId = useId();
   return (
     <LinkRow
       data-agent-title={label}
       current={Boolean(current)}
       kind="agent"
       aria-label={label}
-      aria-describedby={statusText ? statusId : undefined}
+      aria-describedby={
+        [detail ? detailId : "", statusText ? statusId : ""]
+          .filter(Boolean)
+          .join(" ") || undefined
+      }
       data-testid="agent-link"
       className="ah-nav-link"
       href={href}
     >
       {leading}
-      <span className="ah-nav-label">{label}</span>
+      {detail ? (
+        <span className="ah-nav-text">
+          <span className="ah-nav-label">{label}</span>
+          <span className="ah-nav-detail" id={detailId}>
+            {detail}
+          </span>
+        </span>
+      ) : (
+        <span className="ah-nav-label">{label}</span>
+      )}
       {statusText ? (
-        <span id={statusId}>
+        <span id={statusId} className="ah-nav-status">
           {displayStatusText !== undefined ? (
             <>
               {displayStatusText ? (
-                compactMark && displayStatusText === "◌" ? (
-                  // Working is the draft's pulsing accent dot, not a glyph.
-                  <span
-                    className="ah-nav-mark ah-nav-working"
-                    aria-hidden="true"
-                    title={activityLabelForMark(displayStatusText)}
-                  />
-                ) : compactMark && displayStatusText === "◉" ? (
-                  // Background wait: a still ring around a core, so it is
-                  // neither the pulsing working dot nor the open ring.
-                  <span
-                    className="ah-nav-mark ah-nav-background"
-                    aria-hidden="true"
-                    title={activityLabelForMark(displayStatusText)}
-                  />
-                ) : compactMark ? (
-                  <span
-                    className="ah-nav-mark"
-                    aria-hidden="true"
-                    title={activityLabelForMark(displayStatusText)}
-                  >
-                    {displayStatusText}
-                  </span>
+                compactMark ? (
+                  <NavMark mark={displayStatusText} />
                 ) : (
                   <span aria-hidden="true">
                     <StatusMark
@@ -327,11 +341,34 @@ export function NavLink({
     </LinkRow>
   );
 }
+/** The rail's compact activity mark; its meaning is said in words beside it. */
+function NavMark({ mark }: { mark: string }) {
+  const title = activityLabelForMark(mark);
+  // Working is the draft's pulsing accent dot, not a glyph. A background wait
+  // is a still ring around a core, so it is neither the pulsing working dot
+  // nor the open ring. A question asked of the person is the accent disc.
+  const kind = (
+    { "◌": "working", "◉": "background", "?": "question" } as Record<
+      string,
+      string
+    >
+  )[mark];
+  return (
+    <span
+      className={`ah-nav-mark${kind ? ` ah-nav-${kind}` : ""}`}
+      aria-hidden="true"
+      title={title}
+    >
+      {kind === "working" || kind === "background" ? null : mark}
+    </span>
+  );
+}
 function activityLabelForMark(mark: string) {
   return (
     (
       {
         "●": "Uusi vastaus",
+        "?": "Kysyy sinulta",
         "◌": "Agentti työskentelee",
         "○": "Odottaa",
         "◉": "Odottaa taustatyötä",
@@ -366,6 +403,12 @@ export interface AgentNavModel {
   /** A worktree agent (ADR 0025); merged when Git says its work is in the
    * base branch. */
   worktree?: { merged: boolean };
+  /** The agent has asked the person something and waits for the answer. */
+  question?: boolean;
+  /** The second line of a row outside its workspace (Sinun vuorosi, Käynnissä). */
+  detail?: string;
+  /** The workspace's name, for the narrow rail's initials. */
+  workspaceName?: string;
 }
 export function AgentNavItem({
   agentId,
@@ -385,6 +428,8 @@ export function AgentNavItem({
   spinoffWorking = false,
   pendingLabel,
   worktree,
+  question = false,
+  detail,
 }: AgentNavModel) {
   const statusParts = [
     worktree
@@ -403,27 +448,13 @@ export function AgentNavItem({
   const status = [pendingLabel, activityLabel, ...statusParts]
     .filter(Boolean)
     .join(" · ");
-  const mark = pendingLabel
-    ? "…"
-    : attentionLabel
-      ? "●"
-      : activity
-        ? (
-            {
-              working: "◌",
-              waiting: "○",
-              waiting_background: "◉",
-              closed: "✓",
-              unknown: "–",
-            } as const
-          )[activity]
-        : /työ|käynnissä|working/i.test(activityLabel)
-          ? "◌"
-          : /odot|waiting/i.test(activityLabel)
-            ? "○"
-            : /valmis|päättynyt|finished/i.test(activityLabel)
-              ? "✓"
-              : "–";
+  const mark = agentMark({
+    pendingLabel,
+    attentionLabel,
+    question,
+    activity,
+    activityLabel,
+  });
   return (
     <li
       data-testid={`agent-item-${agentId}`}
@@ -450,6 +481,7 @@ export function AgentNavItem({
           statusText={status || undefined}
           displayStatusText={mark}
           compactMark
+          detail={detail}
           leading={
             worktree ? (
               <Icon
@@ -463,6 +495,40 @@ export function AgentNavItem({
       </ListRow>
     </li>
   );
+}
+function agentMark({
+  pendingLabel,
+  attentionLabel,
+  question,
+  activity,
+  activityLabel,
+}: Pick<
+  AgentNavModel,
+  "pendingLabel" | "attentionLabel" | "question" | "activity" | "activityLabel"
+>) {
+  return pendingLabel
+    ? "…"
+    : attentionLabel
+      ? "●"
+      : question
+        ? "?"
+        : activity
+          ? (
+              {
+                working: "◌",
+                waiting: "○",
+                waiting_background: "◉",
+                closed: "✓",
+                unknown: "–",
+              } as const
+            )[activity]
+          : /työ|käynnissä|working/i.test(activityLabel)
+            ? "◌"
+            : /odot|waiting/i.test(activityLabel)
+              ? "○"
+              : /valmis|päättynyt|finished/i.test(activityLabel)
+                ? "✓"
+                : "–";
 }
 /** A sub-agent at work: the trunk stays, only the branch and its end pulse. */
 function SpinoffWorkingMark() {
@@ -485,133 +551,188 @@ function SpinoffWorkingMark() {
     </svg>
   );
 }
-export function WorkspaceSection({
+/** The strongest state among a workspace's agents, as one hint on its row. */
+export interface WorkspaceHint {
+  kind: "attention" | "working" | "background" | "waiting";
+  count: number;
+  /** The hint in words, for assistive technology and the pointer. */
+  text: string;
+}
+function HintMark({ hint }: { hint: WorkspaceHint }) {
+  return hint.kind === "attention" ? (
+    <span className="ah-rail-count ah-rail-count-attention" aria-hidden="true">
+      {hint.count}
+    </span>
+  ) : (
+    <NavMark
+      mark={
+        hint.kind === "working" ? "◌" : hint.kind === "background" ? "◉" : "○"
+      }
+    />
+  );
+}
+/** One workspace in the rail's alphabetical list. Its conversations are on
+ * its own page; the row says only whether something there waits or runs. */
+export function WorkspaceNavRow({
   name,
   href,
-  expanded,
   selected = false,
   summary,
+  hint,
   mutationState,
-  agents,
-  actions = [],
   workspaceMenu,
-  onToggle,
 }: {
-  workspaceId: string;
   name: string;
   href: string;
-  expanded: boolean;
   selected?: boolean;
   summary?: string;
+  hint?: WorkspaceHint;
   mutationState?: string;
-  agents: AgentNavModel[];
-  actions?: Action[];
   workspaceMenu?: ReactNode;
-  onToggle: () => void;
 }) {
   const summaryId = useId();
-  const [showFinished, setShowFinished] = useState(false);
-  const active = agents
-    .filter((agent) => !agent.finished)
-    .sort((a, b) => (a.priority ?? 4) - (b.priority ?? 4));
-  const finished = agents.filter((agent) => agent.finished);
-  const expandedFinished =
-    showFinished || finished.some((agent) => agent.selected);
+  const description = [hint?.text, summary].filter(Boolean).join(" · ");
   return (
-    <section className="ah-workspace">
-      <div
-        className="ah-workspace-row"
-        data-selected={selected || undefined}
-        title={summary ? `${name} · ${summary}` : name}
+    <li
+      className="ah-workspace ah-workspace-row"
+      data-selected={selected || undefined}
+      title={description ? `${name} · ${description}` : name}
+    >
+      <LinkRow
+        data-workspace-name={name}
+        current={selected}
+        kind="nav"
+        aria-describedby={description ? summaryId : undefined}
+        data-testid={`workspace-${name}`}
+        className="ah-workspace-link"
+        href={href}
       >
-        <ListRow
-          className="ah-sidebar-row"
-          indicator={
-            <ControlButton
-              size="inline"
-              aria-expanded={expanded}
-              aria-label={`${expanded ? "Sulje" : "Avaa"} ${name}`}
-              className="ah-workspace-toggle"
-              variant="quiet"
-              onPress={onToggle}
-            >
-              <span aria-hidden="true" className="ah-disclosure-chevron" />
-            </ControlButton>
-          }
-          trailing={
-            <>
-              {mutationState ? (
-                <StatusMark label={mutationState} tone="warning" />
-              ) : null}
-              {workspaceMenu}
-            </>
-          }
-        >
-          <LinkRow
-            data-workspace-name={name}
-            current={selected}
-            kind="workspace"
-            aria-describedby={summary ? summaryId : undefined}
-            data-testid={`workspace-${name}`}
-            className="ah-workspace-link"
-            href={href}
-          >
-            {name}
-          </LinkRow>
-        </ListRow>
-        {summary ? (
-          <span className="ah-visually-hidden" id={summaryId}>
-            {summary}
-          </span>
-        ) : null}
-      </div>
-      {expanded ? (
-        <>
-          {agents.length ? (
-            <ul>
-              {active.map((agent) => (
-                <AgentNavItem key={agent.agentId} {...agent} />
-              ))}
-              {finished.length ? (
-                <li>
-                  <ControlButton
-                    data-testid="conversations-finished"
-                    size="inline"
-                    className="ah-finished-toggle"
-                    variant="quiet"
-                    aria-expanded={expandedFinished}
-                    onPress={() => setShowFinished(!expandedFinished)}
-                  >
-                    Valmiit {finished.length}
-                  </ControlButton>
-                </li>
-              ) : null}
-              {expandedFinished
-                ? finished.map((agent) => (
-                    <AgentNavItem key={agent.agentId} {...agent} />
-                  ))
-                : null}
-            </ul>
-          ) : (
-            <p className="ah-workspace-empty">Ei keskusteluja.</p>
-          )}
-          {actions.length ? (
-            <div className="ah-actions">
-              {actions.map((action) => (
-                <Button
-                  key={action.label}
-                  label={action.label}
-                  size="row"
-                  variant="quiet"
-                  availability={action.availability}
-                  onPress={action.onPress}
-                />
-              ))}
-            </div>
-          ) : null}
-        </>
+        <Icon name="folder" className="ah-workspace-icon" aria-hidden="true" />
+        <span className="ah-nav-label">{name}</span>
+        {hint ? <HintMark hint={hint} /> : null}
+      </LinkRow>
+      {description ? (
+        <span className="ah-visually-hidden" id={summaryId}>
+          {description}
+        </span>
       ) : null}
-    </section>
+      {mutationState ? (
+        <StatusMark label={mutationState} tone="warning" />
+      ) : null}
+      {workspaceMenu}
+    </li>
+  );
+}
+function initials(name: string) {
+  const parts = name.split(/[-_.\s]+/).filter(Boolean);
+  return (parts.length > 1 ? parts.map((p) => p[0]).join("") : name)
+    .slice(0, 2)
+    .toLocaleUpperCase("fi");
+}
+/** A narrow rail's agent: its workspace's initials and its activity mark. */
+function NowDot(agent: AgentNavModel) {
+  const mark = agentMark(agent);
+  const status = [agent.pendingLabel, agent.detail ?? agent.activityLabel]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <li data-testid={`agent-item-${agent.agentId}`}>
+      <LinkRow
+        kind="nav"
+        current={agent.selected}
+        href={agent.href}
+        title={`${agent.title} · ${status}`}
+        data-testid="agent-link"
+        className="ah-now-dot"
+      >
+        <span className="ah-now-dot-letters" aria-hidden="true">
+          {initials(agent.workspaceName ?? agent.title)}
+        </span>
+        <NavMark mark={mark} />
+        <span className="ah-visually-hidden">
+          {agent.title}: {status}
+        </span>
+      </LinkRow>
+    </li>
+  );
+}
+/** What needs the person and what runs now, across every workspace (the
+ * accepted Nyt sidebar). Workers are listed as themselves, not nested. */
+export function NowSections({
+  yours,
+  running,
+  collapsed = false,
+}: {
+  yours: AgentNavModel[];
+  running: AgentNavModel[];
+  collapsed?: boolean;
+}) {
+  const yoursId = useId();
+  const runningId = useId();
+  if (collapsed)
+    return (
+      <div className="ah-now-dots">
+        <ul data-testid="rail-yours" aria-label="Sinun vuorosi">
+          {yours.map((agent) => (
+            <NowDot key={agent.agentId} {...agent} />
+          ))}
+        </ul>
+        {yours.length ? <hr /> : null}
+        <ul data-testid="rail-running" aria-label="Käynnissä">
+          {running.map((agent) => (
+            <NowDot key={agent.agentId} {...agent} />
+          ))}
+        </ul>
+        {running.length ? <hr /> : null}
+      </div>
+    );
+  return (
+    <>
+      <section
+        className="ah-now"
+        data-testid="rail-yours"
+        aria-labelledby={yoursId}
+      >
+        <h2 className="ah-rail-section-head" id={yoursId}>
+          Sinun vuorosi
+          {yours.length ? (
+            <span className="ah-rail-count ah-rail-count-attention">
+              {yours.length}
+            </span>
+          ) : null}
+        </h2>
+        {yours.length ? (
+          <ul>
+            {yours.map((agent) => (
+              <AgentNavItem key={agent.agentId} {...agent} />
+            ))}
+          </ul>
+        ) : (
+          <p className="ah-now-empty">Mikään ei odota sinua.</p>
+        )}
+      </section>
+      <section
+        className="ah-now"
+        data-testid="rail-running"
+        aria-labelledby={runningId}
+      >
+        <h2 className="ah-rail-section-head" id={runningId}>
+          Käynnissä
+          {running.length ? (
+            <span className="ah-rail-count">{running.length}</span>
+          ) : null}
+        </h2>
+        {running.length ? (
+          <ul>
+            {running.map((agent) => (
+              <AgentNavItem key={agent.agentId} {...agent} />
+            ))}
+          </ul>
+        ) : (
+          <p className="ah-now-empty">Mikään ei ole käynnissä.</p>
+        )}
+      </section>
+    </>
   );
 }
 export function WorkspaceRail({
@@ -619,12 +740,10 @@ export function WorkspaceRail({
   serverLabel,
   connectionLabel,
   connectionTone,
-  unreadReplyHrefs = [],
   homeCurrent = false,
-  runningCount,
+  now,
   filterValue,
   resultSummary,
-  summaryAction,
   onCreateWorkspace,
   listState,
   children,
@@ -639,14 +758,15 @@ export function WorkspaceRail({
   serverLabel: string;
   connectionLabel: string;
   connectionTone?: Tone;
-  unreadReplyHrefs?: string[];
   homeCurrent?: boolean;
-  runningCount?: number;
+  /** Sinun vuorosi and Käynnissä, above the workspaces (NowSections). */
+  now?: ReactNode;
   filterValue: string;
+  /** The number of listed workspaces, said beside the heading. */
   resultSummary: string;
-  summaryAction?: ReactNode;
   onCreateWorkspace?: () => void;
   listState: AsyncState | "source-absent" | "filtered-empty";
+  /** WorkspaceNavRow items, alphabetically. */
   children?: ReactNode;
   archived?: ReactNode;
   /** Running and unfinished clones, above the workspaces. */
@@ -707,30 +827,48 @@ export function WorkspaceRail({
         >
           <Icon name="home" />
           <span className="ah-rail-home-label">Etusivu</span>
-          {runningCount !== undefined && runningCount > 0 ? (
-            <Badge label={`${runningCount} käynnissä`} tone="info" />
-          ) : null}
         </LinkRow>
-        {unreadReplyHrefs.length ? (
-          <LinkRow
-            href={unreadReplyHrefs[0]}
-            data-testid="unread-replies"
-            aria-label={`${unreadReplyHrefs.length} ${unreadReplyHrefs.length === 1 ? "uusi vastaus" : "uutta vastausta"}`}
-            kind="home"
+      </header>
+      <div className="ah-rail-content">
+        {now}
+        {collapsed ? (
+          <ControlButton
+            data-testid="rail-all-workspaces"
+            size="row"
+            variant="quiet"
+            className="ah-now-expand"
+            aria-label="Kaikki työtilat"
+            title="Kaikki työtilat"
+            onPress={onToggle}
           >
-            <span aria-hidden="true">●</span>
-            <span>
-              {collapsed
-                ? unreadReplyHrefs.length
-                : unreadReplyHrefs.length === 1
-                  ? "1 uusi vastaus"
-                  : `${unreadReplyHrefs.length} uutta vastausta`}
-            </span>
-            <Icon name="forward" />
-          </LinkRow>
-        ) : null}
-        {collapsed ? null : (
-          <>
+            <Icon name="folder" />
+          </ControlButton>
+        ) : (
+          <section className="ah-rail-workspaces" aria-labelledby="rail-ws">
+            <div className="ah-rail-section-head">
+              <h2 id="rail-ws">
+                Työtilat
+                <span
+                  data-testid="workspace-summary"
+                  className="ah-rail-count"
+                  role="status"
+                >
+                  {resultSummary}
+                </span>
+              </h2>
+              {onCreateWorkspace ? (
+                <ControlButton
+                  data-testid="workspace-create"
+                  size="row"
+                  variant="quiet"
+                  aria-label="Uusi työtila"
+                  title="Uusi työtila"
+                  onPress={onCreateWorkspace}
+                >
+                  <Icon name="folderPlus" />
+                </ControlButton>
+              ) : null}
+            </div>
             <div className="ah-rail-filter">
               <TextField
                 className="ah-rail-search"
@@ -740,7 +878,7 @@ export function WorkspaceRail({
                 <Label className="ah-visually-hidden">Suodata työtiloja</Label>
                 <Input
                   data-testid="workspace-filter"
-                  placeholder="Suodata"
+                  placeholder="Suodata työtiloja"
                   autoComplete="off"
                 />
               </TextField>
@@ -758,47 +896,24 @@ export function WorkspaceRail({
                 <RefreshIconButton onPress={onRefresh} />
               </span>
             </div>
-            <div className="ah-rail-section-head">
-              <strong>Työtilat</strong>
-              {onCreateWorkspace ? (
-                <ControlButton
-                  data-testid="workspace-create"
-                  size="row"
-                  variant="quiet"
-                  aria-label="Uusi työtila"
-                  title="Uusi työtila"
-                  onPress={onCreateWorkspace}
-                >
-                  <Icon name="folderPlus" />
-                </ControlButton>
-              ) : null}
-            </div>
-            <div data-testid="workspace-summary" className="ah-rail-summary">
-              <span role="status">{resultSummary}</span>
-              {summaryAction}
-            </div>
-          </>
+            {clones}
+            {listState === "loading" ? <p>Ladataan työtiloja…</p> : null}
+            {listState === "empty" ? <p>Työtiloja ei ole.</p> : null}
+            {listState === "filtered-empty" ? (
+              <p data-testid="filter-empty">Hakua vastaavia kohteita ei ole.</p>
+            ) : null}
+            {listState === "source-absent" ? (
+              <p>Työtilakansiota ei löydy.</p>
+            ) : null}
+            {listState === "error" || listState === "unknown" ? (
+              <p>Työtiloja ei voitu näyttää.</p>
+            ) : (
+              <ul className="ah-workspace-list">{children}</ul>
+            )}
+            {listState === "error" || listState === "loading" ? null : archived}
+          </section>
         )}
-      </header>
-      {collapsed ? null : (
-        <div className="ah-rail-content">
-          {clones}
-          {listState === "loading" ? <p>Ladataan työtiloja…</p> : null}
-          {listState === "empty" ? <p>Työtiloja ei ole.</p> : null}
-          {listState === "filtered-empty" ? (
-            <p data-testid="filter-empty">Hakua vastaavia kohteita ei ole.</p>
-          ) : null}
-          {listState === "source-absent" ? (
-            <p>Työtilakansiota ei löydy.</p>
-          ) : null}
-          {listState === "error" || listState === "unknown" ? (
-            <p>Työtiloja ei voitu näyttää.</p>
-          ) : (
-            children
-          )}
-          {listState === "error" || listState === "loading" ? null : archived}
-        </div>
-      )}
+      </div>
       {sessionActions ? (
         <footer className="ah-rail-foot">{sessionActions}</footer>
       ) : null}
@@ -811,6 +926,7 @@ export function ArchivedWorkspaces({
   onRestore,
   restoreReason,
   problem,
+  forceOpen = false,
 }: {
   workspaces: {
     id: string;
@@ -822,10 +938,12 @@ export function ArchivedWorkspaces({
   onRestore?: (id: string) => void;
   restoreReason?: string;
   problem?: string;
+  /** Open while a filter is narrowing the list, so it finds them too. */
+  forceOpen?: boolean;
 }) {
   const [show, setShow] = useState(false);
   if (!workspaces.length && !problem) return null;
-  const open = show || workspaces.some((w) => w.selected);
+  const open = show || forceOpen || workspaces.some((w) => w.selected);
   return (
     <section
       data-testid="archived-workspaces"
@@ -843,6 +961,7 @@ export function ArchivedWorkspaces({
         >
           <span aria-hidden="true" className="ah-disclosure-chevron" />
           Arkistoidut
+          <span className="ah-rail-count">{workspaces.length}</span>
         </ControlButton>
       ) : null}
       {open && workspaces.length ? (

@@ -436,7 +436,9 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
     .getByRole("button")
     .and(page.getByTestId("snapshot-refresh"))
     .click();
-  await expect(row).not.toHaveClass(/ah-waiting-spinoff/);
+  // The restart ended the agent's own run, so with its worker done nothing
+  // keeps it in Käynnissä.
+  await expect(row).toHaveCount(0);
 });
 
 // Merkit (Jari 16.10.2026): the spinoff pill rings the bell only for the

@@ -40,7 +40,7 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
   await (
     await nativeConversationLink(
       page,
-      page.getByTestId("workspace-navigation"),
+      page.locator("main"),
       /Synteettinen viesti 0/,
     )
   ).click();
@@ -278,13 +278,6 @@ test("@native-history missing, corrupt and read-only states", async ({
   await fixture(page, "corrupt");
   await page.getByTestId("snapshot-refresh").click();
   await expect(page.getByTestId("history-stale")).toBeVisible();
-  await page.getByTestId("home-link").filter({ visible: true }).first().click();
-  await expect(
-    page
-      .getByTestId(/^agent-item-/)
-      .and(page.locator('[data-has-history-warning="true"]'))
-      .first(),
-  ).toBeVisible();
   await page.goto(`/agents/${agent}`);
   await page.screenshot({
     path: "test-results/evidence/history-corrupt.png",
@@ -365,7 +358,7 @@ test("@native-history warm return paints from cache while revalidating history",
   await (
     await nativeConversationLink(
       page,
-      page.getByTestId("workspace-navigation"),
+      page.locator("main"),
       /Synteettinen viesti 0/,
     )
   ).click();
@@ -428,7 +421,7 @@ test("@native-history cut-off tail preserves readable pages and offers a new con
   await (
     await nativeConversationLink(
       page,
-      page.getByTestId("workspace-navigation"),
+      page.locator("main"),
       /Synteettinen viesti 0/,
     )
   ).click();

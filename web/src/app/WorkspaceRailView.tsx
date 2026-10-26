@@ -2,33 +2,23 @@ import { useEffect, useState } from "react";
 import {
   AccountShelf,
   ArchivedWorkspaces,
+  NowSections,
+  WorkspaceNavRow,
   WorkspaceRail,
-  WorkspaceSection,
 } from "../components";
-import {
-  agentPresentation,
-  waitsOnWorker,
-} from "../components/agentPresentation";
 import { RailClones } from "../components/ClonePage";
 import type { Tone } from "../components/types";
 import { WorkspaceActions } from "../components/WorkspaceActions";
 import { type CloneJobs, cloneLabel, useCloneView } from "./cloneJobs";
 import {
   type ConversationStore,
-  unreadableHistory,
   useConversationMetadata,
 } from "./conversationStore";
-import type { Session } from "./conversations";
 import type { AccountProfile } from "./pi";
+import { type RailNow, railNow } from "./railNow";
 import { serverInfo, serverInformationChanges } from "./serverAdministration";
-import {
-  browserOwned,
-  type Snapshot,
-  type Workspace,
-  worktreeMerged,
-} from "./snapshot";
+import type { Snapshot, Workspace } from "./snapshot";
 import type { RootState } from "./store";
-import { unreadReplies } from "./unreadReplies";
 
 export function sourceLabel(state: string) {
   return (
@@ -85,15 +75,39 @@ export function connectionStatus(
       ? { label: "Yhdistetty", tone: "success" }
       : { label: "Tietoja puuttuu", tone: "warning" };
 }
+/** The rail's Sinun vuorosi and Käynnissä; the app also badges the phone's
+ * menu button with the first. */
+export function useRailNow({
+  store,
+  snapshot,
+  workspaces,
+  ...rest
+}: Omit<Parameters<typeof railNow>[0], "agents" | "metadata" | "snapshot"> & {
+  store?: ConversationStore;
+  snapshot?: Snapshot;
+}): RailNow {
+  const metadata = useConversationMetadata(store);
+  if (!snapshot) return { yours: [], running: [], hints: new Map() };
+  return railNow({
+    ...rest,
+    snapshot,
+    workspaces,
+    metadata,
+    agents: metadata.agents.size
+      ? [...metadata.agents.values()]
+      : snapshot.agents,
+  });
+}
+const alphabetical = (a: Workspace, b: Workspace) =>
+  (a.display_name ?? a.name).localeCompare(b.display_name ?? b.name, "fi");
 // Navigation and catalog presentation live here; the loader and route switch stay in App.
 export function WorkspaceRailView({
   phase,
   snapshot,
-  closing = new Set(),
   profile,
-  store,
   source,
   collapsed,
+  now,
   matches,
   archived = [],
   onRestoreWorkspace,
@@ -101,10 +115,6 @@ export function WorkspaceRailView({
   filter,
   railState,
   selectedId,
-  selectedAgentId,
-  daemonSessions,
-  expanded,
-  onExpand,
   onNewConversation,
   newReason,
   onCreateWorkspace,
@@ -115,17 +125,15 @@ export function WorkspaceRailView({
   onLogout,
   onAdministration,
   pathname,
-  search,
   clones,
 }: {
   phase: RootState["connection"]["phase"];
   snapshot: Snapshot;
-  /** Conversations whose close is pending: dimmed and marked until confirmed. */
-  closing?: ReadonlySet<string>;
   profile?: AccountProfile;
-  store: ConversationStore;
   source: string;
   collapsed: boolean;
+  /** From useRailNow, over every visible workspace whatever the filter. */
+  now: RailNow;
   matches: Workspace[];
   archived?: Workspace[];
   onRestoreWorkspace?: (workspace: Workspace) => void;
@@ -140,10 +148,6 @@ export function WorkspaceRailView({
     | "filtered-empty"
     | "ready";
   selectedId: string | undefined;
-  selectedAgentId: string | undefined;
-  daemonSessions: Session[];
-  expanded: Record<string, boolean>;
-  onExpand: (next: Record<string, boolean>) => void;
   onNewConversation?: (workspaceId: string) => void;
   newReason?: (id: string) => string;
   onCreateWorkspace?: () => void;
@@ -154,16 +158,17 @@ export function WorkspaceRailView({
   onLogout: () => void;
   onAdministration: () => void;
   pathname: string;
-  search: string;
   clones?: CloneJobs;
 }) {
   const cloneView = useCloneView(clones);
   const queued = cloneView.queue.filter((q) => q.state !== "present");
   const server = useServer(pathname);
-  const metadata = useConversationMetadata(store);
-  const agents = metadata.agents.size
-    ? [...metadata.agents.values()]
-    : snapshot.agents;
+  const term = filter.toLocaleLowerCase();
+  const archivedMatches = archived
+    .filter((w) =>
+      (w.display_name ?? w.name).toLocaleLowerCase().includes(term),
+    )
+    .sort(alphabetical);
   return (
     <WorkspaceRail
       collapsed={collapsed}
@@ -187,37 +192,19 @@ export function WorkspaceRailView({
         />
       }
       homeCurrent={pathname === "/workspaces"}
-      runningCount={
-        phase === "authenticated"
-          ? agents.filter(
-              (a) =>
-                agentPresentation({
-                  runActive:
-                    metadata.statuses.get(a.agent_id)?.run_active ??
-                    a.run_active,
-                  waitingOn: a.waiting_on,
-                  process: daemonSessions.some((s) => s.agent_id === a.agent_id)
-                    ? "daemon_managed_live"
-                    : a.process,
-                  command: metadata.staleStatuses.has(a.agent_id)
-                    ? undefined
-                    : metadata.statuses.get(a.agent_id)?.state,
-                  pendingQuestion:
-                    !!metadata.statuses.get(a.agent_id)?.pending_question ||
-                    !!a.pending_question,
-                }).activity === "working",
-            ).length
-          : undefined
+      now={
+        <NowSections
+          yours={now.yours}
+          running={now.running}
+          collapsed={collapsed}
+        />
       }
-      unreadReplyHrefs={unreadReplies(
-        agents,
-        metadata.attention,
-        daemonSessions,
-        snapshot.agents,
-      )}
       filterValue={filter}
-      resultSummary={`${matches.length} ${source === "confirmed" ? "työtilaa" : "löydettyä työtilaa"}`}
-      summaryAction={undefined}
+      resultSummary={
+        source === "confirmed"
+          ? `${matches.length}`
+          : `${matches.length} löydettyä`
+      }
       onCreateWorkspace={onCreateWorkspace}
       listState={railState}
       onToggle={onToggle}
@@ -267,7 +254,8 @@ export function WorkspaceRailView({
       }
       archived={
         <ArchivedWorkspaces
-          workspaces={archived.map((w) => ({
+          forceOpen={!!filter}
+          workspaces={archivedMatches.map((w) => ({
             id: w.workspace_id,
             name: w.display_name ?? w.name,
             href: `/workspaces/${w.workspace_id}`,
@@ -292,17 +280,13 @@ export function WorkspaceRailView({
         />
       }
     >
-      {matches.map((w) => (
-        <WorkspaceSection
+      {[...matches].sort(alphabetical).map((w) => (
+        <WorkspaceNavRow
           key={w.workspace_id}
-          workspaceId={w.workspace_id}
           name={w.display_name ?? w.name}
           href={`/workspaces/${w.workspace_id}`}
-          expanded={
-            expanded[w.workspace_id] ??
-            Boolean(agents.some((a) => a.workspace_id === w.workspace_id))
-          }
           selected={selectedId === w.workspace_id}
+          hint={now.hints.get(w.workspace_id)}
           summary={`${w.kind === "git_main_worktree" ? "Git" : "Hakemisto"} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
           mutationState={
             snapshot.write_state === "read_only"
@@ -311,111 +295,6 @@ export function WorkspaceRailView({
                 ? "Vain luku"
                 : undefined
           }
-          agents={agents
-            .filter(
-              (a) =>
-                a.workspace_id === w.workspace_id &&
-                a.archive !== "archived" &&
-                snapshot.agents.find(
-                  (current) => current.agent_id === a.agent_id,
-                )?.archive !== "archived",
-            )
-            .map((a) => ({
-              agentId: a.agent_id,
-              href: browserOwned(a, daemonSessions)
-                ? `/workspaces/${w.workspace_id}?conversation=${a.agent_id}`
-                : `/agents/${a.agent_id}`,
-              title: a.title.display,
-              pendingLabel: closing.has(a.agent_id) ? "Suljetaan…" : undefined,
-              worktree: a.worktree_id
-                ? {
-                    merged: worktreeMerged(
-                      w.worktrees?.find(
-                        (place) => place.worktree_id === a.worktree_id,
-                      ),
-                    ),
-                  }
-                : undefined,
-              ...(() => {
-                // A worktree conversation started under its place's ID.
-                const managed = daemonSessions.some(
-                  (s) =>
-                    s.agent_id === a.agent_id &&
-                    s.workspace_id === (a.worktree_id ?? w.workspace_id),
-                );
-                const presentation = agentPresentation({
-                  runActive:
-                    metadata.statuses.get(a.agent_id)?.run_active ??
-                    a.run_active,
-                  waitingOn: a.waiting_on,
-                  process:
-                    phase === "stale"
-                      ? "stale"
-                      : managed
-                        ? "daemon_managed_live"
-                        : a.process,
-                  control: managed ? "writable" : a.control,
-                  command:
-                    metadata.statuses.has(a.agent_id) &&
-                    !metadata.staleStatuses.has(a.agent_id)
-                      ? metadata.statuses.get(a.agent_id)?.state
-                      : undefined,
-                  connectionLost: phase === "stale",
-                  attention: metadata.attention.get(a.agent_id),
-                  pendingQuestion:
-                    !!a.pending_question ||
-                    (metadata.statuses.get(a.agent_id)?.pending_question !=
-                      null &&
-                      !metadata.staleStatuses.has(a.agent_id)),
-                  intentionallyClosed:
-                    phase !== "stale" && a.process === "confirmed_exited",
-                });
-                const isNew = managed && a.history === "missing";
-                const attention = metadata.attention.get(a.agent_id) === "new";
-                return {
-                  finished: presentation.activity === "closed" && !attention,
-                  priority: isNew
-                    ? 0
-                    : attention
-                      ? 1
-                      : presentation.activity === "working"
-                        ? 2
-                        : presentation.activity === "waiting"
-                          ? 3
-                          : 4,
-                  activity: presentation.activity,
-                  activityLabel: presentation.activityLabel,
-                  activityShortLabel: presentation.activityShortLabel,
-                  controlLabel: presentation.controlLabel,
-                  operationLabel: presentation.operationLabel,
-                  historyLabel: unreadableHistory(
-                    a,
-                    managed,
-                    metadata.statuses.get(a.agent_id),
-                  )
-                    ? "Historia ei luettavissa"
-                    : metadata.historyReadFailures.has(a.agent_id) ||
-                        a.history === "unavailable" ||
-                        metadata.statuses.get(a.agent_id)?.native_history ===
-                          "unavailable"
-                      ? "Historiaa ei voitu tarkistaa"
-                      : undefined,
-                  attentionLabel: presentation.attentionLabel,
-                  // A sub-agent at work, whether or not the parent still
-                  // waits for it: a daemon restart ends the wait, not the run.
-                  spinoffWorking:
-                    phase !== "stale" &&
-                    ((a.spinoffs_working ?? 0) > 0 ||
-                      (presentation.activity === "waiting_background" &&
-                        waitsOnWorker(a.waiting_on))),
-                };
-              })(),
-              selected:
-                a.agent_id === selectedAgentId ||
-                (selectedId === w.workspace_id &&
-                  new URLSearchParams(search).get("conversation") ===
-                    a.agent_id),
-            }))}
           workspaceMenu={
             <WorkspaceActions
               workspace={w}
@@ -423,15 +302,6 @@ export function WorkspaceRailView({
               newReason={newReason?.(w.workspace_id)}
               rail
             />
-          }
-          onToggle={() =>
-            onExpand({
-              ...expanded,
-              [w.workspace_id]: !(
-                expanded[w.workspace_id] ??
-                Boolean(agents.some((a) => a.workspace_id === w.workspace_id))
-              ),
-            })
           }
         />
       ))}

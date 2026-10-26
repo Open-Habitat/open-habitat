@@ -4,8 +4,9 @@ import { AccountSettings, AccountShelf } from "./Account";
 import {
   AgentHeader,
   AppShell,
+  NowSections,
+  WorkspaceNavRow,
   WorkspaceRail,
-  WorkspaceSection,
 } from "./Navigation";
 import { Button } from "./Primitives";
 import { ConnectionBanner, type ConnectionState } from "./Status";
@@ -38,7 +39,6 @@ function Journey({
   collapsedInitially?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(collapsedInitially);
-  const [expanded, setExpanded] = useState(true);
   const [filter, setFilter] = useState("");
   const [details, setDetails] = useState(false);
   return (
@@ -65,6 +65,22 @@ function Journey({
                 : "Työtiloja ei voitu vahvistaa"
             }
             listState={listState}
+            now={
+              <NowSections
+                yours={[]}
+                running={[
+                  {
+                    agentId: "a-1",
+                    href: "/workspaces/w-1/agents/a-1",
+                    title:
+                      "Tarkista todella pitkä keskustelun otsikko joka ei mahdu navigaation yhdelle riville",
+                    activityLabel: "Työskentelee",
+                    controlLabel: "Selain ohjaa",
+                    selected: true,
+                  },
+                ]}
+              />
+            }
             onToggle={() => setCollapsed(!collapsed)}
             onFilter={setFilter}
             onRefresh={noop}
@@ -72,26 +88,10 @@ function Journey({
               <AccountShelf name="Oma tili" onSettings={noop} onLogout={noop} />
             }
           >
-            <WorkspaceSection
-              workspaceId="w-1"
+            <WorkspaceNavRow
               name="esimerkki-työtila"
               href="/workspaces/w-1"
-              expanded={expanded}
               selected
-              summary="Git-työtila"
-              onToggle={() => setExpanded(!expanded)}
-              actions={[{ label: "Avaa työtila", onPress: noop }]}
-              agents={[
-                {
-                  agentId: "a-1",
-                  href: "/workspaces/w-1/agents/a-1",
-                  title:
-                    "Tarkista todella pitkä keskustelun otsikko joka ei mahdu navigaation yhdelle riville",
-                  activityLabel: "Työskentelee",
-                  controlLabel: "Selain ohjaa",
-                  selected: true,
-                },
-              ]}
             />
           </WorkspaceRail>
         }

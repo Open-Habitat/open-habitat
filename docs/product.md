@@ -58,17 +58,32 @@ Palaava käyttäjä, jonka Pi-tunnukset ovat kunnossa, pääsee suoraan työtilo
 
 ## Työhön palaaminen ja navigointi
 
-Sivupalkki näyttää käyttäjän `~/src`-hakemistosta löydetyt työtilat ja niiden
-keskustelut. Tavallinen hakemisto kelpaa työtilaksi ilman Gitiä tai
-asetustiedostoa. Listaa voi suodattaa, ja piilotetut työtilat voi palauttaa
-näkyviin. Tyhjä lista, lataus ja hakemiston lukemisen epäonnistuminen erottuvat
-toisistaan.
+Sivupalkin yläosa kertoo, mikä on nyt kesken kaikissa työtiloissa.
+**Sinun vuorosi** listaa keskustelut, joissa agentti kysyy jotain tai on
+vastannut ja vastaus on lukematta. **Käynnissä** listaa muut elävät
+keskustelut: työskentelevät, viestiä odottavat ja ne, jotka odottavat
+taustatyötä (prosessia tai workeria), ja kertoo, mitä ne odottavat. Rivillä
+näkyy keskustelun otsikko, työtila ja tila. Worker näkyy omana rivinään eikä
+vanhempansa alla; vanhemman rivin merkki kertoo, että sen worker työskentelee.
+
+Näiden alla ovat käyttäjän `~/src`-hakemistosta löydetyt työtilat
+aakkosjärjestyksessä, jotta työtila löytyy joka kerta samasta kohdasta.
+Tavallinen hakemisto kelpaa työtilaksi ilman Gitiä tai asetustiedostoa.
+Työtilan rivillä on pieni vihje siitä, odottaako siellä jokin käyttäjää tai
+onko siellä työtä käynnissä. Rivi vie työtilan sivulle, jolla ovat sen
+keskustelut, myös valmiit; sivupalkki ei luettele niitä työtilan alla. Listaa
+voi suodattaa, ja arkistoidut työtilat ovat taitettuna listan lopussa, josta
+ne voi palauttaa; suodatin löytää myös ne. Tyhjä lista, lataus ja hakemiston
+lukemisen epäonnistuminen erottuvat toisistaan.
 
 **Etusivu** vie paluunäkymään, josta käyttäjä löytää käynnissä olevat ja
-äskettäin avatut keskustelunsa. Työpöydällä sivupalkin voi kaventaa kaistaksi;
-puhelimessa navigaatio avautuu keskustelun päälle. Työtilan ja keskustelun
-valinta näkyy selaimen osoitteessa, jotta niihin voi palata linkillä, sivun
-uudelleenlatauksella tai selaimen takaisin-toiminnolla.
+äskettäin avatut keskustelunsa. Työpöydällä sivupalkin voi kaventaa kaistaksi,
+jossa Sinun vuorosi- ja Käynnissä-keskustelut näkyvät työtilan kirjaimina ja
+tilamerkkeinä; kaistan työtilapainike levittää palkin. Puhelimessa navigaatio
+avautuu keskustelun päälle, ja valikkopainikkeessa on määrä, kun jokin odottaa
+käyttäjää. Työtilan ja keskustelun valinta näkyy selaimen osoitteessa, jotta
+niihin voi palata linkillä, sivun uudelleenlatauksella tai selaimen
+takaisin-toiminnolla.
 
 Ensimmäinen keskustelun avaus hakee sen tilan ja historian ennen sisällön
 näyttämistä. Historia alkaa tuoreimmasta sisällöstä, ja vanhempaa voi lukea

@@ -2,7 +2,12 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MemoryRouter, useLocation, useNavigate } from "react-router";
 import { settingsSection } from "../app/settingsRoute";
 import { AccountSettings, AccountShelf } from "./Account";
-import { AppShell, WorkspaceRail, WorkspaceSection } from "./Navigation";
+import {
+  AppShell,
+  NowSections,
+  WorkspaceNavRow,
+  WorkspaceRail,
+} from "./Navigation";
 
 const noop = () => {};
 function RoutedSettings() {
@@ -55,6 +60,21 @@ function Example({
               filterValue=""
               resultSummary="1 työtila"
               listState="ready"
+              now={
+                <NowSections
+                  yours={[]}
+                  running={[
+                    {
+                      agentId: "pi:example",
+                      title:
+                        "Pitkä keskustelu, joka typistyy ahtaassa valikossa",
+                      href: "/agents/pi:example",
+                      activityLabel: "Prosessin tila ei tiedossa",
+                      controlLabel: "Vain luku",
+                    },
+                  ]}
+                />
+              }
               onToggle={noop}
               onFilter={noop}
               onRefresh={noop}
@@ -66,21 +86,9 @@ function Example({
                 />
               }
             >
-              <WorkspaceSection
-                workspaceId="ws_example00"
+              <WorkspaceNavRow
                 name="esimerkki"
                 href="/workspaces/ws_example00"
-                expanded
-                onToggle={noop}
-                agents={[
-                  {
-                    agentId: "pi:example",
-                    title: "Pitkä keskustelu, joka typistyy ahtaassa valikossa",
-                    href: "/agents/pi:example",
-                    activityLabel: "Prosessin tila ei tiedossa",
-                    controlLabel: "Vain luku",
-                  },
-                ]}
               />
             </WorkspaceRail>
           }

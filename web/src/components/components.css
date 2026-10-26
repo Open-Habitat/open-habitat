@@ -254,20 +254,6 @@
 .ah-rail-search input::placeholder {
   color: var(--ah-muted);
 }
-.ah-rail-summary {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-  color: var(--ah-muted);
-  font-size: 11.5px;
-  line-height: 1.45;
-}
-.ah-rail-summary > span {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
 .ah-title-row,
 .ah-message header,
 .ah-operation > header,
@@ -806,22 +792,12 @@ h2.ah-landing-say[tabindex="-1"]:focus {
 .ah-workspace-facts .ah-facts {
   margin-bottom: 0;
 }
-.ah-workspace {
-  display: grid;
-  gap: var(--ah-s1);
-  margin-bottom: 10px;
-  min-width: 0;
-}
 .ah-workspace-row {
   display: flex;
   align-items: center;
   gap: var(--ah-control-gap);
   min-width: 0;
   border-radius: var(--ah-r-nav);
-}
-.ah-workspace-row .ah-workspace-toggle {
-  flex: none;
-  --i-fg: var(--ah-muted);
 }
 .ah-disclosure-chevron {
   display: inline-block;
@@ -842,19 +818,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   width: 6px;
   height: 6px;
   border-width: 1.5px;
-}
-.ah-workspace ul {
-  display: grid;
-  gap: var(--ah-s1);
-  margin: 0;
-  padding: 0 0 0 6px;
-  list-style: none;
-}
-.ah-workspace-empty {
-  margin: 0;
-  padding: 2px 8px 4px 28px;
-  color: var(--ah-muted);
-  font-size: 12px;
 }
 .ah-agent-item {
   padding-inline-start: calc(var(--ah-depth, 0) * var(--ah-s4));
@@ -1444,9 +1407,6 @@ details[open] > summary:not([class])::before {
   flex: 1;
   min-width: 0;
 }
-.ah-sidebar-row {
-  flex: 1;
-}
 .ah-sidebar-agent-row {
   width: 100%;
 }
@@ -1829,9 +1789,6 @@ details[open] > summary:not([class])::before {
   .ah-mobile-close {
     cursor: pointer;
   }
-}
-.ah-workspace ul {
-  grid-template-columns: minmax(0, 1fr);
 }
 .ah-agent-item {
   min-width: 0;
@@ -3374,30 +3331,6 @@ details[open] > summary:not([class])::before {
 .ah-sidebar-agent-row .ah-nav-link .ah-status {
   font-size: 13px;
 }
-.ah-workspace-add {
-  opacity: 0;
-}
-.ah-workspace-row:hover .ah-workspace-add,
-.ah-workspace-row:focus-within .ah-workspace-add {
-  opacity: 1;
-}
-@media (hover: none) {
-  .ah-workspace-add {
-    opacity: 1;
-  }
-}
-/* Rail disclosure rows open a group in the list: full width, aligned with
-   the rows, the inline height (ui-control-audit). */
-.ah-finished-toggle {
-  --i-bg: transparent;
-  --i-fg: var(--ah-muted);
-  --i-hover: var(--ah-hover);
-  width: 100%;
-  padding-inline-start: 24px;
-  border: 0;
-  font-weight: 400;
-  text-align: left;
-}
 .ah-rail-archived {
   margin-top: auto;
   padding-top: var(--ah-s2);
@@ -3446,7 +3379,7 @@ details[open] > summary:not([class])::before {
   min-width: 0;
   color: var(--ah-muted);
 }
-.ah-sidebar-agent-row .ah-nav-mark {
+.ah-rail .ah-nav-mark {
   flex: none;
   width: 14px;
   text-align: center;
@@ -3456,19 +3389,19 @@ details[open] > summary:not([class])::before {
    sidebar, start page, return view and conversation. With reduced motion it
    stands still inside a ring, so it still differs from Uusi vastaus. A new
    reply's mark wins on the start page. */
-.ah-sidebar-agent-row .ah-nav-working {
+.ah-rail .ah-nav-working {
   display: inline-grid;
   place-items: center;
   height: 14px;
 }
-.ah-sidebar-agent-row .ah-nav-working::before {
+.ah-rail .ah-nav-working::before {
   content: "";
   width: 8px;
   height: 8px;
 }
 .ah-status-working .ah-status-dot,
 .ah-home-dot-working:not(.ah-home-0),
-.ah-sidebar-agent-row .ah-nav-working::before {
+.ah-rail .ah-nav-working::before {
   box-sizing: border-box;
   border: 0;
   border-radius: 50%;
@@ -3478,7 +3411,7 @@ details[open] > summary:not([class])::before {
 @media (prefers-reduced-motion: reduce) {
   .ah-status-working .ah-status-dot,
   .ah-home-dot-working:not(.ah-home-0),
-  .ah-sidebar-agent-row .ah-nav-working::before {
+  .ah-rail .ah-nav-working::before {
     box-shadow: 0 0 0 2px var(--ah-accent-line);
   }
 }
@@ -3486,19 +3419,19 @@ details[open] > summary:not([class])::before {
    of the person. A still accent ring around a core: not the pulsing working
    dot, not the open waiting ring, not the unknown dash. One look for the
    sidebar, start page, return view and the conversation's top status. */
-.ah-sidebar-agent-row .ah-nav-background {
+.ah-rail .ah-nav-background {
   display: inline-grid;
   place-items: center;
   height: 14px;
 }
-.ah-sidebar-agent-row .ah-nav-background::before {
+.ah-rail .ah-nav-background::before {
   content: "";
   width: 9px;
   height: 9px;
 }
 .ah-background-dot,
 .ah-status-background .ah-status-dot,
-.ah-sidebar-agent-row .ah-nav-background::before {
+.ah-rail .ah-nav-background::before {
   display: inline-block;
   flex: none;
   box-sizing: border-box;
@@ -4471,4 +4404,206 @@ button.ah-markdown-attachment {
     max-width: 140px;
     max-height: 96px;
   }
+}
+
+/* The Nyt sidebar (Aakkoset): what waits for the person and what runs now,
+   across every workspace, above the workspaces in alphabetical order. A
+   workspace row leads to its page, where its conversations are. */
+.ah-now,
+.ah-rail-workspaces {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ah-now {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  margin-bottom: var(--ah-s3);
+}
+.ah-now ul,
+.ah-workspace-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+h2.ah-rail-section-head,
+.ah-rail-section-head h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+}
+h2.ah-rail-section-head {
+  justify-content: flex-start;
+  padding-inline: 8px;
+}
+.ah-rail-workspaces .ah-rail-section-head {
+  padding-inline-start: 8px;
+}
+.ah-rail-count {
+  color: var(--ah-muted);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ah-rail-count-attention {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+.ah-now-empty {
+  margin: 0;
+  padding: 2px 8px 6px;
+  color: var(--ah-muted);
+  font-size: 12px;
+}
+/* Two lines: the title, then its workspace, state and what it waits for.
+   The mark leads, as in the accepted prototype. */
+.ah-now .ah-sidebar-agent-row,
+.ah-now .ah-sidebar-agent-row .ah-nav-link {
+  height: auto;
+}
+.ah-now .ah-sidebar-agent-row .ah-nav-link {
+  align-items: flex-start;
+  padding-block: 5px;
+}
+.ah-sidebar-agent-row .ah-nav-link > span.ah-nav-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ah-now .ah-nav-status {
+  order: -1;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 20px;
+}
+.ah-rail .ah-nav-link .ah-nav-text {
+  display: flex;
+  flex-direction: column;
+}
+.ah-nav-detail {
+  overflow: hidden;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-now .ah-nav-worktree {
+  margin-top: 3px;
+}
+.ah-rail .ah-nav-question {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+.ah-rail-workspaces {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ah-rail-workspaces .ah-rail-filter {
+  margin-bottom: 4px;
+}
+.ah-rail .ah-workspace-link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--ah-s2);
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: var(--ah-r-nav);
+  font-size: 12.5px;
+}
+.ah-workspace-link .ah-nav-label {
+  flex: 1;
+  min-width: 0;
+}
+.ah-workspace-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ah-faint);
+}
+.ah-workspace-link .ah-rail-count-attention {
+  flex: none;
+}
+/* The narrow rail: the Nyt rows as workspace initials with their marks, then
+   one button that widens the rail to the workspaces. */
+.ah-rail-collapsed .ah-rail-content {
+  align-items: center;
+  padding-inline: 0;
+}
+.ah-now-dots,
+.ah-now-dots ul {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-now-dots hr {
+  width: 24px;
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--ah-line);
+}
+.ah-rail .ah-now-dot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: var(--ah-r-md);
+}
+.ah-now-dot-letters {
+  color: var(--ah-ink-2);
+  font-size: 11px;
+  font-weight: 600;
+}
+.ah-rail .ah-now-dot .ah-nav-mark {
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  transform: scale(0.85);
+}
+/* The phone's menu button says when something waits for the person. */
+.ah-navigation-open {
+  position: relative;
+}
+.ah-navigation-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
 }

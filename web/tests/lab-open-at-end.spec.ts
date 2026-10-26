@@ -7,7 +7,7 @@ test.use({
   viewport: { width: 1280, height: 720 },
 });
 
-test("@lab opening from home, sidebar and workspace always lands at latest", async ({
+test("@lab opening from home and workspace always lands at latest", async ({
   page,
 }) => {
   await page.request.get("/fixture/open-at-end");
@@ -51,15 +51,8 @@ test("@lab opening from home, sidebar and workspace always lands at latest", asy
   await card.getByTestId("open-conversation").click();
   await end();
   await leave();
-  await (
-    await nativeConversationLink(
-      page,
-      page.getByRole("navigation"),
-      "Avaamisen tarkistus",
-    )
-  ).click();
-  await end();
-  await leave();
+  // An ended terminal conversation is not in the sidebar's Nyt lists; its
+  // workspace page leads to it.
   await page
     .getByRole("navigation")
     .getByTestId("workspace-aurinkokello")

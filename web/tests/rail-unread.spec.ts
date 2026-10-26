@@ -4,7 +4,7 @@ import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
-test("@a11y unread rail link opens replies by keyboard, then clears only the opened reply", async ({
+test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it only when opened", async ({
   page,
   context,
 }) => {
@@ -12,6 +12,11 @@ test("@a11y unread rail link opens replies by keyboard, then clears only the ope
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  const yours = page
+    .getByRole("navigation")
+    .getByTestId("rail-yours")
+    .getByRole("link")
+    .and(page.getByTestId("agent-link"));
   const writer = await context.newPage();
   const urls: string[] = [];
   for (const message of ["first unseen reply", "second unseen reply"]) {
@@ -34,16 +39,12 @@ test("@a11y unread rail link opens replies by keyboard, then clears only the ope
       .and(writer.locator('[data-mode="send"]'))
       .click();
     await expect(writer.getByTestId("message-input")).toBeEnabled();
-    await expect(page.getByTestId("unread-replies")).toBeVisible({
-      timeout: 25000,
-    });
+    await expect(yours).toHaveCount(urls.length, { timeout: 25000 });
   }
   await writer.close();
   await page.bringToFront();
-  const link = page.getByRole("link").and(page.getByTestId("unread-replies"));
-  await expect(link).toHaveAttribute("href", urls[0]);
-  // This checks the dynamic count, not Finnish copy.
-  await expect(link).toHaveAccessibleName(/2/);
+  await expect(yours.nth(0)).toHaveAttribute("href", urls[0]);
+  await expect(yours.nth(1)).toHaveAttribute("href", urls[1]);
   expect(
     (
       await new AxeBuilder({ page })
@@ -51,19 +52,25 @@ test("@a11y unread rail link opens replies by keyboard, then clears only the ope
         .analyze()
     ).violations,
   ).toEqual([]);
-  await link.focus();
+  await yours.nth(0).focus();
   await page.keyboard.press("Enter");
   await expect
     .poll(() => new URL(page.url()).searchParams.get("conversation"))
     .toBe(new URL(urls[0], hostOrigin).searchParams.get("conversation"));
-  await expect(link).toHaveAttribute("href", urls[1]);
-  await expect(link).toHaveAccessibleName(/1/);
+  // Opened, the reply is no longer the person's turn; the other one still is.
+  await expect(yours).toHaveCount(1);
+  await expect(yours.first()).toHaveAttribute("href", urls[1]);
+  await expect(
+    page.getByTestId("rail-running").locator(`a[href="${urls[0]}"]`),
+  ).toBeVisible();
   await expect(page.getByTestId("message-input")).toBeFocused();
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId("navigation-badge")).toBeVisible();
   await page.getByTestId("navigation-open").click();
-  await expect(link).toBeVisible();
-  await link.focus();
+  await expect(yours.first()).toBeVisible();
+  await yours.first().focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("unread-replies")).toHaveCount(0);
+  await expect(yours).toHaveCount(0);
+  await expect(page.getByTestId("navigation-badge")).toHaveCount(0);
   await expect(page.getByTestId("message-input")).toBeFocused();
 });

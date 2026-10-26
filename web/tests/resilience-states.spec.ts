@@ -227,10 +227,8 @@ test("@resilience populated native history remains readable during outage", asyn
   await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await page
-    .getByRole("navigation")
-    .locator(
-      '[data-testid="agent-link"][data-agent-title="Synteettinen viesti 0"]',
-    )
+    .locator('main [data-testid^="home-conversation-"]')
+    .filter({ hasText: "Synteettinen viesti 0" })
     .click();
   await expect(page.locator("main")).toContainText("Synteettinen viesti 0");
   await page.route("**/api/v1/snapshot", (route) =>
@@ -423,10 +421,8 @@ test("@resilience an incomplete catalog does not claim a deep-linked conversatio
   await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   const agentLink = page
-    .getByRole("navigation")
-    .locator(
-      '[data-testid="agent-link"][data-agent-title="Synteettinen viesti 0"]',
-    );
+    .locator('main [data-testid^="home-conversation-"]')
+    .filter({ hasText: "Synteettinen viesti 0" });
   await expect(agentLink).toBeVisible();
   const href = await agentLink.getAttribute("href");
   if (!href || !/^\/agents\/pi:/.test(href))

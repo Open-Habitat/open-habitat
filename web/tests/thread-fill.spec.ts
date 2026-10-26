@@ -62,8 +62,14 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
 
   // Tall: the native page is taller than the view; its first child is
   // reachable at the top of the scroll range.
+  // A terminal history that has ended is reached through the start page.
+  await nav.getByTestId("home-link").click();
   await (
-    await nativeConversationLink(page, nav, /Synteettinen viesti 0/)
+    await nativeConversationLink(
+      page,
+      page.locator("main"),
+      /Synteettinen viesti 0/,
+    )
   ).click();
   await expect(page.locator(".ah-feed li")).toHaveCount(25);
   const top = await stream.evaluate((el) => {

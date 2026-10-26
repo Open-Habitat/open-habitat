@@ -59,6 +59,7 @@ export function unreadableHistory(
   return !managed || !!status?.turn_settled;
 }
 
+export type ConversationMetadata = Metadata;
 type Metadata = Readonly<{
   agents: ReadonlyMap<string, Agent>;
   statuses: ReadonlyMap<string, Status>;
