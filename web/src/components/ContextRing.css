@@ -1,0 +1,209 @@
+/* Context use in the top bar (Rengas, prototype round
+   2026-10-25-kontekstin-mittari). There is no warning token: near the limit
+   uses the accent (attention), only the critical level the error colour. */
+.ah-ctx-chip,
+.ah-ctx-dialog {
+  --ctx: var(--ah-muted);
+  --ctx-ink: var(--ah-muted);
+}
+:is(.ah-ctx-chip, .ah-ctx-dialog):is(
+  [data-level="near"],
+  [data-level="compacting"]
+) {
+  --ctx: var(--ah-accent);
+  --ctx-ink: var(--ah-accent-ink);
+}
+:is(.ah-ctx-chip, .ah-ctx-dialog)[data-level="critical"] {
+  --ctx: var(--ah-err);
+  --ctx-ink: var(--ah-err);
+}
+
+/* A quiet pill: no border or surface until hovered or open. */
+.ah-ctx-chip {
+  flex: none;
+  gap: 5px;
+  padding-inline: 5px 8px;
+  border-color: transparent;
+  --i-bg: transparent;
+  color: var(--ah-ink-2);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ah-ctx-chip .ah-ctx-value {
+  color: var(--ctx-ink);
+}
+.ah-ctx-chip:is([data-level="ok"], [data-level="nowindow"]) .ah-ctx-value {
+  color: var(--ah-ink-2);
+}
+.ah-ctx-chip[data-level="critical"] .ah-ctx-value {
+  font-weight: 600;
+}
+.ah-ctx-ring {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  overflow: visible;
+}
+.ah-ctx-ring circle {
+  fill: none;
+  stroke-width: 2.4;
+}
+.ah-ctx-track {
+  stroke: var(--ah-line-strong);
+}
+.ah-ctx-arc {
+  stroke: var(--ctx);
+  stroke-linecap: round;
+}
+[data-level="ok"] .ah-ctx-arc {
+  stroke: var(--ah-ink-2);
+}
+.ah-ctx-tick {
+  stroke: var(--ah-ink);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+:is([data-level="after"], [data-level="nowindow"]) .ah-ctx-track {
+  stroke: var(--ah-muted);
+  stroke-dasharray: 2.2 2.2;
+}
+.ah-ctx-spin {
+  transform-origin: 10px 10px;
+  animation: ah-ctx-spin 1.1s linear infinite;
+}
+@keyframes ah-ctx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Details: anchored under the indicator on desktop, a sheet on a phone. */
+.ah-ctx-layer {
+  width: min(330px, calc(100vw - 24px));
+}
+.ah-ctx-layer .ah-dialog {
+  padding: 12px 14px;
+  border-radius: 0;
+  box-shadow: none;
+}
+.ah-ctx-dialog {
+  font-size: 13px;
+}
+.ah-ctx-title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.ah-ctx-title:focus {
+  outline: none;
+}
+.ah-ctx-big {
+  margin: 0 0 8px;
+  color: var(--ctx-ink);
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ah-ctx-dialog:is(
+    [data-level="ok"],
+    [data-level="nowindow"],
+    [data-level="after"]
+  )
+  .ah-ctx-big {
+  color: var(--ah-ink);
+}
+.ah-ctx-big span {
+  margin-left: 6px;
+  color: var(--ah-muted);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+.ah-ctx-meter {
+  position: relative;
+  height: 6px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-sunken);
+  box-shadow: inset 0 0 0 1px var(--ah-line-soft);
+}
+.ah-ctx-meter i {
+  display: block;
+  height: 100%;
+  background: var(--ctx);
+}
+.ah-ctx-dialog[data-level="ok"] .ah-ctx-meter i {
+  background: var(--ah-ink-2);
+}
+.ah-ctx-meter b {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--ah-ink);
+  opacity: 0.45;
+}
+.ah-ctx-lead {
+  margin: 0 0 10px;
+  color: var(--ah-ink-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.ah-ctx-facts {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.ah-ctx-facts > div {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 8px;
+}
+.ah-ctx-facts dt {
+  color: var(--ah-muted);
+}
+.ah-ctx-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Phone: the ring alone below the attention level; the details are a sheet. */
+@media (max-width: 760px) {
+  .ah-ctx-chip {
+    padding-inline: 4px;
+  }
+  .ah-ctx-chip[data-level="ok"] .ah-ctx-value {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  .ah-ctx-sheet {
+    padding: 0;
+    place-items: end center;
+  }
+  .ah-ctx-sheet .ah-modal {
+    width: 100%;
+    max-height: 82dvh;
+    overflow: auto;
+  }
+  .ah-ctx-sheet .ah-dialog {
+    padding: 14px 16px calc(20px + env(safe-area-inset-bottom));
+    border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0;
+  }
+  .ah-ctx-sheet .ah-dialog::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 0 auto 10px;
+    border-radius: var(--ah-r-pill);
+    background: var(--ah-line-strong);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-ctx-spin {
+    animation: none;
+  }
+}

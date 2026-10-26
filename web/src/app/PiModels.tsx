@@ -28,6 +28,7 @@ export type Models = {
   default_model: string | null;
   default_thinking?: string;
   catalog_status?: "native_cached" | "unavailable";
+  auto_compaction?: boolean;
   models: ModelChoice[];
 };
 export async function readModels(response: Response): Promise<Models> {

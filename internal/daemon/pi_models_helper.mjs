@@ -93,10 +93,17 @@ try {
   // Read back from disk, not the session's cached settings.
   const stored = SettingsManager.create(process.env.HOME, join(process.env.HOME, '.pi', 'agent'), { projectTrusted: false });
   for (const failure of stored.drainErrors()) { reportStorage(failure.error); throw Error('readback'); }
+  // The context indicator's limits: the window and Pi's own compaction
+  // threshold. An invalid compaction setting omits them; it is Pi's to report.
+  const limit = n => Number.isSafeInteger(n) && n >= 0 && n <= 100000000 ? n : undefined;
+  const reserve = m => { try { return limit(stored.getCompactionReserveTokens(m)); } catch { return undefined; } };
+  let autoCompaction;
+  try { autoCompaction = stored.getCompactionEnabled() === true; } catch { autoCompaction = undefined; }
   const result = { schema_version: 1, default_provider: stored.getDefaultProvider() ?? null, default_model: stored.getDefaultModel() ?? null,
     default_thinking: stored.getModelThinkingLevel(stored.getDefaultProvider(), stored.getDefaultModel()) ?? stored.getDefaultThinkingLevel() ?? 'off',
-    catalog_status: catalogStatus,
-    models: models.map(m => ({ provider: m.provider, id: m.id, name: m.name, thinking_levels: levels(m) })) };
+    catalog_status: catalogStatus, auto_compaction: autoCompaction,
+    models: models.map(m => ({ provider: m.provider, id: m.id, name: m.name, thinking_levels: levels(m),
+      context_window: limit(m.contextWindow) || undefined, compaction_reserve_tokens: reserve(m) })) };
   process.stdout.write(JSON.stringify(result) + '\n');
 } catch (error) {
   reportStorage(error);

@@ -19,6 +19,7 @@ import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { ComposerModelPicker } from "../components/ComposerModelPicker";
+import { ContextRing } from "../components/ContextRing";
 import { controlClassName } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
@@ -38,6 +39,7 @@ import { toolStopped } from "./bashFailure";
 import { useConversationActions } from "./ConversationActions";
 import { ConversationGitStatus } from "./ConversationGitStatus";
 import { readCommands, readFiles, readPreview } from "./composerReads";
+import { contextUsage } from "./contextUsage";
 import { provisionalItems } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
 import { useAgentNotices } from "./conversationStore";
@@ -300,6 +302,12 @@ function BrowserConversationContent({
     shortModel(
       selectedModel ?? (!id ? (models?.default_model ?? undefined) : undefined),
     ) ?? "Malli ei tiedossa";
+  const contextState = contextUsage({
+    entries,
+    fragments: live?.fragments,
+    model: selectedModel,
+    catalog: models,
+  });
   const selectedThinking =
     (emptyConversation ? modelChoice?.thinking : undefined) ??
     nativeSettings.thinking ??
@@ -1372,6 +1380,9 @@ function BrowserConversationContent({
                   : "neutral"
             }
             settings={nativeSettings}
+            contextIndicator={
+              contextState ? <ContextRing usage={contextState} /> : undefined
+            }
             terminal={shell.toggle}
             gitStatus={
               <ConversationGitStatus

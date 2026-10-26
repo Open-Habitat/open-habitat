@@ -294,7 +294,7 @@ ajattelutaso. Keskustelussa ei näytetä Pi:n alkutilan asetusmerkintöjä, kosk
 ajattelutaso ovat jo yläpalkissa. Vain todellinen mallin tai ajattelutason
 muutos näkyy hillittynä rivinä vanhasta uuteen; nykyisen arvon toistava
 asetusmerkintä on hiljainen. Mallit näytetään nimillä, ei provider/model-
-tunnisteilla (Jari 23.10.2026). Tiivistys kuuluu samaan hillittyyn riviperheeseen. Pi:n
+tunnisteilla (Jari 23.10.2026). Tiivistys kuuluu samaan hillittyyn riviperheeseen. Mallisirun vasemmalla puolella on kontekstin rengas ja prosentti (Jari 26.10.2026, kierros `prototypes/rounds/2026-10-25-kontekstin-mittari`, suunta Rengas): huomioväri 70 %:sta ja virheväri 90 %:sta kuten Pi:n alarivillä, merkki renkaassa Pi:n tiivistysrajan kohdalla, tiivistyksen aikana pyörivä kaari ja sen jälkeen "?" Pi:n seuraavaan vastaukseen asti. Ennen ensimmäistä vastausta rengasta ei ole, ja tuntemattoman ikkunan malli näyttää tokenit ilman osuutta. Puhelimessa prosentti näkyy vasta 70 %:sta. Rengas avaa tiedot. Pi:n
 keskustelun nimimerkintöjä ("Keskustelun tieto") ei näytetä, koska otsikko on
 yläpalkissa. Valmiin säikeen yhteenveto ("1 ajatusta · 2 työkalua") ja kesto
 ovat säikeen alussa PI-rivillä, josta työn saa kiinni; säikeen loppuun ei

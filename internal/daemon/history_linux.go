@@ -76,6 +76,7 @@ type historyEntry struct {
 	IsError            *bool          `json:"is_error,omitempty"`
 	StopReason         string         `json:"stop_reason,omitempty"`
 	Model              string         `json:"model,omitempty"`
+	ContextTokens      int64          `json:"context_tokens,omitempty"`
 	EntryType          string         `json:"entry_type,omitempty"`
 	ExitCode           *int           `json:"exit_code,omitempty"`
 	Cancelled          bool           `json:"cancelled,omitempty"`

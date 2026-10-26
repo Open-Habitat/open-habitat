@@ -20,6 +20,8 @@ export type ModelChoice = {
   outcome?: "answered" | "refused";
   observed_at?: string;
   thinking_levels?: string[];
+  context_window?: number;
+  compaction_reserve_tokens?: number;
 };
 export function refused(model?: ModelChoice) {
   return (

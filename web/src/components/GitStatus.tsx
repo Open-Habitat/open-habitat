@@ -115,7 +115,8 @@ function Arrows({
   );
 }
 
-function usePhone() {
+/** Phone widths take details as a bottom sheet rather than an anchored layer. */
+export function usePhone() {
   const [phone, setPhone] = useState(
     () =>
       typeof window.matchMedia === "function" &&

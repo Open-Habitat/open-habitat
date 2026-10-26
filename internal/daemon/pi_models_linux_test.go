@@ -47,16 +47,28 @@ func TestPiModelsNativeDefault(t *testing.T) {
 		t.Fatal("no native models")
 	}
 	model := "gpt-99-sol"
-	if !slices.ContainsFunc(available.Models, func(m piModel) bool { return m.ID == model }) {
-		t.Fatalf("Pi cached model absent: %+v", available.Models)
+	// The context indicator's limits are Pi's: the registry window and the
+	// compaction reserve, here Pi's defaults.
+	cached := func(r piModelsResponse) piModel {
+		i := slices.IndexFunc(r.Models, func(m piModel) bool { return m.ID == model })
+		if i < 0 {
+			t.Fatalf("Pi cached model absent: %+v", r.Models)
+		}
+		return r.Models[i]
+	}
+	if m := cached(available); m.ContextWindow != 128000 || m.CompactionReserve == nil || *m.CompactionReserve != 16384 || available.AutoCompaction == nil || !*available.AutoCompaction {
+		t.Fatalf("context limits: %+v auto=%v", m, available.AutoCompaction)
 	}
 	settingsPath := filepath.Join(home, ".pi", "agent", "settings.json")
-	if err := os.WriteFile(settingsPath, []byte(`{"theme":"dark","defaultProvider":"anthropic","defaultModel":"old"}`), 0600); err != nil {
+	if err := os.WriteFile(settingsPath, []byte(`{"theme":"dark","defaultProvider":"anthropic","defaultModel":"old","compaction":{"enabled":false,"modelOverrides":{"openai-codex/gpt-99-sol":{"reserveTokens":30000}}}}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	previous, err := p.models(context.Background(), "")
 	if err != nil || previous.DefaultProvider == nil || *previous.DefaultProvider != "anthropic" || previous.DefaultModel == nil || *previous.DefaultModel != "old" {
 		t.Fatalf("lost other provider's default: %+v, %v", previous, err)
+	}
+	if m := cached(previous); m.CompactionReserve == nil || *m.CompactionReserve != 30000 || previous.AutoCompaction == nil || *previous.AutoCompaction {
+		t.Fatalf("Pi's own compaction settings not read: %+v auto=%v", m, previous.AutoCompaction)
 	}
 	chosen, err := p.models(context.Background(), model)
 	if err != nil {

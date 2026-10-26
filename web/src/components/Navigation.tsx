@@ -900,6 +900,7 @@ export function AgentHeader({
   archiveControl,
   editorControl,
   settings,
+  contextIndicator,
   modelPicker,
   gitStatus,
   terminal,
@@ -924,6 +925,8 @@ export function AgentHeader({
   editorControl?: ReactNode;
   archiveReason?: string;
   settings?: { model?: string; thinking?: string };
+  /** How full the model's context is (Rengas), just before the model. */
+  contextIndicator?: ReactNode;
   modelPicker?: ReactNode;
   /** The workspace's Git status chip, beside the model (Yläpalkissa). */
   gitStatus?: ReactNode;
@@ -1004,6 +1007,7 @@ export function AgentHeader({
           />
         ) : null}
         {gitStatus}
+        {contextIndicator}
         {modelPicker ??
           (settings?.model || settings?.thinking ? (
             <ControlButton

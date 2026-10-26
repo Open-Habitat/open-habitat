@@ -643,6 +643,9 @@ func nativeEntryPayload(entry historyEntry) map[string]any {
 	if entry.Model != "" {
 		payload["model"] = entry.Model
 	}
+	if entry.ContextTokens > 0 {
+		payload["context_tokens"] = entry.ContextTokens
+	}
 	if entry.EntryType != "" {
 		payload["entry_type"] = entry.EntryType
 	}

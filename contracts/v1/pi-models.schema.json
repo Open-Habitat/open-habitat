@@ -75,6 +75,18 @@
               ]
             }
           },
+          "context_window": {
+            "description": "The model's context window in Pi's registry.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000
+          },
+          "compaction_reserve_tokens": {
+            "description": "Pi's compaction.reserveTokens for this model from the person's global Pi settings: Pi compacts automatically when the context exceeds the window minus this reserve.",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000000
+          },
           "provider": {
             "enum": [
               "openai-codex",
@@ -98,6 +110,10 @@
         "xhigh",
         "max"
       ]
+    },
+    "auto_compaction": {
+      "description": "Pi's global compaction.enabled setting.",
+      "type": "boolean"
     },
     "catalog_status": {
       "enum": [

@@ -65,6 +65,8 @@ export interface HistoryEntry {
   failure_cause?: BashFailure;
   stop_reason?: string;
   model?: string;
+  /** Context size Pi recorded with this assistant reply. */
+  context_tokens?: number;
   exit_code?: number;
   cancelled?: boolean;
   output_truncated?: boolean;

@@ -109,19 +109,22 @@ func piModelsFixture(home string, trusted func(*http.Request) bool) http.Handler
 		models := response["models"].([]map[string]any)
 		for _, m := range models {
 			m["provider"] = "openai-codex"
+			m["context_window"] = 272000
+			m["compaction_reserve_tokens"] = 16384
 		}
+		response["auto_compaction"] = true
 		raw, _ := os.ReadFile(filepath.Join(home, ".pi/agent/auth.json"))
 		var credentials map[string]any
 		_ = json.Unmarshal(raw, &credentials)
 		if credentials["openai"] != nil {
 			for _, m := range append([]map[string]any{}, models...) {
-				models = append(models, map[string]any{"provider": "openai", "id": m["id"], "name": m["name"], "thinking_levels": m["thinking_levels"], "older": m["older"] == true})
+				models = append(models, map[string]any{"provider": "openai", "id": m["id"], "name": m["name"], "thinking_levels": m["thinking_levels"], "older": m["older"] == true, "context_window": 400000, "compaction_reserve_tokens": 16384})
 			}
 		}
 		for _, provider := range []string{"anthropic", "deepseek"} {
 			if credentials[provider] != nil {
 				for _, m := range fixtureKeyModels[provider] {
-					models = append(models, map[string]any{"provider": provider, "id": m[0], "name": m[1], "thinking_levels": []string{"off", "high"}, "older": m[2] == "older"})
+					models = append(models, map[string]any{"provider": provider, "id": m[0], "name": m[1], "thinking_levels": []string{"off", "high"}, "older": m[2] == "older", "context_window": 1000000, "compaction_reserve_tokens": 16384})
 				}
 			}
 		}

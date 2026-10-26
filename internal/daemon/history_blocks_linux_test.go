@@ -96,3 +96,36 @@ func TestNativeAbortRecordedAsErrorIsAnAbort(t *testing.T) {
 		}
 	}
 }
+
+// The browser reads a reply's context size as Pi's context usage does: Pi's
+// total, else its counters, never from an aborted or failed reply, and a
+// malformed usage never costs the entry itself.
+func TestAssistantContextTokensFollowPi(t *testing.T) {
+	for _, c := range []struct {
+		message string
+		want    int64
+	}{
+		{`"stopReason":"stop","usage":{"input":100,"output":20,"cacheRead":5000,"cacheWrite":7,"totalTokens":5127}`, 5127},
+		{`"stopReason":"toolUse","usage":{"input":100,"output":20,"cacheRead":5000,"cacheWrite":7}`, 5127},
+		{`"stopReason":"stop","usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0}`, 0},
+		{`"stopReason":"aborted","usage":{"totalTokens":5127}`, 0},
+		{`"stopReason":"error","errorMessage":"429 rate limited","usage":{"totalTokens":5127}`, 0},
+		{`"stopReason":"error","errorMessage":"This operation was aborted","usage":{"totalTokens":5127}`, 0},
+		{`"stopReason":"stop","usage":{"totalTokens":"many"}`, 0},
+		{`"stopReason":"stop","usage":{"totalTokens":-5}`, 0},
+	} {
+		e := nativeEntry{ID: "entry_1", Type: "message", Message: json.RawMessage(`{"role":"assistant","content":[{"type":"text","text":"Hei"}],` + c.message + `}`)}
+		result := nativeBlocks(e)
+		if result.ContextTokens != c.want || result.Kind != "assistant" || len(result.Blocks) != 1 {
+			t.Errorf("%s: %+v, want %d", c.message, result, c.want)
+		}
+		wire, _ := json.Marshal(nativeEntryPayload(result))
+		if strings.Contains(string(wire), "context_tokens") != (c.want > 0) {
+			t.Errorf("%s: wire %s", c.message, wire)
+		}
+	}
+	user := nativeBlocks(nativeEntry{ID: "entry_2", Type: "message", Message: json.RawMessage(`{"role":"user","content":"Hei","usage":{"totalTokens":5127}}`)})
+	if user.ContextTokens != 0 {
+		t.Fatalf("user message carries usage: %+v", user)
+	}
+}

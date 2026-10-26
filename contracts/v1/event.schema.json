@@ -236,6 +236,12 @@
                 "type": "string",
                 "maxLength": 200
               },
+              "context_tokens": {
+                "description": "Context size Pi recorded with this assistant reply (usage.totalTokens, else the sum of its input, output and cache counters), as Pi's own context-usage reading counts it. Omitted for an aborted or failed reply and for zero usage.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000000
+              },
               "truncated_blocks": {
                 "type": "boolean"
               },

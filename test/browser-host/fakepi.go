@@ -11,6 +11,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -287,6 +289,30 @@ type fakeSession struct {
 	parent, lastMessage, lastRecap string
 	started                        bool
 	model, thinking, provider      string
+	// context is the context size the next reply records, as a model's
+	// usage would; compacted says the history was just summarized.
+	context   int
+	compacted bool
+}
+
+var contextPrompt = regexp.MustCompile(`konteksti (\d{1,9})`)
+
+// replyUsage is the synthetic usage of a reply: it grows each turn, a prompt
+// "konteksti N" sets it, and the first reply after a compaction starts low.
+func (s *fakeSession) replyUsage(prompt string) map[string]any {
+	switch {
+	case contextPrompt.MatchString(prompt):
+		s.context, _ = strconv.Atoi(contextPrompt.FindStringSubmatch(prompt)[1])
+	case s.compacted:
+		s.context = 31600
+	case s.context == 0:
+		s.context = 11800
+	default:
+		s.context += 6400
+	}
+	s.compacted = false
+	output := min(400, s.context)
+	return map[string]any{"input": s.context - output, "output": output, "cacheRead": 0, "cacheWrite": 0, "totalTokens": s.context}
 }
 
 func (s *fakeSession) beginRun() {
@@ -628,9 +654,19 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	if s.model != "" {
 		model, provider = s.model, s.provider
 	}
-	s.append(message("assistant", []map[string]any{{"type": "text", "text": answer}}, map[string]any{"provider": provider, "model": model, "stopReason": "stop"}))
+	s.append(message("assistant", []map[string]any{{"type": "text", "text": answer}}, map[string]any{"provider": provider, "model": model, "stopReason": "stop", "usage": s.replyUsage(prompt)}))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant"}})
 	emit(map[string]any{"type": "agent_end"})
+	if strings.Contains(prompt, "tiivistä") {
+		// Pi's threshold compaction runs after the turn: the old history
+		// becomes a summary entry, and Pi's context usage is unknown until
+		// the next reply records new usage.
+		emit(map[string]any{"type": "compaction_start", "reason": "threshold"})
+		time.Sleep(6 * step)
+		s.append(map[string]any{"type": "compaction", "summary": "Synteettinen tiivistelmä aiemmasta keskustelusta.", "firstKeptEntryId": s.lastMessage, "tokensBefore": s.context})
+		s.compacted = true
+		emit(map[string]any{"type": "compaction_end", "reason": "threshold", "aborted": false, "willRetry": false})
+	}
 }
 
 // fakeGitAction runs the native Git an agent would run when asked to commit

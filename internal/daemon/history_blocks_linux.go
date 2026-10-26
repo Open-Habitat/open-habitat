@@ -145,6 +145,7 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		StopReason   string          `json:"stopReason"`
 		ErrorMessage string          `json:"errorMessage"`
 		Model        string          `json:"model"`
+		Usage        json.RawMessage `json:"usage"`
 	}
 	if json.Unmarshal(e.Message, &m) != nil {
 		return
@@ -211,6 +212,9 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		}
 		if len(m.Model) <= 200 {
 			out.Model = m.Model
+		}
+		if out.StopReason != "aborted" && out.StopReason != "error" {
+			out.ContextTokens = piContextTokens(m.Usage)
 		}
 	}
 	var plain string
@@ -289,6 +293,32 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		out.Blocks = []historyBlock{{Type: "text", Text: prefixBytes(out.full, 16384), Readable: len(out.full) > 16384}}
 	}
 	return
+}
+
+// piContextTokens counts an assistant reply's context as Pi's
+// calculateContextTokens does (totalTokens, else the sum of the counters), so
+// the browser reads the number Pi's own context usage starts from. The caller
+// skips aborted and failed replies as Pi does; zero, malformed or implausible
+// usage counts as none. Usage never decides whether the entry itself is read.
+func piContextTokens(raw json.RawMessage) int64 {
+	var u struct {
+		Input       float64 `json:"input"`
+		Output      float64 `json:"output"`
+		CacheRead   float64 `json:"cacheRead"`
+		CacheWrite  float64 `json:"cacheWrite"`
+		TotalTokens float64 `json:"totalTokens"`
+	}
+	if len(raw) == 0 || json.Unmarshal(raw, &u) != nil {
+		return 0
+	}
+	total := u.TotalTokens
+	if total == 0 {
+		total = u.Input + u.Output + u.CacheRead + u.CacheWrite
+	}
+	if !(total >= 1 && total <= 100_000_000) {
+		return 0
+	}
+	return int64(total)
 }
 
 func prefixBytes(text string, max int) string {

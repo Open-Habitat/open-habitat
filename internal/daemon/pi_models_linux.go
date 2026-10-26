@@ -36,6 +36,9 @@ type piModel struct {
 	Outcome        string   `json:"outcome,omitempty"`
 	ObservedAt     string   `json:"observed_at,omitempty"`
 	ThinkingLevels []string `json:"thinking_levels,omitempty"`
+	ContextWindow  int64    `json:"context_window,omitempty"`
+	// A pointer: zero is a valid reserve (compact only when the window is full).
+	CompactionReserve *int64 `json:"compaction_reserve_tokens,omitempty"`
 }
 type piModelsResponse struct {
 	SchemaVersion   int       `json:"schema_version"`
@@ -43,6 +46,7 @@ type piModelsResponse struct {
 	DefaultModel    *string   `json:"default_model"`
 	DefaultThinking string    `json:"default_thinking,omitempty"`
 	CatalogStatus   string    `json:"catalog_status,omitempty"`
+	AutoCompaction  *bool     `json:"auto_compaction,omitempty"`
 	Models          []piModel `json:"models"`
 }
 
@@ -105,7 +109,7 @@ func (p *PiDevice) modelSettings(ctx context.Context, action, selected string, t
 		return piModelsResponse{}, errors.New("native Pi models unavailable")
 	}
 	for _, m := range result.Models {
-		if m.ID == "" || len(m.ID) > 160 || len(m.Name) > 200 {
+		if m.ID == "" || len(m.ID) > 160 || len(m.Name) > 200 || m.ContextWindow < 0 || m.ContextWindow > 100_000_000 || m.CompactionReserve != nil && (*m.CompactionReserve < 0 || *m.CompactionReserve > 100_000_000) {
 			return piModelsResponse{}, errors.New("invalid native Pi model")
 		}
 	}
