@@ -246,12 +246,56 @@ export const interruptedLabel = (p: InterruptedProcess) =>
   p.reason === "server_restart"
     ? "Katkesi palvelimen uudelleenkäynnistyksessä"
     : "Katkesi, kun agentti pysähtyi";
+/** How an ended process reads. */
+export interface ExitReading {
+  /** ok: exit 0; neutral: ended as the agent may have expected; err: failed. */
+  tone: "ok" | "neutral" | "err";
+  /** Lower-case, for the middle of a sentence. */
+  label: string;
+}
+// Jari 26.10.2026 (proto-background-waits, direction 2): a non-zero exit code
+// is a fact the agent explains in its next message, not a crash. A release
+// watcher's "skipped, no product change" and a wait's check-in are ordinary
+// outcomes, and Habitat cannot tell them from a real failure, so every exit
+// code reads neutral. Red is kept for what is a failure whatever the command:
+// a signal, and a process that never started or was lost. A recognised
+// Taskfleet wait (run ids joined) names its own codes.
+export function exitReading(p: {
+  killed: boolean;
+  exit_code: number | null;
+  signal: string | null;
+  end_reason: string | null;
+  run_ids: string[];
+}): ExitReading {
+  if (p.killed) return { tone: "neutral", label: "pysäytetty" };
+  if (p.end_reason === "spawn_error" || p.end_reason === "missing_pid")
+    return { tone: "err", label: "ei käynnistynyt" };
+  if (p.end_reason === "lost") return { tone: "err", label: "katosi" };
+  if (p.exit_code === 0) return { tone: "ok", label: "valmis" };
+  if (p.signal) return { tone: "err", label: "kaatui" };
+  if (p.exit_code === null) return { tone: "err", label: "epäonnistui" };
+  if (p.run_ids.length) {
+    // `taskfleet run wait`: 2 timeout, 3 a settled run failed
+    // (--fail-on-error), 4 check-in snapshot. The run's own failure shows on
+    // the worker; the wait did what it was asked.
+    const wait = {
+      2: "odotus aikakatkaistiin",
+      3: "ajo epäonnistui",
+      4: "välitarkistus",
+    }[p.exit_code];
+    if (wait) return { tone: "neutral", label: wait };
+  }
+  return { tone: "neutral", label: "päättyi" };
+}
+export const recordExit = (p: ProcessRecord) =>
+  exitReading({ ...p, killed: p.status === "killed" });
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export function processLabel(p: ProcessRecord) {
   return {
     running: "Käynnissä",
     terminating: "Pysäytetään…",
     terminate_timeout: "Ei pysähtynyt",
     killed: "Pysäytetty",
-    exited: p.exit_code === 0 ? "Valmis" : "Epäonnistui",
+    exited: capital(recordExit(p).label),
   }[p.status];
 }

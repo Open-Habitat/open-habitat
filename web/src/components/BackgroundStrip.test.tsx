@@ -40,23 +40,45 @@ describe("background strip facts", () => {
     process_token: "pt_wait",
     run_ids: ["01m53wnktnxb4w2xgdd79a66de"],
   });
-  it("shows a taskfleet wait as its spinoff's bell, never as a process", () => {
+  it("shows a taskfleet wait on its spinoff, never as a process", () => {
     const f = facts([run({})], [wait, proc({ wakes_agent: false })]);
     expect(f.proc.records.map((p) => p.id)).toEqual(["proc_example"]);
     expect(f.spin.live[0].wait?.id).toBe("proc_wait");
-    expect(f.spin.bell).toBe(true);
+    expect(f.spin.marks.map((i) => i.waited)).toEqual([true]);
     // The other process does not wake the agent: no process bell.
     expect(f.proc.bell).toBe(false);
   });
-  it("rings the bell only after the agent's turn has ended", () => {
-    expect(facts([run({})], [wait], false).spin.bell).toBe(false);
+  it("marks a working spinoff nobody waits on, waited ones first", () => {
+    const other = run({ run_id: "01m53wnje1f3ybcw17qsx2sysd", title: "B" });
+    const f = facts([other, run({})], [wait]);
+    expect(f.spin.marks.map((i) => [i.run.title, i.waited])).toEqual([
+      ["README", true],
+      ["B", false],
+    ]);
   });
-  it("rings no bell for a wait whose end does not wake the agent, but keeps it on the row", () => {
+  it("keeps the wait mark while the agent works; the turn has not ended yet", () => {
+    expect(facts([run({})], [wait], false).spin.marks[0].waited).toBe(true);
+  });
+  it("counts a wait whose end does not wake the agent as no wait, but keeps it on the row", () => {
     for (const wakes_agent of [false, null] as const) {
       const f = facts([run({})], [{ ...wait, wakes_agent } as ProcessRecord]);
-      expect(f.spin.bell).toBe(false);
+      expect(f.spin.marks[0].waited).toBe(false);
       expect(f.spin.live[0].wait?.id).toBe("proc_wait");
     }
+  });
+  it("marks a waited run in another state, but not an unwaited one", () => {
+    const parent = run({
+      run_id: "01m53wnje1f3ybcw17qsx2syse",
+      state: "waiting_parent",
+    });
+    expect(facts([parent], []).spin.marks).toHaveLength(0);
+    // Taskfleet did not list the waited run: it is unknown, still waited.
+    expect(facts([], [wait]).spin.marks.map((i) => i.waited)).toEqual([true]);
+  });
+  it("leaves a settled spinoff's wait unmarked", () => {
+    expect(facts([run({ state: "merged" })], [wait]).spin.marks).toHaveLength(
+      0,
+    );
   });
   it("counts only working spinoffs as working; unknown and parent-waiting stay listed", () => {
     const f = facts(

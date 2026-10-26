@@ -222,6 +222,40 @@
 .ah-bg-dot.unknown {
   box-shadow: inset 0 0 0 1.5px var(--ah-muted);
 }
+/* Pisteet: the shared background-wait mark (components.css) when the agent
+   waits on a spinoff, an empty dashed ring of the same size when nobody
+   does. Never red: not waiting is a fact. */
+.ah-bg-wait-dot {
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.ah-bg-wait-dot.nowait {
+  border: 1.5px dashed var(--ah-muted);
+}
+.ah-bg-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 2px;
+  font: 600 11.5px var(--ah-font);
+  font-variant-numeric: tabular-nums;
+}
+.ah-bg-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 8px 8px;
+  font-size: 11.5px;
+  color: var(--ah-muted);
+}
+.ah-bg-legend .nowait {
+  margin-inline-start: 8px;
+}
 [data-state="merged"] .ah-bg-mark {
   color: var(--ah-ok);
 }
@@ -262,8 +296,15 @@
 .ah-bg-label {
   color: var(--ah-ink-2);
 }
+.ah-bg-wait-word {
+  color: var(--ah-ink-2);
+}
+.ah-bg-row[data-waited="true"] .ah-bg-wait-word {
+  color: var(--ah-accent-ink);
+  font-weight: 500;
+}
 [data-state="unmerged"] .ah-bg-label,
-.ah-bg-row[data-failed="true"] .ah-bg-meta {
+.ah-bg-row[data-tone="err"] .ah-bg-meta {
   color: var(--ah-err);
 }
 [data-state="merged"] .ah-bg-label {

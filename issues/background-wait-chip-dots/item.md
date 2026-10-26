@@ -3,13 +3,14 @@ created: 2026-10-26
 updated: 2026-10-26
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: ui-impl
 lane_seq: 3
 collision: [web/src/components/BackgroundStrip.tsx, web/src/app/]
 preparation: ready
 blocked_by: ['@settings-three-pages']
+closed: 2026-10-26
 ---
 
 # Worker chip shows waits as dots; expected exits read neutral

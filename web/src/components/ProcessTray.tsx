@@ -17,6 +17,7 @@ import {
 } from "react-aria-components";
 import {
   controlProcess,
+  exitReading,
   fetchProcesses,
   fetchProcessOutput,
   type InterruptedProcess,
@@ -27,6 +28,7 @@ import {
   type ProcessRecord,
   processLabel,
   processLive,
+  recordExit,
   spinoffLabel,
 } from "../app/processes";
 import { ControlButton } from "./ControlElements";
@@ -276,7 +278,10 @@ function ProcessWindow({
               {process?.name ?? "Prosessi"}
             </Heading>
             {process ? (
-              <span className="ah-process-window-state">
+              <span
+                className="ah-process-window-state"
+                data-tone={live ? undefined : recordExit(process).tone}
+              >
                 {processLabel(process)}
                 {!live && process.exit_code !== null
                   ? ` · koodi ${process.exit_code}`
@@ -424,19 +429,29 @@ export function InterruptedProcesses({
 }
 export function ProcessMark({ process }: { process: ProcessRecord }) {
   return (
-    <span className="ah-process-mark" aria-hidden="true">
+    <span
+      className="ah-process-mark"
+      aria-hidden="true"
+      data-tone={
+        processLive(process) || process.status === "killed"
+          ? undefined
+          : recordExit(process).tone
+      }
+    >
       {process.status === "running" ? (
         <span className="ah-process-dot" />
       ) : (
         <Icon
           name={
-            process.status === "exited" && process.exit_code === 0
-              ? "check"
-              : processLive(process)
-                ? "refresh"
-                : process.status === "exited"
-                  ? "cross"
-                  : "stop"
+            processLive(process)
+              ? "refresh"
+              : process.status === "killed"
+                ? "stop"
+                : {
+                    ok: "check" as const,
+                    neutral: "system" as const,
+                    err: "cross" as const,
+                  }[recordExit(process).tone]
           }
         />
       )}
@@ -592,30 +607,33 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
   const context = useContext(Context);
   const [expanded, setExpanded] = useState(false);
   const delivery = context?.deliveryFor(event) ?? event.delivery;
-  const ordinaryLabel = {
-    success: "valmis",
-    failure: "epäonnistui",
-    crash: "kaatui",
-    killed: "pysäytetty",
-    log_match: "lokiosuma",
-    log_match_suppressed: "lokiosumien ilmoituksia jätettiin pois",
-  }[event.kind];
-  const label =
-    event.run_ids.length && event.exit_code === 2
-      ? "odotus aikakatkaistiin"
-      : event.run_ids.length && event.exit_code === 3
-        ? "ajo epäonnistui"
-        : event.run_ids.length && event.exit_code === 4
-          ? "odotuksen välitilanne"
-          : ordinaryLabel;
+  const reading =
+    event.kind === "log_match" || event.kind === "log_match_suppressed"
+      ? {
+          tone: "neutral" as const,
+          label:
+            event.kind === "log_match"
+              ? "lokiosuma"
+              : "lokiosumien ilmoituksia jätettiin pois",
+        }
+      : exitReading({ ...event, killed: event.kind === "killed" });
   return (
     <div
       data-testid="process-completion"
       data-delivery={delivery}
+      data-tone={reading.tone}
       className="ah-process-completion"
       role="note"
     >
-      <Icon name={event.kind === "success" ? "check" : "system"} />
+      <Icon
+        name={
+          reading.tone === "ok"
+            ? "check"
+            : reading.tone === "err"
+              ? "cross"
+              : "system"
+        }
+      />
       <ControlButton
         data-testid="process-completion-toggle"
         size="inline"
@@ -624,7 +642,7 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
         onPress={() => setExpanded(!expanded)}
       >
         <span className="ah-process-completion-name">{event.process_name}</span>{" "}
-        · {label}
+        · <span className="ah-process-completion-label">{reading.label}</span>
         {event.exit_code !== null ? ` · koodi ${event.exit_code}` : ""}
         {delivery === "wake"
           ? " · herätti agentin"
@@ -661,8 +679,13 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
             <p>Odotusehto päättyi epäonnistuneeseen ajoon.</p>
           ) : event.run_ids.length && event.exit_code === 4 ? (
             <p>
-              Odotus palautti välitilanteen. Ajot jatkuvat, ja agentti voi
-              jatkaa odotusta.
+              Taskfleet palautti tilannekuvan sovitun ajan jälkeen. Workerit
+              työskentelevät yhä, ja agentti voi jatkaa odotusta.
+            </p>
+          ) : reading.tone === "neutral" && event.exit_code ? (
+            <p>
+              Habitat ei tiedä, mitä koodi tälle komennolle tarkoittaa. Agentti
+              kertoo sen yleensä seuraavassa viestissään.
             </p>
           ) : null}
           {context ? (
@@ -781,9 +804,11 @@ export function ProcessAwareToolUse({
             ? "running"
             : record.status === "killed"
               ? "cancelled"
-              : record.exit_code === 0
-                ? "succeeded"
-                : "failed"
+              : {
+                  ok: "succeeded" as const,
+                  neutral: "cancelled" as const,
+                  err: "failed" as const,
+                }[recordExit(record).tone]
           : props.state
       }
     />

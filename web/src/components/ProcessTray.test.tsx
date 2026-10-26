@@ -164,7 +164,7 @@ it("shows typed completions without raw command previews and does not join recyc
   ui.unmount();
 });
 
-it("reads a recognised wait's check-in exit as a check-in rather than a crash", () => {
+it("reads an exit code as an ended process, not a crash; a failed start stays red", () => {
   const event: ProcessEvent = {
     kind: "crash",
     process_id: "proc_example",
@@ -180,16 +180,17 @@ it("reads a recognised wait's check-in exit as a check-in rather than a crash", 
     <>
       <ProcessCompletion event={event} />
       <ProcessCompletion
-        event={{ ...event, process_name: "muu", run_ids: [] }}
+        event={{ ...event, process_name: "muu", exit_code: 3, run_ids: [] }}
+      />
+      <ProcessCompletion
+        event={{ ...event, process_name: "rikki", end_reason: "spawn_error" }}
       />
     </>,
   );
-  const [wait, other] = screen.getAllByTestId("process-completion");
-  expect(wait.textContent).toContain("odotuksen välitilanne");
-  expect(wait.textContent).not.toContain("kaatui");
-  expect(other.textContent).toContain("kaatui");
-  fireEvent.click(within(wait).getByTestId("process-completion-toggle"));
-  expect(within(wait).getByText(/välitilanteen/)).toBeTruthy();
+  const [wait, other, broken] = screen.getAllByTestId("process-completion");
+  expect(wait.dataset.tone).toBe("neutral");
+  expect(other.dataset.tone).toBe("neutral");
+  expect(broken.dataset.tone).toBe("err");
   ui.unmount();
 });
 

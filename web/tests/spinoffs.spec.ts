@@ -158,6 +158,8 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
   await expect(
     page.getByRole("button").and(page.getByTestId("background-spinoffs")),
   ).toHaveAttribute("data-working", "1");
+  // Nobody waits on it, and the closed pill says so.
+  await expect(pill).toHaveAttribute("data-unwaited", "1");
   merged = true;
   await expect(pill).toHaveAttribute("data-working", "0");
   if (process.env.OH_SPINOFF_CAPTURE === "1") {
@@ -441,10 +443,11 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
   await expect(row).toHaveCount(0);
 });
 
-// Merkit (Jari 16.10.2026): the spinoff pill rings the bell only for the
-// agent's wait, keeps a red dot until a failed spinoff's branch is gone, and
-// its tab lists spinoffs (never the wait process) with Lopeta odotus.
-test("@spinoffs @a11y spinoff tab: bell for the wait, a standing red dot until the branch is gone, stop the wait, open a row", async ({
+// Merkit (Jari 16.10.2026) and Pisteet (26.10.2026): the spinoff pill marks
+// the spinoff the agent waits on, keeps a red dot until a failed spinoff's
+// branch is gone, and its tab lists spinoffs (never the wait process) with
+// Lopeta odotus.
+test("@spinoffs @a11y spinoff tab: a mark for the wait, a standing red dot until the branch is gone, stop the wait, open a row", async ({
   page,
 }) => {
   const waited = "01m53wnktnxb4w2xgdd79a66de";
@@ -542,9 +545,11 @@ test("@spinoffs @a11y spinoff tab: bell for the wait, a standing red dot until t
     .getByRole("button")
     .and(page.getByTestId("background-spinoffs"));
   await expect(pill).toHaveAttribute("data-working", "1");
-  await expect(pill.locator(".ah-bg-corner.wait")).toHaveCount(1);
+  // The closed pill marks the working spinoff as waited on.
+  await expect(pill).toHaveAttribute("data-waited", "1");
+  await expect(pill).toHaveAttribute("data-unwaited", "0");
   await expect(pill.locator(".ah-bg-corner.attn")).toHaveCount(1);
-  // The wait is the spinoff's bell: no process pill for it.
+  // The wait belongs to its spinoff: no process pill for it.
   await expect(
     strip.getByRole("button").and(page.getByTestId("background-processes")),
   ).toHaveCount(0);
@@ -555,6 +560,7 @@ test("@spinoffs @a11y spinoff tab: bell for the wait, a standing red dot until t
     panel.getByRole("button").and(page.getByTestId("spinoff-ui-test-fail")),
   ).toBeVisible();
   await expect(panel).not.toContainText("odota-ui-test");
+  await expect(panel.locator('[data-waited="true"]')).toHaveCount(1);
   expect(
     (await new AxeBuilder({ page }).include(".ah-bg-strip").analyze())
       .violations,

@@ -22,8 +22,11 @@
   width: 14px;
   color: var(--ah-muted);
 }
-[data-state="exited"] .ah-process-mark {
+.ah-process-mark[data-tone="ok"] {
   color: var(--ah-ok);
+}
+.ah-process-mark[data-tone="err"] {
+  color: var(--ah-err);
 }
 .ah-process-dot {
   width: 8px;
@@ -46,10 +49,6 @@
   font-size: 12px;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-}
-[data-failed="true"] .ah-process-mark,
-[data-failed="true"] .ah-process-meta {
-  color: var(--ah-err);
 }
 [data-state="terminate_timeout"] .ah-process-meta {
   color: var(--ah-err);
@@ -200,7 +199,7 @@
   font-size: 12.5px;
   white-space: nowrap;
 }
-[data-failed="true"] .ah-process-window-state {
+.ah-process-window-state[data-tone="err"] {
   color: var(--ah-err);
 }
 .ah-process-window-close {
@@ -227,6 +226,18 @@
   width: 14px;
   height: 14px;
   flex: none;
+}
+/* Only a signal, a failed start or a lost process is red; an exit code is
+   the agent's to explain (exitReading). */
+.ah-process-completion > svg {
+  color: var(--ah-muted);
+}
+.ah-process-completion[data-tone="ok"] > svg {
+  color: var(--ah-ok);
+}
+.ah-process-completion[data-tone="err"] > svg,
+.ah-process-completion[data-tone="err"] .ah-process-completion-label {
+  color: var(--ah-err);
 }
 @media (max-width: 760px) {
   .ah-process-output pre {

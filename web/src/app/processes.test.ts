@@ -5,7 +5,12 @@ import {
   agentPresentation,
   waitsOnWorker,
 } from "../components/agentPresentation";
-import { parseInventory, parseOutput, processPath } from "./processes";
+import {
+  exitReading,
+  parseInventory,
+  parseOutput,
+  processPath,
+} from "./processes";
 
 describe("native process boundary", () => {
   it("keeps missing inventory distinct from an authoritative empty list", () => {
@@ -101,5 +106,36 @@ describe("native process boundary", () => {
         runActive: false,
       }).activity,
     ).toBe("waiting");
+  });
+  it("reads an exit code as neutral and keeps red for signals, failed starts and lost processes", () => {
+    const end = (edit: Partial<Parameters<typeof exitReading>[0]>) =>
+      exitReading({
+        killed: false,
+        exit_code: 3,
+        signal: null,
+        end_reason: null,
+        run_ids: [],
+        ...edit,
+      });
+    expect(end({}).tone).toBe("neutral");
+    expect(end({ exit_code: 0 }).tone).toBe("ok");
+    expect(end({ exit_code: null, signal: "SIGSEGV" }).tone).toBe("err");
+    expect(end({ exit_code: 3, signal: "SIGKILL" }).tone).toBe("err");
+    expect(end({ exit_code: 1, end_reason: "spawn_error" }).tone).toBe("err");
+    expect(end({ exit_code: null, end_reason: "lost" }).tone).toBe("err");
+    // A stop the person or agent asked for is no failure, whatever the signal.
+    expect(end({ killed: true, signal: "SIGTERM" }).tone).toBe("neutral");
+    // A recognised Taskfleet wait names its own codes; the same code from
+    // another command is just a code.
+    const wait = ["01m531x6y92ggdqcmb1exzmnya"];
+    for (const exit_code of [2, 3, 4]) {
+      expect(end({ exit_code, run_ids: wait }).tone).toBe("neutral");
+      expect(end({ exit_code, run_ids: wait }).label).not.toBe(
+        end({ exit_code }).label,
+      );
+    }
+    expect(end({ exit_code: 1, run_ids: wait }).label).toBe(
+      end({ exit_code: 1 }).label,
+    );
   });
 });

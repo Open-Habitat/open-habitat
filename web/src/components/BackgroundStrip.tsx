@@ -4,6 +4,7 @@ import {
   type ProcessRecord,
   processLabel,
   processLive,
+  recordExit,
 } from "../app/processes";
 import { type Spinoff, spinoffStateLabel } from "../app/spinoffs";
 import { ControlButton } from "./ControlElements";
@@ -20,10 +21,17 @@ import "./BackgroundStrip.css";
 // Merkit (Jari 16.10.2026, round 2026-10-16-taustatyo-riff): two small pills
 // above the composer, one for the agent's spinoffs and one for its processes.
 // At rest a pill says only whether something of its kind runs (icon and
-// count), whether the agent's ended turn waits on it (bell) and whether a
-// spinoff needs the person (red dot, until its branch is gone). A pill opens
-// a floating panel with the two kinds as tabs; a process opens in a window.
-// A `taskfleet run wait` is its spinoff's bell, never a process row.
+// count), whether the agent's ended turn waits on a process (bell) and
+// whether a spinoff needs the person (red dot, until its branch is gone). A
+// pill opens a floating panel with the two kinds as tabs; a process opens in
+// a window.
+// A `taskfleet run wait` belongs to its spinoff, never a process row.
+//
+// Pisteet (Jari 26.10.2026, proto-background-waits direction 3): the spinoff
+// pill shows one mark per working spinoff instead of a count. The agent's
+// background-wait mark means its ended turn waits on that spinoff; a dashed
+// ring means nobody does, so a wait the agent forgot is visible on the closed
+// pill. Not waiting is a fact, never an error.
 
 const duration = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -45,8 +53,12 @@ interface SpinoffItem {
   run: Spinoff;
   live: boolean;
   wait?: ProcessRecord;
+  /** The agent's turn resumes when this spinoff settles. */
+  waited: boolean;
   attention: boolean;
 }
+/** Above this many marks the pill counts each kind instead. */
+const MAX_MARKS = 5;
 
 /** Everything the strip knows about each kind, derived in one place. */
 export function backgroundFacts({
@@ -91,14 +103,23 @@ export function backgroundFacts({
   // Only a wait whose end starts a turn is the agent waiting (the daemon's
   // waiting_on rule); any running wait can still be stopped from its row.
   const waking = (p?: ProcessRecord) => p?.wakes_agent === true;
-  const spin: SpinoffItem[] = [...runs, ...waitOnly].map((run) => ({
-    run,
-    live: ["working", "waiting_parent", "unknown"].includes(run.state),
-    wait: waits.find((p) => p.run_ids.includes(run.run_id)),
-    // Jari 16.10.2026: a failed spinoff needs the person until its branch is
-    // gone (merged or discarded), not until it has been looked at.
-    attention: run.state === "unmerged" && run.preserved,
-  }));
+  const spin: SpinoffItem[] = [...runs, ...waitOnly].map((run) => {
+    const live = ["working", "waiting_parent", "unknown"].includes(run.state);
+    const wait = waits.find((p) => p.run_ids.includes(run.run_id));
+    return {
+      run,
+      live,
+      wait,
+      waited: live && waking(wait),
+      // Jari 16.10.2026: a failed spinoff needs the person until its branch
+      // is gone (merged or discarded), not until it has been looked at.
+      attention: run.state === "unmerged" && run.preserved,
+    };
+  });
+  const live = [
+    ...spin.filter((i) => i.waited),
+    ...spin.filter((i) => i.live && !i.waited),
+  ];
   const records = processes.filter((p) => p.run_ids.length === 0);
   const available = availability === "available";
   // The conversation has no running Pi (stopped, or starting because a send
@@ -109,15 +130,15 @@ export function backgroundFacts({
   return {
     spin: {
       items: spin,
-      live: [
-        ...spin.filter((i) => i.live && i.wait),
-        ...spin.filter((i) => i.live && !i.wait),
-      ],
+      live,
+      // One mark per working spinoff, and per waited one in another state
+      // (unknown, waiting on its parent): a wait is worth seeing whatever
+      // the run's state, a missing one only while the run works.
+      marks: live.filter((i) => i.waited || i.run.state === "working"),
       ended: spin.filter((i) => !i.live),
       // The count says "työskentelee": unknown and parent-waiting runs are
       // listed with their own labels but not counted as working.
       working: spin.filter((i) => i.run.state === "working").length,
-      bell: agentIdle && spin.some((i) => i.live && waking(i.wait)),
       attention: spin.filter((i) => i.attention).length,
       present: spin.length > 0,
       stale: spinoffsStale,
@@ -217,11 +238,20 @@ export function BackgroundStrip({
         f.live.length > f.working
           ? `${f.live.length - f.working} muussa tilassa`
           : "",
-        f.bell
-          ? `agentti odottaa: ${f.live
-              .filter((i) => i.wait?.wakes_agent === true)
-              .map((i) => i.run.title || i.run.run_id)
-              .join(", ")}`
+        f.marks.length
+          ? [
+              f.marks.some((i) => i.waited)
+                ? `odotetaan: ${f.marks
+                    .filter((i) => i.waited)
+                    .map((i) => i.run.title || i.run.run_id)
+                    .join(", ")}`
+                : "",
+              f.marks.some((i) => !i.waited)
+                ? `${f.marks.filter((i) => !i.waited).length} ilman odotusta`
+                : "",
+            ]
+              .filter(Boolean)
+              .join(", ")
           : "",
         f.attention
           ? `${count(f.attention, "ei mergetty", "ei mergetty")}, työ tallessa`
@@ -315,18 +345,30 @@ export function BackgroundStrip({
     ) : null;
   const spinRow = (i: SpinoffItem) => {
     const r = i.run;
-    const meta =
+    const state =
       r.state === "working" ? (
         duration(Date.now() - Date.parse(r.created_at))
       ) : (
         <span className="ah-bg-label">{spinoffStateLabel(r)}</span>
       );
+    const meta = i.waited ? (
+      <>
+        <span className="ah-bg-wait-word">odotetaan</span> · {state}
+      </>
+    ) : r.state === "working" ? (
+      <>
+        <span className="ah-bg-wait-word">ei odotusta</span> · {state}
+      </>
+    ) : (
+      state
+    );
     return (
       <div
         className="ah-bg-row"
         data-kind="spin"
         data-state={r.state}
         data-attention={i.attention || undefined}
+        data-waited={i.live ? i.waited : undefined}
         key={r.run_id}
       >
         <button
@@ -338,9 +380,7 @@ export function BackgroundStrip({
         >
           <span className="ah-bg-mark" aria-hidden="true">
             {i.live ? (
-              <span
-                className={`ah-bg-dot${r.state === "working" ? " run" : " unknown"}`}
-              />
+              <WaitMark item={i} />
             ) : (
               <Icon name={r.state === "merged" ? "merge" : "warning"} />
             )}
@@ -348,16 +388,6 @@ export function BackgroundStrip({
           <span className="ah-bg-name">{r.title || r.run_id}</span>
           <span className="ah-bg-meta">{meta}</span>
         </button>
-        {i.wait?.wakes_agent === true ? (
-          <span
-            className="ah-bg-wake"
-            role="img"
-            aria-label="Agentti odottaa tätä"
-            title="Agentti jatkaa, kun worker valmistuu"
-          >
-            <Icon name="bell" />
-          </span>
-        ) : null}
         {i.wait ? (
           <ControlButton
             data-testid="stop-wait"
@@ -379,20 +409,26 @@ export function BackgroundStrip({
   };
   const procRow = (p: ProcessRecord) => {
     const live = processLive(p);
+    const exit = live ? undefined : recordExit(p);
     const meta =
       p.status === "running"
         ? duration(Date.now() - p.started_at)
-        : p.status === "exited" && p.ended_at
-          ? p.exit_code === 0
-            ? `Valmis ${clock(p.ended_at)}`
-            : `Virhe · koodi ${p.exit_code ?? "?"}`
-          : processLabel(p);
+        : [
+            processLabel(p),
+            exit?.tone !== "ok" && p.exit_code !== null
+              ? `koodi ${p.exit_code}`
+              : "",
+            exit?.tone === "err" && p.signal ? p.signal : "",
+          ]
+            .filter(Boolean)
+            .join(" · ") +
+          (!live && p.ended_at ? ` · ${clock(p.ended_at)}` : "");
     return (
       <div
         className="ah-bg-row"
         data-kind="proc"
         data-state={p.status}
-        data-failed={p.exit_code !== null && p.exit_code !== 0}
+        data-tone={exit?.tone}
         key={p.process_token}
       >
         <button
@@ -452,6 +488,17 @@ export function BackgroundStrip({
           role="status"
         >
           Tila voi olla vanhentunut.
+        </p>
+      ) : null}
+      {facts.spin.marks.length ? (
+        <p className="ah-bg-legend" data-testid="wait-legend">
+          <span
+            className="ah-bg-wait-dot ah-background-dot"
+            aria-hidden="true"
+          />
+          odotetaan
+          <span className="ah-bg-wait-dot nowait" aria-hidden="true" />
+          ei odotusta: agentti ei herää, kun worker valmistuu
         </p>
       ) : null}
       {facts.spin.live.length ? (
@@ -571,6 +618,16 @@ export function BackgroundStrip({
                   kind === "spin" ? facts.spin.working : f.live.length
                 }
                 data-count={number(kind)}
+                data-waited={
+                  kind === "spin"
+                    ? facts.spin.marks.filter((i) => i.waited).length
+                    : undefined
+                }
+                data-unwaited={
+                  kind === "spin"
+                    ? facts.spin.marks.filter((i) => !i.waited).length
+                    : undefined
+                }
                 key={kind}
                 size="inline"
                 presentation="pill"
@@ -585,8 +642,12 @@ export function BackgroundStrip({
                 onPress={() => view.setPanel(panel === kind ? null : kind)}
               >
                 <Icon name={icon[kind]} className="ah-bg-kind-ic" />
-                <span className="ah-bg-n">{number(kind)}</span>
-                {f.bell ? (
+                {kind === "spin" && facts.spin.marks.length ? (
+                  <WaitMarks marks={facts.spin.marks} />
+                ) : (
+                  <span className="ah-bg-n">{number(kind)}</span>
+                )}
+                {kind === "proc" && facts.proc.bell ? (
                   <span className="ah-bg-corner wait" aria-hidden="true">
                     <Icon name="bell" />
                   </span>
@@ -605,5 +666,46 @@ export function BackgroundStrip({
         </p>
       ) : null}
     </section>
+  );
+}
+
+/** A live spinoff's mark: waited on, working without a wait, or neither. */
+function WaitMark({ item }: { item: SpinoffItem }) {
+  return item.waited ? (
+    <span className="ah-bg-wait-dot ah-background-dot" />
+  ) : item.run.state === "working" ? (
+    <span className="ah-bg-wait-dot nowait" />
+  ) : (
+    <span className="ah-bg-dot unknown" />
+  );
+}
+
+function WaitMarks({ marks }: { marks: SpinoffItem[] }) {
+  if (marks.length <= MAX_MARKS)
+    return (
+      <span className="ah-bg-marks" aria-hidden="true">
+        {marks.map((i) => (
+          <WaitMark item={i} key={i.run.run_id} />
+        ))}
+      </span>
+    );
+  // Many workers: one mark per kind with its count, so the dashed ring of
+  // a forgotten wait can never be cut off.
+  const waited = marks.filter((i) => i.waited).length;
+  return (
+    <span className="ah-bg-marks" aria-hidden="true">
+      {waited ? (
+        <>
+          <span className="ah-bg-wait-dot ah-background-dot" />
+          {waited}
+        </>
+      ) : null}
+      {marks.length - waited ? (
+        <>
+          <span className="ah-bg-wait-dot nowait" />
+          {marks.length - waited}
+        </>
+      ) : null}
+    </span>
   );
 }
