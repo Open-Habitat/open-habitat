@@ -58,10 +58,10 @@ type blockedSink struct {
 	once             sync.Once
 }
 
-func (s *blockedSink) Deliver(context.Context, Identity, string, string) error {
+func (s *blockedSink) Deliver(context.Context, Identity, string, string) (Handoff, error) {
 	s.once.Do(func() { close(s.entered) })
 	<-s.release
-	return nil
+	return HandoffInUse, nil
 }
 
 func TestRevokeDuringHandoff(t *testing.T) {

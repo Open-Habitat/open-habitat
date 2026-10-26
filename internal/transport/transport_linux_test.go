@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -47,12 +48,12 @@ func fixture(t *testing.T) (*Server, *net.UnixListener, gateway.Identity, *atomi
 	t.Cleanup(func() { _ = ln.Close() })
 	cfg := Config{GatewayUID: os.Getuid(), UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: path, Provider: "github", Subject: "42"}
 	calls := new(atomic.Int32)
-	s, e := newServer(cfg, func(_ context.Context, token string) error {
+	s, e := newServer(cfg, func(_ context.Context, token string) (bool, error) {
 		if token != "sentinel-secret" {
 			t.Error("unexpected token")
 		}
 		calls.Add(1)
-		return nil
+		return false, nil
 	}, true)
 	if e != nil {
 		t.Fatal(e)
@@ -95,7 +96,7 @@ func TestHandoffDiagnosticDoesNotExposeCredentials(t *testing.T) {
 	s, _, m, calls := fixture(t)
 	var out bytes.Buffer
 	s.log = diagnostic.New(&out, "daemon")
-	if got := send(t, m, payload(m, strings.Repeat("a", 32))); got != http.StatusNoContent {
+	if got := send(t, m, payload(m, strings.Repeat("a", 32))); got != http.StatusOK {
 		t.Fatalf("handoff: %d", got)
 	}
 	if got := send(t, m, payload(m, strings.Repeat("a", 32))); got != http.StatusBadRequest {
@@ -166,31 +167,31 @@ func TestJITBindingNumericIdentityAndStrictDecode(t *testing.T) {
 func TestHandoffAndRejections(t *testing.T) {
 	_, _, m, calls := fixture(t)
 	sink := Sink{testPath: true}
-	if e := sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e != nil {
+	if _, e := sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e != nil {
 		t.Fatal(e)
 	}
 	if calls.Load() != 1 {
 		t.Fatal(calls.Load())
 	}
 	m.Subject = "43"
-	if sink.Deliver(context.Background(), m, "42", "sentinel-secret") == nil {
+	if _, e := sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e == nil {
 		t.Fatal("mapping accepted")
 	}
 	m.Subject = "42"
 	m.UID++
-	if sink.Deliver(context.Background(), m, "42", "sentinel-secret") == nil {
+	if _, e := sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e == nil {
 		t.Fatal("target accepted")
 	}
 	m.UID--
 	b := payload(m, strings.Repeat("a", 32))
-	if got := send(t, m, b); got != 204 {
+	if got := send(t, m, b); got != 200 {
 		t.Fatalf("status %d", got)
 	}
-	if got := send(t, m, b); got == 204 {
+	if got := send(t, m, b); got == 200 {
 		t.Fatal("replay accepted")
 	}
 	for _, bad := range [][]byte{b[:len(b)-1], append(append([]byte{}, b...), byte('x')), []byte(`{"version":1}`), bytes.Replace(b, []byte(`"version":1`), []byte(`"version":2`), 1), bytes.Replace(b, []byte(`"version":1`), []byte(`"version":1,"version":1`), 1), bytes.Replace(b, []byte(`"token":`), []byte(`"extra":1,"token":`), 1), bytes.Replace(b, []byte(`"subject":"42"`), []byte(`"subject":"43"`), 1), bytes.Replace(b, []byte(`"uid":`+strconv.Itoa(m.UID)), []byte(`"uid":`+strconv.Itoa(m.UID+1)), 1)} {
-		if got := send(t, m, bad); got == 204 {
+		if got := send(t, m, bad); got == 200 {
 			t.Fatalf("invalid accepted: %s", bad)
 		}
 	}
@@ -199,11 +200,11 @@ func TestHandoffAndRejections(t *testing.T) {
 		if !strings.Contains(headers, "Transfer-Encoding") {
 			headers += fmt.Sprintf("Content-Length: %d\r\n", len(b))
 		}
-		if got := raw(t, m.Socket, tc.method, tc.uri, headers, b); got == 204 {
+		if got := raw(t, m.Socket, tc.method, tc.uri, headers, b); got == 200 {
 			t.Fatalf("accepted %s %s %s", tc.method, tc.uri, headers)
 		}
 	}
-	if got := raw(t, m.Socket, "POST", Path, fmt.Sprintf("Content-Type: application/json\r\nContent-Length: %d\r\n", maxBody+1), nil); got == 204 {
+	if got := raw(t, m.Socket, "POST", Path, fmt.Sprintf("Content-Type: application/json\r\nContent-Length: %d\r\n", maxBody+1), nil); got == 200 {
 		t.Fatal("oversize accepted")
 	}
 	if calls.Load() != 2 {
@@ -215,7 +216,7 @@ func TestOneDialAndRedaction(t *testing.T) {
 	sink := Sink{testPath: true, dial: func(context.Context, string) (net.Conn, error) { attempts++; return nil, io.ErrUnexpectedEOF }}
 	m := gateway.Identity{Provider: "github", Subject: "42", UID: os.Geteuid(), Username: "user", Socket: filepath.Join(t.TempDir(), "missing")}
 	for i := 0; i < 2; i++ {
-		e := sink.Deliver(context.Background(), m, "42", "sentinel-secret")
+		_, e := sink.Deliver(context.Background(), m, "42", "sentinel-secret")
 		if e == nil || strings.Contains(e.Error(), "sentinel-secret") {
 			t.Fatal(e)
 		}
@@ -256,7 +257,10 @@ func TestConsumerFailureReplayAndCapacity(t *testing.T) {
 	defer ln.Close()
 	cfg := Config{GatewayUID: os.Getuid(), UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: path, Provider: "github", Subject: "42"}
 	calls := new(atomic.Int32)
-	s, e := newServer(cfg, func(context.Context, string) error { calls.Add(1); return fmt.Errorf("sentinel-secret native failure") }, true)
+	s, e := newServer(cfg, func(context.Context, string) (bool, error) {
+		calls.Add(1)
+		return false, fmt.Errorf("sentinel-secret native failure")
+	}, true)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -265,10 +269,10 @@ func TestConsumerFailureReplayAndCapacity(t *testing.T) {
 	go func() { _ = s.Serve(ctx, ln) }()
 	m := gateway.Identity{Provider: "github", Subject: "42", UID: cfg.UID, Username: cfg.Username, Socket: path}
 	b := payload(m, strings.Repeat("b", 32))
-	if got := send(t, m, b); got == 204 {
+	if got := send(t, m, b); got == 200 {
 		t.Fatal("consumer failed")
 	}
-	if got := send(t, m, b); got == 204 {
+	if got := send(t, m, b); got == 200 {
 		t.Fatal("replayed failure")
 	}
 	if calls.Load() != 1 {
@@ -279,7 +283,7 @@ func TestConsumerFailureReplayAndCapacity(t *testing.T) {
 		s.seen[fmt.Sprintf("%032x", len(s.seen))] = struct{}{}
 	}
 	s.mu.Unlock()
-	if got := send(t, m, payload(m, strings.Repeat("c", 32))); got == 204 || calls.Load() != 1 {
+	if got := send(t, m, payload(m, strings.Repeat("c", 32))); got == 200 || calls.Load() != 1 {
 		t.Fatal("capacity failed open")
 	}
 }
@@ -288,7 +292,7 @@ func TestForgedPeerHeaderAndFraming(t *testing.T) {
 	b := payload(m, strings.Repeat("d", 32))
 	base := fmt.Sprintf("Content-Type: application/json\r\nContent-Length: %d\r\nX-Agent-Host-Identity: forged\r\n", len(b))
 	for _, h := range []string{"Content-Type: application/json\r\nTransfer-Encoding: chunked\r\nContent-Length: 0\r\n", base + fmt.Sprintf("Content-Length: %d\r\n", len(b)), "Content-Type: application/json\r\nContent-Length: 0\r\n"} {
-		if raw(t, m.Socket, "POST", Path, h, b) == 204 {
+		if raw(t, m.Socket, "POST", Path, h, b) == 200 {
 			t.Fatalf("ambiguous framing accepted: %q", h)
 		}
 	}
@@ -298,28 +302,37 @@ func TestForgedPeerHeaderAndFraming(t *testing.T) {
 }
 func TestSuccessResponseMustEnd(t *testing.T) {
 	_, _, m, _ := fixture(t)
-	// One dial, but a malicious same-UID peer sends a second response after 204.
+	// One dial, but a malicious same-UID peer sends a second response after a success.
 	sink := Sink{testPath: true, dial: func(ctx context.Context, _ string) (net.Conn, error) {
 		client, server := net.Pipe()
 		go func() {
 			defer server.Close()
 			_, _ = io.Copy(io.Discard, io.LimitReader(server, 2048))
-			_, _ = io.WriteString(server, "HTTP/1.1 204 No Content\r\n\r\nHTTP/1.1 204 No Content\r\n\r\n")
+			_, _ = io.WriteString(server, okReply+okReply)
 		}()
 		return client, nil
 	}}
 	// A non-Unix injected connection cannot provide kernel credentials.
-	if sink.Deliver(context.Background(), m, "42", "sentinel-secret") == nil {
+	if _, e := sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e == nil {
 		t.Fatal("non-Unix peer accepted")
 	}
 }
+
+// okReply is a well-formed plan-less success from the daemon.
+const okReply = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 44\r\n\r\n{\"schema_version\":1,\"github_token\":\"in_use\"}"
+
 func TestResponseBoundsAndExactSuccess(t *testing.T) {
 	_, _, m, _ := fixture(t)
 	for _, reply := range []string{
 		"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n",
 		"HTTP/1.1 302 Found\r\nLocation: http://example.com/\r\nContent-Length: 0\r\n\r\n",
-		"HTTP/1.1 204 No Content\r\n\r\nHTTP/1.1 204 No Content\r\n\r\n",
-		"HTTP/1.1 204 No Content\r\nX-Pad: " + strings.Repeat("x", maxHeaders+1024) + "\r\n\r\n",
+		// The earlier plan-less contract says nothing about the token.
+		"HTTP/1.1 204 No Content\r\n\r\n",
+		okReply + okReply,
+		strings.Replace(okReply, "\r\n\r\n", "\r\nX-Pad: "+strings.Repeat("x", maxHeaders+1024+4096)+"\r\n\r\n", 1),
+		strings.Replace(okReply, `"in_use"`, `"in-use"`, 1),
+		strings.Replace(okReply, `,"github_token":"in_use"`, `,"github_tokem":"in_use"`, 1),
+		strings.Replace(okReply, `{"schema_version":1,"github_token":"in_use"}`, `{"schema_version":1,"github_token":"x"}   `, 1),
 	} {
 		path := filepath.Join(shortDir(t), "fake")
 		ln, e := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
@@ -346,7 +359,7 @@ func TestResponseBoundsAndExactSuccess(t *testing.T) {
 		sink := Sink{testPath: true, dial: func(ctx context.Context, _ string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", path)
 		}}
-		if e := sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e == nil || strings.Contains(e.Error(), "sentinel-secret") {
+		if _, e := sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e == nil || strings.Contains(e.Error(), "sentinel-secret") {
 			t.Fatalf("response accepted or leaked: %q", reply[:20])
 		}
 		_ = ln.Close()
@@ -437,6 +450,34 @@ func TestBindingTraversalPolicy(t *testing.T) {
 	check(false)
 }
 
+// The daemon says whether gh kept another token instead of this one; only
+// its unused answer reaches the gateway as unused, with or without a plan.
+func TestHandoffSaysWhetherTheTokenIsUnused(t *testing.T) {
+	s, _, m, calls := fixture(t)
+	sink := Sink{testPath: true}
+	use, e := sink.Deliver(context.Background(), m, "42", "sentinel-secret")
+	if e != nil || use != gateway.HandoffInUse {
+		t.Fatal(use, e)
+	}
+	s.consume = func(context.Context, string) (bool, error) { calls.Add(1); return true, nil }
+	if use, e = sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e != nil || use != gateway.HandoffUnused {
+		t.Fatal(use, e)
+	}
+	s.SetPlanConsumer(func(_ context.Context, p Plan) []PlanOutcome { return []PlanOutcome{{p.Defaults[0], "queued"}} })
+	reply, e := sink.DeliverFirst(context.Background(), m, "42", "sentinel-secret", gateway.FirstLogin{Plan: &gateway.RepositoryPlan{Mode: "auto", Defaults: []string{"o/r"}}})
+	if e != nil || reply.Token != gateway.HandoffUnused || len(reply.Defaults) != 1 {
+		t.Fatal(reply, e)
+	}
+	// A failed install answers nothing, so nothing can be revoked.
+	s.consume = func(context.Context, string) (bool, error) { return true, errors.New("install failed") }
+	if use, e = sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e == nil || use != "" {
+		t.Fatal(use, e)
+	}
+	if calls.Load() != 3 {
+		t.Fatal(calls.Load())
+	}
+}
+
 // The plan travels in the same one-time handoff: the daemon installs the
 // token first, then answers every default in order. A plan the daemon has no
 // consumer for, or that breaks the owner/repo grammar or the bound, is refused
@@ -462,8 +503,8 @@ func TestHandoffPlan(t *testing.T) {
 	if len(got) != 1 || got[0].Mode != "auto" || strings.Join(got[0].Defaults, ",") != "northstar-demo/product,northstar-demo/infra" {
 		t.Fatal(got)
 	}
-	// The plan-less handoff keeps its 204 contract.
-	if e := sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e != nil {
+	// The plan-less handoff answers only what became of the token.
+	if _, e := sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e != nil {
 		t.Fatal(e)
 	}
 	before := calls.Load()

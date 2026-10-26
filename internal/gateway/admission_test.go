@@ -159,7 +159,7 @@ type blockingSink struct {
 	during func()
 }
 
-func (s *blockingSink) Deliver(ctx context.Context, m Identity, id, token string) error {
+func (s *blockingSink) Deliver(ctx context.Context, m Identity, id, token string) (Handoff, error) {
 	if s.during != nil {
 		s.during()
 	}

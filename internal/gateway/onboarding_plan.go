@@ -100,15 +100,17 @@ func checkDefaults(ctx context.Context, checker RepositoryChecker, token string,
 }
 
 // deliverFirstLogin is the handoff of the binding-creating login. It returns
-// the record to keep for the subject; the error is the handoff's.
-func (a *Auth) deliverFirstLogin(ctx context.Context, target Identity, id, token string) (onboardingReceipt, bool, error) {
+// the record to keep for the subject and the daemon's answer on the token;
+// the error is the handoff's.
+func (a *Auth) deliverFirstLogin(ctx context.Context, target Identity, id, token string) (onboardingReceipt, bool, Handoff, error) {
 	c, ok := a.onboardingView()
 	checker, canCheck := a.provider.(RepositoryChecker)
 	seed := a.siteKeySeed()
 	if !ok || !canCheck && seed == nil {
 		// Without the configuration, or with nothing to hand over, nothing
 		// is imported or seeded; the login itself goes on as before.
-		return onboardingReceipt{}, false, a.sink.Deliver(ctx, target, id, token)
+		use, err := a.sink.Deliver(ctx, target, id, token)
+		return onboardingReceipt{}, false, use, err
 	}
 	receipt := onboardingReceipt{At: a.now().UTC().Format(time.RFC3339), Mode: c.Repositories.Mode, Defaults: []receiptDefault{}, AIKey: "not_offered"}
 	checked := make([]string, len(c.Repositories.Defaults))
@@ -144,14 +146,15 @@ func (a *Auth) deliverFirstLogin(ctx context.Context, target Identity, id, token
 		if seed != nil {
 			receipt.AIKey = "failed"
 		}
-		return receipt, true, a.sink.Deliver(ctx, target, id, token)
+		use, err := a.sink.Deliver(ctx, target, id, token)
+		return receipt, true, use, err
 	}
 	reply, err := sink.DeliverFirst(ctx, target, id, token, first)
 	if err != nil {
 		// The answer is missing: every daemon-side entry stays unknown, and
 		// a seed that may have been written is recorded as a copy.
 		a.recordFirstCopy(id, first.Seed)
-		return receipt, true, err
+		return receipt, true, "", err
 	}
 	if first.Seed != nil && slices.Contains([]string{"seeded", "already_present", "failed"}, reply.AIKey) {
 		receipt.AIKey = reply.AIKey
@@ -165,7 +168,7 @@ func (a *Auth) deliverFirstLogin(ctx context.Context, target Identity, id, token
 		a.recordFirstCopy(id, first.Seed)
 	}
 	if first.Plan == nil || len(reply.Defaults) != len(plan.Defaults) {
-		return receipt, true, nil
+		return receipt, true, reply.Token, nil
 	}
 	for i, o := range reply.Defaults {
 		for j := range receipt.Defaults {
@@ -174,7 +177,7 @@ func (a *Auth) deliverFirstLogin(ctx context.Context, target Identity, id, token
 			}
 		}
 	}
-	return receipt, true, nil
+	return receipt, true, reply.Token, nil
 }
 
 // recordReceipt keeps the binding-creating login's record. A record that

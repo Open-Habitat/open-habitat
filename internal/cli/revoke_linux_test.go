@@ -64,4 +64,6 @@ func TestPrivateRevocationProtocol(t *testing.T) {
 
 type revokeTestSink struct{}
 
-func (revokeTestSink) Deliver(context.Context, gateway.Identity, string, string) error { return nil }
+func (revokeTestSink) Deliver(context.Context, gateway.Identity, string, string) (gateway.Handoff, error) {
+	return gateway.HandoffInUse, nil
+}

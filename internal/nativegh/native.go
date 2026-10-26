@@ -7,6 +7,7 @@ package nativegh
 import (
 	"bytes"
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -165,8 +166,11 @@ const (
 )
 
 type Result struct {
-	Phase             Phase
-	Storage           Storage
+	Phase   Phase
+	Storage Storage
+	// Unused is set only when the kept login positively holds another
+	// token than the one handed over, so revoking that one costs nothing.
+	Unused            bool
 	CleanupOK         bool
 	HelperInert       bool
 	RevokesOAuthToken bool
@@ -205,16 +209,16 @@ func New(home, subject string, run Runner, evidence Evidence) (*Adapter, error) 
 // Consumer can be passed to transport.NewServer/daemon.ServeHTTP. The token
 // exists only as a call-local reader; callers must not retry the handoff.
 func (a *Adapter) Consumer() transport.Consumer {
-	return func(ctx context.Context, token string) error {
+	return func(ctx context.Context, token string) (bool, error) {
 		result, err := a.Install(ctx, token)
 		// The phase is native observation, distinct from the transport ack.
 		// Never include token, gh output, stderr, login or credential storage.
 		if err != nil {
 			diagnostic.New(os.Stderr, "daemon").Warn("native_gh_install", "outcome", "failed", "reason", "native_install_unavailable")
 		} else {
-			diagnostic.New(os.Stderr, "daemon").Info("native_gh_install", "outcome", "accepted", "phase", string(result.Phase))
+			diagnostic.New(os.Stderr, "daemon").Info("native_gh_install", "outcome", "accepted", "phase", string(result.Phase), "token_unused", result.Unused)
 		}
-		return err
+		return err == nil && result.Unused, err
 	}
 }
 func (a *Adapter) call(ctx context.Context, program string, output bool, in io.Reader, args ...string) ([]byte, error) {
@@ -684,6 +688,16 @@ func (a *Adapter) cleanup(ctx context.Context, login string) bool {
 	_, e = a.gh(ctx, false, nil, statusArgs...)
 	return errors.Is(e, noAuth)
 }
+
+// holdsOther is whether gh's active github.com login positively holds a token
+// other than this one. A token gh cannot show, or one equal to it, may be the
+// one gh uses, so it is never reported as unused.
+func (a *Adapter) holdsOther(ctx context.Context, token string) bool {
+	held, e := a.gh(ctx, true, nil, "auth", "token", "--hostname", "github.com")
+	defer clear(held)
+	held = bytes.TrimSuffix(held, []byte("\n"))
+	return e == nil && len(held) > 0 && subtle.ConstantTimeCompare(held, []byte(token)) == 0
+}
 func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -705,7 +719,7 @@ func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
 		return result, denied
 	case kind == own:
 		if _, storage, ok := a.observeWithLogin(ctx, login); ok {
-			return Result{Phase: Reobserved, Storage: storage}, nil
+			return Result{Phase: Reobserved, Storage: storage, Unused: a.holdsOther(ctx, token)}, nil
 		}
 		return result, denied
 	case kind == revoked:

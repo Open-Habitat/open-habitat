@@ -59,7 +59,24 @@ type Provider interface {
 // TokenSink consumes a token in one attempt; a failure is terminal for this login.
 // Phase 2 supplies the authenticated local UDS implementation.
 type TokenSink interface {
-	Deliver(context.Context, Identity, string, string) error
+	Deliver(context.Context, Identity, string, string) (Handoff, error)
+}
+
+// Handoff is the daemon's answer on what became of the token. HandoffUnused
+// means the person's gh kept its own login of the same account and positively
+// holds another token, so this one went nowhere; anything else is in use.
+type Handoff string
+
+const (
+	HandoffInUse  Handoff = "in_use"
+	HandoffUnused Handoff = "unused"
+)
+
+// TokenRevoker revokes a token the gateway itself just obtained. Only an
+// unused token is revoked: GitHub keeps ten tokens per person and scope and
+// revokes the oldest, which is the one the person's gh holds.
+type TokenRevoker interface {
+	RevokeToken(context.Context, string) error
 }
 
 // RepositoryPlan is the part of the site onboarding the binding-creating
@@ -87,6 +104,7 @@ type FirstLogin struct {
 // AIKey is seeded, already_present (the person's Pi had a credential for
 // that provider, which stays) or failed.
 type FirstLoginReply struct {
+	Token    Handoff
 	Defaults []PlanOutcome
 	AIKey    string
 }
@@ -336,6 +354,24 @@ func (a *Auth) brokerEvent(attempt, operation string, reason BrokerFailure) {
 		fields = append(fields, "attempt_id", attempt)
 	}
 	a.log.Info("oauth_callback", fields...)
+}
+
+// revokeUnused revokes the token this login obtained when the daemon answered
+// that the person's gh kept another one. The sign-in goes on either way: a
+// token left live only counts against GitHub's limit, as before.
+func (a *Auth) revokeUnused(attempt, token string) {
+	revoker, ok := a.provider.(TokenRevoker)
+	if !ok {
+		return
+	}
+	// A browser that leaves mid-callback must not leave the token live.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	outcome := "revoked"
+	if revoker.RevokeToken(ctx, token) != nil {
+		outcome = "failed"
+	}
+	a.log.Info("github_token_revoke", "outcome", outcome, "reason", "unused_by_native_gh", "attempt_id", attempt)
 }
 func (a *Auth) authEvent(attempt, outcome, reason string) {
 	// Only these internally chosen literals may enter the structured log.
@@ -680,19 +716,23 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	// handoff's answer is lost. Nothing is retried: a later login never
 	// carries either.
 	var delivered error
+	var handoff Handoff
 	if ensured.Created {
-		receipt, keep, err := a.deliverFirstLogin(r.Context(), target, id, token)
-		delivered = err
+		receipt, keep, use, err := a.deliverFirstLogin(r.Context(), target, id, token)
+		delivered, handoff = err, use
 		if keep && a.recordReceipt(id, receipt) != nil {
 			a.authEvent(attempt, "degraded", "onboarding_record_failed")
 		}
 	} else {
-		delivered = a.sink.Deliver(r.Context(), target, id, token)
+		handoff, delivered = a.sink.Deliver(r.Context(), target, id, token)
 	}
 	if delivered != nil {
 		a.authEvent(attempt, "rejected", "handoff_failed")
 		a.callbackFailure(w, r, 503, "native_adapter_error")
 		return
+	}
+	if handoff == HandoffUnused {
+		a.revokeUnused(attempt, token)
 	}
 	sid, e := a.secret()
 	if e != nil {

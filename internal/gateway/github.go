@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -229,6 +230,37 @@ func (g GitHubProvider) lookup(ctx context.Context, path string) (GitHubUser, er
 		name = ""
 	}
 	return GitHubUser{ID: body.ID.String(), Login: body.Login, Name: name, Type: body.Type}, nil
+}
+
+// RevokeToken deletes one OAuth token of this app with the app's own
+// credentials. GitHub answers 204 when it is gone; nothing it says is
+// returned, and the token is never logged.
+func (g GitHubProvider) RevokeToken(ctx context.Context, token string) error {
+	if g.ClientID == "" || g.ClientSecret == "" || token == "" {
+		return errors.New("revocation unavailable")
+	}
+	body, e := json.Marshal(struct {
+		AccessToken string `json:"access_token"`
+	}{token})
+	if e != nil {
+		return errors.New("revocation unavailable")
+	}
+	req, e := http.NewRequestWithContext(ctx, "DELETE", githubAPI+"/applications/"+url.PathEscape(g.ClientID)+"/token", bytes.NewReader(body))
+	if e != nil {
+		return errors.New("revocation unavailable")
+	}
+	req.SetBasicAuth(g.ClientID, g.ClientSecret)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Content-Type", "application/json")
+	resp, e := g.client().Do(req)
+	if e != nil {
+		return errors.New("revocation unavailable")
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return errors.New("revocation refused")
+	}
+	return nil
 }
 
 // CheckRepository answers whether the signed-in person can read one site

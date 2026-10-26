@@ -264,9 +264,9 @@ type Sink struct {
 	testPath bool
 }
 
-func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token string) error {
-	_, err := s.deliver(ctx, m, subject, token, nil, nil)
-	return err
+func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token string) (gateway.Handoff, error) {
+	out, err := s.deliver(ctx, m, subject, token, nil, nil)
+	return gateway.Handoff(out.GitHubToken), err
 }
 
 // DeliverFirst hands the token, the repository plan and the site AI key over
@@ -294,23 +294,24 @@ func (s Sink) DeliverFirst(ctx context.Context, m gateway.Identity, subject, tok
 	if err != nil {
 		return gateway.FirstLoginReply{}, err
 	}
-	result := gateway.FirstLoginReply{AIKey: out.AIKey}
+	result := gateway.FirstLoginReply{Token: gateway.Handoff(out.GitHubToken), AIKey: out.AIKey}
 	for _, o := range out.Defaults {
 		result.Defaults = append(result.Defaults, gateway.PlanOutcome{FullName: o.FullName, Outcome: o.Outcome})
 	}
 	return result, nil
 }
 
-// firstReply is the daemon's answer to a handoff with a plan or a seed:
+// reply is the daemon's answer to every handoff: what became of the token,
 // defaults exactly when there was a plan, ai_key exactly when a seed.
-type firstReply struct {
+type reply struct {
 	SchemaVersion int           `json:"schema_version"`
+	GitHubToken   string        `json:"github_token"`
 	Defaults      []PlanOutcome `json:"defaults,omitempty"`
 	AIKey         string        `json:"ai_key,omitempty"`
 }
 
-func validReply(plan *Plan, seed *Seed, v firstReply) bool {
-	if v.SchemaVersion != 1 || (plan == nil) != (v.Defaults == nil) || (seed == nil) != (v.AIKey == "") {
+func validReply(plan *Plan, seed *Seed, v reply) bool {
+	if v.SchemaVersion != 1 || v.GitHubToken != string(gateway.HandoffInUse) && v.GitHubToken != string(gateway.HandoffUnused) || (plan == nil) != (v.Defaults == nil) || (seed == nil) != (v.AIKey == "") {
 		return false
 	}
 	if plan != nil && !validOutcomes(*plan, v.Defaults) {
@@ -319,27 +320,27 @@ func validReply(plan *Plan, seed *Seed, v firstReply) bool {
 	return seed == nil || slices.Contains(seedOutcomes, v.AIKey)
 }
 
-func (s Sink) deliver(ctx context.Context, m gateway.Identity, subject, token string, plan *Plan, seed *Seed) (firstReply, error) {
+func (s Sink) deliver(ctx context.Context, m gateway.Identity, subject, token string, plan *Plan, seed *Seed) (reply, error) {
 	if (!socketOK(m.Socket) && !(s.testPath && filepath.IsAbs(m.Socket))) || m.Provider != "github" || !validSubject(subject) || m.Subject != subject || m.UID <= 0 || m.Username == "" || len(m.Username) > maxField || (socketOK(m.Socket) && m.Socket != "/run/open-habitat/users/"+m.Username+"/daemon.sock") || len(token) == 0 || len(token) > maxToken {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
 	var nonce [16]byte
 	if _, e := rand.Read(nonce[:]); e != nil {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
 	body, e := json.Marshal(request{1, hex.EncodeToString(nonce[:]), m.Provider, subject, m.UID, m.Username, token, plan, seed})
 	if e != nil || len(body) > maxBody {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
 	// The disposable test-path seam must not silently follow a symlink either.
 	if s.testPath && s.dial == nil {
 		info, err := os.Lstat(m.Socket)
 		if err != nil || info.Mode()&os.ModeSymlink != 0 || info.Mode()&os.ModeSocket == 0 {
-			return firstReply{}, denied
+			return reply{}, denied
 		}
 	}
 	if s.dial == nil && !s.testPath && udssecure.Mapped(m.Socket, m.UID) != nil {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
 	dial := s.dial
 	if dial == nil {
@@ -348,11 +349,11 @@ func (s Sink) deliver(ctx context.Context, m gateway.Identity, subject, token st
 		}
 	}
 	if ctx.Err() != nil {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
 	conn, e := dial(ctx, m.Socket)
 	if e != nil {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
 	defer conn.Close()
 	uc, ok := conn.(*net.UnixConn)
@@ -360,7 +361,7 @@ func (s Sink) deliver(ctx context.Context, m gateway.Identity, subject, token st
 	// attested by the root-controlled pathname and socket owner, not by the
 	// listener's SO_PEERCRED (which remains 0 after fd handoff).
 	if !ok || (s.dial == nil && !s.testPath && (peerUID(uc) != 0 || udssecure.Mapped(m.Socket, m.UID) != nil)) || ((s.dial != nil || s.testPath) && peerUID(uc) != m.UID) {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
 	limitBy := deadline
 	if seed != nil {
@@ -368,60 +369,44 @@ func (s Sink) deliver(ctx context.Context, m gateway.Identity, subject, token st
 	}
 	stop, e := setDeadline(ctx, conn, limitBy)
 	if e != nil {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
 	defer stop()
 	req, e := http.NewRequestWithContext(ctx, http.MethodPost, "http://unix"+Path, bytes.NewReader(body))
 	if e != nil {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Close = true
 	if req.Write(conn) != nil {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
-	limit := int64(maxHeaders + 1024)
-	answered := plan != nil || seed != nil
-	if answered {
-		limit += maxPlanReply
-	}
-	bounded := &io.LimitedReader{R: conn, N: limit}
+	bounded := &io.LimitedReader{R: conn, N: maxHeaders + 1024 + maxPlanReply}
 	reader := bufio.NewReader(bounded)
 	res, e := http.ReadResponse(reader, req)
 	if e != nil {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
 	defer res.Body.Close()
-	if !answered {
-		// A 204 is the only success. HTTP forbids a body on 204; reject framing
-		// that attempts to disguise one rather than consuming untrusted text.
-		if res.ProtoMajor != 1 || res.ProtoMinor != 1 || res.StatusCode != http.StatusNoContent || res.ContentLength != 0 || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 0 {
-			return firstReply{}, denied
-		}
-		var tail [1]byte
-		if n, err := reader.Read(tail[:]); n != 0 || err != io.EOF || bounded.N == 0 {
-			return firstReply{}, denied
-		}
-		return firstReply{}, nil
-	}
-	// With a plan or a seed the only success is a 200 whose exact-length body
-	// answers every default, in order, and the seed, each with a fixed outcome.
+	// The only success is a 200 whose exact-length body says what became of
+	// the token and answers every default, in order, and the seed, each with
+	// a fixed outcome.
 	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "application/json" || len(res.Header.Values("Content-Type")) != 1 || res.ContentLength < 1 || res.ContentLength > maxPlanReply || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 1 {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
-	reply, e := io.ReadAll(io.LimitReader(res.Body, maxPlanReply+1))
-	if e != nil || int64(len(reply)) != res.ContentLength {
-		return firstReply{}, denied
+	body, e = io.ReadAll(io.LimitReader(res.Body, maxPlanReply+1))
+	if e != nil || int64(len(body)) != res.ContentLength {
+		return reply{}, denied
 	}
 	var tail [1]byte
 	if n, err := reader.Read(tail[:]); n != 0 || err != io.EOF || bounded.N == 0 {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
-	var v firstReply
-	d := json.NewDecoder(bytes.NewReader(reply))
+	var v reply
+	d := json.NewDecoder(bytes.NewReader(body))
 	d.DisallowUnknownFields()
 	if d.Decode(&v) != nil || d.Decode(new(any)) != io.EOF || !validReply(plan, seed, v) {
-		return firstReply{}, denied
+		return reply{}, denied
 	}
 	return v, nil
 }
@@ -508,8 +493,10 @@ func decode(body []byte) (request, error) {
 	return v, nil
 }
 
-// Consumer receives the token only after peer, identity, framing and mapping checks.
-type Consumer func(context.Context, string) error
+// Consumer receives the token only after peer, identity, framing and mapping
+// checks. unused says the person's gh kept its own login and positively holds
+// another token, so the gateway may revoke this one; when in doubt it is false.
+type Consumer func(ctx context.Context, token string) (unused bool, err error)
 
 // PlanConsumer acts on a validated plan after the token is installed. It
 // answers every default, in order; it never sees the token.
@@ -590,17 +577,16 @@ func (s *Server) Handler() http.Handler {
 		}
 		s.seen[v.Nonce] = struct{}{}
 		s.mu.Unlock()
-		if s.consume(r.Context(), v.Token) != nil {
+		unused, e := s.consume(r.Context(), v.Token)
+		if e != nil {
 			s.log.Warn("credential_handoff", "outcome", "failed", "reason", "native_install_unavailable", "user", s.cfg.Username)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
-		if v.Plan == nil && v.Seed == nil {
-			s.log.Info("credential_handoff", "outcome", "accepted", "user", s.cfg.Username)
-			w.WriteHeader(http.StatusNoContent)
-			return
+		answer := reply{SchemaVersion: 1, GitHubToken: string(gateway.HandoffInUse)}
+		if unused {
+			answer.GitHubToken = string(gateway.HandoffUnused)
 		}
-		answer := firstReply{SchemaVersion: 1}
 		if v.Seed != nil {
 			_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(seedDeadline))
 		}
@@ -621,16 +607,16 @@ func (s *Server) Handler() http.Handler {
 				answer.AIKey = "failed"
 			}
 		}
-		reply, e := json.Marshal(answer)
-		if e != nil || len(reply) > maxPlanReply {
+		out, e := json.Marshal(answer)
+		if e != nil || len(out) > maxPlanReply {
 			s.log.Warn("credential_handoff", "outcome", "failed", "reason", "plan_unavailable", "user", s.cfg.Username)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
-		s.log.Info("credential_handoff", "outcome", "accepted", "user", s.cfg.Username, "plan", map[bool]string{true: "answered", false: "none"}[v.Plan != nil], "ai_key", map[bool]string{true: answer.AIKey, false: "none"}[v.Seed != nil])
-		w.Header().Set("Content-Length", strconv.Itoa(len(reply)))
+		s.log.Info("credential_handoff", "outcome", "accepted", "user", s.cfg.Username, "github_token", answer.GitHubToken, "plan", map[bool]string{true: "answered", false: "none"}[v.Plan != nil], "ai_key", map[bool]string{true: answer.AIKey, false: "none"}[v.Seed != nil])
+		w.Header().Set("Content-Length", strconv.Itoa(len(out)))
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(reply)
+		_, _ = w.Write(out)
 	})
 }
 

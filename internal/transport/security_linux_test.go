@@ -29,7 +29,7 @@ func TestPeerBeforeBodyAndWrongTarget(t *testing.T) {
 	defer ln.Close()
 	calls := new(atomic.Int32)
 	cfg := Config{GatewayUID: os.Getuid() + 1, UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: path, Provider: "github", Subject: "42"}
-	s, e := newServer(cfg, func(context.Context, string) error { calls.Add(1); return nil }, true)
+	s, e := newServer(cfg, func(context.Context, string) (bool, error) { calls.Add(1); return false, nil }, true)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -60,7 +60,7 @@ func TestPeerBeforeBodyAndWrongTarget(t *testing.T) {
 	}
 	cfg.GatewayUID = os.Getuid()
 	cfg.Home = filepath.Join(t.TempDir(), "false-home")
-	if _, e := newServer(cfg, func(context.Context, string) error { return nil }, true); e == nil {
+	if _, e := newServer(cfg, func(context.Context, string) (bool, error) { return false, nil }, true); e == nil {
 		t.Fatal("wrong home accepted")
 	}
 }
@@ -71,7 +71,7 @@ func TestSymlinkTargetRejected(t *testing.T) {
 		t.Fatal(e)
 	}
 	m.Socket = alias
-	if e := (Sink{testPath: true}).Deliver(context.Background(), m, "42", "sentinel-secret"); e == nil {
+	if _, e := (Sink{testPath: true}).Deliver(context.Background(), m, "42", "sentinel-secret"); e == nil {
 		t.Fatal("symlink accepted")
 	}
 	if calls.Load() != 0 {
@@ -83,7 +83,7 @@ func TestCanceledContextCannotConsume(t *testing.T) {
 	_, _, m, calls := fixture(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if e := (Sink{testPath: true}).Deliver(ctx, m, "42", "sentinel-secret"); e == nil || strings.Contains(e.Error(), "sentinel-secret") {
+	if _, e := (Sink{testPath: true}).Deliver(ctx, m, "42", "sentinel-secret"); e == nil || strings.Contains(e.Error(), "sentinel-secret") {
 		t.Fatal("canceled request accepted or leaked")
 	}
 	if calls.Load() != 0 {
@@ -104,7 +104,10 @@ func TestConsumerFailureAndOversize(t *testing.T) {
 	defer ln.Close()
 	cfg := Config{GatewayUID: os.Getuid(), UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: path, Provider: "github", Subject: "42"}
 	calls := new(atomic.Int32)
-	s, e := newServer(cfg, func(context.Context, string) error { calls.Add(1); return errors.New("sentinel-secret native failure") }, true)
+	s, e := newServer(cfg, func(context.Context, string) (bool, error) {
+		calls.Add(1)
+		return false, errors.New("sentinel-secret native failure")
+	}, true)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -114,10 +117,10 @@ func TestConsumerFailureAndOversize(t *testing.T) {
 	body := strings.Repeat("z", maxToken+1)
 	m := gateway.Identity{Provider: cfg.Provider, Subject: cfg.Subject, UID: cfg.UID, Username: cfg.Username, Socket: path}
 	sink := Sink{testPath: true}
-	if e := sink.Deliver(ctx, m, "42", body); e == nil || strings.Contains(e.Error(), body) {
+	if _, e := sink.Deliver(ctx, m, "42", body); e == nil || strings.Contains(e.Error(), body) {
 		t.Fatal("oversize not redacted")
 	}
-	if e := sink.Deliver(ctx, m, "42", "sentinel-secret"); e == nil || strings.Contains(e.Error(), "sentinel-secret") {
+	if _, e := sink.Deliver(ctx, m, "42", "sentinel-secret"); e == nil || strings.Contains(e.Error(), "sentinel-secret") {
 		t.Fatal("consumer failure leaked")
 	}
 	if calls.Load() != 1 {

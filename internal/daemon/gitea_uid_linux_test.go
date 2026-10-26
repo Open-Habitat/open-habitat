@@ -507,7 +507,7 @@ func serveGiteaUID(t *testing.T) {
 	name, subject := os.Getenv("GITEA_UID_NAME"), os.Getenv("GITEA_UID_SUBJECT")
 	home := giteaUIDHome(name)
 	cfg := transport.Config{GatewayUID: giteaUIDGateway, UID: os.Geteuid(), Username: name, Home: home, Socket: "/run/open-habitat/users/" + name + "/daemon.sock", Provider: "github", Subject: subject}
-	server, err := transport.NewServer(cfg, func(context.Context, string) error { return nil })
+	server, err := transport.NewServer(cfg, func(context.Context, string) (bool, error) { return false, nil })
 	if err != nil {
 		t.Fatal("handoff server", err)
 	}

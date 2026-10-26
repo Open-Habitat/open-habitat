@@ -247,6 +247,10 @@ Identity and authority:
   reobserves native state instead of replaying a token, and an existing `gh`
   authorization for another identity, or credential storage that cannot be
   verified as safe, stops login rather than being replaced.
+  The gateway may revoke only the token of the login in hand, and only when
+  the daemon answers that gh positively holds another one; a lost or uncertain
+  answer revokes nothing, and a native credential is never revoked or
+  replaced to make room.
 - An integration's token or password lives only in its tool's own store in
   the person's home; the daemon writes an app password there and keeps no
   copy, and the host keeps no list of connections. The browser pastes a

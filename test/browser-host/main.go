@@ -111,21 +111,22 @@ type sink struct {
 	seedFail *atomic.Bool
 }
 
-func (s sink) Deliver(context.Context, gateway.Identity, string, string) error {
+func (s sink) Deliver(context.Context, gateway.Identity, string, string) (gateway.Handoff, error) {
 	if s.scenario.Load() == "native-error" {
-		return errors.New("synthetic native failure")
+		return "", errors.New("synthetic native failure")
 	}
-	return nil
+	return gateway.HandoffInUse, nil
 }
 
 // DeliverFirst answers the plan and the seed as the person's daemon does after
 // installing the token: through that synthetic daemon's own clone jobs and
 // its native Pi credential helper.
 func (s sink) DeliverFirst(ctx context.Context, m gateway.Identity, subject, token string, first gateway.FirstLogin) (gateway.FirstLoginReply, error) {
-	if err := s.Deliver(ctx, m, subject, token); err != nil {
+	use, err := s.Deliver(ctx, m, subject, token)
+	if err != nil {
 		return gateway.FirstLoginReply{}, err
 	}
-	var reply gateway.FirstLoginReply
+	reply := gateway.FirstLoginReply{Token: use}
 	if plan := first.Plan; plan != nil {
 		jobs := s.plans[subject]
 		if jobs == nil {

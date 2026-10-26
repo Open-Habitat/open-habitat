@@ -30,6 +30,8 @@ type fake struct {
 	apiErr error
 	// probed runs once when gh api user is asked, as a native change would.
 	probed func()
+	// held is what gh auth token shows while logged in.
+	held string
 }
 
 func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
@@ -80,6 +82,11 @@ func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
 		if c.Output {
 			f.t.Fatal("helper secret captured")
 		}
+	case "gh auth token --hostname github.com":
+		if !f.logged || f.held == "" || !c.Output {
+			return nil, denied
+		}
+		return []byte(f.held + "\n"), nil
 	case "gh auth login --hostname github.com --with-token --git-protocol https":
 		f.logged = true
 		f.apiErr = nil
@@ -339,6 +346,46 @@ func TestInstallReobserveAndDisconnect(t *testing.T) {
 				t.Fatal(r, e)
 			}
 		})
+	}
+}
+
+// A login gh keeps makes the handed-over token unused only when gh positively
+// holds another one; the same token, or one gh cannot show, may be in use.
+func TestKeptLoginReportsUnusedTokenOnlyWhenGhHoldsAnother(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		held   string
+		fail   bool
+		unused bool
+	}{
+		{"other", "gho_older-native-token", false, true},
+		{"same", "unique-synthetic-sentinel", false, false},
+		{"unreadable", "gho_older-native-token", true, false},
+		{"empty", "", false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a, f, _ := fixture(t, true)
+			f.logged, f.held = true, tc.held
+			if tc.fail {
+				f.fail = "gh auth token --hostname github.com"
+			}
+			unused, e := a.Consumer()(context.Background(), f.token)
+			if e != nil || unused != tc.unused || containsCommand(f.log, "gh auth login --hostname github.com --with-token --git-protocol https") {
+				t.Fatal(unused, e, f.log)
+			}
+		})
+	}
+	// A fresh install uses the token.
+	a, f, _ := fixture(t, true)
+	f.held = "gho_older-native-token"
+	if unused, e := a.Consumer()(context.Background(), f.token); e != nil || unused {
+		t.Fatal(unused, e)
+	}
+	// A refused install reports nothing unused.
+	a, f, _ = fixture(t, true)
+	f.fail = "gh auth login --hostname github.com --with-token --git-protocol https"
+	if unused, e := a.Consumer()(context.Background(), f.token); e == nil || unused {
+		t.Fatal(unused, e)
 	}
 }
 func TestFreshInstallWithAbsoluteHelper(t *testing.T) {

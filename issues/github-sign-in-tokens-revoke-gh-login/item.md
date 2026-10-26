@@ -2,7 +2,7 @@
 created: 2026-10-26
 updated: 2026-10-26
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: found while implementing github-token-expires-silently
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: unlaned
 collision: [internal/gateway/]
 preparation: ready
+closed: 2026-10-26
 ---
 
 # Each GitHub sign-in mints a token; after ten, GitHub revokes the one gh uses

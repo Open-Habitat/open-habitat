@@ -55,10 +55,11 @@ func (s *planSink) DeliverFirst(ctx context.Context, m Identity, id, token strin
 	if first.Seed != nil {
 		s.seeds = append(s.seeds, *first.Seed)
 	}
-	if err := s.Deliver(ctx, m, id, token); err != nil {
+	use, err := s.Deliver(ctx, m, id, token)
+	if err != nil {
 		return FirstLoginReply{}, err
 	}
-	var reply FirstLoginReply
+	reply := FirstLoginReply{Token: use}
 	if first.Plan != nil {
 		out, err := s.answer(*first.Plan)
 		if err != nil {

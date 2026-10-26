@@ -39,7 +39,9 @@ func (routeProvider) Exchange(_ context.Context, code, _ string) (string, string
 
 type routeSink struct{}
 
-func (routeSink) Deliver(context.Context, gateway.Identity, string, string) error { return nil }
+func (routeSink) Deliver(context.Context, gateway.Identity, string, string) (gateway.Handoff, error) {
+	return gateway.HandoffInUse, nil
+}
 
 func TestAuthenticatedGatewayToTwoDaemonSnapshotHandlers(t *testing.T) {
 	u, e := user.Current()

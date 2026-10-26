@@ -16,18 +16,18 @@ type stoppingSink struct {
 	fail    bool
 }
 
-func (s *stoppingSink) Deliver(ctx context.Context, _ Identity, _ string, _ string) error {
+func (s *stoppingSink) Deliver(ctx context.Context, _ Identity, _ string, _ string) (Handoff, error) {
 	s.calls.Add(1)
 	close(s.entered)
 	select {
 	case <-s.resume:
 	case <-ctx.Done():
-		return ctx.Err()
+		return "", ctx.Err()
 	}
 	if s.fail {
-		return errors.New("ack lost")
+		return "", errors.New("ack lost")
 	}
-	return nil
+	return HandoffInUse, nil
 }
 func TestCallbackRechecksAfterHandoff(t *testing.T) {
 	for _, tc := range []string{"revoke", "epoch", "binding", "outage", "lost-ack"} {

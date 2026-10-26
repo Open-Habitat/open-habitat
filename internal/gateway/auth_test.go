@@ -41,14 +41,22 @@ type fakeSink struct {
 	identity  Identity
 	id, token string
 	err       error
+	// handoff is the daemon's answer; empty answers in use.
+	handoff Handoff
 }
 
-func (f *fakeSink) Deliver(_ context.Context, m Identity, id, token string) error {
+func (f *fakeSink) Deliver(_ context.Context, m Identity, id, token string) (Handoff, error) {
 	f.calls++
 	f.identity = m
 	f.id = id
 	f.token = token
-	return f.err
+	if f.err != nil {
+		return "", f.err
+	}
+	if f.handoff == "" {
+		return HandoffInUse, nil
+	}
+	return f.handoff, nil
 }
 func fixture(t *testing.T) (http.Handler, *Auth, *fakeProvider, *fakeSink, *time.Time) {
 	t.Helper()

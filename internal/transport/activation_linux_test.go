@@ -58,12 +58,12 @@ func TestSharedHTTPHealthAndHandoff(t *testing.T) {
 	defer ln.Close()
 	cfg := Config{GatewayUID: os.Getuid(), UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: path, Provider: "github", Subject: "42"}
 	count := 0
-	server, e := newServer(cfg, func(_ context.Context, token string) error {
+	server, e := newServer(cfg, func(_ context.Context, token string) (bool, error) {
 		if token != "sentinel-secret" {
 			t.Error("wrong token")
 		}
 		count++
-		return nil
+		return false, nil
 	}, true)
 	if e != nil {
 		t.Fatal(e)
@@ -88,7 +88,7 @@ func TestSharedHTTPHealthAndHandoff(t *testing.T) {
 		t.Fatalf("health status %d", res.StatusCode)
 	}
 	m := gateway.Identity{Provider: cfg.Provider, Subject: cfg.Subject, UID: cfg.UID, Username: cfg.Username, Socket: path}
-	if got := send(t, m, payload(m, strings.Repeat("a", 32))); got != 204 {
+	if got := send(t, m, payload(m, strings.Repeat("a", 32))); got != 200 {
 		t.Fatalf("handoff status %d", got)
 	}
 	if count != 1 {
