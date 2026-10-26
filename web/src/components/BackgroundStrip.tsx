@@ -31,7 +31,9 @@ import "./BackgroundStrip.css";
 // pill shows one mark per working spinoff instead of a count. The agent's
 // background-wait mark means its ended turn waits on that spinoff; a dashed
 // ring means nobody does, so a wait the agent forgot is visible on the closed
-// pill. Not waiting is a fact, never an error.
+// pill. Not waiting is a fact, never an error. A live run in another state
+// (Taskfleet doubts its supervisor, or it waits on its parent) keeps a muted
+// mark: the closed pill must never read as "no workers" while one is live.
 
 const duration = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -59,6 +61,11 @@ interface SpinoffItem {
 }
 /** Above this many marks the pill counts each kind instead. */
 const MAX_MARKS = 5;
+/** Live, but neither waited on nor known to be working. */
+const other = (i: SpinoffItem) => !i.waited && i.run.state !== "working";
+/** Working without the agent waiting on it: the dashed ring. */
+const unwaited = (marks: SpinoffItem[]) =>
+  marks.filter((i) => !i.waited && i.run.state === "working");
 
 /** Everything the strip knows about each kind, derived in one place. */
 export function backgroundFacts({
@@ -131,10 +138,9 @@ export function backgroundFacts({
     spin: {
       items: spin,
       live,
-      // One mark per working spinoff, and per waited one in another state
-      // (unknown, waiting on its parent): a wait is worth seeing whatever
-      // the run's state, a missing one only while the run works.
-      marks: live.filter((i) => i.waited || i.run.state === "working"),
+      // One mark per live spinoff; its look says waited, working without
+      // a wait, or another state.
+      marks: live,
       ended: spin.filter((i) => !i.live),
       // The count says "työskentelee": unknown and parent-waiting runs are
       // listed with their own labels but not counted as working.
@@ -246,8 +252,8 @@ export function BackgroundStrip({
                     .map((i) => i.run.title || i.run.run_id)
                     .join(", ")}`
                 : "",
-              f.marks.some((i) => !i.waited)
-                ? `${f.marks.filter((i) => !i.waited).length} ilman odotusta`
+              unwaited(f.marks).length
+                ? `${unwaited(f.marks).length} ilman odotusta`
                 : "",
             ]
               .filter(Boolean)
@@ -499,6 +505,12 @@ export function BackgroundStrip({
           odotetaan
           <span className="ah-bg-wait-dot nowait" aria-hidden="true" />
           ei odotusta: agentti ei herää, kun worker valmistuu
+          {facts.spin.marks.some(other) ? (
+            <>
+              <span className="ah-bg-dot unknown" aria-hidden="true" />
+              muu tila
+            </>
+          ) : null}
         </p>
       ) : null}
       {facts.spin.live.length ? (
@@ -609,7 +621,7 @@ export function BackgroundStrip({
               kind === "proc" && !facts.proc.known
                 ? !interrupted.length
                 : kind === "spin"
-                  ? !facts.spin.working
+                  ? !facts.spin.live.length
                   : !f.live.length;
             return (
               <ControlButton
@@ -625,7 +637,7 @@ export function BackgroundStrip({
                 }
                 data-unwaited={
                   kind === "spin"
-                    ? facts.spin.marks.filter((i) => !i.waited).length
+                    ? unwaited(facts.spin.marks).length
                     : undefined
                 }
                 key={kind}
@@ -692,6 +704,8 @@ function WaitMarks({ marks }: { marks: SpinoffItem[] }) {
   // Many workers: one mark per kind with its count, so the dashed ring of
   // a forgotten wait can never be cut off.
   const waited = marks.filter((i) => i.waited).length;
+  const working = unwaited(marks).length;
+  const rest = marks.filter(other).length;
   return (
     <span className="ah-bg-marks" aria-hidden="true">
       {waited ? (
@@ -700,10 +714,16 @@ function WaitMarks({ marks }: { marks: SpinoffItem[] }) {
           {waited}
         </>
       ) : null}
-      {marks.length - waited ? (
+      {working ? (
         <>
           <span className="ah-bg-wait-dot nowait" />
-          {marks.length - waited}
+          {working}
+        </>
+      ) : null}
+      {rest ? (
+        <>
+          <span className="ah-bg-dot unknown" />
+          {rest}
         </>
       ) : null}
     </span>

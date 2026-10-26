@@ -253,7 +253,8 @@
   font-size: 11.5px;
   color: var(--ah-muted);
 }
-.ah-bg-legend .nowait {
+.ah-bg-legend .nowait,
+.ah-bg-legend .unknown {
   margin-inline-start: 8px;
 }
 [data-state="merged"] .ah-bg-mark {

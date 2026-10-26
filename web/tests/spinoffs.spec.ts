@@ -588,3 +588,77 @@ test("@spinoffs @a11y spinoff tab: a mark for the wait, a standing red dot until
   preserved = false;
   await expect(pill.locator(".ah-bg-corner.attn")).toHaveCount(0);
 });
+
+// Birch pilot.12 (Jari 26.10.2026): a run the conversation created in another
+// repository was live, but Taskfleet read its supervisor as dead and the
+// restart had cut the wait. The closed pill still shows the worker.
+test("@spinoffs a live run in another state keeps its mark on the closed pill", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/agents/pi:*/spinoffs**", (route) =>
+    route.fulfill({
+      json: {
+        schema_version: 1,
+        parent_id: new URL(route.request().url()).pathname
+          .split("/agents/")[1]
+          .split("/spinoffs")[0],
+        availability: "available",
+        runs: [
+          {
+            run_id: "01m5w60pxynq08hyrxde3s1dyn",
+            title: "release pilot.12",
+            created_at: new Date(Date.now() - 50 * 60000).toISOString(),
+            state: "unknown",
+            summary: "",
+            preserved: false,
+            branch: "",
+            worktree: "",
+            source_branch: "main",
+          },
+        ],
+        transcripts: [],
+      },
+    }),
+  );
+  await page.route("**/api/v1/conversations/*/processes**", (route) =>
+    route.fulfill({
+      json: {
+        schema_version: 1,
+        owner_generation: "og_example",
+        availability: "available",
+        unavailable_reason: null,
+        interrupted: [],
+        processes: [],
+      },
+    }),
+  );
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link")
+    .and(page.getByTestId("workspace-ordinary-dir"))
+    .click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("conversation-start"))
+    .click();
+  const pill = page
+    .getByRole("region")
+    .and(page.getByTestId("background-work"))
+    .getByRole("button")
+    .and(page.getByTestId("background-spinoffs"));
+  await expect(pill).toHaveAttribute("data-working", "0");
+  await expect(pill).not.toHaveClass(/\bidle\b/);
+  await expect(pill.locator(".ah-bg-marks .ah-bg-dot.unknown")).toHaveCount(1);
+  await expect(pill).toHaveAccessibleName(/1 muussa tilassa/);
+  await pill.click();
+  await expect(
+    page.getByRole("tabpanel").getByTestId("spinoff-release pilot.12"),
+  ).toContainText("Tila ei tiedossa");
+});

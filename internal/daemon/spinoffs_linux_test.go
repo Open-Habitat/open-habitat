@@ -305,3 +305,33 @@ func TestWorkingSpinoffsCountsOnlyTheParentsWorkingRuns(t *testing.T) {
 		t.Fatalf("no runs = %d", got)
 	}
 }
+
+// Birch pilot.12: the conductor created an interactive Claude run in another
+// repository (~/Sources, outside ~/src). Taskfleet 0.17.1 read its live
+// supervisor as dead. The run still belongs to the conversation, also when a
+// restarted daemon holds no wait for it, and reads as unknown, not settled.
+func TestCrossRepositoryRunWithDoubtedSupervisorStaysTheConversations(t *testing.T) {
+	native := `{"run_id":"01m5w60pxynq08hyrxde3s1dyn","kind":"spinoff","lifecycle":"interactive","status":"pending",
+	"title":"release pilot.12","created_at":"2026-10-26T13:22:23.301499092Z","source_repo":"/home/fixture/Sources/fleetrepo",
+	"source_branch":"main","worktree_path":"/home/fixture/Sources/fleetrepo__worktrees/wt-release","harness":"claude",
+	"node_transcripts":[{"node_id":"n-0001","harness":"claude","attempt":null,"session_id":null,"original_cwd":null,
+	"worktree_path":"/home/fixture/Sources/fleetrepo__worktrees/wt-release","support":"unsupported",
+	"live":{"anchor":"state-root","path":null,"availability":"unsupported"},"original":{"anchor":"run-root","path":null,"availability":"unsupported"}}],
+	"created_by_run_id":null,"created_by_session":{"harness":"pi","session_id":"` + spinoffParent + `"},
+	"supervisor":{"pid":1643413,"state":"dead","alive":false},"stalled":false,"attention_required":false}`
+	var r nativeSpinoff
+	if err := json.Unmarshal([]byte(native), &r); err != nil {
+		t.Fatal(err)
+	}
+	parent := nativeSession{id: spinoffParent, cwd: "/home/fixture/src/open-habitat", state: "readable"}
+	if !belongsSpinoff(r, parent) {
+		t.Fatal("cross-repository run not attributed to its creator conversation")
+	}
+	if got := spinoffState(r); got != "unknown" {
+		t.Fatalf("state = %s, want unknown", got)
+	}
+	r.Supervisor.State = "alive"
+	if got := workingSpinoffs([]nativeSpinoff{r}, parent); got != 1 {
+		t.Fatalf("working = %d, want 1", got)
+	}
+}

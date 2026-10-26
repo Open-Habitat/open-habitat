@@ -66,14 +66,25 @@ describe("background strip facts", () => {
       expect(f.spin.live[0].wait?.id).toBe("proc_wait");
     }
   });
-  it("marks a waited run in another state, but not an unwaited one", () => {
+  it("marks a live run in another state, waited or not", () => {
     const parent = run({
       run_id: "01m53wnje1f3ybcw17qsx2syse",
       state: "waiting_parent",
     });
-    expect(facts([parent], []).spin.marks).toHaveLength(0);
+    expect(facts([parent], []).spin.marks.map((i) => i.waited)).toEqual([
+      false,
+    ]);
     // Taskfleet did not list the waited run: it is unknown, still waited.
     expect(facts([], [wait]).spin.marks.map((i) => i.waited)).toEqual([true]);
+  });
+  it("marks a live run whose supervisor Taskfleet doubts, after the restart cut its wait", () => {
+    // Birch pilot.12: a conversation's cross-repository run, pending with
+    // a live worker, read as supervisor dead; the restart cut the wait.
+    const f = facts([run({ state: "unknown" })], []);
+    expect(f.spin.working).toBe(0);
+    expect(f.spin.marks.map((i) => [i.run.state, i.waited])).toEqual([
+      ["unknown", false],
+    ]);
   });
   it("leaves a settled spinoff's wait unmarked", () => {
     expect(facts([run({ state: "merged" })], [wait]).spin.marks).toHaveLength(

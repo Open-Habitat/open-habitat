@@ -3,11 +3,13 @@ created: 2026-10-26
 updated: 2026-10-26
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 collision: [web/src/components/BackgroundStrip.tsx]
 preparation: ready
+closed: 2026-10-26
+closed_by: agent:taskfleet-run-01m5w917anb75gwtxpzgp4mk10
 ---
 
 # Worker chip shows no workers while a run this conversation created is live
@@ -34,3 +36,8 @@ cross-repository run created by the conversation.
 - [ ] A live run created by the conversation shows in its worker chip
   whatever repository it works in, also after a conversation restart; tests.
 
+## Resolution
+
+### 2026-10-26T14:37:39Z · @agent:taskfleet-run-01m5w917anb75gwtxpzgp4mk10
+
+Taskfleet 0.17.1 falsely read the live supervisor as dead (clock-step identity, fixed upstream 7026d09f, unreleased); Habitat's closed pill then hid the unknown-state run. The pill now marks every live run; see result.md.
