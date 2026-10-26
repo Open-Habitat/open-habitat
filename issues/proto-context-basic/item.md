@@ -3,11 +3,12 @@ created: 2026-10-25
 updated: 2026-10-26
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-context
 lane_seq: 1
 preparation: pending
+closed: 2026-10-26
 ---
 
 # Prototype the basic indicator of an agent's context use

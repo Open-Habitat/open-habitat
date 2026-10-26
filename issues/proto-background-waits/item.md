@@ -3,11 +3,12 @@ created: 2026-10-25
 updated: 2026-10-26
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-waits
 lane_seq: 1
 preparation: pending
+closed: 2026-10-26
 ---
 
 # Prototype how an agent's background waits on its workers are shown

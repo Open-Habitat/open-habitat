@@ -3,11 +3,12 @@ created: 2026-10-25
 updated: 2026-10-26
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-sidebar
 lane_seq: 1
 preparation: pending
+closed: 2026-10-26
 ---
 
 # Prototype what the sidebar should hold instead of the workspace list
