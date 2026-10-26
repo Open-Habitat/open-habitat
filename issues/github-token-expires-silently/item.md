@@ -3,11 +3,12 @@ created: 2026-10-26
 updated: 2026-10-26
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 collision: [internal/daemon/github]
 preparation: ready
+closed: 2026-10-26
 ---
 
 # Habitat's GitHub token in gh stops working overnight while settings say Yhdistetty
@@ -29,6 +30,6 @@ truthfully rather than "Yhdistetty". Never log or print tokens.
 
 ## Acceptance Criteria
 
-- [ ] Cause established; a GitHub connection keeps working for days, or the
+- [x] Cause established; a GitHub connection keeps working for days, or the
   person sees it expire and reconnects in one step; tests at the boundary.
 

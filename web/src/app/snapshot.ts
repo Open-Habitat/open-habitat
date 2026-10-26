@@ -159,7 +159,13 @@ export interface Snapshot {
   write_state: string;
   auth?: {
     native_github: {
-      state: "connected" | "disconnected" | "pending" | "partial" | "unknown";
+      state:
+        | "connected"
+        | "disconnected"
+        | "expired"
+        | "pending"
+        | "partial"
+        | "unknown";
       login?: string;
     };
   };

@@ -1758,6 +1758,12 @@ export function App() {
         onLogout={() => setLogoutPrompt(true)}
         nativeState={snapshot?.auth?.native_github.state}
         nativeLogin={snapshot?.auth?.native_github.login}
+        onReconnect={() => {
+          if (syntheticDemo) return;
+          window.location.assign(
+            `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}`,
+          );
+        }}
         onPiSignIn={() => navigate(`${location.pathname}?pi_sign_in=1`)}
         modelSelector={
           <PiModelSelector

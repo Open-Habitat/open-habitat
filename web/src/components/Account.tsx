@@ -220,6 +220,7 @@ export function AccountShelf({
 type NativeState =
   | "connected"
   | "disconnected"
+  | "expired"
   | "pending"
   | "partial"
   | "unknown";
@@ -232,6 +233,11 @@ const states: Record<NativeState, { label: string; description: string }> = {
     label: "Ei yhdistetty",
     description:
       "GitHub-yhteyttä ei löytynyt. Git-toiminnot voivat vaatia uuden kirjautumisen.",
+  },
+  expired: {
+    label: "Vanhentunut",
+    description:
+      "GitHub ei enää hyväksy palvelimelle tallennettua valtuutusta, joten git push ja gh eivät toimi. Yhdistä uudelleen kirjautumalla GitHubilla.",
   },
   pending: {
     label: "Yhdistäminen kesken",
@@ -260,6 +266,7 @@ export function AccountSettings({
   onLogout,
   csrf,
   onDisconnect,
+  onReconnect,
   onWorkspacesChanged,
   administration = false,
   routeSection,
@@ -270,6 +277,8 @@ export function AccountSettings({
   name?: string;
   csrf?: string;
   onDisconnect?: () => void;
+  /** Sign in with GitHub again; the sign-in replaces an expired gh login. */
+  onReconnect?: () => void;
   /** A workspace came back from the Trash: read the snapshot again. */
   onWorkspacesChanged?: () => void;
   nativeState?: NativeState;
@@ -552,9 +561,29 @@ export function AccountSettings({
                 <code>{nativeLogin}</code>
                 <StatusMark
                   label={state.label}
-                  kind={nativeState === "connected" ? "success" : "unknown"}
-                  tone={nativeState === "connected" ? "success" : "warning"}
+                  kind={
+                    nativeState === "connected"
+                      ? "success"
+                      : nativeState === "expired"
+                        ? "error"
+                        : "unknown"
+                  }
+                  tone={
+                    nativeState === "connected"
+                      ? "success"
+                      : nativeState === "expired"
+                        ? "danger"
+                        : "warning"
+                  }
                 />
+                {nativeState === "expired" && onReconnect && (
+                  <Button
+                    size="row"
+                    data-testid="github-reconnect"
+                    label="Yhdistä GitHub uudelleen"
+                    onPress={onReconnect}
+                  />
+                )}
               </div>
               {csrf && nativeState === "connected" && (
                 <div className="s-editor">

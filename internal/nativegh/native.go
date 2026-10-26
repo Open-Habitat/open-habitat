@@ -517,8 +517,13 @@ func (a *Adapter) checkStatus(ctx context.Context) (string, bool, bool) {
 	if ctx.Err() != nil {
 		return "unknown", false, true
 	}
-	// A revoked token connects nothing; the next sign-in replaces it.
-	if kind == absent || kind == foreign || kind == revoked {
+	// A revoked token connects nothing, but it is not an absent login: gh
+	// still offers it to every push. The person sees it as expired, and the
+	// next sign-in replaces it (Install's revoked case).
+	if kind == revoked {
+		return "expired", false, true
+	}
+	if kind == absent || kind == foreign {
 		return "disconnected", false, true
 	}
 	if kind != own {

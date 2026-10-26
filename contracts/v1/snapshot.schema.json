@@ -150,9 +150,11 @@
           ],
           "properties": {
             "state": {
+              "description": "expired: gh still holds a github.com login whose token GitHub itself rejects; signing in to Habitat with GitHub again replaces it.",
               "enum": [
                 "connected",
                 "disconnected",
+                "expired",
                 "pending",
                 "partial",
                 "unknown"

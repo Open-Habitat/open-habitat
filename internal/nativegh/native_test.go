@@ -174,7 +174,7 @@ func TestStatusFreshSyntheticIdentityAndErrors(t *testing.T) {
 	}
 	f.fail = ""
 	f.apiErr = rejected
-	if got := a.Status(context.Background()); got != "disconnected" {
+	if got := a.Status(context.Background()); got != "expired" {
 		t.Fatal(got)
 	}
 	f.apiErr = nil
@@ -895,7 +895,7 @@ case "$*" in
 	echo login >>"$HOME/log"
 	[ "$(cat)" = unique-synthetic-sentinel ] || exit 1
 	[ "$state" = offline ] && exit 1
-	printf 'github.com:\n    oauth_token: fresh\n    user: alice\n' >"$HOME/.config/gh/hosts.yml"
+	printf 'github.com:\n    users:\n        alice:\n            oauth_token: fresh\n    git_protocol: https\n    oauth_token: fresh\n    user: alice\n' >"$HOME/.config/gh/hosts.yml"
 	echo fresh >"$HOME/state" ;;
 "auth logout --hostname github.com --user "*)
 	echo logout >>"$HOME/log"
@@ -947,10 +947,7 @@ func TestExecutorReplacesOnlyARevokedLogin(t *testing.T) {
 				t.Fatal(err)
 			}
 			before, _ := os.ReadFile(hosts)
-			want := "disconnected"
-			if tc.name == "offline" || tc.name == "locked" {
-				want = "unknown"
-			}
+			want := map[string]string{"revoked": "expired", "revoked-beside-another-account": "expired", "offline": "unknown", "locked": "unknown", "foreign": "disconnected"}[tc.name]
 			if got := a.Status(context.Background()); got != want {
 				t.Fatalf("status %s, want %s", got, want)
 			}
@@ -970,5 +967,58 @@ func TestExecutorReplacesOnlyARevokedLogin(t *testing.T) {
 				t.Fatal("touched a login it could not classify", r, err, string(log))
 			}
 		})
+	}
+}
+
+// A token GitHub stops accepting changes no file on this machine; gh keeps
+// offering it to every push. The settings row must stop saying connected
+// within one recheck, say expired rather than "no login", and one GitHub
+// sign-in must bring the connection back.
+func TestTokenRevokedAtGitHubShowsExpiredAndSignInReconnects(t *testing.T) {
+	bin := t.TempDir()
+	for name, script := range map[string]string{"gh": fakeGH, "git": fakeGit} {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte(script), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PATH", bin)
+	a, _, home := fixture(t, false)
+	a.run = Executor{Home: home}
+	if err := os.Remove(filepath.Join(home, ".config", "gh", "hosts.yml")); err != nil {
+		t.Fatal(err)
+	}
+	if r, err := a.Install(context.Background(), "unique-synthetic-sentinel"); err != nil || r.Phase != Installed {
+		t.Fatal("first sign-in", r, err)
+	}
+	if got := a.ObservedStatus(context.Background()); got != "connected" {
+		t.Fatal(got)
+	}
+	// GitHub revokes the token. hosts.yml and Git's configuration stay as
+	// they were, so only the periodic recheck can notice.
+	if err := os.WriteFile(filepath.Join(home, "state"), []byte("revoked\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	a.flightMu.Lock()
+	a.observed.at = time.Now().Add(-observedRecheck - time.Second)
+	a.flightMu.Unlock()
+	a.ObservedStatus(context.Background())
+	deadline := time.Now().Add(5 * time.Second)
+	for got := a.ObservedStatus(context.Background()); got != "expired"; got = a.ObservedStatus(context.Background()) {
+		if time.Now().After(deadline) {
+			t.Fatalf("revoked token still reported as %s", got)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	// The reconnect is an ordinary GitHub sign-in: its token replaces the
+	// rejected one.
+	if r, err := a.Install(context.Background(), "unique-synthetic-sentinel"); err != nil || r.Phase != Installed {
+		t.Fatal("reconnect", r, err)
+	}
+	if got := a.ObservedStatus(context.Background()); got != "connected" {
+		t.Fatal(got)
+	}
+	log, _ := os.ReadFile(filepath.Join(home, "log"))
+	if string(log) != "login\nlogin\n" {
+		t.Fatalf("unexpected gh mutations %q", log)
 	}
 }

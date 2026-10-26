@@ -556,7 +556,7 @@ func snapshotHandlerWithGitea(cfg transport.Config, trusted func(*http.Request) 
 		expected := opaque("wid_", cfg.Provider+":"+cfg.Subject)
 		display := "GitHub user " + cfg.Subject
 		ghState := <-ghDone
-		if ghState != "connected" && ghState != "disconnected" && ghState != "partial" && ghState != "pending" {
+		if ghState != "connected" && ghState != "disconnected" && ghState != "expired" && ghState != "partial" && ghState != "pending" {
 			ghState = "unknown"
 		}
 		// Local workspace writes are available only with a confirmed source.

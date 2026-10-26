@@ -49,7 +49,7 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 	if denied.Code != 403 {
 		t.Fatalf("peer accepted: %d", denied.Code)
 	}
-	for _, state := range []string{"connected", "disconnected", "partial", "unknown", "invalid"} {
+	for _, state := range []string{"connected", "disconnected", "expired", "partial", "unknown", "invalid"} {
 		status = state
 		w := request(opaque("wid_", "github:42"))
 		if w.Code != 200 {
@@ -73,7 +73,7 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 			t.Fatalf("state=%s body=%s", state, w.Body.String())
 		}
 	}
-	if calls != 6 {
+	if calls != 7 {
 		t.Fatal(calls)
 	}
 }

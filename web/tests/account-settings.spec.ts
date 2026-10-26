@@ -1101,3 +1101,50 @@ test("@account-settings unknown settings link still allows sign-in", async ({
     page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
   ).toBeVisible();
 });
+test.describe("expired GitHub connection", () => {
+  test.use({ deviceScaleFactor: 2 });
+  test("@account-settings an expired gh login says so and one sign-in reconnects", async ({
+    page,
+  }) => {
+    await state(page, "expired");
+    await login(page);
+    await page.goto("/settings/connections");
+    const row = page.locator("#main").getByTestId("github-native-state");
+    await expect(row).toHaveAttribute("data-state", "expired");
+    await expect(row).toContainText("Vanhentunut");
+    await expect(page.locator("#main")).toContainText(
+      "GitHub ei enää hyväksy palvelimelle tallennettua valtuutusta",
+    );
+    // Removing a login GitHub already rejects is not offered; reconnecting is.
+    await expect(page.getByTestId("github-disconnect-inspect")).toHaveCount(0);
+    const reconnect = page
+      .getByRole("button")
+      .and(page.getByTestId("github-reconnect"));
+    await expect(reconnect).toBeVisible();
+    for (const theme of ["light", "dark"] as const) {
+      // Reduced motion: the theme switch must not be captured mid-transition.
+      await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      const results = await new AxeBuilder({ page })
+        .include("[data-testid=github-native-state]")
+        .withTags(["wcag2a", "wcag2aa"])
+        .analyze();
+      expect(results.violations).toEqual([]);
+      await page.screenshot({
+        path: `test-results/evidence/github-expired-${theme}.png`,
+        fullPage: true,
+      });
+    }
+    await page.emulateMedia({ colorScheme: "light" });
+    // The sign-in replaces the rejected token; afterwards the daemon
+    // observes a working login again.
+    await page.unroute("**/api/v1/snapshot");
+    await state(page, "connected");
+    await reconnect.click();
+    await expect(page).toHaveURL(/\/fixture\/provider\?/);
+    await page.getByRole("link").nth(0).click();
+    await expect(page).toHaveURL(/\/settings\/connections$/);
+    await expect(row).toHaveAttribute("data-state", "connected");
+    await expect(page.getByTestId("github-reconnect")).toHaveCount(0);
+  });
+});

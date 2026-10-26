@@ -227,4 +227,30 @@ describe("account presentation", () => {
     rerender(show("connected"));
     expect(screen.getByTestId("github-disconnect-inspect")).toBeTruthy();
   });
+  it("offers a one-step reconnect only for an expired connection", () => {
+    const onReconnect = vi.fn();
+    const show = (
+      nativeState: "connected" | "disconnected" | "expired" | "partial",
+    ) => (
+      <AccountSettings
+        csrf="synthetic-csrf"
+        nativeState={nativeState}
+        onReconnect={onReconnect}
+        onBack={() => {}}
+      />
+    );
+    const { rerender } = render(show("expired"));
+    fireEvent.click(screen.getByTestId("settings-yhteydet"));
+    const row = screen.getByTestId("github-native-state");
+    expect(row.dataset.state).toBe("expired");
+    expect(row.textContent).toContain("Vanhentunut");
+    expect(row.textContent).not.toContain("Yhdistetty");
+    expect(screen.queryByTestId("github-disconnect-inspect")).toBeNull();
+    fireEvent.click(screen.getByTestId("github-reconnect"));
+    expect(onReconnect).toHaveBeenCalledOnce();
+    for (const state of ["connected", "disconnected", "partial"] as const) {
+      rerender(show(state));
+      expect(screen.queryByTestId("github-reconnect")).toBeNull();
+    }
+  });
 });
