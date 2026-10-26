@@ -15,5 +15,10 @@
     "source": "linux_statfs",
     "capacity_bytes": 1073741824,
     "free_bytes": 536870912
+  },
+  "site": {
+    "state": "available",
+    "origin": "https://habitat.example.org",
+    "source": "site_origin_file"
   }
 }

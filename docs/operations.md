@@ -569,7 +569,10 @@ hand-copy the broker's initial JSON examples into an occupied installation.
 The gateway cannot read homes; mapped daemons cannot read gateway secrets.
 
 The daemon validates the pinned Node/Pi tree selected by
-`/opt/open-habitat/pi-runtime.json`. Pi and gh authorization still belong to
+`/opt/open-habitat/pi-runtime.json`. Host apply and upgrade also publish
+`/opt/open-habitat/site-origin.json`, the declared `gateway.origin`, world-readable
+so a person's agent can give them links to this site; daemons treat it as
+display data only. Pi and gh authorization still belong to
 each person's native stores. No install or login step downloads Pi or shares a
 provider key. An unmet Ubuntu minimum or non-Ubuntu archive mismatch is a typed qualification failure, not
 permission to downgrade a customer security update or install apt holds.

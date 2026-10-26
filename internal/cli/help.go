@@ -108,7 +108,7 @@ var helpSpecs = []helpSpec{
 	{"agent view list", "List the person's frozen views, newest first", "agent view list --json", []string{"--output"}},
 	{"agent view remove", "Remove one frozen view's export; open cards say it is gone", "agent view remove --view vabcdefghijklmnopqrstuvwxyz --dry-run --json", []string{"--view", "--dry-run"}},
 	{"agent editor offer", "Offer to show a workspace file, optionally at a line, in the person's Habitat editor; publishes a card the person presses, never opens anything; refuses when the person's editor is not installed", "agent editor offer --current --path cmd/main.go --line 42 --idempotency-key 00000000-0000-4000-8000-000000000003 --json", []string{"--workspace", "--path", "--line", "--conversation", "--current", "--idempotency-key", "--dry-run"}},
-	{"agent environment show", "Read own quota, capacity and daemon version", "agent environment show --json", nil},
+	{"agent environment show", "Read own quota, capacity, daemon version and the site's public origin for links", "agent environment show --json", nil},
 	{"agent workspace list", "Discover native workspaces", "agent workspace list --json", []string{"--output"}},
 	{"agent conversation show", "Read an explicit live record or verified inherited context", "agent conversation show --current --json", []string{"--current", "--conversation"}},
 }

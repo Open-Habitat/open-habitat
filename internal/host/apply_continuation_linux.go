@@ -113,7 +113,7 @@ func applyPrepublicationContinuation(journal string, owner uint32, root string) 
 			return o, ErrRecovery
 		}
 	}
-	for _, path := range []string{"/opt/open-habitat/current", "/opt/open-habitat/current.next", "/opt/open-habitat/core", "/opt/open-habitat/core.next", "/opt/open-habitat/pi-runtime.json", "/opt/open-habitat/editor.json", "/var/lib/open-habitat/broker", "/var/lib/open-habitat/.broker-initialize", "/etc/open-habitat/gateway/gateway.json"} {
+	for _, path := range []string{"/opt/open-habitat/current", "/opt/open-habitat/current.next", "/opt/open-habitat/core", "/opt/open-habitat/core.next", "/opt/open-habitat/pi-runtime.json", "/opt/open-habitat/site-origin.json", "/opt/open-habitat/editor.json", "/var/lib/open-habitat/broker", "/var/lib/open-habitat/.broker-initialize", "/etc/open-habitat/gateway/gateway.json"} {
 		if _, e := os.Lstat(filepath.Join(root, path)); !errors.Is(e, os.ErrNotExist) {
 			return o, ErrRecovery
 		}

@@ -14,5 +14,10 @@
     "source": "linux_statfs",
     "capacity_bytes": 1073741824,
     "free_bytes": 536870912
+  },
+  "site": {
+    "state": "unavailable",
+    "reason": "site_origin_unavailable",
+    "source": "site_origin_file"
   }
 }

@@ -204,5 +204,5 @@ func agentEnvironment(version, commit string, now time.Time) map[string]any {
 	if commit != "" {
 		revision = commit
 	}
-	return map[string]any{"schema_version": 1, "observed_at": now.UTC().Format(time.RFC3339Nano), "daemon": map[string]any{"version": version, "commit": revision}, "quota": quota, "filesystem": fs}
+	return map[string]any{"schema_version": 1, "observed_at": now.UTC().Format(time.RFC3339Nano), "daemon": map[string]any{"version": version, "commit": revision}, "quota": quota, "filesystem": fs, "site": agentSite()}
 }

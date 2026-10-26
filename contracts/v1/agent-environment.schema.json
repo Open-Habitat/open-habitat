@@ -9,7 +9,8 @@
     "observed_at",
     "daemon",
     "quota",
-    "filesystem"
+    "filesystem",
+    "site"
   ],
   "properties": {
     "schema_version": {
@@ -156,6 +157,53 @@
             "free_bytes": {
               "type": "integer",
               "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "site": {
+      "description": "The site's public browser origin for links the agent gives the person (settings, sign-in, views). Display data published by host maintenance, never identity or authorization.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "reason",
+            "source"
+          ],
+          "properties": {
+            "state": {
+              "const": "unavailable"
+            },
+            "reason": {
+              "const": "site_origin_unavailable"
+            },
+            "source": {
+              "const": "site_origin_file"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "origin",
+            "source"
+          ],
+          "properties": {
+            "state": {
+              "const": "available"
+            },
+            "origin": {
+              "type": "string",
+              "maxLength": 255,
+              "pattern": "^https://[^/?#@\\s]+$"
+            },
+            "source": {
+              "const": "site_origin_file"
             }
           }
         }

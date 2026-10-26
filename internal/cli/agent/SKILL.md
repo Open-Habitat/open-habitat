@@ -14,6 +14,10 @@ Run as the person's Unix user, never root. Start with:
 
 The result distinguishes CLI and daemon versions. Quota unavailable is not zero
 usage or unlimited space; filesystem free space is a separate observation.
+`site.origin` is the address the person uses for this Open Habitat (for example
+`https://habitat.example.org`); build links to settings, sign-in or views from
+it. It is display data, not identity. When `site.state` is `unavailable`, say
+so rather than guessing an address.
 For large workspace lists use `workspace list --output FILE.jsonl`; it refuses
 to overwrite an existing file and stdout reports the path and count.
 Reads do not start Pi. `--current` uses the conversation, workspace and launch

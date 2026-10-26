@@ -381,6 +381,12 @@ func finishGeneration(s Site) error {
 	if e = installPolicy("/", policyFile{"/opt/open-habitat/pi-runtime.json", string(b)}, 0); e != nil {
 		return e
 	}
+	// The public origin lets a person's agent link them to this site. It is
+	// display data, never identity, so every user may read it.
+	b, _ = json.Marshal(map[string]string{"origin": s.Gateway.Origin})
+	if e = installPolicy("/", policyFile{"/opt/open-habitat/site-origin.json", string(b)}, 0); e != nil {
+		return e
+	}
 	if slices.Contains(s.Profiles, "editor") {
 		b, _ := json.Marshal(map[string]string{"code_server": generationPath(s) + "/payloads/editor/runtime/bin/code-server"})
 		if e = installPolicy("/", policyFile{"/opt/open-habitat/editor.json", string(b)}, 0); e != nil {
