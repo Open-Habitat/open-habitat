@@ -4,6 +4,9 @@ updated: 2026-10-26
 type: bug
 status: open
 priority: normal
+lane: agent-context
+collision: [internal/daemon/host-context.md, internal/cli/agent_linux.go]
+preparation: ready
 ---
 
 # Agentti ei tiedä oman palvelimensa julkista osoitetta
