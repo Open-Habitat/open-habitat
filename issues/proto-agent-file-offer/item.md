@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-10-26/proto-agent-file-offer
 lane: file-offer
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: agent hands a produced file to the person
