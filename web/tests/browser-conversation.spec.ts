@@ -3307,3 +3307,36 @@ test("@browser-conversation title dots follow automatic observations and manual 
     await page.unrouteAll({ behavior: "ignoreErrors" });
   }
 });
+
+test("@browser-conversation a mermaid fence in a reply is drawn as an image", async ({
+  page,
+}) => {
+  const scripts: string[] = [];
+  page.on("request", (request) => {
+    if (request.resourceType() === "script") scripts.push(request.url());
+  });
+  const mermaidLoaded = () =>
+    scripts.some((url) => /\/mermaid\.core-/.test(url));
+  await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  // Mermaid is fetched only when a reply contains a diagram.
+  expect(mermaidLoaded()).toBe(false);
+  await page.getByTestId("message-input").fill("piirrä kaavio");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  const diagram = page.getByTestId("mermaid-diagram");
+  await expect(diagram).toBeVisible({ timeout: 30000 });
+  // A real render in Chromium: the image decodes to a nonblank SVG.
+  await expect
+    .poll(() =>
+      diagram
+        .locator("img")
+        .evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth),
+    )
+    .toBeGreaterThan(50);
+  // Mermaid's own SVG never stays in the page, only the image of it.
+  await expect(page.locator("svg[aria-roledescription]")).toHaveCount(0);
+  expect(mermaidLoaded()).toBe(true);
+});

@@ -627,6 +627,9 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 		// editor fixture's git-project); the second name does not exist.
 		answer += "\n\nMuutos on kohdassa `cmd/main.go:3-4`. Vanha nimi oli `cmd/old.go`."
 	}
+	if strings.Contains(prompt, "kaavio") {
+		answer += "\n\n```mermaid\nflowchart LR\n  Selain --> Yhdyskäytävä --> Daemon\n```"
+	}
 	if strings.Contains(prompt, "kansiolinkki") {
 		answer += "\n\n[Directory](./cmd/) and `cmd/`."
 	}

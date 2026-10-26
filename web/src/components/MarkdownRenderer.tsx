@@ -6,6 +6,7 @@ import { attachmentURL } from "../app/attachments";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { ControlButton, ExternalLink } from "./ControlElements";
 import { FileLinkContext, parseFileRef } from "./fileRefs";
+import { MermaidDiagram } from "./MermaidDiagram";
 import { OutputBox } from "./OutputBox";
 import remarkBreaks from "./remarkBreaks";
 import remarkFileRefs from "./remarkFileRefs";
@@ -266,18 +267,29 @@ export default function MarkdownRenderer({
                 /^language-([a-zA-Z0-9_+-]+)$/,
               )?.[1];
               const content = children.props.children;
-              if (typeof content === "string")
-                return (
+              if (typeof content === "string") {
+                const complete = fenceComplete(
+                  text,
+                  node?.position?.start?.offset,
+                  node?.position?.end?.offset,
+                );
+                const code = (
                   <MarkdownCode
                     text={content}
                     language={language}
-                    complete={fenceComplete(
-                      text,
-                      node?.position?.start?.offset,
-                      node?.position?.end?.offset,
-                    )}
+                    complete={complete}
                   />
                 );
+                return language === "mermaid" ? (
+                  <MermaidDiagram
+                    source={content}
+                    complete={complete}
+                    fallback={code}
+                  />
+                ) : (
+                  code
+                );
+              }
             }
             return <pre>{children}</pre>;
           },

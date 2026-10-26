@@ -998,6 +998,20 @@ h2.ah-landing-say[tabindex="-1"]:focus {
 .ah-markdown-table table {
   border-collapse: collapse;
 }
+.ah-mermaid {
+  margin: var(--ah-s4) 0;
+  max-width: 100%;
+}
+.ah-mermaid > img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.ah-mermaid-source > summary {
+  margin-top: var(--ah-s2);
+  color: var(--ah-muted);
+  cursor: pointer;
+}
 .ah-markdown-table :is(th, td) {
   border: 1px solid var(--ah-line);
   padding: var(--ah-s2);
