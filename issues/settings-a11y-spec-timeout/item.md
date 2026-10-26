@@ -3,11 +3,12 @@ created: 2026-10-26
 updated: 2026-10-26
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 collision: [web/tests/settings-three-pages.spec.ts]
 preparation: ready
+closed: 2026-10-26
 ---
 
 # settings-three-pages @a11y spec exceeds its 30 s timeout under load
@@ -26,5 +27,5 @@ viewport/theme (or per page) so each has headroom, keeping the same coverage.
 
 ## Acceptance Criteria
 
-- [ ] Same axe coverage; each case well under the timeout on a loaded host.
+- [x] Same axe coverage; each case well under the timeout on a loaded host.
 

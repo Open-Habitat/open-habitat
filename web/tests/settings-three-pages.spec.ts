@@ -160,15 +160,8 @@ test("Koodipalvelut lists the workspaces each code host serves", async ({
   await expect(page).toHaveURL(/\/workspaces\/new$/);
 });
 
-test("@a11y the three pages have no axe violations, light and dark, desktop and phone", async ({
-  page,
-}, testInfo) => {
-  const { url, token } = await (
-    await page.request.get("/fixture/gitea?action=enable")
-  ).json();
-  await hostedWorkspaces(page, url);
-  await signIn(page);
-  // One own key so the key list has a row; Gitea connected for its card.
+/** One own key, so Tekoäly's key list has a row. */
+async function ownKey(page: Page, evidence?: string) {
   await page.goto("/settings/ai");
   await page
     .getByRole("button")
@@ -182,14 +175,16 @@ test("@a11y the three pages have no axe violations, light and dark, desktop and 
     .and(page.getByTestId("api-key-provider-openai"))
     .click();
   await dialog.getByTestId("api-key-input").fill(`sk-${"s".repeat(24)}abcd`);
-  await page.screenshot({
-    path: testInfo.outputPath("evidence/tekoaly-add-key-desktop-light.png"),
-  });
+  if (evidence) await page.screenshot({ path: evidence });
   await dialog
     .getByRole("button")
     .and(page.getByTestId("api-key-save"))
     .click();
   await expect(page.getByTestId("api-key-row-openai")).toBeVisible();
+}
+
+/** Gitea connected, so Koodipalvelut has its card. */
+async function giteaConnected(page: Page, url: string, token: string) {
   await page.goto("/settings/code-hosts");
   await page
     .getByTestId("integration-tile-gitea")
@@ -205,22 +200,42 @@ test("@a11y the three pages have no axe violations, light and dark, desktop and 
     .click();
   await gitea.getByRole("button").and(gitea.getByTestId("gitea-done")).click();
   await expect(page.getByTestId("gitea-connection")).toBeVisible();
+}
 
+// One case per page and viewport: twelve axe runs behind one sign-in sat
+// near the test timeout on a loaded host. Each page gets only the state
+// it shows.
+for (const [path, name] of [
+  ["/settings/ai", "tekoaly"],
+  ["/settings/code-hosts", "koodipalvelut"],
+  ["/settings/agent-data", "tiedot"],
+] as const)
   for (const [width, height, device] of [
     // The shell scrolls inside its main pane; a tall viewport shows the
     // whole page in one screenshot.
     [1280, 2300, "desktop"],
     [390, 2600, "phone"],
-  ] as const) {
-    await page.setViewportSize({ width, height });
-    for (const colorScheme of ["light", "dark"] as const) {
-      // Reduced motion: the theme switch must not be measured mid-transition.
-      await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
-      for (const [path, name] of [
-        ["/settings/ai", "tekoaly"],
-        ["/settings/code-hosts", "koodipalvelut"],
-        ["/settings/agent-data", "tiedot"],
-      ] as const) {
+  ] as const)
+    test(`@a11y ${name} has no axe violations, light and dark, ${device}`, async ({
+      page,
+    }, testInfo) => {
+      const { url, token } = await (
+        await page.request.get("/fixture/gitea?action=enable")
+      ).json();
+      await hostedWorkspaces(page, url);
+      await signIn(page);
+      if (name === "tekoaly")
+        await ownKey(
+          page,
+          device === "desktop"
+            ? testInfo.outputPath("evidence/tekoaly-add-key-desktop-light.png")
+            : undefined,
+        );
+      if (name === "koodipalvelut") await giteaConnected(page, url, token);
+      await page.setViewportSize({ width, height });
+      for (const colorScheme of ["light", "dark"] as const) {
+        // Reduced motion: the theme switch must not be measured mid-transition.
+        await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
         await page.goto(path);
         await expect(
           page.getByTestId(`settings-section-${name}`),
@@ -253,6 +268,4 @@ test("@a11y the three pages have no axe violations, light and dark, desktop and 
           fullPage: true,
         });
       }
-    }
-  }
-});
+    });
