@@ -3,12 +3,13 @@ created: 2026-10-26
 updated: 2026-10-26
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: worker-impl
 lane_seq: 1
 collision: [web/src/components/Spinoffs.tsx, contracts/v1/]
 preparation: ready
+closed: 2026-10-26
 ---
 
 # Worker view: read-only conversation in Kehys, terminal inside the conversation
@@ -19,5 +20,5 @@ Implement Jari's accepted worker view (proto-worker-view rounds 1–2, Decisions
 
 ## Acceptance Criteria
 
-- [ ] Worker view live for Pi and Claude workers on desktop and phone; host facts mapping a run to its native session; Go and browser tests.
+- [x] Worker view live for Pi and Claude workers on desktop and phone; host facts mapping a run to its native session; Go and browser tests.
 
