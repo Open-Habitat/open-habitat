@@ -7,6 +7,7 @@ import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { AgentNotice } from "../components/AgentNotice";
+import type { RestartNotice } from "../components/RestartNotice";
 import type { BashFailure } from "./bashFailure";
 
 const ajv = addFormats(new Ajv({ strict: false }));
@@ -42,6 +43,7 @@ export interface HistoryBlock {
 export interface HistoryEntry {
   skill?: { name: string; description?: string };
   notice?: AgentNotice;
+  restart?: RestartNotice;
   entry_key: string;
   timestamp?: string;
   kind:

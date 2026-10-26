@@ -3,11 +3,12 @@ created: 2026-10-26
 updated: 2026-10-26
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 collision: [web/src/components/Conversation.tsx]
 preparation: ready
+closed: 2026-10-26
 ---
 
 # Restart notice appears as a raw English extension block and calls a live worker stalled
@@ -33,6 +34,6 @@ or nothing beyond a quiet marker, while the agent still gets the full text;
 
 ## Acceptance Criteria
 
-- [ ] Person-facing presentation of the restart notice; agent text unchanged
+- [x] Person-facing presentation of the restart notice; agent text unchanged
   in substance; run state taken from Taskfleet's own status; tests.
 

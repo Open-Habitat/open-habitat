@@ -22,6 +22,10 @@ func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string
 	if _, recognised := projectProcessNotification(candidate, nil); recognised {
 		return nil, false
 	}
+	// The restart catch-up's content is the agent's; the person reads its details.
+	if _, recognised := nativeRestart(nativeEntry{Type: probe.Type, Raw: raw, Message: probe.Message}); recognised {
+		return nil, false
+	}
 	var entry struct {
 		Type    string `json:"type"`
 		Message struct {

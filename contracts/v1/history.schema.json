@@ -168,6 +168,9 @@
               },
               "notice": {
                 "$ref": "notice.schema.json#/$defs/notice"
+              },
+              "restart": {
+                "$ref": "#/$defs/restart"
               }
             }
           }
@@ -418,6 +421,95 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 1000
+        }
+      }
+    },
+    "restart": {
+      "description": "Habitat's catch-up after this conversation's Pi was started again (for example after a server restart): background processes cut off while Pi was stopped, Taskfleet runs whose state changed, and runs still going whose wait was cut. Run states are Taskfleet's own report. The agent's context carries the full text; this is the person's presentation of it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "processes",
+        "runs",
+        "still_running"
+      ],
+      "properties": {
+        "processes": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "process_id",
+              "name"
+            ],
+            "properties": {
+              "process_id": {
+                "type": "string",
+                "pattern": "^proc_[a-f0-9]{4}$"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 200
+              }
+            }
+          }
+        },
+        "runs": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "run_id",
+              "title",
+              "state"
+            ],
+            "properties": {
+              "run_id": {
+                "type": "string",
+                "pattern": "^[0-9a-hjkmnp-tv-z]{26}$"
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "state": {
+                "enum": [
+                  "merged",
+                  "not_merged",
+                  "failed",
+                  "cancelled",
+                  "awaiting",
+                  "stalled"
+                ]
+              }
+            }
+          }
+        },
+        "still_running": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "run_id",
+              "title"
+            ],
+            "properties": {
+              "run_id": {
+                "type": "string",
+                "pattern": "^[0-9a-hjkmnp-tv-z]{26}$"
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 200
+              }
+            }
+          }
         }
       }
     }

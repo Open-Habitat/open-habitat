@@ -4621,3 +4621,9 @@ h2.ah-rail-section-head {
   font-weight: 600;
   line-height: 16px;
 }
+.ah-restart-notice ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-wrap: anywhere;
+}

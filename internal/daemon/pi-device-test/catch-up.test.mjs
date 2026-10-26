@@ -58,7 +58,7 @@ test('the first run after Pi starts gets one context message, and only when ther
     const first = await hooks.get('before_agent_start')({});
     assert.equal(first.message.customType, 'oh-resume-catch-up');
     assert.match(first.message.content, /proc_bbbb "proc_bbbb": npm run dev/);
-    assert.deepEqual(first.message.details.processes, [{ id: 'proc_bbbb', startTime: 1 }]);
+    assert.deepEqual(first.message.details.processes, [{ id: 'proc_bbbb', startTime: 1, name: 'proc_bbbb' }]);
     assert.equal(await hooks.get('before_agent_start')({}), undefined, 'later runs are not told again');
   } finally {
     if (previous !== undefined) process.env.OH_PROCESS_SOCKET = previous;
@@ -90,4 +90,12 @@ test('a run-show must still belong to the parent before catch-up or rearming', a
   const read = async args => args[1] === 'list' ? { runs: [run(ids.live, { status: 'running', source_repo: '/other' })] } : run(ids.live, { created_by_session: { harness: 'pi', session_id: 's2' }, landed: true });
   const result = await readSpinoffs({ sessionId: 's1', cwd: '/w', since: 0, waited: new Set([ids.live]), reported: new Set(), read });
   assert.deepEqual(result, { settled: [], rearm: [] });
+});
+
+test('a stall is attributed to Taskfleet and the details carry what the person sees', () => {
+  const message = catchUpMessage([], { settled: [{ run_id: ids.own, title: 'release', state: 'stalled' }], rearm: [{ run_id: ids.live, title: 'wait' }] });
+  assert.match(message.content, /"release" is reported stalled by Taskfleet/);
+  assert.doesNotMatch(message.content, /supervisor stopped/);
+  assert.deepEqual(message.details.spinoffs, [{ run_id: ids.own, state: 'stalled', title: 'release' }]);
+  assert.deepEqual(message.details.rearm, [{ run_id: ids.live, title: 'wait' }]);
 });

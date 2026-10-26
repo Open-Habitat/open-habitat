@@ -96,7 +96,9 @@ export async function readSpinoffs({ sessionId, cwd, since, waited, reported, re
   }));
   return result;
 }
-const stateText = { merged: 'finished and merged', not_merged: 'finished, not merged', failed: 'failed', cancelled: 'cancelled', awaiting: 'is waiting for you (needs attention)', stalled: 'stalled (its supervisor stopped)' };
+// Each state is Taskfleet's own report; a stall is Taskfleet's liveness
+// verdict, which a live worker can contradict, so it is not restated as fact.
+const stateText = { merged: 'finished and merged', not_merged: 'finished, not merged', failed: 'failed', cancelled: 'cancelled', awaiting: 'is waiting for you (needs attention)', stalled: 'is reported stalled by Taskfleet (check `taskfleet run show` before relying on that)' };
 export function catchUpMessage(processes, spinoffs) {
   if (!processes.length && !spinoffs.settled.length) return null;
   const lines = ['[Open Habitat] This conversation\'s Pi had stopped (for example a server restart) and was started again for the message that follows. While it was stopped:'];
@@ -105,7 +107,7 @@ export function catchUpMessage(processes, spinoffs) {
     for (const p of processes) lines.push(`- ${p.id} "${p.name.slice(0, 200)}": ${p.command.slice(0, 300)}`);
   }
   if (spinoffs.settled.length) {
-    lines.push('', 'Spinoffs that settled:');
+    lines.push('', 'Spinoffs whose state changed:');
     for (const r of spinoffs.settled) lines.push(`- ${r.run_id} "${r.title}" ${stateText[r.state]}`);
   }
   if (spinoffs.rearm.length) {
@@ -114,7 +116,13 @@ export function catchUpMessage(processes, spinoffs) {
   }
   return {
     customType: catchUpType, display: true, content: lines.join('\n'),
-    details: { schema_version: 1, processes: processes.map(p => ({ id: p.id, startTime: p.startTime })), spinoffs: spinoffs.settled.map(r => ({ run_id: r.run_id, state: r.state })), rearm: spinoffs.rearm.map(r => r.run_id) },
+    // The daemon presents these details to the person (restart_linux.go).
+    details: {
+      schema_version: 1,
+      processes: processes.map(p => ({ id: p.id, startTime: p.startTime, name: p.name.slice(0, 200) })),
+      spinoffs: spinoffs.settled.map(r => ({ run_id: r.run_id, state: r.state, title: r.title })),
+      rearm: spinoffs.rearm.map(r => ({ run_id: r.run_id, title: r.title })),
+    },
   };
 }
 export default function (pi) {

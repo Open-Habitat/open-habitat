@@ -278,6 +278,9 @@
               },
               "notice": {
                 "$ref": "notice.schema.json#/$defs/notice"
+              },
+              "restart": {
+                "$ref": "history.schema.json#/$defs/restart"
               }
             }
           }

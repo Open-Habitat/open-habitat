@@ -34,6 +34,7 @@ import {
   ProcessStartCard,
 } from "../components/ProcessTray";
 import { RecapCard } from "../components/RecapCard";
+import { RestartNoticeMarker } from "../components/RestartNotice";
 import { SessionSettingsRow } from "../components/SessionSettingsRow";
 import { SkillInvocation } from "../components/SkillInvocation";
 import { useBrowserShell } from "./BrowserShell";
@@ -792,6 +793,7 @@ export function Entry({
   revision?: string;
 }) {
   if (entry.notice) return <NoticeEntry notice={entry.notice} />;
+  if (entry.restart) return <RestartNoticeMarker notice={entry.restart} />;
   const processBlocks = entry.blocks?.filter((b) => b.type === "process_event");
   if (processBlocks?.length)
     return (

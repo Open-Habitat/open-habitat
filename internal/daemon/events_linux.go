@@ -625,6 +625,9 @@ func nativeEntryPayload(entry historyEntry) map[string]any {
 	if entry.Notice != nil {
 		payload["notice"] = entry.Notice
 	}
+	if entry.Restart != nil {
+		payload["restart"] = entry.Restart
+	}
 	if len(entry.Blocks) > 0 {
 		payload["blocks"] = entry.Blocks
 	}

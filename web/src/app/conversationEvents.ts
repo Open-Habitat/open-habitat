@@ -135,6 +135,7 @@ export function applyTurnEvent(
       entry_key: payload.entry_key as string,
       skill: payload.skill as HistoryEntry["skill"],
       notice: payload.notice as HistoryEntry["notice"],
+      restart: payload.restart as HistoryEntry["restart"],
       kind: payload.entry_kind as HistoryEntry["kind"],
       content: payload.content as HistoryEntry["content"],
       blocks: payload.blocks as HistoryEntry["blocks"],

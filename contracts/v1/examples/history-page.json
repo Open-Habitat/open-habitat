@@ -28,8 +28,38 @@
           "readable": true
         }
       ]
+    },
+    {
+      "entry_key": "entry-redacted-3",
+      "kind": "unknown",
+      "content": {
+        "media_type": "text/plain",
+        "text": "",
+        "complete": true
+      },
+      "restart": {
+        "processes": [
+          {
+            "process_id": "proc_0a1b",
+            "name": "wait-example"
+          }
+        ],
+        "runs": [
+          {
+            "run_id": "01m531x6y92ggdqcmb1exzmn00",
+            "title": "Example spinoff",
+            "state": "merged"
+          }
+        ],
+        "still_running": [
+          {
+            "run_id": "01m531x6y92ggdqcmb1exzmn01",
+            "title": "Example release"
+          }
+        ]
+      }
     }
   ],
   "complete": false,
-  "next_after": "entry-redacted-2"
+  "next_after": "entry-redacted-3"
 }
