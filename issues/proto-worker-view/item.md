@@ -1,13 +1,13 @@
 ---
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-26
 type: improvement
 reporter: jari
 status: open
 priority: normal
 lane: proto-worker
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype a worker's view as a read-only conversation instead of terminal output
@@ -42,3 +42,8 @@ its native session file for Pi and Claude workers, and whether it exists.
 
 - [ ] Prototype variants with notes, and Jari's verdict recorded.
 
+## Decisions
+
+### 2026-10-26T09:31:11Z · @jari
+
+Jari 2026-10-26 on round 1: 'Kehys' is OK. Workers do not show nested in the sidebar (the sidebar already has the worker mark). Round 2: prototype the state where a Claude worker shows only its terminal until its history is readable, and the 'no composer' notice ('Workerille ei kirjoiteta'), which should say the main agent can message the worker, so the person can ask it.

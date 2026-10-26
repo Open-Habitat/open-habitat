@@ -1,13 +1,13 @@
 ---
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-26
 type: improvement
 reporter: jari
 status: open
 priority: normal
 lane: proto-settings
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype grouping of AI, code-host and data integrations in settings
@@ -36,3 +36,7 @@ Compare at least two or three groupings, including where onboarding and the mode
 ### 2026-10-25T18:04:11Z · @jari
 
 Jari 2026-10-25 on round 1: 'Kolme sivua' (Tekoäly, Koodipalvelut, Tiedot agenteille), definitely. The default model shown on the Tekoäly page is clear; clicking it could open the current model selector — riff on that. The API keys part is still thin — riff on it. The GitHub and Gitea logos are neat and should be used. Next: a riff round on the default model and API keys within 'Kolme sivua'.
+
+### 2026-10-26T09:31:11Z · @jari
+
+Jari 2026-10-26 on round 2: 'Ponnahdus' is right (Kolme sivua from round 1). The default-model display row from which the popover opens looks odd: riff on it (round 3). The three-page split and API keys per provider are accepted for implementation: settings-three-pages.

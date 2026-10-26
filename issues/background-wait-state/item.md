@@ -1,6 +1,6 @@
 ---
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-26
 type: improvement
 reporter: jari
 status: done
@@ -41,3 +41,8 @@ top status.
   Jari's review.
 - [x] Tests at the presentation layer (state, not wording).
 
+## Decisions
+
+### 2026-10-26T09:31:11Z · @jari
+
+Jari 2026-10-26: the background-wait dot is OK (screenshots were blurry; future evidence at device scale factor 2).

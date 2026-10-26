@@ -1,6 +1,6 @@
 ---
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-26
 type: improvement
 reporter: jari
 status: open
@@ -45,3 +45,7 @@ any production change.
 ### 2026-10-25T18:04:11Z · @jari
 
 Jari 2026-10-25 on round 1: 'Nyt' is the direction (clearest). The Käynnissä block also includes agents waiting on background work (processes/workers). Agents need not be listed under workspaces any more; a workspace's agents are reached through that workspace's front page. Next: a riff round on how the workspaces are shown under Nyt.
+
+### 2026-10-26T09:31:11Z · @jari
+
+Jari 2026-10-26 on round 2: 'Aakkoset' is right. Accepted as the specification: Nyt (Sinun vuorosi, Käynnissä incl. background-waiting agents) with workspaces alphabetically below; agents reached through the workspace front page. Implementation: sidebar-now-aakkoset.

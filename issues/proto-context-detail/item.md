@@ -1,11 +1,11 @@
 ---
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-26
 type: improvement
 reporter: jari
 status: open
 priority: normal
-lane: proto-context
+lane: context-impl
 lane_seq: 2
 blocked_by: ['@proto-context-basic']
 preparation: ready

@@ -1,6 +1,6 @@
 ---
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-26
 type: improvement
 reporter: jari
 status: open
@@ -34,3 +34,8 @@ visible as such, and keep other background processes as terminals.
 
 - [ ] Prototype variants with notes, and Jari's verdict recorded.
 
+## Decisions
+
+### 2026-10-26T09:31:11Z · @jari
+
+Jari 2026-10-26: as recommended — direction 3's dots on the worker chip with direction 2's neutral exit codes. Implementation: background-wait-chip-dots.

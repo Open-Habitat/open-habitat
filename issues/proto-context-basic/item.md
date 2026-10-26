@@ -1,6 +1,6 @@
 ---
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-26
 type: improvement
 reporter: jari
 status: open
@@ -31,3 +31,8 @@ and whether the host already reads them.
 
 - [ ] Prototype variants with notes, and Jari's verdict recorded.
 
+## Decisions
+
+### 2026-10-26T09:31:11Z · @jari
+
+Jari 2026-10-26: 'Rengas' (ring + percentage in the top bar) is accepted as the specification. Implementation: context-ring-indicator. proto-context-detail follows on it.
