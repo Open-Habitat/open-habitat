@@ -198,7 +198,7 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
   ).toHaveCount(0);
   await expect(page.locator("main")).toContainText("Esimerkit päivitetty.");
   await expect(
-    page.getByRole("region").and(page.getByTestId("spinoff-result")),
+    page.getByRole("complementary").and(page.getByTestId("spinoff-result")),
   ).toContainText("Päivitettiin esimerkit.");
   await expect(
     page.getByRole("button").and(page.getByTestId("worker-ask")),
