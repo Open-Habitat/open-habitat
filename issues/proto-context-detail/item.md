@@ -32,3 +32,8 @@ Code expose natively and what the host would have to read.
 
 - [ ] Prototype variants with notes, and Jari's verdict recorded.
 
+## Decisions
+
+### 2026-10-26T12:10:19Z · @jari
+
+Jari 2026-10-26: a measured total with estimated parts (Pi chars/4), labelled as an estimate, is enough for now. Claude Code reports its own breakdown when sent '/context' as a message; check whether OpenAI/Codex (or Pi) has an equivalent and prefer such native breakdowns where they exist. Variant verdict pending.
