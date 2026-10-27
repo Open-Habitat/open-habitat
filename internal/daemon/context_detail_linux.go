@@ -48,6 +48,7 @@ type contextCompaction struct {
 	SummaryTokens    int64    `json:"summary_tokens"`
 	ReadFiles        []string `json:"read_files"`
 	ModifiedFiles    []string `json:"modified_files"`
+	TokensAfter      *int64   `json:"tokens_after,omitempty"`
 }
 type contextNext struct {
 	FromTurn         int64 `json:"from_turn"`
@@ -206,6 +207,9 @@ func (p *PiDevice) contextDetail(ctx context.Context, s *nativeSession, uid int)
 		return result, err
 	}
 	out, readErr := io.ReadAll(io.LimitReader(stdout, contextDetailOutput+1))
+	if len(out) > contextDetailOutput {
+		_ = cmd.Process.Kill()
+	}
 	if err := cmd.Wait(); err != nil || readErr != nil || len(out) > contextDetailOutput {
 		return result, errors.New("native context unavailable")
 	}

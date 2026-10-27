@@ -55,14 +55,15 @@ func (s *contextSession) turn(provider, ask string, output int, usage int, image
 	}
 	userID = s.message(map[string]any{"role": "user", "content": content, "timestamp": 1})
 	call := fmt.Sprintf("call_%d", s.n)
-	reply := func(content []any) {
+	// Each reply rereads the context; the second one is the larger.
+	reply := func(content []any, size int) {
 		s.message(map[string]any{"role": "assistant", "content": content, "api": "test", "provider": provider, "model": "m",
-			"usage":      map[string]any{"input": 10, "output": 20, "cacheRead": usage - 30, "cacheWrite": 0, "totalTokens": usage, "cost": map[string]any{"total": 0.5}},
+			"usage":      map[string]any{"input": 10, "output": 20, "cacheRead": size - 30, "cacheWrite": 0, "totalTokens": size, "cost": map[string]any{"total": 0.5}},
 			"stopReason": "stop", "timestamp": 1})
 	}
-	reply([]any{map[string]any{"type": "toolCall", "id": call, "name": "bash", "arguments": map[string]any{"command": "cat " + ask}}})
+	reply([]any{map[string]any{"type": "toolCall", "id": call, "name": "bash", "arguments": map[string]any{"command": "cat " + ask}}}, usage-1000)
 	s.message(map[string]any{"role": "toolResult", "toolCallId": call, "toolName": "bash", "content": []any{map[string]any{"type": "text", "text": strings.Repeat("x", output)}}, "isError": false, "timestamp": 1})
-	reply([]any{map[string]any{"type": "text", "text": "done " + ask}})
+	reply([]any{map[string]any{"type": "text", "text": "done " + ask}}, usage)
 	return userID
 }
 
@@ -110,11 +111,14 @@ func TestContextDetailIsPisOwnReading(t *testing.T) {
 
 	const gpt = "11111111-1111-4111-8111-111111111111"
 	writeContextSession(t, home, gpt, "openai-codex", func(s *contextSession) {
-		s.turn("openai-codex", "first", 40000, 30000, false)
+		// A session larger than one pipe buffer reaches Pi whole.
+		s.turn("openai-codex", "first", 2_000_000, 30000, false)
 		kept := s.turn("openai-codex", "second", 4000, 41000, true)
 		s.compact(map[string]any{"summary": "## Goal\nsynthetic summary", "firstKeptEntryId": kept, "tokensBefore": 41000,
 			"details": map[string]any{"readFiles": []string{"/work/a.go"}, "modifiedFiles": []string{"/work/b.go"}}})
 		s.turn("openai-codex", "third", 800, 12345, false)
+		// A shell command the person ran: Pi may cut there, inside turn 3.
+		s.message(map[string]any{"role": "bashExecution", "command": "cat log", "output": strings.Repeat("y", 400), "exitCode": 0, "cancelled": false, "truncated": false, "timestamp": 1})
 	})
 	code, d := readContextDetail(t, h, "pi:"+gpt)
 	if code != 200 {
@@ -122,6 +126,10 @@ func TestContextDetailIsPisOwnReading(t *testing.T) {
 	}
 	if d.AgentID != "pi:"+gpt || d.Harness != "pi" || d.MeasuredTokens == nil || *d.MeasuredTokens != 12345 {
 		t.Fatalf("measured total is Pi's last usage after the compaction: %+v", d)
+	}
+	// The first measurement after the compaction, not its turn's last.
+	if len(d.Compactions) != 1 || d.Compactions[0].TokensAfter == nil || *d.Compactions[0].TokensAfter != 12345-1000 {
+		t.Fatalf("size after the compaction: %+v", d.Compactions)
 	}
 	if len(d.Compactions) != 1 || d.Compactions[0].KeptFromTurn != 2 || d.Compactions[0].TokensBefore != 41000 || d.Compactions[0].ModifiedFiles[0] != "/work/b.go" || !strings.Contains(d.Compactions[0].Summary, "synthetic summary") {
 		t.Fatalf("compaction entry: %+v", d.Compactions)
@@ -148,8 +156,9 @@ func TestContextDetailIsPisOwnReading(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, d = readContextDetail(t, h, "pi:"+gpt)
-	if d.NextCompaction == nil || d.NextCompaction.FromTurn != 2 || d.NextCompaction.KeptFromTurn != 3 || d.NextCompaction.SummarizedTokens == 0 {
-		t.Fatalf("next compaction: %+v", d.NextCompaction)
+	n := d.NextCompaction
+	if n == nil || n.FromTurn != 2 || n.KeptFromTurn != 3 || n.ThroughTurn != 3 || !n.SplitTurn || n.SummarizedTokens == 0 {
+		t.Fatalf("Pi's cut at the shell command falls inside turn 3: %+v", n)
 	}
 
 	// Through the Claude bridge, Claude Code's preset replaces Pi's base
@@ -195,5 +204,24 @@ func TestContextDetailBoundary(t *testing.T) {
 	mux.ServeHTTP(w, req)
 	if w.Code != 400 {
 		t.Fatalf("query accepted: %d", w.Code)
+	}
+}
+
+// Each summary is within its bound, but twenty of them in a three-byte
+// script are not within the daemon's: the oldest give way, not the page.
+func TestContextDetailFitsTheDaemonLimit(t *testing.T) {
+	p, home := piFixture(t)
+	cfg := transport.Config{Home: home, UID: os.Geteuid()}
+	const id = "66666666-6666-4666-8666-666666666666"
+	writeContextSession(t, home, id, "openai-codex", func(s *contextSession) {
+		for i := 0; i < 20; i++ {
+			kept := s.turn("openai-codex", fmt.Sprintf("turn %d", i), 10, 1000, false)
+			s.compact(map[string]any{"summary": strings.Repeat("語", 24000), "firstKeptEntryId": kept, "tokensBefore": 1000})
+		}
+		s.turn("openai-codex", "last", 10, 1000, false)
+	})
+	code, d := readContextDetail(t, ContextDetailHandler(cfg, func(*http.Request) bool { return true }, p), "pi:"+id)
+	if code != 200 || len(d.Compactions) != 20 || !d.Compactions[0].SummaryTruncated || d.Compactions[19].Summary == "" {
+		t.Fatalf("oversized reading: %d %d", code, len(d.Compactions))
 	}
 }

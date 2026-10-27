@@ -318,7 +318,7 @@ function NextCompaction({
       <p className="ah-cd-text" data-testid="context-next">
         {when}{" "}
         {next
-          ? `Silloin ${turnRange(next.from_turn, next.through_turn)} (noin ${kt(next.summarized_tokens)} tokenia) korvautuvat yhteenvedolla${detail.compactions.length ? ", joka päivittää edellisen tiivistelmän" : ""}. ${next.split_turn ? `Vuoro ${next.kept_from_turn} jakautuu: sen alku tiivistyy ja loppu säilyy.` : `${turnRange(next.kept_from_turn, last)} säilyvät sellaisinaan.`}`
+          ? `Silloin ${next.through_turn >= next.from_turn ? turnRange(next.from_turn, next.through_turn) : "keskustelun alku"} (noin ${kt(next.summarized_tokens)} tokenia) korvautuu yhteenvedolla${detail.compactions.length ? ", joka päivittää edellisen tiivistelmän" : ""}. ${next.split_turn ? `Vuoro ${next.kept_from_turn} jakautuu: sen alku tiivistyy ja loppu säilyy.` : `${turnRange(next.kept_from_turn, last)} säilyy sellaisenaan.`}`
           : detail.settings
             ? "Tiivistettävää ei vielä ole: Pi säilyttäisi koko keskustelun sellaisenaan."
             : "Pi:n tiivistysasetuksia ei voitu lukea, joten seuraavaa tiivistystä ei voi ennakoida."}
@@ -344,9 +344,6 @@ function Compactions({ detail }: { detail: ContextDetail }) {
         .map((c, i) => ({ c, n: i + 1 }))
         .reverse()
         .map(({ c, n }) => {
-          const after = detail.turns.find(
-            (t) => t.n > c.after_turn && t.context_tokens !== undefined,
-          );
           return (
             <li key={n}>
               <p className="ah-cd-comp-h">
@@ -360,8 +357,8 @@ function Compactions({ detail }: { detail: ContextDetail }) {
               </p>
               <p className="ah-cd-comp-n num">
                 {full(c.tokens_before)} →{" "}
-                {after?.context_tokens !== undefined
-                  ? `${full(after.context_tokens)} seuraavassa vastauksessa`
+                {c.tokens_after !== undefined
+                  ? `${full(c.tokens_after)} seuraavassa vastauksessa`
                   : "koko seuraavasta vastauksesta"}
               </p>
               <p className="ah-cd-fine">

@@ -82,7 +82,7 @@
       }
     },
     "compactions": {
-      "description": "Compactions on the active path, oldest first; at most the newest 20.",
+      "description": "Compactions on the active path, oldest first; at most the newest 20. When the reading would be too large, the oldest summaries are left out (summary_truncated) before their file lists.",
       "type": "array",
       "maxItems": 20,
       "items": {
@@ -98,7 +98,11 @@
           "summary_truncated": { "type": "boolean" },
           "summary_tokens": { "$ref": "#/$defs/tokens" },
           "read_files": { "$ref": "#/$defs/files" },
-          "modified_files": { "$ref": "#/$defs/files" }
+          "modified_files": { "$ref": "#/$defs/files" },
+          "tokens_after": {
+            "description": "Pi's first valid measurement after the compaction; absent until there is one.",
+            "$ref": "#/$defs/tokens"
+          }
         }
       }
     },

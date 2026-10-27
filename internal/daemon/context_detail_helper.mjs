@@ -17,7 +17,10 @@ try {
     await import(new URL('./core/compaction/index.js', pi).href);
   const { getCurrentSystemMessage } = await import(new URL('../../pi-ai/dist/index.js', pi).href);
 
-  const entries = parseSessionEntries(readFileSync(0, 'utf8'));
+  // A synchronous read of a pipe can fail with EAGAIN on a large session.
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(chunk);
+  const entries = parseSessionEntries(Buffer.concat(chunks).toString('utf8'));
   migrateSessionEntries(entries);
   const session = SessionManager.inMemory('/', undefined, entries);
   const branch = session.getBranch();
@@ -115,14 +118,18 @@ try {
   // Compactions on the active path, newest last.
   const compactions = [];
   let keptFrom = 1;
-  for (const e of branch) {
+  for (const [i, e] of branch.entries()) {
     if (e.type !== 'compaction') continue;
+    // Pi's first valid measurement after this compaction.
+    const after = branch.slice(i + 1).find(x => x.type === 'message' && x.message?.role === 'assistant' && x.message.usage
+      && x.message.stopReason !== 'aborted' && x.message.stopReason !== 'error' && calculateContextTokens(x.message.usage) > 0);
     const kept = turnOf.get(e.firstKeptEntryId) ?? turnOf.get(e.id) ?? 0;
     const files = list => (Array.isArray(list) ? list : []).filter(f => typeof f === 'string').slice(0, 50).map(f => text(f, 512));
     compactions.push({ at: e.timestamp, after_turn: turnOf.get(e.id) ?? 0, kept_from_turn: kept,
       tokens_before: count(e.tokensBefore), summary: text(e.summary, 24000), summary_truncated: (e.summary?.length ?? 0) > 24000,
       summary_tokens: count(Math.ceil((e.summary?.length ?? 0) / 4)),
-      read_files: files(e.details?.readFiles), modified_files: files(e.details?.modifiedFiles) });
+      read_files: files(e.details?.readFiles), modified_files: files(e.details?.modifiedFiles),
+      ...(after ? { tokens_after: count(calculateContextTokens(after.message.usage)) } : {}) });
     keptFrom = kept || keptFrom;
   }
 
@@ -136,10 +143,15 @@ try {
   let next = null;
   const prep = compaction && prepareCompaction(branch, compaction);
   if (prep) {
+    // Pi cuts at its own turn starts (also shell commands and extension
+    // messages); the page numbers turns by the person's messages, so the cut
+    // is placed by entry order and may fall inside a displayed turn.
+    const at = branch.findIndex(e => e.id === prep.firstKeptEntryId);
     const first = turnOf.get(prep.firstKeptEntryId) ?? 0;
+    const before = at > 0 ? turnOf.get(branch[at - 1].id) ?? 0 : 0;
     const summarized = [...prep.messagesToSummarize, ...prep.turnPrefixMessages].reduce((a, m) => a + est(m), 0);
-    next = { from_turn: keptFrom, through_turn: prep.isSplitTurn ? first : first - 1, kept_from_turn: first,
-      split_turn: prep.isSplitTurn, summarized_tokens: summarized };
+    next = { from_turn: keptFrom, through_turn: before, kept_from_turn: first,
+      split_turn: prep.isSplitTurn || (first > 0 && before === first), summarized_tokens: summarized };
   }
 
   const result = {
@@ -152,6 +164,17 @@ try {
     largest_outputs: outputs.slice(0, 5), compactions: compactions.slice(-20), next_compaction: next,
     turns: turns.slice(-500).map(t => ({ ...t, cost: Math.round(t.cost * 1e6) / 1e6 })), turns_omitted: Math.max(0, turns.length - 500),
   };
+  // Every list is bounded, but not their sum: drop the oldest summaries'
+  // text, then their file lists, until the reading fits the daemon's limit.
+  const size = () => Buffer.byteLength(JSON.stringify(result));
+  for (const c of result.compactions) {
+    if (size() <= 900000) break;
+    c.summary = ''; c.summary_truncated = true;
+  }
+  for (const c of result.compactions) {
+    if (size() <= 900000) break;
+    c.read_files = []; c.modified_files = [];
+  }
   process.stdout.write(JSON.stringify(result) + '\n');
 } catch {
   // Session text and Pi errors may contain the person's content.

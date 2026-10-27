@@ -47,6 +47,7 @@ export interface ContextDetail {
     summary_tokens: number;
     read_files: string[];
     modified_files: string[];
+    tokens_after?: number;
   }[];
   next_compaction: {
     from_turn: number;
