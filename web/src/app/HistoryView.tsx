@@ -18,7 +18,6 @@ import {
   UserMessage,
 } from "../components";
 import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
-import { ArchiveControls } from "../components/ArchiveControls";
 import { attachmentsIn, messageText } from "../components/AttachmentChips";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
@@ -1685,34 +1684,29 @@ function HistoryViewContent({
         archiveReason={
           agent.archive === "archived" || mayWrite ? undefined : blockedReason
         }
-        archiveControl={
-          <ArchiveControls
-            state={agent.archive ?? "unknown"}
-            processState={process}
-            empty={
-              state === "empty" || (state === "ready" && entries.length === 0)
-            }
-            eligible={
-              agent.archive === "archived"
-                ? restoreAvailable
-                : mayWrite && !archiveBusy
-            }
-            busy={archiveBusy}
-            blockedReason={
-              agent.archive === "archived"
-                ? !restoreAvailable
-                  ? "Palautus ei ole käytettävissä ennen historian ja yhteyden vahvistusta."
-                  : undefined
-                : mayWrite
-                  ? undefined
-                  : blockedReason
-            }
-            onArchive={() => {
-              if (mayWrite) onArchive?.();
-            }}
-            onRestore={() => onRestore?.()}
-          />
-        }
+        archive={{
+          state: agent.archive ?? "unknown",
+          processState: process,
+          empty:
+            state === "empty" || (state === "ready" && entries.length === 0),
+          eligible:
+            agent.archive === "archived"
+              ? restoreAvailable
+              : mayWrite && !archiveBusy,
+          busy: archiveBusy,
+          blockedReason:
+            agent.archive === "archived"
+              ? !restoreAvailable
+                ? "Palautus ei ole käytettävissä ennen historian ja yhteyden vahvistusta."
+                : undefined
+              : mayWrite
+                ? undefined
+                : blockedReason,
+          onArchive: () => {
+            if (mayWrite) onArchive?.();
+          },
+          onRestore: () => onRestore?.(),
+        }}
         workspaceLabel={workspaceName}
         workspaceHref={`/workspaces/${workspaceId}`}
         detailsExpanded={details}

@@ -397,14 +397,25 @@ test("@native-history read-only control retains safe history actions on desktop 
     await page.setViewportSize({ width, height: 844 });
     const bar = page.locator(".ah-agent-header");
     await expect(bar).toHaveAttribute("data-control", "read-only");
-    for (const testId of ["conversation-retitle", "archive-conversation"])
-      await expect(bar.getByTestId(testId)).toBeEnabled();
-    const details = bar
-      .getByRole("button")
-      .and(page.getByTestId("workspace-details"));
-    await expect(details).toBeEnabled();
-    if ((await details.getAttribute("aria-expanded")) === "false")
-      await details.click();
+    if (width === 1280) {
+      for (const testId of ["conversation-retitle", "archive-conversation"])
+        await expect(bar.getByTestId(testId)).toBeEnabled();
+      const details = bar
+        .getByRole("button")
+        .and(page.getByTestId("workspace-details"));
+      await expect(details).toBeEnabled();
+      if ((await details.getAttribute("aria-expanded")) === "false")
+        await details.click();
+    } else {
+      // The phone keeps the same actions in the conversation's menu.
+      await bar.getByTestId("conversation-menu").click();
+      for (const id of ["retitle", "archive", "details"])
+        await expect(
+          page.getByRole("menuitem").and(page.getByTestId(`menu-${id}`)),
+        ).toBeEnabled();
+      await page.keyboard.press("Escape");
+    }
+    await expect(page.locator(".ah-details-popover")).toBeVisible();
     await expect(page.locator(".ah-read-only-footer")).toBeVisible();
     expect(
       (await new AxeBuilder({ page }).include(".ah-agent-header").analyze())

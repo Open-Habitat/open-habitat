@@ -1569,9 +1569,11 @@ test("@browser-conversation phone archives directly into its workspace", async (
 }) => {
   const id = await stoppedConversation(page);
   await page.setViewportSize({ width: 390, height: 844 });
+  // On a phone the archive action is in the conversation's menu.
+  await page.getByTestId("conversation-menu").click();
   await page
-    .getByTestId("archive-conversation")
-    .and(page.locator(':not([data-archive-state="archived"])'))
+    .getByRole("menuitem")
+    .and(page.getByTestId("menu-archive"))
     .click();
   await expect(page.getByTestId("archive-confirmation")).toHaveCount(0);
   await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);

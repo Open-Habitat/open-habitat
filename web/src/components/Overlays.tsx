@@ -185,6 +185,7 @@ export function Menu({
   popoverClassName,
   triggerPresentation,
   triggerClassName,
+  triggerTestId,
   buttonRef,
   placement,
 }: {
@@ -195,6 +196,7 @@ export function Menu({
   popoverClassName?: string;
   triggerPresentation?: "account" | "icon";
   triggerClassName?: string;
+  triggerTestId?: string;
   buttonRef?: RefObject<HTMLButtonElement | null>;
   placement?: "top start" | "end top" | "bottom start" | "bottom end";
   betweenItems?: ReactNode;
@@ -221,9 +223,10 @@ export function Menu({
       <ControlButton
         size="row"
         data-testid={
-          triggerPresentation === "account"
+          triggerTestId ??
+          (triggerPresentation === "account"
             ? "account-menu-trigger"
-            : "workspace-menu"
+            : "workspace-menu")
         }
         ref={triggerRef}
         variant="secondary"

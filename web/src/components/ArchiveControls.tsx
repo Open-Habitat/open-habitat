@@ -3,17 +3,7 @@ import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { InlineNotice } from "./Status";
 
-export function ArchiveControls({
-  state,
-  eligible,
-  busy,
-  onArchive,
-  onRestore,
-  onClose,
-  blockedReason,
-  processState,
-  empty = false,
-}: {
+export type ArchiveControlsProps = {
   blockedReason?: string;
   processState?: string;
   empty?: boolean;
@@ -23,8 +13,25 @@ export function ArchiveControls({
   onArchive: () => void;
   onRestore: () => void;
   onClose?: () => void;
-}) {
-  const reasonId = useId();
+};
+
+/** The one archive action this conversation offers and why it may be blocked,
+ * shared by the top-bar icon and the phone's header menu. */
+export function archiveAction({
+  state,
+  eligible,
+  busy,
+  onArchive,
+  onRestore,
+  onClose,
+  blockedReason,
+  empty = false,
+}: ArchiveControlsProps): {
+  id: "close" | "archive" | "restore";
+  label: string;
+  reason: string;
+  run: () => void;
+} {
   const reason =
     blockedReason ??
     (busy
@@ -34,24 +41,40 @@ export function ArchiveControls({
         : !eligible
           ? "Odota agentin vuoron päättymistä."
           : "");
-  if (empty && state !== "archived") {
-    const closeReason =
-      blockedReason ??
-      (!onClose
-        ? "Vain selaimessa aloitettu tyhjä keskustelu voidaan sulkea."
-        : reason);
+  if (empty && state !== "archived")
+    return {
+      id: "close",
+      label: "Sulje",
+      reason:
+        blockedReason ??
+        (!onClose
+          ? "Vain selaimessa aloitettu tyhjä keskustelu voidaan sulkea."
+          : reason),
+      run: () => onClose?.(),
+    };
+  return state === "archived"
+    ? { id: "restore", label: "Palauta näkyviin", reason, run: onRestore }
+    : { id: "archive", label: "Arkistoi", reason, run: onArchive };
+}
+
+export function ArchiveControls(props: ArchiveControlsProps) {
+  const { state, processState, blockedReason } = props;
+  const reasonId = useId();
+  const action = archiveAction(props);
+  const reason = action.reason;
+  if (action.id === "close") {
     return (
-      <div className="ah-archive-control" title={closeReason || "Sulje"}>
+      <div className="ah-archive-control" title={reason || action.label}>
         <ControlButton
           data-testid="dialog-close"
           size="row"
           className="ah-topbar-icon"
           variant="quiet"
-          aria-label="Sulje"
-          title={closeReason || "Sulje"}
-          aria-description={closeReason || undefined}
-          isDisabled={Boolean(closeReason)}
-          onPress={() => onClose?.()}
+          aria-label={action.label}
+          title={reason || action.label}
+          aria-description={reason || undefined}
+          isDisabled={Boolean(reason)}
+          onPress={action.run}
         >
           <Icon name="cross" />
         </ControlButton>
@@ -59,10 +82,7 @@ export function ArchiveControls({
     );
   }
   return (
-    <div
-      className="ah-archive-control"
-      title={reason || (state === "archived" ? "Palauta näkyviin" : "Arkistoi")}
-    >
+    <div className="ah-archive-control" title={reason || action.label}>
       <ControlButton
         data-archive-state={state}
         data-process-state={processState}
@@ -71,13 +91,11 @@ export function ArchiveControls({
         className="ah-topbar-icon"
         variant="quiet"
         aria-describedby={reason ? reasonId : undefined}
-        aria-label={state === "archived" ? "Palauta näkyviin" : "Arkistoi"}
-        title={
-          reason || (state === "archived" ? "Palauta näkyviin" : "Arkistoi")
-        }
+        aria-label={action.label}
+        title={reason || action.label}
         aria-description={reason || undefined}
         isDisabled={Boolean(reason)}
-        onPress={() => (state === "archived" ? onRestore() : onArchive())}
+        onPress={action.run}
       >
         <svg
           aria-hidden="true"

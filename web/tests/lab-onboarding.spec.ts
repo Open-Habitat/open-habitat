@@ -107,11 +107,14 @@ test("@lab long native title keeps the original accessible at 390px", async ({
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
-  const details = page
-    .getByRole("button")
-    .and(page.getByTestId("workspace-details"));
-  await details.click();
-  await expect(details).toHaveAttribute("aria-expanded", "true");
+  // A phone shortens the title to one line; its menu shows the whole title.
+  await page.getByTestId("conversation-menu").click();
+  await expect(page.getByRole("menu").locator("..")).toContainText(title);
+  await page
+    .getByRole("menuitem")
+    .and(page.getByTestId("menu-details"))
+    .click();
+  await expect(page.locator(".ah-details-popover")).toBeVisible();
   await expect(heading).toHaveAttribute("title", title);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,

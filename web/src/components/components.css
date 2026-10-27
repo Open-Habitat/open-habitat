@@ -2210,21 +2210,19 @@ details[open] > summary:not([class])::before {
     .ah-state:has(.ah-conversation-frame) {
     height: 100%;
   }
-  .ah-conversation-frame > .ah-agent-header {
-    min-height: 74px;
-    padding: var(--ah-topbar-pad-block) var(--ah-topbar-pad-inline)
-      var(--ah-topbar-pad-block) 100px;
+  /* Only the first row sits beside the floating menu and home buttons. */
+  .ah-conversation-frame > .ah-agent-header .ah-title-row {
+    margin-inline-start: calc(100px - var(--ah-topbar-pad-inline));
   }
   /* Single-workspace mode has no menu button over the header to leave room for. */
-  .ah-app-shell:has(.ah-single-bar) .ah-conversation-frame > .ah-agent-header {
-    min-height: 0;
-    padding-left: var(--ah-topbar-pad-inline);
+  .ah-app-shell:has(.ah-single-bar)
+    .ah-conversation-frame
+    > .ah-agent-header
+    .ah-title-row {
+    margin-inline-start: 0;
   }
   .ah-conversation-frame .ah-composer {
     padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline);
-  }
-  .ah-agent-topline .ah-title-row {
-    flex: 1 1 0;
   }
   .ah-agent-topline > .ah-status {
     font-size: var(--ah-size-meta);
@@ -2340,22 +2338,6 @@ details[open] > summary:not([class])::before {
   .ah-conversation-frame
     > .ah-conversation-notices.ah-conversation-notices:not(:empty) {
     width: calc(100% - 2 * var(--ah-column-pad-inline));
-  }
-}
-
-/* Keep the title visible when activity and capability are independent badges. */
-@media (max-width: 800px) {
-  .ah-agent-topline {
-    flex-wrap: wrap;
-  }
-  .ah-agent-topline .ah-title-row {
-    flex: 1 1 50%;
-  }
-  .ah-agent-topline > .ah-details-toggle {
-    order: 1;
-  }
-  .ah-agent-topline > .ah-status {
-    order: 2;
   }
 }
 
@@ -3472,23 +3454,65 @@ details[open] > summary:not([class])::before {
 .ah-agent-topline .ah-background-dot {
   margin-inline-end: var(--ah-s2);
 }
+/* The conversation's menu replaces its secondary actions only on a phone. */
+.ah-agent-topline .ah-header-more {
+  display: none;
+}
+/* Phone: two rows. The title, the panels and the menu share the first, beside
+   the floating menu and home buttons; the conversation's state (activity, Git,
+   context, model) fills the second. The workspace, new title, archive and
+   details move into the menu, which also shows why an action is blocked. */
 @media (max-width: 800px) {
   .ah-agent-topline {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     /* Packed icon actions keep their focus rings apart (focus rule). */
-    gap: var(--ah-control-gap);
+    gap: var(--ah-s2) var(--ah-control-gap);
+  }
+  .ah-agent-topline::after {
+    content: "";
+    order: 2;
+    flex-basis: 100%;
   }
   .ah-agent-topline .ah-title-row {
     flex: 1 1 0;
     min-width: 0;
+    min-height: var(--ah-control-row);
+  }
+  .ah-agent-topline > * {
+    order: 3;
+  }
+  .ah-agent-topline
+    > :is(
+      .ah-title-row,
+      .ah-editor-controls,
+      .ah-terminal-toggle,
+      .ah-header-more
+    ) {
+    order: 1;
+  }
+  .ah-agent-topline
+    > :is(
+      .ah-header-workspace,
+      .ah-retitle,
+      .ah-archive-control,
+      .ah-details-toggle
+    ) {
+    display: none;
+  }
+  .ah-agent-topline .ah-header-more {
+    display: inline-flex;
+    flex: none;
   }
   .ah-agent-topline > .ah-status {
-    order: 0;
     padding: var(--ah-s1);
     font-size: 0;
   }
-  .ah-agent-topline > .ah-details-toggle {
-    order: 0;
+  /* The model chip takes what the row leaves and shortens the model's name;
+     it never pushes the row onto a third line. */
+  .ah-agent-topline > :is(.md-chip-picker, .ah-set-chip) {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: max-content;
   }
 }
 .ah-sidebar-agent-row {
@@ -3497,19 +3521,6 @@ details[open] > summary:not([class])::before {
 .ah-sidebar-agent-row .ah-nav-link {
   height: 32px;
   padding-block: 0;
-}
-@media (max-width: 800px) {
-  .ah-agent-topline {
-    flex-wrap: wrap;
-  }
-  .ah-agent-topline .ah-title-row {
-    flex: 1 1 90px;
-    min-width: 85px;
-  }
-  .ah-agent-topline .ah-header-workspace {
-    order: 10;
-    width: 100%;
-  }
 }
 /* Recap is a dismissible card adjacent to the editor, outside the transcript scroll. */
 .ah-conversation-frame > .ah-recap {
@@ -3698,12 +3709,11 @@ details[open] > summary:not([class])::before {
 }
 @media (max-width: 800px) {
   .ah-set-chip {
-    max-width: none;
-    flex: none;
+    max-width: 100%;
   }
-  .ah-set-chip .ah-set-model,
-  .ah-set-chip .ah-set-separator {
-    display: none;
+  .ah-set-chip .ah-set-model {
+    min-width: 0;
+    white-space: nowrap;
   }
 }
 /* One output surface for tool results and reply code. */
@@ -4128,12 +4138,6 @@ details[open] > summary:not([class])::before {
   margin: var(--ah-s1) 0;
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
-}
-
-@media (max-width: 800px) {
-  .ah-agent-topline .ah-title-row {
-    flex: 1 0 100%;
-  }
 }
 
 @media (max-width: 800px) {

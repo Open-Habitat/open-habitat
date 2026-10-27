@@ -30,8 +30,8 @@ export function ModelChip({
       className={`ah-set-chip ${controlClassName({ size: "inline", presentation: "pill" })} ${className}`}
       aria-label={label}
     >
-      {modelDisplayName(model, models)} <Icon name="thinking" />{" "}
-      {thinkingDisplayName(thinking)}
+      <span className="ah-set-model">{modelDisplayName(model, models)}</span>{" "}
+      <Icon name="thinking" /> {thinkingDisplayName(thinking)}
     </Element>
   );
 }

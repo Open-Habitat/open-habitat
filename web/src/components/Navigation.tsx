@@ -1,9 +1,15 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { Input, Label, TextField } from "react-aria-components";
-import { useLocation } from "react-router";
+import { useLocation, useNavigate } from "react-router";
+import {
+  ArchiveControls,
+  type ArchiveControlsProps,
+  archiveAction,
+} from "./ArchiveControls";
 import type { AgentPresentation } from "./agentPresentation";
 import { ControlButton, ExternalLink, LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
+import { Menu } from "./Overlays";
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
 import type { StatusKind } from "./Status";
 import { Badge, StatusMark } from "./Status";
@@ -1016,7 +1022,7 @@ export function AgentHeader({
   detailsExpanded,
   onToggleDetails,
   titleAction,
-  archiveControl,
+  archive,
   editorControl,
   settings,
   contextIndicator,
@@ -1039,7 +1045,8 @@ export function AgentHeader({
   workspaceHref: string;
   detailsExpanded: boolean;
   onToggleDetails: () => void;
-  archiveControl?: ReactNode;
+  /** The conversation's archive action; on a phone it moves into the menu. */
+  archive?: ArchiveControlsProps;
   /** The workspace editor's controls (Rinnakkain), where it is offered. */
   editorControl?: ReactNode;
   archiveReason?: string;
@@ -1066,6 +1073,46 @@ export function AgentHeader({
   // for Pi to start); the header then carries no mark at all.
   const visibleActivity = !!activityLabel || !!activityControl;
   const visibleControl = controlKind === "read-only";
+  const navigate = useNavigate();
+  const archiving = archive ? archiveAction(archive) : undefined;
+  // On a phone the secondary actions leave the top bar for this menu, so the
+  // header stays two rows (CSS shows one or the other).
+  const phoneMenu = [
+    {
+      id: "workspace",
+      label: workspaceLabel,
+      description: "Avaa työtila",
+      run: () => navigate(workspaceHref),
+    },
+    ...(titleAction
+      ? [
+          {
+            id: "retitle",
+            label: titleAction.label,
+            availability: naming
+              ? {
+                  state: "disabled" as const,
+                  reason: "Otsikkoa luodaan…",
+                }
+              : (titleAction.availability ?? { state: "enabled" as const }),
+            run: titleAction.onPress,
+          },
+        ]
+      : []),
+    ...(archiving
+      ? [
+          {
+            id: archiving.id,
+            label: archiving.label,
+            availability: archiving.reason
+              ? { state: "disabled" as const, reason: archiving.reason }
+              : undefined,
+            run: archiving.run,
+          },
+        ]
+      : []),
+    { id: "details", label: "Tiedot", run: onToggleDetails },
+  ];
   return (
     <header
       data-activity={activityKind}
@@ -1204,7 +1251,7 @@ export function AgentHeader({
             {titleAction.availability.reason}
           </span>
         ) : null}
-        {archiveControl}
+        {archive ? <ArchiveControls {...archive} /> : null}
         <ControlButton
           data-testid="workspace-details"
           size="row"
@@ -1217,6 +1264,17 @@ export function AgentHeader({
         >
           <Icon name="info" />
         </ControlButton>
+        <Menu
+          label="Keskustelun toiminnot"
+          trigger={<span aria-hidden="true" />}
+          triggerPresentation="icon"
+          triggerClassName="ah-header-more"
+          triggerTestId="conversation-menu"
+          placement="bottom end"
+          heading={<p className="ah-header-full-title">{title}</p>}
+          items={phoneMenu}
+          onAction={(id) => phoneMenu.find((item) => item.id === id)?.run()}
+        />
       </div>
       {titleState ? <StatusMark label={titleState} tone="info" /> : null}
       {detailsExpanded ? (

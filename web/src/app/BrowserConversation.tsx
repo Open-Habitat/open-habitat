@@ -15,7 +15,6 @@ import {
   WorkingProgress,
 } from "../components";
 import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
-import { ArchiveControls } from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
@@ -1284,58 +1283,51 @@ function BrowserConversationContent({
             data-model={selectedModel}
             data-thinking={selectedThinking}
             editorControl={<EditorHeaderControls />}
-            archiveControl={
-              <ArchiveControls
-                state={archive?.archive ?? "unknown"}
-                empty={
-                  entries.length === 0 &&
-                  !historyError &&
-                  !next &&
-                  !!current &&
-                  current.native_history !== "unavailable"
-                }
-                blockedReason={
-                  archiveAwaitingSnapshot
-                    ? "Odotetaan arkiston tilan vahvistusta."
-                    : archive
-                      ? undefined
-                      : "Ladataan arkiston tilaa."
-                }
-                eligible={
-                  !busy &&
-                  !statusStale &&
-                  !serverUnavailable &&
-                  (current?.state === "idle" ||
-                    (current?.state === "stopped" && !held.waiting.length) ||
-                    current?.continuation === "eligible")
-                }
-                busy={!!archiveBusy || !!closeBusy}
-                onArchive={() => {
-                  if (archive) void onArchive?.(archive, true);
-                }}
-                onClose={
-                  archive &&
-                  controlled &&
-                  csrf &&
-                  !serverUnavailable &&
-                  !statusStale &&
-                  current?.state === "idle" &&
-                  !busy
-                    ? () => {
-                        // Close removes this view immediately. Fence in-flight
-                        // status reads before they can turn its expected 404
-                        // into a late navigation back to deleted history.
-                        alive.current = false;
-                        ++generation.current;
-                        void onClose?.(archive);
-                      }
-                    : undefined
-                }
-                onRestore={() => {
-                  if (archive) void onArchive?.(archive, false);
-                }}
-              />
-            }
+            archive={{
+              state: archive?.archive ?? "unknown",
+              empty:
+                entries.length === 0 &&
+                !historyError &&
+                !next &&
+                !!current &&
+                current.native_history !== "unavailable",
+              blockedReason: archiveAwaitingSnapshot
+                ? "Odotetaan arkiston tilan vahvistusta."
+                : archive
+                  ? undefined
+                  : "Ladataan arkiston tilaa.",
+              eligible:
+                !busy &&
+                !statusStale &&
+                !serverUnavailable &&
+                (current?.state === "idle" ||
+                  (current?.state === "stopped" && !held.waiting.length) ||
+                  current?.continuation === "eligible"),
+              busy: !!archiveBusy || !!closeBusy,
+              onArchive: () => {
+                if (archive) void onArchive?.(archive, true);
+              },
+              onClose:
+                archive &&
+                controlled &&
+                csrf &&
+                !serverUnavailable &&
+                !statusStale &&
+                current?.state === "idle" &&
+                !busy
+                  ? () => {
+                      // Close removes this view immediately. Fence in-flight
+                      // status reads before they can turn its expected 404
+                      // into a late navigation back to deleted history.
+                      alive.current = false;
+                      ++generation.current;
+                      void onClose?.(archive);
+                    }
+                  : undefined,
+              onRestore: () => {
+                if (archive) void onArchive?.(archive, false);
+              },
+            }}
             title={title ?? "Uusi keskustelu"}
             titlePending={archive?.title.generation_state === "pending"}
             titleAction={{
@@ -1474,6 +1466,7 @@ function BrowserConversationContent({
                 >
                   <ModelChip
                     as="summary"
+                    data-testid="conversation-model"
                     model={selectedModel}
                     thinking={selectedThinking}
                     models={models?.models}

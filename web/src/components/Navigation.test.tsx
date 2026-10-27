@@ -122,8 +122,10 @@ describe("conversation title", () => {
     const view = render(header(longTitle));
     const heading = view.getByRole("heading", { level: 1 });
     expect(heading.textContent).toBe(longTitle);
-    expect(view.getAllByRole("button")).toHaveLength(1);
-    expect(view.getByTestId("workspace-details")).toBeTruthy();
+    // Tiedot, and the phone's menu that CSS shows in its place.
+    expect(
+      view.getAllByRole("button").map((b) => b.getAttribute("data-testid")),
+    ).toEqual(["workspace-details", "conversation-menu"]);
   });
 });
 
