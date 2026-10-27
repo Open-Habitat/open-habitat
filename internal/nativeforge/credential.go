@@ -97,4 +97,3 @@ func RequestPath(p string) (string, bool) {
 	}
 	return "/" + p, true
 }
-
