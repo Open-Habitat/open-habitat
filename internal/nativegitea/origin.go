@@ -1,6 +1,10 @@
 package nativegitea
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
+)
 
 // MatchOrigin names the repository a clone's origin address points to on
 // one of bases: the base and the owner/name as the address spells them. Only
@@ -12,7 +16,7 @@ import "strings"
 // from its web address, and guessing would call another repository this
 // one.
 func MatchOrigin(origin string, bases []Base) (Base, string, bool) {
-	if len(origin) > maxAddress {
+	if len(origin) > nativeforge.MaxAddress {
 		return Base{}, "", false
 	}
 	for i := 0; i < len(origin); i++ {
@@ -29,7 +33,7 @@ func MatchOrigin(origin string, bases []Base) (Base, string, bool) {
 	if j := strings.IndexByte(rest, '/'); j >= 0 {
 		authority, path = rest[:j], rest[j:]
 	}
-	host, port, ok := parseAuthority(authority)
+	host, port, ok := nativeforge.ParseAuthority(authority)
 	if !ok {
 		return Base{}, "", false
 	}

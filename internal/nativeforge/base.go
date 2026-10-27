@@ -1,4 +1,4 @@
-package nativegitea
+package nativeforge
 
 import (
 	"crypto/sha256"
@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// Base is a canonical HTTPS Gitea base: exact host, port and base path. Two
-// bases are the same Gitea only when all three are equal.
+// Base is a canonical HTTPS forge base: exact host, port and base path. Two
+// bases are the same server instance only when all three are equal.
 type Base struct {
 	// Host is a lowercase DNS name or a canonical IP literal without brackets.
 	Host string
@@ -20,9 +20,10 @@ type Base struct {
 	Path string
 }
 
-const maxAddress = 2048
+// MaxAddress bounds an address a person types or a remote URL.
+const MaxAddress = 2048
 
-// ParseBase accepts what a person types as a Gitea address. "https://" is
+// ParseBase accepts what a person types as a forge address. "https://" is
 // inferred only when no scheme is present; an explicit port and a
 // self-hosted base path are kept. Anything that could mean two different
 // destinations is refused rather than corrected: other schemes, userinfo,
@@ -30,7 +31,7 @@ const maxAddress = 2048
 // segments, non-ASCII or control bytes, and numeric host spellings that are
 // not a canonical IP literal.
 func ParseBase(raw string) (Base, error) {
-	if raw == "" || len(raw) > maxAddress {
+	if raw == "" || len(raw) > MaxAddress {
 		return Base{}, ErrInvalidAddress
 	}
 	for i := 0; i < len(raw); i++ {
@@ -53,7 +54,7 @@ func ParseBase(raw string) (Base, error) {
 	if i := strings.IndexByte(rest, '/'); i >= 0 {
 		authority, path = rest[:i], rest[i:]
 	}
-	host, port, ok := parseAuthority(authority)
+	host, port, ok := ParseAuthority(authority)
 	if !ok {
 		return Base{}, ErrInvalidAddress
 	}
@@ -64,8 +65,8 @@ func ParseBase(raw string) (Base, error) {
 	return Base{Host: host, Port: port, Path: path}, nil
 }
 
-// parseAuthority parses host[:port] or [v6][:port].
-func parseAuthority(a string) (string, int, bool) {
+// ParseAuthority parses host[:port] or [v6][:port].
+func ParseAuthority(a string) (string, int, bool) {
 	host, portText := a, ""
 	if strings.HasPrefix(a, "[") {
 		end := strings.IndexByte(a, ']')
@@ -152,7 +153,7 @@ func canonicalHost(h string) (string, bool) {
 		}
 	}
 	// A numeric final label ("10.1", "0x7f.1", "127.1") is an alternative
-	// IPv4 spelling to some resolvers, never a Gitea's DNS name.
+	// IPv4 spelling to some resolvers, never a forge's DNS name.
 	last := labels[len(labels)-1]
 	if strings.Trim(last, "0123456789") == "" || strings.HasPrefix(last, "0x") {
 		return "", false
@@ -168,14 +169,14 @@ func canonicalPath(p string) (string, bool) {
 	p = strings.TrimSuffix(p, "/")
 	segs := strings.Split(p[1:], "/")
 	for _, s := range segs {
-		if !validSegment(s) {
+		if !ValidSegment(s) {
 			return "", false
 		}
 	}
 	return p, true
 }
 
-func validSegment(s string) bool {
+func ValidSegment(s string) bool {
 	if s == "" || s == "." || s == ".." || len(s) > 255 {
 		return false
 	}
@@ -201,7 +202,7 @@ func (b Base) Authority() string {
 	return h
 }
 
-// String is the canonical base URL, as written into tea's url field.
+// String is the canonical base URL, as written into a native tool's file.
 func (b Base) String() string { return "https://" + b.Authority() + b.Path }
 
 // Digest identifies the base in an owned login name.
@@ -210,9 +211,9 @@ func (b Base) Digest() string {
 	return hex.EncodeToString(sum[:6])
 }
 
-// explicitLoopback reports whether the person named a loopback destination
+// ExplicitLoopback reports whether the person named a loopback destination
 // themselves. Only then may the connection dial loopback.
-func (b Base) explicitLoopback() bool {
+func (b Base) ExplicitLoopback() bool {
 	if b.Host == "localhost" {
 		return true
 	}
@@ -220,12 +221,13 @@ func (b Base) explicitLoopback() bool {
 	return err == nil && ip.IsLoopback()
 }
 
-func (b Base) valid() bool { return b.Host != "" && b.Port > 0 }
+// Valid: b has a host and port.
+func (b Base) Valid() bool { return b.Host != "" && b.Port > 0 }
 
 // RemoteAuthority is the host and port of an HTTPS Git remote address as
 // the credential helper matches them: Git sends the URL's host and the
-// helper canonicalises it, so "https://GITEA.example:443/x" reaches the same
-// login as "https://gitea.example/x". Userinfo is skipped. Any other scheme,
+// helper canonicalises it, so "https://FORGE.example:443/x" reaches the same
+// login as "https://forge.example/x". Userinfo is skipped. Any other scheme,
 // or an authority the helper would refuse, is not ok.
 func RemoteAuthority(raw string) (Base, bool) {
 	i := strings.Index(raw, "://")
@@ -239,7 +241,7 @@ func RemoteAuthority(raw string) (Base, bool) {
 	if k := strings.LastIndexByte(rest, '@'); k >= 0 {
 		rest = rest[k+1:]
 	}
-	host, port, ok := parseAuthority(rest)
+	host, port, ok := ParseAuthority(rest)
 	if !ok {
 		return Base{}, false
 	}

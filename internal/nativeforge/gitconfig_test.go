@@ -1,4 +1,4 @@
-package nativegitea
+package nativeforge
 
 import (
 	"context"
@@ -27,7 +27,7 @@ func gitHome(t *testing.T) (GitConfig, string) {
 	if err := os.WriteFile(exe, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	return GitConfig{Home: home, ConfigHome: filepath.Join(home, ".config")}, exe
+	return GitConfig{Home: home, ConfigHome: filepath.Join(home, ".config"), HelperArgs: "gitea git-credential"}, exe
 }
 
 func gitGet(t *testing.T, g GitConfig, key string) string {
@@ -112,9 +112,18 @@ func TestGitHelperRefusesForeignScopeAndUnsafeExecutable(t *testing.T) {
 		t.Fatal("foreign helper overwritten")
 	}
 	for _, bad := range []string{"open-habitat", exe + " ; rm", "/usr/bin/../bin/git", filepath.Join(g.Home, "missing"), filepath.Join(g.Home, ".gitconfig")} {
-		if _, err := HelperCommand(bad); err == nil {
+		if _, err := HelperCommand(bad, "gitea git-credential"); err == nil {
 			t.Errorf("%q accepted", bad)
 		}
+	}
+	// A GitConfig without its provider's arguments registers nothing.
+	for _, args := range []string{"", "gitea ; rm", "Gitea git-credential", "gitea  git-credential"} {
+		if _, err := HelperCommand(exe, args); err == nil {
+			t.Errorf("arguments %q accepted", args)
+		}
+	}
+	if err := (GitConfig{Home: g.Home, ConfigHome: g.ConfigHome}).Register(ctx, mustBase(t, "other.example.org"), exe); err != ErrHelperConflict {
+		t.Fatalf("no arguments: %v", err)
 	}
 }
 

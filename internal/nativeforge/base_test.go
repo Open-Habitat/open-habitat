@@ -1,4 +1,4 @@
-package nativegitea
+package nativeforge
 
 import "testing"
 
@@ -56,4 +56,13 @@ func TestRemoteAuthority(t *testing.T) {
 			t.Errorf("%q accepted as %q", in, b.String())
 		}
 	}
+}
+
+func mustBase(t *testing.T, s string) Base {
+	t.Helper()
+	b, err := ParseBase(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }

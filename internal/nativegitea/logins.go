@@ -238,7 +238,7 @@ func markAmbiguous(es []entry) {
 }
 
 func sameAccount(a, b Login) bool {
-	return a.Base.valid() && a.Base == b.Base && a.User != "" && strings.EqualFold(a.User, b.User)
+	return a.Base.Valid() && a.Base == b.Base && a.User != "" && strings.EqualFold(a.User, b.User)
 }
 
 func (d *document) projection() []Login {

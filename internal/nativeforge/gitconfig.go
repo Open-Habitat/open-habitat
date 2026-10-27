@@ -1,4 +1,4 @@
-package nativegitea
+package nativeforge
 
 import (
 	"bytes"
@@ -13,33 +13,36 @@ import (
 	"time"
 )
 
-// HelperArgs follow the executable in the registered helper command; Git
-// appends get, store or erase.
-const HelperArgs = "gitea git-credential"
-
 var safeExecutable = regexp.MustCompile(`^(/[A-Za-z0-9._+-]+)+$`)
 
-// HelperCommand is the Git helper value for an installed executable. Git
-// runs an absolute helper through the shell, so the path is limited to
-// characters that need no quoting.
-func HelperCommand(executable string) (string, error) {
-	if len(executable) > 1024 || !safeExecutable.MatchString(executable) || filepath.Clean(executable) != executable {
+var helperArgs = regexp.MustCompile(`^[a-z]+( [a-z-]+)*$`)
+
+// HelperCommand is the Git helper value for an installed executable followed
+// by a provider's fixed helper arguments (Git appends get, store or erase).
+// Git runs an absolute helper through the shell, so the path is limited to
+// characters that need no quoting and the arguments to fixed words.
+func HelperCommand(executable, args string) (string, error) {
+	if len(executable) > 1024 || !safeExecutable.MatchString(executable) || filepath.Clean(executable) != executable || !helperArgs.MatchString(args) {
 		return "", ErrHelperConflict
 	}
 	st, err := os.Stat(executable)
 	if err != nil || !st.Mode().IsRegular() || st.Mode().Perm()&0o111 == 0 {
 		return "", ErrHelperConflict
 	}
-	return executable + " " + HelperArgs, nil
+	return executable + " " + args, nil
 }
 
 // GitConfig edits the person's global Git configuration through Git itself,
 // which owns that format, its includes and its lock. It writes only settings
-// scoped to one Gitea base and never a secret.
+// scoped to one base and never a secret.
 type GitConfig struct {
 	Home, ConfigHome string
 	// Git is the Git executable; "" is /usr/bin/git.
 	Git string
+	// HelperArgs are the provider's helper arguments after the executable,
+	// such as "gitea git-credential". A GitConfig without them registers
+	// nothing.
+	HelperArgs string
 }
 
 const gitTimeout = 10 * time.Second
@@ -144,7 +147,7 @@ func mayApply(scope string, b Base) bool {
 	if k := strings.LastIndexByte(hostport, '@'); k >= 0 {
 		hostport = hostport[k+1:]
 	}
-	host, port, ok := parseAuthority(hostport)
+	host, port, ok := ParseAuthority(hostport)
 	return !ok || strings.Contains(hostport, "*") || host == b.Host && port == b.Port
 }
 
@@ -201,7 +204,7 @@ func (g GitConfig) state(ctx context.Context, b Base, command string) (HelperSta
 
 // State observes the registration for b.
 func (g GitConfig) State(ctx context.Context, b Base, executable string) (HelperState, error) {
-	command, err := HelperCommand(executable)
+	command, err := HelperCommand(executable, g.HelperArgs)
 	if err != nil {
 		return "", err
 	}
@@ -220,10 +223,10 @@ func (g GitConfig) State(ctx context.Context, b Base, executable string) (Helper
 // foreign key keeps our section in place, the move cannot happen and the
 // registration is refused as ErrHelperConflict.
 func (g GitConfig) Register(ctx context.Context, b Base, executable string) error {
-	if !b.valid() {
+	if !b.Valid() {
 		return ErrInvalidAddress
 	}
-	command, err := HelperCommand(executable)
+	command, err := HelperCommand(executable, g.HelperArgs)
 	if err != nil {
 		return err
 	}
@@ -270,7 +273,7 @@ func onlyOurs(values []string, ours ...string) bool {
 // Register wrote for executable; anything else in that scope is left as it
 // is and reported as ErrHelperConflict. Each removal matches its exact value.
 func (g GitConfig) Unregister(ctx context.Context, b Base, executable string) error {
-	command, err := HelperCommand(executable)
+	command, err := HelperCommand(executable, g.HelperArgs)
 	if err != nil {
 		return err
 	}

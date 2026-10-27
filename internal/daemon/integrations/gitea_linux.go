@@ -58,7 +58,7 @@ func NewGitea(env Env, api GiteaAPI, git, executable string) (*GiteaAdapter, err
 	if err != nil {
 		return nil, err
 	}
-	return &GiteaAdapter{Store: store, API: api, Git: nativegitea.GitConfig{Home: env.Home, ConfigHome: config, Git: git}, Executable: executable, env: env}, nil
+	return &GiteaAdapter{Store: store, API: api, Git: nativegitea.NewGitConfig(env.Home, config, git), Executable: executable, env: env}, nil
 }
 
 // Available: the installation provides the qualified tea CLI. Until the

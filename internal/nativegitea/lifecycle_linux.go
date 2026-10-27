@@ -14,19 +14,6 @@ type Verifier interface {
 	Verify(ctx context.Context, b Base, token string) (Account, error)
 }
 
-// Outcome is what a lifecycle call observed or did.
-type Outcome string
-
-const (
-	// Written: tea's file now holds the change.
-	Written Outcome = "written"
-	// Unchanged: the file already held the requested state, which is how a
-	// repeated request after a lost reply is observed rather than replayed.
-	Unchanged Outcome = "unchanged"
-	// Absent: the entry to remove was already gone.
-	Absent Outcome = "absent"
-)
-
 // Connect validates a PAT against base (the account it authenticates and
 // its repository read, see Client.Verify) and adds tea's entry for that
 // account under the owned name. It never sets a default, never takes over an
@@ -34,7 +21,7 @@ const (
 // may already use that external entry, and a second one would make both
 // ambiguous.
 func (s *Store) Connect(ctx context.Context, v Verifier, b Base, token string) (Login, Outcome, error) {
-	if !b.valid() {
+	if !b.Valid() {
 		return Login{}, "", ErrInvalidAddress
 	}
 	if !validToken(token) {
@@ -102,7 +89,7 @@ func (s *Store) Connect(ctx context.Context, v Verifier, b Base, token string) (
 // entry also the Gitea user ID in its name) and can read the repository list. A refusal at any point leaves the
 // previous bytes intact. Only the token scalar changes.
 func (s *Store) Replace(ctx context.Context, v Verifier, t Target, token string) (Login, Outcome, error) {
-	if !t.Base.valid() || t.Name == "" {
+	if !t.Base.Valid() || t.Name == "" {
 		return Login{}, "", ErrNotFound
 	}
 	if !validToken(token) {
@@ -159,19 +146,11 @@ func (s *Store) Replace(ctx context.Context, v Verifier, t Target, token string)
 // and touches no clone. It is refused while the daemon holds the login for
 // an active job; a process that already received the token may still finish.
 func (s *Store) Remove(t Target) (Outcome, error) {
-	key := strings.ToLower(t.Name)
-	s.mu.Lock()
-	if s.holds[key] > 0 || s.removing[key] {
-		s.mu.Unlock()
-		return "", ErrInUse
+	end, err := s.holds.Removing(t.Name)
+	if err != nil {
+		return "", err
 	}
-	s.removing[key] = true
-	s.mu.Unlock()
-	defer func() {
-		s.mu.Lock()
-		delete(s.removing, key)
-		s.mu.Unlock()
-	}()
+	defer end()
 	ss, err := s.open(true)
 	if err != nil {
 		return "", err
@@ -201,23 +180,4 @@ func (s *Store) Remove(t Target) (Outcome, error) {
 // Hold marks a login as used by an active daemon job until release is
 // called; Remove is refused meanwhile. It is in-memory daemon state about
 // the daemon's own jobs, not a record of connections.
-func (s *Store) Hold(name string) (release func(), err error) {
-	key := strings.ToLower(name)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if key == "" || s.removing[key] {
-		return nil, ErrInUse
-	}
-	s.holds[key]++
-	done := false
-	return func() {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		if !done {
-			done = true
-			if s.holds[key]--; s.holds[key] <= 0 {
-				delete(s.holds, key)
-			}
-		}
-	}, nil
-}
+func (s *Store) Hold(name string) (release func(), err error) { return s.holds.Hold(name) }

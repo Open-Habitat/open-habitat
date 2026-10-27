@@ -88,7 +88,7 @@ func newStore(t *testing.T) (*Store, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.lockTimeout = 300 * time.Millisecond
+	s.files.LockTimeout = 300 * time.Millisecond
 	return s, home
 }
 
@@ -236,7 +236,7 @@ func TestUnsafeOrMalformedIsUnavailable(t *testing.T) {
 	t.Run("wrong uid", func(t *testing.T) {
 		s, home := newStore(t)
 		writeTea(t, home, xdgRel, fixture)
-		s.uid = os.Geteuid() + 1
+		s.files.UID = os.Geteuid() + 1
 		if _, err := s.Logins(); err != ErrUnavailable {
 			t.Fatal(err)
 		}
@@ -481,7 +481,7 @@ func TestTeaLockContention(t *testing.T) {
 	}
 	// tea writes (truncating in place, as it does) while holding its lock;
 	// our edit waits, rereads under the lock and keeps tea's change.
-	s.lockTimeout = 5 * time.Second
+	s.files.LockTimeout = 5 * time.Second
 	done := make(chan error, 1)
 	go func() {
 		_, _, err := s.Connect(context.Background(), v, b, "tok-ivy-1")
@@ -508,7 +508,7 @@ func TestWriteFailuresPreserveBytes(t *testing.T) {
 		t.Run(step, func(t *testing.T) {
 			s, home := newStore(t)
 			p := writeTea(t, home, xdgRel, fixture)
-			s.fault = func(at string) error {
+			s.files.Fault = func(at string) error {
 				if at == step {
 					return fault
 				}
@@ -532,7 +532,7 @@ func TestWriteFailuresPreserveBytes(t *testing.T) {
 	t.Run("dirsync is uncertain", func(t *testing.T) {
 		s, home := newStore(t)
 		writeTea(t, home, xdgRel, fixture)
-		s.fault = func(at string) error {
+		s.files.Fault = func(at string) error {
 			if at == "dirsync" {
 				return unix.EIO
 			}
@@ -543,7 +543,7 @@ func TestWriteFailuresPreserveBytes(t *testing.T) {
 			t.Fatal(err)
 		}
 		// Observation, not replay, settles it.
-		s.fault = nil
+		s.files.Fault = nil
 		if _, out, err := s.Connect(context.Background(), v, mustBase(t, "git.example.org"), "tok-ivy-1"); err != nil || out != Unchanged {
 			t.Fatal(out, err)
 		}
@@ -552,7 +552,7 @@ func TestWriteFailuresPreserveBytes(t *testing.T) {
 		s, home := newStore(t)
 		p := writeTea(t, home, xdgRel, fixture)
 		edited := fixture + "# edited by hand meanwhile\n"
-		s.fault = func(at string) error {
+		s.files.Fault = func(at string) error {
 			if at == "write" {
 				os.WriteFile(p, []byte(edited), 0o600)
 			}

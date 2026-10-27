@@ -74,7 +74,7 @@ func newGitHome(t *testing.T, bases ...string) gitHome {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g := nativegitea.GitConfig{Home: home, ConfigHome: filepath.Join(home, ".config")}
+	g := nativegitea.NewGitConfig(home, filepath.Join(home, ".config"), "")
 	for _, s := range bases {
 		b, err := nativegitea.ParseBase(s)
 		if err != nil {
