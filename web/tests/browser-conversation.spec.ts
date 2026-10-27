@@ -155,6 +155,11 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
   const turn = page.getByTestId("agent-turn").first();
   await expectNativeContent(turn, "Selvä. Kysyit:", { timeout: 30000 });
   await page.reload();
+  // After a reload the Markdown renderer loads lazily and replaces the plain
+  // fallback, which moves the stage toggle; a press whose pointer lands on a
+  // moved button is cancelled. Click once the rendered replies are in place.
+  await expect(turn.locator(".ah-markdown").first()).toBeVisible();
+  await expect(turn.locator(".ah-markdown[style]")).toHaveCount(0);
   await turn.getByTestId("history-stage-toggle").click();
   const bash = turn
     .getByTestId("tool-row")
@@ -192,6 +197,13 @@ test("@browser-conversation latest action follows expanded output", async ({
     .click();
   await expectNativeContent(page, "Selvä. Kysyit:", { timeout: 30000 });
   await page.reload();
+  // As above: let the lazy Markdown renderer settle the layout first.
+  await expect(
+    page.locator(".ah-agent-turn .ah-markdown").first(),
+  ).toBeVisible();
+  await expect(page.locator(".ah-agent-turn .ah-markdown[style]")).toHaveCount(
+    0,
+  );
   await page.getByTestId("history-stage-toggle").click();
   const bash = page
     .getByTestId("tool-row")
