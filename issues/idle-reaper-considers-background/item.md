@@ -8,8 +8,9 @@ priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/idle-reaper-considers-background
 lane: agent-lifecycle
-lane_seq: 1
+lane_seq: 2
 preparation: ready
+blocked_by: ['@agent-worker-wait-model']
 ---
 
 # Idle reaper keeps an agent that owns live workers or processes

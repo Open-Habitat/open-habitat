@@ -1,15 +1,16 @@
 ---
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-26/start-page-ideation
 lane: start-ideas
 lane_seq: 1
 preparation: pending
+closed: 2026-10-27
 ---
 
 # Ideation: how the repository start page could develop
@@ -23,3 +24,9 @@ Ideointikierros, ei toteutusta: kokoa 5–10 kehityssuuntaa (esim. vaiheistetut 
 ## Result
 
 [result.md](result.md): kahdeksan kehityssuuntaa, valtuusvaikutukset ja suositus (prototyyppikierros ”Tavoite mukana keskustelussa”).
+
+## Decisions
+
+### 2026-10-27T05:38:57Z · @jari
+
+Jari 2026-10-27: tehdään suositeltu prototyyppikierros 'Tavoite mukana keskustelussa' (A siru ja paneeli, B siru ilman paneelia, C raakateksti ja paneeli). Kierros: proto-start-page-goal.

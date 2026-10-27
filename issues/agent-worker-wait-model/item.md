@@ -8,7 +8,7 @@ priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/agent-worker-wait-model
 lane: agent-lifecycle
-lane_seq: 2
+lane_seq: 1
 preparation: ready
 ---
 

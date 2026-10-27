@@ -7,9 +7,9 @@ status: open
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/wake-agent-on-settled-wait
-lane: agent-lifecycle
+lane: proto-wake
 preparation: ready
-lane_seq: 3
+lane_seq: 1
 ---
 
 # Prototype: waking a stopped agent (typing, visiting, a Herätä button)
