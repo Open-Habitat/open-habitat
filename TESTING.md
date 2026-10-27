@@ -75,6 +75,19 @@ Host-backed browser cases that exercise native credential writes also need that 
 
 Do not reuse an earlier result after changing runnable code, fixtures, dependencies or packaged inputs. The fast command is feedback, not a substitute for the final clean gate.
 
+A whole browser suite runs one at a time per host. Each one starts its own
+Chromes and synthetic hosts; two together held 8-vCPU Birch at full load for
+about 20 minutes, against about 5 minutes for one, and slowed every other worker
+and the live product. `scripts/test-focused.sh --area browser` and `browser-focused.py`
+without `--spec` or `--tag` (including `npm run test:browser` and
+`test:browser:lab`), and the gate's browser phase, therefore run under
+`scripts/browser-suite-lock.py`: an flock on
+`/var/tmp/open-habitat-browser-suite.lock` that waits for the other run and says
+which worktree holds it. The kernel releases the lock when the holder dies, so
+a killed run never blocks the next. Runs of named specs or tags take no lock.
+Bare `npx playwright test` bypasses it, so use the scripts for whole suites.
+`OH_BROWSER_SUITE_LOCK` names a different lock file, for testing the lock.
+
 Landing on `main` requires the checks that match the change: the fast web
 checks and the affected Playwright specs for browser work, the affected Go
 packages and the contracts drift check for host work, and the packaging step

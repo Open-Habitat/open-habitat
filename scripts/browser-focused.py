@@ -31,6 +31,10 @@ def main():
         command += ['tests/' + args.spec]
     if args.tag:
         command += ['--grep', args.tag]
+    if not args.spec and not args.tag:
+        # A whole suite waits for any other whole suite on this host.
+        command = [sys.executable, str(repo / 'scripts/browser-suite-lock.py'),
+                   '--label', str(repo), '--'] + command
     return subprocess.call(command, cwd=repo / 'web')
 
 

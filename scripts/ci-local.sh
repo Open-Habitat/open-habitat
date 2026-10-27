@@ -149,12 +149,15 @@ PY
   (
     start=$SECONDS
     trap 'echo "ci-local phase browser: $((SECONDS-start))s"' EXIT
-    ordinary_rc=0; lab_rc=0
-    (cd web && OH_WEB_PREBUILT=1 npx playwright test) || ordinary_rc=$?
-    (cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts) || lab_rc=$?
-    echo "ci-local browser exits: ordinary=$ordinary_rc lab=$lab_rc"
-    ((ordinary_rc == 0 && lab_rc == 0))
-  ) >"$tmp/browser.log" 2>&1 & browser_pid=$!
+    # Both suites run under one hold of the host-wide whole-suite lock. Its
+    # waiting message goes to the gate's stderr (fd 9), not the buffered log.
+    python3 scripts/browser-suite-lock.py --label "$repo (ci-local)" --status-fd 9 -- bash -c '
+      ordinary_rc=0; lab_rc=0
+      (cd web && OH_WEB_PREBUILT=1 npx playwright test) || ordinary_rc=$?
+      (cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts) || lab_rc=$?
+      echo "ci-local browser exits: ordinary=$ordinary_rc lab=$lab_rc"
+      ((ordinary_rc == 0 && lab_rc == 0))'
+  ) 9>&2 >"$tmp/browser.log" 2>&1 & browser_pid=$!
   browser_rc=0; go_rc=0
   wait "$browser_pid" || browser_rc=$?
   wait "$go_pid" || go_rc=$?

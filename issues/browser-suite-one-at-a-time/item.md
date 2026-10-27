@@ -3,13 +3,14 @@ created: 2026-10-27
 updated: 2026-10-27
 type: chore
 reporter: conductor
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: conductor measurement 2026-10-27
 source_ref: conductor:2026-10-27/browser-suite-one-at-a-time
 lane: gate-health
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Run at most one whole browser suite at a time on a host
@@ -20,4 +21,4 @@ Measured 2026-10-27 on idle Birch (8 vCPU): whole browser suite 5.1 min, lab sui
 
 ## Acceptance Criteria
 
-- [ ] Two concurrent whole-suite runs serialize; a killed holder releases; focused specs are not blocked; documented
+- [x] Two concurrent whole-suite runs serialize; a killed holder releases; focused specs are not blocked; documented
