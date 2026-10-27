@@ -22,6 +22,9 @@ test.use({
 async function expectPhoneComposerWithinViewport(
   page: import("@playwright/test").Page,
 ) {
+  // Restore the caller's viewport: the phone header moves archive and Tiedot
+  // into its menu, which the desktop steps after this check do not open.
+  const previous = page.viewportSize();
   await page.setViewportSize({ width: 390, height: 844 });
   const composer = page.locator(".ah-conversation-frame > .ah-composer");
   await expect(composer).toBeVisible();
@@ -39,6 +42,7 @@ async function expectPhoneComposerWithinViewport(
   expect(bounds.bottom).toBeLessThanOrEqual(844);
   expect(bounds.actionsBottom).toBeLessThanOrEqual(844);
   expect(bounds.scrolls).toBe(false);
+  if (previous) await page.setViewportSize(previous);
 }
 async function readyConversation(page: import("@playwright/test").Page) {
   // The optimistic creation view has an enabled editor and command palette

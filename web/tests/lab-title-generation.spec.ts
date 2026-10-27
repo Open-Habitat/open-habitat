@@ -38,7 +38,15 @@ for (const width of [1440, 390]) {
       );
       const title = page.getByTestId("workspace-title");
       const row = page.getByTestId("conversation-title");
-      const action = page.getByTestId("conversation-retitle");
+      // On a phone the action lives in the header menu, without the arrow.
+      const phone = width < 800;
+      const menu = page.getByTestId("conversation-menu");
+      const action = phone
+        ? page.getByRole("menuitem").and(page.getByTestId("menu-retitle"))
+        : page.getByTestId("conversation-retitle");
+      const openAction = async () => {
+        if (phone && !(await action.isVisible())) await menu.click();
+      };
       await expect(title).toHaveText(original);
       for (const failed of [false, true]) {
         let release!: () => void;
@@ -58,16 +66,20 @@ for (const width of [1440, 390]) {
             }),
           });
         });
+        await openAction();
         await action.click();
         await expect(row).toHaveAttribute("aria-busy", "true");
         await expect(title).toHaveText(failed ? replacement : original);
+        await openAction();
         await expect(action).toBeDisabled();
+        if (phone) await page.keyboard.press("Escape");
         await expect(page.getByTestId("title-dots")).toBeVisible();
         const dots = page.getByTestId("title-dots").locator("i");
         const arrow = page.getByTestId("title-arrow");
-        expect(
-          await arrow.evaluate((el) => el.getAnimations().length),
-        ).toBeGreaterThan(0);
+        if (!phone)
+          expect(
+            await arrow.evaluate((el) => el.getAnimations().length),
+          ).toBeGreaterThan(0);
         expect(
           await dots.first().evaluate((el) => el.getAnimations().length),
         ).toBeGreaterThan(0);
@@ -76,7 +88,7 @@ for (const width of [1440, 390]) {
           await dots.first().evaluate((el) => el.getAnimations().length),
         ).toBe(0);
         expect(await arrow.evaluate((el) => el.getAnimations().length)).toBe(0);
-        await expect(action).toBeInViewport({ ratio: 1 });
+        await expect(phone ? menu : action).toBeInViewport({ ratio: 1 });
         if (!failed) {
           expect(
             (await new AxeBuilder({ page }).exclude(".ah-feed").analyze())
@@ -97,7 +109,9 @@ for (const width of [1440, 390]) {
         release();
         await expect(row).toHaveAttribute("aria-busy", "false");
         await expect(title).toHaveText(replacement);
+        await openAction();
         await expect(action).toBeEnabled();
+        if (phone) await page.keyboard.press("Escape");
         await page.emulateMedia({
           colorScheme,
           reducedMotion: "no-preference",

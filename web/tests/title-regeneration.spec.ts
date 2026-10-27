@@ -158,7 +158,7 @@ test("pending live title animates arrow and dots; failures use the conversation 
   );
 });
 
-test("@a11y compact header gives the title a row on phones and keeps model facts read-only", async ({
+test("@a11y compact header keeps the title on its phone row and model facts read-only", async ({
   page,
 }) => {
   await openConversation(page);
@@ -176,28 +176,54 @@ test("@a11y compact header gives the title a row on phones and keeps model facts
       });
 
       const title = await header.locator("h1").boundingBox();
-      expect(title?.width).toBeGreaterThan(200);
-      const fitsOneLine = () =>
+      if (width !== 390) expect(title?.width).toBeGreaterThan(200);
+      const measure = () =>
         header.locator("h1").evaluate((el) => {
           const range = document.createRange();
           range.selectNodeContents(el);
           const text = range.getBoundingClientRect();
-          return (
-            text.width <= el.clientWidth + 1 &&
-            text.height <=
-              Number.parseFloat(getComputedStyle(el).lineHeight) + 1
-          );
+          return {
+            unshortened: text.width <= el.clientWidth + 1,
+            oneLine:
+              text.height <=
+              Number.parseFloat(getComputedStyle(el).lineHeight) + 1,
+          };
         });
-      expect(await fitsOneLine()).toBe(false);
+      const long = await measure();
+      expect(long.unshortened && long.oneLine).toBe(false);
       if (width === 390) {
-        // The mobile navigation occupies the left of the header. The title
-        // should fill its available row, not a fixed fraction of the viewport.
-        const row = await header.locator(".ah-agent-topline").boundingBox();
+        // On a phone the title shares its row with the panel buttons and the
+        // menu, beside the floating navigation; the model chip sits on the
+        // row below. The title takes all the room that row leaves it.
         const model = await header.locator(".ah-set-chip").boundingBox();
         const titleGroup = await page
           .getByTestId("conversation-title")
           .boundingBox();
-        expect(titleGroup?.width).toBeCloseTo(row?.width ?? 0, 0);
+        const next = await page
+          .getByTestId("conversation-title")
+          .evaluate((el) => {
+            const own = el.getBoundingClientRect();
+            const right = [...(el.parentElement?.children ?? [])]
+              .map((child) => child.getBoundingClientRect())
+              .filter(
+                (box) =>
+                  box.width > 1 &&
+                  box.left >= own.right - 1 &&
+                  Math.abs(
+                    box.top + box.height / 2 - (own.top + own.height / 2),
+                  ) < 12,
+              )
+              .map((box) => box.left);
+            return Math.min(...right);
+          });
+        const gap = await header
+          .locator(".ah-agent-topline")
+          .evaluate(
+            (el) => Number.parseFloat(getComputedStyle(el).columnGap) || 0,
+          );
+        expect(
+          (titleGroup?.x ?? 0) + (titleGroup?.width ?? 0) + gap,
+        ).toBeCloseTo(next, 0);
         expect(model?.y).toBeGreaterThanOrEqual(
           (title?.y ?? 0) + (title?.height ?? 0),
         );
@@ -209,10 +235,15 @@ test("@a11y compact header gives the title a row on phones and keeps model facts
       ).toBe(true);
       // A bounded generated title must fit without expanding the title control.
       // Retain the preceding long native-name case: user names are not shortened.
+      // The phone's title row is narrower than the bound: there the title
+      // stays on one line and shortens, and the menu carries it in full.
       await header.locator("h1").evaluate((el) => {
         el.textContent = "Muistutuksen testaus";
       });
-      expect(await fitsOneLine()).toBe(true);
+      expect(await measure()).toEqual({
+        unshortened: width !== 390,
+        oneLine: true,
+      });
       const pill = header.locator(".md-chip-picker > summary");
       await pill.click();
       const info = header.getByTestId("conversation-model-info");
