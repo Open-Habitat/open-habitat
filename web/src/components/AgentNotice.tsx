@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ControlButton } from "./ControlElements";
-import type { EditorOffer } from "./EditorOffer";
 import type { ViewSummary } from "./ViewOffer";
 
 export type AgentNotice = {
@@ -11,8 +10,6 @@ export type AgentNotice = {
   persistence: "persisted" | "not_persisted" | "unknown";
   /** Set when the notice offers an HTML view (ADR 0032). */
   view?: ViewSummary;
-  /** Set when the notice offers to show a workspace file in the editor. */
-  editor?: EditorOffer;
 };
 
 // Agent text is data, not markup, a link, or a system instruction.

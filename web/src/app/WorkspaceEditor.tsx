@@ -22,7 +22,6 @@ import { EditorSplit } from "../components/EditorSplit";
 import { FileLinkContext, type FileRef } from "../components/fileRefs";
 import { Icon } from "../components/Icon";
 import type { BrowserDocumentHandle } from "./BrowserDocument";
-import { useRegisterEditorLinks } from "./EditorOffers";
 import {
   clampConversationWidth,
   conversationMin,
@@ -411,7 +410,6 @@ function WorkspaceEditorInner({
       available ? { open: openFile, opened, workspace: workspaceId } : null,
     [available, openFile, opened, workspaceId],
   );
-  useRegisterEditorLinks(workspaceId, links);
 
   // The frame page's messages. Only its own window on the editor origin is
   // heard; code-server's webviews share the origin but are other windows.

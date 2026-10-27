@@ -39,16 +39,7 @@
         },
         "view": {
           "$ref": "view.schema.json#/$defs/view"
-        },
-        "editor": {
-          "$ref": "editor.schema.json#/$defs/offer"
         }
-      },
-      "not": {
-        "required": [
-          "view",
-          "editor"
-        ]
       }
     }
   },

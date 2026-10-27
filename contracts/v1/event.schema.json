@@ -67,8 +67,7 @@
         "process.output",
         "process.notification",
         "notice.created",
-        "view.offered",
-        "editor.offered"
+        "view.offered"
       ]
     },
     "resource": {
@@ -1072,36 +1071,6 @@
             "properties": {
               "view": {
                 "$ref": "view.schema.json#/$defs/view"
-              }
-            }
-          },
-          "resource": {
-            "required": [
-              "scope"
-            ]
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "kind": {
-            "const": "editor.offered"
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "payload": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "offer"
-            ],
-            "properties": {
-              "offer": {
-                "$ref": "editor.schema.json#/$defs/offer"
               }
             }
           },

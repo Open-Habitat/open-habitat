@@ -17,14 +17,6 @@ import {
 import { ViewPanel, ViewSplit, ViewTray } from "../components/ViewPanel";
 import type { ConversationStore } from "./conversationStore";
 import {
-  AccountEditorOffers,
-  type EditorLinks,
-  EditorLinksProvider,
-  EditorOfferEntry,
-  type OfferWorkspace,
-  useAccountEditorOffers,
-} from "./EditorOffers";
-import {
   listViews,
   mintViewURL,
   recentAccountViews,
@@ -61,7 +53,6 @@ export function ViewHost({
   identity,
   csrf,
   store,
-  workspaceOf = () => undefined,
   children,
 }: {
   /** A new person drops the previous person's offers and open view. The
@@ -69,8 +60,6 @@ export function ViewHost({
   identity?: string;
   csrf?: string;
   store?: ConversationStore;
-  /** An account editor offer's workspace as the person knows it. */
-  workspaceOf?: (id: string) => OfferWorkspace | undefined;
   children: ReactNode;
 }) {
   // Views exist only where the installation configures a view origin; until
@@ -85,12 +74,6 @@ export function ViewHost({
   const [width, setWidth] = useState(() => Math.round(window.innerWidth * 0.5));
   const title = useRef<HTMLHeadingElement>(null);
   const mintSeq = useRef(0);
-  // Account editor offers share the tray; they need no view origin.
-  const [editor, setEditor] = useState<EditorLinks>();
-  const editorOffers = useAccountEditorOffers(
-    identity,
-    store?.onEditorOffered ?? null,
-  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: identity is the trigger, not an input.
   useEffect(() => {
@@ -218,60 +201,48 @@ export function ViewHost({
 
   return (
     <ViewContext.Provider value={controls}>
-      <EditorLinksProvider onChange={setEditor}>
-        <ViewSplit
-          open={!!opened}
-          expanded={expanded}
-          width={shown}
-          min={bounds.min}
-          max={bounds.max}
-          onResize={(next) =>
-            setWidth(Math.min(Math.max(next, bounds.min), bounds.max))
-          }
-          onReset={() => setWidth(Math.round(total * 0.5))}
-          onShowConversation={() => setExpanded(false)}
-          panel={
-            opened ? (
-              <ViewPanel
-                title={opened.view.title}
-                src={opened.src}
-                failed={opened.failed}
-                expanded={expanded}
-                titleRef={title}
-                onToggleExpanded={() => setExpanded(!expanded)}
-                onOpenTab={() => openTab(opened.view)}
-                onClose={close}
-              />
-            ) : null
-          }
-        >
-          {children}
-        </ViewSplit>
-      </EditorLinksProvider>
-      {(controls && tray.length) || editorOffers.offers.length ? (
-        <ViewTray>
-          {editorOffers.offers.length ? (
-            <AccountEditorOffers
-              offers={editorOffers.offers}
-              editor={editor}
-              workspaceOf={workspaceOf}
-              onDismiss={editorOffers.dismiss}
+      <ViewSplit
+        open={!!opened}
+        expanded={expanded}
+        width={shown}
+        min={bounds.min}
+        max={bounds.max}
+        onResize={(next) =>
+          setWidth(Math.min(Math.max(next, bounds.min), bounds.max))
+        }
+        onReset={() => setWidth(Math.round(total * 0.5))}
+        onShowConversation={() => setExpanded(false)}
+        panel={
+          opened ? (
+            <ViewPanel
+              title={opened.view.title}
+              src={opened.src}
+              failed={opened.failed}
+              expanded={expanded}
+              titleRef={title}
+              onToggleExpanded={() => setExpanded(!expanded)}
+              onOpenTab={() => openTab(opened.view)}
+              onClose={close}
             />
-          ) : null}
-          {controls
-            ? tray.map((view) => (
-                <ViewOfferCard
-                  key={view.view_id}
-                  view={view}
-                  state={controls.state(view.view_id)}
-                  onOpen={(opener) => open(view, opener)}
-                  onOpenTab={() => openTab(view)}
-                  onDismiss={() =>
-                    setHidden((before) => new Set(before).add(view.view_id))
-                  }
-                />
-              ))
-            : null}
+          ) : null
+        }
+      >
+        {children}
+      </ViewSplit>
+      {controls && tray.length ? (
+        <ViewTray>
+          {tray.map((view) => (
+            <ViewOfferCard
+              key={view.view_id}
+              view={view}
+              state={controls.state(view.view_id)}
+              onOpen={(opener) => open(view, opener)}
+              onOpenTab={() => openTab(view)}
+              onDismiss={() =>
+                setHidden((before) => new Set(before).add(view.view_id))
+              }
+            />
+          ))}
         </ViewTray>
       ) : null}
     </ViewContext.Provider>
@@ -279,13 +250,11 @@ export function ViewHost({
 }
 
 /** A conversation notice: an HTML view offer when it carries a view and the
- * installation offers views, an editor offer when it carries one, otherwise
- * the plain notice card. A view offer on an installation without views shows
+ * installation offers views, otherwise the plain notice card. A view offer on an installation without views shows
  * nothing. */
 export function NoticeEntry({ notice }: { notice: AgentNotice }) {
   const views = useContext(ViewContext);
   const view = notice.view;
-  if (notice.editor) return <EditorOfferEntry offer={notice.editor} />;
   if (!view) return <AgentNoticeCard notice={notice} />;
   if (!views) return null;
   return (

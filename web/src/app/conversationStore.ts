@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from "react";
 import type { AgentNotice } from "../components/AgentNotice";
-import type { EditorOffer } from "../components/EditorOffer";
 import type { ViewSummary } from "../components/ViewOffer";
 import { readStartPage, type StartPage } from "./composerReads";
 import {
@@ -107,15 +106,6 @@ export class ConversationStore {
       this.viewListeners.delete(listener);
     };
   }
-  private editorOfferListeners = new Set<(offer: EditorOffer) => void>();
-  /** Account editor offers arrive as user-scoped events and live only in
-   * the browsers open when they arrive. */
-  onEditorOffered = (listener: (offer: EditorOffer) => void): (() => void) => {
-    this.editorOfferListeners.add(listener);
-    return () => {
-      this.editorOfferListeners.delete(listener);
-    };
-  };
   private attentionKeys = new Map<string, string>();
   private visibleId?: string;
   setVisible = (id?: string) => {
@@ -738,12 +728,6 @@ export class ConversationStore {
       const view = event.payload.view as ViewSummary;
       this.viewListeners.forEach((listener) => {
         listener(view);
-      });
-    }
-    if (event.kind === "editor.offered" && !event.resource.agent_id) {
-      const offer = event.payload.offer as EditorOffer;
-      this.editorOfferListeners.forEach((listener) => {
-        listener(offer);
       });
     }
     if (
