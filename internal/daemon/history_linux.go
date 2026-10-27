@@ -949,5 +949,9 @@ func serveNativeRecap(w http.ResponseWriter, cfg transport.Config, sessions []na
 	if value.Through != "" {
 		recap = &value
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "recap": recap, "latest_message": latest})
+	var latestAt any
+	if latest.At != "" {
+		latestAt = latest.At
+	}
+	historyJSON(w, map[string]any{"schema_version": 1, "recap": recap, "latest_message": latest.ID, "latest_message_at": latestAt})
 }

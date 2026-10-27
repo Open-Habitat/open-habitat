@@ -4,10 +4,17 @@
   "title": "Latest native Pi conversation recap",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "recap", "latest_message"],
+  "required": ["schema_version", "recap", "latest_message", "latest_message_at"],
   "properties": {
     "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
     "latest_message": { "type": "string", "maxLength": 128 },
+    "latest_message_at": {
+      "description": "Native timestamp of latest_message; null when there is no message or Pi recorded no readable time.",
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "common.schema.json#/$defs/timestamp" }
+      ]
+    },
     "recap": {
       "oneOf": [
         { "type": "null" },

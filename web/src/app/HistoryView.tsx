@@ -32,7 +32,7 @@ import {
   ProcessProvider,
   ProcessStartCard,
 } from "../components/ProcessTray";
-import { RecapCard } from "../components/RecapCard";
+import { RecapCard, useMinuteNow } from "../components/RecapCard";
 import { RestartNoticeMarker } from "../components/RestartNotice";
 import { SessionSettingsRow } from "../components/SessionSettingsRow";
 import { SkillInvocation } from "../components/SkillInvocation";
@@ -1468,6 +1468,7 @@ function HistoryViewContent({
     ReturnType<typeof readRecap>
   > | null>(null);
   const [recapDismissed, setRecapDismissed] = useState(false);
+  const recapNow = useMinuteNow();
   useEffect(() => {
     let active = true;
     setRecap(null);
@@ -1768,7 +1769,8 @@ function HistoryViewContent({
       {!recapDismissed && recap?.latest_message ? (
         <RecapCard
           recap={shownRecap}
-          now={Date.now()}
+          latestAt={recap.latest_message_at}
+          now={recapNow}
           pending={false}
           error={false}
           unavailable

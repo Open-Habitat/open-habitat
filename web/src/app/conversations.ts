@@ -284,16 +284,25 @@ export function currentRecap(
 ): Recap | null {
   return recap && !running && recap.through === latest ? recap : null;
 }
-export async function readRecap(
-  id: string,
-): Promise<{ recap: Recap | null; latest_message: string }> {
+export type RecapRead = {
+  recap: Recap | null;
+  latest_message: string;
+  // The native time of latest_message: the recap card counts from it, not
+  // from when the recap was written (Jari 27.10.2026).
+  latest_message_at: string | null;
+};
+export async function readRecap(id: string): Promise<RecapRead> {
   const reply = await request(
     `/api/v1/agents/${encodeURIComponent(id).replace("%3A", ":")}/recap`,
   );
   if (!recapValidator.getSchema(recapSchema.$id)?.(reply))
     throw new Error("invalid recap");
-  const result = reply as { recap: Recap | null; latest_message: string };
-  return { recap: result.recap, latest_message: result.latest_message };
+  const result = reply as RecapRead;
+  return {
+    recap: result.recap,
+    latest_message: result.latest_message,
+    latest_message_at: result.latest_message_at,
+  };
 }
 export async function requestRecap(id: string, csrf: string): Promise<void> {
   const reply = await request(`${path(id)}/recap`, undefined, undefined, csrf);

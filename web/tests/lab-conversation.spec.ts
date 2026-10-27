@@ -139,6 +139,12 @@ test("@lab recap is separate, persisted, hidden once outdated and regenerated af
     ).json();
     expect(native.recap.through).toBe(native.latest_message);
     expect(native.recap.trigger).toBe("automatic");
+    // The card's age counts from Pi's own time of the latest message.
+    expect(native.latest_message_at).toEqual(expect.any(String));
+    await expect(card.getByTestId("recap-age")).toHaveAttribute(
+      "datetime",
+      native.latest_message_at,
+    );
     // Measure the visible surfaces, not the composer's padded wrapper. The
     // same card-to-control rhythm must survive both footer types and widths.
     const history = await page.context().newPage();
@@ -171,6 +177,9 @@ test("@lab recap is separate, persisted, hidden once outdated and regenerated af
     await history.goto(`/agents/${id}`);
     await expect(history.locator(".ah-read-only-footer")).toBeVisible();
     await expect(history.locator(".ah-recap")).toBeVisible();
+    await expect(
+      history.locator(".ah-recap").getByTestId("recap-age"),
+    ).toHaveAttribute("datetime", native.latest_message_at);
     let desktopGap: number | undefined;
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 });

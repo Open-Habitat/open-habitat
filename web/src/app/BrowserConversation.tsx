@@ -33,7 +33,7 @@ import {
   ProcessWaitingChip,
   useProcessView,
 } from "../components/ProcessTray";
-import { RecapCard } from "../components/RecapCard";
+import { RecapCard, useMinuteNow } from "../components/RecapCard";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useBrowserShell } from "./BrowserShell";
 import { toolStopped } from "./bashFailure";
@@ -532,6 +532,7 @@ function BrowserConversationContent({
     key: string;
     recap: Recap | null;
     latest: string;
+    latestAt: string | null;
     unavailable: boolean;
   } | null>(null);
   const [recapAction, setRecapAction] = useState<{
@@ -555,6 +556,7 @@ function BrowserConversationContent({
             key: recapKey,
             recap: result.recap,
             latest: result.latest_message,
+            latestAt: result.latest_message_at,
             unavailable: false,
           });
           if (result.recap?.through === result.latest_message)
@@ -576,6 +578,7 @@ function BrowserConversationContent({
             key: recapKey,
             recap: previous?.key === recapKey ? previous.recap : null,
             latest: previous?.key === recapKey ? previous.latest : "",
+            latestAt: previous?.key === recapKey ? previous.latestAt : null,
             unavailable: true,
           }));
       });
@@ -584,11 +587,7 @@ function BrowserConversationContent({
     };
   }, [id, opened, recapKey, newestKey, historyRevision]);
   const recapCurrent = recapView?.key === recapKey ? recapView : null;
-  const [recapNow, setRecapNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setRecapNow(Date.now()), 60000);
-    return () => window.clearInterval(timer);
-  }, []);
+  const recapNow = useMinuteNow();
   const [dismissedRecap, setDismissedRecap] = useState("");
   const dismissalKey = `oh:recap-dismissed:${recapKey}`;
   useEffect(() => {
@@ -1995,6 +1994,7 @@ function BrowserConversationContent({
                 // Only "Tilannekatsaus": the header and sidebar already say
                 // who is waiting (Jari 16.10.2026).
                 recap={shownRecap}
+                latestAt={recapCurrent?.latestAt}
                 now={recapNow}
                 pending={!!recapBusy}
                 onDismiss={
@@ -2050,6 +2050,7 @@ function BrowserConversationContent({
                               key,
                               recap: result.recap,
                               latest: result.latest_message,
+                              latestAt: result.latest_message_at,
                               unavailable: false,
                             });
                             setRecapAction({
@@ -2075,6 +2076,7 @@ function BrowserConversationContent({
                                     key,
                                     recap: result.recap,
                                     latest: result.latest_message,
+                                    latestAt: result.latest_message_at,
                                     unavailable: false,
                                   });
                                   setRecapAction({

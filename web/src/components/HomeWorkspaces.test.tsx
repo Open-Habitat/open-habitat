@@ -136,6 +136,7 @@ describe("workspace home", () => {
               generated_at: 1750000000000,
             },
             latest_message: "one",
+            latest_message_at: null,
           }),
           { headers: { "Content-Type": "application/json" } },
         ),
@@ -177,6 +178,7 @@ describe("workspace home", () => {
             generated_at: 1750000000000,
           },
           latest_message: "two",
+          latest_message_at: null,
         }),
         { headers: { "Content-Type": "application/json" } },
       ),
@@ -195,9 +197,13 @@ describe("workspace home", () => {
                 recap: "First  line\nSecond",
                 next: "Check  this\nnow",
                 through: "one",
-                generated_at: 1750000000000,
+                generated_at: Date.now() - 60000,
               },
               latest_message: "one",
+              // The age counts from the conversation's last message.
+              latest_message_at: new Date(
+                Date.now() - 5 * 60000 - 1000,
+              ).toISOString(),
             }),
             { headers: { "Content-Type": "application/json" } },
           ),
@@ -229,6 +235,7 @@ describe("workspace home", () => {
     ).toBeTruthy();
 
     expect(screen.getByText(/main \+2/)).toBeTruthy();
+    expect(screen.getByTestId("recap-age").textContent).toBe("5 min sitten");
   });
   it("does not present a recap that later native messages outdated", async () => {
     const read = vi.fn(
@@ -243,6 +250,7 @@ describe("workspace home", () => {
               generated_at: 1750000000000,
             },
             latest_message: "two",
+            latest_message_at: null,
           }),
           { headers: { "Content-Type": "application/json" } },
         ),

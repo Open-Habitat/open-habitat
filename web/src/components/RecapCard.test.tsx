@@ -1,6 +1,6 @@
-import { fireEvent, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { RecapCard } from "./RecapCard";
+import { RecapCard, useMinuteNow } from "./RecapCard";
 
 const recap = {
   recap: "Työ etenee.",
@@ -59,5 +59,38 @@ describe("native conversation recap", () => {
     expect(view.getByTestId("recap-refresh")).toHaveProperty("disabled", true);
     fireEvent.click(view.getByTestId("recap-dismiss"));
     expect(close).toHaveBeenCalledOnce();
+  });
+  it("counts from the latest native message, not from the recap", () => {
+    const latestAt = new Date(recap.generated_at - 50 * 60000).toISOString();
+    const view = render(
+      <RecapCard {...base} recap={recap} latestAt={latestAt} />,
+    );
+    const age = view.getByTestId("recap-age");
+    expect(age.textContent).toBe("1 t sitten");
+    expect(age.getAttribute("datetime")).toBe(latestAt);
+    view.rerender(<RecapCard {...base} recap={recap} latestAt={null} />);
+    expect(view.queryByTestId("recap-age")).toBeNull();
+  });
+  it("moves the age on as time passes", () => {
+    vi.useFakeTimers({ now: recap.generated_at });
+    try {
+      const latestAt = new Date(recap.generated_at).toISOString();
+      function Ticking() {
+        return (
+          <RecapCard
+            {...base}
+            recap={recap}
+            latestAt={latestAt}
+            now={useMinuteNow()}
+          />
+        );
+      }
+      const view = render(<Ticking />);
+      expect(view.getByTestId("recap-age").textContent).toBe("juuri nyt");
+      act(() => vi.advanceTimersByTime(3 * 60000));
+      expect(view.getByTestId("recap-age").textContent).toBe("3 min sitten");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

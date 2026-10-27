@@ -268,6 +268,7 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
       json: {
         schema_version: 1,
         latest_message: "done1",
+        latest_message_at: new Date().toISOString(),
         recap: {
           recap: "Synteettinen työ jatkuu taustalla.",
           next: "Odota valmistumista.",

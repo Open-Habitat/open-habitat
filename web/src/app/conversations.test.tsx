@@ -19,23 +19,31 @@ describe("native recap read", () => {
       through: "two",
       generated_at: 1750000000000,
     };
-    const fetch = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ schema_version: 1, recap, latest_message: "two" }),
-          { headers: { "Content-Type": "application/json" } },
-        ),
-      );
+    const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          schema_version: 1,
+          recap,
+          latest_message: "two",
+          latest_message_at: "2026-10-27T08:00:00.000Z",
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
     await expect(
       readRecap("pi:11111111-1111-4111-8111-111111111111"),
-    ).resolves.toEqual({ recap, latest_message: "two" });
+    ).resolves.toEqual({
+      recap,
+      latest_message: "two",
+      latest_message_at: "2026-10-27T08:00:00.000Z",
+    });
     fetch.mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           schema_version: 1,
           recap: { ...recap, secret: "no" },
           latest_message: "two",
+          latest_message_at: null,
         }),
         { headers: { "Content-Type": "application/json" } },
       ),

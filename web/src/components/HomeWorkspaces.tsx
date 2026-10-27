@@ -3,13 +3,13 @@ import {
   type ConversationStore,
   useConversationMetadata,
 } from "../app/conversationStore";
-import type { Recap } from "../app/conversations";
+import type { RecapRead } from "../app/conversations";
 import { currentRecap, readRecap } from "../app/conversations";
 import type { Workspace } from "../app/snapshot";
 import { agentPresentation, waitingName } from "./agentPresentation";
 import { ControlButton, LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
-import { relativeRecapAge } from "./RecapCard";
+import { LatestMessageAge, useMinuteNow } from "./RecapCard";
 import type { ReturnConversation } from "./ReturnView";
 import { StatusMark } from "./Status";
 import { WorkspaceActions } from "./WorkspaceActions";
@@ -67,10 +67,8 @@ export function HomeCard({
   archiveReason?: string;
   archiveError: boolean;
 }) {
-  const [state, setState] = useState<{
-    recap: Recap | null;
-    latest_message: string;
-  }>();
+  const [state, setState] = useState<RecapRead>();
+  const now = useMinuteNow();
   const [error, setError] = useState(false);
   const archiveReasonId = useId();
   // Pi has written nothing yet: there is no recap to read and no state to
@@ -142,9 +140,7 @@ export function HomeCard({
             />
           )}
           {recap && (
-            <time dateTime={new Date(recap.generated_at).toISOString()}>
-              {relativeRecapAge(recap.generated_at, Date.now())}
-            </time>
+            <LatestMessageAge at={state?.latest_message_at} now={now} />
           )}
         </div>
         <span

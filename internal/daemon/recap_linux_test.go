@@ -38,7 +38,7 @@ func TestRecapOnAbandonedBranchIsNotCurrent(t *testing.T) {
 		t.Fatal(err)
 	}
 	recap, latest, ok := latestNativeRecap(path, os.Geteuid(), "11111111-1111-4111-8111-111111111111", "/synthetic")
-	if !ok || recap.Through != "" || latest != "new-user" {
+	if !ok || recap.Through != "" || latest.ID != "new-user" {
 		t.Fatalf("old branch leaked: %+v %q %v", recap, latest, ok)
 	}
 }
@@ -68,7 +68,7 @@ func TestNativeRecapPersistsAndBecomesStale(t *testing.T) {
 	}
 	write(map[string]any{"type": "session", "version": 3, "id": id, "cwd": cwd})
 	write(map[string]any{"type": "message", "id": "one", "parentId": nil, "message": map[string]any{"role": "user", "content": "Work"}})
-	write(map[string]any{"type": "message", "id": "two", "parentId": "one", "message": map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "text", "text": "Done"}}}})
+	write(map[string]any{"type": "message", "id": "two", "parentId": "one", "timestamp": "2026-10-27T08:00:00.000Z", "message": map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "text", "text": "Done"}}}})
 	write(map[string]any{"type": "custom", "id": "three", "parentId": "two", "customType": "conversation-recap", "data": map[string]any{"recap": "Work completed", "next": "Check tests", "generatedAt": 1750000000000, "through": "two", "private": "never expose"}})
 	if err := f.Close(); err != nil {
 		t.Fatal(err)
@@ -109,7 +109,7 @@ func TestNativeRecapPersistsAndBecomesStale(t *testing.T) {
 	if !foundRecap {
 		t.Fatal("recap missing from native history window")
 	}
-	if first["latest_message"] != "two" || first["recap"].(map[string]any)["through"] != "two" {
+	if first["latest_message"] != "two" || first["latest_message_at"] != "2026-10-27T08:00:00.000Z" || first["recap"].(map[string]any)["through"] != "two" {
 		t.Fatal(first)
 	}
 	f, err = os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
@@ -121,7 +121,7 @@ func TestNativeRecapPersistsAndBecomesStale(t *testing.T) {
 		t.Fatal(err)
 	}
 	second := get()
-	if second["latest_message"] != "four" || second["recap"].(map[string]any)["through"] != "two" {
+	if second["latest_message"] != "four" || second["latest_message_at"] != nil || second["recap"].(map[string]any)["through"] != "two" {
 		t.Fatal(second)
 	}
 	f, err = os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)

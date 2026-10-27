@@ -17,6 +17,9 @@ const recap = {
 export const Current: Story = {
   args: {
     recap,
+    // The conversation went quiet 12 minutes before the shown moment.
+    latestAt: new Date(1750000000000 - 12 * 60000).toISOString(),
+    now: 1750000000000,
     pending: false,
     error: false,
     unavailable: false,

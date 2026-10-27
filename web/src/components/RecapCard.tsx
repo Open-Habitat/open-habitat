@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { Recap } from "../app/conversations";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
@@ -11,8 +12,37 @@ export function relativeRecapAge(timestamp: number, now: number): string {
   return `${Math.floor(hours / 24)} pv sitten`;
 }
 
+/** A clock for relative ages that moves on once a minute. */
+export function useMinuteNow(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return now;
+}
+
+/** How long the conversation has been quiet: the age of its latest native
+ * message, not of the recap (Jari 27.10.2026). */
+export function LatestMessageAge({
+  at,
+  now,
+}: {
+  at: string | null | undefined;
+  now: number;
+}) {
+  const time = at ? Date.parse(at) : NaN;
+  if (!Number.isFinite(time)) return null;
+  return (
+    <time data-testid="recap-age" dateTime={at ?? undefined}>
+      {relativeRecapAge(time, now)}
+    </time>
+  );
+}
+
 export function RecapCard({
   recap,
+  latestAt,
   pending,
   error,
   uncertain = false,
@@ -24,6 +54,7 @@ export function RecapCard({
   now = Date.now(),
 }: {
   recap: Recap | null;
+  latestAt?: string | null;
   pending: boolean;
   error: boolean;
   uncertain?: boolean;
@@ -48,11 +79,7 @@ export function RecapCard({
     >
       <div className="ah-recap-heading">
         <strong data-testid="recap-heading">Tilannekatsaus</strong>
-        {recap ? (
-          <time dateTime={new Date(recap.generated_at).toISOString()}>
-            {relativeRecapAge(recap.generated_at, now)}
-          </time>
-        ) : null}
+        {recap ? <LatestMessageAge at={latestAt} now={now} /> : null}
         <span className="ah-recap-grow" />
         {onRequest ? (
           <span title={reason || (recap ? "Päivitä katsaus" : "Luo katsaus")}>

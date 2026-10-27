@@ -72,10 +72,10 @@ func (c *ConversationController) piArgs() ([]string, error) {
 
 // nativeRecap reads the current branch of the user's own native history.
 // It does not infer ownership from browser input or store a browser copy.
-func (c *ConversationController) nativeRecap(s *conversation) (recapData, string, bool) {
+func (c *ConversationController) nativeRecap(s *conversation) (recapData, latestMessage, bool) {
 	sessions, err := nativeSessions(c.nativeCfg())
 	if err != nil {
-		return recapData{}, "", false
+		return recapData{}, latestMessage{}, false
 	}
 	var selected *nativeSession
 	for i := range sessions {
@@ -83,44 +83,49 @@ func (c *ConversationController) nativeRecap(s *conversation) (recapData, string
 			continue
 		}
 		if selected != nil || sessions[i].cwd != s.cwd || sessions[i].state != "readable" {
-			return recapData{}, "", false
+			return recapData{}, latestMessage{}, false
 		}
 		selected = &sessions[i]
 	}
 	if selected == nil {
-		return recapData{}, "", false
+		return recapData{}, latestMessage{}, false
 	}
 	return latestNativeRecap(selected.path, c.cfg.UID, s.id, s.cwd)
 }
 
+// latestMessage is the newest person or agent message on the active branch.
+// At is Pi's own timestamp of it, empty when the native entry has none, so
+// the browser can say how long the conversation has been quiet.
+type latestMessage struct{ ID, At string }
+
 // Scan the active Pi branch backwards once. History windows are deliberately
 // small, but a recap remains discoverable after hundreds of later messages.
-func latestNativeRecap(path string, uid int, id, cwd string) (recapData, string, bool) {
+func latestNativeRecap(path string, uid int, id, cwd string) (recapData, latestMessage, bool) {
 	header := readNativeHeader(path, uid)
 	if header.id != id || header.cwd != cwd || header.state != "readable" {
-		return recapData{}, "", false
+		return recapData{}, latestMessage{}, false
 	}
 	before, err := os.Lstat(path)
 	if err != nil || !before.Mode().IsRegular() || before.Size() > maxHistoryFile {
-		return recapData{}, "", false
+		return recapData{}, latestMessage{}, false
 	}
 	if uid >= 0 {
 		owner, owned := fileOwner(before)
 		if !owned || owner != uid {
-			return recapData{}, "", false
+			return recapData{}, latestMessage{}, false
 		}
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return recapData{}, "", false
+		return recapData{}, latestMessage{}, false
 	}
 	defer file.Close()
 	opened, err := file.Stat()
 	if err != nil || !os.SameFile(before, opened) {
-		return recapData{}, "", false
+		return recapData{}, latestMessage{}, false
 	}
 	var recap recapData
-	var latest string
+	var latest latestMessage
 	var target string
 	var leaf, broken bool
 	err = reverseLines(file, before.Size(), func(line []byte) bool {
@@ -149,17 +154,17 @@ func latestNativeRecap(path string, uid int, id, cwd string) (recapData, string,
 		}
 		entry.Raw = line
 		projected := nativeBlocks(entry)
-		if latest == "" && (projected.Kind == "user" || projected.Kind == "assistant") {
-			latest = entry.ID
+		if latest.ID == "" && (projected.Kind == "user" || projected.Kind == "assistant") {
+			latest = latestMessage{ID: entry.ID, At: nativeTimestamp(entry.Timestamp)}
 		}
 		if recap.Through == "" && projected.Recap != nil {
 			recap = *projected.Recap
 		}
-		return !root && (recap.Through == "" || latest == "")
+		return !root && (recap.Through == "" || latest.ID == "")
 	})
 	after, statErr := os.Lstat(path)
 	if err != nil || statErr != nil || broken || !os.SameFile(before, after) || before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) {
-		return recapData{}, "", false
+		return recapData{}, latestMessage{}, false
 	}
 	return recap, latest, true
 }
@@ -240,16 +245,16 @@ func (c *ConversationController) runRecap(s *conversation, trigger string, epoch
 // extension both decline duplicates; this gate prevents parallel model calls.
 func (c *ConversationController) generateRecap(s *conversation, trigger string, epoch uint64) bool {
 	before, latest, ok := c.nativeRecap(s)
-	if !ok || latest == "" {
+	if !ok || latest.ID == "" {
 		return false
 	}
-	if before.Through == latest {
+	if before.Through == latest.ID {
 		return true
 	}
 	c.mu.Lock()
-	valid := !c.closed && c.sessions[s.id] == s && !s.dead && recapIdle(s) && s.recapActivity == epoch && (trigger != "automatic" || s.recapAttemptedThrough != latest)
+	valid := !c.closed && c.sessions[s.id] == s && !s.dead && recapIdle(s) && s.recapActivity == epoch && (trigger != "automatic" || s.recapAttemptedThrough != latest.ID)
 	if valid && trigger == "automatic" {
-		s.recapAttemptedThrough = latest
+		s.recapAttemptedThrough = latest.ID
 	}
 	c.mu.Unlock()
 	if !valid {
@@ -274,7 +279,7 @@ func (c *ConversationController) generateRecap(s *conversation, trigger string, 
 		return false
 	}
 	after, _, ok := c.nativeRecap(s)
-	return ok && after.Through == latest && after.GeneratedAt > 0
+	return ok && after.Through == latest.ID && after.GeneratedAt > 0
 }
 
 // notePresence hears from the browser that the person is writing or reading

@@ -211,7 +211,8 @@ spinoffinsa kellona eikä koskaan prosessina, ja *Poista päättyneet* poistaa
 vain prosesseja. Selaimen sulkemisesta ei luvata mitään.
 
 Tilannekatsaus on oma korttinsa suoraan kirjoituskentän yllä: otsakkeessa
-ikä, oikealla päivitys ja sulkeminen. Suljettu katsaus pysyy kiinni, kunnes
+aika keskustelun viimeisestä viestistä (ei katsauksen luomisesta, Jari
+27.10.2026), oikealla päivitys ja sulkeminen. Suljettu katsaus pysyy kiinni, kunnes
 syntyy uudempi (Jari 13.10.2026). Kortti ei kerro, miten katsaus syntyi, eikä
 näytä vanhentunutta katsausta: kun katsauksen jälkeen tulee uusia viestejä,
 automaattinen katsaus poistuu näkyvistä, kunnes uusi syntyy keskustelun

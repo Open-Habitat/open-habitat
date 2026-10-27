@@ -67,6 +67,7 @@ for (const phone of [
           json: {
             schema_version: 1,
             latest_message: "done1",
+            latest_message_at: new Date().toISOString(),
             recap: showRecap
               ? {
                   recap: "Synteettinen tilannekatsaus. ".repeat(35),
