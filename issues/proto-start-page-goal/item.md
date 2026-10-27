@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-10-27/proto-start-page-goal
 lane: start-goal
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: the start page's goal travels with the conversation

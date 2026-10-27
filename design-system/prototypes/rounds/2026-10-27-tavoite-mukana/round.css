@@ -1,0 +1,66 @@
+/* Review harness: a bar above the production shell, and the phone frame. */
+.g-review { --g-bar: 76px; }
+.g-reviewbar {
+  position: fixed; inset: 0 0 auto 0; z-index: 50; height: 40px;
+  display: flex; align-items: center; gap: var(--ah-s4); padding: 0 var(--ah-s4);
+  background: var(--ah-surface-2); border-bottom: 1px solid var(--ah-line);
+  color: var(--ah-ink); font-size: var(--ah-size-meta); white-space: nowrap; overflow-x: auto;
+}
+.g-reviewbar label { display: inline-flex; gap: var(--ah-s2); align-items: center; }
+.g-review-note { color: var(--ah-muted); }
+.g-axis {
+  position: fixed; inset: 40px 0 auto 0; z-index: 50; height: 36px; margin: 0;
+  padding: 0 var(--ah-s4); display: flex; align-items: center; overflow: hidden;
+  background: var(--ah-accent-soft); color: var(--ah-accent-ink); border-bottom: 1px solid var(--ah-accent-line);
+  font-size: var(--ah-size-meta); line-height: 1.3;
+}
+/* Room below the shell for the fixed picker, so it never covers the composer. */
+.g-desktop .ah-app-shell:has(.ah-rail) { top: var(--g-bar); height: calc(100dvh - var(--g-bar) - 60px); border-bottom: 1px solid var(--ah-line); }
+.g-phone { position: fixed; inset: var(--g-bar) 0 0 0; display: grid; place-items: start center; padding: var(--ah-s5) 0 96px; overflow: auto; background: var(--ah-bg); }
+.g-phone iframe { border: 1px solid var(--ah-line); border-radius: 28px; box-shadow: var(--ah-shadow-dialog); background: var(--ah-bg); }
+@media (max-width: 900px) { .g-axis { height: auto; min-height: 36px; padding-block: var(--ah-s1); } .g-review { --g-bar: 104px; } }
+.g-in-frame .proto-picker { display: none; }
+
+/* The goal chip in the composer's chip row (chips.tsx). */
+.g-chip-row { display: flex; padding: 0 0 var(--ah-s2); }
+.g-chip {
+  display: inline-flex; align-items: center; max-width: 100%;
+  border: 1px solid var(--ah-accent-line); border-radius: var(--ah-r-md); background: var(--ah-accent-soft);
+}
+.g-chip .g-chip-open { border: 0; background: transparent; color: var(--ah-accent-ink); gap: var(--ah-s2); min-width: 0; }
+.g-chip .g-chip-open:hover { background: color-mix(in srgb, var(--ah-accent) 10%, transparent); }
+.g-chip-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.g-chip-mark { display: inline-grid; color: var(--ah-accent); }
+.g-chip .g-chip-remove { color: var(--ah-muted); border: 0; background: transparent; }
+.g-chip svg { width: 16px; height: 16px; flex: none; }
+
+/* The chip's card: above the composer, in the reading column. */
+.ah-conversation-frame.g-frame { position: relative; }
+.g-card {
+  position: absolute; z-index: 6; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--ah-composer-height, 120px) + var(--ah-s2));
+  width: min(var(--ah-measure, 780px), calc(100% - 2 * var(--ah-s4)));
+  max-height: min(70%, 34rem); display: flex; flex-direction: column;
+  background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg, 12px);
+  box-shadow: var(--ah-shadow-float);
+}
+.g-card > header, .g-card > footer { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ah-s3); padding: var(--ah-s4) var(--ah-s5); }
+.g-card > footer { justify-content: flex-start; border-top: 1px solid var(--ah-line); padding-block: var(--ah-s3); }
+.g-card h3 { margin: 0; font-size: var(--ah-size-title, 1.1rem); }
+.g-card-body { overflow: auto; padding: 0 var(--ah-s5) var(--ah-s4); overscroll-behavior: contain; }
+.g-card .ah-guide-eyebrow { margin: 0 0 var(--ah-s1); }
+.g-card .ah-guide-eyebrow code { text-transform: none; }
+
+/* The guide panel's content, in the production right-hand split. */
+.g-pane-body { flex: 1; min-height: 0; overflow: auto; padding: var(--ah-s5); overscroll-behavior: contain; }
+.g-pane-title { margin: 0 0 var(--ah-s4); font-size: var(--ah-size-title, 1.15rem); }
+.g-pane-body section, .g-card-body section, .g-sheet-steps section { margin-bottom: var(--ah-s4); }
+.g-pane-body h4, .g-card-body h4, .g-sheet-steps h4 { margin: 0 0 var(--ah-s2); font-size: var(--ah-size-body, 1rem); }
+.g-pane-body ol, .g-card-body ol, .g-sheet-steps ol { margin: 0; padding-left: 1.4em; display: grid; gap: var(--ah-s2); }
+.g-pane-body p, .g-card-body p { margin: 0; }
+.g-honest, .g-muted { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.g-card-body .ah-guide-prompt, .g-pane-body .ah-guide-prompt { margin: 0 0 var(--ah-s2); }
+.g-guide-toggle { gap: var(--ah-s1); }
+.g-guide-toggle svg { width: 16px; height: 16px; }
+.g-state { height: 100%; }
+@media (max-width: 800px) { .g-guide-toggle-label { display: none; } }

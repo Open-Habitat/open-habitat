@@ -1,0 +1,69 @@
+{
+ "round": "2026-10-27-tavoite-mukana",
+ "results": [
+  {
+   "width": 1440,
+   "theme": "light",
+   "direction": "a"
+  },
+  {
+   "width": 1440,
+   "theme": "light",
+   "direction": "b"
+  },
+  {
+   "width": 1440,
+   "theme": "light",
+   "direction": "c"
+  },
+  {
+   "width": 1440,
+   "theme": "dark",
+   "direction": "a"
+  },
+  {
+   "width": 1440,
+   "theme": "dark",
+   "direction": "b"
+  },
+  {
+   "width": 1440,
+   "theme": "dark",
+   "direction": "c"
+  },
+  {
+   "width": 390,
+   "theme": "light",
+   "direction": "a"
+  },
+  {
+   "width": 390,
+   "theme": "light",
+   "direction": "b"
+  },
+  {
+   "width": 390,
+   "theme": "light",
+   "direction": "c"
+  },
+  {
+   "width": 390,
+   "theme": "dark",
+   "direction": "a"
+  },
+  {
+   "width": 390,
+   "theme": "dark",
+   "direction": "b"
+  },
+  {
+   "width": 390,
+   "theme": "dark",
+   "direction": "c"
+  },
+  {
+   "extra": "unwrap, C without skill, phone frame"
+  }
+ ],
+ "errors": []
+}
