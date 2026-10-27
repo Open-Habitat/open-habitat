@@ -99,6 +99,7 @@ var helpSpecs = []helpSpec{
 	{"maintenance leave", "Leave maintenance", "maintenance leave --idempotency-key example --dry-run --json", []string{"--idempotency-key", "--dry-run"}},
 	{"revoke subject", "Revoke a bound subject as root", "revoke subject 123 --json", nil},
 	{"gitea git-credential", "Git credential-helper protocol for tea's native Gitea PAT logins: Git appends get, store or erase; get prints username/password only to Git for one unique HTTPS host:port, base path and username match; store and erase keep nothing", "gitea git-credential get", []string{"--login"}},
+	{"gitlab git-credential", "Git credential-helper protocol for glab's native GitLab token logins: Git appends get, store or erase; get prints username/password only to Git for the one HTTPS host:port glab holds a token for, a project path below its base and its own username; store and erase keep nothing", "gitlab git-credential get", nil},
 	{"skill list", "List version-matched companion skills", "skill list --json", nil},
 	{"skill print", "Read a bundled skill without installing", "skill print agent --json", nil},
 	{"skill install", "Install operator or agent skill to native runtime layouts", "skill install agent --target ./skills-example --dry-run --json", []string{"--agent", "--target", "--dry-run", "--force"}},
@@ -204,7 +205,7 @@ func commandHelp(args []string) (any, error) {
 		arguments = append(arguments, map[string]any{"name": "operation_id", "required": true, "description": "Exact 32-character lowercase hexadecimal durable operation ID"})
 	case "agent conversation show":
 		arguments = append(arguments, map[string]any{"name": "pi:UUID", "required": false, "description": "Explicit live controller record; mutually exclusive with --current"})
-	case "gitea git-credential":
+	case "gitea git-credential", "gitlab git-credential":
 		arguments = append(arguments, map[string]any{"name": "operation", "required": true, "possible_values": []string{"get", "store", "erase"}, "description": "Appended by Git; request attributes arrive on stdin"})
 	case "skill print", "skill install":
 		arguments = append(arguments, map[string]any{"name": "name", "required": true, "possible_values": []string{"operator", "agent"}})

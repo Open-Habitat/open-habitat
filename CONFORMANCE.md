@@ -792,6 +792,21 @@ tea's file. The helper calls no daemon or gateway and keeps no state.
 `project-canon review` was not rerun for this leaf; the rows above are source
 and test judgment.
 
+## GitLab credential helper — Git protocol exception
+
+`gitlab git-credential get|store|erase` is the same Git-protocol exception as
+the Gitea leaf above, for glab's file instead of tea's; the rows above apply
+with these differences:
+
+| § | Status | Evidence and limits |
+|---|---|---|
+| 1 | pass | Exactly one operation from get/store/erase; there is no `--login`, because glab keeps one account per server. Extra or unknown arguments exit 1 before stdin is read; the request bounds are the shared parser's (`TestGitLabCredentialCommandSurface`). |
+| 2, 4 | exception | Exit 0 with a credential, or with no output when no usable entry matches; a server glab's file names twice adds one fixed stderr line. Exit 2 when glab's file is unavailable. |
+| 5, 9 | exception | `get` prints only `username=` and `password=`, and only for HTTPS to the exact host and port of a usable glab token entry, a project path (2–21 GitLab path segments, never `/-/` or below a repository) under its base, and its own username when Git names one. |
+| 8 | pass | Paths are glab's selection from `$HOME`/`$XDG_CONFIG_HOME`; `GLAB_CONFIG_DIR` is not followed, so the helper answers only from the file the daemon writes. `GITLAB_TOKEN` and the keyring are never read. |
+| 11 | pass | `store`/`erase` are no-ops (`TestGitLabCredentialHelperClonesAndPushesNestedProjects` clones and pushes a nested group project through real Git with a global store helper and finds no copy). |
+| 14 | pass | `gitlab git-credential --help` drills down with the operation argument. |
+
 ## Admin access batch
 
 `admin access list [--state allowed|joined|withdrawn]`, `admin access lookup
