@@ -6,7 +6,7 @@ import {
   processLive,
   recordExit,
 } from "../app/processes";
-import { type Spinoff, spinoffStateLabel } from "../app/spinoffs";
+import type { Spinoff } from "../app/spinoffs";
 import { ControlButton } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 import {
@@ -51,7 +51,7 @@ const clock = (ms: number) =>
 const count = (n: number, one: string, many: string) =>
   `${n} ${n === 1 ? one : many}`;
 
-interface SpinoffItem {
+export interface SpinoffItem {
   run: Spinoff;
   live: boolean;
   wait?: ProcessRecord;
@@ -120,7 +120,8 @@ export function backgroundFacts({
       waited: live && waking(wait),
       // Jari 16.10.2026: a failed spinoff needs the person until its branch
       // is gone (merged or discarded), not until it has been looked at.
-      attention: run.state === "unmerged" && run.preserved,
+      attention:
+        (run.state === "unmerged" || run.state === "failed") && run.preserved,
     };
   });
   const live = [
@@ -349,25 +350,22 @@ export function BackgroundStrip({
         ) : null}
       </>
     ) : null;
+  // Rivi (Jari 27.10.2026, proto-worker-panel direction 1): two lines per
+  // worker. The second line says in words what the row means for the agent
+  // ("agentti odottaa" / "agentti ei odota") or how the run ended, so the
+  // panel needs no legend; then the harness and profile, and the repository
+  // only when the worker works in another one than this conversation.
   const spinRow = (i: SpinoffItem) => {
     const r = i.run;
-    const state =
-      r.state === "working" ? (
-        duration(Date.now() - Date.parse(r.created_at))
-      ) : (
-        <span className="ah-bg-label">{spinoffStateLabel(r)}</span>
-      );
-    const meta = i.waited ? (
-      <>
-        <span className="ah-bg-wait-word">odotetaan</span> · {state}
-      </>
-    ) : r.state === "working" ? (
-      <>
-        <span className="ah-bg-wait-word">ei odotusta</span> · {state}
-      </>
-    ) : (
-      state
-    );
+    const word = stateWord(i);
+    const when = i.live
+      ? r.state === "working" || r.state === "waiting_parent"
+        ? duration(Date.now() - Date.parse(r.created_at))
+        : ""
+      : r.ended_at && Number.isFinite(Date.parse(r.ended_at))
+        ? clock(Date.parse(r.ended_at))
+        : "";
+    const agent = runAgent(r);
     return (
       <div
         className="ah-bg-row"
@@ -382,17 +380,56 @@ export function BackgroundStrip({
           type="button"
           className="ah-bg-main"
           onClick={() => spinoffs?.open(r)}
-          title="Avaa workerin vain luku -näkymä"
+          title="Avaa workerin näkymä"
         >
           <span className="ah-bg-mark" aria-hidden="true">
             {i.live ? (
               <WaitMark item={i} />
             ) : (
-              <Icon name={r.state === "merged" ? "merge" : "warning"} />
+              <Icon
+                name={
+                  r.state === "merged"
+                    ? "merge"
+                    : r.state === "failed" && !r.preserved
+                      ? "cross"
+                      : "warning"
+                }
+              />
             )}
           </span>
-          <span className="ah-bg-name">{r.title || r.run_id}</span>
-          <span className="ah-bg-meta">{meta}</span>
+          <span className="ah-bg-lines">
+            <span className="ah-bg-line">
+              <span className="ah-bg-name">{r.title || r.run_id}</span>
+              {when ? <span className="ah-bg-meta">{when}</span> : null}
+            </span>
+            <span className="ah-bg-sub" data-testid="spinoff-facts">
+              <span className="ah-bg-word" data-tone={word.tone}>
+                {word.text}
+              </span>
+              {agent ? (
+                <>
+                  <span className="ah-bg-sep" aria-hidden="true">
+                    ·
+                  </span>
+                  <span>{agent}</span>
+                </>
+              ) : null}
+              {r.other_repository ? (
+                <>
+                  <span className="ah-bg-sep" aria-hidden="true">
+                    ·
+                  </span>
+                  <span
+                    className="ah-bg-repo"
+                    data-testid="spinoff-repository"
+                    title="Eri repositorio kuin tämä keskustelu"
+                  >
+                    {r.other_repository}
+                  </span>
+                </>
+              ) : null}
+            </span>
+          </span>
         </button>
         {i.wait ? (
           <ControlButton
@@ -401,7 +438,7 @@ export function BackgroundStrip({
             size="inline"
             variant="quiet"
             aria-label={`Lopeta odotus: ${r.title || r.run_id}`}
-            title="Lopettaa agentin odotuksen. Worker jatkaa työtään, eikä agentti saa ilmoitusta."
+            title="Lopettaa agentin odotuksen. Worker jatkaa työtään, eikä agentti herää sen valmistuessa."
             isDisabled={!view.canControl || view.pending}
             onPress={() => i.wait && void view.control(i.wait)}
           >
@@ -496,23 +533,6 @@ export function BackgroundStrip({
           Tila voi olla vanhentunut.
         </p>
       ) : null}
-      {facts.spin.marks.length ? (
-        <p className="ah-bg-legend" data-testid="wait-legend">
-          <span
-            className="ah-bg-wait-dot ah-background-dot"
-            aria-hidden="true"
-          />
-          odotetaan
-          <span className="ah-bg-wait-dot nowait" aria-hidden="true" />
-          ei odotusta: agentti ei herää, kun worker valmistuu
-          {facts.spin.marks.some(other) ? (
-            <>
-              <span className="ah-bg-dot unknown" aria-hidden="true" />
-              muu tila
-            </>
-          ) : null}
-        </p>
-      ) : null}
       {facts.spin.live.length ? (
         // biome-ignore lint/a11y/useSemanticElements: A labelled group of rows, not a form fieldset.
         <div
@@ -523,7 +543,7 @@ export function BackgroundStrip({
           {facts.spin.live.map(spinRow)}
         </div>
       ) : (
-        <p className="ah-bg-empty">Ei työskenteleviä spinoffeja.</p>
+        <p className="ah-bg-empty">Ei työskenteleviä workereita.</p>
       )}
       {ended("spin", facts.spin.ended.length, facts.spin.ended.map(spinRow))}
     </>
@@ -676,6 +696,48 @@ export function BackgroundStrip({
       ) : null}
     </section>
   );
+}
+
+/** The row's second line opens with this: what it means for the agent, or
+ * how the run ended. */
+export function stateWord(i: SpinoffItem): {
+  text: string;
+  tone: "wait" | "ok" | "err" | "muted";
+} {
+  const r = i.run;
+  const kept = r.preserved ? " · työ tallessa" : "";
+  if (r.state === "merged") return { text: "laskeutui", tone: "ok" };
+  if (r.state === "failed") return { text: `epäonnistui${kept}`, tone: "err" };
+  if (r.state === "unmerged")
+    return {
+      text: `ei mergetty${kept}`,
+      tone: r.preserved ? "err" : "muted",
+    };
+  const state =
+    r.state === "waiting_parent"
+      ? "odottaa pääagenttia"
+      : r.state === "unknown"
+        ? "tila ei tiedossa"
+        : "";
+  if (i.waited)
+    return {
+      text: state ? `agentti odottaa · ${state}` : "agentti odottaa",
+      tone: "wait",
+    };
+  return { text: state || "agentti ei odota", tone: "muted" };
+}
+
+const harnessName = { pi: "Pi", claude: "Claude" } as const;
+/** "Pi · nopea": the worker's agent and Taskfleet profile, when known. */
+function runAgent(r: Spinoff) {
+  const name =
+    r.harness === "pi" || r.harness === "claude" ? harnessName[r.harness] : "";
+  // A profile named after its harness repeats it ("Claude · claude").
+  const profile =
+    r.profile && r.profile.toLowerCase() !== name.toLowerCase()
+      ? r.profile
+      : "";
+  return [name, profile].filter(Boolean).join(" · ");
 }
 
 /** A live spinoff's mark: waited on, working without a wait, or neither. */

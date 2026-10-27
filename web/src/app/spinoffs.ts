@@ -11,8 +11,12 @@ import type { HistoryEntry } from "./history";
 export type WorkerHarness = "pi" | "claude" | "unknown";
 export interface Spinoff {
   harness?: WorkerHarness;
-  /** Taskfleet's selection profile; only for the selected run. */
+  /** Taskfleet's selection profile. */
   profile?: string;
+  /** The worker's repository, only when the parent does not run in it. */
+  other_repository?: string;
+  /** When an ended run ended (its manifest's last write). */
+  ended_at?: string;
   /** Waiting for input at the worker's own terminal prompt. */
   awaiting_input?: boolean;
   /** The live worker's Taskfleet window (browser shell token). */
@@ -28,7 +32,13 @@ export interface Spinoff {
   run_id: string;
   title: string;
   created_at: string;
-  state: "working" | "waiting_parent" | "merged" | "unmerged" | "unknown";
+  state:
+    | "working"
+    | "waiting_parent"
+    | "merged"
+    | "unmerged"
+    | "failed"
+    | "unknown";
   summary: string;
 }
 export interface Spinoffs {
@@ -120,6 +130,7 @@ export function spinoffStateLabel(run: Spinoff) {
     waiting_parent: "Odottaa pääagenttia",
     merged: "Mergetty",
     unmerged: run.preserved ? "Ei mergetty · työ tallessa" : "Ei mergetty",
+    failed: run.preserved ? "Epäonnistui · työ tallessa" : "Epäonnistui",
     unknown: "Tila ei tiedossa",
   }[run.state];
 }

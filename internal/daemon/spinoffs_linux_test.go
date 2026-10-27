@@ -143,6 +143,7 @@ func TestSpinoffAttributionAndReadOnlyHTTP(t *testing.T) {
 		t.Fatal(e)
 	}
 	b, _ := json.Marshal(map[string]any{"schema_version": 1, "data": map[string]any{"runs": []nativeSpinoff{run}}})
+	run.Manifest.Selection.Profile = "fixture-profile"
 	run.Report.Reason = "Synthetic merge conflict"
 	run.WorktreePath = "/invented/worker-checkout"
 	detail, _ := json.Marshal(map[string]any{"schema_version": 1, "data": run})
@@ -158,7 +159,9 @@ func TestSpinoffAttributionAndReadOnlyHTTP(t *testing.T) {
 		r.Header.Set("X-Agent-Host-Identity", opaque("wid_", "github:42"))
 		h.ServeHTTP(w, r)
 		if method == "GET" {
-			if w.Code != 200 || !strings.Contains(w.Body.String(), "Fixture child") {
+			// A live row names its profile (from show) and the repository
+			// the parent conversation does not run in.
+			if w.Code != 200 || !strings.Contains(w.Body.String(), "Fixture child") || !strings.Contains(w.Body.String(), `"profile":"fixture-profile"`) || !strings.Contains(w.Body.String(), `"other_repository":"sibling"`) || strings.Contains(w.Body.String(), "ended_at") {
 				t.Fatalf("%d %s", w.Code, w.Body.String())
 			}
 		} else if w.Code == 200 {
@@ -180,6 +183,56 @@ func TestSpinoffAttributionAndReadOnlyHTTP(t *testing.T) {
 		t.Fatal(w.Code)
 	}
 }
+func TestSpinoffOtherRepository(t *testing.T) {
+	for _, c := range []struct{ src, cwd, want string }{
+		{"/home/u/src/kasvimaa", "/home/u/src/kasvimaa", ""},
+		{"/home/u/src/kasvimaa", "/home/u/src/kasvimaa/web", ""},
+		{"/home/u/src/kirjasto", "/home/u/src/kasvimaa", "kirjasto"},
+		{"/home/u/src/kasvimaa", "/home/u/src/kasvimaa-sibling", "kasvimaa"},
+		{"/home/u/src/kasvimaa-sibling", "/home/u/src/kasvimaa", "kasvimaa-sibling"},
+		{"/home/u/src/kirjasto", "", ""},
+		{"", "/home/u/src/kasvimaa", ""},
+	} {
+		if got := otherRepository(c.src, c.cwd); got != c.want {
+			t.Fatalf("otherRepository(%q, %q) = %q, want %q", c.src, c.cwd, got, c.want)
+		}
+	}
+}
+func TestSpinoffEndedRowFacts(t *testing.T) {
+	cfg, n := spinoffFixture(t)
+	parent := nativeSession{id: spinoffParent, cwd: "/invented/source", state: "readable"}
+	creator := struct {
+		Harness   string `json:"harness"`
+		SessionID string `json:"session_id"`
+	}{"pi", spinoffParent}
+	run := nativeSpinoff{ID: spinoffFixtureID, Kind: "spinoff", Title: "Failed child", Status: "failed", SourceRepo: "/invented/source", Creator: &creator, Nodes: []spinoffNode{n}, CreatedAt: "2026-10-16T10:00:00Z", Harness: "claude"}
+	b, _ := json.Marshal(map[string]any{"schema_version": 1, "data": map[string]any{"runs": []nativeSpinoff{run}}})
+	run.Manifest.Selection.Profile = "tarkka"
+	run.Manifest.UpdatedAt = "2026-10-16T10:42:00Z"
+	detail, _ := json.Marshal(map[string]any{"schema_version": 1, "data": run})
+	bin := filepath.Join(cfg.Home, ".local", "bin", "taskfleet")
+	if e := os.MkdirAll(filepath.Dir(bin), 0700); e != nil {
+		t.Fatal(e)
+	}
+	script := "#!/bin/sh\ncase \"$1\" in version) printf '%s' '{\"schema_version\":1,\"data\":{\"version\":\"0.15.0\"}}';; *) if [ \"$2\" = show ]; then printf '%s' '" + string(detail) + "'; else printf '%s' '" + string(b) + "'; fi;; esac\n"
+	if e := os.WriteFile(bin, []byte(script), 0700); e != nil {
+		t.Fatal(e)
+	}
+	t.Setenv("PATH", filepath.Dir(bin))
+	h := historyHandlerWithReader(cfg, func(*http.Request) bool { return true }, func(transport.Config) ([]nativeSession, error) { return []nativeSession{parent}, nil })
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "http://unix/api/v1/agents/pi:"+spinoffParent+"/spinoffs", nil))
+	var got struct {
+		Runs []map[string]any `json:"runs"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &got) != nil || len(got.Runs) != 1 {
+		t.Fatalf("%d %s", w.Code, w.Body.String())
+	}
+	r := got.Runs[0]
+	if r["state"] != "failed" || r["ended_at"] != "2026-10-16T10:42:00Z" || r["profile"] != "tarkka" || r["harness"] != "claude" || r["other_repository"] != nil {
+		t.Fatalf("ended row facts: %v", r)
+	}
+}
 func TestSpinoffUnavailableTaskfleet(t *testing.T) {
 	home := t.TempDir()
 	binary := filepath.Join(home, ".local", "bin", "taskfleet")
@@ -198,7 +251,7 @@ func TestSpinoffStateHonesty(t *testing.T) {
 	for _, c := range []struct {
 		r    nativeSpinoff
 		want string
-	}{{nativeSpinoff{Status: "running"}, "working"}, {nativeSpinoff{Status: "running", Lifecycle: "interactive", Attention: true}, "waiting_parent"}, {nativeSpinoff{Status: "failed", Landed: true}, "merged"}, {nativeSpinoff{Status: "failed"}, "unmerged"}, {nativeSpinoff{Status: "running", Stalled: true}, "unknown"}, {nativeSpinoff{Status: "running", Attention: true}, "unknown"}} {
+	}{{nativeSpinoff{Status: "running"}, "working"}, {nativeSpinoff{Status: "running", Lifecycle: "interactive", Attention: true}, "waiting_parent"}, {nativeSpinoff{Status: "failed", Landed: true}, "merged"}, {nativeSpinoff{Status: "failed"}, "failed"}, {nativeSpinoff{Status: "done"}, "unmerged"}, {nativeSpinoff{Status: "cancelled"}, "unmerged"}, {nativeSpinoff{Status: "running", Stalled: true}, "unknown"}, {nativeSpinoff{Status: "running", Attention: true}, "unknown"}} {
 		if got := spinoffState(c.r); got != c.want {
 			t.Fatalf("%+v -> %s", c.r, got)
 		}

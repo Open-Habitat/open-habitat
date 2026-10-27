@@ -19,6 +19,7 @@ export function spinoffLabel(run: ProcessSpinoff): string {
       waiting_parent: "Odottaa pääagenttia",
       merged: "Mergetty",
       unmerged: run.preserved ? "Ei mergetty · työ tallessa" : "Ei mergetty",
+      failed: run.preserved ? "Epäonnistui · työ tallessa" : "Epäonnistui",
       unknown: "Tila ei tiedossa",
     }[run.state];
   return run.status === "pending" || run.status === "running"

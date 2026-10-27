@@ -21,4 +21,4 @@ Jari 2026-10-27. Toteutetaan proto-worker-panel-kierroksen suunta 1 Rivi (issues
 
 ## Acceptance Criteria
 
-- [ ] Paneeli vastaa Rivi-suuntaa; selite on poissa; selaintestit kattavat odotetun, odottamattoman ja päättyneen rivin
+- [x] Paneeli vastaa Rivi-suuntaa; selite on poissa; selaintestit kattavat odotetun, odottamattoman ja päättyneen rivin

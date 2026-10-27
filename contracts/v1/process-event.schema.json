@@ -140,6 +140,7 @@
               "waiting_parent",
               "merged",
               "unmerged",
+              "failed",
               "unknown"
             ]
           },

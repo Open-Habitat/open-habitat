@@ -244,23 +244,11 @@
   font: 600 11.5px var(--ah-font);
   font-variant-numeric: tabular-nums;
 }
-.ah-bg-legend {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 4px 8px 8px;
-  font-size: 11.5px;
-  color: var(--ah-muted);
-}
-.ah-bg-legend .nowait,
-.ah-bg-legend .unknown {
-  margin-inline-start: 8px;
-}
 [data-state="merged"] .ah-bg-mark {
   color: var(--ah-ok);
 }
-[data-state="unmerged"] .ah-bg-mark {
+[data-state="unmerged"] .ah-bg-mark,
+[data-state="failed"] .ah-bg-mark {
   color: var(--ah-err);
 }
 .ah-bg-name {
@@ -294,22 +282,72 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.ah-bg-label {
-  color: var(--ah-ink-2);
+/* Rivi: a worker row has two lines; the second says in words what the row
+   means and which agent runs it, so the panel carries no legend. */
+.ah-bg-row[data-kind="spin"] {
+  align-items: flex-start;
 }
-.ah-bg-wait-word {
-  color: var(--ah-ink-2);
+.ah-bg-row[data-kind="spin"] .ah-bg-main {
+  align-items: flex-start;
+  padding-block: 6px;
 }
-.ah-bg-row[data-waited="true"] .ah-bg-wait-word {
-  color: var(--ah-accent-ink);
+.ah-bg-row[data-kind="spin"] .ah-bg-mark {
+  height: 19px;
+}
+.ah-bg-lines {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.ah-bg-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.ah-bg-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 5px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--ah-muted);
+}
+.ah-bg-word {
   font-weight: 500;
+  color: var(--ah-ink-2);
 }
-[data-state="unmerged"] .ah-bg-label,
-.ah-bg-row[data-tone="err"] .ah-bg-meta {
+.ah-bg-word[data-tone="wait"] {
+  color: var(--ah-accent-ink);
+}
+.ah-bg-word[data-tone="ok"] {
+  color: var(--ah-ok);
+}
+.ah-bg-word[data-tone="err"] {
   color: var(--ah-err);
 }
-[data-state="merged"] .ah-bg-label {
-  color: var(--ah-ok);
+.ah-bg-sep {
+  color: var(--ah-faint);
+}
+.ah-bg-repo {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--ah-r-pill);
+  box-shadow: inset 0 0 0 1px var(--ah-line);
+  color: var(--ah-ink-2);
+  font: 500 11px var(--ah-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-bg-row[data-tone="err"] .ah-bg-meta {
+  color: var(--ah-err);
 }
 .ah-bg-wake {
   flex: none;
@@ -328,6 +366,9 @@
   flex: none;
   margin-right: 2px;
   --i-fg: var(--ah-ink-2);
+}
+.ah-bg-row[data-kind="spin"] .ah-bg-stop {
+  margin-top: 2px;
 }
 .ah-bg-stop:hover {
   --i-fg: var(--ah-err);

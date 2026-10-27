@@ -46,10 +46,17 @@ export function workerLive(run?: Spinoff) {
   );
 }
 
+/** Whether the worker's run has ended in Taskfleet's own words. */
+export function workerEnded(run: Spinoff) {
+  return (
+    run.state === "merged" || run.state === "unmerged" || run.state === "failed"
+  );
+}
+
 function stateKind(run: Spinoff): StatusKind {
   if (run.state === "working") return "working";
   if (run.state === "merged") return "success";
-  if (run.state === "unmerged") return "error";
+  if (run.state === "unmerged" || run.state === "failed") return "error";
   if (run.state === "unknown") return "unknown";
   return "neutral";
 }
@@ -125,7 +132,7 @@ function WorkerAsk({ run, onParent }: { run?: Spinoff; onParent: () => void }) {
 
 /** What the worker's run ended in, from Taskfleet's own report. */
 function WorkerResult({ run }: { run: Spinoff }) {
-  if (run.state !== "merged" && run.state !== "unmerged") return null;
+  if (!workerEnded(run)) return null;
   const merged = run.state === "merged";
   return (
     <aside
@@ -341,7 +348,7 @@ export function WorkerView({
         </p>
       ),
     });
-  if (run && (run.state === "merged" || run.state === "unmerged"))
+  if (run && workerEnded(run))
     feed.push({
       id: "worker-result",
       kind: "marker",

@@ -679,6 +679,9 @@ test("@spinoffs a live run in another state keeps its mark on the closed pill", 
   await expect(pill).toHaveAccessibleName(/1 muussa tilassa/);
   await pill.click();
   await expect(
-    page.getByRole("tabpanel").getByTestId("spinoff-release pilot.12"),
-  ).toContainText("Tila ei tiedossa");
+    page
+      .getByRole("tabpanel")
+      .locator('[data-kind="spin"]')
+      .filter({ has: page.getByTestId("spinoff-release pilot.12") }),
+  ).toHaveAttribute("data-state", "unknown");
 });

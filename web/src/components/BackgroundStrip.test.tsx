@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import inventory from "../../../contracts/v1/examples/process-inventory.json";
 import type { ProcessRecord } from "../app/processes";
 import type { Spinoff } from "../app/spinoffs";
-import { backgroundFacts } from "./BackgroundStrip";
+import { backgroundFacts, stateWord } from "./BackgroundStrip";
 
 const base = inventory.processes[0] as ProcessRecord;
 const proc = (edit: Partial<ProcessRecord>): ProcessRecord => ({
@@ -118,6 +118,29 @@ describe("background strip facts", () => {
     expect(
       facts([run({ state: "merged", preserved: true })], []).spin.attention,
     ).toBe(0);
+    // A failed run with work left is the same call to the person.
+    expect(
+      facts([run({ state: "failed", preserved: true })], []).spin.attention,
+    ).toBe(1);
+    expect(
+      facts([run({ state: "failed", preserved: false })], []).spin.attention,
+    ).toBe(0);
+  });
+  it("tones each row's own word: the wait, not waiting, and how it ended", () => {
+    const tone = (r: Spinoff, processes: ProcessRecord[] = []) =>
+      stateWord(facts([r], processes).spin.items[0]).tone;
+    expect(tone(run({}), [wait])).toBe("wait");
+    // A wait whose end does not wake the agent is no wait.
+    expect(tone(run({}), [{ ...wait, wakes_agent: false }])).toBe("muted");
+    expect(tone(run({}))).toBe("muted");
+    expect(tone(run({ state: "waiting_parent" }), [wait])).toBe("wait");
+    expect(tone(run({ state: "merged" }))).toBe("ok");
+    expect(tone(run({ state: "failed" }))).toBe("err");
+    expect(tone(run({ state: "unmerged", preserved: true }))).toBe("err");
+    // Ended without a merge and nothing kept: nothing for the person to do.
+    expect(tone(run({ state: "unmerged" }))).toBe("muted");
+    // A settled run's lingering wait is not the agent waiting.
+    expect(tone(run({ state: "merged" }), [wait])).toBe("ok");
   });
   it("is silent about processes while Pi is stopped, unless a restart cut one off", () => {
     const stopped = (interrupted: number) =>

@@ -62,6 +62,7 @@
               "waiting_parent",
               "merged",
               "unmerged",
+              "failed",
               "unknown"
             ]
           },
@@ -93,7 +94,17 @@
             ]
           },
           "profile": {
-            "description": "Taskfleet's selection profile; only for the selected run.",
+            "description": "Taskfleet's selection profile.",
+            "type": "string",
+            "maxLength": 64
+          },
+          "other_repository": {
+            "description": "The directory name of the worker's repository, present only when the parent conversation does not run inside it.",
+            "type": "string",
+            "maxLength": 200
+          },
+          "ended_at": {
+            "description": "When an ended run's Taskfleet manifest was last written, which is when it ended; absent while it runs.",
             "type": "string",
             "maxLength": 64
           },

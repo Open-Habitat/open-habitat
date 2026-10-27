@@ -77,6 +77,7 @@ type nativeSpinoff struct {
 		Selection struct {
 			Profile string `json:"profile"`
 		} `json:"selection"`
+		UpdatedAt string `json:"updated_at"`
 	} `json:"manifest"`
 	Attach struct {
 		State    string `json:"state"`
@@ -93,6 +94,8 @@ type spinoffRow struct {
 	Terminal      string `json:"terminal,omitempty"`
 	TerminalSpace string `json:"terminal_workspace,omitempty"`
 	Brief         string `json:"brief,omitempty"`
+	OtherRepo     string `json:"other_repository,omitempty"`
+	EndedAt       string `json:"ended_at,omitempty"`
 	Preserved     bool   `json:"preserved"`
 	Branch        string `json:"branch"`
 	Worktree      string `json:"worktree"`
@@ -154,7 +157,9 @@ func spinoffState(r nativeSpinoff) string {
 			return "unknown"
 		}
 		return "working"
-	case "done", "failed", "cancelled":
+	case "failed":
+		return "failed"
+	case "done", "cancelled":
 		return "unmerged"
 	}
 	return "unknown"
@@ -164,6 +169,31 @@ func spinoffState(r nativeSpinoff) string {
 // inventory is already read as this Unix user; cwd is not a security boundary.
 func belongsSpinoff(r nativeSpinoff, parent nativeSession) bool {
 	return taskfleetIDPattern.MatchString(r.ID) && observedTaskfleetKind(r.Kind) && r.AgentOwner != "caller" && r.CreatorRun == nil && r.Creator != nil && r.Creator.Harness == "pi" && r.Creator.SessionID == parent.id && filepath.IsAbs(r.SourceRepo)
+}
+
+// otherRepository names the worker's repository only when the parent
+// conversation does not run inside it: the panel marks a worker that works
+// elsewhere, never one in the conversation's own repository.
+func otherRepository(sourceRepo, parentCwd string) string {
+	// Without the parent's directory nothing says the repository differs.
+	if sourceRepo == "" || parentCwd == "" {
+		return ""
+	}
+	src := filepath.Clean(sourceRepo)
+	if rel, err := filepath.Rel(src, filepath.Clean(parentCwd)); err == nil && rel != ".." && !strings.HasPrefix(rel, "../") {
+		return ""
+	}
+	return prefixBytes(filepath.Base(src), 200)
+}
+
+// showSpinoff reads one run's detail, still attributed to the same parent.
+func showSpinoff(ctx context.Context, home, runID string, parent nativeSession) (nativeSpinoff, bool) {
+	var detail struct {
+		Schema int           `json:"schema_version"`
+		Data   nativeSpinoff `json:"data"`
+	}
+	ok := taskfleetRead(ctx, home, []string{"run", "show", runID, "--output", "json"}, &detail) && detail.Schema == 1 && detail.Data.ID == runID && belongsSpinoff(detail.Data, parent)
+	return detail.Data, ok
 }
 func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Config, sessions []nativeSession) bool {
 	path := req.URL.EscapedPath()
@@ -195,6 +225,7 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 	defer cancel()
 	rows := []spinoffRow{}
 	views := []spinoffView{}
+	var live []int // live rows, by index in rows, to enrich with a profile
 	availability := "available"
 	var reply struct {
 		Schema   int      `json:"schema_version"`
@@ -230,26 +261,30 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 				availability = "partial"
 				break
 			}
-			row := spinoffRow{ID: r.ID, Title: prefixBytes(r.Title, 200), CreatedAt: nativeTimestamp(r.CreatedAt), State: "unknown", Harness: workerHarness(r.Harness), AwaitingInput: r.AwaitingInput}
+			row := spinoffRow{ID: r.ID, Title: prefixBytes(r.Title, 200), CreatedAt: nativeTimestamp(r.CreatedAt), State: "unknown", Harness: workerHarness(r.Harness), AwaitingInput: r.AwaitingInput, OtherRepo: otherRepository(r.SourceRepo, parent.cwd)}
 			if runID == "" && (r.Status == "pending" || r.Status == "running") {
 				row.State = spinoffState(r)
 				row.SourceBranch = prefixBytes(r.SourceBranch, 200)
+				live = append(live, len(rows))
 				rows = append(rows, row)
 				continue
 			}
 			// List is inventory, not landing proof: only show carries the
 			// verified landed flag and retained report/preserved work.
-			var detail struct {
-				Schema int           `json:"schema_version"`
-				Data   nativeSpinoff `json:"data"`
-			}
-			if taskfleetRead(ctx, cfg.Home, []string{"run", "show", r.ID, "--output", "json"}, &detail) && detail.Schema == 1 && detail.Data.ID == r.ID && belongsSpinoff(detail.Data, *parent) {
-				row.State = spinoffState(detail.Data)
-				row.Harness = workerHarness(detail.Data.Harness)
-				row.AwaitingInput = detail.Data.AwaitingInput
-				row.SourceBranch = prefixBytes(detail.Data.SourceBranch, 200)
-				row.Worktree = prefixBytes(detail.Data.WorktreePath, 1024)
-				for _, p := range detail.Data.Preserved {
+			if detail, shown := showSpinoff(ctx, cfg.Home, r.ID, *parent); shown {
+				row.State = spinoffState(detail)
+				row.Harness = workerHarness(detail.Harness)
+				row.AwaitingInput = detail.AwaitingInput
+				row.SourceBranch = prefixBytes(detail.SourceBranch, 200)
+				row.Worktree = prefixBytes(detail.WorktreePath, 1024)
+				row.Profile = prefixBytes(detail.Manifest.Selection.Profile, 64)
+				row.OtherRepo = otherRepository(detail.SourceRepo, parent.cwd)
+				// Taskfleet records no end time; an ended run's manifest was
+				// last written when it ended.
+				if s := detail.Status; s == "done" || s == "failed" || s == "cancelled" {
+					row.EndedAt = nativeTimestamp(detail.Manifest.UpdatedAt)
+				}
+				for _, p := range detail.Preserved {
 					row.Preserved = row.Preserved || p.BranchPresent || p.WorktreePresent
 					if p.Branch != nil {
 						row.Branch = prefixBytes(*p.Branch, 300)
@@ -260,25 +295,24 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 					break
 				}
 				if runID == r.ID {
-					summary := detail.Data.Report.Summary
-					if reason := detail.Data.Report.Reason; reason != "" && reason != summary {
+					summary := detail.Report.Summary
+					if reason := detail.Report.Reason; reason != "" && reason != summary {
 						if summary != "" {
 							summary += "\n\n"
 						}
 						summary += reason
 					}
 					row.Summary = prefixBytes(summary, 16000)
-					row.Profile = prefixBytes(detail.Data.Manifest.Selection.Profile, 64)
-					if token := workerTerminal(detail.Data); token != "" {
-						if space := workerTerminalWorkspace(cfg, detail.Data.WorktreePath); space != "" {
+					if token := workerTerminal(detail); token != "" {
+						if space := workerTerminalWorkspace(cfg, detail.WorktreePath); space != "" {
 							row.Terminal, row.TerminalSpace = token, space
 						}
 					}
 					row.Brief = readRunBrief(cfg, r.ID)
 					// One node's conversation is the view; a later node (a
 					// retried attempt) replaces an earlier one.
-					for i := len(detail.Data.Nodes) - 1; i >= 0 && len(views) == 0; i-- {
-						views = append(views, readSpinoffTranscript(cfg, r.ID, detail.Data.Nodes[i]))
+					for i := len(detail.Nodes) - 1; i >= 0 && len(views) == 0; i-- {
+						views = append(views, readSpinoffTranscript(cfg, r.ID, detail.Nodes[i]))
 					}
 				}
 			} else {
@@ -290,6 +324,17 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 	}
 	if ctx.Err() != nil {
 		availability = "partial"
+	}
+	// A live row's state comes from the list; show adds only the profile its
+	// panel row names. It runs after every ended row's required read so it
+	// can never spend their time, and a missing profile is no partial read.
+	for _, i := range live {
+		if ctx.Err() != nil {
+			break
+		}
+		if d, ok := showSpinoff(ctx, cfg.Home, rows[i].ID, *parent); ok {
+			rows[i].Profile = prefixBytes(d.Manifest.Selection.Profile, 64)
+		}
 	}
 	sort.Slice(rows, func(i, j int) bool {
 		if rows[i].CreatedAt == rows[j].CreatedAt {
