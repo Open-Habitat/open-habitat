@@ -46,4 +46,17 @@ The product behaves as that change intended; no product code changed.
 - `title-regeneration.spec.ts`, `lab-title-generation.spec.ts`,
   `browser-conversation.spec.ts` (71) alone: passed.
 - `./scripts/test-focused.sh --area web`: passed.
-- Whole browser and lab suites: see below.
+- Whole suites on main d732c059 + this change, `OH_BROWSER_WORKERS=4`, under
+  the new suite lock. Birch was never idle during this run: other workers kept
+  it at load 9–15 on 8 vCPU with focused specs.
+  - Browser: 409 passed, 1 failed (11.2 min). All four original failures
+    passed. The failure was `attachment-documents.spec.ts:38`: the composer's
+    six chips did not appear within 5 s.
+  - Lab: 136 passed, 1 failed (4.4 min). Both `lab-title-generation` 390 px
+    cases passed. The failure was `lab-conversation.spec.ts:607` (typed
+    fragments): the live tool row did not appear within 20 s.
+  - Both stray failures passed 3/3 when run alone straight afterwards, at the
+    same load. They are filed as `browser-waits-time-out-under-load`
+    (untriaged). So the acceptance "both suites green on idle Birch" is not
+    shown yet: the remaining reds are load-sensitive waits outside this issue,
+    not the failures this issue named.
