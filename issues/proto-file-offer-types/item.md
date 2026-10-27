@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-10-27/proto-file-offer-types
 lane: file-offer
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype riff: the file card for common content types
