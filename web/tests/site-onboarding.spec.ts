@@ -108,9 +108,9 @@ test("@site-onboarding an administrator's every change saves itself, and the pre
   const catalog = await (await page.request.get("/api/v1/integrations")).json();
   await route(page, "add-integration").click();
   await expect(page.getByTestId("onboarding-add-microsoft")).toBeVisible();
-  // Gitea connections are personal, never a site onboarding step.
+  // Gitea and GitLab connections are personal, never a site onboarding step.
   for (const p of catalog.providers as { id: string; available: boolean }[])
-    if (!p.available && p.id !== "gitea") {
+    if (!p.available && p.id !== "gitea" && p.id !== "gitlab") {
       await expect(
         page.getByTestId(`onboarding-unready-${p.id}`),
       ).toBeVisible();

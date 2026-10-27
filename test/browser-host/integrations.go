@@ -15,6 +15,7 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/daemon"
 	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"github.com/Open-Habitat/open-habitat/internal/nativegitea/giteafake"
+	"github.com/Open-Habitat/open-habitat/internal/nativegitlab/gitlabfake"
 )
 
 // The synthetic host's integration catalog is the product's IMAP entry run
@@ -60,7 +61,7 @@ func (c *integrationControl) set(q url.Values) bool {
 	return true
 }
 
-func fixtureIntegrations(home, repoRoot, self string, gitea *giteafake.Server) (*integrations.Catalog, *integrations.GiteaAdapter) {
+func fixtureIntegrations(home, repoRoot, self string, gitea *giteafake.Server, gitlab *gitlabfake.Server) (*integrations.Catalog, daemon.Forges) {
 	tools := map[string]string{"himalaya": filepath.Join(repoRoot, "test/fixtures/integrations/himalaya"), "curl": filepath.Join(repoRoot, "test/fixtures/integrations/curl")}
 	rclone := filepath.Join(repoRoot, "test/fixtures/integrations/rclone")
 	env := integrations.Env{Home: home, FixtureTools: true,
@@ -71,6 +72,10 @@ func fixtureIntegrations(home, repoRoot, self string, gitea *giteafake.Server) (
 			// tea is offered only while /fixture/gitea has enabled it.
 			if giteaEnabled.Load() {
 				c.Tools["tea"] = "/usr/bin/true"
+			}
+			// glab likewise while /fixture/gitlab has enabled it.
+			if gitlabEnabled.Load() {
+				c.Tools["glab"] = "/usr/bin/true"
 			}
 			return c, nil
 		},
@@ -103,7 +108,11 @@ func fixtureIntegrations(home, repoRoot, self string, gitea *giteafake.Server) (
 	if adapter != nil {
 		opts = append(opts, integrations.WithGitea(adapter))
 	}
-	return integrations.New(env, entries, nil, opts...), adapter
+	gl := gitlabFixtureAdapter(env, gitlab, self)
+	if gl != nil {
+		opts = append(opts, integrations.WithGitLab(gl))
+	}
+	return integrations.New(env, entries, nil, opts...), daemon.Forges{Gitea: adapter, GitLab: gl}
 }
 
 type fixtureEntry struct {

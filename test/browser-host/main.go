@@ -159,7 +159,7 @@ func main() {
 	syscall.Umask(0077)
 	// Git runs this binary as the registered Gitea credential helper, as it
 	// runs the installed open-habitat binary in production.
-	if len(os.Args) >= 2 && os.Args[1] == "gitea" {
+	if len(os.Args) >= 2 && (os.Args[1] == "gitea" || os.Args[1] == "gitlab") {
 		os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr))
 	}
 	guardLifetime(isFakePi(os.Args))
@@ -186,6 +186,10 @@ func main() {
 	giteaServer := startGiteaFixture(tmp)
 	if giteaServer != nil {
 		defer giteaServer.Close()
+	}
+	gitlabServer := startGitLabFixture(tmp)
+	if gitlabServer != nil {
+		defer gitlabServer.Close()
 	}
 	// Lab mode adds richer synthetic history and workspaces; both modes run
 	// the real conversation controller against the fake Pi child.
@@ -482,9 +486,14 @@ esac
 				log.Fatal(e)
 			}
 		}
-		catalog, giteaAdapter := fixtureIntegrations(home, repoRoot, self, giteaServer)
-		handler := daemon.SnapshotHandlerWithNativeRootAndGitea(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, discover, home, giteaAdapter)
-		cloneJobs := daemon.NewCloneJobsWithFixturePrograms(context.Background(), cfg, trusted, home, ghProgram, gitProgram).WithGitea(giteaAdapter)
+		if gitlabServer != nil {
+			if e := gitlabFixtureHome(home, gitlabServer); e != nil {
+				log.Fatal(e)
+			}
+		}
+		catalog, forges := fixtureIntegrations(home, repoRoot, self, giteaServer, gitlabServer)
+		handler := daemon.SnapshotHandlerWithNativeRootAndForges(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, discover, home, forges)
+		cloneJobs := daemon.NewCloneJobsWithFixturePrograms(context.Background(), cfg, trusted, home, ghProgram, gitProgram).WithForges(forges)
 		planTargets[m.Subject] = cloneJobs
 		clones := cloneJobs.Handler()
 		mux.Handle(daemon.RepoClonesPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -547,7 +556,7 @@ esac
 		fixtureWorkspaceCfg := cfg
 		fixtureWorkspaceCfg.Home = home // All workspace writes in the browser host stay in its disposable home.
 		mux.Handle(daemon.WorkspaceGitPath, daemon.WorkspaceGitHandler(fixtureWorkspaceCfg, trusted))
-		mux.Handle(daemon.WorkspaceGitFetchPath, daemon.WorkspaceGitFetchHandler(fixtureWorkspaceCfg, trusted, giteaAdapter))
+		mux.Handle(daemon.WorkspaceGitFetchPath, daemon.WorkspaceGitFetchHandler(fixtureWorkspaceCfg, trusted, forges))
 		mux.Handle(daemon.EditorPreferencePath, daemon.EditorPreferenceHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.FirstRoutePath, daemon.FirstRouteHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.EditorFilesPrefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -594,7 +603,7 @@ esac
 		integrationRoutes := catalog.Handler(func(r *http.Request) bool {
 			return trusted(r) && r.Host == "unix" && r.ProtoMajor == 1 && r.ProtoMinor == 1
 		})
-		for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath, integrations.GiteaPath, integrations.GiteaReposPath} {
+		for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath, integrations.GiteaPath, integrations.GiteaReposPath, integrations.GitLabPath, integrations.GitLabReposPath, integrations.GitLabTokensPath} {
 			mux.Handle(path, integrationRoutes)
 		}
 		mux.Handle(daemon.SnapshotPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -610,7 +619,7 @@ esac
 			case "delay":
 				time.Sleep(650 * time.Millisecond)
 			case "ready", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-slow-start", "pi-start-fail":
-				current.Load().(*daemon.ConversationController).FixtureSnapshotWithGitea(giteaAdapter).ServeHTTP(w, r)
+				current.Load().(*daemon.ConversationController).FixtureSnapshotWithForges(forges).ServeHTTP(w, r)
 				return
 
 			}
@@ -1244,6 +1253,9 @@ esac
 				w.WriteHeader(204)
 			case "/fixture/gitea":
 				giteaFixtureControl(giteaServer, w, r)
+				return
+			case "/fixture/gitlab":
+				gitlabFixtureControl(gitlabServer, w, r)
 				return
 			case "/fixture/integrations":
 				if !integrationFixture.set(r.URL.Query()) {
