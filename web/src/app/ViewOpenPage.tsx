@@ -11,7 +11,8 @@ import { listViews, mintViewURL, viewIdPattern } from "./views";
  * fresh URL. */
 export function ViewOpenPage() {
   const [failed, setFailed] = useState(false);
-  const [view, setView] = useState<{ src: string; title: string }>();
+  const [src, setSrc] = useState<string>();
+  const [title, setTitle] = useState("");
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("id") ?? "";
     if (!viewIdPattern.test(id)) {
@@ -19,22 +20,24 @@ export function ViewOpenPage() {
       return;
     }
     let live = true;
+    // The title is only the tab's label: it never holds back the frame,
+    // whose one-time URL expires a minute after minting.
+    void listViews().then(
+      (views) => {
+        const title = views?.find((v) => v.view_id === id)?.title;
+        if (!live || !title) return;
+        document.title = title;
+        setTitle(title);
+      },
+      () => {},
+    );
     void accountSession()
       .then((session) => {
         if (session === "login") throw new Error("login required");
-        // The title is only the tab's label; without it the view still opens.
-        return Promise.all([
-          mintViewURL(session.csrf, id),
-          listViews().then(
-            (views) => views?.find((v) => v.view_id === id)?.title,
-            () => undefined,
-          ),
-        ]);
+        return mintViewURL(session.csrf, id);
       })
-      .then(([src, title]) => {
-        if (!live) return;
-        if (title) document.title = title;
-        setView({ src, title: title ?? "" });
+      .then((url) => {
+        if (live) setSrc(url);
       })
       .catch(() => {
         if (live) setFailed(true);
@@ -43,10 +46,10 @@ export function ViewOpenPage() {
       live = false;
     };
   }, []);
-  if (view && !failed)
+  if (src && !failed)
     return (
       <main className="ah-view-frame ah-view-tab" data-testid="view-open-page">
-        <ViewFrame src={view.src} title={view.title} />
+        <ViewFrame src={src} title={title} />
       </main>
     );
   return (

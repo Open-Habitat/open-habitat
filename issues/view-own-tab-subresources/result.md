@@ -50,6 +50,11 @@ product's `example.test` or the test harness's `oh.localhost`.
   parent, the tab has no opener and the view's title, and a reload mints a
   fresh hand-off and loads again. The old page fails the first assertion.
 - Web focused checks; Go `./internal/gateway` (comment change only).
+- Independent review (`/llm-review`, finder gpt-6-astra, verifier
+  claude-fable-5-1) confirmed one defect, fixed here: the tab mounted its
+  frame only after the optional title lookup, so a stalled view list could
+  outlast the 60-second hand-off grant. The frame now mounts on the mint
+  alone. No other finding in the framing, the offer removal or the CLI.
 - Chromium only; Safari and a Chrome with third-party cookies blocked are
   Jari's check on the test server (KOKEILTAVAA).
 

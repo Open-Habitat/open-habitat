@@ -10,6 +10,8 @@ The help, agent skill and host context examples drop `--workspace`.
 
 Evidence: `go test ./internal/cli` (`TestViewOfferCurrentResolvesWorkspace`
 covers the default, the missing context and an explicit malformed workspace).
-The daemon still checks that the workspace's directory is the live
-conversation's cwd before exporting, so the default cannot point the offer at a
-different workspace's files.
+The default is the launch context's own workspace, and the daemon refuses a
+`--current` context whose workspace is not the live session's
+(`current_context_stale`), so the default cannot select another workspace. An
+explicit `--workspace` may still name any of the person's own workspaces, as
+before.
