@@ -36,7 +36,8 @@ func (a *Auth) githubClones(w http.ResponseWriter, r *http.Request) {
 		}
 		a.proxy(w, r, s, false)
 	case http.MethodPost:
-		if r.ContentLength < 1 || r.ContentLength > 256 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 {
+		// A GitLab remove names a project path of up to 1024 characters.
+		if r.ContentLength < 1 || r.ContentLength > cloneRequestLimit || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 {
 			safe(w, 400, "invalid_request")
 			return
 		}
@@ -85,3 +86,7 @@ func (a *Auth) githubLookup(w http.ResponseWriter, r *http.Request) {
 	}
 	a.proxy(w, r, s, false)
 }
+
+// cloneRequestLimit bounds one clone action: the longest is a GitLab remove
+// with a 1024-character project path.
+const cloneRequestLimit = 2048

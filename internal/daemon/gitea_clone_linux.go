@@ -239,6 +239,12 @@ func (c *CloneJobs) forgeInterruptedSource(o cloneOrigin, name string, s *forgeS
 		}
 		return full, source
 	}
+	// A path no Gitea could have (a GitLab subgroup longer than a Gitea
+	// owner, say) is a GitLab clone whose connection is gone: it can still
+	// be listed and removed by the path its origin ends with.
+	if full := o.Owner + "/" + name; !validGiteaFullName(full) {
+		return full, map[string]any{"provider": "gitlab"}
+	}
 	source := map[string]any{"provider": "gitea"}
 	var matched []nativegitea.Login
 	for _, l := range s.gitea {

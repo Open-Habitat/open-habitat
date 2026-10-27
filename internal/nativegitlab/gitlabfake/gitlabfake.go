@@ -497,7 +497,8 @@ func (s *Server) smartHTTP(w http.ResponseWriter, r *http.Request, path, rest st
 	a, t, ok := s.token(pass)
 	push := rest == "/git-receive-pack" || r.URL.Query().Get("service") == "git-receive-pack"
 	authorized := project != nil && basic && user != "" && ok && !t.Expired && !t.Revoked && s.member(a, *project)
-	allowed := authorized && t.has("api", "read_repository", "write_repository") && (!push || t.has("api", "write_repository"))
+	// GitLab grants download_code to read_api as well (lib/gitlab/auth.rb).
+	allowed := authorized && t.has("api", "read_api", "read_repository", "write_repository") && (!push || t.has("api", "write_repository"))
 	sso := project != nil && project.SSO
 	gate := s.gate
 	s.mu.Unlock()

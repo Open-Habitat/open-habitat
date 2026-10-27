@@ -367,6 +367,22 @@ func TestGitLabInterruptedCloneIsNamedInFull(t *testing.T) {
 	if _, err := os.Stat(other); !os.IsNotExist(err) {
 		t.Fatal("interrupted clone still there")
 	}
+	// Without a connection, a path no Gitea could have stays a GitLab
+	// clone in the list, and a long path is still removable.
+	long := strings.Repeat("ryhma", 9) + "/" + strings.Repeat("aliryhma", 20)
+	deep := filepath.Join(w.home, "src", "syva")
+	w.git(w.home, "init", "-q", deep)
+	deepOrigin := w.gl.URL + "/" + long + "/syva.git"
+	w.git(deep, "config", "credential."+deepOrigin+".username", "ada")
+	w.git(deep, "remote", "add", "origin", deepOrigin)
+	listed, _ = json.Marshal(w.clones.list())
+	matchesSchema(t, "github-clone.schema.json", string(listed))
+	if !strings.Contains(string(listed), `"provider":"gitlab"`) {
+		t.Fatalf("orphaned deep clone: %s", listed)
+	}
+	if status, out := w.clones.action(`{"action":"remove","source":"gitlab","full_name":"` + long + `/syva"}`); status != 200 || out["state"] != "removed" {
+		t.Fatalf("remove a long path: %d %v", status, out)
+	}
 	for _, bad := range []string{
 		`{"action":"remove","source":"gitlab","full_name":"single"}`,
 		`{"action":"remove","source":"gitlab","full_name":"a/-/b"}`,

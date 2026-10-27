@@ -28,6 +28,9 @@ import (
 const RepoClonesPath = "/api/v1/onboarding/github/clones"
 const RepoCloneEventsPath = RepoClonesPath + "/events"
 
+// cloneRequestLimit bounds one clone action body.
+const cloneRequestLimit = 2048
+
 // A clone job belongs to the user's daemon, not to the HTTP request that
 // started it: the browser subscribes to its progress and may leave and come
 // back. Jobs live in this process's memory only. A daemon restart forgets
@@ -239,7 +242,9 @@ func (c *CloneJobs) handlerAt(path string, trusted func(*http.Request) bool) htt
 			extendReply(w, 30*time.Second)
 			c.list(w, r)
 		case "POST":
-			if r.ContentLength < 1 || r.ContentLength > 256 {
+			// The longest action is a GitLab remove naming a 1024-character
+			// project path.
+			if r.ContentLength < 1 || r.ContentLength > cloneRequestLimit {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
@@ -247,7 +252,7 @@ func (c *CloneJobs) handlerAt(path string, trusted func(*http.Request) bool) htt
 				snapshotError(w, 403, "cross_user_denied")
 				return
 			}
-			body, err := io.ReadAll(io.LimitReader(r.Body, 257))
+			body, err := io.ReadAll(io.LimitReader(r.Body, cloneRequestLimit+1))
 			// Admission (60 s) plus a restart's removal (2 min) outlast the
 			// server's short default write deadline.
 			extendReply(w, 3*time.Minute+30*time.Second)
