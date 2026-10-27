@@ -85,8 +85,10 @@ for (const restart of [false, true]) {
     await retry.click();
     await snapshot;
     await stream;
-    await page.unroute("**/api/v1/events*");
-    await page.unroute("**/api/v1/snapshot");
+    // A later read may still be inside a handler awaiting the page. Plain
+    // unroute hands that route on beneath it, and its own continue then
+    // throws; wait for it instead. These two are this page's only routes.
+    await page.unrouteAll({ behavior: "wait" });
     await expect(
       page.locator(
         '[data-testid^="connection-"][data-state][data-state="stale"]',
@@ -296,7 +298,8 @@ for (const created of [false, true]) {
     await expect(start).toBeEnabled();
     await expect(page.getByTestId("creation-recheck")).toHaveCount(0);
     expect(writes).toBe(1);
-    await page.unroute("**/api/v1/conversations");
+    // As above: a later list read may still be inside its handler.
+    await page.unrouteAll({ behavior: "wait" });
     if (created) {
       expect(createdId).toMatch(/^pi:/);
       await expect(
