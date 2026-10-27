@@ -15,7 +15,12 @@ import {
   undo,
   undoDepth,
 } from "@codemirror/commands";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import {
+  foldGutter,
+  foldKeymap,
+  HighlightStyle,
+  syntaxHighlighting,
+} from "@codemirror/language";
 import {
   type ChangeSet,
   Compartment,
@@ -272,6 +277,26 @@ const theme = EditorView.theme({
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":
     { backgroundColor: "var(--ah-accent-soft)" },
   ".cm-activeLine": { backgroundColor: "var(--ah-hover)" },
+  ".cm-foldGutter .cm-gutterElement": {
+    cursor: "pointer",
+    padding: "0 var(--ah-s1)",
+  },
+  ".cm-foldGutter .cm-gutterElement:hover": { color: "var(--ah-ink)" },
+  ".cm-foldPlaceholder": {
+    backgroundColor: "var(--ah-surface-2)",
+    border: "1px solid var(--ah-line)",
+    color: "var(--ah-ink-2)",
+  },
+});
+// CodeMirror's own words for fold markers, which screen readers and tooltips use.
+const phrases = EditorState.phrases.of({
+  "Fold line": "Kokoa",
+  "Unfold line": "Avaa",
+  "folded code": "koottu osa",
+  unfold: "avaa",
+  "Folded lines": "Koottu rivit",
+  "Unfolded lines": "Avattu rivit",
+  to: "–",
 });
 const syntax = syntaxHighlighting(
   HighlightStyle.define([
@@ -301,7 +326,8 @@ const syntax = syntaxHighlighting(
 );
 
 /** Trusted bundled engine; repository text is only an EditorState document.
- * No preview, project plugin, language server or execution path exists. */
+ * No project plugin, language server or execution path exists; the
+ * Markdown preview beside it renders through the conversation's sanitiser. */
 export default function CodeMirrorEditor({
   content,
   path,
@@ -338,7 +364,11 @@ export default function CodeMirrorEditor({
           mergeField,
           mergeDecorations,
           lockConflicts,
+          phrases,
           lineNumbers(),
+          // A grammar supplies the ranges: Markdown folds a heading's
+          // section, code folds its blocks; plain text has none.
+          foldGutter(),
           highlightActiveLine(),
           history(),
           undoMerge,
@@ -360,6 +390,7 @@ export default function CodeMirrorEditor({
             },
             ...defaultKeymap,
             ...historyKeymap,
+            ...foldKeymap,
           ]),
           EditorView.updateListener.of((update) => {
             const merge = update.state.field(mergeField);

@@ -239,8 +239,52 @@
 }
 /* A conflict card is a block in a horizontally scrolling document: keep it
    to the visible width instead of the longest line's. */
-.ah-browser-document {
+.ah-browser-source {
   container-type: inline-size;
+}
+/* Markdown preview: beside the text where both stay readable, otherwise in
+   its place. The text stays mounted while hidden, so history and the
+   cursor survive the toggle. */
+.ah-browser-document {
+  display: flex;
+  container: ah-editor-panes / inline-size;
+}
+.ah-browser-source {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+.ah-browser-preview {
+  box-sizing: border-box;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: auto;
+  padding: var(--ah-s4) var(--ah-s5);
+  border-inline-start: 1px solid var(--ah-line);
+  background: var(--ah-surface);
+}
+.ah-browser-preview > .ah-markdown {
+  max-width: 72ch;
+  margin-inline: auto;
+}
+.ah-browser-preview:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-inset);
+}
+.ah-browser-document[data-preview="only"] .ah-browser-source {
+  display: none;
+}
+.ah-browser-document[data-preview="only"] .ah-browser-preview {
+  border-inline-start: 0;
+}
+@container ah-editor-panes (width < 720px) {
+  .ah-browser-document[data-preview="side"] .ah-browser-source {
+    display: none;
+  }
+  .ah-browser-document[data-preview="side"] .ah-browser-preview {
+    border-inline-start: 0;
+    padding: var(--ah-s3);
+  }
 }
 .ah-merge-conflict-host {
   position: sticky;
@@ -311,6 +355,10 @@
   }
   .ah-browser-toolbar button {
     min-height: 44px;
+  }
+  /* The path keeps a readable width and pushes buttons to the next row. */
+  .ah-browser-filename {
+    flex-basis: 12ch;
   }
   /* A state longer than one word takes its own row instead of squeezing
      the path to one character per line. */

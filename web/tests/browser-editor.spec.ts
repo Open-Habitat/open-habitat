@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
@@ -693,4 +694,125 @@ for (const width of [1366, 390])
     await page.goForward();
     await expect(page).toHaveURL(conversationURL);
     await expect(page.getByTestId("message-input")).toBeVisible();
+  });
+
+// Committed issue evidence is refreshed only on request.
+async function capture(page: Page, name: string) {
+  if (process.env.OH_VISUAL_CAPTURE !== "1") return;
+  await page.screenshot({
+    path: fileURLToPath(
+      new URL(
+        `../../issues/editor-markdown-preview-folding/evidence/${name}.png`,
+        import.meta.url,
+      ),
+    ),
+  });
+}
+for (const width of [1366, 390])
+  test.describe(() => {
+    test.use({ deviceScaleFactor: 2 });
+    test(`@browser-editor @a11y markdown preview and heading folds ${width}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await openFile(page, width === 390);
+      // Code has no preview; only Markdown does.
+      await expect(page.getByTestId("editor-preview-toggle")).toHaveCount(0);
+      if (!(await page.getByTestId("editor-file-picker").isVisible()))
+        await page.getByTestId("editor-picker").click();
+      await page
+        .getByTestId("editor-file-entry")
+        .and(page.locator('[data-path="cmd/notes.md"]'))
+        .click();
+      const doc = page.getByTestId("editor-document");
+      const line = (text: string) =>
+        doc.locator(".cm-line").filter({ hasText: new RegExp(`^${text}$`) });
+      // A folded heading ends in its placeholder.
+      const heading = line("## Kaavio(…)?");
+      const inside = line("graph LR");
+      await expect(inside).toBeVisible();
+      await expect(page.getByTestId("editor-preview-toggle")).toBeVisible();
+      if (await page.getByTestId("editor-file-picker").isVisible())
+        await page.getByTestId("editor-picker").click();
+
+      // Gutter folds a heading's section up to the next heading of its level.
+      const gutter = async () => {
+        const row = await heading.boundingBox();
+        const lane = await page
+          .getByTestId("codemirror-editor")
+          .locator(".cm-foldGutter")
+          .boundingBox();
+        if (!row || !lane) throw new Error("Missing fold gutter geometry");
+        await page.mouse.click(lane.x + lane.width / 2, row.y + row.height / 2);
+      };
+      await gutter();
+      await expect(inside).toHaveCount(0);
+      await expect(line("## Loppu")).toBeVisible();
+      await capture(page, `folded-${width}`);
+      await heading.click();
+      await doc.press("Control+Shift+BracketRight");
+      await expect(inside).toBeVisible();
+      await heading.click();
+      await doc.press("Control+Shift+BracketLeft");
+      await expect(inside).toHaveCount(0);
+      await gutter();
+      await expect(inside).toBeVisible();
+
+      // Ctrl+Shift+V puts the rendered document in place of the text and
+      // back, keeping focus on the page.
+      const preview = page.getByTestId("editor-preview");
+      const source = page.locator(".ah-browser-source");
+      await heading.click();
+      await doc.press("Control+Shift+V");
+      await expect(preview).toBeFocused();
+      await expect(source).toBeHidden();
+      await expect(preview.getByRole("heading", { level: 1 })).toHaveCount(1);
+      // The conversation's renderer, Mermaid included.
+      await expect(preview.getByTestId("mermaid-diagram")).toBeVisible({
+        timeout: 20000,
+      });
+      await preview.press("Control+Shift+V");
+      await expect(preview).toHaveCount(0);
+      await expect(doc).toBeFocused();
+
+      // The button opens it beside the text where the width allows; the
+      // preview follows unsaved typing.
+      await page.getByTestId("editor-preview-toggle").click();
+      await expect(preview).toBeVisible();
+      if (width === 390) {
+        await expect(source).toBeHidden();
+        await page.getByTestId("editor-preview-toggle").click();
+      } else {
+        await page.getByTestId("hide-conversation").click();
+        await expect(source).toBeVisible();
+        const [a, b] = [
+          await source.boundingBox(),
+          await preview.boundingBox(),
+        ];
+        expect(a && b && a.x + a.width <= b.x + 1).toBe(true);
+      }
+      await doc.click();
+      await doc.press("Control+End");
+      await doc.pressSequentially("\n# Uusi");
+      if (width === 390)
+        await page.getByTestId("editor-preview-toggle").click();
+      await expect(preview.getByRole("heading", { level: 1 })).toHaveCount(2);
+      await expect(preview.getByTestId("mermaid-diagram")).toBeVisible({
+        timeout: 20000,
+      });
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .include('[data-testid="browser-editor"]')
+            .analyze()
+        ).violations,
+      ).toEqual([]);
+      await capture(page, `preview-${width}`);
+      // Ctrl+K then V closes the side preview as VS Code does.
+      const keys = width === 390 ? preview : doc;
+      await keys.press("Control+K");
+      await keys.press("v");
+      await expect(preview).toHaveCount(0);
+      await expect(line("# Uusi")).toBeVisible();
+    });
   });

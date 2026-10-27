@@ -366,6 +366,8 @@ esac
 			// A file for conversation links, independent of code-server availability.
 			_ = os.MkdirAll(filepath.Join(home, "src", "git-project", "cmd"), 0700)
 			_ = os.WriteFile(filepath.Join(home, "src", "git-project", "cmd", "main.go"), []byte("package main\n\nfunc main() {\n\tprintln(\"hei\")\n}\n"), 0600)
+			// Markdown for the editor's preview and heading folds.
+			_ = os.WriteFile(filepath.Join(home, "src", "git-project", "cmd", "notes.md"), []byte("# Muistiinpanot\n\nJohdanto.\n\n## Kaavio\n\n```mermaid\ngraph LR\n  A --> B\n```\n\n## Loppu\n\nViimeinen rivi.\n"), 0600)
 		}
 		sessionRoot := filepath.Join(home, ".pi", "agent", "sessions")
 		if e := os.MkdirAll(sessionRoot, 0700); e != nil {
