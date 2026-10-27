@@ -286,3 +286,14 @@ func (c *ConversationController) stopExpiredIdlePi(ctx context.Context, now time
 		diagnostic.New(os.Stderr, "daemon").Info("conversation_idle_stop", "outcome", outcome, "reason", "idle_timeout", "agent_id", "pi:"+s.id)
 	}
 }
+
+// FixtureIdleStop runs the production idle stop as if every idle child had
+// been idle for a full period, in the synthetic host only.
+func (c *ConversationController) FixtureIdleStop(ctx context.Context) {
+	if !c.fixture {
+		return
+	}
+	now := time.Now()
+	c.stopExpiredIdlePi(ctx, now)
+	c.stopExpiredIdlePi(ctx, now.Add(piIdlePeriod))
+}

@@ -73,11 +73,15 @@ export function HomeCard({
   }>();
   const [error, setError] = useState(false);
   const archiveReasonId = useId();
+  // Pi has written nothing yet: there is no recap to read and no state to
+  // guess, only an empty conversation.
+  const unwritten = conversation.history === "missing";
   useEffect(() => {
     let active = true;
     // A native JSONL append changes the token even when the ID is stable.
     void conversation.revision;
     setError(false);
+    if (unwritten) return;
     void readRecap(conversation.id)
       .then((value) => {
         if (active) setState(value);
@@ -88,7 +92,7 @@ export function HomeCard({
     return () => {
       active = false;
     };
-  }, [conversation.id, conversation.revision]);
+  }, [conversation.id, conversation.revision, unwritten]);
   const activity = agentPresentation(conversation).activity;
   // An outdated recap is not shown as the current situation; the daemon
   // writes a new one once the conversation has been idle.
@@ -126,7 +130,9 @@ export function HomeCard({
             {conversation.pendingLabel ??
               (conversation.attention === "new"
                 ? "Uusi vastaus"
-                : agentPresentation(conversation).activityLabel)}
+                : unwritten && activity === "unknown"
+                  ? "Ei vielä viestejä"
+                  : agentPresentation(conversation).activityLabel)}
           </span>
           {!conversation.browserSession && (
             <StatusMark

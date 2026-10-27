@@ -2628,6 +2628,44 @@ test("@browser-conversation empty browser conversation closes without confirmati
   ).toBeEnabled();
 });
 
+test("@browser-conversation empty conversation closes after Pi's idle stop, from the page and the home card", async ({
+  page,
+}) => {
+  // Pi writes no native history before the first message. After the idle
+  // stop such a conversation is only the daemon's handle; it must not be
+  // stuck in the lists with a close and an archive that both refuse.
+  await open(page);
+  const header = page.locator(".ah-agent-header");
+  const close = header.getByTestId(/^(close|dialog-close|process-close)$/);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/\?conversation=pi:[0-9a-f-]+$/);
+  await expect(close).toBeEnabled();
+  expect((await page.request.get("/fixture/idle-stop")).status()).toBe(204);
+  await page.reload();
+  await expect(close).toBeEnabled();
+  await close.click();
+  await expect(page).toHaveURL(/\/workspaces\/ws_[^?]*$/);
+  await expect(header).toHaveCount(0);
+
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/\?conversation=pi:[0-9a-f-]+$/);
+  const agentId = new URL(page.url()).searchParams.get("conversation");
+  await expect(close).toBeEnabled();
+  expect((await page.request.get("/fixture/idle-stop")).status()).toBe(204);
+  await page.getByTestId("home-link").filter({ visible: true }).click();
+  const card = page
+    .getByTestId(/^conversation-card-/)
+    .and(page.locator(`[data-agent-id="${agentId}"]`));
+  await expect(card).toBeVisible();
+  const archive = card.getByTestId("archive-conversation");
+  await expect(archive).toBeEnabled();
+  await archive.click();
+  await expect(card).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator(".ah-home-name").first()).toBeVisible();
+  await expect(card).toHaveCount(0);
+});
+
 test("@browser-conversation failed close restores the conversation", async ({
   page,
 }) => {

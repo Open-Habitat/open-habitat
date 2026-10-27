@@ -189,7 +189,7 @@ function BrowserConversationContent({
   workspace: Workspace;
   archive?: Agent;
   onArchive?: (agent: Agent, archived: boolean) => Promise<boolean>;
-  onClose?: (agent: Agent) => Promise<void>;
+  onClose?: (agent: Agent) => Promise<unknown>;
   archiveBusy?: boolean;
   closeBusy?: boolean;
   archiveAwaitingSnapshot?: boolean;
@@ -1348,7 +1348,10 @@ function BrowserConversationContent({
                 csrf &&
                 !serverUnavailable &&
                 !statusStale &&
-                current?.state === "idle" &&
+                // A Pi stopped for idleness before the first message leaves
+                // nothing to archive; the daemon closes that one too.
+                (current?.state === "idle" ||
+                  (current?.state === "stopped" && !held.waiting.length)) &&
                 !busy
                   ? () => {
                       // Close removes this view immediately. Fence in-flight

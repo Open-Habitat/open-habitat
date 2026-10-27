@@ -1134,7 +1134,10 @@ export function App() {
   type WorkspaceRecord = NonNullable<typeof snapshot>["workspaces"][number];
   // Closing an empty conversation is a pending command: the conversation
   // stays in the lists, dimmed and marked, until the daemon confirms it.
-  const closeConversation = async (agent: Agent) => {
+  const closeConversation = async (
+    agent: Agent,
+    origin: "conversation" | "home" = "conversation",
+  ) => {
     if (
       !csrf ||
       !mutations ||
@@ -1142,11 +1145,12 @@ export function App() {
       mutations.get(closeKey(agent.agent_id)) ||
       !agent.agent_id.startsWith("pi:")
     )
-      return;
+      return false;
     const token = csrf;
     const route = `${location.pathname}${location.search}`;
     setArchiveProblem("");
-    navigate(`/workspaces/${agent.workspace_id}`, { replace: true });
+    if (origin !== "home")
+      navigate(`/workspaces/${agent.workspace_id}`, { replace: true });
     const result = await mutations.run({
       command: "conversation.close_empty",
       key: closeKey(agent.agent_id),
@@ -1174,10 +1178,12 @@ export function App() {
     // A refusal reverts in place: back to the conversation, with the reason.
     else if (
       result.outcome === "refused" &&
+      origin !== "home" &&
       `${window.location.pathname}${window.location.search}` ===
         `/workspaces/${agent.workspace_id}`
     )
       navigate(route, { replace: true });
+    return result.outcome !== "refused" && result.outcome !== "login";
   };
   const closeProblem = mutations
     ?.problemsWith("conversation:")
@@ -1625,9 +1631,14 @@ export function App() {
       return "Prosessin tilaa ei voitu vahvistaa.";
     return "";
   };
+  // A conversation whose Pi has written no history yet has nothing to keep
+  // in the archive: putting it away closes it.
   const archiveFromCard = (id: string) => {
     const agent = snapshot?.agents.find((a) => a.agent_id === id);
-    return agent ? changeArchive(agent, true, "home") : Promise.resolve(false);
+    if (!agent) return Promise.resolve(false);
+    return agent.history === "missing"
+      ? closeConversation(agent, "home")
+      : changeArchive(agent, true, "home");
   };
   // An empty worktree agent (ADR 0025): the workspace page's icon row, or
   // the top bar's menu in single-workspace mode.

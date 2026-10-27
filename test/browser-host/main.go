@@ -1096,6 +1096,12 @@ esac
 					return
 				}
 				w.WriteHeader(204)
+			case "/fixture/idle-stop":
+				// The daemon's idle timeout, without waiting ten minutes.
+				for _, current := range conversationHandlers {
+					current.Load().(*daemon.ConversationController).FixtureIdleStop(r.Context())
+				}
+				w.WriteHeader(204)
 			case "/fixture/pi-visual-ready":
 				if !lab {
 					http.NotFound(w, r)

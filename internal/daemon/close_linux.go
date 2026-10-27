@@ -69,7 +69,10 @@ func emptyNativeFile(path string, uid int, id, cwd string) (os.FileInfo, error) 
 	return info, nil
 }
 
-// Close is restricted to a fresh browser child owned by this daemon. The
+// Close is restricted to a fresh browser conversation owned by this daemon:
+// either its child is live and idle, or it was created in this incarnation and
+// its child has already been reaped (an idle stop before the first message),
+// so nothing but the controller's handle and Pi's lock file remains. The
 // stopping state fences browser sends while native source is checked and
 // the child is reaped. A terminal Pi does not honor this state; census remains
 // a conservative observation, not a promise about future terminal starts.
@@ -86,26 +89,48 @@ func (c *ConversationController) closeEmpty(w http.ResponseWriter, r *http.Reque
 	defer release()
 	c.mu.Lock()
 	s := c.sessions[id]
-	if c.closed || s == nil || s.rpc == nil || s.owner == nil || s.dead || s.state != "idle" || len(s.commands) != 0 || s.acceptedMessages != 0 || s.aborting || s.naming || s.recapping || s.questionID != "" || s.owner.id != id {
+	live := s != nil && s.rpc != nil && !s.dead && s.state == "idle"
+	reaped := s != nil && s.created && s.dead && !liveChild(s) && (s.state == "stopped" || s.state == "start_failed")
+	// Command IDs are never forgotten, so a reaped handle keeps those of a
+	// held send that was cancelled; there the native check below is the
+	// evidence of emptiness. A live child may have taken one.
+	if c.closed || s == nil || !(live || reaped) || s.owner == nil || (live && len(s.commands) != 0) || s.bash.active() || len(s.held) != 0 || s.acceptedMessages != 0 || s.aborting || s.naming || s.recapping || s.questionID != "" || s.owner.id != id {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	origin, err := s.owner.browserOrigin()
-	if err != nil || origin.Cwd != s.cwd || origin.Workspace != s.workspace {
-		c.mu.Unlock()
-		snapshotError(w, 409, "read_only_history")
-		return
-	}
+	prior := s.state
 	s.state = "stopping"
 	c.mu.Unlock()
 	defer func() {
 		c.mu.Lock()
 		if c.sessions[id] == s && s.state == "stopping" {
-			s.state = "idle"
+			s.state = prior
 		}
 		c.mu.Unlock()
 	}()
+	// A reaped child released its lock; only a newly acquired one proves that
+	// no Pi, browser or terminal, holds this conversation now. The origin it
+	// carries must still be this conversation's browser start.
+	var newOwner *piOwnership
+	if reaped {
+		var err error
+		newOwner, err = acquirePiOwnership(c.home, id)
+		if err != nil {
+			snapshotError(w, 409, "writer_conflict")
+			return
+		}
+		defer newOwner.release()
+	}
+	holder := s.owner
+	if newOwner != nil {
+		holder = newOwner
+	}
+	origin, err := holder.browserOrigin()
+	if err != nil || origin.Cwd != s.cwd || origin.Workspace != s.workspace {
+		snapshotError(w, 409, "read_only_history")
+		return
+	}
 	annotations, err := loadVisibility(c.home)
 	if err != nil {
 		snapshotError(w, 503, "native_source_unavailable")
@@ -141,32 +166,34 @@ func (c *ConversationController) closeEmpty(w http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
-	// Close the pipes and signal only the direct child, never a process group.
-	// piRPC.close returns an intentionally uncertain error even on a reaped child.
-	_ = s.rpc.close()
-	select {
-	case <-s.rpc.exited:
-	default:
-		snapshotError(w, 503, "termination_unknown")
-		return
+	if live {
+		// Close the pipes and signal only the direct child, never a process group.
+		// piRPC.close returns an intentionally uncertain error even on a reaped child.
+		_ = s.rpc.close()
+		select {
+		case <-s.rpc.exited:
+		default:
+			snapshotError(w, 503, "termination_unknown")
+			return
+		}
+		select {
+		case <-s.rpc.done:
+		default:
+			snapshotError(w, 503, "termination_unknown")
+			return
+		}
+		// A detached native child may have inherited the owner lock even though
+		// the direct Pi child was reaped. Only a newly acquired lock proves that
+		// no inherited browser-writer descriptor remains. The proof permit
+		// keeps competing browser admissions out while the lock changes hands.
+		_ = s.owner.release()
+		newOwner, err = acquirePiOwnership(c.home, id)
+		if err != nil {
+			snapshotError(w, 409, "writer_conflict")
+			return
+		}
+		defer newOwner.release()
 	}
-	select {
-	case <-s.rpc.done:
-	default:
-		snapshotError(w, 503, "termination_unknown")
-		return
-	}
-	// A detached native child may have inherited the owner lock even though
-	// the direct Pi child was reaped. Only a newly acquired lock proves that
-	// no inherited browser-writer descriptor remains. The proof permit
-	// keeps competing browser admissions out while the lock changes hands.
-	_ = s.owner.release()
-	newOwner, err := acquirePiOwnership(c.home, id)
-	if err != nil {
-		snapshotError(w, 409, "writer_conflict")
-		return
-	}
-	defer newOwner.release()
 	// Rediscover after exit: Pi may have written its first file during shutdown.
 	after, err := nativeSessions(c.nativeCfg())
 	if err != nil {

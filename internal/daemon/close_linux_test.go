@@ -180,3 +180,80 @@ func TestCloseTerminalBegunSessionHasNoControllerAuthority(t *testing.T) {
 		t.Fatalf("terminal session changed: %d %s %v", w.Code, string(after), err)
 	}
 }
+
+// An empty conversation whose idle Pi was stopped before the first message
+// has no native history and no child. It must still close, and only while
+// nothing native holds or has written to it.
+func TestCloseEmptyAfterIdleStop(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("nonroot daemon only")
+	}
+	for _, mode := range []string{"absent", "empty", "cancelled", "nonempty", "locked", "not_created", "held"} {
+		t.Run(mode, func(t *testing.T) {
+			home := t.TempDir()
+			id := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+			ws := "ws_aaaaaaaa"
+			owner, err := acquirePiOwnership(home, id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := owner.markBrowser(ws, home); err != nil {
+				t.Fatal(err)
+			}
+			// The reaped child's watcher released the lock; its origin stays.
+			if err := owner.release(); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(home, historyRoot, "session.jsonl")
+			if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if mode == "empty" || mode == "nonempty" {
+				contents := fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, home)
+				if mode == "nonempty" {
+					contents += `{"type":"message","id":"m1","message":{"role":"user","content":"hello"}}` + "\n"
+				}
+				if err := os.WriteFile(path, []byte(contents), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if mode == "locked" {
+				// Another Pi (a continuation or a terminal) holds the conversation.
+				other, err := acquirePiOwnership(home, id)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer other.release()
+			}
+			s := &conversation{id: id, workspace: ws, cwd: home, rpc: stoppedRPC(), owner: owner, state: "stopped", dead: true, created: mode != "not_created", commands: map[string]bool{}}
+			if mode == "cancelled" {
+				// A send held for a start that failed, then taken back.
+				s.commands["bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"] = true
+				s.commands["cccccccc-cccc-4ccc-8ccc-cccccccccccc"] = true
+			}
+			if mode == "held" {
+				s.held = []heldMessage{{id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", text: "hello"}}
+			}
+			c := &ConversationController{writerProc: t.TempDir(), cfg: transport.Config{UID: os.Geteuid(), Home: home}, home: home, sessions: map[string]*conversation{id: s}}
+			w := httptest.NewRecorder()
+			c.closeEmpty(w, httptest.NewRequest("POST", "http://unix/api/v1/conversations/"+id+"/close", nil), id)
+			if mode == "absent" || mode == "empty" || mode == "cancelled" {
+				if w.Code != 200 || c.sessions[id] != nil {
+					t.Fatalf("close: %d %s", w.Code, w.Body.String())
+				}
+				if _, err := os.Stat(path); !os.IsNotExist(err) {
+					t.Fatalf("native file remains: %v", err)
+				}
+				return
+			}
+			if w.Code != 409 || c.sessions[id] != s || s.state != "stopped" {
+				t.Fatalf("refusal: %d %s %q", w.Code, w.Body.String(), s.state)
+			}
+			if mode == "nonempty" {
+				if _, err := os.Stat(path); err != nil {
+					t.Fatal("history changed", err)
+				}
+			}
+		})
+	}
+}
