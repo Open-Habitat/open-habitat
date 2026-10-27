@@ -1,13 +1,16 @@
 ---
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: test-failure
 source_ref: taskfleet:01m5wn54hvqw2bzbr82qwnhpc3/browser-flake:lost-accepted-reply-http
 originating_run: 01m5wn54hvqw2bzbr82qwnhpc3
 originating_run_kind: spinoff
+lane: gate-health
+lane_seq: 3
+preparation: ready
 ---
 
 # Browser flake: lost accepted reply recovers on HTTP snapshot fails under whole-suite load
@@ -22,3 +25,9 @@ originating_run_kind: spinoff
 The same test then passed 3/3 run alone (`./scripts/test-focused.sh --area browser --spec browser-conversation.spec.ts --tag "lost accepted reply recovers"`). The branch changed no web code (only generated contract fingerprints), so this is a load-dependent flake. The same case was named in the closed `gate-load-flakes-1019` investigation, whose rechecks passed under load at --workers=2; this run used the default 8 workers. A recurring flake in the whole-suite run makes every worker's browser check ambiguous.
 
 Direction: reproduce with `--repeat-each` at the default worker count and find which wait at line 2345 assumes timing the loaded host does not give.
+
+## Decisions
+
+### 2026-10-27T12:59:39Z · @jari
+
+Jari 2026-10-27: työhön (konduktorin suositus).
