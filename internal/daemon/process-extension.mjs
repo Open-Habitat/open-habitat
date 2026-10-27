@@ -67,8 +67,8 @@ export function branchFacts(branch) {
   }
   return { open: order.filter(p => open.get(p.id) === p), reported, runs };
 }
-function taskfleet(args, cwd) {
-  return new Promise(resolve => execFile('taskfleet', args, { cwd, timeout: 2500, maxBuffer: 4 << 20, env: process.env }, (error, stdout) => {
+function taskfleet(args, cwd, timeout = 2500) {
+  return new Promise(resolve => execFile('taskfleet', args, { cwd, timeout, maxBuffer: 4 << 20, env: process.env }, (error, stdout) => {
     if (error) { resolve(null); return; }
     try { const v = JSON.parse(stdout); resolve(v?.schema_version === 1 ? v.data : null); } catch { resolve(null); }
   }));
@@ -79,16 +79,19 @@ function spinoffState(r) {
   if (r.attention_required || r.awaiting_input) return 'awaiting';
   return { done: 'not_merged', failed: 'failed', cancelled: 'cancelled' }[r.status] ?? null;
 }
+// A run this conversation's Pi created itself (the daemon's belongsSpinoff).
+const ownRun = sessionId => r => typeof r?.source_repo === 'string' && r.source_repo.startsWith('/') &&
+  runPattern.test(r?.run_id ?? '') && ['spinoff', 'research', 'technical-decision', 'fan-out'].includes(r.kind) && r.agent_owner !== 'caller' && r.created_by_run_id == null && r.created_by_session?.harness === 'pi' && r.created_by_session.session_id === sessionId;
+// Still working on its own: a default `run wait` would not have returned yet.
+const liveRun = r => ['pending', 'running'].includes(r.status) && !r.attention_required && !r.awaiting_input && !r.stalled;
 // Only the user's own Taskfleet records: runs this conversation created that
 // settled after the branch's last entry, and the ones it was waiting for.
 export async function readSpinoffs({ sessionId, cwd, since, waited, reported, read = taskfleet }) {
   const result = { settled: [], rearm: [] };
   const list = await read(['run', 'list', '--output', 'json'], cwd);
   if (!Array.isArray(list?.runs)) return result;
-  const belongs = r => typeof r?.source_repo === 'string' && r.source_repo.startsWith('/') &&
-    runPattern.test(r?.run_id ?? '') && ['spinoff', 'research', 'technical-decision', 'fan-out'].includes(r.kind) && r.agent_owner !== 'caller' && r.created_by_run_id == null && r.created_by_session?.harness === 'pi' && r.created_by_session.session_id === sessionId;
+  const belongs = ownRun(sessionId), live = liveRun;
   const mine = list.runs.filter(belongs);
-  const live = r => ['pending', 'running'].includes(r.status) && !r.attention_required && !r.awaiting_input && !r.stalled;
   // A waited-for run is always looked at; the rest only up to a bounded number of reads.
   const others = mine.filter(r => !waited.has(r.run_id) && !live(r)).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 20);
   await Promise.all([...mine.filter(r => waited.has(r.run_id)), ...others].map(async r => {
@@ -135,6 +138,50 @@ export function catchUpMessage(processes, spinoffs) {
       spinoffs: spinoffs.settled.map(r => ({ run_id: r.run_id, state: r.state, title: r.title })),
       rearm: spinoffs.rearm.map(r => ({ run_id: r.run_id, title: r.title })),
     },
+  };
+}
+const reminderType = 'oh-wait-reminder';
+// The runs whose latest word in the branch is a turn-end reminder rather than a
+// waking wait the agent started for them. A declined reminder stands until the
+// agent waits for that run again; once that wait has returned (`--any`,
+// `--check-in`), forgetting to start the next one is reminded again.
+export function remindedRuns(branch) {
+  const reminded = new Set();
+  for (const entry of branch) {
+    const m = entry?.message;
+    const custom = entry?.type === 'custom_message' ? entry : m?.role === 'custom' ? m : null;
+    if (custom?.customType === reminderType) {
+      for (const id of custom.details?.runs ?? []) reminded.add(id);
+    } else if (m?.role === 'toolResult' && m.toolName === 'process') {
+      const d = m.details;
+      if (d?.action === 'start' && (d.notify?.onSuccess === 'turn' || d.notify?.onFailure === 'turn')) for (const id of waitRuns(d.process?.command)) reminded.delete(id);
+    }
+  }
+  return reminded;
+}
+// Agent-worker wait model A: the conversation's own live runs that no running,
+// agent-waking process waits for. Taskfleet is read with a short bound; an
+// error, timeout or missing inventory says nothing, never "remind".
+export async function uncoveredRuns({ sessionId, cwd, waits, read = taskfleet }) {
+  const list = await read(['run', 'list', '--output', 'json'], cwd, 1500);
+  if (!Array.isArray(list?.runs)) return null;
+  const covered = new Set(waits.flatMap(command => waitRuns(command)));
+  return list.runs.filter(ownRun(sessionId)).filter(liveRun).filter(r => !covered.has(r.run_id))
+    .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+    .map(r => ({ run_id: r.run_id, title: String(r.title ?? '').slice(0, 200) }));
+}
+// One visible marker per uncovered set that still has a run nobody has been
+// reminded of; the agent may wait or decline.
+export function waitReminder(uncovered, reminded) {
+  if (!uncovered?.length || uncovered.every(r => reminded.has(r.run_id))) return null;
+  const listed = uncovered.slice(0, 20); // the wait grammar takes at most twenty runs
+  const lines = [`[Open Habitat] ${uncovered.length === 1 ? 'A Taskfleet run you started is' : `${uncovered.length} Taskfleet runs you started are`} still working, and nothing is waiting for ${uncovered.length === 1 ? 'it' : 'them'}, so nothing will wake you when ${uncovered.length === 1 ? 'it settles' : 'they settle'}:`];
+  for (const r of listed) lines.push(`- ${r.run_id} "${r.title}"`);
+  if (uncovered.length > listed.length) lines.push(`- and ${uncovered.length - listed.length} more (\`taskfleet run list\`)`);
+  lines.push('', `To be woken when the first of them settles, start \`taskfleet run wait ${listed.map(r => r.run_id).join(' ')} --any --output json\` with the process tool (notify on exit). If you do not mean to wait, say briefly why; you will not be reminded about these runs again unless you wait for them later.`);
+  return {
+    type: 'custom_message', customType: reminderType, display: true, content: lines.join('\n'),
+    details: { schema_version: 1, runs: uncovered.map(r => r.run_id), titles: uncovered.map(r => r.title) },
   };
 }
 export default function (pi) {
@@ -316,6 +363,27 @@ export default function (pi) {
     const message = catchUpMessage(pending.processes, spinoffs);
     return message ? { message } : undefined;
   });
+  // A completed run only: Escape or an error is the person's or the provider's
+  // stop, not a turn to extend. An earlier handler's continuation reaches this
+  // boundary again, so it is checked then.
+  pi.on('agent_before_settle', async (event, ctx) => {
+    if (shuttingDown || event?.outcome !== 'completed' || event.continue || event.context?.canContinue === false) return;
+    let timer;
+    const reminder = await Promise.race([remindAtSettle(ctx ?? context).catch(() => null), new Promise(resolve => { timer = setTimeout(() => resolve(null), 2000); })]);
+    clearTimeout(timer);
+    return reminder ? { entries: [reminder], continue: true } : undefined;
+  });
+  async function remindAtSettle(ctx) {
+    const sessionId = ctx?.sessionManager?.getSessionId?.();
+    if (typeof sessionId !== 'string' || !sessionId || !ctx.cwd) return null;
+    const branch = ctx.sessionManager.getBranch();
+    const records = await ask('request:list');
+    if (!Array.isArray(records)) return null;
+    // The tray's ◉: a running process whose own start asked to wake the agent.
+    const waits = records.filter(p => p.status === 'running' && wakes(p, branch) === true).map(p => p.command);
+    const uncovered = await uncoveredRuns({ sessionId, cwd: ctx.cwd, waits });
+    return waitReminder(uncovered, remindedRuns(branch));
+  }
   pi.on('session_shutdown', () => {
     for (const socket of sockets) socket.destroy();
     server?.close(); server = undefined;
