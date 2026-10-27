@@ -290,7 +290,9 @@ func (c *ConversationController) restReport(w http.ResponseWriter, r *http.Reque
 	home := c.home
 	settled, working, availability := unreportedRuns(ctx, *parent, scan.last, waited, scan.runs,
 		func(ctx context.Context) ([]nativeSpinoff, bool) { return listTaskfleetRuns(ctx, home) },
-		func(ctx context.Context, run string) (nativeSpinoff, bool) { return showSpinoff(ctx, home, run, *parent) })
+		func(ctx context.Context, run string) (nativeSpinoff, bool) {
+			return showSpinoff(ctx, home, run, *parent)
+		})
 	report["runs"], report["still_running"] = settled, working
 	reply["availability"] = availability
 	historyJSON(w, reply)
