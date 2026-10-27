@@ -2,13 +2,15 @@
 created: 2026-10-27
 updated: 2026-10-27
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: found by design-study worker by running the shipped module
 source_ref: taskfleet:01m5xxx5ffpr29q7bmbmkctzhd/observed:companion-wait-grammar
 originating_run: 01m5xxx5ffpr29q7bmbmkctzhd
 originating_run_kind: research
+lane: wait-grammar
+preparation: ready
 ---
 
 # Companion's wait grammar still misses real run wait shapes, so restart catch-up does not re-arm
