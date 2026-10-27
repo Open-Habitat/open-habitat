@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
 )
 
 // Repository is the projection of one Gitea repository this adapter passes
@@ -145,18 +147,12 @@ type RepoList struct {
 }
 
 // Incomplete is why a repository list ended before Gitea said it was done.
-type Incomplete string
+type Incomplete = nativeforge.Incomplete
 
 const (
-	// IncompleteLimit: a time-independent bound (pages, results, bytes) was
-	// reached and more repositories may exist.
-	IncompleteLimit Incomplete = "limit"
-	// IncompleteInterrupted: a later page failed or the time bound ran out.
-	IncompleteInterrupted Incomplete = "interrupted"
-	// IncompleteInconsistent: the pages disagreed with each other (a
-	// repeated repository, a changed total, a pagination link outside the
-	// list, a repository described inconsistently), so some may be missing.
-	IncompleteInconsistent Incomplete = "inconsistent"
+	IncompleteLimit        = nativeforge.IncompleteLimit
+	IncompleteInterrupted  = nativeforge.IncompleteInterrupted
+	IncompleteInconsistent = nativeforge.IncompleteInconsistent
 )
 
 const (
