@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-10-27/proto-file-offer-many
 lane: file-offer
 lane_seq: 2
-preparation: ready
+preparation: pending
 ---
 
 # Prototype riff: many files in one offer and across a conversation
