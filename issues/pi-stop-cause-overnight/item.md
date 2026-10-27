@@ -1,14 +1,15 @@
 ---
 created: 2026-10-27
 updated: 2026-10-27
-type: bug
+type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/pi-stop-cause-overnight
 lane: agent-lifecycle
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Why the conductor's Pi stopped overnight on Birch
@@ -19,4 +20,10 @@ Jari 2026-10-27: this browser conversation's Pi (pi:be94c497-359f-4cda-bb57-998d
 
 ## Acceptance Criteria
 
-- [ ] Stop time and cause established with evidence, or stated plainly as unknown with what was ruled out
+- [x] Stop time and cause established with evidence, or stated plainly as unknown with what was ruled out
+
+## Resolution
+
+### 2026-10-27T05:31:15Z · @issuectl
+
+Analysis in result.md: idle reaper stopped Pi 10 min after a turn that ended without re-arming run wait; no product defect; fix belongs to wake-agent-on-settled-wait. Retyped bug→task since no defect was found.
