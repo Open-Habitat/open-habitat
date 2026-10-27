@@ -3,12 +3,13 @@ created: 2026-10-27
 updated: 2026-10-27
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-10-26/view-offer-without-conversation-remove
 lane: offers
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Remove the view offer without a conversation (Jari's decision)

@@ -64,9 +64,10 @@ opens by itself. The view runs sandboxed on its own origin with scripts but no
 network: inline everything or ship it in the directory (relative paths; no CDN,
 `fetch`, forms, popups, storage or ES modules from elsewhere). A directory needs
 `--entry-file`; symlinks and special files refuse the offer, names starting with
-a dot are skipped and counted, and the limit is 500 files and 50 MiB. Without
-`--current` or `--conversation pi:UUID` the offer is an account card, for SSH
-workers with no conversation. Use `--dry-run` to see what would be exported. The
+a dot are skipped and counted, and the limit is 500 files and 50 MiB. The card
+appears in a conversation, `--current` or `--conversation pi:UUID`; with
+`--current` the workspace defaults to the conversation's, otherwise name it with
+`--workspace ws_ID`. Use `--dry-run` to see what would be exported. The
 reply says the offer was published, not that anyone saw it; an installation
 without a view origin shows no cards. Reuse a key only for the same offer.
 Views stay in `~/.local/state/open-habitat/views/` until removed.

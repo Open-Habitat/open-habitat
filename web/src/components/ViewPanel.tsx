@@ -247,17 +247,3 @@ export function ViewSplit({
     </div>
   );
 }
-
-/** Account offers (an agent with no conversation, such as an SSH worker)
- * wait in a small stack at the window's corner until opened or hidden. */
-export function ViewTray({ children }: { children: ReactNode }) {
-  return (
-    <section
-      className="ah-view-tray"
-      aria-label="Agenttien tarjoukset"
-      data-testid="view-tray"
-    >
-      {children}
-    </section>
-  );
-}

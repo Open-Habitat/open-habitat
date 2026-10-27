@@ -18,15 +18,16 @@ func TestViewArgumentsRefuseBeforeSocket(t *testing.T) {
 	for _, args := range [][]string{
 		{},
 		{"show"},
-		{"offer", "--workspace", ws, "--source", "r.html"},
-		{"offer", "--workspace", ws, "--idempotency-key", key},
-		{"offer", "--workspace", ws, "--source", "/etc/passwd", "--idempotency-key", key},
-		{"offer", "--workspace", "home", "--source", "r.html", "--idempotency-key", key},
+		{"offer", "--conversation", id, "--workspace", ws, "--source", "r.html"},
+		{"offer", "--conversation", id, "--workspace", ws, "--idempotency-key", key},
+		{"offer", "--conversation", id, "--workspace", ws, "--source", "/etc/passwd", "--idempotency-key", key},
+		{"offer", "--conversation", id, "--workspace", "home", "--source", "r.html", "--idempotency-key", key},
 		{"offer", "--workspace", ws, "--source", "r.html", "--idempotency-key", key, "--conversation", id, "--current"},
-		{"offer", "--workspace", ws, "--source", "r.html", "--idempotency-key", key, "--title", " "},
-		{"offer", "--workspace", ws, "--source", "r.html", "--idempotency-key", key, "--uid", "0"},
-		{"offer", "--workspace", ws, "--source", "r.html", "--idempotency-key", key, "--source", "x.html"},
-		{"offer", "--workspace", ws, "--source", "r.html", "--idempotency-key", key, "--output", "x.jsonl"},
+		{"offer", "--workspace", ws, "--source", "r.html", "--idempotency-key", key},
+		{"offer", "--conversation", id, "--workspace", ws, "--source", "r.html", "--idempotency-key", key, "--title", " "},
+		{"offer", "--conversation", id, "--workspace", ws, "--source", "r.html", "--idempotency-key", key, "--uid", "0"},
+		{"offer", "--conversation", id, "--workspace", ws, "--source", "r.html", "--idempotency-key", key, "--source", "x.html"},
+		{"offer", "--conversation", id, "--workspace", ws, "--source", "r.html", "--idempotency-key", key, "--output", "x.jsonl"},
 		{"list", "--dry-run"},
 		{"list", "--output", "views.txt"},
 		{"remove", "--view", "../x"},
@@ -38,7 +39,7 @@ func TestViewArgumentsRefuseBeforeSocket(t *testing.T) {
 			t.Errorf("%q: %v", args, err)
 		}
 	}
-	_, err := agentViewCommand([]string{"offer", "--workspace", ws, "--source", "r.html", "--idempotency-key", key})
+	_, err := agentViewCommand([]string{"offer", "--conversation", id, "--workspace", ws, "--source", "r.html", "--idempotency-key", key})
 	var c *cliError
 	if !errors.As(err, &c) || c.code == usageCode {
 		t.Fatalf("well-formed offer refused as usage: %v", err)

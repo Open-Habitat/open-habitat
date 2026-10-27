@@ -66,8 +66,7 @@
         "process.changed",
         "process.output",
         "process.notification",
-        "notice.created",
-        "view.offered"
+        "notice.created"
       ]
     },
     "resource": {
@@ -1047,36 +1046,6 @@
           "resource": {
             "required": [
               "agent_id"
-            ]
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "kind": {
-            "const": "view.offered"
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "payload": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "view"
-            ],
-            "properties": {
-              "view": {
-                "$ref": "view.schema.json#/$defs/view"
-              }
-            }
-          },
-          "resource": {
-            "required": [
-              "scope"
             ]
           }
         }

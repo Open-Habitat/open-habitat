@@ -120,16 +120,14 @@ test("a conversation offer opens sandboxed in the panel, isolated from the app s
   await expect(open).toBeFocused();
 });
 
-test("the own tab opens through the app's page with no opener, and account offers wait in the tray", async ({
+test("the own tab opens through the app's page with no opener", async ({
   page,
   context,
-}, info) => {
-  await conversation(page);
-  await offer(page, "account");
-  const tray = page.getByTestId("view-tray");
-  const card = tray.getByTestId("view-offer");
+}) => {
+  const id = await conversation(page);
+  await offer(page, id);
+  const card = page.getByTestId("view-offer");
   await expect(card).toBeVisible();
-  await page.screenshot({ path: info.outputPath("tray.png") });
 
   const opened = context.waitForEvent("page");
   await card.getByTestId("view-open-tab").click();
@@ -140,7 +138,4 @@ test("the own tab opens through the app's page with no opener, and account offer
   expect(tab.url()).toMatch(/\/index\.html$/);
   await expect(card).toHaveAttribute("data-state", "tab_requested");
   await tab.close();
-
-  await card.getByTestId("view-offer-dismiss").click();
-  await expect(tray).toHaveCount(0);
 });

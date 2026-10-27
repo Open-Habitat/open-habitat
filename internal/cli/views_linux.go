@@ -17,8 +17,9 @@ var viewIDArgPattern = regexp.MustCompile(`^v[a-z2-7]{26}$`)
 
 // agentViewCommand offers a workspace HTML file or directory as a frozen view
 // (ADR 0032), lists the person's views, or removes one. An offer reaches the
-// person's open browsers as a card with Avaa and Avaa omalle välilehdelle;
-// the reply says it was published, never that anyone opened it.
+// person's open browsers as a card in its conversation, with Avaa and Avaa
+// omalle välilehdelle; the reply says it was published, never that anyone
+// opened it.
 func agentViewCommand(args []string) (any, error) {
 	if len(args) == 0 || (args[0] != "offer" && args[0] != "list" && args[0] != "remove") {
 		return nil, usage("expected agent view offer|list|remove; inspect --help")
@@ -99,25 +100,22 @@ func agentViewCommand(args []string) (any, error) {
 	if !launchPattern.MatchString(key) {
 		return nil, usage(fmt.Sprintf("invalid --idempotency-key %q; expected UUID; reuse it only for the same offer", key))
 	}
-	path := daemon.AgentViewsPath
 	target, hasTarget := values["--conversation"]
-	if current && hasTarget {
-		return nil, usage("provide at most one of --conversation pi:UUID or --current")
+	if current == hasTarget {
+		return nil, usage("provide exactly one of --current or --conversation pi:UUID; the card appears in that conversation")
 	}
-	if current || hasTarget {
-		if current {
-			target = "--current"
-		}
-		conversation, err := agentRequestPath([]string{"conversation", "show", target})
-		if err != nil {
-			return nil, err
-		}
-		_, query, _ := strings.Cut(conversation, "?")
-		if _, err := url.ParseQuery(query); err != nil {
-			return nil, usage("invalid conversation target")
-		}
-		path += "?" + query
+	if current {
+		target = "--current"
 	}
+	conversation, err := agentRequestPath([]string{"conversation", "show", target})
+	if err != nil {
+		return nil, err
+	}
+	_, query, _ := strings.Cut(conversation, "?")
+	if _, err := url.ParseQuery(query); err != nil {
+		return nil, usage("invalid conversation target")
+	}
+	path := daemon.AgentViewsPath + "?" + query
 	workspace, hasWorkspace := values["--workspace"]
 	if !hasWorkspace && current {
 		// The checked launch context names the conversation's workspace.
@@ -150,7 +148,6 @@ func agentViewCommand(args []string) (any, error) {
 		var reply struct {
 			SkippedHidden int `json:"skipped_hidden"`
 			Offer         struct {
-				Target      string `json:"target"`
 				Persistence string `json:"persistence"`
 			} `json:"offer"`
 		}
@@ -158,7 +155,7 @@ func agentViewCommand(args []string) (any, error) {
 			return nil, system("invalid_agent_response", "invalid view offer result")
 		}
 		warnings = append(warnings, "the offer was published to the person's open browsers; that is not proof anyone opened or saw it")
-		if reply.Offer.Target == "conversation" && reply.Offer.Persistence != "persisted" {
+		if reply.Offer.Persistence != "persisted" {
 			warnings = append(warnings, "the offer card's persistence is "+reply.Offer.Persistence+"; it may not reappear after reload; do not retry with a new key")
 		}
 		if reply.SkippedHidden > 0 {

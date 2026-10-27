@@ -36,15 +36,12 @@ export function ViewOfferCard({
   state = "idle",
   onOpen,
   onOpenTab,
-  onDismiss,
 }: {
   view: ViewSummary;
   state?: ViewOfferState;
   /** Open in the panel; the pressed button receives focus back on close. */
   onOpen: (opener: HTMLElement | null) => void;
   onOpenTab: () => void;
-  /** Hide this card from this view; the export stays. */
-  onDismiss?: () => void;
 }) {
   return (
     <aside
@@ -96,17 +93,6 @@ export function ViewOfferCard({
           </span>
         ) : null}
       </div>
-      {onDismiss ? (
-        <ControlButton
-          size="row"
-          variant="quiet"
-          aria-label="Piilota tarjous"
-          data-testid="view-offer-dismiss"
-          onPress={onDismiss}
-        >
-          <Icon name="cross" />
-        </ControlButton>
-      ) : null}
     </aside>
   );
 }

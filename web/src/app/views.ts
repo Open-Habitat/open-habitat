@@ -73,17 +73,3 @@ export async function mintViewURL(
 export function viewTabPath(viewId: string): string {
   return `/view?id=${encodeURIComponent(viewId)}`;
 }
-
-/** Account offers worth showing: not tied to a conversation and recent. */
-export function recentAccountViews(
-  views: ViewSummary[],
-  now = Date.now(),
-): ViewSummary[] {
-  return views
-    .filter(
-      (view) =>
-        !view.conversation_id &&
-        now - Date.parse(view.created_at) < 24 * 60 * 60 * 1000,
-    )
-    .slice(0, 5);
-}

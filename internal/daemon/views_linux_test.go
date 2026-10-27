@@ -25,7 +25,7 @@ type viewReply struct {
 	View          viewSummary `json:"view"`
 	SkippedHidden int         `json:"skipped_hidden"`
 	Offer         struct {
-		Target string `json:"target"`
+		AgentID string `json:"agent_id"`
 	} `json:"offer"`
 	Error struct {
 		Code string `json:"code"`
@@ -57,11 +57,65 @@ func readExport(h http.Handler, path string) *httptest.ResponseRecorder {
 	return w
 }
 
-func viewFixture(t *testing.T) (*heldHarness, *ConversationController, string) {
+// viewConversation gives a controller one running conversation in cwd whose
+// fake Pi writes each notice it receives into the native history. It returns
+// the controller, the conversation's offer query and the count of notice
+// writes.
+func viewConversation(t *testing.T, home, cwd string) (*ConversationController, string, *atomic.Int32) {
 	t.Helper()
-	h := newHeldHarness(t)
-	ws := filepath.Join(h.root, "src", "project")
-	secret := filepath.Join(h.root, "secret")
+	if err := os.MkdirAll(filepath.Join(home, historyRoot), 0700); err != nil {
+		t.Fatal(err)
+	}
+	id := "11111111-1111-4111-8111-111111111111"
+	path := filepath.Join(home, historyRoot, "native.jsonl")
+	header := fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, cwd)
+	if err := os.WriteFile(path, []byte(header+`{"type":"message","id":"m1","parentId":null,"message":{"role":"user","content":"hello"}}`+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	calls := &atomic.Int32{}
+	peer := testProcessPeer(t, os.Getpid(), func(conn net.Conn) {
+		var req struct {
+			Notice agentNotice `json:"notice"`
+		}
+		if json.NewDecoder(conn).Decode(&req) != nil {
+			return
+		}
+		calls.Add(1)
+		f, _ := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+		defer f.Close()
+		data, _ := json.Marshal(map[string]any{"type": "custom", "id": fmt.Sprintf("n%d", calls.Load()), "parentId": "m1", "timestamp": req.Notice.Timestamp, "customType": noticeType, "data": req.Notice})
+		fmt.Fprintln(f, string(data))
+		json.NewEncoder(conn).Encode(map[string]any{"ok": true, "data": map[string]any{"written": true}})
+	})
+	cfg := transport.Config{Home: home, UID: os.Geteuid()}
+	c := &ConversationController{home: home, cfg: cfg, sessions: map[string]*conversation{id: {id: id, cwd: cwd, workspace: "ws_example123", rpc: peer}}, journal: newEventJournal()}
+	return c, "id=pi:" + id, calls
+}
+
+func workspaceIDNamed(t *testing.T, cfg transport.Config, name string) string {
+	t.Helper()
+	for _, e := range Discover(cfg).Entries {
+		if e.Name == name {
+			return workspaceIDOf(cfg, e)
+		}
+	}
+	t.Fatalf("no workspace %s", name)
+	return ""
+}
+
+type viewFx struct {
+	root string
+	cfg  transport.Config
+	c    *ConversationController
+	ws   string
+	q    string
+}
+
+func viewFixture(t *testing.T) viewFx {
+	t.Helper()
+	root := t.TempDir()
+	ws := filepath.Join(root, "src", "project")
+	secret := filepath.Join(root, "secret")
 	for _, d := range []string{secret, filepath.Join(ws, "site", "sub"), filepath.Join(ws, "site", ".git"), filepath.Join(ws, "linked-site")} {
 		if err := os.MkdirAll(d, 0700); err != nil {
 			t.Fatal(err)
@@ -91,36 +145,43 @@ func viewFixture(t *testing.T) (*heldHarness, *ConversationController, string) {
 			t.Fatal(err)
 		}
 	}
-	c, stop := h.daemon()
-	t.Cleanup(stop)
-	return h, c, composerWorkspaceID(t, h, "project")
+	c, q, _ := viewConversation(t, root, ws)
+	return viewFx{root: root, cfg: c.cfg, c: c, ws: workspaceIDNamed(t, c.cfg, "project"), q: q}
 }
 
 func TestViewOfferFreezesOnlyWhatItNames(t *testing.T) {
-	h, c, ws := viewFixture(t)
+	h := viewFixture(t)
+	c, ws := h.c, h.ws
 	key := func(n string) string { return "00000000-0000-4000-8000-0000000000" + n }
 	// Dry run reports the plan and writes nothing.
-	code, dry := offerView(t, c, "", map[string]any{"idempotency_key": key("01"), "workspace_id": ws, "path": "site", "entry": "index.html", "dry_run": true})
+	code, dry := offerView(t, c, h.q, map[string]any{"idempotency_key": key("01"), "workspace_id": ws, "path": "site", "entry": "index.html", "dry_run": true})
 	if code != 200 || !dry.DryRun {
 		t.Fatalf("dry run: %d %+v", code, dry)
 	}
 	if _, err := os.Stat(filepath.Join(h.root, ".local", "state", "open-habitat", "views")); !os.IsNotExist(err) {
 		t.Fatalf("dry run created the view store: %v", err)
 	}
-	code, single := offerView(t, c, "", map[string]any{"idempotency_key": key("02"), "workspace_id": ws, "path": "report.html"})
-	if code != 200 || single.View.Entry != "report.html" || single.View.Files != 1 || single.Offer.Target != "account" || single.View.ConversationID != "" {
+	// An offer without its conversation has nowhere to appear and is refused
+	// before anything is copied.
+	for _, query := range []string{"", "current=true"} {
+		if code, v := offerView(t, c, query, map[string]any{"idempotency_key": key("02"), "workspace_id": ws, "path": "report.html"}); code != 400 || v.Error.Code != "invalid_arguments" {
+			t.Fatalf("offer without conversation %q: %d %+v", query, code, v)
+		}
+	}
+	code, single := offerView(t, c, h.q, map[string]any{"idempotency_key": key("02"), "workspace_id": ws, "path": "report.html"})
+	if code != 200 || single.View.Entry != "report.html" || single.View.Files != 1 || single.View.ConversationID != strings.TrimPrefix(h.q, "id=") {
 		t.Fatalf("file offer: %d %+v", code, single)
 	}
-	code, site := offerView(t, c, "", map[string]any{"idempotency_key": key("03"), "workspace_id": ws, "path": "site", "entry": "index.html", "title": "Prototyyppi"})
+	code, site := offerView(t, c, h.q, map[string]any{"idempotency_key": key("03"), "workspace_id": ws, "path": "site", "entry": "index.html", "title": "Prototyyppi"})
 	if code != 200 || site.View.Files != 3 || site.SkippedHidden != 2 || site.View.Title != "Prototyyppi" {
 		t.Fatalf("directory offer: %d %+v", code, site)
 	}
 	// The same key and offer recover the same view; a different offer with the
 	// key is a conflict, never a second export.
-	if code, again := offerView(t, c, "", map[string]any{"idempotency_key": key("02"), "workspace_id": ws, "path": "report.html"}); code != 200 || !again.Reused || again.View != single.View {
+	if code, again := offerView(t, c, h.q, map[string]any{"idempotency_key": key("02"), "workspace_id": ws, "path": "report.html"}); code != 200 || !again.Reused || again.View != single.View {
 		t.Fatalf("idempotent replay: %d %+v", code, again)
 	}
-	if code, v := offerView(t, c, "", map[string]any{"idempotency_key": key("02"), "workspace_id": ws, "path": "site", "entry": "index.html"}); code != 409 || v.Error.Code != "idempotency_conflict" {
+	if code, v := offerView(t, c, h.q, map[string]any{"idempotency_key": key("02"), "workspace_id": ws, "path": "site", "entry": "index.html"}); code != 409 || v.Error.Code != "idempotency_conflict" {
 		t.Fatalf("conflicting replay: %d %+v", code, v)
 	}
 	for _, tc := range []struct {
@@ -144,7 +205,7 @@ func TestViewOfferFreezesOnlyWhatItNames(t *testing.T) {
 		for k, v := range tc.body {
 			body[k] = v
 		}
-		if code, v := offerView(t, c, "", body); code < 400 || v.Error.Code != tc.code {
+		if code, v := offerView(t, c, h.q, body); code < 400 || v.Error.Code != tc.code {
 			t.Errorf("%v: %d %q, want %s", tc.body, code, v.Error.Code, tc.code)
 		}
 	}
@@ -179,9 +240,10 @@ func TestViewOfferFreezesOnlyWhatItNames(t *testing.T) {
 }
 
 func TestViewExportReadsOnlyFilesOfThatExport(t *testing.T) {
-	h, c, ws := viewFixture(t)
-	_, a := offerView(t, c, "", map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000011", "workspace_id": ws, "path": "site", "entry": "index.html"})
-	_, b := offerView(t, c, "", map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000012", "workspace_id": ws, "path": "report.html"})
+	h := viewFixture(t)
+	c, ws := h.c, h.ws
+	_, a := offerView(t, c, h.q, map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000011", "workspace_id": ws, "path": "site", "entry": "index.html"})
+	_, b := offerView(t, c, h.q, map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000012", "workspace_id": ws, "path": "report.html"})
 	if a.View.ID == "" || b.View.ID == "" || a.View.ID == b.View.ID {
 		t.Fatalf("offers: %+v %+v", a, b)
 	}
@@ -238,35 +300,11 @@ func TestViewOfferInConversationIsANativeNotice(t *testing.T) {
 	home := t.TempDir()
 	cwd := filepath.Join(home, "src", "fixture")
 	os.MkdirAll(cwd, 0700)
-	os.MkdirAll(filepath.Join(home, historyRoot), 0700)
 	os.WriteFile(filepath.Join(cwd, "report.html"), []byte("<p>raportti</p>"), 0600)
-	id := "11111111-1111-4111-8111-111111111111"
+	c, q, calls := viewConversation(t, home, cwd)
+	id := strings.TrimPrefix(q, "id=pi:")
 	path := filepath.Join(home, historyRoot, "native.jsonl")
-	header := fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, cwd)
-	os.WriteFile(path, []byte(header+`{"type":"message","id":"m1","parentId":null,"message":{"role":"user","content":"hello"}}`+"\n"), 0600)
-	var calls atomic.Int32
-	peer := testProcessPeer(t, os.Getpid(), func(conn net.Conn) {
-		var req struct {
-			Notice agentNotice `json:"notice"`
-		}
-		if json.NewDecoder(conn).Decode(&req) != nil {
-			return
-		}
-		calls.Add(1)
-		f, _ := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
-		defer f.Close()
-		data, _ := json.Marshal(map[string]any{"type": "custom", "id": "n1", "parentId": "m1", "timestamp": req.Notice.Timestamp, "customType": noticeType, "data": req.Notice})
-		fmt.Fprintln(f, string(data))
-		json.NewEncoder(conn).Encode(map[string]any{"ok": true, "data": map[string]any{"written": true}})
-	})
-	cfg := transport.Config{Home: home, UID: os.Geteuid()}
-	c := &ConversationController{home: home, cfg: cfg, sessions: map[string]*conversation{id: {id: id, cwd: cwd, workspace: "ws_example123", rpc: peer}}, journal: newEventJournal()}
-	ws := ""
-	for _, e := range Discover(cfg).Entries {
-		if e.Name == "fixture" {
-			ws = workspaceIDOf(cfg, e)
-		}
-	}
+	ws := workspaceIDNamed(t, c.cfg, "fixture")
 	body := map[string]any{"idempotency_key": "22222222-2222-4222-8222-222222222222", "workspace_id": ws, "path": "report.html", "title": "Raportti"}
 	// An offer to a conversation that is not this daemon's running one is
 	// refused before anything is copied.
@@ -277,7 +315,7 @@ func TestViewOfferInConversationIsANativeNotice(t *testing.T) {
 		t.Fatal("refused offer left an export")
 	}
 	code, v := offerView(t, c, "id=pi:"+id, body)
-	if code != 200 || v.Offer.Target != "conversation" || v.View.ConversationID != "pi:"+id || calls.Load() != 1 {
+	if code != 200 || v.Offer.AgentID != "pi:"+id || v.View.ConversationID != "pi:"+id || calls.Load() != 1 {
 		t.Fatalf("conversation offer: %d %+v", code, v)
 	}
 	notices, err := readNativeNotices(path, os.Geteuid(), id, cwd)
@@ -296,12 +334,13 @@ func TestViewOfferInConversationIsANativeNotice(t *testing.T) {
 // A file name may be longer than a title: the derived title is shortened,
 // and what the offer publishes is what the list and reader accept.
 func TestViewOfferWithLongNameStaysReadable(t *testing.T) {
-	h, c, ws := viewFixture(t)
+	h := viewFixture(t)
+	c, ws := h.c, h.ws
 	name := strings.Repeat("ä", 120) + ".html"
 	if err := os.WriteFile(filepath.Join(h.root, "src", "project", name), []byte("x"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	code, v := offerView(t, c, "", map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000021", "workspace_id": ws, "path": name})
+	code, v := offerView(t, c, h.q, map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000021", "workspace_id": ws, "path": name})
 	if code != 200 || len(v.View.Title) > maxViewTitle || !strings.HasPrefix(name, v.View.Title) {
 		t.Fatalf("offer: %d %+v", code, v)
 	}

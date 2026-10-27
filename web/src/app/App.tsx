@@ -2757,7 +2757,6 @@ export function App() {
                     ? csrf
                     : undefined
                 }
-                store={conversationStore}
               >
                 {editorRoute ? (
                   <WorkspaceEditor

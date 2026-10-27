@@ -14,14 +14,8 @@ import {
   type ViewOfferState,
   type ViewSummary,
 } from "../components/ViewOffer";
-import { ViewPanel, ViewSplit, ViewTray } from "../components/ViewPanel";
-import type { ConversationStore } from "./conversationStore";
-import {
-  listViews,
-  mintViewURL,
-  recentAccountViews,
-  viewTabPath,
-} from "./views";
+import { ViewPanel, ViewSplit } from "../components/ViewPanel";
+import { listViews, mintViewURL, viewTabPath } from "./views";
 
 // Agent HTML views (ADR 0032, prototype round 2 "Suora"): an offer card has
 // both places on every press, the right-hand panel and an own browser tab.
@@ -52,21 +46,17 @@ function panelBounds(total: number) {
 export function ViewHost({
   identity,
   csrf,
-  store,
   children,
 }: {
-  /** A new person drops the previous person's offers and open view. The
-   * children are never remounted for it: they own their own state. */
+  /** A new person drops the previous person's open view. The children are
+   * never remounted for it: they own their own state. */
   identity?: string;
   csrf?: string;
-  store?: ConversationStore;
   children: ReactNode;
 }) {
   // Views exist only where the installation configures a view origin; until
   // the list answers, no offer is shown.
   const [enabled, setEnabled] = useState(false);
-  const [account, setAccount] = useState<ViewSummary[]>([]);
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const [states, setStates] = useState<Record<string, ViewOfferState>>({});
   const [opened, setOpened] = useState<Opened>();
   const [expanded, setExpanded] = useState(false);
@@ -79,8 +69,6 @@ export function ViewHost({
   useEffect(() => {
     mintSeq.current++;
     setEnabled(false);
-    setAccount([]);
-    setHidden(new Set());
     setStates({});
     setOpened(undefined);
     setExpanded(false);
@@ -91,38 +79,13 @@ export function ViewHost({
     const abort = new AbortController();
     void listViews(abort.signal)
       .then((views) => {
-        if (abort.signal.aborted) return;
-        setEnabled(views !== null);
-        setAccount(views ? recentAccountViews(views) : []);
+        if (!abort.signal.aborted) setEnabled(views !== null);
       })
       .catch(() => {
-        // An unreadable list shows no account offers; conversation offers
-        // still need the origin, so they stay hidden too.
+        // An unreadable list leaves offers hidden: they need the origin.
       });
     return () => abort.abort();
   }, [csrf]);
-
-  useEffect(
-    () =>
-      store?.onViewOffered((view) => {
-        // Only the list says whether this installation offers views; a
-        // daemon publishes offers without knowing.
-        if (view.conversation_id) return;
-        setAccount((before) =>
-          [view, ...before.filter((v) => v.view_id !== view.view_id)].slice(
-            0,
-            5,
-          ),
-        );
-        setHidden((before) => {
-          if (!before.has(view.view_id)) return before;
-          const next = new Set(before);
-          next.delete(view.view_id);
-          return next;
-        });
-      }),
-    [store],
-  );
 
   useEffect(() => {
     const resize = () => setTotal(window.innerWidth);
@@ -197,7 +160,6 @@ export function ViewHost({
   );
   const bounds = panelBounds(total);
   const shown = Math.min(Math.max(width, bounds.min), bounds.max);
-  const tray = account.filter((view) => !hidden.has(view.view_id));
 
   return (
     <ViewContext.Provider value={controls}>
@@ -229,22 +191,6 @@ export function ViewHost({
       >
         {children}
       </ViewSplit>
-      {controls && tray.length ? (
-        <ViewTray>
-          {tray.map((view) => (
-            <ViewOfferCard
-              key={view.view_id}
-              view={view}
-              state={controls.state(view.view_id)}
-              onOpen={(opener) => open(view, opener)}
-              onOpenTab={() => openTab(view)}
-              onDismiss={() =>
-                setHidden((before) => new Set(before).add(view.view_id))
-              }
-            />
-          ))}
-        </ViewTray>
-      ) : null}
     </ViewContext.Provider>
   );
 }

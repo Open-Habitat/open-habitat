@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ViewOfferCard } from "./ViewOffer";
-import { ViewTray } from "./ViewPanel";
 
 const view = {
   view_id: "vabcdefghijklmnopqrstuvwxyz",
@@ -34,22 +33,6 @@ export const Prototype: Story = {
 export const Opening: Story = { args: { state: "opening" } };
 export const TabRequested: Story = { args: { state: "tab_requested" } };
 export const Failed: Story = { args: { state: "failed" } };
-export const AccountTray: Story = {
-  render: (args) => (
-    <ViewTray>
-      <ViewOfferCard {...args} onDismiss={() => {}} />
-      <ViewOfferCard
-        {...args}
-        view={{
-          ...view,
-          view_id: "vbcdefghijklmnopqrstuvwxyza",
-          title: "Yöajon yhteenveto",
-        }}
-        onDismiss={() => {}}
-      />
-    </ViewTray>
-  ),
-};
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
 };

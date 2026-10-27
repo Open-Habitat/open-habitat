@@ -168,22 +168,6 @@
   user-select: none;
 }
 
-.ah-view-tray {
-  position: fixed;
-  inset: auto var(--ah-s4) var(--ah-s4) auto;
-  z-index: 30;
-  display: grid;
-  gap: var(--ah-s2);
-  width: min(26rem, calc(100vw - 2 * var(--ah-s4)));
-  max-height: 60vh;
-  overflow: auto;
-}
-.ah-view-tray .ah-view-offer {
-  max-width: none;
-  background: var(--ah-surface);
-  box-shadow: var(--ah-shadow-float);
-}
-
 @media (max-width: 800px) {
   /* A phone is not a small desktop: the panel covers the conversation and
      Close returns to it. */

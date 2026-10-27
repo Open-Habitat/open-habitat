@@ -1,6 +1,5 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ConversationStore } from "./conversationStore";
 import { Entry } from "./HistoryView";
 import { ViewHost } from "./ViewHost";
 
@@ -70,29 +69,6 @@ describe("agent HTML view offers", () => {
     expect(page.queryByTestId("view-offer")).toBeNull();
     // An ordinary notice is unaffected.
     expect(page.getByTestId("agent-notice")).toBeTruthy();
-  });
-
-  it("keeps an account offer hidden where the installation has no view origin", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(new Response(null, { status: 204 })),
-    );
-    let offered: ((view: typeof account) => void) | undefined;
-    const store = {
-      onViewOffered: (listener: (view: typeof account) => void) => {
-        offered = listener;
-        return () => {};
-      },
-    } as unknown as ConversationStore;
-    const account = { ...view, conversation_id: undefined };
-    const page = render(
-      <ViewHost csrf="csrf" store={store}>
-        <p>sivu</p>
-      </ViewHost>,
-    );
-    await act(async () => {});
-    act(() => offered?.(account));
-    expect(page.queryByTestId("view-tray")).toBeNull();
   });
 
   it("opens the panel in a sandboxed frame and a tab only through the app's own page", async () => {

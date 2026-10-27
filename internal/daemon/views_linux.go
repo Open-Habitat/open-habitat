@@ -514,7 +514,7 @@ func removeView(home, id string) error {
 	return os.RemoveAll(filepath.Join(append(append([]string{home}, viewsDirParts...), gone)...))
 }
 
-// ViewsHandler is the browser's list of the person's views (account offers).
+// ViewsHandler is the browser's list of the person's views.
 func ViewsHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
@@ -610,8 +610,9 @@ func ViewExportHandler(cfg transport.Config, trusted func(*http.Request) bool) h
 
 // agentViews is the agent listener's offer, list and remove. An offer names
 // its conversation like a notice does (explicit pi:UUID or the checked launch
-// context) or none, which makes it an account offer. The reply says the offer
-// was published to the person's open browsers, never that anyone saw it.
+// context) and arrives there as a notice; there is no offer without a
+// conversation. The reply says the offer was published to the person's open
+// browsers, never that anyone saw it.
 func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == AgentViewRemovePath {
 		var req struct {
@@ -666,13 +667,11 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 		snapshotError(w, 404, "route_not_found")
 		return
 	}
-	var q agentConversationQuery
-	if r.URL.RawQuery != "" {
-		var bad bool
-		if q, bad = parseAgentConversation(r); bad {
-			snapshotError(w, 400, "invalid_arguments")
-			return
-		}
+	// An offer without its conversation is refused: its card has no place.
+	q, bad := parseAgentConversation(r)
+	if bad {
+		snapshotError(w, 400, "invalid_arguments")
+		return
 	}
 	var req viewRequest
 	if !strictViewBody(w, r, &req) || !sessionIDPattern.MatchString(req.Key) || !idPattern.MatchString(req.WorkspaceID) || !validViewSource(req.Path) || req.Entry != "" && !validViewPath(req.Entry) || req.Title != "" && !validViewTitle(req.Title) {
@@ -690,7 +689,7 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 		snapshotError(w, 409, "idempotency_conflict")
 		return
 	}
-	if q.id != "" && existing == nil {
+	if existing == nil {
 		// Refuse before copying when the offer could not reach its conversation.
 		c.noticeMu.Lock()
 		s, live, source, _, status, code := c.noticeTarget(q)
@@ -766,22 +765,17 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 		historyJSON(w, map[string]any{"schema_version": 1, "dry_run": true, "plan": map[string]any{"title": summary.Title, "entry": summary.Entry, "files": summary.Files, "bytes": summary.Bytes, "skipped_hidden": skipped, "conversation_id": q.id}})
 		return
 	}
-	offer := map[string]any{"target": "account"}
-	if q.id != "" {
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
-		n, status, code := c.createNotice(ctx, q, req.Key, summary.Title, &summary, false)
-		if status != 0 {
-			if existing == nil {
-				_ = removeView(c.viewCfg().Home, summary.ID)
-			}
-			snapshotError(w, status, code)
-			return
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	n, status, code := c.createNotice(ctx, q, req.Key, summary.Title, &summary, false)
+	if status != 0 {
+		if existing == nil {
+			_ = removeView(c.viewCfg().Home, summary.ID)
 		}
-		offer = map[string]any{"target": "conversation", "agent_id": q.id, "persistence": n.Persistence}
-	} else if c.journal != nil {
-		c.journal.appendEvent("view.offered", "", map[string]any{"view": summary})
+		snapshotError(w, status, code)
+		return
 	}
+	offer := map[string]any{"agent_id": q.id, "persistence": n.Persistence}
 	historyJSON(w, map[string]any{"schema_version": 1, "dry_run": false, "reused": existing != nil, "view": summary, "skipped_hidden": skipped, "offer": offer})
 }
 
@@ -797,10 +791,10 @@ func (c *ConversationController) viewCfg() transport.Config {
 
 // FixtureView exports a synthetic multi-file site from the controller's home
 // through the real plan and export, and offers it to a conversation as a
-// transient notice or to the account. It is not mounted by the product and is
-// unavailable outside the browser-host controller.
+// transient notice. It is not mounted by the product and is unavailable
+// outside the browser-host controller.
 func (c *ConversationController) FixtureView(target string) (string, bool) {
-	if !c.fixture || c.journal == nil || target != "account" && !viewConversationPattern.MatchString(target) {
+	if !c.fixture || c.journal == nil || !viewConversationPattern.MatchString(target) {
 		return "", false
 	}
 	home := c.viewCfg().Home
@@ -829,16 +823,9 @@ func (c *ConversationController) FixtureView(target string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-	summary := viewSummary{Title: "Synteettinen näkymä", Entry: plan.entry, Files: len(plan.files), Bytes: plan.bytes, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano)}
-	if target != "account" {
-		summary.ConversationID = target
-	}
+	summary := viewSummary{Title: "Synteettinen näkymä", Entry: plan.entry, Files: len(plan.files), Bytes: plan.bytes, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), ConversationID: target}
 	if summary.ID, err = newViewID(); err != nil || exportView(home, root, req, plan, summary) != nil {
 		return "", false
-	}
-	if target == "account" {
-		c.journal.appendEvent("view.offered", "", map[string]any{"view": summary})
-		return summary.ID, true
 	}
 	n := agentNotice{ID: key, Origin: "agent", Timestamp: time.Now().UTC().Format(time.RFC3339Nano), Text: summary.Title, Persistence: "not_persisted", View: &summary}
 	c.journal.appendEvent("notice.created", target, map[string]any{"notice": n})
