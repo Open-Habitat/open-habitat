@@ -16,6 +16,7 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"github.com/Open-Habitat/open-habitat/internal/nativegh"
 	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
+	"github.com/Open-Habitat/open-habitat/internal/nativegitlab"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
@@ -74,8 +75,8 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(RepoLookupPath, RepoLookupHandler(cfg, server.TrustedPeer))
 	mux.Handle(GitIdentityPath, GitIdentityHandler(cfg, server.TrustedPeer))
 	integrationEnv := newIntegrationEnv(cfg)
-	gitea := newGitea(cfg, integrationEnv)
-	clones := NewCloneJobs(ctx, cfg, server.TrustedPeer).WithGitea(gitea)
+	forges := Forges{Gitea: newGitea(cfg, integrationEnv), GitLab: newGitLab(cfg, integrationEnv)}
+	clones := NewCloneJobs(ctx, cfg, server.TrustedPeer).WithForges(forges)
 	server.SetPlanConsumer(clones.Plan)
 	server.SetSeedConsumer(func(ctx context.Context, s transport.Seed) string { return pi.SeedSiteKey(ctx, s.Provider, s.Key) })
 	mux.Handle(RepoClonesPath, clones.Handler())
@@ -89,7 +90,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	controller.journal = journal
 	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi, controller.ClearPiAuthFailures))
 	mux.Handle(WorkspaceGitPath, WorkspaceGitHandler(cfg, server.TrustedPeer))
-	mux.Handle(WorkspaceGitFetchPath, WorkspaceGitFetchHandler(cfg, server.TrustedPeer, gitea))
+	mux.Handle(WorkspaceGitFetchPath, WorkspaceGitFetchHandler(cfg, server.TrustedPeer, forges))
 	mux.Handle(EditorFilesPrefix, controller.EditorFiles())
 	mux.Handle(EditorPreferencePath, EditorPreferenceHandler(cfg, server.TrustedPeer))
 	mux.Handle(FirstRoutePath, FirstRouteHandler(cfg, server.TrustedPeer))
@@ -107,7 +108,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	attachments := AttachmentsHandler(cfg, server.TrustedPeer)
 	mux.Handle(AttachmentsPath, attachments)
 	mux.Handle(AttachmentsPath+"/", attachments)
-	mux.Handle(SnapshotPath, snapshotHandlerWithGitea(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, adapter.ObservedStatus, journal, controller, gitea))
+	mux.Handle(SnapshotPath, snapshotHandlerWithForges(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, adapter.ObservedStatus, journal, controller, forges))
 	mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		journal.stream(w, r, func() bool {
 			return server.TrustedPeer(r)
@@ -115,9 +116,9 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	}))
 	mux.Handle("/api/v1/agents/", HistoryHandler(cfg, server.TrustedPeer))
 	mux.Handle(ContextDetailPattern, ContextDetailHandler(cfg, server.TrustedPeer, pi))
-	catalog := newIntegrations(ctx, cfg, integrationEnv, gitea)
+	catalog := newIntegrations(ctx, cfg, integrationEnv, forges)
 	integrationRoutes := catalog.Handler(func(r *http.Request) bool { return historyAuthorized(cfg, server.TrustedPeer, r) })
-	for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath, integrations.GiteaPath, integrations.GiteaReposPath} {
+	for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath, integrations.GiteaPath, integrations.GiteaReposPath, integrations.GitLabPath, integrations.GitLabReposPath, integrations.GitLabTokensPath} {
 		mux.Handle(path, integrationRoutes)
 	}
 	mux.Handle("/api/v1/conversations", controller)
@@ -166,11 +167,14 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 // operator's pinned tools, run as this user, with sync clients supervised for
 // the daemon's lifetime. An untrusted or malformed operator configuration
 // leaves every entry unavailable rather than stopping the daemon.
-func newIntegrations(ctx context.Context, cfg transport.Config, env integrations.Env, gitea *integrations.GiteaAdapter) *integrations.Catalog {
+func newIntegrations(ctx context.Context, cfg transport.Config, env integrations.Env, forges Forges) *integrations.Catalog {
 	log := diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "integrations")
 	opts := []integrations.Option{integrations.WithTrash(func(rel string) error { return TrashCloudDirectory(cfg.Home, rel) })}
-	if gitea != nil {
-		opts = append(opts, integrations.WithGitea(gitea))
+	if forges.Gitea != nil {
+		opts = append(opts, integrations.WithGitea(forges.Gitea))
+	}
+	if forges.GitLab != nil {
+		opts = append(opts, integrations.WithGitLab(forges.GitLab))
 	}
 	catalog := integrations.New(env, integrations.Production(), log, opts...)
 	catalog.Start(ctx)
@@ -202,6 +206,20 @@ func newGitea(cfg transport.Config, env integrations.Env) *integrations.GiteaAda
 		return nil
 	}
 	g, err := integrations.NewGitea(env, nativegitea.NewClient(), "/usr/bin/git", launchedExecutable(executable, os.Args[0]))
+	if err != nil {
+		return nil
+	}
+	return g
+}
+
+// newGitLab is the one GitLab adapter the integrations routes and the clone
+// jobs share, with the helper registered at the launch path as for Gitea.
+func newGitLab(cfg transport.Config, env integrations.Env) *integrations.GitLabAdapter {
+	executable, err := os.Executable()
+	if err != nil {
+		return nil
+	}
+	g, err := integrations.NewGitLab(env, nativegitlab.NewClient(), "/usr/bin/git", launchedExecutable(executable, os.Args[0]))
 	if err != nil {
 		return nil
 	}

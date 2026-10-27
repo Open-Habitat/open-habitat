@@ -29,7 +29,7 @@ func (w *giteaWalk) restart() {
 	w.t.Helper()
 	w.clones.stop()
 	w.clones = newCloneJobsFixture(w.t, w.home, "/usr/bin/git")
-	w.clones.jobs.gitea, w.clones.jobs.giteaGit = w.adapter, "/usr/bin/git"
+	w.clones.jobs.gitea, w.clones.jobs.forgeGit = w.adapter, "/usr/bin/git"
 }
 
 func (w *giteaWalk) start(connection string, repository int) string {

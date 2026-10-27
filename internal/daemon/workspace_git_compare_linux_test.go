@@ -195,7 +195,7 @@ func TestWorkspaceGitFetchRunsAsUserAndClassifiesFailures(t *testing.T) {
 	g.run(other, "push", "-q", "origin", "main")
 	entries := Discover(cfg).Entries
 	id := opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entries[0].Name)
-	handler := workspaceGitFetchHandler(cfg, func(*http.Request) bool { return true }, "/usr/bin/git", 10*time.Second, nil)
+	handler := workspaceGitFetchHandler(cfg, func(*http.Request) bool { return true }, "/usr/bin/git", 10*time.Second, Forges{})
 	post := func(body string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest("POST", "http://unix"+WorkspaceGitFetchPath, bytes.NewBufferString(body))
 		r.RequestURI = WorkspaceGitFetchPath
@@ -231,7 +231,7 @@ func TestWorkspaceGitFetchRunsAsUserAndClassifiesFailures(t *testing.T) {
 	if w := post(`{"workspace_id":"` + id + `"}`); w.Code != 409 || !strings.Contains(w.Body.String(), `"no_remote"`) {
 		t.Fatalf("no remote %d %s", w.Code, w.Body.String())
 	}
-	untrusted := workspaceGitFetchHandler(cfg, func(*http.Request) bool { return false }, "/usr/bin/git", time.Second, nil)
+	untrusted := workspaceGitFetchHandler(cfg, func(*http.Request) bool { return false }, "/usr/bin/git", time.Second, Forges{})
 	r := httptest.NewRequest("POST", "http://unix"+WorkspaceGitFetchPath, bytes.NewBufferString(`{"workspace_id":"`+id+`"}`))
 	r.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

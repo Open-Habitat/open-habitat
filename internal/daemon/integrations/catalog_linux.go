@@ -514,6 +514,10 @@ type Catalog struct {
 	// leaves Gitea out of the catalog. giteaWrite serializes its writes.
 	gitea      *GiteaAdapter
 	giteaWrite sync.Mutex
+	// gitlab is the native adapter for glab's logins (gitlab_linux.go);
+	// nil leaves GitLab out. gitlabWrite serializes its writes.
+	gitlab      *GitLabAdapter
+	gitlabWrite sync.Mutex
 }
 
 type Option func(*Catalog)

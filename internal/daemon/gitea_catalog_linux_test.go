@@ -128,7 +128,7 @@ func TestGiteaCommonCatalogKeepsSourcesApart(t *testing.T) {
 
 	cfg := transport.Config{UID: os.Geteuid(), Home: w.home}
 	trusted := func(*http.Request) bool { return true }
-	h := snapshotHandlerWithGitea(cfg, trusted, func(transport.Config) Discovery { return DiscoverFixtureRoot(w.home, os.Geteuid()) }, nativeSessions, w.home, func(context.Context) string { return "unknown" }, nil, nil, w.adapter)
+	h := snapshotHandlerWithForges(cfg, trusted, func(transport.Config) Discovery { return DiscoverFixtureRoot(w.home, os.Geteuid()) }, nativeSessions, w.home, func(context.Context) string { return "unknown" }, nil, nil, Forges{Gitea: w.adapter})
 	snapshot := func() (map[string]any, string) {
 		t.Helper()
 		r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)

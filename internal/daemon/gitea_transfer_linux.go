@@ -9,12 +9,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
+	"github.com/Open-Habitat/open-habitat/internal/nativeforge"
 	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
+	"github.com/Open-Habitat/open-habitat/internal/nativegitlab"
 )
 
-// A transfer the daemon runs against a connected Gitea (a clone job, or the
-// workspace fetch of such a clone) is pinned to the exact remote and refused
+// A transfer the daemon runs against a connected Gitea or GitLab (a clone
+// job, or the workspace fetch of such a clone) is pinned to the exact remote and refused
 // when the person's Git configuration would send it elsewhere. The person's
 // own shell may still change all of this; it is not a sandbox. What it stops
 // is a browser action silently carrying a connection's PAT, or its use, to an
@@ -23,7 +24,7 @@ import (
 // giteaTransferPins are the Git options of a managed transfer of remote.
 // Command-line values are read last, and the exact remote is the most
 // specific HTTP scope, so no personal setting loosens them: HTTPS only,
-// verified TLS, no redirects, no saved cookies (a Gitea session cookie is a
+// verified TLS, no redirects, no saved cookies (a forge session cookie is a
 // second credential), Git's own DNS answer rather than a personal resolve
 // override, and no submodule recursion. With helperScope set, the helper
 // chain for that scope is reset to the registered helper alone, so no other
@@ -109,22 +110,56 @@ func clonedRewritten(ctx context.Context, run cloneRunner, git, home string, chi
 	return err != nil || rewritten
 }
 
-// giteaFetchPolicy decides how the workspace fetch of remote runs. A remote
-// whose configured or effective address is on the server of a connected
-// Gitea login is a managed transfer: it must have one address, no rewrite
-// rule may apply to it, and it runs with giteaTransferPins, the helper chain
-// for that server always reset to the registered helper alone: a personal
-// helper added beside ours, in its scope or anywhere else, would otherwise be
-// handed the token to store. Every other
-// remote is the person's ordinary remote and is fetched as before. A tea file
-// that cannot be read makes no remote managed; the helper reads the same file
-// and then gives Git nothing.
-func giteaFetchPolicy(ctx context.Context, g *integrations.GiteaAdapter, read func(args ...string) ([]byte, error), remote string) ([]string, string) {
-	if g == nil {
-		return nil, ""
+// managedServer is a connected forge server and the helper that answers for
+// it.
+type managedServer struct {
+	server nativeforge.Base
+	helper string
+}
+
+// managedServers are the servers of the person's connected Gitea and GitLab
+// logins, each with its provider's registered helper. A file that cannot be
+// read makes none of its servers managed; its helper reads the same file and
+// then gives Git nothing.
+func managedServers(forges Forges) []managedServer {
+	var out []managedServer
+	if g := forges.Gitea; g != nil {
+		if helper, err := nativegitea.HelperCommand(g.Executable); err == nil {
+			if logins, err := g.Store.Logins(); err == nil {
+				for _, l := range logins {
+					if l.URL != "" {
+						out = append(out, managedServer{l.Base, helper})
+					}
+				}
+			}
+		}
 	}
-	logins, err := g.Store.Logins()
-	if err != nil || len(logins) == 0 {
+	if g := forges.GitLab; g != nil {
+		if helper, err := nativegitlab.HelperCommand(g.Executable); err == nil {
+			if logins, err := g.Store.Logins(); err == nil {
+				for _, l := range logins {
+					if l.URL != "" {
+						out = append(out, managedServer{l.Base, helper})
+					}
+				}
+			}
+		}
+	}
+	return out
+}
+
+// forgeFetchPolicy decides how the workspace fetch of remote runs. A remote
+// whose configured or effective address is on the server of a connected Gitea
+// or GitLab login is a managed transfer: it must have one address, no
+// rewrite rule may apply to it, and it runs with giteaTransferPins, the
+// helper chain for that server always reset to its provider's registered
+// helper alone: a personal helper added beside ours, in its scope or anywhere
+// else, would otherwise be handed the token to store. A server both a Gitea
+// and a GitLab login claim is refused rather than guessed. Every other remote
+// is the person's ordinary remote and is fetched as before.
+func forgeFetchPolicy(ctx context.Context, forges Forges, read func(args ...string) ([]byte, error), remote string) ([]string, string) {
+	servers := managedServers(forges)
+	if len(servers) == 0 {
 		return nil, ""
 	}
 	var exit *nativeCommandExit
@@ -141,20 +176,24 @@ func giteaFetchPolicy(ctx context.Context, g *integrations.GiteaAdapter, read fu
 		urls = nil
 	}
 	target := strings.TrimSuffix(string(effective), "\n")
-	var server nativegitea.Base
-	managed := false
+	var server nativeforge.Base
+	helper := ""
 	for _, u := range append(urls, target) {
-		b, ok := nativegitea.RemoteAuthority(u)
+		b, ok := nativeforge.RemoteAuthority(u)
 		if !ok {
 			continue
 		}
-		for _, l := range logins {
-			if l.URL != "" && l.Base.SameServer(b) {
-				server, managed = b, true
+		for _, m := range servers {
+			if !m.server.SameServer(b) {
+				continue
 			}
+			if helper != "" && (helper != m.helper || !server.SameServer(b)) {
+				return nil, "fetch_failed"
+			}
+			server, helper = b, m.helper
 		}
 	}
-	if !managed {
+	if helper == "" {
 		return nil, ""
 	}
 	if len(urls) != 1 || urls[0] != target {
@@ -164,10 +203,6 @@ func giteaFetchPolicy(ctx context.Context, g *integrations.GiteaAdapter, read fu
 		return nil, "fetch_failed"
 	} else if rewritten {
 		return nil, "remote_rewritten"
-	}
-	helper, err := nativegitea.HelperCommand(g.Executable)
-	if err != nil {
-		return nil, "fetch_failed"
 	}
 	return giteaTransferPins(target, "https://"+server.Authority(), helper), ""
 }

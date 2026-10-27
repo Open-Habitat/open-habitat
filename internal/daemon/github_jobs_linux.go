@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
-	"github.com/Open-Habitat/open-habitat/internal/nativegitea"
 	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
@@ -66,11 +65,13 @@ type CloneJobs struct {
 	budget          func(int) bool
 	now             func() time.Time
 	listProcessScan cloneProcessScan // nil uses the native scan; list-only test seam
-	// gitea is the shared native adapter for Gitea sources; nil offers none.
-	// giteaGit is the real Git a Gitea clone runs, even beside fixture
-	// programs, because its credential comes from the native helper.
+	// gitea and gitlab are the shared native adapters for Gitea and GitLab
+	// sources; nil offers none. forgeGit is the real Git such a clone runs,
+	// even beside fixture programs, because its credential comes from the
+	// native helper.
 	gitea    *integrations.GiteaAdapter
-	giteaGit string
+	gitlab   *integrations.GitLabAdapter
+	forgeGit string
 
 	mu          sync.Mutex
 	jobs        []*cloneJob // newest first
@@ -80,7 +81,7 @@ type CloneJobs struct {
 
 // NewCloneJobs runs every gh and git as this daemon's own user in cfg.Home.
 func NewCloneJobs(ctx context.Context, cfg transport.Config, trusted func(*http.Request) bool) *CloneJobs {
-	return &CloneJobs{ctx: ctx, cfg: cfg, trusted: trusted, home: cfg.Home, gh: "/usr/bin/gh", git: "/usr/bin/git", giteaGit: "/usr/bin/git", run: cloneCommand, budget: boundedCloneVolume, now: time.Now}
+	return &CloneJobs{ctx: ctx, cfg: cfg, trusted: trusted, home: cfg.Home, gh: "/usr/bin/gh", git: "/usr/bin/git", forgeGit: "/usr/bin/git", run: cloneCommand, budget: boundedCloneVolume, now: time.Now}
 }
 
 // WithGitea offers the connections of the shared Gitea adapter as clone
@@ -91,11 +92,17 @@ func (c *CloneJobs) WithGitea(g *integrations.GiteaAdapter) *CloneJobs {
 	return c
 }
 
+// WithForges offers both shared code-host adapters' connections.
+func (c *CloneJobs) WithForges(f Forges) *CloneJobs {
+	c.gitea, c.gitlab = f.Gitea, f.GitLab
+	return c
+}
+
 // NewCloneJobsWithFixturePrograms is the offline integration seam. All
 // filesystem and command homes belong to the disposable fixture, never cfg.Home,
 // and quota admission is not consulted.
 func NewCloneJobsWithFixturePrograms(ctx context.Context, cfg transport.Config, trusted func(*http.Request) bool, home, gh, git string) *CloneJobs {
-	return &CloneJobs{ctx: ctx, cfg: cfg, trusted: trusted, home: home, gh: gh, git: git, giteaGit: "/usr/bin/git", run: func(ctx context.Context, program, _, fd string, args ...string) ([]byte, error) {
+	return &CloneJobs{ctx: ctx, cfg: cfg, trusted: trusted, home: home, gh: gh, git: git, forgeGit: "/usr/bin/git", run: func(ctx context.Context, program, _, fd string, args ...string) ([]byte, error) {
 		return cloneCommand(ctx, program, home, fd, args...)
 	}, budget: func(int) bool { return true }, now: time.Now}
 }
@@ -105,9 +112,10 @@ type cloneJob struct {
 	started            time.Time
 	cancel             context.CancelFunc
 	userCancel         atomic.Bool
-	// git is the program this job runs; source is set for a Gitea clone.
+	// git is the program this job runs; source is set for a Gitea or
+	// GitLab clone.
 	git    string
-	source *giteaCloneSource
+	source *forgeCloneSource
 
 	mu      sync.Mutex
 	state   cloneJobState
@@ -168,7 +176,7 @@ func (j *cloneJob) progressMeasured(stage string, percent int, received *uint64)
 func (j *cloneJob) view(now cloneJobState) map[string]any {
 	v := map[string]any{"job_id": j.id, "full_name": j.fullName, "mode": j.mode, "state": now.State, "started_at": j.started.UTC().Format(time.RFC3339)}
 	if j.source != nil {
-		v["source"] = map[string]any{"provider": "gitea", "connection_id": j.source.ConnectionID, "repository_id": j.source.RepositoryID}
+		v["source"] = map[string]any{"provider": j.source.Provider, "connection_id": j.source.ConnectionID, "repository_id": j.source.RepositoryID}
 	}
 	if now.State == "running" {
 		v["stage"] = now.Stage
@@ -204,7 +212,7 @@ func (c *CloneJobs) runningName() (string, bool) {
 	defer c.mu.Unlock()
 	for _, j := range c.jobs {
 		if s, _ := j.snapshot(); s.State == "running" {
-			return strings.Split(j.fullName, "/")[1], true
+			return cloneDirName(j.fullName), true
 		}
 	}
 	return "", false
@@ -253,15 +261,22 @@ func (c *CloneJobs) handlerAt(path string, trusted func(*http.Request) bool) htt
 				RepositoryID int64  `json:"repository_id"`
 			}
 			if err == nil && int64(len(body)) == r.ContentLength && catalogNoDuplicates(body) && strictCloneJSON(body, &in) == nil && in.Source != "" {
-				g := giteaCloneRequest{Action: in.Action, ConnectionID: in.ConnectionID, FullName: in.FullName, Mode: in.Mode, RepositoryID: in.RepositoryID}
-				if in.Source != "gitea" || in.JobID != "" || !validGiteaRequest(body, g) {
+				g := forgeCloneRequest{Provider: in.Source, Action: in.Action, ConnectionID: in.ConnectionID, FullName: in.FullName, Mode: in.Mode, RepositoryID: in.RepositoryID}
+				if in.JobID != "" || !validForgeRequest(body, g) {
 					snapshotError(w, 400, "invalid_request")
 					return
 				}
-				if g.Action == "remove" {
+				switch {
+				case g.Action == "remove":
 					c.remove(w, g.FullName, true)
-				} else {
-					c.startGitea(w, r, g.ConnectionID, g.RepositoryID, g.Action == "restart")
+				case g.Provider == "gitlab":
+					c.startForge(w, r, func(ctx context.Context) (cloneTarget, int, string) {
+						return c.resolveGitLab(ctx, g.ConnectionID, g.RepositoryID, g.Action == "restart")
+					})
+				default:
+					c.startForge(w, r, func(ctx context.Context) (cloneTarget, int, string) {
+						return c.resolveGitea(ctx, g.ConnectionID, g.RepositoryID, g.Action == "restart")
+					})
 				}
 				return
 			}
@@ -337,7 +352,7 @@ type cloneTarget struct {
 	// pre are Git options before the clone command, config the values the
 	// new repository is created with (git clone --config).
 	pre, config []string
-	source      *giteaCloneSource
+	source      *forgeCloneSource
 	// release ends the job's hold on native state when it settles.
 	release func()
 	// check, when set, runs once the destination exists and before the job
@@ -400,7 +415,7 @@ func (c *CloneJobs) reserve(ctx context.Context, t cloneTarget) (*cloneJob, int,
 		}
 	}()
 	fullName, requested, mode, restart := t.fullName, t.requested, t.mode, t.restart
-	parts := strings.Split(fullName, "/")
+	name := cloneDirName(fullName)
 	src, err := cloneSource(c.cfg, c.home, true)
 	if err != nil {
 		return nil, 409, "checkout_unavailable"
@@ -412,15 +427,15 @@ func (c *CloneJobs) reserve(ctx context.Context, t cloneTarget) (*cloneJob, int,
 		}
 	}()
 	if restart {
-		child, e := dir(unix.Openat2, src, parts[1], true)
+		child, e := dir(unix.Openat2, src, name, true)
 		if e != nil {
 			return nil, 409, "not_interrupted"
 		}
 		// Only an unfinished download of this very address is replaced.
-		_, _, interrupted := interruptedClone(ctx, c.home, t.git, c.run, c.cfg.UID, child, parts[1], func(o cloneOrigin) bool {
-			return o.URL == t.cloneURL && o.Gitea == (t.source != nil)
+		_, _, interrupted := interruptedClone(ctx, c.home, t.git, c.run, c.cfg.UID, child, name, func(o cloneOrigin) bool {
+			return o.URL == t.cloneURL && o.Forge == (t.source != nil)
 		})
-		removed := interrupted && removeCreated(c.ctx, src, child, parts[1])
+		removed := interrupted && removeCreated(c.ctx, src, child, name)
 		unix.Close(child)
 		if !interrupted {
 			return nil, 409, "not_interrupted"
@@ -446,7 +461,7 @@ func (c *CloneJobs) reserve(ctx context.Context, t cloneTarget) (*cloneJob, int,
 	// (including a partial prior attempt) with a successful import.
 	conflict := false
 	if eachSourceEntry(src, func(entry os.DirEntry) {
-		if strings.EqualFold(entry.Name(), parts[1]) {
+		if strings.EqualFold(entry.Name(), name) {
 			conflict = true
 		}
 	}) != nil {
@@ -458,10 +473,10 @@ func (c *CloneJobs) reserve(ctx context.Context, t cloneTarget) (*cloneJob, int,
 	if ctx.Err() != nil {
 		return nil, 409, "checkout_uncertain"
 	}
-	if unix.Mkdirat(src, parts[1], 0700) != nil {
+	if unix.Mkdirat(src, name, 0700) != nil {
 		return nil, 409, "checkout_exists"
 	}
-	child, e := dir(unix.Openat2, src, parts[1], true)
+	child, e := dir(unix.Openat2, src, name, true)
 	initial, e2 := stat(child)
 	if e != nil || e2 != nil || initial.Uid != uint32(c.cfg.UID) {
 		if e == nil {
@@ -472,14 +487,14 @@ func (c *CloneJobs) reserve(ctx context.Context, t cloneTarget) (*cloneJob, int,
 	srcInitial, _ := stat(src)
 	if t.check != nil {
 		if status, code := t.check(ctx); status != 0 {
-			removeCreated(c.ctx, src, child, parts[1])
+			removeCreated(c.ctx, src, child, name)
 			unix.Close(child)
 			return nil, status, code
 		}
 	}
 	id := make([]byte, 16)
 	if _, err := rand.Read(id); err != nil {
-		removeCreated(c.ctx, src, child, parts[1])
+		removeCreated(c.ctx, src, child, name)
 		unix.Close(child)
 		return nil, 503, "checkout_unavailable"
 	}
@@ -494,13 +509,13 @@ func (c *CloneJobs) reserve(ctx context.Context, t cloneTarget) (*cloneJob, int,
 	}
 	c.jobs = kept
 	// In the same hold, so a list never shows the name in neither place.
-	// The plan holds GitHub defaults only; a Gitea namesake is another repo.
+	// The plan holds GitHub defaults only; a forge namesake is another repo.
 	if t.source == nil {
 		c.dropPlannedLocked(requested)
 	}
 	c.mu.Unlock()
 	handedOff, srcOwned = true, false
-	go c.runJob(jobCtx, job, src, child, srcInitial, parts[1], t)
+	go c.runJob(jobCtx, job, src, child, srcInitial, name, t)
 	return job, 0, ""
 }
 
@@ -633,16 +648,16 @@ func (c *CloneJobs) dismiss(w http.ResponseWriter, id string) {
 }
 
 // remove deletes the interrupted clone of fullName: the daemon itself
-// recognises ~/src/<name> as one before touching it. A Gitea one is named by
-// the owner and name its own origin records, so it can be removed after its
+// recognises ~/src/<name> as one before touching it. A Gitea or GitLab one is
+// named by the path its own origin ends with, so it can be removed after its
 // connection is gone; nothing else about it comes from the browser.
-func (c *CloneJobs) remove(w http.ResponseWriter, fullName string, gitea bool) {
+func (c *CloneJobs) remove(w http.ResponseWriter, fullName string, forge bool) {
 	if !cloneWriter.TryLock("workspace_clone_running") {
 		c.busy(w)
 		return
 	}
 	defer cloneWriter.Unlock()
-	owner, name, _ := strings.Cut(fullName, "/")
+	name := cloneDirName(fullName)
 	src, err := cloneSource(c.cfg, c.home, false)
 	if err != nil {
 		snapshotError(w, 409, "not_interrupted")
@@ -658,8 +673,8 @@ func (c *CloneJobs) remove(w http.ResponseWriter, fullName string, gitea bool) {
 	ctx, cancel := context.WithTimeout(c.ctx, 30*time.Second)
 	defer cancel()
 	expect, git := githubOrigin(fullName), c.git
-	if gitea {
-		expect, git = func(o cloneOrigin) bool { return o.Gitea && o.Owner == owner }, c.giteaGit
+	if forge {
+		expect, git = func(o cloneOrigin) bool { return o.Forge && strings.HasSuffix(o.URL, "/"+fullName+".git") }, c.forgeGit
 	}
 	if _, _, ok := interruptedClone(ctx, c.home, git, c.run, c.cfg.UID, child, name, expect); !ok {
 		snapshotError(w, 409, "not_interrupted")
@@ -699,7 +714,7 @@ func (c *CloneJobs) list(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 	defer cancel()
 	names := []string{}
-	var logins *[]nativegitea.Login
+	var sources forgeSources
 	if eachSourceEntry(src, func(entry os.DirEntry) {
 		if entry.IsDir() || entry.Type() == 0 {
 			names = append(names, entry.Name())
@@ -735,13 +750,13 @@ func (c *CloneJobs) list(w http.ResponseWriter, r *http.Request) {
 					return nil, nil, true
 				}
 				git := c.git
-				if found.Gitea {
-					git = c.giteaGit
+				if found.Forge {
+					git = c.forgeGit
 				}
 				if size, origin, ok := interruptedCloneWithScan(ctx, c.home, git, c.run, c.cfg.UID, child, name, func(o cloneOrigin) bool { return o == found }, observe); ok {
 					item := map[string]any{"full_name": origin.Owner + "/" + name, "size_bytes": size}
-					if origin.Gitea {
-						item["source"] = c.giteaInterruptedSource(origin, name, &logins)
+					if origin.Forge {
+						item["full_name"], item["source"] = c.forgeInterruptedSource(origin, name, &sources)
 					}
 					interrupted = append(interrupted, item)
 				}

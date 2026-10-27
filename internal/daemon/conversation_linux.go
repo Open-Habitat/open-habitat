@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"io"
 	"net/http"
 	"os"
@@ -208,12 +207,12 @@ func (c *ConversationController) FixtureSetRecapIdleDelay(delay time.Duration) {
 // FixtureSnapshot exposes the same controller/journal snapshot handoff as the
 // production daemon, using only the browser-host's disposable native root.
 func (c *ConversationController) FixtureSnapshot() http.Handler {
-	return c.FixtureSnapshotWithGitea(nil)
+	return c.FixtureSnapshotWithForges(Forges{})
 }
 
-// FixtureSnapshotWithGitea also matches workspace origins to the fixture's
-// Gitea connections, as the production snapshot does.
-func (c *ConversationController) FixtureSnapshotWithGitea(gitea *integrations.GiteaAdapter) http.Handler {
+// FixtureSnapshotWithForges also matches workspace origins to the fixture's
+// Gitea and GitLab connections, as the production snapshot does.
+func (c *ConversationController) FixtureSnapshotWithForges(forges Forges) http.Handler {
 	if !c.fixture {
 		return http.NotFoundHandler()
 	}
@@ -221,7 +220,7 @@ func (c *ConversationController) FixtureSnapshotWithGitea(gitea *integrations.Gi
 		cfg.Home = c.home
 		return nativeSessions(cfg)
 	}
-	return snapshotHandlerWithGitea(c.cfg, c.trusted, c.discover, sessions, c.home, func(context.Context) string { return "unknown" }, c.journal, c, gitea)
+	return snapshotHandlerWithForges(c.cfg, c.trusted, c.discover, sessions, c.home, func(context.Context) string { return "unknown" }, c.journal, c, forges)
 }
 
 // FixtureEvents exposes the real bounded journal stream to the browser-host.

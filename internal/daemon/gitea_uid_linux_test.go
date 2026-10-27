@@ -534,7 +534,7 @@ func serveGiteaUID(t *testing.T) {
 	mux.Handle(RepoClonesPath, clones.Handler())
 	mux.Handle(RepoCloneEventsPath, clones.Events())
 	mux.Handle(RepoObservePath, RepoObserveHandler(cfg, server.TrustedPeer, clones))
-	mux.Handle(WorkspaceGitFetchPath, WorkspaceGitFetchHandler(cfg, server.TrustedPeer, gitea))
+	mux.Handle(WorkspaceGitFetchPath, WorkspaceGitFetchHandler(cfg, server.TrustedPeer, Forges{Gitea: gitea}))
 	catalog := integrations.New(env, nil, nil, integrations.WithGitea(gitea))
 	routes := catalog.Handler(func(r *http.Request) bool { return historyAuthorized(cfg, server.TrustedPeer, r) })
 	for _, path := range []string{integrations.ListPath, integrations.GiteaPath, integrations.GiteaReposPath} {

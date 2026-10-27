@@ -106,11 +106,23 @@ type gitProgressWriter struct {
 	lastStage   string
 	lastPercent int
 	lastBytes   uint64
+	// refused: Git said the server refused its credential (or Git had
+	// none to give), which a person acts on differently from any other
+	// failure. Only the fact is kept, never the line.
+	refused bool
 }
+
+// gitAuthRefusal are Git's own fatal lines when the server answered 401 or
+// 403 or no credential could be had. Remote text ("remote: ...") is never
+// matched: the server could say anything there.
+var gitAuthRefusal = regexp.MustCompile(`^fatal: (Authentication failed for |could not read (Username|Password) for |unable to access '[^']*': The requested URL returned error: 40[13]$)`)
 
 func (p *gitProgressWriter) Write(b []byte) (int, error) {
 	for _, ch := range b {
 		if ch == '\r' || ch == '\n' {
+			if !p.skip && gitAuthRefusal.Match(p.line) {
+				p.refused = true
+			}
 			if !p.skip {
 				m := nativeCloneProgress.FindSubmatch(p.line)
 				if len(m) == 3 {
@@ -172,7 +184,8 @@ func cloneProgressCommand(ctx context.Context, program, home string, child int, 
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.WaitDelay = time.Second
 	cmd.Stdout = io.Discard
-	cmd.Stderr = &gitProgressWriter{emit: emit}
+	progress := &gitProgressWriter{emit: emit}
+	cmd.Stderr = progress
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -192,8 +205,14 @@ func cloneProgressCommand(ctx context.Context, program, home string, child int, 
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
+	if err != nil && progress.refused {
+		return errCloneAuth
+	}
 	return err
 }
+
+// errCloneAuth: the server refused the clone's credential.
+var errCloneAuth = errors.New("authentication refused")
 
 // An unborn HEAD is indistinguishable from an interrupted clone after git
 // init. Require a resolvable commit before native observation confirms it.
@@ -222,6 +241,9 @@ func cloneReason(err error) string {
 	}
 	if errors.Is(err, context.Canceled) {
 		return "cancelled"
+	}
+	if errors.Is(err, errCloneAuth) {
+		return "auth_refused"
 	}
 	return "native_failure"
 }

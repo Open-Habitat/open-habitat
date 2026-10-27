@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"net/http"
 	"os"
 	"strconv"
@@ -71,10 +70,10 @@ func SnapshotHandlerWithNativeRoot(cfg transport.Config, trusted func(*http.Requ
 	return snapshotHandlerWithStatus(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root, func(context.Context) string { return "unknown" })
 }
 
-// SnapshotHandlerWithNativeRootAndGitea is that seam with the fixture's
-// Gitea adapter, so workspace origins are matched as production does.
-func SnapshotHandlerWithNativeRootAndGitea(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, root string, gitea *integrations.GiteaAdapter) http.Handler {
-	return snapshotHandlerWithGitea(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root, func(context.Context) string { return "unknown" }, nil, nil, gitea)
+// SnapshotHandlerWithNativeRootAndForges is that seam with the fixture's
+// code-host adapters, so workspace origins are matched as production does.
+func SnapshotHandlerWithNativeRootAndForges(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, root string, forges Forges) http.Handler {
+	return snapshotHandlerWithForges(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root, func(context.Context) string { return "unknown" }, nil, nil, forges)
 }
 func snapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string) http.Handler {
 	return snapshotHandlerWithJournal(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, nil)
@@ -83,12 +82,12 @@ func snapshotHandlerWithJournal(cfg transport.Config, trusted func(*http.Request
 	return snapshotHandlerWithController(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, journal, nil)
 }
 func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string, journal *eventJournal, controller *ConversationController) http.Handler {
-	return snapshotHandlerWithGitea(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, journal, controller, nil)
+	return snapshotHandlerWithForges(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, journal, controller, Forges{})
 }
 
-// snapshotHandlerWithGitea also matches each workspace's origin to the
-// person's connected Gitea bases; gitea may be nil.
-func snapshotHandlerWithGitea(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string, journal *eventJournal, controller *ConversationController, gitea *integrations.GiteaAdapter) http.Handler {
+// snapshotHandlerWithForges also matches each workspace's origin to the
+// person's connected Gitea and GitLab bases.
+func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string, journal *eventJournal, controller *ConversationController, forges Forges) http.Handler {
 	instance, ok := uuid()
 	if journal != nil {
 		instance, ok = journal.instance, journal.instance != ""
@@ -313,7 +312,7 @@ func snapshotHandlerWithGitea(cfg transport.Config, trusted func(*http.Request) 
 		defer stopSummary()
 		started = time.Now()
 		global := gitGlobalStamp(nativeHome)
-		bases := giteaBases(gitea)
+		bases, glBases := giteaBases(forges.Gitea), gitlabBases(forges.GitLab)
 		var gitWork sync.WaitGroup
 		gitSlots := make(chan struct{}, 4)
 		for i, entry := range gitEntries {
@@ -345,6 +344,8 @@ func snapshotHandlerWithGitea(cfg transport.Config, trusted func(*http.Request) 
 					ws["git_remote"] = f.remote
 					if match := giteaOriginMatch(f.origin, bases); match != nil {
 						ws["gitea_origin"] = match
+					} else if match := gitlabOriginMatch(f.origin, glBases); match != nil {
+						ws["gitlab_origin"] = match
 					}
 					if f.continuation {
 						ws["publish_continuation"] = true

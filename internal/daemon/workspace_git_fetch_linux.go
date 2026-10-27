@@ -15,7 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
@@ -35,13 +34,13 @@ var gitRemoteName = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9._-]{0,99}$`)
 // working tree, and answers with the workspace's Git observation read again.
 // The daemon has no SSH agent, so an SSH remote whose key needs one fails;
 // that failure is classified, never passed on as Git's own text. A remote on
-// a connected Gitea's server runs under that adapter's transfer policy
-// (gitea_transfer_linux.go); gitea may be nil.
-func WorkspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) bool, gitea *integrations.GiteaAdapter) http.Handler {
-	return workspaceGitFetchHandler(cfg, trusted, "/usr/bin/git", gitFetchLimit, gitea)
+// a connected Gitea's or GitLab's server runs under that adapter's transfer
+// policy (gitea_transfer_linux.go).
+func WorkspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) bool, forges Forges) http.Handler {
+	return workspaceGitFetchHandler(cfg, trusted, "/usr/bin/git", gitFetchLimit, forges)
 }
 
-func workspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) bool, git string, limit time.Duration, gitea *integrations.GiteaAdapter) http.Handler {
+func workspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) bool, git string, limit time.Duration, forges Forges) http.Handler {
 	var mu sync.Mutex
 	running := map[string]bool{}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -87,7 +86,7 @@ func workspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) 
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), limit+3*time.Second)
 		defer cancel()
-		if code := fetchWorkspaceGit(ctx, cfg, *target, git, limit, gitea); code != "" {
+		if code := fetchWorkspaceGit(ctx, cfg, *target, git, limit, forges); code != "" {
 			snapshotError(w, 409, code)
 			return
 		}
@@ -108,7 +107,7 @@ func workspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) 
 
 // fetchWorkspaceGit fetches the remote of the current branch's upstream, or
 // origin, or the only remote. It returns "" on success or a fixed code.
-func fetchWorkspaceGit(ctx context.Context, cfg transport.Config, target gitTarget, git string, limit time.Duration, gitea *integrations.GiteaAdapter) string {
+func fetchWorkspaceGit(ctx context.Context, cfg transport.Config, target gitTarget, git string, limit time.Duration, forges Forges) string {
 	fd, still, done, err := target.open()
 	if err != nil {
 		return "workspace_changed"
@@ -154,7 +153,7 @@ func fetchWorkspaceGit(ctx context.Context, cfg transport.Config, target gitTarg
 	if !gitRemoteName.MatchString(remote) {
 		return "fetch_failed"
 	}
-	pins, code := giteaFetchPolicy(ctx, gitea, read, remote)
+	pins, code := forgeFetchPolicy(ctx, forges, read, remote)
 	if code != "" {
 		return code
 	}

@@ -53,6 +53,18 @@ func (c *Catalog) Handler(authorized func(*http.Request) bool) http.Handler {
 				return
 			}
 			c.giteaRepos(w, r)
+		case GitLabPath:
+			c.gitlabRequest(w, r)
+		case GitLabReposPath, GitLabTokensPath:
+			if c.gitlab == nil {
+				fail(w, 404, "not_found")
+				return
+			}
+			if r.URL.Path == GitLabReposPath {
+				c.gitlabRepos(w, r)
+			} else {
+				c.gitlabTokens(w, r)
+			}
 		default:
 			fail(w, 404, "not_found")
 		}
@@ -102,6 +114,7 @@ type listView struct {
 	Providers     []providerView `json:"providers"`
 	Accounts      []Account      `json:"accounts"`
 	Gitea         *giteaList     `json:"gitea,omitempty"`
+	GitLab        *gitlabList    `json:"gitlab,omitempty"`
 	Skill         SkillState     `json:"skill"`
 }
 
@@ -138,6 +151,15 @@ func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 		// failure is its own state, not the whole list's.
 		gitea := c.gitea.list(r.Context())
 		view.Gitea = &gitea
+	}
+	if c.gitlab != nil {
+		p := providerView{ID: GitLab, Available: c.gitlab.Available(), Login: PersonalToken, Services: []string{"git"}}
+		if !p.Available {
+			p.UnavailableReason, p.MissingTools = "tool_unavailable", []string{"glab"}
+		}
+		view.Providers = append(view.Providers, p)
+		gitlab := c.gitlab.list(r.Context())
+		view.GitLab = &gitlab
 	}
 	accounts, unread := c.accounts()
 	if len(unread) > 0 {

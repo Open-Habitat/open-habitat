@@ -29,6 +29,9 @@ func TestMain(m *testing.M) {
 	if len(os.Args) == 4 && os.Args[1] == "gitea" && os.Args[2] == "git-credential" {
 		os.Exit(giteaHelperForTest(os.Args[3]))
 	}
+	if len(os.Args) == 4 && os.Args[1] == "gitlab" && os.Args[2] == "git-credential" {
+		os.Exit(gitlabHelperForTest(os.Args[3]))
+	}
 	os.Exit(m.Run())
 }
 
@@ -120,7 +123,7 @@ func newGiteaWalkAt(t *testing.T, exe string) *giteaWalk {
 	w.routes = httptest.NewServer(catalog.Handler(func(*http.Request) bool { return true }))
 	t.Cleanup(w.routes.Close)
 	w.clones = newCloneJobsFixture(t, home, "/usr/bin/git")
-	w.clones.jobs.gitea, w.clones.jobs.giteaGit = w.adapter, "/usr/bin/git"
+	w.clones.jobs.gitea, w.clones.jobs.forgeGit = w.adapter, "/usr/bin/git"
 	return w
 }
 
@@ -193,7 +196,7 @@ func (w *giteaWalk) fetch(name string) string {
 		if entry.Name == name {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			return fetchWorkspaceGit(ctx, cfg, workspaceGitTarget(cfg, entry), "/usr/bin/git", 20*time.Second, w.adapter)
+			return fetchWorkspaceGit(ctx, cfg, workspaceGitTarget(cfg, entry), "/usr/bin/git", 20*time.Second, Forges{Gitea: w.adapter})
 		}
 	}
 	w.t.Fatalf("workspace %s not discovered", name)

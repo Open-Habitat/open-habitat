@@ -26,9 +26,10 @@ import (
 // establish (reftable, a detached HEAD, an unreadable file, a file beside
 // .git) is not an interrupted clone: such a directory stays a workspace.
 //
-// A Gitea clone job writes its origin, https://<base>/<owner>/<name>.git, and
-// the account, credential.<origin>.username, into the new configuration
-// before Git transfers anything; together they are what makes it one. A
+// A Gitea or GitLab clone job writes its origin,
+// https://<base>/<owner or group path>/<name>.git, and the account,
+// credential.<origin>.username, into the new configuration before Git
+// transfers anything; together they are what makes it one. A
 // directory that holds less, because the process died before Git recorded
 // them, is not recognised: it stays where it is as an existing destination,
 // and nothing invents an owner for it or removes it.
@@ -42,15 +43,18 @@ type cloneOrigin struct {
 	Owner string
 	// URL is the origin exactly as written.
 	URL string
-	// Gitea is set for a Gitea clone job's directory, User to the account
-	// its configuration names.
-	Gitea bool
+	// Forge is set for a Gitea or GitLab clone job's directory, User to the
+	// account its configuration names. Which of the two it is, and so the
+	// project path a GitLab origin spells below its base, is known only from
+	// the person's connections (cloneSourceFor); Owner is the segment before
+	// the name, as a Gitea origin has it.
+	Forge bool
 	User  string
 }
 
 // githubOrigin is what a GitHub clone of fullName records.
 func githubOrigin(fullName string) func(cloneOrigin) bool {
-	return func(o cloneOrigin) bool { return !o.Gitea && o.URL == "https://github.com/"+fullName+".git" }
+	return func(o cloneOrigin) bool { return !o.Forge && o.URL == "https://github.com/"+fullName+".git" }
 }
 
 // interruptedCloneOwner returns the origin when the open child directory
@@ -142,7 +146,7 @@ func noRefFiles(fd, depth int, budget *int) bool {
 }
 
 // originOf reads the one url of [remote "origin"] from a Git config file as
-// `git clone` writes it, and for a Gitea origin the one username of
+// `git clone` writes it, and for a forge origin the one username of
 // [credential "<origin>"]. Several urls or usernames, includes or anything
 // unexpected in those sections make the answer unknown.
 func originOf(config []byte, name string) (cloneOrigin, bool) {
@@ -181,16 +185,21 @@ func originOf(config []byte, name string) (cloneOrigin, bool) {
 		}
 		return cloneOrigin{Owner: m[1], URL: url}, true
 	}
-	owner, ok := giteaOrigin(url, name)
-	if !ok || len(users[url]) != 1 || !giteaOwnerName.MatchString(users[url][0]) {
+	owner, ok := forgeOrigin(url, name)
+	if !ok || len(users[url]) != 1 || !forgeUser.MatchString(users[url][0]) {
 		return cloneOrigin{}, false
 	}
-	return cloneOrigin{Owner: owner, URL: url, Gitea: true, User: users[url][0]}, true
+	return cloneOrigin{Owner: owner, URL: url, Forge: true, User: users[url][0]}, true
 }
 
-// giteaOrigin is the owner of a canonical Gitea clone address,
-// https://<base>/<owner>/<name>.git, as a Gitea clone job derives it.
-func giteaOrigin(url, name string) (string, bool) {
+// forgeUser is an account name a Gitea or GitLab clone job records.
+var forgeUser = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,255}$`)
+
+// forgeOrigin is the segment before the name of a canonical forge clone
+// address, https://<base>/<...>/<owner>/<name>.git, as a Gitea or GitLab
+// clone job derives it: everything before the name must be a canonical base
+// with at least that one segment.
+func forgeOrigin(url, name string) (string, bool) {
 	prefix, ok := strings.CutSuffix(url, "/"+name+".git")
 	i := strings.LastIndexByte(prefix, '/')
 	if !ok || i < 0 {
@@ -198,7 +207,7 @@ func giteaOrigin(url, name string) (string, bool) {
 	}
 	base, owner := prefix[:i], prefix[i+1:]
 	b, err := nativegitea.ParseBase(base)
-	if err != nil || b.String() != base || !giteaOwnerName.MatchString(owner) || owner == "." || owner == ".." {
+	if err != nil || b.String() != base || !forgeUser.MatchString(owner) || owner == "." || owner == ".." {
 		return "", false
 	}
 	return owner, true
@@ -235,7 +244,7 @@ func interruptedCloneWithScan(ctx context.Context, home, git string, run cloneRu
 	if e != nil || string(remote) != origin.URL+"\n" {
 		return 0, cloneOrigin{}, false
 	}
-	if origin.Gitea {
+	if origin.Forge {
 		user, e := run(readCtx, git, home, fd, "-c", "core.fsmonitor=false", "config", "--local", "--get-all", "credential."+origin.URL+".username")
 		if e != nil || string(user) != origin.User+"\n" {
 			return 0, cloneOrigin{}, false
