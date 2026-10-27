@@ -149,7 +149,7 @@ func (c *ConversationController) classify(ctx context.Context, match func(*conve
 // checking under the lock that each is still the same, live and idle handle.
 // It returns those it marked; the caller closes them with closeStopping after
 // releasing c.mu. Caller holds c.mu.
-func (c *ConversationController) stopIdleLocked(idle []*conversation) []*conversation {
+func (c *ConversationController) stopIdleLocked(idle []*conversation, cause string) []*conversation {
 	var marked []*conversation
 	for _, s := range idle {
 		if c.closed || c.sessions[s.id] != s || !liveChild(s) || heldActivity(s) != "" {
@@ -157,6 +157,7 @@ func (c *ConversationController) stopIdleLocked(idle []*conversation) []*convers
 		}
 		s.startupCancelled = true
 		s.state = "stopping"
+		stopFor(s, cause)
 		if s.recapTimer != nil {
 			s.recapTimer.Stop()
 		}
@@ -220,7 +221,7 @@ func (c *ConversationController) makeRoom(ctx context.Context) {
 	if len(idle) > need {
 		idle = idle[:need]
 	}
-	marked := c.stopIdleLocked(idle)
+	marked := c.stopIdleLocked(idle, "room")
 	c.mu.Unlock()
 	c.closeStopping(marked)
 }
@@ -229,7 +230,7 @@ func (c *ConversationController) makeRoom(ctx context.Context) {
 func (c *ConversationController) stopIfIdle(ctx context.Context, id string) {
 	_, idle := c.classify(ctx, func(s *conversation) bool { return s.id == id })
 	c.mu.Lock()
-	marked := c.stopIdleLocked(idle)
+	marked := c.stopIdleLocked(idle, "person") // archiving is the person's act
 	c.mu.Unlock()
 	c.closeStopping(marked)
 }
@@ -275,7 +276,7 @@ func (c *ConversationController) stopExpiredIdlePi(ctx context.Context, now time
 			expired = append(expired, s)
 		}
 	}
-	marked := c.stopIdleLocked(expired)
+	marked := c.stopIdleLocked(expired, "idle")
 	c.mu.Unlock()
 	c.closeStopping(marked)
 	for _, s := range marked {

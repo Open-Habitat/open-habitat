@@ -15,9 +15,9 @@ import (
 // or the raw commands it repeats; both native entry forms are recognised.
 func TestRestartCatchUpIsPresentedFromItsDetails(t *testing.T) {
 	const run, live = "01m531x6y92ggdqcmb1exzmn00", "01m531x6y92ggdqcmb1exzmn01"
-	body := `"customType":"oh-resume-catch-up","display":true,"content":"[Open Habitat] This conversation's Pi had stopped: taskfleet run wait ` + run + `","details":{"schema_version":1,` +
+	body := `"customType":"oh-resume-catch-up","display":true,"content":"[Open Habitat] This conversation's Pi had stopped: taskfleet run wait ` + run + `","details":{"schema_version":1,"stopped":{"cause":"idle","at":"2026-10-26T18:20:00Z"},` +
 		`"processes":[{"id":"proc_8ffc","startTime":1,"name":"wait-gate-evidence"},{"id":"bad","startTime":2,"name":"x"}],` +
-		`"spinoffs":[{"run_id":"` + run + `","state":"stalled","title":"release pilot.12"},{"run_id":"` + run + `","state":"invented","title":"x"}],` +
+		`"spinoffs":[{"run_id":"` + run + `","state":"stalled","title":"release pilot.12","summary":"Taskfleet's words","branch":"wt/pilot","ended_at":"2026-10-26T18:41:00Z"},{"run_id":"` + run + `","state":"invented","title":"x"}],` +
 		`"rearm":[{"run_id":"` + live + `","title":"gate"},"` + run + `"]}`
 	for _, e := range []nativeEntry{
 		{ID: "a", Type: "custom_message", Raw: json.RawMessage(`{"type":"custom_message",` + body + `}`)},
@@ -28,8 +28,9 @@ func TestRestartCatchUpIsPresentedFromItsDetails(t *testing.T) {
 			t.Fatalf("%s: %+v", e.Type, got)
 		}
 		want := restartNotice{
+			Stopped:      map[string]any{"cause": "idle", "at": "2026-10-26T18:20:00Z"},
 			Processes:    []restartProcess{{"proc_8ffc", "wait-gate-evidence"}},
-			Runs:         []restartRun{{run, "release pilot.12", "stalled"}},
+			Runs:         []restartRun{{run, "release pilot.12", "stalled", "Taskfleet's words", "2026-10-26T18:41:00Z", "wt/pilot"}},
 			StillRunning: []restartRun{{ID: live, Title: "gate"}, {ID: run}},
 		}
 		if a, b := mustJSON(got.Restart), mustJSON(want); a != b {

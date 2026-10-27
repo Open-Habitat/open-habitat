@@ -34,6 +34,7 @@ import {
   useProcessView,
 } from "../components/ProcessTray";
 import { RecapCard, useMinuteNow } from "../components/RecapCard";
+import { RestCard } from "../components/RestartNotice";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useBrowserShell } from "./BrowserShell";
 import { toolStopped } from "./bashFailure";
@@ -83,6 +84,7 @@ import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
 import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
+import { useRest } from "./rest";
 import { useConversation } from "./useConversation";
 import { isReadingIntro, useReadingPositionLayout } from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
@@ -727,6 +729,26 @@ function BrowserConversationContent({
   // Pi is not running: a send is held by the daemon and starts Pi. A previous
   // uncertain send does not block a new message then; it is never resent.
   const notStarted = piNotRunning(current?.state);
+  // Habitat's card of a rest, and the wake the person's typing starts.
+  const rest = useRest({
+    id,
+    workspaceId: workspace.workspace_id,
+    rest:
+      controlled && archive?.archive === "active" && !statusStale
+        ? archive.rest
+        : undefined,
+    spinoffsWorking: archive?.spinoffs_working,
+    csrf,
+  });
+  const restCard =
+    rest.resting && archive?.rest && !held.waiting.length ? (
+      <RestCard
+        stop={archive.rest}
+        notice={rest.report?.report}
+        unavailable={!!rest.report && rest.report.availability !== "available"}
+        wake={rest.wake}
+      />
+    ) : null;
   const bridgeExpected = useBridgeExpected(
     notStarted,
     useProcessView()?.inventory,
@@ -781,6 +803,7 @@ function BrowserConversationContent({
       : undefined;
   const tell = (text: string) => {
     dismissRecapOnSend();
+    rest.onSend();
     if (notStarted)
       held.submit(text, canChooseFirstModel ? modelChoice : undefined, true);
     else if (tellWorking) void submitQueue(workingMode, text);
@@ -1448,7 +1471,9 @@ function BrowserConversationContent({
               // bubble says it (Jari 16.10.2026).
               notStarted && held.waiting.length
                 ? ""
-                : (presentation.operationLabel ?? presentation.activityLabel)
+                : restCard && rest.wake !== "awake"
+                  ? "Lepää"
+                  : (presentation.operationLabel ?? presentation.activityLabel)
             }
             activityControl={
               presentation.activity === "waiting_background" ? (
@@ -1678,6 +1703,9 @@ function BrowserConversationContent({
               }
               items={[
                 ...timeline,
+                ...(restCard
+                  ? [{ id: "rest-card", kind: "receipt", content: restCard }]
+                  : []),
                 ...(sendObservation
                   ? [
                       {
@@ -2147,7 +2175,16 @@ function BrowserConversationContent({
                   ) : undefined
                 }
                 value={draft}
-                onChange={changeDraft}
+                onChange={(value) => {
+                  changeDraft(value);
+                  // The first character wakes a resting agent; nothing else does.
+                  if (value.trim() && restCard) rest.onTyping();
+                }}
+                idlePlaceholder={
+                  restCard && rest.wake !== "awake"
+                    ? "Kirjoita, niin agentti herää…"
+                    : undefined
+                }
                 onActivity={recapHold.note}
                 activity={
                   !notStarted &&
@@ -2207,7 +2244,10 @@ function BrowserConversationContent({
                 }
                 onSendNow={(text = draft) => {
                   if (text !== draft) changeDraft(text);
-                  if (draft.trim() && canSend) dismissRecapOnSend();
+                  if (draft.trim() && canSend) {
+                    dismissRecapOnSend();
+                    rest.onSend();
+                  }
                   if (notStarted) {
                     // A new conversation's first message carries the model
                     // chosen in its field, as a direct first send does.

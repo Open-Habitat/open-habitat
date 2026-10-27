@@ -427,8 +427,34 @@
         }
       }
     },
+    "stop": {
+      "description": "When and why this conversation's browser Pi stopped, as the daemon saw it: idle (stopped after ten idle minutes), room (stopped to make room for another conversation), person (the person stopped, cancelled, archived or deleted), crash (Pi ended unasked) or restart (the daemon started without it, for example after an upgrade; at is then the daemon's start, the latest the stop can have been).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cause",
+        "at"
+      ],
+      "properties": {
+        "cause": {
+          "enum": [
+            "idle",
+            "room",
+            "person",
+            "crash",
+            "restart"
+          ]
+        },
+        "at": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "awake": {
+          "type": "boolean"
+        }
+      }
+    },
     "restart": {
-      "description": "Habitat's catch-up after this conversation's Pi was started again (for example after a server restart): background processes cut off while Pi was stopped, Taskfleet runs whose state changed, and runs still going whose wait was cut. Run states are Taskfleet's own report. The agent's context carries the full text; this is the person's presentation of it.",
+      "description": "Habitat's report of a rest: when and why Pi stopped, background processes cut off with it, this conversation's Taskfleet runs that settled and the agent was not yet told about, and its runs still working. Before the wake it is the rest card; in history it is the catch-up the agent received with the person's message. Run states and summaries are Taskfleet's own report. The agent's context carries the full text; this is the person's presentation of it. In history, still_running lists only runs whose wait was cut off.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -437,6 +463,9 @@
         "still_running"
       ],
       "properties": {
+        "stopped": {
+          "$ref": "#/$defs/stop"
+        },
         "processes": {
           "type": "array",
           "maxItems": 20,
@@ -488,6 +517,19 @@
                   "awaiting",
                   "stalled"
                 ]
+              },
+              "summary": {
+                "description": "Taskfleet's report of the run, the worker's own words.",
+                "type": "string",
+                "maxLength": 2000
+              },
+              "ended_at": {
+                "$ref": "common.schema.json#/$defs/timestamp"
+              },
+              "branch": {
+                "description": "The branch Taskfleet kept when the work was not merged.",
+                "type": "string",
+                "maxLength": 300
               }
             }
           }
@@ -510,6 +552,13 @@
               "title": {
                 "type": "string",
                 "maxLength": 200
+              },
+              "created_at": {
+                "$ref": "common.schema.json#/$defs/timestamp"
+              },
+              "waited": {
+                "description": "A wait the agent had started for this run was cut off when Pi stopped.",
+                "type": "boolean"
               }
             }
           }

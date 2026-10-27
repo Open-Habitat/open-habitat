@@ -4642,3 +4642,103 @@ h2.ah-rail-section-head {
   list-style: none;
   overflow-wrap: anywhere;
 }
+/* Kortti (Jari 27.10.2026): Habitat's report of a rest, at the end of the
+   conversation before the wake and as a quieter dashed marker in history. */
+.ah-rest-card {
+  display: grid;
+  gap: var(--ah-s2);
+  margin-block: var(--ah-s3);
+  padding: var(--ah-s3) var(--ah-s4);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  color: var(--ah-ink);
+  overflow-wrap: anywhere;
+}
+.ah-rest-card.ah-rest-marker {
+  background: var(--ah-surface-2);
+  border-style: dashed;
+}
+.ah-rest-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+}
+.ah-rest-title {
+  flex: 1;
+  margin: 0;
+  font-size: 1.1rem;
+}
+.ah-rest-heading {
+  margin: var(--ah-s2) 0 var(--ah-s1);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ah-rest-text {
+  margin: 0;
+  line-height: 1.5;
+}
+.ah-rest-author {
+  padding: 0 var(--ah-s2);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-rest-list {
+  display: grid;
+  gap: var(--ah-s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-rest-item {
+  display: grid;
+  grid-template-columns: 1.25rem 1fr;
+  gap: var(--ah-s2);
+  align-items: start;
+}
+.ah-rest-icon {
+  margin-top: 0.2rem;
+}
+.ah-rest-item[data-state="merged"] .ah-rest-icon {
+  color: var(--ah-ok);
+}
+.ah-rest-item[data-state="failed"] .ah-rest-icon {
+  color: var(--ah-err);
+}
+.ah-rest-meta {
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-rest-summary {
+  margin: var(--ah-s1) 0 0;
+  white-space: pre-line;
+}
+.ah-rest-branch {
+  display: block;
+}
+.ah-rest-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  margin: 0.45rem auto 0;
+  border-radius: 50%;
+  background: var(--ah-accent);
+}
+.ah-rest-wake {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin: 0;
+  padding: var(--ah-s2) var(--ah-s3);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink-2);
+}
+.ah-rest-marker .ah-rest-wake {
+  padding: 0;
+  background: none;
+}

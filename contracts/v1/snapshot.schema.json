@@ -550,6 +550,10 @@
         "run_active": {
           "type": "boolean"
         },
+        "rest": {
+          "description": "The conversation rests: its browser Pi is not running, or was woken by the person's typing and has not yet been told anything, and the conversation's report card (GET /api/v1/conversations/<id>/rest) speaks for Habitat. awake says the woken Pi is ready for the message. Absent when the agent is running or has been told, and for a conversation the browser cannot start.",
+          "$ref": "history.schema.json#/$defs/stop"
+        },
         "spinoffs_working": {
           "description": "How many of this conversation's own Taskfleet spinoffs are working now, whether or not the conversation still waits for them. Absent when none are known to work.",
           "type": "integer",

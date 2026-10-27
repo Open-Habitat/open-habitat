@@ -96,7 +96,7 @@ func (c *ConversationController) fenceWorkspace(ctx context.Context, cwd string,
 			delete(c.fileFences, inode)
 		}
 	}
-	marked := c.stopIdleLocked(idle)
+	marked := c.stopIdleLocked(idle, "person") // the person deletes the workspace
 	c.mu.Unlock()
 	c.closeStopping(marked)
 	for _, s := range marked {

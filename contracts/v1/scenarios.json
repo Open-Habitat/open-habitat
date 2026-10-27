@@ -838,5 +838,29 @@
       "examples/server-storage-not-in-use.json",
       "examples/agent-environment-not-in-use.json"
     ]
+  },
+  {
+    "id": "CT-044",
+    "covers": [
+      "resting conversation report",
+      "wake on typing"
+    ],
+    "given": [
+      "a browser conversation's Pi stopped (idle, to make room, by the person, by a crash, or with the daemon's restart) and the agent has not been told what happened since"
+    ],
+    "when": [
+      "the person opens the conversation",
+      "the person types the first character",
+      "the person sends the message"
+    ],
+    "then": [
+      "opening shows Habitat's report (when and why Pi stopped, cut-off processes, this conversation's runs that settled unreported with Taskfleet's summaries, runs still working) and starts nothing",
+      "typing wakes Pi once without a turn; a repeated or racing wake answers with the running or starting Pi, never a second child or a conflict",
+      "the first message carries the same report to the agent, which then appears in history as the rest's marker; the snapshot's rest ends",
+      "an unreadable Taskfleet inventory is reported unavailable, never as nothing settled"
+    ],
+    "fixtures": [
+      "examples/rest.json"
+    ]
   }
 ]

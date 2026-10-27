@@ -133,7 +133,7 @@ func (c *ConversationController) startHeld(s *conversation) {
 	} else if release, ok := c.proofPermit(context.Background()); !ok {
 		problem = "source_unavailable"
 	} else {
-		_, problem = c.resume(s.id, s)
+		_, problem = c.resume(s.id, s, false)
 		release()
 	}
 	if problem == "" {
@@ -268,6 +268,7 @@ func (c *ConversationController) awaitReady(s *conversation) {
 	unneeded := s.lazy && len(s.held) == 0 && !heldCommand && s.state == "idle"
 	if unneeded {
 		s.state = "stopping"
+		stopFor(s, "person") // what it was started for was taken back
 	}
 	if heldCommand {
 		s.bash.state = "running"
@@ -378,6 +379,7 @@ func (c *ConversationController) cancelHeld(w http.ResponseWriter, r *http.Reque
 	case s.state == "starting" && s.lazy && !s.dead:
 		s.startupCancelled = true
 		s.state = "stopping"
+		stopFor(s, "person")
 		stopChild = true
 	}
 	// The start is cancelled, so a `!` command waiting for it never runs.

@@ -136,6 +136,13 @@ type conversation struct {
 	promptIDs    []string         // every command ID the outstanding native prompt carries
 	idleSince    time.Time        // first consecutive idle observation; reset by busy observations
 	lastUsed     time.Time        // last start or prompt; makeRoom stops the longest unused idle child first
+	// Why and when this child stopped, and the stop it was started from: the
+	// facts of the rest card (rest_linux.go). Daemon memory only, like
+	// receipts; a daemon restart is itself the cause of every later rest.
+	stopCause string
+	stoppedAt time.Time
+	wokeFrom  restFact
+	told      bool // a prompt reached Pi, which gave the agent its catch-up
 }
 
 type heldMessage struct {
@@ -248,6 +255,7 @@ func (c *ConversationController) shutdown() {
 			s.recapTimer.Stop()
 		}
 		s.state = "uncertain"
+		stopFor(s, "restart")
 		if c.journal != nil {
 			c.journal.appendInvalidation("pi:" + s.id)
 		}
@@ -369,6 +377,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.readReceipt(w, r, parts[0])
 	case r.Method == http.MethodGet && parts[1] == "status":
 		c.observe(w, r, parts[0])
+	case r.Method == http.MethodGet && parts[1] == "rest":
+		c.restReport(w, r, parts[0])
 	case r.Method == http.MethodGet && parts[1] == "eligibility":
 		c.historyEligibility(w, r, parts[0])
 	case r.Method == http.MethodGet && parts[1] == "commands":
@@ -638,6 +648,10 @@ func (c *ConversationController) watch(s *conversation) {
 	_ = s.rpc.out.Close()
 	c.mu.Lock()
 	s.dead = true
+	if s.stoppedAt.IsZero() { // restOf may have seen the reap first
+		s.stoppedAt = time.Now()
+	}
+	stopFor(s, "crash") // nobody here asked it to stop
 	s.interrupted = s.runActive || s.state == "pending" || s.state == "accepted"
 	s.runActive = false // a reaped child runs nothing, whatever its last event said
 	if s.recapTimer != nil {
@@ -872,6 +886,11 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	// A prompt Pi may have taken carries the catch-up of the rest it woke
+	// from; the card has said its piece.
+	if err != nil || accepted {
+		s.told = true
+	}
 	if s.state != "pending" {
 		return
 	}
@@ -1339,6 +1358,7 @@ func (c *ConversationController) stop(w http.ResponseWriter, r *http.Request, id
 	if s.state != "stopping" {
 		s.startupCancelled = true
 		s.state = "stopping"
+		stopFor(s, "person")
 		if c.journal != nil {
 			c.journal.appendInvalidation("pi:" + id)
 		}

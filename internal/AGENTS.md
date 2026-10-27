@@ -363,7 +363,17 @@ Native truth:
   writes it as the person, never the gateway or a host-wide settings store.
 - Reading never starts Pi: opening, scrolling, reconnecting and status reads
   start nothing. Only a send or an explicit start does, after the ownership
-  proof; terminal history stays read-only.
+  proof; terminal history stays read-only. The person's first typed
+  character in a resting conversation is such a start: a wake, without a
+  turn, that answers with a running or starting Pi rather than a conflict or
+  a second child. Nothing wakes Pi on its own: no countdown on opening and
+  no start when background work settles (Jari, 2026-10-27).
+- A resting conversation's report is Habitat's, not the agent's: the stop
+  time and cause the daemon saw (kept in memory with the handle; no handle
+  means the daemon's restart), and Taskfleet's own records read as the
+  person. The card and the agent's catch-up apply one rule to Taskfleet
+  (`unreportedRuns` and the companion's `readSpinoffs`), so the agent is
+  told what the person saw.
 - An uncertain outcome stays uncertain. A missing receipt is not a
   rejection, a 503 does not mean nothing happened, an unavailable inventory
   is not an empty one, and neither the daemon nor the browser ever repeats a

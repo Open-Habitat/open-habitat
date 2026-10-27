@@ -2,13 +2,17 @@
 
 package daemon
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 // The catch-up that process-extension.mjs prepends to the first run after Pi
 // is started again is written for the agent, in English, with raw commands.
 // The person sees a bounded projection of its details instead; the content
 // stays in the agent's context only.
 type restartNotice struct {
+	Stopped      map[string]any   `json:"stopped,omitempty"`
 	Processes    []restartProcess `json:"processes"`
 	Runs         []restartRun     `json:"runs"`
 	StillRunning []restartRun     `json:"still_running"`
@@ -18,10 +22,16 @@ type restartProcess struct {
 	Name string `json:"name"`
 }
 type restartRun struct {
-	ID    string `json:"run_id"`
-	Title string `json:"title"`
-	State string `json:"state,omitempty"`
+	ID      string `json:"run_id"`
+	Title   string `json:"title"`
+	State   string `json:"state,omitempty"`
+	Summary string `json:"summary,omitempty"`
+	EndedAt string `json:"ended_at,omitempty"`
+	Branch  string `json:"branch,omitempty"`
 }
+
+// The stop causes the daemon passes to Pi at launch (rest_linux.go).
+var restCauses = map[string]bool{"idle": true, "room": true, "person": true, "crash": true, "restart": true}
 
 var restartStates = map[string]bool{"merged": true, "not_merged": true, "failed": true, "cancelled": true, "awaiting": true, "stalled": true}
 
@@ -37,6 +47,10 @@ func nativeRestart(e nativeEntry) (historyEntry, bool) {
 		CustomType string `json:"customType"`
 		Display    bool   `json:"display"`
 		Details    struct {
+			Stopped *struct {
+				Cause string `json:"cause"`
+				At    string `json:"at"`
+			} `json:"stopped"`
 			Processes []json.RawMessage `json:"processes"`
 			Spinoffs  []json.RawMessage `json:"spinoffs"`
 			Rearm     []json.RawMessage `json:"rearm"`
@@ -50,6 +64,11 @@ func nativeRestart(e nativeEntry) (historyEntry, bool) {
 		return out, true
 	}
 	n := restartNotice{Processes: []restartProcess{}, Runs: []restartRun{}, StillRunning: []restartRun{}}
+	if st := m.Details.Stopped; st != nil && restCauses[st.Cause] {
+		if at, err := time.Parse(time.RFC3339Nano, st.At); err == nil {
+			n.Stopped = restView(restFact{st.Cause, at})
+		}
+	}
 	// Each item stands alone: a malformed one is left out, not the notice.
 	for _, item := range m.Details.Processes {
 		var p struct {
@@ -62,12 +81,15 @@ func nativeRestart(e nativeEntry) (historyEntry, bool) {
 	}
 	for _, item := range m.Details.Spinoffs {
 		var r struct {
-			ID    string `json:"run_id"`
-			State string `json:"state"`
-			Title string `json:"title"`
+			ID      string `json:"run_id"`
+			State   string `json:"state"`
+			Title   string `json:"title"`
+			Summary string `json:"summary"`
+			EndedAt string `json:"ended_at"`
+			Branch  string `json:"branch"`
 		}
 		if len(n.Runs) < 40 && json.Unmarshal(item, &r) == nil && taskfleetIDPattern.MatchString(r.ID) && restartStates[r.State] {
-			n.Runs = append(n.Runs, restartRun{r.ID, prefixBytes(r.Title, 200), r.State})
+			n.Runs = append(n.Runs, restartRun{r.ID, prefixBytes(r.Title, 200), r.State, prefixBytes(r.Summary, 2000), nativeTimestamp(r.EndedAt), prefixBytes(r.Branch, 300)})
 		}
 	}
 	for _, item := range m.Details.Rearm {

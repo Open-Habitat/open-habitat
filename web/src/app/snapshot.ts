@@ -127,6 +127,8 @@ export interface Agent {
   run_active?: boolean;
   /** This conversation's own Taskfleet spinoffs working now, wait or no wait. */
   spinoffs_working?: number;
+  /** Pi rests and the agent has not been told what happened meanwhile. */
+  rest?: import("../components/RestartNotice").RestStop;
   waiting_on?: import("../components/agentPresentation").WaitingOn[];
   capabilities?: Record<string, { state: string; reason_code: string }>;
 }

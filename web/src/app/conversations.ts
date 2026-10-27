@@ -745,7 +745,8 @@ export async function continueConversation(
     (v.run_active !== undefined && typeof v.run_active !== "boolean") ||
     v.agent_id !== id ||
     v.workspace_id !== workspace ||
-    (v.state !== "starting" && v.state !== "idle") ||
+    // A wake is idempotent: an already running Pi is the answer.
+    (v.state !== "starting" && v.state !== "idle" && v.state !== "running") ||
     v.prior_outcome !== "uncertain"
   )
     throw new Error("invalid continuation");

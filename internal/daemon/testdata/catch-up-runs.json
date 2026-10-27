@@ -1,0 +1,231 @@
+{
+ "_comment": "Shared catch-up rule: rest_linux.go unreportedRuns (the person's card) and process-extension.mjs readSpinoffs (the agent's catch-up) must report these settled runs, in this order and with these fields, and restore these waits. Both test suites read this table.",
+ "cases": [
+  {
+   "name": "own runs that settled after the branch, or that a cut-off wait was for, minus what an earlier catch-up told",
+   "session": "s1",
+   "since": "2026-10-16T12:00:00Z",
+   "waited": [
+    "01m531x6y92ggdqcmb1exzmn03"
+   ],
+   "reported": [
+    "01m531x6y92ggdqcmb1exzmn05:failed",
+    "01m531x6y92ggdqcmb1exzmn06:awaiting"
+   ],
+   "runs": [
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn00",
+     "kind": "spinoff",
+     "status": "done",
+     "title": "t 00",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "landed": true,
+     "report": {
+      "summary": "Korjasi kontrastit.",
+      "reason": "axe puhdas"
+     },
+     "manifest": {
+      "updated_at": "2026-10-16T12:30:00Z"
+     }
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn01",
+     "kind": "spinoff",
+     "status": "done",
+     "title": "t 01",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "manifest": {
+      "updated_at": "2026-10-16T11:00:00Z"
+     }
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn02",
+     "kind": "spinoff",
+     "status": "done",
+     "title": "t 02",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s2"
+     },
+     "created_by_run_id": null,
+     "manifest": {
+      "updated_at": "2026-10-16T12:30:00Z"
+     }
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn03",
+     "kind": "spinoff",
+     "status": "running",
+     "title": "t 03",
+     "created_at": "2026-10-16T09:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn04",
+     "kind": "spinoff",
+     "status": "running",
+     "title": "t 04",
+     "created_at": "2026-10-16T09:30:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn05",
+     "kind": "spinoff",
+     "status": "failed",
+     "title": "t 05",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "manifest": {
+      "updated_at": "2026-10-16T12:30:00Z"
+     }
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn06",
+     "kind": "spinoff",
+     "status": "done",
+     "title": "t 06",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "landed": true,
+     "manifest": {
+      "updated_at": "2026-10-16T12:35:00Z"
+     }
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn07",
+     "kind": "spinoff",
+     "status": "running",
+     "title": "t 07",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "stalled": true,
+     "manifest": {
+      "updated_at": "2026-10-16T09:00:00Z"
+     }
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn08",
+     "kind": "spinoff",
+     "status": "running",
+     "title": "t 08",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "attention_required": true,
+     "manifest": {
+      "updated_at": "2026-10-16T12:20:00Z"
+     }
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn09",
+     "kind": "spinoff",
+     "status": "done",
+     "title": "t 09",
+     "created_at": "2026-10-16T10:00:00Z",
+     "source_repo": "/w",
+     "agent_owner": "taskfleet",
+     "created_by_session": {
+      "harness": "pi",
+      "session_id": "s1"
+     },
+     "created_by_run_id": null,
+     "report": {
+      "summary": "Vienti valmis, yhdistäminen törmäsi."
+     },
+     "preserved_work": [
+      {
+       "branch": "wt/kept",
+       "branch_present": true
+      }
+     ],
+     "manifest": {
+      "updated_at": "2026-10-16T12:40:00Z"
+     }
+    }
+   ],
+   "settled": [
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn07",
+     "state": "stalled"
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn08",
+     "state": "awaiting"
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn00",
+     "state": "merged",
+     "summary": "Korjasi kontrastit.\n\naxe puhdas",
+     "ended_at": "2026-10-16T12:30:00Z"
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn06",
+     "state": "merged",
+     "ended_at": "2026-10-16T12:35:00Z"
+    },
+    {
+     "run_id": "01m531x6y92ggdqcmb1exzmn09",
+     "state": "not_merged",
+     "summary": "Vienti valmis, yhdistäminen törmäsi.",
+     "ended_at": "2026-10-16T12:40:00Z",
+     "branch": "wt/kept"
+    }
+   ],
+   "rearm": [
+    "01m531x6y92ggdqcmb1exzmn03"
+   ]
+  }
+ ]
+}

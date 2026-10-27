@@ -114,12 +114,19 @@ func (c *ConversationController) continuationProof(id string) (*piOwnership, bro
 	}
 }
 
-// continueEnded starts Pi again for an ended browser conversation, for example
-// to retry a failed start. The daemon requires its native ownership lock and
-// browser-origin marker; a terminal history alone cannot grant control.
+// continueEnded wakes a browser conversation: it starts Pi without a turn, as
+// the person begins to type into a resting conversation, or retries a failed
+// start. Waking is idempotent (ADR 0020 as amended 2026-10-27): a Pi that is
+// already running or starting is the answer, not a conflict, so a repeated or
+// racing wake never starts a second child or a turn. The daemon requires its
+// native ownership lock and browser-origin marker; a terminal history alone
+// cannot grant control.
 func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Request, id string) {
 	if r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
 		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	if c.awake(w, id) {
 		return
 	}
 	// Retrying a failed start takes the same path as the send that started it,
@@ -128,7 +135,8 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 	if old := c.sessions[id]; old != nil && old.state == "start_failed" && !c.closed {
 		old.state = "starting"
 		old.startProblem = ""
-		old.lazy = true
+		// A failed wake has nothing to deliver; its retry is a wake again.
+		old.lazy = len(old.held) > 0 || old.bash != nil && old.bash.state == "held"
 		if c.journal != nil {
 			c.journal.appendInvalidation("pi:" + id)
 		}
@@ -143,10 +151,15 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
+	// A racing wake may have started Pi while this one waited for the permit.
+	if c.awake(w, id) {
+		releasePermit()
+		return
+	}
 	c.mu.Lock()
 	old := c.sessions[id]
 	c.mu.Unlock()
-	s, problem := c.resume(id, old)
+	s, problem := c.resume(id, old, true)
 	releasePermit()
 	if problem != "" {
 		switch problem {
@@ -166,11 +179,33 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": "starting", "prior_outcome": "uncertain"})
 }
 
+// awake answers a wake with this daemon's Pi when one already runs or starts.
+func (c *ConversationController) awake(w http.ResponseWriter, id string) bool {
+	c.mu.Lock()
+	old := c.sessions[id]
+	if old == nil || c.closed || !(old.state == "starting" || liveChild(old) && old.state != "stopping" && old.state != "uncertain") {
+		c.mu.Unlock()
+		return false
+	}
+	state := "idle"
+	switch {
+	case old.state == "starting":
+		state = "starting"
+	case heldActivity(old) != "":
+		state = "running"
+	}
+	workspace := old.workspace
+	c.mu.Unlock()
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": workspace, "state": state, "prior_outcome": "uncertain"})
+	return true
+}
+
 // resume proves that the browser may own this native session again and starts
 // a Pi child on it. Caller holds the proof permit. The new handle replaces old
 // and inherits its spent IDs, receipts and held messages, so nothing sent
 // before the start is lost or can be sent twice. It is ready once Pi answers.
-func (c *ConversationController) resume(id string, old *conversation) (*conversation, string) {
+// A wake keeps the child running without anything to deliver.
+func (c *ConversationController) resume(id string, old *conversation, wake bool) (*conversation, string) {
 	owner, origin, ws, cwd, path, proved, eligibility := c.continuationProof(id)
 	if eligibility != "eligible" {
 		return nil, eligibility
@@ -214,7 +249,14 @@ func (c *ConversationController) resume(id string, old *conversation) (*conversa
 		c.mu.Unlock()
 		return nil, "source_unavailable"
 	}
-	p, err := launchPiRPCSession(c.runtime.Node, prefix, c.home, cwd, []string{agentPath(c.home), "USER=" + c.cfg.Username}, owner, ws, path, origin.Workspace)
+	// The rest this start ends, for the agent's catch-up. A start that
+	// follows a turn told in this daemon ends no rest.
+	woke, _, resting := c.restOf(old)
+	if !resting {
+		woke = restFact{}
+	}
+	env := append([]string{agentPath(c.home), "USER=" + c.cfg.Username}, restEnv(woke)...)
+	p, err := launchPiRPCSession(c.runtime.Node, prefix, c.home, cwd, env, owner, ws, path, origin.Workspace)
 	if err != nil {
 		c.mu.Unlock()
 		return nil, "source_unavailable"
@@ -229,6 +271,10 @@ func (c *ConversationController) resume(id string, old *conversation) (*conversa
 		s.held, s.heldChoice, s.lazy, s.interrupted = old.held, old.heldChoice, old.lazy, old.interrupted
 		s.bash = old.bash
 		old.held, old.heldChoice, old.bash = nil, nil, nil
+	}
+	s.wokeFrom = woke
+	if wake {
+		s.lazy = false
 	}
 	c.sessions[id] = s
 	if c.journal != nil {

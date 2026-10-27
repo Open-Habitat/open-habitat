@@ -387,6 +387,7 @@ export function Composer({
   shell,
   sources,
   onActivity,
+  idlePlaceholder = "Kirjoita agentille…",
 }: {
   value: string;
   csrf?: string;
@@ -420,6 +421,8 @@ export function Composer({
   sources?: ComposerSources;
   /** The person pressed or typed in the field. */
   onActivity?: () => void;
+  /** The empty field's invitation while the agent is not working. */
+  idlePlaceholder?: string;
 }) {
   // The draft is what the agent receives: the person's text with one
   // attachment reference per line after it. The field edits only the text;
@@ -1158,7 +1161,7 @@ export function Composer({
   const placeholder = shellOn
     ? ""
     : !working
-      ? "Kirjoita agentille…"
+      ? idlePlaceholder
       : `${selectedWorkingMode === "steer" ? "Ohjaa agenttia" : "Kirjoita, mitä agentti tekee työn jälkeen"}… · ${ALT}+Enter: ${MODE[other(selectedWorkingMode)].label.toLowerCase()}`;
 
   return (

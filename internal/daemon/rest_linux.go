@@ -1,0 +1,306 @@
+//go:build linux
+
+package daemon
+
+import (
+	"context"
+	"net/http"
+	"sort"
+	"sync"
+	"time"
+)
+
+// A conversation rests when its browser Pi is not running and the agent has
+// not yet been told what happened meanwhile. Habitat, not the agent, says
+// when and why Pi stopped and what settled since, before anything is started
+// (Jari's Kortti, 2026-10-27). The first prompt carries the same report to the
+// agent (process-extension.mjs catch-up), after which the rest has ended.
+//
+// The causes are what this daemon itself saw: idle (the idle reaper), room
+// (stopped to make room for another conversation), person (a stop, cancel or
+// archive), crash (Pi ended without being asked). A conversation without a
+// handle in this daemon has rested since the daemon started at the latest:
+// restart, which also covers an upgrade.
+type restFact struct {
+	cause string
+	at    time.Time
+}
+
+// stopFor records why a child is being stopped. The first cause wins: the
+// exit watcher calls an unasked end a crash. Caller holds c.mu.
+func stopFor(s *conversation, cause string) {
+	if s.stopCause == "" {
+		s.stopCause = cause
+	}
+}
+
+// restOf is the rest a handle is in, and whether its Pi is up and ready for
+// the person's message. Caller holds c.mu.
+func (c *ConversationController) restOf(s *conversation) (restFact, bool, bool) {
+	if s == nil {
+		return restFact{"restart", time.UnixMilli(c.started)}, false, true
+	}
+	// Woken by typing but not yet told: the rest it woke from still holds,
+	// also when this Pi stops again unused.
+	if !s.told && s.wokeFrom.cause != "" {
+		return s.wokeFrom, liveChild(s) && !notRunning(s) && s.state != "stopping", true
+	}
+	if liveChild(s) {
+		return restFact{}, false, false
+	}
+	if s.owner == nil {
+		// A stand-in handle for a conversation never started here.
+		return restFact{"restart", time.UnixMilli(c.started)}, false, true
+	}
+	if s.stoppedAt.IsZero() {
+		// Reaped, but its exit watcher has not taken the lock yet.
+		s.stoppedAt = time.Now()
+		stopFor(s, "crash")
+	}
+	return restFact{s.stopCause, s.stoppedAt}, false, true
+}
+
+// restView is the snapshot's and the report's projection of a rest.
+func restView(f restFact) map[string]any {
+	return map[string]any{"cause": f.cause, "at": f.at.UTC().Format(time.RFC3339Nano)}
+}
+
+// restRun is one run in the person's report and in the agent's catch-up.
+type restRun struct {
+	ID        string `json:"run_id"`
+	Title     string `json:"title"`
+	State     string `json:"state,omitempty"`
+	Summary   string `json:"summary,omitempty"`
+	EndedAt   string `json:"ended_at,omitempty"`
+	Branch    string `json:"branch,omitempty"`
+	CreatedAt string `json:"created_at,omitempty"`
+	Waited    *bool  `json:"waited,omitempty"`
+}
+
+// catchUpState is the companion's spinoffState (process-extension.mjs): the
+// agent's word for a run that settled, "" for one that still works. It differs
+// from the panel's spinoffState on purpose: these keys are what earlier
+// catch-ups recorded as told.
+func catchUpState(r nativeSpinoff) string {
+	switch {
+	case r.Landed:
+		return "merged"
+	case r.Stalled:
+		return "stalled"
+	case r.Attention || r.AwaitingInput:
+		return "awaiting"
+	}
+	return map[string]string{"done": "not_merged", "failed": "failed", "cancelled": "cancelled"}[r.Status]
+}
+
+// catchUpLive is the companion's liveRun: working on its own, so a default
+// `run wait` would not have returned yet.
+func catchUpLive(r nativeSpinoff) bool {
+	return (r.Status == "pending" || r.Status == "running") && !r.Attention && !r.AwaitingInput && !r.Stalled
+}
+
+// unreportedRuns is the companion's readSpinoffs rule, read by the daemon
+// while Pi is stopped: this conversation's own runs that settled after the
+// branch's last entry (or that a cut-off wait was for, or that Taskfleet calls
+// stalled) and that no earlier catch-up reported in that state. It also lists
+// the conversation's runs still working, whether a cut-off wait was for them.
+// The tests in testdata/catch-up-runs.json hold both readers to one rule.
+func unreportedRuns(ctx context.Context, parent nativeSession, since int64, waited, reported map[string]bool, list func(context.Context) ([]nativeSpinoff, bool), show func(context.Context, string) (nativeSpinoff, bool)) (settled, working []restRun, availability string) {
+	settled, working = []restRun{}, []restRun{}
+	runs, ok := list(ctx)
+	if !ok || runs == nil {
+		return settled, working, "unavailable"
+	}
+	availability = "available"
+	var mine, others []nativeSpinoff
+	for _, r := range runs {
+		if !belongsSpinoff(r, parent) {
+			continue
+		}
+		if catchUpLive(r) {
+			w := waited[r.ID]
+			working = append(working, restRun{ID: r.ID, Title: prefixBytes(r.Title, 200), CreatedAt: nativeTimestamp(r.CreatedAt), Waited: &w})
+		}
+		if waited[r.ID] {
+			mine = append(mine, r)
+		} else if !catchUpLive(r) {
+			others = append(others, r)
+		}
+	}
+	// A waited-for run is always looked at; the rest only up to a bounded number of reads.
+	sort.SliceStable(others, func(i, j int) bool { return others[i].CreatedAt > others[j].CreatedAt })
+	if len(others) > 20 {
+		others = others[:20]
+	}
+	candidates := append(mine, others...)
+	details := make([]*nativeSpinoff, len(candidates))
+	var wg sync.WaitGroup
+	slots := make(chan struct{}, 4)
+	for i, r := range candidates {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			slots <- struct{}{}
+			defer func() { <-slots }()
+			if d, ok := show(ctx, r.ID); ok && d.ID == r.ID && belongsSpinoff(d, parent) {
+				details[i] = &d
+			}
+		}()
+	}
+	wg.Wait()
+	for i, r := range candidates {
+		d := details[i]
+		if d == nil {
+			availability = "partial"
+			continue
+		}
+		state := catchUpState(*d)
+		if state == "" {
+			continue
+		}
+		// A stall is computed when read and never advances the record's
+		// time, and a run a cut-off wait was for is news; others must be
+		// newer than the branch.
+		updated, err := time.Parse(time.RFC3339Nano, d.Manifest.UpdatedAt)
+		fresh := waited[r.ID] || state == "stalled" || err == nil && updated.UnixMilli() > since
+		if !fresh || reported[r.ID+":"+state] {
+			continue
+		}
+		run := restRun{ID: r.ID, Title: prefixBytes(r.Title, 200), State: state, Summary: runSummary(*d)}
+		if s := d.Status; s == "done" || s == "failed" || s == "cancelled" {
+			run.EndedAt = nativeTimestamp(d.Manifest.UpdatedAt)
+		}
+		if state != "merged" {
+			for _, p := range d.Preserved {
+				if p.Branch != nil && p.BranchPresent {
+					run.Branch = prefixBytes(*p.Branch, 300)
+					break
+				}
+			}
+		}
+		settled = append(settled, run)
+	}
+	sort.SliceStable(settled, func(i, j int) bool {
+		if settled[i].EndedAt == settled[j].EndedAt {
+			return settled[i].ID < settled[j].ID
+		}
+		return settled[i].EndedAt < settled[j].EndedAt
+	})
+	sort.SliceStable(working, func(i, j int) bool { return working[i].CreatedAt < working[j].CreatedAt })
+	if len(working) > 20 {
+		working = working[:20]
+	}
+	if ctx.Err() != nil {
+		availability = "partial"
+	}
+	return settled, working, availability
+}
+
+// runSummary is Taskfleet's own report of a run, the worker's words, bounded
+// for one line of the card.
+func runSummary(d nativeSpinoff) string {
+	summary := d.Report.Summary
+	if reason := d.Report.Reason; reason != "" && reason != summary {
+		if summary != "" {
+			summary += "\n\n"
+		}
+		summary += reason
+	}
+	return prefixBytes(summary, 2000)
+}
+
+// restReport serves GET /api/v1/conversations/<id>/rest: the card a resting
+// browser conversation shows before anything is started. Reading it starts
+// nothing; Taskfleet and the native branch are read as the mapped user.
+func (c *ConversationController) restReport(w http.ResponseWriter, r *http.Request, id string) {
+	if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	origin, err := peekBrowserOrigin(c.home, id)
+	if err != nil {
+		snapshotError(w, 404, "resource_not_found")
+		return
+	}
+	sessions, err := nativeSessions(c.nativeCfg())
+	if err != nil {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	var parent *nativeSession
+	for i := range sessions {
+		if sessions[i].id != id {
+			continue
+		}
+		if parent != nil || sessions[i].cwd != origin.Cwd || sessions[i].state != "readable" {
+			snapshotError(w, 404, "resource_not_found")
+			return
+		}
+		parent = &sessions[i]
+	}
+	if parent == nil {
+		snapshotError(w, 404, "resource_not_found")
+		return
+	}
+	c.mu.Lock()
+	rest, _, resting := c.restOf(c.sessions[id])
+	c.mu.Unlock()
+	report := map[string]any{"processes": []any{}, "runs": []restRun{}, "still_running": []restRun{}}
+	reply := map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "availability": "available", "report": report}
+	if !resting {
+		historyJSON(w, reply)
+		return
+	}
+	report["stopped"] = restView(rest)
+	var scan branchScan
+	ok := false
+	if c.facts != nil {
+		scan, ok = c.facts.sessions.branch(parent.path, c.cfg.UID)
+	}
+	if !ok {
+		reply["availability"] = "unavailable"
+		historyJSON(w, reply)
+		return
+	}
+	// Every process the branch saw start and not end was cut off with Pi.
+	cut := interruptedProcesses(scan.open, time.Now().UnixMilli()+1, c.started)
+	processes := make([]map[string]string, 0, len(cut))
+	for _, p := range cut {
+		processes = append(processes, map[string]string{"process_id": p.ID, "name": p.Name})
+	}
+	report["processes"] = processes
+	// The companion's waited set: the waking waits among the newest twenty
+	// cut-off processes nobody was told about.
+	var unreported []branchProcess
+	for _, p := range scan.open {
+		if !p.Reported {
+			unreported = append(unreported, p)
+		}
+	}
+	waited := map[string]bool{}
+	for _, p := range unreported[max(0, len(unreported)-20):] {
+		if p.Wakes {
+			for _, run := range taskfleetWait(p.Command) {
+				waited[run] = true
+			}
+		}
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	home := c.home
+	settled, working, availability := unreportedRuns(ctx, *parent, scan.last, waited, scan.runs,
+		func(ctx context.Context) ([]nativeSpinoff, bool) { return listTaskfleetRuns(ctx, home) },
+		func(ctx context.Context, run string) (nativeSpinoff, bool) { return showSpinoff(ctx, home, run, *parent) })
+	report["runs"], report["still_running"] = settled, working
+	reply["availability"] = availability
+	historyJSON(w, reply)
+}
+
+// restEnv tells the started Pi's companion which rest it wakes from, so the
+// agent's catch-up names the same stop as the person's card.
+func restEnv(f restFact) []string {
+	if f.cause == "" {
+		return nil
+	}
+	return []string{"OPEN_HABITAT_STOP_CAUSE=" + f.cause, "OPEN_HABITAT_STOPPED_AT=" + f.at.UTC().Format(time.RFC3339)}
+}

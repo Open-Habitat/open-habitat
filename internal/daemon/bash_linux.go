@@ -223,6 +223,7 @@ func (c *ConversationController) abortCommand(w http.ResponseWriter, r *http.Req
 		if stopChild {
 			s.startupCancelled = true
 			s.state = "stopping"
+			stopFor(s, "person")
 		}
 		c.invalidateLocked(s)
 		c.mu.Unlock()

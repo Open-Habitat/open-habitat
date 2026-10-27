@@ -1497,6 +1497,11 @@ func writeFakeTaskfleet(home, parent, workspace, status string) error {
 		"supervisor":         map[string]string{"state": "running"}, "node_transcripts": []any{},
 		"preserved_work": []any{}, "report": map[string]string{"summary": "Synteettinen spinoff."},
 	}
+	if status == "done" {
+		// Taskfleet records no end time; an ended run's manifest was last
+		// written when it ended.
+		run["manifest"] = map[string]string{"updated_at": time.Now().UTC().Format(time.RFC3339Nano)}
+	}
 	dir := filepath.Join(root, "runs", fakeTaskfleetRunID)
 	if e := os.MkdirAll(dir, 0700); e != nil {
 		return e

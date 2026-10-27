@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Entry } from "../app/HistoryView";
-import type { RestartNotice } from "./RestartNotice";
+import { RestCard, type RestartNotice } from "./RestartNotice";
 
 const restart: RestartNotice = {
   processes: [{ process_id: "proc_8ffc", name: "wait-gate-evidence" }],
@@ -57,5 +57,54 @@ describe("restart catch-up", () => {
       />,
     );
     expect(view.getByTestId("restart-notice").querySelector("ul")).toBeNull();
+  });
+  it("becomes the rest's marker when Habitat named the stop, with Taskfleet's own words", () => {
+    const summary = "Vienti valmis.\n\n<b>yhdistäminen</b> törmäsi";
+    const view = render(
+      <Entry
+        entry={{
+          entry_key: "r",
+          kind: "unknown",
+          timestamp: "2026-10-27T05:21:00Z",
+          content: { media_type: "text/plain", text: "", complete: true },
+          restart: {
+            stopped: { cause: "idle", at: "2026-10-26T18:20:00Z" },
+            processes: [],
+            runs: [
+              {
+                run_id: "01m531x6y92ggdqcmb1exzmn00",
+                title: "CSV-vienti",
+                state: "not_merged",
+                summary,
+                branch: "wt/csv",
+              },
+            ],
+            still_running: [],
+          },
+        }}
+      />,
+    );
+    const marker = view.getByTestId("rest-marker");
+    expect(view.queryByTestId("restart-notice")).toBeNull();
+    // Native content is shown unchanged and never as markup.
+    expect(marker.querySelector(".ah-rest-summary")?.textContent).toBe(summary);
+    expect(marker.querySelector("b")).toBeNull();
+    expect(marker.querySelector(".ah-rest-branch")?.textContent).toBe("wt/csv");
+  });
+});
+
+describe("rest card", () => {
+  it("says Habitat wrote it and where the wake stands", () => {
+    const view = render(
+      <RestCard
+        stop={{ cause: "restart", at: "2026-10-26T18:20:00Z" }}
+        wake="waking"
+        unavailable
+      />,
+    );
+    const card = view.getByTestId("rest-card");
+    expect(card.getAttribute("data-wake")).toBe("waking");
+    // An unread inventory is said, never shown as an empty one.
+    expect(view.getByTestId("rest-unavailable")).toBeTruthy();
   });
 });

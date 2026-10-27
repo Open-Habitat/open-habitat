@@ -20,8 +20,8 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
-// heldFakePi records every launch and prompt in the synthetic home so a test
-// can count native writes. Files in HOME steer it: start-delay (seconds before
+// heldFakePi records every launch (and the rest it was started from) and
+// prompt in the synthetic home so a test can count native writes. Files in HOME steer it: start-delay (seconds before
 // answering get_state), start-fail (exit before reading any request),
 // prompt-exit (exit on a prompt without answering it), prompt-hold (keep
 // the turn running until the file is removed) and background (answer the
@@ -41,6 +41,7 @@ if "--no-session" in args:
         if r["type"]=="get_commands": print(json.dumps(dict(type="response",id=r["id"],command="get_commands",success=True,data=dict(commands=COMMANDS))),flush=True)
     sys.exit(0)
 open(os.path.join(home,"launches.log"),"a").write(sid+"\n")
+open(os.path.join(home,"launch-rest.log"),"a").write(os.environ.get("OPEN_HABITAT_STOP_CAUSE","-")+" "+os.environ.get("OPEN_HABITAT_STOPPED_AT","-")+"\n")
 if os.path.exists(os.path.join(home,"start-fail")): sys.exit(3)
 cwd=os.getcwd()
 d=os.path.join(home,".pi","agent","sessions","--"+cwd.strip("/").replace("/","-")+"--")

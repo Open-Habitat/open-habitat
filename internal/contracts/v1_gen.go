@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "0cbf504b04b89d3796a11de1bdde8a0f392989c71bc82b9dc446a26950d2d09a"
+const V1SchemaFingerprint = "a3db886350662921d0ea3923c52c1bf8266c20bcf6fdd5cc43e979db56e34007"
 
 var V1SchemaFiles = []string{
 	"account-profile-update.schema.json",
@@ -61,6 +61,7 @@ var V1SchemaFiles = []string{
 	"process-event.schema.json",
 	"process.schema.json",
 	"recap.schema.json",
+	"rest.schema.json",
 	"scenario.schema.json",
 	"server-access.schema.json",
 	"server-administration-change.schema.json",
@@ -138,6 +139,7 @@ type ProcessControl = json.RawMessage
 type ProcessEvent = json.RawMessage
 type Process = json.RawMessage
 type Recap = json.RawMessage
+type Rest = json.RawMessage
 type Scenario = json.RawMessage
 type ServerAccess = json.RawMessage
 type ServerAdministrationChange = json.RawMessage

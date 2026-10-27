@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "agent_id": "pi:00000000-0000-4000-8000-000000000001",
+  "availability": "available",
+  "report": {
+    "stopped": {
+      "cause": "idle",
+      "at": "2026-10-26T18:20:00Z"
+    },
+    "processes": [],
+    "runs": [
+      {
+        "run_id": "01m531x6y92ggdqcmb1exzmn00",
+        "title": "Kontrastikorjaukset",
+        "state": "merged",
+        "summary": "Korjasi 14 kontrastivirhettä hakusivulla.",
+        "ended_at": "2026-10-26T18:12:00Z"
+      },
+      {
+        "run_id": "01m531x6y92ggdqcmb1exzmn01",
+        "title": "Lainaushistorian CSV-vienti",
+        "state": "not_merged",
+        "summary": "Vienti on valmis, mutta yhdistäminen törmäsi muutokseen.",
+        "ended_at": "2026-10-26T18:41:00Z",
+        "branch": "wt/example-csv"
+      }
+    ],
+    "still_running": [
+      {
+        "run_id": "01m531x6y92ggdqcmb1exzmn02",
+        "title": "Hakuindeksin uudelleenrakennus",
+        "created_at": "2026-10-26T17:47:00Z",
+        "waited": false
+      }
+    ]
+  }
+}

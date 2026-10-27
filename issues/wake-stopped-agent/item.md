@@ -3,13 +3,14 @@ created: 2026-10-27
 updated: 2026-10-27
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/wake-stopped-agent
 lane: proto-wake
 lane_seq: 2
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Wake a stopped agent: typing starts it, Habitat's own report card before the wake
@@ -20,4 +21,4 @@ Implements Jari's choice from proto-wake-stopped-agent round 2 (Kortti; issues/p
 
 ## Acceptance Criteria
 
-- [ ] Card shows before any wake for each stop cause; typing wakes once; sending carries the report; tests at the contract and in the browser
+- [x] Card shows before any wake for each stop cause; typing wakes once; sending carries the report; tests at the contract and in the browser

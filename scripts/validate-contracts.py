@@ -75,6 +75,7 @@ checks = {
     "process-stop.json": "process-control.schema.json",
     "process-event.json": "process-event.schema.json",
     "spinoffs.json": "spinoffs.schema.json",
+    "rest.json": "rest.schema.json",
     "snapshot.json": "snapshot.schema.json",
     "account-storage.json": "account-storage.schema.json",
     "account-storage-not-in-use.json": "account-storage.schema.json",

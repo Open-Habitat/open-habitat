@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import companion, { branchFacts, readSpinoffs, catchUpMessage } from '../process-extension.mjs';
+import companion, { branchFacts, readSpinoffs, catchUpMessage, stopFact } from '../process-extension.mjs';
 
 const start = (id, startTime, command = 'sleep 9', notify = { onSuccess: 'turn', onFailure: 'turn' }) =>
   ({ type: 'message', message: { role: 'toolResult', toolName: 'process', details: { action: 'start', process: { id, name: id, command, startTime }, notify } } });
@@ -41,7 +41,7 @@ test('only this conversation\'s spinoffs that settled after its last entry, or t
   const result = await readSpinoffs({ sessionId: 's1', cwd: '/w', since, waited: new Set([ids.live]), reported: new Set([`${ids.told}:failed`]), read });
   assert.deepEqual(result.settled.map(r => [r.run_id, r.state]), [[ids.own, 'merged']]);
   assert.deepEqual(result.rearm.map(r => r.run_id), [ids.live], 'only a wait the agent had started is restored');
-  assert.deepEqual(await readSpinoffs({ sessionId: 's1', cwd: '/w', since, waited: new Set(), reported: new Set(), read: async () => null }), { settled: [], rearm: [] }, 'missing Taskfleet tells nothing');
+  assert.deepEqual(await readSpinoffs({ sessionId: 's1', cwd: '/w', since, waited: new Set(), reported: new Set(), read: async () => null }), { settled: [], rearm: [], available: false }, 'missing Taskfleet tells nothing, and says it was not read');
   assert.equal(catchUpMessage([], { settled: [], rearm: result.rearm }), null, 'a restored wait alone is not news');
 });
 
@@ -89,7 +89,7 @@ test('cross-workspace attribution, waited runs beyond the newest twenty, and sta
 test('a run-show must still belong to the parent before catch-up or rearming', async () => {
   const read = async args => args[1] === 'list' ? { runs: [run(ids.live, { status: 'running', source_repo: '/other' })] } : run(ids.live, { created_by_session: { harness: 'pi', session_id: 's2' }, landed: true });
   const result = await readSpinoffs({ sessionId: 's1', cwd: '/w', since: 0, waited: new Set([ids.live]), reported: new Set(), read });
-  assert.deepEqual(result, { settled: [], rearm: [] });
+  assert.deepEqual(result, { settled: [], rearm: [], available: true });
 });
 
 test('a stall is attributed to Taskfleet and the details carry what the person sees', () => {
@@ -98,4 +98,32 @@ test('a stall is attributed to Taskfleet and the details carry what the person s
   assert.doesNotMatch(message.content, /supervisor stopped/);
   assert.deepEqual(message.details.spinoffs, [{ run_id: ids.own, state: 'stalled', title: 'release' }]);
   assert.deepEqual(message.details.rearm, [{ run_id: ids.live, title: 'wait' }]);
+});
+
+test('the agent\'s catch-up and the person\'s card follow one settlement rule', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { cases } = JSON.parse(await readFile(new URL('../testdata/catch-up-runs.json', import.meta.url), 'utf8'));
+  for (const c of cases) {
+    const read = async args => args[1] === 'list' ? { runs: c.runs } : c.runs.find(r => r.run_id === args[2]);
+    const result = await readSpinoffs({ sessionId: c.session, cwd: '/w', since: Date.parse(c.since), waited: new Set(c.waited), reported: new Set(c.reported), read });
+    assert.deepEqual(result.settled.map(({ title, ...r }) => r), c.settled, c.name);
+    assert.deepEqual(result.rearm.map(r => r.run_id), c.rearm, c.name);
+  }
+});
+
+test('the catch-up names the stop the person\'s card named, also when nothing settled', () => {
+  const stopped = stopFact({ OPEN_HABITAT_STOP_CAUSE: 'idle', OPEN_HABITAT_STOPPED_AT: '2026-10-26T18:20:00Z' });
+  assert.deepEqual(stopped, { cause: 'idle', at: '2026-10-26T18:20:00Z' });
+  assert.equal(stopFact({ OPEN_HABITAT_STOP_CAUSE: 'nap', OPEN_HABITAT_STOPPED_AT: '2026-10-26T18:20:00Z' }), null, 'an unknown cause is no claim');
+  assert.equal(stopFact({}), null);
+  const quiet = catchUpMessage([], { settled: [], rearm: [], available: true }, stopped);
+  assert.deepEqual(quiet.details.stopped, stopped);
+  assert.match(quiet.content, /2026-10-26T18:20:00Z/);
+  assert.match(quiet.content, /Nothing settled meanwhile/);
+  const unread = catchUpMessage([], { settled: [], rearm: [], available: false }, stopped);
+  assert.doesNotMatch(unread.content, /Nothing settled/, 'an unread inventory is not an empty one');
+  assert.match(unread.content, /could not read/);
+  const told = catchUpMessage([], { settled: [{ run_id: ids.own, title: 'csv', state: 'not_merged', summary: 'Vienti valmis.\n\nTörmäys.', branch: 'wt/csv', ended_at: '2026-10-26T18:41:00Z' }], rearm: [] }, stopped);
+  assert.match(told.content, /Vienti valmis\. Törmäys\./, 'the agent reads the summary the person saw');
+  assert.deepEqual(told.details.spinoffs, [{ run_id: ids.own, state: 'not_merged', title: 'csv', summary: 'Vienti valmis.\n\nTörmäys.', ended_at: '2026-10-26T18:41:00Z', branch: 'wt/csv' }]);
 });

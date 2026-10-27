@@ -797,7 +797,10 @@ export function Entry({
   revision?: string;
 }) {
   if (entry.notice) return <NoticeEntry notice={entry.notice} />;
-  if (entry.restart) return <RestartNoticeMarker notice={entry.restart} />;
+  if (entry.restart)
+    return (
+      <RestartNoticeMarker notice={entry.restart} timestamp={entry.timestamp} />
+    );
   const processBlocks = entry.blocks?.filter((b) => b.type === "process_event");
   if (processBlocks?.length)
     return (

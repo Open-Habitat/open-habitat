@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"strconv"
+	"time"
 )
 
 // The companion's resume message (process-extension.mjs) and its details are
@@ -35,15 +36,33 @@ type interruptedProcess struct {
 	RunIDs  []string `json:"run_ids"`
 }
 
-// scanBranchProcesses reads only process lifecycle facts from the current
-// leaf's ancestry. Commands stay daemon-side; callers project a preview.
+// branchScan is what the active branch says about Pi's processes and about
+// what the agent has already been told: the same facts process-extension.mjs
+// (branchFacts) reads from Pi's own branch when Pi starts.
+type branchScan struct {
+	open []branchProcess
+	// runs holds the `run_id:state` keys of the Taskfleet runs earlier
+	// catch-ups reported.
+	runs map[string]bool
+	// last is the newest entry time on the branch, Unix ms; 0 when none.
+	last int64
+}
+
 func scanBranchProcesses(b []byte) []branchProcess {
+	return scanBranch(b).open
+}
+
+// scanBranch reads only process lifecycle and catch-up facts from the current
+// leaf's ancestry. Commands stay daemon-side; callers project a preview.
+func scanBranch(b []byte) branchScan {
 	type fact struct {
 		id, parent   string
 		start        *branchProcess
 		ended        string
 		reported     []string
+		runs         []string
 		replaceStart string
+		at           int64
 	}
 	facts := []fact{}
 	parents := map[string]string{}
@@ -54,6 +73,7 @@ func scanBranchProcesses(b []byte) []branchProcess {
 		var e struct {
 			ID         string          `json:"id"`
 			Type       string          `json:"type"`
+			Timestamp  string          `json:"timestamp"`
 			ParentID   *string         `json:"parentId"`
 			CustomType string          `json:"customType"`
 			Details    json.RawMessage `json:"details"`
@@ -68,6 +88,9 @@ func scanBranchProcesses(b []byte) []branchProcess {
 			continue
 		}
 		f := fact{id: e.ID}
+		if t, err := time.Parse(time.RFC3339Nano, e.Timestamp); err == nil {
+			f.at = t.UnixMilli()
+		}
 		if e.ParentID != nil {
 			f.parent = *e.ParentID
 		}
@@ -121,10 +144,17 @@ func scanBranchProcesses(b []byte) []branchProcess {
 					ID    string `json:"id"`
 					Start int64  `json:"startTime"`
 				} `json:"processes"`
+				Spinoffs []struct {
+					ID    string `json:"run_id"`
+					State string `json:"state"`
+				} `json:"spinoffs"`
 			}
 			if json.Unmarshal(details, &d) == nil {
 				for _, p := range d.Processes {
 					f.reported = append(f.reported, p.ID+":"+strconv.FormatInt(p.Start, 10))
+				}
+				for _, r := range d.Spinoffs {
+					f.runs = append(f.runs, r.ID+":"+r.State)
 				}
 			}
 		}
@@ -139,9 +169,14 @@ func scanBranchProcesses(b []byte) []branchProcess {
 	open := map[string]*branchProcess{}
 	order := []*branchProcess{}
 	reported := map[string]bool{}
+	scan := branchScan{runs: map[string]bool{}}
 	for _, f := range facts {
 		if !active[f.id] {
 			continue
+		}
+		scan.last = max(scan.last, f.at)
+		for _, key := range f.runs {
+			scan.runs[key] = true
 		}
 		switch {
 		case f.start != nil:
@@ -156,14 +191,14 @@ func scanBranchProcesses(b []byte) []branchProcess {
 			reported[key] = true
 		}
 	}
-	result := []branchProcess{}
+	scan.open = []branchProcess{}
 	for _, p := range order {
 		if open[p.ID] == p {
 			p.Reported = reported[p.ID+":"+strconv.FormatInt(p.Start, 10)]
-			result = append(result, *p)
+			scan.open = append(scan.open, *p)
 		}
 	}
-	return result
+	return scan
 }
 
 // interruptedProcesses projects the cut-off processes the agent has not yet

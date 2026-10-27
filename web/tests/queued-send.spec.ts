@@ -167,7 +167,7 @@ test("@lazy-resume after a daemon restart the conversation stays writable, openi
   ).toHaveLength(1);
 });
 
-test("@lazy-resume Stop before Pi runs returns the waiting message to the field and leaves Pi stopped", async ({
+test("@lazy-resume Stop before Pi runs returns the waiting message to the field and Pi never receives it", async ({
   page,
 }) => {
   test.setTimeout(90000);
@@ -211,10 +211,11 @@ test("@lazy-resume Stop before Pi runs returns the waiting message to the field 
   await expect(editor(page)).toHaveValue("tämä ei saa lähteä");
   await expect(waiting(page)).toHaveCount(0);
   await expect(page.getByTestId("held-message-notice")).toBeVisible();
-  // The Pi that was started for it is closed again once it is ready.
+  // Typing woke Pi (wake-stopped-agent), so it stays up for the text that
+  // went back to the field; nothing was delivered to it.
   await expect
     .poll(async () => (await status(page, id)).state, { timeout: 30000 })
-    .toBe("stopped");
+    .toBe("idle");
   await page.waitForTimeout(500);
   expect(await nativeUserTexts(page, id)).not.toContain("tämä ei saa lähteä");
 });

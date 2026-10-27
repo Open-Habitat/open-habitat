@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/rest.schema.json",
+  "title": "A resting browser conversation's report card",
+  "description": "GET /api/v1/conversations/<id>/rest. Habitat's own report of a rest, shown before anything is started: reading it starts nothing. The person's typing wakes Pi (POST .../continue, idempotent) and the first message carries the same report to the agent. report.stopped is absent when the conversation does not rest. availability says how much of Taskfleet could be read; unavailable is not an empty inventory.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "agent_id",
+    "availability",
+    "report"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "agent_id": {
+      "$ref": "common.schema.json#/$defs/agentId"
+    },
+    "availability": {
+      "enum": [
+        "available",
+        "partial",
+        "unavailable"
+      ]
+    },
+    "report": {
+      "$ref": "history.schema.json#/$defs/restart"
+    }
+  }
+}

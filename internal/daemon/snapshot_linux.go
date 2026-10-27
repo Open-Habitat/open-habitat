@@ -468,6 +468,17 @@ func snapshotHandlerWithGitea(cfg transport.Config, trusted func(*http.Request) 
 			for _, raw := range agents {
 				agent := raw.(map[string]any)
 				id := strings.TrimPrefix(agent["agent_id"].(string), "pi:")
+				// Only a conversation this daemon may start again rests; a
+				// terminal-held or foreign history has no card.
+				if caps, ok := agent["capabilities"].(map[string]any); ok && agent["process"] != "terminal_observed_live" {
+					if resume, ok := caps["agent_resume"].(map[string]string); ok && resume["state"] == "supported" {
+						if rest, awake, resting := controller.restOf(controller.sessions[id]); resting {
+							view := restView(rest)
+							view["awake"] = awake
+							agent["rest"] = view
+						}
+					}
+				}
 				if active := controller.sessions[id]; active != nil {
 					// Naming is a controller operation, independent of the agent's turn.
 					if active.naming {

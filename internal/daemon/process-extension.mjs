@@ -86,10 +86,12 @@ const ownRun = sessionId => r => typeof r?.source_repo === 'string' && r.source_
 const liveRun = r => ['pending', 'running'].includes(r.status) && !r.attention_required && !r.awaiting_input && !r.stalled;
 // Only the user's own Taskfleet records: runs this conversation created that
 // settled after the branch's last entry, and the ones it was waiting for.
+const unread = Object.freeze({ settled: [], rearm: [], available: false });
+// An unread inventory is not an empty one: available says whether it was read.
 export async function readSpinoffs({ sessionId, cwd, since, waited, reported, read = taskfleet }) {
-  const result = { settled: [], rearm: [] };
+  const result = { settled: [], rearm: [], available: true };
   const list = await read(['run', 'list', '--output', 'json'], cwd);
-  if (!Array.isArray(list?.runs)) return result;
+  if (!Array.isArray(list?.runs)) return unread;
   const belongs = ownRun(sessionId), live = liveRun;
   const mine = list.runs.filter(belongs);
   // A waited-for run is always looked at; the rest only up to a bounded number of reads.
@@ -98,6 +100,7 @@ export async function readSpinoffs({ sessionId, cwd, since, waited, reported, re
     const title = String(r.title ?? '').slice(0, 200);
     // List is inventory; show carries the verified landed flag, stall and update time.
     const d = await read(['run', 'show', r.run_id, '--output', 'json'], cwd);
+    if (d === null) result.available = false;
     if (d?.run_id !== r.run_id || !belongs(d)) return;
     const state = spinoffState(d);
     if (!state) {
@@ -107,24 +110,62 @@ export async function readSpinoffs({ sessionId, cwd, since, waited, reported, re
     // A stall is computed when read and never advances the record's time, and
     // anything the agent was waiting for is news; others must be newer than the branch.
     const fresh = waited.has(r.run_id) || state === 'stalled' || Date.parse(d.manifest?.updated_at ?? '') > since;
-    if (fresh && !reported.has(`${r.run_id}:${state}`)) result.settled.push({ run_id: r.run_id, title, state });
+    if (fresh && !reported.has(`${r.run_id}:${state}`)) result.settled.push({ run_id: r.run_id, title, state, ...runReport(d, state) });
   }));
+  // The daemon's card lists them in the same order (rest_linux.go).
+  result.settled.sort((a, b) => (a.ended_at ?? '').localeCompare(b.ended_at ?? '') || a.run_id.localeCompare(b.run_id));
   return result;
+}
+// Taskfleet's own report of a settled run, as the person's card shows it
+// (rest_linux.go runSummary): the worker's summary, when it ended, and the
+// branch kept when the work was not merged.
+function runReport(d, state) {
+  const out = {};
+  let summary = typeof d.report?.summary === 'string' ? d.report.summary : '';
+  const reason = typeof d.report?.reason === 'string' ? d.report.reason : '';
+  if (reason && reason !== summary) summary = summary ? `${summary}\n\n${reason}` : reason;
+  if (summary) out.summary = summary.slice(0, 2000);
+  if (['done', 'failed', 'cancelled'].includes(d.status) && Number.isFinite(Date.parse(d.manifest?.updated_at ?? ''))) out.ended_at = d.manifest.updated_at;
+  if (state !== 'merged') {
+    const kept = (Array.isArray(d.preserved_work) ? d.preserved_work : []).find(p => typeof p?.branch === 'string' && p.branch && p.branch_present);
+    if (kept) out.branch = kept.branch.slice(0, 300);
+  }
+  return out;
+}
+// The rest this Pi was started from, as the daemon saw it and passed it at
+// launch (rest_linux.go restEnv); the person's card names the same stop.
+const stopCauses = {
+  idle: 'after ten idle minutes (Habitat stops an idle Pi)',
+  room: 'to make room for another conversation (only a few run at once)',
+  person: 'because the person stopped it',
+  crash: 'unexpectedly: Pi ended without being asked',
+  restart: 'when Habitat\'s server restarted, for example for an upgrade (at the latest then)',
+};
+export function stopFact(env = process.env) {
+  const cause = env.OPEN_HABITAT_STOP_CAUSE, at = env.OPEN_HABITAT_STOPPED_AT;
+  return stopCauses[cause] && Number.isFinite(Date.parse(at ?? '')) ? { cause, at } : null;
 }
 // Each state is Taskfleet's own report; a stall is Taskfleet's liveness
 // verdict, which a live worker can contradict, so it is not restated as fact.
 const stateText = { merged: 'finished and merged', not_merged: 'finished, not merged', failed: 'failed', cancelled: 'cancelled', awaiting: 'is waiting for you (needs attention)', stalled: 'is reported stalled by Taskfleet (check `taskfleet run show` before relying on that)' };
-export function catchUpMessage(processes, spinoffs) {
-  if (!processes.length && !spinoffs.settled.length) return null;
-  const lines = ['[Open Habitat] This conversation\'s Pi had stopped (for example a server restart) and was started again for the message that follows. While it was stopped:'];
+export function catchUpMessage(processes, spinoffs, stopped = null) {
+  if (!stopped && !processes.length && !spinoffs.settled.length) return null;
+  const news = processes.length || spinoffs.settled.length;
+  const lines = stopped
+    ? [`[Open Habitat] This conversation's Pi stopped at ${stopped.at} ${stopCauses[stopped.cause]}, and was started again for the message that follows. The person saw this same report from Habitat before writing, so answer their message rather than retelling it.${news ? ' While it was stopped:' : spinoffs.available === false ? '' : ' Nothing settled meanwhile.'}`]
+    : ['[Open Habitat] This conversation\'s Pi had stopped (for example a server restart) and was started again for the message that follows. While it was stopped:'];
   if (processes.length) {
     lines.push('', 'Background processes that were cut off when Pi stopped (they are no longer running and their output is gone):');
     for (const p of processes) lines.push(`- ${p.id} "${p.name.slice(0, 200)}": ${p.command.slice(0, 300)}`);
   }
   if (spinoffs.settled.length) {
     lines.push('', 'Spinoffs whose state changed:');
-    for (const r of spinoffs.settled) lines.push(`- ${r.run_id} "${r.title}" ${stateText[r.state]}`);
+    for (const r of spinoffs.settled) {
+      lines.push(`- ${r.run_id} "${r.title}" ${stateText[r.state]}${r.ended_at ? ` (${r.ended_at})` : ''}${r.branch ? `; branch ${r.branch} kept` : ''}`);
+      if (r.summary) lines.push(`  Taskfleet's summary: ${r.summary.replace(/\s*\n\s*/g, ' ')}`);
+    }
   }
+  if (spinoffs.available === false) lines.push('', 'Habitat could not read every Taskfleet record just now, so runs that settled may be missing here; check `taskfleet run list` before relying on this.');
   if (spinoffs.rearm.length) {
     const ids = spinoffs.rearm.map(r => r.run_id).join(' ');
     lines.push('', `Still running, and your wait for them was cut off: ${spinoffs.rearm.map(r => `${r.run_id} "${r.title}"`).join(', ')}. Nothing will tell you when they settle unless you wait again: start \`taskfleet run wait ${ids} --output json\` with the process tool (notify on exit), as you did before.`);
@@ -134,8 +175,9 @@ export function catchUpMessage(processes, spinoffs) {
     // The daemon presents these details to the person (restart_linux.go).
     details: {
       schema_version: 1,
+      ...(stopped ? { stopped } : {}),
       processes: processes.map(p => ({ id: p.id, startTime: p.startTime, name: p.name.slice(0, 200) })),
-      spinoffs: spinoffs.settled.map(r => ({ run_id: r.run_id, state: r.state, title: r.title })),
+      spinoffs: spinoffs.settled.map(r => ({ run_id: r.run_id, state: r.state, title: r.title, ...(r.summary ? { summary: r.summary } : {}), ...(r.ended_at ? { ended_at: r.ended_at } : {}), ...(r.branch ? { branch: r.branch } : {}) })),
       rearm: spinoffs.rearm.map(r => ({ run_id: r.run_id, title: r.title })),
     },
   };
@@ -351,20 +393,24 @@ export default function (pi) {
       const waited = new Set(processes.filter(p => p.wakes).flatMap(p => waitRuns(p.command)));
       const sessionId = ctx.sessionManager.getSessionId?.();
       const since = branch.reduce((t, e) => Math.max(t, Date.parse(e?.timestamp ?? '') || 0), 0);
-      const spinoffs = typeof sessionId === 'string' && sessionId && ctx.cwd
-        ? readSpinoffs({ sessionId, cwd: ctx.cwd, since, waited, reported: facts.runs }).catch(() => ({ settled: [], rearm: [] }))
-        : Promise.resolve({ settled: [], rearm: [] });
-      return { processes, spinoffs };
+      const read = () => typeof sessionId === 'string' && sessionId && ctx.cwd
+        ? readSpinoffs({ sessionId, cwd: ctx.cwd, since, waited, reported: facts.runs }).catch(() => unread)
+        : Promise.resolve(unread);
+      return { processes, spinoffs: read(), read, at: Date.now(), stopped: stopFact() };
     } catch { return null; }
   }
   pi.on('before_agent_start', async () => {
     const pending = catchUp;
     catchUp = null;
     if (!pending) return;
+    // Typing woke this Pi ahead of the message: the person has watched the
+    // card follow Taskfleet since, so the agent is told what they now see. A
+    // Pi started by the send itself uses the read its start began.
+    const current = Date.now() - pending.at > 2000 ? pending.read() : pending.spinoffs;
     let timer;
-    const spinoffs = await Promise.race([pending.spinoffs, new Promise(resolve => { timer = setTimeout(() => resolve({ settled: [], rearm: [] }), 3000); })]);
+    const spinoffs = await Promise.race([current, new Promise(resolve => { timer = setTimeout(() => resolve(unread), 3000); })]);
     clearTimeout(timer);
-    const message = catchUpMessage(pending.processes, spinoffs);
+    const message = catchUpMessage(pending.processes, spinoffs, pending.stopped);
     return message ? { message } : undefined;
   });
   // A completed run only: Escape or an error is the person's or the provider's

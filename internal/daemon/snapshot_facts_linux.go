@@ -61,7 +61,7 @@ type sessionFileFacts struct {
 // sessionProcesses is the branch's open process starts (process_interrupted_linux.go).
 type sessionProcesses struct {
 	stamp fileStamp
-	open  []branchProcess
+	scan  branchScan
 }
 
 type sessionFile struct {
@@ -118,27 +118,34 @@ func (f *sessionFileFacts) header(path string, uid int) nativeSession {
 // processes scans the whole file, so the process tray's two-second poll reads
 // it again only after Pi wrote to it.
 func (f *sessionFileFacts) processes(path string, uid int) ([]branchProcess, bool) {
+	scan, ok := f.branch(path, uid)
+	return scan.open, ok
+}
+
+// branch is the active branch's process and catch-up facts, read again only
+// after Pi wrote to the file.
+func (f *sessionFileFacts) branch(path string, uid int) (branchScan, bool) {
 	before, err := stampOf(path)
 	if err != nil {
-		return nil, false
+		return branchScan{}, false
 	}
 	f.mu.Lock()
 	if c := f.procs[path]; c != nil && c.stamp == before {
 		f.mu.Unlock()
-		return c.open, true
+		return c.scan, true
 	}
 	f.mu.Unlock()
 	b, ok := readNativeBytes(path, uid)
 	if !ok {
-		return nil, false
+		return branchScan{}, false
 	}
-	open := scanBranchProcesses(b)
+	scan := scanBranch(b)
 	if after, err := stampOf(path); err == nil && after == before {
 		f.mu.Lock()
-		f.procs[path] = &sessionProcesses{stamp: before, open: open}
+		f.procs[path] = &sessionProcesses{stamp: before, scan: scan}
 		f.mu.Unlock()
 	}
-	return open, true
+	return scan, true
 }
 
 // title returns the first prompt and the native session name. Both can need
