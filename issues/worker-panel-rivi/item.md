@@ -3,7 +3,7 @@ created: 2026-10-27
 updated: 2026-10-27
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/worker-panel-rivi
@@ -11,6 +11,7 @@ lane: worker-panel
 lane_seq: 1
 collision: [web/src/components/BackgroundStrip.tsx]
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Workerit panel: Rivi direction

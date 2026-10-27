@@ -3,13 +3,14 @@ created: 2026-10-27
 updated: 2026-10-27
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/editor-markdown-preview-folding
 lane: editor-md
 lane_seq: 1
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Editor: Markdown preview and heading folding

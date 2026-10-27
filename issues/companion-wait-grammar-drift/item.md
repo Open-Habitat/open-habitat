@@ -2,7 +2,7 @@
 created: 2026-10-27
 updated: 2026-10-27
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: found by design-study worker by running the shipped module
@@ -11,6 +11,7 @@ originating_run: 01m5xxx5ffpr29q7bmbmkctzhd
 originating_run_kind: research
 lane: wait-grammar
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Companion's wait grammar still misses real run wait shapes, so restart catch-up does not re-arm

@@ -3,13 +3,14 @@ created: 2026-10-27
 updated: 2026-10-27
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 provenance: chat
 source_ref: chat:2026-10-27/github-token-expires-daily
 lane: github-auth
 collision: [internal/gateway/auth.go]
 preparation: ready
+closed: 2026-10-27
 ---
 
 # GitHub connection on Birch expires daily: gh token invalid every morning

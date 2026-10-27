@@ -3,13 +3,14 @@ created: 2026-10-27
 updated: 2026-10-27
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/agent-wait-turn-end-reminder
 lane: agent-lifecycle
 lane_seq: 3
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Remind the agent at turn end about its own live runs that nothing waits on

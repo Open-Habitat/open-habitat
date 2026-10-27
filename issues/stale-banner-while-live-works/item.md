@@ -3,12 +3,13 @@ created: 2026-10-27
 updated: 2026-10-27
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 provenance: chat
 source_ref: chat:2026-10-27/stale-banner-while-live-works
 lane: connection-state
 preparation: ready
+closed: 2026-10-27
 ---
 
 # 'Yhteys katkesi' banner while the live stream clearly works

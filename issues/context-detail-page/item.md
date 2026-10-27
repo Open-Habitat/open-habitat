@@ -1,14 +1,15 @@
 ---
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: context-impl
 lane_seq: 3
 collision: [contracts/v1/]
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Draft of the detailed context status as its own page (Sivu)
