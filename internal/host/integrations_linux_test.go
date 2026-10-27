@@ -74,12 +74,12 @@ func TestIntegrationsClosurePinsTools(t *testing.T) {
 	components := map[string]RuntimeComponent{}
 	for name, rel := range integrationProfileTools {
 		owner := "microsoft-native"
-		if name == "himalaya" || name == "rclone" || name == "gog" || name == "tea" {
+		if name == "himalaya" || name == "rclone" || name == "gog" || name == "tea" || name == "glab" {
 			owner = name
 		}
 		files["runtime/"+rel] = RuntimeFile{Path: "runtime/" + rel, Component: owner, Mode: 0755}
 	}
-	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1", "tea": "0.16.0"} {
+	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1", "tea": "0.16.0", "glab": "1.124.0"} {
 		components[name] = RuntimeComponent{Name: name, Version: version, Kind: "native"}
 	}
 	a := ReleaseArtifact{Profile: "integrations", Packages: []RuntimePackage{{"curl", "amd64", "8.5.0-2ubuntu10.6"}}}
@@ -111,6 +111,16 @@ func TestIntegrationsClosurePinsTools(t *testing.T) {
 		},
 		"no tea": func(a ReleaseArtifact, f map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact {
 			delete(f, "runtime/bin/tea")
+			return a
+		},
+		"no glab": func(a ReleaseArtifact, f map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact {
+			delete(f, "runtime/bin/glab")
+			return a
+		},
+		"glab of another version": func(a ReleaseArtifact, _ map[string]RuntimeFile, c map[string]RuntimeComponent) ReleaseArtifact {
+			r := c["glab"]
+			r.Version = "1.36.0"
+			c["glab"] = r
 			return a
 		},
 		"foreign owner": func(a ReleaseArtifact, f map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact {
@@ -150,7 +160,7 @@ func TestOnlyInstallationTargetsRequireIntegrationTools(t *testing.T) {
 	for name, rel := range integrationProfileTools {
 		files = append(files, RuntimeFile{Path: "runtime/" + rel, Component: name, Mode: 0755})
 	}
-	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1", "tea": "0.16.0"} {
+	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1", "tea": "0.16.0", "glab": "1.124.0"} {
 		components = append(components, RuntimeComponent{Name: name, Version: version, Kind: "native"})
 	}
 	current := AuthenticatedRelease{manifest: ReleaseManifest{Artifacts: []ReleaseArtifact{

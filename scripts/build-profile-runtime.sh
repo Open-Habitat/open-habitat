@@ -37,7 +37,7 @@ work=$(mktemp -d /var/tmp/oh-profile-build.XXXXXXXX)
 trap 'rm -rf "$work"' EXIT
 if [[ $profile == integrations ]]; then
   mkdir "$work/inputs"
-  cp "$repo/runtime/profiles/integrations/"{package.json,package-lock.json,artifact-lock.json,ubuntu-packages.json,microsoft-native.mjs,microsoft-native-cli.mjs,NOTICE,gog-THIRD-PARTY-NOTICES,rclone-THIRD-PARTY-NOTICES,tea-THIRD-PARTY-NOTICES} "$work/inputs/"
+  cp "$repo/runtime/profiles/integrations/"{package.json,package-lock.json,artifact-lock.json,ubuntu-packages.json,microsoft-native.mjs,microsoft-native-cli.mjs,NOTICE,gog-THIRD-PARTY-NOTICES,rclone-THIRD-PARTY-NOTICES,tea-THIRD-PARTY-NOTICES,glab-THIRD-PARTY-NOTICES} "$work/inputs/"
   podman run --rm --pull=never --network=slirp4netns --user 0 \
     -v "$work:/work" -v "$repo/scripts:/scripts:ro" \
     "$image" bash -euc '

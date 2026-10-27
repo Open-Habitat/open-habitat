@@ -186,7 +186,9 @@ class FakeTarget:
                 del tools['himalaya']
             if self.pre_tea():
                 del tools['tea']
-            rewritten = (self.faults.get('config_rewritten') or self.faults.get('pre_tea')) and self.upgraded
+            if self.pre_glab():
+                del tools['glab']
+            rewritten = (self.faults.get('config_rewritten') or self.faults.get('pre_tea') or self.faults.get('pre_glab')) and self.upgraded
             sha = ('d' if rewritten else 'c' if self.app else 'b') * 64
             return {'sha256': sha, 'owner': 0, 'mode': 0o644, 'links': 1, 'sections': ['tools'] + (['dropbox'] if self.app else []), 'tools': tools}
         if a[0] == 'user-unit':
@@ -205,8 +207,14 @@ class FakeTarget:
                 providers['imap'] = [False, 'tool_unavailable']
             if self.pre_tea():
                 providers['gitea'] = [False, 'tool_unavailable']
+            if self.pre_glab():
+                # A predecessor older than the GitLab connector lists none.
+                del providers['gitlab']
             return {'providers': providers}
         return {'active': a[1:]}
+
+    def pre_glab(self):
+        return self.faults.get('pre_glab') and not self.upgraded
 
     def pre_tea(self):
         # A predecessor without tea, or a successor that dropped it.
@@ -383,6 +391,15 @@ class Harness(unittest.TestCase):
         self.assertNotIn('tea', stages['first_use']['integrations']['tools'])
         self.assertEqual(stages['upgrade']['integrations']['providers']['gitea'], [True, None])
         self.assertIn('tea', stages['upgrade']['integrations']['tools'])
+
+    def test_predecessor_without_glab_upgrades_to_gitlab(self):
+        fake, q, failure, doc = self.journey(pre_glab=True)
+        self.assertIsNone(failure, doc)
+        stages = {s['name']: s['observations'] for s in doc['stages']}
+        self.assertNotIn('gitlab', stages['first_use']['integrations']['providers'])
+        self.assertNotIn('glab', stages['first_use']['integrations']['tools'])
+        self.assertEqual(stages['upgrade']['integrations']['providers']['gitlab'], [True, None])
+        self.assertIn('glab', stages['upgrade']['integrations']['tools'])
 
     def test_arm64_release_needs_an_arm64_target(self):
         root = self.root / 'arm64'

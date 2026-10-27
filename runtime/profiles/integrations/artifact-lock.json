@@ -74,6 +74,18 @@
       "filename": "tea-0.16.0-linux-arm64",
       "url": "https://gitea.com/gitea/tea/releases/download/v0.16.0/tea-0.16.0-linux-arm64",
       "sha256": "0e14a036322eeb1fc55e266acafeb8490e523ed99f9232034ae74861e2339879"
+    },
+    {
+      "target": "linux-amd64",
+      "filename": "glab_1.124.0_linux_amd64.tar.gz",
+      "url": "https://gitlab.com/gitlab-org/cli/-/releases/v1.124.0/downloads/glab_1.124.0_linux_amd64.tar.gz",
+      "sha256": "63df684842b0697e418649dd64374d37ac1da0fbcdcb422d6a5557222f8bb40f"
+    },
+    {
+      "target": "linux-arm64",
+      "filename": "glab_1.124.0_linux_arm64.tar.gz",
+      "url": "https://gitlab.com/gitlab-org/cli/-/releases/v1.124.0/downloads/glab_1.124.0_linux_arm64.tar.gz",
+      "sha256": "0716395a0efeb991fc844b33fe55310645afcbd9b9746e50c725e9d1cd1b8d16"
     }
   ],
   "tools": [
@@ -188,6 +200,34 @@
         "tea-THIRD-PARTY-NOTICES"
       ],
       "go_notices": "tea-THIRD-PARTY-NOTICES"
+    },
+    {
+      "target": "linux-amd64",
+      "name": "glab",
+      "version": "1.124.0",
+      "license": "MIT",
+      "source": "https://gitlab.com/gitlab-org/cli",
+      "archive": "glab_1.124.0_linux_amd64.tar.gz",
+      "member": "bin/glab",
+      "sha256": "a2ee2ea59129e39a7f15cf2443085aef8d495d2425f3f8942b43a0ba1f8533a2",
+      "license_files": [
+        "glab-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "glab-THIRD-PARTY-NOTICES"
+    },
+    {
+      "target": "linux-arm64",
+      "name": "glab",
+      "version": "1.124.0",
+      "license": "MIT",
+      "source": "https://gitlab.com/gitlab-org/cli",
+      "archive": "glab_1.124.0_linux_arm64.tar.gz",
+      "member": "bin/glab",
+      "sha256": "b119eecee632dc1eb8624df6d78ce8bdb64a009658cadc170379c4d33cdeb654",
+      "license_files": [
+        "glab-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "glab-THIRD-PARTY-NOTICES"
     }
   ]
 }

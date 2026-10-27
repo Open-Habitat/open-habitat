@@ -44,15 +44,17 @@ OVERRIDE_LIMIT = 536870912
 # Every installation ships the integration tools; only app registrations are
 # the customer's. Before the upgrade the harness enters a placeholder Dropbox
 # registration, as a customer would, which must then survive byte-for-byte.
-INTEGRATION_TOOLS = {'curl', 'gog', 'himalaya', 'microsoft-native', 'ms-365-mcp-server', 'pi', 'rclone', 'tea'}
-# tea arrived with a later release: a predecessor that predates it publishes
-# the other tools, and its daemon offers no usable Gitea until tea is there.
-PRE_TEA_TOOLS = INTEGRATION_TOOLS - {'tea'}
+INTEGRATION_TOOLS = {'curl', 'gog', 'himalaya', 'microsoft-native', 'ms-365-mcp-server', 'pi', 'rclone', 'tea', 'glab'}
+# Tools that arrived with a later release, and the provider each offers: a
+# predecessor that predates one publishes the other tools, and its daemon
+# offers no usable provider until the tool is there.
+LATE_TOOLS = {'tea': 'gitea', 'glab': 'gitlab'}
 INTEGRATIONS_INSTALLED = {'imap': [True, None], 'caldav': [True, None], 'carddav': [True, None], 'apple': [True, None],
                           'google': [False, 'app_credentials_required'],
                           'microsoft': [False, 'app_credentials_required'],
                           'dropbox': [False, 'app_credentials_required'],
-                          'gitea': [True, None]}
+                          'gitea': [True, None],
+                          'gitlab': [True, None]}
 PACKAGE_RE = re.compile(r'^open-habitat-[0-9A-Za-z.+-]+-linux-(amd64|arm64)\.tar\.gz$')
 # What uname -m reports for each package architecture.
 MACHINES = {'amd64': 'x86_64', 'arm64': 'aarch64'}
@@ -573,25 +575,27 @@ class Qualification:
     def integrations(self):
         config = self.probe('integrations-config')
         tools = config['tools']
-        tea = 'tea' in tools
-        had_tea = self.obs.get('integrations_tea', tea)
-        if set(tools) not in (INTEGRATION_TOOLS, PRE_TEA_TOOLS) or (had_tea and not tea) \
+        late = sorted(t for t in LATE_TOOLS if t in tools)
+        had = self.obs.get('integrations_late', late)
+        if not (INTEGRATION_TOOLS - set(LATE_TOOLS) <= set(tools) <= INTEGRATION_TOOLS) or not set(had) <= set(late) \
                 or not all(t['root_owned'] and t['executable'] for t in tools.values()) \
                 or config['owner'] != 0 or config['mode'] != 0o644 or config['links'] != 1:
             raise Failure('integration_tools_missing', 'integrations.json does not name every shipped root-owned tool',
                           {'tools': tools, 'owner': config['owner'], 'mode': oct(config['mode'])})
-        # The upgrade that brings tea legitimately rewrites the tools member.
-        if self.obs.get('integrations_config_sha256', config['sha256']) != config['sha256'] and had_tea == tea:
+        # The upgrade that brings a late tool legitimately rewrites the tools member.
+        if self.obs.get('integrations_config_sha256', config['sha256']) != config['sha256'] and had == late:
             raise Failure('integrations_config_changed', 'integrations.json changed without a release or customer change')
-        self.obs['integrations_config_sha256'], self.obs['integrations_tea'] = config['sha256'], tea
+        self.obs['integrations_config_sha256'], self.obs['integrations_late'] = config['sha256'], late
         want = dict(self.obs.setdefault('integrations_expected', json.loads(json.dumps(INTEGRATIONS_INSTALLED))))
-        if not tea:
-            want['gitea'] = [False, 'tool_unavailable']
+        for tool, provider in LATE_TOOLS.items():
+            if tool not in tools:
+                want[provider] = [False, 'tool_unavailable']
         providers = {n: self.probe('integrations', n, str(GATEWAY), str(GATEWAY))['providers'] for _, n in PEOPLE}
         for name, got in providers.items():
-            # A predecessor older than the Gitea connector lists no Gitea.
-            if not tea and 'gitea' not in got:
-                got = dict(got, gitea=want['gitea'])
+            # A predecessor older than a late connector does not list it.
+            for tool, provider in LATE_TOOLS.items():
+                if tool not in tools and provider not in got:
+                    got = dict(got, **{provider: want[provider]})
             if got != want:
                 raise Failure('integrations_unexpected', f'{name} sees an unexpected integration catalog', {'providers': got, 'expected': want})
         return {'config_sha256': config['sha256'], 'sections': config['sections'], 'tools': sorted(tools),
