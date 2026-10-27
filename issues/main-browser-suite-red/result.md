@@ -60,3 +60,7 @@ The product behaves as that change intended; no product code changed.
     (untriaged). So the acceptance "both suites green on idle Birch" is not
     shown yet: the remaining reds are load-sensitive waits outside this issue,
     not the failures this issue named.
+- After rebasing onto 479be1b7 the three changed specs pass again, except
+  `browser-conversation.spec.ts:145` (saved bash row after reload). It also
+  fails on plain main 479be1b7, so this change did not cause it. Another
+  worker has filed it as `flaky-saved-turn-bash-row`.
