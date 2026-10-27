@@ -139,6 +139,9 @@ checks = {
     "views.json": "view.schema.json",
     "view-handoff.json": "view.schema.json",
     "notice-view.json": "notice.schema.json",
+    "file-offers.json": "file-offer.schema.json",
+    "file-offer.json": "file-offer.schema.json",
+    "notice-file-offer.json": "notice.schema.json",
     "composer-start-page.json": "composer.schema.json",
     "composer-commands.json": "composer.schema.json",
     "composer-start-page-unavailable.json": "composer.schema.json",
@@ -219,6 +222,18 @@ for entry in ["../index.html", "/index.html", ".hidden/index.html", "site/.x.htm
 must_reject("view.schema.json", {"schema_version": 1, "views": [{**view, "path": "/home/x/report.html"}]})
 must_reject("view.schema.json", {"schema_version": 1, "url": "http://oh-view-a.example.invalid/_open-habitat/handoff?token=" + "A" * 43})
 must_reject("view.schema.json", {"schema_version": 1, "url": "https://oh-view-a.example.invalid/index.html"})
+
+# An offered file is named inside its offer, never by a path outside it, a
+# hidden name or a home path, and a notice carries at most one offer.
+offer_manifest = json.loads((BASE / "examples" / "file-offer.json").read_text())
+item = offer_manifest["items"][0]
+for bad in ["../x.md", "/etc/passwd", ".ssh/id", "a/.git/config", "a//b", "a/", "a\\b", "a\nb"]:
+    must_reject("file-offer.schema.json", {**offer_manifest, "items": [{**item, "path": bad}]})
+must_reject("file-offer.schema.json", {**offer_manifest, "items": [{**item, "kind": "html"}]})
+must_reject("file-offer.schema.json", {**offer_manifest, "offer": {**offer_manifest["offer"], "path": "/home/x/out"}})
+must_reject("file-offer.schema.json", {**offer_manifest, "offer": {**offer_manifest["offer"], "folder": "a/b"}})
+notice_offer = json.loads((BASE / "examples" / "notice-file-offer.json").read_text())
+must_reject("notice.schema.json", {**notice_offer, "notice": {**notice_offer["notice"], "view": json.loads((BASE / "examples" / "views.json").read_text())["views"][0]}})
 
 # A deletion request names an entry, never a path.
 must_reject("workspace-deletion.schema.json", {"action": "trash_restore", "entry": "../x"})

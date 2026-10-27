@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ControlButton } from "./ControlElements";
+import type { FileOfferSummary } from "../app/fileOffers";
 import type { ViewSummary } from "./ViewOffer";
 
 export type AgentNotice = {
@@ -10,6 +11,8 @@ export type AgentNotice = {
   persistence: "persisted" | "not_persisted" | "unknown";
   /** Set when the notice offers an HTML view (ADR 0032). */
   view?: ViewSummary;
+  /** Set when the notice offers files to download. */
+  file_offer?: FileOfferSummary;
 };
 
 // Agent text is data, not markup, a link, or a system instruction.

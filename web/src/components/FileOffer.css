@@ -1,0 +1,391 @@
+/* Agent file offers: the card in the conversation (Kortti, Tunniste), the
+   compact package card and the conversation's file panel (Hylly). The panel
+   shares the view panel's pane, header and split (ViewPanel.css). */
+.ah-file-offer {
+  max-width: min(var(--ah-measure), 100%);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ah-s3);
+  padding: var(--ah-s4);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+}
+.ah-file-offer-mark {
+  --ah-kind: var(--ah-ink-2);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid color-mix(in srgb, var(--ah-kind) 40%, var(--ah-line));
+  border-radius: var(--ah-r-md);
+  background: color-mix(in srgb, var(--ah-kind) 12%, var(--ah-surface));
+  color: var(--ah-kind);
+}
+.ah-file-offer-mark[data-group="media"] {
+  --ah-kind: var(--ah-syntax-keyword);
+}
+.ah-file-offer-mark[data-group="document"] {
+  --ah-kind: var(--ah-syntax-number);
+}
+.ah-file-offer-mark[data-group="data"] {
+  --ah-kind: var(--ah-syntax-string);
+}
+.ah-file-offer-mark[data-group="other"] {
+  --ah-kind: var(--ah-ink-2);
+  border-color: var(--ah-line);
+  background: var(--ah-surface);
+}
+.ah-file-offer-mark svg {
+  width: 18px;
+  height: 18px;
+}
+.ah-file-offer-body {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: var(--ah-s1);
+  justify-items: start;
+}
+.ah-file-offer-label,
+.ah-file-offer-meta {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  overflow-wrap: anywhere;
+}
+.ah-file-offer-title,
+.ah-file-offer-name {
+  font-family: var(--ah-mono);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ah-file-offer[data-kind="package"] .ah-file-offer-title {
+  font-family: inherit;
+}
+.ah-file-offer-folder {
+  color: var(--ah-muted);
+  font-family: var(--ah-mono);
+  font-weight: 400;
+}
+.ah-file-offer[data-state="removed"] .ah-file-offer-title {
+  color: var(--ah-muted);
+}
+.ah-file-offer-count {
+  color: var(--ah-muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+/* An image the agent offered shows in the card at a size that fits; the
+   button opens it large. */
+.ah-file-offer-image {
+  display: block;
+  max-width: 100%;
+  margin: var(--ah-s2) 0;
+  padding: 0;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-content-canvas);
+  cursor: zoom-in;
+  overflow: hidden;
+}
+.ah-file-offer-image img {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+}
+.ah-file-offer-image:focus-visible,
+.ah-file-offer-strip button:focus-visible,
+.ah-file-shelf-row:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-accent);
+  outline-offset: 2px;
+}
+.ah-file-offer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+  margin-top: var(--ah-s2);
+}
+.ah-file-offer-actions > a,
+.ah-file-shelf-offer h3 > a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  text-decoration: none;
+}
+/* The package card's strip of images and its folders. */
+.ah-file-offer-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: var(--ah-s1);
+  width: 100%;
+  margin-top: var(--ah-s2);
+  padding: var(--ah-s1);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+}
+.ah-file-offer-strip button {
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ah-r-sm);
+  background: var(--ah-sunken);
+  cursor: zoom-in;
+  overflow: hidden;
+}
+.ah-file-offer-strip img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ah-file-offer-more {
+  display: grid;
+  place-items: center;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-file-offer-folders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s1) var(--ah-s3);
+  color: var(--ah-ink-2);
+  font: var(--ah-size-meta) var(--ah-mono);
+}
+.ah-file-offer-folders > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ah-file-offer-folders svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ah-muted);
+}
+.ah-file-offer-ext {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-sm);
+  background: var(--ah-surface);
+  color: var(--ah-ink-2);
+  font: 600 11px var(--ah-mono);
+}
+
+/* The conversation's file panel. */
+.ah-file-shelf .ah-view-title {
+  font-weight: 600;
+}
+.ah-file-shelf-scroll {
+  display: grid;
+  align-content: start;
+  gap: var(--ah-s4);
+  flex: 1;
+  min-height: 0;
+  padding: var(--ah-s4);
+  overflow: auto;
+}
+.ah-file-shelf-search {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-control-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-muted);
+}
+.ah-file-shelf-search:focus-within {
+  outline: var(--ah-focus-width) solid var(--ah-accent);
+  outline-offset: 1px;
+}
+.ah-file-shelf-search svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.ah-file-shelf-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ah-ink);
+  font: inherit;
+  outline: none;
+}
+.ah-file-shelf-detail {
+  display: grid;
+  justify-items: start;
+  gap: var(--ah-s1);
+  padding-bottom: var(--ah-s4);
+  border-bottom: 1px solid var(--ah-line);
+}
+.ah-file-shelf-detail .ah-file-offer-image {
+  justify-self: stretch;
+  display: grid;
+  place-items: center;
+  margin-top: 0;
+}
+.ah-file-shelf-offer {
+  display: grid;
+  gap: var(--ah-s2);
+}
+.ah-file-shelf-offer h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s2);
+  margin: 0;
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+}
+.ah-file-shelf-offer h3 > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ah-file-shelf-group {
+  display: grid;
+  gap: var(--ah-s1);
+}
+.ah-file-shelf-folder {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  color: var(--ah-ink-2);
+  font: var(--ah-size-meta) var(--ah-mono);
+  overflow-wrap: anywhere;
+}
+.ah-file-shelf-folder svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.ah-file-shelf-folder .ah-file-offer-count {
+  margin-left: auto;
+}
+.ah-file-shelf-group ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-file-shelf-folder + ul {
+  padding-left: var(--ah-s3);
+}
+.ah-file-shelf-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ah-s3);
+  width: 100%;
+  min-height: 40px;
+  padding: var(--ah-s1) var(--ah-s2);
+  border: 1px solid transparent;
+  border-radius: var(--ah-r-md);
+  background: transparent;
+  color: var(--ah-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ah-file-shelf-row:hover {
+  background: var(--ah-surface-hover);
+}
+.ah-file-shelf-row[aria-current="true"] {
+  border-color: var(--ah-line-strong);
+  background: var(--ah-surface);
+}
+.ah-file-shelf-thumb {
+  width: 40px;
+  height: 30px;
+  border-radius: var(--ah-r-sm);
+  object-fit: cover;
+}
+.ah-file-shelf-name {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--ah-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-file-shelf-size {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The preview dialog's offered kinds. */
+.ah-attachment-preview-media {
+  display: block;
+  width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  background: #000;
+  border-radius: var(--ah-r-sm);
+}
+.ah-attachment-preview-audio {
+  width: 100%;
+}
+.ah-offered-text pre {
+  margin: 0;
+  padding: var(--ah-s4);
+  font: var(--ah-size-meta) / 1.5 var(--ah-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ah-offered-table table {
+  border-collapse: collapse;
+  font-size: var(--ah-size-meta);
+}
+.ah-offered-table th,
+.ah-offered-table td {
+  padding: var(--ah-s1) var(--ah-s3);
+  border: 1px solid var(--ah-line);
+  text-align: left;
+  white-space: nowrap;
+}
+.ah-offered-table th {
+  background: var(--ah-surface-2);
+  font-weight: 600;
+}
+.ah-offered-archive ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: var(--ah-s4);
+  list-style: none;
+  font: var(--ah-size-meta) var(--ah-mono);
+}
+.ah-offered-archive li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ah-s4);
+  overflow-wrap: anywhere;
+}
+.ah-offered-archive li > span:last-child {
+  flex: none;
+  color: var(--ah-muted);
+}
+.ah-file-offer-actions svg,
+.ah-file-shelf-offer h3 svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The top bar's file panel toggle with the conversation's file count. */
+.ah-files-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  font-variant-numeric: tabular-nums;
+}
+.ah-files-toggle[aria-pressed="true"] {
+  background: var(--ah-surface-press);
+  color: var(--ah-ink);
+}

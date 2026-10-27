@@ -10,6 +10,7 @@ import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/snapshot.schema.json";
+import fileOfferSchema from "../../../contracts/v1/file-offer.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import workspaceChange from "../../../contracts/v1/workspace-change.schema.json";
 import type { GitSummaryFacts } from "../components/GitStatus";
@@ -18,6 +19,7 @@ const ajv = new Ajv({ strict: false, allErrors: false });
 ajv.addSchema(processEventSchema);
 ajv.addSchema(noticeSchema);
 ajv.addSchema(viewSchema);
+ajv.addSchema(fileOfferSchema);
 ajv.addSchema(editorSchema);
 addFormats(ajv);
 for (const definition of [

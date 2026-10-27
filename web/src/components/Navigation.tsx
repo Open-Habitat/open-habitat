@@ -1024,6 +1024,7 @@ export function AgentHeader({
   titleAction,
   archive,
   editorControl,
+  filesControl,
   settings,
   contextIndicator,
   modelPicker,
@@ -1049,6 +1050,8 @@ export function AgentHeader({
   archive?: ArchiveControlsProps;
   /** The workspace editor's controls (Rinnakkain), where it is offered. */
   editorControl?: ReactNode;
+  /** The conversation's file panel toggle, where it has offered files. */
+  filesControl?: ReactNode;
   archiveReason?: string;
   settings?: { model?: string; thinking?: string };
   /** How full the model's context is (Rengas), just before the model. */
@@ -1198,6 +1201,7 @@ export function AgentHeader({
               <span>{settings.thinking ?? "Agentti"}</span>
             </ControlButton>
           ) : null)}
+        {filesControl}
         {editorControl}
         {terminal}
         {titleAction ? (

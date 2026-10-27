@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "agent_id": "pi:11111111-1111-4111-8111-111111111111",
+  "notice": {
+    "notice_id": "44444444-4444-4444-8444-444444444444",
+    "origin": "agent",
+    "timestamp": "2026-10-27T11:19:00Z",
+    "text": "Kumppanipaketti",
+    "persistence": "persisted",
+    "file_offer": {
+      "offer_id": "fabcdefghijklmnopqrstuvwxyz",
+      "title": "Kumppanipaketti",
+      "folder": "kumppanipaketti",
+      "files": 4,
+      "bytes": 9437184,
+      "created_at": "2026-10-27T11:19:00Z",
+      "conversation_id": "pi:11111111-1111-4111-8111-111111111111"
+    }
+  },
+  "dry_run": false
+}

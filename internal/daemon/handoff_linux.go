@@ -137,6 +137,10 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	// View files are read per request like the editor relay, with paths that
 	// are the person's file names: not logged per request either.
 	outer.Handle(ViewExportPrefix, ViewExportHandler(cfg, server.TrustedPeer))
+	// Offered files likewise: their paths are the person's file names.
+	offers := FileOffersHandler(cfg, server.TrustedPeer)
+	outer.Handle(FileOffersPath, offers)
+	outer.Handle(FileOffersPath+"/", offers)
 	// Share this controller, not the browser mux or its trusted-peer capability.
 	if len(agents) > 0 {
 		agent := agents[0]

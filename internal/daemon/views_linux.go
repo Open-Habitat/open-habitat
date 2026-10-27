@@ -226,7 +226,7 @@ func planView(root int, req viewRequest) (viewPlan, error) {
 			return viewPlan{}, viewFail(400, "view_entry_not_html")
 		}
 		plan := viewPlan{entry: req.Entry}
-		if err := walkView(fd, "", 0, &plan); err != nil {
+		if err := walkView(fd, "", 0, &plan, viewLimits{maxViewFiles, maxViewBytes}); err != nil {
 			return viewPlan{}, err
 		}
 		for _, f := range plan.files {
@@ -240,7 +240,14 @@ func planView(root int, req viewRequest) (viewPlan, error) {
 	}
 }
 
-func walkView(dirfd int, prefix string, depth int, plan *viewPlan) error {
+// viewLimits bound one walk: a view and a file offer freeze by the same
+// rules but to different sizes.
+type viewLimits struct {
+	files int
+	bytes int64
+}
+
+func walkView(dirfd int, prefix string, depth int, plan *viewPlan, limits viewLimits) error {
 	if depth > maxViewDepth {
 		return viewFail(413, "view_too_deep")
 	}
@@ -256,7 +263,7 @@ func walkView(dirfd int, prefix string, depth int, plan *viewPlan) error {
 		for _, e := range batch {
 			names = append(names, e.Name())
 		}
-		if len(names) > 4*maxViewFiles {
+		if len(names) > 4*limits.files {
 			return viewFail(413, "view_too_many_files")
 		}
 		if errors.Is(err, io.EOF) || err == nil && len(batch) == 0 {
@@ -290,10 +297,10 @@ func walkView(dirfd int, prefix string, depth int, plan *viewPlan) error {
 		case unix.S_IFREG:
 			plan.files = append(plan.files, viewFile{rel, st.Size})
 			plan.bytes += st.Size
-			if len(plan.files) > maxViewFiles {
+			if len(plan.files) > limits.files {
 				return viewFail(413, "view_too_many_files")
 			}
-			if plan.bytes > maxViewBytes {
+			if plan.bytes > limits.bytes {
 				return viewFail(413, "view_too_large")
 			}
 		case unix.S_IFDIR:
@@ -301,7 +308,7 @@ func walkView(dirfd int, prefix string, depth int, plan *viewPlan) error {
 			if err != nil {
 				return viewOpenError(err)
 			}
-			err = walkView(child, rel, depth+1, plan)
+			err = walkView(child, rel, depth+1, plan, limits)
 			unix.Close(child)
 			if err != nil {
 				return err
@@ -767,7 +774,7 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	n, status, code := c.createNotice(ctx, q, req.Key, summary.Title, &summary, false)
+	n, status, code := c.createNotice(ctx, q, req.Key, summary.Title, noticeOffer{view: &summary}, false)
 	if status != 0 {
 		if existing == nil {
 			_ = removeView(c.viewCfg().Home, summary.ID)

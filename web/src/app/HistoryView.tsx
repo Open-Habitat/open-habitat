@@ -61,7 +61,7 @@ import {
 } from "./sessionSettings";
 import type { Agent } from "./snapshot";
 import { rowIndexOf, visibleEntryKeys } from "./useReadingPosition";
-import { NoticeEntry } from "./ViewHost";
+import { FilesHeaderControl, NoticeEntry } from "./ViewHost";
 import { EditorHeaderControls } from "./WorkspaceEditor";
 
 // Only the daemon's explicit fallback marker is interpreted here. Unknown data
@@ -1602,6 +1602,7 @@ function HistoryViewContent({
       <AgentHeader
         terminal={shell.toggle}
         editorControl={<EditorHeaderControls />}
+        filesControl={<FilesHeaderControl conversationId={agent.agent_id} />}
         title={agent.title.display}
         titlePending={
           titlePending || agent.title.generation_state === "pending"

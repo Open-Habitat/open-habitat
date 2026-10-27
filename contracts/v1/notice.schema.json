@@ -39,7 +39,16 @@
         },
         "view": {
           "$ref": "view.schema.json#/$defs/view"
+        },
+        "file_offer": {
+          "$ref": "file-offer.schema.json#/$defs/offer"
         }
+      },
+      "not": {
+        "required": [
+          "view",
+          "file_offer"
+        ]
       }
     }
   },

@@ -6,6 +6,7 @@ import historySchema from "../../../contracts/v1/history.schema.json";
 import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/spinoffs.schema.json";
+import fileOfferSchema from "../../../contracts/v1/file-offer.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { HistoryEntry } from "./history";
 export type WorkerHarness = "pi" | "claude" | "unknown";
@@ -60,6 +61,7 @@ for (const s of [
   processEventSchema,
   noticeSchema,
   viewSchema,
+  fileOfferSchema,
   editorSchema,
   common,
   historySchema,

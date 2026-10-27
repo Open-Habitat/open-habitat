@@ -107,6 +107,9 @@ var helpSpecs = []helpSpec{
 	{"agent view offer", "Offer a workspace HTML file, or a directory with --entry-file, as a frozen view the person opens in a side panel or own tab; publishes a card in the --current or --conversation conversation, never opens anything", "agent view offer --current --source report.html --idempotency-key 00000000-0000-4000-8000-000000000002 --json", []string{"--workspace", "--source", "--entry-file", "--title", "--conversation", "--current", "--idempotency-key", "--dry-run"}},
 	{"agent view list", "List the person's frozen views, newest first", "agent view list --json", []string{"--output"}},
 	{"agent view remove", "Remove one frozen view's export; open cards say it is gone", "agent view remove --view vabcdefghijklmnopqrstuvwxyz --dry-run --json", []string{"--view", "--dry-run"}},
+	{"agent file offer", "Offer workspace files (repeat --source; a directory keeps its folders) as a frozen copy the person previews and downloads; publishes a card in the --current or --conversation conversation, never sends anything elsewhere", "agent file offer --current --source out/report.pdf --idempotency-key 00000000-0000-4000-8000-000000000003 --json", []string{"--workspace", "--source", "--title", "--conversation", "--current", "--idempotency-key", "--dry-run"}},
+	{"agent file list", "List the person's file offers, newest first", "agent file list --json", []string{"--output"}},
+	{"agent file remove", "Remove one file offer's frozen copy; its card says it was removed", "agent file remove --offer-id fabcdefghijklmnopqrstuvwxyz --dry-run --json", []string{"--offer-id", "--dry-run"}},
 	{"agent environment show", "Read own quota, capacity, daemon version and the site's public origin for links", "agent environment show --json", nil},
 	{"agent workspace list", "Discover native workspaces", "agent workspace list --json", []string{"--output"}},
 	{"agent conversation show", "Read an explicit live record or verified inherited context", "agent conversation show --current --json", []string{"--current", "--conversation"}},
@@ -180,8 +183,14 @@ func commandHelp(args []string) (any, error) {
 				flag["description"] = "Required provider whose app credentials change"
 				flag["possible_values"] = []string{"google", "microsoft", "dropbox"}
 			}
-			if f == "--workspace" && key == "agent view offer" {
+			if f == "--workspace" && (key == "agent view offer" || key == "agent file offer") {
 				flag["description"] = "Own ws_ ID holding --source; defaults to the launch context's workspace with --current"
+			}
+			if f == "--source" && key == "agent file offer" {
+				flag["description"] = "Workspace-relative file or directory, repeatable up to 20; a file keeps its name, a directory its folders (one directory alone is the package); symlinks and special files refuse the offer, hidden entries in a directory are skipped; at most 200 files and 512 MiB"
+			}
+			if f == "--title" && key == "agent file offer" {
+				flag["description"] = "Card title shown to the person as plain text, 1–200 bytes; defaults to the file or directory name; required with several --source"
 			}
 			if f == "--login" && key == "admin access lookup" {
 				flag["description"] = "Required GitHub login to resolve to its numeric id; read-only"
@@ -247,6 +256,8 @@ func helpFlag(name string) map[string]any {
 		v["description"] = "Card title shown to the person as plain text, 1–200 bytes; defaults to the source name"
 	case "--view":
 		v["description"] = "Exact view_id from agent view list"
+	case "--offer-id":
+		v["description"] = "Exact offer_id from agent file list"
 	case "--workspace":
 		v["description"] = "Explicit own ws_ ID from workspace list; required for creation/archive and settled-history title generation"
 	case "--name":
@@ -324,7 +335,7 @@ func helpFlag(name string) map[string]any {
 	case "--login":
 		v["description"] = "Optional tea login name that narrows the match; never selects a login whose HTTPS host:port, base path or username differs from Git's request"
 	case "--idempotency-key":
-		v["description"] = "Explicit UUID for notice/view-offer/control intent; spent message/control IDs are refused, never replayed; never use a new key to retry uncertain work"
+		v["description"] = "Explicit UUID for notice/view-offer/file-offer/control intent; spent message/control IDs are refused, never replayed; never use a new key to retry uncertain work"
 	case "--output":
 		v["description"] = "Export result rows to a new FILE.jsonl (refuses overwrite); stdout reports path and count"
 	case "--component":

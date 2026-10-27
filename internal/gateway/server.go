@@ -101,6 +101,8 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(editorOpenPath, s.auth.editorOpen)
 		mux.HandleFunc(editorStopPath, s.auth.editorStop)
 		mux.HandleFunc(viewsPath, s.auth.viewList)
+		mux.HandleFunc(fileOffersPath, s.auth.fileOffers)
+		mux.HandleFunc(fileOffersPath+"/", s.auth.fileOffers)
 	}
 	mux.HandleFunc("/", s.ui)
 	if s.auth != nil {

@@ -105,6 +105,14 @@ conversation or in a new tab. The view is a frozen copy that runs sandboxed
 without network access, so inline or bundle its assets. You cannot open their
 browser, and a dev server is not something you can show them this way.
 
+To give the person files you made (charts, spreadsheets, documents, a zip
+or a folder of photos), offer them with `open-habitat agent file offer
+--current --source out/report.pdf --idempotency-key UUID --json` (repeat
+`--source` for several; see the agent skill). The conversation shows a card
+with a preview and a download, and the person finds every offered file in the
+conversation's file panel. The offer is a frozen copy; offer again after a
+change.
+
 ## Integrations
 
 The person connects accounts in Settings → Integrations. For mail, calendars,

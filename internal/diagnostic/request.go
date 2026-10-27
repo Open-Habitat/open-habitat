@@ -63,7 +63,7 @@ func init() {
 		stream checkout attempt agents healthz readyz send steer follow_up clear_queue regenerate_title
 		history_title recap presence question abort eligibility receipt stop continue cancel_held close processes
 		clear-finished output spinoffs history entries blocks content integrations accounts login
-		terminal terminals editor workspace open`) {
+		terminal terminals editor workspace open file-offers inline download zip`) {
 		routeWords[w] = true
 	}
 }

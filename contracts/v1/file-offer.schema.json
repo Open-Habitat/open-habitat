@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/file-offer.schema.json",
+  "title": "Agent file offers",
+  "description": "An agent offers frozen copies of workspace files to the person in a conversation; the conversation's notice carries the offer. App-origin reads, the owner's session only: GET /api/v1/file-offers[?conversation_id=pi:UUID] (the person's offers, or one conversation's), GET /api/v1/file-offers/<offer_id> (one offer and its files' facts), GET /api/v1/file-offers/<offer_id>/inline/<path> (one file for the app's own image, audio and video elements: those types announced, every other file opaque octets as an attachment; HTTP Range), GET /api/v1/file-offers/<offer_id>/download/<path> (always an attachment named after the file; HTTP Range) and GET /api/v1/file-offers/<offer_id>/zip (the whole offer as one stored zip, an attachment the page names). Each path segment is percent-encoded. Every byte response carries a sandbox CSP, nosniff and no-store. A removed offer is 404.",
+  "oneOf": [
+    {"$ref": "#/$defs/list"},
+    {"$ref": "#/$defs/manifest"}
+  ],
+  "$defs": {
+    "path": {
+      "description": "A path inside the offer: relative, clean, no hidden components.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!\\.)(?!.*/\\.)(?!.*//)(?!.*/$)[^/\\\\\\u0000-\\u001f\\u007f]+(/[^/\\\\\\u0000-\\u001f\\u007f]+)*$"
+    },
+    "offer": {
+      "description": "One frozen offer. The title is agent text, shown as data; folder is the offered directory's name when one directory was offered. Nothing says the person has downloaded anything.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offer_id", "title", "files", "bytes", "created_at", "conversation_id"],
+      "properties": {
+        "offer_id": {"type": "string", "pattern": "^f[a-z2-7]{26}$"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "folder": {"type": "string", "minLength": 1, "maxLength": 255, "pattern": "^(?!\\.)[^/\\\\\\u0000-\\u001f\\u007f]+$"},
+        "files": {"type": "integer", "minimum": 1, "maximum": 200},
+        "bytes": {"type": "integer", "minimum": 0, "maximum": 536870912},
+        "created_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+        "conversation_id": {"$ref": "common.schema.json#/$defs/agentId"}
+      }
+    },
+    "item": {
+      "description": "One frozen file and the facts read from it when it was frozen. The kind comes from the name, checked against the bytes where that is cheap; a fact that could not be read is absent.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "kind"],
+      "properties": {
+        "path": {"$ref": "#/$defs/path"},
+        "bytes": {"type": "integer", "minimum": 0, "maximum": 536870912},
+        "kind": {"enum": ["image", "svg", "video", "audio", "markdown", "pdf", "docx", "xlsx", "pptx", "csv", "code", "text", "zip", "file"]},
+        "width": {"type": "integer", "minimum": 1},
+        "height": {"type": "integer", "minimum": 1},
+        "lines": {"type": "integer", "minimum": 1},
+        "columns": {"type": "integer", "minimum": 1},
+        "archive": {
+          "description": "A zip's listing from its central directory, never extracted: all entries counted, at most 100 named.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["entries", "bytes", "names"],
+          "properties": {
+            "entries": {"type": "integer", "minimum": 0},
+            "bytes": {"type": "integer", "minimum": 0},
+            "names": {
+              "type": "array",
+              "maxItems": 100,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["path", "bytes"],
+                "properties": {
+                  "path": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"},
+                  "bytes": {"type": "integer", "minimum": 0}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "list": {
+      "description": "GET /api/v1/file-offers[?conversation_id=pi:UUID]: the person's offers, or one conversation's, newest first, at most 200.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "offers"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "offers": {"type": "array", "maxItems": 200, "items": {"$ref": "#/$defs/offer"}}
+      }
+    },
+    "manifest": {
+      "description": "GET /api/v1/file-offers/<offer_id>: one offer and its files in path order.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "offer", "items"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "offer": {"$ref": "#/$defs/offer"},
+        "items": {"type": "array", "minItems": 1, "maxItems": 200, "items": {"$ref": "#/$defs/item"}}
+      }
+    }
+  }
+}

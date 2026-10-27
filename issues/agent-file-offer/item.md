@@ -3,7 +3,7 @@ created: 2026-10-26
 updated: 2026-10-27
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-26/agent-file-offer
@@ -11,6 +11,7 @@ lane: file-offer
 lane_seq: 3
 blocked_by: ['@proto-agent-file-offer', '@proto-file-offer-types', '@proto-file-offer-many']
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Agent hands a produced file to the person: implementation
@@ -26,4 +27,4 @@ The accepted prototypes are the specification: Kortti (issues/proto-agent-file-o
 
 ## Acceptance Criteria
 
-- [ ] `open-habitat agent file offer` (or the chosen command shape) offers one or more workspace files to the person in the current conversation; the card, the preview dialog and the file panel follow the prototypes; download works on desktop and phone; only the signed-in user's own files; tests at the contract and in the browser
+- [x] `open-habitat agent file offer` (or the chosen command shape) offers one or more workspace files to the person in the current conversation; the card, the preview dialog and the file panel follow the prototypes; download works on desktop and phone; only the signed-in user's own files; tests at the contract and in the browser

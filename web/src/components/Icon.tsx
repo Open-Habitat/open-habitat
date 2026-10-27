@@ -77,7 +77,13 @@ export type IconName =
   | "restore"
   | "run"
   | "key"
-  | "updown";
+  | "updown"
+  | "download"
+  | "image"
+  | "film"
+  | "music"
+  | "table"
+  | "package";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -350,6 +356,39 @@ export function Icon({
     plus: <path d="M12 5v14M5 12h14" />,
     down: <path d="m5 9 7 7 7-7" />,
     updown: <path d="m8 9 4-4 4 4M8 15l4 4 4-4" />,
+    download: <path d="M12 4v11m-5-5 5 5 5-5M5 20h14" />,
+    image: (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <circle cx="9" cy="10" r="1.6" />
+        <path d="m4 18 5-5 4 4 3-3 4 4" />
+      </>
+    ),
+    film: (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m10 9 5 3-5 3Z" />
+      </>
+    ),
+    music: (
+      <>
+        <path d="M9 18V6l10-2v12" />
+        <circle cx="6.5" cy="18" r="2.5" />
+        <circle cx="16.5" cy="16" r="2.5" />
+      </>
+    ),
+    table: (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M3 10h18M3 15h18M9 4v16" />
+      </>
+    ),
+    package: (
+      <>
+        <path d="M6 3h9l4 4v14H6Z" />
+        <path d="M11 3v2h2v2h-2v2h2v2h-2v3" />
+      </>
+    ),
     refresh: <path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7" />,
     copy: (
       <>

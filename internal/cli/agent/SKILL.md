@@ -72,6 +72,34 @@ reply says the offer was published, not that anyone saw it; an installation
 without a view origin shows no cards. Reuse a key only for the same offer.
 Views stay in `~/.local/state/open-habitat/views/` until removed.
 
+To hand the person files you produced (a chart, a spreadsheet, a PDF, a zip,
+a folder of photos) so they can preview and download them:
+
+    open-habitat agent file offer --current --source out/report.pdf --idempotency-key UUID --json
+    open-habitat agent file offer --current --source out/chart.png --source out/data.xlsx --title "Q3 package" --idempotency-key UUID --json
+    open-habitat agent file offer --current --source out/partner-package --idempotency-key UUID --json
+    open-habitat agent file list --json
+    open-habitat agent file remove --offer-id OFFER_ID --json
+
+The offer copies the named files into a frozen offer: later edits do not
+change it, so offer again (new key) after a change. Repeat `--source` for
+several files or directories; a file keeps its name, a directory its folders,
+and one directory alone becomes the package (several sources need `--title`).
+The person sees a card in the conversation: an image shows in it, other
+kinds say what they are and open in a preview (PDF, Office, Markdown, CSV,
+code, video, audio, a zip's listing); every file downloads under its own name
+and a package also as one zip, and the conversation's file panel lists every
+offer. Offer files this way rather than pasting attachment links.
+Symlinks and special files refuse the offer, names starting with a dot inside
+a directory are skipped and counted, and the limit is 200 files and 512 MiB.
+The card appears in a conversation, `--current` or `--conversation pi:UUID`;
+with `--current` the workspace defaults to the conversation's. Use
+`--dry-run` to see what would be offered. The reply says the offer was
+published, not that anyone downloaded it. Remove an offer that is wrong or
+outdated; its card then says it was removed. Offers stay in
+`~/.local/state/open-habitat/files/` until removed and count against the
+person's storage.
+
 To show the person a file at a line in their Habitat editor when they ask
 (Habitat's `code <path>`), write its workspace-relative path and line in your
 reply, such as `src/main.ts:42`; in the conversation that is a link that opens

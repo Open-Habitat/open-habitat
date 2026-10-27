@@ -576,6 +576,9 @@ esac
 			}
 			current.Load().(*daemon.ConversationController).FixtureEvents().ServeHTTP(w, r)
 		}))
+		fileOffers := daemon.FileOffersHandler(fixtureWorkspaceCfg, trusted)
+		mux.Handle(daemon.FileOffersPath, fileOffers)
+		mux.Handle(daemon.FileOffersPath+"/", fileOffers)
 		if viewsMode {
 			mux.Handle(daemon.ViewsPath, daemon.ViewsHandler(fixtureWorkspaceCfg, trusted))
 			mux.Handle(daemon.ViewExportPrefix, daemon.ViewExportHandler(fixtureWorkspaceCfg, trusted))
@@ -895,6 +898,22 @@ esac
 				}
 				w.Header().Set("Content-Type", "application/json")
 				fmt.Fprintf(w, `{"view_id":%q}`, id)
+				return
+			case "/fixture/files":
+				ids, ok := conversationHandlers[0].Load().(*daemon.ConversationController).FixtureFiles(r.URL.Query().Get("target"), r.URL.Query().Get("set"))
+				if !ok {
+					http.Error(w, "fixture failed", 400)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{"offer_ids": ids})
+				return
+			case "/fixture/files-remove":
+				if !conversationHandlers[0].Load().(*daemon.ConversationController).FixtureRemoveFiles(r.URL.Query().Get("id")) {
+					http.Error(w, "fixture failed", 400)
+					return
+				}
+				w.WriteHeader(204)
 				return
 			case "/fixture/notice":
 				if !conversationHandlers[0].Load().(*daemon.ConversationController).FixtureNotice(r.URL.Query().Get("id"), r.URL.Query().Get("text")) {

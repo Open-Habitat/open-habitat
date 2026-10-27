@@ -86,7 +86,7 @@ import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
 import { isReadingIntro, useReadingPositionLayout } from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
-import { NoticeEntry } from "./ViewHost";
+import { FilesHeaderControl, NoticeEntry } from "./ViewHost";
 import {
   EditorHeaderControls,
   useEditorActivity,
@@ -1317,6 +1317,7 @@ function BrowserConversationContent({
             data-model={selectedModel}
             data-thinking={selectedThinking}
             editorControl={<EditorHeaderControls />}
+            filesControl={<FilesHeaderControl conversationId={id} />}
             archive={{
               state: archive?.archive ?? "unknown",
               empty:
