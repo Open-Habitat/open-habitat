@@ -2361,10 +2361,15 @@ test("@browser-conversation lost accepted reply recovers on HTTP snapshot withou
   await page.getByTestId("connection-retry").click();
   await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
   await expect(editor).toHaveValue("");
+  // The recovered message is Pi's running turn, and on a loaded host it may
+  // still run when the snapshot is read. Only events and the unfrozen clock
+  // tell the page that it ended, so restore both before the next message.
+  await page.unroute("**/api/v1/events?after=*");
+  await page.clock.resume();
   await editor.fill("next deliberate message");
   await expect(
     page.getByTestId("send").and(page.locator('[data-mode="send"]')),
-  ).toBeEnabled();
+  ).toBeEnabled({ timeout: 30_000 });
   expect(sends).toBe(1);
 });
 
