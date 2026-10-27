@@ -1,8 +1,8 @@
 ---
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 type: bug
-status: open
+status: testing
 priority: normal
 lane: conversation-live
 collision: [web/src/app/BrowserConversation.tsx]
