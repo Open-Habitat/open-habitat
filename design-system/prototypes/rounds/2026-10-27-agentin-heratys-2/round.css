@@ -1,0 +1,109 @@
+/* Pysähtyneen agentin herätys (proto-wake-stopped-agent, kierros 2). */
+
+/* ---------- Sidebar and top bar: resting (as round 1) ---------- */
+.wk-st { display: inline-flex; color: var(--ah-muted); }
+.wk-st svg { width: 13px; height: 13px; }
+.conv-row .wk-news { flex: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--ah-r-pill); background: var(--ah-accent-soft); color: var(--ah-accent-ink); font: 600 11px/18px var(--ah-font); text-align: center; }
+.chip.wk-chip { color: var(--ah-ink-2); }
+
+/* ---------- Shared: run rows with Taskfleet's summary, the wake line ---------- */
+.wk-sub { margin: 12px 0 4px; color: var(--ah-muted); font: 600 var(--ah-size-label) var(--ah-font); letter-spacing: .04em; text-transform: uppercase; }
+.wk-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.wk-run { display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 8px; align-items: start; font-size: var(--ah-size-ui); }
+.wk-run > .pr-dot, .wk-run > .wk-mk { margin-top: 3px; justify-self: center; }
+.wk-body { min-width: 0; }
+.wk-line1 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.wk-name { color: var(--ah-ink); font-weight: 600; overflow-wrap: anywhere; }
+.wk-meta, .wk-verb { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.wk-verb { color: var(--ah-ink-2); font-size: inherit; }
+.wk-sum, .wk-branch { margin: 2px 0 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.45; overflow-wrap: anywhere; }
+.wk-sum code, .wk-branch code { font: var(--ah-size-code) var(--ah-mono); color: var(--ah-ink); }
+.wk-mk { display: inline-flex; }
+.wk-mk svg { width: 15px; height: 15px; }
+.wk-mk.merged { color: var(--ah-ok); }
+.wk-mk.failed { color: var(--ah-err); }
+.wk-mk.unmerged { color: var(--ah-accent-ink); }
+.wk-why { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.wk-src { margin-left: auto; padding: 1px 7px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); color: var(--ah-muted); font: 500 11px/16px var(--ah-font); }
+.wk-ic { flex: none; display: inline-flex; width: 16px; justify-content: center; color: var(--ah-muted); }
+.wk-ic svg { width: 15px; height: 15px; }
+.wk-ic.ok { color: var(--ah-ok); }
+.wk-ic .st-dot { margin: 0; }
+
+/* ---------- 1 Kortti ---------- */
+.wk-card { border: 1px solid var(--ah-line); border-radius: var(--ah-r-xl); background: var(--ah-surface); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.wk-card.done { background: transparent; border-style: dashed; }
+.wk-head { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+.wk-head > .wk-ic svg { width: 17px; height: 17px; }
+.wk-head h3 { margin: 0; font: 600 var(--ah-size-title) var(--ah-font); color: var(--ah-ink); }
+.wk-foot { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 8px 10px; border-radius: var(--ah-r-lg); background: var(--ah-surface-2); color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.wk-foot strong { color: var(--ah-ink); font-weight: 600; }
+.wk-foot.done { background: none; padding: 4px 0 0; color: var(--ah-muted); }
+.wk-foot.done svg { flex: none; width: 12px; height: 12px; color: var(--ah-ok); }
+
+/* ---------- 2 Aikajana ---------- */
+.wk-time { display: flex; flex-direction: column; gap: 6px; }
+.wk-time-head { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--ah-muted); font: 600 var(--ah-size-label) var(--ah-font); letter-spacing: .04em; text-transform: uppercase; }
+.wk-time-head::before { content: ""; width: 18px; height: 1px; background: var(--ah-line); }
+.wk-time-head .wk-src { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.wk-evs { list-style: none; margin: 0; padding: 0; position: relative; }
+.wk-evs::before { content: ""; position: absolute; left: 58px; top: 10px; bottom: 14px; width: 1px; background: var(--ah-line); }
+.wk-ev { position: relative; display: grid; grid-template-columns: 44px 30px minmax(0, 1fr); align-items: start; padding: 5px 0; font-size: var(--ah-size-ui); }
+.wk-ev time { padding-top: 1px; color: var(--ah-muted); font: var(--ah-size-meta) var(--ah-font); font-variant-numeric: tabular-nums; text-align: right; padding-right: 6px; }
+.wk-evmk { position: relative; z-index: 1; display: inline-flex; justify-self: center; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ah-bg); }
+.wk-evmk svg { width: 15px; height: 15px; }
+.wk-evmk > .wk-mk { display: inline-flex; }
+.wk-ev.stop .wk-evmk { color: var(--ah-muted); }
+.wk-ev.stop .wk-name { color: var(--ah-ink-2); }
+.wk-ev.now .wk-evmk::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ah-line-strong); }
+.wk-ev.now.done .wk-evmk::after { display: none; }
+.wk-ev.now.done .wk-evmk { color: var(--ah-ok); }
+.wk-ev.now.done .wk-evmk svg { width: 12px; height: 12px; }
+.wk-ev.now.done .wk-line1 { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.wk-wake { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; padding: 6px 10px; border-radius: var(--ah-r-lg); background: var(--ah-surface-2); color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.wk-wake strong { color: var(--ah-ink); font-weight: 600; }
+
+/* ---------- 3 Viestin mukana: the tray above the field ---------- */
+.composer .cwrap { grid-template-areas: "wake wake" "queue queue" "box side" "below ."; }
+.composer .cwrap .wk-tray { grid-area: wake; display: flex; flex-direction: column; align-items: stretch; gap: 6px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface-2); padding: 8px 10px; font-size: var(--ah-size-meta); }
+.composer .cwrap .wk-tray[hidden] { display: none; }
+.composer .cwrap .wk-trayhead { display: flex; align-items: flex-start; gap: 8px; }
+.composer .cwrap .wk-trayhead .wk-ic { margin-top: 1px; }
+.wk-traytitle { color: var(--ah-ink-2); }
+.wk-traytitle strong { color: var(--ah-ink); font-weight: 600; }
+.wk-trayfor, .wk-traywake { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--ah-muted); }
+.wk-trayfor svg { width: 13px; height: 13px; }
+.wk-traywake { gap: 8px; color: var(--ah-ink-2); }
+.wk-traywake strong { color: var(--ah-ink); font-weight: 600; }
+.composer .cwrap .wk-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.composer .cwrap .wk-chipbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px 0 8px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); background: var(--ah-surface); color: var(--ah-ink); font: 500 12.5px var(--ah-font); transition: border-color var(--ah-transition), background var(--ah-transition); }
+.composer .cwrap .wk-chipbtn:hover { border-color: var(--ah-line-strong); }
+.composer .cwrap .wk-chipbtn[aria-pressed="true"] { border-color: var(--ah-accent); background: var(--ah-accent-soft); }
+.composer .cwrap .wk-chipbtn:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 1px; }
+.composer .cwrap .wk-chipbtn .wk-mk svg { width: 13px; height: 13px; }
+.composer .cwrap .wk-line1 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.composer .cwrap .wk-detail { padding: 8px 10px; border-radius: var(--ah-r-md); background: var(--ah-surface); border: 1px solid var(--ah-line); }
+
+/* The sent message carries the report as its attachment. */
+.bubble.user .wk-sent { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ah-line); color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.bubble.user .wk-sent p { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
+.bubble.user .wk-sent p svg { flex: none; width: 13px; height: 13px; }
+.bubble.user .wk-sent ul { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 0; list-style: none; }
+.bubble.user .wk-sent li { display: inline-flex; align-items: center; gap: 5px; }
+.bubble.user .wk-sent .wk-mk svg { width: 12px; height: 12px; }
+
+/* Page bar: the stop cause. */
+.wk-cause select { padding: 2px 4px; border: 1px solid var(--ah-line-strong); border-radius: 6px; background: var(--ah-surface); color: var(--ah-ink); }
+
+/* ---------- Phone ---------- */
+@container (max-width: 560px) {
+  .wk-card { padding: 12px; }
+  .wk-evs::before { left: 50px; }
+  .wk-ev { grid-template-columns: 38px 26px minmax(0, 1fr); }
+  .wk-wake { padding: 6px 8px; }
+  .composer .cwrap .wk-tray { padding: 6px 8px; }
+  .composer .cwrap .wk-chipbtn { min-height: 26px; padding: 0 8px 0 6px; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer .cwrap .wk-chipbtn { transition: none; }
+}
