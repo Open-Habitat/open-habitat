@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-func TestProcessCommandHintsAndWaitGrammar(t *testing.T) {
+func TestProcessCommandHints(t *testing.T) {
 	command := `TOKEN=secret curl https://alice:password@example.invalid -H 'Authorization: Bearer abc' --api-key=hidden --password "also hidden" --auth-token another ghp_example123`
 	preview := commandPreview(command)
 	for _, secret := range []string{"secret", "alice", "password@example", "Bearer abc", "hidden", "another", "ghp_example123"} {
@@ -31,49 +31,28 @@ func TestProcessCommandHintsAndWaitGrammar(t *testing.T) {
 	if !strings.Contains(preview, "example.invalid") {
 		t.Fatal("lost useful command hint")
 	}
-	id := "01m51veyk0hsa1br34epkr2rpg"
-	if got := taskfleetWait("/opt/bin/taskfleet run wait " + id + " --any --timeout 2h --output json"); len(got) != 1 || got[0] != id {
-		t.Fatal(got)
-	}
-	for _, bad := range []string{"X=y taskfleet run wait " + id, "taskfleet run wait " + id + " | cat", "taskfleet run wait '" + id + "'", "taskfleet run wait " + id + " --unknown", "taskfleet run wait " + id + " --timeout nope", "./taskfleet run wait " + id} {
-		if taskfleetWait(bad) != nil {
-			t.Fatal("unsafe recognition", bad)
-		}
-	}
 }
 
-func TestTaskfleetWaitRealCommandShapes(t *testing.T) {
-	id, other := "01m51veyk0hsa1br34epkr2rpg", "01m5tae9rjsc7kq2pxfear0e66"
-	for _, tc := range []struct {
-		command string
-		want    []string
-	}{
-		// The shapes a conductor ran in Habitat on 2026-10-25.
-		{"cd ~/src/open-habitat && taskfleet run wait " + id + " --check-in 45m --output json", []string{id}},
-		{"cd ~/src/open-habitat && taskfleet run wait " + id + " --terminal --check-in 45m --output json", []string{id}},
-		{"cd /home/a/src/x && /usr/local/bin/taskfleet run wait " + id + " " + other + " --any --fail-on-error --progress --json --poll-interval 2s --timeout 2400", []string{id, other}},
-		{"taskfleet run wait " + id + " --terminal", []string{id}},
-		{"cd ~/src/open-habitat && taskfleet run wait " + id + " --check-in", nil},
-		{"cd ~/src/open-habitat && taskfleet run wait " + id + " --check-in 0", nil},
-		{"cd ~/src/open-habitat && taskfleet run wait " + id + " --check-in soon", nil},
-		{"cd ~/src/open-habitat && taskfleet run wait " + id + " && echo done", nil},
-		{"cd ~/src/open-habitat & taskfleet run wait " + id, nil},
-		{"cd ~/src/open-habitat || taskfleet run wait " + id, nil},
-		{"cd ~/src/open-habitat; taskfleet run wait " + id, nil},
-		{"cd a && cd b && taskfleet run wait " + id, nil},
-		{"cd $HOME && taskfleet run wait " + id, nil},
-		{"cd 'my dir' && taskfleet run wait " + id, nil},
-		{"cd ~/src/* && taskfleet run wait " + id, nil},
-		{"cd a&&taskfleet run wait " + id, nil},
-		{"cd && taskfleet run wait " + id, nil},
-		{"pushd x && taskfleet run wait " + id, nil},
-		{"cd x &&\ntaskfleet run wait " + id, nil},
-		{"taskfleet run wait " + id + " --output ./out.json", nil},
-		{"taskfleet run wait " + id + " --check-in=45m", nil},
-	} {
-		got := taskfleetWait(tc.command)
-		if strings.Join(got, ",") != strings.Join(tc.want, ",") || (got == nil) != (tc.want == nil) {
-			t.Errorf("%q: got %v, want %v", tc.command, got, tc.want)
+// The table is shared with the companion's waitRuns test
+// (pi-device-test/process-extension.test.mjs) so the two grammars agree.
+func TestTaskfleetWaitSharedGrammar(t *testing.T) {
+	raw, err := os.ReadFile("testdata/taskfleet-wait-grammar.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var table struct {
+		Cases []struct {
+			Command string   `json:"command"`
+			RunIDs  []string `json:"run_ids"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(raw, &table); err != nil || len(table.Cases) == 0 {
+		t.Fatal(err)
+	}
+	for _, tc := range table.Cases {
+		got := taskfleetWait(tc.Command)
+		if strings.Join(got, ",") != strings.Join(tc.RunIDs, ",") || (got == nil) != (len(tc.RunIDs) == 0) {
+			t.Errorf("%q: got %v, want %v", tc.Command, got, tc.RunIDs)
 		}
 	}
 }

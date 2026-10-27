@@ -1,10 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
-import { mkdtemp, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import companion from '../process-extension.mjs';
+import companion, { waitRuns } from '../process-extension.mjs';
+
+// Shared with the daemon's TestTaskfleetWaitSharedGrammar so the two grammars agree.
+test('waitRuns recognises exactly the daemon\'s Taskfleet wait shapes', async () => {
+  const { cases } = JSON.parse(await readFile(new URL('../testdata/taskfleet-wait-grammar.json', import.meta.url), 'utf8'));
+  assert.ok(cases.length > 0);
+  for (const c of cases) assert.deepEqual(waitRuns(c.command), c.run_ids, c.command);
+});
 
 function request(path, q) {
   return new Promise((resolve, reject) => {

@@ -1,0 +1,220 @@
+{
+ "_comment": "Shared Taskfleet wait grammar: processes_linux.go taskfleetWait and process-extension.mjs waitRuns must give these run ids (empty = not a recognised wait). Both test suites read this table.",
+ "cases": [
+  {
+   "command": "/opt/bin/taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --any --timeout 2h --output json",
+   "run_ids": [
+    "01m51veyk0hsa1br34epkr2rpg"
+   ]
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --output json",
+   "run_ids": [
+    "01m51veyk0hsa1br34epkr2rpg"
+   ]
+  },
+  {
+   "command": "cd ~/src/open-habitat && taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --check-in 45m --output json",
+   "run_ids": [
+    "01m51veyk0hsa1br34epkr2rpg"
+   ]
+  },
+  {
+   "command": "cd ~/src/open-habitat && taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --terminal --check-in 45m --output json",
+   "run_ids": [
+    "01m51veyk0hsa1br34epkr2rpg"
+   ]
+  },
+  {
+   "command": "cd /home/a/src/x && /usr/local/bin/taskfleet run wait 01m51veyk0hsa1br34epkr2rpg 01m5tae9rjsc7kq2pxfear0e66 --any --fail-on-error --progress --json --poll-interval 2s --timeout 2400",
+   "run_ids": [
+    "01m51veyk0hsa1br34epkr2rpg",
+    "01m5tae9rjsc7kq2pxfear0e66"
+   ]
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --terminal",
+   "run_ids": [
+    "01m51veyk0hsa1br34epkr2rpg"
+   ]
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --check-in 45m",
+   "run_ids": [
+    "01m51veyk0hsa1br34epkr2rpg"
+   ]
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --timeout 1h30m --check-in 0.5h --output text",
+   "run_ids": [
+    "01m51veyk0hsa1br34epkr2rpg"
+   ]
+  },
+  {
+   "command": "  taskfleet run wait 01m51veyk0hsa1br34epkr2rpg\t--output   jsonl  ",
+   "run_ids": [
+    "01m51veyk0hsa1br34epkr2rpg"
+   ]
+  },
+  {
+   "command": "taskfleet run wait",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait --any --output json",
+   "run_ids": []
+  },
+  {
+   "command": "X=y taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg | cat",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg & ",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait '01m51veyk0hsa1br34epkr2rpg'",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --unknown",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --timeout nope",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --timeout 0",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --timeout 0s",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --timeout -5m",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --timeout +5m",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --output yaml",
+   "run_ids": []
+  },
+  {
+   "command": "./taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleets run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01M51VEYK0HSA1BR34EPKR2RPG",
+   "run_ids": []
+  },
+  {
+   "command": "cd ~/src/open-habitat && taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --check-in",
+   "run_ids": []
+  },
+  {
+   "command": "cd ~/src/open-habitat && taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --check-in 0",
+   "run_ids": []
+  },
+  {
+   "command": "cd ~/src/open-habitat && taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --check-in soon",
+   "run_ids": []
+  },
+  {
+   "command": "cd ~/src/open-habitat && taskfleet run wait 01m51veyk0hsa1br34epkr2rpg && echo done",
+   "run_ids": []
+  },
+  {
+   "command": "cd ~/src/open-habitat & taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "cd ~/src/open-habitat || taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "cd ~/src/open-habitat; taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "cd a && cd b && taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "cd $HOME && taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "cd 'my dir' && taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "cd ~/src/* && taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "cd a&&taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "cd && taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "pushd x && taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "cd x &&\ntaskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg\n",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --output ./out.json",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg --check-in=45m",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet run wait 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet\u0085run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet\ufeffrun wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "taskfleet\u00a0run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "/opt/{foo,bar}/taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  },
+  {
+   "command": "/opt/*/taskfleet run wait 01m51veyk0hsa1br34epkr2rpg",
+   "run_ids": []
+  }
+ ]
+}

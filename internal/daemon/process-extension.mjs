@@ -9,20 +9,32 @@ const maxFrame = 256 * 1024;
 const catchUpType = 'oh-resume-catch-up';
 const runPattern = /^[0-9a-hjkmnp-tv-z]{26}$/;
 const key = p => `${p.id}:${p.startTime}`;
-// The daemon's narrow Taskfleet wait grammar (processes_linux.go taskfleetWait).
+// The daemon's narrow Taskfleet wait grammar (processes_linux.go taskfleetWait),
+// including its one literal leading `cd <path> &&`. Both are tested against
+// testdata/taskfleet-wait-grammar.json so they cannot drift apart again.
+const waitRefused = /[|&;<>($`\\"'\n\r)]/;
+const waitExpanded = /[|&;<>($`\\"'\n\r)#*?[\]{}=]/;
+const waitDuration = /^(?:[0-9]+|(?:(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:ns|us|µs|μs|ms|s|m|h))+)$/;
 export function waitRuns(command) {
-  if (typeof command !== 'string' || /[|&;<>($`\\"'\n\r)]/.test(command)) return [];
-  const words = command.trim().split(/\s+/);
+  if (typeof command !== 'string' || /[\n\r]/.test(command)) return [];
+  let words = command.split(/[ \t]+/).filter(Boolean);
+  if (words.length > 3 && words[0] === 'cd' && words[2] === '&&') {
+    if (waitExpanded.test(words[1])) return [];
+    words = words.slice(3);
+  }
+  if (waitRefused.test(words.join(' '))) return [];
   const bin = words[0] ?? '';
-  if (words.length < 4 || !(bin === 'taskfleet' || bin.startsWith('/') && bin.endsWith('/taskfleet')) || words[1] !== 'run' || words[2] !== 'wait') return [];
+  if (words.length < 4 || waitExpanded.test(bin) || bin.replace(/\/+$/, '').split('/').pop() !== 'taskfleet' || bin !== 'taskfleet' && !bin.startsWith('/') || words[1] !== 'run' || words[2] !== 'wait') return [];
   const ids = [];
   for (let i = 3; i < words.length; ++i) {
     const w = words[i];
-    if (['--all', '--any', '--fail-on-error', '--progress', '--json'].includes(w)) continue;
-    if (['--timeout', '--poll-interval', '--output'].includes(w)) {
+    if (['--all', '--any', '--fail-on-error', '--progress', '--json', '--terminal'].includes(w)) continue;
+    if (['--timeout', '--check-in', '--poll-interval', '--output'].includes(w)) {
       const v = words[++i];
-      if (v === undefined || w === '--output' && !['json', 'jsonl', 'text'].includes(v)) return [];
-      if (w !== '--output' && !/^[1-9][0-9]*$|^[0-9.]+(ns|us|µs|ms|s|m|h)([0-9.]+(ns|us|µs|ms|s|m|h))*$/.test(v)) return [];
+      if (v === undefined) return [];
+      if (w === '--output') {
+        if (!['json', 'jsonl', 'text'].includes(v)) return [];
+      } else if (!waitDuration.test(v) || !/[1-9]/.test(v)) return [];
       continue;
     }
     if (!runPattern.test(w) || ids.length >= 20) return [];

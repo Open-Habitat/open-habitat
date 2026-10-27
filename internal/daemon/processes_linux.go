@@ -19,6 +19,11 @@ import (
 
 var processIDPattern = regexp.MustCompile(`^proc_[a-f0-9]{4}$`)
 var taskfleetIDPattern = regexp.MustCompile(`^[0-9a-hjkmnp-tv-z]{26}$`)
+
+// Bare seconds or Go-style unit runs, written out rather than left to
+// time.ParseDuration so the companion's copy (process-extension.mjs) can match
+// it exactly; a value must also name a non-zero amount.
+var taskfleetDurationPattern = regexp.MustCompile(`^(?:[0-9]+|(?:(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:ns|us|µs|μs|ms|s|m|h))+)$`)
 var previewEnv = regexp.MustCompile(`(^|\s)[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|\S+)`)
 var previewURL = regexp.MustCompile(`(https?://)[^\s/@]+(?::[^\s/@]*)?@`)
 var previewOption = regexp.MustCompile(`(?i)(--[^\s=]*(?:token|secret|key|pass|auth|user|cred)[^\s=]*(?:=|\s+)|(?:-H|--header)(?:=|\s+))(?:"[^"]*"|'[^']*'|\S+)`)
@@ -47,14 +52,18 @@ func commandPreview(command string) string {
 // narrow grammar stay ordinary processes. No browser text is ever executed.
 // Agents usually wait from the repository whose runs they wait on, so one
 // literal leading `cd <path> &&` is allowed; any other shell syntax is not.
+// The companion's waitRuns (process-extension.mjs) is the same grammar; both
+// are tested against testdata/taskfleet-wait-grammar.json.
 func taskfleetWait(command string) []string {
 	const refused = "|&;<>($`\\\"'\n\r)"
+	const expanded = refused + "#*?[]{}="
 	if strings.ContainsAny(command, "\n\r") {
 		return nil
 	}
-	words := strings.Fields(command)
+	// Shell blanks only, so the companion's split cannot disagree on Unicode spaces.
+	words := strings.FieldsFunc(command, func(r rune) bool { return r == ' ' || r == '\t' })
 	if len(words) > 3 && words[0] == "cd" && words[2] == "&&" {
-		if strings.ContainsAny(words[1], refused+"#*?[]{}=") {
+		if strings.ContainsAny(words[1], expanded) {
 			return nil
 		}
 		words = words[3:]
@@ -62,7 +71,7 @@ func taskfleetWait(command string) []string {
 	if strings.ContainsAny(strings.Join(words, " "), refused) {
 		return nil
 	}
-	if len(words) < 4 || filepath.Base(words[0]) != "taskfleet" || (words[0] != "taskfleet" && !filepath.IsAbs(words[0])) || words[1] != "run" || words[2] != "wait" {
+	if len(words) < 4 || strings.ContainsAny(words[0], expanded) || filepath.Base(words[0]) != "taskfleet" || (words[0] != "taskfleet" && !filepath.IsAbs(words[0])) || words[1] != "run" || words[2] != "wait" {
 		return nil
 	}
 	ids := []string{}
@@ -80,10 +89,8 @@ func taskfleetWait(command string) []string {
 				if value != "json" && value != "jsonl" && value != "text" {
 					return nil
 				}
-			} else if d, err := time.ParseDuration(value); err != nil || d <= 0 {
-				if seconds, parseErr := strconv.ParseUint(value, 10, 64); parseErr != nil || seconds == 0 {
-					return nil
-				}
+			} else if !taskfleetDurationPattern.MatchString(value) || !strings.ContainsAny(value, "123456789") {
+				return nil
 			}
 		default:
 			if !taskfleetIDPattern.MatchString(w) || len(ids) >= 20 {
