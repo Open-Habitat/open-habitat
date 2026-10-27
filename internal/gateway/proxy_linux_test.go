@@ -24,7 +24,19 @@ func proxyFixture(t *testing.T, handler http.Handler) (http.Handler, *Auth) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv := &http.Server{Handler: handler}
+	// The daemon reads a request's body before it answers. A fake that
+	// answers first lets the server close the connection under the gateway's
+	// body write, which the proxy reports as 503, so read it here for every
+	// fake handler.
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("fake daemon read: %v", err)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		handler.ServeHTTP(w, r)
+	})}
 	go srv.Serve(ln)
 	t.Cleanup(func() { srv.Close(); ln.Close() })
 	m := Identity{"github", "42", os.Getuid(), "alice", path}
