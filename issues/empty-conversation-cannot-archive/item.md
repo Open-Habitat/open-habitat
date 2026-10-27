@@ -3,12 +3,13 @@ created: 2026-10-27
 updated: 2026-10-27
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 provenance: chat
 source_ref: chat:2026-10-27/empty-conversation-cannot-archive
 lane: conversation-archive
 preparation: ready
+closed: 2026-10-27
 ---
 
 # A new conversation without native history cannot be closed or archived

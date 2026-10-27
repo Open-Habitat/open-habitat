@@ -37,7 +37,13 @@ The same archive refusal hit a fresh empty conversation even before the idle sto
   cancelled send close; content, other lock holder, not created, held refuse).
 - Browser spec "empty conversation closes after Pi's idle stop, from the page and the
   home card" passes; against the pre-change web and daemon it fails at the greyed close.
-- Web unit/static checks; whole browser and lab suites (see commit).
+- Web unit/static checks pass.
+- Whole browser suite (rebased on d732c059): 406 passed, 5 failed, 3 skipped. Four failures
+  are in `main-browser-suite-red` (title header at 390px, send receipt never reposts ×3);
+  the fifth, `browser-conversation.spec.ts:141`, also fails 3 of 5 runs on main alone and
+  is filed as `flaky-saved-turn-bash-row`.
+- Lab suite: 135 passed, 2 failed (`lab-title-generation.spec.ts:8` light/dark, in
+  `main-browser-suite-red`).
 - Independent review (Fable finder, Astra verifier): one finding fixed (cancelled held
   send left the handle unclosable), one dropped as rare (a refused home-card close leaves
   a stale close notice for the workspace page).
