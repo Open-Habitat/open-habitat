@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/gitlab-tokens.schema.json",
+  "title": "What GitLab says about each connection's token now",
+  "description": "GET /api/v1/integrations/gitlab/tokens takes no query. For each usable glab login the mapped daemon reads /user (the token must still authenticate the user glab's entry names, account_mismatch otherwise) and /personal_access_tokens/self with that login's own token, so Koodipalvelut can show the scopes, the expiry date and whether push works without any stored copy. One connection failing never hides another; a failure is a fixed code.",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "connections"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "connections": {"type": "array", "maxItems": 16, "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["connection_id", "api"],
+      "properties": {
+        "connection_id": {"$ref": "integrations.schema.json#/$defs/gitlab_connection_id"},
+        "api": {"anyOf": [{"$ref": "gitlab-connection-change.schema.json#/$defs/api"}, {"const": "native_unavailable"}]},
+        "token": {"$ref": "gitlab-connection-change.schema.json#/$defs/token"}
+      },
+      "if": {"properties": {"api": {"const": "ok"}}}, "then": {"required": ["token"]}, "else": {"not": {"required": ["token"]}}
+    }}
+  }
+}

@@ -126,6 +126,12 @@ checks = {
     "gitea-connected.json": "gitea-connection-change.schema.json",
     "gitea-disconnected.json": "gitea-connection-change.schema.json",
     "gitea-repos.json": "gitea-repos.schema.json",
+    "gitlab-connect.json": "gitlab-connection.schema.json",
+    "gitlab-connected.json": "gitlab-connection-change.schema.json",
+    "gitlab-checked-expired.json": "gitlab-connection-change.schema.json",
+    "gitlab-disconnected.json": "gitlab-connection-change.schema.json",
+    "gitlab-tokens.json": "gitlab-tokens.schema.json",
+    "gitlab-repos.json": "gitlab-repos.schema.json",
     "integration-connect.json": "integration-account.schema.json",
     "integration-connected.json": "integration-change.schema.json",
     "integration-removed.json": "integration-change.schema.json",
@@ -476,4 +482,61 @@ bad_clones["interrupted"][1]["source"]["repository_id"] = 42
 must_reject("github-clone.schema.json", bad_clones)
 must_reject("github-clone.schema.json", {"action": "start", "source": "gitea", "connection_id": "gitea_0123456789abcdef01234567", "full_name": "example-person/notes", "mode": "full"})
 must_reject("github-clone.schema.json", {"action": "start", "full_name": "example_person/notes", "mode": "full"})
+
+def must_accept(schema: str, instance: object) -> None:
+    Draft202012Validator(schemas[schema], registry=registry, format_checker=format_checker).validate(instance)
+
+# GitLab: the token travels only in connect and replace and never in a
+# reply; a token description is GitLab's answer of an ok read only; project
+# paths are nested group paths shown whole, never one that could mean
+# another path; clone requests name a connection and GitLab's id.
+must_reject("gitlab-connection.schema.json", {"action": "check", "connection_id": "gitlab_0123456789abcdef01234567", "token": "x"})
+must_reject("gitlab-connection.schema.json", {"action": "connect", "base_url": "https://gitlab.example.test", "token": "has space"})
+must_reject("gitlab-connection.schema.json", {"action": "replace", "connection_id": "gitea_0123456789abcdef01234567", "token": "x"})
+bad_gitlab = json.loads((BASE / "examples" / "gitlab-connected.json").read_text())
+bad_gitlab["connection"]["token"] = "x"
+must_reject("gitlab-connection-change.schema.json", bad_gitlab)
+bad_gitlab = json.loads((BASE / "examples" / "gitlab-connected.json").read_text())
+bad_gitlab["api"] = "token_expired"
+must_reject("gitlab-connection-change.schema.json", bad_gitlab)
+bad_gitlab = json.loads((BASE / "examples" / "gitlab-connected.json").read_text())
+del bad_gitlab["token"]["expires_at"]
+must_reject("gitlab-connection-change.schema.json", bad_gitlab)
+bad_gitlab = json.loads((BASE / "examples" / "gitlab-tokens.json").read_text())
+bad_gitlab["connections"][2]["token"] = {"push": "unknown"}
+must_reject("gitlab-tokens.schema.json", bad_gitlab)
+for path in ["notes", "a/../b", "a/-/b", "a/b.git", "a/./b", "a//b", "/a/b", "a/b.atom", "/".join(["g"] * 22), "a/" + "x" * 256]:
+    bad_gitlab = json.loads((BASE / "examples" / "gitlab-repos.json").read_text())
+    bad_gitlab["sources"][0]["repositories"][0]["full_name"] = path
+    must_reject("gitlab-repos.schema.json", bad_gitlab)
+deep = json.loads((BASE / "examples" / "gitlab-repos.json").read_text())
+deep["sources"][0]["repositories"][0]["full_name"] = "/".join(["g"] * 20) + "/project"
+must_accept("gitlab-repos.schema.json", deep)
+bad_gitlab = json.loads((BASE / "examples" / "gitlab-repos.json").read_text())
+bad_gitlab["sources"][2]["elsewhere"] = {"count": 1}
+must_reject("gitlab-repos.schema.json", bad_gitlab)
+bad_gitlab = json.loads((BASE / "examples" / "gitlab-repos.json").read_text())
+bad_gitlab["sources"][1]["elsewhere"]["origin"] = "http://person:secret@gitlab.internal"
+must_reject("gitlab-repos.schema.json", bad_gitlab)
+for origin in ({"base_url": "https://gitlab.example.test", "full_name": "example-group/infra/terraform"},):
+    good = json.loads((BASE / "examples" / "snapshot.json").read_text())
+    del good["workspaces"][0]["gitea_origin"]
+    good["workspaces"][0]["gitlab_origin"] = origin
+    must_accept("snapshot.schema.json", good)
+    good["workspaces"][0]["gitlab_origin"] = {**origin, "full_name": "single"}
+    must_reject("snapshot.schema.json", good)
+must_accept("github-clone.schema.json", {"action": "start", "source": "gitlab", "connection_id": "gitlab_0123456789abcdef01234567", "repository_id": 42, "mode": "full"})
+must_accept("github-clone.schema.json", {"action": "remove", "source": "gitlab", "full_name": "example-group/infra/terraform"})
+must_reject("github-clone.schema.json", {"action": "start", "source": "gitlab", "connection_id": "gitea_0123456789abcdef01234567", "repository_id": 42, "mode": "full"})
+must_reject("github-clone.schema.json", {"action": "start", "source": "gitlab", "connection_id": "gitlab_0123456789abcdef01234567", "repository_id": 42, "mode": "blobless"})
+must_reject("github-clone.schema.json", {"action": "remove", "source": "gitlab", "full_name": "example-group/../terraform"})
+clones = json.loads((BASE / "examples" / "github-clones.json").read_text())
+clones["jobs"].append({"job_id": "aabbccddeeff00112233445566778899", "full_name": "example-group/infra/terraform", "source": {"provider": "gitlab", "connection_id": "gitlab_0123456789abcdef01234567", "repository_id": 43}, "mode": "full", "state": "failed", "reason": "auth_refused", "leftover": "removed", "started_at": "2026-10-17T11:55:00Z", "finished_at": "2026-10-17T11:56:00Z"})
+clones["interrupted"].append({"full_name": "example-group/infra/terraform", "size_bytes": 4096, "source": {"provider": "gitlab", "connection_id": "gitlab_0123456789abcdef01234567"}})
+must_accept("github-clone.schema.json", clones)
+clones["interrupted"][-1]["source"] = {"provider": "gitea"}
+must_reject("github-clone.schema.json", clones)
+clones["interrupted"][-1]["source"] = {"provider": "gitlab", "connection_id": "gitea_0123456789abcdef01234567"}
+must_reject("github-clone.schema.json", clones)
+
 print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, negative checks including Microsoft login phases.")

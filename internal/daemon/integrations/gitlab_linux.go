@@ -120,7 +120,7 @@ type gitlabList struct {
 // only when GitLab described the token.
 type gitlabToken struct {
 	Push      string          `json:"push"`
-	Scopes    []string        `json:"scopes,omitempty"`
+	Scopes    *[]string       `json:"scopes,omitempty"`
 	ExpiresAt json.RawMessage `json:"expires_at,omitempty"`
 	Fine      *bool           `json:"fine,omitempty"`
 }
@@ -131,7 +131,8 @@ func tokenView(info nativegitlab.TokenInfo) *gitlabToken {
 		t.Push = string(nativegitlab.PushUnknown)
 	}
 	if info.Known {
-		t.Scopes = append([]string{}, info.Scopes...)
+		scopes := append([]string{}, info.Scopes...)
+		t.Scopes = &scopes
 		fine := info.Fine
 		t.Fine = &fine
 		t.ExpiresAt = json.RawMessage("null")

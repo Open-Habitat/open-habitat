@@ -4,11 +4,13 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -47,6 +49,21 @@ func gitlabHelperForTest(op string) int {
 		return 2
 	}
 	return 0
+}
+
+// matchesSchema validates a reply against its contract with the
+// repository's own validator.
+func matchesSchema(t *testing.T, schema, body string) {
+	t.Helper()
+	python := os.Getenv("PYTHON")
+	if python == "" {
+		python = "python3"
+	}
+	cmd := exec.Command(python, "-c", `import sys,runpy,json; m=runpy.run_path('../../scripts/validate-contracts.py'); m['Draft202012Validator'](m['schemas'][sys.argv[1]],registry=m['registry'],format_checker=m['format_checker']).validate(json.load(sys.stdin))`, schema)
+	cmd.Stdin = strings.NewReader(body)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("%s: %s: %v\n%s", schema, out, err, body)
+	}
 }
 
 type gitlabWalk struct {
@@ -155,6 +172,7 @@ func TestGitLabConnectListCloneFetch(t *testing.T) {
 	if status != 200 || out["api"] != "ok" || conn["git"] != "registered" || conn["kind"] != "pat" || conn["user"] != "ada" || token["push"] != "yes" || token["expires_at"] != "2027-10-27" || strings.Contains(raw, "glpat-") {
 		t.Fatalf("connect: %d %s", status, raw)
 	}
+	matchesSchema(t, "gitlab-connection-change.schema.json", raw)
 	ada := conn["id"].(string)
 	if status, out, _ := w.gitlab("POST", `{"action":"connect","base_url":"`+host+`","token":"glpat-bob-0001"}`); status != 409 || code(out) != "connection_exists" {
 		t.Fatalf("second account on one server: %d %v", status, out)
@@ -169,7 +187,9 @@ func TestGitLabConnectListCloneFetch(t *testing.T) {
 	if gitlab["state"] != "ok" || len(gitlab["connections"].([]any)) != 1 || strings.Contains(raw, "glpat-") {
 		t.Fatalf("list: %s", raw)
 	}
+	matchesSchema(t, "integrations.schema.json", raw)
 	_, tokens, raw := w.request("GET", integrations.GitLabTokensPath, "")
+	matchesSchema(t, "gitlab-tokens.schema.json", raw)
 	states, _ := tokens["connections"].([]any)
 	if len(states) != 1 || states[0].(map[string]any)["api"] != "ok" || strings.Contains(raw, "glpat-") {
 		t.Fatalf("tokens: %s", raw)
@@ -180,6 +200,7 @@ func TestGitLabConnectListCloneFetch(t *testing.T) {
 	if status != 200 || strings.Contains(raw, "glpat-") {
 		t.Fatalf("repos: %d %s", status, raw)
 	}
+	matchesSchema(t, "gitlab-repos.schema.json", raw)
 	source := repos["sources"].([]any)[0].(map[string]any)
 	var names []string
 	for _, r := range source["repositories"].([]any) {
@@ -249,8 +270,10 @@ func TestGitLabConnectListCloneFetch(t *testing.T) {
 	// An expired token: check says so, the fetch fails as an auth failure,
 	// and a replacement for the same user is read by the next fetch.
 	w.gl.SetToken(7, gitlabfake.Token{Value: "glpat-ada-0001", Expired: true})
-	if _, out, _ := w.gitlab("POST", `{"action":"check","connection_id":"`+ada+`"}`); out["api"] != "token_expired" || out["outcome"] != "checked" || out["token"] != nil {
+	if _, out, raw := w.gitlab("POST", `{"action":"check","connection_id":"`+ada+`"}`); out["api"] != "token_expired" || out["outcome"] != "checked" || out["token"] != nil {
 		t.Fatalf("check: %v", out)
+	} else {
+		matchesSchema(t, "gitlab-connection-change.schema.json", raw)
 	}
 	if got := w.fetch("terraform"); got != "remote_auth_unavailable" {
 		t.Fatalf("fetch with an expired token: %q", got)
@@ -313,6 +336,8 @@ func TestGitLabInterruptedCloneIsNamedInFull(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("interrupted: %v", list)
 	}
+	listed, _ := json.Marshal(list)
+	matchesSchema(t, "github-clone.schema.json", string(listed))
 	item := items[0].(map[string]any)
 	source, _ := item["source"].(map[string]any)
 	if item["full_name"] != "konepaja/verkkokauppa/infra/terraform" || source["provider"] != "gitlab" || source["connection_id"] != ada {

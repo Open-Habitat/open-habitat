@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "connections": [
+    {"connection_id": "gitlab_0123456789abcdef01234567", "api": "ok", "token": {"push": "no", "scopes": ["read_api"], "expires_at": "2026-11-05", "fine": false}},
+    {"connection_id": "gitlab_fedcba9876543210fedcba98", "api": "ok", "token": {"push": "unknown"}},
+    {"connection_id": "gitlab_89abcdef0123456789abcdef", "api": "token_expired"}
+  ]
+}

@@ -261,6 +261,27 @@
             }
           }
         },
+        "gitlab_origin": {
+          "description": "For a main worktree whose origin is exactly the credential-free HTTPS address https://<base>/<group>/.../<project>[.git] under the base of one of the person's glab logins: that base and the project's full path, as the daemon matched them. It names a project on a server, not an account. Absent for every other origin, including SSH, which is never assumed equivalent, and for an origin gitea_origin already names. The address itself is never returned.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "base_url",
+            "full_name"
+          ],
+          "properties": {
+            "base_url": {
+              "description": "The base as integrations.schema.json's gitea_base_url spells it.",
+              "type": "string",
+              "minLength": 9,
+              "maxLength": 2048,
+              "pattern": "^https://[^\\s/?#@%\\\\]+(/[^\\s?#@%\\\\]+)*$"
+            },
+            "full_name": {
+              "$ref": "integrations.schema.json#/$defs/gitlab_full_name"
+            }
+          }
+        },
         "visibility": {
           "enum": [
             "visible",

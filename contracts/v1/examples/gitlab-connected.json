@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "outcome": "written",
+  "api": "ok",
+  "connection": {"id": "gitlab_0123456789abcdef01234567", "base_url": "https://gitlab.example.test", "user": "example.person", "kind": "pat", "ambiguous": false, "git": "registered"},
+  "token": {"push": "yes", "scopes": ["read_api", "write_repository"], "expires_at": "2027-10-27", "fine": false}
+}

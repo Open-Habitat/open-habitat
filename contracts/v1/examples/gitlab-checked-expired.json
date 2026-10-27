@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "outcome": "checked",
+  "api": "token_expired",
+  "connection": {"id": "gitlab_0123456789abcdef01234567", "base_url": "https://gitlab.example.test", "user": "example.person", "kind": "pat", "ambiguous": false, "git": "registered"}
+}

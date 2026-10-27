@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/gitlab-connection.schema.json",
+  "title": "Connect, change, check, repair or disconnect a GitLab connection",
+  "description": "POST /api/v1/integrations/gitlab sends connect, replace, check or repair; DELETE sends disconnect. The token travels only in connect and replace, goes once to the mapped daemon, which validates it against the base's /user, /personal_access_tokens/self and one page of the person's projects and writes it into glab's own config.yml host entry, and is never returned, logged or kept anywhere else. connect infers https:// only when no scheme is given and never corrects a host; gitlab.com and a self-hosted GitLab (with an explicit port or a relative-URL base path) are the same form. glab keeps one account per server, so a connect to a server glab already holds a login for is refused. connection_id is one the daemon derived from glab's file; it selects nothing else. check reads GitLab now; the list never touches the network. repair registers the secretless Git credential helper for the connection's base again. disconnect logs glab's entry out as glab auth logout does: it revokes nothing at GitLab and leaves every clone in place, and it is refused while one of this daemon's clones uses the connection.",
+  "oneOf": [
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["action", "base_url", "token"],
+      "properties": {
+        "action": {"const": "connect"},
+        "base_url": {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[!-~]+$"},
+        "token": {"$ref": "#/$defs/token"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["action", "connection_id", "token"],
+      "properties": {
+        "action": {"const": "replace"},
+        "connection_id": {"$ref": "integrations.schema.json#/$defs/gitlab_connection_id"},
+        "token": {"$ref": "#/$defs/token"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["action", "connection_id"],
+      "properties": {
+        "action": {"enum": ["check", "repair", "disconnect"]},
+        "connection_id": {"$ref": "integrations.schema.json#/$defs/gitlab_connection_id"}
+      }
+    }
+  ],
+  "$defs": {
+    "token": {"description": "A GitLab personal, group, project or fine-grained access token: printable ASCII without spaces. read_api and write_repository are the scopes the form asks for; api also works.", "type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^[!-~]+$"}
+  }
+}

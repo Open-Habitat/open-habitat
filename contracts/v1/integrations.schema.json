@@ -9,10 +9,11 @@
     "providers": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/provider"}},
     "accounts": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/account"}},
     "gitea": {"$ref": "#/$defs/gitea"},
+    "gitlab": {"$ref": "#/$defs/gitlab"},
     "skill": {"$ref": "#/$defs/skill"}
   },
   "$defs": {
-    "provider_id": {"description": "apple is the Apple (iCloud) tile: its services are ordinary imap, caldav and carddav accounts, which carry apple_id. gitea is the Gitea tile: its connections are tea's native logins, listed under gitea, never under accounts.", "enum": ["imap", "caldav", "carddav", "google", "microsoft", "dropbox", "apple", "gitea"]},
+    "provider_id": {"description": "apple is the Apple (iCloud) tile: its services are ordinary imap, caldav and carddav accounts, which carry apple_id. gitea is the Gitea tile: its connections are tea's native logins, listed under gitea, never under accounts. gitlab is the GitLab tile (gitlab.com or a self-hosted GitLab): its connections are glab's native host logins, listed under gitlab.", "enum": ["imap", "caldav", "carddav", "google", "microsoft", "dropbox", "apple", "gitea", "gitlab"]},
     "service_id": {"enum": ["mail", "calendar", "contacts", "drive", "onedrive", "sharepoint", "dropbox", "git"]},
     "address": {"type": "string", "minLength": 3, "maxLength": 254, "pattern": "^[a-z0-9._%+-]{1,64}@[a-z0-9-]{1,63}(\\.[a-z0-9-]{1,63})+$"},
     "home_directory": {"type": "string", "maxLength": 512, "pattern": "^~/cloud/[a-z0-9][a-z0-9-]*(/(?!\\.\\.?(/|$))[^/\\u0000-\\u001f]+)+$"},
@@ -24,8 +25,8 @@
         "id": {"$ref": "#/$defs/provider_id"},
         "available": {"description": "False when the tool is not installed or the operator has not configured the application.", "type": "boolean"},
         "unavailable_reason": {"description": "Present only when unavailable: app_credentials_required when the tools are installed and only the operator's application registration is missing, tool_unavailable otherwise.", "enum": ["app_credentials_required", "tool_unavailable"]},
-        "missing_tools": {"description": "With tool_unavailable only: the catalog's tools this installation does not provide as trusted executables, in the entry's order.", "type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"enum": ["curl", "himalaya", "rclone", "gog", "ms-365-mcp-server", "pi", "microsoft-native", "tea"]}},
-        "login": {"description": "personal_token is the Gitea form: an address and a personal access token the daemon validates and writes only into tea's own login file.", "enum": ["app_password", "pasted_redirect", "device_code", "personal_token"]},
+        "missing_tools": {"description": "With tool_unavailable only: the catalog's tools this installation does not provide as trusted executables, in the entry's order.", "type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"enum": ["curl", "himalaya", "rclone", "gog", "ms-365-mcp-server", "pi", "microsoft-native", "tea", "glab"]}},
+        "login": {"description": "personal_token is the Gitea and GitLab form: an address and a personal access token the daemon validates and writes only into tea's or glab's own login file.", "enum": ["app_password", "pasted_redirect", "device_code", "personal_token"]},
         "services": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"$ref": "#/$defs/service_id"}}
       }
     },
@@ -80,6 +81,31 @@
       "properties": {
         "state": {"enum": ["ok", "unavailable"]},
         "connections": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/gitea_connection"}}
+      }
+    },
+    "gitlab_connection_id": {"description": "Derived by the daemon from glab's hosts key, canonical base and user; it carries no token material and selects nothing the daemon did not observe itself.", "type": "string", "pattern": "^gitlab_[0-9a-f]{24}$"},
+    "gitlab_user": {"type": "string", "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,254}$"},
+    "gitlab_full_name": {"description": "A GitLab project path: the namespace (a user, or a group and up to 19 subgroups) and the project, group/subgroup/.../project, 2 to 21 segments, shown in full. Never a dot segment, GitLab's route separator - or a segment ending in .git or .atom.", "type": "string", "maxLength": 1024, "pattern": "^[A-Za-z0-9_.-]{1,255}(/[A-Za-z0-9_.-]{1,255}){1,20}$", "not": {"pattern": "(^|/)(\\.\\.?|-)(/|$)|\\.(git|atom)(/|$)"}},
+    "gitlab_connection": {
+      "description": "One of glab's signed-in host logins, read from its file alone; glab keeps one per server. base_url and user are present only when glab's entry names a valid HTTPS server and user. Only a pat that is not ambiguous can be used.",
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "ambiguous", "git"],
+      "properties": {
+        "id": {"$ref": "#/$defs/gitlab_connection_id"},
+        "base_url": {"$ref": "#/$defs/gitea_base_url"},
+        "user": {"$ref": "#/$defs/gitlab_user"},
+        "kind": {"description": "pat is a token in glab's file the connector can use; oauth (glab refreshes it), keyring (the token is in the operating system's keyring), insecure (glab is told to skip or replace TLS verification, use a proxy, add headers or speak HTTP) and invalid entries are shown, never used or rewritten.", "enum": ["pat", "oauth", "keyring", "insecure", "invalid"]},
+        "ambiguous": {"description": "Another of glab's host keys names the same server; neither is used until the person removes one.", "type": "boolean"},
+        "git": {"$ref": "#/$defs/gitea_git"}
+      }
+    },
+    "gitlab": {
+      "description": "glab's signed-in host logins as the daemon read them now. unavailable: glab's file is unsafe, malformed or unreadable, which is never an empty list.",
+      "type": "object", "additionalProperties": false,
+      "required": ["state", "connections"],
+      "properties": {
+        "state": {"enum": ["ok", "unavailable"]},
+        "connections": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/gitlab_connection"}}
       }
     },
     "account": {

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {"connection_id": "gitlab_0123456789abcdef01234567", "base_url": "https://gitlab.example.test", "user": "example.person", "state": "ok", "complete": true, "repositories": [
+      {"id": 42, "full_name": "example.person/notes", "visibility": "private", "description": "Synthetic notes", "html_url": "https://gitlab.example.test/example.person/notes", "activity_at": "2026-10-20T08:00:00Z", "size_kib": 120, "default_branch": "main", "empty": false, "archived": false, "personal": true, "own": true},
+      {"id": 43, "full_name": "example-group/shop/infra/terraform", "visibility": "internal", "description": "Synthetic infrastructure", "html_url": "https://gitlab.example.test/example-group/shop/infra/terraform", "activity_at": "2026-10-26T08:00:00Z", "size_kib": null, "default_branch": "main", "empty": false, "archived": false, "personal": false, "own": false},
+      {"id": 44, "full_name": "example-group/new-service", "visibility": "private", "description": "", "html_url": "https://gitlab.example.test/example-group/new-service", "activity_at": null, "size_kib": 0, "default_branch": null, "empty": true, "archived": true, "personal": false, "own": false}
+    ]},
+    {"connection_id": "gitlab_fedcba9876543210fedcba98", "base_url": "https://code.example.test:8443/gitlab", "user": "example-person", "state": "ok", "complete": false, "incomplete": "interrupted", "elsewhere": {"count": 3, "origin": "http://gitlab.internal.example"}, "repositories": []},
+    {"connection_id": "gitlab_89abcdef0123456789abcdef", "base_url": "https://gitlab.other.example", "user": "example-person", "state": "failed", "failure": "token_expired", "complete": false, "repositories": []}
+  ]
+}

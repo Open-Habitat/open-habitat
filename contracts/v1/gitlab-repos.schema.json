@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/gitlab-repos.schema.json",
+  "title": "Projects of the person's GitLab connections",
+  "description": "GET /api/v1/integrations/gitlab/repos takes no query. The mapped daemon reads each usable glab login's member projects (GET /projects?membership=true, keyset pagination by id) with that login's own token within a time, page, result and byte bound. Each connection is its own source with its own state: one failing never empties another, and a failed source is never an empty success. Before listing, the token must still authenticate the user glab's entry names (account_mismatch otherwise). complete is true only when the last page carried no next link within the bounds and every page continued the one before; GitLab's next link is checked against the base, never followed. A project whose clone address GitLab gives outside the connected base (a GitLab whose external_url names another address) is never listed, so the token is never sent there: elsewhere counts them. A project is identified by its source's connection_id and GitLab's own numeric id, never by its path alone. Archived projects are listed and marked.",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "sources"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "sources": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/source"}}
+  },
+  "$defs": {
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["connection_id", "base_url", "user", "state", "complete", "repositories"],
+      "properties": {
+        "connection_id": {"$ref": "integrations.schema.json#/$defs/gitlab_connection_id"},
+        "base_url": {"$ref": "integrations.schema.json#/$defs/gitea_base_url"},
+        "user": {"$ref": "integrations.schema.json#/$defs/gitlab_user"},
+        "state": {"enum": ["ok", "failed"]},
+        "failure": {"enum": ["token_rejected", "token_expired", "insufficient_scope", "account_mismatch", "unreachable", "tls_untrusted", "redirect_refused", "forbidden_destination", "not_gitlab", "native_unavailable"]},
+        "complete": {"type": "boolean"},
+        "incomplete": {"description": "Why an ok source is not complete: limit (a page, result or byte bound, or the reply's bound across sources, was reached), interrupted (a later page failed or the time bound ran out), inconsistent (the pages disagreed: a repeated or reordered id, a link outside the list, or a project whose path could mean another one).", "enum": ["limit", "interrupted", "inconsistent"]},
+        "elsewhere": {
+          "description": "Projects left out because GitLab gives their clone address outside the connected base, and one such address's scheme and server for the person to tell GitLab's administrator.",
+          "type": "object", "additionalProperties": false,
+          "required": ["count"],
+          "properties": {
+            "count": {"type": "integer", "minimum": 1, "maximum": 1000000},
+            "origin": {"type": "string", "maxLength": 270, "pattern": "^https?://[^\\s/?#@%\\\\]+$"}
+          }
+        },
+        "repositories": {"type": "array", "maxItems": 1000, "items": {"$ref": "#/$defs/repository"}}
+      },
+      "allOf": [
+        {"if": {"properties": {"state": {"const": "failed"}}}, "then": {"required": ["failure"], "properties": {"complete": {"const": false}, "repositories": {"maxItems": 0}}, "not": {"anyOf": [{"required": ["incomplete"]}, {"required": ["elsewhere"]}]}}, "else": {"not": {"required": ["failure"]}}},
+        {"if": {"properties": {"state": {"const": "ok"}, "complete": {"const": false}}}, "then": {"required": ["incomplete"]}},
+        {"if": {"properties": {"complete": {"const": true}}}, "then": {"not": {"required": ["incomplete"]}}}
+      ]
+    },
+    "repository": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "full_name", "visibility", "description", "html_url", "activity_at", "size_kib", "default_branch", "empty", "archived", "personal", "own"],
+      "properties": {
+        "id": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+        "full_name": {"$ref": "integrations.schema.json#/$defs/gitlab_full_name"},
+        "visibility": {"description": "internal: every signed-in user of that GitLab can see it.", "enum": ["private", "internal", "public"]},
+        "description": {"type": "string", "maxLength": 500},
+        "html_url": {"type": "string", "maxLength": 3100, "pattern": "^https://[^\\s?#@%\\\\]+$"},
+        "activity_at": {"description": "GitLab's last_activity_at: the last activity of any kind, not a push time.", "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+        "size_kib": {"description": "GitLab's repository size in KiB; null when GitLab does not tell (it does only to Reporter and above).", "type": ["integer", "null"], "minimum": 0, "maximum": 9007199254740991},
+        "default_branch": {"type": ["string", "null"], "minLength": 1, "maxLength": 255, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"},
+        "empty": {"description": "GitLab says the repository has no commits; such a project cannot be cloned as a workspace yet.", "type": "boolean"},
+        "archived": {"type": "boolean"},
+        "personal": {"description": "The namespace is a user's, not a group's.", "type": "boolean"},
+        "own": {"description": "The namespace is the user the token authenticates.", "type": "boolean"}
+      }
+    }
+  }
+}

@@ -132,8 +132,26 @@ The packages divide the work as follows.
   launch path (the installation's `current` selector), never a release
   generation, because clones outlive releases. Its HTTP client is fixed Gitea
   reads, never a proxy.
+- `nativegitlab/` adapts glab's native host logins the same way: glab's
+  `config.yml` is the only connection and secret store, read under glab's own
+  `config.lock` and never cached. It writes only the one host entry a person
+  connects (token in the file, `use_keyring: "false"`), disconnects as `glab
+  auth logout` does, and never reads the keyring, `GITLAB_TOKEN` or
+  `GLAB_CONFIG_DIR`, uses glab's OAuth entries, or registers glab's own
+  helper, which matches the host alone. glab keeps one account per server, so
+  a second account there is refused, never written beside the first. Its Git
+  helper (`gitlab git-credential`) answers only HTTPS to the entry's exact
+  host and port for a project path (2–21 GitLab segments, never `/-/`) below
+  its base. A project whose clone address GitLab gives outside the connected
+  base is left out and counted, never cloned.
+- `nativeforge/` is what those two adapters share (the canonical base, the
+  egress-checked HTTP reads, Git's credential protocol, the helper
+  registration, the native file lifecycle and the job holds). It is a library
+  like `egress/`, not a provider abstraction: file formats, path rules,
+  account models and API reads stay in each adapter, where the providers
+  differ.
 - `egress/` is the dial-time destination rule shared by the daemon's
-  credential-bearing requests (Gitea's client, DAV discovery). It holds no
+  credential-bearing requests (the Gitea and GitLab clients, DAV discovery). It holds no
   authority and is not same-UID egress isolation.
 - `udssecure/` decides from the file system whether a socket path is the daemon
   it claims to be. `core/` loads component configuration and the Pi runtime

@@ -34,7 +34,7 @@
     }
   ],
   "$defs": {
-    "reason": {"enum": ["deadline_exceeded", "cancelled", "native_failure", "verification_failed", "destination_exists", "source_unavailable", "daemon_stopping"]},
+    "reason": {"description": "auth_refused: the server refused the clone's credential, or Git had none to give (an expired or revoked token, or a group that requires an SSO session for Git).", "enum": ["deadline_exceeded", "cancelled", "native_failure", "auth_refused", "verification_failed", "destination_exists", "source_unavailable", "daemon_stopping"]},
     "leftover": {"description": "removed: the directory this job created is gone, so a new start is admitted. kept: it could not be removed (or the daemon was stopping) and is recognised as an interrupted clone.", "enum": ["removed", "kept"]}
   }
 }
