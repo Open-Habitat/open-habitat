@@ -243,7 +243,9 @@ func (s *Server) gitCmd(dir string, args ...string) error {
 	return nil
 }
 
-func (s *Server) bare(path string) string { return filepath.Join(s.root, filepath.FromSlash(path)+".git") }
+func (s *Server) bare(path string) string {
+	return filepath.Join(s.root, filepath.FromSlash(path)+".git")
+}
 
 // AddProject creates a bare repository, with one commit unless p.Empty.
 func (s *Server) AddProject(p Project) error {

@@ -147,7 +147,7 @@ func TestProjectsPageConsistency(t *testing.T) {
 		"link elsewhere": {map[string]string{"": "[" + project(base, 1, "g/a") + "]"}, func(r *http.Request, a string) string {
 			return "<https://evil.example/api/v4/projects?id_after=1>; rel=\"next\""
 		}, nativeforge.IncompleteInconsistent},
-		"later page fails": {map[string]string{"": "[" + project(base, 1, "g/a") + "]"}, func(r *http.Request, a string) string { return self("1") }, nativeforge.IncompleteInterrupted},
+		"later page fails":  {map[string]string{"": "[" + project(base, 1, "g/a") + "]"}, func(r *http.Request, a string) string { return self("1") }, nativeforge.IncompleteInterrupted},
 		"malformed project": {map[string]string{"": "[" + project(base, 1, "g/a") + `,{"id":2,"path":"x","path_with_namespace":"../x","namespace":{"full_path":"..","kind":"group"},"visibility":"private"}]`}, func(r *http.Request, a string) string { return "" }, nativeforge.IncompleteInconsistent},
 	} {
 		for k := range pages {
