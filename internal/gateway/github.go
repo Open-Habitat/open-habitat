@@ -38,53 +38,81 @@ func (g GitHubProvider) Exchange(ctx context.Context, code, verifier string) (st
 }
 
 func (g GitHubProvider) ExchangeProfile(ctx context.Context, code, verifier string) (string, string, string, AccountProfile, error) {
+	grant, err := g.ExchangeGrant(ctx, code, verifier)
+	return grant.Token, grant.ID, grant.Login, grant.Profile, err
+}
+
+// GitHubGrant is one code exchange. ExpiresIn is nonzero when GitHub issued
+// an expiring token: an OAuth app registered since August 2026 does so by
+// default, for eight hours, with a refresh token. gh cannot refresh another
+// app's token and Habitat keeps none, so such a login stops working in gh
+// after ExpiresIn; the refresh token is never read.
+type GitHubGrant struct {
+	Token, ID, Login string
+	Profile          AccountProfile
+	ExpiresIn        time.Duration
+}
+
+func (g GitHubProvider) ExchangeGrant(ctx context.Context, code, verifier string) (GitHubGrant, error) {
+	token, id, login, profile, expires, err := g.exchange(ctx, code, verifier)
+	return GitHubGrant{Token: token, ID: id, Login: login, Profile: profile, ExpiresIn: expires}, err
+}
+
+func (g GitHubProvider) exchange(ctx context.Context, code, verifier string) (string, string, string, AccountProfile, time.Duration, error) {
 	form := url.Values{"client_id": {g.ClientID}, "client_secret": {g.ClientSecret}, "code": {code}, "redirect_uri": {g.CallbackURL}, "code_verifier": {verifier}}
 	req, e := http.NewRequestWithContext(ctx, "POST", "https://github.com/login/oauth/access_token", strings.NewReader(form.Encode()))
 	if e != nil {
-		return "", "", "", AccountProfile{}, errors.New("provider unavailable")
+		return "", "", "", AccountProfile{}, 0, errors.New("provider unavailable")
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, e := g.client().Do(req)
 	if e != nil {
-		return "", "", "", AccountProfile{}, errors.New("provider unavailable")
+		return "", "", "", AccountProfile{}, 0, errors.New("provider unavailable")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return "", "", "", AccountProfile{}, errors.New("provider unavailable")
+		return "", "", "", AccountProfile{}, 0, errors.New("provider unavailable")
 	}
 	var result struct {
 		Token     string `json:"access_token"`
 		TokenType string `json:"token_type"`
 		Error     string `json:"error"`
+		// Raw, so that an unexpected shape only loses the warning, never
+		// the sign-in.
+		ExpiresIn json.RawMessage `json:"expires_in"`
 	}
 	if json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&result) != nil || result.Error != "" || result.Token == "" || !strings.EqualFold(result.TokenType, "bearer") {
-		return "", "", "", AccountProfile{}, errors.New("provider unavailable")
+		return "", "", "", AccountProfile{}, 0, errors.New("provider unavailable")
 	}
 	req, e = http.NewRequestWithContext(ctx, "GET", "https://api.github.com/user", nil)
 	if e != nil {
-		return "", "", "", AccountProfile{}, errors.New("provider unavailable")
+		return "", "", "", AccountProfile{}, 0, errors.New("provider unavailable")
 	}
 	req.Header.Set("Authorization", "Bearer "+result.Token)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	resp, e = g.client().Do(req)
 	if e != nil {
-		return "", "", "", AccountProfile{}, errors.New("provider unavailable")
+		return "", "", "", AccountProfile{}, 0, errors.New("provider unavailable")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return "", "", "", AccountProfile{}, errors.New("provider unavailable")
+		return "", "", "", AccountProfile{}, 0, errors.New("provider unavailable")
 	}
 	user, ok := githubUser(io.LimitReader(resp.Body, 65537))
 	if !ok {
-		return "", "", "", AccountProfile{}, errors.New("provider unavailable")
+		return "", "", "", AccountProfile{}, 0, errors.New("provider unavailable")
 	}
 	id := string(user.ID)
 	n, e := strconv.ParseUint(id, 10, 64)
 	if e != nil || n == 0 || strconv.FormatUint(n, 10) != id || user.Login == "" {
-		return "", "", "", AccountProfile{}, errors.New("provider unavailable")
+		return "", "", "", AccountProfile{}, 0, errors.New("provider unavailable")
 	}
-	return result.Token, id, user.Login, normalizeProfile(AccountProfile{Name: user.Name, Email: user.Email, AvatarURL: user.AvatarURL}), nil
+	var expires time.Duration
+	if n, e := strconv.ParseInt(strings.Trim(string(result.ExpiresIn), `"`), 10, 32); e == nil && n > 0 {
+		expires = time.Duration(n) * time.Second
+	}
+	return result.Token, id, user.Login, normalizeProfile(AccountProfile{Name: user.Name, Email: user.Email, AvatarURL: user.AvatarURL}), expires, nil
 }
 
 // Reject ambiguous /user identities (duplicate or case-variant keys), oversized

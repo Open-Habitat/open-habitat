@@ -251,6 +251,10 @@ Identity and authority:
   the daemon answers that gh positively holds another one; a lost or uncertain
   answer revokes nothing, and a native credential is never revoked or
   replaced to make room.
+  The token gh receives must not expire, because gh cannot refresh another
+  app's token. Habitat therefore holds no refresh token, and the gateway
+  does not become a refresher: an OAuth app that issues expiring tokens is
+  an installation defect, which the gateway reports at sign-in.
 - An integration's token or password lives only in its tool's own store in
   the person's home; the daemon writes an app password there and keeps no
   copy, and the host keeps no list of connections. The browser pastes a

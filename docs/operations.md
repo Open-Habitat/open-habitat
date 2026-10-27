@@ -68,6 +68,18 @@ by other users. The runtime manifest version and SHA-256 go in the site file.
 Development-signed runtime releases are for disposable testing only, not a
 production signing-key custody claim.
 
+Register the GitHub OAuth app with its callback at
+`https://<origin>/auth/github/callback`, and under the app's **Optional
+features** opt out of expiring user tokens. GitHub enables them by default
+for OAuth apps registered since August 2026. Such a token works for eight
+hours. The person's `gh` cannot refresh it, and Habitat keeps no refresh
+token, so after eight hours `git push` and `gh` stop working until the person
+signs in again. A sign-in that receives an expiring token logs
+`github_token_expiring` in the gateway journal. Tokens issued before the
+opt-out still expire, and a sign-in keeps gh's login while it works, so each
+person signs in once more after their current token has expired, when
+Settings › Yhteydet shows GitHub as Vanhentunut.
+
 Start from the shipped `site/example.json` and `site/schema.json`. Write a
 private root-owned `/etc/open-habitat/site.json` declaring the home UUID,
 gateway UID/GID, an unoccupied reserved UID/GID pool, numeric GitHub admission

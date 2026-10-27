@@ -650,8 +650,15 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	var token, id, login string
 	var profile AccountProfile
+	var expires time.Duration
 	// Preserve the lightweight Provider seam for synthetic login tests.
 	if provider, ok := a.provider.(interface {
+		ExchangeGrant(context.Context, string, string) (GitHubGrant, error)
+	}); ok {
+		var grant GitHubGrant
+		grant, e = provider.ExchangeGrant(r.Context(), r.URL.Query().Get("code"), p.verifier)
+		token, id, login, profile, expires = grant.Token, grant.ID, grant.Login, grant.Profile, grant.ExpiresIn
+	} else if provider, ok := a.provider.(interface {
 		ExchangeProfile(context.Context, string, string) (string, string, string, AccountProfile, error)
 	}); ok {
 		token, id, login, profile, e = provider.ExchangeProfile(r.Context(), r.URL.Query().Get("code"), p.verifier)
@@ -662,6 +669,12 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.authEvent(attempt, "rejected", "exchange_failed")
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
+	}
+	if expires > 0 {
+		// The OAuth app hands out expiring tokens. The sign-in goes on, but
+		// the token gh receives stops working when it expires; only the app
+		// registration can change that (docs/operations.md).
+		a.log.Warn("github_token_expiring", "outcome", "degraded", "reason", "oauth_app_expiring_tokens", "expires_in_s", int64(expires/time.Second), "attempt_id", attempt)
 	}
 	n, e := strconv.ParseUint(id, 10, 64)
 	if e != nil || n == 0 || strconv.FormatUint(n, 10) != id || login == "" {

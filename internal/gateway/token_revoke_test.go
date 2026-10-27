@@ -22,6 +22,10 @@ type syntheticGitHub struct {
 	revoked []string
 	// refuse answers a revocation with this status instead of 204.
 	refuse int
+	// expiry, when set, is the expires_in member of the exchange reply,
+	// which then also carries a refresh token, as an OAuth app registered
+	// since August 2026 answers by default.
+	expiry string
 }
 
 func (g *syntheticGitHub) RoundTrip(r *http.Request) (*http.Response, error) {
@@ -33,6 +37,9 @@ func (g *syntheticGitHub) RoundTrip(r *http.Request) (*http.Response, error) {
 	switch {
 	case r.Method == "POST" && r.URL.String() == "https://github.com/login/oauth/access_token":
 		g.minted++
+		if g.expiry != "" {
+			return reply(200, fmt.Sprintf(`{"access_token":"gho_synthetic_minted_%d","expires_in":%s,"refresh_token":"ghr_synthetic_refresh","refresh_token_expires_in":15811200,"token_type":"bearer","scope":"gist,read:org,repo"}`, g.minted, g.expiry))
+		}
 		return reply(200, fmt.Sprintf(`{"access_token":"gho_synthetic_minted_%d","token_type":"bearer"}`, g.minted))
 	case r.Method == "GET" && r.URL.String() == "https://api.github.com/user":
 		return reply(200, `{"id":42,"login":"alice"}`)
@@ -146,5 +153,29 @@ func TestGitHubRevokeTokenNeedsAppCredentials(t *testing.T) {
 	}
 	if e := (GitHubProvider{ClientID: "client", ClientSecret: "secret", Client: &http.Client{Transport: gh}}).RevokeToken(context.Background(), "gho_x"); e != nil || len(gh.revoked) != 1 {
 		t.Fatal(e, gh.revoked)
+	}
+}
+
+// An OAuth app that issues eight-hour tokens is the cause of gh's login
+// dying every day: the sign-in still hands the token over, and the gateway
+// says why the connection will not last, naming neither token.
+func TestExpiringTokenSignInWarns(t *testing.T) {
+	const warning = `"event":"github_token_expiring","schema_version":1,"component":"gateway","outcome":"degraded","reason":"oauth_app_expiring_tokens","expires_in_s":28800`
+	h, gh, s, _, logs := revokeFixture(t)
+	if code := signIn(t, h); code != 303 || strings.Contains(logs.String(), "github_token_expiring") {
+		t.Fatal(code, logs.String())
+	}
+	gh.expiry = "28800"
+	if code := signIn(t, h); code != 303 || s.token != "gho_synthetic_minted_2" || !strings.Contains(logs.String(), warning) {
+		t.Fatal(code, logs.String())
+	}
+	if strings.Contains(logs.String(), s.token) || strings.Contains(logs.String(), "ghr_") {
+		t.Fatal("token logged")
+	}
+	// A shape GitHub does not send loses only the warning, never the sign-in.
+	logs.Reset()
+	gh.expiry = `"eight hours"`
+	if code := signIn(t, h); code != 303 || s.token != "gho_synthetic_minted_3" || strings.Contains(logs.String(), "github_token_expiring") {
+		t.Fatal(code, logs.String())
 	}
 }
