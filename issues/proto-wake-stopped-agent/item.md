@@ -8,7 +8,7 @@ priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/wake-agent-on-settled-wait
 lane: proto-wake
-preparation: pending
+preparation: ready
 lane_seq: 1
 ---
 
@@ -24,3 +24,7 @@ Jari 2026-10-27: 'Voisiko meillä olla herkempiä triggereitä agentin uudelleen
 ### 2026-10-27 · @jari
 
 Jari 2026-10-27: not every old conversation should be started automatically when its background work settles. Prototype instead lighter, person-driven triggers: start the stopped agent when the person begins typing in the composer or opens the conversation, or offer a "Herätä" button in the conversation, and whatever else the round finds. Prototype round first (design-system/prototypes method: 2–3 directions, desktop and phone, light and dark, synthetic data); implementation is a later issue. The overnight stop was the idle reaper (pi-stop-cause-overnight).
+
+### 2026-10-27T07:40:52Z · @jari
+
+Jari 2026-10-27 kierroksesta 1: kirjoittamisen aloitus käynnistää agentin on mukava. Painike-suunnan kuvaus (milloin ja miksi pysähtyi, mitä valmistui) on tosi hyvä, mutta siinä raportti tulee vasta, kun agentti käynnistyy uudestaan; sen pitää näkyä jo ennen herätystä. Avatessa-suunnan lähtölaskenta on hölmö, pois. Riffataan näillä (kierros 2). ADR 0020:n muutos (uusi herätysoperaatio) on ok.

@@ -3,13 +3,14 @@ created: 2026-10-27
 updated: 2026-10-27
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/agent-worker-wait-model
 lane: agent-lifecycle
 lane_seq: 1
 preparation: pending
+closed: 2026-10-27
 ---
 
 # Design: how an agent and its workers wait for each other
@@ -23,3 +24,9 @@ Today the parent agent learns of a worker's completion only if it has itself sta
 ## Result
 
 Design study (Finnish): [result.md](result.md). Recommendation A (the companion reminds at turn end when own live runs have no wait); the choice between A, B and C is Jari's.
+
+## Decisions
+
+### 2026-10-27T07:40:52Z · @jari
+
+Jari 2026-10-27: suositus A hyväksytty (agentti odottaa itse; companion muistuttaa vuoron lopussa kattamattomista omista ajoista; tyhjäkäynnin pysäytys ennallaan; pysähtyneen palautus ihmisen herätteellä). Toteutus: agent-wait-turn-end-reminder.
