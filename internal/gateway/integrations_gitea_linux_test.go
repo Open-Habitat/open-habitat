@@ -20,10 +20,21 @@ import (
 	"time"
 )
 
-// A Gitea write reaches only the session's own daemon, with the token in
-// the body unread: the gateway checks the session, CSRF and framing, caps
-// request and reply, never logs the body, and never contacts Gitea itself.
+// A Gitea or GitLab write reaches only the session's own daemon, with the
+// token in the body unread: the gateway checks the session, CSRF and framing,
+// caps request and reply, never logs the body, and never contacts the code
+// host itself.
 func TestGatewayGiteaRoutesBoundAndRouteToTheSessionsDaemon(t *testing.T) {
+	forgeRoutes(t, integrationGiteaPath, integrationGiteaRepos, "integrations_gitea", "gitea_0123456789abcdef01234567")
+}
+
+func TestGatewayGitLabRoutesBoundAndRouteToTheSessionsDaemon(t *testing.T) {
+	forgeRoutes(t, integrationGitLabPath, integrationGitLabRepos, "integrations_gitlab", "gitlab_0123456789abcdef01234567")
+	forgeRoutes(t, integrationGitLabPath, integrationGitLabTokens, "integrations_gitlab", "gitlab_0123456789abcdef01234567")
+}
+
+func forgeRoutes(t *testing.T, integrationGiteaPath, integrationGiteaRepos, logName, connection string) {
+	t.Helper()
 	uid := os.Getuid()
 	now := time.Now()
 	alice := Identity{"github", "42", uid, "alice", "/run/open-habitat/users/alice/daemon.sock"}
@@ -123,13 +134,13 @@ func TestGatewayGiteaRoutesBoundAndRouteToTheSessionsDaemon(t *testing.T) {
 		t.Fatalf("refused requests reached a daemon: %q", seen)
 	}
 
-	change := `{"schema_version":1,"outcome":"written","api":"ok","connection":{"id":"gitea_0123456789abcdef01234567","kind":"pat","owned":true,"ambiguous":false,"git":"registered"}}`
+	change := `{"schema_version":1,"outcome":"written","api":"ok","connection":{"id":"` + connection + `","kind":"pat","ambiguous":false,"git":"registered"}}`
 	reply[integrationGiteaPath] = change
 	reply[integrationGiteaRepos] = `{"schema_version":1,"sources":[]}`
 	if w := send("POST", integrationGiteaPath, connect, "one", "secret-one", json); w.Code != 200 || w.Body.String() != change {
 		t.Fatalf("connect: %d %s", w.Code, w.Body.String())
 	}
-	disconnect := `{"action":"disconnect","connection_id":"gitea_0123456789abcdef01234567"}`
+	disconnect := `{"action":"disconnect","connection_id":"` + connection + `"}`
 	if w := send("DELETE", integrationGiteaPath, disconnect, "two", "secret-two", json); w.Code != 200 {
 		t.Fatalf("disconnect: %d %s", w.Code, w.Body.String())
 	}
@@ -155,7 +166,7 @@ func TestGatewayGiteaRoutesBoundAndRouteToTheSessionsDaemon(t *testing.T) {
 	if w := send("POST", integrationGiteaPath, connect, "one", "secret-one", json); w.Code != 503 {
 		t.Fatalf("lost exchange: %d", w.Code)
 	}
-	if strings.Contains(logs.String(), token) || !strings.Contains(logs.String(), "integrations_gitea") {
+	if strings.Contains(logs.String(), token) || !strings.Contains(logs.String(), logName) {
 		t.Fatalf("gateway log: %s", logs.String())
 	}
 }

@@ -10,8 +10,12 @@ const (
 	integrationLoginPath    = "/api/v1/integrations/login"
 	integrationGiteaPath    = "/api/v1/integrations/gitea"
 	integrationGiteaRepos   = "/api/v1/integrations/gitea/repos"
-	// A Gitea write carries at most an address and a token; its reply and
-	// the repository list are bounded far below the general proxy cap.
+	integrationGitLabPath   = "/api/v1/integrations/gitlab"
+	integrationGitLabRepos  = "/api/v1/integrations/gitlab/repos"
+	integrationGitLabTokens = "/api/v1/integrations/gitlab/tokens"
+	// A Gitea or GitLab write carries at most an address and a token; its
+	// reply and the repository list are bounded far below the general proxy
+	// cap. GitLab's bounds are Gitea's.
 	giteaRequestLimit = 4096
 	giteaChangeLimit  = 64 << 10
 	giteaReposLimit   = 4 << 20
@@ -29,20 +33,24 @@ func (a *Auth) integrations(w http.ResponseWriter, r *http.Request) {
 		integrationLoginPath:    {http.MethodGet: true, http.MethodPost: true, http.MethodPut: true, http.MethodDelete: true},
 		integrationGiteaPath:    {http.MethodPost: true, http.MethodDelete: true},
 		integrationGiteaRepos:   {http.MethodGet: true},
+		integrationGitLabPath:   {http.MethodPost: true, http.MethodDelete: true},
+		integrationGitLabRepos:  {http.MethodGet: true},
+		integrationGitLabTokens: {http.MethodGet: true},
 	}
 	if !allowed[r.URL.Path][r.Method] || !a.exact(r, r.URL.Path) {
 		safe(w, 400, "invalid_request")
 		return
 	}
-	// A Gitea token passes through unread: the gateway checks only the
-	// framing, never parses, logs or keeps the body, and never calls Gitea.
+	// A Gitea or GitLab token passes through unread: the gateway checks only
+	// the framing, never parses, logs or keeps the body, and never calls the
+	// code host.
 	switch r.URL.Path {
-	case integrationGiteaPath:
+	case integrationGiteaPath, integrationGitLabPath:
 		if r.ContentLength < 1 || r.ContentLength > giteaRequestLimit || len(r.TransferEncoding) != 0 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 {
 			safe(w, 400, "invalid_request")
 			return
 		}
-	case integrationGiteaRepos:
+	case integrationGiteaRepos, integrationGitLabRepos, integrationGitLabTokens:
 		if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 			safe(w, 400, "invalid_request")
 			return
