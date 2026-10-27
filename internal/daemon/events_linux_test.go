@@ -332,7 +332,7 @@ func TestJournalOverflowResetAndWriterExit(t *testing.T) {
 	j.delta(agent, "assistant.delta", "first", 0)
 	j.progress(agent, "tool.started", map[string]string{"tool_call_id": "one", "tool_name": "bash", "state": "running"})
 	// A large chunk is split; only text beyond the tail's byte bound gives it up.
-	j.delta(agent, "assistant.delta", strings.Repeat("x", 140<<10), 0)
+	j.delta(agent, "assistant.delta", strings.Repeat("x", tailBytes+(16<<10)), 0)
 	_, _, _, views := j.turnView()
 	if !views[agent].overflow || len(views[agent].frames) != 0 {
 		t.Fatal("overflow retained partial turn")
@@ -350,6 +350,27 @@ func TestJournalOverflowResetAndWriterExit(t *testing.T) {
 	}
 }
 
+// The byte bound is used in full: frames are kept while they fit within it,
+// and the first frame that would exceed it gives the tail up.
+func TestJournalTailByteBound(t *testing.T) {
+	j := newEventJournal()
+	agent := "pi:12345678-1234-1234-1234-123456789012"
+	j.reset(agent, "running")
+	kept, last := 0, 0
+	for n := 0; n < tailFrames; n++ {
+		j.progress(agent, "tool.finished", map[string]string{"tool_call_id": "call_" + strconv.Itoa(n), "tool_name": "bash", "state": "succeeded", "text": strings.Repeat("r", 8<<10)})
+		_, _, _, views := j.turnView()
+		if views[agent].overflow {
+			break
+		}
+		kept, last = views[agent].bytes, len(views[agent].frames[len(views[agent].frames)-1])
+	}
+	_, _, _, views := j.turnView()
+	if !views[agent].overflow || kept > tailBytes || kept+last <= tailBytes {
+		t.Fatalf("byte bound: overflow=%v kept=%d frame=%d bound=%d", views[agent].overflow, kept, last, tailBytes)
+	}
+}
+
 // A long run's tool calls are saved one model turn at a time but published as
 // history only when the run settles. A tail given up at its frame bound must
 // resume at the next model turn, not stay silent until the run ends.
@@ -357,10 +378,15 @@ func TestJournalOverflowResumesAtNextModelTurn(t *testing.T) {
 	j := newEventJournal()
 	agent := "pi:12345678-1234-1234-1234-123456789012"
 	j.reset(agent, "running")
-	for n := 0; n <= tailFrames; n++ {
+	for n := 0; n < tailFrames; n++ {
 		j.progress(agent, "tool.finished", map[string]string{"tool_call_id": "call_" + strconv.Itoa(n), "tool_name": "bash", "state": "succeeded"})
 	}
 	_, _, _, views := j.turnView()
+	if views[agent].overflow || len(views[agent].frames) != tailFrames {
+		t.Fatal("tail gave up before its frame bound", len(views[agent].frames))
+	}
+	j.progress(agent, "tool.finished", map[string]string{"tool_call_id": "one_more", "tool_name": "bash", "state": "succeeded"})
+	_, _, _, views = j.turnView()
 	if !views[agent].overflow {
 		t.Fatal("structural bound did not give up the tail")
 	}

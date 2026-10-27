@@ -156,7 +156,7 @@ func TestOversizeLocalOutputInvalidatesOnlyOnce(t *testing.T) {
 	agent := "pi:11111111-1111-4111-8111-111111111111"
 	// Large chunks are split and kept; only output beyond the tail's byte
 	// bound gives the tail up, and only once.
-	for range 40 {
+	for range tailBytes/5000 + 40 {
 		j.delta(agent, "bash.output", strings.Repeat("x", 5000), 0)
 	}
 	count := 0
@@ -311,5 +311,55 @@ func TestLongStreamKeepsMergedTail(t *testing.T) {
 	}
 	if !strings.HasSuffix(cursor, fmt.Sprintf(":%d", j.seq)) || last > j.seq {
 		t.Fatal("tail is not covered by the snapshot cursor")
+	}
+}
+
+// piToolTurn is one tool-calling model turn of a long run as Pi's RPC sends
+// it, sized like a busy real turn: some thinking, a command, and a result at
+// the live projection's 4 KiB cap, also seen once as cumulative progress.
+func piToolTurn(c *ConversationController, agent string, n int) {
+	call := fmt.Sprintf("call_%03d", n)
+	args := map[string]any{"command": strings.Repeat("c", 200)}
+	result := map[string]any{"content": []map[string]string{{"type": "text", "text": strings.Repeat("r", 4096)}}}
+	for _, event := range []map[string]any{
+		{"type": "turn_start"},
+		{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "thinking_delta", "contentIndex": 0, "delta": strings.Repeat("t", 1024)}},
+		{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "toolcall_delta", "contentIndex": 1, "delta": `{"command":"` + strings.Repeat("c", 200) + `"}`}},
+		{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "toolcall_end", "contentIndex": 1, "toolCall": map[string]any{"id": call, "name": "bash", "arguments": args}}},
+		{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "toolUse"}},
+		{"type": "tool_execution_start", "toolCallId": call, "toolName": "bash", "args": args},
+		{"type": "tool_execution_update", "toolCallId": call, "toolName": "bash", "args": args, "partialResult": result},
+		{"type": "tool_execution_end", "toolCallId": call, "toolName": "bash", "args": args, "result": result},
+		{"type": "turn_end"},
+	} {
+		raw, _ := json.Marshal(event)
+		c.publishDelta(agent, raw)
+	}
+}
+
+// Pi publishes a run's history entries only when it settles, so the live tail
+// holds every model turn of the run. The longest run measured on a real host
+// (2026-10-27) made 55 tool calls; at the busy size above it must stay live
+// from start to end. A tail given up and resumed at a later turn_start would
+// look whole at the end, so the event ring is checked for any give-up.
+func TestLongRunFitsLiveTail(t *testing.T) {
+	j := newEventJournal()
+	c := &ConversationController{journal: j}
+	agent := "pi:11111111-1111-4111-8111-111111111111"
+	c.publishDelta(agent, json.RawMessage(`{"type":"agent_start"}`))
+	const turns = 55
+	for n := range turns {
+		piToolTurn(c, agent, n)
+	}
+	_, _, _, tails := j.turnView()
+	tail := tails[agent]
+	t.Logf("%d tool-calling turns: %d tail frames, %d tail bytes (%.1f frames, %d bytes per turn)", turns, len(tail.frames), tail.bytes, float64(len(tail.frames))/turns, tail.bytes/turns)
+	for _, frame := range j.frames {
+		if strings.Contains(string(frame), `"reason":"ring_truncated"`) {
+			t.Fatalf("long run gave up the live tail: frames=%d bytes=%d", len(tail.frames), tail.bytes)
+		}
+	}
+	if len(tail.frames) != 1+turns*8 || tail.overflow {
+		t.Fatalf("long run tail: %d frames, overflow=%v", len(tail.frames), tail.overflow)
 	}
 }

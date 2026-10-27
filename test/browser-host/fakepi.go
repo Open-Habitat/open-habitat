@@ -688,17 +688,19 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 
 // longRun is one native agent run of many model turns, each calling a tool,
 // as a long task with git and issue calls is: Pi starts the agent once, saves
-// each message as it ends, and settles only after the last answer.
+// each message as it ends, and settles only after the last answer. Its 130
+// turns, eight live frames each, outgrow the daemon's 1000-frame live tail once.
 func (s *fakeSession) longRun(run chan struct{}, emit func(any)) {
-	for n := 0; n < 40; n++ {
+	for n := 0; n < 130; n++ {
 		if s.pause(run, 60*time.Millisecond) {
 			emit(map[string]any{"type": "agent_end"})
 			return
 		}
-		callID := fmt.Sprintf("call_run_%02d", n)
+		callID := fmt.Sprintf("call_run_%03d", n)
 		args := map[string]any{"command": fmt.Sprintf("echo vaihe %d", n)}
 		emit(map[string]any{"type": "turn_start"})
 		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "thinking_delta", "contentIndex": 0, "delta": fmt.Sprintf("Vaihe %d", n)}})
+		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "toolcall_start", "contentIndex": 1, "toolName": "bash", "id": callID}})
 		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "toolcall_delta", "contentIndex": 1, "delta": `{"command":`}})
 		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "toolcall_end", "contentIndex": 1, "toolCall": map[string]any{"id": callID, "name": "bash", "arguments": args}}})
 		s.append(message("assistant", []map[string]any{{"type": "thinking", "thinking": fmt.Sprintf("Vaihe %d", n)}, {"type": "toolCall", "id": callID, "name": "bash", "arguments": args}}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "toolUse"}))

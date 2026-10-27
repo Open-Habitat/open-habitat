@@ -77,6 +77,10 @@ export function parseConversationEvent(raw: string): ConversationEvent {
     throw new Error("mismatched cursor");
   return frame;
 }
+// The daemon's live-tail frame bound (and the snapshot's live_tail maxItems):
+// a run's structure stays live until it settles, about eight fragments per
+// tool call, so the bound covers runs of over a hundred tool calls.
+export const liveTailFragments = 1000;
 const textKinds = new Set([
   "assistant.delta",
   "assistant.thinking.delta",
@@ -244,7 +248,7 @@ export function applyTurnEvent(
           ],
         },
       };
-    if (fragments.length >= 128)
+    if (fragments.length >= liveTailFragments)
       return {
         turn: { ...next, fragments: [], truncated: true },
         recover: "history",

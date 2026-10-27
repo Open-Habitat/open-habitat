@@ -32,7 +32,7 @@ type turnTail struct {
 	overflow bool
 	// The newest tail frame is text of this kind and index. The next flush of
 	// the same text extends that frame rather than taking a frame of its own,
-	// so the 128-frame bound counts structure, not seconds of streaming.
+	// so the frame bound counts structure, not seconds of streaming.
 	textOpen  bool
 	lastKind  string
 	lastIndex int
@@ -280,9 +280,19 @@ func (j *eventJournal) admitTailLocked(agent string, t *turnTail) bool {
 	return true
 }
 
+// Pi publishes a run's history entries only when the run settles, so the tail
+// holds a whole run: eight frames and on average 8 KiB per tool call (13 KiB
+// when every result reaches the 4 KiB live cap). Runs measured on a real host
+// (2026-10-27) peaked at 55 tool calls, ~400 frames and ~450 KiB; these
+// bounds cover about 125 average calls. The frame bound is the snapshot
+// contract's live_tail maxItems. A conversation therefore holds at most 1 MiB
+// of tail while it runs (frames shared with the event ring while it still
+// holds them), and each workspace snapshot carries that much per running
+// conversation. A longer run gives up the tail and resumes it at its next
+// model turn.
 const (
-	tailFrames     = 128
-	tailBytes      = 128 << 10
+	tailFrames     = 1000
+	tailBytes      = 1 << 20
 	tailFrameBytes = 16 << 10
 	deltaBytes     = 4096
 )

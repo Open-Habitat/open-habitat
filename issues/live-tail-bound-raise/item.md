@@ -3,7 +3,7 @@ created: 2026-10-27
 updated: 2026-10-27
 type: improvement
 reporter: jari
-status: open
+status: testing
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/live-tail-bound-raise

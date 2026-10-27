@@ -5,13 +5,32 @@ test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
 // One Pi run of many tool-calling model turns (a long task with git pushes and
 // issue calls, often lengthened by steering) saves each message as it ends but
-// settles only at its end. Its provisional structure outgrew the 128-frame
-// live tail, and "Tapahtumia jäi väliin" stayed until the run settled although
-// the stream was contiguous and native history complete.
+// settles only at its end. Its provisional structure outgrew the live tail,
+// and "Tapahtumia jäi väliin" stayed until the run settled although the
+// stream was contiguous and native history complete. This run is long enough
+// to outgrow even the raised 1000-frame bound once.
 test("a long tool-calling run shows no missed-events notice", async ({
   page,
 }) => {
   test.setTimeout(60000);
+  // Count the daemon giving the tail up, so the run is known to cross the bound.
+  await page.addInitScript(() => {
+    const listen = EventSource.prototype.addEventListener;
+    Object.assign(window, { tailGivenUp: 0 });
+    EventSource.prototype.addEventListener = function (
+      this: EventSource,
+      kind: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions,
+    ) {
+      if (kind === "snapshot.invalidated")
+        listen.call(this, kind, (message) => {
+          if (String((message as MessageEvent).data).includes("ring_truncated"))
+            (window as unknown as { tailGivenUp: number }).tailGivenUp++;
+        });
+      return listen.call(this, kind, listener, options);
+    } as typeof EventSource.prototype.addEventListener;
+  });
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
@@ -69,7 +88,12 @@ test("a long tool-calling run shows no missed-events notice", async ({
     else runs.push(`${key} ×1`);
   }
   console.log(`long-run states (25 ms samples):\n${runs.join("\n")}`);
-  // The run lasts about 40 × 60 ms plus its reads; most samples are mid-run.
-  expect(samples.filter((s) => s.working).length).toBeGreaterThan(40);
+  // The run lasts about 130 × 60 ms plus its reads; most samples are mid-run.
+  expect(samples.filter((s) => s.working).length).toBeGreaterThan(130);
   expect(samples.filter((s) => s.gap)).toEqual([]);
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { tailGivenUp: number }).tailGivenUp,
+    ),
+  ).toBeGreaterThan(0);
 });

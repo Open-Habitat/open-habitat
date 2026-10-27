@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyTurnEvent,
   initialTurn,
+  liveTailFragments,
   parseConversationEvent,
   provisionalItems,
 } from "./conversationEvents";
@@ -325,22 +326,26 @@ describe("long live turns", () => {
       "assistant.delta",
     ]);
   });
-  it("gives up only a tail of 128 structural fragments, never a part of one", () => {
+  it("gives up only a tail of liveTailFragments structural fragments, never a part of one", () => {
     let turn = initialTurn(cursor(0));
-    for (let n = 1; n <= 128; n++)
+    const bound = liveTailFragments;
+    expect(bound).toBe(1000);
+    for (let n = 1; n <= bound; n++)
       turn = applyTurnEvent(
         turn,
         parse(n, "pi.marker", { marker: "entry_appended" }),
         agent,
       ).turn;
+    expect(turn.fragments).toHaveLength(bound);
+    expect(turn.truncated).toBe(false);
     const result = applyTurnEvent(
       turn,
-      parse(129, "pi.marker", { marker: "entry_appended" }),
+      parse(bound + 1, "pi.marker", { marker: "entry_appended" }),
       agent,
     );
     expect(result.recover).toBe("history");
     expect(result.turn).toMatchObject({
-      sequence: 129,
+      sequence: bound + 1,
       fragments: [],
       truncated: true,
     });
@@ -350,7 +355,7 @@ describe("long live turns", () => {
     // the next model turn starts a message whole and is shown again.
     let next = applyTurnEvent(
       result.turn,
-      parse(130, "tool.finished", {
+      parse(bound + 2, "tool.finished", {
         tool_call_id: "late",
         tool_name: "bash",
         state: "succeeded",
@@ -360,12 +365,15 @@ describe("long live turns", () => {
     expect(provisionalItems(next)).toEqual([]);
     next = applyTurnEvent(
       next,
-      parse(131, "pi.lifecycle", { signal: "turn_start" }),
+      parse(bound + 3, "pi.lifecycle", { signal: "turn_start" }),
       agent,
     ).turn;
     next = applyTurnEvent(
       next,
-      parse(132, "assistant.delta", { text: "Jatkan", content_index: 0 }),
+      parse(bound + 4, "assistant.delta", {
+        text: "Jatkan",
+        content_index: 0,
+      }),
       agent,
     ).turn;
     expect(next.truncated).toBe(false);
