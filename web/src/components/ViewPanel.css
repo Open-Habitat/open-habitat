@@ -123,6 +123,11 @@
   border: 0;
   background: var(--ah-content-canvas);
 }
+/* The own tab is the view and nothing else. */
+.ah-view-tab {
+  position: fixed;
+  inset: 0;
+}
 .ah-view-frame-status {
   margin: 0;
   padding: var(--ah-s6);

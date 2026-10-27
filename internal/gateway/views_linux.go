@@ -338,7 +338,10 @@ func (a *Auth) redeemViewHandoff(w http.ResponseWriter, r *http.Request) {
 	// subresource requests count as cross-site and a Lax or Strict cookie
 	// would not go with them. The cookie authorizes only reading this one
 	// view on this one host, the host has no state-changing route, and only
-	// the app may frame it.
+	// the app may frame it. The app always frames a view, in its own tab too:
+	// a browser that blocks third-party cookies drops even this one from
+	// every request of a top-level sandboxed document (no top-level site is
+	// the same as an opaque one), while a frame keeps the app's site.
 	http.SetCookie(w, &http.Cookie{Name: viewCookie, Value: secret, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteNoneMode})
 	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusSeeOther)

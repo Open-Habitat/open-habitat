@@ -120,22 +120,43 @@ test("a conversation offer opens sandboxed in the panel, isolated from the app s
   await expect(open).toBeFocused();
 });
 
-test("the own tab opens through the app's page with no opener", async ({
+test("the own tab frames the view on the app's page, with no opener", async ({
   page,
   context,
 }) => {
   const id = await conversation(page);
-  await offer(page, id);
+  const viewId = await offer(page, id);
   const card = page.getByTestId("view-offer");
   await expect(card).toBeVisible();
 
   const opened = context.waitForEvent("page");
   await card.getByTestId("view-open-tab").click();
   const tab = await opened;
-  await tab.waitForURL(/^https:\/\/oh-view-[a-z2-7]{52}\.oh\.localhost\//);
-  await expect(tab.locator("body")).toHaveAttribute("data-script", "yes");
+  // The tab's top-level page stays the app's: a sandboxed view as the
+  // top-level document loses its view cookie in browsers that block
+  // third-party cookies, so its stylesheet and script would not load.
+  await expect(tab).toHaveURL(`${app}/view?id=${viewId}`);
+  const frame = tab.getByTestId("view-frame");
+  await expect(frame).toHaveAttribute("sandbox", "allow-scripts");
+  const body = tab.frameLocator('[data-testid="view-frame"]').locator("body");
+  await expect(body).toHaveAttribute("data-script", "yes");
+  await expect(body).toHaveAttribute("data-style", "rgb(1, 2, 3)");
+  await expect(body).toHaveAttribute("data-parent", "denied");
+  expect(
+    tab
+      .frames()
+      .some((f) =>
+        /^https:\/\/oh-view-[a-z2-7]{52}\.oh\.localhost\/index\.html$/.test(
+          f.url(),
+        ),
+      ),
+  ).toBe(true);
   expect(await tab.evaluate(() => window.opener)).toBeNull();
-  expect(tab.url()).toMatch(/\/index\.html$/);
+  await expect(tab).toHaveTitle("Synteettinen näkymä");
   await expect(card).toHaveAttribute("data-state", "tab_requested");
+
+  // A reload mints a fresh hand-off rather than replaying a spent one.
+  await tab.reload();
+  await expect(body).toHaveAttribute("data-style", "rgb(1, 2, 3)");
   await tab.close();
 });

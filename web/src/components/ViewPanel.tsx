@@ -9,6 +9,26 @@ import {
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 
+/** A view's content: a sandboxed frame on the view's own host, scripts but
+ * nothing else. The panel and the own tab both show a view this way, so the
+ * top-level page is always the app's: a browser that blocks third-party
+ * cookies keys that on the top-level site, and the view's sandboxed document
+ * as the top-level page would make every request it sends a third-party one,
+ * so its own stylesheets and scripts would not load. */
+export function ViewFrame({ src, title }: { src: string; title: string }) {
+  return (
+    <iframe
+      key={src}
+      data-testid="view-frame"
+      src={src}
+      title={`Agentin näkymä: ${title}`}
+      sandbox="allow-scripts"
+      referrerPolicy="no-referrer"
+      allow=""
+    />
+  );
+}
+
 /** The panel's own controls, as in the editor's header (EditorHeader): they
  * stay reachable even while the conversation is hidden. */
 export function ViewHeader({
@@ -118,15 +138,7 @@ export function ViewPanel({
       />
       <div className="ah-view-frame">
         {src && !failed ? (
-          <iframe
-            key={src}
-            data-testid="view-frame"
-            src={src}
-            title={`Agentin näkymä: ${title}`}
-            sandbox="allow-scripts"
-            referrerPolicy="no-referrer"
-            allow=""
-          />
+          <ViewFrame key={src} src={src} title={title} />
         ) : (
           <p className="ah-view-frame-status" role="status">
             {failed
