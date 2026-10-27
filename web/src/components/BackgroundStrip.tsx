@@ -21,10 +21,11 @@ import "./BackgroundStrip.css";
 // Merkit (Jari 16.10.2026, round 2026-10-16-taustatyo-riff): two small pills
 // above the composer, one for the agent's spinoffs and one for its processes.
 // At rest a pill says only whether something of its kind runs (icon and
-// count), whether the agent's ended turn waits on a process (bell) and
-// whether a spinoff needs the person (red dot, until its branch is gone). A
-// pill opens a floating panel with the two kinds as tabs; a process opens in
-// a window.
+// count) and whether a spinoff needs the person (red dot, until its branch
+// is gone). A pill opens a floating panel with the two kinds as tabs; a
+// process opens in a window. The process pill has no corner cue for a
+// waited process (Jari 27.10.2026): a tiny bell read as a clock, and the
+// top bar already says the agent waits. Its sentence names what it waits on.
 // A `taskfleet run wait` belongs to its spinoff, never a process row.
 //
 // Pisteet (Jari 26.10.2026, proto-background-waits direction 3): the spinoff
@@ -157,7 +158,7 @@ export function backgroundFacts({
         ...liveProcs.filter((p) => !p.wakes_agent),
       ],
       ended: records.filter((p) => !processLive(p)),
-      bell: agentIdle && liveProcs.some((p) => p.wakes_agent),
+      waited: agentIdle && liveProcs.some((p) => p.wakes_agent),
       available,
       // Without a running Pi there is nothing to observe; saying so only
       // repeats what sending a message changes.
@@ -275,7 +276,7 @@ export function BackgroundStrip({
         : `Prosessit: ei tiedossa (${unavailable})`;
     return [
       `Prosessit: ${f.live.length ? `${f.live.length} käynnissä` : "ei käynnissä"}`,
-      f.bell
+      f.waited
         ? `agentti odottaa: ${f.live
             .filter((p) => p.wakes_agent)
             .map((p) => p.name)
@@ -676,11 +677,6 @@ export function BackgroundStrip({
                 ) : (
                   <span className="ah-bg-n">{number(kind)}</span>
                 )}
-                {kind === "proc" && facts.proc.bell ? (
-                  <span className="ah-bg-corner wait" aria-hidden="true">
-                    <Icon name="bell" />
-                  </span>
-                ) : null}
                 {kind === "spin" && facts.spin.attention ? (
                   <span className="ah-bg-corner attn" aria-hidden="true" />
                 ) : null}

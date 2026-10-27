@@ -2078,8 +2078,8 @@ function BrowserConversationContent({
             )}
           {controlled ? (
             <>
-              {/* The bell is the strip's only waiting cue; the top bar
-                  already says Odottaa taustatyötä (Jari 16.10.2026). */}
+              {/* The top bar says Odottaa taustatyötä (Jari 16.10.2026);
+                  the strip marks only which work is waited on. */}
               <BackgroundStrip
                 agentIdle={
                   presentation.activity === "waiting_background" ||

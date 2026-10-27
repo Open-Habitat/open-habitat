@@ -3,13 +3,14 @@ created: 2026-10-27
 updated: 2026-10-27
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-10-26/process-chip-bell-remove
 lane: unlaned
 collision: [web/src/components/BackgroundStrip.tsx]
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Processes chip: remove the corner bell (Jari's decision)

@@ -56,28 +56,12 @@
   align-items: center;
   justify-content: center;
 }
-.ah-bg-corner.wait {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--ah-accent);
-  color: var(--ah-on-accent);
-  box-shadow: 0 0 0 2px var(--ah-bg);
-}
-.ah-bg-corner.wait svg {
-  width: 10px;
-  height: 10px;
-}
 .ah-bg-corner.attn {
   width: 9px;
   height: 9px;
   border-radius: 50%;
   background: var(--ah-err);
   box-shadow: 0 0 0 2px var(--ah-bg);
-}
-.ah-bg-corner.wait + .ah-bg-corner.attn {
-  right: auto;
-  left: -4px;
 }
 .ah-bg-attn-dot {
   display: inline-block;
@@ -204,7 +188,6 @@
   height: 14px;
   flex: none;
 }
-/* biome-ignore lint/style/noDescendingSpecificity: Separate elements of the strip; nothing earlier is overridden. */
 .ah-bg-mark svg {
   width: 13px;
   height: 13px;
@@ -357,7 +340,6 @@
   width: 22px;
   color: var(--ah-accent-ink);
 }
-/* biome-ignore lint/style/noDescendingSpecificity: Separate elements of the strip; nothing earlier is overridden. */
 .ah-bg-wake svg {
   width: 13px;
   height: 13px;

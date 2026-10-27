@@ -45,8 +45,8 @@ describe("background strip facts", () => {
     expect(f.proc.records.map((p) => p.id)).toEqual(["proc_example"]);
     expect(f.spin.live[0].wait?.id).toBe("proc_wait");
     expect(f.spin.marks.map((i) => i.waited)).toEqual([true]);
-    // The other process does not wake the agent: no process bell.
-    expect(f.proc.bell).toBe(false);
+    // The other process does not wake the agent: nothing waited on.
+    expect(f.proc.waited).toBe(false);
   });
   it("marks a working spinoff nobody waits on, waited ones first", () => {
     const other = run({ run_id: "01m53wnje1f3ybcw17qsx2sysd", title: "B" });
