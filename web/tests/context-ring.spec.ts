@@ -62,6 +62,11 @@ test("@context-ring the ring follows Pi's usage, compaction and reload", async (
   const contextPage = page.getByTestId("context-page");
   await expect(contextPage).toHaveAttribute("data-state", "ready");
   await expect(page).toHaveURL(/[?&]context=1/);
+  // The page's measurement is the ring's: Pi's last recorded usage.
+  await expect(page.getByTestId("context-total")).toHaveAttribute(
+    "data-measured",
+    "205300",
+  );
   await expect(contextPage.getByRole("heading", { level: 2 })).toBeFocused();
   await expect(page.getByTestId("conversation-stream")).toBeHidden();
   await expect(ring).toHaveAttribute("aria-pressed", "true");

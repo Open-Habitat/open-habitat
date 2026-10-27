@@ -103,17 +103,21 @@ export type ContextDetailState =
 /**
  * The page's read while it is open. `revision` changes when the native
  * history does; each read runs Pi over the whole session, so a burst of
- * changes waits for a quiet moment. A failed reread keeps the last reading
- * visible, marked as not current.
+ * changes waits for a quiet moment. The live stream can show a reply before
+ * Pi has written it to the session: while the reading's measurement differs
+ * from `expected` (the ring's), it is read again a few times. A failed
+ * reread keeps the last reading visible, marked as not current.
  */
 export function useContextDetail(
   agent: string | undefined,
   open: boolean,
   revision: string,
+  expected: number | undefined,
   onLogin?: () => void,
 ): ContextDetailState {
   const [value, setValue] = useState<ContextDetailState>({ state: "loading" });
-  // biome-ignore lint/correctness/useExhaustiveDependencies: revision is the trigger for a reread.
+  const [retry, setRetry] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: revision and retry trigger a reread.
   useEffect(() => {
     if (!agent || !open) {
       setValue({ state: "loading" });
@@ -123,7 +127,15 @@ export function useContextDetail(
     const timer = setTimeout(
       () => {
         readContextDetail(agent, controller.signal).then(
-          (detail) => setValue({ state: "ready", detail }),
+          (detail) => {
+            setValue({ state: "ready", detail });
+            if (
+              expected !== undefined &&
+              detail.measured_tokens !== expected &&
+              retry < 5
+            )
+              setRetry((n) => n + 1);
+          },
           (error: unknown) => {
             if (controller.signal.aborted) return;
             if (error instanceof Error && error.message === "identity_lost")
@@ -141,6 +153,9 @@ export function useContextDetail(
       controller.abort();
       clearTimeout(timer);
     };
-  }, [agent, open, revision, onLogin]);
+  }, [agent, open, revision, retry, onLogin]);
+  // A new revision or expectation earns its own retries.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on change only.
+  useEffect(() => setRetry(0), [revision, expected]);
   return value;
 }

@@ -36,6 +36,19 @@ exact path, query-free. Contract: `contracts/v1/context-detail.schema.json`.
   from the browser host (`capture.spec.ts`; fake Pi's turns are tiny, so
   almost all of its synthetic usage is "unexplained"), `story-*` from the
   Storybook story with realistic proportions, including the Claude case.
+- Review: `/llm-review` (finder gpt-6-astra, verifier claude-fable-5-1) found
+  four defects, all reproduced by both and fixed with regression tests:
+  EAGAIN on a large piped session (Pi's import makes stdin non-blocking),
+  bounded fields summing past the output limit, Pi's cut at a shell command
+  giving a negative turn the contract rejects, and the post-compaction size
+  taken from the wrong reply. A fifth, found in the screenshots: the page could
+  read the session before Pi wrote a reply the ring already showed from the
+  live stream; it now rereads (up to five times) while its measurement differs
+  from the ring's, and the spec asserts they agree.
+- Whole browser suite once (`npm run test:browser`, 406 cases, run beside
+  other workers on Birch): 394 passed, 9 failed, 3 skipped; all 9 failures
+  (editor, attachment documents, queued send, long run, site key, lost reply)
+  passed on an isolated rerun, so they are load flakes, not this change.
 - On a real Birch session (Claude Opus via the bridge) the estimated parts
   were 108k of a measured 190k; for a GPT session 84k of 88k.
 

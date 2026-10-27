@@ -620,7 +620,11 @@ export function ContextPage({
               </p>
             ) : null}
             <div className="ah-cd-top" data-level={level}>
-              <p className="ah-cd-big" data-testid="context-total">
+              <p
+                className="ah-cd-big"
+                data-testid="context-total"
+                data-measured={view.measured}
+              >
                 {view.measured === undefined ? (
                   <>
                     ? <span>arvio noin {full(view.total)} tokenia</span>

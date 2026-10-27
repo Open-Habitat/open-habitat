@@ -330,6 +330,7 @@ function BrowserConversationContent({
     id,
     contextOpen,
     `${entries.at(-1)?.entry_key}:${entries.length}:${contextState?.phase}`,
+    contextState?.phase === "known" ? contextState.tokens : undefined,
     onLogin,
   );
   const toggleContext = () => {
