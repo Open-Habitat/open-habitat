@@ -3,7 +3,7 @@ created: 2026-10-27
 updated: 2026-10-27
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: pilot.13 clean gate on Birch
@@ -11,6 +11,11 @@ source_ref: gate:2026-10-27/gateway-git-fetch-503
 lane: gate-health
 lane_seq: 4
 preparation: ready
+closed: 2026-10-27
+closed_by: release-pilot-13
+commits:
+- hash: 0d6865a3
+  summary: 'gateway: git fetch test daemon reads the body before replying'
 ---
 
 # Flaky under gate load: TestWorkspaceGitFetchRequiresSessionAndCSRF gets 503

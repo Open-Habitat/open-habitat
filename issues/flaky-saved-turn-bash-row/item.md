@@ -2,7 +2,7 @@
 created: 2026-10-27
 updated: 2026-10-27
 type: bug
-status: open
+status: fixed
 priority: high
 provenance: other
 provenance_detail: worker test run
@@ -12,6 +12,11 @@ originating_run_kind: spinoff
 lane: gate-health
 lane_seq: 1
 preparation: ready
+closed: 2026-10-27
+closed_by: release-pilot-13
+commits:
+- hash: 0e6d74f1
+  summary: 'browser tests: click a reloaded turn''s stage toggle once Markdown settles'
 ---
 
 # Flaky: saved assistant turn's bash row missing after reload (browser-conversation.spec.ts:141)

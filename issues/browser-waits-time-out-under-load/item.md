@@ -2,7 +2,7 @@
 created: 2026-10-27
 updated: 2026-10-27
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: worker measurement during main-browser-suite-red
@@ -12,6 +12,11 @@ originating_run_kind: spinoff
 lane: gate-health
 lane_seq: 2
 preparation: ready
+closed: 2026-10-27
+closed_by: release-pilot-13
+commits:
+- hash: 379f7ecc
+  summary: 'browser tests: wait on composer state, not first-try timing, under load'
 ---
 
 # Two browser waits time out under concurrent worker load (attachment-documents, lab typed fragments)
@@ -30,3 +35,9 @@ Both passed 3/3 when run alone right afterwards, at the same load. So they look 
 ### 2026-10-27T12:59:39Z · @jari
 
 Jari 2026-10-27: työhön (konduktorin suositus).
+
+## Resolution
+
+### 2026-10-27T21:21:07Z · @release-pilot-13
+
+lab-conversation typed-fragments did not reproduce (16/16 at eight workers); openTurnWork no longer closes an already open live toggle. lab-composer-focus:143 (same class, failed in the 22:58 gate) fixed in the same commit.

@@ -2,7 +2,7 @@
 created: 2026-10-26
 updated: 2026-10-27
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: test-failure
 source_ref: taskfleet:01m5wn54hvqw2bzbr82qwnhpc3/browser-flake:lost-accepted-reply-http
@@ -11,6 +11,11 @@ originating_run_kind: spinoff
 lane: gate-health
 lane_seq: 3
 preparation: ready
+closed: 2026-10-27
+closed_by: release-pilot-13
+commits:
+- hash: 8c4406a9
+  summary: 'browser tests: lost accepted reply waits for Pi''s turn to end'
 ---
 
 # Browser flake: lost accepted reply recovers on HTTP snapshot fails under whole-suite load
