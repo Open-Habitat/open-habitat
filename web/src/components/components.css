@@ -2404,6 +2404,15 @@ details[open] > summary:not([class])::before {
   border-radius: 8px;
   padding: 10px 12px;
 }
+/* A loaded image keeps its aspect within the same bound as a text block. */
+.ah-history-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+}
 .ah-tool-row {
   width: 100%;
   max-width: none;

@@ -19,7 +19,7 @@ import {
 } from "../components";
 import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
-import { messageText } from "../components/AttachmentChips";
+import { attachmentsIn, messageText } from "../components/AttachmentChips";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
@@ -300,6 +300,7 @@ function ReadableBlock({
             loaded.mediaType,
           ) ? (
             <img
+              className="ah-history-image"
               alt="Agentin viestin kuva"
               src={`data:${loaded.mediaType};base64,${loaded.data}`}
             />
@@ -590,8 +591,11 @@ function OrderedBlocks({
   toolExpansion,
   plainText = false,
   firstIndex = 0,
+  attachedImages = false,
 }: {
   plainText?: boolean | "user";
+  /** The message's image attachments show as chips, so its image blocks are skipped. */
+  attachedImages?: boolean;
   blocks: HistoryBlock[];
   /** The native index of the first block when these are a slice of an entry. */
   firstIndex?: number;
@@ -619,6 +623,7 @@ function OrderedBlocks({
     <div className="ah-ordered-blocks">
       {blocks.map((block, position) => {
         const index = firstIndex + position;
+        if (attachedImages && block.type === "image") return null;
         return block.type === "toolCall" &&
           block.tool_call_id &&
           ["read", "write", "edit"].includes(block.tool_name ?? "") ? (
@@ -868,6 +873,11 @@ export function Entry({
               {entry.blocks?.length ? (
                 <OrderedBlocks
                   plainText="user"
+                  // The host gives Pi each attached image as an image block
+                  // too; the chip already shows it and opens the preview.
+                  attachedImages={attachmentsIn(content.text).some(
+                    (a) => a.image,
+                  )}
                   firstIndex={entry.skill ? 1 : 0}
                   blocks={entry.skill ? entry.blocks.slice(1) : entry.blocks}
                   results={results}

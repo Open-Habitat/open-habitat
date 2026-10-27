@@ -343,6 +343,28 @@ it("shows image-only user prompts and full text when typed blocks were truncated
   expect(container.textContent).not.toContain("full assistant text");
 });
 
+it("shows an attached image only as its chip in the person's own message", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  const text = `Katso\n![shot.png](/api/v1/attachments/${id})\nAttachment path: /home/p/attachments/${id}`;
+  const { container } = render(
+    <Entry
+      agentId="pi:11111111-1111-4111-8111-111111111111"
+      revision="rev1"
+      entry={{
+        ...entry,
+        blocks: [
+          { type: "text", text },
+          { type: "image", mime_type: "image/png", readable: true },
+        ],
+        content: { media_type: "text/plain", text, complete: true },
+      }}
+    />,
+  );
+  expect(screen.getAllByTestId("attachment-chip")).toHaveLength(1);
+  expect(screen.queryByTestId("history-block-load")).toBeNull();
+  expect(container.textContent).not.toContain("image/png");
+});
+
 it("keeps redacted and unknown blocks inert while loading a result image by its own index", async () => {
   const fetch = vi.fn(
     async (_url: string) =>
@@ -386,6 +408,7 @@ it("keeps redacted and unknown blocks inert while loading a result image by its 
       "data:image/png;base64,QUJD",
     ),
   );
+  expect(container.querySelector("img")?.className).toBe("ah-history-image");
   expect(fetch.mock.calls[0][0]).toContain("/entries/result/blocks/2?");
   expect(container.textContent).not.toContain("secret");
 });
