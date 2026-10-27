@@ -3,13 +3,14 @@ created: 2026-10-26
 updated: 2026-10-27
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-26/research-integration-permission-scopes
 lane: integration-scopes
 lane_seq: 1
 preparation: pending
+closed: 2026-10-27
 ---
 
 # Research: permission levels for integrations (read-only, drafts only, scoped folders)
@@ -29,3 +30,7 @@ Raportti: [result.md](result.md). Seuraava askel on Jarin valinta suosituksesta 
 ### 2026-10-27T05:22:29Z · @jari
 
 Jari 2026-10-27: selvitys hyvä; jätetään auki, Jari käy sen läpi muiden kanssa ennen päätöstä.
+
+### 2026-10-27T12:00:30Z · @jari
+
+Jari 2026-10-27: edetään. Ensin käyttöliittymäprototyypit (proto-integration-permission-levels), toteutus niiden jälkeen.
