@@ -1,15 +1,16 @@
 ---
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-26/research-soniox-speech-input
 lane: speech-input
 lane_seq: 1
 preparation: pending
+closed: 2026-10-27
 ---
 
 # Research: streaming speech-to-text input with Soniox
@@ -23,3 +24,9 @@ Selvitä Sonioxin reaaliaikainen rajapinta (WebSocket-striimaus, suomen tuki ja 
 ## Result
 
 [result.md](result.md): Sonioxin reaaliaikarajapinta, suomi, välitulokset, hinnoittelu, tietosuoja ja avaimen hallinta. Suositus: henkilön oma avain kotihakemistossa, daemonin luoma kertakäyttöinen väliaikainen avain ja suora striimi selaimesta. Jarin päätökset P1–P4 (erityisesti P1: väliaikainen avain sopimuksen yli selaimelle).
+
+## Decisions
+
+### 2026-10-27T11:59:28Z · @jari
+
+Jari 2026-10-27: vaihtoehto D (ylläpitäjän Soniox-avain palvelinasetuksissa, kopioidaan koteihin kuten sivuston AI-avain, käyttäjän oma avain edellä) ja P1-poikkeus (daemon luo kertakäyttöisen väliaikaisen avaimen, selain striimaa suoraan Sonioxille) hyväksytty. Jari: pitää kyetä puhumaan pidempään kuin minuutti. Avaimen 60 s koskee vain streamin avaamista; sanelun pituuden määrää max_session_duration_seconds. Ehdotettu 600 s nostetaan selvästi pitkiin saneluihin (esim. 30–60 min; Sonioxin raja 300 min/stream), ja tauot pidetään auki keepalivella. Tarkka katto päätetään prototyypissä.

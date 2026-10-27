@@ -1,6 +1,6 @@
 ---
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 type: task
 reporter: jari
 status: open
@@ -18,3 +18,9 @@ preparation: ready
 ## Description
 
 Jari 2026-10-26, keskustelusta toisen kehittäjän kanssa (ulkopuolinen käyttäjä, joka arvioi Habitatia omaan ja asiakkaidensa käyttöön). Prototyyppikierros research-soniox-speech-input-selvityksen pohjalta: miten puhesyöte näkyy viestikentässä (mikrofonipainike tai pidä-pohjassa, välitulokset kentässä, lopetus, virhe ja ei avainta -tilat), työpöytä ja puhelin. Jari valitsee; toteutus on myöhempi issue.
+
+## Decisions
+
+### 2026-10-27T11:59:28Z · @jari
+
+Jari 2026-10-27: D + P1 (ks. research-soniox-speech-input Decisions). Sanelu ei saa katketa minuuttiin; prototyypissä näytetään pitkä sanelu, tauot ja mitä tapahtuu katon lähestyessä.
