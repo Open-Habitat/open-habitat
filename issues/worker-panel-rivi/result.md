@@ -58,8 +58,11 @@ Checks run on Birch:
   rows and the stop, the other repository, the failed and preserved ended
   rows, axe, no horizontal overflow at 390 px, the row opening the worker
   view), plus `spinoffs.spec.ts`, `worker-view.spec.ts` and
-  `process-tray.spec.ts`: all passed. The whole-suite result is in the
-  commit message.
+  `process-tray.spec.ts`: all passed. The whole suite
+  (`npm run test:browser`, before the review fix, which changed only the
+  daemon): 403 passed, 3 skipped, 1 failed. The failure was untouched
+  `browser-editor-concurrent.spec.ts:66` (1366 light), which passed 5/5
+  when rerun alone, so a load flake rather than a defect, and not filed.
 - Independent `/llm-review` (gpt-6-astra) produced one finding: the inline
   live-row `run show` could starve ended rows' reads under a slow Taskfleet.
   It was confirmed and fixed with the second pass described above.
