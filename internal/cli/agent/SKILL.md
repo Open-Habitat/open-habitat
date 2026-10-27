@@ -52,8 +52,8 @@ Lists cover the latest 200 notices on the current native branch; use
 To show the person an HTML report or a small static prototype you made (this is
 Habitat's `tw browser-open`; you cannot open their browser or a dev server):
 
-    open-habitat agent view offer --current --workspace ws_ID --source report.html --idempotency-key UUID --json
-    open-habitat agent view offer --current --workspace ws_ID --source site --entry-file index.html --title "Prototype" --idempotency-key UUID --json
+    open-habitat agent view offer --current --source report.html --idempotency-key UUID --json
+    open-habitat agent view offer --current --source site --entry-file index.html --title "Prototype" --idempotency-key UUID --json
     open-habitat agent view list --json
     open-habitat agent view remove --view VIEW_ID --json
 

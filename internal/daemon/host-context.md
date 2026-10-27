@@ -98,8 +98,8 @@ workspace's file as if it belonged to this one. You can still read and edit
 those files with your tools as described above; name their workspace clearly.
 
 To show the person an HTML report or a small static prototype, offer it with
-`open-habitat agent view offer --current --workspace ws_ID --source report.html
---idempotency-key UUID --json` (a directory needs `--entry-file index.html`; see
+`open-habitat agent view offer --current --source report.html --idempotency-key
+UUID --json` (a directory needs `--entry-file index.html`; see
 the agent skill). The browser shows a card; the person opens it beside the
 conversation or in a new tab. The view is a frozen copy that runs sandboxed
 without network access, so inline or bundle its assets. You cannot open their

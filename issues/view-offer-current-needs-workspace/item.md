@@ -3,12 +3,13 @@ created: 2026-10-27
 updated: 2026-10-27
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-10-26/view-offer-current-needs-workspace
 lane: offers
 preparation: ready
+closed: 2026-10-27
 ---
 
 # agent view offer --current still requires --workspace

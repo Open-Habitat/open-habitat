@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 
@@ -98,24 +99,6 @@ func agentViewCommand(args []string) (any, error) {
 	if !launchPattern.MatchString(key) {
 		return nil, usage(fmt.Sprintf("invalid --idempotency-key %q; expected UUID; reuse it only for the same offer", key))
 	}
-	workspace := values["--workspace"]
-	if !workspacePattern.MatchString(workspace) {
-		return nil, usage(fmt.Sprintf("invalid --workspace %q; expected ws_ ID from agent workspace list", workspace))
-	}
-	source, ok := values["--source"]
-	if !ok || source == "" || strings.HasPrefix(source, "/") || len(source) > 1024 {
-		return nil, usage("--source requires a workspace-relative file or directory path, not an absolute path")
-	}
-	request := map[string]any{"idempotency_key": key, "workspace_id": workspace, "path": source, "dry_run": dry}
-	if entry, ok := values["--entry-file"]; ok {
-		request["entry"] = entry
-	}
-	if title, ok := values["--title"]; ok {
-		if strings.TrimSpace(title) == "" || len(title) > 200 {
-			return nil, usage("--title must be nonempty, at most 200 bytes")
-		}
-		request["title"] = title
-	}
 	path := daemon.AgentViewsPath
 	target, hasTarget := values["--conversation"]
 	if current && hasTarget {
@@ -134,6 +117,28 @@ func agentViewCommand(args []string) (any, error) {
 			return nil, usage("invalid conversation target")
 		}
 		path += "?" + query
+	}
+	workspace, hasWorkspace := values["--workspace"]
+	if !hasWorkspace && current {
+		// The checked launch context names the conversation's workspace.
+		workspace = os.Getenv("OPEN_HABITAT_WORKSPACE_ID")
+	}
+	if !workspacePattern.MatchString(workspace) {
+		return nil, usage(fmt.Sprintf("invalid --workspace %q; expected ws_ ID from agent workspace list (optional only with --current)", workspace))
+	}
+	source, ok := values["--source"]
+	if !ok || source == "" || strings.HasPrefix(source, "/") || len(source) > 1024 {
+		return nil, usage("--source requires a workspace-relative file or directory path, not an absolute path")
+	}
+	request := map[string]any{"idempotency_key": key, "workspace_id": workspace, "path": source, "dry_run": dry}
+	if entry, ok := values["--entry-file"]; ok {
+		request["entry"] = entry
+	}
+	if title, ok := values["--title"]; ok {
+		if strings.TrimSpace(title) == "" || len(title) > 200 {
+			return nil, usage("--title must be nonempty, at most 200 bytes")
+		}
+		request["title"] = title
 	}
 	body, _ := json.Marshal(request)
 	data, err := exchangeAgentBody("POST", path, body)
