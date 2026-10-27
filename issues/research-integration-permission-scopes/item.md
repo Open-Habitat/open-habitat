@@ -1,6 +1,6 @@
 ---
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 type: task
 reporter: jari
 status: open
@@ -23,3 +23,9 @@ Selvitä palveluittain (Google, Microsoft Graph, IMAP/SMTP/CalDAV, Dropbox, GitH
 ## Result
 
 Raportti: [result.md](result.md). Seuraava askel on Jarin valinta suosituksesta (C heti, B vaiheittain, välittäjä D auki).
+
+## Decisions
+
+### 2026-10-27T05:22:29Z · @jari
+
+Jari 2026-10-27: selvitys hyvä; jätetään auki, Jari käy sen läpi muiden kanssa ennen päätöstä.

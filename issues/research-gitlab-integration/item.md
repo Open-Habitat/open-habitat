@@ -1,15 +1,16 @@
 ---
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-26/research-gitlab-integration
 lane: gitlab-provider
 lane_seq: 1
 preparation: pending
+closed: 2026-10-27
 ---
 
 # Research: GitLab as a code service (repositories, clone, push)
@@ -23,3 +24,9 @@ Selvitä gitlab.com ja itse ylläpidetty GitLab: tunnistautuminen (OAuth-sovellu
 ## Result
 
 [result.md](result.md): selvitys ja suositus (glabin tiedosto ainoana varastona, rajattu adapteri, PAT). Seuraava askel on Jarin valinta.
+
+## Decisions
+
+### 2026-10-27T05:22:29Z · @jari
+
+Jari 2026-10-27: suositus A hyväksytty (glabin config.yml ainoa varasto, rajattu adapteri ja gitlab git-credential -apu, PAT read_api+write_repository ensin, Gitean ja GitLabin yhteiset osat ensin yhteiseen pakettiin). Edetään proto-gitlab-connect ja gitlab-integration.
