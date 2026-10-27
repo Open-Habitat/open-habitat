@@ -22,4 +22,4 @@ Konduktorin havainto: käyttäjän ~/.pi/agent/sessions/--home-maintainer-src-no
 
 ## Acceptance Criteria
 
-- [ ] Syy näytetty todisteilla (metatiedot, ei sisältöä); keskustelu ilman natiivia istuntoa voidaan sulkea ja arkistoida tai se ei jää listaan; testi rajalla
+- [x] Syy näytetty todisteilla (metatiedot, ei sisältöä); keskustelu ilman natiivia istuntoa voidaan sulkea ja arkistoida tai se ei jää listaan; testi rajalla
