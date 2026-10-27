@@ -8,7 +8,7 @@ priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/wake-agent-on-settled-wait
 lane: proto-wake
-preparation: ready
+preparation: pending
 lane_seq: 1
 ---
 
