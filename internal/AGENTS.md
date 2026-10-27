@@ -251,6 +251,14 @@ Identity and authority:
   the daemon answers that gh positively holds another one; a lost or uncertain
   answer revokes nothing, and a native credential is never revoked or
   replaced to make room.
+  An ordinary sign-in keeps gh's working login of the same account. Only the
+  person's explicit reconnect replaces it: the gateway accepts that intent
+  only from a same-origin start by a session of the account that then signs
+  in, and the daemon replaces only a login that positively holds another
+  token and whose files have not changed since it was classified. The old
+  token is not revoked, because revoking it would carry a native credential
+  out of the person's account to the gateway; once gh's store is
+  overwritten it exists nowhere on the host.
   The token gh receives must not expire, because gh cannot refresh another
   app's token. Habitat therefore holds no refresh token, and the gateway
   does not become a refresher: an OAuth app that issues expiring tokens is

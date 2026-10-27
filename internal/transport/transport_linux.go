@@ -64,6 +64,9 @@ type request struct {
 	// Seed is the site AI key, present only in that same login and only
 	// while the site offers one.
 	Seed *Seed `json:"seed,omitempty"`
+	// Replace is present, and true, only in a reconnect the person started
+	// from settings while signed in as this same account.
+	Replace bool `json:"replace,omitempty"`
 }
 
 // Seed is the site AI key for this person's Pi. The daemon writes it only
@@ -265,7 +268,14 @@ type Sink struct {
 }
 
 func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token string) (gateway.Handoff, error) {
-	out, err := s.deliver(ctx, m, subject, token, nil, nil)
+	out, err := s.deliver(ctx, m, subject, token, nil, nil, false)
+	return gateway.Handoff(out.GitHubToken), err
+}
+
+// DeliverReplacing hands over the token of the person's explicit reconnect,
+// which may take the place of gh's working login of the same account.
+func (s Sink) DeliverReplacing(ctx context.Context, m gateway.Identity, subject, token string) (gateway.Handoff, error) {
+	out, err := s.deliver(ctx, m, subject, token, nil, nil, true)
 	return gateway.Handoff(out.GitHubToken), err
 }
 
@@ -290,7 +300,7 @@ func (s Sink) DeliverFirst(ctx context.Context, m gateway.Identity, subject, tok
 	if p == nil && seed == nil {
 		return gateway.FirstLoginReply{}, denied
 	}
-	out, err := s.deliver(ctx, m, subject, token, p, seed)
+	out, err := s.deliver(ctx, m, subject, token, p, seed, false)
 	if err != nil {
 		return gateway.FirstLoginReply{}, err
 	}
@@ -320,7 +330,7 @@ func validReply(plan *Plan, seed *Seed, v reply) bool {
 	return seed == nil || slices.Contains(seedOutcomes, v.AIKey)
 }
 
-func (s Sink) deliver(ctx context.Context, m gateway.Identity, subject, token string, plan *Plan, seed *Seed) (reply, error) {
+func (s Sink) deliver(ctx context.Context, m gateway.Identity, subject, token string, plan *Plan, seed *Seed, replace bool) (reply, error) {
 	if (!socketOK(m.Socket) && !(s.testPath && filepath.IsAbs(m.Socket))) || m.Provider != "github" || !validSubject(subject) || m.Subject != subject || m.UID <= 0 || m.Username == "" || len(m.Username) > maxField || (socketOK(m.Socket) && m.Socket != "/run/open-habitat/users/"+m.Username+"/daemon.sock") || len(token) == 0 || len(token) > maxToken {
 		return reply{}, denied
 	}
@@ -328,7 +338,7 @@ func (s Sink) deliver(ctx context.Context, m gateway.Identity, subject, token st
 	if _, e := rand.Read(nonce[:]); e != nil {
 		return reply{}, denied
 	}
-	body, e := json.Marshal(request{1, hex.EncodeToString(nonce[:]), m.Provider, subject, m.UID, m.Username, token, plan, seed})
+	body, e := json.Marshal(request{1, hex.EncodeToString(nonce[:]), m.Provider, subject, m.UID, m.Username, token, plan, seed, replace})
 	if e != nil || len(body) > maxBody {
 		return reply{}, denied
 	}
@@ -442,7 +452,7 @@ func decode(body []byte) (request, error) {
 	if e != nil || t != json.Delim('{') {
 		return request{}, denied
 	}
-	allowed := map[string]bool{"version": true, "nonce": true, "provider": true, "subject": true, "uid": true, "username": true, "token": true, "plan": true, "seed": true}
+	allowed := map[string]bool{"version": true, "nonce": true, "provider": true, "subject": true, "uid": true, "username": true, "token": true, "plan": true, "seed": true, "replace": true}
 	seen := map[string]bool{}
 	for keys.More() {
 		k, e := keys.Token()
@@ -459,10 +469,10 @@ func decode(body []byte) (request, error) {
 			return request{}, denied
 		}
 	}
-	// Every field is required except the plan and the seed, each absent or
-	// one of its kind.
+	// Every field is required except the plan, the seed and replace, each
+	// absent or one of its kind.
 	for name := range allowed {
-		if !seen[name] && name != "plan" && name != "seed" {
+		if !seen[name] && name != "plan" && name != "seed" && name != "replace" {
 			return request{}, denied
 		}
 	}
@@ -490,13 +500,20 @@ func decode(body []byte) (request, error) {
 	if seen["seed"] && (v.Seed == nil || !validSeed(*v.Seed)) {
 		return request{}, denied
 	}
+	// A reconnect is never the binding-creating login, and false is spelled
+	// by leaving the field out.
+	if seen["replace"] && (!v.Replace || seen["plan"] || seen["seed"]) {
+		return request{}, denied
+	}
 	return v, nil
 }
 
 // Consumer receives the token only after peer, identity, framing and mapping
-// checks. unused says the person's gh kept its own login and positively holds
-// another token, so the gateway may revoke this one; when in doubt it is false.
-type Consumer func(ctx context.Context, token string) (unused bool, err error)
+// checks. replace is the person's explicit reconnect: the token may take the
+// place of gh's working login of the same account. unused says the person's
+// gh kept its own login and positively holds another token, so the gateway
+// may revoke this one; when in doubt it is false.
+type Consumer func(ctx context.Context, token string, replace bool) (unused bool, err error)
 
 // PlanConsumer acts on a validated plan after the token is installed. It
 // answers every default, in order; it never sees the token.
@@ -577,7 +594,7 @@ func (s *Server) Handler() http.Handler {
 		}
 		s.seen[v.Nonce] = struct{}{}
 		s.mu.Unlock()
-		unused, e := s.consume(r.Context(), v.Token)
+		unused, e := s.consume(r.Context(), v.Token, v.Replace)
 		if e != nil {
 			s.log.Warn("credential_handoff", "outcome", "failed", "reason", "native_install_unavailable", "user", s.cfg.Username)
 			w.WriteHeader(http.StatusServiceUnavailable)

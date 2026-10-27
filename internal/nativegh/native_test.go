@@ -326,14 +326,14 @@ func TestInstallReobserveAndDisconnect(t *testing.T) {
 	for _, keyring := range []bool{true, false} {
 		t.Run(fmt.Sprint(keyring), func(t *testing.T) {
 			a, f, _ := fixture(t, keyring)
-			r, e := a.Install(context.Background(), f.token)
+			r, e := a.Install(context.Background(), f.token, false)
 			if e != nil || r.Phase != Installed {
 				t.Fatalf("%+v %v", r, e)
 			}
 			if !reflect.DeepEqual(f.log[len(f.log)-7:], []string{"gh auth login --hostname github.com --with-token --git-protocol https", "gh auth setup-git --hostname github.com", "gh auth status --hostname github.com", "gh api --hostname github.com user --jq {id: .id, login: .login}", "gh config get git_protocol --host github.com", "git config --global --get credential.https://github.com.helper", "git credential fill"}) {
 				t.Fatal(f.log)
 			}
-			r, e = a.Install(context.Background(), f.token)
+			r, e = a.Install(context.Background(), f.token, false)
 			if e != nil || r.Phase != Reobserved {
 				t.Fatal(r, e)
 			}
@@ -369,7 +369,7 @@ func TestKeptLoginReportsUnusedTokenOnlyWhenGhHoldsAnother(t *testing.T) {
 			if tc.fail {
 				f.fail = "gh auth token --hostname github.com"
 			}
-			unused, e := a.Consumer()(context.Background(), f.token)
+			unused, e := a.Consumer()(context.Background(), f.token, false)
 			if e != nil || unused != tc.unused || containsCommand(f.log, "gh auth login --hostname github.com --with-token --git-protocol https") {
 				t.Fatal(unused, e, f.log)
 			}
@@ -378,20 +378,79 @@ func TestKeptLoginReportsUnusedTokenOnlyWhenGhHoldsAnother(t *testing.T) {
 	// A fresh install uses the token.
 	a, f, _ := fixture(t, true)
 	f.held = "gho_older-native-token"
-	if unused, e := a.Consumer()(context.Background(), f.token); e != nil || unused {
+	if unused, e := a.Consumer()(context.Background(), f.token, false); e != nil || unused {
 		t.Fatal(unused, e)
 	}
 	// A refused install reports nothing unused.
 	a, f, _ = fixture(t, true)
 	f.fail = "gh auth login --hostname github.com --with-token --git-protocol https"
-	if unused, e := a.Consumer()(context.Background(), f.token); e == nil || unused {
+	if unused, e := a.Consumer()(context.Background(), f.token, false); e == nil || unused {
 		t.Fatal(unused, e)
+	}
+}
+
+// An explicit reconnect puts the new token in place of gh's working login of
+// the same account; an ordinary sign-in keeps that login (above). It replaces
+// only a login that positively holds another token and whose files are still
+// those it classified.
+func TestExplicitReconnectReplacesOwnLogin(t *testing.T) {
+	login := "gh auth login --hostname github.com --with-token --git-protocol https"
+	ownFixture := func(t *testing.T) (*Adapter, *fake, string) {
+		a, f, home := fixture(t, false)
+		if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte(staleHosts), 0600); err != nil {
+			t.Fatal(err)
+		}
+		f.logged, f.held = true, "gho_older-native-token"
+		return a, f, home
+	}
+	a, f, _ := ownFixture(t)
+	r, e := a.Install(context.Background(), f.token, true)
+	if e != nil || r.Phase != Replaced || r.Unused || r.Storage != ProtectedFile || !containsCommand(f.log, login) || containsCommand(f.log, "gh auth logout --hostname github.com --user alice") {
+		t.Fatal(r, e, f.log)
+	}
+	// The daemon's answer: the token is in use, so the gateway revokes nothing.
+	a, f, _ = ownFixture(t)
+	if unused, e := a.Consumer()(context.Background(), f.token, true); e != nil || unused || !containsCommand(f.log, login) {
+		t.Fatal(unused, e, f.log)
+	}
+	for name, setup := range map[string]func(*fake, string){
+		"same-token": func(f *fake, _ string) { f.held = f.token },
+		"unreadable": func(f *fake, _ string) { f.fail = "gh auth token --hostname github.com" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			a, f, home := ownFixture(t)
+			setup(f, home)
+			if r, e := a.Install(context.Background(), f.token, true); e != nil || r.Phase != Reobserved || r.Unused || containsCommand(f.log, login) {
+				t.Fatal(r, e, f.log)
+			}
+		})
+	}
+	// The person switches or logs in natively while GitHub answers.
+	a, f, home := ownFixture(t)
+	f.probed = func() {
+		if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte(strings.ReplaceAll(staleHosts, "stale", "fresh-native")), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if r, e := a.Install(context.Background(), f.token, true); e == nil || r.Phase != Partial {
+		t.Fatal(r, e)
+	}
+	for _, cmd := range f.log {
+		if strings.Contains(cmd, "auth login") || strings.Contains(cmd, "auth logout") {
+			t.Fatal("replaced a login it could not attribute", f.log)
+		}
+	}
+	// Another account's login stays a refusal, reconnect or not.
+	a, f, _ = ownFixture(t)
+	f.id = "43"
+	if r, e := a.Install(context.Background(), f.token, true); e == nil || containsCommand(f.log, login) {
+		t.Fatal(r, e, f.log)
 	}
 }
 func TestFreshInstallWithAbsoluteHelper(t *testing.T) {
 	a, f, _ := fixture(t, false)
 	f.helper = "!/usr/bin/gh auth git-credential\n"
-	r, err := a.Install(context.Background(), f.token)
+	r, err := a.Install(context.Background(), f.token, false)
 	if err != nil || r.Phase != Installed || r.Storage != ProtectedFile ||
 		!containsCommand(f.log, "git credential fill") {
 		t.Fatalf("absolute helper install: %+v %v", r, err)
@@ -431,7 +490,7 @@ func TestGitHelperExactFormsAcrossObservationAndDisconnect(t *testing.T) {
 				t.Fatal("executed untrusted credential helper")
 			}
 			f.log = nil
-			installed, installErr := a.Install(context.Background(), f.token)
+			installed, installErr := a.Install(context.Background(), f.token, false)
 			if (installErr == nil) != tc.accept || (tc.accept && installed.Phase != Reobserved) {
 				t.Fatalf("reobserve: %+v %v", installed, installErr)
 			}
@@ -468,7 +527,7 @@ func TestConcurrentSameIDSerializes(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			r, err := a.Install(context.Background(), f.token)
+			r, err := a.Install(context.Background(), f.token, false)
 			if err != nil {
 				t.Errorf("install: %v", err)
 			}
@@ -515,7 +574,7 @@ func TestExistingWrongOrPartialAuthIsNeverOverwritten(t *testing.T) {
 				// Network failure, unreadable keyring or unknown wording.
 				f.apiErr = denied
 			}
-			if _, err := a.Install(context.Background(), f.token); err == nil {
+			if _, err := a.Install(context.Background(), f.token, false); err == nil {
 				t.Fatal("accepted existing invalid login")
 			}
 			if !f.logged {
@@ -545,7 +604,7 @@ func TestRevokedLoginIsReplaced(t *testing.T) {
 		return a, f, home
 	}
 	a, f, _ := revokedFixture(t, staleHosts)
-	r, e := a.Install(context.Background(), f.token)
+	r, e := a.Install(context.Background(), f.token, false)
 	if e != nil || r.Phase != Installed || r.Storage != ProtectedFile {
 		t.Fatal(r, e, f.log)
 	}
@@ -573,7 +632,7 @@ func TestRevokedLoginIsReplaced(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			a, f, home := revokedFixture(t, staleHosts)
 			setup(f, home)
-			if r, e := a.Install(context.Background(), f.token); e == nil || r.Phase != Partial {
+			if r, e := a.Install(context.Background(), f.token, false); e == nil || r.Phase != Partial {
 				t.Fatal(r, e)
 			}
 			for _, cmd := range f.log {
@@ -595,7 +654,7 @@ func TestNativeChangeAfterInstallBlocksCleanup(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if r, e := a.Install(context.Background(), f.token); e == nil || r.CleanupOK || !f.logged {
+	if r, e := a.Install(context.Background(), f.token, false); e == nil || r.CleanupOK || !f.logged {
 		t.Fatal(r, e, f.log)
 	}
 }
@@ -611,7 +670,7 @@ func TestFailedLoginNeverCleansUp(t *testing.T) {
 	f.apiErr = rejected
 	f.fail = "gh auth login --hostname github.com --with-token --git-protocol https"
 	f.probed = func() { f.probed = func() { f.apiErr = nil } } // works when observed afterwards
-	if r, e := a.Install(context.Background(), f.token); e == nil || r.Phase != Partial || r.CleanupOK {
+	if r, e := a.Install(context.Background(), f.token, false); e == nil || r.Phase != Partial || r.CleanupOK {
 		t.Fatal(r, e)
 	}
 	for _, cmd := range f.log {
@@ -626,7 +685,7 @@ func TestFailures(t *testing.T) {
 		t.Run(failed, func(t *testing.T) {
 			a, f, _ := fixture(t, false)
 			f.fail = failed
-			r, e := a.Install(context.Background(), f.token)
+			r, e := a.Install(context.Background(), f.token, false)
 			if e == nil || strings.Contains(e.Error(), f.token) || r.Phase != Partial {
 				t.Fatal(r, e)
 			}
@@ -636,7 +695,7 @@ func TestFailures(t *testing.T) {
 func TestWrongIDCleanupAndStorage(t *testing.T) {
 	a, f, home := fixture(t, false)
 	f.id = "43"
-	r, e := a.Install(context.Background(), f.token)
+	r, e := a.Install(context.Background(), f.token, false)
 	if e == nil || !r.CleanupOK || f.logged {
 		t.Fatal(r, e)
 	}
@@ -655,7 +714,7 @@ func TestWrongIDCleanupAndStorage(t *testing.T) {
 		if e := mutate(p); e != nil {
 			t.Fatal(e)
 		}
-		_, e = a.Install(context.Background(), f.token)
+		_, e = a.Install(context.Background(), f.token, false)
 		if e == nil {
 			t.Fatal("unsafe storage accepted")
 		}
@@ -692,7 +751,7 @@ func TestUnsafeDirectoriesAndCleanupFailure(t *testing.T) {
 				f.id = "43"
 				f.fail = "gh auth logout --hostname github.com --user alice"
 			}
-			r, e := a.Install(context.Background(), f.token)
+			r, e := a.Install(context.Background(), f.token, false)
 			if e == nil || r.Phase != Partial || name == "cleanup-failure" && r.CleanupOK {
 				t.Fatal(r, e)
 			}
@@ -998,7 +1057,7 @@ func TestExecutorReplacesOnlyARevokedLogin(t *testing.T) {
 			if got := a.Status(context.Background()); got != want {
 				t.Fatalf("status %s, want %s", got, want)
 			}
-			r, err := a.Install(context.Background(), "unique-synthetic-sentinel")
+			r, err := a.Install(context.Background(), "unique-synthetic-sentinel", false)
 			log, _ := os.ReadFile(filepath.Join(home, "log"))
 			after, _ := os.ReadFile(hosts)
 			if tc.install {
@@ -1034,7 +1093,7 @@ func TestTokenRevokedAtGitHubShowsExpiredAndSignInReconnects(t *testing.T) {
 	if err := os.Remove(filepath.Join(home, ".config", "gh", "hosts.yml")); err != nil {
 		t.Fatal(err)
 	}
-	if r, err := a.Install(context.Background(), "unique-synthetic-sentinel"); err != nil || r.Phase != Installed {
+	if r, err := a.Install(context.Background(), "unique-synthetic-sentinel", false); err != nil || r.Phase != Installed {
 		t.Fatal("first sign-in", r, err)
 	}
 	if got := a.ObservedStatus(context.Background()); got != "connected" {
@@ -1058,7 +1117,7 @@ func TestTokenRevokedAtGitHubShowsExpiredAndSignInReconnects(t *testing.T) {
 	}
 	// The reconnect is an ordinary GitHub sign-in: its token replaces the
 	// rejected one.
-	if r, err := a.Install(context.Background(), "unique-synthetic-sentinel"); err != nil || r.Phase != Installed {
+	if r, err := a.Install(context.Background(), "unique-synthetic-sentinel", false); err != nil || r.Phase != Installed {
 		t.Fatal("reconnect", r, err)
 	}
 	if got := a.ObservedStatus(context.Background()); got != "connected" {

@@ -1129,11 +1129,18 @@ test.describe("expired GitHub connection", () => {
     // observes a working login again.
     await page.unroute("**/api/v1/snapshot");
     await state(page, "connected");
+    // The button asks for an explicit reconnect, which the gateway accepts
+    // only from this signed-in, same-origin page.
+    const started = page.waitForRequest(/\/auth\/github\/start\?/);
     await reconnect.click();
+    const start = new URL((await started).url());
+    expect(start.searchParams.get("reconnect")).toBe("1");
+    expect(start.searchParams.get("return_to")).toBe("/settings/code-hosts");
     await expect(page).toHaveURL(/\/fixture\/provider\?/);
     await page.getByRole("link").nth(0).click();
     await expect(page).toHaveURL(/\/settings\/code-hosts$/);
     await expect(row).toHaveAttribute("data-state", "connected");
-    await expect(page.getByTestId("github-reconnect")).toHaveCount(0);
+    // A working login can still be replaced on request, as a quieter action.
+    await expect(page.getByTestId("github-reconnect")).toBeVisible();
   });
 });

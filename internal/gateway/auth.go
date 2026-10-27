@@ -72,6 +72,13 @@ const (
 	HandoffUnused Handoff = "unused"
 )
 
+// ReplacingSink delivers the token of an explicit reconnect, which may take
+// the place of gh's working login of the same account. An ordinary sign-in
+// keeps that login.
+type ReplacingSink interface {
+	DeliverReplacing(context.Context, Identity, string, string) (Handoff, error)
+}
+
 // TokenRevoker revokes a token the gateway itself just obtained. Only an
 // unused token is revoked: GitHub keeps ten tokens per person and scope and
 // revokes the oldest, which is the one the person's gh holds.
@@ -190,8 +197,11 @@ type AuthOptions struct {
 }
 type pending struct {
 	verifier, browser, returnTo, attempt, accessEmail string
-	until                                             time.Time
-	serial                                            uint64
+	// reconnect is the subject whose own session started an explicit
+	// reconnect; empty for an ordinary sign-in.
+	reconnect string
+	until     time.Time
+	serial    uint64
 }
 type session struct {
 	identity    Identity
@@ -504,7 +514,18 @@ func uiReturn(path string) bool {
 }
 func (a *Auth) start(w http.ResponseWriter, r *http.Request) {
 	returnTo := "/workspaces"
-	if a.exact(r, "/auth/github/start", "return_to") && uiReturn(r.URL.Query().Get("return_to")) {
+	reconnect, intent := "", "none"
+	if a.exact(r, "/auth/github/start", "return_to", "reconnect") && uiReturn(r.URL.Query().Get("return_to")) && r.URL.Query().Get("reconnect") == "1" {
+		returnTo = r.URL.Query().Get("return_to")
+		// A reconnect replaces gh's working login, so only the person's own
+		// page may ask for it: a cross-site navigation carries the Lax
+		// session cookie but not a same-origin fetch site. A refused intent
+		// is an ordinary sign-in.
+		intent = "reconnect_refused"
+		if s, ok := a.authenticated(r); ok && r.Header.Get("Sec-Fetch-Site") == "same-origin" && len(r.Header.Values("Sec-Fetch-Site")) == 1 {
+			reconnect, intent = s.identity.Subject, "reconnect"
+		}
+	} else if a.exact(r, "/auth/github/start", "return_to") && uiReturn(r.URL.Query().Get("return_to")) {
 		returnTo = r.URL.Query().Get("return_to")
 	} else if !a.exact(r, "/auth/github/start") {
 		safe(w, 400, "invalid_request")
@@ -546,9 +567,9 @@ func (a *Auth) start(w http.ResponseWriter, r *http.Request) {
 	}
 	attempt := attemptID()
 	a.serial++
-	a.pending[state] = pending{verifier: verifier, browser: browser, returnTo: returnTo, attempt: attempt, accessEmail: accessEmail(r), until: now.Add(5 * time.Minute), serial: a.serial}
+	a.pending[state] = pending{verifier: verifier, browser: browser, returnTo: returnTo, attempt: attempt, accessEmail: accessEmail(r), reconnect: reconnect, until: now.Add(5 * time.Minute), serial: a.serial}
 	a.mu.Unlock()
-	a.authEvent(attempt, "started", "none")
+	a.authEvent(attempt, "started", intent)
 	http.SetCookie(w, &http.Cookie{Name: flowCookie, Value: browser, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 300})
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, a.provider.AuthorizationURL(state, challenge), http.StatusFound)
@@ -736,6 +757,10 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		if keep && a.recordReceipt(id, receipt) != nil {
 			a.authEvent(attempt, "degraded", "onboarding_record_failed")
 		}
+	} else if replacing, ok := a.sink.(ReplacingSink); ok && p.reconnect == id {
+		// Only a reconnect of the account that started it: signing in to
+		// GitHub as someone else there is an ordinary sign-in.
+		handoff, delivered = replacing.DeliverReplacing(r.Context(), target, id, token)
 	} else {
 		handoff, delivered = a.sink.Deliver(r.Context(), target, id, token)
 	}

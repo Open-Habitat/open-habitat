@@ -132,13 +132,13 @@ func TestKeyringCancellationAndLoginBinding(t *testing.T) {
 	f.logged = true
 	var observed string
 	a.evidence = loginEvidence{func(_ context.Context, login string) bool { observed = login; return true }}
-	r, e := a.Install(context.Background(), f.token)
+	r, e := a.Install(context.Background(), f.token, false)
 	if e != nil || r.Storage != Keyring || observed != "alice" {
 		t.Fatalf("login binding: %+v %v %s", r, e, observed)
 	}
 	f.id = "43"
 	observed = ""
-	_, _ = a.Install(context.Background(), f.token)
+	_, _ = a.Install(context.Background(), f.token, false)
 	if observed != "" {
 		t.Fatal("wrong numeric identity reached keyring")
 	}

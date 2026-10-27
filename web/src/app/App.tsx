@@ -1789,7 +1789,7 @@ export function App() {
         onLogin={() => {
           if (syntheticDemo) return;
           window.location.assign(
-            `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}`,
+            `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}&reconnect=1`,
           );
         }}
         notice={
@@ -1852,7 +1852,7 @@ export function App() {
         onReconnect={() => {
           if (syntheticDemo) return;
           window.location.assign(
-            `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}`,
+            `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}&reconnect=1`,
           );
         }}
         onPiSignIn={() => navigate(`${location.pathname}?pi_sign_in=1`)}

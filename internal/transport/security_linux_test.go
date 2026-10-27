@@ -29,7 +29,7 @@ func TestPeerBeforeBodyAndWrongTarget(t *testing.T) {
 	defer ln.Close()
 	calls := new(atomic.Int32)
 	cfg := Config{GatewayUID: os.Getuid() + 1, UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: path, Provider: "github", Subject: "42"}
-	s, e := newServer(cfg, func(context.Context, string) (bool, error) { calls.Add(1); return false, nil }, true)
+	s, e := newServer(cfg, func(context.Context, string, bool) (bool, error) { calls.Add(1); return false, nil }, true)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -60,7 +60,7 @@ func TestPeerBeforeBodyAndWrongTarget(t *testing.T) {
 	}
 	cfg.GatewayUID = os.Getuid()
 	cfg.Home = filepath.Join(t.TempDir(), "false-home")
-	if _, e := newServer(cfg, func(context.Context, string) (bool, error) { return false, nil }, true); e == nil {
+	if _, e := newServer(cfg, func(context.Context, string, bool) (bool, error) { return false, nil }, true); e == nil {
 		t.Fatal("wrong home accepted")
 	}
 }
@@ -104,7 +104,7 @@ func TestConsumerFailureAndOversize(t *testing.T) {
 	defer ln.Close()
 	cfg := Config{GatewayUID: os.Getuid(), UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: path, Provider: "github", Subject: "42"}
 	calls := new(atomic.Int32)
-	s, e := newServer(cfg, func(context.Context, string) (bool, error) {
+	s, e := newServer(cfg, func(context.Context, string, bool) (bool, error) {
 		calls.Add(1)
 		return false, errors.New("sentinel-secret native failure")
 	}, true)

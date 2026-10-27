@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -48,7 +49,7 @@ func fixture(t *testing.T) (*Server, *net.UnixListener, gateway.Identity, *atomi
 	t.Cleanup(func() { _ = ln.Close() })
 	cfg := Config{GatewayUID: os.Getuid(), UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: path, Provider: "github", Subject: "42"}
 	calls := new(atomic.Int32)
-	s, e := newServer(cfg, func(_ context.Context, token string) (bool, error) {
+	s, e := newServer(cfg, func(_ context.Context, token string, _ bool) (bool, error) {
 		if token != "sentinel-secret" {
 			t.Error("unexpected token")
 		}
@@ -85,7 +86,7 @@ func raw(t *testing.T, path, method, uri, headers string, body []byte) int {
 	return res.StatusCode
 }
 func payload(m gateway.Identity, nonce string) []byte {
-	b, _ := json.Marshal(request{1, nonce, "github", "42", m.UID, m.Username, "sentinel-secret", nil, nil})
+	b, _ := json.Marshal(request{1, nonce, "github", "42", m.UID, m.Username, "sentinel-secret", nil, nil, false})
 	return b
 }
 func send(t *testing.T, m gateway.Identity, b []byte) int {
@@ -257,7 +258,7 @@ func TestConsumerFailureReplayAndCapacity(t *testing.T) {
 	defer ln.Close()
 	cfg := Config{GatewayUID: os.Getuid(), UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: path, Provider: "github", Subject: "42"}
 	calls := new(atomic.Int32)
-	s, e := newServer(cfg, func(context.Context, string) (bool, error) {
+	s, e := newServer(cfg, func(context.Context, string, bool) (bool, error) {
 		calls.Add(1)
 		return false, fmt.Errorf("sentinel-secret native failure")
 	}, true)
@@ -459,7 +460,7 @@ func TestHandoffSaysWhetherTheTokenIsUnused(t *testing.T) {
 	if e != nil || use != gateway.HandoffInUse {
 		t.Fatal(use, e)
 	}
-	s.consume = func(context.Context, string) (bool, error) { calls.Add(1); return true, nil }
+	s.consume = func(context.Context, string, bool) (bool, error) { calls.Add(1); return true, nil }
 	if use, e = sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e != nil || use != gateway.HandoffUnused {
 		t.Fatal(use, e)
 	}
@@ -469,12 +470,50 @@ func TestHandoffSaysWhetherTheTokenIsUnused(t *testing.T) {
 		t.Fatal(reply, e)
 	}
 	// A failed install answers nothing, so nothing can be revoked.
-	s.consume = func(context.Context, string) (bool, error) { return true, errors.New("install failed") }
+	s.consume = func(context.Context, string, bool) (bool, error) { return true, errors.New("install failed") }
 	if use, e = sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e == nil || use != "" {
 		t.Fatal(use, e)
 	}
 	if calls.Load() != 3 {
 		t.Fatal(calls.Load())
+	}
+}
+
+// A reconnect's handoff says so, and only a reconnect's does. The field is
+// absent or true, and never rides with the binding-creating login's parts.
+func TestHandoffCarriesReconnect(t *testing.T) {
+	s, _, m, calls := fixture(t)
+	var got []bool
+	s.consume = func(_ context.Context, _ string, replace bool) (bool, error) {
+		calls.Add(1)
+		got = append(got, replace)
+		return false, nil
+	}
+	sink := Sink{testPath: true}
+	if use, e := sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e != nil || use != gateway.HandoffInUse {
+		t.Fatal(use, e)
+	}
+	if use, e := sink.DeliverReplacing(context.Background(), m, "42", "sentinel-secret"); e != nil || use != gateway.HandoffInUse {
+		t.Fatal(use, e)
+	}
+	if !slices.Equal(got, []bool{false, true}) {
+		t.Fatal(got)
+	}
+	if b, _ := json.Marshal(request{1, strings.Repeat("f", 32), "github", "42", m.UID, m.Username, "sentinel-secret", nil, nil, false}); bytes.Contains(b, []byte("replace")) {
+		t.Fatal("ordinary handoff names replace")
+	}
+	s.SetPlanConsumer(func(_ context.Context, p Plan) []PlanOutcome { return []PlanOutcome{{p.Defaults[0], "queued"}} })
+	before := calls.Load()
+	b := payload(m, strings.Repeat("d", 32))
+	for i, bad := range []string{`"replace":false,`, `"replace":null,`, `"replace":1,`, `"replace":true,"replace":true,`, `"replace":true,"plan":{"mode":"auto","defaults":["o/r"]},`} {
+		nonce := fmt.Sprintf("%032x", 3000+i)
+		body := bytes.Replace(bytes.Replace(b, []byte(strings.Repeat("d", 32)), []byte(nonce), 1), []byte(`"token":`), []byte(bad+`"token":`), 1)
+		if code := send(t, m, body); code == 200 || code == 204 {
+			t.Fatalf("accepted %s", bad)
+		}
+	}
+	if calls.Load() != before {
+		t.Fatal("malformed reconnect consumed a token")
 	}
 }
 
@@ -521,7 +560,7 @@ func TestHandoffPlan(t *testing.T) {
 		{Mode: "skip", Defaults: []string{"o/.."}},
 		{Mode: "skip", Defaults: []string{"o/r/x"}},
 	} {
-		b, _ := json.Marshal(request{1, fmt.Sprintf("%032x", 1000+i), "github", "42", m.UID, m.Username, "sentinel-secret", &bad, nil})
+		b, _ := json.Marshal(request{1, fmt.Sprintf("%032x", 1000+i), "github", "42", m.UID, m.Username, "sentinel-secret", &bad, nil, false})
 		if code := send(t, m, b); code == 200 || code == 204 {
 			t.Fatalf("invalid plan accepted: %+v", bad)
 		}
@@ -630,7 +669,7 @@ func TestHandoffSeed(t *testing.T) {
 		{Provider: "openai", Key: "$OPENAI_API_KEY"},
 		{Provider: "openai", Key: "sk-short"},
 	} {
-		b, _ := json.Marshal(request{1, fmt.Sprintf("%032x", 2000+i), "github", "42", m.UID, m.Username, "sentinel-secret", nil, &bad})
+		b, _ := json.Marshal(request{1, fmt.Sprintf("%032x", 2000+i), "github", "42", m.UID, m.Username, "sentinel-secret", nil, &bad, false})
 		if code := send(t, m, b); code == 200 || code == 204 {
 			t.Fatalf("invalid seed accepted: %+v", bad)
 		}

@@ -39,7 +39,7 @@ func TestAgentActivatedPairDistinctUIDs(t *testing.T) {
 		}
 		defer d.Close()
 		defer a.Close()
-		server, err := transport.NewServer(cfg, func(context.Context, string) (bool, error) { return false, nil })
+		server, err := transport.NewServer(cfg, func(context.Context, string, bool) (bool, error) { return false, nil })
 		if err != nil {
 			t.Fatal(err)
 		}

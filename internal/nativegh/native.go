@@ -160,6 +160,7 @@ type Phase string
 
 const (
 	Installed  Phase = "installed"
+	Replaced   Phase = "replaced"
 	Reobserved Phase = "already-correct"
 	Partial    Phase = "partial"
 	Absent     Phase = "absent"
@@ -209,8 +210,8 @@ func New(home, subject string, run Runner, evidence Evidence) (*Adapter, error) 
 // Consumer can be passed to transport.NewServer/daemon.ServeHTTP. The token
 // exists only as a call-local reader; callers must not retry the handoff.
 func (a *Adapter) Consumer() transport.Consumer {
-	return func(ctx context.Context, token string) (bool, error) {
-		result, err := a.Install(ctx, token)
+	return func(ctx context.Context, token string, replace bool) (bool, error) {
+		result, err := a.Install(ctx, token, replace)
 		// The phase is native observation, distinct from the transport ack.
 		// Never include token, gh output, stderr, login or credential storage.
 		if err != nil {
@@ -698,7 +699,11 @@ func (a *Adapter) holdsOther(ctx context.Context, token string) bool {
 	held = bytes.TrimSuffix(held, []byte("\n"))
 	return e == nil && len(held) > 0 && subtle.ConstantTimeCompare(held, []byte(token)) == 0
 }
-func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
+
+// Install hands the token to gh. replace is the person's explicit reconnect:
+// it lets the token take the place of gh's working login of the same account,
+// which an ordinary sign-in keeps.
+func (a *Adapter) Install(ctx context.Context, token string, replace bool) (Result, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.mutations.Add(1)
@@ -711,17 +716,30 @@ func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
 	// Never overwrite or clean up credentials we did not just install. The
 	// one exception is a token GitHub itself rejects: it works for nobody, so
 	// replacing it loses nothing, and keeping it would refuse every later
-	// sign-in. A login that cannot be classified (network, keyring, unknown
-	// output) is left alone.
+	// sign-in. The other is the person's explicit reconnect of their own
+	// account, which asks for exactly that. A login that cannot be classified
+	// (network, keyring, unknown output) is left alone.
 	stamp, stamped := credentialStamp(a.home)
+	phase := Installed
 	switch login, kind := a.classify(ctx); {
 	case ctx.Err() != nil:
 		return result, denied
 	case kind == own:
-		if _, storage, ok := a.observeWithLogin(ctx, login); ok {
-			return Result{Phase: Reobserved, Storage: storage, Unused: a.holdsOther(ctx, token)}, nil
+		_, storage, ok := a.observeWithLogin(ctx, login)
+		if !ok {
+			return result, denied
 		}
-		return result, denied
+		other := a.holdsOther(ctx, token)
+		if !replace || !other {
+			return Result{Phase: Reobserved, Storage: storage, Unused: other}, nil
+		}
+		// The incoming token is the same account's, so gh auth login rewrites
+		// only the active entry. It must still be the login just classified:
+		// a native gh auth switch or login in between is not ours to replace.
+		if now, still := credentialStamp(a.home); !stamped || !still || now != stamp {
+			return result, denied
+		}
+		phase = Replaced
 	case kind == revoked:
 		// gh auth login writes the incoming account's entry, which may be
 		// another stored account than the rejected active one; only GitHub's
@@ -745,7 +763,7 @@ func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
 	installed, installedStamped := credentialStamp(a.home)
 	login, storage, ok := a.observe(ctx)
 	if err == nil && ok {
-		return Result{Phase: Installed, Storage: storage}, nil
+		return Result{Phase: phase, Storage: storage}, nil
 	}
 	result.Storage = storage
 	// A failed gh auth login installed nothing, so whatever login gh shows

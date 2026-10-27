@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -26,6 +29,8 @@ type syntheticGitHub struct {
 	// which then also carries a refresh token, as an OAuth app registered
 	// since August 2026 answers by default.
 	expiry string
+	// user is GitHub's answer about the signing-in account; alice by default.
+	user string
 }
 
 func (g *syntheticGitHub) RoundTrip(r *http.Request) (*http.Response, error) {
@@ -42,6 +47,9 @@ func (g *syntheticGitHub) RoundTrip(r *http.Request) (*http.Response, error) {
 		}
 		return reply(200, fmt.Sprintf(`{"access_token":"gho_synthetic_minted_%d","token_type":"bearer"}`, g.minted))
 	case r.Method == "GET" && r.URL.String() == "https://api.github.com/user":
+		if g.user != "" {
+			return reply(200, g.user)
+		}
 		return reply(200, `{"id":42,"login":"alice"}`)
 	case r.Method == "DELETE" && r.URL.String() == "https://api.github.com/applications/client/token":
 		user, pass, ok := r.BasicAuth()
@@ -177,5 +185,95 @@ func TestExpiringTokenSignInWarns(t *testing.T) {
 	gh.expiry = `"eight hours"`
 	if code := signIn(t, h); code != 303 || s.token != "gho_synthetic_minted_3" || strings.Contains(logs.String(), "github_token_expiring") {
 		t.Fatal(code, logs.String())
+	}
+}
+
+// replacingSink records whether the gateway asked the daemon to replace gh's
+// login, as the transport sink does for an explicit reconnect.
+type replacingSink struct {
+	fakeSink
+	replaced []bool
+}
+
+func (s *replacingSink) Deliver(ctx context.Context, m Identity, id, token string) (Handoff, error) {
+	s.replaced = append(s.replaced, false)
+	return s.fakeSink.Deliver(ctx, m, id, token)
+}
+func (s *replacingSink) DeliverReplacing(ctx context.Context, m Identity, id, token string) (Handoff, error) {
+	s.replaced = append(s.replaced, true)
+	return s.fakeSink.Deliver(ctx, m, id, token)
+}
+
+// A reconnect the person starts from settings while signed in asks the daemon
+// to replace gh's working login, and the gateway revokes nothing, since the
+// new token is the one gh then uses. An ordinary sign-in, a reconnect from
+// another site's page or from no session, and a reconnect that signs in to
+// GitHub as another account all keep today's handoff.
+func TestExplicitReconnectReplacesGhLogin(t *testing.T) {
+	gh := &syntheticGitHub{}
+	p := GitHubProvider{ClientID: "client", ClientSecret: "secret", CallbackURL: "https://host.test/auth/github/callback", Client: &http.Client{Transport: gh}}
+	s := &replacingSink{}
+	var logs bytes.Buffer
+	now := time.Date(2026, 10, 27, 9, 0, 0, 0, time.UTC)
+	a, e := NewAuth(OAuthConfig{ClientID: "client", ClientSecret: "secret", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}, AuthOptions{Provider: p, Sink: s, Broker: newFakeBroker(), Now: func() time.Time { return now }, Log: CallbackLogger(&logs)})
+	if e != nil {
+		t.Fatal(e)
+	}
+	h := NewWithAuth("", a)
+	// begin starts a sign-in from the settings page and finishes it.
+	begin := func(reconnect bool, site string, session *http.Cookie) *httptest.ResponseRecorder {
+		t.Helper()
+		path := "/auth/github/start?return_to=%2Fsettings%2Fcode-hosts"
+		if reconnect {
+			path += "&reconnect=1"
+		}
+		r := httptest.NewRequest("GET", "https://host.test"+path, nil)
+		if site != "" {
+			r.Header.Set("Sec-Fetch-Site", site)
+		}
+		if session != nil {
+			r.AddCookie(session)
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != 302 {
+			t.Fatalf("start: %d %s", w.Code, w.Body.String())
+		}
+		u, _ := url.Parse(w.Header().Get("Location"))
+		return callback(h, u.Query().Get("state"), w.Result().Cookies()[0])
+	}
+	w := begin(false, "", nil)
+	if w.Code != 303 {
+		t.Fatal(w.Code)
+	}
+	var session *http.Cookie
+	for _, c := range w.Result().Cookies() {
+		if c.Name == cookieName {
+			session = c
+		}
+	}
+	if session == nil {
+		t.Fatal("no session")
+	}
+	if w := begin(true, "same-origin", session); w.Code != 303 || w.Header().Get("Location") != "/settings/code-hosts" || len(gh.revoked) != 0 {
+		t.Fatal(w.Code, w.Header().Get("Location"), gh.revoked)
+	}
+	// Every other start is an ordinary sign-in: gh keeps its working login,
+	// the daemon answers unused, and the new token is revoked.
+	s.handoff = HandoffUnused
+	for _, c := range []struct {
+		site    string
+		session *http.Cookie
+	}{{"cross-site", session}, {"", session}, {"same-origin", nil}} {
+		begin(true, c.site, c.session)
+	}
+	begin(false, "same-origin", session)
+	gh.user = `{"id":43,"login":"bob"}`
+	begin(true, "same-origin", session)
+	if want := []bool{false, true, false, false, false, false, false}; !slices.Equal(s.replaced, want) || len(gh.revoked) != 5 {
+		t.Fatalf("replaced %v, want %v; revoked %d", s.replaced, want, len(gh.revoked))
+	}
+	if !strings.Contains(logs.String(), `"outcome":"started","reason":"reconnect"`) || !strings.Contains(logs.String(), `"outcome":"started","reason":"reconnect_refused"`) {
+		t.Fatal(logs.String())
 	}
 }

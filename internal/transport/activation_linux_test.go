@@ -58,7 +58,7 @@ func TestSharedHTTPHealthAndHandoff(t *testing.T) {
 	defer ln.Close()
 	cfg := Config{GatewayUID: os.Getuid(), UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Socket: path, Provider: "github", Subject: "42"}
 	count := 0
-	server, e := newServer(cfg, func(_ context.Context, token string) (bool, error) {
+	server, e := newServer(cfg, func(_ context.Context, token string, _ bool) (bool, error) {
 		if token != "sentinel-secret" {
 			t.Error("wrong token")
 		}

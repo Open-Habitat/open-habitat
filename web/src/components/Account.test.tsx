@@ -227,7 +227,7 @@ describe("account presentation", () => {
     rerender(show("connected"));
     expect(screen.getByTestId("github-disconnect-inspect")).toBeTruthy();
   });
-  it("offers a one-step reconnect for an expired or missing connection", () => {
+  it("offers a one-step reconnect for an expired, missing or working connection", () => {
     const onReconnect = vi.fn();
     const show = (
       nativeState: "connected" | "disconnected" | "expired" | "partial",
@@ -251,9 +251,11 @@ describe("account presentation", () => {
     rerender(show("disconnected"));
     fireEvent.click(screen.getByTestId("github-reconnect"));
     expect(onReconnect).toHaveBeenCalledTimes(2);
-    for (const state of ["connected", "partial"] as const) {
-      rerender(show(state));
-      expect(screen.queryByTestId("github-reconnect")).toBeNull();
-    }
+    // A working login is replaced only on request, e.g. by a lasting token.
+    rerender(show("connected"));
+    fireEvent.click(screen.getByTestId("github-reconnect"));
+    expect(onReconnect).toHaveBeenCalledTimes(3);
+    rerender(show("partial"));
+    expect(screen.queryByTestId("github-reconnect")).toBeNull();
   });
 });

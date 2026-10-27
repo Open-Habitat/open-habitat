@@ -167,16 +167,23 @@ export function CodeHostSettings({
               }
             />
             {/* Every GitHub sign-in hands its token to the person's gh, so
-                the same sign-in also connects a missing login. */}
-            {(nativeState === "expired" || nativeState === "disconnected") &&
+                the same sign-in also connects a missing login. A working
+                login is replaced only by this explicit reconnect, for
+                example to swap an expiring token for a lasting one. */}
+            {(nativeState === "expired" ||
+              nativeState === "disconnected" ||
+              nativeState === "connected") &&
               onReconnect && (
                 <Button
                   size="row"
+                  variant={
+                    nativeState === "connected" ? "secondary" : "primary"
+                  }
                   data-testid="github-reconnect"
                   label={
-                    nativeState === "expired"
-                      ? "Yhdistä GitHub uudelleen"
-                      : "Yhdistä GitHub"
+                    nativeState === "disconnected"
+                      ? "Yhdistä GitHub"
+                      : "Yhdistä GitHub uudelleen"
                   }
                   onPress={onReconnect}
                 />

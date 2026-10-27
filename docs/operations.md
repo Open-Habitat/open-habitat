@@ -76,9 +76,10 @@ hours. The person's `gh` cannot refresh it, and Habitat keeps no refresh
 token, so after eight hours `git push` and `gh` stop working until the person
 signs in again. A sign-in that receives an expiring token logs
 `github_token_expiring` in the gateway journal. Tokens issued before the
-opt-out still expire, and a sign-in keeps gh's login while it works, so each
-person signs in once more after their current token has expired, when
-Settings › Yhteydet shows GitHub as Vanhentunut.
+opt-out still expire. An ordinary sign-in keeps gh's login while it works, so
+after the opt-out each person reconnects once from Settings › Koodipalvelut
+(GitHub › Yhdistä GitHub uudelleen), which replaces gh's token with a lasting
+one at once.
 
 Start from the shipped `site/example.json` and `site/schema.json`. Write a
 private root-owned `/etc/open-habitat/site.json` declaring the home UUID,
