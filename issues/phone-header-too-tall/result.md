@@ -36,7 +36,7 @@ the "only a strip of conversation" part. It does not by itself explain a
 composer that is not visible at all; that points to Brave/iOS visual-viewport
 handling and needs a check on the device with this build.
 
-## Other observation
+## Other observation (filed as `desktop-header-title-squeezed`)
 
 At a 1280 px window with the sidebar open, the desktop header (content column
 ~820 px) has no room left for the title: the chips and five icons take the
