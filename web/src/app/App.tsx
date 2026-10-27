@@ -347,6 +347,8 @@ export function App() {
   // Local concealment does not prove the server session ended.
   const clearPerson = useCallback((person?: string) => {
     ++identityGeneration.current;
+    window.clearTimeout(quietRetry.current.timer);
+    quietRetry.current = { failures: 0 };
     owned.current.journal?.stop();
     owned.current.store?.dispose(); // also cancels every pending page read
     owned.current = {};

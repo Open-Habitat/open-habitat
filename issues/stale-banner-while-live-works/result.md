@@ -91,6 +91,15 @@ failure happened at 07:39 is not established: the host cannot see it.
   `browser-conversation`, `refresh-identity`, `account-settings`, `rail-now`
   and `new-conversation-placeholder`). No whole-suite browser run.
 
+## Review
+
+An independent `/llm-review` (finder: GPT-6 Astra; one call; no verifier was needed)
+found one real, bounded defect: `clearPerson` did not cancel a pending quiet
+retry or reset its backoff. `loginFenced` already blocked any read, so the only
+effect was a no-op re-render and a longer first backoff for the next identity.
+The fix is in the follow-up commit, and `lab-snapshot-refresh-live` and
+`refresh-identity` (6/6) were run again after it.
+
 ## Decisions for later review
 
 - **A persistent snapshot-only failure is silent while the stream is open.**
