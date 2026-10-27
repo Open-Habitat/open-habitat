@@ -910,9 +910,16 @@ export function App() {
     location.pathname,
   )?.[1];
   // A landing held for its minimum time still counts as loading here, so the
-  // destination is focused when it actually renders.
+  // destination is focused when it actually renders. A failed background
+  // refresh only marks the same view stale: during a turn every interim reply
+  // refreshes the snapshot, and treating that flip as a new view took the
+  // focus from the composer a person was typing in.
   const viewPhase =
-    landing.show && phase !== "daemon_unavailable" ? "loading" : phase;
+    landing.show && phase !== "daemon_unavailable"
+      ? "loading"
+      : phase === "stale"
+        ? "authenticated"
+        : phase;
   const previousView = useRef({ path: location.pathname, phase: viewPhase });
   // Focus only on navigation or a new sign-in state, never on a snapshot refresh.
   // Settings owns its own entry focus and the conversation owns its editor focus.
