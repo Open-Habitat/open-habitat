@@ -141,6 +141,10 @@ export function catchUpMessage(processes, spinoffs) {
   };
 }
 const reminderType = 'oh-wait-reminder';
+// A wait the agent is woken by whichever way it ends: `run wait` exits 0 when
+// the runs settle and non-zero on a check-in or timeout, and pi-processes
+// wakes on each only if asked to. The tray's ◉ (either one) is looser.
+const wakesOnBoth = notify => notify?.onSuccess === 'turn' && notify?.onFailure === 'turn';
 // The runs whose latest word in the branch is a turn-end reminder rather than a
 // waking wait the agent started for them. A declined reminder stands until the
 // agent waits for that run again; once that wait has returned (`--any`,
@@ -154,7 +158,7 @@ export function remindedRuns(branch) {
       for (const id of custom.details?.runs ?? []) reminded.add(id);
     } else if (m?.role === 'toolResult' && m.toolName === 'process') {
       const d = m.details;
-      if (d?.action === 'start' && (d.notify?.onSuccess === 'turn' || d.notify?.onFailure === 'turn')) for (const id of waitRuns(d.process?.command)) reminded.delete(id);
+      if (d?.action === 'start' && wakesOnBoth(d.notify)) for (const id of waitRuns(d.process?.command)) reminded.delete(id);
     }
   }
   return reminded;
@@ -211,14 +215,14 @@ export default function (pi) {
     if (Buffer.byteLength(line) > maxFrame || socket.writableLength > maxFrame) { socket.destroy(); return; }
     socket.write(line);
   }
-  function wakes(p, branch) {
+  function wakes(p, branch, rule = n => n?.onSuccess === 'turn' || n?.onFailure === 'turn') {
     // Only this child's native start results count. Never rehydrate old owners.
     for (let i = branch.length - 1; i >= 0; --i) {
       const m = branch[i].message;
       const d = m?.details;
       if (m?.role !== 'toolResult' || m.toolName !== 'process' || d?.action !== 'start') continue;
       if (d.process?.id === p.id && d.process?.startTime === p.startTime && p.startTime >= launchedAt) {
-        return d.notify?.onSuccess === 'turn' || d.notify?.onFailure === 'turn';
+        return rule(d.notify);
       }
     }
     return null; // Pending log watches are not observable in 0.10.9.
@@ -365,13 +369,16 @@ export default function (pi) {
   });
   // A completed run only: Escape or an error is the person's or the provider's
   // stop, not a turn to extend. An earlier handler's continuation reaches this
-  // boundary again, so it is checked then.
+  // boundary again, so it is checked then. canContinue is false at every
+  // ordinary end (the last message is the assistant's); the reminder itself is
+  // what lets Pi continue, and Pi checks that again after committing it.
   pi.on('agent_before_settle', async (event, ctx) => {
-    if (shuttingDown || event?.outcome !== 'completed' || event.continue || event.context?.canContinue === false) return;
+    if (shuttingDown || event?.outcome !== 'completed' || event.continue) return;
     let timer;
     const reminder = await Promise.race([remindAtSettle(ctx ?? context).catch(() => null), new Promise(resolve => { timer = setTimeout(() => resolve(null), 2000); })]);
     clearTimeout(timer);
-    return reminder ? { entries: [reminder], continue: true } : undefined;
+    // Returned entries replace the drafts so far; keep earlier handlers'.
+    return reminder ? { entries: [...(event.entries ?? []), reminder], continue: true } : undefined;
   });
   async function remindAtSettle(ctx) {
     const sessionId = ctx?.sessionManager?.getSessionId?.();
@@ -379,8 +386,7 @@ export default function (pi) {
     const branch = ctx.sessionManager.getBranch();
     const records = await ask('request:list');
     if (!Array.isArray(records)) return null;
-    // The tray's ◉: a running process whose own start asked to wake the agent.
-    const waits = records.filter(p => p.status === 'running' && wakes(p, branch) === true).map(p => p.command);
+    const waits = records.filter(p => p.status === 'running' && wakes(p, branch, wakesOnBoth) === true).map(p => p.command);
     const uncovered = await uncoveredRuns({ sessionId, cwd: ctx.cwd, waits });
     return waitReminder(uncovered, remindedRuns(branch));
   }

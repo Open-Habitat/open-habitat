@@ -37,8 +37,10 @@ test('a reminder once per uncovered set, again after a wait for it has returned'
   // The agent waited, the wait returned for one run, and it forgot to wait again.
   const rewaited = [...declined, start(`taskfleet run wait ${ids.a} ${ids.b} --any --output json`)];
   assert.deepEqual(waitReminder([uncovered[1]], remindedRuns(rewaited)).details.runs, [ids.b]);
-  // A wait that never wakes the agent is not the agent waiting.
-  assert.equal(waitReminder(uncovered, remindedRuns([...declined, start(`taskfleet run wait ${ids.a} --output json`, 1, { onSuccess: 'context', onFailure: 'context' })])), null);
+  // A wait that does not wake the agent when the runs settle is not the agent waiting.
+  for (const notify of [{ onSuccess: 'context', onFailure: 'context' }, { onSuccess: 'context', onFailure: 'turn' }, { onSuccess: 'turn', onFailure: 'context' }]) {
+    assert.equal(waitReminder(uncovered, remindedRuns([...declined, start(`taskfleet run wait ${ids.a} --output json`, 1, notify)])), null, JSON.stringify(notify));
+  }
   assert.equal(waitReminder([], new Set()), null);
 });
 
@@ -69,7 +71,8 @@ test('agent_before_settle: reminds once, not when covered, not on Taskfleet erro
     const branch = [];
     const ctx = { cwd: directory, sessionManager: { getBranch: () => branch, getSessionId: () => 's1' } };
     await hooks.get('session_start')({}, ctx);
-    const settle = (extra = {}) => hooks.get('agent_before_settle')({ type: 'agent_before_settle', outcome: 'completed', continue: false, entries: [], context: { canContinue: true }, ...extra }, ctx);
+    // An ordinary end: the last message is the assistant's, so Pi cannot continue yet.
+    const settle = (extra = {}) => hooks.get('agent_before_settle')({ type: 'agent_before_settle', outcome: 'completed', continue: false, entries: [], context: { canContinue: false }, ...extra }, ctx);
 
     await taskfleet('exit 1');
     assert.equal(await settle(), undefined, 'a Taskfleet error is no reminder');
@@ -81,12 +84,14 @@ test('agent_before_settle: reminds once, not when covered, not on Taskfleet erro
     await taskfleet(`cat '${join(directory, 'list.json')}'`);
     assert.equal(await settle({ outcome: 'aborted' }), undefined, 'Escape ends the run');
     assert.equal(await settle({ continue: true }), undefined, 'another continuation comes back here');
-    const reminded = await settle();
+    const earlier = { type: 'custom', customType: 'other-extension' };
+    const reminded = await settle({ entries: [earlier] });
     assert.equal(reminded.continue, true);
-    assert.equal(reminded.entries.length, 1);
-    assert.deepEqual(reminded.entries[0].details.runs, [ids.a, ids.b]);
+    assert.equal(reminded.entries[0], earlier, 'an earlier handler\'s draft is kept');
+    assert.equal(reminded.entries.length, 2);
+    assert.deepEqual(reminded.entries[1].details.runs, [ids.a, ids.b]);
 
-    branch.push(reminded.entries[0]);
+    branch.push(reminded.entries[1]);
     assert.equal(await settle(), undefined, 'the same set is reminded once');
 
     const now = Date.now() + 1;
@@ -96,6 +101,10 @@ test('agent_before_settle: reminds once, not when covered, not on Taskfleet erro
     assert.equal(await settle(), undefined, 'a running waking wait covers the runs');
     records = [{ ...records[0], status: 'exited' }];
     assert.deepEqual((await settle()).entries[0].details.runs, [ids.a, ids.b], 'its return without a new wait is reminded');
+    // A fresh conversation whose only wait is silent when the runs settle.
+    branch.splice(0, branch.length, { type: 'message', message: { role: 'toolResult', toolName: 'process', details: { action: 'start', process: { id: 'proc_bbbb', name: 'wait', command, startTime: now }, notify: { onSuccess: 'context', onFailure: 'turn' } } } });
+    records = [{ ...records[0], status: 'running' }];
+    assert.ok(await settle(), 'a wait silent on success does not cover them');
     records = [];
     api.events.on('processes:request:list', q => q.reply([]));
     assert.equal(await settle(), undefined, 'an ambiguous process inventory is no reminder');

@@ -21,9 +21,18 @@ error, Taskfleet timeout, an ambiguous process inventory, aborted runs and an
 existing continuation give no reminder; an uncovered set is reminded once; a
 running waking wait covers; its return without a new wait reminds again.
 
-Not tried with a real model turn: `agent_before_settle` was exercised only
-through the hook, with the event shape from Pi 1.3.0's `types.d.ts` and
-`agent-session.js`.
+`TestProcessResumeCatchUpAcrossDaemonRestart` (real pinned Pi 1.3.0,
+pi-processes and companion, fake provider and Taskfleet) now also proves it
+natively: the turn ends with one reminder naming only the unwaited spinoff,
+which reaches the provider as the next request, and it is not repeated in
+later turns or after restarts. Not tried with a real model.
+
+Independent review (gpt-6-astra finder, claude-fable-5-1 verifier) found
+three defects, all fixed: the first version skipped the reminder whenever Pi
+reported `canContinue: false`, which is every ordinary end (the test fixture
+had hidden it); returning only the reminder dropped other handlers' boundary
+drafts; and a wait waking only on failure counted as coverage, although
+`run wait` exits 0 when the runs settle.
 
 ## Decisions for later review
 
@@ -34,12 +43,14 @@ through the hook, with the event shape from Pi 1.3.0's `types.d.ts` and
 - **The command lists every uncovered run, at most twenty** (the wait
   grammar's limit), with "and N more" beyond that. `--any` as the result
   recommended.
-- **Coverage is the tray's ◉:** a process in status `running` whose own start
-  asked to wake the agent (`wakes_agent === true`). A wait with
-  `onSuccess: context` does not count, and does not clear an earlier reminder.
-- **Skipped boundaries:** an aborted or failed run (Escape, provider error),
-  a boundary another handler is already continuing, and Pi saying it cannot
-  continue. A run that needs attention, is awaiting input or is stalled is not
+- **Coverage is stricter than the tray's ◉:** a process in status `running`
+  whose start asked to wake the agent on both success and failure. `run wait`
+  exits 0 when the runs settle and non-zero on a check-in or timeout, so a
+  wait that wakes on only one of them can leave the agent asleep; the tray
+  marks either one as waking. Only such a wait clears an earlier reminder.
+- **Skipped boundaries:** an aborted or failed run (Escape, provider error)
+  and a boundary another handler is already continuing (it settles again
+  afterwards and is checked then). A run that needs attention, is awaiting input or is stalled is not
   "live" (a default `run wait` would already return for it).
 - **The person sees the agent-facing English text** through the generic
   extension-message rendering. The catch-up has a Finnish projection in the

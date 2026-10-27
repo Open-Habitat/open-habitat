@@ -51,6 +51,7 @@ const (
 // After the restart the tray shows the cut-off processes, the resumed agent's
 // next turn is told which were cut off and which spinoffs settled, its
 // restored wait wakes it, and a later restart with nothing new adds nothing.
+// Before the restart, the spinoff nothing waits for is reminded once at turn end.
 func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	modules, err := filepath.Abs("pi-device-test/node_modules")
 	if err != nil {
@@ -91,7 +92,8 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	devArgs, _ := json.Marshal(map[string]string{"name": "dev-server", "command": devCommand})
 	reply[1] = string(devArgs)
 	reply[2] = `{"name":"spinoff-wait","command":"taskfleet run wait ` + resumeWaitedRun + ` --output json"}`
-	reply[4] = reply[2] // the agent restores the wait the catch-up names
+	// Request 4 answers the turn-end reminder about the unwaited spinoff with text.
+	reply[5] = reply[2] // the agent restores the wait the catch-up names
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
 		mu.Lock()
@@ -189,7 +191,12 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	if w := h.send(first, id, "Aloita", heldA); w.Code != 200 {
 		t.Fatalf("first send: %d %s", w.Code, w.Body.String())
 	}
-	request(first, id, 3)
+	// The other spinoff runs with nothing waiting for it: the turn ends with
+	// one reminder naming only that run, and the agent's answer settles it.
+	reminder := request(first, id, 4)
+	if !strings.Contains(reminder, "taskfleet run wait "+resumeSettledRun+" --any --output json") || strings.Count(reminder, "nothing is waiting for") != 1 {
+		t.Fatalf("turn end without the wait reminder:\n%s", reminder)
+	}
 	settled(first, id, heldA)
 	var dev string
 	h.eventually("both processes live", func() bool {
@@ -247,13 +254,13 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	if w := h.send(second, id, "Jatketaan", heldB); w.Code != 200 {
 		t.Fatalf("resume send: %d %s", w.Code, w.Body.String())
 	}
-	catchUp := request(second, id, 4)
+	catchUp := request(second, id, 5)
 	for _, want := range []string{"[Open Habitat]", dev + ` \"dev-server\": test`, resumeSettledRun + ` \"fixture ` + resumeSettledRun[22:] + `\" finished and merged`, "taskfleet run wait " + resumeWaitedRun + " --output json"} {
 		if !strings.Contains(catchUp, want) {
 			t.Fatalf("resumed turn lacks %q:\n%s", want, catchUp)
 		}
 	}
-	request(second, id, 5)
+	request(second, id, 6)
 	settled(second, id, heldB)
 	if inv := inventory(second, id); len(inv.Interrupted) != 0 {
 		t.Fatalf("processes the agent was told about stay in the tray: %+v", inv.Interrupted)
@@ -264,7 +271,7 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	beforeWake := second.sessions[id].turnGeneration
 	second.mu.Unlock()
 	writeRuns(id, "done", "done", time.Now())
-	wake := request(second, id, 6)
+	wake := request(second, id, 7)
 	if !strings.Contains(wake, resumeWaitedRun) {
 		t.Fatalf("wake turn without the wait's result:\n%s", wake)
 	}
@@ -287,7 +294,7 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	if w := h.send(third, id, "Taas", heldC); w.Code != 200 {
 		t.Fatalf("third send: %d %s", w.Code, w.Body.String())
 	}
-	if again := request(third, id, 7); strings.Count(again, "[Open Habitat]") != 1 {
+	if again := request(third, id, 8); strings.Count(again, "Pi had stopped") != 1 || strings.Count(again, "nothing is waiting for") != 1 {
 		t.Fatalf("a catch-up without news:\n%s", again)
 	}
 	settled(third, id, heldC)
