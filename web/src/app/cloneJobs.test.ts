@@ -484,7 +484,7 @@ it("reads the list after an unusable Gitea start reply and never resends it", as
     );
     const store = new CloneJobs();
     await expect(
-      store.startGitea(
+      store.startForge(
         { provider: "gitea", connection_id, repository_id: 101 },
         "csrf",
       ),

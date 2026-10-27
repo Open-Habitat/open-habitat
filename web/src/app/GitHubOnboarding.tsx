@@ -57,10 +57,13 @@ const message = (e: unknown) =>
         storage:
           "Tallennustila on täynnä. Pyydä ylläpitäjää nostamaan tallennusrajaa.",
         busy: "Toinen kloonaus on käynnissä. Odota, että se valmistuu.",
-        // Gitea refusals never come from GitHub onboarding's own starts.
+        // Gitea and GitLab refusals never come from GitHub onboarding's own
+        // starts.
         empty:
           "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
         gitea:
+          "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
+        gitlab:
           "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
         rewritten:
           "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",

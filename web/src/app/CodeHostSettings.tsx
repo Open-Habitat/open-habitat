@@ -6,6 +6,7 @@ import { NativeDisconnect } from "../components/NativeDisconnect";
 import { Button } from "../components/Primitives";
 import { StatusMark } from "../components/Status";
 import { type GiteaConnection, host, usable } from "./gitea";
+import { type GitLabConnection, usableGitLab } from "./gitlab";
 import { IntegrationsSettings } from "./IntegrationsSettings";
 import type { IntegrationList, ProviderId } from "./integrations";
 import type { Workspace } from "./snapshot";
@@ -47,8 +48,13 @@ const states: Record<NativeState, { label: string; description: string }> = {
     description: "GitHub-yhteyden tilaa ei juuri nyt voitu vahvistaa.",
   },
 };
-const onlyGitea: ProviderId[] = ["gitea"];
-type Hosted = { w: Workspace; kind: "github" | "gitea"; repo: string };
+const codeHosts: ProviderId[] = ["gitea", "gitlab"];
+type Hosted = {
+  w: Workspace;
+  kind: "github" | "gitea" | "gitlab";
+  repo: string;
+  base?: string;
+};
 
 /** Asetukset › Koodipalvelut (proto-integration-grouping, Kolme sivua): the
  * hosts workspaces are cloned from and pushed to, and the workspaces each
@@ -75,10 +81,15 @@ export function CodeHostSettings({
   const state = states[nativeState ?? "unknown"];
   const [disconnectNotice, setDisconnectNotice] = useState(false);
   const [gitea, setGitea] = useState<GiteaConnection[]>();
+  const [gitlab, setGitLab] = useState<GitLabConnection[]>();
   const onList = useCallback(
-    // Unreadable tea settings say nothing about a clone's server.
-    (list: IntegrationList) =>
-      setGitea(list.gitea?.state === "ok" ? list.gitea.connections : undefined),
+    // Unreadable tea or glab settings say nothing about a clone's server.
+    (list: IntegrationList) => {
+      setGitea(list.gitea?.state === "ok" ? list.gitea.connections : undefined);
+      setGitLab(
+        list.gitlab?.state === "ok" ? list.gitlab.connections : undefined,
+      );
+    },
     [],
   );
   const hosted = useMemo(
@@ -87,16 +98,32 @@ export function CodeHostSettings({
         .filter((w) => w.presence === "present")
         .flatMap((w): Hosted[] =>
           w.gitea_origin
-            ? [{ w, kind: "gitea", repo: w.gitea_origin.full_name }]
-            : w.git_summary?.github_repo
+            ? [
+                {
+                  w,
+                  kind: "gitea",
+                  repo: w.gitea_origin.full_name,
+                  base: w.gitea_origin.base_url,
+                },
+              ]
+            : w.gitlab_origin
               ? [
                   {
                     w,
-                    kind: "github",
-                    repo: w.git_summary.github_repo,
+                    kind: "gitlab",
+                    repo: w.gitlab_origin.full_name,
+                    base: w.gitlab_origin.base_url,
                   },
                 ]
-              : [],
+              : w.git_summary?.github_repo
+                ? [
+                    {
+                      w,
+                      kind: "github",
+                      repo: w.git_summary.github_repo,
+                    },
+                  ]
+                : [],
         )
         .sort((a, b) =>
           (a.w.display_name ?? a.w.name).localeCompare(
@@ -119,6 +146,13 @@ export function CodeHostSettings({
       ? ""
       : gitea
         ? `Pull ja push eivät onnistu ennen kuin ${host(base)}-yhteys on kunnossa. Paikallinen työ jatkuu.`
+        : "";
+  // glab holds one login per server; the server's clones need it usable.
+  const gitlabTrouble = (base: string) =>
+    gitlab?.some((c) => c.base_url === base && usableGitLab(c))
+      ? ""
+      : gitlab
+        ? `Pull ja push eivät onnistu ennen kuin GitLab-yhteys palvelimelle ${host(base)} on kunnossa. Paikallinen työ jatkuu.`
         : "";
   return (
     <div className="s-stack">
@@ -211,9 +245,10 @@ export function CodeHostSettings({
       <div className="s-gitea" data-settings-row="gitea" tabIndex={-1}>
         <IntegrationsSettings
           csrf={csrf}
-          only={onlyGitea}
+          only={codeHosts}
           compact
           onList={onList}
+          onNewWorkspace={onNewWorkspace}
         />
       </div>
       <section
@@ -229,11 +264,13 @@ export function CodeHostSettings({
           ) : null}
         </h3>
         <div className="s-card" data-testid="code-host-workspaces">
-          {hosted.map(({ w, kind, repo }) => {
+          {hosted.map(({ w, kind, repo, base }) => {
             const trouble =
               kind === "github"
                 ? githubTrouble
-                : giteaTrouble(w.gitea_origin?.base_url ?? "");
+                : kind === "gitlab"
+                  ? gitlabTrouble(base ?? "")
+                  : giteaTrouble(base ?? "");
             return (
               <div
                 className="s-ws"
@@ -244,15 +281,17 @@ export function CodeHostSettings({
                 <Icon name="folder" />
                 <strong>{w.display_name ?? w.name}</strong>
                 <LetterMark
-                  mark={kind === "github" ? "GH" : "Gt"}
-                  tone={kind === "github" ? 0 : 3}
+                  mark={
+                    kind === "github" ? "GH" : kind === "gitlab" ? "GL" : "Gt"
+                  }
+                  tone={kind === "github" ? 0 : kind === "gitlab" ? 2 : 3}
                   small
                 />
                 <span className="s-desc">
                   <code>{repo}</code> ·{" "}
                   {kind === "github"
                     ? "GitHub"
-                    : `Gitea ${host(w.gitea_origin?.base_url ?? "")}`}
+                    : `${kind === "gitlab" ? "GitLab" : "Gitea"} ${host(base ?? "")}`}
                 </span>
                 {trouble ? (
                   <span className="s-desc s-bad">{trouble}</span>

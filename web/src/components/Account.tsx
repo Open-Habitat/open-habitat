@@ -41,8 +41,8 @@ import { Button } from "./Primitives";
 import { StatusMark } from "./Status";
 import type { Tone } from "./types";
 
-// Gitea is a code host: Koodipalvelut shows it beside GitHub.
-const codeHosts: ProviderId[] = ["gitea"];
+// Gitea and GitLab are code hosts: Koodipalvelut shows them beside GitHub.
+const codeHosts: ProviderId[] = ["gitea", "gitlab"];
 
 /** Provider subject numbers are not a useful person-facing name. */
 export function accountLabel(displayName: string): string {

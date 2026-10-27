@@ -10,7 +10,8 @@ import { mutationFetch } from "./mutations";
 
 const ajv = new Ajv({ strict: false });
 addFormats(ajv);
-// A Gitea job names its connection with the integrations catalog's id.
+// A Gitea or GitLab job names its connection with the integrations
+// catalog's id.
 ajv.addSchema(integrationsSchema);
 ajv.addSchema(reposSchema);
 ajv.addSchema(cloneSchema);
@@ -77,8 +78,9 @@ export type CloneMode = "full" | "blobless";
 export type CloneJob = {
   job_id: string;
   full_name: string;
-  /** Absent for GitHub; a Gitea clone names its connection and repository. */
-  source?: GiteaCloneSource;
+  /** Absent for GitHub; a Gitea or GitLab clone names its connection and
+   * repository. */
+  source?: ForgeCloneSource;
   mode: CloneMode;
   state: "running" | "confirmed" | "failed" | "cancelled";
   stage?: Extract<CloneProgress, { kind: "progress" }>["stage"];
@@ -89,8 +91,8 @@ export type CloneJob = {
   started_at: string;
   finished_at?: string;
 };
-export type GiteaCloneSource = {
-  provider: "gitea";
+export type ForgeCloneSource = {
+  provider: "gitea" | "gitlab";
   connection_id: string;
   repository_id: number;
 };
@@ -100,12 +102,13 @@ export type PlannedClone = {
   state: "waiting" | "refused";
   reason?: string;
 };
-/** An interrupted clone; a Gitea one names its connection while exactly one
- * matches what the directory records, and can be restarted only then. */
+/** An interrupted clone; a Gitea or GitLab one names its connection while
+ * exactly one matches what the directory records, and can be restarted only
+ * then. A GitLab one's full_name is the whole project path. */
 export type InterruptedClone = {
   full_name: string;
   size_bytes: number;
-  source?: { provider: "gitea"; connection_id?: string };
+  source?: { provider: "gitea" | "gitlab"; connection_id?: string };
 };
 export type CloneJobs = {
   schema_version: 1;
@@ -125,6 +128,7 @@ export class GitHubError extends Error {
       | "busy"
       | "empty"
       | "gitea"
+      | "gitlab"
       | "rewritten"
       | "unavailable",
   ) {
@@ -204,7 +208,11 @@ async function response(r: Response, max: number): Promise<unknown> {
                       code === "gitea_auth_unavailable" ||
                       code === "provider_unavailable"
                     ? "gitea"
-                    : "unavailable",
+                    : code === "gitlab_connection_unavailable" ||
+                        code === "gitlab_git_unavailable" ||
+                        code === "gitlab_auth_unavailable"
+                      ? "gitlab"
+                      : "unavailable",
     );
   }
   if (!r.ok) throw new GitHubError("unavailable");
@@ -301,11 +309,11 @@ export async function startClone(
   return (data as { job: CloneJob }).job;
 }
 
-/** Starts a clone of one repository of a Gitea connection. The daemon
- * looks the repository up again by its id with that connection's token;
- * restart first removes the interrupted clone of that very address. */
-export async function startGiteaClone(
-  source: GiteaCloneSource,
+/** Starts a clone of one repository of a Gitea or GitLab connection. The
+ * daemon looks the repository up again by its id with that connection's
+ * token; restart first removes the interrupted clone of that very address. */
+export async function startForgeClone(
+  source: ForgeCloneSource,
   csrf: string,
   restart = false,
 ): Promise<CloneJob> {
@@ -324,7 +332,7 @@ export async function startGiteaClone(
         },
         body: JSON.stringify({
           action: restart ? "restart" : "start",
-          source: "gitea",
+          source: source.provider,
           connection_id: source.connection_id,
           repository_id: source.repository_id,
           mode: "full",
@@ -338,7 +346,8 @@ export async function startGiteaClone(
   const job = (data as { job?: CloneJob }).job;
   if (
     !cloneJobReplyValid(data) ||
-    job?.source?.connection_id !== source.connection_id ||
+    job?.source?.provider !== source.provider ||
+    job.source.connection_id !== source.connection_id ||
     job.source.repository_id !== source.repository_id
   )
     throw new GitHubError("unavailable");
@@ -383,15 +392,15 @@ export async function dismissClone(jobId: string, csrf: string) {
   if (!cloneDismissedValid(data)) throw new GitHubError("unavailable");
 }
 /** Removes the interrupted clone of name; partial leaves the rest to retry.
- * A Gitea one is named by the owner/name its own origin records. */
+ * A Gitea or GitLab one is named by the path its own origin records. */
 export async function removeInterrupted(
   name: string,
   csrf: string,
-  gitea = false,
+  provider?: "gitea" | "gitlab",
 ): Promise<"removed" | "partial"> {
   const data = await clonePost(
-    gitea
-      ? { action: "remove", source: "gitea", full_name: name }
+    provider
+      ? { action: "remove", source: provider, full_name: name }
       : { action: "remove", full_name: name },
     csrf,
   );

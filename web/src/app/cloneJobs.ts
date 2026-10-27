@@ -5,14 +5,14 @@ import {
   cancelClone,
   cloneJobs,
   dismissClone,
-  type GiteaCloneSource,
+  type ForgeCloneSource,
   GitHubError,
   type InterruptedClone,
   observe,
   type PlannedClone,
   removeInterrupted,
   startClone,
-  startGiteaClone,
+  startForgeClone,
   subscribeClone,
 } from "./github";
 
@@ -257,10 +257,10 @@ export class CloneJobs {
     }
   }
   /** Starts (or, over its interrupted clone, restarts) a clone of a Gitea
-   * connection's repository. */
-  async startGitea(source: GiteaCloneSource, csrf: string, restart = false) {
+   * or GitLab connection's repository. */
+  async startForge(source: ForgeCloneSource, csrf: string, restart = false) {
     try {
-      const job = await startGiteaClone(source, csrf, restart);
+      const job = await startForgeClone(source, csrf, restart);
       this.writes++;
       this.set({
         jobs: [job, ...this.view.jobs.filter((j) => j.job_id !== job.job_id)],
@@ -295,9 +295,9 @@ export class CloneJobs {
       void this.refresh();
     }
   }
-  async remove(name: string, csrf: string, gitea = false) {
+  async remove(name: string, csrf: string, provider?: "gitea" | "gitlab") {
     try {
-      const state = await removeInterrupted(name, csrf, gitea);
+      const state = await removeInterrupted(name, csrf, provider);
       this.writes++;
       return state;
     } finally {

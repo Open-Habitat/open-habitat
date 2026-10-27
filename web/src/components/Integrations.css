@@ -673,3 +673,34 @@ as in the prototype. */
 .ig-bad {
   color: var(--ah-err);
 }
+
+/* GitLab's card and form (proto-gitlab-connect): the token's own row
+   beside Git's, the expiry warning, and the facts of a new connection. */
+.ig-svc .ig-meta + .ig-meta {
+  margin-top: 2px;
+}
+.gl-soon {
+  color: var(--ah-warn-ink, var(--ah-ink-2));
+}
+[data-testid="gitlab-token"] .ah-mono {
+  font-size: 12px;
+}
+[data-testid="gitlab-token"] button {
+  margin-top: var(--ah-s2);
+}
+.gl-link {
+  margin: 0;
+}
+.gl-done {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px var(--ah-s3);
+  margin: 0;
+  font-size: var(--ah-size-meta);
+}
+.gl-done dt {
+  color: var(--ah-muted);
+}
+.gl-done dd {
+  margin: 0;
+}

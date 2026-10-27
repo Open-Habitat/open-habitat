@@ -5,12 +5,12 @@ import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
 import editorSchema from "../../../contracts/v1/editor.schema.json";
 import event from "../../../contracts/v1/event.schema.json";
+import fileOfferSchema from "../../../contracts/v1/file-offer.schema.json";
 import history from "../../../contracts/v1/history.schema.json";
 import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/snapshot.schema.json";
-import fileOfferSchema from "../../../contracts/v1/file-offer.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import workspaceChange from "../../../contracts/v1/workspace-change.schema.json";
 import type { GitSummaryFacts } from "../components/GitStatus";
@@ -53,6 +53,9 @@ export interface Workspace {
   /** The connected Gitea base and owner/name the daemon matched this main
    * checkout's origin to; absent for any other origin. */
   gitea_origin?: { base_url: string; full_name: string };
+  /** The connected GitLab base and full project path the daemon matched
+   * this main checkout's origin to; absent for any other origin. */
+  gitlab_origin?: { base_url: string; full_name: string };
   publish_continuation?: boolean;
   /** Linked worktrees of a main checkout, each a place conversations run in
    * (ADR 0025). */

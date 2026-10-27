@@ -81,8 +81,18 @@ it("recognises an exact GitHub name, also from its URL, and nothing path-like", 
 it("keeps the same owner/repo from GitHub and two Gitea accounts apart", () => {
   // tea's stored user can lag a rename at Gitea; "Omat" follows Gitea's
   // owner id (owned), not a login comparison.
-  const giteaA = { id: "gitea_a", label: "git.example.test", login: "old" };
-  const giteaB = { id: "gitea_b", label: "git.example.test", login: "jari" };
+  const giteaA = {
+    provider: "gitea" as const,
+    id: "gitea_a",
+    label: "git.example.test",
+    login: "old",
+  };
+  const giteaB = {
+    provider: "gitea" as const,
+    id: "gitea_b",
+    label: "git.example.test",
+    login: "jari",
+  };
   const repos: CatalogRepo[] = [
     repo("jari/notes", 1),
     { ...repo("jari/notes", 2), source: giteaA, owned: true },
@@ -112,4 +122,58 @@ it("keeps the same owner/repo from GitHub and two Gitea accounts apart", () => {
   });
   if (s.kind !== "search") throw new Error("search expected");
   expect(s.hits.map((r) => r.source?.id)).toEqual(["gitea_a", "gitea_b"]);
+});
+
+it("lists a GitLab project under its whole namespace (Koko polku)", () => {
+  const com = {
+    provider: "gitlab" as const,
+    id: "gitlab_a",
+    label: "gitlab.com",
+    login: "aino",
+  };
+  const gl = (full_name: string, extra: Partial<CatalogRepo> = {}) => ({
+    ...repo(full_name, 1),
+    source: com,
+    group: true,
+    ...extra,
+  });
+  const a = arrange(
+    [
+      gl("aino/dotfiles", { group: false, owned: true }),
+      gl("konepaja/verkkokauppa/api"),
+      gl("konepaja/verkkokauppa/infra/terraform"),
+      gl("konepaja/verkkokauppa/infra/ansible"),
+      gl("konepaja/wiki"),
+      gl("bob/shared", { group: false }),
+      repo("konepaja/github-namesake", 1, "Organization"),
+    ],
+    { login: "aino", query: "", since: "0", now, taken: () => false },
+  );
+  if (a.kind !== "browse") throw new Error("browse expected");
+  expect(
+    a.sections.map((s) => [s.owner, s.kind, s.source?.id ?? "github", s.total]),
+  ).toEqual([
+    ["aino", "Omat", "gitlab_a", 1],
+    ["konepaja", "Organisaatio", "github", 1],
+    ["konepaja", "Ryhmä", "gitlab_a", 1],
+    ["konepaja/verkkokauppa", "Aliryhmä", "gitlab_a", 1],
+    ["konepaja/verkkokauppa/infra", "Aliryhmä", "gitlab_a", 2],
+    ["bob", "Yhteistyö", "gitlab_a", 1],
+  ]);
+  // Search finds a project by any group of its path.
+  const s = arrange(
+    a.sections.flatMap((x) => x.fresh),
+    {
+      query: "verkkokauppa",
+      since: "0",
+      now,
+      taken: () => false,
+    },
+  );
+  if (s.kind !== "search") throw new Error("search expected");
+  expect(s.hits.map((r) => r.full_name).sort()).toEqual([
+    "konepaja/verkkokauppa/api",
+    "konepaja/verkkokauppa/infra/ansible",
+    "konepaja/verkkokauppa/infra/terraform",
+  ]);
 });

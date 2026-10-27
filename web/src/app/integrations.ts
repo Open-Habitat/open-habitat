@@ -5,6 +5,7 @@ import changeSchema from "../../../contracts/v1/integration-change.schema.json";
 import loginSchema from "../../../contracts/v1/integration-login.schema.json";
 import listSchema from "../../../contracts/v1/integrations.schema.json";
 import type { GiteaConnections } from "./gitea";
+import type { GitLabConnections } from "./gitlab";
 import { mutationFetch } from "./mutations";
 
 // Asetukset › Tiedot agenteille reads and writes through the person's daemon
@@ -28,7 +29,8 @@ export type ProviderId =
   | "microsoft"
   | "dropbox"
   | "apple"
-  | "gitea";
+  | "gitea"
+  | "gitlab";
 export type ServiceId =
   | "mail"
   | "calendar"
@@ -111,6 +113,8 @@ export type IntegrationList = {
   accounts: Account[];
   /** tea's Gitea logins, read from its file alone (ADR 0031). */
   gitea?: GiteaConnections;
+  /** glab's GitLab host logins, read from its file alone. */
+  gitlab?: GitLabConnections;
   skill: SkillState;
 };
 export type IntegrationChange = {

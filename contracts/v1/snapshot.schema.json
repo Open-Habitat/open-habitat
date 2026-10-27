@@ -278,7 +278,13 @@
               "pattern": "^https://[^\\s/?#@%\\\\]+(/[^\\s?#@%\\\\]+)*$"
             },
             "full_name": {
-              "$ref": "integrations.schema.json#/$defs/gitlab_full_name"
+              "description": "The whole project path as integrations.schema.json's gitlab_full_name spells it.",
+              "type": "string",
+              "maxLength": 1024,
+              "pattern": "^[A-Za-z0-9_.-]{1,255}(/[A-Za-z0-9_.-]{1,255}){1,20}$",
+              "not": {
+                "pattern": "(^|/)(\\.\\.?|-)(/|$)|\\.(git|atom)(/|$)"
+              }
             }
           }
         },

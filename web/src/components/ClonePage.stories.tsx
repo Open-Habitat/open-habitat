@@ -20,11 +20,13 @@ import { arrange, type CatalogRepo, type Since } from "./repoCatalog";
 const now = Date.parse("2026-10-24T09:00:00Z");
 const intent = () => {};
 const giteaA2 = {
+  provider: "gitea" as const,
   id: "gitea_b",
   label: "git.example.test (toinen)",
   login: "toinen",
 };
 const giteaAOwn = {
+  provider: "gitea" as const,
   id: "gitea_a",
   label: "git.example.test (esimerkki)",
   login: "esimerkki",

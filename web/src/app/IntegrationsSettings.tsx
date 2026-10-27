@@ -27,6 +27,7 @@ import {
   giteaAction,
   replaceGiteaToken,
 } from "./gitea";
+import { useGitLabSettings } from "./gitlabSettings";
 import {
   type Account,
   type AppleService,
@@ -181,6 +182,7 @@ export function IntegrationsSettings({
   initial,
   compact = false,
   onList,
+  onNewWorkspace,
 }: {
   csrf?: string;
   /** Show only these providers and their accounts (an onboarding step). */
@@ -193,6 +195,8 @@ export function IntegrationsSettings({
   compact?: boolean;
   /** Each catalog the view shows, so the caller can tell what is connected. */
   onList?: (list: IntegrationList) => void;
+  /** Opens Uusi työtila, offered once a code host is connected. */
+  onNewWorkspace?: () => void;
 }) {
   const [list, setList] = useState<IntegrationList | undefined>(initial);
   const [failed, setFailed] = useState(false);
@@ -268,6 +272,16 @@ export function IntegrationsSettings({
       if (alive.current) setChecking(new Set());
     }
   }, []);
+
+  const gitlab = useGitLabSettings({
+    csrf,
+    list,
+    current,
+    alive,
+    load,
+    setNotice,
+    onNewWorkspace,
+  });
 
   const preread = useRef(initial !== undefined);
   useEffect(() => {
@@ -853,6 +867,7 @@ export function IntegrationsSettings({
                 providers: list.providers.filter((p) => shows(p.id)),
                 accounts: list.accounts.filter((a) => shows(listedProvider(a))),
                 gitea: shows("gitea") ? list.gitea : undefined,
+                gitlab: shows("gitlab") ? list.gitlab : undefined,
               }
             : list
         }
@@ -861,9 +876,11 @@ export function IntegrationsSettings({
         onGitea={(intent) => void onGitea(intent)}
         giteaChecks={giteaChecks}
         giteaBusy={giteaBusy}
+        {...gitlab.overview}
         onConnect={(provider) => {
           setNotice("");
           if (provider.id === "gitea") setGitea({ stage: { stage: "form" } });
+          else if (provider.id === "gitlab") gitlab.connect();
           else if (provider.id === "apple")
             setApple({ mode: { kind: "new" }, stage: { stage: "steps" } });
           else setFlow({ provider, stage: { stage: "intro" } });
@@ -943,6 +960,7 @@ export function IntegrationsSettings({
           }}
         />
       ) : null}
+      {gitlab.dialogs}
       {giteaRemoving ? (
         <GiteaDisconnectDialog
           connection={giteaRemoving.connection}

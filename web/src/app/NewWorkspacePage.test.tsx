@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { createMemoryRouter, MemoryRouter, RouterProvider } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
+import { CloneJobs } from "./cloneJobs";
 import { NewWorkspacePage } from "./NewWorkspacePage";
 import type { Workspace } from "./snapshot";
 
@@ -42,6 +43,9 @@ it("looks an exact name up again after its lookup was aborted", async () => {
           );
         return json({ schema_version: 1, full_name: name, state: "not_found" });
       }
+      // An installation without GitLab answers its list as not offered.
+      if (url === "/api/v1/integrations/gitlab/repos")
+        return new Response("", { status: 404 });
       return new Response("", { status: 503 });
     }),
   );
@@ -153,6 +157,9 @@ function renderCatalog(
             },
           ],
         });
+      // An installation without GitLab answers its list as not offered.
+      if (url === "/api/v1/integrations/gitlab/repos")
+        return new Response("", { status: 404 });
       return new Response("", { status: 503 });
     }),
   );
@@ -278,6 +285,9 @@ function renderRouted(
         return sources === "unavailable"
           ? new Response("", { status: 502 })
           : json({ schema_version: 1, sources });
+      // An installation without GitLab answers its list as not offered.
+      if (url === "/api/v1/integrations/gitlab/repos")
+        return new Response("", { status: 404 });
       return new Response("", { status: 503 });
     }),
   );
@@ -391,4 +401,140 @@ it("a failing source is reported on its own and hides no other list", async () =
       .getByTestId("repository-option-ada/notes")
       .getAttribute("data-source"),
   ).toBe("github");
+});
+
+const glRepo = (id: number, full_name: string, extra: object = {}) => ({
+  id,
+  full_name,
+  visibility: "private",
+  description: "",
+  html_url: `https://gitlab.example.test/${full_name}`,
+  activity_at: "2026-10-20T08:00:00Z",
+  size_kib: null,
+  default_branch: "main",
+  empty: false,
+  archived: false,
+  personal: false,
+  own: false,
+  ...extra,
+});
+const gl = "gitlab_0123456789abcdef01234567";
+
+// GitLab's projects join the common list under their whole namespace
+// (Koko polku); the details name the group path and whether push works,
+// and the clone names the connection and GitLab's id, never a path.
+it("lists GitLab projects by their whole namespace and clones one by its id", async () => {
+  const writes: { url: string; body: string }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (init?.method === "POST")
+        writes.push({ url, body: String(init.body ?? "") });
+      if (url === "/api/v1/onboarding/github/repos")
+        return json({ schema_version: 1, complete: true, repositories: [] });
+      if (url === "/api/v1/integrations/gitea/repos")
+        return new Response("", { status: 404 });
+      if (url === "/api/v1/integrations/gitlab/repos")
+        return json({
+          schema_version: 1,
+          sources: [
+            {
+              connection_id: gl,
+              base_url: "https://gitlab.example.test",
+              user: "aino",
+              state: "ok",
+              complete: true,
+              elsewhere: { count: 2, origin: "http://gitlab.internal" },
+              repositories: [
+                glRepo(7, "konepaja/verkkokauppa/infra/terraform", {
+                  visibility: "internal",
+                }),
+                glRepo(8, "konepaja/verkkokauppa/infra/ansible"),
+                glRepo(9, "aino/dotfiles", { personal: true, own: true }),
+              ],
+            },
+          ],
+        });
+      if (url === "/api/v1/integrations/gitlab/tokens")
+        return json({
+          schema_version: 1,
+          connections: [
+            {
+              connection_id: gl,
+              api: "ok",
+              token: {
+                push: "no",
+                scopes: ["read_api"],
+                expires_at: null,
+                fine: false,
+              },
+            },
+          ],
+        });
+      if (url === "/api/v1/onboarding/github/clones" && init?.method === "POST")
+        return json({
+          schema_version: 1,
+          job: {
+            job_id: "0123456789abcdef0123456789abcdef",
+            full_name: "konepaja/verkkokauppa/infra/terraform",
+            source: { provider: "gitlab", connection_id: gl, repository_id: 7 },
+            mode: "full",
+            state: "running",
+            stage: "reserving",
+            started_at: "2026-10-27T10:00:00Z",
+          },
+        });
+      if (url === "/api/v1/onboarding/github/clones")
+        return json({
+          schema_version: 1,
+          jobs: [],
+          interrupted: [],
+          interrupted_complete: true,
+        });
+      return new Response("", { status: 503 });
+    }),
+  );
+  const store = new CloneJobs();
+  render(
+    <MemoryRouter initialEntries={[`/workspaces/new?gitlab=${gl}/7`]}>
+      <NewWorkspacePage
+        csrf="csrf"
+        store={store}
+        workspaces={[]}
+        onCreated={() => {}}
+        onOpen={() => {}}
+        refresh={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByTestId("repo-owner-konepaja/verkkokauppa/infra"),
+    ).toBeTruthy(),
+  );
+  const section = screen.getByTestId("repo-owner-konepaja/verkkokauppa/infra");
+  expect(section.textContent).toContain("Aliryhmä");
+  expect(section.getAttribute("data-source")).toBe("gitlab");
+  expect(screen.getByTestId("repo-owner-aino").textContent).toContain("Omat");
+  expect(screen.getByTestId("repo-details-group").textContent).toBe(
+    "konepaja › verkkokauppa › infra",
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("repo-details-push").textContent).toContain(
+      "write_repository",
+    ),
+  );
+  expect(
+    screen.getAllByTestId("repository-source-note")[0].textContent,
+  ).toContain("2 projektia jäi pois");
+  fireEvent.click(screen.getByTestId("repository-clone"));
+  await waitFor(() => expect(writes).toHaveLength(1));
+  expect(JSON.parse(writes[0].body)).toEqual({
+    action: "start",
+    source: "gitlab",
+    connection_id: gl,
+    repository_id: 7,
+    mode: "full",
+  });
 });

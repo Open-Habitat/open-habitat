@@ -669,3 +669,16 @@ a.ah-rail-clones[aria-current="page"] {
   background: var(--ah-surface-2);
   color: var(--ah-ink-2);
 }
+
+/* A GitLab project path can be deep (group/subgroup/.../project). It is
+   shown whole and wraps rather than cutting off the project's own name
+   (proto-gitlab-connect, Koko polku). */
+.ah-clone-row-name > .ah-clone-path {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ah-clone-detail h2.ah-clone-path,
+.ah-clone-sec-owner {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}

@@ -100,3 +100,39 @@ it("treats a renamed or deleted repository by what its origin says", () => {
     workspace: gh,
   });
 });
+
+it("matches a GitLab project by its server and whole path, its directory by the project's own name", () => {
+  const gitlab = { provider: "gitlab" as const };
+  const cloned = ws("terraform", {
+    git_remote: "other",
+    gitlab_origin: {
+      base_url: A,
+      full_name: "konepaja/verkkokauppa/infra/terraform",
+    },
+  });
+  expect(
+    workspaceFor(
+      {
+        full_name: "Konepaja/Verkkokauppa/infra/terraform",
+        base_url: A,
+        source: gitlab,
+      },
+      [cloned],
+    ),
+  ).toEqual({ kind: "same", workspace: cloned });
+  // Another group's project of the same name would clone into the same
+  // directory, whose origin is known to be another project.
+  expect(
+    workspaceFor(
+      { full_name: "toinen/terraform", base_url: A, source: gitlab },
+      [cloned],
+    ),
+  ).toEqual({ kind: "taken", workspace: cloned });
+  // A Gitea repository of that path on the same server is not it.
+  expect(
+    workspaceFor(
+      { full_name: "konepaja/verkkokauppa/infra/terraform", base_url: A },
+      [cloned],
+    )?.kind,
+  ).toBe("taken");
+});

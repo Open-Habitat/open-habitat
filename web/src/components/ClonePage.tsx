@@ -34,10 +34,16 @@ export type LookupView =
   | { state: "failed"; name: string };
 
 const kib = (n: number) => size(n * 1024);
+/** A path's owner part and its last segment; a GitLab project's owner part
+ * is its whole namespace. */
+const split = (fullName: string) => {
+  const i = fullName.lastIndexOf("/");
+  return [fullName.slice(0, i), fullName.slice(i + 1)] as const;
+};
 
-/** The row's origin as the person reads it: the Gitea server, or GitHub's
- * once the list also holds a Gitea (workspace-import round 3: every row of
- * the common list names its source). */
+/** The row's origin as the person reads it: the Gitea or GitLab server, or
+ * GitHub's once the list also holds another source (workspace-import round
+ * 3: every row of the common list names its source). */
 const originLabel = (source: CatalogRepo["source"], mixed?: boolean) =>
   source ? source.label : mixed ? "github.com" : undefined;
 
@@ -53,13 +59,17 @@ function RepoRow({
   /** Its owner section's heading already names the source. */
   sectioned?: boolean;
 }) {
-  const [owner, name] = repo.full_name.split("/");
+  const [owner, name] = split(repo.full_name);
   const origin = sectioned ? undefined : originLabel(repo.source, mixed);
+  // In its section a GitLab project's namespace is the heading, so the row
+  // names the project; elsewhere the whole path (Koko polku).
+  const prefix =
+    sectioned && repo.source?.provider === "gitlab" ? "" : `${owner}/`;
   return (
     <li>
       <LinkRow
         data-testid={`repository-option-${repo.full_name}`}
-        data-source={repo.source ? "gitea" : "github"}
+        data-source={repo.source?.provider ?? "github"}
         data-connection={repo.source?.id}
         data-workspace={repo.workspace}
         href={repo.href}
@@ -68,8 +78,8 @@ function RepoRow({
         className="ah-clone-row"
       >
         <span className="ah-clone-row-name">
-          <span className="ah-mono">
-            <span className="ah-clone-owner">{owner}/</span>
+          <span className="ah-mono ah-clone-path">
+            {prefix ? <span className="ah-clone-owner">{prefix}</span> : null}
             <b>{name}</b>
           </span>
           {repo.private ? (
@@ -91,14 +101,17 @@ function RepoRow({
           {repo.archived ? (
             <span className="ah-clone-chip">arkistoitu</span>
           ) : null}
+          {repo.empty ? <span className="ah-clone-chip">tyhjä</span> : null}
         </span>
         {repo.description ? (
           <span className="ah-clone-row-desc">{repo.description}</span>
         ) : null}
         <span className="ah-clone-row-meta">
           <span>{when(repo.pushed_at, now)}</span>
-          <span>{kib(repo.size_kib)}</span>
-          {repo.size_kib >= largeKiB ? (
+          <span>
+            {repo.size_kib === null ? "koko ei tiedossa" : kib(repo.size_kib)}
+          </span>
+          {(repo.size_kib ?? 0) >= largeKiB ? (
             <span className="ah-clone-big">suuri</span>
           ) : null}
         </span>
@@ -275,7 +288,7 @@ export function RepoFinder({
               <section className="ah-clone-sec" key={s.key}>
                 <h3
                   data-testid={`repo-owner-${s.owner}`}
-                  data-source={s.source ? "gitea" : "github"}
+                  data-source={s.source?.provider ?? "github"}
                 >
                   <span className="ah-mono ah-clone-sec-owner">{s.owner}</span>
                   {originLabel(s.source, mixed) ? (
@@ -363,8 +376,8 @@ export function CloneMode({
         />
         <span>
           <b>Koko historia</b>
-          {repo ? `noin ${kib(repo.size_kib)}. ` : ""}Kaikki tiedostoversiot
-          heti levylle.
+          {repo?.size_kib != null ? `noin ${kib(repo.size_kib)}. ` : ""}Kaikki
+          tiedostoversiot heti levylle.
         </span>
       </label>
       <label>
@@ -387,6 +400,14 @@ export function CloneMode({
   );
 }
 
+export type PushState = "yes" | "no" | "unknown" | "expired";
+const pushText: Record<PushState, string> = {
+  yes: "Toimii",
+  no: "Ei toimi: tunnukselta puuttuu write_repository",
+  unknown: "Ei tiedossa",
+  expired: "Ei toimi: tunnus vanhentunut",
+};
+
 export function RepoDetails({
   repo,
   now,
@@ -398,6 +419,7 @@ export function RepoDetails({
   onClone,
   cloneReason,
   problem,
+  push,
 }: {
   repo?: CatalogRepo;
   now: number;
@@ -412,6 +434,8 @@ export function RepoDetails({
   /** Why Kloonaa cannot be pressed now, said beside it. */
   cloneReason?: string;
   problem?: string;
+  /** A GitLab connection's push readiness, as GitLab says it now. */
+  push?: PushState;
 }) {
   if (!repo)
     return (
@@ -423,10 +447,12 @@ export function RepoDetails({
         <p>Valitse repo nähdäksesi sen tiedot ennen kloonausta.</p>
       </aside>
     );
-  const [owner, name] = repo.full_name.split("/");
+  const [owner, name] = split(repo.full_name);
   const gitea = repo.source;
-  // A Gitea clone is always full: no partial-clone assumptions for it.
-  const big = !gitea && repo.size_kib >= largeKiB;
+  const gitlab = gitea?.provider === "gitlab";
+  // A Gitea or GitLab clone is always full: no partial-clone assumptions.
+  const big = !gitea && (repo.size_kib ?? 0) >= largeKiB;
+  const sizeKiB = repo.size_kib ?? 0;
   const reasonId = `clone-reason-${name}`;
   return (
     <aside
@@ -448,7 +474,7 @@ export function RepoDetails({
           Kaikki repot
         </LinkRow>
       ) : null}
-      <h2 className="ah-mono">
+      <h2 className="ah-mono ah-clone-path">
         <span className="ah-clone-owner">{owner}/</span>
         {name}
       </h2>
@@ -461,14 +487,24 @@ export function RepoDetails({
             <dt>Lähde</dt>
             <dd>
               <span className="ah-mono" data-testid="repo-details-source">
-                {gitea.login} · {gitea.label}
+                {gitea.login} · {gitlab ? `GitLab ${gitea.label}` : gitea.label}
               </span>
+            </dd>
+          </>
+        ) : null}
+        {gitlab && owner.includes("/") ? (
+          <>
+            <dt>Ryhmä</dt>
+            <dd data-testid="repo-details-group">
+              {owner.split("/").join(" › ")}
             </dd>
           </>
         ) : null}
         <dt>Näkyvyys</dt>
         <dd>
-          {repo.private ? (
+          {repo.visibility === "internal" ? (
+            "Sisäinen: kaikki palvelimen kirjautuneet"
+          ) : repo.private ? (
             <>
               <Icon
                 name="lock"
@@ -485,24 +521,43 @@ export function RepoDetails({
         {repo.archived ? (
           <>
             <dt>Tila</dt>
-            <dd>Arkistoitu: vain luku Giteassa</dd>
+            <dd>Arkistoitu: vain luku {gitlab ? "GitLabissa" : "Giteassa"}</dd>
           </>
         ) : null}
         <dt>Oletushaara</dt>
         <dd>
           <span className="ah-mono">{repo.default_branch ?? "ei haaraa"}</span>
         </dd>
-        <dt>Viimeisin push</dt>
+        <dt>{gitlab ? "Viimeisin toiminta" : "Viimeisin push"}</dt>
         <dd>{when(repo.pushed_at, now)}</dd>
         <dt>Koko</dt>
         <dd>
-          {kib(repo.size_kib)}{" "}
-          <span className="ah-clone-sub">
-            {gitea
-              ? "Gitean ilmoittama koko"
-              : "GitHubin arvio pakatusta historiasta"}
-          </span>
+          {repo.size_kib === null ? (
+            <>
+              Ei tiedossa{" "}
+              <span className="ah-clone-sub">
+                GitLab kertoo koon vain Reporter-roolille tai ylemmälle
+              </span>
+            </>
+          ) : (
+            <>
+              {kib(repo.size_kib)}{" "}
+              <span className="ah-clone-sub">
+                {gitlab
+                  ? "GitLabin ilmoittama koko"
+                  : gitea
+                    ? "Gitean ilmoittama koko"
+                    : "GitHubin arvio pakatusta historiasta"}
+              </span>
+            </>
+          )}
         </dd>
+        {push ? (
+          <>
+            <dt>Push</dt>
+            <dd data-testid="repo-details-push">{pushText[push]}</dd>
+          </>
+        ) : null}
         <dt>Kohde</dt>
         <dd>
           <span className="ah-mono">~/src/{name}</span>
@@ -591,9 +646,9 @@ export function RepoDetails({
                   className="ah-clone-ic-warn"
                 />
                 <span>
-                  <b>Suuri repo.</b> Täysi klooni vie noin {kib(repo.size_kib)}
+                  <b>Suuri repo.</b> Täysi klooni vie noin {kib(sizeKiB)}
                   {free && free.free_bytes > 0
-                    ? `, ${Math.round((100 * repo.size_kib * 1024) / free.free_bytes)} % vapaasta tilasta`
+                    ? `, ${Math.round((100 * sizeKiB * 1024) / free.free_bytes)} % vapaasta tilasta`
                     : ""}
                   , ja haku kestää yhteydestä riippuen kymmeniä minuutteja.
                 </span>
@@ -605,6 +660,20 @@ export function RepoDetails({
                 onMode={onMode}
               />
             </>
+          ) : null}
+          {repo.empty && gitlab ? (
+            <p className="ah-clone-note">
+              <Icon
+                name="info"
+                width={15}
+                height={15}
+                className="ah-clone-ic-muted"
+              />
+              <span>
+                Projektissa ei ole vielä yhtään committia, joten sitä ei voi
+                vielä kloonata työtilaksi.
+              </span>
+            </p>
           ) : null}
           {problem ? (
             <p className="ah-clone-problem" role="alert">
@@ -626,9 +695,11 @@ export function RepoDetails({
           </div>
           <p className="ah-clone-hint" id={reasonId}>
             {cloneReason ??
-              (gitea
-                ? "Kloonataan tämän Gitea-yhteyden tunnuksella. Kloonaus jatkuu palvelimella, vaikka poistut sivulta."
-                : "Kloonataan sinun GitHub-tunnuksillasi. Kloonaus jatkuu palvelimella, vaikka poistut sivulta.")}
+              (gitlab
+                ? "Kloonataan tämän GitLab-yhteyden tunnuksella. Kloonaus jatkuu palvelimella, vaikka poistut sivulta."
+                : gitea
+                  ? "Kloonataan tämän Gitea-yhteyden tunnuksella. Kloonaus jatkuu palvelimella, vaikka poistut sivulta."
+                  : "Kloonataan sinun GitHub-tunnuksillasi. Kloonaus jatkuu palvelimella, vaikka poistut sivulta.")}
           </p>
         </>
       )}
@@ -645,7 +716,9 @@ const stages = {
 } as const;
 const reasons: Record<string, string> = {
   native_failure:
-    "Git keskeytti kloonauksen, esimerkiksi koska GitHub katkaisi yhteyden.",
+    "Git keskeytti kloonauksen, esimerkiksi koska palvelin katkaisi yhteyden.",
+  auth_refused:
+    "Palvelin ei hyväksynyt Gitin kirjautumista. Tunnus voi olla vanhentunut tai peruttu, tai ryhmä voi vaatia voimassa olevan SSO-istunnon: kirjaudu selaimessa ryhmän kertakirjautumisella ja yritä uudelleen.",
   deadline_exceeded: "Kloonaus ei valmistunut 45 minuutissa.",
   verification_failed:
     "Git valmistui, mutta kloonia ei voitu vahvistaa (esimerkiksi tyhjä repo).",
@@ -668,9 +741,9 @@ export type CloneCardView =
   | {
       kind: "job";
       full_name: string;
-      /** A Gitea clone names its connection and repository. */
+      /** A Gitea or GitLab clone names its connection and repository. */
       source?: {
-        provider: "gitea";
+        provider: "gitea" | "gitlab";
         connection_id: string;
         repository_id: number;
       };
@@ -686,8 +759,9 @@ export type CloneCardView =
       kind: "interrupted";
       full_name: string;
       size_bytes: number;
-      /** A Gitea clone; restart is offered only with its connection. */
-      source?: { provider: "gitea"; connection_id?: string };
+      /** A Gitea or GitLab clone; restart is offered only with its
+       * connection. */
+      source?: { provider: "gitea" | "gitlab"; connection_id?: string };
     }
   | {
       /** Asked for in this tab and not yet a job: the daemon runs one at a time. */
@@ -734,7 +808,7 @@ export function CloneCard({
   const [mode, setMode] = useState<"full" | "blobless">(
     view.kind === "job" ? view.mode : "full",
   );
-  const name = view.full_name.split("/")[1];
+  const name = split(view.full_name)[1];
   const dest = `~/src/${name}`;
   const off = busy || !!writeReason;
   const state =

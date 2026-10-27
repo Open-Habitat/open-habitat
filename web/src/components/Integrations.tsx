@@ -7,6 +7,7 @@ import {
 } from "react-aria-components";
 import "./Integrations.css";
 import type { GiteaAPI, GiteaConnection } from "../app/gitea";
+import type { GitLabAPI, GitLabConnection } from "../app/gitlab";
 import {
   type Account,
   type AppleService,
@@ -36,6 +37,7 @@ import {
 } from "../app/integrations";
 import { ControlButton, controlClassName, Segmented } from "./ControlElements";
 import { GiteaCard } from "./GiteaConnection";
+import { GitLabCard, type GitLabTokenView } from "./GitLabConnection";
 import { Icon, type IconName } from "./Icon";
 import { Checkbox, TextField } from "./Primitives";
 
@@ -122,6 +124,14 @@ export const providerCopy: Record<ProviderId, Copy> = {
     gen: "Gitean",
     ill: "Giteaan",
   },
+  gitlab: {
+    name: "GitLab",
+    mark: "GL",
+    tone: 2,
+    site: "GitLab",
+    gen: "GitLabin",
+    ill: "GitLabiin",
+  },
 };
 
 const serviceNames: Record<ProviderId, Partial<Record<ServiceId, string>>> = {
@@ -152,6 +162,7 @@ const serviceNames: Record<ProviderId, Partial<Record<ServiceId, string>>> = {
     contacts: "iCloud-yhteystiedot",
   },
   gitea: { git: "Git-repot työtiloiksi" },
+  gitlab: { git: "gitlab.com tai yrityksen oma GitLab" },
 };
 
 const serviceIcons: Record<ServiceId, IconName> = {
@@ -220,7 +231,9 @@ export function ProviderMark({
 /** The settings page a provider's accounts are on, as a person reads it
  * (Asetukset › …). */
 export const settingsPlace = (provider: ProviderId) =>
-  provider === "gitea" ? "Koodipalvelut" : "Tiedot agenteille";
+  provider === "gitea" || provider === "gitlab"
+    ? "Koodipalvelut"
+    : "Tiedot agenteille";
 
 /** A service's letter tile, shared by every settings page that lists
  * outside accounts (GitHub, AI subscriptions and keys, data sources). Tone 0
@@ -719,6 +732,12 @@ export type GiteaIntent = {
   connection: GiteaConnection;
 };
 
+/** What a GitLab card asks of the page. */
+export type GitLabIntent = {
+  kind: "check" | "replace" | "repair" | "disconnect";
+  connection: GitLabConnection;
+};
+
 /** The generic app-password forms, for providers other than Apple. */
 const genericProviders: ProviderId[] = ["imap", "caldav", "carddav"];
 
@@ -735,6 +754,11 @@ export function IntegrationsOverview({
   onGitea,
   giteaChecks = {},
   giteaBusy,
+  onGitLab,
+  gitlabChecks = {},
+  gitlabTokens = {},
+  gitlabBusy,
+  now = Date.now(),
   compact = false,
 }: {
   list: IntegrationList;
@@ -755,19 +779,32 @@ export function IntegrationsOverview({
   giteaChecks?: Record<string, GiteaAPI>;
   /** A Gitea write is on its way. */
   giteaBusy?: boolean;
+  onGitLab?: (intent: GitLabIntent) => void;
+  /** Each GitLab connection's latest explicit check. */
+  gitlabChecks?: Record<string, GitLabAPI>;
+  /** What GitLab says about each connection's token now. */
+  gitlabTokens?: Record<string, GitLabTokenView>;
+  /** A GitLab write is on its way. */
+  gitlabBusy?: boolean;
+  /** The clock a token's expiry is counted from. */
+  now?: number;
 }) {
   const key = (a: Account) => `${a.provider}:${a.address}`;
   const isChecking = (a: Account) => checking === "all" || checking.has(key(a));
   const giteaConnections = list.gitea?.connections ?? [];
+  const gitlabConnections = list.gitlab?.connections ?? [];
   const shown = (p: Provider) =>
     p.id === "gitea"
       ? giteaConnections.length > 0 || list.gitea?.state === "unavailable"
-      : list.accounts.some((a) => listedProvider(a) === p.id);
+      : p.id === "gitlab"
+        ? gitlabConnections.length > 0 || list.gitlab?.state === "unavailable"
+        : list.accounts.some((a) => listedProvider(a) === p.id);
   const connected = list.providers.filter(shown);
-  // Gitea is offered only where the installation ships its qualified tea;
-  // until then its tile is not shown at all (ADR 0031, runtime proof).
+  // Gitea and GitLab are offered only where the installation ships the
+  // qualified tea and glab; until then their tiles are not shown at all.
   const rest = list.providers.filter(
-    (p) => !shown(p) && (p.id !== "gitea" || p.available),
+    (p) =>
+      !shown(p) && ((p.id !== "gitea" && p.id !== "gitlab") || p.available),
   );
   const primary = rest.filter((p) => !genericProviders.includes(p.id));
   const others = rest.filter((p) => genericProviders.includes(p.id));
@@ -906,6 +943,46 @@ export function IntegrationsOverview({
                   ))}
                 </>
               ) : null}
+              {p.id === "gitlab" ? (
+                <>
+                  {list.gitlab?.state === "unavailable" ? (
+                    <p
+                      className="ig-notice"
+                      role="status"
+                      data-testid="gitlab-unavailable"
+                    >
+                      <Icon name="warning" />
+                      <span>
+                        glab-asetuksia ei voitu lukea turvallisesti, joten
+                        GitLab-yhteyksiä ei näytetä. Tarkista tiedoston
+                        ~/.config/glab-cli/config.yml oikeudet ja muoto.
+                      </span>
+                    </p>
+                  ) : null}
+                  {gitlabConnections.map((c) => (
+                    <GitLabCard
+                      key={c.id}
+                      connection={c}
+                      token={gitlabTokens[c.id]}
+                      check={gitlabChecks[c.id]}
+                      busy={gitlabBusy || !p.available}
+                      now={now}
+                      onCheck={() =>
+                        onGitLab?.({ kind: "check", connection: c })
+                      }
+                      onReplace={() =>
+                        onGitLab?.({ kind: "replace", connection: c })
+                      }
+                      onRepair={() =>
+                        onGitLab?.({ kind: "repair", connection: c })
+                      }
+                      onDisconnect={() =>
+                        onGitLab?.({ kind: "disconnect", connection: c })
+                      }
+                    />
+                  ))}
+                </>
+              ) : null}
               {list.accounts
                 .filter((a) => p.id !== "apple" && listedProvider(a) === p.id)
                 .map((a) => (
@@ -942,7 +1019,9 @@ export function IntegrationsOverview({
                         ? "Apple ID"
                         : p.id === "gitea"
                           ? "Gitea-tili"
-                          : `${providerCopy[p.id].name}-tili`}
+                          : p.id === "gitlab"
+                            ? "GitLab-palvelin"
+                            : `${providerCopy[p.id].name}-tili`}
                   </ControlButton>
                 </div>
               ) : null}
