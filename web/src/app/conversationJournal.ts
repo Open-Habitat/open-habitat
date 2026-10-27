@@ -47,6 +47,8 @@ export class ConversationJournal {
   private lastEventId?: string;
   private seenIds = new Set<string>();
   private source?: EventSource;
+  // The source whose open event arrived; every close clears or replaces source.
+  private openSource?: EventSource;
   private timer?: number;
   private connectTimer?: ReturnType<typeof setTimeout>;
   private probe?: AbortController;
@@ -321,6 +323,7 @@ export class ConversationJournal {
       if (this.stopped || epoch !== this.generation || this.source !== source)
         return;
       opened = true;
+      this.openSource = source;
       clearTimeout(this.connectTimer);
       reconnectDiagnostic({
         event: "stream",
@@ -429,6 +432,19 @@ export class ConversationJournal {
       });
       source.onerror?.(new Event("error"));
     }, 8000);
+  }
+  /**
+   * Whether the event stream is open now and following the daemon. Then the
+   * host is reachable and live facts keep arriving, so a failed snapshot read
+   * is a failed read, not a lost connection.
+   */
+  live() {
+    return (
+      !this.stopped &&
+      !this.recovering &&
+      !!this.source &&
+      this.source === this.openSource
+    );
   }
   /** A definite HTTP failure ends recovery progress before its hang watchdog. */
   snapshotFailed() {

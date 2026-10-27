@@ -111,6 +111,7 @@ import {
   piRequired,
   type RootState,
   stale,
+  streamOpen,
   unavailable,
 } from "./store";
 import { TrashNotice } from "./TrashNotice";
@@ -142,6 +143,25 @@ function safeRoute(path: string) {
 }
 // Two reads that run side by side. A 401 from either wins over the other's
 // failure; otherwise either failure fails both.
+type SnapshotFailure = "network" | "status" | "invalid" | "session" | "other";
+/** A closed class for the diagnostic; the error text itself is never logged. */
+function snapshotFailure(error: unknown): SnapshotFailure {
+  if (!(error instanceof Error)) return "other";
+  if (error.message === "invalid session") return "session";
+  if (
+    error instanceof SyntaxError ||
+    /^(invalid|oversize|missing) snapshot/.test(error.message)
+  )
+    return "invalid";
+  // fetch rejects with a TypeError when the request never got a response;
+  // a TypeError from our own code is not a network failure.
+  if (
+    error instanceof TypeError &&
+    /fetch|load failed|network/i.test(error.message)
+  )
+    return "network";
+  return "other";
+}
 async function bothReads<A, B>(
   a: Promise<A>,
   b: Promise<B>,
@@ -190,6 +210,11 @@ export function App() {
   // fence across a logout/login in another tab, including while Pi is missing.
   const sessionBinding = useRef<string | undefined>(undefined);
   const identityMismatches = useRef(0);
+  // Consecutive snapshot refreshes that failed while the event stream stayed
+  // open, and the timer of the next quiet retry.
+  const quietRetry = useRef<{ timer?: number; failures: number }>({
+    failures: 0,
+  });
   const [collapsed, setCollapsed] = useState(false);
   const [mobileLayout, setMobileLayout] = useState(
     () => window.matchMedia?.("(max-width: 800px)").matches ?? false,
@@ -473,8 +498,17 @@ export function App() {
     },
     onLogin: requireLogin,
     onOffline: setJournalOffline,
+    onOpen: () => {},
   });
   journalCallbacks.current.onSnapshotNeeded = refresh;
+  // A stream that opens proves the host reachable and carries the live facts
+  // again: a stale page leaves its connection notice and reads the snapshot
+  // now rather than at the next invalidation.
+  journalCallbacks.current.onOpen = () => {
+    if (phase !== "stale") return;
+    dispatch(streamOpen());
+    refresh();
+  };
   journalCallbacks.current.onLogin = requireLogin;
   const journal = useMemo(
     () =>
@@ -487,8 +521,10 @@ export function App() {
               journalCallbacks.current.onStatusChange(id, kind, payload),
             onLogin: () => journalCallbacks.current.onLogin(),
             onOffline: (value) => journalCallbacks.current.onOffline(value),
-            onConnection: (state, reason) =>
-              setJournalConnection({ state, reason }),
+            onConnection: (state, reason) => {
+              setJournalConnection({ state, reason });
+              if (state === "online") journalCallbacks.current.onOpen();
+            },
           })
         : undefined,
     [conversationStore, dispatch],
@@ -564,13 +600,36 @@ export function App() {
       generation === identityGeneration.current &&
       !loginFenced.current;
     if (!snapshot && ready()) dispatch(loading());
-    const fail = (gate: "login" | "pi" | "unavailable") => {
+    const fail = (
+      gate: "login" | "pi" | "unavailable",
+      failure?: { outcome: SnapshotFailure; status?: number },
+    ) => {
       if (!ready()) return;
       if (gate === "login") {
         setCSRF(undefined);
         requireLogin();
       } else if (ready() && gate === "pi") dispatch(piRequired());
       else if (ready() && snapshot) {
+        const live = !!journal?.live();
+        reconnectDiagnostic({
+          event: "snapshot-failed",
+          outcome: failure?.outcome ?? "other",
+          status: failure?.status,
+          live,
+        });
+        if (live) {
+          // The open event stream proves the host reachable and keeps the
+          // conversation current, so one failed read is not a lost
+          // connection: a live turn refreshes at every interim reply and tool
+          // end, and the banner flashed during working turns. Read again
+          // later; a newer invalidation reads sooner and cancels this retry.
+          const retry = quietRetry.current;
+          retry.timer = window.setTimeout(
+            () => setRefreshKey((n) => n + 1),
+            Math.min(2000 * ++retry.failures, 15000),
+          );
+          return;
+        }
         journal?.snapshotFailed();
         dispatch(stale());
       } else if (ready()) dispatch(unavailable());
@@ -683,14 +742,17 @@ export function App() {
         const [session, response] = reads;
         if (session === "login") return; // as above
         if (!bind(session)) return;
-        if (response.status === 403 || response.status >= 500)
-          return fail("unavailable");
         if (
+          response.status === 403 ||
+          response.status >= 500 ||
           !response.ok ||
           response.headers.get("content-type")?.split(";")[0] !==
             "application/json"
         )
-          throw new Error("unavailable");
+          return fail("unavailable", {
+            outcome: "status",
+            status: response.status,
+          });
         const next = await readSnapshot(response);
         if (!ready()) return;
         if (
@@ -713,6 +775,7 @@ export function App() {
           return;
         }
         identityMismatches.current = 0;
+        quietRetry.current.failures = 0;
         setPiCheckFailed(false);
         dispatch(authenticated(next));
         mutationsRef.current?.reconcile(receiptMark, (entry) => {
@@ -779,14 +842,16 @@ export function App() {
               fail("login");
           }
         }
-      } catch {
-        if (ready() && !controller.signal.aborted) fail("unavailable");
+      } catch (error) {
+        if (ready() && !controller.signal.aborted)
+          fail("unavailable", { outcome: snapshotFailure(error) });
       }
     };
     void load();
     return () => {
       active = false;
       controller.abort();
+      window.clearTimeout(quietRetry.current.timer);
     };
   }, [
     dispatch,

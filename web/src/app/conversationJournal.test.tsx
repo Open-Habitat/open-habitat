@@ -421,6 +421,44 @@ describe("one tab-wide journal", () => {
       vi.useRealTimers();
     }
   });
+  it("is live only while an opened stream follows the daemon", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          status: 200,
+          ok: true,
+          body: { cancel: () => Promise.resolve() },
+        }),
+      );
+      const { journal } = setup();
+      journal.start(snapshot(0));
+      expect(journal.live()).toBe(false);
+      FakeSource.all[0].onopen?.();
+      expect(journal.live()).toBe(true);
+      // Dropped: not live while the probe runs, nor before the new one opens.
+      FakeSource.all[0].onerror?.();
+      expect(journal.live()).toBe(false);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(FakeSource.all).toHaveLength(2);
+      expect(journal.live()).toBe(false);
+      FakeSource.all[1].onopen?.();
+      expect(journal.live()).toBe(true);
+      // Recovering after a conflicting frame is not live either.
+      journal.route(event(1) as never);
+      journal.route({ ...event(1), event_id: "evt_conflict" } as never);
+      expect(journal.live()).toBe(false);
+      journal.resume(snapshot(1));
+      FakeSource.all.at(-1)?.onopen?.();
+      expect(journal.live()).toBe(true);
+      journal.stop();
+      expect(journal.live()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("bounds a silent EventSource handshake and clears its watchdog on open", async () => {
     vi.useFakeTimers();
     try {

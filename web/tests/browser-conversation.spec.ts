@@ -2011,6 +2011,9 @@ test("@browser-conversation snapshot transport failure leaves editor mounted and
   const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   await editor.fill("säilyvä luonnos");
+  // The host is down for both reads; with the event stream open a failed
+  // snapshot read alone is not an outage. Refresh reopens the stream.
+  await page.route("**/api/v1/events*", (route) => route.abort());
   await page.route("**/api/v1/snapshot", (route) =>
     route.fulfill({ status: 503, body: "offline" }),
   );
@@ -2019,6 +2022,7 @@ test("@browser-conversation snapshot transport failure leaves editor mounted and
     page.getByTestId(/^connection-/).and(page.locator(".ah-connection")),
   ).toBeVisible();
   await expect(editor).toHaveValue("säilyvä luonnos");
+  await page.unroute("**/api/v1/events*");
   await page.unroute("**/api/v1/snapshot");
   await page.getByTestId("connection-retry").click();
   await expect(

@@ -1,8 +1,22 @@
 import AxeBuilder from "@axe-core/playwright";
+import type { Page, Route } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
+
+// A host outage fails both reads: the snapshot, and the event stream whose
+// open connection otherwise proves the host reachable (a failed snapshot
+// read alone shows no outage). The refresh control reopens the stream, so
+// clicking it after this cuts a stream that is already open.
+async function hostDown(page: Page, snapshot: (route: Route) => unknown) {
+  await page.route("**/api/v1/events*", (route) => route.abort());
+  await page.route("**/api/v1/snapshot", snapshot);
+}
+async function hostUp(page: Page) {
+  await page.unroute("**/api/v1/events*");
+  await page.unroute("**/api/v1/snapshot");
+}
 
 test("@resilience failed reads recover in place without claiming an empty catalog", async ({
   page,
@@ -12,7 +26,7 @@ test("@resilience failed reads recover in place without claiming an empty catalo
   await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await expect(page.getByRole("navigation")).toBeVisible();
-  await page.route("**/api/v1/snapshot", (route) =>
+  await hostDown(page, (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -32,7 +46,7 @@ test("@resilience failed reads recover in place without claiming an empty catalo
         'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
-  await page.unroute("**/api/v1/snapshot");
+  await hostUp(page);
   await page.getByTestId("connection-retry").click();
   await expect(
     page
@@ -109,7 +123,7 @@ test("@resilience verified session retains workspaces during a host outage, disa
         'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
-  await page.route("**/api/v1/snapshot", (route) =>
+  await hostDown(page, (route) =>
     route.fulfill({ status: 500, body: "unavailable" }),
   );
   await page.getByTestId("snapshot-refresh").click();
@@ -125,7 +139,7 @@ test("@resilience verified session retains workspaces during a host outage, disa
         'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
-  await page.unroute("**/api/v1/snapshot");
+  await hostUp(page);
   await page.getByTestId("connection-retry").click();
   await expect(
     page.locator(
@@ -133,7 +147,7 @@ test("@resilience verified session retains workspaces during a host outage, disa
     ),
   ).toHaveCount(0);
   // A stopped host drops the transport rather than returning a 5xx.
-  await page.route("**/api/v1/snapshot", (route) => route.abort());
+  await hostDown(page, (route) => route.abort());
   await page.getByTestId("snapshot-refresh").click();
   await expect(
     page.locator(
@@ -147,8 +161,8 @@ test("@resilience verified session retains workspaces during a host outage, disa
         'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
-  await page.unroute("**/api/v1/snapshot");
-  await page.route("**/api/v1/snapshot", (route) =>
+  await hostUp(page);
+  await hostDown(page, (route) =>
     route.fulfill({ status: 503, body: "daemon stopped" }),
   );
   await page.getByTestId("connection-retry").click();
@@ -164,7 +178,7 @@ test("@resilience verified session retains workspaces during a host outage, disa
         'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
-  await page.unroute("**/api/v1/snapshot");
+  await hostUp(page);
   await page.request.get("/fixture/scenario?value=delay");
   await page.getByTestId("connection-retry").click();
   await expect(
@@ -201,16 +215,19 @@ test("@resilience expired session ends the live stream and reaches login even du
         'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
+  await stream;
   await page.route("**/api/v1/snapshot", (route) =>
     route.fulfill({ status: 500, body: "unavailable" }),
   );
+  const failed = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/snapshot" &&
+      response.status() === 500,
+  );
   await page.getByTestId("snapshot-refresh").click();
-  await expect(
-    page.locator(
-      '[data-testid^="connection-"][data-state][data-state="stale"]',
-    ),
-  ).toBeVisible();
-  await stream;
+  await failed;
+  // The open stream proves the host reachable: a failed read is no outage.
+  await expect(page.locator('[data-testid^="connection-"]')).toHaveCount(0);
   // Revocation now closes existing relays. Its 401 probe must clear the old
   // identity without waiting for tab focus or an explicit retry, even though
   // snapshot refreshes still fail.
@@ -231,7 +248,7 @@ test("@resilience populated native history remains readable during outage", asyn
     .filter({ hasText: "Synteettinen viesti 0" })
     .click();
   await expect(page.locator("main")).toContainText("Synteettinen viesti 0");
-  await page.route("**/api/v1/snapshot", (route) =>
+  await hostDown(page, (route) =>
     route.fulfill({ status: 500, body: "unavailable" }),
   );
   await page.getByTestId("snapshot-refresh").click();
@@ -241,7 +258,7 @@ test("@resilience populated native history remains readable during outage", asyn
     ),
   ).toBeVisible();
   await expect(page.locator("main")).toContainText("Synteettinen viesti 0");
-  await page.unroute("**/api/v1/snapshot");
+  await hostUp(page);
   await page.getByTestId("connection-retry").click();
   await expect(
     page.locator(
@@ -267,7 +284,7 @@ test("@resilience active conversation stays readable and blocks writes during sn
   const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   await editor.fill("Luonnos säilyy katkossa");
-  await page.route("**/api/v1/snapshot", (route) =>
+  await hostDown(page, (route) =>
     route.fulfill({ status: 500, body: "host stopped" }),
   );
   await page.getByTestId("snapshot-refresh").click();
@@ -321,7 +338,7 @@ test("@resilience active conversation stays readable and blocks writes during sn
   await page.screenshot({
     path: "test-results/evidence/stale-conversation.png",
   });
-  await page.unroute("**/api/v1/snapshot");
+  await hostUp(page);
   await page.getByTestId("connection-retry").click();
   await expect(
     page.locator(
@@ -349,7 +366,7 @@ test("@resilience working composer has one outage warning and the send stays in 
   await page.getByTestId("send").click();
   await expect(page.getByTestId("send")).toHaveAttribute("data-mode", "steer");
   await editor.fill("Luonnos säilyy katkossa");
-  await page.route("**/api/v1/snapshot", (route) =>
+  await hostDown(page, (route) =>
     route.fulfill({ status: 500, body: "host stopped" }),
   );
   await page.getByTestId("snapshot-refresh").click();
@@ -384,7 +401,7 @@ test("@resilience working composer has one outage warning and the send stays in 
     .include(".ah-composer")
     .analyze();
   expect(accessibility.violations).toEqual([]);
-  await page.unroute("**/api/v1/snapshot");
+  await hostUp(page);
 });
 
 test("@resilience restored network retries a failed read without resending work", async ({
@@ -395,14 +412,14 @@ test("@resilience restored network retries a failed read without resending work"
   await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await expect(page.getByRole("navigation")).toBeVisible();
-  await page.route("**/api/v1/snapshot", (route) => route.abort());
+  await hostDown(page, (route) => route.abort());
   await page.getByTestId("snapshot-refresh").click();
   await expect(
     page.locator(
       '[data-testid^="connection-"][data-state][data-state="stale"]',
     ),
   ).toBeVisible();
-  await page.unroute("**/api/v1/snapshot");
+  await hostUp(page);
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect(
     page

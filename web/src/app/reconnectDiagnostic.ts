@@ -13,6 +13,14 @@ type Diagnostic =
       recovering: boolean;
     }
   | {
+      // A failed snapshot refresh: which step failed, and whether the event
+      // stream was open, so the banner it did or did not cause is explained.
+      event: "snapshot-failed";
+      outcome: "network" | "status" | "invalid" | "session" | "other";
+      status?: number;
+      live: boolean;
+    }
+  | {
       event: "request";
       path: "/api/v1/events" | "/api/v1/snapshot";
       outcome: "started" | "response" | "aborted" | "network-error";

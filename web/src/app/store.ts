@@ -148,6 +148,11 @@ const connection = createSlice({
       if (state.phase === "authenticated" && state.snapshot)
         state.phase = "stale";
     },
+    /** An open event stream proves the host reachable again. */
+    streamOpen(state) {
+      if (state.phase === "stale" && state.snapshot)
+        state.phase = "authenticated";
+    },
     hostChanged(state, action: PayloadAction<HostChange>) {
       const c = action.payload;
       if (!state.snapshot || covers(state.snapshot as Snapshot, c)) return;
@@ -189,6 +194,7 @@ export const {
   piRequired,
   unavailable,
   stale,
+  streamOpen,
   filterChanged,
   clearIdentity,
   hostChanged,
