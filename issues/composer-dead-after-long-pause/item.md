@@ -21,4 +21,4 @@ Ehdokkaat selvitettäväksi todisteilla: selaimen tila jää 'stale'/'reconnecti
 
 ## Acceptance Criteria
 
-- [ ] Syy nimetty todisteilla; kenttä ottaa tekstiä pitkän tauon jälkeen ilman uudelleenlatausta; selaintesti simuloi tauon
+- [x] Syy nimetty todisteilla; kenttä ottaa tekstiä pitkän tauon jälkeen ilman uudelleenlatausta; selaintesti simuloi tauon
