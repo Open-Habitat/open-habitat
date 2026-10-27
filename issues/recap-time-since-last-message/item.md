@@ -3,13 +3,14 @@ created: 2026-10-27
 updated: 2026-10-27
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/recap-time-since-last-message
 lane: recap
 lane_seq: 3
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Recap timestamp: time since the last message, not since the recap was generated
@@ -20,4 +21,4 @@ Jari 2026-10-27: tilannekatsauksen aikaleiman pitää kertoa, kuinka kauan on ku
 
 ## Acceptance Criteria
 
-- [ ] Aikaleima näyttää ajan viimeisestä viestistä kaikissa katsauksen paikoissa ja päivittyy ajan kuluessa; testi
+- [x] Aikaleima näyttää ajan viimeisestä viestistä kaikissa katsauksen paikoissa ja päivittyy ajan kuluessa; testi
