@@ -3,13 +3,14 @@ created: 2026-10-27
 updated: 2026-10-27
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/github-reconnect-keeps-old-token
 lane: github-auth
 collision: [internal/gateway/auth.go]
 preparation: ready
+closed: 2026-10-27
 ---
 
 # GitHub reconnect while the old token still works keeps the old token and revokes the new one

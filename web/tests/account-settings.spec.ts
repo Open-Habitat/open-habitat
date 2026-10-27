@@ -1080,10 +1080,15 @@ test("@account-settings unknown settings link still allows sign-in", async ({
   page,
 }) => {
   await page.goto("/settings/account/");
+  const started = page.waitForRequest(/\/auth\/github\/start\?/);
   await page
     .getByRole("button")
     .and(page.getByTestId("github-sign-in"))
     .click();
+  // An ordinary sign-in keeps gh's working login: only settings reconnects.
+  expect(new URL((await started).url()).searchParams.has("reconnect")).toBe(
+    false,
+  );
   await page.getByRole("link").nth(0).click();
   await expect(page).toHaveURL(/\/workspaces$/);
   await expect(

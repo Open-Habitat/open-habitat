@@ -254,8 +254,9 @@ Identity and authority:
   An ordinary sign-in keeps gh's working login of the same account. Only the
   person's explicit reconnect replaces it: the gateway accepts that intent
   only from a same-origin start by a session of the account that then signs
-  in, and the daemon replaces only a login that positively holds another
-  token and whose files have not changed since it was classified. The old
+  in, and the daemon replaces only gh's sole account, only when it positively
+  holds another token, and only while its files are unchanged since it was
+  classified. The old
   token is not revoked, because revoking it would carry a native credential
   out of the person's account to the gateway; once gh's store is
   overwritten it exists nowhere on the host.

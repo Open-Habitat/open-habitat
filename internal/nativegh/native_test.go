@@ -391,8 +391,8 @@ func TestKeptLoginReportsUnusedTokenOnlyWhenGhHoldsAnother(t *testing.T) {
 
 // An explicit reconnect puts the new token in place of gh's working login of
 // the same account; an ordinary sign-in keeps that login (above). It replaces
-// only a login that positively holds another token and whose files are still
-// those it classified.
+// only gh's sole account, positively holding another token, whose files are
+// still those it classified; otherwise it keeps the login as a sign-in does.
 func TestExplicitReconnectReplacesOwnLogin(t *testing.T) {
 	login := "gh auth login --hostname github.com --with-token --git-protocol https"
 	ownFixture := func(t *testing.T) (*Adapter, *fake, string) {
@@ -413,14 +413,23 @@ func TestExplicitReconnectReplacesOwnLogin(t *testing.T) {
 	if unused, e := a.Consumer()(context.Background(), f.token, true); e != nil || unused || !containsCommand(f.log, login) {
 		t.Fatal(unused, e, f.log)
 	}
-	for name, setup := range map[string]func(*fake, string){
-		"same-token": func(f *fake, _ string) { f.held = f.token },
-		"unreadable": func(f *fake, _ string) { f.fail = "gh auth token --hostname github.com" },
+	for name, tc := range map[string]struct {
+		setup  func(*fake, string)
+		unused bool
+	}{
+		"same-token": {func(f *fake, _ string) { f.held = f.token }, false},
+		"unreadable": {func(f *fake, _ string) { f.fail = "gh auth token --hostname github.com" }, false},
+		// gh auth login would overwrite bob's entry if the token were his.
+		"another-stored-account": {func(f *fake, home string) {
+			if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte(strings.Replace(staleHosts, "    users:\n", "    users:\n        bob:\n            oauth_token: works\n", 1)), 0600); err != nil {
+				t.Fatal(err)
+			}
+		}, true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			a, f, home := ownFixture(t)
-			setup(f, home)
-			if r, e := a.Install(context.Background(), f.token, true); e != nil || r.Phase != Reobserved || r.Unused || containsCommand(f.log, login) {
+			tc.setup(f, home)
+			if r, e := a.Install(context.Background(), f.token, true); e != nil || r.Phase != Reobserved || r.Unused != tc.unused || containsCommand(f.log, login) {
 				t.Fatal(r, e, f.log)
 			}
 		})
@@ -432,7 +441,7 @@ func TestExplicitReconnectReplacesOwnLogin(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if r, e := a.Install(context.Background(), f.token, true); e == nil || r.Phase != Partial {
+	if r, e := a.Install(context.Background(), f.token, true); e != nil || r.Phase != Reobserved || !r.Unused {
 		t.Fatal(r, e)
 	}
 	for _, cmd := range f.log {

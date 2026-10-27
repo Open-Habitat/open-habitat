@@ -1789,7 +1789,7 @@ export function App() {
         onLogin={() => {
           if (syntheticDemo) return;
           window.location.assign(
-            `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}&reconnect=1`,
+            `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}`,
           );
         }}
         notice={

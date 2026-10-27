@@ -730,14 +730,18 @@ func (a *Adapter) Install(ctx context.Context, token string, replace bool) (Resu
 			return result, denied
 		}
 		other := a.holdsOther(ctx, token)
-		if !replace || !other {
+		// gh auth login writes the incoming token's account entry, and only
+		// the active token's identity was observed. So a reconnect replaces
+		// only the sole account; with others stored it keeps the login, as an
+		// ordinary sign-in does.
+		if !replace || !other || !soleAccount(a.home) {
 			return Result{Phase: Reobserved, Storage: storage, Unused: other}, nil
 		}
-		// The incoming token is the same account's, so gh auth login rewrites
-		// only the active entry. It must still be the login just classified:
-		// a native gh auth switch or login in between is not ours to replace.
+		// It must still be the login just classified: a native gh auth
+		// switch or login in between is not ours to replace. Nothing was
+		// handed to gh yet, so the sign-in keeps the login as an ordinary one.
 		if now, still := credentialStamp(a.home); !stamped || !still || now != stamp {
-			return result, denied
+			return Result{Phase: Reobserved, Storage: storage, Unused: other}, nil
 		}
 		phase = Replaced
 	case kind == revoked:
