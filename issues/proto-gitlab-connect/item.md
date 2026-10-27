@@ -1,6 +1,6 @@
 ---
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 type: task
 reporter: jari
 status: open
@@ -10,7 +10,7 @@ source_ref: chat:2026-10-26/proto-gitlab-connect
 lane: gitlab-provider
 lane_seq: 2
 blocked_by: ['@research-gitlab-integration']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: connecting GitLab in Koodipalvelut and importing its repositories
@@ -18,3 +18,7 @@ preparation: ready
 ## Description
 
 Jari 2026-10-26, keskustelusta toisen kehittäjän kanssa (ulkopuolinen käyttäjä, joka arvioi Habitatia omaan ja asiakkaidensa käyttöön). Prototyyppikierros research-gitlab-integration-selvityksen pohjalta: GitLabin yhdistäminen Asetukset › Koodipalvelut -sivulla (gitlab.com ja oma palvelin), virhetilat (puuttuva oikeus, väärä osoite, TLS) ja repojen tuonti työtiloiksi, yhtenäisenä GitHubin ja Gitean kanssa (Gitean connect-riff ja yhteinen lista). Jari valitsee; toteutus on gitlab-integration.
+
+## Result
+
+[result.md](result.md) ja [NOTES.md](NOTES.md): kierros `design-system/prototypes/rounds/2026-10-27-gitlab-yhdistys/`, akselina sisäkkäisen ryhmäpolun esitys yhteisessä listassa (Koko polku, Pääryhmä, Ryhmäsuodatin). Suositus Pääryhmä. Odottaa Jarin valintaa.
