@@ -3,13 +3,14 @@ created: 2026-10-27
 updated: 2026-10-27
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-10-26/own-image-attachment-shown-twice
 lane: composer
 collision: [web/src/app/HistoryView.tsx]
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Own message's image attachment shows twice, with an unbounded 'Lataa lohkon sisältö' button
