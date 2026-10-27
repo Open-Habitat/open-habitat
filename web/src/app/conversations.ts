@@ -195,6 +195,7 @@ async function readBody(response: Response): Promise<unknown> {
 const writeCommands: [RegExp, MutationCommand][] = [
   [/\/question$/, "conversation.question"],
   [/\/recap$/, "conversation.recap"],
+  [/\/presence$/, "conversation.presence"],
   [/\/(regenerate_title|history_title)$/, "conversation.title"],
   [/\/send$/, "conversation.send"],
   [/\/(steer|follow_up)$/, "conversation.queue"],
@@ -296,6 +297,11 @@ export async function requestRecap(id: string, csrf: string): Promise<void> {
   const reply = await request(`${path(id)}/recap`, undefined, undefined, csrf);
   if (!object(reply) || reply.schema_version !== 1 || reply.state !== "done")
     throw new Error("recap generation failed");
+}
+/** Tells the daemon the person is writing or reading here, which postpones
+ * its automatic recap. Nothing depends on the answer. */
+export async function notePresence(id: string, csrf: string): Promise<void> {
+  await request(`${path(id)}/presence`, undefined, undefined, csrf);
 }
 export class TitleGenerationFailed extends Error {
   constructor(readonly reason: string) {

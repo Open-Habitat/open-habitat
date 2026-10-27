@@ -386,6 +386,7 @@ export function Composer({
   modelPicker,
   shell,
   sources,
+  onActivity,
 }: {
   value: string;
   csrf?: string;
@@ -417,6 +418,8 @@ export function Composer({
   shell?: ComposerShell;
   /** `/`, `@`, the buttons and Ctrl/⌘+P; without it they are absent. */
   sources?: ComposerSources;
+  /** The person pressed or typed in the field. */
+  onActivity?: () => void;
 }) {
   // The draft is what the agent receives: the person's text with one
   // attachment reference per line after it. The field edits only the text;
@@ -1209,7 +1212,9 @@ export function Composer({
           value={value}
           disabled={fieldDisabled}
           readOnly={fieldAvailability.state === "read_only"}
+          onPointerDown={onActivity}
           onChange={(e) => {
+            onActivity?.();
             onChange(e.target.value);
             fromText(e.target.value, e.target.selectionStart);
           }}

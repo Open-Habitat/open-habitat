@@ -277,6 +277,36 @@ func (c *ConversationController) generateRecap(s *conversation, trigger string, 
 	return ok && after.Through == latest && after.GeneratedAt > 0
 }
 
+// notePresence hears from the browser that the person is writing or reading
+// in this conversation, and restarts the idle interval of a pending automatic
+// recap. The report only postpones work the daemon would otherwise start on
+// its own, so it needs no proof beyond the user's own socket. It never fences
+// a recap already running: one the person asked for must still finish.
+func (c *ConversationController) notePresence(w http.ResponseWriter, r *http.Request, id string) {
+	if r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	c.mu.Lock()
+	s := c.sessions[id]
+	if s == nil {
+		c.mu.Unlock()
+		snapshotError(w, 404, "resource_not_found")
+		return
+	}
+	if !c.closed && !s.dead {
+		s.recapLastActivity = time.Now()
+		if s.recapTimer != nil && !s.recapping {
+			c.pauseRecap(s)
+			if s.settled && recapIdle(s) {
+				c.scheduleAutomaticRecap(s)
+			}
+		}
+	}
+	c.mu.Unlock()
+	historyJSON(w, map[string]any{"schema_version": 1, "state": "noted"})
+}
+
 func (c *ConversationController) requestRecap(w http.ResponseWriter, r *http.Request, id string) {
 	if r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
 		snapshotError(w, 400, "invalid_request")

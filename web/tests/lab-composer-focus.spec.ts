@@ -149,6 +149,7 @@ for (const viewport of [
       (await page.request.get("/fixture/scenario?value=pi-recap")).status(),
     ).toBe(204);
     try {
+      await page.clock.install();
       await page.goto("/workspaces");
       await page.getByTestId("github-sign-in").click();
       await page
@@ -171,6 +172,8 @@ for (const viewport of [
         .getByTestId("send")
         .and(page.locator('[data-mode="send"]'))
         .click();
+      // Typing holds a fresh recap back for a while; let that pause pass.
+      await page.clock.fastForward(61_000);
       const card = page.getByTestId("recap-card");
       await expect(card).toHaveAttribute("data-trigger", "automatic", {
         timeout: 20000,

@@ -389,6 +389,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.historyTitle(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "recap":
 		c.requestRecap(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "presence":
+		c.notePresence(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "question":
 		c.answerQuestion(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "abort":

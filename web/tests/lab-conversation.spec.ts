@@ -58,6 +58,7 @@ test("@lab recap is separate, persisted, hidden once outdated and regenerated af
     (await page.request.get("/fixture/scenario?value=pi-recap")).status(),
   ).toBe(204);
   try {
+    await page.clock.install();
     await page.goto("/workspaces");
     await page.getByTestId("github-sign-in").click();
     await page
@@ -80,13 +81,13 @@ test("@lab recap is separate, persisted, hidden once outdated and regenerated af
       'Selvä. Kysyit: "Tutki synteettinen työtila".',
       { timeout: 20000 },
     );
-    // A browser-only draft does not reach Pi and must not defer native idle.
-    await editor.fill("Luonnos, jota ei lähetetä");
+    // The synthetic idle interval is far shorter than the pause that typing
+    // the message earns; let the browser's own pause pass.
+    await page.clock.fastForward(61_000);
     const card = page.getByTestId("recap-card");
     await expect(card).toHaveAttribute("data-trigger", "automatic", {
       timeout: 20000,
     });
-    await expect(editor).toHaveValue("Luonnos, jota ei lähetetä");
     const cardWidth = await card.evaluate(
       (node) => node.getBoundingClientRect().width,
     );
@@ -264,6 +265,91 @@ test("@lab recap is separate, persisted, hidden once outdated and regenerated af
     ).json();
     expect(newer.recap.through).not.toBe(native.recap.through);
     expect(newer.recap.through).toBe(newer.latest_message);
+  } finally {
+    expect(
+      (await page.request.get("/fixture/scenario?value=ready")).status(),
+    ).toBe(204);
+  }
+});
+
+// Jari 27.10.2026: the recap must not pop up while a long message is being
+// written. The person's report postpones the daemon's own timer (Go tests);
+// here the synthetic idle interval is shorter than the report gap, so the
+// daemon does write a recap, and the browser must still hold it back.
+test("@lab recap waits while the person writes a long message", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  expect(
+    (await page.request.get("/fixture/scenario?value=pi-recap")).status(),
+  ).toBe(204);
+  try {
+    await page.clock.install();
+    await page.goto("/workspaces");
+    await page.getByTestId("github-sign-in").click();
+    await page
+      .getByRole("link")
+      .and(page.locator('a[href*="code=42"]'))
+      .click();
+    await page
+      .getByRole("navigation")
+      .getByTestId("workspace-aurinkokello")
+      .click();
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    const editor = page.getByTestId("message-input");
+    await editor.fill("Tutki synteettinen työtila");
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+    await expectNativeContent(
+      page,
+      'Selvä. Kysyit: "Tutki synteettinen työtila".',
+      { timeout: 20000 },
+    );
+    const id = new URL(page.url()).searchParams.get("conversation");
+    expect(id).toMatch(/^pi:/);
+    // Typing reports presence through the gateway to the user's daemon.
+    const presence = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/presence") &&
+        response.request().method() === "POST",
+    );
+    await editor.click();
+    await editor.pressSequentially(
+      "Tämä on pitkä viesti, jota kirjoitan rauhassa ja ajatuksella. ".repeat(
+        3,
+      ),
+      { delay: 15 },
+    );
+    expect((await presence).status()).toBe(200);
+    const card = page.getByTestId("recap-card");
+    await expect
+      .poll(
+        async () => {
+          const native = await (
+            await page.request.get(`/api/v1/agents/${id}/recap`)
+          ).json();
+          return native.recap?.through === native.latest_message;
+        },
+        { timeout: 20000 },
+      )
+      .toBe(true);
+    // The recap exists natively and the browser has read it after its
+    // history changed, but the person is still writing.
+    await page.waitForTimeout(1500);
+    await expect(card).toHaveCount(0);
+    await expect(editor).not.toHaveValue("");
+    // An unsent draft keeps holding it however long it stays.
+    await page.clock.fastForward(5 * 60_000);
+    await expect(card).toHaveCount(0);
+    // Once the draft is gone and the person has paused, it appears.
+    await editor.fill("");
+    await expect(card).toHaveCount(0);
+    await page.clock.fastForward(61_000);
+    await expect(card).toHaveAttribute("data-trigger", "automatic", {
+      timeout: 10000,
+    });
   } finally {
     expect(
       (await page.request.get("/fixture/scenario?value=ready")).status(),

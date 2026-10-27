@@ -77,6 +77,7 @@ import {
 } from "./PiModels";
 import { PiQuestion } from "./PiQuestion";
 import { useBridgeExpected } from "./processWarmup";
+import { useRecapHold } from "./recapHold";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
@@ -611,6 +612,33 @@ function BrowserConversationContent({
     !!recapFingerprint &&
     (dismissedRecap === `${dismissalKey}:${recapFingerprint}` ||
       storedDismissal === recapFingerprint);
+  // A recap the daemon finished while the person was typing or reading waits
+  // until they pause; one already showing stays, and one they asked for shows.
+  const recapHold = useRecapHold({
+    id,
+    csrf,
+    controlled,
+    draft,
+    feed,
+    opened,
+  });
+  const [recapSeen, setRecapSeen] = useState<{
+    key: string;
+    fingerprint: string;
+  } | null>(null);
+  const recapHeld =
+    recapHold.active &&
+    recapCurrent?.recap?.trigger === "automatic" &&
+    recapSeen?.key === recapKey &&
+    recapSeen.fingerprint !== recapFingerprint;
+  useEffect(() => {
+    if (!recapCurrent || recapHeld) return;
+    setRecapSeen((previous) =>
+      previous?.key === recapKey && previous.fingerprint === recapFingerprint
+        ? previous
+        : { key: recapKey, fingerprint: recapFingerprint },
+    );
+  }, [recapCurrent, recapHeld, recapKey, recapFingerprint]);
   const dismissRecapOnSend = () => {
     if (!recapFingerprint) return;
     setDismissedRecap(`${dismissalKey}:${recapFingerprint}`);
@@ -620,15 +648,16 @@ function BrowserConversationContent({
       /* Keep it dismissed in this tab. */
     }
   };
-  const shownRecap = recapCurrent
-    ? currentRecap(
-        recapCurrent.recap,
-        recapCurrent.latest,
-        controlled &&
-          current?.state !== "idle" &&
-          current?.state !== "rejected",
-      )
-    : null;
+  const shownRecap =
+    recapCurrent && !recapHeld
+      ? currentRecap(
+          recapCurrent.recap,
+          recapCurrent.latest,
+          controlled &&
+            current?.state !== "idle" &&
+            current?.state !== "rejected",
+        )
+      : null;
   // An outdated automatic recap simply waits for the daemon's next idle
   // recap. One the person asked for keeps its card as a quiet request, so
   // they need not wait for that idle interval.
@@ -2108,6 +2137,7 @@ function BrowserConversationContent({
                 }
                 value={draft}
                 onChange={changeDraft}
+                onActivity={recapHold.note}
                 activity={
                   !notStarted &&
                   (current?.run_active ?? current?.state === "accepted")

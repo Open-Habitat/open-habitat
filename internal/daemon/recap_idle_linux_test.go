@@ -128,3 +128,65 @@ func TestRecapNativeTriggerProjection(t *testing.T) {
 		t.Fatalf("projection: %+v", projected.Recap)
 	}
 }
+
+// A person writing or reading in the browser holds the idle recap back for as
+// long as they keep reporting it; the interval counts from their last report.
+// The report never cancels a recap already running, such as one they asked for.
+func TestPresencePostponesAutomaticRecapButNotARunningOne(t *testing.T) {
+	id := "11111111-1111-4111-8111-111111111111"
+	s := &conversation{id: id, state: "idle", settled: true, rpc: &piRPC{}}
+	c := &ConversationController{sessions: map[string]*conversation{id: s}, recapIdleDelay: 80 * time.Millisecond}
+	called := make(chan string, 4)
+	c.recapGenerator = func(_ *conversation, trigger string, _ uint64) bool { called <- trigger; return true }
+	presence := func() {
+		t.Helper()
+		w := httptest.NewRecorder()
+		c.notePresence(w, httptest.NewRequest(http.MethodPost, "http://unix/presence", nil), id)
+		if w.Code != 200 {
+			t.Fatalf("presence: %d", w.Code)
+		}
+	}
+	c.mu.Lock()
+	c.scheduleAutomaticRecap(s)
+	c.mu.Unlock()
+	deadline := time.Now().Add(250 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		presence()
+		select {
+		case <-called:
+			t.Fatal("recap while the person was active")
+		case <-time.After(25 * time.Millisecond):
+		}
+	}
+	select {
+	case trigger := <-called:
+		if trigger != "automatic" {
+			t.Fatalf("trigger %q", trigger)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("recap never followed the person's quiet period")
+	}
+
+	// A manual recap in flight keeps its activity epoch through presence.
+	c.mu.Lock()
+	s.recapping = true
+	epoch := s.recapActivity
+	c.mu.Unlock()
+	presence()
+	c.mu.Lock()
+	fenced := s.recapActivity != epoch
+	s.recapping = false
+	if s.recapTimer != nil {
+		s.recapTimer.Stop()
+	}
+	c.mu.Unlock()
+	if fenced {
+		t.Fatal("presence fenced a running recap")
+	}
+
+	unknown := httptest.NewRecorder()
+	c.notePresence(unknown, httptest.NewRequest(http.MethodPost, "http://unix/presence", nil), "22222222-2222-4222-8222-222222222222")
+	if unknown.Code != 404 {
+		t.Fatalf("unknown conversation: %d", unknown.Code)
+	}
+}

@@ -61,7 +61,7 @@ func init() {
 		server administration storage account snapshot workspaces git publish disconnect git-identity
 		events conversations onboarding pi status credentials openai models claude-login repos clone
 		stream checkout attempt agents healthz readyz send steer follow_up clear_queue regenerate_title
-		history_title recap question abort eligibility receipt stop continue cancel_held close processes
+		history_title recap presence question abort eligibility receipt stop continue cancel_held close processes
 		clear-finished output spinoffs history entries blocks content integrations accounts login
 		terminal terminals editor workspace open`) {
 		routeWords[w] = true

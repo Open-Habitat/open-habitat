@@ -33,6 +33,7 @@ export const mutationClasses = {
   // Confirmed: only that the command is on its way.
   "conversation.stop": "confirmed",
   "conversation.recap": "confirmed",
+  "conversation.presence": "confirmed",
   "conversation.title": "confirmed",
   "workspace.delete": "confirmed",
   "workspace.worktree": "confirmed",
