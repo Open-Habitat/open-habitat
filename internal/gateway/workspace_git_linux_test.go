@@ -3,6 +3,7 @@
 package gateway
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,8 +17,12 @@ func TestWorkspaceGitFetchRequiresSessionAndCSRF(t *testing.T) {
 	calls := 0
 	host, _ := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
-		if r.Method != "POST" || r.URL.Path != path || r.Header.Get("X-Agent-Host-Identity") != "" {
-			t.Errorf("forwarded %s %s", r.Method, r.URL)
+		// Read the body before replying, as the daemon's JSON decoding does:
+		// a reply sent before the body is consumed closes the connection
+		// under the gateway's write and fails the exchange.
+		forwarded, err := io.ReadAll(r.Body)
+		if err != nil || r.Method != "POST" || r.URL.Path != path || r.Header.Get("X-Agent-Host-Identity") != "" || string(forwarded) != `{"workspace_id":"ws_example123"}` {
+			t.Errorf("forwarded %s %s %q %v", r.Method, r.URL, forwarded, err)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{}`))
