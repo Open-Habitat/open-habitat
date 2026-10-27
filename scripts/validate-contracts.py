@@ -108,6 +108,7 @@ checks = {
     "annotations.json": "annotations.schema.json",
     "history-page.json": "history.schema.json",
     "recap.json": "recap.schema.json",
+    "context-detail.json": "context-detail.schema.json",
     "title-failure.json": "command.schema.json",
     "claude-login.json": "claude-login.schema.json",
     "pi-status.json": "pi-status.schema.json",

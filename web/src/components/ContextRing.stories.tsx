@@ -56,7 +56,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Kontekstin käyttö yläpalkissa (Rengas). Synteettiset luvut; rajat ovat Pi:n omat (70 % ja 90 %, tiivistys ikkunan miinus varan kohdalla). Painike avaa tiedot.",
+          "Kontekstin käyttö yläpalkissa (Rengas). Synteettiset luvut; rajat ovat Pi:n omat (70 % ja 90 %, tiivistys ikkunan miinus varan kohdalla). Painike avaa kontekstin erittelysivun.",
       },
     },
   },

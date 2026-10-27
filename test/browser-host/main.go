@@ -585,6 +585,7 @@ esac
 			daemon.MountEditorFixture(editorCtx, mux, fixtureWorkspaceCfg, trusted, editorDir, os.Getenv("BROWSER_HOST_CODE_SERVER"), startFakeEditor, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username))
 		}
 		mux.Handle("/api/v1/agents/", daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home))
+		mux.Handle(daemon.ContextDetailPattern, daemon.ContextDetailHandlerWithNativeRoot(cfg, trusted, credentialDevice, home))
 		mux.Handle("/api/v1/content/", daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home))
 		catalog.Start(context.Background())
 		integrationRoutes := catalog.Handler(func(r *http.Request) bool {

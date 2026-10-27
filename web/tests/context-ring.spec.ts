@@ -56,16 +56,33 @@ test("@context-ring the ring follows Pi's usage, compaction and reload", async (
   await expect(ring).toHaveAttribute("data-tokens", "205300");
   await expect(ring).toHaveAttribute("data-level", "near");
 
-  // Details open as a dialog and give focus back to the ring.
+  // The ring opens the context page over the conversation: Pi's reading of
+  // the same native session, through the real daemon and Pi's own functions.
   await ring.click();
-  const dialog = page.getByTestId("context-dialog");
-  await expect(dialog).toBeVisible();
+  const contextPage = page.getByTestId("context-page");
+  await expect(contextPage).toHaveAttribute("data-state", "ready");
+  await expect(page).toHaveURL(/[?&]context=1/);
+  await expect(contextPage.getByRole("heading", { level: 2 })).toBeFocused();
+  await expect(page.getByTestId("conversation-stream")).toBeHidden();
+  await expect(ring).toHaveAttribute("aria-pressed", "true");
   expect(
-    (await new AxeBuilder({ page }).include(".ah-ctx-layer").analyze())
+    (await new AxeBuilder({ page }).include(".ah-cd-page").analyze())
       .violations,
   ).toEqual([]);
+  // One turn so far, measured; Pi recorded its prompt and tools.
+  await expect(
+    page.getByTestId("context-turns").locator("tbody tr"),
+  ).toHaveCount(1);
+  await expect(
+    page.getByTestId("context-parts").locator('tr.cat[data-k="sys"]'),
+  ).toHaveCount(1);
+  // A reload keeps the page; Escape returns to the conversation and the ring.
+  await page.reload();
+  await expect(contextPage).toHaveAttribute("data-state", "ready");
   await page.keyboard.press("Escape");
-  await expect(dialog).toHaveCount(0);
+  await expect(contextPage).toHaveCount(0);
+  await expect(page).not.toHaveURL(/context=1/);
+  await expect(page.getByTestId("conversation-stream")).toBeVisible();
   await expect(ring).toBeFocused();
 
   await send(page, "tiivistä konteksti 250000");
@@ -74,6 +91,18 @@ test("@context-ring the ring follows Pi's usage, compaction and reload", async (
   await expect(ring).toHaveAttribute("data-level", "after");
   await page.reload();
   await expect(ring).toHaveAttribute("data-level", "after");
+  // Right after it the page has Pi's compaction entry and no measurement.
+  await ring.click();
+  await expect(contextPage).toHaveAttribute("data-state", "ready");
+  await expect(
+    page.getByTestId("context-compactions").locator(":scope > li"),
+  ).toHaveCount(1);
+  await expect(
+    page.getByTestId("context-parts").locator('tr.cat[data-k="rest"]'),
+  ).toHaveCount(0);
+  // The back control returns to the conversation as well.
+  await page.getByTestId("context-back").click();
+  await expect(contextPage).toHaveCount(0);
   await send(page, "jatka");
   await expect(ring).toHaveAttribute("data-tokens", "31600");
   await expect(ring).toHaveAttribute("data-level", "ok");

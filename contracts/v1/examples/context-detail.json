@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "agent_id": "pi:11111111-1111-4111-8111-111111111111",
+  "harness": "pi",
+  "model": "openai-codex/gpt-example",
+  "measured_tokens": 12345,
+  "estimated_tokens": 12345,
+  "trailing_tokens": 0,
+  "settings": { "enabled": true, "reserve_tokens": 16384, "keep_recent_tokens": 20000 },
+  "parts": { "instructions": 1200, "tools": 90, "summary": 7, "conversation": 40, "tool_output": 1200, "attachments": 0 },
+  "instructions": [
+    { "name": "preamble", "tokens": 100 },
+    { "name": "project_context", "tokens": 1100 }
+  ],
+  "tools": [{ "name": "bash", "tokens": 90 }],
+  "conversation": { "user": 10, "assistant": 10, "thinking": 0, "tool_calls": 20, "other": 0 },
+  "largest_outputs": [{ "name": "bash cat example.txt", "turn": 2, "tokens": 1000 }],
+  "compactions": [
+    {
+      "at": "2026-10-27T10:05:00.000Z",
+      "after_turn": 2,
+      "kept_from_turn": 2,
+      "tokens_before": 41000,
+      "summary": "## Goal\nSynthetic summary.",
+      "summary_truncated": false,
+      "summary_tokens": 7,
+      "read_files": ["/work/a.go"],
+      "modified_files": ["/work/b.go"]
+    }
+  ],
+  "next_compaction": { "from_turn": 2, "through_turn": 2, "kept_from_turn": 3, "split_turn": false, "summarized_tokens": 1100 },
+  "turns": [
+    { "n": 1, "at": "2026-10-27T10:01:00.000Z", "request": "first", "replies": 2, "context_tokens": 30000, "input": 20, "output": 40, "cache_read": 59940, "cache_write": 0, "cost": 0 },
+    { "n": 2, "at": "2026-10-27T10:03:00.000Z", "request": "second", "replies": 2, "context_tokens": 41000, "input": 20, "output": 40, "cache_read": 81940, "cache_write": 0, "cost": 0 },
+    { "n": 3, "at": "2026-10-27T10:06:00.000Z", "request": "third", "replies": 2, "context_tokens": 12345, "input": 20, "output": 40, "cache_read": 24630, "cache_write": 0, "cost": 0 }
+  ],
+  "turns_omitted": 0
+}

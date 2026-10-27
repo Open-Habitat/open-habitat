@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/context-detail.schema.json",
+  "title": "What fills the model's context in one native Pi session",
+  "description": "Pi's own reading of its session file: the measured total from the last valid usage, part sizes by Pi's chars/4 estimate, compaction entries, and the next compaction by Pi's own cut rule. Sizes are tokens.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "agent_id", "harness", "estimated_tokens", "trailing_tokens", "parts", "instructions", "tools", "conversation", "largest_outputs", "compactions", "next_compaction", "turns", "turns_omitted"],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "agent_id": { "$ref": "common.schema.json#/$defs/agentId" },
+    "harness": {
+      "description": "Who assembles the prompt the model receives: Pi itself, or Claude Code behind Pi's Claude bridge, whose own preset replaces Pi's base sections.",
+      "enum": ["pi", "claude_code"]
+    },
+    "model": { "type": "string", "maxLength": 200 },
+    "measured_tokens": {
+      "description": "Pi's last valid usage after the latest compaction or context edit; absent until Pi's next reply.",
+      "$ref": "#/$defs/tokens"
+    },
+    "estimated_tokens": { "$ref": "#/$defs/tokens" },
+    "trailing_tokens": {
+      "description": "Estimated tokens of messages after the last measurement.",
+      "$ref": "#/$defs/tokens"
+    },
+    "settings": {
+      "description": "Pi's compaction settings for this model; absent when Pi's settings are invalid.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "reserve_tokens", "keep_recent_tokens"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "reserve_tokens": { "$ref": "#/$defs/tokens" },
+        "keep_recent_tokens": { "$ref": "#/$defs/tokens" }
+      }
+    },
+    "parts": {
+      "description": "Estimated composition of the current context.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instructions", "tools", "summary", "conversation", "tool_output", "attachments"],
+      "properties": {
+        "instructions": { "$ref": "#/$defs/tokens" },
+        "tools": { "$ref": "#/$defs/tokens" },
+        "summary": { "$ref": "#/$defs/tokens" },
+        "conversation": { "$ref": "#/$defs/tokens" },
+        "tool_output": { "$ref": "#/$defs/tokens" },
+        "attachments": { "$ref": "#/$defs/tokens" }
+      }
+    },
+    "instructions": {
+      "description": "Pi's prompt sections by name; a replaced section is not sent through the Claude bridge.",
+      "type": "array",
+      "maxItems": 40,
+      "items": { "$ref": "#/$defs/part" }
+    },
+    "tools": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/part" } },
+    "conversation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["user", "assistant", "thinking", "tool_calls", "other"],
+      "properties": {
+        "user": { "$ref": "#/$defs/tokens" },
+        "assistant": { "$ref": "#/$defs/tokens" },
+        "thinking": { "$ref": "#/$defs/tokens" },
+        "tool_calls": { "$ref": "#/$defs/tokens" },
+        "other": { "$ref": "#/$defs/tokens" }
+      }
+    },
+    "largest_outputs": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "turn", "tokens"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 120 },
+          "turn": { "$ref": "#/$defs/turn" },
+          "tokens": { "$ref": "#/$defs/tokens" }
+        }
+      }
+    },
+    "compactions": {
+      "description": "Compactions on the active path, oldest first; at most the newest 20.",
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["at", "after_turn", "kept_from_turn", "tokens_before", "summary", "summary_truncated", "summary_tokens", "read_files", "modified_files"],
+        "properties": {
+          "at": { "type": "string", "maxLength": 64 },
+          "after_turn": { "$ref": "#/$defs/turn" },
+          "kept_from_turn": { "$ref": "#/$defs/turn" },
+          "tokens_before": { "$ref": "#/$defs/tokens" },
+          "summary": { "type": "string", "maxLength": 24000 },
+          "summary_truncated": { "type": "boolean" },
+          "summary_tokens": { "$ref": "#/$defs/tokens" },
+          "read_files": { "$ref": "#/$defs/files" },
+          "modified_files": { "$ref": "#/$defs/files" }
+        }
+      }
+    },
+    "next_compaction": {
+      "description": "What Pi's prepareCompaction would summarize now; null when nothing would be.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from_turn", "through_turn", "kept_from_turn", "split_turn", "summarized_tokens"],
+          "properties": {
+            "from_turn": { "$ref": "#/$defs/turn" },
+            "through_turn": { "$ref": "#/$defs/turn" },
+            "kept_from_turn": { "$ref": "#/$defs/turn" },
+            "split_turn": { "type": "boolean" },
+            "summarized_tokens": { "$ref": "#/$defs/tokens" }
+          }
+        }
+      ]
+    },
+    "turns": {
+      "description": "Turns on the active path, oldest first: a person's message and the replies until the next one. Usage is summed over the turn's replies; context_tokens is the last valid reply's.",
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["n", "at", "request", "replies", "input", "output", "cache_read", "cache_write", "cost"],
+        "properties": {
+          "n": { "$ref": "#/$defs/turn" },
+          "at": { "type": "string", "maxLength": 64 },
+          "request": { "type": "string", "maxLength": 160 },
+          "replies": { "type": "integer", "minimum": 0 },
+          "context_tokens": { "$ref": "#/$defs/tokens" },
+          "input": { "$ref": "#/$defs/tokens" },
+          "output": { "$ref": "#/$defs/tokens" },
+          "cache_read": { "$ref": "#/$defs/tokens" },
+          "cache_write": { "$ref": "#/$defs/tokens" },
+          "cost": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "turns_omitted": { "type": "integer", "minimum": 0 }
+  },
+  "$defs": {
+    "tokens": { "type": "integer", "minimum": 0, "maximum": 1000000000000 },
+    "turn": { "type": "integer", "minimum": 0 },
+    "part": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "tokens"],
+      "properties": {
+        "name": { "type": "string", "maxLength": 64 },
+        "tokens": { "$ref": "#/$defs/tokens" },
+        "replaced": { "type": "boolean" }
+      }
+    },
+    "files": { "type": "array", "maxItems": 50, "items": { "type": "string", "maxLength": 512 } }
+  }
+}

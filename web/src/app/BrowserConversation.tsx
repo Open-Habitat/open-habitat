@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router";
 import {
   AgentHeader,
   Button,
@@ -19,6 +20,7 @@ import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { ComposerModelPicker } from "../components/ComposerModelPicker";
+import { ContextPage } from "../components/ContextPage";
 import { ContextRing } from "../components/ContextRing";
 import { controlClassName } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
@@ -39,6 +41,7 @@ import { toolStopped } from "./bashFailure";
 import { useConversationActions } from "./ConversationActions";
 import { ConversationGitStatus } from "./ConversationGitStatus";
 import { readCommands, readFiles, readPreview } from "./composerReads";
+import { useContextDetail } from "./contextDetail";
 import { contextUsage } from "./contextUsage";
 import { provisionalItems } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
@@ -318,6 +321,44 @@ function BrowserConversationContent({
     model: selectedModel,
     catalog: models,
   });
+  // The context page (Sivu) replaces the conversation below the top bar;
+  // the route says it is open so a reload or a shared link keeps it.
+  const location = useLocation();
+  const contextOpen =
+    !!id && new URLSearchParams(location.search).get("context") === "1";
+  const contextDetail = useContextDetail(
+    id,
+    contextOpen,
+    `${entries.at(-1)?.entry_key}:${entries.length}:${contextState?.phase}`,
+    onLogin,
+  );
+  const toggleContext = () => {
+    const q = new URLSearchParams(location.search);
+    if (!contextOpen) {
+      q.set("context", "1");
+      navigate(`${location.pathname}?${q}`, { state: { contextFrom: true } });
+      return;
+    }
+    // Opened from here: going back is closing. A direct link closes in place.
+    if ((location.state as { contextFrom?: boolean } | null)?.contextFrom)
+      navigate(-1);
+    else {
+      q.delete("context");
+      navigate(`${location.pathname}${q.size ? `?${q}` : ""}`, {
+        replace: true,
+      });
+    }
+  };
+  const contextWasOpen = useRef(contextOpen);
+  useEffect(() => {
+    if (contextWasOpen.current && !contextOpen)
+      document
+        .querySelector<HTMLElement>(
+          ".ah-agent-header [data-testid='context-ring']",
+        )
+        ?.focus();
+    contextWasOpen.current = contextOpen;
+  }, [contextOpen]);
   const selectedThinking =
     (emptyConversation ? modelChoice?.thinking : undefined) ??
     nativeSettings.thinking ??
@@ -1235,7 +1276,9 @@ function BrowserConversationContent({
           onChange={changeDraft}
         />
       ) : (
-        <ConversationFrame>
+        <ConversationFrame
+          className={contextOpen ? "ah-frame-context" : undefined}
+        >
           <AgentHeader
             data-model={selectedModel}
             data-thinking={selectedThinking}
@@ -1391,7 +1434,13 @@ function BrowserConversationContent({
             }
             settings={nativeSettings}
             contextIndicator={
-              contextState ? <ContextRing usage={contextState} /> : undefined
+              contextState ? (
+                <ContextRing
+                  usage={contextState}
+                  open={contextOpen}
+                  onToggle={toggleContext}
+                />
+              ) : undefined
             }
             terminal={shell.toggle}
             gitStatus={
@@ -1506,6 +1555,14 @@ function BrowserConversationContent({
               setModelExpanded(false);
             }}
           />
+          {contextOpen ? (
+            <ContextPage
+              detail={contextDetail}
+              usage={contextState}
+              title={title ?? "Keskustelu"}
+              onClose={toggleContext}
+            />
+          ) : null}
           <ConversationStream
             streamRef={feed}
             onScroll={() => {

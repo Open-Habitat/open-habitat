@@ -25,10 +25,12 @@ export function ConversationFrame({
     if (!root || typeof ResizeObserver === "undefined") return;
     let composer: Element | null = null;
     let dock: Element | null = null;
+    let header: Element | null = null;
     const measure = () => {
       for (const [name, element] of [
         ["--ah-composer-height", composer],
         ["--ah-dock-height", dock],
+        ["--ah-header-height", header],
       ] as const) {
         root.style.setProperty(
           name,
@@ -40,12 +42,20 @@ export function ConversationFrame({
     const attach = () => {
       const nextComposer = root.querySelector(":scope > .ah-composer");
       const nextDock = root.querySelector(":scope > .ah-terminal-dock");
-      if (composer === nextComposer && dock === nextDock) return;
+      const nextHeader = root.querySelector(":scope > .ah-agent-header");
+      if (
+        composer === nextComposer &&
+        dock === nextDock &&
+        header === nextHeader
+      )
+        return;
       size.disconnect();
       composer = nextComposer;
       dock = nextDock;
+      header = nextHeader;
       if (composer) size.observe(composer);
       if (dock) size.observe(dock);
+      if (header) size.observe(header);
       measure();
     };
     const changes = new MutationObserver(attach);

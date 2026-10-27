@@ -114,6 +114,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		})
 	}))
 	mux.Handle("/api/v1/agents/", HistoryHandler(cfg, server.TrustedPeer))
+	mux.Handle(ContextDetailPattern, ContextDetailHandler(cfg, server.TrustedPeer, pi))
 	catalog := newIntegrations(ctx, cfg, integrationEnv, gitea)
 	integrationRoutes := catalog.Handler(func(r *http.Request) bool { return historyAuthorized(cfg, server.TrustedPeer, r) })
 	for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath, integrations.GiteaPath, integrations.GiteaReposPath} {

@@ -1,14 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Dialog,
-  DialogTrigger,
-  Heading,
-  Modal,
-  ModalOverlay,
-  Popover,
-} from "react-aria-components";
 import { ControlButton } from "./ControlElements";
-import { usePhone } from "./GitStatus";
 import "./ContextRing.css";
 
 // How full the model's context window is (Rengas, Jari 26.10.2026, issue
@@ -141,11 +132,17 @@ function Ring({
   );
 }
 
-/** The top-bar indicator and the details it opens. */
-export function ContextRing({ usage }: { usage: ContextUsage }) {
-  const trigger = useRef<HTMLButtonElement>(null);
-  const phone = usePhone();
-  const [open, setOpen] = useState(false);
+/** The top-bar indicator; it opens and closes the context page. */
+export function ContextRing({
+  usage,
+  open = false,
+  onToggle,
+}: {
+  usage: ContextUsage;
+  /** The context page is showing. */
+  open?: boolean;
+  onToggle?: () => void;
+}) {
   const { window, percent, threshold, level } = contextFacts(usage);
   const sentence = contextSentence(usage);
   const tick =
@@ -177,103 +174,25 @@ export function ContextRing({ usage }: { usage: ContextUsage }) {
         : percent === undefined
           ? short(usage.tokens ?? 0)
           : pct(percent);
-  const content = (
-    <Dialog
-      data-testid="context-dialog"
-      className="ah-dialog ah-ctx-dialog"
-      data-level={level}
-    >
-      <Heading slot="title" className="ah-ctx-title">
-        Konteksti
-      </Heading>
-      <p className="ah-ctx-big" data-testid="context-figure">
-        {percent !== undefined && window ? (
-          <>
-            {pct(percent)}{" "}
-            <span>
-              {full(usage.tokens ?? 0)} / {full(window)} tokenia
-            </span>
-          </>
-        ) : level === "nowindow" ? (
-          <>
-            {full(usage.tokens ?? 0)} <span>tokenia</span>
-          </>
-        ) : level === "compacting" ? (
-          "Tiivistää…"
-        ) : (
-          <>
-            ? <span>tokenia</span>
-          </>
-        )}
-      </p>
-      {percent !== undefined ? (
-        <div className="ah-ctx-meter" aria-hidden="true">
-          <i style={{ width: `${Math.min(100, percent).toFixed(1)}%` }} />
-          {tick !== undefined ? (
-            <b style={{ left: `${tick.toFixed(1)}%` }} />
-          ) : null}
-        </div>
-      ) : null}
-      <p className="ah-ctx-lead">{sentence}</p>
-      <dl className="ah-ctx-facts">
-        <div>
-          <dt>Malli</dt>
-          <dd>{usage.model ?? "Ei tiedossa"}</dd>
-        </div>
-        <div>
-          <dt>Ikkuna</dt>
-          <dd>{window ? `${full(window)} tokenia` : "Ei tiedossa"}</dd>
-        </div>
-        <div>
-          <dt>Tiivistys</dt>
-          <dd>
-            {usage.autoCompaction === false
-              ? "Automaattinen pois päältä"
-              : threshold !== undefined
-                ? `Automaattinen, kun yli ${full(threshold)} tokenia`
-                : usage.autoCompaction
-                  ? "Automaattinen"
-                  : "Ei tiedossa"}
-          </dd>
-        </div>
-      </dl>
-    </Dialog>
-  );
   return (
     <>
-      <DialogTrigger
-        isOpen={open}
-        onOpenChange={(value) => {
-          setOpen(value);
-          if (!value) queueMicrotask(() => trigger.current?.focus());
-        }}
+      <ControlButton
+        data-testid="context-ring"
+        data-level={level}
+        data-tokens={usage.tokens}
+        data-window={window}
+        size="inline"
+        presentation="pill"
+        variant="quiet"
+        className="ah-ctx-chip"
+        aria-label={`${sentence} ${open ? "Palaa keskusteluun." : "Avaa kontekstin erittely."}`}
+        aria-pressed={open}
+        title={sentence}
+        onPress={onToggle}
       >
-        <ControlButton
-          ref={trigger}
-          data-testid="context-ring"
-          data-level={level}
-          data-tokens={usage.tokens}
-          data-window={window}
-          size="inline"
-          presentation="pill"
-          variant="quiet"
-          className="ah-ctx-chip"
-          aria-label={`${sentence} Avaa kontekstin tiedot.`}
-          title={sentence}
-        >
-          <Ring percent={percent} level={level} tick={tick} />
-          <span className="ah-ctx-value">{value}</span>
-        </ControlButton>
-        {phone ? (
-          <ModalOverlay className="ah-overlay ah-ctx-sheet" isDismissable>
-            <Modal className="ah-modal">{content}</Modal>
-          </ModalOverlay>
-        ) : (
-          <Popover placement="bottom end" className="ah-popover ah-ctx-layer">
-            {content}
-          </Popover>
-        )}
-      </DialogTrigger>
+        <Ring percent={percent} level={level} tick={tick} />
+        <span className="ah-ctx-value">{value}</span>
+      </ControlButton>
       <span
         className="ah-visually-hidden"
         role="status"

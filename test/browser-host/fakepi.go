@@ -293,6 +293,8 @@ type fakeSession struct {
 	// usage would; compacted says the history was just summarized.
 	context   int
 	compacted bool
+	// system is Pi 1.3's recorded prompt state: sections and tools.
+	system map[string]any
 }
 
 var contextPrompt = regexp.MustCompile(`konteksti (\d{1,9})`)
@@ -444,6 +446,14 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 		if arguments != "" {
 			recordedPrompt += "\n\n" + arguments
 		}
+	}
+	if s.system == nil {
+		// Pi 1.3 records its prompt sections and tool declarations as a
+		// system message before the first prompt.
+		s.system = map[string]any{"role": "system", "content": "", "timestamp": time.Now().UnixMilli(),
+			"sections":   map[string]any{"preamble": "You are a synthetic coding assistant.", "project_context": "<project_context>\n" + strings.Repeat("Synteettinen projektin ohje. ", 120) + "\n</project_context>", "skills": "<skills>\n" + strings.Repeat("Synteettinen skill. ", 200) + "\n</skills>", "cwd": "<cwd>\n" + s.cwd + "\n</cwd>"},
+			"toolsAdded": []map[string]any{{"name": "bash", "description": "Run a command.", "parameters": map[string]any{"type": "object"}}, {"name": "read", "description": "Read a file.", "parameters": map[string]any{"type": "object"}}}}
+		s.append(map[string]any{"type": "message", "message": s.system})
 	}
 	// As Pi's, the user message starts in the conversation with its text:
 	// the daemon tells a delivered queued message from it.
@@ -670,7 +680,7 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 		// the next reply records new usage.
 		emit(map[string]any{"type": "compaction_start", "reason": "threshold"})
 		time.Sleep(6 * step)
-		s.append(map[string]any{"type": "compaction", "summary": "Synteettinen tiivistelmä aiemmasta keskustelusta.", "firstKeptEntryId": s.lastMessage, "tokensBefore": s.context})
+		s.append(map[string]any{"type": "compaction", "summary": "Synteettinen tiivistelmä aiemmasta keskustelusta.", "firstKeptEntryId": s.lastMessage, "tokensBefore": s.context, "systemMessage": s.system})
 		s.compacted = true
 		emit(map[string]any{"type": "compaction_end", "reason": "threshold", "aborted": false, "willRetry": false})
 	}
