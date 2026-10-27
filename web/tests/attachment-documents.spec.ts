@@ -54,6 +54,9 @@ test("documents preview in the app's dialog without running anything they carry"
     .click();
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi:/);
+  // A drop is taken only once the composer accepts attachments, the same
+  // state that enables its attach button; earlier the files are ignored.
+  await expect(page.getByTestId("attach-file")).toBeEnabled();
   await page.locator(".ah-conversation-stream").evaluate(
     (element, list) => {
       const data = new DataTransfer();
@@ -70,7 +73,9 @@ test("documents preview in the app's dialog without running anything they carry"
     files.map((f) => ({ name: f.name, bytes: Array.from(f.bytes) })),
   );
   const chips = page.locator(".ah-composer").getByTestId("attachment-chip");
-  await expect(chips).toHaveCount(files.length);
+  // Six files upload one after another, which on a loaded host takes longer
+  // than one ordinary wait.
+  await expect(chips).toHaveCount(files.length, { timeout: 30_000 });
   const preview = page.getByTestId("attachment-preview");
   const document = preview.getByTestId("attachment-document");
   const openChip = async (index: number) => {

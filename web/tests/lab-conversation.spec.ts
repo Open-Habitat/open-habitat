@@ -8,9 +8,11 @@ async function openTurnWork(page: import("@playwright/test").Page) {
   const live = turn.getByTestId("turn-work-toggle");
   const settled = turn.getByTestId("history-stage-toggle");
   await expect(live.or(settled)).toBeVisible({ timeout: 20000 });
-  if (await live.isVisible()) await live.click();
-  else if ((await settled.getAttribute("aria-expanded")) === "false")
-    await settled.click();
+  // Either toggle may already be open (the live one follows the saved work
+  // preference); a click then would hide the work this helper should show.
+  const toggle = (await live.isVisible()) ? live : settled;
+  if ((await toggle.getAttribute("aria-expanded")) === "false")
+    await toggle.click();
 }
 
 // The real synthetic controller has a bounded live-child budget. Each browser

@@ -32,7 +32,7 @@ async function ringSides(page: Page) {
       bottom: r.bottom,
     };
   });
-  expect(ring, "focused editor draws an outline").not.toBeNull();
+  // No outline yet (the editor lost focus to a remount): the caller polls.
   if (!ring) return {};
   const viewport = page.viewportSize() ?? { width: 0, height: 0 };
   const shot = await page.screenshot();
@@ -89,19 +89,27 @@ async function ringSides(page: Page) {
 }
 
 async function expectWholeRing(page: Page, label: string) {
-  await page.getByTestId("message-input").focus();
   // Anti-aliasing may soften a sample or two; a clipped side shows 0 %.
+  // The sides of the last attempt name which edge is clipped on failure.
+  let last: unknown = {};
   await expect
     .poll(
       async () => {
+        // The composer may still be remounted as its sources arrive, which
+        // drops focus; focus whatever editor is current on every attempt.
+        await page.getByTestId("message-input").focus();
         const sides = await ringSides(page);
+        last = sides;
         return Object.values(sides).length === 4
           ? Math.min(...Object.values(sides))
           : -1;
       },
-      { message: `${label}: ${JSON.stringify(await ringSides(page))}` },
+      { message: label },
     )
-    .toBeGreaterThanOrEqual(90);
+    .toBeGreaterThanOrEqual(90)
+    .catch((error: Error) => {
+      throw new Error(`${error.message}\nlast sides: ${JSON.stringify(last)}`);
+    });
 }
 
 // The background strip appears only with background work; the lab's fake Pi
