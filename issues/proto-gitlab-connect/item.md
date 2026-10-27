@@ -3,7 +3,7 @@ created: 2026-10-26
 updated: 2026-10-27
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-26/proto-gitlab-connect
@@ -11,6 +11,7 @@ lane: gitlab-provider
 lane_seq: 2
 blocked_by: ['@research-gitlab-integration']
 preparation: pending
+closed: 2026-10-27
 ---
 
 # Prototype: connecting GitLab in Koodipalvelut and importing its repositories
@@ -22,3 +23,9 @@ Jari 2026-10-26, keskustelusta toisen kehittäjän kanssa (ulkopuolinen käyttä
 ## Result
 
 [result.md](result.md) ja [NOTES.md](NOTES.md): kierros `design-system/prototypes/rounds/2026-10-27-gitlab-yhdistys/`, akselina sisäkkäisen ryhmäpolun esitys yhteisessä listassa (Koko polku, Pääryhmä, Ryhmäsuodatin). Suositus Pääryhmä. Odottaa Jarin valintaa.
+
+## Decisions
+
+### 2026-10-27T08:49:27Z · @jari
+
+Jari 2026-10-27: Koko polku (sisäkkäinen ryhmäpolku näytetään listassa kokonaisena).
