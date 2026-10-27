@@ -3,13 +3,14 @@ created: 2026-10-27
 updated: 2026-10-27
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: high
 provenance: other
 provenance_detail: conductor measurement 2026-10-27
 source_ref: conductor:2026-10-27/main-browser-suite-red
 lane: gate-health
 preparation: ready
+closed: 2026-10-27
 ---
 
 # main is red: title header specs and send-receipt specs fail on an idle machine
@@ -25,3 +26,9 @@ The title failures likely follow phone-header-too-tall (8e6220e1: phone header i
 ## Acceptance Criteria
 
 - [ ] Both suites green on idle Birch; for each failure the cause is named in result.md
+
+## Resolution
+
+### 2026-10-27T10:13:02Z · @issuectl
+
+The four named failures were specs asserting the pre-8e6220e1 phone header; fixed in d7863050 and passing in whole suites. Two other waits went red under concurrent load and are filed separately as browser-waits-time-out-under-load, so 'green on idle Birch' still has to be shown once Birch is idle.
