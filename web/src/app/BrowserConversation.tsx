@@ -626,11 +626,13 @@ function BrowserConversationContent({
     key: string;
     fingerprint: string;
   } | null>(null);
+  // The first read decides what was already there when the conversation
+  // opened, unless the person was already typing or reading while it loaded.
   const recapHeld =
-    recapHold.active &&
     recapCurrent?.recap?.trigger === "automatic" &&
-    recapSeen?.key === recapKey &&
-    recapSeen.fingerprint !== recapFingerprint;
+    (recapSeen?.key === recapKey
+      ? recapHold.active && recapSeen.fingerprint !== recapFingerprint
+      : recapHold.recent);
   useEffect(() => {
     if (!recapCurrent || recapHeld) return;
     setRecapSeen((previous) =>
@@ -1302,7 +1304,10 @@ function BrowserConversationContent({
           problem={problem}
           onRetry={() => setOpenAttempt((n) => n + 1)}
           value={draft}
-          onChange={changeDraft}
+          onChange={(value) => {
+            recapHold.note();
+            changeDraft(value);
+          }}
         />
       ) : (
         <ConversationFrame

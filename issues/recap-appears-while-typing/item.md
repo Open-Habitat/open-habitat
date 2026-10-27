@@ -3,13 +3,14 @@ created: 2026-10-27
 updated: 2026-10-27
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/recap-appears-while-typing
 lane: recap
 lane_seq: 2
 preparation: ready
+closed: 2026-10-27
 ---
 
 # Recap appears while the person is actively typing
@@ -20,4 +21,4 @@ Jari 2026-10-27 (Birch): 'Tulee liian herkästi. Kun mä oon kirjoittamassa pitk
 
 ## Acceptance Criteria
 
-- [ ] No recap is generated or shown while the person is typing or has an unsent draft in this conversation; a browser test covers it
+- [x] No recap is generated or shown while the person is typing or has an unsent draft in this conversation; a browser test covers it

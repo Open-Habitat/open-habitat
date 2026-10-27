@@ -33,7 +33,13 @@ export function useRecapHold({
   draft: string;
   feed: RefObject<HTMLElement | null>;
   opened: boolean;
-}): { active: boolean; note: () => void } {
+}): {
+  /** Typing, a draft, or reading within the quiet period. */
+  active: boolean;
+  /** Typing or reading within the quiet period, draft or not. */
+  recent: boolean;
+  note: () => void;
+} {
   const [recent, setRecent] = useState(false);
   const quiet = useRef<number | undefined>(undefined);
   const reported = useRef({ id: "", at: 0 });
@@ -77,5 +83,5 @@ export function useRecapHold({
       for (const name of events) viewport.removeEventListener(name, note);
     };
   }, [note, opened]);
-  return { active: recent || drafting, note };
+  return { active: recent || drafting, recent, note };
 }
