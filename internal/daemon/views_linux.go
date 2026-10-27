@@ -806,6 +806,8 @@ func (c *ConversationController) FixtureView(target string) (string, bool) {
 		"index.html":       viewFixturePage,
 		"assets/app.js":    viewFixtureScript,
 		"assets/style.css": "body{color:rgb(1, 2, 3)}\n",
+		"assets/mark.svg":  `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8"/></svg>`,
+		"bundle.html":      viewFixtureBundle,
 		".secret":          "hidden",
 	} {
 		if os.WriteFile(filepath.Join(site, name), []byte(text), 0600) != nil {
@@ -833,7 +835,18 @@ func (c *ConversationController) FixtureView(target string) (string, bool) {
 }
 
 // The fixture page reports what its sandbox allowed as data attributes.
-const viewFixturePage = `<!doctype html><html><head><meta charset="utf-8"><title>Fixture</title><link rel="stylesheet" href="assets/style.css"></head><body data-script="no"><h1 id="heading">Synteettinen näkymä</h1><script src="assets/app.js"></script></body></html>
+const viewFixturePage = `<!doctype html><html><head><meta charset="utf-8"><title>Fixture</title><link rel="stylesheet" href="assets/style.css"></head><body data-script="no"><h1 id="heading">Synteettinen näkymä</h1><img id="mark" alt="" src="assets/mark.svg"><a id="bundle" href="bundle.html">Kooste</a><script src="assets/app.js"></script></body></html>
+`
+
+// viewFixtureBundle stands for a bundled single-file page: like a production
+// bundle that compiles schema validators at load, it builds its render code
+// from a string, so it renders only where eval is allowed.
+const viewFixtureBundle = `<!doctype html><html><head><meta charset="utf-8"><title>Kooste</title></head><body><script>
+var render = new Function("root", "var h = document.createElement('h1'); h.id = 'bundle-heading'; h.textContent = 'Kooste'; root.appendChild(h); root.dataset.rendered = 'yes';");
+render(document.body);
+try { document.body.dataset.wasm = new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])) ? "yes" : "no"; } catch (e) { document.body.dataset.wasm = "denied"; }
+try { var w = new Worker(URL.createObjectURL(new Blob(["postMessage(1)"], { type: "text/javascript" }))); w.onmessage = function () { document.body.dataset.worker = "allowed"; }; w.onerror = function () { document.body.dataset.worker = "denied"; }; } catch (e) { document.body.dataset.worker = "denied"; }
+</script></body></html>
 `
 
 const viewFixtureScript = `document.body.dataset.script = "yes";
@@ -841,6 +854,9 @@ try { document.body.dataset.cookie = "readable:" + document.cookie; } catch (e) 
 try { document.body.dataset.parent = String(window.parent.location.href); } catch (e) { document.body.dataset.parent = "denied"; }
 try { localStorage.setItem("x", "1"); document.body.dataset.storage = "yes"; } catch (e) { document.body.dataset.storage = "denied"; }
 document.body.dataset.style = getComputedStyle(document.body).color;
+var mark = document.getElementById("mark");
+function markState() { document.body.dataset.image = mark.naturalWidth > 0 ? "loaded" : "missing"; }
+if (mark.complete) { markState(); } else { mark.onload = markState; mark.onerror = markState; }
 fetch("assets/style.css").then(function () { document.body.dataset.fetch = "allowed"; }, function () { document.body.dataset.fetch = "denied"; });
 `
 

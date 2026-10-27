@@ -30,10 +30,11 @@ import (
 // their daemon's fixed export-read route. Every response on a view host,
 // errors included, carries the sandbox CSP, so a direct open of a view URL is
 // as confined as the panel's sandboxed frame: an opaque origin, scripts but
-// no network, no forms, no popups, no top navigation. View sessions live in
-// gateway memory only and end with their app session; the app cookie is
-// host-only on the app's host and never reaches a view host, and the view
-// cookie is never accepted anywhere but its own view host.
+// no fetches, sockets or workers, no forms, no popups, no top navigation. The
+// document can still navigate itself away, which no policy of its own stops.
+// View sessions live in gateway memory only and end with their app session;
+// the app cookie is host-only on the app's host and never reaches a view
+// host, and the view cookie is never accepted anywhere but its own view host.
 
 const (
 	viewCookie        = "__Host-oh-view"
@@ -232,7 +233,12 @@ func (a *Auth) viewList(w http.ResponseWriter, r *http.Request) {
 
 // viewHeaders are set before anything else on a view host, so an error from
 // any layer still runs sandboxed. Sources name the exact view host, never a
-// sibling, and frames are allowed only inside the app.
+// sibling, and frames are allowed only inside the app. Eval (which also
+// lets WebAssembly compile) is allowed: the content's own scripts already
+// run, so code built from a string gains nothing they lack and stays under
+// the same policy, while bundles that compile at load (schema validators,
+// templates) otherwise open blank. Workers stay off: their confinement would
+// rest on each browser carrying this policy into the worker.
 func (a *Auth) viewHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		self := "'none'"
@@ -240,7 +246,7 @@ func (a *Auth) viewHeaders(next http.Handler) http.Handler {
 			self = "https://" + r.Host
 		}
 		h := w.Header()
-		h.Set("Content-Security-Policy", "sandbox allow-scripts; default-src 'none'; script-src "+self+" 'unsafe-inline'; style-src "+self+" 'unsafe-inline'; img-src "+self+" data: blob:; font-src "+self+" data:; media-src "+self+" data: blob:; connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors "+a.cfg.Origin)
+		h.Set("Content-Security-Policy", "sandbox allow-scripts; default-src 'none'; script-src "+self+" 'unsafe-inline' 'unsafe-eval'; style-src "+self+" 'unsafe-inline'; img-src "+self+" data: blob:; font-src "+self+" data:; media-src "+self+" data: blob:; connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors "+a.cfg.Origin)
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "no-referrer")
 		h.Set("Cache-Control", "no-store")

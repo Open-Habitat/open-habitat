@@ -75,6 +75,7 @@ test("a conversation offer opens sandboxed in the panel, isolated from the app s
   await expect(body).toHaveAttribute("data-parent", "denied");
   await expect(body).toHaveAttribute("data-storage", "denied");
   await expect(body).toHaveAttribute("data-fetch", "denied");
+  await expect(body).toHaveAttribute("data-image", "loaded");
 
   const cookies = await context.cookies();
   const viewCookie = cookies.find((c) => c.name === "__Host-oh-view");
@@ -98,6 +99,16 @@ test("a conversation offer opens sandboxed in the panel, isolated from the app s
     ).violations,
   ).toEqual([]);
   await page.screenshot({ path: info.outputPath("panel.png") });
+
+  // A relative link goes to a sibling file inside the frame. That page is a
+  // bundle that builds its code from a string at load, as production bundles
+  // compiling schema validators do: without eval it would stay blank. Eval
+  // adds no reach: workers stay off as before.
+  await frame.locator("#bundle").click();
+  await expect(body).toHaveAttribute("data-rendered", "yes");
+  await expect(frame.locator("#bundle-heading")).toBeVisible();
+  await expect(body).toHaveAttribute("data-wasm", "yes");
+  await expect(body).toHaveAttribute("data-worker", "denied");
 
   // A direct open of the view's URL, and its errors, carry the sandbox too.
   const viewOrigin = new URL(viewRequests[0].url).origin;
@@ -141,6 +152,7 @@ test("the own tab frames the view on the app's page, with no opener", async ({
   const body = tab.frameLocator('[data-testid="view-frame"]').locator("body");
   await expect(body).toHaveAttribute("data-script", "yes");
   await expect(body).toHaveAttribute("data-style", "rgb(1, 2, 3)");
+  await expect(body).toHaveAttribute("data-image", "loaded");
   await expect(body).toHaveAttribute("data-parent", "denied");
   expect(
     tab
