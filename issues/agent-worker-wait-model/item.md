@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-10-27/agent-worker-wait-model
 lane: agent-lifecycle
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Design: how an agent and its workers wait for each other
