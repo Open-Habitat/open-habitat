@@ -5,12 +5,12 @@ import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
 import editorSchema from "../../../contracts/v1/editor.schema.json";
 import eventSchema from "../../../contracts/v1/event.schema.json";
+import fileOfferSchema from "../../../contracts/v1/file-offer.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
 import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import snapshotSchema from "../../../contracts/v1/snapshot.schema.json";
-import fileOfferSchema from "../../../contracts/v1/file-offer.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import workspaceChangeSchema from "../../../contracts/v1/workspace-change.schema.json";
 import type { Event as WireEvent } from "../contracts/v1.generated";
@@ -164,6 +164,21 @@ export function applyTurnEvent(
     };
     // Saved assistant blocks supersede their streamed content. A saved tool
     // result supersedes only that call; other concurrent calls remain live.
+    // A message whose calls already ran was streamed before their execution:
+    // what came after (the next message) stays until its own entry arrives,
+    // as when a finished run delivers all its entries at once.
+    const calls = new Set(
+      entry.blocks?.flatMap((block) =>
+        block.type === "toolCall" && block.tool_call_id
+          ? [block.tool_call_id]
+          : [],
+      ),
+    );
+    const ran = turn.fragments.findIndex(
+      (fragment) =>
+        fragment.kind.startsWith("tool.") &&
+        calls.has(fragment.payload.tool_call_id as string),
+    );
     const fragments =
       entry.kind === "tool" && entry.tool_call_id
         ? turn.fragments.filter(
@@ -181,7 +196,12 @@ export function applyTurnEvent(
               ),
           )
         : entry.kind === "assistant"
-          ? commandOutput(turn.fragments)
+          ? ran < 0
+            ? commandOutput(turn.fragments)
+            : [
+                ...commandOutput(turn.fragments.slice(0, ran)),
+                ...turn.fragments.slice(ran),
+              ]
           : entry.kind === "bash"
             ? turn.fragments.filter(
                 (fragment) => fragment.kind !== "bash.output",

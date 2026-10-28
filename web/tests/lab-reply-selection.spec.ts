@@ -5,7 +5,7 @@ import { expect, test } from "./lab-host";
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 
 // Drag across the first full line of a prose paragraph in the latest reply
-// that is inside the viewport, then extend the selection by keyboard.
+// that is visible, then extend the selection by keyboard.
 async function selectLine(page: Page) {
   const line = await page.evaluate(() => {
     const turn = [
@@ -14,8 +14,15 @@ async function selectLine(page: Page) {
     for (const p of turn?.querySelectorAll(".ah-markdown p") ?? []) {
       const range = document.createRange();
       range.selectNodeContents(p);
+      // The line must be uncovered (the header and the composer overlay the
+      // stream) where the drag starts and ends.
+      const hits = (x: number, y: number) =>
+        p.contains(document.elementFromPoint(x, y));
       const rect = [...range.getClientRects()].find(
-        (r) => r.top > 80 && r.bottom < innerHeight - 220 && r.width > 240,
+        (r) =>
+          r.width > 240 &&
+          hits(r.left + 4, r.top + r.height / 2) &&
+          hits(r.left + 220, r.top + r.height / 2),
       );
       if (rect) return { x: rect.left, y: rect.top + rect.height / 2 };
     }
@@ -34,7 +41,7 @@ async function selectLine(page: Page) {
 
 const selection = (page: Page) => page.evaluate(() => String(getSelection()));
 
-test("@lab a selection in a live and in a settled reply survives updates, and code labels hold still", async ({
+test("@lab a selection in a live and in a settled reply survives updates and settling, and code labels hold still", async ({
   page,
 }) => {
   test.setTimeout(90000);
@@ -63,6 +70,14 @@ test("@lab a selection in a live and in a settled reply survives updates, and co
     .poll(() => turn.textContent(), { timeout: 20000 })
     .toMatch(/sana5 /);
   const live = await selectLine(page);
+  // The turn and the reply holding the selection are marked while live;
+  // settling must keep both elements.
+  await turn.evaluate((node) => {
+    Object.assign(node, { ahProbe: true });
+    const reply =
+      getSelection()?.anchorNode?.parentElement?.closest(".ah-turn-reply");
+    if (reply) Object.assign(reply, { ahProbe: true });
+  });
   const words = async () =>
     ((await turn.textContent())?.match(/sana\d+/g) ?? []).length;
   const before = await words();
@@ -72,6 +87,14 @@ test("@lab a selection in a live and in a settled reply survives updates, and co
   await expect(
     page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeVisible({ timeout: 30000 });
+  // The saved turn takes over the live one in place: the same turn, the same
+  // reply, now final, and the selection made during the stream is still there.
+  const final = turn.locator('[data-reply-role="final"]');
+  await expect(final).toHaveCount(1);
+  await page.waitForTimeout(1500);
+  expect(await turn.evaluate((node) => "ahProbe" in node)).toBe(true);
+  expect(await final.evaluate((node) => "ahProbe" in node)).toBe(true);
+  expect(await selection(page)).toBe(live);
 
   // A settled reply keeps its DOM: the selection, the code block and its
   // label stay unchanged while the pointer moves over the copy control and

@@ -248,6 +248,30 @@ describe("published conversation stream", () => {
         ]),
       ).map((item) => item.kind),
     ).toEqual(["tool"]);
+    // A finished run may deliver its saved messages only now. The first
+    // one leaves the answer streamed after its call until the answer's own
+    // entry, so the answer never blinks out in between.
+    const saved = (n: number, key: string, blocks: unknown[]) =>
+      applyTurnEvent(
+        turn,
+        parse(n, "history.entry", {
+          entry_key: key,
+          entry_kind: "assistant",
+          content: { media_type: "text/plain", text: "", complete: true },
+          blocks,
+        }),
+        agent,
+      ).turn;
+    turn = saved(5, "native-1", [
+      { type: "text", text: "Tarkistan" },
+      { type: "toolCall", tool_call_id: "tool-1", tool_name: "bash" },
+    ]);
+    expect(provisionalItems(turn).map((item) => item.text)).toEqual([
+      "bash · Valmis",
+      "Valmis",
+    ]);
+    turn = saved(6, "native-2", [{ type: "text", text: "Valmis" }]);
+    expect(provisionalItems(turn)).toEqual([]);
   });
   it("rejects gaps and instance changes, and distinguishes truncated history fallback", () => {
     const turn = initialTurn(cursor(2));

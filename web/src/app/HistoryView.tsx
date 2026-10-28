@@ -136,8 +136,21 @@ function ReadableBlock({
   );
   const request = useRef<AbortController | null>(null);
   const preview = useRef<HTMLPreElement | null>(null);
+  // Loaded content belongs to one native block. A turn's text keeps this
+  // element when its streamed reply becomes the saved one (TurnText).
+  const source = `${entryKey}:${revision}:${index}:${part ?? ""}`;
+  const [loadedFor, setLoadedFor] = useState(source);
+  const current = useRef(source);
+  current.current = source;
+  if (loadedFor !== source) {
+    setLoadedFor(source);
+    setLoaded(undefined);
+    setPending(false);
+    setFailed(false);
+  }
   const displayedText = loaded?.text ?? block.text ?? "";
-  useEffect(() => () => request.current?.abort(), []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a read for the previous source must not land in this one.
+  useEffect(() => () => request.current?.abort(), [source]);
   useLayoutEffect(() => {
     if (preview.current && toolName && displayedText.length)
       preview.current.scrollTop =
@@ -190,7 +203,7 @@ function ReadableBlock({
           complete: chunk.chunk.complete,
           mediaType: chunk.chunk.media_type,
         };
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || current.current !== source) return;
         setLoaded(next);
         if (next.complete) break;
       }
@@ -580,6 +593,18 @@ function FileUse({
         <PiBoundary>Tiedoston tietoja ei saatu. Päivitä historia.</PiBoundary>
       ) : null}
     </PiToolUse>
+  );
+}
+/**
+ * A reply's text in a turn. The streamed and the saved reply render through
+ * this same element, so a turn that settles keeps its DOM and any selection
+ * in it, also when the saved reply is only a preview of a long one.
+ */
+export function TurnText(props: Parameters<typeof ReadableBlock>[0]) {
+  return (
+    <div className="ah-ordered-blocks">
+      <ReadableBlock {...props} />
+    </div>
   );
 }
 function OrderedBlocks({
@@ -1215,7 +1240,16 @@ export function timelineItems(
           key,
           text: block.text ?? "",
           at,
-          node: node(block, index),
+          node: (
+            <TurnText
+              block={block}
+              index={index}
+              entryKey={entry.entry_key}
+              agentId={agentId}
+              revision={revisionOf}
+              onLogin={onLogin}
+            />
+          ),
         };
       if (block.type === "thinking")
         return { kind: "thinking", key, at, node: node(block, index) };

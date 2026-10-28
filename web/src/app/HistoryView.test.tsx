@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { Entry, timelineItems } from "./HistoryView";
+import { Entry, TurnText, timelineItems } from "./HistoryView";
 import type { HistoryEntry } from "./history";
 
 const entry: HistoryEntry = {
@@ -1054,4 +1054,23 @@ it("marks only the turn Pi saved as aborted, and its interrupted tool as stopped
       .querySelector('[data-testid="tool-row"]')
       ?.getAttribute("data-state"),
   ).toBe("cancelled");
+});
+
+it("keeps a reply's elements when its streamed text becomes a saved preview", () => {
+  const text = `Ensimmäinen kappale.\n\n${"Pitkä jatko. ".repeat(40)}`;
+  const { container, rerender } = render(
+    <TurnText block={{ type: "text", text }} index={0} entryKey="live-1" />,
+  );
+  const first = container.querySelector("p");
+  rerender(
+    <TurnText
+      block={{ type: "text", text: text.slice(0, 200), readable: true }}
+      index={0}
+      entryKey="native-1"
+      agentId="pi:agent"
+      revision="r1"
+    />,
+  );
+  expect(container.querySelector("p")).toBe(first);
+  expect(screen.getByTestId("history-block-load")).toBeTruthy();
 });

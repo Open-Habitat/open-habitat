@@ -2,7 +2,7 @@
 created: 2026-10-28
 updated: 2026-10-28
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: worker lab observation
@@ -11,6 +11,7 @@ originating_run: 01m608am2kbdwtcgffgwf7x9c4
 originating_run_kind: spinoff
 lane: conversation-select
 preparation: ready
+closed: 2026-10-28
 ---
 
 # A selection in an agent reply is lost when the turn settles

@@ -9,7 +9,6 @@ import {
   ConversationTimeline,
   HeldStartFailure,
   InlineNotice,
-  Markdown,
   SendObservation,
   WaitingMessage,
   WorkingProgress,
@@ -56,8 +55,8 @@ import {
   currentRecap,
   NotAdmitted,
   type Recap,
-  RecapGenerationFailed,
   type RecapFailureReason,
+  RecapGenerationFailed,
   readRecap,
   regenerateTitle,
   requestRecap,
@@ -77,7 +76,7 @@ import {
   setGuide,
   useGuide,
 } from "./goalGuide";
-import { type LiveTurnInput, timelineItems } from "./HistoryView";
+import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { capacityReason } from "./mutations";
 import { PendingConversation } from "./PendingConversation";
@@ -102,6 +101,7 @@ import { useStoragePressure } from "./StoragePressure";
 import { latestSettings } from "./sessionSettings";
 import { settingsHref } from "./settingsRoute";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
+import { useTurnIdentity } from "./turnIdentity";
 import { useConversation } from "./useConversation";
 import {
   isReadingIntro,
@@ -640,7 +640,7 @@ function BrowserConversationContent({
   const recapFailed =
     controlled &&
     !shownRecap &&
-    !!recapCurrent?.latest &&
+    recapCurrent?.latest &&
     current?.recap_failure?.through === recapCurrent.latest
       ? current.recap_failure
       : undefined;
@@ -1259,7 +1259,13 @@ function BrowserConversationContent({
                     kind: "text",
                     key: item.id,
                     text: item.text,
-                    node: <Markdown text={item.text} />,
+                    node: (
+                      <TurnText
+                        block={{ type: "text", text: item.text }}
+                        index={0}
+                        entryKey={item.id}
+                      />
+                    ),
                   }
                 : item.kind === "thinking"
                   ? { kind: "thinking", key: item.id, node: liveNode(item) }
@@ -1276,7 +1282,7 @@ function BrowserConversationContent({
           ),
         }
       : undefined;
-  const timeline = timelineItems(
+  const savedTimeline = timelineItems(
     entries,
     onLogin,
     id,
@@ -1299,8 +1305,18 @@ function BrowserConversationContent({
     id ? (callId) => store.toolExpansion(id, callId) : undefined,
     liveTurn,
   );
-  const liveMerged = timeline.some((item) => item.live);
+  const liveMerged = savedTimeline.some((item) => item.live);
   const liveRow = !!liveTurn && !liveMerged && provisional.length > 0;
+  // The first provisional block may be retired when native history catches
+  // up; it is not the identity of the turn.
+  const settled = useTurnIdentity(
+    `${identity}:${id ?? ""}`,
+    savedTimeline,
+    liveRow
+      ? `live-turn-${current?.command_id || started?.event_id || provisional[0].id}`
+      : undefined,
+  );
+  const timeline = settled.timeline;
   return (
     <section ref={section} className="ah-reading-view">
       {!id ? (
@@ -1863,12 +1879,10 @@ function BrowserConversationContent({
                       },
                     ]
                   : []),
-                ...(liveTurn && liveRow
+                ...(liveTurn && settled.liveKey
                   ? [
                       {
-                        // The first provisional block may be retired when native
-                        // history catches up; it is not the identity of the turn.
-                        id: `live-turn-${current?.command_id || started?.event_id || provisional[0].id}`,
+                        id: settled.liveKey,
                         kind: "assistant",
                         content: (
                           <AgentTurn
