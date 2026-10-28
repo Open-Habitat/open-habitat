@@ -13,10 +13,12 @@ const input = await new Promise((resolve, reject) => {
   process.stdin.on('end', () => resolve(text));
   process.stdin.on('error', reject);
 });
+// The shared background policy (background-model.mjs) and the conversation's
+// own model, when the daemon knows it, come as arguments.
+const { backgroundModels } = await import(process.argv[2]);
+const conversation = process.argv[3] ? { provider: process.argv[3], id: process.argv[4] } : undefined;
 const runtime = await ModelRuntime.create({ allowModelNetwork: false });
-const available = runtime.getAvailableSnapshot().filter(m => m.input?.includes('text') && m.cost);
-// Price is a ranking hint, not a guarantee of provider entitlement.
-available.sort((a, b) => (a.cost.input + a.cost.output) - (b.cost.input + b.cost.output) || Number(a.reasoning) - Number(b.reasoning));
+const models = backgroundModels(runtime.getAvailableSnapshot().filter(m => m.input?.includes('text')), conversation);
 const bounded = value => {
   if (typeof value !== 'string' || /[\x00-\x1f\x7f]/u.test(value)) return '';
   const title = value.trim().split(/\s+/u).join(' ');
@@ -29,7 +31,7 @@ const instruction = 'Give a short, descriptive, grammatically complete phrase fo
 // generation (including the rewrite and one alternative model) to 15 seconds.
 let invalid = false;
 let timedOut = false;
-for (const model of available.slice(0, 2)) {
+for (const model of models) {
   let fallback = '';
   try {
     for (let attempt = 0; attempt < 2; attempt++) {

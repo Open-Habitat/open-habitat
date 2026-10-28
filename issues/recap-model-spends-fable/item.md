@@ -2,7 +2,7 @@
 created: 2026-10-28
 updated: 2026-10-28
 type: improvement
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: taskfleet worker finding while fixing recap-card-not-shown
@@ -11,6 +11,7 @@ originating_run: 01m608p63qwjznqn9pzspappja
 originating_run_kind: spinoff
 lane: recap
 preparation: ready
+closed: 2026-10-28
 ---
 
 # Recaps spend Fable usage because subscription models all declare zero cost

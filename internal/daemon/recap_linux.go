@@ -40,6 +40,9 @@ func (c *ConversationController) piArgs() ([]string, error) {
 	// long-lived daemon. Recreate the bridge before launching the next child.
 	if c.recapPath != "" {
 		if info, err := os.Lstat(c.recapPath); err == nil && info.Mode().IsRegular() {
+			if err := installBackgroundModel(filepath.Dir(c.recapPath)); err != nil {
+				return nil, err
+			}
 			companion, err := installProcessExtension(filepath.Dir(c.recapPath))
 			if err != nil {
 				return nil, err
@@ -56,6 +59,10 @@ func (c *ConversationController) piArgs() ([]string, error) {
 		return nil, err
 	}
 	path := filepath.Join(dir, "recap-extension.mjs")
+	if err := installBackgroundModel(dir); err != nil {
+		_ = os.RemoveAll(dir)
+		return nil, err
+	}
 	if err := os.WriteFile(path, recapExtension, 0600); err != nil {
 		_ = os.RemoveAll(dir)
 		return nil, err

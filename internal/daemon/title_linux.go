@@ -46,14 +46,21 @@ func titleReason(err error) titleFailure {
 	return titleModelUnavailable // Never reflect fixture or provider error text.
 }
 
-func (c *ConversationController) generateTitle(text string) (string, error) {
+// model is the conversation's own model, nil when unknown: the background
+// policy (background-model.mjs) prefers its provider's small model and falls
+// back to it.
+func (c *ConversationController) generateTitle(text string, model *piStartupChoice) (string, error) {
 	if c.runtime == nil || !utf8.ValidString(text) {
 		return "", titleModelUnavailable
 	}
 	text = prefixBytes(text, 4096)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, c.runtime.Node, "--input-type=module", "-e", titleHelper, c.runtime.Entry)
+	args := []string{"--input-type=module", "-e", titleHelper, c.runtime.Entry, backgroundModelURL}
+	if model != nil {
+		args = append(args, model.Provider, model.Model)
+	}
+	cmd := exec.CommandContext(ctx, c.runtime.Node, args...)
 	cmd.Env = []string{"HOME=" + c.home, "PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}
 	cmd.Dir = filepath.Dir(c.runtime.Entry)
 	cmd.Stdin = strings.NewReader(text)
@@ -167,6 +174,24 @@ func latestNativeUserPrompt(path string, uid int, id, cwd string) string {
 	return ""
 }
 
+// The conversation's model as its active native branch last recorded it, for a
+// history without a running Pi. Nil when the branch records none.
+func latestNativeModel(path string, uid int, id, cwd string) *piStartupChoice {
+	s := readNativeSettled(path, uid)
+	if s.state != "readable" || s.id != id || s.cwd != cwd {
+		return nil
+	}
+	for i := len(s.entries) - 1; i >= 0; i-- {
+		if s.entries[i].Kind == "model_change" {
+			if provider, model, ok := strings.Cut(s.entries[i].full, "/"); ok && provider != "" && model != "" {
+				return &piStartupChoice{Provider: provider, Model: model}
+			}
+			return nil
+		}
+	}
+	return nil
+}
+
 // The only source of truth is Pi's history. This is a precondition read, not a title store.
 func (c *ConversationController) sessionName(s *conversation) (string, bool) {
 	sessions, err := nativeSessions(c.nativeCfg())
@@ -241,7 +266,10 @@ func (c *ConversationController) nameConversation(s *conversation, text string, 
 	if !explicit && before != "" && before != s.automaticName {
 		return titleNativeChanged
 	}
-	generate := c.generateTitle
+	c.mu.Lock()
+	model := s.startupChoice
+	c.mu.Unlock()
+	generate := func(text string) (string, error) { return c.generateTitle(text, model) }
 	if c.fixture && c.titleGenerator != nil {
 		generate = c.titleGenerator
 	}

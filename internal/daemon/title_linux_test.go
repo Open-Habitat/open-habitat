@@ -155,7 +155,9 @@ func TestContinuedTitleReadsLatestNativeUserPrompt(t *testing.T) {
 	for _, row := range []any{
 		map[string]any{"type": "session", "version": 3, "id": id, "cwd": home},
 		map[string]any{"type": "message", "id": "abc1", "message": map[string]any{"role": "user", "content": "Check connection"}},
-		map[string]any{"type": "message", "id": "abc2", "parentId": "abc1", "message": map[string]any{"role": "user", "content": "Tarkista yhteys"}},
+		map[string]any{"type": "model_change", "id": "abc0", "parentId": "abc1", "provider": "claude-bridge", "modelId": "claude-opus-5-5"},
+		map[string]any{"type": "model_change", "id": "abc3", "parentId": "abc0", "provider": "openai-codex", "modelId": "gpt-6-sol"},
+		map[string]any{"type": "message", "id": "abc2", "parentId": "abc3", "message": map[string]any{"role": "user", "content": "Tarkista yhteys"}},
 	} {
 		b, _ := json.Marshal(row)
 		fmt.Fprintln(f, string(b))
@@ -168,6 +170,13 @@ func TestContinuedTitleReadsLatestNativeUserPrompt(t *testing.T) {
 	}
 	if got := latestNativeUserPrompt(path, os.Getuid(), id, "/wrong"); got != "" {
 		t.Fatalf("wrong workspace yielded prompt: %q", got)
+	}
+	// The background title model prefers the conversation's latest model's provider.
+	if got := latestNativeModel(path, os.Getuid(), id, home); got == nil || *got != (piStartupChoice{Provider: "openai-codex", Model: "gpt-6-sol"}) {
+		t.Fatalf("latest native model: %+v", got)
+	}
+	if got := latestNativeModel(path, os.Getuid(), id, "/wrong"); got != nil {
+		t.Fatalf("wrong workspace yielded model: %+v", got)
 	}
 }
 

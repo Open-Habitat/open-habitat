@@ -174,8 +174,10 @@ settled:
 	}
 }
 
-// The cheapest model can fail while the conversation's own model answers
-// (a subscription model whose quota is spent). The recap must then come from
+// A subscription provider declares every model free, the Fable class first
+// (pi-claude-bridge). The recap asks the Sonnet model and never Fable. That
+// model can fail while the conversation's own model answers (a quota spent);
+// the recap must then come from
 // the conversation's model, and when no model answers, the person's request
 // and the card must say why instead of ending in silence.
 func TestRecapFallsBackAndReportsFailureThroughPinnedPi(t *testing.T) {
@@ -207,7 +209,7 @@ func TestRecapFallsBackAndReportsFailureThroughPinnedPi(t *testing.T) {
 			asked = append(asked, body.Model)
 			mu.Unlock()
 		}
-		if recap && (body.Model == "cheap" || conversationDown.Load()) {
+		if recap && (body.Model == "claude-sonnet-5-5" || conversationDown.Load()) {
 			w.WriteHeader(429)
 			fmt.Fprint(w, `{"error":{"message":"synthetic quota spent"}}`)
 			return
@@ -233,7 +235,8 @@ func TestRecapFallsBackAndReportsFailureThroughPinnedPi(t *testing.T) {
 	free := map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}
 	paid := map[string]any{"input": 3, "output": 15, "cacheRead": 0, "cacheWrite": 0}
 	models := map[string]any{"providers": map[string]any{"fixture": map[string]any{"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "authHeader": true, "models": []any{
-		map[string]any{"id": "cheap", "name": "Cheap", "cost": free},
+		map[string]any{"id": "claude-fable-5-1", "name": "Fable", "cost": free},
+		map[string]any{"id": "claude-sonnet-5-5", "name": "Sonnet", "cost": free},
 		map[string]any{"id": "fake", "name": "Fake", "cost": paid},
 	}}}}
 	data, _ := json.Marshal(models)
@@ -294,7 +297,7 @@ func TestRecapFallsBackAndReportsFailureThroughPinnedPi(t *testing.T) {
 		t.Fatalf("fallback recap: %v", reply)
 	}
 	mu.Lock()
-	if fmt.Sprint(asked) != "[cheap fake]" {
+	if fmt.Sprint(asked) != "[claude-sonnet-5-5 fake]" {
 		t.Fatalf("recap models asked: %v", asked)
 	}
 	asked = nil

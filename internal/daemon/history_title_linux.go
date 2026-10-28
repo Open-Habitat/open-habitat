@@ -97,7 +97,8 @@ func (c *ConversationController) historyTitle(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	generate := c.generateTitle
+	model := latestNativeModel(path, c.cfg.UID, id, cwd)
+	generate := func(text string) (string, error) { return c.generateTitle(text, model) }
 	if c.fixture {
 		if c.titleGenerator != nil {
 			generate = c.titleGenerator

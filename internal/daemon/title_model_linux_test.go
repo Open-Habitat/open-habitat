@@ -62,9 +62,9 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 		if !strings.Contains(instruction, "2–5 words") || !strings.Contains(instruction, "32 characters") || !strings.Contains(instruction, "no label or prefix") {
 			t.Errorf("title constraints absent: %s", instruction)
 		}
-		// The first advertised model can fail even when Pi has another one.
-		// Provider error bodies must not be echoed by the helper.
-		if request.Model == "cheap" {
+		// The middle-tier model can fail (its quota spent) while the conversation's
+		// own model answers. Provider error bodies must not be echoed by the helper.
+		if request.Model == "fixture-luna" {
 			cheapCalls.Add(1)
 			http.Error(w, "synthetic-provider-secret", 503)
 			return
@@ -92,12 +92,13 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 	if err := os.MkdirAll(agent, 0700); err != nil {
 		t.Fatal(err)
 	}
-	model := map[string]any{"providers": map[string]any{"fixture": map[string]any{"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "authHeader": true, "models": []any{map[string]any{"id": "cheap", "name": "Cheap", "reasoning": false}, map[string]any{"id": "fake", "name": "Fake", "reasoning": true}}}}}
+	model := map[string]any{"providers": map[string]any{"fixture": map[string]any{"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "authHeader": true, "models": []any{map[string]any{"id": "fixture-opus", "name": "Opus class, never for titles", "reasoning": false}, map[string]any{"id": "fixture-luna", "name": "Luna", "reasoning": false}, map[string]any{"id": "fake", "name": "Fake", "reasoning": true}}}}}
 	data, _ := json.Marshal(model)
 	if err := os.WriteFile(filepath.Join(agent, "models.json"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
 	c := &ConversationController{home: home, cfg: transport.Config{Username: "synthetic"}, runtime: &core.PiRuntimeConfig{Node: nativeNodePath(t), Entry: entry}}
+	conversation := &piStartupChoice{Provider: "fixture", Model: "fake"}
 	for _, tc := range []struct {
 		name, input, raw, retry, want string
 		calls                         int32
@@ -114,7 +115,7 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 			answer.Store(tc.raw)
 			retryAnswer.Store(tc.retry)
 			attempt.Store(0)
-			title, err := c.generateTitle(tc.input)
+			title, err := c.generateTitle(tc.input, conversation)
 			if title != tc.want || (err != nil) != (tc.want == "") {
 				t.Fatalf("title %q, want %q: %v", title, tc.want, err)
 			}
@@ -133,7 +134,7 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 	answer.Store(`{"title":"Repository review","fallback":"Code review"}`)
 	retryAnswer.Store(`{"title":"Repository review","fallback":"Code review"}`)
 	attempt.Store(0)
-	if title, err := c.generateTitle("Review synthetic repository"); title != "" || err != titleModelInvalid || attempt.Load() != 2 {
+	if title, err := c.generateTitle("Review synthetic repository", conversation); title != "" || err != titleModelInvalid || attempt.Load() != 2 {
 		t.Fatalf("token-limited answer accepted or misclassified: %q %v; calls=%d", title, err, attempt.Load())
 	}
 	// Keep an already generated complete phrase when the rewrite stalls. The
@@ -143,7 +144,7 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 	answer.Store(`{"title":"one two three four five six","fallback":"Repositorion tarkistus"}`)
 	attempt.Store(0)
 	start := time.Now()
-	if title, err := c.generateTitle("Review synthetic repository"); err != nil || title != "Repositorion tarkistus" || attempt.Load() != 2 {
+	if title, err := c.generateTitle("Review synthetic repository", conversation); err != nil || title != "Repositorion tarkistus" || attempt.Load() != 2 {
 		t.Fatalf("lost complete fallback during stalled rewrite: %q %v; calls=%d", title, err, attempt.Load())
 	}
 	if time.Since(start) >= 15*time.Second {
