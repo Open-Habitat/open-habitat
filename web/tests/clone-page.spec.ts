@@ -259,6 +259,16 @@ test("@lab an interrupted clone is restarted or removed only explicitly", async 
   const second = card(page, "fixture/second");
   await expect(first).toHaveAttribute("data-state", "interrupted");
   await expect(second).toHaveAttribute("data-state", "interrupted");
+  // The catalog says fixture/second is large, which adds a clone-mode choice
+  // to its card and moves the buttons down. Act only after the catalog is
+  // shown, or the click lands where the button was.
+  await expect(
+    page
+      .locator("main")
+      .getByRole("link")
+      .and(page.getByTestId("repository-option-fixture/first"))
+      .first(),
+  ).toBeVisible();
   // Nothing restarted by itself.
   expect(await posts(page)).toBe(before);
   await second

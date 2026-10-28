@@ -235,22 +235,30 @@ func interruptedCloneWithScan(ctx context.Context, home, git string, run cloneRu
 	readCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 	fd := strconv.Itoa(child)
-	_, e := run(readCtx, git, home, fd, "-c", "core.fsmonitor=false", "rev-parse", "--verify", "-q", "HEAD^{commit}")
+	// The clone list runs these reads without cloneWriter, so a write's
+	// strict scan below could otherwise find the list's Git inside the
+	// directory and refuse an idle clone. The scan drains them first.
+	read := func(args ...string) ([]byte, error) {
+		gitInspectionScan.RLock()
+		defer gitInspectionScan.RUnlock()
+		return run(readCtx, git, home, fd, append([]string{"-c", "core.fsmonitor=false"}, args...)...)
+	}
+	_, e := read("rev-parse", "--verify", "-q", "HEAD^{commit}")
 	var exit *nativeCommandExit
 	if !errors.As(e, &exit) || exit.Code != 1 || readCtx.Err() != nil {
 		return 0, cloneOrigin{}, false
 	}
-	remote, e := run(readCtx, git, home, fd, "-c", "core.fsmonitor=false", "config", "--local", "--get-all", "remote.origin.url")
+	remote, e := read("config", "--local", "--get-all", "remote.origin.url")
 	if e != nil || string(remote) != origin.URL+"\n" {
 		return 0, cloneOrigin{}, false
 	}
 	if origin.Forge {
-		user, e := run(readCtx, git, home, fd, "-c", "core.fsmonitor=false", "config", "--local", "--get-all", "credential."+origin.URL+".username")
+		user, e := read("config", "--local", "--get-all", "credential."+origin.URL+".username")
 		if e != nil || string(user) != origin.User+"\n" {
 			return 0, cloneOrigin{}, false
 		}
 	}
-	refs, e := run(readCtx, git, home, fd, "-c", "core.fsmonitor=false", "for-each-ref", "--count=1", "--format=%(refname)")
+	refs, e := read("for-each-ref", "--count=1", "--format=%(refname)")
 	if e != nil || len(refs) != 0 {
 		return 0, cloneOrigin{}, false
 	}

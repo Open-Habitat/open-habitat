@@ -545,3 +545,42 @@ func TestCloneListInconclusiveProcessScan(t *testing.T) {
 		})
 	}
 }
+
+// The list reads an interrupted clone without cloneWriter, so its Git must
+// count as an inspection: a restart or removal checking the same clone drains
+// it before scanning /proc instead of finding it inside and refusing.
+func TestInterruptedCloneReadsHoldTheInspectionLock(t *testing.T) {
+	home := t.TempDir()
+	path := filepath.Join(home, "src", "repo")
+	if err := os.MkdirAll(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"init", path}, {"-C", path, "remote", "add", "origin", "https://github.com/org/repo.git"}} {
+		if out, err := exec.Command("/usr/bin/git", args...).CombinedOutput(); err != nil {
+			t.Fatalf("git: %s: %v", out, err)
+		}
+	}
+	child, err := unix.Open(path, unix.O_RDONLY|unix.O_DIRECTORY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unix.Close(child)
+	commands, unguarded := 0, 0
+	run := func(ctx context.Context, program, cwd, fd string, args ...string) ([]byte, error) {
+		commands++
+		if gitInspectionScan.TryLock() {
+			gitInspectionScan.Unlock()
+			unguarded++
+		}
+		return cloneCommand(ctx, program, cwd, fd, args...)
+	}
+	clear := func(string, string, int, map[int]bool) ([]workspaceProcess, []workspaceProcess, bool) {
+		return nil, nil, true
+	}
+	if _, _, ok := interruptedCloneWithScan(context.Background(), home, "/usr/bin/git", run, os.Geteuid(), child, "repo", githubOrigin("org/repo"), clear); !ok {
+		t.Fatal("candidate not recognised")
+	}
+	if commands == 0 || unguarded != 0 {
+		t.Fatalf("%d of %d Git reads ran without the inspection lock", unguarded, commands)
+	}
+}
