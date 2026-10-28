@@ -126,7 +126,10 @@ resolve; `validate-contracts.py` is the offline contract check
 (`contracts/AGENTS.md`). `prune-closed.py` and `from-history.sh` carry out
 the root `AGENTS.md` rule that finished working material lives in history:
 the first lists or removes closed issues nothing living names, the second
-prints a removed file. `native-fixture.sh` builds the synthetic native
+prints a removed file. `screenshots-to-avif.py` turns PNG screenshots under
+`issues/` or `design-system/` into the AVIF that `issuectl doctor` expects;
+it removes a PNG only after its own AVIF decodes at the same size, so workers
+never need an `rm` on a variable path for this. `native-fixture.sh` builds the synthetic native
 workspace that `test/AGENTS.md` describes. `vm-serial-drain.py` is the guest's
 only channel back to the host: it caps the serial stream, retains only markers
 and a bounded prefix, and voids the proof if a fixture token appears anywhere,

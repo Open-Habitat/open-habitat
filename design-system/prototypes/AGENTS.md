@@ -129,7 +129,11 @@ säästyy; Jari arvioi ne. Workerin kierros:
   `lib/vendor/`-tiedostoja kokonaan: ne ovat satoja kilotavuja. Käytä
   `grep`iä, `head`iä ja `check.mjs`:ää, ja katso vain muutama ruutukaappaus.
 - Tarkista `check.mjs`:llä (vaalea, tumma, puhelin, vuorovaikutukset
-  klikattuina, konsoli puhdas). Commitoi kierroshakemisto; `dist/` ei ole
+  klikattuina, konsoli puhdas). Issueen talletettavat ruutukaappaukset
+  ovat AVIF-kuvia (`issuectl doctor` varoittaa muista): muunna ne
+  `python3 scripts/screenshots-to-avif.py issues/<slug>/evidence`, joka
+  varmistaa jokaisen AVIFin ja poistaa vasta sitten juuri sen PNG:n.
+  Älä tee samaa `convert … && rm`-komennoilla. Commitoi kierroshakemisto; `dist/` ei ole
   versionhallinnassa, joten raportoi rakennuskomento ja suuntien nimet.
 - Kirjaa issueen `result.md`: akseli, suunnat, mitä kukin päättää, mitä
   host-tietoja näkymä olettaa, ja kysymykset Jarille.

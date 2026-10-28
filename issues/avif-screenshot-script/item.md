@@ -3,13 +3,14 @@ created: 2026-10-28
 updated: 2026-10-28
 type: chore
 reporter: conductor
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: worker:r30-research-alder-pi-plugins/avif
 lane: prototype-tooling
 lane_seq: 1
 preparation: ready
+closed: 2026-10-28
 ---
 
 # Script to convert prototype/evidence screenshots to AVIF without rm on variable paths
