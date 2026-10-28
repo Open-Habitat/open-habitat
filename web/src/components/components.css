@@ -3914,8 +3914,9 @@ details[open] > summary:not([class])::before {
   opacity: 0.85;
   transition: opacity var(--ah-transition);
 }
-.ah-bash-window:hover > .ah-output-meta,
-.ah-bash-window:focus-within > .ah-output-meta,
+/* A code label stays put under the pointer and on touch; it gives way only
+   to output scrolled up beneath it. */
+.ah-bash-window.ah-output-scrolled > .ah-output-meta,
 .ah-file-diff-box:hover > .ah-output-meta,
 .ah-file-diff-box:focus-within > .ah-output-meta {
   opacity: 0;

@@ -34,7 +34,7 @@ async function selectLine(page: Page) {
 
 const selection = (page: Page) => page.evaluate(() => String(getSelection()));
 
-test("@lab a selection in a live and in a settled reply survives updates", async ({
+test("@lab a selection in a live and in a settled reply survives updates, and code labels hold still", async ({
   page,
 }) => {
   test.setTimeout(90000);
@@ -73,9 +73,9 @@ test("@lab a selection in a live and in a settled reply survives updates", async
     page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeVisible({ timeout: 30000 });
 
-  // A settled reply keeps its DOM: the selection and the code block stay
-  // while the pointer moves over the copy control and the page keeps
-  // re-rendering around them.
+  // A settled reply keeps its DOM: the selection, the code block and its
+  // label stay unchanged while the pointer moves over the copy control and
+  // the page keeps re-rendering around them.
   await page.evaluate(() => getSelection()?.removeAllRanges());
   const settled = await selectLine(page);
   const window_ = turn.locator(".ah-markdown-code .ah-bash-window").first();
@@ -88,13 +88,21 @@ test("@lab a selection in a live and in a settled reply survives updates", async
   if (!box) throw new Error("no copy control");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.waitForTimeout(400);
+  const label = window_.locator(".ah-output-meta");
+  const read = () =>
+    label.evaluate((node) => Number(getComputedStyle(node).opacity));
+  const resting = await read();
+  expect(resting).toBeGreaterThan(0.5);
+  const samples: number[] = [];
   for (let i = 0; i < 40; i++) {
     await page.mouse.move(
       box.x + box.width / 2 + ((i % 5) - 2) * 6,
       box.y + box.height / 2 + ((i % 3) - 1) * 10,
     );
+    samples.push(await read());
     await page.waitForTimeout(60);
   }
+  expect(samples.every((value) => value === resting)).toBe(true);
   expect(
     await turn
       .locator(".ah-markdown-code .ah-bash-window")

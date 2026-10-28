@@ -66,7 +66,8 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
   await expect(tool("read").getByTestId("output-copy")).toBeVisible();
   await expectNativeContent(tool("write"), "typescript", {});
   // The label is inside the surface, above its first line and left of the rail.
-  // Hovering or keyboard focus lets the reader see the code unobstructed.
+  // Over that reserved space a code label stays put under the pointer; the
+  // diff card's label gives way on hover.
   for (const name of ["read", "write", "edit"]) {
     const box = tool(name).locator(
       name === "edit" ? ".ah-file-diff-box" : ".ah-output-box",
@@ -93,7 +94,8 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
     }, name);
     expect(layout).toEqual({ inside: true, clearRail: true });
     await box.hover();
-    await expect(label).toHaveCSS("opacity", "0");
+    if (name === "edit") await expect(label).toHaveCSS("opacity", "0");
+    else await expect(label).not.toHaveCSS("opacity", "0");
   }
   await expect(async () => {
     const toggle = tool("edit").locator("button").first();

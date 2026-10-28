@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-28/code-block-language-label-flickers
 lane: conversation-select
 preparation: ready
+closed: 2026-10-28
 ---
 
 # Code block language label flickers when the mouse moves over the copy button
@@ -19,4 +20,4 @@ Jari 2026-10-28 (Birch, pilot.13): koodiblokin yläkulman copy-painikkeen kohdal
 
 ## Acceptance Criteria
 
-- [ ] Kielimerkintä ja copy-painike pysyvät vakaina hiiren liikkuessa; työpöytä ja kosketus
+- [x] Kielimerkintä ja copy-painike pysyvät vakaina hiiren liikkuessa; työpöytä ja kosketus

@@ -226,7 +226,9 @@ export function OutputBox({
   };
   return (
     <div className="ah-output-box">
-      <div className="ah-bash-window">
+      <div
+        className={`ah-bash-window${view === "scroll" && !position.top ? " ah-output-scrolled" : ""}`}
+      >
         {language || long ? (
           <small className="ah-output-meta">
             {language}
