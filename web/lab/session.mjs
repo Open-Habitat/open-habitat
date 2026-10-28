@@ -20,11 +20,13 @@ export async function openLab({
   identity = "alice",
   width = 1440,
   height = 900,
+  deviceScaleFactor = 1,
 } = {}) {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
     viewport: { width, height },
+    deviceScaleFactor,
   });
   const page = await context.newPage();
   await page.goto(`${origin}/workspaces`);

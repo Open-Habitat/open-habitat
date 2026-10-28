@@ -108,6 +108,26 @@
 .s-editor > .s-row {
   padding: 0;
 }
+/* What a person needs only now and then, folded under its row. */
+.s-more {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  line-height: 1.4;
+}
+.s-more summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--ah-ink-2);
+}
+.s-more ul {
+  display: grid;
+  gap: 4px;
+  margin: var(--ah-s2) 0 0;
+  padding-left: 1.2em;
+}
+.s-more code {
+  overflow-wrap: anywhere;
+}
 .s-field {
   display: flex;
   flex-direction: column;

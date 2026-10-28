@@ -3,13 +3,14 @@ created: 2026-10-28
 updated: 2026-10-28
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/sanelu-settings-text-trim
 lane: settings-sanelu
 lane_seq: 2
+closed: 2026-10-28
 ---
 
 # Settings › Sanelu and the shared Soniox key: far too much explanatory text

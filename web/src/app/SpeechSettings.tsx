@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { ControlButton, Segmented } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
 import {
@@ -43,9 +43,7 @@ function SpeechKeyForm({
       <div className="s-row">
         <div className="s-lbl">
           <strong>Alue</strong>
-          <span className="s-desc">
-            Sama kuin Soniox-projektin, jossa avain on tehty.
-          </span>
+          <span className="s-desc">Sama kuin Soniox-projektissa.</span>
         </div>
         <div className="s-val">
           <Segmented
@@ -105,8 +103,23 @@ function SpeechKeyForm({
   );
 }
 
-const permissions =
-  "Soniox-konsolissa avaimelle riittävät oikeudet Temporary API keys ja Speech-to-text, real-time.";
+/** What is needed only now and then, folded under the key row. */
+function SpeechKeyMore({ children }: { children: ReactNode }) {
+  return (
+    <div className="s-editor">
+      <details className="s-more" data-testid="speech-key-more">
+        <summary>Oikeudet ja säilytys</summary>
+        <ul>
+          <li>
+            Soniox-konsolissa avaimelle riittävät oikeudet Temporary API keys ja
+            Speech-to-text, real-time.
+          </li>
+          {children}
+        </ul>
+      </details>
+    </div>
+  );
+}
 
 /** Asetukset › Sanelu: the person's own Soniox key, which their daemon
  * keeps in their home and uses to start each dictation. */
@@ -162,11 +175,6 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
   const site = state.source === "site";
   return (
     <div className="s-stack">
-      <p className="s-intro">
-        Sanelu kirjoittaa puheesi viestikenttään. Puhe kulkee selaimesta suoraan
-        Sonioxille, ja käyttö laskutetaan sen avaimen omistajalta, jonka avainta
-        käytetään.
-      </p>
       <div className="s-card">
         <div className="s-row s-marked" data-testid="speech-key-state">
           <Icon name="mic" />
@@ -178,9 +186,9 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
               data-source={state.source ?? "none"}
             >
               {!state.present
-                ? "Ei avainta. Sanelu tarvitsee Soniox-avaimen."
+                ? "Ei avainta. Sanelu tarvitsee sen."
                 : site
-                  ? `Palvelimen ylläpitäjän antama avain …${state.suffix} (${regionNames[state.region ?? "eu"]}). Oma avain korvaa sen.`
+                  ? `Ylläpitäjän avain …${state.suffix} (${regionNames[state.region ?? "eu"]}).`
                   : `Oma avain …${state.suffix} (${regionNames[state.region ?? "eu"]}).`}
             </span>
           </div>
@@ -216,7 +224,7 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
                 void write(() => saveSpeechKey(csrf, key, region))
               }
               onCancel={editing ? () => setEditing(false) : undefined}
-              note={`Avain tallentuu kotihakemistoosi (~/.config/soniox/key.json), ja agenttisi voivat käyttää sitä. Sitä ei näytetä uudelleen. ${permissions}`}
+              note="Tallennettua avainta ei näytetä uudelleen."
             />
           ) : null}
           {failed ? (
@@ -228,6 +236,12 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
               Muutoksen tulos ei varmistunut. Tila luettiin uudelleen.
             </p>
           ) : null}
+          <SpeechKeyMore>
+            <li>
+              Avain tallentuu tiedostoon <code>~/.config/soniox/key.json</code>,
+              ja agenttisi voivat käyttää sitä.
+            </li>
+          </SpeechKeyMore>
         </div>
       </div>
     </div>
@@ -291,14 +305,12 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
     );
   const key = state.site_key;
   const given = Object.entries(state.given ?? {}).filter(([, n]) => n);
+  const missed = !!(state.given?.not_reached || state.given?.unknown);
   return (
     <div className="s-stack">
       <p className="s-intro">
-        Yhteinen Soniox-avain antaa sanelun kaikille, joilla ei ole omaa.
-        Jokainen saa siitä kopion kotihakemistoonsa, ja hänen agenttinsa voivat
-        käyttää sitä. Käyttö laskutetaan sinulta, ja kaikki jakavat avaimen
-        samanaikaisten sanelujen rajan. Kopiota ei voi perua kuin vaihtamalla
-        avain Soniox-konsolissa.
+        Kaikki, joilla ei ole omaa avainta, sanelevat tällä. Käyttö laskutetaan
+        sinulta.
       </p>
       <div className="s-card">
         <div className="s-row s-marked" data-testid="site-speech-key">
@@ -308,7 +320,7 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
             <span className="s-desc">
               {key
                 ? `…${key.suffix} (${regionNames[key.region]}), otettu käyttöön ${new Date(key.set_at).toLocaleDateString("fi-FI")}.`
-                : "Ei yhteistä avainta. Sanelu toimii vain niillä, jotka lisäävät oman avaimen."}
+                : "Ei yhteistä avainta."}
             </span>
           </div>
           <div className="s-val">
@@ -343,7 +355,7 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
                 void write(() => setSiteSpeechKey(csrf, k, region))
               }
               onCancel={editing ? () => setEditing(false) : undefined}
-              note={`Tallennus antaa avaimen heti jo liittyneille, joilla ei ole omaa, ja uudet saavat sen ensimmäisellä kirjautumisellaan. Tallenna sama avain uudelleen, jos joku jäi tavoittamatta. ${permissions}`}
+              note="Tallennettua avainta ei näytetä uudelleen."
             />
           ) : null}
           {busy ? (
@@ -361,6 +373,9 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
                 .map(([word, n]) => `${n} ${givenWords[word] ?? word}`)
                 .join(", ")}
               .
+              {missed
+                ? " Tavoittamattomat saavat avaimen, kun tallennat sen uudelleen."
+                : ""}
             </p>
           ) : null}
           {problem ? (
@@ -368,6 +383,18 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
               {problem}
             </p>
           ) : null}
+          <SpeechKeyMore>
+            <li>
+              Jokainen saa avaimesta kopion kotihakemistoonsa, ja hänen
+              agenttinsa voivat käyttää sitä. Kopiota ei voi perua kuin
+              vaihtamalla avain Soniox-konsolissa.
+            </li>
+            <li>
+              Jo liittyneet saavat avaimen heti, uudet ensimmäisellä
+              kirjautumisellaan.
+            </li>
+            <li>Kaikki jakavat avaimen samanaikaisten sanelujen rajan.</li>
+          </SpeechKeyMore>
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@ export function openLab(options?: {
   identity?: "alice" | "bob";
   width?: number;
   height?: number;
+  deviceScaleFactor?: number;
 }): Promise<{ browser: Browser; context: BrowserContext; page: Page }>;
 export function snapshot(
   page: Page,

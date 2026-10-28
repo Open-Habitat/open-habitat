@@ -363,5 +363,12 @@ test.describe("@speech Sanelu settings layout", () => {
           .violations,
       ).toEqual([]);
     }
+    // The Soniox console permissions and the key file wait behind the
+    // card's disclosure instead of lengthening the form's note.
+    const more = page.getByTestId("speech-key-more");
+    await expect(more.getByText("Temporary API keys")).toBeHidden();
+    await more.locator("summary").click();
+    await expect(more.getByText("Temporary API keys")).toBeVisible();
+    await expect(more).toContainText("~/.config/soniox/key.json");
   });
 });

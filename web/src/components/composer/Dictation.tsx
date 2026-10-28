@@ -41,7 +41,7 @@ function noticeFor(view: DictationView): DictationNotice | null {
       id: "ceiling",
       tone: "info",
       title: "Sanelu päättyi 10 minuutin kattoon",
-      text: "Kaikki sanottu on kentässä. Jatka uudella sanelulla, jos sinulla on vielä sanottavaa.",
+      text: "Kaikki sanottu on kentässä.",
       actions: ["resume"],
     };
   if (view.ended === "dropped")
@@ -63,7 +63,7 @@ function noticeFor(view: DictationView): DictationNotice | null {
         id: view.failure,
         tone: "info",
         title: "Sanelu tarvitsee Soniox-avaimen",
-        text: "Lisää oma avain asetuksissa. Jos palvelimen ylläpitäjä lisää yhteisen avaimen, sanelu toimii ilman omaa.",
+        text: "Lisää avain asetuksissa.",
         actions: ["settings"],
       };
     case "microphone_denied":
@@ -79,15 +79,15 @@ function noticeFor(view: DictationView): DictationNotice | null {
         id: view.failure,
         tone: "danger",
         title: "Soniox hylkäsi avaimen",
-        text: "Avain on poistettu tai sen oikeudet eivät riitä reaaliaikaiseen saneluun. Vaihda avain asetuksissa.",
+        text: "Vaihda avain asetuksissa.",
         actions: ["settings"],
       };
     case "speech_limit_reached":
       return {
         id: view.failure,
         tone: "danger",
-        title: "Sanelu ei nyt mahdu",
-        text: "Soniox-avaimella on jo niin monta sanelua käynnissä kuin se sallii. Yritä hetken päästä tai lisää oma avain.",
+        title: "Soniox-avaimen sanelut ovat täynnä",
+        text: "Yritä hetken päästä tai lisää oma avain.",
         actions: ["retry", "settings"],
       };
     case "unsupported":
@@ -95,7 +95,7 @@ function noticeFor(view: DictationView): DictationNotice | null {
         id: view.failure,
         tone: "danger",
         title: "Tämä selain ei pysty saneluun",
-        text: "Selain ei anna mikrofonin ääntä sivulle. Kokeile toista selainta.",
+        text: "Kokeile toista selainta.",
         actions: [],
       };
     default:
@@ -103,7 +103,7 @@ function noticeFor(view: DictationView): DictationNotice | null {
         id: "speech_unavailable",
         tone: "danger",
         title: "Soniox ei vastaa",
-        text: "Sanelua ei saatu käyntiin. Yritä hetken päästä uudelleen.",
+        text: "Yritä hetken päästä uudelleen.",
         actions: ["retry"],
       };
   }
@@ -368,10 +368,7 @@ export function DictationCeiling({ view }: { view: DictationView | null }) {
       <Icon name="clock" />
       <span>
         <strong>Sanelu päättyy {mmss(left)} kuluttua</strong>{" "}
-        <span className="ah-dictation-sub">
-          10 minuutin kohdalla. Kaikki sanottu jää kenttään, ja voit jatkaa
-          uudella sanelulla.
-        </span>
+        <span className="ah-dictation-sub">Kaikki sanottu jää kenttään.</span>
       </span>
     </div>
   );
