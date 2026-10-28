@@ -1,0 +1,21 @@
+/* Round 1: Käynnissä grouped. */
+.grp { display: grid; gap: 1px; margin-top: 2px; }
+.grp-head { position: sticky; top: -8px; z-index: 1; display: flex; align-items: center; gap: 6px; margin: 0; padding: 6px 8px 2px; background: var(--ah-rail); font: 600 12px var(--ah-mono); color: var(--ah-ink-2); }
+.grp + .grp { margin-top: 6px; }
+.fold { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 26px; padding: 3px 8px; border: 0; border-radius: var(--ah-r-nav); background: none; color: var(--ah-muted); font-size: 12px; text-align: left; cursor: pointer; }
+.fold:hover { background: var(--ah-hover); color: var(--ah-ink-2); }
+.fold .chev { display: inline-grid; place-items: center; width: 16px; }
+.fold .chev svg { width: 12px; height: 12px; }
+.fold .fl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fold.dormant .fl { font-family: var(--ah-mono); }
+.rule { display: flex; align-items: center; gap: 8px; margin: 8px 8px 2px; color: var(--ah-faint); font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; }
+.rule::after { content: ""; flex: 1; height: 1px; background: var(--ah-line); }
+.row.sum .chev { display: inline-grid; place-items: center; width: 14px; height: 20px; color: var(--ah-faint); }
+.row.sum .chev svg { width: 12px; height: 12px; }
+.nest { display: grid; gap: 1px; padding-left: 14px; margin-left: 8px; border-left: 1px solid var(--ah-line); }
+.ws-item > .nest { margin: 0 0 4px 15px; padding-left: 6px; }
+.ws-item > .nest .row.one { padding-block: 3px; }
+.ws-item > .nest .row.one .ttl { font-size: 12.5px; }
+.more { position: sticky; bottom: -12px; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; margin-top: 6px; padding: 5px 8px; border: 0; border-top: 1px solid var(--ah-line-soft); background: var(--ah-rail); color: var(--ah-muted); font-size: 12px; cursor: pointer; }
+.more:hover { color: var(--ah-ink); }
+.more[hidden] { display: none; }
