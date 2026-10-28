@@ -1,9 +1,9 @@
 ---
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-28
 type: improvement
 reporter: conductor
-status: open
+status: done
 priority: low
 provenance: other
 provenance_detail: views-blank-and-birch-gap review
@@ -11,6 +11,7 @@ source_ref: taskfleet:01m5y4wwrqrdhpw976sbf6evjd/frame-src
 lane: offers
 lane_seq: 6
 preparation: ready
+closed: 2026-10-28
 ---
 
 # HTML view can navigate its own frame to a foreign origin (no frame-src on the app page)

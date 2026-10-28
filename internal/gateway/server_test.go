@@ -65,7 +65,8 @@ func TestAuthenticatedFrameProtection(t *testing.T) {
 	a.access = &accessVerifier{}
 	denied := httptest.NewRecorder()
 	NewWithAuth("", a).ServeHTTP(denied, httptest.NewRequest("GET", "https://host.test/auth/session", nil))
-	if denied.Code != 403 || denied.Header().Get("Content-Security-Policy") != "frame-ancestors 'none'" || denied.Header().Get("X-Frame-Options") != "DENY" {
+	const noFrames = "frame-ancestors 'none'; frame-src 'none'"
+	if denied.Code != 403 || denied.Header().Get("Content-Security-Policy") != noFrames || denied.Header().Get("X-Frame-Options") != "DENY" {
 		t.Fatal("Access denial missing protection")
 	}
 	a.access = nil
@@ -76,8 +77,29 @@ func TestAuthenticatedFrameProtection(t *testing.T) {
 	} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest(tc.method, "https://host.test"+tc.path, nil))
-		if w.Header().Get("Content-Security-Policy") != "frame-ancestors 'none'" || w.Header().Get("X-Frame-Options") != "DENY" {
+		if w.Header().Get("Content-Security-Policy") != noFrames || w.Header().Get("X-Frame-Options") != "DENY" {
 			t.Errorf("%s %s: missing protection (%d)", tc.method, tc.path, w.Code)
+		}
+	}
+}
+
+// The app may frame only the view and editor namespaces, as narrowly as CSP's
+// whole-label wildcard can name them, so a view cannot take its frame elsewhere.
+func TestAppFramePolicy(t *testing.T) {
+	for _, tc := range []struct{ view, editor, want string }{
+		{"", "", "frame-ancestors 'none'; frame-src 'none'"},
+		{"https://oh-view-*.example.org", "", "frame-ancestors 'none'; frame-src https://*.example.org"},
+		{"https://*.views.example.org", "", "frame-ancestors 'none'; frame-src https://*.views.example.org"},
+		{"", "https://code.example.org", "frame-ancestors 'none'; frame-src https://*.code.example.org"},
+		{"https://oh-view-*.example.org", "https://oh-code-*.example.org", "frame-ancestors 'none'; frame-src https://*.example.org"},
+		{"https://oh-view-*.example.org", "https://code.example.org", "frame-ancestors 'none'; frame-src https://*.example.org https://*.code.example.org"},
+	} {
+		_, a, _, _, _ := fixture(t)
+		a.cfg.ViewOrigin, a.cfg.EditorOrigin = tc.view, tc.editor
+		w := httptest.NewRecorder()
+		NewWithAuth(t.TempDir(), a).ServeHTTP(w, httptest.NewRequest("GET", "https://host.test/", nil))
+		if got := w.Header().Get("Content-Security-Policy"); got != tc.want || w.Header().Get("X-Frame-Options") != "DENY" {
+			t.Errorf("view %q editor %q: CSP %q, want %q", tc.view, tc.editor, got, tc.want)
 		}
 	}
 }

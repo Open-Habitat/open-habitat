@@ -191,7 +191,7 @@ func TestEditorOriginIsolation(t *testing.T) {
 		t.Fatalf("editor response headers: %v", res.Header)
 	}
 	app := d.do("GET", "host.test", "/healthz", "", nil)
-	if app.Header.Get("Content-Security-Policy") != "frame-ancestors 'none'" || app.Header.Get("X-Frame-Options") != "DENY" {
+	if app.Header.Get("Content-Security-Policy") != "frame-ancestors 'none'; frame-src https://*.test" || app.Header.Get("X-Frame-Options") != "DENY" {
 		t.Fatalf("app frame headers: %v", app.Header)
 	}
 	frame := d.do("GET", editorTestHost, "/_open-habitat/frame?workspace_id=ws_example123", "", nil)

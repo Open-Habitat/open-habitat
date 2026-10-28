@@ -131,6 +131,42 @@ test("a conversation offer opens sandboxed in the panel, isolated from the app s
   await expect(open).toBeFocused();
 });
 
+test("a view cannot navigate its frame to a foreign origin", async ({
+  page,
+}) => {
+  const id = await conversation(page);
+  await offer(page, id);
+  // Anything the foreign site would serve is recorded, never shown.
+  const foreign: string[] = [];
+  await page.route("https://foreign.example/**", (route) => {
+    foreign.push(route.request().url());
+    return route.fulfill({ contentType: "text/html", body: "<p>foreign</p>" });
+  });
+  await page.getByTestId("view-offer").getByTestId("view-open").click();
+  const body = page.frameLocator('[data-testid="view-frame"]').locator("body");
+  await expect(body).toHaveAttribute("data-script", "yes");
+  await expect(body).toHaveAttribute("data-style", "rgb(1, 2, 3)");
+
+  // The view's own script steers its frame away; the app page's frame-src
+  // admits only the view and editor namespaces, so the browser refuses.
+  const view = page.frames().find((f) => f.url().includes("oh-view-"));
+  expect(view).toBeDefined();
+  const refused = page.waitForEvent("console", (m) =>
+    /frame-src/.test(m.text()),
+  );
+  await view?.evaluate(() =>
+    setTimeout(() => {
+      location.href = "https://foreign.example/phish";
+    }),
+  );
+  // Chrome names only the refused origin, not the path.
+  expect((await refused).text()).toContain("https://foreign.example/");
+  expect(foreign).toEqual([]);
+  expect(page.frames().some((f) => f.url().includes("foreign.example"))).toBe(
+    false,
+  );
+});
+
 test("the own tab frames the view on the app's page, with no opener", async ({
   page,
   context,
