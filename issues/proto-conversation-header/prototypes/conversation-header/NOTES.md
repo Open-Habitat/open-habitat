@@ -1,5 +1,9 @@
 # Keskustelun otsake työpöydällä
 
+Tämä on kierros 1. Jari valitsi siitä suunnan 1 Lyhenee. Kierros 2
+(malli- ja Git-siru) on hakemistossa `../conversation-header-2/`, ja sen opas
+on `../conversation-header-2/NOTES.md`.
+
 Avaa `index.html` selaimessa. Se on yksi offline-tiedosto, käsin kirjoitettu
 eikä tuotantokomponenteista rakennettu. Lähde on
 `design-system/prototypes/rounds/2026-10-28-keskustelun-otsake/`. Rakennus ja
