@@ -2,7 +2,7 @@
 created: 2026-10-28
 updated: 2026-10-28
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: focused test run by a taskfleet worker
@@ -11,6 +11,7 @@ originating_run: 01m60r1c8x04g79g3yqtkd9a2y
 originating_run_kind: spinoff
 lane: agent-lifecycle
 preparation: ready
+closed: 2026-10-28
 ---
 
 # Pi catch-up test: an ordinary first start gets a crash/interrupted-turn notice (TestProcessCatchUpLogic fails on main)

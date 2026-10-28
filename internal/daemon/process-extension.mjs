@@ -245,6 +245,12 @@ export function waitReminder(uncovered, reminded) {
 export default function (pi) {
   let server, context, extensionVersion = null, shuttingDown = false;
   const launchedAt = Date.now();
+  // The rest belongs to this launch only. Left in the environment it would
+  // pass to every tool, tmux window and nested Pi this one starts, each of
+  // which would then claim the same stop as its own.
+  let launchStop = stopFact();
+  delete process.env.OPEN_HABITAT_STOP_CAUSE;
+  delete process.env.OPEN_HABITAT_STOPPED_AT;
   const sockets = new Set();
   const watchers = new Set();
   const outputLeases = new Map();
@@ -397,6 +403,8 @@ export default function (pi) {
   // ADR 0017 as amended: a non-triggering context message on the first run,
   // which only the person's send starts after a restart (ADR 0020).
   function prepareCatchUp(ctx) {
+    const stopped = launchStop; // the first session this Pi opens woke from it
+    launchStop = null;
     try {
       const branch = ctx.sessionManager.getBranch();
       if (!branch?.length) return null;
@@ -408,7 +416,7 @@ export default function (pi) {
       const read = () => typeof sessionId === 'string' && sessionId && ctx.cwd
         ? readSpinoffs({ sessionId, cwd: ctx.cwd, since, waited, reported: facts.runs }).catch(() => unread)
         : Promise.resolve(unread);
-      return { processes, spinoffs: read(), read, at: Date.now(), stopped: stopFact(), turnCut: facts.turnCut };
+      return { processes, spinoffs: read(), read, at: Date.now(), stopped, turnCut: facts.turnCut };
     } catch { return null; }
   }
   pi.on('before_agent_start', async () => {

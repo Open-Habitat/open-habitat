@@ -68,11 +68,21 @@ test('without Taskfleet installed no run exists, which is an empty inventory, no
   } finally { process.env.PATH = path; }
 });
 
-test('the first run after Pi starts gets one context message, and only when there is news', async () => {
+// Each test owns the variables the daemon passes at launch: this suite may
+// itself run under a Habitat Pi, whose own stop must not leak in.
+const launchEnv = ['OH_PROCESS_SOCKET', 'OPEN_HABITAT_STOP_CAUSE', 'OPEN_HABITAT_STOPPED_AT'];
+async function withLaunchEnv(env, body) {
+  const previous = Object.fromEntries(launchEnv.map(k => [k, process.env[k]]));
+  for (const k of launchEnv) delete process.env[k];
+  Object.assign(process.env, env);
+  try { await body(); } finally {
+    for (const k of launchEnv) previous[k] === undefined ? delete process.env[k] : process.env[k] = previous[k];
+  }
+}
+
+test('the first run after Pi starts gets one context message, and only when there is news', () => withLaunchEnv({}, async () => {
   const hooks = new Map();
-  const previous = process.env.OH_PROCESS_SOCKET;
-  delete process.env.OH_PROCESS_SOCKET;
-  try {
+  {
     companion({ on: (k, f) => hooks.set(k, f), events: { on() {}, emit() {} } });
     const ctx = branch => ({ cwd: '/nonexistent-oh-test', sessionManager: { getBranch: () => branch, getSessionId: () => 's1' } });
     await hooks.get('session_start')({}, ctx([start('proc_aaaa', 1), ended('proc_aaaa')]));
@@ -83,10 +93,24 @@ test('the first run after Pi starts gets one context message, and only when ther
     assert.match(first.message.content, /proc_bbbb "proc_bbbb": npm run dev/);
     assert.deepEqual(first.message.details.processes, [{ id: 'proc_bbbb', startTime: 1, name: 'proc_bbbb' }]);
     assert.equal(await hooks.get('before_agent_start')({}), undefined, 'later runs are not told again');
-  } finally {
-    if (previous !== undefined) process.env.OH_PROCESS_SOCKET = previous;
   }
-});
+}));
+
+test('the stop the daemon passed is this launch\'s alone: its first session takes it, and nothing Pi starts inherits it', () => withLaunchEnv({ OPEN_HABITAT_STOP_CAUSE: 'crash', OPEN_HABITAT_STOPPED_AT: '2026-10-28T07:03:43Z' }, async () => {
+  const hooks = new Map();
+  companion({ on: (k, f) => hooks.set(k, f), events: { on() {}, emit() {} } });
+  assert.equal(process.env.OPEN_HABITAT_STOP_CAUSE, undefined, 'a tool, tmux window or nested Pi would claim this stop as its own');
+  assert.equal(process.env.OPEN_HABITAT_STOPPED_AT, undefined);
+  const said = (role, extra = {}) => ({ type: 'message', message: { role, ...extra } });
+  const cut = [said('user'), said('assistant', { stopReason: 'toolUse' })];
+  const ctx = branch => ({ cwd: undefined, sessionManager: { getBranch: () => branch, getSessionId: () => 's1' } });
+  await hooks.get('session_start')({}, ctx(cut));
+  const first = await hooks.get('before_agent_start')({});
+  assert.deepEqual(first.message.details.stopped, { cause: 'crash', at: '2026-10-28T07:03:43Z' });
+  assert.equal(first.message.details.interrupted_turn, true);
+  await hooks.get('session_start')({}, ctx(cut));
+  assert.equal(await hooks.get('before_agent_start')({}), undefined, 'a later session in this Pi did not wake from that stop');
+}));
 
 test('cross-workspace attribution, waited runs beyond the newest twenty, and stalls the record\'s time cannot show', async () => {
   const since = Date.parse('2026-10-16T12:00:00Z');
