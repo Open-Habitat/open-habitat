@@ -395,6 +395,16 @@ const googleSteps: Step[] = [
         <Path p="Google Auth platform › Clients › Create Client" />
         <Val k="Application type" v="Desktop app" copy={false} />
         <Val k="Name" v="Open Habitat" />
+        <Val
+          k="Use this client for an AI-powered agent"
+          v="valittu"
+          copy={false}
+        />
+        <p className="si-effect" data-testid="si-agent-client">
+          Tätä asiakasta käyttävät vain agentit. Valinta ei anna lisäoikeuksia,
+          mutta osa Googlen MCP-palveluista hyväksyy vain agentiksi merkityn
+          asiakkaan.
+        </p>
         <p className="si-quiet">
           Ei uudelleenohjausosoitetta. Palvelin käyttää osoitetta{" "}
           <code>{googleRedirect}</code>.

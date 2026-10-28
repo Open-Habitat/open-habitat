@@ -731,7 +731,10 @@ Add this section to `/opt/open-habitat/integrations.json` beside `tools`:
 
 Agents use gog through the absolute path the generated personal-data skill
 names. Use an **installed/Desktop** OAuth client; no redirect URI is registered, the
-daemon uses `http://localhost` (no port) and the person pastes it back. Enable Drive API, Gmail API, Google Calendar API and People API in
+daemon uses `http://localhost` (no port) and the person pastes it back. Tick
+**Use this client for an AI-powered agent** when creating it: only agents use
+this client, the flag grants nothing extra, and some Google MCP endpoints accept
+only a client marked as an agent. Enable Drive API, Gmail API, Google Calendar API and People API in
 its Google Cloud project. The requested permissions are `openid`, `email`,
 `https://www.googleapis.com/auth/drive`,
 `https://www.googleapis.com/auth/gmail.modify`,

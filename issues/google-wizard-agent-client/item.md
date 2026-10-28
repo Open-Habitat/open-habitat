@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: google-wizard
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/google-wizard-agent-client
+closed: 2026-10-28
 ---
 
 # Google setup wizard: tell the operator to mark the OAuth client as an AI-powered agent
