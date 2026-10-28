@@ -35,10 +35,12 @@ type attempt struct {
 	level Level
 	// resume is the daemon's own restart of an interrupted first pass. It
 	// has no owner, so no browser session sees, drives or cancels it.
-	resume           bool
-	state            string
-	prompt           Prompt
-	folders          []Folder
+	resume  bool
+	state   string
+	prompt  Prompt
+	folders []Folder
+	// measuring are the folders whose size FolderSizer is still counting.
+	measuring        map[string]bool
 	unavailableSites []string
 	room             Room
 	// directory is where the chosen folders will sync, home-relative.
@@ -57,6 +59,9 @@ type attempt struct {
 	// committing marks the native commit, which may run a level change's
 	// last two-way pass: the exchange's timeout no longer applies to it.
 	committing bool
+	// skipped marks a folder step the person answered by leaving the files
+	// out; like an initial sync, no exchange timeout applies after it.
+	skipped bool
 	// choose receives the person's folder choice.
 	choose chan []string
 	// existing are the accounts the tool held when the attempt started; an
@@ -99,6 +104,9 @@ type folder struct {
 	ID        string  `json:"id"`
 	Name      string  `json:"name"`
 	Bytes     *uint64 `json:"bytes,omitempty"`
+	Estimated bool    `json:"estimated,omitempty"`
+	Measuring bool    `json:"measuring,omitempty"`
+	Whole     bool    `json:"whole,omitempty"`
 	Suggested bool    `json:"suggested"`
 }
 
@@ -161,7 +169,7 @@ func (r *relay) view(owner string, now time.Time) LoginView {
 				n := f.Bytes
 				bytes = &n
 			}
-			folders = append(folders, folder{f.ID, f.Name, bytes, f.Suggested})
+			folders = append(folders, folder{f.ID, f.Name, bytes, f.Estimated && bytes != nil, a.measuring[f.ID], f.Whole, f.Suggested})
 		}
 		v.Folders = &folders
 	case "failed":
@@ -546,14 +554,88 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			c.failAttempt(a, ToolFailed)
 			return
 		}
+		// A suggestion that does not fit the home is no suggestion: the
+		// person chooses folders or leaves the files out instead.
+		var suggested uint64
+		for _, f := range folders {
+			if f.Suggested && !f.UnknownSize {
+				suggested += f.Bytes
+			}
+		}
+		if room.OK && suggested > room.Free {
+			for i := range folders {
+				folders[i].Suggested = false
+			}
+		}
+		sizer, sizes := fe.(FolderSizer)
+		measuring := map[string]bool{}
+		if sizes {
+			for _, f := range folders {
+				if f.UnknownSize || f.Estimated {
+					measuring[f.ID] = true
+				}
+			}
+		}
 		if !c.setAttempt(a, func() {
-			a.state, a.address, a.folders, a.room, a.directory = "choose_folders", address, folders, room, dirs[0].Path
+			a.state, a.address, a.folders, a.room, a.directory, a.measuring = "choose_folders", address, folders, room, dirs[0].Path, measuring
 		}) {
 			c.discardUnfinished(e, a, address)
 			return
 		}
+		// Sizes are counted while the person chooses. The count reads the
+		// provider only and ends before the choice is applied, so it never
+		// overlaps the measurement or the pass that follows.
+		sizeCtx, sizeCancel := context.WithCancel(phaseCtx)
+		sized := make(chan struct{})
+		if sizes && len(measuring) > 0 {
+			go func() {
+				defer close(sized)
+				sizer.SizeFolders(sizeCtx, c.env, address, func(id string, bytes uint64) {
+					c.setAttempt(a, func() {
+						if a.state != "choose_folders" || bytes > maxSyncBytes {
+							return
+						}
+						for i := range a.folders {
+							if a.folders[i].ID == id {
+								a.folders[i].Bytes, a.folders[i].UnknownSize, a.folders[i].Estimated = bytes, false, false
+								delete(a.measuring, id)
+							}
+						}
+					})
+				})
+				c.setAttempt(a, func() { a.measuring = nil })
+			}()
+		} else {
+			close(sized)
+		}
+		var ids []string
+		var chosen bool
 		select {
-		case ids := <-a.choose:
+		case ids = <-a.choose:
+			chosen = true
+		case <-phaseCtx.Done():
+		}
+		sizeCancel()
+		<-sized
+		switch {
+		case chosen && len(ids) == 0:
+			// The person left the files out; the login and the provider's
+			// other services stay. Signing in again offers the choice.
+			c.write.Lock()
+			if !c.live(a) || ctx.Err() != nil {
+				c.dropStale(e, a, address)
+				c.write.Unlock()
+				return
+			}
+			if !c.setAttempt(a, func() { a.state, a.address = "completed", address }) {
+				c.dropStale(e, a, address)
+				c.write.Unlock()
+				return
+			}
+			c.reconcile()
+			c.write.Unlock()
+			return
+		case chosen:
 			// The choice is applied under the write lock and only while the
 			// attempt still owns its outcome: a removal or a cancellation
 			// that won the race leaves nothing behind.
@@ -568,8 +650,10 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			syncCtx := context.WithValue(ctx, syncProgressKey{}, func(p SyncProgress) {
 				c.setAttempt(a, func() { a.progress = &p })
 			})
-			// Recursive inventory belongs to the explicitly approved background
-			// pass. No copy is allowed until a fresh quota observation admits it.
+			// No copy is allowed until a fresh count and a fresh quota
+			// observation admit it. A size counted while the person chose
+			// may be minutes old, so a native measurer counts again; without
+			// one, only sizes the entry itself listed are admitted.
 			var syncErr error
 			var bytes uint64
 			if measured, ok := fe.(interface {
@@ -577,18 +661,18 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			}); ok {
 				bytes, syncErr = measured.MeasureFolders(syncCtx, c.env, address, ids)
 			} else {
-				// Entries with already-known sizes still need fresh admission.
-				// Unknown sizes without a native measurer must fail closed.
+				c.relay.mu.Lock()
 				for _, id := range ids {
 					for _, f := range a.folders {
 						if f.ID == id {
-							if f.UnknownSize {
+							if f.UnknownSize || f.Estimated {
 								syncErr = ToolFailed
 							}
 							bytes += f.Bytes // chooseFolders already checked the sum's bound
 						}
 					}
 				}
+				c.relay.mu.Unlock()
 			}
 			if syncErr == nil {
 				room := c.quota()
@@ -630,7 +714,7 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			c.reconcile()
 			c.write.Unlock()
 			return
-		case <-phaseCtx.Done():
+		default:
 			c.discardUnfinished(e, a, address)
 			c.failAttempt(a, phaseCtx.Err())
 			return
@@ -702,7 +786,7 @@ func (c *Catalog) redirect(owner, id, raw string) error {
 	time.AfterFunc(c.signInWait, func() {
 		r.mu.Lock()
 		defer r.mu.Unlock()
-		if r.a == a && a.state == "completing" && !a.syncing && !a.committing {
+		if r.a == a && a.state == "completing" && !a.syncing && !a.committing && !a.skipped {
 			a.state, a.failure = "failed", Expired
 			a.stop()
 			c.log.Warn("integration_login", "provider", string(a.provider), "outcome", "failed", "phase", "post_redirect", "reason", string(Expired))
@@ -751,7 +835,11 @@ func (c *Catalog) chooseFolders(owner, id string, ids []string) error {
 		found := false
 		for _, f := range a.folders {
 			if f.ID == want {
-				unknown = unknown || f.UnknownSize
+				// The whole drive already holds every other folder.
+				if f.Whole && len(ids) > 1 {
+					return errFolders
+				}
+				unknown = unknown || f.UnknownSize || f.Estimated
 				if f.Bytes > maxSyncBytes-total {
 					return errQuota
 				}
@@ -770,6 +858,46 @@ func (c *Catalog) chooseFolders(owner, id string, ids []string) error {
 	}
 	a.state, a.syncing = "completing", true
 	a.choose <- ids
+	return nil
+}
+
+// skipFolders completes a sign-in without syncing any files, when the
+// provider has other services the login serves. Nothing is copied; signing
+// in again offers the folder choice.
+func (c *Catalog) skipFolders(owner, id string) error {
+	r := &c.relay
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	a := r.a
+	if a == nil || a.owner != owner || a.id != id {
+		return errAttemptMissing
+	}
+	if a.state != "choose_folders" {
+		return errAttemptActive
+	}
+	e, ok := c.entry(a.provider).(SyncEntry)
+	if !ok {
+		return errFolders
+	}
+	files := map[string]bool{}
+	for _, d := range e.Directories(c.env, a.address) {
+		files[d.Service] = true
+	}
+	other := false
+	for _, s := range e.Services() {
+		other = other || !files[s]
+	}
+	if !other {
+		// Without files the login would serve nothing.
+		return errFolders
+	}
+	if _, ready := e.SyncCommand(c.env, a.address); ready {
+		// A renewal whose files already sync: leaving them out would have
+		// to stop that sync, which this choice does not do.
+		return errFolders
+	}
+	a.state, a.skipped = "completing", true
+	a.choose <- []string{}
 	return nil
 }
 

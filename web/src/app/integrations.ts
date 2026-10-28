@@ -105,6 +105,9 @@ export type SyncFailure =
   | "quota_insufficient"
   | "quota_unavailable"
   | "initial_sync_incomplete"
+  // A working login whose files never had a first pass: left out, or
+  // refused before anything was copied.
+  | "not_chosen"
   | "initial_sync_resume_failed"
   | "delete_limit"
   | "needs_resync"
@@ -154,6 +157,12 @@ export type Folder = {
   id: string;
   name: string;
   bytes?: number;
+  /** bytes is the provider's own accounting, not a count of the files. */
+  estimated?: true;
+  /** The size is being counted while the person chooses. */
+  measuring?: true;
+  /** The whole drive, which holds every other folder; chosen alone. */
+  whole?: true;
   suggested: boolean;
 };
 export type LoginFailure =
@@ -445,6 +454,7 @@ type LoginControl =
   | { action: "start"; provider: ProviderId; address?: string; level?: Level }
   | { action: "redirect"; attempt_id: string; redirect_url: string }
   | { action: "folders"; attempt_id: string; folders: string[] }
+  | { action: "skip_folders"; attempt_id: string }
   | { action: "cancel"; attempt_id: string };
 
 export async function controlLogin(

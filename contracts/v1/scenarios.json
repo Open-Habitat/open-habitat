@@ -697,6 +697,7 @@
       "a pasted address is accepted only as a loopback redirect and handed only to the tool process this attempt started",
       "an attempt belongs to the browser session that started it; another session can read only that none is its own",
       "removal keeps synced directories unless the person asks, and then moves them to the Trash",
+      "a choice whose known or estimated size does not fit the home's free room is not made in advance; a drive is also offered folder by folder, or its files left out while the login serves the provider's other services",
       "another mapped UID cannot observe or control the first UID's accounts, attempts or skill"
     ]
   },

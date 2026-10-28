@@ -40,9 +40,21 @@ command=$1; shift
 case "$command" in
 about)
  if [ -f "$HOME/status-error" ]; then cat "$HOME/status-error" >&2; exit 7; fi
- echo '{"used":1,"total":10000}';;
-size) echo '{"count":2,"bytes":1024}';;
+ if [ -f "$HOME/drive-about" ]; then cat "$HOME/drive-about"; else echo '{"used":1,"total":10000}'; fi;;
+lsjson)
+ if [ -f "$HOME/drive-top" ]; then cat "$HOME/drive-top"; else exit 90; fi;;
+size)
+ # drive-sizes holds "path<TAB>bytes" lines; "<path>@root" is the files at
+ # the path itself (--max-depth 1).
+ if [ ! -f "$HOME/drive-sizes" ]; then echo '{"count":2,"bytes":1024}'; exit 0; fi
+ key=$1; case " $* " in *" --max-depth 1 "*) key="$1@root";; esac
+ echo "$key" >> "$HOME/size-calls"
+ while [ -f "$HOME/hold-size" ]; do sleep 0.02; done
+ n=$(awk -F '\t' -v k="$key" '$1==k{print $2}' "$HOME/drive-sizes")
+ [ -n "$n" ] || exit 7
+ echo "{\"count\":1,\"bytes\":$n}";;
 bisync)
+ echo "$*" >> "$HOME/bisync-args"
  resync=false; work=''
  while [ "$#" -gt 0 ]; do
   case "$1" in --workdir) work=$2; shift;; --resync) resync=true;; --force) exit 91;; esac

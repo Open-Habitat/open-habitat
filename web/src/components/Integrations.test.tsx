@@ -642,6 +642,90 @@ describe("sign-in dialog", () => {
     expect(onFolders).toHaveBeenCalledWith(["own"]);
   });
 
+  it("leads a drive larger than the home to its folders or to no files", async () => {
+    const onFolders = vi.fn();
+    const onSkipFolders = vi.fn();
+    const view = dialog(
+      {
+        ...paste,
+        state: "choose_folders",
+        authorization_url: undefined,
+        redirect_prefix: undefined,
+        expires_at: undefined,
+        address: "person.home@example.test",
+        directory: "~/cloud/google-drive/person.home@example.test",
+        free_bytes: 13 * 1024 ** 3,
+        folders: [
+          {
+            id: "all",
+            name: "Koko Google Drive",
+            bytes: 25 * 1024 ** 3,
+            estimated: true,
+            whole: true,
+            suggested: false,
+          },
+          { id: "work", name: "Työ", bytes: 3 * 1024 ** 3, suggested: false },
+          { id: "photos", name: "Kuvat", measuring: true, suggested: false },
+        ],
+      },
+      { onFolders, onSkipFolders },
+    );
+    expect(view.getByTestId("integration-folders-too-big")).toBeTruthy();
+    const box = (id: string) =>
+      within(view.getByTestId(`integration-folder-${id}`)).getByRole(
+        "checkbox",
+      ) as HTMLInputElement;
+    expect(box("all").checked).toBe(false);
+    const start = view.getByTestId(
+      "integration-sync-start",
+    ) as HTMLButtonElement;
+    expect(start.disabled).toBe(true);
+    // The whole drive and a folder of it are never chosen together.
+    await userEvent.click(box("work"));
+    await userEvent.click(box("all"));
+    expect(box("work").checked).toBe(false);
+    // An estimate over the room warns but does not forbid: the files are
+    // counted before anything is copied.
+    expect(start.disabled).toBe(false);
+    await userEvent.click(box("work"));
+    expect(box("all").checked).toBe(false);
+    await userEvent.click(start);
+    expect(onFolders).toHaveBeenCalledWith(["work"]);
+    await userEvent.click(view.getByTestId("integration-sync-skip"));
+    expect(onSkipFolders).toHaveBeenCalled();
+  });
+
+  it("offers no way past the files for a provider that has only files", () => {
+    const view = render(
+      <ConnectDialog
+        provider={{ ...google, id: "dropbox", services: ["dropbox"] }}
+        stage={{
+          stage: "login",
+          view: {
+            ...paste,
+            provider: "dropbox",
+            state: "choose_folders",
+            authorization_url: undefined,
+            redirect_prefix: undefined,
+            expires_at: undefined,
+            address: "person@example.test",
+            directory: "~/cloud/dropbox/person@example.test",
+            free_bytes: 1024,
+            folders: [{ id: "all", name: "Dropbox", suggested: true }],
+          },
+        }}
+        onContinue={noop}
+        onPassword={noop}
+        onPaste={noop}
+        onFolders={noop}
+        onSkipFolders={noop}
+        onRestart={noop}
+        onClose={noop}
+      />,
+    );
+    expect(view.queryByTestId("integration-sync-skip")).toBeNull();
+  });
+
   it("shows an administrator consent link as text to send, never as a sign-in", () => {
     const view = dialog({
       schema_version: 1,

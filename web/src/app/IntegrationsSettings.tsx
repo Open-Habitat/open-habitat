@@ -318,9 +318,13 @@ export function IntegrationsSettings({
   // dialog while the daemon finishes the sign-in.
   const view = flow?.stage.stage === "login" ? flow.stage.view : undefined;
   const [retry, setRetry] = useState(0);
+  // A folder choice is read again while its sizes are being counted.
+  const counting =
+    view?.state === "choose_folders" &&
+    view.folders?.some((f) => f.measuring) === true;
   useEffect(() => {
     void retry;
-    if (!live(view)) return;
+    if (!live(view) && !counting) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       void readLogin(controller.signal)
@@ -343,7 +347,7 @@ export function IntegrationsSettings({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [view, load, retry]);
+  }, [view, counting, load, retry]);
 
   // Catalog observations outlive the dialog and are visible to any session
   // of this Unix user. Single flight; a failed read retains the last state.
@@ -630,6 +634,8 @@ export function IntegrationsSettings({
       flow?.stage.stage === "connected" ||
       flow?.stage.stage === "uncertain" ||
       v?.state === "completed" ||
+      // A first sync that failed keeps the login it signed in.
+      v?.state === "failed" ||
       (v?.state === "completing" && Boolean(v.address));
     setFlow(undefined);
     // Leaving the dialog ends a sign-in still in progress; nothing it had
@@ -963,6 +969,13 @@ export function IntegrationsSettings({
                 attempt_id: id,
                 folders: ids,
               });
+          }}
+          onSkipFolders={() => {
+            const id =
+              flow.stage.stage === "login"
+                ? flow.stage.view.attempt_id
+                : undefined;
+            if (id) void loginWrite({ action: "skip_folders", attempt_id: id });
           }}
           onRestart={() => {
             const v =

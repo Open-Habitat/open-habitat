@@ -190,6 +190,9 @@ func (g *google) CheckGrant(ctx context.Context, env Env, address string) ([]Ser
 		if err, rejected := dropboxStatus(ctx, env, c); err == nil {
 			_, ready := g.SyncCommand(env, address)
 			drive, driveFailure = signedInState(ready)
+			if !ready && googleNotChosen(env, address) {
+				drive, driveFailure = StateSyncFailed, FoldersNotChosen
+			}
 		} else if rejected {
 			drive, expired = StateLoginExpired, true
 		} else {
@@ -351,11 +354,13 @@ func (g *google) remove(env Env, address string) error {
 	}
 	fd, err = openHomeDir(env.Home, false, splitPath(googleDir)...)
 	if err == nil {
-		err = unix.Unlinkat(fd, address+".conf", 0)
-		unix.Close(fd)
-		if err != nil && !errors.Is(err, unix.ENOENT) {
-			return err
+		for _, n := range []string{address + ".conf", googleFilter(address), googleFilter(address) + ".md5"} {
+			if e := unix.Unlinkat(fd, n, 0); e != nil && !errors.Is(e, unix.ENOENT) {
+				unix.Close(fd)
+				return e
+			}
 		}
+		unix.Close(fd)
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}

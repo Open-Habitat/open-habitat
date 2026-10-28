@@ -6,9 +6,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"unicode/utf8"
 
 	"golang.org/x/sys/unix"
 )
@@ -123,34 +126,328 @@ func googleCommand(env Env, address string, args ...string) (Command, bool) {
 	return Command{Path: tool, Args: append([]string{"--config", filepath.Join(env.Home, googleDir, address+".conf")}, append(args, "--drive-skip-gdocs", "--drive-skip-shortcuts")...)}, true
 }
 
-func (d *google) Folders(_ context.Context, _ Env, _ string) ([]Folder, error) {
-	// The existing choice is the drive root, not its recursive contents.
-	return []Folder{{ID: "all", Name: "Google Drive", UnknownSize: true, Suggested: true}}, nil
+// googleWhole is the choice of the whole drive; Drive's own folder IDs never
+// take this form.
+const googleWhole = "all"
+
+// googleFolderMax leaves the contract's last folder slot to the whole drive.
+const googleFolderMax = 63
+
+// googleTopFolder is a folder at the root of My Drive, as rclone names it.
+type googleTopFolder struct{ id, name string }
+
+// googleTop lists My Drive's top-level folders. It reads only the root, never
+// recursively, so it is quick whatever the drive holds.
+func googleTop(ctx context.Context, env Env, address string) ([]googleTopFolder, error) {
+	c, ok := googleCommand(env, address, "lsjson", "google:", "--dirs-only", "--no-modtime", "--no-mimetype")
+	if !ok {
+		return nil, ToolFailed
+	}
+	data, err := env.run(ctx, c, nil)
+	if err != nil {
+		return nil, ToolFailed
+	}
+	var list []struct {
+		Name  string `json:"Name"`
+		ID    string `json:"ID"`
+		IsDir bool   `json:"IsDir"`
+	}
+	if json.Unmarshal(data, &list) != nil {
+		return nil, ToolFailed
+	}
+	var out []googleTopFolder
+	for _, f := range list {
+		if f.IsDir && f.Name != "" {
+			out = append(out, googleTopFolder{f.ID, f.Name})
+		}
+	}
+	return out, nil
 }
+
+// offered says whether a top-level folder can be chosen on its own: its ID
+// fits the contract, and its name is one the page can show.
+func (f googleTopFolder) offered() bool {
+	if f.id == googleWhole || !folderID.MatchString(f.id) || len(f.name) > 256 || !utf8.ValidString(f.name) {
+		return false
+	}
+	for _, r := range f.name {
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	return true
+}
+
+// googleEstimate is what Google's own storage accounting says My Drive's
+// files take, outside the trash. It is quick, and counts the files the
+// person owns, so it is an estimate of what syncs, not a count.
+func googleEstimate(ctx context.Context, env Env, address string) (uint64, bool) {
+	c, ok := googleCommand(env, address, "about", "google:", "--json")
+	if !ok {
+		return 0, false
+	}
+	data, err := env.run(ctx, c, nil)
+	if err != nil {
+		return 0, false
+	}
+	var about struct {
+		Used    *uint64 `json:"used"`
+		Trashed uint64  `json:"trashed"`
+	}
+	if json.Unmarshal(data, &about) != nil || about.Used == nil || *about.Used > maxSyncBytes {
+		return 0, false
+	}
+	return *about.Used - min(about.Trashed, *about.Used), true
+}
+
+// Folders offers the whole drive with Google's estimate of its size, and
+// each top-level folder on its own, so a drive that does not fit the home
+// can still sync the folders that do. Their sizes are counted while the
+// person chooses (SizeFolders).
+func (d *google) Folders(ctx context.Context, env Env, address string) ([]Folder, error) {
+	d.native.RLock()
+	defer d.native.RUnlock()
+	whole := Folder{ID: googleWhole, Name: "Koko Google Drive", Whole: true, Suggested: true, UnknownSize: true}
+	if n, ok := googleEstimate(ctx, env, address); ok {
+		whole.Bytes, whole.UnknownSize, whole.Estimated = n, false, true
+	}
+	out := []Folder{whole}
+	// Without the listing the whole drive is still a choice.
+	top, _ := googleTop(ctx, env, address)
+	seen := map[string]bool{}
+	for _, f := range top {
+		if len(out) > googleFolderMax {
+			break
+		}
+		if f.offered() && !seen[f.id] {
+			seen[f.id] = true
+			out = append(out, Folder{ID: f.id, Name: f.name, UnknownSize: true})
+		}
+	}
+	return out, nil
+}
+
+// SizeFolders counts each top-level folder, then the whole drive as their
+// sum with the files at its root once every count succeeded. Three counts
+// run at a time; each is rclone's own recursive size.
+func (d *google) SizeFolders(ctx context.Context, env Env, address string, report func(string, uint64)) {
+	d.native.RLock()
+	defer d.native.RUnlock()
+	top, err := googleTop(ctx, env, address)
+	if err != nil {
+		return
+	}
+	var mu sync.Mutex
+	total, complete := uint64(0), true
+	add := func(n uint64, err error) bool {
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil || n > maxSyncBytes-total {
+			complete = false
+			return false
+		}
+		total += n
+		return true
+	}
+	if c, ok := googleCommand(env, address, "size", "google:", "--max-depth", "1", "--json"); ok {
+		add(env.measureSize(ctx, c, "drive"))
+	} else {
+		return
+	}
+	slots := make(chan struct{}, 3)
+	var wg sync.WaitGroup
+	for _, f := range top {
+		c, ok := googleCommand(env, address, "size", "google:"+f.name, "--fast-list", "--json")
+		if !ok {
+			add(0, ToolFailed)
+			break
+		}
+		select {
+		case slots <- struct{}{}:
+		case <-ctx.Done():
+		}
+		if ctx.Err() != nil {
+			break
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer func() { <-slots }()
+			n, err := env.measureSize(ctx, c, "drive")
+			if add(n, err) && f.offered() {
+				report(f.id, n)
+			}
+		}()
+	}
+	wg.Wait()
+	if complete && ctx.Err() == nil {
+		report(googleWhole, total)
+	}
+}
+
+// MeasureFolders counts the chosen folders now, for a choice made before
+// SizeFolders had counted them.
 func (d *google) MeasureFolders(ctx context.Context, env Env, address string, ids []string) (uint64, error) {
 	d.native.Lock()
 	defer d.native.Unlock()
-	if len(ids) != 1 || ids[0] != "all" {
-		return 0, ToolFailed
+	if len(ids) == 1 && ids[0] == googleWhole {
+		c, ok := googleCommand(env, address, "size", "google:", "--json")
+		if !ok {
+			return 0, ToolFailed
+		}
+		return env.measureSize(ctx, c, "drive")
 	}
-	c, ok := googleCommand(env, address, "size", "google:", "--json")
-	if !ok {
-		return 0, ToolFailed
+	names, err := googleChosen(ctx, env, address, ids)
+	if err != nil {
+		return 0, err
 	}
-	return env.measureSize(ctx, c, "drive")
+	var total uint64
+	for _, name := range names {
+		c, ok := googleCommand(env, address, "size", "google:"+name, "--fast-list", "--json")
+		if !ok {
+			return 0, ToolFailed
+		}
+		n, err := env.measureSize(ctx, c, "drive")
+		if err != nil || n > maxSyncBytes-total {
+			return 0, ToolFailed
+		}
+		total += n
+	}
+	return total, nil
 }
+
+// googleChosen resolves chosen folder IDs to their current names. A folder
+// that is gone or no longer offered fails the choice rather than syncing
+// less than was chosen.
+func googleChosen(ctx context.Context, env Env, address string, ids []string) ([]string, error) {
+	top, err := googleTop(ctx, env, address)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, id := range ids {
+		found := ""
+		for _, f := range top {
+			if f.id == id && f.offered() {
+				found = f.name
+			}
+		}
+		if found == "" {
+			return nil, ToolFailed
+		}
+		names = append(names, found)
+	}
+	return names, nil
+}
+
+// googleFilter is rclone's own filter file for an account that syncs only
+// some top-level folders. Both bisync and the mirror read it on every pass;
+// bisync keeps its checksum beside it and refuses a changed one without
+// --resync. Absent, the whole drive syncs.
+func googleFilter(address string) string { return address + ".filter" }
+
+// googleFilterRules names each chosen folder by its rclone glob, escaped so
+// that a name is matched literally, and excludes everything else.
+func googleFilterRules(names []string) []byte {
+	var b strings.Builder
+	for _, name := range names {
+		b.WriteString("+ /")
+		for _, r := range name {
+			if strings.ContainsRune(`\*?[]{}`, r) {
+				b.WriteByte('\\')
+			}
+			b.WriteRune(r)
+		}
+		b.WriteString("/**\n")
+	}
+	b.WriteString("- **\n")
+	return []byte(b.String())
+}
+
+// googleFilterArgs are the flags that make a pass follow the account's
+// filter file, when it has one.
+func googleFilterArgs(env Env, address, flag string) ([]string, bool) {
+	fd, err := openHomeDir(env.Home, false, splitPath(googleDir)...)
+	if err != nil {
+		return nil, false
+	}
+	defer unix.Close(fd)
+	switch _, err := readFileAt(fd, googleFilter(address), 64<<10); {
+	case err == nil:
+		return []string{flag, filepath.Join(env.Home, googleDir, googleFilter(address))}, true
+	case errors.Is(err, unix.ENOENT):
+		return nil, true
+	default:
+		return nil, false
+	}
+}
+
+// googleSetFilter records the person's choice in the filter file, or
+// removes it for the whole drive.
+func googleSetFilter(env Env, address string, names []string) error {
+	fd, err := openHomeDir(env.Home, false, splitPath(googleDir)...)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(fd)
+	if names == nil {
+		for _, n := range []string{googleFilter(address), googleFilter(address) + ".md5"} {
+			if err := unix.Unlinkat(fd, n, 0); err != nil && !errors.Is(err, unix.ENOENT) {
+				return err
+			}
+		}
+		return nil
+	}
+	return writeFileAt(fd, googleFilter(address), googleFilterRules(names), 0o600)
+}
+
 func googleBisync(env Env, address string) (Command, bool) {
-	return googleCommand(env, address, "bisync", filepath.Join(env.Home, "cloud/google-drive", address), "google:", "--workdir", filepath.Join(env.Home, googleWork(address)), "--resilient", "--recover", "--max-lock", "2m", "--max-delete", "50", "--conflict-resolve", "none", "--conflict-loser", "num", "--create-empty-src-dirs", "--refresh-times", "--compare", "size,modtime")
+	filter, ok := googleFilterArgs(env, address, "--filters-file")
+	if !ok {
+		return Command{}, false
+	}
+	return googleCommand(env, address, append([]string{"bisync", filepath.Join(env.Home, "cloud/google-drive", address), "google:", "--workdir", filepath.Join(env.Home, googleWork(address)), "--resilient", "--recover", "--max-lock", "2m", "--max-delete", "50", "--conflict-resolve", "none", "--conflict-loser", "num", "--create-empty-src-dirs", "--refresh-times", "--compare", "size,modtime"}, filter...)...)
 }
 
 // googleMirror is one pass of the read-only mirror (mirrorCommand).
 func googleMirror(env Env, address string) (Command, bool) {
-	return googleCommand(env, address, "sync", "google:", filepath.Join(env.Home, "cloud/google-drive", address), "--create-empty-src-dirs")
-}
-func (d *google) ChooseFolders(ctx context.Context, env Env, address string, ids []string) error {
-	if len(ids) != 1 || ids[0] != "all" {
-		return ToolFailed
+	filter, ok := googleFilterArgs(env, address, "--filter-from")
+	if !ok {
+		return Command{}, false
 	}
+	return googleCommand(env, address, append([]string{"sync", "google:", filepath.Join(env.Home, "cloud/google-drive", address), "--create-empty-src-dirs"}, filter...)...)
+}
+
+// googleNotChosen reports an account whose files have never had a first
+// pass: its work directory holds nothing, so nothing was copied.
+func googleNotChosen(env Env, address string) bool {
+	names, fd, err := listHomeDir(env.Home, googleWork(address))
+	if err != nil {
+		return false
+	}
+	if fd >= 0 {
+		unix.Close(fd)
+	}
+	return len(names) == 0
+}
+
+func (d *google) ChooseFolders(ctx context.Context, env Env, address string, ids []string) error {
+	var names []string
+	if len(ids) != 1 || ids[0] != googleWhole {
+		var err error
+		if names, err = googleChosen(ctx, env, address, ids); err != nil {
+			return err
+		}
+	}
+	if err := googleSetFilter(env, address, names); err != nil {
+		return err
+	}
+	return d.initialPass(ctx, env, address)
+}
+
+// initialPass is the first pass of the account's chosen files, the one a
+// daemon stop interrupted included (resumeInitial).
+func (d *google) initialPass(ctx context.Context, env Env, address string) error {
 	n, err := googleReadNative(env, address)
 	if err != nil {
 		return err
@@ -207,7 +504,7 @@ func (d *google) resumeInitial(ctx context.Context, env Env, address string, _ [
 	if !interruptedResync(env, googleWork(address)) {
 		return nil
 	}
-	return d.ChooseFolders(ctx, env, address, []string{"all"})
+	return d.initialPass(ctx, env, address)
 }
 func (*google) passService(string) string { return "drive" }
 func (d *google) SyncCommand(env Env, address string) (Command, bool) {

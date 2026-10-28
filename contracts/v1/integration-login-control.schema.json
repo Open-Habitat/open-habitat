@@ -19,6 +19,10 @@
       "attempt_id": {"type": "string", "pattern": "^[0-9]{8}T[0-9]{6}\\.[0-9]{9}$"},
       "folders": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$"}}
     }},
+    {"type": "object", "additionalProperties": false, "required": ["action", "attempt_id"], "description": "At the folder choice of a provider whose login also serves other services than files: complete the sign-in without syncing files. Nothing is copied; the files service then reports not_chosen, and signing in again offers the choice. A provider whose only service is files, or an account whose files already sync (a renewal), refuses it (400).", "properties": {
+      "action": {"const": "skip_folders"},
+      "attempt_id": {"type": "string", "pattern": "^[0-9]{8}T[0-9]{6}\\.[0-9]{9}$"}
+    }},
     {"type": "object", "additionalProperties": false, "required": ["action", "attempt_id"], "properties": {
       "action": {"const": "cancel"},
       "attempt_id": {"type": "string", "pattern": "^[0-9]{8}T[0-9]{6}\\.[0-9]{9}$"}

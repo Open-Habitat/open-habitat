@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: onboarding-google
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/onboarding-google-drive-too-big
+closed: 2026-10-28
 ---
 
 # Onboarding: a Google Drive larger than the quota stops the Google step with unclear states

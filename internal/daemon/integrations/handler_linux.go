@@ -459,6 +459,8 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 		err = c.redirect(owner, in.AttemptID, in.RedirectURL)
 	case r.Method == http.MethodPut && in.Action == "folders" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.RedirectURL == "" && in.Level == "" && validFolders(in.Folders):
 		err = c.chooseFolders(owner, in.AttemptID, in.Folders)
+	case r.Method == http.MethodPut && in.Action == "skip_folders" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.RedirectURL == "" && in.Folders == nil && in.Level == "":
+		err = c.skipFolders(owner, in.AttemptID)
 	case r.Method == http.MethodDelete && in.Action == "cancel" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.RedirectURL == "" && in.Folders == nil && in.Level == "":
 		err = c.cancelLogin(owner, in.AttemptID)
 	default:

@@ -72,6 +72,11 @@ const (
 // sync never resyncs on its own; signing in again offers the initial choice.
 const InitialSyncIncomplete = "initial_sync_incomplete"
 
+// FoldersNotChosen is a sync_failed service whose login works but whose files
+// never had a first pass: the person left them out, or the first choice was
+// refused before anything was copied. Signing in again offers the choice.
+const FoldersNotChosen = "not_chosen"
+
 // signedInState is a file service's state after its tool accepted the login.
 func signedInState(ready bool) (ServiceState, string) {
 	if ready {
@@ -276,11 +281,15 @@ type SyncEntry interface {
 	SyncCommand(env Env, address string) (Command, bool)
 }
 
-// Folder is a provider-side folder the person can choose to sync.
+// Folder is a provider-side folder the person can choose to sync. Estimated
+// is a size the provider's own accounting gives rather than one counted from
+// the files; Whole is the choice that contains every other folder listed.
 type Folder struct {
 	ID, Name    string
 	Bytes       uint64
 	UnknownSize bool
+	Estimated   bool
+	Whole       bool
 	Suggested   bool
 }
 
@@ -289,6 +298,14 @@ type FolderEntry interface {
 	SyncEntry
 	Folders(ctx context.Context, env Env, address string) ([]Folder, error)
 	ChooseFolders(ctx context.Context, env Env, address string, ids []string) error
+}
+
+// FolderSizer counts the listed folders' sizes while the person is still
+// choosing, so the choice shows what each takes. It reports each folder it
+// counted and returns when done or when ctx ends; a folder it did not report
+// keeps the size Folders gave it.
+type FolderSizer interface {
+	SizeFolders(ctx context.Context, env Env, address string, report func(id string, bytes uint64))
 }
 
 // Failure is a fixed outcome code. Native error text never becomes one.
@@ -776,7 +793,9 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 	c.relay.mu.Unlock()
 	var services []Service
 	var grant *Grant
-	if initial || nativeBusy {
+	// A first pass that failed holds nothing native any more: the tool is
+	// asked as usual, and only the file service carries the failure below.
+	if (initial && !failed) || nativeBusy {
 		for _, id := range e.Services() {
 			services = append(services, Service{ID: id, State: StateUnknown})
 		}

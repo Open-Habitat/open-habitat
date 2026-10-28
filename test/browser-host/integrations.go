@@ -39,9 +39,18 @@ type integrationControl struct {
 	// narrowed lists providers whose grant the fixture reports as narrower:
 	// no files, mail drafts without sending, the calendar read only.
 	narrowed map[integrations.Provider]bool
+	// bigDrive lists providers whose files are larger than the home: the
+	// whole drive with an estimate over the room, and folders whose sizes
+	// are counted while the person chooses, once "count" says so.
+	bigDrive map[integrations.Provider]bool
+	count    chan struct{}
 }
 
-var integrationFixture = &integrationControl{approve: make(chan struct{}, 1), expired: map[integrations.Provider]bool{}, narrowed: map[integrations.Provider]bool{}}
+var integrationFixture = &integrationControl{approve: make(chan struct{}, 1), count: make(chan struct{}), expired: map[integrations.Provider]bool{}, narrowed: map[integrations.Provider]bool{}, bigDrive: map[integrations.Provider]bool{}}
+
+// The big drive's folders as the stand-in counts them: the whole 60 GiB
+// against the fixture home's 34.7 GB of room, photos alone too large.
+var bigDriveSizes = map[string]uint64{"all": 60 << 30, "work": 3 << 30, "photos": 40 << 30}
 
 func (c *integrationControl) set(q url.Values) bool {
 	c.mu.Lock()
@@ -58,8 +67,13 @@ func (c *integrationControl) set(q url.Values) bool {
 		c.expired[integrations.Provider(q.Get("provider"))] = true
 	case "narrow":
 		c.narrowed[integrations.Provider(q.Get("provider"))] = true
+	case "bigdrive":
+		c.bigDrive[integrations.Provider(q.Get("provider"))] = true
+	case "count":
+		close(c.count)
+		c.count = make(chan struct{})
 	case "reset":
-		c.outcome, c.expired, c.narrowed = "", map[integrations.Provider]bool{}, map[integrations.Provider]bool{}
+		c.outcome, c.expired, c.narrowed, c.bigDrive = "", map[integrations.Provider]bool{}, map[integrations.Provider]bool{}, map[integrations.Provider]bool{}
 	default:
 		return false
 	}
@@ -168,13 +182,17 @@ func (f *fixtureEntry) Check(ctx context.Context, env integrations.Env, address 
 	integrationFixture.mu.Lock()
 	expired := integrationFixture.expired[f.provider]
 	integrationFixture.mu.Unlock()
+	_, chosen := f.SyncCommand(env, address)
 	var out []integrations.Service
 	for _, s := range f.services {
-		state := integrations.StateOK
+		state, failure := integrations.StateOK, ""
 		if expired {
 			state = integrations.StateLoginExpired
+		} else if s == f.files && !chosen && f.big() {
+			// As the native entry says of files that never had a first pass.
+			state, failure = integrations.StateSyncFailed, integrations.FoldersNotChosen
 		}
-		out = append(out, integrations.Service{ID: s, State: state})
+		out = append(out, integrations.Service{ID: s, State: state, Failure: failure})
 	}
 	return out
 }
@@ -223,8 +241,60 @@ func (f *fixtureEntry) SyncCommand(env integrations.Env, address string) (integr
 	return integrations.Command{Path: "/bin/sh", Args: []string{"-c", `umask 077 && mkdir -p "$1" && exec sleep 86400`, "sync", dir}}, true
 }
 
+func (f *fixtureEntry) big() bool {
+	integrationFixture.mu.Lock()
+	defer integrationFixture.mu.Unlock()
+	return integrationFixture.bigDrive[f.provider]
+}
+
 func (f *fixtureEntry) Folders(context.Context, integrations.Env, string) ([]integrations.Folder, error) {
+	if f.big() {
+		return []integrations.Folder{
+			{ID: "all", Name: "Koko Google Drive", Bytes: 62 << 30, Estimated: true, Whole: true, Suggested: true},
+			{ID: "work", Name: "Työ", UnknownSize: true},
+			{ID: "photos", Name: "Kuvat", UnknownSize: true},
+		}, nil
+	}
 	return f.folders, nil
+}
+
+// SizeFolders counts the big drive's folders once the test says "count".
+func (f *fixtureEntry) SizeFolders(ctx context.Context, _ integrations.Env, _ string, report func(string, uint64)) {
+	if !f.big() {
+		return
+	}
+	integrationFixture.mu.Lock()
+	count := integrationFixture.count
+	integrationFixture.mu.Unlock()
+	select {
+	case <-count:
+	case <-ctx.Done():
+		return
+	}
+	for _, id := range []string{"work", "photos", "all"} {
+		report(id, bigDriveSizes[id])
+	}
+}
+
+// MeasureFolders is the count after a choice made before SizeFolders
+// finished.
+func (f *fixtureEntry) MeasureFolders(_ context.Context, _ integrations.Env, _ string, ids []string) (uint64, error) {
+	sizes := bigDriveSizes
+	if !f.big() {
+		sizes = map[string]uint64{}
+		for _, folder := range f.folders {
+			sizes[folder.ID] = folder.Bytes
+		}
+	}
+	var total uint64
+	for _, id := range ids {
+		n, ok := sizes[id]
+		if !ok {
+			return 0, integrations.ToolFailed
+		}
+		total += n
+	}
+	return total, nil
 }
 
 func (f *fixtureEntry) ChooseFolders(_ context.Context, env integrations.Env, address string, ids []string) error {

@@ -571,6 +571,7 @@ const failureText: Record<SyncFailure, string> = {
   quota_insufficient: "Valitut tiedostot eivät mahdu kiintiöön",
   quota_unavailable: "Vapaata tilaa ei voitu tarkistaa",
   initial_sync_incomplete: "Ensimmäinen synkronointi jäi kesken",
+  not_chosen: "Ei synkronoida",
   initial_sync_resume_failed:
     "Ensimmäisen synkronoinnin jatkaminen epäonnistui",
   delete_limit: "Pysäytetty: liian monta poistoa kerralla",
@@ -596,6 +597,8 @@ const alignmentHelp: Partial<Record<SyncFailure, (name: string) => string>> = {
 // What a failed ordinary pass asks of the person. Retried failures need
 // nothing; the two native safeguards wait for someone to look.
 const failureHelp: Partial<Record<SyncFailure, string>> = {
+  not_chosen:
+    "Kansioita ei ole valittu, joten tiedostoja ei kopioitu. Voit valita ne kirjautumalla uudelleen.",
   delete_limit:
     "Synkronointi olisi poistanut yli puolet tiedostoista, joten se pysäytettiin eikä mitään poistettu. Jos poistit tiedostot tarkoituksella, pyydä ylläpitäjää hyväksymään poistot.",
   needs_resync:
@@ -668,12 +671,14 @@ function ServiceStatus({
         Ei käytössä
       </span>
     );
-  const bad = [
-    "credentials_rejected",
-    "login_expired",
-    "quota_full",
-    "sync_failed",
-  ].includes(service.state);
+  // Files the person left out are a choice, not a fault.
+  const bad =
+    [
+      "credentials_rejected",
+      "login_expired",
+      "quota_full",
+      "sync_failed",
+    ].includes(service.state) && service.failure !== "not_chosen";
   const warn = ["unreachable", "sync_restarting", "unknown"].includes(
     service.state,
   );
@@ -697,9 +702,11 @@ function ServiceStatus({
         name={
           bad || warn
             ? "warning"
-            : service.state === "syncing" || passing
-              ? "refresh"
-              : "check"
+            : service.failure === "not_chosen"
+              ? "info"
+              : service.state === "syncing" || passing
+                ? "refresh"
+                : "check"
         }
       />
       {text}
@@ -1603,6 +1610,7 @@ function PasteStep({
         <p className="ig-p">
           {copy.site} kysyy, mille tilille ja mitkä luvat annat.
         </p>
+        <RedirectExpected site={copy.site} prefix={prefix} />
         <div className="ig-row start">
           <ExternalButton href={href} onOpen={() => setOpened(true)}>
             Avaa {copy.site}
@@ -1644,13 +1652,10 @@ function PasteStep({
       }}
     >
       <p className="ig-h">Liitä osoite, johon {copy.site} lopuksi ohjasi</p>
+      <RedirectExpected site={copy.site} prefix={prefix} />
       <ol className="ig-how">
         <li>Hyväksy luvat avautuneessa välilehdessä.</li>
-        <li>
-          Lopuksi selain siirtyy sivulle, joka ei aukea. Se kuuluu asiaan:
-          osoite alkaa <code>{prefix}</code> ja sisältää kirjautumisen.
-        </li>
-        <li>Kopioi osoiteriviltä koko osoite ja liitä se tähän.</li>
+        <li>Kopioi virhesivun osoiteriviltä koko osoite ja liitä se tähän.</li>
       </ol>
       <TextField
         data-testid="integration-redirect-input"
@@ -1706,12 +1711,44 @@ function PasteStep({
   );
 }
 
+/** The pasted-redirect sign-in ends on a page that does not load. Said
+ * before the person leaves for the provider and again on return, so that
+ * the error page reads as the expected last step, not as a failure. */
+function RedirectExpected({ site, prefix }: { site: string; prefix: string }) {
+  return (
+    <div
+      className="ig-expect"
+      role="note"
+      data-testid="integration-redirect-expected"
+    >
+      <Icon name="info" />
+      <div>
+        <strong>
+          Lopuksi selain näyttää virhesivun, jota ei voi avata. Se kuuluu
+          asiaan.
+        </strong>{" "}
+        Kun olet hyväksynyt luvat, {site} ohjaa osoitteeseen, joka alkaa{" "}
+        <code>{prefix}</code>. Älä sulje sitä välilehteä: sen osoite sisältää
+        kirjautumisen. Kopioi osoite osoiteriviltä ja palaa tänne.
+      </div>
+    </div>
+  );
+}
+
+/** A folder's size as the person reads it before choosing. */
+function folderSize(f: Folder): string {
+  if (f.bytes !== undefined)
+    return f.estimated ? `noin ${gigabytes(f.bytes)}` : gigabytes(f.bytes);
+  return f.measuring ? "Lasketaan kokoa…" : "Koko lasketaan ennen kopiointia";
+}
+
 function FolderStep({
   view,
   provider,
   busy,
   error,
   onChoose,
+  onSkip,
   onCancel,
 }: {
   view: LoginView;
@@ -1719,6 +1756,8 @@ function FolderStep({
   busy?: boolean;
   error?: string;
   onChoose: (ids: string[]) => void;
+  /** Present when the login serves other services than files. */
+  onSkip?: () => void;
   onCancel: () => void;
 }) {
   const folders: Folder[] = view.folders ?? [];
@@ -1728,11 +1767,29 @@ function FolderStep({
   const total = selectedBytes(folders, selected);
   const free = view.free_bytes ?? 0;
   const quota = view.quota_bytes;
+  const chosen = folders.filter((f) => selected.includes(f.id));
   const unknown =
-    view.free_bytes === undefined ||
-    folders.some((f) => selected.includes(f.id) && f.bytes === undefined);
+    view.free_bytes === undefined || chosen.some((f) => f.bytes === undefined);
+  const estimated = chosen.some((f) => f.estimated);
   const over = !unknown && total > free;
   const files = provider.services.find((s) => fileServices.includes(s));
+  // The whole drive does not fit: say so before the list, so the choice of
+  // folders (or none) is the obvious next step.
+  const whole = folders.find((f) => f.whole);
+  const wholeOver =
+    whole?.bytes !== undefined &&
+    view.free_bytes !== undefined &&
+    whole.bytes > free;
+  const toggle = (f: Folder, on: boolean) =>
+    setSelected((s) => {
+      if (!on) return s.filter((x) => x !== f.id);
+      // The whole drive holds every folder; it is chosen alone.
+      if (f.whole) return [f.id];
+      return [
+        ...s.filter((x) => !folders.find((g) => g.id === x)?.whole),
+        f.id,
+      ];
+    });
   return (
     <>
       <p data-testid="integration-folder-choice" className="ig-h">
@@ -1742,25 +1799,46 @@ function FolderStep({
         Kansiot pysyvät ajan tasalla jatkuvasti, myös kun selain on kiinni. Ne
         vievät tilaa kotihakemistosi kiintiöstä.
       </p>
+      {wholeOver && whole?.bytes !== undefined ? (
+        <p
+          className="ig-notice"
+          role="status"
+          data-testid="integration-folders-too-big"
+        >
+          <Icon name="warning" />
+          <span>
+            <b>
+              {whole.name} ei mahdu kotihakemistoosi
+              {whole.estimated ? " (arvio)" : ""}.
+            </b>{" "}
+            Se vie {whole.estimated ? "noin " : ""}
+            {gigabytes(whole.bytes)}, vapaana on {gigabytes(free)}.{" "}
+            {folders.length > 1
+              ? "Valitse alta vain kansiot, joita agentit tarvitsevat"
+              : "Pyydä ylläpitäjältä lisää tilaa"}
+            {onSkip ? ", tai jatka ilman tiedostoja." : "."}
+          </span>
+        </p>
+      ) : null}
       <fieldset className="ig-folders">
         <legend className="ig-sr">
           {files ? serviceName(provider.id, files) : "Kansiot"}
         </legend>
         {folders.map((f) => (
-          <div className="ig-folder" key={f.id}>
+          <div
+            className={`ig-folder${f.whole ? " whole" : ""}`}
+            key={f.id}
+            data-testid={`integration-folder-row-${f.id}`}
+            data-measuring={f.measuring === true}
+            data-known={f.bytes !== undefined}
+          >
             <Checkbox
               data-testid={`integration-folder-${f.id}`}
               label={f.name}
               checked={selected.includes(f.id)}
-              onChange={(on) =>
-                setSelected((s) =>
-                  on ? [...s, f.id] : s.filter((x) => x !== f.id),
-                )
-              }
+              onChange={(on) => toggle(f, on)}
             />
-            <span className="ig-meta">
-              {f.bytes === undefined ? "Ei vielä laskettu" : gigabytes(f.bytes)}
-            </span>
+            <span className="ig-meta">{folderSize(f)}</span>
           </div>
         ))}
       </fieldset>
@@ -1783,10 +1861,17 @@ function FolderStep({
           </span>
         ) : null}
         <span role="status">
-          {unknown ? (
+          {selected.length === 0 ? (
             <span>
-              Valittujen tiedostojen koko ja tilan riittävyys tarkistetaan
-              taustalla ennen kopiointia.{" "}
+              Mitään ei ole valittu.{" "}
+              {view.free_bytes !== undefined ? (
+                <>Vapaana {gigabytes(free)}.</>
+              ) : null}
+            </span>
+          ) : unknown ? (
+            <span>
+              Valittujen kansioiden koko lasketaan, ja tilan riittävyys
+              tarkistetaan ennen kuin mitään kopioidaan.{" "}
               {view.free_bytes !== undefined ? (
                 <>Vapaana {gigabytes(free)}.</>
               ) : (
@@ -1797,15 +1882,18 @@ function FolderStep({
             <>
               <Icon name="warning" />
               <span>
-                <b>Ei mahdu.</b> Valitut {gigabytes(total)}, vapaana{" "}
-                {gigabytes(free)}. Jätä jokin kansio pois tai pyydä
-                ylläpitäjältä lisää tilaa.
+                <b>Ei mahdu{estimated ? " arvion mukaan" : ""}.</b> Valitut{" "}
+                {estimated ? "noin " : ""}
+                {gigabytes(total)}, vapaana {gigabytes(free)}.{" "}
+                {estimated
+                  ? "Koko lasketaan tarkasti ennen kopiointia, mutta valitse mieluummin vain tarvitsemasi kansiot."
+                  : "Jätä jokin kansio pois tai pyydä ylläpitäjältä lisää tilaa."}
               </span>
             </>
           ) : (
             <span>
-              Valittu {gigabytes(total)}. Kotihakemistossa on vapaana{" "}
-              {gigabytes(free)}
+              Valittu {estimated ? "noin " : ""}
+              {gigabytes(total)}. Kotihakemistossa on vapaana {gigabytes(free)}
               {quota ? ` / ${gigabytes(quota)}` : ""}.
             </span>
           )}
@@ -1825,10 +1913,21 @@ function FolderStep({
         >
           Peruuta
         </ControlButton>
+        {onSkip ? (
+          <ControlButton
+            data-testid="integration-sync-skip"
+            size="page"
+            variant="secondary"
+            isDisabled={busy}
+            onPress={onSkip}
+          >
+            Jatka ilman tiedostoja
+          </ControlButton>
+        ) : null}
         <ControlButton
           size="page"
           variant="primary"
-          isDisabled={over || selected.length === 0}
+          isDisabled={(over && !estimated) || selected.length === 0}
           isPending={busy}
           data-testid="integration-sync-start"
           onPress={() => onChoose(selected)}
@@ -1843,10 +1942,13 @@ function FolderStep({
 
 function FailedStep({
   view,
+  others,
   onRestart,
   onClose,
 }: {
   view: LoginView;
+  /** The login also serves other services than files. */
+  others: boolean;
   onRestart: () => void;
   onClose: () => void;
 }) {
@@ -1882,9 +1984,14 @@ function FailedStep({
               {view.failure === "quota_insufficient"
                 ? "Valitut tiedostot eivät mahdu kotihakemistosi kiintiöön."
                 : "Kotihakemiston vapaata tilaa ei voitu tarkistaa."}{" "}
-              Mitään ei kopioitu. Kirjautuminen säilyy. Vapauta tilaa tai pyydä
-              ylläpitäjältä lisää tilaa ja aloita uudelleen.
+              Mitään ei kopioitu.
             </span>
+          </p>
+          <p className="ig-p">
+            {others
+              ? "Kirjautuminen säilyi, joten tilin muut palvelut toimivat jo. Voit sulkea tämän ja jatkaa ilman tiedostoja, tai aloittaa alusta ja valita vähemmän kansioita."
+              : "Kirjautuminen säilyi. Vapauta tilaa, tai aloita alusta ja valitse vähemmän kansioita."}{" "}
+            Lisää tilaa saat ylläpitäjältä.
           </p>
           {restart}
         </>
@@ -2658,6 +2765,7 @@ export function ConnectDialog({
   onPassword,
   onPaste,
   onFolders,
+  onSkipFolders,
   onRestart,
   onClose,
 }: {
@@ -2668,6 +2776,8 @@ export function ConnectDialog({
   onPassword: (account: PasswordAccount) => void;
   onPaste: (url: string) => void;
   onFolders: (ids: string[]) => void;
+  /** Completes the sign-in without files, for a provider with other services. */
+  onSkipFolders?: () => void;
   onRestart: () => void;
   /** Closing an initial sync leaves the daemon working in the background. */
   onClose: () => void;
@@ -2873,12 +2983,28 @@ export function ConnectDialog({
               busy={stage.busy}
               error={stage.error}
               onChoose={onFolders}
+              onSkip={
+                // A renewal's folder step chooses again among files that may
+                // already sync; leaving them out is not offered there.
+                onSkipFolders &&
+                !v.relogin &&
+                provider.services.some((s) => !fileServices.includes(s))
+                  ? onSkipFolders
+                  : undefined
+              }
               onCancel={onClose}
             />
           </>
         );
       else if (v.state === "failed")
-        body = <FailedStep view={v} onRestart={onRestart} onClose={onClose} />;
+        body = (
+          <FailedStep
+            view={v}
+            others={provider.services.some((s) => !fileServices.includes(s))}
+            onRestart={onRestart}
+            onClose={onClose}
+          />
+        );
       else {
         const dir = v.relogin
           ? undefined

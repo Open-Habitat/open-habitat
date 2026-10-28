@@ -1,4 +1,5 @@
-{"schema_version": 1, "state": "choose_folders", "attempt_id": "20261019T094000.000000002", "provider": "google", "address": "person.home@example.test", "relogin": false, "directory": "~/cloud/google-drive/person.home@example.test", "free_bytes": 32212254720, "quota_bytes": 53687091200, "folders": [
-  {"id": "own", "name": "Oma Drive", "bytes": 4617089843, "suggested": true},
-  {"id": "shared", "name": "Jaettu kanssani", "bytes": 1932735283, "suggested": false}
+{"schema_version": 1, "state": "choose_folders", "attempt_id": "20261019T094000.000000002", "provider": "google", "address": "person.home@example.test", "relogin": false, "directory": "~/cloud/google-drive/person.home@example.test", "free_bytes": 14066044108, "quota_bytes": 53687091200, "folders": [
+  {"id": "all", "name": "Koko Google Drive", "bytes": 26843545600, "estimated": true, "whole": true, "suggested": false},
+  {"id": "1ExampleFolderKuvat000000000000000", "name": "Kuvat", "measuring": true, "suggested": false},
+  {"id": "1ExampleFolderTyo00000000000000000", "name": "Työ", "bytes": 4617089843, "suggested": false}
 ]}

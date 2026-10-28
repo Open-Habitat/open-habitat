@@ -640,6 +640,32 @@ as in the prototype. */
   gap: var(--ah-s3);
 }
 
+/* What the pasted-redirect sign-in will look like at its end. It must not
+   be missed: the error page it describes otherwise reads as a failure. */
+.ig-expect {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--ah-line);
+  border-left: 4px solid var(--ah-accent);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+  color: var(--ah-ink);
+  line-height: 1.5;
+}
+.ig-expect strong {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.ig-folder.whole {
+  background: var(--ah-surface-2);
+}
+.ig-folder.whole + .ig-folder {
+  border-top-color: var(--ah-line);
+}
+
 /* Icons last, in ascending specificity. */
 .ig-ic svg {
   width: 15px;
@@ -658,6 +684,13 @@ as in the prototype. */
   height: 17px;
   margin-top: 1px;
   color: var(--ah-muted);
+}
+.ig-expect svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--ah-accent-ink);
 }
 .ig-st svg {
   flex: none;

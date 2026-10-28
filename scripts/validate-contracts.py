@@ -449,6 +449,7 @@ must_reject("integration-login-control.schema.json", {"action":"redirect","attem
 # A level is one of the provider's named levels, and only a start chooses it.
 must_reject("integration-login-control.schema.json", {"action":"start","provider":"microsoft","level":"admin"})
 must_reject("integration-login-control.schema.json", {"action":"cancel","attempt_id":"20261019T094000.000000002","level":"read"})
+must_reject("integration-login-control.schema.json", {"action":"skip_folders","attempt_id":"20261019T094000.000000002","folders":["all"]})
 bad_connect = json.loads((BASE / "examples" / "integration-connect.json").read_text())
 bad_connect["password"] = "secret\n[accounts.x]"
 must_reject("integration-account.schema.json", bad_connect)
