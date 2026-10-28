@@ -54,7 +54,40 @@ type google struct {
 }
 
 const googleRedirect = "http://localhost"
+
+// The levels' scope sets: Täysi, and Vain luku for every service. Google
+// has no drafts scope without sending (gmail.compose sends too), so there
+// is no drafts level.
 const googleScopes = "openid email https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/contacts"
+const googleReadScopes = "openid email https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/contacts.readonly"
+
+func googleLevelScopes(level Level) string {
+	if level == LevelRead {
+		return googleReadScopes
+	}
+	return googleScopes
+}
+
+// googleAskedLevel is the level whose scope set a grant came from: read
+// when it holds only read-level scopes. The two sets share nothing but
+// identity, so a grant narrowed on the consent page still names its set.
+func googleAskedLevel(granted map[string]bool) Level {
+	read := false
+	for s := range granted {
+		if googleIdentity[s] {
+			continue
+		}
+		if strings.Contains(" "+googleScopes+" ", " "+s+" ") {
+			return LevelFull
+		}
+		read = read || strings.Contains(" "+googleReadScopes+" ", " "+s+" ")
+	}
+	if read {
+		return LevelRead
+	}
+	return LevelFull
+}
+
 const googleGogHome = ".config/gog/open-habitat"
 
 // The file keyring is protected by Unix permissions, just like rclone's tokens.
@@ -63,6 +96,7 @@ var googleGogEnv = []string{"GOG_KEYRING_BACKEND=file", "GOG_KEYRING_PASSWORD=op
 
 func (*google) Provider() Provider            { return Google }
 func (*google) Login() LoginKind              { return PastedRedirect }
+func (*google) mirrorsRead()                  {}
 func (*google) Services() []string            { return []string{"drive", "mail", "calendar", "contacts"} }
 func (g *google) Available(env Env) bool      { return g.ToolsInstalled(env) && g.AppConfigured(env) }
 func (*google) Tools() []string               { return []string{"rclone", "gog"} }
@@ -70,6 +104,34 @@ func (g *google) ToolsInstalled(env Env) bool { return MissingTools(g, env) == n
 func (*google) AppConfigured(env Env) bool {
 	_, a := env.googleApp()
 	return a
+}
+
+// Levels: Täysi and Vain luku from the one application; the drafts level is
+// shown as one Google does not offer.
+func (g *google) Levels(env Env) []LevelOption {
+	ok := g.AppConfigured(env)
+	return []LevelOption{appLevel(LevelFull, ok), {ID: LevelDrafts, Reason: LevelNotOffered}, appLevel(LevelRead, ok)}
+}
+
+// Level is the level every service's access amounts to, or "" when the
+// person or a Workspace left some service out or granted a mixture.
+func (*google) Level(_ Env, _ string, services []Service) Level {
+	if len(services) == 0 {
+		return ""
+	}
+	want := services[0].Access
+	for _, s := range services {
+		if s.Access != want {
+			return ""
+		}
+	}
+	switch want {
+	case AccessFull:
+		return LevelFull
+	case AccessRead:
+		return LevelRead
+	}
+	return ""
 }
 func (*google) Directories(_ Env, address string) []SyncDirectory {
 	return []SyncDirectory{{Service: "drive", Path: "cloud/google-drive/" + address, Work: googleWork(address)}}
@@ -137,7 +199,7 @@ func (g *google) CheckGrant(ctx context.Context, env Env, address string) ([]Ser
 	var grant *Grant
 	if known {
 		defer applyAccess(googleRules, granted, out)
-		grant = grantOf(granted, strings.Fields(googleScopes), googleIdentity)
+		grant = grantOf(granted, strings.Fields(googleLevelScopes(googleAskedLevel(granted))), googleIdentity)
 	}
 	if expired {
 		// Both native stores received the same grant. Its rejection is not a
@@ -244,12 +306,14 @@ func (g *google) Skill(env Env, address string) SkillAccount {
 		}
 	}
 	body := fmt.Sprintf("Use `GOG_KEYRING_BACKEND=file GOG_KEYRING_PASSWORD=open-habitat %s --home ~/.config/gog/open-habitat --account %s --no-input --json` followed by the gog command. Use `gmail` (drafts first), `calendar`, `contacts`, and `drive` for online Google-native documents. The keyring password is a fixed native file-backend setting, not a secret. Never export or print tokens. Consult the tool's --help for syntax.", mustTool(env, "gog"), address)
-	if ready {
+	if ready && googleDriveMirror(env, address) {
+		body += fmt.Sprintf("\n\nOrdinary Drive files are under `~/cloud/google-drive/%s/`. Read them with filesystem tools. Drive is read only: this directory is a one-way mirror of Drive. Nothing written here reaches Drive, and the next pass overwrites or deletes any local change, so never keep work here. Google-native documents and shortcuts are not mirrored: read those with gog online.", address)
+	} else if ready {
 		body += fmt.Sprintf("\n\nOrdinary Drive files sync continuously both ways under `~/cloud/google-drive/%s/`. Edits, moves and deletions reach the cloud. Google-native documents and shortcuts are excluded from filesystem sync: use gog online for those. Write only what the person requested. Native bisync safeguards must not be bypassed with --force, blind --resync or remove/reconnect: reconnection is a cloud-preferred union, not deletion approval. Initial conflicting local versions are backed up under `~/.local/share/rclone/google-backups/%s/`.", address, address)
-	} else if driveAccess == AccessFull {
+	} else if driveAccess != AccessNone {
 		body += "\n\nDrive initial sync is not ready. Finish the initial folder choice in Settings → Integrations; do not assume local files are available."
 	} else {
-		body += "\n\nDrive files are not synced: the grant does not let them sync both ways."
+		body += "\n\nDrive files are not synced: Drive is not granted."
 	}
 	body += accessSummary(services, map[string]string{"drive": "Drive", "mail": "Gmail", "calendar": "Calendar", "contacts": "Contacts"})
 	return SkillAccount{Label: "Google", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: body}
@@ -309,9 +373,26 @@ func (g *google) remove(env Env, address string) error {
 	return nil
 }
 
-func (g *google) StartLogin(_ context.Context, env Env, address string) (Login, error) {
+func (g *google) StartLogin(ctx context.Context, env Env, address string) (Login, error) {
+	return g.StartLevelLogin(ctx, env, address, "")
+}
+
+// StartLevelLogin asks for the level's scope set. A renewal without a level
+// asks for the set the account's grant came from.
+func (g *google) StartLevelLogin(ctx context.Context, env Env, address string, level Level) (Login, error) {
 	app, ok := env.googleApp()
 	if !ok || !g.Available(env) {
+		return nil, ToolFailed
+	}
+	if level == "" {
+		level = LevelFull
+		if address != "" {
+			if granted, known := googleGrant(ctx, env, address); known {
+				level = googleAskedLevel(granted)
+			}
+		}
+	}
+	if level != LevelFull && level != LevelRead {
 		return nil, ToolFailed
 	}
 	random := func() (string, error) {
@@ -328,7 +409,7 @@ func (g *google) StartLogin(_ context.Context, env Env, address string) (Login, 
 		return nil, err
 	}
 	hash := sha256.Sum256([]byte(verifier))
-	q := url.Values{"client_id": {app.ClientID}, "response_type": {"code"}, "redirect_uri": {googleRedirect}, "access_type": {"offline"}, "prompt": {"consent"}, "scope": {googleScopes}, "state": {state}, "code_challenge": {base64.RawURLEncoding.EncodeToString(hash[:])}, "code_challenge_method": {"S256"}}
+	q := url.Values{"client_id": {app.ClientID}, "response_type": {"code"}, "redirect_uri": {googleRedirect}, "access_type": {"offline"}, "prompt": {"consent"}, "scope": {googleLevelScopes(level)}, "state": {state}, "code_challenge": {base64.RawURLEncoding.EncodeToString(hash[:])}, "code_challenge_method": {"S256"}}
 	if address != "" {
 		q.Set("login_hint", address)
 	}
@@ -481,22 +562,32 @@ func (l *googleLogin) Commit(ctx context.Context, address string) (result error)
 	}
 	// Publish both native stores under the catalog lock. Roll back a new account
 	// on failure/cancellation; an existing account remains visible for repair.
+	// rclone's own scope option says the files' direction: drive syncs both
+	// ways, drive.readonly is a one-way mirror.
+	before, _ := googleReadNative(l.env, address)
+	scope := map[Access]string{AccessFull: "drive", AccessRead: "drive.readonly"}[googleRules.access("drive", l.granted)]
 	fd, err := openHomeDir(l.env.Home, false, splitPath(googleDir)...)
 	if err != nil {
 		return err
 	}
-	if googleRules.access("drive", l.granted) == AccessFull {
-		config := fmt.Sprintf("[google]\ntype = drive\nclient_id = %s\nclient_secret = %s\nscope = drive\ntoken = %s\n", l.app.ClientID, l.app.ClientSecret, l.token)
+	if scope != "" {
+		config := fmt.Sprintf("[google]\ntype = drive\nclient_id = %s\nclient_secret = %s\nscope = %s\ntoken = %s\n", l.app.ClientID, l.app.ClientSecret, scope, l.token)
 		err = writeFileAt(fd, address+".conf", []byte(config), 0600)
 	} else if err = unix.Unlinkat(fd, address+".conf", 0); errors.Is(err, unix.ENOENT) {
-		// Files sync both ways, so only a full Drive grant gets rclone's
-		// login; a narrower new grant retires an earlier one's. The synced
-		// directory and its listings stay for a later full grant.
+		// A grant without Drive retires an earlier one's rclone login. The
+		// synced directory and its listings stay for a later Drive grant.
 		err = nil
 	}
 	unix.Close(fd)
 	if err != nil {
 		return err
+	}
+	if before.scope != "" && scope != "" && before.scope != scope {
+		// The pair's listings, or the mirror's marker, describe the old
+		// direction; the person's next choice starts the new one.
+		if err := clearWork(l.env, googleWork(address)); err != nil {
+			return err
+		}
 	}
 	var scopes []string
 	for s := range l.granted {
@@ -525,6 +616,112 @@ func (g *google) FolderChoiceAfterLogin(env Env, address string) (bool, error) {
 	return !ready, nil
 }
 
+// endLevel ends the account's old grant before a sign-in at another level
+// (revokeFirstEntry). Google's revocation of any token of the application
+// ends the person's whole grant to it, so revoking the replaced login after
+// the new sign-in would end the new one too. The same level is a renewal
+// and revokes nothing.
+func (g *google) endLevel(ctx context.Context, env Env, address string, level Level) error {
+	g.native.Lock()
+	defer g.native.Unlock()
+	if !ValidAddress(address) || (level != LevelFull && level != LevelRead) {
+		return ToolFailed
+	}
+	granted, known := googleGrant(ctx, env, address)
+	if known {
+		services := make([]Service, 0, 4)
+		for _, id := range g.Services() {
+			services = append(services, Service{ID: id, Access: googleRules.access(id, granted)})
+		}
+		if g.Level(env, address, services) == level {
+			return nil
+		}
+	}
+	native, _ := googleReadNative(env, address)
+	if native.scope == "drive" && level != LevelFull {
+		// Drive stops syncing both ways: what was made locally reaches
+		// Drive once more with the old grant, or nothing changes.
+		if listingsFailed(env.Home, googleWork(address)) {
+			return FinalSyncFailed
+		}
+		if _, syncing := g.SyncCommand(env, address); syncing {
+			cmd, ok := googleBisync(env, address)
+			if !ok || env.runInitialSync(ctx, cmd, "drive") != nil {
+				return FinalSyncFailed
+			}
+		}
+	}
+	refresh := native.refresh
+	if refresh == "" {
+		refresh = googleExportRefresh(ctx, env, address)
+	}
+	return g.revoke(ctx, refresh)
+}
+
+// googleExportRefresh reads the account's refresh token from gog's store,
+// for an account whose grant gave rclone no login. Empty when there is none.
+func googleExportRefresh(ctx context.Context, env Env, address string) string {
+	if !googleHasToken(env, address) {
+		return ""
+	}
+	c, ok := gogCommand(env, "auth", "tokens", "export", address, "--out", "/dev/stdout", "--overwrite")
+	if !ok {
+		return ""
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	data, err := env.run(ctx, c, nil)
+	if err != nil {
+		return ""
+	}
+	// gog writes the token file to its output and then its own summary.
+	var t struct {
+		Email   string `json:"email"`
+		Refresh string `json:"refresh_token"`
+	}
+	if json.NewDecoder(strings.NewReader(string(data))).Decode(&t) != nil || !strings.EqualFold(t.Email, address) {
+		return ""
+	}
+	return t.Refresh
+}
+
+// revoke ends the grant a refresh token belongs to at Google. A token Google
+// no longer knows is already ended.
+func (g *google) revoke(ctx context.Context, refresh string) error {
+	if refresh == "" {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://oauth2.googleapis.com/revoke", strings.NewReader(url.Values{"token": {refresh}}.Encode()))
+	if err != nil {
+		return RevokeFailed
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	client := &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	if g.client != nil {
+		client = g.client
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return RevokeFailed
+	}
+	defer res.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(res.Body, 64<<10+1))
+	if res.StatusCode == 200 {
+		return nil
+	}
+	var refused struct {
+		Error string `json:"error"`
+	}
+	if res.StatusCode == 400 && err == nil && len(data) <= 64<<10 && json.Unmarshal(data, &refused) == nil && (refused.Error == "invalid_token" || refused.Error == "invalid_grant") {
+		return nil
+	}
+	return RevokeFailed
+}
+
 var _ FolderEntry = (*google)(nil)
+var _ LevelEntry = (*google)(nil)
+var _ revokeFirstEntry = (*google)(nil)
 var _ GrantEntry = (*google)(nil)
 var _ LoginEntry = (*google)(nil)

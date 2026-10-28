@@ -695,7 +695,16 @@ const microsoftLevels: Provider = {
   services: ["onedrive", "sharepoint", "mail", "calendar", "contacts"],
   levels: [
     { id: "full", available: true },
-    { id: "drafts", available: false },
+    { id: "drafts", available: false, reason: "application_missing" },
+    { id: "read", available: true },
+  ],
+};
+// Google has no drafts level at all: Gmail's drafts scope sends too.
+const googleLevels: Provider = {
+  ...google,
+  levels: [
+    { id: "full", available: true },
+    { id: "drafts", available: false, reason: "not_offered" },
     { id: "read", available: true },
   ],
 };
@@ -704,15 +713,42 @@ const dropboxLevels: Provider = {
   available: true,
   levels: [
     { id: "full", available: true },
-    { id: "app_folder", available: false },
+    { id: "app_folder", available: false, reason: "application_missing" },
     { id: "read", available: true },
   ],
 };
 const leveled: IntegrationList = {
   schema_version: 1,
-  providers: [microsoftLevels, dropboxLevels],
+  providers: [googleLevels, microsoftLevels, dropboxLevels],
   skill: "current",
   accounts: [
+    {
+      provider: "google",
+      address: "person.home@example.test",
+      checked_at: checked,
+      level: "full",
+      services: [
+        {
+          id: "drive",
+          state: "ok",
+          access: "full",
+          directory: "~/cloud/google-drive/person.home@example.test",
+          last_synced_at: "2026-10-19T06:37:12Z",
+        },
+        { id: "mail", state: "ok", access: "full" },
+        { id: "calendar", state: "ok", access: "full" },
+        { id: "contacts", state: "ok", access: "full" },
+      ],
+      grant: {
+        granted: [
+          "https://www.googleapis.com/auth/calendar",
+          "https://www.googleapis.com/auth/contacts",
+          "https://www.googleapis.com/auth/drive",
+          "https://www.googleapis.com/auth/gmail.modify",
+        ],
+        not_granted: [],
+      },
+    },
     {
       provider: "microsoft",
       address: "person@work.example.test",
@@ -772,7 +808,29 @@ export const DialogLevels: Story = {
 export const DialogChangeLevel: Story = {
   render: dialog(dropboxLevels, {
     stage: "intro",
-    account: leveled.accounts[1],
+    account: leveled.accounts[2],
+  }),
+};
+export const DialogGoogleLevels: Story = {
+  render: dialog(googleLevels, { stage: "intro" }),
+};
+export const DialogGoogleChangeLevel: Story = {
+  render: dialog(googleLevels, {
+    stage: "intro",
+    account: leveled.accounts[0],
+  }),
+};
+export const DialogRevokeFailed: Story = {
+  render: dialog(googleLevels, {
+    stage: "login",
+    view: {
+      ...base,
+      state: "failed",
+      provider: "google",
+      relogin: true,
+      address: "person.home@example.test",
+      failure: "revoke_failed",
+    },
   }),
 };
 export const DialogFinalSyncFailed: Story = {

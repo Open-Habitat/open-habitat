@@ -214,7 +214,7 @@ func (*microsoft) Levels(env Env) []LevelOption {
 	var out []LevelOption
 	for _, l := range microsoftLevels {
 		_, ok := apps[l]
-		out = append(out, LevelOption{l, ok})
+		out = append(out, appLevel(l, ok))
 	}
 	return out
 }

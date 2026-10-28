@@ -7,7 +7,7 @@
       "action": {"const": "start"},
       "provider": {"$ref": "integrations.schema.json#/$defs/provider_id"},
       "address": {"description": "Present to sign an existing account in again.", "$ref": "integrations.schema.json#/$defs/address"},
-      "level": {"description": "The account level to sign in at, one the provider lists as available; anything else is refused with 409 level_unavailable. Absent: a renewal keeps the account's own level, a new account gets the broadest available. Signing an existing account in at another level changes its level: Dropbox revokes the replaced login, and files that stop syncing both ways are synced both ways once more first.", "$ref": "integrations.schema.json#/$defs/level"}
+      "level": {"description": "The account level to sign in at, one the provider lists as available; anything else is refused with 409 level_unavailable. Absent: a renewal keeps the account's own level, a new account gets the broadest available. Signing an existing account in at another level changes its level: files that stop syncing both ways are synced both ways once more first; Dropbox revokes the replaced login after the new sign-in, and Google, whose revocation ends every token of the application, revokes the old grant before the sign-in starts (an abandoned sign-in then leaves the account signed out).", "$ref": "integrations.schema.json#/$defs/level"}
     }},
     {"type": "object", "additionalProperties": false, "required": ["action", "attempt_id", "redirect_url"], "properties": {
       "action": {"const": "redirect"},

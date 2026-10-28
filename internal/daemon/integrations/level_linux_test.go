@@ -92,7 +92,7 @@ func TestDropboxReadLevelMirrorsOneWay(t *testing.T) {
 	_, list, _ := call(t, h, "GET", ListPath, "", nil)
 	raw, _ := json.Marshal(list["providers"].([]any)[0].(map[string]any)["levels"])
 	var levels []LevelOption
-	if json.Unmarshal(raw, &levels) != nil || !slices.Equal(levels, []LevelOption{{LevelFull, true}, {LevelAppFolder, false}, {LevelRead, true}}) {
+	if json.Unmarshal(raw, &levels) != nil || !slices.Equal(levels, []LevelOption{{LevelFull, true, ""}, {LevelAppFolder, false, LevelApplicationMissing}, {LevelRead, true, ""}}) {
 		t.Fatal(string(raw))
 	}
 	if code, out, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "dropbox", "level": "app_folder"}); code != 409 || out["error"].(map[string]any)["code"] != "level_unavailable" {
@@ -301,7 +301,7 @@ func TestMicrosoftReadLevelIsItsApplicationAndMirrors(t *testing.T) {
 		}
 		return base.RoundTrip(r)
 	})
-	if got := m.Levels(env); !slices.Equal(got, []LevelOption{{LevelFull, true}, {LevelDrafts, false}, {LevelRead, true}}) {
+	if got := m.Levels(env); !slices.Equal(got, []LevelOption{{LevelFull, true, ""}, {LevelDrafts, false, LevelApplicationMissing}, {LevelRead, true, ""}}) {
 		t.Fatal(got)
 	}
 	login, err := m.StartLevelLogin(context.Background(), env, "", LevelRead)

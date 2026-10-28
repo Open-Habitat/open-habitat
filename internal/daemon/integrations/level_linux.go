@@ -32,11 +32,33 @@ const (
 	LevelAppFolder Level = "app_folder"
 )
 
-// LevelOption is a level the entry offers and whether the operator
-// registered what it needs.
+// LevelOption is a level the entry shows and whether it can be chosen: the
+// operator registered what it needs, or the provider offers it at all.
 type LevelOption struct {
 	ID        Level `json:"id"`
 	Available bool  `json:"available"`
+	// Reason says why a level is not available.
+	Reason LevelReason `json:"reason,omitempty"`
+}
+
+// LevelReason is why a level cannot be chosen.
+type LevelReason string
+
+const (
+	// LevelApplicationMissing is a level whose application the server's
+	// administrator has not registered.
+	LevelApplicationMissing LevelReason = "application_missing"
+	// LevelNotOffered is a level the provider has no boundary for, such as
+	// Gmail drafts without sending: shown so the choice is honest.
+	LevelNotOffered LevelReason = "not_offered"
+)
+
+// appLevel is a level that needs an operator's application.
+func appLevel(id Level, registered bool) LevelOption {
+	if registered {
+		return LevelOption{ID: id, Available: true}
+	}
+	return LevelOption{ID: id, Reason: LevelApplicationMissing}
 }
 
 // LevelEntry is a sign-in whose account level the person chooses.
@@ -51,6 +73,20 @@ type LevelEntry interface {
 	// Level is the account's level read from its grant and the services'
 	// access, or "" when the grant matches none of the levels.
 	Level(env Env, address string, services []Service) Level
+}
+
+// revokeFirstEntry is a level entry whose provider ends every token of the
+// application at once when one is revoked (Google), so a level change cannot
+// revoke the replaced login after the new sign-in as Dropbox does: the old
+// grant ends before the person signs in again. endLevel runs under the
+// catalog's write lock with the account's sync stopped, before the sign-in
+// starts. Where files would stop syncing both ways it first syncs them both
+// ways once more with the old grant; if that fails, or the old grant cannot
+// be revoked, nothing changes. A sign-in the person then abandons leaves the
+// account signed out, which a renewal repairs.
+type revokeFirstEntry interface {
+	LevelEntry
+	endLevel(ctx context.Context, env Env, address string, level Level) error
 }
 
 // levelAvailable reports whether level is one of options and available.

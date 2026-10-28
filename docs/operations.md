@@ -812,6 +812,27 @@ does not revoke Google's app grant; that is available in the person's Google
 Account security settings. A failed renewal can leave an existing account in
 need of another renewal; no automatic write retries are made.
 
+#### Google account levels
+
+A person chooses **Täysi** (the scopes above) or **Vain luku** when
+connecting, and *Vaihda taso…* changes it later. Both use the one client
+above, so the operator registers nothing more: Vain luku asks for
+`drive.readonly`, `gmail.readonly`, `calendar.readonly` and
+`contacts.readonly` (each under `https://www.googleapis.com/auth/`). Add them
+to the consent screen's data access beside the full set; an External app's
+verification covers them as restricted scopes too. The drafts level is shown
+greyed out as one Google does not offer, because Gmail's drafts scope also
+sends. A read grant's Drive is a one-way mirror (`rclone sync`, rclone's own
+`scope = drive.readonly`), chosen and backed up like the Dropbox mirror.
+
+The level is read from the grant gog keeps. Google's revocation of any token
+ends the person's whole grant to the client, so a level change revokes the
+old grant at Google *before* the new sign-in starts, after one more two-way
+Drive pass where Drive stops syncing both ways; if either fails nothing
+changes (`final_sync_failed`, `revoke_failed`). A sign-in the person then
+abandons leaves the account signed out until a renewal. A renewal at the same
+level revokes nothing.
+
 Before relying on a live account, verify browser consent, initial sync,
 local-file upload, cloud-file download, daemon restart, all three gog services,
 a second account and removal. Synthetic tests do not establish provider consent

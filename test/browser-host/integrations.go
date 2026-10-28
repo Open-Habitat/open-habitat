@@ -95,12 +95,14 @@ func fixtureIntegrations(home, repoRoot, self string, gitea *giteafake.Server, g
 		return e.Provider() == integrations.Google || e.Provider() == integrations.Microsoft
 	})
 	entries = append(entries,
-		&fixtureEntry{provider: integrations.Google, login: integrations.PastedRedirect, services: []string{"mail", "calendar", "contacts", "drive"}, files: "drive", dir: "google-drive",
+		&levelFixture{&fixtureEntry{provider: integrations.Google, login: integrations.PastedRedirect, services: []string{"mail", "calendar", "contacts", "drive"}, files: "drive", dir: "google-drive",
 			addresses: []string{"person.home@example.test", "person.second@example.test"},
 			folders:   []integrations.Folder{{ID: "own", Name: "Oma Drive", Bytes: 4617089843, Suggested: true}, {ID: "shared", Name: "Jaettu kanssani", Bytes: 1932735283, Suggested: true}, {ID: "photos", Name: "Kuvat", Bytes: 33500744908}}},
+			googleLevels},
 		&levelFixture{&fixtureEntry{provider: integrations.Microsoft, login: integrations.DeviceCode, services: []string{"mail", "calendar", "contacts", "onedrive"}, files: "onedrive", dir: "onedrive",
 			addresses: []string{"person@work.example.test", "person.second@work.example.test"},
-			folders:   []integrations.Folder{{ID: "me", Name: "OneDrive – Esimerkki Oy", Bytes: 4509715660, Suggested: true}, {ID: "sales", Name: "SharePoint · Myynti › Asiakirjat", Bytes: 1932735283, Suggested: true}, {ID: "admin", Name: "SharePoint · Hallinto › Sopimukset", Bytes: 644245094}}}},
+			folders:   []integrations.Folder{{ID: "me", Name: "OneDrive – Esimerkki Oy", Bytes: 4509715660, Suggested: true}, {ID: "sales", Name: "SharePoint · Myynti › Asiakirjat", Bytes: 1932735283, Suggested: true}, {ID: "admin", Name: "SharePoint · Hallinto › Sopimukset", Bytes: 644245094}}},
+			microsoftLevels},
 	)
 	// The prototype's home: 50 GB quota with 15.3 GB of other files.
 	room := func() integrations.Room {
@@ -321,17 +323,50 @@ func (l *fixtureLogin) Wait(ctx context.Context) (string, error) {
 	return l.address, nil
 }
 
-// levelFixture is the Microsoft stand-in with account levels: each level is
-// offered while the broker's file holds its application's section, and an
-// account's grant is the one its sign-in's level was given.
-type levelFixture struct{ *fixtureEntry }
+// levelFixture is a stand-in with account levels: each level is offered
+// while the broker's file holds its application's section, a level without
+// a section is one the provider does not offer, and an account's grant is
+// the one its sign-in's level was given.
+type levelFixture struct {
+	*fixtureEntry
+	levels fixtureLevels
+}
 
-var levelSections = map[integrations.Level]string{integrations.LevelFull: "microsoft", integrations.LevelDrafts: "microsoft_drafts", integrations.LevelRead: "microsoft_read"}
+type fixtureLevels struct {
+	sections map[integrations.Level]string
+	granted  map[integrations.Level][]string
+}
+
+var microsoftLevels = fixtureLevels{
+	sections: map[integrations.Level]string{integrations.LevelFull: "microsoft", integrations.LevelDrafts: "microsoft_drafts", integrations.LevelRead: "microsoft_read"},
+	granted: map[integrations.Level][]string{
+		integrations.LevelFull:   {"Calendars.ReadWrite", "Contacts.ReadWrite", "Files.ReadWrite.All", "Mail.ReadWrite", "Mail.Send", "Sites.ReadWrite.All", "User.Read"},
+		integrations.LevelDrafts: {"Calendars.Read", "Contacts.Read", "Files.Read.All", "Mail.ReadWrite", "Sites.Read.All", "User.Read"},
+		integrations.LevelRead:   {"Calendars.Read", "Contacts.Read", "Files.Read.All", "Mail.Read", "Sites.Read.All", "User.Read"},
+	},
+}
+
+// Google's levels share its one application; it has no drafts level.
+var googleLevels = fixtureLevels{
+	sections: map[integrations.Level]string{integrations.LevelFull: "google", integrations.LevelRead: "google"},
+	granted: map[integrations.Level][]string{
+		integrations.LevelFull: {"https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/contacts", "https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/gmail.modify"},
+		integrations.LevelRead: {"https://www.googleapis.com/auth/calendar.readonly", "https://www.googleapis.com/auth/contacts.readonly", "https://www.googleapis.com/auth/drive.readonly", "https://www.googleapis.com/auth/gmail.readonly"},
+	},
+}
 
 func (f *levelFixture) Levels(integrations.Env) []integrations.LevelOption {
 	var out []integrations.LevelOption
 	for _, l := range []integrations.Level{integrations.LevelFull, integrations.LevelDrafts, integrations.LevelRead} {
-		out = append(out, integrations.LevelOption{ID: l, Available: appFixture.set(levelSections[l])})
+		section, offered := f.levels.sections[l]
+		switch {
+		case !offered:
+			out = append(out, integrations.LevelOption{ID: l, Reason: integrations.LevelNotOffered})
+		case appFixture.set(section):
+			out = append(out, integrations.LevelOption{ID: l, Available: true})
+		default:
+			out = append(out, integrations.LevelOption{ID: l, Reason: integrations.LevelApplicationMissing})
+		}
 	}
 	return out
 }
@@ -385,11 +420,7 @@ func (f *levelFixture) CheckGrant(ctx context.Context, env integrations.Env, add
 	if grant != nil || level == "" {
 		return out, grant
 	}
-	granted := map[integrations.Level][]string{
-		integrations.LevelFull:   {"Calendars.ReadWrite", "Contacts.ReadWrite", "Files.ReadWrite.All", "Mail.ReadWrite", "Mail.Send", "Sites.ReadWrite.All", "User.Read"},
-		integrations.LevelDrafts: {"Calendars.Read", "Contacts.Read", "Files.Read.All", "Mail.ReadWrite", "Sites.Read.All", "User.Read"},
-		integrations.LevelRead:   {"Calendars.Read", "Contacts.Read", "Files.Read.All", "Mail.Read", "Sites.Read.All", "User.Read"},
-	}[level]
+	granted := f.levels.granted[level]
 	for i := range out {
 		switch {
 		case level == integrations.LevelFull:

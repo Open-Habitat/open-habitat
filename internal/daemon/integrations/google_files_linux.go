@@ -5,6 +5,7 @@ package integrations
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -59,6 +60,52 @@ func (*google) Accounts(env Env) ([]string, error) {
 	return out, nil
 }
 func googleWork(address string) string { return googleDir + "/bisync/" + address }
+
+// googleNative is what an account's rclone config says: the Drive scope it
+// signed in with, rclone's own choice of drive or drive.readonly, and the
+// grant's refresh token.
+type googleNative struct{ scope, refresh string }
+
+func googleReadNative(env Env, address string) (googleNative, error) {
+	var n googleNative
+	if !ValidAddress(address) {
+		return n, ToolFailed
+	}
+	fd, err := openHomeDir(env.Home, false, splitPath(googleDir)...)
+	if err != nil {
+		return n, err
+	}
+	data, err := readFileAt(fd, address+".conf", 64<<10)
+	unix.Close(fd)
+	if err != nil {
+		return n, err
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		switch value = strings.TrimSpace(value); strings.TrimSpace(key) {
+		case "scope":
+			n.scope = value
+		case "token":
+			var t struct {
+				Refresh string `json:"refresh_token"`
+			}
+			if json.Unmarshal([]byte(value), &t) == nil {
+				n.refresh = t.Refresh
+			}
+		}
+	}
+	return n, nil
+}
+
+// googleDriveMirror reports whether Drive's rclone login reads only, so its
+// files are a one-way mirror.
+func googleDriveMirror(env Env, address string) bool {
+	n, err := googleReadNative(env, address)
+	return err == nil && n.scope == "drive.readonly"
+}
 func googleCommand(env Env, address string, args ...string) (Command, bool) {
 	tool, ok := env.Tool("rclone")
 	if !ok || !ValidAddress(address) {
@@ -95,8 +142,33 @@ func (d *google) MeasureFolders(ctx context.Context, env Env, address string, id
 func googleBisync(env Env, address string) (Command, bool) {
 	return googleCommand(env, address, "bisync", filepath.Join(env.Home, "cloud/google-drive", address), "google:", "--workdir", filepath.Join(env.Home, googleWork(address)), "--resilient", "--recover", "--max-lock", "2m", "--max-delete", "50", "--conflict-resolve", "none", "--conflict-loser", "num", "--create-empty-src-dirs", "--refresh-times", "--compare", "size,modtime")
 }
+
+// googleMirror is one pass of the read-only mirror (mirrorCommand).
+func googleMirror(env Env, address string) (Command, bool) {
+	return googleCommand(env, address, "sync", "google:", filepath.Join(env.Home, "cloud/google-drive", address), "--create-empty-src-dirs")
+}
 func (d *google) ChooseFolders(ctx context.Context, env Env, address string, ids []string) error {
 	if len(ids) != 1 || ids[0] != "all" {
+		return ToolFailed
+	}
+	n, err := googleReadNative(env, address)
+	if err != nil {
+		return err
+	}
+	switch n.scope {
+	case "drive.readonly":
+		fd, err := openHomeDir(env.Home, true, splitPath("cloud/google-drive/"+address)...)
+		if err != nil {
+			return err
+		}
+		unix.Close(fd)
+		cmd, ok := googleMirror(env, address)
+		if !ok {
+			return ToolFailed
+		}
+		return initialMirror(ctx, env, cmd, googleWork(address), ".local/share/rclone/google-backups/"+address, "drive")
+	case "drive":
+	default:
 		return ToolFailed
 	}
 	for _, rel := range []string{"cloud/google-drive/" + address, googleWork(address), ".local/share/rclone/google-backups/" + address} {
@@ -105,6 +177,9 @@ func (d *google) ChooseFolders(ctx context.Context, env Env, address string, ids
 			return err
 		}
 		unix.Close(fd)
+	}
+	if err := unmarkMirrored(env, googleWork(address)); err != nil {
+		return err
 	}
 	cmd, ok := googleBisync(env, address)
 	if !ok {
@@ -136,6 +211,21 @@ func (d *google) resumeInitial(ctx context.Context, env Env, address string, _ [
 }
 func (*google) passService(string) string { return "drive" }
 func (d *google) SyncCommand(env Env, address string) (Command, bool) {
+	n, err := googleReadNative(env, address)
+	if err != nil {
+		return Command{}, false
+	}
+	switch n.scope {
+	case "drive.readonly":
+		cmd, ok := googleMirror(env, address)
+		if !ok || !mirrorReady(env.Home, googleWork(address)) {
+			return Command{}, false
+		}
+		return syncLoop([]syncPass{{Work: googleWork(address), Cmd: cmd, Done: filepath.Join(env.Home, googleWork(address), mirrorDone)}}), true
+	case "drive":
+	default:
+		return Command{}, false
+	}
 	names, fd, err := listHomeDir(env.Home, googleWork(address))
 	if err != nil || fd < 0 {
 		return Command{}, false

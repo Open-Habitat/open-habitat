@@ -892,7 +892,60 @@ describe("account levels", () => {
     expect(onContinue).toHaveBeenCalledWith("read");
   });
 
-  it("names an account's level from its grant, and only for providers with levels", () => {
+  it("shows Google's drafts level as one Google does not offer, and a change revokes first", async () => {
+    const levelled: Provider = {
+      ...google,
+      levels: [
+        { id: "full", available: true },
+        { id: "drafts", available: false, reason: "not_offered" },
+        { id: "read", available: true },
+      ],
+    };
+    const account: Account = {
+      provider: "google",
+      address: "person.home@example.test",
+      checked_at: "2026-10-28T06:38:00Z",
+      level: "full",
+      services: [
+        { id: "mail", state: "ok", access: "full" },
+        {
+          id: "drive",
+          state: "ok",
+          access: "full",
+          directory: "~/cloud/google-drive/person.home@example.test",
+        },
+      ],
+      grant: { granted: [], not_granted: [] },
+    };
+    const onContinue = vi.fn();
+    const view = render(
+      <ConnectDialog
+        provider={levelled}
+        stage={{ stage: "intro", account }}
+        onContinue={onContinue}
+        onPassword={noop}
+        onPaste={noop}
+        onFolders={noop}
+        onRestart={noop}
+        onClose={noop}
+      />,
+    );
+    const drafts = view.getByTestId("integration-level-drafts");
+    expect(
+      (within(drafts).getByRole("radio") as HTMLInputElement).disabled,
+    ).toBe(true);
+    expect(drafts.textContent).toContain("Google ei tarjoa tätä tasoa");
+    expect(drafts.textContent).not.toContain("ylläpitäjä");
+    await userEvent.click(view.getByTestId("integration-level-read"));
+    expect(view.baseElement.textContent).toContain(
+      "peruu vanhan kirjautumisen Googlessa ennen kuin kirjaudut uudelleen",
+    );
+    expect(view.baseElement.textContent).toContain("muuttuu peiliksi");
+    await userEvent.click(view.getByTestId("integration-continue"));
+    expect(onContinue).toHaveBeenCalledWith("read");
+  });
+
+  it("names an account's level from its grant", () => {
     const narrowed: Account = {
       provider: "microsoft",
       address: "person@work.example.test",
@@ -924,8 +977,14 @@ describe("account levels", () => {
       provider: "google",
       address: "person.home@example.test",
       checked_at: "2026-10-28T06:38:00Z",
-      services: [{ id: "mail", state: "ok", access: "read" }],
-      grant: { granted: ["gmail.readonly"], not_granted: [] },
+      services: [
+        { id: "mail", state: "ok", access: "full" },
+        { id: "drive", state: "unknown", access: "none" },
+      ],
+      grant: {
+        granted: ["https://www.googleapis.com/auth/gmail.modify"],
+        not_granted: ["https://www.googleapis.com/auth/drive"],
+      },
     };
     const onChangeLevel = vi.fn();
     const view = render(
@@ -949,11 +1008,12 @@ describe("account levels", () => {
       .map((p) => p.dataset.level);
     // A grant that is a level with a service left out, and one that is
     // none of them.
-    expect(levels).toEqual(["full", "custom", "custom"]);
+    expect(levels).toEqual(["full", "custom", "custom", "custom"]);
     const googleCard = view.getByTestId("integration-account-google");
     expect(
-      within(googleCard).queryByTestId("integration-account-level"),
-    ).toBeNull();
+      within(googleCard).getByTestId("integration-account-level").textContent,
+    ).toBe("Täysi, ilman: Google Drive");
+    // The Google provider here lists no levels, so there is no change.
     expect(
       within(googleCard).queryByTestId("integration-change-level"),
     ).toBeNull();

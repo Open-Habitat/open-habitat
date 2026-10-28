@@ -2,9 +2,9 @@
   "schema_version": 1,
   "providers": [
     {"id": "imap", "available": true, "login": "app_password", "services": ["mail"]},
-    {"id": "google", "available": false, "unavailable_reason": "app_credentials_required", "login": "pasted_redirect", "services": ["mail", "calendar", "contacts", "drive"]},
-    {"id": "microsoft", "available": true, "login": "device_code", "services": ["onedrive", "sharepoint", "mail", "calendar", "contacts"], "levels": [{"id": "full", "available": true}, {"id": "drafts", "available": false}, {"id": "read", "available": true}]},
-    {"id": "dropbox", "available": true, "login": "pasted_redirect", "services": ["dropbox"], "levels": [{"id": "full", "available": true}, {"id": "app_folder", "available": false}, {"id": "read", "available": true}]},
+    {"id": "google", "available": false, "unavailable_reason": "app_credentials_required", "login": "pasted_redirect", "services": ["mail", "calendar", "contacts", "drive"], "levels": [{"id": "full", "available": false, "reason": "application_missing"}, {"id": "drafts", "available": false, "reason": "not_offered"}, {"id": "read", "available": false, "reason": "application_missing"}]},
+    {"id": "microsoft", "available": true, "login": "device_code", "services": ["onedrive", "sharepoint", "mail", "calendar", "contacts"], "levels": [{"id": "full", "available": true}, {"id": "drafts", "available": false, "reason": "application_missing"}, {"id": "read", "available": true}]},
+    {"id": "dropbox", "available": true, "login": "pasted_redirect", "services": ["dropbox"], "levels": [{"id": "full", "available": true}, {"id": "app_folder", "available": false, "reason": "application_missing"}, {"id": "read", "available": true}]},
     {"id": "gitea", "available": true, "login": "personal_token", "services": ["git"]},
     {"id": "gitlab", "available": true, "login": "personal_token", "services": ["git"]}
   ],

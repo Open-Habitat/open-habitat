@@ -178,6 +178,10 @@ it("walks Google's steps, or skips to the fields, and sends nothing invalid", as
       "https://www.googleapis.com/auth/gmail.modify",
       "https://www.googleapis.com/auth/calendar",
       "https://www.googleapis.com/auth/contacts",
+      "https://www.googleapis.com/auth/drive.readonly",
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/calendar.readonly",
+      "https://www.googleapis.com/auth/contacts.readonly",
     ].join("\n"),
   );
   fireEvent.click(within(dialog()).getByTestId("si-back"));

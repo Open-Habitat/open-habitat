@@ -203,13 +203,9 @@ function CloudFolderHint() {
   );
 }
 
-/** Providers whose read-only files are a one-way mirror; Google Drive's
- * read grant syncs nothing. */
-const mirrored: ProviderId[] = ["microsoft", "dropbox"];
-
 /** What a narrower grant lets agents do with a service, in the person's
  * terms; the full level is described by what the agent gets. */
-function narrower(provider: ProviderId, service: Service): string | null {
+function narrower(service: Service): string | null {
   const file = fileServices.includes(service.id);
   switch (service.access) {
     case "none":
@@ -218,9 +214,7 @@ function narrower(provider: ProviderId, service: Service): string | null {
       return "Lukee, järjestelee ja kirjoittaa luonnoksia. Ei voi lähettää.";
     case "read":
       return file
-        ? mirrored.includes(provider)
-          ? "Vain luku. Kansio on peili: muutokset eivät palaa palveluun, ja seuraava synkronointi kirjoittaa ne yli."
-          : "Vain luku. Tiedostoja ei synkronoida kotihakemistoosi, koska synkronointi kulkee molempiin suuntiin."
+        ? "Vain luku. Kansio on peili: muutokset eivät palaa palveluun, ja seuraava synkronointi kirjoittaa ne yli."
         : service.id === "mail"
           ? "Vain luku. Ei voi muuttaa eikä lähettää mitään."
           : service.id === "calendar"
@@ -253,6 +247,20 @@ const levelCopy: Partial<
       sum: "Agentit lukevat postia, kalenteria, yhteystietoja ja tiedostoja, mutta eivät muuta mitään.",
     },
   },
+  google: {
+    full: {
+      name: "Täysi",
+      sum: "Agentit voivat lukea, muokata ja lähettää sinun nimissäsi.",
+    },
+    drafts: {
+      name: "Luonnokset, ei lähetystä",
+      sum: "",
+    },
+    read: {
+      name: "Vain luku",
+      sum: "Agentit lukevat Gmailia, kalenteria, yhteystietoja ja Drivea, mutta eivät muuta mitään.",
+    },
+  },
   dropbox: {
     full: {
       name: "Koko Dropbox",
@@ -281,11 +289,7 @@ function levelAccess(level: Level, service: ServiceId): Access {
 }
 
 /** What agents may do with a service at a level, before signing in. */
-function levelAbility(
-  provider: ProviderId,
-  level: Level,
-  service: ServiceId,
-): string {
+function levelAbility(level: Level, service: ServiceId): string {
   const access = levelAccess(level, service);
   if (fileServices.includes(service)) {
     if (level === "app_folder")
@@ -300,9 +304,7 @@ function levelAbility(
       : service === "calendar"
         ? "Lukee ja muokkaa. Tapahtuma osallistujineen lähettää kutsut."
         : "Lukee ja muokkaa.";
-  return (
-    narrower(provider, { id: service, state: "ok", access }) ?? "Vain luku."
-  );
+  return narrower({ id: service, state: "ok", access }) ?? "Vain luku.";
 }
 
 /** The account card's level: the level the grant amounts to, or the one it
@@ -329,6 +331,8 @@ export function accountLevel(
       rest.every((s) => s.access === levelAccess(l, s.id)),
   );
   if (!match) return { text: "Mukautettu", full: false };
+  if (!without.length)
+    return { text: levelName(account.provider, match), full: match === "full" };
   return {
     text: `${levelName(account.provider, match)}, ilman: ${without.map((s) => serviceName(account.provider, s.id)).join(", ")}`,
     full: false,
@@ -380,7 +384,7 @@ function gets(provider: ProviderId, service: Service): ReactNode {
         eivät palaa palveluun, ja seuraava synkronointi kirjoittaa ne yli.
       </>
     );
-  const limited = narrower(provider, service);
+  const limited = narrower(service);
   if (limited) return limited;
   if (service.directory)
     return (
@@ -1953,14 +1957,35 @@ function FailedStep({
             <span>
               <b>Tasoa ei vaihdettu.</b> Ennen vaihtoa tiedostot piti
               synkronoida vielä kerran molempiin suuntiin, mutta se ei
-              onnistunut. Tili toimii entisellä tasolla, ja uusi kirjautuminen
-              peruttiin.
+              onnistunut. Tili toimii entisellä tasolla
+              {view.provider === "google"
+                ? ", eikä vanhaa kirjautumista peruttu."
+                : ", ja uusi kirjautuminen peruttiin."}
             </span>
           </p>
           <p className="ig-p">
             Katso tiedostojen tila Tiedot agenteille -sivulta ja yritä
             uudelleen, kun synkronointi toimii.
           </p>
+          {restart}
+        </>
+      );
+    case "revoke_failed":
+      return (
+        <>
+          <p
+            className="ig-result bad"
+            role="alert"
+            data-testid="integration-revoke-failed"
+          >
+            <Icon name="warning" />
+            <span>
+              <b>Tasoa ei vaihdettu.</b> Vanhaa kirjautumista ei saatu perutuksi{" "}
+              {copy.gen} päässä, joten sen oikeudet olisivat jääneet voimaan.
+              Tili toimii entisellä tasolla, eikä uutta kirjautumista aloitettu.
+            </span>
+          </p>
+          <p className="ig-p">Yritä hetken kuluttua uudelleen.</p>
           {restart}
         </>
       );
@@ -2307,6 +2332,14 @@ function PasswordField({
   );
 }
 
+/** Why the provider has no boundary for a level, honestly. */
+function notOffered(provider: ProviderId, level: Level): string {
+  const copy = providerCopy[provider];
+  if (provider === "google" && level === "drafts")
+    return "Google ei tarjoa tätä tasoa. Gmailin luonnosoikeus antaa aina myös lähetysoikeuden, joten pelkkiä luonnoksia ei voi myöntää.";
+  return `${copy.site} ei tarjoa tätä tasoa.`;
+}
+
 /** The level cards: each level the provider offers, one chosen. A level
  * the server lacks the application for is shown and says who adds it; the
  * chosen card lists what agents get in each service. */
@@ -2343,7 +2376,9 @@ function LevelChoice({
               <span className="ig-meta">
                 {l.available
                   ? text?.sum
-                  : `Ei käytössä tällä palvelimella. Taso vaatii palvelimelle oman ${copy.name}-sovelluksen, jonka palvelimen ylläpitäjä lisää (Asetukset › Palvelimen ylläpito › Palvelinintegraatiot).`}
+                  : l.reason === "not_offered"
+                    ? notOffered(provider.id, l.id)
+                    : `Ei käytössä tällä palvelimella. Taso vaatii palvelimelle oman ${copy.name}-sovelluksen, jonka palvelimen ylläpitäjä lisää (Asetukset › Palvelimen ylläpito › Palvelinintegraatiot).`}
               </span>
               {l.available && level === l.id ? (
                 <ul className="ig-level-svc">
@@ -2355,7 +2390,7 @@ function LevelChoice({
                           {serviceName(provider.id, s)}
                         </b>
                         <span className="ig-level-svc-text">
-                          {levelAbility(provider.id, l.id, s)}
+                          {levelAbility(l.id, s)}
                         </span>
                       </li>
                     ))}
@@ -2393,7 +2428,9 @@ function LevelChange({
       "lock",
       provider.id === "dropbox"
         ? "Habitat peruu vanhan kirjautumisen Dropboxin päässä, joten laajemmat oikeudet eivät jää voimaan."
-        : `Vanha kirjautuminen poistetaan kotihakemistostasi. ${copy.site} ei anna perua yksittäistä kirjautumista, joten jos epäilet sen päätyneen muualle, kirjaudu ulos kaikista istunnoista ${copy.gen} tiliasetuksista.`,
+        : provider.id === "google"
+          ? "Habitat peruu vanhan kirjautumisen Googlessa ennen kuin kirjaudut uudelleen, koska Google peruu kerralla kaikki Habitatin kirjautumiset. Jos keskeytät kirjautumisen, tili jää kirjautumatta, kunnes kirjaudut uudelleen."
+          : `Vanha kirjautuminen poistetaan kotihakemistostasi. ${copy.site} ei anna perua yksittäistä kirjautumista, joten jos epäilet sen päätyneen muualle, kirjaudu ulos kaikista istunnoista ${copy.gen} tiliasetuksista.`,
     ],
   ];
   if (file) {
@@ -2548,7 +2585,7 @@ function Intro({
   if (provider.levels)
     return (
       <>
-        {account ? null : <CloudFolderHint />}
+        {account || provider.id === "google" ? null : <CloudFolderHint />}
         <p className="ig-lead">Mitä agentit saavat tehdä tällä tilillä?</p>
         <LevelChoice provider={provider} level={level} onChange={setLevel} />
         {account && level ? (

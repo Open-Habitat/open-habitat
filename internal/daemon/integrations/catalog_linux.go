@@ -313,6 +313,9 @@ const (
 	// FinalSyncFailed is a level change whose last two-way pass with the
 	// old grant failed; nothing changed and the new grant was revoked.
 	FinalSyncFailed Failure = "final_sync_failed"
+	// RevokeFailed is a level change whose old grant could not be ended at
+	// the provider before the new sign-in; nothing changed.
+	RevokeFailed Failure = "revoke_failed"
 )
 
 // ConsentRequired is a tenant that needs its administrator to approve the

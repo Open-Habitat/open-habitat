@@ -66,8 +66,14 @@ export type Provider = {
   login: LoginKind;
   services: ServiceId[];
   /** The account levels a sign-in chooses from, broadest first; only for
-   * a provider that offers a choice. */
-  levels?: { id: Level; available: boolean }[];
+   * a provider that offers a choice. reason says why a level cannot be
+   * chosen: the administrator has not registered its application, or the
+   * provider has no such boundary. */
+  levels?: {
+    id: Level;
+    available: boolean;
+    reason?: "application_missing" | "not_offered";
+  }[];
 };
 /** An account level the provider itself enforces. */
 export type Level = "full" | "drafts" | "read" | "app_folder";
@@ -161,7 +167,8 @@ export type LoginFailure =
   | "quota_insufficient"
   | "quota_unavailable"
   | "nothing_granted"
-  | "final_sync_failed";
+  | "final_sync_failed"
+  | "revoke_failed";
 export type LoginView = {
   schema_version: 1;
   state:

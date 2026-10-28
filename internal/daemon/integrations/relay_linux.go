@@ -187,7 +187,7 @@ func loginFailure(err error) string {
 	var f Failure
 	if errors.As(err, &f) {
 		switch f {
-		case Expired, RedirectRejected, DeviceCodeBlocked, AccountMismatch, Cancelled, NothingGranted, FinalSyncFailed:
+		case Expired, RedirectRejected, DeviceCodeBlocked, AccountMismatch, Cancelled, NothingGranted, FinalSyncFailed, RevokeFailed:
 			return string(f)
 		}
 	}
@@ -360,6 +360,29 @@ func (c *Catalog) failAttempt(a *attempt, err error) {
 func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	defer close(a.done)
 	defer a.stop()
+	// A level change at a provider that revokes all of the application's
+	// tokens at once ends the old grant first (revokeFirstEntry).
+	if rf, ok := e.(revokeFirstEntry); ok && a.relogin && a.level != "" {
+		c.write.Lock()
+		if !c.live(a) {
+			c.write.Unlock()
+			return
+		}
+		c.sync.stop(key{e.Provider(), a.address})
+		err := rf.endLevel(ctx, c.env, a.address, a.level)
+		c.reconcile()
+		c.write.Unlock()
+		if err != nil {
+			if !errors.Is(err, FinalSyncFailed) && !errors.Is(err, RevokeFailed) {
+				err = ToolFailed
+			}
+			c.failAttempt(a, loginPhaseError{phase: "level_change", err: err})
+			return
+		}
+		// The last two-way pass may have taken long; consent gets its
+		// whole lifetime from here.
+		c.setAttempt(a, func() { a.until = c.now().Add(loginLifetime) })
+	}
 	// Consent and the folder decision expire; the explicit initial sync may
 	// legitimately take hours. It remains cancellable by the person or by
 	// daemon shutdown, but is not killed by the login's 20-minute deadline.

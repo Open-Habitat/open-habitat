@@ -587,6 +587,102 @@ test("an account level is chosen when connecting and changed later by signing in
   ).toBeLessThanOrEqual(0);
 });
 
+test("Google offers Täysi and Vain luku, says it has no drafts level, and a change revokes the old login first", async ({
+  page,
+}) => {
+  await signIn(page);
+  await fixture(page, "action=reset");
+  await tile(page, "google")
+    .getByRole("button")
+    .and(tile(page, "google").getByTestId("integration-connect-open"))
+    .click();
+  const dialog = page.getByRole("dialog");
+  const level = (id: string) =>
+    dialog.getByTestId(`integration-level-${id}`).getByRole("radio");
+  await expect(level("full")).toBeChecked();
+  await expect(level("drafts")).toBeDisabled();
+  await expect(dialog.getByTestId("integration-level-drafts")).toContainText(
+    "Google ei tarjoa tätä tasoa",
+  );
+  await dialog.getByTestId("integration-level-read").click();
+  await expect(level("read")).toBeChecked();
+  expect(
+    (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
+      .violations,
+    "Google level cards",
+  ).toEqual([]);
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-continue"))
+    .click();
+  const popup = page.waitForEvent("popup");
+  await dialog
+    .getByRole("link")
+    .and(dialog.getByTestId("integration-provider-link"))
+    .click();
+  await (await popup).close();
+  await dialog
+    .getByRole("textbox")
+    .and(dialog.getByTestId("integration-redirect-input"))
+    .fill("http://127.0.0.1:46399/oauth2/callback?state=lab&code=4/synthetic");
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-connect"))
+    .click();
+  await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-sync-start"))
+    .click();
+  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-done"))
+    .click();
+  const card = page
+    .getByRole("article")
+    .and(page.getByTestId("integration-account-google"));
+  await expect(card.getByTestId("integration-account-level")).toHaveAttribute(
+    "data-level",
+    "read",
+  );
+  await expect(card.getByTestId("integration-service-drive")).toHaveAttribute(
+    "data-access",
+    "read",
+  );
+
+  await card
+    .getByRole("button")
+    .and(card.getByTestId("integration-change-level"))
+    .click();
+  await dialog.getByTestId("integration-level-full").click();
+  await expect(dialog.getByTestId("integration-level-change")).toBeVisible();
+  await expect(dialog).toContainText(
+    "peruu vanhan kirjautumisen Googlessa ennen kuin kirjaudut uudelleen",
+  );
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-continue"))
+    .click();
+  await expect(dialog.getByTestId("integration-provider-link")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("cancel"))
+    .first()
+    .click();
+  await expect(dialog).toBeHidden();
+  await card
+    .getByRole("button")
+    .and(card.getByTestId("integration-remove-open"))
+    .click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button")
+    .and(page.getByTestId("integration-remove-confirm"))
+    .click();
+  await expect(page.getByTestId("integration-removal-result")).toBeVisible();
+});
+
 test("a pasted redirect must be the loopback address; a choice over quota is refused", async ({
   page,
 }) => {

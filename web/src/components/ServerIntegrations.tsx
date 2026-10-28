@@ -48,7 +48,8 @@ const googleAPIs: [string, string][] = [
 ];
 const googleEnable = `https://console.cloud.google.com/apis/enableflow?apiid=${googleAPIs.map((a) => a[1]).join(",")}`;
 // Scopes as the Cloud Console's scope list names them: the daemon requests
-// the short `email`, which Google grants as userinfo.email.
+// the short `email`, which Google grants as userinfo.email. The read-only
+// ones are the Vain luku level's (googleReadScopes in the daemon).
 const googleScopes = [
   "openid",
   "https://www.googleapis.com/auth/userinfo.email",
@@ -56,6 +57,10 @@ const googleScopes = [
   "https://www.googleapis.com/auth/gmail.modify",
   "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/contacts",
+  "https://www.googleapis.com/auth/drive.readonly",
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/contacts.readonly",
 ];
 const googleRedirect = "http://localhost";
 // What the daemon's Microsoft entry needs (internal/daemon/integrations/
