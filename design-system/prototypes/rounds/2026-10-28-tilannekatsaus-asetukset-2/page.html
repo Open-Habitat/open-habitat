@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tilannekatsauksen asetukset, kierros 2 — prototyyppi</title>
+<style>
+/*TOKENS*/
+/*PICKER_CSS*/
+
+/* ---- Prototype chrome (not a contestant) ---- */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #0c0d0f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.pc-bar {
+  position: fixed; inset: 0 0 auto 0; height: 44px; z-index: 50;
+  display: flex; align-items: center; gap: 14px; padding: 0 12px;
+  background: #16181b; color: #c9cdd2; font-size: 12px; border-bottom: 1px solid #262a2f;
+  overflow-x: auto; white-space: nowrap;
+}
+.pc-group { display: inline-flex; align-items: center; gap: 2px; }
+.pc-group > span { margin-right: 4px; color: #8a9097; }
+.pc-group button {
+  height: 26px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent;
+  color: #aeb4ba; font: inherit; cursor: pointer;
+}
+.pc-group button:hover { background: rgba(255,255,255,.06); }
+.pc-group button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+.pc-read { margin-left: auto; color: #8a9097; }
+.pc-read b { color: #e6e9ec; font-weight: 500; }
+#viewport { position: fixed; inset: 44px 0 64px 0; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; padding: 12px; }
+body.bare .pc-bar { display: none; }
+body.bare #viewport { inset: 0; padding: 0; }
+body.bare .proto-picker { display: none; }
+#sizer { position: relative; flex: none; }
+#frame {
+  position: absolute; top: 0; left: 0; transform-origin: top left; overflow: hidden;
+  background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font);
+  font-size: var(--ah-size-body); line-height: var(--ah-lh-ui);
+  box-shadow: 0 0 0 1px #2a2e33;
+}
+body.bare #frame { box-shadow: none; }
+
+/* ---- App shell (production context, simplified) ---- */
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.app { display: flex; height: 100%; position: relative; }
+.rail {
+  flex: none; width: var(--ah-rail-width); background: var(--ah-rail); border-right: 1px solid var(--ah-line);
+  display: flex; flex-direction: column; padding: 12px 10px; gap: 2px; font-size: var(--ah-size-ui); overflow: hidden;
+}
+.rail-head { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px; font-weight: 600; margin-bottom: 8px; }
+.rail-ws { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; margin-top: 8px; color: var(--ah-muted); font-family: var(--ah-mono); font-size: var(--ah-size-meta); }
+.rail-item { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); white-space: nowrap; overflow: hidden; cursor: pointer; }
+.rail-item.sub { padding-left: 22px; }
+.rail-item span { overflow: hidden; text-overflow: ellipsis; }
+.rail-item:hover { background: var(--ah-hover); }
+.rail-item.cur { background: var(--ah-current); box-shadow: inset 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); }
+.rail-fill { flex: 1; }
+.rail-account { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px; border-top: 1px solid var(--ah-line); margin-top: 6px; padding-top: 6px; color: var(--ah-ink); cursor: pointer; }
+.avatar { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-size: 11px; font-weight: 600; flex: none; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--ah-bg); }
+.topbar { flex: none; display: flex; align-items: center; gap: 10px; height: 49px; padding: 0 var(--ah-topbar-pad-inline); border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.topbar h1 { margin: 0; font-size: var(--ah-size-title); font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.burger { width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--ah-r-md); color: var(--ah-muted); cursor: pointer; }
+.burger svg.i { width: 20px; height: 20px; }
+.scroll { flex: 1; min-height: 0; overflow: auto; position: relative; }
+
+/* ---- Buttons (ControlButton look) ---- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ah-control-row); padding: 0 var(--ah-control-row-pad);
+  border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-control); color: var(--ah-ink);
+  font: inherit; font-size: var(--ah-control-row-font); font-weight: 500; white-space: nowrap; cursor: pointer;
+}
+.btn:hover { background: var(--ah-control-hover); }
+.btn:disabled { color: var(--ah-disabled-fg); background: var(--ah-disabled-bg); cursor: default; }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--ah-ink-2); }
+.btn.quiet:hover { background: var(--ah-hover); }
+.btn.icon { width: var(--ah-control-row); padding: 0; }
+.btn svg.i { width: 15px; height: 15px; }
+button:focus-visible, [tabindex]:focus-visible, input:focus-visible, summary:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: var(--ah-focus-offset); }
+
+/* ---- Segmented (production Segmented look) ---- */
+.seg { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2); }
+.seg button { height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ah-ink-2); font: 500 12.5px var(--ah-font); cursor: pointer; white-space: nowrap; }
+.seg button:hover { background: var(--ah-hover); }
+.seg button[aria-checked="true"] { background: var(--ah-surface); box-shadow: 0 0 0 1px var(--ah-line-strong); color: var(--ah-ink); font-weight: 600; }
+.seg button:disabled { color: var(--ah-disabled-fg); cursor: default; text-decoration: line-through; }
+.seg button:disabled:hover { background: transparent; }
+.seg.mono button { font-family: var(--ah-mono); }
+
+/* ---- Settings (Asetukset; Settings.css, simplified) ---- */
+.settings { display: flex; gap: var(--ah-s8); padding: var(--ah-s5) 28px 40px; }
+.s-nav { flex: none; width: 190px; display: flex; flex-direction: column; gap: 2px; font-size: var(--ah-size-ui); position: sticky; top: var(--ah-s5); align-self: flex-start; }
+.s-nav .s-h { margin: var(--ah-s4) 10px; font-size: var(--ah-size-h1); font-weight: 600; }
+.s-nav-i { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); font-weight: 500; cursor: pointer; }
+.s-nav-i:hover { background: var(--ah-hover); }
+.s-nav-i.cur { background: var(--ah-current); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-current-line); }
+.s-nav-i.new::after { content: "uusi"; margin-left: auto; font-size: 10.5px; color: var(--ah-accent-ink); font-weight: 600; }
+.s-main { flex: 1; min-width: 0; max-width: 720px; }
+.s-main > h2 { font-size: var(--ah-size-h2); margin: var(--ah-s4) 0 var(--ah-s4); }
+.s-back { display: none; }
+.s-intro { margin: 0 0 14px; color: var(--ah-muted); font-size: var(--ah-size-ui); line-height: 1.5; }
+.s-h3 { margin: var(--ah-s6) 0 6px; font-size: var(--ah-size-ui); font-weight: 600; }
+.s-h3 + .s-intro { margin-bottom: 10px; }
+.s-card { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); overflow: hidden; }
+.s-card:has([data-open]) { overflow: visible; }
+.s-card > * + * { border-top: 1px solid var(--ah-line-soft); }
+.s-row { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(0, auto); gap: var(--ah-s3) var(--ah-s6); align-items: center; padding: var(--ah-s4) var(--ah-s5); font-size: var(--ah-size-ui); }
+.s-row.icon { grid-template-columns: auto minmax(160px, 1fr) minmax(0, auto); }
+.s-row.wide { grid-template-columns: 1fr; }
+.s-lbl { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.s-lbl strong { font-weight: 600; }
+.s-desc { color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.45; }
+.s-warn { grid-column: 1 / -1; margin: -4px 0 0; color: var(--ah-err); font-size: var(--ah-size-meta); line-height: 1.45; }
+.s-val { display: flex; align-items: center; justify-content: flex-end; gap: var(--ah-s3); flex-wrap: wrap; min-width: 0; }
+.s-row[data-landed] { animation: landed 2.4s ease-out both; }
+@keyframes landed { 0%, 40% { background: var(--ah-accent-soft); } 100% { background: transparent; } }
+.s-foot { padding: 10px var(--ah-s5); color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.45; background: var(--ah-surface-2); }
+.s-foot b { color: var(--ah-ink-2); font-weight: 600; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--ah-ok); white-space: nowrap; }
+.status i { width: 8px; height: 8px; border-radius: 50%; background: var(--ah-ok); }
+.preview { padding: 14px var(--ah-s5) 16px; background: var(--ah-bg); }
+.preview .lbl { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ah-muted); margin-bottom: 6px; }
+.preview .ah-recap { margin: 0; width: 100%; max-height: none; }
+.s-actions { display: flex; justify-content: flex-end; padding: 10px var(--ah-s5); }
+
+/* LetterMark (Integrations.css) */
+.ig-mark { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; font: 700 11px var(--ah-font); color: var(--ah-bg); }
+.ig-mark.lg { width: 28px; height: 28px; border-radius: 7px; }
+.ig-tone-0 { background: var(--ah-sunken); color: var(--ah-ink-2); box-shadow: inset 0 0 0 1px var(--ah-line); }
+.ig-tone-1 { background: var(--ah-source-1); }
+.ig-tone-2 { background: var(--ah-source-2); }
+
+/* ---- New controls: the delay slider and the number field ---- */
+.slider { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 14px; width: 340px; max-width: 100%; }
+.slider input[type=range] { width: 100%; margin: 0; accent-color: var(--ah-accent); height: 24px; cursor: pointer; }
+.slider output { min-width: 64px; height: 30px; display: inline-grid; place-items: center; padding: 0 8px; border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2); font: 600 13px var(--ah-font); font-variant-numeric: tabular-nums; }
+.slider .ticks { display: flex; justify-content: space-between; padding: 0 4px; color: var(--ah-faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+.slider[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+.num { display: inline-flex; align-items: center; height: 32px; border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-control); overflow: hidden; }
+.num button { width: 30px; height: 100%; border: 0; background: transparent; color: var(--ah-ink-2); font: 500 16px var(--ah-font); cursor: pointer; }
+.num button:hover { background: var(--ah-control-hover); }
+.num button:disabled { color: var(--ah-disabled-fg); cursor: default; background: transparent; }
+.num input { width: 64px; height: 100%; border: 0; border-inline: 1px solid var(--ah-line-soft); background: var(--ah-surface); color: var(--ah-ink); font: 600 13px var(--ah-font); font-variant-numeric: tabular-nums; text-align: right; padding: 0 6px; -moz-appearance: textfield; }
+.num input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.num .unit { padding: 0 8px; color: var(--ah-muted); font-size: 12.5px; white-space: nowrap; border-left: 1px solid var(--ah-line-soft); height: 100%; display: inline-grid; place-items: center; background: var(--ah-surface-2); }
+.num[data-warn] { border-color: var(--ah-err-line); }
+.num[data-changed] input { color: var(--ah-accent-ink); }
+
+/* ---- The standard model picker: one trigger (field or chip), one panel, one container ---- */
+.mp-anchor { position: relative; display: flex; justify-content: flex-end; min-width: 0; }
+.mp-field {
+  display: inline-flex; align-items: center; gap: var(--ah-s2); max-width: min(100%, 420px); min-width: 0; height: var(--ah-control-row);
+  padding: 0 10px 0 6px; border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-control); color: var(--ah-ink);
+  font: inherit; font-size: var(--ah-control-row-font); text-align: left; cursor: pointer;
+}
+.mp-field:hover { background: var(--ah-control-hover); }
+.mp-field[aria-expanded="true"] { border-color: var(--ah-accent-line); box-shadow: 0 0 0 3px var(--ah-accent-soft); }
+.mp-field .mp-name { font-weight: 600; white-space: nowrap; }
+.mp-field .mp-route { color: var(--ah-muted); font-size: var(--ah-size-meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mp-field .mp-auto { font-size: 11px; font-weight: 600; color: var(--ah-accent-ink); background: var(--ah-accent-soft); border-radius: var(--ah-r-pill); padding: 1px 7px; white-space: nowrap; }
+.mp-field .mp-think { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.mp-field .mp-think svg.i, .mp-field > svg.i { width: 14px; height: 14px; }
+.mp-field > svg.i:last-child { color: var(--ah-muted); }
+.mp-chip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); background: var(--ah-surface-2); color: var(--ah-ink-2); font: 500 12px var(--ah-font); cursor: pointer; white-space: nowrap; }
+.mp-chip:hover { background: var(--ah-hover); }
+.mp-chip svg.i { width: 13px; height: 13px; }
+.mp-pop {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 10; width: 470px; max-width: calc(100vw - 32px); max-height: min(560px, 70vh); overflow: auto;
+  padding: 14px; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); box-shadow: var(--ah-shadow-dialog);
+  text-align: left; transform-origin: top right; animation: mp-in .14s ease-out both;
+}
+@keyframes mp-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+.mp-head { display: flex; align-items: center; justify-content: space-between; margin: -4px 0 10px; }
+.mp-head strong { font-size: var(--ah-size-ui); }
+.mp-body { display: flex; flex-direction: column; gap: 12px; }
+.mp-body .seg { align-self: flex-start; }
+.md-rows { display: flex; flex-direction: column; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); overflow: hidden; }
+.md-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; min-height: 44px; padding: 7px 12px 7px 10px; color: var(--ah-ink); font-size: var(--ah-size-ui); cursor: pointer; }
+.md-row + .md-row { border-top: 1px solid var(--ah-line-soft); }
+.md-row:hover { background: var(--ah-hover); }
+.md-row:has(input:checked) { background: var(--ah-accent-soft); }
+.md-row:has(input:disabled) { cursor: not-allowed; color: var(--ah-muted); }
+.md-row:has(input:disabled):hover { background: transparent; }
+.md-row input { accent-color: var(--ah-accent); margin: 0; }
+.md-t { font-weight: 500; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.md-t small { color: var(--ah-muted); font-weight: 400; font-size: var(--ah-size-meta); }
+.md-note { margin: 0; font-size: var(--ah-size-meta); line-height: 1.45; color: var(--ah-muted); }
+.md-tag { font-size: 11.5px; color: var(--ah-muted); white-space: nowrap; }
+.md-row.auto { min-height: 52px; }
+.md-more summary { padding: 4px 0; font-size: var(--ah-size-meta); color: var(--ah-ink-2); cursor: pointer; }
+.md-more .md-rows { margin-top: 6px; }
+.md-think { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: var(--ah-size-meta); }
+.mp-scrim { position: absolute; inset: 0; z-index: 20; background: var(--ah-scrim); animation: fade .14s ease-out both; }
+@keyframes fade { from { opacity: 0; } }
+.mp-sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; max-height: 82%; overflow: auto; padding: 14px 14px 22px;
+  background: var(--ah-surface); border-top: 1px solid var(--ah-line); border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0; box-shadow: var(--ah-shadow-dialog);
+  animation: sheet-in .2s ease-out both;
+}
+@keyframes sheet-in { from { transform: translateY(24px); opacity: 0; } }
+
+/* ---- Variant A: the advanced fold ---- */
+.adv { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); margin-top: var(--ah-s4); overflow: hidden; }
+.adv > summary { list-style: none; display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 12px var(--ah-s5); cursor: pointer; font-size: var(--ah-size-ui); }
+.adv > summary::-webkit-details-marker { display: none; }
+.adv > summary:hover { background: var(--ah-hover); }
+.adv > summary .chev { transition: transform .15s ease-out; color: var(--ah-muted); }
+.adv[open] > summary .chev { transform: rotate(90deg); }
+.adv > summary .sum { grid-column: 2 / -1; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.adv > summary .chg { font-size: 11px; font-weight: 600; color: var(--ah-accent-ink); }
+.adv > .s-card { border: 0; border-top: 1px solid var(--ah-line-soft); border-radius: 0; }
+.subh { padding: 10px var(--ah-s5) 0; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ah-muted); }
+.s-card > .subh + .s-row { border-top: 0; }
+
+/* ---- Variant C: presets ---- */
+.recipe { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+.recipe > div { padding: 12px var(--ah-s5); display: flex; flex-direction: column; gap: 4px; }
+.recipe > div + div { border-left: 1px solid var(--ah-line-soft); }
+.recipe .h { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ah-muted); }
+.recipe ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: var(--ah-size-ui); font-variant-numeric: tabular-nums; }
+.recipe li b { font-weight: 600; }
+
+/* Phone settings: the section alone, with a back row (production at <= 760px). */
+.ph .settings { display: block; padding: 10px 14px 32px; }
+.ph .s-nav { display: none; }
+.ph .s-back { display: inline-flex; margin: 0 0 4px -8px; }
+.ph .s-main > h2 { margin-top: 4px; }
+.ph .s-row, .ph .s-row.icon { grid-template-columns: 1fr; gap: 8px; }
+.ph .s-row.icon .ig-mark { display: none; }
+.ph .s-val, .ph .mp-anchor { justify-content: flex-start; }
+.ph .seg { width: 100%; }
+.ph .seg button { flex: 1; padding: 0 6px; }
+.ph .mp-anchor { width: 100%; }
+.ph .mp-field { width: 100%; max-width: none; }
+.ph .preview .ah-recap { max-height: none; }
+.ph .slider { width: 100%; }
+.ph .recipe { grid-template-columns: 1fr; }
+.ph .recipe > div + div { border-left: 0; border-top: 1px solid var(--ah-line-soft); }
+
+/* ---- Conversation ---- */
+.conv { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+.conv-head { flex: none; display: flex; align-items: center; gap: 10px; padding: var(--ah-topbar-pad-block) var(--ah-topbar-pad-inline); min-height: 49px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.conv-head h1 { margin: 0; font-size: var(--ah-size-title); font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-head .ws { font-family: var(--ah-mono); font-size: var(--ah-size-meta); color: var(--ah-muted); }
+.conv-head .grow { flex: 1; }
+.conv-head .idle { font-size: var(--ah-size-meta); color: var(--ah-muted); display: inline-flex; align-items: center; gap: 6px; }
+.conv-head .idle i { width: 7px; height: 7px; border-radius: 50%; background: var(--ah-muted); }
+.stream { flex: 1; min-height: 0; overflow: hidden; padding: var(--ah-column-pad-block) var(--ah-column-pad-inline); display: flex; flex-direction: column; justify-content: flex-end; }
+.col { width: 100%; max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin: 0 auto; display: grid; gap: 14px; }
+.msg-user { justify-self: end; max-width: 80%; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-xl); padding: 8px 12px; line-height: var(--ah-lh-body); }
+.msg-agent p { margin: 0 0 8px; line-height: var(--ah-lh-body); }
+.msg-agent .work { font-size: var(--ah-size-meta); color: var(--ah-muted); margin-bottom: 6px; }
+.msg-agent code { font: var(--ah-size-code) var(--ah-mono); background: var(--ah-sunken); padding: 1px 4px; border-radius: 4px; }
+.msg-agent pre { margin: 0 0 8px; padding: 8px 10px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-sunken); font: var(--ah-size-code)/1.55 var(--ah-mono); color: var(--ah-ink-2); white-space: pre-wrap; }
+.composer { flex: none; padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline); }
+.field { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin: 0 auto; min-height: var(--ah-composer-rest-height); display: flex; align-items: center; gap: 8px; padding: 0 6px 0 14px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-xl); background: var(--ah-surface); color: var(--ah-faint); font-size: var(--ah-size-ui); }
+.field .ph-t { flex: 1; }
+.send { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--ah-accent); color: var(--ah-on-accent); }
+
+/* ---- Recap card (RecapCard.tsx + components.css, verbatim geometry) ---- */
+.rc-slot { flex: none; position: relative; width: min(calc(100% - 2 * var(--ah-column-pad-inline)), calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline))); margin: var(--ah-s2) auto 0; }
+.ah-recap {
+  max-height: min(38vh, 280px); overflow: auto; padding: var(--ah-s2) var(--ah-s3) var(--ah-s3);
+  background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); color: var(--ah-ink);
+  animation: ah-appear var(--ah-appear) both;
+}
+.ph .ah-recap { max-height: 24vh; }
+.rc-slot.still > *, .preview .ah-recap { animation: none; }
+.ah-recap p { margin: var(--ah-s2) 0; line-height: 1.5; }
+.ah-recap-heading { display: flex; align-items: center; gap: var(--ah-s2); min-height: 28px; flex-wrap: wrap; }
+.ah-recap-heading strong { font-size: var(--ah-size-meta); }
+.ah-recap-heading time, .ah-recap-heading .meta { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.ah-recap-grow { flex: 1; }
+.ah-recap-next { color: var(--ah-ink-2); }
+.ah-recap .ah-recap-next strong { margin-right: var(--ah-s2); color: var(--ah-muted); font-size: var(--ah-size-meta); text-transform: uppercase; letter-spacing: .04em; }
+.ah-recap-icon { width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: var(--ah-r-md); background: transparent; color: var(--ah-muted); cursor: pointer; }
+.ah-recap-icon:hover { background: var(--ah-hover); color: var(--ah-ink); }
+.ah-recap-skeleton { display: grid; gap: var(--ah-s2); padding: var(--ah-s2) 0; }
+.ah-recap-skeleton span { height: 10px; border-radius: var(--ah-r-pill); background: var(--ah-sunken); animation: ah-recap-loading 1.2s ease-in-out infinite; }
+.ah-recap-skeleton span:last-child { width: 55%; }
+@keyframes ah-recap-loading { 50% { opacity: .45; } }
+.rc-offer {
+  display: flex; align-items: center; gap: var(--ah-s2); min-height: 38px; padding: 4px 6px 4px var(--ah-s3);
+  border: 1px dashed var(--ah-line-strong); border-radius: var(--ah-r-lg); background: transparent; font-size: var(--ah-size-meta); color: var(--ah-ink-2);
+  animation: ah-appear var(--ah-appear) both;
+}
+.rc-offer strong { color: var(--ah-ink); font-weight: 600; }
+.rc-offer .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-offer .btn { height: 28px; padding: 0 10px; font-size: 12.5px; }
+
+.phone {
+  --ah-topbar-pad-block: 6px; --ah-topbar-pad-inline: 14px; --ah-column-pad-block: 12px;
+  --ah-column-pad-inline: 14px; --ah-control-row: 40px;
+}
+@media (prefers-reduced-motion: reduce) { .ah-recap, .rc-offer, .mp-pop, .mp-sheet, .mp-scrim, .s-row[data-landed] { animation: none; } .ah-recap-skeleton span { animation: none; } .adv > summary .chev { transition: none; } }
+</style>
+</head>
+<body>
+<div class="pc-bar" role="toolbar" aria-label="Prototyypin asetukset">
+  <div class="pc-group" data-k="n"><span>Näkymä</span><button data-v="asetukset">Asetukset</button><button data-v="keskustelu">Keskustelu</button></div>
+  <div class="pc-group" data-k="s"><span>Hiljaisuus</span><button data-v="0">0 min</button><button data-v="1">1 min</button><button data-v="3">3 min</button><button data-v="5">5 min</button><button data-v="9">9 min</button></div>
+  <div class="pc-group" data-k="w"><span>Ikkuna</span><button data-v="oma">Oma</button><button data-v="1280">1280</button><button data-v="390">Puhelin</button></div>
+  <div class="pc-group" data-k="t"><span>Teema</span><button data-v="dark">Tumma</button><button data-v="light">Vaalea</button></div>
+  <div class="pc-read" id="readout"></div>
+</div>
+<div id="viewport"><div id="sizer"><div id="frame"></div></div></div>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">1 Perus + lisät</button>
+  <button class="proto-picker-item">2 Kaikki näkyvissä</button>
+  <button class="proto-picker-item">3 Tasot</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item">Nykyinen</button>
+</nav>
+
+<script>
+// ---- State (URL-backed so screenshots are reproducible) ----
+const q = new URLSearchParams(location.search);
+// n: view, s: simulated silence in minutes, w: window, t: theme.
+const S = { n: q.get('n') || 'asetukset', s: q.get('s') || '3', w: q.get('w') || 'oma', t: q.get('t') || 'dark' };
+if (q.get('bare') === '1') document.body.classList.add('bare');
+const VARIANTS = ['a', 'b', 'c', 'now'];
+let V = null;
+
+// What the host does now (recap-extension.mjs, recap_linux.go). Every variant starts from these,
+// so leaving the section untouched changes nothing. Token figures are the byte limits / 4.
+const HOST = { m: 'auto', d: 3, model: 'auto', words: 40, next: 12, msgs: 64, ctx: 16000, per: 1000, out: 512, turns: 1 };
+// Bounds a person may choose, and why (result.md lists the host facts behind each).
+const LIM = {
+  d: { min: 1, max: 9, step: 0.5 },         // Pi stops after 10 idle min; presence reports every 20–30 s
+  words: { min: 10, max: 80, step: 5, unit: 'sanaa' },
+  next: { min: 4, max: 25, step: 1, unit: 'sanaa' },
+  msgs: { min: 4, max: 128, step: 4, unit: 'viestiä' },
+  ctx: { min: 2000, max: 32000, step: 1000, unit: 'tokenia' }, // 12 s per model attempt, 20 s in all
+  per: { min: 250, max: 4000, step: 250, unit: 'tokenia' },
+  out: { min: 128, max: 2048, step: 64, unit: 'tokenia' },
+  turns: { min: 1, max: 10, step: 1, unit: 'vuoroa' },
+};
+const PRESETS = {
+  lyhyt: { label: 'Lyhyt', words: 25, next: 10, msgs: 16, ctx: 4000, per: 500, out: 256, turns: 2 },
+  tavallinen: { label: 'Tavallinen', words: 40, next: 12, msgs: 64, ctx: 16000, per: 1000, out: 512, turns: 1 },
+  perusteellinen: { label: 'Perusteellinen', words: 70, next: 16, msgs: 128, ctx: 32000, per: 2000, out: 768, turns: 1 },
+};
+const PARAMS = ['words', 'next', 'msgs', 'ctx', 'per', 'out', 'turns'];
+const SET = { ...HOST };
+for (const k of Object.keys(HOST)) if (q.has(k)) SET[k] = k === 'm' || k === 'model' ? q.get(k) : +q.get(k);
+// One visit's runtime: what the card shows and which overlays are open.
+const R = { card: null, dismissed: false, land: '', sec: q.get('sec') || '', mp: q.get('mp') || '', mpProv: '', adv: q.get('adv') === '1', custom: q.get('custom') === '1' };
+function resetRuntime() { lastSlot = ''; R.card = null; R.dismissed = false; R.land = ''; R.sec = ''; R.mp = ''; R.mpProv = ''; R.adv = false; R.custom = false; }
+
+// ---- Synthetic catalog: what Pi's registry would offer this person ----
+const ROUTES = { 'claude-bridge': ['Claude-tilaus', 'Cl', 2], 'openai-codex': ['ChatGPT-tilaus', 'Ch', 1] };
+const MODELS = [
+  { p: 'claude-bridge', id: 'claude-fable-5-1', name: 'Fable 5.1', think: ['off', 'low', 'medium', 'high', 'max'] },
+  { p: 'claude-bridge', id: 'claude-opus-5-5', name: 'Opus 5.5', think: ['off', 'low', 'medium', 'high', 'max'] },
+  { p: 'claude-bridge', id: 'claude-sonnet-5-5', name: 'Sonnet 5.5', think: ['off', 'low', 'medium', 'high'] },
+  { p: 'claude-bridge', id: 'claude-haiku-5-5', name: 'Haiku 5.5', think: ['off', 'low'] },
+  { p: 'claude-bridge', id: 'claude-sonnet-5', name: 'Sonnet 5', older: true, think: ['off', 'low', 'medium', 'high'] },
+  { p: 'claude-bridge', id: 'claude-opus-5', name: 'Opus 5', older: true, think: ['off', 'low', 'medium', 'high'] },
+  { p: 'openai-codex', id: 'gpt-6', name: 'GPT 6', think: ['minimal', 'low', 'medium', 'high', 'xhigh'] },
+  { p: 'openai-codex', id: 'gpt-6-luna', name: 'GPT 6 Luna', think: ['minimal', 'low', 'medium', 'high'] },
+  { p: 'openai-codex', id: 'gpt-6-mini', name: 'GPT 6 mini', think: ['minimal', 'low', 'medium'] },
+  { p: 'openai-codex', id: 'gpt-5.5', name: 'GPT 5.5', older: true, think: ['minimal', 'low', 'medium', 'high'] },
+];
+const key = m => `${m.p}/${m.id}`;
+const byKey = k => MODELS.find(m => key(m) === k);
+// background-model.mjs: the conversation provider's middle tier; never Fable or Opus.
+const excluded = m => /fable|opus/.test(m.id);
+const AUTO_FOR = { 'claude-bridge': 'claude-bridge/claude-sonnet-5-5', 'openai-codex': 'openai-codex/gpt-6-luna' };
+const AUTO = byKey(AUTO_FOR['claude-bridge']); // this conversation is a Claude conversation
+// Pi's default model for new conversations (Tekoäly › Oletusmalli).
+const DEF = { model: 'claude-bridge/claude-opus-5-5', thinking: 'medium' };
+
+const RECAPS = {
+  short: 'Varjon laskenta tukee nyt kesä- ja talviaikaa, ja kaikki 18 testiä menevät läpi.',
+  mid: 'Varjon pituuden laskenta tukee nyt kesä- ja talviaikaa: auringon korkeus lasketaan paikallisesta ajasta UTC:n kautta, joten aikavyöhykkeen vaihto ei enää siirrä varjoa tunnilla. Kaikki 18 testiä menevät läpi, ja README:hen lisättiin esimerkki.',
+  long: 'Varjon pituuden laskenta tukee nyt kesä- ja talviaikaa. Auringon korkeus lasketaan paikallisesta ajasta UTC:n kautta tiedostossa src/shadow.ts, joten kesäajan vaihto ei enää siirrä varjoa tunnilla. Testejä on 18 ja ne menevät läpi. README:hen lisättiin esimerkki Helsingin talvipäivänseisauksesta klo 12, jossa kahden metrin kepin varjo on noin 17,6 metriä. Muutoslokia ei ole vielä päivitetty.',
+};
+const NEXTS = { short: 'Julkaise versio 1.4.', mid: 'Julkaise versio 1.4 ja päivitä muutosloki.', long: 'Päivitä muutosloki, julkaise versio 1.4 ja ilmoita siitä aurinkokello-käyttäjille.' };
+const recapText = () => (SET.words <= 25 ? RECAPS.short : SET.words <= 50 ? RECAPS.mid : RECAPS.long);
+const nextText = () => (SET.next <= 6 ? NEXTS.short : SET.next <= 15 ? NEXTS.mid : NEXTS.long);
+const MODE_LABEL = { auto: 'Automaattisesti', ask: 'Kun pyydän', off: 'Ei koskaan' };
+
+const P = {
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  branch: '<circle cx="7" cy="6" r="2"/><path d="M7 8v10M7 12c0 3 3 4 7 4"/><circle cx="17" cy="16" r="2"/>',
+  refresh: '<path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/>',
+  cross: '<path d="M6 6l12 12M18 6 6 18"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
+  send: '<path d="M12 19V5m-6 6 6-6 6 6"/>',
+  back: '<path d="M15 6l-6 6 6 6"/>',
+  updown: '<path d="m8 9 4-4 4 4M8 15l4 4 4-4"/>',
+  thinking: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
+  chev: '<path d="m9 6 6 6-6 6"/>',
+};
+const ic = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fi = n => String(n).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f');
+const phone = () => S.w === '390';
+const quiet = () => +S.s;
+const mode = () => (V === 'now' ? 'auto' : SET.m);
+const delay = () => (V === 'now' ? 3 : SET.d);
+const due = () => quiet() >= delay();
+const mark = p => `<span class="ig-mark ig-tone-${ROUTES[p][2]}" aria-hidden="true">${ROUTES[p][1]}</span>`;
+// A Finnish recap and next step in JSON: about four tokens a word plus the JSON around them.
+const outNeeded = () => Math.ceil((SET.words + SET.next) * 4 + 48);
+const changed = k => SET[k] !== HOST[k];
+
+// ---- Shared controls ----
+function seg(name, options, value, { disabled = false, testid = '' } = {}) {
+  return `<div class="seg" role="radiogroup" aria-label="${esc(name)}"${disabled ? ' aria-disabled="true"' : ''}${testid ? ` data-testid="${testid}"` : ''}>${options.map(([v, l]) =>
+    `<button type="button" role="radio" aria-checked="${String(v) === String(value)}" data-act="set" data-k="${testid}" data-v="${v}">${esc(l)}</button>`).join('')}</div>`;
+}
+function num(k, label) {
+  const l = LIM[k], v = SET[k];
+  const warn = k === 'out' && v < outNeeded();
+  return `<div class="num" data-testid="num-${k}"${warn ? ' data-warn' : ''}${changed(k) ? ' data-changed' : ''}><button type="button" data-act="step" data-k="${k}" data-d="-1" aria-label="${esc(label)}: vähemmän"${v <= l.min ? ' disabled' : ''}>−</button><input type="number" inputmode="numeric" aria-label="${esc(label)}" data-k="${k}" min="${l.min}" max="${l.max}" step="${l.step}" value="${v}"><span class="unit">${l.unit}</span><button type="button" data-act="step" data-k="${k}" data-d="1" aria-label="${esc(label)}: enemmän"${v >= l.max ? ' disabled' : ''}>+</button></div>`;
+}
+function modeDesc() {
+  return {
+    auto: 'Kortti tulee keskustelun yläpuolelle itsestään hiljaisuuden jälkeen. Katsaus ei mene agentin muistiin.',
+    ask: 'Hiljaisuuden jälkeen kentän yläpuolelle tulee Luo katsaus -rivi. Mallia käytetään vasta, kun painat sitä.',
+    off: 'Tilannekatsausta ei tehdä eikä tarjota. Etusivulla näkyvät vain jo tehdyt katsaukset.',
+  }[SET.m];
+}
+function modeRow() {
+  return `<div class="s-row" data-settings-row="tilannekatsaus"${R.land === 'tilannekatsaus' ? ' data-landed' : ''} tabindex="-1">
+    <div class="s-lbl"><strong>Tilannekatsaus</strong><span class="s-desc" data-testid="mode-desc">${esc(modeDesc())}</span></div>
+    <div class="s-val">${seg('Tilannekatsaus', Object.entries(MODE_LABEL), SET.m, { testid: 'mode' })}</div></div>`;
+}
+// Free delay: a slider with its value beside it. No explanatory text (Jari, 2026-10-28).
+function delayRow() {
+  const l = LIM.d, off = SET.m === 'off';
+  const ticks = [1, 3, 5, 7, 9].map(t => `<span>${t}</span>`).join('');
+  return `<div class="s-row" data-settings-row="viive">
+    <div class="s-lbl"><strong>Hiljaisuus ennen katsausta</strong></div>
+    <div class="s-val"><div class="slider" data-testid="delay"${off ? ' aria-disabled="true"' : ''}><input type="range" data-k="d" min="${l.min}" max="${l.max}" step="${l.step}" value="${SET.d}" aria-label="Hiljaisuus ennen katsausta, minuuttia" aria-valuetext="${fi(SET.d)} min"${off ? ' disabled' : ''}><output data-testid="delay-value">${fi(SET.d)} min</output><div class="ticks" aria-hidden="true">${ticks}</div></div></div></div>`;
+}
+function numRow(k, label, desc = '', { testid = '' } = {}) {
+  const warn = k === 'out' && SET.out < outNeeded()
+    ? `<p class="s-warn" data-testid="out-warn">Liian vähän ${fi(SET.words)} + ${fi(SET.next)} sanalle: katsaus voi katketa kesken. Vähintään noin ${fi(outNeeded())}.</p>` : '';
+  return `<div class="s-row" data-settings-row="${k}"${testid ? ` data-testid="${testid}"` : ''}><div class="s-lbl"><strong>${esc(label)}</strong>${desc ? `<span class="s-desc">${desc}</span>` : ''}</div><div class="s-val">${num(k, label)}</div>${warn}</div>`;
+}
+const ROWS = {
+  words: () => numRow('words', 'Katsauksen pituus', 'Yksi tai kaksi virkettä siitä, mitä tehtiin.'),
+  next: () => numRow('next', 'Seuraavaksi-rivi', 'Yksi seuraava askel tai este.'),
+  msgs: () => numRow('msgs', 'Luettavat viestit', 'Viimeisimmät viestisi ja agentin vastaukset. Työkalujen tulosteita ei lueta.'),
+  ctx: () => numRow('ctx', 'Luettava historia enintään', 'Vanhimmat viestit jäävät pois, kun raja tulee vastaan.'),
+  per: () => numRow('per', 'Yhdestä viestistä enintään', 'Pitkästä viestistä luetaan alku.'),
+  out: () => numRow('out', 'Vastauksen yläraja', 'Mallin vastaus katkaistaan tähän.'),
+  turns: () => numRow('turns', 'Ensimmäinen katsaus aikaisintaan', 'Kun keskustelussa on näin monta kysymystä ja vastausta.'),
+};
+function costLine() {
+  return `Yksi katsaus lukee enintään <b>${fi(SET.msgs)} viestiä</b> ja noin <b>${fi(SET.ctx)} tokenia</b>, ja kirjoittaa enintään <b>${fi(SET.out)} tokenia</b>.`;
+}
+function resetButton() {
+  const any = PARAMS.some(changed);
+  return `<div class="s-actions"><button class="btn quiet" data-act="reset" data-testid="reset"${any ? '' : ' disabled'}>Palauta oletukset</button></div>`;
+}
+
+// ---- The standard model picker (Mallivalitsin) ----
+// One component for every model choice: a trigger (field in a settings row, chip in a compact
+// place), one panel (provider tabs, model rows, older models, optional thinking level, optional
+// Automaattinen row, optional exclusions with a reason) and one container (popover on desktop,
+// bottom sheet on phones). Here it serves two places: the recap model and Pi's default model.
+const PICKERS = {
+  recap: {
+    title: 'Tilannekatsauksen malli', auto: true, thinking: false,
+    value: () => SET.model, set: v => { SET.model = v; },
+    reason: m => (excluded(m) ? 'ei taustatöihin' : ''),
+    note: () => `Jos ${SET.model === 'auto' ? 'valittu' : esc(byKey(SET.model).name)} ei vastaa, katsaus tehdään keskustelun omalla mallilla, paitsi jos se on Fable tai Opus.`,
+  },
+  default: {
+    title: 'Oletusmalli', auto: false, thinking: true,
+    value: () => DEF.model, set: v => { DEF.model = v; const m = byKey(v); if (!m.think.includes(DEF.thinking)) DEF.thinking = m.think[Math.min(2, m.think.length - 1)]; },
+    reason: () => '', note: () => 'Koskee uusia keskusteluja. Käynnissä olevien keskustelujen malli ei vaihdu.',
+  },
+};
+function mpTrigger(id) {
+  const c = PICKERS[id], v = c.value(), auto = v === 'auto';
+  const m = auto ? AUTO : byKey(v), open = R.mp === id;
+  const think = c.thinking ? `<span class="mp-think">${ic('thinking')}${esc(DEF.thinking[0].toUpperCase() + DEF.thinking.slice(1))}</span>` : '';
+  return `<button type="button" class="mp-field" data-act="mp" data-mp="${id}" data-testid="mp-${id}" aria-haspopup="dialog" aria-expanded="${open}" aria-label="${esc(c.title)}: ${auto ? 'Automaattinen, nyt ' : ''}${esc(m.name)}, ${ROUTES[m.p][0]}">${auto ? '' : mark(m.p)}${auto ? '<span class="mp-auto">Automaattinen</span>' : ''}<span class="mp-name">${esc(m.name)}</span><span class="mp-route">${ROUTES[m.p][0]}</span>${think}${ic('updown')}</button>`;
+}
+function mpPanel(id) {
+  const c = PICKERS[id], v = c.value();
+  const cur = v === 'auto' ? null : byKey(v);
+  const prov = R.mpProv || (cur ? cur.p : 'claude-bridge');
+  const row = m => {
+    const why = c.reason(m);
+    return `<label class="md-row" data-testid="mp-row-${m.id}"><input type="radio" name="mp-${id}" data-act="mp-pick" data-v="${key(m)}"${key(m) === v ? ' checked' : ''}${why ? ' disabled aria-disabled="true"' : ''}><span class="md-t">${esc(m.name)}</span><span class="md-tag">${why || (id === 'recap' && key(m) === AUTO_FOR[m.p] ? 'automaattisen valinta' : '')}</span></label>`;
+  };
+  const list = MODELS.filter(m => m.p === prov);
+  const older = list.filter(m => m.older);
+  const auto = c.auto ? `<div class="md-rows"><label class="md-row auto" data-testid="mp-row-auto"><input type="radio" name="mp-${id}" data-act="mp-pick" data-v="auto"${v === 'auto' ? ' checked' : ''}><span class="md-t">Automaattinen<small>Keskustelun palveluntarjoajan keskiluokka: nyt Sonnet 5.5 Claude-keskusteluissa ja GPT 6 Luna ChatGPT-keskusteluissa.</small></span><span class="md-tag">suositus</span></label></div>` : '';
+  const tabs = `<div class="seg" role="radiogroup" aria-label="Palveluntarjoaja">${Object.entries(ROUTES).map(([p, r]) =>
+    `<button type="button" role="radio" aria-checked="${p === prov}" data-act="mp-prov" data-v="${p}">${r[0]}</button>`).join('')}</div>`;
+  const think = c.thinking && cur ? `<div class="md-think"><span>Ajattelutaso</span><div class="seg mono" role="radiogroup" aria-label="Ajattelutaso">${['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].map(l =>
+    `<button type="button" role="radio" aria-checked="${DEF.thinking === l}" data-act="mp-think" data-v="${l}"${cur.think.includes(l) ? '' : ' disabled'}>${l}</button>`).join('')}</div></div>` : '';
+  return `<div class="mp-head"><strong>${esc(c.title)}</strong><button type="button" class="btn quiet icon" data-act="mp-close" aria-label="Sulje">${ic('cross')}</button></div>
+    <div class="mp-body">${auto}${c.auto ? '<p class="md-note">Tai valitse itse:</p>' : ''}${tabs}
+      <div class="md-rows">${list.filter(m => !m.older).map(row).join('')}</div>
+      ${older.length ? `<details class="md-more"${cur && cur.older ? ' open' : ''}><summary>Vanhemmat mallit (${older.length})</summary><div class="md-rows">${older.map(row).join('')}</div></details>` : ''}
+      ${think}<p class="md-note">${c.note()}</p></div>`;
+}
+function mpAnchor(id) {
+  const pop = R.mp === id && !phone() ? `<div class="mp-pop" role="dialog" aria-label="${esc(PICKERS[id].title)}" data-testid="mp-panel">${mpPanel(id)}</div>` : '';
+  return `<div class="mp-anchor"${R.mp === id ? ' data-open' : ''}>${mpTrigger(id)}${pop}</div>`;
+}
+function mpSheet() {
+  if (!R.mp || !phone()) return '';
+  return `<div class="mp-scrim" data-act="mp-close" aria-hidden="true"></div><div class="mp-sheet" role="dialog" aria-label="${esc(PICKERS[R.mp].title)}" data-testid="mp-panel">${mpPanel(R.mp)}</div>`;
+}
+function modelRow() {
+  return `<div class="s-row" data-settings-row="malli"><div class="s-lbl"><strong>Malli</strong><span class="s-desc">Fablea ja Opusta ei käytetä taustatöihin.</span></div><div class="s-val">${mpAnchor('recap')}</div></div>`;
+}
+
+// ---- Settings ----
+const SECTIONS = [['tili', 'Tili'], ['laitteet', 'Laitteet'], ['tekoaly', 'Tekoäly'], ['tilannekatsaus', 'Tilannekatsaus'], ['sanelu', 'Sanelu'], ['koodipalvelut', 'Koodipalvelut'], ['tiedot', 'Tiedot agenteille'], ['ulkoasu', 'Ulkoasu'], ['editori', 'Editori'], ['tila', 'Tallennustila']];
+const sections = () => SECTIONS.filter(([id]) => id !== 'tilannekatsaus' || V !== 'now');
+const section = () => R.sec || (V === 'now' ? 'tekoaly' : 'tilannekatsaus');
+function settingsNav() {
+  return `<nav class="s-nav" aria-label="Asetusten osiot"><div class="s-h">Asetukset</div>${sections().map(([id, l]) =>
+    `<div class="s-nav-i${id === section() ? ' cur' : ''}${id === 'tilannekatsaus' ? ' new' : ''}" data-act="sec" data-sec="${id}" data-testid="settings-${id}">${esc(l)}</div>`).join('')}</nav>`;
+}
+function tekoaly() {
+  // Pi's default model uses the same picker; in Nykyinen it is today's DefaultModelRow, which looks the same.
+  const dflt = `<div class="s-row" data-settings-row="default-model"><div class="s-lbl"><strong>Oletusmalli</strong><span class="s-desc">Uusille keskusteluille</span></div><div class="s-val">${mpAnchor('default')}</div></div>`;
+  const work = `<div class="s-row"><div class="s-lbl"><strong>Agentin työ</strong><span class="s-desc">Ajattelu ja työkalut keskustelussa oletuksena.</span></div><div class="s-val"><div class="seg" role="radiogroup" aria-label="Agentin työ"><button type="button" role="radio" aria-checked="true">Piilossa</button><button type="button" role="radio" aria-checked="false">Näkyvissä</button></div></div></div>`;
+  const subs = `<h3 class="s-h3">Tilaukset</h3><div class="s-card">
+    <div class="s-row icon"><span class="ig-mark lg ig-tone-2">Cl</span><div class="s-lbl"><strong>Claude-tilaus</strong><span class="s-desc">Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5.</span></div><div class="s-val"><span class="status"><i></i>Kirjautunut</span></div></div>
+    <div class="s-row icon"><span class="ig-mark lg ig-tone-1">Ch</span><div class="s-lbl"><strong>ChatGPT-tilaus</strong><span class="s-desc">GPT 6, GPT 6 Luna, GPT 6 mini.</span></div><div class="s-val"><span class="status"><i></i>Kirjautunut</span></div></div></div>`;
+  return `<h2>Tekoäly</h2><p class="s-intro">Mallit, joita agentit käyttävät, ja tilaukset tai avaimet, joilla ne saadaan.</p>
+    <div class="s-card">${dflt}${work}</div>${subs}`;
+}
+function preview() {
+  return `<div class="s-card"><div class="preview"><div class="lbl">Esikatselu</div>${recapCard({ preview: true })}</div></div>`;
+}
+const intro = '<h2>Tilannekatsaus</h2><p class="s-intro">Lyhyt katsaus keskustelun tilanteesta, kun palaat siihen. Se tallentuu keskustelun historiaan, mutta ei mene agentin muistiin.</p>';
+
+// A: the everyday choices in one card; what it reads and writes behind one fold.
+function sectionA() {
+  const nChanged = PARAMS.filter(k => k !== 'words').filter(changed).length;
+  const sum = `${fi(SET.msgs)} viestiä · ${fi(SET.ctx)} tokenia historiaa · vastaus enintään ${fi(SET.out)} tokenia`;
+  return `${intro}${preview()}
+    <div class="s-card" style="margin-top:var(--ah-s4)">${modeRow()}${delayRow()}${modelRow()}${ROWS.words()}</div>
+    <details class="adv" data-testid="advanced"${R.adv ? ' open' : ''}><summary data-act="adv"><span class="chev">${ic('chev')}</span><strong>Lisäasetukset</strong><span class="chg">${nChanged ? `${nChanged} muutettu` : ''}</span><span class="sum">${sum}</span></summary>
+      <div class="s-card"><div class="subh">Mitä katsaus lukee</div>${ROWS.msgs()}${ROWS.ctx()}${ROWS.per()}<div class="subh">Mitä katsaus kirjoittaa</div>${ROWS.next()}${ROWS.out()}<div class="subh">Milloin</div>${ROWS.turns()}<div class="s-foot" data-testid="cost">${costLine()}</div>${resetButton()}</div></details>`;
+}
+// B: every number visible, grouped by what it governs.
+function sectionB() {
+  return `${intro}${preview()}
+    <h3 class="s-h3">Milloin</h3><div class="s-card">${modeRow()}${delayRow()}${ROWS.turns()}</div>
+    <h3 class="s-h3">Malli</h3><div class="s-card">${modelRow()}</div>
+    <h3 class="s-h3">Mitä katsaus lukee</h3><div class="s-card">${ROWS.msgs()}${ROWS.ctx()}${ROWS.per()}</div>
+    <h3 class="s-h3">Mitä katsaus kirjoittaa</h3><div class="s-card">${ROWS.words()}${ROWS.next()}${ROWS.out()}<div class="s-foot" data-testid="cost">${costLine()}</div>${resetButton()}</div>`;
+}
+// C: a named level sets every number at once; Oma opens them.
+const presetOf = () => Object.keys(PRESETS).find(p => PARAMS.every(k => PRESETS[p][k] === SET[k])) || 'oma';
+function sectionC() {
+  const p = R.custom ? 'oma' : presetOf();
+  const opts = [...Object.entries(PRESETS).map(([id, x]) => [id, x.label]), ['oma', 'Oma']];
+  const recipe = `<div class="recipe" data-testid="recipe"><div><span class="h">Lukee</span><ul><li><b>${fi(SET.msgs)}</b> viimeisintä viestiä</li><li>noin <b>${fi(SET.ctx)}</b> tokenia, viestistä enintään ${fi(SET.per)}</li><li>aikaisintaan <b>${fi(SET.turns)}</b>. vuoron jälkeen</li></ul></div><div><span class="h">Kirjoittaa</span><ul><li>katsaus enintään <b>${fi(SET.words)}</b> sanaa</li><li>seuraavaksi enintään <b>${fi(SET.next)}</b> sanaa</li><li>vastaus enintään <b>${fi(SET.out)}</b> tokenia</li></ul></div></div>`;
+  const custom = p === 'oma' ? `${ROWS.msgs()}${ROWS.ctx()}${ROWS.per()}${ROWS.turns()}${ROWS.words()}${ROWS.next()}${ROWS.out()}` : '';
+  const desc = { lyhyt: 'Muutama virke viimeisistä viesteistä. Halvin ja nopein.', tavallinen: 'Nykyinen katsaus.', perusteellinen: 'Pidempi katsaus, joka lukee enemmän historiaa. Kuluttaa tilausta noin kaksinkertaisesti.', oma: 'Omat luvut. Muuttamalla lukua lähdet valmiista tasosta.' }[p];
+  return `${intro}${preview()}
+    <div class="s-card" style="margin-top:var(--ah-s4)">${modeRow()}${delayRow()}${modelRow()}</div>
+    <h3 class="s-h3">Laajuus</h3><div class="s-card"><div class="s-row" data-settings-row="laajuus"><div class="s-lbl"><strong>Katsauksen laajuus</strong><span class="s-desc" data-testid="preset-desc">${esc(desc)}</span></div><div class="s-val">${seg('Katsauksen laajuus', opts, p, { testid: 'preset' })}</div></div>${recipe}${custom}<div class="s-foot" data-testid="cost">${costLine()}</div></div>`;
+}
+function viewSettings() {
+  const body = section() === 'tilannekatsaus' ? { a: sectionA, b: sectionB, c: sectionC }[V]() : section() === 'tekoaly' ? tekoaly()
+    : `<h2>${esc(SECTIONS.find(([id]) => id === section())[1])}</h2><p class="s-intro">Ei osa tätä kierrosta.</p>`;
+  return `<div class="settings">${phone() ? '' : settingsNav()}<div class="s-main" data-testid="settings-main"><button class="btn quiet s-back" data-act="nav" data-to="keskustelu">${ic('back')}Asetukset</button>${body}</div></div>`;
+}
+
+// ---- Conversation ----
+function recapCard({ preview = false } = {}) {
+  const pending = !preview && R.card === 'pending';
+  const m = SET.model === 'auto' || V === 'now' ? AUTO : byKey(SET.model);
+  const age = preview ? '3 min sitten' : `${Math.max(quiet(), 1)} min sitten`;
+  let tools = '';
+  if (!preview) {
+    tools += `<span class="ah-recap-grow"></span><button class="ah-recap-icon" data-act="refresh" aria-label="Päivitä katsaus" title="Päivitä katsaus"${pending ? ' disabled' : ''}>${ic('refresh')}</button>`;
+    if (V !== 'now') tools += `<button class="ah-recap-icon" data-act="goto" data-row="tilannekatsaus" aria-label="Tilannekatsauksen asetukset" title="Tilannekatsauksen asetukset" data-testid="card-settings">${ic('gear')}</button>`;
+    tools += `<button class="ah-recap-icon" data-act="dismiss" aria-label="Sulje katsaus" title="Sulje katsaus">${ic('cross')}</button>`;
+  }
+  const meta = preview ? `<span class="meta">· ${esc(m.name)}</span>` : '';
+  const text = V === 'now' ? RECAPS.mid : recapText(), next = V === 'now' ? NEXTS.mid : nextText();
+  const body = pending
+    ? '<div class="ah-recap-skeleton" role="status" aria-label="Luodaan katsausta"><span></span><span></span><span></span></div>'
+    : `<p>${esc(text)}</p><p class="ah-recap-next"><strong>Seuraavaksi</strong> ${esc(next)}</p>`;
+  return `<aside class="ah-recap" aria-label="Keskustelun yhteenveto" data-testid="${preview ? 'recap-preview' : 'recap-card'}"><div class="ah-recap-heading"><strong>Tilannekatsaus</strong>${pending ? '' : `<time>${age}</time>`}${meta}${tools}</div>${body}</aside>`;
+}
+function offerRow() {
+  return `<div class="rc-offer" data-testid="recap-offer"><strong>Tilannekatsaus</strong><span class="grow">Hiljaista ${quiet()} min. Haluatko lyhyen katsauksen?</span><button class="btn" data-act="request">Luo katsaus</button><button class="ah-recap-icon" data-act="dismiss" aria-label="Sulje" title="Sulje">${ic('cross')}</button></div>`;
+}
+let lastSlot = '';
+function recapSlot() {
+  let inner = '';
+  if (!R.dismissed) {
+    const m = mode();
+    if (R.card) inner = recapCard();
+    else if (due() && m === 'auto') inner = recapCard();
+    else if (due() && m === 'ask') inner = offerRow();
+  }
+  // Only a newly appearing card or row animates in; a repaint must not flicker it.
+  const kind = !inner ? '' : inner.includes('recap-offer') ? 'offer' : 'card';
+  const still = kind === lastSlot;
+  lastSlot = kind;
+  if (!inner) return '';
+  return `<div class="rc-slot${still ? ' still' : ''}">${inner}</div>`;
+}
+function viewConversation() {
+  const ph = phone();
+  const head = ph ? '' : `<div class="conv-head"><h1>Varjon pituuden laskenta</h1><span class="ws">aurinkokello</span><span class="grow"></span><span class="idle"><i></i>Odottaa sinua</span><span class="mp-chip" title="Keskustelun malli">Opus 5.5 ${ic('thinking')} Medium</span></div>`;
+  return `<div class="conv">${head}<div class="stream"><div class="col">
+    <div class="msg-user">Lisää varjon pituuden laskentaan tuki kesä- ja talviajalle ja korjaa testit.</div>
+    <div class="msg-agent"><div class="work">Luki 4 tiedostoa · ajoi 3 komentoa</div><p>Lisäsin aikavyöhykkeen käsittelyn tiedostoon <code>src/shadow.ts</code>: auringon korkeus lasketaan nyt paikallisesta ajasta UTC:n kautta, joten kesäajan vaihto ei enää siirrä varjoa tunnilla.</p><pre>npm test
+✓ 18 testiä läpi (0,8 s)</pre></div>
+    <div class="msg-user">Hyvä. Lisää vielä README:hen esimerkki.</div>
+    <div class="msg-agent"><p>Lisäsin README:hen esimerkin Helsingin talvipäivänseisauksesta klo 12: kahden metrin kepin varjo on noin 17,6 metriä.</p></div>
+  </div></div>${recapSlot()}<div class="composer"><div class="field"><span class="ph-t">Kirjoita viesti…</span><span class="send">${ic('send')}</span></div></div></div>`;
+}
+
+const TITLES = { keskustelu: 'Varjon pituuden laskenta', asetukset: 'Asetukset' };
+function rail() {
+  return `<nav class="rail"><div class="rail-head">${ic('menu')} Open Habitat</div>
+    <div class="rail-item">${ic('plus')}<span>Uusi työtila</span></div>
+    <div class="rail-ws">${ic('branch')} aurinkokello</div>
+    <div class="rail-item sub${S.n === 'keskustelu' ? ' cur' : ''}" data-act="nav" data-to="keskustelu"><span>Varjon pituuden laskenta</span></div>
+    <div class="rail-item sub"><span>Kuvien pakkaus WebP-muotoon</span></div>
+    <div class="rail-ws">${ic('branch')} open-habitat</div>
+    <div class="rail-item sub"><span>Julkaisun valmistelu</span></div>
+    <div class="rail-fill"></div>
+    <div class="rail-account${S.n === 'asetukset' ? ' cur' : ''}" data-act="nav" data-to="asetukset"><span class="avatar">JM</span><span>Jari Mustonen</span></div></nav>`;
+}
+function appHTML() {
+  const ph = phone();
+  const view = S.n === 'asetukset' ? `<div class="scroll">${viewSettings()}</div>` : viewConversation();
+  const top = ph ? `<div class="topbar"><span class="burger" data-act="nav" data-to="${S.n === 'asetukset' ? 'keskustelu' : 'asetukset'}">${ic('menu')}</span><h1>${esc(TITLES[S.n])}</h1></div>` : '';
+  return `<div class="app${ph ? ' phone ph' : ''}" data-variant="${V}">${ph ? '' : rail()}<main class="main">${top}${view}</main>${S.n === 'asetukset' ? mpSheet() : ''}</div>`;
+}
+
+// ---- Frame geometry ----
+const HEIGHTS = { 1280: 800, 390: 844 };
+const viewport = document.getElementById('viewport');
+const sizer = document.getElementById('sizer');
+const stage = document.getElementById('frame');
+function frameSize() {
+  if (S.w === 'oma') return { W: viewport.clientWidth, H: viewport.clientHeight };
+  return { W: +S.w, H: HEIGHTS[S.w] };
+}
+function layoutFrame() {
+  const { W, H } = frameSize();
+  const bare = document.body.classList.contains('bare');
+  const s = S.w === 'oma' || bare ? 1 : Math.min(1, (viewport.clientWidth - 24) / W, (viewport.clientHeight - 84) / H);
+  stage.style.width = W + 'px'; stage.style.height = H + 'px';
+  stage.style.transform = s < 1 ? `scale(${s})` : '';
+  sizer.style.width = Math.round(W * s) + 'px'; sizer.style.height = Math.round(H * s) + 'px';
+  stage.dataset.theme = S.t;
+}
+function readout() {
+  const model = SET.model === 'auto' ? 'automaattinen' : byKey(SET.model).name;
+  const set = V === 'now' ? 'ei asetusta' : `${MODE_LABEL[SET.m]}${SET.m === 'off' ? '' : `, ${fi(SET.d)} min`}, ${model}, ${SET.words} sanaa, ${SET.msgs} viestiä`;
+  const card = R.card === 'pending' ? 'katsausta luodaan' : due() || R.card ? (mode() === 'auto' || R.card ? 'kortti' : mode() === 'ask' ? 'tarjous' : 'ei mitään') : 'ei vielä';
+  document.getElementById('readout').innerHTML = `Asetus: <b>${esc(set)}</b> · Hiljaa ${quiet()} min → <b>${card}</b> · Host nyt: <b>kiinteä 3 min, ei asetusta</b>`;
+}
+
+// ---- Picker wiring (picker.js expects `stage` and `variants`) ----
+const variants = VARIANTS.map(v => () => {
+  if (V !== null && V !== v) resetRuntime();
+  V = v; stage.dataset.variant = v; layoutFrame(); readout();
+  return appHTML();
+});
+// A repaint keeps the settings page's scroll position.
+function paint() {
+  const sc = stage.querySelector('.scroll'), top = sc ? sc.scrollTop : 0;
+  stage.innerHTML = appHTML(); readout();
+  const sc2 = stage.querySelector('.scroll'); if (sc2) sc2.scrollTop = top;
+}
+
+let pendingTimer;
+function generate() {
+  R.card = 'pending'; R.dismissed = false; paint();
+  clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(() => { R.card = 'done'; paint(); }, 700);
+}
+function goto(row) {
+  S.n = 'asetukset'; R.sec = 'tilannekatsaus'; R.land = row; rerender();
+  const el = stage.querySelector(`[data-settings-row="${row}"]`);
+  if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); }
+  setTimeout(() => { R.land = ''; }, 2400);
+}
+function setNum(k, v) {
+  const l = LIM[k];
+  v = Math.min(l.max, Math.max(l.min, Math.round(v / l.step) * l.step));
+  if (Number.isNaN(v)) return;
+  SET[k] = v;
+  paint(); syncUrl();
+  stage.querySelector(`input[data-k="${k}"]`)?.focus();
+}
+function closePicker(refocus) {
+  const id = R.mp; R.mp = ''; R.mpProv = ''; paint();
+  if (refocus) stage.querySelector(`[data-mp="${id}"]`)?.focus();
+}
+
+stage.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if (!t) {
+    if (R.mp && !e.target.closest('.mp-pop, .mp-sheet')) closePicker(false);
+    return;
+  }
+  const act = t.dataset.act;
+  if (R.mp && !t.closest('.mp-pop, .mp-sheet') && act !== 'mp') { closePicker(false); if (act === 'mp-close') return; }
+  if (act === 'nav') { S.n = t.dataset.to; R.sec = ''; R.mp = ''; rerender(); }
+  else if (act === 'sec') { R.sec = t.dataset.sec; R.land = ''; R.mp = ''; paint(); }
+  else if (act === 'set') {
+    if (t.dataset.k === 'mode') SET.m = t.dataset.v;
+    else if (t.dataset.k === 'preset') {
+      if (t.dataset.v === 'oma') R.custom = true;
+      else { R.custom = false; Object.assign(SET, Object.fromEntries(PARAMS.map(k => [k, PRESETS[t.dataset.v][k]]))); }
+    } else return;
+    paint(); syncUrl();
+  }
+  else if (act === 'step') setNum(t.dataset.k, SET[t.dataset.k] + LIM[t.dataset.k].step * +t.dataset.d);
+  else if (act === 'reset') { for (const k of PARAMS) SET[k] = HOST[k]; paint(); syncUrl(); }
+  else if (act === 'adv') { e.preventDefault(); R.adv = !R.adv; paint(); syncUrl(); }
+  else if (act === 'mp') {
+    if (R.mp === t.dataset.mp) { closePicker(true); return; }
+    R.mp = t.dataset.mp; R.mpProv = ''; paint();
+    // The popover opens downward, as Oletusmalli's does; the page scrolls it into view.
+    stage.querySelector('.mp-pop')?.scrollIntoView({ block: 'nearest' });
+    (stage.querySelector('[data-testid="mp-panel"] input:checked') || stage.querySelector('[data-testid="mp-panel"]'))?.focus();
+  }
+  else if (act === 'mp-close') closePicker(true);
+  else if (act === 'mp-prov') { R.mpProv = t.dataset.v; paint(); }
+  else if (act === 'mp-pick') {
+    if (t.disabled) return;
+    PICKERS[R.mp].set(t.dataset.v);
+    if (PICKERS[R.mp].thinking) { paint(); syncUrl(); return; } // the thinking level is chosen next, as in production
+    closePicker(true); syncUrl();
+  }
+  else if (act === 'mp-think') { DEF.thinking = t.dataset.v; paint(); }
+  else if (act === 'refresh' || act === 'request') generate();
+  else if (act === 'dismiss') { R.dismissed = true; R.card = null; paint(); }
+  else if (act === 'goto') goto(t.dataset.row);
+});
+// The slider: live value while dragging (no repaint, which would drop the drag), a repaint on release.
+stage.addEventListener('input', e => {
+  const t = e.target;
+  if (t.matches('input[type=range][data-k="d"]')) {
+    SET.d = +t.value;
+    t.setAttribute('aria-valuetext', `${fi(SET.d)} min`);
+    t.closest('.slider').querySelector('output').textContent = `${fi(SET.d)} min`;
+    readout();
+  }
+});
+stage.addEventListener('change', e => {
+  const t = e.target;
+  if (t.matches('input[type=range][data-k="d"]')) { paint(); syncUrl(); stage.querySelector('input[type=range]')?.focus(); }
+  // A field removed by a repaint (variant switch, step button) commits after it, not inside it.
+  else if (t.matches('.num input')) { const k = t.dataset.k, v = +t.value; setTimeout(() => setNum(k, v)); }
+});
+stage.addEventListener('keydown', e => {
+  // Enter commits through the change event; a repaint under a focused, edited field would fire it mid-repaint.
+  if (e.key === 'Enter' && e.target.matches('.num input')) { e.preventDefault(); e.target.blur(); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && R.mp) { e.stopPropagation(); closePicker(true); }
+});
+</script>
+<script>
+/*PICKER_JS*/
+</script>
+<script>
+// ---- Prototype controls ----
+function syncUrl() {
+  const url = new URL(location);
+  for (const [k, v] of Object.entries(S)) url.searchParams.set(k, v);
+  for (const k of Object.keys(HOST)) { if (SET[k] === HOST[k]) url.searchParams.delete(k); else url.searchParams.set(k, SET[k]); }
+  history.replaceState(null, '', url);
+}
+function syncControls() {
+  document.querySelectorAll('.pc-group').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(S[g.dataset.k] === b.dataset.v))));
+}
+function rerender() {
+  syncUrl(); syncControls();
+  stage.innerHTML = variants[current]();
+}
+document.querySelectorAll('.pc-group').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  // A new silence is a new visit to the conversation: the card is read again.
+  if (g.dataset.k === 's') { R.card = null; R.dismissed = false; }
+  if (g.dataset.k === 'n') { R.sec = ''; R.mp = ''; }
+  S[g.dataset.k] = b.dataset.v; rerender();
+}));
+let rz;
+window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(rerender); });
+syncControls();
+</script>
+</body>
+</html>

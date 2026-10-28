@@ -1,132 +1,168 @@
-# Tulos: tilannekatsauksen asetukset
+# Tulos: tilannekatsauksen asetukset, kierros 2
 
-Prototyyppi on `prototypes/recap-settings/index.html`, yksi offline-HTML. Se on
-käsin kirjoitettu sivu
-(`design-system/prototypes/rounds/2026-10-28-tilannekatsaus-asetukset/page.html`),
-jonka `build.mjs` täydentää tokeneilla, upotetuilla fonteilla ja yhteisellä
-valitsimella (`lib/picker.*`). Tuotantokomponenttien bundlea ei käytetä, koska
-se jää Habitatin näkymissä tyhjäksi. Jarin opas on
-`prototypes/recap-settings/NOTES.md`, ja kuvat ovat `evidence/`-hakemistossa
-AVIF-muodossa (laitteen skaalaus 2, muunnos ffmpeg:llä). `verify.mjs` tarkistaa 36 sijoittelutapausta
-(4 suuntaa × 3 tilaa × 3 hiljaisuutta). Lisäksi se klikkaa läpi seuraavat:
-Luo katsaus, Asetuksissa tehdyn muutoksen näkyminen keskustelussa, suunnan 2
-ratas ja mallivalinta (Fablea ja Opusta ei voi valita) sekä suunnan 3 valikko,
-Esc, muutosrivi ja Kumoa. Konsolivirheitä ja verkkopyyntöjä ei ollut, ja
-valitsin läpäisee `picker-check`in.
+Prototyyppi on `prototypes/recap-settings-2/index.html`, yksi offline-HTML.
+Lähde on `design-system/prototypes/rounds/2026-10-28-tilannekatsaus-asetukset-2/`
+(`page.html`, `build.mjs`, `verify.mjs`), ja yhteinen valitsin tulee
+kirjastosta `lib/picker.*`. Tuotantokomponenttien bundlea ei käytetty. Jarin opas on
+`prototypes/recap-settings-2/NOTES.md`, ja kuvat ovat
+`prototypes/recap-settings-2/evidence/` (AVIF, laitteen skaalaus 2).
+`verify.mjs` käy läpi 45 ajoitustapausta (vapaa viive × hiljaisuus × tila ×
+suunta). Lisäksi se tarkistaa mallivalitsimen (popover, puhelimen arkki,
+Fable ja Opus estetty, sama komponentti Oletusmallissa), lukujen rajat,
+vastausrajan varoituksen, Palauta oletukset -painikkeen, suunnan 1 taitoksen
+ja suunnan 3 tasot. Konsoli on puhdas, verkkopyyntöjä ei ole, ja valitsin
+läpäisee `picker-check`in. Kierros 1 (`prototypes/recap-settings/`) on tallessa vertailua
+varten. Sen tulos ja host-taulukko löytyvät tämän tiedoston Git-historiasta.
 
-Nykytila on luettu koodista, eikä labia ajettu. Kortin ulkoasu ja paikka on
-otettu tiedostoista `RecapCard.tsx` ja `components.css` (`.ah-recap`) ja
-Asetusten rakenne tiedostoista `Account.tsx` ja `Settings.css`.
+## Jarin päätös, josta kierros lähti (2026-10-28)
 
-## Nykytila: mitä voi säätää nyt
+Oma osio Asetuksissa. Teksti "Lasketaan viimeisestä viestistä … pisin viive
+on 5 min" poistetaan. Viive on vapaasti säädettävä. Osiossa ovat myös pituusparametrit
+(tokenit ja viestimäärät). Mallivalitsin on sama kuin muualla, mieluiten
+yhteinen standardikomponentti.
 
-Ei mitään. Automaattinen katsaus ajastetaan daemonissa kiinteällä
-kolmen minuutin viiveellä, ja malli valitaan kiinteällä säännöllä.
-Selaimessa on vain kortin sulkeminen (`localStorage`-avain
-`oh:recap-dismissed:<keskustelu>`) ja Päivitä katsaus.
+## Akseli: miten parametrit ryhmitellään
 
-## Host-tiedot
-
-| Tieto | On nyt? | Missä / mitä puuttuu |
-|---|---|---|
-| Automaattisen katsauksen ajastus | **On**, kiinteä | `scheduleAutomaticRecap`, `recap_linux.go:206`. Viive on `3*time.Minute` (`:213`). Kenttä `recapIdleDelay` on vain testisauma (`conversation_linux.go:52`). |
-| Mistä hiljaisuus lasketaan | **On** | Natiivista asettumisesta ja selaimen läsnäoloilmoituksista. Selain ilmoittaa enintään 20–30 s välein, kun henkilö kirjoittaa tai lukee (`recapHold.ts:16`). Valmis automaattinen kortti odottaa vielä 60 s kirjoittamisen tai lukemisen jälkeen (`recapQuietMs`, `recapHold.ts:12`). |
-| Viiveen yläraja | **On** rajoite | Pi:n lapsiprosessi pysäytetään 10 minuutin hiljaisuuden jälkeen (`piIdlePeriod`, `pi_activity_linux.go:253`). Katsaus ajetaan saman Pi-lapsen komentona (`/oh-conversation-recap automatic`), joten viiveen on oltava selvästi alle 10 min. Siksi valinnat ovat 1, 3 ja 5 min. |
-| Pyydetty katsaus (Luo / Päivitä katsaus) | **On** | `POST …/agents/<id>/recap` (`requestRecap`, `conversations.ts`), trigger `manual`. "Kun pyydän" -tila ei tarvitse uutta palvelinta varten. |
-| Hiljaisuuden alkuhetki selaimessa | **On** | `latest_message_at` katsauksen lukuvastauksessa (`recap.schema.json`). Selain voi itse päättää, milloin *Luo katsaus* -rivi näytetään. |
-| Asetus "tila" (auto / kun pyydän / ei) ja viive | **Ei ole** | Daemonin on luettava asetus ennen ajastusta: `ask`- ja `off`-tiloissa ajastinta ei käynnistetä, ja viive tulee asetuksesta. Selain tarvitsee lukureitin (sopimus `contracts/v1/`), jotta se näyttää oikean rivin ja Asetukset. |
-| Mallin valintasääntö | **On** | `backgroundModels`, `background-model.mjs`: keskiluokka (sonnet, luna, flash, medium, mini) keskustelun palveluntarjoajalta, varalla keskustelun oma malli, Fable ja Opus suljettu pois myös varalta. Sama sääntö on automaattisilla nimillä (`title-helper.mjs`). Nimiapuri ei kuitenkaan lataa pi-claude-bridgeä, joten nimet voi tehdä eri malli kuin katsauksen (kommentti `background-model.mjs`:ssä). |
-| Mikä malli katsauksen teki | **Ei selaimelle** | Laajennus raportoi mallin daemonille, mutta tieto päätyy vain journaliin (`recap_linux.go:247`). Kirjoitetussa merkinnässä (`appendEntry`, `recap-extension.mjs:110`) ja sopimuksessa ei ole mallia. |
-| Mitä mallia käytettäisiin (Asetuksissa näytettäväksi) | **Ei ole** | Pi:n mallikatalogi saadaan jo apurilla (`pi_models_linux.go`, `pi_models_helper.mjs`). Saman apurin pitäisi ajaa `backgroundModels` oletusmallilla ja palauttaa tulos, esimerkiksi kenttänä `background_model`. Suunnat 1–3 tarvitsevat tämän. |
-| Henkilön valitsema malli (suunta 2) | **Ei ole** | `backgroundModels` ei ota toivetta vastaan. Toive kokeiltaisiin ensin, jos se on käytettävissä eikä kuulu Fable- tai Opus-perheeseen. Varalla olisi edelleen keskustelun oma malli. Valinta koskisi myös nimiä. |
-| Natiivi paikka asetukselle | **On**, avain puuttuu | Pi 1.3.0:ssa ei ole tilannekatsaus- eikä taustamalliasetusta (`compaction.modelOverrides` koskee vain tokenimääriä). Pi:n `settings.json` sallii omat avaimet (`additionalProperties: true`, `settings-schema.js:290`) ja säilyttää ne kirjoittaessaan, koska vain muutetut kentät yhdistetään (`persistScopedSettings`, `settings-manager.js:449`). Laajennus lukee ne `pi.getSettings()`-kutsulla (`extensions/types.d.ts:1286`), ja daemon lukee tiedostoa jo nyt (`nativeSettingsProvideProcesses`, `recap_linux.go:487`). SettingsManagerissa ei ole setteriä omalle avaimelle, joten kirjoitus tehdään Pi:n omalla tiedostolukolla (`settings.json.lock`) Node-apurissa, kuten `pi_models_helper.mjs` jo käyttää SettingsManageria. |
-| Natiivi TUI:n tilannekatsaus | **Tuntematon** | `recap-extension.mjs:15` mainitsee natiivin TUI-laajennuksen vuorolaskurin. Laajennusta ei löytynyt tästä reposta eikä tämän koneen Pi-asetuksista, joten ei tiedetä, noudattaisiko se samaa avainta. |
-| Etusivun katsaukset | **On** | `HomeWorkspaces.tsx` näyttää jo tehdyt katsaukset. "Ei koskaan" -tilassa uusia ei synny, joten etusivu tyhjenee vähitellen ilman muutosta. |
-| Valtuudet | Ei muutosta | Daemon ajaa henkilön omana Unix-käyttäjänä ja lukee ja kirjoittaa vain hänen kotihakemistonsa tiedostoa. Gateway ja provision eivät osallistu. |
-
-## Akseli: missä tilannekatsausta säädetään
-
-Kaikissa suunnissa säädettävää on sama: tila (Automaattisesti / Kun pyydän /
-Ei koskaan) ja hiljaisuus (1 / 3 / 5 min). Malli näkyy kaikissa suunnissa,
-mutta valita sen voi vain suunnassa 2. "Kun pyydän" näyttää hiljaisuuden
-jälkeen kortin paikalla ohuen katkoviivarivin *Luo katsaus*, eikä mallia
-käytetä ennen painallusta. Asetus koskee henkilöä, ei selainta eikä
-keskustelua.
+Kaikissa suunnissa säädöt, rajat ja oletukset ovat samat. Osion alussa on
+kortin esikatselu, joka seuraa valittua mallia ja sanamäärää. Kortin ratas
+vie osioon (`data-landed`-korostus).
 
 | # | Suunta | Mitä se päättää | Milloin oikea | Mitä se maksaa |
 |---|---|---|---|---|
-| 1 | **Tekoälyn alla** | Asetukset › Tekoäly saa *Taustatyöt*-kortin: Tilannekatsaus, Hiljaisuus ennen katsausta ja Malli (näytetään). Keskustelun kortti ei muutu. | Kun säätöä tarvitaan harvoin, ja riittää, että se löytyy mallien vierestä. | Kortissa ei ole vihjettä siitä, että katsausta voi säätää. Ärsyyntynyt henkilö sulkee kortin joka kerta eikä löydä asetusta. |
-| 2 | **Oma osio** | Uusi Asetusten kohta *Tilannekatsaus*: esikatselu, Milloin ja Malli-luettelo, josta valitaan (Fable ja Opus harmaina, perusteluna "ei taustatöihin"). Kortissa on ratas, joka vie riville. Tekoäly-osiossa on rivi, joka vie tänne. | Kun mallin valinta halutaan henkilölle ja tilannekatsaus nähdään omana ominaisuutenaan. | Uusi osio pieneen asiaan. Mallivalinta laajentaa sääntöä toiveella, ja valinta koskee myös nimiä, mikä ei näy osion nimestä. Kortissa on neljäs kuvake. |
-| 3 | **Kortista** | Asetuksissa ovat samat rivit kuin suunnassa 1. Kortin `⋯`-valikossa ovat viive, *Vain kun pyydän*, *Ei tilannekatsauksia*, malli tekstinä ja *Kaikki asetukset…*. Muutoksen jälkeen kortin paikalle tulee rivi "…kaikissa keskusteluissasi", ja rivillä ovat Kumoa ja Asetukset. | Kun säätö halutaan siihen hetkeen, jolloin kortti häiritsee tai tulee liian aikaisin. | Kortin kevyeen otsikkoon tulee valikko. Valinta kortista muuttaa kaikkien keskustelujen asetusta, ja vain muutosrivi kertoo sen. |
-| – | **Nykyinen** | Ei asetusta: kortti tulee aina 3 min jälkeen. | – | – |
+| 1 | **Perus + lisät** | Yksi kortti: Tilannekatsaus, viive, malli ja katsauksen pituus (sanat). Muut seitsemän lukua ovat *Lisäasetukset*-taitoksen takana kolmessa ryhmässä: lukee / kirjoittaa / milloin. Taitoksen otsikossa ovat aina nykyiset luvut ja "N muutettu". Lopussa on yhteenveto ja Palauta oletukset. | Useimmat säätävät vain milloin, millä mallilla ja kuinka pitkä. Tokenit ja viestimäärät ovat turvarajoja, joihin harva koskee. | Luvut ovat yhden klikkauksen takana, mutta otsikko näyttää ne, joten mikään ei muutu huomaamatta. |
+| 2 | **Kaikki näkyvissä** | Neljä korttia: Milloin (tila, viive, ensimmäinen katsaus), Malli, Mitä katsaus lukee (viestit, historia, yksi viesti) ja Mitä katsaus kirjoittaa (sanat, Seuraavaksi, vastausraja). Lopussa on yhteenveto ja Palauta oletukset. | Kun luvut halutaan nähdä ja niitä halutaan verrata yhdellä silmäyksellä. | Pitkä sivu pienelle ominaisuudelle (11 riviä). Puhelimessa vieritettävää on paljon. |
+| 3 | **Tasot** | Tila, viive ja malli yhdessä kortissa. *Katsauksen laajuus* -kohdassa ovat Lyhyt / Tavallinen / Perusteellinen / Oma, ja valitun tason luvut näkyvät taulukkona (lukee / kirjoittaa). Oma avaa luvut, ja minkä tahansa luvun muuttaminen siirtää valinnan Omaan. | Kun asetuksia käyttää muukin kuin luvuista kiinnostunut (esim. Kaisa): yksi valinta ja sen seuraus nähtävissä. | Tasojen nimet ja arvot ovat uusi tuotelupaus. Kun luku muutetaan, ollaan "Omassa", vaikka muutos olisi pieni. |
+| – | **Nykyinen** | Ei osiota: kortti tulee aina 3 min jälkeen. | – | – |
 
-## Mitä host-tietoja kukin suunta tarvitsee
+## Säädöt, rajat ja mistä ne tulevat
 
-| Tieto | On nyt? | 1 | 2 | 3 |
-|---|---|---|---|---|
-| Tila ja viive henkilön asetuksena, daemon noudattaa | **Ei ole** | tarvitaan | tarvitaan | tarvitaan |
-| Asetuksen luku ja kirjoitus selaimesta (sopimus) | **Ei ole** | tarvitaan | tarvitaan | tarvitaan |
-| Pyydetty katsaus ja `latest_message_at` | **On** | Kun pyydän | Kun pyydän | Kun pyydän |
-| Malli, jota sääntö nyt käyttäisi (`background_model`) | **Ei ole** | näytetään | Automaattinen-rivi | valikossa |
-| Henkilön mallitoive sääntöön | **Ei ole** | – | tarvitaan | – |
-| Kortin tekijämalli merkinnässä ja sopimuksessa | **Ei ole** | – | (esikatselu käyttää valintaa) | – |
+Oletus on kaikissa nykyinen arvo, joten käyttöönotto ei muuta mitään.
+
+| Säätö | Oletus = nyt | Raja prototyypissä | Miksi juuri tämä raja |
+|---|---|---|---|
+| Tilannekatsaus | Automaattisesti | Automaattisesti / Kun pyydän / Ei koskaan | Kierroksen 1 kolmas tila säilyi, koska Jari ei kommentoinut sitä. |
+| Hiljaisuus ennen katsausta | 3 min | **1–9 min, 30 s välein**, liukusäädin ja arvo | Yläraja: Pi pysäytetään, kun se on ollut 10 min joutilaana ja edellisestä läsnäoloilmoituksesta on kulunut 10 min (`piIdlePeriod`, `internal/daemon/pi_activity_linux.go:253`). Tarkistus tehdään kerran minuutissa (`:254`), ja pysäytys pysäyttää myös katsauksen ajastimen (`:162`). Katsauksen ajastin ja pysäytys lasketaan samoista hetkistä: asettumisesta ja selaimen läsnäoloilmoituksesta (`notePresence`, `internal/daemon/recap_linux.go:417`). Kun katsaus on käynnissä, Pi pysyy hereillä (`s.recapping` `heldActivity`ssä, `pi_activity_linux.go:59`). Siksi kaikki alle 10 min viiveet ehtivät, ja 9 min jättää minuutin varaa. Alaraja: selain ilmoittaa lukemisesta tai kirjoittamisesta 20 s välein ja luonnoksesta 30 s välein (`web/src/app/recapHold.ts:16–17`), ja valmis kortti odottaa vielä 60 s (`recapQuietMs`, `:12`). Alle minuutin viive laukeaisi siis lukemisen aikana. |
+| Katsauksen pituus | 40 sanaa | 10–80, 5 välein | Kehotteessa on "at most 40 words" (`PROMPT`, `internal/daemon/recap-extension.mjs:7`), ja kova merkkiraja on 320 (`clean(value?.recap, 320)`, `:74`). Aldern `conversation-recap` käyttää samoja (`RECAP_MAX_CHARS = 320`). |
+| Seuraavaksi-rivi | 12 sanaa | 4–25 | Kehote "at most 12 words" (`:7`), merkkiraja 160 (`clean(value.next, 160)`, `:75`). Alder: `RECAP_NEXT_MAX_CHARS = 160`. |
+| Luettavat viestit | 64 | 4–128, 4 välein | `messages(branch).slice(-64)` (`:27`). Mukana ovat vain käyttäjän ja agentin tekstiviestit, ei työkaluja. Alder lukee enintään 32 käyttäjän vuoroa (`RECAP_HISTORY_MAX_TURNS`). |
+| Luettava historia enintään | ~16 000 tokenia | 2 000–32 000 | Kehote ja historia mahtuvat yhteensä 64 KiB:hen (`64 * 1024`, `:28`), mikä on noin 16 000 tokenia, kun arvioidaan 4 tavua tokenia kohden. Alder: `RECAP_PROMPT_MAX_BYTES = 64 * 1024`. Yläraja tulee ajasta: yritys saa kestää 12 s ja koko katsaus 20 s (`BUDGET_MS`, `ATTEMPT_MS`, `:57`), ja daemon luopuu kehotteesta 25 s jälkeen (`recap_linux.go:389`). 32k tokenia ehtii niissä, enempää ei voi taata. |
+| Yhdestä viestistä enintään | ~1 000 tokenia | 250–4 000 | 4096 tavua (`:34`). Alderlla ei ole viestikohtaista rajaa. |
+| Vastauksen yläraja | 512 tokenia | 128–2 048, 64 välein, varoitus alle (sanat + seuraavaksi) × 4 + 48 | `maxTokens: 512` (`:65`). Jos raja tulee vastaan, tulos on `model_incomplete`. Laajennuksen kommentin mukaan suomenkielinen JSON voi lähestyä 200:aa. Alder: `maxTokens: 160`. JSON-alueen raja on 2048 merkkiä (`:71`). |
+| Ensimmäinen katsaus aikaisintaan | 1 vuoro | 1–10 | **Ei ole OH:ssa**: katsaus tehdään, kun edellisen katsauksen jälkeen on tullut uusi viesti (`:94`). Alderlla `MIN_COMPLETED_TURNS = 3` ja `MIN_TURNS_BETWEEN_RECAPS = 2`. Vuorolaskuri `completedTurns` on jo laajennuksessa (`:17`). |
+| Malli | Automaattinen | Automaattinen tai mikä tahansa luettelon malli paitsi Fable- ja Opus-perhe | `backgroundModels` (`internal/daemon/background-model.mjs:36`). |
+
+## Host-tiedot ja mitä kukin suunta tarvitsee
+
+Kaikki kolme suuntaa tarvitsevat saman hostin. Ne eroavat vain ryhmittelyssä
+(suunta 3 lisää tasojen nimet, jotka ovat pelkkää selainkoodia).
+
+| Tieto | On nyt? | Missä / mitä puuttuu |
+|---|---|---|
+| Henkilön tilannekatsausasetus (tila, viive, malli, 7 lukua) | **Ei ole** | Ehdotus pysyy samana kuin kierroksella 1: oma avain Pi:n `~/.pi/agent/settings.json`-tiedostoon (`openHabitat.recap`). Pi sallii vieraat avaimet, ja laajennus lukee ne `pi.getSettings()`-kutsulla. Kirjoitus tehdään Pi:n lukolla Node-apurissa, kuten `internal/daemon/pi_models_helper.mjs:63` jo käyttää SettingsManageria. |
+| Sopimus selaimelle (luku ja kirjoitus) | **Ei ole** | `contracts/v1/`-hakemistossa on `recap.schema.json` (kortin luku), `pi-models.schema.json` ja `pi-model-update.schema.json`, mutta ei asetusreittiä. |
+| Daemon noudattaa viivettä ja tilaa | **Ei ole** | `delay := 3*time.Minute + time.Millisecond` (`recap_linux.go:213`). `recapIdleDelay` on vain testisauma (`conversation_linux.go:52`). Daemon lukee jo Pi:n asetuksia (`nativeSettingsProvideProcesses`, `recap_linux.go:487`). `recapHold.ts`:n kommentti "three minutes" muuttuu. |
+| Viive yli 9 min | **Ei ole** (rajoite) | Vaatii, että joutilaana pysäytys odottaa ajastettua katsausta: joko `heldActivity` laskee odottavan ajastimen, tai `piIdlePeriod` on vähintään viive + 1 min. Tämä pitää Pi:n hengissä pidempään. Prototyyppi ei tarjoa tätä. |
+| Laajennus lukee sanat, viestit, tavut ja vastausrajan asetuksesta | **Ei ole** | Kaikki ovat vakioita tiedostossa `recap-extension.mjs` (rivit 7, 27, 28, 34, 65, 74 ja 75). Merkkirajojen (320/160) ja JSON-alueen (2048) on kasvettava sanojen ja vastausrajan mukana, noin 8 merkkiä sanaa kohden. |
+| Ensimmäinen katsaus vasta N vuoron jälkeen | **Ei ole** | `completedTurns` on olemassa (`recap-extension.mjs:17`). Tarvitaan ehto ennen `promptFor`-kutsua ja uusi tulos (esim. `too_early`), jonka daemon ohittaa hiljaa. |
+| Henkilön mallitoive | **Ei ole** | `backgroundModels(available, conversation)` ei ota toivetta vastaan. Toive kokeillaan ensin, jos se on käytettävissä eikä kuulu Fable- tai Opus-perheeseen. Varalla on edelleen keskustelun oma malli. `title-helper.mjs` käyttää samaa funktiota, mutta sille ei viedä toivetta (päätös alla). |
+| Mihin Automaattinen nyt osuu (palveluntarjoajittain) | **Ei ole** | Mallikatalogi on olemassa (`pi_models_linux.go`, `pi_models_helper.mjs`, `web/src/app/PiModels.tsx`). Apurin pitäisi ajaa `backgroundModels` kunkin palveluntarjoajan oletusmallilla ja palauttaa tulos, esim. `background_models: {provider: model}`. Ilman sitä Automaattinen-rivi näyttää vain säännön sanoin. |
+| Mallin luettelo ja välilehdet | **On** | `PiModelSelector` (`web/src/app/PiModelSelector.tsx`) ja `ModelPicker` (`web/src/components/ModelPicker.tsx`). |
+
+## Yksi mallivalitsin: mikä on nyt ja mikä muuttuu
+
+Nyt mallin valitsemiseen on **yksi paneeli ja kaksi laukaisinta**.
+Paneeli on `PiModelSelector`: palveluntarjoajan välilehdet (`Segmented`),
+`ModelPicker`-rivit (radio, nimi, "Ei käytettävissä" torjutulle) ja *Vanhemmat
+mallit* -taitos. Lisäksi siinä on ajattelutaso ja `scope`-kohtainen loppu
+(`default`, `new`, `recovery`, `conversation`, `empty`).
+
+- *Asetusrivin kenttä*: `DefaultModelRow` (`web/src/components/DefaultModelRow.tsx`).
+  Kentässä ovat LetterMark, nimi, reitti, ajattelutaso ja ⇅. Kenttä avaa popoverin
+  (470 px) tai puhelimessa arkin (`.dm-pop`, `Settings.css:604–650`).
+- *Siru*: `ModelChip` + `ComposerModelPicker` (tyhjän keskustelun kenttä,
+  `md-pop-up`). Keskustelun otsikon siru avaa tiedot
+  (`ConversationModelInfo`), ei valitsinta.
+- Keskustelun `md-new` (`<details>` + `PiModelSelector scope="new"`,
+  `BrowserConversation.tsx:1331`) on kolmas, oma laukaisimensa. Dialogit
+  (`WorkspacePage.tsx:340`, `NewConversationModelDialog.tsx`) näyttävät saman
+  paneelin ilman laukaisinta.
+
+Ehdotettu standardi (prototyypin `mpTrigger`, `mpPanel` ja `mpAnchor`/`mpSheet`):
+
+1. **`ModelField`** = `DefaultModelRow`in kenttä ja säiliö yleistettynä
+   (otsikko, arvo, `children`). Sitä käyttävät Oletusmalli ja Tilannekatsaus ›
+   Malli. Oletusmallille ei tule näkyvää muutosta.
+2. **`ModelPicker`** saa kaksi valinnaista ominaisuutta. `unavailable(m) →
+   syy` yleistää nykyisen `refused`-tarkistuksen, ja sama rivi näyttää "Ei
+   käytettävissä" ja "ei taustatöihin". `auto` lisää ylimmäksi riviksi
+   *Automaattinen* ja kertoo, mihin se nyt osuu.
+3. **`PiModelSelector` saa scopen `background`**: ei ajattelutasoa, koska
+   `modelRegistry.complete` ei saa sitä (`recap-extension.mjs:65`). Ei
+   myöskään Vahvista-painiketta: valinta tallentuu ja paneeli sulkeutuu
+   heti, ja kirjoitus menee `onChoice`-kutsulla asetukseen, ei
+   `chooseDefault`-kutsuun.
+4. **Siru** (`ModelChip` + `ComposerModelPicker`) pysyy kompaktina
+   laukaisimena, ja sen paneeli on sama. Keskustelun `md-new`-taitos
+   kannattaa vaihtaa `ModelField`iin, jolloin sen ulkoasu muuttuu samaksi
+   kuin Asetuksissa. Keskustelun otsikon tietosiru ei muutu.
 
 ## Suositus
 
-**Suunta 3, Kortista.** Tilannekatsauksen säätöä tarvitaan juuri silloin, kun
-kortti tulee liian aikaisin tai häiritsee, ja kortti on silloin silmien
-edessä. Suunnassa 1 asetus on olemassa, mutta kukaan ei löydä sitä kortista
-käsin. Suunta 3 sisältää myös suunnan 1 Asetus-rivit (Tekoäly ›
-Taustatyöt), joten kohta asetuksissa on, kuten Jari pyysi. Muutosrivi ja Kumoa
-estävät sen, että yksi napautus muuttaa kaikki keskustelut huomaamatta.
+**Suunta 1, Perus + lisät.** Neljä säätöä, joita oikeasti käytetään (tila,
+viive, malli ja pituus), näkyvät heti. Tokenit ja viestimäärät ovat
+kustannus- ja aikarajoja, joita useimmat eivät koske. Taitoksen otsikko
+näyttää niiden arvot ja muutosten määrän, joten Jari näkee luvut avaamatta
+taitosta, eikä mikään muutu huomaamatta. Suunta 2 tekee pienestä
+ominaisuudesta Asetusten pisimmän sivun. Suunnan 3 tasot ovat uusi
+nimettävä lupaus, ja niiden arvot pitäisi perustella. Jos Kaisan
+kaltainen käyttäjä halutaan huomioida, suunnan 3 taso-valinta voidaan
+myöhemmin lisätä suunnan 1 taitoksen sisään.
 
-Mallin valintaa ei kannata antaa vielä (suunta 2). Jarin sääntö (keskiluokka,
-ei koskaan Fable tai Opus, varalla keskustelun oma malli) on juuri päätetty,
-ja sen tavoite on suojata kalleinta kiintiötä. Kun malli näkyy, henkilö tietää,
-mitä tilausta katsaus kuluttaa. Toive voidaan lisätä myöhemmin ilman, että
-mikään tässä muuttuu.
+Toteutus kolmessa osassa:
 
-Toteutus kahdessa osassa:
-
-1. Asetus `openHabitat.recap = { mode: "automatic" | "ask" | "off",
-   idleMinutes: 1 | 3 | 5 }` Pi:n `settings.json`-tiedostoon, kirjoitus Pi:n
-   lukolla. Daemon lukee asetuksen ennen ajastusta, ja selaimelle tulee luku-
-   ja kirjoitusreitti. Lisäksi tarvitaan Tekoäly › Taustatyöt, "Kun pyydän"
-   -rivi ja kortin valikko.
-2. `background_model` mallikatalogin vastaukseen, jotta malli näkyy
-   Asetuksissa ja valikossa. Siihen asti malliriviä ei näytetä.
+1. Asetus Pi:n `settings.json`-tiedostoon, sopimusreitti ja daemonin
+   viive ja tila (1–9 min). Lisäksi osio, liukusäädin ja kortin ratas.
+2. Laajennuksen luvut asetuksesta, mukaan lukien merkkirajojen skaalaus ja
+   "aikaisintaan N vuoroa". Lisäksi uusi numerokenttä (tuotannossa ei ole
+   numero- eikä liukusäädinkomponenttia; `type="range"` ja `type="number"`
+   puuttuvat `web/src`istä).
+3. Mallitoive `backgroundModels`iin, `background_models` katalogiin ja
+   yhteisen valitsimen muutokset (`ModelField`, `ModelPicker`in `auto` ja
+   `unavailable`, scope `background`).
 
 ## Päätökset myöhempää tarkistusta varten
 
-- **Kolmas tila "Kun pyydän".** Vaihtoehto: pelkkä Päällä/Pois. Valinnan
-  syy: pois kytkemisen syy on usein kiintiö, ei itse katsaus. Rivi *Luo
-  katsaus* antaa katsauksen silloin, kun sitä tarvitsee, eikä kuluta mallia
-  muulloin. Lisäksi tuotannosta puuttuu nyt kokonaan tapa pyytää katsausta, kun
-  korttia ei ole näkyvissä.
-- **Viiveet 1, 3 ja 5 min.** Vaihtoehto: vapaa minuuttimäärä tai 10 min ja
-  enemmän. Valinnan syy: Pi lepää 10 minuutin kohdalla, ja katsaus tarvitsee
-  elävän Pi:n. Pidempi viive vaatisi Pi:n käynnistämistä uudelleen pelkkää
-  katsausta varten.
-- **Asetus koskee henkilöä, ei selainta eikä keskustelua.** Vaihtoehdot:
-  selaimen `localStorage` (kuten teema ja Agentin työ) tai keskustelukohtainen
-  asetus. Valinnan syy: daemon käyttää mallia, vaikka selain ei olisi auki, joten
-  vain henkilön asetus voi estää kulutuksen. Keskustelukohtaista tarvetta ei ole
-  näytetty.
-- **Tallennus Pi:n `settings.json`-tiedostoon omalla avaimella.**
-  Vaihtoehto: oma tiedosto Pi:n hakemistossa (kuten pi-claude-bridgen
-  `~/.pi/agent/claude-bridge.json`), joka on helpompi kirjoittaa ilman Pi:n
-  lukkoa. Valinnan syy: asetus pysyy henkilön natiivissa Pi-asetuksessa, jonka
-  laajennus lukee suoraan `pi.getSettings()`-kutsulla, ja natiivi käyttäjä
-  löytää sen samasta paikasta kuin oletusmallin. Pi säilyttää vieraat avaimet.
-  Kirjoitus Pi:n lukolla on toteutuksen ehto.
-- **Malli näytetään, mutta sitä ei valita.** Vaihtoehto: suunnan 2
-  valintaluettelo. Valinnan syy: sääntö on Jarin tuore päätös
-  (`recap-model-spends-fable`), ja varalla oleva malli hoitaa loppuneen
-  kiintiön.
-- **Taustatyöt-otsikko Tekoälyn alla.** Vaihtoehto: oma osio. Valinnan syy:
-  Tekoäly-osio kertoo jo, mitä malleja ja tilauksia on. Taustatyöt
-  (katsaus ja nimet) käyttävät samoja tilauksia, ja otsikon alle mahtuu
-  myöhemmin automaattisten nimien säätö.
-- **Muutos kortista koskee kaikkia keskusteluja ja kertoo sen.** Vaihtoehto:
-  kortin valinta vain tähän keskusteluun. Valinnan syy: sama kuin henkilön
-  asetuksessa. Kumoa korjaa vahingon.
+- **Viive 1–9 min, 30 s välein.** Vaihtoehdot: kokonaiset minuutit, tai
+  rajaton viive niin, että Pi pidetään hereillä katsausta varten. Valinnan
+  syy: 9 min on pisin, joka toimii nykyisellä joutilaana pysäytyksellä
+  muuttamatta sitä, ja puoli minuuttia riittää "vapaaksi" ilman näennäistä
+  tarkkuutta, koska läsnäoloilmoitukset tulevat 20–30 s välein.
+- **Historia tokeneina, tallennus tavuina.** Laajennus mittaa UTF-8-tavuja.
+  Näkymä näyttää tokeneita (tavut / 4) ja sanoo "noin". Vaihtoehdot:
+  kilotavut (tarkka, mutta vieras) tai oikea tokenlaskenta (Pi:llä ei ole
+  tokenisaattoria jokaiselle palveluntarjoajalle). Valinnan syy: Jari pyysi
+  tokenimääriä, ja raja on joka tapauksessa arvio kustannuksesta.
+- **Vastausrajaa ei johdeta sanoista, vaan liian pieni raja varoittaa.**
+  Vaihtoehto: johtaa raja sanamäärästä ja piilottaa se. Valinnan syy: Jari
+  pyysi näkyviin myös vastauksen tokenit. Varoitus kertoo seurauksen
+  (katsaus katkeaa) ennen kuin se tapahtuu.
+- **"Ensimmäinen katsaus aikaisintaan N vuoron jälkeen" mukana, oletus 1.**
+  Vaihtoehto: jättää pois, koska OH:ssa ei ole tätä rajaa. Valinnan syy:
+  Aldern laajennuksessa raja on (3), se on Jarin pyytämä "viestimäärä"
+  -tyyppinen parametri, ja oletus 1 säilyttää nykyisen käytöksen.
+- **Valittu malli koskee vain tilannekatsausta, ei automaattisia nimiä.**
+  Vaihtoehto: sama toive myös nimille, kuten kierroksen 1 suunnassa 2.
+  Valinnan syy: asetus on nyt tilannekatsauksen omassa osiossa, joten
+  vaikutus nimiin olisi piilossa. Nimiapuri ei myöskään lataa
+  pi-claude-bridgeä, joten Claude-tilauksen toive ei toimisi siellä.
+- **Kolmas tila *Kun pyydän* säilyy kierrokselta 1.** Jari ei
+  kommentoinut sitä, ja se on yksi segmentoitu valinta samalla rivillä.
+- **Kortissa on ratas, ei valikkoa.** Kierroksen 1 suunta 3 (valikko
+  kortissa) jäi pois, koska Jari valitsi oman osion. Ratas vie osioon
+  kuten kierroksen 1 suunnassa 2.
+- **Viiveriville ei tule selitystekstiä.** Jari pyysi poistamaan väärän
+  tekstin. Rajat näkyvät asteikkona (1–9), joten selitystä ei tarvita.
+- **Osion oletukset ovat nykyiset arvot.** Osion avaaminen tai
+  käyttöönotto ei muuta yhtään katsausta.
+- **Malli valitaan heti ja paneeli sulkeutuu.** Oletusmallissa paneeli
+  pysyy auki ajattelutason valintaa varten, kuten tuotannossa.
