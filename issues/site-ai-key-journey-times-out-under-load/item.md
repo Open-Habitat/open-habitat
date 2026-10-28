@@ -2,7 +2,7 @@
 created: 2026-10-28
 updated: 2026-10-28
 type: bug
-status: open
+status: fixed
 priority: low
 provenance: other
 provenance_detail: whole default browser suite run by a spinoff worker
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: gate-health
 lane_seq: 104
 preparation: ready
+closed: 2026-10-28
 ---
 
 # site-ai-key admin journey exceeds its 30 s test timeout under suite load

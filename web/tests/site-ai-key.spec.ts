@@ -202,24 +202,31 @@ async function asPerson(page: Page, path: string, body: unknown) {
   });
 }
 
-test("@site-ai-key @a11y an administrator gives the key to people who joined earlier, and a new key replaces the copies", async ({
-  page,
-  browser,
-}) => {
-  // Bob joins before the site has a key; Alice has her own Anthropic key.
+/** Bob joins before the site has a key; then Alice, the administrator,
+ * stores one and has her own Anthropic key. The storing page is the first
+ * test's; these write through the same browser API. */
+async function joinedBeforeTheKey(page: Page, browser: Browser) {
   const bob = await newPerson(browser);
   await expect(
     bob.getByRole("button").and(bob.getByTestId("account-menu-trigger")),
   ).toBeVisible();
-  await storeKey(page);
-  expect(
-    (
-      await asPerson(page, "/api/v1/pi/credentials", {
-        provider: "anthropic",
-        key: ownKey,
-      })
-    ).status(),
-  ).toBe(200);
+  await signIn(page, 0);
+  await expect(
+    page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
+  ).toBeVisible();
+  for (const [path, body] of [
+    ["/api/v1/server/onboarding/ai-key/set", { provider: "anthropic", key }],
+    ["/api/v1/pi/credentials", { provider: "anthropic", key: ownKey }],
+  ] as const)
+    expect((await asPerson(page, path, body)).status()).toBe(200);
+  return bob;
+}
+
+test("@site-ai-key @a11y an administrator gives the key to people who joined earlier", async ({
+  page,
+  browser,
+}) => {
+  const bob = await joinedBeforeTheKey(page, browser);
   await page.goto("/settings/ai-key");
   const card = page.getByTestId("joined-card");
   await expect(card.getByTestId("given-43")).toContainText("Ei annettu");
@@ -264,8 +271,26 @@ test("@site-ai-key @a11y an administrator gives the key to people who joined ear
   const row = bob.getByTestId("api-key-row-anthropic");
   await expect(row).toHaveAttribute("data-site", "current");
   await expect(row.getByTestId("api-key-site")).toBeVisible();
+  await bob.context().close();
+});
 
-  // A new key replaces Bob's copy, and never Alice's own key.
+test("@site-ai-key a new site key replaces the given copies and never a person's own key", async ({
+  page,
+  browser,
+}) => {
+  const bob = await joinedBeforeTheKey(page, browser);
+  const { site_key } = await (
+    await page.request.get("/api/v1/server/onboarding/ai-key/copies")
+  ).json();
+  const given = await asPerson(page, "/api/v1/server/onboarding/ai-key/seed", {
+    subject: "43",
+    provider: site_key.provider,
+    suffix: site_key.suffix,
+    set_at: site_key.set_at,
+  });
+  expect(await given.json()).toMatchObject({ outcome: "seeded" });
+
+  await page.goto("/settings/ai-key");
   await page
     .getByRole("button")
     .and(page.getByTestId("site-key-replace"))
@@ -281,7 +306,7 @@ test("@site-ai-key @a11y an administrator gives the key to people who joined ear
   expect(replaced).toMatchObject({ anthropic: { suffix: "7Q2x" } });
   const alice = await (await page.request.get("/api/v1/pi/credentials")).json();
   expect(alice).toMatchObject({ anthropic: { suffix: "k9Lw" } });
-  await bob.reload();
+  await bob.goto("/settings/ai");
   await expect(bob.getByTestId("api-key-row-anthropic")).toHaveAttribute(
     "data-site",
     "current",
@@ -295,7 +320,7 @@ test("@site-ai-key @a11y an administrator gives the key to people who joined ear
   // The AI-avain page with its Jo liittyneet card fits a phone.
   await page.goto("/settings/ai-key");
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(card).toBeVisible();
+  await expect(page.getByTestId("joined-card")).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth - innerWidth,
