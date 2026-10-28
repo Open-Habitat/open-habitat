@@ -378,11 +378,16 @@
   height: 16px;
 }
 
-/* The top bar's file panel toggle with the conversation's file count. */
-.ah-files-toggle {
+/* The top bar's file panel toggle with the conversation's file count. A
+   count is not a word, so the primitive draws it as a square icon button;
+   the button grows with the count instead, so 11 or 111 stays inside its
+   hover and pressed surface. */
+.ah-files-toggle.ah-button {
   display: inline-flex;
   align-items: center;
   gap: var(--ah-s1);
+  width: auto;
+  padding-inline: var(--ah-s2);
   font-variant-numeric: tabular-nums;
 }
 .ah-files-toggle[aria-pressed="true"] {

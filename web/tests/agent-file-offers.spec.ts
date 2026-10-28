@@ -210,6 +210,17 @@ test("a package card downloads one zip and opens the conversation's file panel",
   await page.keyboard.press("Escape");
   await expect(shelf).toHaveCount(0);
   await expect(packageCard.getByTestId("file-offer-show-files")).toBeFocused();
+
+  // A two-digit count stays inside the toggle's surface.
+  await offer(page, id, "folder");
+  await expect(toggle).toContainText("11");
+  const button = await toggle.boundingBox();
+  const count = await toggle.locator("span").boundingBox();
+  expect(count && button).toBeTruthy();
+  if (count && button) {
+    expect(count.x).toBeGreaterThanOrEqual(button.x);
+    expect(count.x + count.width).toBeLessThanOrEqual(button.x + button.width);
+  }
 });
 
 test("a removed offer stays as an inert card", async ({ page }) => {

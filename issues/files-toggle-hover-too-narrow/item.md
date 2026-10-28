@@ -3,13 +3,14 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: file-shelf
 lane_seq: 1
 preparation: ready
 provenance: chat
 source_ref: kokeiltavaa:2026-10-28/files-toggle-hover-too-narrow
+closed: 2026-10-28
 ---
 
 # Top bar files button hover background too narrow for a two-digit count
