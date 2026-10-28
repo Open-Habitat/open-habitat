@@ -11,7 +11,8 @@ import { notePresence } from "./conversations";
  * after it stops. An unsent draft holds it for as long as it is there. */
 export const recapQuietMs = 60_000;
 // The daemon waits three minutes from the latest report before its automatic
-// recap, so a report at most every 20–30 seconds keeps it waiting.
+// recap, and ten before it stops an idle Pi, so a report at most every 20–30
+// seconds keeps both waiting.
 const reportGapMs = 20_000;
 const draftReportMs = 30_000;
 
@@ -83,5 +84,34 @@ export function useRecapHold({
       for (const name of events) viewport.removeEventListener(name, note);
     };
   }, [note, opened]);
+  // Work anywhere on the conversation's page tells the daemon the person is
+  // here, so it does not stop Pi under them (Jari 28.10.2026): the terminal
+  // dock, the editor, the top bar. Only the daemon hears of it; the recap's
+  // own hold above follows the composer and the stream. A visible tab alone is
+  // not presence: one left open would keep Pi running for good.
+  useEffect(() => {
+    const visible = () => document.visibilityState === "visible";
+    const input = () => {
+      if (visible()) report();
+    };
+    const events = ["keydown", "pointerdown", "wheel", "touchstart"] as const;
+    for (const name of events)
+      window.addEventListener(name, input, { capture: true, passive: true });
+    // Input inside the VS Code frame never reaches this page; focus there in
+    // a focused, visible window is the person working in the editor.
+    const editing = window.setInterval(() => {
+      if (
+        visible() &&
+        document.hasFocus() &&
+        document.activeElement instanceof HTMLIFrameElement
+      )
+        report();
+    }, draftReportMs);
+    return () => {
+      for (const name of events)
+        window.removeEventListener(name, input, { capture: true });
+      window.clearInterval(editing);
+    };
+  }, [report]);
   return { active: recent || drafting, recent, note };
 }

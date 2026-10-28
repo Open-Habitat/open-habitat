@@ -715,12 +715,18 @@ function BrowserConversationContent({
     spinoffsWorking: archive?.spinoffs_working,
     csrf,
   });
+  // Typing wakes a resting Pi whether or not the rest had anything to tell;
+  // the card is shown only when it does.
+  const resting = rest.resting && !!archive?.rest && !held.waiting.length;
   const restCard =
-    rest.resting && archive?.rest && !held.waiting.length ? (
+    resting && archive?.rest && rest.shown ? (
       <RestCard
         stop={archive.rest}
         notice={rest.report?.report}
-        unavailable={!!rest.report && rest.report.availability !== "available"}
+        unavailable={
+          rest.failed ||
+          (!!rest.report && rest.report.availability !== "available")
+        }
         wake={rest.wake}
       />
     ) : null;
@@ -2265,7 +2271,7 @@ function BrowserConversationContent({
                 onChange={(value) => {
                   changeDraft(value);
                   // The first character wakes a resting agent; nothing else does.
-                  if (value.trim() && restCard) rest.onTyping();
+                  if (value.trim() && resting) rest.onTyping();
                 }}
                 idlePlaceholder={
                   restCard && rest.wake !== "awake"

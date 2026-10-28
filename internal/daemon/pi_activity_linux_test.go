@@ -296,6 +296,55 @@ func TestHeldActivity(t *testing.T) {
 	}
 }
 
+// A person the browser reports present is not stopped, however long Pi has
+// been idle; the ten minutes count from the latest report.
+func TestIdleStopWaitsForThePersonsAbsence(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	id := h.create(c)
+	h.converse(c, id, "Ennen lepoa", activityCommand(1))
+	h.quiescent(c, id)
+	now := time.Now().Add(time.Second)
+	c.stopExpiredIdlePi(context.Background(), now)
+	// Writing a long message: the report arrives well into the idle period.
+	c.mu.Lock()
+	c.sessions[id].presentAt = now.Add(8 * time.Minute)
+	c.mu.Unlock()
+	c.stopExpiredIdlePi(context.Background(), now.Add(piIdlePeriod))
+	c.stopExpiredIdlePi(context.Background(), now.Add(8*time.Minute+piIdlePeriod-time.Nanosecond))
+	if !h.live(c, id) {
+		t.Fatal("stopped while the person was present")
+	}
+	c.stopExpiredIdlePi(context.Background(), now.Add(8*time.Minute+piIdlePeriod))
+	if h.live(c, id) {
+		t.Fatal("not stopped ten minutes after the person left")
+	}
+	if f, _, resting := h.rest(c, id); !resting || f.cause != "idle" {
+		t.Fatalf("rest %+v %v", f, resting)
+	}
+}
+
+// The browser's report reaches the idle stop through the presence handler.
+func TestPresenceReportHoldsTheIdleStop(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	id := h.create(c)
+	h.converse(c, id, "Ennen lepoa", activityCommand(1))
+	h.quiescent(c, id)
+	c.stopExpiredIdlePi(context.Background(), time.Now().Add(-piIdlePeriod))
+	w := httptest.NewRecorder()
+	c.notePresence(w, httptest.NewRequest(http.MethodPost, "http://unix/presence", nil), id)
+	if w.Code != 200 {
+		t.Fatalf("presence: %d", w.Code)
+	}
+	c.stopExpiredIdlePi(context.Background(), time.Now())
+	if !h.live(c, id) {
+		t.Fatal("stopped right after a presence report")
+	}
+}
+
 // The watcher's injected clock expires without waiting ten real minutes. The
 // real controller/fake Pi pair proves graceful exit, native history and exactly
 // one delivery on the lazy restart, including a retried browser command ID.

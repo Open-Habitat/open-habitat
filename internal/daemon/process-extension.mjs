@@ -45,11 +45,16 @@ export function waitRuns(command) {
 // What the branch says about process lifetimes and earlier catch-ups. Same
 // rule as the daemon's tray (process_interrupted_linux.go): a start without an
 // end notification or stop result. Graceful shutdown stops leave no record.
+// turnCut is the daemon's branchScan.turnCut: the last message leaves a turn
+// unfinished (a prompt, tool call or tool result nobody answered).
 export function branchFacts(branch) {
   const open = new Map(), order = [], reported = new Set(), runs = new Set();
+  let turnCut = false;
   for (const entry of branch) {
     const m = entry?.message;
     const custom = entry?.type === 'custom_message' ? entry : m?.role === 'custom' ? m : null;
+    // Only the turn's own messages decide, not a `!command` or a custom message.
+    if (entry?.type === 'message' && ['user', 'assistant', 'toolResult'].includes(m?.role)) turnCut = m.role !== 'assistant' || m.stopReason === 'toolUse';
     if (m?.role === 'toolResult' && m.toolName === 'process') {
       const d = m.details;
       if (d?.action === 'start' && /^proc_[a-f0-9]{4}$/.test(d.process?.id ?? '') && d.process.startTime > 0) {
@@ -65,11 +70,13 @@ export function branchFacts(branch) {
       for (const r of custom.details?.spinoffs ?? []) runs.add(`${r.run_id}:${r.state}`);
     }
   }
-  return { open: order.filter(p => open.get(p.id) === p), reported, runs };
+  return { open: order.filter(p => open.get(p.id) === p), reported, runs, turnCut };
 }
 function taskfleet(args, cwd, timeout = 2500) {
   return new Promise(resolve => execFile('taskfleet', args, { cwd, timeout, maxBuffer: 4 << 20, env: process.env }, (error, stdout) => {
-    if (error) { resolve(null); return; }
+    // Without Taskfleet no run exists (the daemon's rest report agrees): an
+    // empty inventory, not an unread one.
+    if (error) { resolve(error.code === 'ENOENT' && args[1] === 'list' ? { runs: [] } : null); return; }
     try { const v = JSON.parse(stdout); resolve(v?.schema_version === 1 ? v.data : null); } catch { resolve(null); }
   }));
 }
@@ -148,11 +155,15 @@ export function stopFact(env = process.env) {
 // Each state is Taskfleet's own report; a stall is Taskfleet's liveness
 // verdict, which a live worker can contradict, so it is not restated as fact.
 const stateText = { merged: 'finished and merged', not_merged: 'finished, not merged', failed: 'failed', cancelled: 'cancelled', awaiting: 'is waiting for you (needs attention)', stalled: 'is reported stalled by Taskfleet (check `taskfleet run show` before relying on that)' };
-export function catchUpMessage(processes, spinoffs, stopped = null) {
-  if (!stopped && !processes.length && !spinoffs.settled.length) return null;
+export function catchUpMessage(processes, spinoffs, stopped = null, turnCut = false) {
   const news = processes.length || spinoffs.settled.length;
+  const cut = !!stopped && turnCut;
+  // Nothing was cut off and nothing settled: the person saw no card, and the
+  // agent is told nothing either (Jari, 2026-10-28). An unread Taskfleet is
+  // still not told as nothing.
+  if (!news && !cut && (!stopped || spinoffs.available !== false)) return null;
   const lines = stopped
-    ? [`[Open Habitat] This conversation's Pi stopped at ${stopped.at} ${stopCauses[stopped.cause]}, and was started again for the message that follows. The person saw this same report from Habitat before writing, so answer their message rather than retelling it.${news ? ' While it was stopped:' : spinoffs.available === false ? '' : ' Nothing settled meanwhile.'}`]
+    ? [`[Open Habitat] This conversation's Pi stopped at ${stopped.at} ${stopCauses[stopped.cause]}, and was started again for the message that follows. The person saw this same report from Habitat before writing, so answer their message rather than retelling it.${cut ? ' The turn it was working on was cut off: its last step above never finished.' : ''}${news ? ' While it was stopped:' : spinoffs.available === false ? '' : ' Nothing settled meanwhile.'}`]
     : ['[Open Habitat] This conversation\'s Pi had stopped (for example a server restart) and was started again for the message that follows. While it was stopped:'];
   if (processes.length) {
     lines.push('', 'Background processes that were cut off when Pi stopped (they are no longer running and their output is gone):');
@@ -176,6 +187,7 @@ export function catchUpMessage(processes, spinoffs, stopped = null) {
     details: {
       schema_version: 1,
       ...(stopped ? { stopped } : {}),
+      ...(cut ? { interrupted_turn: true } : {}),
       processes: processes.map(p => ({ id: p.id, startTime: p.startTime, name: p.name.slice(0, 200) })),
       spinoffs: spinoffs.settled.map(r => ({ run_id: r.run_id, state: r.state, title: r.title, ...(r.summary ? { summary: r.summary } : {}), ...(r.ended_at ? { ended_at: r.ended_at } : {}), ...(r.branch ? { branch: r.branch } : {}) })),
       rearm: spinoffs.rearm.map(r => ({ run_id: r.run_id, title: r.title })),
@@ -396,7 +408,7 @@ export default function (pi) {
       const read = () => typeof sessionId === 'string' && sessionId && ctx.cwd
         ? readSpinoffs({ sessionId, cwd: ctx.cwd, since, waited, reported: facts.runs }).catch(() => unread)
         : Promise.resolve(unread);
-      return { processes, spinoffs: read(), read, at: Date.now(), stopped: stopFact() };
+      return { processes, spinoffs: read(), read, at: Date.now(), stopped: stopFact(), turnCut: facts.turnCut };
     } catch { return null; }
   }
   pi.on('before_agent_start', async () => {
@@ -410,7 +422,7 @@ export default function (pi) {
     let timer;
     const spinoffs = await Promise.race([current, new Promise(resolve => { timer = setTimeout(() => resolve(unread), 3000); })]);
     clearTimeout(timer);
-    const message = catchUpMessage(pending.processes, spinoffs, pending.stopped);
+    const message = catchUpMessage(pending.processes, spinoffs, pending.stopped, pending.turnCut);
     return message ? { message } : undefined;
   });
   // A completed run only: Escape or an error is the person's or the provider's

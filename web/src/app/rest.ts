@@ -2,13 +2,13 @@ import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { useCallback, useEffect, useRef, useState } from "react";
 import common from "../../../contracts/v1/common.schema.json";
+import editorSchema from "../../../contracts/v1/editor.schema.json";
+import fileOfferSchema from "../../../contracts/v1/file-offer.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
 import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/rest.schema.json";
-import fileOfferSchema from "../../../contracts/v1/file-offer.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
-import editorSchema from "../../../contracts/v1/editor.schema.json";
 import type {
   RestartNotice,
   RestStop,
@@ -63,6 +63,20 @@ export async function readRest(
   return report;
 }
 
+/** Whether a rest has anything to tell: work cut off when Pi stopped,
+ * something that settled meanwhile, or a Taskfleet that could not be read
+ * (unread is not empty). Otherwise the card is noise and is not shown, and the
+ * agent's companion tells it nothing either (Jari, 2026-10-28). */
+export function restHasNews(report: RestReport): boolean {
+  const r = report.report;
+  return (
+    report.availability !== "available" ||
+    r.processes.length > 0 ||
+    r.runs.length > 0 ||
+    !!r.interrupted_turn
+  );
+}
+
 /**
  * A resting conversation's card and its wake (Kortti, Jari 2026-10-27). The
  * snapshot says whether the conversation rests; the report is read when it
@@ -84,6 +98,10 @@ export function useRest({
   csrf?: string;
 }): {
   resting: boolean;
+  /** The card is shown: the report has news, or it could not be read. */
+  shown: boolean;
+  /** The latest read failed; the report is as last read. */
+  failed: boolean;
   report?: RestReport;
   wake: WakeState;
   onTyping: () => void;
@@ -91,6 +109,7 @@ export function useRest({
 } {
   const restKey = id && rest ? `${id}:${rest.cause}:${rest.at}` : "";
   const [report, setReport] = useState<{ key: string; value: RestReport }>();
+  const [failed, setFailed] = useState("");
   const [attempt, setAttempt] = useState<{
     key: string;
     state: "waking" | "refused";
@@ -101,9 +120,14 @@ export function useRest({
     void spinoffsWorking; // a run settling is news for the card
     const controller = new AbortController();
     readRest(id, controller.signal).then(
-      (value) => setReport({ key: restKey, value }),
+      (value) => {
+        setReport({ key: restKey, value });
+        setFailed("");
+      },
       () => {
-        /* The card still says why Pi rests; the report stays as last read. */
+        // Nothing proves the rest quiet: the card says why Pi rests, with
+        // the report as last read.
+        if (!controller.signal.aborted) setFailed(restKey);
       },
     );
     return () => controller.abort();
@@ -125,9 +149,12 @@ export function useRest({
     if (restKey) setSent(restKey);
   }, [restKey]);
   const own = attempt?.key === restKey ? attempt.state : undefined;
+  const current = report?.key === restKey ? report.value : undefined;
   return {
     resting: !!restKey && sent !== restKey,
-    report: report?.key === restKey ? report.value : undefined,
+    shown: failed === restKey || (!!current && restHasNews(current)),
+    failed: failed === restKey,
+    report: current,
     wake: rest?.awake ? "awake" : (own ?? "asleep"),
     onTyping,
     onSend,

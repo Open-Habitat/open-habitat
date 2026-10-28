@@ -136,6 +136,7 @@ type conversation struct {
 	promptIDs    []string         // every command ID the outstanding native prompt carries
 	idleSince    time.Time        // first consecutive idle observation; reset by busy observations
 	lastUsed     time.Time        // last start or prompt; makeRoom stops the longest unused idle child first
+	presentAt    time.Time        // the browser's latest report that the person is here (POST .../presence)
 	// Why and when this child stopped, and the stop it was started from: the
 	// facts of the rest card (rest_linux.go). Daemon memory only, like
 	// receipts; a daemon restart is itself the cause of every later rest.

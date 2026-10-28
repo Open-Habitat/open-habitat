@@ -1,7 +1,8 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Entry } from "../app/HistoryView";
-import { RestCard, type RestartNotice } from "./RestartNotice";
+import { type RestReport, restHasNews } from "../app/rest";
+import { type RestartNotice, RestCard } from "./RestartNotice";
 
 const restart: RestartNotice = {
   processes: [{ process_id: "proc_8ffc", name: "wait-gate-evidence" }],
@@ -106,5 +107,68 @@ describe("rest card", () => {
     expect(card.getAttribute("data-wake")).toBe("waking");
     // An unread inventory is said, never shown as an empty one.
     expect(view.getByTestId("rest-unavailable")).toBeTruthy();
+  });
+});
+
+describe("a rest with nothing to tell", () => {
+  const report = (
+    over: Partial<RestReport["report"]> = {},
+    availability: RestReport["availability"] = "available",
+  ): RestReport => ({
+    schema_version: 1,
+    agent_id: "pi:11111111-1111-4111-8111-111111111111",
+    availability,
+    report: {
+      stopped: { cause: "restart", at: "2026-10-28T06:10:00Z" },
+      processes: [],
+      runs: [],
+      still_running: [],
+      ...over,
+    },
+  });
+  it("shows no card when nothing was cut off or settled (Jari 28.10.2026)", () => {
+    expect(restHasNews(report())).toBe(false);
+    // A run still working on its own was neither cut off nor finished.
+    expect(
+      restHasNews(
+        report({
+          still_running: [{ run_id: "01m531x6y92ggdqcmb1exzmn00", title: "t" }],
+        }),
+      ),
+    ).toBe(false);
+  });
+  it("keeps the card when work was cut off, settled, or could not be read", () => {
+    expect(restHasNews(report({ interrupted_turn: true }))).toBe(true);
+    expect(
+      restHasNews(
+        report({ processes: [{ process_id: "proc_aaaa", name: "dev" }] }),
+      ),
+    ).toBe(true);
+    expect(
+      restHasNews(
+        report({
+          runs: [
+            {
+              run_id: "01m531x6y92ggdqcmb1exzmn00",
+              title: "t",
+              state: "merged",
+            },
+          ],
+        }),
+      ),
+    ).toBe(true);
+    expect(restHasNews(report({}, "partial"))).toBe(true);
+  });
+  it("names a cut turn instead of saying nothing was cut off", () => {
+    const view = render(
+      <RestCard
+        stop={{ cause: "restart", at: "2026-10-28T06:10:00Z" }}
+        notice={report({ interrupted_turn: true }).report}
+        wake="asleep"
+      />,
+    );
+    const text = view.getByTestId("rest-card").textContent ?? "";
+    expect(text).toContain("Agentin kesken ollut työ katkesi.");
+    expect(text).not.toContain("Mikään työ ei katkennut");
   });
 });

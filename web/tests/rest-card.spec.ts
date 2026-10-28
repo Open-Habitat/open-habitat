@@ -149,6 +149,13 @@ test("@rest-card a phone shows the card and the wake the same way", async ({
 }) => {
   test.setTimeout(90000);
   const id = await answeredConversation(page, "puhelimella");
+  expect(
+    (
+      await page.request.get(
+        `/fixture/taskfleet?parent=${id.slice(3)}&workspace=ordinary-dir&status=done`,
+      )
+    ).status(),
+  ).toBe(204);
   expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
     204,
   );
@@ -165,4 +172,60 @@ test("@rest-card a phone shows the card and the wake the same way", async ({
   });
   expect(wakes).toEqual([200]);
   expect((await status(page, id)).state).toBe("idle");
+});
+
+// Jari 28.10.2026: "Näitä tällaisia tulee aivan liikaa." A restart that cut
+// nothing off and after which nothing settled has nothing to tell, so there is
+// no card and no "Lepää"; typing still wakes Pi ahead of the message.
+test("@rest-card a rest with nothing to tell shows no card, and typing still wakes Pi", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const id = await answeredConversation(page, "ei uutisia");
+  // Taskfleet answers, with another conversation's run only.
+  expect(
+    (
+      await page.request.get(
+        "/fixture/taskfleet?parent=00000000-0000-4000-8000-000000000000&workspace=ordinary-dir&status=done",
+      )
+    ).status(),
+  ).toBe(204);
+  expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
+    204,
+  );
+  const wakes = countWakes(page);
+  const report = page.waitForResponse(
+    (r) => r.url().endsWith(`/conversations/${id.slice(3)}/rest`) && r.ok(),
+  );
+  await page.reload();
+  const body = await (await report).json();
+  expect(body).toMatchObject({
+    availability: "available",
+    report: {
+      stopped: { cause: "restart" },
+      processes: [],
+      runs: [],
+      interrupted_turn: false,
+    },
+  });
+  expect(await snapshotRest(page, id)).toMatchObject({ cause: "restart" });
+  await page.waitForTimeout(500);
+  await expect(card(page)).toHaveCount(0);
+  await expect(page.locator("main")).not.toContainText("Lepää");
+  await expect(editor(page)).not.toHaveAttribute(
+    "placeholder",
+    "Kirjoita, niin agentti herää…",
+  );
+  await editor(page).pressSequentially("Jatka");
+  await expect.poll(() => wakes.length).toBe(1);
+  expect(wakes[0]).toBe(200);
+  await expect
+    .poll(async () => (await status(page, id)).state, { timeout: 20000 })
+    .toBe("idle");
+  await send(page).click();
+  await expect(page.locator("main")).toContainText('Kysyit: "Jatka"', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId("rest-marker")).toHaveCount(0);
+  await expect.poll(() => snapshotRest(page, id)).toBeUndefined();
 });

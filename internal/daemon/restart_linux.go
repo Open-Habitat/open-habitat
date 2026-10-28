@@ -12,10 +12,12 @@ import (
 // The person sees a bounded projection of its details instead; the content
 // stays in the agent's context only.
 type restartNotice struct {
-	Stopped      map[string]any   `json:"stopped,omitempty"`
-	Processes    []restartProcess `json:"processes"`
-	Runs         []restartRun     `json:"runs"`
-	StillRunning []restartRun     `json:"still_running"`
+	Stopped map[string]any `json:"stopped,omitempty"`
+	// The turn Pi was working on when it stopped never finished.
+	InterruptedTurn bool             `json:"interrupted_turn,omitempty"`
+	Processes       []restartProcess `json:"processes"`
+	Runs            []restartRun     `json:"runs"`
+	StillRunning    []restartRun     `json:"still_running"`
 }
 type restartProcess struct {
 	ID   string `json:"process_id"`
@@ -51,9 +53,10 @@ func nativeRestart(e nativeEntry) (historyEntry, bool) {
 				Cause string `json:"cause"`
 				At    string `json:"at"`
 			} `json:"stopped"`
-			Processes []json.RawMessage `json:"processes"`
-			Spinoffs  []json.RawMessage `json:"spinoffs"`
-			Rearm     []json.RawMessage `json:"rearm"`
+			InterruptedTurn bool              `json:"interrupted_turn"`
+			Processes       []json.RawMessage `json:"processes"`
+			Spinoffs        []json.RawMessage `json:"spinoffs"`
+			Rearm           []json.RawMessage `json:"rearm"`
 		} `json:"details"`
 	}
 	if json.Unmarshal(raw, &m) != nil || m.CustomType != catchUpMessageType || e.Type == "message" && m.Role != "custom" {
@@ -69,6 +72,7 @@ func nativeRestart(e nativeEntry) (historyEntry, bool) {
 			n.Stopped = restView(restFact{st.Cause, at})
 		}
 	}
+	n.InterruptedTurn = n.Stopped != nil && m.Details.InterruptedTurn
 	// Each item stands alone: a malformed one is left out, not the notice.
 	for _, item := range m.Details.Processes {
 		var p struct {

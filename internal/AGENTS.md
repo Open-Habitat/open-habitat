@@ -405,7 +405,15 @@ Native truth:
   means the daemon's restart), and Taskfleet's own records read as the
   person. The card and the agent's catch-up apply one rule to Taskfleet
   (`unreportedRuns` and the companion's `readSpinoffs`), so the agent is
-  told what the person saw.
+  told what the person saw. A rest is news only when work was cut off (a
+  background process, or a turn the branch leaves unfinished), something
+  settled, or Taskfleet could not be read; otherwise there is no card and no
+  catch-up, whatever the cause (Jari, 2026-10-28). A missing Taskfleet
+  binary is an empty inventory, not an unread one.
+- The idle stop waits ten minutes from the later of Pi's last observed work
+  and the browser's last presence report for that conversation; a person
+  writing or working beside it is not away. A room stop does not wait for
+  absence, it only prefers the conversation seen longest ago.
 - An uncertain outcome stays uncertain. A missing receipt is not a
   rejection, a 503 does not mean nothing happened, an unavailable inventory
   is not an empty one, and neither the daemon nor the browser ever repeats a

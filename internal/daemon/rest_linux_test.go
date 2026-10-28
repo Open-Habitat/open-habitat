@@ -242,6 +242,21 @@ func TestRestReportReadsTaskfleetWithoutStarting(t *testing.T) {
 	id := h.create(c)
 	h.converse(c, id, "Käynnistä työ", activityCommand(1))
 	h.quiescent(c, id)
+	// Without Taskfleet on the agent's PATH no run can have settled: the
+	// inventory is empty and read, so a quiet rest has nothing to tell.
+	if taskfleetBinary(h.root) == "" {
+		w := httptest.NewRecorder()
+		c.stop(w, httptest.NewRequest("POST", "http://unix/stop", nil), id)
+		h.eventually("stopped", func() bool { return !h.live(c, id) })
+		w = httptest.NewRecorder()
+		c.restReport(w, httptest.NewRequest("GET", "http://unix/rest", nil), id)
+		var reply map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &reply); err != nil || reply["availability"] != "available" {
+			t.Fatalf("no Taskfleet: %d %s", w.Code, w.Body.String())
+		}
+		h.converse(c, id, "Taas", activityCommand(2))
+		h.quiescent(c, id)
+	}
 	bin := filepath.Join(h.root, ".local", "bin")
 	if err := os.MkdirAll(bin, 0700); err != nil {
 		t.Fatal(err)
@@ -275,7 +290,7 @@ func TestRestReportReadsTaskfleetWithoutStarting(t *testing.T) {
 	launches := len(h.lines("launches.log"))
 	reply := read()
 	report := reply["report"].(map[string]any)
-	if reply["availability"] != "available" || report["stopped"].(map[string]any)["cause"] != "person" {
+	if reply["availability"] != "available" || report["stopped"].(map[string]any)["cause"] != "person" || report["interrupted_turn"] != false {
 		t.Fatalf("report: %v", reply)
 	}
 	runs := report["runs"].([]any)

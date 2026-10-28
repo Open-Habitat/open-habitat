@@ -21,6 +21,21 @@ test('the branch, not a host store, says which processes never ended', () => {
   assert.ok(facts.reported.has('proc_eeee:6') && facts.runs.has('r:merged'));
 });
 
+test('the last message says whether Pi stopped in the middle of a turn', () => {
+  const said = (role, extra = {}) => ({ type: 'message', message: { role, ...extra } });
+  const prompt = said('user'), call = said('assistant', { stopReason: 'toolUse' }), result = said('toolResult'), answer = said('assistant', { stopReason: 'stop' });
+  const title = { type: 'session_info', name: 'otsikko' };
+  assert.equal(branchFacts([prompt, call, result, answer, title]).turnCut, false, 'an answered turn ends with the answer, whatever follows it');
+  assert.equal(branchFacts([prompt]).turnCut, true, 'an unanswered prompt');
+  assert.equal(branchFacts([prompt, call]).turnCut, true, 'a tool call without its result');
+  assert.equal(branchFacts([prompt, call, result]).turnCut, true, 'a tool result the model never answered');
+  assert.equal(branchFacts([prompt, said('assistant', { stopReason: 'aborted' })]).turnCut, false, 'an aborted reply ended its turn');
+  const shell = said('bashExecution', { command: 'git status' }), note = said('custom', { customType: 'oh-resume-catch-up' });
+  assert.equal(branchFacts([prompt, call, result, shell]).turnCut, true, 'the person\'s !command does not finish the agent\'s turn');
+  assert.equal(branchFacts([prompt, note]).turnCut, true, 'a custom message after the prompt is not its answer');
+  assert.equal(branchFacts([prompt, answer, shell]).turnCut, false);
+});
+
 const run = (id, extra = {}) => ({ run_id: id, kind: 'spinoff', status: 'done', title: 't', created_at: '2026-10-16T10:00:00Z', source_repo: '/w', created_by_session: { harness: 'pi', session_id: 's1' }, created_by_run_id: null, ...extra });
 const ids = { own: '01m531x6y92ggdqcmb1exzmn00', old: '01m531x6y92ggdqcmb1exzmn01', other: '01m531x6y92ggdqcmb1exzmn02', live: '01m531x6y92ggdqcmb1exzmn03', idle: '01m531x6y92ggdqcmb1exzmn04', told: '01m531x6y92ggdqcmb1exzmn05' };
 
@@ -43,6 +58,14 @@ test('only this conversation\'s spinoffs that settled after its last entry, or t
   assert.deepEqual(result.rearm.map(r => r.run_id), [ids.live], 'only a wait the agent had started is restored');
   assert.deepEqual(await readSpinoffs({ sessionId: 's1', cwd: '/w', since, waited: new Set(), reported: new Set(), read: async () => null }), { settled: [], rearm: [], available: false }, 'missing Taskfleet tells nothing, and says it was not read');
   assert.equal(catchUpMessage([], { settled: [], rearm: result.rearm }), null, 'a restored wait alone is not news');
+});
+
+test('without Taskfleet installed no run exists, which is an empty inventory, not an unread one', async () => {
+  const path = process.env.PATH;
+  process.env.PATH = '/nonexistent-oh-test';
+  try {
+    assert.deepEqual(await readSpinoffs({ sessionId: 's1', cwd: '/', since: 0, waited: new Set(), reported: new Set() }), { settled: [], rearm: [], available: true });
+  } finally { process.env.PATH = path; }
 });
 
 test('the first run after Pi starts gets one context message, and only when there is news', async () => {
@@ -111,15 +134,19 @@ test('the agent\'s catch-up and the person\'s card follow one settlement rule', 
   }
 });
 
-test('the catch-up names the stop the person\'s card named, also when nothing settled', () => {
+test('the catch-up names the stop the person\'s card named, and says nothing when nothing happened', () => {
   const stopped = stopFact({ OPEN_HABITAT_STOP_CAUSE: 'idle', OPEN_HABITAT_STOPPED_AT: '2026-10-26T18:20:00Z' });
   assert.deepEqual(stopped, { cause: 'idle', at: '2026-10-26T18:20:00Z' });
   assert.equal(stopFact({ OPEN_HABITAT_STOP_CAUSE: 'nap', OPEN_HABITAT_STOPPED_AT: '2026-10-26T18:20:00Z' }), null, 'an unknown cause is no claim');
   assert.equal(stopFact({}), null);
-  const quiet = catchUpMessage([], { settled: [], rearm: [], available: true }, stopped);
-  assert.deepEqual(quiet.details.stopped, stopped);
-  assert.match(quiet.content, /2026-10-26T18:20:00Z/);
-  assert.match(quiet.content, /Nothing settled meanwhile/);
+  assert.equal(catchUpMessage([], { settled: [], rearm: [], available: true }, stopped), null, 'nothing cut off and nothing settled is not news (Jari, 2026-10-28)');
+  const cut = catchUpMessage([], { settled: [], rearm: [], available: true }, stopped, true);
+  assert.deepEqual(cut.details.stopped, stopped);
+  assert.equal(cut.details.interrupted_turn, true);
+  assert.match(cut.content, /2026-10-26T18:20:00Z/);
+  assert.match(cut.content, /turn it was working on was cut off/);
+  assert.match(cut.content, /Nothing settled meanwhile/);
+  assert.equal(catchUpMessage([], { settled: [], rearm: [], available: true }, null, true), null, 'a cut turn is told only with the stop that cut it');
   const unread = catchUpMessage([], { settled: [], rearm: [], available: false }, stopped);
   assert.doesNotMatch(unread.content, /Nothing settled/, 'an unread inventory is not an empty one');
   assert.match(unread.content, /could not read/);

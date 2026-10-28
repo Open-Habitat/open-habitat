@@ -269,6 +269,7 @@ func (c *ConversationController) restReport(w http.ResponseWriter, r *http.Reque
 		processes = append(processes, map[string]string{"process_id": p.ID, "name": p.Name})
 	}
 	report["processes"] = processes
+	report["interrupted_turn"] = scan.turnCut
 	// The companion's waited set: the waking waits among the newest twenty
 	// cut-off processes nobody was told about.
 	var unreported []branchProcess
@@ -289,7 +290,14 @@ func (c *ConversationController) restReport(w http.ResponseWriter, r *http.Reque
 	defer cancel()
 	home := c.home
 	settled, working, availability := unreportedRuns(ctx, *parent, scan.last, waited, scan.runs,
-		func(ctx context.Context) ([]nativeSpinoff, bool) { return listTaskfleetRuns(ctx, home) },
+		func(ctx context.Context) ([]nativeSpinoff, bool) {
+			// Without Taskfleet no run exists to settle: an empty inventory,
+			// not an unread one, or every rest on such a host would be news.
+			if taskfleetBinary(home) == "" {
+				return []nativeSpinoff{}, true
+			}
+			return listTaskfleetRuns(ctx, home)
+		},
 		func(ctx context.Context, run string) (nativeSpinoff, bool) {
 			return showSpinoff(ctx, home, run, *parent)
 		})

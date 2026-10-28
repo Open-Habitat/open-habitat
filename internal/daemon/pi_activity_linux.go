@@ -217,13 +217,22 @@ func (c *ConversationController) makeRoom(ctx context.Context) {
 	}
 	_, idle := c.classify(ctx, func(*conversation) bool { return true })
 	c.mu.Lock()
-	sort.Slice(idle, func(i, j int) bool { return idle[i].lastUsed.Before(idle[j].lastUsed) })
+	sort.Slice(idle, func(i, j int) bool { return lastSeen(idle[i]).Before(lastSeen(idle[j])) })
 	if len(idle) > need {
 		idle = idle[:need]
 	}
 	marked := c.stopIdleLocked(idle, "room")
 	c.mu.Unlock()
 	c.closeStopping(marked)
+}
+
+// lastSeen is when the child was last used or the person last reported being
+// in its conversation. Caller holds c.mu.
+func lastSeen(s *conversation) time.Time {
+	if s.presentAt.After(s.lastUsed) {
+		return s.presentAt
+	}
+	return s.lastUsed
 }
 
 // stopIfIdle stops one conversation's child if it is idle; archive uses it.
@@ -237,7 +246,10 @@ func (c *ConversationController) stopIfIdle(ctx context.Context, id string) {
 
 // Observe rather than guessing from the last prompt: a process bridge can keep
 // Pi busy long after the turn settles. Allow a full idle period after that work
-// is first observed finished. No timer or activity state survives daemon exit.
+// is first observed finished, and after the browser last reported the person
+// in the conversation: someone writing a long message or working in the
+// terminal beside it is not away (Jari, 2026-10-28). No timer or activity
+// state survives daemon exit.
 const piIdlePeriod = 10 * time.Minute
 const piIdleCheckInterval = time.Minute
 
@@ -272,7 +284,7 @@ func (c *ConversationController) stopExpiredIdlePi(ctx context.Context, now time
 		if s.idleSince.IsZero() || s.lastUsed.After(s.idleSince) {
 			s.idleSince = now
 		}
-		if now.Sub(s.idleSince) >= piIdlePeriod {
+		if now.Sub(s.idleSince) >= piIdlePeriod && now.Sub(s.presentAt) >= piIdlePeriod {
 			expired = append(expired, s)
 		}
 	}

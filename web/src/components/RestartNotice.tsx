@@ -17,6 +17,8 @@ export type RestRunState =
   | "stalled";
 export type RestartNotice = {
   stopped?: RestStop;
+  /** The turn Pi was working on never finished. */
+  interrupted_turn?: boolean;
   processes: { process_id: string; name: string }[];
   runs: {
     run_id: string;
@@ -54,12 +56,19 @@ const runIcon: Record<RestRunState, IconName> = {
 };
 
 /** The card's first sentence: Habitat's account of the stop. */
-export function stopSentence(stop: RestStop, cutOff: number): string {
+export function stopSentence(
+  stop: RestStop,
+  cutOff: number,
+  turnCut = false,
+): string {
   const at = syncedTime(stop.at);
   const cut =
-    cutOff > 0
-      ? ` ${cutOff === 1 ? "Yksi taustatyö katkesi" : `${cutOff} taustatyötä katkesi`} samalla.`
-      : " Mikään työ ei katkennut.";
+    [
+      turnCut ? " Agentin kesken ollut työ katkesi." : "",
+      cutOff > 0
+        ? ` ${cutOff === 1 ? "Yksi taustatyö katkesi" : `${cutOff} taustatyötä katkesi`} samalla.`
+        : "",
+    ].join("") || " Mikään työ ei katkennut.";
   switch (stop.cause) {
     case "idle":
       return `Pi pysähtyi ${at}, kun se oli ollut 10 minuuttia jouten.${cut}`;
@@ -125,7 +134,9 @@ export function RestCard({
         </h2>
         <span className="ah-rest-author">Habitat</span>
       </header>
-      <p className="ah-rest-text">{stopSentence(stop, cut.length)}</p>
+      <p className="ah-rest-text">
+        {stopSentence(stop, cut.length, !!notice?.interrupted_turn)}
+      </p>
       {cut.length ? (
         <p className="ah-rest-text">
           Katkenneet taustatyöt:{" "}

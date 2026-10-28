@@ -46,6 +46,10 @@ type branchScan struct {
 	runs map[string]bool
 	// last is the newest entry time on the branch, Unix ms; 0 when none.
 	last int64
+	// turnCut says the branch's last message leaves a turn unfinished: a
+	// prompt, a tool call or a tool result the model never answered. Pi
+	// stopped in the middle of that work.
+	turnCut bool
 }
 
 func scanBranchProcesses(b []byte) []branchProcess {
@@ -63,6 +67,8 @@ func scanBranch(b []byte) branchScan {
 		runs         []string
 		replaceStart string
 		at           int64
+		message      bool // a conversation message, which ends (or not) a turn
+		open         bool // that message leaves its turn unfinished
 	}
 	facts := []fact{}
 	parents := map[string]string{}
@@ -80,6 +86,7 @@ func scanBranch(b []byte) branchScan {
 			Message    *struct {
 				Role       string          `json:"role"`
 				ToolName   string          `json:"toolName"`
+				StopReason string          `json:"stopReason"`
 				CustomType string          `json:"customType"`
 				Details    json.RawMessage `json:"details"`
 			} `json:"message"`
@@ -99,6 +106,14 @@ func scanBranch(b []byte) branchScan {
 		customType, details := e.CustomType, e.Details
 		if e.Type == "message" && e.Message != nil {
 			customType, details = e.Message.CustomType, e.Message.Details
+			// Only the turn's own messages decide; the person's `!command`
+			// and Habitat's custom messages are not the agent's answer.
+			switch e.Message.Role {
+			case "user", "toolResult":
+				f.message, f.open = true, true
+			case "assistant":
+				f.message, f.open = true, e.Message.StopReason == "toolUse"
+			}
 		}
 		switch {
 		case e.Type == "message" && e.Message != nil && e.Message.Role == "toolResult" && e.Message.ToolName == "process":
@@ -175,6 +190,9 @@ func scanBranch(b []byte) branchScan {
 			continue
 		}
 		scan.last = max(scan.last, f.at)
+		if f.message {
+			scan.turnCut = f.open
+		}
 		for _, key := range f.runs {
 			scan.runs[key] = true
 		}

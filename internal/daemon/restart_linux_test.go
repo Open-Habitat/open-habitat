@@ -15,7 +15,7 @@ import (
 // or the raw commands it repeats; both native entry forms are recognised.
 func TestRestartCatchUpIsPresentedFromItsDetails(t *testing.T) {
 	const run, live = "01m531x6y92ggdqcmb1exzmn00", "01m531x6y92ggdqcmb1exzmn01"
-	body := `"customType":"oh-resume-catch-up","display":true,"content":"[Open Habitat] This conversation's Pi had stopped: taskfleet run wait ` + run + `","details":{"schema_version":1,"stopped":{"cause":"idle","at":"2026-10-26T18:20:00Z"},` +
+	body := `"customType":"oh-resume-catch-up","display":true,"content":"[Open Habitat] This conversation's Pi had stopped: taskfleet run wait ` + run + `","details":{"schema_version":1,"stopped":{"cause":"idle","at":"2026-10-26T18:20:00Z"},"interrupted_turn":true,` +
 		`"processes":[{"id":"proc_8ffc","startTime":1,"name":"wait-gate-evidence"},{"id":"bad","startTime":2,"name":"x"}],` +
 		`"spinoffs":[{"run_id":"` + run + `","state":"stalled","title":"release pilot.12","summary":"Taskfleet's words","branch":"wt/pilot","ended_at":"2026-10-26T18:41:00Z"},{"run_id":"` + run + `","state":"invented","title":"x"}],` +
 		`"rearm":[{"run_id":"` + live + `","title":"gate"},"` + run + `"]}`
@@ -28,10 +28,11 @@ func TestRestartCatchUpIsPresentedFromItsDetails(t *testing.T) {
 			t.Fatalf("%s: %+v", e.Type, got)
 		}
 		want := restartNotice{
-			Stopped:      map[string]any{"cause": "idle", "at": "2026-10-26T18:20:00Z"},
-			Processes:    []restartProcess{{"proc_8ffc", "wait-gate-evidence"}},
-			Runs:         []restartRun{{run, "release pilot.12", "stalled", "Taskfleet's words", "2026-10-26T18:41:00Z", "wt/pilot"}},
-			StillRunning: []restartRun{{ID: live, Title: "gate"}, {ID: run}},
+			Stopped:         map[string]any{"cause": "idle", "at": "2026-10-26T18:20:00Z"},
+			InterruptedTurn: true,
+			Processes:       []restartProcess{{"proc_8ffc", "wait-gate-evidence"}},
+			Runs:            []restartRun{{run, "release pilot.12", "stalled", "Taskfleet's words", "2026-10-26T18:41:00Z", "wt/pilot"}},
+			StillRunning:    []restartRun{{ID: live, Title: "gate"}, {ID: run}},
 		}
 		if a, b := mustJSON(got.Restart), mustJSON(want); a != b {
 			t.Fatalf("%s:\n got %s\nwant %s", e.Type, a, b)
@@ -53,6 +54,45 @@ func TestRestartCatchUpIsPresentedFromItsDetails(t *testing.T) {
 	hidden := nativeBlocks(nativeEntry{ID: "c", Type: "custom_message", Raw: json.RawMessage(`{"type":"custom_message","customType":"oh-resume-catch-up","display":false,"content":"x"}`)})
 	if hidden.Kind != "" {
 		t.Fatalf("an undisplayed catch-up became visible: %+v", hidden)
+	}
+}
+
+// The branch's last message says whether Pi stopped in the middle of a turn:
+// the same rule as the companion's branchFacts (catch-up.test.mjs).
+func TestBranchScanSeesACutTurn(t *testing.T) {
+	line := func(id, parent, message string) string {
+		p := "null"
+		if parent != "" {
+			p = `"` + parent + `"`
+		}
+		if message == "" {
+			return `{"type":"session_info","id":"` + id + `","parentId":` + p + `,"timestamp":"2030-01-01T00:00:00Z","name":"otsikko"}`
+		}
+		return `{"type":"message","id":"` + id + `","parentId":` + p + `,"timestamp":"2030-01-01T00:00:00Z","message":` + message + `}`
+	}
+	prompt, call, result := `{"role":"user","content":"x"}`, `{"role":"assistant","stopReason":"toolUse"}`, `{"role":"toolResult","toolName":"read"}`
+	answer, aborted := `{"role":"assistant","stopReason":"stop"}`, `{"role":"assistant","stopReason":"aborted"}`
+	shell, note := `{"role":"bashExecution","command":"git status"}`, `{"role":"custom","customType":"oh-resume-catch-up"}`
+	for _, tc := range []struct {
+		name  string
+		lines []string
+		cut   bool
+	}{
+		{"answered, then titled", []string{line("e1", "", prompt), line("e2", "e1", call), line("e3", "e2", result), line("e4", "e3", answer), line("e5", "e4", "")}, false},
+		{"unanswered prompt", []string{line("e1", "", prompt)}, true},
+		{"tool call without result", []string{line("e1", "", prompt), line("e2", "e1", call)}, true},
+		{"unanswered tool result", []string{line("e1", "", prompt), line("e2", "e1", call), line("e3", "e2", result)}, true},
+		{"aborted reply", []string{line("e1", "", prompt), line("e2", "e1", aborted)}, false},
+		// The person's `!command` and Habitat's messages are not the answer.
+		{"shell after a tool result", []string{line("e1", "", prompt), line("e2", "e1", call), line("e3", "e2", result), line("e4", "e3", shell)}, true},
+		{"custom after the prompt", []string{line("e1", "", prompt), line("e2", "e1", note)}, true},
+		{"shell after the answer", []string{line("e1", "", prompt), line("e2", "e1", answer), line("e3", "e2", shell)}, false},
+		// Only the active leaf's ancestry counts.
+		{"cut sibling branch", []string{line("e1", "", prompt), line("e2", "e1", answer), line("e3", "e2", prompt), line("e4", "e2", "")}, false},
+	} {
+		if got := scanBranch([]byte(strings.Join(tc.lines, "\n"))).turnCut; got != tc.cut {
+			t.Errorf("%s: turnCut %v, want %v", tc.name, got, tc.cut)
+		}
 	}
 }
 
