@@ -1,5 +1,16 @@
-import { isValidElement, type ReactNode, useContext, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import {
+  createContext,
+  isValidElement,
+  memo,
+  type ReactNode,
+  useContext,
+  useState,
+} from "react";
+import ReactMarkdown, {
+  type Components,
+  type ExtraProps,
+  type Options,
+} from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { attachmentURL } from "../app/attachments";
@@ -8,6 +19,7 @@ import { ControlButton, ExternalLink } from "./ControlElements";
 import { FileLinkContext, parseFileRef } from "./fileRefs";
 import { MermaidDiagram } from "./MermaidDiagram";
 import { OutputBox } from "./OutputBox";
+import rehypeStableText from "./rehypeStableText";
 import remarkBreaks from "./remarkBreaks";
 import remarkFileRefs from "./remarkFileRefs";
 
@@ -227,7 +239,73 @@ function AttachmentImage({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-export default function MarkdownRenderer({
+// The reply source, for telling a finished fence from one still streaming.
+const SourceContext = createContext("");
+
+function MarkdownPre({
+  children,
+  node,
+}: ExtraProps & { children?: ReactNode }) {
+  const text = useContext(SourceContext);
+  if (isValidElement<{ className?: string; children?: unknown }>(children)) {
+    const language = children.props.className?.match(
+      /^language-([a-zA-Z0-9_+-]+)$/,
+    )?.[1];
+    const content = children.props.children;
+    if (typeof content === "string") {
+      const complete = fenceComplete(
+        text,
+        node?.position?.start?.offset,
+        node?.position?.end?.offset,
+      );
+      const code = (
+        <MarkdownCode text={content} language={language} complete={complete} />
+      );
+      return language === "mermaid" ? (
+        <MermaidDiagram source={content} complete={complete} fallback={code} />
+      ) : (
+        code
+      );
+    }
+  }
+  return <pre>{children}</pre>;
+}
+
+// React compares component types by identity. Components created per render
+// would remount every code block, link and inline code on each re-render of a
+// reply, replacing the DOM under a selection and resetting hover state.
+const components: Components = {
+  img: ({ src, alt }) =>
+    typeof src === "string" && attachmentURL.test(src) ? (
+      <AttachmentImage src={src} alt={alt || "Liite"} />
+    ) : (
+      <span>{alt}</span>
+    ),
+  a: ({ href, children, title }) => (
+    <MarkdownLink href={href} title={title}>
+      {children}
+    </MarkdownLink>
+  ),
+  pre: MarkdownPre,
+  code: ({ className, children }) => (
+    <InlineCode className={className}>{children}</InlineCode>
+  ),
+  table: ({ children }) => (
+    <div className="ah-markdown-table">
+      <table>{children}</table>
+    </div>
+  ),
+};
+const plainPlugins = [remarkGfm, remarkFileRefs];
+const breakPlugins = [remarkGfm, remarkBreaks, remarkFileRefs];
+const rehypePlugins: Options["rehypePlugins"] = [
+  [rehypeSanitize, schema],
+  rehypeStableText,
+];
+
+// A settled reply re-renders with its parent (clock ticks, live updates of
+// other turns); unchanged text needs no new parse.
+export default memo(function MarkdownRenderer({
   text,
   breaks = false,
 }: {
@@ -236,75 +314,17 @@ export default function MarkdownRenderer({
 }) {
   return (
     <div className="ah-markdown">
-      <ReactMarkdown
-        remarkPlugins={
-          breaks
-            ? [remarkGfm, remarkBreaks, remarkFileRefs]
-            : [remarkGfm, remarkFileRefs]
-        }
-        rehypePlugins={[[rehypeSanitize, schema]]}
-        skipHtml
-        urlTransform={safeUrl}
-        components={{
-          img: ({ src, alt }) =>
-            typeof src === "string" && attachmentURL.test(src) ? (
-              <AttachmentImage src={src} alt={alt || "Liite"} />
-            ) : (
-              <span>{alt}</span>
-            ),
-          a: ({ href, children, title }) => (
-            <MarkdownLink href={href} title={title}>
-              {children}
-            </MarkdownLink>
-          ),
-          pre: ({ children, node }) => {
-            if (
-              isValidElement<{ className?: string; children?: unknown }>(
-                children,
-              )
-            ) {
-              const language = children.props.className?.match(
-                /^language-([a-zA-Z0-9_+-]+)$/,
-              )?.[1];
-              const content = children.props.children;
-              if (typeof content === "string") {
-                const complete = fenceComplete(
-                  text,
-                  node?.position?.start?.offset,
-                  node?.position?.end?.offset,
-                );
-                const code = (
-                  <MarkdownCode
-                    text={content}
-                    language={language}
-                    complete={complete}
-                  />
-                );
-                return language === "mermaid" ? (
-                  <MermaidDiagram
-                    source={content}
-                    complete={complete}
-                    fallback={code}
-                  />
-                ) : (
-                  code
-                );
-              }
-            }
-            return <pre>{children}</pre>;
-          },
-          code: ({ className, children }) => (
-            <InlineCode className={className}>{children}</InlineCode>
-          ),
-          table: ({ children }) => (
-            <div className="ah-markdown-table">
-              <table>{children}</table>
-            </div>
-          ),
-        }}
-      >
-        {text}
-      </ReactMarkdown>
+      <SourceContext.Provider value={text}>
+        <ReactMarkdown
+          remarkPlugins={breaks ? breakPlugins : plainPlugins}
+          rehypePlugins={rehypePlugins}
+          skipHtml
+          urlTransform={safeUrl}
+          components={components}
+        >
+          {text}
+        </ReactMarkdown>
+      </SourceContext.Provider>
     </div>
   );
-}
+});

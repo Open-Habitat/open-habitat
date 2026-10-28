@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-28/text-selection-lost-in-agent-reply
 lane: conversation-select
 preparation: ready
+closed: 2026-10-28
 ---
 
 # Selecting text in an agent reply flickers and is often lost
@@ -19,4 +20,4 @@ Jari 2026-10-28 (Birch, pilot.13): kun maalaan agentin viestistä tekstiä, vali
 
 ## Acceptance Criteria
 
-- [ ] Hiirellä ja näppäimistöllä tehty valinta säilyy agentin viestissä; selaintesti valitsee tekstiä live-päivitysten aikana
+- [x] Hiirellä ja näppäimistöllä tehty valinta säilyy agentin viestissä; selaintesti valitsee tekstiä live-päivitysten aikana

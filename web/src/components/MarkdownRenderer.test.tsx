@@ -98,3 +98,44 @@ describe("file links in rendered Markdown", () => {
     expect(container.textContent).toContain("and source");
   });
 });
+
+// A selection lives on DOM nodes; a re-render must leave those nodes in place.
+describe("a rendered reply under a selection", () => {
+  it("keeps code blocks, links and inline code while the reply grows", () => {
+    const text =
+      "See `src/main.ts` and [docs](https://example.com).\n\n```sh\nls\n```\n";
+    const ui = (reply: string) => (
+      <FileLinkContext.Provider value={{ open: vi.fn() }}>
+        <MarkdownRenderer text={reply} />
+      </FileLinkContext.Provider>
+    );
+    const { container, rerender } = render(ui(text));
+    const nodes = () =>
+      ["figure", "pre", "a[href^='http']", "a[href^='#']"].map((selector) =>
+        container.querySelector(selector),
+      );
+    const before = nodes();
+    expect(before.every(Boolean)).toBe(true);
+    rerender(ui(`${text}\nLisää tekstiä.`));
+    nodes().forEach((node, index) => {
+      expect(node).toBe(before[index]);
+    });
+  });
+
+  it("leaves a selection in a streamed paragraph when more text arrives", () => {
+    const start = "Ensimmäinen lause, joka on tarpeeksi pitkä. ".repeat(4);
+    const { container, rerender } = render(<MarkdownRenderer text={start} />);
+    const first = container.querySelector("p")?.firstChild;
+    if (!first) throw new Error("no paragraph text");
+    const range = document.createRange();
+    range.setStart(first, 2);
+    range.setEnd(first, 12);
+    const selected = range.toString();
+    rerender(<MarkdownRenderer text={`${start}lisää sanoja virrasta`} />);
+    expect(container.querySelector("p")?.firstChild).toBe(first);
+    expect(range.toString()).toBe(selected);
+    expect(container.querySelector("p")?.textContent).toBe(
+      `${start}lisää sanoja virrasta`,
+    );
+  });
+});

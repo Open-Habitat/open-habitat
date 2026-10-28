@@ -1,5 +1,6 @@
 import hljs from "highlight.js/lib/core";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { stableChunks } from "./rehypeStableText";
 
 const grammars = {
   python: () => import("highlight.js/lib/languages/python"),
@@ -238,7 +239,7 @@ export function SyntaxCode({
     <code ref={ref} className="ah-syntax">
       {active && result?.text === text && result.language === language
         ? result.nodes
-        : text}
+        : stableChunks(text)}
     </code>
   );
 }
