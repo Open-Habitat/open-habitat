@@ -47,16 +47,18 @@ function SpeechKeyForm({
             Sama kuin Soniox-projektin, jossa avain on tehty.
           </span>
         </div>
-        <Segmented
-          data-testid="speech-region"
-          label="Alue"
-          options={[
-            { id: "eu", label: regionNames.eu },
-            { id: "us", label: regionNames.us },
-          ]}
-          value={region}
-          onChange={setRegion}
-        />
+        <div className="s-val">
+          <Segmented
+            data-testid="speech-region"
+            label="Alue"
+            options={[
+              { id: "eu", label: regionNames.eu },
+              { id: "us", label: regionNames.us },
+            ]}
+            value={region}
+            onChange={setRegion}
+          />
+        </div>
       </div>
       <label className="s-field">
         Soniox API-avain
@@ -78,7 +80,7 @@ function SpeechKeyForm({
           note
         )}
       </p>
-      <div className="ah-dialog-actions">
+      <div className="s-actions">
         {onCancel ? (
           <ControlButton
             data-testid="speech-key-cancel"
@@ -166,7 +168,7 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
         käytetään.
       </p>
       <div className="s-card">
-        <div className="s-row" data-testid="speech-key-state">
+        <div className="s-row s-marked" data-testid="speech-key-state">
           <Icon name="mic" />
           <div className="s-lbl">
             <strong>Soniox-avain</strong>
@@ -207,26 +209,26 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
               </>
             ) : null}
           </div>
+          {csrf && (!state.present || editing) ? (
+            <SpeechKeyForm
+              busy={busy}
+              onSave={(key, region) =>
+                void write(() => saveSpeechKey(csrf, key, region))
+              }
+              onCancel={editing ? () => setEditing(false) : undefined}
+              note={`Avain tallentuu kotihakemistoosi (~/.config/soniox/key.json), ja agenttisi voivat käyttää sitä. Sitä ei näytetä uudelleen. ${permissions}`}
+            />
+          ) : null}
+          {failed ? (
+            <p
+              className="s-editor s-desc s-bad"
+              role="alert"
+              data-testid="speech-key-failed"
+            >
+              Muutoksen tulos ei varmistunut. Tila luettiin uudelleen.
+            </p>
+          ) : null}
         </div>
-        {csrf && (!state.present || editing) ? (
-          <SpeechKeyForm
-            busy={busy}
-            onSave={(key, region) =>
-              void write(() => saveSpeechKey(csrf, key, region))
-            }
-            onCancel={editing ? () => setEditing(false) : undefined}
-            note={`Avain tallentuu kotihakemistoosi (~/.config/soniox/key.json), ja agenttisi voivat käyttää sitä. Sitä ei näytetä uudelleen. ${permissions}`}
-          />
-        ) : null}
-        {failed ? (
-          <p
-            className="s-desc s-bad"
-            role="alert"
-            data-testid="speech-key-failed"
-          >
-            Muutoksen tulos ei varmistunut. Tila luettiin uudelleen.
-          </p>
-        ) : null}
       </div>
     </div>
   );
@@ -299,7 +301,7 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
         avain Soniox-konsolissa.
       </p>
       <div className="s-card">
-        <div className="s-row" data-testid="site-speech-key">
+        <div className="s-row s-marked" data-testid="site-speech-key">
           <Icon name="mic" />
           <div className="s-lbl">
             <strong>Yhteinen Soniox-avain</strong>
@@ -334,35 +336,39 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
               </>
             ) : null}
           </div>
+          {csrf && (!key || editing) ? (
+            <SpeechKeyForm
+              busy={busy}
+              onSave={(k, region) =>
+                void write(() => setSiteSpeechKey(csrf, k, region))
+              }
+              onCancel={editing ? () => setEditing(false) : undefined}
+              note={`Tallennus antaa avaimen heti jo liittyneille, joilla ei ole omaa, ja uudet saavat sen ensimmäisellä kirjautumisellaan. Tallenna sama avain uudelleen, jos joku jäi tavoittamatta. ${permissions}`}
+            />
+          ) : null}
+          {busy ? (
+            <p role="status" className="s-editor s-desc">
+              Annetaan avainta jo liittyneille…
+            </p>
+          ) : null}
+          {given.length ? (
+            <p
+              role="status"
+              className="s-editor s-desc"
+              data-testid="site-speech-given"
+            >
+              {given
+                .map(([word, n]) => `${n} ${givenWords[word] ?? word}`)
+                .join(", ")}
+              .
+            </p>
+          ) : null}
+          {problem ? (
+            <p role="alert" className="s-editor s-desc s-bad">
+              {problem}
+            </p>
+          ) : null}
         </div>
-        {csrf && (!key || editing) ? (
-          <SpeechKeyForm
-            busy={busy}
-            onSave={(k, region) =>
-              void write(() => setSiteSpeechKey(csrf, k, region))
-            }
-            onCancel={editing ? () => setEditing(false) : undefined}
-            note={`Tallennus antaa avaimen heti jo liittyneille, joilla ei ole omaa, ja uudet saavat sen ensimmäisellä kirjautumisellaan. Tallenna sama avain uudelleen, jos joku jäi tavoittamatta. ${permissions}`}
-          />
-        ) : null}
-        {busy ? (
-          <p role="status" className="s-desc">
-            Annetaan avainta jo liittyneille…
-          </p>
-        ) : null}
-        {given.length ? (
-          <p role="status" className="s-desc" data-testid="site-speech-given">
-            {given
-              .map(([word, n]) => `${n} ${givenWords[word] ?? word}`)
-              .join(", ")}
-            .
-          </p>
-        ) : null}
-        {problem ? (
-          <p role="alert" className="s-desc s-bad">
-            {problem}
-          </p>
-        ) : null}
       </div>
     </div>
   );

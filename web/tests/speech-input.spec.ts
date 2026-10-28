@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
@@ -284,4 +285,83 @@ test("@speech the dictation warns a minute before the ten-minute ceiling and end
   await expect(notice(page)).toHaveAttribute("data-notice", "ceiling");
   await expect(page.getByTestId("message-input")).toHaveValue("Pitkä sanelu");
   await expect.poll(async () => (await soniox(page)).ended).toBe(1);
+});
+
+test.describe("@speech Sanelu settings layout", () => {
+  test.use({ deviceScaleFactor: 2 });
+
+  test("@speech @a11y the Soniox key form sits inside its card's padding beside the mic", async ({
+    page,
+  }, testInfo) => {
+    await signIn(page);
+    await page.goto("/settings/speech");
+    const card = page.locator(".s-card").filter({
+      has: page.getByTestId("speech-key-state"),
+    });
+    const form = page.getByTestId("speech-key-form");
+    await expect(form).toBeVisible();
+    // Reduced motion: neither the shots nor axe may catch the theme switch
+    // mid-transition.
+    const theme = async (colorScheme: "light" | "dark") => {
+      await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-theme",
+        colorScheme,
+      );
+    };
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const colorScheme of ["light", "dark"] as const) {
+        await theme(colorScheme);
+        await card.screenshot({
+          path: testInfo.outputPath(`sanelu-${width}-${colorScheme}.png`),
+          animations: "disabled",
+        });
+      }
+    }
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      const box = async (locator: ReturnType<Page["locator"]>) => {
+        const b = await locator.boundingBox();
+        if (!b) throw new Error("not laid out");
+        return b;
+      };
+      const c = await box(card);
+      // The key field, its note and Tallenna keep the row's inset from every
+      // card edge, as the other Settings rows do.
+      for (const part of [
+        page.getByTestId("speech-key-input"),
+        form.locator("p.s-desc"),
+        page.getByTestId("speech-key-save"),
+      ]) {
+        const b = await box(part);
+        expect(b.x - c.x).toBeGreaterThanOrEqual(12);
+        expect(c.x + c.width - (b.x + b.width)).toBeGreaterThanOrEqual(12);
+        expect(c.y + c.height - (b.y + b.height)).toBeGreaterThanOrEqual(12);
+      }
+      // The row's title follows its mic icon instead of floating mid-card.
+      const icon = await box(
+        page.getByTestId("speech-key-state").locator("svg").first(),
+      );
+      const title = await box(
+        page.getByTestId("speech-key-state").locator("strong").first(),
+      );
+      expect(title.x - (icon.x + icon.width)).toBeLessThanOrEqual(24);
+      expect(title.x).toBeGreaterThan(icon.x);
+      expect(
+        await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
+        ),
+      ).toBeLessThanOrEqual(1);
+    }
+    for (const colorScheme of ["light", "dark"] as const) {
+      await theme(colorScheme);
+      expect(
+        (await new AxeBuilder({ page }).include(".s-main").analyze())
+          .violations,
+      ).toEqual([]);
+    }
+  });
 });

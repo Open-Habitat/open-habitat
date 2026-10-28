@@ -3,13 +3,14 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/soniox-key-form-no-padding
 lane: settings-sanelu
 lane_seq: 1
+closed: 2026-10-28
 ---
 
 # Settings › Sanelu: the Soniox key form touches the card edges, rows misaligned

@@ -98,6 +98,16 @@
   flex-direction: column;
   gap: var(--ah-s3);
 }
+/* An editor opens inside its row, which already gives the card's inset;
+   a label/value line inside the editor reuses the row layout without
+   adding a second inset. */
+.s-editor,
+.s-editor p {
+  margin: 0;
+}
+.s-editor > .s-row {
+  padding: 0;
+}
 .s-field {
   display: flex;
   flex-direction: column;
