@@ -82,6 +82,7 @@ type Opened = {
   opener: HTMLElement | null;
 };
 
+// Below their sum the panel covers the conversation (ViewPanel.css).
 const minPanel = 320;
 // The guide is a narrow reading column, not a view.
 const guidePanel = 400;

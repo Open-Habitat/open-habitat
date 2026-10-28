@@ -159,9 +159,16 @@
   user-select: none;
 }
 
-@media (max-width: 800px) {
-  /* A phone is not a small desktop: the panel covers the conversation and
-     Close returns to it. */
+/* Measured against the split, not the window: beside the navigation (a phone
+   on its side keeps it) the split is narrower than the screen. */
+.ah-view-open {
+  container: view-split / inline-size;
+}
+/* A phone is not a small desktop: where the split cannot hold the narrowest
+   panel beside the narrowest conversation (ViewHost's minPanel +
+   minConversation), the panel covers the conversation and Close returns
+   to it. */
+@container view-split (width < 680px) {
   .ah-view-open > .ah-view-pane {
     position: absolute;
     inset: 0;

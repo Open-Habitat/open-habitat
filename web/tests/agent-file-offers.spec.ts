@@ -264,6 +264,7 @@ test.describe("phone", () => {
     await expect(shelf).toBeVisible();
     const box = await shelf.boundingBox();
     expect(box?.width).toBeGreaterThanOrEqual(388);
+    await expect(page.getByTestId("message-input")).not.toBeVisible();
     await shelf
       .locator(`[data-testid="file-shelf-offer"][data-offer-id="${folder}"]`)
       .getByTestId("file-shelf-row")
@@ -274,5 +275,16 @@ test.describe("phone", () => {
       await page.screenshot({ path: `${evidence}/hylly-phone-light.png` });
     await page.getByTestId("close-file-shelf").click();
     await expect(shelf).toHaveCount(0);
+
+    // On its side a phone is wider than the phone layout and keeps the
+    // navigation; the split beside it is too narrow to share, so the panel
+    // still covers the conversation.
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.getByTestId("toggle-file-shelf").click();
+    await expect(shelf).toBeVisible();
+    await expect(page.getByTestId("message-input")).not.toBeVisible();
+    await expect(page.getByTestId("resize-view")).not.toBeVisible();
+    await page.getByTestId("close-file-shelf").click();
+    await expect(page.getByTestId("message-input")).toBeVisible();
   });
 });
