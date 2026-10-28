@@ -3,13 +3,14 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: file-offers
 lane_seq: 1
 preparation: ready
 provenance: chat
 source_ref: kokeiltavaa:2026-10-28/file-offer-preview-height-flicker
+closed: 2026-10-28
 ---
 
 # Offered file preview keeps changing height

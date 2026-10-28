@@ -116,3 +116,27 @@ it("reads a table's quoted separators, doubled quotes and line breaks as cell te
   // One very long row is cut at the column limit.
   expect(tableRows(",".repeat(100_000), false)[0]).toHaveLength(50);
 });
+
+it("reads the file once while the dialog stays open, however often its caller renders", async () => {
+  const bytes = new TextEncoder().encode("a;b\n1;2\n");
+  const read = vi.fn(async (_url: string, _signal: AbortSignal) => bytes);
+  const preview = () => (
+    <AttachmentPreview
+      attachment={{ image: false, name: "luvut.csv", url, source: "" }}
+      onClose={() => {}}
+      // A new function on every render, as a caller's inline closure is.
+      read={(u, signal) => read(u, signal)}
+      offered={{
+        item: { path: "luvut.csv", bytes: bytes.length, kind: "csv" },
+        download: url,
+      }}
+    />
+  );
+  const { rerender } = render(preview());
+  await screen.findByTestId("attachment-preview-table");
+  rerender(preview());
+  rerender(preview());
+  expect(screen.getByTestId("attachment-preview-table")).toBeTruthy();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(read).toHaveBeenCalledTimes(1);
+});

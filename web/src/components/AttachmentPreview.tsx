@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
   Dialog as AriaDialog,
   Heading,
@@ -158,6 +158,12 @@ export function AttachmentPreview({
   offered?: OfferedFile;
 }) {
   const [bytes, setBytes] = useState<Uint8Array | "unknown">();
+  // The bytes are read once per file. A caller's `read` is usually a new
+  // function on every render, and reading again on each would empty the
+  // dialog and refill it, shrinking and growing it for as long as the
+  // conversation behind it renders.
+  const reader = useRef(read);
+  reader.current = read;
   const offeredKind = offered?.item.kind;
   // Media plays from the host, a zip is listed from its facts and an
   // unknown kind has nothing to show: none of them is read here.
@@ -174,14 +180,14 @@ export function AttachmentPreview({
     if (attachment.image || unread) return;
     const controller = new AbortController();
     setBytes(undefined);
-    read(attachment.url, controller.signal).then(
+    reader.current(attachment.url, controller.signal).then(
       (data) => setBytes(data),
       () => {
         if (!controller.signal.aborted) setBytes("unknown");
       },
     );
     return () => controller.abort();
-  }, [attachment, read, unread]);
+  }, [attachment.url, attachment.image, unread]);
   const loaded = typeof bytes === "object" ? bytes : null;
   const textKind =
     offeredKind === "csv" || offeredKind === "code" || offeredKind === "text"

@@ -68,6 +68,10 @@ test("each kind's card previews in the dialog and downloads under its own name",
   );
 
   // Text kinds open in the dialog from their bytes, shown unchanged.
+  let reads = 0;
+  page.on("request", (request) => {
+    if (request.url().includes(`/${csv}/download/`)) reads++;
+  });
   await card(page, csv).getByTestId("file-offer-preview").click();
   const dialog = page.getByTestId("attachment-preview");
   await expect(
@@ -79,6 +83,13 @@ test("each kind's card previews in the dialog and downloads under its own name",
     .include('[data-testid="attachment-preview"]')
     .analyze();
   expect(axe.violations).toEqual([]);
+  // The conversation behind the dialog goes on: the dialog keeps the bytes
+  // it read. Reading again on every render emptied and refilled it, so its
+  // height kept changing.
+  const [later] = await offer(page, id, "single");
+  await expect(card(page, later)).toHaveAttribute("data-state", "ready");
+  await expect(dialog.getByTestId("attachment-preview-table")).toBeVisible();
+  expect(reads).toBe(1);
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(card(page, csv).getByTestId("file-offer-preview")).toBeFocused();
