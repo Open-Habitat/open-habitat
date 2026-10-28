@@ -101,8 +101,6 @@ export const Shelf: StoryObj<typeof FileShelf> = {
             ]),
           },
         ]}
-        selected={{ offerId: pack.offer_id, path: "LUE-MINUT.md" }}
-        onSelect={() => {}}
         onClose={() => {}}
       />
     </div>

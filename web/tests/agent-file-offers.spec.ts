@@ -17,6 +17,7 @@ test.use({
 });
 
 const evidence = "../issues/agent-file-offer/evidence";
+const shelfEvidence = "../issues/folder-offer-file-rows/evidence";
 const capture = !!process.env.OH_VISUAL_CAPTURE;
 
 async function conversation(page: Page): Promise<string> {
@@ -183,36 +184,96 @@ test("a package card downloads one zip and opens the conversation's file panel",
   await expect(shelf).toBeVisible();
   await expect(shelf.getByTestId("file-shelf-offer")).toHaveCount(2);
   await expect(shelf.getByTestId("file-shelf-row")).toHaveCount(6);
-  // Opened from the card, the panel shows that offer's first file.
-  await expect(shelf.getByTestId("file-shelf-detail")).toBeVisible();
+  // No file is chosen for the person: the panel is the list.
+  await expect(shelf.getByTestId("file-shelf-detail")).toHaveCount(0);
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
 
-  // One search covers every offer of the conversation.
+  // A row's own buttons take the size's place under the pointer.
+  const singleRow = shelf
+    .locator(`[data-testid="file-shelf-offer"][data-offer-id="${single}"]`)
+    .locator("li");
+  const actions = singleRow.locator(".ah-file-shelf-actions");
+  await page.mouse.move(0, 0);
+  await expect(actions).toHaveCSS("opacity", "0");
+  await singleRow.hover();
+  await expect(actions).toHaveCSS("opacity", "1");
+  await expect(
+    singleRow.getByRole("button", { name: "Näytä isona: kaavio.png" }),
+  ).toBeVisible();
+  await expect(
+    singleRow.getByRole("link", { name: "Lataa: kaavio.png" }),
+  ).toBeVisible();
+
+  // One search covers every offer of the conversation; the row's download
+  // keeps the file's own name.
   await shelf.getByTestId("file-shelf-search").fill("ä");
   await expect(shelf.getByTestId("file-shelf-row")).toHaveCount(1);
-  await shelf.getByTestId("file-shelf-row").click();
+  await shelf.getByTestId("file-shelf-row").hover();
   const named = page.waitForEvent("download");
   await shelf.getByTestId("file-shelf-download").click();
   expect((await named).suggestedFilename()).toBe("LUE MINUT ä.txt");
   await shelf.getByTestId("file-shelf-search").fill("");
-  await shelf
-    .locator(`[data-testid="file-shelf-offer"][data-offer-id="${single}"]`)
-    .getByTestId("file-shelf-row")
-    .click();
-  await expect(
-    shelf.getByTestId("file-shelf-detail").locator("img"),
-  ).toBeVisible();
+
+  // Pressing a row opens its preview; closing it leaves no selection behind.
+  await singleRow.getByTestId("file-shelf-row").click();
+  const dialog = page.getByTestId("attachment-preview");
+  await expect(dialog.locator("img")).toBeVisible();
+  if (capture)
+    await page.screenshot({
+      path: `${shelfEvidence}/leijuva-desktop-light-esikatselu.png`,
+    });
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(singleRow.getByTestId("file-shelf-row")).toBeFocused();
+  await page.mouse.move(0, 0);
+  await expect(singleRow).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(singleRow.getByTestId("file-shelf-row")).toHaveCSS(
+    "background-color",
+    "rgba(0, 0, 0, 0)",
+  );
+
+  // From the keyboard, Tab goes from the row to its own buttons, which
+  // show while the focus is on the row.
+  const folderRow = shelf
+    .locator(`[data-testid="file-shelf-offer"][data-offer-id="${folder}"]`)
+    .locator("li")
+    .first();
+  await folderRow.getByTestId("file-shelf-row").focus();
+  await page.keyboard.press("Tab");
+  await expect(folderRow.getByTestId("file-shelf-preview")).toBeFocused();
+  await expect(folderRow.locator(".ah-file-shelf-actions")).toHaveCSS(
+    "opacity",
+    "1",
+  );
+  await page.keyboard.press("Enter");
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await page.keyboard.press("Tab");
+  await expect(folderRow.getByTestId("file-shelf-download")).toBeFocused();
 
   const axe = await new AxeBuilder({ page })
     .include('[data-testid="file-shelf"]')
     .analyze();
   expect(axe.violations).toEqual([]);
   if (capture) {
-    await page.screenshot({ path: `${evidence}/hylly-desktop-light.png` });
+    // At rest: no keyboard focus left on a row's buttons.
+    await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+    await singleRow.hover();
+    await page.screenshot({
+      path: `${shelfEvidence}/leijuva-desktop-light-osoitin.png`,
+    });
+    await page.mouse.move(0, 0);
+    await page.screenshot({
+      path: `${shelfEvidence}/leijuva-desktop-light.png`,
+    });
     await page.emulateMedia({ colorScheme: "dark" });
     // Let the theme transition settle before the capture.
     await page.waitForTimeout(500);
-    await page.screenshot({ path: `${evidence}/hylly-desktop-dark.png` });
+    await singleRow.hover();
+    await page.screenshot({
+      path: `${shelfEvidence}/leijuva-desktop-dark.png`,
+    });
     await page.emulateMedia({ colorScheme: "light" });
   }
 
@@ -276,14 +337,38 @@ test.describe("phone", () => {
     const box = await shelf.boundingBox();
     expect(box?.width).toBeGreaterThanOrEqual(388);
     await expect(page.getByTestId("message-input")).not.toBeVisible();
-    await shelf
+    // Without hover the row's own buttons are always there, and the size
+    // sits under the name.
+    const row = shelf
       .locator(`[data-testid="file-shelf-offer"][data-offer-id="${folder}"]`)
-      .getByTestId("file-shelf-row")
-      .first()
-      .click();
-    await expect(shelf.getByTestId("file-shelf-detail")).toBeVisible();
-    if (capture)
-      await page.screenshot({ path: `${evidence}/hylly-phone-light.png` });
+      .locator("li")
+      .first();
+    await expect(row.locator(".ah-file-shelf-actions")).toHaveCSS(
+      "opacity",
+      "1",
+    );
+    const name = await row.locator(".ah-file-shelf-name").boundingBox();
+    const size = await row.locator(".ah-file-shelf-size").boundingBox();
+    expect(name && size && size.y > name.y).toBe(true);
+    const rowOverflow = await shelf.evaluate(
+      (el) => el.scrollWidth - el.clientWidth,
+    );
+    expect(rowOverflow).toBeLessThanOrEqual(0);
+    if (capture) {
+      await page.screenshot({
+        path: `${shelfEvidence}/leijuva-phone-light.png`,
+      });
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.waitForTimeout(500);
+      await page.screenshot({
+        path: `${shelfEvidence}/leijuva-phone-dark.png`,
+      });
+      await page.emulateMedia({ colorScheme: "light" });
+    }
+    await row.getByTestId("file-shelf-row").click();
+    await expect(page.getByTestId("attachment-preview")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("attachment-preview")).toHaveCount(0);
     await page.getByTestId("close-file-shelf").click();
     await expect(shelf).toHaveCount(0);
 
@@ -297,5 +382,15 @@ test.describe("phone", () => {
     await expect(page.getByTestId("resize-view")).not.toBeVisible();
     await page.getByTestId("close-file-shelf").click();
     await expect(page.getByTestId("message-input")).toBeVisible();
+
+    // Opened from an older offer's card, the panel scrolls to that offer.
+    await offer(page, id, "folder");
+    await expect(page.getByTestId("toggle-file-shelf")).toContainText("11");
+    await card(page, folder).getByTestId("file-offer-show-files").click();
+    await expect(
+      shelf.locator(
+        `[data-testid="file-shelf-offer"][data-offer-id="${folder}"] h3`,
+      ),
+    ).toBeInViewport();
   });
 });

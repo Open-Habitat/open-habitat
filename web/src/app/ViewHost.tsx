@@ -71,7 +71,8 @@ const GuideContext = createContext<GuideControls | null>(null);
 
 type Shelf = {
   conversationId: string;
-  selected?: { offerId: string; path?: string };
+  /** The offer the panel was opened at from its card. */
+  offerId?: string;
   opener: HTMLElement | null;
 };
 
@@ -232,7 +233,7 @@ export function ViewHost({
       setShelf({
         conversationId,
         opener,
-        selected: offerId ? { offerId } : undefined,
+        offerId,
       });
       refreshOffers(conversationId);
     },
@@ -248,7 +249,7 @@ export function ViewHost({
   }, []);
 
   // The panel's title takes focus when a view or the file panel opens, not
-  // when a file is chosen in the panel.
+  // when the open file panel is sent to another offer of its conversation.
   const shelfFor = shelf?.conversationId;
   useEffect(() => {
     if (opened || shelfFor) title.current?.focus();
@@ -366,7 +367,6 @@ export function ViewHost({
                 <ShelfPanel
                   shelf={shelf}
                   titleRef={title}
-                  onSelect={(selected) => setShelf({ ...shelf, selected })}
                   onClose={closeShelf}
                 />
               ) : guideShown ? (
@@ -430,39 +430,21 @@ function FileOfferEntry({ offer }: { offer: FileOfferSummary }) {
 function ShelfPanel({
   shelf,
   titleRef,
-  onSelect,
   onClose,
 }: {
   shelf: Shelf;
   titleRef: React.Ref<HTMLHeadingElement>;
-  onSelect: (selected: { offerId: string; path: string }) => void;
   onClose: () => void;
 }) {
   const list = useConversationOffers(shelf.conversationId);
   const offers = Array.isArray(list) ? list : [];
   const states = useFileOffers(offers.map((o) => o.offer_id));
-  // Opened from a card, the panel shows that offer's first file.
-  const first =
-    shelf.selected && !shelf.selected.path ? shelf.selected : undefined;
-  const firstIndex = first
-    ? offers.findIndex((o) => o.offer_id === first.offerId)
-    : -1;
-  const firstState = firstIndex >= 0 ? states[firstIndex] : undefined;
-  const firstPath =
-    firstState?.state === "ready"
-      ? firstState.manifest.items[0]?.path
-      : undefined;
-  useEffect(() => {
-    if (first && firstPath)
-      onSelect({ offerId: first.offerId, path: firstPath });
-  }, [first, firstPath, onSelect]);
   return (
     <FileShelf
       offers={offers.map((offer, i) => ({ offer, state: states[i] }))}
       unavailable={list === "unavailable"}
-      selected={shelf.selected}
+      scrollTo={shelf.offerId}
       titleRef={titleRef}
-      onSelect={onSelect}
       onClose={onClose}
     />
   );

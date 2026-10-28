@@ -96,10 +96,13 @@
   object-fit: contain;
 }
 .ah-file-offer-image:focus-visible,
-.ah-file-offer-strip button:focus-visible,
-.ah-file-shelf-row:focus-visible {
+.ah-file-offer-strip button:focus-visible {
   outline: var(--ah-focus-width) solid var(--ah-accent);
   outline-offset: 2px;
+}
+.ah-file-shelf-row:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-accent);
+  outline-offset: -2px;
 }
 .ah-file-offer-actions {
   display: flex;
@@ -218,19 +221,6 @@
   font: inherit;
   outline: none;
 }
-.ah-file-shelf-detail {
-  display: grid;
-  justify-items: start;
-  gap: var(--ah-s1);
-  padding-bottom: var(--ah-s4);
-  border-bottom: 1px solid var(--ah-line);
-}
-.ah-file-shelf-detail .ah-file-offer-image {
-  justify-self: stretch;
-  display: grid;
-  place-items: center;
-  margin-top: 0;
-}
 .ah-file-shelf-offer {
   display: grid;
   gap: var(--ah-s2);
@@ -278,34 +268,42 @@
 .ah-file-shelf-folder + ul {
   padding-left: var(--ah-s3);
 }
+/* A row opens its file's preview. Its own preview and download buttons take
+   the size's place while the pointer or the keyboard focus is on the row;
+   a click leaves no selection behind, so focus alone draws no background. */
+.ah-file-shelf-item {
+  position: relative;
+  border-radius: var(--ah-r-md);
+}
+.ah-file-shelf-item:hover {
+  background: var(--ah-surface-hover);
+}
 .ah-file-shelf-row {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr);
   align-items: center;
   gap: var(--ah-s3);
   width: 100%;
   min-height: 40px;
-  padding: var(--ah-s1) var(--ah-s2);
-  border: 1px solid transparent;
+  padding: var(--ah-s1) calc(var(--ah-control-row) * 2 + var(--ah-s3))
+    var(--ah-s1) var(--ah-s2);
+  border: 0;
   border-radius: var(--ah-r-md);
   background: transparent;
   color: var(--ah-ink);
   font: inherit;
   text-align: left;
-  cursor: pointer;
-}
-.ah-file-shelf-row:hover {
-  background: var(--ah-surface-hover);
-}
-.ah-file-shelf-row[aria-current="true"] {
-  border-color: var(--ah-line-strong);
-  background: var(--ah-surface);
+  cursor: zoom-in;
 }
 .ah-file-shelf-thumb {
   width: 40px;
   height: 30px;
   border-radius: var(--ah-r-sm);
   object-fit: cover;
+}
+.ah-file-shelf-text {
+  display: grid;
+  min-width: 0;
 }
 .ah-file-shelf-name {
   min-width: 0;
@@ -315,9 +313,54 @@
   white-space: nowrap;
 }
 .ah-file-shelf-size {
+  position: absolute;
+  top: 50%;
+  right: var(--ah-s3);
+  transform: translateY(-50%);
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
   font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.ah-file-shelf-actions {
+  position: absolute;
+  top: 50%;
+  right: var(--ah-s1);
+  display: flex;
+  align-items: center;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+}
+.ah-file-shelf-gap {
+  width: var(--ah-control-row);
+}
+.ah-file-shelf-item:hover .ah-file-shelf-actions,
+.ah-file-shelf-item:has(:focus-visible) .ah-file-shelf-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+.ah-file-shelf-item:hover .ah-file-shelf-size,
+.ah-file-shelf-item:has(:focus-visible) .ah-file-shelf-size {
+  opacity: 0;
+}
+/* Touch has no hover, and a phone has no room to wait for one: the buttons
+   are always there and the size moves under the name. */
+@media (hover: none), (max-width: 800px) {
+  .ah-file-shelf-row {
+    min-height: 48px;
+  }
+  .ah-file-shelf-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .ah-file-shelf-size,
+  .ah-file-shelf-item:hover .ah-file-shelf-size,
+  .ah-file-shelf-item:has(:focus-visible) .ah-file-shelf-size {
+    position: static;
+    transform: none;
+    opacity: 1;
+  }
 }
 
 /* The preview dialog's offered kinds. */

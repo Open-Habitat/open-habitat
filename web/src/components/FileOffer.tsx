@@ -2,7 +2,9 @@ import "./FileOffer.css";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type Ref,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -448,21 +450,22 @@ export function FileOfferCard({
 export type ShelfOffer = { offer: FileOfferSummary; state: OfferState };
 
 /** The conversation's file panel (Hylly): every offer of the conversation,
- * newest first and by folder, a search across them, and the selected file's
- * preview, facts and download. */
+ * newest first and by folder, and a search across them. A row opens its
+ * file's preview; its own preview and download buttons show on hover and
+ * focus, and always on touch (prototype round proto-folder-offer-file-rows,
+ * direction Leijuva). */
 export function FileShelf({
   offers,
   unavailable,
-  selected,
+  scrollTo,
   titleRef,
-  onSelect,
   onClose,
 }: {
   offers: ShelfOffer[];
   unavailable?: boolean;
-  selected?: { offerId: string; path?: string };
+  /** The offer the panel was opened at from its card. */
+  scrollTo?: string;
   titleRef?: Ref<HTMLHeadingElement>;
-  onSelect: (selection: { offerId: string; path: string }) => void;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -472,15 +475,23 @@ export function FileShelf({
   } | null>(null);
   const total = offers.reduce((n, o) => n + o.offer.files, 0);
   const needle = query.trim().toLocaleLowerCase("fi-FI");
-  const chosen = useMemo(() => {
-    if (!selected?.path) return undefined;
-    const offer = offers.find((o) => o.offer.offer_id === selected.offerId);
-    const item =
-      offer?.state.state === "ready"
-        ? offer.state.manifest.items.find((i) => i.path === selected.path)
-        : undefined;
-    return offer && item ? { offer: offer.offer, item } : undefined;
-  }, [offers, selected]);
+  // Opened from a card, the panel brings that offer into view once, after
+  // the offers above it have their rows; the newest is already at the top.
+  const scroll = useRef<HTMLDivElement>(null);
+  const scrolled = useRef<string>(undefined);
+  const listed = offers.some((o) => o.offer.offer_id === scrollTo);
+  const settled = offers.every((o) => o.state.state !== "loading");
+  useEffect(() => {
+    if (!scrollTo || !listed || !settled || scrolled.current === scrollTo)
+      return;
+    scrolled.current = scrollTo;
+    const section = [
+      ...(scroll.current?.querySelectorAll<HTMLElement>(
+        "[data-testid='file-shelf-offer']",
+      ) ?? []),
+    ].find((el) => el.dataset.offerId === scrollTo);
+    section?.scrollIntoView({ block: "start" });
+  }, [scrollTo, listed, settled]);
   const keyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (event.key === "Escape" && !previewing) {
       event.preventDefault();
@@ -515,7 +526,7 @@ export function FileShelf({
           </ControlButton>
         </span>
       </header>
-      <div className="ah-file-shelf-scroll">
+      <div className="ah-file-shelf-scroll" ref={scroll}>
         <label className="ah-file-shelf-search">
           <Icon name="search" />
           <input
@@ -527,71 +538,6 @@ export function FileShelf({
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
-        {chosen ? (
-          <div className="ah-file-shelf-detail" data-testid="file-shelf-detail">
-            {chosen.item.kind === "image" || chosen.item.kind === "svg" ? (
-              <button
-                type="button"
-                className="ah-file-offer-image"
-                aria-label={`Näytä isona: ${baseName(chosen.item.path)}`}
-                onClick={() =>
-                  setPreviewing({
-                    offerId: chosen.offer.offer_id,
-                    item: chosen.item,
-                  })
-                }
-              >
-                <img
-                  src={inlineURL(chosen.offer.offer_id, chosen.item.path)}
-                  alt=""
-                  decoding="async"
-                />
-              </button>
-            ) : (
-              <KindMark kind={chosen.item.kind} />
-            )}
-            <strong className="ah-file-offer-name">
-              {baseName(chosen.item.path)}
-            </strong>
-            {folderOf(chosen.item.path) || chosen.offer.folder ? (
-              <span className="ah-file-offer-meta ah-file-offer-folder">
-                {[chosen.offer.folder, folderOf(chosen.item.path)]
-                  .filter(Boolean)
-                  .join("/")}
-                /
-              </span>
-            ) : null}
-            <span className="ah-file-offer-meta">
-              {fileFacts(chosen.item).join(" · ")}
-            </span>
-            <span className="ah-file-offer-meta">
-              Tarjottu klo {time(chosen.offer.created_at)} · Vain sinulle
-            </span>
-            <span className="ah-file-offer-actions">
-              <DownloadLink
-                testId="file-shelf-download"
-                href={downloadURL(chosen.offer.offer_id, chosen.item.path)}
-                name={baseName(chosen.item.path)}
-              />
-              {kinds[chosen.item.kind].action ? (
-                <ControlButton
-                  size="row"
-                  data-testid="file-shelf-preview"
-                  onPress={() =>
-                    setPreviewing({
-                      offerId: chosen.offer.offer_id,
-                      item: chosen.item,
-                    })
-                  }
-                >
-                  {chosen.item.kind === "image" || chosen.item.kind === "svg"
-                    ? "Avaa isona"
-                    : kinds[chosen.item.kind].action}
-                </ControlButton>
-              ) : null}
-            </span>
-          </div>
-        ) : null}
         {unavailable ? (
           <p className="ah-file-offer-meta" role="status">
             Tiedostoja ei saatu juuri nyt.
@@ -664,36 +610,61 @@ export function FileShelf({
                   ) : null}
                   <ul>
                     {list.map((item) => {
-                      const current =
-                        selected?.offerId === offer.offer_id &&
-                        selected.path === item.path;
+                      const name = baseName(item.path);
+                      const action = kinds[item.kind].action;
+                      const open = () =>
+                        setPreviewing({ offerId: offer.offer_id, item });
                       return (
-                        <li key={item.path}>
+                        <li key={item.path} className="ah-file-shelf-item">
                           <button
                             type="button"
                             className="ah-file-shelf-row"
                             data-testid="file-shelf-row"
                             data-path={item.path}
-                            aria-current={current ? "true" : undefined}
-                            onClick={() =>
-                              onSelect({
-                                offerId: offer.offer_id,
-                                path: item.path,
-                              })
-                            }
+                            onClick={open}
                           >
                             <Thumb
                               offerId={offer.offer_id}
                               item={item}
                               className="ah-file-shelf-thumb"
                             />
-                            <span className="ah-file-shelf-name">
-                              {baseName(item.path)}
-                            </span>
-                            <span className="ah-file-shelf-size">
-                              {formatOfferSize(item.bytes)}
+                            <span className="ah-file-shelf-text">
+                              <span className="ah-file-shelf-name">{name}</span>
+                              <span className="ah-file-shelf-size">
+                                {formatOfferSize(item.bytes)}
+                              </span>
                             </span>
                           </button>
+                          <span className="ah-file-shelf-actions">
+                            {action ? (
+                              <ControlButton
+                                size="row"
+                                variant="quiet"
+                                data-testid="file-shelf-preview"
+                                aria-label={`${action}: ${name}`}
+                                title={action}
+                                onPress={open}
+                              >
+                                <Icon name="eye" />
+                              </ControlButton>
+                            ) : (
+                              <span className="ah-file-shelf-gap" />
+                            )}
+                            <a
+                              data-testid="file-shelf-download"
+                              className={controlClassName({
+                                variant: "quiet",
+                                size: "row",
+                                presentation: "icon",
+                              })}
+                              href={downloadURL(offer.offer_id, item.path)}
+                              download={name}
+                              aria-label={`Lataa: ${name}`}
+                              title="Lataa"
+                            >
+                              <Icon name="download" />
+                            </a>
+                          </span>
                         </li>
                       );
                     })}
