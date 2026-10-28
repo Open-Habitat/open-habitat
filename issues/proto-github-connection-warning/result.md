@@ -1,170 +1,184 @@
 # Tulos: rikkinäinen GitHub-yhteys
 
-Prototyyppi on `prototypes/github-connection/index.html`, yksi offline-HTML.
-Se on käsin kirjoitettu sivu
-(`design-system/prototypes/rounds/2026-10-28-github-yhteys/page.html`), jonka
-`build.mjs` täydentää tokeneilla, upotetuilla fonteilla ja yhteisellä
-valitsimella (`lib/picker.*`). Tuotantokomponenttien bundlea ei käytetä, koska
-sellainen jää Habitatin näkymissä tyhjäksi. Opas on
-`prototypes/github-connection/NOTES.md`. Kuvat ovat `evidence/`-hakemistossa
-laitteen skaalauksella 2. `verify.mjs` tarkistaa 80 sijoittelutapausta:
-4 suuntaa × 4 näkymää × 5 syytä. Lisäksi se klikkaa vuorovaikutukset läpi:
-kirjoitetun nimen lisäys, Myöhemmin, sivupalkin rivi ja uudelleen yhdistäminen.
-Konsolivirheitä tai verkkopyyntöjä ei tullut, ja valitsin läpäisee
-`picker-check`in.
+Kierroksen 2 prototyyppi on `prototypes/github-connection-2/index.html`, yksi
+käsin kirjoitettu offline-HTML. Lähde on
+`design-system/prototypes/rounds/2026-10-28-github-yhteys-2/page.html`, ja
+`build.mjs` täydentää sen tokeneilla, upotetuilla fonteilla ja yhteisellä
+valitsimella (`lib/picker.*`). Opas Jarille on
+`prototypes/github-connection-2/NOTES.md`, ja kuvat ovat
+`prototypes/github-connection-2/evidence/`-hakemistossa (AVIF, laitteen skaalaus 2).
 
-Nykytila on luettu koodista. Labia ei ajettu: kaikki varoitukset ovat
-komponenttien tekstejä, ja niiden ehdot ovat tässä luetuissa tiedostoissa.
+`verify.mjs` tarkistaa seuraavat:
 
-## Missä GitHub-yhteyttä tarvitaan ja mitä näkyy nyt
+- **78 sijoittelutapausta**: 4 suuntaa × 3 näkymää × 6 tilannetta
+  asettuneessa tilassa, ja lisäksi palvelimen yrityksen aikaiset tilat.
+- **Elävät tapahtumat**: pitkä katko asettuu varoitukseksi ja poistuu, kun
+  GitHub palaa. Lyhyt katko pysyy suunnassa 1 hiljaa.
+- **Uudelleen yhdistäminen** kaikista kolmesta paikasta ja organisaation
+  hyväksyntäpyyntö.
+- **Valitsin** läpäisee `picker-check`in.
+- **Konsolivirheitä tai verkkopyyntöjä** ei tullut.
 
-| Kohta | Mitä tarvitsee | Mitä näkyy nyt, kun yhteys puuttuu tai on rikki |
-|---|---|---|
-| Uusi työtila, repolista (`NewWorkspacePage` → `RepoFinder`) | `GET …/github/repos` (daemon: `gh api /user` ja `/user/repos`) | "Repolistaa ei saatu GitHubista. Voit silti kirjoittaa repon nimen muodossa omistaja/repo." (`ClonePage.tsx:195`). Syytä ei näy, vaikka selain saa 409 `github_auth_unavailable` → `GitHubError("auth")`, koska `catch` heittää koodin pois (`NewWorkspacePage.tsx:211`). |
-| Uusi työtila, kirjoitettu omistaja/repo | `GET …/github/repository` (sama `/user`-tarkistus ensin) | "GitHubiin ei saatu yhteyttä. Yritä hetken päästä uudelleen." (`ClonePage.tsx:244`). Sama teksti tulee myös, kun tunnus on vanhentunut, eli "yritä hetken päästä" johtaa harhaan. |
-| Uusi työtila, Kloonaa | `POST …/github/clones` | Aloitus hylätään (409 `github_auth_unavailable`, `github_jobs_linux.go:390`): "GitHub-tunnukset eivät ole käytettävissä. Yhdistä GitHub kohdassa Asetukset › Koodipalvelut." Pelkkä teksti ilman linkkiä. Kesken mennyt klooni kertoo syyn `auth_refused`. |
-| Asetukset › Käyttöönotto › Lisää oletusrepo (`OnboardingAdministration`) | ylläpitäjän oma repolista ja haku | Sama `RepoFinder`-teksti kuin yllä, eikä valittavaa ole (bugi alla). |
-| Asetukset › Käyttöönotto, oletusrepojen tiedot | ylläpitäjän repolista | Ei mitään: `.catch(() => {})` (`OnboardingAdministration.tsx:262`), jolloin tiedot vain puuttuvat. |
-| Ensimmäinen kirjautuminen, repovalitsin (`GitHubOnboarding` → `GitHubRepoChooser`) | repolista | Erottaa syyt `no-auth` ("GitHub-kirjautuminen puuttuu") ja `unavailable` ("Repoja ei voitu hakea"). Korjausnappia ei ole. |
-| Asetukset › Koodipalvelut, GitHub-rivi (`CodeHostSettings`) | snapshotin `auth.native_github.state` | Tila ja kuvaus jokaiselle tilalle (Yhdistetty, Ei yhdistetty, Vanhentunut, Osittainen, Tilaa ei tiedetä). Painike on Yhdistä uudelleen, ja GitHub-työtiloissa lukee "Push ei onnistu…". Tämä on ainoa paikka, jossa syy näkyy nyt. |
-| Työtila › Julkaise GitHubiin (`WorkspaceGitHub`) | gh ja git push | `github_auth_unavailable`: "Paikallinen GitHub-valtuutus ei vastaa tätä käyttäjää." Korjausta ei tarjota. |
-| Työtila › Päivitä tila / Hae etärepo | git fetch käyttäjän tunnuksilla | `remote_auth_unavailable`: "…etärepo vaati kirjautumisen, eikä Git löytänyt tunnuksia palvelimelta." |
-| Agentit keskustelussa ja worktree-agentit | gh ja git push agentin omina komentoina | Host ei näytä mitään. Virhe näkyy vain agentin työkalutulosteessa. |
-| Bannerit (`ConnectionBanner`, `NewVersionBanner`, `StoragePressureNotice`) | – | GitHub-tilalle ei ole banneria. |
+Kierros 1 (`prototypes/github-connection/`) jää vertailuksi.
 
-Palvelimen pääsylista (ylläpitäjä lisää henkilön GitHub-tunnuksella) käyttää
-gatewayn OAuth-sovellusta eikä henkilön yhteyttä
-(`internal/gateway/github.go:195`), joten se ei kuulu tähän.
+Tuotantokoodia ei muutettu. Nykytila on luettu koodista. Labia tai oikeaa
+GitHubia ei ajettu, joten alla oleva GitHubin käytös on merkitty
+dokumentoiduksi silloin, kun sitä ei kokeiltu.
 
-## Mitä host osaa erottaa (host-tiedot)
+## Jarin kysymys: tarvitaanko painallusta?
 
-| Syy | Tunnistaako host nyt? | Mistä |
-|---|---|---|
-| Ei yhdistetty (gh:lla ei ole github.com-kirjautumista) | **Kyllä**: `native_github.state = disconnected` | `nativegh` `classify`: gh:n oma "not logged in" -viesti (`native.go:256`, `:531`) |
-| Gh:ssa on eri GitHub-tilin kirjautuminen | Kyllä, mutta sama `disconnected` | `foreign` yhdistyy `disconnected`iin (`native.go:531`) |
-| Tunnus vanhentunut tai peruttu | **Kyllä**: `expired`. Vanhentunutta ja peruttua ei voi erottaa, koska GitHub vastaa molempiin "Bad credentials (HTTP 401)". | `rejectedDiagnostic` (`native.go:127`) |
-| Git-tunnusapu puuttuu (gh toimii, git push ei) | Kyllä: `partial` | `checkStatus` (`native.go:544`) |
-| **GitHub ei vastaa** (verkko, GitHubin katko) | **Ei**: `unknown`, sama arvo kuin lukitulla avainnipulla, kesken olevalla muutoksella ja oudolla gh-tulosteella | `classify` palauttaa `unclassified` (`native.go:266`) |
-| **Organisaatio estää OAuth-sovelluksen** (OAuth App access restrictions tai SAML SSO) | **Ei**. Repolista jättää organisaation repot pois hiljaa, haku muuttaa 403:n `not_found`iksi (`github_repos_linux.go:353`), ja klooni kaatuu syyllä `auth_refused` tai `source_unavailable`. | – |
-| Repolistan epäonnistumisen syy | Osittain. 409 `github_auth_unavailable` tulee mistä tahansa `/user`-virheestä, myös verkkovirheestä (`github_repos_linux.go:215`). 503 `native_source_unavailable` tulee sivutuksen virheestä. | |
-| Kirjautunut tunnus (`native_github.login`) | Skeemassa on, mutta daemon ei lähetä sitä (`snapshot_linux.go:600`), joten "Kirjautunut käyttäjänä …" ei näy Koodipalveluissa koskaan. Repolista kertoo tunnuksen (`login`). | |
-| Milloin tila päivittyy | Snapshot luetaan minuutin välein ja kun välilehti palaa näkyviin (`App.tsx:566`, `:461`). Daemon muistaa tiedostopohjaisen tunnuksen tilan enintään 5 minuuttia ja `unknown`in 30 sekuntia. Paikallinen tunnusmuutos, kuten uudelleen yhdistäminen, havaitaan heti (`native.go:301`–`356`). | |
+Vain silloin, kun korjaus vaatii ihmisen päätöksen tai kirjautumisen
+GitHubissa. Alla syy kerrallaan, mitä host voi tehdä itse ja mistä se nyt
+tunnistaa syyn.
 
-## Bugi: miksi kirjoitettu omistaja/repo ei kelvannut
+| Syy | Voiko host korjata itse? | Miten tunnistetaan nyt | Mitä puuttuu |
+|---|---|---|---|
+| **GitHubin tilapäinen katko** (verkko, GitHubin 5xx, aikakatkaisu) | **Kyllä: odottaa ja yrittää uudelleen.** Tunnus on kunnossa, joten ihmisen ei tarvitse tehdä mitään. | Daemon kysyy `gh api user` neljän sekunnin aikarajalla (`internal/nativegh/native.go:33`, `classify` `:256`). Mikä tahansa muu kuin GitHubin oma "Bad credentials" -vastaus jää luokittelematta, ja tila on `unknown` (`:535`). Tila `unknown` tarkistetaan uudelleen 30 sekunnin välein, `observedUnknownRecheck` (`:311`), joten katkon päätyttyä tila palaa itsestään. Selain lukee snapshotin minuutin välein ja kun välilehti palaa näkyviin (`web/src/app/App.tsx:566`, `:461`). | **Katkoa ei eroteta** muista `unknown`-tapauksista, kuten lukitusta avainnipusta tai kesken olevasta muutoksesta. Tarvitaan oma tila (esimerkiksi `unreachable`), jonka gh:n verkkovirheviesti tai HTTP 5xx tuottaa. Lisäksi tarvitaan tieto siitä, mistä hetkestä tila on jatkunut, jotta varoitus voidaan näyttää vasta kahden minuutin jälkeen. Repolistan 409 `github_auth_unavailable` (`internal/daemon/github_repos_linux.go:215`, `:317`) tulee myös verkkovirheestä, joten se pitää jakaa kahtia. |
+| **Vanhentunut tunnus** (8 tunnin tunnukset) | **Ei.** Gateway saa uusimistunnuksen, mutta heittää sen pois tarkoituksella (`internal/gateway/github.go:45`). Gh ei osaa uusia toisen sovelluksen tunnusta, ja jos Habitat säilyttäisi ja uusisi tunnuksia, se olisi oma valtuutusvälittäjä. Juuren `AGENTS.md` kieltää sellaisen. Oikea korjaus on ylläpitäjän: OAuth-sovelluksen asetuksista kytketään vanhenevat tunnukset pois (`docs/operations.md:73`). Gateway kirjaa vanhenevan tunnuksen `github_token_expiring`-varoituksena (`internal/gateway/auth.go:698`). | GitHub vastaa vanhentuneeseen tunnukseen "Bad credentials (HTTP 401)" (`rejectedDiagnostic`, `native.go:127`), jolloin tila on `expired` (`:529`). Tiedostoon tallennettu tunnus tarkistetaan uudelleen viiden minuutin välein, `observedRecheck` (`:310`), avainnipun tunnus joka kerta. Vanheneminen näkyy siis enintään noin kuuden minuutin viiveellä. | Ei mitään hostin korjaukseen. Ehdotus: henkilö ei voi korjata ylläpitäjän asetusta, joten ylläpitäjälle näytetään oma vihje silloin, kun gateway näkee vanhenevia tunnuksia. Tätä ei ole prototyypissä. |
+| **Tunnus peruttu** (henkilö poisti tunnuksen tai sovelluksen GitHubissa) | **Ei ilman ihmistä**, mutta korjaus on yksi painallus: `/auth/github/start?return_to=…&reconnect=1`. GitHub ohittaa hyväksyntäsivun, jos sovellus on yhä hyväksytty samoilla oikeuksilla ja henkilö on kirjautunut GitHubiin (GitHubin OAuth-ohjeen mukaan; ei kokeiltu tällä kierroksella). Jos sovellus on peruttu, GitHub kysyy luvan uudelleen. **Myös tavallinen kirjautuminen** korvaa tunnuksen, jonka GitHub hylkää (`Install`, `case kind == revoked`, `native.go:747`). Uusi kirjautuminen millä tahansa laitteella korjaa siis tilanteen itsestään. Istunto kestää kuitenkin 90 päivää (`internal/gateway/session_store.go:16`), joten tähän ei voi luottaa. | Sama 401 ja `expired` kuin vanhentuneessa. Perutun ja vanhentuneen erottaminen vaatisi tunnuksen, eikä GitHub erottele niitä vastauksessaan. | Ei mitään. Automaattinen siirtyminen GitHubiin ilman painallusta olisi mahdollinen, mutta sitä ei suositella (päätös alla). |
+| **Ei yhdistetty** (ei kirjautumista tai eri tili gh:ssa) | **Ei.** Valinta kuuluu henkilölle. Hän voi myös olla katkaissut yhteyden tarkoituksella. | Gh:n oma "not logged in" -viesti tuottaa tilan `disconnected` (`absentDiagnostic`, `native.go:119`). Myös vieras tili tuottaa `disconnected`in (`:531`). | Ei mitään. |
+| **Organisaatio estää** (OAuth App access restrictions tai SAML SSO) | **Ei.** OAuth-rajoituksessa organisaation omistajan pitää hyväksyä sovellus, ja GitHubin hyväksyntäpyyntö ilmoittaa hänelle. SAML SSO:ssa henkilö voi itse kirjautua organisaation SSO:hon ja yhdistää uudelleen. | **Ei tunnisteta.** Repohaku muuttaa 403:n `not_found`iksi (`github_repos_linux.go:353`), repolista jättää organisaation repot pois hiljaa, ja agentin gh tai git kaatuu ilman hostin selitystä. | 403:n viestin tunnistus kuten "organization has enabled OAuth App access restrictions" ja "Resource protected by organization SAML enforcement", sekä GitHubin `X-GitHub-SSO`-otsake (GitHubin dokumentoima, ei kokeiltu). Tieto annetaan organisaatiokohtaisena, ja sen voi liittää työtilaan sen `git_summary.github_repo`-omistajan perusteella. |
+| **Git-tunnusapu puuttuu** (`partial`) | **Mahdollisesti**: `gh auth setup-git` korjaisi sen. Se kuitenkin muuttaa henkilön `~/.gitconfig`ia, jossa voi olla tarkoituksella toinen apu. | `observeWithLogin` (`native.go:662`). | Ei kuulu tähän kierrokseen. Ehdotus: painike "Korjaa Git-asetus" Koodipalveluissa, ei hiljaista korjausta. |
 
-Hakulistan rivit ovat linkkejä. Kirjoitettu tarkka nimi muuttuu riviksi vasta,
-kun haku `GET /api/v1/onboarding/github/repository` vastaa `found`. Daemonin
-haku tekee ensin saman `boundGitHubUser`-tarkistuksen samoilla gh-tunnuksilla
-kuin repolista (`github_repos_linux.go:317`). Jos lista epäonnistui yhteyden
-takia, haku epäonnistuu siis samasta syystä. Selain tekee jokaisesta
-virheestä tilan `failed`, ja `RepoFinder` näyttää "GitHubiin ei saatu
-yhteyttä", eikä valittavaa ole. Vihje "Voit silti kirjoittaa repon nimen" toimii
-vain, kun lista kaatui muusta syystä (503 sivutuksessa). Tämä on vika,
-koska tallennus ei tarvitse GitHubia: gateway tarkistaa vain nimen muodon
-(`internal/gateway/onboarding.go:111`), ja pääsy tarkistetaan jokaisen uuden
-henkilön kirjautumisessa. Kirjattu erilliseksi bugiksi
-`typed-repo-unselectable-without-github` (intake, ajoittamaton). Uusi työtila
--sivulla vika on vain sanamuodossa, koska kloonaus tarvitsee yhteyden
-joka tapauksessa.
+Agentin oma `git push` keskustelussa ei odota hostin tarkistusta. Se
+epäonnistuu heti, ja hostin tila päivittyy vasta seuraavassa tarkistuksessa,
+tiedostotunnuksella enintään viiden minuutin kuluttua. Viivettä lyhentäisi,
+jos daemon tunnistaisi agentin epäonnistuneen bash-tuloksen gitin
+kirjautumisvirheeksi ja tekisi siitä heti uuden tarkistuksen. Tunnistuksen
+sääntö on jo olemassa (`gitAuthRefusal`,
+`internal/daemon/github_stream_linux.go:118`), samoin malli tulosteesta
+tehdystä esitysvihjeestä (`parseBashFailure`,
+`internal/daemon/bash_failure_linux.go:22`). Vihje käynnistäisi vain
+tarkistuksen. Itse todisteena sitä ei käytettäisi.
 
-## Akseli: kuinka paljon varoitus näkyy muualla kuin tarvekohdassa
+## Missä GitHubia tarvitaan (kierroksen 1 kartoitus tiivistettynä)
 
-Kaikissa kolmessa suunnassa tarvekohdat ovat samat. Repolista, kirjoitetun
-nimen haku, Kloonaa ja Lisää oletusrepo näyttävät syyn omana ilmoituksenaan ja
-tarjoavat sen korjauksen:
+Repolista ja kirjoitetun nimen haku (`NewWorkspacePage` → `RepoFinder`),
+Kloonaa, Asetukset › Käyttöönotto › Lisää oletusrepo, ensimmäisen
+kirjautumisen repovalitsin, Koodipalvelut, Julkaise GitHubiin sekä agenttien
+gh ja git push. Nyt syy näkyy vain Koodipalveluissa (`CodeHostSettings`).
+Keskustelussa host ei näytä mitään, eikä GitHub-tilalle ole banneria.
+Kirjoitetun omistaja/repo-nimen vika on kirjattu erilliseksi bugiksi
+`typed-repo-unselectable-without-github`.
 
-- **Ei yhdistetty**: Yhdistä GitHub.
-- **Vanhentunut**: Yhdistä uudelleen. Molemmat menevät osoitteeseen
-  `/auth/github/start?return_to=<tämä sivu>&reconnect=1` ja palaavat samalle
-  sivulle.
-- **GitHub ei vastaa**: Yritä uudelleen. Uudelleen yhdistämistä ei tarjota,
-  koska se ei auttaisi.
-- **Organisaatio estää**: Pyydä hyväksyntää GitHubissa (GitHubin sivu, jolla
-  sovellukselle pyydetään organisaation hyväksyntää).
+## Akseli: missä varoitus on keskustelussa ja miten palvelimen oma yritys näkyy
 
-Lisää oletusrepo -ikkunassa kirjoitetun nimen voi lisätä **tarkistamatta**
-(merkintä "ei tarkistettu"). Korjauksen jälkeen näkyy hetken "GitHub yhdistetty
-käyttäjänä …", varoitukset poistuvat ja lista tulee näkyviin. Banneri tai rivi
-näkyy vain, kun korjaus on henkilön omissa käsissä (Ei yhdistetty tai
-Vanhentunut). GitHubin katko ja organisaation esto näkyvät vain kohdassa,
-johon ne vaikuttavat.
+Kaikissa suunnissa palvelin yrittää ensin itse ja varoittaa vasta sitten.
+Yritys tehdään näin:
+
+- **Katko**: uudet yritykset 0, 30, 60 ja 120 sekunnin kohdalla. Sen jälkeen
+  näytetään varoitus, ja tarkistus jatkuu 30 sekunnin välein.
+- **401**: yksi lisätarkistus 10 sekunnin kuluttua.
+- **Ei yhdistetty ja organisaation esto**: varoitus heti, koska nämä ovat
+  varmoja tietoja.
+
+Varoitus on yleinen. Se näkyy keskustelussa ja sovelluksen yläreunassa
+muissa näkymissä, ja se poistuu itsestään, kun tila korjaantuu. Pitkän katkon
+varoituksessa ei ole korjausnappia, koska ihmisen ei tarvitse tehdä mitään,
+mutta siinä on Tarkista nyt. Organisaation esto näkyy vain kyseisen
+organisaation työtiloissa.
 
 | # | Suunta | Mitä se päättää | Milloin oikea | Mitä se maksaa |
 |---|---|---|---|---|
-| 1 | **Aina näkyvä** | Koko sovelluksen yläreunassa on banneri (`ConnectionBanner`in paikka ja muoto). Vanhentunut on punainen, Ei yhdistetty neutraali. Painikkeet ovat korjaus ja Asetukset › Koodipalvelut. Banneria ei voi sulkea, vaan se poistuu, kun seuraava snapshot kertoo yhteyden toimivan. | Kun GitHub on työn ydin kaikille, eikä kukaan tee pelkkää paikallista työtä. | Tarvekohdissa sama asia näkyy kahdesti (banneri ja ilmoitus). Henkilö, joka on tarkoituksella katkaissut yhteyden (Katkaise paikallinen GitHub-yhteys), näkee bannerin aina. |
-| 2 | **Väistyvä** | Sama banneri ja lisäksi Myöhemmin. Sen jälkeen varoitus pienenee sivupalkin alareunaan riviksi "GitHub-yhteys vanhentunut · Korjaa", ja puhelimessa valikkonappiin tulee piste. Banneri palaa seuraavassa istunnossa (sessionStorage, ei palvelinta). Asetuksissa Koodipalveluiden vieressä on piste. | Kun varoituksen pitää tavoittaa jokainen kerran, mutta paikallinen työ ei saa jäädä sen alle. | Kaksi esitystapaa samalle tilalle. Sivupalkin rivi vie korkeutta pienellä näytöllä. Suljettu banneri palaa uudessa välilehdessä. |
-| 3 | **Vain tarvittaessa** | Banneria ei ole. Sivupalkin alareunassa on koko ajan hiljainen rivi (puhelimessa valikkonapin piste), ja kokonaisuudessaan varoitus näkyy vasta tarvekohdassa. | Kun suurin osa käytöstä on keskustelua agentin kanssa ja GitHub tarvitaan harvoin. | Agentin epäonnistunut push keskustelussa ei saa vierelleen selitystä. Sivupalkin rivi jää helposti huomaamatta. Jarin tapaus olisi näkynyt vasta oletusrepo-ikkunassa (nyt oikein selitettynä). |
+| 1 | **Hiljaa, yläreunaan** | Yritys ei näy. Kun palvelin luovuttaa, `ConnectionBanner`in paikalle tulee banneri kaikissa näkymissä, myös keskustelussa. | Kun halutaan vähiten näkyvää liikettä. Lyhyestä katkosta ei näy mitään. | Kahden minuutin ajan agentin push epäonnistuu keskustelussa ilman selitystä. Banneri on kaukana kirjoituskentästä, jossa katse on. |
+| 2 | **Näkyvä yritys, kentän yllä** | Keskustelussa ilmoitus on kirjoituskentän yllä `.ah-actionable-notices`-paikassa, jossa nykyinen "Kielimallikirjautuminen ei ole kunnossa" on (`web/src/app/BrowserConversation.tsx:2008`). Yritys näkyy yhden rivin tilana "yritetään uudelleen… (2/4)", ja paluu näkyy hetken. Muualla yläreunan banneri näyttää saman. | Kun henkilö on keskustelussa ja hänen pitää ymmärtää heti, miksi push epäonnistui ja että palvelin hoitaa sen. | Lyhyt katko näkyy (rivi ja paluu). Kentän yllä oleva ilmoitus vie korkeutta puhelimessa. |
+| 3 | **Otsakkeessa ja langassa** | Keskustelun otsakkeessa on Git-tilan vieressä GitHub-siru: pyörivä merkki yrityksen aikana, piste epäonnistuessa. Sirusta aukeaa selitys ja korjaus (puhelimessa alhaalta). Kun palvelin luovuttaa, agentin epäonnistuneen komennon alle tulee Open Habitatin huomautus korjausnappeineen. Muualla on banneri kuten suunnassa 1. | Kun varoituksen pitää liittyä siihen, mikä epäonnistui, ja muuten pysyä pienenä. | Siru on helppo ohittaa. Huomautus langassa vaatii daemonilta uuden tiedon: agentin komennon tunnistamisen. Puhelimen yläpalkissa on vähän tilaa. |
 
 ## Mitä host-tietoja kukin suunta tarvitsee
 
 | Tieto | On nyt? | 1 | 2 | 3 |
 |---|---|---|---|---|
-| `native_github.state` `disconnected`/`expired` snapshotissa | **On** | banneri | banneri ja rivi | rivi |
-| Tarvekohdan syy repolistalle ja haulle (409 `github_auth_unavailable` erotettuna muista virheistä) | **On** palvelimella ja `GitHubError("auth")`ina selaimessa, mutta kutsujat heittävät sen pois | kaikki | kaikki | kaikki |
-| Kirjoitetun oletusrepon tallennus ilman GitHubia | **On** (gateway tarkistaa vain muodon) | kaikki | kaikki | kaikki |
-| Paluu samalle sivulle (`return_to`, `reconnect=1`) | **On** (`App.tsx:1870`) | kaikki | kaikki | kaikki |
-| Suljetun bannerin muistaminen | Selaimen sessionStorage, ei palvelinta | – | tarvitaan | – |
-| **"GitHub ei vastaa"** erillään muista `unknown`-tapauksista (gh:n verkkovirheen luokitus, esimerkiksi tila `unreachable`, sekä repolistan 409:n jakaminen verkkovirheeseen ja tunnusvirheeseen) | **Ei ole** | tarvekohta | tarvekohta | tarvekohta |
-| **Organisaation esto** (gh api:n 403:n viesti "OAuth App access restrictions" tai "SAML enforcement" omana koodinaan haussa ja kloonissa; listan hiljaisesti puuttuvat organisaatiot vaativat erillisen selvityksen, esimerkiksi `/user/memberships/orgs` vs. listan omistajat) | **Ei ole** | tarvekohta ja Koodipalvelut | sama | sama |
-| `native_github.login` snapshotissa | Skeemassa on, daemon ei lähetä | onnistumisviesti | sama | sama |
+| `native_github.state` = `expired` tai `disconnected` snapshotissa (`internal/daemon/snapshot_linux.go:600`) | **On** | banneri | ilmoitus ja banneri | siru ja banneri |
+| Taustatarkistus 30 sekunnin välein (`unknown`) ja 5 minuutin välein (tiedostotunnus) (`internal/nativegh/native.go:310`–`311`) | **On** | kaikki | kaikki | kaikki |
+| Uudelleen yhdistäminen samalle sivulle (`reconnect=1`, `return_to`; `internal/gateway/auth.go:522`, `web/src/app/App.tsx` `onReconnect`) | **On** | kaikki | kaikki | kaikki |
+| Työtilan GitHub-repo (`git_summary.github_repo`, `web/src/app/CodeHostSettings.tsx:118`) | **On** | organisaation esto keskustelussa | sama | sama |
+| **Katkon oma tila** (esim. `unreachable`) erotettuna muista `unknown`-tapauksista | **Ei ole** | banneri katkosta | rivi ja ilmoitus | siru |
+| **Yrityksen eteneminen** snapshotissa (monesko yritys, mistä hetkestä tila on jatkunut) | **Ei ole** | vain alkuhetki (2 min raja) | rivi "(2/4)" | siru |
+| **Tila "varmistetaan"** 401:n lisätarkistuksen ajaksi (nyt `expired` tulee heti) | **Ei ole** (pieni muutos `checkStatus`iin) | – | rivi | siru |
+| **Organisaation esto** organisaatiokohtaisena tietona (403:n viesti tai `X-GitHub-SSO`) | **Ei ole** | banneri | ilmoitus | siru ja huomautus |
+| **Agentin epäonnistuneen git- tai gh-komennon tunnistus** (laukaisee tarkistuksen ja liittää huomautuksen komentoon; malleina `gitAuthRefusal` ja `parseBashFailure`) | **Ei ole** | nopeampi varoitus | nopeampi varoitus | huomautus langassa |
+| `native_github.login` snapshotissa ("yhdistetty käyttäjänä …") | Skeemassa on, mutta daemon ei lähetä sitä (`snapshot_linux.go:600`) | onnistumisviesti | sama | sama |
 
-Ilman puuttuvia tietoja kaikki suunnat toimivat syillä Ei yhdistetty ja
-Vanhentunut. GitHubin katko näkyy silloin kuten nyt ("ei saatu yhteyttä,
-yritä uudelleen"), ja organisaation esto näkyy kuten nyt ("Repoa ei ole, tai
-sinulla ei ole siihen pääsyä").
+Ilman puuttuvia tietoja kaikki suunnat toimivat syillä Vanhentunut ja Ei
+yhdistetty. Katko näkyy silloin kuten nyt: Koodipalveluissa "Tilaa ei
+tiedetä", eikä varoitusta tule.
 
 ## Suositus
 
-**Suunta 2, Väistyvä.** Jarin tapauksessa yhteys oli poikki eikä mikään
-kertonut sitä. Banneri kertoo sen heti ensimmäisellä sivulla, myös silloin,
-kun agentin push epäonnistuu keskustelussa. Siinä kohdassa suunta 3 jää
-hiljaiseksi. Myöhemmin poistaa suunnan 1 kustannuksen: henkilö, joka tekee
-tarkoituksella pelkkää paikallista työtä tai on katkaissut yhteyden, saa
-varoituksen pois näkyvistä. Silti se jää sivupalkkiin ja palaa täytenä
-jokaisessa tarvekohdassa. Toteutus kannattaa tehdä kahdessa osassa:
+**Suunta 2, Näkyvä yritys, kentän yllä.** Jarin kysymykseen vastaa parhaiten
+se, että henkilö näkee palvelimen yrittävän. Kun push epäonnistuu
+keskustelussa, kentän yllä lukee heti "GitHub ei vastannut · yritetään
+uudelleen…". Henkilö tietää silloin, ettei hänen tarvitse tehdä mitään.
+Jos palvelin ei onnistu, sama paikka muuttuu varoitukseksi, jossa on yksi
+painallus (tai ei yhtään, jos kyse on katkosta). Paikka on jo tuotannossa
+saman lajin ilmoitukselle, kielimallin kirjautumiselle, joten uutta
+esitystapaa ei tarvita. Suunta 1 jättää kahden minuutin aukon, jonka aikana
+epäonnistunut push jää selittämättä. Suunnan 3 siru on näistä
+hienovaraisin, mutta se on helppo ohittaa, ja langan huomautus vaatii
+eniten uutta daemonilta.
 
-1. **Heti, olemassa olevilla tiedoilla:** tarvekohtien ilmoitukset syineen ja
-   korjauspainikkeineen (repolista, haku, Kloonaa, Lisää oletusrepo,
-   ensimmäisen kirjautumisen valitsin, Julkaise GitHubiin) ja Lisää
-   tarkistamatta (korjaa bugin). Lisäksi banneri ja sivupalkin rivi
-   tiloille `disconnected` ja `expired` sekä `native_github.login`
-   snapshotiin.
-2. **Myöhemmin, host-tiedot:** "GitHub ei vastaa" ja organisaation esto.
-   Kumpikin on daemonin luokittelua (gh:n tulosteen tai HTTP-tilan
-   tulkinta). Valtuuksia ne eivät muuta.
+Toteutus kannattaa tehdä kahdessa osassa:
+
+1. **Olemassa olevilla tiedoilla**:
+   - ilmoitus kentän yllä ja banneri tiloille `expired` ja `disconnected`
+   - korjaus samalle sivulle
+   - tarvekohtien ilmoitukset kierroksen 1 mukaan
+   - `native_github.login` snapshotiin
+   - bugi `typed-repo-unselectable-without-github`
+2. **Daemonin luokittelu**: katkon oma tila ja yrityksen eteneminen,
+   401:n lisätarkistus, organisaation esto sekä agentin epäonnistuneen
+   komennon laukaisema tarkistus. Nämä ovat daemonin havaintoja henkilön
+   omilla tunnuksilla, joten ne eivät muuta valtuuksia eivätkä gatewayn,
+   daemonin ja provisionin jakoa.
 
 ## Päätökset myöhempää tarkistusta varten
 
-- **Banneri vain korjattaville syille** (Ei yhdistetty, Vanhentunut).
-  Vaihtoehto: banneri myös GitHubin katkolle. Valinnan syy: henkilö ei voi
-  korjata katkoa, joten pysyvä varoitus olisi melua. Katko näkyy siellä, missä
-  se estää jotain.
-- **Ei yhdistetty saa bannerin, mutta neutraalina; Vanhentunut on punainen.**
-  Vaihtoehto: Ei yhdistetty pelkkänä rivinä. Valinnan syy: host ei erota
-  tarkoituksellista katkaisua kadonneesta yhteydestä (tarkoituksellisesta
-  katkaisusta ei jää merkintää, eikä sellaista kuulu jäädä), ja suunnan 2
-  Myöhemmin hoitaa tarkoituksellisen tapauksen.
-- **Lisää tarkistamatta Lisää oletusrepo -ikkunassa.** Vaihtoehdot: estää
-  lisäys, kunnes yhteys toimii, tai sallia vain muotoon tarkistettu nimi
-  ilman merkintää. Valinnan syy: tallennus ei tarvitse ylläpitäjän GitHubia,
-  ja pääsy tarkistetaan jokaisen henkilön omalla tilillä. Merkintä "ei
-  tarkistettu" kertoo, että kirjoitusvirhe on mahdollinen. Tämä ei muuta
-  valtuuksia: ylläpitäjä voi jo nyt tallentaa minkä tahansa muodollisesti
-  kelvollisen nimen API:n kautta.
-- **Korjaus palaa samalle sivulle** (`return_to`). Vaihtoehto: korjaus
-  Asetukset › Koodipalveluissa. Valinnan syy: kohta, jossa henkilö oli
-  tekemässä jotain, on se, jonne hän haluaa takaisin. Koodipalvelut on
-  bannerissa toisena painikkeena.
-- **Suljetun bannerin muisti on selaimen sessionStorage.** Vaihtoehto:
-  palvelimelle tallennettu kuittaus. Valinnan syy: uutta tallennuspaikkaa ei
-  tehdä ilman tarvetta (AGENTS.md), ja uuden istunnon muistutus on
-  tarkoituksellinen.
-- **Organisaation eston korjaus on GitHubin hyväksyntäpyyntö.** Vaihtoehto:
-  ohje ottaa yhteyttä organisaation omistajaan. Valinnan syy: GitHubin oma
-  sivu tekee pyynnön ja ilmoittaa omistajalle.
+- **Uusimistunnusta ei säilytetä, eikä tunnusta uusita automaattisesti.**
+  - Vaihtoehto: gateway tai daemon säilyttää GitHubin uusimistunnuksen ja
+    vaihtaa gh:lle uuden tunnuksen kahdeksan tunnin välein.
+  - Valinnan syy: se olisi oma valtuutusvälittäjä, jonka juuren
+    `AGENTS.md` kieltää, ja se toisi uuden salaisuuden säilytyspaikan. Oikea
+    korjaus on ylläpitäjän asetus (`docs/operations.md`).
+  - Jos tätä halutaan, se on arkkitehtuuripäätös Jarin kanssa.
+- **Vanhentunut tai peruttu tunnus tarvitsee painalluksen; automaattista
+  siirtymistä GitHubiin ei tehdä.**
+  - Vaihtoehto: kun sovellus avataan ja tila on `expired`, selain siirtyy
+    itse GitHubiin ja takaisin.
+  - Valinnan syy: palvelin ei voi tietää etukäteen, kysyykö GitHub
+    kirjautumista tai lupaa. Kesken työn tapahtuva sivun vaihto vie
+    henkilön pois siitä, mitä hän teki. Yksi painallus, jonka jälkeen
+    GitHub tavallisesti palauttaa kysymättä, on lähes yhtä kevyt.
+- **Kahden minuutin odotus ennen katkon varoitusta, yritykset 0, 30, 60
+  ja 120 sekunnin kohdalla.**
+  - Vaihtoehdot: varoitus heti tai vasta viiden minuutin jälkeen.
+  - Valinnan syy: daemon tarkistaa jo 30 sekunnin välein. GitHubin lyhyet
+    häiriöt menevät yleensä ohi minuutissa, ja kaksi minuuttia on vielä
+    lyhyt aika selittämättömälle epäonnistumiselle.
+- **Katkon varoitus näytetään yleisenä bannerina, mutta ilman
+  korjausnappia.**
+  - Kierroksessa 1 katko näkyi vain tarvekohdassa.
+  - Valinnan syy: Jari pyysi yleistä varoitusta. Kun teksti sanoo
+    "sinun ei tarvitse tehdä mitään" ja varoitus poistuu itsestään, se
+    selittää epäonnistuneet pushit melutta.
+- **401:lle tehdään yksi lisätarkistus 10 sekunnin kuluttua.**
+  - Vaihtoehto: varoitus heti.
+  - Valinnan syy: tarkistus on halpa, ja se suojaa GitHubin hetkellisiltä
+    virhevastauksilta. Kymmenen sekuntia ei viivästytä mitään, minkä
+    henkilö huomaisi.
+- **Organisaation esto näkyy keskustelussa vain sen organisaation
+  työtiloissa** (`git_summary.github_repo`-omistaja).
+  - Vaihtoehto: kaikkialla.
+  - Valinnan syy: muut repot toimivat, joten yleinen varoitus johtaisi
+    harhaan.
+- **Varoitusta ei voi sulkea.**
+  - Kierroksessa 1 suunnalla 2 oli Myöhemmin-painike.
+  - Valinnan syy: varoitus tulee nyt vasta, kun palvelin on luovuttanut,
+    ja se poistuu itsestään. Myöhemmin-painikkeen voi lisätä, jos
+    tarkoituksella katkaistu yhteys (`disconnected`) osoittautuu
+    häiritseväksi.
 
 ## Sivulöydös
 
 - Snapshot ei lähetä tunnusta `native_github.login`, vaikka skeema ja
-  `CodeHostSettings` olettavat sen (`snapshot_linux.go:600`). Siksi
-  "Kirjautunut käyttäjänä …" ei näy koskaan. Pieni, ja kuuluu osaan 1.
+  `CodeHostSettings` olettavat sen (`internal/daemon/snapshot_linux.go:600`).
+  Siksi "Kirjautunut käyttäjänä …" ei näy koskaan. Pieni, ja kuuluu osaan 1.

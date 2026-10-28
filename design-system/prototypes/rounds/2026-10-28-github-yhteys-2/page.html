@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub-yhteyden varoitus, kierros 2 — prototyyppi</title>
+<style>
+/*TOKENS*/
+/*PICKER_CSS*/
+
+/* ---- Prototype chrome (not a contestant) ---- */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #0c0d0f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.pc-bar {
+  position: fixed; inset: 0 0 auto 0; height: 44px; z-index: 50;
+  display: flex; align-items: center; gap: 14px; padding: 0 12px;
+  background: #16181b; color: #c9cdd2; font-size: 12px; border-bottom: 1px solid #262a2f;
+  overflow-x: auto; white-space: nowrap;
+}
+.pc-group { display: inline-flex; align-items: center; gap: 2px; }
+.pc-group > span { margin-right: 4px; color: #8a9097; }
+.pc-bar button {
+  height: 26px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent;
+  color: #aeb4ba; font: inherit; cursor: pointer;
+}
+.pc-bar button:hover { background: rgba(255,255,255,.06); }
+.pc-bar button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+.pc-bar .pc-sim { border: 1px dashed #4a5058; }
+.pc-bar .pc-sim[hidden] { display: none; }
+.pc-read { margin-left: auto; color: #8a9097; }
+.pc-read b { color: #e6e9ec; font-weight: 500; }
+#viewport { position: fixed; inset: 44px 0 64px 0; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; padding: 12px; }
+body.bare .pc-bar { display: none; }
+body.bare #viewport { inset: 0; padding: 0; }
+body.bare .proto-picker { display: none; }
+#sizer { position: relative; flex: none; }
+#frame {
+  position: absolute; top: 0; left: 0; transform-origin: top left; overflow: hidden;
+  background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font);
+  font-size: var(--ah-size-body); line-height: var(--ah-lh-ui);
+  box-shadow: 0 0 0 1px #2a2e33;
+}
+body.bare #frame { box-shadow: none; }
+
+/* ---- App shell (production context, simplified) ---- */
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.app { display: flex; height: 100%; position: relative; }
+.rail {
+  flex: none; width: var(--ah-rail-width); background: var(--ah-rail); border-right: 1px solid var(--ah-line);
+  display: flex; flex-direction: column; padding: 12px 10px; gap: 2px; font-size: var(--ah-size-ui); overflow: hidden;
+}
+.rail-head { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px; font-weight: 600; margin-bottom: 8px; }
+.rail-ws { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; margin-top: 8px; color: var(--ah-muted); font-family: var(--ah-mono); font-size: var(--ah-size-meta); }
+.rail-item { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); white-space: nowrap; overflow: hidden; cursor: pointer; }
+.rail-item.sub { padding-left: 22px; }
+.rail-item span { overflow: hidden; text-overflow: ellipsis; }
+.rail-item:hover { background: var(--ah-hover); }
+.rail-item.cur { background: var(--ah-current); box-shadow: inset 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); }
+.rail-fill { flex: 1; }
+.rail-account { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px; border-top: 1px solid var(--ah-line); margin-top: 6px; padding-top: 6px; color: var(--ah-ink); cursor: pointer; }
+.avatar { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-size: 11px; font-weight: 600; flex: none; }
+
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--ah-bg); position: relative; }
+.topbar { flex: none; display: flex; align-items: center; gap: 8px; height: 49px; padding: 0 10px 0 var(--ah-topbar-pad-inline); border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.topbar h1 { margin: 0; font-size: var(--ah-size-title); font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.burger { position: relative; width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--ah-r-md); color: var(--ah-muted); flex: none; }
+.burger svg.i { width: 20px; height: 20px; }
+.scroll { flex: 1; min-height: 0; overflow: auto; }
+
+/* ---- Buttons (ControlButton look) ---- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ah-control-row); padding: 0 var(--ah-control-row-pad);
+  border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-control); color: var(--ah-ink);
+  font: inherit; font-size: var(--ah-control-row-font); font-weight: 500; white-space: nowrap; cursor: pointer; text-decoration: none;
+}
+.btn:hover { background: var(--ah-control-hover); }
+.btn.primary { background: var(--ah-accent); border-color: var(--ah-accent); color: var(--ah-on-accent); }
+.btn.primary:hover { background: var(--ah-accent-hover); }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--ah-ink-2); }
+.btn.quiet:hover { background: var(--ah-hover); }
+.btn[disabled], .btn.primary[disabled] { background: var(--ah-disabled-bg); border-color: var(--ah-disabled-bg); color: var(--ah-disabled-fg); cursor: not-allowed; }
+.btn svg.i { width: 15px; height: 15px; }
+
+/* Spinner for the host's own attempt */
+.spin { width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid var(--ah-line-strong); border-top-color: var(--ah-ink-2); animation: spin 900ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- App-wide banner (ConnectionBanner slot: under the top, above the page) ---- */
+.gh-banner {
+  flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s4);
+  padding: var(--ah-s3) 16px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface-2);
+  font-size: 13px; animation: ah-appear var(--ah-appear) both;
+}
+.gh-banner.danger { border-color: var(--ah-err-line); background: var(--ah-err-soft); }
+.gh-banner.ok { border-color: var(--ah-accent-line); background: var(--ah-ok-soft); color: var(--ah-ok); font-weight: 500; }
+.gh-banner .gh-ic { color: var(--ah-muted); display: grid; }
+.gh-banner.danger .gh-ic, .gh-banner.danger strong { color: var(--ah-err); }
+.gh-banner strong { font-weight: 600; }
+.gh-banner .txt { flex: 1 1 320px; min-width: 0; color: var(--ah-ink-2); display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.gh-banner .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.gh-banner.trying { color: var(--ah-ink-2); }
+.ph .gh-banner { padding: 10px 14px; font-size: 12.5px; }
+.ph .gh-banner .txt { flex-basis: 100%; }
+.ph .gh-banner .gh-ic { display: none; }
+.ph .gh-banner .acts { width: 100%; }
+.ph .gh-banner .acts .btn.primary { flex: 1; }
+.ph .gh-banner.trying .txt, .ph .gh-banner.ok .txt { flex-basis: auto; }
+
+/* ---- Notice above the composer (V2; InlineNotice in .ah-actionable-notices) ---- */
+.cnotice {
+  max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin: 0 auto var(--ah-s2); width: 100%;
+  display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; align-items: center;
+  padding: 10px 12px; border: 1px solid var(--ah-line); border-left-width: 5px; border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2); font-size: var(--ah-size-ui); line-height: 1.45; animation: ah-appear var(--ah-appear) both;
+}
+.cnotice.danger { border-color: var(--ah-err-line); background: var(--ah-err-soft); }
+.cnotice.ok { border-color: var(--ah-accent-line); background: var(--ah-ok-soft); color: var(--ah-ok); }
+.cnotice.trying { border-left-width: 1px; padding: 7px 12px; color: var(--ah-ink-2); background: var(--ah-surface); }
+.cnotice > .ic { color: var(--ah-muted); display: grid; }
+.cnotice.danger > .ic, .cnotice.danger strong { color: var(--ah-err); }
+.cnotice strong { font-weight: 600; }
+.cnotice p { margin: 0; color: var(--ah-ink-2); }
+.cnotice .body { min-width: 0; }
+.cnotice .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.ph .cnotice { grid-template-columns: auto 1fr; }
+.ph .cnotice .acts { grid-column: 1 / -1; justify-content: stretch; }
+.ph .cnotice .acts .btn { flex: 1; }
+.ph .cnotice.trying .acts { grid-column: auto; }
+
+/* ---- Header chip (V3, beside the Git status chip) ---- */
+.conv-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 10px var(--ah-topbar-pad-inline); border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); position: relative; }
+.conv-head h1 { margin: 0; font-size: var(--ah-size-title); font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-head .ws { font-family: var(--ah-mono); font-size: var(--ah-size-meta); color: var(--ah-muted); }
+.gitchip, .ghchip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); font-size: 12px; color: var(--ah-ink-2); background: var(--ah-surface); white-space: nowrap; flex: none; }
+.gitchip .mono { font-family: var(--ah-mono); }
+.ghchip { cursor: pointer; font: inherit; font-size: 12px; animation: ah-appear var(--ah-appear) both; }
+.ghchip:hover { background: var(--ah-surface-hover); }
+.ghchip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ah-muted); }
+.ghchip.danger { border-color: var(--ah-err-line); color: var(--ah-err); background: var(--ah-err-soft); }
+.ghchip.danger .dot { background: var(--ah-err); }
+.ghchip.ok { color: var(--ah-ok); border-color: var(--ah-accent-line); }
+.ghchip .spin { width: 12px; height: 12px; }
+.ph .ghchip .lbl-long { display: none; }
+.pop {
+  position: absolute; top: calc(100% + 6px); right: 12px; z-index: 6; width: 360px; padding: 14px 16px;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog);
+  font-size: var(--ah-size-ui); line-height: 1.5; display: flex; flex-direction: column; gap: 8px; animation: ah-appear var(--ah-appear) both;
+}
+.pop strong { font-weight: 600; }
+.pop.danger strong { color: var(--ah-err); }
+.pop p { margin: 0; color: var(--ah-ink-2); }
+.pop .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.ph .pop { position: fixed; top: auto; bottom: 0; left: 0; right: 0; width: auto; border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0; padding: 18px 16px 22px; }
+.ph .pop .acts .btn.primary { flex: 1; }
+/* Host note under the agent's failed command (V3) */
+.hostnote { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: -2px 0 8px; padding: 6px 10px; border-left: 3px solid var(--ah-line-strong); color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.45; animation: ah-appear var(--ah-appear) both; }
+.hostnote.danger { border-left-color: var(--ah-err); }
+.hostnote b { font-weight: 600; color: var(--ah-ink); }
+.hostnote .btn { height: 26px; font-size: 12px; padding: 0 8px; }
+
+/* ---- Conversation ---- */
+.conv { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+.stream { flex: 1; min-height: 0; overflow: hidden; padding: var(--ah-column-pad-block) var(--ah-column-pad-inline); }
+.col { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin: 0 auto; display: grid; gap: 14px; }
+.msg-user { justify-self: end; max-width: 80%; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-xl); padding: 8px 12px; }
+.msg-agent p { margin: 0 0 8px; line-height: var(--ah-lh-body); }
+.msg-agent .work { font-size: var(--ah-size-meta); color: var(--ah-muted); margin-bottom: 6px; }
+.msg-agent pre { margin: 0 0 8px; padding: 8px 10px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-sunken); font: var(--ah-size-code)/1.55 var(--ah-mono); color: var(--ah-ink-2); white-space: pre-wrap; word-break: break-word; }
+.msg-agent code { font-family: var(--ah-mono); font-size: .92em; }
+.composer { flex: none; padding: var(--ah-s2) var(--ah-column-pad-inline) var(--ah-composer-pad-block); }
+.field { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin: 0 auto; min-height: var(--ah-composer-rest-height); display: flex; align-items: center; gap: 8px; padding: 0 6px 0 14px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-xl); background: var(--ah-surface); color: var(--ah-faint); font-size: var(--ah-size-ui); }
+.field .ph-t { flex: 1; }
+.send { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--ah-accent); color: var(--ah-on-accent); }
+
+/* ---- Uusi työtila (ClonePage, simplified) ---- */
+.page { max-width: 1040px; margin: 0 auto; padding: 22px 28px 40px; display: flex; flex-direction: column; gap: var(--ah-s5); font-size: var(--ah-size-ui); }
+.ph .page { padding: 14px 14px 32px; }
+.page-head h2 { margin: 0; font-size: var(--ah-size-h2); font-weight: 600; }
+.page-head p { margin: 4px 0 0; color: var(--ah-muted); }
+.clone-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--ah-s5); align-items: start; }
+.ph .clone-grid { grid-template-columns: 1fr; }
+.finder { display: flex; flex-direction: column; gap: var(--ah-s4); min-width: 0; }
+.search { display: flex; align-items: center; gap: var(--ah-s2); height: 36px; padding: 0 10px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-muted); }
+.search span { color: var(--ah-faint); font-size: 13px; }
+.sec h3 { display: flex; align-items: center; gap: var(--ah-s2); margin: 0 0 4px; color: var(--ah-ink-2); font: 600 12px var(--ah-font); }
+.sec h3 .mono { font-family: var(--ah-mono); }
+.sec h3 .kind { color: var(--ah-muted); font-weight: 400; }
+.sec ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.row { display: flex; flex-direction: column; gap: 2px; padding: 7px 10px; border-radius: var(--ah-r-nav); cursor: pointer; }
+.row:hover { background: var(--ah-hover); }
+.row.cur { background: var(--ah-current); box-shadow: inset 0 0 0 1px var(--ah-current-line); }
+.row .nm { display: flex; align-items: center; gap: 6px; font-family: var(--ah-mono); font-size: 13px; }
+.row .nm .ow { color: var(--ah-muted); }
+.row .desc { color: var(--ah-ink-2); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .meta { display: flex; gap: 10px; color: var(--ah-muted); font-size: 11.5px; }
+.empty { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-ui); line-height: 1.45; }
+.pending { display: flex; align-items: center; gap: 8px; color: var(--ah-ink-2); font-size: var(--ah-size-ui); }
+.detail { display: flex; flex-direction: column; gap: 10px; padding: var(--ah-s4) var(--ah-s5); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface-2); }
+.detail h4 { margin: 0; font: 600 15px/1.35 var(--ah-mono); }
+.detail .muted { color: var(--ah-muted); margin: 0; }
+.detail dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 12.5px; }
+.detail dt { color: var(--ah-muted); }
+.detail dd { margin: 0; }
+.place {
+  display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: start;
+  padding: 12px 14px; border: 1px solid var(--ah-line); border-left-width: 4px; border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2); font-size: var(--ah-size-ui); line-height: 1.45;
+}
+.place.danger { border-color: var(--ah-err-line); border-left-color: var(--ah-err); background: var(--ah-err-soft); }
+.place > svg.i { margin-top: 2px; color: var(--ah-muted); }
+.place.danger > svg.i, .place.danger strong { color: var(--ah-err); }
+.place strong { font-weight: 600; display: block; }
+.place p { margin: 2px 0 0; color: var(--ah-ink-2); }
+.place .acts { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+.hint { margin: 0; color: var(--ah-muted); font-size: 12px; line-height: 1.45; }
+
+/* ---- Settings › Koodipalvelut ---- */
+.settings { display: flex; height: 100%; }
+.s-nav { flex: none; width: 220px; padding: 18px 10px; border-right: 1px solid var(--ah-line); display: flex; flex-direction: column; gap: 2px; font-size: var(--ah-size-ui); }
+.s-nav .s-h { padding: 0 10px 8px; font-weight: 600; font-size: var(--ah-size-title); }
+.s-nav div { padding: 6px 10px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); display: flex; align-items: center; gap: 6px; }
+.s-nav div.cur { background: var(--ah-current); box-shadow: inset 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); }
+.s-main { flex: 1; min-width: 0; overflow: auto; padding: 22px 28px 40px; }
+.ph .s-main { padding: 14px; }
+.s-main h2 { margin: 0 0 4px; font-size: var(--ah-size-h2); }
+.s-intro { margin: 0 0 14px; color: var(--ah-muted); font-size: var(--ah-size-ui); }
+.s-card { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); margin-bottom: 16px; }
+.s-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; font-size: var(--ah-size-ui); }
+.s-lbl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.s-lbl strong { font-weight: 600; }
+.s-desc { color: var(--ah-ink-2); line-height: 1.45; }
+.s-desc.bad { color: var(--ah-err); }
+.s-meta { color: var(--ah-muted); font-size: 12px; }
+.s-val { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.ph .s-row { flex-wrap: wrap; }
+.ph .s-val { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
+.letter { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; background: var(--ah-sunken); color: var(--ah-source-1); font: 600 11px var(--ah-mono); flex: none; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.status i { width: 8px; height: 8px; border-radius: 50%; background: var(--ah-muted); }
+.status.ok { color: var(--ah-ok); } .status.ok i { background: var(--ah-ok); }
+.status.bad { color: var(--ah-err); } .status.bad i { background: var(--ah-err); }
+.status.warn { color: var(--ah-ink-2); }
+.orgs { margin: 8px 0 0; padding: 8px 10px; border-radius: var(--ah-r-md); background: var(--ah-sunken); font-size: 12.5px; color: var(--ah-ink-2); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.orgs .mono { font-family: var(--ah-mono); }
+.chip { display: inline-flex; align-items: center; padding: 0 6px; height: 18px; border-radius: var(--ah-r-pill); border: 1px solid var(--ah-line); color: var(--ah-muted); font: 500 11px var(--ah-font); white-space: nowrap; }
+.chip.ok { color: var(--ah-ok); border-color: currentColor; }
+
+/* Redirect veil (simulated trip to GitHub and back) */
+.veil { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center; background: var(--ah-scrim); animation: ah-appear var(--ah-appear) both; }
+.veil div { padding: 16px 20px; border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog); font-size: var(--ah-size-ui); max-width: 360px; text-align: center; line-height: 1.5; }
+
+.phone {
+  --ah-topbar-pad-block: 6px; --ah-topbar-pad-inline: 14px; --ah-column-pad-block: 12px;
+  --ah-column-pad-inline: 14px; --ah-control-row: 40px;
+}
+@media (prefers-reduced-motion: reduce) { .gh-banner, .cnotice, .ghchip, .pop, .hostnote, .veil { animation: none; } .spin { animation-duration: 3s; } }
+</style>
+</head>
+<body>
+<div class="pc-bar" role="toolbar" aria-label="Prototyypin asetukset">
+  <div class="pc-group" data-k="n"><span>Näkymä</span>
+    <button data-v="koti">Keskustelu</button><button data-v="klooni">Uusi työtila</button><button data-v="koodi">Koodipalvelut</button>
+  </div>
+  <div class="pc-group" data-k="c"><span>Tilanne</span>
+    <button data-v="blip">Lyhyt katko</button><button data-v="outage">Pitkä katko</button><button data-v="exp">Vanhentunut tai peruttu</button><button data-v="disc">Ei yhdistetty</button><button data-v="org">Organisaatio estää</button><button data-v="ok">Kunnossa</button>
+  </div>
+  <button class="pc-sim" id="sim-back" data-testid="sim-back" title="Simuloi: GitHubin katko päättyy">GitHub palaa</button>
+  <div class="pc-group" data-k="w"><span>Ikkuna</span><button data-v="oma">Oma</button><button data-v="1280">1280</button><button data-v="390">Puhelin</button></div>
+  <div class="pc-group" data-k="t"><span>Teema</span><button data-v="dark">Tumma</button><button data-v="light">Vaalea</button></div>
+  <div class="pc-read" id="readout"></div>
+</div>
+<div id="viewport"><div id="sizer"><div id="frame"></div></div></div>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">1 Hiljaa, yläreunaan</button>
+  <button class="proto-picker-item">2 Näkyvä yritys, kentän yllä</button>
+  <button class="proto-picker-item">3 Otsakkeessa ja langassa</button>
+  <button class="proto-picker-item">Nykyinen</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+</nav>
+
+<script>
+// ---- State (URL-backed so screenshots are reproducible) ----
+const q = new URLSearchParams(location.search);
+const S = { n: q.get('n') || 'koti', c: q.get('c') || 'exp', w: q.get('w') || 'oma', t: q.get('t') || 'dark' };
+if (q.get('bare') === '1') document.body.classList.add('bare');
+// at=<simulated seconds> freezes the timeline there (screenshots); at=end is the settled state.
+const FROZEN = q.has('at') ? (q.get('at') === 'end' ? 999 : +q.get('at')) : null;
+const VARIANTS = ['d1', 'd2', 'd3', 'now'];
+let V = null;
+// One visit: simulated clock, the outage's end, the fix, popover. Reset on every mount.
+const R = {};
+function resetRuntime() {
+  Object.assign(R, { t: FROZEN ?? 0, back: null, checkNow: null, fixed: false, toast: false, veil: null, pop: q.get('pop') === '1' && FROZEN !== null, requested: false, gone: false });
+}
+resetRuntime();
+
+const LOGIN = 'maintainer';
+const ORG = 'northwind';
+const TICK_MS = 50; // one simulated second
+
+// ---- The host's own attempt (the proposal in result.md) ----
+// A network failure, a GitHub 5xx or a timeout is transient: the daemon already rechecks an
+// unknown state every 30 s. It retries at 0, 30, 60 and 120 s and only then gives up showing
+// the attempt; it keeps checking every 30 s and the warning leaves by itself. GitHub's own
+// 401 (expired or revoked) is checked once more after 10 s and then needs a person.
+// No login and an organisation restriction are definite at once.
+const RETRIES = [0, 30, 60, 120];
+const BLIP_OK = 60;
+function host() {
+  const c = R.fixed ? 'ok' : S.c, t = R.t;
+  if (c === 'ok') return { phase: R.toast ? 'fixed' : 'ok' };
+  if (c === 'blip' || c === 'outage') {
+    // When does a check first succeed?
+    let ok = c === 'blip' ? BLIP_OK : Infinity;
+    if (R.back !== null) {
+      const next = R.checkNow !== null && R.checkNow >= R.back ? R.checkNow : nextCheck(R.back);
+      ok = Math.min(ok, next);
+    }
+    if (t >= ok) return t < ok + 4 ? { phase: 'recovered' } : { phase: 'ok' };
+    const fails = RETRIES.filter(x => x <= t).length;
+    if (t >= RETRIES[RETRIES.length - 1]) return { phase: 'down', since: 0 };
+    return { phase: 'trying', k: fails, n: RETRIES.length };
+  }
+  if (c === 'exp') return t < 10 ? { phase: 'confirming' } : { phase: 'need' };
+  return { phase: 'need' };
+}
+function nextCheck(after) {
+  for (const x of RETRIES) if (x >= after) return x;
+  return RETRIES[RETRIES.length - 1] + Math.ceil((after - RETRIES[RETRIES.length - 1]) / 30) * 30;
+}
+const cause = () => R.fixed ? 'ok' : S.c;
+
+const COPY = {
+  outage: { tone: 'neutral', title: 'GitHub ei vastaa',
+    text: 'Sinun ei tarvitse tehdä mitään. Palvelin yrittää 30 sekunnin välein, ja ilmoitus poistuu itsestään, kun yhteys palaa. Push, kloonaus ja gh odottavat; paikallinen työ jatkuu.',
+    short: 'Palvelin yrittää uudelleen itse. Push ja gh odottavat.' },
+  exp: { tone: 'danger', title: 'GitHub-yhteys on vanhentunut tai peruttu', fix: 'Yhdistä uudelleen',
+    text: 'GitHub ei enää hyväksy palvelimen valtuutusta, eikä palvelin voi uusia sitä itse. Yhdistä uudelleen: GitHub palauttaa sinut tänne, yleensä kysymättä mitään.',
+    short: 'Push ja gh eivät toimi. Palvelin ei voi uusia valtuutusta itse.' },
+  disc: { tone: 'neutral', title: 'GitHubia ei ole yhdistetty', fix: 'Yhdistä GitHub',
+    text: 'Palvelimella ei ole GitHub-kirjautumistasi, joten push, kloonaus ja gh eivät toimi. Paikallinen työ ja keskustelut toimivat.',
+    short: 'Push ja gh eivät toimi ennen yhdistämistä.' },
+  org: { tone: 'neutral', title: `Organisaatio ${ORG} estää Open Habitatin`, org: true,
+    text: `GitHub-yhteytesi toimii, mutta ${ORG} sallii vain hyväksymänsä sovellukset. Tämän työtilan push ja gh eivät toimi, ennen kuin organisaation omistaja hyväksyy Open Habitatin. Muut repot toimivat.`,
+    short: `Tämän työtilan push ja gh eivät toimi ennen organisaation hyväksyntää.` },
+};
+// Which copy a settled failure uses.
+const copyKey = () => ({ outage: 'outage', blip: 'outage', exp: 'exp', disc: 'disc', org: 'org' })[cause()];
+
+const P = {
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  branch: '<circle cx="7" cy="6" r="2"/><path d="M7 8v10M7 12c0 3 3 4 7 4"/><circle cx="17" cy="16" r="2"/>',
+  warning: '<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4M12 17h.01"/>',
+  search: '<circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  external: '<path d="M13 5h6v6M19 5l-9 9"/><path d="M19 14v5H5V5h5"/>',
+  refresh: '<path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/>',
+  check: '<path d="m4 12 5 5L20 6"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',
+  send: '<path d="M12 19V5m-6 6 6-6 6 6"/>',
+  github: '<path transform="translate(2 0) scale(.9)" d="M9 19c-4 1-4-2-6-2m12 4v-4a3.5 3.5 0 0 0-1-3c3.3-.4 6-1.6 6-5.5A4.3 4.3 0 0 0 19 5c.1-1-.1-2-.5-3 0 0-1.3-.4-4.5 1.7a15 15 0 0 0-8 0C2.8 1.6 1.5 2 1.5 2 1.1 3 .9 4 1 5a4.3 4.3 0 0 0-1 3.5C0 12.4 2.7 13.6 6 14a3.5 3.5 0 0 0-1 3v4"/>',
+};
+const ic = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const phone = () => S.w === '390';
+const RETURN = { koti: '/workspaces/open-habitat?conversation=…', klooni: '/workspaces/new', koodi: '/settings/koodipalvelut' };
+
+// The person's action for a settled failure: a fix, a request, or (outage) only an optional check.
+function actions(k, { cls = 'primary' } = {}) {
+  const c = COPY[k];
+  const out = [];
+  if (c.fix) out.push(`<button class="btn ${cls}" data-act="fix" title="/auth/github/start?return_to=${RETURN[S.n]}&amp;reconnect=1">${ic('github')}${c.fix}</button>`);
+  if (k === 'outage') out.push(`<button class="btn quiet" data-act="check">${ic('refresh')}Tarkista nyt</button>`);
+  if (c.org) out.push(R.requested ? `<span class="chip ok" data-testid="org-requested">Pyyntö lähetetty omistajalle</span>`
+    : `<a class="btn" href="#" data-act="org" title="github.com/settings/connections/applications/…">Pyydä hyväksyntää GitHubissa ${ic('external')}</a>`);
+  return out.join('');
+}
+
+// Does the warning concern this view? An organisation restriction only concerns that
+// organisation's repositories; everything else concerns every GitHub use.
+const concerns = () => cause() !== 'org' || S.n !== 'klooni';
+
+// ---- App-wide banner: V1 and V3 only once the host gives up; V2 shows the attempt too ----
+function banner() {
+  const h = host();
+  if (V === 'now') return '';
+  if (S.n === 'koti' && V !== 'd1') return ''; // the chat view has its own place in V2 and V3
+  if (h.phase === 'fixed') return `<div class="gh-banner ok" role="status" data-testid="gh-ok">${ic('check')}<span class="txt">GitHub yhdistetty käyttäjänä ${LOGIN}. Push ja gh toimivat taas.</span></div>`;
+  if (S.n === 'koodi') return ''; // the GitHub row itself says it
+  if (!concerns()) return '';
+  if (V === 'd2' && h.phase === 'trying') return `<div class="gh-banner trying" role="status" data-testid="gh-trying"><span class="spin" aria-hidden="true"></span><span class="txt"><span>GitHub ei vastannut · yritetään uudelleen… <span style="color:var(--ah-muted)">(${h.k}/${h.n})</span></span></span></div>`;
+  if (V === 'd2' && h.phase === 'confirming') return `<div class="gh-banner trying" role="status" data-testid="gh-trying"><span class="spin" aria-hidden="true"></span><span class="txt"><span>GitHub hylkäsi valtuutuksen · tarkistetaan vielä kerran…</span></span></div>`;
+  if (V === 'd2' && h.phase === 'recovered') return `<div class="gh-banner ok" role="status" data-testid="gh-recovered">${ic('check')}<span class="txt">GitHub-yhteys palasi.</span></div>`;
+  if (h.phase !== 'need' && h.phase !== 'down') return '';
+  const k = copyKey(), c = COPY[k];
+  return `<div class="gh-banner ${c.tone}" role="${c.tone === 'danger' ? 'alert' : 'status'}" data-testid="gh-banner" data-cause="${k}">
+    <span class="gh-ic">${ic(k === 'outage' ? 'info' : 'warning')}</span>
+    <span class="txt"><strong>${esc(c.title)}</strong><span>${esc(phone() ? c.short : c.text)}</span></span>
+    <span class="acts">${actions(k)}</span></div>`;
+}
+
+// ---- V2: the notice above the composer ----
+function composerNotice() {
+  if (V !== 'd2') return '';
+  const h = host();
+  if (h.phase === 'trying') return `<div class="cnotice trying" role="status" data-testid="c-trying"><span class="spin" aria-hidden="true"></span><p>GitHub ei vastannut · yritetään uudelleen… <span style="color:var(--ah-muted)">(${h.k}/${h.n})</span></p><span class="acts"></span></div>`;
+  if (h.phase === 'confirming') return `<div class="cnotice trying" role="status" data-testid="c-trying"><span class="spin" aria-hidden="true"></span><p>GitHub hylkäsi valtuutuksen · tarkistetaan vielä kerran…</p><span class="acts"></span></div>`;
+  if (h.phase === 'recovered') return `<div class="cnotice ok trying" role="status" data-testid="c-recovered">${ic('check')}<p style="color:inherit">GitHub-yhteys palasi.</p><span class="acts"></span></div>`;
+  if (h.phase === 'fixed') return `<div class="cnotice ok trying" role="status" data-testid="gh-ok">${ic('check')}<p style="color:inherit">GitHub yhdistetty käyttäjänä ${LOGIN}. Pyydä agenttia yrittämään uudelleen.</p><span class="acts"></span></div>`;
+  if (h.phase !== 'need' && h.phase !== 'down') return '';
+  const k = copyKey(), c = COPY[k];
+  return `<div class="cnotice ${c.tone}" role="${c.tone === 'danger' ? 'alert' : 'status'}" data-testid="c-notice" data-cause="${k}">
+    <span class="ic">${ic(k === 'outage' ? 'info' : 'warning')}</span>
+    <div class="body"><strong>${esc(c.title)}</strong><p>${esc(phone() ? c.short : c.text)}</p></div>
+    <span class="acts">${actions(k)}</span></div>`;
+}
+
+// ---- V3: the chip beside the Git status, its popover, and the note under the failed command ----
+function headChip() {
+  if (V !== 'd3') return '';
+  const h = host();
+  if (h.phase === 'trying' || h.phase === 'confirming') return `<button class="ghchip" data-act="pop" data-testid="gh-chip" data-state="trying" title="Palvelin tarkistaa GitHub-yhteyttä"><span class="spin" aria-hidden="true"></span>GitHub<span class="lbl-long"> · tarkistetaan…</span></button>`;
+  if (h.phase === 'recovered' || h.phase === 'fixed') return `<span class="ghchip ok" data-testid="gh-chip" data-state="ok">${ic('check')}GitHub</span>`;
+  if (h.phase !== 'need' && h.phase !== 'down') return '';
+  const k = copyKey(), c = COPY[k];
+  const label = { outage: 'ei vastaa', exp: 'vanhentunut', disc: 'ei yhdistetty', org: 'organisaatio estää' }[k];
+  return `<button class="ghchip ${c.tone}" data-act="pop" data-testid="gh-chip" data-state="${k}" aria-expanded="${R.pop}"><span class="dot"></span>GitHub<span class="lbl-long"> · ${label}</span></button>`;
+}
+function popover() {
+  if (V !== 'd3' || !R.pop) return '';
+  const h = host();
+  if (h.phase === 'trying' || h.phase === 'confirming') return `<div class="pop" role="dialog" aria-label="GitHub-yhteys" data-testid="gh-pop"><strong>Tarkistetaan GitHub-yhteyttä</strong><p>${h.phase === 'trying' ? `GitHub ei vastannut. Palvelin yrittää uudelleen itse (${h.k}/${h.n}); sinun ei tarvitse tehdä mitään.` : 'GitHub hylkäsi valtuutuksen. Palvelin tarkistaa vielä kerran ennen kuin pyytää sinua yhdistämään.'}</p></div>`;
+  if (h.phase !== 'need' && h.phase !== 'down') return '';
+  const k = copyKey(), c = COPY[k];
+  return `<div class="pop ${c.tone}" role="dialog" aria-label="GitHub-yhteys" data-testid="gh-pop"><strong>${esc(c.title)}</strong><p>${esc(c.text)}</p><span class="acts">${actions(k)}<button class="btn quiet" data-act="nav" data-to="koodi">Koodipalvelut</button></span></div>`;
+}
+// Only once the host has settled: a note attached to the agent's failed command.
+function hostNote() {
+  if (V !== 'd3') return '';
+  const h = host();
+  if (h.phase !== 'need' && h.phase !== 'down') return '';
+  const k = copyKey(), c = COPY[k];
+  const lead = { outage: 'GitHub ei vastannut. Palvelin yrittää itse, ja push onnistuu, kun yhteys palaa.', exp: 'Push epäonnistui, koska GitHub-yhteys on vanhentunut tai peruttu.', disc: 'Push epäonnistui, koska GitHubia ei ole yhdistetty.', org: `${ORG} estää Open Habitatin, siksi gh ei pääse repoon.` }[k];
+  return `<div class="hostnote ${c.tone}" data-testid="host-note"><b>Open Habitat:</b><span>${esc(lead)}</span>${c.fix ? `<button class="btn" data-act="fix">${ic('github')}${c.fix}</button>` : ''}${c.org && !R.requested ? `<a class="btn" href="#" data-act="org">Pyydä hyväksyntää ${ic('external')}</a>` : ''}</div>`;
+}
+
+// ---- Shell ----
+function rail() {
+  const n = S.n, org = cause() === 'org' || S.c === 'org';
+  return `<nav class="rail"><div class="rail-head">${ic('menu')} Open Habitat</div>
+    <div class="rail-item${n === 'klooni' ? ' cur' : ''}" data-act="nav" data-to="klooni">${ic('plus')}<span>Uusi työtila</span></div>
+    <div class="rail-ws">${ic('branch')} open-habitat</div>
+    <div class="rail-item sub${n === 'koti' && !org ? ' cur' : ''}" data-act="nav" data-to="koti"><span>Julkaisun valmistelu</span></div>
+    <div class="rail-item sub"><span>Kuvien pakkaus WebP-muotoon</span></div>
+    <div class="rail-ws">${ic('branch')} pilot-materiaalit</div>
+    <div class="rail-item sub${n === 'koti' && org ? ' cur' : ''}"><span>Tehtäväpohjien päivitys</span></div>
+    <div class="rail-fill"></div>
+    <div class="rail-account" data-act="nav" data-to="koodi"><span class="avatar">JM</span><span>Jari Mustonen</span></div></nav>`;
+}
+function topbar(title, extra = '') {
+  return `<div class="topbar"><span class="burger">${ic('menu')}</span><h1>${esc(title)}</h1>${extra}</div>`;
+}
+
+// ---- Views ----
+function conversation() {
+  const c = cause(), org = S.c === 'org';
+  const repo = org ? `${ORG}/pilot-materiaalit` : `${LOGIN}/open-habitat`;
+  const title = org ? 'Tehtäväpohjien päivitys' : 'Julkaisun valmistelu';
+  let out;
+  const failedPush = (err, say) => `<pre>$ git push origin julkaisu\n${err}</pre>${hostNote()}<p>${say}</p>`;
+  if (S.c === 'exp' && c !== 'ok') out = failedPush(`remote: Invalid username or token. Password authentication is not supported for Git operations.\nfatal: Authentication failed for 'https://github.com/${repo}.git/'`, 'Push ei onnistunut: GitHub ei hyväksynyt tunnusta. Muutokset ovat tallessa haarassa <code>julkaisu</code>.');
+  else if (S.c === 'disc' && c !== 'ok') out = failedPush(`fatal: could not read Username for 'https://github.com': terminal prompts disabled`, 'Push ei onnistunut, koska palvelimella ei ole GitHub-tunnuksia. Muutokset ovat tallessa haarassa <code>julkaisu</code>.');
+  else if (S.c === 'outage' && host().phase !== 'ok' && host().phase !== 'recovered') out = failedPush(`fatal: unable to access 'https://github.com/${repo}.git/': The requested URL returned error: 503`, 'GitHub ei vastannut. Muutokset ovat tallessa haarassa <code>julkaisu</code>.');
+  else if (S.c === 'org' && c !== 'ok') out = `<pre>$ gh pr create --fill\nGraphQL: Although you appear to have the correct authorization credentials, the \`${ORG}\` organization has enabled OAuth App access restrictions, meaning that data access to third-parties is limited.</pre>${hostNote()}<p>PR:n luonti ei onnistunut: organisaatio ${ORG} rajoittaa sovellusten pääsyä. Haara on tallessa paikallisesti.</p>`;
+  else if (S.c === 'blip') out = `<pre>$ git push origin julkaisu\nfatal: unable to access 'https://github.com/${repo}.git/': Could not resolve host: github.com</pre><p>GitHubiin ei saatu yhteyttä. Yritän hetken päästä uudelleen.</p><pre>$ git push origin julkaisu\nTo https://github.com/${repo}.git\n   4f2a9c1..8b07d3e  julkaisu -> julkaisu</pre><p>Toinen yritys onnistui. Haara <code>julkaisu</code> on GitHubissa.</p>`;
+  else out = `<pre>$ git push origin julkaisu\nTo https://github.com/${repo}.git\n   4f2a9c1..8b07d3e  julkaisu -> julkaisu</pre><p>Push onnistui. Haara <code>julkaisu</code> on GitHubissa.</p>`;
+  const git = `<span class="gitchip" title="Git-tila">${ic('branch')}<span class="mono">julkaisu</span> ↑2</span>`;
+  const head = phone() ? '' : `<div class="conv-head"><h1>${title}</h1><span class="ws">${org ? 'pilot-materiaalit' : 'open-habitat'}</span>${git}${headChip()}${popover()}</div>`;
+  return { title, html: `${head}
+    <div class="stream"><div class="col">
+      <div class="msg-user">${org ? 'Päivitä tehtäväpohjat ja tee PR.' : 'Tee julkaisun muutokset valmiiksi ja pushaa haara.'}</div>
+      <div class="msg-agent"><div class="work">Muokkasi 4 tiedostoa · ajoi 3 komentoa</div>
+        <p>Muutokset on tehty ja testit menevät läpi. ${org ? 'Pushaan haaran ja avaan PR:n.' : 'Pushaan haaran.'}</p>${out}</div>
+    </div></div>
+    <div class="composer">${composerNotice()}<div class="field"><span class="ph-t">Kirjoita viesti…</span><span class="send">${ic('send')}</span></div></div>` };
+}
+
+const REPOS = [
+  { o: LOGIN, n: 'open-habitat', d: 'Selaimesta käytettävä koti natiiveille agenteille', when: '2 t sitten', size: '48 Mt', priv: true },
+  { o: ORG, n: 'pilot-materiaalit', d: 'Opettajien pilotin ohjeet ja tehtäväpohjat', when: 'eilen', size: '212 Mt', priv: true, org: true },
+  { o: LOGIN, n: 'aurinkokello', d: 'Aurinkokellon laskenta ja kuvat', when: '3 pv sitten', size: '6,1 Mt' },
+  { o: ORG, n: 'printtipalvelu', d: '3D-tulostusjonon palvelin', when: 'viikko sitten', size: '31 Mt', priv: true, org: true },
+  { o: LOGIN, n: 'kotisivu', d: 'Henkilökohtainen kotisivu', when: '2 vk sitten', size: '2,4 Mt' },
+];
+const row = r => `<li class="row" data-testid="repo-row"><span class="nm"><span><span class="ow">${esc(r.o)}/</span><b>${esc(r.n)}</b></span>${r.priv ? ic('lock') : ''}</span><span class="desc">${esc(r.d)}</span><span class="meta"><span>${r.when}</span><span>${r.size}</span></span></li>`;
+function repoList(filterOrg) {
+  const list = REPOS.filter(r => !(filterOrg && r.org));
+  const own = list.filter(r => r.o === LOGIN), org = list.filter(r => r.o === ORG);
+  return `<section class="sec"><h3><span class="mono">${LOGIN}</span><span class="kind">omat</span></h3><ul>${own.map(row).join('')}</ul></section>`
+    + (org.length ? `<section class="sec"><h3><span class="mono">${ORG}</span><span class="kind">organisaatio</span></h3><ul>${org.map(row).join('')}</ul></section>` : '');
+}
+// The list area of Uusi työtila follows the host's attempt in every direction.
+function finderBody() {
+  const h = host(), c = cause();
+  if (V === 'now') {
+    if (['trying', 'confirming', 'need', 'down'].includes(h.phase) && c !== 'org') return `<p class="empty" role="alert" data-testid="now-failed">Repolistaa ei saatu GitHubista. Voit silti kirjoittaa repon nimen muodossa omistaja/repo.</p>`;
+    return repoList(c === 'org');
+  }
+  if (h.phase === 'trying') return `<p class="pending" role="status" data-testid="list-trying"><span class="spin"></span>Haetaan GitHubista… GitHub ei vastannut, yritetään uudelleen (${h.k}/${h.n}).</p>`;
+  if (h.phase === 'confirming') return `<p class="pending" role="status" data-testid="list-trying"><span class="spin"></span>Tarkistetaan GitHub-yhteyttä…</p>`;
+  if (h.phase === 'down') return `<div class="place" role="status" data-testid="gh-place">${ic('info')}<div><strong>GitHub ei vastaa</strong><p>Repolista haetaan itsestään, kun yhteys palaa.</p></div><div class="acts">${actions('outage')}</div></div>`;
+  if (h.phase === 'need' && c !== 'org') {
+    const k = copyKey(), cc = COPY[k];
+    return `<div class="place ${cc.tone}" role="alert" data-testid="gh-place">${ic('warning')}<div><strong>${esc(cc.title)}</strong><p>Repolistaa ei voi hakea eikä repoja kloonata ennen kuin yhteys on korjattu.</p></div><div class="acts">${actions(k)}<span class="hint">Palaat tälle sivulle.</span></div></div>`;
+  }
+  if (c === 'org') return repoList(true) + `<div class="place" role="status" data-testid="gh-place">${ic('warning')}<div><strong>${esc(COPY.org.title)}</strong><p>${ORG}-organisaation repot puuttuvat listasta.</p></div><div class="acts">${actions('org')}</div></div>`;
+  return repoList(false);
+}
+function viewKlooni() {
+  const h = host();
+  const blocked = V !== 'now' && ['trying', 'confirming', 'need', 'down'].includes(h.phase) && cause() !== 'org';
+  const detail = blocked ? `<aside class="detail"><p class="muted">Valitse repo, kun lista on saatu GitHubista.</p><button class="btn primary" disabled>${ic('github')}Kloonaa työtilaksi</button></aside>`
+    : `<aside class="detail"><h4><span style="color:var(--ah-muted)">${LOGIN}/</span>open-habitat</h4><p class="muted">Selaimesta käytettävä koti natiiveille agenteille</p><dl><dt>Näkyvyys</dt><dd>Yksityinen</dd><dt>Oletushaara</dt><dd>main</dd><dt>Koko</dt><dd>48 Mt</dd></dl></aside>`;
+  return `<div class="scroll"><div class="page">${phone() ? '' : `<div class="page-head"><h2>Uusi työtila</h2><p>Kloonaa repo palvelimelle työtilaksi.</p></div>`}
+    <div class="clone-grid"><div class="finder"><div class="search">${ic('search')}<span>Hae nimellä tai kirjoita omistaja/repo</span></div>${finderBody()}</div>${phone() ? '' : detail}</div></div></div>`;
+}
+
+function viewKoodi() {
+  const h = host(), c = cause(), now = V === 'now';
+  let st;
+  if (h.phase === 'ok' || h.phase === 'fixed' || h.phase === 'recovered' || c === 'org') st = { label: 'Yhdistetty', cls: 'ok', desc: `Kirjautunut käyttäjänä ${LOGIN}. Git ja gh toimivat työtiloissa.` };
+  else if (now && (c === 'blip' || c === 'outage')) st = { label: 'Tilaa ei tiedetä', cls: 'warn', desc: 'GitHub-yhteyden tilaa ei juuri nyt voitu vahvistaa.' };
+  else if (now && c === 'exp') st = { label: 'Vanhentunut', cls: 'bad', desc: 'GitHub ei enää hyväksy palvelimelle tallennettua valtuutusta, joten git push ja gh eivät toimi. Yhdistä uudelleen kirjautumalla GitHubilla.' };
+  else if (h.phase === 'trying') st = { label: 'Yritetään uudelleen…', cls: 'warn', spin: true, desc: `GitHub ei vastannut. Palvelin yrittää itse (${h.k}/${h.n}); valtuutus on tallessa.` };
+  else if (h.phase === 'confirming') st = { label: 'Tarkistetaan…', cls: 'warn', spin: true, desc: 'GitHub hylkäsi valtuutuksen. Palvelin tarkistaa vielä kerran.' };
+  else if (h.phase === 'down') st = { label: 'GitHub ei vastaa', cls: 'warn', desc: 'Valtuutus on tallessa, mutta GitHub ei vastaa. Palvelin yrittää 30 sekunnin välein; uudelleen yhdistäminen ei auta.', meta: 'Viimeksi toiminut 2 min sitten · viimeksi yritetty juuri nyt' };
+  else if (c === 'exp') st = { label: 'Vanhentunut tai peruttu', cls: 'bad', desc: 'GitHub ei enää hyväksy palvelimen valtuutusta, eikä palvelin voi uusia sitä itse. Yhdistä uudelleen kirjautumalla GitHubilla.' };
+  else st = { label: 'Ei yhdistetty', cls: 'warn', desc: 'GitHub-yhteyttä ei löytynyt, joten git push ja gh eivät toimi. Yhdistä kirjautumalla GitHubilla.' };
+  const fixable = (c === 'exp' || c === 'disc') && h.phase === 'need' || now && c === 'exp';
+  const btn = fixable ? `<button class="btn primary" data-act="fix">${ic('github')}${c === 'disc' ? 'Yhdistä GitHub' : 'Yhdistä uudelleen'}</button>`
+    : h.phase === 'down' && !now ? `<button class="btn" data-act="check">${ic('refresh')}Tarkista nyt</button>` : '';
+  const orgs = c === 'org' && !now ? `<div class="orgs" data-testid="gh-orgs"><span>Organisaatiot:</span><span class="mono">${ORG}</span><span class="chip">estää sovelluksen</span>${actions('org')}</div>` : '';
+  return `<div class="scroll"><div class="settings">${phone() ? '' : `<nav class="s-nav"><div class="s-h">Asetukset</div>${['Yleiset', 'Koodipalvelut', 'Integraatiot', 'Tallennustila', 'Käyttöönotto'].map(s => `<div class="${s === 'Koodipalvelut' ? 'cur' : ''}">${s}</div>`).join('')}</nav>`}
+    <div class="s-main"><h2>Koodipalvelut</h2><p class="s-intro">Palvelut, joista työtilat kloonataan ja joihin agentit pushaavat.</p>
+    <div class="s-card"><div class="s-row" data-testid="gh-row" data-state="${h.phase}"><span class="letter">GH</span>
+      <div class="s-lbl"><strong>GitHub</strong><span class="s-desc${st.cls === 'bad' ? ' bad' : ''}">${esc(st.desc)}</span>${st.meta ? `<span class="s-meta">${st.meta}</span>` : ''}${orgs}</div>
+      <div class="s-val"><span class="status ${st.cls}">${st.spin ? '<span class="spin"></span>' : '<i></i>'}${st.label}</span>${btn}</div></div></div></div></div></div>`;
+}
+
+const TITLES = { klooni: 'Uusi työtila', koodi: 'Koodipalvelut' };
+function appHTML() {
+  const ph = phone();
+  let inner, title;
+  if (S.n === 'koti') { const cv = conversation(); title = cv.title; inner = `<div class="conv">${cv.html}</div>`; }
+  else { title = TITLES[S.n]; inner = S.n === 'klooni' ? viewKlooni() : viewKoodi(); }
+  const top = ph ? topbar(title, S.n === 'koti' ? headChip() : '') : '';
+  const pop = ph && S.n === 'koti' ? popover() : '';
+  const veil = R.veil ? `<div class="veil" data-testid="veil"><div>${R.veil}</div></div>` : '';
+  return `<div class="app${ph ? ' phone ph' : ''}">${ph ? '' : rail()}<main class="main">${top}${banner()}${inner}${pop}</main>${veil}</div>`;
+}
+
+// ---- Frame geometry ----
+const HEIGHTS = { 1280: 800, 390: 844 };
+const viewport = document.getElementById('viewport');
+const sizer = document.getElementById('sizer');
+const stage = document.getElementById('frame');
+function layoutFrame() {
+  const { W, H } = S.w === 'oma' ? { W: viewport.clientWidth, H: viewport.clientHeight } : { W: +S.w, H: HEIGHTS[S.w] };
+  const bare = document.body.classList.contains('bare');
+  const s = S.w === 'oma' || bare ? 1 : Math.min(1, (viewport.clientWidth - 24) / W, (viewport.clientHeight - 84) / H);
+  stage.style.width = W + 'px'; stage.style.height = H + 'px';
+  stage.style.transform = s < 1 ? `scale(${s})` : '';
+  sizer.style.width = Math.round(W * s) + 'px'; sizer.style.height = Math.round(H * s) + 'px';
+  stage.dataset.theme = S.t;
+}
+function readout() {
+  const h = host(), c = cause();
+  const fact = { blip: 'nyt unknown; verkkovirhettä ei eroteta', outage: 'nyt unknown; verkkovirhettä ei eroteta', exp: 'native_github.state = expired (on jo)', disc: 'native_github.state = disconnected (on jo)', org: 'ei tietoa hostilla', ok: 'connected' }[c];
+  const ph = { ok: 'kunnossa', fixed: 'korjattu', recovered: 'yhteys palasi', trying: `yritys ${h.k}/${h.n} epäonnistui`, confirming: 'varmistetaan', need: 'tarvitsee ihmisen', down: 'luovutti näyttämisen, yrittää 30 s välein' }[h.phase];
+  const m = Math.floor(R.t / 60), s = String(Math.floor(R.t % 60)).padStart(2, '0');
+  document.getElementById('readout').innerHTML = `Aika <b>${FROZEN === 999 ? 'lopussa' : `${m}:${s}`}</b> · Host: <b>${ph}</b> · Tieto: <b>${fact}</b>`;
+  document.getElementById('sim-back').hidden = S.c !== 'outage' || R.back !== null || R.fixed;
+}
+
+// ---- Timeline: repaint only when what is shown changes ----
+let ticker, shown = '';
+const key = () => JSON.stringify(host()) + R.pop + R.requested + R.fixed + R.toast + (R.veil || '');
+function paint() { stage.innerHTML = appHTML(); shown = key(); readout(); }
+function startClock() {
+  clearInterval(ticker);
+  if (FROZEN !== null) return;
+  ticker = setInterval(() => {
+    if (R.t >= 400) { clearInterval(ticker); return; }
+    R.t += 1;
+    if (key() !== shown) paint(); else readout();
+  }, TICK_MS);
+}
+
+// ---- Picker wiring (picker.js expects `stage` and `variants`); every mount restarts the timeline ----
+const variants = VARIANTS.map(v => () => {
+  V = v; resetRuntime(); stage.dataset.variant = v; layoutFrame();
+  startClock();
+  const html = appHTML(); shown = key(); readout();
+  return html;
+});
+
+stage.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if (e.target.closest('a')) e.preventDefault();
+  if (!t) { if (R.pop && !e.target.closest('.pop')) { R.pop = false; paint(); } return; }
+  const act = t.dataset.act;
+  if (act === 'pop') { R.pop = !R.pop; paint(); }
+  else if (act === 'nav') { S.n = t.dataset.to; R.pop = false; syncURL(); paint(); }
+  else if (act === 'check') { R.checkNow = R.t; paint(); }
+  else if (act === 'org') {
+    R.veil = 'Siirrytään GitHubiin…<br><span style="color:var(--ah-muted)">(simuloitu: GitHub lähettää pyynnön organisaation omistajalle)</span>'; paint();
+    setTimeout(() => { R.veil = null; R.requested = true; R.pop = false; paint(); }, 900);
+  }
+  else if (act === 'fix') {
+    R.veil = 'Siirrytään GitHubiin…<br><span style="color:var(--ah-muted)">(simuloitu: sovellus on jo hyväksytty, joten GitHub palauttaa tänne kysymättä)</span>'; paint();
+    setTimeout(() => { R.veil = null; R.fixed = true; R.toast = true; R.pop = false; paint();
+      setTimeout(() => { R.toast = false; paint(); }, 5000); }, 900);
+  }
+});
+document.getElementById('sim-back').addEventListener('click', () => { R.back = R.t; paint(); });
+</script>
+<script>
+/*PICKER_JS*/
+</script>
+<script>
+// ---- Prototype controls ----
+function syncControls() {
+  document.querySelectorAll('.pc-group').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(S[g.dataset.k] === b.dataset.v))));
+}
+function syncURL() {
+  const url = new URL(location);
+  for (const [k, v] of Object.entries(S)) url.searchParams.set(k, v);
+  history.replaceState(null, '', url);
+  syncControls();
+}
+document.querySelectorAll('.pc-group').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S[g.dataset.k] = b.dataset.v; syncURL();
+  // A new situation or view starts the timeline again; window and theme keep it.
+  if (g.dataset.k === 'c' || g.dataset.k === 'n') stage.innerHTML = variants[current]();
+  else { layoutFrame(); paint(); }
+}));
+let rz;
+window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { layoutFrame(); paint(); }); });
+syncControls();
+</script>
+</body>
+</html>
