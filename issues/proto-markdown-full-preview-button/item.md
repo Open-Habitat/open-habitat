@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-markdown-preview
 lane_seq: 1
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: kokeiltavaa:2026-10-28/proto-markdown-full-preview-button
 ---
@@ -19,3 +19,9 @@ Markdownin koko näkymän esikatselulle parempi pikanäppäin ja oma painike, pa
 ## Prototyyppi
 
 Kierros 28.10. odottaa Jarin valintaa (preparation `pending`): [result.md](result.md), opas [prototypes/markdown-preview/NOTES.md](prototypes/markdown-preview/NOTES.md).
+
+## Decisions
+
+### 2026-10-28T11:29:01Z · @jari
+
+Jari 2026-10-28: suunta Painike. Painikerivi, mieluiten ikonipainikkeina. Rinnakkain-muotoa ei tarvita. Sama esikatselu myös CSV:lle ja muille tiedostomuodoille, joissa se on mielekäs. Riffikierros 2 tältä pohjalta.
