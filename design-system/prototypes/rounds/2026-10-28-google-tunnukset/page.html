@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="prototype-round" content="2026-10-28-google-tunnukset">
+<title>Palvelinintegraatiot: asiakas ja tunnukset samassa vaiheessa — prototyyppi</title>
+<style>
+/*TOKENS*/
+/*PICKER_CSS*/
+
+/* ---- Prototype chrome (not a contestant) ---- */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #0c0d0f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.pc-bar {
+  position: fixed; inset: 0 0 auto 0; height: 44px; z-index: 60;
+  display: flex; align-items: center; gap: 14px; padding: 0 12px;
+  background: #16181b; color: #c9cdd2; font-size: 12px; border-bottom: 1px solid #262a2f;
+  overflow-x: auto; white-space: nowrap;
+}
+.pc-group { display: inline-flex; align-items: center; gap: 2px; }
+.pc-group > span { margin-right: 4px; color: #8a9097; }
+.pc-bar button {
+  height: 26px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent;
+  color: #aeb4ba; font: inherit; cursor: pointer;
+}
+.pc-bar button:hover { background: rgba(255,255,255,.06); }
+.pc-bar button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+.pc-read { margin-left: auto; color: #8a9097; }
+#viewport { position: fixed; inset: 44px 0 64px 0; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; padding: 12px; }
+body.bare .pc-bar, body.bare .proto-picker { display: none; }
+body.bare #viewport { inset: 0; padding: 0; }
+#sizer { position: relative; flex: none; }
+#frame {
+  position: absolute; top: 0; left: 0; transform-origin: top left; overflow: hidden;
+  background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font);
+  font-size: var(--ah-size-body); line-height: var(--ah-lh-ui);
+  box-shadow: 0 0 0 1px #2a2e33;
+}
+body.bare #frame { box-shadow: none; }
+#frame svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#frame code, #frame pre, .mono { font-family: var(--ah-mono); }
+
+/* ---- App shell (production context, simplified) ---- */
+.app { display: flex; height: 100%; }
+.rail { flex: none; width: var(--ah-rail-width); background: var(--ah-rail); border-right: 1px solid var(--ah-line); display: flex; flex-direction: column; font-size: var(--ah-size-ui); }
+.rail-title { display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 10px; font-weight: 600; font-size: 14.5px; }
+.rail-title .ok { color: var(--ah-ok); font-size: 11.5px; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; }
+.rail-title .ok::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.rail-collapse { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center; border-radius: var(--ah-r-md); background: var(--ah-surface); }
+.rail-collapse svg { width: 16px; height: 16px; }
+.rail-home { display: flex; align-items: center; gap: 10px; padding: 8px 18px; font-weight: 600; font-size: 14.5px; border-bottom: 1px solid var(--ah-line-soft); padding-bottom: 14px; }
+.rail-home svg { width: 18px; height: 18px; }
+.rail-h { margin: 18px 16px 4px; font: 600 var(--ah-size-label) var(--ah-font); color: var(--ah-muted); text-transform: uppercase; letter-spacing: .05em; }
+.rail-empty { margin: 4px 16px 0; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rail-ws { display: flex; align-items: center; gap: 8px; padding: 6px 16px; font-family: var(--ah-mono); font-size: 13px; color: var(--ah-ink-2); }
+.rail-ws svg { width: 14px; height: 14px; color: var(--ah-muted); }
+.rail-foot { margin-top: auto; padding: 10px; }
+.rail-acct { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: var(--ah-r-md); background: var(--ah-surface); font-weight: 600; }
+.avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--ah-sunken); box-shadow: inset 0 0 0 1px var(--ah-line); font-size: 12px; }
+.main { flex: 1; min-width: 0; overflow: auto; }
+.s-page { display: flex; gap: 32px; max-width: 1100px; margin: 0 auto; padding: 48px 24px 40px 80px; }
+.s-nav { display: flex; flex-direction: column; flex: none; width: 190px; gap: 2px; }
+.s-nav .back { color: var(--ah-ink-2); font-size: var(--ah-size-ui); font-weight: 600; text-align: center; margin-bottom: 18px; }
+.s-nav h1 { margin: var(--ah-s4) 10px; font-size: var(--ah-size-h1); }
+.s-nav-i { display: flex; align-items: center; gap: 9px; min-height: 36px; padding: 0 10px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); font: 500 var(--ah-size-ui) var(--ah-font); }
+.s-nav-i svg { width: 16px; height: 16px; color: var(--ah-muted); flex: none; }
+.s-nav-i[aria-current] { background: var(--ah-current); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-current-line); }
+.s-nav-h { margin: var(--ah-s5) 10px 4px; font: 600 var(--ah-size-label) var(--ah-font); color: var(--ah-muted); text-transform: uppercase; letter-spacing: .05em; }
+.s-main { flex: 1; min-width: 0; max-width: 720px; }
+.s-main > h2 { font-size: var(--ah-size-h2); margin: 0 0 var(--ah-s4); }
+.s-card { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); overflow: hidden; }
+.s-card > * + * { border-top: 1px solid var(--ah-line-soft); }
+.s-row { padding: var(--ah-s4) var(--ah-s5); }
+.s-desc { color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.4; margin: 0; }
+.s-version { margin-top: 12px; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.mtool { display: flex; align-items: center; gap: 14px; height: 52px; padding: 0 18px; border-bottom: 1px solid var(--ah-line); font-weight: 600; }
+.mtool svg { width: 20px; height: 20px; }
+.mtool .home { margin-left: auto; }
+.phone .s-page { display: block; padding: 18px 18px 40px; }
+.phone .s-nav { display: none; }
+.mback { color: var(--ah-muted); font-size: var(--ah-size-ui); font-weight: 600; margin-bottom: 18px; display: block; }
+
+/* ---- Production primitives (Controls.module.css, components.css) ---- */
+.btn { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: var(--b-gap); min-height: var(--b-h); padding: 0 var(--b-pad); border: 1px solid transparent; border-radius: var(--ah-r-md); font: inherit; font-size: var(--b-font); font-weight: 600; line-height: 1.2; cursor: pointer; background: var(--i-bg, transparent); color: var(--i-fg, var(--ah-ink)); border-color: var(--i-border, transparent); white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--i-hover, var(--ah-surface-hover)); }
+.btn:disabled { background: var(--ah-disabled-bg); color: var(--ah-disabled-fg); cursor: default; }
+.btn:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 1px; }
+.btn svg { width: var(--b-icon); height: var(--b-icon); flex: none; }
+.b-page { --b-h: var(--ah-control-page); --b-font: var(--ah-control-page-font); --b-pad: var(--ah-control-page-pad); --b-icon: var(--ah-control-page-icon); --b-gap: var(--ah-control-page-gap); }
+.b-row { --b-h: var(--ah-control-row); --b-font: var(--ah-control-row-font); --b-pad: var(--ah-control-row-pad); --b-icon: var(--ah-control-row-icon); --b-gap: var(--ah-control-row-gap); }
+.b-primary { --i-bg: var(--ah-accent); --i-fg: var(--ah-on-accent); --i-hover: var(--ah-accent-hover); }
+.b-secondary, .b-quiet { --i-bg: var(--ah-control); --i-hover: var(--ah-control-hover); }
+.b-quiet { --i-fg: var(--ah-accent-ink); }
+.b-icon { width: var(--b-h); min-width: var(--b-h); padding: 0; --i-bg: transparent; --i-fg: var(--ah-accent-ink); }
+.ext { color: var(--ah-accent-ink); display: inline-flex; align-items: center; gap: 4px; }
+.ext svg { width: 18px; height: 18px; }
+.mark { display: inline-flex; align-items: center; gap: var(--ah-s2); font-size: var(--ah-size-meta); font-weight: 600; }
+.mark svg { width: 16px; height: 16px; }
+.mark.ok { color: var(--ah-ok); }
+.mark.warn { color: var(--ah-ink-2); }
+.mark.warn .ring { width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; margin: 0 3px; }
+.mark.wait { color: var(--ah-accent-ink); }
+.ig-mark { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; font: 700 11px var(--ah-font); color: var(--ah-bg); }
+.ig-tone-1 { background: var(--ah-source-1); } .ig-tone-2 { background: var(--ah-source-2); } .ig-tone-3 { background: var(--ah-source-3); }
+.ah-overlay { position: absolute; inset: 0; z-index: 50; display: grid; place-items: center; padding: var(--ah-s5); background: var(--ah-scrim); }
+.ah-modal { width: min(720px, 100%); max-height: calc(100% - 2 * var(--ah-s5)); overflow: auto; border-radius: var(--ah-r-xl); }
+.ah-dialog { padding: var(--ah-s7); border-radius: var(--ah-r-xl); background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog); }
+.ah-dialog h2 { margin: 0; font-size: var(--ah-size-h1); line-height: 1.3; }
+.field { display: grid; gap: var(--ah-s2); width: 100%; }
+.field > label { font-weight: 600; font-size: var(--ah-size-ui); }
+.field input { width: 100%; min-height: var(--ah-touch); padding: var(--ah-s3) var(--ah-s4); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink); font: inherit; }
+.field input.mono { font-family: var(--ah-mono); font-size: 13px; }
+.field input[aria-invalid] { border-color: var(--ah-err); }
+.field input:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 1px; }
+.field .hint { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.field .err { color: var(--ah-err); font-size: var(--ah-size-meta); }
+.field.secret > label { font-weight: 400; }
+
+/* ---- ServerIntegrations.css (verbatim where it applies) ---- */
+.si { container: si / inline-size; }
+.si-rows { list-style: none; margin: 0; padding: 0; }
+.si-row { display: grid; grid-template-columns: auto minmax(min-content, 1fr) minmax(min-content, 240px) minmax(150px, max-content); gap: var(--ah-s2) var(--ah-s4); align-items: center; min-height: 52px; padding: var(--ah-s3) var(--ah-s4); }
+.si-row + .si-row { border-top: 1px solid var(--ah-line-soft); }
+.si-main { display: flex; align-items: center; gap: var(--ah-s2) var(--ah-s3); flex-wrap: wrap; min-width: 0; }
+.si-name { font-weight: 600; white-space: nowrap; }
+.si-act { display: flex; justify-content: flex-end; }
+.si-note, .si-bad, .si-warn, .si-path, .si-role { display: flex; align-items: center; gap: var(--ah-s1); }
+.si-note svg, .si-bad svg, .si-warn svg, .si-path svg, .si-role svg { width: 14px; height: 14px; flex: none; }
+.si-quiet, .si-path, .si-muted { font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.si-muted, .si-path { color: var(--ah-muted); }
+.si-bad { font-size: var(--ah-size-meta); color: var(--ah-err); }
+.si-quiet code { font-size: 12px; }
+.si-modal { width: min(560px, 100%); }
+.si-modal.si-wide { width: min(600px, 100%); }
+.si-dialog { display: grid; gap: var(--ah-s4); }
+.si-dialog p { margin: 0; }
+.si-stepbody { display: grid; gap: var(--ah-s2); justify-items: start; align-content: start; min-width: 0; }
+.si-wide .si-stepbody { min-height: 180px; }
+.si-progress { display: flex; gap: 4px; }
+.si-progress span { flex: 1; height: 4px; border-radius: 2px; background: var(--ah-line); }
+.si-progress [data-done] { background: var(--ah-accent-line, var(--ah-accent)); }
+.si-progress [data-current] { background: var(--ah-accent); }
+.si-stepname { font-weight: 600; }
+.si-stepname .si-muted { font-weight: 400; margin-right: var(--ah-s1); }
+.si-list { margin: 0; padding-left: 1.2em; display: grid; gap: 2px; }
+.si-val { display: flex; align-items: center; gap: var(--ah-s2); flex-wrap: wrap; min-width: 0; max-width: 100%; }
+.si-val code { font-size: 13px; padding: 2px 6px; background: var(--ah-sunken, var(--ah-surface-2)); border-radius: var(--ah-r-sm); min-width: 0; overflow-wrap: anywhere; }
+.si-k { font-size: var(--ah-size-meta); color: var(--ah-ink-2); min-width: 120px; }
+.si-effect { padding: var(--ah-s2) var(--ah-s3); border-left: 2px solid var(--ah-line-strong); font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.si-block { display: flex; align-items: flex-start; gap: var(--ah-s2); max-width: 100%; min-width: 0; }
+.si-cmd { font-family: var(--ah-mono); font-size: 12px; background: var(--ah-sunken); border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md); min-width: 0; margin: 0; padding: var(--ah-s2) var(--ah-s3); white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
+.si-handoff { display: grid; gap: var(--ah-s1); min-width: 0; padding-top: var(--ah-s2); border-top: 1px solid var(--ah-line); width: 100%; }
+.si-fields { display: grid; gap: var(--ah-s3); width: 100%; }
+.si-foot { display: flex; align-items: center; gap: var(--ah-s2); flex-wrap: wrap; }
+.si-grow { flex: 1; }
+.si-bad.alert { padding: var(--ah-s2) 0; }
+@container si (max-width: 640px) {
+  .si-row { grid-template-columns: auto minmax(min-content, 1fr) auto; }
+  .si-state { grid-column: 2; grid-row: 2; }
+  .si-act { grid-column: 3; grid-row: 1 / 3; }
+}
+@container si (max-width: 420px) {
+  .si-row { grid-template-columns: auto minmax(0, 1fr); }
+  .si-act { grid-column: 2; grid-row: 3; justify-content: flex-start; }
+}
+
+/* ---- This round: the console step and its values on one screen ---- */
+/* The step that both creates the values and receives them. */
+.gw-console { font-weight: 600; font-size: var(--ah-size-meta); color: var(--ah-muted); text-transform: uppercase; letter-spacing: .05em; }
+.gw-warn { display: flex; gap: var(--ah-s1); align-items: flex-start; font-size: var(--ah-size-meta); color: var(--ah-ink); }
+.gw-warn svg { width: 14px; height: 14px; flex: none; margin-top: 2px; color: var(--ah-err); }
+.gw-handoff-link { display: flex; flex-wrap: wrap; gap: var(--ah-s2); align-items: flex-start; width: 100%; }
+.gw-handoff-link > .si-quiet { flex-basis: 100%; }
+.gw-handoff-link .si-cmd { flex: 1; }
+.gw-handoff-link .si-cmd[data-template] { color: var(--ah-muted); }
+
+/* 1 Perään: the console's instructions, a turn, then the fields. */
+.gw-then { width: 100%; margin: var(--ah-s3) 0 var(--ah-s1); padding-top: var(--ah-s4); border-top: 1px solid var(--ah-line); color: var(--ah-ink); font-weight: 600; font-size: var(--ah-size-ui); }
+
+/* 2 Rinnakkain: the console on the left, what comes back on the right. */
+.si-modal.gw-split-modal { width: min(920px, 100%); }
+.gw-split { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: var(--ah-s6); width: 100%; align-items: start; }
+.gw-col { display: grid; gap: var(--ah-s2); justify-items: start; align-content: start; min-width: 0; }
+.gw-get { padding: var(--ah-s5); border-radius: var(--ah-r-lg); background: var(--ah-sunken); border: 1px solid var(--ah-line-soft); gap: var(--ah-s3); justify-items: stretch; }
+.gw-get .si-path, .gw-get .si-quiet, .gw-get .gw-warn { justify-self: start; }
+.gw-arrow { display: none; }
+.phone .gw-split { grid-template-columns: minmax(0, 1fr); gap: var(--ah-s4); }
+
+/* 3 Vuorotellen: one numbered console action at a time, fields in place. */
+.gw-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; width: 100%; counter-reset: gw; }
+.gw-steps > li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 2px var(--ah-s3); padding: var(--ah-s3) 0; counter-increment: gw; position: relative; }
+.gw-steps > li + li { border-top: 1px solid var(--ah-line-soft); }
+.gw-steps > li::before { content: counter(gw); grid-row: 1 / 3; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; background: var(--ah-sunken); color: var(--ah-ink-2); box-shadow: inset 0 0 0 1px var(--ah-line); }
+.gw-steps > li.get::before { background: var(--ah-accent-soft); color: var(--ah-accent-ink); box-shadow: inset 0 0 0 1px var(--ah-accent-line); }
+.gw-steps > li.opt::before { content: "?"; }
+.gw-steps .gw-t { font-weight: 600; font-size: var(--ah-size-ui); line-height: 22px; }
+.gw-steps .gw-b { display: grid; gap: var(--ah-s2); justify-items: start; min-width: 0; grid-column: 2; }
+.gw-steps .field > label { display: none; }
+</style>
+</head>
+<body>
+<div class="pc-bar" role="toolbar" aria-label="Prototyypin asetukset">
+  <div class="pc-group" data-k="w"><span>Ikkuna</span><button data-v="1280">Työpöytä</button><button data-v="390">Puhelin</button></div>
+  <div class="pc-group" data-k="t"><span>Teema</span><button data-v="light">Vaalea</button><button data-v="dark">Tumma</button></div>
+  <div class="pc-group"><span>Ohje</span><button id="fill" title="Täyttää avoimen ohjeen kentät synteettisillä arvoilla">Täytä arvot</button><button id="reset">Alusta</button></div>
+  <div class="pc-read" id="readout">Avaa ohje rivin painikkeesta Aseta tunnukset…</div>
+</div>
+<div id="viewport"><div id="sizer"><div id="frame"></div></div></div>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">1 Perään</button>
+  <button class="proto-picker-item">2 Rinnakkain</button>
+  <button class="proto-picker-item">3 Vuorotellen</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item">Nykyinen</button>
+</nav>
+
+<script>
+// ---- Icons (web/src/components/Icon.tsx paths) ----
+const ICONS = {
+  forward: '<path d="m9 5 7 7-7 7"/>',
+  external: '<path d="M13 5h6v6M19 5l-9 9"/><path d="M19 14v5H5V5h5"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  check: '<path d="m4 12 5 5L20 6"/>',
+  warning: '<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4M12 17h.01"/>',
+  user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.6 4-5 7-5s5.8 1.4 7 5"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  home: '<path d="M4 11 12 4l8 7"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  left: '<path d="m15 5-7 7 7 7"/>',
+  folder: '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2h8.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
+  plug: '<path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0zM12 16v5"/>',
+  server: '<rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="16" height="7" rx="1.5"/><path d="M8 7.5h.01M8 16.5h.01"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 8-8M16 7l2 2"/>',
+  people: '<circle cx="9" cy="8" r="3"/><path d="M3 20c1-3.5 3.4-5 6-5s5 1.5 6 5M16 5a3 3 0 0 1 0 6M18 15c1.5.6 2.5 2.2 3 5"/>',
+  disk: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 14h18"/>',
+};
+const ic = n => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ---- What the daemon needs (ServerIntegrations.tsx, same values) ----
+const googleAPIs = ['Gmail API', 'Google Calendar API', 'Google Drive API', 'People API'];
+const googleScopes = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/contacts'];
+const microsoftPermissions = ['openid', 'profile', 'User.Read', 'offline_access', 'Files.ReadWrite.All', 'Sites.ReadWrite.All', 'Mail.ReadWrite', 'Mail.Send', 'Calendars.ReadWrite', 'Contacts.ReadWrite'];
+const microsoftRedirect = 'https://login.microsoftonline.com/common/oauth2/nativeclient';
+const dropboxScopes = ['account_info.read', 'files.metadata.read', 'files.metadata.write', 'files.content.read', 'files.content.write', 'sharing.read', 'sharing.write'];
+const dropboxRedirect = 'http://localhost:53682/';
+
+// Synthetic values for Täytä arvot; none of them is real.
+const SAMPLE = {
+  client_id: '915508263417-a8d2kq0zr7m3vh1ts9pe5wybc6lfnjxu.apps.googleusercontent.com',
+  client_secret: 'GOCSPX-synthetic-Kq3vT8xWm2Lp',
+  ms_client_id: '6f1c2a9e-3b47-4d8a-9e21-5c0b7d4f8a13',
+  tenant_id: 'b2d4e6f8-1a3c-4e5f-8b7d-9c0e2f4a6b81',
+  app_key: 'p3n8vq1zt6ka0rw',
+  app_secret: 'h2m5c9xj4ub7ye1',
+};
+
+// ---- Small production pieces ----
+const copyBtn = (label, value) => `<button class="btn b-row b-icon" data-copy="${esc(value)}" aria-label="Kopioi ${esc(label)}">${ic('copy')}</button>`;
+const Val = (k, v, copy = true) => `<div class="si-val"><span class="si-k">${esc(k)}</span><code>${esc(v)}</code>${copy ? copyBtn(k, v) : ''}</div>`;
+const Path = p => `<p class="si-path">${ic('forward')}<span>${esc(p)}</span></p>`;
+const Role = t => `<p class="si-quiet si-role">${ic('user')}<span>${t}</span></p>`;
+const Ext = (t, id) => `<a class="ext" href="#" data-testid="${id}">${t} ${ic('external')}</a>`;
+const Block = (lines, label, joiner) => `<div class="si-block"><pre class="si-cmd">${esc(lines.join('\n'))}</pre>${copyBtn(label, lines.join(joiner))}</div>`;
+
+// ---- Fields: the provider's two values (Fields in ServerIntegrations.tsx) ----
+const FIELDS = {
+  google: [
+    { id: 'client_id', label: 'Client ID', hint: '…apps.googleusercontent.com' },
+    { id: 'client_secret', label: 'Client secret', secret: true },
+  ],
+  microsoft: [
+    { id: 'ms_client_id', label: 'Application (client) ID' },
+    { id: 'tenant_id', label: 'Directory (tenant) ID' },
+  ],
+  dropbox: [
+    { id: 'app_key', label: 'App key' },
+    { id: 'app_secret', label: 'App secret', secret: true },
+  ],
+};
+const googleID = /^[0-9]{1,20}-[a-z0-9]{1,64}\.apps\.googleusercontent\.com$/;
+const plain = /^[A-Za-z0-9._-]{1,256}$/;
+const guid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+function appErrors(p, v) {
+  const [a, b] = FIELDS[p].map(f => (v[f.id] || '').trim());
+  const e = {};
+  if (p === 'google') { if (!googleID.test(a)) e.client_id = 'Tarkista Client ID: se päättyy .apps.googleusercontent.com.'; if (!plain.test(b)) e.client_secret = 'Tarkista Client secret.'; }
+  else if (p === 'dropbox') { if (!plain.test(a)) e.app_key = 'Tarkista App key.'; if (!plain.test(b)) e.app_secret = 'Tarkista App secret.'; }
+  else { if (!guid.test(a)) e.ms_client_id = 'Tarkista Application (client) ID: muoto 8-4-4-4-12.'; if (!guid.test(b)) e.tenant_id = 'Tarkista Directory (tenant) ID: muoto 8-4-4-4-12.'; }
+  return e;
+}
+function field(f, opts = {}) {
+  const v = W.values[f.id] || '';
+  const err = W.errors[f.id];
+  const input = `<input id="f-${f.id}" data-testid="si-field-${f.id}" data-field="${f.id}" ${f.secret ? 'type="password" autocomplete="new-password"' : 'type="text" autocomplete="off" class="mono"'} value="${esc(v)}"${err ? ' aria-invalid="true"' : ''}${opts.aria ? ` aria-label="${esc(f.label)}"` : ''}>`;
+  return `<div class="field${f.secret ? ' secret' : ''}"><label for="f-${f.id}">${esc(f.label)}</label>${input}${f.hint ? `<span class="hint">${esc(f.hint)}</span>` : ''}${err ? `<span class="err" role="alert">${esc(err)}</span>` : ''}</div>`;
+}
+const fields = (p, opts) => `<div class="si-fields">${FIELDS[p].map(f => field(f, opts)).join('')}</div>`;
+
+// The admin-consent link for someone who has the role: filled in as the
+// values are typed, a template until both are well formed.
+function consentLink() {
+  const id = (W.values.ms_client_id || '').trim(), t = (W.values.tenant_id || '').trim();
+  const ok = guid.test(id) && guid.test(t);
+  const url = `https://login.microsoftonline.com/${ok ? t : '{Directory (tenant) ID}'}/adminconsent?client_id=${ok ? id : '{Application (client) ID}'}`;
+  return `<div class="gw-handoff-link" data-testid="gw-consent-link">${ok ? '' : '<span class="si-quiet">Linkki täyttyy, kun arvot on liitetty.</span>'}<pre class="si-cmd"${ok ? '' : ' data-template'}>${esc(url)}</pre>${ok ? copyBtn('hyväksyntälinkki', url) : ''}</div>`;
+}
+
+// ---- The console steps ----
+// Shared steps are the production ones verbatim. Each provider's last step is
+// what this round changes: `do` blocks happen in the console, `get` blocks
+// carry what the console hands back. Every direction shows the same blocks.
+const S_APIS = { id: 'apis', title: 'API:t', body: () => `<p>Valitse organisaation Google Cloud -projekti ja ota käyttöön:</p><ul class="si-list">${googleAPIs.map(a => `<li>${a}</li>`).join('')}</ul>${Ext('Ota käyttöön Google Cloudissa', 'si-enable-link')}` };
+const S_AUD = { id: 'audience', title: 'Kohdeyleisö', body: () => `${Path('Google Auth platform › Branding › Get started')}${Val('App name', 'Open Habitat')}${Val('Audience', 'Internal', false)}<p class="si-effect">Internal edellyttää Google Workspacea. Vain organisaation tilit voivat yhdistää, eikä Googlen vahvistusta tarvita.</p>` };
+const S_SCOPES = { id: 'scopes', title: 'Käyttöoikeudet', body: () => `${Path('Google Auth platform › Data Access › Add or Remove Scopes')}${Block(googleScopes, 'käyttöoikeudet', ',')}` };
+const googleClientForm = () => `${Val('Application type', 'Desktop app', false)}${Val('Name', 'Open Habitat')}${Val('Use this client for an AI-powered agent', 'valittu', false)}<p class="si-effect">Tätä asiakasta käyttävät vain agentit. Valinta ei anna lisäoikeuksia, mutta osa Googlen MCP-palveluista hyväksyy vain agentiksi merkityn asiakkaan.</p><p class="si-quiet">Ei uudelleenohjausosoitetta. Palvelin käyttää osoitetta <code>http://localhost</code>.</p>`;
+const S_CLIENT_OLD = { id: 'client', title: 'OAuth-asiakas', body: () => `${Path('Google Auth platform › Clients › Create Client')}${googleClientForm()}<p class="si-warn">${ic('warning')}<span>Kopioi Client secret heti: Google näyttää sen vain kerran.</span></p>` };
+const S_CLIENT = {
+  id: 'client', title: 'Asiakas ja tunnukset', merged: true, console: 'Google Cloudissa',
+  then: 'Google näyttää ikkunan OAuth client created',
+  blocks: [
+    { side: 'do', t: 'Avaa asiakkaan luonti', html: () => Path('Google Auth platform › Clients › Create Client') },
+    { side: 'do', t: 'Täytä lomake', html: googleClientForm },
+    { side: 'do', t: 'Valitse Create', html: () => `<p class="si-quiet">Google luo asiakkaan ja näyttää ikkunan <em>OAuth client created</em>.</p>`, only3: true },
+    { side: 'get', t: 'Kopioi ikkunasta Client ID', field: 'client_id' },
+    { side: 'get', t: 'Kopioi ikkunasta Client secret', field: 'client_secret', after: () => `<p class="gw-warn" data-testid="gw-once">${ic('warning')}<span>Google näyttää salaisuuden vain tässä ikkunassa. Liitä se ennen kuin suljet ikkunan.</span></p>` },
+  ],
+  intro: () => `<p class="si-quiet">Valitse lopuksi <em>Create</em>.</p>`,
+};
+
+const M_REGISTER = { id: 'register', title: 'Rekisteröi sovellus', body: () => `${Ext('Avaa Microsoft Entra', 'si-entra-link')}<p class="si-quiet">Entran yläreunan hakukenttä vie oikealle sivulle: hae <em>App registrations</em> ja myöhemmin sovelluksen nimellä.</p>${Path('Entra ID › App registrations › New registration')}${Val('Name', 'Open Habitat')}${Val('Supported account types', 'Single tenant only - <organisaatio>', false)}<p class="si-effect">Vain organisaation työtilit. Henkilökohtaiset Microsoft-tilit eivät voi yhdistää.</p><p class="si-quiet">Jätä Redirect URI tyhjäksi ja valitse <em>Register</em>.</p>${Role('Vaatii vähintään roolin Application Developer.')}` };
+const M_PUBLIC = { id: 'public', title: 'Julkinen asiakas', body: () => `${Path('Authentication › Settings')}${Val('Allow public client flows', 'Enabled', false)}<p class="si-quiet">Valitse <em>Save</em>. Henkilöt kirjautuvat laitekoodilla, joten client secretiä ei luoda.</p>${Path('Authentication › Redirect URI configuration › Add Redirect URI › Mobile and desktop applications')}${Val('Redirect URI', microsoftRedirect)}` };
+const M_PERMS = { id: 'permissions', title: 'Käyttöoikeudet', body: () => `${Path('API permissions › Add a permission › Microsoft Graph › Delegated permissions')}${Block(microsoftPermissions, 'käyttöoikeudet', ' ')}<p class="si-quiet">User.Read on valmiina. Valitse lopuksi <em>Add permissions</em>.</p>` };
+const M_CONSENT_OLD = { id: 'consent', title: 'Hyväksyntä', body: () => `${Path('API permissions › Grant admin consent for <organisaatio> › Yes')}<p class="si-effect">Henkilöiltä ei kysytä hyväksyntää. Status-sarakkeessa lukee <em>Granted for &lt;organisaatio&gt;</em>.</p>${Role('Vaatii roolin Cloud Application Administrator, Application Administrator tai Privileged Role Administrator.')}<div class="si-handoff"><span class="si-quiet">Jos rooli puuttuu, lähetä linkki sille, jolla se on. Arvot ovat sovelluksen Overview-sivulla.</span><pre class="si-cmd">https://login.microsoftonline.com/{Directory (tenant) ID}/adminconsent?client_id={Application (client) ID}</pre></div>` };
+const M_CONSENT = {
+  id: 'consent', title: 'Hyväksyntä ja tunnukset', merged: true, console: 'Microsoft Entrassa',
+  then: 'Sovelluksen Overview-sivulla',
+  blocks: [
+    { side: 'do', t: 'Myönnä hyväksyntä', html: () => `${Path('API permissions › Grant admin consent for <organisaatio> › Yes')}<p class="si-effect">Henkilöiltä ei kysytä hyväksyntää. Status-sarakkeessa lukee <em>Granted for &lt;organisaatio&gt;</em>.</p>${Role('Vaatii roolin Cloud Application Administrator, Application Administrator tai Privileged Role Administrator.')}` },
+    { side: 'get', t: 'Avaa Overview ja kopioi Application (client) ID', field: 'ms_client_id', before: () => Path('Overview') },
+    { side: 'get', t: 'Kopioi Directory (tenant) ID', field: 'tenant_id', after: () => `<p class="si-quiet">Salaisuutta ei tarvita.</p>` },
+    { side: 'get', opt: true, t: 'Jos rooli puuttuu, lähetä linkki sille, jolla se on', html: consentLink },
+  ],
+};
+
+const D_CREATE = { id: 'create', title: 'Luo sovellus', body: () => `${Ext('Avaa Dropbox App Console', 'si-dropbox-link')}${Val('Choose an API', 'Scoped access', false)}${Val('Choose the type of access you need', 'Full Dropbox', false)}<p class="si-effect">Henkilöt synkronoivat koko Dropboxinsa, joten App folder ei riitä.</p>${Val('Name your app', 'Open Habitat <organisaatio>', false)}<p class="si-quiet">Nimen on oltava yksilöllinen, eikä siinä saa olla sanaa Dropbox. Valitse <em>Create app</em>.</p>${Role('Sovellus kuuluu tilille, jolla luot sen. Käytä organisaation yhteistä Dropbox-tiliä.')}` };
+const dropboxRedirectHTML = () => `${Path('Settings › OAuth 2 › Redirect URIs')}${Val('Redirect URI', dropboxRedirect)}<p class="si-quiet">Valitse <em>Add</em>. Osoitteen on oltava täsmälleen tämä, kauttaviiva mukaan.</p>`;
+const dropboxUsersHTML = () => `${Path('Settings › Development users › Enable additional users')}<p class="si-effect">Uusi sovellus on kehitystilassa (Development), ja ilman tätä vain sovelluksen omistaja voi yhdistää.</p>`;
+const D_SETTINGS_OLD = { id: 'settings', title: 'Asetukset', body: () => dropboxRedirectHTML() + dropboxUsersHTML() };
+const D_PERMS = { id: 'permissions', title: 'Käyttöoikeudet', body: () => `${Path('Permissions')}${Block(dropboxScopes, 'käyttöoikeudet', ' ')}<p class="si-quiet">account_info.read on valmiina. Löydät muut selaimen haulla (Ctrl+F tai ⌘F). Valitse lopuksi <em>Submit</em>.</p><p class="si-quiet">Myöhempi muutos ei koske jo yhdistettyjä tilejä.</p>` };
+const D_SETTINGS = {
+  id: 'settings', title: 'Asetukset ja tunnukset', merged: true, console: 'Dropbox App Consolessa',
+  then: 'Samalla Settings-sivulla ylempänä',
+  blocks: [
+    { side: 'do', t: 'Lisää uudelleenohjausosoite', html: dropboxRedirectHTML },
+    { side: 'do', t: 'Salli muut käyttäjät', html: dropboxUsersHTML },
+    { side: 'get', t: 'Kopioi App key', field: 'app_key', before: () => Path('Settings › App key') },
+    { side: 'get', t: 'Näytä ja kopioi App secret', field: 'app_secret', before: () => Path('Settings › App secret › Show') },
+  ],
+};
+
+// The flows. Nykyinen is production; the directions drop the separate
+// Tunnukset step. Dropbox moves Käyttöoikeudet before Asetukset so the flow
+// ends on the Settings page that shows its values.
+const FLOW = {
+  current: { google: [S_APIS, S_AUD, S_SCOPES, S_CLIENT_OLD], microsoft: [M_REGISTER, M_PUBLIC, M_PERMS, M_CONSENT_OLD], dropbox: [D_CREATE, D_SETTINGS_OLD, D_PERMS] },
+  merged: { google: [S_APIS, S_AUD, S_SCOPES, S_CLIENT], microsoft: [M_REGISTER, M_PUBLIC, M_PERMS, M_CONSENT], dropbox: [D_CREATE, D_PERMS, D_SETTINGS] },
+};
+const NAME = { google: 'Google', microsoft: 'Microsoft 365', dropbox: 'Dropbox' };
+const SKIP = { google: 'Minulla on jo asiakas', microsoft: 'Minulla on jo sovellus', dropbox: 'Minulla on jo sovellus' };
+// Where the values of an existing app are (Minulla on jo …). Google shows an
+// existing secret no more, so an existing client needs a new one.
+const EXISTING = {
+  google: () => `${Path('Google Auth platform › Clients › Open Habitat › Add secret')}<p class="si-quiet">Google ei näytä vanhaa salaisuutta uudelleen. Lisää asiakkaalle uusi ja kopioi se ikkunasta.</p>`,
+  microsoft: () => Path('Overview'),
+  dropbox: () => Path('Settings › App key, App secret (Show)'),
+};
+
+// ---- State ----
+const PARAMS = new URLSearchParams(location.search);
+const S = { w: PARAMS.get('w') || '1280', t: PARAMS.get('t') || 'light' };
+let V = 'd1';
+const fresh = () => ({ open: null, at: 0, skip: false, values: {}, errors: {}, saving: false });
+let W = fresh();
+let READY = { google: false, microsoft: false, dropbox: false };
+if (PARAMS.get('p') && NAME[PARAMS.get('p')]) { W.open = PARAMS.get('p'); W.at = +(PARAMS.get('s') || 1) - 1; W.skip = PARAMS.get('skip') === '1'; }
+
+function steps() {
+  const flow = V === 'cur' ? FLOW.current : FLOW.merged;
+  const list = flow[W.open];
+  const enter = { id: 'enter', title: 'Tunnukset', enter: true };
+  if (W.skip) return [enter];
+  return V === 'cur' ? [...list, enter] : list;
+}
+
+// ---- The page ----
+const ROWS = [
+  ['google', 'G', 1], ['microsoft', 'M', 2], ['apple', 'iC', 3, 'Apple (iCloud)'], ['imap', '@', 3, 'Sähköposti (IMAP)'],
+  ['caldav', 'C', 3, 'Kalenteri (CalDAV)'], ['carddav', 'C', 3, 'Yhteystiedot (CardDAV)'], ['dropbox', 'D', 3],
+];
+function row([id, letter, tone, label]) {
+  const app = id in READY;
+  const ready = !app || READY[id];
+  const mark = ready ? `<span class="mark ok" data-testid="si-status-${id}">${ic('check')}Tarjolla</span>` : `<span class="mark warn" data-testid="si-status-${id}"><span class="ring"></span>Ei tarjolla</span>`;
+  const act = !app ? '' : ready ? `<button class="btn b-row b-secondary" data-testid="si-menu-${id}">Tunnukset ${ic('chev')}</button>` : `<button class="btn b-row b-secondary" data-testid="si-setup-${id}" data-open="${id}">Aseta tunnukset…</button>`;
+  return `<li class="si-row" data-testid="si-row-${id}" data-status="${ready ? 'ready' : 'needs_app'}"><span class="ig-mark ig-tone-${tone}">${letter}</span><span class="si-main"><span class="si-name">${esc(label || NAME[id])}</span></span><span class="si-state">${mark}</span><span class="si-act">${act}</span></li>`;
+}
+function settings() {
+  return `<div class="s-row"><p class="s-desc">Tarjolla olevat palvelut jokainen yhdistää itse kohdassa Asetukset › Tiedot agenteille.</p></div><div class="si"><ul class="si-rows">${ROWS.map(row).join('')}</ul></div>`;
+}
+function rail() {
+  const ws = ['aurinkokello', 'kotisivu', 'muistiinpanot', 'reseptikirja', 'tilastoharjoitus'];
+  return `<aside class="rail"><div class="rail-title">Synteettinen palvelin <span class="ok">Yhdistetty</span><span class="rail-collapse">${ic('left')}</span></div>
+  <div class="rail-home">${ic('home')}Etusivu</div>
+  <div class="rail-h">Sinun vuorosi</div><p class="rail-empty">Mikään ei odota sinua.</p>
+  <div class="rail-h">Käynnissä</div><p class="rail-empty">Mikään ei ole käynnissä.</p>
+  <div class="rail-h">Työtilat 5</div>${ws.map(w => `<div class="rail-ws">${ic('folder')}${w}</div>`).join('')}
+  <div class="rail-foot"><div class="rail-acct"><span class="avatar">A</span>Alice</div></div></aside>`;
+}
+function nav() {
+  const i = (n, t, cur) => `<div class="s-nav-i"${cur ? ' aria-current="page"' : ''}>${ic(n)}${t}</div>`;
+  return `<nav class="s-nav"><div class="back">Takaisin</div><h1>Asetukset</h1>${i('user', 'Tili')}${i('disk', 'Laitteet')}${i('key', 'Tekoäly')}${i('plug', 'Tiedot agenteille')}${i('folder', 'Editori')}<div class="s-nav-h">Palvelimen ylläpito</div>${i('server', 'Palvelin')}${i('plug', 'Palvelinintegraatiot', true)}${i('key', 'AI-avain')}${i('forward', 'Käyttöönotto')}${i('people', 'Käyttäjät ja pääsy')}${i('disk', 'Levytila')}</nav>`;
+}
+function appHTML() {
+  const phone = S.w === '390';
+  const page = `<div class="s-page">${phone ? '' : nav()}<section class="s-main">${phone ? '<span class="mback">← Asetukset</span>' : ''}<h2>Palvelinintegraatiot</h2><div class="s-card">${settings()}</div>${phone ? '' : '<p class="s-version">Palvelimen versio: <code>0.0.0-lab</code> Tämä välilehti on ajan tasalla.</p>'}</section></div>`;
+  const body = phone ? `<div class="main"><div class="mtool">${ic('menu')}Asetukset<span class="home">${ic('home')}</span></div>${page}</div>` : `${rail()}<div class="main">${page}</div>`;
+  return `<div class="app${phone ? ' phone' : ''}">${body}${W.open ? dialog() : ''}</div>`;
+}
+
+// ---- The dialog ----
+function stepBody(step, last) {
+  if (step.enter) {
+    // Production's separate Tunnukset step, and every direction's Minulla on jo … view.
+    const where = W.skip && V !== 'cur' ? EXISTING[W.open]() : W.open === 'microsoft' ? Path('Overview') : W.open === 'dropbox' ? Path('Settings › App key, App secret (Show)') : '';
+    return `${where}${fields(W.open)}${W.open === 'microsoft' ? '<p class="si-quiet">Salaisuutta ei tarvita.</p>' : ''}`;
+  }
+  if (!step.merged) return step.body();
+  return ({ d1: mergedThen, d2: mergedSplit, d3: mergedSteps })[V](step);
+}
+const blockHTML = (b, opts) => b.field
+  ? `${b.before ? b.before() : ''}${field(FIELDS[W.open].find(f => f.id === b.field), opts)}${b.after ? b.after() : ''}`
+  : b.html();
+// 1 Perään: production's step as it is, then a turn and the values.
+function mergedThen(step) {
+  const doB = step.blocks.filter(b => b.side === 'do' && !b.only3), get = step.blocks.filter(b => b.side === 'get');
+  return `${doB.map(b => blockHTML(b)).join('')}${step.intro ? step.intro() : ''}<p class="gw-then" data-testid="gw-then"><span>${esc(step.then)}</span></p>${getHTML(get)}`;
+}
+function getHTML(get) {
+  const f = get.filter(b => b.field), rest = get.filter(b => !b.field);
+  const pre = f.map(b => b.before ? b.before() : '').filter((x, i, a) => a.indexOf(x) === i && x !== '');
+  // Dropbox names one place for each value; the merged list says it once.
+  const paths = W.open === 'dropbox' ? Path('Settings › App key, App secret (Show)') : pre.join('');
+  return `${paths}<div class="si-fields">${f.map(b => field(FIELDS[W.open].find(x => x.id === b.field)) + (b.after ? b.after() : '')).join('')}</div>${rest.map(b => `<div class="si-handoff"><span class="si-quiet">${esc(b.t)}.</span>${b.html()}</div>`).join('')}`;
+}
+// 2 Rinnakkain: the console's side and what it hands back, side by side.
+function mergedSplit(step) {
+  const doB = step.blocks.filter(b => b.side === 'do' && !b.only3), get = step.blocks.filter(b => b.side === 'get');
+  return `<div class="gw-split" data-testid="gw-split"><div class="gw-col"><p class="gw-console">${esc(step.console)}</p>${doB.map(b => blockHTML(b)).join('')}${step.intro ? step.intro() : ''}</div><div class="gw-col gw-get" data-testid="gw-get"><p class="gw-console">Tähän</p><p class="si-quiet">${esc(step.then)}:</p>${getHTML(get)}</div></div>`;
+}
+// 3 Vuorotellen: each console action in order, the fields where they come.
+function mergedSteps(step) {
+  return `<ol class="gw-steps" data-testid="gw-steps">${step.blocks.map(b => `<li class="${b.side}${b.opt ? ' opt' : ''}"><span class="gw-t">${esc(b.t)}</span><div class="gw-b">${blockHTML(b, { aria: true })}</div></li>`).join('')}</ol>`;
+}
+
+function dialog() {
+  const list = steps();
+  const i = Math.min(W.at, list.length - 1);
+  const step = list[i], last = i === list.length - 1;
+  const many = list.length > 1;
+  const split = V === 'd2' && step.merged && S.w !== '390';
+  const title = `${NAME[W.open]}: aseta tunnukset`;
+  const progress = many ? `<div class="si-progress" data-testid="si-progress" role="img" aria-label="Vaihe ${i + 1}/${list.length}">${list.map((s, j) => `<span${j < i ? ' data-done' : ''}${j === i ? ' data-current' : ''}></span>`).join('')}</div><p class="si-stepname" data-testid="si-stepname" data-step="${step.id}"><span class="si-muted">${i + 1}/${list.length}</span> ${esc(step.title)}</p>` : '';
+  const left = i === 0 && !last ? `<button class="btn b-row b-quiet" data-testid="si-skip" data-act="skip">${SKIP[W.open]}</button>` : '';
+  const back = i > 0 || (W.skip && V !== 'cur') ? `<button class="btn b-row b-secondary" data-testid="si-back" data-act="back"${W.saving ? ' disabled' : ''}>Takaisin</button>` : `<button class="btn b-row b-secondary" data-act="close"${W.saving ? ' disabled' : ''}>Peruuta</button>`;
+  const fwd = last ? `<button class="btn b-page b-primary" data-testid="si-save" data-act="save"${W.saving ? ' disabled' : ''}>${W.saving ? 'Odottaa palvelinta…' : 'Tallenna'}</button>` : `<button class="btn b-page b-primary" data-testid="si-next" data-act="next">Seuraava</button>`;
+  return `<div class="ah-overlay" data-act="scrim"><div class="ah-modal si-modal${many ? ' si-wide' : ''}${split ? ' gw-split-modal' : ''}"><section class="ah-dialog si-dialog" role="dialog" aria-label="${esc(title)}" data-testid="si-setup-dialog" data-variant="${V}"><h2>${esc(title)}</h2>${progress}<div class="si-stepbody" data-testid="si-step-${step.id}">${stepBody(step, last)}</div><div class="si-foot">${left}<span class="si-grow"></span>${back}${fwd}</div></section></div></div>`;
+}
+
+// ---- Frame geometry ----
+const HEIGHTS = { 1280: 900, 390: 844 };
+const viewport = document.getElementById('viewport');
+const sizer = document.getElementById('sizer');
+const stage = document.getElementById('frame');
+function layoutFrame() {
+  const W_ = +S.w, H = HEIGHTS[S.w];
+  const bare = document.body.classList.contains('bare');
+  const s = bare ? 1 : Math.min(1, (viewport.clientWidth - 24) / W_, (viewport.clientHeight - 24) / H);
+  stage.style.width = W_ + 'px'; stage.style.height = H + 'px';
+  stage.style.transform = s < 1 ? `scale(${s})` : '';
+  sizer.style.width = Math.round(W_ * s) + 'px'; sizer.style.height = Math.round(H * s) + 'px';
+  stage.dataset.theme = S.t;
+}
+function readout() {
+  const r = document.getElementById('readout');
+  if (!W.open) { r.textContent = 'Avaa ohje rivin painikkeesta Aseta tunnukset…'; return; }
+  const n = steps().length;
+  r.textContent = `${NAME[W.open]}: ${n} ${n === 1 ? 'vaihe' : 'vaihetta'}${W.skip ? ' (Minulla on jo …)' : ''}`;
+}
+function paint() {
+  const keepScroll = stage.querySelector('.ah-modal')?.scrollTop || 0;
+  stage.innerHTML = appHTML();
+  const m = stage.querySelector('.ah-modal'); if (m) m.scrollTop = keepScroll;
+  readout();
+}
+
+// ---- Interaction inside the frame ----
+stage.addEventListener('click', e => {
+  const t = e.target.closest('[data-open],[data-act],[data-copy],a');
+  if (!t) return;
+  if (t.matches('a')) { e.preventDefault(); return; }
+  if (t.dataset.copy !== undefined) { navigator.clipboard?.writeText(t.dataset.copy).catch(() => {}); t.innerHTML = ic('check'); setTimeout(() => { t.innerHTML = ic('copy'); }, 1400); return; }
+  if (t.dataset.open) { W = fresh(); W.open = t.dataset.open; paint(); stage.querySelector('[role=dialog]')?.focus(); return; }
+  const act = t.dataset.act;
+  if (act === 'scrim' && e.target !== t) return;
+  if ((act === 'close' || act === 'scrim') && !W.saving) { W = fresh(); paint(); return; }
+  // Production jumps to its Tunnukset step and keeps Takaisin to the guide.
+  if (act === 'skip') { if (V === 'cur') W.at = steps().length - 1; else { W.skip = true; W.at = 0; } paint(); return; }
+  if (act === 'back') { if (W.skip) { W.skip = false; W.at = 0; } else W.at--; W.errors = {}; const m = stage.querySelector('.ah-modal'); paint(); stage.querySelector('.ah-modal').scrollTop = 0; return; }
+  if (act === 'next') { W.at++; paint(); stage.querySelector('.ah-modal').scrollTop = 0; return; }
+  if (act === 'save') {
+    W.errors = appErrors(W.open, W.values);
+    if (Object.keys(W.errors).length) { paint(); stage.querySelector('[aria-invalid]')?.focus(); return; }
+    W.saving = true; paint();
+    const p = W.open;
+    setTimeout(() => { READY[p] = true; W = fresh(); paint(); }, 700);
+  }
+});
+stage.addEventListener('input', e => {
+  const f = e.target.dataset.field; if (!f) return;
+  W.values[f] = e.target.value;
+  if (W.errors[f]) { delete W.errors[f]; e.target.removeAttribute('aria-invalid'); e.target.parentElement.querySelector('.err')?.remove(); }
+  const link = stage.querySelector('[data-testid=gw-consent-link]');
+  if (link) link.outerHTML = consentLink();
+});
+
+// ---- Picker wiring (picker.js expects `stage` and `variants`) ----
+const VARIANTS = ['d1', 'd2', 'd3', 'cur'];
+let lastV = null;
+const variants = VARIANTS.map(v => () => {
+  // A new direction starts its dialog over; theme and window changes keep it.
+  if (lastV && lastV !== v && W.open) { const o = W.open, skip = W.skip; W = fresh(); W.open = o; W.skip = skip; }
+  lastV = v; V = v; stage.dataset.variant = v; layoutFrame();
+  setTimeout(readout);
+  return appHTML();
+});
+</script>
+<script>
+/*PICKER_JS*/
+</script>
+<script>
+// ---- Prototype controls ----
+function syncControls() {
+  document.querySelectorAll('.pc-group[data-k]').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(S[g.dataset.k] === b.dataset.v))));
+}
+function rerender() {
+  const url = new URL(location);
+  for (const [k, v] of Object.entries(S)) url.searchParams.set(k, v);
+  history.replaceState(null, '', url);
+  syncControls();
+  layoutFrame();
+  paint();
+}
+document.querySelectorAll('.pc-group[data-k]').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S[g.dataset.k] = b.dataset.v; rerender();
+}));
+document.getElementById('fill').addEventListener('click', () => {
+  if (!W.open) return;
+  for (const f of FIELDS[W.open]) W.values[f.id] = SAMPLE[f.id];
+  W.errors = {}; paint();
+});
+document.getElementById('reset').addEventListener('click', () => { W = fresh(); READY = { google: false, microsoft: false, dropbox: false }; paint(); });
+let rz;
+window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { layoutFrame(); }); });
+if (PARAMS.get('bare') === '1') document.body.classList.add('bare');
+syncControls();
+layoutFrame();
+</script>
+</body>
+</html>

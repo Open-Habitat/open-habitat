@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: low
 lane: proto-google-wizard
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-10-28/proto-google-wizard-secrets-step
 ---
