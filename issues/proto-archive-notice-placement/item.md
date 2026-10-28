@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: archive-notice
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-10-28/proto-archive-notice-placement
 ---

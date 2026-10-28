@@ -1,0 +1,63 @@
+/* Arkistoinnin ilmoituksen paikka (round.js). Ilmoitus on tuotannon ArchiveNoticen näköinen
+   (käänteinen pilleri, 13 px, varjo); suunta vaihtaa vain paikan. */
+.an-host:empty { display: none; }
+.an-host { display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+.an-host > * { pointer-events: auto; }
+/* Ylhäällä: yläpalkin alla keskellä, langan vanhimman osan päällä. */
+.an-top { position: absolute; left: 0; right: 0; z-index: 6; padding: 0 16px; }
+/* Nykyinen (vertailu): tuotannon paikka, keskellä alhaalla 20 px reunasta. */
+.an-cur { position: absolute; left: 0; right: 0; bottom: 20px; z-index: 20; padding: 0 16px; }
+/* Kentän yllä: oma rivi kentän yläreunassa; lanka lyhenee eikä mitään jää alle. */
+.an-dock { flex: none; padding: 6px var(--ah-column-pad-inline) 0; background: var(--ah-bg); border-top: 1px solid var(--ah-line-soft); }
+.an-dock + .composer { border-top: 0; }
+.an-dock .an-note { width: min(100%, var(--ah-conversation-width)); box-shadow: none; }
+
+.an-note { position: relative; overflow: hidden; display: flex; align-items: center; gap: 10px; max-width: min(100%, 560px); padding: 6px 6px 6px 14px; border-radius: var(--ah-r-md); background: var(--ah-ink); color: var(--ah-bg); box-shadow: var(--ah-shadow-float), 0 6px 20px rgba(16, 24, 40, .14); font-size: 13px; }
+.an-note .an-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-note.an-wrap .an-text { white-space: normal; }
+.an-btn { flex: none; min-height: 28px; padding: 0 10px; border: 0; border-radius: var(--ah-r-sm, 6px); background: transparent; color: inherit; font: 600 12.5px var(--ah-font); cursor: pointer; }
+.an-btn:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+.an-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+.an-btn[aria-disabled="true"] { opacity: .55; cursor: default; }
+.an-x { width: 28px; padding: 0; font-size: 16px; font-weight: 400; }
+.an-problem { color: inherit; opacity: .85; }
+/* Elinaika näkyy ohuena viivana; pysähtyy, kun osoitin tai fokus on ilmoituksessa. */
+.an-life { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: currentColor; opacity: .35; transform-origin: left; }
+@keyframes an-life { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.an-in { animation: an-in-top 160ms ease-out; }
+.an-dock .an-in, .an-cur .an-in { animation-name: an-in-up; }
+@keyframes an-in-top { from { opacity: 0; transform: translateY(-6px); } }
+@keyframes an-in-up { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .an-in { animation: none; } .an-life { display: none; } }
+
+/* Paikallaan: kuittausrivi listassa siinä, mistä keskustelu tai työtila lähti. */
+.an-receipt { position: relative; overflow: hidden; display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 4px 0 10px; border: 1px dashed var(--ah-line-strong); border-radius: var(--ah-r-nav); color: var(--ah-ink-2); font-size: 12.5px; list-style: none; }
+.rail .an-receipt { margin-left: 18px; }
+.an-ws-receipt .an-receipt { margin: 2px 0 2px; }
+.an-receipt .an-r-ic { flex: none; display: inline-flex; color: var(--ah-muted); }
+.an-receipt .an-r-ic svg { width: 14px; height: 14px; }
+.an-receipt .an-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-receipt .an-text b { font-weight: 500; color: var(--ah-ink); }
+.an-receipt .an-btn { color: var(--ah-accent-ink); min-height: 26px; }
+.an-receipt .an-btn:hover { background: var(--ah-hover); }
+.an-receipt .an-life { background: var(--ah-accent); opacity: .5; }
+.an-receipt.an-in { animation: an-in-place 200ms ease-out; }
+@keyframes an-in-place { from { opacity: 0; background: var(--ah-accent-soft); } }
+
+/* Työtilasivu, jolle arkistointi vie (tuotannon WorkspacePage tiivistettynä). */
+.an-wspage { align-self: center; padding-top: 8px; }
+.an-wspage header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.an-wspage h1 { margin: 0; font: 600 20px var(--ah-font); font-family: var(--ah-mono); }
+.an-wspage h1:focus { outline: none; }
+.an-wspage header p { margin: 4px 0 0; color: var(--ah-muted); font-size: 12.5px; }
+.an-wspage h2 { margin: 24px 0 8px; font: 600 12px var(--ah-font); color: var(--ah-muted); text-transform: uppercase; letter-spacing: .04em; }
+.an-ws-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.an-ws-list > .an-receipt { min-height: 42px; padding-left: 14px; }
+.an-ws-row { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 14px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink); text-decoration: none; }
+.an-ws-row:hover { background: var(--ah-surface-hover); }
+.an-ws-row:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 1px; }
+.an-ws-st { flex: none; color: var(--ah-muted); font-size: 12px; }
+.an-wt { flex: none; color: var(--ah-muted); font-size: 11.5px; }
+@container (max-width: 760px) { .an-wt { display: none; } .an-wspage header { flex-direction: column; } }
+/* The workspace page has no field; the page chrome's display rule would otherwise beat [hidden]. */
+.composer[hidden] { display: none; }
