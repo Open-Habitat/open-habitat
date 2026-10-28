@@ -10,7 +10,15 @@ import {
   useState,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Navigate, useLocation, useNavigate } from "react-router";
+import {
+  type Location,
+  Navigate,
+  type NavigateProps,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router";
 import {
   AccountLogoutDialog,
   AccountSettings,
@@ -132,6 +140,11 @@ const CatalogPreview =
     ? lazy(() => import("../test/CatalogPreview"))
     : null;
 
+/** A redirect of the view under Settings waits until Settings closes, so
+ * work that finishes meanwhile does not take the person out of Settings. */
+function Redirect({ held, ...props }: NavigateProps & { held: boolean }) {
+  return held ? null : <Navigate {...props} />;
+}
 function safeRoute(path: string) {
   return path === "/" ||
     path === "/workspaces" ||
@@ -184,9 +197,16 @@ export function App() {
   const bundle = useBundleState();
   useEffect(watchBundle, []);
   const navigate = useNavigate();
-  const location = useLocation();
-  const defaultSettingsOpen = isSettingsRoute(location.pathname);
-  const piSignInOpen = new URLSearchParams(location.search).has("pi_sign_in");
+  // The router's location. Settings opened from inside the app lies over the
+  // view it was opened from, which stays mounted under it at its own location
+  // (`location` below), so closing Settings brings that view back as it was:
+  // its conversation, editor and panels, without a remount.
+  const route = useLocation();
+  const outside = useRef<Location | undefined>(undefined);
+  if (!isSettingsRoute(route.pathname) && route.pathname !== "/administration")
+    outside.current = route;
+  const defaultSettingsOpen = isSettingsRoute(route.pathname);
+  const piSignInOpen = new URLSearchParams(route.search).has("pi_sign_in");
   const {
     phase,
     snapshot: hostSnapshot,
@@ -199,6 +219,17 @@ export function App() {
         ? "failed"
         : "off",
   );
+  // A Pi sign-in started from Settings takes the page itself, as it does
+  // elsewhere; a deep link has no view under it and closes to the home view.
+  const settingsOver =
+    isSettingsRoute(route.pathname) &&
+    settingsSection(route.pathname) !== undefined &&
+    !piSignInOpen &&
+    (phase === "authenticated" || phase === "stale") &&
+    !landing.show
+      ? outside.current
+      : undefined;
+  const location = settingsOver ?? route;
   const [refreshKey, setRefreshKey] = useState(0);
   const [piCheckFailed, setPiCheckFailed] = useState(false);
   // Daemon catalog distinguishes browser-started Pi sessions from read-only
@@ -256,8 +287,10 @@ export function App() {
       }
     >
   >({});
-  const currentRoute = useRef(location);
-  currentRoute.current = location;
+  // Where the person actually is: work that finishes later must not pull
+  // them out of Settings.
+  const currentRoute = useRef(route);
+  currentRoute.current = route;
   const [newChoiceWorkspace, setNewChoiceWorkspace] = useState<string>();
   const [defaultRefresh, setDefaultRefresh] = useState(0);
   const [createPending, setCreatePending] = useState<Set<string>>(new Set());
@@ -268,11 +301,10 @@ export function App() {
   }>();
   const railStarting = useRef(new Set<string>());
   const [logoutPrompt, setLogoutPrompt] = useState(false);
-  const [settingsReturn, setSettingsReturn] = useState("/workspaces");
   const [settingsFromMenu, setSettingsFromMenu] = useState(false);
   const returningFromSettings = useRef(false);
   useEffect(() => {
-    if (!isSettingsRoute(location.pathname) && returningFromSettings.current) {
+    if (!isSettingsRoute(route.pathname) && returningFromSettings.current) {
       returningFromSettings.current = false;
       // Onboarding focuses its newly mounted heading in an effect; return focus afterwards.
       requestAnimationFrame(() => {
@@ -289,7 +321,7 @@ export function App() {
         )?.focus();
       });
     }
-  }, [location.pathname]);
+  }, [route.pathname]);
   const [profile, setProfile] = useState<AccountProfile>();
   const [profileSkipped, setProfileSkipped] = useState(false);
   const identity = hostSnapshot?.identity.web_identity_id;
@@ -376,7 +408,7 @@ export function App() {
         sessionStorage.removeItem(key);
     setJournalOffline(false);
     setJournalConnection({ state: "online" });
-    setSettingsReturn("/workspaces");
+    outside.current = undefined;
     setSettingsFromMenu(false);
     returningFromSettings.current = false;
     setDaemonSessions([]);
@@ -394,17 +426,12 @@ export function App() {
   }, [identity, clearPerson]);
   const openSettings = () => {
     setSettingsFromMenu(true);
-    setSettingsReturn(
-      isSettingsRoute(location.pathname)
-        ? "/workspaces"
-        : safeRoute(location.pathname),
-    );
     navigate("/settings");
   };
   const syntheticDemo = import.meta.env.VITE_SYNTHETIC_DEMO === "true";
   const fixtureName =
     import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
-      ? new URLSearchParams(location.search).get("fixture")
+      ? new URLSearchParams(route.search).get("fixture")
       : null;
   const refresh = useCallback(() => {
     setRefreshKey((n) => n + 1);
@@ -729,7 +756,7 @@ export function App() {
           reconnectFetch(
             "/api/v1/snapshot",
             syntheticDemo
-              ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
+              ? `/api/v1/snapshot?scenario=${new URLSearchParams(route.search).get("scenario") ?? "ready"}`
               : "/api/v1/snapshot",
             {
               credentials: "same-origin",
@@ -1087,16 +1114,16 @@ export function App() {
     if (!snapshot || phase !== "authenticated" || source !== "confirmed")
       return;
     const home = onlyWorkspace ? "/" : "/workspaces";
-    if (location.pathname === (onlyWorkspace ? "/workspaces" : "/"))
-      navigate(`${home}${location.search}${location.hash}`, { replace: true });
+    if (route.pathname === (onlyWorkspace ? "/workspaces" : "/"))
+      navigate(`${home}${route.search}${route.hash}`, { replace: true });
   }, [
     snapshot,
     phase,
     source,
     onlyWorkspace,
-    location.pathname,
-    location.search,
-    location.hash,
+    route.pathname,
+    route.search,
+    route.hash,
     navigate,
   ]);
   const visibleCount = source === "confirmed" ? visible.length : undefined;
@@ -1531,7 +1558,7 @@ export function App() {
     if (
       autoStart.identity !== identity ||
       Date.now() > autoStart.until ||
-      `${location.pathname}${location.search}` !== autoStart.route
+      `${route.pathname}${route.search}` !== autoStart.route
     ) {
       setAutoStart(undefined);
       return;
@@ -1542,7 +1569,7 @@ export function App() {
     if (!created || createReason(created.workspace_id)) return;
     setAutoStart(undefined);
     startFromHome(created.workspace_id);
-  }, [autoStart, snapshot, identity, defaultStart, csrf, phase, location]);
+  }, [autoStart, snapshot, identity, defaultStart, csrf, phase, route]);
   const returnConversations: (ReturnConversation & { workspaceId: string })[] =
     (snapshot?.agents ?? [])
       .filter(
@@ -1769,6 +1796,78 @@ export function App() {
         { replace: true },
       );
   };
+  // Closing Settings returns to the view it was opened from, or to the home
+  // view when it was opened from a link with nothing before it.
+  const closeSettings = () => {
+    returningFromSettings.current = true;
+    setSettingsFromMenu(false);
+    const back = outside.current;
+    if (back)
+      navigate(`${back.pathname}${back.search}${back.hash}`, {
+        state: back.state,
+      });
+    else navigate(onlyWorkspace ? "/" : "/workspaces");
+  };
+  const settingsView = (
+    <AccountSettings
+      editorIdentity={identity}
+      routeSection={settingsSection(route.pathname)}
+      routeRow={route.hash.slice(1) || undefined}
+      onNavigate={navigate}
+      workspaces={snapshot?.workspaces}
+      onNewWorkspace={() => navigate("/workspaces/new")}
+      profile={
+        profile ?? {
+          name: accountLabel(snapshot?.identity.display_name ?? ""),
+          email: "",
+          avatar_url: "",
+        }
+      }
+      onLogout={() => setLogoutPrompt(true)}
+      nativeState={snapshot?.auth?.native_github.state}
+      nativeLogin={snapshot?.auth?.native_github.login}
+      onReconnect={() => {
+        if (syntheticDemo) return;
+        window.location.assign(
+          `/auth/github/start?return_to=${encodeURIComponent(safeRoute(route.pathname))}&reconnect=1`,
+        );
+      }}
+      onPiSignIn={() => navigate(`${route.pathname}?pi_sign_in=1`)}
+      modelSelector={
+        <PiModelSelector
+          csrf={csrf}
+          onChoice={() => {
+            setDefaultStart(undefined);
+            setDefaultRefresh((value) => value + 1);
+          }}
+        />
+      }
+      csrf={csrf}
+      onDisconnect={refresh}
+      onWorkspacesChanged={refresh}
+      onClose={closeSettings}
+    />
+  );
+  // The view under Settings is shown only once Settings closes. A profile
+  // that still asks for its name keeps that page instead, as before.
+  const profileRequired =
+    !syntheticDemo &&
+    !!profile &&
+    !profileSkipped &&
+    (!profile.name || !profile.email);
+  const settingsLayer = !!settingsOver && !profileRequired;
+  useLayoutEffect(() => {
+    if (!settingsLayer) return;
+    // The layer covers main's visible box from the top; the view under it
+    // gets its scroll position back when Settings closes.
+    const view = document.getElementById("main");
+    if (!view) return;
+    const top = view.scrollTop;
+    view.scrollTop = 0;
+    return () => {
+      view.scrollTop = top;
+    };
+  }, [settingsLayer]);
   const main =
     landing.show && phase !== "daemon_unavailable" ? (
       <Landing
@@ -1847,48 +1946,7 @@ export function App() {
       <Navigate to="/settings" replace />
     ) : isSettingsRoute(location.pathname) &&
       (phase === "authenticated" || phase === "stale" || settingsFromMenu) ? (
-      <AccountSettings
-        editorIdentity={identity}
-        routeSection={settingsSection(location.pathname)}
-        routeRow={location.hash.slice(1) || undefined}
-        onNavigate={navigate}
-        workspaces={snapshot?.workspaces}
-        onNewWorkspace={() => navigate("/workspaces/new")}
-        profile={
-          profile ?? {
-            name: accountLabel(snapshot?.identity.display_name ?? ""),
-            email: "",
-            avatar_url: "",
-          }
-        }
-        onLogout={() => setLogoutPrompt(true)}
-        nativeState={snapshot?.auth?.native_github.state}
-        nativeLogin={snapshot?.auth?.native_github.login}
-        onReconnect={() => {
-          if (syntheticDemo) return;
-          window.location.assign(
-            `/auth/github/start?return_to=${encodeURIComponent(safeRoute(location.pathname))}&reconnect=1`,
-          );
-        }}
-        onPiSignIn={() => navigate(`${location.pathname}?pi_sign_in=1`)}
-        modelSelector={
-          <PiModelSelector
-            csrf={csrf}
-            onChoice={() => {
-              setDefaultStart(undefined);
-              setDefaultRefresh((value) => value + 1);
-            }}
-          />
-        }
-        csrf={csrf}
-        onDisconnect={refresh}
-        onWorkspacesChanged={refresh}
-        onBack={() => {
-          returningFromSettings.current = true;
-          setSettingsFromMenu(false);
-          navigate(settingsReturn);
-        }}
-      />
+      settingsView
     ) : phase === "pi_required" ? (
       <GitHubOnboarding
         preferredName={profile?.name}
@@ -1921,7 +1979,8 @@ export function App() {
       browserOwned(selectedAgent, daemonSessions) ? (
       // A browser conversation opens with its composer, never as read-only
       // history; its Pi starts only when the person sends.
-      <Navigate
+      <Redirect
+        held={!!settingsOver}
         replace
         to={`/workspaces/${agentWorkspace.workspace_id}?conversation=${selectedAgent.agent_id}`}
       />
@@ -2028,7 +2087,7 @@ export function App() {
         {!new URLSearchParams(location.search).has("conversation") ? (
           onlyWorkspace?.workspace_id === selected.workspace_id ? (
             // The only workspace's page is the home page.
-            <Navigate to="/" replace />
+            <Redirect held={!!settingsOver} to="/" replace />
           ) : conversationStore ? (
             workspacePage(selected)
           ) : null
@@ -2057,9 +2116,14 @@ export function App() {
             new URLSearchParams(location.search).get("conversation") ?? "",
           ) ? (
             creationViews[selected.workspace_id]?.rechecked ? (
-              <Navigate replace to={`/workspaces/${selected.workspace_id}`} />
+              <Redirect
+                held={!!settingsOver}
+                replace
+                to={`/workspaces/${selected.workspace_id}`}
+              />
             ) : creationViews[selected.workspace_id]?.session ? (
-              <Navigate
+              <Redirect
+                held={!!settingsOver}
                 replace
                 to={`/workspaces/${selected.workspace_id}?conversation=${creationViews[selected.workspace_id].session?.agent_id}`}
               />
@@ -2073,7 +2137,11 @@ export function App() {
               // Nothing is being created and no earlier creation is uncertain
               // (for example, it was reconciled just before a reload): there
               // is no conversation to wait for here.
-              <Navigate replace to={`/workspaces/${selected.workspace_id}`} />
+              <Redirect
+                held={!!settingsOver}
+                replace
+                to={`/workspaces/${selected.workspace_id}`}
+              />
             ) : (
               (() => {
                 const worktree =
@@ -2751,45 +2819,63 @@ export function App() {
             </>
           }
           main={
-            <div
-              className={
-                phase === "authentication_required"
-                  ? "ah-login-view"
-                  : "ah-state"
-              }
-            >
-              {railStartError ? (
-                <InlineNotice
-                  title="Keskustelun luonnin tulos epävarma"
-                  description={railStartError}
-                  tone="warning"
-                />
+            <>
+              {settingsLayer ? (
+                <div className="ah-settings-layer">
+                  <div className="ah-state">{settingsView}</div>
+                </div>
               ) : null}
-              <ViewHost
-                identity={identity}
-                csrf={
-                  phase === "authenticated" || phase === "stale"
-                    ? csrf
-                    : undefined
-                }
-              >
-                {editorRoute ? (
-                  <WorkspaceEditor
-                    workspaceId={editorWorkspaceId}
-                    identity={identity}
-                    csrf={
-                      phase === "authenticated" || phase === "stale"
-                        ? csrf
-                        : undefined
-                    }
-                  >
-                    {main}
-                  </WorkspaceEditor>
-                ) : (
-                  main
-                )}
-              </ViewHost>
-            </div>
+              {/* The view keeps its own location under Settings, also for the
+                  components that read it themselves. */}
+              <Routes location={location}>
+                <Route
+                  path="*"
+                  element={
+                    <div
+                      className={
+                        phase === "authentication_required"
+                          ? "ah-login-view"
+                          : "ah-state"
+                      }
+                      inert={settingsLayer}
+                      data-under-settings={settingsLayer || undefined}
+                    >
+                      {railStartError ? (
+                        <InlineNotice
+                          title="Keskustelun luonnin tulos epävarma"
+                          description={railStartError}
+                          tone="warning"
+                        />
+                      ) : null}
+                      <ViewHost
+                        identity={identity}
+                        csrf={
+                          phase === "authenticated" || phase === "stale"
+                            ? csrf
+                            : undefined
+                        }
+                      >
+                        {editorRoute ? (
+                          <WorkspaceEditor
+                            workspaceId={editorWorkspaceId}
+                            identity={identity}
+                            csrf={
+                              phase === "authenticated" || phase === "stale"
+                                ? csrf
+                                : undefined
+                            }
+                          >
+                            {main}
+                          </WorkspaceEditor>
+                        ) : (
+                          main
+                        )}
+                      </ViewHost>
+                    </div>
+                  }
+                />
+              </Routes>
+            </>
           }
         />
       </StoragePressureProvider>

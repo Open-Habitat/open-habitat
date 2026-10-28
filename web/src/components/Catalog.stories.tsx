@@ -319,7 +319,7 @@ export const Account: Story = {
       <AccountSettings
         name="Oma tili"
         nativeState="connected"
-        onBack={noop}
+        onClose={noop}
         onLogout={noop}
       />
     </main>
@@ -328,7 +328,7 @@ export const Account: Story = {
 export const AccountPartial: Story = {
   render: () => (
     <main>
-      <AccountSettings name="Oma tili" nativeState="partial" onBack={noop} />
+      <AccountSettings name="Oma tili" nativeState="partial" onClose={noop} />
     </main>
   ),
 };
@@ -519,7 +519,7 @@ export const AccountDark: Story = {
       <AccountSettings
         name="Oma tili"
         nativeState="connected"
-        onBack={noop}
+        onClose={noop}
         onLogout={noop}
       />
     </main>

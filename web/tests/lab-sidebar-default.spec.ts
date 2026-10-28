@@ -77,7 +77,7 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
     } else if (surface === "workspace") {
       await page
         .getByRole("button")
-        .and(page.getByTestId("settings-back"))
+        .and(page.getByTestId("settings-close"))
         .click();
       await expect(page).toHaveURL(workspaceURL);
       plus = page

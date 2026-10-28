@@ -16,7 +16,7 @@ function RoutedSettings() {
   return (
     <AccountSettings
       name="Oma tili"
-      onBack={noop}
+      onClose={noop}
       onLogout={noop}
       routeSection={settingsSection(location.pathname)}
       onNavigate={navigate}

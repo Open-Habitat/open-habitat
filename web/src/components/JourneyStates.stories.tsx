@@ -176,7 +176,7 @@ export const SessionExpiredNoOldContent: Story = {
 };
 export const AccountReturnFocus: Story = {
   render: () => (
-    <AccountSettings name="Oma tili" nativeState="partial" onBack={noop} />
+    <AccountSettings name="Oma tili" nativeState="partial" onClose={noop} />
   ),
 };
 export const StoppingPi: Story = {

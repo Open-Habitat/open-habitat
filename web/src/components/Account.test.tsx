@@ -28,7 +28,7 @@ describe("account presentation", () => {
           onSettings={() => {}}
           onLogout={() => {}}
         />
-        <AccountSettings profile={profile} onBack={() => {}} />
+        <AccountSettings profile={profile} onClose={() => {}} />
       </>,
     );
     expect(screen.getByTestId("account-menu-trigger")).toBeTruthy();
@@ -48,7 +48,7 @@ describe("account presentation", () => {
   it("keeps the settings radio in sync with a theme change made elsewhere", () => {
     setThemeChoice("light");
     try {
-      render(<AccountSettings name="Oma tili" onBack={() => {}} />);
+      render(<AccountSettings name="Oma tili" onClose={() => {}} />);
       fireEvent.click(screen.getByTestId("settings-ulkoasu"));
       expect(
         screen.getByTestId("segment-light").getAttribute("aria-pressed"),
@@ -75,7 +75,7 @@ describe("account presentation", () => {
     try {
       act(() => setThemeChoice("dark"));
       expect(getThemeChoice()).toBe("dark");
-      render(<AccountSettings name="Oma tili" onBack={() => {}} />);
+      render(<AccountSettings name="Oma tili" onClose={() => {}} />);
       fireEvent.click(screen.getByTestId("settings-ulkoasu"));
       expect(
         screen.getByTestId("segment-dark").getAttribute("aria-pressed"),
@@ -88,7 +88,11 @@ describe("account presentation", () => {
   });
   it("shows only the chosen section and prefixes theme choices with shared icons", () => {
     render(
-      <AccountSettings name="Oma tili" onBack={() => {}} onLogout={() => {}} />,
+      <AccountSettings
+        name="Oma tili"
+        onClose={() => {}}
+        onLogout={() => {}}
+      />,
     );
     expect(screen.getByTestId("logout-open")).toBeTruthy();
     expect(screen.queryByRole("group")).toBeNull();
@@ -182,7 +186,7 @@ describe("account presentation", () => {
         routeSection="tekoaly"
         onNavigate={() => {}}
         onPiSignIn={signIn}
-        onBack={() => {}}
+        onClose={() => {}}
       />
     );
     const { unmount } = render(show());
@@ -214,7 +218,7 @@ describe("account presentation", () => {
       <AccountSettings
         csrf="synthetic-csrf"
         nativeState={nativeState}
-        onBack={() => {}}
+        onClose={() => {}}
       />
     );
     const { rerender } = render(show());
@@ -236,7 +240,7 @@ describe("account presentation", () => {
         csrf="synthetic-csrf"
         nativeState={nativeState}
         onReconnect={onReconnect}
-        onBack={() => {}}
+        onClose={() => {}}
       />
     );
     const { rerender } = render(show("expired"));

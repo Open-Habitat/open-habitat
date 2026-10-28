@@ -52,7 +52,10 @@ test("@a11y keyboard navigation places focus on destination and restores account
   await expect(
     page.locator(".s-nav").getByRole("heading", { level: 1 }),
   ).toBeFocused();
-  await page.getByRole("button").and(page.getByTestId("settings-back")).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("settings-close"))
+    .click();
   await expect(
     page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
   ).toBeFocused();

@@ -648,3 +648,50 @@
     background: var(--ah-scrim);
   }
 }
+/* Settings closes from its corner, which stays in reach while the page
+   scrolls. */
+.ah-account-settings.s-page {
+  position: relative;
+}
+.s-close {
+  --i-bg: var(--ah-bg);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  order: 3;
+  flex: none;
+  /* Over the section's heading row: the section keeps its whole width. */
+  margin-left: calc(-1 * (var(--ah-s8) + var(--ah-control-row)));
+}
+@media (max-width: 760px) {
+  /* Above the section list or the section's own back row, at their right
+     end, without a row of its own. */
+  .s-close {
+    order: -1;
+    align-self: flex-end;
+    margin-left: 0;
+    margin-bottom: calc(-1 * (var(--ah-control-row) + var(--ah-s5)));
+  }
+}
+/* Opened from inside the app, Settings lies over the view it came from,
+   which stays as it was under it (App.tsx). */
+.ah-shell-body > main:has(> .ah-settings-layer) {
+  position: relative;
+  overflow: hidden;
+}
+.ah-settings-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: auto;
+  background: var(--ah-bg);
+  padding: clamp(var(--ah-s7), 4vw, 64px);
+}
+[data-under-settings] {
+  visibility: hidden;
+}
+@media (max-width: 800px) {
+  .ah-settings-layer {
+    padding: var(--ah-s6);
+  }
+}

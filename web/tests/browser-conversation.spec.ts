@@ -969,7 +969,7 @@ test("@browser-conversation settings does not recheck the Pi gate; returning and
     /^(signed_in|api_key|missing)$/,
   );
   expect(checks).toBe(0);
-  await page.getByTestId("settings-back").click();
+  await page.getByTestId("settings-close").click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "ordinary-dir",
   );

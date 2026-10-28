@@ -127,7 +127,7 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
           ).toBeVisible();
           await page
             .getByRole("button")
-            .and(page.getByTestId("settings-back"))
+            .and(page.getByTestId("settings-close"))
             .click();
           await expect(
             page

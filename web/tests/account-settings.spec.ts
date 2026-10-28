@@ -165,7 +165,10 @@ test("@account-settings verified native state, route return and explicit disconn
     path: "test-results/evidence/account-connected.png",
     fullPage: true,
   });
-  await page.getByRole("button").and(page.getByTestId("settings-back")).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("settings-close"))
+    .click();
   await expect(page).toHaveURL(new RegExp(`${returnPath}$`));
   await expect(
     page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
@@ -184,7 +187,10 @@ test("@account-settings verified native state, route return and explicit disconn
   await expect(
     page.locator("#main").getByTestId("github-native-state"),
   ).toBeVisible();
-  await page.getByRole("button").and(page.getByTestId("settings-back")).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("settings-close"))
+    .click();
   await expect(page).toHaveURL(/\/workspaces$/);
   await expect(
     page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
@@ -345,7 +351,7 @@ test("@account-settings OpenAI sign-in state is read again on each visit; uncert
     ).toBeVisible();
     await page
       .getByRole("button")
-      .and(page.getByTestId("settings-back"))
+      .and(page.getByTestId("settings-close"))
       .click();
     await page.unrouteAll();
   }

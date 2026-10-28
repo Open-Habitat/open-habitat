@@ -230,6 +230,26 @@ export function AccountShelf({
   );
 }
 
+/** Whether Esc belongs to what the person is typing in. */
+function typedInto(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  if (target instanceof HTMLInputElement)
+    return ![
+      "checkbox",
+      "radio",
+      "button",
+      "submit",
+      "reset",
+      "range",
+    ].includes(target.type);
+  return (
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    !!target.closest("[role='textbox'], [role='combobox'], [role='searchbox']")
+  );
+}
+
 export function AccountSettings({
   editorIdentity,
   profile,
@@ -238,7 +258,7 @@ export function AccountSettings({
   nativeLogin,
   onPiSignIn,
   modelSelector,
-  onBack,
+  onClose,
   onLogout,
   csrf,
   onDisconnect,
@@ -264,7 +284,8 @@ export function AccountSettings({
   nativeLogin?: string;
   onPiSignIn?: () => void;
   modelSelector?: React.ReactNode;
-  onBack: () => void;
+  /** Closes Settings: the X in the corner, or Esc outside a field. */
+  onClose: () => void;
   onLogout?: () => void;
   administration?: boolean;
   routeSection?: string | null;
@@ -328,6 +349,29 @@ export function AccountSettings({
     else navHeading.current?.focus();
   }, [section, detail]);
   const main = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing)
+        return;
+      // A field, a dialog, a menu or the phone's navigation keeps its Esc;
+      // the view kept under Settings has none of them open for the person.
+      if (
+        typedInto(event.target) ||
+        [
+          ...document.querySelectorAll(
+            "[aria-modal='true'], [role='dialog']:not([hidden]), [role='menu'], [role='listbox']:not([hidden]), .ah-mobile-open",
+          ),
+        ].some((open) => !open.closest("[data-under-settings]"))
+      )
+        return;
+      event.preventDefault();
+      closeRef.current();
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, []);
   // A link to a row (the model selector's Claude link, the new-workspace
   // page's Gitea error, …) lands on it: the row is scrolled into view, takes
   // focus and is marked for a moment. Rows read by the daemon appear later,
@@ -446,19 +490,22 @@ export function AccountSettings({
         section === "kayttoonotto" && admin ? " wide" : ""
       }`}
     >
+      <ControlButton
+        data-testid="settings-close"
+        className="s-close"
+        size="row"
+        variant="quiet"
+        presentation="icon"
+        aria-label="Sulje asetukset"
+        onPress={onClose}
+      >
+        <Icon name="cross" />
+      </ControlButton>
       <nav
         data-testid="settings-navigation"
         className="s-nav"
         aria-label="Asetusten osiot"
       >
-        <Button
-          data-testid="settings-back"
-          label="Takaisin"
-          variant="quiet"
-          presentation="back"
-          size="row"
-          onPress={onBack}
-        />
         <h1 data-testid="settings-title" ref={navHeading} tabIndex={-1}>
           Asetukset
         </h1>
