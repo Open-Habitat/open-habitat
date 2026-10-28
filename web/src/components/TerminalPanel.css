@@ -13,6 +13,10 @@
   border-top: 1px solid var(--ah-line-strong);
   background: var(--ah-bg);
 }
+/* The open panel leaves the composer's field a smaller share of the room. */
+.ah-conversation-frame:has(> .ah-terminal-dock) {
+  --ah-composer-share: 4;
+}
 /* Maximised, the panel takes the column; the conversation stays mounted. */
 .ah-conversation-frame:has(> .ah-terminal-dock[data-max])
 > :not(.ah-agent-header):not(.ah-terminal-dock):not(.ah-floating-controls) {

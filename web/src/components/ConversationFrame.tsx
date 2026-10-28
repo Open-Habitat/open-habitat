@@ -28,6 +28,7 @@ export function ConversationFrame({
     let header: Element | null = null;
     const measure = () => {
       for (const [name, element] of [
+        ["--ah-frame-height", root],
         ["--ah-composer-height", composer],
         ["--ah-dock-height", dock],
         ["--ah-header-height", header],
@@ -50,6 +51,7 @@ export function ConversationFrame({
       )
         return;
       size.disconnect();
+      size.observe(root);
       composer = nextComposer;
       dock = nextDock;
       header = nextHeader;

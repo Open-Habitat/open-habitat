@@ -48,7 +48,18 @@
   display: block;
   width: 100%;
   min-height: 44px;
-  max-height: min(40vh, 268px);
+  /* A long draft scrolls inside the field so the conversation keeps a share
+     of what the header and the bottom panel leave (the frame measures them);
+     with the panel open it is lower still, a quarter instead of a third. */
+  --ah-composer-room: calc(
+    var(--ah-frame-height, 100dvh) -
+    var(--ah-header-height, 0px) -
+    var(--ah-dock-height, 0px)
+  );
+  max-height: max(
+    44px,
+    min(268px, calc(var(--ah-composer-room) / var(--ah-composer-share, 3)))
+  );
   box-sizing: border-box;
   overflow-y: auto;
   resize: none;

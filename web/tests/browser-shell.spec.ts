@@ -684,3 +684,79 @@ test("@browser-shell Ctrl-D ends only its own shell and the last one closes the 
   await openFirstShell(page);
   expect(await shells(page, id)).toHaveLength(1);
 });
+
+// Review material for Jari, never a passing visual comparison.
+const composerCapture = process.env.OH_COMPOSER_CAPTURE;
+
+test.describe(() => {
+  test.use({ deviceScaleFactor: 2 });
+  test("@browser-shell a long draft scrolls inside the composer and leaves the conversation its share", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await conversation(page);
+    const input = page
+      .getByRole("textbox")
+      .and(page.getByTestId("message-input"));
+    await input.fill(
+      Array.from({ length: 12 }, (_, i) => `Kohta ${i}: aiempi viesti.`).join(
+        "\n\n",
+      ),
+    );
+    await page.getByRole("button").and(page.getByTestId("send")).click();
+    await expect(page.locator("main")).toContainText("Selvä. Kysyit:", {
+      timeout: 30000,
+    });
+    await input.fill(
+      Array.from({ length: 60 }, (_, i) => `Luonnoksen rivi ${i}`).join("\n"),
+    );
+    const stream = page.getByTestId("conversation-stream");
+    const composer = page.locator(".ah-conversation-frame > .ah-composer");
+    // The draft stays reachable inside the field, and the conversation
+    // keeps at least as much height as the composer takes.
+    const holds = async () =>
+      expect(async () => {
+        const field = await input.evaluate((node) => ({
+          scroll: node.scrollHeight,
+          client: node.clientHeight,
+        }));
+        expect(field.scroll).toBeGreaterThan(field.client);
+        const history = await stream.boundingBox();
+        const box = await composer.boundingBox();
+        if (!history || !box) throw new Error("missing layout boxes");
+        expect(history.height).toBeGreaterThanOrEqual(box.height);
+      }).toPass();
+    const shot = async (name: string) => {
+      if (!composerCapture) return;
+      await page.screenshot({
+        path: `${composerCapture}/composer-${name}.png`,
+      });
+    };
+    const fieldHeight = async () => (await input.boundingBox())?.height ?? 0;
+    await holds();
+    const closedField = await fieldHeight();
+    await shot("1440-panel-closed");
+    const panel = await openFirstShell(page);
+    await holds();
+    const openField = await fieldHeight();
+    expect(openField).toBeLessThan(closedField);
+    await shot("1440-panel-open");
+    // A taller panel lowers the field further rather than the conversation.
+    await panel
+      .getByRole("separator")
+      .and(page.getByTestId("resize-terminal"))
+      .focus();
+    for (let i = 0; i < 4; i += 1) await page.keyboard.press("ArrowUp");
+    await holds();
+    expect(await fieldHeight()).toBeLessThan(openField);
+    await shot("1440-panel-tall");
+    await panel
+      .getByRole("button")
+      .and(page.getByTestId("hide-terminal"))
+      .click();
+    await expect(panel).toBeHidden();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await holds();
+    await shot("390-phone");
+  });
+});
