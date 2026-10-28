@@ -163,6 +163,19 @@ it("walks Google's steps, or skips to the fields, and sends nothing invalid", as
   // Internal only: there is no audience choice to make.
   fireEvent.click(within(dialog()).getByTestId("si-back"));
   fireEvent.click(within(dialog()).getByTestId("si-back"));
+  // Each scope as Data Access › Add or Remove Scopes lists it.
+  expect(
+    within(dialog()).getByTestId("si-scopes").querySelector("pre")?.textContent,
+  ).toBe(
+    [
+      "openid",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/drive",
+      "https://www.googleapis.com/auth/gmail.modify",
+      "https://www.googleapis.com/auth/calendar",
+      "https://www.googleapis.com/auth/contacts",
+    ].join("\n"),
+  );
   fireEvent.click(within(dialog()).getByTestId("si-back"));
   expect(within(dialog()).queryByRole("radio")).toBeNull();
   expect(within(dialog()).queryByTestId("segment-external")).toBeNull();

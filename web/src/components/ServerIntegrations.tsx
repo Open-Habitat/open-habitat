@@ -44,9 +44,11 @@ const googleAPIs: [string, string][] = [
   ["People API", "people.googleapis.com"],
 ];
 const googleEnable = `https://console.cloud.google.com/apis/enableflow?apiid=${googleAPIs.map((a) => a[1]).join(",")}`;
+// Scopes as the Cloud Console's scope list names them: the daemon requests
+// the short `email`, which Google grants as userinfo.email.
 const googleScopes = [
   "openid",
-  "email",
+  "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/drive",
   "https://www.googleapis.com/auth/gmail.modify",
   "https://www.googleapis.com/auth/calendar",

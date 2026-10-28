@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: google-wizard
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/google-wizard-email-scope
+closed: 2026-10-28
 ---
 
 # Google setup wizard lists the scope as 'email', which the Cloud Console does not offer
