@@ -254,17 +254,6 @@ export const NarrowerGrant: Story = {
     },
   },
 };
-export const DialogNothingGranted: Story = {
-  render: dialog(google, {
-    stage: "login",
-    view: {
-      ...base,
-      state: "failed",
-      provider: "google",
-      failure: "nothing_granted",
-    },
-  }),
-};
 export const ForeignSkill: Story = {
   args: { list: { ...connected, skill: "blocked" } },
 };
@@ -405,6 +394,17 @@ export const DialogBlocked: Story = {
       state: "failed",
       provider: "microsoft",
       failure: "device_code_blocked",
+    },
+  }),
+};
+export const DialogNothingGranted: Story = {
+  render: dialog(google, {
+    stage: "login",
+    view: {
+      ...base,
+      state: "failed",
+      provider: "google",
+      failure: "nothing_granted",
     },
   }),
 };

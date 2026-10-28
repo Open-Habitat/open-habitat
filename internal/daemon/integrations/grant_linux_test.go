@@ -244,6 +244,33 @@ func TestMicrosoftGrantWithoutServices(t *testing.T) {
 	}
 }
 
+// A level never claims less than the token can do: sending is full, and
+// either files or sites permission reaches both OneDrive and libraries.
+func TestMicrosoftAccessNeverUnderclaims(t *testing.T) {
+	for granted, want := range map[string]map[string]Access{
+		"Mail.Read Mail.Send":                {"mail": AccessFull},
+		"Mail.Send":                          {"mail": AccessFull},
+		"Mail.ReadWrite":                     {"mail": AccessDrafts},
+		"Files.ReadWrite.All":                {"onedrive": AccessFull, "sharepoint": AccessFull},
+		"Sites.Read.All":                     {"onedrive": AccessRead, "sharepoint": AccessRead},
+		"Files.Read.All Sites.ReadWrite.All": {"onedrive": AccessFull, "sharepoint": AccessFull},
+		"Calendars.Read Contacts.ReadWrite":  {"mail": AccessNone, "onedrive": AccessNone},
+	} {
+		set := map[string]bool{}
+		for _, s := range strings.Fields(granted) {
+			set[s] = true
+		}
+		for service, access := range want {
+			if got := microsoftRules.access(service, set); got != access {
+				t.Errorf("%s %s: %s", granted, service, got)
+			}
+		}
+	}
+	if got := googleRules.access("mail", map[string]bool{googleScope + "gmail.readonly": true, googleScope + "gmail.send": true}); got != AccessFull {
+		t.Error("gmail send read as", got)
+	}
+}
+
 func TestMicrosoftAllowedScopes(t *testing.T) {
 	for granted, want := range map[string]string{
 		"User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite Contacts.ReadWrite Files.ReadWrite.All": microsoftMCPScopes,

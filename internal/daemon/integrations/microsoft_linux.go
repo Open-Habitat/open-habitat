@@ -63,10 +63,14 @@ const microsoftMCPScopes = "User.Read Mail.ReadWrite Mail.Send Calendars.ReadWri
 const microsoftRequest = "openid profile offline_access https://graph.microsoft.com/.default"
 
 // microsoftRules are the services' levels in Graph's own permission names.
+// A level is what the token can do, never only what the catalog sets up:
+// Files.* reaches every library the person can, and Sites.* their OneDrive,
+// though only Files.ReadWrite.All gets roots and Sites.ReadWrite.All the
+// followed libraries synced; and Mail.Send sends whatever else is missing.
 var microsoftRules = grantRules{
-	"onedrive":   {{[]string{"Files.ReadWrite.All"}, AccessFull}, {[]string{"Files.Read.All"}, AccessRead}},
-	"sharepoint": {{[]string{"Sites.ReadWrite.All"}, AccessFull}, {[]string{"Sites.Read.All"}, AccessRead}},
-	"mail":       {{[]string{"Mail.ReadWrite", "Mail.Send"}, AccessFull}, {[]string{"Mail.ReadWrite"}, AccessDrafts}, {[]string{"Mail.Read"}, AccessRead}},
+	"onedrive":   {{[]string{"Files.ReadWrite.All"}, AccessFull}, {[]string{"Sites.ReadWrite.All"}, AccessFull}, {[]string{"Files.Read.All"}, AccessRead}, {[]string{"Sites.Read.All"}, AccessRead}},
+	"sharepoint": {{[]string{"Sites.ReadWrite.All"}, AccessFull}, {[]string{"Files.ReadWrite.All"}, AccessFull}, {[]string{"Sites.Read.All"}, AccessRead}, {[]string{"Files.Read.All"}, AccessRead}},
+	"mail":       {{[]string{"Mail.Send"}, AccessFull}, {[]string{"Mail.ReadWrite"}, AccessDrafts}, {[]string{"Mail.Read"}, AccessRead}},
 	"calendar":   {{[]string{"Calendars.ReadWrite"}, AccessFull}, {[]string{"Calendars.Read"}, AccessRead}},
 	"contacts":   {{[]string{"Contacts.ReadWrite"}, AccessFull}, {[]string{"Contacts.Read"}, AccessRead}},
 }

@@ -176,9 +176,11 @@ func (g *google) CheckGrant(ctx context.Context, env Env, address string) ([]Ser
 // googleRules are the Google services' levels in Google's own scope names.
 // The catalog asks for the first of each; a person may leave any of them out
 // on Google's consent page, and an earlier or narrower grant may name others.
+// Any scope that sends mail is full: the page never claims less than the
+// token can do.
 var googleRules = grantRules{
 	"drive":    {{[]string{googleScope + "drive"}, AccessFull}, {[]string{googleScope + "drive.readonly"}, AccessRead}},
-	"mail":     {{[]string{"https://mail.google.com/"}, AccessFull}, {[]string{googleScope + "gmail.modify"}, AccessFull}, {[]string{googleScope + "gmail.readonly"}, AccessRead}},
+	"mail":     {{[]string{"https://mail.google.com/"}, AccessFull}, {[]string{googleScope + "gmail.modify"}, AccessFull}, {[]string{googleScope + "gmail.compose"}, AccessFull}, {[]string{googleScope + "gmail.send"}, AccessFull}, {[]string{googleScope + "gmail.readonly"}, AccessRead}},
 	"calendar": {{[]string{googleScope + "calendar"}, AccessFull}, {[]string{googleScope + "calendar.readonly"}, AccessRead}},
 	"contacts": {{[]string{googleScope + "contacts"}, AccessFull}, {[]string{googleScope + "contacts.readonly"}, AccessRead}},
 }
