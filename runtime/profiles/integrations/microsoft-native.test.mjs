@@ -25,6 +25,7 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
   const networkClient = network(tenant, state);
   const request = {client_id: client, tenant_id: tenant, address: 'person@example.test', refresh_token: 'synthetic-refresh-original'};
   await importGrant(request, {networkClient});
+  assert.ok(state.lastScope.split(' ').includes('https://graph.microsoft.com/.default'), 'import named permissions');
   const before = new Map();
   for (const name of ['.token-cache.json', '.cache-key', '.selected-account.json']) {
     const file = path.join(directory, name);
@@ -36,7 +37,8 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
   state.refuse = true;
   await assert.rejects(importGrant(request, {networkClient}));
   state.refuse = false;
-  state.omitScope = 'Mail.Send';
+  // The identity read is required; any other permission may be missing.
+  state.omitScope = 'User.Read';
   await assert.rejects(importGrant(request, {networkClient}), /missing_scopes/);
   delete state.omitScope;
   state.cancelled = true;
@@ -64,12 +66,20 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
   state.expiresIn = 3600;
   const stored = await fs.readFile(process.env.MS365_MCP_TOKEN_CACHE_PATH, 'utf8');
   const polls = state.polls;
-  assert.equal(await verifyGrant(request, {networkClient}, graph(200)), 'ok');
-  assert.equal(await verifyGrant(request, {networkClient}, graph(200)), 'ok');
+  const verified = await verifyGrant(request, {networkClient}, graph(200));
+  assert.equal(verified.state, 'ok');
+  for (const scope of ['User.Read', 'Mail.Send']) assert.ok(verified.scopes.includes(scope), JSON.stringify(verified));
+  assert.equal((await verifyGrant(request, {networkClient}, graph(200))).state, 'ok');
   assert.equal(state.polls, polls + 2, 'verify did not ask the tenant');
+  // A narrower grant is named as the tenant answered it.
+  state.omitScope = 'Mail.Send';
+  const narrower = await verifyGrant(request, {networkClient}, graph(200));
+  assert.equal(narrower.state, 'ok');
+  assert.ok(!narrower.scopes.includes('Mail.Send') && narrower.scopes.includes('Mail.ReadWrite'), JSON.stringify(narrower));
+  delete state.omitScope;
   assert.notEqual(await fs.readFile(process.env.MS365_MCP_TOKEN_CACHE_PATH, 'utf8'), stored, 'rotated grant not persisted in the native store');
-  assert.equal(await verifyGrant(request, {networkClient}, graph(503)), 'unreachable');
-  assert.equal(await verifyGrant(request, {networkClient}, async () => { throw Error('offline'); }), 'unreachable');
+  assert.equal((await verifyGrant(request, {networkClient}, graph(503))).state, 'unreachable');
+  assert.equal((await verifyGrant(request, {networkClient}, async () => { throw Error('offline'); })).state, 'unreachable');
   const cases = [
     [{refuse: true}, 'refused'],
     [{refuse: true, codes: [700082]}, 'refused'],
@@ -84,16 +94,16 @@ const { DefaultTokenCacheStorage, resetCacheKeyForTests } = await import('@softe
   ];
   for (const [answer, expected] of cases) {
     Object.assign(state, answer);
-    assert.equal(await verifyGrant(request, {networkClient}, graph(200)), expected, JSON.stringify(answer));
+    assert.deepEqual(await verifyGrant(request, {networkClient}, graph(200)), {state: expected}, JSON.stringify(answer));
     for (const key of Object.keys(answer)) delete state[key];
   }
   // The grant still works once the tenant answers again.
-  assert.equal(await verifyGrant(request, {networkClient}, graph(200)), 'ok');
-  assert.equal(await verifyGrant({...request, address: 'other@example.test'}, {networkClient}, graph(200)), 'refused');
+  assert.equal((await verifyGrant(request, {networkClient}, graph(200))).state, 'ok');
+  assert.equal((await verifyGrant({...request, address: 'other@example.test'}, {networkClient}, graph(200))).state, 'refused');
   await assert.rejects(verifyGrant({...request, tenant_id: 'common'}, {networkClient}, graph(200)), /invalid_input/);
   process.env.MS365_MCP_TOKEN_CACHE_PATH = path.join(root, 'missing', '.token-cache.json');
   process.env.MS365_MCP_SELECTED_ACCOUNT_PATH = path.join(root, 'missing', '.selected-account.json');
-  assert.equal(await verifyGrant(request, {networkClient}, graph(200)), 'refused');
+  assert.equal((await verifyGrant(request, {networkClient}, graph(200))).state, 'refused');
   console.log('PASS work native verify states');
 }
 await fs.rm(root, {recursive: true});

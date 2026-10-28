@@ -83,6 +83,29 @@ func dropboxCommand(env Env, address string, args ...string) (Command, bool) {
 	return Command{Path: tool, Args: append([]string{"--config", filepath.Join(env.Home, dropboxDir, address+".conf")}, args...)}, true
 }
 func (d *dropbox) Check(ctx context.Context, env Env, address string) []Service {
+	out, _ := d.CheckGrant(ctx, env, address)
+	return out
+}
+
+// CheckGrant reads the service's state and its grant. Dropbox refuses a
+// request for scopes the operator's application lacks, the person cannot
+// leave any out on its consent page, and the sign-in verified the token's
+// own scopes (Wait), so a saved login carries exactly the requested set.
+func (d *dropbox) CheckGrant(ctx context.Context, env Env, address string) ([]Service, *Grant) {
+	services := d.check(ctx, env, address)
+	if _, ok := dropboxCommand(env, address); !ok {
+		return services, nil
+	}
+	granted := scopeSet(strings.Fields(dropboxScopes), func(s string) string { return s })
+	services[0].Access = dropboxRules.access("dropbox", granted)
+	return services, grantOf(granted, strings.Fields(dropboxScopes), nil)
+}
+
+// dropboxRules: files sync both ways, so only the full set is a level the
+// catalog runs.
+var dropboxRules = grantRules{"dropbox": {{strings.Fields(dropboxScopes), AccessFull}, {[]string{"files.content.read"}, AccessRead}}}
+
+func (d *dropbox) check(ctx context.Context, env Env, address string) []Service {
 	d.native.Lock()
 	defer d.native.Unlock()
 	service := Service{ID: "dropbox", State: StateUnknown}
@@ -341,10 +364,17 @@ func (l *dropboxLogin) Wait(ctx context.Context) (string, error) {
 		RefreshToken string `json:"refresh_token"`
 		TokenType    string `json:"token_type"`
 		ExpiresIn    int64  `json:"expires_in"`
+		Scope        string `json:"scope"`
 	}
 	err := l.entry.request(ctx, "https://api.dropboxapi.com/oauth2/token", url.Values{"grant_type": {"authorization_code"}, "code": {code}, "client_id": {l.app.ClientID}, "client_secret": {l.app.ClientSecret}, "redirect_uri": {dropboxRedirect}, "code_verifier": {l.verifier}}, "", &token)
 	if err != nil || token.AccessToken == "" || token.RefreshToken == "" || token.ExpiresIn <= 0 || token.ExpiresIn > 86400 {
 		return "", ToolFailed
+	}
+	// The token's own scopes are the grant. Its one service syncs both ways,
+	// which a narrower grant cannot run (Dropbox refuses to issue one for
+	// this request, so this is the operator's application changing under it).
+	if token.Scope != "" && dropboxRules.access("dropbox", scopeSet(strings.Fields(token.Scope), func(s string) string { return s })) != AccessFull {
+		return "", NothingGranted
 	}
 	var account struct {
 		Email         string `json:"email"`
@@ -391,4 +421,5 @@ func (l *dropboxLogin) Commit(ctx context.Context, address string) error {
 func (l *dropboxLogin) Cancel() { l.token = nil }
 
 var _ FolderEntry = (*dropbox)(nil)
+var _ GrantEntry = (*dropbox)(nil)
 var _ LoginEntry = (*dropbox)(nil)

@@ -39,7 +39,18 @@
         "directory": {"$ref": "#/$defs/home_directory"},
         "failure": {"description": "Why a sync_failed service stopped or why a sync_restarting service's latest pass failed; the native login is retained. quota_insufficient and quota_unavailable are a transient initial-inventory admission refusal; initial_sync_incomplete is a working login whose first sync never finished and is not being resumed (signing in again offers the initial choice); initial_sync_resume_failed is a first sync that a daemon stop interrupted, whose automatic resume then failed. needs_resync is a critical abort only an explicit resync recovers: on sync_failed the native listings were set aside (signing in again is not the remedy), on sync_restarting the latest pass said so. Also on sync_restarting: delete_limit is bisync's mass-deletion safeguard, remote_unreachable a pass that could not reach the provider and pass_failed any other failed pass. A pass failure stays until a pass succeeds. On login_expired, every service of an account whose native configuration could not follow the operator's current application carries the reason: app_changed when it was signed in with another application, tenant_changed when the application's tenant refused its grant (signing in again is the remedy for both), outside_tenant when the account is not in that tenant's directory (signing in again cannot help).", "enum": ["quota_insufficient", "quota_unavailable", "initial_sync_incomplete", "initial_sync_resume_failed", "delete_limit", "needs_resync", "remote_unreachable", "pass_failed", "app_changed", "tenant_changed", "outside_tenant"]},
         "progress": {"$ref": "#/$defs/sync_progress"},
-        "last_synced_at": {"description": "When the latest successful sync pass ended, from the tool's own committed listings; for several libraries, the oldest. Absent before the first pass has finished.", "type": "string", "format": "date-time"}
+        "last_synced_at": {"description": "When the latest successful sync pass ended, from the tool's own committed listings; for several libraries, the oldest. Absent before the first pass has finished.", "type": "string", "format": "date-time"},
+        "access": {"description": "What the provider's grant lets this service do, read from the grant itself and never from a record of what was asked: full is everything the catalog asks of it, drafts is mail that can be read and drafted but not sent, read is reading only, none is a service the grant leaves out, which nothing reaches (its state is then unknown). A file service syncs only with full. Absent when the account's grant cannot be read now, and for accounts without one (app passwords).", "enum": ["full", "drafts", "read", "none"]}
+      }
+    },
+    "scope": {"description": "A permission in the provider's own name: a Google scope, a Microsoft Graph permission or a Dropbox scope.", "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"},
+    "grant": {
+      "description": "The provider's grant as the daemon read it now: from gog's store of the token's scopes (Google), the tenant's answer to the Outlook tool's refresh (Microsoft) or the scopes the sign-in verified (Dropbox). not_granted lists what the catalog asks for that the grant lacks: left out on the consent page, or not consented to by the organisation. Identity scopes are not listed.",
+      "type": "object", "additionalProperties": false,
+      "required": ["granted", "not_granted"],
+      "properties": {
+        "granted": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/scope"}},
+        "not_granted": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/scope"}}
       }
     },
     "sync_progress": {
@@ -116,7 +127,8 @@
         "address": {"$ref": "#/$defs/address"},
         "services": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "#/$defs/service"}},
         "checked_at": {"type": "string", "format": "date-time"},
-        "apple_id": {"description": "Present when the account's stored server is Apple's iCloud: the Apple ID whose card shows it. A mail account's address is its iCloud Mail address, which may differ.", "$ref": "#/$defs/address"}
+        "apple_id": {"description": "Present when the account's stored server is Apple's iCloud: the Apple ID whose card shows it. A mail account's address is its iCloud Mail address, which may differ.", "$ref": "#/$defs/address"},
+        "grant": {"$ref": "#/$defs/grant"}
       }
     }
   }

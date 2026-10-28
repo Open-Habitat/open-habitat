@@ -36,9 +36,12 @@ type integrationControl struct {
 	approve chan struct{}
 	// expired lists providers whose logins the fixture reports as expired.
 	expired map[integrations.Provider]bool
+	// narrowed lists providers whose grant the fixture reports as narrower:
+	// no files, mail drafts without sending, the calendar read only.
+	narrowed map[integrations.Provider]bool
 }
 
-var integrationFixture = &integrationControl{approve: make(chan struct{}, 1), expired: map[integrations.Provider]bool{}}
+var integrationFixture = &integrationControl{approve: make(chan struct{}, 1), expired: map[integrations.Provider]bool{}, narrowed: map[integrations.Provider]bool{}}
 
 func (c *integrationControl) set(q url.Values) bool {
 	c.mu.Lock()
@@ -53,8 +56,10 @@ func (c *integrationControl) set(q url.Values) bool {
 		c.outcome = q.Get("value")
 	case "expire":
 		c.expired[integrations.Provider(q.Get("provider"))] = true
+	case "narrow":
+		c.narrowed[integrations.Provider(q.Get("provider"))] = true
 	case "reset":
-		c.outcome, c.expired = "", map[integrations.Provider]bool{}
+		c.outcome, c.expired, c.narrowed = "", map[integrations.Provider]bool{}, map[integrations.Provider]bool{}
 	default:
 		return false
 	}
@@ -170,6 +175,26 @@ func (f *fixtureEntry) Check(ctx context.Context, env integrations.Env, address 
 		out = append(out, integrations.Service{ID: s, State: state})
 	}
 	return out
+}
+
+// CheckGrant reports a narrower grant only while the fixture narrows it;
+// otherwise the grant is not read, as with an unreadable native store.
+func (f *fixtureEntry) CheckGrant(ctx context.Context, env integrations.Env, address string) ([]integrations.Service, *integrations.Grant) {
+	out := f.Check(ctx, env, address)
+	integrationFixture.mu.Lock()
+	narrowed := integrationFixture.narrowed[f.provider]
+	integrationFixture.mu.Unlock()
+	if !narrowed {
+		return out, nil
+	}
+	access := map[string]integrations.Access{f.files: integrations.AccessNone, "mail": integrations.AccessDrafts, "calendar": integrations.AccessRead, "contacts": integrations.AccessFull}
+	for i := range out {
+		out[i].Access = access[out[i].ID]
+		if out[i].Access == integrations.AccessNone {
+			out[i].State = integrations.StateUnknown
+		}
+	}
+	return out, &integrations.Grant{Granted: []string{"Calendars.Read", "Contacts.ReadWrite", "Mail.ReadWrite", "User.Read"}, NotGranted: []string{"Calendars.ReadWrite", "Files.ReadWrite.All", "Mail.Send", "Sites.ReadWrite.All"}}
 }
 
 func (f *fixtureEntry) Remove(_ context.Context, env integrations.Env, address string) error {

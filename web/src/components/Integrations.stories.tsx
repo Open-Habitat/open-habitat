@@ -198,6 +198,73 @@ export const TenantRefused: Story = {
     },
   },
 };
+/** The organisation consented to mail drafts but not to sending or files,
+ * and the person left Drive out on Google's consent page. */
+export const NarrowerGrant: Story = {
+  args: {
+    list: {
+      ...connected,
+      accounts: [
+        {
+          provider: "microsoft",
+          address: "person@example.test",
+          checked_at: checked,
+          services: [
+            { id: "onedrive", state: "unknown", access: "none" },
+            { id: "sharepoint", state: "unknown", access: "none" },
+            { id: "mail", state: "ok", access: "drafts" },
+            { id: "calendar", state: "ok", access: "read" },
+            { id: "contacts", state: "ok", access: "full" },
+          ],
+          grant: {
+            granted: [
+              "Calendars.Read",
+              "Contacts.ReadWrite",
+              "Mail.ReadWrite",
+              "User.Read",
+            ],
+            not_granted: [
+              "Calendars.ReadWrite",
+              "Files.ReadWrite.All",
+              "Mail.Send",
+              "Sites.ReadWrite.All",
+            ],
+          },
+        },
+        {
+          provider: "google",
+          address: "person.home@example.test",
+          checked_at: checked,
+          services: [
+            { id: "drive", state: "unknown", access: "none" },
+            { id: "mail", state: "ok", access: "full" },
+            { id: "calendar", state: "ok", access: "full" },
+            { id: "contacts", state: "ok", access: "full" },
+          ],
+          grant: {
+            granted: [
+              "https://www.googleapis.com/auth/calendar",
+              "https://www.googleapis.com/auth/contacts",
+              "https://www.googleapis.com/auth/gmail.modify",
+            ],
+            not_granted: ["https://www.googleapis.com/auth/drive"],
+          },
+        },
+      ],
+    },
+  },
+};
+export const DialogNothingGranted: Story = {
+  render: dialog(google, {
+    stage: "login",
+    view: {
+      ...base,
+      state: "failed",
+      provider: "google",
+      failure: "nothing_granted",
+    },
+  }),
+};
 export const ForeignSkill: Story = {
   args: { list: { ...connected, skill: "blocked" } },
 };

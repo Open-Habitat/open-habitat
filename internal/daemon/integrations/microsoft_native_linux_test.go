@@ -59,7 +59,7 @@ func TestMicrosoftSingleGrantNativeRuntime(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The actual MCP library must reload the adapter's encrypted account.
-	cmd, _ := microsoftMCPCommand(env, l.app, microsoftMCPDir+"/"+address, address, "--list-accounts")
+	cmd, _ := microsoftMCPCommand(env, l.app, microsoftMCPDir+"/"+address, address, l.allowed, "--list-accounts")
 	data, err := env.run(context.Background(), cmd, nil)
 	var accounts struct {
 		Accounts []struct {
@@ -72,7 +72,7 @@ func TestMicrosoftSingleGrantNativeRuntime(t *testing.T) {
 	// The real adapter takes the daemon's verify request: an address without
 	// a store is refused before any network, a request it rejects would not be.
 	env.Config.Tools["microsoft-native"] = filepath.Join(runtime, "bin/microsoft-native")
-	if state := microsoftVerify(context.Background(), env, "nobody@example.test"); state != "refused" {
+	if state, _ := microsoftVerify(context.Background(), env, "nobody@example.test"); state != "refused" {
 		t.Fatal("native verify protocol", state)
 	}
 	env.Config.Tools["microsoft-native"] = adapter

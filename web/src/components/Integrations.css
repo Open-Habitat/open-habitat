@@ -135,6 +135,40 @@ as in the prototype. */
   color: var(--ah-ink);
   font-weight: 600;
 }
+.ig-warn ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+/* The grant in the provider's own names: a quiet list for checking. */
+.ig-grant {
+  padding: 8px 12px 10px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ig-grant summary {
+  cursor: pointer;
+  color: var(--ah-ink-2);
+}
+.ig-grant ul {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ig-grant li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ig-grant code {
+  overflow-wrap: anywhere;
+}
+.ig-grant li.miss {
+  color: var(--ah-muted);
+}
 /* Status */
 .ig-st {
   display: inline-flex;
@@ -491,6 +525,12 @@ as in the prototype. */
   flex: none;
   width: 14px;
   height: 14px;
+}
+.ig-grant svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--ah-ok);
 }
 .ig-wait svg {
   flex: none;

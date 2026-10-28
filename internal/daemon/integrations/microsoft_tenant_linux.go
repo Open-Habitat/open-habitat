@@ -60,6 +60,7 @@ type microsoftNative struct {
 	token            string   // the remotes' most recently refreshed token
 	mcpClient        string   // the Pi registration's, empty when unknown
 	mcpTenant        string
+	mcpAllowed       string // the registration's --allowed-scopes, from its grant
 }
 
 func (n microsoftNative) remotesStale(app MicrosoftApp) bool {
@@ -140,7 +141,8 @@ func microsoftReadNative(env Env, address string) (microsoftNative, error) {
 	}
 	var config struct {
 		Servers map[string]struct {
-			Env map[string]string `json:"env"`
+			Env  map[string]string `json:"env"`
+			Args []string          `json:"args"`
 		} `json:"mcpServers"`
 	}
 	if json.Unmarshal(data, &config) != nil {
@@ -148,6 +150,11 @@ func microsoftReadNative(env Env, address string) (microsoftNative, error) {
 	}
 	server := config.Servers[microsoftServerName(address)]
 	n.mcpClient, n.mcpTenant = server.Env["MS365_MCP_CLIENT_ID"], server.Env["MS365_MCP_TENANT_ID"]
+	for i, a := range server.Args {
+		if a == "--allowed-scopes" && i+1 < len(server.Args) {
+			n.mcpAllowed = server.Args[i+1]
+		}
+	}
 	return n, nil
 }
 
@@ -227,7 +234,7 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 		// the tenant: the tenant accepts this person. Without remotes, MSAL's
 		// own grant is asked through the tenant; an outage is asked again.
 		if len(n.clients) == 0 {
-			switch microsoftVerify(ctx, env, address) {
+			switch state, _ := microsoftVerify(ctx, env, address); state {
 			case "ok":
 			case "refused":
 				m.refuse(address, app, TenantChanged)
@@ -239,7 +246,12 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 				return ServerUnreachable
 			}
 		}
-		if err := microsoftRegister(ctx, env, app, address); err != nil {
+		// The registration keeps the scopes its sign-in's grant gave it.
+		allowed := microsoftAllowed(microsoftGranted(strings.Fields(n.mcpAllowed)))
+		if n.mcpAllowed == "" {
+			allowed = microsoftMCPScopes
+		}
+		if err := microsoftRegister(ctx, env, app, address, allowed); err != nil {
 			return err
 		}
 	}
@@ -267,7 +279,7 @@ func (m *microsoft) redeemAtTenant(ctx context.Context, env Env, app MicrosoftAp
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	if err := m.request(ctx, microsoftAuthority(app)+"token", url.Values{"client_id": {app.ClientID}, "grant_type": {"refresh_token"}, "refresh_token": {old.Refresh}, "scope": {microsoftScopes}}, "", &token); err != nil {
+	if err := m.request(ctx, microsoftAuthority(app)+"token", url.Values{"client_id": {app.ClientID}, "grant_type": {"refresh_token"}, "refresh_token": {old.Refresh}, "scope": {microsoftRequest}}, "", &token); err != nil {
 		return "", err
 	}
 	if token.Error != "" {
@@ -346,12 +358,12 @@ func (m *microsoft) redeemAtTenant(ctx context.Context, env Env, app MicrosoftAp
 
 // microsoftRegister registers, or replaces, the account's Outlook server in
 // Pi's MCP configuration with the current application's environment.
-func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address string) error {
+func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, allowed string) error {
 	pi, ok := env.Tool("pi")
 	if !ok {
 		return ToolFailed
 	}
-	mcp, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address)
+	mcp, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, allowed)
 	if !ok {
 		return ToolFailed
 	}

@@ -11,7 +11,8 @@
     {"provider": "google", "address": "person.home@example.test", "checked_at": "2026-10-19T09:38:00Z", "services": [
       {"id": "mail", "state": "login_expired"},
       {"id": "drive", "state": "sync_restarting", "failure": "delete_limit", "last_synced_at": "2026-10-19T09:12:41Z", "directory": "~/cloud/google-drive/person.home@example.test", "progress": {"service": "drive", "phase": "preparing", "elapsed_seconds": 3, "bytes": 0, "total_bytes": 0, "files": 0, "total_files": 0}}
-    ]}
+    ]},
+    {"provider": "microsoft", "address": "person@example.test", "checked_at": "2026-10-19T09:38:00Z", "services": [{"id": "onedrive", "state": "unknown", "access": "none"}, {"id": "sharepoint", "state": "unknown", "access": "none"}, {"id": "mail", "state": "ok", "access": "drafts"}, {"id": "calendar", "state": "ok", "access": "read"}, {"id": "contacts", "state": "ok", "access": "full"}], "grant": {"granted": ["Calendars.Read", "Contacts.ReadWrite", "Mail.ReadWrite", "User.Read"], "not_granted": ["Calendars.ReadWrite", "Files.ReadWrite.All", "Mail.Send", "Sites.ReadWrite.All"]}}
   ],
   "gitea": {"state": "ok", "connections": [
     {"id": "gitea_0123456789abcdef01234567", "base_url": "https://git.example.test/gitea", "user": "example-person", "kind": "pat", "owned": true, "ambiguous": false, "git": "registered"},

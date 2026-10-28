@@ -91,6 +91,9 @@ type Service struct {
 	// LastSyncedAt is when the latest successful pass ended, from rclone's
 	// own committed listings; for several libraries, the oldest of them.
 	LastSyncedAt string `json:"last_synced_at,omitempty"`
+	// Access is what the provider's grant allows this service, when the
+	// grant can be read (grant_linux.go).
+	Access Access `json:"access,omitempty"`
 }
 
 type Account struct {
@@ -101,6 +104,9 @@ type Account struct {
 	// AppleID is set when the account's stored server is Apple's
 	// (apple_linux.go): the page shows it in that Apple ID's card.
 	AppleID string `json:"apple_id,omitempty"`
+	// Grant is the provider's grant in its own scope names, when it can be
+	// read; the services carry what it allows.
+	Grant *Grant `json:"grant,omitempty"`
 }
 
 // Env is everything an entry may use: the person's home and the operator's
@@ -140,6 +146,13 @@ type Entry interface {
 	Remove(ctx context.Context, env Env, address string) error
 	// Skill describes the account for the personal-data skill.
 	Skill(env Env, address string) SkillAccount
+}
+
+// GrantEntry reads the provider's grant along with the services' states.
+// Each service then carries its Access, and the grant its scope names.
+type GrantEntry interface {
+	Entry
+	CheckGrant(ctx context.Context, env Env, address string) ([]Service, *Grant)
 }
 
 // AppEntry is an entry that also needs the operator's application
@@ -293,6 +306,8 @@ const (
 	AccountMismatch     Failure = "account_mismatch"
 	ToolFailed          Failure = "tool_failed"
 	Cancelled           Failure = "cancelled"
+	// NothingGranted is a grant that reaches none of the entry's services.
+	NothingGranted Failure = "nothing_granted"
 )
 
 // ConsentRequired is a tenant that needs its administrator to approve the
@@ -727,10 +742,14 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 	resume := c.relay.resume[key{e.Provider(), address}]
 	c.relay.mu.Unlock()
 	var services []Service
+	var grant *Grant
 	if initial || nativeBusy {
 		for _, id := range e.Services() {
 			services = append(services, Service{ID: id, State: StateUnknown})
 		}
+	} else if g, ok := e.(GrantEntry); ok {
+		services, grant = g.CheckGrant(ctx, c.env, address)
+		resumeView(resume, services)
 	} else {
 		services = e.Check(ctx, c.env, address)
 		// The tool sees only that the first pass never finished; the daemon
@@ -746,6 +765,10 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 			matched, synced, aborted := false, true, false
 			var oldest time.Time
 			var pass passState
+			if a := services[i].Access; a == AccessNone || a == AccessRead {
+				// Files sync both ways, so a narrower grant has no sync.
+				continue
+			}
 			for _, d := range dirs {
 				if d.Service != services[i].ID {
 					continue
@@ -830,7 +853,7 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 			}
 		}
 	}
-	out := Account{Provider: e.Provider(), Address: address, Services: services, CheckedAt: c.now().UTC().Format(time.RFC3339)}
+	out := Account{Provider: e.Provider(), Address: address, Services: services, CheckedAt: c.now().UTC().Format(time.RFC3339), Grant: grant}
 	out.AppleID, _ = c.appleMember(e, address)
 	return out
 }

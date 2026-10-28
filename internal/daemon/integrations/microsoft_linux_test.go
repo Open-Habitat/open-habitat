@@ -434,7 +434,7 @@ func TestMicrosoftNativeRefreshUsesTheTenant(t *testing.T) {
 		t.Fatal("wrong rclone refresh authority", err)
 	}
 	app, _ := env.microsoftApp()
-	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address)
+	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, microsoftMCPScopes)
 	if !ok || !strings.Contains(strings.Join(cmd.Env, "\n"), "MS365_MCP_TENANT_ID="+testTenant) {
 		t.Fatal("restart lost the tenant")
 	}
@@ -1109,6 +1109,13 @@ func TestMicrosoftDiscoveryTransportAndMissingScope(t *testing.T) {
 			})
 			l := &microsoftLogin{entry: m, env: microsoftEnv(t), address: "person@example.test"}
 			err := l.discover(ctx, "access-secret", mode != "missing-scope")
+			if mode == "missing-scope" {
+				// Without the sites grant OneDrive alone is discovered.
+				if err != nil || !strings.Contains(string(l.config), "[onedrive]") || strings.Contains(string(l.config), "[sp-") {
+					t.Fatalf("sites left out: %v\n%s", err, l.config)
+				}
+				return
+			}
 			var detail microsoftDiscoveryError
 			if !errors.As(err, &detail) {
 				t.Fatal("missing discovery diagnostic", err)
@@ -1125,8 +1132,6 @@ func TestMicrosoftDiscoveryTransportAndMissingScope(t *testing.T) {
 				if detail.step != "onedrive" || !errors.Is(err, want) || loginFailure(err) != reason {
 					t.Fatal("lost context outcome", detail)
 				}
-			} else if detail.step != "sharepoint_scope" {
-				t.Fatal(detail)
 			}
 		})
 	}

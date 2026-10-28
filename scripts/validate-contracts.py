@@ -414,6 +414,10 @@ bad_integrations["accounts"][1]["services"][1]["directory"] = "/home/person/clou
 must_reject("integrations.schema.json", bad_integrations)
 bad_integrations["accounts"][1]["services"][1]["directory"] = "~/cloud/google-drive/../../.ssh"
 must_reject("integrations.schema.json", bad_integrations)
+# A grant's scope is the provider's name, never markup or free text.
+bad_grant = json.loads((BASE / "examples" / "integrations.json").read_text())
+bad_grant["accounts"][2]["grant"]["granted"].append("<img src=x>")
+must_reject("integrations.schema.json", bad_grant)
 must_reject("integration-login-control.schema.json", {"action":"redirect","attempt_id":"20261019T094000.000000002","redirect_url":"https://gateway.example.test/callback?code=x"})
 bad_connect = json.loads((BASE / "examples" / "integration-connect.json").read_text())
 bad_connect["password"] = "secret\n[accounts.x]"

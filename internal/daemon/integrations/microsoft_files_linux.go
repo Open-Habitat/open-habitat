@@ -83,11 +83,9 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 		} `json:"value"`
 		Next string `json:"@odata.nextLink"`
 	}
-	if personal.Type != "personal" {
-		step = "sharepoint_scope"
-		if !sitesGranted {
-			return ToolFailed
-		}
+	// Without the sites grant the account syncs OneDrive alone, and the
+	// SharePoint row shows the grant left it out.
+	if personal.Type != "personal" && sitesGranted {
 		step = "followed_sites"
 		if err := l.entry.request(ctx, "https://graph.microsoft.com/v1.0/me/followedSites?$select=id,displayName,webUrl&$top=100", nil, bearer, &sites); err != nil {
 			return err
@@ -139,7 +137,7 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 		return ToolFailed
 	}
 	var config strings.Builder
-	config.WriteString("# Microsoft cloud roots discovered for this native account.\n")
+	config.WriteString(microsoftConfigHeader)
 	for _, r := range remotes {
 		step = "onedrive_metadata"
 		if r.Name != "onedrive" {
@@ -157,6 +155,9 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 	l.config = []byte(config.String())
 	return nil
 }
+
+const microsoftConfigHeader = "# Microsoft cloud roots discovered for this native account.\n"
+
 func microsoftRemotes(env Env, address string) ([]microsoftRemote, error) {
 	if !ValidAddress(address) {
 		return nil, ToolFailed

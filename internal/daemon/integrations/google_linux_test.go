@@ -29,12 +29,21 @@ set -eu
 [ "$1" = --home ]; home=$2; shift 2
 [ "$GOG_KEYRING_BACKEND" = file ]; [ "$GOG_KEYRING_PASSWORD" = open-habitat ]
 [ "$1" = --no-input ]; [ "$2" = --json ]; shift 2
-case "$1 $2 $3" in
+case "$1 $2 ${3:-}" in
  "auth credentials set") cat >/dev/null;;
  "auth tokens import")
  data=$(cat); email=$(printf '%s' "$data" | sed 's/.*"email":"\([^"]*\)".*/\1/')
  name=$(printf 'token:default:%s' "$email" | base64 -w0 | tr '+/' '-_' | tr -d '=')
- printf 'native-encrypted-token' >"$home/data/keyring/_gogcli_key_v1_$name";;
+ printf 'native-encrypted-token' >"$home/data/keyring/_gogcli_key_v1_$name"
+ printf '%s' "$data" >"$home/data/imported-$name";;
+ "auth list ")
+ [ ! -f "$HOME/gog-fail" ]
+ printf '{"accounts":['; sep=
+ for f in "$home"/data/imported-*; do
+  [ -f "$f" ] && [ -f "$home/data/keyring/_gogcli_key_v1_${f##*/imported-}" ] || continue
+  printf '%s' "$sep"; cat "$f"; sep=,
+ done
+ printf ']}';;
  *)
  if [ -f "$HOME/block-probes" ]; then
   touch "$HOME/probe-$2-$3"
@@ -196,7 +205,8 @@ func TestGoogleIdentityConsentAndRedirect(t *testing.T) {
 		want                error
 	}{
 		{"identity mismatch", "other@example.test", googleScopes, AccountMismatch},
-		{"partial consent", "person@example.test", "openid email https://www.googleapis.com/auth/drive", ToolFailed},
+		{"partial consent", "person@example.test", "openid email https://www.googleapis.com/auth/drive", nil},
+		{"nothing granted", "person@example.test", "openid email", NothingGranted},
 		{"complete", "person@example.test", googleScopes, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

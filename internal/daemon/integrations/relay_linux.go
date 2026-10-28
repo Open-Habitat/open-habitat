@@ -181,7 +181,7 @@ func loginFailure(err error) string {
 	var f Failure
 	if errors.As(err, &f) {
 		switch f {
-		case Expired, RedirectRejected, DeviceCodeBlocked, AccountMismatch, Cancelled:
+		case Expired, RedirectRejected, DeviceCodeBlocked, AccountMismatch, Cancelled, NothingGranted:
 			return string(f)
 		}
 	}

@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -103,6 +104,12 @@ func googleHasToken(env Env, address string) bool {
 	return err == nil
 }
 func (g *google) Check(ctx context.Context, env Env, address string) []Service {
+	out, _ := g.CheckGrant(ctx, env, address)
+	return out
+}
+
+// CheckGrant reads the services' states and the grant they run on.
+func (g *google) CheckGrant(ctx context.Context, env Env, address string) ([]Service, *Grant) {
 	// Checks of different accounts share the read lease; removal/replacement
 	// waits for every native process that could still use or refresh credentials.
 	g.native.RLock()
@@ -111,8 +118,12 @@ func (g *google) Check(ctx context.Context, env Env, address string) []Service {
 	check := lock.(*sync.Mutex)
 	check.Lock()
 	defer check.Unlock()
+	granted, known := googleGrant(ctx, env, address)
+	reaches := func(service string) bool {
+		return !known || googleRules.access(service, granted) != AccessNone
+	}
 	drive, driveFailure, expired := StateUnknown, "", false
-	if c, ok := googleCommand(env, address, "about", "google:", "--json"); ok {
+	if c, ok := googleCommand(env, address, "about", "google:", "--json"); ok && reaches("drive") {
 		if err, rejected := dropboxStatus(ctx, env, c); err == nil {
 			_, ready := g.SyncCommand(env, address)
 			drive, driveFailure = signedInState(ready)
@@ -123,21 +134,29 @@ func (g *google) Check(ctx context.Context, env Env, address string) []Service {
 		}
 	}
 	out := []Service{{ID: "drive", State: drive, Failure: driveFailure}, {ID: "mail", State: StateUnknown}, {ID: "calendar", State: StateUnknown}, {ID: "contacts", State: StateUnknown}}
+	var grant *Grant
+	if known {
+		defer applyAccess(googleRules, granted, out)
+		grant = grantOf(granted, strings.Fields(googleScopes), googleIdentity)
+	}
 	if expired {
 		// Both native stores received the same grant. Its rejection is not a
 		// network outage in the other three services (Testing tokens expire weekly).
 		for i := range out {
 			out[i].State = StateLoginExpired
 		}
-		return out
+		return out, grant
 	}
 	if !googleHasToken(env, address) {
-		return out
+		return out, grant
 	}
 	// Four serial exchanges per account consume the catalog deadline before a
 	// second account is reached. Independent read-only service probes run together.
 	var wg sync.WaitGroup
 	for i, args := range [][]string{{"gmail", "labels", "list"}, {"calendar", "calendars", "--max", "1"}, {"contacts", "list", "--max", "1"}} {
+		if !reaches(out[i+1].ID) {
+			continue
+		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -151,16 +170,86 @@ func (g *google) Check(ctx context.Context, env Env, address string) []Service {
 		}()
 	}
 	wg.Wait()
+	return out, grant
+}
+
+// googleRules are the Google services' levels in Google's own scope names.
+// The catalog asks for the first of each; a person may leave any of them out
+// on Google's consent page, and an earlier or narrower grant may name others.
+var googleRules = grantRules{
+	"drive":    {{[]string{googleScope + "drive"}, AccessFull}, {[]string{googleScope + "drive.readonly"}, AccessRead}},
+	"mail":     {{[]string{"https://mail.google.com/"}, AccessFull}, {[]string{googleScope + "gmail.modify"}, AccessFull}, {[]string{googleScope + "gmail.readonly"}, AccessRead}},
+	"calendar": {{[]string{googleScope + "calendar"}, AccessFull}, {[]string{googleScope + "calendar.readonly"}, AccessRead}},
+	"contacts": {{[]string{googleScope + "contacts"}, AccessFull}, {[]string{googleScope + "contacts.readonly"}, AccessRead}},
+}
+
+const googleScope = "https://www.googleapis.com/auth/"
+
+// Google adds these to every grant; they are identity, not permissions.
+var googleIdentity = map[string]bool{"openid": true, "email": true, "profile": true, googleScope + "userinfo.email": true, googleScope + "userinfo.profile": true}
+
+// googleGrantServices are gog's names for the services a grant reaches.
+func googleGrantServices(granted map[string]bool) []string {
+	var out []string
+	for _, s := range []struct{ service, gog string }{{"mail", "gmail"}, {"calendar", "calendar"}, {"contacts", "contacts"}, {"drive", "drive"}} {
+		if googleRules.access(s.service, granted) != AccessNone {
+			out = append(out, s.gog)
+		}
+	}
 	return out
 }
+
+// googleGrant reads the account's grant from gog's own store, where the
+// sign-in imported the scopes Google's token response named. gog answers
+// from its files without the network; false when it cannot be read.
+func googleGrant(ctx context.Context, env Env, address string) (map[string]bool, bool) {
+	c, ok := gogCommand(env, "auth", "list")
+	if !ok {
+		return nil, false
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	data, err := env.run(ctx, c, nil)
+	if err != nil {
+		return nil, false
+	}
+	var list struct {
+		Accounts []struct {
+			Email  string   `json:"email"`
+			Scopes []string `json:"scopes"`
+		} `json:"accounts"`
+	}
+	if json.Unmarshal(data, &list) != nil {
+		return nil, false
+	}
+	for _, a := range list.Accounts {
+		if strings.EqualFold(a.Email, address) && len(a.Scopes) > 0 {
+			return scopeSet(a.Scopes, func(s string) string { return s }), true
+		}
+	}
+	return nil, false
+}
+
 func (g *google) Skill(env Env, address string) SkillAccount {
 	_, ready := g.SyncCommand(env, address)
+	granted, known := googleGrant(context.Background(), env, address)
+	driveAccess := AccessFull
+	var services []Service
+	if known {
+		driveAccess = googleRules.access("drive", granted)
+		for _, id := range g.Services() {
+			services = append(services, Service{ID: id, Access: googleRules.access(id, granted)})
+		}
+	}
 	body := fmt.Sprintf("Use `GOG_KEYRING_BACKEND=file GOG_KEYRING_PASSWORD=open-habitat %s --home ~/.config/gog/open-habitat --account %s --no-input --json` followed by the gog command. Use `gmail` (drafts first), `calendar`, `contacts`, and `drive` for online Google-native documents. The keyring password is a fixed native file-backend setting, not a secret. Never export or print tokens. Consult the tool's --help for syntax.", mustTool(env, "gog"), address)
 	if ready {
 		body += fmt.Sprintf("\n\nOrdinary Drive files sync continuously both ways under `~/cloud/google-drive/%s/`. Edits, moves and deletions reach the cloud. Google-native documents and shortcuts are excluded from filesystem sync: use gog online for those. Write only what the person requested. Native bisync safeguards must not be bypassed with --force, blind --resync or remove/reconnect: reconnection is a cloud-preferred union, not deletion approval. Initial conflicting local versions are backed up under `~/.local/share/rclone/google-backups/%s/`.", address, address)
-	} else {
+	} else if driveAccess == AccessFull {
 		body += "\n\nDrive initial sync is not ready. Finish the initial folder choice in Settings → Integrations; do not assume local files are available."
+	} else {
+		body += "\n\nDrive files are not synced: the grant does not let them sync both ways."
 	}
+	body += accessSummary(services, map[string]string{"drive": "Drive", "mail": "Gmail", "calendar": "Calendar", "contacts": "Contacts"})
 	return SkillAccount{Label: "Google", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: body}
 }
 func mustTool(env Env, name string) string {
@@ -252,6 +341,7 @@ type googleLogin struct {
 	redirect                        chan string
 	token                           []byte
 	refresh                         string
+	granted                         map[string]bool
 }
 
 func (l *googleLogin) Prompt(context.Context) (Prompt, error) {
@@ -324,15 +414,12 @@ func (l *googleLogin) Wait(ctx context.Context) (string, error) {
 	if l.entry.request(ctx, "https://oauth2.googleapis.com/token", url.Values{"grant_type": {"authorization_code"}, "code": {code}, "client_id": {l.app.ClientID}, "client_secret": {l.app.ClientSecret}, "redirect_uri": {googleRedirect}, "code_verifier": {l.verifier}}, "", &token) != nil || token.AccessToken == "" || token.RefreshToken == "" || token.ExpiresIn <= 0 || token.ExpiresIn > 86400 {
 		return "", ToolFailed
 	}
-	// Google permits partial consent. Never advertise services the grant lacks.
-	scopes := map[string]bool{}
-	for _, s := range strings.Fields(token.Scope) {
-		scopes[s] = true
-	}
-	for _, s := range strings.Fields(googleScopes) {
-		if s != "openid" && s != "email" && !scopes[s] {
-			return "", ToolFailed
-		}
+	// Google permits partial consent, and a Workspace may allow less. The
+	// account is connected with what was granted and its services show the
+	// rest as not granted; a grant that reaches no service connects nothing.
+	granted := scopeSet(strings.Fields(token.Scope), func(s string) string { return s })
+	if len(googleGrantServices(granted)) == 0 {
+		return "", NothingGranted
 	}
 	var account struct {
 		Email    string `json:"email"`
@@ -349,6 +436,7 @@ func (l *googleLogin) Wait(ctx context.Context) (string, error) {
 		return "", AccountMismatch
 	}
 	l.refresh = token.RefreshToken
+	l.granted = granted
 	l.token, _ = json.Marshal(map[string]any{"access_token": token.AccessToken, "refresh_token": token.RefreshToken, "token_type": "Bearer", "expiry": time.Now().Add(time.Duration(token.ExpiresIn) * time.Second).UTC().Format(time.RFC3339)})
 	return address, nil
 }
@@ -395,13 +483,27 @@ func (l *googleLogin) Commit(ctx context.Context, address string) (result error)
 	if err != nil {
 		return err
 	}
-	config := fmt.Sprintf("[google]\ntype = drive\nclient_id = %s\nclient_secret = %s\nscope = drive\ntoken = %s\n", l.app.ClientID, l.app.ClientSecret, l.token)
-	err = writeFileAt(fd, address+".conf", []byte(config), 0600)
+	if googleRules.access("drive", l.granted) == AccessFull {
+		config := fmt.Sprintf("[google]\ntype = drive\nclient_id = %s\nclient_secret = %s\nscope = drive\ntoken = %s\n", l.app.ClientID, l.app.ClientSecret, l.token)
+		err = writeFileAt(fd, address+".conf", []byte(config), 0600)
+	} else if err = unix.Unlinkat(fd, address+".conf", 0); errors.Is(err, unix.ENOENT) {
+		// Files sync both ways, so only a full Drive grant gets rclone's
+		// login; a narrower new grant retires an earlier one's. The synced
+		// directory and its listings stay for a later full grant.
+		err = nil
+	}
 	unix.Close(fd)
 	if err != nil {
 		return err
 	}
-	data, _ := json.Marshal(map[string]any{"email": address, "refresh_token": l.refresh, "services": []string{"gmail", "calendar", "contacts", "drive"}, "scopes": strings.Fields(googleScopes)})
+	var scopes []string
+	for s := range l.granted {
+		scopes = append(scopes, s)
+	}
+	sort.Strings(scopes)
+	// gog keeps the grant's own scopes beside its token; googleGrant reads
+	// them back, so no other record of the grant exists.
+	data, _ := json.Marshal(map[string]any{"email": address, "refresh_token": l.refresh, "services": googleGrantServices(l.granted), "scopes": scopes})
 	c, ok = gogCommand(l.env, "auth", "tokens", "import", "-")
 	if !ok {
 		return ToolFailed
@@ -411,5 +513,16 @@ func (l *googleLogin) Commit(ctx context.Context, address string) (result error)
 }
 func (l *googleLogin) Cancel() { l.token = nil; l.refresh = "" }
 
+// FolderChoiceAfterLogin offers the Drive choice only when the grant let
+// rclone sign in and Drive has not synced yet.
+func (g *google) FolderChoiceAfterLogin(env Env, address string) (bool, error) {
+	if _, ok := googleCommand(env, address, "about"); !ok {
+		return false, nil
+	}
+	_, ready := g.SyncCommand(env, address)
+	return !ready, nil
+}
+
 var _ FolderEntry = (*google)(nil)
+var _ GrantEntry = (*google)(nil)
 var _ LoginEntry = (*google)(nil)

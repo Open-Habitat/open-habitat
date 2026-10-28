@@ -36,6 +36,115 @@ const list: IntegrationList = {
 const noop = () => {};
 
 describe("Integraatiot overview", () => {
+  it("shows a narrower grant: what is missing, who narrowed it and the grant in the provider's names", async () => {
+    const onSignInAgain = vi.fn();
+    const account = (provider: "microsoft" | "google") => ({
+      provider,
+      address: "person@example.test",
+      checked_at: "2026-10-28T06:38:00Z",
+      services:
+        provider === "microsoft"
+          ? [
+              {
+                id: "onedrive" as const,
+                state: "unknown" as const,
+                access: "none" as const,
+              },
+              {
+                id: "mail" as const,
+                state: "ok" as const,
+                access: "drafts" as const,
+              },
+              {
+                id: "calendar" as const,
+                state: "ok" as const,
+                access: "read" as const,
+              },
+            ]
+          : [
+              {
+                id: "drive" as const,
+                state: "unknown" as const,
+                access: "none" as const,
+              },
+              {
+                id: "mail" as const,
+                state: "ok" as const,
+                access: "full" as const,
+              },
+            ],
+      grant:
+        provider === "microsoft"
+          ? {
+              granted: ["Calendars.Read", "Mail.ReadWrite", "User.Read"],
+              not_granted: ["Files.ReadWrite.All", "Mail.Send"],
+            }
+          : {
+              granted: ["https://www.googleapis.com/auth/gmail.modify"],
+              not_granted: ["https://www.googleapis.com/auth/drive"],
+            },
+    });
+    const view = render(
+      <IntegrationsOverview
+        list={{
+          ...list,
+          providers: [
+            google,
+            {
+              id: "microsoft",
+              available: true,
+              login: "device_code",
+              services: ["onedrive", "mail", "calendar"],
+            },
+          ],
+          accounts: [account("microsoft"), account("google")],
+        }}
+        checking={new Set()}
+        onCheck={noop}
+        onConnect={noop}
+        onSignInAgain={onSignInAgain}
+        onRemove={noop}
+      />,
+    );
+    expect(view.getByTestId("integration-limits").textContent).toContain(
+      "Se ei estä tätä",
+    );
+    const ms = view.getByTestId("integration-account-microsoft");
+    const notice =
+      within(ms).getByTestId("integration-account-narrowed").textContent ?? "";
+    expect(notice).toContain("Organisaatiosi on rajannut");
+    expect(notice).toContain("Outlook-posti: lähetys");
+    expect(notice).toContain("Outlook-kalenteri: muokkaus");
+    expect(notice).toContain("OneDrive ja SharePoint");
+    const onedrive = within(ms).getByTestId("integration-service-onedrive");
+    expect(onedrive.dataset.access).toBe("none");
+    expect(onedrive.textContent).toContain("Ei käytössä");
+    expect(
+      within(ms).getByTestId("integration-service-mail").textContent,
+    ).toContain("Ei voi lähettää");
+    // The organisation's limit is not changed by signing in again.
+    expect(within(ms).queryByTestId("integration-reauth")).toBeNull();
+    const grant = within(ms).getByTestId("integration-grant");
+    expect(grant.textContent).toContain("Myönnetyt oikeudet (3)");
+    expect(
+      within(grant)
+        .getAllByTestId("integration-not-granted")
+        .map((r) => r.textContent),
+    ).toEqual([
+      "–Files.ReadWrite.Allpyydettiin, ei myönnetty",
+      "–Mail.Sendpyydettiin, ei myönnetty",
+    ]);
+    const g = view.getByTestId("integration-account-google");
+    expect(
+      within(g).getByTestId("integration-account-narrowed").textContent,
+    ).toContain("Kirjautuessa jäi myöntämättä: Google Drive");
+    expect(within(g).getByTestId("integration-grant").textContent).toContain(
+      "gmail.modify",
+    );
+    await userEvent.click(within(g).getByTestId("integration-reauth"));
+    expect(onSignInAgain).toHaveBeenCalledTimes(1);
+  });
+
   it("offers another account of a connected provider and a new sign-in for a rejected password", async () => {
     const onConnect = vi.fn();
     const onSignInAgain = vi.fn();

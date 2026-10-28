@@ -5,6 +5,11 @@ import AuthManager from '@softeria/ms-365-mcp-server/dist/auth.js';
 import { DefaultTokenCacheStorage, wrapCache, unwrapCache } from '@softeria/ms-365-mcp-server/dist/token-cache-storage.js';
 
 export const scopes = ['User.Read', 'Mail.ReadWrite', 'Mail.Send', 'Calendars.ReadWrite', 'Contacts.ReadWrite'];
+// What the tenant consented to the application, never a permission it did
+// not: naming one would fail the whole request when an organisation granted
+// less. The tenant's answer names the grant; the daemon reads it from there.
+const granted = ['https://graph.microsoft.com/.default'];
+const graphName = scope => scope.replace(/^https:\/\/graph\.microsoft\.com\//i, '');
 
 export function application(clientId, tenant, system = {}) {
   return new PublicClientApplication({
@@ -25,10 +30,10 @@ export async function importGrant({client_id, tenant_id, address, refresh_token}
   if (typeof refresh_token !== 'string' || !refresh_token) throw Error('invalid_input');
   const app = application(client_id, tenant_id, system);
   // MSAL, not host code, creates the account/refresh records and owns rotation.
-  const result = await app.acquireTokenByRefreshToken({ refreshToken: refresh_token, scopes, forceCache: true });
+  const result = await app.acquireTokenByRefreshToken({ refreshToken: refresh_token, scopes: granted, forceCache: true });
   if (!result?.account || result.account.username.toLowerCase() !== address.toLowerCase()) throw Error('account_mismatch');
-  const granted = new Set(result.scopes.map(scope => scope.replace(/^https:\/\/graph\.microsoft\.com\//i, '').toLowerCase()));
-  if (scopes.some(scope => !granted.has(scope.toLowerCase()))) throw Error('missing_scopes');
+  // The tool needs the identity read; any other scope may be missing.
+  if (!result.scopes.some(scope => graphName(scope).toLowerCase() === 'user.read')) throw Error('missing_scopes');
   const accounts = await app.getTokenCache().getAllAccounts();
   if (accounts.length !== 1 || accounts[0].homeAccountId !== result.account.homeAccountId) throw Error('account_mismatch');
   const storage = new DefaultTokenCacheStorage();
@@ -68,7 +73,7 @@ function classify(error) {
 // as the same text. This runs a refresh through the tool's own
 // AuthManager and store, so a rotated refresh token is persisted exactly as
 // the tool would, and answers with a fixed code: ok, refused, outside_tenant
-// or unreachable.
+// or unreachable. With ok it also names the scopes of the tenant's answer.
 export async function verifyGrant({client_id, tenant_id, address}, system = {}, graph = fetch) {
   validate({client_id, tenant_id, address});
   const manager = new AuthManager({
@@ -82,22 +87,24 @@ export async function verifyGrant({client_id, tenant_id, address}, system = {}, 
     await manager.loadTokenCache();
     account = (await manager.msalApp.getTokenCache().getAllAccounts()).find(a => a.username?.toLowerCase() === address.toLowerCase());
   } catch {
-    return 'refused';
+    return {state: 'refused'};
   }
-  if (!account) return 'refused';
-  let token;
+  if (!account) return {state: 'refused'};
+  let result;
   try {
     // Always asked of the tenant: a cached access token proves nothing about
     // the grant, and after a tenant change it is the previous tenant's.
-    token = (await manager.msalApp.acquireTokenSilent({account, scopes, forceRefresh: true})).accessToken;
+    result = await manager.msalApp.acquireTokenSilent({account, scopes: granted, forceRefresh: true});
   } catch (error) {
-    return classify(error);
+    return {state: classify(error)};
   }
   // As the tool's own check: a token is not a reachable mailbox.
   try {
-    const response = await graph('https://graph.microsoft.com/v1.0/me', {headers: {Authorization: `Bearer ${token}`}, signal: AbortSignal.timeout(15000)});
-    return response.ok ? 'ok' : 'unreachable';
+    const response = await graph('https://graph.microsoft.com/v1.0/me', {headers: {Authorization: `Bearer ${result.accessToken}`}, signal: AbortSignal.timeout(15000)});
+    if (!response.ok) return {state: 'unreachable'};
   } catch {
-    return 'unreachable';
+    return {state: 'unreachable'};
   }
+  const names = (result.scopes ?? []).map(graphName).filter(scope => /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/.test(scope)).slice(0, 64);
+  return {state: 'ok', scopes: names};
 }

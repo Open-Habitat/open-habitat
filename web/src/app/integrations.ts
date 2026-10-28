@@ -83,7 +83,13 @@ export type Service = {
   failure?: SyncFailure;
   /** When the latest successful pass ended, from the tool's own listings. */
   last_synced_at?: string;
+  /** What the provider's grant lets the service do, read from the grant;
+   * absent when it cannot be read. */
+  access?: Access;
 };
+export type Access = "full" | "drafts" | "read" | "none";
+/** The provider's grant in its own scope names. */
+export type Grant = { granted: string[]; not_granted: string[] };
 export type SyncFailure =
   | "quota_insufficient"
   | "quota_unavailable"
@@ -106,6 +112,7 @@ export type Account = {
   /** Set when the account's stored server is Apple's iCloud: the Apple ID
    * whose card shows it. */
   apple_id?: string;
+  grant?: Grant;
 };
 export type IntegrationList = {
   schema_version: 1;
@@ -144,7 +151,8 @@ export type LoginFailure =
   | "tool_failed"
   | "cancelled"
   | "quota_insufficient"
-  | "quota_unavailable";
+  | "quota_unavailable"
+  | "nothing_granted";
 export type LoginView = {
   schema_version: 1;
   state:

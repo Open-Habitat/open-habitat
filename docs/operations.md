@@ -742,7 +742,9 @@ consent screen as **Internal**, which requires Google Workspace: only the
 organisation's accounts can connect, and Google's verification is not needed.
 An External app in Testing needs every tester added and its refresh tokens for
 these scopes expire after seven days; in production it needs Google's
-verification, not a host-side workaround. Partial consent is rejected. No incoming port, shared localhost
+verification, not a host-side workaround. A person may leave services out on
+Google's consent page: the account connects with what was granted, and the
+page shows the rest as not granted. No incoming port, shared localhost
 listener, public callback or gateway credential handling is involved.
 
 Each person connects their own accounts in Settings → Integrations. Ordinary
@@ -800,6 +802,11 @@ step. By hand, in the Entra admin center:
 4. *Grant admin consent for <organisation>* (Cloud Application Administrator,
    Application Administrator or Privileged Role Administrator), so nobody is
    asked to consent and the tenant's user-consent policy cannot block a person.
+   A sign-in asks for what the tenant consented to the application (Graph's
+   `.default`), so an organisation that consents to less, for example
+   `Mail.ReadWrite` without `Mail.Send`, still connects: the page shows each
+   service's level and what was not granted, and the Outlook tool is started
+   with only the granted permissions. `User.Read` is required.
 
 The application's *Overview* shows both values. `admin integrations set
 --provider microsoft --client-id <Application (client) ID> --tenant-id

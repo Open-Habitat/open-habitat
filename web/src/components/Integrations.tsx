@@ -16,6 +16,7 @@ import {
   appleServices,
   clockTime,
   type Folder,
+  type Grant,
   gigabytes,
   type IntegrationList,
   type LoginView,
@@ -198,8 +199,50 @@ function CloudFolderHint() {
   );
 }
 
+/** What a narrower grant lets agents do with a service, in the person's
+ * terms; the full level is described by what the agent gets. */
+function narrower(service: Service): string | null {
+  const file = fileServices.includes(service.id);
+  switch (service.access) {
+    case "none":
+      return "Ei myönnetty. Agentit eivät pääse tähän.";
+    case "drafts":
+      return "Lukee, järjestelee ja kirjoittaa luonnoksia. Ei voi lähettää.";
+    case "read":
+      return file
+        ? "Vain luku. Tiedostoja ei synkronoida kotihakemistoosi, koska synkronointi kulkee molempiin suuntiin."
+        : service.id === "mail"
+          ? "Vain luku. Ei voi muuttaa eikä lähettää mitään."
+          : service.id === "calendar"
+            ? "Vain luku. Ei voi luoda tapahtumia eikä lähettää kutsuja."
+            : "Vain luku.";
+  }
+  return null;
+}
+
+/** What a narrower grant leaves out of a service, as a phrase. */
+function missingOf(provider: ProviderId, service: Service): string | null {
+  const name = serviceName(provider, service.id);
+  switch (service.access) {
+    case "none":
+      return name;
+    case "drafts":
+      return `${name}: lähetys`;
+    case "read":
+      return `${name}: muokkaus`;
+  }
+  return null;
+}
+
+/** A scope as the provider's documentation names it: Google's without its
+ * common address prefix. */
+const scopeName = (scope: string) =>
+  scope.replace(/^https:\/\/www\.googleapis\.com\/auth\//, "");
+
 /** What the agent gets from a service, in a sentence. */
 function gets(provider: ProviderId, service: Service): ReactNode {
+  const limited = narrower(service);
+  if (limited) return limited;
   if (service.directory)
     return (
       <>
@@ -254,6 +297,100 @@ export function LetterMark({
     >
       {mark}
     </span>
+  );
+}
+
+/** The page's warning: what agents can do with what the services granted,
+ * and what the grant, the only real limit, does not prevent. */
+export function GrantLimits() {
+  return (
+    <div className="ig-warn" role="note" data-testid="integration-limits">
+      <Icon name="shield" />
+      <div>
+        <strong>
+          Agentit voivat käyttää kaikkea, minkä palvelu myönsi tähän
+          liittämillesi tileille.
+        </strong>{" "}
+        Ne voivat lähettää postia, muuttaa kalenteria ja muokata tai poistaa
+        tiedostoja sinun nimissäsi, jos myöntö sen sallii, ja liitetty viesti
+        tai tiedosto voi sisältää ohjeita, joita agentti yrittää noudattaa.
+        Myönnetty oikeus on palvelun oma raja: se pitää, vaikka agentti
+        erehtyisi tai sitä yritettäisiin ohjata. Se ei estä tätä:
+        <ul>
+          <li>
+            Agentit ajavat sinun käyttäjänäsi, joten ne voivat lukea myös
+            kirjautumistiedot kotihakemistostasi. Jos tieto päätyy muualle,
+            sillä voi tehdä saman kuin agentti, ei enempää.
+          </li>
+          <li>
+            Agentti voi kertoa eteenpäin kaiken, mitä se saa lukea. Vain luku ei
+            estä lukemista.
+          </li>
+          <li>
+            Agentin työkalujen omat ”turvatilat” ovat ohjeita, eivät rajoja.
+            Raja on se, minkä palvelu myönsi.
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/** Why an account's grant is narrower than the catalog asked, and where it
+ * is changed. Only the grant is read; who narrowed it is known by provider. */
+function GrantNotice({ account }: { account: Account }) {
+  const missing = account.services
+    .map((s) => missingOf(account.provider, s))
+    .filter((m): m is string => !!m);
+  if (!account.grant?.not_granted.length || missing.length === 0) return null;
+  return (
+    <p
+      className="ig-notice"
+      role="status"
+      data-testid="integration-account-narrowed"
+    >
+      <Icon name="info" />
+      <span>
+        {account.provider === "microsoft" ? (
+          <>
+            <strong>Organisaatiosi on rajannut Habitatin oikeuksia.</strong>{" "}
+            Puuttuu: {missing.join(", ")}. Yhteys toimii myönnetyillä
+            oikeuksilla. Rajaus muutetaan organisaation Microsoft Entra
+            -hallinnassa, ei täällä.
+          </>
+        ) : (
+          <>
+            <strong>Kirjautuessa jäi myöntämättä:</strong> {missing.join(", ")}.
+            Agentit eivät pääse niihin. Kirjaudu uudelleen ja myönnä ne, jos
+            haluat. Google Workspacen ylläpitäjä voi myös rajata oikeuksia.
+          </>
+        )}
+      </span>
+    </p>
+  );
+}
+
+/** The grant in the provider's own names, for IT and for checking. */
+function GrantList({ grant }: { grant: Grant }) {
+  return (
+    <details className="ig-grant" data-testid="integration-grant">
+      <summary>Myönnetyt oikeudet ({grant.granted.length})</summary>
+      <ul>
+        {grant.granted.map((s) => (
+          <li key={s}>
+            <Icon name="check" />
+            <code title={s}>{scopeName(s)}</code>
+          </li>
+        ))}
+        {grant.not_granted.map((s) => (
+          <li key={s} className="miss" data-testid="integration-not-granted">
+            <span aria-hidden="true">–</span>
+            <code title={s}>{scopeName(s)}</code>
+            <span>pyydettiin, ei myönnetty</span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -376,6 +513,18 @@ function ServiceStatus({
         Tarkistetaan…
       </span>
     );
+  if (service.access === "none")
+    return (
+      <span
+        data-testid="integration-service-state"
+        data-state={service.state}
+        data-access="none"
+        className="ig-st"
+      >
+        <Icon name="cross" />
+        Ei käytössä
+      </span>
+    );
   const bad = [
     "credentials_rejected",
     "login_expired",
@@ -447,7 +596,11 @@ export function AccountCard({
           <span className="ig-rn">{copy.name}</span>
           <span className="ig-meta">{account.address}</span>
         </div>
-        {needsSignIn(account) && onSignInAgain ? (
+        {(needsSignIn(account) ||
+          // Google lets the person grant what was left out by signing in again.
+          (account.provider === "google" &&
+            !!account.grant?.not_granted.length)) &&
+        onSignInAgain ? (
           <ControlButton
             data-testid="integration-reauth"
             size="row"
@@ -509,9 +662,11 @@ export function AccountCard({
           </p>
         ) : null;
       })()}
+      <GrantNotice account={account} />
       {account.services.map((s) => (
         <div
           data-testid={`integration-service-${s.id}`}
+          data-access={s.access}
           className="ig-svc"
           key={s.id}
         >
@@ -554,7 +709,7 @@ export function AccountCard({
           </div>
           <div className="ig-sv">
             <ServiceStatus service={s} checking={checking} />
-            {checking ? null : s.directory ? (
+            {checking || s.access === "none" ? null : s.directory ? (
               // A file service's moving clock is its last successful pass,
               // not the status check: only that says the files sync.
               <span data-testid="integration-last-synced" className="ig-meta">
@@ -577,6 +732,7 @@ export function AccountCard({
           </div>
         </div>
       ))}
+      {account.grant ? <GrantList grant={account.grant} /> : null}
     </article>
   );
 }
@@ -847,7 +1003,7 @@ export function IntegrationsOverview({
             tiedostoja, postia ja kalentereita.
           </p>
           <CloudFolderHint />
-          <AgentWarning />
+          <GrantLimits />
         </>
       )}
       {/* The personal-data skill maps mail, calendars and files, not Gitea. */}
@@ -1597,6 +1753,28 @@ function FailedStep({
           ) : null}
           <p className="ig-p">
             Kun lupa on annettu, kirjaudu uudelleen. Mitään ei tallennettu.
+          </p>
+          {restart}
+        </>
+      );
+    case "nothing_granted":
+      return (
+        <>
+          <p
+            className="ig-result bad"
+            role="alert"
+            data-testid="integration-nothing-granted"
+          >
+            <Icon name="stop" />
+            <span>
+              <b>Kirjautuminen ei myöntänyt yhtään käytettävää oikeutta.</b>{" "}
+              {copy.site} ei myöntänyt Habitatille mitään, mitä agentit voisivat
+              käyttää, joten tiliä ei yhdistetty. Mitään ei tallennettu.
+            </span>
+          </p>
+          <p className="ig-p">
+            Kirjaudu uudelleen ja myönnä vähintään yksi palvelu, tai pyydä
+            organisaatiosi ylläpitäjää sallimaan sovelluksen oikeudet.
           </p>
           {restart}
         </>

@@ -449,6 +449,52 @@ test("a device code relays to the browser, folders fit the quota, and sync start
   await expect(
     card.getByTestId("integration-service-state").first(),
   ).toBeVisible();
+
+  // A grant the organisation narrowed is shown as granted, not refused: the
+  // card says what is missing and lists the grant in Microsoft's own names.
+  await expect(page.getByTestId("integration-limits")).toContainText(
+    "Se ei estä tätä",
+  );
+  await fixture(page, "action=narrow&provider=microsoft");
+  await card
+    .getByRole("button")
+    .and(card.getByTestId("integration-recheck"))
+    .click();
+  await expect(card.getByTestId("integration-account-narrowed")).toContainText(
+    "Organisaatiosi on rajannut",
+  );
+  await expect(
+    card.getByTestId("integration-service-onedrive"),
+  ).toHaveAttribute("data-access", "none");
+  await expect(card.getByTestId("integration-service-mail")).toContainText(
+    "Ei voi lähettää",
+  );
+  await expect(card.getByTestId("integration-reauth")).toHaveCount(0);
+  await card
+    .getByTestId("integration-grant")
+    .getByText("Myönnetyt oikeudet (4)")
+    .click();
+  await expect(
+    card
+      .getByTestId("integration-not-granted")
+      .filter({ hasText: "Mail.Send" }),
+  ).toBeVisible();
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid="integration-account-microsoft"]')
+        .analyze()
+    ).violations,
+    "narrowed card",
+  ).toEqual([]);
+  // The provider's long names wrap on a phone rather than widen the page.
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    ),
+  ).toBeLessThanOrEqual(0);
+  await fixture(page, "action=reset");
 });
 
 test("a pasted redirect must be the loopback address; a choice over quota is refused", async ({

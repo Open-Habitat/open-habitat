@@ -29,10 +29,9 @@ func TestMicrosoftFirstApprovalAfterPendingAndSlowDown(t *testing.T) {
 	m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
 		if strings.HasSuffix(r.URL.Path, "/devicecode") {
 			_ = r.ParseForm()
-			for _, scope := range []string{"Files.ReadWrite.All", "Sites.ReadWrite.All", "Mail.ReadWrite", "Mail.Send", "Calendars.ReadWrite", "Contacts.ReadWrite"} {
-				if !strings.Contains(r.Form.Get("scope"), scope) {
-					t.Error("missing union scope", scope)
-				}
+			// One request for whatever the tenant consented to the application.
+			if r.Form.Get("scope") != microsoftRequest {
+				t.Error("device code scope", r.Form.Get("scope"))
 			}
 			codes++
 		}
@@ -99,7 +98,7 @@ func TestMicrosoftFirstApprovalAfterPendingAndSlowDown(t *testing.T) {
 	if remotes, err := microsoftRemotes(env, address); err != nil || len(remotes) != 2 {
 		t.Fatal("files store not ready", err)
 	}
-	if state := microsoftMCPState(ctx, env, address); state != StateOK {
+	if state, _ := microsoftMCPState(ctx, env, address); state != StateOK {
 		t.Fatal("Outlook store not ready", state)
 	}
 }
