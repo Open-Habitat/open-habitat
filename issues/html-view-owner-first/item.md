@@ -1,17 +1,15 @@
 ---
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-28
 type: feature
 reporter: jari
 status: done
 priority: normal
-related: ['@agent-html-artifacts']
+closed: 2026-10-25
 lane: html-views
 lane_seq: 2
 collision: [web/src/app/, contracts/v1/, internal/gateway/, docs/]
-blocked_by: ['@agent-html-artifacts']
 preparation: ready
-closed: 2026-10-25
 ---
 
 # Show an agent's HTML view to its owner: offer card, side panel and own tab

@@ -3,7 +3,7 @@
 **Status:** Accepted by Jari on 2026-10-18. His decisions of that day are
 recorded in [agent-integrations](../../issues/agent-integrations/item.md#decisions)
 and, for the account model, the personal-data skill and the directory layout,
-in the [prototype round's result](../../issues/proto-integrations/result.md).
+in the prototype round's result (`issues/proto-integrations/result.md` in history).
 
 ## Context
 
@@ -13,7 +13,7 @@ Google, Microsoft 365 and ordinary IMAP and CalDAV/CardDAV accounts. Two
 research rounds
 ([first](../../issues/research-integrations/report.md),
 Microsoft and Claude (`issues/research-integrations-microsoft/report.md`))
-and a [prototype round](../../issues/proto-integrations/result.md) that drove
+and a prototype round (`issues/proto-integrations/result.md` in history) that drove
 each tool's login on this host found the following.
 
 - OpenClaw's data integrations are Agent Skills that teach an agent to call an

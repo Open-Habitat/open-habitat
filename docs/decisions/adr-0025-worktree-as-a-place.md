@@ -164,9 +164,9 @@ The gateway and the provisioning broker gain nothing.
 - An agent may merge, rebase or delete branches the browser shows; the top bar
   follows because it reads Git again. The browser never claims more than Git
   says.
-- [implement-worktree-agents](../../issues/implement-worktree-agents/item.md)
+- implement-worktree-agents (`issues/implement-worktree-agents/item.md` in history)
   implements creation and the marks;
-  [implement-worktree-cleanup](../../issues/implement-worktree-cleanup/item.md)
+  implement-worktree-cleanup (`issues/implement-worktree-cleanup/item.md` in history)
   implements the list and removal.
 
 ## Alternatives

@@ -1,6 +1,6 @@
 ---
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-28
 type: improvement
 reporter: jari
 status: done
@@ -10,14 +10,12 @@ provenance_detail: Implementation split of plan-site-onboarding-authority accept
 source_ref: taskfleet:01m5p58hc8f6gyd5zad5gxx136/split:site-ai-key
 originating_run: 01m5p58hc8f6gyd5zad5gxx136
 originating_run_kind: spinoff
-related: ['@plan-site-onboarding-authority', '@proto-admin-server-onboarding']
-blocked_by: ['@onboarding-ai-offer', '@onboarding-default-repositories']
+closed_by: agent
+closed: 2026-10-24
 collision: [internal/gateway/administration, contracts/v1/, web/src/app/Settings, internal/daemon/pi]
 preparation: ready
 lane: site-onboarding
 lane_seq: 5
-closed: 2026-10-24
-closed_by: agent
 ---
 
 # Site AI key: gateway-held key seeded once into a new person's Pi credentials

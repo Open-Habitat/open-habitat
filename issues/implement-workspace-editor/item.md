@@ -1,16 +1,15 @@
 ---
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-28
 type: feature
 reporter: jari
 status: done
 priority: high
-related: ['@proto-file-viewing-2']
+closed: 2026-10-19
 lane: workspace-editor
 lane_seq: 1
 collision: [internal/gateway/]
 preparation: ready
-closed: 2026-10-19
 ---
 
 # Workspace editor beside the conversation (code-server, Rinnakkain)

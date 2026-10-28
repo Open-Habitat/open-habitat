@@ -3,7 +3,7 @@
 **Status:** Accepted by Jari on 2026-10-17 as the host side of the
 Kloonaussivulla direction
 (`issues/proto-repo-selection/result.md` (in history),
-implemented in [repo-catalog-clone-jobs](../../issues/repo-catalog-clone-jobs/item.md)).
+implemented in repo-catalog-clone-jobs (`issues/repo-catalog-clone-jobs/item.md` in history)).
 It replaces the "Completion and interruption" part of
 ADR 0005; ADR 0005's progress parsing and
 verification from Git still hold.

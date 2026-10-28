@@ -1,6 +1,6 @@
 ---
 created: 2026-10-26
-updated: 2026-10-27
+updated: 2026-10-28
 type: task
 reporter: jari
 status: done
@@ -9,9 +9,8 @@ provenance: chat
 source_ref: chat:2026-10-26/proto-gitlab-connect
 lane: gitlab-provider
 lane_seq: 2
-blocked_by: ['@research-gitlab-integration']
-preparation: pending
 closed: 2026-10-27
+preparation: pending
 ---
 
 # Prototype: connecting GitLab in Koodipalvelut and importing its repositories

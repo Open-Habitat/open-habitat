@@ -1,9 +1,0 @@
-=== RUN   TestNativePiNoticeOneToolCall
-    notices_native_linux_test.go:167: tool failed: {"type":"tool_execution_end","toolCallId":"notice-tool","toolName":"bash","result":{"content":[{"type":"text","text":"/opt/open-habitat/current/open-habitat\n{\"error\":{\"code\":\"agent_unavailable\",\"message\":\"native operation failed or is uncertain; inspect native state before acting; do not replay automatically\"},\"schema_version\":1}\n\n\nCommand exited with code 2"}],"structuredContent":{"output":"/opt/open-habitat/current/open-habitat\n{\"error\":{\"code\":\"agent_unavailable\",\"message\":\"native operation failed or is uncertain; inspect native state before acting; do not replay automatically\"},\"schema_version\":1}\n","truncated":false,"exit_code":2,"wall_time_seconds":0},"isError":true},"isError":true,"durationMs":33}
-    notices_native_linux_test.go:180: first notice write was not persisted: /opt/open-habitat/current/open-habitat
-        {"error":{"code":"agent_unavailable","message":"native operation failed or is uncertain; inspect native state before acting; do not replay automatically"},"schema_version":1}
-
-
-        Command exited with code 2
---- FAIL: TestNativePiNoticeOneToolCall (0.64s)
-FAIL
