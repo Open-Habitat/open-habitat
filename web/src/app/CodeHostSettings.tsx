@@ -17,7 +17,9 @@ export type NativeState =
   | "expired"
   | "pending"
   | "partial"
-  | "unknown";
+  | "unknown"
+  | "unreachable"
+  | "verifying";
 const states: Record<NativeState, { label: string; description: string }> = {
   connected: {
     label: "Yhdistetty",
@@ -46,6 +48,16 @@ const states: Record<NativeState, { label: string; description: string }> = {
   unknown: {
     label: "Tilaa ei tiedetä",
     description: "GitHub-yhteyden tilaa ei juuri nyt voitu vahvistaa.",
+  },
+  unreachable: {
+    label: "GitHub ei vastaa",
+    description:
+      "Palvelin ei saanut GitHubiin yhteyttä. Valtuutus on tallessa; palvelin yrittää itse uudelleen.",
+  },
+  verifying: {
+    label: "Tarkistetaan",
+    description:
+      "GitHub hylkäsi valtuutuksen kerran. Palvelin tarkistaa sen vielä uudelleen.",
   },
 };
 const codeHosts: ProviderId[] = ["gitea", "gitlab"];
@@ -138,7 +150,9 @@ export function CodeHostSettings({
       ? "Push ei onnistu ennen kuin GitHub-yhteys on korjattu. Paikallinen työ jatkuu."
       : nativeState === "partial"
         ? "Push ei välttämättä onnistu ennen kuin GitHub-yhteys on valmis. Paikallinen työ jatkuu."
-        : "";
+        : nativeState === "unreachable"
+          ? "Push odottaa, kunnes GitHub vastaa taas. Paikallinen työ jatkuu."
+          : "";
   // A clone names a repository on a server, not an account: it is in trouble
   // only when none of the person's logins to that server is usable.
   const giteaTrouble = (base: string) =>

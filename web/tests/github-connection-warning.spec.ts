@@ -31,7 +31,13 @@ test.afterEach(async ({ page }) => {
   await page.unrouteAll({ behavior: "ignoreErrors" });
 });
 
-async function nativeGitHub(page: Page, state: string, login?: string) {
+async function nativeGitHub(
+  page: Page,
+  state: string,
+  login?: string,
+  more: Record<string, unknown> = {},
+  repo?: { workspace: string; github_repo: string },
+) {
   await page.unroute("**/api/v1/snapshot");
   await page.route("**/api/v1/snapshot", async (route) => {
     const response = await route.fetch();
@@ -40,9 +46,37 @@ async function nativeGitHub(page: Page, state: string, login?: string) {
       await route.fulfill({ response });
       return;
     }
-    body.auth.native_github = login ? { state, login } : { state };
+    body.auth.native_github = { state, ...(login ? { login } : {}), ...more };
+    for (const w of body.workspaces ?? [])
+      if (repo && w.name === repo.workspace)
+        w.git_summary = {
+          ...(w.git_summary ?? { branch: "main", dirty_count: 0 }),
+          github_repo: repo.github_repo,
+        };
     await route.fulfill({ response, json: body });
   });
+}
+/** The daemon's own retry of an outage, at its nth check of four. */
+const retry = (attempt: number) => ({
+  retry: {
+    attempt,
+    attempts: 4,
+    since: "2026-10-28T10:00:00Z",
+    next_at: "2026-10-28T10:02:00Z",
+  },
+});
+async function openConversation(page: Page) {
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-ordinary-dir")
+    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page.getByTestId("message-input").fill("Pushaa haara");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
 }
 async function signIn(page: Page) {
   await page.request.get("/fixture/scenario?value=ready");
@@ -242,4 +276,125 @@ test("@github-connection a default repository typed by name is added unchecked w
     )
     .toEqual(["example-org/handbook"]);
   await expect(row).toHaveAttribute("aria-current", "page");
+});
+
+test("@github-connection an outage is the host's own retry, then a warning with nothing to press", async ({
+  page,
+}) => {
+  await nativeGitHub(page, "unreachable", undefined, retry(2));
+  await signIn(page);
+  // Elsewhere the strip says the host is trying, in one quiet line.
+  const strip = page.locator(".ah-warning-page");
+  await expect(strip).toHaveAttribute(
+    "data-testid",
+    "github-connection-progress",
+  );
+  await expect(strip).toHaveAttribute("data-state", "retrying");
+  await expect(strip).toHaveAttribute("role", "status");
+  await openConversation(page);
+  // In the conversation the same line is above the composer, once.
+  const notices = page.locator(".ah-actionable-notices");
+  await expect(
+    notices.getByTestId("github-connection-progress"),
+  ).toHaveAttribute("data-state", "retrying");
+  await expect(page.getByTestId("github-connection-progress")).toHaveCount(1);
+  await alignedWithComposer(page);
+  await evidence(page, "outage-retrying", ".ah-actionable-notices");
+
+  // The retry is over: a warning, with no repair, because the host does it.
+  await nativeGitHub(page, "unreachable", undefined, retry(4));
+  await page.reload();
+  const warning = notices.getByTestId("github-connection-warning");
+  await expect(warning).toHaveAttribute("data-state", "unreachable");
+  await expect(page.getByTestId("github-connection-progress")).toHaveCount(0);
+  await expect(page.getByTestId("github-connection-fix")).toHaveCount(0);
+  await alignedWithComposer(page);
+  await evidence(page, "outage-warning", ".ah-actionable-notices");
+
+  // A first rejection is being verified: a line, not yet a repair.
+  await nativeGitHub(page, "verifying");
+  await page.reload();
+  await expect(
+    notices.getByTestId("github-connection-progress"),
+  ).toHaveAttribute("data-state", "verifying");
+  await expect(page.getByTestId("github-connection-warning")).toHaveCount(0);
+});
+
+test("@github-connection an organisation's restriction is said in its own repository's conversation, with where to ask", async ({
+  page,
+}) => {
+  await nativeGitHub(
+    page,
+    "connected",
+    "alice-gh",
+    { restricted_orgs: [{ owner: "example-org", restriction: "oauth_app" }] },
+    { workspace: "ordinary-dir", github_repo: "Example-Org/app" },
+  );
+  await signIn(page);
+  // Other repositories still work: nothing app-wide.
+  await expect(page.locator(".ah-warning-page")).toHaveCount(0);
+  await openConversation(page);
+  const warning = page
+    .locator(".ah-actionable-notices")
+    .getByTestId("github-connection-warning");
+  await expect(warning).toHaveAttribute("data-state", "org_oauth_app");
+  // The approval is asked on GitHub, in a new tab, without a referrer.
+  const fix = warning.getByTestId("github-connection-fix");
+  await expect(fix).toHaveAttribute("href", /^https:\/\/github\.com\//);
+  await expect(fix).toHaveAttribute("target", "_blank");
+  await expect(fix).toHaveAttribute("rel", /noopener/);
+  await alignedWithComposer(page);
+  await evidence(page, "org-restricted", ".ah-actionable-notices");
+
+  // A SAML organisation is lifted by its sign-on and a reconnect.
+  await nativeGitHub(
+    page,
+    "connected",
+    "alice-gh",
+    { restricted_orgs: [{ owner: "example-org", restriction: "saml" }] },
+    { workspace: "ordinary-dir", github_repo: "example-org/app" },
+  );
+  await page.reload();
+  await expect(warning).toHaveAttribute("data-state", "org_saml");
+  const conversation = page.url();
+  await page.route("**/auth/github/start?*", (route) => route.abort());
+  const started = page.waitForRequest(/\/auth\/github\/start\?/);
+  await warning.getByTestId("github-connection-fix").click();
+  expect(new URL((await started).url()).searchParams.get("reconnect")).toBe(
+    "1",
+  );
+
+  // Another organisation's repository is not told about it.
+  await nativeGitHub(
+    page,
+    "connected",
+    "alice-gh",
+    { restricted_orgs: [{ owner: "example-org", restriction: "saml" }] },
+    { workspace: "ordinary-dir", github_repo: "other-org/app" },
+  );
+  await page.goto(conversation);
+  await expect(page.getByTestId("message-input")).toBeVisible();
+  await expect(page.getByTestId("github-connection-warning")).toHaveCount(0);
+});
+
+test("@github-connection a repository its organisation keeps out says why instead of not found", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/onboarding/github/repository?*", (route) =>
+    route.fulfill({
+      json: {
+        schema_version: 1,
+        full_name: "example-org/handbook",
+        state: "restricted",
+        restriction: "oauth_app",
+      },
+    }),
+  );
+  await signIn(page);
+  await page.goto("/workspaces/new");
+  await page.getByTestId("repository-search").fill("example-org/handbook");
+  await expect(page.getByTestId("repo-lookup")).toHaveAttribute(
+    "data-state",
+    "restricted",
+  );
 });

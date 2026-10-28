@@ -45,6 +45,9 @@ type ConversationController struct {
 	fixture        bool                         // untrusted synthetic runtime: never set in production
 	titleGenerator func(string) (string, error) // unit fixture only
 	journal        *eventJournal
+	// github follows the person's GitHub connection after a failed agent
+	// command (github_restrictions_linux.go); nil in fixtures without one.
+	github *githubWatch
 	// A short-lived per-daemon gate prevents continuation probes from presenting
 	// each other's temporary flock as an external writer. Never hold mu across I/O.
 	proofGate      chan struct{}

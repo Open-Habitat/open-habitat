@@ -267,6 +267,20 @@ func (c *ConversationController) drain(s *conversation) {
 		if c.journal != nil && !hideArguments {
 			c.publishDelta("pi:"+s.id, raw)
 		}
+		if frame.Type == "tool_execution_end" && c.github != nil {
+			// A failed git or gh command against GitHub is a hint to look at
+			// the connection now, not at the next scheduled check.
+			var end struct {
+				ToolName string          `json:"toolName"`
+				IsError  bool            `json:"isError"`
+				Result   json.RawMessage `json:"result"`
+			}
+			if json.Unmarshal(raw, &end) == nil {
+				if text, ok := liveBashFailureText(end.ToolName, end.IsError, end.Result); ok && parseBashFailure(end.ToolName, end.IsError, text) != nil {
+					go c.noteGitHubFailure(s.cwd, text)
+				}
+			}
+		}
 		if frame.Type == "queue_update" {
 			var q struct {
 				Steering []string `json:"steering"`

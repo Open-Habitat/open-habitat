@@ -61,7 +61,14 @@ export type Catalog = {
 };
 export type Lookup =
   | { schema_version: 1; full_name: string; state: "found"; repository: Repo }
-  | { schema_version: 1; full_name: string; state: "not_found" };
+  | { schema_version: 1; full_name: string; state: "not_found" }
+  /** GitHub refused it because its organisation keeps the app out. */
+  | {
+      schema_version: 1;
+      full_name: string;
+      state: "restricted";
+      restriction: "oauth_app" | "saml";
+    };
 export type Observation = {
   schema_version: 1;
   full_name: string;

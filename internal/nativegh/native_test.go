@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -120,6 +121,7 @@ func fixture(t *testing.T, keyring bool) (*Adapter, *fake, string) {
 	if e != nil {
 		t.Fatal(e)
 	}
+	t.Cleanup(func() { stopAdapter(a) })
 	return a, f, home
 }
 func TestAbsentDiagnosticStrict(t *testing.T) {
@@ -181,7 +183,16 @@ func TestStatusFreshSyntheticIdentityAndErrors(t *testing.T) {
 	}
 	f.fail = ""
 	f.apiErr = rejected
+	a.verifyAfter = 0
+	// A first rejection is checked once more before it is believed.
+	if got := a.Status(context.Background()); got != "verifying" {
+		t.Fatal(got)
+	}
 	if got := a.Status(context.Background()); got != "expired" {
+		t.Fatal(got)
+	}
+	f.apiErr = unreachable
+	if got := a.Status(context.Background()); got != "unreachable" {
 		t.Fatal(got)
 	}
 	f.apiErr = nil
@@ -1055,6 +1066,7 @@ func TestExecutorReplacesOnlyARevokedLogin(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			a, _, home := fixture(t, false)
 			a.run = Executor{Home: home}
+			a.verifyAfter = 0
 			if err := os.WriteFile(filepath.Join(home, "state"), []byte(tc.state+"\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -1067,8 +1079,12 @@ func TestExecutorReplacesOnlyARevokedLogin(t *testing.T) {
 				t.Fatal(err)
 			}
 			before, _ := os.ReadFile(hosts)
-			want := map[string]string{"revoked": "expired", "revoked-beside-another-account": "expired", "offline": "unknown", "locked": "unknown", "foreign": "disconnected"}[tc.name]
-			if got := a.Status(context.Background()); got != want {
+			want := map[string]string{"revoked": "expired", "revoked-beside-another-account": "expired", "offline": "unreachable", "locked": "unknown", "foreign": "disconnected"}[tc.name]
+			got := a.Status(context.Background())
+			if got == "verifying" {
+				got = a.Status(context.Background())
+			}
+			if got != want {
 				t.Fatalf("status %s, want %s", got, want)
 			}
 			r, err := a.Install(context.Background(), "unique-synthetic-sentinel", false)
@@ -1104,6 +1120,7 @@ func TestTokenRevokedAtGitHubShowsExpiredAndSignInReconnects(t *testing.T) {
 	t.Setenv("PATH", bin)
 	a, _, home := fixture(t, false)
 	a.run = Executor{Home: home}
+	a.verifyAfter = 20 * time.Millisecond
 	if err := os.Remove(filepath.Join(home, ".config", "gh", "hosts.yml")); err != nil {
 		t.Fatal(err)
 	}
@@ -1140,5 +1157,315 @@ func TestTokenRevokedAtGitHubShowsExpiredAndSignInReconnects(t *testing.T) {
 	log, _ := os.ReadFile(filepath.Join(home, "log"))
 	if string(log) != "login\nlogin\n" {
 		t.Fatalf("unexpected gh mutations %q", log)
+	}
+}
+
+func stopAdapter(a *Adapter) {
+	a.flightMu.Lock()
+	a.retryDelays = []time.Duration{time.Hour}
+	a.verifyAfter = time.Hour
+	a.stopRetry()
+	a.flightMu.Unlock()
+}
+
+func TestUnreachableDiagnosticStrict(t *testing.T) {
+	for _, tc := range []struct {
+		text        string
+		unreachable bool
+	}{
+		{"error connecting to api.github.com\ncheck your internet connection or https://githubstatus.com\n", true},
+		{`Get "https://api.github.com/user": dial tcp: lookup api.github.com on 127.0.0.53:53: server misbehaving` + "\n", true},
+		{`Get "https://api.github.com/user": net/http: TLS handshake timeout` + "\n", true},
+		{`Get "https://api.github.com/user": read tcp 10.0.0.2:5555->140.82.121.6:443: read: connection reset by peer` + "\n", true},
+		{"gh: Server Error (HTTP 500)\n", true},
+		{"gh: HTTP 502\n", true},
+		{"gh: HTTP 503 (https://api.github.com/user)\n", true},
+		// The token's own answers, and anything unrecognised, are not an outage.
+		{"gh: Bad credentials (HTTP 401)\n", false},
+		{"gh: Requires authentication (HTTP 401)\n", false},
+		{"gh: Not Found (HTTP 404)\n", false},
+		{`Get "https://api.github.com/user": x509: certificate signed by unknown authority` + "\n", false},
+		{`Get "https://example.invalid/user": dial tcp: connection refused` + "\n", false},
+		{"gh: Server Error (HTTP 500)\nsomething else\n", false},
+		{"", false},
+	} {
+		if got := unreachableDiagnostic([]byte(tc.text)); got != tc.unreachable {
+			t.Fatalf("unreachable(%q) = %v", tc.text, got)
+		}
+	}
+}
+
+// An outage is its own state: the host counts its checks, asks GitHub again
+// by itself on the schedule without a page asking, tells each new try, and
+// ends the outage at the first answer.
+func TestOutageRetriesByItselfAndEndsAtTheFirstAnswer(t *testing.T) {
+	a, f, _ := fixture(t, false)
+	f.logged = true
+	var mu sync.Mutex
+	f.apiErr = unreachable
+	a.retryDelays = []time.Duration{40 * time.Millisecond, 40 * time.Millisecond, 40 * time.Millisecond, 40 * time.Millisecond}
+	var told []Observation
+	a.OnChange(func() {
+		a.flightMu.Lock()
+		o := a.told
+		a.flightMu.Unlock()
+		mu.Lock()
+		told = append(told, o)
+		mu.Unlock()
+	})
+	start := time.Now()
+	first := a.ObservedConnection(context.Background())
+	if first.State != "unreachable" || first.Attempt != 1 || first.Since.Before(start) || !first.NextAt.After(first.Since) || first.Login != "" {
+		t.Fatalf("first check: %+v", first)
+	}
+	var third Observation
+	deadline := time.Now().Add(5 * time.Second)
+	for third = a.ObservedConnection(context.Background()); third.Attempt < 3; third = a.ObservedConnection(context.Background()) {
+		if time.Now().After(deadline) {
+			t.Fatalf("no retry by itself: %+v", third)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if third.State != "unreachable" || !third.Since.Equal(first.Since) {
+		t.Fatalf("the outage keeps its start: %+v", third)
+	}
+	a.flightMu.Lock()
+	f.apiErr = nil
+	a.flightMu.Unlock()
+	for got := a.ObservedConnection(context.Background()); got.State != "connected"; got = a.ObservedConnection(context.Background()) {
+		if time.Now().After(deadline) {
+			t.Fatalf("the outage did not end: %+v", got)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if got := a.ObservedConnection(context.Background()); got.Attempt != 0 || !got.Since.IsZero() || got.Login != "alice" {
+		t.Fatalf("connected carries no outage: %+v", got)
+	}
+	a.flightMu.Lock()
+	pending := a.retry != nil
+	a.flightMu.Unlock()
+	if pending {
+		t.Fatal("a working connection keeps no retry")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(told) < 4 || told[0].Attempt != 1 || told[1].Attempt != 2 || told[len(told)-1].State != "connected" {
+		t.Fatalf("each try and the end are told once: %+v", told)
+	}
+	// The next outage starts counting again.
+	f.apiErr = unreachable
+	if got := a.wait(context.Background(), a.start()); got.Attempt != 1 || got.Since.Before(first.NextAt) {
+		t.Fatalf("a new outage: %+v", got)
+	}
+}
+
+// A first rejection is verified once before the person is told to repair
+// it; a passing one leaves no trace, and a later rejection is verified anew.
+func TestFirstRejectionIsVerifiedOnce(t *testing.T) {
+	a, f, _ := fixture(t, false)
+	f.logged = true
+	a.verifyAfter = 30 * time.Millisecond
+	f.apiErr = rejected
+	if got := a.ObservedStatus(context.Background()); got != "verifying" {
+		t.Fatal(got)
+	}
+	// Without anyone asking, the second check comes and settles it.
+	deadline := time.Now().Add(5 * time.Second)
+	for got := a.ObservedStatus(context.Background()); got != "expired"; got = a.ObservedStatus(context.Background()) {
+		if time.Now().After(deadline) {
+			t.Fatalf("verification did not settle: %s", got)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	// It stays settled: later checks do not verify the same rejection again.
+	if got := a.Status(context.Background()); got != "expired" {
+		t.Fatal(got)
+	}
+	// A rejection that passes before the second check is not reported.
+	f.apiErr = nil
+	if got := a.Status(context.Background()); got != "connected" {
+		t.Fatal(got)
+	}
+	a.verifyAfter = time.Hour
+	f.apiErr = rejected
+	if got := a.Status(context.Background()); got != "verifying" {
+		t.Fatal(got)
+	}
+	// A check before the second one is due confirms nothing.
+	if got := a.Status(context.Background()); got != "verifying" {
+		t.Fatal(got)
+	}
+	f.apiErr = nil
+	if got := a.Status(context.Background()); got != "connected" {
+		t.Fatal(got)
+	}
+	a.flightMu.Lock()
+	defer a.flightMu.Unlock()
+	if a.retry != nil || !a.rejectedAt.IsZero() {
+		t.Fatal("a passing rejection left a pending check")
+	}
+}
+
+// An agent's failed command asks for a check now; hints in a burst share one.
+func TestRecheckHintStartsOneCheck(t *testing.T) {
+	a, f, _ := fixture(t, false)
+	f.logged = true
+	if got := a.ObservedStatus(context.Background()); got != "connected" {
+		t.Fatal(got)
+	}
+	f.apiErr = unreachable
+	// The remembered answer is young and its files did not change.
+	if got := a.ObservedStatus(context.Background()); got != "connected" {
+		t.Fatal(got)
+	}
+	a.Recheck()
+	a.Recheck()
+	deadline := time.Now().Add(5 * time.Second)
+	for got := a.ObservedStatus(context.Background()); got != "unreachable"; got = a.ObservedStatus(context.Background()) {
+		if time.Now().After(deadline) {
+			t.Fatalf("the hint started no check: %s", got)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	n := 0
+	for _, c := range f.log {
+		if c == "gh api --hostname github.com user --jq {id: .id, login: .login}" {
+			n++
+		}
+	}
+	if n != 2 {
+		t.Fatalf("two hints in a burst must share one check: %d API calls", n)
+	}
+}
+
+// Checks between the scheduled ones (page reads, hints, an unremembered
+// observation) neither count as tries nor tell a change, so no read can
+// start another read.
+func TestOutageCountFollowsTheScheduleNotTheReads(t *testing.T) {
+	a, f, _ := fixture(t, false)
+	f.logged = true
+	f.apiErr = unreachable
+	a.retryDelays = []time.Duration{time.Hour}
+	var told atomic.Int32
+	a.OnChange(func() { told.Add(1) })
+	first := a.Status(context.Background())
+	for range 5 {
+		if got := a.wait(context.Background(), a.start()); got != (Observation{State: "unreachable", Since: got.Since, Attempt: 1, NextAt: got.NextAt}) || got.NextAt.Sub(got.Since) != time.Hour {
+			t.Fatalf("an early check counted: %+v", got)
+		}
+	}
+	if first != "unreachable" || told.Load() != 1 {
+		t.Fatalf("%s, told %d", first, told.Load())
+	}
+}
+
+// lockedRunner lets a test change the fake while the adapter's own timers
+// run checks.
+type lockedRunner struct {
+	mu *sync.Mutex
+	f  *fake
+}
+
+func (l lockedRunner) Run(ctx context.Context, c Command) ([]byte, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.f.Run(ctx, c)
+}
+
+// A verification whose second check learns nothing is not abandoned: with
+// no page reading, the host still reaches a verdict and tells it.
+func TestVerificationOutlivesAnInconclusiveCheck(t *testing.T) {
+	a, f, _ := fixture(t, false)
+	var mu sync.Mutex
+	a.run = lockedRunner{&mu, f}
+	f.logged = true
+	f.apiErr = rejected
+	a.verifyAfter = 30 * time.Millisecond
+	told := make(chan string, 16)
+	a.OnChange(func() {
+		a.flightMu.Lock()
+		state := a.told.State
+		a.flightMu.Unlock()
+		told <- state
+	})
+	if got := a.Status(context.Background()); got != "verifying" {
+		t.Fatal(got)
+	}
+	if got := <-told; got != "verifying" {
+		t.Fatal(got)
+	}
+	// The second check meets a GitHub that answers nothing classifiable.
+	mu.Lock()
+	f.apiErr = denied
+	mu.Unlock()
+	time.Sleep(60 * time.Millisecond)
+	mu.Lock()
+	f.apiErr = rejected
+	mu.Unlock()
+	select {
+	case got := <-told:
+		if got != "expired" {
+			t.Fatal(got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the verification was abandoned")
+	}
+}
+
+// A confirmed rejection belongs to its credential: a new login's first 401
+// is verified again.
+func TestRejectionIsConfirmedAgainstTheSameCredential(t *testing.T) {
+	a, f, home := fixture(t, false)
+	f.logged = true
+	f.apiErr = rejected
+	a.verifyAfter = 0
+	if got := a.Status(context.Background()); got != "verifying" {
+		t.Fatal(got)
+	}
+	if got := a.Status(context.Background()); got != "expired" {
+		t.Fatal(got)
+	}
+	a.verifyAfter = time.Hour
+	// The person logs in again natively; GitHub's first answer is a 401.
+	if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte("github.com:\n  oauth_token: fake-new\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.Status(context.Background()); got != "verifying" {
+		t.Fatalf("a new credential's first rejection: %s", got)
+	}
+}
+
+// A read that meets a sign-in in progress during an outage neither stops
+// the retry nor counts as a try.
+func TestBusyCheckKeepsTheOutageRetry(t *testing.T) {
+	a, f, _ := fixture(t, false)
+	var mu sync.Mutex
+	a.run = lockedRunner{&mu, f}
+	f.logged = true
+	f.apiErr = unreachable
+	a.retryDelays = []time.Duration{300 * time.Millisecond}
+	a.early = 10 * time.Millisecond
+	if got := a.ObservedConnection(context.Background()); got.Attempt != 1 {
+		t.Fatalf("%+v", got)
+	}
+	// A sign-in holds the adapter while a page asks.
+	a.mu.Lock()
+	busy := a.wait(context.Background(), a.start())
+	a.mu.Unlock()
+	if busy.State != "unknown" {
+		t.Fatalf("%+v", busy)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		a.flightMu.Lock()
+		tries := a.outageTries
+		a.flightMu.Unlock()
+		if tries >= 2 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the busy check stopped the retry")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }

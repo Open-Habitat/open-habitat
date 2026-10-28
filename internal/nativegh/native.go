@@ -38,6 +38,10 @@ var noAuth = errors.New("gh reports no known GitHub hosts")
 // rejected is GitHub's own answer that the active github.com token is no
 // longer valid (revoked or deleted). It is not a network or keyring failure.
 var rejected = errors.New("GitHub rejects the active gh token")
+
+// unreachable is gh's own report that GitHub could not be asked or answered
+// with a server error: an outage, which says nothing about the token.
+var unreachable = errors.New("GitHub did not answer")
 var loginPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}$`)
 
 type Command struct {
@@ -103,6 +107,9 @@ func (e Executor) Run(ctx context.Context, c Command) ([]byte, error) {
 			if userProbe && rejectedDiagnostic(diagnostic.Bytes()) {
 				return nil, rejected
 			}
+			if userProbe && unreachableDiagnostic(diagnostic.Bytes()) {
+				return nil, unreachable
+			}
 		}
 		return nil, denied
 	}
@@ -131,6 +138,27 @@ func rejectedDiagnostic(b []byte) bool {
 	// failure names the connection. Both, and any other wording, fail closed:
 	// only GitHub's rejection of the token itself makes a login replaceable.
 	return strings.TrimSpace(string(b)) == "gh: Bad credentials (HTTP 401)"
+}
+
+// gh's lines for a request that never reached GitHub or that GitHub's
+// servers failed: its own DNS hint, Go's transport errors for the one URL
+// the probe asks, and an HTTP 5xx answer (gh 2.45/2.46 print the message,
+// when GitHub gave one, before the status). Any other wording stays
+// unclassified; a timeout of the probe itself is not taken as an outage,
+// because a hung keyring helper looks the same.
+var unreachableLine = regexp.MustCompile(`^(?:error connecting to api\.github\.com|check your internet connection or https://githubstatus\.com|Get "https://api\.github\.com/user": (?:dial tcp[ :]|read tcp |net/http: TLS handshake timeout|net/http: timeout|EOF$|.*: connection reset by peer$)|gh: (?:[^\n]*\(HTTP 5[0-9]{2}\)|HTTP 5[0-9]{2}(?: \([^\n]*\))?))`)
+
+func unreachableDiagnostic(b []byte) bool {
+	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
+	if len(lines) == 0 || len(lines) > 4 {
+		return false
+	}
+	for _, line := range lines {
+		if !unreachableLine.MatchString(strings.TrimSpace(line)) {
+			return false
+		}
+	}
+	return true
 }
 
 type bounded struct {
@@ -190,10 +218,27 @@ type Adapter struct {
 	// mutations moves at the start and end of Install and Disconnect, so an
 	// observation that overlapped either is never remembered.
 	mutations atomic.Uint64
-	home      string
-	subject   string
-	run       Runner
-	evidence  Evidence
+	// The connection's recent course, derived in memory from the
+	// observations themselves and guarded by flightMu: when an outage began
+	// and how many checks have found it, when GitHub first rejected the
+	// token without a second check confirming it, the timer of the next
+	// check either asks for, and the last state told to onChange.
+	outageSince time.Time
+	outageTries int
+	outageNext  time.Time
+	rejectedAt  time.Time
+	rejectedFor string // the credential stamp and generation it was about
+	retry       *time.Timer
+	told        Observation
+	onChange    func()
+	verifyAfter time.Duration
+	retryDelays []time.Duration
+	early       time.Duration // how early a check may come and still be the scheduled one
+	lastAsked   time.Time
+	home        string
+	subject     string
+	run         Runner
+	evidence    Evidence
 }
 
 func New(home, subject string, run Runner, evidence Evidence) (*Adapter, error) {
@@ -204,7 +249,32 @@ func New(home, subject string, run Runner, evidence Evidence) (*Adapter, error) 
 	if run == nil {
 		run = Executor{Home: home}
 	}
-	return &Adapter{home: home, subject: subject, run: run, evidence: evidence}, nil
+	return &Adapter{home: home, subject: subject, run: run, evidence: evidence, verifyAfter: verifyAfter, retryDelays: retryDelays, early: time.Second}, nil
+}
+
+// OnChange names what to call, outside the adapter's locks, when a check
+// has settled on a different connection than the one last told: another
+// state or login, or another try of an outage. The daemon uses it to tell
+// open pages to read the snapshot again.
+func (a *Adapter) OnChange(f func()) {
+	a.flightMu.Lock()
+	a.onChange = f
+	a.flightMu.Unlock()
+}
+
+// Recheck asks GitHub now instead of at the next scheduled check, for a hint
+// that the connection may have changed: an agent's git or gh command against
+// GitHub just failed. The hint is never itself evidence; only the check that
+// it starts is. Hints closer together than this share one check.
+func (a *Adapter) Recheck() {
+	a.flightMu.Lock()
+	if time.Since(a.lastAsked) < recheckHintSpacing {
+		a.flightMu.Unlock()
+		return
+	}
+	a.lastAsked = time.Now()
+	a.flightMu.Unlock()
+	a.start()
 }
 
 // Consumer can be passed to transport.NewServer/daemon.ServeHTTP. The token
@@ -242,6 +312,7 @@ const (
 	foreign              // GitHub answers with another account's ID
 	absent               // gh's explicit diagnostic: no github.com login
 	revoked              // GitHub rejects the active token itself
+	outage               // gh could not reach GitHub, or GitHub failed
 )
 
 func (a *Adapter) identity(ctx context.Context) (string, bool) {
@@ -262,6 +333,9 @@ func (a *Adapter) classify(ctx context.Context) (string, account) {
 	b, e := a.gh(ctx, true, nil, userArgs...)
 	if errors.Is(e, rejected) {
 		return "", revoked
+	}
+	if errors.Is(e, unreachable) {
+		return "", outage
 	}
 	if e != nil {
 		return "", unclassified
@@ -291,7 +365,30 @@ func (a *Adapter) classify(ctx context.Context) (string, account) {
 type Observation struct {
 	State string
 	Login string
+	// For "unreachable": when the outage began, how many checks have found
+	// it so far, and when the next one is due. The first RetryAttempts
+	// checks are the host's own retry; after them the outage is a warning.
+	Since   time.Time
+	Attempt int
+	NextAt  time.Time
 }
+
+// The checks of an outage before the host stops calling it a retry, and the
+// waits after each of them: GitHub is asked at 0, 30, 60 and 120 seconds,
+// and every 30 seconds after that until it answers.
+const RetryAttempts = 4
+
+var retryDelays = []time.Duration{30 * time.Second, 30 * time.Second, 60 * time.Second, 30 * time.Second}
+
+// A first 401 is checked once more before it is believed: GitHub's API has
+// answered a valid token with a passing "Bad credentials".
+const verifyAfter = 10 * time.Second
+
+const recheckHintSpacing = 5 * time.Second
+
+// A scheduled check that met a sign-in or disconnect in progress is tried
+// again this much later.
+const busyRetry = 5 * time.Second
 
 type statusFlight struct {
 	done  chan struct{}
@@ -349,7 +446,7 @@ func (a *Adapter) ObservedConnection(ctx context.Context) Observation {
 	a.flightMu.Unlock()
 	if ok && o != nil && o.stamp == stamp && o.gen == gen {
 		recheck := observedRecheck
-		if o.obs.State == "unknown" {
+		if o.obs.State == "unknown" || o.obs.State == "unreachable" || o.obs.State == "verifying" {
 			recheck = observedUnknownRecheck
 		}
 		if time.Since(o.at) > recheck {
@@ -388,6 +485,29 @@ func (a *Adapter) start() *statusFlight {
 		f.obs, f.busy, remember = a.checkStatus(budget)
 		after, still := credentialStamp(a.home)
 		a.flightMu.Lock()
+		var tell func()
+		if !f.busy {
+			// The credential the check was about: a rejection is confirmed
+			// only against the same one.
+			credential := fmt.Sprintf("%d:%s", f.gen, f.stamp)
+			switch {
+			case f.gen != a.mutations.Load() || stamped != still || after != f.stamp:
+				credential = ""
+			case !stamped:
+				// Files that cannot be stamped at all: the adapter's own
+				// sign-ins and disconnects still tell credentials apart.
+				credential = fmt.Sprintf("%d:", f.gen)
+			}
+			f.obs = a.settle(f.obs, credential, time.Now())
+			if f.obs.State != "unknown" && !sameConnection(f.obs, a.told) {
+				a.told, tell = f.obs, a.onChange
+			}
+		} else if now := time.Now(); !a.outageSince.IsZero() && !now.Before(a.outageNext.Add(-a.early)) || !a.rejectedAt.IsZero() && !now.Before(a.rejectedAt.Add(a.verifyAfter-a.early)) {
+			// A sign-in or disconnect held the adapter at the scheduled
+			// check: it is not lost, only later. An earlier busy check
+			// leaves the pending timer alone.
+			a.schedule(busyRetry)
+		}
 		// Remember only an observation whose inputs did not move under it.
 		if remember && !f.busy && stamped && still && after == f.stamp && f.gen == a.mutations.Load() {
 			a.observed = &observedStatus{obs: f.obs, stamp: f.stamp, gen: f.gen, at: time.Now()}
@@ -397,8 +517,88 @@ func (a *Adapter) start() *statusFlight {
 		a.flight = nil
 		close(f.done)
 		a.flightMu.Unlock()
+		if tell != nil {
+			tell()
+		}
 	}()
 	return f
+}
+
+// settle turns one check into the connection's state over time. An outage
+// counts its checks and asks for the next one itself, so the retry goes on
+// without a page open and the warning leaves once GitHub answers. A first
+// rejection is "verifying" until a second check, verifyAfter later, says
+// the same. Called with flightMu held.
+func (a *Adapter) settle(obs Observation, credential string, now time.Time) Observation {
+	switch obs.State {
+	case "unknown":
+		// Nothing was learned: neither an outage nor a rejection ends. The
+		// scheduled check of either still has a successor.
+		if !a.outageSince.IsZero() && !now.Before(a.outageNext.Add(-a.early)) {
+			wait := a.retryDelays[len(a.retryDelays)-1]
+			a.outageNext = now.Add(wait)
+			a.schedule(wait)
+		} else if !a.rejectedAt.IsZero() && !now.Before(a.rejectedAt.Add(a.verifyAfter-a.early)) {
+			a.schedule(a.verifyAfter)
+		}
+		return obs
+	case "unreachable":
+		a.rejectedAt = time.Time{}
+		// A check before the scheduled one (a page's read, an agent's hint)
+		// is not another try: the count follows the schedule, so extra
+		// checks can neither hurry the warning nor tell a change each time.
+		// The scheduled check is armed again in case an early one took its
+		// timer's place (a sign-in held the adapter).
+		if !a.outageSince.IsZero() && now.Before(a.outageNext.Add(-a.early)) {
+			obs.Since, obs.Attempt, obs.NextAt = a.outageSince, a.outageTries, a.outageNext
+			a.schedule(a.outageNext.Sub(now))
+			return obs
+		}
+		if a.outageSince.IsZero() {
+			a.outageSince, a.outageTries = now, 0
+		}
+		a.outageTries++
+		wait := a.retryDelays[min(a.outageTries, len(a.retryDelays))-1]
+		a.outageNext = now.Add(wait)
+		obs.Since, obs.Attempt, obs.NextAt = a.outageSince, a.outageTries, a.outageNext
+		a.schedule(wait)
+		return obs
+	case "expired":
+		a.outageSince, a.outageTries = time.Time{}, 0
+		// Another credential's rejection, or one whose files moved under
+		// the check, confirms nothing about this one.
+		if a.rejectedAt.IsZero() || credential == "" || credential != a.rejectedFor {
+			a.rejectedAt, a.rejectedFor = now, credential
+			a.schedule(a.verifyAfter)
+			return Observation{State: "verifying"}
+		}
+		// Only the check verifyAfter later confirms it.
+		if due := a.rejectedAt.Add(a.verifyAfter); now.Before(due) {
+			a.schedule(due.Sub(now))
+			return Observation{State: "verifying"}
+		}
+		a.stopRetry()
+		return obs
+	}
+	a.outageSince, a.outageTries, a.rejectedAt = time.Time{}, 0, time.Time{}
+	a.stopRetry()
+	return obs
+}
+
+func (a *Adapter) schedule(wait time.Duration) {
+	a.stopRetry()
+	a.retry = time.AfterFunc(wait, func() { a.start() })
+}
+
+func (a *Adapter) stopRetry() {
+	if a.retry != nil {
+		a.retry.Stop()
+		a.retry = nil
+	}
+}
+
+func sameConnection(x, y Observation) bool {
+	return x.State == y.State && x.Login == y.Login && x.Attempt == y.Attempt
 }
 
 func (a *Adapter) wait(ctx context.Context, f *statusFlight) Observation {
@@ -541,6 +741,11 @@ func (a *Adapter) checkStatus(ctx context.Context) (Observation, bool, bool) {
 	// next sign-in replaces it (Install's revoked case).
 	if kind == revoked {
 		return Observation{State: "expired"}, false, true
+	}
+	// GitHub could not be asked: the token may be fine, and the connection
+	// comes back by itself.
+	if kind == outage {
+		return Observation{State: "unreachable"}, false, true
 	}
 	if kind == absent || kind == foreign {
 		return Observation{State: "disconnected"}, false, true

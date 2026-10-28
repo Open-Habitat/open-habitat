@@ -52,16 +52,26 @@ func nativeBashFailure(name string, failed bool, content json.RawMessage) *bashF
 	if name != "bash" || !failed {
 		return nil
 	}
+	text, ok := bashContentText(content)
+	if !ok {
+		return nil
+	}
+	return parseBashFailure(name, failed, text)
+}
+
+// bashContentText is the text of a bash result's content: a string or the
+// text blocks of a list.
+func bashContentText(content json.RawMessage) (string, bool) {
 	var text string
 	if json.Unmarshal(content, &text) == nil {
-		return parseBashFailure(name, failed, text)
+		return text, true
 	}
 	var blocks []struct {
 		Type string `json:"type"`
 		Text string `json:"text"`
 	}
 	if json.Unmarshal(content, &blocks) != nil {
-		return nil
+		return "", false
 	}
 	var texts []string
 	for _, b := range blocks {
@@ -69,18 +79,27 @@ func nativeBashFailure(name string, failed bool, content json.RawMessage) *bashF
 			texts = append(texts, b.Text)
 		}
 	}
-	return parseBashFailure(name, failed, strings.Join(texts, "\n"))
+	return strings.Join(texts, "\n"), true
 }
 
 func liveBashFailure(name string, failed bool, result json.RawMessage) *bashFailure {
-	if name != "bash" || !failed {
+	text, ok := liveBashFailureText(name, failed, result)
+	if !ok {
 		return nil
+	}
+	return parseBashFailure(name, failed, text)
+}
+
+// liveBashFailureText is the output of a failed live bash result.
+func liveBashFailureText(name string, failed bool, result json.RawMessage) (string, bool) {
+	if name != "bash" || !failed {
+		return "", false
 	}
 	var r struct {
 		Content json.RawMessage `json:"content"`
 	}
 	if json.Unmarshal(result, &r) != nil {
-		return nil
+		return "", false
 	}
-	return nativeBashFailure(name, failed, r.Content)
+	return bashContentText(r.Content)
 }

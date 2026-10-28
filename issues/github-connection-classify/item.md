@@ -3,7 +3,7 @@ created: 2026-10-28
 updated: 2026-10-28
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 provenance: chat
@@ -11,6 +11,7 @@ source_ref: chat:2026-10-28/github-connection-classify
 lane: github-warning
 lane_seq: 2
 blocked_by: ['@github-connection-warning']
+closed: 2026-10-28
 ---
 
 # GitHub connection: daemon tells outage, rejected token and organisation restriction apart

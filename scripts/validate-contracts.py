@@ -553,6 +553,18 @@ must_reject("gitlab-repos.schema.json", bad_gitlab)
 bad_gitlab = json.loads((BASE / "examples" / "gitlab-repos.json").read_text())
 bad_gitlab["sources"][1]["elsewhere"]["origin"] = "http://person:secret@gitlab.internal"
 must_reject("gitlab-repos.schema.json", bad_gitlab)
+# The host's own GitHub classification: an outage with its retry, and an
+# organisation that keeps the person's token out.
+good = json.loads((BASE / "examples" / "snapshot.json").read_text())
+good["auth"]["native_github"] = {"state": "unreachable", "retry": {"attempt": 2, "attempts": 4, "since": "2026-10-28T10:00:00Z", "next_at": "2026-10-28T10:01:00Z"}, "restricted_orgs": [{"owner": "example-org", "restriction": "oauth_app"}]}
+must_accept("snapshot.schema.json", good)
+good["auth"]["native_github"]["restricted_orgs"][0]["owner"] = "example-org/monorepo"
+must_reject("snapshot.schema.json", good)
+good["auth"]["native_github"]["restricted_orgs"] = []
+del good["auth"]["native_github"]["retry"]["next_at"]
+must_reject("snapshot.schema.json", good)
+must_accept("github-repository.schema.json", {"schema_version": 1, "full_name": "example-org/monorepo", "state": "restricted", "restriction": "saml"})
+must_reject("github-repository.schema.json", {"schema_version": 1, "full_name": "example-org/monorepo", "state": "restricted"})
 for origin in ({"base_url": "https://gitlab.example.test", "full_name": "example-group/infra/terraform"},):
     good = json.loads((BASE / "examples" / "snapshot.json").read_text())
     del good["workspaces"][0]["gitea_origin"]

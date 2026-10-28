@@ -66,6 +66,8 @@ import { GitHubOnboarding } from "./GitHubOnboarding";
 import {
   concerns,
   githubFault,
+  githubOrgFault,
+  githubProgress,
   markReconnect,
   takeReturnRoute,
   useGitHubRecovery,
@@ -1013,7 +1015,11 @@ export function App() {
   // a settled fault, the confirmation once it works again, and the one
   // repair, which returns to this same page.
   const nativeGitHub = snapshot?.auth?.native_github;
-  const githubWarning = githubFault(nativeGitHub?.state);
+  const githubWarning = githubFault(nativeGitHub?.state, nativeGitHub?.retry);
+  const githubAttempt = githubProgress(
+    nativeGitHub?.state,
+    nativeGitHub?.retry,
+  );
   const githubRecovery = useGitHubRecovery(
     identity,
     nativeGitHub?.state,
@@ -2273,8 +2279,14 @@ export function App() {
                         githubWorkspace: !!selected.git_summary?.github_repo,
                       })
                         ? githubWarning
-                        : undefined
+                        : // An organisation's restriction only where its
+                          // repository is worked on: others still work.
+                          githubOrgFault(
+                            nativeGitHub?.restricted_orgs,
+                            selected.git_summary?.github_repo,
+                          )
                     }
+                    progress={githubAttempt}
                     recovery={githubRecovery}
                     onReconnect={syntheticDemo ? undefined : reconnectGitHub}
                   />
@@ -2719,6 +2731,7 @@ export function App() {
                       ? githubWarning
                       : undefined
                   }
+                  progress={githubAttempt}
                   recovery={githubRecovery}
                   onReconnect={syntheticDemo ? undefined : reconnectGitHub}
                 />

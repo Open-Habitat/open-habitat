@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/github-repository.schema.json",
   "title": "Exact GitHub repository lookup",
-  "description": "GET /api/v1/onboarding/github/repository?full_name=owner%2Frepo looks up one repository on GitHub with the mapped user's own gh, whether or not it is in their catalog. not_found means GitHub answered 404 to this user: the repository does not exist or is not accessible to them, which GitHub does not distinguish. Any other failure is an error reply, not not_found.",
+  "description": "GET /api/v1/onboarding/github/repository?full_name=owner%2Frepo looks up one repository on GitHub with the mapped user's own gh, whether or not it is in their catalog. not_found means GitHub answered 404 to this user: the repository does not exist or is not accessible to them, which GitHub does not distinguish. restricted means GitHub answered 403 because the repository's organisation keeps the person's OAuth token out: oauth_app for the organisation's OAuth App access restrictions, saml for SAML single sign-on the token is not authorised for. Any other failure is an error reply, not not_found.",
   "oneOf": [
     {
       "type": "object", "additionalProperties": false,
@@ -21,6 +21,16 @@
         "schema_version": {"const": 1},
         "full_name": {"$ref": "#/$defs/fullName"},
         "state": {"const": "not_found"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "full_name", "state", "restriction"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "full_name": {"$ref": "#/$defs/fullName"},
+        "state": {"const": "restricted"},
+        "restriction": {"enum": ["oauth_app", "saml"]}
       }
     }
   ],

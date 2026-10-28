@@ -573,14 +573,28 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 		display := "GitHub user " + cfg.Subject
 		gh := <-ghDone
 		ghState := gh.State
-		if ghState != "connected" && ghState != "disconnected" && ghState != "expired" && ghState != "partial" && ghState != "pending" {
+		switch ghState {
+		case "connected", "disconnected", "expired", "partial", "pending", "unreachable", "verifying":
+		default:
 			ghState = "unknown"
 		}
 		// The person's own login, for "Kirjautunut käyttäjänä …"; only a
 		// login gh works with is named.
-		nativeGitHub := map[string]string{"state": ghState}
+		nativeGitHub := map[string]any{"state": ghState}
 		if (ghState == "connected" || ghState == "partial") && gh.Login != "" {
 			nativeGitHub["login"] = gh.Login
+		}
+		// The host's own retry of an outage: the page says it is trying,
+		// and warns once the retry is over.
+		if ghState == "unreachable" && gh.Attempt > 0 && !gh.Since.IsZero() && !gh.NextAt.IsZero() {
+			nativeGitHub["retry"] = map[string]any{"attempt": min(gh.Attempt, 100000), "attempts": nativegh.RetryAttempts, "since": gh.Since.UTC().Format(time.RFC3339), "next_at": gh.NextAt.UTC().Format(time.RFC3339)}
+		}
+		if orgs := controller.githubOrgs().list(); len(orgs) > 0 {
+			restricted := make([]map[string]string, 0, len(orgs))
+			for _, o := range orgs {
+				restricted = append(restricted, map[string]string{"owner": o.Owner, "restriction": o.Kind})
+			}
+			nativeGitHub["restricted_orgs"] = restricted
 		}
 		// Local workspace writes are available only with a confirmed source.
 		// A missing source still gets a valid but unusable observation token.

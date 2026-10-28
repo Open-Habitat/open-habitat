@@ -32,7 +32,7 @@ func agentWorkspaceRoutes(cfg transport.Config, c *ConversationController, clone
 	routes := map[string]http.Handler{
 		AgentWorkspaceOperationsPath: workspaceHandlerAt(cfg, transport.AgentPeer, c, AgentWorkspaceOperationsPath, true),
 		AgentRepositoriesPath:        repoCatalogHandlerAt(cfg, transport.AgentPeer, run, AgentRepositoriesPath),
-		AgentRepositoryPath:          repoLookupHandlerAt(cfg, transport.AgentPeer, run, AgentRepositoryPath),
+		AgentRepositoryPath:          repoLookupHandlerAt(cfg, transport.AgentPeer, run, AgentRepositoryPath, c.githubOrgs()),
 		AgentCheckoutPath:            repoObserveHandlerAt(cfg, transport.AgentPeer, cfg.Home, "/usr/bin/git", cloneCommand, clones, AgentCheckoutPath),
 	}
 	if clones != nil {

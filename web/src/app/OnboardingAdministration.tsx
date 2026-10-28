@@ -22,7 +22,7 @@ import {
 import type { NativeState } from "./CodeHostSettings";
 import { GitHubPlaceNotice } from "./GitHubConnectionNotice";
 import { catalog, GitHubError, lookup, type Repo } from "./github";
-import { githubFault } from "./githubConnection";
+import { githubFault, lookupView } from "./githubConnection";
 import { readIntegrations } from "./integrations";
 import {
   deleteSiteKey,
@@ -127,7 +127,7 @@ function DefaultRepositoryFinder({
             [name]:
               r.state === "found"
                 ? { state: "found", name, repo: choice(r.repository) }
-                : { state: "not_found", name },
+                : lookupView(name, r),
           })),
         )
         .catch(() =>

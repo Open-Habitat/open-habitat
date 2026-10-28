@@ -1,18 +1,73 @@
-import { ControlButton } from "../components/ControlElements";
+import { ControlButton, controlClassName } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
 import { WarningBanner } from "../components/WarningBanner";
-import type { GitHubRecovery, GitHubWarning } from "./githubConnection";
+import type {
+  GitHubProgress,
+  GitHubRecovery,
+  GitHubWarning,
+} from "./githubConnection";
+
+function repairable(warning: GitHubWarning, onReconnect?: () => void) {
+  return !!warning.fix && (!!warning.href || !!onReconnect);
+}
+
+/** The warning's one repair: a page on GitHub, or the reconnect. */
+function Repair({
+  warning,
+  onReconnect,
+  testId,
+}: {
+  warning: GitHubWarning;
+  onReconnect?: () => void;
+  testId: string;
+}) {
+  if (warning.href && warning.fix)
+    return (
+      // A page on GitHub, styled as the warning's button rather than as
+      // an inline link.
+      <a
+        data-testid={testId}
+        href={warning.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        referrerPolicy="no-referrer"
+        className={controlClassName({
+          variant: "primary",
+          size: "row",
+          text: true,
+        })}
+      >
+        <Icon name="github" width={14} height={14} />
+        {warning.fix}
+      </a>
+    );
+  if (!warning.fix || !onReconnect) return null;
+  return (
+    <ControlButton
+      data-testid={testId}
+      size="row"
+      variant="primary"
+      onPress={onReconnect}
+    >
+      <Icon name="github" width={14} height={14} />
+      {warning.fix}
+    </ControlButton>
+  );
+}
 
 /** The person's GitHub connection in the common warning: above the composer
  * in a conversation, or as the app-wide strip elsewhere. A confirmation
  * takes its place for a moment once the connection works again. */
 export function GitHubConnectionNotice({
   warning,
+  progress,
   recovery,
   placement,
   onReconnect,
 }: {
   warning?: GitHubWarning;
+  /** The host's own attempt, shown while there is no settled warning. */
+  progress?: GitHubProgress;
   recovery?: GitHubRecovery;
   placement: "inline" | "page";
   onReconnect?: () => void;
@@ -30,6 +85,19 @@ export function GitHubConnectionNotice({
           : "GitHub-yhteys palasi."}
       </WarningBanner>
     );
+  if (!warning && progress)
+    return (
+      <WarningBanner
+        data-testid="github-connection-progress"
+        data-state={progress.kind}
+        tone="progress"
+        placement={placement}
+      >
+        {progress.kind === "verifying"
+          ? "GitHub hylkäsi valtuutuksen · tarkistetaan uudelleen…"
+          : `GitHub ei vastannut · yritetään uudelleen… (${progress.attempt}/${progress.attempts})`}
+      </WarningBanner>
+    );
   if (!warning) return null;
   return (
     <WarningBanner
@@ -41,16 +109,12 @@ export function GitHubConnectionNotice({
       short={warning.short}
       placement={placement}
       actions={
-        onReconnect ? (
-          <ControlButton
-            data-testid="github-connection-fix"
-            size="row"
-            variant="primary"
-            onPress={onReconnect}
-          >
-            <Icon name="github" width={14} height={14} />
-            {warning.fix}
-          </ControlButton>
+        repairable(warning, onReconnect) ? (
+          <Repair
+            warning={warning}
+            onReconnect={onReconnect}
+            testId="github-connection-fix"
+          />
         ) : null
       }
     >
@@ -80,16 +144,12 @@ export function GitHubPlaceNotice({
       icon={warning ? "warning" : "info"}
       title={warning?.title ?? "GitHub-yhteyttä ei voitu käyttää"}
       actions={
-        warning && onReconnect ? (
-          <ControlButton
-            data-testid="github-place-fix"
-            size="row"
-            variant="primary"
-            onPress={onReconnect}
-          >
-            <Icon name="github" width={14} height={14} />
-            {warning.fix}
-          </ControlButton>
+        warning && repairable(warning, onReconnect) ? (
+          <Repair
+            warning={warning}
+            onReconnect={onReconnect}
+            testId="github-place-fix"
+          />
         ) : null
       }
     >

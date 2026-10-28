@@ -60,15 +60,24 @@ func gitSummaryAt(ctx context.Context, home string, fd int, place *worktreePlace
 	}
 	origin, err := read("remote", "get-url", "origin")
 	if err == nil {
-		value := strings.TrimSpace(string(origin))
-		name := strings.TrimPrefix(strings.TrimPrefix(value, "https://github.com/"), "git@github.com:")
-		name = strings.TrimSuffix(name, ".git")
-		parts := strings.Split(name, "/")
-		if (strings.HasPrefix(value, "https://github.com/") || strings.HasPrefix(value, "git@github.com:")) && len(parts) == 2 && gitHubSegment(parts[0]) && gitHubSegment(parts[1]) {
+		if name, ok := githubRepoName(string(origin)); ok {
 			summary["github_repo"] = name
 		}
 	}
 	return summary, true
+}
+
+// githubRepoName is owner/repo of a github.com origin, never the URL itself:
+// it can hold a credential.
+func githubRepoName(origin string) (string, bool) {
+	value := strings.TrimSpace(origin)
+	name := strings.TrimPrefix(strings.TrimPrefix(value, "https://github.com/"), "git@github.com:")
+	name = strings.TrimSuffix(name, ".git")
+	parts := strings.Split(name, "/")
+	if (strings.HasPrefix(value, "https://github.com/") || strings.HasPrefix(value, "git@github.com:")) && len(parts) == 2 && gitHubSegment(parts[0]) && gitHubSegment(parts[1]) {
+		return name, true
+	}
+	return "", false
 }
 
 func gitHubSegment(s string) bool {

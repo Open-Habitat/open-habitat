@@ -150,15 +150,73 @@
           ],
           "properties": {
             "state": {
-              "description": "expired: gh still holds a github.com login whose token GitHub itself rejects; signing in to Habitat with GitHub again replaces it.",
+              "description": "expired: gh still holds a github.com login whose token GitHub itself rejects, confirmed by a second check; signing in to Habitat with GitHub again replaces it. verifying: GitHub rejected the token once and the host checks again shortly. unreachable: gh could not reach GitHub or GitHub answered with a server error; the token may be fine and the host retries by itself (retry).",
               "enum": [
                 "connected",
                 "disconnected",
                 "expired",
                 "pending",
                 "partial",
-                "unknown"
+                "unknown",
+                "unreachable",
+                "verifying"
               ]
+            },
+            "retry": {
+              "description": "The host's own retry of an outage, present only with state unreachable. attempt counts the checks that found GitHub unreachable since the outage began; while it is below attempts the host is still retrying, after that the outage is a warning and checks continue.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "attempt",
+                "attempts",
+                "since",
+                "next_at"
+              ],
+              "properties": {
+                "attempt": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100000
+                },
+                "attempts": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                },
+                "since": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "next_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            },
+            "restricted_orgs": {
+              "description": "Organisations whose repositories GitHub refused the person's own gh for: oauth_app, the organisation's OAuth App access restrictions (an owner approves the app); saml, SAML single sign-on the token is not authorised for (the person signs in to the organisation's SSO and reconnects). An in-memory observation of the person's daemon.",
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "owner",
+                  "restriction"
+                ],
+                "properties": {
+                  "owner": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}$"
+                  },
+                  "restriction": {
+                    "enum": [
+                      "oauth_app",
+                      "saml"
+                    ]
+                  }
+                }
+              }
             },
             "login": {
               "type": "string",

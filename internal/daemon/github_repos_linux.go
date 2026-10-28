@@ -129,6 +129,10 @@ func RepoLookupHandler(cfg transport.Config, trusted func(*http.Request) bool) h
 	return repoLookupHandler(cfg, trusted, func(ctx context.Context, args ...string) ([]byte, error) { return runRepoGH(ctx, cfg.Home, args...) })
 }
 
+func repoLookupHandlerNoting(cfg transport.Config, trusted func(*http.Request) bool, orgs *githubOrgs) http.Handler {
+	return repoLookupHandlerAt(cfg, trusted, orgs.run, RepoLookupPath, orgs)
+}
+
 // RepoLookupHandlerWithFixtureGH is the offline fixture seam for the lookup.
 func RepoLookupHandlerWithFixtureGH(cfg transport.Config, trusted func(*http.Request) bool, program, home string) http.Handler {
 	return repoLookupHandler(cfg, trusted, func(ctx context.Context, args ...string) ([]byte, error) {
@@ -296,10 +300,12 @@ func lookupNameAt(r *http.Request, path string) (string, bool) {
 var ghStatusLine = regexp.MustCompile(`^HTTP/[0-9.]+ ([0-9]{3})`)
 
 func repoLookupHandler(cfg transport.Config, trusted func(*http.Request) bool, run func(context.Context, ...string) ([]byte, error)) http.Handler {
-	return repoLookupHandlerAt(cfg, trusted, run, RepoLookupPath)
+	return repoLookupHandlerAt(cfg, trusted, run, RepoLookupPath, nil)
 }
 
-func repoLookupHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, run func(context.Context, ...string) ([]byte, error), path string) http.Handler {
+// orgs, when given, learns from each answer which organisations keep the
+// person's GitHub connection out.
+func repoLookupHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, run func(context.Context, ...string) ([]byte, error), path string, orgs *githubOrgs) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		name, ok := lookupNameAt(r, path)
 		if !ok {
@@ -317,7 +323,16 @@ func repoLookupHandlerAt(cfg transport.Config, trusted func(*http.Request) bool,
 			snapshotError(w, 409, "github_auth_unavailable")
 			return
 		}
-		switch item, state := lookupRepo(ctx, run, name); state {
+		item, state := lookupRepo(ctx, run, name)
+		orgs.noteLookup(name, state)
+		switch state {
+		case "restricted_oauth_app", "restricted_saml":
+			// An agent's reply keeps its two answers; GitHub refused it either way.
+			if path != RepoLookupPath {
+				historyJSON(w, map[string]any{"schema_version": 1, "full_name": name, "state": "not_found"})
+				break
+			}
+			historyJSON(w, map[string]any{"schema_version": 1, "full_name": name, "state": "restricted", "restriction": strings.TrimPrefix(state, "restricted_")})
 		case "not_found":
 			historyJSON(w, map[string]any{"schema_version": 1, "full_name": name, "state": "not_found"})
 		case "found":
@@ -350,7 +365,20 @@ func lookupRepo(ctx context.Context, run func(context.Context, ...string) ([]byt
 	switch {
 	case status == nil:
 		return repoItem{}, "unavailable"
-	case err != nil && (string(status[1]) == "404" || string(status[1]) == "403" || string(status[1]) == "451"):
+	case err != nil && string(status[1]) == "403":
+		head := raw[:len(raw)-len(body)]
+		// An organisation that keeps this OAuth app out answers 403 for
+		// every repository it owns; the person can have it lifted. Its
+		// signals come first: that answer may also have spent the window.
+		if kind := orgRestriction(head, body); kind != "" {
+			return repoItem{}, "restricted_" + kind
+		}
+		// A rate limit says nothing about the repository.
+		if rateLimited(head, body) {
+			return repoItem{}, "unavailable"
+		}
+		return repoItem{}, "not_found"
+	case err != nil && (string(status[1]) == "404" || string(status[1]) == "451"):
 		return repoItem{}, "not_found"
 	case err == nil && string(status[1]) == "200":
 		var v nativeRepo

@@ -73,7 +73,8 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	claude := &claudeLogin{device: pi}
 	mux.Handle("/api/v1/pi/claude-login", claude.handler(cfg, server.TrustedPeer))
 	mux.Handle(RepoCatalogPath, RepoCatalogHandler(cfg, server.TrustedPeer))
-	mux.Handle(RepoLookupPath, RepoLookupHandler(cfg, server.TrustedPeer))
+	githubOrgs := newGitHubOrgs(func(ctx context.Context, args ...string) ([]byte, error) { return runRepoGH(ctx, cfg.Home, args...) })
+	mux.Handle(RepoLookupPath, repoLookupHandlerNoting(cfg, server.TrustedPeer, githubOrgs))
 	mux.Handle(GitIdentityPath, GitIdentityHandler(cfg, server.TrustedPeer))
 	integrationEnv := newIntegrationEnv(cfg)
 	forges := Forges{Gitea: newGitea(cfg, integrationEnv), GitLab: newGitLab(cfg, integrationEnv)}
@@ -89,6 +90,12 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	journal := newEventJournal()
 	controller := newConversationController(ctx, cfg, runtime, server.TrustedPeer, piStatus)
 	controller.journal = journal
+	// A changed GitHub connection or organisation restriction is news to
+	// every open page: it reads the snapshot again. It is not a native
+	// write, so it does not count as one against snapshots in flight.
+	adapter.OnChange(journal.appendSnapshotRaceInvalidation)
+	githubOrgs.changed = journal.appendSnapshotRaceInvalidation
+	controller.github = &githubWatch{recheck: adapter.Recheck, orgs: githubOrgs}
 	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi, controller.ClearPiAuthFailures))
 	mux.Handle(WorkspaceGitPath, WorkspaceGitHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceGitFetchPath, WorkspaceGitFetchHandler(cfg, server.TrustedPeer, forges))

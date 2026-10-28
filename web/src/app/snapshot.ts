@@ -173,8 +173,20 @@ export interface Snapshot {
         | "expired"
         | "pending"
         | "partial"
-        | "unknown";
+        | "unknown"
+        | "unreachable"
+        | "verifying";
       login?: string;
+      retry?: {
+        attempt: number;
+        attempts: number;
+        since: string;
+        next_at: string;
+      };
+      restricted_orgs?: {
+        owner: string;
+        restriction: "oauth_app" | "saml";
+      }[];
     };
   };
 }

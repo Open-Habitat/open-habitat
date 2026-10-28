@@ -1,17 +1,26 @@
 import { useEffect, useRef, useState } from "react";
+import type { LookupView } from "../components/ClonePage";
 import type { NativeState } from "./CodeHostSettings";
+import type { Lookup } from "./github";
 
 // What the browser says about the person's own GitHub connection, read from
-// the snapshot's native_github.state (proto-github-connection-warning,
-// round 2, direction 2). The host already rechecks that state by itself, so
-// a warning appears only for a settled fault the person has to repair, and
-// it leaves by itself once the snapshot says the connection works.
+// the snapshot's native_github (proto-github-connection-warning, round 2,
+// direction 2). The host rechecks that state by itself, so a warning appears
+// only for a settled fault, and it leaves by itself once the snapshot says
+// the connection works.
 //
-// Only "expired" and "disconnected" are such faults today. An outage is
-// still "unknown" in the snapshot, the same as a locked keyring, so the
-// "yritetään uudelleen" line waits for the daemon to tell it apart.
+// The daemon tells an outage apart (unreachable) and retries it by itself:
+// while it does, a one-line progress says so; once the retry is over the
+// outage is a warning with nothing to press. A first rejection is verified
+// before it is called expired. An organisation that keeps the app out is
+// said only where its repositories are worked on.
 
-export type GitHubFault = "expired" | "disconnected";
+export type GitHubFault =
+  | "expired"
+  | "disconnected"
+  | "unreachable"
+  | "org_oauth_app"
+  | "org_saml";
 
 export type GitHubWarning = {
   fault: GitHubFault;
@@ -22,10 +31,33 @@ export type GitHubWarning = {
   short: string;
   /** Where GitHub is needed right now: the repository finders. */
   place: string;
-  fix: string;
+  /** The one repair: a reconnect, or a page on GitHub (href). None when
+   * the host repairs it by itself. */
+  fix?: string;
+  href?: string;
 };
 
-const warnings: Record<GitHubFault, GitHubWarning> = {
+export type GitHubRetry = {
+  attempt: number;
+  attempts: number;
+  since: string;
+  next_at: string;
+};
+
+export type GitHubRestriction = {
+  owner: string;
+  restriction: "oauth_app" | "saml";
+};
+
+/** What the host is doing about the connection right now. */
+export type GitHubProgress =
+  | { kind: "verifying" }
+  | { kind: "retrying"; attempt: number; attempts: number };
+
+const warnings: Record<
+  "expired" | "disconnected" | "unreachable",
+  GitHubWarning
+> = {
   expired: {
     fault: "expired",
     tone: "danger",
@@ -46,13 +78,95 @@ const warnings: Record<GitHubFault, GitHubWarning> = {
       "Repolistaa ei voi hakea, koska palvelimella ei ole GitHub-kirjautumistasi.",
     fix: "Yhdistä GitHub",
   },
+  unreachable: {
+    fault: "unreachable",
+    tone: "neutral",
+    title: "GitHub ei vastaa",
+    text: "Palvelin ei ole saanut GitHubiin yhteyttä. Valtuutuksesi on tallessa, eikä sinun tarvitse tehdä mitään: palvelin yrittää puolen minuutin välein, ja ilmoitus poistuu itsestään. Push, kloonaus ja gh odottavat; paikallinen työ toimii.",
+    short: "Push ja gh odottavat. Palvelin yrittää itse uudelleen.",
+    place:
+      "GitHub ei juuri nyt vastaa palvelimelle. Palvelin yrittää itse uudelleen; repolista tulee, kun yhteys palaa.",
+  },
 };
 
-/** The settled fault behind a state, if the person can repair it. */
-export function githubFault(state?: NativeState): GitHubWarning | undefined {
-  return state === "expired" || state === "disconnected"
-    ? warnings[state]
+/** The settled fault behind a state, if there is one to tell. An outage
+ * is one only once the host's own retry is over. */
+export function githubFault(
+  state?: NativeState,
+  retry?: GitHubRetry,
+): GitHubWarning | undefined {
+  if (state === "expired" || state === "disconnected") return warnings[state];
+  if (state === "unreachable" && retry && retry.attempt >= retry.attempts)
+    return warnings.unreachable;
+  return undefined;
+}
+
+/** The host's own attempt in progress: the second check of a rejection, or
+ * the retry of an outage before it becomes a warning. */
+export function githubProgress(
+  state?: NativeState,
+  retry?: GitHubRetry,
+): GitHubProgress | undefined {
+  if (state === "verifying") return { kind: "verifying" };
+  if (state === "unreachable" && retry && retry.attempt < retry.attempts)
+    return {
+      kind: "retrying",
+      attempt: retry.attempt,
+      attempts: retry.attempts,
+    };
+  return undefined;
+}
+
+/** The restriction of the organisation that owns repo ("owner/name"), as
+ * the warning where that repository is worked on. */
+export function githubOrgFault(
+  restricted: readonly GitHubRestriction[] | undefined,
+  repo: string | undefined,
+): GitHubWarning | undefined {
+  const owner = repo?.split("/")[0]?.toLowerCase();
+  const found = owner
+    ? restricted?.find((r) => r.owner.toLowerCase() === owner)
     : undefined;
+  return found ? orgWarning(found.owner, found.restriction) : undefined;
+}
+
+/** A lookup's answer as the finders show it: GitHub's refusal for the
+ * repository's organisation says why and what lifts it. */
+export function lookupView(name: string, r: Lookup): LookupView {
+  if (r.state === "restricted")
+    return {
+      state: "restricted",
+      name,
+      reason: orgWarning(name.split("/")[0], r.restriction).place,
+    };
+  return { state: "not_found", name };
+}
+
+/** What an organisation's restriction means and how it is lifted. */
+export function orgWarning(
+  owner: string,
+  restriction: GitHubRestriction["restriction"],
+): GitHubWarning {
+  return restriction === "oauth_app"
+    ? {
+        fault: "org_oauth_app",
+        tone: "neutral",
+        title: `Organisaatio ${owner} ei ole hyväksynyt palvelimen GitHub-sovellusta`,
+        text: `Organisaatio ${owner} rajoittaa ulkopuolisten sovellusten pääsyä, joten push, kloonaus ja gh eivät toimi sen repoissa. Pyydä hyväksyntää GitHubin asetuksista (Authorized OAuth Apps): omistaja saa pyynnöstä ilmoituksen, ja varoitus poistuu itsestään hyväksynnän jälkeen.`,
+        short: `Organisaation ${owner} omistajan pitää hyväksyä sovellus.`,
+        place: `Organisaatio ${owner} rajoittaa ulkopuolisten sovellusten pääsyä, joten palvelin ei näe sen repoja. Pyydä hyväksyntää GitHubin asetuksista; organisaation omistaja saa pyynnöstä ilmoituksen.`,
+        fix: "Pyydä hyväksyntää GitHubissa",
+        href: "https://github.com/settings/applications",
+      }
+    : {
+        fault: "org_saml",
+        tone: "neutral",
+        title: `Organisaatio ${owner} vaatii kertakirjautumisen`,
+        text: `Organisaatio ${owner} käyttää SAML-kertakirjautumista, eikä palvelimen GitHub-valtuutusta ole hyväksytty sille, joten push, kloonaus ja gh eivät toimi sen repoissa. Kirjaudu organisaation kertakirjautumiseen GitHubissa ja yhdistä sitten uudelleen.`,
+        short: `Kirjaudu organisaation ${owner} kertakirjautumiseen ja yhdistä uudelleen.`,
+        place: `Organisaatio ${owner} vaatii SAML-kertakirjautumisen, jota palvelimen GitHub-valtuutukselle ei ole tehty. Kirjaudu organisaation kertakirjautumiseen GitHubissa ja yhdistä sitten uudelleen.`,
+        fix: "Yhdistä uudelleen",
+      };
 }
 
 /** Whether a fault concerns a place that is not itself about GitHub. A
@@ -64,8 +178,9 @@ export function concerns(
   where: { provider?: "github" | "google"; githubWorkspace?: boolean },
 ): warning is GitHubWarning {
   if (!warning) return false;
+  // Only a person with a gh login can have it rejected or unanswered.
   return (
-    warning.fault === "expired" ||
+    warning.fault !== "disconnected" ||
     where.provider === "github" ||
     !!where.githubWorkspace
   );
@@ -146,8 +261,15 @@ export function useGitHubRecovery(
   const last = useRef<{ identity?: string; state?: NativeState }>({});
   useEffect(() => {
     if (last.current.identity !== identity) last.current = { identity };
-    // An unknown or pending moment between two settled states is not news.
-    if (!state || state === "unknown" || state === "pending") return;
+    // An unknown or pending moment between two settled states is not news,
+    // nor is the host's second look at a rejection.
+    if (
+      !state ||
+      state === "unknown" ||
+      state === "pending" ||
+      state === "verifying"
+    )
+      return;
     const before = last.current.state;
     last.current.state = state;
     if (state !== "connected") {
@@ -157,7 +279,11 @@ export function useGitHubRecovery(
       return;
     }
     if (takeReconnect()) setRecovery({ kind: "reconnected", login, identity });
-    else if (before === "expired" || before === "disconnected")
+    else if (
+      before === "expired" ||
+      before === "disconnected" ||
+      before === "unreachable"
+    )
       setRecovery({ kind: "recovered", identity });
   }, [identity, state, login]);
   useEffect(() => {

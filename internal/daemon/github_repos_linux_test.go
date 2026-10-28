@@ -183,7 +183,15 @@ func TestRepoLookupExactName(t *testing.T) {
 		{"found", answer("200 OK", 0, found), 200, `"state":"found"`},
 		{"not found", answer("404 Not Found", 1, `{"message":"Not Found"}`), 200, `"state":"not_found"`},
 		{"server error", answer("502 Bad Gateway", 1, `{}`), 503, "native_source_unavailable"},
-		{"refused", answer("403 Forbidden", 1, `{"message":"Resource protected by organization SAML enforcement"}`), 200, `"state":"not_found"`},
+		{"refused", answer("403 Forbidden", 1, `{"message":"Must have admin rights to Repository."}`), 200, `"state":"not_found"`},
+		// An organisation that keeps the app out is told apart: the person
+		// can have it lifted.
+		{"saml", answer("403 Forbidden", 1, `{"message":"Resource protected by organization SAML enforcement. You must grant your OAuth token access to this organization."}`), 200, `"restriction":"saml","schema_version":1,"state":"restricted"`},
+		{"oauth app", answer("403 Forbidden", 1, "{\"message\":\"Although you appear to have the correct authorization credentials, the `raine` organization has enabled OAuth App access restrictions, meaning that data access to third-parties is limited.\"}"), 200, `"restriction":"oauth_app","schema_version":1,"state":"restricted"`},
+		// A rate limit is no answer about the repository.
+		{"rate limit", answer("403 Forbidden", 1, `{"message":"You have exceeded a secondary rate limit."}`), 503, "native_source_unavailable"},
+		// The message is GitHub's, not a repository's: on any other status it means nothing.
+		{"restriction wording on 404", answer("404 Not Found", 1, `{"message":"has enabled OAuth App access restrictions"}`), 200, `"state":"not_found"`},
 		{"200 with failure exit", answer("200 OK", 1, found), 503, "native_source_unavailable"},
 		{"no network", func(_ context.Context, args ...string) ([]byte, error) {
 			if args[len(args)-1] == "/user" {

@@ -31,7 +31,7 @@ import {
   lookup,
   type Repo,
 } from "./github";
-import type { GitHubWarning } from "./githubConnection";
+import { type GitHubWarning, lookupView } from "./githubConnection";
 import {
   daysLeft,
   type GitLabSource,
@@ -289,7 +289,7 @@ export function NewWorkspacePage({
               [name]:
                 r.state === "found"
                   ? { state: "found", name, repo: choice(r.repository) }
-                  : { state: "not_found", name },
+                  : lookupView(name, r),
             })),
           )
           .catch((e) => {
@@ -927,9 +927,11 @@ export function NewWorkspacePage({
                     ? `Haetaan ${selectedName}…`
                     : looked[selectedName].state === "not_found"
                       ? `Repoa ${selectedName} ei ole, tai sinulla ei ole siihen pääsyä.`
-                      : github
-                        ? `Kloonaus tarvitsee GitHub-yhteyden. ${github.fix} ilmoituksesta.`
-                        : "GitHubiin ei saatu yhteyttä. Yritä hetken päästä uudelleen."}
+                      : looked[selectedName].state === "restricted"
+                        ? looked[selectedName].reason
+                        : github?.fix
+                          ? `Kloonaus tarvitsee GitHub-yhteyden. ${github.fix} ilmoituksesta.`
+                          : "GitHubiin ei saatu yhteyttä. Yritä hetken päästä uudelleen."}
                 </p>
               </aside>
             ) : (

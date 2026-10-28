@@ -31,6 +31,9 @@ export type LookupView =
   | { state: "searching"; name: string }
   | { state: "found"; name: string; repo: RepoChoice }
   | { state: "not_found"; name: string }
+  /** GitHub answered, refusing it for its organisation; reason says why
+   * and what lifts it. */
+  | { state: "restricted"; name: string; reason: string }
   /** GitHub could not be asked; reason says why, when the app knows. */
   | { state: "failed"; name: string; reason?: string }
   /** GitHub could not be asked, yet the name can be chosen as it is: a
