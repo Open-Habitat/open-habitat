@@ -1116,16 +1116,22 @@ export function AgentHeader({
       ? `${settings.model ?? "Malli ei tiedossa"} · ajattelutaso ${settings.thinking ?? "Agentti"}`
       : undefined;
   // On a phone the secondary actions leave the top bar for this menu, so the
-  // header stays two rows; on a desktop it appears when the row has had to
-  // move them there to keep the title readable (CSS shows one or the other).
+  // header stays two rows; on a desktop it appears once the row has had to
+  // move the workspace there to keep the title readable, and lists only what
+  // the row no longer shows (CSS shows the trigger, this decides the rows).
+  const menuActions = hidden.actions !== false;
   const headerMenu = [
-    {
-      id: "workspace",
-      label: workspaceLabel,
-      description: "Avaa työtila",
-      run: () => navigate(workspaceHref),
-    },
-    ...(titleAction
+    ...(hidden.workspace !== false
+      ? [
+          {
+            id: "workspace",
+            label: workspaceLabel,
+            description: "Avaa työtila",
+            run: () => navigate(workspaceHref),
+          },
+        ]
+      : []),
+    ...(menuActions && titleAction
       ? [
           {
             id: "retitle",
@@ -1140,7 +1146,7 @@ export function AgentHeader({
           },
         ]
       : []),
-    ...(archiving
+    ...(menuActions && archiving
       ? [
           {
             id: archiving.id,
@@ -1152,7 +1158,9 @@ export function AgentHeader({
           },
         ]
       : []),
-    { id: "details", label: "Tiedot", run: onToggleDetails },
+    ...(menuActions
+      ? [{ id: "details", label: "Tiedot", run: onToggleDetails }]
+      : []),
     // What the shortened row no longer shows: the Git counts (the chip's
     // icon still opens its layer) and the model, whose level is in Tiedot.
     ...(hidden.git

@@ -3573,8 +3573,8 @@ details[open] > summary:not([class])::before {
   margin-inline-end: var(--ah-s2);
 }
 /* The conversation's menu holds its secondary actions on a phone, and on a
-   desktop once the row has had to move them there. A quiet icon like the
-   actions beside it. */
+   desktop once the row has had to move the workspace there. A quiet icon
+   like the actions beside it. */
 .ah-agent-topline .ah-header-more {
   display: none;
   --i-bg: transparent;
@@ -3672,7 +3672,7 @@ details[open] > summary:not([class])::before {
     > :is(.ah-retitle, .ah-archive-control, .ah-details-toggle) {
     display: none;
   }
-  .ah-agent-topline[data-shorten~="3"] .ah-header-more {
+  .ah-agent-topline[data-shorten~="1"] .ah-header-more {
     display: inline-flex;
     flex: none;
   }

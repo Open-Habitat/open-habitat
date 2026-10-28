@@ -229,13 +229,25 @@ async function expectOneRow(page: Page, header: Locator, width: number) {
     await expect(header.getByTestId(id)).toBeInViewport({ ratio: 1 });
   const menu = header.getByTestId("conversation-menu");
   const steps = geometry.steps.split(" ");
+  if (!steps.includes("1")) {
+    await expect(header.getByTestId("conversation-workspace")).toBeInViewport({
+      ratio: 1,
+    });
+    await expect(menu).toBeHidden();
+  } else await expect(menu).toBeInViewport({ ratio: 1 });
   if (!steps.includes("3")) {
     for (const id of ["conversation-retitle", "workspace-details"])
       await expect(header.getByTestId(id)).toBeInViewport({ ratio: 1 });
-    await expect(menu).toBeHidden();
+    if (!steps.includes("1")) return;
+    // The menu holds only the workspace, which the row no longer shows.
+    await menu.click();
+    const items = page.getByRole("menu").getByRole("menuitem");
+    await expect(items).toHaveCount(1);
+    await expect(items.and(page.getByTestId("menu-workspace"))).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(items).toHaveCount(0);
     return;
   }
-  await expect(menu).toBeInViewport({ ratio: 1 });
   await menu.click();
   const items = page.getByRole("menu");
   const expected = ["workspace", "retitle", "archive", "details"];

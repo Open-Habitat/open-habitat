@@ -6,17 +6,27 @@ import { StatusMark } from "./Status";
  * the title keeps its share of the one row (proto-conversation-header,
  * round 2, direction 1). components.css draws each step from the row's
  * `data-shorten` list:
- * 1 the workspace; 2 the context percentage (the ring stays); 3 new title,
- * archive and details into the ⋯ menu; 4 the file count; 5 tighter gaps
- * and chips; 6 the Git counts (the icon stays; a Git row joins the menu);
- * 7 the model chip (a model row joins the menu). */
+ * 1 the workspace into the ⋯ menu; 2 the context percentage (the ring
+ * stays); 3 new title, archive and details into the ⋯ menu; 4 the file
+ * count; 5 tighter gaps and chips; 6 the Git counts (the icon stays; a Git
+ * row joins the menu); 7 the model chip (a model row joins the menu). */
 export const HEADER_STEPS = 7;
+const WORKSPACE = 1;
+const ACTIONS = 3;
 const GIT_COUNTS = 6;
 const MODEL = 7;
 /** The title keeps this share of the row, or its whole text. */
 const TITLE_SHARE = 0.4;
 
-export type HiddenState = { git?: string; model?: string };
+/** What the desktop row moved into the ⋯ menu. Unset where nothing was
+ * measured (a phone, whose menu holds every secondary action, or a test DOM
+ * without layout): the menu then lists everything. */
+export type HiddenState = {
+  workspace?: boolean;
+  actions?: boolean;
+  git?: string;
+  model?: string;
+};
 
 /** Measures the header's one row and applies the fewest steps that leave the
  * title its share. Content decides as much as width does (a long title,
@@ -82,11 +92,19 @@ export function useHeaderShortening(
               .querySelector<HTMLElement>(".ah-set-chip[data-menu-summary]")
               ?.getAttribute("data-menu-summary")
           : undefined;
+      const next: HiddenState = {
+        workspace: desktop.matches ? steps >= WORKSPACE : undefined,
+        actions: desktop.matches ? steps >= ACTIONS : undefined,
+        git: git ?? undefined,
+        model: model ?? undefined,
+      };
       setHidden((previous) =>
-        previous.git === (git ?? undefined) &&
-        previous.model === (model ?? undefined)
+        previous.workspace === next.workspace &&
+        previous.actions === next.actions &&
+        previous.git === next.git &&
+        previous.model === next.model
           ? previous
-          : { git: git ?? undefined, model: model ?? undefined },
+          : next,
       );
     };
     const schedule = () => {

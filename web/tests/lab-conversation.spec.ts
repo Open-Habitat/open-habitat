@@ -514,7 +514,20 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await expect(
     page.locator("main").getByRole("heading", { level: 1 }),
   ).toHaveText(/Lisää komentoriville --json-lippu/);
-  await page.locator("main").getByTestId("conversation-workspace").click();
+  // The header's workspace link is the first thing a short row moves into
+  // the ⋯ menu, so a person reaches the workspace from whichever it shows.
+  const workspaceLink = page
+    .locator("main")
+    .getByTestId("conversation-workspace");
+  if (await workspaceLink.isVisible()) await workspaceLink.click();
+  else {
+    await page.locator("main").getByTestId("conversation-menu").click();
+    await page
+      .getByRole("menuitem")
+      .and(page.getByTestId("menu-workspace"))
+      .click();
+  }
+  await expect(page).toHaveURL(/\/workspaces\/[^/?]+$/);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();

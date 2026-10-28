@@ -3,13 +3,14 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: normal
 preparation: ready
 provenance: chat
 source_ref: suite:2026-10-28/r30/lab-conversation
 lane: gate-health
 lane_seq: 99
+closed: 2026-10-28
 ---
 
 # Lab spec clicks the header workspace link that the one-row header now folds into the menu
