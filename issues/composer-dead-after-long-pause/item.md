@@ -1,9 +1,9 @@
 ---
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: testing
 priority: high
 provenance: chat
 source_ref: chat:2026-10-27/composer-dead-after-long-pause
