@@ -1,15 +1,16 @@
 ---
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-28
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-27/start-page-goal-chip
 lane: start-goal
 lane_seq: 2
 preparation: ready
+closed: 2026-10-28
 ---
 
 # Start page: goal chip in the composer and guide steps in a side panel
@@ -20,4 +21,4 @@ Implements Jari's choice from proto-start-page-goal (A, siru ja paneeli; issues/
 
 ## Acceptance Criteria
 
-- [ ] Aloita fills the chip, panel shows steps, history shows the chip, reload keeps the goal; desktop and phone; browser tests
+- [x] Aloita fills the chip, panel shows steps, history shows the chip, reload keeps the goal; desktop and phone; browser tests

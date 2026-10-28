@@ -40,7 +40,12 @@ import { useBrowserShell } from "./BrowserShell";
 import { toolStopped } from "./bashFailure";
 import { useConversationActions } from "./ConversationActions";
 import { ConversationGitStatus } from "./ConversationGitStatus";
-import { readCommands, readFiles, readPreview } from "./composerReads";
+import {
+  readCommands,
+  readFiles,
+  readPreview,
+  type StartPage,
+} from "./composerReads";
 import { useContextDetail } from "./contextDetail";
 import { contextUsage } from "./contextUsage";
 import { provisionalItems } from "./conversationEvents";
@@ -63,6 +68,15 @@ import {
   TitleGenerationFailed,
 } from "./conversations";
 import { messageFor, toolPath } from "./editorChanges";
+import {
+  composerGoals,
+  conversationGoal,
+  guideOpensItself,
+  guideOwner,
+  readFirstSkill,
+  setGuide,
+  useGuide,
+} from "./goalGuide";
 import { type LiveTurnInput, timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { capacityReason } from "./mutations";
@@ -94,7 +108,11 @@ import {
   useReadingPositionLayout,
 } from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
-import { FilesHeaderControl, NoticeEntry } from "./ViewHost";
+import {
+  FilesHeaderControl,
+  GuideHeaderControl,
+  NoticeEntry,
+} from "./ViewHost";
 import {
   EditorHeaderControls,
   useEditorActivity,
@@ -870,6 +888,72 @@ function BrowserConversationContent({
     }
   }, [bash, setReceipt]);
   const runWorkspace = current?.workspace_id ?? workspace.workspace_id;
+  // The start page names the goals whose skill calls the conversation shows
+  // as a goal: a chip in the draft, the guide beside a recorded call.
+  const pageKey = `${identity}:${current?.agent_id ?? ""}:${runWorkspace}`;
+  const [startPage, setStartPage] = useState<{
+    key: string;
+    page: StartPage | null;
+  }>();
+  const page = startPage?.key === pageKey ? startPage.page : undefined;
+  const pageWanted =
+    entries.some((entry) => entry.skill) ||
+    draft.startsWith("/skill:") ||
+    !!next;
+  useEffect(() => {
+    const agentId = current?.agent_id;
+    if (!agentId || !controlled || !pageWanted || startPage?.key === pageKey)
+      return;
+    let live = true;
+    // The empty view's read is the same cached promise.
+    store.startPage(agentId, runWorkspace).then(
+      (read) => {
+        if (live) setStartPage({ key: pageKey, page: read });
+      },
+      () => {
+        // No goal is shown without the page; nothing else depends on it.
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [
+    current?.agent_id,
+    controlled,
+    pageWanted,
+    startPage?.key,
+    pageKey,
+    store,
+    runWorkspace,
+  ]);
+  const goals = useMemo(() => composerGoals(page), [page]);
+  const guide = id ? guideOwner(identity, id) : undefined;
+  const startedGoal = useGuide(guide)?.goal;
+  const loadedGoal = conversationGoal(page, startedGoal, entries, draft);
+  // Older history holds the first message: read just its start, once.
+  const [first, setFirst] = useState<{ key: string; skill?: string }>();
+  const firstWanted = !!next && !loadedGoal && goals.length > 0;
+  useEffect(() => {
+    const agentId = current?.agent_id;
+    if (!agentId || !firstWanted || first?.key === pageKey) return;
+    const controller = new AbortController();
+    readFirstSkill(agentId, controller.signal).then(
+      (skill) => setFirst({ key: pageKey, skill }),
+      () => {
+        // Without it the guide waits until older history is loaded.
+      },
+    );
+    return () => controller.abort();
+  }, [current?.agent_id, firstWanted, first?.key, pageKey]);
+  const goal =
+    loadedGoal ??
+    conversationGoal(
+      page,
+      undefined,
+      [],
+      "",
+      first?.key === pageKey ? first.skill : undefined,
+    );
   const workspacePath = workspace.place
     ? undefined
     : workspace.path?.match(/\/src\/.+$/)?.[0];
@@ -1292,6 +1376,13 @@ function BrowserConversationContent({
             data-thinking={selectedThinking}
             editorControl={<EditorHeaderControls />}
             filesControl={<FilesHeaderControl conversationId={id} />}
+            guideControl={
+              <GuideHeaderControl
+                owner={guide}
+                goal={goal}
+                page={page && !("state" in page) ? page.title : undefined}
+              />
+            }
             archive={{
               state: archive?.archive ?? "unknown",
               empty:
@@ -1638,6 +1729,17 @@ function BrowserConversationContent({
                     store={store}
                     draft={draft}
                     onChange={changeDraft}
+                    onPage={(read) =>
+                      setStartPage({ key: pageKey, page: read })
+                    }
+                    onStarted={(started, title) => {
+                      if (guide)
+                        setGuide(guide, {
+                          goal: started,
+                          page: title,
+                          open: guideOpensItself(),
+                        });
+                    }}
                   />
                 ) : undefined
               }
@@ -2138,6 +2240,7 @@ function BrowserConversationContent({
                   ) : undefined
                 }
                 value={draft}
+                goals={goals}
                 onChange={(value) => {
                   changeDraft(value);
                   // The first character wakes a resting agent; nothing else does.

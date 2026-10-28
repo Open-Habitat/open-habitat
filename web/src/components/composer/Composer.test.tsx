@@ -504,6 +504,78 @@ it("keeps attachments out of the field and sends their references unchanged", ()
   expect(send).toHaveBeenCalledWith(`Katso tätä!\n\n${notes}`);
 });
 
+it("shows a start-page goal's skill call as a chip and sends Pi's invocation unchanged", async () => {
+  const shot =
+    "![shot.png](/api/v1/attachments/11111111-1111-4111-8111-111111111111)";
+  const goals = [
+    { skill: "korjaa", title: "Korjaa ongelma", request: "Selvitä syy." },
+  ];
+  const send = vi.fn();
+  const drafts: string[] = [];
+  function Draft({ initial }: { initial: string }) {
+    const [value, setValue] = useState(initial);
+    return (
+      <Composer
+        {...base}
+        goals={goals}
+        value={value}
+        onChange={(next) => {
+          drafts.push(next);
+          setValue(next);
+        }}
+        onSendNow={send}
+      />
+    );
+  }
+  const view = render(<Draft initial={`/skill:korjaa [havainto]\n${shot}`} />);
+  expect(field(view).value).toBe("[havainto]");
+  expect(view.getByTestId("goal-chip")).toBeTruthy();
+  fireEvent.change(field(view), { target: { value: "Virhe X" } });
+  expect(drafts.at(-1)).toBe(`/skill:korjaa Virhe X\n${shot}`);
+  // Emptied, the field still sends the skill call itself.
+  fireEvent.change(field(view), { target: { value: "" } });
+  expect(drafts.at(-1)).toBe(`/skill:korjaa \n${shot}`);
+  fireEvent.change(field(view), { target: { value: "Virhe X" } });
+  fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
+  expect(send).toHaveBeenCalledWith(`/skill:korjaa Virhe X\n${shot}`);
+
+  fireEvent.click(view.getByTestId("goal-chip-open"));
+  fireEvent.click(await view.findByTestId("goal-chip-unwrap"));
+  expect(drafts.at(-1)).toBe(`Selvitä syy.\n\nVirhe X\n${shot}`);
+  expect(view.queryByTestId("goal-chip")).toBeNull();
+  view.unmount();
+
+  // Another skill, or a goal's name still being typed, stays text.
+  for (const initial of ["/skill:muu teksti", "/skill:korjaa"]) {
+    const other = render(<Draft initial={initial} />);
+    expect(field(other).value).toBe(initial);
+    expect(other.queryByTestId("goal-chip")).toBeNull();
+    other.unmount();
+  }
+
+  // The goal's text is part of the skill call, never a shell command.
+  const run = vi.fn();
+  const shellSend = vi.fn();
+  const shelled = render(
+    <Composer
+      {...base}
+      goals={goals}
+      value="/skill:korjaa !npm test"
+      onSendNow={shellSend}
+      shell={{ workspaceLabel: "w", onRun: run, onStop: noop }}
+    />,
+  );
+  fireEvent.keyDown(field(shelled), { key: "Enter", code: "Enter" });
+  expect(run).not.toHaveBeenCalled();
+  expect(shellSend).toHaveBeenCalledWith("/skill:korjaa !npm test");
+  shelled.unmount();
+
+  const removed = render(<Draft initial="/skill:korjaa Oma teksti" />);
+  fireEvent.click(removed.getByTestId("goal-chip-remove"));
+  expect(drafts.at(-1)).toBe("Oma teksti");
+  expect(field(removed).value).toBe("Oma teksti");
+});
+
 describe("installed skill aliases at send", () => {
   const skill: CommandList = {
     answered_by: "helper",

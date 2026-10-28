@@ -221,3 +221,69 @@ it("reads prose without Pi and resolves an authored skill only when preparing a 
   );
   expect(screen.queryByTestId("goal-guide")).not.toBeNull();
 });
+
+it("leaves the request to the goal's own skill and selects the placeholder after the chip", async () => {
+  if (!("goals" in authored)) throw new Error("fixture");
+  const goal = {
+    ...authored.goals[0],
+    prompt: "Native prompt\n\n[observation]",
+    skill: "native",
+  };
+  vi.mocked(readStartPage).mockResolvedValue({ ...authored, goals: [goal] });
+  const skill = (description: string): CommandList => ({
+    answered_by: "helper",
+    commands: [
+      {
+        name: "skill:native",
+        source: "skill",
+        scope: "project",
+        description,
+        terminal_only: false,
+      },
+    ],
+  });
+  const onChange = vi.fn();
+  const onStarted = vi.fn();
+  // The composer shows the skill call as a chip and the field the rest.
+  const content = (draft: string) => (
+    <div className="ah-conversation-frame">
+      <StartPageRead
+        workspaceId="workspace"
+        draft={draft}
+        onChange={onChange}
+        onStarted={onStarted}
+      />
+      <textarea
+        data-testid="draft"
+        value={draft.replace(/^\/skill:native /, "")}
+        onChange={() => {}}
+      />
+    </div>
+  );
+  vi.mocked(readCommands).mockResolvedValue(skill(" Goal "));
+  const view = render(content(""));
+  await waitFor(() =>
+    expect(screen.queryByTestId("starting-goal")).not.toBeNull(),
+  );
+  fireEvent.click(screen.getByTestId("starting-goal"));
+  fireEvent.click(screen.getByTestId("guide-start-top"));
+  const prepared = "/skill:native [observation]";
+  await waitFor(() => expect(onChange).toHaveBeenCalledWith(prepared));
+  expect(onStarted).toHaveBeenCalledWith(goal, "Repository title");
+  view.rerender(content(prepared));
+  const field = screen.getByTestId("draft") as HTMLTextAreaElement;
+  expect(document.activeElement).toBe(field);
+  expect(field.value.slice(field.selectionStart, field.selectionEnd)).toBe(
+    "[observation]",
+  );
+
+  // A general skill the goal borrows does not hold its request.
+  vi.mocked(readCommands).mockResolvedValue(skill("Some general skill"));
+  view.rerender(content(""));
+  fireEvent.click(screen.getByTestId("guide-start-top"));
+  await waitFor(() =>
+    expect(onChange).toHaveBeenLastCalledWith(
+      "/skill:native Native prompt\n\n[observation]",
+    ),
+  );
+});

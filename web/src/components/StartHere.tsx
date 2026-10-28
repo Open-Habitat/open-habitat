@@ -5,7 +5,9 @@ import { GoalGuide } from "./GoalGuide";
 import { Markdown } from "./Markdown";
 import "./StartHere.css";
 
-export function goalDraft(goal: StartGoal, draft: string) {
+/** The authored request without its one editable placeholder, and the
+ * placeholder itself. */
+export function goalRequest(goal: StartGoal) {
   // Ambiguous/malformed brackets stay literal: never guess which input to replace.
   const brackets = goal.prompt.match(/\[[^[\]\r\n]+\]/g) ?? [];
   const placeholder =
@@ -17,11 +19,24 @@ export function goalDraft(goal: StartGoal, draft: string) {
   const request = placeholder
     ? goal.prompt.replace(placeholder, "").trim()
     : goal.prompt.replace(/\n+$/, "");
-  const prompt = goal.skill ? `/skill:${goal.skill} ${request}` : request;
-  const text =
-    [prompt, draft.trim() ? draft.replace(/\n+$/, "") : undefined, placeholder]
-      .filter((part) => part !== undefined && part !== "")
-      .join("\n\n") + (placeholder ? "" : "\n\n");
+  return { request, placeholder };
+}
+
+/** The draft Aloita prepares. A goal's own skill (`carried`) already holds
+ * the request, so only the invocation, the person's draft and the
+ * placeholder go into the field; Pi records the request with the skill. */
+export function goalDraft(goal: StartGoal, draft: string, carried = false) {
+  const { request, placeholder } = goalRequest(goal);
+  // Pi reads the skill name up to the first space, so the space is the separator.
+  const invocation = goal.skill ? `/skill:${goal.skill} ` : "";
+  const body = [
+    carried && goal.skill ? undefined : request,
+    draft.trim() ? draft.replace(/\n+$/, "") : undefined,
+    placeholder,
+  ]
+    .filter((part) => part !== undefined && part !== "")
+    .join("\n\n");
+  const text = invocation + body + (placeholder || !body ? "" : "\n\n");
   return {
     text,
     selectionStart: text.length - (placeholder?.length ?? 0),

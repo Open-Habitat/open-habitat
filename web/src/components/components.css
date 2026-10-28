@@ -3502,6 +3502,7 @@ details[open] > summary:not([class])::before {
       .ah-title-row,
       .ah-editor-controls,
       .ah-terminal-toggle,
+      .ah-guide-toggle,
       .ah-header-more
     ) {
     order: 1;

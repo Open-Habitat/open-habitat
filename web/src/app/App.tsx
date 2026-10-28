@@ -54,6 +54,7 @@ import {
 import { FallbackAccount } from "./FallbackAccount";
 import { seededRouteOpen } from "./firstRoute";
 import { GitHubOnboarding } from "./GitHubOnboarding";
+import { adoptGuide } from "./goalGuide";
 import { HistoryView } from "./HistoryView";
 import { adoptCreation } from "./heldMessages";
 import {
@@ -1473,7 +1474,10 @@ export function App() {
       .then((session) => {
         if (!session || !current()) return;
         // The new conversation takes over what was written meanwhile.
-        if (person) adoptCreation(person, workspaceId, session.agent_id);
+        if (person) {
+          adoptCreation(person, workspaceId, session.agent_id);
+          adoptGuide(person, workspaceId, session.agent_id);
+        }
         setDaemonSessions((old) => [...old, session]);
         refresh();
         setCreationViews((old) => ({ ...old, [workspaceId]: { session } }));

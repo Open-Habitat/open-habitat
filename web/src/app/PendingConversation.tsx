@@ -10,7 +10,20 @@ import {
 } from "../components";
 import { controlClassName } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
-import { readCommands, readFiles, readPreview } from "./composerReads";
+import {
+  readCommands,
+  readFiles,
+  readPreview,
+  type StartPage,
+} from "./composerReads";
+import {
+  composerGoals,
+  conversationGoal,
+  creationGuideOwner,
+  guideOpensItself,
+  setGuide,
+  useGuide,
+} from "./goalGuide";
 import {
   creationKeys,
   type LocalHeld,
@@ -21,6 +34,7 @@ import {
 import { shortModel, usePiModels } from "./PiModels";
 import { StartPageRead } from "./StartPageRead";
 import type { Workspace } from "./snapshot";
+import { GuideHeaderControl } from "./ViewHost";
 
 /** Focus the field when a view opens without another focus target, so the
  * person can type at once. */
@@ -168,6 +182,10 @@ export function CreatingConversation({
     readHeld(keys.held),
   );
   const [notice, setNotice] = useState("");
+  const [page, setPage] = useState<StartPage | null>();
+  const goals = useMemo(() => composerGoals(page), [page]);
+  const guideOwner = creationGuideOwner(identity, workspace.workspace_id);
+  const started = useGuide(guideOwner)?.goal;
   const section = useRef<HTMLDivElement>(null);
   // The person just asked for this conversation: the field takes focus from
   // the + or workspace button so they can type at once.
@@ -227,6 +245,13 @@ export function CreatingConversation({
           detailsFacts={[{ label: "Työtila", value: workspace.path ?? "" }]}
           detailsExpanded={details}
           onToggleDetails={() => setDetails(!details)}
+          guideControl={
+            <GuideHeaderControl
+              owner={guideOwner}
+              goal={conversationGoal(page, started, [], draft)}
+              page={page && !("state" in page) ? page.title : undefined}
+            />
+          }
         />
         <ConversationStream>
           {worktree && !waiting.length ? (
@@ -239,6 +264,14 @@ export function CreatingConversation({
                 workspaceId={workspace.workspace_id}
                 draft={draft}
                 onChange={setDraft}
+                onPage={setPage}
+                onStarted={(goal, title) =>
+                  setGuide(guideOwner, {
+                    goal,
+                    page: title,
+                    open: guideOpensItself(),
+                  })
+                }
               />
             }
             historyMode="pagedAccessible"
@@ -314,6 +347,7 @@ export function CreatingConversation({
             </span>
           }
           value={draft}
+          goals={goals}
           sources={sources}
           availability={
             problem

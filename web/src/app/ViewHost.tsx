@@ -11,6 +11,7 @@ import {
 import { type AgentNotice, AgentNoticeCard } from "../components/AgentNotice";
 import { ControlButton } from "../components/ControlElements";
 import { FileOfferCard, FileShelf } from "../components/FileOffer";
+import { GuidePanel } from "../components/GuidePanel";
 import { Icon } from "../components/Icon";
 import {
   ViewOfferCard,
@@ -18,6 +19,7 @@ import {
   type ViewSummary,
 } from "../components/ViewOffer";
 import { ViewPanel, ViewSplit } from "../components/ViewPanel";
+import type { StartGoal } from "./composerReads";
 import {
   type FileOfferSummary,
   noteOffer,
@@ -27,13 +29,17 @@ import {
   useFileOffer,
   useFileOffers,
 } from "./fileOffers";
+import { readGuide, setGuide, useGuide } from "./goalGuide";
 import { listViews, mintViewURL, viewTabPath } from "./views";
 
 // Agent HTML views (ADR 0032, prototype round 2 "Suora"): an offer card has
 // both places on every press, the right-hand panel and an own browser tab.
 // Nothing opens without a press, and the app never reads the view's content.
 // The same right-hand panel holds the conversation's offered files (Hylly);
-// one panel is open at a time.
+// one panel is open at a time. So does a started goal's guide (Opas): the
+// conversation shown activates its guide owner, and the guide's open state
+// lives in the tab's guide memory (goalGuide) so that a conversation created
+// meanwhile takes it over.
 
 type ViewControls = {
   state: (id: string) => ViewOfferState;
@@ -52,6 +58,17 @@ type ShelfControls = {
 
 const ShelfContext = createContext<ShelfControls | null>(null);
 
+type GuideControls = {
+  /** The guide owner of the conversation shown now. */
+  active?: string;
+  activate: (owner: string) => void;
+  deactivate: (owner: string) => void;
+  open: (owner: string, goal: StartGoal, page: string) => void;
+  close: () => void;
+};
+
+const GuideContext = createContext<GuideControls | null>(null);
+
 type Shelf = {
   conversationId: string;
   selected?: { offerId: string; path?: string };
@@ -66,6 +83,8 @@ type Opened = {
 };
 
 const minPanel = 320;
+// The guide is a narrow reading column, not a view.
+const guidePanel = 400;
 const minConversation = 360;
 
 function panelBounds(total: number) {
@@ -92,6 +111,19 @@ export function ViewHost({
   const [expanded, setExpanded] = useState(false);
   const [total, setTotal] = useState(() => window.innerWidth);
   const [width, setWidth] = useState(() => Math.round(window.innerWidth * 0.5));
+  const [guideFor, setGuideFor] = useState<string>();
+  const guide = useGuide(guideFor);
+  const guideOpen = !!guide?.open;
+  const [guideWidth, setGuideWidth] = useState(guidePanel);
+  const guideFocus = useRef<HTMLElement | null | undefined>(undefined);
+  const guideOwner = useRef(guideFor);
+  guideOwner.current = guideFor;
+  // Another panel takes the place of the guide; the guide stays known.
+  const displaceGuide = useCallback(() => {
+    const owner = guideOwner.current;
+    const current = owner ? readGuide(owner) : undefined;
+    if (owner && current?.open) setGuide(owner, { ...current, open: false });
+  }, []);
   const title = useRef<HTMLHeadingElement>(null);
   const mintSeq = useRef(0);
 
@@ -141,6 +173,7 @@ export function ViewHost({
     (view: ViewSummary, opener: HTMLElement | null) => {
       if (!csrf) return;
       const seq = ++mintSeq.current;
+      displaceGuide();
       setShelf(undefined);
       setOpened({ view, opener });
       setState(view.view_id, "opening");
@@ -157,7 +190,7 @@ export function ViewHost({
         },
       );
     },
-    [csrf, setState],
+    [csrf, setState, displaceGuide],
   );
 
   // The tab opens synchronously with noopener on this app's own page, which
@@ -190,6 +223,7 @@ export function ViewHost({
           ? document.activeElement
           : null;
       mintSeq.current++;
+      displaceGuide();
       setOpened((current) => {
         if (current) setState(current.view.view_id, "idle");
         return undefined;
@@ -201,7 +235,7 @@ export function ViewHost({
       });
       refreshOffers(conversationId);
     },
-    [setState],
+    [setState, displaceGuide],
   );
 
   const closeShelf = useCallback(() => {
@@ -218,6 +252,55 @@ export function ViewHost({
   useEffect(() => {
     if (opened || shelfFor) title.current?.focus();
   }, [opened?.view.view_id, opened, shelfFor]);
+
+  const deactivateGuide = useCallback(
+    (owner: string) =>
+      setGuideFor((current) => (current === owner ? undefined : current)),
+    [],
+  );
+  // An opened guide takes the panel from a view or the file panel.
+  useEffect(() => {
+    if (!guideOpen) return;
+    mintSeq.current++;
+    setOpened((current) => {
+      if (current) setState(current.view.view_id, "idle");
+      return undefined;
+    });
+    setShelf(undefined);
+    setExpanded(false);
+  }, [guideOpen, setState]);
+  // Opened from the top bar, the guide takes focus once it is shown; opened by
+  // Aloita, the field keeps it for the placeholder just selected.
+  const guideShown = !opened && !shelf && guideOpen && guide;
+  const guideVisible = !!guideShown;
+  useEffect(() => {
+    if (guideVisible && guideFocus.current !== undefined)
+      title.current?.focus();
+  }, [guideVisible]);
+
+  const guideControls = useMemo<GuideControls>(
+    () => ({
+      active: guideFor,
+      activate: setGuideFor,
+      deactivate: deactivateGuide,
+      open: (owner, goal, page) => {
+        guideFocus.current =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+        setGuide(owner, { goal, page, open: true });
+      },
+      close: () => {
+        const owner = guideOwner.current;
+        const current = owner ? readGuide(owner) : undefined;
+        if (owner && current) setGuide(owner, { ...current, open: false });
+        const opener = guideFocus.current;
+        guideFocus.current = undefined;
+        if (opener) window.setTimeout(() => opener.focus(), 0);
+      },
+    }),
+    [guideFor, deactivateGuide],
+  );
 
   const shelfControls = useMemo<ShelfControls>(
     () => ({
@@ -240,46 +323,64 @@ export function ViewHost({
     [enabled, states, open, openTab],
   );
   const bounds = panelBounds(total);
-  const shown = Math.min(Math.max(width, bounds.min), bounds.max);
+  const shown = Math.min(
+    Math.max(guideShown ? guideWidth : width, bounds.min),
+    bounds.max,
+  );
 
   return (
     <ViewContext.Provider value={controls}>
       <ShelfContext.Provider value={shelfControls}>
-        <ViewSplit
-          open={!!opened || !!shelf}
-          expanded={expanded}
-          width={shown}
-          min={bounds.min}
-          max={bounds.max}
-          onResize={(next) =>
-            setWidth(Math.min(Math.max(next, bounds.min), bounds.max))
-          }
-          onReset={() => setWidth(Math.round(total * 0.5))}
-          onShowConversation={() => setExpanded(false)}
-          panel={
-            opened ? (
-              <ViewPanel
-                title={opened.view.title}
-                src={opened.src}
-                failed={opened.failed}
-                expanded={expanded}
-                titleRef={title}
-                onToggleExpanded={() => setExpanded(!expanded)}
-                onOpenTab={() => openTab(opened.view)}
-                onClose={close}
-              />
-            ) : shelf ? (
-              <ShelfPanel
-                shelf={shelf}
-                titleRef={title}
-                onSelect={(selected) => setShelf({ ...shelf, selected })}
-                onClose={closeShelf}
-              />
-            ) : null
-          }
-        >
-          {children}
-        </ViewSplit>
+        <GuideContext.Provider value={guideControls}>
+          <ViewSplit
+            open={!!opened || !!shelf || !!guideShown}
+            expanded={expanded}
+            width={shown}
+            min={bounds.min}
+            max={bounds.max}
+            onResize={(next) =>
+              (guideShown ? setGuideWidth : setWidth)(
+                Math.min(Math.max(next, bounds.min), bounds.max),
+              )
+            }
+            onReset={() =>
+              guideShown
+                ? setGuideWidth(guidePanel)
+                : setWidth(Math.round(total * 0.5))
+            }
+            onShowConversation={() => setExpanded(false)}
+            panel={
+              opened ? (
+                <ViewPanel
+                  title={opened.view.title}
+                  src={opened.src}
+                  failed={opened.failed}
+                  expanded={expanded}
+                  titleRef={title}
+                  onToggleExpanded={() => setExpanded(!expanded)}
+                  onOpenTab={() => openTab(opened.view)}
+                  onClose={close}
+                />
+              ) : shelf ? (
+                <ShelfPanel
+                  shelf={shelf}
+                  titleRef={title}
+                  onSelect={(selected) => setShelf({ ...shelf, selected })}
+                  onClose={closeShelf}
+                />
+              ) : guideShown ? (
+                <GuidePanel
+                  goal={guideShown.goal}
+                  page={guideShown.page}
+                  titleRef={title}
+                  onClose={guideControls.close}
+                />
+              ) : null
+            }
+          >
+            {children}
+          </ViewSplit>
+        </GuideContext.Provider>
       </ShelfContext.Provider>
     </ViewContext.Provider>
   );
@@ -391,6 +492,48 @@ export function FilesHeaderControl({
       onPress={() => (open ? shelf.close() : shelf.open(conversationId))}
     >
       <Icon name="file" /> <span>{count}</span>
+    </ControlButton>
+  );
+}
+
+/** The conversation header's guide toggle (Opas). It makes the conversation
+ * shown the guide's owner, and appears only while the conversation has a
+ * start-page goal: started in this tab or recorded by Pi as a skill call. */
+export function GuideHeaderControl({
+  owner,
+  goal,
+  page,
+}: {
+  owner?: string;
+  goal?: StartGoal;
+  page?: string;
+}) {
+  const host = useContext(GuideContext);
+  const guide = useGuide(owner);
+  const activate = host?.activate;
+  const deactivate = host?.deactivate;
+  useEffect(() => {
+    if (!owner || !activate || !deactivate) return;
+    activate(owner);
+    return () => deactivate(owner);
+  }, [owner, activate, deactivate]);
+  const shown = guide?.goal ?? goal;
+  if (!host || !owner || !shown) return null;
+  const open = !!guide?.open && host.active === owner;
+  return (
+    <ControlButton
+      data-testid="guide-toggle"
+      size="row"
+      variant="quiet"
+      className="ah-guide-toggle"
+      aria-label={open ? "Piilota opas" : "Näytä opas"}
+      title={`Opas: ${shown.title}`}
+      aria-pressed={open}
+      onPress={() =>
+        open ? host.close() : host.open(owner, shown, guide?.page ?? page ?? "")
+      }
+    >
+      <Icon name="scroll" /> <span className="ah-guide-toggle-label">Opas</span>
     </ControlButton>
   );
 }

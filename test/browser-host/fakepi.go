@@ -450,6 +450,29 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 		if arguments != "" {
 			recordedPrompt += "\n\n" + arguments
 		}
+	} else if command, arguments, _ := strings.Cut(prompt, " "); strings.HasPrefix(command, "/skill:") {
+		// Pi's _expandSkillCommand for a project skill in the workspace: the
+		// name runs to the first space, the body loses its frontmatter and
+		// the arguments are trimmed.
+		name := strings.TrimPrefix(command, "/skill:")
+		for _, dir := range []string{".pi", ".agents"} {
+			base := filepath.Join(s.cwd, dir, "skills", name)
+			data, err := os.ReadFile(filepath.Join(base, "SKILL.md"))
+			if err != nil || !filepath.IsLocal(name) {
+				continue
+			}
+			body := string(data)
+			if strings.HasPrefix(body, "---\n") {
+				if end := strings.Index(body[4:], "\n---"); end >= 0 {
+					body = body[4+end+4:]
+				}
+			}
+			recordedPrompt = fmt.Sprintf("<skill name=\"%s\" location=\"%s/SKILL.md\">\nReferences are relative to %s.\n\n%s\n</skill>", name, base, base, strings.TrimSpace(body))
+			if arguments = strings.TrimSpace(arguments); arguments != "" {
+				recordedPrompt += "\n\n" + arguments
+			}
+			break
+		}
 	}
 	if s.system == nil {
 		// Pi 1.3 records its prompt sections and tool declarations as a
@@ -789,6 +812,7 @@ func fakeCommands() []any {
 	return []any{
 		command("skill:git-commit", "Stage and commit working-tree changes as one or more well-formed commits.", "skill", "auto", "user"),
 		command("skill:pytest-debug", "Find why a pytest test fails and fix the smallest cause first.", "skill", "auto", "project"),
+		command("skill:korjaa-ongelma", "Korjaa havaittu ongelma", "skill", "auto", "project"),
 		command("review", "Review the working-tree diff before committing", "prompt", "auto", "user"),
 		command("fix-tests", "Fix failing tests", "prompt", "auto", "project"),
 		command("mcp", "Manage MCP servers", "extension", "builtin", "user"),

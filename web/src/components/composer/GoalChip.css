@@ -1,0 +1,46 @@
+/* The goal chip above the field: the draft's leading skill invocation shown
+   by the start-page goal's title (proto-start-page-goal, direction A). */
+.ah-goal-chip-row {
+  display: flex;
+}
+.ah-goal-chip {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid var(--ah-accent-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-goal-chip > .ah-goal-chip-open {
+  min-width: 0;
+  gap: var(--ah-s2);
+  color: inherit;
+  background: transparent;
+}
+.ah-goal-chip > .ah-goal-chip-open > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ah-accent);
+}
+.ah-goal-chip-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.ah-goal-chip > .ah-goal-chip-remove {
+  flex: none;
+  color: var(--ah-muted);
+}
+.ah-goal-chip-reader .ah-guide-heading > h2 {
+  font-family: inherit;
+}
+.ah-goal-chip-note {
+  margin: var(--ah-s2) 0 0;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}

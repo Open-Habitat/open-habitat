@@ -24,6 +24,25 @@ describe("repository start page", () => {
     ).toBe("/skill:fixture An editable prompt\n\nExisting draft.\n\n");
     expect(goalDraft(goal, " ").text).toBe("An editable prompt\n\n");
   });
+  it("leaves a goal's own skill to carry the request: only the call, the draft and the placeholder", () => {
+    const own = {
+      ...goal,
+      skill: "korjaa",
+      prompt: "Selvitä syy.\n\n[havainto]",
+    };
+    const prepared = goalDraft(own, "Earlier\n", true);
+    expect(prepared.text).toBe("/skill:korjaa Earlier\n\n[havainto]");
+    expect(
+      prepared.text.slice(prepared.selectionStart, prepared.selectionEnd),
+    ).toBe("[havainto]");
+    expect(goalDraft({ ...own, prompt: "Selvitä syy." }, "", true).text).toBe(
+      "/skill:korjaa ",
+    );
+    // Without a verified skill nothing carries it: the request is text.
+    expect(goalDraft({ ...own, skill: undefined }, "", true).text).toBe(
+      "Selvitä syy.\n\n[havainto]",
+    );
+  });
   it("normalizes trailing blank lines so typing starts in one new paragraph", () => {
     expect(
       goalDraft({ ...goal, prompt: "Request\n\n\n" }, "Earlier\n\n\n").text,

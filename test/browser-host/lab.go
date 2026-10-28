@@ -82,6 +82,15 @@ func seedLab(home string) error {
 			if e := os.WriteFile(filepath.Join(dir, ".agents/start-page.md"), labStartPage, 0600); e != nil {
 				return e
 			}
+			// The start page's first goal has its own skill, as the
+			// start-page skill writes it: the goal's title is its description.
+			goalSkill := filepath.Join(dir, ".agents", "skills", "korjaa-ongelma")
+			if e := os.MkdirAll(goalSkill, 0700); e != nil {
+				return e
+			}
+			if e := os.WriteFile(filepath.Join(goalSkill, "SKILL.md"), []byte("---\nname: korjaa-ongelma\ndescription: Korjaa havaittu ongelma\ndisable-model-invocation: true\n---\nSelvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n"), 0600); e != nil {
+				return e
+			}
 			skillDir := filepath.Join(dir, ".pi", "skills", "pytest-debug")
 			if e := os.MkdirAll(skillDir, 0700); e != nil {
 				return e

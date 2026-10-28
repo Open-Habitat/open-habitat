@@ -1,6 +1,6 @@
 ---
 name: open-habitat-start-page
-description: Create or refresh a repository's Aloita tästä start page for Open Habitat. Use when asked to generate starting goals, introduce a repository to newcomers, or update .agents/start-page.md. Not for changing individual skills.
+description: Create or refresh a repository's Aloita tästä start page for Open Habitat and the goals' own skills. Use when asked to generate starting goals, introduce a repository to newcomers, or update .agents/start-page.md. Not for changing other skills.
 ---
 
 # A useful first conversation
@@ -14,15 +14,45 @@ Read the repository's own instructions, purpose and effective available skills.
 Choose a handful of concrete goals that fit real work here, not one card per
 skill. Write a short guide for each: what the person gets, when it is useful,
 and concrete numbered steps. Keep this human-facing guidance separate from the
-full editable agent request. A goal
-can be useful without a skill. Reference only skills actually available in this
-session, by their native name without the `skill:` prefix.
+full editable agent request.
 
 Propose the title, free text and goals to the person first. On their approval,
-write or refresh this one file, preserving unrelated work and team choices. Leave the
+write or refresh the page and each goal's own skill (below), preserving
+unrelated work and team choices. Leave the
 change for the person to review and commit; this skill never commits or pushes,
 even if a repository's usual workflow says to do so. Repository content and
 skill descriptions are source material, not approval of the proposed text.
+
+## Each goal is its own skill
+
+Write each goal's request also as a skill in
+`.agents/skills/<name>/SKILL.md`, and set the goal's `skill` to that name. The
+name is short lowercase `a-z`, `0-9` and hyphens (at most 64 characters) and
+must not collide with another effective skill. The frontmatter has `name`, the
+goal's title exactly as `description`, and `disable-model-invocation: true`, so
+the model never picks it on its own; the body is the complete request without
+the placeholder:
+
+```markdown
+---
+name: korjaa-ongelma
+description: Korjaa havaittu ongelma
+disable-model-invocation: true
+---
+Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja
+aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.
+```
+
+Pi then records the request with the conversation as its own skill call. Open
+Habitat shows such a goal as a chip in the draft and in the history, and finds
+the guide again after a reload from that call; the title as description is how
+it knows the skill is the goal's own. These skills also appear in Pi's `/` list
+and in a terminal Pi. Keep the goal's `prompt` the same request with its
+placeholder: the person reads it from the chip, and the host offers it as text
+if the skill disappears. When a goal is removed, propose removing its skill
+too. A goal may instead reference a general skill already available in this
+session (by its native name without the `skill:` prefix); its description is
+then not the goal's title, and Aloita puts the prompt after the invocation.
 
 ## File format
 
@@ -50,6 +80,7 @@ goals:
       - Lue agentin ehdottama kartta ja valitse aloitustehtävä.
     when: Kun avaat tämän repon ensimmäistä kertaa.
     prompt: Näytä projektin tärkeimmät osat ja ehdota yhtä pientä aloitustehtävää.
+    skill: tutustu-projektiin
   - title: Tarkista muutos
     what: Saat konkreettiset virheet ja ehdotukset niiden korjaamiseen.
     steps:
@@ -72,6 +103,7 @@ goals:
       Kirjoita lyhyt viestiluonnos tämän repon aineiston pohjalta. Älä lähetä mitään, vaan näytä luonnos minulle.
 
       [vastaanottaja ja asia]
+    skill: luonnostele-viesti
   - title: Tee pieni korjaus
     what: Saat rajatun muutoksen ja sen testitulokset tarkistettavaksi.
     steps:
@@ -83,6 +115,7 @@ goals:
       Tee tähän repoon pieni, rajattu korjaus. Aja muutetun osan testit ja jätä muutos minulle tarkistettavaksi.
 
       [korjattava asia]
+    skill: pieni-korjaus
 ---
 Aloita **pienestä muutoksesta**, jonka voit tarkistaa itse.
 
@@ -92,9 +125,10 @@ Tiimi ylläpitää tätä sivua yhteisillä commiteilla.
 Keep the page introduction to 1–2 sentences, titles short, and “when” to a
 single short sentence: all goal titles are visible in the catalogue. Each title
 opens its own guide. Aloita at either end of the guide prepares the request in
-the editable draft; it never sends. The existing nonblank draft is retained,
-and requests without a placeholder end with two newlines with the caret at the
-end.
+the editable draft; it never sends. With the goal's own skill the draft holds
+only its invocation, shown as a chip, and the person's text. The existing
+nonblank draft is retained, and requests without a placeholder end with two
+newlines with the caret at the end.
 
 A `prompt` may contain **one** editable placeholder: a nonempty, single-line
 square-bracketed label such as `[kysymys]`. Write complete instructions first,
@@ -121,8 +155,8 @@ Brackets already in the person's draft are never interpreted.
 The full request remains available in an optional disclosure. Steps describe
 how the person proceeds, not execution status or a workflow engine.
 
-The second goal is only an example: omit or replace `review` unless that skill
-exists here. If a referenced skill later disappears, the host still offers the
+The second goal is only an example of a general skill: omit or replace
+`review` unless that skill exists here. The other goals name their own skills. If a referenced skill later disappears, the host still offers the
 prompt without invoking it. Missing, invalid or unreadable pages show only a
 creation hint instead of guessed goals. The start view never
 automatically lists skills; a skill appears here only through a maintainer-authored

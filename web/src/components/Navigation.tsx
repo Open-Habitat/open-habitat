@@ -1025,6 +1025,7 @@ export function AgentHeader({
   archive,
   editorControl,
   filesControl,
+  guideControl,
   settings,
   contextIndicator,
   modelPicker,
@@ -1052,6 +1053,8 @@ export function AgentHeader({
   editorControl?: ReactNode;
   /** The conversation's file panel toggle, where it has offered files. */
   filesControl?: ReactNode;
+  /** The started goal's guide toggle (Opas), where the conversation has one. */
+  guideControl?: ReactNode;
   archiveReason?: string;
   settings?: { model?: string; thinking?: string };
   /** How full the model's context is (Rengas), just before the model. */
@@ -1201,6 +1204,7 @@ export function AgentHeader({
               <span>{settings.thinking ?? "Agentti"}</span>
             </ControlButton>
           ) : null)}
+        {guideControl}
         {filesControl}
         {editorControl}
         {terminal}

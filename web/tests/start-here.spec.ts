@@ -124,11 +124,13 @@ for (const width of [1440, 390]) {
       });
       await page.getByTestId("guide-request").locator("summary").click();
       await expect(page.getByTestId("guide-prompt")).toHaveText(
-        "/skill:pytest-debug Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\n[kuvaile havainto]",
+        "/skill:korjaa-ongelma Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\n[kuvaile havainto]",
       );
       await page.getByTestId("guide-start-top").click();
+      // The goal's own skill carries the request; the chip shows its call.
+      await expect(page.getByTestId("goal-chip")).toBeVisible();
       await expect(field).toHaveValue(
-        "/skill:pytest-debug Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\nOma keskeneräinen ajatus.\n\n[kuvaile havainto]",
+        "Oma keskeneräinen ajatus.\n\n[kuvaile havainto]",
       );
       await expect(field).toBeFocused();
       expect(
@@ -144,9 +146,8 @@ for (const width of [1440, 390]) {
         },
       );
       await field.press("X");
-      await expect(field).toHaveValue(
-        "/skill:pytest-debug Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\nOma keskeneräinen ajatus.\n\nX",
-      );
+      await expect(field).toHaveValue("Oma keskeneräinen ajatus.\n\nX");
+      await page.getByTestId("goal-chip-remove").click();
       await field.fill("");
       await page.getByTestId("guide-start-bottom").click();
       await expect(field).toBeFocused();
@@ -156,9 +157,8 @@ for (const width of [1440, 390]) {
         ),
       ).toBe("[kuvaile havainto]");
       await field.press("Y");
-      await expect(field).toHaveValue(
-        "/skill:pytest-debug Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\nY",
-      );
+      await expect(field).toHaveValue("Y");
+      await page.getByTestId("goal-chip-remove").click();
       await expect(page.getByTestId("goal-guide")).toBeVisible();
       await field.fill("Oma keskeneräinen ajatus.");
       await page.getByTestId("guide-back").click();

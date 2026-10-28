@@ -41,6 +41,13 @@ import {
   shellExcluded,
   withLeadingCommand,
 } from "./completion";
+import {
+  type ComposerGoal,
+  GoalChip,
+  joinGoal,
+  splitGoal,
+  unwrapGoal,
+} from "./GoalChip";
 import { Palette, type PaletteTab } from "./Palette";
 import "./composer.css";
 
@@ -388,6 +395,7 @@ export function Composer({
   sources,
   onActivity,
   idlePlaceholder = "Kirjoita agentille…",
+  goals,
 }: {
   value: string;
   csrf?: string;
@@ -423,22 +431,28 @@ export function Composer({
   onActivity?: () => void;
   /** The empty field's invitation while the agent is not working. */
   idlePlaceholder?: string;
+  /** Start-page goals: a draft beginning with one's skill shows its chip. */
+  goals?: ComposerGoal[];
 }) {
   // The draft is what the agent receives: the person's text with one
   // attachment reference per line after it. The field edits only the text;
   // the attachments show as chips (Jari 24.10.2026).
-  const draft = useRef({ value: draftValue, onChange: onDraftChange });
-  draft.current = { value: draftValue, onChange: onDraftChange };
-  const { text: value, attachments } = splitAttachments(draftValue);
-  const onChange = useCallback((text: string) => {
+  const draft = useRef({ value: draftValue, onChange: onDraftChange, goals });
+  draft.current = { value: draftValue, onChange: onDraftChange, goals };
+  const { text: whole, attachments } = splitAttachments(draftValue);
+  const { goal, text: value } = splitGoal(whole, goals);
+  // The field's text with the draft's goal chip and attachments kept.
+  const setText = useCallback((text: string, keepGoal = true) => {
     const current = draft.current;
-    const next = joinAttachments(
-      text,
-      splitAttachments(current.value).attachments,
-    );
+    const parts = splitAttachments(current.value);
+    const kept = keepGoal
+      ? splitGoal(parts.text, current.goals).goal
+      : undefined;
+    const next = joinAttachments(joinGoal(kept, text), parts.attachments);
     draft.current = { ...current, value: next };
     current.onChange(next);
   }, []);
+  const onChange = useCallback((text: string) => setText(text), [setText]);
   const removeAttachment = (index: number) => {
     const current = draft.current;
     const parts = splitAttachments(current.value);
@@ -550,7 +564,8 @@ export function Composer({
   const lastCaret = useRef<[number, number] | null>(null);
   const { commands, files } = useSources(sources, open);
   const working = activity === "working";
-  const shellOn = !!shell && isShell(value);
+  // A goal chip makes the draft a skill call; its text is never a command.
+  const shellOn = !!shell && !goal && isShell(value);
   const running = shell?.running;
   const now = useNow(running?.state === "running");
   const stopping = stopState ?? shell?.stopState;
@@ -1170,6 +1185,31 @@ export function Composer({
       aria-label="Kirjoita viesti"
     >
       {queueCard}
+      {goal ? (
+        <GoalChip
+          goal={goal}
+          onRemove={
+            fieldDisabled
+              ? undefined
+              : () => {
+                  setText(value, false);
+                  field.current?.focus();
+                }
+          }
+          onUnwrap={
+            fieldDisabled
+              ? undefined
+              : () => {
+                  const text = unwrapGoal(goal, value);
+                  setText(text, false);
+                  requestAnimationFrame(() => {
+                    field.current?.focus();
+                    field.current?.setSelectionRange(text.length, text.length);
+                  });
+                }
+          }
+        />
+      ) : null}
       <AttachmentChips
         attachments={attachments}
         onRemove={fieldDisabled ? undefined : removeAttachment}

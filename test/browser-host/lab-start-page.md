@@ -11,7 +11,7 @@
         "Agentti selvittää syyn ja tekee pienen toistavan testin.",
         "Agentti korjaa juurisyyn, ajaa testit ja kertoo tarkistamatta jääneen."
       ],
-      "skill": "pytest-debug",
+      "skill": "korjaa-ongelma",
       "prompt": "Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\n[kuvaile havainto]"
     },
     {
