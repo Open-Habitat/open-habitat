@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fi" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Koko näkymän esikatselu · ikonirivi (kierros 2)</title>
+<style>/*TOKENS*/</style>
+<style>/*PAGE_CSS*/</style>
+<style>/*PICKER_CSS*/</style>
+</head>
+<body>
+<div class="hn">
+  <strong id="hn-name"></strong><span class="hn-note" id="hn-note"></span>
+  <label>Tiedosto <select data-set="file">
+    <option value="md">saaristoretki-2027.md</option>
+    <option value="csv">ilmoittautuneet.csv</option>
+    <option value="svg">reittikartta.svg</option>
+    <option value="html">kutsu.html</option>
+    <option value="json">asetukset.json (ei esikatselua)</option>
+  </select></label>
+  <label>Keskustelu <select data-set="conv"><option value="0">piilossa</option><option value="1">rinnalla</option></select></label>
+  <label>Näppäimet <select data-set="kbd"><option value="mac">Mac</option><option value="pc">PC</option></select></label>
+  <label>Teema <select id="theme"><option value="light">vaalea</option><option value="dark">tumma</option></select></label>
+  <label><input type="checkbox" id="phone"> Puhelin (390 px)</label>
+</div>
+<div class="frame-wrap"><div class="frame"><div id="stage"></div></div></div>
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Tiedostorivi</button>
+  <button class="proto-picker-item">Otsikkopalkki</button>
+  <button class="proto-picker-item">Kulma</button>
+</nav>
+<script>window.FILES = /*FILES*/;</script>
+<script>/*PAGE_JS*/</script>
+<script>
+document.getElementById('theme').addEventListener('change', (e) => { document.documentElement.dataset.theme = e.target.value; });
+document.getElementById('phone').addEventListener('change', (e) => { document.querySelector('.frame-wrap').classList.toggle('phone', e.target.checked); });
+/*PICKER_JS*/
+</script>
+</body>
+</html>

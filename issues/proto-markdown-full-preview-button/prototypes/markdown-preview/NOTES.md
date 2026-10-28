@@ -1,5 +1,8 @@
 # Markdownin esikatselu · koko näkymän ohjain
 
+> Kierros 1. Valitsit 28.10. suunnan *Painike* (ikoneina, ei rinnakkaista);
+> kierros 2 on [../full-preview-icons/NOTES.md](../full-preview-icons/NOTES.md).
+
 Sanoit 28.10., että Cmd+Shift+V:n avaama esikatselu tekstin tilalle on
 juuri oikea, että lukunäkymä saa olla muokkaamaton, että Cmd+K V on liian
 hidas ja että koko näkymän esikatselulle tarvitaan oma painike. Tämä

@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-markdown-preview
 lane_seq: 1
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: kokeiltavaa:2026-10-28/proto-markdown-full-preview-button
 ---
@@ -18,7 +18,7 @@ Markdownin koko näkymän esikatselulle parempi pikanäppäin ja oma painike, pa
 
 ## Prototyyppi
 
-Kierros 28.10. odottaa Jarin valintaa (preparation `pending`): [result.md](result.md), opas [prototypes/markdown-preview/NOTES.md](prototypes/markdown-preview/NOTES.md).
+Kierros 1 (ohjaimen muoto) ratkesi: Painike ikoneina, ei rinnakkaista. Kierros 2 (ikonirivin paikka ja kuvakkeet muodon mukaan, ⌘E) odottaa Jarin valintaa (preparation `pending`): [result.md](result.md), opas [prototypes/full-preview-icons/NOTES.md](prototypes/full-preview-icons/NOTES.md).
 
 ## Decisions
 

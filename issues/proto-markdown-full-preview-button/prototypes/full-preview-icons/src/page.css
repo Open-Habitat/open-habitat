@@ -1,0 +1,131 @@
+/* Kierros 2: koko näkymän esikatselun ikonirivi. Tuotannon BrowserEditorin (CodeMirror 6
+   -paneeli) esityskopio tokenien päällä; ei tuotantokomponentteja. */
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--ah-bg); color: var(--ah-ink); font: 400 var(--ah-size-ui)/var(--ah-lh-ui) var(--ah-font); }
+
+/* ----- Harness: the page's own settings row (not part of the design) ----- */
+.hn { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 8px 16px; background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-size: var(--ah-size-meta); }
+.hn strong { margin-right: 4px; }
+.hn .hn-note { color: var(--ah-ink-2); flex: 1 1 360px; }
+.hn label { display: inline-flex; gap: 6px; align-items: center; color: var(--ah-ink-2); }
+.hn select { font: inherit; }
+.frame-wrap { padding: 0 0 72px; }
+.frame { container-type: inline-size; height: calc(100vh - 110px); min-height: 600px; display: flex; background: var(--ah-bg); overflow: hidden; }
+.frame-wrap.phone { padding-top: 12px; }
+.frame-wrap.phone .frame { width: 390px; margin: 0 auto; border: 1px solid var(--ah-line); border-radius: 12px; --ah-control-row: 40px; --ah-control-row-font: 14px; }
+#stage { flex: 1; min-width: 0; display: flex; }
+.app { flex: 1; min-width: 0; display: flex; }
+
+/* ----- Buttons: production primitive (Controls.module.css), row size ----- */
+.b { box-sizing: border-box; position: relative; min-height: var(--ah-control-row); padding: 0 var(--ah-control-row-pad); border: 1px solid transparent; border-radius: var(--ah-r-md); font: 600 var(--ah-control-row-font)/1.2 var(--ah-font); color: var(--ah-ink); background: var(--ah-control); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: var(--ah-control-row-gap); white-space: nowrap; }
+.b:hover { background: var(--ah-control-hover); }
+.b:disabled { color: var(--ah-disabled-fg); background: var(--ah-disabled-bg); cursor: default; }
+.b svg, .ib svg { width: var(--ah-control-row-icon); height: var(--ah-control-row-icon); flex: none; }
+/* Icon button: a square as tall as its role (spacing.css). */
+.ib { box-sizing: border-box; position: relative; width: var(--ah-control-row); height: var(--ah-control-row); padding: 0; border: 1px solid transparent; border-radius: var(--ah-r-md); background: transparent; color: var(--ah-accent-ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.ib:hover { background: var(--ah-surface-hover); }
+.ib[aria-pressed="true"] { background: var(--ah-accent-soft); color: var(--ah-accent-ink); box-shadow: inset 0 0 0 1px var(--ah-accent-line); }
+:is(.b, .ib, textarea, .pv):focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: var(--ah-focus-inset); }
+/* A pair of icons that are one choice: segments touch and draw the ring inside. */
+.pair { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--ah-r-md); background: var(--ah-control); }
+.pair .ib { width: calc(var(--ah-control-row) - 4px); height: calc(var(--ah-control-row) - 4px); border-radius: calc(var(--ah-r-md) - 2px); color: var(--ah-muted); }
+.pair .ib:hover { background: var(--ah-control-hover); color: var(--ah-ink); }
+.pair .ib[aria-pressed="true"] { background: var(--ah-surface); color: var(--ah-accent-ink); box-shadow: 0 0 0 1px var(--ah-line); }
+/* Tooltip with the shortcut: hover or keyboard focus (title would not show the key on focus). */
+[data-tip]:is(:hover, :focus-visible)::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; padding: 5px 8px; border-radius: 6px; background: var(--ah-ink); color: var(--ah-bg); font: 500 12px/1.3 var(--ah-font); white-space: nowrap; pointer-events: none; }
+.corner.bottom [data-tip]:is(:hover, :focus-visible)::after { top: auto; bottom: calc(100% + 6px); }
+
+/* ----- Editor panel ----- */
+.ed { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--ah-surface); }
+.ed-head { display: flex; align-items: center; gap: 4px; padding: 4px 8px 4px 14px; border-bottom: 1px solid var(--ah-line); }
+.ed-head h2 { margin: 0; flex: 1; font: 500 var(--ah-size-h2)/1.3 var(--ah-font); }
+.ed-head .sep { width: 1px; height: 18px; margin: 0 4px; background: var(--ah-line); }
+.ed-tools { display: flex; align-items: center; gap: var(--ah-s2); padding: var(--ah-s2); border-bottom: 1px solid var(--ah-line); flex-wrap: wrap; }
+.ed-file { flex: 1; min-width: 0; font: 400 13px var(--ah-mono); overflow-wrap: anywhere; }
+.ed-state { color: var(--ah-ink-2); }
+.ed-state:empty { display: none; }
+.ed-body { flex: 1; min-height: 0; display: flex; position: relative; overflow: hidden; }
+.src { flex: 1 1 0; min-width: 0; overflow: auto; background: var(--ah-surface); }
+.code { position: relative; --g: 3.4em; font: 400 13px/1.6 var(--ah-mono); background: linear-gradient(to right, var(--ah-surface-2) var(--g), transparent var(--g)); min-height: 100%; }
+.rows, .code textarea { margin: 0; padding: 6px 12px 40vh calc(var(--g) + 8px); font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; }
+.rows .ln { position: relative; }
+.rows .ln::before { content: attr(data-n); position: absolute; left: calc(-1 * var(--g) - 8px); width: calc(var(--g) - 10px); text-align: right; color: var(--ah-muted); }
+.rows .ln.fold::after { content: '⌄'; position: absolute; left: -16px; top: -2px; color: var(--ah-faint); }
+.code textarea { position: absolute; inset: 0; width: 100%; box-sizing: border-box; border: 0; resize: none; overflow: hidden; background: transparent; color: transparent; caret-color: var(--ah-ink); }
+.code textarea::selection { background: color-mix(in srgb, var(--ah-accent) 25%, transparent); }
+.sx-h { color: var(--ah-syntax-title); }
+.sx-k { color: var(--ah-syntax-keyword); }
+.sx-s { color: var(--ah-syntax-string); }
+.sx-n { color: var(--ah-syntax-number); }
+.sx-c { color: var(--ah-syntax-comment); }
+.sx-b { font-weight: 700; }
+.ed-body[data-mode="preview"] .src { display: none; }
+
+/* ----- Preview (in place of the text) ----- */
+.pv { box-sizing: border-box; flex: 1 1 0; min-width: 0; overflow: auto; background: var(--ah-surface); }
+.pv-md { padding: var(--ah-s4) var(--ah-s5) 30vh; }
+.doc { max-width: 72ch; margin-inline: auto; font-size: var(--ah-size-body); line-height: var(--ah-lh-body); }
+.doc h1 { font: 650 26px/1.25 var(--ah-font); margin: 0 0 .5em; }
+.doc h2 { font: 600 19px/1.3 var(--ah-font); margin: 1.4em 0 .4em; }
+.doc h3 { font: 600 15.5px/1.3 var(--ah-font); margin: 1.2em 0 .3em; }
+.doc blockquote { margin: 1em 0; padding-left: 12px; border-left: 3px solid var(--ah-line-strong); color: var(--ah-ink-2); }
+.doc code { font: 400 var(--ah-size-code) var(--ah-mono); background: var(--ah-sunken); padding: 1px 4px; border-radius: 4px; }
+.doc pre { background: var(--ah-sunken); padding: 10px 12px; border-radius: var(--ah-r-md); overflow: auto; }
+.doc pre code { background: none; padding: 0; }
+.doc table { border-collapse: collapse; margin: .8em 0; font-size: var(--ah-size-ui); }
+.doc th, .doc td { border: 1px solid var(--ah-line); padding: 4px 8px; text-align: left; }
+.doc th { background: var(--ah-surface-2); }
+/* CSV: the whole file as a table, header row fixed while scrolling. */
+.pv-csv { padding: 0 0 30vh; }
+.pv-csv .cap { position: sticky; left: 0; padding: 8px 14px; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.pv-csv table { border-collapse: separate; border-spacing: 0; font-size: var(--ah-size-ui); }
+.pv-csv th, .pv-csv td { padding: 5px 10px; border-bottom: 1px solid var(--ah-line-soft); border-right: 1px solid var(--ah-line-soft); text-align: left; white-space: nowrap; }
+.pv-csv thead th { position: sticky; top: 0; z-index: 1; background: var(--ah-surface-2); border-bottom: 1px solid var(--ah-line-strong); font-weight: 600; }
+.pv-csv td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.pv-csv .rn { color: var(--ah-muted); text-align: right; font: 400 12px var(--ah-mono); background: var(--ah-surface-2); position: sticky; left: 0; }
+.pv-csv thead .rn { z-index: 2; }
+/* SVG: the picture on a checkerboard, so transparency shows in both themes. */
+.pv-img { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 16px; }
+.pv-img .checker { max-width: 100%; padding: 12px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: repeating-conic-gradient(var(--ah-sunken) 0 25%, var(--ah-surface) 0 50%) 0 0 / 16px 16px; }
+.pv-img img { display: block; max-width: 100%; height: auto; }
+.pv-img .cap, .pv-html .cap { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+/* HTML: an inert frame, no scripts, no network. */
+.pv-html { display: flex; flex-direction: column; }
+.pv-html .cap { padding: 6px 14px; border-bottom: 1px solid var(--ah-line); }
+.pv-html iframe { flex: 1; width: 100%; min-height: 0; border: 0; background: var(--ah-content-canvas); }
+
+/* ----- Kulma: a floating icon pair over the document ----- */
+.corner { position: absolute; top: 10px; right: 18px; z-index: 5; display: flex; padding: 3px; gap: 2px; border-radius: 10px; background: var(--ah-surface); border: 1px solid var(--ah-line-strong); box-shadow: 0 4px 14px rgba(16, 24, 40, .14); }
+.corner .ib { color: var(--ah-muted); border-radius: 7px; }
+.corner .ib:hover { color: var(--ah-ink); }
+.corner .ib[aria-pressed="true"] { background: var(--ah-accent-soft); color: var(--ah-accent-ink); box-shadow: none; }
+
+/* ----- Context: the conversation beside, or its rail ----- */
+.rail { width: 34px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 10px; background: var(--ah-rail); border-left: 1px solid var(--ah-line); color: var(--ah-ink-2); }
+.rail svg { width: 14px; height: 14px; }
+.rail span { writing-mode: vertical-rl; font-size: 13px; }
+.conv { width: 50%; flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--ah-line); background: var(--ah-bg); }
+.conv-head { display: flex; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.conv-head span { color: var(--ah-ok); font-weight: 600; font-size: 12px; }
+.conv-body { flex: 1; overflow: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 18px; font-size: var(--ah-size-body); line-height: var(--ah-lh-body); }
+.conv-body p { margin: 0; }
+.conv-body code { font: 400 var(--ah-size-code) var(--ah-mono); }
+.user { align-self: flex-end; max-width: 85%; padding: 10px 14px; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg, 12px); }
+.compose { margin: 10px 18px 16px; padding: 12px 14px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg, 12px); background: var(--ah-surface); color: var(--ah-muted); }
+
+/* ----- Phone ----- */
+@container (max-width: 600px) {
+  .rail, .conv { display: none; }
+  .ed-file { flex-basis: 12ch; }
+  .code { --g: 2.8em; font-size: 12.5px; }
+  .ib { width: 44px; height: 44px; }
+  .pair .ib { width: 40px; height: 40px; }
+  [data-tip]:is(:hover, :focus-visible)::after { display: none; }
+  /* In the thumb's reach, not over the first lines. */
+  .corner { top: auto; bottom: 16px; right: 14px; }
+  .pv-md { padding-inline: var(--ah-s3); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :is(.b, .ib) { transition: background-color 120ms ease-out, color 120ms ease-out; }
+}

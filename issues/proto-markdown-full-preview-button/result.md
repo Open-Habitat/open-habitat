@@ -1,133 +1,191 @@
-# Prototyyppi: koko näkymän esikatselun painike ja nopeampi näppäin
+# Prototyyppi: koko näkymän esikatselun ikonirivi ja nopeampi näppäin
 
-Kierros `design-system/prototypes/rounds/2026-10-28-md-esikatselu`, tulos
-[prototypes/markdown-preview/index.html](prototypes/markdown-preview/index.html),
-Jarin opas [prototypes/markdown-preview/NOTES.md](prototypes/markdown-preview/NOTES.md)
-ja kuvat `prototypes/markdown-preview/evidence/` (laitteen skaalauskerroin 2).
-Pohjana on nykyinen toteutus (`web/src/components/BrowserEditor.tsx`,
-`CodeMirrorEditor.tsx`; editor-markdown-preview-folding): yksi
-*Esikatselu*-painike rinnakkaiselle, Ctrl/Cmd+Shift+V tekstin tilalle ja
-Ctrl/Cmd+K V rinnalle. Kapeampi kuin 720 px paneeli näyttää rinnakkaisen
-tekstin tilalla.
+## Kierrokset
 
-Rakennus ja tarkistus (rakentaa tiedoston ja ottaa kuvat):
+- **Kierros 1** (28.10.): ohjaimen muoto. Vaihtoehdot olivat Painike,
+  Valitsin ja Kelluva. Lähde on `design-system/prototypes/rounds/2026-10-28-md-esikatselu`,
+  tulos [prototypes/markdown-preview/index.html](prototypes/markdown-preview/index.html)
+  ja opas [NOTES.md](prototypes/markdown-preview/NOTES.md). Jari valitsi
+  Painikkeen ikoneina ilman rinnakkaista tilaa. Lisäksi sama esikatselu
+  tulee muille muodoille, joissa se on mielekäs.
+- **Kierros 2** (28.10., tämä): ikonirivin paikka ja kuvakkeet muodon
+  mukaan. Tulos on käsin kirjoitettu offline-tiedosto
+  [prototypes/full-preview-icons/index.html](prototypes/full-preview-icons/index.html),
+  ja Jarin opas on [NOTES.md](prototypes/full-preview-icons/NOTES.md).
+  Kuvat ovat hakemistossa `prototypes/full-preview-icons/evidence/`
+  (laitteen skaalauskerroin 2).
+
+Rakennus ja tarkistus:
 
 ```
 PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright NODE_PATH=<checkout>/web/node_modules \
-  node design-system/prototypes/rounds/2026-10-28-md-esikatselu/verify.mjs
+  node issues/proto-markdown-full-preview-button/prototypes/full-preview-icons/verify.mjs
 ```
 
-Tarkistus käy jokaisen suunnan läpi 1440 ja 390 px leveydellä sekä vaaleana
-että tummana. Se tarkistaa nämä: ⌘⇧V avaa esikatselun tekstin tilalle
-samaan osioon ja siirtää fokuksen esikatseluun, Esc palaa tekstiin siihen
-kohtaan, johon esikatselussa luettiin, ja suunnan oma ohjain avaa ja sulkee
-esikatselun. Lisäksi ⌘⌥V näyttää esikatselun rinnalla, kirjoitus päivittää
-esikatselun ja kapeasta paneelista puuttuu rinnakkaisen ohjain. Valitsin on
-kunnossa, mikään ei vuoda vaakasuunnassa, eikä konsolissa ole virheitä tai
-verkkopyyntöjä. Tulos 28.10.: `PASS: 12 direction×size×theme cases`.
+`build.mjs` kokoaa `src/`-hakemiston käsin kirjoitetun sivun, tokenit,
+fontit ja synteettiset tiedostot yhdeksi tiedostoksi. Tuotantokomponentteja
+ei niputeta, koska niputettu rakennus näkyy Habitatin näkymissä tyhjänä.
+`verify.mjs` käy jokaisen suunnan läpi 1440 ja 390 px leveydellä, vaaleana
+ja tummana. Se tarkistaa nämä:
+
+- ⌘E ja ⌘⇧V avaavat esikatselun tekstin tilalle samaan osioon ja fokus
+  siirtyy esikatseluun.
+- Esc palaa tekstiin siihen kohtaan, johon esikatselussa luettiin.
+- Suunnan oma ohjain avaa ja sulkee esikatselun.
+- Nuolinäppäin esikatselussa ei vaihda suuntaa.
+- CSV avautuu taulukkona samalle riville ja palaa samalle riville.
+- SVG piirtyy kuvana.
+- HTML näkyy `sandbox=""`-kehyksessä, ja tiedoston oma skripti estyy.
+- JSON-tiedostossa ei ole riviä, eivätkä näppäimet tee mitään.
+- Mikään ei vuoda vaakasuunnassa, valitsin on kunnossa, eikä sivu tee
+  verkkopyyntöjä.
+
+Tulos 28.10.: `PASS: 12 direction×size×theme cases`. Ainoa konsoliviesti
+on Chromiumin ilmoitus HTML-tiedoston estetystä skriptistä, ja tarkistus
+vaatii sen.
 
 ## Akseli ja suunnat
 
-Akseli: **minkä muotoinen ohjain koko näkymän esikatselulla on.** Muu on
-kaikissa suunnissa samaa: näppäimet, Esc, paluu samaan kohtaan, kapean
-paneelin sääntö, vihjeet ja pitkä tiedosto (`saaristoretki-2027.md`,
-132 riviä otsikoita, listoja, taulukoita, lainaus ja koodiaita).
+Akseli: **missä ikonirivi on ja mitä kuvakkeita siinä on.** Muu on
+kaikissa suunnissa samaa: näppäimet, Esc, paluu samaan kohtaan, muodot
+ja niiden kuvakkeet.
 
-| Suunta | Ohjain | Mitä suunta päättää |
-| --- | --- | --- |
-| 1 Painike | Työkalurivillä *Esikatselu* (silmä ja teksti) avaa koko näkymän, ja sen vieressä on kuvake rinnakkaiselle. Molemmat ovat `aria-pressed`-painikkeita, joiden uusi painallus sulkee esikatselun. Kapeassa paneelissa kuvake jää pois. | Nykyinen painike vaihtaa merkitystä rinnakkaisesta koko näkymään. Rinnakkainen saa pienen kuvakkeen. |
-| 2 Valitsin | Työkalurivillä on segmentoitu valitsin *Teksti · Rinnakkain · Esikatselu* (tuotannon `presentation="segment"`). Kapeassa paneelissa valitsin on *Teksti · Esikatselu*. | Esikatselu on editorin tila, joka näkyy aina, eikä sitä käytetä kytkimellä. |
-| 3 Kelluva | Työkalurivillä ei ole esikatselua. Dokumentin oikeassa alakulmassa kelluu *Esikatselu*, joka vaihtuu *Muokkaa*-painikkeeksi, ja leveässä paneelissa sen yllä on pieni rinnakkaisen kuvake. | Ohjain siirtyy työkaluriviltä dokumenttiin peukalon ulottuville. Tämä on editorille uusi kelluva muoto. |
+| Suunta | Paikka | Kuvakkeet | Mitä suunta päättää |
+| --- | --- | --- | --- |
+| 1 Tiedostorivi | Työkalurivi (`.ah-browser-toolbar`) tiedostonimen ja Tallennan välissä, nykyisen *Esikatselu*-tekstipainikkeen paikalla | Kaksi kuvaketta yhtenä ryhmänä (`role="group"`, `aria-pressed`): kynä *Teksti* ja muodon kuvake (*Esikatselu*, *Taulukko*, *Kuva*, *Sivu*) | Tila näkyy aina, ja paluu tekstiin on oma painikkeensa. |
+| 2 Otsikkopalkki | `EditorHeader` ikkunapainikkeiden (‹ ×) vasemmalla puolella, erottimen takana | Yksi muodon kuvake `aria-pressed`-kytkimenä: painettuna esikatselu on auki, ja uusi painallus palaa tekstiin | Editorin otsikkopalkki saa tiedostokohtaisen toiminnon. Työkalurivi ei muutu. |
+| 3 Kulma | Kelluu dokumentin päällä oikeassa yläkulmassa ja puhelimessa oikeassa alakulmassa | Sama pari kuin suunnassa 1 | Editoriin tulee kelluva ohjain. Työkalurivi ei muutu. |
+
+## Muodot: mitä editori jo näyttää ja mitä esikatselu olisi
+
+Editori avaa vain tekstiä. Daemon hylkää muun kuin UTF-8:n,
+NUL-tavun, sekalaiset rivinvaihdot ja yli 1 MiB:n tiedostot
+(`internal/daemon/editor_files_linux.go`, `editorTextLimit` ja
+`reason`), ja tiedostopuu näyttää ne harmaana *unsupported*-rivinä
+(`web/src/components/EditorFileTree.tsx`). Kielioppi tulee
+tiedostopäätteestä (`web/src/components/editorGrammar.ts`).
+
+| Muoto | Esikatselu | Renderöijä tuotannossa | Arvio |
+| --- | --- | --- | --- |
+| Markdown `.md`, `.markdown` | Muotoiltu teksti | On: `Markdown` (`web/src/components/Markdown.tsx`), jota editori jo käyttää (`BrowserEditor.tsx` `markdownPath`) | Kyllä |
+| CSV `.csv`, TSV `.tsv` | Koko tiedosto taulukkona. Otsikkorivi ja rivinumerosarake pysyvät paikallaan, ja numerot tasataan oikealle. | Osittain: `csvSeparator` ja `tableRows` (`web/src/components/AttachmentPreview.tsx`) jäsentävät tiedoston, mutta vain 60 riviä ja 50 saraketta liitteen esikatselua varten. Editorissa raja nostetaan, ja rivinumerot tarvitsevat rivien lähdekohdan. | Kyllä |
+| SVG `.svg` | Kuva `<img>`-elementissä ruudukkotaustalla. `<img>` ei suorita skriptejä eikä hae mitään. | Ei. Tarvitaan blob-URL puskurista ja kuvakomponentti. | Kyllä |
+| HTML `.html`, `.htm` | Sivu kehyksessä ilman skriptejä ja verkkoa. Linkit ja suhteelliset kuvat eivät toimi, ja yläreunan rivi kertoo sen. | Malli on olemassa: Word-esikatselun `sandbox=""`-kehys, `frameCSP` ja `inertMarkup` (`web/src/app/documentPreview.ts`, `DocumentPreview.tsx` `WordFrame`) | Kyllä, rajoituksin |
+| JSON, YAML, TOML, koodi | Ei esikatselua. CodeMirror taittaa jo lohkot (`foldGutter`), eikä puunäkymä toisi lisää. | – | Ei |
+| Kuvat (PNG, JPEG, GIF, WebP), PDF, docx, xlsx, pptx | Editori ei avaa niitä. Ne ovat binäärisiä, ja puu näyttää ne harmaina. Liitteiden renderöijät ovat olemassa (`DocumentPreview.tsx`, `AttachmentPreview.tsx`). | – | Ei tähän issueen. Työtilan tiedostojen katseluohjelma on oma ominaisuutensa: editorin lukureitti palauttaa vain tekstiä, joten binääritiedosto tarvitsee oman lukureittinsä. |
 
 ## Pikanäppäin
 
-Säilyy: **Ctrl/Cmd+Shift+V** vaihtaa tekstin ja koko näkymän esikatselun
-välillä (Jarin toive). Uusi: **Ctrl/Cmd+Alt+V** (Macissa ⌘⌥V) vaihtaa
-rinnakkaisen esikatselun yhdellä painalluksella Cmd+K V:n sijaan. Lisäksi
-**Esc** palaa koko näkymästä tekstiin.
+- **Säilyy: Ctrl/Cmd+Shift+V.** Se vaihtaa tekstin ja esikatselun välillä
+  kuten VS Codessa ja code-serverissä.
+- **Uusi: Ctrl/Cmd+E** (Macissa ⌘E). Se tekee saman kahdella
+  näppäimellä, ja E muistuttaa sanasta *esikatselu*.
+- **Esc** palaa esikatselusta tekstiin.
+- **Ctrl/Cmd+K V poistuu**, koska rinnakkaista tilaa ei ole. Samalla
+  poistuu Ctrl/Cmd+K:n nielaisu kaikissa Markdown-tiedostoissa.
 
-Miksi Ctrl/Cmd+Alt+V:
+Ristiriidat tarkistettiin:
 
-- Sitä ei ole CodeMirrorin näppäinkartoissa. Tarkistin tämän asennetuista
-  `@codemirror/commands`- ja `language`-paketeista: Mod-Alt-yhdistelmiä
-  ovat vain nuolet, `\` sekä `[` ja `]`.
-- Selaimissa se on V:n yhdistelmistä vapaa. ⌘⇧V ja ⌥⇧⌘V ovat Macissa
-  *Liitä ja sovita tyyli*, ja Ctrl+Shift+V liittää muissa järjestelmissä
-  pelkän tekstin. Tuotanto ohittaa jo ⌘⇧V:n `preventDefault`illa, ja ⌘⌥V
-  ja Ctrl+Alt+V ovat vapaita. Tämä perustuu tunnettuihin oletuksiin, eikä
-  sitä ole kokeiltu jokaisessa selaimessa.
-- Se on sama kirjain kuin koko näkymällä, ja vain muunnosnäppäin vaihtuu.
-
-Varaukset, jotka toteutuksen on hoidettava:
-
-- Macissa Option muuttaa merkin (⌥V on `√`), joten tunnistus tehdään
-  `e.code === "KeyV"`:llä eikä `e.key`:llä.
-- Windowsissa AltGr lähettää Ctrl+Alt. Tunnistus ohittaa siksi
-  `e.getModifierState("AltGraph")`-painallukset, jotta AltGr+V kirjoittaa
-  merkin niillä asetteluilla, joilla se on käytössä.
-
-Hylätyt vaihtoehdot: Ctrl/Cmd+Shift+B on Chromessa kirjanmerkkipalkki,
-Ctrl+Shift+M on Firefoxin responsiivinen tila, ja Alt+Shift+V kirjoittaa
-Macissa merkin `◊`. Pelkkä kirjain ei käy, koska tekstissä kirjoitetaan.
+- **CodeMirror.** Editori käyttää näppäinkarttoja `defaultKeymap`,
+  `historyKeymap` ja `foldKeymap` sekä omaa `Mod-s`:ää
+  (`CodeMirrorEditor.tsx`). Asennetuissa paketeissa
+  (`@codemirror/commands`, `@codemirror/language`) ei ole `Mod-e`- eikä
+  `Mod-Shift-v`-sidontaa. `Ctrl-e` (rivin loppuun) on vain Macin
+  Emacs-sidonta (`emacsStyleKeymap`, `mac:`), ja Macissa Mod on Cmd,
+  joten ⌘E on eri näppäin.
+- **Habitat.** Sovelluksen muut pikanäppäimet ovat Mod+Alt+K (editori,
+  `web/src/app/editor.ts`), Alt+T (pääte, `terminalShortcut.ts`) ja
+  Mod+P (kenttä, `Composer.tsx`). Kuuntelija on vain editorin juuressa
+  esikatseltavan tiedoston ollessa auki.
+- **code-server.** Se on eri editori omassa kehyksessään, eikä Habitatin
+  kuuntelija ole siinä mukana, joten ajonaikaista ristiriitaa ei ole.
+  Lihasmuistissa ero kuitenkin on: VS Codessa Ctrl+E on Quick Open
+  (Windows ja Linux) ja Cmd+E *Use selection for find* (Mac), eikä
+  code-server opi ⌘E:tä, ellei sen `keybindings.json`iin lisätä sidontaa.
+- **Selaimet.** Ctrl+E siirtää Chromessa, Edgessä ja Firefoxissa
+  (Windows ja Linux) fokuksen hakukenttään, ja ⌘E on Macin selaimissa
+  *Käytä valintaa hakuun*. Molemmat sivu voi ohittaa `preventDefault`illa,
+  toisin kuin selaimen varaamat Ctrl+T, W ja N. Tuotanto ohittaa samoin
+  jo ⌘⇧V:n. Tämä perustuu selainten tunnettuun käytökseen; sitä ei ole
+  kokeiltu jokaisella selaimella.
+- **Tunnistus.** Näppäin tunnistetaan `e.code === "KeyE"`:llä, ja
+  `!e.altKey` sulkee pois AltGr:n, joka saapuu Windowsissa Ctrl+Altina.
 
 ## Host-faktat, joita näkymä olettaa
 
 | Fakta | Suunta | Onko olemassa |
 | --- | --- | --- |
-| Esikatselun tilat pois, rinnakkain ja tekstin tilalla, sekä kapean paneelin sääntö (alle 720 px rinnakkainen näytetään tekstin tilalla) | kaikki | On (`BrowserEditor.tsx`, `BrowserEditor.css` `@container ah-editor-panes`) |
+| Esikatselun tila tekstin tilalla | kaikki | On: `BrowserEditor.tsx` `Preview = "off" \| "side" \| "only"`. Tila `side` ja kapean paneelin sääntö (`BrowserEditor.css` `@container ah-editor-panes`) poistuvat. |
 | Ctrl/Cmd+Shift+V editorin juuren capture-kuuntelijassa ennen CodeMirroria | kaikki | On |
-| Ctrl/Cmd+Alt+V `e.code`:lla ja AltGr-poikkeuksella | kaikki | Ei. Tilalle tulee Ctrl/Cmd+K V -sointu ja sen Ctrl/Cmd+K-nielaisu. |
-| Esc koko näkymän esikatselussa palaa tekstiin | kaikki | Ei |
-| Fokus siirtyy jäljelle jäävään osaan, kun fokusoitu osa piilotetaan | kaikki | On (`toggle` ja `requestAnimationFrame`) |
-| Paluu samaan kohtaan: esikatselu avautuu tekstin yläreunan osioon ja teksti palaa esikatselussa luettuun kohtaan (otsikkoankkurit ja suhteellinen kohta osion sisällä) | kaikki | Ei. Tuotannossa esikatselu alkaa alusta. Lähde- ja esikatselurivien vastaavuutta ei ole, joten se tehdään otsikoiden järjestyksestä: CodeMirrorin Markdown-puun otsikot ja esikatselun `h1–h6` samassa järjestyksessä. |
-| Kirjoitettaessa rinnakkainen esikatselu pitää muokattavan osion näkyvissä | kaikki | Ei (edellisen issuen päätös: ei vierityksen synkronointia) |
-| Rinnakkaisen ohjaimen piilotus kapeassa paneelissa: JS:n tieto paneelin leveydestä tai saman container queryn sääntö ohjaimelle | 1, 2, 3 | Osittain: container query on olemassa, mutta se ei koske työkaluriviä, joka on `ah-editor-panes`-säiliön ulkopuolella. Tarvitaan `ResizeObserver` tai säiliö koko editorille. |
-| Kuvakkeet: silmä, rinnakkain ja kynä | 1, 2, 3 | Ei editorissa. Projektin kuvakesarjasta on tarkistettava, onko niitä. |
-| Segmentoitu valitsin `ControlButton presentation="segment"` | 2 | On (`ControlElements.tsx`, `Controls.module.css` `.segmented`/`.segment`) |
-| Kelluva painike dokumentin päällä (`.floating`-esitys) | 3 | Esitys on olemassa (`Controls.module.css` `.floating`), mutta editorissa ei ole kelluvia ohjaimia |
-| Vihje, jossa näkyy pikanäppäin (`aria-keyshortcuts` ja näkyvä vihje) | kaikki | `aria-keyshortcuts` on. Näkyvän vihjeen esitys on tarkistettava tuotannon tooltip-komponentista. |
+| Ctrl/Cmd+E samassa kuuntelijassa (`e.code`) | kaikki | Ei |
+| Ctrl/Cmd+K V -sointu | – | On, ja se poistetaan |
+| Esc palaa esikatselusta tekstiin | kaikki | Ei |
+| Fokus siirtyy jäljelle jäävään osaan | kaikki | On: `toggle` ja `requestAnimationFrame` |
+| Paluu samaan kohtaan: Markdownissa otsikoiden järjestys ja suhteellinen kohta osiossa, CSV:ssä rivi = rivi | kaikki | Ei. Tuotannossa esikatselu alkaa alusta. |
+| Esikatselu useammalle muodolle: muodon tunnistus päätteestä ja renderöijä muodoittain (Markdown, CSV ja TSV, SVG, HTML) | kaikki | Osittain: vain `markdownPath` on olemassa. CSV:n jäsennin on liitteissä, SVG:n renderöijää ei ole, ja HTML:n kehysmalli on Word-esikatselussa. |
+| Kuvakkeet: kynä, silmä, taulukko ja kuva | kaikki | On: `web/src/components/Icon.tsx` (`pencil`, `eye`, `table`, `image`) |
+| Kuvakepari yhtenä ryhmänä | 1, 3 | Lähes: `ControlButton presentation="segment"` (`ControlElements.tsx`, `Controls.module.css` `.segmented`/`.segment`) on tekstisegmentti. Ikonisegmentti on uusi esitys. |
+| Kuvake `EditorHeader`issa | 2 | Rakenne on (`EditorHeader.tsx` `.ah-editor-controls`), mutta otsikkopalkki ei tiedä avoimesta tiedostosta. `WorkspaceEditor.tsx`:n on välitettävä esikatselun tila ja muoto `BrowserDocument`ilta otsikkopalkille. |
+| Kelluva ohjain dokumentin päällä | 3 | Esitys on (`Controls.module.css` `.floating`), mutta editorissa ei ole kelluvia ohjaimia |
+| Vihje, jossa pikanäppäin näkyy osoittimella ja fokuksella | kaikki | `aria-keyshortcuts` on. Näkyvä vihje on tarkistettava tuotannon tooltip-komponentista. |
 
 Muutos koskee vain selaimen editoria. Se ei koske daemonia, gatewayta,
-provisionia tai sopimusta, eikä mikään suunta siirrä valtuutta.
+provisionia tai sopimusta, eikä mikään suunta siirrä valtuutta. HTML:n
+esikatselu näyttää käyttäjän oman tiedoston hänen omassa selaimessaan
+ilman skriptejä ja verkkoa, samalla mallilla kuin Word-liitteen
+esikatselu.
 
 ## Suositus
 
-**1 Painike.** Jari pyysi omaa painiketta koko näkymän esikatselulle, ja
-tämä suunta antaa sen nykyisen *Esikatselun* paikalle ilman uutta muotoa.
-Rinnakkainen saa pienen kuvakkeen, jota tarvitaan vain leveässä
-paneelissa. Työkalurivi kasvaa yhdellä 32 px:n kuvakkeella, ja puhelimessa
-se ei kasva lainkaan. Valitsin näyttää tilan selvimmin, mutta se vie
-tiiviiltä riviltä noin 300 px ja puhelimessa yhden rivin lisää, vaikka
-puhelimessa tiloja on vain kaksi. Kelluva on paras peukalolle, mutta se
-peittää tekstiä ja tuo editoriin muodon, jota siinä ei muuten ole.
+**1 Tiedostorivi**, muodon mukaisin kuvakkein, ⌘E ja ⌘⇧V sekä Esc.
+
+Pari näyttää aina, kumpi tila on auki. Kynä antaa paluun tekstiin myös
+puhelimessa, jossa Esc:iä ei ole. Painikkeet ovat siellä, missä
+*Esikatselu* on nyt, eli avoimen tiedoston vieressä. Toteutus pysyy
+`BrowserEditor`issa, eikä otsikkopalkin tarvitse tietää tiedostosta.
+Otsikkopalkki vie vähiten tilaa, mutta yksittäinen painettu kuvake ei
+näytä yhtä selvästi paluuta, ja se vaatii tilan nostamisen
+`WorkspaceEditor`iin. Kulma on paras peukalolle, mutta se peittää rivien
+loppua, ja kierroksella 1 Jari valitsi painikkeen kelluvan sijaan.
 
 ## Decisions for later review
 
-- **Rinnakkaisen pikanäppäin on Ctrl/Cmd+Alt+V.** Vaihtoehdot olivat
-  Cmd+K V:n säilyttäminen ja vain koko näkymän nopeuttaminen tai toinen
-  kirjain (B tai M törmäävät selaimiin). Valitsin yhden painalluksen
-  yhdistelmän, joka käyttää samaa kirjainta kuin koko näkymä ja on vapaa
-  sekä CodeMirrorissa että selaimissa.
-- **Cmd+K V poistuu, ei jää rinnakkaiseksi aliakseksi.** Vaihtoehtona oli
-  säilyttää se VS Coden lihasmuistin vuoksi. Poistin sen, koska sointu
-  nielaisee nyt Ctrl/Cmd+K:n kaikissa Markdown-tiedostoissa, ja kaksi
-  tapaa samaan asiaan on yksi enemmän opittavaa ja testattavaa.
-- **Esc palaa koko näkymästä tekstiin.** Vaihtoehto oli, ettei Esc tee
-  mitään. Esikatselu on vain luettava, joten Escillä ei ole siinä muuta
-  merkitystä. Rinnakkaisessa tilassa Esc ei tee mitään, koska teksti on
-  silloin näkyvissä ja Esc kuuluu CodeMirrorille.
-- **Esikatselu avautuu samaan kohtaan, ja paluu tekstiin tulee luettuun
-  kohtaan.** Vaihtoehto oli nykyinen alusta avautuminen. Pitkässä
-  tiedostossa alusta avautuva esikatselu pakottaa etsimään kohdan, joten
-  pikanäppäin olisi nopea vain lyhyessä tiedostossa. Ankkurina toimivat
-  otsikot, koska rivitasoinen vastaavuus vaatisi lähdekarttaa
-  Markdown-renderöijästä.
-- **Rinnakkainen esikatselu seuraa kirjoitusta osion tarkkuudella.**
-  Vaihtoehto oli täysi vierityksen synkronointi kuten VS Codessa. Valitsin
-  kevyemmän, koska kirjoittaessa tarvitaan vain muokattavan osion näkymistä.
-- **Painikkeen nimi on *Esikatselu*, ja se avaa koko näkymän.** Vaihtoehto
-  oli *Koko näkymä* tai *Lue*. *Esikatselu* on jo tuttu, ja koko näkymä on
-  Jarin pääkäyttö. Rinnakkaisen nimi on vihjeessä ja `aria-label`issa.
-- **Kapeassa paneelissa rinnakkaisen ohjain piilotetaan** eikä näytetä
-  ohjainta, joka tekisi saman kuin koko näkymä. Kahden saman tekevän
-  painikkeen näyttäminen olisi harhaanjohtavaa.
+- **Uusi pikanäppäin on Ctrl/Cmd+E, ja ⌘⇧V säilyy.** Vaihtoehdot:
+  - Pelkkä ⌘⇧V. Se on jo yksi painallus, mutta kolme näppäintä.
+  - Ctrl/Cmd+Alt+V kierrokselta 1. Se ei ole nopeampi, ja Macissa Option
+    muuttaa merkin.
+  - Pelkkä kirjain. Se ei käy, koska tekstiin kirjoitetaan.
+
+  Valitsin E:n, koska se on kahden näppäimen yhdistelmä, vapaa
+  CodeMirrorissa ja Habitatissa ja selaimissa ohitettavissa, ja koska se
+  muistuttaa sanasta *esikatselu*.
+- **⌘E:tä ei lisätä code-serverin näppäimiin.** Vaihtoehto oli
+  `keybindings.json`-sidonta `markdown.showPreview`ille Fleetrepon
+  asennukseen. Jätin sen pois, koska code-serverin asetukset ovat
+  käyttäjän omia, eikä tämä issue koske code-serveriä.
+- **Cmd+K V poistuu, eikä Ctrl/Cmd+K:ta enää nielaista.** Rinnakkaista
+  tilaa ei ole, joten soinnulle ei jää tehtävää.
+- **Esikatselu tulee Markdownille, CSV:lle ja TSV:lle, SVG:lle ja
+  HTML:lle.** JSONille, YAMLille ja koodille sitä ei tule, koska taitto
+  riittää, eikä puunäkymä ole esikatselu. Binääritiedostot jäävät
+  editorin ulkopuolelle, ja niiden katselu on erillinen
+  tiedostonkatseluohjelman ominaisuus.
+- **HTML näytetään ilman skriptejä.** Vaihtoehdot:
+  - Skriptit sallitaan eristetyssä kehyksessä. Tämä on hylätty, koska se
+    ajaisi työtilan koodia Habitatin sivulla.
+  - HTML jätetään ilman esikatselua.
+
+  Valitsin Word-esikatselun mallin (`sandbox=""`, `frameCSP` ja
+  `inertMarkup`). Sivun ulkoasu näkyy, mutta mikään ei suoritu. Linkit
+  ja suhteelliset kuvat eivät toimi, ja yläreunan rivi kertoo sen.
+- **CSV näytetään kokonaan, ei 60 riviä kuten liitteessä.** Editori
+  avaa enintään 1 MiB:n tiedoston. Toteuttaja voi rajata taulukon, jos
+  suuri tiedosto hidastaa, mutta silloin rajaus kerrotaan rivillä.
+- **Kuvakkeen nimi muodon mukaan:** *Esikatselu*, *Taulukko*, *Kuva* ja
+  *Sivu*. Vaihtoehto oli *Esikatselu* kaikille. Muodon nimi kertoo
+  ennalta, mitä painike näyttää, ja nimi on vihjeessä ja `aria-label`issa.
+- **Paluu samaan kohtaan ja Esc** säilyvät kierrokselta 1. CSV saa saman
+  rivi rivistä -vastaavuuden. SVG ja HTML ovat yksi kuva, joten niissä
+  kohtaa ei ole.
+- **Kulma-suunnan ohjain on puhelimessa alakulmassa** eikä yläkulmassa,
+  koska peukalo ylettää sinne ja ensimmäiset rivit jäävät näkyviin.
