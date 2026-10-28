@@ -3,13 +3,14 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: file-offers
 lane_seq: 2
 preparation: ready
 provenance: chat
 source_ref: kokeiltavaa:2026-10-28/csv-preview-umlauts-broken
+closed: 2026-10-28
 ---
 
 # CSV preview shows Finnish letters broken

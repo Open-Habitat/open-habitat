@@ -358,3 +358,24 @@ func TestFileKindNeedsAgreeingBytes(t *testing.T) {
 		}
 	}
 }
+
+func TestCountTextColumnsFollowTheFirstRowsSeparator(t *testing.T) {
+	for _, tc := range []struct {
+		text    string
+		tsv     bool
+		columns int
+	}{
+		// A Finnish spreadsheet's CSV: semicolons, decimal commas in quotes.
+		{"päivä;käynnit;keskustelut\nma;12;4\n", false, 3},
+		{"nimi;\"1,5\";\"a,b,c\"\n", false, 3},
+		{"a,\"b;c;d\",e\n", false, 3},
+		{"a\tb\tc\n", false, 3},
+		// A tie keeps the comma; a .tsv is always split at tabs.
+		{"a;b,c\n", false, 2},
+		{"a,b,c\td\n", true, 2},
+	} {
+		if _, columns := countText(strings.NewReader(tc.text), true, tc.tsv); columns != tc.columns {
+			t.Errorf("%q: %d columns, want %d", tc.text, columns, tc.columns)
+		}
+	}
+}

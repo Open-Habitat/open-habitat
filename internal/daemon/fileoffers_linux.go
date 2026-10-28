@@ -426,7 +426,9 @@ func frozenFacts(files int, rel string, size int64) fileOfferItem {
 }
 
 // countText counts lines and, for a table, the first row's columns (a quoted
-// separator does not split a column).
+// separator does not split a column). A CSV's separator is the comma,
+// semicolon or tab its first row has most of, a comma on a tie: the same
+// rule as the browser's table preview (`csvSeparator`).
 func countText(r io.Reader, table, tabs bool) (int, int) {
 	data, err := io.ReadAll(io.LimitReader(r, maxCountedText))
 	if err != nil || len(data) == 0 {
@@ -438,20 +440,31 @@ func countText(r io.Reader, table, tabs bool) (int, int) {
 	}
 	columns := 0
 	if table {
-		sep := byte(',')
-		if tabs {
-			sep = '\t'
-		}
 		first, _, _ := bytes.Cut(data, []byte{'\n'})
-		columns = 1
+		var comma, semicolon, tab int
 		quoted := false
 		for _, c := range first {
 			switch {
 			case c == '"':
 				quoted = !quoted
-			case c == sep && !quoted:
-				columns++
+			case quoted:
+			case c == ',':
+				comma++
+			case c == ';':
+				semicolon++
+			case c == '\t':
+				tab++
 			}
+		}
+		switch {
+		case tabs:
+			columns = tab + 1
+		case semicolon > comma && semicolon >= tab:
+			columns = semicolon + 1
+		case tab > comma:
+			columns = tab + 1
+		default:
+			columns = comma + 1
 		}
 	}
 	return lines, columns

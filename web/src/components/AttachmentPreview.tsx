@@ -36,6 +36,25 @@ export type OfferedFile = {
   download: string;
 };
 
+/** A CSV's separator: the comma, semicolon or tab its first row has most of
+ * outside quotes, a comma on a tie. A spreadsheet in a Finnish locale writes
+ * semicolons, because the comma is its decimal mark. The daemon's column
+ * count (`countText`) uses the same rule. */
+export function csvSeparator(text: string): string {
+  const counts: Record<string, number> = { ",": 0, ";": 0, "\t": 0 };
+  let quoted = false;
+  for (const c of text) {
+    if (c === '"') quoted = !quoted;
+    else if (!quoted && (c === "\n" || c === "\r")) break;
+    else if (!quoted && c in counts) counts[c]++;
+  }
+  return counts[";"] > counts[","] && counts[";"] >= counts["\t"]
+    ? ";"
+    : counts["\t"] > counts[","]
+      ? "\t"
+      : ",";
+}
+
 /** The first rows and columns of a CSV (or TSV) as cells; quotes may hold
  * separators, doubled quotes and line breaks. Cells past the column limit
  * are left out, so one long row cannot build an unbounded table. */
@@ -45,7 +64,7 @@ export function tableRows(
   limit = 60,
   columns = 50,
 ) {
-  const sep = tabs ? "\t" : ",";
+  const sep = tabs ? "\t" : csvSeparator(text);
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = "";

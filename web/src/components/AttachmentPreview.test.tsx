@@ -117,6 +117,22 @@ it("reads a table's quoted separators, doubled quotes and line breaks as cell te
   expect(tableRows(",".repeat(100_000), false)[0]).toHaveLength(50);
 });
 
+it("splits a CSV at the separator its first row uses", async () => {
+  const { tableRows } = await import("./AttachmentPreview");
+  // A Finnish spreadsheet writes semicolons; its decimal commas stay in cells.
+  expect(tableRows("päivä;käynnit\nma;1,5\n", false)).toEqual([
+    ["päivä", "käynnit"],
+    ["ma", "1,5"],
+  ]);
+  // A quoted separator does not count, and a tie keeps the comma.
+  expect(tableRows('a,"b;c;d",e\n', false)).toEqual([["a", "b;c;d", "e"]]);
+  expect(tableRows("a;b,c\n", false)).toEqual([["a;b", "c"]]);
+  expect(tableRows("a\tb\n1\t2", false)).toEqual([
+    ["a", "b"],
+    ["1", "2"],
+  ]);
+});
+
 it("reads the file once while the dialog stays open, however often its caller renders", async () => {
   const bytes = new TextEncoder().encode("a;b\n1;2\n");
   const read = vi.fn(async (_url: string, _signal: AbortSignal) => bytes);
