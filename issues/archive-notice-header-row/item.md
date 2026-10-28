@@ -10,6 +10,7 @@ provenance: chat
 source_ref: chat:2026-10-28/archive-notice-header-row
 lane: desktop-header
 lane_seq: 2
+blocked_by: ['@conversation-header-shorten']
 ---
 
 # Archive and similar notices as a quiet row inside the top bar
