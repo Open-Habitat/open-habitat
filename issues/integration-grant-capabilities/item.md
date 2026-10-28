@@ -3,13 +3,14 @@ created: 2026-10-28
 updated: 2026-10-28
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: integration-scopes
 lane_seq: 3
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/integration-grant-capabilities
+closed: 2026-10-28
 ---
 
 # Integrations: read the actual grant and accept a narrower one
