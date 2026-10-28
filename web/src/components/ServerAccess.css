@@ -21,17 +21,6 @@
   flex-wrap: wrap;
   min-width: 0;
 }
-.sa-inline input {
-  flex: 1 1 220px;
-  min-width: 0;
-  min-height: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--ah-line-strong);
-  border-radius: var(--ah-r-md);
-  background: var(--ah-surface);
-  color: var(--ah-ink);
-  font: inherit;
-}
 .sa-check {
   font-size: var(--ah-size-meta);
   min-height: 1.4em;
@@ -146,4 +135,31 @@
   .sa-act {
     justify-content: flex-start;
   }
+}
+.sa-inline textarea {
+  flex: 1 1 220px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: inherit;
+  line-height: 20px;
+  resize: vertical;
+}
+.sa-batch {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.sa-batch-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px var(--ah-s3);
+  min-width: 0;
 }

@@ -52,17 +52,26 @@ test("@server-access an administrator adds, removes and restores a person; remov
     204,
   );
 
-  // Add Carol: GitHub check by login, then the broker by numeric id.
-  await page.getByTestId("access-login-input").fill("@Carol");
+  // Add several at once: each login is checked on GitHub on its own, and
+  // only Carol, a person with no admission yet, goes to the broker by
+  // numeric id.
+  await page
+    .getByTestId("access-login-input")
+    .fill("@Carol, bob\nexample-org nobody-here");
   await page.getByRole("button").and(page.getByTestId("access-add")).click();
-  await expect(page.getByTestId("access-check")).toHaveAttribute(
-    "data-kind",
-    "found",
-  );
+  const item = (login: string) =>
+    page.locator(`[data-testid=access-batch-item][data-login="${login}"]`);
+  await expect(item("Carol")).toHaveAttribute("data-kind", "found");
+  await expect(item("bob")).toHaveAttribute("data-kind", "duplicate");
+  await expect(item("example-org")).toHaveAttribute("data-kind", "problem");
+  await expect(item("example-org")).toContainText("henkilön GitHub-tili");
+  await expect(item("nobody-here")).toHaveAttribute("data-kind", "problem");
+  await expect(page.getByTestId("access-add")).toHaveText("Salli 1");
   await page.getByRole("button").and(page.getByTestId("access-add")).click();
   await expect(row("44")).toHaveAttribute("data-pending", "add");
   await expect(row("44")).not.toHaveAttribute("data-pending", /./);
   await expect(row("44")).toHaveAttribute("data-state", "allowed");
+  await expect(item("Carol")).toHaveAttribute("data-kind", "added");
 
   // A duplicate is reported under the field.
   await page.getByTestId("access-login-input").fill("bob");

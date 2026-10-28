@@ -7,8 +7,8 @@ import {
   type GitHubAccount,
   type LookupResult,
   loginShape,
-  normalizeLogin,
   type OnboardingReceipt,
+  splitLogins,
 } from "../app/serverAccess";
 import { ControlButton, Segmented } from "./ControlElements";
 import { Icon } from "./Icon";
@@ -269,7 +269,94 @@ type Check =
       kind: "found" | "restore" | "duplicate";
       user: GitHubAccount;
       text?: string;
-    };
+    }
+  | { kind: "batch"; items: BatchItem[]; sending: boolean };
+
+/** What the host settled for one sent addition, in the administrator's words
+ * when it was refused. */
+export type AddOutcome =
+  | { kind: "changed" }
+  | { kind: "refused"; text: string }
+  | { kind: "uncertain" };
+
+/** One name of a several-name addition and where it stands. */
+type BatchItem = { login: string } & (
+  | { kind: "checking" | "invalid" }
+  | { kind: "problem"; text: string }
+  | {
+      kind:
+        | "found"
+        | "restore"
+        | "duplicate"
+        | "sending"
+        | "added"
+        | "restored"
+        | "refused"
+        | "uncertain";
+      user: GitHubAccount;
+      text?: string;
+    }
+);
+
+// Each name is looked up and sent on its own, one at a time, so a long
+// paste is bounded by what one administrator could reasonably mean.
+const maxBatch = 100;
+
+const shapeHint =
+  "Kirjaimia, numeroita ja yksittäisiä yhdysmerkkejä, enintään 39.";
+const lookupProblem = (result: Exclude<LookupResult, { kind: "found" }>) =>
+  result.kind === "refused"
+    ? accessRefusal(result.code)
+    : "GitHubiin ei saatu yhteyttä.";
+
+function BatchLine({ item }: { item: BatchItem }) {
+  const user = "user" in item ? item.user : undefined;
+  const words: Record<BatchItem["kind"], string> = {
+    checking: "Tarkistetaan…",
+    invalid: "Ei kelpaa GitHub-tunnukseksi.",
+    problem: "",
+    found: "Sallitaan",
+    restore: "Pääsy palautetaan",
+    duplicate: "",
+    sending: "Lisätään…",
+    added: "Lisätty",
+    restored: "Palautettu",
+    refused: "",
+    uncertain: "Tila epävarma: päivitä lista.",
+  };
+  const bad =
+    item.kind === "invalid" ||
+    item.kind === "problem" ||
+    item.kind === "refused" ||
+    item.kind === "uncertain";
+  return (
+    <li
+      className="sa-batch-item"
+      data-testid="access-batch-item"
+      data-login={item.login}
+      data-kind={item.kind}
+    >
+      <span>
+        <strong>@{user?.login || item.login}</strong>
+        {user && (
+          <span className="sa-muted">
+            {" "}
+            {user.name && `${user.name} · `}GitHub-id {user.id}
+          </span>
+        )}
+      </span>
+      <span
+        className={
+          bad ? "sa-bad" : item.kind === "duplicate" ? "sa-dup" : "sa-muted"
+        }
+      >
+        {bad && <Icon name="warning" />}
+        {item.kind === "duplicate" && <Icon name="info" />}
+        {("text" in item && item.text) || words[item.kind]}
+      </span>
+    </li>
+  );
+}
 
 function AddLogin({
   rows,
@@ -282,13 +369,14 @@ function AddLogin({
   disabled: boolean;
   reason?: string;
   lookup: (login: string) => Promise<LookupResult>;
-  onAdd: (user: GitHubAccount, restore: boolean) => void;
+  onAdd: (user: GitHubAccount, restore: boolean) => Promise<AddOutcome>;
 }) {
   const [raw, setRaw] = useState("");
   const [check, setCheck] = useState<Check>({ kind: "idle" });
   // Each lookup's number; an answer to an older one is dropped.
   const asked = useRef(0);
-  const login = normalizeLogin(raw);
+  const logins = splitLogins(raw);
+  const login = logins.length === 1 ? logins[0] : "";
   const existing = (id: string) => rows.find((r) => r.id === id);
   const judge = (user: GitHubAccount): Check => {
     const r = existing(user.id);
@@ -308,19 +396,97 @@ function AddLogin({
       return { kind: "duplicate", user, text: "On jo sallittu." };
     return { kind: "duplicate", user, text: "Pääsy on suljettu palvelimella." };
   };
+  const batchReady =
+    check.kind === "batch" &&
+    !check.sending &&
+    check.items.every((i) => i.kind !== "checking") &&
+    check.items.some((i) => i.kind === "found" || i.kind === "restore");
+  // Several names: each is checked on its own with the single-name rules,
+  // then every one that can be allowed is sent, one at a time, and its
+  // outcome shown beside its name.
+  const checkMany = async () => {
+    if (logins.length > maxBatch) {
+      setCheck({
+        kind: "invalid",
+        text: `Enintään ${maxBatch} nimeä kerralla.`,
+      });
+      return;
+    }
+    const n = ++asked.current;
+    const items: BatchItem[] = logins.map((login) =>
+      loginShape.test(login)
+        ? { login, kind: "checking" }
+        : { login, kind: "invalid" },
+    );
+    setCheck({ kind: "batch", items: [...items], sending: false });
+    for (const [i, item] of items.entries()) {
+      if (item.kind !== "checking") continue;
+      const result = await lookup(item.login);
+      if (n !== asked.current) return;
+      if (result.kind !== "found")
+        items[i] = {
+          login: item.login,
+          kind: "problem",
+          text: lookupProblem(result),
+        };
+      else {
+        const earlier = items.find(
+          (x, j) => j < i && "user" in x && x.user.id === result.user.id,
+        );
+        const judged = judge(result.user);
+        items[i] = earlier
+          ? {
+              login: item.login,
+              kind: "duplicate",
+              user: result.user,
+              text: `Sama tili kuin @${earlier.login}.`,
+            }
+          : judged.kind === "found" ||
+              judged.kind === "restore" ||
+              judged.kind === "duplicate"
+            ? { login: item.login, ...judged }
+            : items[i];
+      }
+      setCheck({ kind: "batch", items: [...items], sending: false });
+    }
+  };
+  const sendMany = async (items: BatchItem[]) => {
+    const n = ++asked.current;
+    const next = [...items];
+    setCheck({ kind: "batch", items: [...next], sending: true });
+    for (const [i, item] of next.entries()) {
+      if (item.kind !== "found" && item.kind !== "restore") continue;
+      const restore = item.kind === "restore";
+      next[i] = { ...item, kind: "sending" };
+      setCheck({ kind: "batch", items: [...next], sending: true });
+      const outcome = await onAdd(item.user, restore);
+      next[i] =
+        outcome.kind === "changed"
+          ? { ...item, kind: restore ? "restored" : "added" }
+          : outcome.kind === "refused"
+            ? { ...item, kind: "refused", text: outcome.text }
+            : { ...item, kind: "uncertain" };
+      setCheck({ kind: "batch", items: [...next], sending: true });
+    }
+    if (n !== asked.current) return;
+    setRaw("");
+    setCheck({ kind: "batch", items: next, sending: false });
+  };
   const submit = async () => {
     if (disabled) return;
+    if (check.kind === "batch") {
+      if (batchReady) await sendMany(check.items);
+      return;
+    }
     if (check.kind === "found" || check.kind === "restore") {
-      onAdd(check.user, check.kind === "restore");
+      void onAdd(check.user, check.kind === "restore");
       setRaw("");
       setCheck({ kind: "idle" });
       return;
     }
+    if (logins.length > 1) return checkMany();
     if (!loginShape.test(login)) {
-      setCheck({
-        kind: "invalid",
-        text: "Kirjaimia, numeroita ja yksittäisiä yhdysmerkkejä, enintään 39.",
-      });
+      setCheck({ kind: "invalid", text: shapeHint });
       return;
     }
     const n = ++asked.current;
@@ -330,16 +496,17 @@ function AddLogin({
     setCheck(
       result.kind === "found"
         ? judge(result.user)
-        : {
-            kind: "problem",
-            text:
-              result.kind === "refused"
-                ? accessRefusal(result.code)
-                : "GitHubiin ei saatu yhteyttä.",
-          },
+        : { kind: "problem", text: lookupProblem(result) },
     );
   };
-  const ready = check.kind === "found" || check.kind === "restore";
+  const ready =
+    check.kind === "found" || check.kind === "restore" || batchReady;
+  const sending = check.kind === "batch" && check.sending;
+  const allowable =
+    check.kind === "batch"
+      ? check.items.filter((i) => i.kind === "found" || i.kind === "restore")
+          .length
+      : 0;
   return (
     <form
       className="sa-add"
@@ -352,14 +519,27 @@ function AddLogin({
       <label className="sa-field">
         <strong>Salli GitHub-tunnus</strong>
         <span className="sa-inline">
-          <input
+          <textarea
             data-testid="access-login-input"
             value={raw}
-            disabled={disabled}
+            rows={Math.min(6, Math.max(1, raw.split("\n").length))}
+            disabled={disabled || sending}
             autoComplete="off"
             spellCheck={false}
-            placeholder="github-tunnus"
-            aria-describedby="access-check"
+            placeholder="github-tunnus, toinen-tunnus"
+            aria-describedby="access-check access-hint"
+            onKeyDown={(e) => {
+              // Enter checks and allows as in a one-line field; Shift+Enter
+              // starts a new line for another name.
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey &&
+                !e.nativeEvent.isComposing
+              ) {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
             onChange={(e) => {
               setRaw(e.target.value);
               asked.current++;
@@ -373,17 +553,23 @@ function AddLogin({
             variant={ready ? "primary" : "secondary"}
             isDisabled={
               disabled ||
-              !login ||
+              sending ||
+              (check.kind === "batch" ? !batchReady : !logins.length) ||
               check.kind === "checking" ||
               check.kind === "duplicate"
             }
           >
             {check.kind === "restore"
               ? "Palauta pääsy"
-              : ready
-                ? "Salli"
-                : "Tarkista"}
+              : check.kind === "batch" && allowable
+                ? `Salli ${allowable}`
+                : ready
+                  ? "Salli"
+                  : "Tarkista"}
           </ControlButton>
+        </span>
+        <span id="access-hint" className="sa-muted">
+          Useita nimiä voi erottaa pilkulla, välilyönnillä tai rivinvaihdolla.
         </span>
       </label>
       <div
@@ -395,6 +581,12 @@ function AddLogin({
       >
         {disabled ? (
           reason && <span className="sa-muted">{reason}</span>
+        ) : check.kind === "batch" ? (
+          <ul className="sa-batch" data-testid="access-batch">
+            {check.items.map((item) => (
+              <BatchLine key={item.login} item={item} />
+            ))}
+          </ul>
         ) : check.kind === "checking" ? (
           <span className="sa-muted">Tarkistetaan GitHubista…</span>
         ) : check.kind === "invalid" || check.kind === "problem" ? (
@@ -512,7 +704,7 @@ export function ServerAccess({
   problem?: { id: string; text: string };
   canWrite?: boolean;
   lookup: (login: string) => Promise<LookupResult>;
-  onAdd: (user: GitHubAccount, restore: boolean) => void;
+  onAdd: (user: GitHubAccount, restore: boolean) => Promise<AddOutcome>;
   onRemove: (entry: AccessEntry) => void;
   onRefresh: () => void;
 }) {
@@ -629,7 +821,7 @@ export function ServerAccess({
                 addLocked={!view.runtime_admission}
                 onRemove={setRemoving}
                 onRestore={(x) =>
-                  onAdd(
+                  void onAdd(
                     { id: x.id, login: x.login_hint ?? "", name: x.name ?? "" },
                     true,
                   )

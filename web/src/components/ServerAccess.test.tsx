@@ -193,6 +193,131 @@ it("reports a duplicate under the field by numeric id and offers restore for a w
   expect(calls.lookup).toHaveBeenCalledTimes(3);
 });
 
+it("checks several logins one by one and allows those that can be allowed", async () => {
+  const lookup = vi.fn(async (login: string) =>
+    login === "frank"
+      ? {
+          kind: "found" as const,
+          user: { id: "47", login: "frank", name: "Frank Example" },
+        }
+      : login === "Frank-Alias"
+        ? {
+            kind: "found" as const,
+            user: { id: "47", login: "frank", name: "Frank Example" },
+          }
+        : login === "gina"
+          ? {
+              kind: "found" as const,
+              user: { id: "48", login: "gina", name: "" },
+            }
+          : login === "bob"
+            ? {
+                kind: "found" as const,
+                user: { id: "43", login: "bob", name: "Bob Example" },
+              }
+            : login === "dave"
+              ? {
+                  kind: "found" as const,
+                  user: { id: "45", login: "dave", name: "Dave Example" },
+                }
+              : login === "acme"
+                ? { kind: "refused" as const, code: "github_not_user" }
+                : { kind: "refused" as const, code: "github_user_not_found" },
+  );
+  const onAdd = vi.fn(async (user: { id: string }, _restore: boolean) =>
+    user.id === "48"
+      ? { kind: "refused" as const, text: "Sallittujen lista on täynnä." }
+      : { kind: "changed" as const },
+  );
+  setup({ lookup, onAdd });
+  fireEvent.change(screen.getByTestId("access-login-input"), {
+    target: {
+      value:
+        "frank, @bob\nnobody acme,-bad- https://github.com/dave FRANK Frank-Alias\ngina",
+    },
+  });
+  fireEvent.click(screen.getByTestId("access-add"));
+  const items = () =>
+    Object.fromEntries(
+      screen
+        .getAllByTestId("access-batch-item")
+        .map((i) => [i.dataset.login, i.dataset.kind]),
+    );
+  await vi.waitFor(() =>
+    expect(items()).toEqual({
+      frank: "found",
+      bob: "duplicate",
+      nobody: "problem",
+      acme: "problem",
+      "-bad-": "invalid",
+      dave: "restore",
+      "Frank-Alias": "duplicate",
+      gina: "found",
+    }),
+  );
+  // A repeat of the same login is dropped; a shape-invalid one is never
+  // looked up.
+  expect(lookup.mock.calls.map(([l]) => l)).toEqual([
+    "frank",
+    "bob",
+    "nobody",
+    "acme",
+    "dave",
+    "Frank-Alias",
+    "gina",
+  ]);
+  const text = (login: string) =>
+    screen
+      .getAllByTestId("access-batch-item")
+      .find((i) => i.dataset.login === login)?.textContent;
+  expect(text("acme")).toContain("Tunnus ei ole henkilön GitHub-tili.");
+  expect(text("nobody")).toContain("GitHub-käyttäjää ei löydy.");
+  expect(text("bob")).toContain("On jo käyttäjä");
+  expect(text("Frank-Alias")).toContain("Sama tili kuin @frank.");
+  expect(onAdd).not.toHaveBeenCalled();
+  expect(screen.getByTestId("access-add").textContent).toBe("Salli 3");
+  fireEvent.click(screen.getByTestId("access-add"));
+  await vi.waitFor(() =>
+    expect(items()).toMatchObject({
+      frank: "added",
+      dave: "restored",
+      gina: "refused",
+    }),
+  );
+  expect(onAdd.mock.calls.map(([u, r]) => [u.id, r])).toEqual([
+    ["47", false],
+    ["45", true],
+    ["48", false],
+  ]);
+  expect(text("gina")).toContain("Sallittujen lista on täynnä.");
+  expect(
+    (screen.getByTestId("access-login-input") as HTMLTextAreaElement).value,
+  ).toBe("");
+});
+
+it("stops checking several logins when the field changes", async () => {
+  let answer: (v: unknown) => void = () => {};
+  const lookup = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        answer = resolve;
+      }) as never,
+  );
+  setup({ lookup });
+  const input = screen.getByTestId("access-login-input");
+  fireEvent.change(input, { target: { value: "frank gina" } });
+  fireEvent.click(screen.getByTestId("access-add"));
+  fireEvent.change(input, { target: { value: "frank" } });
+  answer({
+    kind: "found",
+    user: { id: "47", login: "frank", name: "Frank Example" },
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(lookup).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId("access-check").dataset.kind).toBe("idle");
+});
+
 it("drops a lookup answer that arrives after the login changed", async () => {
   let answer: (v: unknown) => void = () => {};
   const lookup = vi.fn(

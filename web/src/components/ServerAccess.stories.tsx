@@ -99,7 +99,7 @@ function Tab(props: Partial<Parameters<typeof ServerAccess>[0]>) {
       <ServerAccess
         view={view}
         lookup={lookup}
-        onAdd={() => {}}
+        onAdd={async () => ({ kind: "changed" })}
         onRemove={() => {}}
         onRefresh={() => {}}
         {...props}

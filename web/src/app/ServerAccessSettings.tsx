@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
-import { type PendingChange, ServerAccess } from "../components/ServerAccess";
+import {
+  type AddOutcome,
+  type PendingChange,
+  ServerAccess,
+} from "../components/ServerAccess";
 import {
   type AccessEntry,
   type AccessView,
@@ -68,25 +72,27 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
     action: "add" | "remove",
     id: string,
     mark: PendingChange,
-  ) => {
-    if (!csrf) return;
+  ): Promise<AddOutcome> => {
+    const ended = "Istunto on päättynyt. Kirjaudu uudelleen.";
+    if (!csrf) return { kind: "refused", text: ended };
     setProblem(undefined);
     setPending((p) => ({ ...p, [id]: mark }));
     changes.current++;
     const result = await changeAccess(csrf, action, id);
     changes.current++;
-    if (result.kind === "changed") settle(id, result.entry);
-    else if (result.kind === "refused" || result.kind === "login") {
+    if (result.kind === "changed") {
+      settle(id, result.entry);
+      return { kind: "changed" };
+    }
+    if (result.kind === "refused" || result.kind === "login") {
       // A 401 is refused before anything is written.
       settle(id);
-      setProblem({
-        id,
-        text:
-          result.kind === "login"
-            ? "Istunto on päättynyt. Kirjaudu uudelleen."
-            : accessRefusal(result.code),
-      });
-    } else setPending((p) => ({ ...p, [id]: { ...mark, kind: "uncertain" } }));
+      const text = result.kind === "login" ? ended : accessRefusal(result.code);
+      setProblem({ id, text });
+      return { kind: "refused", text };
+    }
+    setPending((p) => ({ ...p, [id]: { ...mark, kind: "uncertain" } }));
+    return { kind: "uncertain" };
   };
   if (!view)
     return failed ? (
@@ -120,7 +126,7 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
             : Promise.resolve({ kind: "unavailable" })
         }
         onAdd={(user: GitHubAccount, restore) =>
-          void change("add", user.id, {
+          change("add", user.id, {
             kind: restore ? "restore" : "add",
             login: user.login || undefined,
             name: user.name || undefined,

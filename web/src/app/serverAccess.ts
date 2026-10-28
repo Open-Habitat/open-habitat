@@ -168,6 +168,21 @@ export const normalizeLogin = (raw: string) =>
 
 export const loginShape = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
 
+/** The logins in a field that may hold several, separated by commas,
+ * spaces or newlines; each normalized, a repeat (GitHub logins ignore case)
+ * dropped. */
+export function splitLogins(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(/[\s,;]+/)) {
+    const login = normalizeLogin(part);
+    if (!login || seen.has(login.toLowerCase())) continue;
+    seen.add(login.toLowerCase());
+    out.push(login);
+  }
+  return out;
+}
+
 /** A refusal in words the administrator can act on. */
 export function accessRefusal(code: string): string {
   switch (code) {
