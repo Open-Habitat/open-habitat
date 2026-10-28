@@ -342,3 +342,78 @@ func TestGoogleLevelChangeWithoutDriveRevokesGogsToken(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// A token gog holds but cannot export cannot be ended, so the change fails.
+func TestGoogleLevelChangeFailsWhenTheTokenCannotBeRead(t *testing.T) {
+	env := googleEnv(t)
+	email := "person@example.test"
+	g := syntheticGoogle(t, &email, googleScopes)
+	scope := "openid email " + googleScope + "gmail.modify"
+	revokes := &googleRevokes{}
+	levelGoogle(t, g, &scope, revokes)
+	if _, err := googleSignIn(t, g, env, "", LevelFull); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(env.Home, "export-fail"), nil, 0600)
+	if err := g.endLevel(context.Background(), env, email, LevelRead); !errors.Is(err, RevokeFailed) || len(revokes.list()) != 0 {
+		t.Fatal(err, revokes.list())
+	}
+}
+
+// A renewal keeps the account's own level: from rclone's Drive scope when
+// gog cannot say, and not at all when neither can, rather than guessing.
+func TestGoogleRenewalNeverGuessesTheLevel(t *testing.T) {
+	env := googleEnv(t)
+	email := "person@example.test"
+	g := syntheticGoogle(t, &email, googleScopes)
+	scope := googleReadScopes
+	levelGoogle(t, g, &scope, &googleRevokes{})
+	if _, err := googleSignIn(t, g, env, "", LevelRead); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(env.Home, "gog-fail"), nil, 0600)
+	login, err := g.StartLevelLogin(context.Background(), env, email, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if auth, _ := url.Parse(login.(*googleLogin).auth); auth.Query().Get("scope") != googleReadScopes {
+		t.Fatal("renewal broadened the account", auth.Query().Get("scope"))
+	}
+	os.Remove(filepath.Join(env.Home, googleDir, email+".conf"))
+	if _, err := g.StartLevelLogin(context.Background(), env, email, ""); err == nil {
+		t.Fatal("renewed at a guessed level")
+	}
+}
+
+// A new connection that turns out to be an account already connected at
+// another level is refused: only a level change ends the old grant first.
+// At the account's own level it is a renewal.
+func TestGoogleNewConnectionToAnExistingAccountKeepsItsLevel(t *testing.T) {
+	env := googleEnv(t)
+	email := "person@example.test"
+	g := syntheticGoogle(t, &email, googleScopes)
+	scope := googleScopes
+	revokes := &googleRevokes{}
+	levelGoogle(t, g, &scope, revokes)
+	if _, err := googleSignIn(t, g, env, "", LevelFull); err != nil {
+		t.Fatal(err)
+	}
+	full := googleConfig(t, env, email)
+	scope = googleReadScopes
+	login, err := g.StartLevelLogin(context.Background(), env, "", LevelRead)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := login.(*googleLogin)
+	l.Redirect(context.Background(), googleRedirect+"?"+url.Values{"state": {l.state}, "code": {"synthetic-code"}}.Encode())
+	if _, err := l.Wait(context.Background()); !errors.Is(err, AlreadyConnected) {
+		t.Fatal(err)
+	}
+	if googleConfig(t, env, email) != full || len(revokes.list()) != 0 {
+		t.Fatal("a refused connection changed the account")
+	}
+	scope = googleScopes
+	if _, err := googleSignIn(t, g, env, "", LevelFull); err != nil {
+		t.Fatal("same level connection refused", err)
+	}
+}

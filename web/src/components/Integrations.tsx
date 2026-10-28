@@ -1970,6 +1970,24 @@ function FailedStep({
           {restart}
         </>
       );
+    case "already_connected":
+      return (
+        <>
+          <p
+            className="ig-result bad"
+            role="alert"
+            data-testid="integration-already-connected"
+          >
+            <Icon name="warning" />
+            <span>
+              <b>Tili on jo yhdistetty toisella tasolla.</b> Mitään ei muutettu.
+              Vaihda sen taso tilin kortista kohdasta Vaihda taso…, jotta vanha
+              kirjautuminen perutaan ensin.
+            </span>
+          </p>
+          {restart}
+        </>
+      );
     case "revoke_failed":
       return (
         <>

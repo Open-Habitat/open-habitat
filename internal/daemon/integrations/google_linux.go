@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -384,13 +385,20 @@ func (g *google) StartLevelLogin(ctx context.Context, env Env, address string, l
 	if !ok || !g.Available(env) {
 		return nil, ToolFailed
 	}
-	if level == "" {
-		level = LevelFull
-		if address != "" {
-			if granted, known := googleGrant(ctx, env, address); known {
-				level = googleAskedLevel(granted)
-			}
+	if level == "" && address != "" {
+		own, known := googleOwnLevel(ctx, env, address)
+		switch {
+		case known:
+			level = own
+		case googleHasToken(env, address):
+			// Its grant cannot be read: guessing could broaden it.
+			return nil, ToolFailed
+		default:
+			// Nothing of the account is here; it connects anew.
+			level = LevelFull
 		}
+	} else if level == "" {
+		level = LevelFull
 	}
 	if level != LevelFull && level != LevelRead {
 		return nil, ToolFailed
@@ -413,13 +421,14 @@ func (g *google) StartLevelLogin(ctx context.Context, env Env, address string, l
 	if address != "" {
 		q.Set("login_hint", address)
 	}
-	return &googleLogin{entry: g, env: env, app: app, expected: address, state: state, verifier: verifier, auth: "https://accounts.google.com/o/oauth2/v2/auth?" + q.Encode(), redirect: make(chan string, 1)}, nil
+	return &googleLogin{entry: g, env: env, app: app, level: level, expected: address, state: state, verifier: verifier, auth: "https://accounts.google.com/o/oauth2/v2/auth?" + q.Encode(), redirect: make(chan string, 1)}, nil
 }
 
 type googleLogin struct {
 	entry                           *google
 	env                             Env
 	app                             GoogleApp
+	level                           Level
 	expected, state, verifier, auth string
 	redirect                        chan string
 	token                           []byte
@@ -517,6 +526,19 @@ func (l *googleLogin) Wait(ctx context.Context) (string, error) {
 	}
 	if l.expected != "" && address != l.expected {
 		return "", AccountMismatch
+	}
+	if l.expected == "" {
+		// A new connection that turns out to be an account already here is
+		// a renewal, which keeps its level. At another level it would be a
+		// level change without the old grant ended first, and ending it now
+		// would end this one too: refuse it, and leave the grant unused.
+		if accounts, err := l.entry.Accounts(l.env); err != nil {
+			return "", ToolFailed
+		} else if slices.Contains(accounts, address) {
+			if own, known := googleOwnLevel(ctx, l.env, address); !known || own != l.level {
+				return "", AlreadyConnected
+			}
+		}
 	}
 	l.refresh = token.RefreshToken
 	l.granted = granted
@@ -653,36 +675,56 @@ func (g *google) endLevel(ctx context.Context, env Env, address string, level Le
 	}
 	refresh := native.refresh
 	if refresh == "" {
-		refresh = googleExportRefresh(ctx, env, address)
+		var err error
+		if refresh, err = googleExportRefresh(ctx, env, address); err != nil {
+			return err
+		}
 	}
 	return g.revoke(ctx, refresh)
 }
 
+// googleOwnLevel is the level of an account's grant: from gog's record of
+// it, or else from the Drive scope rclone signed in with. False when neither
+// answers.
+func googleOwnLevel(ctx context.Context, env Env, address string) (Level, bool) {
+	if granted, known := googleGrant(ctx, env, address); known {
+		return googleAskedLevel(granted), true
+	}
+	switch n, _ := googleReadNative(env, address); n.scope {
+	case "drive":
+		return LevelFull, true
+	case "drive.readonly":
+		return LevelRead, true
+	}
+	return "", false
+}
+
 // googleExportRefresh reads the account's refresh token from gog's store,
 // for an account whose grant gave rclone no login. Empty when there is none.
-func googleExportRefresh(ctx context.Context, env Env, address string) string {
+func googleExportRefresh(ctx context.Context, env Env, address string) (string, error) {
 	if !googleHasToken(env, address) {
-		return ""
+		return "", nil
 	}
 	c, ok := gogCommand(env, "auth", "tokens", "export", address, "--out", "/dev/stdout", "--overwrite")
 	if !ok {
-		return ""
+		return "", RevokeFailed
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	data, err := env.run(ctx, c, nil)
 	if err != nil {
-		return ""
+		return "", RevokeFailed
 	}
 	// gog writes the token file to its output and then its own summary.
 	var t struct {
 		Email   string `json:"email"`
 		Refresh string `json:"refresh_token"`
 	}
-	if json.NewDecoder(strings.NewReader(string(data))).Decode(&t) != nil || !strings.EqualFold(t.Email, address) {
-		return ""
+	if json.NewDecoder(strings.NewReader(string(data))).Decode(&t) != nil || !strings.EqualFold(t.Email, address) || t.Refresh == "" {
+		// A token is there but cannot be read: it cannot be ended either.
+		return "", RevokeFailed
 	}
-	return t.Refresh
+	return t.Refresh, nil
 }
 
 // revoke ends the grant a refresh token belongs to at Google. A token Google

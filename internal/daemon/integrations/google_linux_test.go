@@ -37,6 +37,7 @@ case "$1 $2 ${3:-}" in
  printf 'native-encrypted-token' >"$home/data/keyring/_gogcli_key_v1_$name"
  printf '%s' "$data" >"$home/data/imported-$name";;
  "auth tokens export")
+ [ ! -f "$HOME/export-fail" ]
  [ "$5" = --out ] && [ "$6" = /dev/stdout ] && [ "$7" = --overwrite ]
  name=$(printf 'token:default:%s' "$4" | base64 -w0 | tr '+/' '-_' | tr -d '=')
  cat "$home/data/imported-$name"; printf '{"exported":true}';;

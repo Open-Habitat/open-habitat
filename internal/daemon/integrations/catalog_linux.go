@@ -316,6 +316,9 @@ const (
 	// RevokeFailed is a level change whose old grant could not be ended at
 	// the provider before the new sign-in; nothing changed.
 	RevokeFailed Failure = "revoke_failed"
+	// AlreadyConnected is a new connection to an account already here at
+	// another level, which only a level change of that account may make.
+	AlreadyConnected Failure = "already_connected"
 )
 
 // ConsentRequired is a tenant that needs its administrator to approve the

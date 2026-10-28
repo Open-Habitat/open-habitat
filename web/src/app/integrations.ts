@@ -168,7 +168,8 @@ export type LoginFailure =
   | "quota_unavailable"
   | "nothing_granted"
   | "final_sync_failed"
-  | "revoke_failed";
+  | "revoke_failed"
+  | "already_connected";
 export type LoginView = {
   schema_version: 1;
   state:
