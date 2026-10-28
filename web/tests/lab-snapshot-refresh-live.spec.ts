@@ -62,9 +62,24 @@ test("@lab failed snapshot refreshes during a live turn show no connection loss"
     ];
     let failing = false;
     let failed = 0;
+    // Host snapshots the page received after the failures ended. The body is
+    // read here, from the host's answer, because Chromium may already have
+    // dropped it by the time a response listener asks for it.
+    let recovered = 0;
     await page.route("**/api/v1/snapshot*", async (route) => {
-      if (!failing) return route.continue();
-      await failures[failed++ % failures.length](route);
+      if (failing) return failures[failed++ % failures.length](route);
+      // A read already under way when the failures began does not count.
+      const afterFailures = failed > 0;
+      try {
+        const response = await route.fetch();
+        const read =
+          response.ok() && (await response.text()).includes('"event_cursor"');
+        await route.fulfill({ response });
+        if (read && afterFailures) recovered++;
+      } catch {
+        // The page dropped this read; only a delivered one counts.
+        await route.abort().catch(() => {});
+      }
     });
     const editor = page.getByTestId("message-input");
     // "hidas" spaces fake Pi's phases two seconds apart.
@@ -87,15 +102,8 @@ test("@lab failed snapshot refreshes during a live turn show no connection loss"
     await expect(finalReply).toBeVisible({ timeout: 30000 });
     await expect.poll(() => failed, { timeout: 15000 }).toBeGreaterThan(2);
     // The host is readable again: the page reads it without being asked.
-    const recovered = page.waitForResponse(
-      async (response) =>
-        response.url().includes("/api/v1/snapshot") &&
-        response.ok() &&
-        (await response.text()).includes('"event_cursor"'),
-      { timeout: 20000 },
-    );
     failing = false;
-    await recovered;
+    await expect.poll(() => recovered, { timeout: 20000 }).toBeGreaterThan(0);
     const notices = await page.evaluate(
       () =>
         (window as typeof window & { connectionNotices: string[] })

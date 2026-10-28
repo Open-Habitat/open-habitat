@@ -3,13 +3,14 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: suite:2026-10-28/r29/lab-snapshot-refresh-live
 lane: gate-health
 lane_seq: 102
 preparation: ready
+closed: 2026-10-28
 ---
 
 # Lab suite: snapshot-refresh-live spec loses a response body under load
