@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: speech-input
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/speech-input-composer
+closed: 2026-10-28
 ---
 
 # Speech input in the composer (Soniox, 10 min ceiling)
