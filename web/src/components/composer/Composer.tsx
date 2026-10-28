@@ -805,16 +805,12 @@ export function Composer({
       // a second press while it ends sends nothing more.
       if (endingToSend.current) return;
       endingToSend.current = true;
-      const text = await dictation.stop().finally(() => {
+      await dictation.stop().finally(() => {
         endingToSend.current = false;
       });
-      const current = draft.current.value;
-      return sendDraft(
-        otherWay,
-        text === null
-          ? current
-          : joinAttachments(text, splitAttachments(current).attachments),
-      );
+      // The ended dictation has already put its text in the draft, beside
+      // the goal and the attachments.
+      return sendDraft(otherWay, draft.current.value);
     }
     return sendDraft(otherWay, draftValue);
   };
