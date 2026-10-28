@@ -242,12 +242,10 @@
 .ah-browser-source {
   container-type: inline-size;
 }
-/* Markdown preview: beside the text where both stay readable, otherwise in
-   its place. The text stays mounted while hidden, so history and the
-   cursor survive the toggle. */
+/* A full-view preview in place of the text. The text stays mounted while
+   hidden, so history and the cursor survive. */
 .ah-browser-document {
   display: flex;
-  container: ah-editor-panes / inline-size;
 }
 .ah-browser-source {
   flex: 1 1 0;
@@ -259,13 +257,7 @@
   flex: 1 1 0;
   min-width: 0;
   overflow: auto;
-  padding: var(--ah-s4) var(--ah-s5);
-  border-inline-start: 1px solid var(--ah-line);
   background: var(--ah-surface);
-}
-.ah-browser-preview > .ah-markdown {
-  max-width: 72ch;
-  margin-inline: auto;
 }
 .ah-browser-preview:focus-visible {
   outline: var(--ah-focus-width) solid var(--ah-focus);
@@ -274,17 +266,106 @@
 .ah-browser-document[data-preview="only"] .ah-browser-source {
   display: none;
 }
-.ah-browser-document[data-preview="only"] .ah-browser-preview {
-  border-inline-start: 0;
+.ah-browser-preview[data-kind="markdown"] {
+  padding: var(--ah-s4) var(--ah-s5);
 }
-@container ah-editor-panes (width < 720px) {
-  .ah-browser-document[data-preview="side"] .ah-browser-source {
-    display: none;
-  }
-  .ah-browser-document[data-preview="side"] .ah-browser-preview {
-    border-inline-start: 0;
-    padding: var(--ah-s3);
-  }
+.ah-browser-preview > .ah-markdown {
+  max-width: 72ch;
+  margin-inline: auto;
+}
+/* The pencil and the format's icon: a segmented pair as tall as the
+   toolbar's other buttons. */
+.ah-browser-views > button {
+  --b-h: calc(var(--ah-control-row) - 6px);
+}
+.ah-preview-caption {
+  margin: 0;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+/* A table: the header row and the line numbers stay in place. */
+.ah-browser-preview[data-kind="table"] > .ah-preview-caption {
+  position: sticky;
+  left: 0;
+  padding: var(--ah-s2) var(--ah-s3);
+}
+.ah-preview-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--ah-size-ui);
+}
+.ah-preview-table :is(th, td) {
+  padding: var(--ah-s1) var(--ah-s3);
+  border-bottom: 1px solid var(--ah-line-soft);
+  border-right: 1px solid var(--ah-line-soft);
+  text-align: left;
+  white-space: pre;
+}
+.ah-preview-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ah-surface-2);
+  border-bottom-color: var(--ah-line-strong);
+  font-weight: 600;
+}
+.ah-preview-table td[data-numeric] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ah-preview-table .ah-preview-line {
+  position: sticky;
+  left: 0;
+  background: var(--ah-surface-2);
+  color: var(--ah-muted);
+  font: 400 var(--ah-size-label) var(--ah-mono);
+  text-align: right;
+}
+.ah-preview-table thead .ah-preview-line {
+  z-index: 2;
+}
+/* A picture on a checkerboard, so transparency shows in both themes. */
+.ah-preview-image {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin: 0;
+  padding: var(--ah-s5) var(--ah-s4);
+}
+.ah-preview-checker {
+  max-width: 100%;
+  padding: var(--ah-s3);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background:
+    repeating-conic-gradient(var(--ah-sunken) 0 25%, var(--ah-surface) 0 50%) 0
+    0 / 16px 16px;
+}
+.ah-preview-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.ah-browser-preview[data-kind="image"] > .ah-preview-caption {
+  padding: var(--ah-s4);
+}
+/* A page fills the view below the line that says what does not work. */
+.ah-browser-preview[data-kind="page"] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ah-preview-page-note {
+  padding: var(--ah-s1) var(--ah-s3);
+  border-bottom: 1px solid var(--ah-line);
+}
+.ah-preview-page {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #fff;
 }
 .ah-merge-conflict-host {
   position: sticky;
@@ -356,6 +437,13 @@
   .ah-browser-toolbar button {
     min-height: 44px;
   }
+  .ah-browser-toolbar > button:not(.ah-button-text) {
+    width: 44px;
+  }
+  .ah-browser-views > button {
+    --b-h: 38px;
+    min-height: 38px;
+  }
   /* The path keeps a readable width and pushes buttons to the next row. */
   .ah-browser-filename {
     flex-basis: 12ch;
@@ -365,5 +453,15 @@
   .ah-browser-state[data-changes] {
     order: 5;
     flex-basis: 100%;
+  }
+  /* Plain unsaved changes show in the filled save icon; the word would
+     push the icons to a second row. Screen readers still hear it. */
+  .ah-browser-state:not([data-changes]) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }

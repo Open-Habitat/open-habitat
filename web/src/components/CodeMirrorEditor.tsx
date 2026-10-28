@@ -56,6 +56,14 @@ import {
 
 export type { EditorChange, EditorMergeApi, MergeState };
 
+/** Where the reader is, so a full-view preview opens and returns there. */
+export interface EditorPlaceApi {
+  /** The 0-based line at the top of the view. */
+  topLine: () => number;
+  /** Scrolls a 0-based line to the top; the cursor stays where it was. */
+  showLine: (line: number) => void;
+}
+
 import type { FileRef } from "./fileRefs";
 
 const mapState = (s: MergeState, ch: ChangeSet): MergeState => ({
@@ -327,7 +335,7 @@ const syntax = syntaxHighlighting(
 
 /** Trusted bundled engine; repository text is only an EditorState document.
  * No project plugin, language server or execution path exists; the
- * Markdown preview beside it renders through the conversation's sanitiser. */
+ * Markdown preview renders through the conversation's sanitiser. */
 export default function CodeMirrorEditor({
   content,
   path,
@@ -336,6 +344,7 @@ export default function CodeMirrorEditor({
   onSave,
   disabled = false,
   mergeApi,
+  place,
 }: {
   content: string;
   path: string;
@@ -344,6 +353,7 @@ export default function CodeMirrorEditor({
   onSave: () => void;
   disabled?: boolean;
   mergeApi?: RefObject<EditorMergeApi | undefined>;
+  place?: RefObject<EditorPlaceApi | undefined>;
 }) {
   const parent = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | undefined>(undefined);
@@ -506,6 +516,24 @@ export default function CodeMirrorEditor({
           editor.focus();
         },
       };
+    if (place)
+      place.current = {
+        topLine: () =>
+          editor.state.doc.lineAt(
+            editor.lineBlockAtHeight(editor.scrollDOM.scrollTop).from,
+          ).number - 1,
+        showLine(line) {
+          const doc = editor.state.doc;
+          const at = doc.line(Math.max(1, Math.min(line + 1, doc.lines))).from;
+          // Measured, not estimated: the editor was hidden until this frame.
+          editor.requestMeasure({
+            read: (v) => v.lineBlockAt(at).top + v.documentPadding.top,
+            write: (top, v) => {
+              v.scrollDOM.scrollTop = top;
+            },
+          });
+        },
+      };
     let active = true;
     void editorGrammar(path)
       .then((extension) => {
@@ -518,6 +546,7 @@ export default function CodeMirrorEditor({
       active = false;
       view.current = undefined;
       if (mergeApi) mergeApi.current = undefined;
+      if (place) place.current = undefined;
       editor.destroy();
     };
     // The controller remounts this view on document replacement, not each keystroke.

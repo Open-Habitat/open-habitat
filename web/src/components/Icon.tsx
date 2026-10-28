@@ -85,7 +85,8 @@ export type IconName =
   | "music"
   | "table"
   | "package"
-  | "mic";
+  | "mic"
+  | "save";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -236,6 +237,12 @@ export function Icon({
       <>
         <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
         <circle cx="12" cy="12" r="2.5" />
+      </>
+    ),
+    save: (
+      <>
+        <path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+        <path d="M7 3v5h8V3M7 21v-7h10v7" />
       </>
     ),
     disk: (

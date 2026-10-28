@@ -702,12 +702,34 @@ async function capture(page: Page, name: string) {
   await page.screenshot({
     path: fileURLToPath(
       new URL(
-        `../../issues/editor-markdown-preview-folding/evidence/${name}.png`,
+        `../../issues/editor-full-preview-icons/evidence/${name}.png`,
         import.meta.url,
       ),
     ),
   });
 }
+async function openEntry(page: Page, path: string) {
+  if (!(await page.getByTestId("editor-file-picker").isVisible()))
+    await page.getByTestId("editor-picker").click();
+  const entry = page
+    .getByTestId("editor-file-entry")
+    .and(page.locator(`[data-path="${path}"]`));
+  await entry.click();
+  await expect(entry).toHaveAttribute("aria-current", "page");
+  await expect(page.getByTestId("codemirror-editor")).toBeVisible();
+  if (await page.getByTestId("editor-file-picker").isVisible())
+    await page.getByTestId("editor-picker").click();
+}
+/** The 1-based number of the first text line fully in view. */
+const firstLine = (page: Page) =>
+  page.getByTestId("codemirror-editor").evaluate((editor) => {
+    const scroller = editor.querySelector(".cm-scroller");
+    const edge = scroller?.getBoundingClientRect().top ?? 0;
+    const gutter = Array.from(
+      editor.querySelectorAll<HTMLElement>(".cm-lineNumbers .cm-gutterElement"),
+    ).find((g) => g.textContent && g.getBoundingClientRect().top >= edge - 1);
+    return Number(gutter?.textContent);
+  });
 for (const width of [1366, 390])
   test.describe(() => {
     test.use({ deviceScaleFactor: 2 });
@@ -716,24 +738,24 @@ for (const width of [1366, 390])
     }) => {
       await page.setViewportSize({ width, height: 844 });
       await openFile(page, width === 390);
-      // Code has no preview; only Markdown does.
-      await expect(page.getByTestId("editor-preview-toggle")).toHaveCount(0);
-      if (!(await page.getByTestId("editor-file-picker").isVisible()))
-        await page.getByTestId("editor-picker").click();
-      await page
-        .getByTestId("editor-file-entry")
-        .and(page.locator('[data-path="cmd/notes.md"]'))
-        .click();
+      // Code has no preview: no view pair, and the keys stay the browser's.
+      await expect(page.getByTestId("editor-view")).toHaveCount(0);
       const doc = page.getByTestId("editor-document");
+      const preview = page.getByTestId("editor-preview");
+      await doc.press("Control+E");
+      await expect(preview).toHaveCount(0);
+      await expect(doc).toBeFocused();
+      await openEntry(page, "cmd/notes.md");
       const line = (text: string) =>
         doc.locator(".cm-line").filter({ hasText: new RegExp(`^${text}$`) });
       // A folded heading ends in its placeholder.
       const heading = line("## Kaavio(…)?");
       const inside = line("graph LR");
       await expect(inside).toBeVisible();
-      await expect(page.getByTestId("editor-preview-toggle")).toBeVisible();
-      if (await page.getByTestId("editor-file-picker").isVisible())
-        await page.getByTestId("editor-picker").click();
+      const textButton = page.getByTestId("editor-text-toggle");
+      const previewButton = page.getByTestId("editor-preview-toggle");
+      await expect(textButton).toHaveAttribute("aria-pressed", "true");
+      await expect(previewButton).toHaveAttribute("aria-pressed", "false");
 
       // Gutter folds a heading's section up to the next heading of its level.
       const gutter = async () => {
@@ -748,7 +770,6 @@ for (const width of [1366, 390])
       await gutter();
       await expect(inside).toHaveCount(0);
       await expect(line("## Loppu")).toBeVisible();
-      await capture(page, `folded-${width}`);
       await heading.click();
       await doc.press("Control+Shift+BracketRight");
       await expect(inside).toBeVisible();
@@ -758,44 +779,33 @@ for (const width of [1366, 390])
       await gutter();
       await expect(inside).toBeVisible();
 
-      // Ctrl+Shift+V puts the rendered document in place of the text and
-      // back, keeping focus on the page.
-      const preview = page.getByTestId("editor-preview");
+      // Ctrl+Shift+V and Ctrl+E put the rendered document in place of the
+      // text and back; Esc returns too. Focus stays on the page.
       const source = page.locator(".ah-browser-source");
       await heading.click();
       await doc.press("Control+Shift+V");
       await expect(preview).toBeFocused();
       await expect(source).toBeHidden();
+      await expect(previewButton).toHaveAttribute("aria-pressed", "true");
       await expect(preview.getByRole("heading", { level: 1 })).toHaveCount(1);
       // The conversation's renderer, Mermaid included.
       await expect(preview.getByTestId("mermaid-diagram")).toBeVisible({
         timeout: 20000,
       });
-      await preview.press("Control+Shift+V");
+      await preview.press("Escape");
+      await expect(preview).toHaveCount(0);
+      await expect(doc).toBeFocused();
+      await doc.press("Control+E");
+      await expect(preview).toBeFocused();
+      await preview.press("Control+E");
       await expect(preview).toHaveCount(0);
       await expect(doc).toBeFocused();
 
-      // The button opens it beside the text where the width allows; the
-      // preview follows unsaved typing.
-      await page.getByTestId("editor-preview-toggle").click();
-      await expect(preview).toBeVisible();
-      if (width === 390) {
-        await expect(source).toBeHidden();
-        await page.getByTestId("editor-preview-toggle").click();
-      } else {
-        await page.getByTestId("hide-conversation").click();
-        await expect(source).toBeVisible();
-        const [a, b] = [
-          await source.boundingBox(),
-          await preview.boundingBox(),
-        ];
-        expect(a && b && a.x + a.width <= b.x + 1).toBe(true);
-      }
-      await doc.click();
+      // The pair switches too, and the preview follows unsaved typing.
       await doc.press("Control+End");
       await doc.pressSequentially("\n# Uusi");
-      if (width === 390)
-        await page.getByTestId("editor-preview-toggle").click();
+      await previewButton.click();
+      await expect(source).toBeHidden();
       await expect(preview.getByRole("heading", { level: 1 })).toHaveCount(2);
       await expect(preview.getByTestId("mermaid-diagram")).toBeVisible({
         timeout: 20000,
@@ -807,12 +817,119 @@ for (const width of [1366, 390])
             .analyze()
         ).violations,
       ).toEqual([]);
-      await capture(page, `preview-${width}`);
-      // Ctrl+K then V closes the side preview as VS Code does.
-      const keys = width === 390 ? preview : doc;
-      await keys.press("Control+K");
-      await keys.press("v");
+      await capture(page, `md-esikatselu-${width}`);
+      // The buffer is still unsaved, and Ctrl+S saves it from the preview.
+      await expect(page.getByTestId("editor-dirty")).not.toBeEmpty();
+      await preview.press("Control+S");
+      await expect(page.getByTestId("editor-dirty")).toBeEmpty();
+      await textButton.click();
       await expect(preview).toHaveCount(0);
       await expect(line("# Uusi")).toBeVisible();
+    });
+
+    test(`@browser-editor @a11y table, picture and page previews ${width}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 });
+      const requests: string[] = [];
+      page.on("request", (r) => requests.push(r.url()));
+      await openFile(page, width === 390);
+      const doc = page.getByTestId("editor-document");
+      const preview = page.getByTestId("editor-preview");
+
+      // A CSV opens as a table on the line the text showed, numbered by
+      // text line, and returns to the line the table showed.
+      await openEntry(page, "cmd/taulu.csv");
+      // Focus first: a click scrolls the text to its cursor.
+      await doc.click();
+      await page
+        .getByTestId("codemirror-editor")
+        .locator(".cm-scroller")
+        .evaluate((el) => {
+          el.scrollTop = el.scrollHeight / 2;
+        });
+      await expect.poll(() => firstLine(page)).toBeGreaterThan(20);
+      const before = await firstLine(page);
+      await doc.press("Control+E");
+      const table = preview.getByTestId("editor-preview-table");
+      await expect(table).toBeVisible();
+      await expect(preview).toBeFocused();
+      // A quoted line break makes the first data row two lines.
+      await expect(table.locator('tr[data-line="3"] th').first()).toHaveText(
+        "4",
+      );
+      const topRow = () =>
+        preview.evaluate((el) => {
+          const edge =
+            el.querySelector("thead th")?.getBoundingClientRect().bottom ?? 0;
+          const row = Array.from(
+            el.querySelectorAll<HTMLElement>("tbody tr"),
+          ).find((r) => r.getBoundingClientRect().bottom > edge + 2);
+          return Number(row?.dataset.line) + 1;
+        });
+      expect(Math.abs((await topRow()) - before)).toBeLessThanOrEqual(1);
+      await capture(page, `csv-taulukko-${width}`);
+      await preview.evaluate((el) => {
+        el.scrollTop += 300;
+      });
+      const read = await topRow();
+      expect(read).toBeGreaterThan(before);
+      await preview.press("Escape");
+      await expect(doc).toBeFocused();
+      await page.waitForTimeout(500);
+      await expect
+        .poll(async () => Math.abs((await firstLine(page)) - read))
+        .toBeLessThanOrEqual(1);
+
+      // An SVG is drawn as an image: its script does not run and nothing it
+      // names is fetched.
+      await openEntry(page, "cmd/tunnus.svg");
+      await expect(page.getByTestId("editor-preview-toggle")).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+      await doc.press("Control+Shift+V");
+      const image = preview.getByTestId("editor-preview-image");
+      await expect(image).toBeVisible();
+      await expect
+        .poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth))
+        .toBeGreaterThan(0);
+      expect(await page.title()).not.toBe("svg-ran");
+      // Not a blob: a blob shares the app's origin, and opening the image in
+      // a tab of its own would run the picture's script there.
+      expect(await image.getAttribute("src")).toMatch(/^data:image\/svg\+xml/);
+
+      // HTML shows in a sandboxed frame without scripts or network.
+      await openEntry(page, "cmd/sivu.html");
+      await page.getByTestId("editor-preview-toggle").click();
+      const frame = preview.getByTestId("editor-preview-page");
+      await expect(frame).toBeVisible();
+      await expect(frame).toHaveAttribute("sandbox", "");
+      const site = page.frameLocator('[data-testid="editor-preview-page"]');
+      await expect(site.locator("h1")).toHaveText("Kutsu");
+      await expect(site.locator("script, link, [data-ran]")).toHaveCount(0);
+      expect(
+        await frame.evaluate(
+          (element: HTMLIFrameElement) => element.contentDocument === null,
+        ),
+      ).toBe(true);
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .include('[data-testid="browser-editor"]')
+            // The sandboxed page runs no script, axe's included.
+            .exclude('[data-testid="editor-preview-page"]')
+            .analyze()
+        ).violations,
+      ).toEqual([]);
+      await capture(page, `html-sivu-${width}`);
+      // The pencil returns to the text where Esc is not at hand.
+      await page.getByTestId("editor-text-toggle").click();
+      await expect(preview).toHaveCount(0);
+      expect(
+        requests.filter((url) =>
+          /example\.test|kuva\.png|tyyli\.css|tracker/.test(url),
+        ),
+      ).toEqual([]);
     });
   });

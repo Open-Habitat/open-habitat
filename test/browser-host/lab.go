@@ -76,6 +76,7 @@ func seedLab(home string) error {
 			if e := os.WriteFile(filepath.Join(dir, "cmd", "main.go"), []byte("package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Aurinkokello\")\n}\n"), 0600); e != nil {
 				return e
 			}
+			writePreviewFixtures(filepath.Join(dir, "cmd"))
 			if e := os.MkdirAll(filepath.Join(dir, ".agents"), 0700); e != nil {
 				return e
 			}

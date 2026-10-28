@@ -1,5 +1,6 @@
 import {
   lazy,
+  type ReactNode,
   type RefObject,
   Suspense,
   useDeferredValue,
@@ -7,22 +8,50 @@ import {
   useRef,
   useState,
 } from "react";
-import { ControlButton } from "./ControlElements";
+import type { EditorPlaceApi } from "./CodeMirrorEditor";
+import { ControlButton, controlStyles } from "./ControlElements";
 import { EditorFileTree } from "./EditorFileTree";
 import type { EditorChange, EditorMergeApi, MergeSource } from "./editorMerge";
+import {
+  type FileView,
+  fileView,
+  headingLines,
+  heightToLine,
+  lineToHeight,
+} from "./editorPreview";
 import type { TreeDirectories } from "./editorTree";
 import type { FileRef } from "./fileRefs";
+import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 import "./BrowserEditor.css";
 
 const CodeMirror = lazy(() => import("./CodeMirrorEditor"));
-const markdownPath = (path?: string) =>
-  !!path && /\.(md|markdown)$/i.test(path);
-/** Beside the text, or in its place. A narrow editor shows either one. */
-type Preview = "off" | "side" | "only";
-// Cmd on Apple keyboards, where Ctrl+K is CodeMirror's delete-to-line-end.
-const mod = (e: KeyboardEvent) =>
-  /Mac|iPhone|iPad/.test(navigator.platform) ? e.metaKey : e.ctrlKey;
+// Tables, pictures and pages load with the first such file.
+const loadFilePreview = () => import("./EditorFilePreview");
+const FilePreview = lazy(loadFilePreview);
+const apple = () => /Mac|iPhone|iPad/.test(navigator.platform);
+// Cmd on Apple keyboards, where Ctrl+E is CodeMirror's end of line.
+const mod = (e: KeyboardEvent) => (apple() ? e.metaKey : e.ctrlKey);
+// Matched by `code`, so a layout or Option never changes the key; AltGr
+// arrives as Ctrl+Alt on Windows and is left alone.
+const previewKey = (e: KeyboardEvent) =>
+  mod(e) && !e.altKey && (e.shiftKey ? e.code === "KeyV" : e.code === "KeyE");
+const saveKey = (e: KeyboardEvent) =>
+  mod(e) && !e.altKey && !e.shiftKey && e.code === "KeyS";
+/** Mounted with the preview's content, once a lazy renderer has loaded. */
+function Mounted({
+  then,
+  children,
+}: {
+  then: () => void;
+  children: ReactNode;
+}) {
+  const ran = useRef(then);
+  useEffect(() => {
+    ran.current();
+  }, []);
+  return children;
+}
 /** Changes someone else wrote to the open file, as the toolbar shows them. */
 export type DiskChanges =
   | { kind: "pending"; source: MergeSource; count: number }
@@ -67,13 +96,89 @@ export interface BrowserEditorProps {
   onUndoImport: () => void;
   onReimport: () => void;
 }
+// Same place both ways: Markdown maps by its headings, in the same order in
+// the text and the rendered document, and by the relative place inside a
+// section; a table row carries its text line. A picture or page is one view.
+const top = (el: Element, from: Element) =>
+  el.getBoundingClientRect().top - from.getBoundingClientRect().top;
+function markdownGeometry(preview: HTMLElement, text: string) {
+  const doc = preview.querySelector(".ah-markdown");
+  if (!doc) return;
+  const base = top(doc, preview) + preview.scrollTop;
+  const heights = Array.from(
+    doc.querySelectorAll("h1, h2, h3, h4, h5, h6"),
+    (h) => top(h, doc),
+  );
+  return {
+    base,
+    args: [
+      text.split("\n").length,
+      headingLines(text),
+      heights,
+      doc.scrollHeight,
+    ] as const,
+  };
+}
+// A heading lands a little below the top edge rather than under it.
+const breathing = 12;
+function previewHeight(
+  preview: HTMLElement,
+  view: FileView | undefined,
+  text: string,
+  line: number,
+): number {
+  if (view?.kind === "markdown") {
+    const g = markdownGeometry(preview, text);
+    return g ? g.base + lineToHeight(line, ...g.args) - breathing : 0;
+  }
+  if (view?.kind !== "table") return 0;
+  const rows = Array.from(
+    preview.querySelectorAll<HTMLElement>("tbody tr[data-line]"),
+  );
+  const row = rows.findLast((r) => Number(r.dataset.line) <= line);
+  const head = preview.querySelector("thead");
+  if (!row || row === rows[0]) return 0;
+  return (
+    top(row, preview) +
+    preview.scrollTop -
+    (head?.getBoundingClientRect().height ?? 0)
+  );
+}
+function previewLine(
+  preview: HTMLElement,
+  view: FileView | undefined,
+  text: string,
+): number {
+  if (!preview.scrollTop) return 0;
+  if (view?.kind === "markdown") {
+    const g = markdownGeometry(preview, text);
+    return g
+      ? heightToLine(preview.scrollTop + breathing - g.base, ...g.args)
+      : 0;
+  }
+  if (view?.kind !== "table") return 0;
+  // The header cells stick; the row group itself scrolls away.
+  const edge = preview
+    .querySelector("thead th")
+    ?.getBoundingClientRect().bottom;
+  if (edge === undefined) return 0;
+  const row = Array.from(
+    preview.querySelectorAll<HTMLElement>("tbody tr[data-line]"),
+  ).find((r) => r.getBoundingClientRect().bottom > edge + 2);
+  return row ? Number(row.dataset.line) : 0;
+}
 export function BrowserEditor(p: BrowserEditorProps) {
   const Engine = CodeMirror;
   const pickerButton = useRef<HTMLButtonElement>(null);
   const root = useRef<HTMLDivElement>(null);
-  const markdown = markdownPath(p.document?.path);
-  const [preview, setPreview] = useState<Preview>("off");
-  const shown = markdown ? preview : "off";
+  const place = useRef<EditorPlaceApi | undefined>(undefined);
+  const path = p.document?.path;
+  const view = fileView(path);
+  // The preview belongs to the file it was opened on: another file opens as
+  // text. It is shown in place of the text, which stays mounted while
+  // hidden, so history and the cursor survive.
+  const [previewed, setPreviewed] = useState<string>();
+  const shown = !!view && previewed === path;
   // The preview follows the buffer, not the file on disk; a large file
   // renders behind typing instead of on every keystroke.
   const [live, setLive] = useState({ revision: -1, text: "" });
@@ -82,57 +187,88 @@ export function BrowserEditor(p: BrowserEditorProps) {
       ? live.text
       : (p.document?.content ?? "");
   const rendered = useDeferredValue(text);
-  const toggle = (want: Exclude<Preview, "off">) => {
-    const next = shown === want ? "off" : want;
-    const pane = (name: string) =>
-      root.current?.querySelector<HTMLElement>(`.ah-browser-${name}`);
-    const holder = ["source", "preview"].find((name) =>
+  const pane = (name: string) =>
+    root.current?.querySelector<HTMLElement>(`.ah-browser-${name}`);
+  // Where the preview lands when its content has mounted.
+  const arrival = useRef<{ line: number; focus: boolean }>(undefined);
+  const arrive = () => {
+    const a = arrival.current;
+    arrival.current = undefined;
+    const preview = pane("preview");
+    if (!a || !preview) return;
+    preview.scrollTop = previewHeight(preview, view, text, a.line);
+    if (a.focus) preview.focus({ preventScroll: true });
+  };
+  /** Text or preview, opening each where the reader was in the other. */
+  const show = (preview: boolean) => {
+    if (!view || !path || preview === shown) return;
+    const holder = ["source", "preview", "toolbar"].find((name) =>
       pane(name)?.contains(document.activeElement),
     );
-    setPreview(next);
-    // Hiding the pane that has focus must not drop it on the page: it moves
-    // to the pane that is left.
+    const now = pane("preview");
+    const line = now
+      ? previewLine(now, view, text)
+      : (place.current?.topLine() ?? 0);
+    if (preview) {
+      // Focus moves into the preview unless a toolbar button holds it.
+      arrival.current = {
+        line,
+        focus: holder === "source" || holder === "preview",
+      };
+      setPreviewed(path);
+      return;
+    }
+    setPreviewed(undefined);
     requestAnimationFrame(() => {
-      const source = pane("source");
-      if (
-        holder === "source" &&
-        source &&
-        getComputedStyle(source).display === "none"
-      )
-        pane("preview")?.focus();
-      else if (holder === "preview" && !pane("preview"))
-        source?.querySelector<HTMLElement>(".cm-content")?.focus();
+      place.current?.showLine(line);
+      // Hiding the part that has focus must not drop it on the page.
+      if (holder === "preview")
+        pane("source")
+          ?.querySelector<HTMLElement>(".cm-content")
+          ?.focus({ preventScroll: true });
     });
   };
-  const toggleRef = useRef(toggle);
-  toggleRef.current = toggle;
-  // VS Code's keys: Ctrl/Cmd+Shift+V opens the preview in place of the text,
-  // Ctrl/Cmd+K then V beside it. Captured before CodeMirror sees them.
+  const showRef = useRef({ show, shown, save: () => {} });
+  // Ctrl/Cmd+E and VS Code's Ctrl/Cmd+Shift+V switch between text and
+  // preview, Esc returns to the text. Captured before CodeMirror sees them;
+  // a file without a preview keeps them as the browser's own.
+  const previewable = !!view;
   useEffect(() => {
     const el = root.current;
-    if (!el || !markdown) return;
-    let chord = false;
+    if (!el || !previewable) return;
     const onKey = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      const wasChord = chord;
-      chord = false;
-      if (wasChord && key === "v" && !e.shiftKey && !e.altKey) {
+      const { show, shown, save } = showRef.current;
+      if (previewKey(e)) {
         e.preventDefault();
         e.stopPropagation();
-        toggleRef.current("side");
-      } else if (mod(e) && e.shiftKey && !e.altKey && key === "v") {
+        show(!shown);
+      } else if (shown && saveKey(e)) {
+        // The text's own Ctrl/Cmd+S is hidden with it.
+        e.preventDefault();
+        save();
+      } else if (
+        e.key === "Escape" &&
+        shown &&
+        !e.defaultPrevented &&
+        !(e.target as Element).closest?.(".ah-browser-picker")
+      ) {
         e.preventDefault();
         e.stopPropagation();
-        toggleRef.current("only");
-      } else if (mod(e) && !e.shiftKey && !e.altKey && key === "k") {
-        e.preventDefault();
-        e.stopPropagation();
-        chord = true;
-      } else if (wasChord && ["control", "meta"].includes(key)) chord = true;
+        show(false);
+      }
     };
     el.addEventListener("keydown", onKey, true);
     return () => el.removeEventListener("keydown", onKey, true);
-  }, [markdown]);
+  }, [previewable]);
+  // A link to a line asks for the text.
+  const selection = p.document?.selection;
+  useEffect(() => {
+    if (selection) setPreviewed(undefined);
+  }, [selection]);
+  // A table, picture or page opens without waiting for its renderer.
+  useEffect(() => {
+    if (view && view.kind !== "markdown") void loadFilePreview();
+  }, [view]);
   const c = p.changes;
   const agent = c?.source === "agent";
   const conflicts = c?.kind === "imported" ? c.conflicts : 0;
@@ -179,6 +315,15 @@ export function BrowserEditor(p: BrowserEditorProps) {
       </ControlButton>
     ) : undefined;
   const replacing = c?.kind === "undone" && p.dirty;
+  const saveDisabled =
+    !p.dirty || p.saving || p.loading || p.saveBlocked || conflicts > 0;
+  showRef.current = {
+    show,
+    shown,
+    save: () => {
+      if (!saveDisabled) p.onSave();
+    },
+  };
   return (
     <div
       ref={root}
@@ -214,35 +359,69 @@ export function BrowserEditor(p: BrowserEditorProps) {
           </span>
           {action}
         </span>
-        {markdown ? (
-          <ControlButton
-            data-testid="editor-preview-toggle"
-            size="row"
-            variant="quiet"
-            // Pressed means shown, whichever way: pressing closes it.
-            onPress={() => toggle(shown === "off" ? "side" : shown)}
-            aria-pressed={shown !== "off"}
-            aria-keyshortcuts="Control+Shift+V Meta+Shift+V"
+        {view ? (
+          // One choice of two: the text or the file's own preview.
+          <fieldset
+            aria-label="Näkymä"
+            className={`${controlStyles.segmented} ah-browser-views`}
+            data-testid="editor-view"
           >
-            Esikatselu
-          </ControlButton>
+            <ControlButton
+              data-testid="editor-text-toggle"
+              size="row"
+              variant="quiet"
+              presentation="segment"
+              aria-label="Teksti"
+              aria-pressed={!shown}
+              aria-keyshortcuts={shown ? "Escape" : undefined}
+              title={shown ? "Takaisin tekstiin · Esc" : "Teksti"}
+              onPress={() => show(false)}
+            >
+              <Icon name="pencil" />
+            </ControlButton>
+            <ControlButton
+              data-testid="editor-preview-toggle"
+              size="row"
+              variant="quiet"
+              presentation="segment"
+              aria-label={view.label}
+              aria-pressed={shown}
+              aria-keyshortcuts="Control+E Meta+E Control+Shift+V Meta+Shift+V"
+              title={`${view.label} · ${apple() ? "⌘E" : "Ctrl+E"}`}
+              onPress={() => show(true)}
+            >
+              <Icon name={view.icon} />
+            </ControlButton>
+          </fieldset>
         ) : null}
-        <ControlButton
-          data-testid="editor-save"
-          size="row"
-          variant={replacing ? "danger" : "secondary"}
-          onPress={p.onSave}
-          isDisabled={
-            !p.dirty || p.saving || p.loading || p.saveBlocked || conflicts > 0
-          }
-          aria-describedby={conflicts ? "ah-editor-save-reason" : undefined}
-        >
-          {replacing
-            ? agent
+        {replacing ? (
+          <ControlButton
+            data-testid="editor-save"
+            size="row"
+            variant="danger"
+            onPress={p.onSave}
+            isDisabled={saveDisabled}
+          >
+            {agent
               ? "Tallenna ja korvaa agentin versio"
-              : "Tallenna ja korvaa levyn versio"
-            : "Tallenna"}
-        </ControlButton>
+              : "Tallenna ja korvaa levyn versio"}
+          </ControlButton>
+        ) : (
+          // Unsaved changes show beside the path and fill the icon, so the
+          // save stays in sight without its word.
+          <ControlButton
+            data-testid="editor-save"
+            size="row"
+            variant={p.dirty && !saveDisabled ? "primary" : "secondary"}
+            onPress={p.onSave}
+            isDisabled={saveDisabled}
+            aria-label="Tallenna"
+            title={`Tallenna · ${apple() ? "⌘S" : "Ctrl+S"}`}
+            aria-describedby={conflicts ? "ah-editor-save-reason" : undefined}
+          >
+            <Icon name="save" />
+          </ControlButton>
+        )}
       </div>
       {conflicts ? (
         <p
@@ -281,7 +460,10 @@ export function BrowserEditor(p: BrowserEditorProps) {
             pickerButton.current?.focus();
           }}
         />
-        <div className="ah-browser-document" data-preview={shown}>
+        <div
+          className="ah-browser-document"
+          data-preview={shown ? "only" : "off"}
+        >
           {p.document ? (
             <>
               <div className="ah-browser-source">
@@ -304,19 +486,35 @@ export function BrowserEditor(p: BrowserEditorProps) {
                     onSave={p.onSave}
                     disabled={p.saving || p.loading}
                     mergeApi={p.mergeApi}
+                    place={place}
                   />
                 </Suspense>
               </div>
-              {shown !== "off" ? (
+              {shown && view ? (
                 // A scrolling region is reachable from the keyboard.
                 <section
                   className="ah-browser-preview"
                   data-testid="editor-preview"
-                  aria-label="Esikatselu"
+                  data-kind={view.kind}
+                  aria-label={view.label}
                   // biome-ignore lint/a11y/noNoninteractiveTabindex: the region scrolls.
                   tabIndex={0}
                 >
-                  <Markdown text={rendered} />
+                  <Suspense
+                    fallback={<p role="status">Ladataan esikatselua</p>}
+                  >
+                    <Mounted then={arrive}>
+                      {view.kind === "markdown" ? (
+                        <Markdown text={rendered} />
+                      ) : (
+                        <FilePreview
+                          kind={view.kind}
+                          text={rendered}
+                          path={p.document.path}
+                        />
+                      )}
+                    </Mounted>
+                  </Suspense>
                 </section>
               ) : null}
             </>

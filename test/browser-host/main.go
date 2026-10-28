@@ -374,8 +374,7 @@ esac
 			// A file for conversation links, independent of code-server availability.
 			_ = os.MkdirAll(filepath.Join(home, "src", "git-project", "cmd"), 0700)
 			_ = os.WriteFile(filepath.Join(home, "src", "git-project", "cmd", "main.go"), []byte("package main\n\nfunc main() {\n\tprintln(\"hei\")\n}\n"), 0600)
-			// Markdown for the editor's preview and heading folds.
-			_ = os.WriteFile(filepath.Join(home, "src", "git-project", "cmd", "notes.md"), []byte("# Muistiinpanot\n\nJohdanto.\n\n## Kaavio\n\n```mermaid\ngraph LR\n  A --> B\n```\n\n## Loppu\n\nViimeinen rivi.\n"), 0600)
+			writePreviewFixtures(filepath.Join(home, "src", "git-project", "cmd"))
 		}
 		sessionRoot := filepath.Join(home, ".pi", "agent", "sessions")
 		if e := os.MkdirAll(sessionRoot, 0700); e != nil {
@@ -1559,4 +1558,42 @@ func (b *fixtureBroker) ListQuotas(ctx context.Context) ([]gateway.QuotaRow, gat
 		rows = append(rows, gateway.QuotaRow{BoundUser: u, Quota: q})
 	}
 	return rows, fs, nil
+}
+
+// writePreviewFixtures gives the editor one file of each previewable kind:
+// Markdown for the preview and heading folds, a table, a picture and a page.
+func writePreviewFixtures(dir string) {
+	// Markdown for the editor's preview and heading folds.
+	_ = os.WriteFile(filepath.Join(dir, "notes.md"), []byte("# Muistiinpanot\n\nJohdanto.\n\n## Kaavio\n\n```mermaid\ngraph LR\n  A --> B\n```\n\n## Loppu\n\nViimeinen rivi.\n"), 0600)
+	// A table, a picture and a page for the editor's other previews.
+	_ = os.WriteFile(filepath.Join(dir, "taulu.csv"), []byte(browserTable()), 0600)
+	_ = os.WriteFile(filepath.Join(dir, "tunnus.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><script>document.title="svg-ran"</script><rect x="10" y="10" width="100" height="60" rx="8" fill="teal"/><image href="https://example.test/tracker.png" width="1" height="1"/></svg>
+`), 0600)
+	_ = os.WriteFile(filepath.Join(dir, "sivu.html"), []byte(`<!doctype html>
+<html>
+<head>
+<title>Kutsu</title>
+<link rel="stylesheet" href="tyyli.css">
+<style>h1 { color: teal; }</style>
+</head>
+<body>
+<h1>Kutsu</h1>
+<p>Tervetuloa <a href="https://example.test/">sivuille</a>.</p>
+<img src="kuva.png" alt="kuva">
+<script>document.body.dataset.ran = "1"; fetch("https://example.test/beacon");</script>
+</body>
+</html>
+`), 0600)
+}
+
+// browserTable is a semicolon CSV long enough to scroll, with a quoted line
+// break, so a row and its text line numbers part ways.
+func browserTable() string {
+	var b strings.Builder
+	b.WriteString("Nimi;Ryhmä;Maksettu\n")
+	b.WriteString("\"Kaksi\nriviä\";A;125\n")
+	for i := 1; i <= 200; i++ {
+		fmt.Fprintf(&b, "Henkilö %d;%c;%d\n", i, 'A'+rune(i%2), i*5)
+	}
+	return b.String()
 }

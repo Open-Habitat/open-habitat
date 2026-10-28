@@ -102,37 +102,6 @@ it("lays a Word document out as a self-contained page without active content", a
   expect(page).not.toMatch(/javascript:/i);
 });
 
-it("reads a table's quoted separators, doubled quotes and line breaks as cell text", async () => {
-  const { tableRows } = await import("./AttachmentPreview");
-  expect(tableRows('a,"b,c",d\r\n"say ""hi""","x\ny",z\n', false)).toEqual([
-    ["a", "b,c", "d"],
-    ['say "hi"', "x\ny", "z"],
-  ]);
-  expect(tableRows("a\tb,c\n1\t2", true)).toEqual([
-    ["a", "b,c"],
-    ["1", "2"],
-  ]);
-  expect(tableRows("1\n2\n3\n", false, 2)).toHaveLength(2);
-  // One very long row is cut at the column limit.
-  expect(tableRows(",".repeat(100_000), false)[0]).toHaveLength(50);
-});
-
-it("splits a CSV at the separator its first row uses", async () => {
-  const { tableRows } = await import("./AttachmentPreview");
-  // A Finnish spreadsheet writes semicolons; its decimal commas stay in cells.
-  expect(tableRows("päivä;käynnit\nma;1,5\n", false)).toEqual([
-    ["päivä", "käynnit"],
-    ["ma", "1,5"],
-  ]);
-  // A quoted separator does not count, and a tie keeps the comma.
-  expect(tableRows('a,"b;c;d",e\n', false)).toEqual([["a", "b;c;d", "e"]]);
-  expect(tableRows("a;b,c\n", false)).toEqual([["a;b", "c"]]);
-  expect(tableRows("a\tb\n1\t2", false)).toEqual([
-    ["a", "b"],
-    ["1", "2"],
-  ]);
-});
-
 it("reads the file once while the dialog stays open, however often its caller renders", async () => {
   const bytes = new TextEncoder().encode("a;b\n1;2\n");
   const read = vi.fn(async (_url: string, _signal: AbortSignal) => bytes);
