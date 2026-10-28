@@ -29,9 +29,12 @@ const (
 
 // syncPass is one native bisync invocation of a supervised loop. Work is its
 // home-relative working directory, where rclone commits the pass's listings.
+// Done is set for a mirror pass: the absolute marker the loop writes after
+// the pass succeeds (mirrorDone).
 type syncPass struct {
 	Work string
 	Cmd  Command
+	Done string
 }
 
 // syncInterval is the pause between successful rounds of passes; tests
@@ -55,7 +58,11 @@ func syncLoop(passes []syncPass) Command {
 		for _, a := range append(append([]string(nil), p.Cmd.Args...), "--use-json-log", "--stats", "1s", "--stats-log-level", "NOTICE") {
 			script.WriteString(" " + quote(a))
 		}
-		fmt.Fprintf(&script, `; rc=$?; printf '{"open_habitat_pass":%d,"exit":%%d}\n' "$rc" >&2; [ "$rc" -eq 0 ] || failed=1; `, i)
+		script.WriteString("; rc=$?; ")
+		if p.Done != "" {
+			script.WriteString(`[ "$rc" -ne 0 ] || : > ` + quote(p.Done) + " || rc=1; ")
+		}
+		fmt.Fprintf(&script, `printf '{"open_habitat_pass":%d,"exit":%%d}\n' "$rc" >&2; [ "$rc" -eq 0 ] || failed=1; `, i)
 		work = append(work, p.Work)
 	}
 	fmt.Fprintf(&script, `[ "$failed" -eq 0 ] || exit 1; sleep %g; done`, syncInterval.Seconds())
@@ -264,9 +271,13 @@ func listingsFailed(home, work string) bool {
 }
 
 // lastSynced is when rclone last committed both bisync listings in a
-// home-relative working directory: the end of the latest successful pass,
-// read from the native files on every request rather than remembered.
+// home-relative working directory, or a mirror pass last finished there: the
+// end of the latest successful pass, read from the files on every request
+// rather than remembered.
 func lastSynced(home, work string) (time.Time, bool) {
+	if t, ok := mirrorSynced(home, work); ok {
+		return t, true
+	}
 	names, fd, err := listHomeDir(home, work)
 	if err != nil || fd < 0 {
 		return time.Time{}, false

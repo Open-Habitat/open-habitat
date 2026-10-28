@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
 )
 
 type helpSpec struct {
@@ -33,7 +35,7 @@ var helpSpecs = []helpSpec{
 	{"agent integration list", "Read native accounts and sync state; no login tokens", "agent integration list --json", nil},
 	{"agent question answer", "Answer the observed pending native question; protected JSON: request_id, value (boolean or string)", "agent question answer --conversation pi:00000000-0000-4000-8000-000000000001 --input-file - --json", []string{"--conversation", "--input-file", "--dry-run"}},
 	{"agent question cancel", "Cancel the observed native question; protected JSON: request_id; delivery remains uncertain", "agent question cancel --conversation pi:00000000-0000-4000-8000-000000000001 --input-file - --json", []string{"--conversation", "--input-file", "--dry-run"}},
-	{"agent integration-login create", "Start own-UID OAuth; JSON: provider, optional existing address; give URL/device code to the person", "agent integration-login create --input-file - --json", []string{"--input-file", "--dry-run"}},
+	{"agent integration-login create", "Start own-UID OAuth; JSON: provider, optional existing address, optional account level (full, drafts, read, app_folder) from integrations list; give URL/device code to the person", "agent integration-login create --input-file - --json", []string{"--input-file", "--dry-run"}},
 	{"agent integration-login show", "Observe own-UID OAuth attempt, never a browser lease", "agent integration-login show --json", nil},
 	{"agent integration-login update", "Submit protected JSON: attempt_id and either redirect_url (loopback) or folders (IDs)", "agent integration-login update --input-file - --json", []string{"--input-file", "--dry-run"}},
 	{"agent integration-login delete", "Cancel own-UID OAuth; protected JSON: attempt_id; not grant revocation", "agent integration-login delete --input-file - --json", []string{"--input-file", "--dry-run"}},
@@ -181,8 +183,8 @@ func commandHelp(args []string) (any, error) {
 				flag["possible_values"] = []string{"openai", "anthropic", "deepseek"}
 			}
 			if f == "--provider" && strings.HasPrefix(key, "admin integrations ") {
-				flag["description"] = "Required provider whose app credentials change"
-				flag["possible_values"] = []string{"google", "microsoft", "dropbox"}
+				flag["description"] = "Required provider whose app credentials change; microsoft_drafts, microsoft_read and dropbox_app_folder are the applications of a narrower account level"
+				flag["possible_values"] = integrationapps.Providers
 			}
 			if f == "--workspace" && (key == "agent view offer" || key == "agent file offer") {
 				flag["description"] = "Own ws_ ID holding --source; defaults to the launch context's workspace with --current"
@@ -364,9 +366,9 @@ func helpFlag(name string) map[string]any {
 	case "--client-id":
 		v["description"] = "Required public client id: Google's ends in .apps.googleusercontent.com, Microsoft's Application (client) ID is a GUID, Dropbox's is the App key"
 	case "--client-secret-file":
-		v["description"] = "Required for google and dropbox: FILE or - for stdin holding the client secret (Dropbox App secret); one trailing newline is ignored; never passed in argv"
+		v["description"] = "Required for google, dropbox and dropbox_app_folder: FILE or - for stdin holding the client secret (Dropbox App secret); one trailing newline is ignored; never passed in argv"
 	case "--tenant-id":
-		v["description"] = "Required for microsoft: the organisation's Directory (tenant) ID GUID; the app is single tenant, so common, organizations and consumers are refused"
+		v["description"] = "Required for microsoft, microsoft_drafts and microsoft_read: the organisation's Directory (tenant) ID GUID; the app is single tenant, so common, organizations and consumers are refused"
 	case "--github-id":
 		v["description"] = "Required canonical numeric GitHub id, as admin access lookup prints it; a login is never accepted here"
 	case "--state":

@@ -20,7 +20,26 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-type microsoftRemote struct{ Name, Directory, DriveID, DriveType string }
+// microsoftRemote is one cloud root of an account's rclone config. Writable
+// is whether the sign-in's grant (grantKey) lets its files sync both ways; a
+// root without a recorded grant was written when only that could sync.
+type microsoftRemote struct {
+	Name, Directory, DriveID, DriveType string
+	Writable                            bool
+}
+
+// service is the account's service the root belongs to.
+func (r microsoftRemote) service() string {
+	if r.Name == "onedrive" {
+		return "onedrive"
+	}
+	return "sharepoint"
+}
+
+// microsoftWritable is whether a grant lets a root of service sync both ways.
+func microsoftWritable(service string, granted map[string]bool) bool {
+	return microsoftRules.access(service, granted) == AccessFull
+}
 
 var microsoftDriveID = regexp.MustCompile(`^[A-Za-z0-9!_-]{1,256}$`)
 var microsoftRemoteName = regexp.MustCompile(`^(onedrive|sp-[a-f0-9]{24})$`)
@@ -146,7 +165,7 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 		if !microsoftDriveID.MatchString(r.DriveID) || (r.DriveType != "personal" && r.DriveType != "business" && r.DriveType != "documentLibrary") {
 			return ToolFailed
 		}
-		fmt.Fprintf(&config, "[%s]\ntype = onedrive\nclient_id = %s\nregion = global\ntenant = %s\ndrive_id = %s\ndrive_type = %s\ndescription = %s\ntoken = %s\n\n", r.Name, l.app.ClientID, l.app.TenantID, r.DriveID, r.DriveType, r.Directory, l.token)
+		fmt.Fprintf(&config, "[%s]\ntype = onedrive\nclient_id = %s\nregion = global\ntenant = %s\ndrive_id = %s\ndrive_type = %s\ndescription = %s\ntoken = %s\n%s\n", r.Name, l.app.ClientID, l.app.TenantID, r.DriveID, r.DriveType, r.Directory, l.token, grantLine(l.granted))
 	}
 	step = "config_limit"
 	if config.Len() > 64<<10 {
@@ -187,7 +206,7 @@ func microsoftRemotes(env Env, address string) ([]microsoftRemote, error) {
 				return nil, ToolFailed
 			}
 			seen[name] = true
-			out = append(out, microsoftRemote{Name: name})
+			out = append(out, microsoftRemote{Name: name, Writable: true})
 		} else if key, value, ok := strings.Cut(line, "="); ok {
 			if len(out) == 0 {
 				return nil, ToolFailed
@@ -197,6 +216,9 @@ func microsoftRemotes(env Env, address string) ([]microsoftRemote, error) {
 				out[len(out)-1].Directory = strings.TrimSpace(value)
 			case "drive_type":
 				out[len(out)-1].DriveType = strings.TrimSpace(value)
+			case grantKey:
+				r := &out[len(out)-1]
+				r.Writable = microsoftWritable(r.service(), microsoftGranted(strings.Fields(value)))
 			}
 		}
 	}
@@ -231,8 +253,14 @@ func microsoftCommand(env Env, address string, args ...string) (Command, bool) {
 	}
 	return Command{Path: tool, Args: append([]string{"--config", filepath.Join(env.Home, microsoftDir, address+".conf")}, args...)}, true
 }
-func microsoftReady(env Env, address, remote string) bool {
-	names, fd, err := listHomeDir(env.Home, microsoftWork(address, remote))
+
+// microsoftReady reports whether a root's chosen first pass finished in the
+// direction its grant syncs: bisync's committed listings, or a mirror pass.
+func microsoftReady(env Env, address string, r microsoftRemote) bool {
+	if !r.Writable {
+		return mirrorReady(env.Home, microsoftWork(address, r.Name))
+	}
+	names, fd, err := listHomeDir(env.Home, microsoftWork(address, r.Name))
 	if err != nil || fd < 0 {
 		return false
 	}
@@ -259,7 +287,7 @@ func (*microsoft) Directories(env Env, address string) []SyncDirectory {
 		pending = append(pending, d)
 		// A library whose listings a critical abort set aside stays listed,
 		// so its stop is reported rather than hidden behind a ready sibling.
-		if work := microsoftWork(address, r.Name); microsoftReady(env, address, r.Name) || listingsFailed(env.Home, work) {
+		if work := microsoftWork(address, r.Name); microsoftReady(env, address, r) || listingsFailed(env.Home, work) {
 			d.Work = work
 			out = append(out, d)
 		}
@@ -282,7 +310,7 @@ func (m *microsoft) Folders(ctx context.Context, env Env, address string) ([]Fol
 	var out []Folder
 	anyReady := false
 	for _, r := range remotes {
-		anyReady = anyReady || microsoftReady(env, address, r.Name)
+		anyReady = anyReady || microsoftReady(env, address, r)
 	}
 	for _, r := range remotes {
 
@@ -290,7 +318,7 @@ func (m *microsoft) Folders(ctx context.Context, env Env, address string) ([]Fol
 		if r.Name != "onedrive" {
 			label = "SharePoint · " + strings.TrimPrefix(r.Directory, "cloud/sharepoint/")
 		}
-		out = append(out, Folder{ID: r.Name, Name: label, UnknownSize: true, Suggested: microsoftReady(env, address, r.Name) || (!anyReady && r.Name == "onedrive")})
+		out = append(out, Folder{ID: r.Name, Name: label, UnknownSize: true, Suggested: microsoftReady(env, address, r) || (!anyReady && r.Name == "onedrive")})
 	}
 	return out, nil
 }
@@ -333,6 +361,15 @@ func (m *microsoft) MeasureFolders(ctx context.Context, env Env, address string,
 	return total, nil
 }
 
+// microsoftMirror is one read-only root's mirror pass.
+func microsoftMirror(env Env, address string, r microsoftRemote) (Command, bool) {
+	c, ok := microsoftCommand(env, address)
+	if !ok {
+		return Command{}, false
+	}
+	return mirrorCommand(c, env, r.Name+":", r.Directory), true
+}
+
 func microsoftBisync(env Env, address string, r microsoftRemote) (Command, bool) {
 	return microsoftCommand(env, address, "bisync", filepath.Join(env.Home, r.Directory), r.Name+":", "--workdir", filepath.Join(env.Home, microsoftWork(address, r.Name)), "--resilient", "--recover", "--max-lock", "2m", "--max-delete", "50", "--conflict-resolve", "none", "--conflict-loser", "num", "--create-empty-src-dirs", "--refresh-times", "--compare", "size,modtime")
 }
@@ -361,7 +398,7 @@ func (m *microsoft) ChooseFolders(ctx context.Context, env Env, address string, 
 		selected[id] = true
 	}
 	for _, r := range remotes {
-		if !selected[r.Name] || microsoftReady(env, address, r.Name) {
+		if !selected[r.Name] || microsoftReady(env, address, r) {
 			// Choosing more libraries never resyncs a healthy existing pair.
 			continue
 		}
@@ -385,12 +422,27 @@ func (m *microsoft) ChooseFolders(ctx context.Context, env Env, address string, 
 // cloud-preferred union whose differing local files go to the backup directory.
 func microsoftInitialPass(ctx context.Context, env Env, address string, r microsoftRemote) error {
 	backup := ".local/share/rclone/microsoft-backups/" + address + "/" + r.Name
+	if !r.Writable {
+		fd, err := openHomeDir(env.Home, true, splitPath(r.Directory)...)
+		if err != nil {
+			return err
+		}
+		unix.Close(fd)
+		c, ok := microsoftMirror(env, address, r)
+		if !ok {
+			return ToolFailed
+		}
+		return initialMirror(ctx, env, c, microsoftWork(address, r.Name), backup, r.service())
+	}
 	for _, rel := range []string{r.Directory, microsoftWork(address, r.Name), backup} {
 		fd, err := openHomeDir(env.Home, true, splitPath(rel)...)
 		if err != nil {
 			return err
 		}
 		unix.Close(fd)
+	}
+	if err := unmarkMirrored(env, microsoftWork(address, r.Name)); err != nil {
+		return err
 	}
 	c, ok := microsoftBisync(env, address, r)
 	if !ok {
@@ -455,14 +507,23 @@ func (m *microsoft) SyncCommand(env Env, address string) (Command, bool) {
 	}
 	var passes []syncPass
 	for _, r := range remotes {
-		if !microsoftReady(env, address, r.Name) {
+		if !microsoftReady(env, address, r) {
+			continue
+		}
+		work := microsoftWork(address, r.Name)
+		if !r.Writable {
+			c, ok := microsoftMirror(env, address, r)
+			if !ok {
+				return Command{}, false
+			}
+			passes = append(passes, syncPass{Work: work, Cmd: c, Done: filepath.Join(env.Home, work, mirrorDone)})
 			continue
 		}
 		c, ok := microsoftBisync(env, address, r)
 		if !ok {
 			return Command{}, false
 		}
-		passes = append(passes, syncPass{Work: microsoftWork(address, r.Name), Cmd: c})
+		passes = append(passes, syncPass{Work: work, Cmd: c})
 	}
 	if len(passes) == 0 {
 		return Command{}, false

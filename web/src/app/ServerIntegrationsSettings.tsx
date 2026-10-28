@@ -15,7 +15,7 @@ import { readAccess } from "./serverAccess";
 import {
   type AppChange,
   type AppFields,
-  type AppProvider,
+  type AppSection,
   appRefusal,
   changeIntegrationApp,
   type IntegrationApps,
@@ -36,10 +36,10 @@ export function ServerIntegrationsSettings({ csrf }: { csrf?: string }) {
   const [names, setNames] = useState<Record<string, string>>({});
   const [failed, setFailed] = useState(false);
   const [pending, setPending] = useState<
-    Partial<Record<ProviderId, PendingApp>>
+    Partial<Record<ProviderId | AppSection, PendingApp>>
   >({});
   const [problem, setProblem] = useState<{
-    provider: ProviderId;
+    provider: ProviderId | AppSection;
     text: string;
   }>();
   // Bumped when a change is sent and when its reply arrives: a read that a
@@ -107,7 +107,7 @@ export function ServerIntegrationsSettings({ csrf }: { csrf?: string }) {
     return () => controller.abort();
   }, [reload]);
   const change = async (
-    provider: AppProvider,
+    provider: AppSection,
     fields?: AppFields,
   ): Promise<AppChange> => {
     if (!csrf) return { kind: "refused", code: "admin_required" };

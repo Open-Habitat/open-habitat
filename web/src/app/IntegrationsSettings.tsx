@@ -38,6 +38,7 @@ import {
   controlLogin,
   type IntegrationChange,
   type IntegrationList,
+  type Level,
   type LoginView,
   listedProvider,
   type PasswordAccount,
@@ -60,6 +61,8 @@ const refusals: Record<string, string> = {
   account_missing: "Tiliä ei enää ole. Sivu päivitetään.",
   provider_unavailable:
     "Tämä integraatio ei ole käytettävissä tällä palvelimella.",
+  level_unavailable:
+    "Tämä taso ei ole käytettävissä tällä palvelimella. Valitse toinen taso tai pyydä ylläpitäjää ottamaan se käyttöön.",
   redirect_invalid:
     "Tämä ei ole se osoite, johon kirjautuminen päättyi. Liitä osoiteriviltä koko osoite.",
   quota_insufficient:
@@ -169,7 +172,8 @@ const live = (v?: LoginView) =>
   v !== undefined &&
   ["starting", "device_code", "open_url", "completing"].includes(v.state);
 
-type Flow = { provider: Provider; stage: ConnectStage };
+/** level is the account level the person chose, kept for a restart. */
+type Flow = { provider: Provider; stage: ConnectStage; level?: Level };
 
 /** The person's outside accounts: reads the catalog and the accounts live
  * from the person's tools through their daemon, and relays sign-ins.
@@ -376,10 +380,15 @@ export function IntegrationsSettings({
   const setStage = (stage: ConnectStage) =>
     setFlow((f) => (f ? { ...f, stage } : f));
 
-  const startLogin = async (provider: Provider, address?: string) => {
+  const startLogin = async (
+    provider: Provider,
+    address?: string,
+    level?: Level,
+  ) => {
     if (!csrf) return;
     setFlow({
       provider,
+      level,
       stage: {
         stage: "login",
         view: {
@@ -395,12 +404,14 @@ export function IntegrationsSettings({
         action: "start",
         provider: provider.id,
         ...(address ? { address } : {}),
+        ...(level ? { level } : {}),
       });
-      setFlow({ provider, stage: { stage: "login", view: next } });
+      setFlow({ provider, level, stage: { stage: "login", view: next } });
     } catch (e) {
       const text = refusalText(e);
       setFlow({
         provider,
+        level,
         stage: text
           ? {
               stage: "login",
@@ -898,6 +909,14 @@ export function IntegrationsSettings({
             });
           else void startLogin(provider, account.address);
         }}
+        onChangeLevel={(account) => {
+          const provider = list.providers.find(
+            (p) => p.id === account.provider,
+          );
+          if (!provider) return;
+          setNotice("");
+          setFlow({ provider, stage: { stage: "intro", account } });
+        }}
         onStopSync={(account) => void stopSync(account)}
         onRemove={(account) => {
           setNotice("");
@@ -908,10 +927,17 @@ export function IntegrationsSettings({
         <ConnectDialog
           provider={flow.provider}
           stage={flow.stage}
-          onContinue={() => {
+          onContinue={(level) => {
             if (flow.provider.login === "app_password")
               setStage({ stage: "password" });
-            else void startLogin(flow.provider);
+            else
+              void startLogin(
+                flow.provider,
+                flow.stage.stage === "intro"
+                  ? flow.stage.account?.address
+                  : undefined,
+                level,
+              );
           }}
           onPassword={(a) => void onPassword(a)}
           onPaste={(url) => {
@@ -941,7 +967,11 @@ export function IntegrationsSettings({
           onRestart={() => {
             const v =
               flow.stage.stage === "login" ? flow.stage.view : undefined;
-            void startLogin(flow.provider, v?.relogin ? v.address : undefined);
+            void startLogin(
+              flow.provider,
+              v?.relogin ? v.address : undefined,
+              flow.level,
+            );
           }}
           onClose={close}
         />

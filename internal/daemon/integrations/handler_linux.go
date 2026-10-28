@@ -107,6 +107,9 @@ type providerView struct {
 	MissingTools      []string  `json:"missing_tools,omitempty"`
 	Login             LoginKind `json:"login"`
 	Services          []string  `json:"services"`
+	// Levels are the account levels a sign-in chooses from, for a
+	// LevelEntry only.
+	Levels []LevelOption `json:"levels,omitempty"`
 }
 
 type listView struct {
@@ -132,7 +135,11 @@ func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 			if reason == "tool_unavailable" {
 				missing = MissingTools(e, c.env)
 			}
-			view.Providers = append(view.Providers, providerView{p, reason == "", reason, missing, e.Login(), e.Services()})
+			var levels []LevelOption
+			if le, ok := e.(LevelEntry); ok {
+				levels = le.Levels(c.env)
+			}
+			view.Providers = append(view.Providers, providerView{p, reason == "", reason, missing, e.Login(), e.Services(), levels})
 		}
 		// The Apple tile follows Microsoft's, before the generic forms.
 		if p == Microsoft {
@@ -383,6 +390,7 @@ type loginRequest struct {
 	AttemptID   string   `json:"attempt_id"`
 	RedirectURL string   `json:"redirect_url"`
 	Folders     []string `json:"folders"`
+	Level       Level    `json:"level"`
 }
 
 var attemptID = regexp.MustCompile(`^[0-9]{8}T[0-9]{6}\.[0-9]{9}$`)
@@ -420,8 +428,19 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 			fail(w, 400, "invalid_request")
 			return
 		}
+		le, levels := e.(LevelEntry)
+		if in.Level != "" && !levels {
+			fail(w, 400, "invalid_request")
+			return
+		}
 		if !e.Available(c.env) {
 			fail(w, 409, "provider_unavailable")
+			return
+		}
+		if in.Level != "" && !levelAvailable(le.Levels(c.env), in.Level) {
+			// An unknown level is as unavailable as one the operator has not
+			// registered; neither starts a sign-in.
+			fail(w, 409, "level_unavailable")
 			return
 		}
 		if in.Address != "" {
@@ -434,13 +453,13 @@ func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owne
 				return
 			}
 		}
-		err = c.startLogin(owner, e, in.Address)
-	case r.Method == http.MethodPut && in.Action == "redirect" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.Folders == nil:
+		err = c.startLogin(owner, e, in.Address, in.Level)
+	case r.Method == http.MethodPut && in.Action == "redirect" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.Folders == nil && in.Level == "":
 		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(45 * time.Second))
 		err = c.redirect(owner, in.AttemptID, in.RedirectURL)
-	case r.Method == http.MethodPut && in.Action == "folders" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.RedirectURL == "" && validFolders(in.Folders):
+	case r.Method == http.MethodPut && in.Action == "folders" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.RedirectURL == "" && in.Level == "" && validFolders(in.Folders):
 		err = c.chooseFolders(owner, in.AttemptID, in.Folders)
-	case r.Method == http.MethodDelete && in.Action == "cancel" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.RedirectURL == "" && in.Folders == nil:
+	case r.Method == http.MethodDelete && in.Action == "cancel" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.RedirectURL == "" && in.Folders == nil && in.Level == "":
 		err = c.cancelLogin(owner, in.AttemptID)
 	default:
 		fail(w, 400, "invalid_request")

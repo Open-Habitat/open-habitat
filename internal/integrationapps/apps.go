@@ -23,15 +23,28 @@ const Path = "/opt/open-habitat/integrations.json"
 // MaxFile is the most the daemon reads of the operator file.
 const MaxFile = 16384
 
-// Providers in the catalog's order. Each needs the operator's application.
-var Providers = []string{"google", "microsoft", "dropbox"}
+// Providers are the file's application sections in the catalog's order;
+// each needs the operator's application. A provider whose account levels are
+// separate applications has one section per level beside its own, which is
+// the full level: an Entra application's consented permissions are what every
+// one of its tokens carries, and a Dropbox application's access type (App
+// folder or Full Dropbox) is fixed when it is created, so a narrower level
+// that the provider itself enforces is another registration. The section
+// name is the provider, an underscore and the level.
+var Providers = []string{"google", "microsoft", "microsoft_drafts", "microsoft_read", "dropbox", "dropbox_app_folder"}
+
+// ProviderOf is the provider a section registers an application for.
+func ProviderOf(section string) string {
+	provider, _, _ := strings.Cut(section, "_")
+	return provider
+}
 
 // Fields are a provider's section members, in the order they are written.
 func Fields(provider string) []string {
 	switch provider {
-	case "google", "dropbox":
+	case "google", "dropbox", "dropbox_app_folder":
 		return []string{"client_id", "client_secret"}
-	case "microsoft":
+	case "microsoft", "microsoft_drafts", "microsoft_read":
 		return []string{"client_id", "tenant_id"}
 	}
 	return nil
@@ -40,7 +53,7 @@ func Fields(provider string) []string {
 // SecretField names the member that must never leave root's file, or "" when
 // the provider's application is a public client without one.
 func SecretField(provider string) string {
-	if provider == "microsoft" {
+	if ProviderOf(provider) == "microsoft" {
 		return ""
 	}
 	return "client_secret"
@@ -62,7 +75,10 @@ var (
 // common or organizations (AADSTS50194), so the tenant is always the
 // organisation's Directory (tenant) ID.
 func Usable(provider string, f map[string]string) bool {
-	switch provider {
+	if Fields(provider) == nil {
+		return false
+	}
+	switch ProviderOf(provider) {
 	case "google":
 		return googleValue.MatchString(f["client_id"]) && googleValue.MatchString(f["client_secret"])
 	case "dropbox":
@@ -76,7 +92,9 @@ func Usable(provider string, f map[string]string) bool {
 // Valid is what the broker writes: exactly the provider's fields, usable by
 // the daemon, in the provider's own format, and no value pasted twice. Both
 // Microsoft ids sit on the same Entra Overview page, so the same GUID in
-// either case is refused as the likeliest paste mistake.
+// either case is refused as the likeliest paste mistake. A level's section is
+// judged alone: which application a sign-in used decides only what it asks
+// for, while the level an account shows is read from what it was granted.
 func Valid(provider string, f map[string]string) bool {
 	want := Fields(provider)
 	if want == nil || len(f) != len(want) || !Usable(provider, f) {

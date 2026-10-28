@@ -98,9 +98,9 @@ func fixtureIntegrations(home, repoRoot, self string, gitea *giteafake.Server, g
 		&fixtureEntry{provider: integrations.Google, login: integrations.PastedRedirect, services: []string{"mail", "calendar", "contacts", "drive"}, files: "drive", dir: "google-drive",
 			addresses: []string{"person.home@example.test", "person.second@example.test"},
 			folders:   []integrations.Folder{{ID: "own", Name: "Oma Drive", Bytes: 4617089843, Suggested: true}, {ID: "shared", Name: "Jaettu kanssani", Bytes: 1932735283, Suggested: true}, {ID: "photos", Name: "Kuvat", Bytes: 33500744908}}},
-		&fixtureEntry{provider: integrations.Microsoft, login: integrations.DeviceCode, services: []string{"mail", "calendar", "contacts", "onedrive"}, files: "onedrive", dir: "onedrive",
+		&levelFixture{&fixtureEntry{provider: integrations.Microsoft, login: integrations.DeviceCode, services: []string{"mail", "calendar", "contacts", "onedrive"}, files: "onedrive", dir: "onedrive",
 			addresses: []string{"person@work.example.test", "person.second@work.example.test"},
-			folders:   []integrations.Folder{{ID: "me", Name: "OneDrive – Esimerkki Oy", Bytes: 4509715660, Suggested: true}, {ID: "sales", Name: "SharePoint · Myynti › Asiakirjat", Bytes: 1932735283, Suggested: true}, {ID: "admin", Name: "SharePoint · Hallinto › Sopimukset", Bytes: 644245094}}},
+			folders:   []integrations.Folder{{ID: "me", Name: "OneDrive – Esimerkki Oy", Bytes: 4509715660, Suggested: true}, {ID: "sales", Name: "SharePoint · Myynti › Asiakirjat", Bytes: 1932735283, Suggested: true}, {ID: "admin", Name: "SharePoint · Hallinto › Sopimukset", Bytes: 644245094}}}},
 	)
 	// The prototype's home: 50 GB quota with 15.3 GB of other files.
 	room := func() integrations.Room {
@@ -253,6 +253,8 @@ type fixtureLogin struct {
 	env     integrations.Env
 	address string
 	pasted  chan string
+	// level is the account level the stand-in grants (levelFixture).
+	level integrations.Level
 }
 
 func (l *fixtureLogin) Prompt(context.Context) (integrations.Prompt, error) {
@@ -303,10 +305,117 @@ func (l *fixtureLogin) Wait(ctx context.Context) (string, error) {
 			return "", err
 		}
 	}
+	if l.level != "" {
+		// The stand-in's grant: what the level's application was granted.
+		dir := l.entry.store(l.env) + "-level"
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return "", err
+		}
+		if err := os.WriteFile(filepath.Join(dir, l.address), []byte(l.level), 0o600); err != nil {
+			return "", err
+		}
+	}
 	integrationFixture.mu.Lock()
 	delete(integrationFixture.expired, l.entry.provider)
 	integrationFixture.mu.Unlock()
 	return l.address, nil
+}
+
+// levelFixture is the Microsoft stand-in with account levels: each level is
+// offered while the broker's file holds its application's section, and an
+// account's grant is the one its sign-in's level was given.
+type levelFixture struct{ *fixtureEntry }
+
+var levelSections = map[integrations.Level]string{integrations.LevelFull: "microsoft", integrations.LevelDrafts: "microsoft_drafts", integrations.LevelRead: "microsoft_read"}
+
+func (f *levelFixture) Levels(integrations.Env) []integrations.LevelOption {
+	var out []integrations.LevelOption
+	for _, l := range []integrations.Level{integrations.LevelFull, integrations.LevelDrafts, integrations.LevelRead} {
+		out = append(out, integrations.LevelOption{ID: l, Available: appFixture.set(levelSections[l])})
+	}
+	return out
+}
+
+func (f *levelFixture) Available(env integrations.Env) bool { return f.AppConfigured(env) }
+func (f *levelFixture) AppConfigured(env integrations.Env) bool {
+	for _, o := range f.Levels(env) {
+		if o.Available {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *levelFixture) levelOf(env integrations.Env, address string) integrations.Level {
+	b, err := os.ReadFile(filepath.Join(f.store(env)+"-level", address))
+	if err != nil {
+		return ""
+	}
+	return integrations.Level(b)
+}
+
+func (f *levelFixture) StartLogin(ctx context.Context, env integrations.Env, address string) (integrations.Login, error) {
+	return f.StartLevelLogin(ctx, env, address, "")
+}
+
+func (f *levelFixture) StartLevelLogin(ctx context.Context, env integrations.Env, address string, level integrations.Level) (integrations.Login, error) {
+	if level == "" && address != "" {
+		level = f.levelOf(env, address)
+	}
+	if level == "" {
+		for _, o := range f.Levels(env) {
+			if o.Available {
+				level = o.ID
+				break
+			}
+		}
+	}
+	login, err := f.fixtureEntry.StartLogin(ctx, env, address)
+	if err == nil {
+		login.(*fixtureLogin).level = level
+	}
+	return login, err
+}
+
+// CheckGrant reads a narrowed grant as the plain stand-in does; otherwise
+// the grant of the account's level, when its sign-in recorded one.
+func (f *levelFixture) CheckGrant(ctx context.Context, env integrations.Env, address string) ([]integrations.Service, *integrations.Grant) {
+	out, grant := f.fixtureEntry.CheckGrant(ctx, env, address)
+	level := f.levelOf(env, address)
+	if grant != nil || level == "" {
+		return out, grant
+	}
+	granted := map[integrations.Level][]string{
+		integrations.LevelFull:   {"Calendars.ReadWrite", "Contacts.ReadWrite", "Files.ReadWrite.All", "Mail.ReadWrite", "Mail.Send", "Sites.ReadWrite.All", "User.Read"},
+		integrations.LevelDrafts: {"Calendars.Read", "Contacts.Read", "Files.Read.All", "Mail.ReadWrite", "Sites.Read.All", "User.Read"},
+		integrations.LevelRead:   {"Calendars.Read", "Contacts.Read", "Files.Read.All", "Mail.Read", "Sites.Read.All", "User.Read"},
+	}[level]
+	for i := range out {
+		switch {
+		case level == integrations.LevelFull:
+			out[i].Access = integrations.AccessFull
+		case level == integrations.LevelDrafts && out[i].ID == "mail":
+			out[i].Access = integrations.AccessDrafts
+		default:
+			out[i].Access = integrations.AccessRead
+		}
+	}
+	return out, &integrations.Grant{Granted: granted, NotGranted: []string{}}
+}
+
+func (f *levelFixture) Remove(ctx context.Context, env integrations.Env, address string) error {
+	_ = os.Remove(filepath.Join(f.store(env)+"-level", address))
+	return f.fixtureEntry.Remove(ctx, env, address)
+}
+
+func (f *levelFixture) Level(env integrations.Env, address string, services []integrations.Service) integrations.Level {
+	level := f.levelOf(env, address)
+	for _, s := range services {
+		if s.Access == "" || s.Access == integrations.AccessNone {
+			return ""
+		}
+	}
+	return level
 }
 
 func (l *fixtureLogin) Cancel() {}

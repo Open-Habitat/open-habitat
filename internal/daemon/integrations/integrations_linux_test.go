@@ -961,7 +961,7 @@ func TestInitialSyncRejectsReplacementButExplicitStopKeepsNativeAccount(t *testi
 	if view := waitState(t, h, ownerA, "completing"); view["address"] != s.signsIn {
 		t.Fatal("first native sync lost its phase observation", view)
 	}
-	if err := c.startLogin(ownerA, e, ""); err != errAttemptActive {
+	if err := c.startLogin(ownerA, e, "", ""); err != errAttemptActive {
 		t.Fatal("replacement interrupted sync", err)
 	}
 	// Status does not wait behind the long native initial pass.

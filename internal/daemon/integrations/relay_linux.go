@@ -30,6 +30,9 @@ type attempt struct {
 	// signed in once it finished.
 	address string
 	relogin bool
+	// level is the account level the person chose, "" for the entry's own
+	// choice (LevelEntry.StartLevelLogin).
+	level Level
 	// resume is the daemon's own restart of an interrupted first pass. It
 	// has no owner, so no browser session sees, drives or cancels it.
 	resume           bool
@@ -181,7 +184,7 @@ func loginFailure(err error) string {
 	var f Failure
 	if errors.As(err, &f) {
 		switch f {
-		case Expired, RedirectRejected, DeviceCodeBlocked, AccountMismatch, Cancelled, NothingGranted:
+		case Expired, RedirectRejected, DeviceCodeBlocked, AccountMismatch, Cancelled, NothingGranted, FinalSyncFailed:
 			return string(f)
 		}
 	}
@@ -235,7 +238,7 @@ var errAttemptMissing = errors.New("attempt_not_found")
 
 // start begins a login for owner. Another session's live attempt is not
 // replaced: the tool may be waiting on that person's provider tab.
-func (c *Catalog) startLogin(owner string, e LoginEntry, address string) error {
+func (c *Catalog) startLogin(owner string, e LoginEntry, address string, level Level) error {
 	r := &c.relay
 	r.mu.Lock()
 	if a := r.a; a != nil && a.syncing && !finished(a.state) {
@@ -265,7 +268,7 @@ func (c *Catalog) startLogin(owner string, e LoginEntry, address string) error {
 		return errAttemptActive
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	a := &attempt{owner: owner, id: c.now().UTC().Format("20060102T150405.000000000"), provider: e.Provider(), address: address, relogin: address != "", state: "starting", cancel: cancel, until: c.now().Add(loginLifetime), choose: make(chan []string, 1), existing: map[string]bool{}, done: make(chan struct{})}
+	a := &attempt{owner: owner, id: c.now().UTC().Format("20060102T150405.000000000"), provider: e.Provider(), address: address, relogin: address != "", level: level, state: "starting", cancel: cancel, until: c.now().Add(loginLifetime), choose: make(chan []string, 1), existing: map[string]bool{}, done: make(chan struct{})}
 	if list, err := e.Accounts(c.env); err == nil {
 		for _, x := range list {
 			a.existing[x] = true
@@ -359,7 +362,13 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	// daemon shutdown, but is not killed by the login's 20-minute deadline.
 	phaseCtx, phaseCancel := context.WithDeadline(ctx, a.until)
 	defer phaseCancel()
-	login, err := e.StartLogin(phaseCtx, c.env, a.address)
+	var login Login
+	var err error
+	if le, ok := e.(LevelEntry); ok {
+		login, err = le.StartLevelLogin(phaseCtx, c.env, a.address, a.level)
+	} else {
+		login, err = e.StartLogin(phaseCtx, c.env, a.address)
+	}
 	if err != nil {
 		c.failAttempt(a, err)
 		return
@@ -464,8 +473,14 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		}
 		c.write.Unlock()
 		if err != nil {
-			c.failAttempt(a, loginPhaseError{phase: "native_commit", err: ToolFailed})
+			if !errors.Is(err, FinalSyncFailed) {
+				err = ToolFailed
+			}
+			c.failAttempt(a, loginPhaseError{phase: "native_commit", err: err})
 			return
+		}
+		if r, ok := login.(interface{ RevokeFailed() bool }); ok && r.RevokeFailed() {
+			c.log.Warn("integration_revoke", "provider", string(e.Provider()), "outcome", "failed", "reason", "previous_login_kept")
 		}
 	}
 	fe, choose := e.(FolderEntry)

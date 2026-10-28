@@ -718,6 +718,43 @@ union are backed up under `~/.local/share/rclone/dropbox-backups/<account>/`.
 Removing a connection keeps local files unless the person chooses Trash, and
 does not revoke the app grant at Dropbox.
 
+#### Dropbox account levels
+
+A person chooses one of three levels when connecting, and *Vaihda taso…*
+changes it later with a new sign-in. Dropbox enforces each one:
+
+- **Koko Dropbox** (full) is the application above with all its scopes; files
+  sync both ways under `~/cloud/dropbox/<account>/`.
+- **Vain luku** (read) asks the same application for `account_info.read`,
+  `files.metadata.read` and `files.content.read` only, so it needs nothing
+  more from the operator. Its files are a one-way mirror of Dropbox
+  (`rclone sync`): local changes never reach Dropbox and the next pass
+  overwrites them. The person chooses the mirror like the two-way sync, and
+  local files the first mirror pass would overwrite or delete go to the backup
+  directory above.
+- **Vain sovelluskansio** (app folder) needs a second application, created as
+  **Scoped access → App folder** with the same permissions and redirect URI.
+  It sees only `Apps/<application name>/` in the person's Dropbox, which syncs
+  both ways under `~/cloud/dropbox-app-folder/<account>/`. Its section is
+
+  ```json
+  "dropbox_app_folder": {"client_id": "<App folder app key>", "client_secret": "<App folder app secret>"}
+  ```
+
+  (`admin integrations set --provider dropbox_app_folder`, or the level's row
+  under Dropbox in Palvelinintegraatiot). Without it the level is shown greyed
+  out and refers people to the administrator.
+
+The level an account shows is read from what it was granted: the token
+response's scopes, which rclone's config keeps beside the token
+(`habitat_grant`), and the application the sign-in used. A level change that
+stops a two-way sync, or moves to another root, first runs one more two-way
+pass with the old login, so nothing made locally is left behind; if that pass
+fails, nothing changes and the new login is revoked. After a level change, and
+after any other new sign-in, the daemon revokes the replaced login at Dropbox.
+A level change to another root leaves the old directory in place, no longer
+synced.
+
 ### Google app registration
 
 Add this section to `/opt/open-habitat/integrations.json` beside `tools`:
@@ -871,6 +908,46 @@ calendar/contacts reads, a second account, daemon restart, and removal. Also
 verify the consent-required link before admin consent and any applicable
 device policy. Synthetic tests cannot establish real tenant consent or token
 refresh.
+
+#### Microsoft account levels
+
+A person chooses a level when connecting, and *Vaihda taso…* changes it later
+with a new sign-in. Every token of an Entra application carries all the
+permissions consented to that application, whatever a sign-in asks, so each
+level is its **own application**, registered exactly as above (single tenant,
+public client, the same redirect URI, admin consent) but with the level's
+delegated permissions:
+
+| Level | Section | Delegated permissions besides `openid`, `profile`, `User.Read`, `offline_access` |
+|---|---|---|
+| Täysi (full) | `microsoft` | `Files.ReadWrite.All`, `Sites.ReadWrite.All`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.ReadWrite`, `Contacts.ReadWrite` |
+| Luonnokset, ei lähetystä (drafts) | `microsoft_drafts` | `Files.Read.All`, `Sites.Read.All`, `Mail.ReadWrite`, `Calendars.Read`, `Contacts.Read` |
+| Vain luku (read) | `microsoft_read` | `Files.Read.All`, `Sites.Read.All`, `Mail.Read`, `Calendars.Read`, `Contacts.Read` |
+
+The drafts level sends nothing: an event with attendees sends invitations
+and a file grant can create a public sharing link, so only mail is writable.
+A level section has the same two fields as `microsoft`
+(`admin integrations set --provider microsoft_drafts|microsoft_read`, or the
+level's row under Microsoft 365 in Palvelinintegraatiot); the tenant is
+normally the same. A level without its application is shown greyed out and
+refers people to the administrator; only the full level is needed for the
+integration to be offered. The consent link a person may be shown names the
+level's application and permissions.
+
+The level an account shows is read from its grant (the tenant's answer to
+each status check), never from what was chosen: an organisation that
+consented to less shows what it granted, and a grant matching no level shows
+its services one by one. An account keeps using the application its native
+configs name; if the operator replaces or removes that application the
+account asks to sign in again (`app_changed`). Read-only files (drafts and
+read) are a one-way mirror (`rclone sync`) of the chosen roots: local changes
+never reach Microsoft and the next pass overwrites them. A level change that
+stops a two-way sync first runs one more two-way pass with the old login; if
+it fails, nothing changes. Microsoft cannot revoke a single refresh token, so
+the replaced login is deleted from the home but stays valid at Microsoft until
+it expires or the person signs out of all sessions in their Microsoft account.
+The level for files in selected folders only (`Files.SelectedOperations.Selected`)
+is not offered.
 
 ## Agent command search path
 

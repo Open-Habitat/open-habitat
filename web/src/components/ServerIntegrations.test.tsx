@@ -94,6 +94,10 @@ it("orders the catalog's seven rows and offers each state's one action", () => {
   ).toEqual([
     ["si-row-google", "ready"],
     ["si-row-microsoft", "needs_app"],
+    // A provider's narrower levels follow it; a provider whose tools are
+    // missing has none to set.
+    ["si-row-microsoft_drafts", "needs_app"],
+    ["si-row-microsoft_read", "needs_app"],
     ["si-row-apple", "ready"],
     ["si-row-imap", "ready"],
     ["si-row-caldav", "ready"],
@@ -491,4 +495,35 @@ it("copies the one command that installs a missing tool", async () => {
     );
   });
   expect(writeText).toHaveBeenCalledWith(fixCommand);
+});
+
+it("sets and removes a level's own application as its own section", async () => {
+  const withRead: IntegrationApps = {
+    ...apps,
+    apps: [
+      ...apps.apps,
+      {
+        provider: "microsoft_read",
+        client_id: "11111111-2222-4333-8444-555555555555",
+        tenant_id: "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903",
+        usable: true,
+        source: "site_admin",
+        actor: "root",
+        at: "2026-10-28T06:00:00Z",
+      },
+    ],
+  };
+  const calls = setup({ apps: withRead });
+  expect(row("microsoft_read" as ProviderId).dataset.status).toBe("ready");
+  fireEvent.click(screen.getByTestId("si-setup-microsoft_drafts"));
+  fireEvent.click(screen.getByTestId("si-skip"));
+  type("si-field-client_id", "22222222-3333-4444-8555-666666666666");
+  type("si-field-tenant_id", "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903");
+  fireEvent.click(screen.getByTestId("si-save"));
+  await waitFor(() =>
+    expect(calls.onSave).toHaveBeenCalledWith("microsoft_drafts", {
+      client_id: "22222222-3333-4444-8555-666666666666",
+      tenant_id: "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903",
+    }),
+  );
 });

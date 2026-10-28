@@ -277,3 +277,18 @@
     justify-content: flex-start;
   }
 }
+
+/* A provider's narrower account level: its own application, set under the
+   provider's row. */
+.si-row.si-level {
+  min-height: 44px;
+  padding-top: var(--ah-s2);
+  padding-bottom: var(--ah-s2);
+}
+.si-level-indent {
+  width: 24px;
+}
+.si-row.si-level .si-name {
+  font-weight: 500;
+  white-space: normal;
+}

@@ -1,7 +1,12 @@
 import { render, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { IntegrationList, LoginView, Provider } from "../app/integrations";
+import type {
+  Account,
+  IntegrationList,
+  LoginView,
+  Provider,
+} from "../app/integrations";
 import {
   ConnectDialog,
   IntegrationsOverview,
@@ -812,5 +817,149 @@ describe("Gitea in the overview", () => {
     );
     expect(within(oauth).queryByTestId("gitea-disconnect-open")).toBeNull();
     expect(within(oauth).getByTestId("gitea-unsupported")).toBeTruthy();
+  });
+});
+
+describe("account levels", () => {
+  const dropbox: Provider = {
+    id: "dropbox",
+    available: true,
+    login: "pasted_redirect",
+    services: ["dropbox"],
+    levels: [
+      { id: "full", available: true },
+      { id: "app_folder", available: false },
+      { id: "read", available: true },
+    ],
+  };
+  const full: Account = {
+    provider: "dropbox",
+    address: "person@example.test",
+    checked_at: "2026-10-28T06:38:00Z",
+    level: "full",
+    services: [
+      {
+        id: "dropbox",
+        state: "ok",
+        access: "full",
+        directory: "~/cloud/dropbox/person@example.test",
+      },
+    ],
+    grant: { granted: ["files.content.write"], not_granted: [] },
+  };
+  const intro = (
+    account: Account | undefined,
+    onContinue: (level?: string) => void,
+  ) =>
+    render(
+      <ConnectDialog
+        provider={dropbox}
+        stage={{ stage: "intro", account }}
+        onContinue={onContinue}
+        onPassword={noop}
+        onPaste={noop}
+        onFolders={noop}
+        onRestart={noop}
+        onClose={noop}
+      />,
+    );
+
+  it("signs in at the chosen level, and a level without the server's app cannot be chosen", async () => {
+    const onContinue = vi.fn();
+    const view = intro(undefined, onContinue);
+    const radio = (id: string) =>
+      within(view.getByTestId(`integration-level-${id}`)).getByRole(
+        "radio",
+      ) as HTMLInputElement;
+    expect(radio("full").checked).toBe(true);
+    expect(radio("app_folder").disabled).toBe(true);
+    await userEvent.click(view.getByTestId("integration-level-app_folder"));
+    expect(radio("full").checked).toBe(true);
+    await userEvent.click(view.getByTestId("integration-level-read"));
+    await userEvent.click(view.getByTestId("integration-continue"));
+    expect(onContinue).toHaveBeenCalledWith("read");
+  });
+
+  it("changes an account's level only to another one, and says what the change does", async () => {
+    const onContinue = vi.fn();
+    const view = intro(full, onContinue);
+    const go = view.getByTestId("integration-continue") as HTMLButtonElement;
+    expect(go.disabled).toBe(true);
+    await userEvent.click(view.getByTestId("integration-level-read"));
+    expect(view.getByTestId("integration-level-change")).toBeTruthy();
+    expect(go.disabled).toBe(false);
+    await userEvent.click(go);
+    expect(onContinue).toHaveBeenCalledWith("read");
+  });
+
+  it("names an account's level from its grant, and only for providers with levels", () => {
+    const narrowed: Account = {
+      provider: "microsoft",
+      address: "person@work.example.test",
+      checked_at: "2026-10-28T06:38:00Z",
+      services: [
+        { id: "onedrive", state: "unknown", access: "none" },
+        { id: "mail", state: "ok", access: "drafts" },
+        { id: "calendar", state: "ok", access: "full" },
+      ],
+      grant: { granted: ["Mail.ReadWrite"], not_granted: ["Mail.Send"] },
+    };
+    const read: Account = {
+      ...narrowed,
+      address: "reader@work.example.test",
+      services: [
+        { id: "onedrive", state: "unknown", access: "none" },
+        { id: "mail", state: "ok", access: "read" },
+        { id: "calendar", state: "ok", access: "read" },
+      ],
+    };
+    const microsoft: Provider = {
+      id: "microsoft",
+      available: true,
+      login: "device_code",
+      services: ["onedrive", "mail", "calendar"],
+      levels: [{ id: "full", available: true }],
+    };
+    const googleAccount: Account = {
+      provider: "google",
+      address: "person.home@example.test",
+      checked_at: "2026-10-28T06:38:00Z",
+      services: [{ id: "mail", state: "ok", access: "read" }],
+      grant: { granted: ["gmail.readonly"], not_granted: [] },
+    };
+    const onChangeLevel = vi.fn();
+    const view = render(
+      <IntegrationsOverview
+        list={{
+          schema_version: 1,
+          providers: [dropbox, microsoft, google],
+          skill: "current",
+          accounts: [full, narrowed, read, googleAccount],
+        }}
+        checking={new Set()}
+        onCheck={noop}
+        onConnect={noop}
+        onSignInAgain={noop}
+        onChangeLevel={onChangeLevel}
+        onRemove={noop}
+      />,
+    );
+    const levels = view
+      .getAllByTestId("integration-account-level")
+      .map((p) => p.dataset.level);
+    // A grant that is a level with a service left out, and one that is
+    // none of them.
+    expect(levels).toEqual(["full", "custom", "custom"]);
+    const googleCard = view.getByTestId("integration-account-google");
+    expect(
+      within(googleCard).queryByTestId("integration-account-level"),
+    ).toBeNull();
+    expect(
+      within(googleCard).queryByTestId("integration-change-level"),
+    ).toBeNull();
+    within(view.getByTestId("integration-account-dropbox"))
+      .getByTestId("integration-change-level")
+      .click();
+    expect(onChangeLevel).toHaveBeenCalledWith(full);
   });
 });

@@ -23,6 +23,9 @@ import (
 // redeemed at the new tenant first, and only a grant that tenant accepts is
 // written. A grant it refuses, or a sign-in made with another application,
 // leaves the configs as they are and tells the person to sign in again.
+// With an application for each account level, the current application is
+// the configured one of the account's own level: the one whose client id its
+// configs name (microsoftAccountApp).
 
 // The reasons an account cannot follow the operator's current application.
 // They are login_expired failures on every service of the account.
@@ -189,7 +192,7 @@ func (m *microsoft) refuse(address string, app MicrosoftApp, reason string) {
 }
 
 func (m *microsoft) Misaligned(env Env, address string) bool {
-	app, ok := env.microsoftApp()
+	app, _, ok := microsoftAppOf(env, address)
 	if !ok {
 		return false
 	}
@@ -207,7 +210,7 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 		return ToolFailed
 	}
 	defer m.native.Unlock()
-	app, ok := env.microsoftApp()
+	app, _, ok := microsoftAppOf(env, address)
 	if !ok {
 		return nil
 	}
@@ -382,7 +385,7 @@ func microsoftRegister(ctx context.Context, env Env, app MicrosoftApp, address, 
 // alignedView shows a refused account as needing a new sign-in, with the
 // reason, on every service.
 func (m *microsoft) alignedView(env Env, address string, services []Service) {
-	app, ok := env.microsoftApp()
+	app, _, ok := microsoftAppOf(env, address)
 	if !ok {
 		return
 	}

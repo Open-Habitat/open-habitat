@@ -446,6 +446,9 @@ bad_grant = json.loads((BASE / "examples" / "integrations.json").read_text())
 bad_grant["accounts"][2]["grant"]["granted"].append("<img src=x>")
 must_reject("integrations.schema.json", bad_grant)
 must_reject("integration-login-control.schema.json", {"action":"redirect","attempt_id":"20261019T094000.000000002","redirect_url":"https://gateway.example.test/callback?code=x"})
+# A level is one of the provider's named levels, and only a start chooses it.
+must_reject("integration-login-control.schema.json", {"action":"start","provider":"microsoft","level":"admin"})
+must_reject("integration-login-control.schema.json", {"action":"cancel","attempt_id":"20261019T094000.000000002","level":"read"})
 bad_connect = json.loads((BASE / "examples" / "integration-connect.json").read_text())
 bad_connect["password"] = "secret\n[accounts.x]"
 must_reject("integration-account.schema.json", bad_connect)

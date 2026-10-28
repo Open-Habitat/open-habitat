@@ -1,7 +1,7 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import schema from "../../../contracts/v1/server-integrations.schema.json";
-import type { ProviderId } from "./integrations";
+import type { Level, ProviderId } from "./integrations";
 import { bounded } from "./integrations";
 import { mutationFetch, writeOutcome } from "./mutations";
 
@@ -25,8 +25,29 @@ export const appProviders: AppProvider[] = ["google", "microsoft", "dropbox"];
 export const isAppProvider = (p: ProviderId): p is AppProvider =>
   (appProviders as ProviderId[]).includes(p);
 
+/** A section of root's file: a provider's own application, its full level,
+ * or the separate application of one of its narrower account levels. */
+export type AppSection =
+  | AppProvider
+  | "microsoft_drafts"
+  | "microsoft_read"
+  | "dropbox_app_folder";
+/** The narrower levels' sections of each provider, broadest first. */
+export const levelSections: Partial<
+  Record<AppProvider, { section: AppSection; level: Level }[]>
+> = {
+  microsoft: [
+    { section: "microsoft_drafts", level: "drafts" },
+    { section: "microsoft_read", level: "read" },
+  ],
+  dropbox: [{ section: "dropbox_app_folder", level: "app_folder" }],
+};
+/** The provider a section registers an application for. */
+export const sectionProvider = (section: AppSection): AppProvider =>
+  section.split("_")[0] as AppProvider;
+
 export type IntegrationApp = {
-  provider: AppProvider;
+  provider: AppSection;
   client_id?: string;
   tenant_id?: string;
   usable: boolean;
@@ -67,7 +88,7 @@ export async function readIntegrationApps(
  * retried: a lost reply is reported as uncertain. */
 export async function changeIntegrationApp(
   csrf: string,
-  provider: AppProvider,
+  provider: AppSection,
   fields?: AppFields,
 ): Promise<AppChange> {
   let response: Response | undefined;
@@ -123,7 +144,7 @@ export const appFields: Record<AppProvider, [string, string]> = {
 export type InvalidApp = "audience" | "tenant" | "client" | "other";
 export function invalidApp(app: IntegrationApp): InvalidApp | undefined {
   if (app.usable) return undefined;
-  if (app.provider === "microsoft") {
+  if (sectionProvider(app.provider) === "microsoft") {
     const t = app.tenant_id?.toLowerCase() ?? "";
     if (["common", "organizations", "consumers"].includes(t)) return "audience";
     if (!guid.test(app.client_id ?? "")) return "client";
@@ -135,9 +156,10 @@ export function invalidApp(app: IntegrationApp): InvalidApp | undefined {
 /** Field errors for a section, keyed by field; empty when the broker would
  * accept it. Values are trimmed by the caller. */
 export function appErrors(
-  provider: AppProvider,
+  section: AppSection,
   f: AppFields,
 ): Partial<Record<string, string>> {
+  const provider = sectionProvider(section);
   const [first, second] = appFields[provider];
   const e: Partial<Record<string, string>> = {};
   const a = f[first] ?? "";
@@ -191,8 +213,9 @@ export function appRefusal(code: string): string {
 /** The client id's recognisable start: a Google id always ends in the same
  * domain, so its project number is what the console also shows; a Dropbox
  * App key has no structure, so four characters. */
-export function shortClientID(provider: AppProvider, id?: string): string {
+export function shortClientID(section: AppSection, id?: string): string {
   if (!id) return "";
+  const provider = sectionProvider(section);
   if (provider === "google") return `${id.split("-")[0]}-…`;
   if (provider === "microsoft") return `${id.split("-")[0]}-…`;
   return id.length > 4 ? `${id.slice(0, 4)}…` : id;

@@ -1,14 +1,17 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   Dialog as AriaDialog,
+  RadioGroup as AriaRadioGroup,
   Heading,
   Modal,
   ModalOverlay,
+  Radio,
 } from "react-aria-components";
 import "./Integrations.css";
 import type { GiteaAPI, GiteaConnection } from "../app/gitea";
 import type { GitLabAPI, GitLabConnection } from "../app/gitlab";
 import {
+  type Access,
   type Account,
   type AppleService,
   appleGroups,
@@ -19,6 +22,7 @@ import {
   type Grant,
   gigabytes,
   type IntegrationList,
+  type Level,
   type LoginView,
   listedProvider,
   minutesLeft,
@@ -199,9 +203,13 @@ function CloudFolderHint() {
   );
 }
 
+/** Providers whose read-only files are a one-way mirror; Google Drive's
+ * read grant syncs nothing. */
+const mirrored: ProviderId[] = ["microsoft", "dropbox"];
+
 /** What a narrower grant lets agents do with a service, in the person's
  * terms; the full level is described by what the agent gets. */
-function narrower(service: Service): string | null {
+function narrower(provider: ProviderId, service: Service): string | null {
   const file = fileServices.includes(service.id);
   switch (service.access) {
     case "none":
@@ -210,7 +218,9 @@ function narrower(service: Service): string | null {
       return "Lukee, järjestelee ja kirjoittaa luonnoksia. Ei voi lähettää.";
     case "read":
       return file
-        ? "Vain luku. Tiedostoja ei synkronoida kotihakemistoosi, koska synkronointi kulkee molempiin suuntiin."
+        ? mirrored.includes(provider)
+          ? "Vain luku. Kansio on peili: muutokset eivät palaa palveluun, ja seuraava synkronointi kirjoittaa ne yli."
+          : "Vain luku. Tiedostoja ei synkronoida kotihakemistoosi, koska synkronointi kulkee molempiin suuntiin."
         : service.id === "mail"
           ? "Vain luku. Ei voi muuttaa eikä lähettää mitään."
           : service.id === "calendar"
@@ -218,6 +228,128 @@ function narrower(service: Service): string | null {
             : "Vain luku.";
   }
   return null;
+}
+
+// ---------- Account levels ----------
+
+type LevelCopy = { name: string; sum: string };
+
+/** The levels of the providers that offer a choice, as the person reads
+ * them: each is a boundary the provider itself enforces. */
+const levelCopy: Partial<
+  Record<ProviderId, Partial<Record<Level, LevelCopy>>>
+> = {
+  microsoft: {
+    full: {
+      name: "Täysi",
+      sum: "Agentit voivat lukea, muokata ja lähettää sinun nimissäsi.",
+    },
+    drafts: {
+      name: "Luonnokset, ei lähetystä",
+      sum: "Agentit lukevat ja kirjoittavat postiluonnoksia. Tililtä ei lähde mitään: ei postia, kalenterikutsuja eikä jakolinkkejä.",
+    },
+    read: {
+      name: "Vain luku",
+      sum: "Agentit lukevat postia, kalenteria, yhteystietoja ja tiedostoja, mutta eivät muuta mitään.",
+    },
+  },
+  dropbox: {
+    full: {
+      name: "Koko Dropbox",
+      sum: "Agentit voivat lukea, muokata, poistaa ja jakaa kaikkia tiedostojasi.",
+    },
+    app_folder: {
+      name: "Vain sovelluskansio",
+      sum: "Agentit näkevät vain sovelluksen oman kansion Dropboxin Apps-kansiossa. Muu Dropboxisi ei näy niille lainkaan.",
+    },
+    read: {
+      name: "Vain luku",
+      sum: "Agentit lukevat kaikkia tiedostojasi, mutta eivät muuta, poista tai jaa niitä.",
+    },
+  },
+};
+
+export const levelName = (provider: ProviderId, level: Level) =>
+  levelCopy[provider]?.[level]?.name ?? level;
+
+/** What a level promises a service: drafts sends nothing, so everything
+ * but mail is read only. */
+function levelAccess(level: Level, service: ServiceId): Access {
+  if (level === "full" || level === "app_folder") return "full";
+  if (level === "drafts" && service === "mail") return "drafts";
+  return "read";
+}
+
+/** What agents may do with a service at a level, before signing in. */
+function levelAbility(
+  provider: ProviderId,
+  level: Level,
+  service: ServiceId,
+): string {
+  const access = levelAccess(level, service);
+  if (fileServices.includes(service)) {
+    if (level === "app_folder")
+      return "Vain sovelluksen kansio, synkronoituu molempiin suuntiin. Muu Dropbox ei näy.";
+    return access === "full"
+      ? "Synkronoituu kotihakemistoosi molempiin suuntiin. Agentit voivat muokata, poistaa ja jakaa."
+      : "Peili: tiedostot kopioituvat kotihakemistoosi, mutta muutokset eivät palaa. Kansioon tehty muutos kirjoittuu seuraavalla kierroksella yli.";
+  }
+  if (access === "full")
+    return service === "mail"
+      ? "Lukee, järjestelee, kirjoittaa luonnoksia ja lähettää."
+      : service === "calendar"
+        ? "Lukee ja muokkaa. Tapahtuma osallistujineen lähettää kutsut."
+        : "Lukee ja muokkaa.";
+  return (
+    narrower(provider, { id: service, state: "ok", access }) ?? "Vain luku."
+  );
+}
+
+/** The account card's level: the level the grant amounts to, or the one it
+ * would be without the services left out, or a custom grant. Null when the
+ * grant cannot be read. */
+export function accountLevel(
+  account: Account,
+): { text: string; full: boolean } | null {
+  if (!levelCopy[account.provider]) return null;
+  if (account.level)
+    return {
+      text: levelName(account.provider, account.level),
+      full: account.level === "full",
+    };
+  const shown = account.services.filter((s) => s.access);
+  if (!shown.length) return null;
+  const without = shown.filter((s) => s.access === "none");
+  const rest = shown.filter((s) => s.access !== "none");
+  const levels = Object.keys(levelCopy[account.provider] ?? {}) as Level[];
+  const match = levels.find(
+    (l) =>
+      l !== "app_folder" &&
+      rest.length > 0 &&
+      rest.every((s) => s.access === levelAccess(l, s.id)),
+  );
+  if (!match) return { text: "Mukautettu", full: false };
+  return {
+    text: `${levelName(account.provider, match)}, ilman: ${without.map((s) => serviceName(account.provider, s.id)).join(", ")}`,
+    full: false,
+  };
+}
+
+/** The account's level as a pill: a full grant in the warning tone, a
+ * narrower one in the accent. */
+function LevelPill({ account }: { account: Account }) {
+  const level = accountLevel(account);
+  if (!level) return null;
+  return (
+    <span
+      className={`ig-lv ${level.full ? "full" : "narrow"}`}
+      data-testid="integration-account-level"
+      data-level={account.level ?? "custom"}
+    >
+      <Icon className="ig-lv-icon" name={level.full ? "key" : "lock"} />
+      {level.text}
+    </span>
+  );
 }
 
 /** What a narrower grant leaves out of a service, as a phrase. */
@@ -241,7 +373,14 @@ const scopeName = (scope: string) =>
 
 /** What the agent gets from a service, in a sentence. */
 function gets(provider: ProviderId, service: Service): ReactNode {
-  const limited = narrower(service);
+  if (service.access === "read" && service.directory)
+    return (
+      <>
+        Vain luku. Kansio <code>{service.directory}</code> on peili: muutokset
+        eivät palaa palveluun, ja seuraava synkronointi kirjoittaa ne yli.
+      </>
+    );
+  const limited = narrower(provider, service);
   if (limited) return limited;
   if (service.directory)
     return (
@@ -569,11 +708,14 @@ export function AccountCard({
   checking,
   onCheck,
   onSignInAgain,
+  onChangeLevel,
   onStopSync,
   onRemove,
   unavailable,
 }: {
   account: Account;
+  /** Signs the account in again at another level. */
+  onChangeLevel?: () => void;
   /** Why the provider is out of use on this server; the account's own
    * native login is kept, but nothing reaches or refreshes it meanwhile. */
   unavailable?: Provider["unavailable_reason"];
@@ -596,6 +738,7 @@ export function AccountCard({
           <span className="ig-rn">{copy.name}</span>
           <span className="ig-meta">{account.address}</span>
         </div>
+        <LevelPill account={account} />
         {(needsSignIn(account) ||
           // Google lets the person grant what was left out by signing in again.
           (account.provider === "google" &&
@@ -608,6 +751,16 @@ export function AccountCard({
             onPress={onSignInAgain}
           >
             Kirjaudu uudelleen
+          </ControlButton>
+        ) : null}
+        {onChangeLevel ? (
+          <ControlButton
+            data-testid="integration-change-level"
+            size="row"
+            variant="secondary"
+            onPress={onChangeLevel}
+          >
+            Vaihda taso…
           </ControlButton>
         ) : null}
         <ControlButton
@@ -904,6 +1057,7 @@ export function IntegrationsOverview({
   onCheck,
   onConnect,
   onSignInAgain,
+  onChangeLevel,
   onStopSync,
   onRemove,
   onApple,
@@ -927,6 +1081,8 @@ export function IntegrationsOverview({
   onCheck: (account?: Account) => void;
   onConnect: (provider: Provider) => void;
   onSignInAgain: (account: Account) => void;
+  /** Opens the level choice for an account of a provider with levels. */
+  onChangeLevel?: (account: Account) => void;
   onStopSync?: (account: Account) => void;
   onRemove: (account: Account) => void;
   onApple?: (intent: AppleIntent) => void;
@@ -1155,6 +1311,11 @@ export function IntegrationsOverview({
                     onSignInAgain={
                       p.available ? () => onSignInAgain(a) : undefined
                     }
+                    onChangeLevel={
+                      p.available && p.levels && onChangeLevel
+                        ? () => onChangeLevel(a)
+                        : undefined
+                    }
                     onStopSync={onStopSync ? () => onStopSync(a) : undefined}
                     onRemove={() => onRemove(a)}
                   />
@@ -1222,7 +1383,8 @@ export function IntegrationsOverview({
 // ---------- The connect dialog ----------
 
 export type ConnectStage =
-  | { stage: "intro" }
+  /** account is set when the person changes an existing account's level. */
+  | { stage: "intro"; account?: Account }
   | { stage: "password"; relogin?: string; error?: string; busy?: boolean }
   | { stage: "login"; view: LoginView; error?: string; busy?: boolean }
   | { stage: "connected"; address: string; relogin?: boolean }
@@ -1779,6 +1941,29 @@ function FailedStep({
           {restart}
         </>
       );
+    case "final_sync_failed":
+      return (
+        <>
+          <p
+            className="ig-result bad"
+            role="alert"
+            data-testid="integration-final-sync-failed"
+          >
+            <Icon name="warning" />
+            <span>
+              <b>Tasoa ei vaihdettu.</b> Ennen vaihtoa tiedostot piti
+              synkronoida vielä kerran molempiin suuntiin, mutta se ei
+              onnistunut. Tili toimii entisellä tasolla, ja uusi kirjautuminen
+              peruttiin.
+            </span>
+          </p>
+          <p className="ig-p">
+            Katso tiedostojen tila Tiedot agenteille -sivulta ja yritä
+            uudelleen, kun synkronointi toimii.
+          </p>
+          {restart}
+        </>
+      );
     case "device_code_blocked":
       return (
         <>
@@ -2122,22 +2307,262 @@ function PasswordField({
   );
 }
 
+/** The level cards: each level the provider offers, one chosen. A level
+ * the server lacks the application for is shown and says who adds it; the
+ * chosen card lists what agents get in each service. */
+function LevelChoice({
+  provider,
+  level,
+  onChange,
+}: {
+  provider: Provider;
+  level?: Level;
+  onChange: (level: Level) => void;
+}) {
+  const copy = providerCopy[provider.id];
+  return (
+    <AriaRadioGroup
+      className="ig-levels"
+      aria-label="Taso"
+      value={level ?? null}
+      onChange={(v) => onChange(v as Level)}
+    >
+      {(provider.levels ?? []).map((l) => {
+        const text = levelCopy[provider.id]?.[l.id];
+        return (
+          <Radio
+            key={l.id}
+            value={l.id}
+            isDisabled={!l.available}
+            className="ig-level"
+            data-testid={`integration-level-${l.id}`}
+          >
+            <span className="ig-level-dot" aria-hidden="true" />
+            <span className="ig-level-body">
+              <b className="ig-level-name">{text?.name ?? l.id}</b>
+              <span className="ig-meta">
+                {l.available
+                  ? text?.sum
+                  : `Ei käytössä tällä palvelimella. Taso vaatii palvelimelle oman ${copy.name}-sovelluksen, jonka palvelimen ylläpitäjä lisää (Asetukset › Palvelimen ylläpito › Palvelinintegraatiot).`}
+              </span>
+              {l.available && level === l.id ? (
+                <ul className="ig-level-svc">
+                  {provider.services
+                    .filter((s) => s !== "sharepoint")
+                    .map((s) => (
+                      <li key={s}>
+                        <b className="ig-level-svc-name">
+                          {serviceName(provider.id, s)}
+                        </b>
+                        <span className="ig-level-svc-text">
+                          {levelAbility(provider.id, l.id, s)}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              ) : null}
+            </span>
+          </Radio>
+        );
+      })}
+    </AriaRadioGroup>
+  );
+}
+
+/** What changing an account's level does, before the person signs in. */
+function LevelChange({
+  provider,
+  account,
+  level,
+}: {
+  provider: Provider;
+  account: Account;
+  level: Level;
+}) {
+  const copy = providerCopy[provider.id];
+  const current = accountLevel(account);
+  const file = provider.services.find((s) => fileServices.includes(s));
+  const before = account.services.find((s) => s.id === file)?.access;
+  const appFolder = (l?: Level) => l === "app_folder";
+  const items: [IconName, string][] = [
+    [
+      "external",
+      `Kirjaudut uudelleen ${copy.gen} sivulla. Uusi kirjautuminen korvaa vanhan.`,
+    ],
+    [
+      "lock",
+      provider.id === "dropbox"
+        ? "Habitat peruu vanhan kirjautumisen Dropboxin päässä, joten laajemmat oikeudet eivät jää voimaan."
+        : `Vanha kirjautuminen poistetaan kotihakemistostasi. ${copy.site} ei anna perua yksittäistä kirjautumista, joten jos epäilet sen päätyneen muualle, kirjaudu ulos kaikista istunnoista ${copy.gen} tiliasetuksista.`,
+    ],
+  ];
+  if (file) {
+    const name = serviceName(provider.id, file);
+    const after = levelAccess(level, file);
+    const rootChanges = appFolder(account.level) !== appFolder(level);
+    if (before === "full" && (after !== "full" || rootChanges))
+      items.push([
+        "refresh",
+        `Ennen vaihtoa Habitat synkronoi ${name}-kansion vielä kerran molempiin suuntiin, joten jo tehdyt muutokset ehtivät palveluun. Jos se ei onnistu, mitään ei vaihdeta.`,
+      ]);
+    if (rootChanges)
+      items.push([
+        "folder",
+        appFolder(level)
+          ? "Sovelluskansio synkronoituu omaan kansioonsa kotihakemistossasi. Nykyinen Dropbox-kansio jää paikalleen, mutta se ei enää synkronoidu."
+          : "Dropbox synkronoituu omaan kansioonsa kotihakemistossasi. Sovelluskansion kansio jää paikalleen, mutta se ei enää synkronoidu.",
+      ]);
+    if (after === "read" && before !== "read")
+      items.push([
+        "folder",
+        `${name} muuttuu peiliksi: muutokset eivät enää palaa palveluun. Valitset kansiot uudelleen kirjautumisen jälkeen.`,
+      ]);
+    if (after === "full" && before === "read" && !rootChanges)
+      items.push([
+        "folder",
+        `${name} synkronoituu taas molempiin suuntiin. Valitset kansiot uudelleen kirjautumisen jälkeen.`,
+      ]);
+  }
+  return (
+    <>
+      <p className="ig-fromto" data-testid="integration-level-change">
+        {current ? (
+          <span className={`ig-lv ${current.full ? "full" : "narrow"}`}>
+            {current.text}
+          </span>
+        ) : null}
+        <span aria-hidden="true">→</span>
+        <span className={`ig-lv ${level === "full" ? "full" : "narrow"}`}>
+          {levelName(provider.id, level)}
+        </span>
+      </p>
+      <ul className="ig-change">
+        {items.map(([icon, text]) => (
+          <li key={text}>
+            <Icon className="ig-change-icon" name={icon} />
+            <span>{text}</span>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/** The dialog's warning follows the chosen level: what agents can do with
+ * it, or that a narrower level still lets them pass on what they read. */
+function LevelWarning({
+  provider,
+  level,
+}: {
+  provider: Provider;
+  level: Level;
+}) {
+  const can: string[] = [];
+  const services = provider.services;
+  if (services.includes("mail") && levelAccess(level, "mail") === "full")
+    can.push("lähettää postia");
+  if (
+    services.includes("calendar") &&
+    levelAccess(level, "calendar") === "full"
+  )
+    can.push("muuttaa kalenteria ja lähettää kutsuja");
+  const file = services.find((s) => fileServices.includes(s));
+  if (file && level === "app_folder")
+    can.push("muokata ja poistaa sovelluskansion tiedostoja");
+  else if (file && levelAccess(level, file) === "full")
+    can.push("muokata, poistaa ja jakaa tiedostoja");
+  const first = can.length
+    ? `Agentit voivat ${can.length > 1 ? `${can.slice(0, -1).join(", ")} ja ${can[can.length - 1]}` : can[0]} sinun nimissäsi.`
+    : level === "drafts"
+      ? "Agentit voivat järjestellä postia ja kirjoittaa luonnoksia, mutta eivät lähettää mitään. Ne voivat silti kertoa eteenpäin kaiken, minkä lukevat."
+      : "Agentit eivät voi lähettää tai muuttaa mitään, mutta ne voivat lukea kaiken, minkä tämä taso avaa, ja kertoa sen eteenpäin.";
+  return (
+    <div
+      className="ig-warn"
+      role="note"
+      data-testid="integration-level-warning"
+    >
+      <Icon name="shield" />
+      <div>
+        <strong>{first}</strong> Liitetty viesti tai tiedosto voi sisältää
+        ohjeita, joita agentti yrittää noudattaa. Agentit näkevät myös
+        kirjautumistiedon, mutta sillä voi tehdä vain sen, minkä{" "}
+        {providerCopy[provider.id].site} myönsi.
+      </div>
+    </div>
+  );
+}
+
 function Intro({
   provider,
+  account,
   onContinue,
   onCancel,
 }: {
   provider: Provider;
-  onContinue: () => void;
+  /** The account whose level changes; absent when connecting a new one. */
+  account?: Account;
+  onContinue: (level?: Level) => void;
   onCancel: () => void;
 }) {
   const copy = providerCopy[provider.id];
+  const offered = provider.levels?.filter((l) => l.available) ?? [];
+  const current = account?.level;
+  const [level, setLevel] = useState<Level | undefined>(() =>
+    current && offered.some((l) => l.id === current) ? current : offered[0]?.id,
+  );
   const how =
     provider.login === "device_code"
       ? `Kirjaudut ${copy.gen} sivulla lyhyellä koodilla. Työpaikan tilillä organisaation ylläpitäjän voi joutua hyväksymään sovelluksen ensin.`
       : provider.login === "pasted_redirect"
         ? `${copy.site} avautuu uuteen välilehteen. Hyväksymisen jälkeen kopioit sen osoitteen, johon päädyit, takaisin tänne.`
         : "Tarvitset postipalvelusi sovellussalasanan ja palvelimen nimen. Ne kirjoitetaan vain kotihakemistosi asetuksiin.";
+  const continueButton = (
+    <ControlButton
+      data-testid="integration-continue"
+      size="page"
+      variant="primary"
+      isDisabled={
+        provider.levels !== undefined &&
+        (!level || (account !== undefined && level === current))
+      }
+      onPress={() => onContinue(level)}
+    >
+      {provider.login === "app_password" ? null : <Icon name="external" />}
+      Jatka{provider.login === "app_password" ? "" : `: ${copy.site}`}
+    </ControlButton>
+  );
+  const buttons = (
+    <div className="ig-row">
+      <ControlButton
+        data-testid="cancel"
+        size="page"
+        variant="secondary"
+        onPress={onCancel}
+      >
+        Peruuta
+      </ControlButton>
+      {continueButton}
+    </div>
+  );
+  if (provider.levels)
+    return (
+      <>
+        {account ? null : <CloudFolderHint />}
+        <p className="ig-lead">Mitä agentit saavat tehdä tällä tilillä?</p>
+        <LevelChoice provider={provider} level={level} onChange={setLevel} />
+        {account && level ? (
+          <LevelChange provider={provider} account={account} level={level} />
+        ) : (
+          <p className="ig-p">
+            {how} Taso pyydetään {copy.gen} kirjautumisessa, joten {copy.site}{" "}
+            itse valvoo sitä.
+          </p>
+        )}
+        {level ? <LevelWarning provider={provider} level={level} /> : null}
+        {buttons}
+      </>
+    );
   return (
     <>
       {(provider.id === "microsoft" || provider.id === "dropbox") && (
@@ -2165,25 +2590,7 @@ function Intro({
       </ul>
       <p className="ig-p">{how}</p>
       <AgentWarning />
-      <div className="ig-row">
-        <ControlButton
-          data-testid="cancel"
-          size="page"
-          variant="secondary"
-          onPress={onCancel}
-        >
-          Peruuta
-        </ControlButton>
-        <ControlButton
-          data-testid="integration-continue"
-          size="page"
-          variant="primary"
-          onPress={onContinue}
-        >
-          {provider.login === "app_password" ? null : <Icon name="external" />}
-          Jatka{provider.login === "app_password" ? "" : `: ${copy.site}`}
-        </ControlButton>
-      </div>
+      {buttons}
     </>
   );
 }
@@ -2201,7 +2608,8 @@ export function ConnectDialog({
 }: {
   provider?: Provider;
   stage: ConnectStage;
-  onContinue: () => void;
+  /** Starts the sign-in, at the chosen level for a provider with levels. */
+  onContinue: (level?: Level) => void;
   onPassword: (account: PasswordAccount) => void;
   onPaste: (url: string) => void;
   onFolders: (ids: string[]) => void;
@@ -2224,14 +2632,22 @@ export function ConnectDialog({
     (stage.stage === "password" && stage.relogin) ||
     (stage.stage === "login" && stage.view.relogin) ||
     (stage.stage === "connected" && stage.relogin);
-  const title = relogin
-    ? `Kirjaudu uudelleen: ${copy.name}`
-    : `Yhdistä ${provider.id === "imap" ? "sähköpostitili" : `${copy.name}-tili`}`;
+  const title =
+    stage.stage === "intro" && stage.account
+      ? `Vaihda taso: ${copy.name}`
+      : relogin
+        ? `Kirjaudu uudelleen: ${copy.name}`
+        : `Yhdistä ${provider.id === "imap" ? "sähköpostitili" : `${copy.name}-tili`}`;
   let body: ReactNode = null;
   switch (stage.stage) {
     case "intro":
       body = (
-        <Intro provider={provider} onContinue={onContinue} onCancel={onClose} />
+        <Intro
+          provider={provider}
+          account={stage.account}
+          onContinue={onContinue}
+          onCancel={onClose}
+        />
       );
       break;
     case "password":

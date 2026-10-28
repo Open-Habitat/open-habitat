@@ -98,7 +98,7 @@ func readSecret(path string) (string, error) {
 }
 
 func adminIntegrationsCommand(args []string) (any, error) {
-	const shape = "expected admin integrations list, admin integrations set --provider google|dropbox --client-id <id> --client-secret-file <path|-> [--dry-run], admin integrations set --provider microsoft --client-id <id> --tenant-id <id> [--dry-run] or admin integrations clear --provider <provider> [--dry-run]"
+	const shape = "expected admin integrations list, admin integrations set --provider google|dropbox|dropbox_app_folder --client-id <id> --client-secret-file <path|-> [--dry-run], admin integrations set --provider microsoft|microsoft_drafts|microsoft_read --client-id <id> --tenant-id <id> [--dry-run] or admin integrations clear --provider <provider> [--dry-run]"
 	if len(args) == 0 {
 		return nil, usage(shape)
 	}
@@ -142,14 +142,14 @@ func adminIntegrationsCommand(args []string) (any, error) {
 	}
 	provider := flags["--provider"]
 	if !slices.Contains(integrationapps.Providers, provider) {
-		return nil, usage(fmt.Sprintf("invalid --provider %q; expected google, microsoft or dropbox", provider))
+		return nil, usage(fmt.Sprintf("invalid --provider %q; expected one of %s", provider, strings.Join(integrationapps.Providers, ", ")))
 	}
 	var fields map[string]string
 	if verb == "set" {
 		secretField := integrationapps.SecretField(provider)
 		_, hasSecret := flags["--client-secret-file"]
 		_, hasTenant := flags["--tenant-id"]
-		if hasSecret != (secretField != "") || hasTenant != (provider == "microsoft") {
+		if hasSecret != (secretField != "") || hasTenant != (secretField == "") {
 			return nil, usage(fmt.Sprintf("--provider %s takes --client-id and %s", provider, map[bool]string{true: "--client-secret-file", false: "--tenant-id"}[secretField != ""]))
 		}
 		fields = map[string]string{"client_id": flags["--client-id"]}
@@ -164,7 +164,7 @@ func adminIntegrationsCommand(args []string) (any, error) {
 			fields[secretField] = secret
 		}
 		if !integrationapps.Valid(provider, fields) {
-			return nil, usage(integrationFormat[provider])
+			return nil, usage(integrationFormat[integrationapps.ProviderOf(provider)])
 		}
 	}
 	if dry {

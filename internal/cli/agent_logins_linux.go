@@ -73,7 +73,7 @@ func parseAgentLoginRequest(args []string, stdin io.Reader) (conversationRequest
 	case "integration-login show":
 		req.method, req.path = "GET", daemon.AgentIntegrationLoginPath
 	case "integration-login create":
-		req.method, req.path, needsInput, allowedFields, action = "POST", daemon.AgentIntegrationLoginPath, true, " provider address ", "start"
+		req.method, req.path, needsInput, allowedFields, action = "POST", daemon.AgentIntegrationLoginPath, true, " provider address level ", "start"
 	case "integration-login update":
 		req.method, req.path, needsInput, allowedFields = "PUT", daemon.AgentIntegrationLoginPath, true, " attempt_id redirect_url folders "
 	case "integration-login delete":

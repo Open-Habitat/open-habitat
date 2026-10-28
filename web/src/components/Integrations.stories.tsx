@@ -686,3 +686,105 @@ export const BackgroundQuotaRefusal: Story = {
     },
   },
 };
+
+// Account levels: each a boundary the provider enforces. The server here has
+// Microsoft's full and read applications but not the drafts one, and no
+// Dropbox App folder application.
+const microsoftLevels: Provider = {
+  ...microsoft,
+  services: ["onedrive", "sharepoint", "mail", "calendar", "contacts"],
+  levels: [
+    { id: "full", available: true },
+    { id: "drafts", available: false },
+    { id: "read", available: true },
+  ],
+};
+const dropboxLevels: Provider = {
+  ...dropbox,
+  available: true,
+  levels: [
+    { id: "full", available: true },
+    { id: "app_folder", available: false },
+    { id: "read", available: true },
+  ],
+};
+const leveled: IntegrationList = {
+  schema_version: 1,
+  providers: [microsoftLevels, dropboxLevels],
+  skill: "current",
+  accounts: [
+    {
+      provider: "microsoft",
+      address: "person@work.example.test",
+      checked_at: checked,
+      level: "read",
+      services: [
+        {
+          id: "onedrive",
+          state: "ok",
+          access: "read",
+          directory: "~/cloud/onedrive/person@work.example.test",
+          last_synced_at: "2026-10-19T06:37:12Z",
+        },
+        { id: "mail", state: "ok", access: "read" },
+        { id: "calendar", state: "ok", access: "read" },
+        { id: "contacts", state: "ok", access: "read" },
+      ],
+      grant: {
+        granted: [
+          "Calendars.Read",
+          "Contacts.Read",
+          "Files.Read.All",
+          "Mail.Read",
+          "Sites.Read.All",
+          "User.Read",
+        ],
+        not_granted: [],
+      },
+    },
+    {
+      provider: "dropbox",
+      address: "person@example.test",
+      checked_at: checked,
+      level: "full",
+      services: [
+        {
+          id: "dropbox",
+          state: "ok",
+          access: "full",
+          directory: "~/cloud/dropbox/person@example.test",
+          last_synced_at: "2026-10-19T06:37:12Z",
+        },
+      ],
+      grant: {
+        granted: ["files.content.read", "files.content.write"],
+        not_granted: [],
+      },
+    },
+  ],
+};
+export const Levels: Story = {
+  args: { list: leveled, onChangeLevel: intent },
+};
+export const DialogLevels: Story = {
+  render: dialog(microsoftLevels, { stage: "intro" }),
+};
+export const DialogChangeLevel: Story = {
+  render: dialog(dropboxLevels, {
+    stage: "intro",
+    account: leveled.accounts[1],
+  }),
+};
+export const DialogFinalSyncFailed: Story = {
+  render: dialog(dropboxLevels, {
+    stage: "login",
+    view: {
+      ...base,
+      state: "failed",
+      provider: "dropbox",
+      relogin: true,
+      address: "person@example.test",
+      failure: "final_sync_failed",
+    },
+  }),
+};

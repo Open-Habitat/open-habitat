@@ -24,7 +24,7 @@ func microsoftEnv(t *testing.T) Env {
 	script := `#!/bin/sh
 set -eu
 [ "$MS365_MCP_USE_KEYTAR" = false ]
-[ "$MS365_MCP_CLIENT_ID" = 00000000-0000-0000-0000-000000000001 ]
+case "$MS365_MCP_CLIENT_ID" in 00000000-0000-0000-0000-00000000000[12]) ;; *) exit 79;; esac
 case " $* " in
  '  ')
  read -r payload || :
@@ -83,7 +83,8 @@ func syntheticMicrosoft(t *testing.T, upn, failure string) *microsoft {
 				t.Error("OAuth method")
 			}
 			_ = r.ParseForm()
-			if r.Form.Get("client_id") != "00000000-0000-0000-0000-000000000001" || r.Form.Get("client_secret") != "" {
+			// The full level's application, or the read level's (level_linux_test.go).
+			if !strings.HasPrefix(r.Form.Get("client_id"), "00000000-0000-0000-0000-00000000000") || r.Form.Get("client_secret") != "" {
 				t.Error("public client credentials")
 			}
 			switch r.URL.Path {
@@ -433,7 +434,7 @@ func TestMicrosoftNativeRefreshUsesTheTenant(t *testing.T) {
 	if err != nil || !strings.Contains(string(config), "tenant = "+testTenant+"\n") {
 		t.Fatal("wrong rclone refresh authority", err)
 	}
-	app, _ := env.microsoftApp()
+	app := env.microsoftApps()[LevelFull]
 	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, microsoftMCPScopes)
 	if !ok || !strings.Contains(strings.Join(cmd.Env, "\n"), "MS365_MCP_TENANT_ID="+testTenant) {
 		t.Fatal("restart lost the tenant")
@@ -643,7 +644,7 @@ func TestMicrosoftReloginPreservesDirectoriesAndDoesNotResyncHealthyPairs(t *tes
 	if err := m.ChooseFolders(context.Background(), env, address, []string{current[0].Name}); err != nil {
 		t.Fatal(err)
 	}
-	if microsoftReady(env, address, current[1].Name) {
+	if microsoftReady(env, address, current[1]) {
 		t.Fatal("deselected pair still enabled")
 	}
 	if _, err := os.Stat(filepath.Join(env.Home, current[1].Directory)); err != nil {
@@ -787,7 +788,10 @@ type fastMicrosoftEntry struct {
 }
 
 func (e *fastMicrosoftEntry) StartLogin(ctx context.Context, env Env, address string) (Login, error) {
-	login, err := e.microsoft.StartLogin(ctx, env, address)
+	return e.StartLevelLogin(ctx, env, address, "")
+}
+func (e *fastMicrosoftEntry) StartLevelLogin(ctx context.Context, env Env, address string, level Level) (Login, error) {
+	login, err := e.microsoft.StartLevelLogin(ctx, env, address, level)
 	if err == nil {
 		login.(*microsoftLogin).interval = time.Millisecond
 	}
@@ -827,7 +831,7 @@ func TestMicrosoftInterruptedRenewalRestoresRetainedSync(t *testing.T) {
 			if !c.sync.supervised(key{Microsoft, address}) {
 				t.Fatal("initial native sync not supervised")
 			}
-			if err := c.startLogin(ownerA, e, address); err != nil {
+			if err := c.startLogin(ownerA, e, address, ""); err != nil {
 				t.Fatal(err)
 			}
 			h := c.Handler(allow)
@@ -975,7 +979,7 @@ func TestMicrosoftRemovalFencesAnAttemptBeforeItsIdentityIsPublished(t *testing.
 	ctx, cancel := context.WithCancel(context.Background())
 	c.Start(ctx)
 	defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
-	if err := c.startLogin(ownerA, e, ""); err != nil {
+	if err := c.startLogin(ownerA, e, "", ""); err != nil {
 		t.Fatal(err)
 	}
 	h := c.Handler(allow)

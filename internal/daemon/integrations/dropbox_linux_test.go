@@ -24,6 +24,9 @@ type dropboxTransport func(*http.Request) (*http.Response, error)
 
 func (f dropboxTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
+// dropboxRevoked is the refresh token the synthetic Dropbox last revoked.
+var dropboxRevoked atomic.Value
+
 func fakeRclone(t *testing.T) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "rclone")
@@ -55,8 +58,13 @@ bisync)
   printf 'native listing\n' > "$work/local..dropbox.path2.lst"
  else
   [ -f "$work/local..dropbox.path1.lst" ]
+  [ ! -f "$HOME/pass-fail" ] || exit 7
   echo pass >> "$HOME/passes"
  fi;;
+sync)
+ echo "$1 $2" >> "$HOME/mirrors"
+ [ ! -f "$HOME/mirror-fail" ] || exit 7
+ mkdir -p "$2";;
 *) exit 90;;
 esac
 `
@@ -75,10 +83,18 @@ func syntheticDropbox(t *testing.T, email *string, exchanges *atomic.Int32) *dro
 		var body string
 		switch r.URL.String() {
 		case "https://api.dropboxapi.com/oauth2/token":
-			exchanges.Add(1)
 			if err := r.ParseForm(); err != nil {
 				t.Fatal(err)
 			}
+			if r.Form.Get("grant_type") == "refresh_token" {
+				// Revoking a replaced login redeems it first.
+				if r.Form.Get("client_secret") == "" || r.Form.Get("refresh_token") == "" {
+					t.Errorf("invalid refresh fields")
+				}
+				body = `{"access_token":"revoking-` + r.Form.Get("refresh_token") + `","token_type":"bearer","expires_in":14400}`
+				break
+			}
+			exchanges.Add(1)
 			if r.Form.Get("code") != "synthetic-code" || r.Form.Get("client_id") != "app-key" || r.Form.Get("client_secret") != "app-secret" || r.Form.Get("redirect_uri") != "http://localhost:53682/" || r.Form.Get("grant_type") != "authorization_code" || len(r.Form.Get("code_verifier")) != 43 {
 				t.Errorf("invalid exchange fields")
 			}
@@ -88,6 +104,9 @@ func syntheticDropbox(t *testing.T, email *string, exchanges *atomic.Int32) *dro
 				t.Error("missing bearer")
 			}
 			body = fmt.Sprintf(`{"email":%q,"email_verified":true}`, *email)
+		case "https://api.dropboxapi.com/2/auth/token/revoke":
+			dropboxRevoked.Store(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer revoking-"))
+			body = "null"
 		default:
 			t.Fatalf("unexpected network destination: %s", r.URL)
 		}

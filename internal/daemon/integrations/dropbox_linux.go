@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,18 +34,124 @@ const dropboxDir = ".config/rclone/open-habitat-dropbox"
 const dropboxRedirect = "http://localhost:53682/"
 const dropboxScopes = "account_info.read files.metadata.read files.metadata.write files.content.read files.content.write sharing.read sharing.write"
 
+// dropboxReadScopes are the read level's request to the Full Dropbox
+// application: Dropbox issues a token with exactly the scopes a sign-in asks.
+const dropboxReadScopes = "account_info.read files.metadata.read files.content.read"
+
+// The local roots. An App folder application sees its own folder as the
+// root, so its files must never meet the whole Dropbox's in one directory.
+func dropboxFullDir(address string) string      { return "cloud/dropbox/" + address }
+func dropboxAppFolderDir(address string) string { return "cloud/dropbox-app-folder/" + address }
+
+// dropboxNative is what an account's rclone config says: its application,
+// token and, from the sign-in, the local root (rclone's description) and the
+// grant (grantKey).
+type dropboxNative struct {
+	clientID, clientSecret, token string
+	directory                     string
+	granted                       []string
+	hasGrant                      bool
+}
+
+// access is the files' access from the grant. A login written before the
+// grant was kept could only have been the full set.
+func (n dropboxNative) access() Access {
+	if !n.hasGrant {
+		return AccessFull
+	}
+	return dropboxRules.access("dropbox", scopeSet(n.granted, func(s string) string { return s }))
+}
+
+func (n dropboxNative) appFolder(address string) bool {
+	return n.directory == dropboxAppFolderDir(address)
+}
+
+// dropboxReadNative reads the account's rclone config. A root other than the
+// two the daemon writes is refused rather than synced.
+func dropboxReadNative(env Env, address string) (dropboxNative, error) {
+	var n dropboxNative
+	if !ValidAddress(address) {
+		return n, ToolFailed
+	}
+	fd, err := openHomeDir(env.Home, false, splitPath(dropboxDir)...)
+	if err != nil {
+		return n, err
+	}
+	data, err := readFileAt(fd, address+".conf", 64<<10)
+	unix.Close(fd)
+	if err != nil {
+		return n, err
+	}
+	n.directory = dropboxFullDir(address)
+	for _, line := range strings.Split(string(data), "\n") {
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		value = strings.TrimSpace(value)
+		switch strings.TrimSpace(key) {
+		case "client_id":
+			n.clientID = value
+		case "client_secret":
+			n.clientSecret = value
+		case "token":
+			n.token = value
+		case "description":
+			if value != dropboxAppFolderDir(address) {
+				return n, ToolFailed
+			}
+			n.directory = value
+		case grantKey:
+			n.granted, n.hasGrant = strings.Fields(value), true
+		}
+	}
+	return n, nil
+}
+
 func (*dropbox) Provider() Provider            { return Dropbox }
 func (*dropbox) Login() LoginKind              { return PastedRedirect }
 func (*dropbox) Services() []string            { return []string{"dropbox"} }
 func (d *dropbox) Available(env Env) bool      { return d.ToolsInstalled(env) && d.AppConfigured(env) }
 func (*dropbox) Tools() []string               { return []string{"rclone"} }
 func (d *dropbox) ToolsInstalled(env Env) bool { return MissingTools(d, env) == nil }
-func (*dropbox) AppConfigured(env Env) bool {
-	_, app := env.dropboxApp()
-	return app
+func (*dropbox) AppConfigured(env Env) bool    { return len(env.dropboxApps()) > 0 }
+func (*dropbox) mirrorsRead()                  {}
+
+// Levels: Full Dropbox, the application's own folder, and reading only.
+func (*dropbox) Levels(env Env) []LevelOption {
+	apps := env.dropboxApps()
+	var out []LevelOption
+	for _, l := range []Level{LevelFull, LevelAppFolder, LevelRead} {
+		_, ok := apps[l]
+		out = append(out, LevelOption{l, ok})
+	}
+	return out
 }
-func (*dropbox) Directories(_ Env, address string) []SyncDirectory {
-	return []SyncDirectory{{Service: "dropbox", Path: "cloud/dropbox/" + address, Work: dropboxWork(address)}}
+
+// Level is the App folder level when the sign-in's application was the App
+// folder one, otherwise the files' access the grant gives.
+func (*dropbox) Level(env Env, address string, services []Service) Level {
+	n, err := dropboxReadNative(env, address)
+	if err != nil || len(services) != 1 {
+		return ""
+	}
+	switch {
+	case n.appFolder(address):
+		return LevelAppFolder
+	case services[0].Access == AccessFull:
+		return LevelFull
+	case services[0].Access == AccessRead:
+		return LevelRead
+	}
+	return ""
+}
+
+func (*dropbox) Directories(env Env, address string) []SyncDirectory {
+	n, err := dropboxReadNative(env, address)
+	if err != nil {
+		return nil
+	}
+	return []SyncDirectory{{Service: "dropbox", Path: n.directory, Work: dropboxWork(address)}}
 }
 func (*dropbox) Accounts(env Env) ([]string, error) {
 	names, fd, err := listHomeDir(env.Home, dropboxDir)
@@ -87,22 +194,30 @@ func (d *dropbox) Check(ctx context.Context, env Env, address string) []Service 
 	return out
 }
 
-// CheckGrant reads the service's state and its grant. Dropbox refuses a
-// request for scopes the operator's application lacks, the person cannot
-// leave any out on its consent page, and the sign-in verified the token's
-// own scopes (Wait), so a saved login carries exactly the requested set.
+// CheckGrant reads the service's state and its grant. A Dropbox token
+// carries no readable scopes, so the grant is what the token response named
+// at sign-in, kept next to the token in rclone's config. The person cannot
+// leave scopes out on Dropbox's consent page, so what was asked is the
+// level's set the grant reaches.
 func (d *dropbox) CheckGrant(ctx context.Context, env Env, address string) ([]Service, *Grant) {
 	services := d.check(ctx, env, address)
-	if _, ok := dropboxCommand(env, address); !ok {
+	n, err := dropboxReadNative(env, address)
+	if _, ok := dropboxCommand(env, address); !ok || err != nil {
 		return services, nil
 	}
 	granted := scopeSet(strings.Fields(dropboxScopes), func(s string) string { return s })
+	if n.hasGrant {
+		granted = scopeSet(n.granted, func(s string) string { return s })
+	}
 	services[0].Access = dropboxRules.access("dropbox", granted)
-	return services, grantOf(granted, strings.Fields(dropboxScopes), nil)
+	requested := dropboxScopes
+	if services[0].Access != AccessFull {
+		requested = dropboxReadScopes
+	}
+	return services, grantOf(granted, strings.Fields(requested), nil)
 }
 
-// dropboxRules: files sync both ways, so only the full set is a level the
-// catalog runs.
+// dropboxRules: the full set syncs both ways, reading alone is a mirror.
 var dropboxRules = grantRules{"dropbox": {{strings.Fields(dropboxScopes), AccessFull}, {[]string{"files.content.read"}, AccessRead}}}
 
 func (d *dropbox) check(ctx context.Context, env Env, address string) []Service {
@@ -154,10 +269,22 @@ func dropboxStatus(ctx context.Context, env Env, c Command) (error, bool) {
 }
 func (d *dropbox) Skill(env Env, address string) SkillAccount {
 	_, ready := d.SyncCommand(env, address)
-	if !ready {
-		return SkillAccount{Label: "Dropbox", Kinds: []string{"files"}, Body: fmt.Sprintf("Dropbox is signed in, but initial sync is not ready. Do not assume files are available under `~/cloud/dropbox/%s/`. Ask the person to sign in again in Settings → Integrations and finish the initial sync choice.", address)}
+	n, err := dropboxReadNative(env, address)
+	dir := dropboxFullDir(address)
+	if err == nil {
+		dir = n.directory
 	}
-	return SkillAccount{Label: "Dropbox", Kinds: []string{"files"}, Synced: true, Body: fmt.Sprintf("Dropbox files are ordinary files under `~/cloud/dropbox/%s/`. Read them with filesystem tools, not the repository catalog. This is continuous two-way sync: edits, moves and deletions reach Dropbox and other devices. Write only what the person requested. If a native bisync safeguard stops sync, keep both copies and ask the person/operator to inspect the native rclone state. Do not use `--force`, blindly `--resync`, or remove and reconnect to approve deletions: reconnection is a union and can restore deleted files. Settings → Integrations can renew a rejected login, but does not approve mass deletions.", address)}
+	if !ready {
+		return SkillAccount{Label: "Dropbox", Kinds: []string{"files"}, Body: fmt.Sprintf("Dropbox is signed in, but initial sync is not ready. Do not assume files are available under `~/%s/`. Ask the person to sign in again in Settings → Integrations and finish the initial sync choice.", dir)}
+	}
+	scope := ""
+	if n.appFolder(address) {
+		scope = " The account reaches only this application's own folder in Dropbox (Apps/<application>), never the rest of the person's Dropbox."
+	}
+	if n.access() != AccessFull {
+		return SkillAccount{Label: "Dropbox", Kinds: []string{"files"}, Synced: true, Body: fmt.Sprintf("Dropbox files are ordinary files under `~/%s/`. Read them with filesystem tools, not the repository catalog. The account is read only: this directory is a one-way mirror of Dropbox. Nothing written here reaches Dropbox, and the next pass overwrites or deletes any local change, so never keep work here.%s", dir, scope)}
+	}
+	return SkillAccount{Label: "Dropbox", Kinds: []string{"files"}, Synced: true, Body: fmt.Sprintf("Dropbox files are ordinary files under `~/%s/`. Read them with filesystem tools, not the repository catalog. This is continuous two-way sync: edits, moves and deletions reach Dropbox and other devices. Write only what the person requested. If a native bisync safeguard stops sync, keep both copies and ask the person/operator to inspect the native rclone state. Do not use `--force`, blindly `--resync`, or remove and reconnect to approve deletions: reconnection is a union and can restore deleted files. Settings → Integrations can renew a rejected login, but does not approve mass deletions.%s", dir, scope)}
 }
 func (d *dropbox) Remove(_ context.Context, env Env, address string) error {
 	d.native.Lock()
@@ -188,9 +315,13 @@ func (d *dropbox) Remove(_ context.Context, env Env, address string) error {
 	}
 	return nil
 }
-func (d *dropbox) Folders(_ context.Context, _ Env, _ string) ([]Folder, error) {
+func (d *dropbox) Folders(_ context.Context, env Env, address string) ([]Folder, error) {
 	// The existing choice is the drive root, not its recursive contents.
-	return []Folder{{ID: "all", Name: "Dropbox", UnknownSize: true, Suggested: true}}, nil
+	name := "Dropbox"
+	if n, err := dropboxReadNative(env, address); err == nil && n.appFolder(address) {
+		name = "Dropbox › Apps"
+	}
+	return []Folder{{ID: "all", Name: name, UnknownSize: true, Suggested: true}}, nil
 }
 func (d *dropbox) MeasureFolders(ctx context.Context, env Env, address string, ids []string) (uint64, error) {
 	d.native.Lock()
@@ -205,18 +336,44 @@ func (d *dropbox) MeasureFolders(ctx context.Context, env Env, address string, i
 	return env.measureSize(ctx, c, "dropbox")
 }
 func dropboxBisync(env Env, address string) (Command, bool) {
-	return dropboxCommand(env, address, "bisync", filepath.Join(env.Home, "cloud/dropbox", address), "dropbox:", "--workdir", filepath.Join(env.Home, dropboxWork(address)), "--resilient", "--recover", "--max-lock", "2m", "--max-delete", "50", "--conflict-resolve", "none", "--conflict-loser", "num", "--create-empty-src-dirs", "--refresh-times", "--compare", "size,modtime")
+	n, err := dropboxReadNative(env, address)
+	if err != nil {
+		return Command{}, false
+	}
+	return dropboxCommand(env, address, "bisync", filepath.Join(env.Home, n.directory), "dropbox:", "--workdir", filepath.Join(env.Home, dropboxWork(address)), "--resilient", "--recover", "--max-lock", "2m", "--max-delete", "50", "--conflict-resolve", "none", "--conflict-loser", "num", "--create-empty-src-dirs", "--refresh-times", "--compare", "size,modtime")
 }
 func (d *dropbox) ChooseFolders(ctx context.Context, env Env, address string, ids []string) error {
 	if len(ids) != 1 || ids[0] != "all" {
 		return ToolFailed
 	}
-	for _, rel := range []string{"cloud/dropbox/" + address, dropboxWork(address), ".local/share/rclone/dropbox-backups/" + address} {
+	n, err := dropboxReadNative(env, address)
+	if err != nil {
+		return err
+	}
+	if n.access() == AccessRead {
+		fd, err := openHomeDir(env.Home, true, splitPath(n.directory)...)
+		if err != nil {
+			return err
+		}
+		unix.Close(fd)
+		cmd, ok := dropboxCommand(env, address)
+		if !ok {
+			return ToolFailed
+		}
+		return initialMirror(ctx, env, mirrorCommand(cmd, env, "dropbox:", n.directory), dropboxWork(address), ".local/share/rclone/dropbox-backups/"+address, "dropbox")
+	}
+	if n.access() != AccessFull {
+		return ToolFailed
+	}
+	for _, rel := range []string{n.directory, dropboxWork(address), ".local/share/rclone/dropbox-backups/" + address} {
 		fd, err := openHomeDir(env.Home, true, splitPath(rel)...)
 		if err != nil {
 			return err
 		}
 		unix.Close(fd)
+	}
+	if err := unmarkMirrored(env, dropboxWork(address)); err != nil {
+		return err
 	}
 	cmd, ok := dropboxBisync(env, address)
 	if !ok {
@@ -248,6 +405,21 @@ func (d *dropbox) resumeInitial(ctx context.Context, env Env, address string, _ 
 }
 func (*dropbox) passService(string) string { return "dropbox" }
 func (d *dropbox) SyncCommand(env Env, address string) (Command, bool) {
+	n, err := dropboxReadNative(env, address)
+	if err != nil {
+		return Command{}, false
+	}
+	switch n.access() {
+	case AccessRead:
+		cmd, ok := dropboxCommand(env, address)
+		if !ok || !mirrorReady(env.Home, dropboxWork(address)) {
+			return Command{}, false
+		}
+		return syncLoop([]syncPass{{Work: dropboxWork(address), Cmd: mirrorCommand(cmd, env, "dropbox:", n.directory), Done: filepath.Join(env.Home, dropboxWork(address), mirrorDone)}}), true
+	case AccessFull:
+	default:
+		return Command{}, false
+	}
 	names, fd, err := listHomeDir(env.Home, dropboxWork(address))
 	if err != nil || fd < 0 {
 		return Command{}, false
@@ -269,9 +441,35 @@ func (d *dropbox) SyncCommand(env Env, address string) (Command, bool) {
 }
 
 func (d *dropbox) StartLogin(ctx context.Context, env Env, address string) (Login, error) {
-	app, ok := env.dropboxApp()
+	return d.StartLevelLogin(ctx, env, address, "")
+}
+
+// StartLevelLogin asks the level's application for the level's scopes. A
+// renewal without a level keeps the account's own: its root and its grant.
+func (d *dropbox) StartLevelLogin(ctx context.Context, env Env, address string, level Level) (Login, error) {
+	if level == "" && address != "" {
+		n, err := dropboxReadNative(env, address)
+		switch {
+		case err != nil:
+			// A config the daemon cannot read is renewed as a new one.
+			level = firstLevel(d.Levels(env))
+		case n.appFolder(address):
+			level = LevelAppFolder
+		case n.access() == AccessRead:
+			level = LevelRead
+		default:
+			level = LevelFull
+		}
+	} else if level == "" {
+		level = firstLevel(d.Levels(env))
+	}
+	app, ok := env.dropboxApps()[level]
 	if !ok {
 		return nil, ToolFailed
+	}
+	scopes := dropboxScopes
+	if level == LevelRead {
+		scopes = dropboxReadScopes
 	}
 	random := func() (string, error) {
 		var b [32]byte
@@ -287,17 +485,24 @@ func (d *dropbox) StartLogin(ctx context.Context, env Env, address string) (Logi
 		return nil, err
 	}
 	hash := sha256.Sum256([]byte(verifier))
-	q := url.Values{"client_id": {app.ClientID}, "response_type": {"code"}, "redirect_uri": {dropboxRedirect}, "token_access_type": {"offline"}, "scope": {dropboxScopes}, "state": {state}, "code_challenge": {base64.RawURLEncoding.EncodeToString(hash[:])}, "code_challenge_method": {"S256"}}
-	return &dropboxLogin{entry: d, env: env, app: app, expected: address, state: state, verifier: verifier, auth: "https://www.dropbox.com/oauth2/authorize?" + q.Encode(), redirect: make(chan string, 1)}, nil
+	q := url.Values{"client_id": {app.ClientID}, "response_type": {"code"}, "redirect_uri": {dropboxRedirect}, "token_access_type": {"offline"}, "scope": {scopes}, "state": {state}, "code_challenge": {base64.RawURLEncoding.EncodeToString(hash[:])}, "code_challenge_method": {"S256"}}
+	return &dropboxLogin{entry: d, env: env, app: app, level: level, requested: strings.Fields(scopes), expected: address, state: state, verifier: verifier, auth: "https://www.dropbox.com/oauth2/authorize?" + q.Encode(), redirect: make(chan string, 1)}, nil
 }
 
 type dropboxLogin struct {
 	entry                           *dropbox
 	env                             Env
 	app                             DropboxApp
+	level                           Level
+	requested, granted              []string
 	expected, state, verifier, auth string
 	redirect                        chan string
 	token                           []byte // transient exchange result, written only into rclone's own store
+	// refresh is the new grant's refresh token, kept only to revoke the
+	// grant when the commit refuses it.
+	refresh string
+	// revokeFailed is set when a replaced login could not be revoked.
+	revokeFailed bool
 }
 
 func (l *dropboxLogin) Prompt(context.Context) (Prompt, error) {
@@ -319,6 +524,9 @@ func (l *dropboxLogin) Redirect(_ context.Context, raw string) error {
 		return RedirectRejected
 	}
 }
+
+// request posts a form, or an empty body, and decodes the reply into out
+// unless out is nil.
 func (d *dropbox) request(ctx context.Context, endpoint string, form url.Values, bearer string, out any) error {
 	var body io.Reader
 	if form != nil {
@@ -343,14 +551,46 @@ func (d *dropbox) request(ctx context.Context, endpoint string, form url.Values,
 		return ToolFailed
 	}
 	defer res.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(res.Body, 64<<10+1))
 	if res.StatusCode != 200 {
+		var refused struct {
+			Error string `json:"error"`
+		}
+		if res.StatusCode == 400 && err == nil && len(data) <= 64<<10 && json.Unmarshal(data, &refused) == nil && refused.Error == "invalid_grant" {
+			return errGrantRefused
+		}
 		return ToolFailed
 	}
-	data, err := io.ReadAll(io.LimitReader(res.Body, 64<<10+1))
-	if err != nil || len(data) > 64<<10 || json.Unmarshal(data, out) != nil {
+	if err != nil || len(data) > 64<<10 || out != nil && json.Unmarshal(data, out) != nil {
 		return ToolFailed
 	}
 	return nil
+}
+
+// errGrantRefused is the token endpoint refusing a refresh token: revoked,
+// expired or otherwise ended.
+var errGrantRefused = fmt.Errorf("%w: grant refused", ToolFailed)
+
+// revoke ends a Dropbox grant at Dropbox: the refresh token and every access
+// token issued from it. A fresh access token is redeemed first, since the
+// stored one may have expired; a grant Dropbox already refuses is ended.
+func (d *dropbox) revoke(ctx context.Context, app DropboxApp, refresh string) error {
+	if refresh == "" {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	var fresh struct {
+		AccessToken string `json:"access_token"`
+	}
+	err := d.request(ctx, "https://api.dropboxapi.com/oauth2/token", url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refresh}, "client_id": {app.ClientID}, "client_secret": {app.ClientSecret}}, "", &fresh)
+	if errors.Is(err, errGrantRefused) {
+		return nil
+	}
+	if err != nil || fresh.AccessToken == "" {
+		return ToolFailed
+	}
+	return d.request(ctx, "https://api.dropboxapi.com/2/auth/token/revoke", nil, fresh.AccessToken, nil)
 }
 func (l *dropboxLogin) Wait(ctx context.Context) (string, error) {
 	var code string
@@ -370,10 +610,15 @@ func (l *dropboxLogin) Wait(ctx context.Context) (string, error) {
 	if err != nil || token.AccessToken == "" || token.RefreshToken == "" || token.ExpiresIn <= 0 || token.ExpiresIn > 86400 {
 		return "", ToolFailed
 	}
-	// The token's own scopes are the grant. Its one service syncs both ways,
-	// which a narrower grant cannot run (Dropbox refuses to issue one for
-	// this request, so this is the operator's application changing under it).
-	if token.Scope != "" && dropboxRules.access("dropbox", scopeSet(strings.Fields(token.Scope), func(s string) string { return s })) != AccessFull {
+	// The token's own scopes are the grant, kept with the token for the
+	// level and the files' direction. Dropbox issues what was asked; a reply
+	// without scopes is that.
+	l.refresh, l.granted = token.RefreshToken, l.requested
+	if token.Scope != "" {
+		l.granted = strings.Fields(token.Scope)
+	}
+	if a := dropboxRules.access("dropbox", scopeSet(l.granted, func(s string) string { return s })); a != AccessFull && a != AccessRead {
+		l.revokeNew(ctx)
 		return "", NothingGranted
 	}
 	var account struct {
@@ -395,10 +640,22 @@ func (l *dropboxLogin) Wait(ctx context.Context) (string, error) {
 }
 
 // Commit runs under the catalog's write lock with this account's sync stopped.
-func (l *dropboxLogin) Commit(ctx context.Context, address string) error {
+// A login it replaces whose files sync both ways and would no longer, or
+// would sync another root, first syncs both ways once more with the old
+// grant, so nothing made locally is left behind; if that pass fails nothing
+// changes and the new grant is revoked. The replaced login is then revoked
+// at Dropbox, since a narrower level is real only once the broader token
+// stops working.
+func (l *dropboxLogin) Commit(ctx context.Context, address string) (result error) {
 	l.entry.native.Lock()
 	defer l.entry.native.Unlock()
 	defer func() { l.token = nil }()
+	// A grant the commit refuses is ended rather than left valid unused.
+	defer func() {
+		if result != nil {
+			l.revokeNew(ctx)
+		}
+	}()
 	if len(l.token) == 0 || !ValidAddress(address) {
 		return ToolFailed
 	}
@@ -408,6 +665,20 @@ func (l *dropboxLogin) Commit(ctx context.Context, address string) error {
 	if _, ok := l.env.Tool("rclone"); !ok {
 		return ToolFailed
 	}
+	directory := dropboxFullDir(address)
+	if l.level == LevelAppFolder {
+		directory = dropboxAppFolderDir(address)
+	}
+	writable := dropboxRules.access("dropbox", scopeSet(l.granted, func(s string) string { return s })) == AccessFull
+	old, oldErr := dropboxReadNative(l.env, address)
+	replaced := oldErr == nil
+	changed := replaced && (old.directory != directory || (old.access() == AccessFull) != writable)
+	if _, syncing := l.entry.SyncCommand(l.env, address); changed && syncing && old.access() == AccessFull {
+		cmd, ok := dropboxBisync(l.env, address)
+		if !ok || l.env.runInitialSync(ctx, cmd, "dropbox") != nil {
+			return FinalSyncFailed
+		}
+	}
 	// rclone's OAuth client_secret is Sensitive, not IsPassword: unlike
 	// password fields it is stored verbatim (oauthutil.OverrideCredentials).
 	fd, err := openHomeDir(l.env.Home, true, splitPath(dropboxDir)...)
@@ -416,10 +687,52 @@ func (l *dropboxLogin) Commit(ctx context.Context, address string) error {
 	}
 	defer unix.Close(fd)
 	config := fmt.Sprintf("[dropbox]\ntype = dropbox\nclient_id = %s\nclient_secret = %s\ntoken = %s\n", l.app.ClientID, l.app.ClientSecret, l.token)
-	return writeFileAt(fd, address+".conf", []byte(config), 0600)
+	if directory != dropboxFullDir(address) {
+		config += "description = " + directory + "\n"
+	}
+	config += grantLine(l.granted)
+	if err := writeFileAt(fd, address+".conf", []byte(config), 0600); err != nil {
+		return err
+	}
+	l.refresh = ""
+	if changed {
+		// The pair's listings, or the mirror's marker, describe the old
+		// direction and root; the person's next choice starts the new one.
+		if err := clearWork(l.env, dropboxWork(address)); err != nil {
+			return err
+		}
+	}
+	if replaced {
+		var t struct {
+			Refresh string `json:"refresh_token"`
+		}
+		_ = json.Unmarshal([]byte(old.token), &t)
+		if l.entry.revoke(ctx, DropboxApp{ClientID: old.clientID, ClientSecret: old.clientSecret}, t.Refresh) != nil {
+			l.revokeFailed = true
+		}
+	}
+	return nil
 }
-func (l *dropboxLogin) Cancel() { l.token = nil }
+
+// RevokeFailed reports that the login this one replaced could not be ended
+// at Dropbox; it works until it expires or the person revokes it there.
+func (l *dropboxLogin) RevokeFailed() bool { return l.revokeFailed }
+
+// Cancel drops the exchange's result. A grant that was issued but never
+// committed is revoked: nothing would ever use it.
+func (l *dropboxLogin) Cancel() {
+	l.token = nil
+	l.revokeNew(context.Background())
+}
+
+func (l *dropboxLogin) revokeNew(ctx context.Context) {
+	if l.refresh != "" {
+		_ = l.entry.revoke(context.WithoutCancel(ctx), l.app, l.refresh)
+		l.refresh = ""
+	}
+}
 
 var _ FolderEntry = (*dropbox)(nil)
+var _ LevelEntry = (*dropbox)(nil)
 var _ GrantEntry = (*dropbox)(nil)
 var _ LoginEntry = (*dropbox)(nil)

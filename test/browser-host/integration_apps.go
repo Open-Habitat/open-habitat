@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"net/url"
 	"slices"
@@ -23,7 +24,8 @@ import (
 // daemon reads the real file. /fixture/integration-apps switches root's
 // browser_setup, delays the broker's writes so the waiting state can be seen,
 // loses the next write's reply after committing it, refuses the next write as
-// host maintenance would, or installs a stand-in rclone.
+// host maintenance would, installs a stand-in rclone, or sets root's section
+// for one of Microsoft's level applications.
 type fixtureApps struct {
 	mu     sync.Mutex
 	apps   map[string]gateway.IntegrationApp
@@ -74,6 +76,9 @@ func (f *fixtureApps) fixture(q url.Values) error {
 			f.rclone = true
 		case key == "clear" && slices.Contains(integrationapps.Providers, v):
 			delete(f.apps, v)
+		case key == "set" && integrationapps.ProviderOf(v) == "microsoft" && slices.Contains(integrationapps.Providers, v):
+			// root's own section for one of Microsoft's level applications.
+			f.apps[v] = gateway.IntegrationApp{Provider: v, ClientID: "7c2e5b1a-0d94-4f3b-8a61-3e9f2c7d" + fmt.Sprintf("%04d", len(v)), TenantID: "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903", Usable: true, Source: "operator"}
 		default:
 			return errors.New("unknown integration-apps fixture")
 		}
@@ -103,6 +108,9 @@ func (f *fixtureApps) config(tools map[string]string, rclone string) integration
 	}
 	if a, ok := f.apps["dropbox"]; ok {
 		c.Dropbox = &integrations.DropboxApp{ClientID: a.ClientID, ClientSecret: f.secret["dropbox"]}
+	}
+	if a, ok := f.apps["dropbox_app_folder"]; ok {
+		c.DropboxAppFolder = &integrations.DropboxApp{ClientID: a.ClientID, ClientSecret: f.secret["dropbox_app_folder"]}
 	}
 	return c
 }

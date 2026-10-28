@@ -290,10 +290,10 @@ func TestMicrosoftAllowedScopes(t *testing.T) {
 	}
 }
 
-// Dropbox's token names its scopes. The full set connects and reads as full;
-// a narrower one cannot run the two-way sync and connects nothing.
+// Dropbox's token names its scopes. The full set connects and reads as full,
+// the read set as read; one without the files' content connects nothing.
 func TestDropboxGrantIsTheTokensScopes(t *testing.T) {
-	for scope, want := range map[string]error{dropboxScopes: nil, "": nil, "account_info.read files.metadata.read files.content.read": NothingGranted} {
+	for scope, want := range map[string]error{dropboxScopes: nil, "": nil, dropboxReadScopes: nil, "account_info.read files.metadata.read": NothingGranted} {
 		t.Run(scope, func(t *testing.T) {
 			env := dropboxEnv(t)
 			email := "person@example.test"
@@ -322,8 +322,13 @@ func TestDropboxGrantIsTheTokensScopes(t *testing.T) {
 			if err := l.Commit(context.Background(), address); err != nil {
 				t.Fatal(err)
 			}
+			// The grant is read back from rclone's config, not the login.
 			services, grant := d.CheckGrant(context.Background(), env, address)
-			if services[0].Access != AccessFull || grant == nil || len(grant.NotGranted) != 0 || len(grant.Granted) != len(strings.Fields(dropboxScopes)) {
+			access, level, granted := AccessFull, LevelFull, dropboxScopes
+			if scope == dropboxReadScopes {
+				access, level, granted = AccessRead, LevelRead, dropboxReadScopes
+			}
+			if services[0].Access != access || d.Level(env, address, services) != level || grant == nil || len(grant.NotGranted) != 0 || len(grant.Granted) != len(strings.Fields(granted)) {
 				t.Fatalf("%v %+v", services, grant)
 			}
 		})

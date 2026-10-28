@@ -270,6 +270,144 @@ as in the prototype. */
   flex: 1;
   min-width: 0;
 }
+/* Account levels: the card's pill, the dialog's level cards and what a
+ * change does. A full grant takes the warning tone, a narrower one the
+ * accent. */
+.ig-lv {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-sunken);
+  color: var(--ah-ink-2);
+  font: 500 12px / 1.2 var(--ah-font);
+}
+.ig-lv-icon {
+  width: 12px;
+  height: 12px;
+}
+.ig-lv.full {
+  border-color: var(--ah-err-line);
+  background: var(--ah-err-soft);
+  color: var(--ah-err);
+}
+.ig-lv.narrow {
+  border-color: var(--ah-accent-line);
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ig-levels {
+  display: grid;
+  gap: 6px;
+}
+.ig-level {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  cursor: pointer;
+}
+.ig-level[data-hovered] {
+  background: var(--ah-hover);
+}
+.ig-level[data-selected] {
+  border-color: var(--ah-accent-line);
+  background: var(--ah-accent-soft);
+}
+.ig-level[data-focus-visible] {
+  outline: 2px solid var(--ah-accent);
+  outline-offset: 2px;
+}
+.ig-level[data-disabled] {
+  border-style: dashed;
+  background: var(--ah-sunken);
+  cursor: not-allowed;
+}
+.ig-level-dot {
+  flex: 0 0 16px;
+  height: 16px;
+  margin-top: 2px;
+  border: 2px solid var(--ah-accent-ink);
+  border-radius: 50%;
+}
+.ig-level[data-disabled] .ig-level-dot {
+  border-color: var(--ah-line-strong);
+}
+.ig-level[data-selected] .ig-level-dot {
+  box-shadow: inset 0 0 0 3px var(--ah-surface);
+  background: var(--ah-accent);
+}
+.ig-level-body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.ig-level-name {
+  font-weight: 600;
+}
+.ig-level-svc {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+}
+.ig-level-svc li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+}
+.ig-level-svc-name {
+  min-width: 9em;
+  font-weight: 500;
+  color: var(--ah-ink);
+}
+.ig-level-svc-text {
+  flex: 1 1 14em;
+  min-width: 0;
+}
+.ig-level[data-disabled] .ig-level-name {
+  color: var(--ah-muted);
+}
+.ig-fromto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ig-change {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+}
+.ig-change li {
+  display: flex;
+  gap: 8px;
+}
+.ig-change-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ah-muted);
+}
+@container (max-width: 600px) {
+  .ig-acc .ig-lv {
+    margin-left: 48px;
+  }
+}
 /* The sign-in dialog */
 .ah-modal.ig-dlg {
   width: min(580px, 100%);

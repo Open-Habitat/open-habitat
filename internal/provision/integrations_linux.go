@@ -268,7 +268,7 @@ func integrationApps(file []byte, state integrationFile) ([]IntegrationApp, erro
 			if publicID.MatchString(fields["client_id"]) {
 				app.ClientID = fields["client_id"]
 			}
-			if p == "microsoft" && publicID.MatchString(fields["tenant_id"]) {
+			if integrationapps.ProviderOf(p) == "microsoft" && publicID.MatchString(fields["tenant_id"]) {
 				app.TenantID = fields["tenant_id"]
 			}
 			for _, r := range state.Apps {

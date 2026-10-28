@@ -126,7 +126,7 @@ func validIntegrationApp(x IntegrationApp, fields map[string]json.RawMessage) bo
 		}
 	}
 	// An operator's hand-written id is shown only when it is token-shaped.
-	if !integrationProvider(x.Provider) || x.ClientID != "" && !publicID.MatchString(x.ClientID) || x.TenantID != "" && (!publicID.MatchString(x.TenantID) || x.Provider != "microsoft") {
+	if !integrationProvider(x.Provider) || x.ClientID != "" && !publicID.MatchString(x.ClientID) || x.TenantID != "" && (!publicID.MatchString(x.TenantID) || integrationapps.ProviderOf(x.Provider) != "microsoft") {
 		return false
 	}
 	switch x.Source {

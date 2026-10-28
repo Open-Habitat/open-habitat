@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { Fragment, type ReactNode, useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import type { Provider, ProviderId } from "../app/integrations";
 import { providerOrder } from "../app/onboardingConfig";
@@ -6,6 +6,7 @@ import {
   type AppChange,
   type AppFields,
   type AppProvider,
+  type AppSection,
   appErrors,
   appFields,
   appRefusal,
@@ -13,11 +14,13 @@ import {
   type IntegrationApps,
   invalidApp,
   isAppProvider,
+  levelSections,
+  sectionProvider,
   shortClientID,
 } from "../app/serverIntegrations";
 import { ControlButton, ExternalLink } from "./ControlElements";
 import { Icon } from "./Icon";
-import { ProviderMark, providerCopy } from "./Integrations";
+import { levelName, ProviderMark, providerCopy } from "./Integrations";
 import { Menu } from "./Overlays";
 import { TextField } from "./Primitives";
 import { Badge, StatusMark } from "./Status";
@@ -59,18 +62,40 @@ const googleRedirect = "http://localhost";
 // microsoft_linux.go): microsoftScopes and microsoftMCPScopes, deduplicated,
 // all delegated Graph permissions, and the redirect microsoftConsent() names.
 // The app is single tenant, so only the organisation's accounts sign in.
-const microsoftPermissions = [
-  "openid",
-  "profile",
-  "User.Read",
-  "offline_access",
-  "Files.ReadWrite.All",
-  "Sites.ReadWrite.All",
-  "Mail.ReadWrite",
-  "Mail.Send",
-  "Calendars.ReadWrite",
-  "Contacts.ReadWrite",
-];
+// A narrower level is its own application with the level's permissions
+// (microsoftLevelScopes): the drafts level sends nothing, so everything but
+// mail is read only.
+const microsoftIdentity = ["openid", "profile", "User.Read", "offline_access"];
+const microsoftPermissions: Record<
+  "microsoft" | "microsoft_drafts" | "microsoft_read",
+  string[]
+> = {
+  microsoft: [
+    ...microsoftIdentity,
+    "Files.ReadWrite.All",
+    "Sites.ReadWrite.All",
+    "Mail.ReadWrite",
+    "Mail.Send",
+    "Calendars.ReadWrite",
+    "Contacts.ReadWrite",
+  ],
+  microsoft_drafts: [
+    ...microsoftIdentity,
+    "Files.Read.All",
+    "Sites.Read.All",
+    "Mail.ReadWrite",
+    "Calendars.Read",
+    "Contacts.Read",
+  ],
+  microsoft_read: [
+    ...microsoftIdentity,
+    "Files.Read.All",
+    "Sites.Read.All",
+    "Mail.Read",
+    "Calendars.Read",
+    "Contacts.Read",
+  ],
+};
 const microsoftRedirect =
   "https://login.microsoftonline.com/common/oauth2/nativeclient";
 // Entra admin center › App registrations, where New registration starts.
@@ -82,8 +107,9 @@ const microsoftConsent =
   "https://login.microsoftonline.com/{Directory (tenant) ID}/adminconsent?client_id={Application (client) ID}";
 // What the daemon's Dropbox entry needs (internal/daemon/integrations/
 // dropbox_linux.go): dropboxScopes, all requested by name at sign-in, and
-// dropboxRedirect, matched exactly. It syncs the root dropbox:, so the app
-// needs Full Dropbox rather than an app folder.
+// dropboxRedirect, matched exactly. The full and read levels sync the root
+// dropbox:, so their app needs Full Dropbox; the app folder level is a
+// second app of the App folder type with the same scopes.
 const dropboxScopes = [
   "account_info.read",
   "files.metadata.read",
@@ -140,7 +166,7 @@ function statusOf(
   return { kind: "tool_missing", tools: catalog.missing_tools ?? [] };
 }
 
-function Mark({ p, s }: { p: ProviderId; s: Status }) {
+function Mark({ p, s }: { p: ProviderId | AppSection; s: Status }) {
   const id = `si-status-${p}`;
   switch (s.kind) {
     case "ready":
@@ -229,10 +255,10 @@ function AppLine({
         : `${day(app.at)} · ${names[app.actor ?? ""] ? `@${names[app.actor ?? ""]}` : `GitHub-id ${app.actor}`}`;
   return (
     <span className="si-app" data-testid={`si-app-${app.provider}`}>
-      {where[app.provider]}
+      {where[sectionProvider(app.provider)]}
       {app.client_id && (
         <>
-          {` · ${idName[app.provider]} `}
+          {` · ${idName[sectionProvider(app.provider)]} `}
           <code>{shortClientID(app.provider, app.client_id)}</code>
         </>
       )}
@@ -420,7 +446,13 @@ const googleSteps: Step[] = [
   },
 ];
 
-const microsoftSteps: Step[] = [
+const microsoftAppName: Record<keyof typeof microsoftPermissions, string> = {
+  microsoft: "Open Habitat",
+  microsoft_drafts: "Open Habitat – luonnokset",
+  microsoft_read: "Open Habitat – vain luku",
+};
+
+const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
   {
     id: "register",
     title: "Rekisteröi sovellus",
@@ -439,7 +471,14 @@ const microsoftSteps: Step[] = [
           <em>App registrations</em> ja myöhemmin sovelluksen nimellä.
         </p>
         <Path p="Entra ID › App registrations › New registration" />
-        <Val k="Name" v="Open Habitat" />
+        <Val k="Name" v={microsoftAppName[section]} />
+        {section !== "microsoft" && (
+          <p className="si-effect" data-testid="si-level-app">
+            Oma sovellus tälle tasolle: Microsoft antaa jokaiselle sovelluksen
+            tunnukselle kaikki sovellukselle hyväksytyt oikeudet, joten taso on
+            raja vain omana sovelluksenaan.
+          </p>
+        )}
         <Val
           k="Supported account types"
           v="Single tenant only - <organisaatio>"
@@ -479,8 +518,13 @@ const microsoftSteps: Step[] = [
       <>
         <Path p="API permissions › Add a permission › Microsoft Graph › Delegated permissions" />
         <div className="si-block" data-testid="si-permissions">
-          <pre className="si-cmd">{microsoftPermissions.join("\n")}</pre>
-          <Copy value={microsoftPermissions.join(" ")} label="käyttöoikeudet" />
+          <pre className="si-cmd">
+            {microsoftPermissions[section].join("\n")}
+          </pre>
+          <Copy
+            value={microsoftPermissions[section].join(" ")}
+            label="käyttöoikeudet"
+          />
         </div>
         <p className="si-quiet">
           User.Read on valmiina. Valitse lopuksi <em>Add permissions</em>.
@@ -516,7 +560,7 @@ const microsoftSteps: Step[] = [
 
 // One App Console page per step; Enable additional users sits on the Settings
 // page beside the redirect.
-const dropboxSteps: Step[] = [
+const dropboxSteps = (appFolder: boolean): Step[] => [
   {
     id: "create",
     title: "Luo sovellus",
@@ -533,13 +577,28 @@ const dropboxSteps: Step[] = [
         <Val k="Choose an API" v="Scoped access" copy={false} />
         <Val
           k="Choose the type of access you need"
-          v="Full Dropbox"
+          v={appFolder ? "App folder" : "Full Dropbox"}
           copy={false}
         />
-        <p className="si-effect" data-testid="si-full-dropbox">
-          Henkilöt synkronoivat koko Dropboxinsa, joten App folder ei riitä.
-        </p>
-        <Val k="Name your app" v="Open Habitat <organisaatio>" copy={false} />
+        {appFolder ? (
+          <p className="si-effect" data-testid="si-app-folder">
+            Tällä tasolla henkilöt synkronoivat vain sovelluksen oman kansion
+            (Apps/&lt;sovelluksen nimi&gt;). Muu Dropbox ei näy agenteille.
+          </p>
+        ) : (
+          <p className="si-effect" data-testid="si-full-dropbox">
+            Henkilöt synkronoivat koko Dropboxinsa, joten App folder ei riitä.
+          </p>
+        )}
+        <Val
+          k="Name your app"
+          v={
+            appFolder
+              ? "Open Habitat <organisaatio> sovelluskansio"
+              : "Open Habitat <organisaatio>"
+          }
+          copy={false}
+        />
         <p className="si-quiet">
           Nimen on oltava yksilöllinen, eikä siinä saa olla sanaa Dropbox.
           Valitse <em>Create app</em>.
@@ -592,11 +651,27 @@ const dropboxSteps: Step[] = [
   },
 ];
 
-/** Each guided provider's console steps before its values. */
-const guides: Record<AppProvider, Step[]> = {
-  google: googleSteps,
-  microsoft: microsoftSteps,
-  dropbox: dropboxSteps,
+/** Each section's console steps before its values. */
+function guide(section: AppSection): Step[] {
+  switch (section) {
+    case "google":
+      return googleSteps;
+    case "dropbox":
+    case "dropbox_app_folder":
+      return dropboxSteps(section === "dropbox_app_folder");
+    default:
+      return microsoftSteps(section);
+  }
+}
+/** The section's name as the administrator reads it. */
+const sectionName = (section: AppSection) => {
+  const provider = sectionProvider(section);
+  const level = levelSections[provider]?.find(
+    (l) => l.section === section,
+  )?.level;
+  return level
+    ? `${name(provider)}, taso ${levelName(provider, level)}`
+    : name(provider);
 };
 const skipLabel: Record<AppProvider, string> = {
   google: "Minulla on jo asiakas",
@@ -676,13 +751,13 @@ function Fields({
  * values last. The dialog stays open until the broker answers, so a refusal
  * keeps what was typed. */
 export function AppSetupDialog({
-  provider,
+  provider: section,
   replace,
   step: initial = 0,
   onSave,
   onClose,
 }: {
-  provider: AppProvider;
+  provider: AppSection;
   replace?: IntegrationApp;
   /** The step it opens at; stories show each one. */
   step?: number;
@@ -700,8 +775,9 @@ export function AppSetupDialog({
     title: replace ? "Uusi salaisuus" : "Tunnukset",
     body: null,
   };
-  const guide = replace ? undefined : guides[provider];
-  const steps = guide ? [...guide, enter] : [enter];
+  const provider = sectionProvider(section);
+  const guided = replace ? undefined : guide(section);
+  const steps = guided ? [...guided, enter] : [enter];
   const i = Math.min(at, steps.length - 1);
   const last = i === steps.length - 1;
   const step = steps[i];
@@ -711,7 +787,7 @@ export function AppSetupDialog({
       [first]: (fixedID ?? values[first] ?? "").trim(),
       [second]: (values[second] ?? "").trim(),
     };
-    const e = appErrors(provider, fields);
+    const e = appErrors(section, fields);
     setErrors(e);
     setRefusal("");
     if (Object.keys(e).length) return;
@@ -721,7 +797,7 @@ export function AppSetupDialog({
     if (result.kind === "refused") setRefusal(appRefusal(result.code));
     else onClose();
   };
-  const title = `${name(provider)}: ${replace ? "vaihda tunnukset" : "aseta tunnukset"}`;
+  const title = `${sectionName(section)}: ${replace ? "vaihda tunnukset" : "aseta tunnukset"}`;
   return (
     <Modalish
       testId="si-setup-dialog"
@@ -858,16 +934,47 @@ export function AppSetupDialog({
 }
 
 function RemoveDialog({
-  provider,
+  provider: section,
   step,
   onConfirm,
   onClose,
 }: {
-  provider: AppProvider;
+  provider: AppSection;
   step: boolean;
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const provider = sectionProvider(section);
+  if (section !== provider)
+    return (
+      <Modalish
+        testId="si-remove-dialog"
+        title={`Poistetaanko tason tunnukset (${sectionName(section)})?`}
+        onClose={onClose}
+      >
+        <ul className="si-consequences">
+          <li>Tasoa ei voi enää valita yhdistettäessä.</li>
+          <li>Tällä tasolla yhdistetyt tilit eivät voi kirjautua uudelleen.</li>
+        </ul>
+        <div className="si-foot">
+          <span className="si-grow" />
+          <ControlButton size="row" variant="secondary" onPress={onClose}>
+            Peruuta
+          </ControlButton>
+          <ControlButton
+            data-testid="si-remove-confirm"
+            size="page"
+            variant="danger"
+            onPress={() => {
+              onConfirm();
+              onClose();
+            }}
+          >
+            Poista tunnukset
+          </ControlButton>
+        </div>
+      </Modalish>
+    );
   return (
     <Modalish
       testId="si-remove-dialog"
@@ -942,8 +1049,8 @@ function FixDialog({
 }
 
 type Open =
-  | { kind: "setup"; provider: AppProvider; replace?: IntegrationApp }
-  | { kind: "remove"; provider: AppProvider }
+  | { kind: "setup"; provider: AppSection; replace?: IntegrationApp }
+  | { kind: "remove"; provider: AppSection }
   | { kind: "fix"; provider: ProviderId; tools: string[] };
 
 export function ServerIntegrations({
@@ -965,16 +1072,16 @@ export function ServerIntegrations({
   apps: IntegrationApps;
   /** Providers the site's onboarding has an integration step for. */
   steps?: ProviderId[];
-  pending?: Partial<Record<ProviderId, PendingApp>>;
+  pending?: Partial<Record<ProviderId | AppSection, PendingApp>>;
   /** A definite refusal of the last removal, shown on its row. */
-  problem?: { provider: ProviderId; text: string };
+  problem?: { provider: ProviderId | AppSection; text: string };
   /** GitHub logins of known actors, by id. */
   names?: Record<string, string>;
   canWrite?: boolean;
   onboardingHref: string;
   onOpenOnboarding?: () => void;
-  onSave: (provider: AppProvider, fields: AppFields) => Promise<AppChange>;
-  onRemove: (provider: AppProvider) => void;
+  onSave: (provider: AppSection, fields: AppFields) => Promise<AppChange>;
+  onRemove: (provider: AppSection) => void;
   onRefresh: () => void;
 }) {
   const [open, setOpen] = useState<Open>();
@@ -1004,106 +1111,220 @@ export function ServerIntegrations({
             : undefined;
           const step = steps.includes(p);
           const hidden = s.kind !== "ready";
+          // A provider's narrower levels are separate applications, offered
+          // once the provider's tools are installed.
+          const levels =
+            isAppProvider(p) && (s.kind === "ready" || s.kind === "needs_app")
+              ? (levelSections[p] ?? [])
+              : [];
           return (
-            <li
-              key={p}
-              className="si-row"
-              data-testid={`si-row-${p}`}
-              data-status={s.kind}
-            >
-              <ProviderMark provider={p} small />
-              <span className="si-main">
-                <span className="si-name">{name(p)}</span>
-                {step && (
-                  <a
-                    className="si-step"
-                    data-testid={`si-step-${p}`}
-                    data-hidden={hidden || undefined}
-                    href={onboardingHref}
-                    aria-label={`Käyttöönotto: ${name(p)}-vaihe${hidden ? ", piilossa" : ""}`}
-                    onClick={(e) => {
-                      if (
-                        !onOpenOnboarding ||
-                        e.button ||
-                        e.metaKey ||
-                        e.ctrlKey ||
-                        e.shiftKey ||
-                        e.altKey
-                      )
-                        return;
-                      e.preventDefault();
-                      onOpenOnboarding();
-                    }}
-                  >
-                    <Badge
-                      label={
-                        hidden ? "Käyttöönotossa · piilossa" : "Käyttöönotossa"
+            <Fragment key={p}>
+              <li
+                className="si-row"
+                data-testid={`si-row-${p}`}
+                data-status={s.kind}
+              >
+                <ProviderMark provider={p} small />
+                <span className="si-main">
+                  <span className="si-name">{name(p)}</span>
+                  {step && (
+                    <a
+                      className="si-step"
+                      data-testid={`si-step-${p}`}
+                      data-hidden={hidden || undefined}
+                      href={onboardingHref}
+                      aria-label={`Käyttöönotto: ${name(p)}-vaihe${hidden ? ", piilossa" : ""}`}
+                      onClick={(e) => {
+                        if (
+                          !onOpenOnboarding ||
+                          e.button ||
+                          e.metaKey ||
+                          e.ctrlKey ||
+                          e.shiftKey ||
+                          e.altKey
+                        )
+                          return;
+                        e.preventDefault();
+                        onOpenOnboarding();
+                      }}
+                    >
+                      <Badge
+                        label={
+                          hidden
+                            ? "Käyttöönotossa · piilossa"
+                            : "Käyttöönotossa"
+                        }
+                        tone={hidden ? "warning" : "neutral"}
+                      />
+                    </a>
+                  )}
+                  {app && !pending[p] && invalidApp(app) && (
+                    <span className="si-bad" data-testid={`si-invalid-${p}`}>
+                      <Icon name="warning" />
+                      Tunnukset eivät kelpaa: {invalidText(app)}
+                    </span>
+                  )}
+                  {problem?.provider === p && !pending[p] && (
+                    <span className="si-bad" role="alert">
+                      <Icon name="warning" />
+                      {problem.text}
+                    </span>
+                  )}
+                </span>
+                <span className="si-state">
+                  <Mark p={p} s={s} />
+                </span>
+                <span className="si-act">
+                  {s.kind === "uncertain" ? (
+                    <ControlButton
+                      data-testid={`si-refresh-${p}`}
+                      size="row"
+                      variant="secondary"
+                      onPress={onRefresh}
+                    >
+                      <Icon name="refresh" />
+                      Päivitä
+                    </ControlButton>
+                  ) : s.kind === "tool_missing" ? (
+                    <ControlButton
+                      data-testid={`si-fix-${p}`}
+                      size="row"
+                      variant="secondary"
+                      onPress={() =>
+                        setOpen({ kind: "fix", provider: p, tools: s.tools })
                       }
-                      tone={hidden ? "warning" : "neutral"}
-                    />
-                  </a>
-                )}
-                {app && !pending[p] && invalidApp(app) && (
-                  <span className="si-bad" data-testid={`si-invalid-${p}`}>
-                    <Icon name="warning" />
-                    Tunnukset eivät kelpaa: {invalidText(app)}
-                  </span>
-                )}
-                {problem?.provider === p && !pending[p] && (
-                  <span className="si-bad" role="alert">
-                    <Icon name="warning" />
-                    {problem.text}
-                  </span>
-                )}
-              </span>
-              <span className="si-state">
-                <Mark p={p} s={s} />
-              </span>
-              <span className="si-act">
-                {s.kind === "uncertain" ? (
-                  <ControlButton
-                    data-testid={`si-refresh-${p}`}
-                    size="row"
-                    variant="secondary"
-                    onPress={onRefresh}
+                    >
+                      Korjaa…
+                    </ControlButton>
+                  ) : s.kind === "needs_app" && isAppProvider(p) ? (
+                    <ControlButton
+                      data-testid={`si-setup-${p}`}
+                      size="row"
+                      variant="secondary"
+                      isDisabled={locked}
+                      onPress={() => setOpen({ kind: "setup", provider: p })}
+                    >
+                      Aseta tunnukset…
+                    </ControlButton>
+                  ) : s.kind === "ready" && app && isAppProvider(p) ? (
+                    <span data-testid={`si-menu-${p}`}>
+                      <Menu
+                        label={`${name(p)}: tunnukset`}
+                        trigger={<span>Tunnukset</span>}
+                        placement="bottom end"
+                        heading={<AppLine app={app} names={names} />}
+                        items={[
+                          ...(p === "google" && app.client_id
+                            ? [
+                                {
+                                  id: "replace",
+                                  label: "Vaihda tunnukset…",
+                                  availability: locked
+                                    ? {
+                                        state: "disabled" as const,
+                                        reason:
+                                          "Asetus selaimesta pois käytöstä",
+                                      }
+                                    : undefined,
+                                },
+                              ]
+                            : []),
+                          {
+                            id: "remove",
+                            label: "Poista tunnukset…",
+                            danger: true,
+                            availability: locked
+                              ? {
+                                  state: "disabled" as const,
+                                  reason: "Asetus selaimesta pois käytöstä",
+                                }
+                              : undefined,
+                          },
+                        ]}
+                        onAction={(k) =>
+                          setOpen(
+                            k === "replace"
+                              ? { kind: "setup", provider: p, replace: app }
+                              : { kind: "remove", provider: p },
+                          )
+                        }
+                      />
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+              {levels.map(({ section, level }) => {
+                const levelApp = apps.apps.find((a) => a.provider === section);
+                const ls: Status = pending[section]
+                  ? { kind: pending[section] }
+                  : levelApp?.usable
+                    ? { kind: "ready" }
+                    : { kind: "needs_app" };
+                return (
+                  <li
+                    key={section}
+                    className="si-row si-level"
+                    data-testid={`si-row-${section}`}
+                    data-status={ls.kind}
                   >
-                    <Icon name="refresh" />
-                    Päivitä
-                  </ControlButton>
-                ) : s.kind === "tool_missing" ? (
-                  <ControlButton
-                    data-testid={`si-fix-${p}`}
-                    size="row"
-                    variant="secondary"
-                    onPress={() =>
-                      setOpen({ kind: "fix", provider: p, tools: s.tools })
-                    }
-                  >
-                    Korjaa…
-                  </ControlButton>
-                ) : s.kind === "needs_app" && isAppProvider(p) ? (
-                  <ControlButton
-                    data-testid={`si-setup-${p}`}
-                    size="row"
-                    variant="secondary"
-                    isDisabled={locked}
-                    onPress={() => setOpen({ kind: "setup", provider: p })}
-                  >
-                    Aseta tunnukset…
-                  </ControlButton>
-                ) : s.kind === "ready" && app && isAppProvider(p) ? (
-                  <span data-testid={`si-menu-${p}`}>
-                    <Menu
-                      label={`${name(p)}: tunnukset`}
-                      trigger={<span>Tunnukset</span>}
-                      placement="bottom end"
-                      heading={<AppLine app={app} names={names} />}
-                      items={[
-                        ...(p === "google" && app.client_id
-                          ? [
+                    <span className="si-level-indent" aria-hidden="true" />
+                    <span className="si-main">
+                      <span className="si-name">
+                        Taso: {levelName(p, level)}
+                      </span>
+                      {levelApp &&
+                        !pending[section] &&
+                        invalidApp(levelApp) && (
+                          <span
+                            className="si-bad"
+                            data-testid={`si-invalid-${section}`}
+                          >
+                            <Icon name="warning" />
+                            Tunnukset eivät kelpaa: {invalidText(levelApp)}
+                          </span>
+                        )}
+                      {problem?.provider === section && !pending[section] && (
+                        <span className="si-bad" role="alert">
+                          <Icon name="warning" />
+                          {problem.text}
+                        </span>
+                      )}
+                    </span>
+                    <span className="si-state">
+                      {ls.kind === "needs_app" ? (
+                        // A level is optional: without its application
+                        // people see it greyed out, not the provider gone.
+                        <StatusMark
+                          data-testid={`si-status-${section}`}
+                          label="Ei käytössä"
+                        />
+                      ) : (
+                        <Mark p={section} s={ls} />
+                      )}
+                    </span>
+                    <span className="si-act">
+                      {ls.kind === "uncertain" ? (
+                        <ControlButton
+                          data-testid={`si-refresh-${section}`}
+                          size="row"
+                          variant="secondary"
+                          onPress={onRefresh}
+                        >
+                          <Icon name="refresh" />
+                          Päivitä
+                        </ControlButton>
+                      ) : levelApp ? (
+                        <span data-testid={`si-menu-${section}`}>
+                          <Menu
+                            label={`${sectionName(section)}: tunnukset`}
+                            trigger={<span>Tunnukset</span>}
+                            placement="bottom end"
+                            heading={<AppLine app={levelApp} names={names} />}
+                            items={[
                               {
-                                id: "replace",
-                                label: "Vaihda tunnukset…",
+                                id: "remove",
+                                label: "Poista tunnukset…",
+                                danger: true,
                                 availability: locked
                                   ? {
                                       state: "disabled" as const,
@@ -1111,32 +1332,30 @@ export function ServerIntegrations({
                                     }
                                   : undefined,
                               },
-                            ]
-                          : []),
-                        {
-                          id: "remove",
-                          label: "Poista tunnukset…",
-                          danger: true,
-                          availability: locked
-                            ? {
-                                state: "disabled" as const,
-                                reason: "Asetus selaimesta pois käytöstä",
-                              }
-                            : undefined,
-                        },
-                      ]}
-                      onAction={(k) =>
-                        setOpen(
-                          k === "replace"
-                            ? { kind: "setup", provider: p, replace: app }
-                            : { kind: "remove", provider: p },
-                        )
-                      }
-                    />
-                  </span>
-                ) : null}
-              </span>
-            </li>
+                            ]}
+                            onAction={() =>
+                              setOpen({ kind: "remove", provider: section })
+                            }
+                          />
+                        </span>
+                      ) : ls.kind === "needs_app" ? (
+                        <ControlButton
+                          data-testid={`si-setup-${section}`}
+                          size="row"
+                          variant="secondary"
+                          isDisabled={locked}
+                          onPress={() =>
+                            setOpen({ kind: "setup", provider: section })
+                          }
+                        >
+                          Aseta tunnukset…
+                        </ControlButton>
+                      ) : null}
+                    </span>
+                  </li>
+                );
+              })}
+            </Fragment>
           );
         })}
       </ul>
@@ -1151,7 +1370,7 @@ export function ServerIntegrations({
       {open?.kind === "remove" && (
         <RemoveDialog
           provider={open.provider}
-          step={steps.includes(open.provider)}
+          step={(steps as string[]).includes(open.provider)}
           onConfirm={() => onRemove(open.provider)}
           onClose={() => setOpen(undefined)}
         />

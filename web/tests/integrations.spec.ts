@@ -497,6 +497,96 @@ test("a device code relays to the browser, folders fit the quota, and sync start
   await fixture(page, "action=reset");
 });
 
+test("an account level is chosen when connecting and changed later by signing in again", async ({
+  page,
+}) => {
+  await signIn(page);
+  await fixture(page, "action=reset");
+  // The server has Microsoft's full and read applications, not the drafts one.
+  expect(
+    (
+      await page.request.get("/fixture/integration-apps?set=microsoft_read")
+    ).status(),
+  ).toBe(204);
+  await page.reload();
+  await tile(page, "microsoft")
+    .getByRole("button")
+    .and(tile(page, "microsoft").getByTestId("integration-connect-open"))
+    .click();
+  const dialog = page.getByRole("dialog");
+  const level = (id: string) =>
+    dialog.getByTestId(`integration-level-${id}`).getByRole("radio");
+  await expect(level("full")).toBeChecked();
+  await expect(level("drafts")).toBeDisabled();
+  await dialog.getByTestId("integration-level-read").click();
+  await expect(level("read")).toBeChecked();
+  expect(
+    (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
+      .violations,
+    "level cards",
+  ).toEqual([]);
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-continue"))
+    .click();
+  await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
+  await fixture(page, "action=approve");
+  await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-sync-start"))
+    .click();
+  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-done"))
+    .click();
+  const card = page
+    .getByRole("article")
+    .and(page.getByTestId("integration-account-microsoft"));
+  await expect(card.getByTestId("integration-account-level")).toHaveAttribute(
+    "data-level",
+    "read",
+  );
+  await expect(card.getByTestId("integration-service-mail")).toHaveAttribute(
+    "data-access",
+    "read",
+  );
+
+  // Vaihda taso… offers the same cards; the current level cannot be chosen
+  // again, and a renewal keeps the folders, so no folder step follows.
+  await card
+    .getByRole("button")
+    .and(card.getByTestId("integration-change-level"))
+    .click();
+  const go = dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-continue"));
+  await expect(level("read")).toBeChecked();
+  await expect(go).toBeDisabled();
+  await dialog.getByTestId("integration-level-full").click();
+  await expect(dialog.getByTestId("integration-level-change")).toBeVisible();
+  await go.click();
+  await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
+  await fixture(page, "action=approve");
+  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-done"))
+    .click();
+  await expect(card.getByTestId("integration-account-level")).toHaveAttribute(
+    "data-level",
+    "full",
+  );
+  // On a phone the pill wraps under the name rather than widen the page.
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    ),
+  ).toBeLessThanOrEqual(0);
+});
+
 test("a pasted redirect must be the loopback address; a choice over quota is refused", async ({
   page,
 }) => {

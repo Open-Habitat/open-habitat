@@ -45,6 +45,14 @@ func TestValidIsTheDaemonRuleAndTheProviderFormat(t *testing.T) {
 		{"microsoft", map[string]string{"client_id": guid, "tenant_id": "contoso.onmicrosoft.com"}, false, false},
 		{"microsoft", map[string]string{"client_id": guid, "tenant_id": other, "client_secret": "x"}, true, false},
 		{"imap", map[string]string{"client_id": "a", "client_secret": "b"}, false, false},
+		// A level's application is its provider's kind of registration.
+		{"microsoft_read", map[string]string{"client_id": guid, "tenant_id": other}, true, true},
+		{"microsoft_drafts", map[string]string{"client_id": guid, "tenant_id": "common"}, false, false},
+		{"microsoft_read", map[string]string{"client_id": guid, "client_secret": "h2m5c9xj4ub7ye1"}, false, false},
+		{"dropbox_app_folder", map[string]string{"client_id": "p3n8vq1zt6ka0rw", "client_secret": "h2m5c9xj4ub7ye1"}, true, true},
+		{"dropbox_app_folder", map[string]string{"client_id": guid, "tenant_id": other}, false, false},
+		{"dropbox_read", map[string]string{"client_id": "p3n8vq1zt6ka0rw", "client_secret": "h2m5c9xj4ub7ye1"}, false, false},
+		{"google_read", map[string]string{"client_id": googleID, "client_secret": "GOCSPX-abc"}, false, false},
 	} {
 		if Usable(c.provider, c.f) != c.usable || Valid(c.provider, c.f) != c.valid {
 			t.Errorf("%s %v: usable %v valid %v, want %v %v", c.provider, c.f, Usable(c.provider, c.f), Valid(c.provider, c.f), c.usable, c.valid)

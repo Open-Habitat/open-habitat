@@ -65,7 +65,12 @@ export type Provider = {
   missing_tools?: string[];
   login: LoginKind;
   services: ServiceId[];
+  /** The account levels a sign-in chooses from, broadest first; only for
+   * a provider that offers a choice. */
+  levels?: { id: Level; available: boolean }[];
 };
+/** An account level the provider itself enforces. */
+export type Level = "full" | "drafts" | "read" | "app_folder";
 export type SyncProgress = {
   service?: ServiceId;
   phase: "inventory" | "preparing" | "transferring";
@@ -113,6 +118,9 @@ export type Account = {
    * whose card shows it. */
   apple_id?: string;
   grant?: Grant;
+  /** The level the grant amounts to, read from the grant; absent when it
+   * cannot be read or is none of the levels. */
+  level?: Level;
 };
 export type IntegrationList = {
   schema_version: 1;
@@ -152,7 +160,8 @@ export type LoginFailure =
   | "cancelled"
   | "quota_insufficient"
   | "quota_unavailable"
-  | "nothing_granted";
+  | "nothing_granted"
+  | "final_sync_failed";
 export type LoginView = {
   schema_version: 1;
   state:
@@ -425,7 +434,7 @@ export async function removeAccount(
 }
 
 type LoginControl =
-  | { action: "start"; provider: ProviderId; address?: string }
+  | { action: "start"; provider: ProviderId; address?: string; level?: Level }
   | { action: "redirect"; attempt_id: string; redirect_url: string }
   | { action: "folders"; attempt_id: string; folders: string[] }
   | { action: "cancel"; attempt_id: string };

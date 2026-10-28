@@ -3,6 +3,8 @@
   "providers": [
     {"id": "imap", "available": true, "login": "app_password", "services": ["mail"]},
     {"id": "google", "available": false, "unavailable_reason": "app_credentials_required", "login": "pasted_redirect", "services": ["mail", "calendar", "contacts", "drive"]},
+    {"id": "microsoft", "available": true, "login": "device_code", "services": ["onedrive", "sharepoint", "mail", "calendar", "contacts"], "levels": [{"id": "full", "available": true}, {"id": "drafts", "available": false}, {"id": "read", "available": true}]},
+    {"id": "dropbox", "available": true, "login": "pasted_redirect", "services": ["dropbox"], "levels": [{"id": "full", "available": true}, {"id": "app_folder", "available": false}, {"id": "read", "available": true}]},
     {"id": "gitea", "available": true, "login": "personal_token", "services": ["git"]},
     {"id": "gitlab", "available": true, "login": "personal_token", "services": ["git"]}
   ],
@@ -12,6 +14,7 @@
       {"id": "mail", "state": "login_expired"},
       {"id": "drive", "state": "sync_restarting", "failure": "delete_limit", "last_synced_at": "2026-10-19T09:12:41Z", "directory": "~/cloud/google-drive/person.home@example.test", "progress": {"service": "drive", "phase": "preparing", "elapsed_seconds": 3, "bytes": 0, "total_bytes": 0, "files": 0, "total_files": 0}}
     ]},
+    {"provider": "dropbox", "address": "person@example.test", "checked_at": "2026-10-19T09:38:00Z", "level": "read", "services": [{"id": "dropbox", "state": "ok", "access": "read", "directory": "~/cloud/dropbox/person@example.test", "last_synced_at": "2026-10-19T09:37:12Z"}], "grant": {"granted": ["account_info.read", "files.content.read", "files.metadata.read"], "not_granted": []}},
     {"provider": "microsoft", "address": "person@example.test", "checked_at": "2026-10-19T09:38:00Z", "services": [{"id": "onedrive", "state": "unknown", "access": "none"}, {"id": "sharepoint", "state": "unknown", "access": "none"}, {"id": "mail", "state": "ok", "access": "drafts"}, {"id": "calendar", "state": "ok", "access": "read"}, {"id": "contacts", "state": "ok", "access": "full"}], "grant": {"granted": ["Calendars.Read", "Contacts.ReadWrite", "Mail.ReadWrite", "User.Read"], "not_granted": ["Calendars.ReadWrite", "Files.ReadWrite.All", "Mail.Send", "Sites.ReadWrite.All"]}}
   ],
   "gitea": {"state": "ok", "connections": [

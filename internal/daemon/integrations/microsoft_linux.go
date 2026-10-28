@@ -33,20 +33,67 @@ type MicrosoftApp struct {
 	TenantID string `json:"tenant_id"`
 }
 
-func (env Env) microsoftApp() (MicrosoftApp, bool) {
-	cfg := env.Config
-	if env.LoadConfig != nil {
-		var err error
-		cfg, err = env.LoadConfig()
-		if err != nil {
-			return MicrosoftApp{}, false
+// microsoftApps are the operator's usable Entra applications by level.
+func (env Env) microsoftApps() map[Level]MicrosoftApp {
+	cfg, ok := env.config()
+	out := map[Level]MicrosoftApp{}
+	if !ok {
+		return out
+	}
+	for _, x := range []struct {
+		app     *MicrosoftApp
+		section string
+		level   Level
+	}{{cfg.Microsoft, "microsoft", LevelFull}, {cfg.MicrosoftDrafts, "microsoft_drafts", LevelDrafts}, {cfg.MicrosoftRead, "microsoft_read", LevelRead}} {
+		if x.app != nil && integrationapps.Usable(x.section, map[string]string{"client_id": x.app.ClientID, "tenant_id": x.app.TenantID}) {
+			out[x.level] = *x.app
 		}
 	}
-	if cfg.Microsoft == nil {
-		return MicrosoftApp{}, false
+	return out
+}
+
+// microsoftLevels in the page's order.
+var microsoftLevels = []Level{LevelFull, LevelDrafts, LevelRead}
+
+// microsoftLevelScopes are the Graph permissions each level's application
+// has, the set its administrator consents to. Drafts sends nothing: mail is
+// drafted, calendars and files only read, since an event sends invitations
+// and a file grant can create a public sharing link.
+var microsoftLevelScopes = map[Level]string{
+	LevelFull:   microsoftScopes + " " + microsoftMCPScopes,
+	LevelDrafts: "openid profile offline_access User.Read Files.Read.All Sites.Read.All Mail.ReadWrite Calendars.Read Contacts.Read",
+	LevelRead:   "openid profile offline_access User.Read Files.Read.All Sites.Read.All Mail.Read Calendars.Read Contacts.Read",
+}
+
+// microsoftAccountApp is the configured application an account's native
+// configs were signed in with, and its level. When none of them is, it is
+// the broadest configured one, which Align then reports as app_changed.
+func microsoftAccountApp(env Env, n microsoftNative) (MicrosoftApp, Level, bool) {
+	apps := env.microsoftApps()
+	client := n.mcpClient
+	if client == "" && len(n.clients) > 0 {
+		client = n.clients[0]
 	}
-	a := *cfg.Microsoft
-	return a, integrationapps.Usable("microsoft", map[string]string{"client_id": a.ClientID, "tenant_id": a.TenantID})
+	for _, l := range microsoftLevels {
+		if a, ok := apps[l]; ok && client != "" && strings.EqualFold(a.ClientID, client) {
+			return a, l, true
+		}
+	}
+	for _, l := range microsoftLevels {
+		if a, ok := apps[l]; ok {
+			return a, l, true
+		}
+	}
+	return MicrosoftApp{}, "", false
+}
+
+// microsoftAppOf reads the account's native configs for microsoftAccountApp.
+func microsoftAppOf(env Env, address string) (MicrosoftApp, Level, bool) {
+	n, err := microsoftReadNative(env, address)
+	if err != nil {
+		return MicrosoftApp{}, "", false
+	}
+	return microsoftAccountApp(env, n)
 }
 
 const microsoftDir = ".config/rclone/open-habitat-microsoft"
@@ -93,8 +140,40 @@ func microsoftGranted(scopes []string) map[string]bool {
 	return out
 }
 
-func microsoftGrantOf(granted map[string]bool) *Grant {
-	return grantOf(granted, strings.Fields(microsoftScopes+" "+microsoftMCPScopes), microsoftIdentity)
+// microsoftGrantOf shows the grant against what the sign-in's level asked.
+func microsoftGrantOf(granted map[string]bool, level Level) *Grant {
+	requested, ok := microsoftLevelScopes[level]
+	if !ok {
+		requested = microsoftLevelScopes[LevelFull]
+	}
+	return grantOf(granted, strings.Fields(requested), microsoftIdentity)
+}
+
+// microsoftLevelOf is the level whose services' access the grant gives
+// exactly; a grant an organisation narrowed otherwise is none of them.
+func microsoftLevelOf(services []Service) Level {
+	match := func(want func(id string) Access) bool {
+		for _, s := range services {
+			if s.Access != want(s.ID) {
+				return false
+			}
+		}
+		return len(services) > 0
+	}
+	switch {
+	case match(func(string) Access { return AccessFull }):
+		return LevelFull
+	case match(func(id string) Access {
+		if id == "mail" {
+			return AccessDrafts
+		}
+		return AccessRead
+	}):
+		return LevelDrafts
+	case match(func(string) Access { return AccessRead }):
+		return LevelRead
+	}
+	return ""
 }
 
 // microsoftAllowed is the Outlook server's --allowed-scopes for a grant:
@@ -127,14 +206,27 @@ func (*microsoft) Services() []string {
 	return []string{"onedrive", "sharepoint", "mail", "calendar", "contacts"}
 }
 func (m *microsoft) Available(env Env) bool { return m.ToolsInstalled(env) && m.AppConfigured(env) }
+func (*microsoft) mirrorsRead()             {}
+
+// Levels: each is one Entra application of the operator's.
+func (*microsoft) Levels(env Env) []LevelOption {
+	apps := env.microsoftApps()
+	var out []LevelOption
+	for _, l := range microsoftLevels {
+		_, ok := apps[l]
+		out = append(out, LevelOption{l, ok})
+	}
+	return out
+}
+
+func (*microsoft) Level(_ Env, _ string, services []Service) Level {
+	return microsoftLevelOf(services)
+}
 func (*microsoft) Tools() []string {
 	return []string{"rclone", "ms-365-mcp-server", "pi", "microsoft-native"}
 }
 func (m *microsoft) ToolsInstalled(env Env) bool { return MissingTools(m, env) == nil }
-func (*microsoft) AppConfigured(env Env) bool {
-	_, a := env.microsoftApp()
-	return a
-}
+func (*microsoft) AppConfigured(env Env) bool    { return len(env.microsoftApps()) > 0 }
 func (*microsoft) Accounts(env Env) ([]string, error) {
 	// The native stores are a union: an interrupted commit or manual cleanup
 	// of one tool must leave the account visible for repair/removal.
@@ -270,16 +362,27 @@ func (m *microsoft) request(ctx context.Context, endpoint string, form url.Value
 func microsoftAuthority(app MicrosoftApp) string {
 	return "https://login.microsoftonline.com/" + app.TenantID + "/oauth2/v2.0/"
 }
-func microsoftConsent(app MicrosoftApp) ConsentRequired {
+func microsoftConsent(app MicrosoftApp, level Level) ConsentRequired {
 	// The application's own tenant: its administrator is the only one who
-	// can consent to a single-tenant app.
-	return ConsentRequired{URL: "https://login.microsoftonline.com/" + url.PathEscape(app.TenantID) + "/v2.0/adminconsent?" + url.Values{"client_id": {app.ClientID}, "scope": {microsoftScopes + " " + microsoftMCPScopes}, "redirect_uri": {"https://login.microsoftonline.com/common/oauth2/nativeclient"}}.Encode()}
+	// can consent to a single-tenant app. The consent is to the level's set.
+	scopes, ok := microsoftLevelScopes[level]
+	if !ok {
+		scopes = microsoftLevelScopes[LevelFull]
+	}
+	var named []string
+	seen := map[string]bool{}
+	for _, s := range strings.Fields(scopes) {
+		if !microsoftIdentity[s] && !seen[s] {
+			named, seen[s] = append(named, s), true
+		}
+	}
+	return ConsentRequired{URL: "https://login.microsoftonline.com/" + url.PathEscape(app.TenantID) + "/v2.0/adminconsent?" + url.Values{"client_id": {app.ClientID}, "scope": {"openid profile offline_access " + strings.Join(named, " ")}, "redirect_uri": {"https://login.microsoftonline.com/common/oauth2/nativeclient"}}.Encode()}
 }
-func microsoftAuthFailure(app MicrosoftApp, code string, numbers []int) error {
+func microsoftAuthFailure(app MicrosoftApp, level Level, code string, numbers []int) error {
 	for _, n := range numbers {
 		switch n {
 		case 65001, 65004, 90094:
-			return microsoftConsent(app)
+			return microsoftConsent(app, level)
 		case 53003, 530032:
 			return DeviceCodeBlocked
 		}
@@ -306,6 +409,7 @@ type microsoftLogin struct {
 	entry            *microsoft
 	env              Env
 	app              MicrosoftApp
+	level            Level
 	expected         string
 	device           string
 	prompt           Prompt
@@ -315,11 +419,27 @@ type microsoftLogin struct {
 	address, staging string
 	// allowed is the Outlook server's --allowed-scopes for this grant.
 	allowed string
+	// granted is the token's Graph permissions, kept with each cloud root.
+	granted []string
 }
 
 func (m *microsoft) StartLogin(ctx context.Context, env Env, address string) (Login, error) {
-	app, ok := env.microsoftApp()
-	if !ok || !m.Available(env) {
+	return m.StartLevelLogin(ctx, env, address, "")
+}
+
+// StartLevelLogin signs in with the level's application. A renewal without
+// a level keeps the application the account was signed in with.
+func (m *microsoft) StartLevelLogin(ctx context.Context, env Env, address string, level Level) (Login, error) {
+	if !m.Available(env) {
+		return nil, ToolFailed
+	}
+	if level == "" && address != "" {
+		_, level, _ = microsoftAppOf(env, address)
+	} else if level == "" {
+		level = firstLevel(m.Levels(env))
+	}
+	app, ok := env.microsoftApps()[level]
+	if !ok {
 		return nil, ToolFailed
 	}
 	var d struct {
@@ -335,7 +455,7 @@ func (m *microsoft) StartLogin(ctx context.Context, env Env, address string) (Lo
 		return nil, err
 	}
 	if d.Error != "" {
-		return nil, microsoftAuthFailure(app, d.Error, d.Codes)
+		return nil, microsoftAuthFailure(app, level, d.Error, d.Codes)
 	}
 	if d.DeviceCode == "" || d.Expires < 1 || d.Expires > 900 {
 		return nil, ToolFailed
@@ -350,7 +470,7 @@ func (m *microsoft) StartLogin(ctx context.Context, env Env, address string) (Lo
 	if !validPrompt(DeviceCode, p) || (d.URI != "https://microsoft.com/devicelogin" && d.URI != "https://login.microsoftonline.com/common/oauth2/deviceauth" && d.URI != "https://login.microsoft.com/device") {
 		return nil, ToolFailed
 	}
-	return &microsoftLogin{started: time.Now(), entry: m, env: env, app: app, expected: address, device: d.DeviceCode, prompt: p, interval: time.Duration(d.Interval) * time.Second}, nil
+	return &microsoftLogin{started: time.Now(), entry: m, env: env, app: app, level: level, expected: address, device: d.DeviceCode, prompt: p, interval: time.Duration(d.Interval) * time.Second}, nil
 }
 
 // transition emits only fixed vocabulary and counters, never provider output.
@@ -407,7 +527,7 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 		if token.Error == "" {
 			break
 		}
-		if err := microsoftAuthFailure(l.app, token.Error, token.Codes); err != nil {
+		if err := microsoftAuthFailure(l.app, l.level, token.Error, token.Codes); err != nil {
 			return "", err
 		}
 		if token.Error == "slow_down" {
@@ -440,6 +560,10 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 		return "", NothingGranted
 	}
 	l.allowed = microsoftAllowed(scopes)
+	for s := range scopes {
+		l.granted = append(l.granted, s)
+	}
+	sort.Strings(l.granted)
 	awaitingApproval = false
 	l.transition("token_acquired", pending, slow)
 	if err := l.approved("files_discovery"); err != nil {
@@ -467,13 +591,14 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	l.address = address
 	l.token, _ = json.Marshal(map[string]any{"access_token": token.Access, "refresh_token": token.Refresh, "token_type": "Bearer", "expiry": time.Now().Add(time.Duration(token.Expires) * time.Second).UTC().Format(time.RFC3339)})
 	phase = "graph_discovery"
-	if scopes["Files.ReadWrite.All"] {
-		if err := l.discover(ctx, token.Access, scopes["Sites.ReadWrite.All"]); err != nil {
+	if scopes["Files.ReadWrite.All"] || scopes["Files.Read.All"] {
+		// A read files grant mirrors its roots one way (level_linux.go).
+		if err := l.discover(ctx, token.Access, scopes["Sites.ReadWrite.All"] || scopes["Sites.Read.All"]); err != nil {
 			return "", err
 		}
 	} else {
-		// Files sync both ways, so a narrower files grant syncs nothing; the
-		// account keeps Outlook with no cloud roots, as an Exchange-only one.
+		// Without a files grant the account keeps Outlook with no cloud
+		// roots, as an Exchange-only one.
 		l.config = []byte(microsoftConfigHeader)
 	}
 	// The union grant is imported by the pinned MSAL closure; MSAL creates its
@@ -578,6 +703,26 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 	previousRemotes, err := microsoftRemotes(l.env, address)
 	if err != nil {
 		return err
+	}
+	// A root whose files the new grant syncs the other way starts over
+	// from the person's next choice. One that synced both ways and will not
+	// first syncs both ways once more with the old grant, so nothing made
+	// locally is left behind; if that fails, nothing changes.
+	granted := microsoftGranted(l.granted)
+	var turned []string
+	for _, r := range previousRemotes {
+		writable := microsoftWritable(r.service(), granted)
+		if writable == r.Writable {
+			continue
+		}
+		turned = append(turned, r.Name)
+		if !r.Writable || !microsoftReady(l.env, address, r) {
+			continue
+		}
+		cmd, ok := microsoftBisync(l.env, address, r)
+		if !ok || l.env.runInitialSync(ctx, cmd, r.service()) != nil {
+			return FinalSyncFailed
+		}
 	}
 	l.config = microsoftPreserveDirectories(l.config, previousRemotes)
 	hadServer, err := microsoftMCPConfigured(l.env, address)
@@ -693,7 +838,15 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 	if err := microsoftRegister(ctx, l.env, l.app, address, l.allowed); err != nil {
 		return err
 	}
-	return writeFileAt(fd, address+".conf", l.config, 0600)
+	if err := writeFileAt(fd, address+".conf", l.config, 0600); err != nil {
+		return err
+	}
+	for _, name := range turned {
+		// Listings of the other direction would misreport the root until
+		// its next first pass replaces them (which clears them too).
+		_ = clearWork(l.env, microsoftWork(address, name))
+	}
+	return nil
 }
 
 // Pi's remove command returns failure for an absent name. Read its native
@@ -827,7 +980,7 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 			if err, rejected := dropboxStatus(ctx, env, cmd); err == nil {
 				for _, candidate := range remotes {
 					sameService := (candidate.Name == "onedrive") == (r.Name == "onedrive")
-					if sameService && microsoftReady(env, address, candidate.Name) {
+					if sameService && microsoftReady(env, address, candidate) {
 						out[i].State = StateOK
 					}
 				}
@@ -843,7 +996,8 @@ func (m *microsoft) CheckGrant(ctx context.Context, env Env, address string) ([]
 	var grant *Grant
 	if granted != nil {
 		applyAccess(microsoftRules, granted, out)
-		grant = microsoftGrantOf(granted)
+		_, level, _ := microsoftAppOf(env, address)
+		grant = microsoftGrantOf(granted, level)
 	}
 	// A file service without roots is shown only when the grant says why:
 	// otherwise the account simply has no OneDrive or followed libraries.
@@ -885,7 +1039,7 @@ func microsoftMCPState(ctx context.Context, env Env, address string) (ServiceSta
 // outside_tenant or unreachable, and with ok the scopes the tenant's token
 // response named. It returns "" when the app or tools are not configured.
 func microsoftVerify(ctx context.Context, env Env, address string) (string, []string) {
-	app, ok := env.microsoftApp()
+	app, _, ok := microsoftAppOf(env, address)
 	if !ok {
 		return "", nil
 	}
@@ -919,10 +1073,15 @@ func microsoftVerify(ctx context.Context, env Env, address string) (string, []st
 func (m *microsoft) Skill(env Env, address string) SkillAccount {
 	_, ready := m.SyncCommand(env, address)
 	var directories strings.Builder
+	files := "Selected OneDrive files sync both ways under `~/cloud/onedrive/%s/`; selected SharePoint libraries under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only directories shown in Settings → Integrations are ready. Edits, moves and deletions reach the cloud: write only what the person requested. If rclone's native bisync safeguards stop sync, preserve both sides; never bypass them with --force or blind --resync. Reconnecting does not approve deletions. Initial conflicting local versions are backed up under `~/.local/share/rclone/microsoft-backups/%s/`."
 	if remotes, err := microsoftRemotes(env, address); err == nil {
 		for _, r := range remotes {
-			if microsoftReady(env, address, r.Name) {
+			if microsoftReady(env, address, r) {
 				fmt.Fprintf(&directories, "\n- `~/%s/`", r.Directory)
+			}
+			if !r.Writable {
+				// The grant reads files only; its roots are one-way mirrors.
+				files = "Selected OneDrive files are a read-only one-way mirror under `~/cloud/onedrive/%s/`, selected SharePoint libraries under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only directories shown in Settings → Integrations are ready. Nothing written there reaches Microsoft, and the next pass overwrites or deletes any local change, so never keep work there. Files the first mirror pass replaced are backed up under `~/.local/share/rclone/microsoft-backups/%s/`."
 			}
 		}
 	}
@@ -941,7 +1100,7 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 			services = append(services, Service{ID: id, Access: microsoftRules.access(id, allowed)})
 		}
 	}
-	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: fmt.Sprintf("Use the Pi MCP server `%s` for Outlook mail (drafts first), calendars and contacts. It is pinned to this account; never switch its identity or export tokens. The server's own tool descriptions provide syntax. Selected OneDrive files sync both ways under `~/cloud/onedrive/%s/`; selected SharePoint libraries under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only directories shown in Settings → Integrations are ready. Edits, moves and deletions reach the cloud: write only what the person requested. If rclone's native bisync safeguards stop sync, preserve both sides; never bypass them with --force or blind --resync. Reconnecting does not approve deletions. Initial conflicting local versions are backed up under `~/.local/share/rclone/microsoft-backups/%s/`. One Microsoft sign-in authorizes both cloud files and Outlook. Other work tenants may require their administrator's consent to the operator's app.", microsoftServerName(address), address, address) + "\n\nReady sync directories:" + directories.String() + accessSummary(services, map[string]string{"mail": "Outlook mail", "calendar": "Outlook calendar", "contacts": "Outlook contacts"})}
+	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: fmt.Sprintf("Use the Pi MCP server `%s` for Outlook mail (drafts first), calendars and contacts. It is pinned to this account; never switch its identity or export tokens. The server's own tool descriptions provide syntax. "+files+" One Microsoft sign-in authorizes both cloud files and Outlook. Other work tenants may require their administrator's consent to the operator's app.", microsoftServerName(address), address, address) + "\n\nReady sync directories:" + directories.String() + accessSummary(services, map[string]string{"mail": "Outlook mail", "calendar": "Outlook calendar", "contacts": "Outlook contacts"})}
 }
 
 var _ FolderEntry = (*microsoft)(nil)

@@ -107,6 +107,8 @@ type Account struct {
 	// Grant is the provider's grant in its own scope names, when it can be
 	// read; the services carry what it allows.
 	Grant *Grant `json:"grant,omitempty"`
+	// Level is the account level the grant amounts to, when it is one.
+	Level Level `json:"level,omitempty"`
 }
 
 // Env is everything an entry may use: the person's home and the operator's
@@ -308,6 +310,9 @@ const (
 	Cancelled           Failure = "cancelled"
 	// NothingGranted is a grant that reaches none of the entry's services.
 	NothingGranted Failure = "nothing_granted"
+	// FinalSyncFailed is a level change whose last two-way pass with the
+	// old grant failed; nothing changed and the new grant was revoked.
+	FinalSyncFailed Failure = "final_sync_failed"
 )
 
 // ConsentRequired is a tenant that needs its administrator to approve the
@@ -338,6 +343,10 @@ type Config struct {
 	Dropbox   *DropboxApp       `json:"dropbox,omitempty"`
 	Google    *GoogleApp        `json:"google,omitempty"`
 	Microsoft *MicrosoftApp     `json:"microsoft,omitempty"`
+	// The applications of a provider's narrower account levels (level_linux.go).
+	MicrosoftDrafts  *MicrosoftApp `json:"microsoft_drafts,omitempty"`
+	MicrosoftRead    *MicrosoftApp `json:"microsoft_read,omitempty"`
+	DropboxAppFolder *DropboxApp   `json:"dropbox_app_folder,omitempty"`
 }
 
 // DropboxApp identifies the operator's scoped Dropbox application, not a person.
@@ -346,20 +355,35 @@ type DropboxApp struct {
 	ClientSecret string `json:"client_secret"`
 }
 
-func (env Env) dropboxApp() (DropboxApp, bool) {
-	cfg := env.Config
+// config is the operator's configuration now.
+func (env Env) config() (Config, bool) {
 	if env.LoadConfig != nil {
-		var err error
-		cfg, err = env.LoadConfig()
-		if err != nil {
-			return DropboxApp{}, false
-		}
+		cfg, err := env.LoadConfig()
+		return cfg, err == nil
 	}
-	if cfg.Dropbox == nil {
-		return DropboxApp{}, false
+	return env.Config, true
+}
+
+// dropboxApps are the operator's usable Dropbox applications by level: the
+// Full Dropbox application serves the full and the read level, which differ
+// only in the scopes a sign-in asks for, and the App folder application the
+// app folder level.
+func (env Env) dropboxApps() map[Level]DropboxApp {
+	cfg, ok := env.config()
+	out := map[Level]DropboxApp{}
+	if !ok {
+		return out
 	}
-	a := *cfg.Dropbox
-	return a, integrationapps.Usable("dropbox", map[string]string{"client_id": a.ClientID, "client_secret": a.ClientSecret})
+	usable := func(a *DropboxApp, section string) bool {
+		return a != nil && integrationapps.Usable(section, map[string]string{"client_id": a.ClientID, "client_secret": a.ClientSecret})
+	}
+	if usable(cfg.Dropbox, "dropbox") {
+		out[LevelFull], out[LevelRead] = *cfg.Dropbox, *cfg.Dropbox
+	}
+	if usable(cfg.DropboxAppFolder, "dropbox_app_folder") {
+		out[LevelAppFolder] = *cfg.DropboxAppFolder
+	}
+	return out
 }
 
 // LoadConfig reads ConfigPath. Untrusted files and malformed JSON fail closed;
@@ -409,16 +433,16 @@ func parseConfig(data []byte, log *slog.Logger) (Config, error) {
 				}
 				cfg.Tools[name] = path
 			}
-		case "dropbox":
+		case "dropbox", "dropbox_app_folder":
 			var app DropboxApp
-			if err := decodeStrict(raw, &app); err != nil {
-				ignored("dropbox", "invalid_entry")
+			if err := decodeStrict(raw, &app); err != nil || !integrationapps.Usable(name, map[string]string{"client_id": app.ClientID, "client_secret": app.ClientSecret}) {
+				ignored(name, "invalid_entry")
 				continue
 			}
-			cfg.Dropbox = &app
-			if _, ok := (Env{Config: cfg}).dropboxApp(); !ok {
-				cfg.Dropbox = nil
-				ignored("dropbox", "invalid_entry")
+			if name == "dropbox" {
+				cfg.Dropbox = &app
+			} else {
+				cfg.DropboxAppFolder = &app
 			}
 		case "google":
 			var app GoogleApp
@@ -431,16 +455,19 @@ func parseConfig(data []byte, log *slog.Logger) (Config, error) {
 				cfg.Google = nil
 				ignored("google", "invalid_entry")
 			}
-		case "microsoft":
+		case "microsoft", "microsoft_drafts", "microsoft_read":
 			var app MicrosoftApp
-			if err := decodeStrict(raw, &app); err != nil {
-				ignored("microsoft", "invalid_entry")
+			if err := decodeStrict(raw, &app); err != nil || !integrationapps.Usable(name, map[string]string{"client_id": app.ClientID, "tenant_id": app.TenantID}) {
+				ignored(name, "invalid_entry")
 				continue
 			}
-			cfg.Microsoft = &app
-			if _, ok := (Env{Config: cfg}).microsoftApp(); !ok {
-				cfg.Microsoft = nil
-				ignored("microsoft", "invalid_entry")
+			switch name {
+			case "microsoft":
+				cfg.Microsoft = &app
+			case "microsoft_drafts":
+				cfg.MicrosoftDrafts = &app
+			default:
+				cfg.MicrosoftRead = &app
 			}
 		default:
 			// Unknown keys can contain arbitrary operator input; never log them.
@@ -757,6 +784,7 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 		resumeView(resume, services)
 	}
 	if s, ok := e.(SyncEntry); ok {
+		_, mirrors := e.(mirrorEntry)
 		full := c.quota().Full
 		k := key{e.Provider(), address}
 		restarting, passes := c.sync.restarting(k), c.sync.passes(k)
@@ -765,8 +793,8 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 			matched, synced, aborted := false, true, false
 			var oldest time.Time
 			var pass passState
-			if a := services[i].Access; a == AccessNone || a == AccessRead {
-				// Files sync both ways, so a narrower grant has no sync.
+			if a := services[i].Access; a == AccessNone || a == AccessRead && !mirrors {
+				// A read grant's files sync only where the entry mirrors them.
 				continue
 			}
 			for _, d := range dirs {
@@ -854,6 +882,9 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 		}
 	}
 	out := Account{Provider: e.Provider(), Address: address, Services: services, CheckedAt: c.now().UTC().Format(time.RFC3339), Grant: grant}
+	if le, ok := e.(LevelEntry); ok && grant != nil {
+		out.Level = le.Level(c.env, address, services)
+	}
 	out.AppleID, _ = c.appleMember(e, address)
 	return out
 }
