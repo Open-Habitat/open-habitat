@@ -8,14 +8,10 @@
 .ah-gs-chip > svg {
   color: var(--ah-ink-2);
 }
-.ah-gs-chip-branch {
-  max-width: 14ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--ah-mono);
-  font-weight: 500;
-  color: var(--ah-ink-2);
+.ah-gs-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .ah-gs-chip[aria-expanded="true"] {
   background: var(--ah-current);
@@ -37,8 +33,7 @@
   height: 11px;
   stroke-width: 2.4;
 }
-.ah-gs-n.zero,
-.ah-gs-dirty.zero {
+.ah-gs-n.zero {
   color: var(--ah-faint);
 }
 .ah-gs-dirty {
@@ -52,9 +47,6 @@
   height: 7px;
   border-radius: 50%;
   background: var(--ah-accent);
-}
-.ah-gs-dirty.zero .ah-gs-dot {
-  background: var(--ah-faint);
 }
 
 /* Details: anchored under the chip on desktop. */
@@ -357,11 +349,8 @@
   }
 }
 
-/* Phone: the branch name drops out of the chip, the details are a sheet. */
+/* Phone: the details are a sheet. */
 @media (max-width: 700px) {
-  .ah-gs-chip-branch {
-    display: none;
-  }
   .ah-gs-sheet {
     padding: 0;
     place-items: end center;

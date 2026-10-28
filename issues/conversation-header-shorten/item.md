@@ -3,13 +3,14 @@ created: 2026-10-28
 updated: 2026-10-28
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: desktop-header
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/conversation-header-shorten
 blocked_by: ['@proto-conversation-header']
+closed: 2026-10-28
 ---
 
 # Desktop conversation header: one row that shortens in place, lighter chips

@@ -13,7 +13,12 @@ import {
   WaitingMessage,
   WorkingProgress,
 } from "../components";
-import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
+import {
+  AgentTurn,
+  elapsedLabel,
+  ThinkingRow,
+  type TurnStep,
+} from "../components/AgentTurn";
 import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
@@ -24,7 +29,7 @@ import { controlClassName } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
-import { ModelChip } from "../components/ModelChip";
+import { ModelChip, modelSummary } from "../components/ModelChip";
 import {
   ProcessAwareToolUse,
   ProcessProvider,
@@ -85,12 +90,7 @@ import {
   ConversationModelInfo,
   PiModelSelector,
 } from "./PiModelSelector";
-import {
-  modelDisplayName,
-  shortModel,
-  thinkingDisplayName,
-  usePiModels,
-} from "./PiModels";
+import { shortModel, usePiModels } from "./PiModels";
 import { PiQuestion } from "./PiQuestion";
 import { useBridgeExpected } from "./processWarmup";
 import { useRecapHold } from "./recapHold";
@@ -1551,6 +1551,16 @@ function BrowserConversationContent({
                 <ProcessWaitingChip label={presentation.activityLabel} />
               ) : undefined
             }
+            activityDetail={
+              presentation.activity === "working" && liveTurn?.working
+                ? [
+                    liveTurn.activity,
+                    elapsed === undefined ? "" : elapsedLabel(elapsed),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                : undefined
+            }
             activityKind={
               presentation.activity === "working"
                 ? "working"
@@ -1579,6 +1589,7 @@ function BrowserConversationContent({
             modelPicker={
               emptyConversation ? (
                 <ModelChip
+                  compact
                   model={selectedModel}
                   thinking={selectedThinking}
                   models={models?.models}
@@ -1600,10 +1611,15 @@ function BrowserConversationContent({
                   <ModelChip
                     as="summary"
                     data-testid="conversation-model"
+                    compact
                     model={selectedModel}
                     thinking={selectedThinking}
                     models={models?.models}
-                    aria-label={`Malli ja ajattelutaso: ${modelDisplayName(selectedModel, models?.models)}, ${thinkingDisplayName(selectedThinking)}`}
+                    aria-label={modelSummary(
+                      selectedModel,
+                      selectedThinking,
+                      models?.models,
+                    )}
                   />
                   <div className="md-pop">
                     {chipOpen ? (

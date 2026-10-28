@@ -8,6 +8,7 @@ import {
 } from "./ArchiveControls";
 import type { AgentPresentation } from "./agentPresentation";
 import { ControlButton, ExternalLink, LinkRow } from "./ControlElements";
+import { HeaderActivity, useHeaderShortening } from "./HeaderShortening";
 import { Icon } from "./Icon";
 import { Menu } from "./Overlays";
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
@@ -1022,6 +1023,7 @@ export function AgentHeader({
   titleState,
   titlePending = false,
   activityLabel,
+  activityDetail,
   activityControl,
   activityAnimated = false,
   activityKind = "neutral",
@@ -1048,6 +1050,8 @@ export function AgentHeader({
   titleState?: string;
   titlePending?: boolean;
   activityLabel: string;
+  /** The running turn's phase and duration, in the activity's tooltip. */
+  activityDetail?: string;
   activityControl?: ReactNode;
   activityAnimated?: boolean;
   activityKind?: StatusKind;
@@ -1091,9 +1095,16 @@ export function AgentHeader({
   const visibleControl = controlKind === "read-only";
   const navigate = useNavigate();
   const archiving = archive ? archiveAction(archive) : undefined;
+  const topline = useRef<HTMLDivElement>(null);
+  const hidden = useHeaderShortening(topline);
+  const fallbackModel =
+    settings?.model || settings?.thinking
+      ? `${settings.model ?? "Malli ei tiedossa"} · ajattelutaso ${settings.thinking ?? "Agentti"}`
+      : undefined;
   // On a phone the secondary actions leave the top bar for this menu, so the
-  // header stays two rows (CSS shows one or the other).
-  const phoneMenu = [
+  // header stays two rows; on a desktop it appears when the row has had to
+  // move them there to keep the title readable (CSS shows one or the other).
+  const headerMenu = [
     {
       id: "workspace",
       label: workspaceLabel,
@@ -1128,6 +1139,31 @@ export function AgentHeader({
         ]
       : []),
     { id: "details", label: "Tiedot", run: onToggleDetails },
+    // What the shortened row no longer shows: the Git counts (the chip's
+    // icon still opens its layer) and the model, whose level is in Tiedot.
+    ...(hidden.git
+      ? [
+          {
+            id: "git",
+            label: "Git",
+            description: hidden.git,
+            run: () =>
+              topline.current
+                ?.querySelector<HTMLElement>(".ah-gs-chip")
+                ?.click(),
+          },
+        ]
+      : []),
+    ...(hidden.model
+      ? [
+          {
+            id: "model",
+            label: "Malli",
+            description: hidden.model,
+            run: onToggleDetails,
+          },
+        ]
+      : []),
   ];
   return (
     <header
@@ -1135,7 +1171,7 @@ export function AgentHeader({
       data-control={controlKind}
       className="ah-agent-header"
     >
-      <div className="ah-agent-topline">
+      <div className="ah-agent-topline" ref={topline}>
         <div
           className="ah-title-row"
           data-testid="conversation-title"
@@ -1172,10 +1208,10 @@ export function AgentHeader({
         </LinkRow>
         {visibleActivity
           ? (activityControl ?? (
-              <StatusMark
+              <HeaderActivity
                 label={activityLabel}
-                tone="info"
-                animated={activityAnimated ? "running" : false}
+                detail={activityDetail}
+                animated={activityAnimated}
                 kind={activityKind}
               />
             ))
@@ -1196,26 +1232,21 @@ export function AgentHeader({
               data-testid="conversation-details"
               data-model={settings?.model}
               data-thinking={settings?.thinking}
+              data-menu-summary={fallbackModel}
               size="inline"
               presentation="pill"
-              className="ah-set-chip"
-              aria-label="Malli ja ajattelutaso · avaa tiedot"
-              title="Malli ja ajattelutaso · avaa tiedot"
+              className="ah-set-chip ah-set-compact"
+              aria-label={`${fallbackModel} · avaa tiedot`}
+              title={fallbackModel}
               aria-expanded={detailsExpanded}
               onPress={onToggleDetails}
             >
               <span className="ah-set-model">
                 {settings.model ?? "Malli ei tiedossa"}
               </span>
-              <span className="ah-set-separator" aria-hidden="true">
-                {" "}
-                ·{" "}
-              </span>
-              <span className="ah-set-thinking">
-                {settings.thinking ?? "Agentti"}
-              </span>
             </ControlButton>
           ) : null)}
+        <i className="ah-header-sep" aria-hidden="true" />
         {guideControl}
         {filesControl}
         {editorControl}
@@ -1286,14 +1317,14 @@ export function AgentHeader({
         </ControlButton>
         <Menu
           label="Keskustelun toiminnot"
-          trigger={<span aria-hidden="true" />}
+          trigger={<Icon name="more" />}
           triggerPresentation="icon"
           triggerClassName="ah-header-more"
           triggerTestId="conversation-menu"
           placement="bottom end"
           heading={<p className="ah-header-full-title">{title}</p>}
-          items={phoneMenu}
-          onAction={(id) => phoneMenu.find((item) => item.id === id)?.run()}
+          items={headerMenu}
+          onAction={(id) => headerMenu.find((item) => item.id === id)?.run()}
         />
       </div>
       {titleState ? <StatusMark label={titleState} tone="info" /> : null}

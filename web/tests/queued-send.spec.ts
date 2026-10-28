@@ -189,7 +189,7 @@ test("@lazy-resume Stop before Pi runs returns the waiting message to the field 
   await expect(editor(page)).toBeEnabled();
   // No top-bar state while it waits and no account of Pi starting.
   const header = page.locator(".ah-agent-header");
-  await expect(header.locator(".ah-agent-topline > .ah-status")).toHaveCount(0);
+  await expect(header.locator(".ah-agent-topline .ah-status")).toHaveCount(0);
   await expect(page.getByTestId("creation-progress")).toHaveCount(0);
   // Pi starting on send is the normal path (ADR 0020): its process bridge
   // is not up yet, and that is not a connection problem. Two process polls

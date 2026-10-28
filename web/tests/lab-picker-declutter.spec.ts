@@ -67,8 +67,10 @@ test("@a11y new conversation picker fits, dismisses without saving, and commits 
         (value) => document.documentElement.setAttribute("data-theme", value),
         theme,
       );
-      // Both locations must render the same readout, not a raw thinking id
-      // in the composer or a different icon/surface on one trigger.
+      // Both locations read the same native setting. The composer's picker,
+      // where the level is chosen, shows the model and the level; the
+      // header's quiet chip only the model, with the level in its tooltip
+      // and name (proto-conversation-header round 2).
       const headerChip = page.locator(".ah-agent-header .ah-set-chip");
       await expect(headerChip).toHaveAttribute(
         "data-model",
@@ -78,22 +80,14 @@ test("@a11y new conversation picker fits, dismisses without saving, and commits 
         "data-thinking",
         (await trigger.getAttribute("data-thinking")) ?? "",
       );
-      expect(await trigger.innerText()).toBe(await headerChip.innerText());
-      const appearance = (element: Element) => {
-        const style = getComputedStyle(element);
-        return [
-          style.backgroundColor,
-          style.color,
-          style.borderRadius,
-          style.fontSize,
-          style.fontWeight,
-          style.height,
-          style.width,
-        ];
-      };
-      expect(await trigger.evaluate(appearance)).toEqual(
-        await headerChip.evaluate(appearance),
+      const model = await trigger.locator(".ah-set-model").innerText();
+      const level = await trigger.locator(".ah-set-thinking").innerText();
+      expect(await headerChip.locator(".ah-set-model").innerText()).toBe(model);
+      await expect(headerChip).toHaveAttribute(
+        "title",
+        `${model} · ajattelutaso ${level}`,
       );
+      await expect(headerChip.locator(".ah-set-thinking")).toHaveCount(0);
       await snapshot(page, info.outputPath(`chips-${width}-${theme}`), {
         labOrigin: new URL(page.url()).origin,
       });

@@ -92,6 +92,8 @@ export function gitSentence(f: GitSummaryFacts): string {
   return `${parts.join(", ")}.`;
 }
 
+/** The chip's counts: only the ones that are not zero (round 2 of
+ * proto-conversation-header); the sentence and the layer give all of them. */
 function Arrows({
   up,
   down,
@@ -101,16 +103,21 @@ function Arrows({
   down: number;
   title: [string, string];
 }) {
+  if (!up && !down) return null;
   return (
     <span className="ah-gs-ab">
-      <span className={`ah-gs-n${up ? "" : " zero"}`} title={title[0]}>
-        <Icon name="arrowUp" />
-        {up}
-      </span>
-      <span className={`ah-gs-n${down ? "" : " zero"}`} title={title[1]}>
-        <Icon name="arrowDown" />
-        {down}
-      </span>
+      {up ? (
+        <span className="ah-gs-n" title={title[0]}>
+          <Icon name="arrowUp" />
+          {up}
+        </span>
+      ) : null}
+      {down ? (
+        <span className="ah-gs-n" title={title[1]}>
+          <Icon name="arrowDown" />
+          {down}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -165,6 +172,17 @@ export function GitStatusChip({
           }).replace(/^Haara/, "haara")
         : gitSentence(facts)
   }`;
+  // What the header's ⋯ menu shows when the counts no longer fit beside
+  // the title: "main ↑3 ●2".
+  const summary = [
+    facts.branch,
+    merged ? "yhdistetty" : "",
+    !merged && arrows?.up ? `↑${arrows.up}` : "",
+    !merged && arrows?.down ? `↓${arrows.down}` : "",
+    !merged && facts.dirty_count ? `●${facts.dirty_count}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const content = (
     <Dialog
       data-testid="git-dialog"
@@ -196,42 +214,48 @@ export function GitStatusChip({
         ref={trigger}
         className={`ah-gs-chip${worktree ? " ah-gs-worktree" : ""}${merged ? " merged" : ""}`}
         aria-label={`${sentence} Avaa Git-tiedot.`}
+        data-menu-summary={summary}
         title={worktree ? "Worktree · avaa tiedot" : "Git-tila · avaa tiedot"}
       >
         <Icon name={merged ? "merge" : worktree ? "worktree" : "branch"} />
-        <span className="ah-gs-chip-branch">{facts.branch}</span>
-        {merged ? (
-          <span className="ah-gs-chip-merged">yhdistetty</span>
-        ) : arrows ? (
-          <Arrows
-            up={arrows.up}
-            down={arrows.down}
-            title={
-              arrows.base
-                ? [
-                    `${count(arrows.up, "commit", "committia")} edellä ${arrows.against}-haaraa`,
-                    `${count(arrows.down, "commit", "committia")} jäljessä ${arrows.against}-haarasta`,
-                  ]
-                : [
-                    `${count(arrows.up, "commit", "committia")} lähettämättä`,
-                    `${count(arrows.down, "commit", "committia")} tulossa`,
-                  ]
-            }
-          />
-        ) : null}
-        {merged ? null : (
-          <span
-            className={`ah-gs-dirty${facts.dirty_count ? "" : " zero"}`}
-            title={count(
-              facts.dirty_count,
-              "muuttunut tiedosto",
-              "muuttunutta tiedostoa",
-            )}
-          >
-            <span className="ah-gs-dot" aria-hidden="true" />
-            {facts.dirty_count}
+        {/* The branch is named in the layer's heading and the chip's name,
+            not on the chip: a long one took the title's room. */}
+        {merged || arrows?.up || arrows?.down || facts.dirty_count ? (
+          <span className="ah-gs-counts">
+            {merged ? (
+              <span className="ah-gs-chip-merged">yhdistetty</span>
+            ) : arrows ? (
+              <Arrows
+                up={arrows.up}
+                down={arrows.down}
+                title={
+                  arrows.base
+                    ? [
+                        `${count(arrows.up, "commit", "committia")} edellä ${arrows.against}-haaraa`,
+                        `${count(arrows.down, "commit", "committia")} jäljessä ${arrows.against}-haarasta`,
+                      ]
+                    : [
+                        `${count(arrows.up, "commit", "committia")} lähettämättä`,
+                        `${count(arrows.down, "commit", "committia")} tulossa`,
+                      ]
+                }
+              />
+            ) : null}
+            {!merged && facts.dirty_count ? (
+              <span
+                className="ah-gs-dirty"
+                title={count(
+                  facts.dirty_count,
+                  "muuttunut tiedosto",
+                  "muuttunutta tiedostoa",
+                )}
+              >
+                <span className="ah-gs-dot" aria-hidden="true" />
+                {facts.dirty_count}
+              </span>
+            ) : null}
           </span>
-        )}
+        ) : null}
       </ControlButton>
       {phone ? (
         <ModalOverlay className="ah-overlay ah-gs-sheet" isDismissable>

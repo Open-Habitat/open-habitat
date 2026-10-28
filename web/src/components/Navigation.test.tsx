@@ -122,11 +122,48 @@ describe("conversation title", () => {
     const view = render(header(longTitle));
     const heading = view.getByRole("heading", { level: 1 });
     expect(heading.textContent).toBe(longTitle);
-    // Tiedot, and the phone's menu that CSS shows in its place.
+    // The activity dot (its tooltip's trigger), Tiedot, and the menu that
+    // CSS shows in its place on a phone or a short row.
     expect(
       view.getAllByRole("button").map((b) => b.getAttribute("data-testid")),
-    ).toEqual(["workspace-details", "conversation-menu"]);
+    ).toEqual(["header-activity", "workspace-details", "conversation-menu"]);
   });
+});
+
+// proto-conversation-header round 2: the activity is a dot whose state is
+// its name and, on hover, focus or a tap, its tooltip; the model chip names
+// only the model and keeps the thinking level in its tooltip and name.
+it("names the activity dot with its state and the model chip with its level", () => {
+  const view = render(
+    <MemoryRouter>
+      <AgentHeader
+        title="Otsikko"
+        activityLabel="Työskentelee"
+        activityDetail="Ajattelee · 2 min 14 s"
+        activityKind="working"
+        controlLabel="Selainohjaus"
+        workspaceLabel="Repo"
+        workspaceHref="/workspaces/ws_example00"
+        detailsExpanded={false}
+        onToggleDetails={() => {}}
+        settings={{ model: "Opus 5.5", thinking: "medium" }}
+      />
+    </MemoryRouter>,
+  );
+  const dot = view.getByRole("button", {
+    name: "Työskentelee · Ajattelee · 2 min 14 s",
+  });
+  expect(dot.querySelector(".ah-header-tip")?.textContent).toBe(
+    "Työskentelee · Ajattelee · 2 min 14 s",
+  );
+  fireEvent.click(dot);
+  expect(dot.hasAttribute("data-open")).toBe(true);
+  fireEvent.keyDown(dot, { key: "Escape" });
+  expect(dot.hasAttribute("data-open")).toBe(false);
+  const chip = view.getByTestId("conversation-details");
+  expect(chip.textContent).toBe("Opus 5.5");
+  expect(chip.getAttribute("title")).toBe("Opus 5.5 · ajattelutaso medium");
+  expect(chip.getAttribute("aria-label")).toContain("ajattelutaso medium");
 });
 
 it("shows native settings in a chip and aligned facts without loose disabled reasons", () => {

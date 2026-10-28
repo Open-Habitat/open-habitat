@@ -3186,7 +3186,7 @@ details[open] > summary:not([class])::before {
 .ah-archive-control .ah-topbar-icon {
   flex: none;
 }
-/* Reserve the dots' space so fast naming never shifts the title or tools. */
+/* The title's row fills what the tools leave, so naming never moves them. */
 .ah-agent-topline .ah-title-row {
   align-items: center;
   justify-content: flex-start;
@@ -3223,6 +3223,13 @@ details[open] > summary:not([class])::before {
 }
 .ah-title-dots i:nth-child(3) {
   animation-delay: calc(2 * var(--ah-title-dot-step));
+}
+/* The dots take room only while a title is being made: a shortened title
+   lends them its last characters for that moment instead of giving up
+   their width for good beside the editor. */
+.ah-agent-topline .ah-title-dots:not([data-busy="true"]) {
+  width: 0;
+  margin-inline-start: calc(-1 * var(--ah-s2));
 }
 .ah-archive-control {
   position: relative;
@@ -3470,8 +3477,16 @@ details[open] > summary:not([class])::before {
 .ah-agent-topline .ah-background-dot {
   margin-inline-end: var(--ah-s2);
 }
-/* The conversation's menu replaces its secondary actions only on a phone. */
+/* The conversation's menu holds its secondary actions on a phone, and on a
+   desktop once the row has had to move them there. A quiet icon like the
+   actions beside it. */
 .ah-agent-topline .ah-header-more {
+  display: none;
+  --i-bg: transparent;
+  --i-border: transparent;
+  --i-fg: var(--ah-accent-ink);
+}
+.ah-agent-topline .ah-header-more .ah-menu-chevron {
   display: none;
 }
 /* Phone: two rows. The title, the panels and the menu share the first, beside
@@ -3524,6 +3539,19 @@ details[open] > summary:not([class])::before {
     padding: var(--ah-s1);
     font-size: 0;
   }
+  /* A finger's hit area for the activity dot's tooltip, which opens from
+     the dot's start: the dot begins the second row, at the screen's edge. */
+  .ah-agent-topline > .ah-header-activity {
+    width: 32px;
+    height: 32px;
+  }
+  .ah-agent-topline .ah-header-tip {
+    left: 0;
+    transform: none;
+  }
+  .ah-agent-topline > .ah-header-sep {
+    display: none;
+  }
   /* The model chip takes what the row leaves and shortens the model's name;
      it never pushes the row onto a third line. */
   .ah-agent-topline > :is(.md-chip-picker, .ah-set-chip) {
@@ -3532,87 +3560,134 @@ details[open] > summary:not([class])::before {
     max-width: max-content;
   }
 }
-/* Desktop: the conversation column, not the window, decides. Beside the
-   sidebar, the editor or a view one row of state and actions left the title
-   only its dots. The title keeps a third of the row, and the workspace, Git
-   and model chips shorten before it does; a column too narrow for even that
-   gets two rows: the title with every action, then the conversation's state.
-   Unlike a phone, no action moves into a menu. */
-.ah-conversation-frame > .ah-agent-header {
-  container: conversation-header / inline-size;
-}
+/* Desktop: one row (proto-conversation-header, round 2). The title keeps
+   40 % of the row or its whole text; when the row is short of room the
+   chips shorten in place, in a fixed order, and the rarely used actions
+   move into the ⋯ menu. HeaderShortening.tsx measures the row and lists
+   the steps taken in data-shorten. A later row (a notice) may follow the
+   topline inside the header; nothing here assumes the topline is alone. */
 @media (min-width: 801px) {
-  .ah-agent-topline .ah-title-row {
-    min-width: 33%;
+  .ah-agent-topline[data-shorten~="1"] > .ah-header-workspace {
+    display: none;
   }
-  .ah-agent-topline
-    > :is(.ah-header-workspace, .ah-gs-chip, .md-chip-picker, .ah-set-chip) {
-    flex: 0 1 auto;
-    min-width: 4rem;
+  .ah-agent-topline[data-shorten~="2"] .ah-ctx-value {
+    display: none;
   }
-  .ah-agent-topline > .ah-header-workspace {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+  .ah-agent-topline[data-shorten~="3"]
+    > :is(.ah-retitle, .ah-archive-control, .ah-details-toggle) {
+    display: none;
   }
-  /* Only the branch name shortens; the counts stay whole. */
-  .ah-agent-topline > .ah-gs-chip {
-    min-width: auto;
+  .ah-agent-topline[data-shorten~="3"] .ah-header-more {
+    display: inline-flex;
+    flex: none;
   }
-  .ah-agent-topline > .ah-gs-chip .ah-gs-chip-branch {
-    min-width: 2ch;
+  .ah-agent-topline[data-shorten~="4"] > .ah-files-toggle > span {
+    display: none;
   }
-  /* The picker's summary is the visible chip; it shortens with the picker,
-     the model and the thinking level together. */
-  .ah-agent-topline > .md-chip-picker > .ah-set-chip {
-    max-width: min(100%, 240px, 35vw);
+  .ah-agent-topline[data-shorten~="5"] {
+    gap: var(--ah-s1);
   }
-  .ah-agent-topline .ah-set-chip > :is(.ah-set-model, .ah-set-thinking) {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .ah-agent-topline[data-shorten~="5"] > .ah-header-sep {
+    display: none;
   }
-  @container conversation-header (width < 80rem) {
-    .ah-agent-topline {
-      flex-wrap: wrap;
-      row-gap: var(--ah-s1);
-    }
-    .ah-agent-topline::after {
-      content: "";
-      order: 2;
-      flex-basis: 100%;
-    }
-    .ah-agent-topline > * {
-      order: 3;
-    }
-    .ah-agent-topline
-      > :is(
-        .ah-title-row,
-        .ah-guide-toggle,
-        .ah-files-toggle,
-        .ah-editor-controls,
-        .ah-terminal-toggle,
-        .ah-retitle,
-        .ah-archive-control,
-        .ah-details-toggle
-      ) {
-      order: 1;
-    }
-    .ah-agent-topline > .ah-status:first-of-type {
-      margin-left: 0;
-    }
-    /* Beside the editor or a view the column can be narrower than the
-       title's minimum and the actions together. */
-    .ah-agent-topline .ah-title-row {
-      min-width: min(8rem, 100%);
-    }
-    /* Grown from a small basis, so the state row breaks only when even the
-       shortened chips do not fit, and capped at what they say. */
-    .ah-agent-topline
-      > :is(.ah-header-workspace, .ah-gs-chip, .md-chip-picker) {
-      flex: 1 1 4rem;
-      max-width: max-content;
-    }
+  .ah-agent-topline[data-shorten~="5"]
+    :is(.ah-gs-chip, .ah-ctx-chip, .ah-set-chip) {
+    padding-inline: 6px;
+  }
+  .ah-agent-topline[data-shorten~="6"] .ah-gs-counts {
+    display: none;
+  }
+  .ah-agent-topline[data-shorten~="7"] > :is(.md-chip-picker, .ah-set-chip) {
+    display: none;
+  }
+}
+/* The shared quiet look: chips without a border or a surface until hovered
+   or open, Git without its zero counts, the activity a dot. */
+.ah-agent-topline :is(.ah-gs-chip, .ah-set-chip) {
+  --i-bg: transparent;
+  --i-hover: var(--ah-hover);
+  --i-fg: var(--ah-ink-2);
+  border-color: transparent;
+}
+.ah-agent-topline
+  :is(.ah-gs-chip, .ah-set-chip):is([aria-expanded="true"], [open] > *) {
+  --i-bg: var(--ah-hover);
+  background: var(--ah-hover);
+  border-color: transparent;
+}
+.ah-agent-topline .ah-set-compact {
+  --i-fg: var(--ah-ink);
+  font-weight: 500;
+}
+.ah-header-sep {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  background: var(--ah-line);
+}
+.ah-header-activity {
+  flex: none;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+}
+.ah-header-activity:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+/* The words stay in the mark for its readers; the row shows the dot. */
+/* biome-ignore lint/style/noDescendingSpecificity: The header's own mark, unrelated to the collapsed rail's. */
+.ah-header-activity > .ah-status {
+  gap: 0;
+  font-size: 0;
+}
+.ah-header-activity .ah-status-dot {
+  width: 8px;
+  height: 8px;
+}
+.ah-header-tip {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 9px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-ink);
+  color: var(--ah-bg);
+  font-size: var(--ah-size-meta);
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 120ms ease-out,
+    visibility 120ms;
+}
+.ah-header-activity:is(:focus-visible, [data-open]) .ah-header-tip {
+  visibility: visible;
+  opacity: 1;
+}
+@media (hover: hover) {
+  .ah-header-activity:hover .ah-header-tip {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-header-tip {
+    transition: none;
   }
 }
 .ah-sidebar-agent-row {
@@ -4273,6 +4348,7 @@ details[open] > summary:not([class])::before {
       .ah-terminal-toggle,
       .ah-header-more,
       .ah-status,
+      .ah-header-activity,
       .ah-visually-hidden
     ) {
     display: none;
@@ -4280,7 +4356,7 @@ details[open] > summary:not([class])::before {
   .ah-app-shell[data-keyboard]
     .ah-conversation-frame:has(.ah-composer :focus)
     .ah-agent-topline
-    > .ah-status {
+    > :is(.ah-status, .ah-header-activity) {
     order: 1;
   }
 }

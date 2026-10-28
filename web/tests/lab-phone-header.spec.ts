@@ -1,7 +1,13 @@
+import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./lab-host";
 
-test.use({ reducedMotion: "reduce", isMobile: true, hasTouch: true });
+test.use({
+  reducedMotion: "reduce",
+  isMobile: true,
+  hasTouch: true,
+  deviceScaleFactor: 2,
+});
 
 // A phone header that wraps every control onto its own line left the
 // conversation a strip of the screen (five rows on an iPhone). It stays two
@@ -56,6 +62,31 @@ for (const width of [390, 360]) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(width);
+    // The same quiet chips as on a desktop: Git without the branch name,
+    // the model without its level. A tap on the activity dot says its state.
+    await expect(header.getByTestId("git-chip")).not.toContainText(/\p{L}/u);
+    await expect(
+      header.getByTestId("conversation-model").locator(".ah-set-thinking"),
+    ).toHaveCount(0);
+    const activity = header.getByTestId("header-activity");
+    await activity.tap();
+    await expect(activity.locator(".ah-header-tip")).toBeVisible();
+    await expect(activity.locator(".ah-header-tip")).toHaveText(
+      (await activity.getAttribute("aria-label")) ?? "",
+    );
+    if (process.env.OH_HEADER_CAPTURE)
+      for (const colorScheme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme });
+        await page.screenshot({
+          path: resolve(
+            process.env.OH_HEADER_CAPTURE,
+            `phone-${width}-${colorScheme}.png`,
+          ),
+          clip: { x: 0, y: 0, width, height: 180 },
+        });
+      }
+    await header.getByTestId("workspace-title").tap();
+    await expect(activity.locator(".ah-header-tip")).toBeHidden();
 
     // The secondary actions are in the menu, with the whole title.
     await header.getByTestId("conversation-menu").click();

@@ -1,25 +1,50 @@
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import type { Locator } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./lab-host";
 
 test.use({ reducedMotion: "reduce", deviceScaleFactor: 2 });
 
-// Between the phone breakpoint and a wide window the sidebar leaves the
-// conversation 800-1000 px, and one row of state chips and actions squeezed
-// the title to its dots. The title keeps a readable share; what does not fit
-// beside it moves to a second row, and every desktop action stays visible.
+// The desktop conversation header is one row (proto-conversation-header,
+// round 2, direction 1). When the column is short of room the chips shorten
+// in place, in a fixed order, until the title keeps 40 % of the row or its
+// whole text; the rarely used actions move into the ⋯ menu. A long title,
+// branch and model name must not take the row from it, beside the sidebar
+// or the open editor.
 const branch =
   "wt/korjaa-otsikkorivin-tilanjako-kapeassa-keskustelusarakkeessa";
+const capture = process.env.OH_HEADER_CAPTURE;
 for (const width of [1024, 1280, 1600, 1920]) {
-  test(`@a11y desktop conversation header keeps the title readable at ${width}px with the sidebar open`, async ({
+  test(`@a11y desktop conversation header stays one row with a readable title at ${width}px`, async ({
     page,
   }) => {
+    test.setTimeout(90000);
     await page.setViewportSize({ width, height: 800 });
     await page.route("**/api/v1/workspaces/git?*", async (route) => {
       const response = await route.fetch();
       const body = await response.json();
       await route.fulfill({ response, json: { ...body, branch } });
+    });
+    // A long catalogue name for the lab's model: the chip shows the short
+    // form of whatever the catalogue calls it, so the row must survive one.
+    await page.route("**/api/v1/pi/models", async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      const response = await route.fetch();
+      const body = await response.json();
+      await route.fulfill({
+        response,
+        json: {
+          ...body,
+          models: [
+            ...body.models,
+            {
+              ...body.models[0],
+              id: "fake-pi",
+              name: "Claude Opus 5.5 Extended Preview 1M",
+            },
+          ],
+        },
+      });
     });
     await page.goto("/workspaces");
     await page.getByTestId("github-sign-in").click();
@@ -38,39 +63,40 @@ for (const width of [1024, 1280, 1600, 1920]) {
       .click();
     await page
       .getByTestId("message-input")
-      .fill("Tarkista otsikkorivin tilanjako kapeassa keskustelusarakkeessa");
+      .fill(
+        "Tarkista otsikkorivin tilanjako kapeassa keskustelusarakkeessa ja kerro, mitkä sirut lyhenevät ensin",
+      );
     await page
       .getByTestId("send")
       .and(page.locator('[data-mode="send"]'))
       .click();
     await expect(page.locator(".ah-rail")).toBeVisible();
     const header = page.locator(".ah-conversation-frame > .ah-agent-header");
-    await expect(header.getByTestId("git-chip")).toHaveAttribute(
-      "data-branch",
-      branch,
+    const git = header.getByTestId("git-chip");
+    await expect(git).toHaveAttribute("data-branch", branch);
+    await expect(header.getByTestId("conversation-model")).toContainText(
+      "Extended Preview",
     );
-    // Review material for the issue, not a visual comparison.
-    if (process.env.OH_DESKTOP_HEADER_CAPTURE)
-      await page.screenshot({
-        path: resolve(process.env.OH_DESKTOP_HEADER_CAPTURE, `${width}.png`),
-        clip: { x: 0, y: 0, width, height: 240 },
-      });
-    for (const id of [
-      "workspace-title",
-      "conversation-workspace",
-      "git-chip",
-      "context-ring",
-      "conversation-model",
-      "toggle-editor",
-      "toggle-terminal",
-      "conversation-retitle",
-      "workspace-details",
-    ])
-      await expect(header.getByTestId(id)).toBeInViewport({ ratio: 1 });
-    await expectReadable(header, 2);
+
+    // The quiet chips: no branch name and no zero counts on the Git chip,
+    // which still names the branch for its readers; only the model on the
+    // model chip, whose level is in its tooltip and name.
+    await expect(git).not.toContainText(branch);
+    await expect(git.locator(".zero")).toHaveCount(0);
+    await expect(git).toHaveAttribute("aria-label", new RegExp(branch));
+    const model = header.getByTestId("conversation-model");
+    await expect(model).toHaveAttribute(
+      "title",
+      /^Opus 5.5 Extended Preview · ajattelutaso /,
+    );
+    await expect(model).toHaveAttribute("aria-label", /ajattelutaso/);
+    await expect(model.locator(".ah-set-thinking")).toHaveCount(0);
     expect(
-      await page.evaluate(() => document.documentElement.scrollWidth),
-    ).toBe(width);
+      await git.evaluate((el) => getComputedStyle(el).borderTopColor),
+    ).toBe("rgba(0, 0, 0, 0)");
+
+    await expectOneRow(page, header, width);
+    await shoot(page, header, `${width}-sidebar`);
     for (const colorScheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme });
       expect(
@@ -78,38 +104,84 @@ for (const width of [1024, 1280, 1600, 1920]) {
           .violations,
       ).toEqual([]);
     }
+    await page.emulateMedia({ colorScheme: "light" });
 
-    // Beside the open editor the column narrows further: the state may take
-    // one more row, but the title keeps its share and nothing overlaps.
+    // The activity is a dot; its state shows as text on hover and on
+    // keyboard focus, and is the dot's accessible name.
+    const activity = header.getByTestId("header-activity");
+    const tip = activity.locator(".ah-header-tip");
+    await expect(tip).toBeHidden();
+    await activity.hover();
+    await expect(tip).toBeVisible();
+    expect(await tip.textContent()).toBe(
+      await activity.getAttribute("aria-label"),
+    );
+    await page.mouse.move(2, 790);
+    await expect(tip).toBeHidden();
+    await activity.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(activity).toBeFocused();
+    await expect(tip).toBeVisible();
+    await shoot(page, header, `${width}-activity-tip`, 120);
+    await page.keyboard.press("Escape");
+
+    // Beside the open editor the column narrows to 440-640 px: the same
+    // one row, with more of it shortened.
     await header.getByTestId("toggle-editor").click();
     await expect(page.locator(".ah-editor-open")).toBeVisible();
-    if (process.env.OH_DESKTOP_HEADER_CAPTURE)
-      await page.screenshot({
-        path: resolve(
-          process.env.OH_DESKTOP_HEADER_CAPTURE,
-          `${width}-editor.png`,
-        ),
-        clip: { x: 0, y: 0, width, height: 240 },
-      });
-    await expectReadable(header, 3);
+    await expectOneRow(page, header, width);
+    await shoot(page, header, `${width}-editor`);
   });
 }
 
-async function expectReadable(header: Locator, maxRows: number) {
+async function shoot(page: Page, header: Locator, name: string, extra = 0) {
+  if (!capture) return;
+  const box = await header.boundingBox();
+  if (!box) return;
+  // A menu just closed returns focus to its trigger; the picture is of rest.
+  if (!name.includes("tip"))
+    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  for (const colorScheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme });
+    await page.screenshot({
+      path: resolve(capture, `${name}-${colorScheme}.png`),
+      clip: {
+        x: 0,
+        y: 0,
+        width: page.viewportSize()?.width ?? 0,
+        height: box.y + box.height + extra,
+      },
+    });
+  }
+  await page.emulateMedia({ colorScheme: "light" });
+}
+
+async function expectOneRow(page: Page, header: Locator, width: number) {
+  // Let the header measure itself after a layout change.
+  await page.waitForTimeout(100);
   const geometry = await header.evaluate((element) => {
+    const row = element.querySelector(".ah-agent-topline") as HTMLElement;
     const title = element.querySelector("h1") as HTMLElement;
-    const boxes = [
-      ...element.querySelectorAll(
-        ".ah-agent-topline > *, .ah-agent-topline > * > summary",
-      ),
-    ]
+    const boxes = [...row.querySelectorAll(":scope > *, :scope > * > summary")]
       .map((child) => child.getBoundingClientRect())
       .filter((box) => box.width > 1 && box.height > 1);
     const tops = boxes.map((box) => box.top + box.height / 2);
+    const own = row.getBoundingClientRect();
     return {
-      row: (
-        element.querySelector(".ah-agent-topline") as HTMLElement
-      ).getBoundingClientRect().width,
+      row: own.width,
+      right: own.right,
+      steps: row.dataset.shorten ?? "",
+      // What took the row, for a failure's message.
+      parts: [...row.children]
+        .map((child) => {
+          const box = child.getBoundingClientRect();
+          return box.width
+            ? `${child.className.split(" ")[0]} ${Math.round(box.width)}`
+            : "";
+        })
+        .filter(Boolean)
+        .join(", "),
       title: title.getBoundingClientRect().width,
       titleText: title.scrollWidth,
       // A shortened chip whose content spills out covers its neighbour.
@@ -125,16 +197,70 @@ async function expectReadable(header: Locator, maxRows: number) {
             !(b.left <= a.left && b.right >= a.right),
         ),
       ).length,
+      outside: boxes.filter((box) => box.right > own.right + 1).length,
       rows: tops.filter(
         (centre, i) => tops.findIndex((c) => Math.abs(c - centre) < 12) === i,
       ).length,
     };
   });
-  // Either the whole title or a quarter of the row: enough words to
-  // recognise the conversation, whatever the chips beside it hold.
-  expect(geometry.title).toBeGreaterThanOrEqual(
-    Math.min(geometry.titleText, geometry.row / 4),
-  );
-  expect(geometry.rows).toBeLessThanOrEqual(maxRows);
+  expect(geometry.rows, `rows at steps "${geometry.steps}"`).toBe(1);
   expect(geometry.overlaps).toBe(0);
+  expect(geometry.outside).toBe(0);
+  expect(
+    geometry.title,
+    `title share at steps "${geometry.steps}": ${geometry.parts}`,
+  ).toBeGreaterThanOrEqual(
+    Math.min(geometry.titleText, geometry.row * 0.4) - 1,
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    width,
+  );
+
+  // Every action is in view, directly or through the ⋯ menu, and the state
+  // the row no longer shows is in the menu.
+  for (const id of [
+    "workspace-title",
+    "header-activity",
+    "git-chip",
+    "context-ring",
+    "toggle-editor",
+    "toggle-terminal",
+  ])
+    await expect(header.getByTestId(id)).toBeInViewport({ ratio: 1 });
+  const menu = header.getByTestId("conversation-menu");
+  const steps = geometry.steps.split(" ");
+  if (!steps.includes("3")) {
+    for (const id of ["conversation-retitle", "workspace-details"])
+      await expect(header.getByTestId(id)).toBeInViewport({ ratio: 1 });
+    await expect(menu).toBeHidden();
+    return;
+  }
+  await expect(menu).toBeInViewport({ ratio: 1 });
+  await menu.click();
+  const items = page.getByRole("menu");
+  const expected = ["workspace", "retitle", "archive", "details"];
+  if (steps.includes("6")) expected.push("git");
+  if (steps.includes("7")) expected.push("model");
+  else
+    await expect(header.getByTestId("conversation-model")).toBeInViewport({
+      ratio: 1,
+    });
+  for (const id of expected)
+    await expect(
+      items.getByRole("menuitem").and(page.getByTestId(`menu-${id}`)),
+    ).toBeVisible();
+  const popover = await page.locator(".ah-popover").boundingBox();
+  expect(popover && popover.x + popover.width).toBeLessThanOrEqual(width);
+  if (!steps.includes("6")) {
+    await page.keyboard.press("Escape");
+    await expect(items).toHaveCount(0);
+    return;
+  }
+  // The Git row opens the chip's layer, which names the branch.
+  await items.getByRole("menuitem").and(page.getByTestId("menu-git")).click();
+  const details = page.getByRole("dialog").and(page.getByTestId("git-dialog"));
+  await expect(details).toBeVisible();
+  await expect(details).toContainText(branch);
+  await page.keyboard.press("Escape");
+  await expect(details).toHaveCount(0);
 }

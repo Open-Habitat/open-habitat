@@ -36,10 +36,13 @@ for (const width of [1440, 390]) {
     await expect(chip).toHaveAttribute("data-base-behind", "3");
     await expect(chip).toHaveAttribute("data-changes", "4");
     await expect(chip).toBeVisible();
-    // The branch name drops out of the chip on a phone; the arrows stay.
-    await expect(chip.locator(".ah-gs-chip-branch")).toBeVisible({
-      visible: width > 700,
-    });
+    // The chip carries the marks, not the branch (proto-conversation-header
+    // round 2): the name is in its accessible name and the layer's heading.
+    // Zero counts are left out.
+    await expect(chip).not.toContainText("status-rivit");
+    await expect(chip).toHaveAttribute("aria-label", /status-rivit/);
+    await expect(chip).toContainText("4");
+    await expect(chip.locator(".zero")).toHaveCount(0);
     await chip.click();
     const details = page
       .getByRole("dialog")
