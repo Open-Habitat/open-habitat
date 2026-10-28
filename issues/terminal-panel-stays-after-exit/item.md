@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-28/terminal-panel-stays-after-exit
 lane: terminal-panel
 preparation: ready
+closed: 2026-10-28
 ---
 
 # Terminal panel stays open after the shell exits with Ctrl-D
@@ -19,4 +20,4 @@ Jari 2026-10-28 (Birch, pilot.13): kun suljen terminaalin Ctrl-D:llä, se jää 
 
 ## Acceptance Criteria
 
-- [ ] Ctrl-D/exit sulkee paneelin; selaintesti
+- [x] Ctrl-D/exit sulkee paneelin; selaintesti

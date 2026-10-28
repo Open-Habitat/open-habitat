@@ -215,6 +215,9 @@ export function useBrowserShell({
   }, [list, attached, pending]);
   const activeTab = tabs.find((t) => t.key === active) ?? tabs[0];
   const activeKey = activeTab?.key;
+  // Read by socket callbacks, which outlive the render that made them.
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
   useEffect(() => {
     if (pending && list?.shells.some((s) => `s:${s.shell}` === pending.key))
       setPending(undefined);
@@ -272,13 +275,37 @@ export function useBrowserShell({
               setPhase({ kind: "detached" });
               return;
             }
+            const ended = connection.current?.key;
             connection.current = undefined;
             setReady(undefined);
             setPending(undefined);
+            // The shell ended itself (exit, Ctrl-D) and tmux ended its
+            // session: drop its tab now rather than after the next list
+            // read, and close the panel when it was the last one.
+            const last = !tabsRef.current.some(
+              (t) => t.key !== ended && t.key !== "new",
+            );
             if (target.kind === "taskfleet") {
               setAttached((a) => a.filter((t) => t !== target.token));
-              setToast("Taskfleetin ikkuna sulkeutui.");
-            } else setToast("Pääte päättyi. Sen tmux-istunto suljettiin.");
+              if (!last) setToast("Taskfleetin ikkuna sulkeutui.");
+            } else {
+              setList((current) =>
+                current
+                  ? {
+                      ...current,
+                      shells: current.shells.filter(
+                        (s) => `s:${s.shell}` !== ended,
+                      ),
+                    }
+                  : current,
+              );
+              if (!last)
+                setToast("Pääte päättyi. Sen tmux-istunto suljettiin.");
+            }
+            if (last) {
+              setOpen(false);
+              setMaximized(false);
+            }
             setActive(undefined);
             void refresh();
           },

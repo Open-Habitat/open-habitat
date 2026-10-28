@@ -218,7 +218,7 @@ test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tm
   await page.keyboard.press("Delete");
   await expect(panel.getByRole("tab")).toHaveCount(1);
   await expect.poll(async () => (await shells(page, id)).length).toBe(1);
-  // exit ends the last shell; the panel shows the empty state.
+  // exit ends the last shell; its tmux session ends and the panel closes.
   // The remaining shell is reattached once a command makes the round trip;
   // input typed while it connects is not delivered.
   await tabs.getByRole("tab").click();
@@ -232,7 +232,7 @@ test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tm
     });
   }).toPass({ timeout: 15_000 });
   await page.keyboard.type("exit\n");
-  await expect(panel.getByTestId("terminal-empty")).toBeVisible();
+  await expect(panel).toBeHidden();
   await expect.poll(async () => (await shells(page, id)).length).toBe(0);
 });
 
@@ -645,4 +645,42 @@ test("@browser-shell closing the last tab hides the panel and reopening starts a
     "echo fresh-$(printenv LAST_CLOSE_MARKER)-$((6*7))\n",
   );
   await expect(screen(page)).toContainText("fresh--42");
+});
+
+test("@browser-shell Ctrl-D ends only its own shell and the last one closes the panel", async ({
+  page,
+}) => {
+  const id = await conversation(page);
+  const panel = await openFirstShell(page);
+  await page.keyboard.type("echo first-$((2+2))\n");
+  await expect(screen(page)).toContainText("first-4");
+  await panel.getByRole("button").and(page.getByTestId("new-terminal")).click();
+  await expect(panel.getByRole("tab")).toHaveCount(2);
+  await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
+  await expect.poll(async () => (await shells(page, id)).length).toBe(2);
+  await page.keyboard.type("echo second-$((3+3))\n");
+  await expect(screen(page)).toContainText("second-6");
+  // The second shell ends itself: its tab goes, the first shell is shown.
+  await page.keyboard.press("Control+d");
+  await expect(panel.getByRole("tab")).toHaveCount(1);
+  await expect(panel).toBeVisible();
+  await expect(screen(page)).toContainText("first-4");
+  await expect.poll(async () => (await shells(page, id)).length).toBe(1);
+  // The remaining shell takes input once its reattachment is through.
+  await panel.getByRole("tab").click();
+  await page.keyboard.press("Enter");
+  let probe = 0;
+  await expect(async () => {
+    probe += 1;
+    await page.keyboard.type(`echo probe-${probe}$((0))\n`);
+    await expect(screen(page)).toContainText(`probe-${probe}0`, {
+      timeout: 2000,
+    });
+  }).toPass({ timeout: 15_000 });
+  await page.keyboard.press("Control+d");
+  await expect(panel).toBeHidden();
+  await expect.poll(() => shells(page, id)).toEqual([]);
+  // The toggle opens a fresh shell, not an empty dock.
+  await openFirstShell(page);
+  expect(await shells(page, id)).toHaveLength(1);
 });
