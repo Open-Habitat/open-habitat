@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tilannekatsauksen asetukset — prototyyppi</title>
+<style>
+/*TOKENS*/
+/*PICKER_CSS*/
+
+/* ---- Prototype chrome (not a contestant) ---- */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #0c0d0f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.pc-bar {
+  position: fixed; inset: 0 0 auto 0; height: 44px; z-index: 50;
+  display: flex; align-items: center; gap: 14px; padding: 0 12px;
+  background: #16181b; color: #c9cdd2; font-size: 12px; border-bottom: 1px solid #262a2f;
+  overflow-x: auto; white-space: nowrap;
+}
+.pc-group { display: inline-flex; align-items: center; gap: 2px; }
+.pc-group > span { margin-right: 4px; color: #8a9097; }
+.pc-group button {
+  height: 26px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent;
+  color: #aeb4ba; font: inherit; cursor: pointer;
+}
+.pc-group button:hover { background: rgba(255,255,255,.06); }
+.pc-group button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+.pc-read { margin-left: auto; color: #8a9097; }
+.pc-read b { color: #e6e9ec; font-weight: 500; }
+#viewport { position: fixed; inset: 44px 0 64px 0; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; padding: 12px; }
+body.bare .pc-bar { display: none; }
+body.bare #viewport { inset: 0; padding: 0; }
+body.bare .proto-picker { display: none; }
+#sizer { position: relative; flex: none; }
+#frame {
+  position: absolute; top: 0; left: 0; transform-origin: top left; overflow: hidden;
+  background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font);
+  font-size: var(--ah-size-body); line-height: var(--ah-lh-ui);
+  box-shadow: 0 0 0 1px #2a2e33;
+}
+body.bare #frame { box-shadow: none; }
+
+/* ---- App shell (production context, simplified) ---- */
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.app { display: flex; height: 100%; position: relative; }
+.rail {
+  flex: none; width: var(--ah-rail-width); background: var(--ah-rail); border-right: 1px solid var(--ah-line);
+  display: flex; flex-direction: column; padding: 12px 10px; gap: 2px; font-size: var(--ah-size-ui); overflow: hidden;
+}
+.rail-head { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px; font-weight: 600; margin-bottom: 8px; }
+.rail-ws { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; margin-top: 8px; color: var(--ah-muted); font-family: var(--ah-mono); font-size: var(--ah-size-meta); }
+.rail-item { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); white-space: nowrap; overflow: hidden; cursor: pointer; }
+.rail-item.sub { padding-left: 22px; }
+.rail-item span { overflow: hidden; text-overflow: ellipsis; }
+.rail-item:hover { background: var(--ah-hover); }
+.rail-item.cur { background: var(--ah-current); box-shadow: inset 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); }
+.rail-fill { flex: 1; }
+.rail-account { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px; border-top: 1px solid var(--ah-line); margin-top: 6px; padding-top: 6px; color: var(--ah-ink); cursor: pointer; }
+.avatar { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-size: 11px; font-weight: 600; flex: none; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--ah-bg); }
+.topbar { flex: none; display: flex; align-items: center; gap: 10px; height: 49px; padding: 0 var(--ah-topbar-pad-inline); border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.topbar h1 { margin: 0; font-size: var(--ah-size-title); font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.burger { width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--ah-r-md); color: var(--ah-muted); cursor: pointer; }
+.burger svg.i { width: 20px; height: 20px; }
+.scroll { flex: 1; min-height: 0; overflow: auto; position: relative; }
+
+/* ---- Buttons (ControlButton look) ---- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ah-control-row); padding: 0 var(--ah-control-row-pad);
+  border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-control); color: var(--ah-ink);
+  font: inherit; font-size: var(--ah-control-row-font); font-weight: 500; white-space: nowrap; cursor: pointer;
+}
+.btn:hover { background: var(--ah-control-hover); }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--ah-ink-2); }
+.btn.quiet:hover { background: var(--ah-hover); }
+.btn.link { border: 0; background: transparent; padding: 0 2px; height: auto; color: var(--ah-accent-ink); text-decoration: underline; text-underline-offset: 2px; font-weight: 500; }
+.btn svg.i { width: 15px; height: 15px; }
+button:focus-visible, [tabindex]:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: var(--ah-focus-offset); }
+
+/* ---- Segmented (production Segmented look) ---- */
+.seg { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2); }
+.seg button { height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ah-ink-2); font: 500 12.5px var(--ah-font); cursor: pointer; white-space: nowrap; }
+.seg button:hover { background: var(--ah-hover); }
+.seg button[aria-checked="true"] { background: var(--ah-surface); box-shadow: 0 0 0 1px var(--ah-line-strong); color: var(--ah-ink); font-weight: 600; }
+.seg[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+
+/* ---- Settings (Asetukset; Settings.css, simplified) ---- */
+.settings { display: flex; gap: var(--ah-s8); height: 100%; padding: var(--ah-s5) 28px 40px; overflow: auto; }
+.s-nav { flex: none; width: 190px; display: flex; flex-direction: column; gap: 2px; font-size: var(--ah-size-ui); }
+.s-nav .s-h { margin: var(--ah-s4) 10px; font-size: var(--ah-size-h1); font-weight: 600; }
+.s-nav-i { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); font-weight: 500; cursor: pointer; }
+.s-nav-i:hover { background: var(--ah-hover); }
+.s-nav-i.cur { background: var(--ah-current); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-current-line); }
+.s-nav-i.new::after { content: "uusi"; margin-left: auto; font-size: 10.5px; color: var(--ah-accent-ink); font-weight: 600; }
+.s-main { flex: 1; min-width: 0; max-width: 720px; }
+.s-main > h2 { font-size: var(--ah-size-h2); margin: var(--ah-s4) 0 var(--ah-s4); }
+.s-back { display: none; }
+.s-intro { margin: 0 0 14px; color: var(--ah-muted); font-size: var(--ah-size-ui); line-height: 1.5; }
+.s-h3 { margin: var(--ah-s6) 0 6px; font-size: var(--ah-size-ui); font-weight: 600; }
+.s-h3 + .s-intro { margin-bottom: 10px; }
+.s-card { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); overflow: hidden; }
+.s-card > * + * { border-top: 1px solid var(--ah-line-soft); }
+.s-row { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(0, auto); gap: var(--ah-s3) var(--ah-s6); align-items: center; padding: var(--ah-s4) var(--ah-s5); font-size: var(--ah-size-ui); }
+.s-row.icon { grid-template-columns: auto minmax(160px, 1fr) minmax(0, auto); }
+.s-lbl { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.s-lbl strong { font-weight: 600; }
+.s-desc { color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.45; }
+.s-val { display: flex; align-items: center; justify-content: flex-end; gap: var(--ah-s3); flex-wrap: wrap; min-width: 0; }
+.s-row[data-landed] { animation: landed 2.4s ease-out both; }
+@keyframes landed { 0%, 40% { background: var(--ah-accent-soft); } 100% { background: transparent; } }
+.letter { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; background: var(--ah-sunken); color: var(--ah-source-1); font: 600 11px var(--ah-mono); flex: none; }
+.model-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2); font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.model-chip .prov { color: var(--ah-muted); font-weight: 400; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--ah-ok); white-space: nowrap; }
+.status i { width: 8px; height: 8px; border-radius: 50%; background: var(--ah-ok); }
+/* Model radio list (direction 2) */
+.radios { list-style: none; margin: 0; padding: 0; }
+.radios li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 10px var(--ah-s5); font-size: var(--ah-size-ui); cursor: pointer; }
+.radios li + li { border-top: 1px solid var(--ah-line-soft); }
+.radios li:hover { background: var(--ah-hover); }
+.radios li[aria-disabled="true"] { cursor: default; color: var(--ah-muted); }
+.radios li[aria-disabled="true"]:hover { background: transparent; }
+.radios .dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--ah-line-strong); display: grid; place-items: center; }
+.radios li[aria-checked="true"] .dot { border-color: var(--ah-accent); }
+.radios li[aria-checked="true"] .dot::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ah-accent); }
+.radios li[aria-disabled="true"] .dot { border-style: dashed; }
+.radios .nm { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.radios .nm small { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.radios .tag { font-size: 11.5px; color: var(--ah-muted); white-space: nowrap; }
+.s-foot { padding: 10px var(--ah-s5); color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.45; background: var(--ah-surface-2); }
+.preview { padding: 14px var(--ah-s5) 16px; background: var(--ah-bg); }
+.preview .lbl { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ah-muted); margin-bottom: 6px; }
+.preview .ah-recap { margin: 0; width: 100%; }
+
+/* Phone settings: the section alone, with a back row (production at <= 760px). */
+.ph .settings { display: block; padding: 10px 14px 32px; }
+.ph .s-nav { display: none; }
+.ph .s-back { display: inline-flex; margin: 0 0 4px -8px; }
+.ph .s-main > h2 { margin-top: 4px; }
+.ph .s-row, .ph .s-row.icon { grid-template-columns: 1fr; }
+.ph .s-row.icon .letter { display: none; }
+.ph .s-val { justify-content: flex-start; }
+.ph .seg { width: 100%; }
+.ph .seg button { flex: 1; padding: 0 6px; }
+
+/* ---- Conversation ---- */
+.conv { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+.conv-head { flex: none; display: flex; align-items: center; gap: 10px; padding: var(--ah-topbar-pad-block) var(--ah-topbar-pad-inline); min-height: 49px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.conv-head h1 { margin: 0; font-size: var(--ah-size-title); font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-head .ws { font-family: var(--ah-mono); font-size: var(--ah-size-meta); color: var(--ah-muted); }
+.conv-head .grow { flex: 1; }
+.conv-head .idle { font-size: var(--ah-size-meta); color: var(--ah-muted); display: inline-flex; align-items: center; gap: 6px; }
+.conv-head .idle i { width: 7px; height: 7px; border-radius: 50%; background: var(--ah-muted); }
+.stream { flex: 1; min-height: 0; overflow: hidden; padding: var(--ah-column-pad-block) var(--ah-column-pad-inline); display: flex; flex-direction: column; justify-content: flex-end; }
+.col { width: 100%; max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin: 0 auto; display: grid; gap: 14px; }
+.msg-user { justify-self: end; max-width: 80%; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-xl); padding: 8px 12px; line-height: var(--ah-lh-body); }
+.msg-agent p { margin: 0 0 8px; line-height: var(--ah-lh-body); }
+.msg-agent .work { font-size: var(--ah-size-meta); color: var(--ah-muted); margin-bottom: 6px; }
+.msg-agent code { font: var(--ah-size-code) var(--ah-mono); background: var(--ah-sunken); padding: 1px 4px; border-radius: 4px; }
+.msg-agent pre { margin: 0 0 8px; padding: 8px 10px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-sunken); font: var(--ah-size-code)/1.55 var(--ah-mono); color: var(--ah-ink-2); white-space: pre-wrap; }
+.composer { flex: none; padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline); }
+.field { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin: 0 auto; min-height: var(--ah-composer-rest-height); display: flex; align-items: center; gap: 8px; padding: 0 6px 0 14px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-xl); background: var(--ah-surface); color: var(--ah-faint); font-size: var(--ah-size-ui); }
+.field .ph-t { flex: 1; }
+.send { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--ah-accent); color: var(--ah-on-accent); }
+
+/* ---- Recap card (RecapCard.tsx + components.css, verbatim geometry) ---- */
+.rc-slot { flex: none; position: relative; width: min(calc(100% - 2 * var(--ah-column-pad-inline)), calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline))); margin: var(--ah-s2) auto 0; }
+.ah-recap {
+  max-height: min(38vh, 280px); overflow: auto; padding: var(--ah-s2) var(--ah-s3) var(--ah-s3);
+  background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); color: var(--ah-ink);
+  animation: ah-appear var(--ah-appear) both;
+}
+.ph .ah-recap { max-height: 20vh; }
+.rc-slot.still > *, .preview .ah-recap { animation: none; }
+.ah-recap p { margin: var(--ah-s2) 0; line-height: 1.5; }
+.ah-recap-heading { display: flex; align-items: center; gap: var(--ah-s2); min-height: 28px; flex-wrap: wrap; }
+.ah-recap-heading strong { font-size: var(--ah-size-meta); }
+.ah-recap-heading time, .ah-recap-heading .meta { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.ah-recap-grow { flex: 1; }
+.ah-recap-next { color: var(--ah-ink-2); }
+.ah-recap .ah-recap-next strong { margin-right: var(--ah-s2); color: var(--ah-muted); font-size: var(--ah-size-meta); text-transform: uppercase; letter-spacing: .04em; }
+.ah-recap-icon { width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: var(--ah-r-md); background: transparent; color: var(--ah-muted); cursor: pointer; }
+.ah-recap-icon:hover { background: var(--ah-hover); color: var(--ah-ink); }
+.ah-recap-icon[aria-expanded="true"] { background: var(--ah-hover); color: var(--ah-ink); }
+.ah-recap-skeleton { display: grid; gap: var(--ah-s2); padding: var(--ah-s2) 0; }
+.ah-recap-skeleton span { height: 10px; border-radius: var(--ah-r-pill); background: var(--ah-sunken); animation: ah-recap-loading 1.2s ease-in-out infinite; }
+.ah-recap-skeleton span:last-child { width: 55%; }
+@keyframes ah-recap-loading { 50% { opacity: .45; } }
+
+/* "Kun pyydän": one quiet row in the card's place, no model call until pressed. */
+.rc-offer {
+  display: flex; align-items: center; gap: var(--ah-s2); min-height: 38px; padding: 4px 6px 4px var(--ah-s3);
+  border: 1px dashed var(--ah-line-strong); border-radius: var(--ah-r-lg); background: transparent; font-size: var(--ah-size-meta); color: var(--ah-ink-2);
+  animation: ah-appear var(--ah-appear) both;
+}
+.rc-offer strong { color: var(--ah-ink); font-weight: 600; }
+.rc-offer .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-offer .btn { height: 28px; padding: 0 10px; font-size: 12.5px; }
+/* A changed setting, said once where it was changed. */
+.rc-note {
+  display: flex; align-items: center; gap: var(--ah-s2); flex-wrap: wrap; padding: 6px 6px 6px var(--ah-s3); border-radius: var(--ah-r-lg);
+  background: var(--ah-surface-2); border: 1px solid var(--ah-line); font-size: var(--ah-size-meta); color: var(--ah-ink-2);
+  animation: ah-appear var(--ah-appear) both;
+}
+.rc-note .grow { flex: 1 1 200px; }
+
+/* Direction 3: the card's own menu. Opens upwards; the card sits on the composer. */
+.rc-menu {
+  position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 4; width: 290px; padding: 6px;
+  border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-menu);
+  font-size: var(--ah-size-ui); transform-origin: bottom right; animation: menu-in .14s ease-out both;
+}
+@keyframes menu-in { from { opacity: 0; transform: translateY(4px) scale(.98); } }
+.rc-menu .h { padding: 6px 8px 4px; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ah-muted); }
+.rc-menu button.mi { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 0 8px; border: 0; border-radius: var(--ah-r-md); background: transparent; color: var(--ah-ink); font: inherit; text-align: left; cursor: pointer; }
+.rc-menu button.mi:hover { background: var(--ah-hover); }
+.rc-menu button.mi .ck { width: 16px; display: grid; place-items: center; color: var(--ah-accent-ink); }
+.rc-menu hr { border: 0; border-top: 1px solid var(--ah-line-soft); margin: 6px 0; }
+.rc-menu .info { padding: 4px 8px 6px 32px; color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.45; }
+.rc-menu .info b { color: var(--ah-ink-2); font-weight: 600; }
+.ph .rc-menu { width: auto; left: 0; }
+
+.phone {
+  --ah-topbar-pad-block: 6px; --ah-topbar-pad-inline: 14px; --ah-column-pad-block: 12px;
+  --ah-column-pad-inline: 14px; --ah-control-row: 40px;
+}
+@media (prefers-reduced-motion: reduce) { .ah-recap, .rc-offer, .rc-note, .rc-menu, .s-row[data-landed] { animation: none; } .ah-recap-skeleton span { animation: none; } }
+</style>
+</head>
+<body>
+<div class="pc-bar" role="toolbar" aria-label="Prototyypin asetukset">
+  <div class="pc-group" data-k="n"><span>Näkymä</span><button data-v="keskustelu">Keskustelu</button><button data-v="asetukset">Asetukset</button></div>
+  <div class="pc-group" data-k="s"><span>Hiljaisuus</span><button data-v="0">0 min</button><button data-v="1">1 min</button><button data-v="3">3 min</button><button data-v="5">5 min</button></div>
+  <div class="pc-group" data-k="w"><span>Ikkuna</span><button data-v="oma">Oma</button><button data-v="1280">1280</button><button data-v="390">Puhelin</button></div>
+  <div class="pc-group" data-k="t"><span>Teema</span><button data-v="dark">Tumma</button><button data-v="light">Vaalea</button></div>
+  <div class="pc-read" id="readout"></div>
+</div>
+<div id="viewport"><div id="sizer"><div id="frame"></div></div></div>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">1 Tekoälyn alla</button>
+  <button class="proto-picker-item">2 Oma osio</button>
+  <button class="proto-picker-item">3 Kortista</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item">Nykyinen</button>
+</nav>
+
+<script>
+// ---- State (URL-backed so screenshots are reproducible) ----
+const q = new URLSearchParams(location.search);
+// n: view, s: simulated silence in minutes, w: window, t: theme.
+const S = { n: q.get('n') || 'keskustelu', s: q.get('s') || '3', w: q.get('w') || 'oma', t: q.get('t') || 'dark' };
+if (q.get('bare') === '1') document.body.classList.add('bare');
+const VARIANTS = ['d1', 'd2', 'd3', 'now'];
+let V = null;
+// The person's setting. In production it is one per person, read by the daemon and the
+// recap extension; here it lives for the visit. m: auto | ask | off, d: minutes, model: id or 'auto'.
+const SET = { m: q.get('m') || 'auto', d: +(q.get('d') || 3), model: q.get('model') || 'auto' };
+// One visit's runtime: what the card shows and which overlays are open.
+const R = { card: null, dismissed: false, menu: q.get('menu') === '1', note: '', land: '', sec: q.get('sec') || '' };
+function resetRuntime() { lastSlot = ''; R.card = null; R.dismissed = false; R.menu = false; R.note = ''; R.land = ''; R.sec = ''; }
+
+// ---- Synthetic catalog: what Pi's registry would offer this person ----
+// Policy (background-model.mjs): the provider's middle tier, newest first; the conversation's own
+// model as the fallback; never a Fable or Opus class model, not even as the fallback.
+const MODELS = [
+  { id: 'anthropic/claude-sonnet-5-5', name: 'Claude Sonnet 5.5', prov: 'Claude-tilaus', tier: 'mid' },
+  { id: 'anthropic/claude-haiku-5-5', name: 'Claude Haiku 5.5', prov: 'Claude-tilaus', tier: 'small' },
+  { id: 'openai-codex/gpt-6-luna', name: 'GPT-6 Luna', prov: 'ChatGPT-tilaus', tier: 'mid' },
+  { id: 'openai-codex/gpt-6-mini', name: 'GPT-6 mini', prov: 'ChatGPT-tilaus', tier: 'small' },
+  { id: 'anthropic/claude-opus-5-5', name: 'Claude Opus 5.5', prov: 'Claude-tilaus', tier: 'excluded' },
+  { id: 'anthropic/claude-fable-5-1', name: 'Claude Fable 5.1', prov: 'Claude-tilaus', tier: 'excluded' },
+];
+const AUTO = MODELS[0]; // what the policy picks for a Claude conversation
+const modelOf = id => MODELS.find(m => m.id === id) || AUTO;
+const usedModel = () => (V === 'd2' && SET.model !== 'auto' ? modelOf(SET.model) : AUTO);
+
+const RECAP = {
+  text: 'Varjon pituuden laskenta tukee nyt kesä- ja talviaikaa, ja kaikki 18 testiä menevät läpi. README:hen lisättiin esimerkki Helsingin talvipäivänseisauksesta.',
+  next: 'Julkaise versio 1.4 ja päivitä muutosloki.',
+};
+const MODE_LABEL = { auto: 'Automaattisesti', ask: 'Kun pyydän', off: 'Ei koskaan' };
+
+const P = {
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  branch: '<circle cx="7" cy="6" r="2"/><path d="M7 8v10M7 12c0 3 3 4 7 4"/><circle cx="17" cy="16" r="2"/>',
+  refresh: '<path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/>',
+  cross: '<path d="M6 6l12 12M18 6 6 18"/>',
+  check: '<path d="m4 12 5 5L20 6"/>',
+  dots: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
+  send: '<path d="M12 19V5m-6 6 6-6 6 6"/>',
+  back: '<path d="M15 6l-6 6 6 6"/>',
+};
+const ic = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const phone = () => S.w === '390';
+const quiet = () => +S.s;
+// Nykyinen has no setting: automatic after a fixed three minutes.
+const mode = () => (V === 'now' ? 'auto' : SET.m);
+const delay = () => (V === 'now' ? 3 : SET.d);
+const due = () => quiet() >= delay();
+
+// ---- Shared pieces ----
+function seg(name, options, value, { disabled = false, testid = '' } = {}) {
+  return `<div class="seg" role="radiogroup" aria-label="${esc(name)}"${disabled ? ' aria-disabled="true"' : ''}${testid ? ` data-testid="${testid}"` : ''}>${options.map(([v, l]) =>
+    `<button type="button" role="radio" aria-checked="${String(v) === String(value)}" data-act="set" data-k="${testid}" data-v="${v}">${esc(l)}</button>`).join('')}</div>`;
+}
+function modeDesc() {
+  const d = delay();
+  return {
+    auto: `Kun keskustelu on ollut hiljaa ${d} min, sen yläpuolelle tulee lyhyt katsaus: mitä tehtiin ja mitä seuraavaksi. Katsaus ei mene agentin muistiin.`,
+    ask: `Kun keskustelu on ollut hiljaa ${d} min, kentän yläpuolelle tulee Luo katsaus -rivi. Mallia käytetään vasta, kun painat sitä.`,
+    off: 'Tilannekatsausta ei tehdä eikä tarjota. Etusivulla näkyvät vain jo tehdyt katsaukset.',
+  }[SET.m];
+}
+function modeRow() {
+  return `<div class="s-row" data-settings-row="tilannekatsaus"${R.land === 'tilannekatsaus' ? ' data-landed' : ''} tabindex="-1">
+    <div class="s-lbl"><strong>Tilannekatsaus</strong><span class="s-desc" data-testid="mode-desc">${esc(modeDesc())}</span></div>
+    <div class="s-val">${seg('Tilannekatsaus', Object.entries(MODE_LABEL), SET.m, { testid: 'mode' })}</div></div>`;
+}
+function delayRow() {
+  return `<div class="s-row" data-settings-row="viive">
+    <div class="s-lbl"><strong>Hiljaisuus ennen katsausta</strong><span class="s-desc">Lasketaan viimeisestä viestistä ja siitä, kun viimeksi kirjoitit tai luit keskustelua. Agentti lepää 10 minuutin hiljaisuuden jälkeen, joten pisin viive on 5 min.</span></div>
+    <div class="s-val">${seg('Hiljaisuus ennen katsausta', [[1, '1 min'], [3, '3 min'], [5, '5 min']], SET.d, { disabled: SET.m === 'off', testid: 'delay' })}</div></div>`;
+}
+function modelRowReadOnly() {
+  const m = AUTO;
+  return `<div class="s-row" data-settings-row="taustamalli" data-testid="model-readonly">
+    <div class="s-lbl"><strong>Malli</strong><span class="s-desc">Valitaan automaattisesti: keskustelun palveluntarjoajan keskiluokan uusin malli, ja jos se ei vastaa, keskustelun oma malli. Fablea ja Opusta ei käytetä taustatöihin. Sama sääntö valitsee mallin keskustelujen automaattisille nimille.</span></div>
+    <div class="s-val"><span class="model-chip">${esc(m.name)} <span class="prov">· ${esc(m.prov)}</span></span></div></div>`;
+}
+function backgroundCard() {
+  return `<h3 class="s-h3" data-testid="background-card">Taustatyöt</h3><p class="s-intro">Agentin keskustelun ulkopuolella tekemät pienet työt. Ne käyttävät tilauksiasi, mutta eivät näy agentin muistissa.</p>
+    <div class="s-card">${modeRow()}${delayRow()}${modelRowReadOnly()}</div>`;
+}
+
+// ---- Settings ----
+const SECTIONS = [['tili', 'Tili'], ['laitteet', 'Laitteet'], ['tekoaly', 'Tekoäly'], ['tilannekatsaus', 'Tilannekatsaus'], ['sanelu', 'Sanelu'], ['koodipalvelut', 'Koodipalvelut'], ['tiedot', 'Tiedot agenteille'], ['ulkoasu', 'Ulkoasu'], ['editori', 'Editori'], ['tila', 'Tallennustila']];
+const sections = () => SECTIONS.filter(([id]) => id !== 'tilannekatsaus' || V === 'd2');
+const section = () => R.sec || (V === 'd2' ? 'tilannekatsaus' : 'tekoaly');
+function settingsNav() {
+  return `<nav class="s-nav" aria-label="Asetusten osiot"><div class="s-h">Asetukset</div>${sections().map(([id, l]) =>
+    `<div class="s-nav-i${id === section() ? ' cur' : ''}${id === 'tilannekatsaus' ? ' new' : ''}" data-act="sec" data-sec="${id}" data-testid="settings-${id}">${esc(l)}</div>`).join('')}</nav>`;
+}
+function tekoaly() {
+  const work = `<div class="s-row"><div class="s-lbl"><strong>Agentin työ</strong><span class="s-desc">Ajattelu ja työkalut keskustelussa oletuksena.</span></div><div class="s-val"><div class="seg" role="radiogroup" aria-label="Agentin työ"><button type="button" role="radio" aria-checked="true">Piilossa</button><button type="button" role="radio" aria-checked="false">Näkyvissä</button></div></div></div>`;
+  const dflt = `<div class="s-row"><div class="s-lbl"><strong>Oletusmalli</strong><span class="s-desc">Uudet keskustelut alkavat tällä mallilla.</span></div><div class="s-val"><span class="model-chip">Claude Opus 5.5 <span class="prov">· ajattelu keskitaso</span></span></div></div>`;
+  const subs = `<h3 class="s-h3">Tilaukset</h3><div class="s-card">
+    <div class="s-row icon"><span class="letter">Cl</span><div class="s-lbl"><strong>Claude-tilaus</strong><span class="s-desc">Kirjautunut. Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5.</span></div><div class="s-val"><span class="status"><i></i>Kirjautunut</span></div></div>
+    <div class="s-row icon"><span class="letter">Ch</span><div class="s-lbl"><strong>ChatGPT-tilaus</strong><span class="s-desc">Kirjautunut. GPT-6, GPT-6 Luna, GPT-6 mini.</span></div><div class="s-val"><span class="status"><i></i>Kirjautunut</span></div></div></div>`;
+  // Direction 2 points from the AI section to its own page, so a person looking for "which model" finds it.
+  const pointer = V === 'd2' ? `<div class="s-row" data-testid="d2-pointer"><div class="s-lbl"><strong>Taustatöiden malli</strong><span class="s-desc">Tilannekatsaus ja keskustelujen automaattiset nimet: ${esc(usedModel().name)}${SET.model === 'auto' ? ' (automaattinen)' : ''}.</span></div><div class="s-val"><button class="btn" data-act="sec" data-sec="tilannekatsaus">Tilannekatsaus ›</button></div></div>` : '';
+  return `<h2>Tekoäly</h2><p class="s-intro">Mallit, joita agentit käyttävät, ja tilaukset tai avaimet, joilla ne saadaan.</p>
+    <div class="s-card">${dflt}${work}${pointer}</div>
+    ${V === 'd1' || V === 'd3' ? backgroundCard() : ''}${subs}`;
+}
+function recapSection() {
+  const used = usedModel();
+  const rows = MODELS.map(m => {
+    const off = m.tier === 'excluded';
+    const checked = !off && SET.model === m.id;
+    const tag = off ? 'ei taustatöihin' : m.tier === 'small' ? 'pienempi' : '';
+    return `<li role="radio" aria-checked="${checked}" ${off ? 'aria-disabled="true"' : `data-act="model" data-v="${m.id}" tabindex="0"`} data-testid="model-${m.id.split('/')[1]}"><span class="dot"></span><span class="nm">${esc(m.name)}<small>${esc(m.prov)}</small></span><span class="tag">${tag}</span></li>`;
+  }).join('');
+  return `<h2>Tilannekatsaus</h2><p class="s-intro">Lyhyt katsaus keskustelun tilanteesta, kun palaat siihen. Se tallentuu keskustelun historiaan, mutta ei mene agentin muistiin.</p>
+    <div class="s-card"><div class="preview"><div class="lbl">Esikatselu</div>${recapCard({ preview: true })}</div></div>
+    <h3 class="s-h3">Milloin</h3><div class="s-card">${modeRow()}${delayRow()}</div>
+    <h3 class="s-h3">Malli</h3><div class="s-card" data-settings-row="malli"${R.land === 'malli' ? ' data-landed' : ''}>
+      <ul class="radios" role="radiogroup" aria-label="Tilannekatsauksen malli" data-testid="model-list">
+        <li role="radio" aria-checked="${SET.model === 'auto'}" data-act="model" data-v="auto" tabindex="0" data-testid="model-auto"><span class="dot"></span><span class="nm">Automaattinen<small>Nyt ${esc(AUTO.name)}: keskustelun palveluntarjoajan keskiluokka</small></span><span class="tag">suositus</span></li>
+        ${rows}</ul>
+      <div class="s-foot">Jos ${esc(used.name)} ei vastaa, katsaus tehdään keskustelun omalla mallilla, paitsi jos se on Fable tai Opus. Sama valinta koskee keskustelujen automaattisia nimiä.</div></div>`;
+}
+function viewSettings() {
+  const body = section() === 'tilannekatsaus' ? recapSection() : section() === 'tekoaly' ? tekoaly()
+    : `<h2>${esc(SECTIONS.find(([id]) => id === section())[1])}</h2><p class="s-intro">Ei osa tätä kierrosta.</p>`;
+  return `<div class="settings">${phone() ? '' : settingsNav()}<div class="s-main" data-testid="settings-main"><button class="btn quiet s-back" data-act="nav" data-to="keskustelu">${ic('back')}Asetukset</button>${body}</div></div>`;
+}
+
+// ---- Conversation ----
+function recapCard({ preview = false } = {}) {
+  const pending = !preview && R.card === 'pending';
+  const m = usedModel();
+  const age = preview ? '3 min sitten' : `${Math.max(quiet(), 1)} min sitten`;
+  let tools = '';
+  if (!preview) {
+    tools += `<span class="ah-recap-grow"></span><button class="ah-recap-icon" data-act="refresh" aria-label="Päivitä katsaus" title="Päivitä katsaus"${pending ? ' disabled' : ''}>${ic('refresh')}</button>`;
+    if (V === 'd2') tools += `<button class="ah-recap-icon" data-act="goto" data-sec="tilannekatsaus" data-row="tilannekatsaus" aria-label="Tilannekatsauksen asetukset" title="Tilannekatsauksen asetukset" data-testid="card-settings">${ic('gear')}</button>`;
+    if (V === 'd3') tools += `<button class="ah-recap-icon" data-act="menu" aria-label="Tilannekatsauksen valinnat" aria-haspopup="menu" aria-expanded="${R.menu}" data-testid="card-menu">${ic('dots')}</button>`;
+    tools += `<button class="ah-recap-icon" data-act="dismiss" aria-label="Sulje katsaus" title="Sulje katsaus">${ic('cross')}</button>`;
+  }
+  // The model is named where a person can do something about it: d2's preview, d3's menu.
+  const meta = preview ? `<span class="meta">· ${esc(m.name)}</span>` : '';
+  const body = pending
+    ? '<div class="ah-recap-skeleton" role="status" aria-label="Luodaan katsausta"><span></span><span></span><span></span></div>'
+    : `<p>${esc(RECAP.text)}</p><p class="ah-recap-next"><strong>Seuraavaksi</strong> ${esc(RECAP.next)}</p>`;
+  return `<aside class="ah-recap" aria-label="Keskustelun yhteenveto" data-testid="${preview ? 'recap-preview' : 'recap-card'}"><div class="ah-recap-heading"><strong>Tilannekatsaus</strong>${pending ? '' : `<time>${age}</time>`}${meta}${tools}</div>${body}</aside>`;
+}
+function offerRow() {
+  const more = V === 'd3' ? `<button class="ah-recap-icon" data-act="menu" aria-label="Tilannekatsauksen valinnat" aria-haspopup="menu" aria-expanded="${R.menu}" data-testid="card-menu">${ic('dots')}</button>` : '';
+  return `<div class="rc-offer" data-testid="recap-offer"><strong>Tilannekatsaus</strong><span class="grow">Hiljaista ${quiet()} min. Haluatko lyhyen katsauksen?</span><button class="btn" data-act="request">Luo katsaus</button>${more}<button class="ah-recap-icon" data-act="dismiss" aria-label="Sulje" title="Sulje">${ic('cross')}</button></div>`;
+}
+function menu() {
+  const opt = (k, v, label) => {
+    const on = k === 'd' ? SET.m === 'auto' && SET.d === v : SET.m === v;
+    return `<button class="mi" role="menuitemradio" aria-checked="${on}" data-act="menu-set" data-k="${k}" data-v="${v}"><span class="ck">${on ? ic('check') : ''}</span>${esc(label)}</button>`;
+  };
+  return `<div class="rc-menu" role="menu" aria-label="Tilannekatsauksen valinnat" data-testid="recap-menu">
+    <div class="h">Automaattinen katsaus</div>${opt('d', 1, '1 min hiljaisuuden jälkeen')}${opt('d', 3, '3 min hiljaisuuden jälkeen')}${opt('d', 5, '5 min hiljaisuuden jälkeen')}
+    <hr>${opt('m', 'ask', 'Vain kun pyydän')}${opt('m', 'off', 'Ei tilannekatsauksia')}
+    <hr><div class="info">Malli: <b>${esc(AUTO.name)}</b>. Valitaan automaattisesti, ei koskaan Fable tai Opus.</div>
+    <button class="mi" role="menuitem" data-act="goto" data-sec="tekoaly" data-row="tilannekatsaus"><span class="ck"></span>Kaikki asetukset…</button>
+    <div class="info" style="padding-top:0">Koskee kaikkia keskustelujasi.</div></div>`;
+}
+let lastSlot = '';
+function recapSlot() {
+  let inner = '';
+  if (R.note) inner = R.note;
+  else if (!R.dismissed) {
+    const m = mode();
+    if (R.card) inner = recapCard();
+    else if (due() && m === 'auto') inner = recapCard();
+    else if (due() && m === 'ask') inner = offerRow();
+  }
+  // Only a newly appearing card, row or note animates in; a repaint for a menu or a click must not flicker it.
+  const kind = !inner ? '' : R.note ? 'note' : inner.includes('recap-offer') ? 'offer' : 'card';
+  const still = kind === lastSlot;
+  lastSlot = kind;
+  if (!inner) return '';
+  return `<div class="rc-slot${still ? ' still' : ''}">${inner}${V === 'd3' && R.menu && !R.note ? menu() : ''}</div>`;
+}
+function viewConversation() {
+  const ph = phone();
+  const head = ph ? '' : `<div class="conv-head"><h1>Varjon pituuden laskenta</h1><span class="ws">aurinkokello</span><span class="grow"></span><span class="idle"><i></i>Odottaa sinua</span></div>`;
+  return `<div class="conv">${head}<div class="stream"><div class="col">
+    <div class="msg-user">Lisää varjon pituuden laskentaan tuki kesä- ja talviajalle ja korjaa testit.</div>
+    <div class="msg-agent"><div class="work">Luki 4 tiedostoa · ajoi 3 komentoa</div><p>Lisäsin aikavyöhykkeen käsittelyn tiedostoon <code>src/shadow.ts</code>: auringon korkeus lasketaan nyt paikallisesta ajasta UTC:n kautta, joten kesäajan vaihto ei enää siirrä varjoa tunnilla.</p><pre>npm test
+✓ 18 testiä läpi (0,8 s)</pre></div>
+    <div class="msg-user">Hyvä. Lisää vielä README:hen esimerkki.</div>
+    <div class="msg-agent"><p>Lisäsin README:hen esimerkin Helsingin talvipäivänseisauksesta klo 12: kahden metrin kepin varjo on noin 17,6 metriä.</p></div>
+  </div></div>${recapSlot()}<div class="composer"><div class="field"><span class="ph-t">Kirjoita viesti…</span><span class="send">${ic('send')}</span></div></div></div>`;
+}
+
+const TITLES = { keskustelu: 'Varjon pituuden laskenta', asetukset: 'Asetukset' };
+function rail() {
+  return `<nav class="rail"><div class="rail-head">${ic('menu')} Open Habitat</div>
+    <div class="rail-item">${ic('plus')}<span>Uusi työtila</span></div>
+    <div class="rail-ws">${ic('branch')} aurinkokello</div>
+    <div class="rail-item sub${S.n === 'keskustelu' ? ' cur' : ''}" data-act="nav" data-to="keskustelu"><span>Varjon pituuden laskenta</span></div>
+    <div class="rail-item sub"><span>Kuvien pakkaus WebP-muotoon</span></div>
+    <div class="rail-ws">${ic('branch')} open-habitat</div>
+    <div class="rail-item sub"><span>Julkaisun valmistelu</span></div>
+    <div class="rail-fill"></div>
+    <div class="rail-account${S.n === 'asetukset' ? ' cur' : ''}" data-act="nav" data-to="asetukset"><span class="avatar">JM</span><span>Jari Mustonen</span></div></nav>`;
+}
+function appHTML() {
+  const ph = phone();
+  const view = S.n === 'asetukset' ? `<div class="scroll">${viewSettings()}</div>` : viewConversation();
+  const top = ph ? `<div class="topbar"><span class="burger" data-act="nav" data-to="${S.n === 'asetukset' ? 'keskustelu' : 'asetukset'}">${ic('menu')}</span><h1>${esc(TITLES[S.n])}</h1></div>` : '';
+  return `<div class="app${ph ? ' phone ph' : ''}" data-variant="${V}">${ph ? '' : rail()}<main class="main">${top}${view}</main></div>`;
+}
+
+// ---- Frame geometry ----
+const HEIGHTS = { 1280: 800, 390: 844 };
+const viewport = document.getElementById('viewport');
+const sizer = document.getElementById('sizer');
+const stage = document.getElementById('frame');
+function frameSize() {
+  if (S.w === 'oma') return { W: viewport.clientWidth, H: viewport.clientHeight };
+  return { W: +S.w, H: HEIGHTS[S.w] };
+}
+function layoutFrame() {
+  const { W, H } = frameSize();
+  const bare = document.body.classList.contains('bare');
+  const s = S.w === 'oma' || bare ? 1 : Math.min(1, (viewport.clientWidth - 24) / W, (viewport.clientHeight - 84) / H);
+  stage.style.width = W + 'px'; stage.style.height = H + 'px';
+  stage.style.transform = s < 1 ? `scale(${s})` : '';
+  sizer.style.width = Math.round(W * s) + 'px'; sizer.style.height = Math.round(H * s) + 'px';
+  stage.dataset.theme = S.t;
+}
+function readout() {
+  const set = V === 'now' ? 'ei asetusta' : `${MODE_LABEL[SET.m]}${SET.m === 'off' ? '' : `, ${SET.d} min`}${V === 'd2' ? `, malli ${SET.model === 'auto' ? 'automaattinen' : modelOf(SET.model).name}` : ''}`;
+  const card = R.card === 'pending' ? 'katsausta luodaan' : due() || R.card ? (mode() === 'auto' || R.card ? 'kortti' : mode() === 'ask' ? 'tarjous' : 'ei mitään') : 'ei vielä';
+  document.getElementById('readout').innerHTML = `Asetus: <b>${esc(set)}</b> · Hiljaa ${quiet()} min → <b>${card}</b> · Host nyt: <b>kiinteä 3 min, ei asetusta</b>`;
+}
+
+// ---- Picker wiring (picker.js expects `stage` and `variants`) ----
+const variants = VARIANTS.map(v => () => {
+  if (V !== null && V !== v) resetRuntime();
+  V = v; stage.dataset.variant = v; layoutFrame(); readout();
+  return appHTML();
+});
+function paint() { stage.innerHTML = appHTML(); readout(); }
+
+// A request shows the card's skeleton for a moment, as the daemon's model call does.
+let pendingTimer;
+function generate() {
+  R.card = 'pending'; R.menu = false; R.dismissed = false; paint();
+  clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(() => { R.card = 'done'; paint(); }, 700);
+}
+function noteChanged(prev) {
+  const what = SET.m === 'off' ? 'Tilannekatsaukset pois kaikista keskusteluistasi.' : SET.m === 'ask' ? 'Tilannekatsaus vain kun pyydät, kaikissa keskusteluissasi.' : `Automaattinen katsaus ${SET.d} min hiljaisuuden jälkeen.`;
+  R.prev = prev;
+  R.note = `<div class="rc-note" role="status" data-testid="recap-note"><span class="grow">${esc(what)}</span><button class="btn quiet" data-act="undo">Kumoa</button><button class="btn quiet" data-act="goto" data-sec="tekoaly" data-row="tilannekatsaus">Asetukset</button><button class="ah-recap-icon" data-act="note-close" aria-label="Sulje">${ic('cross')}</button></div>`;
+}
+function goto(sec, row) {
+  S.n = 'asetukset'; R.sec = sec; R.land = row; R.menu = false; rerender();
+  const el = stage.querySelector(`[data-settings-row="${row}"]`);
+  if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); }
+  setTimeout(() => { R.land = ''; }, 2400);
+}
+
+stage.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if (!t) { if (R.menu && !e.target.closest('.rc-menu')) { R.menu = false; paint(); } return; }
+  const act = t.dataset.act;
+  if (act === 'nav') { S.n = t.dataset.to; R.sec = ''; R.menu = false; rerender(); }
+  else if (act === 'sec') { R.sec = t.dataset.sec; R.land = ''; paint(); }
+  else if (act === 'set') {
+    if (t.dataset.k === 'mode') SET.m = t.dataset.v;
+    else if (t.dataset.k === 'delay') SET.d = +t.dataset.v;
+    else return;
+    paint(); syncUrl();
+  }
+  else if (act === 'model') { SET.model = t.dataset.v; paint(); syncUrl(); }
+  else if (act === 'refresh' || act === 'request') generate();
+  else if (act === 'dismiss') { R.dismissed = true; R.card = null; R.menu = false; paint(); }
+  else if (act === 'menu') { R.menu = !R.menu; paint(); if (R.menu) stage.querySelector('.rc-menu [role^="menuitem"]')?.focus(); }
+  else if (act === 'menu-set') {
+    const prev = { ...SET };
+    if (t.dataset.k === 'd') { SET.m = 'auto'; SET.d = +t.dataset.v; R.menu = false; paint(); syncUrl(); return; }
+    SET.m = t.dataset.v; R.card = null; R.menu = false; noteChanged(prev); paint(); syncUrl();
+  }
+  else if (act === 'undo') { Object.assign(SET, R.prev); R.note = ''; R.dismissed = false; R.card = 'done'; paint(); syncUrl(); }
+  else if (act === 'note-close') { R.note = ''; R.dismissed = true; paint(); }
+  else if (act === 'goto') goto(t.dataset.sec, t.dataset.row);
+});
+// The repaint replaces the focused element, so Escape is heard on the document.
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && R.menu) { R.menu = false; paint(); stage.querySelector('[data-act="menu"]')?.focus(); }
+});
+stage.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('li[data-act]')) { e.preventDefault(); e.target.click(); }
+});
+</script>
+<script>
+/*PICKER_JS*/
+</script>
+<script>
+// ---- Prototype controls ----
+function syncUrl() {
+  const url = new URL(location);
+  for (const [k, v] of Object.entries(S)) url.searchParams.set(k, v);
+  url.searchParams.set('m', SET.m); url.searchParams.set('d', SET.d); url.searchParams.set('model', SET.model);
+  history.replaceState(null, '', url);
+}
+function syncControls() {
+  document.querySelectorAll('.pc-group').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(S[g.dataset.k] === b.dataset.v))));
+}
+function rerender() {
+  syncUrl(); syncControls();
+  stage.innerHTML = variants[current]();
+}
+document.querySelectorAll('.pc-group').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  // A new silence is a new visit to the conversation: the card is read again.
+  if (g.dataset.k === 's') { R.card = null; R.dismissed = false; R.menu = false; R.note = ''; }
+  if (g.dataset.k === 'n') { R.sec = ''; R.menu = false; }
+  S[g.dataset.k] = b.dataset.v; rerender();
+}));
+let rz;
+window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(rerender); });
+syncControls();
+</script>
+</body>
+</html>
