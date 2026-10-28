@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rikkinäinen GitHub-yhteys — prototyyppi</title>
+<style>
+/*TOKENS*/
+/*PICKER_CSS*/
+
+/* ---- Prototype chrome (not a contestant) ---- */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #0c0d0f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.pc-bar {
+  position: fixed; inset: 0 0 auto 0; height: 44px; z-index: 50;
+  display: flex; align-items: center; gap: 14px; padding: 0 12px;
+  background: #16181b; color: #c9cdd2; font-size: 12px; border-bottom: 1px solid #262a2f;
+  overflow-x: auto; white-space: nowrap;
+}
+.pc-group { display: inline-flex; align-items: center; gap: 2px; }
+.pc-group > span { margin-right: 4px; color: #8a9097; }
+.pc-group button {
+  height: 26px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent;
+  color: #aeb4ba; font: inherit; cursor: pointer;
+}
+.pc-group button:hover { background: rgba(255,255,255,.06); }
+.pc-group button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+.pc-read { margin-left: auto; color: #8a9097; }
+.pc-read b { color: #e6e9ec; font-weight: 500; }
+#viewport { position: fixed; inset: 44px 0 64px 0; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; padding: 12px; }
+body.bare .pc-bar { display: none; }
+body.bare #viewport { inset: 0; padding: 0; }
+body.bare .proto-picker { display: none; }
+#sizer { position: relative; flex: none; }
+#frame {
+  position: absolute; top: 0; left: 0; transform-origin: top left; overflow: hidden;
+  background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font);
+  font-size: var(--ah-size-body); line-height: var(--ah-lh-ui);
+  box-shadow: 0 0 0 1px #2a2e33;
+}
+body.bare #frame { box-shadow: none; }
+
+/* ---- App shell (production context, simplified) ---- */
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.app { display: flex; height: 100%; }
+.rail {
+  flex: none; width: var(--ah-rail-width); background: var(--ah-rail); border-right: 1px solid var(--ah-line);
+  display: flex; flex-direction: column; padding: 12px 10px; gap: 2px; font-size: var(--ah-size-ui); overflow: hidden;
+}
+.rail-head { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px; font-weight: 600; margin-bottom: 8px; }
+.rail-ws { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; margin-top: 8px; color: var(--ah-muted); font-family: var(--ah-mono); font-size: var(--ah-size-meta); }
+.rail-item { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); white-space: nowrap; overflow: hidden; cursor: pointer; }
+.rail-item.sub { padding-left: 22px; }
+.rail-item span { overflow: hidden; text-overflow: ellipsis; }
+.rail-item:hover { background: var(--ah-hover); }
+.rail-item.cur { background: var(--ah-current); box-shadow: inset 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); }
+.rail-fill { flex: 1; }
+.rail-account { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px; border-top: 1px solid var(--ah-line); margin-top: 6px; padding-top: 6px; color: var(--ah-ink); cursor: pointer; }
+.avatar { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-size: 11px; font-weight: 600; flex: none; }
+
+/* Rail mark (directions 2 after Myöhemmin, and 3): quiet, one row, opens Koodipalvelut. */
+.rail-gh {
+  display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 6px 8px; border-radius: var(--ah-r-nav);
+  color: var(--ah-ink-2); font-size: var(--ah-size-meta); line-height: 1.35; cursor: pointer;
+  border: 1px solid var(--ah-line); background: var(--ah-surface);
+  animation: ah-appear var(--ah-appear) both;
+}
+.rail-gh:hover { background: var(--ah-surface-hover); }
+.rail-gh .gh-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--ah-muted); }
+.rail-gh.danger .gh-dot { background: var(--ah-err); }
+.rail-gh b { font-weight: 600; color: var(--ah-ink); display: block; }
+.rail-gh .go { margin-left: auto; color: var(--ah-accent-ink); font-weight: 500; white-space: nowrap; }
+
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--ah-bg); }
+.topbar { flex: none; display: flex; align-items: center; gap: 10px; height: 49px; padding: 0 var(--ah-topbar-pad-inline); border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.topbar h1 { margin: 0; font-size: var(--ah-size-title); font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.burger { position: relative; width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--ah-r-md); color: var(--ah-muted); }
+.burger svg.i { width: 20px; height: 20px; }
+.burger .badge { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--ah-muted); box-shadow: 0 0 0 2px var(--ah-surface); }
+.burger .badge.danger { background: var(--ah-err); }
+.scroll { flex: 1; min-height: 0; overflow: auto; }
+
+/* ---- Buttons (ControlButton look) ---- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ah-control-row); padding: 0 var(--ah-control-row-pad);
+  border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-control); color: var(--ah-ink);
+  font: inherit; font-size: var(--ah-control-row-font); font-weight: 500; white-space: nowrap; cursor: pointer;
+}
+.btn:hover { background: var(--ah-control-hover); }
+.btn.primary { background: var(--ah-accent); border-color: var(--ah-accent); color: var(--ah-on-accent); }
+.btn.primary:hover { background: var(--ah-accent-hover); }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--ah-ink-2); }
+.btn.quiet:hover { background: var(--ah-hover); }
+.btn.link { border: 0; background: transparent; padding: 0 2px; height: auto; color: var(--ah-accent-ink); text-decoration: underline; text-underline-offset: 2px; font-weight: 500; }
+.btn[disabled] { background: var(--ah-disabled-bg); border-color: var(--ah-disabled-bg); color: var(--ah-disabled-fg); cursor: not-allowed; }
+.btn svg.i { width: 15px; height: 15px; }
+
+/* ---- Banner (ConnectionBanner family: full width under the top, above the page) ---- */
+.gh-banner {
+  flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s4);
+  padding: var(--ah-s3) 16px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface-2);
+  font-size: 13px; animation: ah-appear var(--ah-appear) both;
+}
+.gh-banner.danger { border-color: var(--ah-err-line); background: var(--ah-err-soft); }
+.gh-banner .gh-ic { color: var(--ah-muted); display: grid; }
+.gh-banner.danger .gh-ic, .gh-banner.danger strong { color: var(--ah-err); }
+.gh-banner strong { font-weight: 600; }
+.gh-banner .txt { flex: 1 1 320px; min-width: 0; color: var(--ah-ink-2); display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.gh-banner .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.gh-ok { flex: none; display: flex; align-items: center; gap: 8px; padding: var(--ah-s3) 16px; border-bottom: 1px solid var(--ah-accent-line); background: var(--ah-ok-soft); color: var(--ah-ok); font-size: 13px; font-weight: 500; animation: ah-appear var(--ah-appear) both; }
+.ph .gh-banner { padding: 10px 14px; font-size: 12.5px; }
+.ph .gh-banner .txt { flex-basis: 100%; }
+.ph .gh-banner .txt .more, .ph .gh-banner .gh-ic { display: none; }
+.ph .gh-banner .acts { width: 100%; }
+.ph .gh-banner .acts .btn.primary { flex: 1; }
+
+/* ---- In-place notice (same in all three directions) ---- */
+.gh-place {
+  display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: start;
+  padding: 12px 14px; border: 1px solid var(--ah-line); border-left-width: 4px; border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2); font-size: var(--ah-size-ui); line-height: 1.45;
+}
+.gh-place.danger { border-color: var(--ah-err-line); border-left-color: var(--ah-err); background: var(--ah-err-soft); }
+.gh-place.neutral { border-left-color: var(--ah-line-strong); }
+.gh-place > svg.i { margin-top: 2px; color: var(--ah-muted); }
+.gh-place.danger > svg.i, .gh-place.danger strong { color: var(--ah-err); }
+.gh-place strong { font-weight: 600; display: block; }
+.gh-place p { margin: 2px 0 0; color: var(--ah-ink-2); }
+.gh-place .acts { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+.gh-place .acts .note { color: var(--ah-muted); font-size: 12px; }
+.gh-hint { margin: 0; color: var(--ah-muted); font-size: 12px; line-height: 1.45; }
+.gh-hint a, .gh-place a { color: var(--ah-accent-ink); }
+a.btn, .gh-place a.btn { color: var(--ah-ink); text-decoration: none; }
+
+/* ---- Uusi työtila (ClonePage, simplified) ---- */
+.page { max-width: 1040px; margin: 0 auto; padding: 22px 28px 40px; display: flex; flex-direction: column; gap: var(--ah-s5); font-size: var(--ah-size-ui); }
+.ph .page { padding: 14px 14px 32px; }
+.page-head h2 { margin: 0; font-size: var(--ah-size-h2); font-weight: 600; }
+.page-head p { margin: 4px 0 0; color: var(--ah-muted); }
+.clone-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--ah-s5); align-items: start; }
+.ph .clone-grid { grid-template-columns: 1fr; }
+.finder { display: flex; flex-direction: column; gap: var(--ah-s4); min-width: 0; }
+.search { display: flex; align-items: center; gap: var(--ah-s2); height: 36px; padding: 0 10px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-muted); }
+.search:focus-within { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: var(--ah-focus-offset); }
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ah-ink); font: 13px var(--ah-font); outline: none; }
+.seg { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2); align-self: flex-start; }
+.seg span { padding: 4px 10px; border-radius: 6px; color: var(--ah-ink-2); font-size: 12.5px; }
+.seg span.on { background: var(--ah-surface); box-shadow: 0 0 0 1px var(--ah-line); color: var(--ah-ink); font-weight: 600; }
+.sec h3 { display: flex; align-items: center; gap: var(--ah-s2); margin: 0 0 4px; color: var(--ah-ink-2); font: 600 12px var(--ah-font); }
+.sec h3 .mono { font-family: var(--ah-mono); }
+.sec h3 .kind { color: var(--ah-muted); font-weight: 400; }
+.sec ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.row { display: flex; flex-direction: column; gap: 2px; padding: 7px 10px; border-radius: var(--ah-r-nav); cursor: pointer; }
+.row:hover { background: var(--ah-hover); }
+.row.cur { background: var(--ah-current); box-shadow: inset 0 0 0 1px var(--ah-current-line); }
+.row .nm { display: flex; align-items: center; gap: 6px; font-family: var(--ah-mono); font-size: 13px; min-width: 0; }
+.row .nm .ow { color: var(--ah-muted); }
+.row .desc { color: var(--ah-ink-2); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .meta { display: flex; gap: 10px; color: var(--ah-muted); font-size: 11.5px; }
+.chip { display: inline-flex; align-items: center; padding: 0 6px; height: 18px; border-radius: var(--ah-r-pill); border: 1px solid var(--ah-line); color: var(--ah-muted); font: 500 11px var(--ah-font); white-space: nowrap; }
+.chip.ok { color: var(--ah-ok); border-color: currentColor; }
+.chip.unver { color: var(--ah-ink-2); border-style: dashed; border-color: var(--ah-line-strong); }
+.empty { margin: 0; color: var(--ah-muted); font-size: var(--ah-size-ui); line-height: 1.45; }
+.lookup { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px dashed var(--ah-line-strong); border-radius: var(--ah-r-md); }
+.lookup .nm { font-family: var(--ah-mono); font-size: 13px; }
+.lookup .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.detail { display: flex; flex-direction: column; gap: 10px; padding: var(--ah-s4) var(--ah-s5); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface-2); }
+.detail h4 { margin: 0; font: 600 15px/1.35 var(--ah-mono); }
+.detail .muted { color: var(--ah-muted); margin: 0; }
+.detail dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 12.5px; }
+.detail dt { color: var(--ah-muted); }
+.detail dd { margin: 0; }
+
+/* ---- Settings (Asetukset) ---- */
+.settings { display: flex; height: 100%; }
+.s-nav { flex: none; width: 220px; padding: 18px 10px; border-right: 1px solid var(--ah-line); display: flex; flex-direction: column; gap: 2px; font-size: var(--ah-size-ui); }
+.s-nav .s-h { padding: 0 10px 8px; font-weight: 600; font-size: var(--ah-size-title); }
+.s-nav div { padding: 6px 10px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.s-nav div.cur { background: var(--ah-current); box-shadow: inset 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); }
+.s-nav .gh-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ah-err); margin-left: auto; }
+.s-main { flex: 1; min-width: 0; overflow: auto; padding: 22px 28px 40px; }
+.ph .s-main { padding: 14px; }
+.s-main h2 { margin: 0 0 4px; font-size: var(--ah-size-h2); }
+.s-intro { margin: 0 0 14px; color: var(--ah-muted); font-size: var(--ah-size-ui); }
+.s-card { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); margin-bottom: 16px; }
+.s-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; font-size: var(--ah-size-ui); }
+.s-row + .s-row { border-top: 1px solid var(--ah-line-soft); }
+.s-lbl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.s-lbl strong { font-weight: 600; }
+.s-desc { color: var(--ah-ink-2); line-height: 1.45; }
+.s-desc.bad { color: var(--ah-err); }
+.s-val { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.ph .s-row { flex-wrap: wrap; }
+.ph .s-val { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
+.letter { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; background: var(--ah-sunken); color: var(--ah-source-1); font: 600 11px var(--ah-mono); flex: none; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.status i { width: 8px; height: 8px; border-radius: 50%; background: var(--ah-muted); }
+.status.ok { color: var(--ah-ok); } .status.ok i { background: var(--ah-ok); }
+.status.bad { color: var(--ah-err); } .status.bad i { background: var(--ah-err); }
+.status.warn { color: var(--ah-ink-2); }
+.wsl { list-style: none; margin: 0; padding: 0; }
+.wsl li { display: flex; flex-direction: column; gap: 2px; padding: 10px 16px; border-top: 1px solid var(--ah-line-soft); font-size: var(--ah-size-ui); }
+.wsl li:first-child { border-top: 0; }
+.wsl .mono { font-family: var(--ah-mono); font-size: 12.5px; color: var(--ah-muted); }
+.wsl .trouble { color: var(--ah-ink-2); font-size: 12.5px; }
+.orgs { margin: 8px 0 0; padding: 8px 10px; border-radius: var(--ah-r-md); background: var(--ah-sunken); font-size: 12.5px; color: var(--ah-ink-2); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.orgs .mono { font-family: var(--ah-mono); }
+.orgs a { color: var(--ah-accent-ink); }
+.defaults li { flex-direction: row; align-items: center; justify-content: space-between; }
+
+/* ---- Dialog (Lisää oletusrepo) ---- */
+.scrim { position: absolute; inset: 0; background: var(--ah-scrim); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 5; }
+.ph .scrim { padding: 0; align-items: stretch; }
+.dialog { width: min(720px, 100%); max-height: 100%; display: flex; flex-direction: column; border-radius: var(--ah-r-xl); background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog); overflow: hidden; }
+.ph .dialog { border-radius: 0; }
+.dialog .body { padding: 24px 24px 16px; overflow: auto; display: flex; flex-direction: column; gap: 14px; }
+.ph .dialog .body { padding: 18px 14px 12px; }
+.dialog h2 { margin: 0; font-size: var(--ah-size-h1); }
+.ph .dialog h2 { font-size: var(--ah-size-h2); }
+.dialog .intro { margin: 0; color: var(--ah-ink-2); font-size: var(--ah-size-ui); line-height: 1.5; }
+.dialog .foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; border-top: 1px solid var(--ah-line); color: var(--ah-muted); font-size: var(--ah-size-ui); }
+.ph .dialog .foot { padding: 10px 14px; }
+
+/* ---- Conversation (Koti) ---- */
+.conv { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.conv-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px var(--ah-topbar-pad-inline); border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.conv-head h1 { margin: 0; font-size: var(--ah-size-title); font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-head .ws { font-family: var(--ah-mono); font-size: var(--ah-size-meta); color: var(--ah-muted); }
+.stream { flex: 1; min-height: 0; overflow: hidden; padding: var(--ah-column-pad-block) var(--ah-column-pad-inline); }
+.col { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin: 0 auto; display: grid; gap: 14px; }
+.msg-user { justify-self: end; max-width: 80%; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-xl); padding: 8px 12px; }
+.msg-agent p { margin: 0 0 8px; line-height: var(--ah-lh-body); }
+.msg-agent .work { font-size: var(--ah-size-meta); color: var(--ah-muted); margin-bottom: 6px; }
+.msg-agent pre { margin: 0 0 8px; padding: 8px 10px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-sunken); font: var(--ah-size-code)/1.55 var(--ah-mono); color: var(--ah-ink-2); white-space: pre-wrap; }
+.composer { flex: none; padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline); }
+.field { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin: 0 auto; min-height: var(--ah-composer-rest-height); display: flex; align-items: center; gap: 8px; padding: 0 6px 0 14px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-xl); background: var(--ah-surface); color: var(--ah-faint); font-size: var(--ah-size-ui); }
+.field .ph-t { flex: 1; }
+.send { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--ah-accent); color: var(--ah-on-accent); }
+
+/* Redirect veil (simulated trip to GitHub and back) */
+.veil { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center; background: var(--ah-scrim); animation: ah-appear var(--ah-appear) both; }
+.veil div { padding: 16px 20px; border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog); font-size: var(--ah-size-ui); max-width: 340px; text-align: center; line-height: 1.5; }
+
+.phone {
+  --ah-topbar-pad-block: 6px; --ah-topbar-pad-inline: 14px; --ah-column-pad-block: 12px;
+  --ah-column-pad-inline: 14px; --ah-control-row: 40px;
+}
+@media (prefers-reduced-motion: reduce) { .gh-banner, .gh-ok, .rail-gh, .veil { animation: none; } }
+</style>
+</head>
+<body>
+<div class="pc-bar" role="toolbar" aria-label="Prototyypin asetukset">
+  <div class="pc-group" data-k="n"><span>Näkymä</span>
+    <button data-v="koti">Keskustelu</button><button data-v="klooni">Uusi työtila</button><button data-v="oletus">Lisää oletusrepo</button><button data-v="koodi">Koodipalvelut</button>
+  </div>
+  <div class="pc-group" data-k="c"><span>Syy</span>
+    <button data-v="disc">Ei yhdistetty</button><button data-v="exp">Vanhentunut tai peruttu</button><button data-v="net">GitHub ei vastaa</button><button data-v="org">Organisaatio estää</button><button data-v="ok">Kunnossa</button>
+  </div>
+  <div class="pc-group" data-k="w"><span>Ikkuna</span><button data-v="oma">Oma</button><button data-v="1280">1280</button><button data-v="390">Puhelin</button></div>
+  <div class="pc-group" data-k="t"><span>Teema</span><button data-v="dark">Tumma</button><button data-v="light">Vaalea</button></div>
+  <div class="pc-read" id="readout"></div>
+</div>
+<div id="viewport"><div id="sizer"><div id="frame"></div></div></div>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">1 Aina näkyvä</button>
+  <button class="proto-picker-item">2 Väistyvä</button>
+  <button class="proto-picker-item">3 Vain tarvittaessa</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item">Nykyinen</button>
+</nav>
+
+<script>
+// ---- State (URL-backed so screenshots are reproducible) ----
+const q = new URLSearchParams(location.search);
+const S = { n: q.get('n') || 'oletus', c: q.get('c') || 'exp', w: q.get('w') || 'oma', t: q.get('t') || 'dark' };
+if (q.get('bare') === '1') document.body.classList.add('bare');
+const VARIANTS = ['d1', 'd2', 'd3', 'now'];
+let V = null; // set by the first mount; the URL's runtime state survives it
+// Runtime state of one visit; reset when the cause or variant changes.
+const R = { dismissed: q.get('dismissed') === '1', fixed: false, toast: false, veil: false, query: q.get('q') || '', added: [], looked: {} };
+function resetRuntime() { R.dismissed = false; R.fixed = false; R.toast = false; R.veil = false; R.added = []; R.looked = {}; }
+
+const LOGIN = 'maintainer';
+const ORG = 'northwind';
+// Synthetic catalog. The northwind rows are what an organisation's OAuth restriction hides.
+const REPOS = [
+  { o: LOGIN, n: 'open-habitat', d: 'Selaimesta käytettävä koti natiiveille agenteille', when: '2 t sitten', size: '48 Mt', priv: true },
+  { o: ORG, n: 'pilot-materiaalit', d: 'Opettajien pilotin ohjeet ja tehtäväpohjat', when: 'eilen', size: '212 Mt', priv: true, org: true },
+  { o: LOGIN, n: 'aurinkokello', d: 'Aurinkokellon laskenta ja kuvat', when: '3 pv sitten', size: '6,1 Mt' },
+  { o: ORG, n: 'printtipalvelu', d: '3D-tulostusjonon palvelin', when: 'viikko sitten', size: '31 Mt', priv: true, org: true },
+  { o: LOGIN, n: 'kotisivu', d: 'Henkilökohtainen kotisivu', when: '2 vk sitten', size: '2,4 Mt' },
+];
+
+// What the host can tell (see result.md): disc and exp come from the snapshot's
+// native_github.state today; net and org need host facts that do not exist yet.
+const CAUSE = {
+  disc: { tone: 'neutral', title: 'GitHubia ei ole yhdistetty', rail: 'GitHub ei yhdistetty', fix: 'Yhdistä GitHub', global: true,
+    banner: 'Repojen haku, kloonaus, git push ja gh eivät toimi.', more: 'Paikallinen työ ja keskustelut toimivat.',
+    place: 'Repolistaa ei voi hakea, koska palvelimella ei ole GitHub-kirjautumistasi.' },
+  exp: { tone: 'danger', title: 'GitHub-yhteys on vanhentunut', rail: 'GitHub-yhteys vanhentunut', fix: 'Yhdistä uudelleen', global: true,
+    banner: 'GitHub ei enää hyväksy palvelimelle tallennettua valtuutusta, joten repojen haku, kloonaus, git push ja gh eivät toimi.', more: 'Paikallinen työ jatkuu.',
+    place: 'GitHub ei enää hyväksy palvelimelle tallennettua valtuutusta: se on vanhentunut tai peruttu. Repolistaa ei voi hakea eikä repoja kloonata.' },
+  net: { tone: 'neutral', title: 'GitHub ei vastaa', retry: true, global: false,
+    place: 'Palvelin ei juuri nyt saa yhteyttä GitHubiin. Valtuutus on tallessa, joten uudelleen yhdistäminen ei auta.' },
+  org: { tone: 'neutral', title: `Organisaatio ${ORG} estää pääsyn`, global: false,
+    place: `GitHub-yhteytesi toimii, mutta organisaatio ${ORG} sallii vain hyväksymänsä sovellukset. Sen repot eivät näy eikä niitä voi kloonata, ennen kuin organisaation omistaja hyväksyy Open Habitatin.` },
+  ok: { global: false },
+};
+const cause = () => R.fixed ? 'ok' : S.c;
+const broken = () => cause() === 'disc' || cause() === 'exp' || cause() === 'net';
+
+const P = {
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  home: '<path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  branch: '<circle cx="7" cy="6" r="2"/><path d="M7 8v10M7 12c0 3 3 4 7 4"/><circle cx="17" cy="16" r="2"/>',
+  warning: '<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4M12 17h.01"/>',
+  search: '<circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  external: '<path d="M13 5h6v6M19 5l-9 9"/><path d="M19 14v5H5V5h5"/>',
+  refresh: '<path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/>',
+  check: '<path d="m4 12 5 5L20 6"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',
+  send: '<path d="M12 19V5m-6 6 6-6 6 6"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
+  github: '<path transform="translate(2 0) scale(.9)" d="M9 19c-4 1-4-2-6-2m12 4v-4a3.5 3.5 0 0 0-1-3c3.3-.4 6-1.6 6-5.5A4.3 4.3 0 0 0 19 5c.1-1-.1-2-.5-3 0 0-1.3-.4-4.5 1.7a15 15 0 0 0-8 0C2.8 1.6 1.5 2 1.5 2 1.1 3 .9 4 1 5a4.3 4.3 0 0 0-1 3.5C0 12.4 2.7 13.6 6 14a3.5 3.5 0 0 0-1 3v4"/>',
+};
+const ic = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const phone = () => S.w === '390';
+// Where "Yhdistä uudelleen" returns: the page it was pressed on (return_to).
+const RETURN = { koti: '/', klooni: '/workspaces/new', oletus: '/settings/kayttoonotto', koodi: '/settings/koodipalvelut' };
+
+// ---- Shared pieces ----
+function fixButtons(c, { settings = true, primaryCls = 'primary' } = {}) {
+  const k = CAUSE[c];
+  const out = [];
+  if (k.fix) out.push(`<button class="btn ${primaryCls}" data-act="fix" title="/auth/github/start?return_to=${RETURN[S.n]}&amp;reconnect=1">${ic('github')}${k.fix}</button>`);
+  if (k.retry) out.push(`<button class="btn" data-act="retry">${ic('refresh')}Yritä uudelleen</button>`);
+  if (c === 'org') out.push(`<a class="btn" href="#" data-act="org" title="github.com/settings/connections/applications/…">Pyydä hyväksyntää GitHubissa ${ic('external')}</a>`);
+  if (settings && S.n !== 'koodi' && k.global) out.push(`<button class="btn quiet" data-act="nav" data-to="koodi">Asetukset › Koodipalvelut</button>`);
+  return out.join('');
+}
+// The notice where GitHub is needed: the same in all three directions.
+function placeNotice(c, lead) {
+  const k = CAUSE[c];
+  return `<div class="gh-place ${k.tone}" role="alert" data-testid="gh-place" data-cause="${c}">${ic(c === 'net' ? 'info' : 'warning')}
+    <div><strong>${esc(k.title)}</strong><p>${lead ? esc(lead) + ' ' : ''}${esc(k.place)}</p></div>
+    <div class="acts">${fixButtons(c, { settings: false })}${k.fix ? `<span class="note">Palaat tälle sivulle.</span>` : ''}</div></div>`;
+}
+
+function banner() {
+  const c = cause();
+  if (R.toast) return `<div class="gh-ok" role="status" data-testid="gh-ok">${ic('check')}GitHub yhdistetty käyttäjänä ${LOGIN}. Repolista ja Git-toiminnot ovat taas käytössä.</div>`;
+  if (V === 'now' || V === 'd3' || !CAUSE[c].global) return '';
+  if (V === 'd2' && R.dismissed) return '';
+  const k = CAUSE[c];
+  const later = V === 'd2' ? `<button class="btn quiet" data-act="later">Myöhemmin</button>` : '';
+  return `<div class="gh-banner ${k.tone}" role="${k.tone === 'danger' ? 'alert' : 'status'}" data-testid="gh-banner">
+    <span class="gh-ic">${ic('warning')}</span>
+    <span class="txt"><strong>${esc(k.title)}</strong><span>${esc(k.banner)} <span class="more">${esc(k.more)}</span></span></span>
+    <span class="acts">${fixButtons(c, { settings: !phone() })}${later}</span></div>`;
+}
+// The quiet mark: direction 3 always, direction 2 after Myöhemmin.
+const railMarked = () => CAUSE[cause()].global && (V === 'd3' || (V === 'd2' && R.dismissed));
+function railMark() {
+  if (!railMarked()) return '';
+  const k = CAUSE[cause()];
+  return `<div class="rail-gh ${k.tone}" data-act="nav" data-to="koodi" data-testid="gh-rail" title="Asetukset › Koodipalvelut"><i class="gh-dot"></i><span><b>${esc(k.rail)}</b>Push, kloonaus ja gh eivät toimi</span><span class="go">Korjaa</span></div>`;
+}
+
+function rail() {
+  const n = S.n;
+  return `<nav class="rail"><div class="rail-head">${ic('menu')} Open Habitat</div>
+    <div class="rail-item${n === 'klooni' ? ' cur' : ''}" data-act="nav" data-to="klooni">${ic('plus')}<span>Uusi työtila</span></div>
+    <div class="rail-ws">${ic('branch')} open-habitat</div>
+    <div class="rail-item sub${n === 'koti' ? ' cur' : ''}" data-act="nav" data-to="koti"><span>Julkaisun valmistelu</span></div>
+    <div class="rail-item sub"><span>Kuvien pakkaus WebP-muotoon</span></div>
+    <div class="rail-ws">${ic('branch')} aurinkokello</div>
+    <div class="rail-item sub"><span>Varjon pituuden laskenta</span></div>
+    <div class="rail-fill"></div>
+    ${railMark()}
+    <div class="rail-account" data-act="nav" data-to="koodi"><span class="avatar">JM</span><span>Jari Mustonen</span></div></nav>`;
+}
+function topbar(title) {
+  const badge = railMarked() ? `<i class="badge ${CAUSE[cause()].tone}" data-testid="gh-badge"></i>` : '';
+  return `<div class="topbar"><span class="burger">${ic('menu')}${badge}</span><h1>${esc(title)}</h1></div>`;
+}
+
+// ---- Views ----
+function viewKoti() {
+  const c = cause();
+  const failed = c === 'disc' || c === 'exp';
+  const push = failed
+    ? `<pre>$ git push origin julkaisu
+remote: Invalid username or token.
+fatal: Authentication failed for 'https://github.com/${LOGIN}/open-habitat.git/'</pre>
+      <p>Push ei onnistunut: GitHub ei hyväksynyt tunnusta. Muutokset ovat tallessa paikallisessa haarassa <code>julkaisu</code>. Kun GitHub-yhteys on korjattu, voin yrittää uudelleen.</p>`
+    : c === 'net'
+      ? `<pre>$ git push origin julkaisu
+fatal: unable to access 'https://github.com/${LOGIN}/open-habitat.git/': Could not resolve host: github.com</pre>
+      <p>GitHubiin ei saatu yhteyttä. Yritän hetken päästä uudelleen.</p>`
+      : `<pre>$ git push origin julkaisu
+To https://github.com/${LOGIN}/open-habitat.git
+   4f2a9c1..8b07d3e  julkaisu -> julkaisu</pre><p>Push onnistui. Haara <code>julkaisu</code> on GitHubissa.</p>`;
+  return `${phone() ? '' : `<div class="conv-head"><h1>Julkaisun valmistelu</h1><span class="ws">open-habitat</span></div>`}
+    <div class="stream"><div class="col">
+      <div class="msg-user">Tee julkaisun muutokset valmiiksi ja pushaa haara.</div>
+      <div class="msg-agent"><div class="work">Muokkasi 4 tiedostoa · ajoi 3 komentoa</div>
+        <p>Muutokset on tehty ja testit menevät läpi. Pushaan haaran.</p>${push}</div>
+    </div></div>
+    <div class="composer"><div class="field"><span class="ph-t">Kirjoita viesti…</span><span class="send">${ic('send')}</span></div></div>`;
+}
+
+function repoRow(r, { chosen = false, href = true } = {}) {
+  return `<li class="row${chosen ? ' cur' : ''}" data-act="${href ? 'pick' : ''}" data-name="${r.o}/${r.n}" data-testid="repo-row">
+    <span class="nm"><span><span class="ow">${esc(r.o)}/</span><b>${esc(r.n)}</b></span>${r.priv ? ic('lock') : ''}${chosen ? '<span class="chip ok">✓ valittu</span>' : ''}${r.unver ? '<span class="chip unver">ei tarkistettu</span>' : ''}</span>
+    ${r.d ? `<span class="desc">${esc(r.d)}</span>` : ''}
+    ${r.when ? `<span class="meta"><span>${esc(r.when)}</span><span>${esc(r.size)}</span></span>` : ''}</li>`;
+}
+function visibleRepos() {
+  const c = cause();
+  if (broken()) return [];
+  return REPOS.filter(r => !(c === 'org' && r.org));
+}
+const exactName = s => { const t = s.trim(); return /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(t) ? t : ''; };
+
+// The list part of RepoFinder: production words in Nykyinen, cause-specific notices otherwise.
+function finderBody(where) {
+  const c = cause();
+  const typed = exactName(R.query);
+  const out = [];
+  if (V === 'now') {
+    if (broken()) out.push(`<p class="empty" role="alert" data-testid="now-failed">Repolistaa ei saatu GitHubista. Voit silti kirjoittaa repon nimen muodossa omistaja/repo.</p>`);
+  } else if (c !== 'ok' && c !== 'org') {
+    out.push(placeNotice(c));
+  }
+  if (typed) out.push(lookupSection(typed, where));
+  const list = visibleRepos().filter(r => !R.query || exactName(R.query) || `${r.o}/${r.n}`.includes(R.query.trim()));
+  if (list.length && !typed) {
+    const chosen = name => R.added.some(a => a.name === name);
+    const own = list.filter(r => r.o === LOGIN), org = list.filter(r => r.o === ORG);
+    out.push(`<section class="sec"><h3><span class="mono">${LOGIN}</span><span class="kind">omat</span></h3><ul>${own.map(r => repoRow(r, { chosen: chosen(`${r.o}/${r.n}`) })).join('')}</ul></section>`);
+    if (org.length) out.push(`<section class="sec"><h3><span class="mono">${ORG}</span><span class="kind">organisaatio</span></h3><ul>${org.map(r => repoRow(r, { chosen: chosen(`${r.o}/${r.n}`) })).join('')}</ul></section>`);
+  }
+  if (c === 'org' && V !== 'now' && !typed) out.push(placeNotice('org', `${ORG}-organisaation repot puuttuvat listasta.`));
+  // A typed name that could not be checked can still be chosen as a default (it is checked
+  // at each new person's own sign-in); the hint says so only where it is true.
+  if (V !== 'now' && broken() && where === 'oletus' && !typed) out.push(`<p class="gh-hint">Voit silti lisätä oletusrepon kirjoittamalla sen nimen muodossa omistaja/repo. Sitä ei voi nyt tarkistaa, mutta pääsy tarkistetaan joka tapauksessa jokaisen uuden henkilön omalla tilillä.</p>`);
+  return out.join('');
+}
+
+function lookupSection(name, where) {
+  const c = cause();
+  const st = R.looked[name] || 'searching';
+  const head = `<h3><span class="mono">${esc(name)}</span><span class="kind">GitHubista</span></h3>`;
+  const isOrg = name.toLowerCase().startsWith(ORG + '/');
+  const added = R.added.find(a => a.name.toLowerCase() === name.toLowerCase());
+  if (st === 'searching') return `<section class="sec" data-testid="lookup" data-state="searching">${head}<p class="empty" role="status">Haetaan GitHubista…</p></section>`;
+  if (V === 'now') {
+    // Production: the lookup needs the same connection, so it fails too.
+    if (broken() || (c === 'org' && isOrg)) return `<section class="sec" data-testid="lookup" data-state="${broken() ? 'failed' : 'not_found'}">${head}<p class="empty">${broken() ? 'GitHubiin ei saatu yhteyttä. Yritä hetken päästä uudelleen.' : 'Repoa ei ole, tai sinulla ei ole siihen pääsyä.'}</p></section>`;
+    return `<section class="sec" data-testid="lookup" data-state="found">${head}<ul>${repoRow(REPOS.find(r => `${r.o}/${r.n}` === name) || { o: name.split('/')[0], n: name.split('/')[1], d: '', when: 'kuukausi sitten', size: '1,2 Mt' }, { chosen: !!added })}</ul></section>`;
+  }
+  if (broken() || (c === 'org' && isOrg)) {
+    const why = c === 'org' ? `Organisaatio ${ORG} estää pääsyn tällä yhteydellä, joten repoa ei voi tarkistaa.` : c === 'net' ? 'GitHub ei vastannut, joten repoa ei voi nyt tarkistaa.' : 'Repoa ei voi tarkistaa ennen kuin GitHub-yhteys on korjattu.';
+    const act = where === 'oletus'
+      ? (added ? `<span class="chip ok">✓ lisätty</span><span class="chip unver">ei tarkistettu</span><button class="btn quiet" data-act="unadd" data-name="${esc(name)}">Poista</button>`
+               : `<button class="btn" data-act="add-unverified" data-name="${esc(name)}" data-testid="add-unverified">${ic('plus')}Lisää tarkistamatta</button><span class="gh-hint">Pääsy tarkistetaan jokaisen uuden henkilön omalla tilillä hänen kirjautuessaan.</span>`)
+      : `<span class="gh-hint">Kloonaus tarvitsee toimivan yhteyden.</span>`;
+    return `<section class="sec" data-testid="lookup" data-state="unverified">${head}<div class="lookup"><span class="nm">${esc(name)}</span><span class="gh-hint" style="color:var(--ah-ink-2)">${why}</span><span class="acts">${act}</span></div></section>`;
+  }
+  const r = REPOS.find(x => `${x.o}/${x.n}`.toLowerCase() === name.toLowerCase()) || { o: name.split('/')[0], n: name.split('/')[1], d: '', when: 'kuukausi sitten', size: '1,2 Mt' };
+  return `<section class="sec" data-testid="lookup" data-state="found">${head}<ul>${repoRow(r, { chosen: !!added })}</ul></section>`;
+}
+
+function searchBox() {
+  return `<label class="search">${ic('search')}<input data-testid="repo-search" type="search" value="${esc(R.query)}" placeholder="Hae nimellä tai kirjoita omistaja/repo" autocomplete="off" spellcheck="false"></label>
+    <div class="seg" aria-label="Päivitetty"><span class="on">Kaikki</span><span>30 pv</span><span>3 kk</span><span>Vuosi</span></div>`;
+}
+
+function viewKlooni() {
+  const c = cause();
+  const blocked = V !== 'now' && (broken());
+  const detail = blocked
+    ? `<aside class="detail" data-testid="repo-details"><p class="muted">GitHub-repoja ei voi valita eikä kloonata ennen kuin yhteys toimii.</p>
+        <button class="btn primary" disabled>${ic('github')}Kloonaa työtilaksi</button>
+        <p class="gh-hint">${c === 'net' ? 'GitHub ei vastaa. Yritä hetken päästä uudelleen.' : `Kloonaus tarvitsee GitHub-yhteyden. ${esc(CAUSE[c].fix)} yllä olevasta ilmoituksesta.`}</p></aside>`
+    : V === 'now' && broken()
+      ? `<aside class="detail" data-testid="repo-details"><p class="muted">Valitse repo nähdäksesi sen tiedot ennen kloonausta.</p></aside>`
+      : `<aside class="detail" data-testid="repo-details"><h4><span style="color:var(--ah-muted)">${LOGIN}/</span>open-habitat</h4><p class="muted">Selaimesta käytettävä koti natiiveille agenteille</p>
+        <dl><dt>Näkyvyys</dt><dd>Yksityinen</dd><dt>Oletushaara</dt><dd>main</dd><dt>Koko</dt><dd>48 Mt</dd><dt>Kohde</dt><dd>~/src/open-habitat</dd></dl>
+        <p class="gh-hint" style="margin-top:4px">Repo on jo työtilana ~/src/open-habitat.</p></aside>`;
+  return `<div class="page" data-view="klooni">${phone() ? '' : `<div class="page-head"><h2>Uusi työtila</h2><p>Kloonaa repo palvelimelle työtilaksi.</p></div>`}
+    <div class="clone-grid"><div class="finder">${searchBox()}${finderBody('klooni')}</div>${phone() ? '' : detail}</div></div>`;
+}
+
+const SNAV = ['Yleiset', 'Koodipalvelut', 'Integraatiot', 'Tallennustila', 'Käyttöönotto', 'Palvelin'];
+function settingsNav(cur) {
+  if (phone()) return '';
+  const dot = V !== 'now' && CAUSE[cause()].global;
+  return `<nav class="s-nav"><div class="s-h">Asetukset</div>${SNAV.map(s => `<div class="${s === cur ? 'cur' : ''}" ${s === 'Koodipalvelut' ? 'data-act="nav" data-to="koodi"' : s === 'Käyttöönotto' ? 'data-act="nav" data-to="oletus"' : ''}>${s}${s === 'Koodipalvelut' && dot ? '<i class="gh-dot" aria-label="GitHub-yhteydessä on ongelma"></i>' : ''}</div>`).join('')}</nav>`;
+}
+
+function viewOletus() {
+  const c = cause();
+  const n = R.added.length;
+  const defaults = R.added.length
+    ? R.added.map(a => `<li><span><span class="mono" style="color:var(--ah-ink)">${esc(a.name)}</span>${a.unver ? ' <span class="chip unver">ei tarkistettu</span>' : ''}</span></li>`).join('')
+    : `<li><span class="mono">Ei vielä oletusrepoja.</span></li>`;
+  const page = `<div class="settings">${settingsNav('Käyttöönotto')}<div class="s-main"><h2>Käyttöönotto</h2><p class="s-intro">Mitä uusi henkilö saa ensimmäisellä kirjautumisellaan.</p>
+    <div class="s-card"><div class="s-row"><div class="s-lbl"><strong>Oletusrepot</strong><span class="s-desc">Kloonataan uudelle henkilölle, jos hänellä on niihin pääsy.</span></div><div class="s-val"><button class="btn">${ic('plus')}Lisää oletusrepo</button></div></div>
+    <ul class="wsl defaults">${defaults}</ul></div></div></div>`;
+  const intro = V === 'now' || !broken()
+    ? 'Näet omat GitHub-repojesi. Uuden henkilön pääsy tarkistetaan hänen omalla tilillään. Valitun repon voi poistaa valitsemalla sen uudelleen.'
+    : 'Uuden henkilön pääsy tarkistetaan hänen omalla tilillään. Valitun repon voi poistaa valitsemalla sen uudelleen.';
+  const dialog = `<div class="scrim"><div class="dialog" role="dialog" aria-label="Lisää oletusrepo" data-testid="finder-dialog">
+    <div class="body"><h2>Lisää oletusrepo</h2><p class="intro">${intro}</p><div class="finder">${searchBox()}${finderBody('oletus')}</div></div>
+    <div class="foot"><span role="status">${n} / 20 oletusrepoa</span><button class="btn">Valmis</button></div></div></div>`;
+  return { page, dialog };
+}
+
+function viewKoodi() {
+  const c = cause();
+  const now = V === 'now';
+  // Production's states and words (CodeHostSettings); the directions add the cause the host would need to tell.
+  const st = c === 'ok' || c === 'org' ? { label: 'Yhdistetty', cls: 'ok', desc: `Kirjautunut käyttäjänä ${LOGIN}. Git ja gh toimivat työtiloissa.` }
+    : c === 'exp' ? { label: 'Vanhentunut', cls: 'bad', desc: 'GitHub ei enää hyväksy palvelimelle tallennettua valtuutusta, joten git push ja gh eivät toimi. Yhdistä uudelleen kirjautumalla GitHubilla.' }
+    : c === 'disc' ? { label: 'Ei yhdistetty', cls: 'warn', desc: 'GitHub-yhteyttä ei löytynyt, joten git push ja gh eivät toimi. Yhdistä kirjautumalla GitHubilla.' }
+    : now ? { label: 'Tilaa ei tiedetä', cls: 'warn', desc: 'GitHub-yhteyden tilaa ei juuri nyt voitu vahvistaa.' }
+    : { label: 'GitHub ei vastaa', cls: 'warn', desc: 'Valtuutus on tallessa, mutta palvelin ei juuri nyt saa yhteyttä GitHubiin. Uudelleen yhdistäminen ei auta; tila tarkistetaan uudelleen puolen minuutin välein.' };
+  const btn = c === 'exp' || c === 'disc' ? `<button class="btn primary" data-act="fix">${ic('github')}${c === 'disc' ? 'Yhdistä GitHub' : 'Yhdistä uudelleen'}</button>`
+    : c === 'net' && !now ? `<button class="btn" data-act="retry">${ic('refresh')}Tarkista nyt</button>`
+    : c === 'ok' || c === 'org' ? `<button class="btn">Yhdistä uudelleen</button>` : '';
+  const orgs = c === 'org' && !now
+    ? `<div class="orgs" data-testid="gh-orgs"><span>Organisaatiot:</span><span class="mono">${LOGIN}</span><span class="chip ok">toimii</span><span class="mono">${ORG}</span><span class="chip">estää sovelluksen</span><a href="#" data-act="org">Pyydä hyväksyntää GitHubissa ↗</a></div>` : '';
+  const trouble = c === 'exp' || c === 'disc' ? 'Push ei onnistu ennen kuin GitHub-yhteys on korjattu. Paikallinen työ jatkuu.' : '';
+  const ws = [['open-habitat', `${LOGIN}/open-habitat`], ['aurinkokello', `${LOGIN}/aurinkokello`], ['pilot-materiaalit', `${ORG}/pilot-materiaalit`]];
+  const wsTrouble = name => trouble || (c === 'org' && !now && name.startsWith(ORG) ? `Organisaatio ${ORG} estää pääsyn: pull ja push eivät onnistu tällä yhteydellä.` : '');
+  return `<div class="settings">${settingsNav('Koodipalvelut')}<div class="s-main"><h2>Koodipalvelut</h2><p class="s-intro">Palvelut, joista työtilat kloonataan ja joihin agentit pushaavat.</p>
+    <div class="s-card"><div class="s-row" data-testid="gh-row" data-state="${c}"><span class="letter">GH</span>
+      <div class="s-lbl"><strong>GitHub</strong><span class="s-desc${c === 'exp' ? ' bad' : ''}">${esc(st.desc)} Selaimesta uloskirjautuminen ei poista palvelimen valtuutusta.</span>${orgs}</div>
+      <div class="s-val"><span class="status ${st.cls}"><i></i>${st.label}</span>${btn}</div></div>
+    <ul class="wsl">${ws.map(([w, r]) => `<li><span>${w}</span><span class="mono">${r}</span>${wsTrouble(r) ? `<span class="trouble">${esc(wsTrouble(r))}</span>` : ''}</li>`).join('')}</ul></div></div></div>`;
+}
+
+const TITLES = { koti: 'Julkaisun valmistelu', klooni: 'Uusi työtila', oletus: 'Käyttöönotto', koodi: 'Koodipalvelut' };
+function appHTML() {
+  const ph = phone();
+  // The dialog's overlay covers the whole app, banner and rail included, as production's ModalOverlay does.
+  const oletus = S.n === 'oletus' ? viewOletus() : null;
+  const view = S.n === 'koti' ? viewKoti() : S.n === 'klooni' ? viewKlooni() : oletus ? oletus.page : viewKoodi();
+  const veil = R.veil ? `<div class="veil"><div>Siirrytään GitHubiin…<br><span style="color:var(--ah-muted)">(simuloitu: GitHub kysyy luvan ja palauttaa tälle sivulle)</span></div></div>` : '';
+  const inner = S.n === 'oletus' || S.n === 'koodi' ? `<div class="scroll" style="position:relative">${view}</div>` : S.n === 'koti' ? `<div class="conv">${view}</div>` : `<div class="scroll">${view}</div>`;
+  return `<div class="app${ph ? ' phone ph' : ''}" style="position:relative">${ph ? '' : rail()}<main class="main">${ph ? topbar(TITLES[S.n]) : ''}${banner()}${inner}</main>${oletus ? oletus.dialog : ''}${veil}</div>`;
+}
+
+// ---- Frame geometry ----
+const HEIGHTS = { 1280: 800, 390: 844 };
+const viewport = document.getElementById('viewport');
+const sizer = document.getElementById('sizer');
+const stage = document.getElementById('frame');
+function frameSize() {
+  if (S.w === 'oma') return { W: viewport.clientWidth, H: viewport.clientHeight };
+  return { W: +S.w, H: HEIGHTS[S.w] };
+}
+function layoutFrame() {
+  const { W, H } = frameSize();
+  const bare = document.body.classList.contains('bare');
+  const s = S.w === 'oma' || bare ? 1 : Math.min(1, (viewport.clientWidth - 24) / W, (viewport.clientHeight - 84) / H);
+  stage.style.width = W + 'px'; stage.style.height = H + 'px';
+  stage.style.transform = s < 1 ? `scale(${s})` : '';
+  sizer.style.width = Math.round(W * s) + 'px'; sizer.style.height = Math.round(H * s) + 'px';
+  stage.dataset.theme = S.t;
+}
+function readout() {
+  const c = cause();
+  const fact = { disc: 'native_github.state = disconnected (on jo)', exp: 'native_github.state = expired (on jo)', net: 'tänään unknown; erillinen tieto puuttuu', org: 'ei tietoa hostilla', ok: 'native_github.state = connected' }[c];
+  document.getElementById('readout').innerHTML = `Hostin tieto: <b>${fact}</b>`;
+}
+
+// ---- Picker wiring (picker.js expects `stage` and `variants`) ----
+const variants = VARIANTS.map(v => () => {
+  if (V !== null && V !== v) resetRuntime();
+  V = v; stage.dataset.variant = v; layoutFrame(); readout();
+  scheduleLookup();
+  return appHTML();
+});
+function paint() { stage.innerHTML = appHTML(); readout(); }
+
+// A typed exact name is looked up after a short pause, as production does.
+let lookTimer;
+function scheduleLookup() {
+  const name = exactName(R.query);
+  if (!name || R.looked[name]) return;
+  clearTimeout(lookTimer);
+  lookTimer = setTimeout(() => { R.looked[name] = 'done'; paint(); }, 350);
+}
+
+stage.addEventListener('input', e => {
+  if (!e.target.matches('[data-testid="repo-search"]')) return;
+  R.query = e.target.value;
+  const pos = e.target.selectionStart;
+  paint(); scheduleLookup();
+  const el = stage.querySelector('[data-testid="repo-search"]');
+  el.focus(); el.setSelectionRange(pos, pos);
+});
+stage.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if (e.target.closest('a')) e.preventDefault();
+  if (!t) return;
+  const act = t.dataset.act;
+  if (act === 'later') { R.dismissed = true; paint(); }
+  else if (act === 'nav') { S.n = t.dataset.to; R.query = ''; rerender(); }
+  else if (act === 'fix') {
+    R.veil = true; paint();
+    setTimeout(() => { R.veil = false; R.fixed = true; R.toast = true; R.looked = {}; paint(); scheduleLookup();
+      setTimeout(() => { R.toast = false; paint(); }, 5000); }, 900);
+  }
+  else if (act === 'retry') { R.looked = {}; paint(); scheduleLookup(); }
+  else if (act === 'add-unverified') { R.added.push({ name: t.dataset.name, unver: true }); paint(); }
+  else if (act === 'unadd') { R.added = R.added.filter(a => a.name !== t.dataset.name); paint(); }
+  else if (act === 'pick' && S.n === 'oletus') {
+    const name = t.dataset.name;
+    R.added = R.added.some(a => a.name === name) ? R.added.filter(a => a.name !== name) : [...R.added, { name }];
+    paint();
+  }
+});
+</script>
+<script>
+/*PICKER_JS*/
+</script>
+<script>
+// ---- Prototype controls ----
+function syncControls() {
+  document.querySelectorAll('.pc-group').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(S[g.dataset.k] === b.dataset.v))));
+}
+function rerender() {
+  const url = new URL(location);
+  for (const [k, v] of Object.entries(S)) url.searchParams.set(k, v);
+  history.replaceState(null, '', url);
+  syncControls();
+  stage.innerHTML = variants[current]();
+}
+document.querySelectorAll('.pc-group').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (g.dataset.k === 'c' || g.dataset.k === 'n') { resetRuntime(); R.query = g.dataset.k === 'n' ? '' : R.query; }
+  S[g.dataset.k] = b.dataset.v; rerender();
+}));
+let rz;
+window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(rerender); });
+syncControls();
+</script>
+</body>
+</html>
