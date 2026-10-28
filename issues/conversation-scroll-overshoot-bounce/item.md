@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-28/conversation-scroll-overshoot-bounce
 lane: conversation-scroll
 preparation: ready
+closed: 2026-10-28
 ---
 
 # Conversation scroll overshoots its end, creeps back and then jumps
@@ -21,4 +22,4 @@ Lisäys Jari 2026-10-28: agentin tehdessä työtä keskustelu välillä pompahta
 
 ## Acceptance Criteria
 
-- [ ] Ei ylitystä eikä viivästettyä hyppyä vieritettäessä loppuun asti; kentän kasvu ei pomputa näkymää; työpöytä (trackpad) ja puhelin
+- [x] Ei ylitystä eikä viivästettyä hyppyä vieritettäessä loppuun asti; kentän kasvu ei pomputa näkymää; työpöytä (trackpad) ja puhelin

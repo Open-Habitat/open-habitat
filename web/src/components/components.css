@@ -1327,8 +1327,24 @@ details[open] > summary:not([class])::before {
   min-height: 0;
   overflow: auto;
   overflow-anchor: none;
-  overscroll-behavior: contain;
+  /* No elastic overscroll either (Jari 28.10.2026): the thread stops at its
+     ends instead of stretching past them and springing back. */
+  overscroll-behavior: none;
   padding: var(--ah-column-pad-block) var(--ah-column-pad-inline);
+}
+/* Space a following view keeps while its tail is rebuilt (useFollowLatest). */
+.ah-conversation-stream::after {
+  content: "";
+  flex: none;
+  height: var(--ah-stream-hold, 0px);
+}
+.ah-conversation-stream[data-hold-release]::after {
+  transition: height 240ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-conversation-stream[data-hold-release]::after {
+    transition: none;
+  }
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
 .ah-conversation-stream > * {

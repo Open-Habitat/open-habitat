@@ -60,7 +60,11 @@ import {
   sessionMarkers,
 } from "./sessionSettings";
 import type { Agent } from "./snapshot";
-import { rowIndexOf, visibleEntryKeys } from "./useReadingPosition";
+import {
+  rowIndexOf,
+  scrollToEnd,
+  visibleEntryKeys,
+} from "./useReadingPosition";
 import { FilesHeaderControl, NoticeEntry } from "./ViewHost";
 import { EditorHeaderControls } from "./WorkspaceEditor";
 
@@ -1535,16 +1539,17 @@ function HistoryViewContent({
     const saved = anchor.current;
     if (!viewport) return;
     if (!saved) {
-      viewport.scrollTop = viewport.scrollHeight;
+      scrollToEnd(viewport);
       return;
     }
     const index = rowIndexOf(entries, saved.key);
     const row = viewport.querySelectorAll<HTMLElement>(".ah-feed > li")[index];
-    if (row)
-      viewport.scrollTop +=
-        row.getBoundingClientRect().top -
+    const shift = row
+      ? row.getBoundingClientRect().top -
         viewport.getBoundingClientRect().top -
-        saved.offset;
+        saved.offset
+      : 0;
+    if (Math.abs(shift) >= 1) viewport.scrollTop += shift;
   }, [entries, agent.agent_id]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: observe the timeline children mounted by this history window.
   useEffect(() => {
@@ -1568,7 +1573,7 @@ function HistoryViewContent({
         readerInput();
     };
     const update = () => {
-      if (following.current) viewport.scrollTop = viewport.scrollHeight;
+      if (following.current) scrollToEnd(viewport);
     };
     const observer = new ResizeObserver(update);
     observer.observe(viewport);

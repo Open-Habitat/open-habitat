@@ -81,14 +81,18 @@ import {
 import { PiQuestion } from "./PiQuestion";
 import { useBridgeExpected } from "./processWarmup";
 import { useRecapHold } from "./recapHold";
+import { useRest } from "./rest";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
 import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
-import { useRest } from "./rest";
 import { useConversation } from "./useConversation";
-import { isReadingIntro, useReadingPositionLayout } from "./useReadingPosition";
+import {
+  isReadingIntro,
+  useFollowLatest,
+  useReadingPositionLayout,
+} from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
 import { FilesHeaderControl, NoticeEntry } from "./ViewHost";
 import {
@@ -397,92 +401,14 @@ function BrowserConversationContent({
     restoreAnchor,
     setUnseen,
   });
-  const userScrollIntent = useRef(0);
-  // Only reader input can suspend following. Layout-induced scrolls (including
-  // the browser clamping scrollTop when work collapses) are not reader input.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: opened binds listeners when the stream mounts.
-  useEffect(() => {
-    const viewport = feed.current;
-    if (!viewport) return;
-    let intentTimer: number | undefined;
-    const intent = () => {
-      userScrollIntent.current = Date.now();
-      window.clearTimeout(intentTimer);
-      intentTimer = window.setTimeout(() => {
-        if (wasAtBottom.current && !isReadingIntro(viewport))
-          viewport.scrollTop = viewport.scrollHeight;
-        userScrollIntent.current = 0;
-      }, 650);
-    };
-    const atEnd = () =>
-      viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 1;
-    const wheel = (event: WheelEvent) => {
-      if (event.deltaY < 0 || !atEnd()) intent();
-    };
-    let touchY = 0;
-    const touchstart = (event: TouchEvent) => {
-      touchY = event.touches[0]?.clientY ?? 0;
-    };
-    const touchmove = (event: TouchEvent) => {
-      const y = event.touches[0]?.clientY ?? 0;
-      if (y > touchY || !atEnd()) intent();
-      touchY = y;
-    };
-    const keys = (event: KeyboardEvent) => {
-      if (
-        ["ArrowUp", "PageUp", "Home"].includes(event.key) ||
-        (["ArrowDown", "PageDown", "End", " "].includes(event.key) && !atEnd())
-      )
-        intent();
-    };
-    const toggle = () => {
-      userScrollIntent.current = 0;
-      wasAtBottom.current = false;
-      setAwayFromLatest(
-        viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight >
-          120,
-      );
-    };
-    const scrollbar = (event: PointerEvent) => {
-      if (event.target === viewport) intent();
-    };
-    viewport.addEventListener("wheel", wheel, { passive: true });
-    viewport.addEventListener("touchstart", touchstart, { passive: true });
-    viewport.addEventListener("touchmove", touchmove, { passive: true });
-    viewport.addEventListener("pointerdown", scrollbar);
-    viewport.addEventListener("keydown", keys);
-    viewport.addEventListener("ah:work-toggle", toggle);
-    return () => {
-      window.clearTimeout(intentTimer);
-      viewport.removeEventListener("wheel", wheel);
-      viewport.removeEventListener("touchstart", touchstart);
-      viewport.removeEventListener("touchmove", touchmove);
-      viewport.removeEventListener("pointerdown", scrollbar);
-      viewport.removeEventListener("keydown", keys);
-      viewport.removeEventListener("ah:work-toggle", toggle);
-    };
-  }, [feed, id, opened, wasAtBottom, setAwayFromLatest]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Rebind when native entries mount the stream; the ref itself is stable.
-  useEffect(() => {
-    const viewport = feed.current;
-    if (!viewport) return;
-    const update = () => {
-      if (isReadingIntro(viewport)) return;
-      // Growth keeps a following view at the bottom. A stale intent without a
-      // resulting scroll expires, such as a downward wheel nudge at the end.
-      if (wasAtBottom.current && Date.now() - userScrollIntent.current >= 600)
-        viewport.scrollTop = viewport.scrollHeight;
-      setAwayFromLatest(
-        viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight >
-          120,
-      );
-    };
-    const observer = new ResizeObserver(update);
-    observer.observe(viewport);
-    for (const child of viewport.children) observer.observe(child);
-    update();
-    return () => observer.disconnect();
-  }, [feed, id, opened, entries.length, wasAtBottom]);
+  const { scrolled } = useFollowLatest({
+    feed,
+    id,
+    opened,
+    rows: entries.length,
+    wasAtBottom,
+    setAwayFromLatest,
+  });
   useEffect(() => {
     if (!finishedInBackground) return;
     const old = document.title;
@@ -1284,6 +1210,7 @@ function BrowserConversationContent({
     liveTurn,
   );
   const liveMerged = timeline.some((item) => item.live);
+  const liveRow = !!liveTurn && !liveMerged && provisional.length > 0;
   return (
     <section ref={section} className="ah-reading-view">
       {!id ? (
@@ -1649,18 +1576,15 @@ function BrowserConversationContent({
             onScroll={() => {
               const el = feed.current;
               if (!el || isReadingIntro(el)) return;
-              const atBottom =
-                el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-              if (atBottom) {
+              const move = scrolled(el);
+              if (move === "end") {
                 wasAtBottom.current = true;
                 setAwayFromLatest(false);
-                userScrollIntent.current = 0;
                 readingAnchor.current = undefined;
                 if (id) store.savePosition(id);
                 setUnseen(0);
               } else {
-                if (Date.now() - userScrollIntent.current < 600) {
-                  userScrollIntent.current = 0;
+                if (move === "left") {
                   wasAtBottom.current = false;
                   setAwayFromLatest(
                     el.scrollHeight - el.scrollTop - el.clientHeight > 120,
@@ -1722,7 +1646,10 @@ function BrowserConversationContent({
                   ? entries.length
                     ? "stale"
                     : "error"
-                  : entries.length || held.waiting.length
+                  : // A live turn ends the start page even before its
+                    // native history is read; otherwise the intro would stay
+                    // above it and keep the view from following the work.
+                    entries.length || held.waiting.length || liveRow
                     ? "ready"
                     : "empty"
               }
@@ -1828,7 +1755,7 @@ function BrowserConversationContent({
                       },
                     ]
                   : []),
-                ...(liveTurn && !liveMerged && provisional.length
+                ...(liveTurn && liveRow
                   ? [
                       {
                         // The first provisional block may be retired when native
