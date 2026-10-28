@@ -1,0 +1,1 @@
+{"schema_version": 1, "api_key": "snx_temp_example000000", "expires_at": "2026-10-28T09:01:00Z", "websocket_url": "wss://stt-rt.eu.soniox.com/transcribe-websocket", "max_session_seconds": 600}

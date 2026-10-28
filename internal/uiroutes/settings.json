@@ -6,10 +6,12 @@
   "tiedot": "agent-data",
   "ulkoasu": "appearance",
   "editori": "editor",
+  "sanelu": "speech",
   "tila": "storage",
   "palvelin": "server",
   "palvelinintegraatiot": "server-integrations",
   "aiavain": "ai-key",
+  "saneluavain": "speech-key",
   "kayttoonotto": "onboarding",
   "kayttajat": "users",
   "levy": "disk"

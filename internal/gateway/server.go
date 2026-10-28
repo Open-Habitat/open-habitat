@@ -47,6 +47,9 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(siteKeyPath+"/copies", s.auth.siteKeyCopiesHTTP)
 		mux.HandleFunc(siteKeyPath+"/check", s.auth.siteKeyCopiesHTTP)
 		mux.HandleFunc(siteKeyPath+"/seed", s.auth.siteKeyCopiesHTTP)
+		mux.HandleFunc(siteSpeechKeyPath, s.auth.siteSpeechKeyHTTP)
+		mux.HandleFunc(siteSpeechKeyPath+"/set", s.auth.siteSpeechKeyHTTP)
+		mux.HandleFunc(siteSpeechKeyPath+"/delete", s.auth.siteSpeechKeyHTTP)
 		mux.HandleFunc(accessPath, s.auth.accessHTTP)
 		mux.HandleFunc(accessPath+"/lookup", s.auth.accessHTTP)
 		mux.HandleFunc(accessPath+"/add", s.auth.accessHTTP)
@@ -85,6 +88,8 @@ func (s *Server) routes() http.Handler {
 			mux.HandleFunc(path, s.auth.piCredentials)
 		}
 		mux.HandleFunc("/api/v1/pi/models", s.auth.piModels)
+		mux.HandleFunc(speechKeyPath, s.auth.speechRoute)
+		mux.HandleFunc(speechSessionPath, s.auth.speechRoute)
 		mux.HandleFunc("/api/v1/pi/claude-login", s.auth.claudeLogin)
 		mux.HandleFunc("/api/v1/onboarding/github/repos", s.auth.githubRepos)
 		mux.HandleFunc(githubLookupPath, s.auth.githubLookup)

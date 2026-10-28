@@ -17,6 +17,8 @@ describe("settings URL contract", () => {
       "onboarding",
       "server",
       "server-integrations",
+      "speech",
+      "speech-key",
       "storage",
       "users",
     ]);

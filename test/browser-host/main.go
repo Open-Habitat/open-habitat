@@ -284,6 +284,10 @@ esac
 	}()
 	var cloneCalls atomic.Int64
 	planTargets := map[string]*daemon.CloneJobs{}
+	// The synthetic Soniox lives on this host's origin, known once the
+	// listener is up.
+	var sonioxBase atomic.Pointer[string]
+	soniox := newSonioxFake(func() string { return *sonioxBase.Load() })
 	seedTargets := map[string]*daemon.PiDevice{}
 	var seedFail atomic.Bool
 	var busyMu sync.Mutex
@@ -522,6 +526,9 @@ esac
 		// The gateway's own request giving the site key to a joined person,
 		// decided by the same native Pi helper under Pi's lock.
 		mux.Handle(daemon.SiteKeyPath, daemon.SiteKeyHandler(cfg, trusted, credentialDevice))
+		speechCfg := cfg
+		speechCfg.Home = home
+		daemon.NewSpeechWithFixtureEndpoints(speechCfg, trusted, soniox.endpoints, soniox.client()).Mount(mux)
 		// Exercise native Claude availability through the same handler as the daemon.
 		// This synthetic host intentionally has no installed Claude runtime.
 		mux.Handle("/api/v1/pi/claude-login", daemon.ClaudeLoginHandler(cfg, trusted, credentialDevice))
@@ -666,6 +673,7 @@ esac
 			viewOrigin = "https://oh-view-*." + domain
 		}
 	}
+	sonioxBase.Store(&origin)
 	fixtureProvider := &provider{origin: origin}
 	adminPath := filepath.Join(tmp, "administration.json")
 	if err := os.WriteFile(adminPath, []byte(`{"version":1,"name":"Synthetic lab","administrators":["42"],"default_limit_bytes":8589934592}`), 0600); err != nil {
@@ -698,6 +706,10 @@ esac
 	// together with the first body bytes, not on a bare header flush.
 	var edgeHoldHead atomic.Bool
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/fixture/soniox" || strings.HasPrefix(r.URL.Path, "/fixture/soniox/") {
+			soniox.serve(w, r)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, "/fixture/") {
 			switch r.URL.Path {
 			case "/fixture/lab-marker":

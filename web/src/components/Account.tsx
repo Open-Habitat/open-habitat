@@ -27,6 +27,7 @@ import { ServerAdministration } from "../app/ServerAdministration";
 import { ServerIntegrationsSettings } from "../app/ServerIntegrationsSettings";
 import { ServerVersionLine } from "../app/ServerVersion";
 import { SiteKeyAdministration } from "../app/SiteKeyAdministration";
+import { SpeechKeyAdministration, SpeechSettings } from "../app/SpeechSettings";
 import { type ServerInfo, serverInfo } from "../app/serverAdministration";
 import { settingsHref } from "../app/settingsRoute";
 import type { Workspace } from "../app/snapshot";
@@ -357,6 +358,7 @@ export function AccountSettings({
     ["tili", "Tili"],
     ["laitteet", "Laitteet"],
     ["tekoaly", "Tekoäly"],
+    ["sanelu", "Sanelu"],
     ["koodipalvelut", "Koodipalvelut"],
     ["tiedot", "Tiedot agenteille"],
     ["ulkoasu", "Ulkoasu"],
@@ -367,6 +369,7 @@ export function AccountSettings({
     ["palvelin", "Palvelin"],
     ["palvelinintegraatiot", "Palvelinintegraatiot"],
     ["aiavain", "AI-avain"],
+    ["saneluavain", "Saneluavain"],
     ["kayttoonotto", "Käyttöönotto"],
     ["kayttajat", "Käyttäjät ja pääsy"],
     ["levy", "Levytila"],
@@ -386,6 +389,8 @@ export function AccountSettings({
     palvelin: "server",
     palvelinintegraatiot: "plug",
     aiavain: "key",
+    sanelu: "mic",
+    saneluavain: "mic",
     // A turn on a route, not the chevron that marks a menu (Jari 24.10.2026).
     kayttoonotto: "steer",
     kayttajat: "users",
@@ -614,6 +619,7 @@ export function AccountSettings({
         {section === "tiedot" && (
           <IntegrationsSettings csrf={csrf} except={codeHosts} />
         )}
+        {section === "sanelu" && <SpeechSettings csrf={csrf} />}
         {section === "editori" && (
           <EditorSettings identity={editorIdentity} csrf={csrf} />
         )}
@@ -657,6 +663,8 @@ export function AccountSettings({
             </div>
           ) : admin && section === "aiavain" ? (
             <SiteKeyAdministration csrf={csrf} />
+          ) : admin && section === "saneluavain" ? (
+            <SpeechKeyAdministration csrf={csrf} />
           ) : admin ? (
             <ServerAdministration
               csrf={csrf}

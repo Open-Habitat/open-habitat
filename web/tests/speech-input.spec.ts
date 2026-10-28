@@ -1,0 +1,287 @@
+import type { Page } from "@playwright/test";
+import { hostOrigin } from "../test-ports.mjs";
+import { expect, test } from "./worker-host";
+
+// Speech input in the composer (speech-input-composer) through the real
+// gateway and daemon routes against the browser host's synthetic Soniox:
+// the daemon mints a temporary key with the person's Soniox key from their
+// home, the browser streams PCM straight to the fake real-time socket, and
+// the case decides what "Soniox" hears. The microphone is an oscillator, so
+// no device, real key or network is involved. Same-UID synthetic evidence:
+// it proves routing, the contract and the browser's stream handling, not
+// Soniox itself or UID isolation.
+
+test.use({
+  baseURL: hostOrigin,
+  ignoreHTTPSErrors: true,
+  viewport: { width: 1280, height: 900 },
+});
+
+const ownKey = `own${"0".repeat(24)}Ab12`;
+const siteKey = `site${"0".repeat(24)}Kq7Z`;
+
+test.beforeEach(async ({ page }) => {
+  // The browser's microphone is a tone, or refused when the case says so.
+  await page.addInitScript(() => {
+    const devices = navigator.mediaDevices ?? ({} as MediaDevices);
+    Object.defineProperty(navigator, "mediaDevices", { value: devices });
+    devices.getUserMedia = async () => {
+      if ((window as { denyMicrophone?: boolean }).denyMicrophone)
+        throw new DOMException("denied", "NotAllowedError");
+      const context = new AudioContext();
+      const tone = context.createOscillator();
+      const out = context.createMediaStreamDestination();
+      tone.connect(out);
+      tone.start();
+      return out.stream;
+    };
+  });
+});
+
+async function signIn(page: Page) {
+  await page.goto("/workspaces");
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
+}
+
+async function openConversation(page: Page) {
+  await page.goto("/workspaces");
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-ordinary-dir")
+    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi:/);
+}
+
+const soniox = async (page: Page) =>
+  (await (await page.request.get("/fixture/soniox?action=state")).json()) as {
+    minted: number;
+    open: number;
+    configs: { audio_format: string; num_channels: number }[];
+    audio: number;
+    ended: number;
+    authorization: string;
+  };
+
+async function say(
+  page: Page,
+  tokens: {
+    text: string;
+    is_final: boolean;
+    start_ms?: number;
+    end_ms?: number;
+  }[],
+) {
+  // The stream counts as open once the fake has read its start message.
+  await expect.poll(async () => (await soniox(page)).open).toBe(1);
+  expect(
+    (
+      await page.request.post("/fixture/soniox?action=say", {
+        data: tokens,
+      })
+    ).status(),
+  ).toBe(204);
+}
+
+async function control(page: Page, query: string) {
+  expect(
+    (await page.request.get(`/fixture/soniox?action=${query}`)).status(),
+  ).toBe(204);
+}
+
+const mic = (page: Page) =>
+  page.getByRole("button").and(page.getByTestId("dictation-mic"));
+const pill = (page: Page) => page.getByTestId("dictation-stop");
+const notice = (page: Page) => page.getByTestId("dictation-notice");
+
+test("@speech without a key the mic leads to Sanelu; with one the dictation streams, shows the guess dimmed and sends", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  await openConversation(page);
+  const conversation = page.url();
+  await page.getByTestId("message-input").fill("Alku");
+  await mic(page).click();
+  await expect(notice(page)).toHaveAttribute(
+    "data-notice",
+    "speech_key_missing",
+  );
+  // No stream was opened and nothing was minted without a key.
+  expect((await soniox(page)).minted).toBe(0);
+  await notice(page)
+    .getByRole("button")
+    .and(page.getByTestId("dictation-settings"))
+    .click();
+  await expect(page).toHaveURL(/\/settings\/speech$/);
+  await page.getByTestId("speech-key-input").fill(ownKey);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
+    "data-source",
+    "own",
+  );
+
+  await page.goto(conversation);
+  await page.getByTestId("message-input").fill("Alku");
+  await mic(page).click();
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  // The daemon minted with the person's own key; the browser streams PCM.
+  const state = await soniox(page);
+  expect(state.authorization).toBe(`Bearer ${ownKey}`);
+  expect(state.configs[0]).toMatchObject({
+    audio_format: "pcm_s16le",
+    num_channels: 1,
+  });
+  await expect.poll(async () => (await soniox(page)).audio).toBeGreaterThan(0);
+  await say(page, [
+    { text: " sanelun", start_ms: 0, end_ms: 400, is_final: true },
+    { text: " ensimmäi", is_final: false },
+  ]);
+  await expect(page.getByTestId("dictation-final")).toHaveText("sanelun");
+  await expect(page.getByTestId("dictation-interim")).toHaveText(" ensimmäi");
+  // While dictating the field shows the dictation, not an editable box.
+  await expect(page.getByTestId("message-input")).toBeHidden();
+  await say(page, [
+    {
+      text: " ensimmäinen lause.",
+      start_ms: 400,
+      end_ms: 1200,
+      is_final: true,
+    },
+  ]);
+  await expect(page.getByTestId("dictation-interim")).toHaveText("");
+  // Send ends the dictation and sends what was said after what was written.
+  await page.getByRole("button").and(page.getByTestId("send")).click();
+  await expect(page.locator("main")).toContainText(
+    'Kysyit: "Alku sanelun ensimmäinen lause."',
+    { timeout: 20_000 },
+  );
+  await expect.poll(async () => (await soniox(page)).ended).toBe(1);
+  await expect(pill(page)).toHaveCount(0);
+  await expect(mic(page)).toBeVisible();
+});
+
+test("@speech the administrator's key reaches the person; a dropped stream reconnects once, then ends keeping the text", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  await page.goto("/settings/speech-key");
+  await page.getByTestId("speech-key-input").fill(siteKey);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("site-speech-key")).toContainText("Kq7Z");
+  await expect(page.getByTestId("site-speech-given")).toBeVisible();
+  await page.goto("/settings/speech");
+  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
+    "data-source",
+    "site",
+  );
+
+  await openConversation(page);
+  await mic(page).click();
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  expect((await soniox(page)).authorization).toBe(`Bearer ${siteKey}`);
+  await say(page, [
+    { text: "Ensimmäinen", start_ms: 0, end_ms: 500, is_final: true },
+    { text: " osa", is_final: false },
+  ]);
+  await expect(page.getByTestId("dictation-final")).toHaveText("Ensimmäinen");
+  await control(page, "drop");
+  // One reconnect with a new single-use key; the unconfirmed words stay.
+  await expect.poll(async () => (await soniox(page)).minted).toBe(2);
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  await expect(page.getByTestId("dictation-final")).toHaveText(
+    "Ensimmäinen osa",
+  );
+  await say(page, [{ text: " toinen", is_final: true }]);
+  await expect(page.getByTestId("dictation-final")).toHaveText(
+    "Ensimmäinen osa toinen",
+  );
+  await control(page, "drop");
+  await expect(notice(page)).toHaveAttribute("data-notice", "dropped");
+  expect((await soniox(page)).minted).toBe(2);
+  await expect(page.getByTestId("message-input")).toHaveValue(
+    "Ensimmäinen osa toinen",
+  );
+  await expect(page.getByTestId("dictation-resume")).toBeVisible();
+});
+
+test("@speech a refused key, a reached limit and a refused microphone reach the person as fixed notices", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  await page.goto("/settings/speech");
+  await page.getByTestId("speech-key-input").fill(ownKey);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
+    "data-source",
+    "own",
+  );
+  await openConversation(page);
+
+  await control(page, "mint&value=rejected");
+  await mic(page).click();
+  await expect(notice(page)).toHaveAttribute(
+    "data-notice",
+    "speech_key_rejected",
+  );
+  // Soniox's own words never reach the page.
+  await expect(notice(page)).not.toContainText("synthetic detail");
+
+  await control(page, "mint&value=limit");
+  await mic(page).click();
+  await expect(notice(page)).toHaveAttribute(
+    "data-notice",
+    "speech_limit_reached",
+  );
+
+  // A temporary key Soniox refuses at the stream's start is a refused key.
+  await control(page, "mint&value=ok");
+  await control(page, "refuse");
+  await mic(page).click();
+  await expect(notice(page)).toHaveAttribute(
+    "data-notice",
+    "speech_key_rejected",
+  );
+
+  await page.evaluate(() => {
+    (window as { denyMicrophone?: boolean }).denyMicrophone = true;
+  });
+  await mic(page).click();
+  await expect(notice(page)).toHaveAttribute(
+    "data-notice",
+    "microphone_denied",
+  );
+  await expect(page.getByTestId("message-input")).toBeEditable();
+});
+
+test("@speech the dictation warns a minute before the ten-minute ceiling and ends there with the text", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.clock.install();
+  await signIn(page);
+  await page.goto("/settings/speech");
+  await page.getByTestId("speech-key-input").fill(ownKey);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
+    "data-source",
+    "own",
+  );
+  await openConversation(page);
+  await mic(page).click();
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  await say(page, [{ text: "Pitkä sanelu", is_final: true }]);
+  await expect(page.getByTestId("dictation-final")).toHaveText("Pitkä sanelu");
+  await page.clock.runFor("08:50");
+  await expect(page.getByTestId("dictation-ceiling")).toHaveCount(0);
+  await page.clock.runFor("00:20");
+  await expect(page.getByTestId("dictation-ceiling")).toBeVisible();
+  await page.clock.runFor("01:00");
+  await expect(notice(page)).toHaveAttribute("data-notice", "ceiling");
+  await expect(page.getByTestId("message-input")).toHaveValue("Pitkä sanelu");
+  await expect.poll(async () => (await soniox(page)).ended).toBe(1);
+});

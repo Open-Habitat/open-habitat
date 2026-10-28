@@ -314,10 +314,11 @@ Identity and authority:
   forwards the write without parsing or logging it; replies carry presence
   and at most a literal key's four-character suffix; configured references
   are never resolved. The host keeps no credential store and no token copy,
-  with one exception.
-- The site AI key is the gateway's only persistent provider credential (Jari,
-  2026-10-24). It lives in a gateway-UID `0600` file of its own, never in
-  administration state, a receipt, a log or a reply beyond provider, suffix
+  with the two site keys below as the exceptions.
+- The site AI key and the site Soniox key are the gateway's only persistent
+  provider credentials (Jari, 2026-10-24 and 2026-10-27). The site AI key
+  lives in a gateway-UID `0600` file of its own, never in administration
+  state, a receipt, a log or a reply beyond provider, suffix
   and time, and is written only by a current administrator's browser session
   or root's control socket. `offer` is `site_key` exactly while it is stored.
   It is handed over once, in the handoff of the login whose `ensure` replied
@@ -347,6 +348,19 @@ Identity and authority:
   an unanswered write is uncertain. A new key of the same provider replaces
   every recorded earlier copy; removing the key recalls nothing. The daemon's
   route is the gateway's own request, never proxied from a browser.
+- A person's Soniox key and its region live only in
+  `~/.config/soniox/key.json` (0600), which the product names because Soniox
+  has no native store; the daemon is its only product writer, and replies
+  carry presence, region, source and at most the four-character suffix. The
+  site Soniox key (Jari, 2026-10-27) follows the site AI key's rules: a
+  gateway-UID `0600` file of its own, written only by a current
+  administrator's browser session, read back as region, suffix and time,
+  and given only through the person's own daemon (in the login whose
+  `ensure` replied `created`, and to every joined person, once, when an
+  administrator sets it). The daemon writes it only where the file is
+  absent or is itself an earlier site copy (`source: "site"`), never over
+  a key the person saved; nothing retries and removing the key recalls
+  nothing. The gateway never uses the key or mints from it.
 - The browser shell runs as the person through the person's daemon, as Pi's
   bash already does; it grants nothing new. The gateway accepts its upgrade
   only from the exact app Origin, dials the daemon only after the session's
@@ -414,7 +428,14 @@ Native truth:
   purged automatically, and removal never follows a symlink or crosses a
   filesystem.
 - Tokens, native error text and credential-bearing remote URLs never cross
-  the contract; native failures reach the browser as fixed codes.
+  the contract; native failures reach the browser as fixed codes. The one
+  exception (Jari, 2026-10-27) is Soniox's temporary key for one dictation,
+  so the browser can stream audio straight to Soniox: the person's own
+  daemon mints it with their Soniox key, `single_use`, valid for at most
+  60 s to open a stream, capped by the session ceiling
+  (`max_session_duration_seconds` 600) and usable only for
+  `transcribe_websocket`. It is returned only to the session that asked,
+  never logged or stored, and the long-lived key never leaves the home.
 - Service diagnostics (JSONL on stderr, one journal per service) carry the
   component, event, outcome and a fixed reason, never raw errors,
   credentials, user content or command output. They are operational

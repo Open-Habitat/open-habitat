@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/speech.schema.json",
+  "title": "Speech input: the person's Soniox key and one dictation's temporary key",
+  "$comment": "Errors are the common envelope with fixed codes: speech_key_missing (409, no key in the home), speech_key_rejected (409, Soniox refused the key), speech_limit_reached (429, Soniox's or the daemon's limit), speech_unavailable (503, Soniox did not answer). Nothing Soniox said crosses.",
+  "$defs": {
+    "region": {
+      "enum": ["us", "eu"]
+    },
+    "key_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "present", "suffix", "region", "source"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "present": {"type": "boolean"},
+        "suffix": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9_-]{4}$"},
+        "region": {"enum": ["us", "eu", null]},
+        "source": {"enum": ["own", "site", null]}
+      }
+    },
+    "key_update": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "region"],
+      "properties": {
+        "key": {"type": "string", "pattern": "^[A-Za-z0-9_-]{16,256}$"},
+        "region": {"$ref": "#/$defs/region"}
+      }
+    },
+    "session": {
+      "$comment": "The one provider token that crosses the contract (internal/AGENTS.md): single-use, opens a stream for at most 60 s, transcribe_websocket only, the session capped at max_session_seconds.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "api_key", "expires_at", "websocket_url", "max_session_seconds"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "api_key": {"type": "string", "pattern": "^[A-Za-z0-9_.-]{8,512}$"},
+        "expires_at": {"type": "string", "format": "date-time"},
+        "websocket_url": {"type": "string", "pattern": "^wss://[A-Za-z0-9.-]+(:[0-9]{1,5})?/[A-Za-z0-9/_.-]*$", "maxLength": 256},
+        "max_session_seconds": {"const": 600}
+      }
+    }
+  },
+  "oneOf": [
+    {"$ref": "#/$defs/key_state"},
+    {"$ref": "#/$defs/key_update"},
+    {"$ref": "#/$defs/session"}
+  ]
+}

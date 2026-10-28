@@ -100,6 +100,7 @@ import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
 import { latestSettings } from "./sessionSettings";
+import { settingsHref } from "./settingsRoute";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
 import {
@@ -300,6 +301,11 @@ function BrowserConversationContent({
     onLogin,
   });
   const storagePressure = useStoragePressure();
+  // One object per page, so the composer keeps its dictation engine.
+  const speech = useMemo(
+    () => ({ onOpenSettings: () => navigate(settingsHref("sanelu")) }),
+    [navigate],
+  );
   const nativeHistory = current?.native_history;
   useEffect(() => {
     onNativeHistory?.(nativeHistory);
@@ -2215,6 +2221,7 @@ function BrowserConversationContent({
               />
               <Composer
                 csrf={csrf}
+                speech={speech}
                 modelPicker={
                   canChooseFirstModel ? (
                     <ComposerModelPicker

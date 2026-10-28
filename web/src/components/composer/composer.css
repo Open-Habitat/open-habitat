@@ -912,3 +912,271 @@
     left: auto;
   }
 }
+
+/* ---- speech input (proto-speech-input) ---- */
+/* While dictating, the field shows what was written, the confirmed text and
+   Soniox's changing guess dimmed after it; the box's edge turns the
+   recording colour. */
+.ah-cbox-dictating {
+  border-color: color-mix(in srgb, var(--ah-err) 55%, var(--ah-line-strong));
+}
+.ah-cbox:has(> .ah-dictation-live:focus) {
+  border-color: color-mix(in srgb, var(--ah-err) 55%, var(--ah-line-strong));
+}
+.ah-cbox-field[hidden] {
+  display: none;
+}
+.ah-dictation-live {
+  min-height: 66px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ah-dictation-live.empty::before {
+  content: attr(data-placeholder);
+  color: var(--ah-muted);
+}
+.ah-dictation-interim {
+  color: var(--ah-muted);
+}
+.ah-dictation-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: -0.18em;
+  background: var(--ah-err);
+  animation: ah-dictation-blink 1s steps(2, start) infinite;
+}
+.ah-dictation-slot {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.ah-crow .ah-dictation-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 4px 0 11px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-err-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ah-err) 40%, transparent);
+  color: var(--ah-ink);
+  font: 500 12px var(--ah-font);
+  white-space: nowrap;
+}
+.ah-dictation-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ah-err);
+  animation: ah-dictation-pulse 1.6s ease-in-out infinite;
+}
+.ah-dictation-pill.busy .ah-dictation-dot {
+  background: var(--ah-muted);
+  animation: none;
+}
+.ah-dictation-pill.paused .ah-dictation-dot {
+  opacity: 0.55;
+  animation: none;
+}
+.ah-dictation-bars {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  height: 14px;
+}
+.ah-dictation-bars i {
+  display: block;
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--ah-err);
+  transition: transform 90ms linear;
+}
+.ah-dictation-pill.paused .ah-dictation-bars i,
+.ah-dictation-pill.busy .ah-dictation-bars i {
+  background: var(--ah-muted);
+}
+.ah-dictation-time {
+  font: 500 12px var(--ah-mono);
+  font-variant-numeric: tabular-nums;
+}
+.ah-dictation-state {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ah-muted);
+}
+.ah-dictation-done {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-surface);
+  box-shadow: 0 0 0 1px var(--ah-line);
+  color: var(--ah-ink);
+}
+.ah-composer .ah-dictation-done svg {
+  width: 14px;
+  height: 14px;
+}
+.ah-dictation-pill:hover .ah-dictation-done {
+  background: var(--ah-surface-hover);
+}
+.ah-dictation-pill.hold .ah-dictation-done {
+  display: none;
+}
+/* Above the field: the ceiling approaching; below it: why it ended. */
+.ah-dictation-note,
+.ah-dictation-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px 12px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.ah-composer .ah-dictation-note > svg,
+.ah-composer .ah-dictation-notice > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--ah-dictation-icon, var(--ah-muted));
+}
+.ah-dictation-note strong {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ah-dictation-sub {
+  color: var(--ah-ink-2);
+}
+.ah-dictation-note.urgent,
+.ah-dictation-notice.danger {
+  --ah-dictation-icon: var(--ah-err);
+  border-color: var(--ah-err-line);
+  background: var(--ah-err-soft);
+}
+.ah-dictation-notice {
+  position: relative;
+  padding-right: 36px;
+}
+.ah-dictation-notice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.ah-dictation-notice-body strong {
+  font-weight: 600;
+}
+.ah-dictation-notice-body p {
+  margin: 0;
+  color: var(--ah-ink-2);
+}
+.ah-dictation-notice-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+}
+.ah-dictation-act {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: 500 12.5px var(--ah-font);
+  cursor: pointer;
+}
+.ah-dictation-act:hover {
+  background: var(--ah-surface-hover);
+}
+.ah-dictation-act.primary {
+  border-color: var(--ah-accent);
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+}
+.ah-dictation-act.primary:hover {
+  background: var(--ah-accent-hover);
+}
+.ah-dictation-x {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--ah-r-md);
+  background: none;
+  color: var(--ah-muted);
+  cursor: pointer;
+}
+.ah-dictation-x:hover {
+  background: var(--ah-hover);
+  color: var(--ah-ink);
+}
+.ah-composer .ah-dictation-x svg {
+  width: 14px;
+  height: 14px;
+}
+.ah-dictation-act:focus-visible,
+.ah-dictation-x:focus-visible {
+  outline: var(--ah-focus-width, 2px) solid var(--ah-focus);
+  outline-offset: 2px;
+}
+@keyframes ah-dictation-blink {
+  to {
+    visibility: hidden;
+  }
+}
+@keyframes ah-dictation-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+/* Phone: while dictating the pill takes the row's tools' place. */
+@media (max-width: 440px) {
+  .ah-crow-dictating .ah-crow-btn:not(.ah-dictation-mic),
+  .ah-crow-dictating .ah-crow-grow,
+  .ah-crow-dictating .ah-composer-model {
+    display: none;
+  }
+  .ah-crow-dictating .ah-dictation-slot,
+  .ah-crow-dictating .ah-dictation-pill {
+    flex: 1;
+  }
+  .ah-crow-dictating .ah-dictation-pill {
+    min-height: 36px;
+  }
+  .ah-crow-dictating .ah-dictation-state {
+    flex: 1;
+    text-align: left;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-dictation-dot,
+  .ah-dictation-caret {
+    animation: none;
+  }
+  .ah-dictation-bars i {
+    transition: none;
+  }
+}

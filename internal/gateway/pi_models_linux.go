@@ -51,6 +51,34 @@ func (a *Auth) piCredentials(w http.ResponseWriter, r *http.Request) {
 	a.proxy(w, r, s, false)
 }
 
+const (
+	speechKeyPath     = "/api/v1/speech/key"
+	speechSessionPath = "/api/v1/speech/session"
+)
+
+// speechRoute forwards the person's Soniox key routes and the temporary-key
+// mint to their daemon without parsing either: the key is saved and the
+// temporary key minted only there.
+func (a *Auth) speechRoute(w http.ResponseWriter, r *http.Request) {
+	valid := (r.Method == http.MethodGet || r.Method == http.MethodPost || r.Method == http.MethodDelete) && a.exact(r, speechKeyPath) || r.Method == http.MethodPost && a.exact(r, speechSessionPath)
+	if !valid {
+		safe(w, 400, "invalid_request")
+		return
+	}
+	s, ok := a.authenticated(r)
+	if !ok {
+		safe(w, 401, "authentication_required")
+		return
+	}
+	if r.Method != http.MethodGet {
+		if denied := a.authorizeWrite(r, s); denied != "" {
+			safe(w, 403, denied)
+			return
+		}
+	}
+	a.proxy(w, r, s, false)
+}
+
 func (a *Auth) claudeLogin(w http.ResponseWriter, r *http.Request) {
 	if (r.Method != "GET" && r.Method != "POST" && r.Method != "PUT" && r.Method != "DELETE") || !a.exact(r, "/api/v1/pi/claude-login") {
 		safe(w, 400, "invalid_request")

@@ -666,3 +666,104 @@ describe("installed skill aliases at send", () => {
     expect(field(view).value).toBe("/demo Original");
   });
 });
+
+describe("composer speech input", () => {
+  type Socket = {
+    protocols: string[];
+    sent: unknown[];
+    onopen: (() => void) | null;
+    onmessage: ((e: { data: string }) => void) | null;
+    onclose: (() => void) | null;
+  };
+  function fakeSpeech() {
+    const sockets: Socket[] = [];
+    const deps = {
+      mint: async () => ({
+        schema_version: 1 as const,
+        api_key: "snx_temp_1",
+        expires_at: "2026-10-28T09:01:00Z",
+        websocket_url: "wss://stt-rt.eu.soniox.com/transcribe-websocket",
+        max_session_seconds: 600 as const,
+      }),
+      microphone: async () =>
+        ({ getTracks: () => [] }) as unknown as MediaStream,
+      capture: async () => ({ sampleRate: 16_000, close: noop }),
+      socket: (_url: string, protocols: string[]) => {
+        const s: Socket = {
+          protocols,
+          sent: [],
+          onopen: null,
+          onmessage: null,
+          onclose: null,
+        };
+        Object.assign(s, {
+          readyState: 1,
+          send: (d: unknown) => s.sent.push(d),
+          close: () => s.onclose?.(),
+        });
+        sockets.push(s);
+        return s as unknown as WebSocket;
+      },
+      now: () => Date.now(),
+      setInterval: () => 0,
+      clearInterval: noop,
+    };
+    return { deps, sockets };
+  }
+  function Stateful(props: {
+    deps: ReturnType<typeof fakeSpeech>["deps"];
+    onSendNow: (text?: string) => void;
+  }) {
+    const [value, setValue] = useState("Alku");
+    return (
+      <Composer
+        {...base}
+        csrf="csrf"
+        value={value}
+        onChange={setValue}
+        onSendNow={props.onSendNow}
+        speech={{ onOpenSettings: noop, deps: props.deps }}
+      />
+    );
+  }
+
+  it("dictates after what was written and Send ends the dictation and sends it", async () => {
+    const { deps, sockets } = fakeSpeech();
+    const sent = vi.fn();
+    const view = render(<Stateful deps={deps} onSendNow={sent} />);
+    const mic = view.getByTestId("dictation-mic");
+    fireEvent.pointerDown(mic, { button: 0 });
+    fireEvent.pointerUp(window);
+    fireEvent.click(mic);
+    await waitFor(() => expect(sockets).toHaveLength(1));
+    await act(async () => sockets[0]?.onopen?.());
+    expect(view.getByTestId("dictation-live")).toBeTruthy();
+    await act(async () =>
+      sockets[0]?.onmessage?.({
+        data: JSON.stringify({
+          tokens: [
+            { text: " sanelu", is_final: true },
+            { text: " jatkuu", is_final: false },
+          ],
+        }),
+      }),
+    );
+    expect(view.getByTestId("dictation-final").textContent).toBe("sanelu");
+    expect(view.getByTestId("dictation-interim").textContent).toBe(" jatkuu");
+    fireEvent.click(view.getByTestId("send"));
+    // The end of the stream is an empty text frame; Soniox then finishes.
+    await waitFor(() => expect(sockets[0]?.sent.at(-1)).toBe(""));
+    await act(async () =>
+      sockets[0]?.onmessage?.({
+        data: JSON.stringify({
+          tokens: [{ text: " jatkuu.", is_final: true }],
+          finished: true,
+        }),
+      }),
+    );
+    await waitFor(() =>
+      expect(sent).toHaveBeenCalledWith("Alku sanelu jatkuu."),
+    );
+    expect(field(view).value).toBe("Alku sanelu jatkuu.");
+  });
+});

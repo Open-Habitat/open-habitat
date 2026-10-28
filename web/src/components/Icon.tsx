@@ -83,7 +83,8 @@ export type IconName =
   | "film"
   | "music"
   | "table"
-  | "package";
+  | "package"
+  | "mic";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -127,6 +128,12 @@ export function Icon({
         <rect x="14" y="3" width="7" height="7" rx="1" />
         <rect x="3" y="14" width="7" height="7" rx="1" />
         <path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3" />
+      </>
+    ),
+    mic: (
+      <>
+        <rect x="9" y="3" width="6" height="11" rx="3" />
+        <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
       </>
     ),
     clock: (

@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "56c9687714844e7bde7ab24e92ea1006087d59646acc02f8db3f162e7704a115"
+const V1SchemaFingerprint = "a2b2bd8c2d527ff8538fd1316e3555764e1e5d85040977234db0bd38e1787f29"
 
 var V1SchemaFiles = []string{
 	"account-profile-update.schema.json",
@@ -72,11 +72,13 @@ var V1SchemaFiles = []string{
 	"server-administration.schema.json",
 	"server-integrations.schema.json",
 	"server-onboarding.schema.json",
+	"server-speech-key.schema.json",
 	"server-storage-change.schema.json",
 	"server-storage.schema.json",
 	"server.schema.json",
 	"site-onboarding.schema.json",
 	"snapshot.schema.json",
+	"speech.schema.json",
 	"spinoffs.schema.json",
 	"terminal.schema.json",
 	"view.schema.json",
@@ -154,11 +156,13 @@ type ServerAdministrationChange = json.RawMessage
 type ServerAdministration = json.RawMessage
 type ServerIntegrations = json.RawMessage
 type ServerOnboarding = json.RawMessage
+type ServerSpeechKey = json.RawMessage
 type ServerStorageChange = json.RawMessage
 type ServerStorage = json.RawMessage
 type Server = json.RawMessage
 type SiteOnboarding = json.RawMessage
 type Snapshot = json.RawMessage
+type Speech = json.RawMessage
 type Spinoffs = json.RawMessage
 type Terminal = json.RawMessage
 type View = json.RawMessage

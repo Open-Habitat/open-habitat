@@ -111,42 +111,13 @@ var errNotSent = errors.New("site key request not sent")
 // askDaemon sends one site key request to target's own daemon and returns
 // its one word. errNotSent means no request left the gateway.
 func (a *Auth) askDaemon(ctx context.Context, target Identity, req siteKeyDaemonRequest) (string, error) {
-	if a.snapshotDial == nil && udssecure.Mapped(target.Socket, target.UID) != nil {
-		return "", errNotSent
-	}
 	body, err := json.Marshal(req)
 	if err != nil {
 		return "", errNotSent
 	}
-	ctx, cancel := context.WithTimeout(ctx, siteKeyDaemonDeadline)
-	defer cancel()
-	var dialed atomic.Bool
-	transport := &http.Transport{
-		MaxResponseHeaderBytes: 16 << 10,
-		DisableKeepAlives:      true,
-		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-			conn, err := a.dialDaemon(ctx, target)
-			dialed.Store(err == nil)
-			return conn, err
-		},
-	}
-	defer transport.CloseIdleConnections()
-	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://unix"+siteKeyDaemonPath, bytes.NewReader(body))
+	b, err := a.postDaemon(ctx, target, siteKeyDaemonPath, body)
 	if err != nil {
-		return "", errNotSent
-	}
-	r.Header.Set("Content-Type", "application/json")
-	res, err := transport.RoundTrip(r)
-	if err != nil {
-		if !dialed.Load() {
-			return "", errNotSent
-		}
 		return "", err
-	}
-	defer res.Body.Close()
-	b, err := io.ReadAll(io.LimitReader(res.Body, 1025))
-	if err != nil || len(b) > 1024 || res.StatusCode != http.StatusOK {
-		return "", errors.New("site key reply unavailable")
 	}
 	var reply struct {
 		SchemaVersion int    `json:"schema_version"`
@@ -165,6 +136,46 @@ func (a *Auth) askDaemon(ctx context.Context, target Identity, req siteKeyDaemon
 		return reply.Outcome, nil
 	}
 	return "", errors.New("site key reply invalid")
+}
+
+// postDaemon sends one of the gateway's own requests to target's daemon and
+// returns the reply body of a 200. errNotSent means no request left the
+// gateway; any other error may follow a request the daemon acted on.
+func (a *Auth) postDaemon(ctx context.Context, target Identity, path string, body []byte) ([]byte, error) {
+	if a.snapshotDial == nil && udssecure.Mapped(target.Socket, target.UID) != nil {
+		return nil, errNotSent
+	}
+	ctx, cancel := context.WithTimeout(ctx, siteKeyDaemonDeadline)
+	defer cancel()
+	var dialed atomic.Bool
+	transport := &http.Transport{
+		MaxResponseHeaderBytes: 16 << 10,
+		DisableKeepAlives:      true,
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			conn, err := a.dialDaemon(ctx, target)
+			dialed.Store(err == nil)
+			return conn, err
+		},
+	}
+	defer transport.CloseIdleConnections()
+	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://unix"+path, bytes.NewReader(body))
+	if err != nil {
+		return nil, errNotSent
+	}
+	r.Header.Set("Content-Type", "application/json")
+	res, err := transport.RoundTrip(r)
+	if err != nil {
+		if !dialed.Load() {
+			return nil, errNotSent
+		}
+		return nil, err
+	}
+	defer res.Body.Close()
+	b, err := io.ReadAll(io.LimitReader(res.Body, 1025))
+	if err != nil || len(b) > 1024 || res.StatusCode != http.StatusOK {
+		return nil, errors.New("daemon reply unavailable")
+	}
+	return b, nil
 }
 
 // storedSiteKey is the stored key and what a daemon compares it with, or

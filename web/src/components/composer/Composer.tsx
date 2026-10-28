@@ -42,6 +42,14 @@ import {
   withLeadingCommand,
 } from "./completion";
 import {
+  type ComposerSpeech,
+  DictationCeiling,
+  DictationControl,
+  DictationLive,
+  DictationNoticeView,
+  useDictation,
+} from "./Dictation";
+import {
   type ComposerGoal,
   GoalChip,
   joinGoal,
@@ -396,6 +404,7 @@ export function Composer({
   onActivity,
   idlePlaceholder = "Kirjoita agentille…",
   goals,
+  speech,
 }: {
   value: string;
   csrf?: string;
@@ -433,6 +442,8 @@ export function Composer({
   idlePlaceholder?: string;
   /** Start-page goals: a draft beginning with one's skill shows its chip. */
   goals?: ComposerGoal[];
+  /** Speech input: the mic beside Send. Needs csrf. */
+  speech?: ComposerSpeech;
 }) {
   // The draft is what the agent receives: the person's text with one
   // attachment reference per line after it. The field edits only the text;
@@ -619,7 +630,25 @@ export function Composer({
     !shellText ||
     !!running ||
     (shell.runAvailability && shell.runAvailability.state !== "enabled");
-  const sendReady = shellOn ? !runBlocked : !!draftValue.trim() && !sendBlocked;
+  // A dictation that ends puts its text in the field, with the caret after
+  // it, and the field is ordinary text again.
+  const dictation = useDictation(speech, csrf, (text) => {
+    onChange(text);
+    window.requestAnimationFrame(() => {
+      const el = field.current;
+      if (!el || el.hidden) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+      el.scrollTop = el.scrollHeight;
+    });
+  });
+  const dictating = dictation.active;
+  const dictatedText = dictating
+    ? `${dictation.base}${dictation.view?.final ?? ""}`
+    : "";
+  const sendReady = shellOn
+    ? !runBlocked
+    : !!(dictating ? dictatedText : draftValue).trim() && !sendBlocked;
 
   // ---- inserting text ----
   const replaceRange = useCallback(
@@ -770,14 +799,28 @@ export function Composer({
             }
           : null;
   const send = async (otherWay = false) => {
+    if (dictating) {
+      // Send during a dictation ends it first and sends what was said.
+      const text = await dictation.stop();
+      const current = draft.current.value;
+      return sendDraft(
+        otherWay,
+        text === null
+          ? current
+          : joinAttachments(text, splitAttachments(current).attachments),
+      );
+    }
+    return sendDraft(otherWay, draftValue);
+  };
+  const sendDraft = async (otherWay: boolean, content: string) => {
     if (shellOn) {
       if (running) return;
       if (!runBlocked && shell) shell.onRun(shellText, shellExcluded(value));
       return;
     }
-    if (!draftValue.trim() || sendBlocked || resolution.current) return;
-    let text = draftValue;
-    if (sources && /^\/[A-Za-z0-9][A-Za-z0-9._-]*(?=\s|$)/.test(draftValue)) {
+    if (!content.trim() || sendBlocked || resolution.current) return;
+    let text = content;
+    if (sources && /^\/[A-Za-z0-9][A-Za-z0-9._-]*(?=\s|$)/.test(content)) {
       const controller = new AbortController();
       resolution.current = controller;
       setResolving(true);
@@ -785,7 +828,7 @@ export function Composer({
       try {
         const list = await sources.commands(controller.signal);
         if (controller.signal.aborted) return;
-        text = resolveSkillAlias(draftValue, list.commands);
+        text = resolveSkillAlias(content, list.commands);
       } catch {
         if (!controller.signal.aborted)
           setNotice(
@@ -814,7 +857,9 @@ export function Composer({
       : `Aja komento työtilassa ${shell?.workspaceLabel ?? ""} (Enter)`
     : working
       ? `${MODE[selectedWorkingMode].label}: ${MODE[selectedWorkingMode].long} (Enter). ${ALT}+Enter: ${MODE[other(selectedWorkingMode)].label.toLowerCase()}.`
-      : "Lähetä (Enter)";
+      : dictating
+        ? "Lopeta sanelu ja lähetä"
+        : "Lähetä (Enter)";
 
   // ---- keys ----
   const onFieldKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1159,7 +1204,7 @@ export function Composer({
           ? "Komennot ja taidot · kirjoita myös / kentässä"
           : `Tiedosto · kirjoita myös @ kentässä, ${MOD}+P avaa valitsimen`
       }
-      disabled={fieldDisabled}
+      disabled={fieldDisabled || dictating}
       onMouseDown={(e) => {
         lastCaret.current = fieldCaret();
         e.preventDefault();
@@ -1210,6 +1255,7 @@ export function Composer({
           }
         />
       ) : null}
+      <DictationCeiling view={dictation.view} />
       <AttachmentChips
         attachments={attachments}
         onRemove={fieldDisabled ? undefined : removeAttachment}
@@ -1232,9 +1278,11 @@ export function Composer({
       ) : null}
       <div
         ref={box}
-        className={`ah-cbox${shellOn ? " ah-cbox-shell" : ""}${fieldDisabled ? " ah-cbox-disabled" : ""}`}
+        className={`ah-cbox${shellOn ? " ah-cbox-shell" : ""}${fieldDisabled ? " ah-cbox-disabled" : ""}${dictating ? " ah-cbox-dictating" : ""}`}
       >
+        {dictating ? <DictationLive dictation={dictation} /> : null}
         <textarea
+          hidden={dictating}
           data-testid="message-input"
           autoComplete="off"
           data-working={working}
@@ -1293,11 +1341,15 @@ export function Composer({
             }, 120);
           }}
         />
-        <div className={`ah-crow${busy ? " ah-crow-busy" : ""}`}>
+        <div
+          className={`ah-crow${busy ? " ah-crow-busy" : ""}${dictating ? " ah-crow-dictating" : ""}`}
+        >
           {csrf ? (
             <AttachmentMenu
               anchorRef={box}
-              disabled={uploading || availability.state !== "enabled"}
+              disabled={
+                uploading || availability.state !== "enabled" || dictating
+              }
               onAttach={() => picker.current?.click()}
             />
           ) : null}
@@ -1312,6 +1364,15 @@ export function Composer({
           <span className="ah-crow-grow" />
           {modelPicker ? (
             <div className="ah-composer-model">{modelPicker}</div>
+          ) : null}
+          {speech && csrf && !shellOn ? (
+            <span className="ah-dictation-slot">
+              <DictationControl
+                dictation={dictation}
+                text={value}
+                disabled={fieldDisabled || !!fieldReason}
+              />
+            </span>
           ) : null}
           {working && !shellOn ? (
             <button
@@ -1426,6 +1487,13 @@ export function Composer({
             commandNotice || notice
           )}
         </p>
+      ) : null}
+      {speech ? (
+        <DictationNoticeView
+          dictation={dictation}
+          text={value}
+          onOpenSettings={speech.onOpenSettings}
+        />
       ) : null}
       {sendState === "rejected" ? (
         <InlineNotice

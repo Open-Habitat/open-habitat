@@ -155,6 +155,12 @@ checks = {
     "composer-files.json": "composer.schema.json",
     "composer-file-preview.json": "composer.schema.json",
     "composer-bash.json": "composer.schema.json",
+    "speech-key.json": "speech.schema.json",
+    "speech-key-update.json": "speech.schema.json",
+    "speech-session.json": "speech.schema.json",
+    "speech-error.json": "error.schema.json",
+    "server-speech-key.json": "server-speech-key.schema.json",
+    "server-speech-key-set.json": "server-speech-key.schema.json",
 }
 for fixture, schema in checks.items():
     instance = json.loads((BASE / "examples" / fixture).read_text())
@@ -317,6 +323,27 @@ must_reject("server-onboarding.schema.json", {**onboarding_change, "repositories
 must_reject("server-onboarding.schema.json", {**onboarding_change, "integrations": [{"provider": "slack", "required": False}]})
 must_reject("server-onboarding.schema.json", {**onboarding_change, "ai_account": {"offer": "gemini"}})
 must_reject("server-onboarding.schema.json", {k: v for k, v in onboarding_change.items() if k != "expected_version"})
+
+# Speech input: the person's key is read back as presence, region, source
+# and suffix only, saved as one literal key, and the only token that
+# crosses is one dictation's temporary key with the fixed ceiling.
+speech_key = json.loads((BASE / "examples" / "speech-key.json").read_text())
+must_reject("speech.schema.json", {**speech_key, "key": "example0000000000000000000000Ab12"})
+must_reject("speech.schema.json", {**speech_key, "suffix": "example0000000000000000000000Ab12"})
+must_reject("speech.schema.json", {"key": "$SONIOX_API_KEY", "region": "eu"})
+must_reject("speech.schema.json", {"key": "example0000000000000000000000Ab12", "region": "eu", "source": "site"})
+speech_session = json.loads((BASE / "examples" / "speech-session.json").read_text())
+must_reject("speech.schema.json", {**speech_session, "max_session_seconds": 1800})
+must_reject("speech.schema.json", {**speech_session, "websocket_url": "https://stt-rt.soniox.com/transcribe-websocket"})
+must_reject("speech.schema.json", {**speech_session, "websocket_url": "wss://user:key@stt-rt.soniox.com/x"})
+must_reject("speech.schema.json", {**speech_session, "region_key": "example0000000000000000000000Ab12"})
+# The site Soniox key reads back as region and suffix; a set reply counts
+# answers and names nobody.
+server_speech = json.loads((BASE / "examples" / "server-speech-key.json").read_text())
+must_reject("server-speech-key.schema.json", {**server_speech, "site_key": {**server_speech["site_key"], "key": "example0000000000000000000000Kq7Z"}})
+must_reject("server-speech-key.schema.json", {**server_speech, "given": {"seeded": 1, "people": ["43"]}})
+must_reject("server-speech-key.schema.json", {**server_speech, "given": {"own": 1}})
+must_reject("server-speech-key.schema.json", {"region": "jp", "key": "example0000000000000000000000Kq7Z"})
 
 terminal_validator = Draft202012Validator(schemas["terminal.schema.json"], registry=registry, format_checker=format_checker)
 for message in json.loads((BASE / "examples" / "terminal-messages.json").read_text()):

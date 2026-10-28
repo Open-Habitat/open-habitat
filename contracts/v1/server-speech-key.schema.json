@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/server-speech-key.schema.json",
+  "title": "The site's Soniox key as an administrator reads, sets and removes it",
+  "$defs": {
+    "view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["region", "suffix", "set_at"],
+      "properties": {
+        "region": {"enum": ["us", "eu"]},
+        "suffix": {"type": "string", "pattern": "^[A-Za-z0-9_-]{4}$"},
+        "set_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "read": {
+      "$comment": "given is present after a set: how many joined people's daemons answered which word. It names nobody and nothing about a person's own key beyond kept.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "site_key": {"$ref": "#/$defs/view"},
+        "given": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "seeded": {"type": "integer", "minimum": 1},
+            "replaced": {"type": "integer", "minimum": 1},
+            "already_current": {"type": "integer", "minimum": 1},
+            "kept": {"type": "integer", "minimum": 1},
+            "not_reached": {"type": "integer", "minimum": 1},
+            "unknown": {"type": "integer", "minimum": 1}
+          }
+        }
+      }
+    },
+    "set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["region", "key"],
+      "properties": {
+        "region": {"enum": ["us", "eu"]},
+        "key": {"type": "string", "pattern": "^[A-Za-z0-9_-]{16,256}$"}
+      }
+    },
+    "delete": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 0
+    }
+  },
+  "oneOf": [
+    {"$ref": "#/$defs/read"},
+    {"$ref": "#/$defs/set"},
+    {"$ref": "#/$defs/delete"}
+  ]
+}

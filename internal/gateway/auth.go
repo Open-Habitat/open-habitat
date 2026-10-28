@@ -257,6 +257,7 @@ type Auth struct {
 	// that give or replace copies, so no write hands over a key that a
 	// concurrent change has already replaced.
 	siteKeyOps      chan struct{}
+	speech          siteSpeech
 	admission       map[string]admission
 	unmatchedLog    admission // process-wide budget; never keyed by request input
 	accessLog       admission // bound anonymous Access denials independently
@@ -321,6 +322,9 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 		return nil, err
 	}
 	a.siteKeyOps = make(chan struct{}, 1)
+	if err := a.loadSiteSpeechKey(); err != nil {
+		return nil, err
+	}
 	if err := a.loadSessions(); err != nil {
 		// Unusable state cannot authenticate any cookie. Permit a new OAuth
 		// login to replace it, without trusting or copying its old contents.
@@ -771,6 +775,9 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	if handoff == HandoffUnused {
 		a.revokeUnused(attempt, token)
+	}
+	if ensured.Created {
+		a.giveSpeechKeyAtFirstLogin(target)
 	}
 	sid, e := a.secret()
 	if e != nil {

@@ -67,6 +67,9 @@ export const mutationClasses = {
   "account.first_route": "confirmed",
   "editor.stop": "confirmed",
   "view.handoff": "confirmed",
+  "speech.key": "confirmed",
+  "speech.session": "confirmed",
+  "server.speech_key": "confirmed",
 } as const satisfies Record<string, MutationClass>;
 export type MutationCommand = keyof typeof mutationClasses;
 

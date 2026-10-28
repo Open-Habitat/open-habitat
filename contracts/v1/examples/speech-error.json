@@ -1,0 +1,1 @@
+{"schema_version": 1, "error": {"code": "speech_key_missing", "message": "Request could not be completed", "retryable": false, "correlation_id": "req_00000000"}}
