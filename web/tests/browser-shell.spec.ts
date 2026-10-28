@@ -657,9 +657,11 @@ test("@browser-shell Ctrl-D ends only its own shell and the last one closes the 
   await panel.getByRole("button").and(page.getByTestId("new-terminal")).click();
   await expect(panel.getByRole("tab")).toHaveCount(2);
   await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
-  await expect.poll(async () => (await shells(page, id)).length).toBe(2);
+  // Typed at once, while the new shell may still be opening: the focused
+  // terminal keeps the keys and gives them to the shell when it is ready.
   await page.keyboard.type("echo second-$((3+3))\n");
   await expect(screen(page)).toContainText("second-6");
+  await expect.poll(async () => (await shells(page, id)).length).toBe(2);
   // The second shell ends itself: its tab goes, the first shell is shown.
   await page.keyboard.press("Control+d");
   await expect(panel.getByRole("tab")).toHaveCount(1);

@@ -50,6 +50,8 @@ function store(storage: () => Storage, key: string, value: string) {
   }
 }
 const local = () => localStorage;
+// Typing ahead of a shell is a few keystrokes; a paste waits for the shell.
+const typedLimit = 4096;
 
 type Connection = {
   id: number;
@@ -57,6 +59,12 @@ type Connection = {
   socket: TerminalSocket;
   /** Output that arrived before this connection's surface was open. */
   held?: Uint8Array[];
+  /** Keys typed into the focused surface before the shell was ready; they go
+   * to the shell once it is, as a native terminal's would. */
+  typed?: string[];
+  /** Set with readiness, before React renders it: input then goes straight
+   * to the socket, or nowhere for a read-only terminal. */
+  readOnly?: boolean;
 };
 type Phase =
   | { kind: "connecting" }
@@ -249,6 +257,13 @@ export function useBrowserShell({
         {
           ready: (r) => {
             if (!mine()) return;
+            const c = connection.current;
+            if (c) {
+              const typed = c.typed ?? [];
+              c.typed = undefined;
+              c.readOnly = !!r.read_only;
+              if (!c.readOnly) for (const text of typed) c.socket.send(text);
+            }
             retries.current = 0;
             setReady(r);
             setPhase({ kind: "open" });
@@ -375,7 +390,7 @@ export function useBrowserShell({
           },
         },
       );
-      connection.current = { id, key, socket, held: [] };
+      connection.current = { id, key, socket, held: [], typed: [] };
     },
     [csrf, workspaceId, refresh, onLogin, setOpen],
   );
@@ -467,10 +482,18 @@ export function useBrowserShell({
   };
 
   const send = (data: string) => {
-    if (ready?.read_only || phase.kind !== "open") return;
+    const c = connection.current;
+    if (!c || c.readOnly) return;
+    // Readiness is the connection's own: the rendered phase may still say
+    // connecting just after the shell became ready.
+    if (!c.typed && phase.kind !== "open" && phase.kind !== "connecting")
+      return;
     const s = stickyRef.current;
     if (s.ctrl || s.alt) setSticky({ ctrl: false, alt: false });
-    connection.current?.socket.send(withModifiers(data, s));
+    const text = withModifiers(data, s);
+    if (!c.typed) c.socket.send(text);
+    else if (c.typed.reduce((n, t) => n + t.length, text.length) <= typedLimit)
+      c.typed.push(text);
   };
 
   const askPaste = (text: string) => {
