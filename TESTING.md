@@ -92,7 +92,8 @@ Landing on `main` requires the checks that match the change: the fast web
 checks and the affected Playwright specs for browser work, the affected Go
 packages and the contracts drift check for host work, and the packaging step
 when packaging inputs changed. Workers and worker briefs do not run the full
-gate before merging. The full clean gate runs in three situations: when a
+gate or a whole browser suite before merging, unless the change crosses
+every browser journey; the whole suite runs once on integrated `main`. The full clean gate runs in three situations: when a
 gated release is cut, when someone suspects a cross-cutting breakage, and
 once per work round on `main` so its health is known. It is:
 
