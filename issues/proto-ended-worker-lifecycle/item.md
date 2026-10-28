@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: proto-ended-worker
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/proto-ended-worker-lifecycle
 ---
@@ -20,3 +20,7 @@ Jari 2026-10-28 (testikone, pilot.456, kuvakaappaus liitteenä): päättynyt wor
 ### 2026-10-28T11:29:01Z · @jari
 
 Jari 2026-10-28: ei kuittausta. Lista heijastaa todellista tilaa: kun agentti siivoaa worktreet ja haarat, rivi katoaa listasta. Rivillä voi olla painike worktreen poistamiseen tms. Keskeneräisellä on punainen pallo, mutta tyypillinen reaktio on sanoa agentille jotakin (pyyntö agentille, ei selaimen omaa toimintoa). Riffikierros 2 tältä pohjalta (lähinnä suunta 2 Ratkaisu ilman kuittausta).
+
+### 2026-10-28T17:37:22Z · @jari
+
+Jari 2026-10-28, kierros 2: 'Kerro agentille' on itse toiminto, ei luonnos: se pyytää agenttia käsittelemään juuri sen worktreen, ja agentti suosittelee, mitä sille voidaan tehdä. Lisäksi painike 'Käsittele kaikki'. Riffikierros 3 tältä pohjalta.

@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: archive-notice
 preparation: pending
 provenance: chat
 source_ref: chat:2026-10-28/proto-archive-notice-placement
+closed: 2026-10-28
 ---
 
 # Prototype: where the worktree-archived notice appears so it does not cover the next composer
@@ -20,3 +21,7 @@ Jari 2026-10-28 (Birch, pilot.13): kun arkistoin työpuun, siitä kertova kelluv
 ### 2026-10-28T11:29:01Z · @jari
 
 Jari 2026-10-28: suunta Ylhäällä. Riffikierros 2 sen visuaalisesta ilmeestä ennen toteutusta.
+
+### 2026-10-28T17:37:22Z · @jari
+
+Jari 2026-10-28, kierros 2: Otsakerivi. Toteutus: archive-notice-header-row.

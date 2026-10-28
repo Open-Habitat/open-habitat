@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-conversation-header
 preparation: pending
 provenance: chat
 source_ref: chat:2026-10-28/proto-conversation-header
+closed: 2026-10-28
 ---
 
 # Prototype: the conversation header on desktop (one row, title readable, not heavy)
@@ -24,6 +25,10 @@ Jari 2026-10-28: suunta 1 Lyhenee. Jari pitää myös kaikkien suuntien yhteises
 ### 2026-10-28T11:09:18Z · @jari
 
 Jari 2026-10-28, lisäpalaute Lyhenee-suuntaan, riffikierros 2 ennen toteutusta: mallisiru lyhyeksi, pelkkä 'Opus 5.5' tai jopa 'Opus'; ajattelutaso selviää sirun avatessa tai näkyy pienenä ikonina sirussa (molemmat vaihtoehdot riffiin). Git-sirussa ei näytetä haaran nimeä; nimi näkyy vasta avattaessa. Pohjana Lyhenee ja yhteinen kevyt ulkoasu sekä tilapisteen tooltip.
+
+### 2026-10-28T17:37:22Z · @jari
+
+Jari 2026-10-28: kierros 2, suunta 1 Taso avattaessa: mallisirussa pelkkä malli, ajattelutaso näkyy sirua avattaessa, vihjeessä ja saavutettavassa nimessä. Nimimuoto suosituksen mukaan 'Opus 5.5'. Toteutus: conversation-header-shorten, result.md:n Muutokset toteutukseen -kohdan mukaan.
 
 ## Reopen Notes — 2026-10-28
 

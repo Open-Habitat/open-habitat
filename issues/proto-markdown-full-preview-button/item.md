@@ -3,13 +3,14 @@ created: 2026-10-28
 updated: 2026-10-28
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-markdown-preview
 lane_seq: 1
 preparation: pending
 provenance: chat
 source_ref: kokeiltavaa:2026-10-28/proto-markdown-full-preview-button
+closed: 2026-10-28
 ---
 
 # Prototype: faster shortcut and own button for the full-view Markdown preview
@@ -25,3 +26,7 @@ Kierros 1 (ohjaimen muoto) ratkesi: Painike ikoneina, ei rinnakkaista. Kierros 2
 ### 2026-10-28T11:29:01Z · @jari
 
 Jari 2026-10-28: suunta Painike. Painikerivi, mieluiten ikonipainikkeina. Rinnakkain-muotoa ei tarvita. Sama esikatselu myös CSV:lle ja muille tiedostomuodoille, joissa se on mielekäs. Riffikierros 2 tältä pohjalta.
+
+### 2026-10-28T17:37:22Z · @jari
+
+Jari 2026-10-28, kierros 2: Tiedostorivi. Myös Tallenna-painike ikoniksi samaan riviin. Toteutus: editor-full-preview-icons.
