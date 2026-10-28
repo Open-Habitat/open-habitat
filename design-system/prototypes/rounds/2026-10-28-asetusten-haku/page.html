@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Haku asetuksissa — prototyyppi</title>
+<style>
+/*TOKENS*/
+/*PICKER_CSS*/
+
+/* ---- Prototype chrome (not a contestant) ---- */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #0c0d0f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.pc-bar {
+  position: fixed; inset: 0 0 auto 0; height: 44px; z-index: 50;
+  display: flex; align-items: center; gap: 14px; padding: 0 12px;
+  background: #16181b; color: #c9cdd2; font-size: 12px; border-bottom: 1px solid #262a2f;
+  overflow-x: auto; white-space: nowrap;
+}
+.pc-group { display: inline-flex; align-items: center; gap: 2px; }
+.pc-group > span { margin-right: 4px; color: #8a9097; }
+.pc-group button {
+  height: 26px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent;
+  color: #aeb4ba; font: inherit; cursor: pointer;
+}
+.pc-group button:hover { background: rgba(255,255,255,.06); }
+.pc-group button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+.pc-read { margin-left: auto; color: #8a9097; }
+.pc-read b { color: #e6e9ec; font-weight: 500; }
+#viewport { position: fixed; inset: 44px 0 64px 0; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; padding: 12px; }
+body.bare .pc-bar { display: none; }
+body.bare #viewport { inset: 0; padding: 0; }
+body.bare .proto-picker { display: none; }
+#sizer { position: relative; flex: none; }
+#frame {
+  position: absolute; top: 0; left: 0; transform-origin: top left; overflow: hidden;
+  background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font);
+  font-size: var(--ah-size-body); line-height: var(--ah-lh-ui);
+  box-shadow: 0 0 0 1px #2a2e33;
+}
+body.bare #frame { box-shadow: none; }
+
+/* ---- App shell (production context, simplified) ---- */
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.app { display: flex; height: 100%; position: relative; }
+.rail {
+  flex: none; width: var(--ah-rail-width); background: var(--ah-rail); border-right: 1px solid var(--ah-line);
+  display: flex; flex-direction: column; padding: 12px 10px; gap: 2px; font-size: var(--ah-size-ui); overflow: hidden;
+}
+.rail-head { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px; font-weight: 600; margin-bottom: 8px; }
+.rail-ws { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; margin-top: 8px; color: var(--ah-muted); font-family: var(--ah-mono); font-size: var(--ah-size-meta); }
+.rail-item { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); white-space: nowrap; overflow: hidden; cursor: pointer; }
+.rail-item.sub { padding-left: 22px; }
+.rail-item span { overflow: hidden; text-overflow: ellipsis; }
+.rail-item:hover { background: var(--ah-hover); }
+.rail-item.cur { background: var(--ah-current); box-shadow: inset 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); }
+.rail-fill { flex: 1; }
+.rail-account { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px; border-top: 1px solid var(--ah-line); margin-top: 6px; padding-top: 6px; color: var(--ah-ink); cursor: pointer; border-radius: var(--ah-r-nav); }
+.rail-account.cur { background: var(--ah-current); }
+.avatar { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-size: 11px; font-weight: 600; flex: none; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--ah-bg); position: relative; }
+.topbar { flex: none; display: flex; align-items: center; gap: 10px; height: 49px; padding: 0 var(--ah-topbar-pad-inline); border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.topbar h1 { margin: 0; font-size: var(--ah-size-title); font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: var(--ah-r-md); background: transparent; color: var(--ah-muted); cursor: pointer; flex: none; }
+.icon-btn:hover { background: var(--ah-hover); color: var(--ah-ink); }
+.icon-btn svg.i { width: 20px; height: 20px; }
+.scroll { flex: 1; min-height: 0; overflow: auto; position: relative; }
+button:focus-visible, [tabindex]:focus-visible, a:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: var(--ah-focus-offset); }
+
+/* The conversation that Settings covered (what the close X returns to). */
+.convo { flex: 1; overflow: auto; padding: 28px 32px; }
+.convo-col { max-width: var(--ah-conversation-width); margin: 0 auto; display: flex; flex-direction: column; gap: 16px; font-size: var(--ah-size-body); line-height: var(--ah-lh-body); }
+.msg-user { align-self: flex-end; max-width: 80%; padding: 10px 14px; border-radius: 14px; background: var(--ah-surface-2); border: 1px solid var(--ah-line-soft); }
+.msg-agent p { margin: 0 0 8px; }
+.composer { flex: none; padding: 10px 32px 18px; }
+.composer .field { max-width: var(--ah-conversation-width); margin: 0 auto; height: 48px; border: 1px solid var(--ah-line); border-radius: 14px; background: var(--ah-surface); display: flex; align-items: center; padding: 0 14px; color: var(--ah-muted); }
+
+/* ---- Buttons and controls (ControlButton, Segmented looks) ---- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ah-control-row); padding: 0 var(--ah-control-row-pad);
+  border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-control); color: var(--ah-ink);
+  font: inherit; font-size: var(--ah-control-row-font); font-weight: 500; white-space: nowrap; cursor: pointer;
+}
+.btn:hover { background: var(--ah-control-hover); }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--ah-ink-2); }
+.btn.quiet:hover { background: var(--ah-hover); }
+.btn.danger { color: var(--ah-err); }
+.seg { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface-2); max-width: 100%; }
+.seg button { height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ah-ink-2); font: 500 12.5px var(--ah-font); cursor: pointer; white-space: nowrap; }
+.seg button:hover { background: var(--ah-hover); }
+.seg button[aria-checked="true"] { background: var(--ah-surface); box-shadow: 0 0 0 1px var(--ah-line-strong); color: var(--ah-ink); font-weight: 600; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-surface); font-size: 12.5px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.chip .sub { color: var(--ah-muted); font-weight: 400; }
+.num { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ah-muted); }
+.num input, .txt input { height: 30px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink); font: inherit; font-size: 13px; padding: 0 8px; }
+.num input { width: 64px; text-align: right; }
+.txt input { width: 14em; max-width: 100%; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--ah-ok); white-space: nowrap; }
+.status i { width: 8px; height: 8px; border-radius: 50%; background: var(--ah-ok); }
+.status.off { color: var(--ah-muted); }
+.status.off i { background: var(--ah-line-strong); }
+.bar { width: 180px; height: 6px; border-radius: 3px; background: var(--ah-sunken); overflow: hidden; box-shadow: inset 0 0 0 1px var(--ah-line-soft); }
+.bar span { display: block; height: 100%; background: var(--ah-accent); }
+.letter { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; background: var(--ah-sunken); color: var(--ah-source-1); font: 600 11px var(--ah-mono); flex: none; }
+
+/* ---- Settings (Settings.css, simplified) ---- */
+.settings { display: flex; gap: var(--ah-s8); min-height: 100%; padding: var(--ah-s5) 28px 48px; }
+.s-nav { flex: none; width: 190px; display: flex; flex-direction: column; gap: 2px; font-size: var(--ah-size-ui); position: sticky; top: var(--ah-s5); align-self: flex-start; }
+.s-nav .s-h { margin: var(--ah-s4) 10px var(--ah-s3); font-size: var(--ah-size-h1); font-weight: 600; }
+.s-nav-i { display: flex; align-items: center; gap: 9px; min-height: 36px; padding: 0 10px; border: 0; border-radius: var(--ah-r-nav); background: transparent; color: var(--ah-ink-2); font: 500 var(--ah-size-ui) var(--ah-font); text-align: left; cursor: pointer; width: 100%; }
+.s-nav-i svg.i { color: var(--ah-muted); }
+.s-nav-i:hover { background: var(--ah-hover); }
+.s-nav-i[aria-current] { background: var(--ah-current); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-current-line); }
+.s-nav-i .nl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-nav-i.new .nl::after { content: " uusi"; font-size: 10.5px; color: var(--ah-accent-ink); font-weight: 600; }
+.s-nav-h { margin: var(--ah-s5) 10px 4px; font: 600 var(--ah-size-label) var(--ah-font); color: var(--ah-muted); text-transform: uppercase; letter-spacing: .05em; }
+.s-main { flex: 1; min-width: 0; max-width: 720px; }
+.s-main > h2 { font-size: var(--ah-size-h2); margin: var(--ah-s4) 0 var(--ah-s4); outline: none; }
+.s-back { display: none; }
+.s-intro { margin: 0 0 14px; color: var(--ah-muted); font-size: var(--ah-size-ui); line-height: 1.5; }
+.s-h3 { margin: var(--ah-s6) 0 6px; font-size: var(--ah-size-ui); font-weight: 600; }
+.s-card { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); overflow: hidden; }
+.s-card > * + * { border-top: 1px solid var(--ah-line-soft); }
+.s-row { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(0, auto); gap: var(--ah-s3) var(--ah-s6); align-items: center; padding: var(--ah-s4) var(--ah-s5); font-size: var(--ah-size-ui); scroll-margin-block: var(--ah-s8); }
+.s-row.icon { grid-template-columns: auto minmax(160px, 1fr) minmax(0, auto); }
+.s-row:focus { outline: none; }
+.s-lbl { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.s-lbl strong { font-weight: 600; }
+.s-desc { color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.45; }
+.s-val { display: flex; align-items: center; justify-content: flex-end; gap: var(--ah-s3); flex-wrap: wrap; min-width: 0; }
+.s-version { margin-top: var(--ah-s5); padding-top: var(--ah-s3); border-top: 1px solid var(--ah-line); color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.s-version code { font-family: var(--ah-mono); color: var(--ah-ink); }
+/* Production's landing mark (Settings.css [data-settings-row][data-landed]). */
+.s-row[data-landed] { animation: s-landed 2.4s ease-out; }
+@keyframes s-landed { 0%, 40% { background: var(--ah-accent-soft); box-shadow: inset 3px 0 0 var(--ah-accent); } 100% { background: transparent; box-shadow: inset 3px 0 0 transparent; } }
+/* While a search is active, every matching row in the open section keeps a quiet mark. */
+.s-row[data-hit] { box-shadow: inset 3px 0 0 var(--ah-accent-line); }
+.s-row[data-hit][data-landed] { animation-name: s-landed-hit; }
+@keyframes s-landed-hit { 0%, 40% { background: var(--ah-accent-soft); box-shadow: inset 3px 0 0 var(--ah-accent); } 100% { background: transparent; box-shadow: inset 3px 0 0 var(--ah-accent-line); } }
+mark { background: color-mix(in srgb, var(--ah-accent) 26%, transparent); color: inherit; border-radius: 3px; }
+[data-theme="dark"] mark { background: color-mix(in srgb, var(--ah-accent) 38%, transparent); }
+
+/* ---- Close X (settings-close-returns, implemented separately) ---- */
+.s-close { position: absolute; top: 14px; right: 16px; z-index: 6; }
+
+/* ---- Search field (top of the settings sidebar; SearchField / .ah-rail-search look) ---- */
+.ss { position: relative; margin: 0 0 8px; }
+.ss-field { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 6px 0 9px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-muted); }
+.ss-field:focus-within { border-color: var(--ah-focus); box-shadow: 0 0 0 1px var(--ah-focus); }
+.ss-field svg.i { width: 15px; height: 15px; }
+.ss-field input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--ah-ink); font: 400 13px var(--ah-font); padding: 0; }
+.ss-field input::placeholder { color: var(--ah-muted); }
+.ss-field input::-webkit-search-cancel-button { display: none; }
+.ss-kbd { font: 500 11px var(--ah-mono); color: var(--ah-muted); border: 1px solid var(--ah-line); border-radius: 4px; padding: 0 5px; line-height: 16px; }
+.ss-clear { width: 22px; height: 22px; border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--ah-sunken); color: var(--ah-muted); cursor: pointer; padding: 0; }
+.ss-clear svg.i { width: 12px; height: 12px; stroke-width: 2.2; }
+.ss-clear:hover { color: var(--ah-ink); }
+.ss-sum { display: block; margin: 6px 10px 2px; font-size: var(--ah-size-meta); color: var(--ah-muted); min-height: 1em; }
+
+/* ---- Direction 1: results in the sidebar ---- */
+.r1 { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.r1 li { display: flex; gap: 9px; padding: 7px 10px; border-radius: var(--ah-r-nav); cursor: pointer; color: var(--ah-ink-2); }
+.r1 li:hover { background: var(--ah-hover); }
+.r1 li[aria-selected="true"] { background: var(--ah-current); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-current-line); }
+.r1 li svg.i { margin-top: 2px; color: var(--ah-muted); }
+.r1 .rt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.r1 .rl { font-weight: 500; overflow-wrap: anywhere; }
+.r1 .rp { font-size: 11.5px; color: var(--ah-muted); line-height: 1.35; }
+.r1 .rw { font-size: 11.5px; color: var(--ah-muted); font-style: italic; }
+.r-none { padding: 10px; color: var(--ah-muted); font-size: var(--ah-size-meta); line-height: 1.5; }
+.r-none b { color: var(--ah-ink-2); font-weight: 600; }
+
+/* ---- Direction 2: a filtered results page ---- */
+.s-nav-i.dim { opacity: .45; }
+.s-nav-i .cnt { font: 600 11px var(--ah-font); color: var(--ah-accent-ink); background: var(--ah-accent-soft); border-radius: 999px; padding: 1px 7px; }
+.rs-head { display: flex; align-items: baseline; gap: 10px; margin: var(--ah-s4) 0 var(--ah-s2); }
+.rs-head h2 { font-size: var(--ah-size-h2); margin: 0; }
+.rs-head span { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.rs-group { margin-top: var(--ah-s5); scroll-margin-top: var(--ah-s4); }
+.rs-gh { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: var(--ah-size-ui); font-weight: 600; }
+.rs-gh svg.i { color: var(--ah-muted); }
+.rs-gh .sp { flex: 1; }
+.rs-gh .crumb { color: var(--ah-muted); font-weight: 400; }
+.rs-open { border: 0; background: transparent; color: var(--ah-accent-ink); font: 500 var(--ah-size-meta) var(--ah-font); cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+.rs-open:hover { text-decoration: underline; }
+.rs-whole { padding: 8px var(--ah-s5); font-size: var(--ah-size-meta); color: var(--ah-muted); background: var(--ah-surface-2); }
+
+/* ---- Direction 3: a quick-search popover ---- */
+.pop {
+  position: absolute; left: 0; top: 38px; z-index: 20; width: 460px; max-height: 520px; display: flex; flex-direction: column;
+  border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-menu), 0 20px 48px rgba(0,0,0,.18);
+  animation: pop-in 140ms cubic-bezier(.23,1,.32,1); transform-origin: top left;
+}
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px) scale(.985); } }
+.pop-list { overflow: auto; padding: 6px; }
+.pop-gh { padding: 8px 10px 4px; font: 600 var(--ah-size-label) var(--ah-font); color: var(--ah-muted); text-transform: uppercase; letter-spacing: .05em; }
+.pop-i { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 7px 10px; border-radius: var(--ah-r-md); cursor: pointer; }
+.pop-i:hover { background: var(--ah-hover); }
+.pop-i[aria-selected="true"] { background: var(--ah-accent-soft); }
+.pop-i svg.i { color: var(--ah-muted); }
+.pop-i .pl { font-weight: 500; font-size: var(--ah-size-ui); }
+.pop-i .pp { grid-column: 2; font-size: 11.5px; color: var(--ah-muted); }
+.pop-i .pk { grid-row: 1 / span 2; grid-column: 3; font: 500 11px var(--ah-mono); color: var(--ah-muted); visibility: hidden; }
+.pop-i[aria-selected="true"] .pk { visibility: visible; }
+.pop-foot { flex: none; display: flex; gap: 14px; padding: 8px 14px; border-top: 1px solid var(--ah-line-soft); font-size: 11.5px; color: var(--ah-muted); background: var(--ah-surface-2); border-radius: 0 0 var(--ah-r-lg) var(--ah-r-lg); }
+.pop-foot kbd { font: 500 11px var(--ah-mono); }
+
+/* ---- Phone (production at <= 760px: the list, or the section alone) ---- */
+.phone { --ah-topbar-pad-inline: 14px; --ah-control-row: 40px; }
+.ph .settings { display: block; padding: 6px 14px 40px; }
+.ph .s-nav { width: auto; position: static; }
+.ph .s-nav .s-h { margin: 6px 4px 12px; font-size: 26px; }
+.ph .s-nav-i { min-height: 44px; }
+.ph .s-back { display: inline-flex; margin: 0 0 4px -8px; }
+.ph .s-main > h2 { margin-top: 4px; font-size: 20px; }
+.ph .s-row, .ph .s-row.icon { grid-template-columns: 1fr; }
+.ph .s-row.icon .letter { display: none; }
+.ph .s-val { justify-content: flex-start; }
+.ph .ss-field { height: 40px; border-radius: 10px; }
+.ph .ss-field input { font-size: 16px; }
+.ph .ss-kbd { display: none; }
+.ph .r1 li { padding: 10px; }
+.ph .s-close { top: 6px; right: 8px; }
+.ph-top { height: 52px; flex: none; display: flex; align-items: center; padding: 0 8px; }
+/* Direction 3 on the phone: the search takes the whole screen. */
+.sheet { position: absolute; inset: 0; z-index: 30; background: var(--ah-bg); display: flex; flex-direction: column; animation: sheet-in 180ms cubic-bezier(.23,1,.32,1); }
+@keyframes sheet-in { from { opacity: 0; transform: translateY(12px); } }
+.sheet-top { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--ah-line-soft); }
+.sheet-top .ss { flex: 1; margin: 0; }
+.sheet .pop-list { flex: 1; padding: 6px 8px 40px; }
+.sheet .pop-i { padding: 11px 10px; }
+@media (prefers-reduced-motion: reduce) { .pop, .sheet, .s-row[data-landed] { animation: none; } }
+</style>
+</head>
+<body>
+<div class="pc-bar" role="toolbar" aria-label="Prototyypin asetukset">
+  <div class="pc-group" data-k="w"><span>Ikkuna</span><button data-v="oma">Oma</button><button data-v="1280">1280</button><button data-v="390">Puhelin</button></div>
+  <div class="pc-group" data-k="t"><span>Teema</span><button data-v="dark">Tumma</button><button data-v="light">Vaalea</button></div>
+  <div class="pc-group" data-k="role"><span>Rooli</span><button data-v="admin">Ylläpitäjä</button><button data-v="person">Henkilö</button></div>
+  <div class="pc-group" data-k="q"><span>Kokeile</span><button data-v="tumma">tumma</button><button data-v="avain">avain</button><button data-v="gmail">gmail</button><button data-v="malli">malli</button><button data-v="puhelin">puhelin</button><button data-v="recap">recap</button><button data-v="kiintiö">kiintiö</button><button data-v="lomake">lomake</button></div>
+  <div class="pc-read" id="readout"></div>
+</div>
+<div id="viewport"><div id="sizer"><div id="frame"></div></div></div>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">1 Sivupalkissa</button>
+  <button class="proto-picker-item">2 Tulossivu</button>
+  <button class="proto-picker-item">3 Pikahaku</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item">Nykyinen</button>
+</nav>
+
+<script>
+// ---- State (URL-backed so screenshots are reproducible) ----
+const q = new URLSearchParams(location.search);
+// w: window, t: theme, role: admin | person, sec: open section ('' is the phone list),
+// q: the search text, view: settings | closed.
+const S = {
+  w: q.get('w') || 'oma', t: q.get('t') || 'dark', role: q.get('role') || 'admin',
+  sec: q.get('sec') ?? 'tekoaly', q: q.get('q') || '', view: q.get('view') || 'settings',
+};
+if (q.get('bare') === '1') document.body.classList.add('bare');
+const VARIANTS = ['d1', 'd2', 'd3', 'now'];
+let V = null;
+// One visit: the selected result, the row a jump marks, whether d3's popover or sheet is open,
+// and where the phone's back row returns.
+const R = { sel: 0, land: '', pop: q.get('pop') === '1', back: '' };
+// The settings' own values, so controls work wherever they show (d2 edits them in the results).
+const VAL = { work: 'hidden', theme: 'dark', region: 'eu', editor: 'codemirror6', recapMode: 'auto', onboardingRepos: 'Henkilö valitsee' };
+
+const P = {
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  branch: '<circle cx="7" cy="6" r="2"/><path d="M7 8v10M7 12c0 3 3 4 7 4"/><circle cx="17" cy="16" r="2"/>',
+  cross: '<path d="M6 6l12 12M18 6 6 18"/>',
+  back: '<path d="M15 6l-6 6 6 6"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
+  user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.5 4-5 7-5s5.8 1.5 7 5"/>',
+  devices: '<rect x="3" y="5" width="13" height="10" rx="1.5"/><path d="M7 19h5"/><rect x="17" y="9" width="4.5" height="10" rx="1"/>',
+  agent: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+  recap: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>',
+  code: '<path d="m9 7-5 5 5 5M15 7l5 5-5 5"/>',
+  plug: '<path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0zM12 16v5"/>',
+  eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+  editor: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  disk: '<ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>',
+  server: '<rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="16" height="7" rx="1.5"/><path d="M8 7.5h.01M8 16.5h.01"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 8-8M16 7l2.5 2.5M14 9l2 2"/>',
+  steer: '<path d="M5 19V11a4 4 0 0 1 4-4h9"/><path d="m15 4 3 3-3 3"/>',
+  users: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.9-3.2 3.3-4.6 6-4.6s5.1 1.4 6 4.6"/><path d="M16 5.5a3 3 0 0 1 0 6M18 15.2c1.6.6 2.6 2 3 4.3"/>',
+  phone: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>',
+  enter: '<path d="M19 6v6a2 2 0 0 1-2 2H6m3-3-3 3 3 3"/>',
+};
+const ic = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const phone = () => S.w === '390';
+const admin = () => S.role === 'admin';
+
+// ---- The settings: every current section and its rows (from web/src: Account.tsx and the
+// components it renders), plus the coming Tilannekatsaus section. One table both draws the
+// page and is searched, so a result always lands on a row that exists. `kw` are the synonyms
+// a person might type; `group` is the h3 the row sits under. ----
+const SEG = (key, options) => ({ seg: key, options });
+const SECTIONS = [
+  { id: 'tili', label: 'Tili', icon: 'user', kw: ['account', 'profiili', 'profile', 'oma tili'], rows: [
+    { id: 'identity', label: 'Jari Mustonen', term: 'Profiili ja uloskirjautuminen', desc: 'jari@example.fi · GitHub-tili, jolla kirjauduit', mark: 'JM', ctrl: { btn: 'Kirjaudu ulos…' }, kw: ['kirjaudu ulos', 'uloskirjautuminen', 'logout', 'sign out', 'nimi', 'kuva', 'avatar'] },
+    { id: 'git-identity', label: 'Git-identiteetti', desc: 'Commitien tekijä. Tallentuu globaaliin ~/.gitconfig-tiedostoon.', ctrl: { value: 'Jari Mustonen · jari@example.fi', btn: 'Muokkaa' }, kw: ['git', 'commit', 'author', 'tekijä', 'user.name', 'user.email', 'sähköposti', 'email'] },
+  ] },
+  { id: 'laitteet', label: 'Laitteet', icon: 'devices', kw: ['devices', 'istunnot', 'sessions'], rows: [
+    { id: 'device-link', label: 'Kirjaudu puhelimella', desc: 'Näytä koodi ja avaa Habitat toisella laitteella ilman uutta GitHub-kirjautumista.', mark: 'QR', ctrl: { btn: 'Näytä koodi' }, kw: ['qr', 'puhelin', 'mobiili', 'phone', 'mobile', 'toinen laite', 'tabletti'] },
+    { id: 'sessions', group: 'Kirjautuneet laitteet', label: 'Tämä selain', term: 'Kirjautuneet laitteet', desc: 'Firefox · Linux · nyt', ctrl: { status: 'Tämä laite' }, kw: ['istunnot', 'sessions', 'kirjaa ulos', 'laitteet', 'selain'] },
+    { id: 'session-iphone', group: 'Kirjautuneet laitteet', label: 'iPhone', desc: 'Safari · iOS · eilen 21.14', ctrl: { btn: 'Kirjaa ulos' }, kw: ['istunnot', 'kirjaa ulos'] },
+  ] },
+  { id: 'tekoaly', label: 'Tekoäly', icon: 'agent', kw: ['ai', 'tekoäly', 'mallit', 'models', 'llm'], intro: 'Mallit, joita agentit käyttävät, ja tilaukset tai avaimet, joilla ne saadaan.', rows: [
+    { id: 'default-model', label: 'Oletusmalli', desc: 'Uusien keskustelujen malli ja ajattelun taso.', ctrl: { chip: 'Claude Sonnet 5.5', sub: 'keskitaso' }, kw: ['malli', 'model', 'kielimalli', 'llm', 'ajattelu', 'thinking', 'reasoning', 'päättely'] },
+    { id: 'agent-work', label: 'Agentin työ', desc: 'Ajattelu ja työkalut keskustelussa oletuksena.', ctrl: SEG('work', [['hidden', 'Piilossa'], ['visible', 'Näkyvissä']]), kw: ['näytä työ', 'työkalut', 'tool calls', 'ajattelu näkyviin', 'thinking'] },
+    { id: 'chatgpt', group: 'Tilaukset', label: 'ChatGPT-tilaus', desc: 'Kirjautunut. Mallit: GPT-6 Luna, GPT-6 mini.', mark: 'Ch', ctrl: { status: 'Kirjautunut', btn: 'Kirjaudu uudelleen' }, kw: ['openai', 'codex', 'gpt', 'tilaus', 'subscription'] },
+    { id: 'claude', group: 'Tilaukset', label: 'Claude-tilaus', desc: 'Kirjautunut. Mallit: Claude Sonnet 5.5, Claude Opus 5.5.', mark: 'Cl', ctrl: { status: 'Kirjautunut', btn: 'Kirjaudu uudelleen' }, kw: ['anthropic', 'claude max', 'claude pro', 'tilaus', 'subscription'] },
+    { id: 'api-keys', group: 'API-avaimet', label: 'API-avaimet', desc: 'Oma avain palveluntarjoajalle. Käyttö laskutetaan avaimen omistajalta.', ctrl: { value: 'DeepSeek · Oma', btn: 'Lisää avain…' }, kw: ['api key', 'token', 'avain', 'deepseek', 'openrouter', 'anthropic', 'openai'] },
+  ] },
+  { id: 'tilannekatsaus', label: 'Tilannekatsaus', icon: 'recap', isNew: true, kw: ['recap', 'yhteenveto', 'summary', 'tiivistelmä', 'katsaus'], intro: 'Kortti, joka kertoo hiljaiseksi jääneen keskustelun tilanteen ja seuraavan askeleen. Koskee kaikkia keskustelujasi.', rows: [
+    { id: 'recap-mode', label: 'Milloin katsaus tehdään', desc: 'Automaattisesti hiljaisuuden jälkeen, vain pyynnöstä tai ei koskaan.', ctrl: SEG('recapMode', [['auto', 'Automaattisesti'], ['ask', 'Kun pyydän'], ['off', 'Ei koskaan']]), kw: ['recap', 'yhteenveto', 'summary', 'kortti', 'pois päältä'] },
+    { id: 'recap-delay', label: 'Hiljaisuus ennen katsausta', desc: 'Kuinka kauan keskustelu on hiljaa ennen kuin katsaus tehdään.', ctrl: { num: 3, unit: 'min' }, kw: ['viive', 'delay', 'odotus', 'minuutit', 'aika'] },
+    { id: 'recap-length', label: 'Katsauksen pituus', desc: 'Kortin tekstin enimmäispituus.', ctrl: { num: 160, unit: 'tokenia' }, kw: ['tokenit', 'tokens', 'pituus', 'length', 'lyhyt'] },
+    { id: 'recap-messages', label: 'Luettavat viestit', desc: 'Kuinka monta viimeisintä viestiä katsaus lukee.', ctrl: { num: 20, unit: 'viestiä' }, kw: ['viestimäärä', 'messages', 'konteksti'] },
+    { id: 'recap-model', label: 'Malli', desc: 'Keskitason malli. Ei koskaan Fable- tai Opus-malleja.', ctrl: { chip: 'Claude Sonnet 5.5', sub: 'automaattinen' }, kw: ['model', 'malli', 'kielimalli', 'taustamalli'] },
+  ] },
+  { id: 'sanelu', label: 'Sanelu', icon: 'mic', kw: ['dictation', 'speech', 'puhe', 'ääni', 'mikrofoni', 'voice'], intro: 'Sanelu kirjoittaa puheesi viestikenttään. Puhe kulkee selaimesta suoraan Sonioxille, ja käyttö laskutetaan sen avaimen omistajalta, jonka avainta käytetään.', rows: [
+    { id: 'speech-key', label: 'Soniox-avain', desc: 'Ylläpitäjän antama yhteinen avain.', mark: 'So', ctrl: { btn: 'Lisää oma avain…' }, kw: ['soniox', 'avain', 'api key', 'puhe', 'dictation'] },
+    { id: 'speech-region', label: 'Alue', desc: 'Sama kuin Soniox-projektin, jossa avain on tehty.', ctrl: SEG('region', [['eu', 'EU'], ['us', 'USA']]), kw: ['region', 'eu', 'us', 'sijainti'] },
+  ] },
+  { id: 'koodipalvelut', label: 'Koodipalvelut', icon: 'code', kw: ['git', 'code hosts', 'repot', 'repositories'], intro: 'Palvelut, joista työtilat kloonataan ja joihin agentit pushaavat.', rows: [
+    { id: 'github', label: 'GitHub', desc: 'Kirjautunut käyttäjänä maintainer. Selaimesta uloskirjautuminen ei poista palvelimen valtuutusta.', mark: 'GH', ctrl: { status: 'Yhdistetty', btn: 'Kirjaudu uudelleen' }, kw: ['gh', 'repo', 'push', 'pull', 'token', 'git'] },
+    { id: 'gitea', label: 'Gitea', desc: 'git.example.fi · pääsytunnus voimassa', mark: 'Gt', ctrl: { btn: 'Muokkaa…' }, kw: ['forgejo', 'oma git-palvelin', 'pääsytunnus', 'token'] },
+    { id: 'gitlab', label: 'GitLab', desc: 'Ei yhdistetty.', mark: 'GL', ctrl: { btn: 'Yhdistä…' }, kw: ['gitlab.com', 'pääsytunnus', 'token'] },
+    { id: 'workspaces', group: 'Tuodut työtilat', label: 'Tuodut työtilat', desc: 'aurinkokello · open-habitat · kotisivu', ctrl: { value: '3 työtilaa' }, kw: ['kloonatut', 'repot', 'workspaces', 'työtilat'] },
+  ] },
+  { id: 'tiedot', label: 'Tiedot agenteille', icon: 'plug', kw: ['integraatiot', 'integrations', 'yhteydet', 'tilit'], intro: 'Sähköposti, kalenterit, yhteystiedot ja tiedostot, joita agenttisi saavat käyttää.', rows: [
+    { id: 'google', label: 'Google', desc: 'jari@example.fi · Gmail, Kalenteri, Yhteystiedot, Drive', mark: 'G', ctrl: { status: 'Yhdistetty', btn: '⋯' }, kw: ['gmail', 'google drive', 'kalenteri', 'calendar', 'contacts', 'yhteystiedot', 'sähköposti', 'mail'] },
+    { id: 'microsoft', label: 'Microsoft', desc: 'Outlook, kalenteri, yhteystiedot, OneDrive ja SharePoint yhdellä kirjautumisella.', mark: 'M', ctrl: { btn: 'Yhdistä…' }, kw: ['outlook', 'onedrive', 'sharepoint', 'office 365', 'm365', 'kalenteri', 'sähköposti', 'mail'] },
+    { id: 'apple', label: 'Apple', desc: 'iCloud Mail, Kalenteri ja Yhteystiedot sovelluskohtaisella salasanalla.', mark: 'Ap', ctrl: { btn: 'Yhdistä…' }, kw: ['icloud', 'sovelluskohtainen salasana', 'app-specific password', 'kalenteri', 'sähköposti', 'mail'] },
+    { id: 'dropbox', label: 'Dropbox', desc: 'Tiedostot synkronoidaan kotihakemistoosi.', mark: 'Db', ctrl: { btn: 'Yhdistä…' }, kw: ['tiedostot', 'files', 'pilvi', 'cloud'] },
+    { id: 'imap', label: 'Muu sähköposti', desc: 'IMAP-palvelin käyttäjätunnuksella ja salasanalla.', mark: '@', ctrl: { btn: 'Yhdistä…' }, kw: ['imap', 'smtp', 'fastmail', 'posti', 'mail', 'sähköposti'] },
+  ] },
+  { id: 'ulkoasu', label: 'Ulkoasu', icon: 'eye', kw: ['appearance', 'look', 'näkymä'], rows: [
+    { id: 'theme', label: 'Teema', desc: 'Järjestelmä seuraa laitteen asetusta. Koskee tätä selainta.', ctrl: SEG('theme', [['system', 'Järjestelmä'], ['light', 'Vaalea'], ['dark', 'Tumma']]), kw: ['tumma tila', 'dark mode', 'vaalea tila', 'light mode', 'yötila', 'väri', 'theme', 'värit'] },
+  ] },
+  { id: 'editori', label: 'Editori', icon: 'editor', kw: ['editor', 'muokkain'], rows: [
+    { id: 'editor', label: 'Työtilan editori', desc: 'Puhelimessa aina CodeMirror 6.', ctrl: SEG('editor', [['codemirror6', 'CodeMirror 6'], ['vscode', 'VS Code']]), kw: ['vscode', 'vs code', 'codemirror', 'ide', 'koodieditori'] },
+  ] },
+  { id: 'tila', label: 'Tallennustila', icon: 'disk', kw: ['storage', 'levy', 'disk', 'tila'], rows: [
+    { id: 'usage', label: 'Käyttö', desc: '4,2 GiB / 20 GiB · 118 GiB vapaana palvelimen levyllä', ctrl: { bar: 21 }, kw: ['kiintiö', 'quota', 'levytila', 'disk', 'tilaa'] },
+    { id: 'trash', group: 'Roskakori', label: 'Roskakori', desc: '2 poistettua työtilaa, jotka voi palauttaa.', ctrl: { btn: 'Tyhjennä roskakori…', danger: true }, kw: ['poistetut', 'deleted', 'palauta', 'restore', 'trash'] },
+  ] },
+  // Palvelimen ylläpito: only for an administrator.
+  { id: 'palvelin', admin: true, label: 'Palvelin', icon: 'server', kw: ['server', 'ylläpito', 'admin'], rows: [
+    { id: 'server-name', label: 'Palvelimen nimi', desc: 'Näkyy kaikille sivupalkissa. Tallentuu, kun poistut kentästä.', ctrl: { input: 'Mustosten Habitat' }, kw: ['nimi', 'name', 'otsikko'] },
+    { id: 'server-version', label: 'Versio', desc: 'Palvelin ja tämä välilehti ajavat samaa versiota.', ctrl: { value: 'pilot.13 · 4f5eade' }, kw: ['version', 'päivitys', 'release', 'julkaisu'] },
+  ] },
+  { id: 'palvelinintegraatiot', admin: true, label: 'Palvelinintegraatiot', icon: 'plug', kw: ['oauth', 'server integrations'], intro: 'Sovellukset, joiden kautta henkilöt yhdistävät Googlen, Microsoftin ja Dropboxin.', rows: [
+    { id: 'app-google', label: 'Google-sovellus', desc: 'Asiakas ja tunnukset asetettu. Kohdeyleisö: ulkoinen.', mark: 'G', ctrl: { status: 'Käytössä', btn: '⋯' }, kw: ['oauth', 'client id', 'client secret', 'tunnukset', 'api:t', 'gmail'] },
+    { id: 'app-microsoft', label: 'Microsoft-sovellus', desc: 'Ei asetettu. Henkilöt eivät voi yhdistää Microsoftia.', mark: 'M', ctrl: { btn: 'Rekisteröi sovellus…' }, kw: ['oauth', 'azure', 'entra', 'client id', 'tunnukset', 'outlook'] },
+    { id: 'app-dropbox', label: 'Dropbox-sovellus', desc: 'Ei asetettu.', mark: 'Db', ctrl: { btn: 'Luo sovellus…' }, kw: ['oauth', 'app key', 'tunnukset'] },
+  ] },
+  { id: 'aiavain', admin: true, label: 'AI-avain', icon: 'key', kw: ['site key', 'yhteinen avain'], rows: [
+    { id: 'site-key', label: 'Yhteinen AI-avain', desc: 'Anthropic-avain henkilöille, joilla ei ole omaa tilausta tai avainta.', ctrl: { value: 'sk-ant-…x7Qa', btn: 'Vaihda…' }, kw: ['api key', 'avain', 'anthropic', 'jaettu', 'site key', 'token'] },
+  ] },
+  { id: 'saneluavain', admin: true, label: 'Saneluavain', icon: 'mic', kw: ['speech key', 'sanelu', 'soniox'], rows: [
+    { id: 'site-speech-key', label: 'Yhteinen Soniox-avain', desc: 'Kaikkien sanelu käyttää tätä, ellei henkilöllä ole omaa avainta.', ctrl: { value: '…f81c', btn: 'Vaihda…' }, kw: ['soniox', 'avain', 'api key', 'sanelu', 'dictation'] },
+  ] },
+  { id: 'kayttoonotto', admin: true, label: 'Käyttöönotto', icon: 'steer', kw: ['onboarding', 'uusi käyttäjä', 'reitti'], rows: [
+    { id: 'onboarding-repos', label: 'Repot', desc: 'Repovalitsin avautuu ilman esivalintoja.', ctrl: { chip: 'Henkilö valitsee' }, kw: ['oletusrepo', 'esivalitut repot', 'repositories', 'onboarding'] },
+    { id: 'onboarding-ai', label: 'AI-tili', desc: 'Kirjautuminen tilauksella tai oma avain.', ctrl: { chip: 'Henkilö valitsee' }, kw: ['tilaus', 'avain', 'onboarding'] },
+  ] },
+  { id: 'kayttajat', admin: true, label: 'Käyttäjät ja pääsy', icon: 'users', kw: ['users', 'access', 'pääsy', 'kutsu', 'invite'], rows: [
+    { id: 'access', label: 'Kuka saa kirjautua', desc: 'GitHub-käyttäjät, jotka olet hyväksynyt.', ctrl: { value: '3 käyttäjää', btn: 'Lisää…' }, kw: ['allowlist', 'hyväksy', 'kutsu', 'invite', 'pääsy', 'access'] },
+  ] },
+  { id: 'levy', admin: true, label: 'Levytila', icon: 'disk', kw: ['disk', 'levy', 'storage'], rows: [
+    { id: 'disk', label: 'Levy', desc: 'Käyttäjäkohtaiset rajat käytössä. 118 GiB vapaana.', ctrl: { bar: 58 }, kw: ['levytila', 'disk'] },
+    { id: 'default-limit', label: 'Oletusraja', desc: 'Uusien käyttäjien raja. Ei muuta nykyisiä.', ctrl: { num: 20, unit: 'GiB' }, kw: ['kiintiö', 'quota', 'raja', 'limit'] },
+  ] },
+];
+const sectionsShown = () => SECTIONS.filter(s => !s.admin || admin());
+const secOf = id => SECTIONS.find(s => s.id === id);
+
+// ---- Matching: case- and accent-insensitive word prefixes (so "aani" finds "ääni"). Every
+// word typed must match the setting's name, a synonym, the description or the section. ----
+const fold = s => [...String(s)].map(c => c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')[0] || ' ').join('');
+function wordHits(text, term) {
+  // Start indices of `term` in `text` (both folded); length is term.length. A short term must
+  // begin a word; from four letters it may sit inside one, because Finnish compounds
+  // ("Oletusmalli", "Saneluavain") hide the word a person types.
+  const f = fold(text), out = [];
+  let i = f.indexOf(term);
+  while (i >= 0) { if (term.length >= 4 || i === 0 || /[^a-z0-9]/.test(f[i - 1])) out.push(i); i = f.indexOf(term, i + 1); }
+  return out;
+}
+const terms = s => fold(s).split(/\s+/).filter(Boolean);
+function entries() {
+  const out = [];
+  for (const s of sectionsShown()) {
+    out.push({ kind: 'section', sec: s, label: s.label, path: s.admin ? 'Palvelimen ylläpito' : 'Asetukset', kw: s.kw, desc: s.intro || '' });
+    for (const r of s.rows) out.push({ kind: 'row', sec: s, row: r, label: r.term || r.label, path: [s.admin ? 'Ylläpito' : '', s.label, r.group].filter(Boolean).join(' › '), kw: r.kw || [], desc: r.desc || '' });
+  }
+  return out;
+}
+function search(query) {
+  const ts = terms(query);
+  if (!ts.length) return [];
+  const res = [];
+  for (const e of entries()) {
+    let score = 0, via = null, kwHit = null, ok = true;
+    for (const t of ts) {
+      if (wordHits(e.label, t).length) { score += fold(e.label).startsWith(t) ? 120 : 100; continue; }
+      const k = e.kw.find(k => wordHits(k, t).length);
+      if (k) { score += 60; via = via || 'kw'; kwHit = kwHit || k; continue; }
+      // A section's name alone finds the section, not every row in it; with more words it narrows.
+      if (e.kind === 'row' && ts.length > 1 && wordHits(e.sec.label, t).length) { score += 30; continue; }
+      if (t.length >= 3 && wordHits(e.desc, t).length) { score += 20; via = via || 'desc'; continue; }
+      ok = false; break;
+    }
+    // The person's own settings come before the server's at an equal match.
+    if (ok) res.push({ ...e, score: score + (e.kind === 'section' ? 5 : 0) - (e.sec.admin ? 25 : 0), via, kwHit });
+  }
+  return res.sort((a, b) => b.score - a.score);
+}
+// Wrap every typed word's matches in <mark>, against the original text.
+function hl(text, query) {
+  const ts = terms(query);
+  if (!ts.length) return esc(text);
+  const marks = new Array(text.length).fill(false);
+  for (const t of ts) for (const i of wordHits(text, t)) for (let j = i; j < i + t.length; j++) marks[j] = true;
+  let out = '', open = false;
+  [...text].forEach((c, i) => {
+    if (marks[i] && !open) { out += '<mark>'; open = true; }
+    if (!marks[i] && open) { out += '</mark>'; open = false; }
+    out += esc(c);
+  });
+  return out + (open ? '</mark>' : '');
+}
+function snippet(text, query) {
+  const t = terms(query).find(t => wordHits(text, t).length);
+  const i = t ? wordHits(text, t)[0] : 0;
+  const start = Math.max(0, text.lastIndexOf(' ', Math.max(0, i - 24)));
+  return (start > 0 ? '…' : '') + hl(text.slice(start).trim(), query);
+}
+const results = () => search(S.q);
+// The rows a search marks in a section: the matching rows, or none when only the section matched.
+const hitRows = secId => new Set(results().filter(r => r.kind === 'row' && r.sec.id === secId).map(r => r.row.id));
+
+// ---- Drawing the settings ----
+function ctrlHTML(c) {
+  let h = '';
+  if (c.value) h += `<span class="s-desc">${esc(c.value)}</span>`;
+  if (c.status) h += `<span class="status${c.status === 'Tämä laite' ? ' off' : ''}"><i></i>${esc(c.status)}</span>`;
+  if (c.seg) h += `<div class="seg" role="radiogroup">${c.options.map(([v, l]) => `<button type="button" role="radio" aria-checked="${VAL[c.seg] === v}" data-act="val" data-k="${c.seg}" data-v="${v}">${esc(l)}</button>`).join('')}</div>`;
+  if (c.chip) h += `<button type="button" class="chip" data-act="toast" data-msg="Avaisi valitsimen">${esc(c.chip)}${c.sub ? ` <span class="sub">· ${esc(c.sub)}</span>` : ''}</button>`;
+  if (c.num != null) h += `<label class="num"><input type="number" value="${c.num}" aria-label="arvo">${esc(c.unit)}</label>`;
+  if (c.input) h += `<label class="txt"><input type="text" value="${esc(c.input)}" aria-label="Palvelimen nimi"></label>`;
+  if (c.bar != null) h += `<span class="bar" aria-hidden="true"><span style="width:${c.bar}%"></span></span>`;
+  if (c.btn) h += `<button type="button" class="btn${c.danger ? ' danger' : ''}" data-act="toast" data-msg="${esc(c.btn)}">${esc(c.btn)}</button>`;
+  return h;
+}
+function rowHTML(s, r, { hit = false, query = '' } = {}) {
+  const q = hit ? query : '';
+  const land = R.land === r.id ? ' data-landed' : '';
+  return `<div class="s-row${r.mark != null ? ' icon' : ''}" data-settings-row="${r.id}" tabindex="-1"${hit ? ' data-hit' : ''}${land}>
+    ${r.mark != null ? `<span class="letter">${esc(r.mark)}</span>` : ''}
+    <div class="s-lbl"><strong>${hl(r.label, q)}</strong><span class="s-desc">${hl(r.desc, q)}</span></div>
+    <div class="s-val">${ctrlHTML(r.ctrl)}</div></div>`;
+}
+// A section's rows in cards, with an h3 before each group.
+function rowsHTML(s, rows, opts) {
+  let h = '', group = null, open = false;
+  for (const r of rows) {
+    if (!open || r.group !== group) {
+      if (open) h += '</div>';
+      if (r.group && r.group !== group) h += `<h3 class="s-h3">${esc(r.group)}</h3>`;
+      h += '<div class="s-card">'; open = true; group = r.group;
+    }
+    h += rowHTML(s, r, { hit: opts.hits?.has(r.id), query: opts.query });
+  }
+  return h + (open ? '</div>' : '');
+}
+function sectionHTML(s) {
+  const hits = S.q && V !== 'now' ? hitRows(s.id) : new Set();
+  const back = R.back === 'results' ? 'Hakutulokset' : 'Asetukset';
+  return `<button class="btn quiet s-back" data-act="phone-back">${ic('back')}${back}</button>
+    <h2 tabindex="-1" data-testid="settings-section-${s.id}">${esc(s.label)}</h2>
+    ${s.intro ? `<p class="s-intro">${esc(s.intro)}</p>` : ''}
+    ${rowsHTML(s, s.rows, { hits, query: S.q })}
+    ${s.id === 'palvelin' ? '' : '<p class="s-version">Palvelin ajaa versiota <code>pilot.13</code>.</p>'}`;
+}
+function navItems(items, extra = () => '') {
+  return items.map(s => `<button type="button" class="s-nav-i${s.isNew ? ' new' : ''}${extra(s)}" data-act="sec" data-sec="${s.id}" data-testid="settings-${s.id}"${S.sec === s.id && !phone() ? ' aria-current="page"' : ''}>${ic(s.icon)}<span class="nl">${esc(s.label)}</span>${s._cnt ? `<span class="cnt">${s._cnt}</span>` : ''}</button>`).join('');
+}
+function navSections(extra) {
+  const own = sectionsShown().filter(s => !s.admin), adm = sectionsShown().filter(s => s.admin);
+  return navItems(own, extra) + (adm.length ? `<span class="s-nav-h">Palvelimen ylläpito</span>${navItems(adm, extra)}` : '');
+}
+function fieldHTML({ autofocus = false } = {}) {
+  const clear = S.q ? `<button type="button" class="ss-clear" data-act="clear" aria-label="Tyhjennä haku" data-testid="search-clear">${ic('cross')}</button>` : (phone() ? '' : '<span class="ss-kbd" aria-hidden="true">/</span>');
+  return `<div class="ss-field">${ic('search')}<input type="search" data-testid="settings-search" placeholder="Hae asetuksista" aria-label="Hae asetuksista" autocomplete="off" spellcheck="false" value="${esc(S.q)}"${V === 'd3' ? ' role="combobox" aria-expanded="' + (R.pop ? 'true' : 'false') + '" aria-controls="ss-pop"' : ''}${autofocus ? ' data-autofocus' : ''}>${clear}</div>`;
+}
+const sumText = n => (n === 0 ? 'Ei osumia' : n === 1 ? '1 osuma' : `${n} osumaa`);
+function noneHTML() {
+  return `<div class="r-none" data-testid="search-none">Ei osumia haulle <b>“${esc(S.q)}”</b>. Kokeile toista sanaa, esimerkiksi <i>teema</i>, <i>malli</i> tai <i>avain</i>.</div>`;
+}
+
+// ---- Direction 1: results replace the section list; the pane follows the selection ----
+function d1Nav() {
+  const res = results();
+  if (!S.q) return navSections();
+  if (!res.length) return noneHTML();
+  return `<ul class="r1" role="listbox" aria-label="Hakutulokset" data-testid="search-results">${res.map((r, i) => {
+    const why = r.via === 'kw' ? `<span class="rw">osui: ${hl(r.kwHit, S.q)}</span>` : r.via === 'desc' ? `<span class="rp">${snippet(r.desc, S.q)}</span>` : '';
+    return `<li role="option" aria-selected="${i === R.sel}" data-act="pick" data-i="${i}" data-testid="result-${r.kind === 'row' ? r.row.id : r.sec.id}">${ic(r.sec.icon)}<span class="rt"><span class="rl">${hl(r.label, S.q)}</span><span class="rp">${esc(r.path)}</span>${why}</span></li>`;
+  }).join('')}</ul>`;
+}
+// ---- Direction 2: the pane becomes a results page with the real controls ----
+function d2Groups() {
+  const res = results();
+  const bySec = new Map();
+  for (const r of res) {
+    if (!bySec.has(r.sec.id)) bySec.set(r.sec.id, { whole: false, rows: new Set() });
+    const g = bySec.get(r.sec.id);
+    if (r.kind === 'section') g.whole = true; else g.rows.add(r.row.id);
+  }
+  return sectionsShown().filter(s => bySec.has(s.id)).map(s => {
+    const g = bySec.get(s.id);
+    // A section that matched by name shows all of its rows.
+    const rows = g.whole ? s.rows : s.rows.filter(r => g.rows.has(r.id));
+    return { s, rows, whole: g.whole, n: g.whole ? s.rows.length : rows.length };
+  });
+}
+function d2Page() {
+  const groups = d2Groups();
+  const n = groups.reduce((a, g) => a + g.n, 0);
+  if (!groups.length) return `<div class="rs-head"><h2>Hakutulokset</h2></div>${noneHTML()}`;
+  return `<div class="rs-head"><h2 tabindex="-1">Hakutulokset</h2><span role="status" data-testid="search-summary">${sumText(n)} · ${groups.length} ${groups.length === 1 ? 'osio' : 'osiota'}</span></div>
+    ${groups.map(g => `<section class="rs-group" data-testid="group-${g.s.id}" data-group="${g.s.id}">
+      <div class="rs-gh">${ic(g.s.icon)}<span>${hl(g.s.label, S.q)}</span>${g.s.admin ? '<span class="crumb">· Palvelimen ylläpito</span>' : ''}<span class="sp"></span><button class="rs-open" data-act="open-sec" data-sec="${g.s.id}">Avaa osio ›</button></div>
+      ${rowsHTML(g.s, g.rows, { hits: new Set(g.rows.map(r => r.id)), query: S.q })}
+    </section>`).join('')}`;
+}
+function d2Nav() {
+  if (!S.q) return navSections();
+  const counts = new Map(d2Groups().map(g => [g.s.id, g.n]));
+  for (const s of SECTIONS) s._cnt = counts.get(s.id) || 0;
+  const h = navSections(s => (counts.has(s.id) ? '' : ' dim'));
+  for (const s of SECTIONS) s._cnt = 0;
+  return h;
+}
+// ---- Direction 3: a popover under the field; the page stays until a result is chosen ----
+const SUGGEST = ['default-model', 'theme', 'device-link', 'recap-mode'];
+function d3Items() {
+  if (!S.q) {
+    const all = entries();
+    return SUGGEST.map(id => all.find(e => e.kind === 'row' && e.row.id === id)).filter(Boolean);
+  }
+  return results();
+}
+function d3List() {
+  const items = d3Items();
+  if (S.q && !items.length) return noneHTML();
+  const secs = items.filter(r => r.kind === 'section'), rows = items.filter(r => r.kind === 'row');
+  const order = [...secs, ...rows];
+  const item = (r, i) => `<div class="pop-i" role="option" aria-selected="${i === R.sel}" data-act="pick" data-i="${i}" data-testid="result-${r.kind === 'row' ? r.row.id : r.sec.id}">${ic(r.sec.icon)}<span class="pl">${hl(r.label, S.q)}</span><span class="pk">↵</span><span class="pp">${esc(r.path)}${r.via === 'kw' ? ` · osui: ${hl(r.kwHit, S.q)}` : r.via === 'desc' ? ` · ${snippet(r.desc, S.q)}` : ''}</span></div>`;
+  let h = '', i = 0;
+  if (!S.q) h += `<div class="pop-gh">Ehdotuksia</div>${order.map(r => item(r, i++)).join('')}`;
+  else {
+    if (secs.length) h += `<div class="pop-gh">Osiot</div>${secs.map(r => item(r, i++)).join('')}`;
+    if (rows.length) h += `<div class="pop-gh">Asetukset</div>${rows.map(r => item(r, i++)).join('')}`;
+  }
+  return h;
+}
+const d3Order = () => { const it = d3Items(); return S.q ? [...it.filter(r => r.kind === 'section'), ...it.filter(r => r.kind === 'row')] : it; };
+function d3Pop() {
+  if (!R.pop) return '';
+  return `<div class="pop" id="ss-pop" role="listbox" aria-label="Hakutulokset" data-testid="search-results"><div class="pop-list">${d3List()}</div>
+    <div class="pop-foot"><span><kbd>↑↓</kbd> valitse</span><span><kbd>↵</kbd> avaa</span><span><kbd>Esc</kbd> sulje</span></div></div>`;
+}
+
+// The ordered list Enter and the arrows move through, per direction.
+function pickList() { return V === 'd3' ? d3Order() : V === 'd1' ? results() : []; }
+
+function settingsHTML() {
+  const ph = phone();
+  const listView = ph && !S.sec; // the phone's settings list
+  let nav = '', main = '';
+  const search = V === 'now' ? '' : `<div class="ss">${fieldHTML()}${V === 'd3' && !ph ? d3Pop() : ''}${V === 'd1' ? `<span class="ss-sum" role="status" data-testid="search-summary-nav">${S.q ? sumText(results().length) : ''}</span>` : ''}</div>`;
+  const navBody = V === 'd1' ? d1Nav() : V === 'd2' ? d2Nav() : navSections();
+  nav = `<nav class="s-nav" aria-label="Asetusten osiot" data-testid="settings-navigation"><div class="s-h" data-testid="settings-title">Asetukset</div>${search}${ph && V === 'd2' && S.q ? '' : navBody}</nav>`;
+  const s = secOf(S.sec);
+  if (V === 'd2' && S.q && (!ph || listView)) main = `<div class="s-main" data-testid="settings-main">${d2Page()}</div>`;
+  else if (s && (!ph || !listView)) main = `<div class="s-main" data-testid="settings-main">${sectionHTML(s)}</div>`;
+  const close = `<button type="button" class="icon-btn s-close" data-act="close" aria-label="Sulje asetukset" data-testid="settings-close">${ic('cross')}</button>`;
+  if (ph) {
+    const sheet = V === 'd3' && R.pop ? `<div class="sheet" data-testid="search-sheet"><div class="sheet-top"><div class="ss">${fieldHTML()}</div><button class="btn quiet" data-act="sheet-cancel">Peruuta</button></div><div class="pop-list" role="listbox" aria-label="Hakutulokset" data-testid="search-results">${d3List()}</div></div>` : '';
+    return `<div class="ph-top">${close}</div><div class="scroll" data-testid="settings-scroll"><div class="settings">${listView ? nav : ''}${main}</div></div>${sheet}`;
+  }
+  return `${close}<div class="scroll" data-testid="settings-scroll"><div class="settings">${nav}${main}</div></div>`;
+}
+
+function conversationHTML() {
+  return `<div class="convo"><div class="convo-col">
+    <div class="msg-user">Lisää varjon pituuden laskentaan tuki kesä- ja talviajalle ja korjaa testit.</div>
+    <div class="msg-agent"><p>Lisäsin aikavyöhykkeen käsittelyn tiedostoon <code>src/shadow.ts</code>. Kaikki 18 testiä menevät läpi.</p></div>
+    <div class="msg-user">Hyvä. Avaan asetukset hetkeksi.</div>
+  </div></div><div class="composer"><div class="field">Kirjoita viesti…</div></div>`;
+}
+function rail() {
+  return `<nav class="rail"><div class="rail-head">${ic('menu')} Open Habitat</div>
+    <div class="rail-item">${ic('plus')}<span>Uusi työtila</span></div>
+    <div class="rail-ws">${ic('branch')} aurinkokello</div>
+    <div class="rail-item sub${S.view === 'closed' ? ' cur' : ''}" data-act="close"><span>Varjon pituuden laskenta</span></div>
+    <div class="rail-item sub"><span>Kuvien pakkaus WebP-muotoon</span></div>
+    <div class="rail-ws">${ic('branch')} open-habitat</div>
+    <div class="rail-item sub"><span>Julkaisun valmistelu</span></div>
+    <div class="rail-fill"></div>
+    <div class="rail-account${S.view === 'settings' ? ' cur' : ''}" data-act="open-settings" data-testid="open-settings"><span class="avatar">JM</span><span>Jari Mustonen</span></div></nav>`;
+}
+function appHTML() {
+  const ph = phone();
+  let view;
+  if (S.view === 'closed') {
+    const top = ph ? `<div class="topbar"><button class="icon-btn" data-act="open-settings" data-testid="open-settings" aria-label="Asetukset">${ic('menu')}</button><h1>Varjon pituuden laskenta</h1></div>` : '';
+    view = top + conversationHTML();
+  } else view = settingsHTML();
+  return `<div class="app${ph ? ' phone ph' : ''}" data-variant="${V}">${ph ? '' : rail()}<main class="main">${view}</main></div>`;
+}
+
+// ---- Frame geometry ----
+const HEIGHTS = { 1280: 800, 390: 844 };
+const viewport = document.getElementById('viewport');
+const sizer = document.getElementById('sizer');
+const stage = document.getElementById('frame');
+function frameSize() {
+  if (S.w === 'oma') return { W: viewport.clientWidth, H: viewport.clientHeight };
+  return { W: +S.w, H: HEIGHTS[S.w] };
+}
+function layoutFrame() {
+  const { W, H } = frameSize();
+  const bare = document.body.classList.contains('bare');
+  const s = S.w === 'oma' || bare ? 1 : Math.min(1, (viewport.clientWidth - 24) / W, (viewport.clientHeight - 84) / H);
+  stage.style.width = W + 'px'; stage.style.height = H + 'px';
+  stage.style.transform = s < 1 ? `scale(${s})` : '';
+  sizer.style.width = Math.round(W * s) + 'px'; sizer.style.height = Math.round(H * s) + 'px';
+  stage.dataset.theme = S.t;
+}
+function readout() {
+  const n = S.q ? results().length : 0;
+  const how = { d1: 'tulokset sivupalkissa', d2: 'tulossivu', d3: 'pikahaku', now: 'ei hakua' }[V];
+  document.getElementById('readout').innerHTML = `${esc(how)}${S.q && V !== 'now' ? ` · “${esc(S.q)}” → <b>${sumText(n)}</b>` : ''} · Host nyt: <b>ei hakua, rivihyppy on</b>`;
+}
+
+// ---- Picker wiring (picker.js expects `stage` and `variants`) ----
+const variants = VARIANTS.map(v => () => {
+  if (V !== null && V !== v) { R.sel = 0; R.land = ''; R.pop = false; R.back = ''; }
+  V = v; stage.dataset.variant = v; layoutFrame(); readout();
+  return appHTML();
+});
+// Repaint, keeping the search field's focus and caret (the whole frame is redrawn).
+let painting = false;
+function paint({ focus = false } = {}) {
+  const a = document.activeElement;
+  const had = a && a.matches?.('[data-testid="settings-search"]');
+  const pos = had ? a.selectionStart : null;
+  const scroller = stage.querySelector('[data-testid="settings-scroll"]');
+  const top = scroller ? scroller.scrollTop : 0;
+  stage.innerHTML = appHTML(); readout(); syncUrl();
+  const sc = stage.querySelector('[data-testid="settings-scroll"]');
+  if (sc) sc.scrollTop = top;
+  if (had || focus) {
+    const inputs = stage.querySelectorAll('[data-testid="settings-search"]');
+    const input = inputs[inputs.length - 1];
+    // Restoring focus is not the person focusing the field: it must not reopen d3's popover.
+    painting = true;
+    if (input) { input.focus({ preventScroll: true }); const p = pos ?? input.value.length; input.setSelectionRange(p, p); }
+    painting = false;
+  }
+}
+let toastTimer;
+function toast(msg) {
+  let t = stage.querySelector('.toast');
+  if (!t) { t = document.createElement('div'); t.className = 'toast'; stage.appendChild(t); }
+  t.textContent = `Prototyyppi: ${msg}`;
+  Object.assign(t.style, { position: 'absolute', left: '50%', bottom: '24px', transform: 'translateX(-50%)', padding: '8px 14px', borderRadius: '10px', background: 'var(--ah-ink)', color: 'var(--ah-bg)', fontSize: '12.5px', zIndex: 40 });
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 1600);
+}
+
+// Open a section and mark one row in it, as production's settingsHref(section, row) does.
+let landTimer;
+function land(secId, rowId, { focusRow = false } = {}) {
+  S.sec = secId; R.land = rowId || '';
+  paint();
+  const row = rowId && stage.querySelector(`[data-settings-row="${rowId}"]`);
+  if (row) { row.scrollIntoView({ block: 'center' }); if (focusRow) row.focus({ preventScroll: true }); }
+  else if (!phone()) stage.querySelector('[data-testid="settings-scroll"]').scrollTop = 0;
+  if (focusRow && !row) stage.querySelector('.s-main h2')?.focus();
+  clearTimeout(landTimer);
+  landTimer = setTimeout(() => { R.land = ''; stage.querySelector('[data-landed]')?.removeAttribute('data-landed'); }, 2400);
+}
+function choose(r, { focusRow = true } = {}) {
+  if (!r) return;
+  if (V === 'd3') R.pop = false;
+  if (phone()) R.back = V === 'd1' ? 'results' : '';
+  land(r.sec.id, r.kind === 'row' ? r.row.id : '', { focusRow });
+}
+// Direction 1 previews as you move: the pane opens the selected result (desktop only).
+function preview() {
+  if (V !== 'd1' || phone() || !S.q) return;
+  const r = results()[R.sel];
+  if (r) land(r.sec.id, r.kind === 'row' ? r.row.id : '');
+}
+function setQuery(v) {
+  S.q = v; R.sel = 0;
+  if (V === 'd3') R.pop = true;
+  paint();
+  if (V === 'd1') { preview(); stage.querySelector('[data-testid="settings-search"]')?.focus(); const i = stage.querySelector('[data-testid="settings-search"]'); i?.setSelectionRange(i.value.length, i.value.length); }
+}
+function closeSettings() { S.view = 'closed'; S.q = ''; R.pop = false; R.sel = 0; R.back = ''; paint(); }
+
+stage.addEventListener('input', e => {
+  if (e.target.matches('[data-testid="settings-search"]')) setQuery(e.target.value);
+});
+stage.addEventListener('focusin', e => {
+  if (!painting && V === 'd3' && e.target.matches('[data-testid="settings-search"]') && !R.pop) { R.pop = true; R.sel = 0; paint({ focus: true }); }
+});
+stage.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if (!t) {
+    // d3: a click in the field opens the popover again; a click elsewhere closes it.
+    if (V === 'd3' && !R.pop && e.target.matches('[data-testid="settings-search"]')) { R.pop = true; R.sel = 0; paint({ focus: true }); }
+    else if (V === 'd3' && R.pop && !phone() && !e.target.closest('.ss')) { R.pop = false; paint(); }
+    return;
+  }
+  const act = t.dataset.act;
+  if (act === 'sec') {
+    // d2: a section with matches scrolls the results to its group; any other clears the search.
+    if (V === 'd2' && S.q) {
+      const g = stage.querySelector(`[data-group="${t.dataset.sec}"]`);
+      if (g) { g.scrollIntoView({ block: 'start' }); return; }
+      S.q = '';
+    }
+    if (V === 'd3') R.pop = false;
+    R.back = ''; land(t.dataset.sec, '');
+    if (phone()) stage.querySelector('[data-testid="settings-scroll"]').scrollTop = 0;
+  }
+  else if (act === 'pick') { const list = pickList(); R.sel = +t.dataset.i; choose(list[R.sel], { focusRow: V !== 'd1' || phone() }); }
+  else if (act === 'open-sec') { R.back = ''; S.q = ''; land(t.dataset.sec, ''); }
+  else if (act === 'clear') { S.q = ''; R.sel = 0; paint({ focus: true }); }
+  else if (act === 'val') {
+    VAL[t.dataset.k] = t.dataset.v;
+    if (t.dataset.k === 'theme' && t.dataset.v !== 'system') { S.t = t.dataset.v; syncControls(); layoutFrame(); }
+    paint();
+  }
+  else if (act === 'toast') toast(t.dataset.msg);
+  else if (act === 'close') closeSettings();
+  else if (act === 'open-settings') { S.view = 'settings'; if (phone()) S.sec = ''; paint(); }
+  // The phone's back row returns to the list, which still shows the search the person made.
+  else if (act === 'phone-back') { S.sec = ''; R.land = ''; R.back = ''; paint(); stage.querySelector('[data-testid="settings-scroll"]').scrollTop = 0; }
+  else if (act === 'sheet-cancel') { R.pop = false; S.q = ''; paint(); }
+});
+// Keys: "/" focuses the search; arrows and Enter walk the results; Escape clears the search,
+// and with nothing to clear closes Settings (settings-close-returns).
+document.addEventListener('keydown', e => {
+  if (S.view !== 'settings' || e.metaKey || e.ctrlKey || e.altKey) return;
+  const inField = e.target.matches?.('[data-testid="settings-search"]');
+  if (e.key === '/' && !inField && V !== 'now' && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) {
+    e.preventDefault();
+    if (phone() && S.sec) { S.sec = ''; paint(); }
+    stage.querySelector('[data-testid="settings-search"]')?.focus();
+    return;
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (S.q || (V === 'd3' && R.pop)) { S.q = ''; R.sel = 0; R.pop = false; paint({ focus: inField && V !== 'd3' }); }
+    else closeSettings();
+    return;
+  }
+  if (!inField) return;
+  const list = pickList();
+  if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && list.length) {
+    e.preventDefault();
+    R.sel = (R.sel + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length;
+    paint(); preview();
+    stage.querySelector('[data-testid="settings-search"]')?.focus();
+    stage.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (V === 'd2') { const first = stage.querySelector('.rs-group .s-row'); first?.focus(); return; }
+    choose(list[R.sel], { focusRow: true });
+  }
+});
+</script>
+<script>
+/*PICKER_JS*/
+</script>
+<script>
+// ---- Prototype controls ----
+function syncUrl() {
+  const url = new URL(location);
+  for (const [k, v] of Object.entries(S)) url.searchParams.set(k, v);
+  history.replaceState(null, '', url);
+}
+function syncControls() {
+  document.querySelectorAll('.pc-group').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(S[g.dataset.k] === b.dataset.v))));
+}
+function rerender() {
+  syncUrl(); syncControls();
+  stage.innerHTML = variants[current]();
+}
+document.querySelectorAll('.pc-group').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (g.dataset.k === 'q') {
+    // An example query: Settings open, the search typed as a person would.
+    S.view = 'settings'; S.q = b.dataset.v; R.sel = 0; R.pop = V === 'd3';
+    if (phone()) S.sec = '';
+    syncControls(); stage.innerHTML = variants[current](); syncUrl(); preview();
+    return;
+  }
+  if (g.dataset.k === 't') VAL.theme = b.dataset.v;
+  if (g.dataset.k === 'w' && b.dataset.v === '390') S.sec = '';
+  if (g.dataset.k === 'role' && b.dataset.v === 'person' && secOf(S.sec)?.admin) S.sec = 'tekoaly';
+  S[g.dataset.k] = b.dataset.v; rerender();
+}));
+let rz;
+window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(rerender); });
+VAL.theme = S.t;
+syncControls();
+// A URL with a query in direction 1 opens the first result, as typing it would.
+requestAnimationFrame(() => requestAnimationFrame(() => preview()));
+</script>
+</body>
+</html>

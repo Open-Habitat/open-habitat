@@ -5,7 +5,7 @@ type: feature
 reporter: jari
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-10-28/proto-settings-search
 lane: proto-settings-search
