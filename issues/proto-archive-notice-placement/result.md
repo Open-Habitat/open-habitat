@@ -1,103 +1,141 @@
-# Tulos: arkistoinnin ilmoituksen paikka
+# Tulos: arkistoinnin ilmoitus ylhäällä, ilme (kierros 2)
 
-Prototyyppi on `prototypes/archive-notice/index.html`, ja se on rakennettu
-kierroksesta `design-system/prototypes/rounds/2026-10-28-arkistoinnin-ilmoitus/`.
-Tiedosto on yksi offline-HTML, joka on koottu prototyyppikirjastosta, eikä siinä
-ole tuotantokomponenttien bundlea. Opas on `prototypes/archive-notice/NOTES.md`,
-ja kuvat ovat `prototypes/archive-notice/evidence/`-hakemistossa laitteen
-skaalauksella 2.
+Jari valitsi kierroksen 1 suunnan **Ylhäällä** (28.10.2026). Kierros 2 riffaa
+sen ilmettä. Prototyyppi on `prototypes/archive-notice-2/index.html`, ja se on
+rakennettu kierroksesta
+`design-system/prototypes/rounds/2026-10-28-arkistoinnin-ilmoitus-2/`. Se on
+yksi offline-HTML prototyyppikirjastosta, eikä siinä ole tuotantokomponenttien
+bundlea. Opas Jarille on `prototypes/archive-notice-2/NOTES.md`, ja kuvat ovat
+`prototypes/archive-notice-2/evidence/`-hakemistossa laitteen skaalauksella 2.
+Kierros 1 on vertailua varten tallessa hakemistossa `prototypes/archive-notice/`.
 
-`verify.mjs` käy läpi kaikki kolme suuntaa ja tuotannon nykyisen paikan
-työpöydällä (1440 px) ja puhelimessa (390 px), vaaleana ja tummana. Se
-tarkistaa, että:
+`verify.mjs` käy läpi kaikki kolme ilmettä työpöydällä (1440 px) ja puhelimessa
+(390 px), vaaleana ja tummana. Jokaisessa yhdistelmässä se tarkistaa, että:
 
-- arkistointi vie työtilasivulle ja näyttää kuittauksen ilman että fokus siirtyy
-  siihen;
-- kun seuraava keskustelu avataan ja siihen kirjoitetaan, kuittaus ei peitä
-  kenttää eikä Lähetä-painiketta, kun taas tuotannon paikka peittää molemmat;
-- Kenttärivi-suunnassa lanka päättyy rivin yläpuolelle;
-- Esc kentässä ei sulje kuittausta, ja osoitin pysäyttää sen kellon;
-- Palauta tuo keskustelun takaisin ja avaa sen;
-- kuittaus poistuu itsestään 8 sekunnin jälkeen;
-- roskakorin ja tilanvaihdon ilmoitukset käyttävät samaa paikkaa eivätkä peitä
-  kenttää;
-- konsoli ja verkko pysyvät puhtaina.
+- arkistoinnin jälkeen kuittaus on yläpalkin alla ja fokus jää muualle;
+- seuraavassa keskustelussa kenttä, Lähetä-painike ja uusin vastaus jäävät
+  vapaiksi eikä vastaus leikkaudu, myöskään Otsakerivissä, joka siirtää lankaa;
+- fokus pysyy kentässä ja Esc kentässä ei sulje kuittausta;
+- kolme ilmoitusta pinoutuu ilmeen omalla tavalla: Kortin pakassa luku on +2 ja
+  takana odottavan kello on pysähdyksissä, Nauhassa näkyy kolme riviä, ja
+  Otsakerivissä näkyy +2, joka avaa muut;
+- pino ei peitä kenttää edes avattuna, ja Palauta toimii pinosta;
+- kesken jäänyt poisto pysyy auki ilman kelloa;
+- kukin ilme poistuu itsestään elinaikansa jälkeen eikä ennen (8, 10 ja 20 s);
+- valitsin vastaa kirjaston määrittelyä (`picker-check.mjs`), ja konsoli ja verkko
+  pysyvät puhtaina.
 
-Myös kirjaston `check.mjs` menee läpi ilman virheitä.
+Kirjaston `check.mjs`ää ei ajettu, koska se hakee Playwrightin tämän worktreen
+`web/node_modules`ista, jota ei ole. `verify.mjs` tekee samat tarkistukset ja
+lisäksi kierroksen omat.
 
-Nykytila on luettu koodista: `web/src/components/ArchiveNotice.tsx`,
-`components.css` (`.ah-archive-notice`), `App.tsx` (`changeArchive`,
-`#overlays`) ja `TrashNotice.tsx`. Labia ei ajettu, koska koodista näkyy suoraan,
-että ilmoitus on `position: fixed; bottom: 20px` ja globaali. Juuri siksi se
-seuraa navigoinnin mukana seuraavan keskustelun kentän päälle.
+## Akseli: kuittauksen ilme ja paino yläpalkin alla
 
-## Akseli: missä kuittaus on suhteessa seuraavaan työpintaan
+| # | Ilme | Elinaika | Pinoaminen | Milloin se on oikea | Mitä se maksaa |
+|---|---|---|---|---|---|
+| 1 | **Kortti**: tuotannon tumma pilleri kompaktina korttina, kelluu keskellä yläpalkin alla | 8 s | Pakka: uusin näkyy, takana pilkistää kaksi reunaa ja +N. Odottavien kellot ovat pysähdyksissä. Osoitin tai fokus levittää pakan. | Kun halutaan pienin muutos tuotantoon ja huomiota herättävä kuittaus | Peittää sen, mikä sivun yläreunassa on. Työtilasivulla, jolle arkistointi vie, se on sivun otsikko (puhelimessa kokonaan). Pakassa kumoaminen voi jäädä myöhemmän ilmoituksen taakse. |
+| 2 | **Nauha**: ohut koko sarakkeen levyinen harmaa nauha kiinni yläpalkin alareunassa, kelluu langan päällä | 10 s | Jokainen ilmoitus on oma rivinsä, ja kaikilla on oma kellonsa. Mitään ei jää piiloon. | Kun useita ilmoituksia tulee usein ja jokaisen kumoamisen pitää näkyä heti | Peittää koko sarakkeen yläreunan, työtilasivulla otsikon ja *Uusi keskustelu* -painikkeen. Kolme riviä vie puhelimessa noin 120 px. |
+| 3 | **Otsakerivi**: hiljainen rivi yläpalkin sisällä, ilman taustaa ja varjoa | 20 s | Uusin rivi näkyy, ja +N avaa muut. Avaamattomien kellot ovat pysähdyksissä. | Kun mikään ei saa peittää mitään millään sivulla | Lanka siirtyy rivin verran alas. Uusin vastaus pysyy paikallaan, koska lanka on ankkuroitu alareunaan. Kuittaus on hiljaisin, joten sen voi ohittaa katseella. Jokainen sivun yläpalkki tarvitsee paikan rivikseen. |
 
-| # | Suunta | Mitä se päättää | Milloin se on oikea | Mitä se maksaa |
-|---|---|---|---|---|
-| 1 | Ylhäällä | Sama pilleri kuin nyt, mutta näkymän yläpalkin alla keskellä. Peittää vain langan vanhinta osaa. | Jos halutaan yksi paikka kaikille kelluville ilmoituksille ja pienin muutos. Kirjoittaminen ja uusin vastaus pysyvät aina vapaina. | Kuittaus on kaukana siitä kohdasta, jossa käsi ja katse ovat. Puhelimessa se peittää langan yläosaa 8 s ajan. |
-| 2 | Kenttärivi | Oma rivi kentän yläreunassa. Lanka väistää, joten mitään ei jää kuittauksen alle. Sivuilla ilman kenttää rivi on alareunassa. | Jos kumoaminen halutaan pitää lähellä sitä kohtaa, jossa ollaan, mutta ei kentän päällä. | Lanka hyppää rivin verran kahdesti. Pinoutuvat ilmoitukset vievät puhelimessa paljon tilaa. Rivi on edelleen siinä kohdassa, jota Jari piti häiritsevänä. |
-| 3 | Paikallaan | Ei kelluvaa ilmoitusta. Keskustelun paikalle sivupalkkiin ja työtilasivun listaan jää kuittausrivi, joka pysyy 30 s. | Jos kuittauksen halutaan olevan siellä, minne asia meni, eikä mitään saa kellua. | Puhelimessa kuittaus katoaa näkyvistä, kun seuraava keskustelu avataan, koska valikko on kiinni. Tilanvaihdolle ei ole listapaikkaa, joten kelluva paikka tarvitaan silti. Tuloksena on kaksi järjestelmää. |
+Kaikille ilmeille yhteistä: kuittaus ei ota fokusta, Esc sulkee sen vain sen
+sisältä, ja osoitin tai fokus ilmoitusalueella pysäyttää kellot. Kesken oleva
+tai epäonnistunut toiminto pitää kuittauksen auki. Saman lajin uusi ilmoitus
+korvaa vanhan. Pitkä tai virheen sisältävä teksti rivittyy, ja kapealla
+näytöllä sen toiminnot siirtyvät omalle rivilleen.
 
-## Host-tiedot, joita suunnat tarvitsevat
+## Saman lajin ilmoitukset koodissa
 
-Mikään suunta ei tarvitse daemonin, gatewayn tai provisionin muutosta. Kaikki
-tiedot ovat jo selaimessa. Muutokset ovat käyttöliittymän rakennetta.
+Kaikki nämä käyttävät nyt `ArchiveNotice`a (`web/src/components/ArchiveNotice.tsx`),
+jonka paikka on `.ah-archive-notice` (`web/src/components/components.css`,
+`position: fixed; bottom: 20px`). Valittu ilme koskee niitä kaikkia:
+
+| Ilmoitus | Missä | Huomio |
+|---|---|---|
+| Keskustelun arkistointi, *Arkistoitu … Palauta* | `web/src/app/App.tsx`, `archiveNotice` `overlays`-propissa | Kiireinen, kunnes host vahvistaa. Palautus navigoi kohtaan `archiveNotice.route`. |
+| Työtilan roskakori: *Siirretty roskakoriin*, *Ei poistettu kokonaan:*, *Poistettu pysyvästi* | `web/src/app/TrashNotice.tsx` (App.tsx `trashOutcome`) | Sisältää linkin *Roskakori*. Osittainen tai korvattu tulos jää auki (`problem`). |
+| Tilanvaihto: *Yksi työtila jäljellä …* | App.tsx `modeNotice`, `wrap` | Ei kumottavaa. Yhdistyy roskakorin ilmoitukseen, kun molemmat syntyvät samasta poistosta. |
+| Työtilan arkistointi tai piilotus, *… Kumoa* | `web/src/app/WorkspacePage.tsx` (`hideNotice`) | Piirretään sivun sisällä eikä `#overlays`-kerroksessa, mutta se on sama kiinteä elementti. |
+
+Samaa lajia, mutta eri komponentti: päätenäkymän `ToastRegion`
+(`web/src/components/Status.tsx`, `.ah-toast`, oikea alakulma, 4 s, ei
+toimintoja; `web/src/app/BrowserShell.tsx`). Se on kelluva ja ohimenevä ilmoitus,
+joten ehdotan sille samaa ilmettä ja paikkaa (ks. päätökset). Paikallaan pysyvät
+tilarivit (`PendingNote`, kentän `ah-composer-notice`, lomakkeiden
+`role="alert"`-rivit) eivät ole kelluvia ilmoituksia, joten ne jäävät ennalleen.
+
+## Host-tiedot, joita ilmeet tarvitsevat
+
+Mikään ilme ei tarvitse daemonin, gatewayn tai provisionin muutosta, eikä uutta
+tietoa hostilta. Kaikki on selaimen rakennetta.
 
 | Tieto tai rakenne | Onko olemassa |
 |---|---|
-| Arkistointi optimistisena mutaationa, vahvistuksen odotus (`busy`) ja palautus | **On**: `changeArchive` ja `conversation.archive`-mutaatio. Palautus vie takaisin kohtaan `archiveNotice.route`. |
-| Ilmoitus säilyy navigoinnin yli | **On**: `#overlays` `Navigation.tsx`:ssä. Kaikki suunnat tarvitsevat tämän. |
-| Yläpalkin alareuna ilmoituksen paikaksi (suunta 1) | **Osittain.** Ilmoitus on `#overlays`-kerroksessa sisältöalueen ulkopuolella. Sen pitää ankkuroitua sisältösarakkeen yläreunaan, ja sivupalkin leveys on otettava huomioon. Tämä on CSS-muutos tai `#overlays`-kerroksen siirto sisältösarakkeen sisään. Uutta tietoa ei tarvita. |
-| Kentän korkeus ja paikka ilmoitukselle (suunta 2) | **Osittain.** `--ah-composer-height` on olemassa, mutta vain `ConversationFrame`n sisällä. Ilmoitus pitää piirtää kehyksen kenttäpaikkaan tai tuoda muuttuja shellin tasolle. Kelluvat kontrollit (`.ah-floating-controls`) lasketaan kentän ja dockin korkeudesta, joten rivi on lisättävä tuohon laskuun. Sivut ilman kenttää tarvitsevat oman paikan. |
-| Juuri arkistoitu keskustelu listassa (suunta 3) | **Osittain.** Selain tietää sen (`archiveNotice`-tila), mutta sivupalkki ja työtilasivu suodattavat arkistoidut pois. Kumpikin tarvitsee kuittausrivin. Roskakorin tulos on jo tilassa `trashOutcome`. Tilanvaihdolle ei ole listapaikkaa. |
-| Sama paikka muille kelluville ilmoituksille | **On**: `TrashNotice`, tilanvaihto (`modeNotice`) ja työtilan arkistointi (`WorkspacePage`) käyttävät samaa `ArchiveNotice`a. Päätteen `ToastRegion` (`.ah-toast`, oikea alakulma) on erillinen ja jää tämän kierroksen ulkopuolelle. |
+| Ilmoitus säilyy navigoinnin yli | **On**: `#overlays` (`web/src/components/Navigation.tsx:240`) on sisältöalueen ulkopuolella, ja siksi kuittaus seuraa työtilasivulta keskusteluun. |
+| Arkistoinnin vahvistuksen odotus ja kumoaminen | **On**: App.tsx `changeArchive` sekä `busy` agentin `archive`-tilasta. |
+| Elinaika ja tauko osoittimen tai fokuksen ajaksi | **On, yhdelle ilmoitukselle**: `ArchiveNotice` (8 s, `remaining`-ref). Ilmekohtainen aika ja koko ilmoitusalueen yhteinen tauko puuttuvat. Ilmoitusalueen pitää tietää kaikki näkyvät ilmoitukset. Nyt ne ovat erillisiä elementtejä App.tsx:ssä ja WorkspacePage.tsx:ssä. |
+| Pino ja korvaaminen lajin mukaan | **Ei ole.** Ilmoitukset piirtyvät nyt samaan kohtaan päällekkäin. Tarvitaan yksi ilmoitusalue (lista ja laji per ilmoitus), jonka kautta kaikki neljä käyttäjää kulkevat. Kaikki ilmeet tarvitsevat tämän. |
+| Esc vain ilmoituksen sisältä | **Ei ole**: `ArchiveNotice` kuuntelee Esciä `document`-tasolla. Rajaus on pieni muutos. |
+| Yläpalkin alareuna (Kortti, Nauha) | **Osittain.** Keskustelussa yläpalkin korkeus on `--ah-header-height` (`web/src/components/ConversationFrame.tsx`), mutta vain kehyksen sisällä. Työtilasivulla otsake on `.ah-workspace-page-head` (`WorkspacePage.tsx`), joka on sivun sisältöä. `#overlays`-kerros pitää ankkuroida sisältösarakkeen yläreunaan, ja sivupalkin leveys on huomioitava. |
+| Paikka yläpalkin sisällä (Otsakerivi) | **Ei ole.** Jokainen sivun yläpalkki (`.ah-agent-header`, työtilasivun otsake, asetus- ja etusivu) tarvitsee paikan ilmoitusalueen riville, esimerkiksi portaalikohteen. Keskustelussa `--ah-header-height` mittaa jo yläpalkin, ja `composer.css` käyttää sitä, joten kasvava yläpalkki näkyy niissä laskuissa ilman uutta mittausta. Lanka pitää pitää alareunaan ankkuroituna, kun yläpalkki kasvaa. |
+| Näppäimistöjärjestys | **Osittain.** `#overlays` on DOM:n lopussa, joten Kortin ja Nauhan Palauta tulee Tab-järjestyksessä viimeisenä. Otsakerivi on DOM:ssa yläpalkin jälkeen, joten se tulee Tab-järjestyksessä heti otsikon jälkeen. |
 
 ## Suositus
 
-**Ylhäällä (1).** Se korjaa Jarin havaitseman ongelman kaikissa tilanteissa
-yhdellä paikkamuutoksella. Kenttä, Lähetä-painike ja uusin vastaus pysyvät
-vapaina kaikilla sivuilla ja leveyksillä. Kaikki nykyiset `ArchiveNotice`n
-käyttäjät, eli arkistointi, roskakori, tilanvaihto ja työtilan arkistointi,
-siirtyvät samaan paikkaan ilman omaa logiikkaa. Elinaika, kumoaminen ja
-fokuskäytös säilyvät ennallaan.
+**Otsakerivi (3).** Ilmeistä vain se ratkaisee Jarin ongelman kokonaan: se ei
+peitä mitään millään sivulla. Kortti ja Nauha siirtävät peittämisen kentästä
+sivun yläreunaan, ja työtilasivulla, jolle arkistointi juuri vie, siellä on
+sivun otsikko ja *Uusi keskustelu* -painike. Otsakerivi ei myöskään tarvitse
+elinajan viivaa eikä varjoa. Siksi sen 20 s elinaika on mahdollinen, ja
+kumoamiselle jää aikaa, vaikka katse olisi kentässä. Pinossa kumoaminen ei
+koskaan katoa kokonaan, koska +N on samalla rivillä.
 
-Kenttärivi pitää kuittauksen juuri siinä kohdassa, jota Jari piti häiritsevänä,
-ja liikuttaa lankaa. Paikallaan on hiljaisin vaihtoehto, mutta se jättää
-puhelimen ilman näkyvää kumoamista ja vaatii silti kelluvan paikan
-tilanvaihdolle.
+Otsakerivin hinta on toteutuksessa: jokainen yläpalkki tarvitsee paikan
+rivilleen. Rivin hiljaisuus on myös riski. Jos Jari kokee rivin liian
+huomaamattomaksi, toinen vaihtoehto on Kortti. Se on lähimpänä tuotantoa ja
+pienin muutos (CSS ja pakka). Sen hinta on työtilasivun otsikon peittyminen 8
+sekunniksi.
 
-Toteutus, jos tämä valitaan:
+Toteutus, jos Otsakerivi valitaan:
 
-1. `.ah-archive-notice` ankkuroidaan sisältösarakkeen yläreunaan, yläpalkin alle
-   keskelle. Eri ilmoitukset pinoutuvat, ja saman lajin uudempi korvaa vanhemman.
-2. Esc rajataan toimimaan vain silloin, kun fokus on ilmoituksessa.
-3. Mahdollisesti elinajan viiva (kysymys 2).
+1. Yksi ilmoitusalue (konteksti tai tila App.tsx:ssä), jonka kautta arkistointi,
+   roskakori, tilanvaihto ja työtilan arkistointi kulkevat. Saman lajin uusi
+   korvaa vanhan.
+2. Portaalikohde jokaisen sivun yläpalkkiin. `ArchiveNotice`n tilalle tulee rivi
+   ja +N-painike. Kesken tai virheessä oleva ilmoitus pysyy auki.
+3. Esc rajataan ilmoitukseen, elinaika on 20 s, ja tauko koskee koko
+   ilmoitusaluetta.
+4. Myöhemmin päätteen `ToastRegion` siirretään samaan alueeseen.
 
 ## Päätökset myöhempää tarkistusta varten
 
-- **Esc sulkee vain ilmoituksen sisältä.** Tuotannossa Esc on globaali.
-  Vaihtoehto on pitää se ennallaan. Valitsin rajauksen, koska Esc kentässä tai
-  dialogissa ei saa hävittää kumoamisen mahdollisuutta huomaamatta.
-- **Elinaika on 8 s, ja se pysähtyy osoittimen tai fokuksen ajaksi.** Tämä on
-  tuotannon arvo, jotta akseli pysyy yhtenä. Paikallaan-suunnassa aika on 30 s,
-  koska rivi ei peitä mitään. Vaihtoehtoja olisivat pidempi elinaika tai
-  sulkeminen vasta seuraavasta navigoinnista.
-- **Saman lajin ilmoitus korvaa edellisen, eri lajit pinoutuvat.** Tuotannossa
-  ne piirtyvät samaan kohtaan päällekkäin. Vaihtoehto on jono, jossa näkyy yksi
-  ilmoitus kerrallaan. Valitsin pinon, koska jonossa myöhempi ilmoitus joutuisi
-  odottamaan ja sen kumoamisaika lyhenisi.
-- **Elinajan viiva on lisätty kaikkiin suuntiin.** Tuotannossa sitä ei ole. Se
-  näyttää, että kuittaus poistuu itsestään ja että osoitin pysäyttää sen.
-- **Palauta vie keskusteluun ja kohdistaa sen otsikkoon.** Tuotanto navigoi
-  aiempaan reittiin. Vedos tekee saman.
-- **Työtilasivu on vedoksessa tiivistetty.** Siinä ovat otsikko, polku, Uusi
-  keskustelu ja keskustelulista. Tuotannon `WorkspacePage` sisältää enemmän,
-  mutta kuittauksen paikan kannalta sillä ei ole merkitystä.
+- **Elinaika riippuu ilmeestä (8, 10, 20 s).** Vaihtoehto oli 8 s kaikille,
+  kuten tuotannossa. Valitsin ilmekohtaiset ajat, koska peittävän kortin pitää
+  väistyä nopeasti, mutta mitään peittämätön rivi voi antaa kumoamiselle enemmän
+  aikaa.
+- **Pinossa odottavien kellot ovat pysähdyksissä (Kortti ja Otsakerivi).**
+  Vaihtoehto on, että kaikki kellot käyvät. Valitsin pysäytyksen, koska muuten
+  myöhempi ilmoitus kuluttaisi piilossa olevan kumoamisajan.
+- **Osoitin tai fokus ilmoitusalueella pysäyttää kaikkien kellot**, ei vain sen
+  ilmoituksen, jonka päällä osoitin on. Tuotannossa tauko koskee yhtä
+  ilmoitusta. Pakkaa levitettäessä yhden ilmoituksen tauko jättäisi muut
+  katoamaan käden alta.
+- **Uusin ilmoitus on lähimpänä yläpalkkia.** Vaihtoehto on aikajärjestys
+  ylhäältä alas. Valitsin tämän, koska juuri tehty toiminto on se, joka
+  todennäköisimmin kumotaan.
+- **Virheen sisältävä ilmoitus rivittyy ja jää auki ilman viivaa.** Tuotannossa
+  `problem` pitää ilmoituksen auki mutta katkaisee tekstin. Puhelimessa
+  katkaistu virhe ei kerro mitään.
+- **Päätteen `ToastRegion` saa saman ilmeen ja paikan** (ehdotus, ei osa tätä
+  kierrosta). Vaihtoehto on jättää se oikeaan alakulmaan. Kaksi kelluvaa
+  ilmoitusjärjestelmää näyttäisivät samanlaisen asian kahdessa paikassa.
+- **Esc rajataan ilmoituksen sisälle**, kuten kierroksessa 1. Jari ei ole vielä
+  vastannut tähän (kierroksen 1 kysymys 3).
+- **Työtilasivu on vedoksessa tiivistetty.** Tuotannon `WorkspacePage` sisältää
+  enemmän, mutta otsikon peittyminen näkyy jo tiivistetyssä versiossa.
 
 ## Kysymykset Jarille
 
-1. Mikä suunta: Ylhäällä, Kenttärivi vai Paikallaan? Suositus on Ylhäällä.
-2. Otetaanko elinajan viiva mukaan toteutukseen?
-3. Saako Esc sulkea ilmoituksen mistä tahansa, kuten nyt, vai vain silloin, kun
-   fokus on ilmoituksessa?
+1. Mikä ilme: Kortti, Nauha vai Otsakerivi? Suositus on Otsakerivi.
+2. Jos Otsakerivi: huomaatko sen kirjoittaessasi, vai onko se liian hiljainen?
+3. Saako Esc sulkea ilmoituksen mistä tahansa, vai vain silloin, kun fokus on
+   ilmoituksessa? (Avoinna kierroksesta 1.)

@@ -1,5 +1,8 @@
 # Arkistoinnin ilmoituksen paikka
 
+Kierros 1. Jari valitsi suunnan Ylhäällä; ilmeen kierros 2 on hakemistossa
+`../archive-notice-2/`.
+
 Avaa `index.html` selaimessa. Se on yksi offline-tiedosto, joka on rakennettu
 prototyyppikirjastosta eikä tuotantokomponenteista. Rakennus ja tarkistus tehdään
 komennolla

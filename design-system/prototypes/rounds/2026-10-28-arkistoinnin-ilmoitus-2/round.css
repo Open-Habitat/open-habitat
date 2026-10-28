@@ -1,0 +1,96 @@
+/* Arkistoinnin ilmoitus ylhäällä, kierros 2 (round.js). Paikka on päätetty: yläpalkin alla.
+   Ilme vaihtuu: Kortti kelluu, Nauha on kiinni yläpalkissa, Otsakerivi on osa sitä. */
+.an-host:empty { display: none; }
+.an-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-text b { font-weight: 600; }
+.an-wrap .an-text, .an-bad .an-text { white-space: normal; }
+.an-bad { align-items: flex-start; padding-block: 6px; }
+.an-bad .an-ic { margin-top: 6px; }
+.an-bad .an-text { padding-top: 4px; }
+.an-problem { opacity: .85; }
+.an-ic { flex: none; display: inline-flex; }
+.an-ic svg { width: 15px; height: 15px; }
+.an-btn { flex: none; min-height: 28px; padding: 0 10px; border: 0; border-radius: var(--ah-r-sm, 6px); background: transparent; color: inherit; font: 600 12.5px var(--ah-font); cursor: pointer; }
+.an-btn:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
+.an-btn:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 1px; }
+.an-btn[aria-disabled="true"] { opacity: .55; cursor: default; }
+.an-x { width: 28px; padding: 0; font-size: 16px; font-weight: 400; }
+/* Remaining lifetime; it stops while the pointer or focus is on the notice area. */
+.an-life { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: currentColor; opacity: .35; transform-origin: left; }
+@keyframes an-life { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes an-in-down { from { opacity: 0; transform: translateY(-6px); } }
+@keyframes an-in-fade { from { opacity: 0; } }
+
+/* ---------- 1 Kortti: compact floating card, a deck when there are several ---------- */
+.an-card-host { position: absolute; left: 0; right: 0; z-index: 6; display: grid; justify-items: center; padding: 0 16px; pointer-events: none; }
+.an-card { grid-area: 1 / 1; position: relative; overflow: hidden; display: flex; align-items: center; gap: 8px; width: min(100%, 440px); min-height: 40px; padding: 4px 4px 4px 12px; border-radius: var(--ah-r-md); background: var(--ah-ink); color: var(--ah-bg); box-shadow: var(--ah-shadow-float), 0 6px 20px rgba(16, 24, 40, .16); font-size: 13px; pointer-events: auto; transition: transform 200ms ease-out, opacity 200ms ease-out; }
+.an-card .an-ic { opacity: .75; }
+.an-card.an-in { animation: an-in-down 180ms ease-out; }
+/* Collapsed deck: the newest in front, at most two edges peeking from behind. */
+.an-card[data-depth="1"] { transform: translateY(7px) scale(.96); opacity: .9; z-index: -1; }
+.an-card[data-depth="2"] { transform: translateY(14px) scale(.92); opacity: .75; z-index: -2; }
+.an-card[data-depth="3"] { transform: translateY(14px) scale(.92); opacity: 0; z-index: -3; }
+.an-card[data-depth]:not([data-depth="0"]) > * { visibility: hidden; }
+.an-more { flex: none; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, currentColor 16%, transparent); font-size: 11.5px; font-weight: 600; }
+/* Open deck (pointer or focus on it): every card in its own row, newest first. */
+.an-card-host.open { grid-auto-flow: row; row-gap: 6px; }
+.an-card-host.open .an-card { grid-area: auto; transform: none; opacity: 1; z-index: auto; }
+.an-card-host.open .an-card > * { visibility: visible; }
+.an-card-host.open .an-more { display: none; }
+
+/* ---------- 2 Nauha: slim full-width band attached to the top bar ---------- */
+.an-band-host { position: absolute; left: 0; right: 0; z-index: 6; display: flex; flex-direction: column; background: var(--ah-sunken); border-bottom: 1px solid var(--ah-line); box-shadow: 0 6px 14px rgba(16, 24, 40, .07); animation: an-in-down 160ms ease-out; }
+.an-row { position: relative; display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 2px max(8px, calc((100% - var(--ah-conversation-width)) / 2)) 2px max(14px, calc((100% - var(--ah-conversation-width)) / 2 + 2px)); color: var(--ah-ink); font-size: 13px; }
+.an-row + .an-row { border-top: 1px solid var(--ah-line-soft); }
+.an-row .an-ic { color: var(--ah-muted); }
+.an-row .an-btn:not(.an-x) { color: var(--ah-accent-ink); }
+.an-row .an-x { color: var(--ah-muted); }
+.an-row .an-life { background: var(--ah-accent); opacity: .4; }
+.an-row.an-in { animation: an-in-fade 200ms ease-out; }
+.an-row.an-bad .an-ic, .an-row.an-bad .an-problem { color: var(--ah-err); opacity: 1; }
+
+/* ---------- 3 Otsakerivi: a quiet line inside the top bar, in flow ---------- */
+.an-head-host { flex: none; display: flex; flex-direction: column; background: var(--ah-surface); border-bottom: 1px solid var(--ah-line); }
+.frame[data-an-look="head"] .topbar:has(+ .an-head-host:not(:empty)) { border-bottom-color: transparent; }
+.an-line { position: relative; display: flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 var(--ah-topbar-pad-inline); color: var(--ah-ink-2); font-size: 12.5px; animation: an-in-fade 220ms ease-out; }
+.an-line[hidden] { display: none; }
+.an-line .an-ic { color: var(--ah-muted); }
+.an-line .an-ic svg { width: 14px; height: 14px; }
+.an-line .an-text b { font-weight: 500; color: var(--ah-ink); }
+.an-line .an-btn { min-height: 24px; padding: 0 8px; font-size: 12px; }
+.an-line .an-btn:not(.an-x) { color: var(--ah-accent-ink); }
+.an-line .an-x { width: 24px; color: var(--ah-muted); }
+.an-line .an-count { flex: none; min-height: 22px; padding: 0 8px; border: 1px solid var(--ah-line); border-radius: 999px; background: transparent; color: var(--ah-ink-2); font: 600 11.5px var(--ah-font); cursor: pointer; }
+.an-line .an-count:hover { background: var(--ah-surface-hover); }
+.an-line .an-count:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 1px; }
+.an-line.an-bad .an-ic, .an-line.an-bad .an-problem { color: var(--ah-err); opacity: 1; }
+.an-line:last-child { padding-bottom: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .an-card, .an-card.an-in, .an-band-host, .an-row.an-in, .an-line { animation: none; transition: none; }
+  .an-life { display: none; }
+}
+
+/* Workspace page, where archiving lands (production WorkspacePage, condensed). */
+.an-wspage { align-self: center; padding-top: 8px; }
+.an-wspage header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.an-wspage h1 { margin: 0; font: 600 20px var(--ah-font); font-family: var(--ah-mono); }
+.an-wspage h1:focus { outline: none; }
+.an-wspage header p { margin: 4px 0 0; color: var(--ah-muted); font-size: 12.5px; }
+.an-wspage h2 { margin: 24px 0 8px; font: 600 12px var(--ah-font); color: var(--ah-muted); text-transform: uppercase; letter-spacing: .04em; }
+.an-ws-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.an-ws-row { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 14px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink); text-decoration: none; }
+.an-ws-row:hover { background: var(--ah-surface-hover); }
+.an-ws-row:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 1px; }
+.an-ws-st { flex: none; color: var(--ah-muted); font-size: 12px; }
+.an-wt { flex: none; color: var(--ah-muted); font-size: 11.5px; }
+@container (max-width: 760px) { .an-wt { display: none; } .an-wspage header { flex-direction: column; } }
+/* The workspace page has no field; the page chrome's display rule would otherwise beat [hidden]. */
+.composer[hidden] { display: none; }
+@container (max-width: 560px) { .an-card-host { padding: 0 10px; } }
+/* Narrow: a notice that must be read gets the full width; its actions move to a row below. */
+@container (max-width: 560px) {
+  .an-bad, .an-wrap { flex-wrap: wrap; row-gap: 2px; }
+  .an-bad .an-text, .an-wrap .an-text { flex: 1 1 calc(100% - 40px); }
+  .an-bad .an-text + .an-btn, .an-wrap .an-text + .an-btn, .an-wrap .an-text + .an-more, .an-wrap .an-text + .an-count { margin-left: auto; }
+}
