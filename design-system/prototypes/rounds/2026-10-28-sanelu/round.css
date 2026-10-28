@@ -1,0 +1,114 @@
+/* Sanelu viestikenttään (proto-speech-input). Alakerta tuotannon Rivillä-mallin mukaan
+   (web/src/components/composer/composer.css): kenttä ja sen oma alarivi samassa laatikossa. */
+/* Nested under the composer so the page chrome's generic `.composer div/button/textarea` rules lose. */
+.composer.sp-composer {
+display: block; padding: 10px 16px 14px;
+:where(div) { width: auto; display: block; gap: 0; align-items: normal; }
+.sp-area { width: min(100%, var(--ah-conversation-width)); margin: 0 auto; display: flex; flex-direction: column; gap: 6px; }
+[hidden] { display: none !important; }
+:where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; min-height: 0; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+
+/* ---- the field box ---- */
+.sp-box { position: relative; display: flex; flex-direction: column; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-xl); background: var(--ah-surface); transition: border-color var(--ah-transition); }
+.sp-box:has(> textarea:focus) { border-color: var(--ah-composer-focus); outline: 2px solid var(--ah-composer-focus); outline-offset: 1px; }
+.sp-field { display: block; width: 100%; min-height: 44px; max-height: min(40vh, 268px); box-sizing: border-box; overflow-y: auto; resize: none; padding: 11px 14px 6px; border: 0; border-radius: var(--ah-r-xl); background: transparent; color: var(--ah-ink); font: inherit; line-height: 1.45; outline: none; }
+textarea.sp-field::placeholder { color: var(--ah-muted); }
+/* While dictating, the field shows confirmed text and the changing guess after it. */
+.sp-live { white-space: pre-wrap; overflow-wrap: anywhere; min-height: 66px; }
+.sp-live.empty::before { content: attr(data-placeholder); color: var(--ah-muted); }
+.sp-int { color: var(--ah-muted); }
+.sp-caret { display: inline-block; width: 2px; height: 1.1em; margin-left: 1px; vertical-align: -0.18em; background: var(--ah-err); animation: sp-blink 1s steps(2, start) infinite; }
+.sp-area.dictating .sp-box { border-color: color-mix(in srgb, var(--ah-err) 55%, var(--ah-line-strong)); }
+
+/* ---- the bottom row ---- */
+.sp-row { display: flex; align-items: center; gap: 2px; min-width: 0; padding: 0 6px 6px; }
+.sp-grow { flex: 1; }
+.sp-btn { display: inline-flex; flex: none; align-items: center; gap: 5px; min-height: 28px; padding: 0 9px; border-radius: var(--ah-r-pill); color: var(--ah-ink-2); font: 500 12px var(--ah-font); transition: background var(--ah-transition), color var(--ah-transition); }
+.sp-btn svg { width: 15px; height: 15px; flex: none; }
+.sp-btn:hover:not(:disabled) { background: var(--ah-hover); color: var(--ah-ink); }
+.sp-btn:disabled { opacity: .45; cursor: default; }
+.sp-model { flex: none; padding: 0 8px; color: var(--ah-muted); font: 500 12px var(--ah-font); white-space: nowrap; }
+.sp-model.sp-tool[disabled] { opacity: .45; }
+/* The mic: icon and word at rest, like the row's other tools. */
+.sp-mic-slot { display: inline-flex; align-items: center; min-width: 0; }
+.sp-mic svg { width: 16px; height: 16px; }
+
+/* The recording pill: dot, level, time, state, and Valmis. One press ends the dictation. */
+.sp-pill { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 4px 0 11px; border-radius: var(--ah-r-pill); background: var(--ah-err-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ah-err) 40%, transparent); color: var(--ah-ink); font: 500 12px var(--ah-font); white-space: nowrap; min-width: 0; }
+.sp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ah-err); flex: none; animation: sp-pulse 1.6s ease-in-out infinite; }
+.sp-pill.busy .sp-dot { background: var(--ah-muted); animation: none; }
+.sp-pill.paused .sp-dot { animation: none; opacity: .55; }
+.sp-bars { display: inline-flex; align-items: center; gap: 2px; height: 14px; flex: none; }
+.sp-bars i { display: block; width: 3px; height: 14px; border-radius: 2px; background: var(--ah-err); transform: scaleY(.18); transition: transform 90ms linear; }
+.sp-pill.paused .sp-bars i, .sp-pill.busy .sp-bars i { background: var(--ah-muted); }
+.sp-time { font: 500 12px var(--ah-mono); font-variant-numeric: tabular-nums; }
+.sp-state { color: var(--ah-muted); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sp-done { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 0 10px; border-radius: var(--ah-r-pill); background: var(--ah-surface); box-shadow: 0 0 0 1px var(--ah-line); color: var(--ah-ink); flex: none; }
+.sp-done svg { width: 14px; height: 14px; }
+.sp-pill:hover .sp-done { background: var(--ah-surface-hover); }
+.sp-pill.hold .sp-done { display: none; }
+
+/* Send and the agent's Stop, as in production. */
+.sp-send, .sp-agent-stop { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 32px; height: 32px; margin-left: 4px; border-radius: 50%; transition: background var(--ah-transition), transform 120ms ease-out; }
+.sp-send svg, .sp-agent-stop svg { width: 16px; height: 16px; }
+.sp-send { background: var(--ah-accent); color: var(--ah-on-accent); }
+.sp-send:hover { background: var(--ah-accent-hover); }
+.sp-send[aria-disabled="true"] { background: var(--ah-disabled-bg); color: var(--ah-disabled-fg); cursor: default; }
+.sp-agent-stop { background: var(--ah-ink); color: var(--ah-bg); }
+button:active:not([aria-disabled="true"]):not(:disabled) { transform: scale(.97); }
+
+/* ---- above the field: the ceiling approaching ---- */
+.sp-above:empty, .sp-below:empty { display: none; }
+.sp-note, .sp-ask, .sp-notice { display: flex; align-items: flex-start; gap: 9px; padding: 8px 12px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface-2); font-size: 12.5px; line-height: 1.4; color: var(--ah-ink); animation: sp-in 160ms ease-out; }
+.sp-note > svg, .sp-ask svg, .sp-notice > svg { width: 16px; height: 16px; flex: none; margin-top: 1px; color: var(--ah-muted); }
+.sp-note .sub, .sp-ask .sub { color: var(--ah-ink-2); }
+.sp-note strong, .sp-ask strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.sp-note.urgent, .sp-ask.urgent { border-color: var(--ah-err-line); background: var(--ah-err-soft); }
+.sp-note.urgent > svg, .sp-ask.urgent svg { color: var(--ah-err); }
+.sp-note.calm > svg { color: var(--ah-ok); }
+.sp-ask { flex-wrap: wrap; align-items: center; justify-content: space-between; row-gap: 8px; }
+.sp-ask-text { display: flex; gap: 9px; align-items: flex-start; flex: 1 1 260px; }
+.sp-ask-acts, .sp-notice-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.sp-b { display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink); font: 500 12.5px var(--ah-font); }
+.sp-b:hover { background: var(--ah-surface-hover); }
+.sp-b.primary { border-color: var(--ah-accent); background: var(--ah-accent); color: var(--ah-on-accent); }
+.sp-b.primary:hover { background: var(--ah-accent-hover); }
+
+/* ---- below the field: why it ended, errors, no key ---- */
+.sp-notice { position: relative; padding-right: 36px; }
+.sp-notice.danger { border-color: var(--ah-err-line); background: var(--ah-err-soft); }
+.sp-notice.danger > svg { color: var(--ah-err); }
+.sp-notice-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sp-notice-body strong { font-weight: 600; }
+.sp-notice-body p { margin: 0; color: var(--ah-ink-2); }
+.sp-notice-acts { margin-top: 5px; }
+.sp-x { position: absolute; top: 5px; right: 5px; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: var(--ah-r-md); color: var(--ah-muted); }
+.sp-x:hover { background: var(--ah-hover); color: var(--ah-ink); }
+.sp-x svg { width: 14px; height: 14px; }
+
+/* ---- phone: the row's tools go icon-only; while dictating the pill takes the row ---- */
+.frame-wrap.phone & { padding: 8px 10px 10px; }
+.frame-wrap.phone & .sp-btn .lbl, .frame-wrap.phone & .sp-model { display: none; }
+.frame-wrap.phone & .sp-btn { padding: 0 8px; min-height: 34px; }
+.frame-wrap.phone & .sp-area.dictating .sp-tool { display: none; }
+.frame-wrap.phone & .sp-area.dictating .sp-grow { display: none; }
+.frame-wrap.phone & .sp-area.dictating .sp-mic-slot { flex: 1; }
+.frame-wrap.phone & .sp-area.dictating .sp-pill { flex: 1; min-height: 36px; }
+.frame-wrap.phone & .sp-area.dictating .sp-pill .sp-state { flex: 1; text-align: left; }
+.frame-wrap.phone & .sp-live { max-height: 38vh; }
+@media (max-width: 440px) {
+  .sp-btn .lbl, .sp-model { display: none; }
+  .sp-area.dictating .sp-tool, .sp-area.dictating .sp-grow { display: none; }
+  .sp-area.dictating .sp-mic-slot, .sp-area.dictating .sp-pill { flex: 1; }
+  .sp-area.dictating .sp-pill .sp-state { flex: 1; text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-dot, .sp-caret { animation: none; }
+  .sp-note, .sp-ask, .sp-notice { animation: none; }
+  .sp-bars i { transition: none; }
+}
+}
+@keyframes sp-blink { to { visibility: hidden; } }
+@keyframes sp-pulse { 50% { opacity: .35; } }
+@keyframes sp-in { from { opacity: 0; transform: translateY(4px); } }
