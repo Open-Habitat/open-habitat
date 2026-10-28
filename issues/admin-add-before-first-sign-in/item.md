@@ -8,7 +8,7 @@ priority: normal
 provenance: chat
 source_ref: chat:2026-10-28/admin-add-before-first-sign-in
 lane: admission-ui
-preparation: ready
+preparation: pending
 ---
 
 # Cannot make someone an administrator before they have signed in
