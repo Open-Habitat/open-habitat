@@ -5,7 +5,7 @@ type: feature
 reporter: conductor
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-10-28/proto-worker-row-work-facts
 lane: proto-worker-row-work-facts
