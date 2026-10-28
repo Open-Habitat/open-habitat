@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import schema from "../../../contracts/v1/git-identity.schema.json";
 import { ControlButton } from "../components/ControlElements";
 import { Button } from "../components/Primitives";
-import { mutationFetch } from "./mutations";
+import { mutationFetch, refusalReason, writeOutcome } from "./mutations";
 
 const valid = new Ajv({ strict: false }).compile(schema);
 type Identity = {
@@ -36,7 +36,14 @@ export function GitIdentity({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Why the last confirmation did not go through. It outlives the re-read
+  // that follows, so a failed click never looks like nothing happened.
+  const [notice, setNotice] = useState("");
   const [refresh, setRefresh] = useState(0);
+  useEffect(() => {
+    void csrf;
+    setNotice("");
+  }, [csrf]);
   useEffect(() => {
     // Re-read after a session binding changes, never reuse another person's values.
     void csrf;
@@ -72,8 +79,10 @@ export function GitIdentity({
     if (!csrf || busy) return;
     setBusy(true);
     setError("");
+    setNotice("");
+    let r: Response | undefined;
     try {
-      const r = await mutationFetch("git.identity", path, {
+      r = await mutationFetch("git.identity", path, {
         method: "POST",
         credentials: "same-origin",
         cache: "no-store",
@@ -87,7 +96,11 @@ export function GitIdentity({
           mode: onboarding ? "onboarding" : "settings",
         }),
       });
-      if (!r.ok) throw new Error("write");
+    } catch {
+      r = undefined;
+    }
+    try {
+      if (!r?.ok) throw new Error("write");
       const data: unknown = await r.json();
       if (!valid(data)) throw new Error("contract");
       setIdentity(data as Identity);
@@ -95,7 +108,15 @@ export function GitIdentity({
       if (onboarding) onContinue?.();
     } catch {
       // A lost response may follow a completed write. Observe Git instead of
-      // retrying the POST, which would be a second native mutation.
+      // retrying the POST, which would be a second native mutation. An
+      // existing identity needs no words: the re-read shows it.
+      const outcome = await writeOutcome(r?.ok ? undefined : r);
+      if (outcome.kind === "refused" && outcome.code !== "identity_exists")
+        setNotice(refusalReason(outcome.code, outcome.status));
+      else if (outcome.kind !== "refused")
+        setNotice(
+          "Tallennuksen tulosta ei saatu varmistettua. Git-asetukset luettiin uudelleen.",
+        );
       setRefresh((old) => old + 1);
     } finally {
       setBusy(false);
@@ -148,9 +169,9 @@ export function GitIdentity({
             "Tarkistetaan Git-asetukset…"
           )}
         </div>
-        {error && (
-          <p className="s-editor" role="alert">
-            {error}
+        {(error || notice) && (
+          <p className="s-editor" role="alert" data-testid="git-identity-error">
+            {error || notice}
           </p>
         )}
         {editing && identity && (
@@ -214,7 +235,11 @@ export function GitIdentity({
       aria-label="Git-identiteetti"
     >
       <h3>Git-identiteetti</h3>
-      {error && <p role="alert">{error}</p>}
+      {(error || notice) && (
+        <p role="alert" data-testid="git-identity-error">
+          {error || notice}
+        </p>
+      )}
       {!identity ? (
         <p>{error ? retry : "Tarkistetaan Git-asetukset…"}</p>
       ) : !existing && identity.emails.length === 0 ? (

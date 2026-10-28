@@ -44,12 +44,13 @@ func TestGitIdentityFreshAndNeverOverwrite(t *testing.T) {
 		h.ServeHTTP(w, r)
 		return w
 	}
-	// A long-running clone must not block reading Git identity in settings.
-	if !cloneWriter.TryLock() {
+	// A long-running clone holds the ~/src writer for its whole transfer. It
+	// must block neither reading nor confirming the Git identity: onboarding
+	// asks for the identity while the site's default repositories clone.
+	if !cloneWriter.TryLock("workspace_clone_running") {
 		t.Fatal("clone lock busy")
 	}
 	w := request("GET", "")
-	cloneWriter.Unlock()
 	if w.Code != 200 {
 		t.Fatalf("get: %d %s", w.Code, w.Body)
 	}
@@ -61,8 +62,9 @@ func TestGitIdentityFreshAndNeverOverwrite(t *testing.T) {
 		t.Fatalf("suggestions: %+v", initial)
 	}
 	w = request("POST", `{"name":"Alice Example","email":"typed@example.invalid","mode":"onboarding"}`)
+	cloneWriter.Unlock()
 	if w.Code != 200 {
-		t.Fatalf("write: %d %s", w.Code, w.Body)
+		t.Fatalf("write during a clone: %d %s", w.Code, w.Body)
 	}
 	n, e := gitValue(context.Background(), git, "user.name")
 	if e != nil || n != "Alice Example" {
@@ -94,6 +96,14 @@ func TestGitIdentityFreshAndNeverOverwrite(t *testing.T) {
 	n, _ = gitValue(context.Background(), git, "user.name")
 	if n != "Alice Edited" {
 		t.Fatalf("settings name: %q", n)
+	}
+	// Identity writes still exclude each other: the onboarding check and its
+	// write must not interleave with another write.
+	gitIdentityWriter.Lock()
+	w = request("POST", `{"name":"Other","email":"alice@example.invalid","mode":"settings"}`)
+	gitIdentityWriter.Unlock()
+	if w.Code != 409 || !strings.Contains(w.Body.String(), "workspace_identity_running") {
+		t.Fatalf("concurrent write: %d %s", w.Code, w.Body)
 	}
 }
 

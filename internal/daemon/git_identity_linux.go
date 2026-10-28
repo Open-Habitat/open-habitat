@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
@@ -22,6 +23,8 @@ import (
 const GitIdentityPath = "/api/v1/account/git-identity"
 
 var gitIdentityLogin = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}$`)
+
+var gitIdentityWriter sync.Mutex
 
 type gitIdentity struct {
 	SchemaVersion  int      `json:"schema_version"`
@@ -155,11 +158,15 @@ func gitIdentityHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			return
 		}
 		if r.Method == "POST" {
-			if !cloneWriter.TryLock("workspace_identity_running") {
-				snapshotError(w, 409, "workspace_busy")
+			// Serializes identity writes, so onboarding's "never overwrite" check
+			// and its write are one step. It is not the ~/src writer: a clone that
+			// runs for many minutes never touches ~/.gitconfig and must not block
+			// confirming the identity during onboarding.
+			if !gitIdentityWriter.TryLock() {
+				snapshotError(w, 409, "workspace_identity_running")
 				return
 			}
-			defer cloneWriter.Unlock()
+			defer gitIdentityWriter.Unlock()
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
 		defer cancel()

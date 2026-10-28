@@ -14,8 +14,9 @@ test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 const hidden = "private-org/secret";
 const defaults = ["fixture/bob-only", "fixture/team-default", hidden];
 
-/** The administrator configures the site; then a new person signs in. */
-async function newPerson(page: Page, mode: string, names = defaults) {
+/** The administrator configures the site; then a new person signs in and
+ * reaches the Git identity, the first step of their route. */
+async function signIn(page: Page, mode: string, names = defaults) {
   expect(
     (
       await page.request.get(
@@ -32,24 +33,14 @@ async function newPerson(page: Page, mode: string, names = defaults) {
     .click();
   // The second synthetic identity has never signed in on this host.
   await page.getByRole("link").nth(1).click();
-  if (mode === "auto") {
-    // Auto clones start at login and share the daemon's native-write lock
-    // with Git identity confirmation. Do not let a fast isolated run submit
-    // that unrelated write while a default is still cloning (409 workspace_busy).
-    await expect
-      .poll(async () => {
-        const list = await (
-          await page.request.get("/api/v1/onboarding/github/clones")
-        ).json();
-        return list.jobs
-          .filter((job: { state: string }) => job.state === "confirmed")
-          .map((job: { full_name: string }) => job.full_name)
-          .sort();
-      })
-      .toEqual(["fixture/bob-only", "fixture/team-default"]);
-  }
+}
+async function newPerson(page: Page, mode: string, names = defaults) {
+  await signIn(page, mode, names);
   await confirmGitIdentity(page);
 }
+const cloneJobs = async (page: Page) =>
+  (await (await page.request.get("/api/v1/onboarding/github/clones")).json())
+    .jobs as { full_name: string; state: string }[];
 const step = (page: Page, id: string) =>
   page
     .getByRole("navigation", { name: "Käyttöönoton vaiheet" })
@@ -102,6 +93,55 @@ test("@site-defaults auto: the readable defaults are locked rows already being f
         .sort();
     })
     .toEqual(["fixture/bob-only", "fixture/second", "fixture/team-default"]);
+});
+
+test("@site-defaults auto: the Git identity is confirmed while a default is still cloning", async ({
+  page,
+}) => {
+  // A large default repository takes minutes; the clone holds the daemon's
+  // ~/src writer all that time. Confirming the identity must not wait for it.
+  await page.request.get("/fixture/clone?mode=hold");
+  try {
+    await signIn(page, "auto");
+    await expect
+      .poll(
+        async () =>
+          (await cloneJobs(page)).filter((j) => j.state === "running").length,
+      )
+      .toBe(1);
+    const panel = page.getByTestId("git-identity");
+    const confirm = panel
+      .getByRole("button")
+      .and(page.getByTestId("git-identity-confirm"));
+    await expect(confirm).toBeVisible();
+    await confirm.click();
+    await expect(
+      page
+        .getByRole("heading")
+        .and(page.getByTestId("repository-chooser-title")),
+    ).toBeVisible();
+    await expect(page.getByTestId("git-identity-error")).toHaveCount(0);
+    const identity = await (
+      await page.request.get("/api/v1/account/git-identity")
+    ).json();
+    expect(identity.name).not.toBe("");
+    expect(identity.email).toContain("@");
+    // The clone was still in progress the whole time.
+    expect(
+      (await cloneJobs(page)).filter((j) => j.state === "running"),
+    ).toHaveLength(1);
+  } finally {
+    await page.request.get("/fixture/clone?mode=release");
+    await page.request.get("/fixture/clone?mode=normal");
+  }
+  await expect
+    .poll(async () =>
+      (await cloneJobs(page))
+        .filter((j) => j.state === "confirmed")
+        .map((j) => j.full_name)
+        .sort(),
+    )
+    .toEqual(["fixture/bob-only", "fixture/team-default"]);
 });
 
 test("@site-defaults preselected: the readable defaults start selected and nothing is fetched before Continue", async ({

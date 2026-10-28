@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: onboarding-git
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/onboarding-git-identity-stuck-while-cloning
+closed: 2026-10-28
 ---
 
 # Onboarding: confirming the Git identity does nothing while repositories are still cloning

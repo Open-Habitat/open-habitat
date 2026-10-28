@@ -62,6 +62,44 @@ it("prefills account details during onboarding and saves the edited name", async
   });
 });
 
+it("says why a confirmation did not go through instead of showing the same form again", async () => {
+  const unset = {
+    ok: true,
+    json: async () => ({
+      schema_version: 1,
+      name: "",
+      email: "",
+      source: "~/.gitconfig",
+      suggested_name: "Alice",
+      suggested_email: "42+alice@users.noreply.github.com",
+      emails: ["42+alice@users.noreply.github.com"],
+    }),
+  };
+  const onContinue = vi.fn();
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(unset)
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "workspace_identity_running" }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+    .mockResolvedValueOnce(unset);
+  vi.stubGlobal("fetch", fetcher);
+  render(<GitIdentity csrf="csrf" onboarding onContinue={onContinue} />);
+  fireEvent.click(await screen.findByTestId("git-identity-confirm"));
+  expect((await screen.findByTestId("git-identity-error")).textContent).toBe(
+    "Git-tekijätietojen tallennus on kesken. Odota hetki ja yritä uudelleen.",
+  );
+  // The write is observed again, not repeated, and the message stays.
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
+  expect(fetcher.mock.calls[2][1].method).toBeUndefined();
+  await screen.findByTestId("git-identity-confirm");
+  expect(screen.getByTestId("git-identity-error")).toBeTruthy();
+  expect(onContinue).not.toHaveBeenCalled();
+});
+
 it("shows existing identity read-only during onboarding", async () => {
   vi.stubGlobal(
     "fetch",
