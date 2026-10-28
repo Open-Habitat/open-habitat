@@ -1,0 +1,110 @@
+/* Markdownin esikatselu: tuotannon BrowserEditorin (CodeMirror 6 -paneeli) esityskopio
+   tokenien päällä. Kehys on koko leveä; keskustelun lanka ja kenttä eivät kuulu kierrokseen. */
+[hidden] { display: none !important; }
+.frame-wrap { padding: 0 0 80px; }
+.frame { max-width: none; border: 0; border-radius: 0; height: calc(100vh - 125px); min-height: 640px; }
+.frame-wrap.phone { padding-top: 16px; }
+.frame-wrap.phone .frame { border: 1px solid var(--ah-line); border-radius: 12px; }
+.frame > .topbar, .frame > .composer { display: none; }
+#stage { padding: 0; display: block; overflow: hidden; }
+#stage > .md-demo { width: 100%; max-width: none; height: 100%; }
+.md-demo { display: flex; flex-direction: column; font-size: var(--ah-size-ui); }
+.md-note { margin: 0; padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-size: var(--ah-size-meta); }
+.md-note span { color: var(--ah-ink-2); flex: 1 1 320px; }
+.md-note label { display: inline-flex; gap: 6px; align-items: center; color: var(--ah-ink-2); }
+.md-note select { font: inherit; }
+.md-app { flex: 1; min-height: 0; display: flex; }
+
+/* ----- Buttons: the production primitive (Controls.module.css), row size ----- */
+.md-demo .b, .md-demo .seg, .md-demo .fab { box-sizing: border-box; min-height: var(--ah-control-row); padding: 0 var(--ah-control-row-pad); border: 1px solid transparent; border-radius: var(--ah-r-md); font: 600 var(--ah-control-row-font)/1.2 var(--ah-font); color: var(--ah-ink); background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: var(--ah-control-row-gap); white-space: nowrap; position: relative; }
+.md-demo .b svg, .md-demo .seg svg, .md-demo .fab svg { width: var(--ah-control-row-icon); height: var(--ah-control-row-icon); flex: none; }
+.md-demo .b.text { background: var(--ah-control); }
+.md-demo .b.text:hover { background: var(--ah-control-hover); }
+.md-demo .b.secondary { color: var(--ah-ink); }
+.md-demo .b.quiet { color: var(--ah-accent-ink); }
+.md-demo .b.icon { width: var(--ah-control-row); padding: 0; background: transparent; }
+.md-demo .b.icon:hover { background: var(--ah-surface-hover); }
+.md-demo .b:disabled { color: var(--ah-disabled-fg); background: var(--ah-disabled-bg); cursor: default; }
+.md-demo .b[aria-pressed="true"] { background: var(--ah-accent-soft); color: var(--ah-accent-ink); box-shadow: inset 0 0 0 1px var(--ah-accent-line); }
+.md-demo :is(.b, .seg, .fab, textarea, .md-pv):focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: var(--ah-focus-inset); }
+.segmented { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--ah-r-md); background: var(--ah-control); }
+.md-demo .seg { min-height: calc(var(--ah-control-row) - 4px); padding: 0 10px; border: 0; border-radius: calc(var(--ah-r-md) - 2px); color: var(--ah-muted); font-weight: 500; }
+.md-demo .seg:hover { background: var(--ah-control-hover); }
+.md-demo .seg[aria-pressed="true"] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-line); font-weight: 600; }
+/* Tooltip with the shortcut: hover or keyboard focus. */
+.md-demo [data-tip]:is(:hover, :focus-visible)::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); right: 0; z-index: 5; padding: 5px 8px; border-radius: 6px; background: var(--ah-ink); color: var(--ah-bg); font: 500 12px/1.3 var(--ah-font); white-space: nowrap; pointer-events: none; }
+.md-fab [data-tip]:is(:hover, :focus-visible)::after { top: auto; bottom: calc(100% + 6px); }
+
+/* ----- Editor panel ----- */
+.md-editor { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--ah-surface); }
+.md-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 14px; border-bottom: 1px solid var(--ah-line); }
+.md-head h2 { margin: 0; flex: 1; font: 500 14px var(--ah-font); }
+.md-head-ctl { display: flex; gap: 4px; }
+.md-head .b.icon { color: var(--ah-accent-ink); }
+.md-toolbar { display: flex; align-items: center; gap: var(--ah-s2); padding: var(--ah-s2); border-bottom: 1px solid var(--ah-line); flex-wrap: wrap; }
+.md-file { flex: 1; min-width: 0; font: 400 13.5px var(--ah-mono); overflow-wrap: anywhere; }
+.md-state { color: var(--ah-ink-2); }
+.md-state:empty { display: none; }
+.md-ctl { display: inline-flex; gap: 4px; }
+.md-body { flex: 1; min-height: 0; display: flex; position: relative; overflow: hidden; }
+.md-src { flex: 1 1 0; min-width: 0; overflow: auto; background: var(--ah-surface); }
+.md-code { position: relative; --g: 3.4em; font: 400 13px/1.6 var(--ah-mono); background: linear-gradient(to right, var(--ah-surface-2) var(--g), transparent var(--g)); min-height: 100%; }
+.md-rows, .md-code textarea { margin: 0; padding: 6px 12px 40vh calc(var(--g) + 8px); font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; }
+.md-rows { color: var(--ah-ink); }
+.md-rows .ln { position: relative; }
+.md-rows .ln::before { content: attr(data-n); position: absolute; left: calc(-1 * var(--g) - 8px); width: calc(var(--g) - 10px); text-align: right; color: var(--ah-muted); }
+.md-rows .ln.head::after { content: '⌄'; position: absolute; left: -16px; top: -2px; color: var(--ah-faint); }
+.md-code textarea { position: absolute; inset: 0; width: 100%; box-sizing: border-box; border: 0; resize: none; overflow: hidden; background: transparent; color: transparent; caret-color: var(--ah-ink); }
+.md-code textarea::selection { background: color-mix(in srgb, var(--ah-accent) 25%, transparent); }
+.sx-h { color: var(--ah-syntax-title); }
+.sx-k { color: var(--ah-syntax-keyword); }
+.sx-s { color: var(--ah-syntax-string); }
+.sx-c { color: var(--ah-syntax-comment); }
+.sx-b { font-weight: 700; }
+.md-pv { box-sizing: border-box; flex: 1 1 0; min-width: 0; overflow: auto; padding: var(--ah-s4) var(--ah-s5) 30vh; border-inline-start: 1px solid var(--ah-line); background: var(--ah-surface); }
+.md-pv > .md-doc { max-width: 72ch; margin-inline: auto; font-size: var(--ah-size-body); line-height: var(--ah-lh-body); }
+.md-doc h2 { font: 650 26px/1.25 var(--ah-font); margin: 0 0 .5em; }
+.md-doc h3 { font: 600 19px/1.3 var(--ah-font); margin-top: 1.4em; }
+.md-doc h4 { font: 600 15.5px/1.3 var(--ah-font); }
+.md-doc blockquote { padding-left: 12px; border-left: 3px solid var(--ah-line-strong); color: var(--ah-ink-2); }
+.md-body[data-shown="only"] .md-src { display: none; }
+.md-body[data-shown="only"] .md-pv { border-inline-start: 0; }
+.md-editor[data-narrow="true"] .wide-only { display: none; }
+.md-editor[data-narrow="true"] .md-pv { padding-inline: var(--ah-s3); }
+
+/* ----- Kelluva: the floating toggle in the document's corner ----- */
+.md-fab { position: absolute; right: 18px; bottom: 18px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 3; }
+.md-demo .fab { min-height: 40px; padding: 0 16px; border-radius: 999px; background: var(--ah-surface); color: var(--ah-accent-ink); border-color: var(--ah-line-strong); box-shadow: 0 4px 14px rgba(16, 24, 40, .14); }
+.md-demo .fab:hover { background: var(--ah-surface-hover); }
+.md-demo .fab.mini { width: 40px; padding: 0; }
+.md-demo .fab[aria-pressed="true"] { background: var(--ah-current); border-color: var(--ah-current-line); }
+.md-body[data-shown="side"] .md-fab { right: 24px; }
+
+/* ----- Context: the conversation beside, or its rail ----- */
+.md-rail { width: 34px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 10px; background: var(--ah-rail); border-left: 1px solid var(--ah-line); color: var(--ah-ink-2); }
+.md-rail svg { width: 14px; height: 14px; }
+.md-rail span { writing-mode: vertical-rl; font-size: 13px; }
+.md-conv { width: 52%; flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--ah-line); background: var(--ah-bg); }
+.md-conv-head { display: flex; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.md-conv-head span { color: var(--ah-ok); font-weight: 600; font-size: 12px; }
+.md-conv-body { flex: 1; overflow: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 18px; font-size: var(--ah-size-body); line-height: var(--ah-lh-body); }
+.md-user { align-self: flex-end; max-width: 85%; padding: 10px 14px; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); }
+.md-conv-compose { margin: 10px 18px 16px; padding: 12px 14px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg); background: var(--ah-surface); color: var(--ah-muted); }
+
+/* ----- Phone ----- */
+@container (max-width: 600px) {
+  .md-note span { flex-basis: 100%; }
+  .md-rail, .md-conv { display: none; }
+  .md-toolbar { position: sticky; top: 0; }
+  .md-demo .b { min-height: 44px; }
+  .md-demo .b.icon { width: 44px; }
+  .segmented .seg { min-height: 40px; }
+  .md-file { flex-basis: 12ch; }
+  .md-code { --g: 2.8em; font-size: 12.5px; }
+  .md-fab { right: 14px; bottom: 14px; }
+  .md-demo .fab { min-height: 48px; padding: 0 18px; }
+  .md-demo [data-tip]:is(:hover, :focus-visible)::after { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .md-demo :is(.b, .seg, .fab) { transition: background-color 120ms ease-out, color 120ms ease-out; }
+}
