@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,9 +40,16 @@ const dropboxScopes = "account_info.read files.metadata.read files.metadata.writ
 const dropboxReadScopes = "account_info.read files.metadata.read files.content.read"
 
 // The local roots. An App folder application sees its own folder as the
-// root, so its files must never meet the whole Dropbox's in one directory.
+// root, so its files must never meet the whole Dropbox's in one directory,
+// nor another App folder application's: an account the operator's new App
+// folder application signs in again gets a root of its own, named by the
+// application (dropboxAppFolderDirOf).
 func dropboxFullDir(address string) string      { return "cloud/dropbox/" + address }
 func dropboxAppFolderDir(address string) string { return "cloud/dropbox-app-folder/" + address }
+func dropboxAppFolderDirOf(address, clientID string) string {
+	h := sha256.Sum256([]byte(clientID))
+	return dropboxAppFolderDir(address) + "." + hex.EncodeToString(h[:4])
+}
 
 // dropboxNative is what an account's rclone config says: its application,
 // token and, from the sign-in, the local root (rclone's description) and the
@@ -63,7 +71,7 @@ func (n dropboxNative) access() Access {
 }
 
 func (n dropboxNative) appFolder(address string) bool {
-	return n.directory == dropboxAppFolderDir(address)
+	return n.directory != dropboxFullDir(address)
 }
 
 // dropboxReadNative reads the account's rclone config. A root other than the
@@ -97,13 +105,13 @@ func dropboxReadNative(env Env, address string) (dropboxNative, error) {
 		case "token":
 			n.token = value
 		case "description":
-			if value != dropboxAppFolderDir(address) {
-				return n, ToolFailed
-			}
 			n.directory = value
 		case grantKey:
 			n.granted, n.hasGrant = strings.Fields(value), true
 		}
+	}
+	if d := n.directory; d != dropboxFullDir(address) && d != dropboxAppFolderDir(address) && d != dropboxAppFolderDirOf(address, n.clientID) {
+		return n, ToolFailed
 	}
 	return n, nil
 }
@@ -665,17 +673,33 @@ func (l *dropboxLogin) Commit(ctx context.Context, address string) (result error
 	if _, ok := l.env.Tool("rclone"); !ok {
 		return ToolFailed
 	}
-	directory := dropboxFullDir(address)
-	if l.level == LevelAppFolder {
-		directory = dropboxAppFolderDir(address)
-	}
 	writable := dropboxRules.access("dropbox", scopeSet(l.granted, func(s string) string { return s })) == AccessFull
 	old, oldErr := dropboxReadNative(l.env, address)
 	replaced := oldErr == nil
+	directory := dropboxFullDir(address)
+	// The operator replaced the App folder application: the new one's
+	// folder is another root, and the old one may no longer exist.
+	appReplaced := false
+	if l.level == LevelAppFolder {
+		directory = dropboxAppFolderDir(address)
+		switch {
+		case replaced && old.appFolder(address) && strings.EqualFold(old.clientID, l.app.ClientID):
+			directory = old.directory
+		case replaced && old.appFolder(address):
+			directory, appReplaced = dropboxAppFolderDirOf(address, l.app.ClientID), true
+		}
+	}
 	changed := replaced && (old.directory != directory || (old.access() == AccessFull) != writable)
+	if changed && !appReplaced && old.access() == AccessFull && listingsFailed(l.env.Home, dropboxWork(address)) {
+		// A critical abort set the pair aside; no pass can run without an
+		// explicit resync, and changing now would skip the last two-way one.
+		return FinalSyncFailed
+	}
 	if _, syncing := l.entry.SyncCommand(l.env, address); changed && syncing && old.access() == AccessFull {
 		cmd, ok := dropboxBisync(l.env, address)
-		if !ok || l.env.runInitialSync(ctx, cmd, "dropbox") != nil {
+		// A replaced application's last pass is attempted, not required: its
+		// directory stays as it is, and the application may be gone.
+		if (!ok || l.env.runInitialSync(ctx, cmd, "dropbox") != nil) && !appReplaced {
 			return FinalSyncFailed
 		}
 	}

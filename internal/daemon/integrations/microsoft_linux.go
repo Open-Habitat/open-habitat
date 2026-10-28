@@ -716,6 +716,11 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 			continue
 		}
 		turned = append(turned, r.Name)
+		if r.Writable && listingsFailed(l.env.Home, microsoftWork(address, r.Name)) {
+			// A critical abort set the pair aside: no pass runs without an
+			// explicit resync, and changing now would skip the last one.
+			return FinalSyncFailed
+		}
 		if !r.Writable || !microsoftReady(l.env, address, r) {
 			continue
 		}

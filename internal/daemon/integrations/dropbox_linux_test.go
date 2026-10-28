@@ -58,6 +58,7 @@ bisync)
   printf 'native listing\n' > "$work/local..dropbox.path2.lst"
  else
   [ -f "$work/local..dropbox.path1.lst" ]
+  while [ -f "$HOME/hold-pass" ]; do sleep 0.02; done
   [ ! -f "$HOME/pass-fail" ] || exit 7
   echo pass >> "$HOME/passes"
  fi;;

@@ -753,7 +753,10 @@ pass with the old login, so nothing made locally is left behind; if that pass
 fails, nothing changes and the new login is revoked. After a level change, and
 after any other new sign-in, the daemon revokes the replaced login at Dropbox.
 A level change to another root leaves the old directory in place, no longer
-synced.
+synced; so does replacing the App folder application, whose accounts then
+sync a directory of their own (`~/cloud/dropbox-app-folder/<account>.<id>/`)
+after signing in again. A pair a critical abort set aside cannot run that last
+two-way pass, so a level change away from it is refused until it is recovered.
 
 ### Google app registration
 

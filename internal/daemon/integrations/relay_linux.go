@@ -54,6 +54,9 @@ type attempt struct {
 	// redirected marks that the pasted address went to the tool; a second
 	// paste is refused rather than repeated.
 	redirected bool
+	// committing marks the native commit, which may run a level change's
+	// last two-way pass: the exchange's timeout no longer applies to it.
+	committing bool
 	// choose receives the person's folder choice.
 	choose chan []string
 	// existing are the accounts the tool held when the attempt started; an
@@ -456,7 +459,7 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		Commit(context.Context, string) error
 	}); ok {
 		c.write.Lock()
-		if !c.live(a) || ctx.Err() != nil {
+		if !c.setAttempt(a, func() { a.committing = true }) || ctx.Err() != nil {
 			c.write.Unlock()
 			c.failAttempt(a, Cancelled)
 			return
@@ -676,7 +679,7 @@ func (c *Catalog) redirect(owner, id, raw string) error {
 	time.AfterFunc(c.signInWait, func() {
 		r.mu.Lock()
 		defer r.mu.Unlock()
-		if r.a == a && a.state == "completing" && !a.syncing {
+		if r.a == a && a.state == "completing" && !a.syncing && !a.committing {
 			a.state, a.failure = "failed", Expired
 			a.stop()
 			c.log.Warn("integration_login", "provider", string(a.provider), "outcome", "failed", "phase", "post_redirect", "reason", string(Expired))

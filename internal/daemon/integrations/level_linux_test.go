@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // levelDropbox is a synthetic Dropbox for level sign-ins: each authorization
@@ -249,8 +250,27 @@ func TestDropboxAppFolderLevelHasItsOwnRoot(t *testing.T) {
 	if body := d.Skill(env, email).Body; !strings.Contains(body, "~/cloud/dropbox-app-folder/"+email+"/") || !strings.Contains(body, "own folder") {
 		t.Fatal(body)
 	}
+	// The operator replaces the App folder application: its folder is another
+	// root, so the account gets a directory of its own and starts afresh,
+	// and the old one stays as it is.
+	os.WriteFile(filepath.Join(env.Home, "cloud/dropbox-app-folder", email, "kept.txt"), []byte("mine"), 0600)
+	env.Config.DropboxAppFolder = &DropboxApp{ClientID: "folder-key-2", ClientSecret: "folder-secret-2"}
+	if _, err := dropboxSignIn(t, d, env, email, ""); err != nil {
+		t.Fatal(err)
+	}
+	dirs := d.Directories(env, email)
+	if len(dirs) != 1 || dirs[0].Path != dropboxAppFolderDirOf(email, "folder-key-2") {
+		t.Fatal(dirs)
+	}
+	if _, ok := d.SyncCommand(env, email); ok {
+		t.Fatal("the new application's folder synced against the old one's listings")
+	}
+	if _, err := os.Stat(filepath.Join(env.Home, "cloud/dropbox-app-folder", email, "kept.txt")); err != nil {
+		t.Fatal("old application's directory touched", err)
+	}
+	config = dropboxConfig(t, env, email)
 	// A root the daemon never writes is not synced.
-	os.WriteFile(filepath.Join(env.Home, dropboxDir, email+".conf"), []byte(strings.Replace(config, "dropbox-app-folder", "elsewhere", 1)), 0600)
+	os.WriteFile(filepath.Join(env.Home, dropboxDir, email+".conf"), []byte(strings.Replace(config, "description = cloud/dropbox-app-folder", "description = cloud/elsewhere", 1)), 0600)
 	if _, ok := d.SyncCommand(env, email); ok || d.Directories(env, email) != nil {
 		t.Fatal("foreign root synced")
 	}
@@ -402,5 +422,70 @@ func TestMicrosoftLevelChangeSyncsBothWaysOnce(t *testing.T) {
 	}
 	if choose, _ := m.FolderChoiceAfterLogin(env, address); !choose {
 		t.Fatal("the mirror needs the person's choice")
+	}
+}
+
+// A pair a critical abort set aside cannot sync both ways once more, so a
+// level change away from it is refused rather than skipping that pass.
+func TestDropboxLevelChangeRefusesAnAbortedPair(t *testing.T) {
+	env := dropboxEnv(t)
+	email := "person@example.test"
+	var exchanges atomic.Int32
+	d := syntheticDropbox(t, &email, &exchanges)
+	scope := ""
+	levelDropbox(t, d, &scope)
+	if _, err := dropboxSignIn(t, d, env, "", LevelFull); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.ChooseFolders(context.Background(), env, email, []string{"all"}); err != nil {
+		t.Fatal(err)
+	}
+	work := filepath.Join(env.Home, dropboxWork(email))
+	for _, side := range []string{"path1", "path2"} {
+		if err := os.Rename(filepath.Join(work, "local..dropbox."+side+".lst"), filepath.Join(work, "local..dropbox."+side+".lst-err")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	scope = dropboxReadScopes
+	if _, err := dropboxSignIn(t, d, env, email, LevelRead); !errors.Is(err, FinalSyncFailed) {
+		t.Fatal(err)
+	}
+	if !listingsFailed(env.Home, dropboxWork(email)) {
+		t.Fatal("the aborted pair's evidence was removed")
+	}
+}
+
+// The last two-way pass of a level change may take longer than the pasted
+// address's exchange is allowed; the exchange's timeout does not end it.
+func TestDropboxFinalPassOutlastsTheExchangeTimeout(t *testing.T) {
+	env := dropboxEnv(t)
+	email := "person@example.test"
+	var exchanges atomic.Int32
+	d := syntheticDropbox(t, &email, &exchanges)
+	scope := ""
+	levelDropbox(t, d, &scope)
+	if _, err := dropboxSignIn(t, d, env, "", LevelFull); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.ChooseFolders(context.Background(), env, email, []string{"all"}); err != nil {
+		t.Fatal(err)
+	}
+	scope = dropboxReadScopes
+	c := New(env, []Entry{d}, nil, WithQuota(func() Room { return Room{Free: 2048, OK: true} }))
+	c.signInWait = 200 * time.Millisecond
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c.Start(ctx)
+	defer c.sync.stopAll()
+	h := c.Handler(allow)
+	os.WriteFile(filepath.Join(env.Home, "hold-pass"), nil, 0600)
+	call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "dropbox", "address": email, "level": "read"})
+	view := waitState(t, h, ownerA, "open_url")
+	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "redirect", "attempt_id": view["attempt_id"], "redirect_url": dropboxPaste(t, view)})
+	time.Sleep(500 * time.Millisecond)
+	os.Remove(filepath.Join(env.Home, "hold-pass"))
+	waitState(t, h, ownerA, "choose_folders")
+	if passes, _ := os.ReadFile(filepath.Join(env.Home, "passes")); !strings.Contains(string(passes), "pass") {
+		t.Fatal("no final pass")
 	}
 }
