@@ -2,13 +2,16 @@
 created: 2026-10-28
 updated: 2026-10-28
 type: bug
-status: untriaged
+status: open
 priority: low
 provenance: other
 provenance_detail: whole default browser suite run by a spinoff worker
 source_ref: taskfleet:01m60r1fawvv8rgv07ztqxm9xm/site-ai-key-load-timeout
 originating_run: 01m60r1fawvv8rgv07ztqxm9xm
 originating_run_kind: spinoff
+lane: gate-health
+lane_seq: 104
+preparation: ready
 ---
 
 # site-ai-key admin journey exceeds its 30 s test timeout under suite load

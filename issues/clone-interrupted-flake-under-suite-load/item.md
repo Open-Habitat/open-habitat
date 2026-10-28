@@ -3,10 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: conductor
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: suite:2026-10-28/r29/clone-page
+lane: gate-health
+lane_seq: 101
+preparation: ready
 ---
 
 # Browser suite: interrupted-clone spec times out under whole-suite load

@@ -2,12 +2,15 @@
 created: 2026-10-28
 updated: 2026-10-28
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m60fcq4r5qaz9gq4f5veyhr2/browser-shell-ctrl-d-flake
 originating_run: 01m60fcq4r5qaz9gq4f5veyhr2
 originating_run_kind: spinoff
+lane: gate-health
+lane_seq: 103
+preparation: ready
 ---
 
 # browser-shell Ctrl-D spec loses typed input in the second shell under full-suite load
