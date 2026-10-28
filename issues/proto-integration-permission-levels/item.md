@@ -1,6 +1,6 @@
 ---
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-28
 type: task
 reporter: jari
 status: open
@@ -9,7 +9,7 @@ provenance: chat
 source_ref: chat:2026-10-27/proto-integration-permission-levels
 lane: integration-scopes
 lane_seq: 2
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: choosing an integration's permission level when connecting
