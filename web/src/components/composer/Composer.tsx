@@ -643,6 +643,7 @@ export function Composer({
     });
   });
   const dictating = dictation.active;
+  const endingToSend = useRef(false);
   const dictatedText = dictating
     ? `${dictation.base}${dictation.view?.final ?? ""}`
     : "";
@@ -800,8 +801,13 @@ export function Composer({
           : null;
   const send = async (otherWay = false) => {
     if (dictating) {
-      // Send during a dictation ends it first and sends what was said.
-      const text = await dictation.stop();
+      // Send during a dictation ends it first and sends what was said;
+      // a second press while it ends sends nothing more.
+      if (endingToSend.current) return;
+      endingToSend.current = true;
+      const text = await dictation.stop().finally(() => {
+        endingToSend.current = false;
+      });
       const current = draft.current.value;
       return sendDraft(
         otherWay,

@@ -104,6 +104,7 @@ export class Dictation {
   private accepted = false;
   private tick: number | null = null;
   private finished: (() => void) | null = null;
+  private finishing: Promise<void> | null = null;
 
   constructor(deps: DictationDeps, onChange: (view: DictationView) => void) {
     this.deps = deps;
@@ -133,18 +134,29 @@ export class Dictation {
     try {
       // The microphone first: its prompt may take longer than the key's
       // one minute to open a stream.
+      let stream: MediaStream;
       try {
-        this.stream = await this.deps.microphone();
+        stream = await this.deps.microphone();
       } catch {
         throw new SpeechError("microphone_denied");
       }
-      if (run !== this.run) return;
-      this.capture = await this.deps
-        .capture(this.stream, (pcm, level) => this.frame(run, pcm, level))
+      // A dictation stopped while the browser asked must not keep the
+      // microphone it was given afterwards.
+      if (run !== this.run) {
+        for (const track of stream.getTracks()) track.stop();
+        return;
+      }
+      this.stream = stream;
+      const capture = await this.deps
+        .capture(stream, (pcm, level) => this.frame(run, pcm, level))
         .catch(() => {
           throw new SpeechError("unsupported");
         });
-      if (run !== this.run) return;
+      if (run !== this.run) {
+        capture.close();
+        return;
+      }
+      this.capture = capture;
       const session = await this.deps.mint(this.abort.signal);
       if (run !== this.run) return;
       this.lastVoice = this.deps.now();
@@ -356,15 +368,25 @@ export class Dictation {
     return this.view.final;
   }
 
-  private async finish(run: number, why: "stopped" | "ceiling") {
-    if (run !== this.run || !this.active || this.view.phase === "finishing")
-      return;
+  private finish(run: number, why: "stopped" | "ceiling"): Promise<void> {
+    // Every stop during the wait for Soniox's last words waits for the same
+    // end, so Send never takes the text before it is final.
+    if (this.view.phase === "finishing" && this.finishing)
+      return this.finishing;
+    if (run !== this.run || !this.active) return Promise.resolve();
     if (this.view.phase === "connecting") {
       this.run++;
       this.release();
       this.set({ ...idle, final: this.view.final, ended: why });
-      return;
+      return Promise.resolve();
     }
+    this.finishing = this.finishStream(run, why).finally(() => {
+      this.finishing = null;
+    });
+    return this.finishing;
+  }
+
+  private async finishStream(run: number, why: "stopped" | "ceiling") {
     this.set({ phase: "finishing" });
     // The microphone stops at once; Soniox finalises what it has.
     this.capture?.close();

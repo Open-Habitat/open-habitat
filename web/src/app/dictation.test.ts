@@ -210,7 +210,7 @@ describe("Dictation", () => {
     });
   });
 
-  it("reports a refused start without text, and a refused key mid-dictation with the text", async () => {
+  it("reports a refused key or a stream refused at its start as a failed start", async () => {
     const missing = harness([new SpeechError("speech_key_missing")]);
     await missing.d.start();
     expect(missing.d.view).toMatchObject({
@@ -245,5 +245,43 @@ describe("Dictation", () => {
     expect(await stopped).toBe("Valmis teksti");
     expect(h.d.view.ended).toBe("stopped");
     expect(h.mintCount()).toBe(1);
+  });
+
+  it("a second stop while Soniox finishes waits for the same final text", async () => {
+    const h = harness([session(1)]);
+    await h.d.start();
+    const ws = h.sockets[0];
+    ws?.open();
+    ws?.reply({ tokens: [{ text: "Hei", is_final: true }] });
+    const first = h.d.stop();
+    const second = h.d.stop();
+    ws?.reply({
+      tokens: [{ text: " maailma", is_final: true }],
+      finished: true,
+    });
+    expect(await second).toBe("Hei maailma");
+    expect(await first).toBe("Hei maailma");
+  });
+
+  it("a stop while the browser asks for the microphone releases the microphone it gets later", async () => {
+    let grant: (s: MediaStream) => void = () => {};
+    let stopped = 0;
+    const h = harness([session(1)]);
+    const d = new Dictation(
+      {
+        ...(h.d as unknown as { deps: DictationDeps }).deps,
+        microphone: () => new Promise<MediaStream>((r) => (grant = r)),
+      },
+      () => {},
+    );
+    const started = d.start();
+    await d.stop();
+    grant({
+      getTracks: () => [{ stop: () => stopped++ }],
+    } as unknown as MediaStream);
+    await started;
+    expect(stopped).toBe(1);
+    expect(d.view.phase).toBe("idle");
+    expect(h.sockets).toHaveLength(0);
   });
 });
