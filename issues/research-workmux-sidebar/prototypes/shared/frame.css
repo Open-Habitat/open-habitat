@@ -107,6 +107,13 @@ svg { width: 14px; height: 14px; flex: none; }
 @media (max-width: 720px) {
   .lab { padding: 6px 10px; }
   .lab > div:first-child { display: none; }
+  /* The picker sits at the top, so on the phone the lab controls go under the composer. */
+  .lab { order: 2; border-bottom: 0; border-top: 1px solid var(--ah-line); justify-content: center; }
+  .lab-controls { flex-wrap: nowrap; gap: 6px; }
+  .lab label { font-size: 0; }
+  .lab select { max-width: 38vw; }
+  .lab button { white-space: nowrap; }
+  .lab select, .lab button { padding: 4px 6px; }
   .rail { position: absolute; inset: 0 auto 0 0; width: min(88vw, 340px); z-index: 20; transform: translateX(-100%); transition: transform var(--ah-transition, 160ms) ease-out; box-shadow: var(--ah-shadow-dialog); }
   .app[data-drawer] .rail { transform: none; }
   .app[data-drawer] .scrim { display: block; position: absolute; inset: 0; background: rgba(0, 0, 0, .32); z-index: 15; }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Builds one round's self-contained review page <round>/index.html; never imported by production.
 //   node issues/research-workmux-sidebar/prototypes/shared/build.mjs <round-dir>
-// The round directory holds round.json ({ round, title, subtitle, names }), round.css and
+// The round directory holds round.json ({ round, title, subtitle, names, scenes?, lab? }), round.css and
 // round.js. Tokens and fonts come from design-system/, the picker from
 // design-system/prototypes/lib/ (PICKER.md verbatim, placed at the top because the composer
 // is at the bottom), the frame from this directory.
@@ -42,7 +42,8 @@ ${read('design-system/prototypes/lib/picker.css')}
 <header class="lab">
   <div><strong>${meta.title}</strong><span>${meta.subtitle}</span></div>
   <div class="lab-controls">
-    <label>Tilanne <select id="scene"><option value="many">Rupeama käynnissä (16 keskustelua)</option><option value="few">Hiljainen ilta (4)</option></select></label>
+    <label>Tilanne <select id="scene">${(meta.scenes ?? [['many', 'Rupeama käynnissä (16 keskustelua)'], ['few', 'Hiljainen ilta (4)']]).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>
+    ${meta.lab ?? ''}
     <button type="button" id="reset">Alusta</button>
     <button type="button" id="theme">Tumma</button>
   </div>

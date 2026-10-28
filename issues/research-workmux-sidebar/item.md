@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: research-workmux-sidebar
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-10-28/research-workmux-sidebar
 ---

@@ -1,0 +1,38 @@
+/* Round 3b: Lopussa in the conversation the person is in. The card is round 2's Lopussa card;
+   the dock is new: a slim line between the stream and the composer. */
+.answered { color: var(--ah-muted); font-size: 12.5px; }
+.lcard { margin-top: 4px; display: grid; gap: 6px; }
+.lcard .lh { color: var(--ah-muted); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; display: flex; gap: 6px; align-items: center; }
+.lcard .lh .count { letter-spacing: 0; text-transform: none; }
+.lb { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 12px 14px; border: 1px solid var(--ah-accent-line); border-radius: var(--ah-r-lg); background: var(--ah-surface-2); text-align: left; cursor: pointer; color: var(--ah-ink); }
+.lb:hover { border-color: var(--ah-accent); }
+.lb .txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.lb .ttl { font-weight: 600; }
+.lb .det { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.lb .ex { color: var(--ah-ink-2); font-size: 13px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.lb .go { flex: none; align-self: center; display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: var(--ah-r-md); background: var(--ah-accent); color: var(--ah-on-accent); font-size: 13px; font-weight: 600; }
+.lnote, .dnote { color: var(--ah-muted); font-size: 12px; font-style: italic; }
+.lend { display: grid; gap: 4px; justify-items: center; }
+.lnone { color: var(--ah-muted); font-size: 12.5px; text-align: center; }
+
+.dock { flex: none; display: grid; gap: 2px; padding: 0 18px; }
+.dock > * { max-width: var(--ah-conversation-width, 760px); width: 100%; margin: 0 auto; }
+.dock.quiet { padding-top: 6px; text-align: center; }
+.db { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 4px 6px 4px 12px; border: 1px solid var(--ah-accent-line); border-radius: var(--ah-r-md); background: var(--ah-accent-soft); color: var(--ah-ink); font-size: 13px; text-align: left; cursor: pointer; margin-top: 8px; }
+.db:hover { border-color: var(--ah-accent); }
+.db .dl { flex: none; color: var(--ah-accent-ink); font-size: 12px; font-weight: 600; }
+.db .mk { height: 16px; }
+.db .ttl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.db .det { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ah-muted); font-size: 12px; }
+.db .count { flex: none; }
+.db .go { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: var(--ah-r-md); background: var(--ah-accent); color: var(--ah-on-accent); font-size: 12.5px; font-weight: 600; }
+.db kbd { font: 600 10.5px var(--ah-mono); opacity: .8; }
+.dock + .composer { padding-top: 6px; }
+@media (max-width: 720px) {
+  .dock { padding: 0 10px; }
+  .db { margin-top: 6px; min-height: 40px; }
+  .db .dl, .db .det, .db kbd { display: none; }
+  .db .ttl { flex: 1; }
+  .lb { padding: 10px 12px; }
+  .lb .ex { display: none; }
+}

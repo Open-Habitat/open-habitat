@@ -7,7 +7,10 @@
 //
 // A round sets F.hooks: { running(list) -> html for Käynnissä, workspaces() -> html for the
 // workspace list, topbar(c) -> extra topbar html, strip() -> html under the topbar,
-// streamEnd(c) -> html at the end of the conversation, onKey(e) -> handled? }.
+// streamEnd(c) -> html at the end of the conversation, onKey(e) -> handled?,
+// row(c, opts) -> html for one row, body(c) -> the conversation, dock(c) -> html above the
+// composer, send(c, text) -> handled?, adjust(x) -> mutates a derived conversation }.
+// F.fixture({ all, few, labels, cur }) replaces the evening before F.setup (round 3).
 (() => {
 const SVG = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const IC = {
@@ -26,7 +29,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;
 const WS = ['kasvimaa', 'kirjasto', 'kotisivu', 'muistiinpanot', 'resepti', 'saaasema'];
 // t: minutes since the conversation's last change. kind: question | new | working | waiting |
 // background. worker: a Taskfleet worker's own conversation (its own row, never nested).
-const ALL = [
+let ALL = [
   { id: 'c1', title: 'Iltakierros', ws: 'kasvimaa', kind: 'question', t: 4, ask: 'Mergetäänkö satokalenterin prototyyppi nyt vai odotetaanko valintaasi?', opts: ['Odota valintaa', 'Mergeä nyt'] },
   { id: 'c2', title: 'Kuvien pakkaus', ws: 'kirjasto', kind: 'new', t: 12, reply: 'Pakkaus on nyt build-vaiheessa ja testit ovat vihreinä. Kuvien koko pieneni keskimäärin 38 %.' },
   { id: 'c3', title: 'Sääaseman CSV-vienti', ws: 'saaasema', kind: 'new', t: 64, reply: 'Vienti kirjoittaa nyt yhden tiedoston vuorokautta kohden. Aikavyöhyke on UTC, kuten pyysit.' },
@@ -44,12 +47,13 @@ const ALL = [
   { id: 'c7', title: 'Anturien kalibrointi', ws: 'saaasema', kind: 'background', t: 15, waits: 'kalibrointi.sh' },
   { id: 'c8', title: 'Blogin RSS', ws: 'kotisivu', kind: 'waiting', t: 1500 },
 ];
-const FEW = ['c2', 'c5', 'c6'];
+let FEW = ['c2', 'c5', 'c6'];
+let START = 'c4';
 const LABEL = { question: 'Kysyy sinulta', new: 'Uusi vastaus', working: 'Työskentelee', waiting: 'Odottaa viestiä', background: 'Odottaa taustatyötä' };
 const QUIET_MIN = 60; // waiting for a message for over an hour: nobody is on it right now
 const ago = (m) => m < 1 ? `${Math.round(m * 60)} s` : m < 60 ? `${Math.round(m)} min` : m < 1440 ? `${Math.floor(m / 60)} h` : `${Math.floor(m / 1440)} pv`;
 
-const fresh = () => ({ cur: 'c4', seen: new Set(), answered: new Set(), drawer: false, open: {}, toast: '', bump: 0 });
+const fresh = () => ({ cur: START, seen: new Set(), answered: new Set(), drawer: false, open: {}, toast: '', bump: 0 });
 const S = { v: 0, scene: 'many', ...fresh() };
 
 function convs() {
@@ -59,6 +63,7 @@ function convs() {
     if (x.kind === 'new' && S.seen.has(x.id)) x.kind = 'waiting';
     if (x.kind === 'question' && S.answered.has(x.id)) { x.kind = 'working'; x.t = 0.2; }
     if (S.scene === 'few' && x.id === 'c4') { x.kind = 'waiting'; x.t = 70; }
+    F.hooks.adjust?.(x);
     return x;
   });
 }
@@ -74,6 +79,7 @@ function detail(c, { ws = true } = {}) {
   return [ws ? c.ws : null, LABEL[c.kind], c.waits && c.kind === 'background' ? c.waits : null].filter(Boolean).join(' · ');
 }
 function row(c, opts = {}) {
+  if (F.hooks.row) return F.hooks.row(c, opts);
   const cur = c.id === S.cur ? ' aria-current="page"' : '';
   const one = opts.one;
   return `<li><button type="button" class="row${one ? ' one' : ''}${quiet(c) ? ' quiet' : ''}" data-open="${c.id}" data-testid="row-${c.id}"${cur} title="${esc(c.title)} · ${esc(detail(c))} · ${ago(c.t)}">
@@ -119,7 +125,8 @@ function body(c) {
   if (was.kind === 'question' && c.kind === 'question') agent = `<div class="ask" data-testid="ask"><p>${esc(was.ask)}</p><div class="opts">${was.opts.map(o => `<button type="button" data-answer="${c.id}">${esc(o)}</button>`).join('')}</div></div>`;
   else if (was.reply) agent = `<p>${esc(was.reply)}</p>`;
   else if (c.kind === 'background') agent = `<p>Käynnistin työt. Odotan nyt: ${esc(c.waits)}.</p>`;
-  else if (c.kind === 'waiting') agent = '<p>Valmista. Kerro, jatketaanko seuraavaan vaiheeseen.</p>';
+  else if (c.kind === 'failed') agent = `<p>${esc(c.fail ?? 'Työ keskeytyi.')}</p>`;
+  else if (c.kind === 'waiting' || c.kind === 'done') agent = '<p>Valmista. Kerro, jatketaanko seuraavaan vaiheeseen.</p>';
   else agent = '<p>Luen ensin nykyisen toteutuksen ja testit.</p>';
   const work = c.kind === 'working' || c.kind === 'background' ? `<p class="working-line">${mark(c.kind)}${LABEL[c.kind]} · ${ago(c.t)}</p>` : '';
   return `<div class="msg-user">${esc(user)}</div><div class="msg-agent"><span class="who">Pi</span>${agent}</div>${work}`;
@@ -136,7 +143,8 @@ function main() {
       ${H.topbar ? H.topbar(c) : ''}
     </header>
     ${H.strip ? H.strip() : ''}
-    <div class="stream" data-testid="stream"><div class="col">${body(c)}${H.streamEnd ? H.streamEnd(c) : ''}</div></div>
+    <div class="stream" data-testid="stream"><div class="col">${H.body ? H.body(c) : body(c)}${H.streamEnd ? H.streamEnd(c) : ''}</div></div>
+    ${H.dock ? H.dock(c) : ''}
     <div class="composer"><form data-testid="composer"><textarea rows="1" placeholder="Kirjoita viesti" aria-label="Viesti"></textarea><button class="send" type="submit">Lähetä</button></form></div>
   </main>`;
 }
@@ -147,9 +155,20 @@ let toastTimer;
 function repaint(focus) {
   const stage = document.getElementById('stage');
   const scroll = stage.querySelector('[data-testid="rail-scroll"]')?.scrollTop ?? 0;
+  // The stream keeps following the end if it did, and the composer keeps its text and focus.
+  const st = stage.querySelector('[data-testid="stream"]');
+  const follow = !st || st.scrollHeight - st.scrollTop - st.clientHeight < 24;
+  const was = { cur: S._painted, top: st?.scrollTop ?? 0 };
+  const ta = stage.querySelector('.composer textarea');
+  const draft = ta?.value ?? '', typing = ta && document.activeElement === ta;
   stage.innerHTML = view();
   const sc = stage.querySelector('[data-testid="rail-scroll"]');
   if (sc) sc.scrollTop = scroll;
+  const st2 = stage.querySelector('[data-testid="stream"]');
+  if (st2) st2.scrollTop = was.cur === S.cur && !follow ? was.top : st2.scrollHeight;
+  S._painted = S.cur;
+  const ta2 = stage.querySelector('.composer textarea');
+  if (ta2 && was.cur === S.cur) { ta2.value = draft; if (typing && !focus) ta2.focus(); }
   if (focus) stage.querySelector(focus)?.focus();
   F.hooks.after?.();
   if (S.toast) { clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ''; stage.querySelector('.toast')?.remove(); }, 2600); }
@@ -166,7 +185,7 @@ document.addEventListener('click', (e) => {
   const t = e.target.closest('[data-open],[data-act],[data-answer],[data-ws]');
   if (!t || !t.closest('#stage')) return;
   if (t.dataset.open) { e.preventDefault(); open(t.dataset.open); return; }
-  if (t.dataset.answer) { S.answered.add(t.dataset.answer); S.toast = 'Vastaus lähetetty.'; repaint(); return; }
+  if (t.dataset.answer) { if (F.hooks.send?.(byId(t.dataset.answer), t.textContent.trim())) return; S.answered.add(t.dataset.answer); S.toast = 'Vastaus lähetetty.'; repaint(); return; }
   if (t.dataset.ws) { S.toast = `Työtilan ${t.dataset.ws} sivu (ei tässä prototyypissä).`; repaint(); return; }
   const a = t.dataset.act;
   if (a === 'home') { e.preventDefault(); S.toast = 'Etusivu (ei tässä prototyypissä).'; repaint(); }
@@ -180,6 +199,7 @@ document.addEventListener('submit', (e) => {
   const txt = e.target.querySelector('textarea');
   if (!txt.value.trim()) return;
   const c = byId(S.cur);
+  if (F.hooks.send?.(c, txt.value.trim())) { txt.value = ''; return; }
   if (c && c.kind === 'question') S.answered.add(c.id);
   S.toast = 'Viesti lähetetty.';
   repaint();
@@ -199,5 +219,11 @@ function setup(names) {
   document.getElementById('reset').addEventListener('click', () => { Object.assign(S, fresh()); repaint(); });
   return names.map((_, i) => () => { Object.assign(S, { v: i }, fresh()); setTimeout(() => F.hooks.after?.(), 0); return view(); });
 }
-window.F = { IC, esc, WS, S, ago, convs, byId, isYours, quiet, yours, running, mark, detail, row, flatRunning, wsHint, plainWorkspaces, repaint, open, view, setup, LABEL, hooks: {} };
+function fixture({ all, few, labels, cur }) {
+  if (all) ALL = all;
+  if (few) FEW = few;
+  if (labels) Object.assign(LABEL, labels);
+  if (cur) { START = cur; S.cur = cur; }
+}
+window.F = { fixture, baseBody: body, IC, esc, WS, S, ago, convs, byId, isYours, quiet, yours, running, mark, detail, row, flatRunning, wsHint, plainWorkspaces, repaint, open, view, setup, LABEL, hooks: {} };
 })();

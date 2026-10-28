@@ -1,0 +1,8 @@
+{
+  "round": "research-workmux-sidebar/ryhmat-tiivis",
+  "title": "Ryhmät tiiviinä · Kierros 3",
+  "subtitle": "Synteettinen offline-prototyyppi · 1–3 tai ←/→ vaihtaa suuntaa · pallo kertoo tilan",
+  "names": ["Nimi", "Aika", "Tieto"],
+  "scenes": [["many", "Rupeama käynnissä (10 workeria, 20 keskustelua)"], ["few", "Hiljainen ilta (5)"]],
+  "lab": "<button type=\"button\" id=\"legend\" aria-expanded=\"false\">Selite</button>"
+}
