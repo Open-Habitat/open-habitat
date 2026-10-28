@@ -190,3 +190,56 @@ test("@github-connection Uusi työtila says why the list is missing, without a s
   await page.goto(returnTo as string);
   await expect(page).toHaveURL(/\/workspaces\/new$/);
 });
+
+test("@github-connection a default repository typed by name is added unchecked while GitHub cannot be asked", async ({
+  page,
+}) => {
+  await nativeGitHub(page, "expired");
+  const refused = {
+    status: 409,
+    json: {
+      schema_version: 1,
+      error: {
+        code: "github_auth_unavailable",
+        message: "Request could not be completed",
+        retryable: false,
+        correlation_id: "req_00000000",
+      },
+    },
+  };
+  await page.route("**/api/v1/onboarding/github/repos", (route) =>
+    route.fulfill(refused),
+  );
+  await page.route("**/api/v1/onboarding/github/repository?*", (route) =>
+    route.fulfill(refused),
+  );
+  await signIn(page);
+  await page.goto("/settings/onboarding");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("onboarding-add-repository"))
+    .click();
+  const finder = page
+    .getByRole("dialog")
+    .and(page.getByTestId("onboarding-repository-finder"));
+  await expect(finder.getByTestId("github-place-warning")).toHaveAttribute(
+    "data-state",
+    "expired",
+  );
+  await finder.getByTestId("repository-search").fill("example-org/handbook");
+  const row = finder
+    .getByRole("link")
+    .and(finder.getByTestId("repository-unchecked-example-org/handbook"));
+  await expect(row).toBeVisible();
+  await evidence(page, "default-repository", "[role=dialog]");
+  await row.click();
+  // The gateway saves the name as typed; access is each newcomer's own.
+  await expect
+    .poll(
+      async () =>
+        (await (await page.request.get("/api/v1/server/onboarding")).json())
+          .repositories.defaults,
+    )
+    .toEqual(["example-org/handbook"]);
+  await expect(row).toHaveAttribute("aria-current", "page");
+});

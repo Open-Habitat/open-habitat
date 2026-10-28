@@ -201,6 +201,14 @@ a.ah-clone-row[aria-current="page"] {
   background: var(--ah-err-soft);
   color: var(--ah-err);
 }
+/* A name chosen without GitHub's answer (a default repository). */
+.ah-clone-chip-unchecked {
+  border: 1px dashed var(--ah-line-strong);
+  color: var(--ah-muted);
+}
+.ah-clone-chip-after {
+  margin-left: 0;
+}
 .ah-clone-secfoot {
   display: flex;
   flex-wrap: wrap;

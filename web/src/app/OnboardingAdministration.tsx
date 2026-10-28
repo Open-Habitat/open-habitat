@@ -145,11 +145,25 @@ function DefaultRepositoryFinder({
     };
   }, [typed, wanted]);
   const found = typed ? looked[typed] : undefined;
+  // GitHub could not be asked about the name: saving needs no GitHub, and
+  // each new person's own access is checked at their sign-in anyway, so the
+  // name can be chosen as typed (typed-repo-unselectable-without-github).
+  const unchecked = (name: string): LookupView => ({
+    state: "unchecked",
+    name,
+    reason: fault
+      ? "GitHub-yhteys ei toimi, joten nimeä ei voi tarkistaa."
+      : "GitHub ei vastannut, joten nimeä ei voi tarkistaa.",
+    href: `${settingsHref("kayttoonotto")}?${isAdded(name) ? removeParam : addParam}=${encodeURIComponent(name)}`,
+    selected: isAdded(name),
+  });
   const typedLookup: LookupView | undefined = wanted
     ? found
       ? found.state === "found"
         ? { ...found, repo: choice(found.repo) }
-        : found
+        : found.state === "failed"
+          ? unchecked(found.name)
+          : found
       : { state: "searching", name: typed }
     : undefined;
   return (

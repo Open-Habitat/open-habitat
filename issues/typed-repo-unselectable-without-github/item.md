@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: untriaged
+status: fixed
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m60hjy6bp0w3rj69711a1736/typed-repo-unselectable
 originating_run: 01m60hjy6bp0w3rj69711a1736
 originating_run_kind: spinoff
+closed: 2026-10-28
 ---
 
 # Typed owner/repo cannot be chosen when the GitHub repository list failed
@@ -53,3 +54,9 @@ promise the typed route when the failure is the connection (the browser
 already maps 409 `github_auth_unavailable` to `GitHubError("auth")`, but
 both callers drop the code), and in Lisää oletusrepo let a typed exact name
 be added unchecked.
+
+## Comments
+
+### 2026-10-28T18:13:20Z · @agent
+
+Lisää oletusrepo: a typed exact name whose lookup fails becomes an "ei tarkistettu" row that adds it as typed. The Uusi työtila wording (the list's place says the connection is the cause; the typed lookup says cloning needs the connection) landed with github-connection-warning.

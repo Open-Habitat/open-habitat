@@ -32,7 +32,16 @@ export type LookupView =
   | { state: "found"; name: string; repo: RepoChoice }
   | { state: "not_found"; name: string }
   /** GitHub could not be asked; reason says why, when the app knows. */
-  | { state: "failed"; name: string; reason?: string };
+  | { state: "failed"; name: string; reason?: string }
+  /** GitHub could not be asked, yet the name can be chosen as it is: a
+   * default repository is checked at each new person's own sign-in. */
+  | {
+      state: "unchecked";
+      name: string;
+      reason: string;
+      href: string;
+      selected?: boolean;
+    };
 
 const kib = (n: number) => size(n * 1024);
 /** A path's owner part and its last segment; a GitLab project's owner part
@@ -236,6 +245,38 @@ export function RepoFinder({
           {lookup.state === "found" ? (
             <ul>
               <RepoRow repo={lookup.repo} now={now} mixed={mixed} />
+            </ul>
+          ) : lookup.state === "unchecked" ? (
+            <ul>
+              <li>
+                <LinkRow
+                  data-testid={`repository-unchecked-${lookup.name}`}
+                  href={lookup.href}
+                  kind="nav"
+                  current={lookup.selected}
+                  className="ah-clone-row"
+                >
+                  <span className="ah-clone-row-name">
+                    <span className="ah-mono ah-clone-path">
+                      <span className="ah-clone-owner">
+                        {split(lookup.name)[0]}/
+                      </span>
+                      <b>{split(lookup.name)[1]}</b>
+                    </span>
+                    {lookup.selected ? (
+                      <span className="ah-clone-chip ah-clone-chip-ok">
+                        ✓ valittu
+                      </span>
+                    ) : null}
+                    <span
+                      className={`ah-clone-chip ah-clone-chip-unchecked${lookup.selected ? " ah-clone-chip-after" : ""}`}
+                    >
+                      ei tarkistettu
+                    </span>
+                  </span>
+                  <span className="ah-clone-row-desc">{lookup.reason}</span>
+                </LinkRow>
+              </li>
             </ul>
           ) : (
             <p

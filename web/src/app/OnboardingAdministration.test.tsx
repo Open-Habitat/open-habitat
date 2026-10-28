@@ -69,13 +69,16 @@ function mockHost(
   };
 }
 
-function page(entry = settingsHref("kayttoonotto")) {
+function page(
+  entry = settingsHref("kayttoonotto"),
+  props: Partial<Parameters<typeof OnboardingAdministration>[0]> = {},
+) {
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route
           path="/settings/*"
-          element={<OnboardingAdministration csrf="csrf" />}
+          element={<OnboardingAdministration csrf="csrf" {...props} />}
         />
       </Routes>
     </MemoryRouter>,
@@ -196,6 +199,36 @@ it("adds and removes a default picked in the finder through the route, saving ea
   ).toEqual([
     ["example-org/product", "example-org/docs"],
     ["example-org/docs"],
+  ]);
+});
+
+it("lets a typed name be added unchecked when GitHub cannot be asked, and says why", async () => {
+  // The host answers neither the catalog nor the lookup (503 for both).
+  const puts: Record<string, unknown>[] = [];
+  mockHost((body) => {
+    puts.push(body);
+    return answer(2 + puts.length, body);
+  });
+  const onReconnect = vi.fn();
+  page(settingsHref("kayttoonotto"), { nativeState: "expired", onReconnect });
+  fireEvent.click(await screen.findByTestId("onboarding-add-repository"));
+  const finder = await screen.findByTestId("onboarding-repository-finder");
+  const warning = await within(finder).findByTestId("github-place-warning");
+  expect(warning.getAttribute("data-state")).toBe("expired");
+  fireEvent.click(within(warning).getByTestId("github-place-fix"));
+  expect(onReconnect).toHaveBeenCalledOnce();
+  fireEvent.change(within(finder).getByTestId("repository-search"), {
+    target: { value: "example-org/tools" },
+  });
+  const row = await within(finder).findByTestId(
+    "repository-unchecked-example-org/tools",
+  );
+  fireEvent.click(row);
+  await screen.findByTestId("onboarding-default-example-org/tools");
+  await waitFor(() => expect(puts).toHaveLength(1));
+  expect((puts[0].repositories as { defaults: string[] }).defaults).toEqual([
+    "example-org/product",
+    "example-org/tools",
   ]);
 });
 
