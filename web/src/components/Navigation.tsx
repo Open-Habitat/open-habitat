@@ -46,12 +46,22 @@ export function AppShell({
     const viewport = window.visualViewport;
     const element = shell.current;
     if (!viewport || !element) return;
+    // The tallest visible height at this width is the screen without the
+    // keyboard; browser chrome moves it far less than a keyboard does.
+    let width = 0;
+    let tallest = 0;
     const update = () => {
       // Pinch zoom must keep its native pan/zoom behavior. The keyboard and
       // browser chrome resize/pan the visual viewport without changing scale.
       if (viewport.scale !== 1) return;
+      if (window.innerWidth !== width) {
+        width = window.innerWidth;
+        tallest = 0;
+      }
+      tallest = Math.max(tallest, viewport.height);
       element.style.setProperty("--ah-visible-height", `${viewport.height}px`);
       element.style.setProperty("--ah-visible-top", `${viewport.offsetTop}px`);
+      element.toggleAttribute("data-keyboard", tallest - viewport.height > 150);
     };
     update();
     viewport.addEventListener("resize", update);

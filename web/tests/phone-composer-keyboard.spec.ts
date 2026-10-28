@@ -34,12 +34,14 @@ for (const phone of [
   {
     name: "iOS Safari",
     pan: 45,
+    zoomsSmallText: true,
     userAgent:
       "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
   },
   {
     name: "Android Chrome",
     pan: 0,
+    zoomsSmallText: false,
     userAgent:
       "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36",
   },
@@ -56,11 +58,21 @@ for (const phone of [
     }) => {
       // Desktop Playwright cannot open an OS keyboard. Emulate its separate
       // visual viewport, including Safari's pan, rather than resize the layout.
-      await page.addInitScript(() => {
+      await page.addInitScript((zoomsSmallText) => {
         const viewport = new EventTarget();
         Object.assign(viewport, { height: 844, offsetTop: 0, scale: 1 });
         Object.defineProperty(window, "visualViewport", { value: viewport });
-      });
+        if (!zoomsSmallText) return;
+        // iOS WebKit zooms into a focused field whose text is under 16px;
+        // the zoomed visual viewport then no longer stands for the keyboard.
+        document.addEventListener("focusin", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) return;
+          if (!target.matches("textarea, input, [contenteditable]")) return;
+          const size = Number.parseFloat(getComputedStyle(target).fontSize);
+          if (size < 16) Object.assign(viewport, { scale: 16 / size });
+        });
+      }, phone.zoomsSmallText);
       let showRecap = false;
       await page.route("**/api/v1/agents/*/recap", (route) =>
         route.fulfill({
@@ -140,8 +152,19 @@ for (const phone of [
       };
       await resize(440, phone.pan);
       await editorVisible(440 + phone.pan);
+      // Typing with the keyboard open, the header gives up its second row and
+      // the overview steps aside, so the conversation keeps at least two
+      // fifths of the room above the keyboard. Both return when it closes.
+      const context = page.getByTestId("context-ring");
+      await expect(context).toBeHidden();
+      await expect(page.locator(".ah-recap")).toBeHidden();
+      expect(
+        await stream.evaluate((el) => el.getBoundingClientRect().height),
+      ).toBeGreaterThanOrEqual(440 * 0.4);
       await resize(844, 0);
       await editorVisible(844);
+      await expect(context).toBeInViewport({ ratio: 1 });
+      await expect(page.locator(".ah-recap")).toBeVisible();
     });
   });
 }

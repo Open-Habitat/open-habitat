@@ -4252,6 +4252,36 @@ details[open] > summary:not([class])::before {
   .ah-conversation-frame > .ah-recap {
     max-height: min(20vh, calc(var(--ah-visible-height, 100dvh) * 0.2));
   }
+  /* Typing with the keyboard open, the header keeps only its first row (the
+     activity mark joins it) and the overview card steps aside until the
+     keyboard closes, so the conversation keeps a share of the little room
+     above the keyboard. Only while the composer has focus: a picker's own
+     search field must not hide the chip it opened from. */
+  .ah-app-shell[data-keyboard]
+    .ah-conversation-frame:has(.ah-composer :focus)
+    > .ah-recap,
+  .ah-app-shell[data-keyboard]
+    .ah-conversation-frame:has(.ah-composer :focus)
+    .ah-agent-topline::after,
+  .ah-app-shell[data-keyboard]
+    .ah-conversation-frame:has(.ah-composer :focus)
+    .ah-agent-topline
+    > :not(
+      .ah-title-row,
+      .ah-editor-controls,
+      .ah-terminal-toggle,
+      .ah-header-more,
+      .ah-status,
+      .ah-visually-hidden
+    ) {
+    display: none;
+  }
+  .ah-app-shell[data-keyboard]
+    .ah-conversation-frame:has(.ah-composer :focus)
+    .ah-agent-topline
+    > .ah-status {
+    order: 1;
+  }
 }
 
 /* Attachments are chips, never reference text: compact and removable in a

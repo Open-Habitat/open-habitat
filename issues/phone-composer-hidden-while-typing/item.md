@@ -1,14 +1,15 @@
 ---
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-10-26/phone-composer-hidden-while-typing
 lane: phone-layout
 preparation: ready
+closed: 2026-10-28
 ---
 
 # Phone: composer not visible while typing

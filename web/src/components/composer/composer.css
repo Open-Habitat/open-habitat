@@ -87,6 +87,16 @@
   font-kerning: normal;
   font-size: 13.5px;
 }
+/* iOS WebKit (Safari, Brave) zooms the page into a focused field whose text
+   is under 16px. Zoomed, the visual viewport no longer measures the keyboard
+   (AppShell ignores it while scale is not 1), so the shell stays full height
+   and the keyboard covers the field. A touch screen gets 16px instead. */
+@media (pointer: coarse) {
+  .ah-cbox .ah-cbox-field,
+  .ah-choice-search input {
+    font-size: 16px;
+  }
+}
 
 /* ---- the bottom row ---- */
 .ah-crow {
