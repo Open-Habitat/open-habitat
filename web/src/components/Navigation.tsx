@@ -1201,7 +1201,9 @@ export function AgentHeader({
                 {" "}
                 ·{" "}
               </span>
-              <span>{settings.thinking ?? "Agentti"}</span>
+              <span className="ah-set-thinking">
+                {settings.thinking ?? "Agentti"}
+              </span>
             </ControlButton>
           ) : null)}
         {guideControl}

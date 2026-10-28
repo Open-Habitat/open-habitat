@@ -72,20 +72,6 @@
   flex: 1;
   min-height: 0;
 }
-/* The conversation header in the narrowed column: the narrow arrangement,
-   as beside the editor. */
-.ah-view-open .ah-agent-topline {
-  flex-wrap: wrap;
-  row-gap: var(--ah-s1);
-}
-.ah-view-open .ah-agent-topline .ah-title-row {
-  flex: 1 1 90px;
-  min-width: 85px;
-}
-.ah-view-open .ah-agent-topline .ah-header-workspace {
-  order: 10;
-  width: 100%;
-}
 .ah-view-pane {
   display: flex;
   flex-direction: column;

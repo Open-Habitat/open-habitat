@@ -31,7 +31,8 @@ export function ModelChip({
       aria-label={label}
     >
       <span className="ah-set-model">{modelDisplayName(model, models)}</span>{" "}
-      <Icon name="thinking" /> {thinkingDisplayName(thinking)}
+      <Icon name="thinking" />{" "}
+      <span className="ah-set-thinking">{thinkingDisplayName(thinking)}</span>
     </Element>
   );
 }

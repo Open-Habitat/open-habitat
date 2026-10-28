@@ -3532,6 +3532,89 @@ details[open] > summary:not([class])::before {
     max-width: max-content;
   }
 }
+/* Desktop: the conversation column, not the window, decides. Beside the
+   sidebar, the editor or a view one row of state and actions left the title
+   only its dots. The title keeps a third of the row, and the workspace, Git
+   and model chips shorten before it does; a column too narrow for even that
+   gets two rows: the title with every action, then the conversation's state.
+   Unlike a phone, no action moves into a menu. */
+.ah-conversation-frame > .ah-agent-header {
+  container: conversation-header / inline-size;
+}
+@media (min-width: 801px) {
+  .ah-agent-topline .ah-title-row {
+    min-width: 33%;
+  }
+  .ah-agent-topline
+    > :is(.ah-header-workspace, .ah-gs-chip, .md-chip-picker, .ah-set-chip) {
+    flex: 0 1 auto;
+    min-width: 4rem;
+  }
+  .ah-agent-topline > .ah-header-workspace {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  /* Only the branch name shortens; the counts stay whole. */
+  .ah-agent-topline > .ah-gs-chip {
+    min-width: auto;
+  }
+  .ah-agent-topline > .ah-gs-chip .ah-gs-chip-branch {
+    min-width: 2ch;
+  }
+  /* The picker's summary is the visible chip; it shortens with the picker,
+     the model and the thinking level together. */
+  .ah-agent-topline > .md-chip-picker > .ah-set-chip {
+    max-width: min(100%, 240px, 35vw);
+  }
+  .ah-agent-topline .ah-set-chip > :is(.ah-set-model, .ah-set-thinking) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  @container conversation-header (width < 80rem) {
+    .ah-agent-topline {
+      flex-wrap: wrap;
+      row-gap: var(--ah-s1);
+    }
+    .ah-agent-topline::after {
+      content: "";
+      order: 2;
+      flex-basis: 100%;
+    }
+    .ah-agent-topline > * {
+      order: 3;
+    }
+    .ah-agent-topline
+      > :is(
+        .ah-title-row,
+        .ah-guide-toggle,
+        .ah-files-toggle,
+        .ah-editor-controls,
+        .ah-terminal-toggle,
+        .ah-retitle,
+        .ah-archive-control,
+        .ah-details-toggle
+      ) {
+      order: 1;
+    }
+    .ah-agent-topline > .ah-status:first-of-type {
+      margin-left: 0;
+    }
+    /* Beside the editor or a view the column can be narrower than the
+       title's minimum and the actions together. */
+    .ah-agent-topline .ah-title-row {
+      min-width: min(8rem, 100%);
+    }
+    /* Grown from a small basis, so the state row breaks only when even the
+       shortened chips do not fit, and capped at what they say. */
+    .ah-agent-topline
+      > :is(.ah-header-workspace, .ah-gs-chip, .md-chip-picker) {
+      flex: 1 1 4rem;
+      max-width: max-content;
+    }
+  }
+}
 .ah-sidebar-agent-row {
   height: 32px;
 }

@@ -1,8 +1,8 @@
 ---
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-28
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: worker observation in synthetic lab
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: desktop-header
 lane_seq: 1
 preparation: ready
+closed: 2026-10-28
 ---
 
 # Desktop conversation header squeezes the title to nothing at ~1280 px with the sidebar open

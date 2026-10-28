@@ -136,20 +136,6 @@
   box-shadow: var(--ah-shadow-float);
   font-size: var(--ah-size-ui);
 }
-/* The conversation header in the editor's column: the narrow arrangement,
-   since the column, not the window, is narrow. */
-.ah-editor-open .ah-agent-topline {
-  flex-wrap: wrap;
-  row-gap: var(--ah-s1);
-}
-.ah-editor-open .ah-agent-topline .ah-title-row {
-  flex: 1 1 90px;
-  min-width: 85px;
-}
-.ah-editor-open .ah-agent-topline .ah-header-workspace {
-  order: 10;
-  width: 100%;
-}
 .ah-editor-controls {
   display: inline-flex;
   flex: none;

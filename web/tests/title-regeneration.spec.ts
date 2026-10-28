@@ -171,8 +171,10 @@ test("@a11y compact header keeps the title on its phone row and model facts read
     for (const width of [1366, 390]) {
       await page.setViewportSize({ width, height: 844 });
       await header.locator("h1").evaluate((el) => {
+        // Longer than the title's whole row, which the state chips no longer
+        // share when the column is narrow.
         el.textContent =
-          "Pitkä keskustelun otsikko jonka pitäisi saada tilaa työkalujen rinnalla";
+          "Pitkä keskustelun otsikko jonka pitäisi saada tilaa työkalujen rinnalla silloinkin kun ikkuna on kapea ja sivupalkki auki";
       });
 
       const title = await header.locator("h1").boundingBox();
