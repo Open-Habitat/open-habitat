@@ -3,13 +3,12 @@ created: 2026-10-28
 updated: 2026-10-28
 type: task
 reporter: jari
-status: done
+status: open
 priority: normal
 lane: proto-conversation-header
-preparation: pending
+preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/proto-conversation-header
-closed: 2026-10-28
 ---
 
 # Prototype: the conversation header on desktop (one row, title readable, not heavy)
@@ -21,3 +20,11 @@ Jari 2026-10-28 (testikone, pilot.455): keskustelun yläpalkki on nyt kahdessa r
 ### 2026-10-28T11:02:46Z · @jari
 
 Jari 2026-10-28: suunta 1 Lyhenee. Jari pitää myös kaikkien suuntien yhteisestä kevyemmästä ulkoasusta: lyhyemmät painikkeet ja ikonit, sirut ilman reunoja, Gitin nollat piilossa ja toiminnan tila pelkkänä pisteenä ilman 'Työskentelee'-pilleriä. Pisteelle tooltip (konduktorin ratkaisu Jarin kysymykseen): hover ja näppäimistöfokus näyttävät tilan tekstinä (esim. Työskentelee · Ajattelee, kesto), kosketuksella napautus; tila on aina myös pisteen saavutettavassa nimessä. Toteutus: conversation-header-shorten.
+
+### 2026-10-28T11:09:18Z · @jari
+
+Jari 2026-10-28, lisäpalaute Lyhenee-suuntaan, riffikierros 2 ennen toteutusta: mallisiru lyhyeksi, pelkkä 'Opus 5.5' tai jopa 'Opus'; ajattelutaso selviää sirun avatessa tai näkyy pienenä ikonina sirussa (molemmat vaihtoehdot riffiin). Git-sirussa ei näytetä haaran nimeä; nimi näkyy vasta avattaessa. Pohjana Lyhenee ja yhteinen kevyt ulkoasu sekä tilapisteen tooltip.
+
+## Reopen Notes — 2026-10-28
+
+_Add rationale for reopening here._

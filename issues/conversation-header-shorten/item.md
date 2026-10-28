@@ -6,9 +6,10 @@ reporter: jari
 status: open
 priority: normal
 lane: desktop-header
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-10-28/conversation-header-shorten
+blocked_by: ['@proto-conversation-header']
 ---
 
 # Desktop conversation header: one row that shortens in place, lighter chips
