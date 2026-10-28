@@ -12,6 +12,9 @@ type Frame = {
   gap: number;
   rows: { text: string; top: number }[];
   last: number;
+  /** From the end of the stream's content to the stream's bottom, which the
+   * chip strip and the composer sit on: its padding plus any hold. */
+  tail: number;
 };
 
 // Record what each frame paints. A task can run between a commit and the next
@@ -56,6 +59,9 @@ async function recordFrames(page: Page) {
             };
           }),
           last: (rows.at(-1)?.getBoundingClientRect().top ?? 0) - bottom,
+          tail:
+            bottom -
+            (stream.lastElementChild?.getBoundingClientRect().bottom ?? 0),
         });
       }
     };
@@ -155,14 +161,17 @@ async function tallAtEnd(page: Page) {
     { timeout: 20000 },
   );
   // The saved reply replaces the live one after the turn; wait until the
-  // thread has stopped changing.
+  // thread has stopped changing. A hold keeps the height while it lasts.
   const stream = page.locator(".ah-conversation-stream");
   let previous = -1;
   await expect
     .poll(
       async () => {
-        const height = await stream.evaluate((n) => n.scrollHeight);
-        const settled = height === previous;
+        const [height, held] = await stream.evaluate((n) => [
+          n.scrollHeight,
+          getComputedStyle(n, "::after").height !== "0px",
+        ]);
+        const settled = height === previous && !held;
         previous = height;
         return settled;
       },
@@ -238,6 +247,52 @@ test("@lab a followed conversation does not bounce while turns run", async ({
   expect(frames.length).toBeGreaterThan(30);
   expect(frames.filter((f) => f.gap > 2).map((f) => f.gap)).toEqual([]);
   expect(jumps(frames)).toEqual([]);
+});
+
+// Jari 2026-10-28: while the agent worked, an empty gap of about 50 px stayed
+// between the live row and the chip above the composer. Holding the height of
+// a shrinking tail bridges a rebuilt row (15–60 ms); held longer it is that
+// gap. During and after live turns the last row is back at the design spacing
+// above the composer area within a moment of every change.
+test("@lab the live row stays at its spacing above the composer", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  await openConversation(page);
+  await slowHistory(page);
+  for (const text of ["ensimmäinen viesti", "toinen viesti"]) {
+    await send(page, text);
+    await idle(page);
+  }
+  await page.waitForTimeout(1000);
+  const design = await page
+    .locator(".ah-conversation-stream")
+    .evaluate((n) => Number.parseFloat(getComputedStyle(n).paddingBottom));
+  await recordFrames(page);
+  for (const text of ["pitkä ajo", "kolmas viesti"]) {
+    await send(page, text);
+    await idle(page);
+    // The slow history read settles the turn after it ends.
+    await page.waitForTimeout(2500);
+  }
+  const frames = await stopFrames(page);
+  expect(frames.filter((f) => f.work).length).toBeGreaterThan(30);
+  // Stretches of frames with more than the design spacing under the last row.
+  const wide: string[] = [];
+  let since: Frame | undefined;
+  for (const frame of [...frames, undefined]) {
+    if (frame && frame.tail > design + 1) since ??= frame;
+    else if (since) {
+      const end = frame?.t ?? frames.at(-1)?.t ?? since.t;
+      if (end - since.t > 700)
+        wide.push(
+          `${Math.round(end - since.t)}ms +${Math.round(since.tail - design)}px`,
+        );
+      since = undefined;
+    }
+  }
+  expect(wide).toEqual([]);
+  expect(frames.at(-1)?.tail).toBeCloseTo(design, 0);
 });
 
 // Jari 2026-10-28: the conversation bounced when a line break grew the

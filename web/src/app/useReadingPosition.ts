@@ -294,9 +294,10 @@ export function useReadingPositionLayout({
 
 /** How long a reader gesture owns the view before following may move it. */
 const intentWindow = 600;
-/** How long a following view keeps its height when its tail shrinks: longer
- * than a native-history read on a loaded host (over a second). */
-const holdWindow = 2000;
+/** How long a following view keeps its height when its tail shrinks. A row
+ * being rebuilt is gone for 15–60 ms; a live row that changes its own shape
+ * stays shorter, and holding that longer is an empty gap above the composer. */
+const holdWindow = 300;
 
 /** Follows the latest turn while the reader is at the end, and lets reader
  * input, and only reader input, suspend it. Layout-induced scrolls (including
@@ -324,7 +325,9 @@ export function useFollowLatest({
   // rows that replace it have rendered, or a row first renders shorter. Taking
   // that dip at face value clamps a following view up and pins it back down a
   // moment later. The stream keeps its height (an empty --ah-stream-hold at
-  // the end) until the content regrows or the hold expires.
+  // the end) until the content regrows or the hold expires. The expiry is
+  // set when the hold starts: a live turn resizes its tail all the time, and
+  // restarting the expiry on each resize kept the hold for the whole turn.
   const hold = useRef({ id, px: 0, floor: 0, timer: 0 });
   // biome-ignore lint/correctness/useExhaustiveDependencies: opened binds listeners when the stream mounts.
   useEffect(() => {
@@ -420,6 +423,7 @@ export function useFollowLatest({
     // again from the height it then finds.
     const release = () => {
       window.clearTimeout(state.timer);
+      state.timer = 0;
       state.floor = 0;
       if (state.px) setHold(0);
     };
@@ -444,16 +448,18 @@ export function useFollowLatest({
           state.floor - height > viewport.clientHeight / 2
         ) {
           window.clearTimeout(state.timer);
+          state.timer = 0;
           state.floor = height;
           if (state.px) setHold(0);
         } else {
           setHold(state.floor - height);
-          window.clearTimeout(state.timer);
           // A held view that never regrows lets go gently, not with a jump.
-          state.timer = window.setTimeout(() => {
-            state.floor = content();
-            setHold(0, true);
-          }, holdWindow);
+          if (!state.timer)
+            state.timer = window.setTimeout(() => {
+              state.timer = 0;
+              state.floor = content();
+              setHold(0, true);
+            }, holdWindow);
         }
         scrollToEnd(viewport);
       }

@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: conversation-scroll
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/live-row-gap-above-composer
+closed: 2026-10-28
 ---
 
 # Large empty gap between the live 'agent working' row and the chip above the composer
