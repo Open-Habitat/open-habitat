@@ -37,4 +37,4 @@ check and, with only the remount reintroduced, on a detached code block.
   by the history item (`turn:<entry>`, `OrderedBlocks`), so the turn remounts
   once and a selection made during the stream is lost then. Unifying the
   live and saved turn identity is in the scroll/turn code another worker owns;
-  filed separately through intake.
+  filed as `selection-lost-when-turn-settles`.
