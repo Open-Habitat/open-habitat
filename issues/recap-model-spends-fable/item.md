@@ -28,3 +28,7 @@ Decision needed: which model a recap should use. Options: (a) the conversation's
 ### 2026-10-28T05:15:12Z · @jari
 
 Jari 2026-10-28: ei hinnan perusteella eikä Fable-kiintiötä taustatöihin. Käytäntö mallialiaksella: taustatyöt (tilannekatsaus ja automaattinen otsikko) käyttävät palveluntarjoajan pienen luokan aliasta (Claudella haiku, muilla vastaava pieni malli nimen tai aliaksen perusteella), ja varalla keskustelun omaa mallia; ei koskaan Fablea tai Opusta taustatyöhön.
+
+### 2026-10-28T05:19:29Z · @jari
+
+Jari 2026-10-28 (tarkennus, korvaa aiemman haiku-kohdan): taustatyöt käyttävät Claudella Sonnet-perhettä (uusin saatavilla, nyt claude-sonnet-5-5) ja OpenAI:lla Luna-perhettä (uusin, nyt gpt-6-luna). Muilla palveluntarjoajilla vastaava keskiluokka, varalla keskustelun oma malli; ei koskaan Fablea tai Opusta.
