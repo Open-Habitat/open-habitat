@@ -148,7 +148,12 @@ test("@lab composer: Enter steers, Alt+Enter queues, the chip swaps, and the que
   ).toBeVisible();
   // The chip is reached by keyboard and swaps the mode; the next Enter goes that way.
   await field.focus();
-  for (const testId of ["attach-file", "command-palette", "file-picker"]) {
+  for (const testId of [
+    "attach-file",
+    "command-palette",
+    "file-picker",
+    "dictation-mic",
+  ]) {
     await page.keyboard.press("Tab");
     await expect(page.getByTestId(testId)).toBeFocused();
   }
@@ -327,8 +332,8 @@ test("@lab composer on a phone: the bottom row fits while Pi works and the list 
   }));
   expect(fits.overflow).toBeLessThanOrEqual(1);
   expect(fits.right).toBeLessThanOrEqual(viewport.width);
-  // Attachment, command and file buttons drop their labels while Pi works.
-  expect(fits.labels).toEqual(["none", "none", "none"]);
+  // Attachment, command, file and dictation buttons drop their labels while Pi works.
+  expect(fits.labels).toEqual(["none", "none", "none", "none"]);
   for (const testId of ["composer-stop", "send"])
     expect(
       (await page.getByTestId(testId).boundingBox())?.height ?? 0,

@@ -1148,11 +1148,26 @@ test("@browser-conversation warm controlled return reads neither status nor hist
   await page.goto(firstURL);
   await expect(page.getByTestId("message-input")).toBeEnabled();
   await page.getByTestId("workspace-ordinary-dir").last().click();
+  // The second window's own first reads (its offers and start page; the
+  // workspace list reads neither) can land after its field is enabled. They
+  // are not part of the return being measured.
+  const mounted = (path: string, query = "") =>
+    page
+      .waitForRequest((request) => {
+        const url = new URL(request.url());
+        return url.pathname === path && url.search.includes(query);
+      })
+      .then((request) => request.response());
+  const secondReads = Promise.all([
+    mounted("/api/v1/file-offers", secondId.slice(3)),
+    mounted("/api/v1/workspaces/start_page"),
+  ]);
   await page
     .getByRole("navigation")
     .locator(`a[href*="${secondId.slice(3)}"]`)
     .click();
   await expect(page.getByTestId("message-input")).toBeEnabled();
+  await secondReads;
   const requests: string[] = [];
   const controlledRecapReads: string[] = [];
   const streams: string[] = [];

@@ -82,10 +82,13 @@ for (const width of [1440, 1366, 390]) {
       ).toBe(true);
       while (await panel.getByTestId("history-block-load").count()) {
         await panel.getByTestId("history-block-load").click();
+        // The Button marks an in-flight read with React Aria's data-pending;
+        // count again only after it settles, or the loop clicks a button that
+        // the completing read is about to remove.
         await expect(
           panel
             .getByTestId("history-block-load")
-            .and(page.locator('[aria-busy="true"]')),
+            .and(page.locator('[data-pending="true"]')),
         ).toHaveCount(0);
       }
       await expect(panel).toContainText("END OF RECORDED INSTRUCTION");

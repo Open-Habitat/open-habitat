@@ -73,7 +73,9 @@ for (const stream of ["survives", "drops"] as const)
       return route.abort("internetdisconnected");
     });
     await page.context().setOffline(false);
-    await expect.poll(() => failed).toBeGreaterThan(0);
+    // Streams that failed while offline (the fast-forward fires their
+    // retries) put the journal in transport backoff, at most 30 s.
+    await expect.poll(() => failed, { timeout: 35000 }).toBeGreaterThan(0);
     await page.waitForTimeout(3000);
     settled = true;
 
