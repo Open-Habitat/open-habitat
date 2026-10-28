@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/nativegh"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
@@ -233,7 +234,7 @@ func TestSnapshotWatermarkPrecedesConcurrentNativeChange(t *testing.T) {
 	// The snapshot constructor captures the watermark before discovery, even if
 	// the native event arrives while discovery is still constructing the image.
 	discover := func(transport.Config) Discovery { j.appendInvalidation(""); return Discovery{State: "empty"} }
-	h := snapshotHandlerWithJournal(cfg, func(*http.Request) bool { return true }, discover, func(transport.Config) ([]nativeSession, error) { return nil, nil }, cfg.Home, func(context.Context) string { return "disconnected" }, j)
+	h := snapshotHandlerWithJournal(cfg, func(*http.Request) bool { return true }, discover, func(transport.Config) ([]nativeSession, error) { return nil, nil }, cfg.Home, func(context.Context) nativegh.Observation { return nativegh.Observation{State: "disconnected"} }, j)
 	r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
 	r.RequestURI = SnapshotPath
 	r.Header.Set("X-Agent-Host-Identity", opaque("wid_", "github:123"))

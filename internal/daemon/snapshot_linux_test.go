@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Open-Habitat/open-habitat/internal/nativegh"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 	"net/http"
@@ -28,7 +29,12 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock"}
 	calls := 0
 	status := "connected"
-	h := snapshotHandlerWithStatus(cfg, func(*http.Request) bool { return true }, func(transport.Config) Discovery { return Discovery{State: "empty"} }, func(transport.Config) ([]nativeSession, error) { return nil, nil }, t.TempDir(), func(context.Context) string { calls++; return status })
+	h := snapshotHandlerWithStatus(cfg, func(*http.Request) bool { return true }, func(transport.Config) Discovery { return Discovery{State: "empty"} }, func(transport.Config) ([]nativeSession, error) { return nil, nil }, t.TempDir(), func(context.Context) nativegh.Observation {
+		calls++
+		// The handler, not only the adapter, names a login only beside a
+		// state gh works with.
+		return nativegh.Observation{State: status, Login: "alice"}
+	})
 	request := func(id string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
 		r.RequestURI = SnapshotPath
@@ -41,7 +47,10 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 	if w := request(opaque("wid_", "github:99")); w.Code != 200 || calls != 1 {
 		t.Fatalf("untrusted probe: %d calls=%d", w.Code, calls)
 	}
-	deniedHandler := snapshotHandlerWithStatus(cfg, func(*http.Request) bool { return false }, func(transport.Config) Discovery { t.Fatal("untrusted peer reached discovery"); return Discovery{} }, func(transport.Config) ([]nativeSession, error) { return nil, nil }, t.TempDir(), func(context.Context) string { t.Fatal("untrusted peer reached native status"); return "unknown" })
+	deniedHandler := snapshotHandlerWithStatus(cfg, func(*http.Request) bool { return false }, func(transport.Config) Discovery { t.Fatal("untrusted peer reached discovery"); return Discovery{} }, func(transport.Config) ([]nativeSession, error) { return nil, nil }, t.TempDir(), func(context.Context) nativegh.Observation {
+		t.Fatal("untrusted peer reached native status")
+		return nativegh.Observation{}
+	})
 	denied := httptest.NewRecorder()
 	untrusted := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
 	untrusted.RequestURI = SnapshotPath
@@ -59,6 +68,7 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 			Auth struct {
 				NativeGitHub struct {
 					State string `json:"state"`
+					Login string `json:"login"`
 				} `json:"native_github"`
 			} `json:"auth"`
 		}
@@ -69,7 +79,8 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 		if state == "invalid" {
 			want = "unknown"
 		}
-		if doc.Auth.NativeGitHub.State != want || bytes.Contains(w.Body.Bytes(), []byte("oauth_token")) {
+		wantLogin := map[string]string{"connected": "alice", "partial": "alice"}[state]
+		if doc.Auth.NativeGitHub.State != want || doc.Auth.NativeGitHub.Login != wantLogin || bytes.Contains(w.Body.Bytes(), []byte("oauth_token")) {
 			t.Fatalf("state=%s body=%s", state, w.Body.String())
 		}
 	}

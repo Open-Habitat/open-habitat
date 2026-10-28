@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import {
   AgentHeader,
@@ -25,7 +25,7 @@ import { BashToolCard } from "../components/BashToolCard";
 import { ComposerModelPicker } from "../components/ComposerModelPicker";
 import { ContextPage } from "../components/ContextPage";
 import { ContextRing } from "../components/ContextRing";
-import { controlClassName } from "../components/ControlElements";
+import { ControlButton, controlClassName } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
 import { EditorReplaceNote } from "../components/EditorReplaceNote";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
@@ -39,6 +39,7 @@ import {
 } from "../components/ProcessTray";
 import { RecapCard, useMinuteNow } from "../components/RecapCard";
 import { RestCard } from "../components/RestartNotice";
+import { WarningBanner } from "../components/WarningBanner";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useBrowserShell } from "./BrowserShell";
 import { toolStopped } from "./bashFailure";
@@ -212,7 +213,11 @@ function BrowserConversationContent({
   onLogin,
   onSessionCreated,
   onNativeHistory,
+  github,
 }: {
+  /** The person's GitHub connection, when it needs saying here: the app
+   * reads it from the snapshot, not from this conversation. */
+  github?: ReactNode;
   workspace: Workspace;
   archive?: Agent;
   onArchive?: (agent: Agent, archived: boolean) => Promise<boolean>;
@@ -2022,38 +2027,52 @@ function BrowserConversationContent({
             ))}
           </ConversationStream>
           <div className="ah-actionable-notices">
+            {github}
             {!statusStale && current?.auth_error === "pi_auth_failed" ? (
-              <InlineNotice
+              <WarningBanner
                 data-testid="provider-auth-error"
-                title="Kielimallikirjautuminen ei ole kunnossa"
-                description="Kirjaudu OpenAI-tilillesi uudelleen ja jatka sitten keskustelua. Viestiä ei lähetetä automaattisesti uudelleen; luonnos säilyy."
                 tone="danger"
-                actions={[
-                  {
-                    label: "Kirjaudu uudelleen",
-                    onPress: () =>
+                title="Kielimallikirjautuminen ei ole kunnossa"
+                actions={
+                  <ControlButton
+                    data-testid="notice-action"
+                    size="row"
+                    variant="primary"
+                    onPress={() =>
                       navigate(
                         `/workspaces/${(workspace.place?.parent ?? workspace).workspace_id}?conversation=${encodeURIComponent(id ?? "")}&pi_sign_in=1`,
-                      ),
-                  },
-                ]}
-              />
+                      )
+                    }
+                  >
+                    Kirjaudu uudelleen
+                  </ControlButton>
+                }
+              >
+                Kirjaudu OpenAI-tilillesi uudelleen ja jatka sitten keskustelua.
+                Viestiä ei lähetetä automaattisesti uudelleen; luonnos säilyy.
+              </WarningBanner>
             ) : null}
             {!statusStale && current?.auth_error === "pi_model_unsupported" ? (
-              <InlineNotice
+              <WarningBanner
                 data-testid="model-unavailable"
-                title="Valittu kielimalli ei ole käytettävissä"
-                description="Agentti ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Valitse toinen malli ja aloita uusi keskustelu. Viestiä ei toisteta; luonnos säilyy."
                 tone="danger"
-                actions={[
-                  {
-                    label: "Valitse toinen malli",
-                    onPress: () => {
+                title="Valittu kielimalli ei ole käytettävissä"
+                actions={
+                  <ControlButton
+                    data-testid="notice-action"
+                    size="row"
+                    onPress={() => {
                       setModelExpanded(!modelExpanded);
-                    },
-                  },
-                ]}
-              />
+                    }}
+                  >
+                    Valitse toinen malli
+                  </ControlButton>
+                }
+              >
+                Agentti ilmoitti, ettei valittu malli ole tuettu tällä
+                ChatGPT-tilillä. Valitse toinen malli ja aloita uusi keskustelu.
+                Viestiä ei toisteta; luonnos säilyy.
+              </WarningBanner>
             ) : null}
             {!statusStale &&
             current?.auth_error === "pi_model_unsupported" &&

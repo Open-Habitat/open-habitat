@@ -3,7 +3,6 @@
 package daemon
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -80,7 +79,7 @@ for line in sys.stdin:
 	// only its in-flight operation through the existing snapshot field.
 	snapshot := snapshotHandlerWithController(c.cfg, func(*http.Request) bool { return true },
 		func(transport.Config) Discovery { return scan(home, os.Geteuid(), unix.Openat2) },
-		nativeSessions, home, func(context.Context) string { return "unknown" }, c.journal, c)
+		nativeSessions, home, unknownGitHub, c.journal, c)
 	generationState := func() string {
 		t.Helper()
 		r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)

@@ -222,7 +222,7 @@ func (c *ConversationController) FixtureSnapshotWithForges(forges Forges) http.H
 		cfg.Home = c.home
 		return nativeSessions(cfg)
 	}
-	return snapshotHandlerWithForges(c.cfg, c.trusted, c.discover, sessions, c.home, func(context.Context) string { return "unknown" }, c.journal, c, forges)
+	return snapshotHandlerWithForges(c.cfg, c.trusted, c.discover, sessions, c.home, unknownGitHub, c.journal, c, forges)
 }
 
 // FixtureEvents exposes the real bounded journal stream to the browser-host.

@@ -108,6 +108,19 @@ lähetysvirheenä: viestin toimitusta ei vielä tiedetä. Vahvistettu virhe
 erottuu epävarmasta tuloksesta. Sovelluksen yhteyskatkos näkyy yhdessä
 yläreunan ilmoituksessa, ja aiempi sisältö jää luettavaksi.
 
+Yhteinen varoitus (`WarningBanner`, Jari 28.10.2026, kierros
+`prototypes/rounds/2026-10-28-github-yhteys-2`, suunta Näkyvä yritys kentän
+päällä) kertoo, mitä palvelin tekee viasta tai mitä käyttäjä voi tehdä.
+Sävyjä on neljä: palvelimen oma yritys (yksi hiljainen rivi pyörivällä
+merkillä, ei toimintoa), neutraali, vakava ja hetken näkyvä paluu. Sävy
+näkyy pehmeänä pintana, ohuena reunana ja kuvakkeen pyöreänä merkkinä;
+sivureunan korostusraitaa ei käytetä. Siinä on enintään yksi
+korjaustoiminto, joka puhelimessa vie koko rivin tekstin alla, ja
+puhelimessa teksti voi olla lyhyempi. Keskustelussa varoitus on
+kirjoituskentän yllä kentän levyisenä, muissa näkymissä yläreunan nauhana.
+Varoitusta ei voi sulkea: se tulee vasta, kun palvelin ei korjaa asiaa
+itse, ja poistuu itsestään, kun tila korjaantuu.
+
 ## Sovelluskehys
 
 Sivupalkin Etusivu ja sen yllä palvelimen nimi vievät työtilojen etusivulle ([vedos](drafts/Etusivu.proto.html),

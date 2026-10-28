@@ -19,7 +19,10 @@ import {
   exactName,
   type Since,
 } from "../components/repoCatalog";
-import { catalog, lookup, type Repo } from "./github";
+import type { NativeState } from "./CodeHostSettings";
+import { GitHubPlaceNotice } from "./GitHubConnectionNotice";
+import { catalog, GitHubError, lookup, type Repo } from "./github";
+import { githubFault } from "./githubConnection";
 import { readIntegrations } from "./integrations";
 import {
   deleteSiteKey,
@@ -46,16 +49,23 @@ const removeParam = "pois";
 function DefaultRepositoryFinder({
   added,
   onClose,
+  nativeState,
+  onReconnect,
 }: {
   added: string[];
   onClose: () => void;
+  nativeState?: NativeState;
+  onReconnect?: () => void;
 }) {
+  const fault = githubFault(nativeState);
   const [now] = useState(() => Date.now());
   const [repos, setRepos] = useState<{
     state: "loading" | "failed" | "ready";
     list: Repo[];
     complete: boolean;
     login?: string;
+    /** The daemon could not use the GitHub credentials (409). */
+    auth?: boolean;
   }>({ state: "loading", list: [], complete: true });
   const [query, setQuery] = useState("");
   const [since, setSince] = useState<Since>("0");
@@ -71,9 +81,14 @@ function DefaultRepositoryFinder({
           login: c.login,
         }),
       )
-      .catch(() => {
+      .catch((e) => {
         if (!controller.signal.aborted)
-          setRepos({ state: "failed", list: [], complete: true });
+          setRepos({
+            state: "failed",
+            list: [],
+            complete: true,
+            auth: e instanceof GitHubError && e.code === "auth",
+          });
       });
     return () => controller.abort();
   }, []);
@@ -175,6 +190,15 @@ function DefaultRepositoryFinder({
               lookup={typedLookup}
               incomplete={!repos.complete}
               state={repos.state}
+              failure={
+                fault || repos.auth ? (
+                  <GitHubPlaceNotice
+                    warning={fault}
+                    onReconnect={onReconnect}
+                    also="Voit silti lisätä oletusrepon kirjoittamalla sen nimen muodossa omistaja/repo; pääsy tarkistetaan jokaisen uuden henkilön omalla tilillä."
+                  />
+                ) : undefined
+              }
             />
           </div>
           <div className="ob-finder-foot">
@@ -201,7 +225,16 @@ function DefaultRepositoryFinder({
  * sent together after it under the version it returned. A conflict or an
  * unconfirmed write stops editing until the host is read again, so nothing is
  * ever overwritten on a guess. */
-export function OnboardingAdministration({ csrf }: { csrf?: string }) {
+export function OnboardingAdministration({
+  csrf,
+  nativeState,
+  onReconnect,
+}: {
+  csrf?: string;
+  /** The administrator's own GitHub connection, which the finder uses. */
+  nativeState?: NativeState;
+  onReconnect?: () => void;
+}) {
   const location = useLocation();
   const navigate = useNavigate();
   const [doc, setDoc] = useState<OnboardingDocument>();
@@ -433,6 +466,8 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
         <DefaultRepositoryFinder
           added={doc.repositories.defaults}
           onClose={() => setFinder(false)}
+          nativeState={nativeState}
+          onReconnect={onReconnect}
         />
       ) : null}
     </>

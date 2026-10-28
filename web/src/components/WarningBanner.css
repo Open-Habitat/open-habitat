@@ -1,0 +1,111 @@
+/* The common warning. The tone is carried by the surface, the 1px border
+   and the icon's round mark; there is no side stripe (Jari 28.10.2026). */
+.ah-warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--ah-s2) var(--ah-s3);
+  padding: 10px 12px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-ui);
+  line-height: var(--ah-lh-ui);
+  animation: ah-appear var(--ah-appear) both;
+}
+.ah-warning-page {
+  flex: none;
+  align-items: center;
+  padding: var(--ah-s3) 16px;
+  border-width: 0 0 1px;
+  border-radius: 0;
+}
+.ah-warning-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-surface);
+  color: var(--ah-muted);
+}
+.ah-warning-body {
+  flex: 1 1 18rem;
+  min-width: 0;
+  /* The mark is 24px; the first line sits on its centre. */
+  padding-block: 2px;
+}
+.ah-warning-body strong {
+  display: block;
+  color: var(--ah-ink);
+  font-weight: 600;
+}
+.ah-warning-body p {
+  margin: 0;
+}
+.ah-warning-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+  align-items: center;
+  margin-inline-start: auto;
+}
+/* A one-line state (no title) stays one row and is quieter. */
+.ah-warning-line {
+  align-items: center;
+  padding-block: 6px;
+}
+.ah-warning-line .ah-warning-body {
+  padding-block: 0;
+}
+
+.ah-warning-progress {
+  background: var(--ah-surface);
+}
+.ah-warning-danger {
+  border-color: var(--ah-err-line);
+  background: var(--ah-err-soft);
+}
+.ah-warning-danger .ah-warning-mark,
+.ah-warning-danger .ah-warning-body strong {
+  color: var(--ah-err);
+}
+.ah-warning-success {
+  border-color: var(--ah-accent-line);
+  background: var(--ah-ok-soft);
+  color: var(--ah-ok);
+}
+.ah-warning-success .ah-warning-mark {
+  color: var(--ah-ok);
+}
+.ah-warning-spin {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ah-line-strong);
+  border-top-color: var(--ah-ink-2);
+  border-radius: 50%;
+  animation: var(--ah-title-spin);
+}
+
+.ah-warning-narrow {
+  display: none;
+}
+/* Phone width: the short text, and the repair action takes the whole row
+   under it. */
+@media (max-width: 800px) {
+  .ah-warning-wide {
+    display: none;
+  }
+  .ah-warning-narrow {
+    display: inline;
+  }
+  .ah-warning:not(.ah-warning-line) .ah-warning-actions {
+    flex-basis: 100%;
+    margin-inline-start: 0;
+  }
+  .ah-warning:not(.ah-warning-line) .ah-warning-actions > * {
+    flex: 1 1 auto;
+  }
+}

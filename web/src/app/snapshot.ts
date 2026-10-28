@@ -165,6 +165,7 @@ export interface Snapshot {
   agents: Agent[];
   write_state: string;
   auth?: {
+    provider: "github" | "google";
     native_github: {
       state:
         | "connected"

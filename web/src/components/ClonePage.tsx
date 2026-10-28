@@ -31,7 +31,8 @@ export type LookupView =
   | { state: "searching"; name: string }
   | { state: "found"; name: string; repo: RepoChoice }
   | { state: "not_found"; name: string }
-  | { state: "failed"; name: string };
+  /** GitHub could not be asked; reason says why, when the app knows. */
+  | { state: "failed"; name: string; reason?: string };
 
 const kib = (n: number) => size(n * 1024);
 /** A path's owner part and its last segment; a GitLab project's owner part
@@ -130,6 +131,7 @@ export function RepoFinder({
   lookup,
   incomplete,
   state,
+  failure,
   sourceNotes = [],
   mixed,
 }: {
@@ -145,6 +147,9 @@ export function RepoFinder({
   incomplete?: boolean;
   /** The catalog itself: loading, failed or read. */
   state: "loading" | "failed" | "ready";
+  /** Why the catalog failed, when the app knows (a broken GitHub
+   * connection), in place of the general words. */
+  failure?: ReactNode;
   /** What each connected Gitea's own list says beside GitHub's: a failed or
    * incomplete source, already in words. */
   sourceNotes?: {
@@ -190,6 +195,8 @@ export function RepoFinder({
         <p className="ah-clone-empty" role="status">
           Haetaan repoja GitHubista…
         </p>
+      ) : state === "failed" && failure ? (
+        failure
       ) : state === "failed" ? (
         <p className="ah-clone-empty" role="alert">
           Repolistaa ei saatu GitHubista. Voit silti kirjoittaa repon nimen
@@ -241,7 +248,8 @@ export function RepoFinder({
                 ? "Haetaan GitHubista…"
                 : lookup.state === "not_found"
                   ? "Repoa ei ole, tai sinulla ei ole siihen pääsyä."
-                  : "GitHubiin ei saatu yhteyttä. Yritä hetken päästä uudelleen."}
+                  : (lookup.reason ??
+                    "GitHubiin ei saatu yhteyttä. Yritä hetken päästä uudelleen.")}
             </p>
           )}
         </section>

@@ -109,7 +109,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	attachments := AttachmentsHandler(cfg, server.TrustedPeer)
 	mux.Handle(AttachmentsPath, attachments)
 	mux.Handle(AttachmentsPath+"/", attachments)
-	mux.Handle(SnapshotPath, snapshotHandlerWithForges(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, adapter.ObservedStatus, journal, controller, forges))
+	mux.Handle(SnapshotPath, snapshotHandlerWithForges(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, adapter.ObservedConnection, journal, controller, forges))
 	mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		journal.stream(w, r, func() bool {
 			return server.TrustedPeer(r)

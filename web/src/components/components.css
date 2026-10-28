@@ -1486,6 +1486,10 @@ details[open] > summary:not([class])::before {
   overflow: auto;
   margin-inline: auto;
 }
+/* A warning above the composer lines up with the composer's field. */
+.ah-actionable-notices > .ah-warning {
+  margin: 0 var(--ah-column-pad-inline) var(--ah-s2);
+}
 @media (max-height: 600px) {
   .ah-conversation-frame .ah-composer {
     max-height: min(45vh, calc(100dvh - 14rem));

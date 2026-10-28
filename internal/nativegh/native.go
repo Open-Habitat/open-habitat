@@ -285,9 +285,17 @@ func (a *Adapter) classify(ctx context.Context) (string, account) {
 	return v.Login, own
 }
 
+// Observation is one status check: the state, and for the person's own
+// working login also its GitHub login name. A foreign or rejected login's
+// name is never part of it.
+type Observation struct {
+	State string
+	Login string
+}
+
 type statusFlight struct {
 	done  chan struct{}
-	state string
+	obs   Observation
 	busy  bool // a mutation held the adapter; the answer says nothing
 	stamp string
 	gen   uint64
@@ -296,7 +304,7 @@ type statusFlight struct {
 // observedStatus is the last completed observation and the native inputs it
 // was made from. It is never written to disk.
 type observedStatus struct {
-	state string
+	obs   Observation
 	stamp string
 	gen   uint64
 	at    time.Time
@@ -318,7 +326,7 @@ func (a *Adapter) Status(ctx context.Context) string {
 	if ctx.Err() != nil {
 		return "unknown"
 	}
-	return a.wait(ctx, a.start())
+	return a.wait(ctx, a.start()).State
 }
 
 // ObservedStatus answers from the last observation while none of gh's or
@@ -326,8 +334,13 @@ func (a *Adapter) Status(ctx context.Context) string {
 // otherwise observes afresh like Status. The snapshot uses it so that a page
 // load does not wait for GitHub's API; mutation checks keep using Status.
 func (a *Adapter) ObservedStatus(ctx context.Context) string {
+	return a.ObservedConnection(ctx).State
+}
+
+// ObservedConnection is ObservedStatus with the login it observed.
+func (a *Adapter) ObservedConnection(ctx context.Context) Observation {
 	if ctx.Err() != nil {
-		return "unknown"
+		return Observation{State: "unknown"}
 	}
 	stamp, ok := credentialStamp(a.home)
 	gen := a.mutations.Load()
@@ -336,13 +349,13 @@ func (a *Adapter) ObservedStatus(ctx context.Context) string {
 	a.flightMu.Unlock()
 	if ok && o != nil && o.stamp == stamp && o.gen == gen {
 		recheck := observedRecheck
-		if o.state == "unknown" {
+		if o.obs.State == "unknown" {
 			recheck = observedUnknownRecheck
 		}
 		if time.Since(o.at) > recheck {
 			a.start() // the next snapshot sees the refreshed observation
 		}
-		return o.state
+		return o.obs
 	}
 	// A flight already under way may have read the inputs before they
 	// changed; its answer is not this caller's. The next flight starts after
@@ -350,7 +363,7 @@ func (a *Adapter) ObservedStatus(ctx context.Context) string {
 	f := a.start()
 	if !ok || f.stamp != stamp || f.gen != gen {
 		if a.wait(ctx, f); ctx.Err() != nil {
-			return "unknown"
+			return Observation{State: "unknown"}
 		}
 		f = a.start()
 	}
@@ -372,12 +385,12 @@ func (a *Adapter) start() *statusFlight {
 		budget, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 		defer cancel()
 		var remember bool
-		f.state, f.busy, remember = a.checkStatus(budget)
+		f.obs, f.busy, remember = a.checkStatus(budget)
 		after, still := credentialStamp(a.home)
 		a.flightMu.Lock()
 		// Remember only an observation whose inputs did not move under it.
 		if remember && !f.busy && stamped && still && after == f.stamp && f.gen == a.mutations.Load() {
-			a.observed = &observedStatus{state: f.state, stamp: f.stamp, gen: f.gen, at: time.Now()}
+			a.observed = &observedStatus{obs: f.obs, stamp: f.stamp, gen: f.gen, at: time.Now()}
 		} else if !remember {
 			a.observed = nil
 		}
@@ -388,15 +401,15 @@ func (a *Adapter) start() *statusFlight {
 	return f
 }
 
-func (a *Adapter) wait(ctx context.Context, f *statusFlight) string {
+func (a *Adapter) wait(ctx context.Context, f *statusFlight) Observation {
 	select {
 	case <-f.done:
 		if ctx.Err() == nil {
-			return f.state
+			return f.obs
 		}
 	case <-ctx.Done():
 	}
-	return "unknown"
+	return Observation{State: "unknown"}
 }
 
 // credentialStamp names every local input of checkStatus: gh's configuration
@@ -511,40 +524,41 @@ func GitConfigStamp(home string) (string, bool) {
 	return b.String(), true
 }
 
-// checkStatus reports the state, whether a mutation made the answer
+// checkStatus reports the observation, whether a mutation made the answer
 // meaningless, and whether its inputs are all files credentialStamp covers.
-func (a *Adapter) checkStatus(ctx context.Context) (string, bool, bool) {
+func (a *Adapter) checkStatus(ctx context.Context) (Observation, bool, bool) {
+	unknown := Observation{State: "unknown"}
 	if !a.mu.TryLock() {
-		return "unknown", true, false // mutation in progress; cannot infer its eventual outcome
+		return unknown, true, false // mutation in progress; cannot infer its eventual outcome
 	}
 	defer a.mu.Unlock()
 	login, kind := a.classify(ctx)
 	if ctx.Err() != nil {
-		return "unknown", false, true
+		return unknown, false, true
 	}
 	// A revoked token connects nothing, but it is not an absent login: gh
 	// still offers it to every push. The person sees it as expired, and the
 	// next sign-in replaces it (Install's revoked case).
 	if kind == revoked {
-		return "expired", false, true
+		return Observation{State: "expired"}, false, true
 	}
 	if kind == absent || kind == foreign {
-		return "disconnected", false, true
+		return Observation{State: "disconnected"}, false, true
 	}
 	if kind != own {
-		return "unknown", false, true
+		return unknown, false, true
 	}
 	_, _, ok := a.observeWithLogin(ctx, login)
 	// Without a token in hosts.yml, gh and the observation consult the
 	// keyring, whose lock state is not a file: such an answer is not kept.
 	remember := fileToken(a.home)
 	if ctx.Err() != nil {
-		return "unknown", false, remember
+		return unknown, false, remember
 	}
 	if !ok {
-		return "partial", false, remember
+		return Observation{State: "partial", Login: login}, false, remember
 	}
-	return "connected", false, remember
+	return Observation{State: "connected", Login: login}, false, remember
 }
 func (a *Adapter) storage(ctx context.Context, login string) (Storage, bool) {
 	// Resolve parent components first; the final path is opened with O_NOFOLLOW.

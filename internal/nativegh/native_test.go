@@ -820,13 +820,18 @@ func TestObservedStatusFollowsNativeInputs(t *testing.T) {
 	if got := a.ObservedStatus(context.Background()); got != "connected" || calls() != 1 {
 		t.Fatalf("unchanged inputs must not ask GitHub again: %s after %d calls", got, calls())
 	}
+	// The remembered observation names the person's own login.
+	if got := a.ObservedConnection(context.Background()); got != (Observation{State: "connected", Login: "alice"}) || calls() != 1 {
+		t.Fatalf("own login: %+v after %d calls", got, calls())
+	}
 	// Another login on this machine rewrites hosts.yml.
 	f.id = "43"
 	if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte("github.com:\n  oauth_token: fake-other\n  user: other\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if got := a.ObservedStatus(context.Background()); got != "disconnected" || calls() != 2 {
-		t.Fatalf("hosts.yml change: %s after %d calls", got, calls())
+	// Another account's login is not the person's, so its name is not told.
+	if got := a.ObservedConnection(context.Background()); got != (Observation{State: "disconnected"}) || calls() != 2 {
+		t.Fatalf("hosts.yml change: %+v after %d calls", got, calls())
 	}
 	// A Git credential helper change lives in ~/.gitconfig, not in gh's files.
 	f.id = "42"
@@ -861,7 +866,7 @@ func TestObservedStatusFollowsNativeInputs(t *testing.T) {
 	deadline := time.Now().Add(3 * time.Second)
 	for {
 		a.flightMu.Lock()
-		state := a.observed.state
+		state := a.observed.obs.State
 		a.flightMu.Unlock()
 		if state == "connected" {
 			break

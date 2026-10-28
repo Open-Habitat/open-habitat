@@ -48,46 +48,50 @@ func snapshotError(w http.ResponseWriter, status int, code string) {
 	_, _ = w.Write(b)
 }
 
+func unknownGitHub(context.Context) nativegh.Observation {
+	return nativegh.Observation{State: "unknown"}
+}
+
 // SnapshotHandler uses the same guarded socket and trusted configuration as the
 // native handoff. discover is injectable only at construction, never per request.
 func SnapshotHandler(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery) http.Handler {
-	status := func(context.Context) string { return "unknown" }
+	status := unknownGitHub
 	if adapter, err := nativegh.New(cfg.Home, cfg.Subject, nil, nativegh.LinuxSecretService()); err == nil {
-		status = adapter.ObservedStatus
+		status = adapter.ObservedConnection
 	}
 	return SnapshotHandlerWithStatus(cfg, trusted, discover, status)
 }
 
 // SnapshotHandlerWithStatus shares the daemon's native adapter with the handoff
 // so a snapshot cannot observe credentials midway through a mutation.
-func SnapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, status func(context.Context) string) http.Handler {
+func SnapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, status func(context.Context) nativegh.Observation) http.Handler {
 	return snapshotHandlerWithStatus(cfg, trusted, discover, nativeSessions, cfg.Home, status)
 }
 
 // SnapshotHandlerWithNativeRoot is a disposable fixture seam for cross-package
 // transport tests; the production constructor always reads the mapped home.
 func SnapshotHandlerWithNativeRoot(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, root string) http.Handler {
-	return snapshotHandlerWithStatus(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root, func(context.Context) string { return "unknown" })
+	return snapshotHandlerWithStatus(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root, unknownGitHub)
 }
 
 // SnapshotHandlerWithNativeRootAndForges is that seam with the fixture's
 // code-host adapters, so workspace origins are matched as production does.
 func SnapshotHandlerWithNativeRootAndForges(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, root string, forges Forges) http.Handler {
-	return snapshotHandlerWithForges(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root, func(context.Context) string { return "unknown" }, nil, nil, forges)
+	return snapshotHandlerWithForges(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root, unknownGitHub, nil, nil, forges)
 }
-func snapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string) http.Handler {
+func snapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) nativegh.Observation) http.Handler {
 	return snapshotHandlerWithJournal(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, nil)
 }
-func snapshotHandlerWithJournal(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string, journal *eventJournal) http.Handler {
+func snapshotHandlerWithJournal(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) nativegh.Observation, journal *eventJournal) http.Handler {
 	return snapshotHandlerWithController(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, journal, nil)
 }
-func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string, journal *eventJournal, controller *ConversationController) http.Handler {
+func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) nativegh.Observation, journal *eventJournal, controller *ConversationController) http.Handler {
 	return snapshotHandlerWithForges(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, journal, controller, Forges{})
 }
 
 // snapshotHandlerWithForges also matches each workspace's origin to the
 // person's connected Gitea and GitLab bases.
-func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string, journal *eventJournal, controller *ConversationController, forges Forges) http.Handler {
+func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) nativegh.Observation, journal *eventJournal, controller *ConversationController, forges Forges) http.Handler {
 	instance, ok := uuid()
 	if journal != nil {
 		instance, ok = journal.instance, journal.instance != ""
@@ -147,12 +151,12 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 		}
 		// The parts below are independent native observations: run them side
 		// by side rather than adding up their latencies.
-		ghDone := make(chan string, 1)
+		ghDone := make(chan nativegh.Observation, 1)
 		go func() {
 			started := time.Now()
-			state := nativeStatus(r.Context())
+			obs := nativeStatus(r.Context())
 			diagnostic.Phase(r.Context(), "github", started)
-			ghDone <- state
+			ghDone <- obs
 		}()
 		var waitingViews map[string][]waitingProcess
 		waitingDone := make(chan struct{})
@@ -567,9 +571,16 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 		}
 		expected := opaque("wid_", cfg.Provider+":"+cfg.Subject)
 		display := "GitHub user " + cfg.Subject
-		ghState := <-ghDone
+		gh := <-ghDone
+		ghState := gh.State
 		if ghState != "connected" && ghState != "disconnected" && ghState != "expired" && ghState != "partial" && ghState != "pending" {
 			ghState = "unknown"
+		}
+		// The person's own login, for "Kirjautunut käyttäjänä …"; only a
+		// login gh works with is named.
+		nativeGitHub := map[string]string{"state": ghState}
+		if (ghState == "connected" || ghState == "partial") && gh.Login != "" {
+			nativeGitHub["login"] = gh.Login
 		}
 		// Local workspace writes are available only with a confirmed source.
 		// A missing source still gets a valid but unusable observation token.
@@ -597,7 +608,7 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 				return "unknown"
 			}
 			return "confirmed"
-		}()), fact("daemon_owner", "unknown")}, "workspaces": workspaces, "agents": agents, "operations": []any{}, "command_ledger": map[string]any{"epoch": instance, "max_entries": 10000, "max_age_seconds": 86400, "entries": []any{}}, "auth": map[string]any{"provider": cfg.Provider, "provider_account_id": cfg.Subject, "native_github": map[string]string{"state": ghState}}}
+		}()), fact("daemon_owner", "unknown")}, "workspaces": workspaces, "agents": agents, "operations": []any{}, "command_ledger": map[string]any{"epoch": instance, "max_entries": 10000, "max_age_seconds": 86400, "entries": []any{}}, "auth": map[string]any{"provider": cfg.Provider, "provider_account_id": cfg.Subject, "native_github": nativeGitHub}}
 		b, err := json.Marshal(body)
 		if err != nil || len(b) > MaxSnapshotBytes {
 			snapshotError(w, 503, "native_source_unavailable")

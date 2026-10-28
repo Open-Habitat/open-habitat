@@ -703,7 +703,11 @@ export function AccountSettings({
         )}
         {adminSections.some(([id]) => id === section) &&
           (admin && section === "kayttoonotto" ? (
-            <OnboardingAdministration csrf={csrf} />
+            <OnboardingAdministration
+              csrf={csrf}
+              nativeState={nativeState}
+              onReconnect={onReconnect}
+            />
           ) : admin && section === "palvelinintegraatiot" ? (
             <div className="s-card ah-administration">
               <ServerIntegrationsSettings csrf={csrf} />

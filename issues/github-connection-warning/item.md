@@ -3,13 +3,14 @@ created: 2026-10-28
 updated: 2026-10-28
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/github-connection-warning
 lane: github-warning
 lane_seq: 1
+closed: 2026-10-28
 ---
 
 # GitHub connection: visible host retry above the composer, then a warning; generic warning banner style

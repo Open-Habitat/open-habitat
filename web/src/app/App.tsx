@@ -61,7 +61,15 @@ import {
 } from "./conversations";
 import { FallbackAccount } from "./FallbackAccount";
 import { seededRouteOpen } from "./firstRoute";
+import { GitHubConnectionNotice } from "./GitHubConnectionNotice";
 import { GitHubOnboarding } from "./GitHubOnboarding";
+import {
+  concerns,
+  githubFault,
+  markReconnect,
+  takeReturnRoute,
+  useGitHubRecovery,
+} from "./githubConnection";
 import { adoptGuide } from "./goalGuide";
 import { HistoryView } from "./HistoryView";
 import { adoptCreation } from "./heldMessages";
@@ -1001,6 +1009,29 @@ export function App() {
     };
     return placeWorkspace(selected, place);
   }, [selected, openConversation, snapshot, daemonSessions]);
+  // The person's own GitHub connection (proto-github-connection-warning):
+  // a settled fault, the confirmation once it works again, and the one
+  // repair, which returns to this same page.
+  const nativeGitHub = snapshot?.auth?.native_github;
+  const githubWarning = githubFault(nativeGitHub?.state);
+  const githubRecovery = useGitHubRecovery(
+    identity,
+    nativeGitHub?.state,
+    nativeGitHub?.login,
+  );
+  // The page in the address bar, which is Settings when it lies over a view.
+  const reconnectGitHub = useCallback(() => {
+    if (syntheticDemo) return;
+    const returnTo = safeRoute(route.pathname);
+    markReconnect(`${route.pathname}${route.search}`, returnTo);
+    window.location.assign(
+      `/auth/github/start?return_to=${encodeURIComponent(returnTo)}&reconnect=1`,
+    );
+  }, [route.pathname, route.search]);
+  useEffect(() => {
+    const back = takeReturnRoute(route.pathname, route.search);
+    if (back) navigate(back, { replace: true });
+  }, [route.pathname, route.search, navigate]);
   const selectedAgentId = /^\/agents\/(pi:[0-9a-fA-F-]{36})$/.exec(
     location.pathname,
   )?.[1];
@@ -1826,12 +1857,7 @@ export function App() {
       onLogout={() => setLogoutPrompt(true)}
       nativeState={snapshot?.auth?.native_github.state}
       nativeLogin={snapshot?.auth?.native_github.login}
-      onReconnect={() => {
-        if (syntheticDemo) return;
-        window.location.assign(
-          `/auth/github/start?return_to=${encodeURIComponent(safeRoute(route.pathname))}&reconnect=1`,
-        );
-      }}
+      onReconnect={reconnectGitHub}
       onPiSignIn={() => navigate(`${route.pathname}?pi_sign_in=1`)}
       modelSelector={
         <PiModelSelector
@@ -2048,6 +2074,8 @@ export function App() {
       </>
     ) : location.pathname === "/workspaces/new" ? (
       <NewWorkspacePage
+        github={githubWarning}
+        onReconnect={syntheticDemo ? undefined : reconnectGitHub}
         csrf={csrf}
         token={snapshot?.user_observation_token}
         writeReason={
@@ -2235,6 +2263,22 @@ export function App() {
                 />
               ) : null}
               <BrowserConversation
+                github={
+                  <GitHubConnectionNotice
+                    placement="inline"
+                    warning={
+                      concerns(githubWarning, {
+                        provider: snapshot?.auth?.provider,
+                        // A worktree's place has the workspace's origin.
+                        githubWorkspace: !!selected.git_summary?.github_repo,
+                      })
+                        ? githubWarning
+                        : undefined
+                    }
+                    recovery={githubRecovery}
+                    onReconnect={syntheticDemo ? undefined : reconnectGitHub}
+                  />
+                }
                 csrf={
                   priorIdentity.current && priorIdentity.current !== identity
                     ? undefined
@@ -2657,6 +2701,27 @@ export function App() {
                   SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data ·
                   Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä
                 </div>
+              ) : null}
+              {/* The conversation says it above its composer, Uusi työtila
+                  where GitHub is needed, and Koodipalvelut in its GitHub row. */}
+              {(phase === "authenticated" || phase === "stale") &&
+              !landing.show &&
+              (isSettingsRoute(route.pathname)
+                ? settingsSection(route.pathname) !== "koodipalvelut"
+                : !(selected && openConversation) &&
+                  location.pathname !== "/workspaces/new") ? (
+                <GitHubConnectionNotice
+                  placement="page"
+                  warning={
+                    concerns(githubWarning, {
+                      provider: snapshot?.auth?.provider,
+                    })
+                      ? githubWarning
+                      : undefined
+                  }
+                  recovery={githubRecovery}
+                  onReconnect={syntheticDemo ? undefined : reconnectGitHub}
+                />
               ) : null}
               {phase === "authentication_required" ||
               phase === "pi_required" ||

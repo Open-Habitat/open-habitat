@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/Open-Habitat/open-habitat/internal/nativegh"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
@@ -59,7 +60,10 @@ func TestSlowSnapshotRecordsPhases(t *testing.T) {
 	}
 	uid, _ := strconv.Atoi(u.Uid)
 	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42", Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock"}
-	slowGitHub := func(context.Context) string { time.Sleep(diagnostic.SlowRead); return "connected" }
+	slowGitHub := func(context.Context) nativegh.Observation {
+		time.Sleep(diagnostic.SlowRead)
+		return nativegh.Observation{State: "connected"}
+	}
 	snapshot := snapshotHandlerWithStatus(cfg, func(*http.Request) bool { return true }, func(transport.Config) Discovery { return Discovery{State: "empty"} }, func(transport.Config) ([]nativeSession, error) { return nil, nil }, t.TempDir(), slowGitHub)
 	var buf bytes.Buffer
 	r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)

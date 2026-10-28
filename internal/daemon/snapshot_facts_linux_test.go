@@ -46,7 +46,7 @@ func newFactsHome(t testing.TB) *factsHome {
 	trusted := func(*http.Request) bool { return true }
 	status := func(context.Context) string { return "unknown" }
 	controller := newConversationController(t.Context(), cfg, nil, trusted, status)
-	h := snapshotHandlerWithController(cfg, trusted, func(transport.Config) Discovery { return scan(home, uid, unix.Openat2) }, nativeSessions, home, status, nil, controller)
+	h := snapshotHandlerWithController(cfg, trusted, func(transport.Config) Discovery { return scan(home, uid, unix.Openat2) }, nativeSessions, home, unknownGitHub, nil, controller)
 	f := &factsHome{t: t, home: home, src: src}
 	f.snapshot = func() map[string]any {
 		t.Helper()

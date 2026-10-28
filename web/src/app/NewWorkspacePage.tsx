@@ -20,6 +20,7 @@ import {
   type Since,
 } from "../components/repoCatalog";
 import { type CloneJobs, cloneLabel, useCloneView } from "./cloneJobs";
+import { GitHubPlaceNotice } from "./GitHubConnectionNotice";
 import { type GiteaSource, giteaRepos, host } from "./gitea";
 import {
   type CloneJob,
@@ -30,6 +31,7 @@ import {
   lookup,
   type Repo,
 } from "./github";
+import type { GitHubWarning } from "./githubConnection";
 import {
   daysLeft,
   type GitLabSource,
@@ -141,7 +143,13 @@ export function NewWorkspacePage({
   onCreated,
   onOpen,
   refresh,
+  github,
+  onReconnect,
 }: {
+  /** A settled fault in the person's GitHub connection, said where the
+   * list would be. */
+  github?: GitHubWarning;
+  onReconnect?: () => void;
   csrf?: string;
   token?: string;
   /** Why nothing can be written now; undefined when writes are possible. */
@@ -170,6 +178,8 @@ export function NewWorkspacePage({
     complete: boolean;
     /** The person's own GitHub login, for the "Omat" section. */
     login?: string;
+    /** The daemon could not use the GitHub credentials (409). */
+    auth?: boolean;
   }>({ state: "loading", list: [], complete: true });
   // Each connected Gitea is its own source: one failing never hides
   // GitHub's list or another Gitea's.
@@ -206,9 +216,14 @@ export function NewWorkspacePage({
           login: c.login,
         }),
       )
-      .catch(() => {
+      .catch((e) => {
         if (!controller.signal.aborted)
-          setRepos({ state: "failed", list: [], complete: true });
+          setRepos({
+            state: "failed",
+            list: [],
+            complete: true,
+            auth: e instanceof GitHubError && e.code === "auth",
+          });
       });
     void giteaRepos(controller.signal)
       .then((sources) => setGitea({ state: "ready", sources }))
@@ -277,12 +292,22 @@ export function NewWorkspacePage({
                   : { state: "not_found", name },
             })),
           )
-          .catch(() => {
+          .catch((e) => {
             // An aborted lookup answered nothing: forget it so that typing the
             // name again looks it up again.
             setLooked((old) => {
               if (!controller.signal.aborted)
-                return { ...old, [name]: { state: "failed", name } };
+                return {
+                  ...old,
+                  [name]: {
+                    state: "failed",
+                    name,
+                    reason:
+                      e instanceof GitHubError && e.code === "auth"
+                        ? "Repoa ei voi hakea eikä kloonata ennen kuin GitHub-yhteys toimii."
+                        : undefined,
+                  },
+                };
               const { [name]: _, ...rest } = old;
               return rest;
             });
@@ -870,6 +895,14 @@ export function NewWorkspacePage({
               lookup={typedLookup}
               incomplete={!repos.complete}
               state={repos.state}
+              failure={
+                github || repos.auth ? (
+                  <GitHubPlaceNotice
+                    warning={github}
+                    onReconnect={onReconnect}
+                  />
+                ) : undefined
+              }
               sourceNotes={sourceNotes}
               mixed={gitea.sources.length + gitlab.sources.length > 0}
             />
@@ -894,7 +927,9 @@ export function NewWorkspacePage({
                     ? `Haetaan ${selectedName}…`
                     : looked[selectedName].state === "not_found"
                       ? `Repoa ${selectedName} ei ole, tai sinulla ei ole siihen pääsyä.`
-                      : "GitHubiin ei saatu yhteyttä. Yritä hetken päästä uudelleen."}
+                      : github
+                        ? `Kloonaus tarvitsee GitHub-yhteyden. ${github.fix} ilmoituksesta.`
+                        : "GitHubiin ei saatu yhteyttä. Yritä hetken päästä uudelleen."}
                 </p>
               </aside>
             ) : (
