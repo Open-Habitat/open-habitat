@@ -457,6 +457,22 @@ test("@workspace-page card archive offers undo on the same page without starting
   const notice = page.locator(".ah-archive-notice");
   await expect(notice).toBeVisible();
   await expect(page.getByTestId(cardId)).toHaveCount(0);
+  // Another kind stacks: the newest shows, +N opens the rest.
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("workspace-archive"))
+    .click();
+  const area = page.getByTestId("notice-area").filter({ has: notice });
+  const more = area.getByRole("button").and(page.getByTestId("notice-more"));
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+  await expect(area.locator(".ah-archive-notice:visible")).toHaveCount(1);
+  await more.click();
+  await expect(area.locator(".ah-archive-notice:visible")).toHaveCount(2);
+  // Esc closes only the notice that holds focus, and focus goes back to
+  // the page rather than being lost with the row.
+  await more.press("Escape");
+  await expect(notice).toHaveCount(1);
+  await expect(page.locator("main")).toBeFocused();
   await notice
     .getByRole("button")
     .and(page.getByTestId("restore-notice"))

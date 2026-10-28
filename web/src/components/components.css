@@ -1627,6 +1627,14 @@ details[open] > summary:not([class])::before {
     padding-inline: var(--ah-s3);
     border-bottom: 1px solid var(--ah-line);
   }
+  /* The notice row continues the toolbar: one bar, one border below both. */
+  .ah-mobile-toolbar + .ah-notice-area-page {
+    top: var(--ah-touch);
+    padding-inline: var(--ah-s3);
+  }
+  .ah-mobile-toolbar:has(+ .ah-notice-area-page:not(:empty)) {
+    border-bottom-color: transparent;
+  }
   .ah-mobile-title {
     flex: 1;
     min-width: 0;
@@ -1705,37 +1713,120 @@ details[open] > summary:not([class])::before {
   border-radius: var(--ah-r-pill);
 }
 
+/* The notice area: quiet rows inside the page's top bar, in flow, so they
+   push the page down rather than cover it (proto-archive-notice-placement,
+   round 2, Otsakerivi). The newest is nearest the bar; +N opens the rest. */
+.ah-notice-area {
+  display: flex;
+  flex-direction: column;
+}
+.ah-notice-area:empty {
+  display: none;
+}
+/* Pages whose top bar is their own head: the row sits above the content and
+   stays in view while the page scrolls. */
+.ah-notice-area-page {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-bottom: var(--ah-s4);
+  border-bottom: 1px solid var(--ah-line);
+  background: var(--ah-bg);
+}
 .ah-archive-notice {
-  position: fixed;
-  z-index: 20;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 10px;
-  max-width: calc(100% - 32px);
-  padding: 6px 6px 6px 14px;
-  border-radius: var(--ah-r-md);
-  background: var(--ah-ink);
-  color: var(--ah-bg);
-  box-shadow: var(--ah-shadow-float);
-  font-size: 13px;
+  gap: 6px;
+  min-height: 30px;
+  color: var(--ah-ink-2);
+  font-size: 12.5px;
+  animation: ah-notice-in 220ms ease-out;
 }
-/* biome-ignore lint/style/noDescendingSpecificity: the notice is not a rail/composer descendant. */
-.ah-archive-notice [data-ah-primitive="button"] {
-  color: inherit;
+.ah-archive-notice[hidden] {
+  display: none;
 }
-/* biome-ignore lint/style/noDescendingSpecificity: notice text is not diff content. */
-.ah-archive-notice > span {
+.ah-notice-area-header {
+  margin-top: 4px;
+}
+.ah-archive-notice-icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--ah-muted);
+}
+.ah-archive-notice-icon svg {
+  width: 14px;
+  height: 14px;
+}
+.ah-archive-notice-text {
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
 }
-/* biome-ignore lint/style/noDescendingSpecificity: notice text is not diff content. */
-.ah-archive-notice-wrap > span {
+.ah-archive-notice-text b {
+  font-weight: 500;
+  color: var(--ah-ink);
+}
+/* A notice that must be read, or one that says what went wrong, wraps. */
+.ah-archive-notice-wrap .ah-archive-notice-text,
+.ah-archive-notice-problem .ah-archive-notice-text {
   white-space: normal;
+  padding-block: 4px;
+}
+.ah-archive-notice-problem .ah-archive-notice-icon,
+.ah-archive-notice-error {
+  color: var(--ah-err);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: the notice is not a rail/composer descendant. */
+.ah-archive-notice [data-ah-primitive="button"] {
+  flex: none;
+  min-height: 24px;
+  padding-inline: 8px;
+  color: var(--ah-accent-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.ah-archive-notice .ah-archive-notice-close {
+  width: 24px;
+  padding: 0;
+  color: var(--ah-muted);
+  font-size: 16px;
+  font-weight: 400;
+}
+.ah-archive-notice .ah-archive-notice-more {
+  min-height: 22px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  color: var(--ah-ink-2);
+  font-size: 11.5px;
+}
+@keyframes ah-notice-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-archive-notice {
+    animation: none;
+  }
+}
+/* Narrow: a notice that must be read gets the full width; its actions move
+   to a row below. */
+@media (max-width: 560px) {
+  .ah-archive-notice-wrap,
+  .ah-archive-notice-problem {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .ah-archive-notice-wrap .ah-archive-notice-text,
+  .ah-archive-notice-problem .ah-archive-notice-text {
+    flex: 1 1 calc(100% - 40px);
+  }
+  .ah-archive-notice-wrap .ah-archive-notice-text + *,
+  .ah-archive-notice-problem .ah-archive-notice-text + * {
+    margin-left: auto;
+  }
 }
 
 .ah-floating-controls {

@@ -3029,6 +3029,9 @@ for (const width of [1280, 390]) {
   });
 }
 
+// The agreed lifetime of a notice row (proto-archive-notice-placement, Otsakerivi).
+const NOTICE_LIFETIME_MS = 20_000;
+
 test("@conversation-details archive undo returns to conversation; offer pauses and expires", async ({
   page,
 }) => {
@@ -3044,24 +3047,24 @@ test("@conversation-details archive undo returns to conversation; offer pauses a
   await expect(page.locator("main h1")).toBeFocused();
   await expect(notice.getByTestId("restore-notice")).toBeEnabled();
   await notice.hover();
-  await page.clock.fastForward(9000);
+  await page.clock.fastForward(NOTICE_LIFETIME_MS + 1000);
   await expect(notice).toBeVisible();
   const undo = notice.getByTestId("restore-notice");
   await undo.focus();
   await page.mouse.move(0, 0);
-  await page.clock.fastForward(9000);
+  await page.clock.fastForward(NOTICE_LIFETIME_MS + 1000);
   await expect(notice).toBeVisible();
   await undo.click();
   await expect(page).toHaveURL(new RegExp(`(?:conversation=|agents/)${id}`));
   await expect(notice).toHaveCount(0);
 });
 
-test("@conversation-details archive offer expires after eight unpaused seconds", async ({
+test("@conversation-details archive offer rides in the next header and expires unpaused", async ({
   page,
 }) => {
   await stoppedConversation(page);
-  // Install before the toast schedules its timeout: a later installation does
-  // not move already-scheduled native timers onto Playwright's clock.
+  // Install before the notice schedules its timeout: a later installation
+  // does not move already-scheduled native timers onto Playwright's clock.
   await page.clock.install();
   await archiveFromConfirmedView(page, () =>
     page
@@ -3071,12 +3074,28 @@ test("@conversation-details archive offer expires after eight unpaused seconds",
   const notice = page.locator(".ah-archive-notice");
   await expect(notice).toBeVisible();
   await expect(notice.getByTestId("restore-notice")).toBeEnabled();
+  const workspace = page.url();
+  // The next conversation carries the offer as a row in its top bar, above
+  // the thread rather than over the composer.
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(
+    page.locator(".ah-agent-header .ah-archive-notice"),
+  ).toBeVisible();
+  // The row may now lie under the pointer that pressed the button, which
+  // rightly pauses it.
   await page.mouse.move(0, 0);
+  const editor = page.getByTestId("message-input");
+  await editor.focus();
+  // A writer's Esc belongs to the composer, not to the notice.
+  await page.keyboard.press("Escape");
+  await expect(notice).toBeVisible();
+  await expect(editor).toBeFocused();
   // Advance through callbacks rather than jumping past React's timer cleanup
   // and rescheduling when the pointer leaves the transient notice.
-  await page.clock.runFor(8100);
+  await page.clock.runFor(NOTICE_LIFETIME_MS + 100);
 
   await expect(notice).toHaveCount(0);
+  await page.goto(workspace);
   await page.locator(".ah-workspace-archive > summary").click();
   await expect(
     page

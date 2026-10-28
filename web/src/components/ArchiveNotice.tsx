@@ -1,8 +1,26 @@
-import { useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { ControlButton } from "./ControlElements";
+import { Icon, type IconName } from "./Icon";
+import { type NoticeKind, returnFocusToWork, useNotice } from "./NoticeArea";
 
-/** Transient undo offer; the archive itself remains native host state. */
+/** How long an untouched notice stays. The row covers nothing, so the undo
+ * can wait longer than a floating toast could. */
+export const NOTICE_LIFETIME_MS = 20_000;
+
+const icons: Record<NoticeKind, IconName> = {
+  archive: "archive",
+  trash: "trash",
+  mode: "info",
+  "workspace-archive": "eyeOff",
+};
+
+/** Transient undo offer; the archive itself remains native host state. A
+ * quiet row in the page's top bar (NoticeArea). It never takes focus; Esc
+ * closes it only from inside it, because a writer's Esc belongs to the
+ * composer. */
 export function ArchiveNotice({
+  kind = "archive",
   title,
   busy,
   problem,
@@ -14,6 +32,7 @@ export function ArchiveNotice({
   link,
   wrap = false,
 }: {
+  kind?: NoticeKind;
   /** Long text wraps instead of being cut: a notice that must be read. */
   wrap?: boolean;
   /** Bold after the message; absent when the message says it all. */
@@ -21,7 +40,9 @@ export function ArchiveNotice({
   message?: string;
   detail?: string;
   restoreLabel?: string;
+  /** The action is on its way: the notice stays and its undo waits. */
   busy: boolean;
+  /** Something did not go as asked: the notice stays until closed. */
   problem?: string;
   /** Absent when there is nothing to undo. */
   onRestore?: () => void;
@@ -29,40 +50,46 @@ export function ArchiveNotice({
   /** Where the thing can be found later. */
   link?: { label: string; onPress: () => void };
 }) {
-  const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
-  const remaining = useRef(8000);
+  const notice = useNotice(kind, !!onRestore, onClose);
+  const row = useRef<HTMLElement>(null);
+  const remaining = useRef(NOTICE_LIFETIME_MS);
+  const held = notice.paused || notice.folded || busy || !!problem;
   useEffect(() => {
-    if (hovered || focused || busy || problem) return;
+    if (held) return;
     const start = Date.now();
     const timer = window.setTimeout(onClose, remaining.current);
     return () => {
       window.clearTimeout(timer);
       remaining.current = Math.max(0, remaining.current - (Date.now() - start));
     };
-  }, [hovered, focused, busy, problem, onClose]);
-  useEffect(() => {
-    const onEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onEscape);
-    return () => document.removeEventListener("keydown", onEscape);
-  }, [onClose]);
-  return (
-    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: pointer/focus on the whole status pauses its lifetime; actions remain native buttons.
+  }, [held, onClose]);
+  // Closing a notice that holds focus hands focus back to the work.
+  const dismiss = () => {
+    const hadFocus = !!row.current?.contains(document.activeElement);
+    onClose();
+    if (hadFocus) requestAnimationFrame(returnFocusToWork);
+  };
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== "Escape") return;
+    event.stopPropagation();
+    dismiss();
+  };
+  const more = notice.index === 0 && notice.count > 1 ? notice.count - 1 : 0;
+  const content = (
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Esc from one of the row's own buttons closes it; the actions remain native buttons.
     <section
+      ref={row}
       data-testid="archive-notice"
-      className={`ah-archive-notice${wrap ? " ah-archive-notice-wrap" : ""}`}
+      data-kind={kind}
+      className={`ah-archive-notice${wrap ? " ah-archive-notice-wrap" : ""}${problem ? " ah-archive-notice-problem" : ""}`}
       role="status"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocusCapture={() => setFocused(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget))
-          setFocused(false);
-      }}
+      hidden={notice.folded}
+      onKeyDown={onKeyDown}
     >
-      <span>
+      <span className="ah-archive-notice-icon" aria-hidden="true">
+        <Icon name={problem ? "warning" : icons[kind]} />
+      </span>
+      <span className="ah-archive-notice-text">
         {message}
         {title ? (
           <>
@@ -71,8 +98,30 @@ export function ArchiveNotice({
           </>
         ) : null}
         {detail ? <span> · {detail}</span> : null}
-        {problem ? <span data-testid="archive-error"> · {problem}</span> : null}
+        {problem ? (
+          <span data-testid="archive-error" className="ah-archive-notice-error">
+            {" "}
+            · {problem}
+          </span>
+        ) : null}
       </span>
+      {more && notice.setOpen ? (
+        <ControlButton
+          data-testid="notice-more"
+          size="inline"
+          variant="quiet"
+          className="ah-archive-notice-more"
+          aria-expanded={notice.open}
+          aria-label={
+            notice.open
+              ? "Piilota muut ilmoitukset"
+              : `Näytä muut ilmoitukset (${more})`
+          }
+          onPress={() => notice.setOpen?.(!notice.open)}
+        >
+          {notice.open ? "Piilota" : `+${more}`}
+        </ControlButton>
+      ) : null}
       {link ? (
         <ControlButton
           data-testid="notice-link"
@@ -95,13 +144,16 @@ export function ArchiveNotice({
         </ControlButton>
       ) : null}
       <ControlButton
+        data-testid="notice-close"
         size="row"
         variant="quiet"
+        className="ah-archive-notice-close"
         aria-label="Sulje ilmoitus"
-        onPress={onClose}
+        onPress={dismiss}
       >
         ×
       </ControlButton>
     </section>
   );
+  return notice.element ? createPortal(content, notice.element) : content;
 }

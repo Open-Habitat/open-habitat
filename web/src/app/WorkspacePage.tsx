@@ -287,6 +287,7 @@ export function WorkspacePage({
       ) : null}
       {hideNotice && hidden ? (
         <ArchiveNotice
+          kind="workspace-archive"
           title={workspace.display_name ?? workspace.name}
           detail={`Tiedostot ja keskustelut säilyvät. Löydät sen ${archivedPlace === "home" ? "etusivun" : "sivupalkin"} lopusta, Arkistoidut-ryhmästä.`}
           restoreLabel="Kumoa"

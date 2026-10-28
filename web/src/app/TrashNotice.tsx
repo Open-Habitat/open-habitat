@@ -66,6 +66,7 @@ export function TrashNotice({
   if (result.state === "deleted")
     return (
       <ArchiveNotice
+        kind="trash"
         message="Poistettu pysyvästi"
         title={name}
         detail={
@@ -98,6 +99,7 @@ export function TrashNotice({
   const sticky = result.state !== "trashed" || !!result.kept_reason;
   return (
     <ArchiveNotice
+      kind="trash"
       message={
         result.state === "trashed"
           ? "Siirretty roskakoriin"

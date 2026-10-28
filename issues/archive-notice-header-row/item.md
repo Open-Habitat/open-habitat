@@ -3,7 +3,7 @@ created: 2026-10-28
 updated: 2026-10-28
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 provenance: chat
@@ -11,6 +11,7 @@ source_ref: chat:2026-10-28/archive-notice-header-row
 lane: desktop-header
 lane_seq: 2
 blocked_by: ['@conversation-header-shorten']
+closed: 2026-10-28
 ---
 
 # Archive and similar notices as a quiet row inside the top bar

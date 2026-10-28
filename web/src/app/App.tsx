@@ -2830,6 +2830,7 @@ export function App() {
               ) : null}
               {modeNotice && !(trashOutcome && modeNotice.single) ? (
                 <ArchiveNotice
+                  kind="mode"
                   key={modeNotice.key}
                   message={modeNotice.text}
                   wrap
@@ -2839,6 +2840,7 @@ export function App() {
               ) : null}
               {archiveNotice ? (
                 <ArchiveNotice
+                  kind="archive"
                   key={archiveNotice.id}
                   title={archiveNotice.title}
                   busy={

@@ -10,13 +10,26 @@ import type { AgentPresentation } from "./agentPresentation";
 import { ControlButton, ExternalLink, LinkRow } from "./ControlElements";
 import { HeaderActivity, useHeaderShortening } from "./HeaderShortening";
 import { Icon } from "./Icon";
+import { NoticeAreaProvider, NoticeSlot } from "./NoticeArea";
 import { Menu } from "./Overlays";
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
 import type { StatusKind } from "./Status";
 import { Badge, StatusMark } from "./Status";
 import type { AsyncState, Availability, Tone } from "./types";
 
-export function AppShell({
+type AppShellProps = Parameters<typeof Shell>[0];
+
+/** The authenticated frame. It holds the one notice area: the overlays'
+ * notices and a page's own both reach the page's top bar through it. */
+export function AppShell(props: AppShellProps) {
+  return (
+    <NoticeAreaProvider>
+      <Shell {...props} />
+    </NoticeAreaProvider>
+  );
+}
+
+function Shell({
   className,
   connection,
   rail,
@@ -235,6 +248,7 @@ export function AppShell({
               ) : null}
             </div>
           ) : null}
+          <NoticeSlot className="ah-notice-area-page" />
           {main}
         </main>
       </div>
@@ -1327,6 +1341,7 @@ export function AgentHeader({
           onAction={(id) => headerMenu.find((item) => item.id === id)?.run()}
         />
       </div>
+      <NoticeSlot priority={1} className="ah-notice-area-header" />
       {titleState ? <StatusMark label={titleState} tone="info" /> : null}
       {detailsExpanded ? (
         <section
