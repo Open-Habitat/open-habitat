@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-28/admission-add-many-github-logins
 lane: admission-ui
 preparation: ready
+closed: 2026-10-28
 ---
 
 # Add several GitHub users at once (comma, space or newline separated)
@@ -19,4 +20,4 @@ Jari 2026-10-28 (Birch ja Contoso, pilot.13): Asetukset › Käyttäjät ja pä�
 
 ## Acceptance Criteria
 
-- [ ] Monen nimen syöte lisää kelvolliset ja raportoi jokaisen nimen tuloksen; testi
+- [x] Monen nimen syöte lisää kelvolliset ja raportoi jokaisen nimen tuloksen; testi
