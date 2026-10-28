@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-folder-offer
 lane_seq: 1
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: kokeiltavaa:2026-10-28/proto-folder-offer-file-rows
 ---
