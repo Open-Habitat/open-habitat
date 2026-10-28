@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-28
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: integration-wizard
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/integration-wizard-merged-secrets-step
+closed: 2026-10-28
 ---
 
 # Integration setup guides: console steps and secret fields side by side on one step, direct console links

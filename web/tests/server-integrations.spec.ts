@@ -41,8 +41,8 @@ const googleAvailable = (page: Page) => available(page, "google");
 
 async function enterGoogle(page: Page, walk: boolean) {
   const dialog = page.getByTestId("si-setup-dialog");
-  if (walk)
-    for (const step of ["apis", "audience", "scopes", "client"]) {
+  if (walk) {
+    for (const step of ["apis", "audience", "scopes"]) {
       await expect(dialog.getByTestId("si-stepname")).toHaveAttribute(
         "data-step",
         step,
@@ -52,12 +52,15 @@ async function enterGoogle(page: Page, walk: boolean) {
         .and(dialog.getByTestId("si-next"))
         .click();
     }
-  else
+    // The client is created and its values typed on the same step.
+    await expect(dialog.getByTestId("si-stepname")).toHaveAttribute(
+      "data-step",
+      "client",
+    );
+  } else {
     await dialog.getByRole("button").and(dialog.getByTestId("si-skip")).click();
-  await expect(dialog.getByTestId("si-stepname")).toHaveAttribute(
-    "data-step",
-    "enter",
-  );
+    await expect(dialog.getByTestId("si-step-enter")).toBeVisible();
+  }
   await dialog.getByTestId("si-field-client_id").fill(googleID);
   await dialog.getByTestId("si-field-client_secret").fill("GOCSPX-synthetic");
   await dialog.getByRole("button").and(dialog.getByTestId("si-save")).click();
@@ -197,6 +200,23 @@ test("@server-integrations @a11y a lost broker reply stays uncertain until read 
   await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
   await expect(dialog.getByTestId("si-scopes")).toBeVisible();
   expect(await overflow()).toBeLessThanOrEqual(0);
+  await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
+  // The last step's console side and its values: stacked on a phone, side
+  // by side on a desktop.
+  const split = dialog.getByTestId("si-split");
+  const placement = () =>
+    split.evaluate((el) => {
+      const [left, get] = Array.from(el.children).map((c) =>
+        c.getBoundingClientRect(),
+      );
+      return {
+        below: get.top >= left.bottom - 0.5,
+        beside: get.left >= left.right - 0.5 && get.top < left.bottom,
+      };
+    });
+  await expect(split).toBeVisible();
+  expect(await placement()).toEqual({ below: true, beside: false });
+  expect(await overflow()).toBeLessThanOrEqual(0);
   expect(
     (
       await new AxeBuilder({ page })
@@ -204,9 +224,10 @@ test("@server-integrations @a11y a lost broker reply stays uncertain until read 
         .analyze()
     ).violations,
   ).toEqual([]);
-  await dialog.getByRole("button").and(dialog.getByTestId("si-back")).click();
-  await dialog.getByRole("button").and(dialog.getByTestId("si-back")).click();
   await page.setViewportSize({ width: 1280, height: 900 });
+  expect(await placement()).toEqual({ below: false, beside: true });
+  for (let i = 0; i < 3; i++)
+    await dialog.getByRole("button").and(dialog.getByTestId("si-back")).click();
 
   await fixture(page, "lose=1");
   await enterGoogle(page, false);
@@ -234,34 +255,37 @@ test("@server-integrations @a11y an administrator sets Microsoft's single-tenant
     .and(page.getByTestId("si-setup-microsoft"))
     .click();
   const dialog = page.getByTestId("si-setup-dialog");
-  await expect(dialog.getByTestId("si-entra-link")).toHaveAttribute(
+  await expect(dialog.getByTestId("si-console-link")).toHaveAttribute(
     "href",
     /^https:\/\/entra\.microsoft\.com\//,
   );
-  for (const step of ["register", "public", "permissions", "consent"]) {
+  for (const step of ["register", "public", "permissions"]) {
     await expect(dialog.getByTestId("si-stepname")).toHaveAttribute(
       "data-step",
       step,
     );
-    if (step === "consent") {
-      // The longest step, with the consent link, fits a phone.
-      await page.setViewportSize({ width: 390, height: 844 });
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth - innerWidth,
-        ),
-      ).toBeLessThanOrEqual(0);
-      expect(
-        (
-          await new AxeBuilder({ page })
-            .include("[data-testid=si-setup-dialog]")
-            .analyze()
-        ).violations,
-      ).toEqual([]);
-      await page.setViewportSize({ width: 1280, height: 900 });
-    }
     await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
   }
+  await expect(dialog.getByTestId("si-stepname")).toHaveAttribute(
+    "data-step",
+    "consent",
+  );
+  // The longest step, the consent beside the ids and the consent link,
+  // fits a phone.
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth - innerWidth,
+    ),
+  ).toBeLessThanOrEqual(0);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include("[data-testid=si-setup-dialog]")
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.setViewportSize({ width: 1280, height: 900 });
   await expect(dialog.getByTestId("si-field-client_secret")).toHaveCount(0);
   await dialog
     .getByTestId("si-field-client_id")
@@ -311,11 +335,11 @@ test("@server-integrations @a11y an administrator sets Dropbox's app through the
     .and(page.getByTestId("si-setup-dropbox"))
     .click();
   const dialog = page.getByTestId("si-setup-dialog");
-  await expect(dialog.getByTestId("si-dropbox-link")).toHaveAttribute(
+  await expect(dialog.getByTestId("si-console-link")).toHaveAttribute(
     "href",
     "https://www.dropbox.com/developers/apps/create",
   );
-  for (const step of ["create", "settings", "permissions"]) {
+  for (const step of ["create", "permissions"]) {
     await expect(dialog.getByTestId("si-stepname")).toHaveAttribute(
       "data-step",
       step,
@@ -338,6 +362,11 @@ test("@server-integrations @a11y an administrator sets Dropbox's app through the
     }
     await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
   }
+  // The guide ends on the Settings page, which also shows the keys.
+  await expect(dialog.getByTestId("si-stepname")).toHaveAttribute(
+    "data-step",
+    "settings",
+  );
   await dialog.getByTestId("si-field-client_id").fill("p3n8vq1zt6ka0rw");
   // The App key pasted twice is refused in its field, before the broker.
   await dialog.getByTestId("si-field-client_secret").fill("p3n8vq1zt6ka0rw");

@@ -63,6 +63,9 @@ const googleScopes = [
   "https://www.googleapis.com/auth/contacts.readonly",
 ];
 const googleRedirect = "http://localhost";
+// Google Auth platform's pages. Each opens in the project last selected in
+// the console, as the enable flow above does; the page names the project.
+const googleAuth = "https://console.cloud.google.com/auth";
 // What the daemon's Microsoft entry needs (internal/daemon/integrations/
 // microsoft_linux.go): microsoftScopes and microsoftMCPScopes, deduplicated,
 // all delegated Graph permissions, and the redirect microsoftConsent() names.
@@ -103,13 +106,17 @@ const microsoftPermissions: Record<
 };
 const microsoftRedirect =
   "https://login.microsoftonline.com/common/oauth2/nativeclient";
-// Entra admin center › App registrations, where New registration starts.
-export const entraAppRegistrations =
+// Entra admin center › App registrations. An app's own pages need its
+// Application ID, which the guide only learns on its last step, so the
+// steps after New registration open the list.
+const entraAppRegistrations =
   "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade";
-// The values come in the last step, so the link for an administrator who
-// can consent is shown as a template.
-const microsoftConsent =
-  "https://login.microsoftonline.com/{Directory (tenant) ID}/adminconsent?client_id={Application (client) ID}";
+const entraNewRegistration =
+  "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade/quickStartType~/null/isMSAApp~/false";
+/** The admin-consent link for someone who has the role: filled from the
+ * typed ids once both are well formed, a template until then. */
+const microsoftConsent = (tenant?: string, client?: string) =>
+  `https://login.microsoftonline.com/${tenant ?? "{Directory (tenant) ID}"}/adminconsent?client_id=${client ?? "{Application (client) ID}"}`;
 // What the daemon's Dropbox entry needs (internal/daemon/integrations/
 // dropbox_linux.go): dropboxScopes, all requested by name at sign-in, and
 // dropboxRedirect, matched exactly. The full and read levels sync the root
@@ -125,7 +132,10 @@ const dropboxScopes = [
   "sharing.write",
 ];
 const dropboxRedirect = "http://localhost:53682/";
-export const dropboxCreate = "https://www.dropbox.com/developers/apps/create";
+const dropboxCreate = "https://www.dropbox.com/developers/apps/create";
+// My apps. An app's own page needs its App key, which the guide only learns
+// on its last step.
+const dropboxApps = "https://www.dropbox.com/developers/apps";
 // The server cannot see how many people have connected nor the app's status,
 // so the rule stays where an administrator returns to: the row's menu.
 const dropboxLimit =
@@ -313,25 +323,51 @@ const Val = ({
     {copy && <Copy value={v} label={k} />}
   </div>
 );
-/** Where in the console, in the console's own (English) words. */
-const Path = ({ p }: { p: string }) => (
-  <p className="si-path">
-    <Icon name="forward" />
-    <span>{p}</span>
-  </p>
+/** Where in the console, in the console's own (English) words, and a
+ * direct link to that page. `pick` says what to choose when the link can
+ * only open the list the page is under. */
+const Path = ({
+  p,
+  href,
+  pick,
+}: {
+  p: string;
+  href?: string;
+  pick?: ReactNode;
+}) => (
+  <div className="si-where">
+    <p className="si-path">
+      <Icon name="forward" />
+      <span>{p}</span>
+    </p>
+    {href && (
+      <p className="si-open">
+        <ExternalLink
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          data-testid="si-console-link"
+        >
+          Avaa sivu <Icon name="external" />
+        </ExternalLink>
+        {pick && <span className="si-quiet">{pick}</span>}
+      </p>
+    )}
+  </div>
 );
 
 function Modalish({
   testId,
   title,
-  wide,
+  size,
   dismissable = true,
   onClose,
   children,
 }: {
   testId: string;
   title: string;
-  wide?: boolean;
+  /** wide: a guide; split: a guide step beside its values. */
+  size?: "wide" | "split";
   dismissable?: boolean;
   onClose: () => void;
   children: ReactNode;
@@ -343,7 +379,7 @@ function Modalish({
       isDismissable={dismissable}
       onOpenChange={(open) => !open && onClose()}
     >
-      <Modal className={`ah-modal si-modal${wide ? " si-wide" : ""}`}>
+      <Modal className={`ah-modal si-modal${size ? ` si-${size}` : ""}`}>
         <Dialog
           className="ah-dialog si-dialog"
           data-testid={testId}
@@ -365,7 +401,16 @@ const Role = ({ children }: { children: ReactNode }) => (
   </p>
 );
 
-type Step = { id: string; title: string; body: ReactNode };
+/** A guide step. The last one is also where the console's values are
+ * typed: `console` names the side done there, `values` says where the
+ * console shows them. */
+type Step = {
+  id: string;
+  title: string;
+  body: ReactNode;
+  console?: string;
+  values?: ReactNode;
+};
 
 const googleSteps: Step[] = [
   {
@@ -383,7 +428,7 @@ const googleSteps: Step[] = [
           href={googleEnable}
           target="_blank"
           rel="noreferrer"
-          data-testid="si-enable-link"
+          data-testid="si-console-link"
         >
           Ota käyttöön Google Cloudissa <Icon name="external" />
         </ExternalLink>
@@ -395,7 +440,10 @@ const googleSteps: Step[] = [
     title: "Kohdeyleisö",
     body: (
       <>
-        <Path p="Google Auth platform › Branding › Get started" />
+        <Path
+          p="Google Auth platform › Branding › Get started"
+          href={`${googleAuth}/branding`}
+        />
         <Val k="App name" v="Open Habitat" />
         <Val k="Audience" v="Internal" copy={false} />
         <p className="si-effect" data-testid="si-audience">
@@ -410,7 +458,10 @@ const googleSteps: Step[] = [
     title: "Käyttöoikeudet",
     body: (
       <>
-        <Path p="Google Auth platform › Data Access › Add or Remove Scopes" />
+        <Path
+          p="Google Auth platform › Data Access › Add or Remove Scopes"
+          href={`${googleAuth}/scopes`}
+        />
         <div className="si-block" data-testid="si-scopes">
           <pre className="si-cmd">{googleScopes.join("\n")}</pre>
           <Copy value={googleScopes.join(",")} label="käyttöoikeudet" />
@@ -420,10 +471,14 @@ const googleSteps: Step[] = [
   },
   {
     id: "client",
-    title: "OAuth-asiakas",
+    title: "Asiakas ja tunnukset",
+    console: "Google Cloudissa",
     body: (
       <>
-        <Path p="Google Auth platform › Clients › Create Client" />
+        <Path
+          p="Google Auth platform › Clients › Create Client"
+          href={`${googleAuth}/clients/create`}
+        />
         <Val k="Application type" v="Desktop app" copy={false} />
         <Val k="Name" v="Open Habitat" />
         <Val
@@ -440,13 +495,15 @@ const googleSteps: Step[] = [
           Ei uudelleenohjausosoitetta. Palvelin käyttää osoitetta{" "}
           <code>{googleRedirect}</code>.
         </p>
-        <p className="si-warn">
-          <Icon name="warning" />
-          <span>
-            Kopioi Client secret heti: Google näyttää sen vain kerran.
-          </span>
+        <p className="si-quiet">
+          Valitse lopuksi <em>Create</em>.
         </p>
       </>
+    ),
+    values: (
+      <p className="si-quiet">
+        Google näyttää ikkunan <em>OAuth client created</em>:
+      </p>
     ),
   },
 ];
@@ -457,25 +514,33 @@ const microsoftAppName: Record<keyof typeof microsoftPermissions, string> = {
   microsoft_read: "Open Habitat – vain luku",
 };
 
+/** An Entra page of the app registered on the first step. */
+const EntraPath = ({ p, app }: { p: string; app: string }) => (
+  <Path
+    p={p}
+    href={entraAppRegistrations}
+    pick={
+      <>
+        Valitse sovellus <em>{app}</em>.
+      </>
+    }
+  />
+);
+
 const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
   {
     id: "register",
     title: "Rekisteröi sovellus",
     body: (
       <>
-        <ExternalLink
-          href={entraAppRegistrations}
-          target="_blank"
-          rel="noreferrer"
-          data-testid="si-entra-link"
-        >
-          Avaa Microsoft Entra <Icon name="external" />
-        </ExternalLink>
+        <Path
+          p="Entra ID › App registrations › New registration"
+          href={entraNewRegistration}
+        />
         <p className="si-quiet" data-testid="si-entra-search">
           Entran yläreunan hakukenttä vie oikealle sivulle: hae{" "}
           <em>App registrations</em> ja myöhemmin sovelluksen nimellä.
         </p>
-        <Path p="Entra ID › App registrations › New registration" />
         <Val k="Name" v={microsoftAppName[section]} />
         {section !== "microsoft" && (
           <p className="si-effect" data-testid="si-level-app">
@@ -505,7 +570,10 @@ const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
     title: "Julkinen asiakas",
     body: (
       <>
-        <Path p="Authentication › Settings" />
+        <EntraPath
+          p="Authentication › Settings"
+          app={microsoftAppName[section]}
+        />
         <Val k="Allow public client flows" v="Enabled" copy={false} />
         <p className="si-quiet">
           Valitse <em>Save</em>. Henkilöt kirjautuvat laitekoodilla, joten
@@ -521,7 +589,10 @@ const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
     title: "Käyttöoikeudet",
     body: (
       <>
-        <Path p="API permissions › Add a permission › Microsoft Graph › Delegated permissions" />
+        <EntraPath
+          p="API permissions › Add a permission › Microsoft Graph › Delegated permissions"
+          app={microsoftAppName[section]}
+        />
         <div className="si-block" data-testid="si-permissions">
           <pre className="si-cmd">
             {microsoftPermissions[section].join("\n")}
@@ -539,10 +610,14 @@ const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
   },
   {
     id: "consent",
-    title: "Hyväksyntä",
+    title: "Hyväksyntä ja tunnukset",
+    console: "Microsoft Entrassa",
     body: (
       <>
-        <Path p="API permissions › Grant admin consent for <organisaatio> › Yes" />
+        <EntraPath
+          p="API permissions › Grant admin consent for <organisaatio> › Yes"
+          app={microsoftAppName[section]}
+        />
         <p className="si-effect" data-testid="si-consent">
           Henkilöiltä ei kysytä hyväksyntää. Status-sarakkeessa lukee{" "}
           <em>Granted for &lt;organisaatio&gt;</em>.
@@ -551,20 +626,33 @@ const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
           Vaatii roolin Cloud Application Administrator, Application
           Administrator tai Privileged Role Administrator.
         </Role>
-        <div className="si-handoff" data-testid="si-consent-link">
-          <span className="si-quiet">
-            Jos rooli puuttuu, lähetä linkki sille, jolla se on. Arvot ovat
-            sovelluksen Overview-sivulla.
-          </span>
-          <pre className="si-cmd">{microsoftConsent}</pre>
-        </div>
+      </>
+    ),
+    values: (
+      <>
+        <p className="si-quiet">Sovelluksen Overview-sivulla:</p>
+        <Path p="Overview" />
       </>
     ),
   },
 ];
 
-// One App Console page per step; Enable additional users sits on the Settings
-// page beside the redirect.
+/** A page of the app created on the first step. */
+const dropboxPath = (p: string, tab: string) => (
+  <Path
+    p={p}
+    href={dropboxApps}
+    pick={
+      <>
+        Valitse sovellus ja välilehti <em>{tab}</em>.
+      </>
+    }
+  />
+);
+
+// One App Console page per step. Käyttöoikeudet comes before Asetukset so
+// the guide ends on the Settings page, which shows the App key and secret;
+// Enable additional users sits there beside the redirect.
 const dropboxSteps = (appFolder: boolean): Step[] => [
   {
     id: "create",
@@ -575,7 +663,7 @@ const dropboxSteps = (appFolder: boolean): Step[] => [
           href={dropboxCreate}
           target="_blank"
           rel="noreferrer"
-          data-testid="si-dropbox-link"
+          data-testid="si-console-link"
         >
           Avaa Dropbox App Console <Icon name="external" />
         </ExternalLink>
@@ -616,30 +704,11 @@ const dropboxSteps = (appFolder: boolean): Step[] => [
     ),
   },
   {
-    id: "settings",
-    title: "Asetukset",
-    body: (
-      <>
-        <Path p="Settings › OAuth 2 › Redirect URIs" />
-        <Val k="Redirect URI" v={dropboxRedirect} />
-        <p className="si-quiet">
-          Valitse <em>Add</em>. Osoitteen on oltava täsmälleen tämä, kauttaviiva
-          mukaan.
-        </p>
-        <Path p="Settings › Development users › Enable additional users" />
-        <p className="si-effect" data-testid="si-additional-users">
-          Uusi sovellus on kehitystilassa (Development), ja ilman tätä vain
-          sovelluksen omistaja voi yhdistää.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "permissions",
     title: "Käyttöoikeudet",
     body: (
       <>
-        <Path p="Permissions" />
+        {dropboxPath("Permissions", "Permissions")}
         <div className="si-block" data-testid="si-permissions">
           <pre className="si-cmd">{dropboxScopes.join("\n")}</pre>
           <Copy value={dropboxScopes.join(" ")} label="käyttöoikeudet" />
@@ -654,9 +723,72 @@ const dropboxSteps = (appFolder: boolean): Step[] => [
       </>
     ),
   },
+  {
+    id: "settings",
+    title: "Asetukset ja tunnukset",
+    console: "Dropbox App Consolessa",
+    body: (
+      <>
+        {dropboxPath("Settings › OAuth 2 › Redirect URIs", "Settings")}
+        <Val k="Redirect URI" v={dropboxRedirect} />
+        <p className="si-quiet">
+          Valitse <em>Add</em>. Osoitteen on oltava täsmälleen tämä, kauttaviiva
+          mukaan.
+        </p>
+        <Path p="Settings › Development users › Enable additional users" />
+        <p className="si-effect" data-testid="si-additional-users">
+          Uusi sovellus on kehitystilassa (Development), ja ilman tätä vain
+          sovelluksen omistaja voi yhdistää.
+        </p>
+      </>
+    ),
+    values: (
+      <>
+        <p className="si-quiet">Samalla Settings-sivulla ylempänä:</p>
+        <Path p="Settings › App key, App secret (Show)" />
+      </>
+    ),
+  },
 ];
 
-/** Each section's console steps before its values. */
+/** Where an existing app's values are, for Minulla on jo …. Google shows
+ * an existing secret no more, so an existing client needs a new one. */
+function existing(section: AppSection): ReactNode {
+  switch (sectionProvider(section)) {
+    case "google":
+      return (
+        <>
+          <Path
+            p="Google Auth platform › Clients › Open Habitat › Add secret"
+            href={`${googleAuth}/clients`}
+            pick={
+              <>
+                Valitse asiakas <em>Open Habitat</em>.
+              </>
+            }
+          />
+          <p className="si-quiet" data-testid="si-new-secret">
+            Google ei näytä vanhaa salaisuutta uudelleen. Lisää asiakkaalle uusi
+            ja kopioi se ikkunasta.
+          </p>
+        </>
+      );
+    case "dropbox":
+      return dropboxPath("Settings › App key, App secret (Show)", "Settings");
+    default:
+      return (
+        <EntraPath
+          p="Overview"
+          app={
+            microsoftAppName[section as keyof typeof microsoftPermissions] ??
+            microsoftAppName.microsoft
+          }
+        />
+      );
+  }
+}
+
+/** Each section's console steps, the last one beside its values. */
 function guide(section: AppSection): Step[] {
   switch (section) {
     case "google":
@@ -752,13 +884,50 @@ function Fields({
   );
 }
 
+/** The consent link filled from the typed ids, to send to someone who has
+ * the role; a template until both are well formed. */
+function ConsentLink({
+  section,
+  values,
+}: {
+  section: AppSection;
+  values: AppFields;
+}) {
+  const client = (values.client_id ?? "").trim();
+  const tenant = (values.tenant_id ?? "").trim();
+  const ok =
+    Object.keys(appErrors(section, { client_id: client, tenant_id: tenant }))
+      .length === 0;
+  const url = ok ? microsoftConsent(tenant, client) : microsoftConsent();
+  return (
+    <div
+      className="si-handoff"
+      data-testid="si-consent-link"
+      data-filled={ok || undefined}
+    >
+      <span className="si-quiet">
+        Jos rooli puuttuu, lähetä linkki sille, jolla se on.
+        {!ok && " Linkki täyttyy, kun arvot on liitetty."}
+      </span>
+      <div className="si-block">
+        <pre className="si-cmd" data-template={!ok || undefined}>
+          {url}
+        </pre>
+        {ok && <Copy value={url} label="hyväksyntälinkki" />}
+      </div>
+    </div>
+  );
+}
+
 /** Aseta tunnukset… and Vaihda tunnukset…: one console step at a time, the
- * values last. The dialog stays open until the broker answers, so a refusal
- * keeps what was typed. */
+ * last beside its values (proto-google-wizard-secrets-step, direction
+ * "Rinnakkain"). Minulla on jo … opens only the values. The dialog stays
+ * open until the broker answers, so a refusal keeps what was typed. */
 export function AppSetupDialog({
   provider: section,
   replace,
   step: initial = 0,
+  skip: initialSkip = false,
   onSave,
   onClose,
 }: {
@@ -766,6 +935,8 @@ export function AppSetupDialog({
   replace?: IntegrationApp;
   /** The step it opens at; stories show each one. */
   step?: number;
+  /** Opens at Minulla on jo …; stories show it. */
+  skip?: boolean;
   onSave: (fields: AppFields) => Promise<AppChange>;
   onClose: () => void;
 }) {
@@ -774,18 +945,33 @@ export function AppSetupDialog({
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState("");
   const [at, setAt] = useState(initial);
+  const [skip, setSkip] = useState(initialSkip);
   const fixedID = replace?.client_id;
+  const provider = sectionProvider(section);
   const enter: Step = {
     id: "enter",
     title: replace ? "Uusi salaisuus" : "Tunnukset",
     body: null,
+    values: replace ? (
+      <>
+        <Path
+          p="Google Auth platform › Clients › Open Habitat › Add secret"
+          href={`${googleAuth}/clients/${encodeURIComponent(replace.client_id ?? "")}`}
+        />
+        <p className="si-quiet" data-testid="si-replace-effect">
+          Yhdistetyt tilit käyttävät vanhaa salaisuutta, kunnes poistat sen
+          Googlessa. Sen jälkeen niiden täytyy kirjautua uudelleen.
+        </p>
+      </>
+    ) : (
+      existing(section)
+    ),
   };
-  const provider = sectionProvider(section);
-  const guided = replace ? undefined : guide(section);
-  const steps = guided ? [...guided, enter] : [enter];
+  const steps = replace || skip ? [enter] : guide(section);
   const i = Math.min(at, steps.length - 1);
   const last = i === steps.length - 1;
   const step = steps[i];
+  const split = last && step.body !== null;
   const submit = async () => {
     const [first, second] = appFields[provider];
     const fields = {
@@ -802,12 +988,50 @@ export function AppSetupDialog({
     if (result.kind === "refused") setRefusal(appRefusal(result.code));
     else onClose();
   };
+  const entry = (
+    <>
+      {step.values}
+      <Fields
+        provider={provider}
+        values={values}
+        errors={errors}
+        fixedID={fixedID}
+        onChange={(f, v) => {
+          setValues((x) => ({ ...x, [f]: v }));
+          setErrors((x) => ({ ...x, [f]: undefined }));
+        }}
+      />
+      {provider === "google" && (
+        <p className="si-warn" data-testid="si-secret-once">
+          <Icon name="warning" />
+          <span>
+            Google näyttää salaisuuden vain tässä ikkunassa. Liitä se ennen kuin
+            suljet ikkunan.
+          </span>
+        </p>
+      )}
+      {provider === "microsoft" && (
+        <p className="si-quiet" data-testid="si-no-secret">
+          Salaisuutta ei tarvita.
+        </p>
+      )}
+      {split && provider === "microsoft" && (
+        <ConsentLink section={section} values={values} />
+      )}
+      {refusal && (
+        <p className="si-bad" role="alert" data-testid="si-refusal">
+          <Icon name="warning" />
+          {refusal}
+        </p>
+      )}
+    </>
+  );
   const title = `${sectionName(section)}: ${replace ? "vaihda tunnukset" : "aseta tunnukset"}`;
   return (
     <Modalish
       testId="si-setup-dialog"
       title={title}
-      wide={steps.length > 1}
+      size={split ? "split" : steps.length > 1 || skip ? "wide" : undefined}
       dismissable={!saving}
       onClose={onClose}
     >
@@ -840,43 +1064,19 @@ export function AppSetupDialog({
         </>
       )}
       <div className="si-stepbody" data-testid={`si-step-${step.id}`}>
-        {last ? (
-          <>
-            {replace ? (
-              <>
-                <Path p="Google Auth platform › Clients › Open Habitat › Add secret" />
-                <p className="si-quiet" data-testid="si-replace-effect">
-                  Yhdistetyt tilit käyttävät vanhaa salaisuutta, kunnes poistat
-                  sen Googlessa. Sen jälkeen niiden täytyy kirjautua uudelleen.
-                </p>
-              </>
-            ) : provider === "microsoft" ? (
-              <Path p="Overview" />
-            ) : provider === "dropbox" ? (
-              <Path p="Settings › App key, App secret (Show)" />
-            ) : null}
-            <Fields
-              provider={provider}
-              values={values}
-              errors={errors}
-              fixedID={fixedID}
-              onChange={(f, v) => {
-                setValues((x) => ({ ...x, [f]: v }));
-                setErrors((x) => ({ ...x, [f]: undefined }));
-              }}
-            />
-            {provider === "microsoft" && (
-              <p className="si-quiet" data-testid="si-no-secret">
-                Salaisuutta ei tarvita.
-              </p>
-            )}
-            {refusal && (
-              <p className="si-bad" role="alert" data-testid="si-refusal">
-                <Icon name="warning" />
-                {refusal}
-              </p>
-            )}
-          </>
+        {split ? (
+          <div className="si-cols" data-testid="si-split">
+            <div className="si-col">
+              <p className="si-side">{step.console}</p>
+              {step.body}
+            </div>
+            <div className="si-col si-get" data-testid="si-get">
+              <p className="si-side">Tähän</p>
+              {entry}
+            </div>
+          </div>
+        ) : last ? (
+          entry
         ) : (
           step.body
         )}
@@ -887,19 +1087,29 @@ export function AppSetupDialog({
             data-testid="si-skip"
             size="row"
             variant="quiet"
-            onPress={() => setAt(steps.length - 1)}
+            onPress={() => {
+              setSkip(true);
+              setErrors({});
+            }}
           >
             {skipLabel[provider]}
           </ControlButton>
         )}
         <span className="si-grow" />
-        {i > 0 ? (
+        {i > 0 || skip ? (
           <ControlButton
             data-testid="si-back"
             size="row"
             variant="secondary"
             isDisabled={saving}
-            onPress={() => setAt(i - 1)}
+            onPress={() => {
+              setErrors({});
+              setRefusal("");
+              if (skip) {
+                setSkip(false);
+                setAt(0);
+              } else setAt(i - 1);
+            }}
           >
             Takaisin
           </ControlButton>

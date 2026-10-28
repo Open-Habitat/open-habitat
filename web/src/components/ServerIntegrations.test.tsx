@@ -144,6 +144,27 @@ it("takes Apple's missing-tool status from the catalog and hides its onboarding 
   expect(screen.getByTestId("si-fix-dialog")).toBeTruthy();
 });
 
+/** Walks the guide to its last step, checking every step opens its console
+ * page directly, and returns the step ids. */
+function walk(): string[] {
+  const steps: string[] = [];
+  for (;;) {
+    steps.push(within(dialog()).getByTestId("si-stepname").dataset.step ?? "");
+    const links = within(dialog()).getAllByTestId("si-console-link");
+    for (const a of links)
+      expect(a.getAttribute("href")).toMatch(
+        /^https:\/\/(console\.cloud\.google\.com|entra\.microsoft\.com|www\.dropbox\.com)\//,
+      );
+    const next = within(dialog()).queryByTestId("si-next");
+    if (!next) break;
+    // Fields only on the last step, beside its console instructions.
+    expect(within(dialog()).queryByTestId("si-split")).toBeNull();
+    fireEvent.click(next);
+  }
+  expect(within(dialog()).getByTestId("si-split")).toBeTruthy();
+  return steps;
+}
+
 it("walks Google's steps, or skips to the fields, and sends nothing invalid", async () => {
   const calls = setup({
     apps: { ...apps, apps: [] },
@@ -156,16 +177,16 @@ it("walks Google's steps, or skips to the fields, and sends nothing invalid", as
     ),
   });
   fireEvent.click(screen.getByTestId("si-setup-google"));
-  const steps: string[] = [];
-  for (;;) {
-    steps.push(within(dialog()).getByTestId("si-stepname").dataset.step ?? "");
-    const next = within(dialog()).queryByTestId("si-next");
-    if (!next) break;
-    fireEvent.click(next);
-  }
-  expect(steps).toEqual(["apis", "audience", "scopes", "client", "enter"]);
+  expect(walk()).toEqual(["apis", "audience", "scopes", "client"]);
+  // The client is created and its values typed on the same step.
+  expect(within(dialog()).getByTestId("si-field-client_secret")).toBeTruthy();
+  fireEvent.click(within(dialog()).getByTestId("si-save"));
+  await waitFor(() =>
+    expect(
+      screen.getByTestId("si-field-client_id").getAttribute("aria-invalid"),
+    ).toBe("true"),
+  );
   // Internal only: there is no audience choice to make.
-  fireEvent.click(within(dialog()).getByTestId("si-back"));
   fireEvent.click(within(dialog()).getByTestId("si-back"));
   // Each scope as Data Access › Add or Remove Scopes lists it.
   expect(
@@ -188,6 +209,13 @@ it("walks Google's steps, or skips to the fields, and sends nothing invalid", as
   expect(within(dialog()).queryByRole("radio")).toBeNull();
   expect(within(dialog()).queryByTestId("segment-external")).toBeNull();
   fireEvent.click(within(dialog()).getByTestId("si-back"));
+  // Minulla on jo asiakas opens only the fields; Takaisin returns to the
+  // guide's start.
+  fireEvent.click(within(dialog()).getByTestId("si-skip"));
+  expect(within(dialog()).queryByTestId("si-stepname")).toBeNull();
+  expect(within(dialog()).getByTestId("si-step-enter")).toBeTruthy();
+  fireEvent.click(within(dialog()).getByTestId("si-back"));
+  expect(within(dialog()).getByTestId("si-stepname").dataset.step).toBe("apis");
   fireEvent.click(within(dialog()).getByTestId("si-skip"));
   type("si-field-client_id", "abc");
   type("si-field-client_secret", "GOCSPX-x");
@@ -217,28 +245,20 @@ const invalid = (testId: string) =>
 it("walks Microsoft's single-tenant guide with the ids last and no secret", async () => {
   const calls = setup({}, { kind: "refused", code: "host_busy" });
   fireEvent.click(screen.getByTestId("si-setup-microsoft"));
-  const steps: string[] = [];
-  for (;;) {
-    steps.push(within(dialog()).getByTestId("si-stepname").dataset.step ?? "");
-    const next = within(dialog()).queryByTestId("si-next");
-    if (!next) break;
-    fireEvent.click(next);
-  }
-  expect(steps).toEqual([
-    "register",
-    "public",
-    "permissions",
-    "consent",
-    "enter",
-  ]);
+  expect(walk()).toEqual(["register", "public", "permissions", "consent"]);
   expect(within(dialog()).queryByTestId("si-field-client_secret")).toBeNull();
   expect(within(dialog()).queryByRole("radio")).toBeNull();
 
   // An audience keyword or a domain is not the organisation's tenant id,
   // and the client id pasted twice is caught, before anything is sent.
+  // The consent link for someone with the role fills only from ids the
+  // save would accept.
+  const consent = () => within(dialog()).getByTestId("si-consent-link");
   type("si-field-client_id", clientID);
   for (const tenant of ["common", "organizations", "contoso.onmicrosoft.com"]) {
     type("si-field-tenant_id", tenant);
+    expect(consent().dataset.filled).toBeUndefined();
+    expect(within(consent()).queryByTestId("si-copy")).toBeNull();
     fireEvent.click(within(dialog()).getByTestId("si-save"));
     await waitFor(() => expect(invalid("si-field-tenant_id")).toBe(true));
   }
@@ -250,6 +270,10 @@ it("walks Microsoft's single-tenant guide with the ids last and no secret", asyn
   // Correcting the field clears its error.
   type("si-field-tenant_id", ` ${tenantID} `);
   expect(invalid("si-field-tenant_id")).toBe(false);
+  expect(consent().querySelector("pre")?.textContent).toBe(
+    `https://login.microsoftonline.com/${tenantID}/adminconsent?client_id=${clientID}`,
+  );
+  expect(within(consent()).getByTestId("si-copy")).toBeTruthy();
 
   // A refusal keeps the dialog and what was typed.
   fireEvent.click(within(dialog()).getByTestId("si-save"));
@@ -322,9 +346,8 @@ it("skips Microsoft's guide straight to the ids for an existing app", () => {
   setup();
   fireEvent.click(screen.getByTestId("si-setup-microsoft"));
   fireEvent.click(within(dialog()).getByTestId("si-skip"));
-  expect(within(dialog()).getByTestId("si-stepname").dataset.step).toBe(
-    "enter",
-  );
+  expect(within(dialog()).getByTestId("si-step-enter")).toBeTruthy();
+  expect(within(dialog()).getByTestId("si-field-tenant_id")).toBeTruthy();
   expect(within(dialog()).getByTestId("si-save")).toBeTruthy();
 });
 
@@ -372,14 +395,8 @@ const dropboxNeedsApp = providers.map((p) =>
 it("walks Dropbox's App Console pages with the keys last and sends nothing the broker would refuse", async () => {
   const calls = setup({ providers: dropboxNeedsApp });
   fireEvent.click(screen.getByTestId("si-setup-dropbox"));
-  const steps: string[] = [];
-  for (;;) {
-    steps.push(within(dialog()).getByTestId("si-stepname").dataset.step ?? "");
-    const next = within(dialog()).queryByTestId("si-next");
-    if (!next) break;
-    fireEvent.click(next);
-  }
-  expect(steps).toEqual(["create", "settings", "permissions", "enter"]);
+  // The guide ends on the Settings page, which also shows the keys.
+  expect(walk()).toEqual(["create", "permissions", "settings"]);
   expect(
     within(dialog()).getByTestId("si-field-client_secret").getAttribute("type"),
   ).toBe("password");

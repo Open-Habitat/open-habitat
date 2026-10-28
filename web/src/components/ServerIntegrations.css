@@ -54,7 +54,6 @@
 }
 .si-note,
 .si-bad,
-.si-warn,
 .si-path,
 .si-role {
   display: flex;
@@ -123,8 +122,23 @@
   align-content: start;
   min-width: 0;
 }
-.si-wide .si-stepbody {
+.si-wide .si-stepbody,
+.si-split .si-stepbody {
   min-height: 180px;
+}
+/* A console path and the link that opens its page. */
+.si-where {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.si-open {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ah-s1) var(--ah-s2);
+  flex-wrap: wrap;
+  padding-left: calc(14px + var(--ah-s1));
+  font-size: var(--ah-size-meta);
 }
 .si-progress {
   display: flex;
@@ -203,7 +217,20 @@
   overflow-wrap: anywhere;
   max-width: 100%;
 }
-/* The consent link for someone else: a template, so it is not copied. */
+.si-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ah-s1);
+  font-size: var(--ah-size-meta);
+}
+.si-warn svg {
+  margin-top: 2px;
+  color: var(--ah-err);
+}
+/* The consent link for someone else: copied only once the ids fill it. */
+.si-handoff .si-cmd[data-template] {
+  color: var(--ah-muted);
+}
 .si-handoff {
   display: grid;
   gap: var(--ah-s1);
@@ -251,6 +278,53 @@
 }
 .si-grow {
   flex: 1;
+}
+
+/* The last guide step: what is done in the console beside what comes back
+   here. Narrower than two readable columns, the values go below. */
+.si-modal.si-split {
+  width: min(920px, 100%);
+}
+.si-split .si-stepbody {
+  container: si-step / inline-size;
+}
+.si-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--ah-s6);
+  width: 100%;
+  align-items: start;
+}
+@container si-step (max-width: 640px) {
+  .si-cols {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ah-s4);
+  }
+}
+.si-col {
+  display: grid;
+  gap: var(--ah-s2);
+  justify-items: start;
+  align-content: start;
+  min-width: 0;
+}
+.si-get {
+  padding: var(--ah-s5);
+  gap: var(--ah-s3);
+  justify-items: stretch;
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-sunken);
+  border: 1px solid var(--ah-line-soft);
+}
+.si-get .si-cmd {
+  background: var(--ah-surface);
+}
+.si-side {
+  font-weight: 600;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 @container si (max-width: 640px) {

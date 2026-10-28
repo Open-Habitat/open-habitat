@@ -206,16 +206,23 @@ export const GoogleStepAudience: StoryObj<typeof Setup> = {
 export const GoogleStepScopes: StoryObj<typeof Setup> = {
   render: () => <Setup step={2} />,
 };
+/** The last step: the client is created beside where its values go. */
 export const GoogleStepClient: StoryObj<typeof Setup> = {
   render: () => <Setup step={3} />,
 };
-export const GoogleStepCredentials: StoryObj<typeof Setup> = {
-  render: () => <Setup step={4} />,
+export const GoogleStepClientPhone: StoryObj<typeof Setup> = {
+  render: () => <Setup step={3} />,
+  globals: { viewport: { value: "mobile1" } },
+};
+/** Minulla on jo asiakas: only the values and where they are. */
+export const GoogleExisting: StoryObj<typeof Setup> = {
+  render: () => <Setup skip />,
 };
 export const GoogleNewSecret: StoryObj<typeof Setup> = {
   render: () => <Setup replace={google.apps[0]} />,
 };
-/** Microsoft's guided setup: the Entra console first, the two ids last. */
+/** Microsoft's guided setup: the Entra console first, the two ids beside
+ * the consent. */
 export const MicrosoftStepRegister: StoryObj<typeof Setup> = {
   render: () => <Setup provider="microsoft" step={0} />,
 };
@@ -228,25 +235,20 @@ export const MicrosoftStepPermissions: StoryObj<typeof Setup> = {
 export const MicrosoftStepConsent: StoryObj<typeof Setup> = {
   render: () => <Setup provider="microsoft" step={3} />,
 };
-export const MicrosoftStepCredentials: StoryObj<typeof Setup> = {
-  render: () => <Setup provider="microsoft" step={4} />,
-};
 export const MicrosoftStepPhone: StoryObj<typeof Setup> = {
   render: () => <Setup provider="microsoft" step={3} />,
   globals: { viewport: { value: "mobile1" } },
 };
-/** Dropbox's guided setup: one App Console page per step, the keys last. */
+/** Dropbox's guided setup: one App Console page per step, the keys beside
+ * the Settings page. */
 export const DropboxStepCreate: StoryObj<typeof Setup> = {
   render: () => <Setup provider="dropbox" step={0} />,
 };
-export const DropboxStepSettings: StoryObj<typeof Setup> = {
+export const DropboxStepPermissions: StoryObj<typeof Setup> = {
   render: () => <Setup provider="dropbox" step={1} />,
 };
-export const DropboxStepPermissions: StoryObj<typeof Setup> = {
+export const DropboxStepSettings: StoryObj<typeof Setup> = {
   render: () => <Setup provider="dropbox" step={2} />,
-};
-export const DropboxStepCredentials: StoryObj<typeof Setup> = {
-  render: () => <Setup provider="dropbox" step={3} />,
 };
 export const DropboxStepPhone: StoryObj<typeof Setup> = {
   render: () => <Setup provider="dropbox" step={0} />,
