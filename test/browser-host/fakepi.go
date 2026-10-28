@@ -162,7 +162,7 @@ func runFakePi(args []string) {
 		case "get_commands":
 			mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
 			commands := fakeCommands()
-			if strings.TrimSpace(string(mode)) == "pi-recap" || strings.TrimSpace(string(mode)) == "pi-recap-unsupported" {
+			if m := strings.TrimSpace(string(mode)); m == "pi-recap" || m == "pi-recap-unsupported" || m == "pi-recap-failing" {
 				commands = append(commands, map[string]any{"name": "oh-conversation-recap", "source": "extension"})
 			}
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "get_commands", "success": true, "data": map[string]any{"commands": commands}})
@@ -215,6 +215,10 @@ func runFakePi(args []string) {
 		case "prompt":
 			if req.Message == "/oh-conversation-recap" || req.Message == "/oh-conversation-recap automatic" {
 				mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
+				if strings.TrimSpace(string(mode)) == "pi-recap-failing" {
+					// As the recap extension reports a model whose quota is spent.
+					emit(map[string]any{"type": "extension_ui_request", "id": "recap-outcome", "method": "notify", "notifyType": "error", "message": `oh-conversation-recap:{"outcome":"model_error","model":"fixture/fake","detail":"synthetic quota spent"}`})
+				}
 				if (strings.TrimSpace(string(mode)) == "pi-recap" || strings.TrimSpace(string(mode)) == "pi-recap-unsupported") && s.lastMessage != "" && s.lastRecap != s.lastMessage {
 					trigger := "manual"
 					if strings.HasSuffix(req.Message, " automatic") {

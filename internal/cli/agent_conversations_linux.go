@@ -57,13 +57,19 @@ func conversationOperationError(path string, data json.RawMessage) error {
 		return nil
 	}
 	var result struct {
-		State string `json:"state"`
+		State  string `json:"state"`
+		Reason string `json:"reason"`
 	}
 	if json.Unmarshal(data, &result) != nil {
 		return system("invalid_agent_response", "invalid conversation result")
 	}
 	if result.State == "failed" {
-		return system("native_operation_failed", "native title/recap generation failed; inspect native state before requesting another model call")
+		reason := ""
+		// The daemon's fixed reason codes, never free text from the reply.
+		if len(result.Reason) <= 40 && strings.Trim(result.Reason, "abcdefghijklmnopqrstuvwxyz_") == "" && result.Reason != "" {
+			reason = " (reason: " + result.Reason + ")"
+		}
+		return system("native_operation_failed", "native title/recap generation failed"+reason+"; inspect native state before requesting another model call")
 	}
 	return nil
 }

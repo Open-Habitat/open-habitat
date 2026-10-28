@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -170,5 +171,152 @@ settled:
 	}
 	if found != 1 || calls.Load() != 2 {
 		t.Fatalf("native recaps %d, model calls %d: %+v", found, calls.Load(), saved.entries)
+	}
+}
+
+// The cheapest model can fail while the conversation's own model answers
+// (a subscription model whose quota is spent). The recap must then come from
+// the conversation's model, and when no model answers, the person's request
+// and the card must say why instead of ending in silence.
+func TestRecapFallsBackAndReportsFailureThroughPinnedPi(t *testing.T) {
+	cli, err := filepath.Abs(filepath.Join("pi-device-test", "node_modules", "@earendil-works", "pi-coding-agent", "dist", "bundle", "cli.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(cli); err != nil {
+		t.Skip("pinned Pi test dependency not installed")
+	}
+	ext, err := filepath.Abs("recap-extension.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var conversationDown atomic.Bool
+	var mu sync.Mutex
+	asked := []string{}
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Model    string `json:"model"`
+			Messages []struct {
+				Content any `json:"content"`
+			} `json:"messages"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		recap := strings.Contains(fmt.Sprint(body.Messages), "Write a brief catch-up")
+		if recap {
+			mu.Lock()
+			asked = append(asked, body.Model)
+			mu.Unlock()
+		}
+		if recap && (body.Model == "cheap" || conversationDown.Load()) {
+			w.WriteHeader(429)
+			fmt.Fprint(w, `{"error":{"message":"synthetic quota spent"}}`)
+			return
+		}
+		answer := "First response"
+		if recap {
+			answer = `{"recap":"Synthetic task done.","next":"Check result"}`
+		}
+		b, _ := json.Marshal(answer)
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprintf(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":%s},\"finish_reason\":null}]}\n\n", b)
+		fmt.Fprint(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
+	}))
+	defer provider.Close()
+	home := t.TempDir()
+	cwd := filepath.Join(home, "src", "fixture")
+	if err := os.MkdirAll(filepath.Join(home, ".pi", "agent"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(cwd, 0700); err != nil {
+		t.Fatal(err)
+	}
+	free := map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}
+	paid := map[string]any{"input": 3, "output": 15, "cacheRead": 0, "cacheWrite": 0}
+	models := map[string]any{"providers": map[string]any{"fixture": map[string]any{"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "authHeader": true, "models": []any{
+		map[string]any{"id": "cheap", "name": "Cheap", "cost": free},
+		map[string]any{"id": "fake", "name": "Fake", "cost": paid},
+	}}}}
+	data, _ := json.Marshal(models)
+	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "models.json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	id, _ := uuid()
+	owner, err := acquirePiOwnership(home, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.release()
+	if err := owner.markBrowser("ws_example123", cwd); err != nil {
+		t.Fatal(err)
+	}
+	ws, err := os.Open(cwd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+	p, err := launchPiRPCCommand(nativeNodePath(t), []string{cli, "--provider", "fixture", "--model", "fake", "--extension", ext, "--extension", filepath.Join(filepath.Dir(ext), "process-extension.mjs")}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws, "ws_example123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.close()
+	controller := &ConversationController{home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}, sessions: map[string]*conversation{}}
+	controller.sessions[id] = &conversation{id: id, cwd: cwd, rpc: p, state: "idle"}
+	turn := func(text string) {
+		t.Helper()
+		if accepted, err := p.request("prompt", text, 15*time.Second); !accepted || err != nil {
+			t.Fatalf("prompt %v %v", accepted, err)
+		}
+		timeout := time.After(15 * time.Second)
+		for {
+			select {
+			case event := <-p.events:
+				if strings.Contains(string(event), `"type":"agent_settled"`) {
+					return
+				}
+			case <-timeout:
+				t.Fatal("native Pi did not settle")
+			}
+		}
+	}
+	request := func() map[string]any {
+		t.Helper()
+		w := httptest.NewRecorder()
+		controller.requestRecap(w, httptest.NewRequest(http.MethodPost, "http://unix/recap", nil), id)
+		var reply map[string]any
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &reply) != nil {
+			t.Fatalf("recap request: %d %s", w.Code, w.Body.String())
+		}
+		return reply
+	}
+
+	turn("Do the synthetic task")
+	if reply := request(); reply["state"] != "done" {
+		t.Fatalf("fallback recap: %v", reply)
+	}
+	mu.Lock()
+	if fmt.Sprint(asked) != "[cheap fake]" {
+		t.Fatalf("recap models asked: %v", asked)
+	}
+	asked = nil
+	mu.Unlock()
+	if s := controller.sessions[id]; s.recapFailure != nil {
+		t.Fatalf("success left a failure: %+v", s.recapFailure)
+	}
+
+	turn("Do another synthetic task")
+	conversationDown.Store(true)
+	reply := request()
+	if reply["state"] != "failed" || reply["reason"] != "model_error" {
+		t.Fatalf("failed recap must say why: %v", reply)
+	}
+	_, latest, _ := controller.nativeRecap(controller.sessions[id])
+	if f := controller.sessions[id].recapFailure; f == nil || f.Reason != "model_error" || f.Through != latest.ID || f.Trigger != "manual" {
+		t.Fatalf("card failure: %+v latest %s", f, latest.ID)
+	}
+	// The status the browser polls carries it.
+	status := httptest.NewRecorder()
+	controller.observe(status, httptest.NewRequest(http.MethodGet, "http://unix/status", nil), id)
+	if !strings.Contains(status.Body.String(), `"recap_failure":{"reason":"model_error"`) {
+		t.Fatalf("status: %s", status.Body.String())
 	}
 }

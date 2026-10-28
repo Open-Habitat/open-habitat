@@ -1,15 +1,16 @@
 ---
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-28
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: kokeiltavaa:2026-10-26/recap-card-not-shown
 lane: recap
 preparation: ready
 lane_seq: 1
+closed: 2026-10-28
 ---
 
 # Recap card did not appear at all on the test server (pilot.421)

@@ -36,46 +36,85 @@ function promptFor(branch) {
   }
   return selected.length ? PROMPT + selected.join('\n\n') : undefined;
 }
+// The daemon reads this outcome from the RPC stream before the prompt's own
+// response (pi_rpc_linux.go), so a failure leaves a reason instead of silence.
+const OUTCOME = 'oh-conversation-recap:';
+const report = (ctx, outcome, model = '', detail = '') => {
+  try { ctx.ui.notify(OUTCOME + JSON.stringify({ outcome, model, detail: clean(detail, 200) }), outcome === 'done' ? 'info' : 'error'); } catch { /* No UI: the daemon reports an unknown outcome. */ }
+};
+const name = (m) => `${m.provider}/${m.id}`;
+// Declared cost picks the first model. Subscription providers declare every
+// model as free, so the first can be one whose own quota is spent while the
+// conversation's model still answers (the Claude bridge's Fable, October
+// 2026). The conversation's model is the fallback that demonstrably works.
+function candidates(ctx) {
+  const usable = (m) => m && m.input?.includes('text') && ctx.modelRegistry.hasConfiguredAuth(m);
+  const priced = ctx.modelRegistry.getAvailable().filter(m => usable(m) && m.cost);
+  priced.sort((a, b) => (a.cost.input + a.cost.output) - (b.cost.input + b.cost.output) || Number(a.reasoning) - Number(b.reasoning));
+  const out = priced.slice(0, 1);
+  if (usable(ctx.model) && !out.some(m => name(m) === name(ctx.model))) out.push(ctx.model);
+  return out;
+}
+// Pi answers the daemon's prompt only after this handler returns, and the
+// daemon gives up on the whole RPC channel at 25 seconds.
+const BUDGET_MS = 20000, ATTEMPT_MS = 12000;
+async function ask(ctx, model, prompt, deadline) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Math.max(0, Math.min(ATTEMPT_MS, deadline - Date.now())));
+  try {
+    // A Finnish recap and next step in JSON alone can approach 200 tokens.
+    const answer = await ctx.modelRegistry.complete(model, {
+      messages: [{ role: 'user', content: [{ type: 'text', text: prompt }], timestamp: Date.now() }],
+    }, { signal: controller.signal, maxTokens: 512, cacheRetention: 'none', sessionId: randomUUID() });
+    if (answer.stopReason === 'aborted' || controller.signal.aborted) return { outcome: 'model_timeout' };
+    if (answer.stopReason === 'length') return { outcome: 'model_incomplete' };
+    if (answer.stopReason !== 'stop') return { outcome: 'model_error', detail: answer.errorMessage || answer.stopReason };
+    const raw = text(answer.content).trim();
+    const start = raw.indexOf('{'), end = raw.lastIndexOf('}');
+    if (start < 0 || end < start || end - start > 2048) return { outcome: 'invalid_response' };
+    let value;
+    try { value = JSON.parse(raw.slice(start, end + 1)); } catch { return { outcome: 'invalid_response' }; }
+    const recap = clean(value?.recap, 320);
+    return recap ? { outcome: 'done', recap, next: clean(value.next, 160) } : { outcome: 'invalid_response' };
+  } catch (error) {
+    return { outcome: controller.signal.aborted ? 'model_timeout' : 'model_error', detail: error?.message };
+  } finally { clearTimeout(timeout); }
+}
 export default function (pi) {
   let pending = false;
   pi.registerCommand('oh-conversation-recap', {
     description: 'Save a brief recap outside the agent context',
     handler: async (args, ctx) => {
-      if (pending) return;
+      if (pending) return report(ctx, 'busy');
       pending = true;
       try {
+        const deadline = Date.now() + BUDGET_MS;
         const before = ctx.sessionManager.getBranch();
         const lastMessage = [...before].reverse().find(e => e.type === 'message' && ['user', 'assistant'].includes(e.message?.role));
-        if (!lastMessage) return;
+        if (!lastMessage) return report(ctx, 'no_message');
         const previous = [...before].reverse().find(e => e.type === 'custom' && e.customType === TYPE);
         // A lost HTTP response or a second tab must not spend twice for the same turn.
-        if (previous?.data?.through === lastMessage.id) return;
+        if (previous?.data?.through === lastMessage.id) return report(ctx, 'done');
         const prompt = promptFor(before);
-        const models = ctx.modelRegistry.getAvailable().filter(m => m.input?.includes('text') && m.cost && ctx.modelRegistry.hasConfiguredAuth(m));
-        models.sort((a, b) => (a.cost.input + a.cost.output) - (b.cost.input + b.cost.output) || Number(a.reasoning) - Number(b.reasoning));
-        const model = models[0];
-        if (!prompt || !model) return;
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
-        let answer;
-        try {
-          answer = await ctx.modelRegistry.complete(model, {
-            messages: [{ role: 'user', content: [{ type: 'text', text: prompt }], timestamp: Date.now() }],
-          }, { signal: controller.signal, maxTokens: 160, cacheRetention: 'none', sessionId: randomUUID() });
-        } finally { clearTimeout(timeout); }
-        if (answer.stopReason !== 'stop') return;
-        const raw = text(answer.content).trim();
-        const start = raw.indexOf('{'), end = raw.lastIndexOf('}');
-        if (start < 0 || end < start || end - start > 2048) return;
-        const value = JSON.parse(raw.slice(start, end + 1));
-        const recap = clean(value.recap, 320);
-        if (!recap) return;
+        if (!prompt) return report(ctx, 'no_message');
+        const models = candidates(ctx);
+        if (!models.length) return report(ctx, 'no_model');
+        let result, model;
+        for (model of models) {
+          if (Date.now() >= deadline) break;
+          result = await ask(ctx, model, prompt, deadline);
+          if (result.outcome === 'done') break;
+        }
+        if (result?.outcome !== 'done') return report(ctx, result?.outcome ?? 'model_timeout', model ? name(model) : '', result?.detail);
         const current = ctx.sessionManager.getBranch();
         const latest = [...current].reverse().find(e => e.type === 'message' && ['user', 'assistant'].includes(e.message?.role));
-        if (latest?.id !== lastMessage.id || current.some(e => e.type === 'custom' && e.customType === TYPE && e.data?.through === lastMessage.id)) return;
-        pi.appendEntry(TYPE, { recap, next: clean(value.next, 160), through: lastMessage.id, completedTurnCount: completedTurns(current), generatedAt: Date.now(), trigger: args?.trim() === 'automatic' ? 'automatic' : 'manual' });
-      } catch { /* HTTP caller checks the native entry, not a notification. */ }
-      finally { pending = false; }
+        if (current.some(e => e.type === 'custom' && e.customType === TYPE && e.data?.through === lastMessage.id)) return report(ctx, 'done', name(model));
+        if (latest?.id !== lastMessage.id) return report(ctx, 'superseded', name(model));
+        pi.appendEntry(TYPE, { recap: result.recap, next: result.next, through: lastMessage.id, completedTurnCount: completedTurns(current), generatedAt: Date.now(), trigger: args?.trim() === 'automatic' ? 'automatic' : 'manual' });
+        report(ctx, 'done', name(model));
+      } catch (error) {
+        report(ctx, 'write_failed', '', error?.message);
+      } finally { pending = false; }
     },
   });
 }

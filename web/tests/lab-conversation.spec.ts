@@ -368,6 +368,66 @@ test("@lab recap waits while the person writes a long message", async ({
   }
 });
 
+test("@lab a failed recap shows its reason, automatic and on request", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  expect(
+    (
+      await page.request.get("/fixture/scenario?value=pi-recap-failing")
+    ).status(),
+  ).toBe(204);
+  try {
+    await page.clock.install();
+    await page.goto("/workspaces");
+    await page.getByTestId("github-sign-in").click();
+    await page
+      .getByRole("link")
+      .and(page.locator('a[href*="code=42"]'))
+      .click();
+    await page
+      .getByRole("navigation")
+      .getByTestId("workspace-aurinkokello")
+      .click();
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    await page.getByTestId("message-input").fill("Tutki synteettinen työtila");
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+    await expectNativeContent(
+      page,
+      'Selvä. Kysyit: "Tutki synteettinen työtila".',
+      { timeout: 20000 },
+    );
+    await page.clock.fastForward(61_000);
+    // No recap was ever written, yet the automatic failure has a card.
+    const card = page.getByTestId("recap-card");
+    const failure = card.getByTestId("recap-failure");
+    await expect(failure).toHaveAttribute("data-reason", "model_error", {
+      timeout: 20000,
+    });
+    await expect(card.getByTestId("recap-refresh")).toBeEnabled();
+    const reply = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().endsWith("/recap"),
+    );
+    await card.getByTestId("recap-refresh").click();
+    expect(await (await reply).json()).toMatchObject({
+      state: "failed",
+      reason: "model_error",
+    });
+    await expect(failure).toHaveAttribute("data-reason", "model_error");
+    await card.getByTestId("recap-dismiss").click();
+    await expect(card).toHaveCount(0);
+  } finally {
+    expect(
+      (await page.request.get("/fixture/scenario?value=ready")).status(),
+    ).toBe(204);
+  }
+});
+
 test("@lab unsupported-model action remains usable when a native recap arrives", async ({
   page,
 }) => {

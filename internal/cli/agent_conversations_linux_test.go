@@ -74,7 +74,12 @@ func TestAgentConversationGenerationFailure(t *testing.T) {
 		path := "/agent/v1/conversations/00000000-0000-4000-8000-000000000001/" + action
 		err := conversationOperationError(path, json.RawMessage(`{"schema_version":1,"state":"failed","reason":"model_unavailable"}`))
 		ce, ok := err.(*cliError)
-		if !ok || ce.exit != 2 || ce.code != "native_operation_failed" {
+		if !ok || ce.exit != 2 || ce.code != "native_operation_failed" || !strings.Contains(ce.message, "model_unavailable") {
+			t.Fatalf("%s: %v", action, err)
+		}
+		// Only a fixed reason code is repeated, never reply text.
+		err = conversationOperationError(path, json.RawMessage(`{"schema_version":1,"state":"failed","reason":"Bearer secret"}`))
+		if ce, ok := err.(*cliError); !ok || ce.code != "native_operation_failed" || strings.Contains(ce.message, "secret") {
 			t.Fatalf("%s: %v", action, err)
 		}
 		if conversationOperationError(path, json.RawMessage(`{"schema_version":1,"state":"done"}`)) != nil {

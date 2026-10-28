@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Recap } from "../app/conversations";
+import type { Recap, RecapFailureReason } from "../app/conversations";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 
@@ -40,11 +40,31 @@ export function LatestMessageAge({
   );
 }
 
+/** Why no recap was written, in words the person can act on. Every reason
+ * the daemon reports has one, so a failure never shows as silence. */
+const failureText: Record<RecapFailureReason, string> = {
+  no_message: "Keskustelussa ei ole vielä viestejä.",
+  no_model: "Katsaukselle ei löytynyt mallia, johon on kirjautuminen.",
+  model_error: "Malli ei vastannut katsauspyyntöön.",
+  model_timeout: "Malli ei vastannut ajoissa.",
+  model_incomplete: "Mallin vastaus jäi kesken.",
+  invalid_response: "Mallin vastauksesta ei saatu katsausta.",
+  superseded: "Keskustelu jatkui ennen kuin katsaus valmistui.",
+  busy: "Edellinen katsaus on vielä tekeillä.",
+  write_failed: "Katsausta ei voitu tallentaa keskusteluun.",
+  history_unavailable: "Keskustelun historiaa ei voitu lukea.",
+  command_unavailable: "Agentti ei tarjonnut katsaustoimintoa.",
+  controller_unavailable: "Yhteys agenttiin katkesi kesken katsauksen.",
+  outcome_unknown: "Katsauksen tulosta ei saatu agentilta.",
+  not_written: "Katsaus ei tallentunut keskusteluun.",
+};
+
 export function RecapCard({
   recap,
   latestAt,
   pending,
   error,
+  failure,
   uncertain = false,
   unverifiable = false,
   unavailable,
@@ -57,6 +77,8 @@ export function RecapCard({
   latestAt?: string | null;
   pending: boolean;
   error: boolean;
+  /** The daemon's reason for the failed attempt, when it gave one. */
+  failure?: RecapFailureReason;
   uncertain?: boolean;
   unverifiable?: boolean;
   unavailable: boolean;
@@ -133,12 +155,19 @@ export function RecapCard({
         <p className="ah-recap-empty">Pyydä lyhyt katsaus ennen kuin jatkat.</p>
       )}
       {error || uncertain || unverifiable ? (
-        <p className="ah-inline-error" role="alert">
+        <p
+          className="ah-inline-error"
+          role="alert"
+          data-testid="recap-failure"
+          data-reason={
+            error && !unverifiable && !uncertain ? failure : undefined
+          }
+        >
           {unverifiable
             ? "Katsausta ei voitu tarkistaa. Lataa sivu uudelleen."
             : uncertain
               ? "Luonnin tulos ei ole tiedossa. Tarkista katsaus lataamalla sivu uudelleen."
-              : "Katsausta ei voitu luoda. Yritä uudelleen."}
+              : `Katsausta ei voitu luoda.${failure ? ` ${failureText[failure]}` : ""} Yritä uudelleen.`}
         </p>
       ) : null}
     </aside>

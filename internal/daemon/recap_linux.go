@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 )
 
 //go:embed recap-extension.mjs
@@ -223,7 +225,7 @@ func (c *ConversationController) scheduleAutomaticRecap(s *conversation) {
 		}
 		s.recapping = true
 		c.mu.Unlock()
-		_ = c.runRecap(s, "automatic", epoch)
+		c.runRecap(s, "automatic", epoch)
 		c.mu.Lock()
 		s.recapping = false
 		if s.recapReschedule && recapIdle(s) && s.settled {
@@ -234,52 +236,169 @@ func (c *ConversationController) scheduleAutomaticRecap(s *conversation) {
 	})
 }
 
-func (c *ConversationController) runRecap(s *conversation, trigger string, epoch uint64) bool {
-	if c.recapGenerator != nil {
-		return c.recapGenerator(s, trigger, epoch)
+// recapOutcome is why one recap attempt ended. Reason is empty on success.
+// Model and Detail come from the extension and reach only the journal: a
+// provider's error text is not for the browser.
+type recapOutcome struct{ Reason, Model, Detail, Through string }
+
+// recapFailure is what the person sees on the card when the newest recap
+// attempt failed. It lives with the controlled conversation, as
+// recapAttemptedThrough does, and is not a store: a restart forgets it.
+type recapFailure struct{ Reason, Through, Trigger string }
+
+// Reasons the browser may show; anything else from a changed extension is
+// reported as an unknown outcome rather than passed through.
+var recapReasons = map[string]bool{
+	"no_message": true, "no_model": true, "model_error": true, "model_timeout": true,
+	"model_incomplete": true, "invalid_response": true, "superseded": true, "busy": true,
+	"write_failed": true, "history_unavailable": true, "command_unavailable": true,
+	"controller_unavailable": true, "outcome_unknown": true, "not_written": true,
+}
+
+type recapExtensionOutcome struct {
+	Outcome string `json:"outcome"`
+	Model   string `json:"model"`
+	Detail  string `json:"detail"`
+}
+
+const recapOutcomePrefix = "oh-conversation-recap:"
+
+// noteRecapOutcome keeps the recap extension's report out of the live stream:
+// it is the daemon's own signal, not something Pi asked to show.
+func (p *piRPC) noteRecapOutcome(frame json.RawMessage) bool {
+	var request struct {
+		Method  string `json:"method"`
+		Message string `json:"message"`
 	}
-	return c.generateRecap(s, trigger, epoch)
+	if json.Unmarshal(frame, &request) != nil || request.Method != "notify" || !strings.HasPrefix(request.Message, recapOutcomePrefix) {
+		return false
+	}
+	var note recapExtensionOutcome
+	if len(request.Message) > 4096 || json.Unmarshal([]byte(strings.TrimPrefix(request.Message, recapOutcomePrefix)), &note) != nil {
+		note = recapExtensionOutcome{Outcome: "outcome_unknown"}
+	}
+	if note.Outcome != "done" && !recapReasons[note.Outcome] {
+		note.Outcome = "outcome_unknown"
+	}
+	note.Model, note.Detail = prefixBytes(strings.ToValidUTF8(note.Model, ""), 200), prefixBytes(strings.ToValidUTF8(note.Detail, ""), 200)
+	p.recapMu.Lock()
+	p.recapNote = &note
+	p.recapMu.Unlock()
+	return true
+}
+
+func (p *piRPC) takeRecapOutcome() *recapExtensionOutcome {
+	p.recapMu.Lock()
+	defer p.recapMu.Unlock()
+	note := p.recapNote
+	p.recapNote = nil
+	return note
+}
+
+func (c *ConversationController) runRecap(s *conversation, trigger string, epoch uint64) string {
+	var out recapOutcome
+	if c.recapGenerator != nil {
+		out = c.recapGenerator(s, trigger, epoch)
+	} else {
+		out = c.generateRecap(s, trigger, epoch)
+	}
+	c.recordRecapOutcome(s, trigger, out)
+	return out.Reason
+}
+
+// recordRecapOutcome leaves a trace of every attempt: the operator's journal
+// line, and for a failure the card's reason until a later attempt replaces it.
+// A fenced automatic attempt (the person resumed, or this message was already
+// tried) did nothing and is not reported.
+func (c *ConversationController) recordRecapOutcome(s *conversation, trigger string, out recapOutcome) {
+	if out.Reason == "fenced" {
+		return
+	}
+	log := diagnostic.New(os.Stderr, "daemon")
+	if out.Reason == "" {
+		log.Info("conversation_recap", "outcome", "done", "trigger", trigger, "model", out.Model, "agent_id", "pi:"+s.id)
+	} else {
+		log.Warn("conversation_recap", "outcome", "failed", "reason", out.Reason, "trigger", trigger, "model", out.Model, "detail", out.Detail, "agent_id", "pi:"+s.id)
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.sessions[s.id] != s {
+		return
+	}
+	if out.Reason == "" {
+		s.recapFailure = nil
+	} else {
+		s.recapFailure = &recapFailure{Reason: out.Reason, Through: out.Through, Trigger: trigger}
+	}
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + s.id)
+	}
 }
 
 // The native branch and latest message are authoritative. The RPC child and
 // extension both decline duplicates; this gate prevents parallel model calls.
-func (c *ConversationController) generateRecap(s *conversation, trigger string, epoch uint64) bool {
+func (c *ConversationController) generateRecap(s *conversation, trigger string, epoch uint64) recapOutcome {
 	before, latest, ok := c.nativeRecap(s)
-	if !ok || latest.ID == "" {
-		return false
+	if !ok {
+		return recapOutcome{Reason: "history_unavailable"}
+	}
+	if latest.ID == "" {
+		return recapOutcome{Reason: "no_message"}
 	}
 	if before.Through == latest.ID {
-		return true
+		return recapOutcome{Through: latest.ID}
 	}
 	c.mu.Lock()
-	valid := !c.closed && c.sessions[s.id] == s && !s.dead && recapIdle(s) && s.recapActivity == epoch && (trigger != "automatic" || s.recapAttemptedThrough != latest.ID)
+	attempted := trigger == "automatic" && s.recapAttemptedThrough == latest.ID
+	valid := !c.closed && c.sessions[s.id] == s && !s.dead && recapIdle(s) && s.recapActivity == epoch && !attempted
 	if valid && trigger == "automatic" {
 		s.recapAttemptedThrough = latest.ID
 	}
 	c.mu.Unlock()
 	if !valid {
-		return false
+		if trigger == "automatic" {
+			return recapOutcome{Reason: "fenced"}
+		}
+		return recapOutcome{Reason: "superseded", Through: latest.ID}
 	}
 	commands, err := s.rpc.requestQueue("get_commands", "", 4*time.Second)
 	if err != nil || !commands.Accepted || !commands.RecapCommand {
-		return false
+		return recapOutcome{Reason: "command_unavailable", Through: latest.ID}
 	}
 	c.mu.Lock()
 	valid = !c.closed && c.sessions[s.id] == s && !s.dead && recapIdle(s) && s.recapActivity == epoch
 	c.mu.Unlock()
 	if !valid {
-		return false
+		if trigger == "automatic" {
+			return recapOutcome{Reason: "fenced"}
+		}
+		return recapOutcome{Reason: "superseded", Through: latest.ID}
 	}
 	command := "/oh-conversation-recap"
 	if trigger == "automatic" {
 		command += " automatic"
 	}
+	_ = s.rpc.takeRecapOutcome()
 	accepted, err := s.rpc.request("prompt", command, 25*time.Second)
 	if err != nil || !accepted {
-		return false
+		return recapOutcome{Reason: "controller_unavailable", Through: latest.ID}
 	}
+	out := recapOutcome{Reason: "outcome_unknown", Through: latest.ID}
+	if note := s.rpc.takeRecapOutcome(); note != nil {
+		out.Model, out.Detail = note.Model, note.Detail
+		if note.Outcome != "done" {
+			out.Reason = note.Outcome
+			return out
+		}
+	}
+	// The extension's word is not proof: the native entry is.
 	after, _, ok := c.nativeRecap(s)
-	return ok && after.Through == latest.ID && after.GeneratedAt > 0
+	if ok && after.Through == latest.ID && after.GeneratedAt > 0 {
+		out.Reason = ""
+	} else if out.Reason != "outcome_unknown" || out.Model != "" {
+		out.Reason = "not_written"
+	}
+	return out
 }
 
 // notePresence hears from the browser that the person is writing or reading
@@ -334,9 +453,9 @@ func (c *ConversationController) requestRecap(w http.ResponseWriter, r *http.Req
 	c.mu.Unlock()
 	// A disconnected tab cannot cancel this native model call. Other tabs see
 	// the in-flight guard and can read the persisted entry after it completes.
-	done := make(chan bool, 1)
+	done := make(chan string, 1)
 	go func() {
-		success := c.runRecap(s, "manual", epoch)
+		reason := c.runRecap(s, "manual", epoch)
 		c.mu.Lock()
 		s.recapping = false
 		if s.recapReschedule && recapIdle(s) && s.settled {
@@ -344,12 +463,12 @@ func (c *ConversationController) requestRecap(w http.ResponseWriter, r *http.Req
 			c.scheduleAutomaticRecap(s)
 		}
 		c.mu.Unlock()
-		done <- success
+		done <- reason
 	}()
-	if <-done {
+	if reason := <-done; reason == "" {
 		historyJSON(w, map[string]any{"schema_version": 1, "state": "done"})
 	} else {
-		historyJSON(w, map[string]any{"schema_version": 1, "state": "failed"})
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "failed", "reason": reason})
 	}
 }
 

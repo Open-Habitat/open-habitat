@@ -17,14 +17,14 @@ func TestAutomaticRecapIdleGateAcrossTabsAndActivity(t *testing.T) {
 	entered := make(chan struct{}, 4)
 	release := make(chan struct{})
 	var calls atomic.Int32
-	c.recapGenerator = func(_ *conversation, trigger string, epoch uint64) bool {
+	c.recapGenerator = func(_ *conversation, trigger string, epoch uint64) recapOutcome {
 		if trigger != "automatic" {
 			t.Errorf("unexpected trigger %q", trigger)
 		}
 		calls.Add(1)
 		entered <- struct{}{}
 		<-release
-		return true
+		return recapOutcome{}
 	}
 	c.mu.Lock()
 	c.scheduleAutomaticRecap(s)
@@ -70,7 +70,7 @@ func TestOutdatedAutomaticRecapIsRegeneratedAfterNextIdle(t *testing.T) {
 	s := &conversation{id: "11111111-1111-4111-8111-111111111111", state: "idle", settled: true, rpc: &piRPC{}}
 	c := &ConversationController{sessions: map[string]*conversation{s.id: s}, recapIdleDelay: 20 * time.Millisecond}
 	called := make(chan string, 4)
-	c.recapGenerator = func(_ *conversation, trigger string, _ uint64) bool { called <- trigger; return true }
+	c.recapGenerator = func(_ *conversation, trigger string, _ uint64) recapOutcome { called <- trigger; return recapOutcome{} }
 	wait := func(what string) {
 		t.Helper()
 		select {
@@ -109,7 +109,7 @@ func TestRejectedCommandDoesNotRestartNativeIdleClock(t *testing.T) {
 	c := &ConversationController{sessions: map[string]*conversation{s.id: s}, recapIdleDelay: 50 * time.Millisecond}
 	s.recapLastActivity = time.Now().Add(-time.Second)
 	called := make(chan struct{}, 1)
-	c.recapGenerator = func(_ *conversation, _ string, _ uint64) bool { called <- struct{}{}; return true }
+	c.recapGenerator = func(_ *conversation, _ string, _ uint64) recapOutcome { called <- struct{}{}; return recapOutcome{} }
 	c.mu.Lock()
 	c.scheduleAutomaticRecap(s)
 	c.mu.Unlock()
@@ -137,7 +137,7 @@ func TestPresencePostponesAutomaticRecapButNotARunningOne(t *testing.T) {
 	s := &conversation{id: id, state: "idle", settled: true, rpc: &piRPC{}}
 	c := &ConversationController{sessions: map[string]*conversation{id: s}, recapIdleDelay: 80 * time.Millisecond}
 	called := make(chan string, 4)
-	c.recapGenerator = func(_ *conversation, trigger string, _ uint64) bool { called <- trigger; return true }
+	c.recapGenerator = func(_ *conversation, trigger string, _ uint64) recapOutcome { called <- trigger; return recapOutcome{} }
 	presence := func() {
 		t.Helper()
 		w := httptest.NewRecorder()

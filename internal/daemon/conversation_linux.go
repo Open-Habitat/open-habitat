@@ -49,8 +49,8 @@ type ConversationController struct {
 	// each other's temporary flock as an external writer. Never hold mu across I/O.
 	proofGate      chan struct{}
 	recapPath      string
-	recapIdleDelay time.Duration                            // test seam; zero uses the production three-minute interval
-	recapGenerator func(*conversation, string, uint64) bool // synthetic test seam
+	recapIdleDelay time.Duration                                    // test seam; zero uses the production three-minute interval
+	recapGenerator func(*conversation, string, uint64) recapOutcome // synthetic test seam
 	// started tells a process cut off by this daemon's restart from one cut
 	// off by a Pi stop since (process_interrupted_linux.go). Unix ms.
 	started int64
@@ -109,8 +109,9 @@ type conversation struct {
 	recapActivity                                           uint64 // activity fence, protected by c.mu
 	recapLastActivity                                       time.Time
 	recapReschedule                                         bool
-	recapAttemptedThrough                                   string // at most one automatic request per native message
-	automaticName                                           string // last name written by this controller, never authoritative
+	recapAttemptedThrough                                   string        // at most one automatic request per native message
+	recapFailure                                            *recapFailure // the newest attempt's failure, shown on the card
+	automaticName                                           string        // last name written by this controller, never authoritative
 	firstText, thirdText, latestText                        string
 	settlement                                              map[string]string // observed_at, native_key, state; nil means unknown
 	authError                                               string            // fixed code only; cleared on a new prompt
@@ -1016,6 +1017,10 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	runActive := s.runActive
 	held := heldView(s.held)
 	startProblem, interrupted := s.startProblem, s.interrupted
+	var recapFailed map[string]string
+	if f := s.recapFailure; f != nil {
+		recapFailed = map[string]string{"reason": f.Reason, "through": f.Through, "trigger": f.Trigger}
+	}
 	startupChoice, authError := s.startupChoice, s.authError
 	state, command, ack, cursor, lost := s.state, s.command, s.ack, s.cursor, s.lost
 	settlement := s.settlement
@@ -1117,7 +1122,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		continuation = "unproven"
 	}
 	c.mu.Unlock()
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem, "interrupted": interrupted, "bash": bash})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem, "interrupted": interrupted, "bash": bash, "recap_failure": recapFailed})
 }
 
 // answerQuestion spends the native request ID before touching Pi. This uncorrelated

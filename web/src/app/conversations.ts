@@ -80,6 +80,8 @@ export type Status = Session & {
   interrupted?: boolean;
   /** The conversation's last `!` command in this daemon incarnation. */
   bash?: BashStatus | null;
+  /** Why the newest recap attempt failed, for the message it was about. */
+  recap_failure?: RecapFailure | null;
   send_receipt?: "" | "pending" | "accepted" | "rejected" | "uncertain";
   turn_settled?: {
     state: "settled" | "unknown";
@@ -94,6 +96,31 @@ export type Status = Session & {
   } | null;
 };
 export type HeldMessage = { command_id: string; text: string };
+/** The daemon's reasons a recap was not written (recap_linux.go). */
+export const recapFailureReasons = [
+  "no_message",
+  "no_model",
+  "model_error",
+  "model_timeout",
+  "model_incomplete",
+  "invalid_response",
+  "superseded",
+  "busy",
+  "write_failed",
+  "history_unavailable",
+  "command_unavailable",
+  "controller_unavailable",
+  "outcome_unknown",
+  "not_written",
+] as const;
+export type RecapFailureReason = (typeof recapFailureReasons)[number];
+export type RecapFailure = {
+  reason: RecapFailureReason;
+  through: string;
+  trigger: "automatic" | "manual";
+};
+const recapFailureReason = (v: unknown): v is RecapFailureReason =>
+  (recapFailureReasons as readonly unknown[]).includes(v);
 export type BashStatus = {
   command_id: string;
   command: string;
@@ -304,10 +331,21 @@ export async function readRecap(id: string): Promise<RecapRead> {
     latest_message_at: result.latest_message_at,
   };
 }
+/** The daemon answered that no recap was written, and why. */
+export class RecapGenerationFailed extends Error {
+  constructor(readonly reason: RecapFailureReason | undefined) {
+    super("recap generation failed");
+  }
+}
 export async function requestRecap(id: string, csrf: string): Promise<void> {
   const reply = await request(`${path(id)}/recap`, undefined, undefined, csrf);
-  if (!object(reply) || reply.schema_version !== 1 || reply.state !== "done")
-    throw new Error("recap generation failed");
+  if (object(reply) && reply.schema_version === 1 && reply.state === "done")
+    return;
+  throw new RecapGenerationFailed(
+    object(reply) && recapFailureReason(reply.reason)
+      ? reply.reason
+      : undefined,
+  );
 }
 /** Tells the daemon the person is writing or reading here, which postpones
  * its automatic recap. Nothing depends on the answer. */
@@ -576,6 +614,12 @@ export function parseStatus(v: unknown, id: string): Status {
     (v.held !== undefined && !validHeldList(v.held)) ||
     (v.bash !== undefined && !validBashStatus(v.bash)) ||
     (v.interrupted !== undefined && typeof v.interrupted !== "boolean") ||
+    (v.recap_failure != null &&
+      (!object(v.recap_failure) ||
+        !recapFailureReason(v.recap_failure.reason) ||
+        typeof v.recap_failure.through !== "string" ||
+        v.recap_failure.through.length > 128 ||
+        !["automatic", "manual"].includes(String(v.recap_failure.trigger)))) ||
     (v.start_problem !== undefined &&
       (typeof v.start_problem !== "string" ||
         !/^(|[a-z][a-z0-9_]{2,63})$/.test(v.start_problem))) ||

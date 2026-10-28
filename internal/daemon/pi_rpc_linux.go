@@ -51,6 +51,11 @@ type piRPC struct {
 	bashMu        sync.Mutex
 	bashReplies   map[string]chan json.RawMessage
 	eventsDrained chan struct{} // controller consumed all queued native events
+	// The recap extension's last reported outcome (recap-extension.mjs). Pi
+	// writes it before the prompt's response, and read is sequential, so the
+	// requester sees it once that response arrives.
+	recapMu   sync.Mutex
+	recapNote *recapExtensionOutcome
 }
 
 // launchPiRPC is a fixture bridge. The production controller requires a fresh
@@ -308,6 +313,9 @@ func (p *piRPC) read() {
 			if failure.Type == "message_end" && failure.Message.Role == "assistant" && failure.Message.StopReason == "error" {
 				_, _ = (&storageDiagnostics{operation: "pi_message_persistence"}).Write([]byte(failure.Message.ErrorMessage))
 			}
+		}
+		if envelope.Type == "extension_ui_request" && p.noteRecapOutcome(frame) {
+			continue
 		}
 		queue := p.events
 		if envelope.Type == "response" {
