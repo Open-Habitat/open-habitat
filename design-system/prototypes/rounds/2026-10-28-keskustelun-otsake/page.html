@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keskustelun otsake työpöydällä — prototyyppi</title>
+<style>
+/*TOKENS*/
+/*PICKER_CSS*/
+
+/* ---- Prototype chrome (not a contestant) ---- */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #0c0d0f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.pc-bar {
+  position: fixed; inset: 0 0 auto 0; height: 44px; z-index: 50;
+  display: flex; align-items: center; gap: 14px; padding: 0 12px;
+  background: #16181b; color: #c9cdd2; font-size: 12px; border-bottom: 1px solid #262a2f;
+  overflow-x: auto; white-space: nowrap;
+}
+.pc-group { display: inline-flex; align-items: center; gap: 2px; }
+.pc-group > span { margin-right: 4px; color: #8a9097; }
+.pc-group button {
+  height: 26px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent;
+  color: #aeb4ba; font: inherit; cursor: pointer;
+}
+.pc-group button:hover { background: rgba(255,255,255,.06); }
+.pc-group button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+.pc-read { margin-left: auto; color: #8a9097; font-variant-numeric: tabular-nums; }
+.pc-read b { color: #e6e9ec; font-weight: 500; }
+#viewport { position: fixed; inset: 44px 0 64px 0; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; padding: 12px; }
+body.bare .pc-bar { display: none; }
+body.bare #viewport { inset: 0; padding: 0; }
+body.bare .proto-picker { display: none; }
+#sizer { position: relative; flex: none; }
+#frame {
+  position: absolute; top: 0; left: 0; transform-origin: top left; overflow: hidden;
+  background: var(--ah-bg); color: var(--ah-ink); font-family: var(--ah-font);
+  font-size: var(--ah-size-body); line-height: var(--ah-lh-ui);
+  box-shadow: 0 0 0 1px #2a2e33;
+}
+body.bare #frame { box-shadow: none; }
+
+/* ---- App shell (production context, simplified) ---- */
+.app { display: flex; height: 100%; }
+.rail {
+  flex: none; width: var(--ah-rail-width); background: var(--ah-rail); border-right: 1px solid var(--ah-line);
+  display: flex; flex-direction: column; padding: 12px 10px; gap: 2px; font-size: var(--ah-size-ui); overflow: hidden;
+}
+.rail.collapsed { width: var(--ah-rail-compact-width); align-items: center; padding-inline: 0; }
+.rail-head { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px; font-weight: 600; margin-bottom: 8px; }
+.rail-ws { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; margin-top: 8px; color: var(--ah-muted); font-family: var(--ah-mono); font-size: var(--ah-size-meta); }
+.rail-item { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px 0 22px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail-item span { overflow: hidden; text-overflow: ellipsis; }
+.rail-item.cur { background: var(--ah-current); box-shadow: inset 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); }
+.rail-item .sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--ah-accent); flex: none; animation: ah-pulse var(--ah-pulse); }
+.rail-icon { width: 32px; height: 32px; display: grid; place-items: center; color: var(--ah-muted); border-radius: var(--ah-r-nav); }
+.rail-icon.cur { background: var(--ah-current); color: var(--ah-ink); }
+.main { flex: 1; min-width: 0; display: flex; }
+.editor { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--ah-surface); }
+.editor-head { height: 41px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-bottom: 1px solid var(--ah-line); font-family: var(--ah-mono); font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.editor pre { margin: 0; padding: 12px 16px; font-family: var(--ah-mono); font-size: var(--ah-size-code); line-height: 1.7; color: var(--ah-ink-2); white-space: pre; overflow: hidden; }
+.editor pre .k { color: var(--ah-syntax-keyword); } .editor pre .s { color: var(--ah-syntax-string); } .editor pre .c { color: var(--ah-syntax-comment); }
+.conv { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--ah-bg); }
+.editor + .conv { flex: none; border-left: 1px solid var(--ah-line); }
+.stream { flex: 1; min-height: 0; overflow: hidden; padding: var(--ah-column-pad-block) var(--ah-column-pad-inline); }
+.col { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin: 0 auto; display: grid; gap: 14px; }
+.msg-user { justify-self: end; max-width: 80%; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-xl); padding: 8px 12px; }
+.msg-agent p { margin: 0 0 8px; line-height: var(--ah-lh-body); }
+.msg-agent .work { font-size: var(--ah-size-meta); color: var(--ah-muted); margin-bottom: 6px; }
+.composer { flex: none; padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline); }
+.field {
+  max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin: 0 auto;
+  min-height: var(--ah-composer-rest-height); display: flex; align-items: center; gap: 8px;
+  padding: 0 6px 0 14px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-xl);
+  background: var(--ah-surface); color: var(--ah-faint); font-size: var(--ah-size-ui);
+}
+.field .ph { flex: 1; }
+.send { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--ah-accent); color: var(--ah-on-accent); }
+.send svg { width: 16px; height: 16px; }
+.phone .stream { padding: var(--ah-column-pad-block) var(--ah-column-pad-inline); }
+
+/* Phone token overrides (the frame is not the window, so no media query). */
+.phone {
+  --ah-topbar-pad-block: 6px; --ah-topbar-pad-inline: 14px; --ah-column-pad-block: 12px;
+  --ah-column-pad-inline: 14px; --ah-control-row: 40px; --ah-control-inline: 32px;
+}
+
+/* ---- Header: shared markup ---- */
+svg.i { width: var(--ah-control-inline-icon); height: var(--ah-control-inline-icon); flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.hdr {
+  position: relative; flex: none; padding: var(--ah-topbar-pad-block) var(--ah-topbar-pad-inline);
+  border-bottom: 1px solid var(--ah-line); background: var(--ah-surface);
+}
+.top { display: flex; align-items: center; gap: var(--ah-s3); min-width: 0; }
+.h-title { flex: 1 1 0; min-width: 0; margin: 0; font-size: var(--ah-size-title); font-weight: 600; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.h-ws { flex: none; font-family: var(--ah-mono); font-size: var(--ah-size-meta); color: var(--ah-muted); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.h-status { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: var(--ah-size-meta); font-weight: 500; color: var(--ah-accent-ink); white-space: nowrap; }
+.h-status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ah-accent); animation: ah-pulse var(--ah-pulse); }
+.h-chip {
+  flex: none; display: inline-flex; align-items: center; gap: 5px; height: var(--ah-control-inline);
+  padding: 0 var(--ah-control-inline-pad); border: 1px solid transparent; border-radius: var(--ah-r-pill);
+  background: transparent; color: var(--ah-ink-2); font: inherit; font-size: var(--ah-size-meta);
+  white-space: nowrap; min-width: 0; cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.h-chip:hover { background: var(--ah-hover); }
+.h-git .br { font-family: var(--ah-mono); font-weight: 500; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.h-git .n { display: inline-flex; align-items: center; gap: 1px; }
+.h-git .ab { display: inline-flex; gap: 6px; }
+.h-ctx .ring { width: 14px; height: 14px; border-radius: 50%; flex: none; background: conic-gradient(var(--ah-accent) 0 8%, var(--ah-line-strong) 8% 100%); -webkit-mask: radial-gradient(circle, transparent 4px, #000 4.5px); mask: radial-gradient(circle, transparent 4px, #000 4.5px); }
+.h-model .m, .h-model .th { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.h-model .m { font-weight: 500; color: var(--ah-ink); }
+.h-icon {
+  flex: none; position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-width: var(--ah-control-row); height: var(--ah-control-row); padding: 0 6px; border: 0; border-radius: var(--ah-r-md);
+  background: transparent; color: var(--ah-muted); font: inherit; font-size: var(--ah-size-meta); cursor: pointer;
+}
+.h-icon:hover { background: var(--ah-hover); color: var(--ah-ink); }
+.h-icon svg.i { width: var(--ah-control-row-icon); height: var(--ah-control-row-icon); }
+.h-files .cnt { font-weight: 600; color: var(--ah-accent-ink); }
+.h-retitle svg { width: 17px; height: 17px; }
+.h-more, .h-burger { display: none; }
+.h-sep { flex: none; width: 1px; height: 18px; background: var(--ah-line); }
+.h-actions { display: contents; }
+
+/* Menu (⋯) */
+.h-menu {
+  position: absolute; z-index: 20; top: calc(100% - 4px); right: var(--ah-s2); width: min(320px, calc(100% - 16px));
+  padding: 6px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface);
+  box-shadow: var(--ah-shadow-menu); font-size: var(--ah-size-ui); display: none;
+}
+.hdr[data-menu="open"] .h-menu { display: block; animation: ah-appear var(--ah-appear) both; }
+.h-menu .full-title { margin: 4px 8px 6px; font-weight: 600; font-size: var(--ah-size-ui); }
+.h-menu .mi { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 4px 8px; border-radius: 6px; color: var(--ah-ink-2); }
+.h-menu .mi:hover { background: var(--ah-hover); }
+.h-menu .mi .k { width: 6.5rem; flex: none; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.h-menu .mi .v { min-width: 0; overflow-wrap: anywhere; display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.h-menu hr { border: 0; border-top: 1px solid var(--ah-line-soft); margin: 4px 0; }
+.h-menu .mono { font-family: var(--ah-mono); font-size: var(--ah-size-meta); }
+
+/* ---- Production chip look (Nykyinen, Aiempi) ---- */
+.prod .h-chip { border-color: var(--ah-control-line); }
+.prod .h-status { padding: 3px 10px; border-radius: var(--ah-r-pill); background: var(--ah-accent-soft); }
+.prod .h-git .br { max-width: 14ch; }
+.prod .h-model { max-width: min(240px, calc(var(--fw) * .35)); overflow: hidden; }
+
+/* Aiempi: one row, the title takes what the chips leave (before desktop-header-title-squeezed). */
+.cmp-old .top > .h-status { margin-left: auto; }
+
+/* Nykyinen: the header's own width decides (container query), as in production now. */
+.cmp-now { container: hdr / inline-size; }
+.cmp-now:not(.ph) .h-title { min-width: 33%; }
+.cmp-now:not(.ph) .top > :is(.h-ws, .h-git, .h-model) { flex: 0 1 auto; min-width: 4rem; }
+.cmp-now:not(.ph) .h-git { min-width: auto !important; }
+.cmp-now:not(.ph) .h-git .br { min-width: 2ch; }
+.cmp-now:not(.ph) .h-model { max-width: min(100%, 240px, calc(var(--fw) * .35)); }
+.cmp-now:not(.ph) .top > .h-status { margin-left: auto; }
+@container hdr (width < 80rem) {
+  .cmp-now:not(.ph) .top { flex-wrap: wrap; row-gap: var(--ah-s1); }
+  .cmp-now:not(.ph) .top::after { content: ""; order: 2; flex-basis: 100%; }
+  .cmp-now:not(.ph) .top > * { order: 3; }
+  .cmp-now:not(.ph) .top > :is(.h-title, .h-icon) { order: 1; }
+  .cmp-now:not(.ph) .top > .h-status { margin-left: 0; }
+  .cmp-now:not(.ph) .h-title { min-width: min(8rem, 100%); }
+  .cmp-now:not(.ph) .top > :is(.h-ws, .h-git, .h-model) { flex: 1 1 4rem; max-width: max-content; }
+}
+
+/* ---- Quiet chips (all three directions) ---- */
+.quiet .h-git .z { display: none; }
+.quiet .h-status { padding: 0 2px; }
+
+/* Phone, every variant: production's two rows (title, panels and menu; then state).
+   Directions 2 and 3 replace the second row; see below. */
+.ph .top { flex-wrap: wrap; gap: var(--ah-s2) var(--ah-control-gap); }
+.ph .top::after { content: ""; order: 2; flex-basis: 100%; }
+.ph .top > * { order: 3; }
+.ph .top > :is(.h-burger, .h-title, .h-editor, .h-terminal, .h-more) { order: 1; }
+.ph .top > :is(.h-ws, .h-retitle, .h-archive, .h-info, .h-sep) { display: none; }
+.ph .h-burger, .ph .h-more { display: inline-flex; }
+.ph .h-title { line-height: var(--ah-control-row); }
+/* The directions keep the file panel with the other panels on the first row. */
+.quiet.ph .top > .h-files { order: 1; }
+.ph .h-status .lbl { display: none; }
+.prod.ph .h-status { padding: var(--ah-s1); }
+.ph .top > .h-model { flex: 1 1 0; min-width: 0; max-width: max-content; overflow: hidden; }
+.ph .h-files .cnt { display: inline; }
+
+/* Direction 1 · Lyhenee paikallaan: levels applied in order until the title keeps its share. */
+.d1 .top.l1 .h-ws { display: none; }
+.d1.ph .h-model :is(.th, .bulb) { display: none; }
+.d1 .top.l2 .h-model :is(.th, .bulb) { display: none; }
+.d1 .top.l3 .h-status .lbl { display: none; }
+.d1 .top.l4 .h-ctx .pct { display: none; }
+.d1 .top.l5 .h-git .br { max-width: 12ch; }
+.d1 .top.l6 .h-git .br { display: none; }
+.d1 .top.l7 .h-model .m { max-width: 8ch; }
+.d1 .top.l8 :is(.h-retitle, .h-archive, .h-info) { display: none; }
+.d1 .top.l8 .h-more { display: inline-flex; }
+.d1 .top.l9 .h-files .cnt { display: none; }
+.d1 .top.l10 { gap: var(--ah-s1); }
+.d1 .top.l10 .h-sep { display: none; }
+.d1 .top.l11 .h-git .ab { display: none; }
+.d1 .top.l12 .h-model { display: none; }
+.ph .h-git .br { max-width: 12ch; }
+
+/* Direction 2 · Valikkoon: whole items leave the row for the ⋯ menu, in order. */
+.d2 .top .gone { display: none !important; }
+.d2 .top.more-on .h-more { display: inline-flex; }
+.d2.ph .top { flex-wrap: nowrap; }
+.d2.ph .top::after { display: none; }
+.d2.ph .top > :is(.h-ws, .h-git, .h-ctx, .h-model) { display: none; }
+.d2.ph .top > .h-status { order: 1; }
+
+/* Direction 3 · Kentän luo: the header keeps title, activity and actions; the
+   conversation's settings and Git sit in a quiet line under the field. */
+.d3 .top.l1 .h-status .lbl { display: none; }
+.d3 .top.l2 :is(.h-retitle, .h-archive, .h-info) { display: none; }
+.d3 .top.l2 .h-more { display: inline-flex; }
+.d3 .top.l3 .h-files .cnt { display: none; }
+.d3.ph .top { flex-wrap: nowrap; }
+.d3.ph .top::after { display: none; }
+.d3.ph .top > .h-status { order: 1; }
+.fstate {
+  max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin: 4px auto 0;
+  display: flex; align-items: center; gap: 2px; min-width: 0; overflow: hidden; padding-inline: 2px;
+}
+.fstate .h-chip { height: 24px; padding: 0 7px; color: var(--ah-muted); font-size: 12px; }
+.fstate .h-chip .m { color: var(--ah-ink-2); }
+.fstate .h-ws { padding: 0 7px; font-size: 12px; }
+.fstate .h-git .z { display: none; }
+.fstate .push { margin-left: auto; }
+.fstate.l1 .h-ws { display: none; }
+.fstate.l2 .h-git .br { max-width: 12ch; }
+.fstate.l3 .h-git .br { display: none; }
+.fstate.l4 .h-ctx .pct { display: none; }
+.fstate.l5 .h-model .th, .fstate.l5 .h-model .bulb { display: none; }
+</style>
+</head>
+<body>
+<div class="pc-bar" role="toolbar" aria-label="Prototyypin asetukset">
+  <div class="pc-group" data-k="w"><span>Ikkuna</span>
+    <button data-v="oma">Oma</button><button data-v="1024">1024</button><button data-v="1280">1280</button><button data-v="1600">1600</button><button data-v="1920">1920</button><button data-v="390">Puhelin</button>
+  </div>
+  <div class="pc-group" data-k="sb"><span>Sivupalkki</span><button data-v="1">Auki</button><button data-v="0">Kiinni</button></div>
+  <div class="pc-group" data-k="ed"><span>Editori</span><button data-v="0">Kiinni</button><button data-v="1">Auki</button></div>
+  <div class="pc-group" data-k="c"><span>Sisältö</span><button data-v="pitka">Pitkä</button><button data-v="lyhyt">Jarin kuva</button></div>
+  <div class="pc-group" data-k="t"><span>Teema</span><button data-v="dark">Tumma</button><button data-v="light">Vaalea</button></div>
+  <div class="pc-read" id="readout"></div>
+</div>
+<div id="viewport"><div id="sizer"><div id="frame"></div></div></div>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">1 Lyhenee</button>
+  <button class="proto-picker-item">2 Valikkoon</button>
+  <button class="proto-picker-item">3 Kentän luo</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item">Nykyinen</button>
+  <button class="proto-picker-item">Aiempi</button>
+</nav>
+
+<script>
+// ---- State (URL-backed so screenshots are reproducible) ----
+const q = new URLSearchParams(location.search);
+const S = {
+  w: q.get('w') || 'oma',
+  sb: q.get('sb') ?? '1',
+  ed: q.get('ed') ?? '0',
+  c: q.get('c') || 'pitka',
+  t: q.get('t') || 'dark',
+};
+if (q.get('bare') === '1') document.body.classList.add('bare');
+const VARIANTS = ['d1', 'd2', 'd3', 'now', 'old'];
+let V = 'd1';
+
+// Synthetic content. "lyhyt" is the content of Jari's screenshot (pilot.455).
+const CONTENT = {
+  pitka: {
+    title: 'Testikoneen muutosten läpikäynti ja otsakkeen tilanjako kapeassa keskustelusarakkeessa',
+    ws: 'aurinkokello-palvelin', branch: 'wt/korjaa-otsikkorivin-tilanjako-kapeassa-keskustelusarakkeessa',
+    up: 3, down: 0, dirty: 2, ctx: 8, model: 'Opus 5.5 (1M konteksti)', thinking: 'Medium', files: 10,
+  },
+  lyhyt: {
+    title: 'Testikoneen muutosten läpikäynti',
+    ws: 'open-habitat', branch: 'main', up: 1, down: 0, dirty: 0, ctx: 8, model: 'Opus 5.5', thinking: 'Medium', files: 10,
+  },
+};
+
+// Icons: production's Icon.tsx paths.
+const P = {
+  file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  editor: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16m5-11-2 3 2 3m3-6 2 3-2 3"/>',
+  terminal: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 8 4 4-4 4M14 16h3"/>',
+  archive: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v11h14V9M10 13h4"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',
+  branch: '<circle cx="7" cy="6" r="2"/><path d="M7 8v10M7 12c0 3 3 4 7 4"/><circle cx="17" cy="16" r="2"/>',
+  thinking: '<path d="M9 18h6m-6 3h6M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 2H9s0-1-1-2Z"/>',
+  more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  send: '<path d="M12 19V5m-6 6 6-6 6 6"/>',
+  home: '<path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  message: '<path d="M5 5h14v10H9l-4 4z"/>',
+};
+const ic = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+const retitleIcon = `<svg viewBox="0 0 24 24" aria-hidden="true" style="flex:none"><path fill="currentColor" d="M0.5 13.5 0.61 12.87 2.12 12.64 3.84 2.86 2.41 2.63 2.52 2H8L7.89 2.63L6.37 2.86L5.63 7.11H9.81L10.56 2.86L9.13 2.63L9.24 2H14.74L14.62 2.63L13.1 2.86L11.37 12.64L12.81 12.87L12.7 13.5H7.21L7.32 12.87L8.84 12.64L9.64 8.05H5.46L4.65 12.64L6.08 12.87L5.97 13.5Z"/><g transform="translate(12.5 12) scale(.5)" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></g></svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ---- Header pieces ----
+function pieces(d) {
+  const z = n => n === 0 ? ' z' : '';
+  return {
+    ws: `<a class="h-ws" data-k="ws" href="#" title="Avaa työtila ${esc(d.ws)}">${esc(d.ws)}</a>`,
+    status: `<span class="h-status" data-k="status" title="Työskentelee"><i class="dot"></i><span class="lbl">Työskentelee</span></span>`,
+    git: `<button class="h-chip h-git" data-k="git" title="${esc(d.branch)} · ${d.up} edellä, ${d.down} jäljessä, ${d.dirty} muuttunutta tiedostoa">${ic('branch')}<span class="br">${esc(d.branch)}</span><span class="ab"><span class="n${z(d.up)}">↑${d.up}</span><span class="n${z(d.down)}">↓${d.down}</span><span class="n${z(d.dirty)}">●${d.dirty}</span></span></button>`,
+    ctx: `<button class="h-chip h-ctx" data-k="ctx" title="Konteksti ${d.ctx} % käytössä"><i class="ring"></i><span class="pct">${d.ctx} %</span></button>`,
+    model: `<button class="h-chip h-model" data-k="model" title="${esc(d.model)} · ${esc(d.thinking)}"><span class="m">${esc(d.model)}</span>${ic('thinking', 'bulb')}<span class="th">${esc(d.thinking)}</span></button>`,
+    files: `<button class="h-icon h-files" data-k="files" aria-label="Tiedostot (${d.files})" title="Tiedostot">${ic('file')}<span class="cnt">${d.files}</span></button>`,
+    editor: `<button class="h-icon h-editor" data-k="editor" aria-label="Editori" title="Editori">${ic('editor')}</button>`,
+    terminal: `<button class="h-icon h-terminal" data-k="terminal" aria-label="Pääte" title="Pääte">${ic('terminal')}</button>`,
+    retitle: `<button class="h-icon h-retitle" data-k="retitle" aria-label="Uusi otsikko" title="Uusi otsikko">${retitleIcon}</button>`,
+    archive: `<button class="h-icon h-archive" data-k="archive" aria-label="Arkistoi" title="Arkistoi">${ic('archive')}</button>`,
+    info: `<button class="h-icon h-info" data-k="info" aria-label="Tiedot" title="Tiedot">${ic('info')}</button>`,
+    more: `<button class="h-icon h-more" data-act="more" aria-label="Keskustelun toiminnot" title="Lisää">${ic('more')}</button>`,
+    burger: `<button class="h-icon h-burger" aria-label="Valikko">${ic('menu')}</button>`,
+    sep: `<i class="h-sep" aria-hidden="true"></i>`,
+  };
+}
+
+// Menu rows: what the ⋯ menu holds for a given set of hidden keys.
+function menuRows(d, keys) {
+  const row = (k, v, cls = '') => `<div class="mi"><span class="k">${k}</span><span class="v ${cls}">${v}</span></div>`;
+  const out = [];
+  const st = [], ac = [];
+  if (keys.has('status')) st.push(row('Tila', '<span class="h-status"><i class="dot"></i>Työskentelee</span>'));
+  if (keys.has('ws')) st.push(row('Työtila', esc(d.ws), 'mono'));
+  if (keys.has('git')) st.push(row('Git', `<span class="mono">${esc(d.branch)}</span><span>↑${d.up} ↓${d.down} ●${d.dirty}</span>`));
+  if (keys.has('ctx')) st.push(row('Konteksti', `${d.ctx} % käytössä`));
+  if (keys.has('model')) st.push(row('Malli', `${esc(d.model)} · ${esc(d.thinking)}`));
+  if (keys.has('retitle')) ac.push(`<div class="mi">${retitleIcon.replace('<svg', '<svg width="16" height="16"')} Uusi otsikko</div>`);
+  if (keys.has('archive')) ac.push(`<div class="mi">${ic('archive')} Arkistoi</div>`);
+  if (keys.has('info')) ac.push(`<div class="mi">${ic('info')} Tiedot</div>`);
+  out.push(`<p class="full-title">${esc(d.title)}</p>`);
+  if (st.length) out.push('<hr>', ...st);
+  if (ac.length) out.push('<hr>', ...ac);
+  return out.join('');
+}
+
+function header(v, d, phone) {
+  const p = pieces(d);
+  const prod = v === 'now' || v === 'old';
+  const cls = ['hdr', v === 'now' ? 'cmp-now' : v === 'old' ? 'cmp-old' : v, prod ? 'prod' : 'quiet', phone ? 'ph' : ''].join(' ');
+  const title = `<h1 class="h-title" title="${esc(d.title)}">${esc(d.title)}</h1>`;
+  const actions = [p.files, p.editor, p.terminal, p.retitle, p.archive, p.info, p.more].join('');
+  let row;
+  if (v === 'd3') row = [p.burger, title, p.status, p.sep, actions].join('');
+  else if (prod) row = [p.burger, title, p.ws, p.status, p.git, p.ctx, p.model, actions].join('');
+  else row = [p.burger, title, p.ws, p.status, p.git, p.ctx, p.model, p.sep, actions].join('');
+  return `<header class="${cls}"><div class="top">${row}</div><div class="h-menu" role="menu">${menuRows(d, new Set(['ws', 'retitle', 'archive', 'info']))}</div></header>`;
+}
+
+function footState(d) {
+  const p = pieces(d);
+  return `<div class="fstate">${p.model}${p.ctx}<span class="push"></span>${p.ws}${p.git}</div>`;
+}
+
+const RAIL_CONVS = ['Testikoneen muutosten läpikäynti ja otsakkeen…', 'Status-skripti', 'Kuvien pakkaus WebP-muotoon', 'Varmuuskopioinnin ajastus'];
+function rail(open, d) {
+  if (!open) return `<nav class="rail collapsed">${['menu', 'home', 'plus'].map(n => `<span class="rail-icon">${ic(n)}</span>`).join('')}<span class="rail-icon cur">${ic('message')}</span></nav>`;
+  return `<nav class="rail"><div class="rail-head">${ic('menu')} Open Habitat</div>
+    <div class="rail-item">${ic('home')}<span>Koti</span></div>
+    <div class="rail-ws">${ic('branch')} ${esc(d.ws)}</div>
+    ${RAIL_CONVS.map((c, i) => `<div class="rail-item${i === 0 ? ' cur' : ''}">${i === 0 ? '<i class="sdot"></i>' : ''}<span>${esc(c)}</span></div>`).join('')}
+    <div class="rail-ws">${ic('branch')} kotisivu</div>
+    <div class="rail-item"><span>Ylläpitosivun teksti</span></div></nav>`;
+}
+
+const EDITOR = `<div class="editor"><div class="editor-head">${ic('file')} web/src/components/components.css</div><pre><span class="c">/* Desktop: the conversation column, not the window, decides. */</span>
+.ah-conversation-frame > .ah-agent-header {
+  container: <span class="s">conversation-header</span> / inline-size;
+}
+<span class="k">@media</span> (min-width: 801px) {
+  .ah-agent-topline .ah-title-row {
+    min-width: 33%;
+  }
+  <span class="k">@container</span> conversation-header (width &lt; 80rem) {
+    .ah-agent-topline {
+      flex-wrap: wrap;
+      row-gap: var(--ah-s1);
+    }
+  }
+}</pre></div>`;
+
+function stream(phone) {
+  return `<div class="stream"><div class="col">
+    <div class="msg-user">Käy läpi testikoneen muutokset ja kerro, mitkä otsakkeen sirut voisi tiivistää.</div>
+    <div class="msg-agent"><div class="work">Luki 6 tiedostoa · ajoi 2 komentoa</div>
+      <p>Otsakkeessa on kuusi tilatietoa: työtila, aktiviteetti, Git-haara laskureineen, konteksti, malli ja ajattelutaso. Niistä vain aktiviteetti muuttuu kesken vuoron.</p>
+      <p>Työtila näkyy jo sivupalkissa, ja Git-laskurit ovat useimmiten nollia. Ne ovat ensimmäiset ehdokkaat tiivistettäviksi.</p></div>
+    <div class="msg-user">Entä malli?</div>
+    <div class="msg-agent"><p>Malli ja ajattelutaso koskevat seuraavaa viestiä, joten ne kuuluvat lähelle kenttää tai ainakin näkyviin. Ajattelutason voi lyhentää ensin.</p></div>
+  </div></div>`;
+}
+
+function appHTML() {
+  const d = CONTENT[S.c] || CONTENT.pitka;
+  const phone = S.w === '390';
+  const ed = S.ed === '1' && !phone;
+  const r = phone ? '' : rail(S.sb === '1', d);
+  const fieldState = V === 'd3' ? footState(d) : '';
+  const conv = `<section class="conv"${ed ? ` style="width:${edWidth()}px"` : ''}>${header(V, d, phone)}${stream(phone)}
+    <div class="composer"><div class="field"><span class="ph">Kirjoita viesti…</span><span class="send">${ic('send')}</span></div>${fieldState}</div></section>`;
+  return `<div class="app${phone ? ' phone' : ''}">${r}<main class="main">${ed ? EDITOR : ''}${conv}</main></div>`;
+}
+
+// ---- Frame geometry ----
+const HEIGHTS = { 1024: 700, 1280: 800, 1600: 900, 1920: 1080, 390: 844 };
+const viewport = document.getElementById('viewport');
+const sizer = document.getElementById('sizer');
+const stage = document.getElementById('frame');
+function frameSize() {
+  if (S.w === 'oma') return { W: viewport.clientWidth, H: viewport.clientHeight };
+  return { W: +S.w, H: HEIGHTS[S.w] };
+}
+function edWidth() {
+  const { W } = frameSize();
+  const railW = S.sb === '1' ? 296 : 52;
+  const total = W - railW;
+  return Math.round(Math.min(640, Math.max(440, total * 0.3)));
+}
+function layoutFrame() {
+  const { W, H } = frameSize();
+  // Bare (screenshots): the window is the frame. Otherwise scale to fit above the picker.
+  const bare = document.body.classList.contains('bare');
+  const s = S.w === 'oma' || bare ? 1 : Math.min(1, (viewport.clientWidth - 24) / W, (viewport.clientHeight - 84) / H);
+  stage.style.width = W + 'px'; stage.style.height = H + 'px';
+  stage.style.transform = s < 1 ? `scale(${s})` : '';
+  stage.style.setProperty('--fw', W / 100 + 'px');
+  sizer.style.width = Math.round(W * s) + 'px'; sizer.style.height = Math.round(H * s) + 'px';
+  stage.dataset.theme = S.t;
+}
+
+// ---- Fitting: the title keeps at least 40 % of the row (or its whole text) ----
+const TITLE_SHARE = 0.4;
+function titleOk(top) {
+  const t = top.querySelector('.h-title');
+  if (!t) return true;
+  const need = Math.min(t.scrollWidth, top.clientWidth * TITLE_SHARE);
+  return t.clientWidth >= need - 1 && top.scrollWidth <= top.clientWidth + 1;
+}
+function levels(top, max, ok) {
+  const set = n => { for (let i = 1; i <= max; i++) top.classList.toggle('l' + i, i <= n); };
+  for (let n = 0; n <= max; n++) { set(n); if (ok(top)) return n; }
+  return max;
+}
+function fitD2(hdr, d) {
+  const top = hdr.querySelector('.top');
+  const order = ['ws', 'ctx', 'git', 'model', 'retitle', 'archive', 'info', '.lbl', '.cnt'];
+  const always = ['ws', 'retitle', 'archive', 'info'];
+  const phone = hdr.classList.contains('ph');
+  let hidden = [];
+  for (let n = 0; n <= order.length; n++) {
+    hidden = order.slice(0, n);
+    top.querySelectorAll('[data-k], .lbl, .cnt').forEach(el => el.classList.toggle('gone', hidden.includes(el.dataset.k) || hidden.includes('.' + el.classList[0])));
+    top.classList.toggle('more-on', n > 0);
+    if (phone || titleOk(top)) break;
+  }
+  const inMenu = new Set(phone ? ['status', 'ws', 'git', 'ctx', 'model', 'retitle', 'archive', 'info'] : hidden.filter(k => !k.startsWith('.')));
+  if (!phone) always.forEach(k => { if (hidden.includes(k)) inMenu.add(k); });
+  hdr.querySelector('.h-menu').innerHTML = menuRows(d, inMenu);
+  return hidden.length;
+}
+function afterRender() {
+  const hdr = stage.querySelector('.hdr');
+  if (!hdr) return;
+  const d = CONTENT[S.c] || CONTENT.pitka;
+  const top = hdr.querySelector('.top');
+  const phone = hdr.classList.contains('ph');
+  let lv = '';
+  if (V === 'd1' && !phone) lv = 'taso ' + levels(top, 12, titleOk);
+  if (V === 'd1') {
+    const hiddenKeys = new Set(['ws', 'retitle', 'archive', 'info']);
+    if (top.classList.contains('l11')) hiddenKeys.add('git');
+    if (top.classList.contains('l12')) hiddenKeys.add('model');
+    hdr.querySelector('.h-menu').innerHTML = menuRows(d, hiddenKeys);
+  }
+  if (V === 'd2') lv = 'valikossa ' + fitD2(hdr, d);
+  if (V === 'd3') {
+    if (!phone) lv = 'taso ' + levels(top, 3, titleOk);
+    const fs = stage.querySelector('.fstate');
+    if (fs) levels(fs, 5, el => el.scrollWidth <= el.clientWidth + 1);
+    hdr.querySelector('.h-menu').innerHTML = menuRows(d, new Set(['ws', 'retitle', 'archive', 'info']));
+  }
+  readout(lv);
+}
+function readout(lv) {
+  const hdr = stage.querySelector('.hdr');
+  const t = hdr.querySelector('.h-title');
+  const el = document.getElementById('readout');
+  const tw = Math.round(t.getBoundingClientRect().width / (stage.getBoundingClientRect().width / stage.offsetWidth));
+  el.innerHTML = `Otsikolle <b>${tw}</b> / ${t.scrollWidth} px · otsake <b>${hdr.offsetHeight}</b> px${lv ? ' · ' + lv : ''}`;
+  stage.dataset.titleWidth = t.clientWidth; stage.dataset.titleNatural = t.scrollWidth; stage.dataset.headerHeight = hdr.offsetHeight;
+}
+new MutationObserver(() => requestAnimationFrame(() => document.fonts.ready.then(afterRender))).observe(stage, { childList: true });
+
+// ---- Picker wiring (picker.js expects `stage` and `variants`) ----
+const variants = VARIANTS.map(v => () => { V = v; stage.dataset.variant = v; layoutFrame(); return appHTML(); });
+
+// Menu toggle inside the frame.
+stage.addEventListener('click', e => {
+  const b = e.target.closest('[data-act="more"]');
+  const hdr = stage.querySelector('.hdr');
+  if (b) { hdr.dataset.menu = hdr.dataset.menu === 'open' ? '' : 'open'; return; }
+  if (!e.target.closest('.h-menu') && hdr) hdr.dataset.menu = '';
+  if (e.target.closest('a')) e.preventDefault();
+});
+</script>
+<script>
+/*PICKER_JS*/
+</script>
+<script>
+// ---- Prototype controls ----
+function syncControls() {
+  document.querySelectorAll('.pc-group').forEach(g => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(S[g.dataset.k] === b.dataset.v))));
+}
+function rerender() {
+  const url = new URL(location);
+  for (const [k, v] of Object.entries(S)) url.searchParams.set(k, v);
+  history.replaceState(null, '', url);
+  syncControls();
+  stage.innerHTML = variants[current]();
+}
+document.querySelectorAll('.pc-group').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S[g.dataset.k] = b.dataset.v; rerender();
+}));
+let rz;
+window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(rerender); });
+syncControls();
+</script>
+</body>
+</html>

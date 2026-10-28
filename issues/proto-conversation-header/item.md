@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: proto-conversation-header
-preparation: ready
+preparation: pending
 provenance: chat
 source_ref: chat:2026-10-28/proto-conversation-header
 ---
