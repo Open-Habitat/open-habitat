@@ -114,12 +114,10 @@ func TestProcessPinnedPiBridgeAndWake(t *testing.T) {
 	case <-time.After(15 * time.Second):
 		t.Fatal("completion did not wake Pi")
 	}
-	c.mu.Lock()
-	active, state := s.runActive, s.state
-	c.mu.Unlock()
-	if !active || state != "accepted" {
-		t.Fatalf("native wake not working: active=%v state=%s", active, state)
-	}
+	// The provider call proves Pi started the wake turn, but drain reads Pi's
+	// agent_start frame on its own goroutine. The call is held until
+	// wakeRelease, so the run cannot settle before this observes it.
+	wait("native wake active", func() bool { c.mu.Lock(); defer c.mu.Unlock(); return s.runActive && s.state == "accepted" })
 	// Inventory queries do not prompt, steer or disturb the active model request.
 	inv = inventory()
 	if inv.Availability != "available" || calls.Load() != 3 {

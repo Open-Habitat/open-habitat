@@ -1,8 +1,8 @@
 ---
 created: 2026-10-28
-updated: 2026-10-28
+updated: 2026-10-29
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m61wz8039qbfn1xg421ds8m9/test-flake:process-pinned-pi-bridge-wake
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: gate-health
 lane_seq: 110
 preparation: ready
+closed: 2026-10-29
 ---
 
 # TestProcessPinnedPiBridgeAndWake fails under heavy load: native wake not active
