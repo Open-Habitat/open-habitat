@@ -123,23 +123,33 @@ export function railNow({
     // rest says so; liveness cannot, because a browser conversation's
     // reaped handle is still listed and so still counts as managed.
     const crashed = !turn && a.rest?.cause === "crash" && !a.rest.awake;
-    if (!turn && !live && !crashed) continue;
+    // The host's other failures: a turn that ended in an error, and a worker
+    // run that failed after the conversation last changed. Both stay in
+    // sight like a crash, and work that runs again is not failed any more.
+    const failure = observed.activity === "working" ? undefined : a.failure;
+    const failed = crashed || failure !== undefined;
+    if (!turn && !live && !failed) continue;
     const name = w.display_name ?? w.name;
-    const state = attention
-      ? "Uusi vastaus"
-      : facts.pendingQuestion
-        ? "Kysyy sinulta"
-        : crashed
-          ? "Pi kaatui"
-          : observed.activity === "working"
-            ? "Työskentelee"
-            : observed.activity === "waiting_background"
-              ? "Odottaa taustatyötä"
-              : observed.activity === "waiting"
-                ? "Odottaa viestiä"
-                : workerBusy
-                  ? "Worker työskentelee"
-                  : observed.activityLabel;
+    const state =
+      failure === "turn_error"
+        ? "Vuoro päättyi virheeseen"
+        : failure === "worker_failed"
+          ? "Worker epäonnistui"
+          : attention
+            ? "Uusi vastaus"
+            : facts.pendingQuestion
+              ? "Kysyy sinulta"
+              : crashed
+                ? "Pi kaatui"
+                : observed.activity === "working"
+                  ? "Työskentelee"
+                  : observed.activity === "waiting_background"
+                    ? "Odottaa taustatyötä"
+                    : observed.activity === "waiting"
+                      ? "Odottaa viestiä"
+                      : workerBusy
+                        ? "Worker työskentelee"
+                        : observed.activityLabel;
     const waits =
       observed.activity === "waiting_background" && a.waiting_on?.length
         ? a.waiting_on.map(waitingName).join(", ")
@@ -155,7 +165,7 @@ export function railNow({
       workspaceId: w.workspace_id,
       workspaceName: name,
       changedAt: Number.isFinite(changedAt) ? changedAt : undefined,
-      failed: crashed || undefined,
+      failed: failed || undefined,
       detail: [name, state, waits, presentation.operationLabel]
         .filter(Boolean)
         .join(" · "),
@@ -212,7 +222,7 @@ export function railNow({
       count.yours++;
     } else {
       running.push(model);
-      if (crashed) continue;
+      if (failed) continue;
       if (observed.activity === "working") count.working++;
       else if (observed.activity === "waiting_background") count.background++;
       else if (observed.activity === "waiting") count.waiting++;

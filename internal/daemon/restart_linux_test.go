@@ -96,6 +96,43 @@ func TestBranchScanSeesACutTurn(t *testing.T) {
 	}
 }
 
+// A turn ended in an error when the branch's last message is a reply the
+// provider failed; a retry's answer or the person's next prompt ends that.
+func TestBranchScanSeesAnErrorTurn(t *testing.T) {
+	line := func(id, parent, message string) string {
+		p := "null"
+		if parent != "" {
+			p = `"` + parent + `"`
+		}
+		if message == "" {
+			return `{"type":"session_info","id":"` + id + `","parentId":` + p + `,"timestamp":"2030-01-01T00:00:00Z","name":"otsikko"}`
+		}
+		return `{"type":"message","id":"` + id + `","parentId":` + p + `,"timestamp":"2030-01-01T00:00:00Z","message":` + message + `}`
+	}
+	prompt, answer, failed := `{"role":"user","content":"x"}`, `{"role":"assistant","stopReason":"stop"}`, `{"role":"assistant","stopReason":"error","errorMessage":"overloaded"}`
+	aborted, shell := `{"role":"assistant","stopReason":"aborted"}`, `{"role":"bashExecution","command":"git status"}`
+	stoppedTool := `{"role":"assistant","stopReason":"error","errorMessage":"This operation was aborted"}`
+	for _, tc := range []struct {
+		name  string
+		lines []string
+		error bool
+	}{
+		{"failed reply", []string{line("e1", "", prompt), line("e2", "e1", failed)}, true},
+		{"failed, then titled", []string{line("e1", "", prompt), line("e2", "e1", failed), line("e3", "e2", "")}, true},
+		{"failed, then the shell", []string{line("e1", "", prompt), line("e2", "e1", failed), line("e3", "e2", shell)}, true},
+		{"retried", []string{line("e1", "", prompt), line("e2", "e1", failed), line("e3", "e2", answer)}, false},
+		{"asked again", []string{line("e1", "", prompt), line("e2", "e1", failed), line("e3", "e2", prompt)}, false},
+		{"answered", []string{line("e1", "", prompt), line("e2", "e1", answer)}, false},
+		{"stopped by the person", []string{line("e1", "", prompt), line("e2", "e1", aborted)}, false},
+		{"stopped while a tool ran", []string{line("e1", "", prompt), line("e2", "e1", stoppedTool)}, false},
+		{"failed sibling branch", []string{line("e1", "", prompt), line("e2", "e1", failed), line("e3", "e1", answer)}, false},
+	} {
+		if got := scanBranch([]byte(strings.Join(tc.lines, "\n"))).turnError; got != tc.error {
+			t.Errorf("%s: turnError %v, want %v", tc.name, got, tc.error)
+		}
+	}
+}
+
 func validateHistoryPage(t *testing.T, page string) {
 	t.Helper()
 	python := os.Getenv("PYTHON")

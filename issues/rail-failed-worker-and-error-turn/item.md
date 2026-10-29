@@ -2,7 +2,7 @@
 created: 2026-10-29
 updated: 2026-10-29
 type: feature
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: taskfleet worker run sidebar-group-row-time
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: sidebar
 lane_seq: 2
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Rail failed ball for failed Taskfleet worker runs and error-ended turns

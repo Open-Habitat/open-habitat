@@ -409,6 +409,9 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 						if n := workingSpinoffs(taskRuns, session); n > 0 {
 							agent["spinoffs_working"] = n
 						}
+						if workerFailedUnseen(nativeHome, cfg.UID, taskRuns, session) {
+							agent["failure"] = "worker_failed"
+						}
 						switch processes[session.path] {
 						case "writer_present":
 							agent["process"] = "terminal_observed_live"
@@ -513,6 +516,33 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 		}
 		if controller != nil {
 			controller.mu.Unlock()
+		}
+		// A turn that ended in an error is read from the branch of a Pi that
+		// runs now, where the person can still act on it. The branch scan reads
+		// the whole file, so a closed conversation's is not read at all.
+		readable := map[string]nativeSession{}
+		for _, session := range sessions {
+			if session.state == "readable" {
+				readable["pi:"+session.id] = session
+			}
+		}
+		for _, raw := range agents {
+			agent := raw.(map[string]any)
+			session, ok := readable[agent["agent_id"].(string)]
+			if !ok || agent["process"] != "terminal_observed_live" && agent["process"] != "daemon_managed_live" {
+				continue
+			}
+			var scan branchScan
+			if facts != nil {
+				scan, ok = facts.sessions.branch(session.path, cfg.UID)
+			} else if b, read := readNativeBytes(session.path, cfg.UID); read {
+				scan = scanBranch(b)
+			} else {
+				ok = false
+			}
+			if ok && scan.turnError {
+				agent["failure"] = "turn_error"
+			}
 		}
 		// A place with conversations gets its Git summary, for the top bar's
 		// chip and the rail's merged mark, within its own bounded budget.

@@ -458,7 +458,8 @@ export interface AgentNavModel {
   historyLabel?: string;
   /** When the conversation last changed (the host's changed_at), Unix ms. */
   changedAt?: number;
-  /** The turn ended in a failure the person has to look at (Pi crashed). */
+  /** The work ended in a failure the person has to look at: Pi crashed, the
+   * turn ended in an error, or a worker run failed. */
   failed?: boolean;
   selected?: boolean;
   priority?: number; // caller ranks native state; navigation only presents it

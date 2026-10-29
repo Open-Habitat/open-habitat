@@ -497,6 +497,14 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 		s.longRun(run, emit)
 		return
 	}
+	// A provider that fails the turn: Pi saves the empty reply with
+	// stopReason "error" and the provider's message.
+	if strings.Contains(prompt, "virhevuoro") {
+		s.append(message("assistant", []map[string]any{}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "error", "errorMessage": "529 overloaded"}))
+		emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "error", "errorMessage": "529 overloaded"}})
+		emit(map[string]any{"type": "agent_end"})
+		return
+	}
 	// An abort ends the run as Pi's does: a streaming reply is saved with
 	// stopReason "aborted"; a running tool returns an error result, and the
 	// model request that follows it is saved empty as the pinned Pi saves it,

@@ -50,6 +50,9 @@ type branchScan struct {
 	// prompt, a tool call or a tool result the model never answered. Pi
 	// stopped in the middle of that work.
 	turnCut bool
+	// turnError says the branch's last message is a reply that ended in an
+	// error: the provider failed the turn and Pi gave up on it.
+	turnError bool
 }
 
 func scanBranchProcesses(b []byte) []branchProcess {
@@ -69,6 +72,7 @@ func scanBranch(b []byte) branchScan {
 		at           int64
 		message      bool // a conversation message, which ends (or not) a turn
 		open         bool // that message leaves its turn unfinished
+		failed       bool // that message is a reply the provider failed
 	}
 	facts := []fact{}
 	parents := map[string]string{}
@@ -84,11 +88,12 @@ func scanBranch(b []byte) branchScan {
 			CustomType string          `json:"customType"`
 			Details    json.RawMessage `json:"details"`
 			Message    *struct {
-				Role       string          `json:"role"`
-				ToolName   string          `json:"toolName"`
-				StopReason string          `json:"stopReason"`
-				CustomType string          `json:"customType"`
-				Details    json.RawMessage `json:"details"`
+				Role         string          `json:"role"`
+				ToolName     string          `json:"toolName"`
+				StopReason   string          `json:"stopReason"`
+				ErrorMessage string          `json:"errorMessage"`
+				CustomType   string          `json:"customType"`
+				Details      json.RawMessage `json:"details"`
 			} `json:"message"`
 		}
 		if json.Unmarshal(scanner.Bytes(), &e) != nil || e.Type == "session" || !entryIDPattern.MatchString(e.ID) {
@@ -113,6 +118,9 @@ func scanBranch(b []byte) branchScan {
 				f.message, f.open = true, true
 			case "assistant":
 				f.message, f.open = true, e.Message.StopReason == "toolUse"
+				// A stop while a tool runs is saved as an error; it is the
+				// person's abort, not a failure.
+				f.failed = piStopReason(e.Message.StopReason, e.Message.ErrorMessage) == "error"
 			}
 		}
 		switch {
@@ -191,7 +199,7 @@ func scanBranch(b []byte) branchScan {
 		}
 		scan.last = max(scan.last, f.at)
 		if f.message {
-			scan.turnCut = f.open
+			scan.turnCut, scan.turnError = f.open, f.failed
 		}
 		for _, key := range f.runs {
 			scan.runs[key] = true

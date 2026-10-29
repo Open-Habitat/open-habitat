@@ -134,6 +134,10 @@ export interface Agent {
   spinoffs_working?: number;
   /** Pi rests and the agent has not been told what happened meanwhile. */
   rest?: import("../components/RestartNotice").RestStop;
+  /** The work ended in a failure nobody has acted on: the last reply ended
+   * in an error (read while Pi runs), or an own Taskfleet run failed after
+   * the conversation last changed. */
+  failure?: "turn_error" | "worker_failed";
   waiting_on?: import("../components/agentPresentation").WaitingOn[];
   capabilities?: Record<string, { state: string; reason_code: string }>;
 }

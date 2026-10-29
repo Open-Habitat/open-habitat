@@ -542,6 +542,44 @@ func workingSpinoffs(runs []nativeSpinoff, parent nativeSession) int {
 	return n
 }
 
+// workerFailedUnseen says whether one of the conversation's own Taskfleet
+// runs failed after the conversation last changed. Neither the agent nor the
+// person has written to it since, so nobody has acted on the failure yet;
+// a parent that waits for the run is woken by its end and so moves on at once.
+// The time a run ended is its manifest's updated_at, which `run list` does
+// not carry; the manifest is read directly rather than through `run show` for
+// every failed run on every snapshot.
+func workerFailedUnseen(home string, uid int, runs []nativeSpinoff, parent nativeSession) bool {
+	changed, err := time.Parse(time.RFC3339Nano, parent.changedAt)
+	if err != nil {
+		return false
+	}
+	var dir *os.File
+	for _, r := range runs {
+		if !belongsSpinoff(r, parent) || spinoffState(r) != "failed" {
+			continue
+		}
+		if dir == nil {
+			if dir, err = os.Open(home); err != nil {
+				return false
+			}
+			defer dir.Close()
+		}
+		b, _, ok := readHomeFile(int(dir.Fd()), filepath.Join(".taskfleet", "runs", r.ID, "manifest.json"), uid, 1<<20, false, false)
+		var manifest struct {
+			Status    string `json:"status"`
+			UpdatedAt string `json:"updated_at"`
+		}
+		if !ok || json.Unmarshal(b, &manifest) != nil || manifest.Status != "failed" {
+			continue
+		}
+		if ended, err := time.Parse(time.RFC3339Nano, manifest.UpdatedAt); err == nil && ended.After(changed) {
+			return true
+		}
+	}
+	return false
+}
+
 func observedTaskfleetKind(kind string) bool {
 	switch kind {
 	case "spinoff", "research", "technical-decision", "fan-out":

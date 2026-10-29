@@ -371,6 +371,103 @@ func TestSnapshotChangedAtFollowsSessionFile(t *testing.T) {
 	}
 }
 
+func agentFailure(doc map[string]any, id string) string {
+	for _, raw := range doc["agents"].([]any) {
+		if a := raw.(map[string]any); a["agent_id"] == "pi:"+id {
+			failure, _ := a["failure"].(string)
+			return failure
+		}
+	}
+	return ""
+}
+
+// A conversation's own Taskfleet run that failed is news until the
+// conversation changes after the failure.
+func TestSnapshotFailureFollowsAFailedWorker(t *testing.T) {
+	f := newFactsHome(t)
+	work := filepath.Join(f.src, "work")
+	if err := os.Mkdir(work, 0700); err != nil {
+		t.Fatal(err)
+	}
+	id := "44444444-4444-4444-8444-444444444444"
+	path := writeSession(t, f.home, id, work, `{"type":"message","id":"m1","parentId":null,"timestamp":"2026-10-16T10:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"Tee työ"}]}}`)
+	touch := func(at time.Time) {
+		t.Helper()
+		if err := os.Chtimes(path, at, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	touch(time.Date(2026, 10, 16, 10, 0, 1, 0, time.UTC))
+	f.write(filepath.Join(f.home, ".local", "bin", "taskfleet"), "#!/bin/sh\ncat \"$HOME/taskfleet-list.json\"\n")
+	if err := os.Chmod(filepath.Join(f.home, ".local", "bin", "taskfleet"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	run := "01m52z7x908xeehvas4j6xrtj1"
+	manifest := filepath.Join(f.home, ".taskfleet", "runs", run, "manifest.json")
+	runs := func(status, updated string) {
+		t.Helper()
+		f.write(filepath.Join(f.home, "taskfleet-list.json"), `{"schema_version":1,"data":{"runs":[{"run_id":"`+run+`","kind":"spinoff","status":"`+status+`","source_repo":"`+work+`","created_by_session":{"harness":"pi","session_id":"`+id+`"}}]}}`)
+		f.write(manifest, `{"kind":"spinoff","status":"`+status+`","updated_at":"`+updated+`"}`)
+	}
+	runs("running", "2026-10-16T10:02:00Z")
+	if got := agentFailure(f.snapshot(), id); got != "" {
+		t.Fatalf("working run: failure %q", got)
+	}
+	runs("failed", "2026-10-16T10:05:00Z")
+	if got := agentFailure(f.snapshot(), id); got != "worker_failed" {
+		t.Fatalf("failed run: failure %q", got)
+	}
+	// The agent or the person wrote to the conversation after the failure.
+	touch(time.Date(2026, 10, 16, 10, 6, 0, 0, time.UTC))
+	if got := agentFailure(f.snapshot(), id); got != "" {
+		t.Fatalf("acted on: failure %q", got)
+	}
+	// A failure older than the conversation's last change is not news either.
+	runs("failed", "2026-10-16T09:00:00Z")
+	if got := agentFailure(f.snapshot(), id); got != "" {
+		t.Fatalf("old failure: failure %q", got)
+	}
+}
+
+// A running Pi whose last reply ended in an error has failed its turn; a
+// closed conversation's branch is not read for it.
+func TestSnapshotFailureFollowsAnErrorTurn(t *testing.T) {
+	f := newFactsHome(t)
+	work := filepath.Join(f.src, "work")
+	if err := os.Mkdir(work, 0700); err != nil {
+		t.Fatal(err)
+	}
+	id := "55555555-5555-4555-8555-555555555555"
+	prompt := `{"type":"message","id":"m1","parentId":null,"timestamp":"2026-10-16T10:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"Kysymys"}]}}`
+	failed := `{"type":"message","id":"m2","parentId":"m1","timestamp":"2026-10-16T10:00:02.000Z","message":{"role":"assistant","content":[],"stopReason":"error","errorMessage":"overloaded"}}`
+	path := writeSession(t, f.home, id, work, prompt, failed)
+	if got := agentFailure(f.snapshot(), id); got != "" {
+		t.Fatalf("closed conversation: failure %q", got)
+	}
+	// A writer holding the session file open is a Pi that runs.
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	holder := exec.Command("/bin/sleep", "30")
+	holder.ExtraFiles = []*os.File{file}
+	if err := holder.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = holder.Process.Kill(); _ = holder.Wait() })
+	doc := f.snapshot()
+	if got := agentFailure(doc, id); got != "turn_error" {
+		t.Fatalf("running Pi with a failed reply: failure %q, agents %v", got, doc["agents"])
+	}
+	if _, err := file.WriteString(`{"type":"message","id":"m3","parentId":"m2","timestamp":"2026-10-16T10:01:00.000Z","message":{"role":"user","content":[{"type":"text","text":"Uudestaan"}]}}` + "\n"); err != nil {
+		t.Fatal(err)
+	}
+	if got := agentFailure(f.snapshot(), id); got != "" {
+		t.Fatalf("asked again: failure %q", got)
+	}
+}
+
 // Taskfleet's listing is reused while its run records are unchanged; a new
 // node record hides its worktree container at once, and a supervisor's
 // heartbeat does not cost another listing.

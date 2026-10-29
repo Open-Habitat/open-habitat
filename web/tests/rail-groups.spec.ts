@@ -104,3 +104,33 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
     path: "test-results/evidence/rail-groups-phone.png",
   });
 });
+
+test("@rail-groups A turn that ended in an error is a failed row until the person writes again", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/conversations-reset");
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  const nav = page.getByTestId("workspace-navigation");
+  const running = nav.getByTestId("rail-running");
+  const id = await start(page);
+  const send = async (text: string) => {
+    await page.getByTestId("message-input").fill(text);
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+  };
+  await send("Tee virhevuoro");
+  const row = running.getByTestId(`agent-item-${id}`);
+  await expect(row).toHaveAttribute("data-ball", "fail", { timeout: 25000 });
+  await expect(row).toHaveAttribute(
+    "title",
+    /ordinary-dir · Vuoro päättyi virheeseen/,
+  );
+  // Writing again starts a new turn; its answer is done, not failed.
+  await send("Yritä uudestaan");
+  await expect(row).toHaveAttribute("data-ball", "done", { timeout: 25000 });
+});
