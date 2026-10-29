@@ -12,6 +12,7 @@ import {
   sendReceipt,
   status,
 } from "./conversations";
+import type { SendObservationValue } from "./sentMessages";
 import type { Snapshot, Workspace } from "./snapshot";
 import { useReadingPosition } from "./useReadingPosition";
 
@@ -55,10 +56,8 @@ export function useConversation({
   const next = windowView?.next;
   const [draftState, setDraftState] = useState({ key: "", value: "" });
   const [receipt, setReceipt] = useState("");
-  const [sendObservation, setSendObservation] = useState<{
-    text: string;
-    state: "pending" | "accepted" | "rejected" | "uncertain";
-  }>();
+  const [sendObservation, setSendObservation] =
+    useState<SendObservationValue>();
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
   // The HTTP send may still be held after a status/receipt read returns 404.
@@ -267,9 +266,10 @@ export function useConversation({
         | null) ?? undefined,
     );
     const text = sessionStorage.getItem(submittedKey);
+    const command = sessionStorage.getItem(uncertainKey);
     setSendObservation(
-      text !== null && sessionStorage.getItem(uncertainKey)
-        ? { text, state: "uncertain" }
+      text !== null && command
+        ? { text, state: "uncertain", command }
         : undefined,
     );
   }, [draftKey, continuationKey, submittedKey, uncertainKey]);
@@ -362,25 +362,31 @@ export function useConversation({
           const text = sessionStorage.getItem(submittedKey);
           // Do not let an older in-flight read settle a newer command.
           if (sessionStorage.getItem(sendKey) === command && text !== null) {
+            // What the send itself recorded (its kind) stays with the same
+            // command's later outcomes.
+            const same = (old?: SendObservationValue) =>
+              old?.command === command && old.text === text ? old : undefined;
             if (outcome === "accepted" || outcome === "rejected") {
-              setSendObservation({ text, state: outcome });
+              const state = outcome;
+              setSendObservation((old) => ({
+                ...same(old),
+                text,
+                command,
+                state,
+              }));
               setReceipt(outcome === "rejected" ? "Viesti hylättiin." : "");
               sessionStorage.removeItem(sendKey);
               sessionStorage.removeItem(uncertainKey);
               sessionStorage.removeItem(submittedKey);
-              if (
-                outcome === "accepted" &&
-                sessionStorage.getItem(draftKey) === text
-              )
-                changeDraft("");
-              if (outcome === "rejected" && !sessionStorage.getItem(draftKey))
-                changeDraft(text);
             } else {
               sessionStorage.setItem(uncertainKey, command);
-              setSendObservation({
+              const state = outcome === "pending" ? "pending" : "uncertain";
+              setSendObservation((old) => ({
+                ...same(old),
                 text,
-                state: outcome === "pending" ? "pending" : "uncertain",
-              });
+                command,
+                state,
+              }));
               setReceipt(
                 outcome === "pending"
                   ? "Viesti odottaa kuittausta. Tarkistetaan uudelleen."
@@ -467,14 +473,12 @@ export function useConversation({
       submittedKey,
       uncertainKey,
       continuationKey,
-      draftKey,
       captureAnchor,
       store,
       clearRetry,
       scheduleRetry,
       navigate,
       onLogin,
-      changeDraft,
     ],
   );
   latestRefresh.current = refresh;

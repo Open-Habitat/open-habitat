@@ -18,13 +18,16 @@ import {
   type Status,
   send,
 } from "./conversations";
+import type { HistoryEntry } from "./history";
 import { refusalReason, WriteRefused } from "./mutations";
+import {
+  type SendObservationValue as Observation,
+  type OwnSend,
+  type QueuedSend,
+  userKeys,
+} from "./sentMessages";
 import type { Workspace } from "./snapshot";
 
-type Observation = {
-  text: string;
-  state: "pending" | "accepted" | "rejected" | "uncertain";
-};
 /** One Stop press on a running turn. Its outcome is read from status: the
  * turn ending is the success, so success needs no message of its own. */
 export type StopAttempt = {
@@ -45,6 +48,7 @@ export function useConversationActions({
   ambiguous,
   busy,
   current,
+  entries,
   draft,
   receipt,
   sendObservation,
@@ -61,6 +65,8 @@ export function useConversationActions({
   setSendObservation,
   setConfirmStop,
   changeDraft,
+  onSent,
+  onQueued,
   refresh,
   onLogin,
   onSessionCreated,
@@ -73,6 +79,8 @@ export function useConversationActions({
   ambiguous: string | null;
   busy: boolean;
   current?: Status;
+  /** Native history as this page shows it. */
+  entries: HistoryEntry[];
   draft: string;
   receipt: string;
   sendObservation?: Observation;
@@ -89,6 +97,10 @@ export function useConversationActions({
   setSendObservation: Dispatch<SetStateAction<Observation | undefined>>;
   setConfirmStop: Dispatch<SetStateAction<boolean>>;
   changeDraft: (value: string) => void;
+  /** Draws a direct send as the person's message. */
+  onSent: (message: OwnSend) => void;
+  /** Draws a steering or follow-up message, or with `clear` drops them all. */
+  onQueued: (message: QueuedSend | "clear") => void;
   refresh: (proof?: boolean, history?: boolean) => Promise<void>;
   onLogin: () => void;
   onSessionCreated: (session: Session) => void;
@@ -161,7 +173,10 @@ export function useConversationActions({
       if (alive.current && !handedOff) setBusy(false);
     }
   };
-  const submit = async (text = draft) => {
+  // The text leaves the field at once and is drawn where it is going; a
+  // refused or unknown outcome gives it back (see sentMessages.ts). A message
+  // not typed in the field (the editor's note) keeps the draft.
+  const submit = async (text = draft, keepDraft = false) => {
     if (
       busy ||
       !current ||
@@ -185,7 +200,9 @@ export function useConversationActions({
       sessionStorage.setItem(sendKey, command);
       sessionStorage.setItem(uncertainKey, command);
       inFlightSend.current = command;
-      setSendObservation({ text, state: "pending" });
+      setSendObservation({ text, state: "pending", command, kind: "send" });
+      onSent({ command, text, before: userKeys(entries) });
+      if (!keepDraft) changeDraft("");
       setReceipt("Viesti odottaa kuittausta");
       await send(current.agent_id, text, command, token, firstChoice);
       inFlightSend.current = undefined;
@@ -198,11 +215,11 @@ export function useConversationActions({
       else if (alive.current && error instanceof NotAdmitted) {
         sessionStorage.removeItem(sendKey);
         sessionStorage.removeItem(uncertainKey);
-        setSendObservation({ text, state: "rejected" });
+        setSendObservation({ text, state: "rejected", command });
         setReceipt("Viesti hylättiin. Tarkista keskustelun tila.");
       } else if (alive.current) {
         sessionStorage.setItem(uncertainKey, command);
-        setSendObservation({ text, state: "uncertain" });
+        setSendObservation({ text, state: "uncertain", command });
         setReceipt(
           "Lähetysvirhe. Tarkistetaan alkuperäisen viestin kuittaus automaattisesti.",
         );
@@ -212,7 +229,11 @@ export function useConversationActions({
       if (alive.current) setBusy(false);
     }
   };
-  const submitQueue = async (kind: "steer" | "follow_up", text = draft) => {
+  const submitQueue = async (
+    kind: "steer" | "follow_up",
+    text = draft,
+    keepDraft = false,
+  ) => {
     if (
       busy ||
       !current ||
@@ -232,8 +253,17 @@ export function useConversationActions({
       if (!alive.current) return;
       sessionStorage.setItem(sendKey, command);
       sessionStorage.setItem(uncertainKey, command);
-      setSendObservation({ text, state: "pending" });
+      setSendObservation({ text, state: "pending", command, kind: "queue" });
       sessionStorage.setItem(submittedKey, text);
+      onQueued({
+        command,
+        kind,
+        text,
+        preexisting: entries
+          .filter((e) => e.kind === "user" && e.content?.text?.includes(text))
+          .map((e) => e.entry_key),
+      });
+      if (!keepDraft) changeDraft("");
       setReceipt("Viesti odottaa kuittausta");
       await queueMessage(current.agent_id, text, command, token, kind);
       if (alive.current) await refresh();
@@ -243,7 +273,7 @@ export function useConversationActions({
         sessionStorage.removeItem(sendKey);
         sessionStorage.removeItem(uncertainKey);
         sessionStorage.removeItem(submittedKey);
-        setSendObservation({ text, state: "rejected" });
+        setSendObservation({ text, state: "rejected", command });
         if (alive.current) {
           setReceipt(
             "Tila muuttui. Viestiä ei lähetetty. Tarkista keskustelun tila.",
@@ -255,7 +285,7 @@ export function useConversationActions({
         (error as Error).message !== "identity_lost"
       ) {
         sessionStorage.setItem(uncertainKey, command);
-        setSendObservation({ text, state: "uncertain" });
+        setSendObservation({ text, state: "uncertain", command });
         setReceipt(
           "Lähetysvirhe. Tarkistetaan alkuperäisen viestin kuittaus automaattisesti.",
         );
@@ -300,6 +330,9 @@ export function useConversationActions({
         ...removed.follow_up,
       ].join("\n\n");
       if (restored) changeDraft(draft ? `${draft}\n\n${restored}` : restored);
+      // Pi's answer is the whole truth about its queue now; a delivered
+      // message this tab still drew is in native history or soon will be.
+      onQueued("clear");
       if (current.queue)
         setRestoredQueue({
           id: current.agent_id,

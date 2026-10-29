@@ -146,6 +146,9 @@ test("@lab composer: Enter steers, Alt+Enter queues, the chip swaps, and the que
   await expect(
     page.getByTestId("composer-mode").and(page.locator('[data-mode="steer"]')),
   ).toBeVisible();
+  // The card shows a message before its command's reply; the field's
+  // controls come back once the reply has.
+  await expect(page.getByTestId("attach-file")).toBeEnabled();
   // The chip is reached by keyboard and swaps the mode; the next Enter goes that way.
   await field.focus();
   for (const testId of [
@@ -190,6 +193,8 @@ test("@lab composer: Esc in the field stops Pi and puts the queue back into the 
   await expect(page.getByTestId("composer-queue")).toContainText(
     "Tarkista myös README.",
   );
+  // The card shows it before the command's reply; Stop waits for that.
+  await expect(page.getByTestId("attach-file")).toBeEnabled();
   await field.focus();
   await field.press("Escape");
   await expect(field).toHaveValue("Tarkista myös README.");

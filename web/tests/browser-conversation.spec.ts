@@ -520,7 +520,12 @@ for (const outcome of ["pending", "rejected", "uncertain"] as const) {
       .getByTestId("send")
       .and(page.locator('[data-mode="send"]'))
       .click();
-    await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
+    // A pending message is drawn as the person's message on its way.
+    const observation =
+      outcome === "pending"
+        ? page.locator('[data-testid="message"][data-delivery="pending"]')
+        : page.locator(`.ah-send-${outcome}`);
+    await expect(observation).toBeVisible();
     await expectPhoneComposerWithinViewport(page);
     if (outcome === "uncertain") {
       await expect(
@@ -535,7 +540,15 @@ for (const outcome of ["pending", "rejected", "uncertain"] as const) {
     expect(sends).toBe(1);
     const before = lookups;
     await refreshConversation(page);
-    await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
+    if (outcome === "pending")
+      // Pi's history may show it by now; either way it is drawn once.
+      await expect(
+        page
+          .getByTestId("conversation-timeline")
+          .getByTestId("user-content")
+          .filter({ hasText: "Synteettinen pending" }),
+      ).toHaveCount(1);
+    else await expect(observation).toBeVisible();
     expect(lookups).toBe(before); // matching status receipt avoids an extra request
     // The page still polls status. Let intercepted fetches finish before
     // Playwright disposes their responses during page teardown.
@@ -695,7 +708,10 @@ test("@browser-conversation in-flight send remains pending through missing recei
     .and(page.locator('[data-mode="send"]'))
     .click();
   await entered;
-  await expect(page.locator(".ah-send-pending")).toBeVisible();
+  await expect(
+    page.locator('[data-testid="message"][data-delivery="pending"]'),
+  ).toBeVisible();
+  await expect(page.getByTestId("message-input")).toHaveValue("");
   await refreshConversation(page);
   await missingReceipt;
   await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
@@ -1029,6 +1045,118 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
     count: 0,
     visible: false,
   });
+});
+
+/** Samples every frame where the person can see a text: the field, Pi's
+ * queue card and the conversation. */
+async function sampleText(page: import("@playwright/test").Page, text: string) {
+  await page.evaluate((t) => {
+    const w = window as unknown as {
+      samples: { field: boolean; queue: boolean; shown: number }[];
+    };
+    w.samples = [];
+    const tick = () => {
+      const field = document.querySelector<HTMLTextAreaElement>(
+        '[data-testid="message-input"]',
+      );
+      w.samples.push({
+        field: !!field?.value.includes(t),
+        queue: [
+          ...document.querySelectorAll('[data-testid="composer-queue"] li'),
+        ].some((e) => e.textContent?.includes(t)),
+        shown: [
+          ...document.querySelectorAll(
+            '[data-testid="conversation-timeline"] [data-testid="user-content"]',
+          ),
+        ].filter((e) => e.textContent?.includes(t)).length,
+      });
+      requestAnimationFrame(tick);
+    };
+    tick();
+  }, text);
+  return async () =>
+    (await page.evaluate(
+      () => (window as unknown as { samples: unknown[] }).samples,
+    )) as { field: boolean; queue: boolean; shown: number }[];
+}
+test("@browser-conversation a sent message is shown at once and never twice", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
+  const send = page.getByTestId("send").and(page.locator('[data-mode="send"]'));
+  await editor.fill("ensimmäinen vuoro");
+  await send.click();
+  await expectNativeContent(page, 'Selvä. Kysyit: "ensimmäinen vuoro".', {
+    timeout: 20000,
+  });
+  // Pi runs and is idle: a direct send. Pi's own record of the message
+  // reaches the page only after a debounced invalidation and a history read.
+  await editor.fill("toinen vuoro");
+  await expect(send).toBeEnabled({ timeout: 20000 });
+  const samples = await sampleText(page, "toinen vuoro");
+  // Hold every native history read: the message must not wait for one.
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/agents/*/history?*", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await send.click();
+  try {
+    await expect(
+      page
+        .getByTestId("conversation-timeline")
+        .getByTestId("user-content")
+        .filter({ hasText: "toinen vuoro" }),
+    ).toBeVisible({ timeout: 2000 });
+    await expect(editor).toHaveValue("");
+  } finally {
+    release();
+  }
+  await expectNativeContent(page, 'Selvä. Kysyit: "toinen vuoro".', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId("send-pending")).toHaveCount(0);
+  const seen = await samples();
+  // From the press on, the text is always in view and never in the
+  // conversation twice, and it leaves the field for the conversation.
+  expect(seen.filter((s) => !s.field && !s.queue && !s.shown)).toEqual([]);
+  expect(seen.filter((s) => s.shown > 1)).toEqual([]);
+  expect(seen.at(-1)).toEqual({ field: false, queue: false, shown: 1 });
+  expect(seen.filter((s) => s.field && s.shown)).toEqual([]);
+});
+test("@browser-conversation a steering message stays in view until Pi's record shows it", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
+  await editor.fill("hidas päätyö");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  const steer = page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="steer"]'));
+  await expect(steer).toBeVisible();
+  await editor.fill("ohjaus matkalla");
+  const samples = await sampleText(page, "ohjaus matkalla");
+  await steer.click();
+  // Pi delivers it at its next step; until then it is in Pi's queue card.
+  await expectNativeContent(page, 'Selvä. Kysyit: "ohjaus matkalla".', {
+    timeout: 30000,
+  });
+  const seen = await samples();
+  expect(seen.filter((s) => !s.field && !s.queue && !s.shown)).toEqual([]);
+  expect(seen.filter((s) => s.shown > 1)).toEqual([]);
+  expect(seen.at(-1)).toEqual({ field: false, queue: false, shown: 1 });
 });
 
 test("@browser-conversation a refused or unknown stop says so once and Stop works again", async ({
@@ -2502,8 +2630,15 @@ test("@browser-conversation queued command with pending ack stays pending withou
   ).toBeVisible();
   await editor.fill("jonoon vain kerran");
   await editor.press("Alt+Enter");
-  await expect(page.locator(".ah-send-pending")).toBeVisible();
+  // Pending, it waits in Pi's queue card and is not given back as unknown.
+  await expect(
+    page
+      .getByTestId("composer-queue")
+      .getByRole("listitem")
+      .filter({ hasText: "jonoon vain kerran" }),
+  ).toBeVisible();
   await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
+  await expect(editor).toHaveValue("");
   expect(queues).toBe(1);
 });
 

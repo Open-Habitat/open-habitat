@@ -17,6 +17,7 @@ import {
   HeldStartFailure,
   InlineNotice,
   SendObservation,
+  UserMessage,
   WaitingMessage,
   WorkingProgress,
 } from "../components";
@@ -107,6 +108,7 @@ import { useRest } from "./rest";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
+import { useSentMessages, shownQueue as withSentQueue } from "./sentMessages";
 import { latestSettings } from "./sessionSettings";
 import { settingsHref } from "./settingsRoute";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
@@ -419,13 +421,27 @@ function BrowserConversationContent({
     setModelExpanded(false);
     setChipOpen(false);
   }, [workspace.workspace_id, id]);
+  const {
+    own: ownMessage,
+    onSent,
+    queued,
+    onQueued,
+  } = useSentMessages({
+    scope: `${identity}:${id ?? ""}`,
+    entries,
+    queue: current?.queue,
+    sendObservation,
+    draft,
+    changeDraft,
+  });
   useReadingPositionLayout({
     entries,
     live,
     // The queue card above the field changes the reading area's height.
     queueOpen:
       (current?.queue?.steering.length ?? 0) +
-        (current?.queue?.follow_up.length ?? 0) >
+        (current?.queue?.follow_up.length ?? 0) +
+        queued.length >
       0,
     receipt,
     problem,
@@ -769,6 +785,7 @@ function BrowserConversationContent({
     ambiguous,
     busy,
     current,
+    entries,
     draft,
     receipt,
     sendObservation,
@@ -785,6 +802,8 @@ function BrowserConversationContent({
     setSendObservation,
     setConfirmStop,
     changeDraft,
+    onSent,
+    onQueued,
     refresh,
     onLogin,
     onSessionCreated,
@@ -888,8 +907,8 @@ function BrowserConversationContent({
     rest.onSend();
     if (notStarted)
       held.submit(text, canChooseFirstModel ? modelChoice : undefined, true);
-    else if (tellWorking) void submitQueue(workingMode, text);
-    else void submit(text);
+    else if (tellWorking) void submitQueue(workingMode, text, true);
+    else void submit(text, true);
   };
   // Kerro agentille on an ended worker's row: this conversation started it.
   // A request during a turn waits as a follow-up; a steer would redirect
@@ -944,12 +963,14 @@ function BrowserConversationContent({
       : stopAttemptHere?.phase;
   // Queue texts already restored into the field are not shown again from a
   // status read that predates their removal.
-  const shownQueue =
+  const shownQueue = withSentQueue(
     current?.queue &&
-    restoredQueue?.id === current.agent_id &&
-    restoredQueue.revision === current.queue.revision
+      restoredQueue?.id === current.agent_id &&
+      restoredQueue.revision === current.queue.revision
       ? { ...current.queue, steering: [], follow_up: [] }
-      : current?.queue;
+      : current?.queue,
+    queued,
+  );
   const queueRestoreAvailability =
     !busy &&
     !ambiguous &&
@@ -1960,7 +1981,10 @@ function BrowserConversationContent({
                   : // A live turn ends the start page even before its
                     // native history is read; otherwise the intro would stay
                     // above it and keep the view from following the work.
-                    entries.length || held.waiting.length || liveRow
+                    entries.length ||
+                      held.waiting.length ||
+                      liveRow ||
+                      ownMessage
                     ? "ready"
                     : "empty"
               }
@@ -1969,26 +1993,55 @@ function BrowserConversationContent({
                 ...(restCard
                   ? [{ id: "rest-card", kind: "receipt", content: restCard }]
                   : []),
-                ...(sendObservation
+                ...(ownMessage
                   ? [
                       {
-                        id: "send-observation",
-                        kind: "receipt",
+                        id: `sent:${ownMessage.command}`,
+                        kind: "user",
                         content: (
-                          <SendObservation
-                            text={sendObservation.text}
-                            state={sendObservation.state}
-                            showText
+                          <UserMessage
+                            delivery={
+                              ownMessage.pending ? "pending" : "accepted"
+                            }
+                            sourceText={ownMessage.text}
+                            deliveryState={
+                              ownMessage.pending ? "Lähetetään" : undefined
+                            }
                             onCopy={() =>
                               void navigator.clipboard?.writeText(
-                                sendObservation.text,
+                                ownMessage.text,
                               )
                             }
                           />
                         ),
                       },
                     ]
-                  : []),
+                  : sendObservation &&
+                      // The bubble or the queue card shows a message on its
+                      // way; a reload knows only that one is.
+                      !(
+                        sendObservation.kind &&
+                        sendObservation.state === "pending"
+                      )
+                    ? [
+                        {
+                          id: "send-observation",
+                          kind: "receipt",
+                          content: (
+                            <SendObservation
+                              text={sendObservation.text}
+                              state={sendObservation.state}
+                              showText
+                              onCopy={() =>
+                                void navigator.clipboard?.writeText(
+                                  sendObservation.text,
+                                )
+                              }
+                            />
+                          ),
+                        },
+                      ]
+                    : []),
                 ...held.waiting.map((w) => ({
                   id: `held:${w.command_id}`,
                   kind: "user",

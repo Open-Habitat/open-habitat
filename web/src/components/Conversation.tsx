@@ -146,9 +146,12 @@ function Message({
   stateKind = "neutral",
   replyComplete = false,
   interim = false,
+  delivery,
   onCopy,
 }: {
   speaker: string;
+  /** A message this page sent that Pi's history does not show yet. */
+  delivery?: "pending" | "accepted";
   /** The person's own message, which a worker's view gives to the main agent. */
   person?: boolean;
   interim?: boolean;
@@ -173,6 +176,7 @@ function Message({
       data-testid="message"
       data-reply-complete={replyComplete || undefined}
       data-interim={interim || undefined}
+      data-delivery={delivery}
       data-voice={voice === "person" ? undefined : voice}
       className={`ah-message${replyComplete ? " ah-message-reply" : ""}${interim ? " ah-message-reply ah-message-interim" : ""}${stateTone === "danger" || stateTone === "warning" || stateAnimated ? " ah-message-alert" : ""}`}
     >
@@ -213,9 +217,11 @@ export function UserMessage({
   time,
   deliveryState,
   deliveryTone = "neutral",
+  delivery,
   onCopy,
 }: {
   sourceText: string;
+  delivery?: "pending" | "accepted";
   skill?: ReactNode;
   children?: ReactNode;
   time?: string;
@@ -243,6 +249,7 @@ export function UserMessage({
       time={time}
       state={deliveryState}
       stateTone={deliveryTone}
+      delivery={delivery}
       onCopy={onCopy}
     >
       {skill}
