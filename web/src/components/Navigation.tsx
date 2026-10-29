@@ -13,6 +13,7 @@ import { Icon } from "./Icon";
 import { NoticeAreaProvider, NoticeSlot } from "./NoticeArea";
 import { Menu } from "./Overlays";
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
+import { relativeRecapAge, useMinuteNow } from "./RecapCard";
 import type { StatusKind } from "./Status";
 import { Badge, StatusMark } from "./Status";
 import type { AsyncState, Availability, Tone } from "./types";
@@ -268,6 +269,8 @@ export function NavLink({
   compactMark,
   leading,
   detail,
+  oneLine = false,
+  end,
 }: {
   label: string;
   href: string;
@@ -281,6 +284,10 @@ export function NavLink({
   leading?: ReactNode;
   /** A second line under the label: where the row lives and what it waits for. */
   detail?: string;
+  /** Keep the row to one line: the detail is said, not shown. */
+  oneLine?: boolean;
+  /** A short fact at the end of the line, such as the time. */
+  end?: ReactNode;
 }) {
   const statusId = useId();
   const detailId = useId();
@@ -300,7 +307,14 @@ export function NavLink({
       href={href}
     >
       {leading}
-      {detail ? (
+      {detail && oneLine ? (
+        <>
+          <span className="ah-nav-label">{label}</span>
+          <span className="ah-visually-hidden" id={detailId}>
+            {detail}
+          </span>
+        </>
+      ) : detail ? (
         <span className="ah-nav-text">
           <span className="ah-nav-label">{label}</span>
           <span className="ah-nav-detail" id={detailId}>
@@ -368,6 +382,7 @@ export function NavLink({
           ))}
         </span>
       ) : null}
+      {end}
       {badgeText ? <Badge label={badgeText} tone="warning" /> : null}
     </LinkRow>
   );
@@ -421,7 +436,10 @@ export interface AgentNavModel {
   attentionLabel?: string;
   operationLabel?: string;
   historyLabel?: string;
-  relativeTime?: string;
+  /** When the conversation last changed (the host's changed_at), Unix ms. */
+  changedAt?: number;
+  /** The turn ended in a failure the person has to look at (Pi crashed). */
+  failed?: boolean;
   selected?: boolean;
   priority?: number; // caller ranks native state; navigation only presents it
   finished?: boolean;
@@ -436,11 +454,84 @@ export interface AgentNavModel {
   worktree?: { merged: boolean };
   /** The agent has asked the person something and waits for the answer. */
   question?: boolean;
-  /** The second line of a row outside its workspace (Sinun vuorosi, Käynnissä). */
+  /** What the row says about itself beyond its title: workspace, state and
+   * what it waits for. The one-line row says it but does not show it. */
   detail?: string;
-  /** The workspace's name, for the narrow rail's initials. */
+  /** The workspace the row is grouped under in Käynnissä. */
+  workspaceId?: string;
+  /** The workspace's name, for the group heading and the narrow rail. */
   workspaceName?: string;
 }
+/** The rail's state ball (research-workmux-sidebar round 3, Ryhmät tiiviinä):
+ * working includes waiting on background work, your turn is a question or an
+ * unread reply, done waits for a message, failed needs a look. */
+export type BallKind = "work" | "you" | "done" | "fail" | "unknown";
+const ballLabels: Record<BallKind, string> = {
+  work: "Työskentelee",
+  you: "Sinun vuorosi",
+  done: "Valmis",
+  fail: "Epäonnistui",
+  unknown: "Tila ei tiedossa",
+};
+export function ballOf(
+  agent: Pick<
+    AgentNavModel,
+    | "failed"
+    | "attentionLabel"
+    | "question"
+    | "activity"
+    | "activityLabel"
+    | "spinoffWorking"
+  >,
+): BallKind {
+  if (agent.failed) return "fail";
+  if (agent.attentionLabel || agent.question) return "you";
+  const activity =
+    agent.activity ??
+    (/työ|käynnissä|working/i.test(agent.activityLabel)
+      ? "working"
+      : /odot|waiting/i.test(agent.activityLabel)
+        ? "waiting"
+        : undefined);
+  if (
+    activity === "working" ||
+    activity === "waiting_background" ||
+    agent.spinoffWorking
+  )
+    return "work";
+  if (activity === "waiting" || activity === "closed") return "done";
+  return "unknown";
+}
+function Ball({ kind }: { kind: BallKind }) {
+  return (
+    <span
+      className={`ah-nav-mark ah-ball ah-ball-${kind}`}
+      aria-hidden="true"
+      title={ballLabels[kind]}
+    />
+  );
+}
+/** The row's short age of its last change: nyt, 4 min, 2 t, 3 pv. */
+export function changeAge(at: number, now: number): string {
+  const minutes = Math.max(0, Math.floor((now - at) / 60000));
+  if (minutes < 1) return "nyt";
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} t`;
+  return `${Math.floor(hours / 24)} pv`;
+}
+/** Done and untouched for over an hour: nobody is on it right now. */
+const quietAfter = 60 * 60 * 1000;
+function quiet(agent: AgentNavModel, now: number) {
+  return (
+    ballOf(agent) === "done" &&
+    agent.changedAt !== undefined &&
+    now - agent.changedAt >= quietAfter &&
+    !agent.selected
+  );
+}
+/** One line: the state ball, the title and the time since the last change.
+ * Everything else about the row is in its description and tooltip. */
 export function AgentNavItem({
   agentId,
   href,
@@ -451,7 +542,8 @@ export function AgentNavItem({
   attentionLabel,
   operationLabel,
   historyLabel,
-  relativeTime,
+  changedAt,
+  failed,
   selected = false,
   depth = 0,
   presence = "present",
@@ -461,8 +553,20 @@ export function AgentNavItem({
   worktree,
   question = false,
   detail,
-}: AgentNavModel) {
-  const statusParts = [
+  now = Date.now(),
+}: AgentNavModel & { now?: number }) {
+  const ball = ballOf({
+    failed,
+    attentionLabel,
+    question,
+    activity,
+    activityLabel,
+    spinoffWorking,
+  });
+  const age = changedAt !== undefined ? changeAge(changedAt, now) : undefined;
+  const said = [
+    pendingLabel,
+    detail ?? activityLabel,
     worktree
       ? worktree.merged
         ? "Worktree-agentti, työ yhdistetty"
@@ -470,96 +574,60 @@ export function AgentNavItem({
       : null,
     spinoffWorking ? "Worker työskentelee" : null,
     controlLabel,
-    operationLabel,
+    detail ? null : operationLabel,
     historyLabel,
     stale ? "Tieto vanhentunut" : null,
     presence === "absent" ? "Ei enää löydy" : null,
-  ].filter(Boolean);
-  // A pending command is the first thing said about the row.
-  const status = [pendingLabel, activityLabel, ...statusParts]
+    changedAt !== undefined ? relativeRecapAge(changedAt, now) : null,
+  ]
     .filter(Boolean)
     .join(" · ");
-  const mark = agentMark({
-    pendingLabel,
-    attentionLabel,
-    question,
-    activity,
-    activityLabel,
-  });
   return (
     <li
       data-testid={`agent-item-${agentId}`}
+      data-ball={ball}
+      title={`${title} · ${said}`}
       data-waiting={activity === "waiting_background"}
       data-has-history-warning={Boolean(historyLabel)}
       className={`ah-agent-item${spinoffWorking ? " ah-waiting-spinoff" : ""}${pendingLabel ? " ah-pending-item" : ""}`}
       style={{ "--ah-depth": depth } as React.CSSProperties}
     >
       <ListRow
-        className="ah-sidebar-agent-row"
-        trailing={
-          relativeTime || spinoffWorking ? (
-            <>
-              {relativeTime ? <time>{relativeTime}</time> : null}
-              {spinoffWorking ? <SpinoffWorkingMark /> : null}
-            </>
-          ) : undefined
-        }
+        className="ah-sidebar-agent-row ah-now-row"
+        trailing={spinoffWorking ? <SpinoffWorkingMark /> : undefined}
       >
         <NavLink
           href={href}
           label={title}
           current={selected ? "page" : false}
-          statusText={status || undefined}
-          displayStatusText={mark}
-          compactMark
-          detail={detail}
+          detail={said}
+          oneLine
           leading={
-            worktree ? (
-              <Icon
-                name={worktree.merged ? "merge" : "worktree"}
-                className={`ah-nav-worktree${worktree.merged ? " merged" : ""}`}
-                aria-hidden="true"
-              />
+            <>
+              <Ball kind={ball} />
+              {worktree ? (
+                <Icon
+                  name={worktree.merged ? "merge" : "worktree"}
+                  className={`ah-nav-worktree${worktree.merged ? " merged" : ""}`}
+                  aria-hidden="true"
+                />
+              ) : null}
+            </>
+          }
+          end={
+            age !== undefined && changedAt !== undefined ? (
+              <time
+                className="ah-nav-time"
+                dateTime={new Date(changedAt).toISOString()}
+              >
+                {age}
+              </time>
             ) : undefined
           }
         />
       </ListRow>
     </li>
   );
-}
-function agentMark({
-  pendingLabel,
-  attentionLabel,
-  question,
-  activity,
-  activityLabel,
-}: Pick<
-  AgentNavModel,
-  "pendingLabel" | "attentionLabel" | "question" | "activity" | "activityLabel"
->) {
-  return pendingLabel
-    ? "…"
-    : attentionLabel
-      ? "●"
-      : question
-        ? "?"
-        : activity
-          ? (
-              {
-                working: "◌",
-                waiting: "○",
-                waiting_background: "◉",
-                closed: "✓",
-                unknown: "–",
-              } as const
-            )[activity]
-          : /työ|käynnissä|working/i.test(activityLabel)
-            ? "◌"
-            : /odot|waiting/i.test(activityLabel)
-              ? "○"
-              : /valmis|päättynyt|finished/i.test(activityLabel)
-                ? "✓"
-                : "–";
 }
 /** A sub-agent at work: the trunk stays, only the branch and its end pulse. */
 function SpinoffWorkingMark() {
@@ -660,14 +728,17 @@ function initials(name: string) {
     .slice(0, 2)
     .toLocaleUpperCase("fi");
 }
-/** A narrow rail's agent: its workspace's initials and its activity mark. */
+/** A narrow rail's agent: its workspace's initials and its state ball. */
 function NowDot(agent: AgentNavModel) {
-  const mark = agentMark(agent);
-  const status = [agent.pendingLabel, agent.detail ?? agent.activityLabel]
+  const ball = ballOf(agent);
+  const status = [
+    agent.pendingLabel,
+    agent.detail ?? agent.activityLabel ?? ballLabels[ball],
+  ]
     .filter(Boolean)
     .join(" · ");
   return (
-    <li data-testid={`agent-item-${agent.agentId}`}>
+    <li data-testid={`agent-item-${agent.agentId}`} data-ball={ball}>
       <LinkRow
         kind="nav"
         current={agent.selected}
@@ -679,12 +750,139 @@ function NowDot(agent: AgentNavModel) {
         <span className="ah-now-dot-letters" aria-hidden="true">
           {initials(agent.workspaceName ?? agent.title)}
         </span>
-        <NavMark mark={mark} />
+        <Ball kind={ball} />
         <span className="ah-visually-hidden">
           {agent.title}: {status}
         </span>
       </LinkRow>
     </li>
+  );
+}
+const quietWord = (n: number) => `${n} ${n === 1 ? "hiljainen" : "hiljaista"}`;
+/** Opens and closes a folded part of Käynnissä; the fold is the tab's view. */
+function FoldToggle({
+  testId,
+  open,
+  onToggle,
+  label,
+  count,
+  workspace = false,
+}: {
+  testId: string;
+  open: boolean;
+  onToggle: () => void;
+  label: string;
+  count?: number;
+  workspace?: boolean;
+}) {
+  return (
+    <li>
+      <ControlButton
+        data-testid={testId}
+        size="inline"
+        variant="quiet"
+        className={`ah-now-fold${workspace ? " ah-now-fold-workspace" : ""}`}
+        aria-expanded={open}
+        onPress={onToggle}
+      >
+        <span aria-hidden="true" className="ah-disclosure-chevron" />
+        <span className="ah-now-fold-label">{label}</span>
+        {count !== undefined ? (
+          <span className="ah-rail-count">{count}</span>
+        ) : null}
+      </ControlButton>
+    </li>
+  );
+}
+/** Käynnissä grouped by workspace (Ryhmät): done rows quiet for over an hour
+ * fold to the end of their group, and a workspace where everything is quiet
+ * sinks under Hiljaiset. The open conversation and a failed one never fold. */
+function RunningGroups({
+  running,
+  now,
+}: {
+  running: AgentNavModel[];
+  now: number;
+}) {
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const toggle = (key: string) => setOpen((o) => ({ ...o, [key]: !o[key] }));
+  const groups = new Map<string, { name: string; rows: AgentNavModel[] }>();
+  for (const agent of running) {
+    const key = agent.workspaceId ?? agent.workspaceName ?? "";
+    const group = groups.get(key) ?? {
+      name: agent.workspaceName ?? "",
+      rows: [],
+    };
+    group.rows.push(agent);
+    groups.set(key, group);
+  }
+  const ordered = [...groups.entries()].sort(([, a], [, b]) =>
+    a.name.localeCompare(b.name, "fi"),
+  );
+  const live = ordered.filter(([, g]) => g.rows.some((a) => !quiet(a, now)));
+  const dormant = ordered.filter(([, g]) => g.rows.every((a) => quiet(a, now)));
+  const row = (agent: AgentNavModel) => (
+    <AgentNavItem key={agent.agentId} {...agent} now={now} />
+  );
+  return (
+    <>
+      {live.map(([key, g]) => {
+        const shown = g.rows.filter((a) => !quiet(a, now));
+        const hidden = g.rows.filter((a) => quiet(a, now));
+        const fold = `q:${key}`;
+        return (
+          <div
+            key={key}
+            className="ah-now-group"
+            data-testid={`rail-group-${g.name}`}
+          >
+            <h3 className="ah-now-group-head">
+              <span className="ah-now-group-name">{g.name}</span>
+              <span className="ah-rail-count">{g.rows.length}</span>
+            </h3>
+            <ul>
+              {shown.map(row)}
+              {hidden.length ? (
+                <FoldToggle
+                  testId={`rail-fold-quiet-${g.name}`}
+                  open={!!open[fold]}
+                  onToggle={() => toggle(fold)}
+                  label={quietWord(hidden.length)}
+                />
+              ) : null}
+              {hidden.length && open[fold] ? hidden.map(row) : null}
+            </ul>
+          </div>
+        );
+      })}
+      {dormant.length ? (
+        <>
+          <p className="ah-now-rule" data-testid="rail-quiet-rule">
+            <span>Hiljaiset · yli tunnin</span>
+          </p>
+          <ul data-testid="rail-quiet">
+            {dormant.map(([key, g]) => {
+              const fold = `d:${key}`;
+              return (
+                <li key={key} className="ah-now-dormant">
+                  <ul>
+                    <FoldToggle
+                      testId={`rail-fold-dormant-${g.name}`}
+                      open={!!open[fold]}
+                      onToggle={() => toggle(fold)}
+                      label={g.name}
+                      count={g.rows.length}
+                      workspace
+                    />
+                    {open[fold] ? g.rows.map(row) : null}
+                  </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : null}
+    </>
   );
 }
 /** What needs the person and what runs now, across every workspace (the
@@ -700,6 +898,7 @@ export function NowSections({
 }) {
   const yoursId = useId();
   const runningId = useId();
+  const now = useMinuteNow();
   if (collapsed)
     return (
       <div className="ah-now-dots">
@@ -735,7 +934,7 @@ export function NowSections({
         {yours.length ? (
           <ul>
             {yours.map((agent) => (
-              <AgentNavItem key={agent.agentId} {...agent} />
+              <AgentNavItem key={agent.agentId} {...agent} now={now} />
             ))}
           </ul>
         ) : (
@@ -754,11 +953,7 @@ export function NowSections({
           ) : null}
         </h2>
         {running.length ? (
-          <ul>
-            {running.map((agent) => (
-              <AgentNavItem key={agent.agentId} {...agent} />
-            ))}
-          </ul>
+          <RunningGroups running={running} now={now} />
         ) : (
           <p className="ah-now-empty">Mikään ei ole käynnissä.</p>
         )}

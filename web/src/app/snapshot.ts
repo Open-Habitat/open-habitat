@@ -110,6 +110,8 @@ export interface Agent {
   /** The conversation runs in this worktree place of the workspace. */
   worktree_id?: string;
   started_at?: string;
+  /** When the conversation last changed: its Pi session file's mtime. */
+  changed_at?: string;
   archive?: "active" | "archived" | "unknown";
   observation_token?: string;
   history: "readable" | "missing" | "corrupt" | "unavailable";

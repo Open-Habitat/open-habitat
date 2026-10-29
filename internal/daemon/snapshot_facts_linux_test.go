@@ -328,6 +328,49 @@ func TestSnapshotSessionFactsFollowSessionFiles(t *testing.T) {
 	}
 }
 
+func agentChanged(doc map[string]any, id string) string {
+	for _, raw := range doc["agents"].([]any) {
+		if a := raw.(map[string]any); a["agent_id"] == "pi:"+id {
+			changed, _ := a["changed_at"].(string)
+			return changed
+		}
+	}
+	return ""
+}
+
+// A conversation's last change is its session file's modification time, and
+// the next snapshot after Pi appends to the file carries the new time.
+func TestSnapshotChangedAtFollowsSessionFile(t *testing.T) {
+	f := newFactsHome(t)
+	if err := os.Mkdir(filepath.Join(f.src, "work"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	id := "33333333-3333-4333-8333-333333333333"
+	path := writeSession(t, f.home, id, filepath.Join(f.src, "work"), `{"type":"message","id":"m1","parentId":null,"timestamp":"2026-10-16T10:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"Kysymys"}]}}`)
+	earlier := time.Date(2026, 10, 16, 10, 0, 1, 0, time.UTC)
+	if err := os.Chtimes(path, earlier, earlier); err != nil {
+		t.Fatal(err)
+	}
+	if got := agentChanged(f.snapshot(), id); got != "2026-10-16T10:00:01Z" {
+		t.Fatalf("changed_at %q", got)
+	}
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.WriteString(`{"type":"session_info","id":"i1","parentId":"m1","timestamp":"2026-10-16T10:05:00.000Z","name":"Nimi"}` + "\n"); err != nil {
+		t.Fatal(err)
+	}
+	file.Close()
+	later := earlier.Add(5 * time.Minute)
+	if err := os.Chtimes(path, later, later); err != nil {
+		t.Fatal(err)
+	}
+	if got := agentChanged(f.snapshot(), id); got != "2026-10-16T10:05:01Z" {
+		t.Fatalf("changed_at after append %q", got)
+	}
+}
+
 // Taskfleet's listing is reused while its run records are unchanged; a new
 // node record hides its worktree container at once, and a supervisor's
 // heartbeat does not cost another listing.

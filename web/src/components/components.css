@@ -4795,15 +4795,147 @@ h2.ah-rail-section-head {
   color: var(--ah-muted);
   font-size: 12px;
 }
-/* Two lines: the title, then its workspace, state and what it waits for.
-   The mark leads, as in the accepted prototype. */
+/* One line (Ryhmät tiiviinä, Aika): the state ball, the title and the time
+   since the last change. Workspace, state and what it waits for are in the
+   row's description and tooltip. On the phone the row is a thumb's height. */
 .ah-now .ah-sidebar-agent-row,
 .ah-now .ah-sidebar-agent-row .ah-nav-link {
   height: auto;
 }
 .ah-now .ah-sidebar-agent-row .ah-nav-link {
-  align-items: flex-start;
-  padding-block: 5px;
+  min-height: 24px;
+  padding: 0 8px 0 12px;
+  font-size: 13px;
+}
+.ah-agent-item[data-ball="done"] .ah-nav-link {
+  color: var(--ah-ink-2);
+}
+.ah-nav-time {
+  flex: none;
+  color: var(--ah-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.ah-rail .ah-ball {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ah-faint);
+}
+/* Working pulses with a halo: teal and green are close in a still image. */
+.ah-rail .ah-ball-work {
+  background: var(--ah-accent);
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--ah-accent) 28%, transparent);
+  animation: ah-pulse var(--ah-pulse);
+}
+.ah-rail .ah-ball-you {
+  background: var(--ah-turn);
+}
+.ah-rail .ah-ball-done {
+  background: var(--ah-ok);
+}
+/* Failed is a diamond: red and green are close for many eyes. */
+.ah-rail .ah-ball-fail {
+  border-radius: 1px;
+  background: var(--ah-err);
+  transform: scale(0.9) rotate(45deg);
+}
+/* Unknown is an open ring, so it is never read as one of the four states. */
+.ah-rail .ah-ball-unknown {
+  box-sizing: border-box;
+  border: 1.5px solid var(--ah-faint);
+  background: transparent;
+}
+.ah-now-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  margin-top: 2px;
+}
+.ah-now-group + .ah-now-group {
+  margin-top: 4px;
+}
+/* The workspace stays in sight while its group scrolls past. */
+.ah-now-group-head {
+  position: sticky;
+  top: -8px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 5px 8px 1px;
+  background: var(--ah-rail);
+  color: var(--ah-ink-2);
+  font: 600 12px var(--ah-mono);
+}
+.ah-now-group-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-now-group > ul {
+  gap: 0;
+}
+.ah-rail .ah-now-fold.ah-button {
+  --i-bg: transparent;
+  --i-fg: var(--ah-muted);
+  --i-hover: var(--ah-hover);
+  --i-hover-fg: var(--ah-ink-2);
+  --i-pressed: var(--ah-hover);
+  --i-pressed-fg: var(--ah-ink-2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 24px;
+  padding: 0 8px 0 12px;
+  border: 0;
+  border-radius: var(--ah-r-nav);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+}
+.ah-now-fold-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-now-fold-workspace .ah-now-fold-label {
+  font-family: var(--ah-mono);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: A fold's chevron is the small one of the rail's group toggles. */
+.ah-now-fold .ah-disclosure-chevron {
+  width: 5px;
+  height: 5px;
+}
+.ah-now-rule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 8px 2px;
+  color: var(--ah-muted);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.ah-now-rule::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--ah-line);
+}
+@media (max-width: 800px) {
+  .ah-now .ah-sidebar-agent-row .ah-nav-link {
+    min-height: 40px;
+    font-size: 14px;
+  }
+  .ah-rail .ah-now-fold.ah-button {
+    min-height: 36px;
+  }
 }
 .ah-sidebar-agent-row .ah-nav-link > span.ah-nav-text {
   flex: 1 1 auto;
@@ -4826,9 +4958,6 @@ h2.ah-rail-section-head {
   font-size: var(--ah-size-meta);
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.ah-now .ah-nav-worktree {
-  margin-top: 3px;
 }
 .ah-rail .ah-nav-question {
   display: inline-grid;
@@ -4915,6 +5044,9 @@ h2.ah-rail-section-head {
   right: 0;
   bottom: 2px;
   transform: scale(0.85);
+}
+.ah-rail .ah-now-dot .ah-ball-fail {
+  transform: scale(0.8) rotate(45deg);
 }
 /* The phone's menu button says when something waits for the person. */
 .ah-navigation-open {

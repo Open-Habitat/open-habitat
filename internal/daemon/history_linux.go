@@ -51,6 +51,10 @@ type nativeHeader struct {
 }
 type nativeSession struct {
 	id, cwd, path, revision, state, startedAt string
+	// changedAt is the session file's modification time: Pi appends every
+	// entry to it, so it is when the conversation last changed. Only
+	// discovery's header read sets it.
+	changedAt string
 	entries                                   []historyEntry
 	boundaryFound, olderComplete              bool
 	cutOff                                    bool
@@ -217,7 +221,7 @@ func readNativeHeader(path string, uid int) nativeSession {
 	if info.Size() > maxHistoryFile {
 		state = "unavailable"
 	}
-	return nativeSession{id: h.ID, cwd: h.Cwd, path: path, state: state, startedAt: nativeTimestamp(h.Timestamp), revision: opaque("rev_", fmt.Sprintf("%d:%d:%d", info.Size(), info.ModTime().UnixNano(), info.Mode()))}
+	return nativeSession{id: h.ID, cwd: h.Cwd, path: path, state: state, startedAt: nativeTimestamp(h.Timestamp), changedAt: info.ModTime().UTC().Format(time.RFC3339Nano), revision: opaque("rev_", fmt.Sprintf("%d:%d:%d", info.Size(), info.ModTime().UnixNano(), info.Mode()))}
 }
 
 // A concurrent append can change size/mtime during one read. Retry once;
@@ -916,6 +920,9 @@ func sessionFactTitled(s nativeSession, wsid, prompt, name string) map[string]an
 	fact := map[string]any{"agent_id": "pi:" + s.id, "workspace_id": wsid, "observation_token": opaque("obs_", s.id+":"+s.revision), "presence": "present", "history": s.state, "process": "unknown", "control": "read_only", "activity": "unknown", "capabilities": map[string]any{"agent_resume": map[string]string{"state": "unsupported", "reason_code": "read_only_slice"}}, "title": map[string]any{"display": title, "source": source, "generation_state": "not_requested", "replaceable": true}, "queue": map[string]any{"revision": opaque("qr_", s.id), "steering": []string{}, "follow_up": []string{}}, "live_tail": []any{}, "history_query": "/api/v1/agents/pi:" + s.id + "/history"}
 	if s.startedAt != "" {
 		fact["started_at"] = s.startedAt
+	}
+	if s.changedAt != "" {
+		fact["changed_at"] = s.changedAt
 	}
 	return fact
 }

@@ -632,6 +632,10 @@
         "started_at": {
           "$ref": "common.schema.json#/$defs/timestamp"
         },
+        "changed_at": {
+          "description": "When the conversation last changed: the modification time of its Pi session file, to which Pi appends every entry. Absent when the conversation has no session file yet.",
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
         "run_active": {
           "type": "boolean"
         },

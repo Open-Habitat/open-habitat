@@ -29,8 +29,8 @@ export interface RailNow {
 
 /**
  * Sorts the visible workspaces' live conversations into the rail's Sinun
- * vuorosi and Käynnissä. Catalog order is kept within each group: the host
- * knows no last-activity time, and a row that jumps on every turn is harder
+ * vuorosi and Käynnissä. Catalog order is kept within each group even though
+ * each row carries its last change: a row that jumps on every turn is harder
  * to hit than one that stays.
  */
 export function railNow({
@@ -114,33 +114,44 @@ export function railNow({
     const workerBusy = (a.spinoffs_working ?? 0) > 0;
     const live =
       (observed.running && observed.activity !== "closed") || workerBusy;
-    if (!turn && !live) continue;
+    // Pi ended unasked: the conversation rests until the person writes, and
+    // stays in Käynnissä as failed so it is not silently gone. The snapshot's
+    // rest says so; liveness cannot, because a browser conversation's
+    // reaped handle is still listed and so still counts as managed.
+    const crashed = !turn && a.rest?.cause === "crash" && !a.rest.awake;
+    if (!turn && !live && !crashed) continue;
     const name = w.display_name ?? w.name;
     const state = attention
       ? "Uusi vastaus"
       : facts.pendingQuestion
         ? "Kysyy sinulta"
-        : observed.activity === "working"
-          ? "Työskentelee"
-          : observed.activity === "waiting_background"
-            ? "Odottaa taustatyötä"
-            : observed.activity === "waiting"
-              ? "Odottaa viestiä"
-              : workerBusy
-                ? "Worker työskentelee"
-                : observed.activityLabel;
+        : crashed
+          ? "Pi kaatui"
+          : observed.activity === "working"
+            ? "Työskentelee"
+            : observed.activity === "waiting_background"
+              ? "Odottaa taustatyötä"
+              : observed.activity === "waiting"
+                ? "Odottaa viestiä"
+                : workerBusy
+                  ? "Worker työskentelee"
+                  : observed.activityLabel;
     const waits =
       observed.activity === "waiting_background" && a.waiting_on?.length
         ? a.waiting_on.map(waitingName).join(", ")
         : "";
     const pendingLabel = closing.has(a.agent_id) ? "Suljetaan…" : undefined;
+    const changedAt = a.changed_at ? Date.parse(a.changed_at) : Number.NaN;
     const model: AgentNavModel = {
       agentId: a.agent_id,
       href: browserOwned(a, daemonSessions)
         ? `/workspaces/${w.workspace_id}?conversation=${a.agent_id}`
         : `/agents/${a.agent_id}`,
       title: a.title.display,
+      workspaceId: w.workspace_id,
       workspaceName: name,
+      changedAt: Number.isFinite(changedAt) ? changedAt : undefined,
+      failed: crashed || undefined,
       detail: [name, state, waits, presentation.operationLabel]
         .filter(Boolean)
         .join(" · "),
@@ -189,6 +200,7 @@ export function railNow({
       count.yours++;
     } else {
       running.push(model);
+      if (crashed) continue;
       if (observed.activity === "working") count.working++;
       else if (observed.activity === "waiting_background") count.background++;
       else if (observed.activity === "waiting") count.waiting++;

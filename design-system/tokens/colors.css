@@ -39,6 +39,8 @@
 
   --ah-ok: #2f7a55;
   --ah-ok-soft: #eef7f1;
+  /* Sinun vuorosi: the rail's ball for a question or an unread reply. */
+  --ah-turn: #b8740b;
   --ah-err: #a3412b;
   --ah-err-soft: #fdf1ee;
   --ah-err-line: #f3d7d0;
@@ -95,6 +97,7 @@
 
   --ah-ok: #8fcfa8;
   --ah-ok-soft: #1b2721;
+  --ah-turn: #eab04e;
   --ah-err: #e8a08a;
   --ah-err-soft: #261c1b;
   --ah-err-line: #4a2e28;

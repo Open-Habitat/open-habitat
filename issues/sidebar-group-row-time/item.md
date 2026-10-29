@@ -3,12 +3,13 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: sidebar
 lane_seq: 1
 collision: [web/src/components/Navigation.tsx]
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Compact Ryhmät sidebar row with state ball and time
@@ -21,6 +22,6 @@ Implement the compact Ryhmät sidebar row from `research-workmux-sidebar` round 
 
 ## Acceptance Criteria
 
-- [ ] One-line rows with state ball and relative time, desktop and phone.
-- [ ] The time comes from a native fact (no new store); updates live.
-- [ ] Browser spec; KOKEILTAVAA line.
+- [x] One-line rows with state ball and relative time, desktop and phone.
+- [x] The time comes from a native fact (no new store); updates live.
+- [x] Browser spec; KOKEILTAVAA line.

@@ -101,6 +101,58 @@ describe("rail Nyt groups", () => {
     expect(now.running[2].detail).toContain("npm test");
   });
 
+  it("carries the host's last change and keeps a crashed Pi in sight as failed", () => {
+    const now = run([
+      agent("idle", {
+        run_active: false,
+        changed_at: "2026-10-29T10:00:00.000Z",
+      }),
+      agent("crashed", {
+        process: "not_observed",
+        rest: { cause: "crash", at: "2026-10-29T10:05:00Z" },
+      }),
+      agent("rested", {
+        process: "not_observed",
+        rest: { cause: "idle", at: "2026-10-29T10:05:00Z" },
+      }),
+    ]);
+    expect(ids(now.running)).toEqual(["idle", "crashed"]);
+    expect(now.running[0].changedAt).toBe(Date.parse("2026-10-29T10:00:00Z"));
+    expect(now.running[0].workspaceName).toBe("kotisivu");
+    expect(now.running[0].failed).toBeUndefined();
+    expect(now.running[1].changedAt).toBeUndefined();
+    expect(now.running[1].failed).toBe(true);
+    expect(now.running[1].detail).toContain("Pi kaatui");
+    // A failed row is not live work in its workspace's hint.
+    expect(now.hints.get("ws_example00")?.count).toBe(1);
+  });
+
+  it("shows a crashed browser conversation as failed though its handle is listed", () => {
+    const crashed = agent("browser", {
+      run_active: false,
+      capabilities: {
+        agent_resume: { state: "supported", reason_code: "browser_origin" },
+      },
+      rest: { cause: "crash", at: "2026-10-29T10:05:00Z" },
+    });
+    const listed = (rest: Agent["rest"]) =>
+      run([{ ...crashed, rest }], {
+        sessions: [
+          {
+            agent_id: "browser",
+            workspace_id: "ws_example00",
+            state: "stopped",
+          },
+        ],
+      }).running;
+    expect(listed(crashed.rest)[0].failed).toBe(true);
+    // Woken by the person's typing, Pi is up again: not failed any more.
+    expect(
+      listed({ cause: "crash", at: "2026-10-29T10:05:00Z", awake: true })[0]
+        .failed,
+    ).toBeUndefined();
+  });
+
   it("keeps the rows through a lost connection without claiming they work", () => {
     const now = run([agent("working", { run_active: true })], {
       phase: "stale",

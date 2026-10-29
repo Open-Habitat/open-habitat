@@ -2,7 +2,14 @@ import { fireEvent, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { agentPresentation } from "./agentPresentation";
-import { AgentHeader, AgentNavItem } from "./Navigation";
+import {
+  AgentHeader,
+  AgentNavItem,
+  type AgentNavModel,
+  ballOf,
+  changeAge,
+  NowSections,
+} from "./Navigation";
 
 const longTitle =
   "Keskustelu pitkästä aiheesta ja sen eri vaiheista sekä kaikista tähän liittyvistä muutoksista";
@@ -218,24 +225,23 @@ describe("rail activity marks", () => {
       </MemoryRouter>,
     );
   };
-  it("maps a working turn to the working dot, not a glyph", () => {
+  const ball = (view: ReturnType<typeof row>) =>
+    view.container.querySelector(".ah-ball")?.className ?? "";
+  it("maps a working turn to the working ball", () => {
     const view = row({ process: "daemon_managed_live", runActive: true });
-    const mark = view.container.querySelector(".ah-nav-mark");
-    expect(mark?.classList.contains("ah-nav-working")).toBe(true);
-    expect(mark?.textContent).toBe("");
+    expect(ball(view)).toContain("ah-ball-work");
+    expect(view.container.querySelector(".ah-ball")?.textContent).toBe("");
 
     const link = view.getByRole("link");
     expect(
       document.getElementById(link.getAttribute("aria-describedby") ?? ""),
     ).toBeTruthy();
   });
-  it("keeps waiting as the ring glyph", () => {
+  it("shows a turn that ended, waiting for a message, as done", () => {
     const view = row({ process: "daemon_managed_live", runActive: false });
-    const mark = view.container.querySelector(".ah-nav-mark");
-    expect(mark?.classList.contains("ah-nav-working")).toBe(false);
-    expect(mark?.textContent).toBe("○");
+    expect(ball(view)).toContain("ah-ball-done");
   });
-  it("gives a background wait its own still dot", () => {
+  it("counts a background wait as working", () => {
     const view = row({
       process: "daemon_managed_live",
       command: "idle",
@@ -243,10 +249,7 @@ describe("rail activity marks", () => {
         { process_id: "p", name: "testit", kind: "process", run_ids: [] },
       ],
     });
-    const mark = view.container.querySelector(".ah-nav-mark");
-    expect(mark?.classList.contains("ah-nav-background")).toBe(true);
-    expect(mark?.classList.contains("ah-nav-working")).toBe(false);
-    expect(mark?.textContent).toBe("");
+    expect(ball(view)).toContain("ah-ball-work");
     expect(view.container.querySelector('[data-waiting="true"]')).toBeTruthy();
   });
   it("pulses only the branch of a working spinoff's mark", () => {
@@ -262,5 +265,107 @@ describe("rail activity marks", () => {
     expect(
       mark?.querySelectorAll(":scope > path, :scope > circle"),
     ).toHaveLength(2);
+  });
+});
+
+// sidebar-group-row-time: one line per conversation, the state ball and the
+// time since its last change; Käynnissä grouped by workspace.
+describe("Ryhmät rows", () => {
+  const now = Date.parse("2026-10-29T12:00:00Z");
+  const agent = (
+    id: string,
+    over: Partial<AgentNavModel> = {},
+  ): AgentNavModel => ({
+    agentId: id,
+    href: `/agents/${id}`,
+    title: `Keskustelu ${id}`,
+    activity: "waiting",
+    activityLabel: "Odottaa viestiä",
+    controlLabel: "",
+    workspaceId: "ws_kasvimaa0",
+    workspaceName: "kasvimaa",
+    detail: "kasvimaa · Odottaa viestiä",
+    ...over,
+  });
+  const at = (minutes: number) => now - minutes * 60000;
+  it("says the age briefly on the row", () => {
+    expect(changeAge(at(0.5), now)).toBe("nyt");
+    expect(changeAge(at(4), now)).toBe("4 min");
+    expect(changeAge(at(130), now)).toBe("2 t");
+    expect(changeAge(at(3000), now)).toBe("2 pv");
+  });
+  it("gives each state its ball", () => {
+    expect(ballOf(agent("a", { attentionLabel: "Uusi" }))).toBe("you");
+    expect(ballOf(agent("a", { question: true }))).toBe("you");
+    expect(ballOf(agent("a", { activity: "working" }))).toBe("work");
+    expect(ballOf(agent("a", { activity: "waiting_background" }))).toBe("work");
+    expect(ballOf(agent("a", { spinoffWorking: true }))).toBe("work");
+    expect(ballOf(agent("a"))).toBe("done");
+    expect(ballOf(agent("a", { failed: true }))).toBe("fail");
+    expect(ballOf(agent("a", { activity: "unknown" }))).toBe("unknown");
+  });
+  it("keeps the row to one line and says the rest", () => {
+    const view = render(
+      <MemoryRouter>
+        <ul>
+          <AgentNavItem {...agent("a", { changedAt: at(130) })} now={now} />
+        </ul>
+      </MemoryRouter>,
+    );
+    const link = view.getByRole("link");
+    expect(link.querySelector("time")?.textContent).toBe("2 t");
+    expect(link.querySelector(".ah-nav-text")).toBeNull();
+    expect(link.closest("li")?.getAttribute("title")).toBe(
+      "Keskustelu a · kasvimaa · Odottaa viestiä · 2 t sitten",
+    );
+    expect(
+      document.getElementById(link.getAttribute("aria-describedby") ?? "")
+        ?.textContent,
+    ).toBe("kasvimaa · Odottaa viestiä · 2 t sitten");
+  });
+  it("groups Käynnissä, folds quiet rows, and sinks an all-quiet workspace", () => {
+    const view = render(
+      <MemoryRouter>
+        <NowSections
+          yours={[]}
+          running={[
+            agent("w1", { activity: "working", changedAt: Date.now() }),
+            agent("w2", { changedAt: Date.now() - 3 * 3600000 }),
+            agent("w3", {
+              changedAt: Date.now() - 3 * 3600000,
+              selected: true,
+            }),
+            agent("w4", {
+              changedAt: Date.now() - 2 * 3600000,
+              failed: true,
+            }),
+            agent("k1", {
+              workspaceId: "ws_kotisivu0",
+              workspaceName: "kotisivu",
+              changedAt: Date.now() - 25 * 3600000,
+            }),
+          ]}
+        />
+      </MemoryRouter>,
+    );
+    const group = view.getByTestId("rail-group-kasvimaa");
+    expect(group.querySelector("h3")?.textContent).toBe("kasvimaa4");
+    // The open conversation and the failed one never fold away.
+    for (const id of ["w1", "w3", "w4"])
+      expect(view.queryByTestId(`agent-item-${id}`)).not.toBeNull();
+    expect(view.queryByTestId("agent-item-w2")).toBeNull();
+    const fold = view.getByTestId("rail-fold-quiet-kasvimaa");
+    expect(fold.textContent).toBe("1 hiljainen");
+    fireEvent.click(fold);
+    expect(view.queryByTestId("agent-item-w2")).not.toBeNull();
+    expect(view.queryByTestId("rail-group-kotisivu")).toBeNull();
+    expect(view.getByTestId("rail-quiet-rule").textContent).toBe(
+      "Hiljaiset · yli tunnin",
+    );
+    expect(view.queryByTestId("agent-item-k1")).toBeNull();
+    fireEvent.click(view.getByTestId("rail-fold-dormant-kotisivu"));
+    expect(
+      view.getByTestId("agent-item-k1").querySelector("time")?.textContent,
+    ).toBe("1 pv");
   });
 });
