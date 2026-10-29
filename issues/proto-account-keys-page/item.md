@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: account-secrets
 lane_seq: 2
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: account keys page (public SSH and age keys)
