@@ -210,6 +210,12 @@ export function appRefusal(code: string): string {
   }
 }
 
+/** The Google Cloud project number a Google client id starts with, or
+ * undefined when the id is not of that shape. */
+export function googleProject(id?: string): string | undefined {
+  return /^(\d+)-[^/?#&]+\.apps\.googleusercontent\.com$/.exec(id ?? "")?.[1];
+}
+
 /** The client id's recognisable start: a Google id always ends in the same
  * domain, so its project number is what the console also shows; a Dropbox
  * App key has no structure, so four characters. */

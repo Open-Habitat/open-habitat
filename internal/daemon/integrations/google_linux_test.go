@@ -417,3 +417,20 @@ echo '{}'
 		t.Fatal("account checks queued behind another account/service")
 	}
 }
+
+// The skill names gog's Sheets, Docs and Slides commands and sends an API
+// that is not enabled to the administrator, in the client's own project when
+// its id names one.
+func TestGoogleSkillSendsDisabledAPIToAdministrator(t *testing.T) {
+	env := googleEnv(t)
+	if u := googleEnableURL(env); strings.Contains(u, "project=") || !strings.Contains(u, "sheets.googleapis.com,docs.googleapis.com,slides.googleapis.com") {
+		t.Fatal(u)
+	}
+	env.Config.Google.ClientID = "704213598812-k3v9q2mfa0b7s1dn5e8rjhtc4lpu6xwo.apps.googleusercontent.com"
+	body := (&google{}).Skill(env, "p@example.test").Body
+	for _, want := range []string{"`sheets`, `docs` and `slides`", "not enabled for this OAuth project", "administrator must enable", "apiid=" + googleAPIs + "&project=704213598812"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("skill lacks %q:\n%s", want, body)
+		}
+	}
+}

@@ -10,6 +10,7 @@ import {
   appErrors,
   appFields,
   appRefusal,
+  googleProject,
   type IntegrationApp,
   type IntegrationApps,
   invalidApp,
@@ -40,13 +41,23 @@ export type PendingApp = "set" | "clear" | "uncertain";
 
 // What the daemon's Google entry needs (internal/daemon/integrations/
 // google_linux.go): the APIs its tools call, its scopes and its redirect.
+// The drive scope already reaches Sheets, Docs and Slides, but gog's sheets,
+// docs and slides commands call their own APIs, which Google refuses until
+// the project enables them.
 const googleAPIs: [string, string][] = [
   ["Gmail API", "gmail.googleapis.com"],
   ["Google Calendar API", "calendar-json.googleapis.com"],
   ["Google Drive API", "drive.googleapis.com"],
   ["People API", "people.googleapis.com"],
+  ["Google Sheets API", "sheets.googleapis.com"],
+  ["Google Docs API", "docs.googleapis.com"],
+  ["Google Slides API", "slides.googleapis.com"],
 ];
-const googleEnable = `https://console.cloud.google.com/apis/enableflow?apiid=${googleAPIs.map((a) => a[1]).join(",")}`;
+/** The enable flow for every API, in the given project when the client is
+ * known (its id starts with the project number, as Google's own "not
+ * enabled" errors link it), else in the project last selected. */
+const googleEnable = (project?: string) =>
+  `https://console.cloud.google.com/apis/enableflow?apiid=${googleAPIs.map((a) => a[1]).join(",")}${project ? `&project=${project}` : ""}`;
 // Scopes as the Cloud Console's scope list names them: the daemon requests
 // the short `email`, which Google grants as userinfo.email. The read-only
 // ones are the Vain luku level's (googleReadScopes in the daemon).
@@ -425,7 +436,7 @@ const googleSteps: Step[] = [
           ))}
         </ul>
         <ExternalLink
-          href={googleEnable}
+          href={googleEnable()}
           target="_blank"
           rel="noreferrer"
           data-testid="si-console-link"
@@ -1431,6 +1442,14 @@ export function ServerIntegrations({
                         placement="bottom end"
                         heading={<AppLine app={app} names={names} />}
                         items={[
+                          ...(p === "google" && googleProject(app.client_id)
+                            ? [
+                                {
+                                  id: "apis",
+                                  label: "Ota API:t käyttöön Google Cloudissa",
+                                },
+                              ]
+                            : []),
                           ...(p === "google" && app.client_id
                             ? [
                                 {
@@ -1459,11 +1478,17 @@ export function ServerIntegrations({
                           },
                         ]}
                         onAction={(k) =>
-                          setOpen(
-                            k === "replace"
-                              ? { kind: "setup", provider: p, replace: app }
-                              : { kind: "remove", provider: p },
-                          )
+                          k === "apis"
+                            ? window.open(
+                                googleEnable(googleProject(app.client_id)),
+                                "_blank",
+                                "noopener,noreferrer",
+                              )
+                            : setOpen(
+                                k === "replace"
+                                  ? { kind: "setup", provider: p, replace: app }
+                                  : { kind: "remove", provider: p },
+                              )
                         }
                       />
                     </span>

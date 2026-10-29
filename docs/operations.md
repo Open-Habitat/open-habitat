@@ -790,8 +790,29 @@ names. Use an **installed/Desktop** OAuth client; no redirect URI is registered,
 daemon uses `http://localhost` (no port) and the person pastes it back. Tick
 **Use this client for an AI-powered agent** when creating it: only agents use
 this client, the flag grants nothing extra, and some Google MCP endpoints accept
-only a client marked as an agent. Enable Drive API, Gmail API, Google Calendar API and People API in
-its Google Cloud project. The requested permissions are `openid`, `email`,
+only a client marked as an agent. Enable these APIs in its Google Cloud
+project; one link enables them all:
+<https://console.cloud.google.com/apis/enableflow?apiid=gmail.googleapis.com,calendar-json.googleapis.com,drive.googleapis.com,people.googleapis.com,sheets.googleapis.com,docs.googleapis.com,slides.googleapis.com>
+(add `&project=<project number>`, the client ID's leading digits, to open it in
+the right project; once the client is saved, Settings → Palvelimen ylläpito →
+Palvelinintegraatiot → Google → Tunnukset → Ota API:t käyttöön Google Cloudissa opens it
+filled in).
+
+| API | Used for |
+| --- | --- |
+| [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com) | `gog gmail` |
+| [Google Calendar API](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com) | `gog calendar` |
+| [Google Drive API](https://console.cloud.google.com/apis/library/drive.googleapis.com) | Drive sync and `gog drive` |
+| [People API](https://console.cloud.google.com/apis/library/people.googleapis.com) | `gog contacts` |
+| [Google Sheets API](https://console.cloud.google.com/apis/library/sheets.googleapis.com) | `gog sheets` |
+| [Google Docs API](https://console.cloud.google.com/apis/library/docs.googleapis.com) | `gog docs` |
+| [Google Slides API](https://console.cloud.google.com/apis/library/slides.googleapis.com) | `gog slides` |
+
+The Drive scope already reaches Sheets, Docs and Slides; their APIs only need
+enabling. Until an API is enabled, Google answers its calls with "… API has not
+been used in project N before or it is disabled" (gog reports it as not enabled
+for the OAuth project), however the person signed in; the personal-data skill
+tells agents to report it as this administrator action. The requested permissions are `openid`, `email`,
 `https://www.googleapis.com/auth/drive`,
 `https://www.googleapis.com/auth/gmail.modify`,
 `https://www.googleapis.com/auth/calendar`, and

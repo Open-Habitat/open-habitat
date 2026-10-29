@@ -3,12 +3,13 @@ created: 2026-10-29
 updated: 2026-10-29
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 lane_seq: 6
 collision: [docs/]
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Google integration instructions: enable Sheets, Docs and Slides APIs

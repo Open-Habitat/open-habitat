@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -309,7 +310,8 @@ func (g *google) Skill(env Env, address string) SkillAccount {
 			services = append(services, Service{ID: id, Access: googleRules.access(id, granted)})
 		}
 	}
-	body := fmt.Sprintf("Use `GOG_KEYRING_BACKEND=file GOG_KEYRING_PASSWORD=open-habitat %s --home ~/.config/gog/open-habitat --account %s --no-input --json` followed by the gog command. Use `gmail` (drafts first), `calendar`, `contacts`, and `drive` for online Google-native documents. The keyring password is a fixed native file-backend setting, not a secret. Never export or print tokens. Consult the tool's --help for syntax.", mustTool(env, "gog"), address)
+	body := fmt.Sprintf("Use `GOG_KEYRING_BACKEND=file GOG_KEYRING_PASSWORD=open-habitat %s --home ~/.config/gog/open-habitat --account %s --no-input --json` followed by the gog command. Use `gmail` (drafts first), `calendar`, `contacts`, `drive` for online Google-native documents, and `sheets`, `docs` and `slides` to read and edit Google Sheets, Docs and Slides in place. The keyring password is a fixed native file-backend setting, not a secret. Never export or print tokens. Consult the tool's --help for syntax.", mustTool(env, "gog"), address)
+	body += "\n\nAn error saying an API \"has not been used in project\", \"is disabled\" or \"is not enabled for this OAuth project\" is not missing permission and the person cannot fix it by signing in again: the server's administrator must enable that API in the Google Cloud project, at " + googleEnableURL(env) + " or the link Google's error names. Tell the person exactly that."
 	if ready && googleDriveMirror(env, address) {
 		body += fmt.Sprintf("\n\nOrdinary Drive files are under `~/cloud/google-drive/%s/`. Read them with filesystem tools. Drive is read only: this directory is a one-way mirror of Drive. Nothing written here reaches Drive, and the next pass overwrites or deletes any local change, so never keep work here. Google-native documents and shortcuts are not mirrored: read those with gog online.", address)
 	} else if ready {
@@ -322,6 +324,27 @@ func (g *google) Skill(env Env, address string) SkillAccount {
 	body += accessSummary(services, map[string]string{"drive": "Drive", "mail": "Gmail", "calendar": "Calendar", "contacts": "Contacts"})
 	return SkillAccount{Label: "Google", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: body}
 }
+
+// googleAPIs are the APIs gog calls for the scopes the levels request; the
+// drive scope covers Sheets, Docs and Slides, but each has its own API that
+// the Cloud project must enable.
+const googleAPIs = "gmail.googleapis.com,calendar-json.googleapis.com,drive.googleapis.com,people.googleapis.com,sheets.googleapis.com,docs.googleapis.com,slides.googleapis.com"
+
+var googleProjectNumber = regexp.MustCompile(`^([0-9]+)-[^/?#&]+\.apps\.googleusercontent\.com$`)
+
+// googleEnableURL opens the console's enable flow for every API, in the
+// client's project when its id names one: an installed client id starts with
+// the project number, which is how Google's own "not enabled" errors link it.
+func googleEnableURL(env Env) string {
+	u := "https://console.cloud.google.com/apis/enableflow?apiid=" + googleAPIs
+	if app, ok := env.googleApp(); ok {
+		if m := googleProjectNumber.FindStringSubmatch(app.ClientID); m != nil {
+			u += "&project=" + m[1]
+		}
+	}
+	return u
+}
+
 func mustTool(env Env, name string) string {
 	p, ok := env.Tool(name)
 	if !ok {

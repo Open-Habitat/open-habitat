@@ -475,6 +475,29 @@ it("replaces only Google's secret, for the same client", async () => {
   );
 });
 
+it("opens every Google API's enable flow in the client's own project", async () => {
+  setup();
+  const open = vi.spyOn(window, "open").mockReturnValue(null);
+  fireEvent.click(
+    within(screen.getByTestId("si-menu-google")).getByRole("button"),
+  );
+  fireEvent.click(await screen.findByTestId("menu-apis"));
+  const url = new URL(String(open.mock.calls[0][0]));
+  expect(url.origin + url.pathname).toBe(
+    "https://console.cloud.google.com/apis/enableflow",
+  );
+  expect(url.searchParams.get("project")).toBe("704213598812");
+  expect(url.searchParams.get("apiid")?.split(",")).toEqual(
+    expect.arrayContaining([
+      "sheets.googleapis.com",
+      "docs.googleapis.com",
+      "slides.googleapis.com",
+      "drive.googleapis.com",
+    ]),
+  );
+  open.mockRestore();
+});
+
 it("confirms a removal with its consequences before asking the host", async () => {
   const calls = setup();
   fireEvent.click(
