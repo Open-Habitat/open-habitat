@@ -4,12 +4,42 @@ import {
   canRecheckCreation,
   continueConversation,
   createTracked,
+  currentRecap,
   questionTextFits,
   readRecap,
   regenerateTitle,
   retitleHistory,
   TitleGenerationFailed,
+  turnUnderway,
 } from "./conversations";
+
+describe("current recap", () => {
+  const recap = {
+    recap: "Work complete",
+    next: "Check tests",
+    through: "two",
+    generated_at: 1750000000000,
+  };
+  it("stays current while Pi rests, starts or stops", () => {
+    for (const state of [
+      "idle",
+      "rejected",
+      "stopped",
+      "starting",
+      "stopping",
+      "start_failed",
+    ])
+      expect(currentRecap(recap, "two", turnUnderway(state, false))).toBe(
+        recap,
+      );
+  });
+  it("is hidden while a turn may run or once a later message exists", () => {
+    for (const state of ["pending", "accepted", "uncertain"])
+      expect(currentRecap(recap, "two", turnUnderway(state))).toBeNull();
+    expect(currentRecap(recap, "two", turnUnderway("idle", true))).toBeNull();
+    expect(currentRecap(recap, "three")).toBeNull();
+  });
+});
 
 describe("native recap read", () => {
   it("accepts bounded native data and rejects unknown fields", async () => {

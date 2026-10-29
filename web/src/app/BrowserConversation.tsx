@@ -80,6 +80,7 @@ import {
   type Session,
   type Status,
   TitleGenerationFailed,
+  turnUnderway,
 } from "./conversations";
 import { messageFor, toolPath } from "./editorChanges";
 import {
@@ -658,9 +659,7 @@ function BrowserConversationContent({
       ? currentRecap(
           recapCurrent.recap,
           recapCurrent.latest,
-          controlled &&
-            current?.state !== "idle" &&
-            current?.state !== "rejected",
+          controlled && turnUnderway(current?.state, current?.run_active),
         )
       : null;
   // An outdated automatic recap simply waits for the daemon's next idle
@@ -706,9 +705,11 @@ function BrowserConversationContent({
     (current?.state !== "idle" && current?.state !== "rejected") ||
     !!recapCurrent?.unavailable;
   const recapUnavailableReason =
-    current?.state !== "idle" && current?.state !== "rejected"
-      ? "Odota agentin vuoron päättymistä."
-      : undefined;
+    current?.state === "stopped"
+      ? "Agentti lepää. Kirjoittaminen herättää sen."
+      : current?.state !== "idle" && current?.state !== "rejected"
+        ? "Odota agentin vuoron päättymistä."
+        : undefined;
   // Make a recap now: the card's refresh and the header's button.
   const requestRecapNow =
     controlled && csrf && id

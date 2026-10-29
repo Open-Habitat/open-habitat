@@ -315,6 +315,18 @@ export function currentRecap(
 ): Recap | null {
   return recap && !running && recap.through === latest ? recap : null;
 }
+/** Whether Pi may be taking a turn that outdates the recap. A resting,
+ * starting or stopping Pi is not: its recap stays current, and a stopped
+ * conversation is exactly where the person returns to read it (Jari
+ * 29.10.2026). An uncertain controller may still be running a turn. */
+export function turnUnderway(state?: string, runActive?: boolean): boolean {
+  return (
+    runActive === true ||
+    state === "pending" ||
+    state === "accepted" ||
+    state === "uncertain"
+  );
+}
 export type RecapRead = {
   recap: Recap | null;
   latest_message: string;
