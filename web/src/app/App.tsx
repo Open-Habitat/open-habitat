@@ -297,6 +297,10 @@ export function App() {
       }
     >
   >({});
+  // The workspace whose new-conversation view is dictating. The created
+  // conversation waits until the dictation ends, as a swap would end it
+  // and lose what was being said.
+  const [creationDictating, setCreationDictating] = useState<string>();
   // Where the person actually is: work that finishes later must not pull
   // them out of Settings.
   const currentRoute = useRef(route);
@@ -2155,7 +2159,8 @@ export function App() {
                 replace
                 to={`/workspaces/${selected.workspace_id}`}
               />
-            ) : creationViews[selected.workspace_id]?.session ? (
+            ) : creationViews[selected.workspace_id]?.session &&
+              creationDictating !== selected.workspace_id ? (
               <Redirect
                 held={!!settingsOver}
                 replace
@@ -2195,6 +2200,26 @@ export function App() {
                     key={`${identity}:${selected.workspace_id}`}
                     workspace={selected}
                     identity={identity}
+                    csrf={
+                      priorIdentity.current &&
+                      priorIdentity.current !== identity
+                        ? undefined
+                        : csrf
+                    }
+                    onDictating={(active) => {
+                      const id = selected.workspace_id;
+                      if (active) return setCreationDictating(id);
+                      // What was said or typed while the created
+                      // conversation waited joins its draft too.
+                      const session = creationViews[id]?.session;
+                      if (session && identity) {
+                        adoptCreation(identity, id, session.agent_id);
+                        adoptGuide(identity, id, session.agent_id);
+                      }
+                      setCreationDictating((old) =>
+                        old === id ? undefined : old,
+                      );
+                    }}
                     worktree={
                       worktree
                         ? {

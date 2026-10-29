@@ -3,12 +3,13 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 lane_seq: 2
 collision: [web/src/app/PendingConversation.tsx]
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Dictation button missing before the conversation's first message
@@ -29,6 +30,6 @@ antaa sen, on `web/src/app/BrowserConversation.tsx`. Aloitusnäkymän composer
 
 ## Acceptance Criteria
 
-- [ ] Sanelupainike näkyy ja toimii uuden keskustelun aloitusnäkymässä samoin kuin käynnissä olevassa keskustelussa, myös worktree-agentin ensimmäisen viestin näkymässä.
-- [ ] Sanelun teksti päätyy samaan luonnokseen kuin tavoitteen Aloita-teksti eikä katoa, kun keskustelu luodaan ensimmäisestä viestistä.
-- [ ] Selainspeksi aloitusnäkymän sanelulle (fake Soniox).
+- [x] Sanelupainike näkyy ja toimii uuden keskustelun aloitusnäkymässä samoin kuin käynnissä olevassa keskustelussa, myös worktree-agentin ensimmäisen viestin näkymässä.
+- [x] Sanelun teksti päätyy samaan luonnokseen kuin tavoitteen Aloita-teksti eikä katoa, kun keskustelu luodaan ensimmäisestä viestistä.
+- [x] Selainspeksi aloitusnäkymän sanelulle (fake Soniox).

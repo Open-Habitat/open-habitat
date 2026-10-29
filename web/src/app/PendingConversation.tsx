@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   AgentHeader,
   Composer,
@@ -33,6 +34,7 @@ import {
 } from "./heldMessages";
 import { shortModel, usePiModels } from "./PiModels";
 import { StartPageRead } from "./StartPageRead";
+import { settingsHref } from "./settingsRoute";
 import type { Workspace } from "./snapshot";
 import { GuideHeaderControl } from "./ViewHost";
 
@@ -141,6 +143,8 @@ export function CreatingConversation({
   refused = false,
   onCreateAgain,
   worktree,
+  csrf,
+  onDictating,
 }: {
   workspace: Workspace;
   identity: string;
@@ -158,6 +162,11 @@ export function CreatingConversation({
     blocked?: string;
     onFirstMessage?: (text: string) => void;
   };
+  /** Speech input needs it, as in the created conversation. */
+  csrf?: string;
+  /** A dictation is under way: the created conversation waits for it, so
+   * its text reaches the draft the conversation takes over. */
+  onDictating?: (active: boolean) => void;
 }) {
   const sources = useMemo(
     () => ({
@@ -170,6 +179,12 @@ export function CreatingConversation({
       workspaceName: workspace.display_name ?? workspace.name,
     }),
     [workspace.workspace_id, workspace.display_name, workspace.name],
+  );
+  const navigate = useNavigate();
+  // One object per view, so the composer keeps its dictation engine.
+  const speech = useMemo(
+    () => ({ onOpenSettings: () => navigate(settingsHref("sanelu")) }),
+    [navigate],
   );
   const { data: models } = usePiModels();
   const displayModel = shortModel(models?.default_model ?? undefined);
@@ -346,6 +361,9 @@ export function CreatingConversation({
               {models?.default_thinking ?? "Agentti"}
             </span>
           }
+          csrf={csrf}
+          speech={speech}
+          onDictating={onDictating}
           value={draft}
           goals={goals}
           sources={sources}

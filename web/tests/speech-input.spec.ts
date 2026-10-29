@@ -289,6 +289,117 @@ test("@speech the dictation warns a minute before the ten-minute ceiling and end
   await expect.poll(async () => (await soniox(page)).ended).toBe(1);
 });
 
+async function saveOwnKey(page: Page) {
+  await page.goto("/settings/speech");
+  await page.getByTestId("speech-key-input").fill(ownKey);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
+    "data-source",
+    "own",
+  );
+}
+
+test("@speech a new conversation dictates before it exists and keeps what was said once created", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  await saveOwnKey(page);
+  // The creation reply waits until the dictation is under way, so the
+  // conversation is created in the middle of it.
+  let release = () => {};
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let replied = false;
+  await page.route("**/api/v1/conversations", async (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    const response = await route.fetch();
+    await released;
+    await route.fulfill({ response });
+    replied = true;
+  });
+  await page.goto("/workspaces");
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-ordinary-dir")
+    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=new$/);
+  await page.getByTestId("message-input").fill("Alku");
+  await mic(page).click();
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  await say(page, [
+    { text: " ennen", start_ms: 0, end_ms: 400, is_final: true },
+    { text: " keskustelua.", start_ms: 400, end_ms: 900, is_final: true },
+  ]);
+  await expect(page.getByTestId("dictation-final")).toHaveText(
+    "ennen keskustelua.",
+  );
+  release();
+  await expect.poll(() => replied).toBe(true);
+  // The created conversation waits for the dictation instead of ending it.
+  await page.waitForTimeout(1000);
+  await expect(page).toHaveURL(/conversation=new$/);
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  await pill(page).click();
+  await expect(page).toHaveURL(/conversation=pi:/);
+  await expect(page.getByTestId("message-input")).toHaveValue(
+    "Alku ennen keskustelua.",
+  );
+  await expect.poll(async () => (await soniox(page)).ended).toBe(1);
+  await page.getByRole("button").and(page.getByTestId("send")).click();
+  await expect(page.locator("main")).toContainText(
+    'Kysyit: "Alku ennen keskustelua."',
+    { timeout: 20_000 },
+  );
+});
+
+test("@speech a worktree agent's first message can be dictated and is the message that creates it", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  await saveOwnKey(page);
+  await page.goto("/workspaces");
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-git-project")
+    .click();
+  await page
+    .locator("main")
+    .getByRole("button")
+    .and(page.getByTestId("new-worktree"))
+    .click();
+  await expect(page).toHaveURL(/conversation=new-worktree$/);
+  await expect(page.getByTestId("worktree-intro")).toBeVisible();
+  await mic(page).click();
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  await say(page, [
+    { text: "Korjaa testit.", start_ms: 0, end_ms: 800, is_final: true },
+  ]);
+  await expect(page.getByTestId("dictation-final")).toHaveText(
+    "Korjaa testit.",
+  );
+  // Send ends the dictation; its text is the message that creates the
+  // agent. This workspace has no commit to branch from, so the host refuses
+  // and the message comes back to the field: it was what was sent.
+  const creation = page.waitForRequest(
+    (r) =>
+      r.method() === "POST" &&
+      new URL(r.url()).pathname === "/api/v1/conversations",
+  );
+  await page.getByRole("button").and(page.getByTestId("send")).click();
+  await creation;
+  await expect(page.getByTestId("creation-problem")).toHaveAttribute(
+    "data-state",
+    "refused",
+  );
+  await expect(page.getByTestId("message-input")).toHaveValue("Korjaa testit.");
+  await expect.poll(async () => (await soniox(page)).ended).toBe(1);
+  await expect(mic(page)).toBeVisible();
+});
+
 test.describe("@speech Sanelu settings layout", () => {
   test.use({ deviceScaleFactor: 2 });
 

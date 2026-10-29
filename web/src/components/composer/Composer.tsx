@@ -405,6 +405,7 @@ export function Composer({
   idlePlaceholder = "Kirjoita agentille…",
   goals,
   speech,
+  onDictating,
 }: {
   value: string;
   csrf?: string;
@@ -444,6 +445,9 @@ export function Composer({
   goals?: ComposerGoal[];
   /** Speech input: the mic beside Send. Needs csrf. */
   speech?: ComposerSpeech;
+  /** A dictation is under way, or ending into a send: its text is not yet
+   * in the draft or not yet sent. */
+  onDictating?: (active: boolean) => void;
 }) {
   // The draft is what the agent receives: the person's text with one
   // attachment reference per line after it. The field edits only the text;
@@ -644,6 +648,14 @@ export function Composer({
   });
   const dictating = dictation.active;
   const endingToSend = useRef(false);
+  const [sendingDictation, setSendingDictation] = useState(false);
+  const dictationBusy = dictating || sendingDictation;
+  const reportDictating = useRef(onDictating);
+  reportDictating.current = onDictating;
+  useEffect(() => {
+    reportDictating.current?.(dictationBusy);
+  }, [dictationBusy]);
+  useEffect(() => () => reportDictating.current?.(false), []);
   const dictatedText = dictating
     ? `${dictation.base}${dictation.view?.final ?? ""}`
     : "";
@@ -805,12 +817,17 @@ export function Composer({
       // a second press while it ends sends nothing more.
       if (endingToSend.current) return;
       endingToSend.current = true;
-      await dictation.stop().finally(() => {
-        endingToSend.current = false;
-      });
-      // The ended dictation has already put its text in the draft, beside
-      // the goal and the attachments.
-      return sendDraft(otherWay, draft.current.value);
+      setSendingDictation(true);
+      try {
+        await dictation.stop().finally(() => {
+          endingToSend.current = false;
+        });
+        // The ended dictation has already put its text in the draft, beside
+        // the goal and the attachments.
+        return await sendDraft(otherWay, draft.current.value);
+      } finally {
+        setSendingDictation(false);
+      }
     }
     return sendDraft(otherWay, draftValue);
   };
