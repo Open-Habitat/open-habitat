@@ -629,7 +629,8 @@ Agent file offers need no configuration. An agent offers workspace files to the 
 Every installation ships the integration tools in the required `integrations`
 profile, so a site's `profiles` always lists `core` and `integrations`. The
 signed profile carries **himalaya 2.2.1** (IMAP), **rclone 1.71.2**, **gog
-0.39.1**, **tea 0.16.0** (Gitea), **glab 1.124.0** (GitLab), **@softeria/ms-365-mcp-server 0.170.1** with the `microsoft-native`
+0.39.1**, **tea 0.16.0** (Gitea), **glab 1.124.0** (GitLab), **sops 3.13.3**
+(the person's own SOPS, at `/opt/open-habitat/profiles/integrations/bin/sops`), **@softeria/ms-365-mcp-server 0.170.1** with the `microsoft-native`
 adapter, **MSAL 5.6.0** and their own **Node 22.21.1**, and a Pi wrapper that
 runs the same release's core **Pi 1.3.0** for native `pi mcp add/remove`. Each
 upstream executable is pinned by archive and file SHA-256 with its upstream

@@ -177,7 +177,9 @@ func validIntegrationsClosure(a ReleaseArtifact, files map[string]RuntimeFile, c
 			return false
 		}
 	}
-	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1", "tea": "0.16.0", "glab": "1.124.0"} {
+	// sops is the person's own tool (the account keys page and the agent
+	// skill name it); no catalog entry runs it, so apply does not publish it.
+	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1", "tea": "0.16.0", "glab": "1.124.0", "sops": "3.13.3"} {
 		c, ok := components[name]
 		if !ok || c.Kind != "native" || c.Version != version || files["runtime/bin/"+name].Component != name {
 			return false

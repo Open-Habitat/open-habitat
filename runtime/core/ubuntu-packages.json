@@ -12,6 +12,11 @@
       "version": "3.137ubuntu1"
     },
     {
+      "name": "age",
+      "architecture": "native",
+      "version": "1.1.1-1ubuntu0.24.04.3"
+    },
+    {
       "name": "gh",
       "architecture": "native",
       "version": "2.45.0-1ubuntu0.3"
@@ -20,6 +25,11 @@
       "name": "git",
       "architecture": "native",
       "version": "1:2.43.0-1ubuntu7.4"
+    },
+    {
+      "name": "openssh-client",
+      "architecture": "native",
+      "version": "1:9.6p1-3ubuntu13"
     },
     {
       "name": "passwd",

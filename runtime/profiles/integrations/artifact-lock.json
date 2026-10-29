@@ -86,6 +86,18 @@
       "filename": "glab_1.124.0_linux_arm64.tar.gz",
       "url": "https://gitlab.com/gitlab-org/cli/-/releases/v1.124.0/downloads/glab_1.124.0_linux_arm64.tar.gz",
       "sha256": "0716395a0efeb991fc844b33fe55310645afcbd9b9746e50c725e9d1cd1b8d16"
+    },
+    {
+      "target": "linux-amd64",
+      "filename": "sops-v3.13.3.linux.amd64",
+      "url": "https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64",
+      "sha256": "e5bec3346a873ae91d871550f3e698c1aad962aff462a080e40f25fde17fef6b"
+    },
+    {
+      "target": "linux-arm64",
+      "filename": "sops-v3.13.3.linux.arm64",
+      "url": "https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.arm64",
+      "sha256": "53b0abacd38ef1b12a66d6c100956691b9cefce018d91f81e73ddf7438b94d77"
     }
   ],
   "tools": [
@@ -228,6 +240,34 @@
         "glab-THIRD-PARTY-NOTICES"
       ],
       "go_notices": "glab-THIRD-PARTY-NOTICES"
+    },
+    {
+      "target": "linux-amd64",
+      "name": "sops",
+      "version": "3.13.3",
+      "license": "MPL-2.0",
+      "source": "https://github.com/getsops/sops",
+      "archive": "sops-v3.13.3.linux.amd64",
+      "member": null,
+      "sha256": "e5bec3346a873ae91d871550f3e698c1aad962aff462a080e40f25fde17fef6b",
+      "license_files": [
+        "sops-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "sops-THIRD-PARTY-NOTICES"
+    },
+    {
+      "target": "linux-arm64",
+      "name": "sops",
+      "version": "3.13.3",
+      "license": "MPL-2.0",
+      "source": "https://github.com/getsops/sops",
+      "archive": "sops-v3.13.3.linux.arm64",
+      "member": null,
+      "sha256": "53b0abacd38ef1b12a66d6c100956691b9cefce018d91f81e73ddf7438b94d77",
+      "license_files": [
+        "sops-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "sops-THIRD-PARTY-NOTICES"
     }
   ]
 }

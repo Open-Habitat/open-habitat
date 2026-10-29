@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "web_identity_id": "wid_example-a",
+  "keys": [],
+  "missing": [
+    {"kind": "ssh", "file": "~/.ssh/id_ed25519", "can_create": true},
+    {"kind": "age", "file": "~/.config/sops/age/keys.txt", "can_create": false}
+  ]
+}

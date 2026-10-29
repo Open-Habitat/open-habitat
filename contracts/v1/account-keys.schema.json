@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/account-keys.schema.json",
+  "title": "The account's public SSH and age keys",
+  "description": "Public halves only, each rebuilt by the person's daemon from an unencrypted private file on the account and checked against it. No field carries a private key.",
+  "$defs": {
+    "file": {
+      "description": "The private key's file, relative to the account's home.",
+      "type": "string",
+      "pattern": "^~/[^\\u0000-\\u001f]+$",
+      "maxLength": 300
+    },
+    "modified_at": {"type": "string", "format": "date-time", "maxLength": 40},
+    "ssh_key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "file", "algorithm", "public_key", "fingerprint", "modified_at"],
+      "properties": {
+        "kind": {"const": "ssh"},
+        "file": {"$ref": "#/$defs/file"},
+        "algorithm": {"enum": ["ssh-ed25519", "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521"]},
+        "public_key": {
+          "description": "One authorized_keys line: algorithm, key and the private file's comment.",
+          "type": "string",
+          "pattern": "^[a-z0-9@.-]+ [A-Za-z0-9+/]+=* ?[^\\u0000-\\u001f]*$",
+          "maxLength": 6000
+        },
+        "fingerprint": {"description": "As `ssh-keygen -lf` prints it.", "type": "string", "pattern": "^SHA256:[A-Za-z0-9+/]{43}$"},
+        "comment": {"type": "string", "minLength": 1, "maxLength": 200},
+        "modified_at": {"$ref": "#/$defs/modified_at"}
+      }
+    },
+    "age_key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "file", "algorithm", "public_key", "modified_at"],
+      "properties": {
+        "kind": {"const": "age"},
+        "file": {"$ref": "#/$defs/file"},
+        "algorithm": {"const": "X25519"},
+        "public_key": {"description": "The age recipient.", "type": "string", "pattern": "^age1[02-9ac-hj-np-z]{58}$"},
+        "modified_at": {"$ref": "#/$defs/modified_at"}
+      }
+    },
+    "missing": {
+      "description": "A default key file that does not exist. can_create says the key tool is installed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "file", "can_create"],
+      "properties": {
+        "kind": {"enum": ["ssh", "age"]},
+        "file": {"enum": ["~/.ssh/id_ed25519", "~/.config/sops/age/keys.txt"]},
+        "can_create": {"type": "boolean"}
+      }
+    },
+    "create": {
+      "description": "Create the default key of one kind. Never replaces an existing file.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"enum": ["ssh", "age"]}}
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "web_identity_id", "keys", "missing"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "web_identity_id": {"type": "string", "pattern": "^wid_[A-Za-z0-9_-]+$", "maxLength": 128},
+        "keys": {"type": "array", "maxItems": 32, "items": {"oneOf": [{"$ref": "#/$defs/ssh_key"}, {"$ref": "#/$defs/age_key"}]}},
+        "missing": {"type": "array", "maxItems": 2, "items": {"$ref": "#/$defs/missing"}},
+        "created": {"description": "In the reply to a creation: the key that creation made, as it made it. The list is read afterwards and may already differ.", "oneOf": [{"$ref": "#/$defs/ssh_key"}, {"$ref": "#/$defs/age_key"}]}
+      }
+    }
+  },
+  "$ref": "#/$defs/result"
+}

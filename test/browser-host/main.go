@@ -571,6 +571,9 @@ esac
 		mux.Handle(daemon.WorkspaceGitPath, daemon.WorkspaceGitHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspaceGitFetchPath, daemon.WorkspaceGitFetchHandler(fixtureWorkspaceCfg, trusted, forges))
 		mux.Handle(daemon.AccountPreferencesPath, daemon.AccountPreferencesHandler(fixtureWorkspaceCfg, trusted))
+		// The real handler and the system's own ssh-keygen and age-keygen,
+		// writing only into the disposable home.
+		mux.Handle(daemon.AccountKeysPath, daemon.AccountKeysHandlerWithFixtureTools(fixtureWorkspaceCfg, trusted, "/usr/bin/ssh-keygen", "/usr/bin/age-keygen"))
 		mux.Handle(daemon.FirstRoutePath, daemon.FirstRouteHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.EditorFilesPrefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			current.Load().(*daemon.ConversationController).EditorFiles().ServeHTTP(w, r)
@@ -938,6 +941,24 @@ esac
 			case "/fixture/files-remove":
 				if !conversationHandlers[0].Load().(*daemon.ConversationController).FixtureRemoveFiles(r.URL.Query().Get("id")) {
 					http.Error(w, "fixture failed", 400)
+					return
+				}
+				w.WriteHeader(204)
+				return
+			case "/fixture/agent-key":
+				// The agent, as the same Unix user, makes a key beside the
+				// page: ssh-keygen in the person's home, outside the page.
+				home := filepath.Join(tmp, "alice")
+				name := r.URL.Query().Get("name")
+				if name != "id_ed25519" && name != "deploy_ed25519" {
+					http.Error(w, "unknown key", 400)
+					return
+				}
+				_ = os.Mkdir(filepath.Join(home, ".ssh"), 0700)
+				_ = os.Remove(filepath.Join(home, ".ssh", name))
+				_ = os.Remove(filepath.Join(home, ".ssh", name+".pub"))
+				if e := exec.Command("/usr/bin/ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "agent@example", "-f", filepath.Join(home, ".ssh", name)).Run(); e != nil {
+					http.Error(w, "fixture failed", 500)
 					return
 				}
 				w.WriteHeader(204)

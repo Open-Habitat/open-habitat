@@ -3,9 +3,10 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "82c2539c9349ce730f80e9b5737d90d58c3acbb2397b61ef504e3115bdd108af"
+const V1SchemaFingerprint = "aa9792d3e5fee5e9c044a1ae05648749c8e2cfef851a2b8ca146dbcfffaff6f0"
 
 var V1SchemaFiles = []string{
+	"account-keys.schema.json",
 	"account-preferences.schema.json",
 	"account-profile-update.schema.json",
 	"account-session.schema.json",
@@ -93,6 +94,7 @@ var V1SchemaFiles = []string{
 }
 
 // Wire families remain opaque until validated against their canonical JSON Schema.
+type AccountKeys = json.RawMessage
 type AccountPreferences = json.RawMessage
 type AccountProfileUpdate = json.RawMessage
 type AccountSession = json.RawMessage

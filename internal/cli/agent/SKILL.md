@@ -324,6 +324,36 @@ and human login consent" below. Browser-session leases remain separate; no
 session header grants agent identity or ownership.
 
 
+## Account keys: SSH, age and SOPS
+
+The account's SSH and age keys are made on the account and never leave it.
+`ssh-keygen`, `age-keygen` and `sops` are installed (`sops` at
+`/opt/open-habitat/profiles/integrations/bin/sops`; SOPS finds the age key in
+`~/.config/sops/age/keys.txt` without configuration).
+
+- Make a key only when the person asks, never over an existing file:
+  `ssh-keygen -t ed25519 -N "" -f ~/.ssh/<name>` and
+  `age-keygen -o ~/.config/sops/age/keys.txt` (both refuse or ask before
+  overwriting; do not force them). The account has no SSH agent, so these
+  keys have no passphrase and stay `0600`. Settings → Avaimet
+  (`<origin>/settings/keys`) also makes the default keys.
+- Never print, copy, upload or paste a private key, `keys.txt`, a decrypted
+  secret or `sops -d` output into the conversation: it would stay in Pi's
+  history and reach the model provider. Decrypt only into a file or process
+  that needs it, for example `sops exec-env secrets.yaml 'command'`.
+- A public half (`ssh-keygen -y -f KEY`, `age-keygen -y keys.txt`) is safe to
+  show, but tell the person to copy it for their administrator from
+  `<origin>/settings/keys`, which reads it from the private file itself: a
+  key copied from your reply could be anyone's. The SSH fingerprint there is
+  what the administrator compares, read to them over another channel.
+- Adding the account to an organisation is the administrator's work: they
+  add the SSH key as a new device (for example `<name>-habitat`) and the age
+  recipient to `.sops.yaml` followed by `sops updatekeys`. Removing access is
+  theirs too. Do not edit an organisation's recipient or access lists unless
+  the person asks for exactly that change.
+- Take a server's host key from a trusted source (the organisation's
+  `known_hosts` or its documented fingerprint), not from the first connection.
+
 ## History, receipts and native process observations
 
 `history list` discovers owned native Pi histories, including terminal histories

@@ -44,6 +44,8 @@ for path in SCHEMA_FILES:
 
 checks = {
     "account-preferences.json": "account-preferences.schema.json",
+    "account-keys.json": "account-keys.schema.json",
+    "account-keys-none.json": "account-keys.schema.json",
     "first-route.json": "first-route.schema.json",
     "editor-file-read.json": "workspace-editor-files.schema.json",
     "editor-file-save.json": "workspace-editor-files.schema.json",
@@ -238,6 +240,20 @@ must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identi
 must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "experimental": {}, "uid": 123})
 must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "experimental": {"terminal-watch": False}})
 must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "experimental": {"../x": True}})
+
+# Account keys carry public halves only: no field a private key could fill,
+# no age identity in a recipient's place, and a creation names one kind.
+keys = json.loads((BASE / "examples" / "account-keys.json").read_text())
+must_reject("account-keys.schema.json", {**keys, "keys": [{**keys["keys"][0], "private_key": "-----BEGIN OPENSSH PRIVATE KEY-----"}]})
+must_reject("account-keys.schema.json", {**keys, "keys": [{**keys["keys"][1], "public_key": "AGE-SECRET-KEY-1QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ"}]})
+must_reject("account-keys.schema.json", {**keys, "keys": [{**keys["keys"][0], "public_key": "-----BEGIN OPENSSH PRIVATE KEY-----"}]})
+must_reject("account-keys.schema.json", {**keys, "keys": [{**keys["keys"][0], "fingerprint": "MD5:00"}]})
+must_reject("account-keys.schema.json", {**keys, "keys": [{**keys["keys"][0], "file": "/home/someone/.ssh/id_ed25519"}]})
+must_reject("account-keys.schema.json", {**keys, "missing": [{"kind": "ssh", "file": "~/.ssh/id_rsa", "can_create": True}]})
+keys_create = Draft202012Validator({"$ref": schemas["account-keys.schema.json"]["$id"] + "#/$defs/create"}, registry=registry)
+keys_create.validate({"kind": "age"})
+for bad in ({}, {"kind": "rsa"}, {"kind": "ssh", "file": "~/.ssh/other"}):
+    assert not keys_create.is_valid(bad), f"key creation accepted {bad!r}"
 
 # A view names its entry inside the export, never a path outside it or a
 # hidden file, and its open URL is the fixed handoff on an HTTPS view host.

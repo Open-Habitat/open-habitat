@@ -5,6 +5,7 @@ import {
   Modal,
   ModalOverlay,
 } from "react-aria-components";
+import { AccountKeys } from "../app/AccountKeys";
 import { EditorSettings } from "../app/EditorSettings";
 import { ExperimentalFeatures } from "../app/ExperimentalFeatures";
 import "./Settings.css";
@@ -703,6 +704,7 @@ export function AccountSettings({
           </div>
         )}
         {section === "laitteet" && <Devices csrf={csrf} onLogout={onLogout} />}
+        {section === "avaimet" && <AccountKeys csrf={csrf} />}
         {section === "tekoaly" && (
           <div className="s-stack">
             <p className="s-intro">

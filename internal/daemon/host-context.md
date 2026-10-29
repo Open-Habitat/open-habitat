@@ -16,7 +16,8 @@ Unavailable quota is not unlimited space. These reads do not start Pi.
 When the person must act in the browser, give a full link built from
 `site.origin` in that environment output, never an address guessed or found
 elsewhere: settings is `<origin>/settings` (for example `/settings/ai` for AI
-models and keys, `/settings/code-hosts` for GitHub and Gitea, `/settings/account`),
+models and keys, `/settings/code-hosts` for GitHub and Gitea, `/settings/keys`
+for the account's public SSH and age keys, `/settings/account`),
 and signing in to GitHub again is `<origin>/auth/github/start`. If the origin is
 unavailable, describe where to go in the browser instead.
 

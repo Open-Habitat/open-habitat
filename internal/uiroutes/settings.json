@@ -1,6 +1,7 @@
 {
   "tili": "account",
   "laitteet": "devices",
+  "avaimet": "keys",
   "tekoaly": "ai",
   "tilannekatsaus": "recap",
   "koodipalvelut": "code-hosts",

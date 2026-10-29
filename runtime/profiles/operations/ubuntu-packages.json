@@ -2,11 +2,6 @@
   "platform": "ubuntu-24.04",
   "packages": [
     {
-      "name": "age",
-      "architecture": "native",
-      "version": "1.1.1-1ubuntu0.24.04.3"
-    },
-    {
       "name": "ansible",
       "architecture": "all",
       "version": "9.2.0+dfsg-0ubuntu5"

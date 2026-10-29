@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: account-secrets
 lane_seq: 3
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Asetukset › Avaimet: account SSH and age keys (Taulukko)
@@ -20,6 +21,6 @@ Implement `proto-account-keys-page` direction **Taulukko** (Jari 29.10.): Asetuk
 
 ## Acceptance Criteria
 
-- [ ] Keys page as the prototype's Taulukko, from native files; key creation through the person's daemon.
-- [ ] Skill text and runtime profile change.
-- [ ] Contract, daemon and browser tests; KOKEILTAVAA line.
+- [x] Keys page as the prototype's Taulukko, from native files; key creation through the person's daemon.
+- [x] Skill text and runtime profile change.
+- [x] Contract, daemon and browser tests; KOKEILTAVAA line.

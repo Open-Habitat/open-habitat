@@ -15,6 +15,7 @@ describe("settings URL contract", () => {
       "disk",
       "editor",
       "experimental",
+      "keys",
       "onboarding",
       "recap",
       "server",

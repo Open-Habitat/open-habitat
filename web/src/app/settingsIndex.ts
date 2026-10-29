@@ -107,6 +107,36 @@ export const settingsSections = [
     ],
   },
   {
+    id: "avaimet",
+    label: "Avaimet",
+    icon: "key",
+    kw: ["keys", "avain", "ssh", "age", "sops", "julkinen avain", "public key"],
+    intro:
+      "Tilin julkiset SSH- ja age-avaimet, jotka ylläpitäjä tarvitsee pääsyä tai salaisuuksia varten.",
+    rows: [
+      {
+        id: "account-keys",
+        label: "Tilin julkiset avaimet",
+        kw: [
+          "ssh",
+          "ssh-avain",
+          "ssh key",
+          "id_ed25519",
+          "age",
+          "age-avain",
+          "sops",
+          "salaisuudet",
+          "secrets",
+          "sormenjälki",
+          "fingerprint",
+          "luo avain",
+          "ylläpitäjä",
+        ],
+        desc: "SSH- ja age-avainten julkiset osat ja sormenjäljet. Puuttuvan avaimen voi luoda tililtä.",
+      },
+    ],
+  },
+  {
     id: "tekoaly",
     label: "Tekoäly",
     icon: "agent",

@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "web_identity_id": "wid_example-a",
+  "keys": [
+    {
+      "kind": "ssh",
+      "file": "~/.ssh/id_ed25519",
+      "algorithm": "ssh-ed25519",
+      "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA5z57WK3YdjUW1MXsznOK5TK+boh4e44zSqBbUNtPg/ person@habitat.example.org",
+      "fingerprint": "SHA256:bNw5ZRoVQKPlioaoebVpQwvX1asbAwOlF35b5hzAAe4",
+      "comment": "person@habitat.example.org",
+      "modified_at": "2026-10-12T09:30:00Z"
+    },
+    {
+      "kind": "age",
+      "file": "~/.config/sops/age/keys.txt",
+      "algorithm": "X25519",
+      "public_key": "age1zgxd79sw3jvcsj2c2tlr7stegtxpd9kcq2zjwpkuylg6yrlwvegsv5juss",
+      "modified_at": "2026-10-12T09:31:00Z"
+    }
+  ],
+  "missing": []
+}

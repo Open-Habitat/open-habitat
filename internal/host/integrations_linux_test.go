@@ -79,7 +79,8 @@ func TestIntegrationsClosurePinsTools(t *testing.T) {
 		}
 		files["runtime/"+rel] = RuntimeFile{Path: "runtime/" + rel, Component: owner, Mode: 0755}
 	}
-	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1", "tea": "0.16.0", "glab": "1.124.0"} {
+	files["runtime/bin/sops"] = RuntimeFile{Path: "runtime/bin/sops", Component: "sops", Mode: 0755}
+	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1", "tea": "0.16.0", "glab": "1.124.0", "sops": "3.13.3"} {
 		components[name] = RuntimeComponent{Name: name, Version: version, Kind: "native"}
 	}
 	a := ReleaseArtifact{Profile: "integrations", Packages: []RuntimePackage{{"curl", "amd64", "8.5.0-2ubuntu10.6"}}}
@@ -111,6 +112,10 @@ func TestIntegrationsClosurePinsTools(t *testing.T) {
 		},
 		"no tea": func(a ReleaseArtifact, f map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact {
 			delete(f, "runtime/bin/tea")
+			return a
+		},
+		"no sops": func(a ReleaseArtifact, f map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact {
+			delete(f, "runtime/bin/sops")
 			return a
 		},
 		"no glab": func(a ReleaseArtifact, f map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact {
@@ -160,7 +165,8 @@ func TestOnlyInstallationTargetsRequireIntegrationTools(t *testing.T) {
 	for name, rel := range integrationProfileTools {
 		files = append(files, RuntimeFile{Path: "runtime/" + rel, Component: name, Mode: 0755})
 	}
-	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1", "tea": "0.16.0", "glab": "1.124.0"} {
+	files = append(files, RuntimeFile{Path: "runtime/bin/sops", Component: "sops", Mode: 0755})
+	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1", "tea": "0.16.0", "glab": "1.124.0", "sops": "3.13.3"} {
 		components = append(components, RuntimeComponent{Name: name, Version: version, Kind: "native"})
 	}
 	current := AuthenticatedRelease{manifest: ReleaseManifest{Artifacts: []ReleaseArtifact{
