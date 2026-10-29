@@ -117,8 +117,12 @@ test("@settings-search / finds a setting, arrows preview results beside the list
     .analyze()
     .then((r) => expect(r.violations).toEqual([]));
 
-  await page.keyboard.press("Control+a");
-  await page.keyboard.type("malli");
+  // One input event, so the list changes once: once the previous search's
+  // result is gone the list is the final one, and its second result is the
+  // one the arrows reach (typing letter by letter let a loaded run read the
+  // second result of a partial query).
+  await field(page).fill("malli");
+  await expect(option(page, "row-theme")).toHaveCount(0);
   const second = options.nth(1);
   const secondKey = (await second.getAttribute("data-testid"))?.replace(
     "settings-result-",
