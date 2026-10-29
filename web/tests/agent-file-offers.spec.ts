@@ -249,6 +249,8 @@ test("a package card downloads one zip and opens the conversation's file panel",
   await expect(dialog).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
+  // The dialog hands focus back after it unmounts; Tab starts from there.
+  await expect(folderRow.getByTestId("file-shelf-preview")).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(folderRow.getByTestId("file-shelf-download")).toBeFocused();
 
