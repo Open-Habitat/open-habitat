@@ -25,6 +25,7 @@ func TestBrowserRoutesHTTP2(t *testing.T) {
 		{"GET", accountPreferencesPath, "", a.personalSetting(accountPreferencesPath)},
 		{"GET", firstRoutePath, "", a.personalSetting(firstRoutePath)},
 		{"POST", accountKeysPath, `{"kind":"ssh"}`, a.accountKeys},
+		{"POST", ownMachinesPath, `{"action":"connect"}`, a.ownMachines},
 		{"GET", editorFilesPrefix + "list?workspace_id=x&path=", "", a.editorFiles},
 		{"GET", terminalsPath + "?workspace_id=" + "ws_" + strings.Repeat("a", 24), "", a.terminalList},
 		{"POST", terminalClosePath, "{}", a.terminalClose},

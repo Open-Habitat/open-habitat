@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/own-machines.schema.json",
+  "title": "The person's own machines over their own tailnet",
+  "description": "Read and written by the person's daemon as the person: their own Tailscale node (a user unit), the devices Tailscale lists, and the machines in their SSH configuration. No field carries a key's private half, a node key or a credential; the login URL is Tailscale's own.",
+  "$defs": {
+    "name": {"description": "A device's name in the person's tailnet: the first label of its MagicDNS name.", "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+    "address": {"description": "A Tailscale IPv4 address.", "type": "string", "pattern": "^100\\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\\.[0-9]{1,3}\\.[0-9]{1,3}$"},
+    "user": {"description": "The user on the machine whose rights the agent gets.", "type": "string", "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$"},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "fingerprint": {"description": "As `ssh-keygen -lf` prints it.", "type": "string", "pattern": "^SHA256:[A-Za-z0-9+/]{43}$"},
+    "seen": {"type": "string", "format": "date-time", "maxLength": 40},
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "address", "shields_up"],
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "dns_name": {"type": "string", "maxLength": 255},
+        "address": {"$ref": "#/$defs/address"},
+        "tailnet": {"type": "string", "maxLength": 255},
+        "login": {"description": "The tailnet account the node joined as.", "type": "string", "maxLength": 255},
+        "shields_up": {"description": "Inbound tailnet connections are refused. The node's locked config sets it; false means it was changed outside Habitat.", "type": "boolean"}
+      }
+    },
+    "tailscale": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "description": "unavailable: this server ships no Tailscale; off: no node on the account; stopped: the node's unit exists but does not answer; login: waiting for the person's Tailscale login; approval: waiting for the tailnet's administrator; starting; on.",
+          "enum": ["unavailable", "off", "stopped", "login", "approval", "starting", "on"]
+        },
+        "auth_url": {"description": "Tailscale's own login page for this node, only while it waits for a login.", "type": "string", "pattern": "^https://login\\.tailscale\\.com/a/[^\\s?#]{1,280}$"},
+        "node": {"$ref": "#/$defs/node"}
+      }
+    },
+    "peer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "os", "address", "online", "ssh"],
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "dns_name": {"type": "string", "maxLength": 255},
+        "os": {"type": "string", "maxLength": 40},
+        "address": {"$ref": "#/$defs/address"},
+        "online": {"type": "boolean"},
+        "last_seen": {"$ref": "#/$defs/seen"},
+        "ssh": {"description": "possible: macOS or Linux; later: Windows, not yet guided; no: a phone or other device without an SSH server.", "enum": ["possible", "later", "no"]}
+      }
+    },
+    "machine": {
+      "description": "One machine in the person's SSH configuration (~/.ssh/config.d/habitat-<name>.conf); the agent reaches it with `ssh <name>`.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "user", "address", "expires", "expired", "in_tailnet", "online", "host_key", "connection_open"],
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "user": {"$ref": "#/$defs/user"},
+        "address": {"$ref": "#/$defs/address"},
+        "expires": {"description": "The date the machine's line stops being accepted, as Habitat wrote it.", "$ref": "#/$defs/date"},
+        "expired": {"type": "boolean"},
+        "in_tailnet": {"type": "boolean"},
+        "online": {"type": "boolean"},
+        "last_seen": {"$ref": "#/$defs/seen"},
+        "os": {"type": "string", "maxLength": 40},
+        "host_key": {"description": "The pinned host key the person compared; empty when its file is gone.", "anyOf": [{"$ref": "#/$defs/fingerprint"}, {"const": ""}]},
+        "connection_open": {"description": "An SSH connection to it is open now (its control socket exists).", "type": "boolean"}
+      }
+    },
+    "grant": {
+      "description": "The line for the machine and the command that installs it. Nothing is written on the account but the key, if it was missing.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["machine", "user", "address", "expires", "line", "command", "key_fingerprint"],
+      "properties": {
+        "machine": {"$ref": "#/$defs/name"},
+        "user": {"$ref": "#/$defs/user"},
+        "address": {"$ref": "#/$defs/address"},
+        "expires": {"$ref": "#/$defs/date"},
+        "line": {"type": "string", "pattern": "^restrict,from=\"[0-9.]+\",expiry-time=\"[0-9]{8}\" ssh-ed25519 [A-Za-z0-9+/]+=* habitat:[A-Za-z0-9._-]+@[A-Za-z0-9._-]+$", "maxLength": 400},
+        "command": {"type": "string", "maxLength": 1000},
+        "key_fingerprint": {"$ref": "#/$defs/fingerprint"}
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["machine", "result"],
+      "properties": {
+        "machine": {"$ref": "#/$defs/name"},
+        "result": {"description": "ok: the machine accepted the key and ran a command; key_rejected: it answered and refused the key; host_key_changed: a saved machine shows another host key; offline: Tailscale does not see it; no_ssh: nothing answers SSH on it; failed: anything else.", "enum": ["ok", "key_rejected", "host_key_changed", "offline", "no_ssh", "failed"]},
+        "host_key": {"description": "The host key the machine showed, for the person to compare before it is saved.", "$ref": "#/$defs/fingerprint"}
+      }
+    },
+    "request": {
+      "description": "One action. A new machine is named only by its tailnet name; its address comes from Tailscale.",
+      "oneOf": [
+        {"type": "object", "additionalProperties": false, "required": ["action"], "properties": {"action": {"enum": ["connect", "disconnect"]}}},
+        {"type": "object", "additionalProperties": false, "required": ["action", "peer", "user", "days"], "properties": {"action": {"const": "grant"}, "peer": {"$ref": "#/$defs/name"}, "user": {"$ref": "#/$defs/user"}, "days": {"enum": [7, 30, 90]}}},
+        {"type": "object", "additionalProperties": false, "required": ["action", "machine", "days"], "properties": {"action": {"const": "renew"}, "machine": {"$ref": "#/$defs/name"}, "days": {"enum": [7, 30, 90]}}},
+        {"type": "object", "additionalProperties": false, "required": ["action", "peer", "user"], "properties": {"action": {"const": "check"}, "peer": {"$ref": "#/$defs/name"}, "user": {"$ref": "#/$defs/user"}}},
+        {"type": "object", "additionalProperties": false, "required": ["action", "machine"], "properties": {"action": {"enum": ["recheck", "remove"]}, "machine": {"$ref": "#/$defs/name"}}},
+        {"type": "object", "additionalProperties": false, "required": ["action", "peer", "user", "expires", "host_key"], "properties": {"action": {"const": "save"}, "peer": {"$ref": "#/$defs/name"}, "user": {"$ref": "#/$defs/user"}, "expires": {"$ref": "#/$defs/date"}, "host_key": {"$ref": "#/$defs/fingerprint"}}},
+        {"type": "object", "additionalProperties": false, "required": ["action", "machine", "expires"], "properties": {"action": {"const": "extend"}, "machine": {"$ref": "#/$defs/name"}, "expires": {"$ref": "#/$defs/date"}}}
+      ]
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "web_identity_id", "tailscale", "peers", "machines", "ssh_include", "remove_command"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "web_identity_id": {"type": "string", "pattern": "^wid_[A-Za-z0-9_-]+$", "maxLength": 128},
+        "tailscale": {"$ref": "#/$defs/tailscale"},
+        "peers": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/peer"}},
+        "machines": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/machine"}},
+        "ssh_include": {"description": "~/.ssh/config includes the machines before its first Host block.", "type": "boolean"},
+        "remove_command": {"description": "Removes this account's line from a machine's authorized_keys.", "type": "string", "maxLength": 500},
+        "account_key": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["file", "fingerprint"],
+          "properties": {"file": {"const": "~/.ssh/id_ed25519"}, "fingerprint": {"$ref": "#/$defs/fingerprint"}}
+        },
+        "grant": {"$ref": "#/$defs/grant"},
+        "check": {"$ref": "#/$defs/check"},
+        "saved": {"$ref": "#/$defs/name"},
+        "removed": {"$ref": "#/$defs/name"}
+      }
+    }
+  },
+  "$ref": "#/$defs/result"
+}

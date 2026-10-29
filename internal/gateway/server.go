@@ -69,6 +69,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(accountPreferencesPath, s.auth.personalSetting(accountPreferencesPath))
 		mux.HandleFunc(firstRoutePath, s.auth.personalSetting(firstRoutePath))
 		mux.HandleFunc(accountKeysPath, s.auth.accountKeys)
+		mux.HandleFunc(ownMachinesPath, s.auth.ownMachines)
 		mux.HandleFunc(workspaceFilesPath, s.auth.workspaceComposerRead)
 		mux.HandleFunc(workspaceFilePreviewPath, s.auth.workspaceComposerRead)
 		mux.HandleFunc(terminalsPath, s.auth.terminalList)

@@ -415,6 +415,37 @@ export const settingsSections = [
     ],
   },
   {
+    id: "omatkoneet",
+    label: "Omat koneet",
+    icon: "laptop",
+    kw: ["own machines", "my computer", "oma kone", "tietokone", "mac", "kone"],
+    intro:
+      "Agentti voi käyttää omaa tietokonettasi SSH:lla oman Tailscale-verkkosi kautta.",
+    rows: [
+      {
+        id: "own-machines-tailscale",
+        label: "Tailscale",
+        kw: ["tailscale", "tailnet", "vpn", "verkko", "network"],
+        desc: "Habitatin oma laite Tailscale-verkossasi: yhdistä tai irrota.",
+      },
+      {
+        id: "own-machines",
+        label: "Koneet",
+        kw: [
+          "ssh",
+          "etäkirjautuminen",
+          "remote login",
+          "authorized_keys",
+          "lisää kone",
+          "add machine",
+          "macbook",
+          "linux",
+        ],
+        desc: "Koneet, joille agentti pääsee: lisää, uusi pääsy tai poista.",
+      },
+    ],
+  },
+  {
     id: "ulkoasu",
     label: "Ulkoasu",
     icon: "eye",

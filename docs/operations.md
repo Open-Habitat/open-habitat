@@ -630,7 +630,7 @@ Every installation ships the integration tools in the required `integrations`
 profile, so a site's `profiles` always lists `core` and `integrations`. The
 signed profile carries **himalaya 2.2.1** (IMAP), **rclone 1.71.2**, **gog
 0.39.1**, **tea 0.16.0** (Gitea), **glab 1.124.0** (GitLab), **sops 3.13.3**
-(the person's own SOPS, at `/opt/open-habitat/profiles/integrations/bin/sops`), **@softeria/ms-365-mcp-server 0.170.1** with the `microsoft-native`
+(the person's own SOPS, at `/opt/open-habitat/profiles/integrations/bin/sops`), **tailscale/tailscaled 1.104.4** (each person's own Tailscale node, below), **@softeria/ms-365-mcp-server 0.170.1** with the `microsoft-native`
 adapter, **MSAL 5.6.0** and their own **Node 22.21.1**, and a Pi wrapper that
 runs the same release's core **Pi 1.3.0** for native `pi mcp add/remove`. Each
 upstream executable is pinned by archive and file SHA-256 with its upstream
@@ -670,6 +670,31 @@ in site.json and run apply; the broker then refuses browser and CLI writes, and
 hand edits work as before. The broker's service needs `/opt/open-habitat`
 writable for this, which the shipped unit declares. Every person still connects their own accounts in Settings →
 Integrations; the operator configures no one's connection.
+
+### Own machines over Tailscale
+
+Settings → Omat koneet lets a person give their agent SSH access to their own
+computer over their own tailnet. The operator configures nothing: the
+integrations profile ships Tailscale's static `tailscale` and `tailscaled`,
+and the person's daemon writes and starts a systemd **user** unit
+(`~/.config/systemd/user/habitat-tailscale.service`) in their account. It
+needs the person's user manager to run with lingering, which the broker
+enables for admitted accounts; without it the page says the account's
+services cannot be started. Each node runs in userspace networking, adds no
+interface, route or DNS to the host, opens no TCP port, keeps its LocalAPI
+socket in the account's `0700` runtime directory and its state in
+`~/.local/state/habitat-tailscale`, and its locked config keeps shields up.
+The host itself never joins a tailnet for this feature.
+
+What an administrator must know and tell people: **root on this server can
+use a person's grant.** The account's SSH key and the node's key are files in
+the home, so root can read them or run `ssh` as the person. The grant is
+bounded by the person's machine: one line in `authorized_keys` with
+`restrict`, `from=` the node's tailnet address and `expiry-time=` (at most 90
+days), and on a Mac Remote Login for that one user without full disk access.
+The page says this before anything is saved. Removing a machine in Habitat
+does not withdraw it from a copy of the key; the person removes the line on
+the machine, which the page gives as a command.
 
 ### Gitea and GitLab servers
 

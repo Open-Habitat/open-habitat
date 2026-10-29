@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "web_identity_id": "wid_example-a",
+  "tailscale": {
+    "state": "on",
+    "node": {"name": "habitat-alice", "dns_name": "habitat-alice.example-tailnet.ts.net", "address": "100.101.22.7", "tailnet": "example-tailnet.ts.net", "login": "alice@example.com", "shields_up": true}
+  },
+  "peers": [
+    {"name": "alice-macbook", "dns_name": "alice-macbook.example-tailnet.ts.net", "os": "macOS", "address": "100.88.14.53", "online": true, "ssh": "possible"},
+    {"name": "alice-phone", "dns_name": "alice-phone.example-tailnet.ts.net", "os": "iOS", "address": "100.90.1.2", "online": true, "ssh": "no"},
+    {"name": "living-room-nas", "dns_name": "living-room-nas.example-tailnet.ts.net", "os": "linux", "address": "100.71.203.10", "online": false, "last_seen": "2026-10-26T09:00:00Z", "ssh": "possible"}
+  ],
+  "machines": [
+    {"name": "alice-macbook", "user": "alice", "address": "100.88.14.53", "expires": "2026-11-28", "expired": false, "in_tailnet": true, "online": true, "os": "macOS", "host_key": "SHA256:q8Vd2mR0bW3kYt1pZs9xLc4nHe7uJ5gAo6fTiK2wQyE", "connection_open": false}
+  ],
+  "ssh_include": true,
+  "account_key": {"file": "~/.ssh/id_ed25519", "fingerprint": "SHA256:Y2nT6kq0Rz8wXv3bLm5dHs1fJc9gPa4uEo7iKt2RxBw"},
+  "remove_command": "umask 077 && grep -v ' habitat:alice@habitat\\.example\\.org$' ~/.ssh/authorized_keys > ~/.ssh/authorized_keys.habitat; mv ~/.ssh/authorized_keys.habitat ~/.ssh/authorized_keys",
+  "grant": {
+    "machine": "living-room-nas",
+    "user": "alice",
+    "address": "100.71.203.10",
+    "expires": "2026-11-28",
+    "line": "restrict,from=\"100.101.22.7\",expiry-time=\"20261128\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPm4Vq0h7sX2bN9cR3kT6wYz1dLf8eJu5aGo4iHp0QsE habitat:alice@habitat.example.org",
+    "command": "umask 077 && mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys && { grep -v ' habitat:alice@habitat\\.example\\.org$' ~/.ssh/authorized_keys; echo 'restrict,from=\"100.101.22.7\",expiry-time=\"20261128\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPm4Vq0h7sX2bN9cR3kT6wYz1dLf8eJu5aGo4iHp0QsE habitat:alice@habitat.example.org'; } > ~/.ssh/authorized_keys.habitat && mv ~/.ssh/authorized_keys.habitat ~/.ssh/authorized_keys",
+    "key_fingerprint": "SHA256:Y2nT6kq0Rz8wXv3bLm5dHs1fJc9gPa4uEo7iKt2RxBw"
+  }
+}

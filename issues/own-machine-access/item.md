@@ -3,12 +3,13 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: own-machine
 lane_seq: 3
 preparation: ready
 blocked_by: ['@account-keys-page']
+closed: 2026-10-29
 ---
 
 # Own computer over Tailscale + SSH: guided setup, several machines

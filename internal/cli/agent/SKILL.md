@@ -354,6 +354,33 @@ The account's SSH and age keys are made on the account and never leave it.
 - Take a server's host key from a trusted source (the organisation's
   `known_hosts` or its documented fingerprint), not from the first connection.
 
+## The person's own machines
+
+The person may have given you SSH access to their own computers in Settings →
+Omat koneet (`<origin>/settings/machines`). Each one is a host in their SSH
+configuration, `~/.ssh/config.d/habitat-<name>.conf`, reached through their
+own Tailscale node on this account: `ssh <name> -- <command>` (for example
+`ssh alice-macbook -- defaults read com.apple.HIToolbox` or `scp`). That file
+list is the only list of machines; `grep -h '^Host ' ~/.ssh/config.d/habitat-*.conf`
+names them.
+
+- You act as the person's user on that machine, with everything that user
+  may do. Say which machine you are about to use before the first command of
+  a task, and do not change its settings, install software or touch files
+  outside what the person asked for.
+- A refused key (`Permission denied`), an expired grant, a changed host key
+  or an unreachable machine is the person's answer or their machine's state:
+  tell them what happened and point to the settings page. Never try another
+  route, another key or another user, never edit the `habitat-*` files or
+  `known_hosts` entries, and never accept a new host key yourself.
+- Never stop, edit or reconfigure the account's Tailscale node
+  (`habitat-tailscale.service`, `~/.config/habitat-tailscale/`, the socket
+  under `$XDG_RUNTIME_DIR/habitat-tailscale/`), never turn shields down, and
+  never open a SOCKS or HTTP proxy to the tailnet: other people on this server
+  could then use the person's network.
+- Adding a machine, renewing access or removing one is done by the person in
+  the settings page, never by you; the line on the machine is theirs to add.
+
 ## History, receipts and native process observations
 
 `history list` discovers owned native Pi histories, including terminal histories

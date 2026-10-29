@@ -52,7 +52,7 @@ with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir='/var/tmp') as dir
     assert actual['node_modules/@azure/msal-node'] == '5.6.0'
     assert actual['node_modules/@softeria/ms-365-mcp-server'] == '0.170.1'
     runtime = root / 'runtime'
-    pins = {'himalaya': '2.2.1', 'rclone': '1.71.2', 'gog': '0.39.1', 'tea': '0.16.0', 'glab': '1.124.0', 'sops': '3.13.3'}
+    pins = {'himalaya': '2.2.1', 'rclone': '1.71.2', 'gog': '0.39.1', 'tea': '0.16.0', 'glab': '1.124.0', 'sops': '3.13.3', 'tailscale': '1.104.4', 'tailscaled': '1.104.4'}
     for name, version in pins.items():
         assert components[name]['kind'] == 'native' and components[name]['version'] == version
         assert records['runtime/bin/' + name]['component'] == name and records['runtime/bin/' + name]['mode'] == 0o755
@@ -69,7 +69,7 @@ with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir='/var/tmp') as dir
             go_notices.check((root / 'licenses' / name / 'THIRD-PARTY-NOTICES').read_text(), data)
     tool_env = {'HOME': str(root / 'home'), 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8'}
     (root / 'home').mkdir()
-    for argv, expected in [(['himalaya', '--version'], 'v2.2.1'), (['rclone', 'version'], 'v1.71.2'), (['gog', '--version'], '0.39.1'), (['tea', '--version'], '0.16.0'), (['glab', '--version'], '1.124.0'), (['sops', '--disable-version-check', '--version'], '3.13.3')]:
+    for argv, expected in [(['himalaya', '--version'], 'v2.2.1'), (['rclone', 'version'], 'v1.71.2'), (['gog', '--version'], '0.39.1'), (['tea', '--version'], '0.16.0'), (['glab', '--version'], '1.124.0'), (['sops', '--disable-version-check', '--version'], '3.13.3'), (['tailscale', 'version'], '1.104.4'), (['tailscaled', '--version'], '1.104.4')]:
         out = subprocess.check_output([runtime / 'bin' / argv[0], *argv[1:]], env=tool_env, text=True, timeout=30)
         assert expected in out, (argv, out)
     # The Pi wrapper resolves core through the stable profile link, as host

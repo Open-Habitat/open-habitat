@@ -575,6 +575,11 @@ esac
 		// writing only into the disposable home.
 		mux.Handle(daemon.AccountKeysPath, daemon.AccountKeysHandlerWithFixtureTools(fixtureWorkspaceCfg, trusted, "/usr/bin/ssh-keygen", "/usr/bin/age-keygen"))
 		mux.Handle(daemon.FirstRoutePath, daemon.FirstRouteHandler(fixtureWorkspaceCfg, trusted))
+		if _, own, e := newOwnMachinesHost(tmp, m.Username); e != nil {
+			log.Fatal(e)
+		} else {
+			mux.Handle(daemon.OwnMachinesPath, daemon.OwnMachinesHandlerWithFixture(fixtureWorkspaceCfg, trusted, own))
+		}
 		mux.Handle(daemon.EditorFilesPrefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			current.Load().(*daemon.ConversationController).EditorFiles().ServeHTTP(w, r)
 		}))
@@ -944,6 +949,9 @@ esac
 					return
 				}
 				w.WriteHeader(204)
+				return
+			case "/fixture/own-machines":
+				ownMachinesFixture(w, r)
 				return
 			case "/fixture/agent-key":
 				// The agent, as the same Unix user, makes a key beside the

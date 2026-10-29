@@ -198,6 +198,19 @@ Identity and authority:
   notice text is data, never approval. The browser-confirmation set for personal
   operations is empty: explicit targets and existing safety proofs apply.
   Native git, gh, tmux and Taskfleet keep their own jobs and records.
+- A person's own Tailscale node (Omat koneet) is theirs alone: a systemd
+  user unit of their account, never a system `tailscaled`, never a host-wide
+  tailnet and never a Habitat-owned tailnet, auth key or admin access to
+  anyone's. Its LocalAPI socket lives only in the unit's `0700`
+  RuntimeDirectory, because tailscaled makes the socket world-writable and
+  its dial endpoint checks no permission; no SOCKS or HTTP proxy port is
+  ever opened. Shields stay up through a locked config, because userspace
+  networking forwards inbound tailnet connections to every user's loopback.
+  The machines are the person's own SSH configuration and nothing else; a
+  host key is pinned only after the person compared it, and the daemon
+  never edits a machine's `authorized_keys` or withdraws a grant there.
+  The UI says that the agent gets everything the person's user has on the
+  machine and that the server's root can use the grant, and offers no pause.
 - An agent environment observation reads quota as its own UID directly from the
   kernel; it never calls the broker or gateway or caches quota on their behalf.
   A failed read is unavailable, not zero usage or unlimited space; filesystem

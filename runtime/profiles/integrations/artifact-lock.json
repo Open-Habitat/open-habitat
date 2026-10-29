@@ -98,6 +98,18 @@
       "filename": "sops-v3.13.3.linux.arm64",
       "url": "https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.arm64",
       "sha256": "53b0abacd38ef1b12a66d6c100956691b9cefce018d91f81e73ddf7438b94d77"
+    },
+    {
+      "target": "linux-amd64",
+      "filename": "tailscale_1.104.4_amd64.tgz",
+      "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.4_amd64.tgz",
+      "sha256": "624ea093d47d62cf56f17b8332d74b8decda4a1faa610ebc60a1de334b2b3dc9"
+    },
+    {
+      "target": "linux-arm64",
+      "filename": "tailscale_1.104.4_arm64.tgz",
+      "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.4_arm64.tgz",
+      "sha256": "a1c249ce6bdebef62e1ae3b997595555bce2ae4709bf95a718e9ca7a129dad7e"
     }
   ],
   "tools": [
@@ -268,6 +280,62 @@
         "sops-THIRD-PARTY-NOTICES"
       ],
       "go_notices": "sops-THIRD-PARTY-NOTICES"
+    },
+    {
+      "target": "linux-amd64",
+      "name": "tailscale",
+      "version": "1.104.4",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/tailscale/tailscale",
+      "archive": "tailscale_1.104.4_amd64.tgz",
+      "member": "tailscale_1.104.4_amd64/tailscale",
+      "sha256": "f27bd0ad0a9a04c23ae02aa8a5897cf7f99e4e5ae153c0e5f7000b122418c830",
+      "license_files": [
+        "tailscale-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "tailscale-THIRD-PARTY-NOTICES"
+    },
+    {
+      "target": "linux-arm64",
+      "name": "tailscale",
+      "version": "1.104.4",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/tailscale/tailscale",
+      "archive": "tailscale_1.104.4_arm64.tgz",
+      "member": "tailscale_1.104.4_arm64/tailscale",
+      "sha256": "01c657aa13af9a13789aa5f5fa70327c200d5387f2ac8cf245ec73e213b15217",
+      "license_files": [
+        "tailscale-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "tailscale-THIRD-PARTY-NOTICES"
+    },
+    {
+      "target": "linux-amd64",
+      "name": "tailscaled",
+      "version": "1.104.4",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/tailscale/tailscale",
+      "archive": "tailscale_1.104.4_amd64.tgz",
+      "member": "tailscale_1.104.4_amd64/tailscaled",
+      "sha256": "afc601d3c5be812105064eba11b64afa8928e983815bc47db218f25f3749c0c0",
+      "license_files": [
+        "tailscaled-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "tailscaled-THIRD-PARTY-NOTICES"
+    },
+    {
+      "target": "linux-arm64",
+      "name": "tailscaled",
+      "version": "1.104.4",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/tailscale/tailscale",
+      "archive": "tailscale_1.104.4_arm64.tgz",
+      "member": "tailscale_1.104.4_arm64/tailscaled",
+      "sha256": "c8c80d2f0919eb48b0a86a9f1ddd2289d07ded51a886066db8059cd6461e5aa3",
+      "license_files": [
+        "tailscaled-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "tailscaled-THIRD-PARTY-NOTICES"
     }
   ]
 }

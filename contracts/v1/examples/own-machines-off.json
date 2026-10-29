@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "web_identity_id": "wid_example-a",
+  "tailscale": {"state": "off"},
+  "peers": [],
+  "machines": [],
+  "ssh_include": false,
+  "remove_command": "umask 077 && grep -v ' habitat:alice@habitat\\.example\\.org$' ~/.ssh/authorized_keys > ~/.ssh/authorized_keys.habitat; mv ~/.ssh/authorized_keys.habitat ~/.ssh/authorized_keys"
+}

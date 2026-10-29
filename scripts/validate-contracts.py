@@ -46,6 +46,8 @@ checks = {
     "account-preferences.json": "account-preferences.schema.json",
     "account-keys.json": "account-keys.schema.json",
     "account-keys-none.json": "account-keys.schema.json",
+    "own-machines.json": "own-machines.schema.json",
+    "own-machines-off.json": "own-machines.schema.json",
     "first-route.json": "first-route.schema.json",
     "editor-file-read.json": "workspace-editor-files.schema.json",
     "editor-file-save.json": "workspace-editor-files.schema.json",
@@ -254,6 +256,20 @@ keys_create = Draft202012Validator({"$ref": schemas["account-keys.schema.json"][
 keys_create.validate({"kind": "age"})
 for bad in ({}, {"kind": "rsa"}, {"kind": "ssh", "file": "~/.ssh/other"}):
     assert not keys_create.is_valid(bad), f"key creation accepted {bad!r}"
+
+# Own machines: the login link is Tailscale's own, an address is a tailnet
+# address, and a request names a new machine only by its tailnet name.
+machines = json.loads((BASE / "examples" / "own-machines.json").read_text())
+must_reject("own-machines.schema.json", {**machines, "tailscale": {"state": "login", "auth_url": "https://evil.example/a/x"}})
+must_reject("own-machines.schema.json", {**machines, "tailscale": {"state": "login", "auth_url": "https://login.tailscale.com/a/x?next=https://evil.example"}})
+must_reject("own-machines.schema.json", {**machines, "machines": [{**machines["machines"][0], "address": "192.168.1.10"}]})
+must_reject("own-machines.schema.json", {**machines, "account_key": {"file": "~/.ssh/id_ed25519", "fingerprint": machines["account_key"]["fingerprint"], "private_key": "x"}})
+must_reject("own-machines.schema.json", {**machines, "grant": {**machines["grant"], "line": machines["grant"]["line"].replace("restrict,", "")}})
+machines_request = Draft202012Validator({"$ref": schemas["own-machines.schema.json"]["$id"] + "#/$defs/request"}, registry=registry)
+for good in ({"action": "connect"}, {"action": "grant", "peer": "alice-macbook", "user": "alice", "days": 30}, {"action": "save", "peer": "alice-macbook", "user": "alice", "expires": "2026-11-28", "host_key": machines["account_key"]["fingerprint"]}, {"action": "remove", "machine": "alice-macbook"}):
+    machines_request.validate(good)
+for bad in ({"action": "grant", "peer": "alice-macbook", "user": "alice", "days": 365}, {"action": "check", "peer": "alice-macbook", "user": "alice", "address": "100.88.14.53"}, {"action": "check", "peer": "100.88.14.53", "user": "alice"}, {"action": "remove", "machine": "../x"}, {"action": "connect", "peer": "x"}):
+    assert not machines_request.is_valid(bad), f"own-machines request accepted {bad!r}"
 
 # A view names its entry inside the export, never a path outside it or a
 # hidden file, and its open URL is the fixed handoff on an HTTPS view host.
