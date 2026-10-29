@@ -59,8 +59,9 @@ describe("start page lifetime", () => {
       expect(readStartPage).toHaveBeenCalledTimes(1);
       if (page && !("state" in page)) {
         fireEvent.click(screen.getByTestId("starting-goal"));
-        fireEvent.click(screen.getByTestId("guide-start-top"));
-        expect(onChange).toHaveBeenCalledWith("Native prompt\n\nDraft\n\n");
+        await waitFor(() =>
+          expect(onChange).toHaveBeenCalledWith("Native prompt\n\nDraft\n\n"),
+        );
       }
     },
   );
@@ -159,7 +160,6 @@ it("focuses and selects the prepared draft after a delayed controlled-input comm
   await waitFor(() =>
     expect(screen.queryByTestId("starting-goal")).not.toBeNull(),
   );
-  fireEvent.click(screen.getByTestId("starting-goal"));
   // Let any frame callback run before the parent commits the controlled value,
   // as can happen under load. A single-frame focus attempt loses the intent.
   const frame = vi
@@ -168,15 +168,15 @@ it("focuses and selects the prepared draft after a delayed controlled-input comm
       callback(0);
       return 0;
     });
+  const prepared = "Investigate\n\nOriginal\n\n[observation]";
   try {
-    fireEvent.click(screen.getByTestId("guide-start-top"));
+    fireEvent.click(screen.getByTestId("starting-goal"));
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith(prepared));
   } finally {
     frame.mockRestore();
   }
   const field = screen.getByTestId("draft") as HTMLTextAreaElement;
   expect(document.activeElement).not.toBe(field);
-  const prepared = "Investigate\n\nOriginal\n\n[observation]";
-  expect(onChange).toHaveBeenCalledWith(prepared);
   expect(field.value).toBe("Original");
   view.rerender(content(prepared));
   expect(document.activeElement).toBe(field);
@@ -184,7 +184,7 @@ it("focuses and selects the prepared draft after a delayed controlled-input comm
     "[observation]",
   );
   // Later typing must not reapply the selection or steal focus back.
-  screen.getByTestId("guide-start-top").focus();
+  screen.getByTestId("starting-goal").focus();
   view.rerender(content("Edited"));
   expect(document.activeElement).not.toBe(field);
 });
@@ -210,7 +210,6 @@ it("reads prose without Pi and resolves an authored skill only when preparing a 
   );
   expect(readCommands).not.toHaveBeenCalled();
   fireEvent.click(screen.getByTestId("starting-goal"));
-  fireEvent.click(screen.getByTestId("guide-start-top"));
   expect(onChange).not.toHaveBeenCalled();
   view.rerender(<StartPageRead {...props} draft="Edited during lookup" />);
   finish({ answered_by: "helper", commands: [] });
@@ -219,7 +218,7 @@ it("reads prose without Pi and resolves an authored skill only when preparing a 
       "Native prompt\n\nEdited during lookup\n\n",
     ),
   );
-  expect(screen.queryByTestId("goal-guide")).not.toBeNull();
+  expect(screen.queryByTestId("goal-guide")).toBeNull();
 });
 
 it("leaves the request to the goal's own skill and selects the placeholder after the chip", async () => {
@@ -266,10 +265,13 @@ it("leaves the request to the goal's own skill and selects the placeholder after
     expect(screen.queryByTestId("starting-goal")).not.toBeNull(),
   );
   fireEvent.click(screen.getByTestId("starting-goal"));
-  fireEvent.click(screen.getByTestId("guide-start-top"));
   const prepared = "/skill:native [observation]";
   await waitFor(() => expect(onChange).toHaveBeenCalledWith(prepared));
-  expect(onStarted).toHaveBeenCalledWith(goal, "Repository title");
+  expect(onStarted).toHaveBeenCalledWith(goal, "Repository title", {
+    text: prepared,
+    selectionStart: "/skill:native ".length,
+    selectionEnd: prepared.length,
+  });
   view.rerender(content(prepared));
   const field = screen.getByTestId("draft") as HTMLTextAreaElement;
   expect(document.activeElement).toBe(field);
@@ -280,7 +282,7 @@ it("leaves the request to the goal's own skill and selects the placeholder after
   // A general skill the goal borrows does not hold its request.
   vi.mocked(readCommands).mockResolvedValue(skill("Some general skill"));
   view.rerender(content(""));
-  fireEvent.click(screen.getByTestId("guide-start-top"));
+  fireEvent.click(screen.getByTestId("starting-goal"));
   await waitFor(() =>
     expect(onChange).toHaveBeenLastCalledWith(
       "/skill:native Native prompt\n\n[observation]",

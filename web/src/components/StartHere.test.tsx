@@ -121,10 +121,23 @@ describe("repository start page", () => {
         .getByTestId("start-page-body")
         .querySelector('[href^="javascript:"]'),
     ).toBeNull();
+    // Choosing a goal is its Aloita: no guide stops in between.
+    fireEvent.click(screen.getByTestId("starting-goal"));
+    expect(onGoal).toHaveBeenCalledWith(goal);
+    expect(screen.queryByTestId("goal-guide")).toBeNull();
+    onGoal.mockClear();
+    view.rerender(
+      <StartHere
+        {...props}
+        page={{ title: "T", body: "B", goals: [goal] }}
+        preparing={goal}
+      />,
+    );
+    expect(screen.getByTestId("starting-goal").getAttribute("aria-busy")).toBe(
+      "true",
+    );
     fireEvent.click(screen.getByTestId("starting-goal"));
     expect(onGoal).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByTestId("guide-start-top"));
-    expect(onGoal).toHaveBeenCalledWith(goal);
     view.rerender(<StartHere {...props} page={null} />);
     expect(screen.queryAllByTestId("starting-goal")).toHaveLength(0);
     expect(screen.queryByTestId("start-page-title")).toBeNull();

@@ -3,7 +3,7 @@ import { snapshot } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
-// Aloita puts the goal's own skill call in the draft as a chip, the guide
+// Choosing a goal puts the goal's own skill call in the draft as a chip, the guide
 // stays beside the conversation, and after a reload Pi's recorded skill call
 // brings the guide back (proto-start-page-goal, direction A).
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
@@ -36,8 +36,8 @@ for (const [width, theme] of [
     const panel = page.getByTestId("guide-panel");
     const toggle = page.getByTestId("guide-toggle");
     // The first authored goal has its own skill (lab-start-page.md).
+    // Choosing it is its Aloita: no guide stops in between.
     await page.getByTestId("starting-goal").first().click();
-    await page.getByTestId("guide-start-top").click();
 
     const chip = page.getByTestId("goal-chip");
     await expect(chip).toBeVisible();

@@ -52,7 +52,8 @@ placeholder: the person reads it from the chip, and the host offers it as text
 if the skill disappears. When a goal is removed, propose removing its skill
 too. A goal may instead reference a general skill already available in this
 session (by its native name without the `skill:` prefix); its description is
-then not the goal's title, and Aloita puts the prompt after the invocation.
+then not the goal's title, and choosing the goal puts the prompt after the
+invocation.
 
 ## File format
 
@@ -123,9 +124,13 @@ Tiimi ylläpitää tätä sivua yhteisillä commiteilla.
 ```
 
 Keep the page introduction to 1–2 sentences, titles short, and “when” to a
-single short sentence: all goal titles are visible in the catalogue. Each title
-opens its own guide. Aloita at either end of the guide prepares the request in
-the editable draft; it never sends. With the goal's own skill the draft holds
+single short sentence: all goal titles are visible in the catalogue. The
+workspace page shows the title, the introduction's first paragraph (the rest
+behind a disclosure) and the same goals, so put what a newcomer must know
+first, such as a safety note, in that first paragraph. Choosing a goal, on the
+workspace page or at the start of a conversation, prepares the request in the
+editable draft of that new or empty conversation and opens the goal's guide
+beside it; it never sends. With the goal's own skill the draft holds
 only its invocation, shown as a chip, and the person's text. The existing
 nonblank draft is retained, and requests without a placeholder end with two
 newlines with the caret at the end.
@@ -144,7 +149,7 @@ prompt: |-
   [kysymys]
 ```
 
-Aloita moves a single placeholder from anywhere in the authored request to the
+Choosing the goal moves a single placeholder from anywhere in the authored request to the
 end of the draft, after the instructions and any existing draft, separated by
 one blank line. The entire marker including brackets is selected, so typing
 replaces it; nothing is sent. Surrounding instruction punctuation is retained,
@@ -152,7 +157,8 @@ so refresh older inline-placeholder requests into the form above. Multiple,
 nested, empty, whitespace-only, unclosed or multiline brackets are literal text,
 not placeholders; those requests use the normal end caret and two newlines.
 Brackets already in the person's draft are never interpreted.
-The full request remains available in an optional disclosure. Steps describe
+The full request stays readable: from the goal's chip, or as the draft's own
+text when no skill carries it. Steps describe
 how the person proceeds, not execution status or a workflow engine.
 
 The second goal is only an example of a general skill: omit or replace

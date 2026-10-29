@@ -61,9 +61,11 @@
   outline: var(--ah-focus-width) solid var(--ah-focus);
   outline-offset: var(--ah-focus-offset);
 }
-/* The catalogue rests on the composer; a guide is a top-anchored reading view. */
-.ah-conversation-stream:has(.ah-goal-guide) > :first-child {
-  margin-top: 0;
+.ah-start-goal[aria-busy="true"] {
+  cursor: progress;
+}
+.ah-start-goal[aria-disabled="true"]:not([aria-busy="true"]) {
+  cursor: default;
 }
 @media (max-width: 600px) {
   .ah-start {

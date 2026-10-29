@@ -1760,6 +1760,7 @@ export function App() {
             ? csrf
             : undefined
         }
+        identity={identity}
         startReason={createReason(ws.workspace_id)}
         onRecheckCreation={
           identity &&

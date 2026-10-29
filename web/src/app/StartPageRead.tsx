@@ -1,12 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { goalDraft, StartHere } from "../components/StartHere";
-import {
-  readCommands,
-  readStartPage,
-  type StartGoal,
-  type StartPage,
-} from "./composerReads";
+import { readStartPage, type StartGoal, type StartPage } from "./composerReads";
 import type { ConversationStore } from "./conversationStore";
+import { resolveGoal } from "./goalGuide";
 
 export function StartPageRead({
   workspaceId,
@@ -24,15 +20,19 @@ export function StartPageRead({
   onChange: (draft: string) => void;
   /** The page as read, for the composer's goal chips. */
   onPage?: (page: StartPage | null) => void;
-  /** Aloita prepared this goal's draft: the guide can open beside it. */
-  onStarted?: (goal: StartGoal, page: string) => void;
+  /** Choosing a goal prepared its draft: the guide can open beside it. */
+  onStarted?: (
+    goal: StartGoal,
+    page: string,
+    prepared: ReturnType<typeof goalDraft>,
+  ) => void;
 }) {
   const latest = useRef({ draft, onChange, onPage, onStarted });
   latest.current = { draft, onChange, onPage, onStarted };
   const [page, setPage] = useState<StartPage | null>();
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [attempt, retry] = useState(0);
-  const [preparing, setPreparing] = useState(false);
+  const [preparing, setPreparing] = useState<StartGoal>();
   const [prepareError, setPrepareError] = useState(false);
   const preparation = useRef<AbortController | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: preparation belongs to this exact target.
@@ -65,7 +65,7 @@ export function StartPageRead({
     const controller = new AbortController();
     setState("loading");
     setPage(undefined);
-    setPreparing(false);
+    setPreparing(undefined);
     setPrepareError(false);
     const read =
       agentId && store
@@ -95,32 +95,24 @@ export function StartPageRead({
           if (preparation.current) return;
           const controller = new AbortController();
           preparation.current = controller;
-          setPreparing(true);
+          setPreparing(goal);
           setPrepareError(false);
-          let effective = goal;
-          let carried = false;
+          let resolved: Awaited<ReturnType<typeof resolveGoal>>;
           try {
-            if (goal.skill) {
-              const list = await readCommands(
-                agentId ? { agentId } : { workspaceId },
-                controller.signal,
-              );
-              const skill = list.commands.find(
-                (c) => c.source === "skill" && c.name === `skill:${goal.skill}`,
-              );
-              effective = { ...goal, skill: skill ? goal.skill : undefined };
-              // The goal's own skill (described by the goal's title) holds
-              // the request; a general skill the goal borrows does not.
-              carried = skill?.description.trim() === goal.title.trim();
-            }
+            resolved = await resolveGoal(
+              goal,
+              agentId ? { agentId } : { workspaceId },
+              controller.signal,
+            );
             if (controller.signal.aborted) return;
           } catch {
             if (!controller.signal.aborted) setPrepareError(true);
             return;
           } finally {
             preparation.current = null;
-            if (!controller.signal.aborted) setPreparing(false);
+            if (!controller.signal.aborted) setPreparing(undefined);
           }
+          const { goal: effective, carried } = resolved;
           const prepared = goalDraft(effective, latest.current.draft, carried);
           setPreparedDraft({
             ...prepared,
@@ -128,12 +120,12 @@ export function StartPageRead({
           });
           latest.current.onChange(prepared.text);
           if (page && !("state" in page))
-            latest.current.onStarted?.(effective, page.title);
+            latest.current.onStarted?.(effective, page.title, prepared);
         }}
       />
       {prepareError && (
         <p role="status">
-          Taitoa ei saatu tarkistettua. Yritä Aloita-painiketta uudelleen.
+          Taitoa ei saatu tarkistettua. Valitse tavoite uudelleen.
         </p>
       )}
     </div>

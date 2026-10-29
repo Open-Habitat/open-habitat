@@ -1,0 +1,41 @@
+/* The start page on the workspace page: the page's full width, above Git and
+   the conversations, which it pushes down rather than competes with. */
+.ah-start.ah-workspace-intro {
+  max-width: none;
+  margin: 0;
+  padding: 0 0 var(--ah-s6);
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+.ah-workspace-page .ah-workspace-intro h2 {
+  display: block;
+  margin: 0;
+  font-size: var(--ah-size-h2);
+  color: var(--ah-ink);
+  text-transform: none;
+  letter-spacing: normal;
+}
+.ah-workspace-intro-body {
+  margin-top: var(--ah-s2);
+}
+.ah-workspace-intro .ah-start-goals {
+  margin-block: 0 var(--ah-s4);
+}
+.ah-workspace-intro .ah-start-hint {
+  margin: 0;
+}
+.ah-workspace-intro-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ah-s2) var(--ah-s4);
+  padding: var(--ah-s4) var(--ah-s5);
+  border: 1px dashed var(--ah-line-strong);
+  border-radius: var(--ah-r-lg);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-ui);
+}
+.ah-workspace-intro-line p {
+  margin: 0;
+  flex: 1 1 260px;
+  overflow-wrap: anywhere;
+}

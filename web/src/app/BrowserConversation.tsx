@@ -87,9 +87,11 @@ import {
   conversationGoal,
   guideOpensItself,
   guideOwner,
+  prepareField,
   readFirstSkill,
   setGuide,
   useGuide,
+  usePreparedField,
 } from "./goalGuide";
 import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
@@ -1096,6 +1098,8 @@ function BrowserConversationContent({
   const goals = useMemo(() => composerGoals(page), [page]);
   const guide = id ? guideOwner(identity, id) : undefined;
   const startedGoal = useGuide(guide)?.goal;
+  // A goal chosen before this conversation existed keeps its selection.
+  usePreparedField(guide, section);
   const loadedGoal = conversationGoal(page, startedGoal, entries, draft);
   // Older history holds the first message: read just its start, once.
   const [first, setFirst] = useState<{ key: string; skill?: string }>();
@@ -1962,13 +1966,18 @@ function BrowserConversationContent({
                     onPage={(read) =>
                       setStartPage({ key: pageKey, page: read })
                     }
-                    onStarted={(started, title) => {
-                      if (guide)
-                        setGuide(guide, {
-                          goal: started,
-                          page: title,
-                          open: guideOpensItself(),
-                        });
+                    onStarted={(started, title, prepared) => {
+                      if (!guide) return;
+                      prepareField(guide, {
+                        text: prepared.text,
+                        start: prepared.selectionStart,
+                        end: prepared.selectionEnd,
+                      });
+                      setGuide(guide, {
+                        goal: started,
+                        page: title,
+                        open: guideOpensItself(),
+                      });
                     }}
                   />
                 ) : undefined

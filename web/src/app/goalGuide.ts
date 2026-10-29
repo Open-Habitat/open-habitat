@@ -1,7 +1,9 @@
-import { useSyncExternalStore } from "react";
+import { type RefObject, useLayoutEffect, useSyncExternalStore } from "react";
+import { splitAttachments } from "../components/AttachmentChips";
 import type { ComposerGoal } from "../components/composer/GoalChip";
-import { goalRequest } from "../components/StartHere";
-import type { StartGoal, StartPage } from "./composerReads";
+import { goalDraft, goalRequest } from "../components/StartHere";
+import { readCommands, type StartGoal, type StartPage } from "./composerReads";
+import { creationKeys } from "./heldMessages";
 import { type HistoryEntry, readHistory } from "./history";
 
 /**
@@ -24,6 +26,24 @@ const notify = () => {
   for (const listener of listeners) listener();
 };
 
+/**
+ * What choosing a goal outside a conversation leaves for the new one: the
+ * prepared draft, its selection (the placeholder) and focus in the field.
+ * The new conversation is drawn first while it is created and again once it
+ * exists, and the goal chip appears only after its start page is read; the
+ * selection is put back each time the field shows the prepared text, until
+ * the person changes it. Like the guide, it lives in this tab's memory only.
+ */
+type PreparedField = { text: string; start: number; end: number };
+const preparedFields = new Map<
+  string,
+  PreparedField & { shownIn?: HTMLTextAreaElement; shown?: string }
+>();
+
+export function prepareField(owner: string, field: PreparedField) {
+  preparedFields.set(owner, field);
+}
+
 /** A conversation's guide owner; a conversation being created is `new:<workspace>`. */
 export const guideOwner = (identity: string, conversation: string) =>
   `${identity}:${conversation}`;
@@ -41,18 +61,177 @@ export function readGuide(owner: string) {
 }
 
 /** The created conversation takes over the guide started while it was being
- * created, as it takes over the draft (adoptCreation). */
+ * created, and the prepared field's selection, as it takes over the draft
+ * (adoptCreation). */
 export function adoptGuide(
   identity: string,
   workspaceId: string,
   agentId: string,
 ) {
   const from = creationGuideOwner(identity, workspaceId);
+  const field = preparedFields.get(from);
+  if (field) {
+    preparedFields.delete(from);
+    preparedFields.set(guideOwner(identity, agentId), field);
+  }
   const guide = guides.get(from);
   if (!guide) return;
   guides.delete(from);
   guides.set(guideOwner(identity, agentId), guide);
   notify();
+}
+
+/**
+ * A goal's skill counts only if Pi lists it for this workspace or
+ * conversation; otherwise the request goes in as text. The goal's own skill
+ * (described by the goal's title) holds the request (`carried`); a general
+ * skill the goal borrows does not.
+ */
+export async function resolveGoal(
+  goal: StartGoal,
+  scope: { agentId: string } | { workspaceId: string },
+  signal: AbortSignal,
+): Promise<{ goal: StartGoal; carried: boolean }> {
+  if (!goal.skill) return { goal, carried: false };
+  const list = await readCommands(scope, signal);
+  const skill = list.commands.find(
+    (c) => c.source === "skill" && c.name === `skill:${goal.skill}`,
+  );
+  return {
+    goal: { ...goal, skill: skill ? goal.skill : undefined },
+    carried: skill?.description.trim() === goal.title.trim(),
+  };
+}
+
+/** A draft as the composer's field shows it, without its attachment
+ * reference lines (they are chips), and draft positions mapped into it. */
+function asShown(draft: string, positions: number[]) {
+  const lines = draft.split("\n");
+  const removed: [number, number][] = [];
+  let offset = 0;
+  lines.forEach((line, i) => {
+    const end = offset + line.length;
+    if (splitAttachments(line).attachments.length)
+      // A removed line takes its newline with it: the one before it if last.
+      removed.push(
+        i < lines.length - 1
+          ? [offset, end + 1]
+          : [Math.max(0, offset - 1), end],
+      );
+    offset = end + 1;
+  });
+  const map = (at: number) =>
+    removed.reduce(
+      (shifted, [from, to]) =>
+        shifted - (at >= to ? to - from : at > from ? at - from : 0),
+      at,
+    );
+  return { text: splitAttachments(draft).text, positions: positions.map(map) };
+}
+
+export function usePreparedField(
+  owner: string | undefined,
+  root: RefObject<HTMLElement | null>,
+) {
+  useLayoutEffect(() => {
+    const prepared = owner ? preparedFields.get(owner) : undefined;
+    if (!owner || !prepared) return;
+    const field = root.current?.querySelector<HTMLTextAreaElement>(
+      ".ah-composer textarea",
+    );
+    if (!field) return;
+    const same = field === prepared.shownIn;
+    if (same && field.value === prepared.shown) return;
+    const {
+      text,
+      positions: [start, end],
+    } = asShown(prepared.text, [prepared.start, prepared.end]);
+    // The composer shows a goal's skill invocation as a chip and edits the rest.
+    const chip = /^\/skill:\S+ /.exec(text)?.[0].length ?? 0;
+    const offset =
+      field.value === text
+        ? 0
+        : chip && field.value === text.slice(chip)
+          ? chip
+          : -1;
+    if (offset < 0) {
+      // Edited after it was shown: the person's own text and caret win.
+      if (same) preparedFields.delete(owner);
+      return;
+    }
+    const active = document.activeElement;
+    if (active && active !== document.body && active !== field) return;
+    prepared.shownIn = field;
+    prepared.shown = field.value;
+    field.focus({ preventScroll: true });
+    field.setSelectionRange(
+      Math.max(0, start - offset),
+      Math.max(0, end - offset),
+    );
+    field.scrollTop = field.scrollHeight;
+  });
+}
+
+/**
+ * Choosing a goal outside a conversation is its Aloita: the new
+ * conversation's draft is prepared before it is created, and its guide is
+ * set as Aloita sets it. Returns false when the skill could not be checked;
+ * nothing is then prepared.
+ */
+export async function prepareGoalConversation({
+  identity,
+  workspaceId,
+  goal,
+  page,
+  signal,
+}: {
+  identity: string;
+  workspaceId: string;
+  goal: StartGoal;
+  page: string;
+  signal: AbortSignal;
+}) {
+  const { goal: effective, carried } = await resolveGoal(
+    goal,
+    { workspaceId },
+    signal,
+  );
+  if (signal.aborted) return false;
+  const key = creationKeys(identity, workspaceId).draft;
+  const prepared = goalDraft(
+    effective,
+    sessionStorage.getItem(key) ?? "",
+    carried,
+  );
+  sessionStorage.setItem(key, prepared.text);
+  const owner = creationGuideOwner(identity, workspaceId);
+  prepareField(owner, {
+    text: prepared.text,
+    start: prepared.selectionStart,
+    end: prepared.selectionEnd,
+  });
+  setGuide(owner, { goal: effective, page, open: guideOpensItself() });
+  return true;
+}
+
+/** A new conversation's draft that is a native invocation, caret after it. */
+export function prepareInvocation(
+  identity: string,
+  workspaceId: string,
+  invocation: string,
+) {
+  const key = creationKeys(identity, workspaceId).draft;
+  const draft = sessionStorage.getItem(key) ?? "";
+  const text = draft.startsWith(invocation)
+    ? draft
+    : `${invocation}${draft.trim() ? `\n\n${draft.replace(/\n+$/, "")}` : ""}`;
+  sessionStorage.setItem(key, text);
+  const at = invocation.length;
+  prepareField(creationGuideOwner(identity, workspaceId), {
+    text,
+    start: draft.startsWith(invocation) ? text.length : at,
+    end: draft.startsWith(invocation) ? text.length : at,
+  });
 }
 
 export function useGuide(owner: string | undefined) {

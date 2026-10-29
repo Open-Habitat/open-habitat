@@ -89,44 +89,11 @@ for (const width of [1440, 390]) {
         labOrigin,
       });
       await field.fill("Oma keskeneräinen ajatus.");
+      // Choosing a goal is its Aloita (Jari 29.10.2026): no guide stops in
+      // between, and the guide stays reachable beside the conversation.
       await page.getByTestId("starting-goal").first().focus();
       await page.keyboard.press("Enter");
-      await expect(page.getByTestId("guide-title")).toBeFocused();
-      await expect(field).toHaveValue("Oma keskeneräinen ajatus.");
-      await page.getByTestId("guide-back").click();
-      await expect(page.getByTestId("starting-goal").first()).toBeFocused();
-      await expect(field).toHaveValue("Oma keskeneräinen ajatus.");
-      await page.getByTestId("starting-goal").first().click();
-      await expect(page.getByTestId("guide-back")).toBeInViewport();
-      if (width === 1440) {
-        await page.setViewportSize({ width: 390, height: 900 });
-        await expect(page.getByTestId("guide-back")).toBeInViewport();
-        await expect(page.getByTestId("guide-start-top")).toBeInViewport();
-        await page.setViewportSize({ width, height: 900 });
-        await expect(page.getByTestId("guide-back")).toBeInViewport();
-      }
-      const titleBox = await page.getByTestId("guide-title").boundingBox();
-      const topBox = await page.getByTestId("guide-start-top").boundingBox();
-      const bottomBox = await page
-        .getByTestId("guide-start-bottom")
-        .boundingBox();
-      if (!titleBox || !topBox || !bottomBox)
-        throw new Error("Guide action missing");
-      expect(Math.abs(topBox.x - titleBox.x)).toBeLessThan(2);
-      expect(Math.abs(bottomBox.x - titleBox.x)).toBeLessThan(2);
-      expect(topBox.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height);
-      const guideAudit = await new AxeBuilder({ page })
-        .include('[data-testid="start-here"]')
-        .analyze();
-      expect(guideAudit.violations).toEqual([]);
-      await snapshot(page, testInfo.outputPath(`guide-${width}-${theme}`), {
-        labOrigin,
-      });
-      await page.getByTestId("guide-request").locator("summary").click();
-      await expect(page.getByTestId("guide-prompt")).toHaveText(
-        "/skill:korjaa-ongelma Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\n[kuvaile havainto]",
-      );
-      await page.getByTestId("guide-start-top").click();
+      await expect(page.getByTestId("goal-guide")).toHaveCount(0);
       // The goal's own skill carries the request; the chip shows its call.
       await expect(page.getByTestId("goal-chip")).toBeVisible();
       await expect(field).toHaveValue(
@@ -138,6 +105,13 @@ for (const width of [1440, 390]) {
           node.value.slice(node.selectionStart, node.selectionEnd),
         ),
       ).toBe("[kuvaile havainto]");
+      if (width === 1440)
+        await expect(page.getByTestId("guide-panel")).toBeVisible();
+      else {
+        // A phone opens nothing by itself over the field just filled.
+        await expect(page.getByTestId("guide-panel")).toHaveCount(0);
+        await expect(page.getByTestId("guide-toggle")).toBeVisible();
+      }
       await snapshot(
         page,
         testInfo.outputPath(`placeholder-${width}-${theme}`),
@@ -148,71 +122,30 @@ for (const width of [1440, 390]) {
       await field.press("X");
       await expect(field).toHaveValue("Oma keskeneräinen ajatus.\n\nX");
       await page.getByTestId("goal-chip-remove").click();
-      await field.fill("");
-      await page.getByTestId("guide-start-bottom").click();
-      await expect(field).toBeFocused();
-      expect(
-        await field.evaluate((node: HTMLTextAreaElement) =>
-          node.value.slice(node.selectionStart, node.selectionEnd),
-        ),
-      ).toBe("[kuvaile havainto]");
-      await field.press("Y");
-      await expect(field).toHaveValue("Y");
-      await page.getByTestId("goal-chip-remove").click();
-      await expect(page.getByTestId("goal-guide")).toBeVisible();
       await field.fill("Oma keskeneräinen ajatus.");
-      await page.getByTestId("guide-back").click();
       await page.getByTestId("starting-goal").nth(1).click();
-      await page.getByTestId("guide-start-bottom").click();
-      await expect(field).toHaveValue(
-        "Lue repon ohjeet ja kerro lyhyesti, mitä Aurinkopolku tekee. Näytä tärkeimmät hakemistot ja mistä testit ajetaan. Älä muuta tiedostoja.\n\nOma keskeneräinen ajatus.\n\n",
-      );
+      const withDraft =
+        "Lue repon ohjeet ja kerro lyhyesti, mitä Aurinkopolku tekee. Näytä tärkeimmät hakemistot ja mistä testit ajetaan. Älä muuta tiedostoja.\n\nOma keskeneräinen ajatus.\n\n";
+      await expect(field).toHaveValue(withDraft);
       await expect(field).toBeFocused();
       expect(
         await field.evaluate((node: HTMLTextAreaElement) => [
           node.selectionStart,
           node.selectionEnd,
-          node.value.length,
         ]),
-      ).toEqual([
-        "Lue repon ohjeet ja kerro lyhyesti, mitä Aurinkopolku tekee. Näytä tärkeimmät hakemistot ja mistä testit ajetaan. Älä muuta tiedostoja.\n\nOma keskeneräinen ajatus.\n\n"
-          .length,
-        "Lue repon ohjeet ja kerro lyhyesti, mitä Aurinkopolku tekee. Näytä tärkeimmät hakemistot ja mistä testit ajetaan. Älä muuta tiedostoja.\n\nOma keskeneräinen ajatus.\n\n"
-          .length,
-        "Lue repon ohjeet ja kerro lyhyesti, mitä Aurinkopolku tekee. Näytä tärkeimmät hakemistot ja mistä testit ajetaan. Älä muuta tiedostoja.\n\nOma keskeneräinen ajatus.\n\n"
-          .length,
-      ]);
+      ).toEqual([withDraft.length, withDraft.length]);
       await field.press("X");
-      await expect(field).toHaveValue(
-        "Lue repon ohjeet ja kerro lyhyesti, mitä Aurinkopolku tekee. Näytä tärkeimmät hakemistot ja mistä testit ajetaan. Älä muuta tiedostoja.\n\nOma keskeneräinen ajatus.\n\nX",
-      );
-      await expect(page.getByTestId("goal-guide")).toBeVisible();
+      await expect(field).toHaveValue(`${withDraft}X`);
       await field.fill("");
-      await page.getByTestId("guide-back").click();
       await page.getByTestId("starting-goal").nth(2).click();
-      await page.getByTestId("guide-request").locator("summary").click();
-      const fullRequest = page.getByTestId("guide-prompt");
-      await expect(fullRequest).toContainText(
-        "docs/esimerkit/erittain-pitka-synteettinen-julkaisun-valmistelun-tarkistuslistan-tiedostonimi.md",
+      await expect(field).toHaveValue(
+        /docs\/esimerkit\/erittain-pitka-synteettinen-julkaisun-valmistelun-tarkistuslistan-tiedostonimi\.md/,
       );
-      expect(
-        await fullRequest.evaluate(
-          (node) =>
-            node.scrollHeight > node.clientHeight &&
-            node.scrollWidth <= node.clientWidth,
-        ),
-      ).toBe(true);
-      const request = await fullRequest.innerText();
       await snapshot(page, testInfo.outputPath(`request-${width}-${theme}`), {
         labOrigin,
       });
-      await page.getByTestId("guide-start-top").click();
-      await expect(field).toHaveValue(`${request}\n\n`);
-      await expect(page.getByTestId("goal-guide")).toBeVisible();
       await field.fill("");
-      await page.getByTestId("guide-back").click();
       await page.getByTestId("starting-goal").nth(1).click();
-      await page.getByTestId("guide-start-top").click();
       await expect(field).toHaveValue(
         "Lue repon ohjeet ja kerro lyhyesti, mitä Aurinkopolku tekee. Näytä tärkeimmät hakemistot ja mistä testit ajetaan. Älä muuta tiedostoja.\n\n",
       );

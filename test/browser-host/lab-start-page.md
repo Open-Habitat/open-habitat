@@ -73,3 +73,5 @@
 }
 ---
 Pieni **retkireittien suunnittelija**. Tässä repossa ovat sovellus, testit ja käyttöohjeet.
+
+Testit ajetaan komennolla `make test`. Reittitiedostoja ei muuteta käsin.

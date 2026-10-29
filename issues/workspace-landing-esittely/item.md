@@ -3,12 +3,13 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: workspace-page
 lane_seq: 1
 collision: [web/src/components/HomeWorkspaces.tsx]
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Workspace page: Esittely landing; a goal lands with Aloita done
@@ -23,6 +24,6 @@ Jari's change: choosing a goal must not land on a page that still needs an Aloit
 
 ## Acceptance Criteria
 
-- [ ] Esittely section on the workspace page from the existing start-page read; desktop and phone.
-- [ ] Goal → new conversation with the request in the composer, no extra Aloita step; placeholder selected when present.
-- [ ] Browser specs; KOKEILTAVAA line.
+- [x] Esittely section on the workspace page from the existing start-page read; desktop and phone.
+- [x] Goal → new conversation with the request in the composer, no extra Aloita step; placeholder selected when present.
+- [x] Browser specs; KOKEILTAVAA line.

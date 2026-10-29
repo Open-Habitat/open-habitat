@@ -22,8 +22,10 @@ import {
   conversationGoal,
   creationGuideOwner,
   guideOpensItself,
+  prepareField,
   setGuide,
   useGuide,
+  usePreparedField,
 } from "./goalGuide";
 import {
   creationKeys,
@@ -203,10 +205,12 @@ export function CreatingConversation({
   const started = useGuide(guideOwner)?.goal;
   const section = useRef<HTMLDivElement>(null);
   // The person just asked for this conversation: the field takes focus from
-  // the + or workspace button so they can type at once.
+  // the + or workspace button so they can type at once. A goal chosen on the
+  // workspace page also selects its placeholder, here and once created.
   useEffect(() => {
     section.current?.querySelector("textarea")?.focus({ preventScroll: true });
   }, []);
+  usePreparedField(guideOwner, section);
   const setDraft = (value: string) => {
     setDraftState(value);
     if (value) sessionStorage.setItem(keys.draft, value);
@@ -280,13 +284,18 @@ export function CreatingConversation({
                 draft={draft}
                 onChange={setDraft}
                 onPage={setPage}
-                onStarted={(goal, title) =>
+                onStarted={(goal, title, prepared) => {
+                  prepareField(guideOwner, {
+                    text: prepared.text,
+                    start: prepared.selectionStart,
+                    end: prepared.selectionEnd,
+                  });
                   setGuide(guideOwner, {
                     goal,
                     page: title,
                     open: guideOpensItself(),
-                  })
-                }
+                  });
+                }}
               />
             }
             historyMode="pagedAccessible"

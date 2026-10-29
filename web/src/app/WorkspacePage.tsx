@@ -27,6 +27,7 @@ import { type Choice, PiModelSelector } from "./PiModelSelector";
 import type { Workspace } from "./snapshot";
 import { type DeletionOutcome, WorkspaceDeletion } from "./WorkspaceDeletion";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
+import { WorkspaceLanding } from "./WorkspaceLanding";
 import { WorktreeCleanup } from "./WorktreeCleanup";
 import "./WorkspacePage.css";
 
@@ -35,6 +36,7 @@ export function WorkspacePage({
   conversations,
   store,
   csrf,
+  identity,
   onNew,
   onNewWorktree,
   onArchive,
@@ -63,6 +65,8 @@ export function WorkspacePage({
   conversations: HomeConversation[];
   store: ConversationStore;
   csrf?: string;
+  /** The person whose new-conversation draft a chosen goal prepares. */
+  identity?: string;
   onNew?: (id: string) => void;
   onNewWorktree?: (id: string) => void;
   onArchive?: (id: string) => Promise<boolean>;
@@ -357,6 +361,18 @@ export function WorkspacePage({
             Aloita keskustelu valitulla mallilla
           </ControlButton>
         </Dialog>
+      ) : null}
+      {workspace.facts.some(
+        (f) => f.source === "filesystem" && f.state === "confirmed",
+      ) ? (
+        <WorkspaceLanding
+          key={workspace.workspace_id}
+          workspaceId={workspace.workspace_id}
+          identity={identity}
+          onNew={onNew}
+          startReason={startReason}
+          single={single}
+        />
       ) : null}
       {single ? null : (
         <div className="ah-workspace-git">
