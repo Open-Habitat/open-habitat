@@ -123,6 +123,15 @@ Connected Dropbox files live under `~/cloud/dropbox/<account>/`, outside the
 workspace sources. These are live two-way synced files: a write or deletion
 propagates to the cloud and the person's other devices, so change only what
 the person requested.
+Gitea clones authenticate with the person's own Gitea token through the
+registered native Git credential helper; `git push` there works only when that
+token has `write:repository`. A Gitea push refused with HTTP 403 while fetch
+works is most often a read-only token (an archived or mirror repository also
+refuses every push): ask the person to check the connection in
+`<origin>/settings/code-hosts`, which says when the token is read-only, and to
+replace it with one that has `read:user` and `write:repository`. Never put a
+token in a remote URL or Git configuration. Protected branches and the
+account's repository rights stay Gitea's to enforce.
 Connection and interactive sign-in steps belong to the person; never ask them
 to paste passwords or tokens into the conversation. Do not infer a connection
 from this guide. Model-provider credentials are configured in the browser's Pi

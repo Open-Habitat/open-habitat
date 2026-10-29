@@ -2,5 +2,6 @@
   "schema_version": 1,
   "outcome": "written",
   "api": "ok",
+  "push": "allowed",
   "connection": {"id": "gitea_0123456789abcdef01234567", "base_url": "https://git.example.test/gitea", "user": "example-person", "kind": "pat", "owned": true, "ambiguous": false, "git": "registered"}
 }

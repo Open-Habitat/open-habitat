@@ -8,7 +8,7 @@ import {
   Radio,
 } from "react-aria-components";
 import "./Integrations.css";
-import type { GiteaAPI, GiteaConnection } from "../app/gitea";
+import type { GiteaCheck, GiteaConnection } from "../app/gitea";
 import type { GitLabAPI, GitLabConnection } from "../app/gitlab";
 import {
   type Access,
@@ -1099,7 +1099,7 @@ export function IntegrationsOverview({
   onApple?: (intent: AppleIntent) => void;
   onGitea?: (intent: GiteaIntent) => void;
   /** Each Gitea connection's latest explicit check. */
-  giteaChecks?: Record<string, GiteaAPI>;
+  giteaChecks?: Record<string, GiteaCheck>;
   /** A Gitea write is on its way. */
   giteaBusy?: boolean;
   onGitLab?: (intent: GitLabIntent) => void;

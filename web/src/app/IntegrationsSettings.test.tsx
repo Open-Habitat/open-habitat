@@ -49,16 +49,32 @@ const list = (connections: unknown[]) => ({
 });
 
 /** A host whose tea file gains the connection when the connect write
- * reaches it; the reply to that write is decided by `reply`. */
-function host(reply: (written: () => void) => Promise<Response>) {
+ * reaches it; the reply to that write is decided by `reply`. A check,
+ * which the page also makes by itself, answers with `push`. */
+function host(
+  reply: (written: () => void) => Promise<Response>,
+  opts: { connected?: boolean; push?: string } = {},
+) {
   const writes: unknown[] = [];
-  let connected = false;
+  const checks: unknown[] = [];
+  let connected = !!opts.connected;
   const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url === "/api/v1/integrations")
       return json(list(connected ? [connection] : []));
     if (url === "/api/v1/integrations/gitea" && init?.method === "POST") {
-      writes.push(JSON.parse(String(init.body)));
+      const body = JSON.parse(String(init.body));
+      if (body.action === "check") {
+        checks.push(body);
+        return json({
+          schema_version: 1,
+          outcome: "checked",
+          connection,
+          api: "ok",
+          push: opts.push ?? "allowed",
+        });
+      }
+      writes.push(body);
       return reply(() => {
         connected = true;
       });
@@ -68,6 +84,7 @@ function host(reply: (written: () => void) => Promise<Response>) {
   vi.stubGlobal("fetch", fetch);
   return {
     writes,
+    checks,
     reads: () =>
       fetch.mock.calls.filter(([u]) => String(u) === "/api/v1/integrations")
         .length,
@@ -163,4 +180,92 @@ it("closes the form with its token when another login replaces the session", asy
   expect(screen.queryByTestId("gitea-dialog")).toBeNull();
   expect(screen.queryByTestId("gitea-check-result")).toBeNull();
   expect(h.writes).toHaveLength(1);
+});
+
+it("checks a shown connection once by itself and names a read-only token", async () => {
+  const h = host(async () => json({}, 500), {
+    connected: true,
+    push: "read_only",
+  });
+  render(<IntegrationsSettings csrf="session-a" />);
+  const card = await screen.findByTestId("gitea-connection");
+  await waitFor(() => expect(card.getAttribute("data-push")).toBe("read_only"));
+  expect(within(card).getByTestId("gitea-push").textContent).toContain(
+    "push ei onnistu",
+  );
+  expect(h.checks).toEqual([{ action: "check", connection_id: connection.id }]);
+  expect(h.writes).toEqual([]);
+});
+
+it("a connect's own answer is not checked again", async () => {
+  const h = host(async (written) => {
+    written();
+    return json({
+      schema_version: 1,
+      outcome: "written",
+      connection,
+      api: "ok",
+      push: "allowed",
+    });
+  });
+  render(<IntegrationsSettings csrf="session-a" />);
+  const dialog = await fillForm();
+  await userEvent.click(within(dialog).getByTestId("gitea-submit"));
+  await waitFor(() => expect(dialog.getAttribute("data-stage")).toBe("done"));
+  await waitFor(() =>
+    expect(
+      screen.getByTestId("gitea-connection").getAttribute("data-push"),
+    ).toBe("allowed"),
+  );
+  expect(h.checks).toEqual([]);
+});
+
+it("the person's own write waits for the automatic check in flight", async () => {
+  const order: string[] = [];
+  let answerCheck: () => void = () => {};
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/v1/integrations") return json(list([connection]));
+      if (url !== "/api/v1/integrations/gitea")
+        return new Response("", { status: 404 });
+      const body = JSON.parse(String(init?.body));
+      order.push(`${body.action}:start`);
+      if (body.action === "check")
+        await new Promise<void>((resolve) => {
+          answerCheck = resolve;
+        });
+      order.push(`${body.action}:end`);
+      return body.action === "check"
+        ? json({
+            schema_version: 1,
+            outcome: "checked",
+            connection,
+            api: "ok",
+            push: "read_only",
+          })
+        : json({
+            schema_version: 1,
+            outcome: "written",
+            removed: { id: connection.id },
+          });
+    }),
+  );
+  render(<IntegrationsSettings csrf="session-a" />);
+  const card = await screen.findByTestId("gitea-connection");
+  await waitFor(() => expect(order).toEqual(["check:start"]));
+  await userEvent.click(within(card).getByTestId("gitea-disconnect-open"));
+  await userEvent.click(await screen.findByTestId("gitea-disconnect-confirm"));
+  // Not sent beside the check, where the daemon would refuse it as busy.
+  expect(order).toEqual(["check:start"]);
+  await act(async () => answerCheck());
+  await waitFor(() =>
+    expect(order).toEqual([
+      "check:start",
+      "check:end",
+      "disconnect:start",
+      "disconnect:end",
+    ]),
+  );
 });

@@ -132,6 +132,16 @@ The packages divide the work as follows.
   launch path (the installation's `current` selector), never a release
   generation, because clones outlive releases. Its HTTP client is fixed Gitea
   reads, never a proxy.
+  A connection asks for the person's own `read:user` + `write:repository`
+  PAT, so native Git pushes with the person's Gitea rights through that same
+  helper (Jari, 2026-10-29, replacing ADR 0031's read-only first scope). A
+  `read:repository` token is still accepted and named read-only, never
+  refused or silently widened. Push is native Git's alone: no browser push
+  control, push broker or second token, and branch protection and account
+  rights stay Gitea's. Gitea shows no token its scopes and the API's `push`
+  permission is the account's, so whether a token may push is read from
+  receive-pack's ref advertisement for a repository the account may push to,
+  never by pushing.
 - `nativegitlab/` adapts glab's native host logins the same way: glab's
   `config.yml` is the only connection and secret store, read under glab's own
   `config.lock` and never cached. It writes only the one host entry a person

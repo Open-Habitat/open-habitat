@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/gitea-connection-change.schema.json",
   "title": "Outcome of a Gitea connection write or check",
-  "description": "outcome: written (tea's file now holds the change), unchanged (it already did; a repeated request after a lost reply is observed, not replayed), absent (the entry to remove was already gone) or checked. api is the base's /user answer for this token now, given only by connect, replace and check; it is never Git readiness, which connection.git observes separately. A connect whose helper registration failed still answers with the connection and its git state, so the page offers repair rather than a working connection. Refusals are fixed error codes in the error shape: nothing was written.",
+  "description": "outcome: written (tea's file now holds the change), unchanged (it already did; a repeated request after a lost reply is observed, not replayed), absent (the entry to remove was already gone) or checked. api is the base's /user answer for this token now, given only by connect, replace and check; it is never Git readiness, which connection.git observes separately. push accompanies a working api: whether Gitea lets Git push with this token, read from receive-pack's ref advertisement for one repository the account itself may push to, without pushing. allowed: the token has write:repository; read_only: it lacks it, so fetch works and every push is refused; unknown: the account has no repository it may push to on the first page, or Gitea's answer said neither. Branch protection and the account's rights stay Gitea's to enforce on each push. A connect whose helper registration failed still answers with the connection and its git state, so the page offers repair rather than a working connection. Refusals are fixed error codes in the error shape: nothing was written.",
   "type": "object", "additionalProperties": false,
   "required": ["schema_version", "outcome"],
   "properties": {
@@ -10,11 +10,15 @@
     "outcome": {"enum": ["written", "unchanged", "absent", "checked"]},
     "connection": {"$ref": "integrations.schema.json#/$defs/gitea_connection"},
     "api": {"enum": ["ok", "token_rejected", "insufficient_scope", "account_mismatch", "unreachable", "tls_untrusted", "redirect_refused", "forbidden_destination", "not_gitea"]},
+    "push": {"enum": ["allowed", "read_only", "unknown"]},
     "removed": {
       "type": "object", "additionalProperties": false,
       "required": ["id"],
       "properties": {"id": {"$ref": "integrations.schema.json#/$defs/gitea_connection_id"}}
     }
+  },
+  "dependentSchemas": {
+    "push": {"required": ["api"], "properties": {"api": {"const": "ok"}}}
   },
   "oneOf": [
     {"required": ["connection"], "not": {"required": ["removed"]}},

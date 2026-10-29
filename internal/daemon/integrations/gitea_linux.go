@@ -36,6 +36,7 @@ type GiteaAPI interface {
 	User(ctx context.Context, b nativegitea.Base, token string) (nativegitea.Account, error)
 	Repos(ctx context.Context, b nativegitea.Base, token string) (nativegitea.RepoList, error)
 	Repository(ctx context.Context, b nativegitea.Base, token string, id int64) (nativegitea.Repository, error)
+	Push(ctx context.Context, b nativegitea.Base, user, token string) nativegitea.Push
 }
 
 // GiteaAdapter is the one native adapter the integrations routes and the
@@ -172,7 +173,9 @@ type giteaChange struct {
 	Outcome       string           `json:"outcome"`
 	Connection    *giteaConnection `json:"connection,omitempty"`
 	API           string           `json:"api,omitempty"`
-	Removed       *giteaRemoved    `json:"removed,omitempty"`
+	// Push is whether Git may push with the token, beside a working api.
+	Push    string        `json:"push,omitempty"`
+	Removed *giteaRemoved `json:"removed,omitempty"`
 }
 
 type giteaRemoved struct {
@@ -300,8 +303,9 @@ func (c *Catalog) giteaRequest(w http.ResponseWriter, r *http.Request) {
 			c.log.Warn("integration_gitea", "action", "connect", "outcome", "helper_not_registered", "reason", "git_config")
 		}
 		v := g.view(ctx, login, nil)
-		c.log.Info("integration_gitea", "action", "connect", "outcome", string(outcome))
-		reply(w, giteaChange{SchemaVersion: 1, Outcome: string(outcome), Connection: &v, API: "ok"})
+		push := g.API.Push(ctx, base, login.User, in.Token)
+		c.log.Info("integration_gitea", "action", "connect", "outcome", string(outcome), "push", string(push))
+		reply(w, giteaChange{SchemaVersion: 1, Outcome: string(outcome), Connection: &v, API: "ok", Push: string(push)})
 		return
 	}
 	login, err := g.Login(in.ConnectionID)
@@ -317,8 +321,9 @@ func (c *Catalog) giteaRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		v := g.view(ctx, updated, nil)
-		c.log.Info("integration_gitea", "action", "replace", "outcome", string(outcome))
-		reply(w, giteaChange{SchemaVersion: 1, Outcome: string(outcome), Connection: &v, API: "ok"})
+		push := g.API.Push(ctx, updated.Base, updated.User, in.Token)
+		c.log.Info("integration_gitea", "action", "replace", "outcome", string(outcome), "push", string(push))
+		reply(w, giteaChange{SchemaVersion: 1, Outcome: string(outcome), Connection: &v, API: "ok", Push: string(push)})
 	case "check":
 		token, err := g.Store.Token(login.Target())
 		if err != nil {
@@ -336,8 +341,12 @@ func (c *Catalog) giteaRequest(w http.ResponseWriter, r *http.Request) {
 			c.giteaRefuse(w, in.Action, err)
 			return
 		}
+		push := ""
+		if state == "ok" {
+			push = string(g.API.Push(ctx, login.Base, login.User, token))
+		}
 		v := g.view(ctx, login, nil)
-		reply(w, giteaChange{SchemaVersion: 1, Outcome: "checked", Connection: &v, API: state})
+		reply(w, giteaChange{SchemaVersion: 1, Outcome: "checked", Connection: &v, API: state, Push: push})
 	case "repair":
 		if !login.Usable() {
 			c.giteaRefuse(w, in.Action, nativegitea.ErrUnsupported)

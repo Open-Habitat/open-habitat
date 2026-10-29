@@ -94,33 +94,17 @@ type Response struct {
 // unverified certificate their own errors. Any other status is the caller's
 // to interpret, with its bounded body.
 func (c HTTP) Get(ctx context.Context, b Base, path string, header http.Header, limit int) (Response, error) {
-	if !b.Valid() {
-		return Response{}, ErrInvalidAddress
-	}
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, b.String()+path, nil)
-	if err != nil {
-		return Response{}, ErrInvalidAddress
-	}
+	h := http.Header{"Accept": {"application/json"}}
 	for k, v := range header {
-		req.Header[k] = v
+		h[k] = v
 	}
-	req.Header.Set("Accept", "application/json")
-	tr := c.transport(b)
-	defer tr.CloseIdleConnections()
-	hc := &http.Client{
-		Transport:     tr,
-		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	}
-	resp, err := hc.Do(req)
+	resp, err := c.do(ctx, b, path, h)
 	if err != nil {
-		return Response{}, classifyTransport(err)
+		return Response{}, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
-		return Response{}, ErrRedirect
-	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, int64(limit)+1))
 	if err != nil {
 		return Response{}, classifyTransport(err)
@@ -134,6 +118,60 @@ func (c HTTP) Get(ctx context.Context, b Base, path string, header http.Header, 
 		body = body[:limit]
 	}
 	return Response{Status: resp.StatusCode, Header: resp.Header, Body: body}, nil
+}
+
+// Probe performs one GET of base+path like Get, but a success's body is
+// never read: its status and headers are the answer. It is for a read whose
+// success can be any size and says nothing the status does not, such as a
+// Git ref advertisement. A refusal's body is kept up to probeRefusal bytes,
+// since it may say which refusal it is.
+func (c HTTP) Probe(ctx context.Context, b Base, path string, header http.Header) (Response, error) {
+	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+	defer cancel()
+	resp, err := c.do(ctx, b, path, header)
+	if err != nil {
+		return Response{}, err
+	}
+	defer resp.Body.Close()
+	out := Response{Status: resp.StatusCode, Header: resp.Header}
+	if resp.StatusCode >= 400 {
+		if out.Body, err = io.ReadAll(io.LimitReader(resp.Body, probeRefusal)); err != nil {
+			return Response{}, classifyTransport(err)
+		}
+	}
+	return out, nil
+}
+
+const probeRefusal = 512
+
+// do sends one GET of base+path to the base's own address. A redirect is
+// ErrRedirect; the caller closes the body of any other answer.
+func (c HTTP) do(ctx context.Context, b Base, path string, header http.Header) (*http.Response, error) {
+	if !b.Valid() {
+		return nil, ErrInvalidAddress
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, b.String()+path, nil)
+	if err != nil {
+		return nil, ErrInvalidAddress
+	}
+	for k, v := range header {
+		req.Header[k] = v
+	}
+	tr := c.transport(b)
+	defer tr.CloseIdleConnections()
+	hc := &http.Client{
+		Transport:     tr,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, classifyTransport(err)
+	}
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		resp.Body.Close()
+		return nil, ErrRedirect
+	}
+	return resp, nil
 }
 
 // JSON decodes the answer. Only a JSON answer is the provider's: a login

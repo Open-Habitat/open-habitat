@@ -38,6 +38,10 @@ func NewClient() *Client { return &Client{} }
 // product never does.
 func NewClientWithRoots(roots *x509.CertPool) *Client { return &Client{roots: roots} }
 
+func (c *Client) http() nativeforge.HTTP {
+	return nativeforge.HTTP{Resolve: c.resolve, Roots: c.roots}
+}
+
 // get performs one bounded GET of base+/api/v1+path with the PAT. The token
 // lives only in this request's header.
 func (c *Client) get(ctx context.Context, b Base, path, token string, out any) error {
@@ -54,7 +58,7 @@ func (c *Client) getLimited(ctx context.Context, b Base, path, token string, lim
 	if !validToken(token) {
 		return nil, ErrInvalidToken
 	}
-	resp, err := nativeforge.HTTP{Resolve: c.resolve, Roots: c.roots}.Get(ctx, b, "/api/v1"+path, http.Header{"Authorization": {"token " + token}}, limit)
+	resp, err := c.http().Get(ctx, b, "/api/v1"+path, http.Header{"Authorization": {"token " + token}}, limit)
 	if err != nil {
 		return nil, err
 	}

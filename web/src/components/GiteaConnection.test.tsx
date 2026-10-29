@@ -1,8 +1,8 @@
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { GiteaConnection } from "../app/gitea";
-import { GiteaDialog, type GiteaStage } from "./GiteaConnection";
+import type { GiteaCheck, GiteaConnection } from "../app/gitea";
+import { GiteaCard, GiteaDialog, type GiteaStage } from "./GiteaConnection";
 
 const noop = () => {};
 const connection: GiteaConnection = {
@@ -118,5 +118,66 @@ describe("Gitea connect form", () => {
     );
     await userEvent.click(view.getByTestId("gitea-repair"));
     expect(onRepair).toHaveBeenCalledWith({ ...connection, git: "absent" });
+  });
+});
+
+describe("Gitea push", () => {
+  it("asks for write:repository and says what a read-only token cannot do", async () => {
+    const view = render(
+      <GiteaDialog
+        stage={{ stage: "form" }}
+        onSubmit={noop}
+        onRepair={noop}
+        onClose={noop}
+      />,
+    );
+    await userEvent.click(view.getByTestId("gitea-token-help"));
+    const help = view.getByTestId("gitea-token-instructions").textContent;
+    expect(help).toContain("write:repository");
+    expect(help).toContain("read:user");
+    view.rerender(
+      <GiteaDialog
+        stage={{ stage: "done", connection, push: "read_only" }}
+        onSubmit={noop}
+        onRepair={noop}
+        onClose={noop}
+      />,
+    );
+    expect(view.getByTestId("gitea-push").textContent).toContain(
+      "push ei onnistu",
+    );
+    view.rerender(
+      <GiteaDialog
+        stage={{ stage: "done", connection, push: "allowed" }}
+        onSubmit={noop}
+        onRepair={noop}
+        onClose={noop}
+      />,
+    );
+    expect(view.queryByTestId("gitea-push")).toBeNull();
+  });
+
+  it("names a read-only check on the card and only there", () => {
+    const card = (check?: GiteaCheck) => (
+      <GiteaCard
+        connection={connection}
+        check={check}
+        onCheck={noop}
+        onReplace={noop}
+        onRepair={noop}
+        onDisconnect={noop}
+      />
+    );
+    const view = render(card());
+    expect(view.queryByTestId("gitea-push")).toBeNull();
+    view.rerender(card({ api: "ok", push: "read_only" }));
+    expect(view.getByTestId("gitea-connection").dataset.push).toBe("read_only");
+    expect(view.getByTestId("gitea-push").getAttribute("role")).toBe("status");
+    view.rerender(card({ api: "ok", push: "allowed" }));
+    expect(view.queryByTestId("gitea-push")).toBeNull();
+    expect(view.getByTestId("gitea-git").textContent).toContain("push");
+    // A failing check says nothing about push.
+    view.rerender(card({ api: "token_rejected" }));
+    expect(view.getByTestId("gitea-connection").dataset.push).toBeUndefined();
   });
 });

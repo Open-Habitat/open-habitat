@@ -30,10 +30,11 @@ type Account struct {
 	Login string
 	Token string
 	// Scopes are the token's scopes, as Gitea's scope picker sets them. nil
-	// means the read-only connector's own pair, read:user and
-	// read:repository. A read the scopes do not cover answers 403, as Gitea
-	// does: /user needs read:user, /user/repos both, the other repository
-	// reads and Git read:repository. A write scope implies its read scope.
+	// means the read-only pair read:user and read:repository. A read the
+	// scopes do not cover answers 403, as Gitea does: /user needs read:user,
+	// /user/repos both, the other repository reads and Git read:repository,
+	// and Git's receive-pack write:repository. A write scope implies its read
+	// scope.
 	Scopes []string
 }
 
@@ -52,7 +53,7 @@ func (a Account) has(category string) bool {
 }
 
 // Repo is a repository owned by an account; Readers lists further account
-// IDs that may read it (collaborators).
+// IDs that may read it and Writers those that may also push (collaborators).
 type Repo struct {
 	ID          int64
 	Owner, Name string
@@ -60,6 +61,7 @@ type Repo struct {
 	Empty       bool
 	Description string
 	Readers     []int64
+	Writers     []int64
 	// CloneURL replaces the clone_url the API reports, as a Gitea whose
 	// configured root URL names another host would.
 	CloneURL string
@@ -99,6 +101,8 @@ type Server struct {
 	requests []GitRequest
 	apiHits  int
 	failing  map[string]bool // tokens whose API reads answer 500
+	// httpGitOff refuses receive-pack as a Gitea with DISABLE_HTTP_GIT does.
+	httpGitOff bool
 	gate     chan struct{}   // while set, Git requests wait for it to close
 }
 
@@ -211,6 +215,14 @@ func (s *Server) SetScopes(id int64, scopes []string) {
 	}
 }
 
+// DisableHTTPPush makes receive-pack answer Gitea's DISABLE_HTTP_GIT
+// refusal (403 with its own text) to a write-scoped token.
+func (s *Server) DisableHTTPPush() {
+	s.mu.Lock()
+	s.httpGitOff = true
+	s.mu.Unlock()
+}
+
 // SetToken replaces an account's token, as rotating a PAT at Gitea does.
 func (s *Server) SetToken(id int64, token string) {
 	s.mu.Lock()
@@ -294,6 +306,30 @@ func (s *Server) account(token string) (Account, bool) {
 	return Account{}, false
 }
 
+// writes reports whether the token's scopes cover category for writing.
+func (a Account) writes(category string) bool {
+	for _, s := range a.Scopes {
+		if s == "all" || s == "write:"+category {
+			return true
+		}
+	}
+	return false
+}
+
+// pushable is the account's own right to push to r, whatever its token's
+// scopes: the owner and the Writers.
+func (s *Server) pushable(a Account, r Repo) bool {
+	if a.Login == r.Owner {
+		return true
+	}
+	for _, id := range r.Writers {
+		if id == a.ID {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Server) readable(a Account, r Repo) bool {
 	owner := false
 	for _, o := range s.accounts {
@@ -309,10 +345,12 @@ func (s *Server) readable(a Account, r Repo) bool {
 			return true
 		}
 	}
-	return false
+	return s.pushable(a, r)
 }
 
-func (s *Server) view(r Repo, accounts []Account) map[string]any {
+// view is r as viewer's API answers show it. Its permissions are the
+// account's, as Gitea's are: a read-only token still sees push: true.
+func (s *Server) view(r Repo, viewer Account, accounts []Account) map[string]any {
 	full := r.Owner + "/" + r.Name
 	branch := "main"
 	if r.Empty {
@@ -334,7 +372,7 @@ func (s *Server) view(r Repo, accounts []Account) map[string]any {
 		"private": r.Private, "empty": r.Empty, "archived": false, "description": r.Description,
 		"default_branch": branch, "updated_at": "2026-10-20T10:00:00+03:00", "size": 24,
 		"html_url": s.URL + "/" + full, "clone_url": clone, "ssh_url": "git@127.0.0.1:" + full + ".git",
-		"permissions": map[string]bool{"admin": false, "push": false, "pull": true},
+		"mirror": false, "permissions": map[string]bool{"admin": false, "push": s.pushable(viewer, r), "pull": true},
 	}
 }
 
@@ -399,7 +437,7 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		mine := []map[string]any{}
 		for _, repo := range repos {
 			if s.readable(a, repo) {
-				mine = append(mine, s.view(repo, accounts))
+				mine = append(mine, s.view(repo, a, accounts))
 			}
 		}
 		start := min((page-1)*limit, len(mine))
@@ -416,7 +454,7 @@ func (s *Server) api(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/v1/repositories/"), 10, 64)
 		for _, repo := range repos {
 			if err == nil && repo.ID == id && s.readable(a, repo) {
-				_ = json.NewEncoder(w).Encode(s.view(repo, accounts))
+				_ = json.NewEncoder(w).Encode(s.view(repo, a, accounts))
 				return
 			}
 		}
@@ -445,7 +483,7 @@ func (s *Server) smartHTTP(w http.ResponseWriter, r *http.Request, owner, name, 
 	if allowed {
 		redirect = repo.RedirectTo
 	}
-	gate := s.gate
+	gate, gitOff := s.gate, s.httpGitOff
 	s.mu.Unlock()
 	if gate != nil {
 		select {
@@ -471,15 +509,31 @@ func (s *Server) smartHTTP(w http.ResponseWriter, r *http.Request, owner, name, 
 		http.Redirect(w, r, target, http.StatusFound)
 		return
 	}
-	// A read-only grant: Gitea refuses receive-pack for read:repository.
+	env := []string{"GIT_PROJECT_ROOT=" + s.root, "GIT_HTTP_EXPORT_ALL=1", "HOME=" + s.root, "GIT_CONFIG_NOSYSTEM=1", "PATH=/usr/bin:/bin"}
 	if rest == "/git-receive-pack" || r.URL.Query().Get("service") == "git-receive-pack" {
-		w.WriteHeader(http.StatusForbidden)
-		return
+		// Gitea refuses HTTP Git when it is turned off, then checks the
+		// token's scope at write level (a bare 403). The account's own right
+		// to push it leaves to the push itself (Git's proc-receive), so the
+		// advertisement still answers and only the push is refused.
+		if gitOff {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte("Interacting with repositories by HTTP protocol is not allowed"))
+			return
+		}
+		if !a.writes("repository") {
+			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			return
+		}
+		if !s.pushable(a, *repo) && rest == "/git-receive-pack" {
+			http.Error(w, "User permission denied", http.StatusForbidden)
+			return
+		}
+		env = append(env, "GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=http.receivepack", "GIT_CONFIG_VALUE_0=true")
 	}
 	h := &cgi.Handler{
 		Path: "/usr/lib/git-core/git-http-backend",
 		Root: "/",
-		Env:  []string{"GIT_PROJECT_ROOT=" + s.root, "GIT_HTTP_EXPORT_ALL=1", "HOME=" + s.root, "GIT_CONFIG_NOSYSTEM=1", "PATH=/usr/bin:/bin"},
+		Env:  env,
 	}
 	h.ServeHTTP(w, r)
 }

@@ -24,6 +24,10 @@ import (
 
 const giteaFixtureToken = "gitea-pat-synthetic-0001"
 
+// giteaFixtureScopes are the token's scopes as the connect form asks for
+// them; the read-only action takes write:repository away.
+var giteaFixtureScopes = []string{"read:user", "write:repository"}
+
 var giteaEnabled atomic.Bool
 
 // giteaHold is the fixture's hold on Git transfers. One lock covers placing
@@ -39,7 +43,7 @@ func startGiteaFixture(tmp string) *giteafake.Server {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil
 	}
-	srv, err := giteafake.Start(dir, []giteafake.Account{{ID: 9001, Login: "fixture", Token: giteaFixtureToken}}, []giteafake.Repo{
+	srv, err := giteafake.Start(dir, []giteafake.Account{{ID: 9001, Login: "fixture", Token: giteaFixtureToken, Scopes: giteaFixtureScopes}}, []giteafake.Repo{
 		{ID: 2001, Owner: "fixture", Name: "notes", Private: true, Description: "Synthetic Gitea notes"},
 		{ID: 2002, Owner: "fixture", Name: "first", Private: true, Description: "Same name as the GitHub repository"},
 		{ID: 2003, Owner: "fixture", Name: "blank", Private: true, Empty: true},
@@ -77,7 +81,9 @@ func giteaFixtureAdapter(env integrations.Env, srv *giteafake.Server, self strin
 // giteaFixtureControl serves /fixture/gitea: enable or disable the provider,
 // push one more upstream commit to fixture/notes, hold or release every Git
 // transfer (a slow clone), or make the API answer 500 to the fixture's token
-// and recover (an unwell server, so its source fails alone). Each answer names
+// and recover (an unwell server, so its source fails alone), or make the
+// token read-only and writable again; enable restores a writable token.
+// Each answer names
 // the address and the synthetic token a test types into the form.
 func giteaFixtureControl(srv *giteafake.Server, w http.ResponseWriter, r *http.Request) {
 	if srv == nil {
@@ -87,6 +93,11 @@ func giteaFixtureControl(srv *giteafake.Server, w http.ResponseWriter, r *http.R
 	switch r.URL.Query().Get("action") {
 	case "enable":
 		giteaEnabled.Store(true)
+		srv.SetScopes(9001, giteaFixtureScopes)
+	case "read-only":
+		srv.SetScopes(9001, []string{"read:user", "read:repository"})
+	case "writable":
+		srv.SetScopes(9001, giteaFixtureScopes)
 	case "disable":
 		giteaEnabled.Store(false)
 	case "hold":

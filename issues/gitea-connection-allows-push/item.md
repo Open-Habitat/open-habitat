@@ -3,13 +3,14 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-29/gitea-connection-allows-push
 lane: gitea
 lane_seq: 20
+closed: 2026-10-29
 ---
 
 # Gitea connection: allow push with the person's own write-scoped token; explain a read-only one

@@ -46,13 +46,19 @@ export type GiteaAPI =
   | "redirect_refused"
   | "forbidden_destination"
   | "not_gitea";
+/** Whether Gitea lets Git push with the token, read without pushing. */
+export type GiteaPush = "allowed" | "read_only" | "unknown";
 export type GiteaChange = {
   schema_version: 1;
   outcome: "written" | "unchanged" | "absent" | "checked";
   connection?: GiteaConnection;
   api?: GiteaAPI;
+  push?: GiteaPush;
   removed?: { id: string };
 };
+/** A connection's latest answer from Gitea: its API and, when that works,
+ * its push. */
+export type GiteaCheck = { api: GiteaAPI; push?: GiteaPush };
 export type GiteaRepository = {
   id: number;
   full_name: string;

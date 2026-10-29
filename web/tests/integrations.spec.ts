@@ -980,6 +980,8 @@ test("a Gitea connection is made from the form, refusals stay in view, and it is
     "data-git",
     "registered",
   );
+  // The token has write:repository, so nothing warns about push.
+  await expect(dialog.getByTestId("gitea-push")).toHaveCount(0);
   await dialog
     .getByRole("button")
     .and(dialog.getByTestId("gitea-done"))
@@ -988,6 +990,7 @@ test("a Gitea connection is made from the form, refusals stay in view, and it is
     .getByRole("article")
     .and(page.getByTestId("gitea-connection"));
   await expect(connection).toHaveAttribute("data-git", "registered");
+  await expect(connection).toHaveAttribute("data-push", "allowed");
   const list = await (await page.request.get("/api/v1/integrations")).json();
   expect(JSON.stringify(list)).not.toContain(token);
   expect(list.gitea.connections).toHaveLength(1);
@@ -1000,6 +1003,23 @@ test("a Gitea connection is made from the form, refusals stay in view, and it is
     "data-api",
     "ok",
   );
+
+  // The same token made read-only at Gitea: the next check names it before
+  // any push meets a 403, and the page opened afresh checks by itself.
+  await page.request.get("/fixture/gitea?action=read-only");
+  await connection
+    .getByRole("button")
+    .and(connection.getByTestId("gitea-check"))
+    .click();
+  await expect(connection).toHaveAttribute("data-push", "read_only");
+  await expect(
+    connection.getByRole("status").and(connection.getByTestId("gitea-push")),
+  ).toContainText("write:repository");
+  await page.reload();
+  await expect(
+    page.getByRole("article").and(page.getByTestId("gitea-connection")),
+  ).toHaveAttribute("data-push", "read_only");
+  await page.request.get("/fixture/gitea?action=writable");
 
   // Bob's daemon reads Bob's tea file: Alice's connection is not his.
   const other = await browser.newContext({
@@ -1048,7 +1068,12 @@ test("an uncertain Gitea connect is observed from tea's state and never resent",
   await signIn(page, "Alice", "koodipalvelut");
   let posts = 0;
   await page.route("**/api/v1/integrations/gitea", async (route) => {
-    if (route.request().method() !== "POST") return route.continue();
+    // The page's own check of what it then shows carries no token.
+    if (
+      route.request().method() !== "POST" ||
+      route.request().postDataJSON()?.action === "check"
+    )
+      return route.continue();
     posts++;
     // The write reaches the person's daemon; only its answer is lost.
     await route.fetch();

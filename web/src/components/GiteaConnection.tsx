@@ -7,7 +7,9 @@ import {
 } from "react-aria-components";
 import {
   type GiteaAPI,
+  type GiteaCheck,
   type GiteaConnection,
+  type GiteaPush,
   giteaAddress,
   gitReady,
   host,
@@ -33,7 +35,12 @@ export type GiteaStage =
       error?: { field: GiteaField; text: string };
       busy?: boolean;
     }
-  | { stage: "done"; connection: GiteaConnection; replaced?: boolean }
+  | {
+      stage: "done";
+      connection: GiteaConnection;
+      replaced?: boolean;
+      push?: GiteaPush;
+    }
   | { stage: "uncertain" };
 
 const apiText: Record<GiteaAPI, string> = {
@@ -52,6 +59,10 @@ export function giteaAPIText(api: GiteaAPI): string {
   return apiText[api];
 }
 
+/** What a read-only token means, wherever the page names one. */
+const readOnlyText =
+  "Vain luku: tunnukselta puuttuu repojen kirjoitusoikeus (write:repository), joten push ei onnistu. Vaihda tilalle tunnus, jolla se on.";
+
 /** One tea login: a usable PAT connection with its Git readiness, or one
  * the connector shows but does not use. */
 export function GiteaCard({
@@ -64,8 +75,8 @@ export function GiteaCard({
   onDisconnect,
 }: {
   connection: GiteaConnection;
-  /** The latest explicit check's answer for this connection. */
-  check?: GiteaAPI;
+  /** The latest check's answer for this connection. */
+  check?: GiteaCheck;
   busy?: boolean;
   onCheck: () => void;
   onReplace: () => void;
@@ -79,6 +90,7 @@ export function GiteaCard({
       data-testid="gitea-connection"
       data-connection={c.id}
       data-git={c.git}
+      data-push={check?.api === "ok" ? check.push : undefined}
       className="ig-card"
       aria-label={`Gitea · ${name || "tea-kirjautuminen"}`}
     >
@@ -141,7 +153,9 @@ export function GiteaCard({
             <span className="ig-rn">Git-repot</span>
             <span className="ig-meta">
               {gitReady(c)
-                ? "Kloonaus ja haku käyttävät tätä tunnusta. Myös agenttisi voivat käyttää sitä."
+                ? check?.api === "ok" && check.push === "allowed"
+                  ? "Kloonaus, haku ja push käyttävät tätä tunnusta. Myös agenttisi voivat käyttää sitä."
+                  : "Kloonaus ja haku käyttävät tätä tunnusta. Myös agenttisi voivat käyttää sitä."
                 : c.git === "foreign"
                   ? "Git-asetuksissasi on tälle palvelimelle toinen tunnusapuri, joten Habitat ei käytä tunnusta Gitissä."
                   : "Git ei vielä käytä tätä tunnusta. Kloonaus ei onnistu ennen kuin Git-asetus on kunnossa."}
@@ -162,15 +176,27 @@ export function GiteaCard({
             {check ? (
               <span
                 data-testid="gitea-check-result"
-                data-api={check}
-                className={`ig-meta ${check === "ok" ? "" : "ig-bad"}`}
+                data-api={check.api}
+                className={`ig-meta ${check.api === "ok" ? "" : "ig-bad"}`}
               >
-                {apiText[check]}
+                {apiText[check.api]}
               </span>
             ) : null}
           </div>
         </div>
       )}
+      {ok && check?.api === "ok" && check.push === "read_only" ? (
+        <p className="ig-notice" role="status" data-testid="gitea-push">
+          <Icon name="warning" />
+          <span>{readOnlyText}</span>
+        </p>
+      ) : null}
+      {ok && check?.api === "ok" && check.push === "unknown" ? (
+        <p className="ig-p" data-testid="gitea-push">
+          Pushin toimivuutta ei voitu tarkistaa: tililtä ei löytynyt repoa,
+          johon se saa pushata, tai Gitea ei vastannut.
+        </p>
+      ) : null}
     </article>
   );
 }
@@ -297,9 +323,25 @@ export function GiteaDialog({
             <span className="ah-mono">{c.base_url && host(c.base_url)}</span>
           </span>
         </p>
+        {stage.push === "read_only" ? (
+          <p
+            className="ig-result bad"
+            role="alert"
+            data-testid="gitea-push"
+            data-push="read_only"
+          >
+            <Icon name="warning" />
+            <span>
+              {readOnlyText} Kloonaus ja haku toimivat tälläkin tunnuksella.
+            </span>
+          </p>
+        ) : null}
         {gitReady(c) ? (
           <p className="ig-p">
             Voit nyt valita Giteasta repon uudeksi työtilaksi.
+            {stage.push === "allowed"
+              ? " Push toimii samalla tunnuksella Gitillä."
+              : ""}
           </p>
         ) : (
           <>
@@ -414,9 +456,13 @@ export function GiteaDialog({
           <div className="ig-p" data-testid="gitea-token-instructions">
             <strong>Giteassa: Asetukset → Sovellukset</strong>
             <p>
-              Luo uusi pääsytunnus ja anna sille käyttäjätietojen ja repojen
-              lukuoikeus (<code>read:user</code>, <code>read:repository</code>
-              ). Tämä yhteys ei kirjoita Giteaan.
+              Luo uusi pääsytunnus ja anna sille käyttäjätietojen lukuoikeus ja
+              repojen kirjoitusoikeus (<code>read:user</code>,{" "}
+              <code>write:repository</code>). Kirjoitusoikeudella sinä ja
+              agenttisi voitte pushata Gitillä; suojatut haarat ja tilisi
+              oikeudet rajaavat sitä Giteassa kuten ennenkin. Pelkällä
+              lukuoikeudella (<code>read:repository</code>) kloonaus ja haku
+              toimivat, mutta push ei.
             </p>
             <p>
               Kopioi tunnus tähän. Sen tarkat oikeusvalinnat riippuvat Gitean

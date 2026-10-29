@@ -22,10 +22,11 @@ import {
 } from "../components/Integrations";
 import {
   connectGitea,
-  type GiteaAPI,
+  type GiteaCheck,
   type GiteaConnection,
   giteaAction,
   replaceGiteaToken,
+  usable,
 } from "./gitea";
 import { useGitLabSettings } from "./gitlabSettings";
 import {
@@ -107,7 +108,7 @@ const giteaRefusals: Record<string, [GiteaField, string]> = {
   ],
   insufficient_scope: [
     "token",
-    "Tunnukselta puuttuu lukuoikeus käyttäjätietoihin tai repoihin. Anna sille read:user ja read:repository.",
+    "Tunnukselta puuttuu lukuoikeus käyttäjätietoihin tai repoihin. Anna sille read:user ja write:repository.",
   ],
   account_mismatch: [
     "token",
@@ -230,7 +231,11 @@ export function IntegrationsSettings({
     replace?: GiteaConnection;
     stage: GiteaStage;
   }>();
-  const [giteaChecks, setGiteaChecks] = useState<Record<string, GiteaAPI>>({});
+  const [giteaChecks, setGiteaChecks] = useState<Record<string, GiteaCheck>>(
+    {},
+  );
+  // Connections this view has checked or is checking without being asked.
+  const giteaSeen = useRef(new Set<string>());
   const [giteaBusy, setGiteaBusy] = useState(false);
   const [giteaRemoving, setGiteaRemoving] = useState<{
     connection: GiteaConnection;
@@ -258,6 +263,7 @@ export function IntegrationsSettings({
       setGitea(undefined);
       setGiteaRemoving(undefined);
       setGiteaChecks({});
+      giteaSeen.current = new Set();
       setGiteaBusy(false);
     }
     shownFor.current = csrf;
@@ -276,6 +282,61 @@ export function IntegrationsSettings({
       if (alive.current) setChecking(new Set());
     }
   }, []);
+
+  // A connection the page shows is checked once without being asked, so a
+  // read-only token is named before a push meets Gitea's 403. One at a
+  // time, as the daemon serializes them, and silently: Tarkista asks again
+  // and says what went wrong. The daemon refuses a write that meets another
+  // rather than queueing it, so the person's own action waits for the check
+  // in flight and stops the rest; what was left unchecked, or met a busy
+  // daemon, is checked when the list is read again.
+  const giteaAuto = useRef({ holds: 0, done: Promise.resolve() });
+  useEffect(() => {
+    const sent = csrf;
+    const shown =
+      (!only || only.includes("gitea")) && !except?.includes("gitea");
+    if (!sent || !shown || !list?.gitea) return;
+    const due = list.gitea.connections.filter(
+      (c) => usable(c) && !giteaSeen.current.has(c.id),
+    );
+    if (!due.length) return;
+    for (const c of due) giteaSeen.current.add(c.id);
+    const auto = giteaAuto.current;
+    auto.done = auto.done
+      .then(async () => {
+        for (const [i, c] of due.entries()) {
+          if (!alive.current || session.current !== sent) return;
+          if (auto.holds > 0) {
+            for (const left of due.slice(i)) giteaSeen.current.delete(left.id);
+            return;
+          }
+          try {
+            const change = await giteaAction(sent, "check", c.id);
+            if (!alive.current || session.current !== sent) return;
+            const api = change.api;
+            if (api)
+              setGiteaChecks((m) =>
+                m[c.id] ? m : { ...m, [c.id]: { api, push: change.push } },
+              );
+          } catch (e) {
+            if (e instanceof Refused && e.code === "native_busy")
+              giteaSeen.current.delete(c.id);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [csrf, list, only, except]);
+  /** Runs the person's own Gitea write after the automatic check in flight. */
+  const giteaOwn = async <T,>(write: () => Promise<T>): Promise<T> => {
+    const auto = giteaAuto.current;
+    auto.holds++;
+    try {
+      await auto.done;
+      return await write();
+    } finally {
+      auto.holds--;
+    }
+  };
 
   const gitlab = useGitLabSettings({
     csrf,
@@ -745,21 +806,31 @@ export function IntegrationsSettings({
     if (!sent) return;
     setGitea((g) => g && { ...g, stage: { stage: "form", busy: true } });
     try {
-      const change = replace
-        ? await replaceGiteaToken(sent, replace.id, token)
-        : await connectGitea(sent, address, token);
+      const change = await giteaOwn(() =>
+        replace
+          ? replaceGiteaToken(sent, replace.id, token)
+          : connectGitea(sent, address, token),
+      );
       if (!current(sent)) return;
       const connection = change.connection;
       setGitea((g) =>
         g && connection
           ? {
               ...g,
-              stage: { stage: "done", connection, replaced: !!replace },
+              stage: {
+                stage: "done",
+                connection,
+                replaced: !!replace,
+                push: change.push,
+              },
             }
           : g,
       );
-      if (connection && change.api)
-        setGiteaChecks((c) => ({ ...c, [connection.id]: "ok" }));
+      if (connection && change.api) {
+        const check = { api: change.api, push: change.push };
+        giteaSeen.current.add(connection.id);
+        setGiteaChecks((c) => ({ ...c, [connection.id]: check }));
+      }
       void load();
     } catch (e) {
       if (!current(sent)) return;
@@ -791,13 +862,19 @@ export function IntegrationsSettings({
       return;
     }
     const sent = csrf;
+    const kind = intent.kind;
     if (!sent || giteaBusy) return;
     setGiteaBusy(true);
     try {
-      const change = await giteaAction(sent, intent.kind, intent.connection.id);
+      const change = await giteaOwn(() =>
+        giteaAction(sent, kind, intent.connection.id),
+      );
       if (!current(sent)) return;
       const api = change.api;
-      if (api) setGiteaChecks((c) => ({ ...c, [intent.connection.id]: api }));
+      if (api) {
+        const check = { api, push: change.push };
+        setGiteaChecks((c) => ({ ...c, [intent.connection.id]: check }));
+      }
       if (gitea?.stage.stage === "done" && change.connection) {
         const connection = change.connection;
         setGitea((g) =>
@@ -826,7 +903,7 @@ export function IntegrationsSettings({
     if (!sent || !target) return;
     setGiteaRemoving({ connection: target, busy: true });
     try {
-      await giteaAction(sent, "disconnect", target.id);
+      await giteaOwn(() => giteaAction(sent, "disconnect", target.id));
       if (!current(sent)) return;
       setGiteaRemoving(undefined);
       setNotice(

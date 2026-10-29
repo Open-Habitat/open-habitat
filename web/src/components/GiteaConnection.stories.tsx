@@ -142,7 +142,7 @@ const meta = {
     onSignInAgain: intent,
     onRemove: intent,
     onGitea: intent,
-    giteaChecks: { [ready.id]: "ok" as const },
+    giteaChecks: { [ready.id]: { api: "ok", push: "allowed" } },
   },
 } satisfies Meta<typeof IntegrationsOverview>;
 export default meta;
@@ -154,7 +154,20 @@ export const Connections: Story = {};
 export const CheckRejected: Story = {
   args: {
     list: list([ready]),
-    giteaChecks: { [ready.id]: "token_rejected" },
+    giteaChecks: { [ready.id]: { api: "token_rejected" } },
+  },
+};
+/** A token without write:repository: fetch works, push would meet 403. */
+export const CheckReadOnly: Story = {
+  args: {
+    list: list([ready]),
+    giteaChecks: { [ready.id]: { api: "ok", push: "read_only" } },
+  },
+};
+export const CheckPushUnknown: Story = {
+  args: {
+    list: list([ready]),
+    giteaChecks: { [ready.id]: { api: "ok", push: "unknown" } },
   },
 };
 export const NotOffered: Story = {
@@ -232,7 +245,10 @@ export const DialogChecking: Story = {
   ),
 };
 export const DialogConnected: Story = {
-  render: dialog({ stage: "done", connection: ready }),
+  render: dialog({ stage: "done", connection: ready, push: "allowed" }),
+};
+export const DialogConnectedReadOnly: Story = {
+  render: dialog({ stage: "done", connection: ready, push: "read_only" }),
 };
 export const DialogConnectedGitAbsent: Story = {
   render: dialog({ stage: "done", connection: { ...ready, git: "absent" } }),

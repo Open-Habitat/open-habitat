@@ -486,6 +486,9 @@ bad_gitea = json.loads((BASE / "examples" / "gitea-connected.json").read_text())
 bad_gitea["connection"]["base_url"] = "https://person:secret@git.example.test"
 must_reject("gitea-connection-change.schema.json", bad_gitea)
 must_reject("gitea-connection-change.schema.json", {"schema_version": 1, "outcome": "written", "removed": {"id": "gitea_0123456789abcdef01234567"}, "api": "ok"})
+bad_gitea = json.loads((BASE / "examples" / "gitea-connected.json").read_text())
+bad_gitea["api"] = "token_rejected"
+must_reject("gitea-connection-change.schema.json", bad_gitea)
 bad_gitea = json.loads((BASE / "examples" / "gitea-repos.json").read_text())
 bad_gitea["sources"][2]["repositories"] = bad_gitea["sources"][0]["repositories"]
 must_reject("gitea-repos.schema.json", bad_gitea)
