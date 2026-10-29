@@ -190,6 +190,7 @@ export function BrowserConversation(
         workspaceId: props.workspace.workspace_id,
         workspaceName: props.workspace.display_name ?? props.workspace.name,
         csrf: props.csrf,
+        githubState: props.recoverySnapshot?.auth?.native_github.state,
       }}
     >
       <ProcessProvider

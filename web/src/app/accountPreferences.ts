@@ -225,9 +225,14 @@ export function AccountPreferencesProvider({
 }
 
 /** Whether the person turned the experimental feature on. Off until the
- * daemon has confirmed otherwise, and off without a signed-in session. */
-export function useExperimentalFeature(id: ExperimentalFeatureId): boolean {
-  const { identity, csrf } = useContext(Session);
+ * daemon has confirmed otherwise, and off without a signed-in session. A
+ * caller above `AccountPreferencesProvider` names the session itself. */
+export function useExperimentalFeature(
+  id: ExperimentalFeatureId,
+  session?: { identity?: string; csrf?: string },
+): boolean {
+  const named = useContext(Session);
+  const { identity, csrf } = session ?? named;
   const k = identity && csrf ? key(identity, csrf) : undefined;
   return useSyncExternalStore(
     subscribe,

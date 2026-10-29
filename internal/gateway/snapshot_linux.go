@@ -34,7 +34,7 @@ func historyGatewayPath(path string, q url.Values) bool {
 	if spinoffPath.MatchString(path) {
 		return len(q) == 0 || len(q) == 1 && len(q["run"]) == 1 && spinoffRunID.MatchString(q.Get("run"))
 	}
-	if recapPath.MatchString(path) || contextPath.MatchString(path) {
+	if recapPath.MatchString(path) || contextPath.MatchString(path) || spinoffWorkPath.MatchString(path) {
 		return len(q) == 0
 	}
 	if m := historyPath.FindStringSubmatch(path); m != nil {
@@ -62,6 +62,7 @@ func historyGatewayPath(path string, q url.Values) bool {
 }
 
 var spinoffPath = regexp.MustCompile(`^/api/v1/agents/pi:[0-9a-fA-F-]{36}/spinoffs$`)
+var spinoffWorkPath = regexp.MustCompile(`^/api/v1/agents/pi:[0-9a-fA-F-]{36}/spinoff-work$`)
 var spinoffRunID = regexp.MustCompile(`^[0-9a-hjkmnp-tv-z]{26}$`)
 var recapPath = regexp.MustCompile(`^/api/v1/agents/pi:[0-9a-fA-F-]{36}/recap$`)
 var contextPath = regexp.MustCompile(`^/api/v1/agents/pi:[0-9a-fA-F-]{36}/context$`)

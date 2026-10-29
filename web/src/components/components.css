@@ -4955,6 +4955,9 @@ h2.ah-rail-section-head {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.ah-nav-work[data-tone="work"] {
+  color: var(--ah-ink-2);
+}
 .ah-rail .ah-nav-question {
   display: inline-grid;
   place-items: center;

@@ -3,13 +3,14 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: experimental
 lane_seq: 2
 collision: [web/src/components/Navigation.tsx]
 preparation: ready
 blocked_by: ['@proto-experimental-features', '@experimental-features-section']
+closed: 2026-10-29
 ---
 
 # Experimental: worker row work sentence
@@ -22,5 +23,5 @@ Implement `proto-worker-row-work-facts` direction **Lause** (Jari 29.10.): the w
 
 ## Acceptance Criteria
 
-- [ ] Sentence on worker rows in the panel and sidebar from native Git/gh reads.
-- [ ] Behind the experimental switch; browser spec; KOKEILTAVAA line.
+- [x] Sentence on worker rows in the panel and sidebar from native Git/gh reads.
+- [x] Behind the experimental switch; browser spec; KOKEILTAVAA line.

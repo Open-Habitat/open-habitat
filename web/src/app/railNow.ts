@@ -17,6 +17,7 @@ import {
   worktreeMerged,
 } from "./snapshot";
 import type { RootState } from "./store";
+import { placeWorkClause } from "./workSentence";
 
 export interface RailNow {
   /** A new reply or a question: the person's turn. */
@@ -44,6 +45,7 @@ export function railNow({
   selectedAgentId,
   selectedId,
   search = "",
+  workFacts = false,
 }: {
   agents: Agent[];
   snapshot: Snapshot;
@@ -55,6 +57,8 @@ export function railNow({
   selectedAgentId?: string;
   selectedId?: string;
   search?: string;
+  /** The worker-row sentence is on: worktree rows say their work. */
+  workFacts?: boolean;
 }): RailNow {
   const yours: AgentNavModel[] = [];
   const running: AgentNavModel[] = [];
@@ -157,11 +161,19 @@ export function railNow({
         .join(" · "),
       pendingLabel,
       worktree: a.worktree_id
-        ? {
-            merged: worktreeMerged(
-              w.worktrees?.find((place) => place.worktree_id === a.worktree_id),
-            ),
-          }
+        ? (() => {
+            const place = w.worktrees?.find(
+              (p) => p.worktree_id === a.worktree_id,
+            );
+            const merged = worktreeMerged(place);
+            return {
+              merged,
+              work:
+                workFacts && !merged
+                  ? placeWorkClause(place?.git_summary)
+                  : undefined,
+            };
+          })()
         : undefined,
       question: !attention && facts.pendingQuestion,
       activity: presentation.activity,

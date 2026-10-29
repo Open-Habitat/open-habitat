@@ -277,6 +277,7 @@ export function NavLink({
   leading,
   detail,
   oneLine = false,
+  line,
   end,
 }: {
   label: string;
@@ -293,6 +294,9 @@ export function NavLink({
   detail?: string;
   /** Keep the row to one line: the detail is said, not shown. */
   oneLine?: boolean;
+  /** A one-line row's short shown line under its label; decorative, as the
+   * detail says the same. */
+  line?: ReactNode;
   /** A short fact at the end of the line, such as the time. */
   end?: ReactNode;
 }) {
@@ -316,7 +320,16 @@ export function NavLink({
       {leading}
       {detail && oneLine ? (
         <>
-          <span className="ah-nav-label">{label}</span>
+          {line ? (
+            <span className="ah-nav-text">
+              <span className="ah-nav-label">{label}</span>
+              <span className="ah-nav-detail" aria-hidden="true">
+                {line}
+              </span>
+            </span>
+          ) : (
+            <span className="ah-nav-label">{label}</span>
+          )}
           <span className="ah-visually-hidden" id={detailId}>
             {detail}
           </span>
@@ -458,7 +471,12 @@ export interface AgentNavModel {
   pendingLabel?: string;
   /** A worktree agent (ADR 0025); merged when Git says its work is in the
    * base branch. */
-  worktree?: { merged: boolean };
+  worktree?: {
+    merged: boolean;
+    /** What the worktree's work is, in words (worker-row sentence,
+     * experimental); absent while the feature is off. */
+    work?: { text: string; tone: "work" | "muted" };
+  };
   /** The agent has asked the person something and waits for the answer. */
   question?: boolean;
   /** What the row says about itself beyond its title: workspace, state and
@@ -579,6 +597,7 @@ export function AgentNavItem({
         ? "Worktree-agentti, työ yhdistetty"
         : "Worktree-agentti"
       : null,
+    worktree?.work?.text,
     spinoffWorking ? "Worker työskentelee" : null,
     controlLabel,
     detail ? null : operationLabel,
@@ -609,6 +628,17 @@ export function AgentNavItem({
           current={selected ? "page" : false}
           detail={said}
           oneLine
+          line={
+            worktree?.work && !worktree.merged ? (
+              <span
+                className="ah-nav-work"
+                data-testid="worktree-work"
+                data-tone={worktree.work.tone}
+              >
+                {worktree.work.text}
+              </span>
+            ) : undefined
+          }
           leading={
             <>
               <Ball kind={ball} />

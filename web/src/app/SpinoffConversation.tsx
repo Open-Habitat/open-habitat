@@ -1,4 +1,11 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useNavigate } from "react-router";
 import {
   SpinoffContext,
@@ -6,13 +13,16 @@ import {
   WorkerVoice,
   workerLive,
 } from "../components/Spinoffs";
+import { useExperimentalFeature } from "./accountPreferences";
 import type { timelineItems } from "./HistoryView";
+import { settingsHref } from "./settingsRoute";
 import {
   readSpinoffs,
   type Spinoff,
   type Spinoffs,
   type WorkerTranscript,
 } from "./spinoffs";
+import { readSpinoffWork, type SpinoffWork } from "./spinoffWork";
 import { WorkerTerminal } from "./WorkerTerminal";
 import { askable } from "./workerRequests";
 // An incomplete read is not proof that a run vanished: Taskfleet keeps
@@ -36,6 +46,8 @@ type WorkerPlace = {
   workspaceId?: string;
   workspaceName?: string;
   csrf?: string;
+  /** gh's state as the snapshot last saw it, for the pull-request note. */
+  githubState?: string;
 };
 export function SpinoffProvider({
   parent,
@@ -105,6 +117,7 @@ export function SpinoffProvider({
       clearTimeout(timer);
     };
   }, [parent, run, onLogin]);
+  const work = useWorkerWork(parent, data);
   // biome-ignore lint/correctness/useExhaustiveDependencies: recheck is the trigger, not read inside the effect.
   useEffect(() => {
     const again = resume.current;
@@ -120,7 +133,15 @@ export function SpinoffProvider({
   const selected = data?.runs.find((r) => r.run_id === run);
   return (
     <SpinoffContext.Provider
-      value={{ data, stale, open: (r) => route(r.run_id), request, setRequest }}
+      value={{
+        data,
+        stale,
+        open: (r) => route(r.run_id),
+        request,
+        setRequest,
+        work: work && new Map(work.runs.map((w) => [w.run_id, w])),
+        workNote: work && workNote(work, place.githubState),
+      }}
     >
       {run ? (
         <WorkerConversation
@@ -149,6 +170,62 @@ export function SpinoffProvider({
   );
 }
 
+/** The workers' work facts, read only while the person has the worker-row
+ * sentence on: each read runs Git and asks GitHub once per worker branch, so
+ * it follows the listed runs slowly rather than the spinoffs read's pace. */
+function useWorkerWork(parent: string | undefined, data?: Spinoffs) {
+  const on = useExperimentalFeature("worker-row-sentence");
+  const [work, setWork] = useState<SpinoffWork>();
+  // A new run or a state change asks again at once.
+  const runs =
+    data?.runs
+      .filter((r) => r.state !== "merged")
+      .map((r) => `${r.run_id}:${r.state}`)
+      .join(",") ?? "";
+  useEffect(() => {
+    if (!on || !parent || !runs) {
+      setWork(undefined);
+      return;
+    }
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const load = async () => {
+      try {
+        const next = await readSpinoffWork(parent, controller.signal);
+        if (!controller.signal.aborted) setWork(next);
+      } catch {
+        // Facts that could not be read are not shown as old ones.
+        if (!controller.signal.aborted) setWork(undefined);
+      } finally {
+        if (!controller.signal.aborted) timer = setTimeout(load, 30000);
+      }
+    };
+    void load();
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [on, parent, runs]);
+  return on ? work : undefined;
+}
+
+/** One note for the panel when gh said nothing about a worker that Git
+ * answered for: the cause is the same for every row, so no row carries it. */
+function workNote(work: SpinoffWork, githubState?: string) {
+  if (
+    !work.runs.some(
+      (r) => r.git === "available" && r.pull_request_state === "unknown",
+    )
+  )
+    return undefined;
+  return githubState === "disconnected" || githubState === "expired"
+    ? {
+        text: "PR-tiedot puuttuvat, koska gh ei ole kirjautunut GitHubiin. Muutokset näkyvät silti.",
+        href: settingsHref("koodipalvelut", "github"),
+      }
+    : { text: "PR-tietoja ei saatu gh:lta. Muutokset näkyvät silti." };
+}
+
 function WorkerConversation({
   run,
   transcript,
@@ -173,6 +250,7 @@ function WorkerConversation({
   // Habitat reads a Claude worker's session only once Claude has written
   // it: say so when it arrives while the person watches the terminal.
   const [arrived, setArrived] = useState(false);
+  const spinoffs = useContext(SpinoffContext);
   const unreadable = useRef(false);
   const availability = transcript?.availability;
   useEffect(() => {
@@ -233,6 +311,7 @@ function WorkerConversation({
       }
       terminal={terminal}
       historyArrived={arrived}
+      work={run ? spinoffs?.work?.get(run.run_id) : undefined}
       onParent={onParent}
       onTell={onTell}
     />

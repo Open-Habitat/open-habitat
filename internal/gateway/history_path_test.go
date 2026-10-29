@@ -8,7 +8,7 @@ import (
 )
 
 func TestRecapAndContextGatewayReadPaths(t *testing.T) {
-	for _, base := range []string{"/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/recap", "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/context"} {
+	for _, base := range []string{"/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/recap", "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/context", "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/spinoff-work"} {
 		if !historyGatewayPath(base, url.Values{}) || historyGatewayPath(base, url.Values{"limit": {"1"}}) || historyGatewayPath(base+"/other", url.Values{}) {
 			t.Fatalf("%s must be exact and query-free", base)
 		}

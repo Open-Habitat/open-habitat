@@ -255,7 +255,10 @@ func addGitLineCounts(read gitRead, fd int, files []workspaceGitFile) {
 	// Rename detection as in status: a rename row gets the rename's own
 	// counts ("added\tdeleted\t" then the old and new path as their own
 	// NUL-terminated fields), not the whole new file as an addition.
-	if raw, err := read("diff", "--numstat", "-z", "--find-renames", "--no-ext-diff", "--no-textconv", "HEAD", "--"); err == nil && len(raw) <= 1<<20 {
+	// autoRefreshIndex: against the working tree, diff would otherwise
+	// rewrite a stat-dirty index and take index.lock under the person's own
+	// Git, which GIT_OPTIONAL_LOCKS does not stop.
+	if raw, err := read("-c", "diff.autoRefreshIndex=false", "diff", "--numstat", "-z", "--find-renames", "--no-ext-diff", "--no-textconv", "HEAD", "--"); err == nil && len(raw) <= 1<<20 {
 		counts := map[string][2]int{}
 		renamed := map[string]bool{}
 		records := strings.Split(strings.TrimSuffix(string(raw), "\x00"), "\x00")
@@ -300,25 +303,32 @@ func addGitLineCounts(read gitRead, fd int, files []workspaceGitFile) {
 func intPtr(v int) *int { return &v }
 
 func countUntrackedLines(fd int, path string) (int, bool) {
+	lines, binary, ok := untrackedLines(fd, path)
+	return lines, ok && !binary
+}
+
+// untrackedLines counts a file's lines, or says it is binary as Git's
+// numstat would; ok is false when it could not be read within the bounds.
+func untrackedLines(fd int, path string) (int, bool, bool) {
 	file, err := open(unix.Openat2, fd, path, unix.O_RDONLY|unix.O_NONBLOCK|unix.O_NOCTTY, true)
 	if err != nil {
-		return 0, false
+		return 0, false, false
 	}
 	defer unix.Close(file)
 	st, err := stat(file)
 	if err != nil || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Size > 1<<20 {
-		return 0, false
+		return 0, false, false
 	}
 	buf := make([]byte, st.Size+1)
 	n, err := io.ReadFull(fdReader(file), buf)
 	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) || n > int(st.Size) {
-		return 0, false
+		return 0, false, false
 	}
 	buf = buf[:n]
 	lines := 0
 	for _, b := range buf {
 		if b == 0 {
-			return 0, false // binary, as Git's numstat would say
+			return 0, true, true // binary, as Git's numstat would say
 		}
 		if b == '\n' {
 			lines++
@@ -327,7 +337,7 @@ func countUntrackedLines(fd int, path string) (int, bool) {
 	if n > 0 && buf[n-1] != '\n' {
 		lines++
 	}
-	return lines, true
+	return lines, false, true
 }
 
 type fdReader int

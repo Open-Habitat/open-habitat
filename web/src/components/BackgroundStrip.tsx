@@ -8,7 +8,8 @@ import {
 } from "../app/processes";
 import type { Spinoff } from "../app/spinoffs";
 import { askable, type RequestPhase, unfinished } from "../app/workerRequests";
-import { ControlButton } from "./ControlElements";
+import { checksWord, prName, workClause } from "../app/workSentence";
+import { ControlButton, LinkRow } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 import {
   type BackgroundKind,
@@ -551,6 +552,16 @@ export function BackgroundStrip({
         ? clock(Date.parse(r.ended_at))
         : "";
     const agent = runAgent(r);
+    // Lause (worker-row sentence, experimental): what the worker has
+    // produced, right after the state word, so a narrow row cuts the agent
+    // first. A landed run's work is in its source branch: no facts.
+    const work =
+      !gone && !phase && r.state !== "merged"
+        ? spinoffs?.work?.get(r.run_id)
+        : undefined;
+    const clause = work && workClause(work);
+    const pr = work?.pull_request;
+    const checks = pr && checksWord(pr);
     return (
       <div
         className="ah-bg-row"
@@ -599,6 +610,38 @@ export function BackgroundStrip({
               <span className="ah-bg-word" data-tone={word.tone}>
                 {word.text}
               </span>
+              {clause ? (
+                <>
+                  <span className="ah-bg-sep" aria-hidden="true">
+                    ·
+                  </span>
+                  <span
+                    className="ah-bg-work"
+                    data-testid="spinoff-work"
+                    data-tone={clause.tone}
+                  >
+                    {clause.text}
+                  </span>
+                </>
+              ) : null}
+              {pr && checks ? (
+                <>
+                  <span className="ah-bg-sep" aria-hidden="true">
+                    ·
+                  </span>
+                  <span className="ah-bg-pr" data-testid="spinoff-pr">
+                    {prName(pr)}
+                    {checks.text ? (
+                      <>
+                        {" "}
+                        <span className="ah-bg-check" data-tone={checks.tone}>
+                          {checks.text}
+                        </span>
+                      </>
+                    ) : null}
+                  </span>
+                </>
+              ) : null}
               {agent && !phase && !gone ? (
                 <>
                   <span className="ah-bg-sep" aria-hidden="true">
@@ -734,6 +777,17 @@ export function BackgroundStrip({
     unfinished(i.run) && !phaseOf(i.run) ? 0 : phaseOf(i.run) ? 1 : 2;
   const spinPanel = (
     <>
+      {spinoffs?.workNote ? (
+        <p data-testid="spinoff-work-note" className="ah-bg-note">
+          <Icon name="info" />
+          <span>{spinoffs.workNote.text}</span>
+          {spinoffs.workNote.href ? (
+            <LinkRow kind="inline" href={spinoffs.workNote.href}>
+              Yhdistä GitHub
+            </LinkRow>
+          ) : null}
+        </p>
+      ) : null}
       {facts.spin.stale ? (
         <p
           data-testid="background-stale"

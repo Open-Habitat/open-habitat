@@ -483,7 +483,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 			snapshotError(w, 503, "native_source_unavailable")
 			return
 		}
-		if serveSpinoffs(w, r, cfg, sessions) {
+		if serveSpinoffs(w, r, cfg, sessions) || serveSpinoffWork(w, r, cfg, sessions) {
 			return
 		}
 		if strings.HasPrefix(path, "/api/v1/agents/") && strings.HasSuffix(path, "/recap") {

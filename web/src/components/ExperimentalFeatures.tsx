@@ -32,12 +32,13 @@ export const experimentalFeatures = [
     id: "worker-row-sentence",
     name: "Workerin työ rivillä",
     desc: "Workerin rivi kertoo sanoin, onko se jo tehnyt jotain: commitit, muutokset ja pull requestin tarkistukset.",
-    where: "Workerit-paneelin riveillä ja sivupalkin worktree-keskusteluissa.",
+    where:
+      "Workerit-paneelin riveillä ja workerin näkymässä. Sivupalkin worktree-keskustelut kertovat commitit ja muutokset ilman PR:ää.",
     shows:
       "”2 committia · 3 muutosta”, ”PR #412 luonnos, tarkistukset käynnissä” tai ”ei vielä muutoksia”.",
     needs: "PR-tiedot näkyvät, kun gh on kirjautunut (Koodipalvelut).",
     caption: "Workerit-paneeli",
-    landed: false,
+    landed: true,
   },
   {
     id: "terminal-watch",

@@ -38,7 +38,10 @@ import { ArchivedWorkspaces } from "../components/Navigation";
 import type { ReturnConversation } from "../components/ReturnView";
 import { StatusBell } from "../components/StatusBell";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
-import { AccountPreferencesProvider } from "./accountPreferences";
+import {
+  AccountPreferencesProvider,
+  useExperimentalFeature,
+} from "./accountPreferences";
 import { BrowserConversation } from "./BrowserConversation";
 import { watchBundle } from "./bundleRelease";
 import { CloneJobs } from "./cloneJobs";
@@ -1121,6 +1124,10 @@ export function App() {
                   )
                 ? "filtered-empty"
                 : "ready";
+  const workerRowSentence = useExperimentalFeature("worker-row-sentence", {
+    identity,
+    csrf,
+  });
   const now = useRailNow({
     store: conversationStore,
     snapshot,
@@ -1131,6 +1138,8 @@ export function App() {
     selectedAgentId,
     selectedId,
     search: location.search,
+    // App is above AccountPreferencesProvider: it names the session.
+    workFacts: workerRowSentence,
   });
   // Every conversation opened, by any route, is a step of the walk the
   // experimental next-waiting line offers (view state of this tab).

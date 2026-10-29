@@ -13,7 +13,9 @@ import {
   spinoffStateLabel,
   type WorkerTranscript,
 } from "../app/spinoffs";
-import { ControlButton } from "./ControlElements";
+import type { WorkerWork } from "../app/spinoffWork";
+import { workSentence } from "../app/workSentence";
+import { ControlButton, ExternalLink } from "./ControlElements";
 import {
   ConversationTimeline,
   ConversationVoice,
@@ -36,6 +38,11 @@ export const SpinoffContext = createContext<{
    * conversation sends the request once it is back. */
   request?: string;
   setRequest?: (run?: string) => void;
+  /** Each worker's work facts by run id, only while the person has the
+   * worker-row sentence on (Kokeelliset ominaisuudet). */
+  work?: ReadonlyMap<string, WorkerWork>;
+  /** One panel note when gh could not say anything about pull requests. */
+  workNote?: { text: string; href?: string };
 } | null>(null);
 
 const harnessName = { pi: "Pi", claude: "Claude Code", unknown: "Agentti" };
@@ -202,6 +209,7 @@ export function WorkerView({
   workspaceHref,
   terminal,
   historyArrived = false,
+  work,
   onParent,
   onTell,
 }: {
@@ -218,6 +226,8 @@ export function WorkerView({
   terminal?: ReactNode;
   /** The history became readable while this view was open. */
   historyArrived?: boolean;
+  /** What the worker has produced (the worker-row sentence, experimental). */
+  work?: WorkerWork;
   onParent: () => void;
   /** Sends the parent conversation a request about this worker's work. */
   onTell?: () => void;
@@ -415,6 +425,22 @@ export function WorkerView({
           </span>
         ) : null}
         <WorkerAsk run={run} onParent={onParent} />
+        {run && work && run.state !== "merged" ? (
+          <p className="ah-worker-work" data-testid="worker-work">
+            <span>{workSentence(work, run.source_branch)}</span>
+            {work.pull_request ? (
+              <ExternalLink
+                data-testid="worker-pr"
+                href={work.pull_request.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Avaa PR #{work.pull_request.number}
+                <Icon name="external" />
+              </ExternalLink>
+            ) : null}
+          </p>
+        ) : null}
       </div>
       <AgentHeader
         title={run?.title || "Worker"}

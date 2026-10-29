@@ -75,6 +75,7 @@ checks = {
     "process-stop.json": "process-control.schema.json",
     "process-event.json": "process-event.schema.json",
     "spinoffs.json": "spinoffs.schema.json",
+    "spinoff-work.json": "spinoff-work.schema.json",
     "rest.json": "rest.schema.json",
     "snapshot.json": "snapshot.schema.json",
     "account-storage.json": "account-storage.schema.json",
@@ -542,6 +543,14 @@ must_reject("github-clone.schema.json", {"action": "start", "full_name": "exampl
 
 def must_accept(schema: str, instance: object) -> None:
     Draft202012Validator(schemas[schema], registry=registry, format_checker=format_checker).validate(instance)
+
+# A worker's pull request travels exactly when GitHub named one, and its
+# link can only be a github.com pull request page.
+work_run = {"run_id": "01m521vczarx5bkx086n64t1t2", "git": "available", "pull_request_state": "found", "pull_request": {"number": 4, "state": "open", "url": "https://github.com/o/r/pull/4", "checks": {"passed": 0, "failed": 0, "pending": 0}}}
+must_accept("spinoff-work.schema.json", {"schema_version": 1, "parent_id": "pi:11111111-1111-4111-8111-111111111111", "availability": "available", "runs": [work_run]})
+must_reject("spinoff-work.schema.json", {"schema_version": 1, "parent_id": "pi:11111111-1111-4111-8111-111111111111", "availability": "available", "runs": [{**work_run, "pull_request_state": "unknown"}]})
+must_reject("spinoff-work.schema.json", {"schema_version": 1, "parent_id": "pi:11111111-1111-4111-8111-111111111111", "availability": "available", "runs": [{k: v for k, v in work_run.items() if k != "pull_request"}]})
+must_reject("spinoff-work.schema.json", {"schema_version": 1, "parent_id": "pi:11111111-1111-4111-8111-111111111111", "availability": "available", "runs": [{**work_run, "pull_request": {**work_run["pull_request"], "url": "https://evil.example/o/r/pull/4"}}]})
 
 # A preferences write names exactly one change: the engine or one switch.
 preferences_write = Draft202012Validator({"$ref": schemas["account-preferences.schema.json"]["$id"] + "#/$defs/write"}, registry=registry)

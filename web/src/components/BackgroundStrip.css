@@ -300,6 +300,40 @@
 .ah-bg-sep {
   color: var(--ah-faint);
 }
+/* Lause (worker-row sentence, experimental): the work in words. */
+.ah-bg-work[data-tone="work"] {
+  color: var(--ah-ink);
+}
+.ah-bg-pr {
+  color: var(--ah-ink-2);
+}
+.ah-bg-check[data-tone="ok"] {
+  color: var(--ah-ok);
+}
+.ah-bg-check[data-tone="err"] {
+  color: var(--ah-err);
+}
+.ah-bg-check[data-tone="run"] {
+  color: var(--ah-accent-ink);
+}
+.ah-bg-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 4px 4px 6px;
+  padding: 6px 10px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ah-ink-2);
+}
+.ah-bg-note svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
 .ah-bg-repo {
   display: inline-flex;
   align-items: center;

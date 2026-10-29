@@ -18,6 +18,27 @@
   height: 15px;
   flex: none;
 }
+/* What the worker has produced, in words (worker-row sentence): the band's
+   own full-width line, so it stays on a phone where the meta hides. */
+.ah-worker-work {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ah-s1) var(--ah-s3);
+  margin: 0;
+  color: var(--ah-ink-2);
+}
+.ah-worker-work a {
+  display: inline-flex;
+  gap: var(--ah-s1);
+  align-items: center;
+  color: var(--ah-accent-ink);
+}
+.ah-worker-work svg {
+  width: 13px;
+  height: 13px;
+}
 .ah-worker-kind {
   display: inline-flex;
   gap: var(--ah-s1);

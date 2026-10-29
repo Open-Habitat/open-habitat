@@ -196,6 +196,26 @@ func worktreeOnDisk(path string) bool {
 	return err == nil && st.IsDir()
 }
 
+// preservedWork is what an ended run left on disk: whether its branch or
+// worktree is still there, and their names as Taskfleet records them.
+func preservedWork(detail nativeSpinoff) (kept bool, branch, worktree string) {
+	worktree = detail.WorktreePath
+	for _, p := range detail.Preserved {
+		kept = p.BranchPresent || p.WorktreePresent
+		if p.Branch != nil {
+			branch = *p.Branch
+		}
+		if p.Worktree != nil {
+			worktree = *p.Worktree
+		}
+		break
+	}
+	// A merged run whose worktree removal did not finish keeps no preserved
+	// work in Taskfleet's words, but its checkout is still on disk for
+	// someone to clean up.
+	return kept || worktreeOnDisk(detail.WorktreePath), branch, worktree
+}
+
 // showSpinoff reads one run's detail, still attributed to the same parent.
 func showSpinoff(ctx context.Context, home, runID string, parent nativeSession) (nativeSpinoff, bool) {
 	var detail struct {
@@ -217,18 +237,8 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 		snapshotError(w, 400, "invalid_request")
 		return true
 	}
-	var parent *nativeSession
-	for i := range sessions {
-		if "pi:"+sessions[i].id == id {
-			if parent != nil {
-				snapshotError(w, 503, "native_source_unavailable")
-				return true
-			}
-			parent = &sessions[i]
-		}
-	}
-	if parent == nil || parent.state != "readable" {
-		snapshotError(w, 404, "resource_not_found")
+	parent := spinoffParentSession(w, sessions, id)
+	if parent == nil {
 		return true
 	}
 	ctx, cancel := context.WithTimeout(req.Context(), 5*time.Second)
@@ -294,20 +304,10 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 				if s := detail.Status; s == "done" || s == "failed" || s == "cancelled" {
 					row.EndedAt = nativeTimestamp(detail.Manifest.UpdatedAt)
 				}
-				for _, p := range detail.Preserved {
-					row.Preserved = row.Preserved || p.BranchPresent || p.WorktreePresent
-					if p.Branch != nil {
-						row.Branch = prefixBytes(*p.Branch, 300)
-					}
-					if p.Worktree != nil {
-						row.Worktree = prefixBytes(*p.Worktree, 1024)
-					}
-					break
-				}
-				// A merged run whose worktree removal did not finish keeps
-				// no preserved work in Taskfleet's words, but its checkout
-				// is still on disk for someone to clean up.
-				row.Preserved = row.Preserved || worktreeOnDisk(detail.WorktreePath)
+				kept, branch, worktree := preservedWork(detail)
+				row.Preserved = kept
+				row.Branch = prefixBytes(branch, 300)
+				row.Worktree = prefixBytes(worktree, 1024)
 				// Jari 28.10.2026: the list is the real state. An ended
 				// worker is listed while its branch or worktree exists and
 				// leaves once both are gone; nothing acknowledges it away.
@@ -375,6 +375,26 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 	}
 	historyJSON(w, map[string]any{"schema_version": 1, "parent_id": id, "availability": availability, "runs": rows, "transcripts": views})
 	return true
+}
+
+// spinoffParentSession is the one readable native session id names, or nil
+// after writing the error reply.
+func spinoffParentSession(w http.ResponseWriter, sessions []nativeSession, id string) *nativeSession {
+	var parent *nativeSession
+	for i := range sessions {
+		if "pi:"+sessions[i].id == id {
+			if parent != nil {
+				snapshotError(w, 503, "native_source_unavailable")
+				return nil
+			}
+			parent = &sessions[i]
+		}
+	}
+	if parent == nil || parent.state != "readable" {
+		snapshotError(w, 404, "resource_not_found")
+		return nil
+	}
+	return parent
 }
 
 // openat2 resolves the entire native path beneath the trusted mapped home;
