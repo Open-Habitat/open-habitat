@@ -2,13 +2,16 @@
 created: 2026-10-29
 updated: 2026-10-29
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: agent test run
 source_ref: taskfleet:01m63y2324hs9yb1p9ym2btx17/spec-failure:browser-conversation-openai-unknown
 originating_run: 01m63y2324hs9yb1p9ym2btx17
 originating_run_kind: spinoff
+lane: gate-health
+preparation: ready
+lane_seq: 150
 ---
 
 # browser-conversation spec: OpenAI credential row stays unknown in settings (fails on main)

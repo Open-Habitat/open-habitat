@@ -2,13 +2,16 @@
 created: 2026-10-29
 updated: 2026-10-29
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: agent test run
 source_ref: taskfleet:01m63y2324hs9yb1p9ym2btx17/spec-failure:settings-search-recap-messages
 originating_run: 01m63y2324hs9yb1p9ym2btx17
 originating_run_kind: spinoff
+lane: gate-health
+preparation: ready
+lane_seq: 140
 ---
 
 # settings-search spec: recap-messages row not found after choosing Oma (fails on main)
