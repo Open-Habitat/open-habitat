@@ -209,28 +209,74 @@ func TestSpinoffEndedRowFacts(t *testing.T) {
 	b, _ := json.Marshal(map[string]any{"schema_version": 1, "data": map[string]any{"runs": []nativeSpinoff{run}}})
 	run.Manifest.Selection.Profile = "tarkka"
 	run.Manifest.UpdatedAt = "2026-10-16T10:42:00Z"
-	detail, _ := json.Marshal(map[string]any{"schema_version": 1, "data": run})
 	bin := filepath.Join(cfg.Home, ".local", "bin", "taskfleet")
 	if e := os.MkdirAll(filepath.Dir(bin), 0700); e != nil {
 		t.Fatal(e)
 	}
-	script := "#!/bin/sh\ncase \"$1\" in version) printf '%s' '{\"schema_version\":1,\"data\":{\"version\":\"0.15.0\"}}';; *) if [ \"$2\" = show ]; then printf '%s' '" + string(detail) + "'; else printf '%s' '" + string(b) + "'; fi;; esac\n"
-	if e := os.WriteFile(bin, []byte(script), 0700); e != nil {
-		t.Fatal(e)
-	}
 	t.Setenv("PATH", filepath.Dir(bin))
 	h := historyHandlerWithReader(cfg, func(*http.Request) bool { return true }, func(transport.Config) ([]nativeSession, error) { return []nativeSession{parent}, nil })
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest("GET", "http://unix/api/v1/agents/pi:"+spinoffParent+"/spinoffs", nil))
-	var got struct {
-		Runs []map[string]any `json:"runs"`
+	read := func(t *testing.T, detail nativeSpinoff, query string) []map[string]any {
+		t.Helper()
+		d, _ := json.Marshal(map[string]any{"schema_version": 1, "data": detail})
+		script := "#!/bin/sh\ncase \"$1\" in version) printf '%s' '{\"schema_version\":1,\"data\":{\"version\":\"0.15.0\"}}';; *) if [ \"$2\" = show ]; then printf '%s' '" + string(d) + "'; else printf '%s' '" + string(b) + "'; fi;; esac\n"
+		if e := os.WriteFile(bin, []byte(script), 0700); e != nil {
+			t.Fatal(e)
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", "http://unix/api/v1/agents/pi:"+spinoffParent+"/spinoffs"+query, nil))
+		var got struct {
+			Availability string           `json:"availability"`
+			Runs         []map[string]any `json:"runs"`
+		}
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &got) != nil || got.Availability != "available" {
+			t.Fatalf("%d %s", w.Code, w.Body.String())
+		}
+		return got.Runs
 	}
-	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &got) != nil || len(got.Runs) != 1 {
-		t.Fatalf("%d %s", w.Code, w.Body.String())
+	branch := "wt/fixture-child"
+	kept := run
+	kept.Preserved = []spinoffPreserved{{Branch: &branch, BranchPresent: true}}
+	rows := read(t, kept, "")
+	if len(rows) != 1 {
+		t.Fatalf("preserved run not listed: %v", rows)
 	}
-	r := got.Runs[0]
-	if r["state"] != "failed" || r["ended_at"] != "2026-10-16T10:42:00Z" || r["profile"] != "tarkka" || r["harness"] != "claude" || r["other_repository"] != nil {
+	r := rows[0]
+	if r["state"] != "failed" || r["ended_at"] != "2026-10-16T10:42:00Z" || r["profile"] != "tarkka" || r["harness"] != "claude" || r["other_repository"] != nil || r["preserved"] != true || r["branch"] != branch {
 		t.Fatalf("ended row facts: %v", r)
+	}
+	// Jari 28.10.2026: once its branch and worktree are gone the run leaves
+	// the list, though Taskfleet still records it; its own view still opens.
+	gone := run
+	gone.Preserved = []spinoffPreserved{{Branch: &branch}}
+	gone.WorktreePath = filepath.Join(cfg.Home, "src", "source__worktrees", "wt-child")
+	if rows := read(t, gone, ""); len(rows) != 0 {
+		t.Fatalf("run without work on disk listed: %v", rows)
+	}
+	if rows := read(t, gone, "?run="+spinoffFixtureID); len(rows) != 1 || rows[0]["preserved"] != false {
+		t.Fatalf("selected run hidden: %v", rows)
+	}
+	// A merged run whose worktree is still on disk stays for its cleanup; a
+	// symlink in the worktree's place is not a worktree.
+	landed := gone
+	landed.Landed = true
+	if e := os.MkdirAll(filepath.Dir(gone.WorktreePath), 0700); e != nil {
+		t.Fatal(e)
+	}
+	if e := os.Symlink(cfg.Home, gone.WorktreePath); e != nil {
+		t.Fatal(e)
+	}
+	if rows := read(t, landed, ""); len(rows) != 0 {
+		t.Fatalf("symlinked worktree counted: %v", rows)
+	}
+	if e := os.Remove(gone.WorktreePath); e != nil {
+		t.Fatal(e)
+	}
+	if e := os.Mkdir(gone.WorktreePath, 0700); e != nil {
+		t.Fatal(e)
+	}
+	rows = read(t, landed, "")
+	if len(rows) != 1 || rows[0]["state"] != "merged" || rows[0]["preserved"] != true {
+		t.Fatalf("merged run with its worktree left: %v", rows)
 	}
 }
 func TestSpinoffUnavailableTaskfleet(t *testing.T) {

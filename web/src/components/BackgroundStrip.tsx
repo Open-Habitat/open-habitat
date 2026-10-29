@@ -7,6 +7,7 @@ import {
   recordExit,
 } from "../app/processes";
 import type { Spinoff } from "../app/spinoffs";
+import { askable, type RequestPhase, unfinished } from "../app/workerRequests";
 import { ControlButton } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 import {
@@ -21,8 +22,8 @@ import "./BackgroundStrip.css";
 // Merkit (Jari 16.10.2026, round 2026-10-16-taustatyo-riff): two small pills
 // above the composer, one for the agent's spinoffs and one for its processes.
 // At rest a pill says only whether something of its kind runs (icon and
-// count) and whether a spinoff needs the person (red dot, until its branch
-// is gone). A pill opens a floating panel with the two kinds as tabs; a
+// count) and whether a spinoff needs the person (a red ball per unfinished
+// worker, until its branch and worktree are gone). A pill opens a floating panel with the two kinds as tabs; a
 // process opens in a window. The process pill has no corner cue for a
 // waited process (Jari 27.10.2026): a tiny bell read as a clock, and the
 // top bar already says the agent waits. Its sentence names what it waits on.
@@ -35,6 +36,34 @@ import "./BackgroundStrip.css";
 // pill. Not waiting is a fact, never an error. A live run in another state
 // (Taskfleet doubts its supervisor, or it waits on its parent) keeps a muted
 // mark: the closed pill must never read as "no workers" while one is live.
+//
+// Kerro agentille (Jari 28.–29.10.2026, proto-ended-worker-lifecycle round 3,
+// Vanhempi): an ended row is listed while its branch or worktree exists (the
+// daemon's list), an unfinished one carries a red ball, and its button sends
+// the parent conversation a request to look at it. While the request is
+// handled the ball is a ring and the second line says where it is. A row
+// whose branch and worktree are gone shows why for a moment, then folds away.
+// The pill shows a ball per waiting row and a ring per handled one, and
+// Käsittele kaikki beside it sends one request for every waiting row.
+
+/** How the conversation that started the workers takes their requests. */
+export interface WorkerAsk {
+  /** Each handled row's phase, read from the receiving conversation. */
+  phases: Record<string, RequestPhase>;
+  /** Why the conversation cannot take a request now. */
+  blocked?: string;
+  /** This conversation, or a new one when the browser cannot write here. */
+  target: "here" | "new";
+  send: (runs: Spinoff[]) => void;
+  /** Opens the conversation a row's request went to, when not this one. */
+  open?: (run: Spinoff) => void;
+  /** Why the last request was not sent. */
+  problem?: string;
+}
+/** A pressed row reads as sent until the conversation shows the request. */
+const PRESS_GRACE = 8000;
+/** How long a row whose work is gone stays to say so before it folds. */
+const LEAVE_MS = 1500;
 
 const duration = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -174,13 +203,21 @@ export function backgroundFacts({
 export function BackgroundStrip({
   agentIdle,
   piNotRunning,
+  ask,
 }: {
   agentIdle?: boolean;
   /** No Pi runs yet for this conversation (stopped, starting or failed). */
   piNotRunning?: boolean;
+  /** Absent: this view cannot send the workers' requests anywhere. */
+  ask?: WorkerAsk;
 }) {
   const view = useProcessView();
   const spinoffs = useContext(SpinoffContext);
+  const [pressed, setPressed] = useState<Record<string, number>>({});
+  const [leaving, setLeaving] = useState<{ run: Spinoff; at: number }[]>([]);
+  const [askNotice, setAskNotice] = useState("");
+  const listed = useRef<Spinoff[]>(undefined);
+  const panelOpen = useRef(false);
   const [endedOpen, setEndedOpen] = useState<Record<BackgroundKind, boolean>>({
     spin: false,
     proc: false,
@@ -203,8 +240,117 @@ export function BackgroundStrip({
     agentIdle: !!agentIdle,
     piNotRunning: !!piNotRunning,
   });
-  const kinds = (["spin", "proc"] as const).filter((k) => facts[k].present);
+  const now = Date.now();
+  const phaseOf = (r: Spinoff): RequestPhase | undefined =>
+    ask?.phases[r.run_id] ??
+    (now - (pressed[r.run_id] ?? 0) < PRESS_GRACE ? "sent" : undefined);
+  // Waiting for a request: the red balls and Käsittele kaikki.
+  const free = facts.spin.ended.filter(
+    (i) => unfinished(i.run) && !phaseOf(i.run),
+  );
+  const handled = facts.spin.ended.filter(
+    (i) => askable(i.run) && phaseOf(i.run),
+  );
+  // A row that came back (a partial read, a resumed run) is no longer leaving.
+  const shownLeaving = leaving
+    .map((l) => l.run)
+    .filter((r) => !facts.spin.items.some((i) => i.run.run_id === r.run_id));
+  const kinds = (["spin", "proc"] as const).filter(
+    (k) => facts[k].present || (k === "spin" && shownLeaving.length > 0),
+  );
   const panel = view?.panel && kinds.includes(view.panel) ? view.panel : null;
+  panelOpen.current = panel === "spin";
+  const data = spinoffs?.data;
+  useEffect(() => {
+    // Only a complete read proves that a row left: its branch and worktree
+    // are gone. A partial read keeps the rows it did not mention.
+    if (!data) return;
+    const before = listed.current;
+    listed.current = data.runs;
+    if (!before || data.availability !== "available") return;
+    const gone = before.filter(
+      (r) => !data.runs.some((n) => n.run_id === r.run_id),
+    );
+    const at = Date.now();
+    if (gone.length)
+      setLeaving((old) => [...old, ...gone.map((run) => ({ run, at }))]);
+  }, [data]);
+  useEffect(() => {
+    if (!leaving.length) return;
+    const due = Math.min(...leaving.map((l) => l.at)) + LEAVE_MS;
+    const timer = window.setTimeout(
+      () => {
+        const now = Date.now();
+        const gone = leaving.filter((l) => l.at + LEAVE_MS <= now);
+        setLeaving((old) => old.filter((l) => !gone.includes(l)));
+        const runs = gone
+          .map((l) => l.run)
+          .filter((r) => !listed.current?.some((n) => n.run_id === r.run_id));
+        if (panelOpen.current && runs.length)
+          setAskNotice(
+            runs.length === 1
+              ? `${runs[0].title || runs[0].run_id} poistui Workerit-listasta: haaraa ja worktreetä ei enää ole.`
+              : `${runs.length} workeria poistui Workerit-listasta: haaroja ja worktreitä ei enää ole.`,
+          );
+      },
+      Math.max(0, due - Date.now()),
+    );
+    return () => window.clearTimeout(timer);
+  }, [leaving]);
+  useEffect(() => {
+    if (!askNotice) return;
+    const timer = window.setTimeout(() => setAskNotice(""), 6000);
+    return () => window.clearTimeout(timer);
+  }, [askNotice]);
+  // The press's own grace ends: the row reads from the conversation again.
+  const graceEnd = Math.max(0, ...Object.values(pressed)) + PRESS_GRACE - now;
+  useEffect(() => {
+    if (graceEnd <= 0) return;
+    const timer = window.setTimeout(
+      () => setPressed((p) => ({ ...p })),
+      graceEnd,
+    );
+    return () => window.clearTimeout(timer);
+  }, [graceEnd]);
+  const request = (runs: Spinoff[]) => {
+    if (!ask || ask.blocked || !runs.length) return;
+    ask.send(runs);
+    const at = Date.now();
+    setPressed((p) => ({
+      ...p,
+      ...Object.fromEntries(runs.map((r) => [r.run_id, at])),
+    }));
+    setAskNotice(
+      ask.target === "new"
+        ? "Tähän keskusteluun ei voi kirjoittaa selaimesta, joten pyyntö lähti uuteen keskusteluun."
+        : "",
+    );
+  };
+  const requestRef = useRef(request);
+  requestRef.current = request;
+  // The worker view's own Kerro agentille returns here and sends from here,
+  // once this conversation can take it.
+  const pending = spinoffs?.request;
+  const pendingRun = data?.runs.find((r) => r.run_id === pending);
+  const pendingReady = !!pendingRun && !!ask && !ask.blocked;
+  const setPanelRef = useRef(view?.setPanel);
+  setPanelRef.current = view?.setPanel;
+  useEffect(() => {
+    if (!pending) return;
+    if (pendingReady && pendingRun) {
+      spinoffs?.setRequest?.(undefined);
+      setPanelRef.current?.("spin");
+      requestRef.current([pendingRun]);
+      return;
+    }
+    // A conversation that does not become able to take it says why on the
+    // row's own button instead.
+    const timer = window.setTimeout(() => {
+      spinoffs?.setRequest?.(undefined);
+      setPanelRef.current?.("spin");
+    }, 10000);
+    return () => window.clearTimeout(timer);
+  }, [pending, pendingReady, pendingRun, spinoffs?.setRequest]);
   const close = () => {
     const kind = panel;
     view?.setPanel(null);
@@ -262,8 +408,9 @@ export function BackgroundStrip({
               .join(", ")
           : "",
         f.attention
-          ? `${count(f.attention, "ei mergetty", "ei mergetty")}, työ tallessa`
+          ? `${count(f.attention, "keskeneräinen", "keskeneräistä")}, työ tallessa`
           : "",
+        handled.length ? `${handled.length} agentin käsittelyssä` : "",
         f.ended.length ? count(f.ended.length, "päättynyt", "päättynyttä") : "",
       ]
         .filter(Boolean)
@@ -302,6 +449,31 @@ export function BackgroundStrip({
         ? String(interrupted.length)
         : "?"
       : String(kind === "spin" ? facts.spin.working : facts.proc.live.length);
+  const askButton = (
+    runs: Spinoff[],
+    label: string,
+    testid: string,
+    className = "ah-bg-tell",
+  ) =>
+    ask ? (
+      <ControlButton
+        data-testid={testid}
+        size="inline"
+        variant="secondary"
+        className={className}
+        isDisabled={!!ask.blocked}
+        title={
+          ask.blocked ??
+          (runs.length > 1
+            ? `Lähettää yhden pyynnön ${ask.target === "new" ? "uuteen keskusteluun" : "tähän keskusteluun"}: agentti tarkistaa ${runs.length} workeria ja suosittelee.`
+            : `Lähettää pyynnön ${ask.target === "new" ? "uuteen keskusteluun" : "tähän keskusteluun"}: agentti tarkistaa worktreen ja suosittelee.`)
+        }
+        onPress={() => request(runs)}
+      >
+        <Icon name="message" />
+        <span>{label}</span>
+      </ControlButton>
+    ) : null;
   const ended = (kind: BackgroundKind, n: number, rows: ReactNode) =>
     n ? (
       <>
@@ -316,7 +488,7 @@ export function BackgroundStrip({
           >
             <Icon name="forward" className="ah-bg-chev" />
             <span>{count(n, "päättynyt", "päättynyttä")}</span>
-            {kind === "spin" && facts.spin.attention && !endedOpen.spin ? (
+            {kind === "spin" && free.length && !endedOpen.spin ? (
               <span
                 className="ah-bg-attn-dot"
                 role="img"
@@ -338,6 +510,13 @@ export function BackgroundStrip({
               <span>Poista päättyneet</span>
             </ControlButton>
           ) : null}
+          {kind === "spin" && free.length > 1
+            ? askButton(
+                free.map((i) => i.run),
+                `Käsittele kaikki (${free.length})`,
+                "ask-all",
+              )
+            : null}
         </div>
         {endedOpen[kind] ? (
           // biome-ignore lint/a11y/useSemanticElements: A labelled group of rows, not a form fieldset.
@@ -356,9 +535,14 @@ export function BackgroundStrip({
   // ("agentti odottaa" / "agentti ei odota") or how the run ended, so the
   // panel needs no legend; then the harness and profile, and the repository
   // only when the worker works in another one than this conversation.
-  const spinRow = (i: SpinoffItem) => {
+  const spinRow = (i: SpinoffItem, gone = false) => {
     const r = i.run;
-    const word = stateWord(i);
+    const phase = !gone && askable(r) ? phaseOf(r) : undefined;
+    const word = gone
+      ? { text: "haara ja worktree poistettu", tone: "ok" as const }
+      : phase
+        ? phaseWord(phase, ask?.target ?? "here")
+        : stateWord(i);
     const when = i.live
       ? r.state === "working" || r.state === "waiting_parent"
         ? duration(Date.now() - Date.parse(r.created_at))
@@ -374,6 +558,8 @@ export function BackgroundStrip({
         data-state={r.state}
         data-attention={i.attention || undefined}
         data-waited={i.live ? i.waited : undefined}
+        data-phase={gone ? "gone" : phase}
+        data-leaving={gone || undefined}
         key={r.run_id}
       >
         <button
@@ -384,8 +570,14 @@ export function BackgroundStrip({
           title="Avaa workerin näkymä"
         >
           <span className="ah-bg-mark" aria-hidden="true">
-            {i.live ? (
+            {gone ? (
+              <Icon name="check" className="ah-bg-gone" />
+            ) : phase ? (
+              <RequestMark phase={phase} />
+            ) : i.live ? (
               <WaitMark item={i} />
+            ) : unfinished(r) ? (
+              <span className="ah-bg-ball" />
             ) : (
               <Icon
                 name={
@@ -407,7 +599,7 @@ export function BackgroundStrip({
               <span className="ah-bg-word" data-tone={word.tone}>
                 {word.text}
               </span>
-              {agent ? (
+              {agent && !phase && !gone ? (
                 <>
                   <span className="ah-bg-sep" aria-hidden="true">
                     ·
@@ -415,7 +607,7 @@ export function BackgroundStrip({
                   <span>{agent}</span>
                 </>
               ) : null}
-              {r.other_repository ? (
+              {r.other_repository && !phase && !gone ? (
                 <>
                   <span className="ah-bg-sep" aria-hidden="true">
                     ·
@@ -445,6 +637,21 @@ export function BackgroundStrip({
           >
             <Icon name="stop" />
           </ControlButton>
+        ) : ask && phase ? (
+          <ControlButton
+            data-testid="request-show"
+            className="ah-bg-tell"
+            size="inline"
+            variant="quiet"
+            onPress={() =>
+              ask.target === "new" && ask.open ? ask.open(r) : close()
+            }
+          >
+            <span>{ask.target === "new" ? "Avaa" : "Näytä"}</span>
+            <span className="ah-bg-wide">keskustelu</span>
+          </ControlButton>
+        ) : ask && !gone && askable(r) ? (
+          askButton([r], "Kerro agentille", "ask-agent")
         ) : (
           <span className="ah-bg-gap" aria-hidden="true" />
         )}
@@ -523,6 +730,8 @@ export function BackgroundStrip({
       </div>
     );
   };
+  const order = (i: SpinoffItem) =>
+    unfinished(i.run) && !phaseOf(i.run) ? 0 : phaseOf(i.run) ? 1 : 2;
   const spinPanel = (
     <>
       {facts.spin.stale ? (
@@ -541,12 +750,20 @@ export function BackgroundStrip({
           role="group"
           aria-label="Workerit: käynnissä"
         >
-          {facts.spin.live.map(spinRow)}
+          {facts.spin.live.map((i) => spinRow(i))}
         </div>
       ) : (
         <p className="ah-bg-empty">Ei työskenteleviä workereita.</p>
       )}
-      {ended("spin", facts.spin.ended.length, facts.spin.ended.map(spinRow))}
+      {ended("spin", facts.spin.ended.length + shownLeaving.length, [
+        ...[...facts.spin.ended]
+          // Waiting rows first, then the ones being handled, then the rest.
+          .sort((a, b) => order(a) - order(b))
+          .map((i) => spinRow(i)),
+        ...shownLeaving.map((run) =>
+          spinRow({ run, live: false, waited: false, attention: false }, true),
+        ),
+      ])}
     </>
   );
   const procPanel = (
@@ -658,6 +875,8 @@ export function BackgroundStrip({
                     ? unwaited(facts.spin.marks).length
                     : undefined
                 }
+                data-unfinished={kind === "spin" ? free.length : undefined}
+                data-handled={kind === "spin" ? handled.length : undefined}
                 key={kind}
                 size="inline"
                 presentation="pill"
@@ -672,22 +891,44 @@ export function BackgroundStrip({
                 onPress={() => view.setPanel(panel === kind ? null : kind)}
               >
                 <Icon name={icon[kind]} className="ah-bg-kind-ic" />
-                {kind === "spin" && facts.spin.marks.length ? (
-                  <WaitMarks marks={facts.spin.marks} />
+                {kind === "spin" &&
+                (facts.spin.marks.length || free.length || handled.length) ? (
+                  <>
+                    {facts.spin.marks.length ? (
+                      <WaitMarks marks={facts.spin.marks} />
+                    ) : null}
+                    {free.length || handled.length ? (
+                      <EndedMarks
+                        phases={handled.map((i) => phaseOf(i.run))}
+                        waiting={free.length}
+                      />
+                    ) : null}
+                  </>
                 ) : (
                   <span className="ah-bg-n">{number(kind)}</span>
                 )}
-                {kind === "spin" && facts.spin.attention ? (
-                  <span className="ah-bg-corner attn" aria-hidden="true" />
-                ) : null}
               </ControlButton>
             );
           })}
+          {kinds.includes("spin") && free.length
+            ? askButton(
+                free.map((i) => i.run),
+                free.length > 1
+                  ? `Käsittele kaikki (${free.length})`
+                  : "Käsittele",
+                "ask-all-pill",
+                "ah-bg-tell ah-bg-pill-tell",
+              )
+            : null}
         </div>
       </div>
-      {view.notice ? (
-        <p className="ah-bg-notice" role="status">
-          {view.notice}
+      {view.notice || ask?.problem || askNotice ? (
+        <p
+          className="ah-bg-notice"
+          role="status"
+          data-testid="background-notice"
+        >
+          {view.notice || ask?.problem || askNotice}
         </p>
       ) : null}
     </section>
@@ -702,7 +943,10 @@ export function stateWord(i: SpinoffItem): {
 } {
   const r = i.run;
   const kept = r.preserved ? " · työ tallessa" : "";
-  if (r.state === "merged") return { text: "laskeutui", tone: "ok" };
+  if (r.state === "merged")
+    return r.preserved
+      ? { text: "mergetty · worktree jäljellä", tone: "ok" }
+      : { text: "laskeutui", tone: "ok" };
   if (r.state === "failed") return { text: `epäonnistui${kept}`, tone: "err" };
   if (r.state === "unmerged")
     return {
@@ -721,6 +965,63 @@ export function stateWord(i: SpinoffItem): {
       tone: "wait",
     };
   return { text: state || "agentti ei odota", tone: "muted" };
+}
+
+/** A handled row's second line: where its request is. */
+export function phaseWord(
+  phase: RequestPhase,
+  target: WorkerAsk["target"],
+): { text: string; tone: "busy" | "wait" } {
+  const where =
+    target === "new" ? "uudessa keskustelussa" : "tässä keskustelussa";
+  if (phase === "queued")
+    return { text: "pyyntö jonossa · lähtee, kun vuoro päättyy", tone: "busy" };
+  if (phase === "sent")
+    return {
+      text:
+        target === "new"
+          ? "pyyntö lähetetty · uudessa keskustelussa"
+          : "pyyntö lähetetty",
+      tone: "busy",
+    };
+  if (phase === "answer")
+    return { text: `odottaa vastaustasi · ${where}`, tone: "wait" };
+  if (phase === "acting")
+    return {
+      text: `agentti toimii vastauksesi mukaan · ${where}`,
+      tone: "busy",
+    };
+  return { text: `agentti tarkistaa · ${where}`, tone: "busy" };
+}
+
+/** A turning ring while the agent has the request, a still one while it
+ * waits for the person's answer (the rail's Odottaa sinua). */
+function RequestMark({ phase }: { phase?: RequestPhase }) {
+  return <span className={`ah-bg-ring${phase === "answer" ? " still" : ""}`} />;
+}
+
+/** The pill's ended marks: a ring per handled row, a ball per waiting one. */
+function EndedMarks({
+  phases,
+  waiting,
+}: {
+  phases: (RequestPhase | undefined)[];
+  waiting: number;
+}) {
+  return (
+    <span className="ah-bg-marks" aria-hidden="true">
+      {phases.slice(0, 3).map((p, n) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: identical marks in a fixed order.
+        <RequestMark phase={p} key={`r${n}`} />
+      ))}
+      {phases.length > 3 ? `+${phases.length - 3}` : null}
+      {Array.from({ length: Math.min(waiting, 3) }, (_, n) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: identical marks in a fixed order.
+        <span className="ah-bg-ball" key={`b${n}`} />
+      ))}
+      {waiting > 3 ? <span className="ah-bg-more">+{waiting - 3}</span> : null}
+    </span>
+  );
 }
 
 const harnessName = { pi: "Pi", claude: "Claude" } as const;

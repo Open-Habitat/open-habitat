@@ -568,7 +568,7 @@ test("@spinoffs @a11y spinoff tab: a mark for the wait, a standing red dot until
   // The closed pill marks the working spinoff as waited on.
   await expect(pill).toHaveAttribute("data-waited", "1");
   await expect(pill).toHaveAttribute("data-unwaited", "0");
-  await expect(pill.locator(".ah-bg-corner.attn")).toHaveCount(1);
+  await expect(pill).toHaveAttribute("data-unfinished", "1");
   // The wait belongs to its spinoff: no process pill for it.
   await expect(
     strip.getByRole("button").and(page.getByTestId("background-processes")),
@@ -589,7 +589,7 @@ test("@spinoffs @a11y spinoff tab: a mark for the wait, a standing red dot until
   await expect(panel).toHaveCount(0);
   await expect(pill).toBeFocused();
   // Looking does not clear it: the branch still exists.
-  await expect(pill.locator(".ah-bg-corner.attn")).toHaveCount(1);
+  await expect(pill).toHaveAttribute("data-unfinished", "1");
   await pill.click();
   await panel.getByRole("button").and(page.getByTestId("stop-wait")).click();
   await expect.poll(() => stops.length).toBe(1);
@@ -606,7 +606,7 @@ test("@spinoffs @a11y spinoff tab: a mark for the wait, a standing red dot until
   await expect(page).toHaveURL(new RegExp(`spinoff=${failed}`));
   await page.getByRole("button").and(page.getByTestId("parent-top")).click();
   preserved = false;
-  await expect(pill.locator(".ah-bg-corner.attn")).toHaveCount(0);
+  await expect(pill).toHaveAttribute("data-unfinished", "0");
 });
 
 // Birch pilot.12 (Jari 26.10.2026): a run the conversation created in another

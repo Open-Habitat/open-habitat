@@ -32,6 +32,10 @@ export const SpinoffContext = createContext<{
   data?: Spinoffs;
   stale?: boolean;
   open: (run: Spinoff) => void;
+  /** A run whose Kerro agentille was pressed in its own view: the parent
+   * conversation sends the request once it is back. */
+  request?: string;
+  setRequest?: (run?: string) => void;
 } | null>(null);
 
 const harnessName = { pi: "Pi", claude: "Claude Code", unknown: "Agentti" };
@@ -131,7 +135,7 @@ function WorkerAsk({ run, onParent }: { run?: Spinoff; onParent: () => void }) {
 }
 
 /** What the worker's run ended in, from Taskfleet's own report. */
-function WorkerResult({ run }: { run: Spinoff }) {
+function WorkerResult({ run, onTell }: { run: Spinoff; onTell?: () => void }) {
   if (!workerEnded(run)) return null;
   const merged = run.state === "merged";
   return (
@@ -158,6 +162,23 @@ function WorkerResult({ run }: { run: Spinoff }) {
           <code>taskfleet run salvage {run.run_id}</code>
         </p>
       ) : null}
+      {onTell ? (
+        <div className="ah-worker-decide" data-testid="worker-decide">
+          <p>
+            <strong>Mitä tälle työlle tehdään?</strong> Agentti tarkistaa sen ja
+            suosittelee; sinä päätät vastaamalla pääkeskustelussa.
+          </p>
+          <ControlButton
+            data-testid="worker-tell"
+            size="row"
+            variant="secondary"
+            onPress={onTell}
+          >
+            <Icon name="message" />
+            Kerro agentille
+          </ControlButton>
+        </div>
+      ) : null}
     </aside>
   );
 }
@@ -182,6 +203,7 @@ export function WorkerView({
   terminal,
   historyArrived = false,
   onParent,
+  onTell,
 }: {
   run?: Spinoff;
   transcript?: WorkerTranscript;
@@ -197,6 +219,8 @@ export function WorkerView({
   /** The history became readable while this view was open. */
   historyArrived?: boolean;
   onParent: () => void;
+  /** Sends the parent conversation a request about this worker's work. */
+  onTell?: () => void;
 }) {
   const [full, setFull] = useState(false);
   const [details, setDetails] = useState(false);
@@ -352,7 +376,7 @@ export function WorkerView({
     feed.push({
       id: "worker-result",
       kind: "marker",
-      content: <WorkerResult run={run} />,
+      content: <WorkerResult run={run} onTell={onTell} />,
     });
   const last = feed.at(-1)?.id;
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new last item or a returned stream is the trigger.

@@ -1,4 +1,11 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation } from "react-router";
 import {
   AgentHeader,
@@ -20,7 +27,7 @@ import {
   type TurnStep,
 } from "../components/AgentTurn";
 import { agentPresentation } from "../components/agentPresentation";
-import { BackgroundStrip } from "../components/BackgroundStrip";
+import { BackgroundStrip, type WorkerAsk } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { ComposerModelPicker } from "../components/ComposerModelPicker";
 import { ContextPage } from "../components/ContextPage";
@@ -39,6 +46,7 @@ import {
 } from "../components/ProcessTray";
 import { RecapCard, useMinuteNow } from "../components/RecapCard";
 import { RestCard } from "../components/RestartNotice";
+import { SpinoffContext } from "../components/Spinoffs";
 import { WarningBanner } from "../components/WarningBanner";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useBrowserShell } from "./BrowserShell";
@@ -121,6 +129,7 @@ import {
   useEditorToolReport,
   useReplaceNotes,
 } from "./WorkspaceEditor";
+import { requestPhases, requestText } from "./workerRequests";
 
 function bashCommand(value: string) {
   try {
@@ -794,6 +803,39 @@ function BrowserConversationContent({
       held.submit(text, canChooseFirstModel ? modelChoice : undefined, true);
     else if (tellWorking) void submitQueue(workingMode, text);
     else void submit(text);
+  };
+  // Kerro agentille on an ended worker's row: this conversation started it.
+  // A request during a turn waits as a follow-up; a steer would redirect
+  // the turn the person started.
+  const spinoffs = useContext(SpinoffContext);
+  const workerAsk: WorkerAsk = {
+    target: "here",
+    blocked: tellBlocked,
+    phases: requestPhases({
+      runs: spinoffs?.data?.runs ?? [],
+      entries,
+      queued: [
+        ...(current?.queue?.steering ?? []),
+        ...(current?.queue?.follow_up ?? []),
+      ],
+      sent: [
+        ...held.waiting.map((w) => w.text),
+        // A refused send is not on its way; the row waits again.
+        ...(sendObservation && sendObservation.state !== "rejected"
+          ? [sendObservation.text]
+          : []),
+      ],
+      working: !!tellWorking,
+    }),
+    send: (runs) => {
+      const text = requestText(runs);
+      dismissRecapOnSend();
+      rest.onSend();
+      if (notStarted)
+        held.submit(text, canChooseFirstModel ? modelChoice : undefined, true);
+      else if (tellWorking) void submitQueue("follow_up", text);
+      else void submit(text);
+    },
   };
   const turnRunning = current?.run_active ?? current?.state === "accepted";
   // A stop attempt ends with its turn; the next turn starts without one.
@@ -2273,6 +2315,7 @@ function BrowserConversationContent({
                   presentation.activity === "waiting"
                 }
                 piNotRunning={bridgeExpected}
+                ask={workerAsk}
               />
               <Composer
                 csrf={csrf}

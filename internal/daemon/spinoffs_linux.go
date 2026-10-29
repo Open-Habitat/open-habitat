@@ -186,6 +186,16 @@ func otherRepository(sourceRepo, parentCwd string) string {
 	return prefixBytes(filepath.Base(src), 200)
 }
 
+// worktreeOnDisk says whether an ended run's checkout directory still
+// exists. Lstat: a symlink in its place is not the worktree.
+func worktreeOnDisk(path string) bool {
+	if !filepath.IsAbs(path) {
+		return false
+	}
+	st, err := os.Lstat(filepath.Clean(path))
+	return err == nil && st.IsDir()
+}
+
 // showSpinoff reads one run's detail, still attributed to the same parent.
 func showSpinoff(ctx context.Context, home, runID string, parent nativeSession) (nativeSpinoff, bool) {
 	var detail struct {
@@ -293,6 +303,17 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 						row.Worktree = prefixBytes(*p.Worktree, 1024)
 					}
 					break
+				}
+				// A merged run whose worktree removal did not finish keeps
+				// no preserved work in Taskfleet's words, but its checkout
+				// is still on disk for someone to clean up.
+				row.Preserved = row.Preserved || worktreeOnDisk(detail.WorktreePath)
+				// Jari 28.10.2026: the list is the real state. An ended
+				// worker is listed while its branch or worktree exists and
+				// leaves once both are gone; nothing acknowledges it away.
+				// The worker's own view (?run=) still opens any run.
+				if runID == "" && !row.Preserved {
+					continue
 				}
 				if runID == r.ID {
 					summary := detail.Report.Summary

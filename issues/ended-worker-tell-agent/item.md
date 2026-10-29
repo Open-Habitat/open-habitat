@@ -3,12 +3,13 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: ended-worker
 lane_seq: 2
 collision: [web/src/app/conversations.ts]
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Ended worker: Kerro agentille to the parent conversation
@@ -21,6 +22,6 @@ Implement `proto-ended-worker-lifecycle` round 3 as specified by its prototype a
 
 ## Acceptance Criteria
 
-- [ ] Kerro agentille and Käsittele kaikki work as in the prototype, through the person's existing send path (no new authority).
-- [ ] Row stages and disappearance follow native Taskfleet/Git state.
-- [ ] Browser specs for the flows; KOKEILTAVAA line.
+- [x] Kerro agentille and Käsittele kaikki work as in the prototype, through the person's existing send path (no new authority).
+- [x] Row stages and disappearance follow native Taskfleet/Git state.
+- [x] Browser specs for the flows; KOKEILTAVAA line.

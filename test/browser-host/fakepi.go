@@ -30,9 +30,15 @@ func isFakePi(args []string) bool {
 	return false
 }
 
+// rejected: a prompt that starts with "hylkää". Only the start, so a worker
+// request offering "mergeä, jatka tai hylkää" is an ordinary message.
+func rejected(message string) bool {
+	return strings.HasPrefix(strings.TrimSpace(message), "hylkää")
+}
+
 // runFakePi speaks enough of Pi's RPC protocol for the controller and writes
 // a native v3 session file the way Pi does. It never contacts a model.
-// Prompts steer it: "hidas" slows every step, "hylkää" is rejected,
+// Prompts steer it: "hidas" slows every step, one starting "hylkää" is rejected,
 // "ei pysähdy" refuses an abort,
 // "kaadu" exits mid-turn, "pitkä" answers at length, "commitoi" commits a
 // file in its working directory and "yhdistä" merges its branch into the
@@ -194,7 +200,7 @@ func runFakePi(args []string) {
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "abort_bash", "success": true})
 		case "steer", "follow_up":
 			mu.Lock()
-			reject := req.Message == "" || strings.Contains(req.Message, "hylkää")
+			reject := req.Message == "" || rejected(req.Message)
 			if !reject {
 				if req.Type == "steer" {
 					steering = append(steering, req.Message)
@@ -230,7 +236,7 @@ func runFakePi(args []string) {
 				continue
 			}
 			mu.Lock()
-			reject := busy || strings.Contains(req.Message, "hylkää")
+			reject := busy || rejected(req.Message)
 			if !reject {
 				busy = true
 				s.beginRun()

@@ -52,6 +52,7 @@ import {
   type HistoryPage,
   readHistory,
 } from "./history";
+import { useNewConversationAsk } from "./newConversationAsk";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { useStoragePressure } from "./StoragePressure";
 import {
@@ -1455,6 +1456,15 @@ function HistoryViewContent({
   });
   const [eligibility, setEligibility] =
     useState<Awaited<ReturnType<typeof historyEligibility>>>();
+  // The browser cannot write here: a worker's request starts a new one.
+  const workerAsk = useNewConversationAsk({
+    identity: store.identity,
+    parentId: agent.agent_id,
+    workspaceId,
+    parentTitle: agent.title.display,
+    csrf,
+    onLogin,
+  });
   const [actionError, setActionError] = useState("");
   useEffect(() => {
     let controller = new AbortController();
@@ -1841,7 +1851,7 @@ function HistoryViewContent({
           Uusi keskustelu
         </LinkRow>
       </div>
-      <BackgroundStrip />
+      <BackgroundStrip ask={workerAsk} />
       {shell.panel}
     </ConversationFrame>
   );

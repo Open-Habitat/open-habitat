@@ -267,6 +267,22 @@
   font-size: var(--ah-size-meta);
   overflow-wrap: anywhere;
 }
+/* Kerro agentille at the foot of an ended worker whose work is still on
+   disk: the same request as its row in the parent's Workers panel. */
+.ah-worker-decide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s2);
+  margin-top: var(--ah-s3);
+  padding-top: var(--ah-s3);
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-worker-decide p {
+  flex: 1 1 260px;
+  margin: 0;
+}
 /* The phone's floating navigation buttons sit at the frame's top-left
    corner, so the band leaves them room; the profile moves to Tiedot. */
 @media (width <= 800px) {

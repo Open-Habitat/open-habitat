@@ -71,6 +71,7 @@
             "maxLength": 16000
           },
           "preserved": {
+            "description": "The ended run's branch or worktree is still on disk. In the list (no run query) an ended run appears only while this holds.",
             "type": "boolean"
           },
           "branch": {

@@ -14,6 +14,7 @@ import {
   type WorkerTranscript,
 } from "./spinoffs";
 import { WorkerTerminal } from "./WorkerTerminal";
+import { askable } from "./workerRequests";
 // An incomplete read is not proof that a run vanished: Taskfleet keeps
 // settled runs. Keep the runs it did not mention until a complete read.
 export function keepKnownRuns(previous: Spinoffs | undefined, next: Spinoffs) {
@@ -59,6 +60,7 @@ export function SpinoffProvider({
   const run = new URLSearchParams(location.search).get("spinoff");
   const [data, setData] = useState<Spinoffs>();
   const [stale, setStale] = useState(false);
+  const [request, setRequest] = useState<string>();
   const resume = useRef<() => void>(undefined);
   useEffect(() => {
     resume.current = undefined;
@@ -118,7 +120,7 @@ export function SpinoffProvider({
   const selected = data?.runs.find((r) => r.run_id === run);
   return (
     <SpinoffContext.Provider
-      value={{ data, stale, open: (r) => route(r.run_id) }}
+      value={{ data, stale, open: (r) => route(r.run_id), request, setRequest }}
     >
       {run ? (
         <WorkerConversation
@@ -131,6 +133,14 @@ export function SpinoffProvider({
           place={place}
           onLogin={onLogin}
           onParent={() => route()}
+          onTell={
+            selected && askable(selected)
+              ? () => {
+                  setRequest(selected.run_id);
+                  route();
+                }
+              : undefined
+          }
         />
       ) : (
         children
@@ -148,6 +158,7 @@ function WorkerConversation({
   place,
   onLogin,
   onParent,
+  onTell,
 }: {
   run?: Spinoff;
   transcript?: WorkerTranscript;
@@ -157,6 +168,7 @@ function WorkerConversation({
   place: WorkerPlace;
   onLogin?: () => void;
   onParent: () => void;
+  onTell?: () => void;
 }) {
   // Habitat reads a Claude worker's session only once Claude has written
   // it: say so when it arrives while the person watches the terminal.
@@ -222,6 +234,7 @@ function WorkerConversation({
       terminal={terminal}
       historyArrived={arrived}
       onParent={onParent}
+      onTell={onTell}
     />
   );
 }
