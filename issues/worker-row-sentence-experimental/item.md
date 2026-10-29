@@ -9,7 +9,7 @@ lane: experimental
 lane_seq: 2
 collision: [web/src/components/Navigation.tsx]
 preparation: ready
-blocked_by: ['@proto-experimental-features']
+blocked_by: ['@proto-experimental-features', '@experimental-features-section']
 ---
 
 # Experimental: worker row work sentence

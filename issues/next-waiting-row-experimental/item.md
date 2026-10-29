@@ -9,7 +9,7 @@ lane: experimental
 lane_seq: 1
 collision: [web/src/app/BrowserConversation.tsx]
 preparation: ready
-blocked_by: ['@proto-experimental-features']
+blocked_by: ['@proto-experimental-features', '@experimental-features-section']
 ---
 
 # Experimental: next waiting conversation row after replying

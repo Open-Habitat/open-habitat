@@ -8,7 +8,7 @@ priority: normal
 lane: experimental
 lane_seq: 3
 preparation: ready
-blocked_by: ['@proto-experimental-features']
+blocked_by: ['@proto-experimental-features', '@experimental-features-section']
 ---
 
 # Experimental: read-only mirror of a terminal Pi's tmux window
