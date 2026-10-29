@@ -4,9 +4,10 @@ import { ControlButton } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 import { type NoticeKind, returnFocusToWork, useNotice } from "./NoticeArea";
 
-/** How long an untouched notice stays. The row covers nothing, so the undo
- * can wait longer than a floating toast could. */
-export const NOTICE_LIFETIME_MS = 20_000;
+/** How long an untouched notice stays: long enough to read the title and
+ * reach the undo, short enough not to linger (Jari found 20 s too long).
+ * Hover, focus or a pending action holds it. */
+export const NOTICE_LIFETIME_MS = 8_000;
 
 const icons: Record<NoticeKind, IconName> = {
   archive: "archive",

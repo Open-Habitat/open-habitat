@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: ui-polish
 lane_seq: 12
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Archive notice stays 20 s; too long

@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ArchiveNotice } from "./ArchiveNotice";
+import { ArchiveNotice, NOTICE_LIFETIME_MS } from "./ArchiveNotice";
 import { NoticeAreaProvider, type NoticeKind, NoticeSlot } from "./NoticeArea";
 
 type Shown = { id: string; kind: NoticeKind; undo?: boolean };
@@ -87,12 +87,12 @@ describe("NoticeArea", () => {
         ]}
       />,
     );
-    act(() => vi.advanceTimersByTime(19_000));
+    act(() => vi.advanceTimersByTime(NOTICE_LIFETIME_MS - 1_000));
     expect(visible()).toEqual(["newer"]);
     act(() => vi.advanceTimersByTime(1_500));
     // The folded one waited: it has its whole lifetime left.
     expect(visible()).toEqual(["older"]);
-    act(() => vi.advanceTimersByTime(19_000));
+    act(() => vi.advanceTimersByTime(NOTICE_LIFETIME_MS - 1_000));
     expect(visible()).toEqual(["older"]);
     act(() => vi.advanceTimersByTime(1_500));
     expect(rows()).toHaveLength(0);
@@ -106,7 +106,7 @@ describe("NoticeArea", () => {
     act(() => vi.advanceTimersByTime(60_000));
     expect(rows()).toHaveLength(1);
     fireEvent.pointerLeave(area);
-    act(() => vi.advanceTimersByTime(20_500));
+    act(() => vi.advanceTimersByTime(NOTICE_LIFETIME_MS + 500));
     expect(rows()).toHaveLength(0);
   });
 

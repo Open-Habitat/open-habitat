@@ -3166,8 +3166,8 @@ for (const width of [1280, 390]) {
   });
 }
 
-// The agreed lifetime of a notice row (proto-archive-notice-placement, Otsakerivi).
-const NOTICE_LIFETIME_MS = 20_000;
+// The agreed lifetime of a notice row (archive-notice-too-long).
+const NOTICE_LIFETIME_MS = 8_000;
 
 test("@conversation-details archive undo returns to conversation; offer pauses and expires", async ({
   page,
