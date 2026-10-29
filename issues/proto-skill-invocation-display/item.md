@@ -1,13 +1,14 @@
 ---
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-10-29
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 lane: proto-skill
 lane_seq: 1
 preparation: pending
+closed: 2026-10-29
 ---
 
 # Prototype: how a skill invocation appears in the conversation

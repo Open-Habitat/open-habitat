@@ -1,13 +1,14 @@
 ---
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-10-29
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-editor
 lane_seq: 1
 preparation: pending
+closed: 2026-10-29
 ---
 
 # Prototype: editor choice in Settings and a cleaner CodeMirror file browser

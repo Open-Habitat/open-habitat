@@ -2,13 +2,16 @@
 created: 2026-10-29
 updated: 2026-10-29
 type: feature
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: taskfleet worker run sidebar-group-row-time
 source_ref: taskfleet:01m63gzb4d8mnc471ny1rk0wnz/rail-failed-sources
 originating_run: 01m63gzb4d8mnc471ny1rk0wnz
 originating_run_kind: spinoff
+lane: sidebar
+lane_seq: 2
+preparation: ready
 ---
 
 # Rail failed ball for failed Taskfleet worker runs and error-ended turns
