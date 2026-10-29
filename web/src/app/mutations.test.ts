@@ -5,8 +5,30 @@ import {
   MutationLayer,
   mutationClasses,
   slowConfirmationMs,
+  startProblemReason,
   writeOutcome,
 } from "./mutations";
+
+// Jari 29.10.2026: a failed start said only start_failed / unproven.
+describe("start problems in words", () => {
+  it.each([
+    "history_damaged",
+    "quota_full",
+    "storage_full",
+    "writer_present",
+    "read_only_history",
+    "source_unavailable",
+    "pi_start_failed",
+    "capacity_exceeded",
+    "unproven",
+    "something_new",
+    undefined,
+  ])("says why for %s", (code) => {
+    const reason = startProblemReason(code);
+    expect(reason.length).toBeGreaterThan(20);
+    expect(reason).not.toMatch(/[a-z]+_[a-z]+/);
+  });
+});
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {

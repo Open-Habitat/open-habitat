@@ -101,6 +101,7 @@ export function RestCard({
   stop,
   notice,
   wake,
+  refusal,
   wokeAt,
   unavailable = false,
 }: {
@@ -108,6 +109,8 @@ export function RestCard({
   notice?: RestartNotice;
   /** Before the wake; absent for the history marker. */
   wake?: WakeState;
+  /** Why a refused wake would be refused on send too, in words. */
+  refusal?: string;
   /** The history marker: when the person's message woke the agent. */
   wokeAt?: string;
   /** Taskfleet could not be fully read: no claim that nothing else settled. */
@@ -222,7 +225,9 @@ export function RestCard({
         ) : (
           <>
             <Icon name="moon" />
-            {wakeLine[wake]}
+            {wake === "refused" && refusal
+              ? `Agenttia ei voitu käynnistää. ${refusal}`
+              : wakeLine[wake]}
           </>
         )}
       </p>

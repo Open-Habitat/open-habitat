@@ -68,6 +68,7 @@ export type Status = Session & {
     | "eligible"
     | "writer_present"
     | "read_only_history"
+    | "history_damaged"
     | "unproven";
   native_revision: string;
   history_query: string;
@@ -174,6 +175,9 @@ export type ContinueRefusal =
   | "writer_conflict"
   | "read_only_history"
   | "control_uncertain"
+  | "history_damaged"
+  | "quota_full"
+  | "storage_full"
   | "capacity_exceeded";
 export class ContinuationRefused extends Error {
   constructor(readonly code: ContinueRefusal) {
@@ -544,9 +548,13 @@ export async function historyEligibility(
     !["writer_present", "not_observed", "unknown"].includes(
       String(v.process),
     ) ||
-    !["eligible", "writer_present", "read_only_history", "unproven"].includes(
-      String(v.continuation),
-    )
+    ![
+      "eligible",
+      "writer_present",
+      "read_only_history",
+      "history_damaged",
+      "unproven",
+    ].includes(String(v.continuation))
   )
     throw new Error("invalid eligibility");
   return {
@@ -593,9 +601,13 @@ export function parseStatus(v: unknown, id: string): Status {
       v.auth_error !== "pi_auth_failed" &&
       v.auth_error !== "pi_model_unsupported") ||
     !["missing", "unavailable", "present"].includes(String(v.native_history)) ||
-    !["eligible", "writer_present", "read_only_history", "unproven"].includes(
-      String(v.continuation),
-    ) ||
+    ![
+      "eligible",
+      "writer_present",
+      "read_only_history",
+      "history_damaged",
+      "unproven",
+    ].includes(String(v.continuation)) ||
     typeof v.native_revision !== "string" ||
     v.native_revision.length > 256 ||
     (v.queue !== undefined &&
@@ -765,17 +777,26 @@ export async function continueConversation(
       headers: { "X-Agent-Host-CSRF": csrf, Origin: window.location.origin },
     },
   );
-  if (response.status === 409 || response.status === 429) {
+  if (
+    response.status === 409 ||
+    response.status === 429 ||
+    response.status === 507
+  ) {
     const error = await readJSON(response);
     if (
       object(error) &&
       error.schema_version === 1 &&
       object(error.error) &&
       ((response.status === 409 &&
-        ["writer_conflict", "read_only_history", "control_uncertain"].includes(
-          String(error.error.code),
-        )) ||
-        (response.status === 429 && error.error.code === "capacity_exceeded"))
+        [
+          "writer_conflict",
+          "read_only_history",
+          "control_uncertain",
+          "history_damaged",
+        ].includes(String(error.error.code))) ||
+        (response.status === 429 && error.error.code === "capacity_exceeded") ||
+        (response.status === 507 &&
+          ["quota_full", "storage_full"].includes(String(error.error.code))))
     )
       throw new ContinuationRefused(error.error.code as ContinueRefusal);
     throw new Error("invalid refusal");

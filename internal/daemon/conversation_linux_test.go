@@ -594,19 +594,29 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	check("writer_present") // live child, despite uncertain RPC and readable JSONL
 	close(exited)           // direct child reaped; status releases the controller's lock
 	check("eligible")
-	// A cut-off tail stays viewable but is never handed to Pi for appending.
+	// A cut-off tail is eligible: only a start removes it. Probing it, as
+	// status and admission do, never changes the native file.
 	cut := header + `{"type":"message","id":"cut","message":{"content":"lost`
 	if err := os.WriteFile(path, []byte(cut), 0600); err != nil {
 		t.Fatal(err)
 	}
-	check("unproven")
-	cutReply := httptest.NewRecorder()
-	c.continueEnded(cutReply, httptest.NewRequest("POST", "http://unix/continue", nil), id)
-	if cutReply.Code != http.StatusConflict {
-		t.Fatalf("cut-off continuation admitted: %d", cutReply.Code)
-	}
+	check("eligible")
 	if data, _ := os.ReadFile(path); string(data) != cut {
-		t.Fatal("continuation changed cut-off history")
+		t.Fatal("a continuation probe changed cut-off history")
+	}
+	// A complete corrupt line is damage the person is told about.
+	damaged := header + "{bad\n"
+	if err := os.WriteFile(path, []byte(damaged), 0600); err != nil {
+		t.Fatal(err)
+	}
+	check("history_damaged")
+	damagedReply := httptest.NewRecorder()
+	c.continueEnded(damagedReply, httptest.NewRequest("POST", "http://unix/continue", nil), id)
+	if damagedReply.Code != http.StatusConflict || !strings.Contains(damagedReply.Body.String(), "history_damaged") {
+		t.Fatalf("damaged continuation: %d %s", damagedReply.Code, damagedReply.Body.String())
+	}
+	if data, _ := os.ReadFile(path); string(data) != damaged {
+		t.Fatal("continuation changed damaged history")
 	}
 	if err := os.WriteFile(path, []byte(header), 0600); err != nil {
 		t.Fatal(err)
@@ -672,7 +682,7 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	if err := os.WriteFile(path, []byte(header+"{\"type\":\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	check("unproven")
+	check("history_damaged")
 	if err := os.WriteFile(path, []byte(header), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -712,7 +722,7 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	if err := os.WriteFile(path, []byte(header+"{\"type\":\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	restartProof("unproven")
+	restartProof("history_damaged")
 }
 
 func TestConversationReceiptAndUnknownQuestion(t *testing.T) {

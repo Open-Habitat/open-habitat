@@ -108,6 +108,18 @@ describe("rest card", () => {
     // An unread inventory is said, never shown as an empty one.
     expect(view.getByTestId("rest-unavailable")).toBeTruthy();
   });
+  it("says why a refused wake would be refused on send too", () => {
+    const view = render(
+      <RestCard
+        stop={{ cause: "idle", at: "2026-10-29T21:29:00Z" }}
+        wake="refused"
+        refusal="Tallennustilasi on täynnä."
+      />,
+    );
+    const text = view.getByTestId("rest-card").textContent ?? "";
+    expect(text).toContain("Agenttia ei voitu käynnistää. Tallennustilasi");
+    expect(text).not.toContain("kun lähetät viestin");
+  });
 });
 
 describe("a rest with nothing to tell", () => {

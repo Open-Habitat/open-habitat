@@ -96,7 +96,10 @@ func (c *ConversationController) continuationProof(id string) (*piOwnership, bro
 		_ = ws.Close()
 		return fail("unproven")
 	}
-	if _, err := reconciledNativeHistory(path, c.cfg.UID, id, cwd); err != nil {
+	// A stable cut-off tail is eligible: resume removes it before Pi starts
+	// (readyNativeTail). Damage elsewhere is said, never skipped.
+	_, err = reconciledNativeTail(path, c.cfg.UID, id, cwd)
+	if err != nil && !errors.Is(err, errHistoryDamaged) {
 		_ = ws.Close()
 		return fail("unproven")
 	}
@@ -107,6 +110,10 @@ func (c *ConversationController) continuationProof(id string) (*piOwnership, bro
 		_ = ws.Close()
 		return fail("writer_present")
 	case "not_observed":
+		if err != nil {
+			_ = ws.Close()
+			return fail("history_damaged")
+		}
 		return owner, origin, ws, cwd, path, old, "eligible"
 	default:
 		_ = ws.Close()
@@ -171,6 +178,10 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 			snapshotError(w, 503, "native_source_unavailable")
 		case "capacity_exceeded":
 			snapshotError(w, 429, "capacity_exceeded")
+		case "history_damaged":
+			snapshotError(w, 409, "history_damaged")
+		case "quota_full", "storage_full":
+			snapshotError(w, 507, problem)
 		default:
 			snapshotError(w, 409, "control_uncertain")
 		}
@@ -221,6 +232,11 @@ func (c *ConversationController) resume(id string, old *conversation, wake bool)
 		}
 	}()
 	defer ws.Close()
+	// The owner fence is held and no other writer was observed: only now
+	// may a cut-off tail be quarantined, or Pi would append onto it.
+	if problem := c.readyNativeTail(path, id, cwd); problem != "" {
+		return nil, problem
+	}
 	// The owner fence is still held. Establish the pre-existing native keys
 	// before starting Pi so the first settlement emits only this turn's new
 	// entries, not the entire continued session into the shared replay ring.

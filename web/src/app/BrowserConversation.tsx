@@ -95,7 +95,7 @@ import {
 } from "./goalGuide";
 import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
-import { capacityReason } from "./mutations";
+import { startProblemReason } from "./mutations";
 import { type NextWaiting, NextWaitingDock } from "./NextWaitingDock";
 import { sshTarget } from "./ownMachines";
 import {
@@ -864,6 +864,7 @@ function BrowserConversationContent({
           (!!rest.report && rest.report.availability !== "available")
         }
         wake={rest.wake}
+        refusal={rest.refusal}
       />
     ) : null;
   const bridgeExpected = useBridgeExpected(
@@ -2102,11 +2103,7 @@ function BrowserConversationContent({
                         content: (
                           <HeldStartFailure
                             count={held.waiting.length}
-                            reason={
-                              current?.start_problem === "capacity_exceeded"
-                                ? capacityReason
-                                : undefined
-                            }
+                            reason={startProblemReason(current?.start_problem)}
                             onRetry={() => void held.retry()}
                             onEdit={() => void held.cancel()}
                           />

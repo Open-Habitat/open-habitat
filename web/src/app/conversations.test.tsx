@@ -61,6 +61,9 @@ describe("native continuation refusals", () => {
     ["read_only_history", 409],
     ["control_uncertain", 409],
     ["capacity_exceeded", 429],
+    ["history_damaged", 409],
+    ["quota_full", 507],
+    ["storage_full", 507],
   ] as const)(
     "preserves %s from the host instead of retrying",
     async (code, status) => {

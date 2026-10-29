@@ -52,6 +52,7 @@ import {
   type HistoryPage,
   readHistory,
 } from "./history";
+import { startProblemReason } from "./mutations";
 import { useNewConversationAsk } from "./newConversationAsk";
 import { sshTarget } from "./ownMachines";
 import { OwnMachineUseProvider, useOpenMachines } from "./ownMachineUse";
@@ -1852,9 +1853,11 @@ function HistoryViewContent({
           <p>
             {eligibility?.continuation === "writer_present"
               ? "Jatkaminen estetty: keskustelulla on aktiivinen kirjoittaja."
-              : eligibility?.continuation === "unproven"
-                ? "Jatkamisen edellytyksiä ei voitu vahvistaa. Päivitä tiedot."
-                : "Tätä keskustelua ei voi ohjata selaimesta."}
+              : eligibility?.continuation === "history_damaged"
+                ? startProblemReason("history_damaged")
+                : eligibility?.continuation === "unproven"
+                  ? "Jatkamisen edellytyksiä ei voitu vahvistaa. Päivitä tiedot."
+                  : "Tätä keskustelua ei voi ohjata selaimesta."}
           </p>
         </div>
         {/* A browser conversation is never continued from here: once it is

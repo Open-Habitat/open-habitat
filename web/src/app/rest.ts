@@ -14,7 +14,18 @@ import type {
   RestStop,
   WakeState,
 } from "../components/RestartNotice";
-import { continueConversation } from "./conversations";
+import { ContinuationRefused, continueConversation } from "./conversations";
+import { refusalReason } from "./mutations";
+
+// Refusals a send would meet again: the card says why instead of promising
+// that the message starts Pi.
+const lasting = new Set([
+  "history_damaged",
+  "quota_full",
+  "storage_full",
+  "writer_conflict",
+  "capacity_exceeded",
+]);
 
 export interface RestReport {
   schema_version: 1;
@@ -104,6 +115,8 @@ export function useRest({
   failed: boolean;
   report?: RestReport;
   wake: WakeState;
+  /** Why the wake was refused, when a send would be refused too. */
+  refusal?: string;
   onTyping: () => void;
   onSend: () => void;
 } {
@@ -113,6 +126,7 @@ export function useRest({
   const [attempt, setAttempt] = useState<{
     key: string;
     state: "waking" | "refused";
+    reason?: string;
   }>();
   const tried = useRef(new Set<string>());
   useEffect(() => {
@@ -137,9 +151,16 @@ export function useRest({
     if (tried.current.has(restKey)) return;
     tried.current.add(restKey);
     setAttempt({ key: restKey, state: "waking" });
-    continueConversation(id, workspaceId, csrf).catch(() => {
+    continueConversation(id, workspaceId, csrf).catch((error: unknown) => {
       // A refused or uncertain wake is never repeated: the send starts Pi.
-      setAttempt({ key: restKey, state: "refused" });
+      setAttempt({
+        key: restKey,
+        state: "refused",
+        reason:
+          error instanceof ContinuationRefused && lasting.has(error.code)
+            ? refusalReason(error.code)
+            : undefined,
+      });
     });
   }, [id, csrf, restKey, rest?.awake, workspaceId]);
   // The message ends the rest; the catch-up it carries takes the card's
@@ -149,6 +170,8 @@ export function useRest({
     if (restKey) setSent(restKey);
   }, [restKey]);
   const own = attempt?.key === restKey ? attempt.state : undefined;
+  const refusal =
+    !rest?.awake && attempt?.key === restKey ? attempt.reason : undefined;
   const current = report?.key === restKey ? report.value : undefined;
   return {
     resting: !!restKey && sent !== restKey,
@@ -156,6 +179,7 @@ export function useRest({
     failed: failed === restKey,
     report: current,
     wake: rest?.awake ? "awake" : (own ?? "asleep"),
+    refusal,
     onTyping,
     onSend,
   };

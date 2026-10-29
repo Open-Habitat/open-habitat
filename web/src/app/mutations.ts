@@ -194,6 +194,31 @@ export async function writeOutcome(
 export const capacityReason =
   "Neljä keskustelua työskentelee jo — odota, että jokin vuoro päättyy, tai pysäytä se.";
 
+/** Why Pi did not start, from the host's fixed start problem, in words the
+ * person can act on; an unknown code still says something true. */
+export function startProblemReason(code: string | undefined): string {
+  switch (code) {
+    case "capacity_exceeded":
+      return capacityReason;
+    case "history_damaged":
+      return "Keskustelun historiatiedostossa on vioittunut rivi, joten Habitat ei näytä historiaa eikä käynnistä agenttia sen päälle. Tiedosto on tallella muuttamattomana kotihakemistosi .pi/agent/sessions-kansiossa; jatka uudessa keskustelussa tai pyydä agenttia tarkistamaan tiedosto toisessa keskustelussa.";
+    case "quota_full":
+      return "Tallennustilasi on täynnä, eikä keskeneräistä historiariviä voitu siirtää talteen. Vapauta tilaa ja yritä uudelleen.";
+    case "storage_full":
+      return "Palvelimen levy on täynnä, eikä keskeneräistä historiariviä voitu siirtää talteen. Vapauta tilaa ja yritä uudelleen.";
+    case "writer_present":
+      return "Keskustelua kirjoittaa toinen Pi, esimerkiksi päätteessä.";
+    case "read_only_history":
+      return "Keskustelua ei aloitettu selaimesta, joten se on vain luettavissa.";
+    case "source_unavailable":
+      return "Pi:n asennusta tai historiaa ei voitu lukea juuri nyt.";
+    case "pi_start_failed":
+      return "Pi pysähtyi käynnistyessään.";
+    default:
+      return "Habitat ei voinut varmistaa, ettei keskustelua kirjoiteta muualla.";
+  }
+}
+
 /** Why the host said no, in words the person can act on. */
 export function refusalReason(code: string, status = 409): string {
   switch (code) {
@@ -237,6 +262,10 @@ export function refusalReason(code: string, status = 409): string {
       return "Työtilojen tilaa ei voitu lukea varmasti.";
     case "read_only_history":
       return "Historia on vain luettavissa.";
+    case "history_damaged":
+    case "quota_full":
+    case "storage_full":
+      return startProblemReason(code);
     case "worktree_base_unavailable":
       return "Työtilassa ei ole haaraa, josta worktree tehtäisiin (irrotettu HEAD tai ei vielä committeja).";
     case "worktree_unavailable":

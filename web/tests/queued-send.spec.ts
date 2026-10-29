@@ -286,6 +286,10 @@ test("@queued-send a failed start keeps the message and a retry delivers it once
   await expect(page.getByTestId("agent-start-failed")).toBeVisible({
     timeout: 20000,
   });
+  // The reason is said in words, never as the host's code (Jari 29.10.).
+  await expect(page.getByTestId("agent-start-failed")).toContainText(
+    "Pi pysähtyi käynnistyessään.",
+  );
   await expect(waiting(page)).toHaveCount(1);
   const bubble = waiting(page).first();
   await expect(bubble).toHaveAttribute("data-waiting", "failed");
