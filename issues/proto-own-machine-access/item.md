@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: own-machine
 lane_seq: 2
-preparation: pending
+preparation: ready
 blocked_by: ['@research-own-machine-access']
 ---
 
