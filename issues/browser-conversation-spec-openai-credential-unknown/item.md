@@ -2,7 +2,7 @@
 created: 2026-10-29
 updated: 2026-10-29
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: agent test run
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: gate-health
 preparation: ready
 lane_seq: 150
+closed: 2026-10-29
 ---
 
 # browser-conversation spec: OpenAI credential row stays unknown in settings (fails on main)
