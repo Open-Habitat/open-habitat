@@ -1,0 +1,187 @@
+/* The top bar's bell (proto-notification-bell, Tila). Quiet while what holds
+   is a warning or news; a serious item turns it into a red pill that says
+   it in words, so storage full is readable without opening anything. */
+.ah-bell {
+  --i-fg: var(--ah-ink-2);
+  position: relative;
+  flex: none;
+  white-space: nowrap;
+}
+.ah-bell[aria-expanded="true"] {
+  --i-bg: var(--ah-surface-press);
+}
+.ah-bell-serious {
+  font-size: 12px;
+}
+.ah-bell-count {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+  font: 600 10px / 15px var(--ah-font);
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--ah-surface);
+}
+.ah-bell-serious .ah-bell-count {
+  position: static;
+  background: var(--ah-err);
+  color: var(--ah-on-err);
+  box-shadow: none;
+}
+.ah-bell-ring {
+  animation: ah-bell-ring 520ms ease-out;
+  transform-origin: 50% 10%;
+}
+@keyframes ah-bell-ring {
+  20% {
+    transform: rotate(14deg);
+  }
+  45% {
+    transform: rotate(-11deg);
+  }
+  70% {
+    transform: rotate(6deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-bell-ring {
+    animation: none;
+  }
+}
+
+.ah-bell-popover {
+  width: min(392px, calc(100vw - 16px));
+  padding: 0;
+}
+/* The panel scrolls, not the popover, so its focus ring is not clipped. */
+.ah-bell-panel {
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  padding: 4px 0 6px;
+  border-radius: inherit;
+}
+.ah-bell-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 14px 6px;
+}
+.ah-bell-head h2 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.ah-bell-head span,
+.ah-bell-item-meta {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-bell-group {
+  margin: 0;
+  padding: 8px 14px 2px;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-label);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ah-bell-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 2px 10px;
+  margin: 4px 8px;
+  padding: 10px 10px 10px 8px;
+  border-radius: var(--ah-r-md);
+}
+.ah-bell-item + .ah-bell-item {
+  border-top: 1px solid var(--ah-line-soft);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.ah-bell-item[data-tone="danger"] {
+  background: var(--ah-err-soft);
+}
+.ah-bell-item[data-tone="danger"] + .ah-bell-item {
+  border-top-color: transparent;
+}
+.ah-bell-item-icon {
+  grid-row: 1 / span 3;
+  padding-top: 2px;
+  color: var(--ah-ink-2);
+}
+.ah-bell-item-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.ah-bell-item[data-tone="info"] .ah-bell-item-icon {
+  color: var(--ah-accent-ink);
+}
+.ah-bell-item h3 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.ah-bell-item[data-tone="danger"] .ah-bell-item-icon,
+.ah-bell-item[data-tone="danger"] h3 {
+  color: var(--ah-err);
+}
+.ah-bell-item p {
+  margin: 4px 0 0;
+  color: var(--ah-ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.ah-bell-item-actions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ah-bell-empty {
+  margin: 4px 14px 10px;
+  color: var(--ah-muted);
+  font-size: 13px;
+}
+
+/* One bell per screen: the rail head carries it on a desktop page without a
+   top bar, the phone toolbar on a phone. */
+@media (max-width: 800px) {
+  .ah-rail .ah-bell,
+  .ah-fallback-account .ah-bell {
+    display: none;
+  }
+  .ah-bell-words {
+    max-width: 92px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+/* In the rail the bell shares the Etusivu row, the same place on every
+   desktop page without a top bar. */
+.ah-rail-home-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ah-rail-home-row > .ah-rail-home {
+  flex: 1;
+  min-width: 0;
+}
+.ah-rail-collapsed .ah-rail-home-row {
+  flex-direction: column;
+}
+.ah-rail-collapsed .ah-rail-home-row > .ah-rail-home {
+  flex: none;
+}
+.ah-rail-collapsed .ah-bell-words {
+  display: none;
+}

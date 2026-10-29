@@ -55,21 +55,19 @@ function Repair({
   );
 }
 
-/** The person's GitHub connection in the common warning: above the composer
- * in a conversation, or as the app-wide strip elsewhere. A confirmation
+/** The person's GitHub connection in the common warning, above the composer
+ * in a conversation (elsewhere the status bell says it). A confirmation
  * takes its place for a moment once the connection works again. */
 export function GitHubConnectionNotice({
   warning,
   progress,
   recovery,
-  placement,
   onReconnect,
 }: {
   warning?: GitHubWarning;
   /** The host's own attempt, shown while there is no settled warning. */
   progress?: GitHubProgress;
   recovery?: GitHubRecovery;
-  placement: "inline" | "page";
   onReconnect?: () => void;
 }) {
   if (recovery)
@@ -78,10 +76,9 @@ export function GitHubConnectionNotice({
         data-testid="github-connection-ok"
         data-state={recovery.kind}
         tone="success"
-        placement={placement}
       >
         {recovery.kind === "reconnected"
-          ? `GitHub yhdistetty${recovery.login ? ` käyttäjänä ${recovery.login}` : ""}. ${placement === "inline" ? "Pyydä agenttia yrittämään uudelleen." : "Push ja gh toimivat taas."}`
+          ? `GitHub yhdistetty${recovery.login ? ` käyttäjänä ${recovery.login}` : ""}. Pyydä agenttia yrittämään uudelleen.`
           : "GitHub-yhteys palasi."}
       </WarningBanner>
     );
@@ -91,7 +88,6 @@ export function GitHubConnectionNotice({
         data-testid="github-connection-progress"
         data-state={progress.kind}
         tone="progress"
-        placement={placement}
       >
         {progress.kind === "verifying"
           ? "GitHub hylkäsi valtuutuksen · tarkistetaan uudelleen…"
@@ -107,7 +103,6 @@ export function GitHubConnectionNotice({
       icon="warning"
       title={warning.title}
       short={warning.short}
-      placement={placement}
       actions={
         repairable(warning, onReconnect) ? (
           <Repair

@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: top-bar
 lane_seq: 1
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Top bar bell for account-wide conditions (Tila)
@@ -20,6 +21,6 @@ Implement `proto-notification-bell` direction **Tila** (Jari 29.10.): a bell in 
 
 ## Acceptance Criteria
 
-- [ ] Bell with the conditions the result lists, from existing native facts; desktop and phone; light and dark.
-- [ ] The strips it replaces are removed where the bell now carries them.
-- [ ] Browser specs; KOKEILTAVAA line.
+- [x] Bell with the conditions the result lists, from existing native facts; desktop and phone; light and dark.
+- [x] The strips it replaces are removed where the bell now carries them.
+- [x] Browser specs; KOKEILTAVAA line.

@@ -1,8 +1,20 @@
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
-import { expect, test } from "./worker-host";
+import { expect, type Page, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
+
+// The storage item behind the status bell (proto-notification-bell, Tila):
+// one bell on screen, wherever this page puts it.
+const bell = (page: Page) =>
+  page.locator('[data-testid="status-bell"]:visible');
+const storage = (page: Page) =>
+  page.locator('[data-testid="status-item"][data-key="storage"]');
+async function recheck(page: Page) {
+  if ((await bell(page).getAttribute("aria-expanded")) !== "true")
+    await bell(page).click();
+  await storage(page).getByTestId("quota-recheck").click();
+}
 
 test("quota warning, full storage and recovery keep the conversation mounted without resending @a11y", async ({
   page,
@@ -24,11 +36,12 @@ test("quota warning, full storage and recovery keep the conversation mounted wit
     .and(page.getByTestId("github-sign-in"))
     .click();
   await page.getByRole("link").nth(0).click();
-  await expect(page.getByTestId("quota-state")).toHaveAttribute(
-    "data-full",
-    "false",
-  );
-  await expect(page.getByTestId("quota-state")).toBeVisible();
+  // Near full is a quiet bell; its panel says which.
+  await expect(bell(page)).toHaveAttribute("data-tone", "neutral");
+  await bell(page).click();
+  await expect(storage(page)).toHaveAttribute("data-full", "false");
+  await page.keyboard.press("Escape");
+  await expect(storage(page)).toHaveCount(0);
   // A terminal history that has ended is reached through the start page.
   await page
     .locator("main")
@@ -41,38 +54,33 @@ test("quota warning, full storage and recovery keep the conversation mounted wit
     historyUnavailable ? route.fulfill({ status: 503 }) : route.continue(),
   );
   usage = 100;
-  await page.getByRole("button").and(page.getByTestId("quota-recheck")).click();
-  await expect(page.getByTestId("quota-state")).toHaveAttribute(
-    "data-full",
-    "true",
-  );
-  await expect(page.getByTestId("quota-state")).toBeVisible();
+  await recheck(page);
+  await expect(storage(page)).toHaveAttribute("data-full", "true");
+  // Full is said on the bell itself, without opening anything.
+  await expect(bell(page)).toHaveAttribute("data-tone", "danger");
   await expect(page.getByTestId("history-stale")).toHaveCount(0);
   await expect(page.locator(".ah-feed li")).toHaveCount(25);
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("quota-storage-open"))
-    .click();
+  await storage(page).getByTestId("quota-storage-open").click();
   await expect(page).toHaveURL(/settings\/storage/);
   await expect(
     page.getByRole("heading").and(page.getByTestId("settings-section-tila")),
   ).toBeVisible();
-  await expect(page.getByTestId("quota-state")).toHaveAttribute(
-    "data-full",
-    "true",
-  );
-  await expect(page.getByTestId("quota-pressure")).toBeVisible();
+  await expect(bell(page)).toHaveAttribute("data-tone", "danger");
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   let writes = 0;
   page.on("request", (request) => {
     if (request.method() !== "GET") writes++;
   });
   await page.goto(conversationURL);
-  await expect(page.getByTestId("quota-pressure")).toBeVisible();
+  await expect(bell(page)).toHaveAttribute("data-tone", "danger");
   historyUnavailable = false;
   usage = 25;
-  await page.getByRole("button").and(page.getByTestId("quota-recheck")).click();
-  await expect(page.getByTestId("quota-pressure")).toHaveCount(0);
+  // Freed space empties the open panel; closing it leaves no bell.
+  await recheck(page);
+  await expect(storage(page)).toHaveCount(0);
+  await expect(page.getByTestId("status-empty")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(bell(page)).toHaveCount(0);
   await expect(page.locator(".ah-feed li")).toHaveCount(25);
   expect(writes).toBe(0);
 });

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { AccountShelf } from "../components";
 import { ControlButton } from "../components/ControlElements";
 import { Dialog } from "../components/Overlays";
@@ -30,7 +30,9 @@ export function SingleWorkspaceBarView({
   onSettings,
   onAdministration,
   onLogout,
+  bell,
 }: {
+  bell?: ReactNode;
   workspace: Workspace;
   phase: RootState["connection"]["phase"];
   source: string;
@@ -105,6 +107,7 @@ export function SingleWorkspaceBarView({
         trashReason={lastWorkspaceReason}
         onAction={act}
         status={status}
+        bell={bell}
         account={
           <AccountShelf
             profile={

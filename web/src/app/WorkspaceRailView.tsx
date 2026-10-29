@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   AccountShelf,
   ArchivedWorkspaces,
@@ -126,7 +126,10 @@ export function WorkspaceRailView({
   onAdministration,
   pathname,
   clones,
+  bell,
 }: {
+  /** The status bell, where no top bar carries it. */
+  bell?: ReactNode;
   phase: RootState["connection"]["phase"];
   snapshot: Snapshot;
   profile?: AccountProfile;
@@ -171,6 +174,7 @@ export function WorkspaceRailView({
     .sort(alphabetical);
   return (
     <WorkspaceRail
+      bell={bell}
       collapsed={collapsed}
       serverLabel={serverLabel(server)}
       connectionLabel={connectionStatus(phase, source).label}

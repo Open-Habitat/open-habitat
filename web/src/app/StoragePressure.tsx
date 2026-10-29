@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router";
-import { InlineNotice } from "../components/Status";
+import type { StatusItem } from "../components/StatusBell";
 import { settingsHref } from "./settingsRoute";
 import { bytes, type OwnStorage, ownStorage } from "./storageQuota";
 
@@ -93,43 +93,41 @@ export function StoragePressureProvider({
   );
 }
 
-export function StoragePressureNotice() {
+/** Storage near its limit or full, as the bell's item; nothing below 90 %. */
+export function useStorageStatus(): StatusItem | undefined {
   const { full, quota, unavailable, retry } = useStoragePressure();
   const navigate = useNavigate();
-  if (!quota) return null;
+  if (!quota) return undefined;
   const { used, bound, shared } = room(quota);
-  if (used < bound * 0.9) return null;
+  if (used < bound * 0.9) return undefined;
   const what = shared ? "Palvelimen levy" : "Tallennustilasi";
-  return (
-    <div
-      data-unavailable={unavailable}
-      data-testid="quota-state"
-      data-full={full}
-      data-shared={shared}
-      role="status"
-    >
-      <InlineNotice
-        data-testid="quota-pressure"
-        title={
-          full
-            ? `${what} on täynnä (${bytes(used)} / ${bytes(bound)})`
-            : `${what} on lähes täynnä (${bytes(used)} / ${bytes(bound)})`
-        }
-        description={`${shared ? "Levy on kaikkien käyttäjien yhteinen; myös muiden tiedostot täyttävät sitä. " : ""}Vapauta tilaa roskakorista tai pyydä agenttia siivoamaan tarpeettomia tiedostoja. Roskakoriin siirtäminen ei vapauta tilaa ennen sen tyhjentämistä.${full ? " Tallennus on voinut epäonnistua. Viestejä ei lähetetä uudelleen automaattisesti." : ""}${unavailable ? " Tallennustilaa ei voitu tarkistaa; tämä on viimeisin tieto." : ""}`}
-        tone={full ? "danger" : "warning"}
-        actions={[
-          {
-            testId: "quota-storage-open",
-            label: "Asetukset › Tallennustila ja roskakori",
-            onPress: () => navigate(settingsHref("tila")),
-          },
-          {
-            testId: "quota-recheck",
-            label: "Tarkista vapautettu tila",
-            onPress: retry,
-          },
-        ]}
-      />
-    </div>
-  );
+  return {
+    key: "storage",
+    tone: full ? "danger" : "warning",
+    icon: "disk",
+    group: "own",
+    short: full ? "Tila täynnä" : "Tila lähes täynnä",
+    title: full ? `${what} on täynnä` : `${what} on lähes täynnä`,
+    meta: `${bytes(used)} / ${bytes(bound)}`,
+    body: `${shared ? "Levy on kaikkien käyttäjien yhteinen; myös muiden tiedostot täyttävät sitä. " : ""}Vapauta tilaa roskakorista tai pyydä agenttia siivoamaan tarpeettomia tiedostoja. Roskakoriin siirtäminen ei vapauta tilaa ennen sen tyhjentämistä.${full ? " Tallennus on voinut epäonnistua. Viestejä ei lähetetä uudelleen automaattisesti." : ""}${unavailable ? " Tallennustilaa ei voitu tarkistaa; tämä on viimeisin tieto." : ""}`,
+    data: {
+      full: String(full),
+      shared: String(shared),
+      unavailable: String(unavailable),
+    },
+    actions: [
+      {
+        testId: "quota-storage-open",
+        label: "Tallennustila ja roskakori",
+        primary: true,
+        onPress: () => navigate(settingsHref("tila")),
+      },
+      {
+        testId: "quota-recheck",
+        label: "Tarkista vapautettu tila",
+        keepOpen: true,
+        onPress: retry,
+      },
+    ],
+  };
 }

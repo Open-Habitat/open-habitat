@@ -16,6 +16,7 @@ import { Button, ListRow, RefreshIconButton } from "./Primitives";
 import { relativeRecapAge, useMinuteNow } from "./RecapCard";
 import type { StatusKind } from "./Status";
 import { Badge, StatusMark } from "./Status";
+import { StatusBell } from "./StatusBell";
 import type { AsyncState, Availability, Tone } from "./types";
 
 type AppShellProps = Parameters<typeof Shell>[0];
@@ -40,9 +41,13 @@ function Shell({
   mobileTitle,
   fallbackAccount,
   topBar,
+  bell,
   navigationBadge = 0,
 }: {
   className?: string;
+  /** The status bell on a page without a top bar: the phone's toolbar, and
+   * beside the fallback account. */
+  bell?: ReactNode;
   /** How many conversations wait for the person (Sinun vuorosi), on the
    * phone's menu button while the rail is out of sight. */
   navigationBadge?: number;
@@ -196,6 +201,7 @@ function Shell({
         ) : null}
         {fallbackAccount && !rail ? (
           <aside className="ah-fallback-account" aria-label="Tili">
+            {bell}
             {fallbackAccount}
           </aside>
         ) : null}
@@ -235,6 +241,7 @@ function Shell({
               <span className="ah-mobile-title" title={mobileTitle}>
                 {mobileTitle ?? "Etusivu"}
               </span>
+              {bell}
               {rail &&
               location.pathname !== "/workspaces" &&
               (!/^\/workspaces\/ws_/.test(location.pathname) ||
@@ -962,6 +969,7 @@ export function NowSections({
   );
 }
 export function WorkspaceRail({
+  bell,
   collapsed,
   serverLabel,
   connectionLabel,
@@ -1001,6 +1009,8 @@ export function WorkspaceRail({
   onToggle: () => void;
   onFilter: (value: string) => void;
   onRefresh: () => void;
+  /** The status bell on a page without a top bar of its own. */
+  bell?: ReactNode;
 }) {
   return (
     <nav
@@ -1044,16 +1054,19 @@ export function WorkspaceRail({
             onPress={onToggle}
           />
         </div>
-        <LinkRow
-          href="/workspaces"
-          data-testid="home-link"
-          kind="home"
-          current={homeCurrent}
-          className="ah-rail-home"
-        >
-          <Icon name="home" />
-          <span className="ah-rail-home-label">Etusivu</span>
-        </LinkRow>
+        <div className="ah-rail-home-row">
+          <LinkRow
+            href="/workspaces"
+            data-testid="home-link"
+            kind="home"
+            current={homeCurrent}
+            className="ah-rail-home"
+          >
+            <Icon name="home" />
+            <span className="ah-rail-home-label">Etusivu</span>
+          </LinkRow>
+          {bell}
+        </div>
       </header>
       <div className="ah-rail-content">
         {now}
@@ -1570,6 +1583,7 @@ export function AgentHeader({
           </span>
         ) : null}
         {archive ? <ArchiveControls {...archive} /> : null}
+        <StatusBell />
         <ControlButton
           data-testid="workspace-details"
           size="row"

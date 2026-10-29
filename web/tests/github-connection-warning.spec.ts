@@ -4,7 +4,7 @@ import { expect, type Page, test } from "./worker-host";
 
 // The person's own GitHub connection in the common warning
 // (proto-github-connection-warning round 2, direction 2): above the composer
-// in a conversation, the app-wide strip elsewhere, and the repair that
+// in a conversation, the status bell everywhere, and the repair that
 // returns to the same conversation. The synthetic host reports "unknown";
 // these cases rewrite the snapshot's native_github, the one fact the
 // browser reads. Same-UID synthetic evidence, not UID isolation.
@@ -65,6 +65,11 @@ const retry = (attempt: number) => ({
     next_at: "2026-10-28T10:02:00Z",
   },
 });
+/** The one status bell on screen, and its GitHub item once opened. */
+const bell = (page: Page) =>
+  page.locator('[data-testid="status-bell"]:visible');
+const bellGitHub = (page: Page) =>
+  page.locator('[data-testid="status-item"][data-key="github"]');
 async function openConversation(page: Page) {
   await page
     .getByRole("navigation")
@@ -126,15 +131,14 @@ test("@github-connection an expired login is said above the composer and app-wid
     .getByTestId("workspace-ordinary-dir")
     .click();
   const workspacePath = new URL(page.url()).pathname;
-  // Without a conversation open, the strip under the top bar says it.
-  const strip = page.locator(".ah-warning-page");
-  await expect(strip).toHaveAttribute(
-    "data-testid",
-    "github-connection-warning",
-  );
-  await expect(strip).toHaveAttribute("data-state", "expired");
-  await expect(strip).toHaveAttribute("role", "alert");
-  await evidence(page, "workspace", ".ah-warning-page");
+  // Without a conversation open, the bell says it in words; no strip.
+  await expect(bell(page)).toHaveAttribute("data-tone", "danger");
+  await expect(page.locator(".ah-warning-page")).toHaveCount(0);
+  await bell(page).click();
+  await expect(bellGitHub(page)).toHaveAttribute("data-state", "expired");
+  await expect(bellGitHub(page).getByTestId("status-github-fix")).toBeVisible();
+  await evidence(page, "workspace", "[data-testid=status-panel]");
+  await page.keyboard.press("Escape");
 
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await page.getByTestId("message-input").fill("Pushaa haara");
@@ -202,11 +206,10 @@ test("@github-connection Uusi työtila says why the list is missing, without a s
     }),
   );
   await signIn(page);
-  // Elsewhere the strip is there…
-  await expect(page.locator(".ah-warning-page")).toHaveAttribute(
-    "data-state",
-    "disconnected",
-  );
+  // Elsewhere the bell has it…
+  await bell(page).click();
+  await expect(bellGitHub(page)).toHaveAttribute("data-state", "disconnected");
+  await page.keyboard.press("Escape");
   await page.goto("/workspaces/new");
   // …and on the page that needs GitHub the finder says it instead.
   const place = page.getByTestId("github-place-warning");
@@ -283,14 +286,8 @@ test("@github-connection an outage is the host's own retry, then a warning with 
 }) => {
   await nativeGitHub(page, "unreachable", undefined, retry(2));
   await signIn(page);
-  // Elsewhere the strip says the host is trying, in one quiet line.
-  const strip = page.locator(".ah-warning-page");
-  await expect(strip).toHaveAttribute(
-    "data-testid",
-    "github-connection-progress",
-  );
-  await expect(strip).toHaveAttribute("data-state", "retrying");
-  await expect(strip).toHaveAttribute("role", "status");
+  // While the host is still trying, nothing holds yet: no bell.
+  await expect(bell(page)).toHaveCount(0);
   await openConversation(page);
   // In the conversation the same line is above the composer, once.
   const notices = page.locator(".ah-actionable-notices");
@@ -308,6 +305,11 @@ test("@github-connection an outage is the host's own retry, then a warning with 
   await expect(warning).toHaveAttribute("data-state", "unreachable");
   await expect(page.getByTestId("github-connection-progress")).toHaveCount(0);
   await expect(page.getByTestId("github-connection-fix")).toHaveCount(0);
+  // The bell has it too, quiet and with nothing to press.
+  await bell(page).click();
+  await expect(bellGitHub(page)).toHaveAttribute("data-state", "unreachable");
+  await expect(bellGitHub(page).getByRole("button")).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await alignedWithComposer(page);
   await evidence(page, "outage-warning", ".ah-actionable-notices");
 
@@ -332,7 +334,7 @@ test("@github-connection an organisation's restriction is said in its own reposi
   );
   await signIn(page);
   // Other repositories still work: nothing app-wide.
-  await expect(page.locator(".ah-warning-page")).toHaveCount(0);
+  await expect(bell(page)).toHaveCount(0);
   await openConversation(page);
   const warning = page
     .locator(".ah-actionable-notices")

@@ -99,18 +99,24 @@ test("@version an open tab asks to reload after an upgrade, and the draft surviv
   await page.getByTestId("conversation-start").click();
   const editor = page.getByTestId("message-input");
   await editor.fill("Puolivalmis luonnos");
-  await expect(page.locator('[data-testid="version-banner"]')).toHaveCount(0);
+  const bell = page.locator('[data-testid="status-bell"]:visible');
+  await expect(bell).toHaveCount(0);
 
   // A release switch: the gateway restarts with another version and serves a
   // bundle whose index.html names different asset URLs.
   await readsFinished();
   // Returning to the tab is what a person does after leaving it open.
   await upgrade(page, 1);
-  const banner = page.getByTestId("version-banner");
-  await expect(banner).toBeVisible();
+  // The conversation's top bar has the bell; the new version is behind it.
+  await expect(bell).toBeVisible();
+  await bell.click();
+  const item = page
+    .getByTestId("status-panel")
+    .locator('[data-testid="status-item"][data-key="version"]');
+  await expect(item).toBeVisible();
   await expect(editor).toHaveValue("Puolivalmis luonnos");
 
-  await banner.getByTestId("version-reload").click();
+  await item.getByTestId("version-reload").click();
   await expect(
     page.locator("script[type=module][src*='?release=1']"),
   ).toHaveCount(1);
@@ -126,5 +132,7 @@ test("@version an open tab asks to reload after an upgrade, and the draft surviv
   await expect(
     row.locator('[data-testid="bundle-state"][data-state="current"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-testid="version-banner"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="status-bell"]:visible')).toHaveCount(
+    0,
+  );
 });

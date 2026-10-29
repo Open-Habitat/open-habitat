@@ -170,6 +170,7 @@
     padding: 0 6px;
   }
   .ah-single-bar .ah-single-new {
+    flex: none;
     width: var(--ah-control-row);
     padding: 0;
     justify-content: center;

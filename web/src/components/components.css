@@ -4390,16 +4390,6 @@ details[open] > summary:not([class])::before {
   display: inline-flex;
   gap: var(--ah-s2);
 }
-/* The reload prompt keeps its sentence readable on a phone: text first, then
-   both actions on one line, instead of squeezing the text between buttons. */
-.ah-new-version-text {
-  flex: 1 1 18rem;
-}
-.ah-new-version-actions {
-  display: flex;
-  gap: var(--ah-s3);
-}
-
 /* A pending command (ADR 0023): steady dim, never blinking; its text says so. */
 .ah-pending-item {
   opacity: 0.55;

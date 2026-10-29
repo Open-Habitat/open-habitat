@@ -8,10 +8,24 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
-import {
-  StoragePressureNotice,
-  StoragePressureProvider,
-} from "./StoragePressure";
+import { StoragePressureProvider, useStorageStatus } from "./StoragePressure";
+
+// The bell's storage item, its facts as attributes and its recheck a button.
+function StorageProbe() {
+  const item = useStorageStatus();
+  if (!item) return null;
+  return (
+    <button
+      type="button"
+      data-testid="quota-state"
+      data-full={item.data?.full}
+      data-unavailable={item.data?.unavailable}
+      onClick={() =>
+        item.actions.find((a) => a.testId === "quota-recheck")?.onPress?.()
+      }
+    />
+  );
+}
 
 const response = (usage: number) =>
   new Response(
@@ -34,7 +48,7 @@ it("retains a full observation on read failure but discards it on identity chang
   const view = (identity: string) => (
     <MemoryRouter>
       <StoragePressureProvider key={identity} enabled>
-        <StoragePressureNotice />
+        <StorageProbe />
       </StoragePressureProvider>
     </MemoryRouter>
   );
@@ -43,7 +57,7 @@ it("retains a full observation on read failure but discards it on identity chang
     (await screen.findByTestId("quota-state")).getAttribute("data-full"),
   ).toBe("true");
   fetch.mockRejectedValue(new Error("offline"));
-  fireEvent.click(screen.getByTestId("quota-recheck"));
+  fireEvent.click(screen.getByTestId("quota-state"));
   await waitFor(() =>
     expect(
       screen.getByTestId("quota-state").getAttribute("data-unavailable"),
@@ -76,7 +90,7 @@ it("polls only after the previous read finishes, then warns at 90 percent", asyn
   render(
     <MemoryRouter>
       <StoragePressureProvider enabled>
-        <StoragePressureNotice />
+        <StorageProbe />
       </StoragePressureProvider>
     </MemoryRouter>,
   );

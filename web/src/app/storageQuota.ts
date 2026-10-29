@@ -136,4 +136,7 @@ export async function changeStorage(
     body: JSON.stringify({ subject, limit_bytes: limit }),
   });
   if (!r.ok) throw new Error("Storage change unavailable");
+  storageAdministrationChanges.dispatchEvent(new Event("change"));
 }
+/** Fires after a confirmed limit change, so the bell rereads overcommit. */
+export const storageAdministrationChanges = new EventTarget();

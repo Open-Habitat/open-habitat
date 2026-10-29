@@ -35,6 +35,7 @@ export function SingleWorkspaceBar({
   trashReason,
   onAction,
   account,
+  bell,
   status,
 }: {
   name: string;
@@ -60,6 +61,8 @@ export function SingleWorkspaceBar({
   trashReason: string;
   onAction: (action: SingleWorkspaceAction) => void;
   account: ReactNode;
+  /** The status bell, while no conversation's top bar carries it. */
+  bell?: ReactNode;
   /** Live feedback of a menu action, read by screen readers. */
   status?: string;
 }) {
@@ -150,6 +153,7 @@ export function SingleWorkspaceBar({
         <span className="ah-visually-hidden">{connectionLabel}</span>
       </span>
       <span className="ah-single-grow" />
+      {bell}
       <ControlButton
         data-testid="single-new-conversation"
         size="row"

@@ -26,7 +26,6 @@ import {
   Button,
   ConnectionBanner,
   InlineNotice,
-  NewVersionBanner,
 } from "../components";
 import { accountLabel } from "../components/Account";
 import { ArchiveNotice } from "../components/ArchiveNotice";
@@ -37,14 +36,10 @@ import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { refused } from "../components/ModelPicker";
 import { ArchivedWorkspaces } from "../components/Navigation";
 import type { ReturnConversation } from "../components/ReturnView";
+import { StatusBell } from "../components/StatusBell";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import { BrowserConversation } from "./BrowserConversation";
-import {
-  dismissBundlePrompt,
-  reloadForNewBundle,
-  useBundleState,
-  watchBundle,
-} from "./bundleRelease";
+import { watchBundle } from "./bundleRelease";
 import { CloneJobs } from "./cloneJobs";
 import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
@@ -105,10 +100,6 @@ import {
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import { SingleWorkspaceBarView } from "./SingleWorkspaceBarView";
 import {
-  StoragePressureNotice,
-  StoragePressureProvider,
-} from "./StoragePressure";
-import {
   isSettingsRoute,
   settingsHref,
   settingsSection,
@@ -120,6 +111,7 @@ import {
   sourceState,
   worktreeMerged,
 } from "./snapshot";
+import { StatusSource } from "./statusItems";
 import {
   authenticated,
   authenticationRequired,
@@ -204,7 +196,6 @@ async function bothReads<A, B>(
 }
 export function App() {
   const dispatch = useDispatch();
-  const bundle = useBundleState();
   useEffect(watchBundle, []);
   const navigate = useNavigate();
   // The router's location. Settings opened from inside the app lies over the
@@ -2296,7 +2287,6 @@ export function App() {
               <BrowserConversation
                 github={
                   <GitHubConnectionNotice
-                    placement="inline"
                     warning={
                       concerns(githubWarning, {
                         provider: snapshot?.auth?.provider,
@@ -2641,14 +2631,29 @@ export function App() {
   // The workspace editor sits beside a workspace's conversation; the wrapper
   // is there on every conversation route, so opening it remounts nothing.
   const editorRoute = !!(selectedId && openConversation) || !!selectedAgentId;
+  // A conversation's top bar carries the bell; elsewhere, and while Settings
+  // lies over the conversation, the rail, the phone's toolbar or the single
+  // workspace bar does. One bell per screen.
+  const conversationBell = editorRoute && !settingsLayer;
   const editorWorkspaceId = selectedAgentId
     ? agentWorkspace &&
       (selectedAgent?.worktree_id ?? agentWorkspace.workspace_id)
     : (conversationWorkspace ?? selected)?.workspace_id;
   return (
     <PiModelsProvider key={identity} enabled={!!identity}>
-      <StoragePressureProvider enabled={!!identity}>
+      <StatusSource
+        enabled={!!identity}
+        pathname={location.pathname}
+        github={
+          (phase === "authenticated" || phase === "stale") &&
+          concerns(githubWarning, { provider: snapshot?.auth?.provider })
+            ? githubWarning
+            : undefined
+        }
+        onReconnect={syntheticDemo ? undefined : reconnectGitHub}
+      >
         <AppShell
+          bell={conversationBell ? undefined : <StatusBell />}
           navigationBadge={now.yours.length}
           className={
             [
@@ -2661,6 +2666,7 @@ export function App() {
           topBar={
             onlyWorkspace && snapshot && conversationStore && !landing.show ? (
               <SingleWorkspaceBarView
+                bell={conversationBell ? undefined : <StatusBell />}
                 workspace={onlyWorkspace}
                 phase={phase}
                 source={source}
@@ -2725,41 +2731,11 @@ export function App() {
           }
           connection={
             <>
-              <StoragePressureNotice />
-
-              {bundle.status === "newer" && !bundle.dismissed ? (
-                <NewVersionBanner
-                  onReload={reloadForNewBundle}
-                  onLater={dismissBundlePrompt}
-                />
-              ) : null}
               {syntheticDemo ? (
                 <div className="ah-demo-banner" role="status">
                   SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data ·
                   Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä
                 </div>
-              ) : null}
-              {/* The conversation says it above its composer, Uusi työtila
-                  where GitHub is needed, and Koodipalvelut in its GitHub row. */}
-              {(phase === "authenticated" || phase === "stale") &&
-              !landing.show &&
-              (isSettingsRoute(route.pathname)
-                ? settingsSection(route.pathname) !== "koodipalvelut"
-                : !(selected && openConversation) &&
-                  location.pathname !== "/workspaces/new") ? (
-                <GitHubConnectionNotice
-                  placement="page"
-                  warning={
-                    concerns(githubWarning, {
-                      provider: snapshot?.auth?.provider,
-                    })
-                      ? githubWarning
-                      : undefined
-                  }
-                  progress={githubAttempt}
-                  recovery={githubRecovery}
-                  onReconnect={syntheticDemo ? undefined : reconnectGitHub}
-                />
               ) : null}
               {phase === "authentication_required" ||
               phase === "pi_required" ||
@@ -2800,6 +2776,7 @@ export function App() {
             !onlyWorkspace &&
             !landing.show ? (
               <WorkspaceRailView
+                bell={conversationBell ? undefined : <StatusBell />}
                 phase={phase}
                 snapshot={snapshot}
                 profile={profile}
@@ -2983,7 +2960,7 @@ export function App() {
             </>
           }
         />
-      </StoragePressureProvider>
+      </StatusSource>
     </PiModelsProvider>
   );
 }
