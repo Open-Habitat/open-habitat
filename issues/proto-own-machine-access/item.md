@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: own-machine
 lane_seq: 2
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: managing access to my own computer in the UI
