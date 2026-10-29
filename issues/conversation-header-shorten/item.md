@@ -1,6 +1,6 @@
 ---
 created: 2026-10-28
-updated: 2026-10-28
+updated: 2026-10-29
 type: feature
 reporter: jari
 status: done
@@ -9,7 +9,6 @@ lane: desktop-header
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-28/conversation-header-shorten
-blocked_by: ['@proto-conversation-header']
 closed: 2026-10-28
 ---
 

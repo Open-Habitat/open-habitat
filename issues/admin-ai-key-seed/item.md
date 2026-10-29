@@ -1,6 +1,6 @@
 ---
 created: 2026-10-24
-updated: 2026-10-28
+updated: 2026-10-29
 type: improvement
 reporter: jari
 status: done
@@ -11,11 +11,10 @@ source_ref: taskfleet:01m5p58hc8f6gyd5zad5gxx136/split:admin-ai-key-seed
 originating_run: 01m5p58hc8f6gyd5zad5gxx136
 originating_run_kind: spinoff
 closed: 2026-10-24
-blocked_by: ['@site-ai-key']
+preparation: ready
 collision: [internal/gateway/administration, internal/daemon/pi, contracts/v1/, web/src/app/, web/src/components/]
 lane: proto-ai-key
 lane_seq: 2
-preparation: ready
 ---
 
 # admin ai-key seed: give an already-joined person the site AI key
