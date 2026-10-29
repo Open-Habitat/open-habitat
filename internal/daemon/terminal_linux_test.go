@@ -69,7 +69,6 @@ func newTerminalFixture(t *testing.T, trusted bool) *terminalFixture {
 	trust := func(*http.Request) bool { return trusted }
 	mux.Handle(TerminalsPath, h.TerminalsHandler(trust))
 	mux.Handle(TerminalClosePath, h.TerminalCloseHandler(trust))
-	mux.Handle(TerminalWriterPath, h.TerminalWriterHandler(trust))
 	mux.Handle(TerminalPath, h.TerminalHandler(trust))
 	sock := filepath.Join(tmp, "d.sock")
 	ln, err := net.Listen("unix", sock)

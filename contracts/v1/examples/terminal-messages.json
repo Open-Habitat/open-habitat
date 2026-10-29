@@ -25,15 +25,6 @@
     "rows": 30
   },
   {
-    "type": "ready",
-    "conversation": "01a18138-fa3f-75eb-b302-21792486d5e7",
-    "name": "work:2",
-    "read_only": true,
-    "survives_restart": false,
-    "cols": 120,
-    "rows": 40
-  },
-  {
     "type": "exit",
     "state": "ended"
   },
@@ -46,20 +37,5 @@
     "workspace_id": "ws_example123",
     "shell": "2",
     "closed": true
-  },
-  {
-    "schema_version": 1,
-    "workspace_id": "ws_example123",
-    "conversation": "01a18138-fa3f-75eb-b302-21792486d5e7",
-    "place": "tmux",
-    "session": "work",
-    "window": 2,
-    "name": "pi"
-  },
-  {
-    "schema_version": 1,
-    "workspace_id": "ws_example123",
-    "conversation": "01a18138-fa3f-75eb-b302-21792486d5e7",
-    "place": "terminal"
   }
 ]

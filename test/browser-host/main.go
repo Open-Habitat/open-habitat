@@ -978,42 +978,6 @@ esac
 				}
 				w.WriteHeader(204)
 				return
-			case "/fixture/terminal-pi":
-				// A Pi in the person's own tmux, writing the synthetic terminal
-				// history: argv[0] is pi, it works in the history's directory, and
-				// the history changes after it starts. Its tmux server is not the
-				// product's and has no client.
-				tmux, e := exec.LookPath("tmux")
-				if e != nil {
-					http.Error(w, "tmux missing", 500)
-					return
-				}
-				socket := filepath.Join(tmp, "terminal-pi.sock")
-				run := func(args ...string) error {
-					cmd := exec.Command(tmux, append([]string{"-f", "/dev/null", "-S", socket}, args...)...)
-					cmd.Env = []string{"HOME=" + filepath.Join(tmp, "alice"), "PATH=/usr/local/bin:/usr/bin:/bin", "SHELL=/bin/bash", "TERM=xterm-256color", "LANG=C.UTF-8"}
-					return cmd.Run()
-				}
-				switch r.URL.Query().Get("mode") {
-				case "start":
-					if e := run("new-session", "-d", "-s", "work", "-n", "pi", "-x", "100", "-y", "30", "-c", filepath.Join(tmp, "alice", "src", "ordinary-dir"), "printf 'terminal-pi-marker\\n'; exec -a pi sleep 600"); e != nil {
-						http.Error(w, "fixture failed", 500)
-						return
-					}
-					time.Sleep(200 * time.Millisecond)
-					now := time.Now().Add(time.Second)
-					if e := os.Chtimes(histories["alice"], now, now); e != nil {
-						http.Error(w, "fixture failed", 500)
-						return
-					}
-				case "stop":
-					_ = run("kill-server")
-				default:
-					http.Error(w, "unknown mode", 400)
-					return
-				}
-				w.WriteHeader(204)
-				return
 			case "/fixture/history":
 				mode := r.URL.Query().Get("mode")
 				path := histories["alice"]

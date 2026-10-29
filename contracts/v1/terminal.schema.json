@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/terminal.schema.json",
-  "title": "Browser shell: a workspace's tmux shells, read-only Taskfleet windows and terminal Pi panes, and the terminal socket's control messages",
-  "description": "GET /api/v1/workspaces/terminals?workspace_id= lists; POST /api/v1/workspaces/terminals/close ends one shell; GET /api/v1/workspaces/terminals/writer?workspace_id=&conversation= says where a conversation's terminal Pi runs; GET /api/v1/workspaces/terminal?workspace_id=&shell=new|<n>, &taskfleet=<token> or &conversation=<id> upgrades to a WebSocket. On the socket, binary frames carry terminal bytes and text frames carry these control messages; the browser's first message is the CSRF proof, its second the terminal size. No message carries a path, socket, pane, process or Unix name.",
+  "title": "Browser shell: a workspace's tmux shells, read-only Taskfleet windows, and the terminal socket's control messages",
+  "description": "GET /api/v1/workspaces/terminals?workspace_id= lists; POST /api/v1/workspaces/terminals/close ends one shell; GET /api/v1/workspaces/terminal?workspace_id=&shell=new|<n> or &taskfleet=<token> upgrades to a WebSocket. On the socket, binary frames carry terminal bytes and text frames carry these control messages; the browser's first message is the CSRF proof, its second the terminal size. No message carries a path, socket or Unix name.",
   "oneOf": [
     {
       "$ref": "#/$defs/list"
@@ -12,9 +12,6 @@
     },
     {
       "$ref": "#/$defs/closed"
-    },
-    {
-      "$ref": "#/$defs/writer"
     },
     {
       "$ref": "#/$defs/auth"
@@ -170,87 +167,6 @@
         }
       }
     },
-    "writer": {
-      "title": "Where a Pi in the person's own terminal writes one conversation. A tmux pane is named by its session and window and can be watched read-only; a Pi outside tmux, or in a pane the daemon cannot reach, is only said to run",
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "schema_version",
-        "workspace_id",
-        "conversation",
-        "place"
-      ],
-      "properties": {
-        "schema_version": {
-          "const": 1
-        },
-        "workspace_id": {
-          "type": "string",
-          "pattern": "^ws_[A-Za-z0-9_-]{8,64}$"
-        },
-        "conversation": {
-          "type": "string",
-          "pattern": "^[0-9a-fA-F-]{36}$"
-        },
-        "place": {
-          "enum": [
-            "tmux",
-            "terminal",
-            "none"
-          ],
-          "description": "none also when the writer cannot be named with certainty"
-        },
-        "session": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 64
-        },
-        "window": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 999999
-        },
-        "name": {
-          "type": "string",
-          "maxLength": 128
-        }
-      },
-      "if": {
-        "properties": {
-          "place": {
-            "const": "tmux"
-          }
-        }
-      },
-      "then": {
-        "required": [
-          "session",
-          "window",
-          "name"
-        ]
-      },
-      "else": {
-        "not": {
-          "anyOf": [
-            {
-              "required": [
-                "session"
-              ]
-            },
-            {
-              "required": [
-                "window"
-              ]
-            },
-            {
-              "required": [
-                "name"
-              ]
-            }
-          ]
-        }
-      }
-    },
     "auth": {
       "title": "Browser's first socket message: the session's CSRF proof, checked by the gateway",
       "type": "object",
@@ -296,7 +212,7 @@
       }
     },
     "ready": {
-      "title": "The terminal is attached. A read-only Taskfleet window or terminal Pi pane gives the watched size, which the browser adopts, and repeats ready when that size changes",
+      "title": "The terminal is attached. A read-only Taskfleet view gives the watched window's size, which the browser adopts, and repeats ready when that size changes",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -315,10 +231,6 @@
         "taskfleet": {
           "type": "string",
           "pattern": "^[0-9a-f]{8,64}-[0-9]{1,6}$"
-        },
-        "conversation": {
-          "type": "string",
-          "pattern": "^[0-9a-fA-F-]{36}$"
         },
         "name": {
           "type": "string",

@@ -25,7 +25,6 @@ import { WriteRefused } from "./mutations";
 import {
   closeShell,
   listTerminals,
-  readTerminalWriter,
   type TerminalList,
   TerminalLogin,
   type TerminalReady,
@@ -125,7 +124,6 @@ export function useBrowserShell({
   csrf,
   onLogin,
   onSendToConversation,
-  watchEnabled = false,
 }: {
   workspaceId: string;
   workspaceLabel: string;
@@ -133,14 +131,7 @@ export function useBrowserShell({
   onLogin?: () => void;
   /** Absent when the conversation takes no input. */
   onSendToConversation?: (text: string) => void;
-  /** The terminal-watch experiment is on; turning it off drops its tab. */
-  watchEnabled?: boolean;
-}): {
-  toggle: ReactNode;
-  panel: ReactNode;
-  /** Opens a read-only tab on a conversation's terminal Pi pane. */
-  watch: (conversation: string, name: string) => void;
-} {
+}): { toggle: ReactNode; panel: ReactNode } {
   // Opening is an explicit intent in this view, not a cross-workspace preference.
   // Restoring a bare open flag used to mount an empty dock without opening a shell.
   const [open, setOpenState] = useState(false);
@@ -161,12 +152,6 @@ export function useBrowserShell({
   const [maximized, setMaximized] = useState(false);
   const [list, setList] = useState<TerminalList>();
   const [attached, setAttached] = useState<string[]>([]);
-  // A conversation's terminal Pi pane, watched read-only; its name is the
-  // tmux session and window the daemon last reported.
-  const [watched, setWatched] = useState<{
-    conversation: string;
-    name: string;
-  }>();
   const [active, setActive] = useState<string>();
   // A tab the list does not show yet: a shell being opened ("new"), then
   // the numbered shell it became until the next list read includes it.
@@ -234,33 +219,13 @@ export function useBrowserShell({
           session: w.session,
         });
     }
-    if (watched)
-      out.push({
-        key: `w:${watched.conversation}`,
-        name: watched.name,
-        busy: false,
-        readOnly: true,
-        session: watched.name.split(":")[0],
-        terminalPi: true,
-      });
     return out;
-  }, [list, attached, pending, watched]);
+  }, [list, attached, pending]);
   const activeTab = tabs.find((t) => t.key === active) ?? tabs[0];
   const activeKey = activeTab?.key;
   // Read by socket callbacks, which outlive the render that made them.
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
-  // Turning the experiment off ends its tab, and the panel with it when the
-  // tab was all it showed.
-  useEffect(() => {
-    if (watchEnabled || !watched) return;
-    setWatched(undefined);
-    setActive((a) => (a?.startsWith("w:") ? undefined : a));
-    if (!tabsRef.current.some((t) => !t.terminalPi)) {
-      setOpen(false);
-      setMaximized(false);
-    }
-  }, [watchEnabled, watched, setOpen]);
   useEffect(() => {
     if (pending && list?.shells.some((s) => `s:${s.shell}` === pending.key))
       setPending(undefined);
@@ -338,9 +303,6 @@ export function useBrowserShell({
             if (target.kind === "taskfleet") {
               setAttached((a) => a.filter((t) => t !== target.token));
               if (!last) setToast("Taskfleetin ikkuna sulkeutui.");
-            } else if (target.kind === "writer") {
-              setWatched(undefined);
-              if (!last) setToast("Päätteen Pi päättyi. Peili suljettiin.");
             } else {
               setList((current) =>
                 current
@@ -367,7 +329,6 @@ export function useBrowserShell({
             if (code >= 4000 && code < 5000) {
               connection.current = undefined;
               setPending(undefined);
-              if (target.kind === "writer") setWatched(undefined);
               setToast(terminalRefusal(code, reason));
               setOpen(false);
               setMaximized(false);
@@ -397,28 +358,21 @@ export function useBrowserShell({
             retries.current += 1;
             setTimeout(() => {
               if (!mine()) return;
-              const check =
-                target.kind === "writer"
-                  ? readTerminalWriter(workspaceId, target.conversation).then(
-                      (w) => w.place === "tmux",
-                    )
-                  : listTerminals(workspaceId).then((fresh) => {
-                      if (mine()) setList(fresh);
-                      return target.kind === "taskfleet"
-                        ? fresh.taskfleet.some((t) => t.token === target.token)
-                        : fresh.shells.some(
-                            (s) => `s:${s.shell}` === connection.current?.key,
-                          );
-                    });
-              void check.then(
-                (still) => {
+              void listTerminals(workspaceId).then(
+                (fresh) => {
                   if (!mine()) return;
+                  setList(fresh);
+                  const still =
+                    target.kind === "taskfleet"
+                      ? fresh.taskfleet.some((t) => t.token === target.token)
+                      : fresh.shells.some(
+                          (s) => `s:${s.shell}` === connection.current?.key,
+                        );
                   connection.current = undefined;
                   if (still) setNonce((n) => n + 1);
                   else {
                     setPhase({ kind: "refused", text: "Pääte on päättynyt." });
                     setActive(undefined);
-                    if (target.kind === "writer") setWatched(undefined);
                   }
                 },
                 (error) => {
@@ -452,8 +406,6 @@ export function useBrowserShell({
     if (want === "new") connect("new", { kind: "shell", shell: "new" });
     else if (want.startsWith("s:"))
       connect(want, { kind: "shell", shell: want.slice(2) });
-    else if (want.startsWith("w:"))
-      connect(want, { kind: "writer", conversation: want.slice(2) });
     else connect(want, { kind: "taskfleet", token: want.slice(2) });
   }, [open, activeKey, nonce, connect]);
   useEffect(
@@ -478,13 +430,8 @@ export function useBrowserShell({
         connection.current.socket.close();
         connection.current = undefined;
       }
-      if (active === tab.key) setActive(undefined);
-      if (tab.terminalPi) {
-        setWatched(undefined);
-        setToast(`Irrotettiin ${tab.name}. Pi jatkaa tmuxissa.`);
-        return;
-      }
       setAttached((a) => a.filter((t) => `t:${t}` !== tab.key));
+      if (active === tab.key) setActive(undefined);
       setToast(
         `Irrotettiin ${tab.name}. Ikkuna jatkaa Taskfleetissä; liity uudelleen tmux-valikosta.`,
       );
@@ -564,8 +511,9 @@ export function useBrowserShell({
       const fresh = await listTerminals(workspaceId);
       if (request !== openRequest.current) return;
       setList(fresh);
-      const hasAttachment =
-        !!watched || fresh.taskfleet.some((t) => attached.includes(t.token));
+      const hasAttachment = fresh.taskfleet.some((t) =>
+        attached.includes(t.token),
+      );
       if (!fresh.shells.length && !hasAttachment) {
         setPending({ key: "new", name: "bash" });
         setActive("new");
@@ -577,7 +525,7 @@ export function useBrowserShell({
       if (error instanceof TerminalLogin) onLogin?.();
       else setToast("Päätteitä ei voitu lukea. Yritä uudelleen.");
     }
-  }, [workspaceId, attached, watched, setOpen, focusTerminal, onLogin]);
+  }, [workspaceId, attached, setOpen, focusTerminal, onLogin]);
 
   // Capture before the composer's Enter handler or xterm can consume it.
   useEffect(() => {
@@ -829,19 +777,8 @@ export function useBrowserShell({
       }}
     />
   );
-  const watch = useCallback(
-    (conversation: string, name: string) => {
-      setWatched({ conversation, name });
-      setPending((p) => (p?.key === "new" ? undefined : p));
-      setActive(`w:${conversation}`);
-      setOpen(true);
-      focusTerminal();
-    },
-    [setOpen, focusTerminal],
-  );
   return {
     toggle,
-    watch,
     panel: (
       <>
         {panel}

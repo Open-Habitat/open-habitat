@@ -24,24 +24,6 @@ func (c *ConversationController) ownPiPIDs() map[int]bool {
 	return out
 }
 
-// ownPiSessions names the conversations those children write.
-func (c *ConversationController) ownPiSessions() map[string]bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	out := make(map[string]bool)
-	for _, s := range c.sessions {
-		if s.rpc == nil || s.rpc.cmd == nil || s.rpc.cmd.Process == nil {
-			continue
-		}
-		select {
-		case <-s.rpc.exited:
-		default:
-			out[s.id] = true
-		}
-	}
-	return out
-}
-
 func (c *ConversationController) piWriter(path, cwd string) string {
 	proc := c.writerProc
 	if proc == "" {

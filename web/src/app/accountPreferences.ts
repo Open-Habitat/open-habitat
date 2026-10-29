@@ -19,7 +19,6 @@ export type EditorEngine = "codemirror6" | "vscode";
 export const experimentalFeatureIds = [
   "next-waiting-row",
   "worker-row-sentence",
-  "terminal-watch",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

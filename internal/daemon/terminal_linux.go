@@ -78,14 +78,6 @@ type terminalHost struct {
 	log        *slog.Logger
 	// startServer, when set, starts the server instead (the synthetic host).
 	startServer func(socket string) error
-	// For finding a conversation's terminal Pi: the process table, native
-	// histories and the daemon's own Pi children. Zero values read /proc
-	// and the histories under cfg.Home, and skip no child.
-	proc      string
-	histories func() ([]nativeSession, error)
-	ownPIDs   func() map[int]bool
-	// The conversations those children write.
-	ownSessions func() map[string]bool
 
 	mu    sync.Mutex
 	conns int
@@ -293,7 +285,6 @@ func MountTerminalFixture(ctx context.Context, mux *http.ServeMux, cfg transport
 	}
 	mux.Handle(TerminalsPath, h.TerminalsHandler(trusted))
 	mux.Handle(TerminalClosePath, h.TerminalCloseHandler(trusted))
-	mux.Handle(TerminalWriterPath, h.TerminalWriterHandler(trusted))
 	mux.Handle(TerminalPath, h.TerminalHandler(trusted))
 }
 
@@ -587,7 +578,6 @@ type terminalTarget struct {
 	dir, base string
 	shell     string // "new" or a number
 	taskfleet *taskfleetWindow
-	writer    *writerPane
 }
 
 func (h *terminalHost) reserve() bool {
@@ -606,8 +596,8 @@ func (h *terminalHost) release() {
 	h.mu.Unlock()
 }
 
-// TerminalHandler upgrades to a WebSocket and attaches a PTY to a shell or
-// shows, read-only, a Taskfleet window or a conversation's terminal Pi. The gateway has already checked Origin,
+// TerminalHandler upgrades to a WebSocket and attaches a PTY to a shell or,
+// read-only, to a Taskfleet window. The gateway has already checked Origin,
 // the session and its CSRF proof; the daemon trusts only the gateway peer.
 func (h *terminalHost) TerminalHandler(trusted func(*http.Request) bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -617,15 +607,13 @@ func (h *terminalHost) TerminalHandler(trusted func(*http.Request) bool) http.Ha
 		}
 		q := r.URL.Query()
 		id := q.Get("workspace_id")
-		shell, tf, conversation := q.Get("shell"), q.Get("taskfleet"), q.Get("conversation")
+		shell, tf := q.Get("shell"), q.Get("taskfleet")
 		valid := r.URL.Path == TerminalPath && r.URL.EscapedPath() == TerminalPath && wsframe.IsUpgrade(r) && len(q["workspace_id"]) == 1 && idPattern.MatchString(id)
 		switch {
 		case len(q) == 2 && len(q["shell"]) == 1 && (shell == "new" || terminalShellParam.MatchString(shell)):
 			valid = valid && r.URL.RawQuery == "workspace_id="+id+"&shell="+shell
 		case len(q) == 2 && len(q["taskfleet"]) == 1 && terminalTaskfleetParam.MatchString(tf):
 			valid = valid && r.URL.RawQuery == "workspace_id="+id+"&taskfleet="+tf
-		case len(q) == 2 && len(q["conversation"]) == 1 && sessionIDPattern.MatchString(conversation):
-			valid = valid && r.URL.RawQuery == "workspace_id="+id+"&conversation="+conversation
 		default:
 			valid = false
 		}
@@ -643,14 +631,7 @@ func (h *terminalHost) TerminalHandler(trusted func(*http.Request) bool) http.Ha
 			return
 		}
 		target := terminalTarget{workspace: id, dir: dir, base: base, shell: shell}
-		if conversation != "" {
-			found := h.writerPane(r.Context(), dir, conversation)
-			if found.place != "tmux" {
-				snapshotError(w, 404, "shell_ended")
-				return
-			}
-			target.writer = &found
-		} else if tf != "" {
+		if tf != "" {
 			for _, t := range h.taskfleetWindows(r.Context(), dir) {
 				if t.Token == tf {
 					t := t
@@ -777,8 +758,6 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 	kind := "shell"
 	if target.taskfleet != nil {
 		kind = "taskfleet"
-	} else if target.writer != nil {
-		kind = "writer"
 	}
 	logClose := func(outcome, reason string) {
 		h.log.Info("terminal_close", "outcome", outcome, "workspace", target.workspace, "kind", kind, "reason", reason)
@@ -791,8 +770,8 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 		logClose("refused", "invalid_first_message")
 		return
 	}
-	if target.taskfleet != nil || target.writer != nil {
-		h.watch(ws, target, kind, logClose)
+	if target.taskfleet != nil {
+		h.watch(ws, target, logClose)
 		return
 	}
 	ctx, cancel := context.WithCancel(h.ctx)
@@ -951,31 +930,9 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 // neither type into the window, resize it nor change what Taskfleet's own
 // clients show. (An ignore-size client still sized the window once the last
 // ordinary client left, and tmux 3.6 lost the whole server when a view
-// session's detach hook met destroy-unattached.) A conversation's terminal
-// Pi is shown the same way, by its own pane on the person's tmux server, and
-// only while that process lives.
-func (h *terminalHost) watch(ws *terminalConn, target terminalTarget, kind string, logClose func(string, string)) {
-	socket, pane, size := "", "", "window"
-	var alive func() bool
-	ready := map[string]any{"type": "ready", "read_only": true, "survives_restart": false}
-	if tf := target.taskfleet; tf != nil {
-		socket, pane = tf.socket, tf.window
-		ready["taskfleet"], ready["name"] = tf.Token, tf.Name
-	} else {
-		wp := target.writer
-		socket, pane, size = wp.socket, wp.pane, "pane"
-		// The process is checked every redraw; that it still writes this
-		// conversation, which costs a census, every few seconds.
-		ticks := 0
-		alive = func() bool {
-			ticks++
-			if ticks%10 == 0 {
-				return h.still(h.ctx, target.dir, wp)
-			}
-			return wp.same()
-		}
-		ready["conversation"], ready["name"] = wp.conversation, wp.session+":"+strconv.Itoa(wp.window)
-	}
+// session's detach hook met destroy-unattached.)
+func (h *terminalHost) watch(ws *terminalConn, target terminalTarget, logClose func(string, string)) {
+	tf := target.taskfleet
 	ctx, cancel := context.WithCancel(h.ctx)
 	defer cancel()
 	gone := make(chan struct{})
@@ -989,21 +946,18 @@ func (h *terminalHost) watch(ws *terminalConn, target terminalTarget, kind strin
 		}
 	}()
 	read := func() (cols, rows int, screen []byte, ok bool) {
-		if alive != nil && !alive() {
-			return 0, 0, nil, false
-		}
-		out, err := h.run(ctx, socket, "display-message", "-p", "-t", pane, "#{"+size+"_width} #{"+size+"_height} #{cursor_x} #{cursor_y} #{cursor_flag}")
+		out, err := h.run(ctx, tf.socket, "display-message", "-p", "-t", tf.window, "#{window_width} #{window_height} #{cursor_x} #{cursor_y} #{cursor_flag}")
 		var x, y, visible int
 		if n, _ := fmt.Sscanf(strings.TrimSpace(string(out)), "%d %d %d %d %d", &cols, &rows, &x, &y, &visible); err != nil || n != 5 || cols < 2 || cols > 1000 || rows < 1 || rows > 1000 {
 			return 0, 0, nil, false
 		}
-		captured, err := h.run(ctx, socket, "capture-pane", "-p", "-e", "-t", pane)
+		pane, err := h.run(ctx, tf.socket, "capture-pane", "-p", "-e", "-t", tf.window)
 		if err != nil {
 			return 0, 0, nil, false
 		}
 		var b bytes.Buffer
 		b.WriteString("\x1b[?25l\x1b[H\x1b[2J")
-		for i, line := range strings.Split(strings.TrimRight(string(captured), "\n"), "\n") {
+		for i, line := range strings.Split(strings.TrimRight(string(pane), "\n"), "\n") {
 			if i >= rows {
 				break
 			}
@@ -1022,14 +976,13 @@ func (h *terminalHost) watch(ws *terminalConn, target terminalTarget, kind strin
 	cols, rows, screen, ok := read()
 	if !ok {
 		ws.close(4404, "shell_ended")
-		logClose("refused", kind+"_window_unavailable")
+		logClose("refused", "taskfleet_window_unavailable")
 		return
 	}
-	h.log.Info("terminal_open", "outcome", "opened", "workspace", target.workspace, "kind", kind, "survives_restart", false)
+	h.log.Info("terminal_open", "outcome", "opened", "workspace", target.workspace, "kind", "taskfleet", "survives_restart", false)
 	// The view adopts the window's size; a later ready says it changed.
 	sendReady := func() error {
-		ready["cols"], ready["rows"] = cols, rows
-		return ws.control(ready)
+		return ws.control(map[string]any{"type": "ready", "taskfleet": tf.Token, "name": tf.Name, "read_only": true, "survives_restart": false, "cols": cols, "rows": rows})
 	}
 	if sendReady() != nil || ws.write(wsframe.OpBinary, screen) != nil {
 		logClose("closed", "browser_gone")

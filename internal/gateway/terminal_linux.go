@@ -25,10 +25,9 @@ import (
 // session, and relays bytes. A relayed terminal is a live write channel, so it
 // is registered with the session and closed when the session ends.
 const (
-	terminalsPath      = "/api/v1/workspaces/terminals"
-	terminalClosePath  = "/api/v1/workspaces/terminals/close"
-	terminalWriterPath = "/api/v1/workspaces/terminals/writer"
-	terminalPath       = "/api/v1/workspaces/terminal"
+	terminalsPath     = "/api/v1/workspaces/terminals"
+	terminalClosePath = "/api/v1/workspaces/terminals/close"
+	terminalPath      = "/api/v1/workspaces/terminal"
 	// Terminals one browser session may hold open at once.
 	terminalSessionLimit = 8
 	terminalIdle         = 90 * time.Second
@@ -37,31 +36,12 @@ const (
 var (
 	terminalShell     = regexp.MustCompile(`^(new|[1-9][0-9]{0,2})$`)
 	terminalTaskfleet = regexp.MustCompile(`^[0-9a-f]{8,64}-[0-9]{1,6}$`)
-	// A conversation is named by its native session id, never by a pane.
-	terminalConversation = regexp.MustCompile(`^[0-9a-fA-F-]{36}$`)
-	daemonErrorCode      = regexp.MustCompile(`^[a-z_]{1,40}$`)
+	daemonErrorCode   = regexp.MustCompile(`^[a-z_]{1,40}$`)
 )
 
 func (a *Auth) terminalList(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("workspace_id")
 	if r.Method != http.MethodGet || !a.exact(r, terminalsPath, "workspace_id") || r.URL.EscapedPath() != terminalsPath || r.URL.RawQuery != "workspace_id="+id || !workspaceGitID.MatchString(id) || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || !browserHTTP(r) {
-		safe(w, 400, "invalid_request")
-		return
-	}
-	s, ok := a.authenticated(r)
-	if !ok {
-		safe(w, 401, "authentication_required")
-		return
-	}
-	a.proxy(w, r, s, false)
-}
-
-// terminalWriter asks where a conversation's terminal Pi runs; the daemon
-// finds it and answers with names only.
-func (a *Auth) terminalWriter(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	id, conversation := q.Get("workspace_id"), q.Get("conversation")
-	if r.Method != http.MethodGet || !a.exact(r, terminalWriterPath, "workspace_id", "conversation") || r.URL.EscapedPath() != terminalWriterPath || r.URL.RawQuery != "workspace_id="+id+"&conversation="+conversation || !workspaceGitID.MatchString(id) || !terminalConversation.MatchString(conversation) || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || !browserHTTP(r) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -121,15 +101,13 @@ func (a *Auth) terminalSlot(r *http.Request) (func(), bool) {
 // sees a connection that did not prove it.
 func (a *Auth) terminal(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	id, shell, taskfleet, conversation := q.Get("workspace_id"), q.Get("shell"), q.Get("taskfleet"), q.Get("conversation")
+	id, shell, taskfleet := q.Get("workspace_id"), q.Get("shell"), q.Get("taskfleet")
 	query, param := "", "shell"
 	switch {
 	case len(q["shell"]) == 1 && terminalShell.MatchString(shell):
 		query = "workspace_id=" + id + "&shell=" + shell
 	case len(q["taskfleet"]) == 1 && terminalTaskfleet.MatchString(taskfleet):
 		query, param = "workspace_id="+id+"&taskfleet="+taskfleet, "taskfleet"
-	case len(q["conversation"]) == 1 && terminalConversation.MatchString(conversation):
-		query, param = "workspace_id="+id+"&conversation="+conversation, "conversation"
 	}
 	if query == "" || r.URL.RawQuery != query || !workspaceGitID.MatchString(id) || !a.exact(r, terminalPath, "workspace_id", param) || r.URL.EscapedPath() != terminalPath || !wsframe.IsUpgrade(r) {
 		safe(w, 400, "invalid_request")

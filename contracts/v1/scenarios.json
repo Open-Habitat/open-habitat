@@ -721,7 +721,7 @@
       "a mapped UID whose daemon runs the person's shells as tmux sessions on the product's own tmux server, as that UID, in the workspace's directory"
     ],
     "when": [
-      "the browser lists a workspace's shells, opens a new one or reattaches to one over a WebSocket, watches a Taskfleet window or the tmux pane of a conversation's terminal Pi, closes a shell, loses its connection, or its session ends"
+      "the browser lists a workspace's shells, opens a new one or reattaches to one over a WebSocket, watches a Taskfleet window, closes a shell, loses its connection, or its session ends"
     ],
     "then": [
       "the upgrade is refused unless its Origin is exactly the app's, and the gateway dials the daemon only after the first message proves the session's CSRF token",
@@ -729,7 +729,6 @@
       "closing the browser or losing the connection leaves the shell running in tmux; the next connection reattaches to the same session",
       "the list says whether shells survive a daemon restart: only when the tmux server runs as the person's user service, otherwise it ends with the daemon",
       "a Taskfleet window is attached read-only: no input reaches it, it is not resized, and Taskfleet's own clients keep their window",
-      "a conversation's terminal Pi is named only when no other Pi of the person can have written the conversation, its pane only when that Pi runs inside it and the pane's server is the person's own; the pane is shown read-only like a Taskfleet window, only while that Pi process lives, and the browser names the conversation, never a socket, pane or process",
       "listing starts no tmux server; nothing about shells is stored by the host",
       "no message carries a path, socket name or Unix username; native error text never crosses the contract",
       "another mapped UID cannot list, attach to or close the first UID's shells"

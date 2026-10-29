@@ -539,12 +539,6 @@ export const settingsSections = [
         ],
         desc: "Workerin rivi kertoo commitit, muutokset ja pull requestin tarkistukset.",
       },
-      {
-        id: "terminal-watch",
-        label: "Päätteen Pi:n katselu",
-        kw: ["tmux", "pääte", "terminal", "peili", "mirror", "katso", "watch"],
-        desc: "Päätteessä käynnissä olevan Pi:n tmux-ikkunan katselu selaimessa, vain luku.",
-      },
     ],
   },
   {

@@ -15,7 +15,7 @@ test.use({
 
 const evidence = "../issues/experimental-features-section/evidence";
 const capture = !!process.env.OH_VISUAL_CAPTURE;
-const features = ["next-waiting-row", "worker-row-sentence", "terminal-watch"];
+const features = ["next-waiting-row", "worker-row-sentence"];
 
 async function signIn(page: Page) {
   await page.goto("/workspaces");
@@ -56,6 +56,9 @@ test("@settings-experimental a feature is off by default, switches on the daemon
     await expect(card(page, id).getByText("Missä")).toBeVisible();
     await expect(card(page, id).getByText("Edellyttää")).toBeVisible();
   }
+  await expect(
+    page.getByTestId("experimental-features").getByRole("region"),
+  ).toHaveCount(features.length);
   const a11y = await new AxeBuilder({ page })
     .include('[data-testid="experimental-features"]')
     // The pictures are aria-hidden decoration, faded on purpose while off;
@@ -74,15 +77,15 @@ test("@settings-experimental a feature is off by default, switches on the daemon
       request.url().endsWith("/api/v1/account/preferences") &&
       request.method() === "PUT",
   );
-  await segment(page, "terminal-watch", "on").click();
+  await segment(page, "next-waiting-row", "on").click();
   expect((await write).postDataJSON()).toEqual({
-    experimental: { "terminal-watch": true },
+    experimental: { "next-waiting-row": true },
   });
-  await expect(segment(page, "terminal-watch", "on")).toHaveAttribute(
+  await expect(segment(page, "next-waiting-row", "on")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await expect(segment(page, "next-waiting-row", "off")).toHaveAttribute(
+  await expect(segment(page, "worker-row-sentence", "off")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -91,7 +94,7 @@ test("@settings-experimental a feature is off by default, switches on the daemon
   const other = await context.newPage();
   try {
     await other.goto("/settings/experimental");
-    await expect(segment(other, "terminal-watch", "on")).toHaveAttribute(
+    await expect(segment(other, "next-waiting-row", "on")).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -102,7 +105,7 @@ test("@settings-experimental a feature is off by default, switches on the daemon
         window.dispatchEvent(new Event("nah:theme-change"));
       });
       await other.setViewportSize({ width: 390, height: 844 });
-      await card(other, "terminal-watch").scrollIntoViewIfNeeded();
+      await card(other, "next-waiting-row").scrollIntoViewIfNeeded();
       await other.screenshot({
         path: `${evidence}/kokeelliset-phone-dark-paalla.png`,
       });
@@ -112,8 +115,8 @@ test("@settings-experimental a feature is off by default, switches on the daemon
     await other.close();
   }
 
-  await segment(page, "terminal-watch", "off").click();
-  await expect(segment(page, "terminal-watch", "off")).toHaveAttribute(
+  await segment(page, "next-waiting-row", "off").click();
+  await expect(segment(page, "next-waiting-row", "off")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -166,11 +169,11 @@ test("@settings-experimental settings search finds a feature and lands on its ca
   await page
     .getByRole("combobox")
     .and(page.getByTestId("settings-search"))
-    .fill("tmux");
+    .fill("commit");
   await page
     .getByRole("option")
-    .and(page.getByTestId("settings-result-row-terminal-watch"))
+    .and(page.getByTestId("settings-result-row-worker-row-sentence"))
     .click();
-  await expect(page).toHaveURL(/\/settings\/experimental#terminal-watch$/);
-  await expect(card(page, "terminal-watch")).toBeInViewport();
+  await expect(page).toHaveURL(/\/settings\/experimental#worker-row-sentence$/);
+  await expect(card(page, "worker-row-sentence")).toBeInViewport();
 });

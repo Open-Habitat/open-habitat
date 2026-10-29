@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: experimental
 lane_seq: 10
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Remove the experimental terminal Pi watch
@@ -20,5 +21,5 @@ Jari 29.10.: remove the experimental terminal Pi watch (`terminal-watch-experime
 
 ## Acceptance Criteria
 
-- [ ] No code path reaches a tmux socket outside the daemon's own namespace; Taskfleet window views unchanged.
-- [ ] Contract, daemon, gateway and web tests green; the experimental section shows the two remaining features.
+- [x] No code path reaches a tmux socket outside the daemon's own namespace; Taskfleet window views unchanged.
+- [x] Contract, daemon, gateway and web tests green; the experimental section shows the two remaining features.

@@ -109,12 +109,12 @@ func TestAccountPreferencesHTTPBoundary(t *testing.T) {
 		{"GET", "?uid=123", "", 400}, {"POST", "", `{"engine":"vscode"}`, 400},
 		{"PUT", "", `{"engine":"monaco"}`, 400}, {"PUT", "", `{"engine":"vscode","uid":123}`, 400},
 		{"PUT", "", `{"engine":"vscode"} {}`, 400}, {"PUT", "", `{}`, 400},
-		{"PUT", "", `{"experimental":{"terminal-watch":true}}`, 200},
-		{"PUT", "", `{"engine":"vscode","experimental":{"terminal-watch":true}}`, 400},
+		{"PUT", "", `{"experimental":{"worker-row-sentence":true}}`, 200},
+		{"PUT", "", `{"engine":"vscode","experimental":{"worker-row-sentence":true}}`, 400},
 		{"PUT", "", `{"experimental":{"a":true,"b":true}}`, 400}, {"PUT", "", `{"experimental":{}}`, 400},
 		{"PUT", "", `{"experimental":{"../x":true}}`, 400}, {"PUT", "", `{"experimental":{"x-":true}}`, 400},
 		{"PUT", "", `{"experimental":{"x":"yes"}}`, 400}, {"PUT", "", `{"experimental":null}`, 400},
-		{"PUT", "", `{"experimental":{"terminal-watch":null}}`, 400}, {"PUT", "", `{"engine":"vscode","experimental":null}`, 400},
+		{"PUT", "", `{"experimental":{"worker-row-sentence":null}}`, 400}, {"PUT", "", `{"engine":"vscode","experimental":null}`, 400},
 		{"PUT", "", `{"Engine":"vscode"}`, 400}, {"PUT", "", `{"engine":null}`, 400}, {"PUT", "", `[]`, 400},
 	} {
 		r := httptest.NewRequest(tc.method, "http://unix"+AccountPreferencesPath+tc.suffix, strings.NewReader(tc.body))
@@ -157,12 +157,12 @@ func TestAccountPreferencesMergeOneChange(t *testing.T) {
 	}
 	put(`{"engine":"vscode"}`)
 	put(`{"experimental":{"next-waiting-row":true}}`)
-	reply := put(`{"experimental":{"terminal-watch":true}}`)
-	if reply["engine"] != "vscode" || !reflect.DeepEqual(reply["experimental"], map[string]any{"next-waiting-row": true, "terminal-watch": true}) {
+	reply := put(`{"experimental":{"worker-row-sentence":true}}`)
+	if reply["engine"] != "vscode" || !reflect.DeepEqual(reply["experimental"], map[string]any{"next-waiting-row": true, "worker-row-sentence": true}) {
 		t.Fatalf("merge lost a change: %v", reply)
 	}
 	reply = put(`{"experimental":{"next-waiting-row":false}}`)
-	if !reflect.DeepEqual(reply["experimental"], map[string]any{"terminal-watch": true}) {
+	if !reflect.DeepEqual(reply["experimental"], map[string]any{"worker-row-sentence": true}) {
 		t.Fatalf("off kept the key: %v", reply)
 	}
 	raw, err := os.ReadFile(filepath.Join(home, ".config/open-habitat/preferences.json"))

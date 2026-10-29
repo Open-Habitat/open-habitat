@@ -3,6 +3,6 @@
   "web_identity_id": "wid_example-a",
   "engine": "vscode",
   "experimental": {
-    "terminal-watch": true
+    "worker-row-sentence": true
   }
 }

@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { pasteLines, tabNames, withModifiers } from "./BrowserShell";
-import { readTerminalWriter, TerminalSocket, terminalURL } from "./terminals";
+import { TerminalSocket, terminalURL } from "./terminals";
 
 class FakeSocket {
   static OPEN = 1;
@@ -122,58 +122,6 @@ describe("terminal socket", () => {
     ).toBe(
       "wss://h.test/api/v1/workspaces/terminal?workspace_id=ws_example123&taskfleet=77f5c84c-12",
     );
-    expect(
-      terminalURL(
-        "ws_example123",
-        {
-          kind: "writer",
-          conversation: "01a18138-fa3f-75eb-b302-21792486d5e7",
-        },
-        "https://h.test",
-      ),
-    ).toBe(
-      "wss://h.test/api/v1/workspaces/terminal?workspace_id=ws_example123&conversation=01a18138-fa3f-75eb-b302-21792486d5e7",
-    );
-  });
-});
-
-describe("terminal writer", () => {
-  const conversation = "01a18138-fa3f-75eb-b302-21792486d5e7";
-  const answer = {
-    schema_version: 1,
-    workspace_id: "ws_example123",
-    conversation,
-    place: "tmux",
-    session: "work",
-    window: 2,
-    name: "pi",
-  };
-  const answering = (body: unknown) =>
-    vi.fn(async () => new Response(JSON.stringify(body), { status: 200 }));
-  afterEach(() => vi.unstubAllGlobals());
-
-  it("accepts only an answer about the conversation it asked for", async () => {
-    vi.stubGlobal("fetch", answering(answer));
-    expect(
-      (await readTerminalWriter("ws_example123", conversation)).place,
-    ).toBe("tmux");
-    vi.stubGlobal(
-      "fetch",
-      answering({
-        ...answer,
-        conversation: "02a18138-fa3f-75eb-b302-21792486d5e7",
-      }),
-    );
-    await expect(
-      readTerminalWriter("ws_example123", conversation),
-    ).rejects.toThrow();
-    vi.stubGlobal(
-      "fetch",
-      answering({ ...answer, socket: "/tmp/tmux-1/default" }),
-    );
-    await expect(
-      readTerminalWriter("ws_example123", conversation),
-    ).rejects.toThrow();
   });
 });
 

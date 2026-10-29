@@ -40,17 +40,6 @@ export const experimentalFeatures = [
     caption: "Workerit-paneeli",
     landed: true,
   },
-  {
-    id: "terminal-watch",
-    name: "Päätteen Pi:n katselu",
-    desc: "Päätteessä käynnissä olevan Pi:n tmux-ikkunaa voi katsoa selaimen päätepaneelissa. Selain ei kirjoita siihen.",
-    where: "Päätteessä aloitetun keskustelun alareunassa: Katso päätteessä.",
-    shows: "Tmux-ikkunan sellaisenaan päätepaneelin välilehdellä, vain luku.",
-    needs:
-      "Pi käynnissä tmuxissa samalla käyttäjällä. Ilman tmuxia painiketta ei ole.",
-    caption: "Päätepaneeli",
-    landed: true,
-  },
 ] as const satisfies readonly ExperimentalFeature[];
 
 /** A small drawing of what the feature adds, grey while it is off. It is
@@ -72,7 +61,7 @@ function Picture({ id, on }: { id: string; on: boolean }) {
         <span className="ex-composer">Kirjoita agentille…</span>
       </>
     );
-  else if (id === "worker-row-sentence")
+  else
     body = (
       <>
         <span className="ex-wrow">
@@ -100,23 +89,6 @@ function Picture({ id, on }: { id: string; on: boolean }) {
               <span className="ex-hl">ei vielä muutoksia</span>
             </span>
           </span>
-        </span>
-      </>
-    );
-  else
-    body = (
-      <>
-        <span className="ex-tabs">
-          <span className="ex-tab">$ bash</span>
-          <span className="ex-tab ex-tab-current">
-            work:2 <span className="ex-ro">vain luku</span>
-          </span>
-        </span>
-        <span className="ex-term">
-          <span className="ex-term-a">pi</span> ~/src/aurinkokello · gpt-5.5
-          {"\n"}› Aja testit ja korjaa, mitä löytyy.{"\n"}
-          <span className="ex-term-g">●</span> bash python -m pytest -q{" "}
-          <span className="ex-term-g">14 passed</span>
         </span>
       </>
     );
