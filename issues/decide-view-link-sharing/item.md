@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: view-sharing
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Decide: anyone with the link can open a shared view
