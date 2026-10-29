@@ -36,11 +36,11 @@
       }
     },
     "set": {
+      "$comment": "No region: the setting administrator's own daemon finds the one Soniox takes the key in, and nothing is stored before. A key refused in every region answers speech_key_rejected (409), a reached limit speech_limit_reached (429), and a check that could not be made speech_unavailable (503).",
       "type": "object",
       "additionalProperties": false,
-      "required": ["region", "key"],
+      "required": ["key"],
       "properties": {
-        "region": {"enum": ["us", "eu"]},
         "key": {"type": "string", "minLength": 16, "maxLength": 256, "pattern": "^(?:[A-Za-z0-9_-]+\\.){0,3}[A-Za-z0-9_-]{4,}$"}
       }
     },

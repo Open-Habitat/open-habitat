@@ -3,12 +3,13 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 lane_seq: 1
 collision: [internal/daemon/speech_linux.go, web/src/app/SpeechSettings.tsx]
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Dictation key saved in the wrong Soniox region reads as a rejected key

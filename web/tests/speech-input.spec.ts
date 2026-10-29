@@ -66,6 +66,7 @@ const soniox = async (page: Page) =>
     audio: number;
     ended: number;
     authorization: string;
+    asked: string[];
   };
 
 async function say(
@@ -193,7 +194,8 @@ test("@speech the administrator's key reaches the person; a dropped stream recon
   await expect(page.getByTestId("dictation-final")).toHaveText("Ensimmäinen");
   await control(page, "drop");
   // One reconnect with a new single-use key; the unconfirmed words stay.
-  await expect.poll(async () => (await soniox(page)).minted).toBe(2);
+  // The first key minted was the save's check of the administrator's key.
+  await expect.poll(async () => (await soniox(page)).minted).toBe(3);
   await expect(pill(page)).toHaveAttribute("data-phase", "live");
   await expect(page.getByTestId("dictation-final")).toHaveText(
     "Ensimmäinen osa",
@@ -204,7 +206,7 @@ test("@speech the administrator's key reaches the person; a dropped stream recon
   );
   await control(page, "drop");
   await expect(notice(page)).toHaveAttribute("data-notice", "dropped");
-  expect((await soniox(page)).minted).toBe(2);
+  expect((await soniox(page)).minted).toBe(3);
   await expect(page.getByTestId("message-input")).toHaveValue(
     "Ensimmäinen osa toinen",
   );
@@ -259,6 +261,89 @@ test("@speech a refused key, a reached limit and a refused microphone reach the 
     "microphone_denied",
   );
   await expect(page.getByTestId("message-input")).toBeEditable();
+});
+
+async function keyRegion(page: Page, key: string, region: string) {
+  expect(
+    (
+      await page.request.post(
+        `/fixture/soniox?action=key-region&value=${region}`,
+        { data: key, headers: { "Content-Type": "text/plain" } },
+      )
+    ).status(),
+  ).toBe(204);
+}
+
+test("@speech a key is saved in the region Soniox takes it in, refused when none does, and a wrong stored region heals at dictation", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  // A key no region takes is not saved, and the page says why.
+  const refusedKey = `nowhere${"0".repeat(21)}Nn00`;
+  await keyRegion(page, refusedKey, "none");
+  await page.goto("/settings/speech");
+  await page.getByTestId("speech-key-input").fill(refusedKey);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("speech-key-refused")).toContainText(
+    "Soniox ei hyväksynyt avainta EU- eikä USA-alueella",
+  );
+  await expect(page.getByTestId("speech-key-refused")).not.toContainText(
+    "synthetic detail",
+  );
+  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
+    "data-source",
+    "none",
+  );
+  // An EU project's key is refused in the US and saved as EU.
+  await keyRegion(page, ownKey, "eu");
+  await page.getByTestId("speech-key-input").fill(ownKey);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("speech-key-saved")).toHaveText(
+    "Avain tallennettu. Soniox hyväksyi sen EU-alueella.",
+  );
+  await expect(page.getByTestId("speech-key-source")).toContainText("(EU)");
+  expect((await soniox(page)).minted).toBe(1);
+
+  // The same key now answers only in the US, as a key stored under the
+  // wrong region does: the dictation still starts, and the file is fixed.
+  await keyRegion(page, ownKey, "us");
+  await openConversation(page);
+  await mic(page).click();
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  expect((await soniox(page)).asked.slice(-2)).toEqual(["eu", "us"]);
+  await page.getByTestId("dictation-stop").click();
+  await page.goto("/settings/speech");
+  await expect(page.getByTestId("speech-key-source")).toContainText("(USA)");
+});
+
+test("@speech the administrator's key is saved in its region and refused when Soniox takes it nowhere", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  await page.goto("/settings/speech-key");
+  const refusedKey = `nowhere${"0".repeat(21)}Nn01`;
+  await keyRegion(page, refusedKey, "none");
+  await page.getByTestId("speech-key-input").fill(refusedKey);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("site-speech-key-problem")).toContainText(
+    "Soniox ei hyväksynyt avainta",
+  );
+  await expect(page.getByTestId("site-speech-key")).toContainText(
+    "Ei yhteistä avainta.",
+  );
+  await keyRegion(page, siteKey, "eu");
+  await page.getByTestId("speech-key-input").fill(siteKey);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("site-speech-key-saved")).toHaveText(
+    "Avain tallennettu. Soniox hyväksyi sen EU-alueella.",
+  );
+  await expect(page.getByTestId("site-speech-key")).toContainText("(EU)");
+  await page.goto("/settings/speech");
+  await expect(page.getByTestId("speech-key-source")).toContainText(
+    "Ylläpitäjän avain …Kq7Z (EU).",
+  );
 });
 
 test("@speech the dictation warns a minute before the ten-minute ceiling and ends there with the text", async ({

@@ -880,6 +880,7 @@
     "then": [
       "the person's own daemon mints one single-use temporary key (60 s to open, 600 s session ceiling, transcribe_websocket only) and returns it with the region's WebSocket URL; the long-lived key never crosses",
       "a missing key, a key Soniox refuses, a reached limit and an unreachable Soniox reach the browser as speech_key_missing, speech_key_rejected, speech_limit_reached and speech_unavailable, never Soniox's own text",
+      "a key, the person's or the site's, is saved only once Soniox has taken it, with the region it took it in; a key refused in every region or one Soniox could not be asked about is not saved, and a key stored under the wrong region is tried once in the other and corrected",
       "a site key is written into a home only where there is no key or an earlier site copy; a key the person saved is kept, and the administrator sees counts of answers, never who holds their own key"
     ],
     "fixtures": [

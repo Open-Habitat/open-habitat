@@ -19,7 +19,10 @@ import (
 // The site's Soniox key (Jari 2026-10-27, decision D) follows the site AI
 // key's pattern: the gateway keeps it in a gateway-UID 0600 file of its
 // own, reads back only region, a four-character suffix and when it was set,
-// and never uses it. A copy is written into a person's home only by their
+// and never uses it. Which region the key works in is asked from the
+// setting administrator's own daemon before anything is stored, because a
+// key saved under the wrong region reads as refused at every dictation
+// (speech-key-wrong-region) and only a daemon talks to Soniox. A copy is written into a person's home only by their
 // own daemon, at the sign-in that created their account and when an
 // administrator sets the key; the daemon writes it only where the person has
 // no Soniox key or an earlier site copy. Removing the key recalls nothing.
@@ -29,8 +32,35 @@ import (
 
 const siteSpeechKeyPath = "/api/v1/server/speech-key"
 
-// speechDaemonPath is the daemon's SpeechSiteKeyPath.
-const speechDaemonPath = "/internal/v1/speech/site-key"
+// speechDaemonPath is the daemon's SpeechSiteKeyPath and
+// speechCheckDaemonPath its SpeechKeyCheckPath.
+const (
+	speechDaemonPath      = "/internal/v1/speech/site-key"
+	speechCheckDaemonPath = "/internal/v1/speech/key-check"
+)
+
+// A key the administrator's daemon could not confirm is not stored. These
+// carry the codes the person's own save answers with.
+var (
+	errSpeechKeyRejected    = &OnboardingError{"speech_key_rejected"}
+	errSpeechLimitReached   = &OnboardingError{"speech_limit_reached"}
+	errSpeechKeyUncheckable = &OnboardingError{"speech_unavailable"}
+)
+
+func siteSpeechKeyStatus(e error) (int, string) {
+	var oe *OnboardingError
+	if errors.As(e, &oe) {
+		switch oe {
+		case errSpeechKeyRejected:
+			return 409, oe.Reason
+		case errSpeechLimitReached:
+			return 429, oe.Reason
+		case errSpeechKeyUncheckable:
+			return 503, oe.Reason
+		}
+	}
+	return siteKeyGiveStatus(e)
+}
 
 // sonioxKeyShape, validSonioxKey and speechRegionNames are the daemon's
 // rules (speech_linux.go).
@@ -173,7 +203,48 @@ func (a *Auth) lockSpeechOps(ctx context.Context) (func(), error) {
 	return nil, errSiteKeyBusy
 }
 
-// setSiteSpeechKey stores the key. caller is the browser administrator.
+// checkSiteSpeechKey asks caller's own daemon which region key works in.
+// The daemon mints one temporary key with it, drops it and stores nothing;
+// the gateway itself never sends the key to Soniox.
+func (a *Auth) checkSiteSpeechKey(ctx context.Context, caller, key string) (string, error) {
+	if !validSonioxKey(key) {
+		return "", onboardingInvalid("invalid_key")
+	}
+	target, _, err := a.personRoute(ctx, caller)
+	outcome := "not_reached"
+	var region string
+	if err == nil {
+		body, _ := json.Marshal(map[string]any{"schema_version": 1, "key": key})
+		b, err := a.postDaemon(ctx, target, speechCheckDaemonPath, body)
+		outcome = "unknown"
+		var reply struct {
+			SchemaVersion int    `json:"schema_version"`
+			Outcome       string `json:"outcome"`
+			Region        string `json:"region"`
+		}
+		if err == nil && json.Unmarshal(b, &reply) == nil && reply.SchemaVersion == 1 {
+			switch {
+			case reply.Outcome == "works" && slices.Contains(speechRegionNames, reply.Region):
+				outcome, region = reply.Outcome, reply.Region
+			case reply.Outcome == "rejected" || reply.Outcome == "limited" || reply.Outcome == "unavailable":
+				outcome = reply.Outcome
+			}
+		}
+	}
+	a.log.Info("site_speech_key_check", "outcome", outcome, "region", region, "actor", actorFor(caller))
+	switch outcome {
+	case "works":
+		return region, nil
+	case "rejected":
+		return "", errSpeechKeyRejected
+	case "limited":
+		return "", errSpeechLimitReached
+	}
+	return "", errSpeechKeyUncheckable
+}
+
+// setSiteSpeechKey stores the key with the region its check found. caller
+// is the browser administrator.
 func (a *Auth) setSiteSpeechKey(caller, region, key string) (*speechKeyView, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -290,8 +361,8 @@ func (a *Auth) giveSpeechKeyToJoined(ctx context.Context) (speechGiveCounts, err
 	return counts, nil
 }
 
-// siteSpeechKeyHTTP is GET …/speech-key, POST …/speech-key/set {region,
-// key} and POST …/speech-key/delete {} for a current administrator.
+// siteSpeechKeyHTTP is GET …/speech-key, POST …/speech-key/set {key} and
+// POST …/speech-key/delete {} for a current administrator.
 func (a *Auth) siteSpeechKeyHTTP(w http.ResponseWriter, r *http.Request) {
 	s, ok := a.authenticated(r)
 	if !ok {
@@ -341,13 +412,12 @@ func (a *Auth) siteSpeechKeyHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Region *string `json:"region"`
-		Key    *string `json:"key"`
+		Key *string `json:"key"`
 	}
 	dec := json.NewDecoder(io.LimitReader(r.Body, 1025))
 	dec.DisallowUnknownFields()
 	set := path == siteSpeechKeyPath+"/set"
-	if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF || set != (body.Region != nil && body.Key != nil) || !set && (body.Region != nil || body.Key != nil) {
+	if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF || set != (body.Key != nil) || set && !validSonioxKey(*body.Key) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -370,7 +440,13 @@ func (a *Auth) siteSpeechKeyHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer unlock()
-	k, err := a.setSiteSpeechKey(s.identity.Subject, *body.Region, *body.Key)
+	region, err := a.checkSiteSpeechKey(ctx, s.identity.Subject, *body.Key)
+	if err != nil {
+		status, code := siteSpeechKeyStatus(err)
+		safe(w, status, code)
+		return
+	}
+	k, err := a.setSiteSpeechKey(s.identity.Subject, region, *body.Key)
 	if err != nil {
 		status, code := siteKeyGiveStatus(err)
 		safe(w, status, code)

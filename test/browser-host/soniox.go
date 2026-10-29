@@ -19,11 +19,17 @@ import (
 // sonioxFake is a synthetic Soniox on the host's own TLS origin: the
 // temporary-key API the daemon calls and the real-time WebSocket the
 // browser streams to. No real key or network is used. The browser case
-// drives what Soniox "hears" through /fixture/soniox.
+// drives what Soniox "hears" through /fixture/soniox. Each region has its
+// own API address, and a key works only in its own region, us unless the
+// case says otherwise; the other region answers 401 as Soniox does.
 type sonioxFake struct {
 	mu sync.Mutex
 	// mint is the API's next answer: ok, rejected, limit or unavailable.
 	mint string
+	// keyRegions is the region of a key the case named; asked lists the
+	// region of every mint request in order.
+	keyRegions map[string]string
+	asked      []string
 	// refuse makes the next stream answer its start with error 401.
 	refuse  bool
 	issued  map[string]bool
@@ -54,13 +60,13 @@ func (c *sonioxConn) json(v any) {
 }
 
 func newSonioxFake(origin func() string) *sonioxFake {
-	return &sonioxFake{mint: "ok", issued: map[string]bool{}, conns: map[*sonioxConn]bool{}, origin: origin}
+	return &sonioxFake{mint: "ok", keyRegions: map[string]string{}, issued: map[string]bool{}, conns: map[*sonioxConn]bool{}, origin: origin}
 }
 
-// endpoints is where the daemon's fixture constructor points every region.
-func (f *sonioxFake) endpoints() daemon.SpeechEndpoints {
+// endpoints is where the daemon's fixture constructor points a region.
+func (f *sonioxFake) endpoints(region string) daemon.SpeechEndpoints {
 	base := f.origin()
-	return daemon.SpeechEndpoints{API: base + "/fixture/soniox", WebSocket: "wss://" + strings.TrimPrefix(base, "https://") + "/fixture/soniox/ws"}
+	return daemon.SpeechEndpoints{API: base + "/fixture/soniox/" + region, WebSocket: "wss://" + strings.TrimPrefix(base, "https://") + "/fixture/soniox/ws"}
 }
 
 // client trusts the host's ephemeral certificate, as only the fixture may.
@@ -71,8 +77,10 @@ func (f *sonioxFake) client() *http.Client {
 // serve handles /fixture/soniox/… : the API, the stream and the control.
 func (f *sonioxFake) serve(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/fixture/soniox/v1/auth/temporary-api-key":
-		f.mintKey(w, r)
+	case "/fixture/soniox/us/v1/auth/temporary-api-key":
+		f.mintKey(w, r, "us")
+	case "/fixture/soniox/eu/v1/auth/temporary-api-key":
+		f.mintKey(w, r, "eu")
 	case "/fixture/soniox/ws":
 		f.stream(w, r)
 	case "/fixture/soniox":
@@ -82,7 +90,7 @@ func (f *sonioxFake) serve(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (f *sonioxFake) mintKey(w http.ResponseWriter, r *http.Request) {
+func (f *sonioxFake) mintKey(w http.ResponseWriter, r *http.Request, region string) {
 	var body struct {
 		UsageType          string `json:"usage_type"`
 		ExpiresIn          int    `json:"expires_in_seconds"`
@@ -96,6 +104,15 @@ func (f *sonioxFake) mintKey(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.authHeader = r.Header.Get("Authorization")
+	f.asked = append(f.asked, region)
+	home, named := f.keyRegions[strings.TrimPrefix(f.authHeader, "Bearer ")]
+	if !named {
+		home = "us"
+	}
+	if home != region {
+		http.Error(w, `{"error_type":"unauthenticated","message":"synthetic detail"}`, 401)
+		return
+	}
 	switch f.mint {
 	case "rejected":
 		http.Error(w, `{"error_type":"unauthenticated","message":"synthetic detail"}`, 401)
@@ -200,7 +217,8 @@ func (f *sonioxFake) stream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// control serves /fixture/soniox?action=…: mint=<answer>, refuse, say
+// control serves /fixture/soniox?action=…: mint=<answer>, key-region=<us,
+// eu or none> for the key in the body, refuse, say
 // (a JSON body of tokens sent to every open stream), drop (close every
 // open stream at once) and state.
 func (f *sonioxFake) control(w http.ResponseWriter, r *http.Request) {
@@ -209,6 +227,15 @@ func (f *sonioxFake) control(w http.ResponseWriter, r *http.Request) {
 	case "mint":
 		f.mu.Lock()
 		f.mint = q.Get("value")
+		f.mu.Unlock()
+	case "key-region":
+		key, err := io.ReadAll(io.LimitReader(r.Body, 512))
+		if err != nil || len(key) == 0 {
+			http.Error(w, "key", 400)
+			return
+		}
+		f.mu.Lock()
+		f.keyRegions[string(key)] = q.Get("value")
 		f.mu.Unlock()
 	case "refuse":
 		f.mu.Lock()
@@ -240,7 +267,7 @@ func (f *sonioxFake) control(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"minted": f.minted, "open": len(f.conns), "configs": f.configs, "keepalives": f.keepalives, "audio": f.audio, "ended": f.ended, "authorization": f.authHeader})
+		json.NewEncoder(w).Encode(map[string]any{"minted": f.minted, "open": len(f.conns), "configs": f.configs, "keepalives": f.keepalives, "audio": f.audio, "ended": f.ended, "authorization": f.authHeader, "asked": f.asked})
 		return
 	default:
 		http.Error(w, "unknown soniox fixture action", 400)

@@ -370,7 +370,12 @@ Identity and authority:
   administrator sets it). The daemon writes it only where the file is
   absent or is itself an earlier site copy (`source: "site"`), never over
   a key the person saved; nothing retries and removing the key recalls
-  nothing. The gateway never uses the key or mints from it.
+  nothing. The gateway never uses the key or mints from it. Neither key is
+  stored before Soniox has taken it, under the region it took it in, and
+  the browser never chooses that region; for the site key the gateway asks
+  the setting administrator's own daemon, which stores nothing from the
+  check. A daemon may correct the region in its own key file when a mint
+  succeeds only in the other region.
 - The browser shell runs as the person through the person's daemon, as Pi's
   bash already does; it grants nothing new. The gateway accepts its upgrade
   only from the exact app Origin, dials the daemon only after the session's

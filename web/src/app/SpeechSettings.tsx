@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
-import { ControlButton, Segmented } from "../components/ControlElements";
+import { ControlButton } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
 import {
   deleteSiteSpeechKey,
@@ -16,7 +16,28 @@ import {
 
 const regionNames: Record<SpeechRegion, string> = { eu: "EU", us: "USA" };
 
-/** A Soniox key and its region, sent once and never shown again. */
+/** The region a save found, said once after it. */
+const savedIn = (region: SpeechRegion | null | undefined) =>
+  region
+    ? `Avain tallennettu. Soniox hyväksyi sen ${regionNames[region]}-alueella.`
+    : "";
+
+/** Why a key was not saved, by the code its save answered. Nothing was
+ * stored, so the form stays as it was. */
+const refusals: Record<string, string> = {
+  speech_key_rejected:
+    "Soniox ei hyväksynyt avainta EU- eikä USA-alueella, joten sitä ei tallennettu. Tarkista avain ja sen oikeudet Soniox-konsolissa.",
+  speech_unavailable:
+    "Sonioxiin ei saatu yhteyttä, joten avainta ei voitu tarkistaa eikä sitä tallennettu. Yritä hetken päästä uudelleen.",
+  speech_limit_reached:
+    "Sonioxin raja tuli hetkeksi vastaan, joten avainta ei voitu tarkistaa eikä sitä tallennettu. Yritä hetken päästä uudelleen.",
+};
+
+const refusal = (error: unknown) =>
+  error instanceof Error ? refusals[error.message] : undefined;
+
+/** A Soniox key, sent once and never shown again. Its region is not asked:
+ * a key works only in its Soniox project's region, which the save finds. */
 function SpeechKeyForm({
   busy,
   onSave,
@@ -24,12 +45,11 @@ function SpeechKeyForm({
   note,
 }: {
   busy: boolean;
-  onSave: (key: string, region: SpeechRegion) => void;
+  onSave: (key: string) => void;
   onCancel?: () => void;
   note: string;
 }) {
   const [key, setKey] = useState("");
-  const [region, setRegion] = useState<SpeechRegion>("eu");
   const wrong = key.length > 0 && !validSonioxKey(key.trim());
   return (
     <form
@@ -37,27 +57,9 @@ function SpeechKeyForm({
       data-testid="speech-key-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (validSonioxKey(key.trim())) onSave(key.trim(), region);
+        if (validSonioxKey(key.trim())) onSave(key.trim());
       }}
     >
-      <div className="s-row">
-        <div className="s-lbl">
-          <strong>Alue</strong>
-          <span className="s-desc">Sama kuin Soniox-projektissa.</span>
-        </div>
-        <div className="s-val">
-          <Segmented
-            data-testid="speech-region"
-            label="Alue"
-            options={[
-              { id: "eu", label: regionNames.eu },
-              { id: "us", label: regionNames.us },
-            ]}
-            value={region}
-            onChange={setRegion}
-          />
-        </div>
-      </div>
       <label className="s-field">
         Soniox API-avain
         <input
@@ -128,6 +130,8 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [refused, setRefused] = useState("");
+  const [saved, setSaved] = useState("");
   const load = useCallback((signal?: AbortSignal) => {
     readSpeechKey(signal)
       .then((s) => {
@@ -142,16 +146,24 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
     load(controller.signal);
     return () => controller.abort();
   }, [load]);
-  const write = async (run: () => Promise<SpeechKeyState>) => {
+  const write = async (run: () => Promise<SpeechKeyState>, save = false) => {
     setBusy(true);
     setFailed(false);
+    setRefused("");
+    setSaved("");
     try {
-      setState(await run());
+      const next = await run();
+      setState(next);
       setEditing(false);
-    } catch {
-      // The write may or may not have happened: read the home again.
-      setFailed(true);
-      load();
+      if (save) setSaved(savedIn(next.region));
+    } catch (error) {
+      const why = refusal(error);
+      if (why) setRefused(why);
+      else {
+        // The write may or may not have happened: read the home again.
+        setFailed(true);
+        load();
+      }
     } finally {
       setBusy(false);
     }
@@ -220,12 +232,28 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
           {csrf && (!state.present || editing) ? (
             <SpeechKeyForm
               busy={busy}
-              onSave={(key, region) =>
-                void write(() => saveSpeechKey(csrf, key, region))
-              }
+              onSave={(key) => void write(() => saveSpeechKey(csrf, key), true)}
               onCancel={editing ? () => setEditing(false) : undefined}
-              note="Tallennettua avainta ei näytetä uudelleen."
+              note="Tallennus tarkistaa avaimen Sonioxilta ja tunnistaa sen alueen. Tallennettua avainta ei näytetä uudelleen."
             />
+          ) : null}
+          {saved ? (
+            <p
+              className="s-editor s-desc"
+              role="status"
+              data-testid="speech-key-saved"
+            >
+              {saved}
+            </p>
+          ) : null}
+          {refused ? (
+            <p
+              className="s-editor s-desc s-bad"
+              role="alert"
+              data-testid="speech-key-refused"
+            >
+              {refused}
+            </p>
           ) : null}
           {failed ? (
             <p
@@ -264,6 +292,7 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [problem, setProblem] = useState("");
+  const [saved, setSaved] = useState("");
   const load = useCallback((signal?: AbortSignal) => {
     readSiteSpeechKey(signal)
       .then((s) => {
@@ -278,15 +307,22 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
     load(controller.signal);
     return () => controller.abort();
   }, [load]);
-  const write = async (run: () => Promise<SiteSpeechKey>) => {
+  const write = async (run: () => Promise<SiteSpeechKey>, save = false) => {
     setBusy(true);
     setProblem("");
+    setSaved("");
     try {
-      setState(await run());
+      const next = await run();
+      setState(next);
       setEditing(false);
-    } catch {
-      setProblem("Muutoksen tulos ei varmistunut. Tila luettiin uudelleen.");
-      load();
+      if (save) setSaved(savedIn(next.site_key?.region));
+    } catch (error) {
+      const why = refusal(error);
+      if (why) setProblem(why);
+      else {
+        setProblem("Muutoksen tulos ei varmistunut. Tila luettiin uudelleen.");
+        load();
+      }
     } finally {
       setBusy(false);
     }
@@ -351,16 +387,23 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
           {csrf && (!key || editing) ? (
             <SpeechKeyForm
               busy={busy}
-              onSave={(k, region) =>
-                void write(() => setSiteSpeechKey(csrf, k, region))
-              }
+              onSave={(k) => void write(() => setSiteSpeechKey(csrf, k), true)}
               onCancel={editing ? () => setEditing(false) : undefined}
-              note="Tallennettua avainta ei näytetä uudelleen."
+              note="Tallennus tarkistaa avaimen Sonioxilta ja tunnistaa sen alueen. Tallennettua avainta ei näytetä uudelleen."
             />
           ) : null}
           {busy ? (
             <p role="status" className="s-editor s-desc">
-              Annetaan avainta jo liittyneille…
+              Tarkistetaan avainta ja annetaan sitä jo liittyneille…
+            </p>
+          ) : null}
+          {saved ? (
+            <p
+              role="status"
+              className="s-editor s-desc"
+              data-testid="site-speech-key-saved"
+            >
+              {saved}
             </p>
           ) : null}
           {given.length ? (
@@ -379,7 +422,11 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
             </p>
           ) : null}
           {problem ? (
-            <p role="alert" className="s-editor s-desc s-bad">
+            <p
+              role="alert"
+              className="s-editor s-desc s-bad"
+              data-testid="site-speech-key-problem"
+            >
               {problem}
             </p>
           ) : null}

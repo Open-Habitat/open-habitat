@@ -151,7 +151,7 @@ export async function mintSpeechSession(
 }
 
 async function keyReply(response: Response): Promise<SpeechKeyState> {
-  if (!response.ok) throw Error("unavailable");
+  if (!response.ok) throw Error((await errorCode(response)) || "unavailable");
   const data = await boundedJSON(response);
   if (!validKeyState(data)) throw Error("contract");
   return data;
@@ -168,13 +168,12 @@ export async function readSpeechKey(signal?: AbortSignal) {
   );
 }
 
-export async function saveSpeechKey(
-  csrf: string,
-  key: string,
-  region: SpeechRegion,
-) {
+/** Saves the person's own key. Their daemon asks Soniox which region takes
+ * it; a key no region takes, or one Soniox could not be asked about, is not
+ * saved and throws the contract's code. */
+export async function saveSpeechKey(csrf: string, key: string) {
   return keyReply(
-    await jsonWrite("speech.key", "/api/v1/speech/key", { key, region }, csrf),
+    await jsonWrite("speech.key", "/api/v1/speech/key", { key }, csrf),
   );
 }
 
@@ -206,16 +205,12 @@ export async function readSiteSpeechKey(signal?: AbortSignal) {
   );
 }
 
-export async function setSiteSpeechKey(
-  csrf: string,
-  key: string,
-  region: SpeechRegion,
-) {
+export async function setSiteSpeechKey(csrf: string, key: string) {
   return siteReply(
     await jsonWrite(
       "server.speech_key",
       "/api/v1/server/speech-key/set",
-      { key, region },
+      { key },
       csrf,
     ),
   );

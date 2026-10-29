@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/speech.schema.json",
   "title": "Speech input: the person's Soniox key and one dictation's temporary key",
-  "$comment": "Errors are the common envelope with fixed codes: speech_key_missing (409, no key in the home), speech_key_rejected (409, Soniox refused the key), speech_limit_reached (429, Soniox's or the daemon's limit), speech_unavailable (503, Soniox did not answer). Nothing Soniox said crosses.",
+  "$comment": "Errors are the common envelope with fixed codes: speech_key_missing (409, no key in the home), speech_key_rejected (409, Soniox refused the key in every region), speech_limit_reached (429, Soniox's or the daemon's limit), speech_unavailable (503, Soniox did not answer). A key update answers the last three too: it is saved only once Soniox has taken it, with the region it took it in. Nothing Soniox said crosses.",
   "$defs": {
     "region": {
       "enum": ["us", "eu"]
@@ -22,10 +22,10 @@
     "key_update": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["key", "region"],
+      "$comment": "No region: the daemon finds the one Soniox takes the key in.",
+      "required": ["key"],
       "properties": {
-        "key": {"type": "string", "minLength": 16, "maxLength": 256, "pattern": "^(?:[A-Za-z0-9_-]+\\.){0,3}[A-Za-z0-9_-]{4,}$"},
-        "region": {"$ref": "#/$defs/region"}
+        "key": {"type": "string", "minLength": 16, "maxLength": 256, "pattern": "^(?:[A-Za-z0-9_-]+\\.){0,3}[A-Za-z0-9_-]{4,}$"}
       }
     },
     "session": {

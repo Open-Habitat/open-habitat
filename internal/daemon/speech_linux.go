@@ -42,8 +42,12 @@ const (
 	SpeechKeyPath     = "/api/v1/speech/key"
 	SpeechSessionPath = "/api/v1/speech/session"
 	// SpeechSiteKeyPath is the gateway's own request giving the site's
-	// Soniox key to this person; it is never proxied from a browser.
-	SpeechSiteKeyPath = "/internal/v1/speech/site-key"
+	// Soniox key to this person, and SpeechKeyCheckPath its request asking
+	// an administrator's own daemon which region the key they are setting
+	// works in, since the gateway never uses the key itself. Neither is
+	// ever proxied from a browser.
+	SpeechSiteKeyPath  = "/internal/v1/speech/site-key"
+	SpeechKeyCheckPath = "/internal/v1/speech/key-check"
 )
 
 // SpeechMaxSessionSeconds is one dictation's ceiling (Jari 2026-10-28):
@@ -116,10 +120,10 @@ func NewSpeech(cfg transport.Config, trusted func(*http.Request) bool) *Speech {
 	return newSpeech(cfg, trusted, func(region string) SpeechEndpoints { return speechRegions[region] }, false)
 }
 
-// NewSpeechWithFixtureEndpoints points every region at a synthetic Soniox,
+// NewSpeechWithFixtureEndpoints points each region at a synthetic Soniox,
 // for the browser host and tests only; loopback is allowed there.
-func NewSpeechWithFixtureEndpoints(cfg transport.Config, trusted func(*http.Request) bool, endpoints func() SpeechEndpoints, client *http.Client) *Speech {
-	s := newSpeech(cfg, trusted, func(string) SpeechEndpoints { return endpoints() }, true)
+func NewSpeechWithFixtureEndpoints(cfg transport.Config, trusted func(*http.Request) bool, endpoints func(region string) SpeechEndpoints, client *http.Client) *Speech {
+	s := newSpeech(cfg, trusted, endpoints, true)
 	if client != nil {
 		s.client = client
 	}
@@ -330,22 +334,11 @@ func (s *Speech) allowMint() bool {
 	return true
 }
 
-// Mint creates one dictation's temporary key with the person's key. Soniox
-// failures become fixed codes; nothing Soniox said reaches the browser.
-func (s *Speech) Mint(ctx context.Context) (speechSession, error) {
-	s.mu.Lock()
-	k, err := readSpeechKey(s.cfg.Home)
-	s.mu.Unlock()
-	if err != nil {
-		return speechSession{}, errSpeechFile
-	}
-	if k == nil {
-		return speechSession{}, errSpeechMissing
-	}
-	if !s.allowMint() {
-		return speechSession{}, errSpeechLimit
-	}
-	endpoints := s.endpoints(k.Region)
+// mintAt asks Soniox in region for one dictation's temporary key made with
+// key. Soniox failures become fixed codes; nothing Soniox said reaches the
+// browser.
+func (s *Speech) mintAt(ctx context.Context, key, region string) (speechSession, error) {
+	endpoints := s.endpoints(region)
 	body, _ := json.Marshal(map[string]any{
 		"usage_type":                   "transcribe_websocket",
 		"expires_in_seconds":           speechKeyLifetimeSeconds,
@@ -356,7 +349,7 @@ func (s *Speech) Mint(ctx context.Context) (speechSession, error) {
 	if err != nil {
 		return speechSession{}, errSpeechUnavailable
 	}
-	req.Header.Set("Authorization", "Bearer "+k.APIKey)
+	req.Header.Set("Authorization", "Bearer "+key)
 	req.Header.Set("Content-Type", "application/json")
 	res, err := s.client.Do(req)
 	if err != nil {
@@ -385,6 +378,90 @@ func (s *Speech) Mint(ctx context.Context) (speechSession, error) {
 	return speechSession{SchemaVersion: 1, APIKey: reply.APIKey, ExpiresAt: expires.UTC().Format(time.RFC3339), WebSocketURL: endpoints.WebSocket, MaxSessionSeconds: SpeechMaxSessionSeconds}, nil
 }
 
+// speechRegionOrder is the order a key of unknown region is tried in.
+var speechRegionOrder = []string{"us", "eu"}
+
+// findRegion mints with key in first (when given), then in the other
+// regions, and returns the region that answered with its session. A Soniox
+// project key works only in its own region, and the other regions refuse
+// it as an unknown key (speech-key-wrong-region), so only a refusal moves
+// on: a limit or an unreachable Soniox ends the search, and the key's region
+// stays unknown rather than being guessed.
+func (s *Speech) findRegion(ctx context.Context, key, first string) (string, speechSession, error) {
+	order := speechRegionOrder
+	if first != "" {
+		order = []string{first}
+		for _, region := range speechRegionOrder {
+			if region != first {
+				order = append(order, region)
+			}
+		}
+	}
+	for _, region := range order {
+		session, err := s.mintAt(ctx, key, region)
+		if err == nil {
+			return region, session, nil
+		}
+		if err != errSpeechRejected {
+			return "", speechSession{}, err
+		}
+	}
+	return "", speechSession{}, errSpeechRejected
+}
+
+// correctRegion rewrites the stored key's region to the one Soniox took it
+// in, if the file still holds exactly what the mint read.
+func (s *Speech) correctRegion(read speechKeyFile, region string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	current, err := readSpeechKey(s.cfg.Home)
+	if err != nil || current == nil || *current != read {
+		return
+	}
+	current.Region = region
+	_ = writeSpeechKey(s.cfg.Home, *current)
+}
+
+// Mint creates one dictation's temporary key with the person's key. A key
+// stored with the wrong region, as the region picker once allowed, is
+// tried once in the other region and its file corrected when it works
+// there, so neither the person's key nor a site copy reads as refused.
+func (s *Speech) Mint(ctx context.Context) (speechSession, error) {
+	s.mu.Lock()
+	k, err := readSpeechKey(s.cfg.Home)
+	s.mu.Unlock()
+	if err != nil {
+		return speechSession{}, errSpeechFile
+	}
+	if k == nil {
+		return speechSession{}, errSpeechMissing
+	}
+	if !s.allowMint() {
+		return speechSession{}, errSpeechLimit
+	}
+	region, session, err := s.findRegion(ctx, k.APIKey, k.Region)
+	if err != nil {
+		return speechSession{}, err
+	}
+	if region != k.Region {
+		s.correctRegion(*k, region)
+	}
+	return session, nil
+}
+
+// CheckKey finds the region key works in without storing it anywhere.
+// The temporary key minted on the way is dropped unused.
+func (s *Speech) CheckKey(ctx context.Context, key string) (string, error) {
+	if !ValidSonioxKey(key) {
+		return "", errors.New("invalid key")
+	}
+	if !s.allowMint() {
+		return "", errSpeechLimit
+	}
+	region, _, err := s.findRegion(ctx, key, "")
+	return region, err
+}
+
 func (s *Speech) fail(w http.ResponseWriter, err error) {
 	var e errSpeech
 	if !errors.As(err, &e) {
@@ -393,9 +470,12 @@ func (s *Speech) fail(w http.ResponseWriter, err error) {
 	snapshotError(w, e.status, e.code)
 }
 
-// KeyHandler is GET (state), POST {key, region} (save as the person's own)
-// and DELETE (remove) on SpeechKeyPath. Replies carry presence, region,
-// source and at most the key's last four characters.
+// KeyHandler is GET (state), POST {key} (save as the person's own) and
+// DELETE (remove) on SpeechKeyPath. A key is saved only once Soniox has
+// taken it, with the region it took it in; one that no region takes is
+// speech_key_rejected, and a Soniox that cannot be asked saves nothing.
+// Replies carry presence, region, source and at most the key's last four
+// characters.
 func (s *Speech) KeyHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(s.cfg, s.trusted, r) {
@@ -419,21 +499,20 @@ func (s *Speech) KeyHandler() http.Handler {
 				return
 			}
 			var body struct {
-				Key    string `json:"key"`
-				Region string `json:"region"`
+				Key string `json:"key"`
 			}
 			dec := json.NewDecoder(io.LimitReader(r.Body, 513))
 			dec.DisallowUnknownFields()
-			input = speechKeyFile{Source: "own"}
-			if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF {
+			if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF || !ValidSonioxKey(body.Key) {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-			input.APIKey, input.Region = body.Key, body.Region
-			if !input.valid() {
-				snapshotError(w, 400, "invalid_request")
+			region, err := s.CheckKey(r.Context(), body.Key)
+			if err != nil {
+				s.fail(w, err)
 				return
 			}
+			input = speechKeyFile{APIKey: body.Key, Region: region, Source: "own"}
 		default:
 			snapshotError(w, 405, "method_not_allowed")
 			return
@@ -518,9 +597,53 @@ func (s *Speech) SiteKeyHandler() http.Handler {
 	})
 }
 
+// KeyCheckHandler answers the gateway's check of a key an administrator
+// is setting: works with its region, rejected, limited or unavailable. It
+// stores nothing.
+func (s *Speech) KeyCheckHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !historyAuthorized(s.cfg, s.trusted, r) {
+			snapshotError(w, 403, "cross_user_denied")
+			return
+		}
+		if r.Method != http.MethodPost {
+			snapshotError(w, 405, "method_not_allowed")
+			return
+		}
+		if r.URL.RawQuery != "" || r.Header.Get("Content-Type") != "application/json" || r.ContentLength <= 0 || r.ContentLength > 1024 || len(r.TransferEncoding) != 0 {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		var body struct {
+			SchemaVersion int    `json:"schema_version"`
+			Key           string `json:"key"`
+		}
+		dec := json.NewDecoder(io.LimitReader(r.Body, 1025))
+		dec.DisallowUnknownFields()
+		if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF || body.SchemaVersion != 1 || !ValidSonioxKey(body.Key) {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		reply := map[string]any{"schema_version": 1}
+		region, err := s.CheckKey(r.Context(), body.Key)
+		switch err {
+		case nil:
+			reply["outcome"], reply["region"] = "works", region
+		case errSpeechRejected:
+			reply["outcome"] = "rejected"
+		case errSpeechLimit:
+			reply["outcome"] = "limited"
+		default:
+			reply["outcome"] = "unavailable"
+		}
+		historyJSON(w, reply)
+	})
+}
+
 // Mount adds the speech routes to a daemon mux.
 func (s *Speech) Mount(mux *http.ServeMux) {
 	mux.Handle(SpeechKeyPath, s.KeyHandler())
 	mux.Handle(SpeechSessionPath, s.SessionHandler())
 	mux.Handle(SpeechSiteKeyPath, s.SiteKeyHandler())
+	mux.Handle(SpeechKeyCheckPath, s.KeyCheckHandler())
 }

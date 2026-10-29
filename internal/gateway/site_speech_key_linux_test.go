@@ -18,13 +18,19 @@ import (
 )
 
 // fakeSpeech is one person's daemon as the site Soniox key route sees it:
-// the key file's key and source, decided as the daemon does (the real
-// decision and file are proven in the daemon package).
+// the key file's key and source, decided as the daemon does, and its check
+// of a key against a Soniox whose keys each work in one region (the real
+// decision, file and mint are proven in the daemon package).
 type fakeSpeech struct {
 	mu       sync.Mutex
 	key      string
 	source   string
 	requests []map[string]any
+	checks   []map[string]any
+	// sonioxRegions is where Soniox takes each key; a key it does not list
+	// is refused everywhere, and down makes Soniox unreachable.
+	sonioxRegions map[string]string
+	down          bool
 }
 
 func (f *fakeSpeech) serve(t *testing.T, path string) {
@@ -34,12 +40,24 @@ func (f *fakeSpeech) serve(t *testing.T, path string) {
 	}
 	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
-		if r.URL.Path != speechDaemonPath || r.Method != http.MethodPost || json.NewDecoder(r.Body).Decode(&body) != nil {
+		if r.URL.Path != speechDaemonPath && r.URL.Path != speechCheckDaemonPath || r.Method != http.MethodPost || json.NewDecoder(r.Body).Decode(&body) != nil {
 			w.WriteHeader(400)
 			return
 		}
 		f.mu.Lock()
 		defer f.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == speechCheckDaemonPath {
+			f.checks = append(f.checks, body)
+			reply := map[string]any{"schema_version": 1, "outcome": "rejected"}
+			if region, ok := f.sonioxRegions[body["key"].(string)]; f.down {
+				reply["outcome"] = "unavailable"
+			} else if ok {
+				reply["outcome"], reply["region"] = "works", region
+			}
+			json.NewEncoder(w).Encode(reply)
+			return
+		}
 		f.requests = append(f.requests, body)
 		key := body["key"].(string)
 		outcome := "seeded"
@@ -54,7 +72,6 @@ func (f *fakeSpeech) serve(t *testing.T, path string) {
 		if outcome == "seeded" || outcome == "replaced" {
 			f.key, f.source = key, "site"
 		}
-		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "outcome": outcome})
 	})}
 	go srv.Serve(ln)
@@ -110,17 +127,20 @@ func TestSiteSpeechKeyIsGivenToJoinedPeople(t *testing.T) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", sockets[path])
 	}
 	daemons["42"].key, daemons["42"].source = "AliceOwn0000000000000000", "own"
+	// The site key is a US project's: Soniox refuses it in the EU.
+	daemons["42"].sonioxRegions = map[string]string{siteSoniox: "us"}
 
 	alice := x.login("42", "alice")
 	csrf := x.csrf(alice)
 	bob := x.login("43", "bob")
-	if w := speechKeyPost(x.h, bob, x.csrf(bob), "set", `{"region":"eu","key":"`+siteSoniox+`"}`); w.Code != 403 {
+	if w := speechKeyPost(x.h, bob, x.csrf(bob), "set", `{"key":"`+siteSoniox+`"}`); w.Code != 403 {
 		t.Fatal("bob set the site key", w.Code)
 	}
-	if w := speechKeyPost(x.h, alice, "wrong", "set", `{"region":"eu","key":"`+siteSoniox+`"}`); w.Code != 403 {
+	if w := speechKeyPost(x.h, alice, "wrong", "set", `{"key":"`+siteSoniox+`"}`); w.Code != 403 {
 		t.Fatal("set without the session's proof", w.Code)
 	}
-	for _, body := range []string{`{"region":"jp","key":"` + siteSoniox + `"}`, `{"region":"eu","key":"$SONIOX_API_KEY"}`, `{"region":"eu"}`} {
+	// The region is what Soniox says, never the browser's.
+	for _, body := range []string{`{"region":"eu","key":"` + siteSoniox + `"}`, `{"key":"$SONIOX_API_KEY"}`, `{}`} {
 		if w := speechKeyPost(x.h, alice, csrf, "set", body); w.Code != 400 {
 			t.Fatal("accepted", body, w.Code)
 		}
@@ -129,11 +149,34 @@ func TestSiteSpeechKeyIsGivenToJoinedPeople(t *testing.T) {
 		SiteKey *speechKeyView   `json:"site_key"`
 		Given   speechGiveCounts `json:"given"`
 	}
-	w := speechKeyPost(x.h, alice, csrf, "set", `{"region":"eu","key":"`+siteSoniox+`"}`)
+	// A key Soniox takes nowhere, or a Soniox that cannot be asked, stores
+	// nothing and gives nothing.
+	const refused = "Refused000000000000000000000Xx11"
+	for body, want := range map[string]string{refused: "speech_key_rejected", siteSoniox: "speech_unavailable"} {
+		daemons["42"].down = body == siteSoniox
+		w := speechKeyPost(x.h, alice, csrf, "set", `{"key":"`+body+`"}`)
+		if w.Code == 200 || !strings.Contains(w.Body.String(), `"`+want+`"`) {
+			t.Fatal("unchecked key", want, w.Code, w.Body.String())
+		}
+	}
+	daemons["42"].down = false
+	if _, n := daemons["43"].holds(); n != 0 {
+		t.Fatal("an unchecked key was given")
+	}
+	if _, err := os.Stat(filepath.Join(x.dir, "site-soniox-key.json")); !os.IsNotExist(err) {
+		t.Fatal("an unchecked key was stored", err)
+	}
+	w := speechKeyPost(x.h, alice, csrf, "set", `{"key":"`+siteSoniox+`"}`)
 	got := decodeInto[reply](t, w.Body.Bytes())
 	// carol is admitted but has not joined: she is not offered it yet.
-	if w.Code != 200 || got.SiteKey == nil || got.SiteKey.Suffix != "Kq7Z" || got.SiteKey.Region != "eu" || got.Given["seeded"] != 1 || got.Given["kept"] != 1 || len(got.Given) != 2 {
+	if w.Code != 200 || got.SiteKey == nil || got.SiteKey.Suffix != "Kq7Z" || got.SiteKey.Region != "us" || got.Given["seeded"] != 1 || got.Given["kept"] != 1 || len(got.Given) != 2 {
 		t.Fatal("set", w.Code, w.Body.String())
+	}
+	// Only the administrator's own daemon is asked, with the key alone.
+	for id, d := range daemons {
+		if n := len(d.checks); id == "42" && (n != 3 || len(d.checks[2]) != 2) || id != "42" && n != 0 {
+			t.Fatal("check asked of", id, d.checks)
+		}
 	}
 	if k, _ := daemons["43"].holds(); k != siteSoniox {
 		t.Fatal("bob has no copy")
@@ -142,7 +185,7 @@ func TestSiteSpeechKeyIsGivenToJoinedPeople(t *testing.T) {
 		t.Fatal("alice's own key replaced")
 	}
 	// Setting the same key again reaches anyone the first set did not.
-	got = decodeInto[reply](t, speechKeyPost(x.h, alice, csrf, "set", `{"region":"eu","key":"`+siteSoniox+`"}`).Body.Bytes())
+	got = decodeInto[reply](t, speechKeyPost(x.h, alice, csrf, "set", `{"key":"`+siteSoniox+`"}`).Body.Bytes())
 	if got.Given["already_current"] != 1 || got.Given["kept"] != 1 {
 		t.Fatal("second set", got.Given)
 	}
@@ -197,7 +240,7 @@ func TestSiteSpeechKeyIsGivenToJoinedPeople(t *testing.T) {
 	// The daemon is asked with the key and nothing else; no reply or log
 	// line carries it.
 	for _, r := range daemons["43"].requests {
-		if len(r) != 3 || r["region"] != "eu" {
+		if len(r) != 3 || r["region"] != "us" {
 			t.Fatal("request carried more than the daemon needs", r)
 		}
 	}
