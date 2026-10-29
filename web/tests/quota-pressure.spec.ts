@@ -40,6 +40,16 @@ test("quota warning, full storage and recovery keep the conversation mounted wit
   await expect(bell(page)).toHaveAttribute("data-tone", "neutral");
   await bell(page).click();
   await expect(storage(page)).toHaveAttribute("data-full", "false");
+  // From 95 % the bell itself says it, before writes start failing.
+  usage = 96;
+  await storage(page).getByTestId("quota-recheck").click();
+  await expect(storage(page)).toHaveAttribute("data-critical", "true");
+  await expect(storage(page)).toContainText("melkein täynnä (96 %)");
+  await expect(bell(page)).toHaveAttribute("data-tone", "danger");
+  usage = 91;
+  await storage(page).getByTestId("quota-recheck").click();
+  await expect(storage(page)).toHaveAttribute("data-critical", "false");
+  await expect(bell(page)).toHaveAttribute("data-tone", "neutral");
   await page.keyboard.press("Escape");
   await expect(storage(page)).toHaveCount(0);
   // A terminal history that has ended is reached through the start page.

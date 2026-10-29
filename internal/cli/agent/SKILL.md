@@ -14,6 +14,10 @@ Run as the person's Unix user, never root. Start with:
 
 The result distinguishes CLI and daemon versions. Quota unavailable is not zero
 usage or unlimited space; filesystem free space is a separate observation.
+Check it before large builds, clones or downloads: a full quota cuts writes
+mid-file, the conversation's own history included. Above 85 % of the hard
+limit, tell the person and free regenerable caches (`go clean -cache`, old
+merged worktrees) before adding more.
 `site.origin` is the address the person uses for this Open Habitat (for example
 `https://habitat.example.org`); build links to settings, sign-in or views from
 it. It is display data, not identity. When `site.state` is `unavailable`, say

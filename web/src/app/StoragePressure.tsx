@@ -93,25 +93,40 @@ export function StoragePressureProvider({
   );
 }
 
-/** Storage near its limit or full, as the bell's item; nothing below 90 %. */
+// A full quota cuts writes mid-file, agents' as well as the person's (29.10.
+// 2026 it cut a conversation's history). The bell says so early: quietly from
+// 85 %, and from 95 % on the bell itself, while there is still room to act.
+const NEAR = 0.85;
+const CRITICAL = 0.95;
+
+/** Storage near its limit or full, as the bell's item; nothing below 85 %. */
 export function useStorageStatus(): StatusItem | undefined {
   const { full, quota, unavailable, retry } = useStoragePressure();
   const navigate = useNavigate();
   if (!quota) return undefined;
   const { used, bound, shared } = room(quota);
-  if (used < bound * 0.9) return undefined;
+  if (used < bound * NEAR) return undefined;
+  const critical = !full && used >= bound * CRITICAL;
   const what = shared ? "Palvelimen levy" : "Tallennustilasi";
+  const percent = Math.floor((used / bound) * 100);
   return {
     key: "storage",
-    tone: full ? "danger" : "warning",
+    tone: full || critical ? "danger" : "warning",
     icon: "disk",
     group: "own",
-    short: full ? "Tila täynnä" : "Tila lähes täynnä",
-    title: full ? `${what} on täynnä` : `${what} on lähes täynnä`,
+    short: full
+      ? "Tila täynnä"
+      : critical
+        ? "Tila melkein täynnä"
+        : "Tila lähes täynnä",
+    title: full
+      ? `${what} on täynnä`
+      : `${what} on ${critical ? "melkein" : "lähes"} täynnä (${percent} %)`,
     meta: `${bytes(used)} / ${bytes(bound)}`,
-    body: `${shared ? "Levy on kaikkien käyttäjien yhteinen; myös muiden tiedostot täyttävät sitä. " : ""}Vapauta tilaa roskakorista tai pyydä agenttia siivoamaan tarpeettomia tiedostoja. Roskakoriin siirtäminen ei vapauta tilaa ennen sen tyhjentämistä.${full ? " Tallennus on voinut epäonnistua. Viestejä ei lähetetä uudelleen automaattisesti." : ""}${unavailable ? " Tallennustilaa ei voitu tarkistaa; tämä on viimeisin tieto." : ""}`,
+    body: `${shared ? "Levy on kaikkien käyttäjien yhteinen; myös muiden tiedostot täyttävät sitä. " : ""}${critical ? "Kun tila loppuu, tallennukset katkeavat kesken, myös agenttien kirjoittamat keskusteluhistoriat. " : ""}Vapauta tilaa roskakorista tai pyydä agenttia siivoamaan tarpeettomia tiedostoja, esimerkiksi käännösvälimuistit ja vanhat worktreet. Roskakoriin siirtäminen ei vapauta tilaa ennen sen tyhjentämistä.${full ? " Tallennus on voinut epäonnistua. Viestejä ei lähetetä uudelleen automaattisesti." : ""}${unavailable ? " Tallennustilaa ei voitu tarkistaa; tämä on viimeisin tieto." : ""}`,
     data: {
       full: String(full),
+      critical: String(critical),
       shared: String(shared),
       unavailable: String(unavailable),
     },

@@ -152,8 +152,16 @@ clean, fully pushed clone outright. The browser can list and restore trashed
 workspaces and permanently delete them after confirmation. Nothing is purged
 automatically. Prefer the browser's checked removal flow over `rm -rf`.
 Storage is limited by the installation's per-user filesystem quota; Trash also
-uses space. The browser shows the person's storage usage and limit. Do not invent a numeric allowance or promise that deleting history
+uses space. The browser shows the person's storage usage and limit, and warns
+from 85 %. Do not invent a numeric allowance or promise that deleting history
 or archiving a conversation frees space. An operator must change quota limits.
+A full quota cuts every write mid-file, including this conversation's own
+history, so check `quota` in `open-habitat agent environment show --json`
+before large builds, clones or downloads. Above 85 % tell the person, and
+free what is regenerable before adding more: build caches (`go clean -cache`,
+`npm cache clean --force`, `cargo clean` in a project) and worktrees whose work
+is merged (`git worktree remove`, after checking they hold nothing unpushed).
+Never delete the person's own files to make room without asking.
 
 ## Limits of your authority
 
