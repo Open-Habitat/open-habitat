@@ -44,9 +44,12 @@ type OAuthConfig struct {
 	EditorOrigin string `json:"editor_origin,omitempty"`
 	// ViewOrigin is the per-view DNS template for agent HTML views
 	// (https://oh-view-*.example.org, ADR 0032). Empty offers no views.
-	ViewOrigin string        `json:"view_origin,omitempty"`
-	Identities []Identity    `json:"identities"`
-	Access     *AccessConfig `json:"access,omitempty"`
+	ViewOrigin string `json:"view_origin,omitempty"`
+	// ViewLinkMaxDays enables shared view links (ADR 0033) and is their
+	// longest expiry in days; 0 offers none. It needs a view origin.
+	ViewLinkMaxDays int           `json:"view_link_max_days,omitempty"`
+	Identities      []Identity    `json:"identities"`
+	Access          *AccessConfig `json:"access,omitempty"`
 }
 
 // Provider must validate the authorization code and obtain an authenticated account ID.
@@ -246,6 +249,9 @@ type Auth struct {
 	editors          map[string]editorSession
 	viewGrants       map[string]viewGrant
 	views            map[string]viewSession
+	viewLinks        map[string]viewLink // keyed by link ID
+	viewLinkHosts    map[string]string   // link host -> link ID
+	viewLinkTraffic  viewLinkTraffic
 	sessionFile      string
 	adminFile        string
 	adminEstablished bool
@@ -292,6 +298,9 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if cfg.ViewOrigin != "" && !validViewOrigin(cfg.Origin, cfg.EditorOrigin, cfg.ViewOrigin) {
 		return nil, errors.New("invalid view origin")
 	}
+	if cfg.ViewLinkMaxDays < 0 || cfg.ViewLinkMaxDays > viewLinkMaxDays || cfg.ViewLinkMaxDays > 0 && cfg.ViewOrigin == "" {
+		return nil, errors.New("invalid view link expiry")
+	}
 	if len(cfg.Identities) != 0 {
 		return nil, errors.New("fixed identity mappings are not supported")
 	}
@@ -325,6 +334,7 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if err := a.loadSiteSpeechKey(); err != nil {
 		return nil, err
 	}
+	a.loadViewLinks()
 	if err := a.loadSessions(); err != nil {
 		// Unusable state cannot authenticate any cookie. Permit a new OAuth
 		// login to replace it, without trusting or copying its old contents.

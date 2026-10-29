@@ -36,12 +36,18 @@ export function ViewOfferCard({
   state = "idle",
   onOpen,
   onOpenTab,
+  onShare,
+  sharedUntil,
 }: {
   view: ViewSummary;
   state?: ViewOfferState;
   /** Open in the panel; the pressed button receives focus back on close. */
   onOpen: (opener: HTMLElement | null) => void;
   onOpenTab: () => void;
+  /** Jaa linkillä (ADR 0033); absent where the site offers no links. */
+  onShare?: () => void;
+  /** The expiry of the link that shows this view, when there is one. */
+  sharedUntil?: string;
 }) {
   return (
     <aside
@@ -63,7 +69,15 @@ export function ViewOfferCard({
         <span className="ah-view-offer-meta">
           Jäädytetty HTML ·{" "}
           {view.files === 1 ? "1 tiedosto" : `${view.files} tiedostoa`} ·{" "}
-          {formatViewSize(view.bytes)} · Vain sinulle
+          {formatViewSize(view.bytes)} ·{" "}
+          {sharedUntil ? (
+            <span data-testid="view-shared">
+              Jaettu linkillä{" "}
+              {new Date(sharedUntil).toLocaleDateString("fi-FI")} asti
+            </span>
+          ) : (
+            "Vain sinulle"
+          )}
         </span>
         <span className="ah-view-offer-actions">
           <ControlButton
@@ -84,6 +98,15 @@ export function ViewOfferCard({
           >
             Avaa omalle välilehdelle <Icon name="external" />
           </ControlButton>
+          {onShare && (
+            <ControlButton
+              size="row"
+              data-testid="view-share"
+              onPress={onShare}
+            >
+              <Icon name="link" /> Jaa linkillä
+            </ControlButton>
+          )}
         </span>
         {state === "tab_requested" || state === "failed" ? (
           <span className="ah-view-offer-status" role="status">

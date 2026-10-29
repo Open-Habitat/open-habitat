@@ -272,6 +272,13 @@ func (a *Auth) viewServe(w http.ResponseWriter, r *http.Request) {
 		viewFailure(w, 405, "Näkymää voi vain lukea.")
 		return
 	}
+	a.mu.Lock()
+	link, linked := a.viewLinkHosts[r.Host]
+	a.mu.Unlock()
+	if linked {
+		a.viewLinkServe(w, r, link)
+		return
+	}
 	if r.URL.Path == viewHandoffRoute {
 		a.redeemViewHandoff(w, r)
 		return
@@ -281,11 +288,17 @@ func (a *Auth) viewServe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v, ok := a.viewAuthenticated(r)
+	if token, _, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/"); !ok && validViewLinkToken(token) {
+		// A revoked link's host is an ordinary view host again; its
+		// recipient has no view session to be told about.
+		viewFailure(w, 404, "Linkki ei ole voimassa.")
+		return
+	}
 	if !ok {
 		viewFailure(w, 401, "Näkymän istunto on päättynyt. Avaa näkymä uudelleen Habitatista.")
 		return
 	}
-	a.viewRelay(w, r, v)
+	a.viewRelay(w, r, v.identity, v.viewID, "", nil, "user", v.identity.Username)
 }
 
 func (a *Auth) redeemViewHandoff(w http.ResponseWriter, r *http.Request) {
@@ -410,13 +423,18 @@ func viewRelPath(r *http.Request) (string, bool) {
 	return rel, true
 }
 
-func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, v viewSession) {
-	rel, ok := viewRelPath(r)
+// viewRelay reads one file of viewID from target's daemon. base is the path
+// prefix the view's files sit under on this host (a link's token); charge,
+// when set, takes the file's size from a budget before it is sent.
+func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity, viewID, base string, charge func(int64) bool, logKey, logValue string) {
+	u := *r.URL
+	u.Path = strings.TrimPrefix(u.Path, base)
+	u.RawPath = strings.TrimPrefix(u.RawPath, base)
+	rel, ok := viewRelPath(&http.Request{URL: &u})
 	if !ok {
 		viewFailure(w, 404, "Tiedostoa ei löydy tästä näkymästä.")
 		return
 	}
-	target := v.identity
 	if a.snapshotDial == nil && udssecure.Mapped(target.Socket, target.UID) != nil {
 		viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
 		return
@@ -433,7 +451,7 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, v viewSession) 
 	if rel == "" {
 		method = http.MethodGet
 	}
-	out := &url.URL{Scheme: "http", Host: "unix", Path: "/view-export/" + v.viewID + "/" + rel}
+	out := &url.URL{Scheme: "http", Host: "unix", Path: "/view-export/" + viewID + "/" + rel}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, method, out.String(), http.NoBody)
@@ -444,13 +462,16 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, v viewSession) 
 	res, err := transport.RoundTrip(req)
 	if err != nil {
 		if a.log != nil && r.Context().Err() == nil {
-			a.log.Warn("view_relay", "outcome", "failed", "reason", "daemon_exchange_failed", "user", target.Username)
+			a.log.Warn("view_relay", "outcome", "failed", "reason", "daemon_exchange_failed", logKey, logValue)
 		}
 		viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
 		return
 	}
 	defer res.Body.Close()
 	switch {
+	case res.StatusCode == 404 && rel == "" && base != "":
+		viewFailure(w, 404, "Jaettu näkymä ei ole enää saatavilla.")
+		return
 	case res.StatusCode == 404:
 		viewFailure(w, 404, "Tiedostoa ei löydy tästä näkymästä.")
 		return
@@ -475,13 +496,20 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, v viewSession) 
 			viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
 			return
 		}
-		w.Header().Set("Location", (&url.URL{Path: "/" + body.View.Entry}).EscapedPath())
+		w.Header().Set("Location", (&url.URL{Path: base + "/" + body.View.Entry}).EscapedPath())
 		w.WriteHeader(http.StatusFound)
 		return
 	}
 	size, err := strconv.ParseInt(res.Header.Get("Content-Length"), 10, 64)
 	if err != nil || size < 0 {
 		viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
+		return
+	}
+	if charge != nil && r.Method == http.MethodGet && !charge(size) {
+		if a.log != nil {
+			a.log.Warn("view_relay", "outcome", "rejected", "reason", "daily_budget", logKey, logValue)
+		}
+		viewFailure(w, 429, "Tämän linkin päivän siirtoraja on täynnä. Yritä huomenna uudelleen.")
 		return
 	}
 	kind, ok := viewContentTypes[strings.ToLower(path.Ext(rel))]

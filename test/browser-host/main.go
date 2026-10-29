@@ -201,6 +201,11 @@ func main() {
 	// Views mode adds the per-view origin of agent HTML views (ADR 0032) on
 	// the same sibling-host domain.
 	viewsMode := os.Getenv("BROWSER_HOST_VIEWS") == "1"
+	// Shared view links (ADR 0033) need views; the site's maximum is 90 days.
+	viewLinkDays := 0
+	if viewsMode && os.Getenv("BROWSER_HOST_VIEW_LINKS") == "1" {
+		viewLinkDays = 90
+	}
 	// Ending the host stops a real code-server's process group.
 	editorCtx, editorStop := context.WithCancel(context.Background())
 	defer func() {
@@ -691,7 +696,7 @@ esac
 		if n := release.Load(); n > 0 {
 			version += "." + strconv.Itoa(int(n))
 		}
-		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, EditorOrigin: editorOrigin, ViewOrigin: viewOrigin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: version, Commit: strings.Repeat(strconv.Itoa(int(release.Load())%10), 40), Provider: fixtureProvider, Sink: sink{&scenario, planTargets, seedTargets, piStateFile, &seedFail}, Broker: broker, AdminFile: adminPath, SiteKeyFile: filepath.Join(tmp, "site-ai-key.json"), SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
+		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, EditorOrigin: editorOrigin, ViewOrigin: viewOrigin, ViewLinkMaxDays: viewLinkDays, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: version, Commit: strings.Repeat(strconv.Itoa(int(release.Load())%10), 40), Provider: fixtureProvider, Sink: sink{&scenario, planTargets, seedTargets, piStateFile, &seedFail}, Broker: broker, AdminFile: adminPath, SiteKeyFile: filepath.Join(tmp, "site-ai-key.json"), SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
 		}, SnapshotPeerUID: func(c *net.UnixConn) int { return peers[c.RemoteAddr().String()] }})
 		if err != nil {

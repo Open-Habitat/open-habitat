@@ -13,6 +13,7 @@ import { ControlButton } from "../components/ControlElements";
 import { FileOfferCard, FileShelf } from "../components/FileOffer";
 import { GuidePanel } from "../components/GuidePanel";
 import { Icon } from "../components/Icon";
+import { ViewLinkDialog } from "../components/ViewLink";
 import {
   ViewOfferCard,
   type ViewOfferState,
@@ -30,6 +31,15 @@ import {
   useFileOffers,
 } from "./fileOffers";
 import { readGuide, setGuide, useGuide } from "./goalGuide";
+import {
+  changeViewLink,
+  createViewLink,
+  refreshViewLinks,
+  resetViewLinks,
+  revokeViewLink,
+  useViewLinks,
+  type ViewLink,
+} from "./viewLinks";
 import { listViews, mintViewURL, viewTabPath } from "./views";
 
 // Agent HTML views (ADR 0032, prototype round 2 "Suora"): an offer card has
@@ -45,6 +55,10 @@ type ViewControls = {
   state: (id: string) => ViewOfferState;
   open: (view: ViewSummary, opener: HTMLElement | null) => void;
   openTab: (view: ViewSummary) => void;
+  /** Jaa linkillä; absent where the site offers no links (ADR 0033). */
+  share?: (view: ViewSummary) => void;
+  /** The newest link that shows this view now. */
+  linkFor: (id: string) => ViewLink | undefined;
 };
 
 const ViewContext = createContext<ViewControls | null>(null);
@@ -128,6 +142,11 @@ export function ViewHost({
   }, []);
   const title = useRef<HTMLHeadingElement>(null);
   const mintSeq = useRef(0);
+  const links = useViewLinks();
+  const [views, setViews] = useState<ViewSummary[]>([]);
+  const [sharing, setSharing] = useState<ViewSummary>();
+  // The dialog follows its link by ID: re-pointing moves it to another view.
+  const [sharingLink, setSharingLink] = useState<string>();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: identity is the trigger, not an input.
   useEffect(() => {
@@ -137,6 +156,16 @@ export function ViewHost({
     setOpened(undefined);
     setShelf(undefined);
     setExpanded(false);
+    setSharing(undefined);
+    setViews([]);
+  }, [identity]);
+
+  // Another person's links are forgotten, as their offers are.
+  const linksOf = useRef(identity);
+  useEffect(() => {
+    if (linksOf.current === identity) return;
+    linksOf.current = identity;
+    resetViewLinks();
   }, [identity]);
 
   // Another person's offers are forgotten. The first identity is not a
@@ -153,13 +182,29 @@ export function ViewHost({
     const abort = new AbortController();
     void listViews(abort.signal)
       .then((views) => {
-        if (!abort.signal.aborted) setEnabled(views !== null);
+        if (abort.signal.aborted) return;
+        setEnabled(views !== null);
+        setViews(views ?? []);
+        if (views !== null)
+          void refreshViewLinks(abort.signal).catch(() => {
+            // Without the list no card offers a link.
+          });
       })
       .catch(() => {
         // An unreadable list leaves offers hidden: they need the origin.
       });
     return () => abort.abort();
   }, [csrf]);
+
+  const share = useCallback((view: ViewSummary, linkId?: string) => {
+    setSharing(view);
+    setSharingLink(linkId);
+    // The other views to point a link at are read afresh.
+    void listViews().then(
+      (list) => list && setViews(list),
+      () => {},
+    );
+  }, []);
 
   useEffect(() => {
     const resize = () => setTotal(window.innerWidth);
@@ -313,6 +358,11 @@ export function ViewHost({
     [shelf?.conversationId, openShelf, closeShelf],
   );
 
+  const linkList = typeof links === "object" ? links : undefined;
+  const linkFor = useCallback(
+    (id: string) => linkList?.links.find((l) => l.view_id === id),
+    [linkList],
+  );
   const controls = useMemo<ViewControls | null>(
     () =>
       enabled
@@ -320,10 +370,20 @@ export function ViewHost({
             state: (id) => states[id] ?? "idle",
             open,
             openTab,
+            share: linkList
+              ? (view) => share(view, linkFor(view.view_id)?.link_id)
+              : undefined,
+            linkFor,
           }
         : null,
-    [enabled, states, open, openTab],
+    [enabled, states, open, openTab, linkList, share, linkFor],
   );
+  const sharedLink = sharingLink
+    ? linkList?.links.find((l) => l.link_id === sharingLink)
+    : undefined;
+  const sharedView =
+    (sharedLink && views.find((v) => v.view_id === sharedLink.view_id)) ||
+    sharing;
   const bounds = panelBounds(total);
   const shown = Math.min(
     Math.max(guideShown ? guideWidth : width, bounds.min),
@@ -361,6 +421,16 @@ export function ViewHost({
                   titleRef={title}
                   onToggleExpanded={() => setExpanded(!expanded)}
                   onOpenTab={() => openTab(opened.view)}
+                  onShare={
+                    linkList
+                      ? () =>
+                          share(
+                            opened.view,
+                            linkFor(opened.view.view_id)?.link_id,
+                          )
+                      : undefined
+                  }
+                  sharedUntil={linkFor(opened.view.view_id)?.expires_at}
                   onClose={close}
                 />
               ) : shelf ? (
@@ -381,6 +451,45 @@ export function ViewHost({
           >
             {children}
           </ViewSplit>
+          {sharing && sharedView && linkList && csrf ? (
+            <ViewLinkDialog
+              isOpen
+              onClose={() => setSharing(undefined)}
+              view={sharedView}
+              link={sharedLink}
+              maxDays={linkList.maxDays}
+              otherViews={views}
+              onCreate={(days) =>
+                createViewLink(csrf, sharing.view_id, days).then((l) =>
+                  setSharingLink(l.link_id),
+                )
+              }
+              onExtend={(days) =>
+                sharedLink
+                  ? changeViewLink(csrf, sharedLink.link_id, { days })
+                  : Promise.resolve()
+              }
+              onRepoint={(viewId) =>
+                sharedLink
+                  ? changeViewLink(csrf, sharedLink.link_id, {
+                      view_id: viewId,
+                    })
+                  : Promise.resolve()
+              }
+              onNewAddress={() =>
+                sharedLink
+                  ? changeViewLink(csrf, sharedLink.link_id, {
+                      new_address: true,
+                    })
+                  : Promise.resolve()
+              }
+              onRevoke={() =>
+                sharedLink
+                  ? revokeViewLink(csrf, sharedLink.link_id)
+                  : Promise.resolve()
+              }
+            />
+          ) : null}
         </GuideContext.Provider>
       </ShelfContext.Provider>
     </ViewContext.Provider>
@@ -402,6 +511,8 @@ export function NoticeEntry({ notice }: { notice: AgentNotice }) {
       state={views.state(view.view_id)}
       onOpen={(opener) => views.open(view, opener)}
       onOpenTab={() => views.openTab(view)}
+      onShare={views.share ? () => views.share?.(view) : undefined}
+      sharedUntil={views.linkFor(view.view_id)?.expires_at}
     />
   );
 }

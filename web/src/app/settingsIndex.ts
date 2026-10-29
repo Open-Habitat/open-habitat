@@ -68,6 +68,13 @@ export const settingsSections = [
         ],
         desc: "Commitien tekijä. Tallentuu globaaliin ~/.gitconfig-tiedostoon.",
       },
+      {
+        id: "view-links",
+        label: "Jaetut linkit",
+        kw: ["linkki", "link", "jaa", "share", "julkinen", "näkymä", "view"],
+        desc: "Näkymät, jotka olet jakanut linkillä: kopioi tai poista.",
+        when: "the site offers shared view links",
+      },
     ],
   },
   {
@@ -610,6 +617,13 @@ export const settingsSections = [
         label: "Henkilöt",
         kw: ["käyttäjät", "users", "liittyneet", "poista"],
         desc: "Liittyneet, kirjautumattomat ja poistetut henkilöt.",
+      },
+      {
+        id: "view-links-admin",
+        label: "Jaetut linkit",
+        kw: ["linkki", "link", "jaa", "share", "väärinkäyttö", "abuse"],
+        desc: "Henkilöiden jakamat näkymälinkit; poista väärinkäytetty.",
+        when: "the site offers shared view links or some remain",
       },
     ],
   },

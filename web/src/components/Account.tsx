@@ -40,6 +40,7 @@ import {
 } from "../app/settingsIndex";
 import { settingsHref } from "../app/settingsRoute";
 import type { Workspace } from "../app/snapshot";
+import { ViewLinkSettings } from "../app/ViewLinkSettings";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
 import { ControlButton, Segmented } from "./ControlElements";
@@ -698,6 +699,7 @@ export function AccountSettings({
               </div>
             </div>
             <GitIdentity csrf={csrf} />
+            <ViewLinkSettings csrf={csrf} />
           </div>
         )}
         {section === "laitteet" && <Devices csrf={csrf} onLogout={onLogout} />}

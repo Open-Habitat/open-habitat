@@ -824,6 +824,9 @@ func gatewayDesired(s Site) (map[string][]byte, error) {
 	}
 	if s.Views != nil {
 		oauth["view_origin"] = s.Views.OriginTemplate
+		if s.Views.LinkMaxDays != nil {
+			oauth["view_link_max_days"] = *s.Views.LinkMaxDays
+		}
 	}
 	cfg := map[string]any{"component": "gateway", "listen": s.Gateway.Listen, "gateway_uid": s.Gateway.UID, "static_dir": generationPath(s) + "/web", "oauth": oauth, "tls_cert": "/etc/open-habitat/gateway/tls.crt", "tls_key": "/etc/open-habitat/gateway/tls.key", "entry_gate": "/etc/open-habitat/maintenance"}
 	b, _ := json.Marshal(cfg)

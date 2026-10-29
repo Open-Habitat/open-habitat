@@ -44,8 +44,8 @@ func (a *Auth) RevokeSubject(ctx context.Context, subject string) error {
 	return nil
 }
 
-// revokeSessionsLocked durably removes every session of subject, which ends
-// its relays and editor sessions, and fences login flows started before now.
+// revokeSessionsLocked durably removes every session and shared view link of
+// subject, which ends its relays and editor sessions, and fences login flows started before now.
 // Call under mu.
 func (a *Auth) revokeSessionsLocked(subject string) (int, error) {
 	if a.revoked == nil {
@@ -61,6 +61,11 @@ func (a *Auth) revokeSessionsLocked(subject string) (int, error) {
 		}
 	}); err != nil {
 		return 0, errors.New("session store unavailable")
+	}
+	// A revoked or withdrawn person's shared view links end with their
+	// sessions (ADR 0033).
+	if _, err := a.removeViewLinksLocked(subject); err != nil {
+		return 0, errors.New("view link store unavailable")
 	}
 	a.revoked[subject] = a.serial
 	return removed, nil

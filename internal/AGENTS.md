@@ -21,7 +21,15 @@ The packages divide the work as follows.
   login flow, `session.go` the per-request cookie and write checks,
   `proxy_linux.go` the forwarding, `terminal_linux.go` the browser shell's
   WebSocket relay, `editor_linux.go` the workspace editor's origin, its
-  hand-off and relay.
+  hand-off and relay, `views_linux.go` agent HTML views on per-view hosts.
+  `view_links_linux.go` (shared view links) is the one place where the
+  gateway reads a daemon for a request with no authenticated person, and its
+  reach must stay exactly that: one linked frozen export through the fixed
+  export-read route, the token compared in constant time and expiry,
+  revocation and the owner's withdrawal checked on every read, no cookie set
+  or read on a link host, no listing, no content copy. Only the person's app
+  session creates or changes a link; the agent listener never gains a link
+  operation or learns a link's address.
 - `daemon/`: discovery, Pi history reads, the conversation controller
   (`conversation_linux.go` for HTTP control, `pi_events_linux.go` for Pi event
   translation, `continuation_linux.go` for the ownership proof before Pi

@@ -103,8 +103,8 @@ around it, so the capability is in the URL of every request.
 7. **Expiry, revocation and limits.** The owner chooses 1, 7 or 30 days
    (default 30) or the operator's maximum, and can extend a link from the day
    of the extension. Revoking a link removes its record, and the next request
-   fails. *Uusi osoite* replaces the token, and the link host with it, and
-   keeps the content. When a subject is revoked or withdrawn
+   fails. *Uusi osoite* replaces the token, so every copy of the old URL
+   stops working, and keeps the content. When a subject is revoked or withdrawn
    (`RevokeSubject`, access withdrawal), their links are removed with their
    sessions, and a denied subject's links answer nothing meanwhile. The site
    administrator can list link metadata (owner, title, created, expires, never

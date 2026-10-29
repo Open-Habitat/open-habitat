@@ -105,9 +105,11 @@ type Editor struct {
 }
 
 // Views is the per-view origin of agent HTML views (ADR 0032); absent means
-// the installation offers no views.
+// the installation offers no views. LinkMaxDays enables shared view links
+// (ADR 0033) and is their longest expiry; absent offers none.
 type Views struct {
 	OriginTemplate string `json:"origin_template"`
+	LinkMaxDays    *int   `json:"link_max_days,omitempty"`
 }
 
 // IntegrationSettings is root's control over the browser's part in the
@@ -443,6 +445,9 @@ func (s Site) Validate() error {
 	}
 	if s.Views != nil && (!validSiteEditorOrigin(g.Origin, s.Views.OriginTemplate) || s.Editor != nil && siteOriginsOverlap(s.Editor.OriginTemplate, s.Views.OriginTemplate)) {
 		return siteError("$.views.origin_template", "require separate HTTPS DNS origin with one * in the first label, no port, room for a 52-character view label, and no overlap with the editor origin")
+	}
+	if s.Views != nil && s.Views.LinkMaxDays != nil && (*s.Views.LinkMaxDays < 1 || *s.Views.LinkMaxDays > 365) {
+		return siteError("$.views.link_max_days", "require 1 to 365 days")
 	}
 	return nil
 }

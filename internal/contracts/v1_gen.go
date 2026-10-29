@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "05fad8470d8e57a748b35ada40f2025a8426a71b228e8f6e20cfd4b719c72623"
+const V1SchemaFingerprint = "82c2539c9349ce730f80e9b5737d90d58c3acbb2397b61ef504e3115bdd108af"
 
 var V1SchemaFiles = []string{
 	"account-preferences.schema.json",
@@ -83,6 +83,7 @@ var V1SchemaFiles = []string{
 	"spinoff-work.schema.json",
 	"spinoffs.schema.json",
 	"terminal.schema.json",
+	"view-link.schema.json",
 	"view.schema.json",
 	"workspace-change.schema.json",
 	"workspace-deletion.schema.json",
@@ -169,6 +170,7 @@ type Speech = json.RawMessage
 type SpinoffWork = json.RawMessage
 type Spinoffs = json.RawMessage
 type Terminal = json.RawMessage
+type ViewLink = json.RawMessage
 type View = json.RawMessage
 type WorkspaceChange = json.RawMessage
 type WorkspaceDeletion = json.RawMessage

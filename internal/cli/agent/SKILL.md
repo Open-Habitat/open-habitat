@@ -76,6 +76,13 @@ without a view origin cannot show views, so the offer fails with
 shown here and hand it over as a file offer (below), which they can download
 and open themselves. Reuse a key only for the same offer.
 Views stay in `~/.local/state/open-habitat/views/` until removed.
+Where the site allows it, the person can let anyone open a view with
+*Jaa linkillä* on its card. Only they create, change and revoke such links; you
+cannot, and you never see a link's address unless they paste it. A link shows
+the frozen view it names, so after offering a new version say they can point
+their link at it (*Vaihda sisältö*); removing a view stops its link. Under a
+link the view's files sit below the link's key, so root-relative URLs
+(`/style.css`) break: use relative paths.
 
 To hand the person files you produced (a chart, a spreadsheet, a PDF, a zip,
 a folder of photos) so they can preview and download them:

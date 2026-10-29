@@ -68,6 +68,8 @@ export const mutationClasses = {
   "account.first_route": "confirmed",
   "editor.stop": "confirmed",
   "view.handoff": "confirmed",
+  "view.link": "confirmed",
+  "server.view_link": "confirmed",
   "speech.key": "confirmed",
   "speech.session": "confirmed",
   "server.speech_key": "confirmed",

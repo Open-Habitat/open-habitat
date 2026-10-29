@@ -112,6 +112,11 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(editorOpenPath, s.auth.editorOpen)
 		mux.HandleFunc(editorStopPath, s.auth.editorStop)
 		mux.HandleFunc(viewsPath, s.auth.viewList)
+		mux.HandleFunc(viewLinksPath, s.auth.viewLinksHTTP)
+		mux.HandleFunc(viewLinkChangePath, s.auth.viewLinksHTTP)
+		mux.HandleFunc(viewLinkRevokePath, s.auth.viewLinksHTTP)
+		mux.HandleFunc(adminViewLinksPath, s.auth.adminViewLinksHTTP)
+		mux.HandleFunc(adminViewLinksRevoke, s.auth.adminViewLinksHTTP)
 		mux.HandleFunc(fileOffersPath, s.auth.fileOffers)
 		mux.HandleFunc(fileOffersPath+"/", s.auth.fileOffers)
 	}

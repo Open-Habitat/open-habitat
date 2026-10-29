@@ -21,7 +21,7 @@ func TestSiteSchemaDrift(t *testing.T) {
 	base["identities"].(map[string]any)["login_shell"] = map[string]any{"shell": "/bin/bash", "subjects": []any{"123456"}}
 	base["profiles"] = []any{"core", "editor", "integrations"}
 	base["editor"] = map[string]any{"origin_template": "https://oh-code-*.example.org"}
-	base["views"] = map[string]any{"origin_template": "https://oh-view-*.example.org"}
+	base["views"] = map[string]any{"origin_template": "https://oh-view-*.example.org", "link_max_days": 90}
 	var cases []json.RawMessage
 	add := func(v any) {
 		b, e := json.Marshal(v)
@@ -105,6 +105,9 @@ func TestSiteSchemaDrift(t *testing.T) {
 	}
 	for _, v := range []string{"https://oh-view-*.example.org", "https://*.example.org", "https://view.example.org", "https://view-*.example.org:443", "https://verylongview-*.example.org", "http://view-*.example.org"} {
 		change("views.origin_template", v)
+	}
+	for _, v := range []int{0, 1, 365, 366, -1} {
+		change("views.link_max_days", v)
 	}
 	for _, v := range []string{"/bin/bash", "/usr/bin/zsh", "/opt/fish-3.7/bin/fish", "bin/bash", "/bin/bash/", "//bin/bash", "/bin/../bin/bash", "/bin/./bash", "/usr/sbin/nologin", "/sbin/nologin", "/bin/false", "/usr/bin/false", "/bin/nologin.sh", "/bin/ba sh", "/bin/ba:sh", "/bin/bash\n", "/" + strings.Repeat("a", 127), "/" + strings.Repeat("a", 128)} {
 		change("identities.login_shell.shell", v)

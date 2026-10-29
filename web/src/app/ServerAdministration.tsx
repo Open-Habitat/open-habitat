@@ -8,13 +8,13 @@ import {
   administration,
   changeAdministration,
 } from "./serverAdministration";
-
 import {
   bytes,
   changeStorage,
   type StorageAdministration,
   storageAdministration,
 } from "./storageQuota";
+import { ViewLinkAdministration } from "./ViewLinkSettings";
 
 // This view never receives another user's daemon route, files or credentials.
 export function ServerAdministration({
@@ -112,6 +112,7 @@ export function ServerAdministration({
     return (
       <div className="s-card ah-administration">
         <ServerAccessSettings csrf={csrf} />
+        <ViewLinkAdministration csrf={csrf} />
       </div>
     );
   return (

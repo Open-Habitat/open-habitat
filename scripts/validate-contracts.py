@@ -148,6 +148,11 @@ checks = {
     "editor-open.json": "editor.schema.json",
     "views.json": "view.schema.json",
     "view-handoff.json": "view.schema.json",
+    "view-links.json": "view-link.schema.json",
+    "view-link.json": "view-link.schema.json",
+    "view-link-create.json": "view-link.schema.json",
+    "view-link-change.json": "view-link.schema.json",
+    "server-view-links.json": "view-link.schema.json",
     "notice-view.json": "notice.schema.json",
     "file-offers.json": "file-offer.schema.json",
     "file-offer.json": "file-offer.schema.json",
@@ -242,6 +247,17 @@ for entry in ["../index.html", "/index.html", ".hidden/index.html", "site/.x.htm
 must_reject("view.schema.json", {"schema_version": 1, "views": [{**view, "path": "/home/x/report.html"}]})
 must_reject("view.schema.json", {"schema_version": 1, "url": "http://oh-view-a.example.invalid/_open-habitat/handoff?token=" + "A" * 43})
 must_reject("view.schema.json", {"schema_version": 1, "url": "https://oh-view-a.example.invalid/index.html"})
+# A link change is exactly one change, a link URL is only a host and its
+# token, and the administrator's list never carries a URL.
+link_change = json.loads((BASE / "examples" / "view-link-change.json").read_text())
+must_reject("view-link.schema.json", {**link_change, "days": 7})
+must_reject("view-link.schema.json", {"link_id": link_change["link_id"], "new_address": False})
+link_reply = json.loads((BASE / "examples" / "view-link.json").read_text())
+must_reject("view-link.schema.json", {**link_reply, "link": {**link_reply["link"], "url": "http://oh-view-a.example.invalid/" + "A" * 43 + "/"}})
+must_reject("view-link.schema.json", {**link_reply, "link": {**link_reply["link"], "url": "https://oh-view-a.example.invalid/" + "A" * 43 + "/index.html"}})
+admin_links = json.loads((BASE / "examples" / "server-view-links.json").read_text())
+must_reject("view-link.schema.json", {**admin_links, "links": [{**admin_links["links"][0], "url": link_reply["link"]["url"]}]})
+must_reject("view-link.schema.json", {"view_id": "vabcdefghijklmnopqrstuvwxyz", "days": 366})
 
 # An offered file is named inside its offer, never by a path outside it, a
 # hidden name or a home path, and a notice carries at most one offer.

@@ -106,7 +106,9 @@ without network access, so inline or bundle its assets. You cannot open their
 browser, and a dev server is not something you can show them this way. Where
 this Open Habitat has no views (`site.views` is false in `open-habitat agent
 environment show --json`), the offer fails with `views_unavailable`; say so and
-offer the file instead.
+offer the file instead. If the person wants others to see a view, they share it
+themselves with *Jaa linkillä* on its card where the site allows it; you have no
+link operation.
 
 To give the person files you made (charts, spreadsheets, documents, a zip
 or a folder of photos), offer them with `open-habitat agent file offer

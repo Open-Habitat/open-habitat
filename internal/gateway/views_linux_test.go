@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -24,14 +25,17 @@ const (
 // stand-in for the export-read route that records every request reaching it.
 type viewDesk struct {
 	*editorDesk
-	seen chan *http.Request
+	seen  chan *http.Request
+	mu    *sync.Mutex
+	files map[string]string
 }
 
 func newViewDesk(t *testing.T) *viewDesk {
 	t.Helper()
 	seen := make(chan *http.Request, 64)
 	files := map[string]string{
-		"/view-export/" + viewTestA + "/":                  `{"schema_version":1,"view":{"entry":"site/index.html"}}`,
+		"/view-export/" + viewTestA + "/":                  `{"schema_version":1,"view":{"title":"Kassavirta","entry":"site/index.html"}}`,
+		"/view-export/" + viewTestB + "/":                  `{"schema_version":1,"view":{"title":"Toinen","entry":"secret/index.html"}}`,
 		"/view-export/" + viewTestA + "/site/index.html":   "<script src=app.js></script>",
 		"/view-export/" + viewTestA + "/site/app.js":       "1",
 		"/view-export/" + viewTestA + "/site/data.bin":     "\x00",
@@ -39,9 +43,12 @@ func newViewDesk(t *testing.T) *viewDesk {
 		"/view-export/" + viewTestA + "/site/kuva (1).png": "png",
 		"/view-export/" + viewTestB + "/secret/index.html": "other view",
 	}
+	var mu sync.Mutex
 	daemon := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		seen <- r.Clone(context.Background())
+		mu.Lock()
 		body, ok := files[r.URL.Path]
+		mu.Unlock()
 		if !ok {
 			w.WriteHeader(404)
 			io.WriteString(w, `{"schema_version":1,"error":{"code":"view_file_not_found"}}`)
@@ -56,7 +63,7 @@ func newViewDesk(t *testing.T) *viewDesk {
 	d := newEditorDesk(t, daemon)
 	d.a.cfg.ViewOrigin = "https://oh-view-*.test"
 	d.server.Client().CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	return &viewDesk{d, seen}
+	return &viewDesk{d, seen, &mu, files}
 }
 
 func (d *viewDesk) host(id string) string {

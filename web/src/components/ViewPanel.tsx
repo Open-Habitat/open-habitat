@@ -37,6 +37,7 @@ export function ViewHeader({
   titleRef,
   onToggleExpanded,
   onOpenTab,
+  onShare,
   onClose,
 }: {
   title: string;
@@ -44,6 +45,8 @@ export function ViewHeader({
   titleRef?: Ref<HTMLHeadingElement>;
   onToggleExpanded: () => void;
   onOpenTab: () => void;
+  /** Jaa linkillä (ADR 0033); absent where the site offers no links. */
+  onShare?: () => void;
   onClose: () => void;
 }) {
   return (
@@ -77,6 +80,18 @@ export function ViewHeader({
         >
           <Icon name="external" />
         </ControlButton>
+        {onShare && (
+          <ControlButton
+            data-testid="view-panel-share"
+            size="row"
+            variant="quiet"
+            aria-label="Jaa linkillä"
+            title="Jaa linkillä"
+            onPress={onShare}
+          >
+            <Icon name="link" />
+          </ControlButton>
+        )}
         <ControlButton
           data-testid="close-view"
           size="row"
@@ -102,6 +117,8 @@ export function ViewPanel({
   titleRef,
   onToggleExpanded,
   onOpenTab,
+  onShare,
+  sharedUntil,
   onClose,
 }: {
   title: string;
@@ -112,6 +129,9 @@ export function ViewPanel({
   titleRef?: Ref<HTMLHeadingElement>;
   onToggleExpanded: () => void;
   onOpenTab: () => void;
+  onShare?: () => void;
+  /** The expiry of the link that shows this view, when there is one. */
+  sharedUntil?: string;
   onClose: () => void;
 }) {
   const keyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
@@ -134,6 +154,7 @@ export function ViewPanel({
         titleRef={titleRef}
         onToggleExpanded={onToggleExpanded}
         onOpenTab={onOpenTab}
+        onShare={onShare}
         onClose={onClose}
       />
       <div className="ah-view-frame">
@@ -148,8 +169,11 @@ export function ViewPanel({
         )}
       </div>
       <p className="ah-view-note">
-        Jäädytetty HTML · Vain sinulle · Sisältö on erillään Habitatista eikä
-        pääse verkkoon.
+        Jäädytetty HTML ·{" "}
+        {sharedUntil
+          ? `Jaettu linkillä ${new Date(sharedUntil).toLocaleDateString("fi-FI")} asti`
+          : "Vain sinulle"}{" "}
+        · Sisältö on erillään Habitatista eikä pääse verkkoon.
       </p>
     </section>
   );

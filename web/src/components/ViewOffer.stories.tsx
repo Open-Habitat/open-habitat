@@ -36,3 +36,6 @@ export const Failed: Story = { args: { state: "failed" } };
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
 };
+export const Shared: Story = {
+  args: { onShare: () => {}, sharedUntil: "2026-11-28T12:00:00Z" },
+};

@@ -1,0 +1,72 @@
+.ah-modal.ah-view-link-modal {
+  width: min(560px, calc(100vw - 32px));
+}
+.ah-view-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s3);
+}
+.ah-view-link-what {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s1);
+  margin: 0;
+}
+.ah-view-link-what strong {
+  overflow-wrap: anywhere;
+}
+.ah-view-link-terms {
+  margin: 0;
+  color: var(--ah-muted);
+}
+.ah-view-link-url {
+  display: flex;
+  gap: var(--ah-s2);
+  align-items: center;
+}
+.ah-view-link-url input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-family: var(--ah-mono);
+  font-size: var(--ah-size-meta);
+}
+.ah-view-link-step {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+  align-items: center;
+}
+.ah-view-link-step-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s1);
+  flex-basis: 100%;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}
+.ah-view-link-step select {
+  font: inherit;
+  max-width: 100%;
+}
+.ah-view-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-view-links li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+  align-items: center;
+}
+.ah-view-links li > span {
+  flex: 1;
+  min-width: 12rem;
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: anywhere;
+}

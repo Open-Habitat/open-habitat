@@ -277,6 +277,12 @@
           "pattern": "^https://(?=[a-z0-9*-]{1,12}\\.)(?!-)(?:[a-z0-9-]*\\*[a-z0-9-]*)(?<!-)\\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$(?![\\s\\S])",
           "maxLength": 210,
           "description": "Agent HTML views (ADR 0032): one * in the first DNS label, replaced with a 52-character view label; must not match the application origin or overlap the editor origin. Absent offers no views."
+        },
+        "link_max_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "description": "Shared view links (ADR 0033): anyone with a link a person created opens that view, for at most this many days. Links live on hosts of the view namespace. Absent offers no links."
         }
       }
     },
