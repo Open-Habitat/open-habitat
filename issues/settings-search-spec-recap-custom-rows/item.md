@@ -2,7 +2,7 @@
 created: 2026-10-29
 updated: 2026-10-29
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: agent test run
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: gate-health
 preparation: ready
 lane_seq: 140
+closed: 2026-10-29
 ---
 
 # settings-search spec: recap-messages row not found after choosing Oma (fails on main)

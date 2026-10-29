@@ -71,7 +71,7 @@ prepared host changing runtime targets and synthetic `session_restarting`
 continuation/refusal evidence; native quota cleanup readback remains a kernel
 boundary, not something a synthetic journal proves.
 
-Host-backed browser cases that exercise native credential writes also need that Pi SDK fixture package. Run those checks with `umask 077`: Pi’s SettingsManager creates its settings file using the process umask, and the daemon correctly refuses a group-writable file. A permissive developer-shell umask can therefore make a successful synthetic key save unreadable on the next request.
+Host-backed browser runs need that Pi SDK fixture package too: the synthetic host reads credentials and recap settings through it, and without it unrelated cases fail on "unknown" credentials or unsaved settings, so browser global setup refuses to start. Run those checks with `umask 077`: Pi’s SettingsManager creates its settings file using the process umask, and the daemon correctly refuses a group-writable file. A permissive developer-shell umask can therefore make a successful synthetic key save unreadable on the next request.
 
 Do not reuse an earlier result after changing runnable code, fixtures, dependencies or packaged inputs. The fast command is feedback, not a substitute for the final clean gate.
 
