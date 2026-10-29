@@ -67,7 +67,8 @@
   margin: 0;
   padding: var(--ah-s3);
   background: var(--ah-accent-soft);
-  border-left: 3px solid var(--ah-accent);
+  border: 1px solid var(--ah-accent-line);
+  border-radius: var(--ah-r-md);
   font-size: var(--ah-size-meta);
 }
 .sk-notice > span {

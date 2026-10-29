@@ -52,12 +52,13 @@
   margin: 0;
   padding: var(--ah-s3);
   background: var(--ah-accent-soft);
-  border-left: 3px solid var(--ah-accent);
+  border: 1px solid var(--ah-accent-line);
+  border-radius: var(--ah-r-md);
   font-size: var(--ah-size-meta);
 }
 .ob-notice-error {
   background: var(--ah-err-soft);
-  border-left-color: var(--ah-err-line);
+  border-color: var(--ah-err-line);
 }
 
 /* The route list */
@@ -175,13 +176,10 @@
   margin: var(--ah-s2) 0 0;
   padding: var(--ah-s3);
   background: var(--ah-accent-soft);
-  border-left: 3px solid var(--ah-accent);
+  border: 1px solid var(--ah-accent-line);
+  border-radius: var(--ah-r-md);
   font-size: var(--ah-size-meta);
   color: var(--ah-ink);
-}
-.ob-access {
-  padding-left: var(--ah-s2);
-  border-left: 2px solid var(--ah-line-strong);
 }
 .ob-defaults {
   display: grid;

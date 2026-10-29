@@ -134,9 +134,6 @@
   outline: var(--ah-focus-width) solid var(--ah-focus);
   outline-offset: -2px;
 }
-.ah-process-stderr {
-  box-shadow: inset 2px 0 var(--ah-line-strong);
-}
 .ah-process-completion {
   display: flex;
   align-items: center;

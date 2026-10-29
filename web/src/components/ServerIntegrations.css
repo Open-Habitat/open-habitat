@@ -192,7 +192,8 @@
 }
 .si-effect {
   padding: var(--ah-s2) var(--ah-s3);
-  border-left: 2px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-sm);
+  background: var(--ah-sunken);
   font-size: var(--ah-size-meta);
   color: var(--ah-ink-2);
 }

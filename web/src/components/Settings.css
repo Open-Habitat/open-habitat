@@ -543,17 +543,15 @@
   0%,
   40% {
     background: var(--ah-accent-soft);
-    box-shadow: inset 3px 0 0 var(--ah-accent);
   }
   100% {
     background: transparent;
-    box-shadow: inset 3px 0 0 transparent;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-settings-row][data-landed] {
     animation: none;
-    box-shadow: inset 3px 0 0 var(--ah-accent);
+    background: var(--ah-accent-soft);
   }
 }
 @media (max-width: 760px) {

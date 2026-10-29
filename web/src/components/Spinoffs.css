@@ -1,20 +1,13 @@
 /* A worker's view (proto-worker-view: Kehys with Pääte keskustelussa, Jari
-   26.10.2026). The accent edge and band say whose conversation this is; the
-   conversation itself is production's. */
-.ah-worker-frame {
-  box-shadow: inset 3px 0 0 var(--ah-accent);
-}
-.ah-worker-frame > .ah-agent-header {
-  padding-inline-start: calc(var(--ah-topbar-pad-inline) + 3px);
-}
+   26.10.2026). The band says whose conversation this is; the conversation
+   itself is production's. */
 .ah-worker-band {
   display: flex;
   flex: none;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--ah-s1) var(--ah-s4);
-  padding: var(--ah-s2) var(--ah-topbar-pad-inline) var(--ah-s2)
-    calc(var(--ah-topbar-pad-inline) + 3px);
+  padding: var(--ah-s2) var(--ah-topbar-pad-inline);
   background: var(--ah-accent-soft);
   border-bottom: 1px solid var(--ah-accent-line);
   font-size: var(--ah-size-meta);
@@ -204,7 +197,6 @@
   gap: var(--ah-s2);
   padding: var(--ah-s3);
   border: 1px solid var(--ah-line-strong);
-  border-inline-start: 3px solid var(--ah-ink-2);
   border-radius: var(--ah-r-md);
   background: var(--ah-surface-2);
   font-size: var(--ah-size-ui);

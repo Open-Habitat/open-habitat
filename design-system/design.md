@@ -21,6 +21,16 @@ liike ovat [tokeneissa](tokens/).
 Oletustila on hiljainen. Näkymässä on yksi ensisijainen toiminto kerrallaan;
 toissijaiset toiminnot ovat hillittyjä. Reunat erottavat pinnat, ja varjot
 kuuluvat kelluviin valikoihin, laatikoihin ja viimeisimpään vievään painikkeeseen.
+
+Värillistä reunaraitaa ei käytetä korostukseen, valintaan eikä tilaan: ei
+levennettyä `border-left`iä eikä `inset`-varjoa pinnan sivussa. Raita on
+tunnistettava maneeri, "vähän niin kuin emdash", eikä se kerro mitään, mitä
+kuvake, teksti tai pinta ei jo kerro (Jari 22.10. ja 29.10.2026). Tila näkyy
+merkistä ja tekstistä; jos pinta tarvitsee lisäksi korostusta, se saa pehmeän
+taustan ja koko reunan ympäri 1 px:n tilan viivan (`--ah-*-line`).
+Epäonnistunut työkalurivi on reunoiltaan samanlainen kuin onnistunut.
+Neutraalit 1 px:n jakoviivat paneelien välissä, lainauksen harmaa viiva ja
+vuoron aikajana eivät ole korostusraitoja.
 Kopiointi näkyy hiljaisena toimintona viestin tai koodilohkon yhteydessä.
 
 Käyttöliittymä on suomeksi. Instrument Sans on ihmisen tekstille ja JetBrains

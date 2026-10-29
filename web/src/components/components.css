@@ -593,7 +593,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
 .ah-error-summary {
   padding: var(--ah-s5);
   border: 1px solid currentColor;
-  border-left-width: 5px;
   border-radius: var(--ah-r-md);
   background: var(--ah-surface);
 }
@@ -2138,9 +2137,6 @@ details[open] > summary:not([class])::before {
   border: 1px solid var(--ah-line);
   border-radius: var(--ah-r-md);
   overflow: hidden;
-}
-.ah-tool-row.ah-tool-error {
-  border-left: 3px solid var(--ah-err);
 }
 .ah-tool-row .ah-disclosure {
   border: 0;

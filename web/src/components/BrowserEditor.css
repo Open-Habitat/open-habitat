@@ -213,16 +213,18 @@
 }
 .cm-line.ah-merge-incoming {
   background: var(--ah-ok-soft);
-  box-shadow: inset 3px 0 var(--ah-ok);
 }
 .cm-line.ah-merge-mine {
   background: var(--ah-err-soft);
-  box-shadow: inset 3px 0 var(--ah-err);
 }
-/* A waiting change: a dashed stripe where it will land, no fill yet. */
+/* A waiting change: a hatched band where it will land, not yet the landed
+   change's fill. */
 .cm-line.ah-merge-pending {
-  background:
-    linear-gradient(var(--ah-ok) 50%, transparent 0) 0 0 / 3px 6px repeat-y;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--ah-ok-soft) 0 6px,
+    transparent 6px 12px
+  );
 }
 .ah-merge-pending-tag {
   display: inline-block;
@@ -401,7 +403,6 @@
   padding: var(--ah-s1) var(--ah-s2);
   border-radius: var(--ah-r-sm);
   background: var(--ah-ok-soft);
-  box-shadow: inset 3px 0 var(--ah-ok);
   font-family: var(--ah-mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;

@@ -111,17 +111,15 @@
   width: 28px;
   height: 28px;
 }
-/* The warning about agents. There is no warning tone token; the error tone
-   on the sunken surface marks it,
-as in the prototype. */
+/* The warning about agents. There is no warning tone token; the error-tone
+   border on the sunken surface marks it. */
 .ig-warn,
 .ig-notice {
   display: flex;
   gap: 10px;
   margin: 0;
   padding: 10px 12px;
-  border: 1px solid var(--ah-line);
-  border-left: 3px solid var(--ah-err);
+  border: 1px solid var(--ah-err-line);
   border-radius: var(--ah-r-md);
   background: var(--ah-sunken);
   color: var(--ah-ink-2);
@@ -129,7 +127,7 @@ as in the prototype. */
   line-height: 1.5;
 }
 .ig-notice {
-  border-left-color: var(--ah-line-strong);
+  border-color: var(--ah-line);
 }
 .ig-warn strong {
   color: var(--ah-ink);
@@ -647,8 +645,7 @@ as in the prototype. */
   gap: 10px;
   margin: 0;
   padding: 12px 14px;
-  border: 1px solid var(--ah-line);
-  border-left: 4px solid var(--ah-accent);
+  border: 1px solid var(--ah-accent-line);
   border-radius: var(--ah-r-md);
   background: var(--ah-sunken);
   color: var(--ah-ink);

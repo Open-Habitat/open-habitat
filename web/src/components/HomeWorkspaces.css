@@ -70,8 +70,7 @@
   font-size: 13px;
 }
 .ah-home-card-new {
-  border-left: 3px solid var(--ah-accent);
-  padding-left: 12px;
+  border-color: var(--ah-accent-line);
 }
 .ah-home-card-head {
   display: grid;
@@ -228,8 +227,7 @@
   font-weight: 600;
 }
 .ah-home-card-waiting {
-  border-left: 3px solid var(--ah-accent);
-  padding-left: 12px;
+  border-color: var(--ah-accent-line);
 }
 /* The shared background-wait dot (components.css); new reply still wins.
    The working dot is components.css's own. */

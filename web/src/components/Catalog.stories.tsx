@@ -395,6 +395,15 @@ function ConversationFixture() {
                 onLoadMore={noop}
               />
             </ToolRow>
+            <ToolRow
+              name="bash"
+              targetText="go test ./internal/host"
+              statusLabel="paluuarvo 1"
+              state="failed"
+              errorSummary="Agentti ilmoitti työkalun virheestä."
+              expanded={false}
+              onToggle={noop}
+            />
           </ToolGroup>
         </AssistantMessage>
       ),
