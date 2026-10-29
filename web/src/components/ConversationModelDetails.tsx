@@ -95,10 +95,6 @@ export function ConversationModelDetails({
           <li>Ei tiedossa</li>
         )}
       </ul>
-      <p className="md-note">
-        Tämän keskustelun malli ja ajattelutaso. Vaihtoehdot ovat vertailua
-        varten, eivät valintoja.
-      </p>
     </section>
   );
 }
