@@ -32,10 +32,15 @@ const FilePreview = lazy(loadFilePreview);
 const apple = () => /Mac|iPhone|iPad/.test(navigator.platform);
 // Cmd on Apple keyboards, where Ctrl+E is CodeMirror's end of line.
 const mod = (e: KeyboardEvent) => (apple() ? e.metaKey : e.ctrlKey);
-// Matched by `code`, so a layout or Option never changes the key; AltGr
+// Matched by `code`, so a layout or Option never changes the key. Ctrl/⌘+Alt+P
+// rather than Ctrl/⌘+E, which browsers keep for themselves (a sidebar, the
+// address bar's search) before the page sees it; Shift+V is VS Code's. AltGr
 // arrives as Ctrl+Alt on Windows and is left alone.
 const previewKey = (e: KeyboardEvent) =>
-  mod(e) && !e.altKey && (e.shiftKey ? e.code === "KeyV" : e.code === "KeyE");
+  mod(e) &&
+  (e.altKey
+    ? !e.shiftKey && e.code === "KeyP" && !e.getModifierState("AltGraph")
+    : e.shiftKey && e.code === "KeyV");
 const saveKey = (e: KeyboardEvent) =>
   mod(e) && !e.altKey && !e.shiftKey && e.code === "KeyS";
 /** Mounted with the preview's content, once a lazy renderer has loaded. */
@@ -229,7 +234,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
     });
   };
   const showRef = useRef({ show, shown, save: () => {} });
-  // Ctrl/Cmd+E and VS Code's Ctrl/Cmd+Shift+V switch between text and
+  // Ctrl/Cmd+Alt+P and VS Code's Ctrl/Cmd+Shift+V switch between text and
   // preview, Esc returns to the text. Captured before CodeMirror sees them;
   // a file without a preview keeps them as the browser's own.
   const previewable = !!view;
@@ -386,8 +391,8 @@ export function BrowserEditor(p: BrowserEditorProps) {
               presentation="segment"
               aria-label={view.label}
               aria-pressed={shown}
-              aria-keyshortcuts="Control+E Meta+E Control+Shift+V Meta+Shift+V"
-              title={`${view.label} · ${apple() ? "⌘E" : "Ctrl+E"}`}
+              aria-keyshortcuts="Control+Alt+P Meta+Alt+P Control+Shift+V Meta+Shift+V"
+              title={`${view.label} · ${apple() ? "⌥⌘P" : "Ctrl+Alt+P"}`}
               onPress={() => show(true)}
             >
               <Icon name={view.icon} />

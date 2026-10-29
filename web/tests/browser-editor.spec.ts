@@ -775,7 +775,7 @@ for (const width of [1366, 390])
       await expect(page.getByTestId("editor-view")).toHaveCount(0);
       const doc = page.getByTestId("editor-document");
       const preview = page.getByTestId("editor-preview");
-      await doc.press("Control+E");
+      await doc.press("Control+Alt+KeyP");
       await expect(preview).toHaveCount(0);
       await expect(doc).toBeFocused();
       await openEntry(page, "cmd/notes.md");
@@ -812,7 +812,7 @@ for (const width of [1366, 390])
       await gutter();
       await expect(inside).toBeVisible();
 
-      // Ctrl+Shift+V and Ctrl+E put the rendered document in place of the
+      // Ctrl+Shift+V and Ctrl+Alt+P put the rendered document in place of the
       // text and back; Esc returns too. Focus stays on the page.
       const source = page.locator(".ah-browser-source");
       await heading.click();
@@ -828,9 +828,9 @@ for (const width of [1366, 390])
       await preview.press("Escape");
       await expect(preview).toHaveCount(0);
       await expect(doc).toBeFocused();
-      await doc.press("Control+E");
+      await doc.press("Control+Alt+KeyP");
       await expect(preview).toBeFocused();
-      await preview.press("Control+E");
+      await preview.press("Control+Alt+KeyP");
       await expect(preview).toHaveCount(0);
       await expect(doc).toBeFocused();
 
@@ -883,7 +883,7 @@ for (const width of [1366, 390])
         });
       await expect.poll(() => firstLine(page)).toBeGreaterThan(20);
       const before = await firstLine(page);
-      await doc.press("Control+E");
+      await doc.press("Control+Alt+KeyP");
       const table = preview.getByTestId("editor-preview-table");
       await expect(table).toBeVisible();
       await expect(preview).toBeFocused();
