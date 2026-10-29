@@ -54,10 +54,10 @@ type nativeSession struct {
 	// changedAt is the session file's modification time: Pi appends every
 	// entry to it, so it is when the conversation last changed. Only
 	// discovery's header read sets it.
-	changedAt string
-	entries                                   []historyEntry
-	boundaryFound, olderComplete              bool
-	cutOff                                    bool
+	changedAt                    string
+	entries                      []historyEntry
+	boundaryFound, olderComplete bool
+	cutOff                       bool
 }
 type recapData struct {
 	Recap       string `json:"recap"`

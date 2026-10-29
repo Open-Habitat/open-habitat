@@ -186,7 +186,9 @@ func TestSpeechSessionMintsAndMapsSonioxFailures(t *testing.T) {
 	}))
 	defer soniox.Close()
 	home := t.TempDir()
-	s := NewSpeechWithFixtureEndpoints(transport.Config{Home: home}, func(*http.Request) bool { return true }, func(string) SpeechEndpoints { return SpeechEndpoints{API: soniox.URL, WebSocket: "wss://soniox.invalid/ws"} }, nil)
+	s := NewSpeechWithFixtureEndpoints(transport.Config{Home: home}, func(*http.Request) bool { return true }, func(string) SpeechEndpoints {
+		return SpeechEndpoints{API: soniox.URL, WebSocket: "wss://soniox.invalid/ws"}
+	}, nil)
 	h := s.SessionHandler()
 	if w := speechRequest(t, h, "POST", SpeechSessionPath, ""); w.Code != 409 || !strings.Contains(w.Body.String(), `"speech_key_missing"`) {
 		t.Fatalf("no key: %d %s", w.Code, w.Body)

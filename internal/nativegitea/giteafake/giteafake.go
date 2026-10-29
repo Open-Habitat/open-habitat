@@ -103,7 +103,7 @@ type Server struct {
 	failing  map[string]bool // tokens whose API reads answer 500
 	// httpGitOff refuses receive-pack as a Gitea with DISABLE_HTTP_GIT does.
 	httpGitOff bool
-	gate     chan struct{}   // while set, Git requests wait for it to close
+	gate       chan struct{} // while set, Git requests wait for it to close
 }
 
 // Block holds every following Git request until the returned release is
