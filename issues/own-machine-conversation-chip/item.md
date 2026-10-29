@@ -2,13 +2,16 @@
 created: 2026-10-29
 updated: 2026-10-29
 type: feature
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: follow-up from own-machine-access implementation
 source_ref: taskfleet:01m647w2602m0ntrk9tn09nmqs/followup:own-machines-conversation
 originating_run: 01m647w2602m0ntrk9tn09nmqs
 originating_run_kind: spinoff
+lane: own-machine
+lane_seq: 4
+preparation: ready
 ---
 
 # Own machines: machine chip and open-connection mark in the conversation
