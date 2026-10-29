@@ -60,7 +60,7 @@ export function PersonalStorage({
   return (
     <>
       <div className="s-card">
-        <section aria-label="Käyttö">
+        <section aria-label="Käyttö" data-settings-row="usage" tabIndex={-1}>
           {quota?.limits === "not_in_use" ? (
             <SharedDisk
               capacity={quota.filesystem.capacity_bytes}
@@ -287,6 +287,8 @@ function TrashSettings({
     <section
       data-testid="trash"
       className="ah-trash-section"
+      data-settings-row="trash"
+      tabIndex={-1}
       aria-labelledby="trash-heading"
     >
       <div className="ah-trash-head">

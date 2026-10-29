@@ -15,7 +15,7 @@ export function EditorSettingsControl({
 }) {
   return (
     <div className="s-card" data-testid="editor-settings">
-      <div className="s-row">
+      <div className="s-row" data-settings-row="editor" tabIndex={-1}>
         <div className="s-lbl">
           <strong>Työtilan editori</strong>
           <span className="s-desc">Puhelimessa aina CodeMirror 6.</span>

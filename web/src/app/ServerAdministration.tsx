@@ -151,6 +151,7 @@ export function ServerAdministration({
         <>
           {section === "palvelin" && (
             <InlineTextSetting
+              row="server-name"
               data-testid="server-name-input"
               label="Palvelimen nimi"
               description="Näkyy kaikille sivupalkissa. Tallentuu, kun poistut kentästä."
@@ -169,7 +170,7 @@ export function ServerAdministration({
           {section === "levy" && (
             <>
               {storage && (
-                <div className="s-row">
+                <div className="s-row" data-settings-row="disk" tabIndex={-1}>
                   <div className="s-lbl">
                     <strong>Levy</strong>
                     <span className="s-desc">
@@ -203,6 +204,7 @@ export function ServerAdministration({
               )}
               {storage?.limits !== "not_in_use" && (
                 <InlineTextSetting
+                  row="default-limit"
                   label="Oletusraja"
                   description="Uusien käyttäjien raja. Ei muuta nykyisiä."
                   value={String(data.default_limit_bytes / 1024 ** 3)}
@@ -229,7 +231,11 @@ export function ServerAdministration({
             </>
           )}
           {section === "levy" && (
-            <table className="s-table">
+            <table
+              className="s-table"
+              data-settings-row="user-limits"
+              tabIndex={-1}
+            >
               <thead>
                 <tr>
                   <th>Käyttäjä</th>

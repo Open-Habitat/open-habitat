@@ -3,12 +3,13 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: settings
 lane_seq: 2
 collision: [web/src/app/Settings.tsx]
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Settings search in the sidebar
@@ -21,6 +22,6 @@ Implement `proto-settings-search` as chosen (Jari 29.10.): **Sivupalkissa**. Hit
 
 ## Acceptance Criteria
 
-- [ ] Every settings row is findable and jumps to its row; Finnish synonyms where natural.
-- [ ] Keyboard: `/`, arrows, Enter, Esc.
-- [ ] Browser spec; KOKEILTAVAA line.
+- [x] Every settings row is findable and jumps to its row; Finnish synonyms where natural.
+- [x] Keyboard: `/`, arrows, Enter, Esc.
+- [x] Browser spec; KOKEILTAVAA line.

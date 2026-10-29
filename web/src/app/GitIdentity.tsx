@@ -135,6 +135,8 @@ export function GitIdentity({
       <section
         data-testid="git-identity"
         className="s-row"
+        data-settings-row="git-identity"
+        tabIndex={-1}
         aria-label="Git-identiteetti"
       >
         <div className="s-lbl">

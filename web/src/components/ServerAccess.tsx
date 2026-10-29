@@ -743,12 +743,17 @@ export function ServerAccess({
   return (
     <div className="sa" data-testid="server-access" data-mode={view.mode}>
       {open ? (
-        <p className="s-row sa-open" data-testid="access-open">
+        <p
+          className="s-row sa-open"
+          data-testid="access-open"
+          data-settings-row="access-add"
+          tabIndex={-1}
+        >
           <Icon name="info" />
           Pääsy on avoin: kuka tahansa GitHub-käyttäjä voi kirjautua.
         </p>
       ) : (
-        <div className="s-row">
+        <div className="s-row" data-settings-row="access-add" tabIndex={-1}>
           <AddLogin
             rows={rows}
             disabled={!canWrite || !view.runtime_admission}
@@ -758,7 +763,11 @@ export function ServerAccess({
           />
         </div>
       )}
-      <div className="s-row sa-head">
+      <div
+        className="s-row sa-head"
+        data-settings-row="access-people"
+        tabIndex={-1}
+      >
         <strong>
           Henkilöt <span className="sa-muted">{rows.length}</span>
         </strong>

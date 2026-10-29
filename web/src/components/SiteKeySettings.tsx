@@ -295,7 +295,12 @@ export function SiteKeyPage({
 }) {
   const [removing, setRemoving] = useState(false);
   return (
-    <div className="s-card sk-page" data-testid="site-key-page">
+    <div
+      className="s-card sk-page"
+      data-testid="site-key-page"
+      data-settings-row="site-key"
+      tabIndex={-1}
+    >
       <p className="sk-terms" data-testid="site-key-terms">
         Uusi henkilö saa avaimesta kopion omiin tunnuksiinsa, jos hänellä ei ole
         omaa, eikä näe AI-vaihetta. Käyttö laskutetaan avaimen tililtä. Jo

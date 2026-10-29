@@ -60,7 +60,11 @@ export function LinkCard({
 }) {
   const showing = phase.kind !== "idle" && phase.kind !== "minting";
   return (
-    <div className="s-card dl-card">
+    <div
+      className="s-card dl-card"
+      data-settings-row="device-link"
+      tabIndex={-1}
+    >
       <div className="dl-head">
         <span className="dl-ic">
           <Icon name="phone" />
@@ -169,6 +173,8 @@ export function SessionList({
     <ul
       data-testid="device-sessions"
       className="dl-list"
+      data-settings-row="sessions"
+      tabIndex={-1}
       aria-label="Kirjautuneet laitteet"
     >
       {sessions.map((s) => (

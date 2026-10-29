@@ -1137,6 +1137,8 @@ export function IntegrationsOverview({
     <div
       data-testid={`integration-tile-${p.id}`}
       className="ig-tile"
+      data-settings-row={p.id}
+      tabIndex={-1}
       key={p.id}
     >
       <ProviderMark provider={p.id} />
@@ -1188,6 +1190,8 @@ export function IntegrationsOverview({
             <section
               className="ig-provider"
               key={p.id}
+              data-settings-row={p.id}
+              tabIndex={-1}
               aria-label={providerCopy[p.id].name}
             >
               {p.id === "apple"

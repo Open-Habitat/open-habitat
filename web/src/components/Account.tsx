@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import {
   Dialog as AriaDialog,
   Heading,
@@ -30,16 +30,28 @@ import { ServerVersionLine } from "../app/ServerVersion";
 import { SiteKeyAdministration } from "../app/SiteKeyAdministration";
 import { SpeechKeyAdministration, SpeechSettings } from "../app/SpeechSettings";
 import { type ServerInfo, serverInfo } from "../app/serverAdministration";
+import {
+  type SettingsHit,
+  type SettingsRowId,
+  searchSettings,
+  settingsRowWithin,
+  settingsSections,
+} from "../app/settingsIndex";
 import { settingsHref } from "../app/settingsRoute";
 import type { Workspace } from "../app/snapshot";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
 import { ControlButton, Segmented } from "./ControlElements";
 import { DefaultModelRow } from "./DefaultModelRow";
-import { Icon, type IconName } from "./Icon";
+import { Icon } from "./Icon";
 import { LetterMark } from "./Integrations";
 import { Menu } from "./Overlays";
 import { Button } from "./Primitives";
+import {
+  SettingsSearchField,
+  SettingsSearchResults,
+  settingsHitKey,
+} from "./SettingsSearch";
 import { StatusMark } from "./Status";
 import type { Tone } from "./types";
 
@@ -231,6 +243,9 @@ export function AccountShelf({
   );
 }
 
+/** A section and the row open in it, as one comparable value. */
+const place = (id: string, row?: string) => `${id}#${row ?? ""}`;
+
 /** Whether Esc belongs to what the person is typing in. */
 function typedInto(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -292,7 +307,7 @@ export function AccountSettings({
   routeSection?: string | null;
   /** The row a link named (the URL fragment): scrolled to and marked. */
   routeRow?: string;
-  onNavigate?: (path: string) => void;
+  onNavigate?: (path: string, options?: { replace?: boolean }) => void;
   /** The snapshot's workspaces, for Koodipalvelut's imported list. */
   workspaces?: readonly Workspace[];
   onNewWorkspace?: () => void;
@@ -304,15 +319,32 @@ export function AccountSettings({
     administration ? "palvelin" : "tili",
   );
   const [localDetail, setLocalDetail] = useState(administration);
+  const [localRow, setLocalRow] = useState<string>();
   const section = onNavigate ? (routeSection ?? "tili") : localSection;
   const detail = onNavigate ? routeSection != null : localDetail;
-  const openSection = (id: string) => {
-    if (onNavigate) onNavigate(settingsHref(id));
+  const row = onNavigate ? routeRow : localRow;
+  /** The search opens results beside it as the selection moves: those
+   * route changes move no focus out of the field. Typing outruns the route,
+   * so this is one flag rather than the place last previewed. */
+  const steering = useRef(false);
+  const go = (
+    id: string,
+    target?: SettingsRowId,
+    options?: { replace?: boolean },
+  ) => {
+    if (onNavigate) onNavigate(settingsHref(id, target), options);
     else {
       setLocalSection(id);
       setLocalDetail(true);
+      setLocalRow(target);
     }
   };
+  const openSection = (id: string) => {
+    steering.current = false;
+    go(id);
+  };
+  const toList = () =>
+    onNavigate ? onNavigate("/settings") : setLocalDetail(false);
   const [release, setRelease] = useState<
     Pick<ServerInfo, "version" | "commit">
   >({});
@@ -329,6 +361,77 @@ export function AccountSettings({
   const [openAI, setOpenAI] = useState<OpenAIState>("checking");
   const heading = useRef<HTMLHeadingElement>(null);
   const navHeading = useRef<HTMLHeadingElement>(null);
+  // Search (proto-settings-search, Sivupalkissa): while the field holds
+  // text, its results stand in for the section list and the selected one is
+  // open beside them.
+  const [query, setQuery] = useState("");
+  const [chosen, setSelected] = useState(0);
+  const field = useRef<HTMLInputElement>(null);
+  const searching = query.trim() !== "";
+  const hits = searching
+    ? searchSettings(query, { admin: admin === true })
+    : [];
+  // The list can shrink under the selection (the administrator check).
+  const selected = Math.max(0, Math.min(chosen, hits.length - 1));
+  const queryRef = useRef(query);
+  queryRef.current = query;
+  /** Focus the field once the section list shows again (phone). */
+  const fieldNext = useRef(false);
+  // A chosen row that is already open lands again.
+  const [landing, setLanding] = useState(0);
+  // The phone shows the list or a section, not both: no preview there.
+  const narrow = () => window.matchMedia("(max-width: 760px)").matches;
+  const preview = (hit: SettingsHit | undefined) => {
+    if (!hit || narrow()) return;
+    steering.current = true;
+    if (
+      place(section, detail ? row : undefined) !== place(hit.section, hit.row)
+    )
+      go(hit.section, hit.row, { replace: true });
+  };
+  const changeQuery = (next: string) => {
+    setQuery(next);
+    setSelected(0);
+    if (!next.trim()) steering.current = false;
+    else preview(searchSettings(next, { admin: admin === true })[0]);
+  };
+  const choose = (index: number) => {
+    const hit = hits[index];
+    if (!hit) return;
+    setSelected(index);
+    steering.current = false;
+    if (
+      place(section, detail ? row : undefined) !== place(hit.section, hit.row)
+    )
+      go(hit.section, hit.row, narrow() ? undefined : { replace: true });
+    else if (hit.row) setLanding((n) => n + 1);
+    else heading.current?.focus();
+  };
+  const searchKeys = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) return;
+    if (event.key === "Escape") {
+      // Esc empties the search first and closes Settings only when empty.
+      event.preventDefault();
+      if (query) changeQuery("");
+      else onClose();
+    } else if (
+      (event.key === "ArrowDown" || event.key === "ArrowUp") &&
+      hits.length
+    ) {
+      event.preventDefault();
+      const next =
+        (selected + (event.key === "ArrowDown" ? 1 : hits.length - 1)) %
+        hits.length;
+      setSelected(next);
+      preview(hits[next]);
+      document
+        .getElementById(`settings-search-results-${settingsHitKey(hits[next])}`)
+        ?.scrollIntoView({ block: "nearest" });
+    } else if (event.key === "Enter" && searching) {
+      event.preventDefault();
+      choose(selected);
+    }
+  };
   useEffect(() => {
     void checks;
     const controller = new AbortController();
@@ -346,29 +449,54 @@ export function AccountSettings({
   }, [checks]);
   useEffect(() => {
     void section;
-    if (detail) heading.current?.focus();
+    if (fieldNext.current && !detail) {
+      fieldNext.current = false;
+      field.current?.focus();
+    } else if (steering.current) return;
+    else if (detail) heading.current?.focus();
     else navHeading.current?.focus();
   }, [section, detail]);
   const main = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const keysRef = useRef({ detail, toList });
+  keysRef.current = { detail, toList };
   useEffect(() => {
-    const close = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing)
+    const close = (event: globalThis.KeyboardEvent) => {
+      const slash = event.key === "/" && !event.ctrlKey && !event.metaKey;
+      if (
+        (event.key !== "Escape" && !slash) ||
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.altKey
+      )
         return;
-      // A field, a dialog, a menu or the phone's navigation keeps its Esc;
+      // A field, a dialog, a menu or the phone's navigation keeps its keys;
       // the view kept under Settings has none of them open for the person.
+      // The search's own results are not such a list.
       if (
         typedInto(event.target) ||
         [
           ...document.querySelectorAll(
-            "[aria-modal='true'], [role='dialog']:not([hidden]), [role='menu'], [role='listbox']:not([hidden]), .ah-mobile-open",
+            "[aria-modal='true'], [role='dialog']:not([hidden]), [role='menu'], [role='listbox']:not([hidden]):not(#settings-search-results), .ah-mobile-open",
           ),
         ].some((open) => !open.closest("[data-under-settings]"))
       )
         return;
       event.preventDefault();
-      closeRef.current();
+      if (slash) {
+        // "/" finds a setting from anywhere in Settings; on the phone the
+        // field is on the section list.
+        if (field.current?.checkVisibility?.() ?? true) field.current?.focus();
+        else if (keysRef.current.detail) {
+          fieldNext.current = true;
+          keysRef.current.toList();
+        }
+      } else if (queryRef.current) {
+        setQuery("");
+        setSelected(0);
+        steering.current = false;
+      } else closeRef.current();
     };
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
@@ -377,77 +505,72 @@ export function AccountSettings({
   // page's Gitea error, …) lands on it: the row is scrolled into view, takes
   // focus and is marked for a moment. Rows read by the daemon appear later,
   // so the page waits for the row a short while.
+  // A search's preview lands the same way without taking focus from the
+  // field. A row folded away (Oma's numbers) lands on the row that holds it.
   useEffect(() => {
     void section;
-    if (!detail || !routeRow) return;
+    void landing;
+    if (!detail || !row) return;
+    const focus = !steering.current;
+    const within = settingsRowWithin(row);
+    const find = (id: string) =>
+      main.current?.querySelector<HTMLElement>(
+        `[data-settings-row="${CSS.escape(id)}"]`,
+      );
     let tries = 0;
+    let target: HTMLElement | null | undefined;
     let unmark: number | undefined;
     const timer = window.setInterval(() => {
-      const row = main.current?.querySelector<HTMLElement>(
-        `[data-settings-row="${CSS.escape(routeRow)}"]`,
-      );
-      if (!row && ++tries < 50) return;
+      target = find(row) ?? (within ? find(within) : undefined);
+      if (!target && ++tries < 50) return;
       window.clearInterval(timer);
-      if (!row) return;
-      row.scrollIntoView({ block: "center" });
-      row.focus({ preventScroll: true });
-      row.dataset.landed = "";
-      unmark = window.setTimeout(() => delete row.dataset.landed, 2400);
+      if (!target) return;
+      const landed = target;
+      landed.scrollIntoView({ block: "center" });
+      if (focus) landed.focus({ preventScroll: true });
+      landed.dataset.landed = "";
+      unmark = window.setTimeout(() => delete landed.dataset.landed, 2400);
     }, 100);
     return () => {
       window.clearInterval(timer);
       window.clearTimeout(unmark);
+      if (target) delete target.dataset.landed;
     };
-  }, [section, detail, routeRow]);
-  const sections = [
-    ["tili", "Tili"],
-    ["laitteet", "Laitteet"],
-    ["tekoaly", "Tekoäly"],
-    ["tilannekatsaus", "Tilannekatsaus"],
-    ["sanelu", "Sanelu"],
-    ["koodipalvelut", "Koodipalvelut"],
-    ["tiedot", "Tiedot agenteille"],
-    ["ulkoasu", "Ulkoasu"],
-    ["editori", "Editori"],
-    ["tila", "Tallennustila"],
-  ];
-  const adminSections = [
-    ["palvelin", "Palvelin"],
-    ["palvelinintegraatiot", "Palvelinintegraatiot"],
-    ["aiavain", "AI-avain"],
-    ["saneluavain", "Saneluavain"],
-    ["kayttoonotto", "Käyttöönotto"],
-    ["kayttajat", "Käyttäjät ja pääsy"],
-    ["levy", "Levytila"],
-  ];
-  const title = [...sections, ...adminSections].find(
-    ([id]) => id === section,
-  )?.[1];
-  const sectionIcons: Record<string, IconName> = {
-    tili: "user",
-    laitteet: "devices",
-    tekoaly: "agent",
-    tilannekatsaus: "recap",
-    koodipalvelut: "code",
-    tiedot: "plug",
-    ulkoasu: "eye",
-    editori: "editor",
-    tila: "disk",
-    palvelin: "server",
-    palvelinintegraatiot: "plug",
-    aiavain: "key",
-    sanelu: "mic",
-    saneluavain: "mic",
-    // A turn on a route, not the chevron that marks a menu (Jari 24.10.2026).
-    kayttoonotto: "steer",
-    kayttajat: "users",
-    levy: "disk",
-  };
-  const nav = (items: string[][]) =>
-    items.map(([id, label]) => {
+  }, [section, detail, row, landing]);
+  // While a search is open, its matching rows in the open section keep a
+  // quiet mark; rows that arrive later from the daemon get it too.
+  const hitRows = hits
+    .filter((hit) => hit.section === section && hit.row)
+    .map((hit) => hit.row as string)
+    .join(" ");
+  useEffect(() => {
+    const root = main.current;
+    if (!root || !hitRows) return;
+    const ids = new Set(hitRows.split(" "));
+    const mark = () => {
+      for (const el of root.querySelectorAll<HTMLElement>(
+        "[data-settings-row]",
+      ))
+        if (ids.has(el.dataset.settingsRow ?? "")) el.dataset.hit = "";
+        else delete el.dataset.hit;
+    };
+    mark();
+    const observer = new MutationObserver(mark);
+    observer.observe(root, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      for (const el of root.querySelectorAll<HTMLElement>("[data-hit]"))
+        delete el.dataset.hit;
+    };
+  }, [hitRows]);
+  const sections = settingsSections.filter((entry) => !("admin" in entry));
+  const adminSections = settingsSections.filter((entry) => "admin" in entry);
+  const title = settingsSections.find(({ id }) => id === section)?.label;
+  const nav = (items: readonly (typeof settingsSections)[number][]) =>
+    items.map(({ id, label, icon }) => {
       const content = (
         <>
-          <Icon name={sectionIcons[id]} />
+          <Icon name={icon} />
           {label}
         </>
       );
@@ -512,11 +635,30 @@ export function AccountSettings({
         <h1 data-testid="settings-title" ref={navHeading} tabIndex={-1}>
           Asetukset
         </h1>
-        {nav(sections)}
-        {admin && (
+        <SettingsSearchField
+          inputRef={field}
+          query={query}
+          hits={hits}
+          selected={selected}
+          onQuery={changeQuery}
+          onKeyDown={searchKeys}
+        />
+        {searching ? (
+          <SettingsSearchResults
+            query={query}
+            hits={hits}
+            selected={selected}
+            onPick={choose}
+          />
+        ) : (
           <>
-            <span className="s-nav-h">Palvelimen ylläpito</span>
-            {nav(adminSections)}
+            {nav(sections)}
+            {admin && (
+              <>
+                <span className="s-nav-h">Palvelimen ylläpito</span>
+                {nav(adminSections)}
+              </>
+            )}
           </>
         )}
       </nav>
@@ -527,11 +669,9 @@ export function AccountSettings({
           variant="quiet"
           size="row"
           presentation="back"
-          onPress={() =>
-            onNavigate ? onNavigate("/settings") : setLocalDetail(false)
-          }
+          onPress={toList}
         >
-          ← Asetukset
+          {searching ? "← Hakutulokset" : "← Asetukset"}
         </ControlButton>
         <h2
           ref={heading}
@@ -542,7 +682,7 @@ export function AccountSettings({
         </h2>
         {section === "tili" && (
           <div className="s-card">
-            <div className="s-row">
+            <div className="s-row" data-settings-row="account" tabIndex={-1}>
               <AccountIdentity profile={person} />
               <div className="s-val">
                 {onLogout && (
@@ -576,7 +716,11 @@ export function AccountSettings({
               >
                 {modelSelector}
               </DefaultModelRow>
-              <div className="s-row">
+              <div
+                className="s-row"
+                data-settings-row="agent-work"
+                tabIndex={-1}
+              >
                 <div className="s-lbl">
                   <strong>Agentin työ</strong>
                   <span className="s-desc">
@@ -676,7 +820,11 @@ export function AccountSettings({
         )}
         {section === "ulkoasu" && (
           <div className="s-card">
-            <div className="s-row ah-account-theme-row">
+            <div
+              className="s-row ah-account-theme-row"
+              data-settings-row="theme"
+              tabIndex={-1}
+            >
               <div className="s-lbl">
                 <strong>Teema</strong>
                 <span className="s-desc">
@@ -705,7 +853,7 @@ export function AccountSettings({
             onWorkspacesChanged={onWorkspacesChanged}
           />
         )}
-        {adminSections.some(([id]) => id === section) &&
+        {adminSections.some(({ id }) => id === section) &&
           (admin && section === "kayttoonotto" ? (
             <OnboardingAdministration
               csrf={csrf}

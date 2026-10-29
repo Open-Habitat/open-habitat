@@ -858,7 +858,11 @@ export function OnboardingSettings({
   const status = <SaveStatus save={save} onReload={onReload} />;
   return (
     <div className="ob-page" data-testid="onboarding-settings">
-      <div className="ob-head">
+      <div
+        className="ob-head"
+        data-settings-row="onboarding-preview"
+        tabIndex={-1}
+      >
         <p className="ob-lede">
           Mitä uusi henkilö käy läpi ensimmäisellä kirjautumisella. Vaiheiden
           järjestys on kiinteä. Muutos tallentuu heti ja koskee seuraavaa uutta
@@ -875,7 +879,11 @@ export function OnboardingSettings({
         </ControlButton>
       </div>
       {preview ? null : status}
-      <div className="ob-layout">
+      <div
+        className="ob-layout"
+        data-settings-row="onboarding-route"
+        tabIndex={-1}
+      >
         <RouteList
           doc={doc}
           availability={availability}

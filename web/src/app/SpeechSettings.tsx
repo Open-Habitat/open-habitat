@@ -188,7 +188,12 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
   return (
     <div className="s-stack">
       <div className="s-card">
-        <div className="s-row s-marked" data-testid="speech-key-state">
+        <div
+          className="s-row s-marked"
+          data-testid="speech-key-state"
+          data-settings-row="speech-key"
+          tabIndex={-1}
+        >
           <Icon name="mic" />
           <div className="s-lbl">
             <strong>Soniox-avain</strong>
@@ -349,7 +354,12 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
         sinulta.
       </p>
       <div className="s-card">
-        <div className="s-row s-marked" data-testid="site-speech-key">
+        <div
+          className="s-row s-marked"
+          data-testid="site-speech-key"
+          data-settings-row="site-speech-key"
+          tabIndex={-1}
+        >
           <Icon name="mic" />
           <div className="s-lbl">
             <strong>Yhteinen Soniox-avain</strong>

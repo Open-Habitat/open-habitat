@@ -137,7 +137,10 @@ test("links from the model selector and the new-workspace page land on their row
   await expect(page).toHaveURL(/\/settings\/code-hosts#gitea$/);
   const gitea = page.locator('[data-settings-row="gitea"]');
   await expect(gitea).toBeFocused();
-  await expect(gitea.getByTestId("integration-tile-gitea")).toBeVisible();
+  // The row is Gitea's own tile, not the code hosts' whole block.
+  await expect(
+    gitea.and(page.getByTestId("integration-tile-gitea")),
+  ).toBeVisible();
   await expect(gitea).toHaveAttribute("data-landed", "");
   await page.screenshot({
     path: testInfo.outputPath("evidence/koodipalvelut-landed-gitea.png"),

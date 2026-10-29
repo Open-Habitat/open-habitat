@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
  * typed text with a short reason beside the field.
  */
 export function InlineTextSetting({
+  row,
   "data-testid": testId,
   label,
   description,
@@ -18,6 +19,8 @@ export function InlineTextSetting({
   invalid,
   onSave,
 }: {
+  /** The row's settings-index id, which search and links land on. */
+  row?: string;
   "data-testid"?: string;
   label: string;
   description?: string;
@@ -73,7 +76,12 @@ export function InlineTextSetting({
     }
   };
   return (
-    <div data-testid="inline-setting" className="s-row s-inline">
+    <div
+      data-testid="inline-setting"
+      className="s-row s-inline"
+      data-settings-row={row}
+      tabIndex={row ? -1 : undefined}
+    >
       <div className="s-lbl">
         <label htmlFor={id}>
           <strong>{label}</strong>

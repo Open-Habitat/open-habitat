@@ -256,7 +256,8 @@ export function CodeHostSettings({
           )}
         </div>
       </div>
-      <div className="s-gitea" data-settings-row="gitea" tabIndex={-1}>
+      {/* Gitea's and GitLab's own rows carry their row ids. */}
+      <div className="s-gitea">
         <IntegrationsSettings
           csrf={csrf}
           only={codeHosts}

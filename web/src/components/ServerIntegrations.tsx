@@ -1337,6 +1337,8 @@ export function ServerIntegrations({
               <li
                 className="si-row"
                 data-testid={`si-row-${p}`}
+                data-settings-row={`server-${p}`}
+                tabIndex={-1}
                 data-status={s.kind}
               >
                 <ProviderMark provider={p} small />

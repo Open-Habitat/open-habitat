@@ -49,7 +49,12 @@ export function ServerVersionRow({
   commit?: string;
 }) {
   return (
-    <div data-testid="server-version" className="s-row">
+    <div
+      data-testid="server-version"
+      className="s-row"
+      data-settings-row="server-version"
+      tabIndex={-1}
+    >
       <div className="s-lbl">
         <strong>Versio</strong>
         <span className="s-desc">Palvelimella nyt käynnissä oleva versio.</span>

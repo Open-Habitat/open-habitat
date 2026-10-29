@@ -102,7 +102,12 @@ export function JoinedCard({
 }) {
   const key = copies.site_key;
   return (
-    <div className="s-card sk-joined" data-testid="joined-card">
+    <div
+      className="s-card sk-joined"
+      data-testid="joined-card"
+      data-settings-row="site-key-copies"
+      tabIndex={-1}
+    >
       <div className="s-row">
         <div className="s-lbl">
           <strong>Jo liittyneet</strong>
