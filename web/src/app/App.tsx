@@ -132,6 +132,7 @@ import {
 } from "./store";
 import { TrashNotice } from "./TrashNotice";
 import { ViewHost } from "./ViewHost";
+import { resetViewLinks } from "./viewLinks";
 import type { DeletionOutcome } from "./WorkspaceDeletion";
 import { WorkspaceEditor } from "./WorkspaceEditor";
 import { WorkspacePage } from "./WorkspacePage";
@@ -390,6 +391,8 @@ export function App() {
   // Local concealment does not prove the server session ended.
   const clearPerson = useCallback((person?: string) => {
     ++identityGeneration.current;
+    // The person's shared link URLs are bearer keys: never the next person's.
+    resetViewLinks();
     window.clearTimeout(quietRetry.current.timer);
     quietRetry.current = { failures: 0 };
     owned.current.journal?.stop();

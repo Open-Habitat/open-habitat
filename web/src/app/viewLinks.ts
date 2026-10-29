@@ -44,6 +44,9 @@ export type ViewLinkState =
   | { maxDays: number; links: ViewLink[] };
 
 let state: ViewLinkState;
+// A reset (another person) starts a new epoch; a reply from an older one is
+// dropped, so a link URL never reaches the next person's list.
+let epoch = 0;
 const listeners = new Set<() => void>();
 function publish(next: ViewLinkState) {
   state = next;
@@ -62,6 +65,7 @@ export function useViewLinks(): ViewLinkState {
 
 /** A new person never sees the previous person's links. */
 export function resetViewLinks() {
+  epoch++;
   publish(undefined);
 }
 
@@ -77,12 +81,14 @@ async function boundedJSON(response: Response, max: number): Promise<unknown> {
 
 /** Reads the person's links into the store. */
 export async function refreshViewLinks(signal?: AbortSignal): Promise<void> {
+  const at = epoch;
   try {
     const response = await fetch("/api/v1/view-links", {
       credentials: "same-origin",
       cache: "no-store",
       signal,
     });
+    if (at !== epoch) return;
     if (response.status === 204) {
       publish("off");
       return;
@@ -91,24 +97,25 @@ export async function refreshViewLinks(signal?: AbortSignal): Promise<void> {
     const value = await boundedJSON(response, 128 << 10);
     if (!validList?.(value)) throw new Error("unexpected link reply");
     const list = value as { max_days: number; links: ViewLink[] };
+    if (at !== epoch) return;
     publish({ maxDays: list.max_days, links: list.links });
   } catch (error) {
-    if (signal?.aborted) return;
+    if (signal?.aborted || at !== epoch) return;
     if (state === undefined) publish("unavailable");
     throw error;
   }
 }
 
-function remember(link: ViewLink) {
-  if (!state || typeof state === "string") return;
+function remember(link: ViewLink, at: number) {
+  if (at !== epoch || !state || typeof state === "string") return;
   const rest = state.links.filter((l) => l.link_id !== link.link_id);
-  const at = state.links.findIndex((l) => l.link_id === link.link_id);
-  rest.splice(at < 0 ? 0 : at, 0, link);
+  const index = state.links.findIndex((l) => l.link_id === link.link_id);
+  rest.splice(index < 0 ? 0 : index, 0, link);
   publish({ ...state, links: rest });
 }
 
-function forget(linkId: string) {
-  if (!state || typeof state === "string") return;
+function forget(linkId: string, at: number) {
+  if (at !== epoch || !state || typeof state === "string") return;
   publish({
     ...state,
     links: state.links.filter((l) => l.link_id !== linkId),
@@ -157,13 +164,14 @@ export async function createViewLink(
   viewId: string,
   days: number,
 ): Promise<ViewLink> {
+  const at = epoch;
   const link = await linkWrite(
     "/api/v1/view-links",
     { view_id: viewId, days },
     csrf,
   );
   if (!link) throw new Error(linkFailure(undefined));
-  remember(link);
+  remember(link, at);
   return link;
 }
 
@@ -177,16 +185,18 @@ export async function changeViewLink(
   linkId: string,
   change: ViewLinkChange,
 ): Promise<ViewLink> {
+  const at = epoch;
   const link = await linkWrite(
     "/api/v1/view-links/change",
     { link_id: linkId, ...change },
     csrf,
   ).catch((error: Error) => {
-    if (error.message === linkFailure("view_link_not_found")) forget(linkId);
+    if (error.message === linkFailure("view_link_not_found"))
+      forget(linkId, at);
     throw error;
   });
   if (!link) throw new Error(linkFailure(undefined));
-  remember(link);
+  remember(link, at);
   return link;
 }
 
@@ -194,12 +204,13 @@ export async function revokeViewLink(
   csrf: string,
   linkId: string,
 ): Promise<void> {
+  const at = epoch;
   await linkWrite("/api/v1/view-links/revoke", { link_id: linkId }, csrf).catch(
     (error: Error) => {
       if (error.message !== linkFailure("view_link_not_found")) throw error;
     },
   );
-  forget(linkId);
+  forget(linkId, at);
 }
 
 /** The administrator's list: metadata only, never a URL. */
@@ -212,7 +223,8 @@ export async function adminViewLinks(
     signal,
   });
   if (!response.ok) throw new Error("links unavailable");
-  const value = await boundedJSON(response, 2 << 20);
+  // 4096 rows of escaped titles stay below 8 MiB.
+  const value = await boundedJSON(response, 8 << 20);
   if (!validAdminList?.(value)) throw new Error("unexpected link reply");
   return value as { enabled: boolean; links: AdminViewLink[] };
 }

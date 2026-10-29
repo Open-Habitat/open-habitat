@@ -8,6 +8,7 @@ import (
 	"crypto/subtle"
 	"encoding/base32"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -515,6 +516,15 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity
 	kind, ok := viewContentTypes[strings.ToLower(path.Ext(rel))]
 	if !ok {
 		kind = "application/octet-stream"
+	}
+	if charge != nil {
+		// A public reader that stops reading must not hold its relay slot
+		// past the relay's own bound; the server sets no write timeout.
+		err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(5 * time.Minute))
+		if err != nil && !errors.Is(err, http.ErrNotSupported) {
+			viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
+			return
+		}
 	}
 	w.Header().Set("Content-Type", kind)
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))

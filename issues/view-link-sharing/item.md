@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: view-sharing
 lane_seq: 2
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Shared view links: anyone with the link opens the view (ADR 0033)
@@ -20,6 +21,6 @@ Implement ADR 0033 (view capability links) with Jari's 29.10. change: anyone wit
 
 ## Acceptance Criteria
 
-- [ ] ADR 0033 updated to Jari's decision and marked accepted.
-- [ ] Gateway link records, anonymous read through the owner's daemon, revocation and expiry; browser "Jaa linkillä" on the view card with expiry, copy, re-point and revoke; administrator list and revoke.
-- [ ] Contract, gateway/daemon tests and browser specs; operations.md; KOKEILTAVAA line.
+- [x] ADR 0033 updated to Jari's decision and marked accepted.
+- [x] Gateway link records, anonymous read through the owner's daemon, revocation and expiry; browser "Jaa linkillä" on the view card with expiry, copy, re-point and revoke; administrator list and revoke.
+- [x] Contract, gateway/daemon tests and browser specs; operations.md; KOKEILTAVAA line.

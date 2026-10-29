@@ -35,7 +35,6 @@ import {
   changeViewLink,
   createViewLink,
   refreshViewLinks,
-  resetViewLinks,
   revokeViewLink,
   useViewLinks,
   type ViewLink,
@@ -158,14 +157,6 @@ export function ViewHost({
     setExpanded(false);
     setSharing(undefined);
     setViews([]);
-  }, [identity]);
-
-  // Another person's links are forgotten, as their offers are.
-  const linksOf = useRef(identity);
-  useEffect(() => {
-    if (linksOf.current === identity) return;
-    linksOf.current = identity;
-    resetViewLinks();
   }, [identity]);
 
   // Another person's offers are forgotten. The first identity is not a

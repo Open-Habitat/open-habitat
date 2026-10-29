@@ -397,3 +397,29 @@ type nopSink struct{}
 func (nopSink) Deliver(context.Context, Identity, string, string) (Handoff, error) {
 	return HandoffInUse, nil
 }
+
+func TestViewLinkCommitChecksAndCapacity(t *testing.T) {
+	d := newLinkDesk(t)
+	// The commit after the daemon call refuses a session that expired
+	// meanwhile, though it is still in memory.
+	d.a.mu.Lock()
+	s := d.a.sessions["browser"]
+	_, live := d.a.authenticatedLocked(s)
+	expired := s
+	expired.absolute = d.a.now()
+	d.a.sessions["browser"] = expired
+	_, stale := d.a.authenticatedLocked(s)
+	d.a.sessions["browser"] = s
+	// A site full of expired links still accepts a new one.
+	full := map[string]viewLink{}
+	for i := 0; i < viewLinksMax; i++ {
+		id, _ := d.a.newViewLinkID()
+		full[id] = viewLink{ID: id, Owner: Identity{Provider: "github", Subject: "43"}, Expires: d.a.now().Add(-time.Minute)}
+	}
+	d.a.publishViewLinks(full)
+	d.a.mu.Unlock()
+	if !live || stale {
+		t.Fatalf("commit check: live %v, expired accepted %v", live, stale)
+	}
+	d.createLink(viewTestA, 1)
+}

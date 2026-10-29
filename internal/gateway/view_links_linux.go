@@ -43,9 +43,12 @@ const (
 	adminViewLinksRevoke = "/api/v1/server/view-links/revoke"
 	viewLinkStoreName    = "view-links.json"
 	viewLinkStoreVersion = 1
-	viewLinkMaxDays      = 365
-	viewLinksPerPerson   = 50
-	viewLinksMax         = 4096
+	// 4096 links whose titles JSON-escape at six bytes a character stay
+	// below 7 MiB; the writer refuses what the reader would not read.
+	viewLinkStoreBytes = 16 << 20
+	viewLinkMaxDays    = 365
+	viewLinksPerPerson = 50
+	viewLinksMax       = 4096
 	// Public reads cannot starve the owners' own traffic or exhaust a daemon:
 	// concurrent relays and a day's bytes are bounded per link and per site.
 	// The counters live in memory; a restart resets them.
@@ -161,7 +164,7 @@ func (a *Auth) loadViewLinks() {
 		return
 	}
 	defer f.Close()
-	d := json.NewDecoder(io.LimitReader(f, 4<<20))
+	d := json.NewDecoder(io.LimitReader(f, viewLinkStoreBytes))
 	d.DisallowUnknownFields()
 	var state struct {
 		Version int        `json:"version"`
@@ -222,6 +225,9 @@ func (a *Auth) changeViewLinks(change func(map[string]viewLink)) error {
 		}{viewLinkStoreVersion, list})
 		if err != nil {
 			return err
+		}
+		if len(data) > viewLinkStoreBytes {
+			return errors.New("view link store capacity exceeded")
 		}
 		f, err := os.CreateTemp(filepath.Dir(path), ".view-links-*")
 		if err != nil {
@@ -437,13 +443,15 @@ func (a *Auth) viewLinksHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (a *Auth) createViewLink(w http.ResponseWriter, r *http.Request, s session, viewID string, days int) {
 	a.mu.Lock()
-	mine := 0
+	mine, total := 0, 0
 	for _, l := range a.viewLinks {
-		if sameOwner(l, s.identity) && a.now().Before(l.Expires) {
-			mine++
+		if a.now().Before(l.Expires) {
+			total++
+			if sameOwner(l, s.identity) {
+				mine++
+			}
 		}
 	}
-	total := len(a.viewLinks)
 	a.mu.Unlock()
 	if mine >= viewLinksPerPerson || total >= viewLinksMax {
 		safe(w, 429, "view_links_limited")
@@ -500,14 +508,16 @@ func (a *Auth) createViewLink(w http.ResponseWriter, r *http.Request, s session,
 	writeJSON(w, map[string]any{"schema_version": 1, "link": a.viewLinkReply(l)})
 }
 
-// authenticatedLocked reports whether s is still a live session of its
-// subject: revocation removes every session under mu. Call under mu.
+// authenticatedLocked reports whether s is still a live, unexpired session
+// of its subject after a daemon call: revocation removes every session under
+// mu, and an operator's removed store ends them all. Call under mu.
 func (a *Auth) authenticatedLocked(s session) (session, bool) {
-	if a.deniedLocked(s.identity.Subject) {
+	if a.deniedLocked(s.identity.Subject) || a.sessionFile != "" && !a.sessionStoreHealthy() {
 		return session{}, false
 	}
+	now := a.now()
 	for _, o := range a.sessions {
-		if o.id == s.id && o.identity == s.identity {
+		if o.id == s.id && o.identity == s.identity && now.Before(o.idle) && now.Before(o.absolute) {
 			return o, true
 		}
 	}
