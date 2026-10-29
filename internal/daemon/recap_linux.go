@@ -110,33 +110,50 @@ type latestMessage struct{ ID, At string }
 // Scan the active Pi branch backwards once. History windows are deliberately
 // small, but a recap remains discoverable after hundreds of later messages.
 func latestNativeRecap(path string, uid int, id, cwd string) (recapData, latestMessage, bool) {
+	scan, ok := scanNativeRecap(path, uid, id, cwd, false)
+	return scan.recap, scan.latest, ok
+}
+
+// recapScan is what one backward pass over the active branch found: the
+// newest recap, the newest message and whose it is, and, for a full pass,
+// the completed turns as recap-extension.mjs counts them (a person's message
+// answered by the agent's).
+type recapScan struct {
+	recap      recapData
+	latest     latestMessage
+	latestKind string
+	turns      int
+}
+
+// scanNativeRecap stops at the newest recap and message unless full asks
+// for the whole branch, which counting turns needs.
+func scanNativeRecap(path string, uid int, id, cwd string, full bool) (recapScan, bool) {
 	header := readNativeHeader(path, uid)
 	if header.id != id || header.cwd != cwd || header.state != "readable" {
-		return recapData{}, latestMessage{}, false
+		return recapScan{}, false
 	}
 	before, err := os.Lstat(path)
 	if err != nil || !before.Mode().IsRegular() || before.Size() > maxHistoryFile {
-		return recapData{}, latestMessage{}, false
+		return recapScan{}, false
 	}
 	if uid >= 0 {
 		owner, owned := fileOwner(before)
 		if !owned || owner != uid {
-			return recapData{}, latestMessage{}, false
+			return recapScan{}, false
 		}
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return recapData{}, latestMessage{}, false
+		return recapScan{}, false
 	}
 	defer file.Close()
 	opened, err := file.Stat()
 	if err != nil || !os.SameFile(before, opened) {
-		return recapData{}, latestMessage{}, false
+		return recapScan{}, false
 	}
-	var recap recapData
-	var latest latestMessage
+	var scan recapScan
 	var target string
-	var leaf, broken bool
+	var leaf, broken, answered bool
 	err = reverseLines(file, before.Size(), func(line []byte) bool {
 		var entry nativeEntry
 		if json.Unmarshal(line, &entry) != nil {
@@ -163,19 +180,29 @@ func latestNativeRecap(path string, uid int, id, cwd string) (recapData, latestM
 		}
 		entry.Raw = line
 		projected := nativeBlocks(entry)
-		if latest.ID == "" && (projected.Kind == "user" || projected.Kind == "assistant") {
-			latest = latestMessage{ID: entry.ID, At: nativeTimestamp(entry.Timestamp)}
+		if scan.latest.ID == "" && (projected.Kind == "user" || projected.Kind == "assistant") {
+			scan.latest = latestMessage{ID: entry.ID, At: nativeTimestamp(entry.Timestamp)}
+			scan.latestKind = projected.Kind
 		}
-		if recap.Through == "" && projected.Recap != nil {
-			recap = *projected.Recap
+		// Backwards, a turn completes where a person's message meets an
+		// answer read after it; the extension's forward count agrees.
+		switch {
+		case projected.Kind == "assistant":
+			answered = true
+		case projected.Kind == "user" && answered:
+			scan.turns++
+			answered = false
 		}
-		return !root && (recap.Through == "" || latest.ID == "")
+		if scan.recap.Through == "" && projected.Recap != nil {
+			scan.recap = *projected.Recap
+		}
+		return !root && (full || scan.recap.Through == "" || scan.latest.ID == "")
 	})
 	after, statErr := os.Lstat(path)
 	if err != nil || statErr != nil || broken || !os.SameFile(before, after) || before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) {
-		return recapData{}, latestMessage{}, false
+		return recapScan{}, false
 	}
-	return recap, latest, true
+	return scan, true
 }
 
 // The daemon, not browser focus, observes native work. Called with c.mu held.

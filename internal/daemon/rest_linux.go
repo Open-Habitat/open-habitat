@@ -50,7 +50,8 @@ func (c *ConversationController) restOf(s *conversation) (restFact, bool, bool) 
 	// Woken by typing but not yet told: the rest it woke from still holds,
 	// also when this Pi stops again unused.
 	if !s.told && s.wokeFrom.cause != "" {
-		return s.wokeFrom, liveChild(s) && !notRunning(s) && s.state != "stopping", true
+		// A Pi up only for a recap has not been woken: the rest still holds.
+		return s.wokeFrom, liveChild(s) && !notRunning(s) && s.state != "stopping" && !s.recapOnly, true
 	}
 	if liveChild(s) {
 		return restFact{}, false, false

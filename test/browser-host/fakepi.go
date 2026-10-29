@@ -118,10 +118,22 @@ func runFakePi(args []string) {
 		}
 		for _, line := range strings.Split(string(data), "\n") {
 			var entry struct {
-				ID string `json:"id"`
+				ID         string `json:"id"`
+				Type       string `json:"type"`
+				CustomType string `json:"customType"`
+				Message    struct {
+					Role string `json:"role"`
+				} `json:"message"`
 			}
 			if json.Unmarshal([]byte(line), &entry) == nil && entry.ID != "" {
 				s.parent = entry.ID
+				// A resumed Pi recaps the same latest message as before.
+				if entry.Type == "message" && (entry.Message.Role == "user" || entry.Message.Role == "assistant") {
+					s.lastMessage = entry.ID
+				}
+				if entry.Type == "custom" && entry.CustomType == "conversation-recap" {
+					s.lastRecap = s.lastMessage
+				}
 			}
 		}
 	}

@@ -166,7 +166,7 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 	c.mu.Lock()
 	old := c.sessions[id]
 	c.mu.Unlock()
-	s, problem := c.resume(id, old, true)
+	s, problem := c.resume(id, old, startWake)
 	releasePermit()
 	if problem != "" {
 		switch problem {
@@ -198,6 +198,9 @@ func (c *ConversationController) awake(w http.ResponseWriter, id string) bool {
 		c.mu.Unlock()
 		return false
 	}
+	// The person is typing into it: a Pi started for a recap is theirs now.
+	old.recapOnly = false
+	old.presentAt = time.Now()
 	state := "idle"
 	switch {
 	case old.state == "starting":
@@ -211,12 +214,22 @@ func (c *ConversationController) awake(w http.ResponseWriter, id string) bool {
 	return true
 }
 
+// Why resume starts Pi: to deliver what is held, because the person woke
+// it, or only to make an owed recap (recap_resting_linux.go).
+type startKind int
+
+const (
+	startHeldSend startKind = iota
+	startWake
+	startRecap
+)
+
 // resume proves that the browser may own this native session again and starts
 // a Pi child on it. Caller holds the proof permit. The new handle replaces old
 // and inherits its spent IDs, receipts and held messages, so nothing sent
 // before the start is lost or can be sent twice. It is ready once Pi answers.
 // A wake keeps the child running without anything to deliver.
-func (c *ConversationController) resume(id string, old *conversation, wake bool) (*conversation, string) {
+func (c *ConversationController) resume(id string, old *conversation, kind startKind) (*conversation, string) {
 	owner, origin, ws, cwd, path, proved, eligibility := c.continuationProof(id)
 	if eligibility != "eligible" {
 		return nil, eligibility
@@ -244,7 +257,14 @@ func (c *ConversationController) resume(id string, old *conversation, wake bool)
 	if err != nil {
 		return nil, "unproven"
 	}
-	c.makeRoom(context.Background())
+	// A recap the person did not ask for never stops another Pi for room,
+	// and leaves one place free for the person's next start.
+	room := maxLiveConversations
+	if kind == startRecap {
+		room--
+	} else {
+		c.makeRoom(context.Background())
+	}
 	c.mu.Lock()
 	// Another create or continuation may have run while history was read.
 	// The owner fence still excludes another native writer for this ID.
@@ -252,7 +272,7 @@ func (c *ConversationController) resume(id string, old *conversation, wake bool)
 		c.mu.Unlock()
 		return nil, "unproven"
 	}
-	if c.liveCount() >= maxLiveConversations || (old == nil && len(c.sessions) >= 128) {
+	if c.liveCount() >= room || (old == nil && len(c.sessions) >= 128) {
 		c.mu.Unlock()
 		return nil, "capacity_exceeded"
 	}
@@ -289,9 +309,10 @@ func (c *ConversationController) resume(id string, old *conversation, wake bool)
 		old.held, old.heldChoice, old.bash = nil, nil, nil
 	}
 	s.wokeFrom = woke
-	if wake {
+	if kind != startHeldSend {
 		s.lazy = false
 	}
+	s.recapOnly = kind == startRecap
 	c.sessions[id] = s
 	if c.journal != nil {
 		c.journal.reset("pi:"+id, "idle")

@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: recap
 lane_seq: 2
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Automatic recap is lost when the daemon restarts first

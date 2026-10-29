@@ -556,7 +556,14 @@ esac
 		// each incarnation still runs the real controller and fake Pi child.
 		newConversations := func() (http.Handler, context.CancelFunc) {
 			ctx, cancel := context.WithCancel(context.Background())
-			return daemon.ConversationHandlerWithFixtureRuntime(ctx, cfg, trusted, status, home, &core.PiRuntimeConfig{Node: self, Entry: "/synthetic/pi/dist/index.js", Manifest: "/synthetic/pi/package.json"}), cancel
+			c := daemon.ConversationHandlerWithFixtureRuntime(ctx, cfg, trusted, status, home, &core.PiRuntimeConfig{Node: self, Entry: "/synthetic/pi/dist/index.js", Manifest: "/synthetic/pi/package.json"})
+			// Only the recap scenarios' fake Pi can make a recap; elsewhere a
+			// restarted daemon would only start Pis the cases do not expect.
+			if name, _ := scenario.Load().(string); name == "pi-recap" || name == "pi-recap-unsupported" || name == "pi-recap-failing" {
+				c.FixtureSetRecapIdleDelay(600 * time.Millisecond)
+				c.FixtureRecapResting(ctx)
+			}
+			return c, cancel
 		}
 		conversations, cancel := newConversations()
 		current.Store(conversations)

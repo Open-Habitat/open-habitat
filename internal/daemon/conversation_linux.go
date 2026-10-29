@@ -150,6 +150,9 @@ type conversation struct {
 	stoppedAt  time.Time
 	wokeFrom   restFact
 	told       bool // a prompt reached Pi, which gave the agent its catch-up
+	// Started only for an owed recap and stopped after it; the person's
+	// first wake, send or command makes the Pi theirs (recap_resting_linux.go).
+	recapOnly bool
 }
 
 type heldMessage struct {
@@ -209,6 +212,14 @@ func (c *ConversationController) FixtureSetRecapIdleDelay(delay time.Duration) {
 	defer c.mu.Unlock()
 	if c.fixture {
 		c.recapIdleDelay = delay
+	}
+}
+
+// FixtureRecapResting makes the recaps a restarted synthetic daemon owes,
+// as the production daemon does when it starts (recap_resting_linux.go).
+func (c *ConversationController) FixtureRecapResting(ctx context.Context) {
+	if c.fixture {
+		go c.recapRestingConversations(ctx)
 	}
 }
 
@@ -857,6 +868,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 // beginPrompt marks a native message write as pending. Caller holds c.mu and
 // has spent the command IDs. A send starts a new turn; steer/follow_up do not.
 func (c *ConversationController) beginPrompt(s *conversation, kind string, ids []string) {
+	s.recapOnly = false
 	s.state = "pending"
 	s.lastUsed = time.Now()
 	s.ack = "pending"

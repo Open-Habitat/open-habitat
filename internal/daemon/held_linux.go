@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 )
 
 // Messages sent before Pi runs are held by the daemon, in order, under the
@@ -101,6 +103,7 @@ func (c *ConversationController) holdLocked(w http.ResponseWriter, s *conversati
 		return
 	}
 	s.commands[commandID] = true
+	s.recapOnly = false
 	s.held = append(s.held, heldMessage{id: commandID, text: message})
 	if choice != nil {
 		s.heldChoice = choice
@@ -133,7 +136,7 @@ func (c *ConversationController) startHeld(s *conversation) {
 	} else if release, ok := c.proofPermit(context.Background()); !ok {
 		problem = "source_unavailable"
 	} else {
-		_, problem = c.resume(s.id, s, false)
+		_, problem = c.resume(s.id, s, startHeldSend)
 		release()
 	}
 	if problem == "" {
@@ -250,9 +253,20 @@ func (c *ConversationController) awaitReady(s *conversation) {
 		_ = s.rpc.close()
 		c.mu.Lock()
 		if c.sessions[s.id] == s && s.state == "starting" && !s.startupCancelled {
-			s.state = "start_failed"
-			s.startProblem = "pi_start_failed"
-			c.heldFailed(s)
+			if s.recapOnly {
+				// Nobody asked for this start (recap_resting_linux.go): its
+				// failure is no problem of the person's, and the conversation
+				// simply rests on.
+				s.state = "stopped"
+				diagnostic.New(os.Stderr, "daemon").Warn("conversation_recap", "outcome", "failed", "reason", "pi_start_failed", "trigger", "resting", "agent_id", "pi:"+s.id)
+				if c.journal != nil {
+					c.journal.appendInvalidation("pi:" + s.id)
+				}
+			} else {
+				s.state = "start_failed"
+				s.startProblem = "pi_start_failed"
+				c.heldFailed(s)
+			}
 		}
 		c.mu.Unlock()
 		return
