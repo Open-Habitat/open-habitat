@@ -3,11 +3,6 @@ import { expect, test } from "./lab-host";
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 
-// Server-info interception can overlap page teardown after the last assertion.
-test.afterEach(async ({ page }) => {
-  await page.unrouteAll({ behavior: "wait" });
-});
-
 async function login(
   page: import("@playwright/test").Page,
   name: "Alice" | "Bob",

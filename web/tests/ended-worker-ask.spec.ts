@@ -12,9 +12,6 @@ test.use({
   viewport: { width: 1440, height: 900 },
   deviceScaleFactor: 2,
 });
-test.afterEach(async ({ page }) => {
-  await page.unrouteAll({ behavior: "wait" });
-});
 
 // Review material for Jari, never a passing visual comparison.
 const capture = process.env.OH_WORKER_PANEL_CAPTURE;

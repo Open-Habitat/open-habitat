@@ -113,9 +113,12 @@ for (const width of [1024, 1280, 1600, 1920]) {
     await expect(tip).toBeHidden();
     await activity.hover();
     await expect(tip).toBeVisible();
-    expect(await tip.textContent()).toBe(
-      await activity.getAttribute("aria-label"),
-    );
+    // One read: the duration in both ticks while the turn runs.
+    const [tipText, label] = await activity.evaluate((el) => [
+      el.querySelector(".ah-header-tip")?.textContent,
+      el.getAttribute("aria-label"),
+    ]);
+    expect(tipText).toBe(label);
     await page.mouse.move(2, 790);
     await expect(tip).toBeHidden();
     await activity.focus();
@@ -158,63 +161,27 @@ async function shoot(page: Page, header: Locator, name: string, extra = 0) {
 }
 
 async function expectOneRow(page: Page, header: Locator, width: number) {
-  // Let the header measure itself after a layout change.
-  await page.waitForTimeout(100);
-  const geometry = await header.evaluate((element) => {
-    const row = element.querySelector(".ah-agent-topline") as HTMLElement;
-    const title = element.querySelector("h1") as HTMLElement;
-    const boxes = [...row.querySelectorAll(":scope > *, :scope > * > summary")]
-      .map((child) => child.getBoundingClientRect())
-      .filter((box) => box.width > 1 && box.height > 1);
-    const tops = boxes.map((box) => box.top + box.height / 2);
-    const own = row.getBoundingClientRect();
-    return {
-      row: own.width,
-      right: own.right,
-      steps: row.dataset.shorten ?? "",
-      // What took the row, for a failure's message.
-      parts: [...row.children]
-        .map((child) => {
-          const box = child.getBoundingClientRect();
-          return box.width
-            ? `${child.className.split(" ")[0]} ${Math.round(box.width)}`
-            : "";
-        })
-        .filter(Boolean)
-        .join(", "),
-      title: title.getBoundingClientRect().width,
-      titleText: title.scrollWidth,
-      // A shortened chip whose content spills out covers its neighbour.
-      overlaps: boxes.filter((a, i) =>
-        boxes.some(
-          (b, j) =>
-            j > i &&
-            a.left < b.right - 1 &&
-            b.left < a.right - 1 &&
-            a.top < b.bottom - 1 &&
-            b.top < a.bottom - 1 &&
-            !(a.left <= b.left && a.right >= b.right) &&
-            !(b.left <= a.left && b.right >= a.right),
-        ),
-      ).length,
-      outside: boxes.filter((box) => box.right > own.right + 1).length,
-      rows: tops.filter(
-        (centre, i) => tops.findIndex((c) => Math.abs(c - centre) < 12) === i,
-      ).length,
-    };
-  });
-  expect(geometry.rows, `rows at steps "${geometry.steps}"`).toBe(1);
-  expect(geometry.overlaps).toBe(0);
-  expect(geometry.outside).toBe(0);
-  expect(
-    geometry.title,
-    `title share at steps "${geometry.steps}": ${geometry.parts}`,
-  ).toBeGreaterThanOrEqual(
-    Math.min(geometry.titleText, geometry.row * 0.4) - 1,
-  );
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
-    width,
-  );
+  // The header measures itself on the frame after a layout change, so the
+  // row is read until it holds and its steps stay put between two reads,
+  // not after a guessed delay; the menu checks below follow those steps.
+  let geometry = await measure(header);
+  await expect(async () => {
+    const previous = geometry.steps;
+    geometry = await measure(header);
+    expect(geometry.steps, "steps settled").toBe(previous);
+    expect(geometry.rows, `rows at steps "${geometry.steps}"`).toBe(1);
+    expect(geometry.overlaps).toBe(0);
+    expect(geometry.outside).toBe(0);
+    expect(
+      geometry.title,
+      `title share at steps "${geometry.steps}": ${geometry.parts}`,
+    ).toBeGreaterThanOrEqual(
+      Math.min(geometry.titleText, geometry.row * 0.4) - 1,
+    );
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width);
+  }).toPass({ timeout: 10_000 });
 
   // Every action is in view, directly or through the ⋯ menu, and the state
   // the row no longer shows is in the menu.
@@ -279,4 +246,50 @@ async function expectOneRow(page: Page, header: Locator, width: number) {
   await expect(details).toContainText(branch);
   await page.keyboard.press("Escape");
   await expect(details).toHaveCount(0);
+}
+
+function measure(header: Locator) {
+  return header.evaluate((element) => {
+    const row = element.querySelector(".ah-agent-topline") as HTMLElement;
+    const title = element.querySelector("h1") as HTMLElement;
+    const boxes = [...row.querySelectorAll(":scope > *, :scope > * > summary")]
+      .map((child) => child.getBoundingClientRect())
+      .filter((box) => box.width > 1 && box.height > 1);
+    const tops = boxes.map((box) => box.top + box.height / 2);
+    const own = row.getBoundingClientRect();
+    return {
+      row: own.width,
+      right: own.right,
+      steps: row.dataset.shorten ?? "",
+      // What took the row, for a failure's message.
+      parts: [...row.children]
+        .map((child) => {
+          const box = child.getBoundingClientRect();
+          return box.width
+            ? `${child.className.split(" ")[0]} ${Math.round(box.width)}`
+            : "";
+        })
+        .filter(Boolean)
+        .join(", "),
+      title: title.getBoundingClientRect().width,
+      titleText: title.scrollWidth,
+      // A shortened chip whose content spills out covers its neighbour.
+      overlaps: boxes.filter((a, i) =>
+        boxes.some(
+          (b, j) =>
+            j > i &&
+            a.left < b.right - 1 &&
+            b.left < a.right - 1 &&
+            a.top < b.bottom - 1 &&
+            b.top < a.bottom - 1 &&
+            !(a.left <= b.left && a.right >= b.right) &&
+            !(b.left <= a.left && b.right >= a.right),
+        ),
+      ).length,
+      outside: boxes.filter((box) => box.right > own.right + 1).length,
+      rows: tops.filter(
+        (centre, i) => tops.findIndex((c) => Math.abs(c - centre) < 12) === i,
+      ).length,
+    };
+  });
 }

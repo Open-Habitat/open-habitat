@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: agent
-status: open
+status: fixed
 priority: normal
 lane: gate-health
 lane_seq: 130
 preparation: ready
+closed: 2026-10-29
 ---
 
 # lab-desktop-header flakes: route reads a disposed git response
@@ -28,5 +29,5 @@ teardown), so the test fails on timing, not on the header.
 
 ## Acceptance Criteria
 
-- [ ] The route handler tolerates a disposed response / a request after the assertion phase (e.g. unroute before teardown, or catch the disposal and `route.fallback()`), without hiding a real failure.
-- [ ] Spec passes repeatedly under CPU load.
+- [x] The route handler tolerates a disposed response / a request after the assertion phase (e.g. unroute before teardown, or catch the disposal and `route.fallback()`), without hiding a real failure.
+- [x] Spec passes repeatedly under CPU load.

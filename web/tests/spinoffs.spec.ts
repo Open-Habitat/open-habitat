@@ -12,9 +12,6 @@ test.use({
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 900 },
 });
-test.afterEach(async ({ page }) => {
-  await page.unrouteAll({ behavior: "wait" });
-});
 test("@spinoffs @a11y follows native child rows, opens read-only and returns to parent, including phone", async ({
   page,
 }) => {

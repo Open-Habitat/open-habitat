@@ -15,6 +15,15 @@ export function createHostTest(
   extraEnv: Record<string, string> = {},
 ) {
   return base.extend<{ hostProcess: undefined }>({
+    // A route handler still between route.fetch() and its body when the
+    // case ends (a poll that fired after the last assertion) would read a
+    // response the closing context has disposed and fail a passing case.
+    // Unrouting before the context closes lets late requests through; a
+    // handler's error during the case itself still fails it.
+    page: async ({ page }, use) => {
+      await use(page);
+      await page.unrouteAll({ behavior: "ignoreErrors" });
+    },
     hostProcess: [
       async ({ browserName }, use, testInfo) => {
         if (browserName !== "chromium")
