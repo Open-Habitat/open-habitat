@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: account-secrets
 lane_seq: 1
 preparation: pending
+closed: 2026-10-29
 ---
 
 # Research: SOPS, age and SSH keys on the Habitat account (UI or CLI)
@@ -23,3 +24,9 @@ Research: what a person needs to bring a laptop's secret setup to the account (a
 ## Acceptance Criteria
 
 - [ ] `report.md` (sourced) and `result.md` with a recommendation (UI, skill + CLI, or both), what ships in the runtime profile, and a proposed prototype or implementation issue.
+
+## Decisions
+
+### 2026-10-29T15:14:04Z · @jari
+
+Jari 29.10.: both UI and skill; the keys page may create a key when none exists (public half shown, private stays on the account). Prototype rounds are scoped per view, so the keys page gets its own round: proto-account-keys-page.

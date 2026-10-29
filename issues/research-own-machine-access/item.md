@@ -25,3 +25,9 @@ Research questions: running Tailscale per Unix user without root on the server (
 
 - [ ] `report.md` (sourced) and `result.md`: a supported architecture with its authority split (gateway/daemon/provision; Unix user boundary), the native components reused, the UI surfaces the prototype round must cover, and what Jari must decide.
 - [ ] A spike on the test server or a disposable container proving or refuting unprivileged per-user `tailscaled` (no change to a shared host's network config).
+
+## Decisions
+
+### 2026-10-29T15:14:04Z · @jari
+
+Jari 29.10.: (1) The agent gets everything the person's user has on that machine: this is exactly the principle. (2) The server's root can technically use the grant: accepted, that is how it is. (3) There is no pause button to promise; the UI does not offer a pause that does not really stop the agent. (4) Birch's host-wide tailnet membership is intentional (the whole Birch service sits behind Tailscale) and is not the normal model; the product's per-user Tailscale is.

@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: view-sharing
 lane_seq: 1
 preparation: pending
+closed: 2026-10-29
 ---
 
 # Decide: anyone with the link can open a shared view
@@ -23,3 +24,9 @@ Decide and record (ADR): the capability-link model (unguessable token, separate 
 ## Acceptance Criteria
 
 - [ ] ADR with the recommended model and its authority split, recorded for Jari's approval; implementation issue proposed, not started.
+
+## Decisions
+
+### 2026-10-29T15:14:04Z · @jari
+
+Jari 29.10. on ADR 0033: the model is approved (anyone with the link opens the view; the person creates and revokes links in the browser). The phishing-on-the-product-domain risk is hypothetical and is not to be prepared for, so the mitigations that spoil the content are removed: no mandatory script-free frame that blocks navigation, no recommendation of a separate registrable domain. Shared content behaves like the person's own view. Implementation: view-link-sharing.
