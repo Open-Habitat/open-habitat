@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: account-secrets
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Research: SOPS, age and SSH keys on the Habitat account (UI or CLI)
