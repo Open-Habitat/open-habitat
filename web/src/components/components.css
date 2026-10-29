@@ -2224,6 +2224,19 @@ details[open] > summary:not([class])::before {
   display: flex;
   justify-content: flex-end;
 }
+/* A turn's summary row keeps the turn's own gap to a message of the person
+   next to it, as it does to the agent's replies, so its hover has the same
+   space above and below wherever it sits. */
+.ah-feed
+  > li[data-kind="user"]
+  + li[data-kind="assistant"]:has(.ah-agent-turn > .ah-turn-stage:first-child),
+.ah-feed
+  > li[data-kind="assistant"]:has(
+    .ah-agent-turn > :is(.ah-turn-stage, .ah-turn-strip):last-child
+  )
+  + li[data-kind="user"] {
+  margin-top: calc(var(--ah-turn-gap) - var(--ah-feed-gap));
+}
 .ah-reading-view
   .ah-feed
   > li[data-kind="user"]
@@ -2757,7 +2770,6 @@ details[open] > summary:not([class])::before {
   gap: 8px;
 }
 .ah-turn-strip > button > .ah-disclosure-chevron {
-  margin-top: -2px;
   color: var(--ah-muted);
 }
 .ah-turn-strip > button {
@@ -2797,8 +2809,51 @@ details[open] > summary:not([class])::before {
   border-radius: 6px;
   color: var(--ah-ink-2);
 }
-.ah-turn-stage > button > .ah-disclosure-chevron {
-  margin-top: -2px;
+/* The turn's work toggles do not turn their chevron: the work opens below a
+   settled summary but above the live row, so any direction would be wrong
+   in one of them. Open, the chevron straightens into a bar (Jari 29.10.). */
+:is(.ah-turn-stage, .ah-turn-strip) > button .ah-disclosure-chevron {
+  position: relative;
+  flex: none;
+  width: 6px;
+  height: 10px;
+  border: 0;
+  transform: none;
+}
+:is(.ah-turn-stage, .ah-turn-strip) > button .ah-disclosure-chevron::before,
+:is(.ah-turn-stage, .ah-turn-strip) > button .ah-disclosure-chevron::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  width: 1.5px;
+  height: 5.75px;
+  border-radius: 1px;
+  background: currentColor;
+  transition: transform 180ms ease-out;
+}
+:is(.ah-turn-stage, .ah-turn-strip) > button .ah-disclosure-chevron::before {
+  top: 0;
+  transform-origin: 50% calc(100% - 0.75px);
+  transform: rotate(-45deg);
+}
+:is(.ah-turn-stage, .ah-turn-strip) > button .ah-disclosure-chevron::after {
+  bottom: 0;
+  transform-origin: 50% 0.75px;
+  transform: rotate(45deg);
+}
+:is(.ah-turn-stage, .ah-turn-strip)
+  > button[aria-expanded="true"]
+  .ah-disclosure-chevron::before,
+:is(.ah-turn-stage, .ah-turn-strip)
+  > button[aria-expanded="true"]
+  .ah-disclosure-chevron::after {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.ah-turn-stage, .ah-turn-strip) > button .ah-disclosure-chevron::before,
+  :is(.ah-turn-stage, .ah-turn-strip) > button .ah-disclosure-chevron::after {
+    transition: none;
+  }
 }
 .ah-stage-sum,
 .ah-stage-elapsed,
@@ -2961,19 +3016,6 @@ details[open] > summary:not([class])::before {
 }
 .ah-turn-working > .ah-show-work[aria-expanded="true"] {
   --i-bg: var(--ah-accent-soft);
-}
-.ah-turn-working > button.ah-show-work .ah-disclosure-chevron {
-  transition: transform 180ms ease-out;
-}
-.ah-turn-working
-  > button.ah-show-work[aria-expanded="true"]
-  .ah-disclosure-chevron {
-  transform: rotate(90deg);
-}
-@media (prefers-reduced-motion: reduce) {
-  .ah-show-work .ah-disclosure-chevron {
-    transition: none;
-  }
 }
 .ah-work-label {
   min-width: 69px;

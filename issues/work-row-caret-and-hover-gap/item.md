@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: ui-polish
 lane_seq: 16
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Näytä työ caret turns the wrong way; hover gap differs above own messages
@@ -22,6 +23,6 @@ Also: the summary row's hover highlight has a different gap depending on whether
 
 ## Acceptance Criteria
 
-- [ ] Open state uses a non-directional caret (Jari's proposal), consistent before and after the turn finishes.
-- [ ] The summary row's hover has the same spacing above an agent reply and above the person's own message, aligned with the content edges.
-- [ ] Before/after screenshots at DSF 2; browser spec touching the work row.
+- [x] Open state uses a non-directional caret (Jari's proposal), consistent before and after the turn finishes.
+- [x] The summary row's hover has the same spacing above an agent reply and above the person's own message, aligned with the content edges.
+- [x] Before/after screenshots at DSF 2; browser spec touching the work row.
