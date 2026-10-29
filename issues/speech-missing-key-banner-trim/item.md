@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: ui-polish
 lane_seq: 15
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Dictation missing-key banner says too much

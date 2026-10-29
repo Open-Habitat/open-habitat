@@ -29,7 +29,8 @@ export type DictationNotice = {
   id: SpeechFailure | "ceiling" | "dropped";
   tone: "info" | "danger";
   title: string;
-  text: string;
+  /** Omitted when the title and the action already say it all. */
+  text?: string;
   actions: ("settings" | "retry" | "resume")[];
 };
 
@@ -63,7 +64,6 @@ function noticeFor(view: DictationView): DictationNotice | null {
         id: view.failure,
         tone: "info",
         title: "Sanelu tarvitsee Soniox-avaimen",
-        text: "Lisää avain asetuksissa.",
         actions: ["settings"],
       };
     case "microphone_denied":
@@ -401,7 +401,7 @@ export function DictationNoticeView({
       <Icon name={n.tone === "danger" ? "warning" : "info"} />
       <div className="ah-dictation-notice-body">
         <strong>{n.title}</strong>
-        <p>{n.text}</p>
+        {n.text ? <p>{n.text}</p> : null}
         {n.actions.length ? (
           <div className="ah-dictation-notice-acts">
             {n.actions.map((action, i) => (
