@@ -59,6 +59,13 @@ const failureText: Record<RecapFailureReason, string> = {
   not_written: "Katsaus ei tallentunut keskusteluun.",
 };
 
+/** What to do instead of a plain retry, where retrying alone may not help.
+ * An automatic recap has already been retried once by the daemon. */
+const failureAction: Partial<Record<RecapFailureReason, string>> = {
+  model_timeout:
+    "Yritä hetken päästä uudelleen. Jos tämä toistuu, valitse katsaukselle nopeampi malli asetuksista.",
+};
+
 export function RecapCard({
   recap,
   latestAt,
@@ -90,6 +97,8 @@ export function RecapCard({
   settingsHref?: string;
   now?: number;
 }) {
+  // An invitation to ask beside the failure of the last ask contradicts it.
+  const failed = error || uncertain || unverifiable;
   const reason = unavailable
     ? (unavailableReason ?? "Yhteys tai ohjaus ei ole käytettävissä.")
     : pending
@@ -165,10 +174,12 @@ export function RecapCard({
             </p>
           ) : null}
         </>
-      ) : (
-        <p className="ah-recap-empty">Pyydä lyhyt katsaus ennen kuin jatkat.</p>
+      ) : failed ? null : (
+        <p className="ah-recap-empty" data-testid="recap-empty">
+          Pyydä lyhyt katsaus ennen kuin jatkat.
+        </p>
       )}
-      {error || uncertain || unverifiable ? (
+      {failed ? (
         <p
           className="ah-inline-error"
           role="alert"
@@ -181,7 +192,7 @@ export function RecapCard({
             ? "Katsausta ei voitu tarkistaa. Lataa sivu uudelleen."
             : uncertain
               ? "Luonnin tulos ei ole tiedossa. Tarkista katsaus lataamalla sivu uudelleen."
-              : `Katsausta ei voitu luoda.${failure ? ` ${failureText[failure]}` : ""} Yritä uudelleen.`}
+              : `Katsausta ei voitu luoda.${failure ? ` ${failureText[failure]}` : ""} ${(failure && failureAction[failure]) ?? "Yritä uudelleen."}`}
         </p>
       ) : null}
     </aside>

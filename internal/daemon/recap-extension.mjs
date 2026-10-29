@@ -80,18 +80,24 @@ function candidates(ctx, preferred) {
   return backgroundModels(available, ctx.model, preferred);
 }
 // Pi answers the daemon's prompt only after this handler returns, and the
-// daemon gives up on the whole RPC channel at 25 seconds.
-const BUDGET_MS = 20000, ATTEMPT_MS = 12000;
-async function ask(ctx, model, prompt, deadline, s) {
+// daemon gives up on the whole RPC channel at 30 seconds (recap_linux.go).
+// A model that is not the last candidate gets ATTEMPT_MS, so a stalled one
+// leaves the fallback time; the last gets everything left. The Claude bridge
+// starts a Claude Code process per call: Sonnet on a 16k-token excerpt took
+// 3 to 11 seconds on Birch (2026-10-29), so a fixed 12 s cut off its tail.
+const BUDGET_MS = 25000, ATTEMPT_MS = 12000;
+async function ask(ctx, model, prompt, deadline, s, last) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), Math.max(0, Math.min(ATTEMPT_MS, deadline - Date.now())));
+  const started = Date.now();
+  const timedOut = () => ({ outcome: 'model_timeout', detail: `no answer in ${Math.round((Date.now() - started) / 1000)} s` });
+  const timeout = setTimeout(() => controller.abort(), Math.max(0, last ? deadline - started : Math.min(ATTEMPT_MS, deadline - started)));
   try {
     // A Finnish recap of 40 words and its next step in JSON alone can
     // approach 200 tokens; the person's response limit may be lower.
     const answer = await ctx.modelRegistry.complete(model, {
       messages: [{ role: 'user', content: [{ type: 'text', text: prompt }], timestamp: Date.now() }],
     }, { signal: controller.signal, maxTokens: s.responseTokens, cacheRetention: 'none', sessionId: randomUUID() });
-    if (answer.stopReason === 'aborted' || controller.signal.aborted) return { outcome: 'model_timeout' };
+    if (answer.stopReason === 'aborted' || controller.signal.aborted) return timedOut();
     if (answer.stopReason === 'length') return { outcome: 'model_incomplete' };
     if (answer.stopReason !== 'stop') return { outcome: 'model_error', detail: answer.errorMessage || answer.stopReason };
     const raw = text(answer.content).trim();
@@ -106,7 +112,7 @@ async function ask(ctx, model, prompt, deadline, s) {
     const recap = withinBytes(clean(value?.recap, s.words * 8), 1280);
     return recap ? { outcome: 'done', recap, next: withinBytes(clean(value.next, Math.ceil(s.nextWords * 40 / 3)), 640) } : { outcome: 'invalid_response' };
   } catch (error) {
-    return { outcome: controller.signal.aborted ? 'model_timeout' : 'model_error', detail: error?.message };
+    return controller.signal.aborted ? timedOut() : { outcome: 'model_error', detail: error?.message };
   } finally { clearTimeout(timeout); }
 }
 export default function (pi) {
@@ -134,9 +140,10 @@ export default function (pi) {
         const models = candidates(ctx, settings.model);
         if (!models.length) return report(ctx, 'no_model');
         let result, model;
-        for (model of models) {
+        for (const [index, candidate] of models.entries()) {
           if (Date.now() >= deadline) break;
-          result = await ask(ctx, model, prompt, deadline, settings);
+          model = candidate;
+          result = await ask(ctx, model, prompt, deadline, settings, index === models.length - 1);
           if (result.outcome === 'done') break;
         }
         if (result?.outcome !== 'done') return report(ctx, result?.outcome ?? 'model_timeout', model ? name(model) : '', result?.detail);

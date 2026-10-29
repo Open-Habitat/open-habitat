@@ -44,6 +44,17 @@ describe("native conversation recap", () => {
     expect(view.getAllByRole("alert")).toHaveLength(1);
     expect(view.getByText("Työ etenee.")).toBeTruthy();
   });
+  it("shows a failure without the invitation to ask for a recap", () => {
+    const view = render(<RecapCard {...base} recap={null} />);
+    expect(view.getByTestId("recap-empty")).toBeTruthy();
+    view.rerender(
+      <RecapCard {...base} recap={null} error failure="model_timeout" />,
+    );
+    expect(view.getByRole("alert")).toBeTruthy();
+    expect(view.queryByTestId("recap-empty")).toBeNull();
+    view.rerender(<RecapCard {...base} recap={null} uncertain />);
+    expect(view.queryByTestId("recap-empty")).toBeNull();
+  });
   it("dismisses and keeps a disabled refresh visible during a running turn", () => {
     const close = vi.fn();
     const view = render(

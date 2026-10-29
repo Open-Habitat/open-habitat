@@ -190,3 +190,42 @@ func TestPresencePostponesAutomaticRecapButNotARunningOne(t *testing.T) {
 		t.Fatalf("unknown conversation: %d", unknown.Code)
 	}
 }
+
+// An automatic recap whose model timed out tries once more before the card
+// shows a failure, past the one-request-per-message fence; a second timeout,
+// or one the person asked for, is shown at once.
+func TestAutomaticRecapRetriesOneModelTimeout(t *testing.T) {
+	s := &conversation{id: "11111111-1111-4111-8111-111111111111", state: "idle", settled: true, rpc: &piRPC{}}
+	c := &ConversationController{sessions: map[string]*conversation{s.id: s}}
+	var outcomes []string
+	var fenced []bool
+	c.recapGenerator = func(s *conversation, _ string, _ uint64) recapOutcome {
+		c.mu.Lock()
+		fenced = append(fenced, s.recapAttemptedThrough == "m1")
+		s.recapAttemptedThrough = "m1"
+		c.mu.Unlock()
+		reason := outcomes[0]
+		outcomes = outcomes[1:]
+		return recapOutcome{Reason: reason, Through: "m1"}
+	}
+	outcomes = []string{"model_timeout", ""}
+	if reason := c.runRecap(s, "automatic", 0); reason != "" || len(outcomes) != 0 || s.recapFailure != nil {
+		t.Fatalf("retry: reason %q, left %v, failure %+v", reason, outcomes, s.recapFailure)
+	}
+	if len(fenced) != 2 || fenced[1] {
+		t.Fatalf("the retry met the per-message fence: %v", fenced)
+	}
+	s.recapAttemptedThrough = ""
+	outcomes = []string{"model_timeout", "model_timeout", "unused"}
+	if reason := c.runRecap(s, "automatic", 0); reason != "model_timeout" || len(outcomes) != 1 || s.recapFailure == nil || s.recapFailure.Reason != "model_timeout" {
+		t.Fatalf("second timeout: reason %q, left %v, failure %+v", reason, outcomes, s.recapFailure)
+	}
+	outcomes = []string{"model_timeout", "unused"}
+	if reason := c.runRecap(s, "manual", 0); reason != "model_timeout" || len(outcomes) != 1 {
+		t.Fatalf("manual: reason %q, left %v", reason, outcomes)
+	}
+	outcomes = []string{"model_error", "unused"}
+	if reason := c.runRecap(s, "automatic", 0); reason != "model_error" || len(outcomes) != 1 {
+		t.Fatalf("model error: reason %q, left %v", reason, outcomes)
+	}
+}

@@ -308,11 +308,23 @@ func (p *piRPC) takeRecapOutcome() *recapExtensionOutcome {
 }
 
 func (c *ConversationController) runRecap(s *conversation, trigger string, epoch uint64) string {
-	var out recapOutcome
+	generate := c.generateRecap
 	if c.recapGenerator != nil {
-		out = c.recapGenerator(s, trigger, epoch)
-	} else {
-		out = c.generateRecap(s, trigger, epoch)
+		generate = c.recapGenerator
+	}
+	out := generate(s, trigger, epoch)
+	// A provider's slow tail passes on the next call, so an automatic recap
+	// that timed out tries once more before the card shows the failure. The
+	// activity fence still holds: if the person went on, the retry is fenced.
+	// One the person asked for is not retried: they are waiting on the reply.
+	if trigger == "automatic" && out.Reason == "model_timeout" {
+		diagnostic.New(os.Stderr, "daemon").Warn("conversation_recap", "outcome", "retrying", "reason", out.Reason, "trigger", trigger, "model", out.Model, "detail", out.Detail, "agent_id", "pi:"+s.id)
+		c.mu.Lock()
+		if s.recapAttemptedThrough == out.Through {
+			s.recapAttemptedThrough = ""
+		}
+		c.mu.Unlock()
+		out = generate(s, trigger, epoch)
 	}
 	c.recordRecapOutcome(s, trigger, out)
 	return out.Reason
@@ -391,7 +403,9 @@ func (c *ConversationController) generateRecap(s *conversation, trigger string, 
 		command += " automatic"
 	}
 	_ = s.rpc.takeRecapOutcome()
-	accepted, err := s.rpc.request("prompt", command, 25*time.Second)
+	// The longest request the RPC channel takes; the extension's model budget
+	// (recap-extension.mjs) ends five seconds before it.
+	accepted, err := s.rpc.request("prompt", command, 30*time.Second)
 	if err != nil || !accepted {
 		return recapOutcome{Reason: "controller_unavailable", Through: latest.ID}
 	}
