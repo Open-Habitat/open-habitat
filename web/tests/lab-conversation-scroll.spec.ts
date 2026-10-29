@@ -33,9 +33,10 @@ async function recordFrames(page: Page) {
       const stream = document.querySelector<HTMLElement>(
         ".ah-conversation-stream",
       );
+      // An item that renders nothing is not painted (display: none).
       const rows = [
         ...(stream?.querySelectorAll<HTMLElement>(".ah-feed > li") ?? []),
-      ];
+      ].filter((row) => row.getClientRects().length);
       if (stream && rows.length) {
         const bottom = stream.getBoundingClientRect().bottom;
         frames.push({

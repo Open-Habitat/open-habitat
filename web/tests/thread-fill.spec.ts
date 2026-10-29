@@ -31,8 +31,10 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
   // Empty: the invitation is at the bottom, next to the composer.
   const gapBelow = (selector: string) =>
     stream.evaluate((el, s) => {
-      const items = el.querySelectorAll(s);
-      const last = items[items.length - 1];
+      // An item that renders nothing takes no space and is not the last one.
+      const last = [...el.querySelectorAll(s)]
+        .filter((item) => item.getBoundingClientRect().height > 0)
+        .at(-1);
       if (!last) return Number.NaN;
       return (
         el.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom
@@ -59,6 +61,34 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
   // Bottom alignment means the spare space is above, not below the feed;
   // its amount varies with the composer/model controls and font metrics.
   expect(freeAbove).toBeGreaterThan(await gapBelow(".ah-feed > li"));
+  // Below the last message is only the stream's own padding (Jari
+  // 29.10.2026): no list margin, and no empty item under a running turn.
+  const spareBelow = () =>
+    stream.evaluate((el) => {
+      const shown = [...el.querySelectorAll(".ah-feed > li")].filter(
+        (li) => li.getBoundingClientRect().height > 0,
+      );
+      const bottom = shown.at(-1)?.getBoundingClientRect().bottom;
+      return (
+        el.getBoundingClientRect().bottom -
+        (bottom ?? Number.NaN) -
+        Number.parseFloat(getComputedStyle(el).paddingBottom) -
+        Number.parseFloat(getComputedStyle(el, "::after").height)
+      );
+    });
+  expect(Math.abs(await spareBelow())).toBeLessThan(1);
+  await page.getByTestId("message-input").fill("hidas toinen");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(page.getByTestId("turn-work-toggle")).toBeVisible({
+    timeout: 20000,
+  });
+  await expect.poll(async () => Math.abs(await spareBelow())).toBeLessThan(1);
+  await expectNativeContent(stream, 'Selvä. Kysyit: "hidas toinen".', {
+    timeout: 30000,
+  });
 
   // Tall: the native page is taller than the view; its first child is
   // reachable at the top of the scroll range.

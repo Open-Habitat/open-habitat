@@ -872,8 +872,14 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   gap: var(--ah-s6);
+  margin-block: 0;
   padding: 0;
   list-style: none;
+}
+/* An item that renders nothing (an accepted send) must not add a feed gap
+   between the live turn and the composer. */
+.ah-feed > li:empty {
+  display: none;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
 .ah-feed > li {
