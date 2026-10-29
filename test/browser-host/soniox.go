@@ -32,8 +32,8 @@ type sonioxFake struct {
 	configs []json.RawMessage
 	// keepalives, audio bytes and ended streams as the fake saw them.
 	keepalives, audio, ended int
-	authHeader                string
-	origin                    func() string
+	authHeader               string
+	origin                   func() string
 }
 
 type sonioxConn struct {
