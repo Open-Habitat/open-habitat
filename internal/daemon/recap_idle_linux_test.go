@@ -166,6 +166,20 @@ func TestPresencePostponesAutomaticRecapButNotARunningOne(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("recap never followed the person's quiet period")
 	}
+	// The generator returned, but the timer's goroutine clears recapping only
+	// after that; a loaded run could otherwise mark the manual recap below as
+	// running and have the automatic one's end clear it underneath.
+	for end := time.Now().Add(time.Second); ; time.Sleep(time.Millisecond) {
+		c.mu.Lock()
+		running := s.recapping
+		c.mu.Unlock()
+		if !running {
+			break
+		}
+		if time.Now().After(end) {
+			t.Fatal("the automatic recap never ended")
+		}
+	}
 
 	// A manual recap in flight keeps its activity epoch through presence.
 	c.mu.Lock()
