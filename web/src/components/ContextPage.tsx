@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { ContextDetail, ContextDetailState } from "../app/contextDetail";
-import { contextFacts, type ContextUsage } from "./ContextRing";
+import { type ContextUsage, contextFacts } from "./ContextRing";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import "./ContextPage.css";

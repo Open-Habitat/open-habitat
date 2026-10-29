@@ -5,8 +5,9 @@
 //   BROWSER_HOST_CODE_SERVER=<dir>/bin/code-server .cache/browser-host web/dist
 // then: node web/lab/capture-workspace-editor.mjs <port>
 // Writes only into issues/implement-workspace-editor/evidence/.
-import { chromium } from "@playwright/test";
+
 import { fileURLToPath } from "node:url";
+import { chromium } from "@playwright/test";
 import { snapshot } from "./session.mjs";
 
 const port = process.argv[2];

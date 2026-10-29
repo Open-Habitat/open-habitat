@@ -5,7 +5,7 @@
 // Google and Microsoft entries are the lab's stand-ins; the IMAP entry is the
 // product's, against the fake himalaya.
 //   scripts/lab.sh start && node web/lab/capture-integrations.mjs
-import { origin, openLab, snapshot } from "./session.mjs";
+import { openLab, origin, snapshot } from "./session.mjs";
 
 const out = "issues/integrations-catalog-core/lab";
 const fixture = (page, q) =>

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ControlButton } from "./ControlElements";
 import type { FileOfferSummary } from "../app/fileOffers";
+import { ControlButton } from "./ControlElements";
 import type { ViewSummary } from "./ViewOffer";
 
 export type AgentNotice = {

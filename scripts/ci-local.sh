@@ -107,8 +107,7 @@ if ! $reuse_phases; then
   ) >"$tmp/go-and-contracts.log" 2>&1 & go_pid=$!
 fi
 phase web-checks
-npm run format:check --prefix web
-npm run lint --prefix web
+npm run check --prefix web
 npm run typecheck --prefix web
 npm test --prefix web
 # Build once before Playwright: the same fresh production assets are served by

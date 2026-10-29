@@ -11,7 +11,7 @@ if [[ ! -x web/node_modules/.bin/vitest ]]; then
   echo 'error: web dependencies missing; run npm ci --prefix web first' >&2
   exit 2
 fi
-for check in format:check lint typecheck test; do
+for check in check typecheck test; do
   npm run "$check" --prefix web
 done
 printf 'Web static, unit and component checks passed (no browser, Go, packaging or contracts).\n'

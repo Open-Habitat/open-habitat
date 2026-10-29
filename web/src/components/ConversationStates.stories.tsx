@@ -5,7 +5,6 @@ import { StreamingActivityPreview } from "../test/StreamingActivityPreview";
 import { AgentTurn, ThinkingRow } from "./AgentTurn";
 import { ArchiveControls } from "./ArchiveControls";
 import { BashToolCard } from "./BashToolCard";
-import { ConversationFrame } from "./ConversationFrame";
 import {
   AssistantMessage,
   Composer,
@@ -19,6 +18,7 @@ import {
   UserMessage,
   WaitingMessage,
 } from "./Conversation";
+import { ConversationFrame } from "./ConversationFrame";
 import { Markdown } from "./Markdown";
 import { AgentHeader } from "./Navigation";
 import { PiToolUse } from "./PiBlocks";

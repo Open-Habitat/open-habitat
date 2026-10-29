@@ -10,6 +10,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint --error-on-warnings .",
+    "check": "biome check --error-on-warnings .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run --exclude 'src/components/**/*.test.tsx'",

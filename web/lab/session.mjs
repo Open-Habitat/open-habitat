@@ -1,7 +1,8 @@
 // Synthetic lab only. Never reuse a personal browser profile or real Chrome.
-import { chromium } from "@playwright/test";
+
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { chromium } from "@playwright/test";
 import { labOrigin } from "../test-ports.mjs";
 
 const portFile = fileURLToPath(

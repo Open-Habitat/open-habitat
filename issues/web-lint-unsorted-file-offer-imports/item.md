@@ -2,7 +2,7 @@
 created: 2026-10-29
 updated: 2026-10-29
 type: chore
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: worker observation
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: gate-health
 lane_seq: 120
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Web lint fails on main: unsorted file-offer schema imports
