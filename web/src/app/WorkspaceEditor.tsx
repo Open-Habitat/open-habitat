@@ -47,9 +47,7 @@ type Phase = "idle" | "starting" | "loading" | "ready" | "failed";
 interface EditorControls {
   open: boolean;
   collapsed: boolean;
-  railOpen: boolean;
   toggleOpen: () => void;
-  toggleRail: () => void;
   /** The conversation reports Pi's state for the strip. */
   report: (working: boolean, label: string) => void;
 }
@@ -84,11 +82,13 @@ function WorkspaceEditorInner({
   csrf,
   identity,
   children,
+  onShownChange,
 }: {
   workspaceId?: string;
   csrf?: string;
   identity?: string;
   children: ReactNode;
+  onShownChange?: (shown: boolean) => void;
 }) {
   const { engine: preference, busy: preferenceBusy } = useEditorChoice(
     identity,
@@ -107,7 +107,6 @@ function WorkspaceEditorInner({
   );
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [railOpen, setRailOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [frame, setFrame] = useState<{
     origin: string;
@@ -318,7 +317,6 @@ function WorkspaceEditorInner({
         focusConversationPending.current = true;
       }
       setOpen(next);
-      setRailOpen(false);
     },
     [open, preference, engine, browser, workspaceId],
   );
@@ -497,18 +495,6 @@ function WorkspaceEditorInner({
     return () => window.removeEventListener("keydown", key, true);
   }, [available, open, collapsed, show, focusEditor, showConversation]);
 
-  // The rail over the editor closes with Escape or a route change.
-  useEffect(() => {
-    if (!railOpen) return;
-    const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setRailOpen(false);
-    };
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
-  }, [railOpen]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: A new workspace route is the change that closes it.
-  useEffect(() => setRailOpen(false), [workspaceId]);
-
   // A reply that finishes while the conversation is hidden marks the strip.
   const wasWorking = useRef(false);
   const report = useCallback(
@@ -533,16 +519,20 @@ function WorkspaceEditorInner({
         ? {
             open,
             collapsed,
-            railOpen,
             toggleOpen: () => show(!open),
-            toggleRail: () => setRailOpen((r) => !r),
             report,
           }
         : null,
-    [available, open, collapsed, railOpen, show, report],
+    [available, open, collapsed, show, report],
   );
 
   const editorShown = open && available;
+  // The app rail narrows to its compact strip beside an open editor, so the
+  // account menu and navigation stay where they always are.
+  useEffect(() => {
+    onShownChange?.(editorShown);
+  }, [editorShown, onShownChange]);
+  useEffect(() => () => onShownChange?.(false), [onShownChange]);
   const retry = () => {
     setFrame(undefined);
     setPhase("idle");
@@ -644,7 +634,6 @@ function WorkspaceEditorInner({
       <EditorChannelContext.Provider value={channel}>
         <FileLinkContext.Provider value={links}>
           <EditorSplit
-            className={railOpen && editorShown ? "ah-editor-rail" : undefined}
             open={editorShown}
             collapsed={collapsed}
             width={shown}
@@ -679,6 +668,8 @@ export function WorkspaceEditor(props: {
   csrf?: string;
   identity?: string;
   children: ReactNode;
+  /** Whether the editor is beside the conversation now. */
+  onShownChange?: (shown: boolean) => void;
 }) {
   return (
     <WorkspaceEditorInner
@@ -695,19 +686,6 @@ export function EditorHeaderControls() {
   if (!editor) return null;
   return (
     <span className="ah-editor-controls">
-      {editor.open ? (
-        <ControlButton
-          size="row"
-          variant="quiet"
-          data-testid="editor-navigation"
-          aria-label="Työtilat ja keskustelut"
-          title="Näytä työtilat editorin päällä"
-          aria-expanded={editor.railOpen}
-          onPress={editor.toggleRail}
-        >
-          <Icon name="menu" />
-        </ControlButton>
-      ) : null}
       <ControlButton
         data-testid="toggle-editor"
         size="row"

@@ -352,7 +352,10 @@ for (const engine of ["codemirror6"])
       await page.locator('a[href="#cmd%2Fmain.go%3A3-4"]').click();
       await seen;
       await context.addCookies(await other.cookies());
-      await page.getByTestId("editor-navigation").click();
+      await page
+        .getByTestId("workspace-navigation")
+        .getByTestId("navigation-open")
+        .click();
       await page.getByTestId("snapshot-refresh").click();
       await expect(page.getByTestId("editor-document")).toHaveCount(0);
       release();
@@ -365,6 +368,30 @@ for (const engine of ["codemirror6"])
       await other.close();
     }
   });
+
+test("@browser-editor the account menu stays reachable beside an open editor", async ({
+  page,
+}) => {
+  await openFile(page, false);
+  // The rail narrows to its strip instead of stepping aside: the account
+  // menu was unreachable while the editor was open.
+  const account = page
+    .getByRole("button")
+    .and(page.getByTestId("account-menu-trigger"));
+  await expect(account).toBeInViewport();
+  await account.click();
+  await page
+    .getByRole("menuitem")
+    .and(page.getByTestId("menu-settings"))
+    .click();
+  await expect(page).toHaveURL(/\/settings/);
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("settings-close"))
+    .click();
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  await expect(account).toBeFocused();
+});
 
 test("@browser-editor a transient failed refresh preserves the live dirty document", async ({
   page,
@@ -383,7 +410,10 @@ test("@browser-editor a transient failed refresh preserves the live dirty docume
     (response) =>
       response.url().endsWith("/api/v1/snapshot") && response.status() === 503,
   );
-  await page.getByTestId("editor-navigation").click();
+  await page
+    .getByTestId("workspace-navigation")
+    .getByTestId("navigation-open")
+    .click();
   await page.getByTestId("snapshot-refresh").click();
   await failed;
   await expect(doc).toContainText("buffer survives connection loss");
@@ -413,7 +443,10 @@ test("@browser-editor a vanished workspace observation cannot discard a dirty do
     dialogs++;
     void dialog.dismiss();
   });
-  await page.getByTestId("editor-navigation").click();
+  await page
+    .getByTestId("workspace-navigation")
+    .getByTestId("navigation-open")
+    .click();
   await page.getByTestId("snapshot-refresh").click();
   await expect(page.getByTestId("editor-workspace-changed")).toBeVisible();
   expect(dialogs).toBe(0);

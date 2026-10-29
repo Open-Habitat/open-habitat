@@ -162,24 +162,6 @@
   box-shadow: 0 0 0 2px var(--ah-accent-soft);
   border-radius: var(--ah-r-sm);
 }
-/* While the editor is open the app sidebar steps aside; ☰ brings it over
-   the editor. */
-@media (min-width: 801px) {
-  .ah-shell-body:has(.ah-editor-open) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .ah-shell-body:has(.ah-editor-open) > .ah-rail-slot {
-    display: none;
-  }
-  .ah-shell-body:has(.ah-editor-open.ah-editor-rail) > .ah-rail-slot {
-    display: flex;
-    position: fixed;
-    inset: 0 auto 0 0;
-    z-index: 20;
-    width: var(--ah-rail-width);
-    box-shadow: var(--ah-shadow-dialog);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .ah-editor-overlay .ah-status-dot {
     animation: none;

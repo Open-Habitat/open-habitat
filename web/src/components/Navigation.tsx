@@ -1157,6 +1157,7 @@ export function WorkspaceRail({
             kind="home"
             current={homeCurrent}
             className="ah-rail-home"
+            aria-label={collapsed ? "Etusivu" : undefined}
           >
             <Icon name="home" />
             <span className="ah-rail-home-label">Etusivu</span>

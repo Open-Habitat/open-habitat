@@ -255,6 +255,15 @@ export function App() {
     failures: 0,
   });
   const [collapsed, setCollapsed] = useState(false);
+  // Beside an open editor the rail is compact unless the person widens it for
+  // this editor session; the account menu stays in the rail either way.
+  const [editorShown, setEditorShown] = useState(false);
+  const [railBesideEditor, setRailBesideEditor] = useState(false);
+  const showEditor = useCallback((shown: boolean) => {
+    setEditorShown(shown);
+    if (!shown) setRailBesideEditor(false);
+  }, []);
+  const railCompact = editorShown ? !railBesideEditor : collapsed;
   const [mobileLayout, setMobileLayout] = useState(
     () => window.matchMedia?.("(max-width: 800px)").matches ?? false,
   );
@@ -2843,7 +2852,7 @@ export function App() {
                   snapshot={snapshot}
                   profile={profile}
                   source={source}
-                  collapsed={collapsed && !mobileLayout}
+                  collapsed={railCompact && !mobileLayout}
                   now={now}
                   matches={matches}
                   archived={archivedWorkspaces}
@@ -2880,7 +2889,11 @@ export function App() {
                       : undefined
                   }
                   onFilter={(v) => dispatch(filterChanged(v))}
-                  onToggle={() => setCollapsed(!collapsed)}
+                  onToggle={() =>
+                    editorShown
+                      ? setRailBesideEditor(!railBesideEditor)
+                      : setCollapsed(!collapsed)
+                  }
                   onRefresh={manualRefresh}
                   onSettings={openSettings}
                   onLogout={() => setLogoutPrompt(true)}
@@ -3004,6 +3017,7 @@ export function App() {
                             <WorkspaceEditor
                               workspaceId={editorWorkspaceId}
                               identity={identity}
+                              onShownChange={showEditor}
                               csrf={
                                 phase === "authenticated" || phase === "stale"
                                   ? csrf
