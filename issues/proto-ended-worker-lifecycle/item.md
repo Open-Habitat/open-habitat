@@ -1,14 +1,15 @@
 ---
 created: 2026-10-28
-updated: 2026-10-28
+updated: 2026-10-29
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-ended-worker
 preparation: pending
 provenance: chat
 source_ref: chat:2026-10-28/proto-ended-worker-lifecycle
+closed: 2026-10-29
 ---
 
 # Prototype: what happens to an ended worker that was not merged
@@ -24,3 +25,7 @@ Jari 2026-10-28: ei kuittausta. Lista heijastaa todellista tilaa: kun agentti si
 ### 2026-10-28T17:37:22Z · @jari
 
 Jari 2026-10-28, kierros 2: 'Kerro agentille' on itse toiminto, ei luonnos: se pyytää agenttia käsittelemään juuri sen worktreen, ja agentti suosittelee, mitä sille voidaan tehdä. Lisäksi painike 'Käsittele kaikki'. Riffikierros 3 tältä pohjalta.
+
+### 2026-10-29T09:47:08Z · @jari
+
+Jari 29.10. on round 3: Vanhempi (the parent conversation that started the worker receives the request). Implementation: ended-worker-tell-agent.
