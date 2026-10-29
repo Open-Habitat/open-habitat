@@ -2800,8 +2800,10 @@ details[open] > summary:not([class])::before {
 .ah-stage-elapsed {
   font-variant-numeric: tabular-nums;
 }
+/* Rows only: a subgrid's own column gap would shift the work 1px off the
+   reply column. */
 .ah-turn-work {
-  gap: var(--ah-turn-work-gap);
+  row-gap: var(--ah-turn-work-gap);
   position: relative;
 }
 .ah-turn-work .ah-live-work {
@@ -2818,7 +2820,9 @@ details[open] > summary:not([class])::before {
 .ah-turn-strip::before {
   content: "";
   position: absolute;
-  left: -26px;
+  /* A work block sits in the second column; this puts its 8px node on the
+     rail (centre 11px from the turn's edge) like the reply nodes below. */
+  left: calc(7px - 18px - var(--ah-turn-column-gap));
   top: 8px;
   width: 8px;
   height: 8px;

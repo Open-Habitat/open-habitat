@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: ui-polish
 lane_seq: 11
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Failed tool's timeline marker is off the line
