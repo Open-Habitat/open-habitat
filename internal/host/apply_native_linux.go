@@ -655,8 +655,10 @@ func writeGatewayFile(name string, b []byte, gid uint32) error {
 	}
 	return unix.Fsync(fd)
 }
-func (n *nativeApply) openEntries(ctx context.Context) error { return n.openEntriesMode(ctx, true) }
-func (n *nativeApply) openEntriesMode(ctx context.Context, settings bool) error {
+func (n *nativeApply) openEntries(ctx context.Context) error {
+	return n.openEntriesMode(ctx, administrationConverged)
+}
+func (n *nativeApply) openEntriesMode(ctx context.Context, settings administrationCheck) error {
 	if _, e := os.Lstat(maintenanceFile + ".next"); !errors.Is(e, os.ErrNotExist) {
 		return ErrRecovery
 	}
@@ -673,8 +675,10 @@ func (n *nativeApply) openEntriesMode(ctx context.Context, settings bool) error 
 	}
 	return unix.Fsync(fd)
 }
-func (n *nativeApply) verify(ctx context.Context) error { return n.verifyStructure(ctx, true) }
-func (n *nativeApply) verifyStructure(ctx context.Context, settings bool) error {
+func (n *nativeApply) verify(ctx context.Context) error {
+	return n.verifyStructure(ctx, administrationConverged)
+}
+func (n *nativeApply) verifyStructure(ctx context.Context, settings administrationCheck) error {
 	s := n.site
 	if !gatewayConfigurationMatches(s) {
 		return ErrNativeApply
@@ -735,12 +739,10 @@ func (n *nativeApply) verifyStructure(ctx context.Context, settings bool) error 
 			return e
 		}
 	}
-	if settings {
-		return n.verifySettings(ctx)
+	if settings != administrationCurrent {
+		_, e = n.verifyAdministration(ctx, settings)
+		return e
 	}
-	// Accepted upgrade retries validate the gateway's current authoritative
-	// administration, not historical desired roles/defaults. Configuration apply
-	// retains its separate deliberate convergence and equality checks.
 	var current applySettings
 	if e := control(ctx, map[string]any{"operation": "show"}, &current); e != nil {
 		return e

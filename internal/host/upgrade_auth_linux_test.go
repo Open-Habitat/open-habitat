@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -71,5 +72,46 @@ func TestUpgradeDeclarationUsesNativeMutableTruth(t *testing.T) {
 	current.Identities.UIDMax++
 	if upgradeDeclarationSame(old, current) {
 		t.Fatal("identity migration accepted")
+	}
+}
+
+// An administrator may raise the quota default in the browser after the last
+// apply. A release upgrade converges no administration, so it must neither
+// refuse that predecessor nor carry site.json's older default back.
+func TestUpgradeAcceptsBrowserChangedQuotaDefault(t *testing.T) {
+	declared := uint64(20 << 30)
+	s := Site{Identities: Identities{Administrators: []string{"42", "43"}}}
+	s.Storage.EnforceUserQuota, s.Storage.DefaultLimitBytes = true, &declared
+	live := applySettings{Version: 1, Administrators: []string{"42"}, DefaultLimitBytes: 40 << 30, Pending: []string{"43"}}
+	bound := []string{"42", "44"}
+	if _, reason := administrationMatches(s, live, bound, administrationConverged); reason != "default_limit_not_applied" {
+		t.Fatalf("apply readback accepted an unconverged default: %q", reason)
+	}
+	roles, reason := administrationMatches(s, live, bound, administrationDeclared)
+	if reason != "" {
+		t.Fatalf("browser-changed default refused the upgrade: %q", reason)
+	}
+	if !slices.Equal(roles, []AdministratorOutcome{{"42", "granted"}, {"43", "deferred_until_bound"}}) {
+		t.Fatal(roles)
+	}
+	for name, c := range map[string]struct {
+		change func(*applySettings, *Site)
+		reason string
+	}{
+		"version":            {func(a *applySettings, _ *Site) { a.Version = 2 }, "administration_version_unsupported"},
+		"zero default":       {func(a *applySettings, _ *Site) { a.DefaultLimitBytes = 0 }, "default_limit_invalid"},
+		"unaligned default":  {func(a *applySettings, _ *Site) { a.DefaultLimitBytes = 40<<30 + 1 }, "default_limit_invalid"},
+		"undeclared role":    {func(a *applySettings, _ *Site) { a.Administrators = []string{"42", "44"} }, "administrators_not_applied"},
+		"missing role":       {func(a *applySettings, _ *Site) { a.Administrators = nil }, "administrators_not_applied"},
+		"undeclared pending": {func(a *applySettings, _ *Site) { a.Pending = []string{"45"} }, "administrators_not_applied"},
+		"no quotas": {func(a *applySettings, s *Site) {
+			s.Storage.EnforceUserQuota, s.Storage.DefaultLimitBytes, a.DefaultLimitBytes = false, nil, 0
+		}, ""},
+	} {
+		a, site := live, s
+		c.change(&a, &site)
+		if _, reason := administrationMatches(site, a, bound, administrationDeclared); reason != c.reason {
+			t.Fatalf("%s: got %q, want %q", name, reason, c.reason)
+		}
 	}
 }

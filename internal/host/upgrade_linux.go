@@ -106,8 +106,8 @@ func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error)
 	}
 	serving := s
 	serving.Release = old.Release
-	if e = verifyServingPredecessor(ctx, serving, predecessor); e != nil {
-		p.Checks = append(p.Checks, Check{"upgrade.predecessor", "fail", "predecessor_not_healthy"})
+	if reason := verifyServingPredecessor(ctx, serving, predecessor); reason != "" {
+		p.Checks = append(p.Checks, Check{"upgrade.predecessor", "fail", reason})
 		p.Approvable = false
 	}
 	work, e := observeUpgradeWork(ctx, s, generationPath(old)+"/open-habitat")

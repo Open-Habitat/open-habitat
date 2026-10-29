@@ -116,37 +116,50 @@ func upgradeDeclarationSame(a, b Site) bool {
 	return a.Immutable() == b.Immutable() && slices.Equal(a.Profiles, b.Profiles)
 }
 
-func verifyServingPredecessor(ctx context.Context, s Site, r AuthenticatedRelease) error {
+// verifyServingPredecessor returns "" for a healthy serving predecessor and
+// otherwise the reason naming the first failing observation. The plan reports
+// that reason: a bare "not healthy" leaves the operator nothing to diagnose.
+func verifyServingPredecessor(ctx context.Context, s Site, r AuthenticatedRelease) string {
 	state, e := provision.InspectInstallation(ctx)
-	if e != nil || !admissionPublished(state, s) || state.Epoch != state.ObservedEpoch {
-		return ErrUpgradeTarget
-	}
-	if !gatewayConfigurationMatches(s) {
-		return ErrUpgradeTarget
+	switch {
+	case e != nil:
+		return "predecessor_broker_unavailable"
+	case !admissionPublished(state, s):
+		return "predecessor_admission_not_applied"
+	case state.Epoch != state.ObservedEpoch:
+		return "predecessor_admission_not_observed"
+	case !gatewayConfigurationMatches(s):
+		return "predecessor_gateway_configuration_drift"
 	}
 	policies, e := predecessorUnitPolicies(s)
 	if e != nil {
-		return e
+		return "predecessor_generation_policies_unreadable"
 	}
 	if e := verifyUnitPolicies(ctx, policies); e != nil {
-		return e
+		return "predecessor_unit_policy_drift"
 	}
-	c, e := r.ObserveRuntimePackages(ctx, s.Profiles)
-	if e != nil || c.Status != "pass" {
-		return ErrUpgradeTarget
+	if c, e := r.ObserveRuntimePackages(ctx, s.Profiles); e != nil || c.Status != "pass" {
+		return "predecessor_runtime_packages_not_ready"
 	}
-	if e = (&nativeApply{site: s}).verifySettings(ctx); e != nil {
-		return e
+	if reason, _ := (&nativeApply{site: s}).verifyAdministration(ctx, administrationDeclared); reason != "" {
+		return "predecessor_" + reason
 	}
 	for _, unit := range []string{"open-habitat-broker.service", "open-habitat-gateway.service"} {
 		if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "is-active", "--quiet", unit); e != nil {
-			return e
+			return "predecessor_service_inactive"
 		}
 	}
-	if !preparationExists(s) || sessionPolicyReady(ctx) != nil || bootguard.Storage() != "verified" {
-		return ErrUpgradeTarget
+	switch {
+	case !preparationExists(s):
+		return "predecessor_preparation_missing"
+	case sessionPolicyReady(ctx) != nil:
+		return "predecessor_session_policy_not_ready"
+	case bootguard.Storage() != "verified":
+		return "predecessor_storage_not_verified"
+	case generationMatches(ctx, s, r) != nil:
+		return "predecessor_generation_mismatch"
 	}
-	return generationMatches(ctx, s, r)
+	return ""
 }
 
 // The prior generation is an immutable unit/config generation, not a native

@@ -217,7 +217,9 @@ func (n *nativeUpgrade) verify(ctx context.Context, l *Lock, o Operation) error 
 	if e := waitControl(ctx); e != nil {
 		return e
 	}
-	if e := n.n.verify(ctx); e != nil {
+	// The upgrade converges no administration: site.json's roles must hold,
+	// and the gateway's current default stays whatever an administrator set.
+	if e := n.n.verifyStructure(ctx, administrationDeclared); e != nil {
 		return e
 	}
 	// Cold-start both listeners with real peer credentials. Production daemon
@@ -283,7 +285,7 @@ func (n *nativeUpgrade) open(ctx context.Context, l *Lock, o Operation) error {
 	if e := replacePrivateAt(l.fd, o.ID+"-upgrade-accepted.json", b); e != nil {
 		return e
 	}
-	if e := n.n.openEntries(ctx); e != nil {
+	if e := n.n.openEntriesMode(ctx, administrationDeclared); e != nil {
 		return e
 	}
 	return removeUpgradeFence()
@@ -308,7 +310,7 @@ func (n *nativeUpgrade) finishAccepted(ctx context.Context, l *Lock, o Operation
 	if e = n.currentAdoption(ctx); e != nil {
 		return false, e
 	}
-	if e = n.n.openEntriesMode(ctx, false); e != nil {
+	if e = n.n.openEntriesMode(ctx, administrationCurrent); e != nil {
 		return false, e
 	}
 	if e = removeUpgradeFence(); e != nil {
@@ -336,7 +338,7 @@ func (n *nativeUpgrade) complete(ctx context.Context, l *Lock, o Operation) (boo
 	if e = n.currentAdoption(ctx); e != nil {
 		return false, e
 	}
-	if e = n.n.verifyStructure(ctx, false); e != nil {
+	if e = n.n.verifyStructure(ctx, administrationCurrent); e != nil {
 		return false, e
 	}
 	return true, nil

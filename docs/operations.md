@@ -288,6 +288,21 @@ Deliver the independently signed successor runtime manifest/archives to the same
 incoming release directory, and its verified product package to a root-owned
 non-writable directory. Change only `site.release`; converge admission, roles,
 profiles or quota changes separately before planning the release transition.
+
+The upgrade converges no administration. Administrators must already be
+site.json's (`upgrade.predecessor` reports `predecessor_administrators_not_applied`
+otherwise). The quota default is the gateway's current value: a default an
+administrator changed in the browser after the last apply neither blocks the
+upgrade nor is reset by it, and per-user limits are never touched. Site.json's
+`storage.default_limit_bytes` still says what the next host apply sets, so
+before that apply either write the browser value into site.json or accept that
+apply returns the default to the declared one (existing accounts keep their
+limits; only accounts created afterwards get the new default). A refused
+predecessor names the failing observation in `upgrade.predecessor`'s reason
+(`predecessor_admission_not_applied`, `predecessor_unit_policy_drift`,
+`predecessor_runtime_packages_not_ready`, `predecessor_service_inactive`, and
+so on); diagnose that observation on the running predecessor rather than
+editing the successor's inputs.
 The signed successor must name this exact predecessor, its executable digest,
 the compatibility protocol and every successor binary/web file. A package checksum supplied by the package itself
 is not independent release authentication.

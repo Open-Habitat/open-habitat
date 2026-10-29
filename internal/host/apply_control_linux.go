@@ -169,43 +169,96 @@ func (n *nativeApply) converge(ctx context.Context) error {
 	}
 	return n.verifySettings(ctx)
 }
+
+// administrationCheck says how much of the gateway's administration must
+// equal site.json. Administrators come only from site.json, so every check
+// that requires them requires exactly the declared ones. The quota default is
+// different: site.json declares it and apply converges it, but a current
+// administrator may change it in the browser afterwards, so between applies
+// the gateway's value is the live one.
+type administrationCheck int
+
+const (
+	// administrationConverged is configuration apply's readback after it set
+	// site.json's roles and default.
+	administrationConverged administrationCheck = iota
+	// administrationDeclared is a release upgrade's: it converges nothing, so
+	// it requires site.json's roles but neither reverts nor refuses a default
+	// an administrator changed since the last apply.
+	administrationDeclared
+	// administrationCurrent is an accepted upgrade's recovery: entry has
+	// reopened, so it validates only that the gateway's current
+	// administration is readable, never historical desired roles/defaults.
+	administrationCurrent
+)
+
 func (n *nativeApply) verifySettings(ctx context.Context) error {
+	_, e := n.verifyAdministration(ctx, administrationConverged)
+	return e
+}
+
+// verifyAdministration reads the gateway's administration back and returns the
+// reason naming the first observation that does not satisfy check.
+func (n *nativeApply) verifyAdministration(ctx context.Context, check administrationCheck) (string, error) {
 	var settings applySettings
 	if e := control(ctx, map[string]any{"operation": "show"}, &settings); e != nil {
-		return e
-	}
-	if settings.Version != 1 || n.site.Storage.EnforceUserQuota && settings.DefaultLimitBytes != n.site.Storage.DefaultLimit() {
-		return ErrNativeApply
+		return "administration_unavailable", e
 	}
 	state, e := provision.InspectInstallation(ctx)
 	if e != nil {
-		return e
+		return "broker_unavailable", e
 	}
-	want := []string{}
-	n.roles = []AdministratorOutcome{}
-	for _, id := range n.site.Identities.Administrators {
-		if slices.Contains(state.BoundSubjects, id) {
-			want = append(want, id)
-			n.roles = append(n.roles, AdministratorOutcome{id, "granted"})
-		} else {
-			n.roles = append(n.roles, AdministratorOutcome{id, "deferred_until_bound"})
+	roles, reason := administrationMatches(n.site, settings, state.BoundSubjects, check)
+	if roles != nil {
+		n.roles = roles
+	}
+	if reason != "" {
+		return reason, ErrNativeApply
+	}
+	return "", nil
+}
+
+func administrationMatches(s Site, settings applySettings, bound []string, check administrationCheck) ([]AdministratorOutcome, string) {
+	if settings.Version != 1 {
+		return nil, "administration_version_unsupported"
+	}
+	// Without user quotas the broker sets no limits and apply leaves the
+	// gateway's default alone, so there is nothing to require of it.
+	if s.Storage.EnforceUserQuota {
+		live := settings.DefaultLimitBytes
+		switch {
+		case check == administrationConverged && live != s.Storage.DefaultLimit():
+			return nil, "default_limit_not_applied"
+		case live < 1<<20 || live > 1<<50 || live%1024 != 0:
+			return nil, "default_limit_invalid"
 		}
 	}
-	slices.Sort(settings.Administrators)
+	want := []string{}
+	roles := []AdministratorOutcome{}
+	for _, id := range s.Identities.Administrators {
+		if slices.Contains(bound, id) {
+			want = append(want, id)
+			roles = append(roles, AdministratorOutcome{id, "granted"})
+		} else {
+			roles = append(roles, AdministratorOutcome{id, "deferred_until_bound"})
+		}
+	}
+	got := slices.Clone(settings.Administrators)
+	slices.Sort(got)
 	slices.Sort(want)
-	if !slices.Equal(settings.Administrators, want) {
-		return ErrNativeApply
+	if !slices.Equal(got, want) {
+		return roles, "administrators_not_applied"
 	}
 	// A pending declaration is authority the gateway will grant on its own,
 	// so it must be one site.json still makes. A declaration missing from an
 	// installation that predates pending declarations is not required: such
 	// a person is granted by the next deliberate apply after binding.
 	for _, id := range settings.Pending {
-		if !slices.Contains(n.site.Identities.Administrators, id) {
-			return ErrNativeApply
+		if !slices.Contains(s.Identities.Administrators, id) {
+			return roles, "administrators_not_applied"
 		}
 	}
-	return nil
+	return roles, ""
 }
 
 // convergeRoles makes the gateway's administrators exactly site.json's
