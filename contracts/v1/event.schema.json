@@ -279,6 +279,9 @@
               },
               "restart": {
                 "$ref": "history.schema.json#/$defs/restart"
+              },
+              "wait_reminder": {
+                "$ref": "history.schema.json#/$defs/waitReminder"
               }
             }
           }

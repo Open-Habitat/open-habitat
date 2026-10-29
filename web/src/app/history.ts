@@ -9,6 +9,7 @@ import processEventSchema from "../../../contracts/v1/process-event.schema.json"
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { AgentNotice } from "../components/AgentNotice";
 import type { RestartNotice } from "../components/RestartNotice";
+import type { WaitReminder } from "../components/WaitReminder";
 import type { BashFailure } from "./bashFailure";
 
 const ajv = addFormats(new Ajv({ strict: false }));
@@ -46,6 +47,7 @@ export interface HistoryEntry {
   skill?: { name: string; description?: string };
   notice?: AgentNotice;
   restart?: RestartNotice;
+  wait_reminder?: WaitReminder;
   entry_key: string;
   timestamp?: string;
   kind:

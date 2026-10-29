@@ -651,6 +651,9 @@ func nativeEntryPayload(entry historyEntry) map[string]any {
 	if entry.Restart != nil {
 		payload["restart"] = entry.Restart
 	}
+	if entry.WaitReminder != nil {
+		payload["wait_reminder"] = entry.WaitReminder
+	}
 	if len(entry.Blocks) > 0 {
 		payload["blocks"] = entry.Blocks
 	}

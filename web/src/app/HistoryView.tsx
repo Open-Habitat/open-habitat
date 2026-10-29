@@ -36,6 +36,7 @@ import { RecapCard, useMinuteNow } from "../components/RecapCard";
 import { RestartNoticeMarker } from "../components/RestartNotice";
 import { SessionSettingsRow } from "../components/SessionSettingsRow";
 import { SkillInvocation } from "../components/SkillInvocation";
+import { WaitReminderMarker } from "../components/WaitReminder";
 import { useBrowserShell } from "./BrowserShell";
 import { type BashFailure, toolStopped } from "./bashFailure";
 import { type ConversationStore, useWindow } from "./conversationStore";
@@ -842,6 +843,8 @@ export function Entry({
     return (
       <RestartNoticeMarker notice={entry.restart} timestamp={entry.timestamp} />
     );
+  if (entry.wait_reminder)
+    return <WaitReminderMarker reminder={entry.wait_reminder} />;
   const processBlocks = entry.blocks?.filter((b) => b.type === "process_event");
   if (processBlocks?.length)
     return (
