@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-notification-bell
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: top bar bell for announcements such as the quota warning

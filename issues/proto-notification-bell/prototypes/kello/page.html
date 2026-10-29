@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="prototype-round" content="kello">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Kello yläpalkissa</title>
+<style>
+/*TOKENS*/
+</style>
+<style>
+/* ===== Sivun kehys: ympäristö, jossa suuntaa katsotaan ===== */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--ah-bg); color: var(--ah-ink); font: 400 var(--ah-size-body)/var(--ah-lh-body) var(--ah-font); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+.page-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); font-size: var(--ah-size-ui); }
+.page-bar h1 { margin: 0; font-size: 14px; font-weight: 600; }
+.page-bar label { display: inline-flex; align-items: center; gap: 6px; color: var(--ah-ink-2); }
+.page-bar select { font: inherit; }
+.page-bar .events { display: inline-flex; align-items: center; gap: 6px; color: var(--ah-ink-2); }
+.page-bar .events button { min-height: 26px; padding: 0 9px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-pill); background: var(--ah-surface); font-size: 12px; cursor: pointer; }
+.page-bar .events button:hover { background: var(--ah-surface-hover); }
+.frame-wrap { display: flex; justify-content: center; padding: 16px 16px 80px; }
+.frame { position: relative; width: 100%; max-width: 1280px; height: calc(100vh - 160px); min-height: 560px; background: var(--ah-bg); border: 1px solid var(--ah-line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; container-type: inline-size; }
+.frame-wrap.w1280 .frame { width: 1280px; max-width: none; }
+.frame-wrap.phone .frame { width: 390px; max-width: 100%; height: 780px; min-height: 0; }
+body.bare .page-bar { display: none; }
+body.bare .frame-wrap { padding: 0; }
+body.bare .frame, body.bare .frame-wrap.phone .frame, body.bare .frame-wrap.w1280 .frame { width: 100vw; max-width: none; height: 100vh; min-height: 0; border: 0; border-radius: 0; }
+
+/* ===== Sovelluskehys (kopio tuotannon mitoista, ei tuotantokomponentteja) ===== */
+.shell { flex: 1; min-height: 0; display: flex; position: relative; }
+.rail { flex: none; width: var(--ah-rail-width); display: flex; flex-direction: column; gap: 6px; padding: 10px 8px; background: var(--ah-rail); border-right: 1px solid var(--ah-line); font-size: var(--ah-size-ui); overflow-y: auto; }
+.rail-head { display: flex; align-items: center; gap: 8px; padding: 2px 6px 6px; }
+.rail-head .srv { font: 600 13px var(--ah-font); }
+.rail-head .conn { display: inline-flex; align-items: center; gap: 5px; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.dot-ok { width: 7px; height: 7px; border-radius: 50%; background: var(--ah-ok); }
+.home-row, .conv-row { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 8px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); text-decoration: none; }
+.home-row svg { width: 15px; height: 15px; }
+.ws-name { display: block; padding: 6px 8px 2px; font: 500 12.5px var(--ah-mono); color: var(--ah-ink); }
+.conv-row { padding-left: 22px; }
+.conv-row[aria-current] { background: var(--ah-current); box-shadow: 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); }
+.conv-row .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv-row .m { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.m.attention { background: var(--ah-accent); box-shadow: 0 0 0 2px var(--ah-accent-soft); }
+.m.working { width: 10px !important; height: 10px !important; border: 2px solid var(--ah-accent-line); border-top-color: var(--ah-accent); }
+.rail-foot { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 8px 6px 2px; border-top: 1px solid var(--ah-line); color: var(--ah-ink-2); }
+.avatar { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ah-accent-soft); color: var(--ah-accent-ink); font: 600 11px var(--ah-font); }
+
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+.topbar { flex: none; display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 6px 12px 6px var(--ah-topbar-pad-inline); background: var(--ah-surface); border-bottom: 1px solid var(--ah-line); }
+.tb-title { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.tb-title strong { min-width: 0; font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-title code { flex: none; font: 400 12px var(--ah-mono); color: var(--ah-muted); }
+.tb-right { flex: none; display: flex; align-items: center; gap: 4px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border-radius: var(--ah-r-pill); background: var(--ah-control); font: 500 12px var(--ah-font); color: var(--ah-ink-2); white-space: nowrap; }
+.ring { width: 14px; height: 14px; border-radius: 50%; background: conic-gradient(var(--ah-accent) 0 42%, var(--ah-line) 42% 100%); -webkit-mask: radial-gradient(circle, transparent 4px, #000 4.5px); mask: radial-gradient(circle, transparent 4px, #000 4.5px); }
+.sep { width: 1px; height: 18px; margin: 0 4px; background: var(--ah-line); }
+.icon-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--ah-r-md); background: transparent; color: var(--ah-ink-2); cursor: pointer; }
+.icon-btn:hover { background: var(--ah-control-hover); color: var(--ah-ink); }
+.icon-btn:focus-visible, .bell:focus-visible, .act:focus-visible, .x:focus-visible, .peek button:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 1px; }
+.icon-btn svg, .bell svg { width: 17px; height: 17px; }
+svg.i { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.menu-btn { display: none; }
+.phone-only { display: none; }
+.desk-only { display: contents; }
+.panel.in-page { top: 64px; right: 24px; }
+
+.content { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: var(--ah-column-pad-block) var(--ah-column-pad-inline) 8px; }
+.content > * { width: min(100%, var(--ah-conversation-width)); }
+.thread { margin-top: auto; display: flex; flex-direction: column; gap: var(--ah-s6); }
+.bubble { align-self: flex-end; max-width: 78%; padding: 9px 13px; border-radius: 14px 14px 4px 14px; background: var(--ah-accent-soft); color: var(--ah-ink); }
+.answer p { margin: 0 0 8px; }
+.answer p:last-child { margin: 0; }
+.answer code, .ws-path { font: 400 var(--ah-size-code) var(--ah-mono); }
+.composer { flex: none; display: flex; justify-content: center; padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline) 16px; border-top: 1px solid var(--ah-line-soft); }
+.composer div { width: min(100%, var(--ah-conversation-width)); display: flex; gap: 8px; align-items: flex-end; }
+.composer textarea { flex: 1; height: 44px; resize: none; padding: 10px 12px; font: inherit; color: var(--ah-ink); background: var(--ah-surface); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg); }
+.composer button { min-height: 36px; padding: 0 14px; border: 1px solid var(--ah-accent); border-radius: var(--ah-r-md); background: var(--ah-accent); color: var(--ah-on-accent); font: 600 12.5px var(--ah-font); cursor: pointer; }
+
+.ws-head { display: flex; align-items: flex-start; gap: 12px; padding: 4px 0 14px; border-bottom: 1px solid var(--ah-line); }
+.ws-head .ttl { flex: 1; min-width: 0; }
+.ws-head h1 { margin: 0; font-size: var(--ah-size-h1); font-weight: 600; }
+.ws-path { color: var(--ah-muted); }
+.ws-actions { display: flex; align-items: center; gap: 4px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border: 0; border-radius: var(--ah-r-md); background: var(--ah-control); color: var(--ah-ink); font: 500 13px var(--ah-font); cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--ah-control-hover); }
+.btn.primary { background: var(--ah-accent); color: var(--ah-on-accent); }
+.btn.primary:hover { background: var(--ah-accent-hover); }
+.btn.danger { background: var(--ah-err); color: var(--ah-on-err); }
+.ws-list { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ws-list li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); }
+.ws-list .t { flex: 1; min-width: 0; font-weight: 500; }
+.ws-list .s { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+
+/* ===== Nykyinen: nauhat koko sovelluksen yllä (App.tsx connection-paikka) ===== */
+.strips { flex: none; display: flex; flex-direction: column; }
+.strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 9px 16px; border-bottom: 1px solid var(--ah-accent-line); background: var(--ah-accent-soft); font-size: 13px; }
+.strip strong { font-weight: 500; color: var(--ah-accent-ink); }
+.strip span { color: var(--ah-ink-2); flex: 1 1 320px; }
+.strip.warning { background: var(--ah-surface-2); border-color: var(--ah-line); }
+.strip.warning strong { color: var(--ah-ink); }
+.strip.danger { background: var(--ah-err-soft); border-color: var(--ah-err-line); }
+.strip.danger strong { color: var(--ah-err); }
+.strip .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ===== Kello ===== */
+.bell { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 32px; height: 32px; padding: 0 7px; border: 0; border-radius: var(--ah-r-md); background: transparent; color: var(--ah-ink-2); cursor: pointer; white-space: nowrap; }
+.bell:hover { background: var(--ah-control-hover); color: var(--ah-ink); }
+.bell[aria-expanded="true"] { background: var(--ah-surface-press); color: var(--ah-ink); }
+.bell .badge { position: absolute; top: 2px; right: 1px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: var(--ah-r-pill); background: var(--ah-accent); color: var(--ah-on-accent); font: 600 10px/15px var(--ah-font); text-align: center; box-shadow: 0 0 0 2px var(--ah-surface); }
+.bell .badge.danger { background: var(--ah-err); color: var(--ah-on-err); }
+.bell .unread { position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--ah-accent); box-shadow: 0 0 0 2px var(--ah-surface); }
+.bell .unread.danger { background: var(--ah-err); }
+.bell.quiet { color: var(--ah-muted); }
+/* Tila: vakava asia näkyy kellossa sanoina, ei vain värinä. */
+.bell.pill { padding: 0 10px 0 8px; border: 1px solid var(--ah-err-line); background: var(--ah-err-soft); color: var(--ah-err); font: 600 12px var(--ah-font); }
+.bell.pill:hover { background: var(--ah-err-soft-hover); color: var(--ah-err); }
+.bell.pill .badge { position: static; box-shadow: none; }
+.bell.pill svg { width: 15px; height: 15px; }
+.bell.ringing svg { animation: bell-ring 520ms ease-out; transform-origin: 50% 10%; }
+@keyframes bell-ring { 0% { transform: rotate(0); } 20% { transform: rotate(14deg); } 45% { transform: rotate(-11deg); } 70% { transform: rotate(6deg); } 100% { transform: rotate(0); } }
+.bell.bump { animation: bell-bump 260ms ease-out; }
+@keyframes bell-bump { 40% { transform: scale(1.14); } }
+@media (prefers-reduced-motion: reduce) { .bell.ringing svg, .bell.bump { animation: none; } }
+
+.panel { position: absolute; top: 50px; right: 10px; z-index: 6; width: 392px; max-width: calc(100% - 20px); max-height: calc(100% - 64px); overflow-y: auto; padding: 4px 0 6px; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); box-shadow: var(--ah-shadow-dialog); animation: pop 150ms ease-out; transform-origin: top right; }
+.panel:focus { outline: none; }
+@keyframes pop { from { opacity: 0; transform: scale(.97) translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .panel { animation: none; } }
+.panel-head { display: flex; align-items: baseline; gap: 8px; padding: 10px 14px 6px; }
+.panel-head h2 { margin: 0; font: 600 13.5px var(--ah-font); }
+.panel-head .sub { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.group { padding: 8px 14px 2px; font: 600 var(--ah-size-label) var(--ah-font); letter-spacing: .04em; text-transform: uppercase; color: var(--ah-muted); }
+.item { position: relative; display: grid; grid-template-columns: 18px 1fr; gap: 2px 10px; margin: 4px 8px; padding: 10px 10px 10px 8px; border-radius: var(--ah-r-md); }
+.item + .item { box-shadow: 0 -1px 0 var(--ah-line-soft); border-top-left-radius: 0; border-top-right-radius: 0; }
+.item.danger { background: var(--ah-err-soft); box-shadow: none; }
+.item.danger + .item { box-shadow: none; }
+.item .ic { grid-row: 1 / span 3; padding-top: 2px; color: var(--ah-ink-2); }
+.item.danger .ic { color: var(--ah-err); }
+.item.info .ic { color: var(--ah-accent-ink); }
+.item .ic svg { width: 17px; height: 17px; }
+.item h3 { margin: 0; padding-right: 26px; font: 600 13.5px/1.35 var(--ah-font); }
+.item.danger h3 { color: var(--ah-err); }
+.item .meta { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.item .meta .new { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: var(--ah-r-pill); background: var(--ah-accent); color: var(--ah-on-accent); font: 600 10.5px/16px var(--ah-font); }
+.item p { margin: 4px 0 0; color: var(--ah-ink-2); font-size: 13px; line-height: 1.5; }
+.item .acts { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.act { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border: 0; border-radius: var(--ah-r-md); background: var(--ah-control); color: var(--ah-ink); font: 500 12.5px var(--ah-font); cursor: pointer; }
+.act:hover { background: var(--ah-control-hover); }
+.act.primary { background: var(--ah-accent); color: var(--ah-on-accent); }
+.act.primary:hover { background: var(--ah-accent-hover); }
+.item.danger .act.primary { background: var(--ah-err); color: var(--ah-on-err); }
+.x { position: absolute; top: 6px; right: 6px; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: var(--ah-r-sm); background: transparent; color: var(--ah-muted); cursor: pointer; }
+.x:hover { background: var(--ah-control-hover); color: var(--ah-ink); }
+.x svg { width: 14px; height: 14px; }
+.item.resolved { opacity: .72; }
+.item.resolved .ic { color: var(--ah-ok); }
+.item.resolved h3 { color: var(--ah-ink-2); font-weight: 500; }
+.empty { margin: 4px 14px 10px; color: var(--ah-muted); font-size: 13px; }
+.panel-foot { display: flex; justify-content: flex-end; padding: 4px 14px 6px; }
+.panel-foot button { border: 0; background: transparent; color: var(--ah-accent-ink); font: 500 12.5px var(--ah-font); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+/* ===== Nosto: uusi asia näkyy rivinä yläpalkin alla ja taittuu kelloon ===== */
+.peek { position: relative; flex: none; display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 6px 12px 6px var(--ah-topbar-pad-inline); border-bottom: 1px solid var(--ah-line); background: var(--ah-surface-2); font-size: 13px; overflow: hidden; animation: peek-in 200ms ease-out; }
+@keyframes peek-in { from { opacity: 0; transform: translateY(-6px); } }
+.peek.danger { background: var(--ah-err-soft); border-color: var(--ah-err-line); }
+.peek.info { background: var(--ah-accent-soft); border-color: var(--ah-accent-line); }
+.peek .ic { flex: none; display: inline-flex; color: var(--ah-ink-2); }
+.peek.danger .ic { color: var(--ah-err); }
+.peek.info .ic { color: var(--ah-accent-ink); }
+.peek .ic svg { width: 16px; height: 16px; }
+.peek .txt { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+.peek strong { font-weight: 600; }
+.peek.danger strong { color: var(--ah-err); }
+.peek .meta { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.peek .more { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.peek .acts { flex: none; display: flex; align-items: center; gap: 6px; }
+.peek.danger .act.primary { background: var(--ah-err); color: var(--ah-on-err); }
+.peek .fold { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 0 8px; border: 0; border-radius: var(--ah-r-md); background: transparent; color: var(--ah-ink-2); font: 500 12.5px var(--ah-font); cursor: pointer; }
+.peek .fold:hover { background: var(--ah-control-hover); color: var(--ah-ink); }
+.peek .fold svg { width: 15px; height: 15px; }
+.peek .clock { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--ah-accent); transform-origin: left; animation: drain 8s linear forwards; opacity: .6; }
+.peek:hover .clock, .peek:focus-within .clock { animation-play-state: paused; }
+@keyframes drain { to { transform: scaleX(0); } }
+.peek.leaving { animation: peek-out 200ms ease-out forwards; }
+@keyframes peek-out { to { opacity: 0; transform: translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) { .peek, .peek.leaving { animation: none; } .peek .clock { animation-duration: 8s; } }
+
+.toast { position: absolute; left: 50%; bottom: 92px; z-index: 9; transform: translate(-50%, 8px); max-width: calc(100% - 32px); padding: 9px 14px; border-radius: var(--ah-r-md); background: var(--ah-ink); color: var(--ah-bg); font-size: 12.5px; opacity: 0; pointer-events: none; transition: opacity 180ms ease-out, transform 180ms ease-out; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.scrim { display: none; }
+
+/* ===== Puhelin ===== */
+@container (max-width: 760px) {
+  .rail { position: absolute; inset: 0 auto 0 0; z-index: 8; width: min(86%, 320px); transform: translateX(-102%); transition: transform 200ms ease-out; box-shadow: 0 0 32px rgba(16,24,40,.18); }
+  .drawer-open .rail { transform: none; }
+  .drawer-open .scrim { display: block; position: absolute; inset: 0; z-index: 7; background: var(--ah-scrim); border: 0; }
+  .menu-btn { display: inline-flex; margin-left: -4px; }
+  .phone-only { display: flex; }
+  .desk-only { display: none; }
+  .panel.in-page { top: 50px; right: 8px; }
+  .topbar { gap: 4px; padding: 6px 6px 6px 10px; }
+  .tb-title { flex-direction: column; align-items: flex-start; gap: 0; }
+  .tb-title strong { max-width: 100%; font-size: 14px; }
+  .chip, .sep, .hide-phone { display: none; }
+  .content { padding: 12px 14px 6px; }
+  .composer { padding: 8px 14px 12px; }
+  .panel { top: 50px; left: 8px; right: 8px; width: auto; max-width: none; max-height: calc(100% - 60px); transform-origin: top center; }
+  .peek { flex-wrap: wrap; padding: 8px 10px 8px 14px; align-items: flex-start; }
+  .peek .txt { flex-basis: calc(100% - 30px); }
+  .peek .acts { width: 100%; padding-left: 26px; }
+  .strip { padding: 8px 14px; }
+  .ws-head { flex-direction: column; }
+  .bell.pill .lbl { max-width: 92px; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (prefers-reduced-motion: reduce) { .rail { transition: none; } }
+</style>
+<style>
+/* ===== Valitsin (PICKER.md, sanatarkasti) ===== */
+.proto-picker {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.82);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 8px 24px rgba(0, 0, 0, 0.24),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.proto-picker-highlight {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  will-change: transform;
+}
+
+/* The slide is enabled only after first paint (data-ready), so load doesn't animate. */
+.proto-picker[data-ready] .proto-picker-highlight {
+  transition:
+    transform 250ms cubic-bezier(0.23, 1, 0.32, 1),
+    width 250ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proto-picker[data-ready] .proto-picker-highlight { transition: none; }
+}
+
+.proto-picker-item {
+  position: relative; /* sits above the highlight */
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font: inherit;
+  cursor: pointer;
+  transition: color 150ms ease-out;
+}
+
+.proto-picker-item:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.proto-picker-item:active {
+  transform: scale(0.97);
+}
+
+.proto-picker-item:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 2px;
+}
+
+.proto-picker-item[data-active] {
+  color: #fff;
+}
+
+.proto-picker-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.proto-picker-replay {
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+.proto-picker[data-position="top"] {
+  bottom: auto;
+  top: 24px;
+}
+</style>
+</head>
+<body>
+<div class="page-bar">
+  <h1>Kello yläpalkissa</h1>
+  <label>Näkymä <select id="c-view"><option value="conv">Keskustelu</option><option value="ws">Työtila</option></select></label>
+  <label>Tilanne <select id="c-s"><option value="none">Ei mitään</option><option value="warn">Tila lähes täynnä</option><option value="full">Tila täynnä</option><option value="many">Useita</option></select></label>
+  <span class="events">Tapahtuu:
+    <button type="button" data-ev="version">Uusi versio julkaistaan</button>
+    <button type="button" data-ev="fill">Tila täyttyy</button>
+    <button type="button" data-ev="free">Tilaa vapautuu</button>
+  </span>
+  <label>Rooli <select id="c-role"><option value="person">Henkilö</option><option value="admin">Ylläpitäjä</option></select></label>
+  <label>Ikkuna <select id="c-w"><option value="fit">Oma</option><option value="1280">1280</option><option value="390">Puhelin</option></select></label>
+  <label>Teema <select id="c-t"><option value="light">Vaalea</option><option value="dark">Tumma</option></select></label>
+</div>
+<div class="frame-wrap" id="wrap"><div class="frame" id="frame"></div></div>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Tila</button>
+  <button class="proto-picker-item">Saapuneet</button>
+  <button class="proto-picker-item">Nosto</button>
+  <button class="proto-picker-item">Nykyinen</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+</nav>
+
+<script>
+// Synteettinen data. Tekstit ovat tuotannon omia (StoragePressure.tsx, Status.tsx
+// NewVersionBanner, githubConnection.ts), luvut keksittyjä.
+const ICON = {
+  bell: '<path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6z"/><path d="M10 19.5a2 2 0 0 0 4 0"/>',
+  warning: '<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4M12 17h.01"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',
+  more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  home: '<path d="m3 11 9-8 9 8"/><path d="M5 10v11h14V10M9 21v-7h6v7"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  disk: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h.01M11 15h6"/>',
+  refresh: '<path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/>',
+  github: '<path d="M9 19c-4 1.5-4-2-6-2.5M15 21v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/>',
+  server: '<rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  up: '<path d="m6 15 6-6 6 6"/>',
+};
+const svg = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[n]}</svg>`;
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+const ADVICE = 'Vapauta tilaa roskakorista tai pyydä agenttia siivoamaan tarpeettomia tiedostoja. Roskakoriin siirtäminen ei vapauta tilaa ennen sen tyhjentämistä.';
+// Jokainen ilmoitus on hostin nykyinen tosiasia, ei tallennettu viesti: avain vaihtuu, kun asia muuttuu.
+const KINDS = {
+  'quota:warn': { tone: 'warning', icon: 'disk', group: 'Sinä', short: 'Tila lähes täynnä', title: 'Tallennustilasi on lähes täynnä', meta: '9,2 GiB / 10 GiB',
+    body: ADVICE, acts: [['storage', 'Tallennustila ja roskakori', true], ['recheck', 'Tarkista vapautettu tila']] },
+  'quota:full': { tone: 'danger', icon: 'disk', group: 'Sinä', short: 'Tila täynnä', title: 'Tallennustilasi on täynnä', meta: '10 GiB / 10 GiB',
+    body: ADVICE + ' Tallennus on voinut epäonnistua. Viestejä ei lähetetä uudelleen automaattisesti.', acts: [['storage', 'Tallennustila ja roskakori', true], ['recheck', 'Tarkista vapautettu tila']] },
+  'github:expired': { tone: 'danger', icon: 'github', group: 'Sinä', short: 'GitHub poikki', title: 'GitHub-yhteys on vanhentunut tai peruttu', meta: 'Push ja gh eivät toimi',
+    body: 'GitHub ei enää hyväksy palvelimen valtuutusta, eikä palvelin voi uusia sitä itse. Yhdistä uudelleen: GitHub palauttaa sinut tänne, yleensä kysymättä mitään.', acts: [['github', 'Yhdistä uudelleen', true]] },
+  'version:2026.10.29': { tone: 'info', icon: 'refresh', group: 'Sinä', short: 'Uusi versio', title: 'Uusi versio on saatavilla', meta: 'Luonnokset säilyvät',
+    body: 'Lataa sivu uudelleen, niin saat uusimmat korjaukset. Luonnokset säilyvät.', acts: [['reload', 'Lataa uudelleen', true], ['later', 'Myöhemmin']] },
+  'server:overcommitted': { tone: 'warning', icon: 'server', group: 'Palvelin', short: 'Kiintiöt yli levyn', title: 'Kiintiöt ylittävät palvelimen levyn', meta: '160 GiB kiintiöitä · 120 GiB levyä',
+    body: 'Jos kaikki käyttävät kiintiönsä, levy täyttyy ennen kiintiöitä. Silloin kenenkään tallennus ei onnistu.', acts: [['server', 'Palvelin › Tallennustila', true]], admin: true },
+};
+const RANK = { danger: 0, warning: 1, info: 2 };
+const SCEN = {
+  none: {},
+  warn: { quota: 'warn' },
+  full: { quota: 'full' },
+  many: { quota: 'warn', version: true, github: true },
+};
+
+const qs = new URLSearchParams(location.search);
+const S = {
+  s: qs.get('s') || 'warn', view: qs.get('view') || 'conv', role: qs.get('role') || 'person',
+  w: qs.get('w') || 'fit', t: qs.get('t') || 'light', bare: qs.get('bare') === '1',
+  open: false, drawer: false,
+  conds: {}, at: {}, later: new Set(),
+  seen: new Set(), fresh: new Set(), dismissed: new Set(), resolved: [],
+  folded: new Set(), openedSince: true, ring: false,
+};
+let clockNow = 14 * 60 + 32;
+const hhmm = (m) => `${Math.floor(m / 60)}.${String(m % 60).padStart(2, '0')}`;
+
+function keysOf(c) {
+  const k = [];
+  if (c.quota) k.push(`quota:${c.quota}`);
+  if (c.github) k.push('github:expired');
+  if (c.version) k.push('version:2026.10.29');
+  if (c.server) k.push('server:overcommitted');
+  return k;
+}
+function setScenario(name) {
+  S.s = name;
+  S.conds = { ...SCEN[name], server: S.role === 'admin' && name !== 'none' };
+  S.at = {}; S.later = new Set(); S.seen = new Set(); S.fresh = new Set(); S.dismissed = new Set(); S.resolved = []; S.folded = new Set();
+  S.open = false; S.openedSince = false;
+  keysOf(S.conds).forEach((k, i) => { S.at[k] = hhmm(clockNow - 40 + i * 7); });
+  if (qs.get('fold') === '1') keysOf(S.conds).forEach((k) => S.folded.add(k));
+}
+// Ilmoitukset, jotka ovat nyt voimassa ja tälle roolille.
+function current() {
+  return keysOf(S.conds)
+    .filter((k) => !S.later.has(k))
+    .filter((k) => !KINDS[k].admin || S.role === 'admin')
+    .map((k) => ({ key: k, at: S.at[k], ...KINDS[k] }))
+    .sort((a, b) => RANK[a.tone] - RANK[b.tone] || (a.at < b.at ? 1 : -1));
+}
+function visible() {
+  return VAR === 1 ? current().filter((i) => !S.dismissed.has(i.key)) : current();
+}
+// Nosto näyttää rivinä vain tärkeimmän taittamattoman asian; muut menevät suoraan kelloon.
+function settlePeek() {
+  const up = current().filter((i) => !S.folded.has(i.key));
+  up.slice(1).forEach((i) => S.folded.add(i.key));
+}
+// Ehdon muutos: avain katoaa (ratkesi) tai uusi ilmestyy (saapui).
+function change(next) {
+  const before = new Set(current().map((i) => i.key));
+  const beforeItems = current();
+  S.conds = { ...S.conds, ...next };
+  clockNow += 3;
+  for (const k of keysOf(S.conds)) if (!S.at[k]) S.at[k] = hhmm(clockNow);
+  const after = current();
+  const added = after.filter((i) => !before.has(i.key));
+  for (const i of beforeItems) {
+    if (!after.some((a) => a.key === i.key)) {
+      delete S.at[i.key];
+      if (VAR === 1) S.resolved.unshift({ ...i, resolvedAt: hhmm(clockNow) });
+    }
+  }
+  if (added.length) { S.ring = true; S.openedSince = false; }
+  if (VAR === 2) settlePeek();
+  render();
+  return added;
+}
+
+// ----- Kehys -----
+const frame = document.getElementById('frame');
+const wrap = document.getElementById('wrap');
+let VAR = 0;
+
+function railHTML() {
+  return `<aside class="rail" aria-label="Työtilat">
+  <div class="rail-head"><span class="srv">open-habitat-test</span><span class="conn"><span class="dot-ok"></span>Yhdistetty</span></div>
+  <a class="home-row" href="#">${svg('home')}<span>Etusivu</span></a>
+  <span class="ws-name">kotisivu</span>
+  <a class="conv-row" href="#"${S.view === 'conv' ? ' aria-current="page"' : ''}><span class="t">Varmuuskopioiden siivous</span></a>
+  <a class="conv-row" href="#"><span class="t">Kuvagallerian pikkukuvat</span><span class="m working"></span></a>
+  <span class="ws-name">open-habitat</span>
+  <a class="conv-row" href="#"><span class="t">Lomakkeen validointi</span><span class="m attention"></span></a>
+  <div class="rail-foot"><span class="avatar">J</span><span>Jari</span></div>
+</aside>`;
+}
+
+function bellHTML() {
+  const items = visible();
+  if (VAR === 3) return '';
+  const open = S.open ? 'true' : 'false';
+  const ring = S.ring ? ' ringing' : '';
+  if (VAR === 0) {
+    if (!items.length && !S.open) return '';
+    const danger = items.find((i) => i.tone === 'danger');
+    const n = items.length;
+    const label = `Ilmoitukset: ${n ? n + ' voimassa' : 'ei voimassa olevia'}${danger ? ', ' + danger.short : ''}`;
+    if (danger) {
+      return `<button type="button" class="bell pill${ring}" data-testid="bell" aria-haspopup="dialog" aria-expanded="${open}" aria-label="${esc(label)}" title="${esc(label)}">${svg('bell')}<span class="lbl">${esc(danger.short)}</span>${n > 1 ? `<span class="badge danger">${n}</span>` : ''}</button>`;
+    }
+    return `<button type="button" class="bell${ring}" data-testid="bell" aria-haspopup="dialog" aria-expanded="${open}" aria-label="${esc(label)}" title="${esc(label)}">${svg('bell')}${n ? `<span class="badge">${n}</span>` : ''}</button>`;
+  }
+  if (VAR === 1) {
+    const unread = items.filter((i) => !S.seen.has(i.key));
+    const danger = unread.some((i) => i.tone === 'danger');
+    const label = `Ilmoitukset: ${unread.length ? unread.length + ' lukematonta' : 'ei uusia'}`;
+    return `<button type="button" class="bell${unread.length ? '' : ' quiet'}${ring}" data-testid="bell" aria-haspopup="dialog" aria-expanded="${open}" aria-label="${esc(label)}" title="${esc(label)}">${svg('bell')}${unread.length ? `<span class="badge${danger ? ' danger' : ''}">${unread.length}</span>` : ''}</button>`;
+  }
+  // Nosto: kello on paikka, johon nostot taittuvat.
+  if (!items.length && !S.open) return '';
+  const folded = items.filter((i) => S.folded.has(i.key));
+  const dot = folded.length && !S.openedSince;
+  const danger = folded.some((i) => i.tone === 'danger');
+  const label = `Ilmoitukset: ${items.length} voimassa${dot ? ', uutta' : ''}`;
+  return `<button type="button" class="bell${S.bump ? ' bump' : ''}" data-testid="bell" aria-haspopup="dialog" aria-expanded="${open}" aria-label="${esc(label)}" title="${esc(label)}">${svg('bell')}${dot ? `<span class="unread${danger ? ' danger' : ''}"></span>` : ''}</button>`;
+}
+
+function topbarHTML() {
+  const menu = `<button type="button" class="icon-btn menu-btn" data-ui="drawer" aria-label="Avaa valikko">${svg('menu')}</button>`;
+  if (S.view === 'conv') {
+    return `<header class="topbar">${menu}
+  <div class="tb-title"><strong>Varmuuskopioiden siivous</strong><code>kotisivu</code></div>
+  <div class="tb-right">
+    <span class="chip"><span class="ring"></span>42 %</span>
+    <span class="chip">Opus 5.5</span>
+    <i class="sep"></i>
+    ${bellHTML()}
+    <button type="button" class="icon-btn" data-ui="noop" aria-label="Tiedot" title="Tiedot">${svg('info')}</button>
+    <button type="button" class="icon-btn" data-ui="noop" aria-label="Keskustelun toiminnot" title="Keskustelun toiminnot">${svg('more')}</button>
+  </div>
+</header>`;
+  }
+  // Työtilan sivulla ei ole erillistä yläpalkkia työpöydällä; kello on sivun otsakkeessa.
+  return `<header class="topbar phone-only">${menu}
+  <div class="tb-title"><strong>kotisivu</strong></div>
+  <div class="tb-right">${bellHTML()}<button type="button" class="icon-btn" data-ui="noop" aria-label="Työtilan toiminnot" title="Työtilan toiminnot">${svg('more')}</button></div>
+</header>`;
+}
+
+function contentHTML() {
+  if (S.view === 'conv') {
+    return `<div class="content"><div class="thread">
+  <div class="bubble">Siivoa vanhat varmuuskopiot backups-kansiosta, mutta säilytä viimeisen kuukauden kopiot.</div>
+  <div class="answer"><p>Löysin <code>backups/</code>-kansiosta 46 varmuuskopiota, yhteensä 6,1 GiB. Viimeisen 30 päivän 9 kopiota jäävät.</p><p>Siirsin 37 vanhempaa roskakoriin (4,8 GiB). Tila vapautuu vasta, kun roskakori tyhjennetään.</p></div>
+  <div class="bubble">Hyvä. Tee sitten pikkukuvat kuvagalleriaan.</div>
+  <div class="answer"><p>Aloitan. Pikkukuvat tulevat <code>public/thumbs/</code>-kansioon, noin 380 MiB.</p></div>
+</div></div>
+<div class="composer"><div><textarea aria-label="Viesti" placeholder="Kirjoita viesti…"></textarea><button type="button">Lähetä</button></div></div>`;
+  }
+  return `<div class="content" style="justify-content:flex-start">
+  <div class="ws-head"><div class="ttl"><h1>kotisivu</h1><span class="ws-path">~/src/kotisivu</span></div>
+  <div class="ws-actions"><span class="desk-only">${bellHTML()}</span><button type="button" class="btn primary">Uusi keskustelu</button><button type="button" class="btn">Uusi rinnakkainen</button></div></div>
+  <ul class="ws-list">
+    <li><span class="t">Kuvagallerian pikkukuvat</span><span class="s">Työskentelee</span></li>
+    <li><span class="t">Varmuuskopioiden siivous</span><span class="s">Valmis · 14.12</span></li>
+    <li><span class="t">Yhteydenottolomake</span><span class="s">Valmis · eilen</span></li>
+  </ul>
+</div>`;
+}
+
+function actsHTML(i, cls = 'act') {
+  return i.acts.map(([a, l, p]) => `<button type="button" class="${cls}${p ? ' primary' : ''}" data-act="${a}" data-key="${esc(i.key)}">${esc(l)}</button>`).join('');
+}
+function itemHTML(i, { x = false, fresh = false } = {}) {
+  return `<article class="item ${i.tone}" data-testid="bell-item" data-key="${esc(i.key)}">
+  <span class="ic">${svg(i.icon)}</span>
+  <h3>${esc(i.title)}</h3>
+  <span class="meta">${fresh ? '<span class="new">Uusi</span>' : ''}${esc(i.meta)} · klo ${esc(i.at)}</span>
+  <p>${esc(i.body)}</p>
+  <div class="acts">${actsHTML(i)}</div>
+  ${x ? `<button type="button" class="x" data-x="${esc(i.key)}" aria-label="Kuittaa: ${esc(i.title)}" title="Kuittaa. Palaa, jos tilanne muuttuu.">${svg('close')}</button>` : ''}
+</article>`;
+}
+function groups(items, fn) {
+  const gs = [...new Set(items.map((i) => i.group))];
+  if (gs.length < 2) return items.map(fn).join('');
+  return gs.map((g) => `<div class="group">${g === 'Sinä' ? 'Sinun' : 'Palvelin'}</div>${items.filter((i) => i.group === g).map(fn).join('')}`).join('');
+}
+function panelHTML() {
+  if (!S.open || VAR === 3) return '';
+  const items = visible();
+  let body;
+  if (VAR === 0) {
+    body = `<div class="panel-head"><h2>Ilmoitukset</h2><span class="sub">voimassa nyt</span></div>
+${items.length ? groups(items, (i) => itemHTML(i)) : '<p class="empty" data-testid="bell-empty">Kaikki kunnossa. Kello katoaa, kun suljet tämän.</p>'}`;
+  } else if (VAR === 1) {
+    body = `<div class="panel-head"><h2>Ilmoitukset</h2></div>
+${items.length ? groups(items, (i) => itemHTML(i, { x: true, fresh: S.fresh.has(i.key) })) : '<p class="empty" data-testid="bell-empty">Ei ilmoituksia. Tallennustila, uusi versio ja yhteydet kertovat tänne, kun jokin vaatii huomiota.</p>'}
+${S.resolved.length ? `<div class="group">Ratkenneet</div>${S.resolved.map((r) => `<article class="item resolved" data-testid="bell-resolved"><span class="ic">${svg('check')}</span><h3>${esc(r.title)}</h3><span class="meta">Ratkesi klo ${esc(r.resolvedAt)}</span></article>`).join('')}<div class="panel-foot"><button type="button" data-ui="clear-resolved">Tyhjennä ratkenneet</button></div>` : ''}`;
+  } else {
+    body = `<div class="panel-head"><h2>Ilmoitukset</h2><span class="sub">voimassa nyt</span></div>
+${items.length ? groups(items, (i) => itemHTML(i)) : '<p class="empty" data-testid="bell-empty">Kaikki kunnossa.</p>'}`;
+  }
+  return `<section class="panel${S.view === 'ws' ? ' in-page' : ''}" role="dialog" aria-label="Ilmoitukset" tabindex="-1" data-testid="bell-panel">${body}</section>`;
+}
+
+// Nosto: korkeimman tärkeyden taittamaton asia näkyy rivinä; muut odottavat kellossa.
+function peekHTML() {
+  if (VAR !== 2) return '';
+  const items = visible().filter((i) => !S.folded.has(i.key));
+  if (!items.length) return '';
+  const i = items[0];
+  const others = visible().length - 1;
+  const autoFold = i.tone !== 'danger';
+  return `<div class="peek ${i.tone}" role="status" data-testid="peek" data-key="${esc(i.key)}">
+  <span class="ic">${svg(i.icon)}</span>
+  <span class="txt"><strong>${esc(i.title)}</strong><span class="meta">${esc(i.meta)}</span>${others > 0 ? `<span class="more">+${others} kellossa</span>` : ''}</span>
+  <span class="acts">${actsHTML({ ...i, acts: i.acts.filter(([, , p]) => p) })}<button type="button" class="fold" data-fold="${esc(i.key)}" aria-label="Siirrä kelloon" title="Siirrä kelloon">${svg('up')}<span>Kelloon</span></button></span>
+  ${autoFold ? '<span class="clock" aria-hidden="true"></span>' : ''}
+</div>`;
+}
+
+function stripsHTML() {
+  if (VAR !== 3) return '';
+  const items = current();
+  return `<div class="strips">${items.map((i) => `<div class="strip ${i.tone}" role="status" data-testid="strip"><strong>${esc(i.title)}${i.key.startsWith('quota:') ? ` (${esc(i.meta)})` : ''}</strong><span>${esc(i.body)}</span><span class="acts">${actsHTML(i, 'btn')}</span></div>`).join('')}</div>`;
+}
+
+let foldTimer;
+function render() {
+  document.documentElement.dataset.theme = S.t;
+  document.body.classList.toggle('bare', S.bare);
+  wrap.className = 'frame-wrap' + (S.w === '390' ? ' phone' : S.w === '1280' ? ' w1280' : '');
+  const focusKey = document.activeElement?.closest?.('.panel') ? 'panel' : null;
+  frame.innerHTML = `${stripsHTML()}<div class="shell${S.drawer ? ' drawer-open' : ''}">${railHTML()}<main class="main">${topbarHTML()}${peekHTML()}${contentHTML()}${panelHTML()}<div class="toast" role="status" id="toast"></div></main><button type="button" class="scrim" data-ui="drawer" aria-label="Sulje valikko"></button></div>`;
+  S.ring = false; S.bump = false;
+  if (focusKey) frame.querySelector('.panel')?.focus();
+  // Varoitus ja tieto taittuvat itse 8 s jälkeen, ellei osoitin tai kohdistus ole rivillä.
+  clearTimeout(foldTimer);
+  const peek = frame.querySelector('.peek');
+  if (peek && !peek.classList.contains('danger')) {
+    peek.querySelector('.clock')?.addEventListener('animationend', () => fold(peek.dataset.key));
+  }
+}
+
+function fold(key) {
+  const peek = frame.querySelector('.peek');
+  const go = () => { S.folded.add(key); S.openedSince = false; S.bump = true; render(); };
+  if (peek && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    peek.classList.add('leaving');
+    setTimeout(go, 190);
+  } else go();
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = frame.querySelector('#toast');
+  if (!t) return;
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2600);
+}
+
+function openPanel(on) {
+  S.open = on;
+  if (on) {
+    if (VAR === 1) { S.fresh = new Set(visible().filter((i) => !S.seen.has(i.key)).map((i) => i.key)); visible().forEach((i) => S.seen.add(i.key)); }
+    if (VAR === 2) S.openedSince = true;
+  } else {
+    S.fresh = new Set();
+  }
+  render();
+  if (on) frame.querySelector('.panel')?.focus();
+  else frame.querySelector('[data-testid="bell"]')?.focus();
+}
+
+function act(a, key) {
+  if (a === 'storage') return toast('Avautuisi: Asetukset › Tallennustila ja roskakori');
+  if (a === 'server') return toast('Avautuisi: Asetukset › Palvelin › Tallennustila');
+  if (a === 'recheck') { change({ quota: undefined }); return toast('Tarkistettu: 7,1 GiB / 10 GiB. Tilaa on taas.'); }
+  if (a === 'reload') { change({ version: false }); return toast('Sivu latautuisi uudelleen uuteen versioon.'); }
+  if (a === 'later') { S.later.add(key); render(); return toast('Uusi versio odottaa seuraavaan lataukseen.'); }
+  if (a === 'github') { change({ github: false }); return toast('GitHub yhdistetty uudelleen.'); }
+}
+
+frame.addEventListener('click', (e) => {
+  const t = e.target.closest('button, a');
+  if (!t) { if (S.open && !e.target.closest('.panel')) openPanel(false); return; }
+  if (t.tagName === 'A') e.preventDefault();
+  if (t.matches('[data-testid="bell"]')) return openPanel(!S.open);
+  if (t.dataset.ui === 'drawer') { S.drawer = !S.drawer; return render(); }
+  if (t.dataset.ui === 'clear-resolved') { S.resolved = []; return render(); }
+  if (t.dataset.x) {
+    S.dismissed.add(t.dataset.x); render();
+    const next = frame.querySelector('.panel .x, .panel .act');
+    (next || frame.querySelector('.panel'))?.focus();
+    return;
+  }
+  if (t.dataset.fold) return fold(t.dataset.fold);
+  if (t.dataset.act) return act(t.dataset.act, t.dataset.key);
+  if (S.open && !t.closest('.panel')) openPanel(false);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && S.open) { e.preventDefault(); openPanel(false); }
+});
+
+// ----- Sivun ohjaimet -----
+const ctl = (id, key, after) => {
+  const el = document.getElementById(id);
+  el.value = S[key];
+  el.addEventListener('change', () => { S[key] = el.value; syncURL(); after ? after() : render(); });
+};
+function syncURL() {
+  const url = new URL(location);
+  for (const k of ['s', 'view', 'role', 'w', 't']) url.searchParams.set(k, S[k]);
+  history.replaceState(null, '', url);
+}
+ctl('c-view', 'view');
+ctl('c-s', 's', () => { setScenario(S.s); render(); });
+ctl('c-role', 'role', () => { setScenario(S.s); render(); });
+ctl('c-w', 'w');
+ctl('c-t', 't');
+document.querySelectorAll('[data-ev]').forEach((b) => b.addEventListener('click', () => {
+  const ev = b.dataset.ev;
+  if (ev === 'version') {
+    const k = 'version:2026.10.29';
+    // Julkaistaan "uudelleen": edellinen kuittaus tai taitto ei koske uutta julkaisua.
+    S.conds.version = false; delete S.at[k];
+    for (const set of [S.later, S.seen, S.folded, S.dismissed]) set.delete(k);
+    change({ version: true });
+  }
+  if (ev === 'fill') change({ quota: 'full' });
+  if (ev === 'free') change({ quota: undefined });
+}));
+
+setScenario(S.s);
+
+// ----- Valitsin (PICKER.md, viitejohdotus) -----
+const variants = [0, 1, 2, 3].map((i) => () => { VAR = i; S.open = false; if (i === 2) settlePeek(); render(); return ''; });
+const picker = document.querySelector('.proto-picker');
+const highlight = picker.querySelector('.proto-picker-highlight');
+const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+const replay = picker.querySelector('.proto-picker-replay');
+let currentV = 0;
+
+function moveHighlight() {
+  const el = items[currentV];
+  highlight.style.width = el.offsetWidth + 'px';
+  highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+}
+
+function mount(i) {
+  frame.innerHTML = '';
+  // Clear first, render next frame, so entrance animations re-run.
+  requestAnimationFrame(() => {
+    setScenario(S.s);
+    variants[i]();
+    if (qs.get('open') === '1') openPanel(true);
+  });
+}
+
+function setActive(i) {
+  if (i < 0 || i >= variants.length) return;
+  currentV = i;
+  items.forEach((el, j) => {
+    el.toggleAttribute('data-active', j === i);
+    if (j === i) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
+  });
+  moveHighlight();
+  const url = new URL(location);
+  url.searchParams.set('v', i + 1);
+  history.replaceState(null, '', url);
+  mount(i);
+}
+
+items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+replay?.addEventListener('click', () => mount(currentV));
+window.addEventListener('resize', moveHighlight);
+
+document.addEventListener('keydown', (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const num = parseInt(e.key, 10);
+  if (num >= 1 && num <= variants.length) setActive(num - 1);
+  else if (e.key === 'ArrowRight') setActive((currentV + 1) % variants.length);
+  else if (e.key === 'ArrowLeft') setActive((currentV - 1 + variants.length) % variants.length);
+  else if (e.key === 'r' || e.key === 'R') mount(currentV);
+});
+
+setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
+// Enable the slide only after first paint, so load doesn't animate.
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+</script>
+</body>
+</html>
