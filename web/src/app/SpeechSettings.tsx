@@ -16,24 +16,42 @@ import {
 
 const regionNames: Record<SpeechRegion, string> = { eu: "EU", us: "USA" };
 
-/** The region a save found, said once after it. */
+/** The region a save found, said once after it. The EU is the default
+ * here, so a US key says it was found elsewhere. */
 const savedIn = (region: SpeechRegion | null | undefined) =>
-  region
-    ? `Avain tallennettu. Soniox hyväksyi sen ${regionNames[region]}-alueella.`
-    : "";
+  region === "eu"
+    ? "Avain tallennettu. Soniox hyväksyi sen EU-alueella."
+    : region === "us"
+      ? "Avain tallennettu. Soniox hyväksyi sen USA-alueella, ei oletuksena olevalla EU-alueella."
+      : "";
+
+const sonioxConsole = (
+  <a
+    href="https://console.soniox.com"
+    target="_blank"
+    rel="noopener noreferrer"
+    referrerPolicy="no-referrer"
+  >
+    Soniox-konsolista
+  </a>
+);
 
 /** Why a key was not saved, by the code its save answered. Nothing was
  * stored, so the form stays as it was. */
-const refusals: Record<string, string> = {
-  speech_key_rejected:
-    "Soniox ei hyväksynyt avainta EU- eikä USA-alueella, joten sitä ei tallennettu. Tarkista avain ja sen oikeudet Soniox-konsolissa.",
+const refusals: Record<string, ReactNode> = {
+  speech_key_rejected: (
+    <>
+      Avainta ei tallennettu: Soniox ei tunne sitä EU- eikä USA-alueella, joten
+      se on väärä tai peruttu. Hae uusi avain {sonioxConsole}.
+    </>
+  ),
   speech_unavailable:
-    "Sonioxiin ei saatu yhteyttä, joten avainta ei voitu tarkistaa eikä sitä tallennettu. Yritä hetken päästä uudelleen.",
+    "Avainta ei tallennettu, koska Sonioxiin ei saatu yhteyttä. Yritä hetken päästä uudelleen.",
   speech_limit_reached:
-    "Sonioxin raja tuli hetkeksi vastaan, joten avainta ei voitu tarkistaa eikä sitä tallennettu. Yritä hetken päästä uudelleen.",
+    "Avainta ei tallennettu, koska Sonioxin käyttöraja tuli vastaan. Yritä hetken päästä uudelleen.",
 };
 
-const refusal = (error: unknown) =>
+const refusal = (error: unknown): ReactNode =>
   error instanceof Error ? refusals[error.message] : undefined;
 
 /** A Soniox key, sent once and never shown again. Its region is not asked:
@@ -130,7 +148,7 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [refused, setRefused] = useState("");
+  const [refused, setRefused] = useState<ReactNode>(null);
   const [saved, setSaved] = useState("");
   const load = useCallback((signal?: AbortSignal) => {
     readSpeechKey(signal)
@@ -149,7 +167,7 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
   const write = async (run: () => Promise<SpeechKeyState>, save = false) => {
     setBusy(true);
     setFailed(false);
-    setRefused("");
+    setRefused(null);
     setSaved("");
     try {
       const next = await run();
@@ -296,7 +314,7 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
   const [state, setState] = useState<SiteSpeechKey | "unavailable">();
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [problem, setProblem] = useState("");
+  const [problem, setProblem] = useState<ReactNode>(null);
   const [saved, setSaved] = useState("");
   const load = useCallback((signal?: AbortSignal) => {
     readSiteSpeechKey(signal)
@@ -314,7 +332,7 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
   }, [load]);
   const write = async (run: () => Promise<SiteSpeechKey>, save = false) => {
     setBusy(true);
-    setProblem("");
+    setProblem(null);
     setSaved("");
     try {
       const next = await run();

@@ -50,9 +50,9 @@ function noticeFor(view: DictationView): DictationNotice | null {
       tone: "danger",
       title:
         view.failure === "speech_key_rejected"
-          ? "Sanelu katkesi: Soniox hylkäsi avaimen"
+          ? "Sanelu katkesi: Soniox ei enää hyväksy avainta"
           : view.failure === "speech_limit_reached"
-            ? "Sanelu katkesi: Soniox-avaimen raja täyttyi"
+            ? "Sanelu katkesi: Soniox-avaimen käyttöraja täyttyi"
             : "Sanelu katkesi: yhteys Sonioxiin ei palannut",
       text: `Teksti ${mmss(view.elapsedMs)} asti on kentässä. Viimeiset sanat voivat olla epätarkkoja.`,
       actions: ["resume"],
@@ -78,16 +78,16 @@ function noticeFor(view: DictationView): DictationNotice | null {
       return {
         id: view.failure,
         tone: "danger",
-        title: "Soniox hylkäsi avaimen",
-        text: "Vaihda avain asetuksissa.",
+        title: "Soniox ei hyväksy avainta",
+        text: "Avain on väärä tai peruttu. Tallenna uusi avain asetuksissa.",
         actions: ["settings"],
       };
     case "speech_limit_reached":
       return {
         id: view.failure,
         tone: "danger",
-        title: "Soniox-avaimen sanelut ovat täynnä",
-        text: "Yritä hetken päästä tai lisää oma avain.",
+        title: "Soniox-avaimen käyttöraja on täynnä",
+        text: "Yritä hetken päästä uudelleen tai lisää oma avain asetuksissa.",
         actions: ["retry", "settings"],
       };
     case "unsupported":
@@ -103,7 +103,7 @@ function noticeFor(view: DictationView): DictationNotice | null {
         id: "speech_unavailable",
         tone: "danger",
         title: "Soniox ei vastaa",
-        text: "Yritä hetken päästä uudelleen.",
+        text: "Sanelu ei alkanut. Yritä hetken päästä uudelleen.",
         actions: ["retry"],
       };
   }

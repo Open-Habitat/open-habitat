@@ -26,8 +26,9 @@ type sonioxFake struct {
 	mu sync.Mutex
 	// mint is the API's next answer: ok, rejected, limit or unavailable.
 	mint string
-	// keyRegions is the region of a key the case named; asked lists the
-	// region of every mint request in order.
+	// keyRegions is the region of a key the case named, EU (the default
+	// here) for the others; asked lists the region of every mint request
+	// in order.
 	keyRegions map[string]string
 	asked      []string
 	// refuse makes the next stream answer its start with error 401.
@@ -107,7 +108,7 @@ func (f *sonioxFake) mintKey(w http.ResponseWriter, r *http.Request, region stri
 	f.asked = append(f.asked, region)
 	home, named := f.keyRegions[strings.TrimPrefix(f.authHeader, "Bearer ")]
 	if !named {
-		home = "us"
+		home = "eu"
 	}
 	if home != region {
 		http.Error(w, `{"error_type":"unauthenticated","message":"synthetic detail"}`, 401)

@@ -146,8 +146,8 @@ func TestSpeechKeyRoutesReplyWithoutTheKey(t *testing.T) {
 			t.Fatalf("%+v: %d %s", tc, w.Code, w.Body)
 		}
 	}
-	// The EU key was refused in the US first, then taken in the EU.
-	if asked := soniox.takeAsked(); strings.Join(asked, ",") != "us,eu" {
+	// The EU, the default here, took the EU key at the first ask.
+	if asked := soniox.takeAsked(); strings.Join(asked, ",") != "eu" {
 		t.Fatalf("asked: %v", asked)
 	}
 	w := speechRequest(t, h, "GET", SpeechKeyPath, "")
@@ -319,18 +319,22 @@ func TestSpeechKeySaveChecksTheKeyWithSoniox(t *testing.T) {
 			t.Fatalf("%d: saved %+v %v", code, k, err)
 		}
 	}
-	// Only a refusal moves on to the other region: an unreachable US is
-	// not a reason to guess the EU.
+	// Only a refusal moves on to the other region: an unreachable EU is
+	// not a reason to guess the US.
 	soniox.takeAsked()
 	soniox.status.Store(503)
 	speechRequest(t, h, "POST", SpeechKeyPath, `{"key":"`+ownSpeechKey+`"}`)
-	if asked := soniox.takeAsked(); strings.Join(asked, ",") != "us" {
+	if asked := soniox.takeAsked(); strings.Join(asked, ",") != "eu" {
 		t.Fatalf("asked after an unreachable region: %v", asked)
 	}
+	// The EU, the default here, is asked first; a US key after its refusal.
 	soniox.status.Store(0)
 	var state speechKeyState
 	if w := speechRequest(t, h, "POST", SpeechKeyPath, `{"key":"`+ownSpeechKey+`"}`); w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &state) != nil || *state.Region != "us" {
 		t.Fatalf("save: %d %s", w.Code, w.Body)
+	}
+	if asked := soniox.takeAsked(); strings.Join(asked, ",") != "eu,us" {
+		t.Fatalf("asked for a US key: %v", asked)
 	}
 
 	// The gateway's check of an administrator's key stores nothing.

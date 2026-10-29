@@ -286,8 +286,11 @@ test("@speech a key is saved in the region Soniox takes it in, refused when none
   await page.getByTestId("speech-key-input").fill(refusedKey);
   await page.getByTestId("speech-key-save").click();
   await expect(page.getByTestId("speech-key-refused")).toContainText(
-    "Soniox ei hyväksynyt avainta EU- eikä USA-alueella",
+    "Avainta ei tallennettu: Soniox ei tunne sitä EU- eikä USA-alueella",
   );
+  await expect(
+    page.getByTestId("speech-key-refused").getByRole("link"),
+  ).toHaveAttribute("href", "https://console.soniox.com");
   await expect(page.getByTestId("speech-key-refused")).not.toContainText(
     "synthetic detail",
   );
@@ -295,26 +298,30 @@ test("@speech a key is saved in the region Soniox takes it in, refused when none
     "data-source",
     "none",
   );
-  // An EU project's key is refused in the US and saved as EU.
-  await keyRegion(page, ownKey, "eu");
+  // The EU, the default here, is asked first: a US project's key is
+  // refused there, saved as US, and the page says it is not the default.
+  await keyRegion(page, ownKey, "us");
   await page.getByTestId("speech-key-input").fill(ownKey);
   await page.getByTestId("speech-key-save").click();
   await expect(page.getByTestId("speech-key-saved")).toHaveText(
-    "Avain tallennettu. Soniox hyväksyi sen EU-alueella.",
+    "Avain tallennettu. Soniox hyväksyi sen USA-alueella, ei oletuksena olevalla EU-alueella.",
   );
-  await expect(page.getByTestId("speech-key-source")).toContainText("(EU)");
+  await expect(page.getByTestId("speech-key-source")).toContainText("(USA)");
+  expect((await soniox(page)).asked.slice(-2)).toEqual(["eu", "us"]);
   expect((await soniox(page)).minted).toBe(1);
 
-  // The same key now answers only in the US, as a key stored under the
-  // wrong region does: the dictation still starts, and the file is fixed.
-  await keyRegion(page, ownKey, "us");
+  // The same key now answers only in the EU, as a key stored under the
+  // wrong region does: the dictation still starts, says nothing about the
+  // region, and the file is fixed.
+  await keyRegion(page, ownKey, "eu");
   await openConversation(page);
   await mic(page).click();
   await expect(pill(page)).toHaveAttribute("data-phase", "live");
-  expect((await soniox(page)).asked.slice(-2)).toEqual(["eu", "us"]);
+  expect((await soniox(page)).asked.slice(-2)).toEqual(["us", "eu"]);
+  await expect(notice(page)).toHaveCount(0);
   await page.getByTestId("dictation-stop").click();
   await page.goto("/settings/speech");
-  await expect(page.getByTestId("speech-key-source")).toContainText("(USA)");
+  await expect(page.getByTestId("speech-key-source")).toContainText("(EU)");
 });
 
 test("@speech the administrator's key is saved in its region and refused when Soniox takes it nowhere", async ({
@@ -328,7 +335,7 @@ test("@speech the administrator's key is saved in its region and refused when So
   await page.getByTestId("speech-key-input").fill(refusedKey);
   await page.getByTestId("speech-key-save").click();
   await expect(page.getByTestId("site-speech-key-problem")).toContainText(
-    "Soniox ei hyväksynyt avainta",
+    "Avainta ei tallennettu: Soniox ei tunne sitä",
   );
   await expect(page.getByTestId("site-speech-key")).toContainText(
     "Ei yhteistä avainta.",

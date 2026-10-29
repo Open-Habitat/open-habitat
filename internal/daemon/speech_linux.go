@@ -378,8 +378,9 @@ func (s *Speech) mintAt(ctx context.Context, key, region string) (speechSession,
 	return speechSession{SchemaVersion: 1, APIKey: reply.APIKey, ExpiresAt: expires.UTC().Format(time.RFC3339), WebSocketURL: endpoints.WebSocket, MaxSessionSeconds: SpeechMaxSessionSeconds}, nil
 }
 
-// speechRegionOrder is the order a key of unknown region is tried in.
-var speechRegionOrder = []string{"us", "eu"}
+// speechRegionOrder is the order a key of unknown region is tried in:
+// the EU, the default here, first.
+var speechRegionOrder = []string{"eu", "us"}
 
 // findRegion mints with key in first (when given), then in the other
 // regions, and returns the region that answered with its session. A Soniox
