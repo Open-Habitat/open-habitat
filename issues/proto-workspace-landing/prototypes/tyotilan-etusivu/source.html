@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="fi" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="prototype-round" content="2026-10-29-tyotilan-etusivu">
+<title>Työtilan etusivu – prototyyppi</title>
+<style>
+/*@TOKENS@*/
+</style>
+<style>
+/* ---------- Tuotannon kehys (esityskopio: kisko 296 px, sivu 860 px) ---------- */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--ah-bg);
+  color: var(--ah-ink);
+  font: 400 var(--ah-size-body) / var(--ah-lh-ui) var(--ah-font);
+  -webkit-font-smoothing: antialiased;
+}
+body.phone-mode { background: #8a9198; }
+[data-theme="dark"] body.phone-mode { background: #050607; }
+button { font: inherit; color: inherit; }
+code { font-family: var(--ah-mono); font-size: var(--ah-size-code); }
+#stage { height: 100dvh; }
+.phone-mode #stage { display: grid; place-items: center; padding: 72px 0 24px; overflow: auto; }
+.app {
+  container: app / inline-size;
+  display: grid;
+  /* The rail sets its own width: a container query cannot restyle .app itself. */
+  grid-template-columns: auto minmax(0, 1fr);
+  height: 100%;
+  background: var(--ah-bg);
+  overflow: hidden;
+}
+.phone-mode .app {
+  width: 390px; height: 844px; border-radius: 28px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.25), 0 20px 60px rgba(0,0,0,.35);
+}
+.rail {
+  width: var(--ah-rail-width);
+  display: flex; flex-direction: column; gap: var(--ah-s5);
+  background: var(--ah-rail); border-right: 1px solid var(--ah-line);
+  padding: var(--ah-s4) var(--ah-s3); min-height: 0; overflow: auto;
+}
+.rail-site { display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-weight: 600; font-size: 14px; }
+.rail-site small { color: var(--ah-ok); font-weight: 500; font-size: 12.5px; }
+.rail-site small::before { content: "● "; font-size: 10px; }
+.rail-home { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--ah-r-nav); font-weight: 600; font-size: 14px; }
+.rail h3 { margin: var(--ah-s3) 10px 4px; font-size: var(--ah-size-label); letter-spacing: .05em; text-transform: uppercase; color: var(--ah-muted); font-weight: 600; }
+.rail-quiet { margin: 0 10px; font-size: var(--ah-size-meta); color: var(--ah-muted); }
+.rail-ws { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: 0; border-radius: var(--ah-r-nav); background: transparent; font-family: var(--ah-mono); font-size: 13px; text-align: left; cursor: pointer; }
+.rail-ws[aria-current] { background: var(--ah-current); box-shadow: 0 0 0 1px var(--ah-current-line); }
+.rail-ws:hover { background: var(--ah-hover); }
+.rail-ws svg { --i-fg: var(--ah-muted); }
+.rail-ws .run { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--ah-accent); }
+.rail-account { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--ah-r-md); background: var(--ah-surface); border: 1px solid var(--ah-line); font-weight: 600; font-size: 13.5px; }
+.rail-account span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+.main { min-width: 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.topbar { display: none; }
+svg.i { width: 16px; height: 16px; fill: none; stroke: var(--i-fg, currentColor); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* ---------- Työtilasivu (tuotannon WorkspacePage.css) ---------- */
+.wsp-scroll { padding: var(--ah-s5) clamp(var(--ah-s7), 4vw, 64px) 96px; }
+.ah-workspace-page { display: flex; flex-direction: column; gap: var(--ah-s6); width: 100%; max-width: 860px; margin: 0 auto; }
+.ah-workspace-page-head { display: flex; align-items: flex-start; gap: var(--ah-s3); }
+.ah-workspace-page-title { flex: 1; min-width: 0; }
+.ah-workspace-page-title h1 { margin: 0 0 4px; font: 600 21px / 1.25 var(--ah-mono); overflow-wrap: anywhere; }
+.ah-workspace-page-title > p { margin: 0; color: var(--ah-muted); font-size: 12px; overflow-wrap: anywhere; }
+.ah-workspace-page h2.sec { display: flex; align-items: center; gap: 8px; margin: 0 0 var(--ah-s3); font-size: 12px; color: var(--ah-muted); text-transform: uppercase; letter-spacing: .04em; }
+.ah-workspace-page h2.sec span { color: var(--ah-accent-ink); background: var(--ah-accent-soft); padding: 1px 7px; border-radius: var(--ah-r-pill); }
+.icon-row { display: flex; align-items: center; gap: var(--ah-control-gap); flex: none; }
+.ib { display: grid; place-items: center; width: var(--ah-control-page); height: var(--ah-control-page); border: 0; border-radius: var(--ah-r-md); background: transparent; cursor: pointer; --i-fg: var(--ah-muted); }
+.ib:hover { background: var(--ah-control-hover); }
+.ib svg { width: 18px; height: 18px; }
+.ib.danger { background: var(--ah-err-soft); --i-fg: var(--ah-err); }
+.ib.primary { background: var(--ah-accent); --i-fg: var(--ah-on-accent); }
+.ib.primary:hover { background: var(--ah-accent-hover); }
+.divider { width: 1px; height: 20px; background: var(--ah-line); }
+.ah-workspace-git { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.git-chip { display: inline-flex; align-items: center; gap: 8px; height: var(--ah-control-page); padding: 0 16px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); background: var(--ah-surface); font: 500 13.5px var(--ah-mono); cursor: pointer; }
+.git-chip:hover { background: var(--ah-surface-hover); }
+.git-chip.small { height: var(--ah-control-row); padding: 0 12px; font-size: 12.5px; }
+.ah-workspace-summary { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.ah-home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ah-s4); }
+.ah-home-card { display: flex; flex-direction: column; gap: 8px; min-width: 0; border: 1px solid var(--ah-line); background: var(--ah-surface); border-radius: var(--ah-r-lg); padding: 12px 14px; font-size: 13px; }
+.ah-home-card-new { border-left: 3px solid var(--ah-accent); padding-left: 12px; }
+.card-head { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: start; }
+.card-title { display: flex; align-items: baseline; gap: 8px; color: var(--ah-ink); font-weight: 600; text-decoration: none; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; font-size: 13.5px; }
+.card-title:hover { text-decoration: underline; }
+.dot { flex: none; display: inline-block; width: 8px; height: 8px; border: 1px solid currentColor; border-radius: 50%; }
+.dot.on { background: var(--ah-accent-ink); color: var(--ah-accent-ink); }
+.dot.work { color: var(--ah-accent); background: var(--ah-accent); animation: ah-pulse var(--ah-pulse); }
+.card-meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; color: var(--ah-ink-2); font-size: 12.5px; }
+.card-meta time { color: var(--ah-muted); }
+.wt-line { display: flex; align-items: center; gap: 6px; font: 12px var(--ah-mono); color: var(--ah-muted); --i-fg: var(--ah-muted); }
+.ah-home-card p { margin: 0; }
+.recap { line-height: 1.5; color: var(--ah-ink-2); }
+.next { display: flex; gap: 10px; }
+.next strong { font-size: 11px; text-transform: uppercase; color: var(--ah-muted); flex: none; padding-top: 2px; }
+.live { color: var(--ah-accent-ink); }
+.open-link { align-self: flex-end; color: var(--ah-accent-ink); font-weight: 600; background: none; border: 0; cursor: pointer; padding: 4px 0; }
+details.done summary { cursor: pointer; font-size: 13px; color: var(--ah-ink-2); }
+details.done ul { list-style: none; padding: 0; margin: 8px 0 0; }
+details.done li button { display: block; width: 100%; text-align: left; padding: 7px 8px; border: 0; background: none; border-radius: var(--ah-r-sm); cursor: pointer; font-size: 13.5px; }
+details.done li button:hover { background: var(--ah-hover); }
+
+/* ---------- Aloitussivu (tuotannon StartHere.css ja GoalGuide.css) ---------- */
+.ah-start { color: var(--ah-ink); overflow-wrap: anywhere; }
+.ah-start h2.start-title { font-size: var(--ah-size-h2); margin: 0; }
+.ah-start p { color: var(--ah-ink-2); line-height: var(--ah-lh-body); }
+.md p { margin: 10px 0; }
+.ah-start-heading { margin: var(--ah-s7) 0 var(--ah-s4); font-size: var(--ah-size-ui); font-weight: 500; color: var(--ah-ink-2); }
+.ah-start-goals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ah-s3); margin-block: 0 var(--ah-s5); }
+.ah-start-goal { position: relative; display: block; text-align: left; cursor: pointer; color: var(--ah-ink); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); padding: var(--ah-s5) var(--ah-s8) var(--ah-s5) var(--ah-s5); background: var(--ah-surface); }
+.ah-start-goal strong { display: block; font-weight: 600; line-height: 1.4; }
+.ah-start-goal span { display: block; color: var(--ah-ink-2); font-size: var(--ah-size-ui); line-height: 1.5; margin-top: var(--ah-s2); }
+.ah-start-goal b { position: absolute; right: var(--ah-s5); top: var(--ah-s5); font-weight: 400; color: var(--ah-muted); }
+.ah-start-goal:hover { background: var(--ah-hover); }
+.ah-start-hint { font-size: var(--ah-size-meta); color: var(--ah-ink-2); margin: 0; }
+.ah-goal-guide { color: var(--ah-ink); overflow-wrap: anywhere; }
+.ah-guide-eyebrow { font-size: var(--ah-size-meta); color: var(--ah-muted); margin: var(--ah-s5) 0 var(--ah-s2); }
+.ah-goal-guide h2 { margin: 0; font-size: var(--ah-size-h2); line-height: 1.3; }
+.ah-goal-guide h2:focus { outline: none; }
+.ah-goal-guide section { margin-top: var(--ah-s6); }
+.ah-goal-guide section h3 { margin: 0 0 var(--ah-s2); font-size: var(--ah-size-ui); font-weight: 600; }
+.ah-goal-guide section p, .ah-goal-guide section ol { color: var(--ah-ink-2); line-height: var(--ah-lh-body); margin: 0; }
+.ah-goal-guide ol { padding-left: var(--ah-s6); }
+.ah-goal-guide li + li { margin-top: var(--ah-s2); }
+.ah-guide-disclosure { margin-top: var(--ah-s6); font-size: var(--ah-size-ui); color: var(--ah-ink-2); }
+.ah-guide-disclosure summary { padding-block: var(--ah-s2); cursor: pointer; }
+.ah-guide-prompt { white-space: pre-wrap; max-height: 16em; overflow: auto; padding: var(--ah-s4); background: var(--ah-surface-2); border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); font: inherit; line-height: var(--ah-lh-body); color: var(--ah-ink); }
+.ah-guide-actions { margin-top: var(--ah-s5); display: flex; gap: var(--ah-s4); }
+.btn { display: inline-flex; align-items: center; gap: var(--ah-control-row-gap); height: var(--ah-control-row); padding: 0 var(--ah-control-row-pad); border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-surface); font-size: var(--ah-control-row-font); font-weight: 500; cursor: pointer; white-space: nowrap; --i-fg: currentColor; }
+.btn:hover { background: var(--ah-surface-hover); }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--ah-ink-2); }
+.btn.quiet:hover { background: var(--ah-control-hover); }
+.btn.primary { border-color: transparent; background: var(--ah-accent); color: var(--ah-on-accent); }
+.btn.primary:hover { background: var(--ah-accent-hover); }
+.btn.page { height: var(--ah-control-page); padding: 0 var(--ah-control-page-pad); font-size: var(--ah-control-page-font); }
+.btn.inline { height: var(--ah-control-inline); padding: 0 var(--ah-control-inline-pad); font-size: var(--ah-control-inline-font); }
+:is(button, summary, a):focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: var(--ah-focus-offset); }
+
+/* ---------- Uusi keskustelu (PendingConversation + kenttä) ---------- */
+.conv { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.conv-head { display: flex; align-items: center; gap: var(--ah-s4); padding: var(--ah-topbar-pad-block) var(--ah-topbar-pad-inline); border-bottom: 1px solid var(--ah-line); background: var(--ah-content-canvas, var(--ah-surface)); }
+.conv-head h1 { margin: 0; font-size: var(--ah-size-title); font-weight: 600; }
+.conv-head p { margin: 0; font: 12px var(--ah-mono); color: var(--ah-muted); }
+.conv-stream { flex: 1; min-height: 0; overflow: auto; padding: var(--ah-column-pad-block) var(--ah-column-pad-inline); display: flex; flex-direction: column; }
+.conv-col { width: 100%; max-width: var(--ah-conversation-width); margin: auto auto 0; padding: var(--ah-s7) 0; }
+.conv-col.top { margin-top: 0; }
+.bubble { align-self: flex-end; max-width: 80%; margin-left: auto; padding: 10px 14px; border-radius: var(--ah-r-xl); background: var(--ah-accent-soft); color: var(--ah-ink); white-space: pre-wrap; line-height: var(--ah-lh-body); }
+.reply-note { color: var(--ah-muted); font-size: var(--ah-size-meta); margin-top: var(--ah-s5); }
+.composer-wrap { padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline) calc(var(--ah-composer-pad-block) + 4px); }
+.composer { max-width: var(--ah-conversation-width); margin: 0 auto; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-xl); background: var(--ah-surface); padding: 8px 8px 8px 12px; }
+.composer:focus-within { border-color: var(--ah-composer-focus); }
+.composer textarea { width: 100%; min-height: 44px; max-height: 180px; border: 0; outline: 0; resize: none; background: transparent; color: var(--ah-ink); font: var(--ah-size-body) / 1.5 var(--ah-font); padding: 4px 0; }
+.composer-row { display: flex; align-items: center; gap: var(--ah-control-gap); }
+.composer-row .grow { flex: 1; }
+.model-chip { display: inline-flex; align-items: center; gap: 6px; height: var(--ah-control-inline); padding: 0 9px; border-radius: var(--ah-r-pill); background: var(--ah-control); font-size: 12px; color: var(--ah-ink-2); border: 0; }
+.send { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--ah-accent); --i-fg: var(--ah-on-accent); cursor: pointer; }
+.send:disabled { background: var(--ah-disabled-bg); --i-fg: var(--ah-disabled-fg); cursor: default; }
+.inert-note { font-size: 11px; color: var(--ah-muted); }
+
+/* ---------- Git-kerros ---------- */
+.layer-scrim { position: absolute; inset: 0; z-index: 20; }
+.git-layer { position: absolute; z-index: 21; width: min(360px, calc(100% - 32px)); max-height: 80%; overflow: auto; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); box-shadow: var(--ah-shadow-menu); padding: var(--ah-s4); font-size: 13px; }
+.git-layer h2 { margin: 0 0 var(--ah-s3); font-size: 14px; }
+.git-layer h3 { margin: var(--ah-s4) 0 4px; font-size: 12px; color: var(--ah-muted); }
+.git-list { list-style: none; padding: 0; margin: 0; }
+.git-list li { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--ah-line-soft); align-items: baseline; }
+.git-list code { flex: none; }
+.git-list span { flex: 1; min-width: 0; }
+.git-list time { color: var(--ah-muted); font-size: 11px; flex: none; }
+.git-close { display: flex; justify-content: flex-end; margin-top: var(--ah-s4); }
+.main-wrap { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+
+/* ---------- Tilailmoitus ---------- */
+.toast { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 30; max-width: calc(100% - 32px); padding: 9px 14px; border-radius: var(--ah-r-md); background: var(--ah-ink); color: var(--ah-bg); font-size: 13px; box-shadow: var(--ah-shadow-float); animation: ah-appear var(--ah-appear); }
+
+/* ========== A · Esittely ========== */
+.lp-intro { border-bottom: 1px solid var(--ah-line-soft); padding-bottom: var(--ah-s6); }
+.lp-intro .md p:first-child { margin-top: 8px; }
+.more-btn { margin: 0; }
+.lp-absent { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 12px 14px; border: 1px dashed var(--ah-line-strong); border-radius: var(--ah-r-lg); color: var(--ah-ink-2); font-size: var(--ah-size-ui); }
+.lp-absent p { margin: 0; flex: 1 1 260px; }
+
+/* ========== B · Tilannekuva ========== */
+.tk-desc { margin: 8px 0 0; color: var(--ah-ink-2); font-size: var(--ah-size-ui); line-height: 1.5; max-width: 62ch; }
+.tk-desc button { margin-left: 4px; }
+.tk-introbody { margin-top: 4px; padding: 4px 14px; border-left: 2px solid var(--ah-line); color: var(--ah-ink-2); font-size: var(--ah-size-ui); }
+.tk-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: var(--ah-s4); }
+.tk-panel { border: 1px solid var(--ah-line); background: var(--ah-surface); border-radius: var(--ah-r-lg); padding: 12px 14px; min-width: 0; font-size: 13px; }
+.tk-panel h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--ah-muted); font-weight: 600; }
+.tk-panel h3 .src { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.tk-rows { list-style: none; margin: 0; padding: 0; }
+.tk-rows li { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 4px 10px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--ah-line-soft); }
+.tk-rows li:first-child { border-top: 0; padding-top: 2px; }
+.tk-rows .dot { align-self: center; }
+.tk-rows button.t { text-align: left; border: 0; background: none; padding: 0; font-weight: 600; cursor: pointer; overflow-wrap: anywhere; font-size: 13px; }
+.tk-rows button.t:hover { text-decoration: underline; }
+.tk-rows small { grid-column: 2 / -1; color: var(--ah-ink-2); font-size: 12.5px; line-height: 1.45; }
+.tk-rows .wt { grid-column: 2 / -1; font: 11.5px var(--ah-mono); color: var(--ah-muted); }
+.tk-rows time, .tk-rows .st { color: var(--ah-muted); font-size: 12px; white-space: nowrap; }
+.tk-git-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.tk-git-top code { font-weight: 500; }
+.pill { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--ah-r-pill); background: var(--ah-control); color: var(--ah-ink-2); font-size: 12px; }
+.pill.warn { background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+.tk-goals { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-control-gap); }
+.tk-goals > span { color: var(--ah-muted); font-size: var(--ah-size-meta); margin-right: 4px; }
+.goal-pill { display: inline-flex; align-items: center; gap: 6px; height: var(--ah-control-row); padding: 0 12px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); background: var(--ah-surface); font-size: 13px; cursor: pointer; }
+.goal-pill:hover { background: var(--ah-surface-hover); }
+.tk-empty { color: var(--ah-muted); font-size: 12.5px; margin: 0; }
+
+/* ========== C · Aloitus tässä ========== */
+.at-start { border: 1px solid var(--ah-line); background: var(--ah-surface); border-radius: var(--ah-r-xl); padding: var(--ah-s6) var(--ah-s6) var(--ah-s5); }
+.at-start .ah-start-goal { background: var(--ah-surface-2); }
+.at-start .composer { margin: var(--ah-s5) 0 0; max-width: none; background: var(--ah-bg); }
+.at-start .ah-start-goals { margin-bottom: 0; }
+.at-rows { list-style: none; margin: 0; padding: 0; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); }
+.at-rows li { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: baseline; gap: 2px 10px; padding: 9px 14px; }
+.at-rows li + li { border-top: 1px solid var(--ah-line-soft); }
+.at-rows .dot { align-self: center; }
+.at-rows button { text-align: left; border: 0; background: none; padding: 0; cursor: pointer; font-weight: 600; font-size: 13.5px; overflow-wrap: anywhere; }
+.at-rows button:hover { text-decoration: underline; }
+.at-rows .st { color: var(--ah-muted); font-size: 12.5px; white-space: nowrap; }
+.at-rows small { grid-column: 2 / -1; color: var(--ah-ink-2); font-size: 12.5px; }
+.at-head-git { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* ---------- Puhelin (säiliökysely: sama sääntö kehyksessä ja 390 px:n ikkunassa) ---------- */
+@container app (max-width: 700px) {
+  .rail { display: none; }
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 6px 14px; min-height: 52px; border-bottom: 1px solid var(--ah-line-soft); font-weight: 600; font-size: 15px; }
+  .topbar .ib { width: 40px; height: 40px; --i-fg: var(--ah-ink); }
+  .wsp-scroll { padding: 14px 14px 96px; }
+  .ah-workspace-page-head { flex-wrap: wrap; }
+  .ah-workspace-page-title h1 { font-size: 18px; }
+  .icon-row { flex-basis: 100%; }
+  .icon-row .divider { flex: 1; visibility: hidden; }
+  .ib { width: 40px; height: 40px; }
+  .ah-home-grid, .ah-start-goals, .tk-grid { grid-template-columns: minmax(0, 1fr); }
+  .ah-start-goals { gap: var(--ah-s2); }
+  .ah-start-goal { padding-block: var(--ah-s3); }
+  .ah-start-goal span { margin-top: var(--ah-s1); }
+  .ah-start-goal b { top: var(--ah-s3); }
+  .at-start { padding: var(--ah-s5) var(--ah-s4) var(--ah-s4); border-radius: var(--ah-r-lg); }
+  .conv-head { padding: 6px 14px; }
+  .conv-stream { padding: 12px 14px; }
+  .composer-wrap { padding: 8px 10px 12px; }
+  .git-layer { left: 0 !important; right: 0; bottom: 0; top: auto !important; width: 100%; border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0; padding: var(--ah-s5); }
+  .layer-scrim { background: var(--ah-scrim); }
+}
+/* Työpöydän säiliö mutta kapea (esim. 1024 px kiskon kanssa) */
+@container app (max-width: 1080px) {
+  .tk-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- Valitsin (PICKER.md sanatarkasti) ---------- */
+.proto-picker { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; background: rgba(10, 10, 10, 0.82); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 8px 24px rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.12); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; line-height: 1; -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none; }
+.proto-picker-highlight { position: absolute; top: 4px; left: 0; height: 28px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); will-change: transform; }
+.proto-picker[data-ready] .proto-picker-highlight { transition: transform 250ms cubic-bezier(0.23, 1, 0.32, 1), width 250ms cubic-bezier(0.23, 1, 0.32, 1); }
+@media (prefers-reduced-motion: reduce) { .proto-picker[data-ready] .proto-picker-highlight { transition: none; } }
+.proto-picker-item { position: relative; display: flex; align-items: center; height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: rgba(255, 255, 255, 0.55); font: inherit; cursor: pointer; transition: color 150ms ease-out; }
+.proto-picker-item:hover { color: rgba(255, 255, 255, 0.85); }
+.proto-picker-item:active { transform: scale(0.97); }
+.proto-picker-item:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.4); outline-offset: 2px; }
+.proto-picker-item[data-active] { color: #fff; }
+.proto-picker-divider { width: 1px; height: 16px; margin: 0 4px; background: rgba(255, 255, 255, 0.12); }
+.proto-picker-replay { padding: 0 10px; font-size: 14px; }
+.proto-picker[data-position="top"] { bottom: auto; top: 24px; }
+
+/* ---------- Kierroksen säätimet (kehystä, ei vertailun kohde) ---------- */
+.p-ctl { position: fixed; right: 12px; bottom: 12px; z-index: 2147483646; display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 10px; background: rgba(10,10,10,.82); font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: rgba(255,255,255,.6); }
+.p-ctl summary { cursor: pointer; padding: 2px 4px; color: rgba(255,255,255,.8); }
+.p-ctl div { display: flex; gap: 2px; align-items: center; }
+.p-ctl span { width: 74px; padding-left: 4px; }
+.p-ctl button { border: 0; border-radius: 6px; padding: 5px 8px; background: transparent; color: rgba(255,255,255,.6); cursor: pointer; font: inherit; }
+.p-ctl button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+.capture .proto-picker, .capture .p-ctl { display: none; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<nav class="proto-picker" aria-label="Prototype variants" data-position="top">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Nyt</button>
+  <button class="proto-picker-item">Esittely</button>
+  <button class="proto-picker-item">Tilannekuva</button>
+  <button class="proto-picker-item">Aloitus tässä</button>
+</nav>
+
+<details class="p-ctl" open><summary>Säätimet</summary>
+  <div><span>Teema</span><button data-ctl="theme" data-val="light">Vaalea</button><button data-ctl="theme" data-val="dark">Tumma</button></div>
+  <div><span>Leveys</span><button data-ctl="device" data-val="desk">Työpöytä</button><button data-ctl="device" data-val="phone">Puhelin 390</button></div>
+  <div><span>Aloitussivu</span><button data-ctl="page" data-val="authored">Kirjoitettu</button><button data-ctl="page" data-val="none">Puuttuu</button></div>
+</details>
+
+<script>
+/* ===== Synteettinen data: keksitty aurinkokello-repo, ei oikeita tietoja. ===== */
+const WS = { name: "aurinkokello", path: "~/src/aurinkokello" };
+const START = {
+  title: "Aurinkokello",
+  body: "Komentorivityökalu ja pieni verkkosivu, jotka laskevat auringonnousun ja -laskun annetulle paikalle. Laskenta on `src/aurinko.py`:ssä, ja sivu käyttää samaa kirjastoa.\n\nTestit ajetaan komennolla `make test`. Kaupunkilistaa `data/kaupungit.csv` ei muokata käsin: se luodaan skriptillä `scripts/paivita-kaupungit.py`. Julkaisut tehdään `main`-haarasta, ja versionumero on `pyproject.toml`:ssa.",
+  goals: [
+    { title: "Korjaa havaittu virhe", when: "Laskettu aika on väärä tai komento kaatuu.",
+      what: "Agentti toistaa virheen, etsii syyn, korjaa sen ja lisää testin, joka olisi löytänyt virheen.",
+      steps: ["Kuvaile havainto: paikka, päivä ja mitä odotit.", "Agentti toistaa virheen testillä ennen korjausta.", "Tarkistat korjauksen ja testin ennen yhdistämistä."],
+      prompt: "Korjaa aurinkokellossa havaittu virhe. Toista se ensin testillä, korjaa syy ja aja make test.\n\n[kuvaile havainto]", skill: "korjaa" },
+    { title: "Lisää uusi kaupunki", when: "Haluat paikan, jota listassa ei vielä ole.",
+      what: "Kaupunki lisätään lähdeaineistoon, lista luodaan skriptillä uudelleen ja tulos tarkistetaan tunnetulla päivällä.",
+      steps: ["Kerro kaupunki ja maa.", "Agentti päivittää lähteen ja ajaa skriptin.", "Agentti vertaa yhden päivän aikoja luotettavaan lähteeseen."],
+      prompt: "Lisää kaupunki aurinkokellon kaupunkilistaan scripts/paivita-kaupungit.py:n kautta ja tarkista yhden päivän ajat.\n\n[kaupunki ja maa]" },
+    { title: "Paranna verkkosivua", when: "Sivun ulkoasu tai teksti kaipaa muutosta.",
+      what: "Muutos tehdään verkkosivun omiin tiedostoihin, ja agentti näyttää tuloksen ennen kuin mitään yhdistetään.",
+      steps: ["Kuvaile muutos.", "Agentti tekee sen ja avaa esikatselun.", "Hyväksyt tai pyydät korjauksia."],
+      prompt: "Tee aurinkokellon verkkosivuun seuraava muutos ja näytä esikatselu ennen yhdistämistä.\n\n[kuvaile muutos]" },
+    { title: "Valmistele julkaisu", when: "Muutokset ovat valmiita ja haluat uuden version.",
+      what: "Versio nostetaan, muutosloki kirjoitetaan ja testit ajetaan. Julkaisu jää odottamaan hyväksyntääsi.",
+      steps: ["Agentti kokoaa muutokset edellisestä versiosta.", "Agentti nostaa version ja kirjoittaa muutoslokin.", "Hyväksyt julkaisun keskustelussa."],
+      prompt: "Valmistele aurinkokellon seuraava julkaisu: kokoa muutokset edellisestä tagista, nosta versio pyproject.toml:ssa, kirjoita muutosloki ja aja make test. Älä julkaise ennen kuin hyväksyn." },
+  ],
+};
+// Avoimet keskustelut tuotannon järjestyksessä (sinun vuorosi ensin).
+const CONVS = [
+  { id: "c1", title: "Kesäajan siirtymä laskee tunnin väärin", state: "new", label: "Uusi vastaus", age: "12 min",
+    recap: "Syy löytyi: siirtymäpäivän aikavyöhyke luetaan ennen päivämäärän vaihtoa. Korjaus ja testi ovat valmiina.", next: "Hyväksy korjaus tai pyydä lisätesti syksyn siirtymälle." },
+  { id: "c2", title: "Lisää --json-lippu tulostukseen", state: "working", label: "Työskentelee", age: "nyt",
+    worker: { branch: "json-lippu", git: "↑3 · 1 muutos" }, live: "Agentti työskentelee · käyttää työkalua" },
+  { id: "c3", title: "Päivitä kaupunkilista 2026", state: "idle", label: "Valmis", age: "2 h",
+    worker: { branch: "kaupunkilista-2026", git: "yhdistetty mainiin" },
+    recap: "Lista luotiin uudelleen; 14 uutta kaupunkia. Haara on yhdistetty.", next: "Arkistoi keskustelu, kun olet katsonut muutokset." },
+  { id: "c4", title: "Verkkosivun tumma teema", state: "idle", label: "Odottaa", age: "eilen",
+    recap: "Tumma teema on luonnoksena; kontrasti tarkistettu otsikoille mutta ei kaaviolle.", next: "Päätä, tarvitseeko kaavio oman väripaletin." },
+];
+const DONE = ["Tulosta aikavyöhyke ajan perään", "Napapiirin yötön yö", "Siirrä testit pytestiin"];
+const GIT = { branch: "main", dirty: 2, ahead: 1, behind: 0,
+  files: [["M", "src/aurinko.py"], ["??", "notes/kesaaika.md"]],
+  commits: [["a41c9e2", "Korjaa napapiirin yön laskenta", "2 h"], ["7d0b113", "Lisää Oulu ja Rovaniemi", "eilen"], ["e52f0aa", "Tulosta aikavyöhyke", "3 pv"]] };
+const OTHER_WS = ["kotisivu", "muistiinpanot", "reseptikirja"];
+
+/* ===== Kuvakkeet (tuotannon Icon.tsx:n polut) ===== */
+const ICON = {
+  home: '<path d="m3 11 9-8 9 8"/><path d="M5 10v11h14V10M9 21v-7h6v7"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  github: '<path transform="translate(2 0) scale(.9)" d="M9 19c-4 1-4-2-6-2m12 4v-4a3.5 3.5 0 0 0-1-3c3.3-.4 6-1.6 6-5.5A4.3 4.3 0 0 0 19 5c.1-1-.1-2-.5-3 0 0-1.3-.4-4.5 1.7a15 15 0 0 0-8 0C2.8 1.6 1.5 2 1.5 2 1.1 3 .9 4 1 5a4.3 4.3 0 0 0-1 3.5C0 12.4 2.7 13.6 6 14a3.5 3.5 0 0 0-1 3v4"/>',
+  pencil: '<path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14z"/>',
+  eyeOff: '<path d="M3 3l18 18M10 6c6-1 11 6 11 6s-1 2-3 4M6 6c-2 2-4 6-4 6s4 7 10 6c1 0 2 0 3-1"/><path d="M10 10a3 3 0 0 0 4 4"/>',
+  trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',
+  worktreeNew: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><path d="M6 7v10M6 15c0-3 3-5 7-5M18 5v8M14 9h8"/>',
+  worktree: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M18 10c0 4-6 3-12 7"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  archive: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v11h14V9M10 13h4"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  arrowUp: '<path d="M12 19V5m-6 6 6-6 6 6"/>',
+  back: '<path d="M15 6l-6 6 6 6"/>',
+};
+const icon = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[n]}</svg>`;
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const md = (text) => text.split(/\n{2,}/).map((p) => `<p>${esc(p).replace(/`([^`]+)`/g, "<code>$1</code>")}</p>`).join("");
+const firstSentence = (text) => text.split(/(?<=\.)\s/)[0];
+
+/* ===== Tila ===== */
+const S = {
+  variant: 0, theme: "light", device: "desk", page: "authored",
+  view: "workspace", // workspace | conversation
+  guide: null,       // avattu opas (työtilasivulla C:ssä, keskustelussa A/B/Nyt)
+  draft: "", sent: null, introOpen: false, gitOpen: false, toast: "",
+};
+function reset() { Object.assign(S, { view: "workspace", guide: null, draft: "", sent: null, introOpen: false, gitOpen: false, toast: "" }); }
+const authored = () => (S.page === "authored" ? START : null);
+
+/* ===== Yhteiset palat ===== */
+function rail() {
+  return `<nav class="rail" aria-label="Sivupalkki">
+    <div class="rail-site">Synthetic lab <small>Yhdistetty</small></div>
+    <div class="rail-home">${icon("home")} Etusivu</div>
+    <div><h3>Sinun vuorosi</h3><p class="rail-quiet">1 uusi vastaus</p></div>
+    <div><h3>Työtilat 4</h3>
+      <button class="rail-ws" aria-current="page" data-act="workspace">${icon("folder")} aurinkokello <span class="run" title="Työskentelee"></span></button>
+      ${OTHER_WS.map((w) => `<button class="rail-ws" data-act="toast" data-msg="Avaisi työtilan ${w} (ei osa vertailua)">${icon("folder")} ${w}</button>`).join("")}
+    </div>
+    <div class="rail-account"><span>A</span> Alice</div>
+  </nav>`;
+}
+function topbar(title) {
+  return `<header class="topbar"><button class="ib" aria-label="Valikko" data-act="toast" data-msg="Avaisi sivupalkin (ei osa vertailua)">${icon("menu")}</button>${esc(title)}</header>`;
+}
+function wsHead({ below = "", plus = true } = {}) {
+  const acts = [["copy", "Kopioi polku"], ["github", "Julkaise GitHubiin"], ["pencil", "Muuta näyttönimeä"], ["eyeOff", "Arkistoi"]];
+  return `<header class="ah-workspace-page-head">
+    <div class="ah-workspace-page-title"><h1>${WS.name}</h1><p><code>${WS.path}</code></p>${below}</div>
+    <div class="icon-row">
+      ${acts.map(([n, l]) => `<button class="ib" aria-label="${l}" title="${l}" data-act="toast" data-msg="${l} (ei osa vertailua)">${icon(n)}</button>`).join("")}
+      <button class="ib danger" aria-label="Siirrä roskakoriin" title="Siirrä roskakoriin" data-act="toast" data-msg="Siirrä roskakoriin (ei osa vertailua)">${icon("trash")}</button>
+      <span class="divider"></span>
+      <button class="ib" aria-label="Uusi keskustelu omassa worktreessä" title="Uusi keskustelu omassa worktreessä" data-act="toast" data-msg="Uusi worktree-keskustelu (ei osa vertailua)">${icon("worktreeNew")}</button>
+      ${plus ? `<button class="ib primary" aria-label="Uusi keskustelu" title="Uusi keskustelu" data-act="new">${icon("plus")}</button>` : ""}
+    </div>
+  </header>`;
+}
+const gitLabel = () => `${GIT.branch} · ${GIT.dirty} muutosta${GIT.ahead ? ` ↑${GIT.ahead}` : ""}${GIT.behind ? ` ↓${GIT.behind}` : ""}`;
+const gitChip = (small = false) => `<button class="git-chip${small ? " small" : ""}" data-act="git" aria-haspopup="dialog">${gitLabel()}</button>`;
+const summaryText = "1 odottaa sinua · 1 työskentelee";
+function card(c) {
+  const dot = c.state === "working" ? "work" : c.state === "new" ? "on" : "";
+  return `<article class="ah-home-card${c.state === "new" ? " ah-home-card-new" : ""}" data-testid="card-${c.id}">
+    <div class="card-head">
+      <button class="card-title" data-act="open" data-id="${c.id}"><span class="dot ${dot}" aria-hidden="true"></span>${esc(c.title)}</button>
+      <button class="ib" style="width:26px;height:26px" aria-label="Arkistoi" data-act="toast" data-msg="Arkistoisi keskustelun (ei osa vertailua)">${icon("archive")}</button>
+      <div class="card-meta"><span>${c.label}</span><time>${c.age}</time></div>
+    </div>
+    ${c.worker ? `<div class="wt-line">${icon("worktree")} ${c.worker.branch} · ${c.worker.git}</div>` : ""}
+    ${c.live ? `<p class="live">${c.live}</p>` : ""}
+    ${c.recap ? `<p class="recap">${esc(c.recap)}</p><p class="next"><strong>Seuraavaksi</strong><span>${esc(c.next)}</span></p>` : ""}
+    <button class="open-link" data-act="open" data-id="${c.id}">${c.state === "new" ? "Lue vastaus" : "Avaa"} →</button>
+  </article>`;
+}
+const openSection = () => `<section aria-label="Avoimet keskustelut"><h2 class="sec">Avoimet <span>${CONVS.length}</span></h2><div class="ah-home-grid">${CONVS.map(card).join("")}</div></section>`;
+const doneSection = () => `<details class="done"><summary>Valmiit · ${DONE.length}</summary><ul>${DONE.map((d) => `<li><button data-act="toast" data-msg="Avaisi keskustelun ${esc(d)} (ei osa vertailua)">${esc(d)}</button></li>`).join("")}</ul></details>`;
+function goalCards(where) {
+  const p = authored();
+  return `<div class="ah-start-goals">${p.goals.map((g, i) => `<button type="button" class="ah-start-goal" data-act="goal" data-i="${i}" data-where="${where}"><strong>${esc(g.title)}</strong><span>${esc(g.when)}</span><b aria-hidden="true">→</b></button>`).join("")}</div>`;
+}
+function guide(i, backLabel) {
+  const g = START.goals[i];
+  return `<article class="ah-goal-guide" data-testid="goal-guide">
+    <button class="btn quiet" data-act="guide-back">${icon("back")} ${backLabel}</button>
+    <p class="ah-guide-eyebrow">OPAS</p>
+    <h2 tabindex="-1" data-focus>${esc(g.title)}</h2>
+    <section><h3>Mitä saat</h3><p>${esc(g.what)}</p></section>
+    <section><h3>Milloin käytät</h3><p>${esc(g.when)}</p></section>
+    <section><h3>Näin etenet</h3><ol>${g.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol></section>
+    <details class="ah-guide-disclosure"><summary>Näytä agentille annettava pyyntö</summary><pre class="ah-guide-prompt">${g.skill ? `/skill:${g.skill} ` : ""}${esc(g.prompt)}</pre></details>
+    <footer class="ah-guide-actions"><button class="btn primary page" data-act="aloita" data-i="${i}">Aloita</button></footer>
+  </article>`;
+}
+// Tuotannon goalDraft: taitokutsu + pyyntö + aiempi luonnos + paikkamerkki.
+function goalDraft(g, draft) {
+  const bracket = (g.prompt.match(/\[[^\]]+\]/g) || []);
+  const ph = bracket.length === 1 ? bracket[0] : "";
+  const req = ph ? g.prompt.replace(ph, "").trim() : g.prompt;
+  const body = [req, draft.trim() ? draft.trim() : "", ph].filter(Boolean).join("\n\n");
+  return (g.skill ? `/skill:${g.skill} ` : "") + body;
+}
+function composer(placeholder, id) {
+  return `<div class="composer">
+    <textarea id="${id}" rows="2" placeholder="${placeholder}" aria-label="Viesti agentille">${esc(S.draft)}</textarea>
+    <div class="composer-row"><span class="model-chip" title="Mallin valinta (ei osa vertailua)">claude-sonnet-5-5</span><span class="grow"></span>
+    <button class="send" aria-label="Lähetä" data-act="send" ${S.draft.trim() ? "" : "disabled"}>${icon("arrowUp")}</button></div>
+  </div>`;
+}
+function startCatalogue(where, back) {
+  const p = authored();
+  if (!p) return `<p class="ah-start-hint" data-testid="start-page-hint">Luo aloitussivu kirjoittamalla viestikenttään <code>/open-habitat-start-page</code>.</p>`;
+  if (S.guide !== null) return guide(S.guide, back);
+  return `<h2 class="start-title">${esc(p.title)}</h2><div class="md">${md(p.body)}</div>
+    <h3 class="ah-start-heading">Mitä haluat tehdä?</h3>${goalCards(where)}
+    <p class="ah-start-hint">Tavoite avaa oman oppaan. Voit myös kirjoittaa suoraan agentille.</p>`;
+}
+
+/* ===== Keskustelun aloitussivu (tuotannon uusi keskustelu, kaikille sama) ===== */
+function conversationView() {
+  const body = S.sent
+    ? `<div class="conv-col top"><div class="bubble">${esc(S.sent)}</div><p class="reply-note">Synteettinen: tässä agentti alkaisi vastata. Mitään ei lähetetty.</p></div>`
+    : `<div class="conv-col${S.guide !== null ? " top" : ""}"><section class="ah-start">${startCatalogue("conv", "Kaikki tavoitteet")}</section></div>`;
+  return `<div class="conv">
+    <header class="conv-head">
+      <button class="btn quiet" data-act="workspace" aria-label="Takaisin työtilaan">${icon("back")} ${WS.name}</button>
+      <div><h1>${S.sent ? esc(S.sent.split("\n")[0].slice(0, 48)) : "Uusi keskustelu"}</h1><p>${WS.name}</p></div>
+    </header>
+    <div class="conv-stream" id="stream">${body}</div>
+    <div class="composer-wrap">${composer("Kirjoita agentille…", "field")}</div>
+  </div>`;
+}
+
+/* ===== Suunnat ===== */
+function pageNyt() {
+  return `<div class="ah-workspace-page">${wsHead()}
+    <div class="ah-workspace-git">${gitChip()}<span class="ah-workspace-summary">${summaryText}</span></div>
+    ${openSection()}${doneSection()}</div>`;
+}
+function absentLine(kind) {
+  return `<div class="lp-absent" data-testid="landing-absent"><p>${kind}</p><button class="btn" data-act="create-start">Luo aloitussivu</button></div>`;
+}
+function pageEsittely() {
+  const p = authored();
+  const paras = p ? p.body.split(/\n{2,}/) : [];
+  const shown = S.introOpen ? p?.body : paras[0];
+  const intro = p
+    ? `<section class="ah-start lp-intro" aria-label="Aloitussivu" data-testid="landing">
+        <h2 class="start-title">${esc(p.title)}</h2>
+        <div class="md">${md(shown)}</div>
+        ${paras.length > 1 ? `<button class="btn quiet inline more-btn" data-act="intro" aria-expanded="${S.introOpen}">${S.introOpen ? "Näytä vähemmän" : "Näytä koko esittely"}</button>` : ""}
+        <h3 class="ah-start-heading">Mitä haluat tehdä?</h3>${goalCards("ws")}
+        <p class="ah-start-hint">Tavoite avaa uuden keskustelun oppaaseen. Tyhjän keskustelun saat +:sta.</p>
+      </section>`
+    : absentLine("Tällä työtilalla ei ole aloitussivua. Agentti kirjoittaa sen <code>.agents/start-page.md</code>:hen, ja sama esittely näkyy sitten täällä ja uuden keskustelun alussa.");
+  return `<div class="ah-workspace-page">${wsHead()}${intro}
+    <div class="ah-workspace-git">${gitChip()}<span class="ah-workspace-summary">${summaryText}</span></div>
+    ${openSection()}${doneSection()}</div>`;
+}
+function pageTilannekuva() {
+  const p = authored();
+  const desc = p
+    ? `<p class="tk-desc" data-testid="landing">${esc(firstSentence(p.body))}<button class="btn quiet inline" data-act="intro" aria-expanded="${S.introOpen}">${S.introOpen ? "Piilota esittely" : "Lue esittely"}</button></p>
+       ${S.introOpen ? `<div class="tk-introbody md">${md(p.body)}</div>` : ""}`
+    : "";
+  const waiting = CONVS.filter((c) => c.state === "new");
+  const running = CONVS.filter((c) => c.worker);
+  const recent = CONVS.filter((c) => c.state === "idle" && !c.worker);
+  const row = (c, extra) => `<li><span class="dot ${c.state === "working" ? "work" : c.state === "new" ? "on" : ""}" aria-hidden="true"></span>
+      <button class="t" data-act="open" data-id="${c.id}">${esc(c.title)}</button><time>${c.age}</time>${extra}</li>`;
+  return `<div class="ah-workspace-page">${wsHead({ below: desc })}
+    ${p ? `<div class="tk-goals" aria-label="Aloita tavoitteesta"><span>Aloita:</span>${p.goals.map((g, i) => `<button class="goal-pill" data-act="goal" data-i="${i}" data-where="ws">${esc(g.title)}</button>`).join("")}</div>`
+        : absentLine("Ei aloitussivua: kuvaus ja tavoitteet puuttuvat. Agentti kirjoittaa ne <code>.agents/start-page.md</code>:hen.")}
+    <div class="tk-grid" data-testid="situation">
+      <section class="tk-panel" aria-label="Sinun vuorosi ja käynnissä">
+        <h3>Sinun vuorosi</h3>
+        <ul class="tk-rows">${waiting.map((c) => row(c, `<small>${esc(c.recap)}</small>`)).join("") || '<li><p class="tk-empty">Mikään ei odota sinua.</p></li>'}</ul>
+        <h3 style="margin-top:14px">Workerit <span class="src">omissa worktreeissään</span></h3>
+        <ul class="tk-rows">${running.map((c) => row(c, `<span class="wt">${c.worker.branch} · ${c.worker.git}</span>`)).join("")}</ul>
+      </section>
+      <section class="tk-panel" aria-label="Git">
+        <h3>Git <span class="src">${GIT.branch}</span></h3>
+        <div class="tk-git-top">${gitChip(true)}<span class="pill warn">↑${GIT.ahead} julkaisematta</span></div>
+        <ul class="tk-rows">${GIT.files.map(([s, f]) => `<li><code>${s}</code><span style="font:12px var(--ah-mono);overflow-wrap:anywhere">${f}</span><span></span></li>`).join("")}</ul>
+        <h3 style="margin-top:12px">Viimeisimmät commitit</h3>
+        <ul class="tk-rows">${GIT.commits.map(([h, m, t]) => `<li><code style="color:var(--ah-muted)">${h.slice(0, 7)}</code><span>${esc(m)}</span><time>${t}</time></li>`).join("")}</ul>
+      </section>
+    </div>
+    <section aria-label="Viimeisimmät keskustelut"><h2 class="sec">Viimeisimmät keskustelut <span>${recent.length}</span></h2>
+      <div class="tk-panel"><ul class="tk-rows">${recent.map((c) => row(c, `<small>${esc(c.recap)}</small>`)).join("")}</ul></div>
+    </section>
+    ${doneSection()}</div>`;
+}
+function pageAloitus() {
+  const p = authored();
+  const inner = S.guide !== null
+    ? guide(S.guide, "Kaikki tavoitteet")
+    : p
+      ? `<h2 class="start-title">${esc(p.title)}</h2><div class="md">${md(p.body.split(/\n{2,}/)[0])}</div>
+         <h3 class="ah-start-heading">Mitä haluat tehdä?</h3>${goalCards("here")}`
+      : `<h2 class="start-title">Aloita uusi keskustelu</h2><p class="ah-start-hint" style="margin-top:8px">Luo aloitussivu kirjoittamalla kenttään <code>/open-habitat-start-page</code>, niin esittely ja tavoitteet näkyvät tässä.</p>`;
+  const rows = CONVS.map((c) => `<li><span class="dot ${c.state === "working" ? "work" : c.state === "new" ? "on" : ""}" aria-hidden="true"></span>
+      <button data-act="open" data-id="${c.id}">${esc(c.title)}</button><span class="st">${c.label} · ${c.age}</span>
+      ${c.worker ? `<small class="wt-line">${icon("worktree")} ${c.worker.branch} · ${c.worker.git}</small>` : c.next ? `<small>${esc(c.next)}</small>` : ""}</li>`).join("");
+  // Kenttä aloittaa uuden keskustelun, joten +-painike olisi toinen tie samaan.
+  return `<div class="ah-workspace-page">${wsHead({ plus: false })}
+    <section class="ah-start at-start" aria-label="Aloita keskustelu" data-testid="landing">${inner}
+      ${composer("Kirjoita agentille – lähetys aloittaa uuden keskustelun", "field")}
+    </section>
+    <div class="at-head-git">${gitChip()}<span class="ah-workspace-summary">${summaryText}</span></div>
+    <section aria-label="Avoimet keskustelut"><h2 class="sec">Avoimet <span>${CONVS.length}</span></h2><ul class="at-rows">${rows}</ul></section>
+    ${doneSection()}</div>`;
+}
+const PAGES = [pageNyt, pageEsittely, pageTilannekuva, pageAloitus];
+
+function gitLayer() {
+  if (!S.gitOpen) return "";
+  return `<div class="layer-scrim" data-act="git-close"></div>
+  <div class="git-layer" role="dialog" aria-label="Git · ${WS.name}" style="left:max(16px, calc(50% - 300px)); top:150px">
+    <h2>Git · ${WS.name}</h2>
+    <p style="margin:0"><code>${GIT.branch}</code> · ${GIT.dirty} muutosta · ↑${GIT.ahead} julkaisematta</p>
+    <h3>Muutokset</h3><ul class="git-list">${GIT.files.map(([s, f]) => `<li><code>${s}</code><span><code>${f}</code></span></li>`).join("")}</ul>
+    <h3>Commitit</h3><ul class="git-list">${GIT.commits.map(([h, m, t]) => `<li><code>${h.slice(0, 7)}</code><span>${esc(m)}</span><time>${t}</time></li>`).join("")}</ul>
+    <div class="git-close"><button class="btn" data-act="git-close">Sulje</button></div>
+  </div>`;
+}
+
+function render() {
+  document.documentElement.dataset.theme = S.theme;
+  document.body.classList.toggle("phone-mode", S.device === "phone");
+  document.querySelectorAll(".p-ctl [data-ctl]").forEach((b) => b.setAttribute("aria-pressed", String(S[{ theme: "theme", device: "device", page: "page" }[b.dataset.ctl]] === b.dataset.val)));
+  const conv = S.view === "conversation";
+  const content = conv ? conversationView() : `<div class="wsp-scroll">${PAGES[S.variant]()}</div>`;
+  stage.innerHTML = `<div class="app" data-variant="${S.variant}">${rail()}
+    <div class="main-wrap">${topbar(conv ? "Uusi keskustelu" : WS.name)}
+      <main class="main" id="main">${content}</main>
+      ${gitLayer()}${S.toast ? `<div class="toast" role="status">${S.toast}</div>` : ""}
+    </div></div>`;
+  const focus = stage.querySelector("[data-focus]");
+  if (focus) focus.focus({ preventScroll: false });
+  const field = stage.querySelector("#field");
+  if (field && S.focusField) { field.focus(); field.setSelectionRange(field.value.length, field.value.length); field.scrollTop = field.scrollHeight; S.focusField = false; }
+  if (S.scrollTop) { const m = stage.querySelector("#main"); if (m) m.scrollTop = 0; S.scrollTop = false; }
+}
+
+let toastTimer;
+function toast(msg) { S.toast = msg; render(); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = ""; render(); }, 2600); }
+
+const stage = document.getElementById("stage");
+stage.addEventListener("click", (e) => {
+  const el = e.target.closest("#stage [data-act]");
+  if (!el) return;
+  const act = el.dataset.act;
+  const i = Number(el.dataset.i);
+  if (act === "toast") return toast(el.dataset.msg);
+  if (act === "workspace") { reset(); return render(); }
+  if (act === "new") { Object.assign(S, { view: "conversation", guide: null, sent: null }); return render(); }
+  if (act === "open") { const c = CONVS.find((x) => x.id === el.dataset.id); return toast(`Avaisi keskustelun ”${c.title}” (ei osa vertailua)`); }
+  if (act === "git") { S.gitOpen = true; return render(); }
+  if (act === "git-close") { S.gitOpen = false; return render(); }
+  if (act === "intro") { S.introOpen = !S.introOpen; return render(); }
+  if (act === "create-start") { Object.assign(S, { view: "conversation", guide: null, draft: "/open-habitat-start-page ", focusField: true }); return render(); }
+  if (act === "goal") {
+    // C avaa oppaan työtilasivulla; muut siirtyvät uuteen keskusteluun oppaan kohdalle.
+    S.guide = i;
+    if (el.dataset.where === "ws") S.view = "conversation";
+    S.scrollTop = true;
+    return render();
+  }
+  if (act === "guide-back") { const prev = S.guide; S.guide = null; render(); stage.querySelector(`[data-act="goal"][data-i="${prev}"]`)?.focus(); return; }
+  if (act === "aloita") { S.draft = goalDraft(START.goals[i], S.draft); S.guide = null; S.focusField = true; return render(); }
+  if (act === "send") {
+    if (!S.draft.trim()) return;
+    Object.assign(S, { view: "conversation", sent: S.draft.trim(), draft: "", guide: null });
+    return render();
+  }
+});
+stage.addEventListener("input", (e) => {
+  if (e.target.id !== "field") return;
+  S.draft = e.target.value;
+  const send = stage.querySelector('[data-act="send"]');
+  if (send) send.disabled = !S.draft.trim();
+});
+stage.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && S.gitOpen) { S.gitOpen = false; render(); stage.querySelector('[data-act="git"]')?.focus(); }
+});
+document.querySelector(".p-ctl").addEventListener("click", (e) => {
+  const b = e.target.closest(".p-ctl [data-ctl]");
+  if (!b) return;
+  S[b.dataset.ctl] = b.dataset.val;
+  const url = new URL(location); url.searchParams.set(b.dataset.ctl, b.dataset.val); history.replaceState(null, "", url);
+  render();
+});
+
+/* ===== Valitsimen johdotus (PICKER.md) ===== */
+const variants = PAGES.map((_, i) => () => { S.variant = i; reset(); render(); });
+const picker = document.querySelector(".proto-picker");
+const highlight = picker.querySelector(".proto-picker-highlight");
+const items = [...picker.querySelectorAll(".proto-picker-item:not(.proto-picker-replay)")];
+let current = 0;
+function moveHighlight() { const el = items[current]; highlight.style.width = el.offsetWidth + "px"; highlight.style.transform = `translateX(${el.offsetLeft}px)`; }
+function mount(i) { stage.innerHTML = ""; requestAnimationFrame(() => variants[i]()); }
+function setActive(i) {
+  if (i < 0 || i >= variants.length) return;
+  current = i;
+  items.forEach((el, j) => { el.toggleAttribute("data-active", j === i); if (j === i) el.setAttribute("aria-current", "true"); else el.removeAttribute("aria-current"); });
+  moveHighlight();
+  const url = new URL(location); url.searchParams.set("v", i + 1); history.replaceState(null, "", url);
+  mount(i);
+}
+items.forEach((el, i) => el.addEventListener("click", () => setActive(i)));
+window.addEventListener("resize", moveHighlight);
+document.addEventListener("keydown", (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const num = parseInt(e.key, 10);
+  if (num >= 1 && num <= variants.length) setActive(num - 1);
+  else if (e.key === "ArrowRight") setActive((current + 1) % variants.length);
+  else if (e.key === "ArrowLeft") setActive((current - 1 + variants.length) % variants.length);
+  else if (e.key === "r" || e.key === "R") mount(current);
+});
+const params = new URLSearchParams(location.search);
+for (const k of ["theme", "device", "page"]) if (params.get(k)) S[k] = params.get(k);
+if (innerWidth < 760) document.querySelector(".p-ctl").open = false;
+if (params.get("capture")) document.body.classList.add("capture");
+setActive((parseInt(params.get("v"), 10) || 1) - 1);
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute("data-ready", "")));
+</script>
+</body>
+</html>
