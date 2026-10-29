@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: own-machine
 lane_seq: 2
 preparation: pending
+closed: 2026-10-29
 ---
 
 # Prototype: managing access to my own computer in the UI
@@ -27,3 +28,7 @@ Jari 29.10.: (1) The agent gets everything the person's user has on that machine
 ### 2026-10-29T15:39:43Z · @jari
 
 Jari 29.10. (before opening the prototype): Ohjattu is best, but it must allow adding another machine afterwards, and the machines need meaningful names (probably from Tailscale). To be confirmed after he has seen the round.
+
+### 2026-10-29T15:43:00Z · @jari
+
+Jari 29.10.: Ohjattu (confirmed), with adding another machine afterwards and machine names from Tailscale. Implementation: own-machine-access.
