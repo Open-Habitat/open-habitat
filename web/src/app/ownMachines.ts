@@ -1,4 +1,5 @@
 import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import schema from "../../../contracts/v1/own-machines.schema.json";
 
 /** Omat koneet as the person's daemon reads it: their own Tailscale node,
@@ -97,7 +98,9 @@ export type OwnMachinesRequest =
 
 export type GrantDays = 7 | 30 | 90;
 
-const valid = new Ajv({ strict: false }).compile<OwnMachines>(schema);
+const valid = addFormats(new Ajv({ strict: false })).compile<OwnMachines>(
+  schema,
+);
 export const ownMachinesPath = "/api/v1/own-machines";
 
 export async function readOwnMachines(response: Response) {

@@ -1,4 +1,5 @@
 import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import schema from "../../../contracts/v1/account-keys.schema.json";
 
 /** The account's public keys as the person's daemon read them from the
@@ -31,7 +32,9 @@ export type AccountKeys = {
   created?: AccountKey;
 };
 
-const valid = new Ajv({ strict: false }).compile<AccountKeys>(schema);
+const valid = addFormats(new Ajv({ strict: false })).compile<AccountKeys>(
+  schema,
+);
 export const accountKeysPath = "/api/v1/account/keys";
 
 export async function readAccountKeys(response: Response) {
