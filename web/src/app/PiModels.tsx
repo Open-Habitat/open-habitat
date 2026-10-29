@@ -29,6 +29,8 @@ export type Models = {
   default_thinking?: string;
   catalog_status?: "native_cached" | "unavailable";
   auto_compaction?: boolean;
+  /** The recap's automatic model for a conversation of each provider. */
+  background_models?: Partial<Record<PiProvider, string>>;
   models: ModelChoice[];
 };
 export async function readModels(response: Response): Promise<Models> {

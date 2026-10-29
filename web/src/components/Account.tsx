@@ -23,6 +23,7 @@ import {
 } from "../app/PiCredentials";
 import { usePiModels } from "../app/PiModels";
 import type { AccountProfile } from "../app/pi";
+import { RecapSettingsSection } from "../app/RecapSettings";
 import { ServerAdministration } from "../app/ServerAdministration";
 import { ServerIntegrationsSettings } from "../app/ServerIntegrationsSettings";
 import { ServerVersionLine } from "../app/ServerVersion";
@@ -402,6 +403,7 @@ export function AccountSettings({
     ["tili", "Tili"],
     ["laitteet", "Laitteet"],
     ["tekoaly", "Tekoäly"],
+    ["tilannekatsaus", "Tilannekatsaus"],
     ["sanelu", "Sanelu"],
     ["koodipalvelut", "Koodipalvelut"],
     ["tiedot", "Tiedot agenteille"],
@@ -425,6 +427,7 @@ export function AccountSettings({
     tili: "user",
     laitteet: "devices",
     tekoaly: "agent",
+    tilannekatsaus: "recap",
     koodipalvelut: "code",
     tiedot: "plug",
     ulkoasu: "eye",
@@ -666,6 +669,7 @@ export function AccountSettings({
         {section === "tiedot" && (
           <IntegrationsSettings csrf={csrf} except={codeHosts} />
         )}
+        {section === "tilannekatsaus" && <RecapSettingsSection csrf={csrf} />}
         {section === "sanelu" && <SpeechSettings csrf={csrf} />}
         {section === "editori" && (
           <EditorSettings identity={editorIdentity} csrf={csrf} />

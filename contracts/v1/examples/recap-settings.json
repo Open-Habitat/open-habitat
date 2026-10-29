@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "settings": {
+    "level": "standard",
+    "delay_seconds": 180,
+    "model": null,
+    "words": 40,
+    "next_words": 12,
+    "messages": 64,
+    "history_tokens": 16000,
+    "message_tokens": 1000,
+    "response_tokens": 512,
+    "first_after_turns": 1
+  }
+}

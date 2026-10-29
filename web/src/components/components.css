@@ -3616,6 +3616,7 @@ details[open] > summary:not([class])::before {
   .ah-agent-topline
     > :is(
       .ah-header-workspace,
+      .ah-header-recap,
       .ah-retitle,
       .ah-archive-control,
       .ah-details-toggle
@@ -3665,7 +3666,12 @@ details[open] > summary:not([class])::before {
     display: none;
   }
   .ah-agent-topline[data-shorten~="3"]
-    > :is(.ah-retitle, .ah-archive-control, .ah-details-toggle) {
+    > :is(
+      .ah-header-recap,
+      .ah-retitle,
+      .ah-archive-control,
+      .ah-details-toggle
+    ) {
     display: none;
   }
   .ah-agent-topline[data-shorten~="1"] .ah-header-more {

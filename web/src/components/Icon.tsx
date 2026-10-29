@@ -86,7 +86,9 @@ export type IconName =
   | "table"
   | "package"
   | "mic"
-  | "save";
+  | "save"
+  | "gear"
+  | "recap";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -515,6 +517,19 @@ export function Icon({
       <>
         <path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" />
         <path d="M12 8v4M12 15h.01" />
+      </>
+    ),
+    gear: (
+      <>
+        <path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    ),
+    // Lines of a summary and a spark: a recap written now.
+    recap: (
+      <>
+        <path d="M4 6h16M4 12h9M4 18h6" />
+        <path d="m18 13 .9 2.1 2.1.9-2.1.9L18 19l-.9-2.1L15 16l2.1-.9Z" />
       </>
     ),
   };

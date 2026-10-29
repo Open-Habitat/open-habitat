@@ -120,6 +120,38 @@
         "native_cached",
         "unavailable"
       ]
+    },
+    "background_models": {
+      "description": "The model background work (the conversation recap) uses automatically for a conversation of each provider, by the shared background-model policy. A provider with no usable model is absent.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "openai-codex": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "openai": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "anthropic": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "deepseek": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "claude-bridge": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      }
     }
   },
   "additionalProperties": false

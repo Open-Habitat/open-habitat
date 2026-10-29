@@ -323,3 +323,126 @@ func TestRecapFallsBackAndReportsFailureThroughPinnedPi(t *testing.T) {
 		t.Fatalf("status: %s", status.Body.String())
 	}
 }
+
+// The person's recap settings in Pi's settings.json reach the native
+// extension: the preferred model is asked first, the prompt and response
+// limit follow the chosen length, and the automatic recap waits for the
+// chosen number of turns while one the person asks for does not.
+func TestRecapFollowsPersonSettingsThroughPinnedPi(t *testing.T) {
+	cli, err := filepath.Abs(filepath.Join("pi-device-test", "node_modules", "@earendil-works", "pi-coding-agent", "dist", "bundle", "cli.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(cli); err != nil {
+		t.Skip("pinned Pi test dependency not installed")
+	}
+	ext, err := filepath.Abs("recap-extension.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	type ask struct {
+		model, prompt string
+		limit         int
+	}
+	asked := []ask{}
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Model     string `json:"model"`
+			MaxTokens int    `json:"max_tokens"`
+			MaxCompl  int    `json:"max_completion_tokens"`
+			Messages  []struct {
+				Content any `json:"content"`
+			} `json:"messages"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		prompt := fmt.Sprint(body.Messages)
+		recap := strings.Contains(prompt, "Write a brief catch-up")
+		answer := "First response"
+		if recap {
+			mu.Lock()
+			asked = append(asked, ask{body.Model, prompt, max(body.MaxTokens, body.MaxCompl)})
+			mu.Unlock()
+			answer = `{"recap":"Synthetic task done.","next":"Check result"}`
+		}
+		b, _ := json.Marshal(answer)
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprintf(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":%s},\"finish_reason\":null}]}\n\n", b)
+		fmt.Fprint(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
+	}))
+	defer provider.Close()
+	home := t.TempDir()
+	cwd := filepath.Join(home, "src", "fixture")
+	if err := os.MkdirAll(filepath.Join(home, ".pi", "agent"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(cwd, 0700); err != nil {
+		t.Fatal(err)
+	}
+	models := map[string]any{"providers": map[string]any{"fixture": map[string]any{"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "authHeader": true, "models": []any{
+		map[string]any{"id": "claude-sonnet-5-5", "name": "Sonnet"},
+		map[string]any{"id": "fake", "name": "Fake"},
+		map[string]any{"id": "other", "name": "Other"},
+	}}}}
+	data, _ := json.Marshal(models)
+	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "models.json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	settings := `{"openHabitat":{"recap":{"level":"custom","delaySeconds":300,"model":"fixture/other","words":25,"nextWords":10,"messages":16,"historyTokens":4000,"messageTokens":500,"responseTokens":256,"firstAfterTurns":2}}}`
+	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "settings.json"), []byte(settings), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if d := recapDelay(home); d != 5*time.Minute {
+		t.Fatalf("daemon delay %v", d)
+	}
+	id, _ := uuid()
+	owner, err := acquirePiOwnership(home, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.release()
+	if err := owner.markBrowser("ws_example123", cwd); err != nil {
+		t.Fatal(err)
+	}
+	ws, err := os.Open(cwd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+	p, err := launchPiRPCCommand(nativeNodePath(t), []string{cli, "--provider", "fixture", "--model", "fake", "--extension", ext, "--extension", filepath.Join(filepath.Dir(ext), "process-extension.mjs")}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws, "ws_example123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.close()
+	controller := &ConversationController{home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}, sessions: map[string]*conversation{}}
+	controller.sessions[id] = &conversation{id: id, cwd: cwd, rpc: p, state: "idle"}
+	if accepted, err := p.request("prompt", "Do the synthetic task", 15*time.Second); !accepted || err != nil {
+		t.Fatalf("prompt %v %v", accepted, err)
+	}
+	timeout := time.After(15 * time.Second)
+	for settled := false; !settled; {
+		select {
+		case event := <-p.events:
+			settled = strings.Contains(string(event), `"type":"agent_settled"`)
+		case <-timeout:
+			t.Fatal("native Pi did not settle")
+		}
+	}
+	// One completed turn, two asked for: the automatic recap waits quietly.
+	if reason := controller.runRecap(controller.sessions[id], "automatic", 0); reason != "too_early" {
+		t.Fatalf("automatic recap before the chosen turns: %q", reason)
+	}
+	if f := controller.sessions[id].recapFailure; f != nil {
+		t.Fatalf("waiting is not a failure: %+v", f)
+	}
+	w := httptest.NewRecorder()
+	controller.requestRecap(w, httptest.NewRequest(http.MethodPost, "http://unix/recap", nil), id)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"done"`) {
+		t.Fatalf("asked recap: %d %s", w.Code, w.Body.String())
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(asked) != 1 || asked[0].model != "other" || !strings.Contains(asked[0].prompt, "at most 25 words") || !strings.Contains(asked[0].prompt, "at most 10 words") || asked[0].limit != 256 {
+		t.Fatalf("recap asks: %+v", asked)
+	}
+}

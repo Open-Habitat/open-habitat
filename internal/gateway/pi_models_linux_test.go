@@ -89,3 +89,42 @@ func TestPiCredentialsRoutesFenceWritesAndDoNotLogBodies(t *testing.T) {
 		t.Fatal("unauthenticated credential read accepted")
 	}
 }
+
+func TestRecapSettingsRouteFencesWrites(t *testing.T) {
+	calls := 0
+	host, _ := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"schema_version":1}`))
+	}))
+	if w := proxyCall(host, "GET", "/api/v1/pi/recap-settings", ""); w.Code != 200 {
+		t.Fatalf("read: %d %s", w.Code, w.Body.String())
+	}
+	put := func(csrf bool) int {
+		r := httptest.NewRequest("PUT", "https://host.test/api/v1/pi/recap-settings", strings.NewReader(`{}`))
+		r.AddCookie(&http.Cookie{Name: cookieName, Value: "browser"})
+		r.Header.Set("Content-Type", "application/json")
+		if csrf {
+			r.Header.Set("Origin", "https://host.test")
+			r.Header.Set("X-Agent-Host-CSRF", "token")
+		}
+		w := httptest.NewRecorder()
+		host.ServeHTTP(w, r)
+		return w.Code
+	}
+	if code := put(false); code != 403 {
+		t.Fatalf("write without CSRF: %d", code)
+	}
+	if code := put(true); code != 200 {
+		t.Fatalf("write: %d", code)
+	}
+	if w := proxyCall(host, "POST", "/api/v1/pi/recap-settings", `{}`); w.Code != 400 {
+		t.Fatalf("method: %d", w.Code)
+	}
+	if w := proxyCall(host, "GET", "/api/v1/pi/recap-settings?x=1", ""); w.Code != 400 {
+		t.Fatalf("query: %d", w.Code)
+	}
+	if calls != 2 {
+		t.Fatalf("unexpected proxy calls: %d", calls)
+	}
+}

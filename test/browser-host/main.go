@@ -527,6 +527,8 @@ esac
 		mux.Handle(daemon.SiteKeyPath, daemon.SiteKeyHandler(cfg, trusted, credentialDevice))
 		speechCfg := cfg
 		speechCfg.Home = home
+		// The real handler and Pi's own SettingsManager, as with the keys above.
+		mux.Handle(daemon.RecapSettingsPath, daemon.RecapSettingsHandler(speechCfg, trusted, credentialDevice))
 		daemon.NewSpeechWithFixtureEndpoints(speechCfg, trusted, soniox.endpoints, soniox.client()).Mount(mux)
 		// Exercise native Claude availability through the same handler as the daemon.
 		// This synthetic host intentionally has no installed Claude runtime.

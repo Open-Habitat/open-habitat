@@ -99,7 +99,19 @@ try {
   const reserve = m => { try { return limit(stored.getCompactionReserveTokens(m)); } catch { return undefined; } };
   let autoCompaction;
   try { autoCompaction = stored.getCompactionEnabled() === true; } catch { autoCompaction = undefined; }
-  const result = { schema_version: 1, default_provider: stored.getDefaultProvider() ?? null, default_model: stored.getDefaultModel() ?? null,
+  // What the recap's automatic model is for a conversation of each provider,
+  // by the same policy the recap extension uses. A provider whose own model
+  // would be the fallback is left out: that depends on the conversation.
+  let backgroundModels;
+  try {
+    const policy = await import(process.env.OH_BACKGROUND_POLICY);
+    backgroundModels = {};
+    for (const provider of new Set(models.map(m => m.provider))) {
+      const [choice] = policy.backgroundModels(models, { provider });
+      if (choice?.provider === provider) backgroundModels[provider] = choice.id;
+    }
+  } catch { backgroundModels = undefined; }
+  const result = { schema_version: 1, background_models: backgroundModels, default_provider: stored.getDefaultProvider() ?? null, default_model: stored.getDefaultModel() ?? null,
     default_thinking: stored.getModelThinkingLevel(stored.getDefaultProvider(), stored.getDefaultModel()) ?? stored.getDefaultThinkingLevel() ?? 'off',
     catalog_status: catalogStatus, auto_compaction: autoCompaction,
     models: models.map(m => ({ provider: m.provider, id: m.id, name: m.name, thinking_levels: levels(m),

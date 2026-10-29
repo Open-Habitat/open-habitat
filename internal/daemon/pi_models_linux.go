@@ -48,6 +48,8 @@ type piModelsResponse struct {
 	CatalogStatus   string    `json:"catalog_status,omitempty"`
 	AutoCompaction  *bool     `json:"auto_compaction,omitempty"`
 	Models          []piModel `json:"models"`
+	// The recap's automatic model per provider (background-model.mjs).
+	BackgroundModels map[string]string `json:"background_models,omitempty"`
 }
 
 // Models are Pi's catalog and default, never a host-owned preference.
@@ -75,7 +77,7 @@ func (p *PiDevice) modelSettings(ctx context.Context, action, selected string, t
 	cmd := exec.CommandContext(ctx, p.Node, "--input-type=module", "--eval", piModelsHelper, p.Entry, p.Manifest, action, selected)
 	env := []string{}
 	for _, item := range os.Environ() {
-		if !strings.HasPrefix(item, "HOME=") && !strings.HasPrefix(item, "NODE_OPTIONS=") && !strings.HasPrefix(item, "PI_CODING_AGENT_DIR=") && !strings.HasPrefix(item, "OH_PI_THINKING=") && !strings.HasPrefix(item, "OH_PI_PROVIDER=") {
+		if !strings.HasPrefix(item, "HOME=") && !strings.HasPrefix(item, "NODE_OPTIONS=") && !strings.HasPrefix(item, "PI_CODING_AGENT_DIR=") && !strings.HasPrefix(item, "OH_PI_THINKING=") && !strings.HasPrefix(item, "OH_PI_PROVIDER=") && !strings.HasPrefix(item, "OH_BACKGROUND_POLICY=") {
 			env = append(env, item)
 		}
 	}
@@ -87,7 +89,7 @@ func (p *PiDevice) modelSettings(ctx context.Context, action, selected string, t
 	if len(thinking) > 1 {
 		provider = thinking[1]
 	}
-	cmd.Env = append(env, "HOME="+p.Home, "PI_OFFLINE=1", "OH_PI_THINKING="+level, "OH_PI_PROVIDER="+provider)
+	cmd.Env = append(env, "HOME="+p.Home, "PI_OFFLINE=1", "OH_PI_THINKING="+level, "OH_PI_PROVIDER="+provider, "OH_BACKGROUND_POLICY="+backgroundModelURL)
 	cmd.Dir = p.Home
 	cmd.Stderr = &storageDiagnostics{operation: "pi_models"}
 	cmd.WaitDelay = time.Second
@@ -107,6 +109,11 @@ func (p *PiDevice) modelSettings(ctx context.Context, action, selected string, t
 	}
 	if err != nil || len(out) > 65536 || json.Unmarshal(out, &result) != nil || result.SchemaVersion != 1 || len(result.Models) > 100 {
 		return piModelsResponse{}, errors.New("native Pi models unavailable")
+	}
+	for provider, id := range result.BackgroundModels {
+		if !piConversationProvider(provider) || id == "" || len(id) > 160 {
+			return piModelsResponse{}, errors.New("invalid native background model")
+		}
 	}
 	for _, m := range result.Models {
 		if m.ID == "" || len(m.ID) > 160 || len(m.Name) > 200 || m.ContextWindow < 0 || m.ContextWindow > 100_000_000 || m.CompactionReserve != nil && (*m.CompactionReserve < 0 || *m.CompactionReserve > 100_000_000) {

@@ -70,6 +70,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(SiteKeyPath, SiteKeyHandler(cfg, server.TrustedPeer, pi))
 	NewSpeech(cfg, server.TrustedPeer).Mount(mux)
 	mux.Handle("/api/v1/pi/models", PiModelsHandler(cfg, server.TrustedPeer, pi))
+	mux.Handle(RecapSettingsPath, RecapSettingsHandler(cfg, server.TrustedPeer, pi))
 	claude := &claudeLogin{device: pi}
 	mux.Handle("/api/v1/pi/claude-login", claude.handler(cfg, server.TrustedPeer))
 	mux.Handle(RepoCatalogPath, RepoCatalogHandler(cfg, server.TrustedPeer))

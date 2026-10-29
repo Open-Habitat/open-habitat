@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/recap-settings.schema.json",
+  "title": "The person's conversation recap settings, kept in Pi's settings.json under openHabitat.recap",
+  "$comment": "GET answers the stored settings, or the defaults when none are stored. PUT replaces them with the settings object and answers like GET. Errors are the common envelope: invalid_request (400), recap_settings_unavailable (503).",
+  "$defs": {
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "delay_seconds",
+        "model",
+        "words",
+        "next_words",
+        "messages",
+        "history_tokens",
+        "message_tokens",
+        "response_tokens",
+        "first_after_turns"
+      ],
+      "properties": {
+        "level": {
+          "enum": [
+            "short",
+            "standard",
+            "thorough",
+            "custom"
+          ],
+          "description": "The scope level the person chose. The browser names the levels and their numbers; custom keeps the numbers below as the person set them."
+        },
+        "delay_seconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 540,
+          "description": "Quiet time before the automatic recap. Pi stops after ten idle minutes, which stops the recap timer too; the browser reports presence every 20 to 30 seconds."
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200,
+          "pattern": "^(openai-codex|openai|anthropic|deepseek|claude-bridge)/[^\\s/]+$",
+          "description": "The person's preferred recap model as provider/id, tried first when usable; null is the automatic choice. Never a Fable or Opus class model."
+        },
+        "words": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 80,
+          "description": "Recap length in words."
+        },
+        "next_words": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 25,
+          "description": "Length of the next-step line in words."
+        },
+        "messages": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 128,
+          "description": "How many recent person and agent messages the recap reads."
+        },
+        "history_tokens": {
+          "type": "integer",
+          "minimum": 2000,
+          "maximum": 32000,
+          "description": "Approximate tokens of history read, stored as four bytes per token."
+        },
+        "message_tokens": {
+          "type": "integer",
+          "minimum": 250,
+          "maximum": 4000,
+          "description": "Approximate tokens read from one message."
+        },
+        "response_tokens": {
+          "type": "integer",
+          "minimum": 128,
+          "maximum": 2048,
+          "description": "The model's response limit in tokens."
+        },
+        "first_after_turns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Completed turns before the first automatic recap."
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "settings"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "settings": {
+          "$ref": "#/$defs/settings"
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/result"
+    },
+    {
+      "$ref": "#/$defs/settings"
+    }
+  ]
+}

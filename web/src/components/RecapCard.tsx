@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Recap, RecapFailureReason } from "../app/conversations";
-import { ControlButton } from "./ControlElements";
+import { ControlButton, controlClassName } from "./ControlElements";
 import { Icon } from "./Icon";
 
 export function relativeRecapAge(timestamp: number, now: number): string {
@@ -71,6 +71,7 @@ export function RecapCard({
   unavailableReason,
   onRequest,
   onDismiss,
+  settingsHref,
   now = Date.now(),
 }: {
   recap: Recap | null;
@@ -85,6 +86,8 @@ export function RecapCard({
   unavailableReason?: string;
   onRequest?: () => void;
   onDismiss?: () => void;
+  /** Tilannekatsaus settings, where the card's timing and length are set. */
+  settingsHref?: string;
   now?: number;
 }) {
   const reason = unavailable
@@ -118,6 +121,17 @@ export function RecapCard({
               <Icon name="refresh" />
             </ControlButton>
           </span>
+        ) : null}
+        {settingsHref ? (
+          <a
+            data-testid="recap-settings-link"
+            className={`ah-recap-icon ${controlClassName({ variant: "quiet", size: "inline", presentation: "icon" })}`}
+            href={settingsHref}
+            aria-label="Tilannekatsauksen asetukset"
+            title="Tilannekatsauksen asetukset"
+          >
+            <Icon name="gear" />
+          </a>
         ) : null}
         {onDismiss ? (
           <ControlButton

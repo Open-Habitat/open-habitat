@@ -116,6 +116,8 @@ checks = {
     "pi-attempt.json": "pi-attempt.schema.json",
     "agent-pi-attempt.json": "pi-attempt.schema.json",
     "pi-models.json": "pi-models.schema.json",
+    "recap-settings.json": "recap-settings.schema.json",
+    "recap-settings-update.json": "recap-settings.schema.json",
     "pi-conversation-create.json": "pi-conversation-create.schema.json",
     "workspace-change.json": "workspace-change.schema.json",
     "github-repos.json": "github-repos.schema.json",
@@ -427,6 +429,11 @@ else:
     raise AssertionError("content schema accepted an incomplete, non-truncated value without continuation")
 
 
+recap_settings = json.loads((BASE / "examples" / "recap-settings.json").read_text())
+must_reject("recap-settings.schema.json", {**recap_settings, "settings": {**recap_settings["settings"], "delay_seconds": 30}})
+must_reject("recap-settings.schema.json", {**recap_settings, "settings": {**recap_settings["settings"], "mode": "manual"}})
+must_reject("recap-settings.schema.json", {**recap_settings["settings"], "model": "fixture/fake"})
+must_reject("recap-settings.schema.json", {**recap_settings["settings"], "words": 200})
 must_reject("pi-models.schema.json", {"schema_version":1,"default_provider":None,"default_model":None,"models":[{"id":"example","name":"Example","outcome":"entitled"}]})
 must_reject("pi-conversation-create.schema.json", {"workspace_id":"ws_example123","thinking":"high"})
 must_reject("pi-conversation-create.schema.json", {"workspace_id":"ws_example123","new_worktree":{"name":"../escape"}})

@@ -1,0 +1,12 @@
+{
+  "level": "custom",
+  "delay_seconds": 300,
+  "model": "claude-bridge/claude-sonnet-5-5",
+  "words": 30,
+  "next_words": 12,
+  "messages": 16,
+  "history_tokens": 16000,
+  "message_tokens": 1000,
+  "response_tokens": 512,
+  "first_after_turns": 1
+}

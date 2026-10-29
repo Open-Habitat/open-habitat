@@ -15,6 +15,7 @@ describe("settings URL contract", () => {
       "disk",
       "editor",
       "onboarding",
+      "recap",
       "server",
       "server-integrations",
       "speech",

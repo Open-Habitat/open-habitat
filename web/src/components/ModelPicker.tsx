@@ -30,6 +30,14 @@ export function refused(model?: ModelChoice) {
     Date.now() - Date.parse(model.observed_at) < 7 * 86400000
   );
 }
+/** Fable and Opus class models do no background work: the whole word of
+ * the id or name, as background-model.mjs and the daemon decide it. */
+export function backgroundExcluded(model: ModelChoice): boolean {
+  return `${model.id} ${model.name}`
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .some((word) => word === "fable" || word === "opus");
+}
 export function ModelPicker({
   models,
   selected,
@@ -37,6 +45,8 @@ export function ModelPicker({
   busy,
   onSelect,
   onThinking,
+  unavailable,
+  auto,
 }: {
   models: ModelChoice[];
   selected?: string;
@@ -44,9 +54,15 @@ export function ModelPicker({
   busy?: boolean;
   onSelect: (id: string) => void;
   onThinking?: (level: string) => void;
+  /** Why this use cannot take a model the account can; it shows disabled. */
+  unavailable?: (model: ModelChoice) => string | undefined;
+  /** An Automaattinen row first: what it now picks, whether it is chosen. */
+  auto?: { detail: string; selected: boolean; onSelect: () => void };
 }) {
   const group = useId();
   const older = models.filter((m) => m.older);
+  const reason = (m: ModelChoice) =>
+    refused(m) ? "Ei käytettävissä" : unavailable?.(m);
   const row = (m: ModelChoice) => (
     <label
       key={m.id}
@@ -61,18 +77,34 @@ export function ModelPicker({
         type="radio"
         data-testid={`model-${m.id}`}
         name={group}
-        checked={selected === m.id}
-        disabled={busy || refused(m)}
+        checked={!auto?.selected && selected === m.id}
+        disabled={busy || !!reason(m)}
         onChange={() => onSelect(m.id)}
       />
       <span className="md-t">
         {modelDisplayName(`${m.provider ?? "openai-codex"}/${m.id}`, models)}
       </span>
-      {refused(m) ? <span className="md-note">Ei käytettävissä</span> : null}
+      {reason(m) ? <span className="md-note">{reason(m)}</span> : null}
     </label>
   );
   return (
     <div className="md-pick">
+      {auto ? (
+        <div className="md-rows">
+          <label className="md-row">
+            <input
+              type="radio"
+              data-testid="model-automatic"
+              name={group}
+              checked={auto.selected}
+              disabled={busy}
+              onChange={auto.onSelect}
+            />
+            <span className="md-t">Automaattinen</span>
+            <span className="md-note">{auto.detail}</span>
+          </label>
+        </div>
+      ) : null}
       {refused(models.find((m) => m.id === selected)) ? (
         <p role="alert">
           Nykyinen malli ei toimi tililläsi. Valitse toinen ennen uuden

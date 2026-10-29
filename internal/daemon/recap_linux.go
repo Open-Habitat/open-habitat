@@ -208,9 +208,11 @@ func (c *ConversationController) scheduleAutomaticRecap(s *conversation) {
 		return
 	}
 	s.recapReschedule = false
+	// The person's quiet time (recap_settings_linux.go), read at each
+	// schedule so a changed setting applies from the next settlement.
 	delay := c.recapIdleDelay
 	if delay == 0 {
-		delay = 3*time.Minute + time.Millisecond
+		delay = recapDelay(c.home) + time.Millisecond
 	}
 	// A rejected browser command did not produce a native message. Continue
 	// counting from the last real activity rather than restarting the interval.
@@ -260,6 +262,9 @@ var recapReasons = map[string]bool{
 	"model_incomplete": true, "invalid_response": true, "superseded": true, "busy": true,
 	"write_failed": true, "history_unavailable": true, "command_unavailable": true,
 	"controller_unavailable": true, "outcome_unknown": true, "not_written": true,
+	// The conversation has fewer completed turns than the person's first
+	// automatic recap waits for. Not a failure: nothing is shown.
+	"too_early": true,
 }
 
 type recapExtensionOutcome struct {
@@ -318,7 +323,7 @@ func (c *ConversationController) runRecap(s *conversation, trigger string, epoch
 // A fenced automatic attempt (the person resumed, or this message was already
 // tried) did nothing and is not reported.
 func (c *ConversationController) recordRecapOutcome(s *conversation, trigger string, out recapOutcome) {
-	if out.Reason == "fenced" {
+	if out.Reason == "fenced" || out.Reason == "too_early" {
 		return
 	}
 	log := diagnostic.New(os.Stderr, "daemon")

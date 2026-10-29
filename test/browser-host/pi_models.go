@@ -113,6 +113,7 @@ func piModelsFixture(home string, trusted func(*http.Request) bool) http.Handler
 			m["compaction_reserve_tokens"] = 16384
 		}
 		response["auto_compaction"] = true
+		response["background_models"] = map[string]string{"openai-codex": "gpt-6-luna"}
 		raw, _ := os.ReadFile(filepath.Join(home, ".pi/agent/auth.json"))
 		var credentials map[string]any
 		_ = json.Unmarshal(raw, &credentials)

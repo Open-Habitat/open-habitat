@@ -27,6 +27,7 @@ test("@a11y English settings links survive OAuth, reload and browser history", a
     "account",
     "devices",
     "ai",
+    "recap",
     "speech",
     "code-hosts",
     "agent-data",

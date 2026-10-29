@@ -10,9 +10,10 @@ import { notePresence } from "./conversations";
 /** Typing or reading holds a newly arrived automatic recap back this long
  * after it stops. An unsent draft holds it for as long as it is there. */
 export const recapQuietMs = 60_000;
-// The daemon waits three minutes from the latest report before its automatic
-// recap, and ten before it stops an idle Pi, so a report at most every 20–30
-// seconds keeps both waiting.
+// The daemon waits the person's recap delay (one to nine minutes, three by
+// default) from the latest report before its automatic recap, and ten before
+// it stops an idle Pi, so a report at most every 20–30 seconds keeps both
+// waiting. The shortest delay is a minute for that reason.
 const reportGapMs = 20_000;
 const draftReportMs = 30_000;
 

@@ -3,12 +3,13 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: settings
 lane_seq: 1
 collision: [web/src/app/Settings.tsx]
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Tilannekatsaus settings: levels, logarithmic delay, recap-now button
@@ -28,6 +29,6 @@ Storage and host facts as `proto-recap-settings/result.md` proposes (Pi settings
 
 ## Acceptance Criteria
 
-- [ ] Section with Tasot, logarithmic delay, shared model picker; the extension reads the stored values.
-- [ ] Recap-now button in the conversation header.
-- [ ] Contract, daemon and browser tests; KOKEILTAVAA line.
+- [x] Section with Tasot, logarithmic delay, shared model picker; the extension reads the stored values.
+- [x] Recap-now button in the conversation header.
+- [x] Contract, daemon and browser tests; KOKEILTAVAA line.

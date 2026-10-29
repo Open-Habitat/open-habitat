@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { ModelPicker } from "./ModelPicker";
+import { backgroundExcluded, ModelPicker } from "./ModelPicker";
 
 describe("native model observations", () => {
   it("blocks a recent refusal, but permits an old refusal and an untried future family", () => {
@@ -54,5 +54,38 @@ describe("native model observations", () => {
     ).toBe(true);
     fireEvent.click(screen.getByTestId("segment-off"));
     expect(thinking).toHaveBeenCalledWith("off");
+  });
+});
+
+describe("background use (Tilannekatsaus › Malli)", () => {
+  it("offers Automaattinen first and refuses Fable and Opus classes", () => {
+    const choose = vi.fn();
+    const automatic = vi.fn();
+    render(
+      <ModelPicker
+        models={[
+          { id: "claude-opus-5-5", name: "Opus 5.5" },
+          { id: "proxy", name: "Fable via proxy" },
+          { id: "claude-sonnet-5-5", name: "Sonnet 5.5" },
+        ]}
+        selected="claude-sonnet-5-5"
+        onSelect={choose}
+        unavailable={(m) => (backgroundExcluded(m) ? "x" : undefined)}
+        auto={{ detail: "", selected: true, onSelect: automatic }}
+      />,
+    );
+    const auto = screen.getByTestId("model-automatic") as HTMLInputElement;
+    expect(auto.checked).toBe(true);
+    // Automatic is the choice, so the model it now picks is not checked.
+    expect(
+      (screen.getByTestId("model-claude-sonnet-5-5") as HTMLInputElement)
+        .checked,
+    ).toBe(false);
+    for (const id of ["claude-opus-5-5", "proxy"])
+      expect(
+        (screen.getByTestId(`model-${id}`) as HTMLInputElement).disabled,
+      ).toBe(true);
+    fireEvent.click(screen.getByTestId("model-claude-sonnet-5-5"));
+    expect(choose).toHaveBeenCalledWith("claude-sonnet-5-5");
   });
 });

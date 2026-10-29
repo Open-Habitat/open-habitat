@@ -252,6 +252,23 @@ test("@lab recap is separate, persisted, hidden once outdated and regenerated af
       await page.request.get(`/api/v1/agents/${id}/recap`)
     ).json();
     expect(again.recap.generated_at).toBe(native.recap.generated_at);
+    // The header asks for a recap now: a dismissed current one shows again
+    // and is not written twice.
+    await card.getByTestId("recap-dismiss").click();
+    await expect(card).toHaveCount(0);
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("conversation-recap"))
+      .click();
+    await expectNativeContent(
+      card,
+      "Synteettinen työtila tutkittiin ja vastaus valmistui.",
+      {},
+    );
+    const asked = await (
+      await page.request.get(`/api/v1/agents/${id}/recap`)
+    ).json();
+    expect(asked.recap.generated_at).toBe(native.recap.generated_at);
     await editor.fill("hidas toinen viesti");
     await page
       .getByTestId("send")

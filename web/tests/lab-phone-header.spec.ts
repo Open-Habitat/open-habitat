@@ -91,7 +91,7 @@ for (const width of [390, 360]) {
     // The secondary actions are in the menu, with the whole title.
     await header.getByTestId("conversation-menu").click();
     const menu = page.getByRole("menu");
-    for (const id of ["workspace", "retitle", "archive", "details"])
+    for (const id of ["workspace", "recap", "retitle", "archive", "details"])
       await expect(
         menu.getByRole("menuitem").and(page.getByTestId(`menu-${id}`)),
       ).toBeVisible();

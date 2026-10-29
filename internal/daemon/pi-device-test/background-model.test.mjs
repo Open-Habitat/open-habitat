@@ -50,3 +50,14 @@ test("the conversation's provider first; without a known conversation any provid
   assert.deepEqual(ids(backgroundModels([model('openai-codex', 'gpt-6-luna'), model('openai-codex', 'gpt-6-sol')], {provider: 'claude-bridge', id: 'claude-opus-5-5'})), ['openai-codex/gpt-6-luna']);
   assert.deepEqual(backgroundModels([model('other', 'claude-fable-5-1')], {provider: 'claude-bridge', id: 'claude-fable-5-1'}), []);
 });
+
+test("the person's preference comes first, but never Fable or Opus and only when usable", () => {
+  const conversation = {provider: 'claude-bridge', id: 'claude-haiku-5-5'};
+  assert.deepEqual(ids(backgroundModels(bridge, conversation, {provider: 'claude-bridge', id: 'claude-haiku-5-5'})),
+    ['claude-bridge/claude-haiku-5-5', 'claude-bridge/claude-sonnet-5-5']);
+  assert.deepEqual(ids(backgroundModels(bridge, conversation, {provider: 'claude-bridge', id: 'claude-opus-5-5'})),
+    ['claude-bridge/claude-sonnet-5-5', 'claude-bridge/claude-haiku-5-5']);
+  // A preference the registry cannot use (no sign-in) falls back to automatic.
+  assert.deepEqual(ids(backgroundModels(bridge, conversation, {provider: 'openai-codex', id: 'gpt-6-luna'})),
+    ['claude-bridge/claude-sonnet-5-5', 'claude-bridge/claude-haiku-5-5']);
+});

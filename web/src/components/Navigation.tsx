@@ -1243,6 +1243,7 @@ export function AgentHeader({
   detailsExpanded,
   onToggleDetails,
   titleAction,
+  recapAction,
   archive,
   editorControl,
   filesControl,
@@ -1295,6 +1296,13 @@ export function AgentHeader({
     pending?: boolean;
     onPress: () => void;
   };
+  /** Make a recap now (Jari 29.10.2026: always in the header; recaps are
+   * otherwise automatic). */
+  recapAction?: {
+    availability?: Availability;
+    pending?: boolean;
+    onPress: () => void;
+  };
 }) {
   const titleReasonId = useId();
   const naming = titlePending || !!titleAction?.pending;
@@ -1338,6 +1346,21 @@ export function AgentHeader({
                 }
               : (titleAction.availability ?? { state: "enabled" as const }),
             run: titleAction.onPress,
+          },
+        ]
+      : []),
+    ...(menuActions && recapAction
+      ? [
+          {
+            id: "recap",
+            label: "Tee tilannekatsaus nyt",
+            availability: recapAction.pending
+              ? {
+                  state: "disabled" as const,
+                  reason: "Katsausta luodaan…",
+                }
+              : (recapAction.availability ?? { state: "enabled" as const }),
+            run: recapAction.onPress,
           },
         ]
       : []),
@@ -1468,6 +1491,33 @@ export function AgentHeader({
         {filesControl}
         {editorControl}
         {terminal}
+        {recapAction ? (
+          <ControlButton
+            data-testid="conversation-recap"
+            size="row"
+            className="ah-topbar-icon ah-header-recap"
+            data-busy={recapAction.pending || undefined}
+            variant="quiet"
+            aria-label="Tee tilannekatsaus nyt"
+            title={
+              recapAction.availability && "reason" in recapAction.availability
+                ? recapAction.availability.reason
+                : "Tee tilannekatsaus nyt"
+            }
+            aria-description={
+              recapAction.availability && "reason" in recapAction.availability
+                ? recapAction.availability.reason
+                : undefined
+            }
+            isDisabled={
+              recapAction.availability?.state !== "enabled" ||
+              !!recapAction.pending
+            }
+            onPress={recapAction.onPress}
+          >
+            <Icon name="recap" />
+          </ControlButton>
+        ) : null}
         {titleAction ? (
           <ControlButton
             data-testid="conversation-retitle"

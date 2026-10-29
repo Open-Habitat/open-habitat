@@ -31,9 +31,17 @@ function newer(a, b) {
 
 // `available` holds only models the caller may use (text input, configured
 // auth). `conversation` is the conversation's model ({provider, id}), or
-// undefined when it is not known. Returns at most two models in the order to
-// try: the provider's middle-tier model, then the conversation's own model.
-export function backgroundModels(available, conversation) {
+// undefined when it is not known. `preferred` ({provider, id}) is the
+// person's own choice for the recap, tried first when it is available and
+// not of an excluded class. Returns the models in the order to try: the
+// preference, the provider's middle-tier model, then the conversation's own.
+export function backgroundModels(available, conversation, preferred) {
+  const auto = automatic(available, conversation);
+  const first = preferred && available.find(m => m && m.provider === preferred.provider && m.id === preferred.id && family(m, EXCLUDED_FAMILIES) < 0);
+  return first ? [first, ...auto.filter(m => m !== first)] : auto;
+}
+
+function automatic(available, conversation) {
   const allowed = available.filter(m => m && family(m, EXCLUDED_FAMILIES) < 0);
   const tier = (provider) => allowed.filter(m => family(m, BACKGROUND_FAMILIES) >= 0 && (!provider || m.provider === provider))
     .sort((a, b) => family(a, BACKGROUND_FAMILIES) - family(b, BACKGROUND_FAMILIES) || newer(a, b));

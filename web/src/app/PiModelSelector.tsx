@@ -2,11 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ControlButton, Segmented } from "../components/ControlElements";
 import { ConversationModelDetails } from "../components/ConversationModelDetails";
 import {
+  backgroundExcluded,
   ModelPicker,
   type PiProvider,
   providerPrefix,
   refused,
 } from "../components/ModelPicker";
+import { modelDisplayName } from "../components/modelPresentation";
 import { read as readClaudeLogin } from "./ClaudeSignIn";
 import { usePiModels } from "./PiModels";
 import { settingsHref } from "./settingsRoute";
@@ -24,20 +26,30 @@ const providerLabels: Record<PiProvider, string> = {
   deepseek: "DeepSeek API",
   "claude-bridge": "Claude-tilaus",
 };
-/** A selection is either Pi's global default or an explicit new-session intent. */
+/** A selection is Pi's global default, an explicit new-session intent, or
+ * (scope background) the model the recap prefers, where current undefined is
+ * the automatic choice and onAutomatic chooses it again. */
 export function PiModelSelector({
   csrf,
   scope = "default",
   current,
   currentThinking,
   onChoice,
+  onAutomatic,
   onBlocked,
 }: {
   csrf?: string;
-  scope?: "default" | "new" | "recovery" | "conversation" | "empty";
+  scope?:
+    | "default"
+    | "new"
+    | "recovery"
+    | "conversation"
+    | "empty"
+    | "background";
   current?: string;
   currentThinking?: string;
   onChoice?: (choice: Choice) => void | Promise<void>;
+  onAutomatic?: () => void | Promise<void>;
   onBlocked?: (blocked: boolean) => void;
 }) {
   const [provider, setProvider] = useState<PiProvider>("openai-codex");
@@ -95,7 +107,9 @@ export function PiModelSelector({
     setProvider(initialProvider);
     setChoiceProvider(initialProvider);
     setSelected(
-      current?.replace(providerPrefix, "") ?? data.default_model ?? undefined,
+      current?.replace(providerPrefix, "") ??
+        (scope === "background" ? undefined : data.default_model) ??
+        undefined,
     );
     setThinking(currentThinking ?? data.default_thinking ?? "off");
     // Catalog refreshes must not discard an unconfirmed selection.
@@ -107,7 +121,7 @@ export function PiModelSelector({
     data?.default_thinking,
   ]);
   useEffect(() => {
-    if (!data) return;
+    if (!data || scope === "background") return;
     const appliedProvider =
       current?.split("/")[0] ?? data.default_provider ?? "openai-codex";
     const appliedModel =
@@ -121,7 +135,7 @@ export function PiModelSelector({
         ),
       ),
     );
-  }, [data, current, onBlocked]);
+  }, [data, current, onBlocked, scope]);
   // Pi's default is optimistic (browser-mutation-layer): the choice shows
   // at once and Pi confirms in the background; a refusal reverts it.
   const saveDefault = async (choice: Choice) => {
@@ -137,13 +151,19 @@ export function PiModelSelector({
     if (outcome === "refused") throw Error("refused");
     return outcome;
   };
-  const commit = async (choice: Choice) => {
+  const commit = async (choice: Choice | "automatic") => {
     if (writing.current) return;
     writing.current = true;
     setBusy(true);
     setConfirmed(false);
     setError(false);
     try {
+      if (choice === "automatic") {
+        await onAutomatic?.();
+        setSelected(undefined);
+        setConfirmed(true);
+        return;
+      }
       if (scope === "recovery" && also) await saveDefault(choice);
       await onChoice?.({ ...choice, provider: choice.provider ?? provider });
       setSelected(choice.model);
@@ -162,13 +182,21 @@ export function PiModelSelector({
     data?.models.filter((m) => (m.provider ?? "openai-codex") === provider) ??
     [];
   const choose = (model: string, level = thinking) => {
+    const candidate = candidates.find((m) => m.id === model);
     if (
       busy ||
       (provider === "claude-bridge" && !claudeReady) ||
       data?.catalog_status === "unavailable" ||
-      refused(candidates.find((m) => m.id === model))
+      refused(candidate) ||
+      (scope === "background" && candidate && backgroundExcluded(candidate))
     )
       return;
+    // The recap's model takes no thinking level: Pi's background completion
+    // is not given one (recap-extension.mjs).
+    if (scope === "background") {
+      void commit({ provider, model });
+      return;
+    }
     const supported = candidates.find((m) => m.id === model)?.thinking_levels;
     const next = supported?.includes(level ?? "") ? level : supported?.[0];
     if (scope === "default") {
@@ -274,10 +302,30 @@ export function PiModelSelector({
               (provider === "claude-bridge" && !claudeReady)
             }
             onSelect={choose}
-            onThinking={(level) => {
-              if (selected && choiceProvider === provider)
-                choose(selected, level);
-            }}
+            onThinking={
+              scope === "background"
+                ? undefined
+                : (level) => {
+                    if (selected && choiceProvider === provider)
+                      choose(selected, level);
+                  }
+            }
+            unavailable={
+              scope === "background"
+                ? (m) => (backgroundExcluded(m) ? "Ei taustatöihin" : undefined)
+                : undefined
+            }
+            auto={
+              scope === "background"
+                ? {
+                    detail: data.background_models?.[provider]
+                      ? `Nyt ${modelDisplayName(`${provider}/${data.background_models[provider]}`, data.models)}`
+                      : "Keskustelun oma malli",
+                    selected: !current,
+                    onSelect: () => void commit("automatic"),
+                  }
+                : undefined
+            }
           />
           {scope === "recovery" ? (
             <label className="md-also">

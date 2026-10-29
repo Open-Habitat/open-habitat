@@ -54,7 +54,7 @@ type ConversationController struct {
 	// each other's temporary flock as an external writer. Never hold mu across I/O.
 	proofGate      chan struct{}
 	recapPath      string
-	recapIdleDelay time.Duration                                    // test seam; zero uses the production three-minute interval
+	recapIdleDelay time.Duration                                    // test seam; zero uses the person's recap setting
 	recapGenerator func(*conversation, string, uint64) recapOutcome // synthetic test seam
 	// started tells a process cut off by this daemon's restart from one cut
 	// off by a Pi stop since (process_interrupted_linux.go). Unix ms.

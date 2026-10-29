@@ -23,6 +23,27 @@ func (a *Auth) piModels(w http.ResponseWriter, r *http.Request) {
 	a.proxy(w, r, s, false)
 }
 
+// recapSettings relays the person's recap settings to their daemon, which
+// alone validates them and writes them into Pi's settings.
+func (a *Auth) recapSettings(w http.ResponseWriter, r *http.Request) {
+	if (r.Method != http.MethodGet && r.Method != http.MethodPut) || !a.exact(r, "/api/v1/pi/recap-settings") {
+		safe(w, 400, "invalid_request")
+		return
+	}
+	s, ok := a.authenticated(r)
+	if !ok {
+		safe(w, 401, "authentication_required")
+		return
+	}
+	if r.Method == http.MethodPut {
+		if denied := a.authorizeWrite(r, s); denied != "" {
+			safe(w, 403, denied)
+			return
+		}
+	}
+	a.proxy(w, r, s, false)
+}
+
 // Removal routes of the provider keys the mapped daemon manages. An unknown
 // provider is refused here rather than forwarded.
 var piCredentialRemovals = []string{"/api/v1/pi/credentials/openai", "/api/v1/pi/credentials/anthropic", "/api/v1/pi/credentials/deepseek"}
