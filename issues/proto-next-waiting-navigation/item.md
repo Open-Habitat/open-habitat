@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-next-waiting-navigation
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: moving to the next waiting conversation and back (Alt+arrows)
