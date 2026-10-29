@@ -72,6 +72,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(workspaceFilePreviewPath, s.auth.workspaceComposerRead)
 		mux.HandleFunc(terminalsPath, s.auth.terminalList)
 		mux.HandleFunc(terminalClosePath, s.auth.terminalClose)
+		mux.HandleFunc(terminalWriterPath, s.auth.terminalWriter)
 		mux.HandleFunc(terminalPath, s.auth.terminal)
 		mux.HandleFunc("/api/v1/workspaces", s.auth.workspaces)
 		mux.HandleFunc("/api/v1/workspaces/github/publish", s.auth.githubPublish)

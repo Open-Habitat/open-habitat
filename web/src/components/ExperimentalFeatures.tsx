@@ -49,7 +49,7 @@ export const experimentalFeatures = [
     needs:
       "Pi käynnissä tmuxissa samalla käyttäjällä. Ilman tmuxia painiketta ei ole.",
     caption: "Päätepaneeli",
-    landed: false,
+    landed: true,
   },
 ] as const satisfies readonly ExperimentalFeature[];
 

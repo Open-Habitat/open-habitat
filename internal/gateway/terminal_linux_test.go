@@ -147,7 +147,7 @@ func TestTerminalUpgradeRequiresExactOrigin(t *testing.T) {
 	if b := dialTerminal(t, server, "", "https://host.test", shellQuery); b.res.StatusCode != 401 {
 		t.Errorf("no session: %d", b.res.StatusCode)
 	}
-	for _, q := range []string{"workspace_id=ws_example123", "workspace_id=ws_example123&shell=new&shell=1", "workspace_id=ws_example123&shell=new&taskfleet=abcdef12-1", "workspace_id=..%2F&shell=new", "workspace_id=ws_example123&taskfleet=%2Frun%2Fx"} {
+	for _, q := range []string{"workspace_id=ws_example123", "workspace_id=ws_example123&shell=new&shell=1", "workspace_id=ws_example123&shell=new&taskfleet=abcdef12-1", "workspace_id=..%2F&shell=new", "workspace_id=ws_example123&taskfleet=%2Frun%2Fx", "workspace_id=ws_example123&conversation=pi:44444444-4444-4444-8444-444444444444", "workspace_id=ws_example123&conversation=%2Ftmp%2Ftmux-1%2Fdefault", "workspace_id=ws_example123&conversation=44444444-4444-4444-8444-444444444444&shell=new"} {
 		if b := dialTerminal(t, server, "browser", "https://host.test", q); b.res.StatusCode != 400 {
 			t.Errorf("query %q: %d", q, b.res.StatusCode)
 		}
@@ -198,6 +198,19 @@ func TestTerminalRelayCarriesFramesAndDaemonRefusals(t *testing.T) {
 	q := d.queries
 	d.mu.Unlock()
 	if len(q) != 1 || q[0] != "workspace_id=ws_example123&taskfleet=77f5c84c2248fcc06660-12" {
+		t.Fatalf("daemon query %q", q)
+	}
+	// A conversation's terminal Pi is named by the conversation only.
+	b = dialTerminal(t, server, "browser", "https://host.test", "workspace_id=ws_example123&conversation=44444444-4444-4444-8444-444444444444")
+	b.send(wsframe.OpText, `{"type":"auth","csrf":"token"}`)
+	b.send(wsframe.OpBinary, "x")
+	if f, err := b.read(3 * time.Second); err != nil || f.Op != wsframe.OpBinary {
+		t.Fatalf("writer relay: %+v %v", f, err)
+	}
+	d.mu.Lock()
+	q = d.queries
+	d.mu.Unlock()
+	if len(q) != 2 || q[1] != "workspace_id=ws_example123&conversation=44444444-4444-4444-8444-444444444444" {
 		t.Fatalf("daemon query %q", q)
 	}
 	d.refuse = 404
@@ -330,5 +343,32 @@ func TestTerminalRelayEndsWithSessionDuringHandshake(t *testing.T) {
 	}
 	if n := d.received.Load(); n != 0 {
 		t.Fatalf("%d frames reached the daemon after revocation", n)
+	}
+}
+
+// The writer question names a workspace and a conversation, nothing else: a
+// pane, socket or reordered query is refused before authentication.
+func TestTerminalWriterQueryShape(t *testing.T) {
+	_, a, _, _, _ := fixture(t)
+	const ok = "workspace_id=ws_example123&conversation=44444444-4444-4444-8444-444444444444"
+	for _, q := range []string{
+		"workspace_id=ws_example123",
+		"conversation=44444444-4444-4444-8444-444444444444&workspace_id=ws_example123",
+		"workspace_id=ws_example123&conversation=pi:44444444-4444-4444-8444-444444444444",
+		ok + "&pane=%251",
+		"workspace_id=ws_example123&conversation=%2Ftmp%2Ftmux-1%2Fdefault",
+	} {
+		r := httptest.NewRequest("GET", "https://host.test"+terminalWriterPath+"?"+q, nil)
+		w := httptest.NewRecorder()
+		a.terminalWriter(w, r)
+		if w.Code != 400 {
+			t.Errorf("%q: %d", q, w.Code)
+		}
+	}
+	r := httptest.NewRequest("GET", "https://host.test"+terminalWriterPath+"?"+ok, nil)
+	w := httptest.NewRecorder()
+	a.terminalWriter(w, r)
+	if w.Code != 401 {
+		t.Errorf("well-formed question without a session: %d", w.Code)
 	}
 }

@@ -14,6 +14,9 @@ const validateList = ajv.compile({
 const validateReady = ajv.compile({
   $ref: "https://open-habitat.invalid/contracts/v1/terminal.schema.json#/$defs/ready",
 });
+const validateWriter = ajv.compile({
+  $ref: "https://open-habitat.invalid/contracts/v1/terminal.schema.json#/$defs/writer",
+});
 const validateExit = ajv.compile({
   $ref: "https://open-habitat.invalid/contracts/v1/terminal.schema.json#/$defs/exit",
 });
@@ -42,6 +45,7 @@ export type TerminalReady = {
   type: "ready";
   shell?: string;
   taskfleet?: string;
+  conversation?: string;
   name?: string;
   read_only: boolean;
   survives_restart: boolean;
@@ -69,6 +73,39 @@ export async function listTerminals(
   return value as TerminalList;
 }
 
+/** Where a Pi in the person's own terminal writes a conversation: a tmux
+ * pane the panel can watch, a terminal it cannot, or nowhere it can name. */
+export type TerminalWriter = {
+  schema_version: 1;
+  workspace_id: string;
+  conversation: string;
+  place: "tmux" | "terminal" | "none";
+  session?: string;
+  window?: number;
+  name?: string;
+};
+
+export async function readTerminalWriter(
+  id: string,
+  conversation: string,
+  signal?: AbortSignal,
+): Promise<TerminalWriter> {
+  const response = await fetch(
+    `/api/v1/workspaces/terminals/writer?${new URLSearchParams({ workspace_id: id, conversation })}`,
+    { signal, credentials: "same-origin", cache: "no-store" },
+  );
+  if (response.status === 401) throw new TerminalLogin();
+  if (!response.ok) throw new Error("writer_unavailable");
+  const value: unknown = await response.json();
+  if (
+    !validateWriter(value) ||
+    (value as TerminalWriter).workspace_id !== id ||
+    (value as TerminalWriter).conversation !== conversation
+  )
+    throw new Error("writer_invalid");
+  return value as TerminalWriter;
+}
+
 /** × on a shell: ends its tmux session and everything running in it. */
 export async function closeShell(id: string, shell: string, csrf: string) {
   const outcome = await writeOutcome(
@@ -87,7 +124,8 @@ export async function closeShell(id: string, shell: string, csrf: string) {
 
 export type TerminalTarget =
   | { kind: "shell"; shell: string | "new" }
-  | { kind: "taskfleet"; token: string };
+  | { kind: "taskfleet"; token: string }
+  | { kind: "writer"; conversation: string };
 
 export type TerminalEvents = {
   ready: (ready: TerminalReady) => void;
@@ -107,7 +145,9 @@ export function terminalURL(
   const query =
     target.kind === "shell"
       ? `workspace_id=${encodeURIComponent(id)}&shell=${encodeURIComponent(target.shell)}`
-      : `workspace_id=${encodeURIComponent(id)}&taskfleet=${encodeURIComponent(target.token)}`;
+      : target.kind === "taskfleet"
+        ? `workspace_id=${encodeURIComponent(id)}&taskfleet=${encodeURIComponent(target.token)}`
+        : `workspace_id=${encodeURIComponent(id)}&conversation=${encodeURIComponent(target.conversation)}`;
   return `${origin.replace(/^http/, "ws")}/api/v1/workspaces/terminal?${query}`;
 }
 

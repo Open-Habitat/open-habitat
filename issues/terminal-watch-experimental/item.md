@@ -3,12 +3,13 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: experimental
 lane_seq: 3
 preparation: ready
 blocked_by: ['@proto-experimental-features', '@experimental-features-section']
+closed: 2026-10-29
 ---
 
 # Experimental: read-only mirror of a terminal Pi's tmux window
@@ -21,6 +22,6 @@ Implement `proto-open-in-terminal` direction **Katso** (Jari 29.10.): a terminal
 
 ## Acceptance Criteria
 
-- [ ] Mirror of the writer's tmux window, read-only, scoped to the conversation's workspace.
-- [ ] Short text; without tmux, show only.
-- [ ] Behind the experimental switch; tests; KOKEILTAVAA line.
+- [x] Mirror of the writer's tmux window, read-only, scoped to the conversation's workspace.
+- [x] Short text; without tmux, show only.
+- [x] Behind the experimental switch; tests; KOKEILTAVAA line.

@@ -111,6 +111,10 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	terminals := newTerminalHost(ctx, cfg, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "terminal"))
 	mux.Handle(TerminalsPath, terminals.TerminalsHandler(server.TrustedPeer))
 	mux.Handle(TerminalClosePath, terminals.TerminalCloseHandler(server.TrustedPeer))
+	terminals.histories = func() ([]nativeSession, error) { return nativeSessions(controller.nativeCfg()) }
+	terminals.ownPIDs = controller.ownPiPIDs
+	terminals.ownSessions = controller.ownPiSessions
+	mux.Handle(TerminalWriterPath, terminals.TerminalWriterHandler(server.TrustedPeer))
 	mux.Handle(TerminalPath, terminals.TerminalHandler(server.TrustedPeer))
 	mux.Handle(WorkspacePath, WorkspaceHandlerWithArchive(cfg, server.TrustedPeer, controller))
 	go watchNativeHistory(ctx, cfg, journal, nil)

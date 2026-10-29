@@ -25,6 +25,8 @@ export type TerminalTab = {
   /** A Taskfleet window watched read-only; its × detaches, never ends it. */
   readOnly?: boolean;
   session?: string;
+  /** The read-only tab is a terminal Pi's tmux pane, not a Taskfleet window. */
+  terminalPi?: boolean;
 };
 
 export type TerminalAttachable = {
@@ -99,7 +101,7 @@ const tip = (tab: TerminalTab) =>
   tab.busy
     ? `Ajossa: ${tab.command ?? "ohjelma"}`
     : tab.readOnly
-      ? `Taskfleet ${tab.session ?? ""} · vain luku`
+      ? `${tab.terminalPi ? "tmux" : "Taskfleet"} ${tab.session ?? ""} · vain luku`
       : "Kehotteessa";
 
 export function TerminalPanel({
@@ -323,7 +325,9 @@ export function TerminalPanel({
                   }
                   title={
                     tab.readOnly
-                      ? "Irrota: Taskfleetin ikkuna jatkaa"
+                      ? tab.terminalPi
+                        ? "Irrota: Pi jatkaa tmuxissa"
+                        : "Irrota: Taskfleetin ikkuna jatkaa"
                       : "Lopeta pääte"
                   }
                   onClick={() => onCloseTab(tab.key)}

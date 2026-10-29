@@ -24,6 +24,7 @@ import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
+import { Icon } from "../components/Icon";
 import { OutputBox } from "../components/OutputBox";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
 import {
@@ -36,6 +37,7 @@ import { RecapCard, useMinuteNow } from "../components/RecapCard";
 import { RestartNoticeMarker } from "../components/RestartNotice";
 import { SessionSettingsRow } from "../components/SessionSettingsRow";
 import { SkillInvocation } from "../components/SkillInvocation";
+import { useExperimentalFeature } from "./accountPreferences";
 import { useBrowserShell } from "./BrowserShell";
 import { type BashFailure, toolStopped } from "./bashFailure";
 import { type ConversationStore, useWindow } from "./conversationStore";
@@ -61,6 +63,11 @@ import {
   sessionMarkers,
 } from "./sessionSettings";
 import type { Agent } from "./snapshot";
+import {
+  readTerminalWriter,
+  TerminalLogin,
+  type TerminalWriter,
+} from "./terminals";
 import {
   rowIndexOf,
   scrollToEnd,
@@ -1447,12 +1454,14 @@ function HistoryViewContent({
     if (storagePressure.check) void store.reconnect(agent.agent_id);
   }, [storagePressure.check, store, agent.agent_id]);
 
+  const terminalWatch = useExperimentalFeature("terminal-watch");
   // The workspace's shells; this view has no composer to send a selection to.
   const shell = useBrowserShell({
     workspaceId,
     workspaceLabel: workspaceName,
     csrf,
     onLogin,
+    watchEnabled: terminalWatch,
   });
   const [eligibility, setEligibility] =
     useState<Awaited<ReturnType<typeof historyEligibility>>>();
@@ -1466,6 +1475,41 @@ function HistoryViewContent({
     onLogin,
   });
   const [actionError, setActionError] = useState("");
+  // Experimental (terminal-watch): where a Pi in the person's own terminal
+  // writes this conversation. Off, nothing is asked.
+  const conversation = agent.agent_id.startsWith("pi:")
+    ? agent.agent_id.slice(3)
+    : undefined;
+  const [writer, setWriter] = useState<TerminalWriter>();
+  useEffect(() => {
+    setWriter(undefined);
+    if (!terminalWatch || !conversation || agent.history !== "readable") return;
+    let controller = new AbortController();
+    const probe = () => {
+      controller.abort();
+      controller = new AbortController();
+      const signal = controller.signal;
+      void readTerminalWriter(workspaceId, conversation, signal)
+        .then((answer) => {
+          if (!signal.aborted) setWriter(answer);
+        })
+        .catch((error) => {
+          if (signal.aborted) return;
+          setWriter(undefined);
+          if (error instanceof TerminalLogin) onLogin();
+        });
+    };
+    probe();
+    const timer = globalThis.setInterval(probe, 5000);
+    return () => {
+      globalThis.clearInterval(timer);
+      controller.abort();
+    };
+  }, [terminalWatch, conversation, agent.history, workspaceId, onLogin]);
+  const writerPane =
+    terminalWatch && writer?.place === "tmux"
+      ? `${writer.session}:${writer.window}`
+      : undefined;
   useEffect(() => {
     let controller = new AbortController();
     const probe = () => {
@@ -1834,13 +1878,33 @@ function HistoryViewContent({
         <div>
           <strong data-testid="read-only-indicator">Vain luku</strong>
           <p>
-            {eligibility?.continuation === "writer_present"
-              ? "Jatkaminen estetty: keskustelulla on aktiivinen kirjoittaja."
-              : eligibility?.continuation === "unproven"
-                ? "Jatkamisen edellytyksiä ei voitu vahvistaa. Päivitä tiedot."
-                : "Tätä keskustelua ei voi ohjata selaimesta."}
+            {writerPane ? (
+              <>
+                Pi kirjoittaa tähän tmux-ikkunassa{" "}
+                <span className="ah-mono">{writerPane}</span>.
+              </>
+            ) : terminalWatch && writer?.place === "terminal" ? (
+              "Pi kirjoittaa tähän päätteessä."
+            ) : eligibility?.continuation === "writer_present" ? (
+              "Jatkaminen estetty: keskustelulla on aktiivinen kirjoittaja."
+            ) : eligibility?.continuation === "unproven" ? (
+              "Jatkamisen edellytyksiä ei voitu vahvistaa. Päivitä tiedot."
+            ) : (
+              "Tätä keskustelua ei voi ohjata selaimesta."
+            )}
           </p>
         </div>
+        {writerPane && conversation ? (
+          <ControlButton
+            size="row"
+            variant="secondary"
+            data-testid="terminal-watch"
+            onPress={() => shell.watch(conversation, writerPane)}
+          >
+            <Icon name="eye" width={16} height={16} />
+            Katso päätteessä
+          </ControlButton>
+        ) : null}
         {/* A browser conversation is never continued from here: once it is
             visible again it opens with its composer, and Pi starts on send. */}
         <LinkRow

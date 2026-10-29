@@ -368,6 +368,12 @@ for message in json.loads((BASE / "examples" / "terminal-messages.json").read_te
 must_reject("terminal.schema.json", {"workspace_id": "ws_example123", "shell": "../x"})
 must_reject("terminal.schema.json", {"workspace_id": "ws_example123", "shell": "0"})
 must_reject("terminal.schema.json", {"type": "ready", "taskfleet": "/run/user/1000/taskfleet/tmux-0.sock", "read_only": True, "survives_restart": False})
+writer = {"schema_version": 1, "workspace_id": "ws_example123", "conversation": "01a18138-fa3f-75eb-b302-21792486d5e7", "place": "tmux", "session": "work", "window": 2, "name": "pi"}
+must_reject("terminal.schema.json", {**writer, "socket": "/tmp/tmux-1000/default"})
+must_reject("terminal.schema.json", {**writer, "pane": "%12"})
+must_reject("terminal.schema.json", {k: v for k, v in writer.items() if k != "session"})
+must_reject("terminal.schema.json", {**writer, "place": "terminal"})
+must_reject("terminal.schema.json", {"type": "ready", "conversation": "/tmp/tmux-1000/default", "read_only": True, "survives_restart": False})
 bad_terminals = json.loads((BASE / "examples" / "terminal-list.json").read_text())
 bad_terminals["shells"][0]["cwd"] = "/home/x/src/monorepo"
 must_reject("terminal.schema.json", bad_terminals)

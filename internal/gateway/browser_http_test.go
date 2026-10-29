@@ -27,6 +27,7 @@ func TestBrowserRoutesHTTP2(t *testing.T) {
 		{"GET", editorFilesPrefix + "list?workspace_id=x&path=", "", a.editorFiles},
 		{"GET", terminalsPath + "?workspace_id=" + "ws_" + strings.Repeat("a", 24), "", a.terminalList},
 		{"POST", terminalClosePath, "{}", a.terminalClose},
+		{"GET", terminalWriterPath + "?workspace_id=" + "ws_" + strings.Repeat("a", 24) + "&conversation=44444444-4444-4444-8444-444444444444", "", a.terminalWriter},
 		{"GET", "/api/v1/workspaces/git?workspace_id=" + "ws_" + strings.Repeat("a", 24), "", a.workspaceGit},
 		{"POST", "/api/v1/workspaces/git/fetch", "{}", a.workspaceGitFetch},
 		{"GET", workspaceCommandsPath + "?workspace_id=" + "ws_" + strings.Repeat("a", 24), "", a.workspaceComposerRead},
