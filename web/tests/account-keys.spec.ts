@@ -95,6 +95,14 @@ test("@account-keys a created SSH key shows its public half and the agent's keys
   await page.reload();
   await expect(made).toHaveAttribute("data-unseen", "true");
   await expect(missing(page, "ssh")).toHaveCount(0);
+  // An opened row fits its card at desktop width: the chevron once sat past
+  // Kopioi, over the card's padding and edge.
+  const toggle = made
+    .getByRole("button")
+    .and(page.getByTestId("account-key-toggle"));
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  expect(await made.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
   // Review material, not a visual assertion.
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme });

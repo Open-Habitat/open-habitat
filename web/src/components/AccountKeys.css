@@ -1,11 +1,23 @@
 /* Settings › Avaimet (prototype round proto-account-keys-page, direction 2 Taulukko). */
 .ak-card {
   overflow: hidden;
+  /* Where a row's text starts: the leading disclosure chevron, the mark and
+   * their gaps. The opened detail and notes line up with it. */
+  --ak-indent: calc(
+    var(--ah-s2) +
+    var(--ah-control-row) +
+    28px +
+    var(--ah-s3) *
+    2
+  );
 }
 .ak-head,
 .ak-row {
   display: grid;
-  grid-template-columns: auto minmax(150px, 1fr) auto auto;
+  /* The disclosure chevron leads the row, as in a native outline: on the far
+   * side beyond Kopioi it read as a stray corner and, with a long fingerprint,
+   * spilled over the card edge. */
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
   align-items: center;
   column-gap: var(--ah-s3);
   padding: 10px var(--ah-s4);
@@ -19,8 +31,11 @@
   text-transform: uppercase;
   color: var(--ah-muted);
 }
+.ak-row {
+  padding-left: var(--ah-s2);
+}
 .ak-head > :first-child {
-  grid-column: span 2;
+  grid-column: span 3;
 }
 .ak-list {
   list-style: none;
@@ -98,7 +113,7 @@
 .ak-after,
 .ak-notice {
   margin: 0;
-  padding: 0 var(--ah-s4) 10px calc(var(--ah-s4) * 2 + 28px);
+  padding: 0 var(--ah-s4) 10px var(--ak-indent);
   color: var(--ah-ok);
   font-size: var(--ah-size-meta);
 }
@@ -135,7 +150,7 @@
 .ak-body {
   display: grid;
   gap: var(--ah-s3);
-  padding: 4px var(--ah-s4) 14px calc(var(--ah-s4) * 2 + 28px);
+  padding: 4px var(--ah-s4) 14px var(--ak-indent);
 }
 .ak-line {
   margin: 0;
@@ -182,7 +197,7 @@
   border-radius: 4px;
 }
 .ak-admin {
-  padding: 10px var(--ah-s4) 12px calc(var(--ah-s4) * 2 + 28px);
+  padding: 10px var(--ah-s4) 12px var(--ak-indent);
   border-top: 1px solid var(--ah-line-soft);
   font-size: var(--ah-size-meta);
   line-height: 1.5;
@@ -232,12 +247,19 @@
     display: none;
   }
   .ak-row {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
     row-gap: 2px;
-    padding: 12px 14px;
+    padding: 12px 14px 12px var(--ah-s2);
+  }
+  .ak-chev,
+  .ak-mark {
+    grid-row: 1 / span 2;
+  }
+  .ak-name {
+    grid-column: 3;
   }
   .ak-meta {
-    grid-column: 2;
+    grid-column: 3;
     grid-row: 2;
   }
   .ak-short {
@@ -248,7 +270,7 @@
     display: none;
   }
   .ak-act {
-    grid-column: 3;
+    grid-column: 4;
     grid-row: 1 / span 2;
   }
   .ak-body,

@@ -208,6 +208,18 @@ export function AccountKeysTable({
                   data-unseen={unseen.has(id) || undefined}
                 >
                   <div className="ak-row">
+                    <IconButton
+                      data-testid="account-key-toggle"
+                      size="row"
+                      variant="quiet"
+                      className="ak-chev"
+                      aria-label={`${kinds[entry.kind].title} ${entry.file}: ${expanded ? "sulje" : "näytä koko avain"}`}
+                      aria-expanded={expanded}
+                      aria-controls={expanded ? detailId : undefined}
+                      onPress={() => toggle(id)}
+                    >
+                      <Icon name="forward" />
+                    </IconButton>
                     <span className="ak-mark">
                       <Icon name={kinds[entry.kind].mark} />
                     </span>
@@ -250,18 +262,6 @@ export function AccountKeysTable({
                         <Icon name={done && copied?.ok ? "check" : "copy"} />
                         {done && copied?.ok ? "Kopioitu" : "Kopioi"}
                       </ControlButton>
-                      <IconButton
-                        data-testid="account-key-toggle"
-                        size="row"
-                        variant="quiet"
-                        className="ak-chev"
-                        aria-label={`${kinds[entry.kind].title} ${entry.file}: ${expanded ? "sulje" : "näytä koko avain"}`}
-                        aria-expanded={expanded}
-                        aria-controls={expanded ? detailId : undefined}
-                        onPress={() => toggle(id)}
-                      >
-                        <Icon name="forward" />
-                      </IconButton>
                     </span>
                   </div>
                   {done && (

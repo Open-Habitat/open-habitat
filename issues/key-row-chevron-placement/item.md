@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: settings-polish
 lane_seq: 1
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Keys table row chevron sits oddly beyond Kopioi
