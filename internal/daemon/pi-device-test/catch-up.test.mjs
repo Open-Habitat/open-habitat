@@ -70,7 +70,7 @@ test('without Taskfleet installed no run exists, which is an empty inventory, no
 
 // Each test owns the variables the daemon passes at launch: this suite may
 // itself run under a Habitat Pi, whose own stop must not leak in.
-const launchEnv = ['OH_PROCESS_SOCKET', 'OPEN_HABITAT_STOP_CAUSE', 'OPEN_HABITAT_STOPPED_AT'];
+const launchEnv = ['OH_PROCESS_SOCKET', 'OPEN_HABITAT_STOP_CAUSE', 'OPEN_HABITAT_STOPPED_AT', 'OPEN_HABITAT_STOP_DETAIL'];
 async function withLaunchEnv(env, body) {
   const previous = Object.fromEntries(launchEnv.map(k => [k, process.env[k]]));
   for (const k of launchEnv) delete process.env[k];
@@ -96,17 +96,18 @@ test('the first run after Pi starts gets one context message, and only when ther
   }
 }));
 
-test('the stop the daemon passed is this launch\'s alone: its first session takes it, and nothing Pi starts inherits it', () => withLaunchEnv({ OPEN_HABITAT_STOP_CAUSE: 'crash', OPEN_HABITAT_STOPPED_AT: '2026-10-28T07:03:43Z' }, async () => {
+test('the stop the daemon passed is this launch\'s alone: its first session takes it, and nothing Pi starts inherits it', () => withLaunchEnv({ OPEN_HABITAT_STOP_CAUSE: 'crash', OPEN_HABITAT_STOPPED_AT: '2026-10-28T07:03:43Z', OPEN_HABITAT_STOP_DETAIL: 'Pi exited with status 1; Habitat had not closed its input' }, async () => {
   const hooks = new Map();
   companion({ on: (k, f) => hooks.set(k, f), events: { on() {}, emit() {} } });
   assert.equal(process.env.OPEN_HABITAT_STOP_CAUSE, undefined, 'a tool, tmux window or nested Pi would claim this stop as its own');
   assert.equal(process.env.OPEN_HABITAT_STOPPED_AT, undefined);
+  assert.equal(process.env.OPEN_HABITAT_STOP_DETAIL, undefined);
   const said = (role, extra = {}) => ({ type: 'message', message: { role, ...extra } });
   const cut = [said('user'), said('assistant', { stopReason: 'toolUse' })];
   const ctx = branch => ({ cwd: undefined, sessionManager: { getBranch: () => branch, getSessionId: () => 's1' } });
   await hooks.get('session_start')({}, ctx(cut));
   const first = await hooks.get('before_agent_start')({});
-  assert.deepEqual(first.message.details.stopped, { cause: 'crash', at: '2026-10-28T07:03:43Z' });
+  assert.deepEqual(first.message.details.stopped, { cause: 'crash', at: '2026-10-28T07:03:43Z', detail: 'Pi exited with status 1; Habitat had not closed its input' });
   assert.equal(first.message.details.interrupted_turn, true);
   await hooks.get('session_start')({}, ctx(cut));
   assert.equal(await hooks.get('before_agent_start')({}), undefined, 'a later session in this Pi did not wake from that stop');
@@ -174,6 +175,14 @@ test('the catch-up names the stop the person\'s card named, and says nothing whe
   const unread = catchUpMessage([], { settled: [], rearm: [], available: false }, stopped);
   assert.doesNotMatch(unread.content, /Nothing settled/, 'an unread inventory is not an empty one');
   assert.match(unread.content, /could not read/);
+  const detail = "Habitat closed Pi's input after no reply from Pi to get_commands within 4s, which ends Pi; Pi exited with status 0";
+  const crash = stopFact({ OPEN_HABITAT_STOP_CAUSE: 'crash', OPEN_HABITAT_STOPPED_AT: '2026-10-28T18:22:57Z', OPEN_HABITAT_STOP_DETAIL: detail });
+  assert.deepEqual(crash, { cause: 'crash', at: '2026-10-28T18:22:57Z', detail });
+  const crashed = catchUpMessage([], { settled: [], rearm: [], available: true }, crash, true);
+  assert.ok(crashed.content.includes(`Pi ended without being asked (${detail}), and was started again`), 'the daemon\'s account of the crash is kept in the native history');
+  assert.deepEqual(crashed.details.stopped, crash);
+  assert.deepEqual(stopFact({ OPEN_HABITAT_STOP_CAUSE: 'idle', OPEN_HABITAT_STOPPED_AT: '2026-10-28T18:22:57Z', OPEN_HABITAT_STOP_DETAIL: detail }), { cause: 'idle', at: '2026-10-28T18:22:57Z' }, 'a detail belongs to a crash only');
+  assert.deepEqual(stopFact({ OPEN_HABITAT_STOP_CAUSE: 'crash', OPEN_HABITAT_STOPPED_AT: '2026-10-28T18:22:57Z', OPEN_HABITAT_STOP_DETAIL: 'two\nlines' }), { cause: 'crash', at: '2026-10-28T18:22:57Z' });
   const told = catchUpMessage([], { settled: [{ run_id: ids.own, title: 'csv', state: 'not_merged', summary: 'Vienti valmis.\n\nTörmäys.', branch: 'wt/csv', ended_at: '2026-10-26T18:41:00Z' }], rearm: [] }, stopped);
   assert.match(told.content, /Vienti valmis\. Törmäys\./, 'the agent reads the summary the person saw');
   assert.deepEqual(told.details.spinoffs, [{ run_id: ids.own, state: 'not_merged', title: 'csv', summary: 'Vienti valmis.\n\nTörmäys.', ended_at: '2026-10-26T18:41:00Z', branch: 'wt/csv' }]);

@@ -150,7 +150,11 @@ const stopCauses = {
 };
 export function stopFact(env = process.env) {
   const cause = env.OPEN_HABITAT_STOP_CAUSE, at = env.OPEN_HABITAT_STOPPED_AT;
-  return stopCauses[cause] && Number.isFinite(Date.parse(at ?? '')) ? { cause, at } : null;
+  if (!stopCauses[cause] || !Number.isFinite(Date.parse(at ?? ''))) return null;
+  // The daemon's own account of a crash (rest_linux.go crashDetail). Kept in
+  // the catch-up, it is in the native history when the journal has rotated.
+  const detail = env.OPEN_HABITAT_STOP_DETAIL;
+  return cause === 'crash' && typeof detail === 'string' && detail && detail.length <= 500 && !/[\u0000-\u001f]/.test(detail) ? { cause, at, detail } : { cause, at };
 }
 // Each state is Taskfleet's own report; a stall is Taskfleet's liveness
 // verdict, which a live worker can contradict, so it is not restated as fact.
@@ -163,7 +167,7 @@ export function catchUpMessage(processes, spinoffs, stopped = null, turnCut = fa
   // still not told as nothing.
   if (!news && !cut && (!stopped || spinoffs.available !== false)) return null;
   const lines = stopped
-    ? [`[Open Habitat] This conversation's Pi stopped at ${stopped.at} ${stopCauses[stopped.cause]}, and was started again for the message that follows. The person saw this same report from Habitat before writing, so answer their message rather than retelling it.${cut ? ' The turn it was working on was cut off: its last step above never finished.' : ''}${news ? ' While it was stopped:' : spinoffs.available === false ? '' : ' Nothing settled meanwhile.'}`]
+    ? [`[Open Habitat] This conversation's Pi stopped at ${stopped.at} ${stopCauses[stopped.cause]}${stopped.detail ? ` (${stopped.detail})` : ''}, and was started again for the message that follows. The person saw this same report from Habitat before writing, so answer their message rather than retelling it.${cut ? ' The turn it was working on was cut off: its last step above never finished.' : ''}${news ? ' While it was stopped:' : spinoffs.available === false ? '' : ' Nothing settled meanwhile.'}`]
     : ['[Open Habitat] This conversation\'s Pi had stopped (for example a server restart) and was started again for the message that follows. While it was stopped:'];
   if (processes.length) {
     lines.push('', 'Background processes that were cut off when Pi stopped (they are no longer running and their output is gone):');
@@ -251,6 +255,7 @@ export default function (pi) {
   let launchStop = stopFact();
   delete process.env.OPEN_HABITAT_STOP_CAUSE;
   delete process.env.OPEN_HABITAT_STOPPED_AT;
+  delete process.env.OPEN_HABITAT_STOP_DETAIL;
   const sockets = new Set();
   const watchers = new Set();
   const outputLeases = new Map();

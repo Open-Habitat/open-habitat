@@ -56,6 +56,34 @@ type piRPC struct {
 	// requester sees it once that response arrives.
 	recapMu   sync.Mutex
 	recapNote *recapExtensionOutcome
+	// Why this daemon itself ended Pi's input, if it did: closing stdin
+	// makes Pi shut down, which the exit watcher otherwise only sees as an
+	// unasked end. The first cause wins (endInput).
+	endMu    sync.Mutex
+	endCause string
+}
+
+// A full event queue makes the reader wait for the controller, and Pi waits
+// for its stdout in turn (rpc-mode backpressure). Only a controller that has
+// stopped consuming for this long poisons the channel.
+var piEventStall = 30 * time.Second
+
+// endInput closes Pi's stdin, which ends Pi, and records why. The cause is
+// daemon-authored, never native text: it reaches the service log and the
+// agent's catch-up (restEnv).
+func (p *piRPC) endInput(cause string) {
+	p.endMu.Lock()
+	if p.endCause == "" {
+		p.endCause = cause
+	}
+	p.endMu.Unlock()
+	_ = p.in.Close()
+}
+
+func (p *piRPC) inputEndCause() string {
+	p.endMu.Lock()
+	defer p.endMu.Unlock()
+	return p.endCause
 }
 
 // launchPiRPC is a fixture bridge. The production controller requires a fresh
@@ -233,60 +261,27 @@ func (p *piRPC) read() {
 		if err != nil {
 			if err != io.EOF {
 				p.overflow.Store(true)
+				// A closed descriptor is this daemon's own cleanup, not a frame.
+				if !errors.Is(err, os.ErrClosed) {
+					p.endInput("an unreadable or oversized frame from Pi")
+				}
 			}
 			break
 		}
 		line = bytes.TrimSuffix(line, []byte{'\r'})
 		if !json.Valid(line) {
 			p.overflow.Store(true)
+			p.endInput("a malformed frame from Pi")
 			break
 		}
 		if len(line) > 1<<20 {
-			var echo struct {
-				Type    string `json:"type"`
-				Message struct {
-					Role       string `json:"role"`
-					ToolCallID string `json:"toolCallId"`
-					ToolName   string `json:"toolName"`
-					IsError    bool   `json:"isError"`
-					Content    []struct {
-						Type string `json:"type"`
-						Text string `json:"text"`
-					} `json:"content"`
-				} `json:"message"`
-				ToolCallID string `json:"toolCallId"`
-				ToolName   string `json:"toolName"`
-				IsError    bool   `json:"isError"`
-			}
-			if json.Unmarshal(line, &echo) != nil {
+			bounded, ok := boundedPiFrame(line)
+			if !ok {
 				p.overflow.Store(true)
-				break
-			}
-			switch {
-			case echo.Type == "message_start" && echo.Message.Role == "user":
-				// An image-bearing steer: its text still tells which queued
-				// message Pi delivered (pi_unanswered_linux.go).
-				text := []map[string]string{}
-				for _, block := range echo.Message.Content {
-					if block.Type == "text" {
-						text = append(text, map[string]string{"type": "text", "text": block.Text})
-					}
-				}
-				line, _ = json.Marshal(map[string]any{"type": echo.Type, "message": map[string]any{"role": echo.Message.Role, "content": text}})
-				if len(line) > 1<<20 {
-					line, _ = json.Marshal(map[string]any{"type": echo.Type, "message": map[string]any{"role": echo.Message.Role}})
-				}
-			case (echo.Type == "message_start" || echo.Type == "message_end") && (echo.Message.Role == "user" || echo.Message.Role == "toolResult"):
-				line, _ = json.Marshal(map[string]any{"type": echo.Type, "message": map[string]any{"role": echo.Message.Role, "toolCallId": echo.Message.ToolCallID, "toolName": echo.Message.ToolName, "isError": echo.Message.IsError}})
-			case echo.Type == "tool_execution_end" || echo.Type == "tool_execution_update":
-				line, _ = json.Marshal(map[string]any{"type": echo.Type, "toolCallId": echo.ToolCallID, "toolName": echo.ToolName, "isError": echo.IsError})
-			case echo.Type == "agent_end" || echo.Type == "turn_end":
-				line, _ = json.Marshal(map[string]string{"type": echo.Type})
-			default:
-				p.overflow.Store(true)
-				_ = p.in.Close()
+				p.endInput("an oversized frame from Pi that must arrive whole")
 				return
 			}
+			line = bounded
 		}
 		frame := append(json.RawMessage(nil), line...)
 		var envelope struct {
@@ -294,6 +289,7 @@ func (p *piRPC) read() {
 		}
 		if json.Unmarshal(frame, &envelope) != nil || envelope.Type == "" {
 			p.overflow.Store(true)
+			p.endInput("a frame from Pi without a type")
 			break
 		}
 		var failure struct {
@@ -330,17 +326,124 @@ func (p *piRPC) read() {
 		}
 		select {
 		case queue <- frame:
+			continue
 		default:
-			// Dropping a frame may lose the only evidence of prompt acceptance
-			// or settlement. Poison the channel rather than claiming success.
+		}
+		// The claude bridge releases a whole tool call's argument deltas at
+		// once, thousands of frames within a second, faster than the
+		// controller publishes them. Wait for it rather than drop or poison:
+		// Pi waits for its stdout in turn. Dropping a frame could lose the
+		// only evidence of prompt acceptance or settlement, so a controller
+		// that stops consuming still poisons the channel.
+		stall := time.NewTimer(piEventStall)
+		select {
+		case queue <- frame:
+			stall.Stop()
+		case <-stall.C:
 			p.overflow.Store(true)
-			_ = p.in.Close()
+			p.endInput(fmt.Sprintf("Habitat stopped reading Pi's events for %s", piEventStall))
 			return
 		}
 	}
 	// Even a clean EOF is not proof of a completed prompt. A concurrent request
-	// sees a closed channel and reports uncertainty.
+	// sees a closed channel and reports uncertainty. Pi closed its output
+	// itself here, so closing its input causes nothing.
 	_ = p.in.Close()
+}
+
+// boundedPiFrame reduces a notification frame over 1 MiB to what the
+// controller reads from it: its type and the identity of its message, tool
+// call or stream event. A frame can legitimately grow that large: an
+// image-bearing steer, a long tool result, a large tool call's arguments in
+// toolcall_end, message_end and tool_execution_start, or an aggregate end
+// event. The content stays in Pi's native history, which the browser reloads.
+// A response, UI request or queue update is needed whole, so it fails closed.
+func boundedPiFrame(line []byte) ([]byte, bool) {
+	var echo struct {
+		Type    string `json:"type"`
+		Message *struct {
+			Role       string          `json:"role"`
+			ToolCallID string          `json:"toolCallId"`
+			ToolName   string          `json:"toolName"`
+			IsError    bool            `json:"isError"`
+			StopReason string          `json:"stopReason"`
+			CustomType string          `json:"customType"`
+			Content    json.RawMessage `json:"content"`
+		} `json:"message"`
+		ToolCallID string `json:"toolCallId"`
+		ToolName   string `json:"toolName"`
+		IsError    bool   `json:"isError"`
+		Assistant  *struct {
+			Type         string `json:"type"`
+			ContentIndex int    `json:"contentIndex"`
+			ID           string `json:"id"`
+			ToolName     string `json:"toolName"`
+			ToolCall     *struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"toolCall"`
+		} `json:"assistantMessageEvent"`
+	}
+	if json.Unmarshal(line, &echo) != nil || !safeNativeType(echo.Type) {
+		return nil, false
+	}
+	switch echo.Type {
+	case "response", "extension_ui_request", "queue_update":
+		return nil, false
+	case "agent_end", "turn_end":
+		out, _ := json.Marshal(map[string]string{"type": echo.Type})
+		return out, true
+	}
+	out := map[string]any{"type": echo.Type}
+	set := func(m map[string]any, key, value string) {
+		if value != "" {
+			m[key] = value
+		}
+	}
+	if m := echo.Message; m != nil {
+		message := map[string]any{}
+		set(message, "role", m.Role)
+		set(message, "toolCallId", m.ToolCallID)
+		set(message, "toolName", m.ToolName)
+		set(message, "stopReason", m.StopReason)
+		set(message, "customType", m.CustomType)
+		if m.Role == "toolResult" {
+			message["isError"] = m.IsError
+		}
+		out["message"] = message
+		if echo.Type == "message_start" && m.Role == "user" {
+			// An image-bearing steer: its text still tells which queued
+			// message Pi delivered (pi_unanswered_linux.go).
+			if text, ok := piUserText(m.Content); ok {
+				message["content"] = []map[string]string{{"type": "text", "text": text}}
+			}
+		}
+	}
+	set(out, "toolCallId", echo.ToolCallID)
+	set(out, "toolName", echo.ToolName)
+	if echo.Type == "tool_execution_end" || echo.Type == "tool_execution_update" {
+		out["isError"] = echo.IsError
+	}
+	if a := echo.Assistant; a != nil {
+		event := map[string]any{"type": a.Type, "contentIndex": a.ContentIndex}
+		set(event, "id", a.ID)
+		set(event, "toolName", a.ToolName)
+		if a.ToolCall != nil {
+			event["toolCall"] = map[string]string{"id": a.ToolCall.ID, "name": a.ToolCall.Name}
+		}
+		out["assistantMessageEvent"] = event
+	}
+	bounded, _ := json.Marshal(out)
+	if len(bounded) > 1<<20 {
+		if m, ok := out["message"].(map[string]any); ok {
+			delete(m, "content")
+		}
+		bounded, _ = json.Marshal(out)
+	}
+	if len(bounded) > 1<<20 {
+		bounded, _ = json.Marshal(map[string]string{"type": echo.Type})
+	}
+	return bounded, true
 }
 
 // Native aggregate end events contain all messages from a run, including
@@ -454,7 +557,7 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration, images
 	n, err := p.in.Write(b)
 	if err != nil || n != len(b) || p.closing.Load() {
 		p.poisoned = true
-		_ = p.in.Close()
+		p.endInput("a failed write of " + kind + " to Pi")
 		return piReply{}, errors.New("Pi acceptance uncertain: incomplete write")
 	}
 	timer := time.NewTimer(time.Until(deadline))
@@ -475,7 +578,7 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration, images
 			}
 			if json.Unmarshal(frame, &response) != nil || response.Type != "response" || response.ID != id || response.Command != kind || response.Success == nil || p.closing.Load() || p.overflow.Load() {
 				p.poisoned = true
-				_ = p.in.Close()
+				p.endInput("an unexpected reply from Pi to " + kind)
 				return piReply{}, errors.New("Pi acceptance uncertain: unexpected frame")
 			}
 			if !*response.Success {
@@ -531,7 +634,7 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration, images
 			// Pi may finish its native history instead of shutting down on EOF.
 			// Close still owns eventual process cleanup on service shutdown.
 			if kind != "abort" {
-				_ = p.in.Close()
+				p.endInput(fmt.Sprintf("no reply from Pi to %s within %s", kind, timeout))
 			}
 			return piReply{}, errors.New("Pi acceptance uncertain: timeout")
 		}

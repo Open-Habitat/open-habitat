@@ -3,13 +3,14 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: normal
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-29/conversation-pi-ends-mid-reply
 lane: conversation-live
 lane_seq: 50
+closed: 2026-10-29
 ---
 
 # Habitat conversation's Pi is ended mid-reply without being asked (twice on 28.10.)

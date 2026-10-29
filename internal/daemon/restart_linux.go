@@ -69,7 +69,7 @@ func nativeRestart(e nativeEntry) (historyEntry, bool) {
 	n := restartNotice{Processes: []restartProcess{}, Runs: []restartRun{}, StillRunning: []restartRun{}}
 	if st := m.Details.Stopped; st != nil && restCauses[st.Cause] {
 		if at, err := time.Parse(time.RFC3339Nano, st.At); err == nil {
-			n.Stopped = restView(restFact{st.Cause, at})
+			n.Stopped = restView(restFact{cause: st.Cause, at: at})
 		}
 	}
 	n.InterruptedTurn = n.Stopped != nil && m.Details.InterruptedTurn

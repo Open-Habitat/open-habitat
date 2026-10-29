@@ -143,7 +143,7 @@ func (p *piRPC) startBash(command string, excludeFromContext bool) (<-chan json.
 	n, err := p.in.Write(b)
 	if err != nil || n != len(b) || p.closing.Load() {
 		p.poisoned = true
-		_ = p.in.Close()
+		p.endInput("a failed write of bash to Pi")
 		return nil, errors.New("Pi command uncertain: incomplete write")
 	}
 	return reply, nil

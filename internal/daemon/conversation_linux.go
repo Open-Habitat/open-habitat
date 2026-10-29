@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
@@ -143,10 +144,11 @@ type conversation struct {
 	// Why and when this child stopped, and the stop it was started from: the
 	// facts of the rest card (rest_linux.go). Daemon memory only, like
 	// receipts; a daemon restart is itself the cause of every later rest.
-	stopCause string
-	stoppedAt time.Time
-	wokeFrom  restFact
-	told      bool // a prompt reached Pi, which gave the agent its catch-up
+	stopCause  string
+	stopDetail string // crashDetail, for a crash only
+	stoppedAt  time.Time
+	wokeFrom   restFact
+	told       bool // a prompt reached Pi, which gave the agent its catch-up
 }
 
 type heldMessage struct {
@@ -648,6 +650,9 @@ func (c *ConversationController) createWorktree(ctx context.Context, w http.Resp
 
 func (c *ConversationController) watch(s *conversation) {
 	<-s.rpc.exited
+	// Pi is reaped: a cause recorded after this, such as the reader seeing
+	// the close below, cannot have ended it.
+	inputCause := s.rpc.inputEndCause()
 	_ = s.rpc.in.Close()
 	_ = s.rpc.out.Close()
 	c.mu.Lock()
@@ -656,6 +661,14 @@ func (c *ConversationController) watch(s *conversation) {
 		s.stoppedAt = time.Now()
 	}
 	stopFor(s, "crash") // nobody here asked it to stop
+	if s.stopCause == "crash" && s.stopDetail == "" {
+		var state *os.ProcessState
+		if s.rpc.cmd != nil {
+			state = s.rpc.cmd.ProcessState
+		}
+		s.stopDetail = crashDetail(inputCause, state)
+		diagnostic.New(os.Stderr, "daemon").Warn("conversation_pi_ended", "outcome", "unasked", "agent_id", "pi:"+s.id, "detail", s.stopDetail)
+	}
 	s.interrupted = s.runActive || s.state == "pending" || s.state == "accepted"
 	s.runActive = false // a reaped child runs nothing, whatever its last event said
 	if s.recapTimer != nil {

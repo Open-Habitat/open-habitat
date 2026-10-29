@@ -135,7 +135,7 @@ func (c *ConversationController) reconcileClear(s *conversation, frame json.RawM
 	default:
 		// As the reader does: a dropped response must not read as success.
 		s.rpc.overflow.Store(true)
-		_ = s.rpc.in.Close()
+		s.rpc.endInput("a clear_queue reply Habitat could not hand on")
 	}
 }
 

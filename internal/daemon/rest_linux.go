@@ -4,9 +4,12 @@ package daemon
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -24,6 +27,10 @@ import (
 type restFact struct {
 	cause string
 	at    time.Time
+	// What this daemon saw of a crash (crashDetail): why it ended Pi's
+	// input, if it did, and how Pi exited. The agent's catch-up carries it
+	// into the native history, so it outlives the service journal.
+	detail string
 }
 
 // stopFor records why a child is being stopped. The first cause wins: the
@@ -38,7 +45,7 @@ func stopFor(s *conversation, cause string) {
 // the person's message. Caller holds c.mu.
 func (c *ConversationController) restOf(s *conversation) (restFact, bool, bool) {
 	if s == nil {
-		return restFact{"restart", time.UnixMilli(c.started)}, false, true
+		return restFact{cause: "restart", at: time.UnixMilli(c.started)}, false, true
 	}
 	// Woken by typing but not yet told: the rest it woke from still holds,
 	// also when this Pi stops again unused.
@@ -50,14 +57,14 @@ func (c *ConversationController) restOf(s *conversation) (restFact, bool, bool) 
 	}
 	if s.owner == nil {
 		// A stand-in handle for a conversation never started here.
-		return restFact{"restart", time.UnixMilli(c.started)}, false, true
+		return restFact{cause: "restart", at: time.UnixMilli(c.started)}, false, true
 	}
 	if s.stoppedAt.IsZero() {
 		// Reaped, but its exit watcher has not taken the lock yet.
 		s.stoppedAt = time.Now()
 		stopFor(s, "crash")
 	}
-	return restFact{s.stopCause, s.stoppedAt}, false, true
+	return restFact{cause: s.stopCause, at: s.stoppedAt, detail: s.stopDetail}, false, true
 }
 
 // restView is the snapshot's and the report's projection of a rest.
@@ -312,5 +319,27 @@ func restEnv(f restFact) []string {
 	if f.cause == "" {
 		return nil
 	}
-	return []string{"OPEN_HABITAT_STOP_CAUSE=" + f.cause, "OPEN_HABITAT_STOPPED_AT=" + f.at.UTC().Format(time.RFC3339)}
+	env := []string{"OPEN_HABITAT_STOP_CAUSE=" + f.cause, "OPEN_HABITAT_STOPPED_AT=" + f.at.UTC().Format(time.RFC3339)}
+	if f.cause == "crash" && f.detail != "" {
+		env = append(env, "OPEN_HABITAT_STOP_DETAIL="+f.detail)
+	}
+	return env
+}
+
+// crashDetail is the daemon's own account of an unasked end, built only from
+// its fixed wording, an allowlisted request kind and the exit status: no
+// native text, which could carry provider output or secrets.
+func crashDetail(inputCause string, state *os.ProcessState) string {
+	exit := "Pi's exit status is unknown"
+	if state != nil {
+		if ws, ok := state.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
+			exit = "Pi was killed by signal " + ws.Signal().String()
+		} else {
+			exit = fmt.Sprintf("Pi exited with status %d", state.ExitCode())
+		}
+	}
+	if inputCause == "" {
+		return exit + "; Habitat had not closed its input"
+	}
+	return "Habitat closed Pi's input after " + inputCause + ", which ends Pi; " + exit
 }
