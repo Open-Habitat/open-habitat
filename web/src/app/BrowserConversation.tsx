@@ -96,6 +96,7 @@ import {
 import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { capacityReason } from "./mutations";
+import { type NextWaiting, NextWaitingDock } from "./NextWaitingDock";
 import { PendingConversation } from "./PendingConversation";
 import {
   type Choice,
@@ -227,7 +228,10 @@ function BrowserConversationContent({
   onSessionCreated,
   onNativeHistory,
   github,
+  nextWaiting,
 }: {
+  /** The walk to the next conversation waiting for the person (experimental). */
+  nextWaiting?: NextWaiting;
   /** The person's GitHub connection, when it needs saying here: the app
    * reads it from the snapshot, not from this conversation. */
   github?: ReactNode;
@@ -2405,6 +2409,16 @@ function BrowserConversationContent({
                 piNotRunning={bridgeExpected}
                 ask={workerAsk}
               />
+              {id ? (
+                <NextWaitingDock
+                  next={nextWaiting}
+                  agentId={id}
+                  working={presentation.activity === "working"}
+                  needsYou={
+                    statusStale || !current || !!current.pending_question
+                  }
+                />
+              ) : null}
               <Composer
                 csrf={csrf}
                 speech={speech}

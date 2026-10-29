@@ -26,7 +26,7 @@ export const experimentalFeatures = [
     shows: "Keskustelun nimen, miksi se odottaa ja Avaa-painikkeen (Alt+↓).",
     needs: "Ei muuta. Järjestys seuraa toistaiseksi sivupalkkia.",
     caption: "Keskustelun alareuna",
-    landed: false,
+    landed: true,
   },
   {
     id: "worker-row-sentence",

@@ -3,13 +3,14 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: experimental
 lane_seq: 1
 collision: [web/src/app/BrowserConversation.tsx]
 preparation: ready
 blocked_by: ['@proto-experimental-features', '@experimental-features-section']
+closed: 2026-10-29
 ---
 
 # Experimental: next waiting conversation row after replying
@@ -22,5 +23,5 @@ Implement the "next waiting conversation" row from `research-workmux-sidebar` ro
 
 ## Acceptance Criteria
 
-- [ ] Row appears on the host's working confirmation, opens the next waiting conversation.
-- [ ] Behind the experimental switch; browser spec; KOKEILTAVAA line.
+- [x] Row appears on the host's working confirmation, opens the next waiting conversation.
+- [x] Behind the experimental switch; browser spec; KOKEILTAVAA line.

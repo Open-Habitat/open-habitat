@@ -1,0 +1,111 @@
+/* Seuraava odottava, Työssä (research-workmux-sidebar round 3b): a slim line
+   between the stream and the composer, as wide as the composer. */
+.ah-next-waiting {
+  flex: none;
+  display: grid;
+  gap: 2px;
+  padding: 0 var(--ah-column-pad-inline) 6px;
+}
+.ah-next-waiting > * {
+  width: min(
+    100%,
+    calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline))
+  );
+  margin-inline: auto;
+}
+.ah-next-waiting.quiet {
+  text-align: center;
+}
+.ah-next-note {
+  margin: 0;
+  color: var(--ah-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+.ah-next-open {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 6px 4px 12px;
+  border: 1px solid var(--ah-accent-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-accent-soft);
+  color: var(--ah-ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.ah-next-open:hover {
+  border-color: var(--ah-accent);
+}
+.ah-next-open:focus-visible {
+  outline: 2px solid var(--ah-accent);
+  outline-offset: 2px;
+}
+.ah-next-label {
+  flex: none;
+  color: var(--ah-accent-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* The rail's your-turn ball. */
+.ah-next-ball {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ah-turn);
+}
+.ah-next-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.ah-next-det {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ah-muted);
+  font-size: 12px;
+}
+.ah-next-more {
+  flex: none;
+  color: var(--ah-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.ah-next-go {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.ah-next-go kbd {
+  font: 600 11px var(--ah-mono);
+}
+/* On the phone the line keeps the name, the count and Avaa. */
+@media (max-width: 800px) {
+  .ah-next-open {
+    min-height: 40px;
+  }
+  .ah-next-label,
+  .ah-next-det,
+  .ah-next-go kbd {
+    display: none;
+  }
+  .ah-next-title {
+    flex: 1;
+  }
+}

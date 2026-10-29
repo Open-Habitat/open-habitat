@@ -89,6 +89,7 @@ import {
 } from "./mutations";
 import { NewConversationModelDialog } from "./NewConversationModelDialog";
 import { NewWorkspacePage } from "./NewWorkspacePage";
+import { useWaitingWalk } from "./nextWaiting";
 import { CreatingConversation } from "./PendingConversation";
 import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
 import { PiModelsProvider } from "./PiModels";
@@ -1131,6 +1132,23 @@ export function App() {
     selectedId,
     search: location.search,
   });
+  // Every conversation opened, by any route, is a step of the walk the
+  // experimental next-waiting line offers (view state of this tab).
+  const walkConversation =
+    selectedId && /^pi:[0-9a-fA-F-]{36}$/.test(openConversation ?? "")
+      ? openConversation
+      : null;
+  const walk = useWaitingWalk(
+    identity,
+    walkConversation
+      ? {
+          agentId: walkConversation,
+          href: `/workspaces/${selectedId}?conversation=${walkConversation}`,
+        }
+      : selectedAgentId
+        ? { agentId: selectedAgentId, href: `/agents/${selectedAgentId}` }
+        : undefined,
+  );
   // Single-workspace mode (Yläpalkissa, Jari 18.10.2026) follows the number
   // of visible native workspaces in the snapshot; nothing is stored, and
   // hidden workspaces do not count. An unconfirmed listing keeps the sidebar,
@@ -2351,6 +2369,11 @@ export function App() {
                         ) && a.workspace_id === selected.workspace_id,
                   )?.title.display
                 }
+                nextWaiting={{
+                  yours: now.yours,
+                  walk,
+                  workspaceId: selected.workspace_id,
+                }}
                 onSessionCreated={(session) => {
                   setDaemonSessions((old) => [...old, session]);
                   refresh(); // The new agent must be in the snapshot before its live turn is seeded.
