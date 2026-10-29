@@ -18,6 +18,10 @@ import (
 )
 
 type fake struct {
+	// mu guards the fields against the adapter's own scheduled checks, which
+	// run gh in the background; a test that changes the fake while one may be
+	// due does so through set.
+	mu     sync.Mutex
 	t      *testing.T
 	log    []string
 	token  string
@@ -35,7 +39,15 @@ type fake struct {
 	held string
 }
 
+func (f *fake) set(change func()) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	change()
+}
+
 func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	key := c.Program + " " + strings.Join(c.Args, " ")
 	f.log = append(f.log, key)
 	for _, s := range append(append([]string{}, c.Args...), os.Environ()...) {
@@ -63,7 +75,10 @@ func (f *fake) Run(_ context.Context, c Command) ([]byte, error) {
 	case "gh api --hostname github.com user --jq {id: .id, login: .login}":
 		if probed := f.probed; probed != nil {
 			f.probed = nil
+			// A probe may change the fake itself.
+			f.mu.Unlock()
 			probed()
+			f.mu.Lock()
 		}
 		if f.apiErr != nil {
 			return nil, f.apiErr
@@ -191,22 +206,24 @@ func TestStatusFreshSyntheticIdentityAndErrors(t *testing.T) {
 	if got := a.Status(context.Background()); got != "expired" {
 		t.Fatal(got)
 	}
-	f.apiErr = unreachable
+	f.set(func() { f.apiErr = unreachable })
 	if got := a.Status(context.Background()); got != "unreachable" {
 		t.Fatal(got)
 	}
-	f.apiErr = nil
-	f.fail = "gh api --hostname github.com user --jq {id: .id, login: .login}"
-	f.fail = "gh config get git_protocol --host github.com"
+	f.set(func() {
+		f.apiErr = nil
+		f.fail = "gh config get git_protocol --host github.com"
+	})
 	if got := a.Status(context.Background()); got != "partial" {
 		t.Fatal(got)
 	}
-	f.fail = ""
-	f.logged = false
+	f.set(func() { f.fail, f.logged = "", false })
 	if got := a.Status(context.Background()); got != "disconnected" {
 		t.Fatal(got)
 	}
 	// Only explicit native absence, not an arbitrary error, proves no login.
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	for _, cmd := range f.log {
 		if strings.Contains(cmd, f.token) || strings.Contains(cmd, "auth login") || strings.Contains(cmd, "auth logout") {
 			t.Fatal("unsafe status command", cmd)
