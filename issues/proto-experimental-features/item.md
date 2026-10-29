@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-experimental-features
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: Kokeelliset ominaisuudet settings section
