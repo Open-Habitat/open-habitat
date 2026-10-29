@@ -2,13 +2,16 @@
 created: 2026-10-29
 updated: 2026-10-29
 type: chore
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: worker observation
 source_ref: taskfleet:01m63gzbxj4f9sdcbjqczrrf5q/observation:web-lint-import-order
 originating_run: 01m63gzbxj4f9sdcbjqczrrf5q
 originating_run_kind: spinoff
+lane: gate-health
+lane_seq: 120
+preparation: ready
 ---
 
 # Web lint fails on main: unsorted file-offer schema imports
