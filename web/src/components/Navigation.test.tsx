@@ -323,6 +323,51 @@ describe("Ryhmät rows", () => {
         ?.textContent,
     ).toBe("kasvimaa · Odottaa viestiä · 2 t sitten");
   });
+  it("offers each row's archive, says why one waits, and keeps focus in the rail", () => {
+    const archived: string[] = [];
+    const view = render(
+      <MemoryRouter>
+        <NowSections
+          yours={[agent("y1", { attentionLabel: "Uusi vastaus" })]}
+          running={[
+            agent("w1", { activity: "working", changedAt: Date.now() }),
+            agent("w2", { changedAt: Date.now() }),
+          ]}
+          archive={{
+            reason: (id) =>
+              id === "w1" ? "Odota agentin vuoron päättymistä." : "",
+            run: (id) => archived.push(id),
+          }}
+        />
+      </MemoryRouter>,
+    );
+    const button = (id: string) =>
+      view
+        .getByTestId(`agent-item-${id}`)
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="rail-archive-conversation"]',
+        );
+    // The button is a sibling of the row's link, never inside it.
+    expect(button("w2")?.closest("a")).toBeNull();
+    expect(button("w2")?.getAttribute("aria-label")).toBe(
+      "Arkistoi Keskustelu w2",
+    );
+    expect(button("w1")?.disabled).toBe(true);
+    expect(
+      document.getElementById(
+        button("w1")?.getAttribute("aria-describedby") ?? "",
+      )?.textContent,
+    ).toBe("Odota agentin vuoron päättymistä.");
+    button("w1")?.click();
+    expect(archived).toEqual([]);
+    button("w2")?.focus();
+    fireEvent.click(button("w2") as HTMLButtonElement);
+    expect(archived).toEqual(["w2"]);
+    // The last row hands focus to the one before it.
+    expect(document.activeElement).toBe(
+      view.getByTestId("agent-item-w1").querySelector("a"),
+    );
+  });
   it("groups Käynnissä, folds quiet rows, and sinks an all-quiet workspace", () => {
     const view = render(
       <MemoryRouter>

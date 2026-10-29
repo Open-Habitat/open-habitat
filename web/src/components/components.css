@@ -4331,6 +4331,33 @@ details[open] > summary:not([class])::before {
     opacity: 1;
   }
 }
+/* A rail conversation's archive button takes the place of the row's age
+   while the pointer or focus is on the row, so the rail does not shift.
+   A touch screen has no hover: there it always shows, after the age. */
+.ah-nav-archive {
+  display: flex;
+  align-items: center;
+}
+@media (hover: hover) {
+  .ah-now-row {
+    position: relative;
+  }
+  .ah-nav-archive {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 2px;
+    opacity: 0;
+  }
+  .ah-agent-item:is(:hover, :focus-within) .ah-nav-archive {
+    opacity: 1;
+  }
+  .ah-agent-item:is(:hover, :focus-within):has(.ah-nav-archive) .ah-nav-time {
+    display: none;
+  }
+  .ah-agent-item:is(:hover, :focus-within):has(.ah-nav-archive) .ah-nav-link {
+    padding-inline-end: 30px;
+  }
+}
 .ah-workspace-menu {
   min-width: 230px;
 }

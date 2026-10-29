@@ -3,6 +3,7 @@ import {
   AccountShelf,
   ArchivedWorkspaces,
   NowSections,
+  type RailArchive,
   WorkspaceNavRow,
   WorkspaceRail,
 } from "../components";
@@ -127,7 +128,10 @@ export function WorkspaceRailView({
   pathname,
   clones,
   bell,
+  archiveConversation,
 }: {
+  /** The conversation rows' archive button; absent where none is offered. */
+  archiveConversation?: RailArchive;
   /** The status bell, where no top bar carries it. */
   bell?: ReactNode;
   phase: RootState["connection"]["phase"];
@@ -201,6 +205,7 @@ export function WorkspaceRailView({
           yours={now.yours}
           running={now.running}
           collapsed={collapsed}
+          archive={archiveConversation}
         />
       }
       filterValue={filter}

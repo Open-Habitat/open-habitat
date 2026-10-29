@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: sidebar
 lane_seq: 3
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Sidebar conversation row: archive button on hover

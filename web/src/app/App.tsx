@@ -1390,7 +1390,8 @@ export function App() {
   const changeArchive = async (
     agent: Agent,
     archived: boolean,
-    origin: "conversation" | "home" = "conversation",
+    // The rail archives in place unless the conversation is the open one.
+    origin: "conversation" | "home" | "rail" = "conversation",
   ) => {
     const token = agent.observation_token;
     if (
@@ -1411,7 +1412,7 @@ export function App() {
         title: agent.title.display,
         route: fromRoute,
       });
-      if (origin !== "home") {
+      if (origin === "conversation") {
         archiveFocusPending.current = agent.workspace_id;
         navigate(`/workspaces/${agent.workspace_id}`);
       }
@@ -1726,13 +1727,30 @@ export function App() {
     return "";
   };
   // A conversation whose Pi has written no history yet has nothing to keep
-  // in the archive: putting it away closes it.
-  const archiveFromCard = (id: string) => {
+  // in the archive: putting it away closes it. The status read proves the
+  // first entry before the catalog does, right after the first reply.
+  const putAway = (id: string, origin: "home" | "conversation" | "rail") => {
     const agent = snapshot?.agents.find((a) => a.agent_id === id);
     if (!agent) return Promise.resolve(false);
-    return agent.history === "missing"
-      ? closeConversation(agent, "home")
-      : changeArchive(agent, true, "home");
+    const status = conversationStore?.readMetadata().statuses.get(id);
+    return agent.history === "missing" && status?.native_history !== "present"
+      ? closeConversation(agent, origin === "conversation" ? origin : "home")
+      : changeArchive(agent, true, origin);
+  };
+  const archiveFromCard = (id: string) => putAway(id, "home");
+  // A rail row is archived like a home card, but the refusal shows in the
+  // archive notice, and the open conversation is left as from its own page.
+  const railArchive = {
+    reason: (id: string) => {
+      const conversation = returnConversations.find((c) => c.id === id);
+      return conversation
+        ? cardArchiveReason(conversation)
+        : "Arkistointi ei ole käytettävissä.";
+    },
+    run: (id: string) => {
+      const open = selectedAgentId === id || openConversation === id;
+      void putAway(id, open ? "conversation" : "rail");
+    },
   };
   // An empty worktree agent (ADR 0025): the workspace page's icon row, or
   // the top bar's menu in single-workspace mode.
@@ -2869,6 +2887,7 @@ export function App() {
                   onAdministration={() => navigate(settingsHref("palvelin"))}
                   pathname={location.pathname}
                   clones={cloneJobs}
+                  archiveConversation={railArchive}
                 />
               ) : undefined
             }

@@ -488,6 +488,12 @@ export interface AgentNavModel {
   /** The workspace's name, for the group heading and the narrow rail. */
   workspaceName?: string;
 }
+/** The rail rows' archive button: why a row cannot be archived now ("" when
+ * it can) and the archive itself. */
+export interface RailArchive {
+  reason: (agentId: string) => string;
+  run: (agentId: string) => void;
+}
 /** The rail's state ball (research-workmux-sidebar round 3, Ryhmät tiiviinä):
  * working includes waiting on background work, your turn is a question or an
  * unread reply, done waits for a message, failed needs a look. */
@@ -580,7 +586,10 @@ export function AgentNavItem({
   question = false,
   detail,
   now = Date.now(),
-}: AgentNavModel & { now?: number }) {
+  archive,
+}: AgentNavModel & { now?: number; archive?: RailArchive }) {
+  const archiveReasonId = useId();
+  const archiveReason = archive?.reason(agentId);
   const ball = ballOf({
     failed,
     attentionLabel,
@@ -621,7 +630,53 @@ export function AgentNavItem({
     >
       <ListRow
         className="ah-sidebar-agent-row ah-now-row"
-        trailing={spinoffWorking ? <SpinoffWorkingMark /> : undefined}
+        trailing={
+          spinoffWorking || archive ? (
+            <>
+              {spinoffWorking ? <SpinoffWorkingMark /> : null}
+              {archive ? (
+                <span
+                  className="ah-nav-archive"
+                  title={archiveReason || "Arkistoi"}
+                >
+                  <ControlButton
+                    data-testid="rail-archive-conversation"
+                    variant="quiet"
+                    size="inline"
+                    aria-label={`Arkistoi ${title}`}
+                    aria-describedby={
+                      archiveReason ? archiveReasonId : undefined
+                    }
+                    isDisabled={!!archiveReason}
+                    onPress={(event) => {
+                      // The row leaves the list at once; keep the keyboard in
+                      // the rail on the next row rather than on the page.
+                      const row = (event.target as HTMLElement).closest("li");
+                      const rows = [
+                        ...(row
+                          ?.closest(".ah-now")
+                          ?.querySelectorAll<HTMLElement>(
+                            ".ah-agent-item .ah-nav-link",
+                          ) ?? []),
+                      ];
+                      const here = rows.findIndex((r) => row?.contains(r));
+                      if (row?.contains(document.activeElement))
+                        (rows[here + 1] ?? rows[here - 1])?.focus();
+                      archive.run(agentId);
+                    }}
+                  >
+                    <Icon name="archive" />
+                  </ControlButton>
+                  {archiveReason ? (
+                    <span id={archiveReasonId} className="ah-visually-hidden">
+                      {archiveReason}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
+            </>
+          ) : undefined
+        }
       >
         <NavLink
           href={href}
@@ -838,9 +893,11 @@ function FoldToggle({
 function RunningGroups({
   running,
   now,
+  archive,
 }: {
   running: AgentNavModel[];
   now: number;
+  archive?: RailArchive;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const toggle = (key: string) => setOpen((o) => ({ ...o, [key]: !o[key] }));
@@ -860,7 +917,7 @@ function RunningGroups({
   const live = ordered.filter(([, g]) => g.rows.some((a) => !quiet(a, now)));
   const dormant = ordered.filter(([, g]) => g.rows.every((a) => quiet(a, now)));
   const row = (agent: AgentNavModel) => (
-    <AgentNavItem key={agent.agentId} {...agent} now={now} />
+    <AgentNavItem key={agent.agentId} {...agent} now={now} archive={archive} />
   );
   return (
     <>
@@ -929,10 +986,13 @@ export function NowSections({
   yours,
   running,
   collapsed = false,
+  archive,
 }: {
   yours: AgentNavModel[];
   running: AgentNavModel[];
   collapsed?: boolean;
+  /** Absent where the rail offers no archive (a story). */
+  archive?: RailArchive;
 }) {
   const yoursId = useId();
   const runningId = useId();
@@ -972,7 +1032,12 @@ export function NowSections({
         {yours.length ? (
           <ul>
             {yours.map((agent) => (
-              <AgentNavItem key={agent.agentId} {...agent} now={now} />
+              <AgentNavItem
+                key={agent.agentId}
+                {...agent}
+                now={now}
+                archive={archive}
+              />
             ))}
           </ul>
         ) : (
@@ -991,7 +1056,7 @@ export function NowSections({
           ) : null}
         </h2>
         {running.length ? (
-          <RunningGroups running={running} now={now} />
+          <RunningGroups running={running} now={now} archive={archive} />
         ) : (
           <p className="ah-now-empty">Mikään ei ole käynnissä.</p>
         )}
