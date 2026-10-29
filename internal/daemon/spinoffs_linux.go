@@ -246,6 +246,12 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 	rows := []spinoffRow{}
 	views := []spinoffView{}
 	var live []int // live rows, by index in rows, to enrich with a profile
+	// A live worker's own session says whether it is at work.
+	home, _ := os.Open(cfg.Home)
+	if home != nil {
+		defer home.Close()
+	}
+	now := time.Now()
 	availability := "available"
 	var reply struct {
 		Schema   int      `json:"schema_version"`
@@ -283,7 +289,7 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 			}
 			row := spinoffRow{ID: r.ID, Title: prefixBytes(r.Title, 200), CreatedAt: nativeTimestamp(r.CreatedAt), State: "unknown", Harness: workerHarness(r.Harness), AwaitingInput: r.AwaitingInput, OtherRepo: otherRepository(r.SourceRepo, parent.cwd)}
 			if runID == "" && (r.Status == "pending" || r.Status == "running") {
-				row.State = spinoffState(r)
+				row.State, row.AwaitingInput = liveWorkerState(home, cfg.UID, r, now)
 				row.SourceBranch = prefixBytes(r.SourceBranch, 200)
 				live = append(live, len(rows))
 				rows = append(rows, row)
@@ -292,9 +298,8 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 			// List is inventory, not landing proof: only show carries the
 			// verified landed flag and retained report/preserved work.
 			if detail, shown := showSpinoff(ctx, cfg.Home, r.ID, *parent); shown {
-				row.State = spinoffState(detail)
+				row.State, row.AwaitingInput = liveWorkerState(home, cfg.UID, detail, now)
 				row.Harness = workerHarness(detail.Harness)
-				row.AwaitingInput = detail.AwaitingInput
 				row.SourceBranch = prefixBytes(detail.SourceBranch, 200)
 				row.Worktree = prefixBytes(detail.WorktreePath, 1024)
 				row.Profile = prefixBytes(detail.Manifest.Selection.Profile, 64)
@@ -530,16 +535,23 @@ func filterTaskfleetWorkspaces(home string, entries []Workspace, runs []nativeSp
 	return result
 }
 
-// workingSpinoffs also includes runs in sibling repositories, regardless of
-// whether this daemon still holds the parent's wait after a restart.
-func workingSpinoffs(runs []nativeSpinoff, parent nativeSession) int {
-	n := 0
+// workingSpinoffs counts the parent's own runs at work and those whose Pi
+// waits at its prompt. It also includes runs in sibling repositories,
+// regardless of whether this daemon still holds the parent's wait after a
+// restart.
+func workingSpinoffs(home *os.File, uid int, runs []nativeSpinoff, parent nativeSession, now time.Time) (working, idle int) {
 	for _, r := range runs {
-		if belongsSpinoff(r, parent) && spinoffState(r) == "working" {
-			n++
+		if !belongsSpinoff(r, parent) {
+			continue
+		}
+		switch state, _ := liveWorkerState(home, uid, r, now); state {
+		case "working":
+			working++
+		case "idle":
+			idle++
 		}
 	}
-	return n
+	return working, idle
 }
 
 // workerFailedUnseen says whether one of the conversation's own Taskfleet

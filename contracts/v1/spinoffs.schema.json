@@ -57,8 +57,10 @@
             "maxLength": 64
           },
           "state": {
+            "description": "working: Taskfleet runs the worker and its agent is at work. idle: Taskfleet still runs it, but the worker's own Pi session says its turn ended and it waits at its prompt for a person (an interactive run waiting for review, or a worker that stopped without finishing).",
             "enum": [
               "working",
+              "idle",
               "waiting_parent",
               "merged",
               "unmerged",

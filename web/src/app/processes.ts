@@ -16,6 +16,7 @@ export function spinoffLabel(run: ProcessSpinoff): string {
   if (run.state)
     return {
       working: "Työskentelee",
+      idle: "Odottaa sinua",
       waiting_parent: "Odottaa pääagenttia",
       merged: "Mergetty",
       unmerged: run.preserved ? "Ei mergetty · työ tallessa" : "Ei mergetty",

@@ -35,6 +35,7 @@ export interface Spinoff {
   created_at: string;
   state:
     | "working"
+    | "idle"
     | "waiting_parent"
     | "merged"
     | "unmerged"
@@ -129,6 +130,8 @@ export async function readSpinoffs(
 export function spinoffStateLabel(run: Spinoff) {
   return {
     working: "Työskentelee",
+    // Pi's own word: its turn ended and it waits at its prompt.
+    idle: run.awaiting_input ? "Odottaa vastausta päätteessä" : "Odottaa sinua",
     waiting_parent: "Odottaa pääagenttia",
     merged: "Mergetty",
     unmerged: run.preserved ? "Ei mergetty · työ tallessa" : "Ei mergetty",

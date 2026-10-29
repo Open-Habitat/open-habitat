@@ -132,6 +132,8 @@ export interface Agent {
   run_active?: boolean;
   /** This conversation's own Taskfleet spinoffs working now, wait or no wait. */
   spinoffs_working?: number;
+  /** Own spinoffs Taskfleet runs while their Pi waits at its prompt. */
+  spinoffs_idle?: number;
   /** Pi rests and the agent has not been told what happened meanwhile. */
   rest?: import("../components/RestartNotice").RestStop;
   /** The work ended in a failure nobody has acted on: the last reply ended

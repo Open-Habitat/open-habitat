@@ -142,6 +142,19 @@ describe("background strip facts", () => {
     // A settled run's lingering wait is not the agent waiting.
     expect(tone(run({ state: "merged" }), [wait])).toBe("ok");
   });
+  it("says a worker waiting at its own prompt waits for the person, not works", () => {
+    const f = facts([run({ state: "idle" })], []);
+    expect(f.spin.live).toHaveLength(1);
+    expect(f.spin.working).toBe(0);
+    expect(stateWord(f.spin.items[0])).toEqual({
+      text: "odottaa sinua",
+      tone: "wait",
+    });
+    const asked = facts([run({ state: "idle", awaiting_input: true })], []);
+    expect(stateWord(asked.spin.items[0]).text).toBe(
+      "odottaa vastausta päätteessä",
+    );
+  });
   it("is silent about processes while Pi is stopped, unless a restart cut one off", () => {
     const stopped = (interrupted: number) =>
       backgroundFacts({

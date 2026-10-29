@@ -101,6 +101,22 @@ describe("rail Nyt groups", () => {
     expect(now.running[2].detail).toContain("npm test");
   });
 
+  it("keeps a worker waiting at its own prompt in sight without pulsing", () => {
+    const now = run([
+      agent("worker-idle", { process: "not_observed", spinoffs_idle: 1 }),
+      agent("worker-mixed", {
+        process: "not_observed",
+        spinoffs_working: 1,
+        spinoffs_idle: 1,
+      }),
+    ]);
+    expect(ids(now.running)).toEqual(["worker-idle", "worker-mixed"]);
+    expect(now.running[0].activityLabel).toBe("Worker odottaa sinua");
+    expect(now.running[0].spinoffWorking).toBe(false);
+    expect(now.running[1].activityLabel).toBe("Worker työskentelee");
+    expect(now.running[1].spinoffWorking).toBe(true);
+  });
+
   it("carries the host's last change and keeps a crashed Pi in sight as failed", () => {
     const now = run([
       agent("idle", {

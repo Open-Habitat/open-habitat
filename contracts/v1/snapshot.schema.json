@@ -651,7 +651,13 @@
           ]
         },
         "spinoffs_working": {
-          "description": "How many of this conversation's own Taskfleet spinoffs are working now, whether or not the conversation still waits for them. Absent when none are known to work.",
+          "description": "How many of this conversation's own Taskfleet spinoffs are working now, whether or not the conversation still waits for them. A run whose worker waits at its own prompt is counted in spinoffs_idle instead. Absent when none are known to work.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "spinoffs_idle": {
+          "description": "How many of this conversation's own Taskfleet spinoffs Taskfleet still runs while the worker's own Pi session says it waits at its prompt for a person. Absent when none.",
           "type": "integer",
           "minimum": 1,
           "maximum": 10000

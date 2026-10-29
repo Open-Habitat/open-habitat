@@ -116,8 +116,13 @@ export function railNow({
     // A live process whose turn state is not known still runs, and so does
     // an agent whose worker works on after the agent's own turn ended.
     const workerBusy = (a.spinoffs_working ?? 0) > 0;
+    // A worker whose Pi waits at its own prompt (an interactive run left for
+    // review) keeps the conversation in sight without pulsing.
+    const workerIdle = !workerBusy && (a.spinoffs_idle ?? 0) > 0;
     const live =
-      (observed.running && observed.activity !== "closed") || workerBusy;
+      (observed.running && observed.activity !== "closed") ||
+      workerBusy ||
+      workerIdle;
     // Pi ended unasked: the conversation rests until the person writes, and
     // stays in Käynnissä as failed so it is not silently gone. The snapshot's
     // rest says so; liveness cannot, because a browser conversation's
@@ -149,7 +154,9 @@ export function railNow({
                       ? "Odottaa viestiä"
                       : workerBusy
                         ? "Worker työskentelee"
-                        : observed.activityLabel;
+                        : workerIdle
+                          ? "Worker odottaa sinua"
+                          : observed.activityLabel;
     const waits =
       observed.activity === "waiting_background" && a.waiting_on?.length
         ? a.waiting_on.map(waitingName).join(", ")
@@ -227,6 +234,7 @@ export function railNow({
       else if (observed.activity === "waiting_background") count.background++;
       else if (observed.activity === "waiting") count.waiting++;
       else if (workerBusy) count.background++;
+      else if (workerIdle) count.waiting++;
     }
   }
   const hints = new Map<string, WorkspaceHint>();

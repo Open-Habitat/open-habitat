@@ -52,6 +52,7 @@ export function workerLive(run?: Spinoff) {
   return (
     !!run &&
     (run.state === "working" ||
+      run.state === "idle" ||
       run.state === "waiting_parent" ||
       run.state === "unknown")
   );

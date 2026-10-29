@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
@@ -397,10 +398,10 @@ func TestWorkingSpinoffsCountsOnlyTheParentsWorkingRuns(t *testing.T) {
 		run(func(r *nativeSpinoff) { r.Stalled = true }),
 		run(func(r *nativeSpinoff) { r.AgentOwner = "caller" }),
 	}
-	if got := workingSpinoffs(runs, parent); got != 3 {
+	if got, _ := workingSpinoffs(nil, 0, runs, parent, time.Now()); got != 3 {
 		t.Fatalf("working spinoffs = %d, want 3", got)
 	}
-	if got := workingSpinoffs(nil, parent); got != 0 {
+	if got, _ := workingSpinoffs(nil, 0, nil, parent, time.Now()); got != 0 {
 		t.Fatalf("no runs = %d", got)
 	}
 }
@@ -430,7 +431,7 @@ func TestCrossRepositoryRunWithDoubtedSupervisorStaysTheConversations(t *testing
 		t.Fatalf("state = %s, want unknown", got)
 	}
 	r.Supervisor.State = "alive"
-	if got := workingSpinoffs([]nativeSpinoff{r}, parent); got != 1 {
+	if got, _ := workingSpinoffs(nil, 0, []nativeSpinoff{r}, parent, time.Now()); got != 1 {
 		t.Fatalf("working = %d, want 1", got)
 	}
 }

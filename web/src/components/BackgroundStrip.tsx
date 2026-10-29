@@ -142,7 +142,9 @@ export function backgroundFacts({
   // waiting_on rule); any running wait can still be stopped from its row.
   const waking = (p?: ProcessRecord) => p?.wakes_agent === true;
   const spin: SpinoffItem[] = [...runs, ...waitOnly].map((run) => {
-    const live = ["working", "waiting_parent", "unknown"].includes(run.state);
+    const live = ["working", "idle", "waiting_parent", "unknown"].includes(
+      run.state,
+    );
     const wait = waits.find((p) => p.run_ids.includes(run.run_id));
     return {
       run,
@@ -545,7 +547,9 @@ export function BackgroundStrip({
         ? phaseWord(phase, ask?.target ?? "here")
         : stateWord(i);
     const when = i.live
-      ? r.state === "working" || r.state === "waiting_parent"
+      ? r.state === "working" ||
+        r.state === "idle" ||
+        r.state === "waiting_parent"
         ? duration(Date.now() - Date.parse(r.created_at))
         : ""
       : r.ended_at && Number.isFinite(Date.parse(r.ended_at))
@@ -1010,15 +1014,22 @@ export function stateWord(i: SpinoffItem): {
   const state =
     r.state === "waiting_parent"
       ? "odottaa pääagenttia"
-      : r.state === "unknown"
-        ? "tila ei tiedossa"
-        : "";
+      : r.state === "idle"
+        ? r.awaiting_input
+          ? "odottaa vastausta päätteessä"
+          : "odottaa sinua"
+        : r.state === "unknown"
+          ? "tila ei tiedossa"
+          : "";
   if (i.waited)
     return {
       text: state ? `agentti odottaa · ${state}` : "agentti odottaa",
       tone: "wait",
     };
-  return { text: state || "agentti ei odota", tone: "muted" };
+  return {
+    text: state || "agentti ei odota",
+    tone: r.state === "idle" ? "wait" : "muted",
+  };
 }
 
 /** A handled row's second line: where its request is. */
@@ -1091,9 +1102,12 @@ function runAgent(r: Spinoff) {
   return [name, profile].filter(Boolean).join(" · ");
 }
 
-/** A live spinoff's mark: waited on, working without a wait, or neither. */
+/** A live spinoff's mark: waiting at its own prompt (a still ring, the
+ * rail's Odottaa sinua), waited on, working without a wait, or neither. */
 function WaitMark({ item }: { item: SpinoffItem }) {
-  return item.waited ? (
+  return item.run.state === "idle" ? (
+    <span className="ah-bg-ring still" />
+  ) : item.waited ? (
     <span className="ah-bg-wait-dot ah-background-dot" />
   ) : item.run.state === "working" ? (
     <span className="ah-bg-wait-dot nowait" />

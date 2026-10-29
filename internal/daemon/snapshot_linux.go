@@ -376,6 +376,12 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 				ownPIDs = controller.ownPiPIDs()
 			}
 			processes := snapshotPiWriters(sessions, cfg.UID, ownPIDs)
+			// A live worker's own session says whether it is at work.
+			homeDir, _ := os.Open(nativeHome)
+			if homeDir != nil {
+				defer homeDir.Close()
+			}
+			now := time.Now()
 			for _, session := range sessions {
 				id, worktree := "", ""
 				for _, entry := range observation.Entries {
@@ -406,8 +412,12 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 						agent["worktree_id"] = worktree
 					}
 					if session.state == "readable" {
-						if n := workingSpinoffs(taskRuns, session); n > 0 {
-							agent["spinoffs_working"] = n
+						working, idle := workingSpinoffs(homeDir, cfg.UID, taskRuns, session, now)
+						if working > 0 {
+							agent["spinoffs_working"] = working
+						}
+						if idle > 0 {
+							agent["spinoffs_idle"] = idle
 						}
 						if workerFailedUnseen(nativeHome, cfg.UID, taskRuns, session) {
 							agent["failure"] = "worker_failed"
