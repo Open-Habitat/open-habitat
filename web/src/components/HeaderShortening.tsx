@@ -9,7 +9,8 @@ import { StatusMark } from "./Status";
  * 1 the workspace into the ⋯ menu; 2 the context percentage (the ring
  * stays); 3 new title, archive and details into the ⋯ menu; 4 the file
  * count; 5 tighter gaps and chips; 6 the Git counts (the icon stays; a Git
- * row joins the menu); 7 the model chip (a model row joins the menu). */
+ * row joins the menu) and an open machine's name (its dot stays); 7 the
+ * model chip (a model row joins the menu). */
 export const HEADER_STEPS = 7;
 const WORKSPACE = 1;
 const ACTIONS = 3;

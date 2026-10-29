@@ -8,6 +8,7 @@
   "peers": [
     {"name": "alice-macbook", "dns_name": "alice-macbook.example-tailnet.ts.net", "os": "macOS", "address": "100.88.14.53", "online": true, "ssh": "possible"},
     {"name": "alice-phone", "dns_name": "alice-phone.example-tailnet.ts.net", "os": "iOS", "address": "100.90.1.2", "online": true, "ssh": "no"},
+    {"name": "gaming-pc", "dns_name": "gaming-pc.example-tailnet.ts.net", "os": "windows", "address": "100.90.1.3", "online": true, "ssh": "possible"},
     {"name": "living-room-nas", "dns_name": "living-room-nas.example-tailnet.ts.net", "os": "linux", "address": "100.71.203.10", "online": false, "last_seen": "2026-10-26T09:00:00Z", "ssh": "possible"}
   ],
   "machines": [
@@ -16,11 +17,14 @@
   "ssh_include": true,
   "account_key": {"file": "~/.ssh/id_ed25519", "fingerprint": "SHA256:Y2nT6kq0Rz8wXv3bLm5dHs1fJc9gPa4uEo7iKt2RxBw"},
   "remove_command": "umask 077 && grep -v ' habitat:alice@habitat\\.example\\.org$' ~/.ssh/authorized_keys > ~/.ssh/authorized_keys.habitat; mv ~/.ssh/authorized_keys.habitat ~/.ssh/authorized_keys",
+  "windows_remove_command": "$ErrorActionPreference='Stop'; $d=Join-Path $HOME .ssh; $f=Join-Path $d authorized_keys; $e=New-Object Text.UTF8Encoding $false; if (Test-Path $f) { $k=@([IO.File]::ReadAllLines($f,$e) | Where-Object { $_ -notmatch ' habitat:alice@habitat\\.example\\.org$' }); [IO.File]::WriteAllLines(\"$f.habitat\",[string[]]$k,$e); Move-Item -Force \"$f.habitat\" $f }",
+  "windows_admin_remove_command": "$ErrorActionPreference='Stop'; $d=Join-Path $env:ProgramData ssh; $f=Join-Path $d administrators_authorized_keys; $e=New-Object Text.UTF8Encoding $false; if (Test-Path $f) { $k=@([IO.File]::ReadAllLines($f,$e) | Where-Object { $_ -notmatch ' habitat:alice@habitat\\.example\\.org$' }); [IO.File]::WriteAllLines(\"$f.habitat\",[string[]]$k,$e); Move-Item -Force \"$f.habitat\" $f; icacls.exe $f /inheritance:r /grant '*S-1-5-32-544:F' /grant '*S-1-5-18:F' | Out-Null; if ($LASTEXITCODE) { throw 'icacls' } }",
   "grant": {
     "machine": "living-room-nas",
     "user": "alice",
     "address": "100.71.203.10",
     "expires": "2026-11-28",
+    "shell": "sh",
     "line": "restrict,from=\"100.101.22.7\",expiry-time=\"20261128\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPm4Vq0h7sX2bN9cR3kT6wYz1dLf8eJu5aGo4iHp0QsE habitat:alice@habitat.example.org",
     "command": "umask 077 && mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys && { grep -v ' habitat:alice@habitat\\.example\\.org$' ~/.ssh/authorized_keys; echo 'restrict,from=\"100.101.22.7\",expiry-time=\"20261128\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPm4Vq0h7sX2bN9cR3kT6wYz1dLf8eJu5aGo4iHp0QsE habitat:alice@habitat.example.org'; } > ~/.ssh/authorized_keys.habitat && mv ~/.ssh/authorized_keys.habitat ~/.ssh/authorized_keys",
     "key_fingerprint": "SHA256:Y2nT6kq0Rz8wXv3bLm5dHs1fJc9gPa4uEo7iKt2RxBw"

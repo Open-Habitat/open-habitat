@@ -869,6 +869,7 @@ export function LiveToolRow({
 export function ToolRow({
   name,
   targetText,
+  machine,
   stat,
   statusLabel,
   statusTitle,
@@ -882,6 +883,8 @@ export function ToolRow({
 }: {
   name: string;
   targetText?: string;
+  /** The person's own computer the command ran on, not this server. */
+  machine?: string;
   stat?: string;
   statusLabel: string;
   statusTitle?: string;
@@ -913,6 +916,17 @@ export function ToolRow({
         />
         <span className="ah-tool-names">
           <span className="ah-tool-name">{name}</span>
+          {machine ? (
+            <span
+              className="ah-machine-chip"
+              data-testid="tool-machine"
+              data-machine={machine}
+              title={`Ajettiin koneellasi ${machine}`}
+            >
+              <Icon name="laptop" className="ah-machine-chip-icon" />
+              {machine}
+            </span>
+          ) : null}
           {targetText ? (
             <code className="ah-tool-target">
               {targetText.split(/\r?\n/, 1)[0]}

@@ -2270,6 +2270,47 @@ details[open] > summary:not([class])::before {
   white-space: nowrap;
   color: var(--ah-muted);
 }
+/* The command ran on the person's own computer (proto-own-machine-access):
+   the chip names it before the command, so it stands out among server work. */
+.ah-tool-row .ah-machine-chip,
+.ah-agent-topline > .ah-machine-open {
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  max-width: 14em;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--ah-r-pill);
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ah-tool-row .ah-machine-chip {
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-machine-chip-icon {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+/* An SSH connection to the machine is open now (Yhteys auki). */
+.ah-agent-topline > .ah-machine-open {
+  border: 1px solid var(--ah-line);
+  color: var(--ah-ink-2);
+  font-weight: 400;
+}
+.ah-machine-open-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ah-ok);
+}
 /* biome-ignore lint/style/noDescendingSpecificity: Tool header status sizing is independent of sidebar status. */
 .ah-tool-row .ah-status,
 .ah-tool-row .ah-disclosure small {
@@ -3691,6 +3732,7 @@ details[open] > summary:not([class])::before {
     :is(.ah-gs-chip, .ah-ctx-chip, .ah-set-chip) {
     padding-inline: 6px;
   }
+  .ah-agent-topline[data-shorten~="6"] .ah-machine-open-name,
   .ah-agent-topline[data-shorten~="6"] .ah-gs-counts {
     display: none;
   }

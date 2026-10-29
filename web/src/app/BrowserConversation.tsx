@@ -97,6 +97,12 @@ import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { capacityReason } from "./mutations";
 import { type NextWaiting, NextWaitingDock } from "./NextWaitingDock";
+import { sshTarget } from "./ownMachines";
+import {
+  OwnMachineUseProvider,
+  useOpenMachines,
+  useOwnMachineHosts,
+} from "./ownMachineUse";
 import { PendingConversation } from "./PendingConversation";
 import {
   type Choice,
@@ -200,10 +206,12 @@ export function BrowserConversation(
         onLogin={props.onLogin}
         onStatusEvent={props.onStatusEvent}
       >
-        <BrowserConversationContent
-          {...props}
-          onNativeHistory={setNativeHistory}
-        />
+        <OwnMachineUseProvider key={`${props.identity}:${props.id}`}>
+          <BrowserConversationContent
+            {...props}
+            onNativeHistory={setNativeHistory}
+          />
+        </OwnMachineUseProvider>
       </ProcessProvider>
     </SpinoffProvider>
   );
@@ -350,6 +358,7 @@ function BrowserConversationContent({
     `${identity}/${id ?? ""}`,
   );
   const nativeSettings = latestSettings(entries);
+  const openMachines = useOpenMachines();
   const [modelExpanded, setModelExpanded] = useState(false);
   const [modelChoice, setModelChoice] = useState<Choice>();
   const [modelBlocked, setModelBlocked] = useState(false);
@@ -1258,6 +1267,18 @@ function BrowserConversationContent({
         ) ?? [],
     ),
   );
+  useOwnMachineHosts(
+    liveItems.flatMap((item) =>
+      item.kind === "tool" && item.name === "bash"
+        ? [
+            {
+              command: bashCommand(item.arguments ?? ""),
+              done: item.state === "succeeded" || item.state === "failed",
+            },
+          ]
+        : [],
+    ),
+  );
   // Mid-turn, saved messages arrive by history re-read while their streamed
   // fragments stay until the turn settles. A message whose tool call is saved
   // is saved whole, so its streamed text and reasoning are not shown twice.
@@ -1351,6 +1372,11 @@ function BrowserConversationContent({
           targetText={
             item.name === "bash"
               ? bashCommand(item.arguments ?? "").split("\n")[0]
+              : undefined
+          }
+          remoteHost={
+            item.name === "bash"
+              ? sshTarget(bashCommand(item.arguments ?? ""))
               : undefined
           }
           state={
@@ -1564,6 +1590,7 @@ function BrowserConversationContent({
           className={contextOpen ? "ah-frame-context" : undefined}
         >
           <AgentHeader
+            openMachines={openMachines}
             data-model={selectedModel}
             data-thinking={selectedThinking}
             editorControl={<EditorHeaderControls />}

@@ -107,11 +107,11 @@ test("@own-machines join the tailnet, add two machines, renew, remove and leave"
   ).toEqual([]);
   await button(page, "own-machines-next").click();
 
-  // 2–5 for the Mac: a phone and a Windows machine cannot be chosen.
+  // 2–5 for the Mac: a phone cannot be chosen.
   await expect(
     page.getByTestId("own-machines-peer-alice-phone"),
   ).toBeDisabled();
-  await expect(page.getByTestId("own-machines-peer-gaming-pc")).toBeDisabled();
+  await expect(page.getByTestId("own-machines-peer-gaming-pc")).toBeEnabled();
   await chooseAndAccept(page, "alice-macbook", "100.88.14.53");
   await expect(wizard(page).getByTestId("own-machine-truths")).toBeVisible();
   await page.screenshot({
@@ -239,4 +239,113 @@ test("@own-machines the page and the dialog fit a phone", async ({
       .getByTestId("own-machines")
       .evaluate((el) => el.scrollWidth <= el.clientWidth),
   ).toBe(true);
+});
+
+test("@own-machines a Windows machine gets PowerShell, with the administrators' file as its own choice", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto("/settings/machines");
+  await button(page, "own-machines-add").click();
+  await button(page, "own-machines-connect").click();
+  await expect(
+    page.getByRole("link").and(page.getByTestId("own-machines-login-open")),
+  ).toBeVisible();
+  await fixture(page, "do=approve");
+  await expect(page.getByTestId("own-machines-wizard-joined")).toBeVisible();
+  await button(page, "own-machines-next").click();
+  await page.getByTestId("own-machines-peer-gaming-pc").check();
+  await page.getByTestId("own-machines-user").fill("alice");
+  await button(page, "own-machines-next").click();
+  await button(page, "own-machines-next").click();
+  await expect(wizard(page)).toHaveAttribute("data-step", "4");
+  // The command is the daemon's: the administrator's by default, the
+  // user's own file when the person says they are not one.
+  const command = page.getByTestId("own-machines-command").locator("code");
+  await expect(command).toContainText("administrators_authorized_keys");
+  const choice = page.getByTestId("own-machines-windows-admin");
+  await choice.getByTestId("segment-user").click();
+  await expect(command).not.toContainText("administrators_authorized_keys");
+  await expect(command).toContainText("Join-Path $HOME .ssh");
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include("[data-testid=own-machines-wizard]")
+        .withTags(["wcag2a", "wcag2aa"])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+});
+
+test("@own-machines a command run on the person's machine names it, and the header shows the open connection", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(90_000);
+  // Pi streams its tool calls, as the real one does.
+  await page.request.get("/fixture/scenario?value=pi-deltas");
+  await signIn(page);
+  await page.goto("/settings/machines");
+  await button(page, "own-machines-add").click();
+  await button(page, "own-machines-connect").click();
+  await expect(
+    page.getByRole("link").and(page.getByTestId("own-machines-login-open")),
+  ).toBeVisible();
+  await fixture(page, "do=approve");
+  await expect(page.getByTestId("own-machines-wizard-joined")).toBeVisible();
+  await button(page, "own-machines-next").click();
+  await chooseAndAccept(page, "alice-macbook", "100.88.14.53");
+  await button(page, "own-machines-save").click();
+  await expect(machine(page, "alice-macbook")).toBeVisible();
+  // The agent's command leaves its SSH connection open (ControlMaster).
+  await fixture(page, "do=open&name=alice-macbook");
+
+  await page.goto("/workspaces");
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-ordinary-dir")
+    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page
+    .getByTestId("message-input")
+    .fill("Katso macOS:n versio omalla koneellani");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  // While the agent works, before any row is unfolded.
+  const open = page.locator(".ah-agent-header").getByTestId("machine-open");
+  await expect(open).toContainText("alice-macbook", { timeout: 30_000 });
+  const turn = page.getByTestId("agent-turn").first();
+  const stages = turn.getByTestId("history-stage-toggle");
+  await expect(stages).toBeVisible({ timeout: 30_000 });
+  if ((await stages.getAttribute("aria-expanded")) !== "true")
+    await stages.click();
+  const row = turn
+    .getByTestId("tool-row")
+    .and(page.locator('[data-tool-name="bash"]'));
+  await expect(row.getByTestId("tool-machine")).toHaveAttribute(
+    "data-machine",
+    "alice-macbook",
+  );
+  await expect(open).toContainText("alice-macbook");
+  await page.screenshot({
+    path: testInfo.outputPath("evidence/oma-kone-keskustelussa-1280.png"),
+  });
+
+  // Once the connection closes the header says nothing; the row still
+  // names where the command ran.
+  await fixture(page, "do=close&name=alice-macbook");
+  await page.reload();
+  await expect(page.getByTestId("agent-turn").first()).toBeVisible();
+  const again = page.getByTestId("agent-turn").first();
+  const stagesAgain = again.getByTestId("history-stage-toggle");
+  if ((await stagesAgain.getAttribute("aria-expanded")) !== "true")
+    await stagesAgain.click();
+  await expect(
+    again
+      .getByTestId("tool-row")
+      .and(page.locator('[data-tool-name="bash"]'))
+      .getByTestId("tool-machine"),
+  ).toHaveAttribute("data-machine", "alice-macbook");
+  await expect(open).toHaveCount(0);
 });

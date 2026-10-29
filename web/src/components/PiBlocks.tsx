@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { type BashFailure, failureLabel } from "../app/bashFailure";
+import { useOwnMachine } from "../app/ownMachineUse";
 import { ToolRow } from "./Conversation";
 
 /** One visual use, from call formation through the native saved result. */
@@ -9,6 +10,7 @@ export function PiToolUse({
   state,
   statusLabel,
   targetText,
+  remoteHost,
   stat,
   children,
   expansion,
@@ -20,6 +22,9 @@ export function PiToolUse({
   keepMounted?: boolean;
   expansion?: { get: () => boolean | undefined; set: (value: boolean) => void };
   targetText?: string;
+  /** The host the command ran ssh to (`sshTarget`); a chip names it when it
+   * is one of the person's own machines. */
+  remoteHost?: string;
   stat?: string;
   state:
     | "forming"
@@ -31,6 +36,7 @@ export function PiToolUse({
     | "unknown";
   children?: ReactNode;
 }) {
+  const machine = useOwnMachine(remoteHost, state);
   const streaming =
     state === "forming" || state === "called" || state === "running";
   const [expanded, setExpanded] = useState(() => expansion?.get() ?? streaming);
@@ -55,6 +61,7 @@ export function PiToolUse({
       <ToolRow
         name={name}
         targetText={targetText}
+        machine={machine}
         stat={stat}
         state={state}
         statusLabel={

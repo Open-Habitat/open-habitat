@@ -1296,6 +1296,7 @@ export function AgentHeader({
   contextIndicator,
   modelPicker,
   gitStatus,
+  openMachines,
   terminal,
   detailsFacts,
   detailsExtra,
@@ -1330,6 +1331,9 @@ export function AgentHeader({
   modelPicker?: ReactNode;
   /** The workspace's Git status chip, beside the model (Yläpalkissa). */
   gitStatus?: ReactNode;
+  /** The person's own computers this conversation used that have an SSH
+   * connection open now (Yhteys auki). */
+  openMachines?: readonly string[];
   /** The browser shell's toggle (Paneeli), before the title action. */
   terminal?: ReactNode;
   detailsFacts?: { label: string; value: string; copy?: boolean }[];
@@ -1507,6 +1511,19 @@ export function AgentHeader({
             tone="neutral"
             kind="read-only"
           />
+        ) : null}
+        {openMachines?.length ? (
+          <span
+            className="ah-machine-open"
+            data-testid="machine-open"
+            title={`Agentilla on yhteys auki: ${openMachines.join(", ")}`}
+          >
+            <i className="ah-machine-open-dot" aria-hidden="true" />
+            <span className="ah-visually-hidden">Yhteys auki: </span>
+            <span className="ah-machine-open-name">
+              {openMachines.join(", ")}
+            </span>
+          </span>
         ) : null}
         {gitStatus}
         {contextIndicator}

@@ -303,7 +303,7 @@ type peerView struct {
 	Address  string     `json:"address"`
 	Online   bool       `json:"online"`
 	LastSeen *time.Time `json:"last_seen,omitempty"`
-	// SSH: "possible" (macOS, Linux), "later" (Windows), "no" (phones).
+	// SSH: "possible" (macOS, Linux, Windows), "no" (phones).
 	SSH string `json:"ssh"`
 }
 
@@ -328,7 +328,10 @@ type ownMachinesView struct {
 	SSHInclude    bool          `json:"ssh_include"`
 	AccountKey    *accountKey   `json:"account_key,omitempty"`
 	RemoveCommand string        `json:"remove_command"`
-	status        tailnetStatus
+	// Windows keeps an administrator's keys in one file for all of them.
+	WindowsRemoveCommand      string `json:"windows_remove_command"`
+	WindowsAdminRemoveCommand string `json:"windows_admin_remove_command"`
+	status                    tailnetStatus
 }
 
 // peerName is the machine's name in the person's tailnet: the first label
@@ -355,10 +358,8 @@ func ipv4(ips []string) string {
 
 func peerSSH(osName string) string {
 	switch strings.ToLower(osName) {
-	case "macos", "linux":
+	case "macos", "linux", "windows":
 		return "possible"
-	case "windows":
-		return "later"
 	}
 	return "no"
 }
@@ -374,7 +375,8 @@ func (e ownMachineEnv) unitInstalled() bool {
 }
 
 func (e ownMachineEnv) read(ctx context.Context) (ownMachinesView, error) {
-	view := ownMachinesView{Peers: []peerView{}, Machines: []machineView{}, RemoveCommand: removeCommand(e.comment)}
+	view := ownMachinesView{Peers: []peerView{}, Machines: []machineView{}, RemoveCommand: removeCommand(e.comment),
+		WindowsRemoveCommand: windowsRemoveCommand(e.comment, false), WindowsAdminRemoveCommand: windowsRemoveCommand(e.comment, true)}
 	view.Tailscale.State = "off"
 	if !e.available() {
 		view.Tailscale.State = "unavailable"
@@ -437,7 +439,7 @@ func (e ownMachineEnv) read(ctx context.Context) (ownMachinesView, error) {
 	}
 	today := e.today()
 	for _, m := range machines {
-		mv := machineView{Name: m.name, User: m.user, Address: m.address, Expires: m.expires, Expired: m.expires <= today, HostKey: m.hostKey}
+		mv := machineView{Name: m.name, User: m.user, Address: m.address, Expires: m.expires, Expired: m.expires <= today, HostKey: m.hostKey, OS: m.os}
 		for _, p := range view.Peers {
 			if p.Address == m.address {
 				mv.InTailnet, mv.Online, mv.LastSeen, mv.OS = true, p.Online, p.LastSeen, p.OS
@@ -470,13 +472,18 @@ func validDate(s string) bool {
 
 type machineFile struct {
 	name, user, address, expires, hostKey string
+	// os is Tailscale's name for the machine's OS when it was saved, so a
+	// machine gone from the tailnet still gets its own shell's commands.
+	os string
 }
+
+var machineOSPattern = regexp.MustCompile(`^[A-Za-z0-9]{1,20}$`)
 
 const machineMarker = "# habitat-machine "
 
 func (e ownMachineEnv) machineConfig(m machineFile) string {
 	return "# Open Habitat: an own machine, managed in Settings > Omat koneet.\n" +
-		machineMarker + "name=" + m.name + " user=" + m.user + " address=" + m.address + " expires=" + m.expires + "\n" +
+		machineMarker + "name=" + m.name + " user=" + m.user + " address=" + m.address + " expires=" + m.expires + osField(m.os) + "\n" +
 		"Host " + m.name + "\n" +
 		"\tHostName " + m.address + "\n" +
 		"\tUser " + m.user + "\n" +
@@ -489,6 +496,13 @@ func (e ownMachineEnv) machineConfig(m machineFile) string {
 		"\tGlobalKnownHostsFile /dev/null\n\tStrictHostKeyChecking yes\n\tUpdateHostKeys no\n" +
 		"\tControlMaster auto\n\tControlPath " + e.runtimeDir + "/" + tailnetRuntimeName + "/ssh-%n\n\tControlPersist 10m\n" +
 		"\tForwardAgent no\n\tForwardX11 no\n"
+}
+
+func osField(osName string) string {
+	if !machineOSPattern.MatchString(osName) {
+		return ""
+	}
+	return " os=" + osName
 }
 
 func machineDir(home string, create bool) (*os.File, error) {
@@ -552,6 +566,10 @@ func parseMachineConfig(b []byte) (machineFile, bool) {
 				m.address = v
 			case "expires":
 				m.expires = v
+			case "os":
+				if machineOSPattern.MatchString(v) {
+					m.os = v
+				}
 			}
 		}
 		a, addrErr := netip.ParseAddr(m.address)
@@ -915,12 +933,16 @@ func removeTreeAt(parent int, name string, depth int) error {
 // ---- The grant on the machine ----
 
 type grantView struct {
-	Machine        string `json:"machine"`
-	User           string `json:"user"`
-	Address        string `json:"address"`
-	Expires        string `json:"expires"`
-	Line           string `json:"line"`
+	Machine string `json:"machine"`
+	User    string `json:"user"`
+	Address string `json:"address"`
+	Expires string `json:"expires"`
+	Line    string `json:"line"`
+	// Shell is what Command is for: "sh" on macOS and Linux, "powershell"
+	// on Windows, where AdminCommand is the one for an administrator.
+	Shell          string `json:"shell"`
 	Command        string `json:"command"`
+	AdminCommand   string `json:"admin_command,omitempty"`
 	KeyFingerprint string `json:"key_fingerprint"`
 }
 
@@ -938,6 +960,46 @@ func installCommand(line, comment string) string {
 
 func removeCommand(comment string) string {
 	return "umask 077 && { grep -v '" + commentRegexp(comment) + "' ~/.ssh/authorized_keys || [ $? -eq 1 ]; } > ~/.ssh/authorized_keys.habitat && mv ~/.ssh/authorized_keys.habitat ~/.ssh/authorized_keys"
+}
+
+// Windows' OpenSSH reads a member of Administrators' keys only from
+// %ProgramData%\ssh\administrators_authorized_keys (its default sshd_config),
+// which an elevated PowerShell writes and sshd accepts only when no one but
+// Administrators and SYSTEM may change it. Groups are named by SID because
+// their names are translated (Järjestelmänvalvojat).
+func windowsKeysFile(admin bool) string {
+	if admin {
+		return "$d=Join-Path $env:ProgramData ssh; $f=Join-Path $d administrators_authorized_keys; "
+	}
+	return "$d=Join-Path $HOME .ssh; $f=Join-Path $d authorized_keys; "
+}
+
+const windowsAdminACL = "; icacls.exe $f /inheritance:r /grant '*S-1-5-32-544:F' /grant '*S-1-5-18:F' | Out-Null; if ($LASTEXITCODE) { throw 'icacls' }"
+
+// The file is read and written as UTF-8 without a BOM, which sshd reads, so
+// other keys' lines keep their bytes (a command= path with ä, say).
+// PowerShell 5.1's own Get-Content and Set-Content would not.
+const windowsKeysKept = "$e=New-Object Text.UTF8Encoding $false; "
+
+// windowsInstallCommand is installCommand for PowerShell (5.1 or 7). A read
+// error stops it before anything is written.
+func windowsInstallCommand(line, comment string, admin bool) string {
+	c := "$ErrorActionPreference='Stop'; " + windowsKeysFile(admin) + windowsKeysKept +
+		"New-Item -ItemType Directory -Force $d | Out-Null; $k=@(); if (Test-Path $f) { $k=@([IO.File]::ReadAllLines($f,$e) | Where-Object { $_ -notmatch '" + commentRegexp(comment) + "' }) }; $k+='" + line + "'; " +
+		"[IO.File]::WriteAllLines(\"$f.habitat\",[string[]]$k,$e); Move-Item -Force \"$f.habitat\" $f"
+	if admin {
+		c += windowsAdminACL
+	}
+	return c
+}
+
+func windowsRemoveCommand(comment string, admin bool) string {
+	c := "$ErrorActionPreference='Stop'; " + windowsKeysFile(admin) + windowsKeysKept +
+		"if (Test-Path $f) { $k=@([IO.File]::ReadAllLines($f,$e) | Where-Object { $_ -notmatch '" + commentRegexp(comment) + "' }); [IO.File]::WriteAllLines(\"$f.habitat\",[string[]]$k,$e); Move-Item -Force \"$f.habitat\" $f"
+	if admin {
+		c += windowsAdminACL
+	}
+	return c + " }"
 }
 
 // accountMachineKey is the account's default SSH key, made if it is missing:
@@ -980,7 +1042,7 @@ func (e ownMachineEnv) accountMachineKey(ctx context.Context) (accountKey, error
 	return k, nil
 }
 
-func (e ownMachineEnv) grant(ctx context.Context, view ownMachinesView, target machineFile, days int) (grantView, error) {
+func (e ownMachineEnv) grant(ctx context.Context, view ownMachinesView, target machineFile, days int, windows bool) (grantView, error) {
 	node := view.Tailscale.Node
 	if node == nil {
 		return grantView{}, errTailnetOff
@@ -995,10 +1057,14 @@ func (e ownMachineEnv) grant(ctx context.Context, view ownMachinesView, target m
 	}
 	until := e.now().AddDate(0, 0, days)
 	line := `restrict,from="` + node.Address + `",expiry-time="` + until.Format("20060102") + `" ssh-ed25519 ` + fields[1] + " " + e.comment
-	return grantView{
+	g := grantView{
 		Machine: target.name, User: target.user, Address: target.address, Expires: until.Format("2006-01-02"),
-		Line: line, Command: installCommand(line, e.comment), KeyFingerprint: key.Fingerprint,
-	}, nil
+		Line: line, Shell: "sh", Command: installCommand(line, e.comment), KeyFingerprint: key.Fingerprint,
+	}
+	if windows {
+		g.Shell, g.Command, g.AdminCommand = "powershell", windowsInstallCommand(line, e.comment, false), windowsInstallCommand(line, e.comment, true)
+	}
+	return g, nil
 }
 
 // ---- Checking the connection ----
@@ -1009,7 +1075,8 @@ type checkView struct {
 	HostKey string `json:"host_key,omitempty"`
 }
 
-// probe connects once as the account with the account key and runs `true`.
+// probe connects once as the account with the account key and runs
+// `exit 0`, which every login shell has, Windows' cmd.exe and PowerShell too.
 // A machine not saved yet is reached with a throwaway known_hosts that takes
 // whatever key the machine shows; a saved one only with its pinned key. The
 // person's own ssh configuration plays no part.
@@ -1048,7 +1115,7 @@ func (e ownMachineEnv) probe(ctx context.Context, m machineFile, online bool, pi
 		"-o", "HashKnownHosts=no", "-o", "IdentitiesOnly=yes", "-o", "IdentityAgent=none",
 		"-o", "IdentityFile="+filepath.Join(e.home, machineKeyRel), "-o", "ControlMaster=no", "-o", "ControlPath=none",
 		"-o", "ProxyCommand="+e.tailscale+" --socket="+e.socket()+" nc %h %p",
-		"-l", m.user, "-p", "22", m.address, "true")
+		"-l", m.user, "-p", "22", m.address, "exit 0")
 	cmd.Dir = e.home
 	cmd.Env = []string{"HOME=" + e.home, "PATH=/usr/bin:/bin", "LANG=C.UTF-8"}
 	cmd.Stdin, cmd.Stdout = nil, io.Discard
@@ -1234,6 +1301,8 @@ func ownMachinesHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 		reply["machines"] = view.Machines
 		reply["ssh_include"] = view.SSHInclude
 		reply["remove_command"] = view.RemoveCommand
+		reply["windows_remove_command"] = view.WindowsRemoveCommand
+		reply["windows_admin_remove_command"] = view.WindowsAdminRemoveCommand
 		if view.AccountKey != nil {
 			reply["account_key"] = map[string]string{"file": view.AccountKey.File, "fingerprint": view.AccountKey.Fingerprint}
 		}
@@ -1282,7 +1351,7 @@ func (e ownMachineEnv) act(ctx context.Context, req ownMachinesRequest, reply ma
 		found := false
 		for _, p := range view.Peers {
 			if p.Name == req.Peer && p.SSH == "possible" {
-				target, online, found = machineFile{name: p.Name, user: req.User, address: p.Address}, p.Online, true
+				target, online, found = machineFile{name: p.Name, user: req.User, address: p.Address, os: p.OS}, p.Online, true
 			}
 		}
 		if !found {
@@ -1299,11 +1368,11 @@ func (e ownMachineEnv) act(ctx context.Context, req ownMachinesRequest, reply ma
 		if !ok {
 			return 409, "unknown_machine"
 		}
-		target, online = machineFile{name: m.Name, user: m.User, address: m.Address, expires: m.Expires, hostKey: m.HostKey}, m.Online
+		target, online = machineFile{name: m.Name, user: m.User, address: m.Address, expires: m.Expires, hostKey: m.HostKey, os: m.OS}, m.Online
 	}
 	switch req.Action {
 	case "grant", "renew":
-		g, err := e.grant(ctx, view, target, req.Days)
+		g, err := e.grant(ctx, view, target, req.Days, strings.EqualFold(target.os, "windows"))
 		if err != nil {
 			return 409, "account_key_unusable"
 		}

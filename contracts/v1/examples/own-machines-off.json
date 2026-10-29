@@ -5,5 +5,7 @@
   "peers": [],
   "machines": [],
   "ssh_include": false,
-  "remove_command": "umask 077 && grep -v ' habitat:alice@habitat\\.example\\.org$' ~/.ssh/authorized_keys > ~/.ssh/authorized_keys.habitat; mv ~/.ssh/authorized_keys.habitat ~/.ssh/authorized_keys"
+  "remove_command": "umask 077 && grep -v ' habitat:alice@habitat\\.example\\.org$' ~/.ssh/authorized_keys > ~/.ssh/authorized_keys.habitat; mv ~/.ssh/authorized_keys.habitat ~/.ssh/authorized_keys",
+  "windows_remove_command": "$ErrorActionPreference='Stop'; $d=Join-Path $HOME .ssh; $f=Join-Path $d authorized_keys; $e=New-Object Text.UTF8Encoding $false; if (Test-Path $f) { $k=@([IO.File]::ReadAllLines($f,$e) | Where-Object { $_ -notmatch ' habitat:alice@habitat\\.example\\.org$' }); [IO.File]::WriteAllLines(\"$f.habitat\",[string[]]$k,$e); Move-Item -Force \"$f.habitat\" $f }",
+  "windows_admin_remove_command": "$ErrorActionPreference='Stop'; $d=Join-Path $env:ProgramData ssh; $f=Join-Path $d administrators_authorized_keys; $e=New-Object Text.UTF8Encoding $false; if (Test-Path $f) { $k=@([IO.File]::ReadAllLines($f,$e) | Where-Object { $_ -notmatch ' habitat:alice@habitat\\.example\\.org$' }); [IO.File]::WriteAllLines(\"$f.habitat\",[string[]]$k,$e); Move-Item -Force \"$f.habitat\" $f; icacls.exe $f /inheritance:r /grant '*S-1-5-32-544:F' /grant '*S-1-5-18:F' | Out-Null; if ($LASTEXITCODE) { throw 'icacls' } }"
 }

@@ -216,8 +216,13 @@ func TestOwnMachinesGuidedFlow(t *testing.T) {
 	for _, p := range reply["peers"].([]any) {
 		peers[field(p, "name").(string)] = field(p, "ssh").(string)
 	}
-	if peers["alice-macbook"] != "possible" || peers["alice-phone"] != "no" || peers["gaming-pc"] != "later" {
+	if peers["alice-macbook"] != "possible" || peers["alice-phone"] != "no" || peers["gaming-pc"] != "possible" {
 		t.Fatalf("peers: %v", peers)
+	}
+	// A Windows machine gets PowerShell, with the administrators' branch.
+	reply = f.must(t, `{"action":"grant","peer":"gaming-pc","user":"alice","days":30}`)
+	if field(reply, "grant", "shell") != "powershell" || !strings.Contains(field(reply, "grant", "admin_command").(string), "administrators_authorized_keys") || strings.Contains(field(reply, "grant", "command").(string), "administrators_authorized_keys") {
+		t.Fatalf("windows grant: %v", reply["grant"])
 	}
 
 	// The line names the node's address and the expiry, with the account key
@@ -229,6 +234,9 @@ func TestOwnMachinesGuidedFlow(t *testing.T) {
 	}
 	if field(reply, "grant", "expires") != "2026-11-28" || field(reply, "account_key", "fingerprint") != field(reply, "grant", "key_fingerprint") {
 		t.Fatalf("grant: %v", reply)
+	}
+	if field(reply, "grant", "shell") != "sh" || field(reply, "grant", "admin_command") != nil {
+		t.Fatalf("mac grant: %v", reply["grant"])
 	}
 	if cmd := field(reply, "grant", "command").(string); !strings.Contains(cmd, "grep -v ' habitat:alice@habitat\\.example\\.org$'") || !strings.Contains(cmd, "echo '"+line+"'") {
 		t.Fatalf("command: %s", cmd)
@@ -351,7 +359,6 @@ func TestOwnMachinesRequestsNameOnlyTailnetPeers(t *testing.T) {
 	f.node.Approve()
 	for body, want := range map[string]string{
 		`{"action":"grant","peer":"alice-phone","user":"alice","days":30}`:                                     "unknown_peer",
-		`{"action":"grant","peer":"gaming-pc","user":"alice","days":30}`:                                       "unknown_peer",
 		`{"action":"grant","peer":"stranger","user":"alice","days":30}`:                                        "unknown_peer",
 		`{"action":"grant","peer":"100.88.14.53","user":"alice","days":30}`:                                    "invalid_request",
 		`{"action":"grant","peer":"alice-macbook","user":"alice","days":365}`:                                  "invalid_request",
@@ -572,5 +579,100 @@ func TestOwnMachinesInstallAndRemoveCommands(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(keys, "marker")); err != nil {
 		t.Fatal("authorized_keys replaced after a failed read")
+	}
+}
+
+// A Windows machine keeps its PowerShell commands after it leaves the
+// tailnet: its OS is saved with it.
+func TestOwnMachinesWindowsMachineGoneFromTailnet(t *testing.T) {
+	f := newMachinesFixture(t)
+	f.must(t, `{"action":"connect"}`)
+	f.node.Approve()
+	tailnetfake.SetMachine(f.sshDir, "100.90.1.3", "ok")
+	f.must(t, `{"action":"grant","peer":"gaming-pc","user":"alice","days":30}`)
+	r := f.must(t, `{"action":"check","peer":"gaming-pc","user":"alice"}`)
+	f.must(t, `{"action":"save","peer":"gaming-pc","user":"alice","expires":"2026-11-28","host_key":"`+field(r, "check", "host_key").(string)+`"}`)
+	f.node.SetPeers(nil)
+	r = f.must(t, "")
+	if m := r["machines"].([]any)[0]; field(m, "in_tailnet") != false || field(m, "os") != "windows" {
+		t.Fatalf("machine: %v", m)
+	}
+	r = f.must(t, `{"action":"renew","machine":"gaming-pc","days":7}`)
+	if field(r, "grant", "shell") != "powershell" {
+		t.Fatalf("renewal: %v", r["grant"])
+	}
+}
+
+// The Windows commands do the same in PowerShell, and the administrators'
+// file ends with an ACL sshd accepts. Windows itself is not here: pwsh on
+// Linux runs the same script, and icacls is a recorder. Skipped without pwsh.
+func TestOwnMachinesWindowsCommands(t *testing.T) {
+	pwsh, err := exec.LookPath("pwsh")
+	if err != nil {
+		t.Skip("pwsh not installed")
+	}
+	home, data, bin := t.TempDir(), t.TempDir(), t.TempDir()
+	comment := "habitat:alice@habitat.example.org"
+	acl := filepath.Join(bin, "acl")
+	os.WriteFile(filepath.Join(bin, "icacls.exe"), []byte("#!/bin/sh\necho \"$@\" > "+acl+"\n"), 0700)
+	run := func(cmd string) error {
+		c := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-Command", cmd)
+		c.Env = []string{"HOME=" + home, "ProgramData=" + data, "PATH=" + bin + ":/usr/bin:/bin"}
+		out, err := c.CombinedOutput()
+		if err != nil {
+			t.Logf("%s", out)
+		}
+		return err
+	}
+	line := `restrict,from="100.101.22.7",expiry-time="20261128" ssh-ed25519 AAAAnew ` + comment
+	other := "command=\"C:/Users/Järvi/x.ps1\" ssh-ed25519 AAAAother bob@laptop\nssh-ed25519 AAAAold " + comment + "\nssh-ed25519 AAAAx habitat:alice@habitat-example-org\n"
+	kept := "command=\"C:/Users/Järvi/x.ps1\" ssh-ed25519 AAAAother bob@laptop\nssh-ed25519 AAAAx habitat:alice@habitat-example-org\n"
+	for _, admin := range []bool{false, true} {
+		keys := filepath.Join(home, ".ssh", "authorized_keys")
+		if admin {
+			keys = filepath.Join(data, "ssh", "administrators_authorized_keys")
+		}
+		// A first line goes into a directory that does not exist yet.
+		if err := run(windowsInstallCommand(line, comment, admin)); err != nil {
+			t.Fatal(err)
+		}
+		if b, _ := os.ReadFile(keys); strings.ReplaceAll(string(b), "\r", "") != line+"\n" {
+			t.Fatalf("first install (admin %v): %q", admin, b)
+		}
+		// Other keys keep their bytes, and a BOM sshd would not read goes.
+		os.WriteFile(keys, []byte("\xef\xbb\xbf"+other), 0600)
+		if err := run(windowsInstallCommand(line, comment, admin)); err != nil {
+			t.Fatal(err)
+		}
+		if b, _ := os.ReadFile(keys); strings.ReplaceAll(string(b), "\r", "") != kept+line+"\n" {
+			t.Fatalf("install (admin %v): %q", admin, b)
+		}
+		if err := run(windowsRemoveCommand(comment, admin)); err != nil {
+			t.Fatal(err)
+		}
+		if b, _ := os.ReadFile(keys); strings.ReplaceAll(string(b), "\r", "") != kept {
+			t.Fatalf("remove (admin %v): %q", admin, b)
+		}
+		a, _ := os.ReadFile(acl)
+		if admin != (strings.TrimSpace(string(a)) == keys+" /inheritance:r /grant *S-1-5-32-544:F /grant *S-1-5-18:F") {
+			t.Fatalf("acl (admin %v): %q", admin, a)
+		}
+		// A file it cannot read stays as it is.
+		os.Remove(keys)
+		os.Mkdir(keys, 0700)
+		os.WriteFile(filepath.Join(keys, "marker"), nil, 0600)
+		if run(windowsRemoveCommand(comment, admin)) == nil || run(windowsInstallCommand(line, comment, admin)) == nil {
+			t.Fatalf("a failed read was not a failure (admin %v)", admin)
+		}
+		if _, err := os.Stat(filepath.Join(keys, "marker")); err != nil {
+			t.Fatal("authorized_keys replaced after a failed read")
+		}
+	}
+	// Removing where there is no file is not an error.
+	if err := os.RemoveAll(filepath.Join(home, ".ssh")); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(windowsRemoveCommand(comment, false)); err != nil {
+		t.Fatal(err)
 	}
 }

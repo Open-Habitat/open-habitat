@@ -55,6 +55,8 @@ import {
   readHistory,
 } from "./history";
 import { useNewConversationAsk } from "./newConversationAsk";
+import { sshTarget } from "./ownMachines";
+import { OwnMachineUseProvider, useOpenMachines } from "./ownMachineUse";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { useStoragePressure } from "./StoragePressure";
 import {
@@ -706,6 +708,14 @@ function OrderedBlocks({
                   (block.text
                     ? bashCommand(block.text).split("\n")[0]
                     : undefined))
+                : undefined
+            }
+            remoteHost={
+              block.tool_name === "bash"
+                ? sshTarget(
+                    commands[block.tool_call_id] ??
+                      bashCommand(block.text ?? ""),
+                  )
                 : undefined
             }
             state={toolOutcome(
@@ -1416,7 +1426,11 @@ export function HistoryView(props: Parameters<typeof HistoryViewContent>[0]) {
         onLogin={props.onLogin}
         onStatusEvent={noProcessEvents}
       >
-        <HistoryViewContent {...props} />
+        <OwnMachineUseProvider
+          key={`${props.store.identity}:${props.agent.agent_id}`}
+        >
+          <HistoryViewContent {...props} />
+        </OwnMachineUseProvider>
       </ProcessProvider>
     </SpinoffProvider>
   );
@@ -1448,6 +1462,7 @@ function HistoryViewContent({
   restoreAvailable?: boolean;
   archiveBusy?: boolean;
 }) {
+  const openMachines = useOpenMachines();
   const window = useWindow(store, agent.agent_id);
   const storagePressure = useStoragePressure();
   useEffect(() => {
@@ -1697,6 +1712,7 @@ function HistoryViewContent({
   return (
     <ConversationFrame>
       <AgentHeader
+        openMachines={openMachines}
         terminal={shell.toggle}
         editorControl={<EditorHeaderControls />}
         filesControl={<FilesHeaderControl conversationId={agent.agent_id} />}

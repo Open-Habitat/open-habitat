@@ -692,6 +692,10 @@ the home, so root can read them or run `ssh` as the person. The grant is
 bounded by the person's machine: one line in `authorized_keys` with
 `restrict`, `from=` the node's tailnet address and `expiry-time=` (at most 90
 days), and on a Mac Remote Login for that one user without full disk access.
+On Windows the line needs the machine's OpenSSH Server 8.2 or newer (the
+version that reads `expiry-time=`); for a member of Administrators it goes in
+`%ProgramData%\ssh\administrators_authorized_keys`, which an elevated
+PowerShell writes.
 The page says this before anything is saved. Removing a machine in Habitat
 does not withdraw it from a copy of the key; the person removes the line on
 the machine, which the page gives as a command.

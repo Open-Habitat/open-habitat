@@ -32,7 +32,7 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
   const [wizard, setWizard] = useState<Wizard>();
   const [checks, setChecks] = useState<Record<string, Check>>({});
   const [checking, setChecking] = useState<string>();
-  const [removed, setRemoved] = useState<string>();
+  const [removed, setRemoved] = useState<{ name: string; os?: string }>();
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const phone = useRef(
@@ -263,10 +263,14 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
         setChecks((now) => ({ ...now, [machine]: c }));
       } else if (!r.ok) setNotice(r.message);
     },
-    remove: (machine: string) =>
+    remove: (machine: string) => {
+      // The machine leaves the page with the reply; its line's command
+      // still needs the machine's shell.
+      const os = data?.machines.find((m) => m.name === machine)?.os;
       void page({ action: "remove", machine }, () => {
-        setRemoved(machine);
-      }),
+        setRemoved({ name: machine, os });
+      });
+    },
     copy: async (text: string) => {
       try {
         await navigator.clipboard.writeText(text);

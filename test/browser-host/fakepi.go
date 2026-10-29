@@ -425,6 +425,10 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	if strings.Contains(prompt, "monirivinen komento") {
 		command = "cat <<'EOF'\nensimmäinen\ntoinen\nEOF"
 	}
+	// The person's own machine (Omat koneet): the fake runs nothing there.
+	if strings.Contains(prompt, "omalla koneellani") {
+		command = "ssh alice-macbook -- sw_vers -productVersion"
+	}
 	callID := "call_1"
 	if stream {
 		var raw [4]byte

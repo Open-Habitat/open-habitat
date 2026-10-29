@@ -2,7 +2,7 @@
 created: 2026-10-29
 updated: 2026-10-29
 type: feature
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: follow-up from own-machine-access implementation
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: own-machine
 lane_seq: 4
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Own machines: machine chip and open-connection mark in the conversation

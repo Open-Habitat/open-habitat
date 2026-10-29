@@ -47,7 +47,7 @@
         "address": {"$ref": "#/$defs/address"},
         "online": {"type": "boolean"},
         "last_seen": {"$ref": "#/$defs/seen"},
-        "ssh": {"description": "possible: macOS or Linux; later: Windows, not yet guided; no: a phone or other device without an SSH server.", "enum": ["possible", "later", "no"]}
+        "ssh": {"description": "possible: macOS, Linux or Windows; no: a phone or other device without an SSH server.", "enum": ["possible", "no"]}
       }
     },
     "machine": {
@@ -73,14 +73,16 @@
       "description": "The line for the machine and the command that installs it. Nothing is written on the account but the key, if it was missing.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["machine", "user", "address", "expires", "line", "command", "key_fingerprint"],
+      "required": ["machine", "user", "address", "expires", "line", "shell", "command", "key_fingerprint"],
       "properties": {
         "machine": {"$ref": "#/$defs/name"},
         "user": {"$ref": "#/$defs/user"},
         "address": {"$ref": "#/$defs/address"},
         "expires": {"$ref": "#/$defs/date"},
         "line": {"type": "string", "pattern": "^restrict,from=\"[0-9.]+\",expiry-time=\"[0-9]{8}\" ssh-ed25519 [A-Za-z0-9+/]+=* habitat:[A-Za-z0-9._-]+@[A-Za-z0-9._-]+$", "maxLength": 400},
-        "command": {"type": "string", "maxLength": 1000},
+        "shell": {"description": "What the commands are for: sh on macOS and Linux, powershell on Windows (the machine's OS as Tailscale reports it).", "enum": ["sh", "powershell"]},
+        "command": {"description": "Installs the line for the user: ~/.ssh/authorized_keys, on Windows %USERPROFILE%\\.ssh\\authorized_keys.", "type": "string", "maxLength": 1500},
+        "admin_command": {"description": "Windows only: Windows' OpenSSH reads a member of Administrators' keys from %ProgramData%\\ssh\\administrators_authorized_keys; this installs the line there from an elevated PowerShell.", "type": "string", "maxLength": 1800},
         "key_fingerprint": {"$ref": "#/$defs/fingerprint"}
       }
     },
@@ -109,7 +111,7 @@
     "result": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "web_identity_id", "tailscale", "peers", "machines", "ssh_include", "remove_command"],
+      "required": ["schema_version", "web_identity_id", "tailscale", "peers", "machines", "ssh_include", "remove_command", "windows_remove_command", "windows_admin_remove_command"],
       "properties": {
         "schema_version": {"const": 1},
         "web_identity_id": {"type": "string", "pattern": "^wid_[A-Za-z0-9_-]+$", "maxLength": 128},
@@ -118,6 +120,8 @@
         "machines": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/machine"}},
         "ssh_include": {"description": "~/.ssh/config includes the machines before its first Host block.", "type": "boolean"},
         "remove_command": {"description": "Removes this account's line from a machine's authorized_keys.", "type": "string", "maxLength": 500},
+        "windows_remove_command": {"description": "The same in PowerShell on Windows.", "type": "string", "maxLength": 1000},
+        "windows_admin_remove_command": {"description": "The same for an administrator on Windows, from an elevated PowerShell.", "type": "string", "maxLength": 1200},
         "account_key": {
           "type": "object",
           "additionalProperties": false,

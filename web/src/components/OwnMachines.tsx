@@ -15,6 +15,8 @@ import {
   type Peer,
   seenAgo,
   sshInclude,
+  windowsHostKeyCommand,
+  windowsSSHServerCommand,
 } from "../app/ownMachines";
 import { ControlButton, Segmented } from "./ControlElements";
 import { QrCode } from "./DeviceLink";
@@ -165,6 +167,35 @@ export function Truths({
         </span>
       </li>
     </ul>
+  );
+}
+
+/** The command that takes this account's line off a machine, in the shell
+ * that machine has. Windows keeps an administrator's keys in another file,
+ * so it gets both. */
+function RemoveCommands({
+  data,
+  os,
+  onCopy,
+}: {
+  data: OwnMachines;
+  os?: string;
+  onCopy: (text: string) => Promise<boolean>;
+}) {
+  if (osFamily(os) !== "windows")
+    return <CopyBox text={data.remove_command} onCopy={onCopy} />;
+  return (
+    <>
+      <p className="s-desc">
+        PowerShellissä, jos käyttäjäsi on tavallinen käyttäjä:
+      </p>
+      <CopyBox text={data.windows_remove_command} onCopy={onCopy} />
+      <p className="s-desc">
+        Jos käyttäjäsi on järjestelmänvalvoja, PowerShellissä, joka on avattu
+        järjestelmänvalvojana:
+      </p>
+      <CopyBox text={data.windows_admin_remove_command} onCopy={onCopy} />
+    </>
   );
 }
 
@@ -342,7 +373,8 @@ function MachineCard({
 }) {
   const state = machineState(machine, check?.result);
   const [label, tone] = machinePill[state];
-  const mac = osFamily(machine.os) === "mac";
+  const os = osFamily(machine.os);
+  const mac = os === "mac";
   const node = data.tailscale.node?.name ?? "Habitatin laite";
   return (
     <div
@@ -445,12 +477,14 @@ function MachineCard({
         <details className="om-more" data-testid="own-machine-cut">
           <summary>Näin katkaiset pääsyn koneelta</summary>
           <p className="s-desc">Poista Habitatin rivi koneen päätteessä:</p>
-          <CopyBox text={data.remove_command} onCopy={actions.copy} />
+          <RemoveCommands data={data} os={machine.os} onCopy={actions.copy} />
           <p className="s-desc">
             Tai{" "}
             {mac
               ? "sammuta Etäkirjautuminen (Järjestelmäasetukset › Yleiset › Jakaminen)"
-              : "pysäytä SSH-palvelin (sudo systemctl disable --now ssh)"}
+              : os === "windows"
+                ? "pysäytä OpenSSH-palvelin (järjestelmänvalvojan PowerShellissä: Stop-Service sshd; Set-Service sshd -StartupType Disabled)"
+                : "pysäytä SSH-palvelin (sudo systemctl disable --now ssh)"}
             , tai poista laite {node} Tailscalen hallintasivulta.
           </p>
         </details>
@@ -466,7 +500,7 @@ function MachineCard({
             {fiDate(machine.expires)} asti, jos joku on ehtinyt kopioida
             avaimen, joten poista rivi myös koneelta:
           </p>
-          <CopyBox text={data.remove_command} onCopy={actions.copy} />
+          <RemoveCommands data={data} os={machine.os} onCopy={actions.copy} />
           <div className="om-btns om-end">
             <ControlButton
               size="row"
@@ -541,7 +575,7 @@ export function OwnMachinesPage({
   checks: Readonly<Record<string, Check>>;
   checking?: string;
   /** The machine just removed, whose line is still on the machine. */
-  removed?: string;
+  removed?: { name: string; os?: string };
   notice?: string;
   busy?: boolean;
   actions: OwnMachineActions;
@@ -592,10 +626,10 @@ export function OwnMachinesPage({
         {removed && (
           <div className="om-note om-removed" data-testid="own-machine-removed">
             <p>
-              <b>{removed} poistettu Habitatista.</b> Poista vielä rivi
+              <b>{removed.name} poistettu Habitatista.</b> Poista vielä rivi
               koneelta, niin pääsy loppuu varmasti:
             </p>
-            <CopyBox text={data.remove_command} onCopy={actions.copy} />
+            <RemoveCommands data={data} os={removed.os} onCopy={actions.copy} />
           </div>
         )}
         {data.machines.length > 0 && !data.ssh_include && (
@@ -656,11 +690,9 @@ function PeerChoices({
             ? "lisätty jo"
             : p.ssh === "no"
               ? "ei SSH-palvelinta"
-              : p.ssh === "later"
-                ? "Windows myöhemmin"
-                : p.online
-                  ? "paikalla"
-                  : `viimeksi paikalla ${seenAgo(p.last_seen)}`;
+              : p.online
+                ? "paikalla"
+                : `viimeksi paikalla ${seenAgo(p.last_seen)}`;
           return (
             <label
               key={p.name}
@@ -696,13 +728,14 @@ function PeerChoices({
 function CheckNote({
   check,
   user,
-  mac,
+  os,
 }: {
   check?: Check;
   user: string;
-  mac: boolean;
+  os: ReturnType<typeof osFamily>;
 }) {
   if (!check) return null;
+  const mac = os === "mac";
   const notes: Record<string, ReactNode> = {
     ok: (
       <>
@@ -715,7 +748,9 @@ function CheckNote({
         Aja komento koneella käyttäjänä {user} ja tarkista uudelleen.
         {mac
           ? ` Jos ajoit sen, tarkista että etäkirjautuminen sallii käyttäjän ${user}.`
-          : ""}
+          : os === "windows"
+            ? " Jos käyttäjäsi on järjestelmänvalvoja, aja järjestelmänvalvojan komento. Jos ajoit sen, tarkista OpenSSH:n versio (ssh -V): rivi vaatii version 8.2 tai uudemman."
+            : ""}
       </>
     ),
     offline: (
@@ -729,7 +764,9 @@ function CheckNote({
         <b>Kone on verkossa, mutta SSH ei vastaa.</b>{" "}
         {mac
           ? "Laita etäkirjautuminen päälle (edellinen vaihe)."
-          : "Käynnistä SSH-palvelin (edellinen vaihe)."}
+          : os === "windows"
+            ? "Käynnistä OpenSSH-palvelin (edellinen vaihe). Jos se on käynnissä, Windowsin palomuuri voi estää yhteyden."
+            : "Käynnistä SSH-palvelin (edellinen vaihe)."}
       </>
     ),
     host_key_changed: (
@@ -780,6 +817,9 @@ export function AddMachineDialog({
     : undefined;
   const os = osFamily(peer?.os ?? machine?.os);
   const mac = os === "mac";
+  // Windows reads an administrator's keys from another file; most people's
+  // own account on their own PC is one.
+  const [admin, setAdmin] = useState(true);
   const node = ts.node?.name ?? "habitat";
   const userOk = /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$/.test(wizard.user);
   const step = wizard.step;
@@ -934,6 +974,21 @@ export function AddMachineDialog({
           Jätä <b>Salli etäkäyttäjille täysi levyn käyttöoikeus</b> pois päältä.
         </li>
       </ol>
+    ) : os === "windows" ? (
+      <>
+        <p>
+          Asenna Windowsin oma OpenSSH-palvelin ja käynnistä se. Avaa PowerShell
+          järjestelmänvalvojana (Käynnistä-valikossa hiiren oikea › Suorita
+          järjestelmänvalvojana) ja aja:
+        </p>
+        <CopyBox text={windowsSSHServerCommand} onCopy={copy} />
+        <p className="s-desc">
+          Saman saa Asetuksista: Järjestelmä › Valinnaiset ominaisuudet ›
+          OpenSSH-palvelin. Habitatin rivi vaatii OpenSSH:n version 8.2 tai
+          uudemman; <span className="om-mono">ssh -V</span> kertoo sen. Windows
+          10:n mukana tullut versio voi olla vanhempi.
+        </p>
+      </>
     ) : (
       <>
         <p>Asenna SSH-palvelin ja käynnistä se (Ubuntu ja Debian):</p>
@@ -977,13 +1032,65 @@ export function AddMachineDialog({
     ) : (
       <>
         {renewing && days}
-        <p>
-          Aja tämä komento koneen {mac ? "Päätteessä" : "päätteessä"} käyttäjänä{" "}
-          {g.user}. Se lisää yhden rivin tiedostoon{" "}
-          <span className="om-mono">~/.ssh/authorized_keys</span> ja korvaa
-          aiemman Habitat-rivin, jos sellainen on.
-        </p>
-        <CopyBox text={g.command} testId="own-machines-command" onCopy={copy} />
+        {g.shell === "powershell" && g.admin_command ? (
+          <>
+            <div className="om-row">
+              <span>Käyttäjä {g.user} koneella</span>
+              <Segmented<string>
+                data-testid="own-machines-windows-admin"
+                label={`Käyttäjä ${g.user} koneella`}
+                options={[
+                  { id: "admin", label: "Järjestelmänvalvoja" },
+                  { id: "user", label: "Tavallinen käyttäjä" },
+                ]}
+                value={admin ? "admin" : "user"}
+                onChange={(v) => setAdmin(v === "admin")}
+              />
+            </div>
+            <p>
+              {admin ? (
+                <>
+                  Windows lukee järjestelmänvalvojien avaimet yhteisestä
+                  tiedostosta{" "}
+                  <span className="om-mono">
+                    C:\ProgramData\ssh\administrators_authorized_keys
+                  </span>
+                  . Aja tämä komento PowerShellissä, joka on avattu
+                  järjestelmänvalvojana. Se lisää yhden rivin, korvaa tämän
+                  tilin aiemman rivin ja rajaa tiedoston oikeudet niin kuin
+                  OpenSSH vaatii.
+                </>
+              ) : (
+                <>
+                  Aja tämä komento PowerShellissä käyttäjänä {g.user}. Se lisää
+                  yhden rivin tiedostoon{" "}
+                  <span className="om-mono">.ssh\authorized_keys</span>{" "}
+                  kotikansiossasi ja korvaa aiemman Habitat-rivin, jos sellainen
+                  on.
+                </>
+              )}
+            </p>
+            <CopyBox
+              text={admin ? g.admin_command : g.command}
+              testId="own-machines-command"
+              onCopy={copy}
+            />
+          </>
+        ) : (
+          <>
+            <p>
+              Aja tämä komento koneen {mac ? "Päätteessä" : "päätteessä"}{" "}
+              käyttäjänä {g.user}. Se lisää yhden rivin tiedostoon{" "}
+              <span className="om-mono">~/.ssh/authorized_keys</span> ja korvaa
+              aiemman Habitat-rivin, jos sellainen on.
+            </p>
+            <CopyBox
+              text={g.command}
+              testId="own-machines-command"
+              onCopy={copy}
+            />
+          </>
+        )}
         <details className="om-more">
           <summary>Pelkkä rivi ja mitä sen osat tarkoittavat</summary>
           <CopyBox text={g.line} testId="own-machines-line" onCopy={copy} />
@@ -1020,7 +1127,7 @@ export function AddMachineDialog({
             Tarkista yhteys
           </ControlButton>
         </div>
-        <CheckNote check={wizard.check} user={g.user} mac={mac} />
+        <CheckNote check={wizard.check} user={g.user} os={os} />
         {renewing && wizard.check?.result === "ok" && (
           <Truths
             machine={g.machine}
@@ -1057,8 +1164,14 @@ export function AddMachineDialog({
       </>
     ) : (
       <>
-        <p>Varmista, että Habitat puhuu oikean koneen kanssa. Aja koneella:</p>
-        <CopyBox text={hostKeyCommand} onCopy={copy} />
+        <p>
+          Varmista, että Habitat puhuu oikean koneen kanssa. Aja koneella
+          {os === "windows" ? " PowerShellissä" : ""}:
+        </p>
+        <CopyBox
+          text={os === "windows" ? windowsHostKeyCommand : hostKeyCommand}
+          onCopy={copy}
+        />
         <p>Tuloksessa pitää olla sama sormenjälki kuin tässä:</p>
         <p className="om-fp" data-testid="own-machines-host-key">
           {wizard.check?.host_key}

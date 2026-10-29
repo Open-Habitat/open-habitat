@@ -380,6 +380,9 @@ names them.
   could then use the person's network.
 - Adding a machine, renewing access or removing one is done by the person in
   the settings page, never by you; the line on the machine is theirs to add.
+- On a Windows machine `ssh <name>` runs the command in `cmd.exe`; for
+  PowerShell send `powershell -NoProfile -Command "..."`. Paths are Windows
+  paths (`C:\Users\...`), not `~`.
 
 ## History, receipts and native process observations
 

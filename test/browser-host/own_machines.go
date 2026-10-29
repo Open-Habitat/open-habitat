@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,6 +21,9 @@ type ownMachinesHost struct {
 	runtime string
 	sshDir  string
 	node    *tailnetfake.Node
+	// open are the agents' SSH connections to machines (ControlMaster
+	// sockets), by machine name.
+	open map[string]net.Listener
 }
 
 var ownMachineHosts = map[string]*ownMachinesHost{}
@@ -76,7 +80,8 @@ func (h *ownMachinesHost) userManager(_ context.Context, args ...string) error {
 	return nil
 }
 
-// fixture serves /fixture/own-machines?do=approve|machine|hostkey for alice.
+// fixture serves /fixture/own-machines?do=approve|machine|hostkey|open|close
+// for alice.
 func ownMachinesFixture(w http.ResponseWriter, r *http.Request) {
 	h := ownMachineHosts["alice"]
 	q := r.URL.Query()
@@ -103,6 +108,23 @@ func ownMachinesFixture(w http.ResponseWriter, r *http.Request) {
 		} else {
 			err = tailnetfake.SetHostKey(h.sshDir, q.Get("address"), seed[0])
 		}
+	case "open", "close":
+		name := q.Get("name")
+		h.mu.Lock()
+		if l := h.open[name]; l != nil {
+			l.Close()
+			delete(h.open, name)
+		}
+		if q.Get("do") == "open" {
+			var l net.Listener
+			if l, err = net.Listen("unix", filepath.Join(h.runtime, "habitat-tailscale", "ssh-"+filepath.Base(name))); err == nil {
+				if h.open == nil {
+					h.open = map[string]net.Listener{}
+				}
+				h.open[name] = l
+			}
+		}
+		h.mu.Unlock()
 	default:
 		err = os.ErrInvalid
 	}
