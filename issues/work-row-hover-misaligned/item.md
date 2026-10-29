@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: ui-polish
 lane_seq: 10
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Collapsed work summary row hover is not aligned on the right
