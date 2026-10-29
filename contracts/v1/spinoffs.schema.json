@@ -112,7 +112,7 @@
             "maxLength": 64
           },
           "awaiting_input": {
-            "description": "Taskfleet reads the worker as waiting for input at its own terminal prompt.",
+            "description": "The worker waits for input at its own terminal prompt: Taskfleet reads it so, or the worker's Pi has run for a minute without sending the task it was started with (a startup question such as Pi's project trust prompt holds it; the state is then idle).",
             "type": "boolean"
           },
           "terminal": {

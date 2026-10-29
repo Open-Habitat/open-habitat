@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: worker-presentation
 lane_seq: 3
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Headless Pi worker stuck at the folder trust prompt while Habitat shows it working

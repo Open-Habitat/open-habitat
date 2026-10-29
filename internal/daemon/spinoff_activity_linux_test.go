@@ -63,6 +63,23 @@ func TestLiveWorkerStateReadsPiOwnSession(t *testing.T) {
 			t.Fatalf("%s: working %d idle %d", c.name, working, idle)
 		}
 	}
+	// Jari 28.10.2026: a headless Pi worker sat at Pi's project trust prompt
+	// with only its session header written, while Habitat said it worked.
+	for _, c := range []struct {
+		at    time.Time
+		want  string
+		input bool
+	}{
+		{now, "idle", true},
+		{time.Date(2026, 10, 29, 19, 0, 30, 0, time.UTC), "working", false},
+	} {
+		if err := os.WriteFile(p, []byte(header+"\n"+`{"type":"model_change","id":"m"}`+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if got, input := liveWorkerState(home, cfg.UID, r, c.at); got != c.want || input != c.input {
+			t.Fatalf("header only at %s: %s %v", c.at, got, input)
+		}
+	}
 	// Taskfleet's word stands when Pi's cannot be read: an ended run, a
 	// Claude worker, a path outside the state root, or no session yet.
 	ended := r
