@@ -23,3 +23,7 @@ Jari 29.10.: prototype rounds for managing access to the person's own computer o
 ### 2026-10-29T15:14:04Z · @jari
 
 Jari 29.10.: (1) The agent gets everything the person's user has on that machine: this is exactly the principle. (2) The server's root can technically use the grant: accepted, that is how it is. (3) There is no pause button to promise; the UI does not offer a pause that does not really stop the agent. (4) Birch's host-wide tailnet membership is intentional (the whole Birch service sits behind Tailscale) and is not the normal model; the product's per-user Tailscale is.
+
+### 2026-10-29T15:39:43Z · @jari
+
+Jari 29.10. (before opening the prototype): Ohjattu is best, but it must allow adding another machine afterwards, and the machines need meaningful names (probably from Tailscale). To be confirmed after he has seen the round.
