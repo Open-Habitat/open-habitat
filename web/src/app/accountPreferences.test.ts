@@ -2,14 +2,26 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import {
+  AccountPreferencesProvider,
   chooseEditor,
-  loadEditorPreference,
+  loadAccountPreferences,
+  setExperimentalFeature,
   useEditorChoice,
-} from "./editorPreference";
+  useExperimentalFeature,
+} from "./accountPreferences";
 
-const reply = (identity: string, engine = "vscode") =>
+const reply = (
+  identity: string,
+  engine = "vscode",
+  experimental: Record<string, true> = {},
+) =>
   new Response(
-    JSON.stringify({ schema_version: 1, web_identity_id: identity, engine }),
+    JSON.stringify({
+      schema_version: 1,
+      web_identity_id: identity,
+      engine,
+      experimental,
+    }),
     { headers: { "Content-Type": "application/json" } },
   );
 function Probe({ identity, csrf }: { identity: string; csrf: string }) {
@@ -75,7 +87,7 @@ it("ignores another person's reply and old-session responses, even on the same i
   await act(async () => release(reply("wid_old")));
   expect(screen.getByTestId("choice").textContent).toBe("codemirror6");
   fetch.mockResolvedValueOnce(reply("wid_other"));
-  await act(() => loadEditorPreference("wid_new", "new"));
+  await act(() => loadAccountPreferences("wid_new", "new"));
   expect(screen.getByTestId("choice").getAttribute("data-error")).toBe("true");
   expect(screen.getByTestId("choice").textContent).toBe("codemirror6");
 });
@@ -97,7 +109,7 @@ it("does not retry a lost write or apply a stale read over its confirmed result"
         }),
     )
     .mockResolvedValueOnce(reply("wid_race"));
-  const read = loadEditorPreference("wid_race", "race");
+  const read = loadAccountPreferences("wid_race", "race");
   await act(() => chooseEditor("wid_race", "vscode", "race"));
   await act(async () => {
     release(reply("wid_race", "codemirror6"));
@@ -109,4 +121,57 @@ it("does not retry a lost write or apply a stale read over its confirmed result"
   expect(screen.getByTestId("choice").textContent).toBe("vscode");
   expect(screen.getByTestId("choice").getAttribute("data-error")).toBe("true");
   expect(fetch).toHaveBeenCalledTimes(4);
+});
+function Feature() {
+  return createElement(
+    "output",
+    { "data-testid": "feature" },
+    String(useExperimentalFeature("terminal-watch")),
+  );
+}
+const feature = (identity: string, csrf: string) =>
+  createElement(
+    AccountPreferencesProvider,
+    { identity, csrf },
+    createElement(Feature),
+  );
+it("switches an experimental feature only on the daemon's confirmation, one change per write", async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(reply("wid_feature", "codemirror6"))
+    .mockResolvedValueOnce(
+      reply("wid_feature", "codemirror6", { "terminal-watch": true }),
+    );
+  vi.stubGlobal("fetch", fetch);
+  render(feature("wid_feature", "f"));
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+  expect(screen.getByTestId("feature").textContent).toBe("false");
+  await act(() =>
+    setExperimentalFeature("wid_feature", "terminal-watch", true, "f"),
+  );
+  expect(screen.getByTestId("feature").textContent).toBe("true");
+  expect(fetch.mock.calls[1][1]).toMatchObject({
+    method: "PUT",
+    headers: { "X-Agent-Host-CSRF": "f" },
+    body: JSON.stringify({ experimental: { "terminal-watch": true } }),
+  });
+  fetch.mockRejectedValueOnce(new Error("lost reply"));
+  await act(() =>
+    setExperimentalFeature("wid_feature", "terminal-watch", false, "f"),
+  );
+  expect(screen.getByTestId("feature").textContent).toBe("true");
+});
+it("keeps a feature off without a session, and ignores ids the browser does not know", async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValue(
+      reply("wid_unknown", "vscode", { "graduated-feature": true }),
+    );
+  vi.stubGlobal("fetch", fetch);
+  render(createElement(Feature));
+  expect(screen.getByTestId("feature").textContent).toBe("false");
+  cleanup();
+  render(feature("wid_unknown", "u"));
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+  expect(screen.getByTestId("feature").textContent).toBe("false");
 });

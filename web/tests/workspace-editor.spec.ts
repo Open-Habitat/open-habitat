@@ -40,16 +40,13 @@ async function conversationWithFileLink(
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   // These cases retain coverage of the separate-origin VS Code adapter.
   const session = await (await page.request.get("/auth/session")).json();
-  const preference = await page.request.put(
-    "/api/v1/account/editor-preference",
-    {
-      headers: {
-        Origin: new URL(page.url()).origin,
-        "X-Agent-Host-CSRF": session.csrf,
-      },
-      data: { engine: "vscode" },
+  const preference = await page.request.put("/api/v1/account/preferences", {
+    headers: {
+      Origin: new URL(page.url()).origin,
+      "X-Agent-Host-CSRF": session.csrf,
     },
-  );
+    data: { engine: "vscode" },
+  });
   expect(preference.status()).toBe(200);
   await page.reload();
   await page

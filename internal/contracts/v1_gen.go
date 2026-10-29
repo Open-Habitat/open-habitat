@@ -3,9 +3,10 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "0f843e83af45aad2e20d69ff6d0d0c550d0cf5dd070e02a292c81c4eb03e7dbe"
+const V1SchemaFingerprint = "a7a58e400b70d49b910c41154eeac4534a1bf9141a854bff6762ce9ca73374b5"
 
 var V1SchemaFiles = []string{
+	"account-preferences.schema.json",
 	"account-profile-update.schema.json",
 	"account-session.schema.json",
 	"account-storage.schema.json",
@@ -22,7 +23,6 @@ var V1SchemaFiles = []string{
 	"composer.schema.json",
 	"context-detail.schema.json",
 	"device-link.schema.json",
-	"editor-preference.schema.json",
 	"editor.schema.json",
 	"error.schema.json",
 	"event.schema.json",
@@ -91,6 +91,7 @@ var V1SchemaFiles = []string{
 }
 
 // Wire families remain opaque until validated against their canonical JSON Schema.
+type AccountPreferences = json.RawMessage
 type AccountProfileUpdate = json.RawMessage
 type AccountSession = json.RawMessage
 type AccountStorage = json.RawMessage
@@ -107,7 +108,6 @@ type Common = json.RawMessage
 type Composer = json.RawMessage
 type ContextDetail = json.RawMessage
 type DeviceLink = json.RawMessage
-type EditorPreference = json.RawMessage
 type Editor = json.RawMessage
 type Error = json.RawMessage
 type Event = json.RawMessage

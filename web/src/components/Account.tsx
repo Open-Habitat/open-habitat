@@ -6,6 +6,7 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 import { EditorSettings } from "../app/EditorSettings";
+import { ExperimentalFeatures } from "../app/ExperimentalFeatures";
 import "./Settings.css";
 import { bundleChecks } from "../app/bundleRelease";
 import { ClaudeSignIn } from "../app/ClaudeSignIn";
@@ -817,6 +818,9 @@ export function AccountSettings({
         {section === "sanelu" && <SpeechSettings csrf={csrf} />}
         {section === "editori" && (
           <EditorSettings identity={editorIdentity} csrf={csrf} />
+        )}
+        {section === "kokeelliset" && (
+          <ExperimentalFeatures identity={editorIdentity} csrf={csrf} />
         )}
         {section === "ulkoasu" && (
           <div className="s-card">

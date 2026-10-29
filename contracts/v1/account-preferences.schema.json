@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/account-preferences.schema.json",
+  "$defs": {
+    "engine": {
+      "enum": [
+        "codemirror6",
+        "vscode"
+      ]
+    },
+    "feature_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "maxLength": 48
+    },
+    "write": {
+      "description": "One change: the editor, or one experimental feature's switch. The daemon merges it into the stored document.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "engine"
+          ],
+          "properties": {
+            "engine": {
+              "$ref": "#/$defs/engine"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "experimental"
+          ],
+          "properties": {
+            "experimental": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 1,
+              "propertyNames": {
+                "$ref": "#/$defs/feature_id"
+              },
+              "additionalProperties": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "web_identity_id",
+        "engine",
+        "experimental"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "web_identity_id": {
+          "type": "string",
+          "pattern": "^wid_[A-Za-z0-9_-]+$",
+          "maxLength": 128
+        },
+        "engine": {
+          "$ref": "#/$defs/engine"
+        },
+        "experimental": {
+          "description": "The experimental features the person turned on. A feature that is off is absent.",
+          "type": "object",
+          "maxProperties": 32,
+          "propertyNames": {
+            "$ref": "#/$defs/feature_id"
+          },
+          "additionalProperties": {
+            "const": true
+          }
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/result"
+}

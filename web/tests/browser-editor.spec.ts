@@ -483,7 +483,7 @@ test("@browser-editor a refreshed host preference never interrupts dirty typing"
     );
     const read = page.waitForResponse(
       (response) =>
-        response.url().endsWith("/api/v1/account/editor-preference") &&
+        response.url().endsWith("/api/v1/account/preferences") &&
         response.request().method() === "GET",
     );
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));

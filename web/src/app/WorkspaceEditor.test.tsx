@@ -22,7 +22,7 @@ const preference = vi.hoisted(() => ({
   busy: false,
   error: false,
 }));
-vi.mock("./editorPreference", () => ({
+vi.mock("./accountPreferences", () => ({
   useEditorChoice: () => preference,
 }));
 beforeEach(() => {

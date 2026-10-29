@@ -1,9 +1,9 @@
 import { EditorSettingsControl } from "../components/EditorSettings";
 import {
   chooseEditor,
-  loadEditorPreference,
+  loadAccountPreferences,
   useEditorChoice,
-} from "./editorPreference";
+} from "./accountPreferences";
 
 export function EditorSettings({
   identity,
@@ -23,7 +23,7 @@ export function EditorSettings({
       }}
       onReload={
         identity && csrf
-          ? () => void loadEditorPreference(identity, csrf)
+          ? () => void loadAccountPreferences(identity, csrf)
           : undefined
       }
     />

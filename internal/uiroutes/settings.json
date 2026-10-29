@@ -9,6 +9,7 @@
   "editori": "editor",
   "sanelu": "speech",
   "tila": "storage",
+  "kokeelliset": "experimental",
   "palvelin": "server",
   "palvelinintegraatiot": "server-integrations",
   "aiavain": "ai-key",

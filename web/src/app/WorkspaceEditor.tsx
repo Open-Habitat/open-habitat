@@ -21,6 +21,7 @@ import { EditorHeader } from "../components/EditorHeader";
 import { EditorSplit } from "../components/EditorSplit";
 import { FileLinkContext, type FileRef } from "../components/fileRefs";
 import { Icon } from "../components/Icon";
+import { type EditorEngine, useEditorChoice } from "./accountPreferences";
 import type { BrowserDocumentHandle } from "./BrowserDocument";
 import {
   clampConversationWidth,
@@ -38,7 +39,6 @@ import {
   rememberedConversationWidth,
 } from "./editor";
 import type { ReplaceNote, ToolReport } from "./editorChanges";
-import { type EditorEngine, useEditorChoice } from "./editorPreference";
 
 const BrowserDocument = lazy(() => import("./BrowserDocument"));
 

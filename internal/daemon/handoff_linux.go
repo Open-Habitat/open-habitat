@@ -101,7 +101,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(WorkspaceGitPath, WorkspaceGitHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceGitFetchPath, WorkspaceGitFetchHandler(cfg, server.TrustedPeer, forges))
 	mux.Handle(EditorFilesPrefix, controller.EditorFiles())
-	mux.Handle(EditorPreferencePath, EditorPreferenceHandler(cfg, server.TrustedPeer))
+	mux.Handle(AccountPreferencesPath, AccountPreferencesHandler(cfg, server.TrustedPeer))
 	mux.Handle(FirstRoutePath, FirstRouteHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilesPath, WorkspaceFilesHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilePreviewPath, WorkspaceFilePreviewHandler(cfg, server.TrustedPeer))

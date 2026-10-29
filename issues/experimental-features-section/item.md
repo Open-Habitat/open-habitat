@@ -3,12 +3,13 @@ created: 2026-10-29
 updated: 2026-10-29
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: experimental
 lane_seq: 0
 collision: [web/src/app/settingsIndex.ts]
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Kokeelliset ominaisuudet settings section (Esittely) and per-account switches
@@ -23,6 +24,6 @@ Storage as the prototype result recommends: generalize the editor preference (`~
 
 ## Acceptance Criteria
 
-- [ ] Section with three feature cards and switches, persisted per account through the daemon.
-- [ ] A small client API (`useExperimentalFeature(id)`) the features use.
-- [ ] Contract, daemon and browser tests; KOKEILTAVAA line.
+- [x] Section with three feature cards and switches, persisted per account through the daemon.
+- [x] A small client API (`useExperimentalFeature(id)`) the features use.
+- [x] Contract, daemon and browser tests; KOKEILTAVAA line.

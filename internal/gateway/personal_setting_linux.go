@@ -5,13 +5,14 @@ package gateway
 import "net/http"
 
 const (
-	editorPreferencePath = "/api/v1/account/editor-preference"
-	firstRoutePath       = "/api/v1/account/first-route"
+	accountPreferencesPath = "/api/v1/account/preferences"
+	firstRoutePath         = "/api/v1/account/first-route"
 )
 
-// personalSetting relays a read or a replacing write of one small piece of
-// the person's own state (the editor choice, the first-route mark) to their
-// daemon, which alone reads and writes it.
+// personalSetting relays a read or a write of one small piece of the person's
+// own state (the account preferences, the first-route mark) to their daemon,
+// which alone reads, merges and writes it. A write names one change, so it
+// stays under the 128-byte cap.
 func (a *Auth) personalSetting(path string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) { a.personalSettingHTTP(path, w, r) }
 }

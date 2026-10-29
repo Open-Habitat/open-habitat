@@ -22,7 +22,7 @@ func TestBrowserRoutesHTTP2(t *testing.T) {
 		{"GET", githubClonesPath, "", a.githubClones},
 		{"POST", "/api/v1/workspaces", "{}", a.workspaces},
 		{"GET", "/api/v1/workspaces/github/publish?workspace_id=x&full_name=org%2Frepo&visibility=private", "", a.githubPublish},
-		{"GET", editorPreferencePath, "", a.personalSetting(editorPreferencePath)},
+		{"GET", accountPreferencesPath, "", a.personalSetting(accountPreferencesPath)},
 		{"GET", firstRoutePath, "", a.personalSetting(firstRoutePath)},
 		{"GET", editorFilesPrefix + "list?workspace_id=x&path=", "", a.editorFiles},
 		{"GET", terminalsPath + "?workspace_id=" + "ws_" + strings.Repeat("a", 24), "", a.terminalList},

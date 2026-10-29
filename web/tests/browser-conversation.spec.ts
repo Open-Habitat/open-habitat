@@ -1344,7 +1344,7 @@ test("@browser-conversation warm controlled return reads neither status nor hist
         // The top bar's shell count and editor choice are independent native
         // observations on mount, not conversation status/history reloads.
         path !== "/api/v1/workspaces/terminals" &&
-        path !== "/api/v1/account/editor-preference" &&
+        path !== "/api/v1/account/preferences" &&
         // The workspace page shows the authored start page (file-only read).
         path !== "/api/v1/workspaces/start_page",
     ),

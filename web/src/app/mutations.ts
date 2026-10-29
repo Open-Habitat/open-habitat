@@ -64,7 +64,7 @@ export const mutationClasses = {
   "editor.handoff": "confirmed",
   "editor.open": "confirmed",
   "editor.save": "confirmed",
-  "editor.preference": "confirmed",
+  "account.preferences": "confirmed",
   "account.first_route": "confirmed",
   "editor.stop": "confirmed",
   "view.handoff": "confirmed",

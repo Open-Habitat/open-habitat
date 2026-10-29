@@ -36,6 +36,7 @@ export type IconName =
   | "expand"
   | "stop"
   | "editor"
+  | "flask"
   | "thinking"
   | "terminal"
   | "system"
@@ -96,6 +97,12 @@ export function Icon({
   ...props
 }: { name: IconName } & Omit<SVGProps<SVGSVGElement>, "children">) {
   const paths: Record<IconName, ReactNode> = {
+    flask: (
+      <>
+        <path d="M9 3h6M10 3v6.2L4.6 18.4A1.7 1.7 0 0 0 6.1 21h11.8a1.7 1.7 0 0 0 1.5-2.6L14 9.2V3" />
+        <path d="M7.2 15h9.6" />
+      </>
+    ),
     editor: (
       <>
         <rect x="3" y="4" width="18" height="16" rx="2" />

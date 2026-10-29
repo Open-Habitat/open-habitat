@@ -1,0 +1,275 @@
+//go:build linux
+
+package daemon
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
+	"syscall"
+
+	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"golang.org/x/sys/unix"
+)
+
+const AccountPreferencesPath = "/api/v1/account/preferences"
+
+// accountPreferences is the person's small account-wide settings in one
+// document, ~/.config/open-habitat/preferences.json: the desktop editor and
+// the experimental features they turned on. Only enabled features are kept,
+// so a feature that graduates or is removed leaves at most one stale key.
+type accountPreferences struct {
+	Engine       string          `json:"engine"`
+	Experimental map[string]bool `json:"experimental"`
+}
+
+// preferencesWrite names one change. The gateway caps a write at 128 bytes,
+// so a write never carries the whole document; the daemon merges it.
+type preferencesWrite struct {
+	Engine       *string
+	Experimental map[string]bool
+}
+
+const maxExperimentalFeatures = 32
+
+// preferencesLock serializes the read-merge-replace of the person's file in
+// their daemon, so two devices switching different features at once both
+// land.
+var preferencesLock sync.Mutex
+
+func validEditorEngine(engine string) bool { return engine == "codemirror6" || engine == "vscode" }
+
+// validFeatureID: lower-case words joined by single hyphens, as the
+// contract's pattern says.
+func validFeatureID(id string) bool {
+	if len(id) == 0 || len(id) > 48 || id[0] < 'a' || id[0] > 'z' || id[len(id)-1] == '-' || strings.Contains(id, "--") {
+		return false
+	}
+	for _, c := range id {
+		if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' {
+			return false
+		}
+	}
+	return true
+}
+
+func (p accountPreferences) valid() bool {
+	if !validEditorEngine(p.Engine) || len(p.Experimental) > maxExperimentalFeatures {
+		return false
+	}
+	for id, on := range p.Experimental {
+		if !validFeatureID(id) || !on {
+			return false
+		}
+	}
+	return true
+}
+
+// decodePreferencesWrite accepts exactly what the contract's write allows:
+// one object with exactly one key, either "engine" or "experimental" naming
+// one feature with a boolean. encoding/json alone would match keys without
+// regard to case and read null as false, so each part is decoded on its own.
+func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
+	var change preferencesWrite
+	var outer map[string]json.RawMessage
+	dec := json.NewDecoder(body)
+	if dec.Decode(&outer) != nil || dec.Decode(new(any)) != io.EOF || len(outer) != 1 {
+		return change, false
+	}
+	if raw, ok := outer["engine"]; ok {
+		var engine string
+		if json.Unmarshal(raw, &engine) != nil || !validEditorEngine(engine) {
+			return change, false
+		}
+		change.Engine = &engine
+		return change, true
+	}
+	var switches map[string]*bool
+	if json.Unmarshal(outer["experimental"], &switches) != nil || len(switches) != 1 {
+		return change, false
+	}
+	for id, on := range switches {
+		if on == nil || !validFeatureID(id) {
+			return change, false
+		}
+		change.Experimental = map[string]bool{id: *on}
+	}
+	return change, true
+}
+
+func preferencesDir(home string, create bool) (*os.File, error) {
+	return personalDir(home, create, ".config", "open-habitat")
+}
+
+// personalDir opens home/<parts...>. Use the mapped home, not the gateway's
+// environment or a browser-supplied path. Open each directory without
+// following symlinks and hold it across rename.
+func personalDir(home string, create bool, parts ...string) (*os.File, error) {
+	fd, err := unix.Open(home, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, err
+	}
+	for _, part := range parts {
+		if create {
+			if err = unix.Mkdirat(fd, part, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
+				unix.Close(fd)
+				return nil, err
+			}
+		}
+		next, e := unix.Openat(fd, part, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+		unix.Close(fd)
+		if e != nil {
+			return nil, e
+		}
+		fd = next
+		var st unix.Stat_t
+		if e = unix.Fstat(fd, &st); e != nil || st.Uid != uint32(os.Geteuid()) || st.Mode&0022 != 0 {
+			unix.Close(fd)
+			return nil, errors.New("unsafe configuration directory")
+		}
+	}
+	return os.NewFile(uintptr(fd), "configuration"), nil
+}
+
+func readPreferences(home string) (accountPreferences, error) {
+	result := accountPreferences{Engine: "codemirror6", Experimental: map[string]bool{}}
+	dir, err := preferencesDir(home, false)
+	if errors.Is(err, os.ErrNotExist) {
+		return result, nil
+	}
+	if err != nil {
+		return result, err
+	}
+	defer dir.Close()
+	fd, err := unix.Openat(int(dir.Fd()), "preferences.json", unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
+	if errors.Is(err, os.ErrNotExist) {
+		return result, nil
+	}
+	if err != nil {
+		return result, err
+	}
+	f := os.NewFile(uintptr(fd), "preferences")
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		return result, err
+	}
+	if !st.Mode().IsRegular() || st.Size() > 4096 || st.Mode().Perm()&0022 != 0 || st.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) {
+		return result, errors.New("unsafe configuration file")
+	}
+	result = accountPreferences{}
+	dec := json.NewDecoder(io.LimitReader(f, 4097))
+	dec.DisallowUnknownFields()
+	if err = dec.Decode(&result); err != nil {
+		return result, err
+	}
+	if result.Experimental == nil {
+		result.Experimental = map[string]bool{}
+	}
+	if !result.valid() || dec.Decode(new(any)) != io.EOF {
+		return result, errors.New("invalid preferences")
+	}
+	return result, nil
+}
+
+func savePreferences(home string, value accountPreferences) error {
+	if !value.valid() {
+		return errors.New("invalid preferences")
+	}
+	if value.Experimental == nil {
+		value.Experimental = map[string]bool{}
+	}
+	dir, err := preferencesDir(home, true)
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	var random [16]byte
+	if _, err = rand.Read(random[:]); err != nil {
+		return err
+	}
+	name := ".preferences-" + hex.EncodeToString(random[:])
+	fd, err := unix.Openat(int(dir.Fd()), name, unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0600)
+	if err != nil {
+		return err
+	}
+	defer unix.Unlinkat(int(dir.Fd()), name, 0)
+	f := os.NewFile(uintptr(fd), "preferences")
+	defer f.Close()
+	if err = json.NewEncoder(f).Encode(value); err != nil {
+		return err
+	}
+	if err = f.Sync(); err != nil {
+		return err
+	}
+	if err = f.Close(); err != nil {
+		return err
+	}
+	if err = unix.Renameat(int(dir.Fd()), name, int(dir.Fd()), "preferences.json"); err != nil {
+		return err
+	}
+	return dir.Sync()
+}
+
+// applyPreferences merges one named change into the stored document and
+// returns what is now stored. Turning a feature off removes its key.
+func applyPreferences(home string, change preferencesWrite) (accountPreferences, error) {
+	preferencesLock.Lock()
+	defer preferencesLock.Unlock()
+	value, err := readPreferences(home)
+	if err != nil {
+		return value, err
+	}
+	if change.Engine != nil {
+		value.Engine = *change.Engine
+	}
+	for id, on := range change.Experimental {
+		if on {
+			value.Experimental[id] = true
+		} else {
+			delete(value.Experimental, id)
+		}
+	}
+	return value, savePreferences(home, value)
+}
+
+func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !historyAuthorized(cfg, trusted, r) {
+			snapshotError(w, 403, "cross_user_denied")
+			return
+		}
+		put := r.Method == http.MethodPut
+		if r.URL.Path != AccountPreferencesPath || r.URL.EscapedPath() != AccountPreferencesPath || r.URL.RawQuery != "" || len(r.TransferEncoding) != 0 || (!put && r.Method != http.MethodGet) || (!put && r.ContentLength > 0) {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		var value accountPreferences
+		var err error
+		if put {
+			if r.ContentLength < 2 || r.ContentLength > 128 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 {
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
+			change, ok := decodePreferencesWrite(io.LimitReader(r.Body, 129))
+			if !ok {
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
+			value, err = applyPreferences(cfg.Home, change)
+		} else {
+			value, err = readPreferences(cfg.Home)
+		}
+		if err != nil {
+			snapshotError(w, 503, "preferences_unavailable")
+			return
+		}
+		historyJSON(w, map[string]any{"schema_version": 1, "web_identity_id": opaque("wid_", cfg.Provider+":"+cfg.Subject), "engine": value.Engine, "experimental": value.Experimental})
+	})
+}

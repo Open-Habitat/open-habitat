@@ -43,7 +43,7 @@ for path in SCHEMA_FILES:
     registry = registry.with_resource(data["$id"], Resource.from_contents(data))
 
 checks = {
-    "editor-preference.json": "editor-preference.schema.json",
+    "account-preferences.json": "account-preferences.schema.json",
     "first-route.json": "first-route.schema.json",
     "editor-file-read.json": "workspace-editor-files.schema.json",
     "editor-file-save.json": "workspace-editor-files.schema.json",
@@ -226,9 +226,12 @@ def must_reject(schema: str, instance: object) -> None:
         return
     raise AssertionError(f"{schema} unexpectedly accepted negative fixture: {instance!r}")
 
-# Editor settings carry only a supported enum and the mapped web identity.
-must_reject("editor-preference.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "monaco"})
-must_reject("editor-preference.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "uid": 123})
+# Account preferences carry only a supported engine, enabled feature ids and
+# the mapped web identity; a write names exactly one change.
+must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "monaco", "experimental": {}})
+must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "experimental": {}, "uid": 123})
+must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "experimental": {"terminal-watch": False}})
+must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "experimental": {"../x": True}})
 
 # A view names its entry inside the export, never a path outside it or a
 # hidden file, and its open URL is the fixed handoff on an HTTPS view host.
@@ -539,6 +542,13 @@ must_reject("github-clone.schema.json", {"action": "start", "full_name": "exampl
 
 def must_accept(schema: str, instance: object) -> None:
     Draft202012Validator(schemas[schema], registry=registry, format_checker=format_checker).validate(instance)
+
+# A preferences write names exactly one change: the engine or one switch.
+preferences_write = Draft202012Validator({"$ref": schemas["account-preferences.schema.json"]["$id"] + "#/$defs/write"}, registry=registry)
+for ok in ({"engine": "vscode"}, {"experimental": {"terminal-watch": True}}, {"experimental": {"next-waiting-row": False}}):
+    preferences_write.validate(ok)
+for bad in ({}, {"engine": "vscode", "experimental": {"terminal-watch": True}}, {"experimental": {}}, {"experimental": {"a": True, "b": True}}, {"experimental": {"Terminal": True}}):
+    assert not preferences_write.is_valid(bad), f"preferences write accepted {bad!r}"
 
 # GitLab: the token travels only in connect and replace and never in a
 # reply; a token description is GitLab's answer of an ok read only; project

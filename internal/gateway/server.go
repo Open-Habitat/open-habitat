@@ -66,7 +66,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(workspaceCommandsPath, s.auth.workspaceComposerRead)
 		mux.HandleFunc(workspaceStartPagePath, s.auth.workspaceComposerRead)
 		mux.HandleFunc(editorFilesPrefix, s.auth.editorFiles)
-		mux.HandleFunc(editorPreferencePath, s.auth.personalSetting(editorPreferencePath))
+		mux.HandleFunc(accountPreferencesPath, s.auth.personalSetting(accountPreferencesPath))
 		mux.HandleFunc(firstRoutePath, s.auth.personalSetting(firstRoutePath))
 		mux.HandleFunc(workspaceFilesPath, s.auth.workspaceComposerRead)
 		mux.HandleFunc(workspaceFilePreviewPath, s.auth.workspaceComposerRead)

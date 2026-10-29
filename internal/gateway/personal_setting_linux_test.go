@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestEditorPreferenceRelayRequiresSessionAndCSRF(t *testing.T) {
+func TestAccountPreferencesRelayRequiresSessionAndCSRF(t *testing.T) {
 	calls := 0
 	host, _ := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
@@ -30,8 +30,9 @@ func TestEditorPreferenceRelayRequiresSessionAndCSRF(t *testing.T) {
 		{"PUT", "", "token", "https://other.test", "browser", `{"engine":"vscode"}`, 403},
 		{"GET", "?uid=2", "", "", "browser", "", 400},
 		{"PUT", "", "token", "https://host.test", "browser", strings.Repeat("x", 129), 400},
+		{"PUT", "", "token", "https://host.test", "browser", `{"experimental":{"worker-row-sentence":false}}`, 200},
 	} {
-		r := httptest.NewRequest(tc.method, "https://host.test"+editorPreferencePath+tc.suffix, strings.NewReader(tc.body))
+		r := httptest.NewRequest(tc.method, "https://host.test"+accountPreferencesPath+tc.suffix, strings.NewReader(tc.body))
 		if tc.cookie != "" {
 			r.AddCookie(&http.Cookie{Name: cookieName, Value: tc.cookie})
 		}
@@ -45,7 +46,7 @@ func TestEditorPreferenceRelayRequiresSessionAndCSRF(t *testing.T) {
 			t.Fatalf("%+v: %d %s", tc, w.Code, w.Body.String())
 		}
 	}
-	if calls != 2 {
+	if calls != 3 {
 		t.Fatalf("refused request reached daemon: %d", calls)
 	}
 }

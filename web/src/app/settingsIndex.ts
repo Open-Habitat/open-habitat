@@ -436,6 +436,50 @@ export const settingsSections = [
     ],
   },
   {
+    id: "kokeelliset",
+    label: "Kokeelliset ominaisuudet",
+    icon: "flask",
+    kw: [
+      "experimental",
+      "kokeilu",
+      "kokeellinen",
+      "beta",
+      "labs",
+      "ominaisuus",
+      "feature",
+    ],
+    intro:
+      "Keskeneräisiä ominaisuuksia, joita voit kokeilla jo nyt. Valinnat koskevat kaikkia laitteitasi.",
+    rows: [
+      {
+        id: "next-waiting-row",
+        label: "Seuraava odottava keskustelu",
+        kw: ["seuraava", "next", "odottaa", "waiting", "alt+↓", "jono"],
+        desc: "Kirjoituskentän yläpuolelle seuraava sinua odottava keskustelu, kun agentti työskentelee.",
+      },
+      {
+        id: "worker-row-sentence",
+        label: "Workerin työ rivillä",
+        kw: [
+          "worker",
+          "commit",
+          "muutokset",
+          "pull request",
+          "pr",
+          "tarkistukset",
+          "checks",
+        ],
+        desc: "Workerin rivi kertoo commitit, muutokset ja pull requestin tarkistukset.",
+      },
+      {
+        id: "terminal-watch",
+        label: "Päätteen Pi:n katselu",
+        kw: ["tmux", "pääte", "terminal", "peili", "mirror", "katso", "watch"],
+        desc: "Päätteessä käynnissä olevan Pi:n tmux-ikkunan katselu selaimessa, vain luku.",
+      },
+    ],
+  },
+  {
     id: "palvelin",
     label: "Palvelin",
     icon: "server",
