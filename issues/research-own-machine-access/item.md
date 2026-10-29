@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: own-machine
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Research: the agent reaches the person's own computer over Tailscale + SSH, managed in the UI
