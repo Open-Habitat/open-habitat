@@ -12,34 +12,43 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/core"
 )
 
-// SiteOriginPath is the site's public browser origin, published by host
-// maintenance from the site declaration. It names no person, so every user may
-// read it; only root may write it. It is display data for links the agent
-// gives the person, never an identity or authorization input.
+// SiteOriginPath holds the site's public facts, published by host maintenance
+// from the site declaration: the browser origin and whether views are
+// configured. It names no person, so every user may read it; only root may
+// write it. It is display data for what the agent tells the person, never an
+// identity or authorization input.
 const SiteOriginPath = "/opt/open-habitat/site-origin.json"
 
 var siteOriginPath = SiteOriginPath
 
-// loadSiteOrigin returns the published origin, or an error when the file is
-// missing, untrusted or not a bare https origin.
-func loadSiteOrigin(path string) (string, error) {
-	data, err := core.ReadOperatorFile(path, 4096)
-	if err != nil {
-		return "", err
-	}
-	return parseSiteOrigin(data)
+// siteFacts is the published file. Views says whether the site declares a
+// view origin; without one the browser shows no view cards.
+type siteFacts struct {
+	Origin string
+	Views  bool
 }
 
-func parseSiteOrigin(data []byte) (string, error) {
+// loadSite returns the published facts, or an error when the file is missing,
+// untrusted or malformed.
+func loadSite(path string) (siteFacts, error) {
+	data, err := core.ReadOperatorFile(path, 4096)
+	if err != nil {
+		return siteFacts{}, err
+	}
+	return parseSite(data)
+}
+
+func parseSite(data []byte) (siteFacts, error) {
 	var cfg struct {
 		Origin string `json:"origin"`
+		Views  *bool  `json:"views"`
 	}
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
-	if dec.Decode(&cfg) != nil || dec.Decode(new(any)) != io.EOF || !bareHTTPSOrigin(cfg.Origin) {
-		return "", errors.New("invalid site origin")
+	if dec.Decode(&cfg) != nil || dec.Decode(new(any)) != io.EOF || !bareHTTPSOrigin(cfg.Origin) || cfg.Views == nil {
+		return siteFacts{}, errors.New("invalid site facts")
 	}
-	return cfg.Origin, nil
+	return siteFacts{Origin: cfg.Origin, Views: *cfg.Views}, nil
 }
 
 func bareHTTPSOrigin(s string) bool {
@@ -50,9 +59,9 @@ func bareHTTPSOrigin(s string) bool {
 }
 
 func agentSite() map[string]any {
-	origin, err := loadSiteOrigin(siteOriginPath)
+	site, err := loadSite(siteOriginPath)
 	if err != nil {
 		return map[string]any{"state": "unavailable", "reason": "site_origin_unavailable", "source": "site_origin_file"}
 	}
-	return map[string]any{"state": "available", "origin": origin, "source": "site_origin_file"}
+	return map[string]any{"state": "available", "origin": site.Origin, "views": site.Views, "source": "site_origin_file"}
 }

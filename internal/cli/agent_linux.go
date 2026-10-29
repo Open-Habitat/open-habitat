@@ -234,6 +234,9 @@ func agentRequestTimeout(path string) time.Duration {
 
 func agentResponseError(method, path string, status int, code string) error {
 	path, _, _ = strings.Cut(path, "?")
+	if path == daemon.AgentViewsPath && code == "views_unavailable" {
+		return &cliError{code: code, message: "this Open Habitat has no view origin, so the person's browser would show no view card; nothing was published; tell the person the page cannot be shown here and offer the files instead with agent file offer (they preview and download them)", exit: 1}
+	}
 	if (strings.HasPrefix(path, daemon.AgentHistoryPath) || path == daemon.AgentViewsPath || path == daemon.AgentViewRemovePath || path == daemon.AgentFileOffersPath || path == daemon.AgentFileOfferRemovePath || strings.HasPrefix(path, daemon.AgentAttachmentsPath) || path == daemon.AgentCredentialsPath || strings.HasPrefix(path, daemon.AgentCredentialsPath+"/") || path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || path == daemon.AgentIntegrationLoginPath || path == daemon.AgentPiLoginPath || path == daemon.AgentClaudeLoginPath || strings.HasPrefix(path, daemon.AgentConversationsPath) || path == daemon.AgentWorkspaceOperationsPath || path == daemon.AgentClonesPath || strings.HasPrefix(path, daemon.AgentRepositoryPath) || strings.HasPrefix(path, daemon.AgentRepositoriesPath) || strings.HasPrefix(path, daemon.AgentCheckoutPath)) && status >= 400 && status < 500 && code != "" {
 		return &cliError{code: code, message: "daemon refused personal operation; inspect input and native state; do not replay uncertain work", exit: 1}
 	}

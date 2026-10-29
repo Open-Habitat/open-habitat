@@ -381,10 +381,7 @@ func finishGeneration(s Site) error {
 	if e = installPolicy("/", policyFile{"/opt/open-habitat/pi-runtime.json", string(b)}, 0); e != nil {
 		return e
 	}
-	// The public origin lets a person's agent link them to this site. It is
-	// display data, never identity, so every user may read it.
-	b, _ = json.Marshal(map[string]string{"origin": s.Gateway.Origin})
-	if e = installPolicy("/", policyFile{"/opt/open-habitat/site-origin.json", string(b)}, 0); e != nil {
+	if e = installPolicy("/", policyFile{"/opt/open-habitat/site-origin.json", siteFactsFile(s)}, 0); e != nil {
 		return e
 	}
 	if slices.Contains(s.Profiles, "editor") {
@@ -490,4 +487,13 @@ func runtimePackageTransition(ctx context.Context, s Site, r AuthenticatedReleas
 		return e
 	}
 	return transitionUbuntuPackages(ctx, s.Profiles, r, observed, install, nativeCommandTimeout)
+}
+
+// siteFactsFile is the public site file a person's daemon reads: the origin
+// lets their agent link them to this site, and views says whether a view
+// offer can show them anything. It is display data, never identity, so every
+// user may read it.
+func siteFactsFile(s Site) string {
+	b, _ := json.Marshal(map[string]any{"origin": s.Gateway.Origin, "views": s.Views != nil})
+	return string(b)
 }

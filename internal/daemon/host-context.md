@@ -103,7 +103,10 @@ UUID --json` (a directory needs `--entry-file index.html`; see
 the agent skill). The browser shows a card; the person opens it beside the
 conversation or in a new tab. The view is a frozen copy that runs sandboxed
 without network access, so inline or bundle its assets. You cannot open their
-browser, and a dev server is not something you can show them this way.
+browser, and a dev server is not something you can show them this way. Where
+this Open Habitat has no views (`site.views` is false in `open-habitat agent
+environment show --json`), the offer fails with `views_unavailable`; say so and
+offer the file instead.
 
 To give the person files you made (charts, spreadsheets, documents, a zip
 or a folder of photos), offer them with `open-habitat agent file offer

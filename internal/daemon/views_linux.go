@@ -619,7 +619,7 @@ func ViewExportHandler(cfg transport.Config, trusted func(*http.Request) bool) h
 // its conversation like a notice does (explicit pi:UUID or the checked launch
 // context) and arrives there as a notice; there is no offer without a
 // conversation. The reply says the offer was published to the person's open
-// browsers, never that anyone saw it.
+// browsers, never that anyone saw it; a site without views refuses the offer.
 func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == AgentViewRemovePath {
 		var req struct {
@@ -683,6 +683,14 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 	var req viewRequest
 	if !strictViewBody(w, r, &req) || !sessionIDPattern.MatchString(req.Key) || !idPattern.MatchString(req.WorkspaceID) || !validViewSource(req.Path) || req.Entry != "" && !validViewPath(req.Entry) || req.Title != "" && !validViewTitle(req.Title) {
 		snapshotError(w, 400, "invalid_arguments")
+		return
+	}
+	// Without a view origin the browser shows no card, so an offer would
+	// publish nothing the person can open. Refuse it, dry runs and replays
+	// alike, so the agent says so and offers the files instead. An unreadable
+	// site file is refused too: silence is the failure this guards against.
+	if site, err := c.siteFacts(); err != nil || !site.Views {
+		snapshotError(w, 409, "views_unavailable")
 		return
 	}
 	c.viewMu.Lock()
@@ -784,6 +792,13 @@ func (c *ConversationController) agentViews(w http.ResponseWriter, r *http.Reque
 	}
 	offer := map[string]any{"agent_id": q.id, "persistence": n.Persistence}
 	historyJSON(w, map[string]any{"schema_version": 1, "dry_run": false, "reused": existing != nil, "view": summary, "skipped_hidden": skipped, "offer": offer})
+}
+
+func (c *ConversationController) siteFacts() (siteFacts, error) {
+	if c.site != nil {
+		return c.site()
+	}
+	return loadSite(siteOriginPath)
 }
 
 // viewCfg is the person's configuration with the home the controller reads;

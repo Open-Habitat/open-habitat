@@ -17,7 +17,9 @@ usage or unlimited space; filesystem free space is a separate observation.
 `site.origin` is the address the person uses for this Open Habitat (for example
 `https://habitat.example.org`); build links to settings, sign-in or views from
 it. It is display data, not identity. When `site.state` is `unavailable`, say
-so rather than guessing an address.
+so rather than guessing an address. `site.views` says whether this Open Habitat
+can show views (below); when it is `false` or the site is unavailable, offer
+files instead.
 For large workspace lists use `workspace list --output FILE.jsonl`; it refuses
 to overwrite an existing file and stdout reports the path and count.
 Reads do not start Pi. `--current` uses the conversation, workspace and launch
@@ -68,8 +70,11 @@ a dot are skipped and counted, and the limit is 500 files and 50 MiB. The card
 appears in a conversation, `--current` or `--conversation pi:UUID`; with
 `--current` the workspace defaults to the conversation's, otherwise name it with
 `--workspace ws_ID`. Use `--dry-run` to see what would be exported. The
-reply says the offer was published, not that anyone saw it; an installation
-without a view origin shows no cards. Reuse a key only for the same offer.
+reply says the offer was published, not that anyone saw it. An installation
+without a view origin cannot show views, so the offer fails with
+`views_unavailable` and publishes nothing: tell the person the page cannot be
+shown here and hand it over as a file offer (below), which they can download
+and open themselves. Reuse a key only for the same offer.
 Views stay in `~/.local/state/open-habitat/views/` until removed.
 
 To hand the person files you produced (a chart, a spreadsheet, a PDF, a zip,

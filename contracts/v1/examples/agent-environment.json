@@ -19,6 +19,7 @@
   "site": {
     "state": "available",
     "origin": "https://habitat.example.org",
+    "views": true,
     "source": "site_origin_file"
   }
 }

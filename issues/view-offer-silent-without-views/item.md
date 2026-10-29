@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: agent
-status: open
+status: fixed
 priority: normal
 lane: unlaned
 lane_seq: 4
 preparation: ready
+closed: 2026-10-29
 ---
 
 # View offer succeeds silently on a site without views; nothing appears
@@ -20,6 +21,6 @@ Found by `research-ville-feedback` (29.10.): on an installation without `views.o
 
 ## Acceptance Criteria
 
-- [ ] Without a views origin, `view offer` fails with a clear code and message the agent can relay (and suggests a file offer instead), and the agent guidance says so.
-- [ ] `agent environment show` tells whether views are available on this site.
-- [ ] Tests for both configurations.
+- [x] Without a views origin, `view offer` fails with a clear code and message the agent can relay (and suggests a file offer instead), and the agent guidance says so.
+- [x] `agent environment show` tells whether views are available on this site.
+- [x] Tests for both configurations.

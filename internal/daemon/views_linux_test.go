@@ -88,7 +88,8 @@ func viewConversation(t *testing.T, home, cwd string) (*ConversationController, 
 		json.NewEncoder(conn).Encode(map[string]any{"ok": true, "data": map[string]any{"written": true}})
 	})
 	cfg := transport.Config{Home: home, UID: os.Geteuid()}
-	c := &ConversationController{home: home, cfg: cfg, sessions: map[string]*conversation{id: {id: id, cwd: cwd, workspace: "ws_example123", rpc: peer}}, journal: newEventJournal()}
+	site := func() (siteFacts, error) { return siteFacts{Origin: "https://habitat.example.org", Views: true}, nil }
+	c := &ConversationController{home: home, cfg: cfg, site: site, sessions: map[string]*conversation{id: {id: id, cwd: cwd, workspace: "ws_example123", rpc: peer}}, journal: newEventJournal()}
 	return c, "id=pi:" + id, calls
 }
 
@@ -347,5 +348,40 @@ func TestViewOfferWithLongNameStaysReadable(t *testing.T) {
 	list, err := listViews(h.root)
 	if err != nil || len(list) != 1 || list[0].ID != v.View.ID {
 		t.Fatalf("list: %v %+v", err, list)
+	}
+}
+
+// A site without a view origin shows no card, so an offer there is refused
+// with a code the agent can relay, before anything is copied or published,
+// dry runs and replays included. An unreadable site file refuses too.
+func TestViewOfferRefusedWithoutViewOrigin(t *testing.T) {
+	h := viewFixture(t)
+	c, calls := h.c, h.c.journal
+	body := map[string]any{"idempotency_key": "00000000-0000-4000-8000-000000000031", "workspace_id": h.ws, "path": "report.html"}
+	if code, v := offerView(t, c, h.q, body); code != 200 || v.View.ID == "" {
+		t.Fatalf("offer with views: %d %+v", code, v)
+	}
+	frames := len(calls.frames)
+	for name, site := range map[string]func() (siteFacts, error){
+		"no views":   func() (siteFacts, error) { return siteFacts{Origin: "https://habitat.example.org"}, nil },
+		"unreadable": func() (siteFacts, error) { return siteFacts{}, os.ErrNotExist },
+	} {
+		c.site = site
+		for _, b := range []map[string]any{
+			body, // replay of a published offer
+			{"idempotency_key": "00000000-0000-4000-8000-000000000032", "workspace_id": h.ws, "path": "report.html"},
+			{"idempotency_key": "00000000-0000-4000-8000-000000000033", "workspace_id": h.ws, "path": "report.html", "dry_run": true},
+		} {
+			if code, v := offerView(t, c, h.q, b); code != 409 || v.Error.Code != "views_unavailable" {
+				t.Fatalf("%s: offer %v = %d %+v", name, b, code, v)
+			}
+		}
+	}
+	if list, _ := listViews(h.root); len(list) != 1 || len(calls.frames) != frames {
+		t.Fatalf("refused offers left exports or cards: %d views, %d frames", len(list), len(calls.frames)-frames)
+	}
+	// Invalid input is still named as such.
+	if code, v := offerView(t, c, h.q, map[string]any{"idempotency_key": "x"}); code != 400 || v.Error.Code != "invalid_arguments" {
+		t.Fatalf("invalid offer: %d %+v", code, v)
 	}
 }

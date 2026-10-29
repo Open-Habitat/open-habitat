@@ -101,3 +101,16 @@ func TestApplyProfilePublicationAndUpgrade(t *testing.T) {
 	}
 	check(successor)
 }
+
+// The public site file says whether views are declared; a person's daemon
+// refuses view offers when they are not.
+func TestSiteFactsFileNamesViews(t *testing.T) {
+	s := Site{Gateway: Gateway{Origin: "https://habitat.example.org"}}
+	if got := siteFactsFile(s); got != `{"origin":"https://habitat.example.org","views":false}` {
+		t.Fatalf("without views: %s", got)
+	}
+	s.Views = &Views{OriginTemplate: "https://oh-view-*.example.org"}
+	if got := siteFactsFile(s); got != `{"origin":"https://habitat.example.org","views":true}` {
+		t.Fatalf("with views: %s", got)
+	}
+}

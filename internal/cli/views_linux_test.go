@@ -4,7 +4,10 @@ package cli
 
 import (
 	"errors"
+	"strings"
 	"testing"
+
+	"github.com/Open-Habitat/open-habitat/internal/daemon"
 )
 
 // Malformed offers are usage errors decided before the socket is touched;
@@ -66,5 +69,15 @@ func TestViewOfferCurrentResolvesWorkspace(t *testing.T) {
 	}
 	if _, err := agentViewCommand(append(args, "--workspace", "home")); !errors.As(err, &c) || c.code != usage("").code {
 		t.Fatalf("explicit malformed --workspace accepted: %v", err)
+	}
+}
+
+// A site without views refuses the offer with its own code and a message the
+// agent can relay, naming the file offer as the way to hand the page over.
+func TestViewOfferViewsUnavailableIsRelayable(t *testing.T) {
+	var c *cliError
+	err := agentResponseError("POST", daemon.AgentViewsPath+"?id=pi:11111111-1111-4111-8111-111111111111", 409, "views_unavailable")
+	if !errors.As(err, &c) || c.code != "views_unavailable" || c.exit != 1 || !strings.Contains(c.message, "nothing was published") || !strings.Contains(c.message, "agent file offer") {
+		t.Fatalf("views_unavailable: %#v", err)
 	}
 }
