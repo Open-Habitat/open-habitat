@@ -73,23 +73,23 @@
 .ah-worker-ask-short {
   display: none;
 }
-.ah-worker-ask-dialog {
-  display: grid;
-  gap: var(--ah-s2);
-  max-width: min(360px, calc(100vw - 32px));
-  padding: var(--ah-s4);
-  font-size: var(--ah-size-ui);
+/* A worker's conversation is read from its task down, not anchored to a
+   composer it does not have: no empty space above a short one. */
+.ah-worker-frame .ah-conversation-stream > :first-child {
+  margin-top: 0;
 }
-.ah-worker-ask-dialog h2 {
-  margin: 0;
-  font-size: var(--ah-size-ui);
-}
-.ah-worker-ask-dialog p {
-  margin: 0;
+/* Taskfleet's run context under the task: quiet, open on request. */
+.ah-worker-runcontext {
+  margin-block-start: var(--ah-s2);
+  padding-inline: var(--ah-s3);
   color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
 }
-.ah-worker-ask-dialog [data-ah-primitive] {
-  justify-self: start;
+.ah-worker-runcontext > summary {
+  cursor: pointer;
+}
+.ah-worker-runcontext[open] > summary {
+  margin-block-end: var(--ah-s2);
 }
 
 /* The brief the main agent gave: dashed, so it does not read as yours. */

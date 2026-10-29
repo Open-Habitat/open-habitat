@@ -225,12 +225,8 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
     ).toBeVisible();
   }
   const readsBeforeReturn = parentReads;
-  // Asking goes through the main agent: the notice leads back to it.
+  // Asking goes through the main agent: the chip leads straight back to it.
   await page.getByRole("button").and(page.getByTestId("worker-ask")).click();
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("worker-ask-parent"))
-    .click();
   await expect(page).not.toHaveURL(/spinoff=/);
   await expect.poll(() => parentReads).toBeGreaterThan(readsBeforeReturn);
   await expect(pill).toBeVisible();

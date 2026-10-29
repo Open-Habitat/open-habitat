@@ -9,6 +9,7 @@ import {
 import { useLocation, useNavigate } from "react-router";
 import {
   SpinoffContext,
+  WorkerBrief,
   WorkerView,
   WorkerVoice,
   workerLive,
@@ -271,12 +272,19 @@ function WorkerConversation({
       undefined,
       working ? { working: true, steps: [] } : undefined,
     );
-    // A complete history starts with the task the main agent gave.
-    if (!transcript?.truncated && list[0]?.kind === "user")
+    // A complete history starts with the task the main agent gave, shown
+    // as the brief card: the task first, Taskfleet's run context on request.
+    if (!transcript?.truncated && list[0]?.kind === "user") {
+      const text = entries.find((e) => e.kind === "user")?.content.text;
       list[0] = {
         ...list[0],
-        content: <WorkerVoice voice="brief">{list[0].content}</WorkerVoice>,
+        content: text ? (
+          <WorkerBrief text={text} />
+        ) : (
+          <WorkerVoice voice="brief">{list[0].content}</WorkerVoice>
+        ),
       };
+    }
     return list;
   }, [
     timeline,

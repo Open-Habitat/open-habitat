@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: worker-presentation
 lane_seq: 5
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Worker task card leads with Taskfleet boilerplate; Kysy is clumsy

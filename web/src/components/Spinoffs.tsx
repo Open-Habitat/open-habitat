@@ -6,11 +6,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { Dialog, DialogTrigger, Heading, Popover } from "react-aria-components";
 import {
   type Spinoff,
   type Spinoffs,
   spinoffStateLabel,
+  splitBrief,
   type WorkerTranscript,
 } from "../app/spinoffs";
 import type { WorkerWork } from "../app/spinoffWork";
@@ -74,71 +74,29 @@ function stateKind(run: Spinoff): StatusKind {
 }
 
 /**
- * Instead of a composer: the person asks through the main agent. Only a live
- * Pi worker can receive the main agent's message (`taskfleet run message` is
- * Pi-only), so what the main agent can do depends on the harness and on
- * whether the worker still runs.
+ * Instead of a composer: the person asks through the main agent, so the chip
+ * goes straight to the main conversation (Jari 28.10.2026: a dialog whose
+ * only action led back there was clumsy).
  */
 function WorkerAsk({ run, onParent }: { run?: Spinoff; onParent: () => void }) {
   const live = workerLive(run);
-  const [lead, body] = !live
-    ? [
-        "Worker on päättynyt.",
-        "Pääagentti on saanut sen raportin. Kysy jatkosta pääkeskustelussa.",
-      ]
-    : run?.harness === "pi"
-      ? [
-          "Workerille ei kirjoiteta suoraan.",
-          "Pääagentti voi lähettää sille viestin. Kysy pääkeskustelussa, niin pääagentti välittää kysymyksen.",
-        ]
-      : [
-          "Workerille ei kirjoiteta suoraan.",
-          "Tälle workerille ei voi lähettää viestiä kesken työn, mutta pääagentti näkee sen tilan. Kysy pääkeskustelussa.",
-        ];
   return (
-    <DialogTrigger>
-      <ControlButton
-        data-testid="worker-ask"
-        size="inline"
-        presentation="pill"
-        variant="secondary"
-        className="ah-worker-ask"
-        aria-label={`${lead} ${body}`}
-      >
-        <Icon name={live ? "message" : "info"} />
-        <span className="ah-worker-ask-long">
-          {live
-            ? "Vain luku · kysy pääagentin kautta"
-            : "Päättynyt · kysy jatkosta pääagentilta"}
-        </span>
-        <span className="ah-worker-ask-short">Kysy</span>
-      </ControlButton>
-      <Popover placement="bottom end" className="ah-popover">
-        <Dialog
-          className="ah-dialog ah-worker-ask-dialog"
-          data-testid="worker-ask-notice"
-        >
-          {({ close }) => (
-            <>
-              <Heading slot="title">{lead}</Heading>
-              <p>{body}</p>
-              <ControlButton
-                data-testid="worker-ask-parent"
-                size="inline"
-                variant="primary"
-                onPress={() => {
-                  close();
-                  onParent();
-                }}
-              >
-                {live ? "Kysy pääkeskustelussa" : "Pääkeskusteluun"}
-                <Icon name="forward" />
-              </ControlButton>
-            </>
-          )}
-        </Dialog>
-      </Popover>
-    </DialogTrigger>
+    <ControlButton
+      data-testid="worker-ask"
+      size="inline"
+      presentation="pill"
+      variant="secondary"
+      className="ah-worker-ask"
+      onPress={onParent}
+    >
+      <Icon name={live ? "message" : "info"} />
+      <span className="ah-worker-ask-long">
+        {live
+          ? "Vain luku · kysy pääagentin kautta"
+          : "Päättynyt · kysy jatkosta pääagentilta"}
+      </span>
+      <span className="ah-worker-ask-short">Kysy</span>
+    </ControlButton>
   );
 }
 
@@ -557,13 +515,22 @@ export function WorkerView({
   );
 }
 
-function WorkerBrief({ text }: { text: string }) {
+/** The task the main agent gave, first; Taskfleet's run context that opens
+ * every worker's prompt only on request (Jari 28.10.2026). */
+export function WorkerBrief({ text }: { text: string }) {
+  const { task, context } = splitBrief(text);
   return (
     <WorkerVoice voice="brief">
       <UserMessage
-        sourceText={text}
+        sourceText={task}
         onCopy={() => void navigator.clipboard?.writeText(text)}
       />
+      {context ? (
+        <details className="ah-worker-runcontext" data-testid="run-context">
+          <summary>Taskfleetin ajo-ohje workerille</summary>
+          <Markdown text={context} />
+        </details>
+      ) : null}
     </WorkerVoice>
   );
 }

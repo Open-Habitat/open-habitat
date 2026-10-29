@@ -127,6 +127,20 @@ export async function readSpinoffs(
     throw new Error("spinoffs_unavailable");
   return result;
 }
+/** Taskfleet opens every worker's prompt with its own run context (run id,
+ * issue filing, closing) and ends it with this line before the task the
+ * main agent wrote. */
+const runContextEnd =
+  /\n---[ \t]*\n\s*The original task brief follows\.[ \t]*\n/;
+
+/** The main agent's task, and Taskfleet's run context before it if any. */
+export function splitBrief(text: string): { task: string; context?: string } {
+  if (!text.startsWith("# Taskfleet run context")) return { task: text };
+  const end = runContextEnd.exec(text);
+  const task = end ? text.slice(end.index + end[0].length).trim() : "";
+  if (!end || !task) return { task: text };
+  return { task, context: text.slice(0, end.index).trim() };
+}
 export function spinoffStateLabel(run: Spinoff) {
   return {
     working: "Työskentelee",

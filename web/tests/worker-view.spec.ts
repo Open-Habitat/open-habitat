@@ -149,13 +149,8 @@ test("@worker-view @a11y a Claude worker's conversation replaces its terminal ca
   ).toBeLessThanOrEqual(390);
   await page.setViewportSize({ width: 1440, height: 900 });
 
-  // No composer: asking goes through the main agent.
+  // No composer: asking goes through the main agent, one press away.
   await page.getByRole("button").and(page.getByTestId("worker-ask")).click();
-  await expect(page.getByTestId("worker-ask-notice")).toBeVisible();
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("worker-ask-parent"))
-    .click();
   await expect(page).not.toHaveURL(/spinoff=/);
   await expect(composer).toBeVisible();
 
