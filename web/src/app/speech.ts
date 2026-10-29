@@ -55,8 +55,11 @@ const validSiteKey = ajv.compile<SiteSpeechKey>({
   $ref: `${serverSchema.$id}#/$defs/read`,
 });
 
-/** The daemon's literal-key rule. */
-export const sonioxKeyShape = /^[A-Za-z0-9_-]{16,256}$/;
+/** The daemon's literal-key rule: a plain key or a dotted project key. */
+export const validSonioxKey = (key: string): boolean =>
+  key.length >= 16 &&
+  key.length <= 256 &&
+  /^(?:[A-Za-z0-9_-]+\.){0,3}[A-Za-z0-9_-]{4,}$/.test(key);
 
 /** Why a dictation could not start or go on. The first four are the
  * contract's codes; the rest are the browser's own. */

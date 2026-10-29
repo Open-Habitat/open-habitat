@@ -3,13 +3,14 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 provenance: chat
 source_ref: chat:2026-10-29/soniox-project-key-refused
 lane: settings-sanelu
 lane_seq: 3
+closed: 2026-10-29
 ---
 
 # Soniox project keys (snx_proj_… with dots) are refused by the key shape check

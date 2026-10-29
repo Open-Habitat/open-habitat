@@ -201,3 +201,45 @@ func TestSpeechProductionClientRefusesLoopback(t *testing.T) {
 		t.Fatalf("mint: %v", err)
 	}
 }
+
+// A synthetic key of the Soniox console's project shape, never a real one.
+var projectSpeechKey = "snx_proj_" + strings.Repeat("A", 43) + "." + strings.Repeat("b", 86) + ".0-Cd12"
+
+func TestSonioxKeyShapeTakesProjectKeys(t *testing.T) {
+	for key, want := range map[string]bool{
+		ownSpeechKey:                      true,
+		projectSpeechKey:                  true,
+		"short":                           false,
+		strings.Repeat("A", 257):          false,
+		"$SONIOX_API_KEY000000":           false,
+		"snx_proj_0000000000000000.":      false,
+		".snx_proj_0000000000000000":      false,
+		"snx_proj_00000000..0000000000":   false,
+		"snx_proj_0000000000000000000.ab": false,
+		"a.b.c.d.e0000000000000":          false,
+		"snx_proj_000000 00000000000":     false,
+	} {
+		if ValidSonioxKey(key) != want {
+			t.Errorf("%q: want %v", key, want)
+		}
+	}
+	home := t.TempDir()
+	s := NewSpeech(transport.Config{Home: home}, func(*http.Request) bool { return true })
+	if w := speechRequest(t, s.KeyHandler(), "POST", SpeechKeyPath, `{"key":"`+projectSpeechKey+`","region":"eu"}`); w.Code != 200 {
+		t.Fatalf("save: %d %s", w.Code, w.Body)
+	}
+	if k, err := readSpeechKey(home); err != nil || k.APIKey != projectSpeechKey {
+		t.Fatalf("project key did not round-trip: %+v %v", k, err)
+	}
+	var state speechKeyState
+	if w := speechRequest(t, s.KeyHandler(), "GET", SpeechKeyPath, ""); json.Unmarshal(w.Body.Bytes(), &state) != nil || *state.Suffix != "Cd12" {
+		t.Fatalf("state: %s", w.Body)
+	}
+	// A plain key stored before project keys still reads as the person's.
+	if err := os.WriteFile(filepath.Join(home, ".config/soniox/key.json"), []byte(`{"api_key":"`+ownSpeechKey+`","region":"us","source":"own"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if k, err := readSpeechKey(home); err != nil || k.APIKey != ownSpeechKey {
+		t.Fatalf("stored plain key: %+v %v", k, err)
+	}
+}

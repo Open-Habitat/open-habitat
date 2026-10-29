@@ -157,6 +157,7 @@ checks = {
     "composer-bash.json": "composer.schema.json",
     "speech-key.json": "speech.schema.json",
     "speech-key-update.json": "speech.schema.json",
+    "speech-project-key-update.json": "speech.schema.json",
     "speech-session.json": "speech.schema.json",
     "speech-error.json": "error.schema.json",
     "server-speech-key.json": "server-speech-key.schema.json",
@@ -331,6 +332,12 @@ speech_key = json.loads((BASE / "examples" / "speech-key.json").read_text())
 must_reject("speech.schema.json", {**speech_key, "key": "example0000000000000000000000Ab12"})
 must_reject("speech.schema.json", {**speech_key, "suffix": "example0000000000000000000000Ab12"})
 must_reject("speech.schema.json", {"key": "$SONIOX_API_KEY", "region": "eu"})
+# A project key is dot-joined runs; no empty run, no run shorter than the
+# shown suffix at the end, at most four runs, at most 256 characters.
+for bad in ["snx_proj_0000000000000000.", ".snx_proj_0000000000000000", "snx_proj_00000000..0000000000",
+            "snx_proj_0000000000000000000.ab", "a.b.c.d.e0000000000000", "snx_proj_" + "A" * 248]:
+    must_reject("speech.schema.json", {"key": bad, "region": "eu"})
+    must_reject("server-speech-key.schema.json", {"key": bad, "region": "eu"})
 must_reject("speech.schema.json", {"key": "example0000000000000000000000Ab12", "region": "eu", "source": "site"})
 speech_session = json.loads((BASE / "examples" / "speech-session.json").read_text())
 must_reject("speech.schema.json", {**speech_session, "max_session_seconds": 1800})

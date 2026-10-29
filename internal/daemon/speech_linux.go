@@ -57,9 +57,16 @@ const speechKeyLifetimeSeconds = 60
 // at most this many per rolling minute.
 const speechMintsPerMinute = 10
 
-// SonioxKeyShape is what a long-lived Soniox key may look like here: a
+// sonioxKeyShape is what a long-lived Soniox key may look like here: a
 // literal token, never a reference or command, short enough to be a key.
-var SonioxKeyShape = regexp.MustCompile(`^[A-Za-z0-9_-]{16,256}$`)
+// A project key (snx_proj_…) is up to four such runs joined by dots; the
+// last run is at least four characters so the shown suffix has no dot.
+var sonioxKeyShape = regexp.MustCompile(`^(?:[A-Za-z0-9_-]+\.){0,3}[A-Za-z0-9_-]{4,}$`)
+
+// ValidSonioxKey reports whether key has a long-lived Soniox key's shape.
+func ValidSonioxKey(key string) bool {
+	return len(key) >= 16 && len(key) <= 256 && sonioxKeyShape.MatchString(key)
+}
 
 var temporaryKeyShape = regexp.MustCompile(`^[A-Za-z0-9_.-]{8,512}$`)
 
@@ -88,7 +95,7 @@ type speechKeyFile struct {
 }
 
 func (k speechKeyFile) valid() bool {
-	return SonioxKeyShape.MatchString(k.APIKey) && validSpeechRegion(k.Region) && (k.Source == "own" || k.Source == "site")
+	return ValidSonioxKey(k.APIKey) && validSpeechRegion(k.Region) && (k.Source == "own" || k.Source == "site")
 }
 
 // Speech is one person's speech-input routes.
@@ -498,7 +505,7 @@ func (s *Speech) SiteKeyHandler() http.Handler {
 		}
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1025))
 		dec.DisallowUnknownFields()
-		if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF || body.SchemaVersion != 1 || !SonioxKeyShape.MatchString(body.Key) || !validSpeechRegion(body.Region) {
+		if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF || body.SchemaVersion != 1 || !ValidSonioxKey(body.Key) || !validSpeechRegion(body.Region) {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

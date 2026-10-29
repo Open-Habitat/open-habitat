@@ -32,10 +32,14 @@ const siteSpeechKeyPath = "/api/v1/server/speech-key"
 // speechDaemonPath is the daemon's SpeechSiteKeyPath.
 const speechDaemonPath = "/internal/v1/speech/site-key"
 
-// sonioxKeyShape and speechRegionNames are the daemon's rules
-// (speech_linux.go).
-var sonioxKeyShape = regexp.MustCompile(`^[A-Za-z0-9_-]{16,256}$`)
+// sonioxKeyShape, validSonioxKey and speechRegionNames are the daemon's
+// rules (speech_linux.go).
+var sonioxKeyShape = regexp.MustCompile(`^(?:[A-Za-z0-9_-]+\.){0,3}[A-Za-z0-9_-]{4,}$`)
 var speechRegionNames = []string{"us", "eu"}
+
+func validSonioxKey(key string) bool {
+	return len(key) >= 16 && len(key) <= 256 && sonioxKeyShape.MatchString(key)
+}
 
 // speechGiven are the daemon's words; not_reached when nothing was sent,
 // unknown when the daemon did not answer.
@@ -62,7 +66,7 @@ func (k *speechKeyRecord) view() *speechKeyView {
 }
 
 func validSpeechKeyRecord(k speechKeyRecord) bool {
-	return k.Version == 1 && sonioxKeyShape.MatchString(k.Key) && slices.Contains(speechRegionNames, k.Region) && validRFC3339(k.SetAt)
+	return k.Version == 1 && validSonioxKey(k.Key) && slices.Contains(speechRegionNames, k.Region) && validRFC3339(k.SetAt)
 }
 
 // siteSpeech is the gateway's state for the site's Soniox key.

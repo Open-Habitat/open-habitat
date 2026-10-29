@@ -18,7 +18,9 @@ test.use({
   viewport: { width: 1280, height: 900 },
 });
 
-const ownKey = `own${"0".repeat(24)}Ab12`;
+// The person's key has the Soniox console's dotted project shape and the
+// administrator's the plain one, so both shapes are saved end to end.
+const ownKey = `snx_proj_${"0".repeat(43)}.${"0".repeat(86)}.00Ab12`;
 const siteKey = `site${"0".repeat(24)}Kq7Z`;
 
 test.beforeEach(async ({ page }) => {

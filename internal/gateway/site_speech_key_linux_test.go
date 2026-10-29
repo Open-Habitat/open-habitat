@@ -218,3 +218,23 @@ func TestSiteSpeechKeyFileFailsClosed(t *testing.T) {
 		t.Fatal("started with an invalid key file", err)
 	}
 }
+
+func TestSiteSpeechKeyTakesProjectKeys(t *testing.T) {
+	project := "snx_proj_" + strings.Repeat("A", 43) + "." + strings.Repeat("b", 86) + ".0-Kq7Z"
+	for key, want := range map[string]bool{
+		siteSoniox:                        true,
+		project:                           true,
+		"snx_proj_0000000000000000.":      false,
+		"snx_proj_00000000..0000000000":   false,
+		"snx_proj_0000000000000000000.ab": false,
+		strings.Repeat("A", 257):          false,
+	} {
+		k := speechKeyRecord{Version: 1, Region: "eu", Key: key, SetAt: "2026-10-29T09:00:00Z"}
+		if validSpeechKeyRecord(k) != want {
+			t.Errorf("%q: want %v", key, want)
+		}
+	}
+	if v := (&speechKeyRecord{Key: project}).view(); v.Suffix != "Kq7Z" {
+		t.Fatal("suffix", v.Suffix)
+	}
+}

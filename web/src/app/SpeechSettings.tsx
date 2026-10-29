@@ -11,7 +11,7 @@ import {
   type SpeechRegion,
   saveSpeechKey,
   setSiteSpeechKey,
-  sonioxKeyShape,
+  validSonioxKey,
 } from "./speech";
 
 const regionNames: Record<SpeechRegion, string> = { eu: "EU", us: "USA" };
@@ -30,14 +30,14 @@ function SpeechKeyForm({
 }) {
   const [key, setKey] = useState("");
   const [region, setRegion] = useState<SpeechRegion>("eu");
-  const wrong = key.length > 0 && !sonioxKeyShape.test(key.trim());
+  const wrong = key.length > 0 && !validSonioxKey(key.trim());
   return (
     <form
       className="s-editor"
       data-testid="speech-key-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (sonioxKeyShape.test(key.trim())) onSave(key.trim(), region);
+        if (validSonioxKey(key.trim())) onSave(key.trim(), region);
       }}
     >
       <div className="s-row">
@@ -94,7 +94,7 @@ function SpeechKeyForm({
           size="row"
           variant="primary"
           type="submit"
-          isDisabled={busy || !sonioxKeyShape.test(key.trim())}
+          isDisabled={busy || !validSonioxKey(key.trim())}
         >
           Tallenna
         </ControlButton>
