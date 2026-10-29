@@ -147,7 +147,7 @@ func TestTerminalUpgradeRequiresExactOrigin(t *testing.T) {
 	if b := dialTerminal(t, server, "", "https://host.test", shellQuery); b.res.StatusCode != 401 {
 		t.Errorf("no session: %d", b.res.StatusCode)
 	}
-	for _, q := range []string{"workspace_id=ws_example123", "workspace_id=ws_example123&shell=new&shell=1", "workspace_id=ws_example123&shell=new&taskfleet=abcdef12-1", "workspace_id=..%2F&shell=new", "workspace_id=ws_example123&taskfleet=%2Frun%2Fx"} {
+	for _, q := range []string{"workspace_id=ws_example123", "workspace_id=ws_example123&shell=new&shell=1", "workspace_id=ws_example123&shell=new&taskfleet=abcdef12-1", "workspace_id=..%2F&shell=new", "workspace_id=ws_example123&taskfleet=%2Frun%2Fx", "workspace_id=ws_example123&taskfleet=77f5c84c-1-2-3"} {
 		if b := dialTerminal(t, server, "browser", "https://host.test", q); b.res.StatusCode != 400 {
 			t.Errorf("query %q: %d", q, b.res.StatusCode)
 		}
@@ -187,7 +187,7 @@ func TestTerminalRelayNeedsCSRFProofBeforeTheDaemon(t *testing.T) {
 
 func TestTerminalRelayCarriesFramesAndDaemonRefusals(t *testing.T) {
 	server, _, d := terminalFixture(t)
-	b := dialTerminal(t, server, "browser", "https://host.test", "workspace_id=ws_example123&taskfleet=77f5c84c2248fcc06660-12")
+	b := dialTerminal(t, server, "browser", "https://host.test", "workspace_id=ws_example123&taskfleet=77f5c84c2248fcc06660-12-3")
 	b.send(wsframe.OpText, `{"type":"auth","csrf":"token"}`)
 	b.send(wsframe.OpBinary, "echo hi\r")
 	f, err := b.read(3 * time.Second)
@@ -197,7 +197,7 @@ func TestTerminalRelayCarriesFramesAndDaemonRefusals(t *testing.T) {
 	d.mu.Lock()
 	q := d.queries
 	d.mu.Unlock()
-	if len(q) != 1 || q[0] != "workspace_id=ws_example123&taskfleet=77f5c84c2248fcc06660-12" {
+	if len(q) != 1 || q[0] != "workspace_id=ws_example123&taskfleet=77f5c84c2248fcc06660-12-3" {
 		t.Fatalf("daemon query %q", q)
 	}
 	d.refuse = 404

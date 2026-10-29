@@ -84,6 +84,7 @@ type nativeSpinoff struct {
 		Identity struct {
 			Socket   string `json:"socket"`
 			WindowID string `json:"window_id"`
+			PaneID   string `json:"pane_id"`
 		} `json:"identity"`
 	} `json:"attach"`
 }

@@ -116,9 +116,9 @@
             "type": "boolean"
           },
           "terminal": {
-            "description": "The live worker's Taskfleet window as the browser shell's read-only token (terminal.schema.json); only for the selected run, and only a pointer the terminal route checks again.",
+            "description": "The live worker's Taskfleet window and, when Taskfleet recorded it, the agent's pane in it, as the browser shell's read-only token (terminal.schema.json); only for the selected run, and only a pointer the terminal route checks again.",
             "type": "string",
-            "pattern": "^[0-9a-f]{8,64}-[0-9]{1,6}$"
+            "pattern": "^[0-9a-f]{8,64}-[0-9]{1,6}(-[0-9]{1,6})?$"
           },
           "brief": {
             "description": "The task Taskfleet gave the worker (its run's prompt); only for the selected run.",

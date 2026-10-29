@@ -35,6 +35,7 @@ const (
 var claudeSessionFile = regexp.MustCompile(`^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$`)
 var claudeRecordID = regexp.MustCompile(`^[0-9a-f-]{36}$`)
 var taskfleetWindowID = regexp.MustCompile(`^@([0-9]{1,6})$`)
+var taskfleetPaneID = regexp.MustCompile(`^%([0-9]{1,6})$`)
 
 // readHomeFile reads a regular file of the daemon's own UID beneath home,
 // without following any symlink. With lines, only complete lines are
@@ -471,8 +472,8 @@ func readRunBrief(cfg transport.Config, runID string) string {
 	return prefixBytes(string(b), 16000)
 }
 
-// workerTerminal names the Taskfleet window a live run recorded for its
-// worker, in the browser shell's token form. It is only a pointer: the
+// workerTerminal names the Taskfleet window and pane a live run recorded for
+// its worker, in the browser shell's token form. It is only a pointer: the
 // terminal route admits it only if its own listing finds that window.
 func workerTerminal(r nativeSpinoff) string {
 	if r.Status != "pending" && r.Status != "running" || r.Attach.State != "recorded" {
@@ -484,7 +485,12 @@ func workerTerminal(r nativeSpinoff) string {
 	if m == nil || w == nil || !filepath.IsAbs(socket) || filepath.Base(filepath.Dir(socket)) != "taskfleet" {
 		return ""
 	}
-	return m[1] + "-" + w[1]
+	token := m[1] + "-" + w[1]
+	// The agent's own pane: the window's active pane may be another.
+	if p := taskfleetPaneID.FindStringSubmatch(r.Attach.Identity.PaneID); p != nil {
+		token += "-" + p[1]
+	}
+	return token
 }
 
 // workerTerminalWorkspace is the workspace whose terminal route lists the

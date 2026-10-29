@@ -34,8 +34,9 @@ const (
 )
 
 var (
-	terminalShell     = regexp.MustCompile(`^(new|[1-9][0-9]{0,2})$`)
-	terminalTaskfleet = regexp.MustCompile(`^[0-9a-f]{8,64}-[0-9]{1,6}$`)
+	terminalShell = regexp.MustCompile(`^(new|[1-9][0-9]{0,2})$`)
+	// A Taskfleet window, and for a worker's own view the agent's pane in it.
+	terminalTaskfleet = regexp.MustCompile(`^[0-9a-f]{8,64}-[0-9]{1,6}(-[0-9]{1,6})?$`)
 	daemonErrorCode   = regexp.MustCompile(`^[a-z_]{1,40}$`)
 )
 

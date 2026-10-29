@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: worker-presentation
 lane_seq: 4
 preparation: ready
+closed: 2026-10-29
 ---
 
 # Worker view terminal shows the wrong tmux pane

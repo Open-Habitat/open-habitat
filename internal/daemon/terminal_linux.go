@@ -56,8 +56,10 @@ const (
 var (
 	terminalShellParam = regexp.MustCompile(`^[1-9][0-9]{0,2}$`)
 	// A Taskfleet window is named by its server's socket hash and tmux window
-	// number, never by a socket path or session name from the browser.
-	terminalTaskfleetParam = regexp.MustCompile(`^([0-9a-f]{8,64})-([0-9]{1,6})$`)
+	// number, never by a socket path or session name from the browser. A
+	// worker's own view adds the pane Taskfleet runs the agent in: the
+	// window's active pane may be another (Jari 28.10.2026: a bare shell).
+	terminalTaskfleetParam = regexp.MustCompile(`^([0-9a-f]{8,64})-([0-9]{1,6})(?:-([0-9]{1,6}))?$`)
 	taskfleetSocketName    = regexp.MustCompile(`^tmux-([0-9a-f]{8,64})\.sock$`)
 	terminalSlugUnsafe     = regexp.MustCompile(`[^A-Za-z0-9_-]+`)
 )
@@ -418,6 +420,9 @@ type taskfleetWindow struct {
 	terminalTaskfleetRow
 	socket string
 	window string
+	// pane is the pane to show when the token named one; else the
+	// window's active pane.
+	pane string
 }
 
 // taskfleetWindows lists the windows on Taskfleet's tmux servers whose pane
@@ -452,8 +457,7 @@ func (h *terminalHost) taskfleetWindows(ctx context.Context, dir string) []taskf
 			if len(f) != 5 || !strings.HasPrefix(f[1], "@") {
 				continue
 			}
-			path := filepath.Clean(f[3])
-			if path != dir && !strings.HasPrefix(path, dir+"/") && !strings.HasPrefix(path, dir+"__worktrees/") {
+			if !inTerminalWorkspace(f[3], dir) {
 				continue
 			}
 			token := m[1] + "-" + strings.TrimPrefix(f[1], "@")
@@ -465,11 +469,37 @@ func (h *terminalHost) taskfleetWindows(ctx context.Context, dir string) []taskf
 			}
 			seen[token] = true
 			busy, cmd := busyCommand(f[4])
-			rows = append(rows, taskfleetWindow{terminalTaskfleetRow{Token: token, Name: tmuxText(f[2], 128), Session: tmuxText(f[0], 64), Busy: busy, Command: cmd}, socket, f[1]})
+			rows = append(rows, taskfleetWindow{terminalTaskfleetRow{Token: token, Name: tmuxText(f[2], 128), Session: tmuxText(f[0], 64), Busy: busy, Command: cmd}, socket, f[1], ""})
 		}
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].Token < rows[j].Token })
 	return rows
+}
+
+func inTerminalWorkspace(path, dir string) bool {
+	path = filepath.Clean(path)
+	return path == dir || strings.HasPrefix(path, dir+"/") || strings.HasPrefix(path, dir+"__worktrees/")
+}
+
+// taskfleetPane is one pane of a Taskfleet window, named by a worker's own
+// view: the pane Taskfleet runs the agent in, which need not be the window's
+// active pane. It is admitted by its own directory, as a window is by its
+// active pane's, and only while it is in that window.
+func (h *terminalHost) taskfleetPane(ctx context.Context, dir, hash, window, pane string) *taskfleetWindow {
+	if h.runtimeDir == "" {
+		return nil
+	}
+	socket := filepath.Join(h.runtimeDir, "taskfleet", "tmux-"+hash+".sock")
+	if st, err := os.Lstat(socket); err != nil || st.Mode()&os.ModeSocket == 0 || !alive(socket) {
+		return nil
+	}
+	out, err := h.run(ctx, socket, "display-message", "-p", "-t", "%"+pane, terminalFormat("session_name", "window_id", "window_name", "pane_current_path", "pane_current_command", "pane_id"))
+	f := strings.Split(strings.TrimRight(string(out), "\n"), "\t")
+	if err != nil || len(f) != 6 || f[1] != "@"+window || f[5] != "%"+pane || !inTerminalWorkspace(f[3], dir) {
+		return nil
+	}
+	busy, cmd := busyCommand(f[4])
+	return &taskfleetWindow{terminalTaskfleetRow{Token: hash + "-" + window + "-" + pane, Name: tmuxText(f[2], 128), Session: tmuxText(f[0], 64), Busy: busy, Command: cmd}, socket, "@" + window, "%" + pane}
 }
 
 func terminalJSON(w http.ResponseWriter, body any) {
@@ -632,10 +662,14 @@ func (h *terminalHost) TerminalHandler(trusted func(*http.Request) bool) http.Ha
 		}
 		target := terminalTarget{workspace: id, dir: dir, base: base, shell: shell}
 		if tf != "" {
-			for _, t := range h.taskfleetWindows(r.Context(), dir) {
-				if t.Token == tf {
-					t := t
-					target.taskfleet = &t
+			if m := terminalTaskfleetParam.FindStringSubmatch(tf); m[3] != "" {
+				target.taskfleet = h.taskfleetPane(r.Context(), dir, m[1], m[2], m[3])
+			} else {
+				for _, t := range h.taskfleetWindows(r.Context(), dir) {
+					if t.Token == tf {
+						t := t
+						target.taskfleet = &t
+					}
 				}
 			}
 			if target.taskfleet == nil {
@@ -933,6 +967,11 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 // session's detach hook met destroy-unattached.)
 func (h *terminalHost) watch(ws *terminalConn, target terminalTarget, logClose func(string, string)) {
 	tf := target.taskfleet
+	// A worker's own view names the agent's pane; else the window's active one.
+	shown, size := tf.window, "window"
+	if tf.pane != "" {
+		shown, size = tf.pane, "pane"
+	}
 	ctx, cancel := context.WithCancel(h.ctx)
 	defer cancel()
 	gone := make(chan struct{})
@@ -946,12 +985,12 @@ func (h *terminalHost) watch(ws *terminalConn, target terminalTarget, logClose f
 		}
 	}()
 	read := func() (cols, rows int, screen []byte, ok bool) {
-		out, err := h.run(ctx, tf.socket, "display-message", "-p", "-t", tf.window, "#{window_width} #{window_height} #{cursor_x} #{cursor_y} #{cursor_flag}")
+		out, err := h.run(ctx, tf.socket, "display-message", "-p", "-t", shown, "#{"+size+"_width} #{"+size+"_height} #{cursor_x} #{cursor_y} #{cursor_flag}")
 		var x, y, visible int
 		if n, _ := fmt.Sscanf(strings.TrimSpace(string(out)), "%d %d %d %d %d", &cols, &rows, &x, &y, &visible); err != nil || n != 5 || cols < 2 || cols > 1000 || rows < 1 || rows > 1000 {
 			return 0, 0, nil, false
 		}
-		pane, err := h.run(ctx, tf.socket, "capture-pane", "-p", "-e", "-t", tf.window)
+		pane, err := h.run(ctx, tf.socket, "capture-pane", "-p", "-e", "-t", shown)
 		if err != nil {
 			return 0, 0, nil, false
 		}

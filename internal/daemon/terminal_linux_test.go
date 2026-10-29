@@ -391,6 +391,81 @@ func TestTerminalTaskfleetAttachIsReadOnly(t *testing.T) {
 	}
 }
 
+// Jari 28.10.2026: the worker view showed a bare shell beside the agent,
+// because the window's active pane was not the one Taskfleet runs the agent
+// in. The worker's token names that pane, and only a pane of that window.
+func TestTerminalTaskfleetWatchShowsTheNamedPane(t *testing.T) {
+	f := newTerminalFixture(t, true)
+	tf := filepath.Join(f.host.runtimeDir, "taskfleet")
+	if err := os.MkdirAll(tf, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	sock := filepath.Join(tf, "tmux-77f5c84c2248fcc06661.sock")
+	tmux := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command(f.host.tmux, append([]string{"-f", "/dev/null", "-S", sock}, args...)...)
+		cmd.Env = append(os.Environ(), "SHELL=/bin/bash", "TMUX=")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("tmux %v: %s", args, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	t.Cleanup(func() { _ = exec.Command(f.host.tmux, "-S", sock, "kill-server").Run() })
+	tmux("new-session", "-d", "-s", "headless", "-x", "80", "-y", "24", "-c", f.host.cfg.Home)
+	worker := filepath.Join(f.dir+"__worktrees", "wt-2")
+	if err := os.MkdirAll(worker, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	ids := strings.Fields(tmux("new-window", "-d", "-P", "-F", "#{window_id} #{pane_id}", "-t", "headless:", "-n", "worker", "-c", worker, "printf 'agent-pane-marker\\n'; exec sleep 60"))
+	win, agent := ids[0], ids[1]
+	// A second pane becomes the window's active one, as Jari saw.
+	shell := tmux("split-window", "-h", "-P", "-F", "#{pane_id}", "-t", win, "-c", worker, "printf 'shell-pane-marker\\n'; exec sleep 60")
+	// A pane outside the workspace, in the same window.
+	outside := tmux("split-window", "-d", "-P", "-F", "#{pane_id}", "-t", win, "-c", f.host.cfg.Home, "exec sleep 60")
+	if got := tmux("display-message", "-p", "-t", win, "#{pane_id}"); got != shell {
+		t.Fatalf("active pane %s, want %s", got, shell)
+	}
+	l := f.list(t)
+	for deadline := time.Now().Add(3 * time.Second); len(l.Taskfleet) == 0 && time.Now().Before(deadline); time.Sleep(50 * time.Millisecond) {
+		l = f.list(t)
+	}
+	if len(l.Taskfleet) != 1 {
+		t.Fatalf("taskfleet windows %+v", l.Taskfleet)
+	}
+	window := l.Taskfleet[0].Token
+	token := window + "-" + strings.TrimPrefix(agent, "%")
+	w, code := f.dial(t, "workspace_id="+f.id+"&taskfleet="+token)
+	if code != 101 {
+		t.Fatalf("upgrade %d", code)
+	}
+	w.resize(t, 60, 15)
+	w.waitReady(t)
+	size := tmux("display-message", "-p", "-t", agent, "#{pane_width} #{pane_height}")
+	if w.ready["taskfleet"] != token || fmt.Sprintf("%v %v", w.ready["cols"], w.ready["rows"]) != size {
+		t.Fatalf("ready %+v, pane %s", w.ready, size)
+	}
+	if !w.until(t, "agent-pane-marker", 3*time.Second) || strings.Contains(w.screen.String(), "shell-pane-marker") {
+		t.Fatalf("view did not show the agent's pane: %q", w.screen.String())
+	}
+	// A pane of another window, outside the workspace, or gone is no target.
+	other := tmux("new-window", "-d", "-P", "-F", "#{pane_id}", "-t", "headless:", "-c", worker)
+	for _, pane := range []string{strings.TrimPrefix(other, "%"), strings.TrimPrefix(outside, "%"), "999"} {
+		if _, code := f.dial(t, "workspace_id="+f.id+"&taskfleet="+window+"-"+pane); code != 404 {
+			t.Fatalf("pane %s: %d", pane, code)
+		}
+	}
+	// The agent's pane is its own admission: the active pane leaving the
+	// workspace does not take the worker's view with it.
+	tmux("respawn-pane", "-k", "-t", shell, "-c", f.host.cfg.Home, "exec sleep 60")
+	w2, code := f.dial(t, "workspace_id="+f.id+"&taskfleet="+token)
+	if code != 101 {
+		t.Fatalf("agent pane beside an active pane elsewhere: %d", code)
+	}
+	w2.resize(t, 60, 15)
+	w2.waitReady(t)
+}
+
 func TestTerminalRefusals(t *testing.T) {
 	f := newTerminalFixture(t, true)
 	for name, q := range map[string]string{
@@ -399,6 +474,7 @@ func TestTerminalRefusals(t *testing.T) {
 		"path shell":    "workspace_id=" + f.id + "&shell=..%2Fx",
 		"zero shell":    "workspace_id=" + f.id + "&shell=0",
 		"socket token":  "workspace_id=" + f.id + "&taskfleet=%2Frun%2Fx",
+		"pane symbol":   "workspace_id=" + f.id + "&taskfleet=77f5c84c-1-%2525",
 		"bad workspace": "workspace_id=..&shell=new",
 	} {
 		if _, code := f.dial(t, q); code != 400 {

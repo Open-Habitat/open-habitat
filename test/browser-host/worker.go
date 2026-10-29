@@ -30,7 +30,7 @@ func writeFakeClaudeWorker(home, workspace, history string, landed bool) error {
 	run["manifest"] = map[string]any{"selection": map[string]any{"profile": "prototype-opus"}}
 	// A recorded window this host has no Taskfleet tmux server for: the
 	// terminal route refuses it, as it does for a window that has closed.
-	run["attach"] = map[string]any{"state": "recorded", "identity": map[string]any{"socket": "/run/user/1001/taskfleet/tmux-0123456789abcdef0123.sock", "window_id": "@1"}}
+	run["attach"] = map[string]any{"state": "recorded", "identity": map[string]any{"socket": "/run/user/1001/taskfleet/tmux-0123456789abcdef0123.sock", "window_id": "@1", "pane_id": "%1"}}
 	run["node_transcripts"] = []any{map[string]any{"node_id": "n-0001", "harness": "claude", "session_id": nil, "attempt": nil, "worktree_path": worktree, "support": "unsupported",
 		"live": map[string]any{"anchor": "state-root", "path": nil, "availability": "unsupported"}, "original": map[string]any{"anchor": "run-root", "path": nil, "availability": "unsupported"}}}
 	for name, value := range map[string]any{

@@ -252,6 +252,14 @@ func TestWorkerTerminalPointer(t *testing.T) {
 			t.Fatalf("%+v -> %q, want %q", c.r.Attach, got, c.want)
 		}
 	}
+	// Taskfleet's recorded pane is the agent's; a malformed one is left out.
+	for pane, want := range map[string]string{"%15": "30c4a765d13e401ef01f-8-15", "15": "30c4a765d13e401ef01f-8", "%1;x": "30c4a765d13e401ef01f-8"} {
+		r := run("running", "recorded", sock, "@8")
+		r.Attach.Identity.PaneID = pane
+		if got := workerTerminal(r); got != want {
+			t.Fatalf("pane %q -> %q, want %q", pane, got, want)
+		}
+	}
 }
 
 // The selected run carries what the worker view needs beside its history:
@@ -271,7 +279,7 @@ func TestSpinoffDetailCarriesWorkerFacts(t *testing.T) {
 	"live":{"anchor":"state-root","path":null,"availability":"unsupported"},"original":{"anchor":"run-root","path":null,"availability":"unsupported"}}],
 	"created_by_run_id":null,"created_by_session":{"harness":"pi","session_id":"` + spinoffParent + `"},"supervisor":{"state":"alive"},
 	"manifest":{"selection":{"profile":"prototype-opus"}},
-	"attach":{"state":"recorded","identity":{"socket":"/run/user/1/taskfleet/tmux-30c4a765d13e401ef01f.sock","window_id":"@1"}}}`
+	"attach":{"state":"recorded","identity":{"socket":"/run/user/1/taskfleet/tmux-30c4a765d13e401ef01f.sock","window_id":"@1","pane_id":"%3"}}}`
 	bin := filepath.Join(home, ".local", "bin", "taskfleet")
 	_ = os.MkdirAll(filepath.Dir(bin), 0700)
 	script := "#!/bin/sh\ncase \"$1 $2\" in 'version --output') printf '%s' '{\"schema_version\":1,\"data\":{\"version\":\"0.17.1\"}}';; 'run show') printf '%s' '{\"schema_version\":1,\"data\":" + native + "}';; *) printf '%s' '{\"schema_version\":1,\"data\":{\"runs\":[" + native + "]}}';; esac\n"
@@ -295,7 +303,7 @@ func TestSpinoffDetailCarriesWorkerFacts(t *testing.T) {
 		t.Fatalf("%d %s", w.Code, w.Body.String())
 	}
 	r := body.Runs[0]
-	if r.Harness != "claude" || r.Profile != "prototype-opus" || !r.AwaitingInput || r.Terminal != "30c4a765d13e401ef01f-1" || !strings.HasPrefix(r.TerminalSpace, "ws_") || r.Brief != "# Tehtävä\n\nLisää testit." {
+	if r.Harness != "claude" || r.Profile != "prototype-opus" || !r.AwaitingInput || r.Terminal != "30c4a765d13e401ef01f-1-3" || !strings.HasPrefix(r.TerminalSpace, "ws_") || r.Brief != "# Tehtävä\n\nLisää testit." {
 		t.Fatalf("worker facts lost: %+v", r)
 	}
 	if tr := body.Transcripts[0]; tr.Harness != "claude" || tr.Availability != "available" || len(tr.Entries) != 6 {
