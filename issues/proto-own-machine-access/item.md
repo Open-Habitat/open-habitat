@@ -8,7 +8,6 @@ priority: normal
 lane: own-machine
 lane_seq: 2
 preparation: ready
-blocked_by: ['@research-own-machine-access']
 ---
 
 # Prototype: managing access to my own computer in the UI

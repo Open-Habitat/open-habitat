@@ -3,11 +3,12 @@ created: 2026-10-29
 updated: 2026-10-29
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: own-machine
 lane_seq: 1
 preparation: pending
+closed: 2026-10-29
 ---
 
 # Research: the agent reaches the person's own computer over Tailscale + SSH, managed in the UI
