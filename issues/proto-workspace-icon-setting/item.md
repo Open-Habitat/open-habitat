@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-workspace-icon-setting
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: setting a workspace icon on the repository front page
@@ -29,3 +29,9 @@ valitaan: emoji, repon logo tai johdettu tunnus, ja mitä tapahtuu konffille
 
 - [ ] 2–3 suuntaa; NOTES.md Jarille ja result.md suosituksineen;
       tuotantokoodi ennallaan.
+
+## Decisions
+
+### 2026-10-30T09:04:30Z · @jari
+
+Jari 30.10.: Otsikko, ja sen alle myös Ehdotus. Ehdotukset saa generoida mallilla; ehdotus-workflow ja mallin kanssa sparraaminen prototyypataan vielä (kierros 2). Commit tehdään automaattisesti kyselemättä ja siitä mitään sanomatta. Litteä icon-muoto (emoji, kuvan polku tai 1–3 kirjainta) kelpaa myös käsin kirjoitettavaksi.
