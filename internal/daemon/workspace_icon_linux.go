@@ -36,11 +36,23 @@ const (
 )
 
 type workspaceIcon struct {
-	Kind    string // "", emoji, image
-	Value   string // the emoji
+	Kind    string // "", emoji, letters, image
+	Value   string // the emoji or the letters
 	Path    string // the image, relative to the workspace root
 	Source  string // config, logo
 	Version string // changes when the image file does; a cache key only
+	// Auto is the config's `icon: auto`: the chain without the config, and
+	// no suggestions offered.
+	Auto bool
+	// The repository's own logo, whatever the config says, so the picker
+	// can offer it; empty when there is none.
+	LogoPath, LogoVersion string
+}
+
+// iconSetting is a parsed `icon` value in the config's flat format.
+type iconSetting struct {
+	Kind  string // emoji, letters, image, auto; "" when absent or unusable
+	Value string // the emoji, the letters (upper case) or the image path
 }
 
 // Where a repository usually keeps its logo, in the order they are tried.
@@ -50,55 +62,99 @@ var logoNames = []string{"logo.svg", "favicon.svg", "logo.png", "favicon.png"}
 var iconTypes = map[string]string{".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
 
 func readWorkspaceIcon(op openFunction, root int) workspaceIcon {
-	if b, state := readSmall(op, root, workspaceConfigName, maxWorkspaceConfig); state == "valid" {
-		emoji, path := configIcon(b)
-		if emoji != "" {
-			return workspaceIcon{Kind: "emoji", Value: emoji, Source: "config"}
-		}
-		if path != "" {
-			if v, ok := iconFile(op, root, path); ok {
-				return workspaceIcon{Kind: "image", Path: path, Source: "config", Version: v}
-			}
+	var icon workspaceIcon
+	for _, path := range logoPaths() {
+		if v, ok := iconFile(op, root, path); ok {
+			icon.LogoPath, icon.LogoVersion = path, v
+			break
 		}
 	}
+	if b, state := readSmall(op, root, workspaceConfigName, maxWorkspaceConfig); state == "valid" {
+		switch set := configIcon(b); set.Kind {
+		case "emoji", "letters":
+			icon.Kind, icon.Value, icon.Source = set.Kind, set.Value, "config"
+			return icon
+		case "image":
+			if v, ok := iconFile(op, root, set.Value); ok {
+				icon.Kind, icon.Path, icon.Source, icon.Version = "image", set.Value, "config", v
+				return icon
+			}
+		case "auto":
+			icon.Auto = true
+		}
+	}
+	if icon.LogoPath != "" {
+		icon.Kind, icon.Path, icon.Source, icon.Version = "image", icon.LogoPath, "logo", icon.LogoVersion
+	}
+	return icon
+}
+
+func logoPaths() []string {
+	paths := make([]string, 0, len(logoDirs)*len(logoNames))
 	for _, d := range logoDirs {
 		for _, n := range logoNames {
-			path := n
 			if d != "" {
-				path = d + "/" + n
+				n = d + "/" + n
 			}
-			if v, ok := iconFile(op, root, path); ok {
-				return workspaceIcon{Kind: "image", Path: path, Source: "logo", Version: v}
-			}
+			paths = append(paths, n)
 		}
 	}
-	return workspaceIcon{}
+	return paths
 }
 
 // configIcon reads the config's `icon`. Other fields belong to other
 // features and are ignored; a file that is not a YAML mapping, or an icon
-// that is neither a short emoji nor an image path, has no icon.
-func configIcon(b []byte) (emoji, path string) {
+// that is not in the flat format, has no icon.
+func configIcon(b []byte) iconSetting {
 	var doc struct {
 		Icon yaml.Node `yaml:"icon"`
 	}
 	if !utf8.Valid(b) || yaml.Unmarshal(b, &doc) != nil || doc.Icon.Kind != yaml.ScalarNode || doc.Icon.Tag != "!!str" {
-		return "", ""
+		return iconSetting{}
 	}
-	v := strings.TrimSpace(doc.Icon.Value)
+	return parseIconValue(doc.Icon.Value)
+}
+
+// parseIconValue is the flat format, the one place that says what an icon
+// value is, whether a person wrote it, the picker chose it or a model
+// suggested it: `auto`, a repo-relative image path, 1–3 letters or digits,
+// or a short emoji.
+func parseIconValue(v string) iconSetting {
+	v = strings.TrimSpace(v)
+	if v == "auto" {
+		return iconSetting{Kind: "auto", Value: v}
+	}
 	if p, ok := strings.CutPrefix(v, "./"); ok {
 		v = p
 	}
 	if iconTypes[strings.ToLower(extension(v))] != "" {
-		if validComposerPath(v) && len(v) <= maxIconPath && !strings.ContainsAny(v, "\\") {
-			return "", v
+		if validComposerPath(v) && len(v) <= maxIconPath && !strings.ContainsAny(v, "\\\"") && strings.IndexFunc(v, unicode.IsControl) < 0 {
+			return iconSetting{Kind: "image", Value: v}
 		}
-		return "", ""
+		return iconSetting{}
+	}
+	if letters, ok := iconLetters(v); ok {
+		return iconSetting{Kind: "letters", Value: letters}
 	}
 	if validIconEmoji(v) {
-		return v, ""
+		return iconSetting{Kind: "emoji", Value: v}
 	}
-	return "", ""
+	return iconSetting{}
+}
+
+// iconLetters admits one to three ASCII letters or digits, or the Finnish
+// and Swedish Å, Ä and Ö, and gives them in upper case.
+func iconLetters(v string) (string, bool) {
+	n := utf8.RuneCountInString(v)
+	if n < 1 || n > 3 {
+		return "", false
+	}
+	for _, r := range v {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("åäöÅÄÖ", r)) {
+			return "", false
+		}
+	}
+	return strings.ToUpper(v), true
 }
 
 // validIconEmoji admits a short glyph: at most 32 bytes and 8 code points,
@@ -171,17 +227,18 @@ func iconContent(path string, b []byte) string {
 }
 
 func iconView(icon workspaceIcon) map[string]any {
-	if icon.Kind == "emoji" {
-		return map[string]any{"kind": "emoji", "source": icon.Source, "value": icon.Value}
+	if icon.Kind == "emoji" || icon.Kind == "letters" {
+		return map[string]any{"kind": icon.Kind, "source": icon.Source, "value": icon.Value}
 	}
 	return map[string]any{"kind": "image", "source": icon.Source, "path": icon.Path, "version": icon.Version}
 }
 
-// WorkspaceIconHandler answers `?workspace_id=…[&v=…]` with the workspace's
-// current icon image, chosen again from the repository; `v` is the snapshot's
-// version, a cache key the daemon does not read. The bytes are served as an
-// image only (nosniff); the gateway adds the sandbox policy that keeps an SVG
-// opened on its own from running anything.
+// WorkspaceIconHandler answers `?workspace_id=…[&v=…][&logo=1]` with the
+// workspace's current icon image, chosen again from the repository, or with
+// `logo=1` its logo whatever the config says (the picker's logo option); `v`
+// is the snapshot's version, a cache key the daemon does not read. The bytes
+// are served as an image only (nosniff); the gateway adds the sandbox policy
+// that keeps an SVG opened on its own from running anything.
 func WorkspaceIconHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
@@ -190,8 +247,13 @@ func WorkspaceIconHandler(cfg transport.Config, trusted func(*http.Request) bool
 		}
 		q, err := url.ParseQuery(r.URL.RawQuery)
 		id := q.Get("workspace_id")
-		version := len(q) == 2 && len(q["v"]) == 1 && len(q.Get("v")) <= 64
-		if err != nil || r.Method != http.MethodGet || r.URL.Path != WorkspaceIconPath || r.URL.EscapedPath() != WorkspaceIconPath || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || len(q["workspace_id"]) != 1 || !idPattern.MatchString(id) || len(q) != 1 && !version {
+		logo := len(q["logo"]) == 1 && q.Get("logo") == "1"
+		extra := len(q) - 1
+		if logo {
+			extra--
+		}
+		version := extra == 1 && len(q["v"]) == 1 && len(q.Get("v")) <= 64
+		if err != nil || r.Method != http.MethodGet || r.URL.Path != WorkspaceIconPath || r.URL.EscapedPath() != WorkspaceIconPath || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || len(q["workspace_id"]) != 1 || !idPattern.MatchString(id) || extra != 0 && !version {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -200,7 +262,7 @@ func WorkspaceIconHandler(cfg transport.Config, trusted func(*http.Request) bool
 			snapshotError(w, status, code)
 			return
 		}
-		data, typ, err := readIconImage(r.Context(), *target)
+		data, typ, err := readIconImage(r.Context(), *target, logo)
 		if err != nil {
 			if errors.Is(err, errPreviewMissing) {
 				snapshotError(w, 404, "resource_not_found")
@@ -217,13 +279,19 @@ func WorkspaceIconHandler(cfg transport.Config, trusted func(*http.Request) bool
 	})
 }
 
-func readIconImage(ctx context.Context, target gitTarget) ([]byte, string, error) {
+func readIconImage(ctx context.Context, target gitTarget, logo bool) ([]byte, string, error) {
 	root, still, done, err := target.open()
 	if err != nil {
 		return nil, "", err
 	}
 	defer done()
 	icon := readWorkspaceIcon(unix.Openat2, root)
+	if logo {
+		icon.Kind, icon.Path = "image", icon.LogoPath
+		if icon.LogoPath == "" {
+			icon.Kind = ""
+		}
+	}
 	if icon.Kind != "image" {
 		return nil, "", errPreviewMissing
 	}

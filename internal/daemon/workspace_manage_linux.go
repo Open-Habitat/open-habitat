@@ -34,10 +34,13 @@ type workspaceRequest struct {
 	DisplayName          *string `json:"display_name,omitempty"`
 	Git                  *bool   `json:"git,omitempty"`
 	Hidden               *bool   `json:"hidden,omitempty"`
-	Disposal             string  `json:"disposal,omitempty"`
-	Entry                string  `json:"entry,omitempty"`
-	Confirmation         string  `json:"confirmation,omitempty"`
-	ListingToken         string  `json:"listing_token,omitempty"`
+	// Icon is the `icon` value the page's picker or a suggestion chose, in
+	// the config's flat format (workspace_icon_write_linux.go).
+	Icon         *string `json:"icon,omitempty"`
+	Disposal     string  `json:"disposal,omitempty"`
+	Entry        string  `json:"entry,omitempty"`
+	Confirmation string  `json:"confirmation,omitempty"`
+	ListingToken string  `json:"listing_token,omitempty"`
 	// ClientCommandID is the browser's id for this command. It is echoed in
 	// the reply and on the published change, never used for authorization.
 	ClientCommandID string `json:"client_command_id,omitempty"`
@@ -222,7 +225,7 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 			serveWorktrees(w, cfg, controller, in)
 			return
 		}
-		if in.Disposal != "" || in.Entry != "" || in.Confirmation != "" || in.ListingToken != "" {
+		if in.Disposal != "" || in.Entry != "" || in.Confirmation != "" || in.ListingToken != "" || in.Icon != nil && in.Action != "icon" {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -238,7 +241,7 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-		if in.Action != "create" && in.Action != "settings" && in.Action != "visibility" && in.Action != "git_init" {
+		if in.Action != "create" && in.Action != "settings" && in.Action != "visibility" && in.Action != "git_init" && in.Action != "icon" {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -247,7 +250,7 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-		} else if in.Name != "" || in.UserObservationToken != "" || !idPattern.MatchString(in.WorkspaceID) || in.ObservationToken == "" || len(in.ObservationToken) > 200 || (in.Action == "settings" && (in.DisplayName == nil || in.Git != nil || in.Hidden != nil || *in.DisplayName != "" && !validDisplay(*in.DisplayName))) || (in.Action == "visibility" && (in.Hidden == nil || in.DisplayName != nil || in.Git != nil)) || (in.Action == "git_init" && (in.Hidden != nil || in.Git != nil || in.DisplayName != nil)) {
+		} else if in.Name != "" || in.UserObservationToken != "" || !idPattern.MatchString(in.WorkspaceID) || in.ObservationToken == "" || len(in.ObservationToken) > 200 || (in.Action == "settings" && (in.DisplayName == nil || in.Git != nil || in.Hidden != nil || *in.DisplayName != "" && !validDisplay(*in.DisplayName))) || (in.Action == "visibility" && (in.Hidden == nil || in.DisplayName != nil || in.Git != nil)) || (in.Action == "git_init" && (in.Hidden != nil || in.Git != nil || in.DisplayName != nil)) || (in.Action == "icon" && (in.Icon == nil || in.Hidden != nil || in.Git != nil || in.DisplayName != nil || len(*in.Icon) > maxIconPath)) {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -360,7 +363,14 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 		display := target.DisplayName
 		hidden := false
 		changeKnown := true
+		commit := ""
 		switch in.Action {
+		case "icon":
+			commit, e = setWorkspaceIcon(r.Context(), cfg.Home, child, target.Kind, *in.Icon)
+			if errors.Is(e, errIconInvalid) || errors.Is(e, errIconConfig) {
+				snapshotError(w, 409, e.Error())
+				return
+			}
 		case "settings":
 			if target.Kind == "git_main_worktree" {
 				if e = ensureWorkspaceExclude(child); e != nil {
@@ -426,6 +436,13 @@ func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, 
 		reply := map[string]any{"schema_version": 1, "workspace_id": responseID, "state": "updated"}
 		if in.ClientCommandID != "" {
 			reply["client_command_id"] = in.ClientCommandID
+		}
+		if commit != "" {
+			reply["icon_commit"] = commit
+			// Every tab, this one too, reads the new icon from the next snapshot.
+			if controller != nil && controller.journal != nil && commit != iconUnchanged {
+				controller.journal.appendInvalidation("")
+			}
 		}
 		if changeKnown && (in.Action == "settings" || in.Action == "visibility") {
 			// The reply and the journal carry the changed facts, so neither

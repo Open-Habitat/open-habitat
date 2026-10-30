@@ -274,6 +274,27 @@
         "icon": {
           "$ref": "#/$defs/workspaceIcon"
         },
+        "icon_auto": {
+          "description": "The .open-habitat.yaml at the root says icon: auto: the icon is the chain without the config (the logo, else the derived glyph), and no icon suggestions are offered.",
+          "const": true
+        },
+        "icon_logo": {
+          "description": "The first logo file on the daemon's fixed list, whatever the config says, so the icon picker can offer it. Fetched from /api/v1/workspaces/icon with logo=1.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "version"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/workspaceIconPath"
+            },
+            "version": {
+              "$ref": "#/$defs/workspaceIconVersion"
+            }
+          }
+        },
         "kind": {
           "enum": [
             "directory",
@@ -762,8 +783,29 @@
       }
     },
     "workspaceIcon": {
-      "description": "The workspace's icon as the daemon found it in the repository: the icon field of the committed .open-habitat.yaml at its root, else the first logo file on the daemon's fixed list. Absent when neither gives one; the browser then derives a glyph from the name. An image is fetched from /api/v1/workspaces/icon by workspace_id; the path is for showing where the icon comes from, never a path the browser may ask for.",
+      "description": "The workspace's icon as the daemon found it in the repository: the icon field of the .open-habitat.yaml at its root (an emoji, 1-3 letters or digits, or a repo-relative image), else the first logo file on the daemon's fixed list. Absent when neither gives one; the browser then derives a glyph from the name. An image is fetched from /api/v1/workspaces/icon by workspace_id; the path is for showing where the icon comes from, never a path the browser may ask for.",
       "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "source",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "letters"
+            },
+            "source": {
+              "const": "config"
+            },
+            "value": {
+              "type": "string",
+              "pattern": "^[A-Z0-9ÅÄÖ]{1,3}$"
+            }
+          }
+        },
         {
           "type": "object",
           "additionalProperties": false,
@@ -806,19 +848,25 @@
               ]
             },
             "path": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 255,
-              "pattern": "^[^/\\\\]+(/[^/\\\\]+)*\\.([Ss][Vv][Gg]|[Pp][Nn][Gg]|[Ww][Ee][Bb][Pp]|[Jj][Pp][Ee]?[Gg])$"
+              "$ref": "#/$defs/workspaceIconPath"
             },
             "version": {
-              "description": "Changes when the image file does; a cache key for the image address, not an identity.",
-              "type": "string",
-              "pattern": "^[0-9a-f]{16}$"
+              "$ref": "#/$defs/workspaceIconVersion"
             }
           }
         }
       ]
+    },
+    "workspaceIconPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[^/\\\\]+(/[^/\\\\]+)*\\.([Ss][Vv][Gg]|[Pp][Nn][Gg]|[Ww][Ee][Bb][Pp]|[Jj][Pp][Ee]?[Gg])$"
+    },
+    "workspaceIconVersion": {
+      "description": "Changes when the image file does; a cache key for the image address, not an identity.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
     }
   }
 }

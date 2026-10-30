@@ -100,6 +100,12 @@ func cloneCommandInput(parent context.Context, limit time.Duration, program, cwd
 }
 
 func nativeCommandInput(parent context.Context, limit time.Duration, stderr io.Writer, input, program, cwd, fd string, args ...string) ([]byte, error) {
+	return nativeCommandEnv(parent, limit, stderr, input, nil, program, cwd, fd, args...)
+}
+
+// nativeCommandEnv is nativeCommandInput with variables added to the fixed
+// environment, such as Git's GIT_INDEX_FILE for a private index.
+func nativeCommandEnv(parent context.Context, limit time.Duration, stderr io.Writer, input string, extra []string, program, cwd, fd string, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(parent, limit)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, program, args...)
@@ -121,7 +127,7 @@ func nativeCommandInput(parent context.Context, limit time.Duration, stderr io.W
 		cmd.Dir = cwd
 	}
 
-	cmd.Env = []string{"HOME=" + home, "XDG_CONFIG_HOME=" + filepath.Join(home, ".config"), "PATH=/usr/bin:/bin", "GH_PROMPT_DISABLED=1", "GIT_TERMINAL_PROMPT=0", "GCM_INTERACTIVE=never", "GIT_CONFIG_NOSYSTEM=1", "GIT_OPTIONAL_LOCKS=0"}
+	cmd.Env = append([]string{"HOME=" + home, "XDG_CONFIG_HOME=" + filepath.Join(home, ".config"), "PATH=/usr/bin:/bin", "GH_PROMPT_DISABLED=1", "GIT_TERMINAL_PROMPT=0", "GCM_INTERACTIVE=never", "GIT_CONFIG_NOSYSTEM=1", "GIT_OPTIONAL_LOCKS=0"}, extra...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.WaitDelay = time.Second
 	out := &limitedRepoWriter{}

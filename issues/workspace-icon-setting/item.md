@@ -3,12 +3,13 @@ created: 2026-10-30
 updated: 2026-10-30
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: workspace-icons
 lane_seq: 2
 blocked_by: ['@workspace-icon-chain']
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Set the workspace icon from its page header (Otsikko), committed silently
@@ -30,7 +31,7 @@ tulevat erikseen kierroksen 2 prototyypin jälkeen.
 
 ## Acceptance Criteria
 
-- [ ] Otsikon valitsin prototyypin mukaan, työpöytä ja puhelin; hiljainen
+- [x] Otsikon valitsin prototyypin mukaan, työpöytä ja puhelin; hiljainen
       commit vain konffitiedostosta; ei-Git-hakemistossa vain tiedosto.
-- [ ] Saman kokeellisen kytkimen takana kuin `workspace-icon-chain`;
+- [x] Saman kokeellisen kytkimen takana kuin `workspace-icon-chain`;
       selainspec; KOKEILTAVAA-rivi.

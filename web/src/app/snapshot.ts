@@ -50,13 +50,17 @@ export interface Workspace {
   /** The icon the daemon found in the repository: its .open-habitat.yaml
    * `icon`, else its logo. Absent: the browser derives a glyph. */
   icon?:
-    | { kind: "emoji"; source: "config"; value: string }
+    | { kind: "emoji" | "letters"; source: "config"; value: string }
     | {
         kind: "image";
         source: "config" | "logo";
         path: string;
         version: string;
       };
+  /** The config says `icon: auto`: the chain without it, no suggestions. */
+  icon_auto?: true;
+  /** The repository's logo whatever the config says, for the picker. */
+  icon_logo?: { path: string; version: string };
   kind: string;
   git_remote?: "github" | "other" | "none" | "unknown";
   git_summary?: GitSummaryFacts & { github_repo?: string };

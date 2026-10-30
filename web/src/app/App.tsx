@@ -1988,6 +1988,8 @@ export function App() {
             : undefined
         }
         onNewWorktree={newWorktree(ws)}
+        icon={icons?.get(ws.workspace_id)}
+        onLogin={requireLogin}
         refresh={refresh}
         single={single}
         archived={archived}

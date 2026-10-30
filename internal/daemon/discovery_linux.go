@@ -223,40 +223,47 @@ func scan(home string, uid int, op openFunction, icons bool) Discovery {
 // readSmall reads one bounded regular file named directly in parent; a name
 // with a slash is refused, as fstatat would follow its directory symlinks.
 func readSmall(op openFunction, parent int, name string, limit int) ([]byte, string) {
+	b, _, state := readSmallStat(op, parent, name, limit)
+	return b, state
+}
+
+// readSmallStat is readSmall plus the stat the bytes were proved against,
+// for a writer that must notice a later change to the file it read.
+func readSmallStat(op openFunction, parent int, name string, limit int) (b []byte, after unix.Stat_t, state string) {
 	if name == "" || strings.ContainsRune(name, '/') {
-		return nil, "invalid_file"
+		return nil, after, "invalid_file"
 	}
 	var before unix.Stat_t
 	firstErr := unix.Fstatat(parent, name, &before, unix.AT_SYMLINK_NOFOLLOW)
 	fd, e := open(op, parent, name, unix.O_RDONLY|unix.O_NONBLOCK, true)
 	if e != nil {
 		if firstErr == nil || !errors.Is(e, unix.ENOENT) && errors.Is(firstErr, unix.ENOENT) {
-			return nil, "invalid_file"
+			return nil, after, "invalid_file"
 		}
-		return nil, reason(e)
+		return nil, after, reason(e)
 	}
 	defer unix.Close(fd)
 	s, e := stat(fd)
 	if firstErr != nil || e != nil || !same(before, s) || s.Mode&unix.S_IFMT != unix.S_IFREG || s.Size > int64(limit) {
-		return nil, "invalid_file"
+		return nil, after, "invalid_file"
 	}
 	copyFD, e := unix.Dup(fd)
 	if e != nil {
-		return nil, "io_error"
+		return nil, after, "io_error"
 	}
 	f := os.NewFile(uintptr(copyFD), "bounded")
-	b, e := io.ReadAll(io.LimitReader(f, int64(limit+1)))
+	b, e = io.ReadAll(io.LimitReader(f, int64(limit+1)))
 	f.Close()
 	if e != nil || len(b) > limit {
-		return nil, "invalid_file"
+		return nil, after, "invalid_file"
 	}
-	after, e := stat(fd)
+	after, e = stat(fd)
 	var named unix.Stat_t
 	namedErr := unix.Fstatat(parent, name, &named, unix.AT_SYMLINK_NOFOLLOW)
 	if e != nil || namedErr != nil || !same(s, named) || !same(s, after) || s.Size != after.Size || s.Mtim != after.Mtim || s.Ctim != after.Ctim || int64(len(b)) != after.Size {
-		return nil, "invalid_file"
+		return nil, after, "invalid_file"
 	}
-	return b, "valid"
+	return b, after, "valid"
 }
 func metadata(op openFunction, child int) (string, string, string) {
 	d, e := dir(op, child, ".agent-host", true)

@@ -31,6 +31,8 @@ export const mutationClasses = {
   "conversation.abort_bash": "pending",
   "workspace.create": "pending",
   "workspace.git_init": "pending",
+  // The page shows the chosen icon at once, until the snapshot carries it.
+  "workspace.icon": "pending",
   // Confirmed: only that the command is on its way.
   "conversation.stop": "confirmed",
   "conversation.recap": "confirmed",

@@ -9,6 +9,12 @@ export type WorkspaceResult = {
   state: "created" | "updated";
   client_command_id?: string;
   workspace?: WorkspaceChange;
+  icon_commit?:
+    | "committed"
+    | "unchanged"
+    | "not_git"
+    | "uncommitted"
+    | "commit_failed";
   event_cursor?: string;
 };
 

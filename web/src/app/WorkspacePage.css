@@ -32,6 +32,13 @@
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+.ah-workspace-page-title .ah-workspace-icon-source {
+  margin-top: 4px;
+}
+.ah-workspace-icon-source code {
+  color: var(--ah-ink-2);
+  font-size: 11.5px;
+}
 .ah-workspace-page h2 {
   display: flex;
   align-items: center;

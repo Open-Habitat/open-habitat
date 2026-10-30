@@ -19,7 +19,8 @@ const (
 
 func (a *Auth) workspaceIcon(w http.ResponseWriter, r *http.Request) {
 	q, err := url.ParseQuery(r.URL.RawQuery)
-	shape := a.exact(r, workspaceIconPath, "workspace_id") || len(q.Get("v")) <= 64 && a.exact(r, workspaceIconPath, "workspace_id", "v")
+	short := len(q.Get("v")) <= 64 && (len(q["logo"]) == 0 || q.Get("logo") == "1")
+	shape := short && (a.exact(r, workspaceIconPath, "workspace_id") || a.exact(r, workspaceIconPath, "workspace_id", "v") || a.exact(r, workspaceIconPath, "workspace_id", "logo") || a.exact(r, workspaceIconPath, "workspace_id", "v", "logo"))
 	if err != nil || !shape || r.Method != http.MethodGet || r.URL.EscapedPath() != workspaceIconPath || !workspaceGitID.MatchString(q.Get("workspace_id")) || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || !browserHTTP(r) {
 		safe(w, 400, "invalid_request")
 		return

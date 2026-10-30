@@ -29,6 +29,7 @@ func TestWorkspaceIconRelaysExactShapeAsInertImage(t *testing.T) {
 	for _, ok := range []string{
 		"/api/v1/workspaces/icon?workspace_id=ws_example123",
 		"/api/v1/workspaces/icon?workspace_id=ws_example123&v=0123456789abcdef",
+		"/api/v1/workspaces/icon?workspace_id=ws_example123&v=0123456789abcdef&logo=1",
 	} {
 		w := call("GET", ok)
 		if w.Code != 200 || w.Header().Get("Content-Type") != "image/svg+xml" || w.Header().Get("X-Content-Type-Options") != "nosniff" {
@@ -44,13 +45,15 @@ func TestWorkspaceIconRelaysExactShapeAsInertImage(t *testing.T) {
 		{"GET", "/api/v1/workspaces/icon?workspace_id=..%2Fx"},
 		{"GET", "/api/v1/workspaces/icon?workspace_id=ws_example123&path=logo.svg"},
 		{"GET", "/api/v1/workspaces/icon?workspace_id=ws_example123&v=" + strings.Repeat("a", 65)},
+		{"GET", "/api/v1/workspaces/icon?workspace_id=ws_example123&logo=0"},
+		{"GET", "/api/v1/workspaces/icon?workspace_id=ws_example123&logo=1&logo=1"},
 		{"POST", "/api/v1/workspaces/icon?workspace_id=ws_example123"},
 	} {
 		if w := call(bad.method, bad.target); w.Code != 400 {
 			t.Fatalf("%s %s: %d, want 400", bad.method, bad.target, w.Code)
 		}
 	}
-	if len(forwarded) != 2 {
+	if len(forwarded) != 3 {
 		t.Fatalf("forwarded %d: %q", len(forwarded), forwarded)
 	}
 }

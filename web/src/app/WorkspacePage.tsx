@@ -17,6 +17,8 @@ import { PendingNote } from "../components/PendingNote";
 import { TextField } from "../components/Primitives";
 import { WorkspaceActions } from "../components/WorkspaceActions";
 import { WorkspaceGitLayer } from "../components/WorkspaceGitLayer";
+import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
+import { WorkspaceIconPicker } from "../components/WorkspaceIconPicker";
 import { useGitStatus } from "./ConversationGitStatus";
 import {
   type ConversationStore,
@@ -29,6 +31,8 @@ import { type DeletionOutcome, WorkspaceDeletion } from "./WorkspaceDeletion";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
 import { WorkspaceLanding } from "./WorkspaceLanding";
 import { WorktreeCleanup } from "./WorktreeCleanup";
+import { iconPicker, iconSourceLine } from "./workspaceIcons";
+import { useWorkspaceIconWrite } from "./workspaceIconWrite";
 import "./WorkspacePage.css";
 
 export function WorkspacePage({
@@ -60,6 +64,8 @@ export function WorkspacePage({
   single = false,
   archived,
   archivedPlace = "rail",
+  icon,
+  onLogin,
 }: {
   workspace: Workspace;
   conversations: HomeConversation[];
@@ -101,6 +107,10 @@ export function WorkspacePage({
   archived?: ReactNode;
   /** Where hidden workspaces are listed: home in single-workspace mode. */
   archivedPlace?: "rail" | "home";
+  /** The workspace's icon, while the experimental workspace icons are on:
+   * the heading shows it and it opens the icon picker. */
+  icon?: WorkspaceIconModel;
+  onLogin?: () => void;
 }) {
   const archiveAction = useCardArchiveAction(onArchive);
   const metadata = useConversationMetadata(store);
@@ -137,6 +147,14 @@ export function WorkspacePage({
     workspace.kind === "git_linked_worktree";
   const gitStatus = useGitStatus(workspace, csrf, { eager: true });
   const git = gitStatus.detail;
+  const iconWrite = useWorkspaceIconWrite({
+    workspace,
+    csrf,
+    refresh,
+    reread: gitStatus.details.onReread,
+    onLogin,
+  });
+  const source = iconSourceLine(workspace);
   // A second click while the first is unconfirmed queues behind it.
   const archive = (next: boolean) => {
     if (!onVisibility) return;
@@ -225,6 +243,14 @@ export function WorkspacePage({
         </header>
       ) : (
         <header className="ah-workspace-page-head">
+          {icon ? (
+            <WorkspaceIconPicker
+              model={iconPicker(icon, workspace, iconWrite.pending)}
+              onChoose={(value) => void iconWrite.choose(value)}
+              isDisabled={!iconWrite.available}
+              disabledReason="Kuvaketta voi vaihtaa, kun työtilan tila on vahvistettu."
+            />
+          ) : null}
           <div className="ah-workspace-page-title">
             <h1 data-testid="workspace-title" tabIndex={-1}>
               {workspace.display_name ?? workspace.name}
@@ -232,6 +258,20 @@ export function WorkspacePage({
             <p>
               <code title={workspace.path}>{displayPath}</code>
             </p>
+            {icon ? (
+              <p
+                className="ah-workspace-icon-source"
+                data-testid="workspace-icon-source"
+              >
+                Kuvake: {source.source}
+                {source.where ? (
+                  <>
+                    {" · "}
+                    <code>{source.where}</code>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
             {hidden ? (
               <span className="ah-workspace-hidden">
                 Arkistoitu · tiedostot ja keskustelut säilyvät ·{" "}
@@ -301,6 +341,11 @@ export function WorkspacePage({
         />
       ) : null}
       <PendingNote phase={visibilityPhase ?? renamePhase} />
+      {icon && iconWrite.note ? (
+        <p role="status" data-testid="workspace-icon-note">
+          {iconWrite.note}
+        </p>
+      ) : null}
       {visibilityProblem ? <p role="alert">{visibilityProblem}</p> : null}
       {renameProblem ? <p role="alert">{renameProblem}</p> : null}
       {conversationProblem ? (

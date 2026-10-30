@@ -297,6 +297,12 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 			if entry.Icon.Kind != "" {
 				ws["icon"] = iconView(entry.Icon)
 			}
+			if entry.Icon.Auto {
+				ws["icon_auto"] = true
+			}
+			if entry.Icon.LogoPath != "" {
+				ws["icon_logo"] = map[string]any{"path": entry.Icon.LogoPath, "version": entry.Icon.LogoVersion}
+			}
 			if found := placesOf[id]; len(found) > 0 {
 				list := make([]any, 0, len(found))
 				for _, p := range found {
