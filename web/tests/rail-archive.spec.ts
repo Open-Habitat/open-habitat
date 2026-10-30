@@ -53,8 +53,11 @@ test("a rail conversation archives from its row on hover or by keyboard, without
   await expect(row.locator("time")).toBeHidden();
   await page.mouse.move(0, 0);
   await expect(slot).toHaveCSS("opacity", "0");
-  // Keyboard: the button follows the row's link in the tab order.
+  // Keyboard: the row's actions follow its link in the tab order, rename
+  // first and archive at the row's end.
   await row.getByTestId("agent-link").focus();
+  await page.keyboard.press("Tab");
+  await expect(row.getByTestId("rail-rename-conversation")).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(archive).toBeFocused();
   await expect(slot).toHaveCSS("opacity", "1");

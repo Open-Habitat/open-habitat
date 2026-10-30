@@ -3,11 +3,12 @@ created: 2026-10-30
 updated: 2026-10-30
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: conversation-name
 lane_seq: 1
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Name a conversation by hand; goal-started conversations get the goal's name
@@ -30,10 +31,10 @@ Etusivun tavoitteet: `.agents/start-page.md`, `web/src/components/StartHere.tsx`
 
 ## Acceptance Criteria
 
-- [ ] Keskustelun voi nimetä käsin keskustelun otsakkeesta ja sivupalkin
+- [x] Keskustelun voi nimetä käsin keskustelun otsakkeesta ja sivupalkin
       valikosta (työpöytä ja puhelin); nimi tallentuu Pi:n natiiviin istuntoon
       (esim. Pi:n session name), ei uuteen tietovarastoon, ja käsin annettu nimi
       voittaa automaattisen otsikon.
-- [ ] Etusivun tavoitteesta aloitettu keskustelu saa tavoitteen nimen
+- [x] Etusivun tavoitteesta aloitettu keskustelu saa tavoitteen nimen
       (tai tavoitteen määrittämän nimen), kunnes sen nimeää uudelleen.
-- [ ] Ei kokeellista kytkintä (Jari haluaa nyt); selainspec; KOKEILTAVAA-rivi.
+- [x] Ei kokeellista kytkintä (Jari haluaa nyt); selainspec; KOKEILTAVAA-rivi.

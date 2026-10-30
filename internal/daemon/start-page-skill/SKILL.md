@@ -64,7 +64,10 @@ UTF-8 Markdown with YAML frontmatter. The frontmatter defines the page `title`
 file is at most 32 KiB. A text-only page is valid. Each goal has `title`
 (1–256 bytes), `what` (1–2048 bytes, expected output), `when` (1–1024 bytes),
 `steps` (1–8 plain-text strings, each 1–1024 bytes), `prompt`
-(1–2048 bytes), and optional `skill` (native name). All guide fields are required;
+(1–2048 bytes), optional `skill` (native name) and optional `name` (one line,
+at most 160 bytes): the name of the conversation the goal starts, when the
+goal's title is not a good one (for example `Viikkoraportti` for the goal
+*Kirjoita viikon raportti*). The person can rename it later. All guide fields are required;
 old goals without them are invalid. Guide fields are plain text, not Markdown.
 No other fields. Use short,
 plain Finnish text unless the person requests another language. Quote YAML

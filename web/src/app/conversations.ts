@@ -12,6 +12,7 @@ import recapSchema from "../../../contracts/v1/recap.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { PiProvider } from "../components/ModelPicker";
 import { validBashReply, validBashStatus } from "./composerContract";
+import { conversationName } from "./conversationName";
 import {
   jsonWrite,
   type MutationCommand,
@@ -229,7 +230,7 @@ const writeCommands: [RegExp, MutationCommand][] = [
   [/\/question$/, "conversation.question"],
   [/\/recap$/, "conversation.recap"],
   [/\/presence$/, "conversation.presence"],
-  [/\/(regenerate_title|history_title)$/, "conversation.title"],
+  [/\/(regenerate_title|history_title|name)$/, "conversation.title"],
   [/\/send$/, "conversation.send"],
   [/\/(steer|follow_up)$/, "conversation.queue"],
   [/\/cancel_held$/, "conversation.cancel_held"],
@@ -419,6 +420,31 @@ export async function retitleHistory(
   titleReply(reply);
 }
 
+/**
+ * Name a conversation by hand. Pi records it as the session's native name,
+ * so it is the title everywhere and no automatic title replaces it. A Pi
+ * still starting writes it once ready ("held").
+ */
+export async function renameConversation(
+  id: string,
+  workspace: string,
+  name: string,
+  csrf: string,
+): Promise<"done" | "held"> {
+  if (!ws.test(workspace)) throw new Error("invalid workspace");
+  if (!name || conversationName(name) !== name) throw new Error("invalid name");
+  const reply = await request(
+    `${path(id)}/name`,
+    undefined,
+    { workspace_id: workspace, name },
+    csrf,
+  );
+  if (object(reply) && reply.schema_version === 1 && reply.state === "held")
+    return "held";
+  titleReply(reply);
+  return "done";
+}
+
 export async function list(signal?: AbortSignal): Promise<Session[]> {
   const v = await request(base, signal);
   if (
@@ -448,13 +474,14 @@ export async function createTracked(
   stillCurrent: () => boolean,
   choice?: Parameters<typeof create>[2],
   newWorktree?: string,
+  name?: string,
 ): Promise<Session | undefined> {
   if (!stillCurrent()) return;
   const attempt = crypto.randomUUID();
   sessionStorage.setItem(uncertainKey, `create:${attempt}`);
   pendingCreations.add(uncertainKey);
   try {
-    const result = await create(workspace, csrf, choice, newWorktree);
+    const result = await create(workspace, csrf, choice, newWorktree, name);
     if (!stillCurrent()) return;
     sessionStorage.removeItem(uncertainKey);
     return result;
@@ -477,8 +504,12 @@ export async function create(
     thinking?: string;
   },
   newWorktree?: string,
+  /** The conversation's name from the start, such as a goal's. */
+  name?: string,
 ): Promise<Session> {
   if (!ws.test(workspace)) throw new Error("invalid workspace");
+  if (name !== undefined && (!name || conversationName(name) !== name))
+    throw new Error("invalid name");
   if (newWorktree !== undefined && !worktreeName.test(newWorktree))
     throw new Error("invalid worktree name");
   let response: Response | undefined;
@@ -492,6 +523,7 @@ export async function create(
         ...(newWorktree !== undefined
           ? { new_worktree: { name: newWorktree } }
           : {}),
+        ...(name !== undefined ? { name } : {}),
       },
       csrf,
     );

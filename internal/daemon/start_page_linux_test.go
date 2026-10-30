@@ -75,6 +75,9 @@ func TestStartPageRejectsInvalidDocuments(t *testing.T) {
 		strings.Replace(fixtureStartPage, "steps: [Read the context., Check the result.]", "steps: ["+strings.Repeat("x", 1025)+"]", 1),
 		strings.Replace(fixtureStartPage, "what: A concrete result.", "what: "+strings.Repeat("x", 2049), 1),
 		strings.Replace(fixtureStartPage, "title: Investigate", "title: ''", 1),
+		strings.Replace(fixtureStartPage, "skill: tests", "skill: tests\n    name: \"Two\\nlines\"", 1),
+		strings.Replace(fixtureStartPage, "skill: tests", "skill: tests\n    name: ' Padded'", 1),
+		strings.Replace(fixtureStartPage, "skill: tests", "skill: tests\n    name: "+strings.Repeat("x", 161), 1),
 		strings.Replace(fixtureStartPage, "title: A repository title", "intro: [broken", 1),
 		fixtureStartPage[:8] + string([]byte{0xff}) + fixtureStartPage[8:],
 	} {
@@ -84,6 +87,11 @@ func TestStartPageRejectsInvalidDocuments(t *testing.T) {
 	}
 	if parseStartPage([]byte(strings.ReplaceAll(fixtureStartPage, "\n", "\r\n"))) == nil {
 		t.Fatal("rejected CRLF")
+	}
+	// A goal may name the conversation it starts.
+	named := parseStartPage([]byte(strings.Replace(fixtureStartPage, "skill: tests", "skill: tests\n    name: Viikkoraportti", 1)))
+	if named == nil || named.Goals[0].Name != "Viikkoraportti" || named.Goals[1].Name != "" {
+		t.Fatalf("goal name: %+v", named)
 	}
 	page := parseStartPage([]byte("---\ntitle: Text only\n---\nA **free text** page."))
 	if page == nil || len(page.Goals) != 0 || page.Body != "A **free text** page." {

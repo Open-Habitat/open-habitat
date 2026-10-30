@@ -44,6 +44,7 @@ import {
   currentRecap,
   historyEligibility,
   readRecap,
+  renameConversation,
   retitleHistory,
 } from "./conversations";
 import {
@@ -1718,6 +1719,29 @@ function HistoryViewContent({
           },
           { label: "Natiivi tunniste", value: agent.agent_id, copy: true },
         ]}
+        rename={
+          csrf
+            ? {
+                availability: mayWrite
+                  ? { state: "enabled" }
+                  : { state: "disabled", reason: blockedReason },
+                onSave: async (name) => {
+                  try {
+                    await renameConversation(
+                      agent.agent_id,
+                      agent.worktree_id ?? workspaceId,
+                      name,
+                      csrf,
+                    );
+                  } catch (error) {
+                    if ((error as Error).message === "identity_lost") onLogin();
+                    throw error;
+                  }
+                  onTitleComplete?.();
+                },
+              }
+            : undefined
+        }
         titleAction={{
           label: "Luo uusi otsikko",
           availability:

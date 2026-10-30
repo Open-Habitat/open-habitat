@@ -4,6 +4,7 @@ import {
   ArchivedWorkspaces,
   NowSections,
   type RailArchive,
+  type RailRename,
   WorkspaceNavRow,
   WorkspaceRail,
 } from "../components";
@@ -129,7 +130,10 @@ export function WorkspaceRailView({
   clones,
   bell,
   archiveConversation,
+  renameConversation,
 }: {
+  /** The conversation rows' rename; absent where none is offered. */
+  renameConversation?: RailRename;
   /** The conversation rows' archive button; absent where none is offered. */
   archiveConversation?: RailArchive;
   /** The status bell, where no top bar carries it. */
@@ -206,6 +210,7 @@ export function WorkspaceRailView({
           running={now.running}
           collapsed={collapsed}
           archive={archiveConversation}
+          rename={renameConversation}
         />
       }
       filterValue={filter}

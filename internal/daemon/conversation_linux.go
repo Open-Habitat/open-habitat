@@ -28,6 +28,7 @@ import (
 type ConversationController struct {
 	viewMu   sync.Mutex // serialize view offer idempotency observation and export
 	noticeMu sync.Mutex // serialize native notice idempotency observation and append
+	nameMu   sync.Mutex // order each name's final native check and its write (title_linux.go)
 
 	mu       sync.Mutex
 	sessions map[string]*conversation
@@ -133,6 +134,11 @@ type conversation struct {
 	queuedQuestions                                         []pendingQuestion // bounded native requests waiting behind the visible one
 	spentQuestions                                          map[string]bool   // native IDs already answered or cancelled
 	publishedHistory                                        map[string]bool   // bounded to this native session; JSONL is authoritative
+	// A name the person gave before Pi was ready (pendingName, written once it
+	// is), and the last one Pi accepted (givenName), which stands in for the
+	// title only while Pi has not yet written its session file. Pi's
+	// session_info is the name's only record (conversation_name_linux.go).
+	pendingName, givenName string
 	// Messages sent before Pi is ready. The daemon holds them in order, keyed by
 	// the browser's command ID, and gives Pi their joined text as one prompt.
 	// They live only in this daemon incarnation, like receipts.
@@ -431,6 +437,8 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.regenerateTitle(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "history_title":
 		c.historyTitle(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "name":
+		c.nameByHand(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "recap":
 		c.requestRecap(w, r, parts[0])
 	case r.Method == http.MethodPost && parts[1] == "presence":
@@ -489,8 +497,10 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		NewWorktree *struct {
 			Name string `json:"name"`
 		} `json:"new_worktree"`
+		// The conversation's name from the start, such as a start-page goal's.
+		Name string `json:"name"`
 	}
-	if decodeControl(r, &body, 1024) != nil || !idPattern.MatchString(body.WorkspaceID) || len(body.Model) > 160 || (body.Thinking != "" && (!validThinking(body.Thinking) || body.Model == "")) || body.NewWorktree != nil && !worktreeNameHint.MatchString(body.NewWorktree.Name) {
+	if decodeControl(r, &body, 1024) != nil || !idPattern.MatchString(body.WorkspaceID) || len(body.Model) > 160 || (body.Thinking != "" && (!validThinking(body.Thinking) || body.Model == "")) || body.NewWorktree != nil && !worktreeNameHint.MatchString(body.NewWorktree.Name) || body.Name != "" && !validTitle(body.Name) {
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
@@ -602,7 +612,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lastUsed: time.Now(), events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
+	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lastUsed: time.Now(), events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool), pendingName: body.Name}
 	if body.Model != "" {
 		s.startupChoice = &piStartupChoice{Provider: body.Provider, Model: body.Model, Thinking: body.Thinking}
 		s.launchChoice = s.startupChoice

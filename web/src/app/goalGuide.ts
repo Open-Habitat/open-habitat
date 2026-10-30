@@ -3,6 +3,7 @@ import { splitAttachments } from "../components/AttachmentChips";
 import type { ComposerGoal } from "../components/composer/GoalChip";
 import { goalDraft, goalRequest } from "../components/StartHere";
 import { readCommands, type StartGoal, type StartPage } from "./composerReads";
+import { conversationName } from "./conversationName";
 import { creationKeys } from "./heldMessages";
 import { type HistoryEntry, readHistory } from "./history";
 
@@ -232,6 +233,12 @@ export function prepareInvocation(
     start: draft.startsWith(invocation) ? text.length : at,
     end: draft.startsWith(invocation) ? text.length : at,
   });
+}
+
+/** The name a conversation started from a goal gets until it is renamed:
+ * the goal's own `name`, else its title. */
+export function goalConversationName(goal: StartGoal) {
+  return conversationName(goal.name ?? goal.title) || undefined;
 }
 
 export function useGuide(owner: string | undefined) {

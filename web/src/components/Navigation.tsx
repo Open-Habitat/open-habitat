@@ -10,6 +10,7 @@ import type { AgentPresentation } from "./agentPresentation";
 import { ControlButton, ExternalLink, LinkRow } from "./ControlElements";
 import { HeaderActivity, useHeaderShortening } from "./HeaderShortening";
 import { Icon } from "./Icon";
+import { NameEditor } from "./NameEditor";
 import { NoticeAreaProvider, NoticeSlot } from "./NoticeArea";
 import { Menu } from "./Overlays";
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
@@ -488,6 +489,18 @@ export interface AgentNavModel {
   /** The workspace's name, for the group heading and the narrow rail. */
   workspaceName?: string;
 }
+/** Naming a conversation by hand. `onSave` resolves once the host has the
+ * name and rejects when that is not known. */
+export interface ConversationRename {
+  availability?: Availability;
+  onSave: (name: string) => Promise<void>;
+}
+/** The rail rows' rename: why a row cannot be renamed now ("" when it can)
+ * and the save itself. */
+export interface RailRename {
+  reason: (agentId: string) => string;
+  save: (agentId: string, name: string) => Promise<void>;
+}
 /** The rail rows' archive button: why a row cannot be archived now ("" when
  * it can) and the archive itself. */
 export interface RailArchive {
@@ -587,9 +600,20 @@ export function AgentNavItem({
   detail,
   now = Date.now(),
   archive,
-}: AgentNavModel & { now?: number; archive?: RailArchive }) {
+  rename,
+}: AgentNavModel & {
+  now?: number;
+  archive?: RailArchive;
+  rename?: RailRename;
+}) {
   const archiveReasonId = useId();
   const archiveReason = archive?.reason(agentId);
+  const renameReason = rename?.reason(agentId);
+  const [editing, setEditing] = useState(false);
+  // A saved name shows at once, until the snapshot's title changes.
+  const [saved, setSaved] = useState<{ name: string; over: string }>();
+  if (saved && saved.over !== title) setSaved(undefined);
+  const shownTitle = saved && saved.over === title ? saved.name : title;
   const ball = ballOf({
     failed,
     attentionLabel,
@@ -622,7 +646,7 @@ export function AgentNavItem({
     <li
       data-testid={`agent-item-${agentId}`}
       data-ball={ball}
-      title={`${title} · ${said}`}
+      title={`${shownTitle} · ${said}`}
       data-waiting={activity === "waiting_background"}
       data-has-history-warning={Boolean(historyLabel)}
       className={`ah-agent-item${spinoffWorking ? " ah-waiting-spinoff" : ""}${pendingLabel ? " ah-pending-item" : ""}`}
@@ -631,42 +655,62 @@ export function AgentNavItem({
       <ListRow
         className="ah-sidebar-agent-row ah-now-row"
         trailing={
-          spinoffWorking || archive ? (
+          !editing && (spinoffWorking || archive || rename) ? (
             <>
               {spinoffWorking ? <SpinoffWorkingMark /> : null}
-              {archive ? (
+              {archive || rename ? (
                 <span
                   className="ah-nav-archive"
-                  title={archiveReason || "Arkistoi"}
+                  data-actions={archive && rename ? 2 : 1}
                 >
-                  <ControlButton
-                    data-testid="rail-archive-conversation"
-                    variant="quiet"
-                    size="inline"
-                    aria-label={`Arkistoi ${title}`}
-                    aria-describedby={
-                      archiveReason ? archiveReasonId : undefined
-                    }
-                    isDisabled={!!archiveReason}
-                    onPress={(event) => {
-                      // The row leaves the list at once; keep the keyboard in
-                      // the rail on the next row rather than on the page.
-                      const row = (event.target as HTMLElement).closest("li");
-                      const rows = [
-                        ...(row
-                          ?.closest(".ah-now")
-                          ?.querySelectorAll<HTMLElement>(
-                            ".ah-agent-item .ah-nav-link",
-                          ) ?? []),
-                      ];
-                      const here = rows.findIndex((r) => row?.contains(r));
-                      if (row?.contains(document.activeElement))
-                        (rows[here + 1] ?? rows[here - 1])?.focus();
-                      archive.run(agentId);
-                    }}
-                  >
-                    <Icon name="archive" />
-                  </ControlButton>
+                  {rename ? (
+                    <span title={renameReason || "Nimeä uudelleen"}>
+                      <ControlButton
+                        data-testid="rail-rename-conversation"
+                        variant="quiet"
+                        size="inline"
+                        aria-label={`Nimeä uudelleen ${shownTitle}`}
+                        isDisabled={!!renameReason}
+                        onPress={() => setEditing(true)}
+                      >
+                        <Icon name="pencil" />
+                      </ControlButton>
+                    </span>
+                  ) : null}
+                  {archive ? (
+                    <span title={archiveReason || "Arkistoi"}>
+                      <ControlButton
+                        data-testid="rail-archive-conversation"
+                        variant="quiet"
+                        size="inline"
+                        aria-label={`Arkistoi ${shownTitle}`}
+                        aria-describedby={
+                          archiveReason ? archiveReasonId : undefined
+                        }
+                        isDisabled={!!archiveReason}
+                        onPress={(event) => {
+                          // The row leaves the list at once; keep the keyboard in
+                          // the rail on the next row rather than on the page.
+                          const row = (event.target as HTMLElement).closest(
+                            "li",
+                          );
+                          const rows = [
+                            ...(row
+                              ?.closest(".ah-now")
+                              ?.querySelectorAll<HTMLElement>(
+                                ".ah-agent-item .ah-nav-link",
+                              ) ?? []),
+                          ];
+                          const here = rows.findIndex((r) => row?.contains(r));
+                          if (row?.contains(document.activeElement))
+                            (rows[here + 1] ?? rows[here - 1])?.focus();
+                          archive.run(agentId);
+                        }}
+                      >
+                        <Icon name="archive" />
+                      </ControlButton>
+                    </span>
+                  ) : null}
                   {archiveReason ? (
                     <span id={archiveReasonId} className="ah-visually-hidden">
                       {archiveReason}
@@ -678,46 +722,58 @@ export function AgentNavItem({
           ) : undefined
         }
       >
-        <NavLink
-          href={href}
-          label={title}
-          current={selected ? "page" : false}
-          detail={said}
-          oneLine
-          line={
-            worktree?.work && !worktree.merged ? (
-              <span
-                className="ah-nav-work"
-                data-testid="worktree-work"
-                data-tone={worktree.work.tone}
-              >
-                {worktree.work.text}
-              </span>
-            ) : undefined
-          }
-          leading={
-            <>
-              <Ball kind={ball} />
-              {worktree ? (
-                <Icon
-                  name={worktree.merged ? "merge" : "worktree"}
-                  className={`ah-nav-worktree${worktree.merged ? " merged" : ""}`}
-                  aria-hidden="true"
-                />
-              ) : null}
-            </>
-          }
-          end={
-            age !== undefined && changedAt !== undefined ? (
-              <time
-                className="ah-nav-time"
-                dateTime={new Date(changedAt).toISOString()}
-              >
-                {age}
-              </time>
-            ) : undefined
-          }
-        />
+        {editing && rename ? (
+          <NameEditor
+            value={shownTitle}
+            label="Keskustelun nimi"
+            onSave={(name) => rename.save(agentId, name)}
+            onClose={(name) => {
+              setEditing(false);
+              if (name) setSaved({ name, over: title });
+            }}
+          />
+        ) : (
+          <NavLink
+            href={href}
+            label={shownTitle}
+            current={selected ? "page" : false}
+            detail={said}
+            oneLine
+            line={
+              worktree?.work && !worktree.merged ? (
+                <span
+                  className="ah-nav-work"
+                  data-testid="worktree-work"
+                  data-tone={worktree.work.tone}
+                >
+                  {worktree.work.text}
+                </span>
+              ) : undefined
+            }
+            leading={
+              <>
+                <Ball kind={ball} />
+                {worktree ? (
+                  <Icon
+                    name={worktree.merged ? "merge" : "worktree"}
+                    className={`ah-nav-worktree${worktree.merged ? " merged" : ""}`}
+                    aria-hidden="true"
+                  />
+                ) : null}
+              </>
+            }
+            end={
+              age !== undefined && changedAt !== undefined ? (
+                <time
+                  className="ah-nav-time"
+                  dateTime={new Date(changedAt).toISOString()}
+                >
+                  {age}
+                </time>
+              ) : undefined
+            }
+          />
+        )}
       </ListRow>
     </li>
   );
@@ -894,10 +950,12 @@ function RunningGroups({
   running,
   now,
   archive,
+  rename,
 }: {
   running: AgentNavModel[];
   now: number;
   archive?: RailArchive;
+  rename?: RailRename;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const toggle = (key: string) => setOpen((o) => ({ ...o, [key]: !o[key] }));
@@ -917,7 +975,13 @@ function RunningGroups({
   const live = ordered.filter(([, g]) => g.rows.some((a) => !quiet(a, now)));
   const dormant = ordered.filter(([, g]) => g.rows.every((a) => quiet(a, now)));
   const row = (agent: AgentNavModel) => (
-    <AgentNavItem key={agent.agentId} {...agent} now={now} archive={archive} />
+    <AgentNavItem
+      key={agent.agentId}
+      {...agent}
+      now={now}
+      archive={archive}
+      rename={rename}
+    />
   );
   return (
     <>
@@ -987,12 +1051,15 @@ export function NowSections({
   running,
   collapsed = false,
   archive,
+  rename,
 }: {
   yours: AgentNavModel[];
   running: AgentNavModel[];
   collapsed?: boolean;
   /** Absent where the rail offers no archive (a story). */
   archive?: RailArchive;
+  /** Absent where the rail offers no renaming (a story). */
+  rename?: RailRename;
 }) {
   const yoursId = useId();
   const runningId = useId();
@@ -1037,6 +1104,7 @@ export function NowSections({
                 {...agent}
                 now={now}
                 archive={archive}
+                rename={rename}
               />
             ))}
           </ul>
@@ -1056,7 +1124,12 @@ export function NowSections({
           ) : null}
         </h2>
         {running.length ? (
-          <RunningGroups running={running} now={now} archive={archive} />
+          <RunningGroups
+            running={running}
+            now={now}
+            archive={archive}
+            rename={rename}
+          />
         ) : (
           <p className="ah-now-empty">Mikään ei ole käynnissä.</p>
         )}
@@ -1353,6 +1426,7 @@ export function AgentHeader({
   detailsExpanded,
   onToggleDetails,
   titleAction,
+  rename,
   recapAction,
   archive,
   editorControl,
@@ -1410,6 +1484,8 @@ export function AgentHeader({
     pending?: boolean;
     onPress: () => void;
   };
+  /** Name the conversation by hand: the title becomes a field. */
+  rename?: ConversationRename;
   /** Make a recap now (Jari 29.10.2026: always in the header; recaps are
    * otherwise automatic). */
   recapAction?: {
@@ -1420,6 +1496,17 @@ export function AgentHeader({
 }) {
   const titleReasonId = useId();
   const naming = titlePending || !!titleAction?.pending;
+  const [editing, setEditing] = useState(false);
+  // A saved name shows at once, until the host's title changes from what
+  // it was when the name was saved.
+  const [saved, setSaved] = useState<{ name: string; over: string }>();
+  if (saved && saved.over !== title) setSaved(undefined);
+  const shownTitle = saved && saved.over === title ? saved.name : title;
+  const renameReason =
+    rename?.availability && "reason" in rename.availability
+      ? rename.availability.reason
+      : undefined;
+  const canRename = !!rename && !renameReason && !naming;
   // An empty label means no state to show (for example while messages wait
   // for Pi to start); the header then carries no mark at all.
   const visibleActivity = !!activityLabel || !!activityControl;
@@ -1445,6 +1532,23 @@ export function AgentHeader({
             label: workspaceLabel,
             description: "Avaa työtila",
             run: () => navigate(workspaceHref),
+          },
+        ]
+      : []),
+    ...(rename
+      ? [
+          {
+            id: "rename",
+            label: "Nimeä uudelleen",
+            availability: naming
+              ? {
+                  state: "disabled" as const,
+                  reason: "Otsikkoa luodaan…",
+                }
+              : (rename.availability ?? { state: "enabled" as const }),
+            // After the menu has closed and handed focus back to its
+            // trigger, so the field keeps it.
+            run: () => setTimeout(() => setEditing(true)),
           },
         ]
       : []),
@@ -1531,9 +1635,33 @@ export function AgentHeader({
           data-testid="conversation-title"
           aria-busy={naming}
         >
-          <h1 data-testid="workspace-title" title={title}>
-            {title}
-          </h1>
+          {editing && rename ? (
+            <NameEditor
+              value={shownTitle}
+              label="Keskustelun nimi"
+              onSave={rename.onSave}
+              onClose={(name) => {
+                setEditing(false);
+                if (name) setSaved({ name, over: title });
+              }}
+            />
+          ) : (
+            <h1 data-testid="workspace-title" title={shownTitle}>
+              {canRename ? (
+                <button
+                  type="button"
+                  className="ah-title-rename"
+                  data-testid="conversation-rename"
+                  title="Nimeä uudelleen"
+                  onClick={() => setEditing(true)}
+                >
+                  {shownTitle}
+                </button>
+              ) : (
+                shownTitle
+              )}
+            </h1>
+          )}
           <span
             className="ah-title-dots"
             data-testid="title-dots"
@@ -1717,7 +1845,7 @@ export function AgentHeader({
           triggerClassName="ah-header-more"
           triggerTestId="conversation-menu"
           placement="bottom end"
-          heading={<p className="ah-header-full-title">{title}</p>}
+          heading={<p className="ah-header-full-title">{shownTitle}</p>}
           items={headerMenu}
           onAction={(id) => headerMenu.find((item) => item.id === id)?.run()}
         />

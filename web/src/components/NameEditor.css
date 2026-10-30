@@ -1,0 +1,83 @@
+/* The name field takes the title's place in the header or the rail row and
+   keeps its type, so the row does not jump when editing starts. */
+.ah-name-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s1);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ah-name-field {
+  width: 100%;
+  min-width: 12em;
+  margin: 0;
+  padding: 1px 6px;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: inherit;
+}
+.ah-name-field:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+.ah-name-field[aria-invalid="true"] {
+  border-color: var(--ah-err-line);
+}
+.ah-name-field[aria-busy="true"] {
+  color: var(--ah-muted);
+}
+.ah-name-problem {
+  color: var(--ah-err);
+  font-size: var(--ah-size-meta);
+  font-weight: 400;
+  white-space: normal;
+}
+.ah-agent-header .ah-name-editor {
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  max-width: 38ch;
+}
+.ah-sidebar-agent-row .ah-name-editor {
+  padding-block: 2px;
+}
+/* The header's title is its own rename control; it still reads as a title. */
+.ah-title-rename {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ah-r-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  white-space: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+}
+.ah-title-rename:hover {
+  text-decoration: underline dotted var(--ah-line-strong);
+  text-underline-offset: 4px;
+}
+.ah-title-rename:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+/* A rail row with both rename and archive needs room for two buttons where
+   its age was (components.css, .ah-nav-archive). */
+.ah-nav-archive {
+  gap: 2px;
+}
+@media (hover: hover) {
+  .ah-now
+    .ah-agent-item:is(:hover, :focus-within):has(
+      .ah-nav-archive[data-actions="2"]
+    )
+    .ah-nav-link {
+    padding-inline-end: 58px;
+  }
+}

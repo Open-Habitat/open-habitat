@@ -220,7 +220,11 @@ func (c *ConversationController) relaunchFresh(old *conversation) string {
 	if err != nil {
 		return "source_unavailable"
 	}
-	s := &conversation{id: old.id, workspace: old.workspace, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lazy: old.lazy, lastUsed: time.Now(), launchChoice: old.launchChoice, startupChoice: old.launchChoice, events: make([]json.RawMessage, 0, 64), commands: old.commands, receipts: old.receipts, command: old.command, held: old.held, heldChoice: old.heldChoice, bash: old.bash}
+	s := &conversation{id: old.id, workspace: old.workspace, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lazy: old.lazy, lastUsed: time.Now(), launchChoice: old.launchChoice, startupChoice: old.launchChoice, events: make([]json.RawMessage, 0, 64), commands: old.commands, receipts: old.receipts, command: old.command, held: old.held, heldChoice: old.heldChoice, bash: old.bash, givenName: old.givenName, pendingName: old.pendingName}
+	// Pi kept a name given to the empty conversation only in its memory.
+	if s.pendingName == "" {
+		s.pendingName = old.givenName
+	}
 	old.held, old.heldChoice, old.bash = nil, nil, nil
 	c.sessions[old.id] = s
 	releaseOwner = false
@@ -304,6 +308,9 @@ func (c *ConversationController) awaitReady(s *conversation) {
 		c.closeUnneeded(s)
 		return
 	}
+	// A name given while Pi started is the first thing it records, so it
+	// never races the first message's automatic title.
+	c.writePendingName(s)
 	if ok {
 		c.finishPrompt(s, "send", batch.ids, batch.text, batch.choice, batch.oldState, batch.wasSettled, batch.previousSettlement)
 	}

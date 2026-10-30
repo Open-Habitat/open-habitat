@@ -53,6 +53,7 @@ import {
   list as listConversations,
   readArchiveResult,
   readCloseResult,
+  renameConversation,
   type Session,
   sendArchive,
   sendCloseEmpty,
@@ -71,7 +72,13 @@ import {
   takeReturnRoute,
   useGitHubRecovery,
 } from "./githubConnection";
-import { adoptGuide } from "./goalGuide";
+import {
+  adoptGuide,
+  creationGuideOwner,
+  goalConversationName,
+  guideOwner,
+  readGuide,
+} from "./goalGuide";
 import { HistoryView } from "./HistoryView";
 import { adoptCreation } from "./heldMessages";
 import {
@@ -1628,6 +1635,11 @@ export function App() {
     setCreationViews((old) => ({ ...old, [workspaceId]: {} }));
     const pendingRoute = `/workspaces/${workspaceId}?conversation=${newWorktree === undefined ? "new" : "new-worktree"}`;
     navigate(pendingRoute);
+    // A conversation started from a start-page goal is named after it.
+    const goal = person
+      ? readGuide(creationGuideOwner(person, workspaceId))?.goal
+      : undefined;
+    const name = goal ? goalConversationName(goal) : undefined;
     void createTracked(
       workspaceId,
       csrf,
@@ -1635,6 +1647,7 @@ export function App() {
       current,
       choice,
       newWorktree,
+      name,
     )
       .then((session) => {
         if (!session || !current()) return;
@@ -1642,6 +1655,18 @@ export function App() {
         if (person) {
           adoptCreation(person, workspaceId, session.agent_id);
           adoptGuide(person, workspaceId, session.agent_id);
+          // A goal chosen while it was being created names it now.
+          const chosen = readGuide(guideOwner(person, session.agent_id))?.goal;
+          const late = chosen ? goalConversationName(chosen) : undefined;
+          if (late && late !== name)
+            void renameConversation(
+              session.agent_id,
+              session.workspace_id,
+              late,
+              csrf,
+            ).catch(() => {
+              /* The automatic title then stands; the person can rename. */
+            });
         }
         setDaemonSessions((old) => [...old, session]);
         refresh();
@@ -1824,6 +1849,39 @@ export function App() {
     run: (id: string) => {
       const open = selectedAgentId === id || openConversation === id;
       void putAway(id, open ? "conversation" : "rail");
+    },
+  };
+  // Naming a conversation from the rail. Pi writes the name; a running Pi
+  // directly, a resting one through its settled history.
+  const railRename = {
+    reason: (id: string) => {
+      const agent = snapshot?.agents.find((a) => a.agent_id === id);
+      if (
+        !csrf ||
+        phase !== "authenticated" ||
+        snapshot?.write_state === "read_only"
+      )
+        return "Nimeäminen ei ole käytettävissä.";
+      if (!agent) return "Keskustelua ei löydy.";
+      if (agent.process === "terminal_observed_live")
+        return "Kirjoittaja on käynnissä.";
+      return "";
+    },
+    save: async (id: string, name: string) => {
+      const agent = snapshot?.agents.find((a) => a.agent_id === id);
+      if (!agent || !csrf) throw new Error("unavailable");
+      try {
+        await renameConversation(
+          id,
+          agent.worktree_id ?? agent.workspace_id,
+          name,
+          csrf,
+        );
+      } catch (error) {
+        if ((error as Error).message === "identity_lost") requireLogin();
+        throw error;
+      }
+      refresh();
     },
   };
   // An empty worktree agent (ADR 0025): the workspace page's icon row, or
@@ -2979,6 +3037,7 @@ export function App() {
                   pathname={location.pathname}
                   clones={cloneJobs}
                   archiveConversation={railArchive}
+                  renameConversation={railRename}
                 />
               ) : undefined
             }

@@ -471,7 +471,9 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 					workspace, worktree = p.WorkspaceID, p.ID
 				}
 				if !found && seen[workspace] {
-					agent := sessionFact(nativeSession{id: active.id, state: "missing"}, workspace, cfg.UID)
+					// Pi holds a name given before its first message in memory
+					// and writes it with that message.
+					agent := sessionFactTitled(nativeSession{id: active.id, state: "missing"}, workspace, "", active.givenName)
 					if worktree != "" {
 						agent["worktree_id"] = worktree
 						usedPlaces[worktree] = placeByPath[active.cwd]

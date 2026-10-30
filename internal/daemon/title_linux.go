@@ -263,8 +263,13 @@ func (c *ConversationController) nameConversation(s *conversation, text string, 
 	if !ok {
 		return titleNativeUnavailable
 	}
-	if !explicit && before != "" && before != s.automaticName {
-		return titleNativeChanged
+	c.mu.Lock()
+	ours := s.automaticName
+	c.mu.Unlock()
+	if !explicit && before != "" && before != ours {
+		// A name this handle did not generate, such as one the person gave
+		// or a goal's, always wins over an automatic title.
+		return ""
 	}
 	c.mu.Lock()
 	model := s.startupChoice
@@ -283,6 +288,16 @@ func (c *ConversationController) nameConversation(s *conversation, text string, 
 	if !live {
 		return titleControllerUnavailable
 	}
+	// A name given meanwhile is written under the same lock, so the check
+	// below sees it before this write could replace it.
+	c.nameMu.Lock()
+	defer c.nameMu.Unlock()
+	c.mu.Lock()
+	given := !explicit && s.automaticName != ours
+	c.mu.Unlock()
+	if given {
+		return "" // a name given meanwhile wins, even one equal to ours
+	}
 	current, ok := c.sessionName(s)
 	if !ok {
 		return titleNativeUnavailable
@@ -299,6 +314,7 @@ func (c *ConversationController) nameConversation(s *conversation, text string, 
 	if c.closed || c.sessions[s.id] != s {
 		return titleControllerUnavailable
 	}
+	s.givenName = ""
 	if explicit {
 		// Even an identical regenerated string is now a user-chosen name.
 		s.automaticName = ""

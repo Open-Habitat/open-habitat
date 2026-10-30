@@ -48,6 +48,13 @@
           "pattern": "^[a-z0-9][a-z0-9-]{0,39}$"
         }
       }
+    },
+    "name": {
+      "description": "The conversation's name from the start, such as a start-page goal's. Pi records it as the session name once it is ready; it shows until the person renames the conversation, and no automatic title replaces it. One line, at most 160 UTF-8 bytes.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[^\\s\\u0000-\\u001f\\u007f](?:[^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
     }
   },
   "dependentRequired": {

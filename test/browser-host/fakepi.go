@@ -310,7 +310,10 @@ type fakeSession struct {
 	id, cwd, dir, path             string
 	parent, lastMessage, lastRecap string
 	started                        bool
-	model, thinking, provider      string
+	// unnamed holds a name set before the first entry: Pi keeps it in
+	// memory and writes it with the session's first message.
+	unnamed                   []map[string]any
+	model, thinking, provider string
 	// context is the context size the next reply records, as a model's
 	// usage would; compacted says the history was just summarized.
 	context   int
@@ -376,13 +379,26 @@ func (s *fakeSession) pause(run chan struct{}, d time.Duration) bool {
 func (s *fakeSession) append(v map[string]any) {
 	s.appendMu.Lock()
 	defer s.appendMu.Unlock()
+	if !s.started && v["type"] == "session_info" {
+		s.unnamed = append(s.unnamed, v)
+		return
+	}
 	if !s.started {
 		_ = os.MkdirAll(s.dir, 0700)
 		header := map[string]any{"type": "session", "version": 3, "id": s.id, "timestamp": time.Now().UTC().Format(time.RFC3339Nano), "cwd": s.cwd}
 		b, _ := json.Marshal(header)
 		_ = os.WriteFile(s.path, append(b, '\n'), 0600)
 		s.started = true
+		for _, held := range s.unnamed {
+			s.write(held)
+		}
+		s.unnamed = nil
 	}
+	s.write(v)
+}
+
+// write appends one entry after the session header; the caller holds appendMu.
+func (s *fakeSession) write(v map[string]any) {
 	var raw [4]byte
 	_, _ = rand.Read(raw[:])
 	entry := hex.EncodeToString(raw[:])

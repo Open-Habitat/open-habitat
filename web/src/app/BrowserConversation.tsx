@@ -75,6 +75,7 @@ import {
   RecapGenerationFailed,
   readRecap,
   regenerateTitle,
+  renameConversation,
   requestRecap,
   retitleHistory,
   runBash,
@@ -87,6 +88,7 @@ import { messageFor, toolPath } from "./editorChanges";
 import {
   composerGoals,
   conversationGoal,
+  goalConversationName,
   guideOpensItself,
   guideOwner,
   prepareField,
@@ -1687,6 +1689,27 @@ function BrowserConversationContent({
                   }
                 : undefined
             }
+            rename={
+              id && csrf
+                ? {
+                    availability:
+                      !controlled || statusStale || serverUnavailable
+                        ? {
+                            state: "disabled",
+                            reason: "Ohjaus ei ole käytettävissä.",
+                          }
+                        : { state: "enabled" },
+                    onSave: async (name) => {
+                      await renameConversation(
+                        id,
+                        workspace.workspace_id,
+                        name,
+                        csrf,
+                      );
+                    },
+                  }
+                : undefined
+            }
             titleAction={{
               label: "Luo uusi otsikko",
               availability:
@@ -2003,6 +2026,18 @@ function BrowserConversationContent({
                       setStartPage({ key: pageKey, page: read })
                     }
                     onStarted={(started, title, prepared) => {
+                      // A goal names the conversation it starts, until the
+                      // person renames it.
+                      const name = goalConversationName(started);
+                      if (current?.agent_id && csrf && name)
+                        void renameConversation(
+                          current.agent_id,
+                          workspace.workspace_id,
+                          name,
+                          csrf,
+                        ).catch(() => {
+                          /* The automatic title then stands. */
+                        });
                       if (!guide) return;
                       prepareField(guide, {
                         text: prepared.text,

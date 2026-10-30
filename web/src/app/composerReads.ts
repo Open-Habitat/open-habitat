@@ -23,6 +23,8 @@ export type StartGoal = {
   steps: string[];
   prompt: string;
   skill?: string;
+  /** The name of a conversation the goal starts; its title when absent. */
+  name?: string;
 };
 export type StartPage =
   | { title: string; body: string; goals: StartGoal[] }

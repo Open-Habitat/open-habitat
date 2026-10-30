@@ -24,6 +24,16 @@ func (c *ConversationController) historyTitle(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
+	c.nameHistory(w, r, id, in.WorkspaceID, "")
+}
+
+// nameHistory writes a settled history's name through a temporary Pi child:
+// the given name, or a generated one when given is empty.
+func (c *ConversationController) nameHistory(w http.ResponseWriter, r *http.Request, id, workspaceID, given string) {
+	operation := "history"
+	if given != "" {
+		operation = "given"
+	}
 	c.mu.Lock()
 	available := !c.closed && c.runtime != nil
 	c.mu.Unlock()
@@ -31,7 +41,7 @@ func (c *ConversationController) historyTitle(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	ws, cwd, err := c.workspaceFD(in.WorkspaceID)
+	ws, cwd, err := c.workspaceFD(workspaceID)
 	if err != nil {
 		snapshotError(w, 409, "control_uncertain")
 		return
@@ -92,31 +102,35 @@ func (c *ConversationController) historyTitle(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	text := latestNativeUserPrompt(path, c.cfg.UID, id, cwd)
-	if text == "" {
-		snapshotError(w, 409, "control_uncertain")
-		return
-	}
-	model := latestNativeModel(path, c.cfg.UID, id, cwd)
-	generate := func(text string) (string, error) { return c.generateTitle(text, model) }
-	if c.fixture {
-		if c.titleGenerator != nil {
-			generate = c.titleGenerator
-		} else {
-			generate = func(string) (string, error) { return "Synteettinen otsikko", nil }
+	name := given
+	if name == "" {
+		text := latestNativeUserPrompt(path, c.cfg.UID, id, cwd)
+		if text == "" {
+			snapshotError(w, 409, "control_uncertain")
+			return
 		}
-	}
-	// Model generation does not write native state. Do it outside the global
-	// admission permit, then re-establish every precondition before Pi starts.
-	name, err := generate(text)
-	if err != nil || !validTitle(name) {
-		reason := titleModelInvalid
-		if err != nil {
-			reason = titleReason(err)
+		model := latestNativeModel(path, c.cfg.UID, id, cwd)
+		generate := func(text string) (string, error) { return c.generateTitle(text, model) }
+		if c.fixture {
+			if c.titleGenerator != nil {
+				generate = c.titleGenerator
+			} else {
+				generate = func(string) (string, error) { return "Synteettinen otsikko", nil }
+			}
 		}
-		diagnostic.New(os.Stderr, "daemon").Warn("conversation_title", "outcome", "failed", "operation", "history", "reason", string(reason))
-		historyJSON(w, map[string]any{"schema_version": 1, "state": "failed", "reason": reason})
-		return
+		// Model generation does not write native state. Do it outside the global
+		// admission permit, then re-establish every precondition before Pi starts.
+		generated, err := generate(text)
+		if err != nil || !validTitle(generated) {
+			reason := titleModelInvalid
+			if err != nil {
+				reason = titleReason(err)
+			}
+			diagnostic.New(os.Stderr, "daemon").Warn("conversation_title", "outcome", "failed", "operation", operation, "reason", string(reason))
+			historyJSON(w, map[string]any{"schema_version": 1, "state": "failed", "reason": reason})
+			return
+		}
+		name = generated
 	}
 	release, ok := c.proofPermit(r.Context())
 	if !ok {
