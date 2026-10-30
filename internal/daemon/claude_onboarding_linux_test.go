@@ -106,19 +106,45 @@ func TestMarkClaudeOnboarded(t *testing.T) {
 			t.Fatal("wrote under a foreign lock")
 		}
 	})
-	t.Run("legacy config is left alone", func(t *testing.T) {
-		home := t.TempDir()
-		if err := os.MkdirAll(filepath.Join(home, ".claude"), 0700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(home, ".claude", ".config.json"), []byte(`{}`), 0600); err != nil {
-			t.Fatal(err)
-		}
-		if err := markClaudeOnboarded(home); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := os.Stat(filepath.Join(home, ".claude.json")); !os.IsNotExist(err) {
-			t.Fatal("wrote beside a legacy config")
+	t.Run("legacy config is left alone only when Claude Code reads it", func(t *testing.T) {
+		for name, c := range map[string]struct {
+			legacy  string
+			mode    os.FileMode
+			current bool
+			marked  bool
+		}{
+			"non-empty legacy":            {legacy: `{}`, mode: 0600, current: true},
+			"empty writable, no current":  {mode: 0600},
+			"empty legacy beside current": {mode: 0600, current: true, marked: true},
+			"empty read-only, no current": {mode: 0400, marked: true},
+		} {
+			t.Run(name, func(t *testing.T) {
+				home := t.TempDir()
+				if err := os.MkdirAll(filepath.Join(home, ".claude"), 0700); err != nil {
+					t.Fatal(err)
+				}
+				legacy := filepath.Join(home, ".claude", ".config.json")
+				if err := os.WriteFile(legacy, []byte(c.legacy), 0600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chmod(legacy, c.mode); err != nil {
+					t.Fatal(err)
+				}
+				if c.current {
+					if err := os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{}`), 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := markClaudeOnboarded(home); err != nil {
+					t.Fatal(err)
+				}
+				raw, _ := os.ReadFile(filepath.Join(home, ".claude.json"))
+				var config map[string]any
+				_ = json.Unmarshal(raw, &config)
+				if (config["hasCompletedOnboarding"] == true) != c.marked {
+					t.Fatalf("marked = %v, want %v", config["hasCompletedOnboarding"], c.marked)
+				}
+			})
 		}
 	})
 }

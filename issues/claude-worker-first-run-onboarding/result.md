@@ -26,9 +26,15 @@ että agentin kirjautumisessa.
 - Kirjoitus pitää Claude Coden oman konfiguraatiolukon
   (`~/.claude.json.lock`-hakemisto), joten samaan aikaan käynnissä oleva
   Claude Code ei menetä kirjoitustaan. Vierasta lukkoa ei poisteta.
+  Claude Code ottaa yli 10 sekuntia vanhan lukon. Siksi daemon korvaa
+  tiedoston vain alle 5 sekunnissa ja vain, jos lukko on yhä sen oma
+  (inode ja mtime).
 - Tiedosto korvataan atomisesti tilassa 0600.
 - Jäsentymätöntä, symlinkattua tai muille luettavaa tiedostoa ei kosketa.
-- Vanhaa `~/.claude/.config.json`ia käyttävä tili jätetään rauhaan.
+- Tili jätetään rauhaan, jos Claude Code lukee sillä vanhaa
+  `~/.claude/.config.json`ia (sama ehto kuin Claude Codessa: tavallinen
+  tiedosto, joka ei ole tyhjä, tai kirjoitettava, kun `~/.claude.json`
+  puuttuu).
 - Valmiiksi merkittyä tiedostoa ei kirjoiteta uudelleen.
 - Epäonnistuminen kirjataan (`claude_onboarding` WARN). Kirjautuminen
   näkyy silti onnistuneena.
@@ -65,3 +71,11 @@ kansion luottamuskysymykseen ohi teemavalinnan.
   Esimerkiksi Claude Coden lukko voi olla varattuna yli kaksi sekuntia.
   Kirjautuminen itse onnistui, ja ensikäynnistyksen voi aina käydä läpi
   Claude Codessa.
+
+## Katselmointi
+
+`/llm-review`: löytäjänä gpt-6-astra ja tarkistajana claude-fable-5-1.
+Kaksi löydöstä vahvistettiin Claude Coden binääristä ja korjattiin:
+lukon pitoaika ylitti Claude Coden 10 sekunnin vanhenemisikkunan, ja
+vanhan konfiguraation ehto oli Claude Codea laajempi. PATH-muutoksesta ei
+tullut löydöksiä.

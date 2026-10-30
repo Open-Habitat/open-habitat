@@ -28,10 +28,13 @@ const maxClaudeConfig = 64 << 20
 // a Claude Code running meanwhile neither loses nor overwrites it.
 func markClaudeOnboarded(home string) error {
 	config := filepath.Join(home, ".claude.json")
-	// Claude Code still reads a legacy config there; its owner has used
-	// Claude Code before this sign-in, so it is left alone.
-	if _, err := os.Lstat(filepath.Join(home, ".claude", ".config.json")); !errors.Is(err, os.ErrNotExist) {
-		return nil
+	// Claude Code reads a legacy config instead when it is a regular file
+	// that is non-empty, or writable while the current one is absent. Its
+	// owner used Claude Code before this sign-in, so it is left alone.
+	if st, err := os.Stat(filepath.Join(home, ".claude", ".config.json")); err == nil && st.Mode().IsRegular() {
+		if _, err := os.Lstat(config); st.Size() > 0 || st.Mode().Perm()&0222 != 0 && errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
 	}
 	lock := config + ".lock"
 	for deadline := time.Now().Add(2 * time.Second); ; time.Sleep(50 * time.Millisecond) {
@@ -44,7 +47,25 @@ func markClaudeOnboarded(home string) error {
 			return errors.New("claude config locked")
 		}
 	}
-	defer os.Remove(lock)
+	// Claude Code takes over a lock whose mtime is 10 s old. Ours is never
+	// refreshed, so it is used only well inside that window, and only while
+	// it is still our directory.
+	held := time.Now()
+	ours, err := os.Lstat(lock)
+	if err != nil {
+		return errors.New("claude config locked")
+	}
+	// A takeover recreates the directory; its inode number may be reused,
+	// its mtime is new.
+	isOurs := func() bool {
+		current, err := os.Lstat(lock)
+		return err == nil && os.SameFile(ours, current) && current.ModTime().Equal(ours.ModTime())
+	}
+	defer func() {
+		if isOurs() {
+			_ = os.Remove(lock)
+		}
+	}()
 	members := map[string]json.RawMessage{}
 	f, err := os.OpenFile(config, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err == nil {
@@ -80,6 +101,9 @@ func markClaudeOnboarded(home string) error {
 	}
 	if err != nil {
 		return err
+	}
+	if time.Since(held) >= 5*time.Second || !isOurs() {
+		return errors.New("claude config lock expired")
 	}
 	return os.Rename(tmp.Name(), config)
 }
