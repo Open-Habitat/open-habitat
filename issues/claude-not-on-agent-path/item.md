@@ -1,14 +1,17 @@
 ---
 created: 2026-10-29
-updated: 2026-10-29
+updated: 2026-10-30
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: taskfleet run 01m64kr0dj2mqbxncdtde7vkb1 (fleetrepo test-server env gaps)
 source_ref: taskfleet:01m64kr0dj2mqbxncdtde7vkb1/claude-not-on-agent-path
 originating_run: 01m64kr0dj2mqbxncdtde7vkb1
 originating_run_kind: spinoff
+lane: claude-workers
+lane_seq: 1
+preparation: ready
 ---
 
 # Claude Code workers need claude on the agent PATH; the runtime's bundled Claude Code is not exposed
@@ -28,3 +31,9 @@ The product ships Claude Code in its core runtime (`node_modules/@anthropic-ai/c
 ## Expected
 
 An agent on any installation that has a Claude sign-in finds `claude` on its PATH, and it is the same Claude Code binary and credential store that the sign-in uses. One option is a `claude` entry in the release bin or the core runtime's bin, resolved from the selected runtime.
+
+## Decisions
+
+### 2026-10-30T07:11:20Z · @jari
+
+Jari 30.10.: Jos ongelma esiintyy edelleen, korjataan.

@@ -1,14 +1,17 @@
 ---
 created: 2026-10-29
-updated: 2026-10-29
+updated: 2026-10-30
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: taskfleet run 01m64kr0dj2mqbxncdtde7vkb1 (observed in harness smoke)
 source_ref: taskfleet:01m64kr0dj2mqbxncdtde7vkb1/claude-worker-first-run-onboarding
 originating_run: 01m64kr0dj2mqbxncdtde7vkb1
 originating_run_kind: spinoff
+lane: claude-workers
+lane_seq: 2
+preparation: ready
 ---
 
 # Claude Code worker stops at Claude Code's first-run theme picker on an account signed in only through Habitat
@@ -30,3 +33,9 @@ The product's Claude sign-in (`internal/daemon/claude_login_linux.go`) creates C
 ## Expected
 
 A Claude Code worker started on an account that signed in through Habitat begins work without an interactive first-run step. Possible fixes: the sign-in completes the CLI's onboarding state, or the worker launch passes what Claude Code needs to skip it. Which one belongs here, and which in Taskfleet's claude harness, is open.
+
+## Decisions
+
+### 2026-10-30T07:11:20Z · @jari
+
+Jari 30.10.: Jos ongelma esiintyy edelleen, korjataan.

@@ -1,10 +1,11 @@
 ---
 created: 2026-10-17
-updated: 2026-10-18
+updated: 2026-10-30
 type: epic
 owner: jari
-status: open
+status: done
 priority: normal
+closed: 2026-10-30
 ---
 
 # Integrations to other systems for agents (SharePoint, Google, …)
@@ -32,6 +33,10 @@ Jari, 2026-10-18: operator registration of the OAuth applications is the route (
 ### 2026-10-18T12:16:47Z · @jari
 
 Jari, 2026-10-18: file sync runs continuously as the user, like OneDrive on a laptop, regardless of whether a browser is open. The report's claim that the per-user daemon stops when the connection ends was wrong; it stays up, so this needs no new host surface beyond starting each daemon at boot.
+
+### 2026-10-30T07:11:20Z · @jari
+
+Jari 30.10.: suljetaan, ettei häiritse.
 
 ## Comments
 

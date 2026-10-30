@@ -1,11 +1,12 @@
 ---
 created: 2026-10-24
-updated: 2026-10-25
+updated: 2026-10-30
 type: feature
-status: deferred
+status: obsolete
 priority: normal
 provenance: other
 related: ['@proto-cloud-folder-bridge']
+closed: 2026-10-30
 ---
 
 # Native client on the person's computer: local files and computer use without cloud sync
@@ -27,3 +28,7 @@ A native client on the person's own computer (alongside or instead of the browse
 ### 2026-10-24T15:43:17Z · @jari
 
 Jari 2026-10-24: deferred until the browser UI has started to stabilise.
+
+### 2026-10-30T07:11:20Z · @jari
+
+Jari 30.10.: suljetaan, ettei häiritse.

@@ -1,11 +1,10 @@
 ---
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-30
 type: task
 reporter: jari
-status: open
+status: deferred
 priority: normal
-lane: unlaned
 preparation: pending
 ---
 
@@ -31,3 +30,9 @@ Verify the current behaviour first: start a long-lived child from a conversation
 
 - [x] The current behaviour is verified on the test server (which processes die on upgrade, with evidence): [research.md](research.md), section 2.
 - [ ] A recommendation with options, decided by Jari (ADR), followed by implementation issues.
+
+## Decisions
+
+### 2026-10-30T07:11:02Z · @jari
+
+Jari 30.10.: On tavallaan ok, että prosessit kuolevat päivityksessä; ne säilytetään vain, jos sen voi tehdä ilman ylimääräistä monimutkaisuutta. research.md: vaihtoehto A (host upgrade jättää käyttäjämanagerit rauhaan) on jo tehty; ainoa vaihtoehto, jossa käynnissä oleva vuoro jatkuu (B, keskustelukohtainen pi-host-pitäjä ja uudelleenkytkentäprotokolla), on iso. Siksi lykätty; herätys ja joutilaan Pi:n säilyttäminen (wake-stopped-conversation-on-run-settle) kattaa käytännön haitan.

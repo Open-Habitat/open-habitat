@@ -1,6 +1,6 @@
 ---
 created: 2026-10-16
-updated: 2026-10-21
+updated: 2026-10-30
 type: bug
 reporter: jari
 status: open
@@ -22,3 +22,9 @@ Jari, 2026-10-16 18:0x local: "Nyt katkesi taas yhteys, ja Yhdistä-painike ei t
 ## Investigation status
 
 The live journals establish a gateway/daemon restart, but do not identify why the browser's actual retry failed. The issue remains open. [Investigation and repair](result.md) separates that missing attribution from a reproduced equal-cursor recovery loop, progress/error feedback and passing host-backed restart tests. The repair is carried onto main with content-free browser diagnostics for the next occurrence; it is not a proven fix for the original live incident. See the result’s "Decisions for later review".
+
+## Decisions
+
+### 2026-10-30T07:11:20Z · @jari
+
+Jari 30.10.: tee.

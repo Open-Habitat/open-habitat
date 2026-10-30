@@ -1,6 +1,6 @@
 ---
 created: 2026-10-28
-updated: 2026-10-28
+updated: 2026-10-30
 type: bug
 reporter: jari
 status: open
@@ -8,7 +8,7 @@ priority: normal
 provenance: chat
 source_ref: chat:2026-10-28/admin-add-before-first-sign-in
 lane: admission-ui
-preparation: pending
+preparation: ready
 ---
 
 # Cannot make someone an administrator before they have signed in
@@ -48,3 +48,9 @@ recheck, and revoking before sign-in removes the pending entry.
 Open questions:
 (a) how a browser-named administrator survives host apply: `convergeRoles` makes the gateway's administrators exactly site.json's, so today the next apply would remove it;
 (b) whether a browser administrator may also revoke another administrator.
+
+## Decisions
+
+### 2026-10-30T07:11:02Z · @jari
+
+Jari 30.10.: Ruvetaan tekemään.
