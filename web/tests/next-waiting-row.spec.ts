@@ -87,13 +87,19 @@ test("@next-waiting-row the waiting conversations are walked as one round whose 
   }
   await writer.close();
   await page.bringToFront();
-  // The rail's order is the round's order.
-  const order = (
-    await yours.evaluateAll((links) =>
-      links.map((a) => a.getAttribute("href") ?? ""),
-    )
-  ).map(conversationOf);
-  expect([...order].sort()).toEqual([...replies].sort());
+  // The rail's order is the round's order. Read once the rail holds all
+  // four, polled: a rail re-render under load can briefly hold none.
+  let order: (string | null)[] = [];
+  await expect
+    .poll(async () => {
+      order = (
+        await yours.evaluateAll((links) =>
+          links.map((a) => a.getAttribute("href") ?? ""),
+        )
+      ).map(conversationOf);
+      return [...order].sort();
+    })
+    .toEqual([...replies].sort());
 
   const line = page.getByTestId("next-waiting");
   const queue = page
@@ -172,10 +178,13 @@ test("@next-waiting-row the waiting conversations are walked as one round whose 
   await page.keyboard.press("Alt+ArrowDown");
   await expect.poll(() => conversationNow(page)).toBe(order[0]);
   await expect(queue).toBeVisible();
-  await expect(steps).toHaveCount(5);
-  expect(
-    await steps.evaluateAll((s) => s.map((b) => b.getAttribute("data-agent"))),
-  ).toEqual([here, ...order]);
+  // Polled: while a step's history loads the conversation shows no
+  // composer and so no bar, and under load a single read can fall there.
+  await expect
+    .poll(() =>
+      steps.evaluateAll((s) => s.map((b) => b.getAttribute("data-agent"))),
+    )
+    .toEqual([here, ...order]);
   await expect(steps.nth(1)).toHaveAttribute("aria-current", "step");
   // The reply here is now read and its agent does not work, yet the round
   // goes on (a read reply stalled the old walk).

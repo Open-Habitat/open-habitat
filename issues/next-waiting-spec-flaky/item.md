@@ -3,11 +3,12 @@ created: 2026-10-30
 updated: 2026-10-30
 type: bug
 reporter: agent
-status: open
+status: fixed
 priority: normal
 lane: browser-tests
 lane_seq: 2
 preparation: ready
+closed: 2026-10-30
 ---
 
 # next-waiting-row spec sees an empty round under whole-suite load
@@ -26,6 +27,6 @@ round once before the rail's waiting state has arrived under load.
 
 ## Acceptance Criteria
 
-- [ ] The spec waits on the real state (poll the round/rail, not a single
+- [x] The spec waits on the real state (poll the round/rail, not a single
       read); if the product starts a round from incomplete state, fix the
       product instead. Proven by repeated runs under load.
