@@ -1335,7 +1335,10 @@ details[open] > summary:not([class])::before {
   /* No elastic overscroll either (Jari 28.10.2026): the thread stops at its
      ends instead of stretching past them and springing back. */
   overscroll-behavior: none;
-  padding: var(--ah-column-pad-block) var(--ah-column-pad-inline);
+  /* The last row sits on the composer (Jari 30.10.2026): the composer's own
+     padding is already above its field, so the stream adds little below. */
+  padding: var(--ah-column-pad-block) var(--ah-column-pad-inline)
+    var(--ah-column-pad-block-end);
 }
 /* Space a following view keeps while its tail is rebuilt (useFollowLatest). */
 .ah-conversation-stream::after {

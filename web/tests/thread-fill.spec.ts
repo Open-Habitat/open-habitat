@@ -86,6 +86,35 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
     timeout: 20000,
   });
   await expect.poll(async () => Math.abs(await spareBelow())).toBeLessThan(1);
+  // The turn's start, before the first reply (Jari 30.10.2026): the live row
+  // sits on the composer. Nothing but the stream's bottom padding is under
+  // it, a hold included once its brief window has passed, and that padding
+  // is smaller than the stream's top one.
+  const atStart = () =>
+    stream.evaluate((el) => {
+      const shown = [...el.querySelectorAll(".ah-feed > li")].filter(
+        (li) => li.getBoundingClientRect().height > 0,
+      );
+      const last = shown.at(-1);
+      const style = getComputedStyle(el);
+      return {
+        working: last?.textContent?.includes("Kysyit") === false,
+        under:
+          el.getBoundingClientRect().bottom -
+          (last?.getBoundingClientRect().bottom ?? Number.NaN) -
+          Number.parseFloat(style.paddingBottom),
+        end: Number.parseFloat(style.paddingBottom),
+        top: Number.parseFloat(style.paddingTop),
+      };
+    });
+  await expect
+    .poll(async () => {
+      const s = await atStart();
+      return s.working && Math.abs(s.under) < 1;
+    })
+    .toBe(true);
+  const start = await atStart();
+  expect(start.end).toBeLessThan(start.top);
   await expectNativeContent(stream, 'Selvä. Kysyit: "hidas toinen".', {
     timeout: 30000,
   });

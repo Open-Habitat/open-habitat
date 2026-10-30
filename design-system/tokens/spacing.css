@@ -26,6 +26,9 @@
   --ah-rail-compact-width: 52px;
   --ah-conversation-width: 780px;
   --ah-column-pad-block: 22px;
+  /* Keskustelun alareunus: viimeinen rivi istuu kentän päällä, kuten
+     Agentin vuoro -luonnoksessa (Jari 30.10.2026). */
+  --ah-column-pad-block-end: 8px;
   --ah-column-pad-inline: 24px;
   --ah-topbar-pad-block: 13px;
   --ah-topbar-pad-inline: 24px;
@@ -80,6 +83,7 @@
     --ah-topbar-pad-block: 6px;
     --ah-topbar-pad-inline: 14px;
     --ah-column-pad-block: 12px;
+    --ah-column-pad-block-end: 6px;
     --ah-column-pad-inline: 14px;
     /* Puhelimessa rivien toiminnot kasvavat 40 px:iin ja sisäiset 32 px:iin. */
     --ah-control-row: 40px;
