@@ -1,6 +1,6 @@
 ---
 created: 2026-10-29
-updated: 2026-10-29
+updated: 2026-10-30
 type: feature
 reporter: jari
 status: done
@@ -24,3 +24,9 @@ Implement ADR 0033 (view capability links) with Jari's 29.10. change: anyone wit
 - [x] ADR 0033 updated to Jari's decision and marked accepted.
 - [x] Gateway link records, anonymous read through the owner's daemon, revocation and expiry; browser "Jaa linkillä" on the view card with expiry, copy, re-point and revoke; administrator list and revoke.
 - [x] Contract, gateway/daemon tests and browser specs; operations.md; KOKEILTAVAA line.
+
+## Decisions
+
+### 2026-10-30T03:50:21Z · @jari
+
+Jari 30.10.: shared links must open for anyone on the internet who has the link; an ingress access policy or edge cache that limits them to signed-in people is a defect on an installation, not an accepted variant. Enabled on the Northwind pilot (views.link_max_days 90) by northwind-monorepo run 01m65erkgte4n1ksgfmf83d5vb.

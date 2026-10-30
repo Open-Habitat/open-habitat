@@ -1,6 +1,6 @@
 ---
 created: 2026-10-29
-updated: 2026-10-29
+updated: 2026-10-30
 type: feature
 reporter: jari
 status: done
@@ -9,7 +9,6 @@ lane: experimental
 lane_seq: 1
 collision: [web/src/app/BrowserConversation.tsx]
 preparation: ready
-blocked_by: ['@proto-experimental-features', '@experimental-features-section']
 closed: 2026-10-29
 ---
 

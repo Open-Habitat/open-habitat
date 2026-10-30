@@ -1,6 +1,6 @@
 ---
 created: 2026-10-26
-updated: 2026-10-27
+updated: 2026-10-30
 type: feature
 reporter: jari
 status: done
@@ -10,7 +10,6 @@ source_ref: chat:2026-10-26/gitlab-integration
 lane: gitlab-provider
 lane_seq: 3
 closed: 2026-10-27
-blocked_by: ['@proto-gitlab-connect']
 preparation: ready
 ---
 

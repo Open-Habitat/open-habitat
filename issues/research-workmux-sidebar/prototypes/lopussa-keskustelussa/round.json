@@ -1,7 +1,0 @@
-{
-  "round": "research-workmux-sidebar/lopussa-keskustelussa",
-  "title": "Lopussa keskustelussa · Kierros 3",
-  "subtitle": "Synteettinen offline-prototyyppi · 1–3 tai ←/→ vaihtaa suuntaa · vastaa Iltakierrokseen · Alt+↓ seuraava",
-  "names": ["Heti", "Työssä", "Valmiina"],
-  "lab": "<button type=\"button\" id=\"elsewhere\" title=\"Tarjottu keskustelu hoidetaan toisella laitteella\">Hoida toisaalla</button>"
-}
