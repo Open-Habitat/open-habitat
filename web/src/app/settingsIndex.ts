@@ -522,8 +522,16 @@ export const settingsSections = [
       {
         id: "next-waiting-row",
         label: "Seuraava odottava keskustelu",
-        kw: ["seuraava", "next", "odottaa", "waiting", "alt+↓", "jono"],
-        desc: "Kirjoituskentän yläpuolelle seuraava sinua odottava keskustelu, kun agentti työskentelee.",
+        kw: [
+          "seuraava",
+          "next",
+          "odottaa",
+          "waiting",
+          "alt+↓",
+          "jono",
+          "kierros",
+        ],
+        desc: "Käy sinua odottavat keskustelut läpi yhtenä kierroksena, kun agentti työskentelee.",
       },
       {
         id: "worker-row-sentence",

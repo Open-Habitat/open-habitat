@@ -3,11 +3,12 @@ created: 2026-10-30
 updated: 2026-10-30
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: experimental
 lane_seq: 11
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Next waiting conversations as a queue (Jono)
@@ -20,6 +21,6 @@ Implement `proto-next-waiting-navigation` direction **Jono** (Jari 30.10.): the 
 
 ## Acceptance Criteria
 
-- [ ] Queue bar and step walk as in the prototype, desktop and phone, light and dark; the three gaps fixed.
-- [ ] No new host endpoint or store unless result.md shows one is needed.
-- [ ] Browser spec; KOKEILTAVAA line.
+- [x] Queue bar and step walk as in the prototype, desktop and phone, light and dark; the three gaps fixed.
+- [x] No new host endpoint or store unless result.md shows one is needed.
+- [x] Browser spec; KOKEILTAVAA line.

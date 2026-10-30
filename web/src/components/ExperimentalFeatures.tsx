@@ -20,10 +20,11 @@ export const experimentalFeatures = [
   {
     id: "next-waiting-row",
     name: "Seuraava odottava keskustelu",
-    desc: "Kun olet vastannut ja agentti on aloittanut, kentän yläpuolelle tulee seuraava sinua odottava keskustelu.",
+    desc: "Kun olet vastannut ja agentti on aloittanut, voit käydä sinua odottavat keskustelut läpi yhtenä kierroksena.",
     where:
-      "Keskustelun alareunassa, kirjoituskentän yläpuolella, kun agentti työskentelee.",
-    shows: "Keskustelun nimen, miksi se odottaa ja Avaa-painikkeen (Alt+↓).",
+      "Keskustelun alareunassa, kirjoituskentän yläpuolella. Kierroksen ajan jono näkyy jokaisessa keskustelussa.",
+    shows:
+      "Montako odottaa ja Käy läpi (Alt+↓). Kierroksella koko jonon: Seuraava (Alt+↓), Edellinen (Alt+↑) ja ✕ (Esc).",
     needs: "Ei muuta. Järjestys seuraa toistaiseksi sivupalkkia.",
     caption: "Keskustelun alareuna",
     landed: true,
@@ -54,9 +55,9 @@ function Picture({ id, on }: { id: string; on: boolean }) {
         <span className="ex-ghost" style={{ width: "55%" }} />
         <span className="ex-next">
           <span className="ex-dot" />
-          <b>Kuvien pakkaus</b>
-          <span className="ex-why">uusi vastaus · 12 min</span>
-          <span className="ex-open">Avaa</span>
+          <b>3 odottaa sinua</b>
+          <span className="ex-why">Kuvien pakkaus, …</span>
+          <span className="ex-open">Käy läpi</span>
         </span>
         <span className="ex-composer">Kirjoita agentille…</span>
       </>

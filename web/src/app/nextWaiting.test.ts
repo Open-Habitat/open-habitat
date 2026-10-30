@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AgentNavModel } from "../components/Navigation";
-import { WaitingWalk } from "./nextWaiting";
+import { WaitingRound } from "./nextWaiting";
 
 const row = (agentId: string): AgentNavModel => ({
   agentId,
@@ -9,41 +9,94 @@ const row = (agentId: string): AgentNavModel => ({
   activityLabel: "Uusi vastaus",
   controlLabel: "",
 });
-const step = (agentId: string) => ({ agentId, href: row(agentId).href });
+const ids = (round: WaitingRound) => round.steps?.map((s) => s.agentId);
 
-describe("WaitingWalk", () => {
-  it("offers the first waiting one in the rail's order, never the current one", () => {
-    const walk = new WaitingWalk();
-    expect(walk.offer([row("a"), row("b"), row("c")], "a")).toEqual({
-      next: row("b"),
-      restart: false,
-      more: 1,
-    });
-    expect(walk.offer([row("a")], "a").next).toBeUndefined();
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("WaitingRound", () => {
+  it("starts from the origin and walks the waiting ones in the rail's order", () => {
+    const round = new WaitingRound();
+    expect(round.start(row("o"), [row("o")])).toBeUndefined();
+    expect(round.steps).toBeNull();
+    const first = round.start(row("o"), [row("a"), row("o"), row("b")]);
+    expect(first?.agentId).toBe("a");
+    expect(ids(round)).toEqual(["o", "a", "b"]);
+    round.open("a");
+    expect(round.pos).toBe(1);
+    expect(round.move(1, () => true)?.agentId).toBe("b");
   });
 
-  it("skips the ones visited in this walk and starts again when all are", () => {
-    const walk = new WaitingWalk();
-    walk.visit(step("x"));
-    walk.visit(step("b"));
-    walk.visit(step("x"));
-    const yours = [row("b"), row("c")];
-    expect(walk.offer(yours, "x").next?.agentId).toBe("c");
-    walk.visit(step("c"));
-    walk.visit(step("x"));
-    expect(walk.offer(yours, "x")).toMatchObject({ restart: true });
-    expect(walk.forward(yours, "x")?.agentId).toBe("b");
-    expect(walk.steps.map((s) => s.agentId)).toEqual(["x"]);
+  it("steps back one at a time, never past the origin", () => {
+    const round = new WaitingRound();
+    round.start(row("o"), [row("a"), row("b")]);
+    round.open("a");
+    round.open("b");
+    expect(round.move(-1, () => true)?.agentId).toBe("a");
+    round.open("a");
+    expect(round.move(-1, () => true)?.agentId).toBe("o");
+    round.open("o");
+    expect(round.move(-1, () => true)).toBeUndefined();
+    expect(round.steps).not.toBeNull();
   });
 
-  it("steps back to the conversation before this one and rewinds to it", () => {
-    const walk = new WaitingWalk();
-    walk.visit(step("a"));
-    walk.visit(step("b"));
-    walk.visit(step("b"));
-    expect(walk.steps).toHaveLength(2);
-    expect(walk.back("b")?.agentId).toBe("a");
-    expect(walk.steps).toEqual([]);
-    expect(walk.back("a")).toBeUndefined();
+  it("tells handled here from handled elsewhere and skips the latter", () => {
+    const round = new WaitingRound();
+    round.start(row("o"), [row("a"), row("b"), row("c")]);
+    round.open("a");
+    // a was read here; b was answered on another device; c still waits.
+    const waiting = ["c"];
+    const waits = (id: string) => waiting.includes(id);
+    expect([0, 1, 2, 3].map((i) => round.stateOf(i, waits))).toEqual([
+      "origin",
+      "handled",
+      "elsewhere",
+      "waits",
+    ]);
+    expect(round.move(1, waits)?.agentId).toBe("c");
+    round.open("c");
+    expect(round.move(-1, waits)?.agentId).toBe("a");
+  });
+
+  it("past the last step ends the round, leads to the origin and says how many were handled", () => {
+    vi.useFakeTimers();
+    const round = new WaitingRound();
+    round.start(row("o"), [row("a"), row("b")]);
+    round.open("a");
+    round.open("b");
+    // b still asks: one handled of two.
+    const home = round.move(1, (id) => id === "b");
+    expect(home?.agentId).toBe("o");
+    expect(round.steps).toBeNull();
+    expect(round.note).toMatch(/1/);
+    vi.advanceTimersByTime(5000);
+    expect(round.note).toBe("");
+  });
+
+  it("appends ones that start waiting later and keeps the frozen order", () => {
+    const round = new WaitingRound();
+    round.start(row("o"), [row("a"), row("b")]);
+    const listener = vi.fn();
+    round.subscribe(listener);
+    round.sync([row("c"), row("b")]);
+    expect(ids(round)).toEqual(["o", "a", "b", "c"]);
+    expect(listener).toHaveBeenCalledTimes(1);
+    round.sync([row("c")]);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("says once of each step handled elsewhere", () => {
+    vi.useFakeTimers();
+    const round = new WaitingRound();
+    round.start(row("o"), [row("a"), row("b")]);
+    round.open("a");
+    round.announce((id) => id === "a" || id === "b");
+    expect(round.note).toBe("");
+    round.announce((id) => id === "a");
+    expect(round.note).toContain("b");
+    vi.advanceTimersByTime(5000);
+    round.announce((id) => id === "a");
+    expect(round.note).toBe("");
   });
 });

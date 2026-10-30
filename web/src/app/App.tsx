@@ -92,7 +92,7 @@ import {
 } from "./mutations";
 import { NewConversationModelDialog } from "./NewConversationModelDialog";
 import { NewWorkspacePage } from "./NewWorkspacePage";
-import { useWaitingWalk } from "./nextWaiting";
+import { useWaitingRound } from "./nextWaiting";
 import { CreatingConversation } from "./PendingConversation";
 import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
 import { PiModelsProvider } from "./PiModels";
@@ -1153,22 +1153,16 @@ export function App() {
     // App is above AccountPreferencesProvider: it names the session.
     workFacts: workerRowSentence,
   });
-  // Every conversation opened, by any route, is a step of the walk the
-  // experimental next-waiting line offers (view state of this tab).
+  // Every conversation opened, by any route, moves the experimental
+  // next-waiting round (view state of this tab) to it when it is a step.
   const walkConversation =
     selectedId && /^pi:[0-9a-fA-F-]{36}$/.test(openConversation ?? "")
       ? openConversation
       : null;
-  const walk = useWaitingWalk(
+  const round = useWaitingRound(
     identity,
-    walkConversation
-      ? {
-          agentId: walkConversation,
-          href: `/workspaces/${selectedId}?conversation=${walkConversation}`,
-        }
-      : selectedAgentId
-        ? { agentId: selectedAgentId, href: `/agents/${selectedAgentId}` }
-        : undefined,
+    walkConversation ?? selectedAgentId ?? undefined,
+    now.yours,
   );
   // Single-workspace mode (Yläpalkissa, Jari 18.10.2026) follows the number
   // of visible native workspaces in the snapshot; nothing is stored, and
@@ -2408,11 +2402,24 @@ export function App() {
                         ) && a.workspace_id === selected.workspace_id,
                   )?.title.display
                 }
-                nextWaiting={{
-                  yours: now.yours,
-                  walk,
-                  workspaceId: selected.workspace_id,
-                }}
+                nextWaiting={
+                  walkConversation
+                    ? {
+                        yours: now.yours,
+                        running: now.running,
+                        round,
+                        here: {
+                          agentId: walkConversation,
+                          href: `/workspaces/${selected.workspace_id}?conversation=${walkConversation}`,
+                          title:
+                            snapshot?.agents.find(
+                              (a) => a.agent_id === walkConversation,
+                            )?.title.display ?? "",
+                          workspaceId: selected.workspace_id,
+                        },
+                      }
+                    : undefined
+                }
                 onSessionCreated={(session) => {
                   setDaemonSessions((old) => [...old, session]);
                   refresh(); // The new agent must be in the snapshot before its live turn is seeded.
