@@ -46,6 +46,7 @@ type ConversationController struct {
 	writerProc     string                       // unit fixture only; empty scans the real /proc
 	fixture        bool                         // untrusted synthetic runtime: never set in production
 	titleGenerator func(string) (string, error) // unit fixture only
+	iconSuggester  iconSuggester                // unit fixture only
 	site           func() (siteFacts, error)    // unit fixture only; nil reads the published site file
 	journal        *eventJournal
 	// github follows the person's GitHub connection after a failed agent

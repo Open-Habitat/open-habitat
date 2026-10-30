@@ -1,4 +1,5 @@
 import { type ReactNode, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { ArchiveNotice } from "../components/ArchiveNotice";
 import { agentPresentation } from "../components/agentPresentation";
 import { ControlButton, LinkRow } from "../components/ControlElements";
@@ -12,6 +13,7 @@ import {
   homeSections,
   useCardArchiveAction,
 } from "../components/HomeWorkspaces";
+import { Icon } from "../components/Icon";
 import { Dialog } from "../components/Overlays";
 import { PendingNote } from "../components/PendingNote";
 import { TextField } from "../components/Primitives";
@@ -19,6 +21,7 @@ import { WorkspaceActions } from "../components/WorkspaceActions";
 import { WorkspaceGitLayer } from "../components/WorkspaceGitLayer";
 import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
 import { WorkspaceIconPicker } from "../components/WorkspaceIconPicker";
+import { WorkspaceIconSuggestions } from "../components/WorkspaceIconSuggestions";
 import { useGitStatus } from "./ConversationGitStatus";
 import {
   type ConversationStore,
@@ -26,12 +29,20 @@ import {
 } from "./conversationStore";
 import type { PendingPhase } from "./mutations";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
+import { settingsHref } from "./settingsRoute";
 import type { Workspace } from "./snapshot";
 import { type DeletionOutcome, WorkspaceDeletion } from "./WorkspaceDeletion";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
 import { WorkspaceLanding } from "./WorkspaceLanding";
 import { WorktreeCleanup } from "./WorktreeCleanup";
-import { iconPicker, iconSourceLine } from "./workspaceIcons";
+import { type IconSeen, useIconSuggestions } from "./workspaceIconSuggestions";
+import {
+  iconPicker,
+  iconSetting,
+  iconSourceLine,
+  localSuggestions,
+  previewIcon,
+} from "./workspaceIcons";
 import { useWorkspaceIconWrite } from "./workspaceIconWrite";
 import "./WorkspacePage.css";
 
@@ -112,6 +123,7 @@ export function WorkspacePage({
   icon?: WorkspaceIconModel;
   onLogin?: () => void;
 }) {
+  const navigate = useNavigate();
   const archiveAction = useCardArchiveAction(onArchive);
   const metadata = useConversationMetadata(store);
   const decorated = conversations.map((c) => ({
@@ -155,6 +167,26 @@ export function WorkspacePage({
     onLogin,
   });
   const source = iconSourceLine(workspace);
+  // The suggestion row (Sirut): while the config names no icon, until the
+  // person says Ei nyt for this visit; `icon: auto` hides it for good. The
+  // picker can bring it back for this visit.
+  const [suggestDismissed, setSuggestDismissed] = useState(false);
+  const [suggestAgain, setSuggestAgain] = useState(false);
+  const suggestWanted =
+    !!icon &&
+    iconWrite.available &&
+    !iconWrite.pending &&
+    (suggestAgain ||
+      (iconSetting(workspace) === undefined && !suggestDismissed));
+  const suggestions = useIconSuggestions(
+    workspace.workspace_id,
+    csrf,
+    suggestWanted,
+  );
+  const acceptIcon = (value: string) => {
+    setSuggestAgain(false);
+    void iconWrite.choose(value);
+  };
   // A second click while the first is unconfirmed queues behind it.
   const archive = (next: boolean) => {
     if (!onVisibility) return;
@@ -246,9 +278,23 @@ export function WorkspacePage({
           {icon ? (
             <WorkspaceIconPicker
               model={iconPicker(icon, workspace, iconWrite.pending)}
-              onChoose={(value) => void iconWrite.choose(value)}
+              onChoose={acceptIcon}
               isDisabled={!iconWrite.available}
               disabledReason="Kuvaketta voi vaihtaa, kun työtilan tila on vahvistettu."
+              footer={(close) => (
+                <ControlButton
+                  data-testid="workspace-icon-ask-model"
+                  size="row"
+                  variant="quiet"
+                  onPress={() => {
+                    close();
+                    setSuggestDismissed(false);
+                    setSuggestAgain(true);
+                  }}
+                >
+                  <Icon name="spark" /> Ehdotuksia mallilta…
+                </ControlButton>
+              )}
             />
           ) : null}
           <div className="ah-workspace-page-title">
@@ -345,6 +391,45 @@ export function WorkspacePage({
         <p role="status" data-testid="workspace-icon-note">
           {iconWrite.note}
         </p>
+      ) : null}
+      {icon && suggestWanted && suggestions.state ? (
+        <WorkspaceIconSuggestions
+          model={(() => {
+            const state = suggestions.state;
+            const round = state.rounds[state.at];
+            return {
+              status: state.status,
+              reason: state.reason,
+              items: round
+                ? round.suggestions.map((s) => ({
+                    value: s.icon,
+                    why: s.why,
+                    icon: previewIcon(icon, workspace, s.icon),
+                    label:
+                      s.icon === workspace.icon_logo?.path
+                        ? "Repon logo"
+                        : undefined,
+                  }))
+                : state.status === "failed"
+                  ? localSuggestions(icon, workspace)
+                  : undefined,
+              reply: round?.reply,
+              wishing: !!state.wish,
+              startedAt: state.startedAt,
+              round: { at: state.at, count: state.rounds.length },
+              seen: seenText(state.seen),
+              model: round?.model,
+            };
+          })()}
+          onAccept={acceptIcon}
+          onAsk={(wish) => void suggestions.ask(wish)}
+          onRound={suggestions.move}
+          onOpenSettings={() => navigate(settingsHref("tekoaly"))}
+          onDismiss={() => {
+            setSuggestDismissed(true);
+            setSuggestAgain(false);
+          }}
+        />
       ) : null}
       {visibilityProblem ? <p role="alert">{visibilityProblem}</p> : null}
       {renameProblem ? <p role="alert">{renameProblem}</p> : null}
@@ -498,4 +583,21 @@ export function WorkspacePage({
       {archived}
     </div>
   );
+}
+
+/** What the model was shown, in the words the row's footer uses. */
+function seenText(seen: IconSeen | undefined) {
+  if (!seen) return "nimi, README:n alku, aloitussivu, kielet ja logon polku";
+  const languages = seen.languages
+    ?.map((l) => `${l.name} ${l.percent} %`)
+    .join(", ");
+  return [
+    "nimi",
+    seen.readme ? "README:n alku" : "",
+    seen.start_page ? "aloitussivu" : "",
+    languages ? `kielet (${languages})` : "",
+    seen.logo ? "logon polku" : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
 }

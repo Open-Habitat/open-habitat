@@ -41,6 +41,8 @@ export const mutationClasses = {
   "workspace.delete": "confirmed",
   "workspace.worktree": "confirmed",
   "workspace.github_publish": "confirmed",
+  // Spends the person's own model credentials; nothing is written.
+  "workspace.icon_suggestions": "confirmed",
   "workspace.git_fetch": "confirmed",
   "terminal.close": "confirmed",
   "github.clone": "confirmed",

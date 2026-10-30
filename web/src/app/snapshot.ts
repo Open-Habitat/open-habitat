@@ -13,6 +13,7 @@ import processEventSchema from "../../../contracts/v1/process-event.schema.json"
 import schema from "../../../contracts/v1/snapshot.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import workspaceChange from "../../../contracts/v1/workspace-change.schema.json";
+import workspaceIconSuggestions from "../../../contracts/v1/workspace-icon-suggestions.schema.json";
 import type { GitSummaryFacts } from "../components/GitStatus";
 
 const ajv = new Ajv({ strict: false, allErrors: false });
@@ -31,11 +32,14 @@ for (const definition of [
   operation,
   schema,
   workspaceChange,
+  workspaceIconSuggestions,
 ])
   ajv.addSchema(definition);
 const validate = ajv.getSchema(schema.$id);
 /** The reply of a workspace write, with the change it made (ADR 0023). */
 export const validWorkspaceResult = ajv.getSchema(workspaceChange.$id);
+/** The answer of an icon suggestion request. */
+export const validIconSuggestions = ajv.getSchema(workspaceIconSuggestions.$id);
 export interface Fact {
   source: string;
   state: "confirmed" | "absent" | "unknown" | "unavailable" | "conflicting";

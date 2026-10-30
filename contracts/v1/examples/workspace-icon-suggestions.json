@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "state": "done",
+  "model": "example-provider/example-model",
+  "reply": "README:n mukaan projekti on esimerkki, ja repossa on jo logo.",
+  "suggestions": [
+    {"icon": "design-system/favicon.svg", "why": "repon oma logo"},
+    {"icon": "🪺", "why": "pesä agenteille"},
+    {"icon": "🏡", "why": "koti"},
+    {"icon": "🐚", "why": "kuori eli shell"},
+    {"icon": "EX", "why": "nimikirjaimet"}
+  ],
+  "seen": {
+    "readme": true,
+    "start_page": true,
+    "languages": [{"name": "Go", "percent": 58}, {"name": "TypeScript", "percent": 36}, {"name": "Shell", "percent": 4}],
+    "logo": "design-system/favicon.svg"
+  }
+}

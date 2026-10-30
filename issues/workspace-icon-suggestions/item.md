@@ -3,12 +3,13 @@ created: 2026-10-30
 updated: 2026-10-30
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: workspace-icons
 lane_seq: 3
 blocked_by: ['@workspace-icon-setting']
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Model-generated workspace icon suggestions under the page header (Sirut)
@@ -34,9 +35,9 @@ pelkällä Claude-tilauksella saa ehdotuksia.
 
 ## Acceptance Criteria
 
-- [ ] Ehdotukset henkilön omilla mallitunnuksilla samaa natiivia reittiä kuin
+- [x] Ehdotukset henkilön omilla mallitunnuksilla samaa natiivia reittiä kuin
       otsikointi (`internal/daemon/title_linux.go`), ei uutta palveluasiakasta;
       malli näkee vain prototyypin luettelemat tiedot.
-- [ ] Sirut työpöydällä ja puhelimella; `icon: auto` piilottaa rivin pysyvästi.
-- [ ] Saman kokeellisen kytkimen takana kuin työtilan kuvakkeet; selainspec;
+- [x] Sirut työpöydällä ja puhelimella; `icon: auto` piilottaa rivin pysyvästi.
+- [x] Saman kokeellisen kytkimen takana kuin työtilan kuvakkeet; selainspec;
       KOKEILTAVAA-rivi.

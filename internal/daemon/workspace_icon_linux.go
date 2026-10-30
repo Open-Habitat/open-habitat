@@ -158,23 +158,26 @@ func iconLetters(v string) (string, bool) {
 }
 
 // validIconEmoji admits a short glyph: at most 32 bytes and 8 code points,
-// at least one outside ASCII, no space or control characters other than the
-// joiners and selectors emoji sequences are built from.
+// at least one pictographic symbol, no letters, digits, spaces or control
+// characters other than the joiners, selectors and modifiers emoji
+// sequences are built from.
 func validIconEmoji(v string) bool {
 	if v == "" || len(v) > 32 || utf8.RuneCountInString(v) > 8 {
 		return false
 	}
-	wide := false
+	symbol := false
 	for _, r := range v {
 		switch {
-		case r == 0x200d, r >= 0xfe00 && r <= 0xfe0f, r >= 0xe0020 && r <= 0xe007f:
-		case unicode.IsSpace(r), unicode.IsControl(r), unicode.Is(unicode.Cf, r):
+		case r == 0x200d, r >= 0xfe00 && r <= 0xfe0f, r >= 0xe0020 && r <= 0xe007f, r == 0x20e3:
+		case unicode.IsSpace(r), unicode.IsControl(r), unicode.Is(unicode.Cf, r), unicode.IsLetter(r), unicode.IsDigit(r):
 			return false
-		case r >= 0x80:
-			wide = true
+		case unicode.Is(unicode.So, r) || unicode.Is(unicode.Sk, r) && r >= 0x1f3fb && r <= 0x1f3ff:
+			symbol = true
+		case r < 0x80:
+			return false
 		}
 	}
-	return wide
+	return symbol
 }
 
 func extension(path string) string {

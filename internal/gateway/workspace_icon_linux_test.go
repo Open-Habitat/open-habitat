@@ -3,6 +3,7 @@
 package gateway
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -55,5 +56,49 @@ func TestWorkspaceIconRelaysExactShapeAsInertImage(t *testing.T) {
 	}
 	if len(forwarded) != 3 {
 		t.Fatalf("forwarded %d: %q", len(forwarded), forwarded)
+	}
+}
+
+// Icon suggestions spend the person's model credentials: the gateway relays
+// them only as a write with the session's CSRF proof and Origin, never as a
+// GET or with a query.
+func TestWorkspaceIconSuggestionsRequireCSRF(t *testing.T) {
+	const body = `{"schema_version":1,"workspace_id":"ws_example123","wish":"","history":[]}`
+	calls := 0
+	host, _ := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		forwarded, err := io.ReadAll(r.Body)
+		if err != nil || r.Method != "POST" || r.URL.Path != workspaceIconSuggestionsPath || string(forwarded) != body {
+			t.Errorf("forwarded %s %s %q %v", r.Method, r.URL, forwarded, err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	call := func(method, target string, csrf bool) int {
+		r := httptest.NewRequest(method, "https://host.test"+target, strings.NewReader(body))
+		r.RequestURI = target
+		r.AddCookie(&http.Cookie{Name: cookieName, Value: "browser"})
+		r.Header.Set("Origin", "https://host.test")
+		r.Header.Set("Content-Type", "application/json")
+		if csrf {
+			r.Header.Set("X-Agent-Host-CSRF", "token")
+		}
+		w := httptest.NewRecorder()
+		host.ServeHTTP(w, r)
+		return w.Code
+	}
+	if code := call("POST", workspaceIconSuggestionsPath, true); code != 200 {
+		t.Fatalf("write: %d", code)
+	}
+	if code := call("POST", workspaceIconSuggestionsPath, false); code != 403 {
+		t.Fatalf("without CSRF: %d", code)
+	}
+	for _, bad := range []struct{ method, target string }{{"GET", workspaceIconSuggestionsPath}, {"POST", workspaceIconSuggestionsPath + "?x=1"}} {
+		if code := call(bad.method, bad.target, true); code != 400 {
+			t.Fatalf("%s %s: %d", bad.method, bad.target, code)
+		}
+	}
+	if calls != 1 {
+		t.Fatalf("proxied %d requests", calls)
 	}
 }

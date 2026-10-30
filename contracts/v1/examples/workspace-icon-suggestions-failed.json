@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "state": "failed",
+  "reason": "model_unavailable",
+  "seen": {"readme": false, "start_page": false}
+}

@@ -79,6 +79,31 @@ export function previewIcon(
   return { ...icon, show: { kind: "emoji", value } };
 }
 
+// Emoji the browser offers by itself when no model answers, as in the
+// prototype: a deterministic pick from the name, so a visit repeats it.
+const pool = [
+  ..."🦊🐙🦉🐝🦔🐢🦜🐳🦋🌵🍄🌻🍋🍇🥝🧀🪴⛵🚲🛶🎈🪁🧭🔭🧪🧲🪐🌙🔥💎🎲🧩🎯🪵🧱🌊🍀🐧🦒🦦🐞🪶🎻🥁📮🗿🦀🍉",
+];
+export function nameEmojis(name: string, n = 3) {
+  const i = hash(name) % pool.length;
+  return Array.from({ length: n }, (_, k) => pool[(i + k * 7) % pool.length]);
+}
+
+/** The suggestions the row offers without a model: the chain's logo, the
+ * name's letters and emoji drawn from the name. */
+export function localSuggestions(icon: WorkspaceIconModel, w: Workspace) {
+  return [
+    ...(w.icon_logo
+      ? [{ value: w.icon_logo.path, why: "repon logo", label: "Repon logo" }]
+      : []),
+    { value: glyphLetters(icon.name), why: "nimestä" },
+    ...nameEmojis(icon.name).map((value) => ({
+      value,
+      why: "nimestä arvottu",
+    })),
+  ].map((s) => ({ ...s, icon: previewIcon(icon, w, s.value), local: true }));
+}
+
 /** The page picker's model; `pending` is a choice the snapshot does not
  * carry yet, shown as if it did. */
 export function iconPicker(

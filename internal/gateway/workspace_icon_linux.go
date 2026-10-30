@@ -13,8 +13,9 @@ import (
 // inert when the address is opened on its own too, and nosniff keeps the
 // daemon's image type from being reinterpreted.
 const (
-	workspaceIconPath = "/api/v1/workspaces/icon"
-	workspaceIconCSP  = "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'; frame-ancestors 'none'; form-action 'none'; base-uri 'none'"
+	workspaceIconPath            = "/api/v1/workspaces/icon"
+	workspaceIconSuggestionsPath = "/api/v1/workspaces/icon/suggestions"
+	workspaceIconCSP             = "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'; frame-ancestors 'none'; form-action 'none'; base-uri 'none'"
 )
 
 func (a *Auth) workspaceIcon(w http.ResponseWriter, r *http.Request) {
@@ -32,5 +33,26 @@ func (a *Auth) workspaceIcon(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Add("Content-Security-Policy", workspaceIconCSP)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	a.proxy(w, r, s, false)
+}
+
+// Icon suggestions spend the person's own model credentials, so they are a
+// write: the session's CSRF proof and Origin, then the mapped daemon, which
+// runs the model as that person.
+func (a *Auth) workspaceIconSuggestions(w http.ResponseWriter, r *http.Request) {
+	const path = workspaceIconSuggestionsPath
+	if r.Method != http.MethodPost || !a.exact(r, path) || r.URL.EscapedPath() != path || r.RequestURI != path || r.ContentLength < 2 || r.ContentLength > 4096 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 || len(r.TransferEncoding) != 0 || !browserHTTP(r) {
+		safe(w, 400, "invalid_request")
+		return
+	}
+	s, ok := a.authenticated(r)
+	if !ok {
+		safe(w, 401, "authentication_required")
+		return
+	}
+	if denied := a.authorizeWrite(r, s); denied != "" {
+		safe(w, 403, denied)
+		return
+	}
 	a.proxy(w, r, s, false)
 }

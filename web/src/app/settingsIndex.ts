@@ -574,6 +574,7 @@ export const settingsSections = [
           "sivupalkki",
           "työtilasivu",
           "valitsin",
+          "ehdotus",
           ".open-habitat.yaml",
         ],
         desc: "Sivupalkin keskustelujen edessä on työtilan kuvake repon asetuksesta, logosta tai nimestä; työtilan sivun otsikosta sen voi vaihtaa.",

@@ -162,6 +162,11 @@ func main() {
 	if len(os.Args) >= 2 && (os.Args[1] == "gitea" || os.Args[1] == "gitlab") {
 		os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr))
 	}
+	// The daemon runs this binary as the fixture runtime's node; the icon
+	// suggestion helper gets a synthetic model, other helpers none.
+	if len(os.Args) >= 4 && os.Args[1] == "--input-type=module" && os.Args[2] == "-e" && strings.HasPrefix(os.Args[3], "// open-habitat icon suggestions") {
+		os.Exit(runFakeIconModel())
+	}
 	guardLifetime(isFakePi(os.Args))
 	if isFakePi(os.Args) {
 		runFakePi(os.Args)
@@ -595,6 +600,9 @@ esac
 		mux.Handle(daemon.WorkspaceIconPath, daemon.WorkspaceIconHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspaceStartPagePath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			current.Load().(*daemon.ConversationController).WorkspaceStartPage().ServeHTTP(w, r)
+		}))
+		mux.Handle(daemon.WorkspaceIconSuggestionsPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			current.Load().(*daemon.ConversationController).WorkspaceIconSuggestions().ServeHTTP(w, r)
 		}))
 		mux.Handle(daemon.WorkspaceCommandsPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			current.Load().(*daemon.ConversationController).WorkspaceCommands().ServeHTTP(w, r)

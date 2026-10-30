@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/workspace-icon-suggestions.schema.json",
+  "title": "Workspace icon suggestions",
+  "description": "The answer to POST /api/v1/workspaces/icon/suggestions ({schema_version: 1, workspace_id, wish, history}: the person's wish of at most 200 characters and at most three earlier rounds). The person's own model credentials make the suggestions through the daemon's native helper; the daemon validates every icon against the .open-habitat.yaml flat format and stores nothing.",
+  "$ref": "#/$defs/result",
+  "$defs": {
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "state",
+        "seen"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schemaVersion"
+        },
+        "state": {
+          "enum": [
+            "done",
+            "failed"
+          ]
+        },
+        "reason": {
+          "description": "Why there are no suggestions: no model with the person's credentials, no answer within 15 seconds, or no answer that is a valid icon. Never provider text.",
+          "enum": [
+            "model_unavailable",
+            "model_timeout",
+            "model_invalid_response"
+          ]
+        },
+        "model": {
+          "description": "The provider and model that answered, as provider/id.",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,40}/[A-Za-z0-9][A-Za-z0-9._:-]{0,100}$"
+        },
+        "reply": {
+          "description": "The model's one-sentence answer to the wish.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "suggestions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "icon",
+              "why"
+            ],
+            "properties": {
+              "icon": {
+                "description": "An icon value in the flat format: an emoji, 1-3 letters or digits, or exactly the workspace's logo path. Never auto.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              "why": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              }
+            }
+          }
+        },
+        "seen": {
+          "description": "What the model was shown, for the page to say so.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "readme",
+            "start_page"
+          ],
+          "properties": {
+            "readme": {
+              "type": "boolean"
+            },
+            "start_page": {
+              "type": "boolean"
+            },
+            "languages": {
+              "type": "array",
+              "maxItems": 3,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "percent"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "percent": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  }
+                }
+              }
+            },
+            "logo": {
+              "$ref": "snapshot.schema.json#/$defs/workspaceIconPath"
+            }
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "state": {
+              "const": "done"
+            }
+          },
+          "required": [
+            "model",
+            "suggestions"
+          ],
+          "not": {
+            "required": [
+              "reason"
+            ]
+          }
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "failed"
+            }
+          },
+          "required": [
+            "reason"
+          ],
+          "allOf": [
+            {
+              "not": {
+                "required": [
+                  "suggestions"
+                ]
+              }
+            },
+            {
+              "not": {
+                "required": [
+                  "model"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

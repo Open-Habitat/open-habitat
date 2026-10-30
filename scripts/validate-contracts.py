@@ -64,6 +64,8 @@ checks = {
     "agent-conversation.json": "agent-conversation.schema.json",
 
     "workspace-git.json": "workspace-git.schema.json",
+    "workspace-icon-suggestions.json": "workspace-icon-suggestions.schema.json",
+    "workspace-icon-suggestions-failed.json": "workspace-icon-suggestions.schema.json",
     "terminal-list.json": "terminal.schema.json",
     "workspace-deletion-check.json": "workspace-deletion.schema.json",
     "workspace-trash.json": "workspace-deletion.schema.json",
@@ -435,6 +437,12 @@ must_reject("snapshot.schema.json", bad_snapshot)
 bad_git = json.loads((BASE / "examples" / "workspace-git.json").read_text())
 bad_git["base"]["source"] = "guessed"
 must_reject("workspace-git.schema.json", bad_git)
+
+# A failed suggestion carries no suggestions, and done carries no reason.
+bad_icons = json.loads((BASE / "examples" / "workspace-icon-suggestions.json").read_text())
+bad_icons["state"] = "failed"
+bad_icons["reason"] = "model_timeout"
+must_reject("workspace-icon-suggestions.schema.json", bad_icons)
 
 bad_event = dict(events[0])
 bad_event["emitted_at"] = "not-a-date"
