@@ -1,6 +1,0 @@
-# Disposable QEMU (TCG) host for one arm64 Ubuntu qualification guest. The
-# guest is a real VM with udev, kernel quotas and reboots; this container only
-# holds the emulator, the harness's own tools and its loopback forwards.
-FROM docker.io/library/ubuntu@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends qemu-system-arm qemu-efi-aarch64 qemu-utils cloud-image-utils openssh-client openssl python3 curl ca-certificates && apt-get clean && rm -rf /var/lib/apt/lists/*
