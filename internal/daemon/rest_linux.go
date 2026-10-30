@@ -34,10 +34,15 @@ type restFact struct {
 }
 
 // stopFor records why a child is being stopped. The first cause wins: the
-// exit watcher calls an unasked end a crash. Caller holds c.mu.
+// exit watcher calls an unasked end a crash. A person's stop also goes into
+// the native branch through Pi's close, so a restart cannot read their
+// processes as cut-off waits to wake for (wake_linux.go). Caller holds c.mu.
 func stopFor(s *conversation, cause string) {
 	if s.stopCause == "" {
 		s.stopCause = cause
+	}
+	if s.stopCause == "person" && s.rpc != nil {
+		s.rpc.personStop.Store(true)
 	}
 }
 

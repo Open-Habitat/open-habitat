@@ -94,6 +94,27 @@ describe("restart catch-up", () => {
   });
 });
 
+describe("rest marker after Habitat's own wake", () => {
+  it("says Habitat woke the agent and why", () => {
+    const marker = (woke: RestartNotice["woke"]) => {
+      const view = render(
+        <RestCard
+          stop={{ cause: "crash", at: "2026-10-28T19:26:55Z" }}
+          wokeAt="2026-10-28T19:55:00Z"
+          notice={{ woke, processes: [], runs: [], still_running: [] }}
+        />,
+      );
+      const text = view.getByTestId("rest-marker").textContent ?? "";
+      view.unmount();
+      return text;
+    };
+    expect(marker("settled")).toContain("Habitat herätti agentin");
+    expect(marker("settled")).toContain("ajot, joita se odotti, päättyivät");
+    expect(marker("cut_off")).toContain("taustatyö, jota se odotti, katkesi");
+    expect(marker(undefined)).toContain("Viestisi herätti agentin");
+  });
+});
+
 describe("rest card", () => {
   it("says Habitat wrote it and where the wake stands", () => {
     const view = render(

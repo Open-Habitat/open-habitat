@@ -134,8 +134,9 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	if in.Archived && session != nil && (len(session.held) > 0 || session.state == "starting") {
-		// Messages wait for a Pi that is starting; archiving would hide them.
+	if in.Archived && session != nil && (len(session.held) > 0 || session.state == "starting" || session.waking) {
+		// Messages wait for a Pi that is starting, or Habitat's own wake is
+		// about to give the agent a turn; archiving would hide them.
 		snapshotError(w, 409, "writer_conflict")
 		return
 	}

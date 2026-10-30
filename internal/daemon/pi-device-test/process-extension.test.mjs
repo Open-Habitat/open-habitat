@@ -29,7 +29,8 @@ test('companion uses native authority, fences reused IDs and bounds logs', async
   const previous = process.env.OH_PROCESS_SOCKET;
   process.env.OH_PROCESS_SOCKET = path;
   const hooks = new Map(), bus = new Map();
-  const api = { on: (k, f) => hooks.set(k, f), events: {
+  const appended = [];
+  const api = { on: (k, f) => hooks.set(k, f), appendEntry: (type, data) => appended.push([type, data]), events: {
     on(k, f) { bus.set(k, [...(bus.get(k) ?? []), f]); },
     emit(k, q) { for (const f of bus.get(k) ?? []) f(q); },
   } };
@@ -103,8 +104,11 @@ test('companion uses native authority, fences reused IDs and bounds logs', async
     records.push({ id: 'proc_bcde', startTime: now, status: 'exited' });
     await request(path, { op: 'clear' });
     assert.equal(records.length, 1);
-    await request(path, { op: 'shutdown' });
+    assert.equal(appended.length, 0);
+    // The person's stop is recorded in the branch, so no later wake overrules it.
+    await request(path, { op: 'shutdown', person: true });
     assert.equal(kills.length, 2);
+    assert.deepEqual(appended, [['oh-person-stop', { schema_version: 1 }]]);
     api.events.on('processes:request:list', q => q.reply([]));
     const duplicate = await request(path, { op: 'list' });
     assert.equal(duplicate.error, 'duplicate_owner');

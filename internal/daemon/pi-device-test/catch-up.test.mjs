@@ -1,5 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import net from 'node:net';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import companion, { branchFacts, readSpinoffs, catchUpMessage, stopFact } from '../process-extension.mjs';
 
 const start = (id, startTime, command = 'sleep 9', notify = { onSuccess: 'turn', onFailure: 'turn' }) =>
@@ -70,7 +74,7 @@ test('without Taskfleet installed no run exists, which is an empty inventory, no
 
 // Each test owns the variables the daemon passes at launch: this suite may
 // itself run under a Habitat Pi, whose own stop must not leak in.
-const launchEnv = ['OH_PROCESS_SOCKET', 'OPEN_HABITAT_STOP_CAUSE', 'OPEN_HABITAT_STOPPED_AT', 'OPEN_HABITAT_STOP_DETAIL'];
+const launchEnv = ['OH_PROCESS_SOCKET', 'OPEN_HABITAT_STOP_CAUSE', 'OPEN_HABITAT_STOPPED_AT', 'OPEN_HABITAT_STOP_DETAIL', 'OPEN_HABITAT_CONVERSATION_ID', 'OPEN_HABITAT_LAUNCH_GENERATION'];
 async function withLaunchEnv(env, body) {
   const previous = Object.fromEntries(launchEnv.map(k => [k, process.env[k]]));
   for (const k of launchEnv) delete process.env[k];
@@ -112,6 +116,58 @@ test('the stop the daemon passed is this launch\'s alone: its first session take
   await hooks.get('session_start')({}, ctx(cut));
   assert.equal(await hooks.get('before_agent_start')({}), undefined, 'a later session in this Pi did not wake from that stop');
 }));
+
+function ask(path, q) {
+  return new Promise((resolve, reject) => {
+    const socket = net.createConnection(path);
+    socket.setTimeout(6000, () => socket.destroy(new Error('timeout')));
+    let input = '';
+    socket.on('connect', () => socket.write(JSON.stringify(q) + '\n'));
+    socket.on('error', reject);
+    socket.on('data', b => { input += b; const n = input.indexOf('\n'); if (n >= 0) { resolve(JSON.parse(input.slice(0, n))); socket.destroy(); } });
+  });
+}
+
+test('Habitat\'s own wake gives the agent its catch-up as a turn, once, and never ahead of the person', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'oh-wake-test-'));
+  const path = join(directory, 'p.sock');
+  try {
+    await withLaunchEnv({ OH_PROCESS_SOCKET: path, OPEN_HABITAT_STOP_CAUSE: 'crash', OPEN_HABITAT_STOPPED_AT: '2026-10-28T19:26:55Z', OPEN_HABITAT_CONVERSATION_ID: 'pi:s1', OPEN_HABITAT_LAUNCH_GENERATION: 'g1' }, async () => {
+      const hooks = new Map(), sent = [];
+      companion({ on: (k, f) => hooks.set(k, f), events: { on() {}, emit() {} }, sendMessage: (m, o) => sent.push([m, o]) });
+      const ctx = { cwd: undefined, sessionManager: { getBranch: () => [start('proc_aaaa', 1, `taskfleet run wait ${ids.own} --output json`)], getSessionId: () => 's1' } };
+      await hooks.get('session_start')({}, ctx);
+      const wake = (extra = {}) => ask(path, { op: 'wake', session_id: 's1', generation: 'g1', reason: 'settled', ...extra });
+      assert.equal((await wake({ reason: 'later' })).error, 'invalid_request', 'only the daemon\'s fixed reasons');
+      assert.deepEqual((await wake({ generation: 'g0' })).data, { woken: false, reason: 'conversation_mismatch' });
+      assert.deepEqual((await wake()).data, { woken: true });
+      assert.equal(sent.length, 1);
+      const [message, options] = sent[0];
+      assert.deepEqual(options, { triggerTurn: true });
+      assert.equal(message.customType, 'oh-resume-catch-up');
+      assert.equal(message.details.woke, 'settled');
+      assert.deepEqual(message.details.stopped, { cause: 'crash', at: '2026-10-28T19:26:55Z' });
+      assert.match(message.content, /started it again on its own, without a message from the person, because the Taskfleet runs it was waiting for have settled/);
+      assert.doesNotMatch(message.content, /answer their message/);
+      assert.equal(await hooks.get('before_agent_start')({}), undefined, 'the wake\'s turn is not told twice');
+      assert.deepEqual((await wake()).data, { woken: false, reason: 'told' });
+      // The person's message came first: it carries the catch-up, and a wake after it does nothing.
+      await hooks.get('session_start')({}, ctx);
+      assert.equal((await hooks.get('before_agent_start')({})).message.details.woke, undefined);
+      assert.deepEqual((await wake()).data, { woken: false, reason: 'told' });
+      assert.equal(sent.length, 1);
+      hooks.get('session_shutdown')();
+    });
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('a wake needs news of its own', () => {
+  const stopped = { cause: 'restart', at: '2026-10-28T19:26:55Z' };
+  assert.equal(catchUpMessage([], { settled: [], rearm: [], available: false }, stopped, true, 'cut_off'), null, 'a cut turn or an unread inventory is no reason to wake');
+  const woken = catchUpMessage([{ id: 'proc_aaaa', name: 'odotus', command: 'until curl -sf x; do sleep 5; done', startTime: 1 }], { settled: [], rearm: [], available: true }, stopped, false, 'cut_off');
+  assert.match(woken.content, /a background process it was waiting for was cut off with it and will never report back/);
+  assert.equal(woken.details.woke, 'cut_off');
+});
 
 test('cross-workspace attribution, waited runs beyond the newest twenty, and stalls the record\'s time cannot show', async () => {
   const since = Date.parse('2026-10-16T12:00:00Z');

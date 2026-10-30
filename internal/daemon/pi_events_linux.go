@@ -404,6 +404,7 @@ func (c *ConversationController) drain(s *conversation) {
 		}
 
 		if frame.Type == "agent_start" {
+			s.waking = false // the wake's turn, or another, has begun
 			s.runActive = true
 			s.runInitial = s.state != "pending" && s.state != "accepted"
 			s.settled = false

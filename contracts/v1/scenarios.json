@@ -858,7 +858,8 @@
       "opening shows Habitat's report (when and why Pi stopped, cut-off processes, this conversation's runs that settled unreported with Taskfleet's summaries, runs still working) and starts nothing",
       "typing wakes Pi once without a turn; a repeated or racing wake answers with the running or starting Pi, never a second child or a conflict",
       "the first message carries the same report to the agent, which then appears in history as the rest's marker; the snapshot's rest ends",
-      "an unreadable Taskfleet inventory is reported unavailable, never as nothing settled"
+      "an unreadable Taskfleet inventory is reported unavailable, never as nothing settled",
+      "when Pi stopped (other than by the person) under a background process that would have woken the agent, Habitat wakes the conversation itself once that wait has ended: a cut-off `taskfleet run wait` once its own runs settle as the wait would have returned, any other waking process at once; the agent gets the same report as its turn, and history marks the rest with woke settled or cut_off"
     ],
     "fixtures": [
       "examples/rest.json"

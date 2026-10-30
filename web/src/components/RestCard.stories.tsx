@@ -62,3 +62,24 @@ export const AfterRestart: Story = {
 export const InHistory: Story = {
   args: { wake: undefined, wokeAt: "2026-10-27T04:21:00Z" },
 };
+export const WokenByHabitat: Story = {
+  args: {
+    stop: { cause: "crash", at: "2026-10-28T19:26:55Z" },
+    wake: undefined,
+    wokeAt: "2026-10-28T19:55:00Z",
+    notice: {
+      woke: "settled",
+      processes: [{ process_id: "proc_8ffc", name: "wait-gate-health" }],
+      runs: [
+        {
+          run_id: "01m531x6y92ggdqcmb1exzmn00",
+          title: "gate-health-flakes",
+          state: "merged",
+          summary: "Korjasi kaksi epävakaata testiä.",
+          ended_at: "2026-10-28T19:54:00Z",
+        },
+      ],
+      still_running: [],
+    },
+  },
+};

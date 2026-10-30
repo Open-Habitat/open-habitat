@@ -38,6 +38,11 @@
         "complete": true
       },
       "restart": {
+        "stopped": {
+          "cause": "crash",
+          "at": "2030-01-01T00:00:00Z"
+        },
+        "woke": "settled",
         "processes": [
           {
             "process_id": "proc_0a1b",

@@ -431,7 +431,7 @@
       }
     },
     "stop": {
-      "description": "When and why this conversation's browser Pi stopped, as the daemon saw it: idle (stopped after ten idle minutes), room (stopped to make room for another conversation), person (the person stopped, cancelled, archived or deleted), crash (Pi ended unasked) or restart (the daemon started without it, for example after an upgrade; at is then the daemon's start, the latest the stop can have been).",
+      "description": "When and why this conversation's browser Pi stopped, as the daemon saw it: idle (stopped after ten idle minutes with no background process or working Taskfleet run of its own), room (stopped to make room for another conversation), person (the person stopped, cancelled, archived or deleted), crash (Pi ended unasked) or restart (the daemon started without it, for example after an upgrade; at is then the daemon's start, the latest the stop can have been).",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -506,6 +506,13 @@
       "properties": {
         "stopped": {
           "$ref": "#/$defs/stop"
+        },
+        "woke": {
+          "description": "Habitat woke the agent on its own, without a message from the person, because what the conversation was waiting for when Pi stopped has ended: settled, the Taskfleet runs a cut-off `taskfleet run wait` was for settled as that wait would have returned; cut_off, another background process that would have woken the agent was cut off with Pi. Absent when the person's message woke it. Only in history; a woken rest has no card before the wake.",
+          "enum": [
+            "settled",
+            "cut_off"
+          ]
         },
         "interrupted_turn": {
           "description": "The turn Pi was working on when it stopped never finished: the branch ends in a prompt, tool call or tool result nobody answered. Absent or false when the turn had ended. A rest with no cut-off process, no cut turn, no settled run and a fully read Taskfleet has nothing to tell: the browser shows no card and the agent gets no catch-up.",

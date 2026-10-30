@@ -103,13 +103,13 @@ func (c *ConversationController) holdLocked(w http.ResponseWriter, s *conversati
 		return
 	}
 	s.commands[commandID] = true
-	s.recapOnly = false
+	s.recapOnly, s.autoWake = false, false
 	s.held = append(s.held, heldMessage{id: commandID, text: message})
 	if choice != nil {
 		s.heldChoice = choice
 	}
 	c.receipt(s, commandID, "held")
-	start := s.state != "starting"
+	start := s.state != "starting" && !s.waking
 	if start {
 		s.state = "starting"
 		s.startProblem = ""
@@ -253,12 +253,16 @@ func (c *ConversationController) awaitReady(s *conversation) {
 		_ = s.rpc.close()
 		c.mu.Lock()
 		if c.sessions[s.id] == s && s.state == "starting" && !s.startupCancelled {
-			if s.recapOnly {
-				// Nobody asked for this start (recap_resting_linux.go): its
-				// failure is no problem of the person's, and the conversation
-				// simply rests on.
+			if s.recapOnly || s.autoWake && len(s.held) == 0 {
+				// Nobody asked for this start (recap_resting_linux.go,
+				// wake_linux.go): its failure is no problem of the person's,
+				// and the conversation simply rests on.
 				s.state = "stopped"
-				diagnostic.New(os.Stderr, "daemon").Warn("conversation_recap", "outcome", "failed", "reason", "pi_start_failed", "trigger", "resting", "agent_id", "pi:"+s.id)
+				event := "conversation_recap"
+				if s.autoWake {
+					event = "conversation_wake"
+				}
+				diagnostic.New(os.Stderr, "daemon").Warn(event, "outcome", "failed", "reason", "pi_start_failed", "trigger", "resting", "agent_id", "pi:"+s.id)
 				if c.journal != nil {
 					c.journal.appendInvalidation("pi:" + s.id)
 				}

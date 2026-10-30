@@ -24,7 +24,13 @@ type branchProcess struct {
 	ID, Name, Command string
 	Start             int64
 	Wakes, Reported   bool
+	// The person stopped Pi while it ran (the companion's personStopType
+	// entry): it was cut off by their choice, which no wake overrules.
+	PersonStopped bool
 }
+
+// The companion appends this custom entry when the person stops Pi.
+const personStopType = "oh-person-stop"
 
 type interruptedProcess struct {
 	ID      string   `json:"id"`
@@ -70,6 +76,7 @@ func scanBranch(b []byte) branchScan {
 		runs         []string
 		replaceStart string
 		at           int64
+		personStop   bool
 		message      bool // a conversation message, which ends (or not) a turn
 		open         bool // that message leaves its turn unfinished
 		failed       bool // that message is a reply the provider failed
@@ -161,6 +168,8 @@ func scanBranch(b []byte) branchScan {
 			if json.Unmarshal(details, &d) == nil && (d.Kind == "success" || d.Kind == "failure" || d.Kind == "crash" || d.Kind == "killed") {
 				f.ended = d.ID
 			}
+		case e.Type == "custom" && e.CustomType == personStopType:
+			f.personStop = true
 		case e.Type == "custom_message" && customType == catchUpMessageType:
 			var d struct {
 				Processes []struct {
@@ -203,6 +212,11 @@ func scanBranch(b []byte) branchScan {
 		}
 		for _, key := range f.runs {
 			scan.runs[key] = true
+		}
+		if f.personStop {
+			for _, p := range open {
+				p.PersonStopped = true
+			}
 		}
 		switch {
 		case f.start != nil:

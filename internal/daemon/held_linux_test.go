@@ -24,8 +24,9 @@ import (
 // prompt in the synthetic home so a test can count native writes. Files in HOME steer it: start-delay (seconds before
 // answering get_state), start-fail (exit before reading any request),
 // prompt-exit (exit on a prompt without answering it), prompt-hold (keep
-// the turn running until the file is removed) and background (answer the
-// process bridge with one running background process).
+// the turn running until the file is removed), background (answer the
+// process bridge with one running background process; background-state
+// finished answers with none) and wake-decline (refuse Habitat's own wake).
 const heldFakePi = `#!/usr/bin/env python3
 import datetime,json,os,sys,time,uuid
 home=os.environ["HOME"]; args=sys.argv[1:]
@@ -70,7 +71,20 @@ if os.path.exists(os.path.join(home,"background")):
     def bridge():
         srv=socket.socket(socket.AF_UNIX); srv.bind(os.environ["OH_PROCESS_SOCKET"]); srv.listen(4)
         while True:
-            conn,_=srv.accept(); conn.makefile().readline()
+            conn,_=srv.accept(); q=json.loads(conn.makefile().readline() or "{}")
+            if q.get("op")=="wake":
+                # Habitat's own wake: logged, declined with wake-decline,
+                # otherwise the catch-up becomes a turn as the companion's does.
+                open(os.path.join(home,"wakes.log"),"a").write(json.dumps(q)+"\n")
+                if os.path.exists(os.path.join(home,"wake-decline")):
+                    conn.sendall((json.dumps(dict(ok=True,data=dict(woken=False,reason="nothing_to_tell")))+"\n").encode()); conn.close(); continue
+                conn.sendall((json.dumps(dict(ok=True,data=dict(woken=True)))+"\n").encode()); conn.close()
+                out(dict(type="agent_start"))
+                append(dict(type="custom_message",customType="oh-resume-catch-up",display=True,content="woken",details=dict(schema_version=1,woke=q["reason"],processes=[],spinoffs=[])))
+                out(dict(type="agent_end")); out(dict(type="agent_settled"))
+                continue
+            if q.get("op")=="shutdown" and q.get("person") is True:
+                append(dict(type="custom",customType="oh-person-stop",data=dict(schema_version=1)))
             statepath=os.path.join(home,"background-state")
             state=open(statepath).read() if os.path.exists(statepath) else "running"
             data=dict(protocol=1,records=[] if state=="finished" else [dict(id="proc_1",name="kääntäjä",command="make",status="running",startTime=1)])

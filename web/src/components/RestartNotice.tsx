@@ -17,6 +17,8 @@ export type RestRunState =
   | "stalled";
 export type RestartNotice = {
   stopped?: RestStop;
+  /** Habitat woke the agent itself because what it waited for ended. */
+  woke?: "settled" | "cut_off";
   /** The turn Pi was working on never finished. */
   interrupted_turn?: boolean;
   processes: { process_id: string; name: string }[];
@@ -82,6 +84,13 @@ export function stopSentence(
       return `Habitat käynnistyi uudelleen ${at}, esimerkiksi päivityksen vuoksi, ja Pi pysähtyi viimeistään silloin.${cut}`;
   }
 }
+
+/** Why Habitat woke the agent itself: what it was waiting for ended. */
+const wokeBecause: Record<NonNullable<RestartNotice["woke"]>, string> = {
+  settled: ", koska ajot, joita se odotti, päättyivät",
+  cut_off:
+    ", koska taustatyö, jota se odotti, katkesi eikä enää kerro päättymisestään",
+};
 
 /** Where a resting conversation's wake stands, as the card's last line. */
 export type WakeState = "asleep" | "waking" | "awake" | "refused";
@@ -218,8 +227,11 @@ export function RestCard({
         {marker ? (
           <>
             <Icon name="check" />
-            Viestisi herätti agentin
-            {wokeAt ? ` ${syncedTime(wokeAt)}` : ""}. Agentti sai tämän
+            {notice?.woke
+              ? "Habitat herätti agentin"
+              : "Viestisi herätti agentin"}
+            {wokeAt ? ` ${syncedTime(wokeAt)}` : ""}
+            {notice?.woke ? wokeBecause[notice.woke] : ""}. Agentti sai tämän
             selostuksen.
           </>
         ) : (

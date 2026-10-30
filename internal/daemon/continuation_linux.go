@@ -198,8 +198,9 @@ func (c *ConversationController) awake(w http.ResponseWriter, id string) bool {
 		c.mu.Unlock()
 		return false
 	}
-	// The person is typing into it: a Pi started for a recap is theirs now.
-	old.recapOnly = false
+	// The person is typing into it: a Pi started for a recap or by Habitat's
+	// own wake is theirs now.
+	old.recapOnly, old.autoWake = false, false
 	old.presentAt = time.Now()
 	state := "idle"
 	switch {
@@ -222,6 +223,7 @@ const (
 	startHeldSend startKind = iota
 	startWake
 	startRecap
+	startAutoWake // Habitat's own wake (wake_linux.go)
 )
 
 // resume proves that the browser may own this native session again and starts
@@ -313,6 +315,7 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 		s.lazy = false
 	}
 	s.recapOnly = kind == startRecap
+	s.autoWake = kind == startAutoWake
 	c.sessions[id] = s
 	if c.journal != nil {
 		c.journal.reset("pi:"+id, "idle")

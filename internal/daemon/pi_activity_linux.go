@@ -26,7 +26,8 @@ const maxLiveConversations = 4
 // when its daemon-owned Pi child is alive and
 //
 //   - "turn": a turn runs or is being submitted, messages are held or queued
-//     for it, or the daemon itself is using the child (title, recap, abort);
+//     for it, or the daemon itself is using the child (title, recap, abort,
+//     Habitat's own wake);
 //   - "question": Pi waits for the person's answer inside a turn;
 //   - "processes": a background process Pi started still runs, and stopping
 //     Pi would stop it too;
@@ -56,7 +57,7 @@ func heldActivity(s *conversation) string {
 	switch {
 	case s.questionID != "":
 		return "question"
-	case s.runActive, s.aborting, s.naming, s.recapping, len(s.held) > 0, len(s.queueSteering)+len(s.queueFollowUp) > 0, s.bash.active():
+	case s.runActive, s.aborting, s.naming, s.recapping, s.waking, len(s.held) > 0, len(s.queueSteering)+len(s.queueFollowUp) > 0, s.bash.active():
 		return "turn"
 	case s.settled && s.settlement == nil:
 		return "turn" // the finished turn's native history is still being published
@@ -205,8 +206,8 @@ func (c *ConversationController) liveCount() int {
 	return n
 }
 
-// makeRoom stops idle children, the longest unused first, until one more
-// child fits under the limit. When every place is busy it stops nothing and
+// makeRoom stops idle children, the longest unused first and those waiting
+// only on a Taskfleet run last, until one more child fits under the limit. When every place is busy it stops nothing and
 // the caller's own check refuses at capacity.
 func (c *ConversationController) makeRoom(ctx context.Context) {
 	c.mu.Lock()
@@ -216,8 +217,18 @@ func (c *ConversationController) makeRoom(ctx context.Context) {
 		return
 	}
 	_, idle := c.classify(ctx, func(*conversation) bool { return true })
+	// A Pi held only by its working Taskfleet run yields after the truly idle.
+	var waiting map[*conversation]bool
+	if len(idle) > need {
+		waiting = c.waitingOnRuns(ctx, idle)
+	}
 	c.mu.Lock()
-	sort.Slice(idle, func(i, j int) bool { return lastSeen(idle[i]).Before(lastSeen(idle[j])) })
+	sort.SliceStable(idle, func(i, j int) bool {
+		if waiting[idle[i]] != waiting[idle[j]] {
+			return !waiting[idle[i]]
+		}
+		return lastSeen(idle[i]).Before(lastSeen(idle[j]))
+	})
 	if len(idle) > need {
 		idle = idle[:need]
 	}
@@ -250,6 +261,14 @@ func (c *ConversationController) stopIfIdle(ctx context.Context, id string) {
 // in the conversation: someone writing a long message or working in the
 // terminal beside it is not away (Jari, 2026-10-28). No timer or activity
 // state survives daemon exit.
+//
+// A Pi that waits on something is not stopped for idleness at all (Jari,
+// 2026-10-30): a background process it started is already busy, and so is a
+// Taskfleet run this conversation created that still works on its own, read
+// from Taskfleet's creator-session attribution at each expiry. No time bounds
+// either wait: Taskfleet's own stall verdict ends a run's, and memory is bounded
+// by maxLiveConversations, because a Pi held only by a run still yields its
+// place to another start (makeRoom), after every truly idle one.
 const piIdlePeriod = 10 * time.Minute
 const piIdleCheckInterval = time.Minute
 
@@ -267,13 +286,17 @@ func (c *ConversationController) watchIdlePi(ctx context.Context) {
 }
 
 // now is supplied by the watcher (or an injected clock in tests). The final
-// locked check also fences a prompt that arrived while the bridge was probed.
+// locked check also fences a prompt that arrived while the bridge or
+// Taskfleet was read.
 func (c *ConversationController) stopExpiredIdlePi(ctx context.Context, now time.Time) {
 	_, idle := c.classify(ctx, func(*conversation) bool { return true })
 	c.mu.Lock()
 	candidates := make(map[*conversation]bool, len(idle))
 	for _, s := range idle {
 		candidates[s] = true
+	}
+	expiredAt := func(s *conversation) bool {
+		return now.Sub(s.idleSince) >= piIdlePeriod && now.Sub(s.presentAt) >= piIdlePeriod
 	}
 	var expired []*conversation
 	for _, s := range c.sessions {
@@ -284,11 +307,20 @@ func (c *ConversationController) stopExpiredIdlePi(ctx context.Context, now time
 		if s.idleSince.IsZero() || s.lastUsed.After(s.idleSince) {
 			s.idleSince = now
 		}
-		if now.Sub(s.idleSince) >= piIdlePeriod && now.Sub(s.presentAt) >= piIdlePeriod {
+		if expiredAt(s) {
 			expired = append(expired, s)
 		}
 	}
-	marked := c.stopIdleLocked(expired, "idle")
+	c.mu.Unlock()
+	waiting := c.waitingOnRuns(ctx, expired)
+	c.mu.Lock()
+	var stop []*conversation
+	for _, s := range expired {
+		if !waiting[s] && !s.idleSince.IsZero() && !s.lastUsed.After(s.idleSince) && expiredAt(s) {
+			stop = append(stop, s)
+		}
+	}
+	marked := c.stopIdleLocked(stop, "idle")
 	c.mu.Unlock()
 	c.closeStopping(marked)
 	for _, s := range marked {
@@ -298,6 +330,33 @@ func (c *ConversationController) stopExpiredIdlePi(ctx context.Context, now time
 		}
 		diagnostic.New(os.Stderr, "daemon").Info("conversation_idle_stop", "outcome", outcome, "reason", "idle_timeout", "agent_id", "pi:"+s.id)
 	}
+}
+
+// waitingOnRuns says which of these conversations created a Taskfleet run
+// that still works on its own. One inventory read as the person serves them
+// all; an unreadable inventory holds every one, as an unreadable process
+// bridge does. Without Taskfleet no run exists. Called without c.mu.
+func (c *ConversationController) waitingOnRuns(ctx context.Context, conversations []*conversation) map[*conversation]bool {
+	waiting := map[*conversation]bool{}
+	if len(conversations) == 0 || c.home == "" || taskfleetBinary(c.home) == "" {
+		return waiting
+	}
+	runs, ok := listTaskfleetRuns(ctx, c.home)
+	for _, s := range conversations {
+		waiting[s] = !ok || ownsLiveRun(runs, s.id)
+	}
+	return waiting
+}
+
+// ownsLiveRun is the companion's wait-reminder rule (uncoveredRuns): a run
+// this conversation's Pi created that a default `run wait` would still wait for.
+func ownsLiveRun(runs []nativeSpinoff, id string) bool {
+	for _, r := range runs {
+		if belongsSpinoff(r, nativeSession{id: id}) && catchUpLive(r) {
+			return true
+		}
+	}
+	return false
 }
 
 // FixtureIdleStop runs the production idle stop as if every idle child had

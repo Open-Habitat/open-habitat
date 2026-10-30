@@ -66,6 +66,12 @@ type ConversationController struct {
 	editorSlots    chan struct{}
 	editorSaves    chan struct{}
 	editorFileTest *editorFileTestHooks
+	// Automatic wakes (wake_linux.go), protected by mu: when each
+	// conversation was last woken, and the conversations a cut-off wait from
+	// before this daemon started may wake, found once by its first check.
+	autoWoke       map[string]time.Time
+	restartWaits   map[string]bool
+	restartScanned bool
 }
 
 // A continued native session retains spent browser IDs within this daemon
@@ -150,6 +156,15 @@ type conversation struct {
 	stoppedAt  time.Time
 	wokeFrom   restFact
 	told       bool // a prompt reached Pi, which gave the agent its catch-up
+	// This stopped handle has no cut-off wait left to wake it for
+	// (wake_linux.go); a new handle looks again.
+	waitChecked bool
+	// Habitat's own wake is handing the agent its catch-up: a message sent
+	// meanwhile is held for after that turn, as for a starting Pi.
+	waking bool
+	// Started by Habitat's own wake: a failed start is nobody's problem
+	// and the conversation simply rests on, as for a recap.
+	autoWake bool
 	// Started only for an owed recap and stopped after it; the person's
 	// first wake, send or command makes the Pi theirs (recap_resting_linux.go).
 	recapOnly bool
@@ -179,6 +194,7 @@ func newConversationController(ctx context.Context, cfg transport.Config, runtim
 	c := &ConversationController{started: time.Now().UnixMilli(), cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover, facts: newSnapshotFacts(ctx)}
 	go func() { <-ctx.Done(); c.shutdown() }()
 	go c.watchIdlePi(ctx)
+	go c.watchWaitingRests(ctx)
 	return c
 }
 
@@ -812,7 +828,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 	}
 	// A plain send to a conversation whose Pi is not running (yet) is held by
 	// the daemon and starts Pi if nothing is starting it already.
-	if kind == "send" && notRunning(s) {
+	if kind == "send" && (notRunning(s) || s.waking) {
 		if archiveState != "active" {
 			c.mu.Unlock()
 			snapshotError(w, 409, "control_uncertain")
@@ -868,7 +884,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 // beginPrompt marks a native message write as pending. Caller holds c.mu and
 // has spent the command IDs. A send starts a new turn; steer/follow_up do not.
 func (c *ConversationController) beginPrompt(s *conversation, kind string, ids []string) {
-	s.recapOnly = false
+	s.recapOnly, s.autoWake = false, false
 	s.state = "pending"
 	s.lastUsed = time.Now()
 	s.ack = "pending"

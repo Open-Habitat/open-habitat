@@ -440,8 +440,13 @@ Native truth:
   proof; terminal history stays read-only. The person's first typed
   character in a resting conversation is such a start: a wake, without a
   turn, that answers with a running or starting Pi rather than a conflict or
-  a second child. Nothing wakes Pi on its own: no countdown on opening and
-  no start when background work settles (Jari, 2026-10-27).
+  a second child. No countdown on opening. Habitat wakes a stopped
+  conversation on its own only when it was waiting (Jari, 2026-10-30): the
+  branch shows a waking background process cut off with Pi, and that wait
+  has ended (its own runs settled, or it was not a run wait). The person's
+  stop, which the companion records in the branch, and archive always win;
+  the turn carries only the companion's catch-up built from native facts,
+  never text from the daemon, and nothing the agent did is re-run.
 - A resting conversation's report is Habitat's, not the agent's: the stop
   time and cause the daemon saw (kept in memory with the handle; no handle
   means the daemon's restart), and Taskfleet's own records read as the
@@ -454,8 +459,12 @@ Native truth:
   binary is an empty inventory, not an unread one.
 - The idle stop waits ten minutes from the later of Pi's last observed work
   and the browser's last presence report for that conversation; a person
-  writing or working beside it is not away. A room stop does not wait for
-  absence, it only prefers the conversation seen longest ago.
+  writing or working beside it is not away. A Pi that waits on something, a
+  background process of its own or a Taskfleet run its conversation created
+  that still works, is not stopped for idleness at all (Jari, 2026-10-30);
+  memory stays bounded by the per-person limit, because a Pi held only by a
+  run still yields its place, after the truly idle. A room stop does not
+  wait for absence, it only prefers the conversation seen longest ago.
 - An uncertain outcome stays uncertain. A missing receipt is not a
   rejection, a 503 does not mean nothing happened, an unavailable inventory
   is not an empty one, and neither the daemon nor the browser ever repeats a

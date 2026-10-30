@@ -159,16 +159,25 @@ export function stopFact(env = process.env) {
 // Each state is Taskfleet's own report; a stall is Taskfleet's liveness
 // verdict, which a live worker can contradict, so it is not restated as fact.
 const stateText = { merged: 'finished and merged', not_merged: 'finished, not merged', failed: 'failed', cancelled: 'cancelled', awaiting: 'is waiting for you (needs attention)', stalled: 'is reported stalled by Taskfleet (check `taskfleet run show` before relying on that)' };
-export function catchUpMessage(processes, spinoffs, stopped = null, turnCut = false) {
+// Why Habitat woke a stopped conversation on its own (the daemon's
+// wake_linux.go waitOutcome): what it was waiting for has ended.
+const wokeBecause = {
+  settled: 'the Taskfleet runs it was waiting for have settled',
+  cut_off: 'a background process it was waiting for was cut off with it and will never report back',
+};
+export function catchUpMessage(processes, spinoffs, stopped = null, turnCut = false, woke = null) {
   const news = processes.length || spinoffs.settled.length;
   const cut = !!stopped && turnCut;
   // Nothing was cut off and nothing settled: the person saw no card, and the
   // agent is told nothing either (Jari, 2026-10-28). An unread Taskfleet is
-  // still not told as nothing.
-  if (!news && !cut && (!stopped || spinoffs.available !== false)) return null;
+  // still not told as nothing. A wake needs news of its own.
+  if (!news && (woke || !cut && (!stopped || spinoffs.available !== false))) return null;
+  const started = woke
+    ? `Habitat started it again on its own, without a message from the person, because ${wokeBecause[woke]}. Habitat re-ran nothing: read what follows and carry on with the work that was waiting for it, or tell the person what you found. The person sees this same report in the conversation.`
+    : 'The person saw this same report from Habitat before writing, so answer their message rather than retelling it.';
   const lines = stopped
-    ? [`[Open Habitat] This conversation's Pi stopped at ${stopped.at} ${stopCauses[stopped.cause]}${stopped.detail ? ` (${stopped.detail})` : ''}, and was started again for the message that follows. The person saw this same report from Habitat before writing, so answer their message rather than retelling it.${cut ? ' The turn it was working on was cut off: its last step above never finished.' : ''}${news ? ' While it was stopped:' : spinoffs.available === false ? '' : ' Nothing settled meanwhile.'}`]
-    : ['[Open Habitat] This conversation\'s Pi had stopped (for example a server restart) and was started again for the message that follows. While it was stopped:'];
+    ? [`[Open Habitat] This conversation's Pi stopped at ${stopped.at} ${stopCauses[stopped.cause]}${stopped.detail ? ` (${stopped.detail})` : ''}${woke ? '.' : ', and was started again for the message that follows.'} ${started}${cut ? ' The turn it was working on was cut off: its last step above never finished.' : ''}${news ? ' While it was stopped:' : spinoffs.available === false ? '' : ' Nothing settled meanwhile.'}`]
+    : [woke ? `[Open Habitat] This conversation's Pi had stopped (for example a server restart). ${started} While it was stopped:` : '[Open Habitat] This conversation\'s Pi had stopped (for example a server restart) and was started again for the message that follows. While it was stopped:'];
   if (processes.length) {
     lines.push('', 'Background processes that were cut off when Pi stopped (they are no longer running and their output is gone):');
     for (const p of processes) lines.push(`- ${p.id} "${p.name.slice(0, 200)}": ${p.command.slice(0, 300)}`);
@@ -191,6 +200,7 @@ export function catchUpMessage(processes, spinoffs, stopped = null, turnCut = fa
     details: {
       schema_version: 1,
       ...(stopped ? { stopped } : {}),
+      ...(woke ? { woke } : {}),
       ...(cut ? { interrupted_turn: true } : {}),
       processes: processes.map(p => ({ id: p.id, startTime: p.startTime, name: p.name.slice(0, 200) })),
       spinoffs: spinoffs.settled.map(r => ({ run_id: r.run_id, state: r.state, title: r.title, ...(r.summary ? { summary: r.summary } : {}), ...(r.ended_at ? { ended_at: r.ended_at } : {}), ...(r.branch ? { branch: r.branch } : {}) })),
@@ -305,6 +315,32 @@ export default function (pi) {
       try { pi.appendEntry('oh-agent-notice', n); return { written: true }; }
       catch { return { written: false, reason: 'native_write_failed' }; }
     }
+    if (q.op === 'wake') {
+      // The daemon found what this stopped conversation was waiting for has
+      // ended (wake_linux.go) and started Pi for it. The agent's catch-up is
+      // the turn: built here from the branch and Taskfleet, never from text
+      // the caller sends, as a person's message would carry it.
+      if (!context || shuttingDown || !Object.hasOwn(wokeBecause, q.reason ?? '')) throw new Error('invalid_request');
+      if (context.sessionManager.getSessionId?.() !== q.session_id || process.env.OPEN_HABITAT_CONVERSATION_ID !== `pi:${q.session_id}` || process.env.OPEN_HABITAT_LAUNCH_GENERATION !== q.generation) return { woken: false, reason: 'conversation_mismatch' };
+      const pending = catchUp;
+      if (!pending) return { woken: false, reason: 'told' };
+      let timer;
+      const spinoffs = await Promise.race([pending.read(), new Promise(resolve => { timer = setTimeout(() => resolve(unread), 3000); })]);
+      clearTimeout(timer);
+      // A message the person sent meanwhile took the catch-up with it.
+      if (catchUp !== pending || shuttingDown) return { woken: false, reason: 'told' };
+      const message = catchUpMessage(pending.processes, spinoffs, pending.stopped, pending.turnCut, q.reason);
+      if (!message) return { woken: false, reason: 'nothing_to_tell' };
+      catchUp = null;
+      pi.sendMessage(message, { triggerTurn: true });
+      return { woken: true };
+    }
+    // The person stopped Pi: its processes end by their choice, which the
+    // daemon must not later read as a cut-off wait to wake for
+    // (process_interrupted_linux.go personStopType). Recorded before the
+    // process inventory is asked, whose failure must not lose it; not in
+    // the LLM context.
+    if (q.op === 'shutdown' && q.person === true && context) { try { pi.appendEntry('oh-person-stop', { schema_version: 1 }); } catch {} }
     // Refuse ambiguous managers before dispatching ANY browser control. Shutdown
     // is different: it intentionally stops every native owner in this Pi.
     const inventories = await ask('request:list', {}, q.op === 'shutdown');

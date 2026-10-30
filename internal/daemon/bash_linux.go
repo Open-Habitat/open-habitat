@@ -107,7 +107,7 @@ func (c *ConversationController) startCommand(w http.ResponseWriter, r *http.Req
 	run := &bashRun{commandID: body.CommandID, command: body.Command, excludeFromContext: body.ExcludeFromContext, state: "held", wrote: make(chan struct{})}
 	s.bash = run
 	s.lastUsed = time.Now()
-	s.recapOnly = false
+	s.recapOnly, s.autoWake = false, false
 	// Decide here, under the lock: once it is released a held command may
 	// already be dispatched by awaitReady.
 	start, dispatch := false, false

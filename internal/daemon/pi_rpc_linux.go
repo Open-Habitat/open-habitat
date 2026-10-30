@@ -42,8 +42,11 @@ type piRPC struct {
 	done                                         chan struct{}        // reader done, NOT process exit proof
 	exited                                       chan struct{}        // direct child reaped independently of pipe EOF
 	closing                                      atomic.Bool
-	launched                                     int64 // Unix ms before Pi started: earlier process starts belong to an earlier Pi
-	poisoned                                     bool  // guarded by mu
+	// The person asked for this stop; the companion records it in the
+	// native branch so no later wake overrules it (wake_linux.go).
+	personStop atomic.Bool
+	launched   int64 // Unix ms before Pi started: earlier process starts belong to an earlier Pi
+	poisoned   bool  // guarded by mu
 	// A `bash` reply arrives only when its command ends, long after other
 	// correlated requests. Its ID is registered here before the write, and the
 	// reader routes that one response through the event drain, past the
@@ -648,7 +651,7 @@ func (p *piRPC) close() error {
 	// Stop detached groups through their native owner before closing RPC.
 	if !p.closing.Load() && p.processSocket != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		_ = p.processRequest(ctx, map[string]string{"op": "shutdown"}, nil)
+		_ = p.processRequest(ctx, map[string]any{"op": "shutdown", "person": p.personStop.Load()}, nil)
 		cancel()
 	}
 	p.closing.Store(true)
