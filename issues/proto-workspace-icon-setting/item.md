@@ -18,7 +18,7 @@ preparation: ready
 ## Description
 
 Jari 30.10.: työtilan kuvake (`workspace-icon-chain`, Lähdeketju) on repon
-omassa Open Habitat -konffissa (`.open-habitat.json`), ja sen voi asettaa ja
+omassa Open Habitat -konffissa (`.open-habitat.yaml`), ja sen voi asettaa ja
 muokata repon etusivulla. "Tätä asettamista pitää prototyypata."
 
 Yksi näkymä: repon / työtilan etusivu (työtilan Esittely), josta kuvake

@@ -29,7 +29,7 @@ lukemisen ja näyttämisen.
 
 ## Acceptance Criteria
 
-- [ ] Repon juureen commitoitava Open Habitat -konffi (oletus `.open-habitat.json`,
+- [ ] Repon juureen commitoitava Open Habitat -konffi (oletus `.open-habitat.yaml`,
       kenttä `icon`), luetaan daemonin työtilalistaukseen; ei uutta tietovarastoa.
 - [ ] Sivupalkki, kapea kaistale ja puhelin prototyypin Lähdeketjun mukaan,
       kokeellisen ominaisuuden takana; selainspec; KOKEILTAVAA-rivi.
