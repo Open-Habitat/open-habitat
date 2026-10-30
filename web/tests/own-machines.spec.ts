@@ -36,16 +36,31 @@ const wizard = (page: Page) => page.getByTestId("own-machines-wizard");
 const machine = (page: Page, name: string) =>
   page.locator(`[data-testid="own-machine"][data-machine="${name}"]`);
 
-/** Steps 2–4 for one machine, up to an accepted key. */
-async function chooseAndAccept(page: Page, peer: string, address: string) {
+/** Steps 2–4 for one machine, up to an accepted key. Without days the line
+ * keeps the default, Toistaiseksi. */
+async function chooseAndAccept(
+  page: Page,
+  peer: string,
+  address: string,
+  days?: 7 | 30 | 90,
+) {
   await expect(wizard(page)).toHaveAttribute("data-step", "2");
   await page.getByTestId(`own-machines-peer-${peer}`).check();
   await page.getByTestId("own-machines-user").fill("alice");
+  const length = page.getByTestId("own-machines-days");
+  await expect(length.getByTestId("segment-0")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  if (days) await length.getByTestId(`segment-${days}`).click();
   await button(page, "own-machines-next").click();
   await expect(wizard(page)).toHaveAttribute("data-step", "3");
   await button(page, "own-machines-next").click();
   await expect(wizard(page)).toHaveAttribute("data-step", "4");
   await expect(page.getByTestId("own-machines-command")).toBeVisible();
+  const line = page.getByTestId("own-machines-line").locator("code");
+  if (days) await expect(line).toContainText(',expiry-time="');
+  else await expect(line).not.toContainText("expiry-time");
   await expect(button(page, "own-machines-next")).toBeDisabled();
   // The machine refuses the key until the line is on it.
   await button(page, "own-machines-check").click();
@@ -113,7 +128,9 @@ test("@own-machines join the tailnet, add two machines, renew, remove and leave"
   ).toBeDisabled();
   await expect(page.getByTestId("own-machines-peer-gaming-pc")).toBeEnabled();
   await chooseAndAccept(page, "alice-macbook", "100.88.14.53");
-  await expect(wizard(page).getByTestId("own-machine-truths")).toBeVisible();
+  await expect(wizard(page).getByTestId("own-machine-truths")).toContainText(
+    "on voimassa, kunnes perut sen",
+  );
   await page.screenshot({
     path: testInfo.outputPath("evidence/omat-koneet-vahvistus-1280-light.png"),
   });
@@ -123,6 +140,9 @@ test("@own-machines join the tailnet, add two machines, renew, remove and leave"
     "data-state",
     "active",
   );
+  await expect(
+    machine(page, "alice-macbook").getByTestId("own-machine-expires"),
+  ).toHaveText("voimassa, kunnes perut");
 
   // Another machine afterwards. A fingerprint the person says differs saves
   // nothing.
@@ -139,9 +159,13 @@ test("@own-machines join the tailnet, add two machines, renew, remove and leave"
   // The person takes the line off and starts again.
   await fixture(page, "do=machine&address=100.71.203.9&mode=rejected");
   await button(page, "own-machines-add").click();
-  await chooseAndAccept(page, "workstation", "100.71.203.9");
+  await chooseAndAccept(page, "workstation", "100.71.203.9", 30);
   await button(page, "own-machines-save").click();
   await expect(page.getByTestId("own-machine")).toHaveCount(2);
+  // A chosen length keeps its date on the card.
+  await expect(
+    machine(page, "workstation").getByTestId("own-machine-expires"),
+  ).toHaveText(/^\d{1,2}\.\d{1,2}\.\d{4}$/);
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     await page.waitForTimeout(300);
@@ -169,6 +193,12 @@ test("@own-machines join the tailnet, add two machines, renew, remove and leave"
     .click();
   await expect(wizard(page)).toHaveAttribute("data-step", "4");
   await expect(page.getByTestId("own-machines-command")).toBeVisible();
+  await expect(
+    page.getByTestId("own-machines-days").getByTestId("segment-0"),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByTestId("own-machines-line").locator("code"),
+  ).not.toContainText("expiry-time");
   await fixture(page, "do=machine&address=100.88.14.53&mode=ok");
   await button(page, "own-machines-check").click();
   await expect(page.getByTestId("own-machines-check-result")).toHaveAttribute(
@@ -257,6 +287,13 @@ test("@own-machines a Windows machine gets PowerShell, with the administrators' 
   await page.getByTestId("own-machines-peer-gaming-pc").check();
   await page.getByTestId("own-machines-user").fill("alice");
   await button(page, "own-machines-next").click();
+  // A line without a date needs no OpenSSH 8.2; a dated one says so.
+  await expect(wizard(page)).toHaveAttribute("data-step", "3");
+  await expect(wizard(page)).not.toContainText("version 8.2");
+  await wizard(page).getByRole("button", { name: "Takaisin" }).click();
+  await page.getByTestId("own-machines-days").getByTestId("segment-90").click();
+  await button(page, "own-machines-next").click();
+  await expect(wizard(page)).toContainText("version 8.2");
   await button(page, "own-machines-next").click();
   await expect(wizard(page)).toHaveAttribute("data-step", "4");
   // The command is the daemon's: the administrator's by default, the

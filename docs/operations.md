@@ -690,10 +690,11 @@ What an administrator must know and tell people: **root on this server can
 use a person's grant.** The account's SSH key and the node's key are files in
 the home, so root can read them or run `ssh` as the person. The grant is
 bounded by the person's machine: one line in `authorized_keys` with
-`restrict`, `from=` the node's tailnet address and `expiry-time=` (at most 90
-days), and on a Mac Remote Login for that one user without full disk access.
-On Windows the line needs the machine's OpenSSH Server 8.2 or newer (the
-version that reads `expiry-time=`); for a member of Administrators it goes in
+`restrict` and `from=` the node's tailnet address, and on a Mac Remote Login
+for that one user without full disk access. By default the line has no end
+and stays until the person removes it; a person who picks 7, 30 or 90 days
+gets `expiry-time=` as well, which on Windows needs the machine's OpenSSH
+Server 8.2 or newer. On Windows, for a member of Administrators the line goes in
 `%ProgramData%\ssh\administrators_authorized_keys`, which an elevated
 PowerShell writes.
 The page says this before anything is saved. Removing a machine in Habitat

@@ -20,7 +20,7 @@ const freshWizard = (): Wizard => ({
   mode: "add",
   step: 1,
   user: "",
-  days: 30,
+  days: 0,
 });
 
 /** Asetukset › Omat koneet: the person's daemon reads and does everything;
@@ -156,7 +156,7 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
     },
     choose: async (p: Partial<Pick<Wizard, "peer" | "user" | "days">>) => {
       patch({ ...p, grant: undefined, check: undefined });
-      if (wizard?.mode === "renew" && wizard.peer && p.days) {
+      if (wizard?.mode === "renew" && wizard.peer && p.days !== undefined) {
         // A renewal's new length is a new line.
         patch({ busy: "grant" });
         const r = await send({
@@ -241,10 +241,10 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
         step: 4,
         peer: machine,
         user: m.user,
-        days: 30,
+        days: 0,
         busy: "grant",
       });
-      const r = await send({ action: "renew", machine, days: 30 });
+      const r = await send({ action: "renew", machine, days: 0 });
       setWizard((w) =>
         w
           ? r.ok

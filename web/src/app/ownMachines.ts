@@ -34,6 +34,7 @@ export type Machine = {
   name: string;
   user: string;
   address: string;
+  /** Empty for a line without an end. */
   expires: string;
   expired: boolean;
   in_tailnet: boolean;
@@ -96,7 +97,8 @@ export type OwnMachinesRequest =
     }
   | { action: "extend"; machine: string; expires: string };
 
-export type GrantDays = 7 | 30 | 90;
+/** 0 is a line without an end, the default (Jari 30.10.2026). */
+export type GrantDays = 0 | 7 | 30 | 90;
 
 const valid = addFormats(new Ajv({ strict: false })).compile<OwnMachines>(
   schema,

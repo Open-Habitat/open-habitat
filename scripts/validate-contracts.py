@@ -265,8 +265,13 @@ must_reject("own-machines.schema.json", {**machines, "tailscale": {"state": "log
 must_reject("own-machines.schema.json", {**machines, "machines": [{**machines["machines"][0], "address": "192.168.1.10"}]})
 must_reject("own-machines.schema.json", {**machines, "account_key": {"file": "~/.ssh/id_ed25519", "fingerprint": machines["account_key"]["fingerprint"], "private_key": "x"}})
 must_reject("own-machines.schema.json", {**machines, "grant": {**machines["grant"], "line": machines["grant"]["line"].replace("restrict,", "")}})
+# A line without an end is the default; a dated one names its day.
+dated = machines["grant"]["line"].replace('" ssh-ed25519', '",expiry-time="20261128" ssh-ed25519', 1)
+Draft202012Validator(schemas["own-machines.schema.json"], registry=registry, format_checker=format_checker).validate({**machines, "grant": {**machines["grant"], "expires": "2026-11-28", "line": dated}})
+must_reject("own-machines.schema.json", {**machines, "grant": {**machines["grant"], "line": dated.replace('expiry-time="20261128"', 'expiry-time="2026"')}})
+must_reject("own-machines.schema.json", {**machines, "machines": [{**machines["machines"][0], "expires": "never"}]})
 machines_request = Draft202012Validator({"$ref": schemas["own-machines.schema.json"]["$id"] + "#/$defs/request"}, registry=registry)
-for good in ({"action": "connect"}, {"action": "grant", "peer": "alice-macbook", "user": "alice", "days": 30}, {"action": "save", "peer": "alice-macbook", "user": "alice", "expires": "2026-11-28", "host_key": machines["account_key"]["fingerprint"]}, {"action": "remove", "machine": "alice-macbook"}):
+for good in ({"action": "connect"}, {"action": "grant", "peer": "alice-macbook", "user": "alice", "days": 30}, {"action": "grant", "peer": "alice-macbook", "user": "alice", "days": 0}, {"action": "extend", "machine": "alice-macbook", "expires": ""}, {"action": "save", "peer": "alice-macbook", "user": "alice", "expires": "2026-11-28", "host_key": machines["account_key"]["fingerprint"]}, {"action": "remove", "machine": "alice-macbook"}):
     machines_request.validate(good)
 for bad in ({"action": "grant", "peer": "alice-macbook", "user": "alice", "days": 365}, {"action": "check", "peer": "alice-macbook", "user": "alice", "address": "100.88.14.53"}, {"action": "check", "peer": "100.88.14.53", "user": "alice"}, {"action": "remove", "machine": "../x"}, {"action": "connect", "peer": "x"}):
     assert not machines_request.is_valid(bad), f"own-machines request accepted {bad!r}"

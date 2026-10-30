@@ -50,8 +50,11 @@ const OwnMachinesPath = "/api/v1/own-machines"
 //     machine under ~/.ssh/config.d, included from ~/.ssh/config, so the
 //     agent reaches one with ordinary `ssh <name>`. There is no other list.
 //   - the grant itself is a line the person adds on their machine:
-//     restrict, from= the node's tailnet address and expiry-time=. Habitat
-//     cannot withdraw it; the machine can.
+//     restrict, from= the node's tailnet address and, when the person chose
+//     a date, expiry-time=. By default it has none (Jari 30.10.2026): the
+//     agent has what the person's user has, the person revokes it on the
+//     machine at any time, and a forced renewal would lose the machine
+//     unexpectedly. Habitat cannot withdraw it; the machine can.
 //
 // The account's own SSH key (~/.ssh/id_ed25519, account_keys_linux.go) is
 // the key the machines accept.
@@ -85,7 +88,8 @@ var (
 	commentPartPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,120}$`)
 	machineFilePattern = regexp.MustCompile(`^habitat-([a-z0-9][a-z0-9-]{0,62})\.(conf|known_hosts)$`)
 	fingerprintPattern = regexp.MustCompile(`^SHA256:[A-Za-z0-9+/]{43}$`)
-	grantDays          = map[int]bool{7: true, 30: true, 90: true}
+	// grantDays are the lengths a line may have; 0 is no end.
+	grantDays = map[int]bool{0: true, 7: true, 30: true, 90: true}
 
 	errTailnetUnavailable = errors.New("tailscale_unavailable")
 	errUserManager        = errors.New("user_manager_unavailable")
@@ -439,7 +443,7 @@ func (e ownMachineEnv) read(ctx context.Context) (ownMachinesView, error) {
 	}
 	today := e.today()
 	for _, m := range machines {
-		mv := machineView{Name: m.name, User: m.user, Address: m.address, Expires: m.expires, Expired: m.expires <= today, HostKey: m.hostKey, OS: m.os}
+		mv := machineView{Name: m.name, User: m.user, Address: m.address, Expires: m.expires, Expired: m.expires != "" && m.expires <= today, HostKey: m.hostKey, OS: m.os}
 		for _, p := range view.Peers {
 			if p.Address == m.address {
 				mv.InTailnet, mv.Online, mv.LastSeen, mv.OS = true, p.Online, p.LastSeen, p.OS
@@ -483,7 +487,7 @@ const machineMarker = "# habitat-machine "
 
 func (e ownMachineEnv) machineConfig(m machineFile) string {
 	return "# Open Habitat: an own machine, managed in Settings > Omat koneet.\n" +
-		machineMarker + "name=" + m.name + " user=" + m.user + " address=" + m.address + " expires=" + m.expires + osField(m.os) + "\n" +
+		machineMarker + "name=" + m.name + " user=" + m.user + " address=" + m.address + expiresField(m.expires) + osField(m.os) + "\n" +
 		"Host " + m.name + "\n" +
 		"\tHostName " + m.address + "\n" +
 		"\tUser " + m.user + "\n" +
@@ -496,6 +500,14 @@ func (e ownMachineEnv) machineConfig(m machineFile) string {
 		"\tGlobalKnownHostsFile /dev/null\n\tStrictHostKeyChecking yes\n\tUpdateHostKeys no\n" +
 		"\tControlMaster auto\n\tControlPath " + e.runtimeDir + "/" + tailnetRuntimeName + "/ssh-%n\n\tControlPersist 10m\n" +
 		"\tForwardAgent no\n\tForwardX11 no\n"
+}
+
+// expiresField is absent for a line without an end.
+func expiresField(expires string) string {
+	if expires == "" {
+		return ""
+	}
+	return " expires=" + expires
 }
 
 func osField(osName string) string {
@@ -573,7 +585,7 @@ func parseMachineConfig(b []byte) (machineFile, bool) {
 			}
 		}
 		a, addrErr := netip.ParseAddr(m.address)
-		return m, machineNamePattern.MatchString(m.name) && remoteUserPattern.MatchString(m.user) && validDate(m.expires) && addrErr == nil && a.Is4()
+		return m, machineNamePattern.MatchString(m.name) && remoteUserPattern.MatchString(m.user) && (m.expires == "" || validDate(m.expires)) && addrErr == nil && a.Is4()
 	}
 	return machineFile{}, false
 }
@@ -1055,10 +1067,15 @@ func (e ownMachineEnv) grant(ctx context.Context, view ownMachinesView, target m
 	if len(fields) < 2 || fields[0] != "ssh-ed25519" {
 		return grantView{}, errAccountKey
 	}
-	until := e.now().AddDate(0, 0, days)
-	line := `restrict,from="` + node.Address + `",expiry-time="` + until.Format("20060102") + `" ssh-ed25519 ` + fields[1] + " " + e.comment
+	options, expires := `restrict,from="`+node.Address+`"`, ""
+	if days > 0 {
+		until := e.now().AddDate(0, 0, days)
+		options += `,expiry-time="` + until.Format("20060102") + `"`
+		expires = until.Format("2006-01-02")
+	}
+	line := options + " ssh-ed25519 " + fields[1] + " " + e.comment
 	g := grantView{
-		Machine: target.name, User: target.user, Address: target.address, Expires: until.Format("2006-01-02"),
+		Machine: target.name, User: target.user, Address: target.address, Expires: expires,
 		Line: line, Shell: "sh", Command: installCommand(line, e.comment), KeyFingerprint: key.Fingerprint,
 	}
 	if windows {
@@ -1206,6 +1223,10 @@ func decodeOwnMachinesRequest(b []byte) (ownMachinesRequest, bool) {
 		return req, false
 	}
 	for _, k := range keys {
+		// null would decode as 0 days or an empty date, which mean no end.
+		if string(bytes.TrimSpace(in[k])) == "null" {
+			return req, false
+		}
 		var ok bool
 		switch k {
 		case "peer":
@@ -1217,7 +1238,7 @@ func decodeOwnMachinesRequest(b []byte) (ownMachinesRequest, bool) {
 		case "days":
 			ok = json.Unmarshal(in[k], &req.Days) == nil && grantDays[req.Days]
 		case "expires":
-			ok = str(k, &req.Expires) && validDate(req.Expires)
+			ok = str(k, &req.Expires) && (req.Expires == "" || validDate(req.Expires))
 		case "host_key":
 			ok = str(k, &req.HostKey) && fingerprintPattern.MatchString(req.HostKey)
 		}
@@ -1383,8 +1404,9 @@ func (e ownMachineEnv) act(ctx context.Context, req ownMachinesRequest, reply ma
 	case "save", "extend":
 		today := e.today()
 		limit := e.now().AddDate(0, 0, 91).Format("2006-01-02")
-		// expiry-time="YYYYMMDD" is refused from the start of that day.
-		if req.Expires <= today || req.Expires > limit {
+		// expiry-time="YYYYMMDD" is refused from the start of that day; an
+		// empty date is a line without one.
+		if req.Expires != "" && (req.Expires <= today || req.Expires > limit) {
 			return 400, "invalid_request"
 		}
 		c, hostKeyLine := e.probe(ctx, target, online, req.Action == "extend")

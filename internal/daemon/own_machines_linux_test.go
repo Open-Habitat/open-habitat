@@ -534,6 +534,72 @@ func TestOwnMachinesExpiryDayIsExpired(t *testing.T) {
 	}
 }
 
+// Toistaiseksi, days 0, is a line without expiry-time= that is never
+// expired here; renewal moves a machine between a dated line and one
+// without an end.
+func TestOwnMachinesIndefiniteLine(t *testing.T) {
+	f := newMachinesFixture(t)
+	f.must(t, `{"action":"connect"}`)
+	f.node.Approve()
+	tailnetfake.SetMachine(f.sshDir, "100.88.14.53", "ok")
+	reply := f.must(t, `{"action":"grant","peer":"alice-macbook","user":"alice","days":0}`)
+	line := field(reply, "grant", "line").(string)
+	if !regexp.MustCompile(`^restrict,from="100\.101\.22\.7" ssh-ed25519 [A-Za-z0-9+/]+=* habitat:alice@habitat\.example\.org$`).MatchString(line) || field(reply, "grant", "expires") != "" {
+		t.Fatalf("grant: %v", reply["grant"])
+	}
+	if cmd := field(reply, "grant", "command").(string); !strings.Contains(cmd, "echo '"+line+"'") {
+		t.Fatalf("command: %s", cmd)
+	}
+	tailnetfake.SetMachine(f.sshDir, "100.90.1.3", "ok")
+	reply = f.must(t, `{"action":"grant","peer":"gaming-pc","user":"alice","days":0}`)
+	for _, k := range []string{"command", "admin_command"} {
+		if c := field(reply, "grant", k).(string); !strings.Contains(c, "$k+='"+field(reply, "grant", "line").(string)+"'") || strings.Contains(c, "expiry-time") {
+			t.Fatalf("windows %s: %s", k, c)
+		}
+	}
+	r := f.must(t, `{"action":"check","peer":"alice-macbook","user":"alice"}`)
+	hk := field(r, "check", "host_key").(string)
+	reply = f.must(t, `{"action":"save","peer":"alice-macbook","user":"alice","expires":"","host_key":"`+hk+`"}`)
+	if m := reply["machines"].([]any)[0]; field(m, "expires") != "" || field(m, "expired") != false {
+		t.Fatalf("saved: %v", m)
+	}
+	conf, _ := os.ReadFile(filepath.Join(f.home, ".ssh/config.d/habitat-alice-macbook.conf"))
+	if strings.Contains(string(conf), "expires=") || !strings.Contains(string(conf), machineMarker+"name=alice-macbook user=alice address=100.88.14.53 os=macOS\n") {
+		t.Fatalf("machine config:\n%s", conf)
+	}
+
+	// Years later it is still the person's to revoke.
+	f.env.now = func() time.Time { return time.Date(2031, 1, 1, 8, 0, 0, 0, time.Local) }
+	cfg := transport.Config{Home: f.home, UID: os.Geteuid(), Username: "alice", Provider: "github", Subject: "42"}
+	f.handler = ownMachinesHandler(cfg, func(*http.Request) bool { return true }, f.env)
+	if m := f.must(t, "")["machines"].([]any)[0]; field(m, "expired") != false {
+		t.Fatalf("an indefinite line expired: %v", m)
+	}
+	reply = f.must(t, `{"action":"renew","machine":"alice-macbook","days":30}`)
+	if field(reply, "grant", "expires") != "2031-01-31" || !strings.Contains(field(reply, "grant", "line").(string), `,expiry-time="20310131" ssh-ed25519 `) {
+		t.Fatalf("dated renewal: %v", reply["grant"])
+	}
+	if m := f.must(t, `{"action":"extend","machine":"alice-macbook","expires":"2031-01-31"}`)["machines"].([]any)[0]; field(m, "expires") != "2031-01-31" {
+		t.Fatalf("dated: %v", m)
+	}
+	f.must(t, `{"action":"renew","machine":"alice-macbook","days":0}`)
+	if m := f.must(t, `{"action":"extend","machine":"alice-macbook","expires":""}`)["machines"].([]any)[0]; field(m, "expires") != "" || field(m, "expired") != false {
+		t.Fatalf("back to no end: %v", m)
+	}
+	for _, body := range []string{
+		`{"action":"grant","peer":"alice-macbook","user":"alice","days":null}`,
+		`{"action":"renew","machine":"alice-macbook","days":-1}`,
+		`{"action":"renew","machine":"alice-macbook","days":"0"}`,
+		`{"action":"extend","machine":"alice-macbook","expires":"never"}`,
+		`{"action":"extend","machine":"alice-macbook","expires":null}`,
+	} {
+		if code, _ := f.do(t, body); code != 400 {
+			t.Fatalf("%s: %d", body, code)
+		}
+	}
+	f.matchContract(t)
+}
+
 // The commands the person runs on their machine replace only this
 // account's line, keep every other key, and leave authorized_keys alone
 // when it cannot be read.

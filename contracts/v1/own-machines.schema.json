@@ -8,6 +8,8 @@
     "address": {"description": "A Tailscale IPv4 address.", "type": "string", "pattern": "^100\\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\\.[0-9]{1,3}\\.[0-9]{1,3}$"},
     "user": {"description": "The user on the machine whose rights the agent gets.", "type": "string", "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$"},
     "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "expires": {"description": "The date the line stops being accepted; empty for a line without expiry-time=, valid until the person removes it.", "anyOf": [{"$ref": "#/$defs/date"}, {"const": ""}]},
+    "days": {"description": "How long the line is accepted; 0 is no end (no expiry-time=).", "enum": [0, 7, 30, 90]},
     "fingerprint": {"description": "As `ssh-keygen -lf` prints it.", "type": "string", "pattern": "^SHA256:[A-Za-z0-9+/]{43}$"},
     "seen": {"type": "string", "format": "date-time", "maxLength": 40},
     "node": {
@@ -59,7 +61,7 @@
         "name": {"$ref": "#/$defs/name"},
         "user": {"$ref": "#/$defs/user"},
         "address": {"$ref": "#/$defs/address"},
-        "expires": {"description": "The date the machine's line stops being accepted, as Habitat wrote it.", "$ref": "#/$defs/date"},
+        "expires": {"description": "As Habitat wrote it.", "$ref": "#/$defs/expires"},
         "expired": {"type": "boolean"},
         "in_tailnet": {"type": "boolean"},
         "online": {"type": "boolean"},
@@ -78,8 +80,8 @@
         "machine": {"$ref": "#/$defs/name"},
         "user": {"$ref": "#/$defs/user"},
         "address": {"$ref": "#/$defs/address"},
-        "expires": {"$ref": "#/$defs/date"},
-        "line": {"type": "string", "pattern": "^restrict,from=\"[0-9.]+\",expiry-time=\"[0-9]{8}\" ssh-ed25519 [A-Za-z0-9+/]+=* habitat:[A-Za-z0-9._-]+@[A-Za-z0-9._-]+$", "maxLength": 400},
+        "expires": {"$ref": "#/$defs/expires"},
+        "line": {"type": "string", "pattern": "^restrict,from=\"[0-9.]+\"(,expiry-time=\"[0-9]{8}\")? ssh-ed25519 [A-Za-z0-9+/]+=* habitat:[A-Za-z0-9._-]+@[A-Za-z0-9._-]+$", "maxLength": 400},
         "shell": {"description": "What the commands are for: sh on macOS and Linux, powershell on Windows (the machine's OS as Tailscale reports it).", "enum": ["sh", "powershell"]},
         "command": {"description": "Installs the line for the user: ~/.ssh/authorized_keys, on Windows %USERPROFILE%\\.ssh\\authorized_keys.", "type": "string", "maxLength": 1500},
         "admin_command": {"description": "Windows only: Windows' OpenSSH reads a member of Administrators' keys from %ProgramData%\\ssh\\administrators_authorized_keys; this installs the line there from an elevated PowerShell.", "type": "string", "maxLength": 1800},
@@ -100,12 +102,12 @@
       "description": "One action. A new machine is named only by its tailnet name; its address comes from Tailscale.",
       "oneOf": [
         {"type": "object", "additionalProperties": false, "required": ["action"], "properties": {"action": {"enum": ["connect", "disconnect"]}}},
-        {"type": "object", "additionalProperties": false, "required": ["action", "peer", "user", "days"], "properties": {"action": {"const": "grant"}, "peer": {"$ref": "#/$defs/name"}, "user": {"$ref": "#/$defs/user"}, "days": {"enum": [7, 30, 90]}}},
-        {"type": "object", "additionalProperties": false, "required": ["action", "machine", "days"], "properties": {"action": {"const": "renew"}, "machine": {"$ref": "#/$defs/name"}, "days": {"enum": [7, 30, 90]}}},
+        {"type": "object", "additionalProperties": false, "required": ["action", "peer", "user", "days"], "properties": {"action": {"const": "grant"}, "peer": {"$ref": "#/$defs/name"}, "user": {"$ref": "#/$defs/user"}, "days": {"$ref": "#/$defs/days"}}},
+        {"type": "object", "additionalProperties": false, "required": ["action", "machine", "days"], "properties": {"action": {"const": "renew"}, "machine": {"$ref": "#/$defs/name"}, "days": {"$ref": "#/$defs/days"}}},
         {"type": "object", "additionalProperties": false, "required": ["action", "peer", "user"], "properties": {"action": {"const": "check"}, "peer": {"$ref": "#/$defs/name"}, "user": {"$ref": "#/$defs/user"}}},
         {"type": "object", "additionalProperties": false, "required": ["action", "machine"], "properties": {"action": {"enum": ["recheck", "remove"]}, "machine": {"$ref": "#/$defs/name"}}},
-        {"type": "object", "additionalProperties": false, "required": ["action", "peer", "user", "expires", "host_key"], "properties": {"action": {"const": "save"}, "peer": {"$ref": "#/$defs/name"}, "user": {"$ref": "#/$defs/user"}, "expires": {"$ref": "#/$defs/date"}, "host_key": {"$ref": "#/$defs/fingerprint"}}},
-        {"type": "object", "additionalProperties": false, "required": ["action", "machine", "expires"], "properties": {"action": {"const": "extend"}, "machine": {"$ref": "#/$defs/name"}, "expires": {"$ref": "#/$defs/date"}}}
+        {"type": "object", "additionalProperties": false, "required": ["action", "peer", "user", "expires", "host_key"], "properties": {"action": {"const": "save"}, "peer": {"$ref": "#/$defs/name"}, "user": {"$ref": "#/$defs/user"}, "expires": {"$ref": "#/$defs/expires"}, "host_key": {"$ref": "#/$defs/fingerprint"}}},
+        {"type": "object", "additionalProperties": false, "required": ["action", "machine", "expires"], "properties": {"action": {"const": "extend"}, "machine": {"$ref": "#/$defs/name"}, "expires": {"$ref": "#/$defs/expires"}}}
       ]
     },
     "result": {

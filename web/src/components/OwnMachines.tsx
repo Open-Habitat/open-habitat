@@ -79,6 +79,16 @@ export type WizardActions = {
   restart: () => void;
 };
 
+// Toistaiseksi first and preselected (Jari 30.10.2026): the person revokes
+// the line on the machine at any time, and a forced renewal would lose the
+// machine unexpectedly.
+const dayOptions = [
+  { id: "0", label: "Toistaiseksi" },
+  { id: "7", label: "7 pv" },
+  { id: "30", label: "30 pv" },
+  { id: "90", label: "90 pv" },
+];
+
 const machinePill: Record<MachineState, [string, Tone]> = {
   active: ["Yhdistetty", "success"],
   asleep: ["Ei vastaa", "neutral"],
@@ -130,6 +140,7 @@ export function Truths({
 }: {
   machine?: string;
   user: string;
+  /** Empty for a line without an end. */
   until: string;
   node: string;
   mac: boolean;
@@ -141,8 +152,9 @@ export function Truths({
         <span>
           <b>Agentti saa koneella kaiken, mitä käyttäjäsi {user} saa</b>, eikä
           se kysy lupaa jokaiseen komentoon. Pääsy koskee vain{" "}
-          {machine ? `konetta ${machine}` : "valitsemaasi konetta"} ja päättyy{" "}
-          {fiDate(until)}.
+          {machine ? `konetta ${machine}` : "valitsemaasi konetta"} ja{" "}
+          {until ? `päättyy ${fiDate(until)}` : "on voimassa, kunnes perut sen"}
+          .
           {mac
             ? " Täysi levyn käyttöoikeus pysyy pois, joten macOS suojaa yhä Työpöytää, Dokumentteja ja Mailia."
             : ""}
@@ -160,10 +172,12 @@ export function Truths({
         <Icon name="slash" />
         <span>
           <b>Varma katkaisu tehdään koneellasi:</b> poista rivi, sammuta
-          etäkirjautuminen tai poista {node} Tailscale-verkostasi. Rivi lakkaa
-          myös itsestään toimimasta {fiDate(until)}. Poisto Habitatista ei yksin
-          riitä, koska agentti toimii samana käyttäjänä ja on voinut kopioida
-          avaimen.
+          etäkirjautuminen tai poista {node} Tailscale-verkostasi.
+          {until
+            ? ` Rivi lakkaa myös itsestään toimimasta ${fiDate(until)}.`
+            : ""}{" "}
+          Poisto Habitatista ei yksin riitä, koska agentti toimii samana
+          käyttäjänä ja on voinut kopioida avaimen.
         </span>
       </li>
     </ul>
@@ -412,10 +426,10 @@ function MachineCard({
         )}
         {state === "revoked" && (
           <p className="om-note om-err" data-testid="own-machine-revoked">
-            <b>Kone hylkäsi avaimen</b>, vaikka pääsy olisi ollut voimassa{" "}
-            {fiDate(machine.expires)} asti. Rivi on luultavasti poistettu
-            koneelta tai etäkirjautuminen on pois päältä. Jos teit sen itse,
-            poista kone myös täältä.
+            <b>Kone hylkäsi avaimen</b>, vaikka pääsy olisi ollut voimassa
+            {machine.expires ? ` ${fiDate(machine.expires)} asti` : ""}. Rivi on
+            luultavasti poistettu koneelta tai etäkirjautuminen on pois päältä.
+            Jos teit sen itse, poista kone myös täältä.
           </p>
         )}
         {state === "changed" && (
@@ -438,8 +452,12 @@ function MachineCard({
           </p>
         )}
         <dl className="om-facts">
-          <dt>Pääsy päättyy</dt>
-          <dd>{fiDate(machine.expires)}</dd>
+          <dt>{machine.expires ? "Pääsy päättyy" : "Pääsy"}</dt>
+          <dd data-testid="own-machine-expires">
+            {machine.expires
+              ? fiDate(machine.expires)
+              : "voimassa, kunnes perut"}
+          </dd>
           <dt>Agentti koneella</dt>
           <dd>
             käyttäjänä {machine.user}, kaikki mitä {machine.user} saa
@@ -496,9 +514,12 @@ function MachineCard({
         >
           <p>
             <b>Poistetaanko {machine.name}?</b> Habitat poistaa koneen
-            yhteysasetuksen ja tunnisteen tililtäsi. Koneesi hyväksyy riviä yhä{" "}
-            {fiDate(machine.expires)} asti, jos joku on ehtinyt kopioida
-            avaimen, joten poista rivi myös koneelta:
+            yhteysasetuksen ja tunnisteen tililtäsi. Koneesi hyväksyy riviä yhä
+            {machine.expires
+              ? ` ${fiDate(machine.expires)} asti`
+              : ", kunnes poistat sen"}
+            , jos joku on ehtinyt kopioida avaimen, joten poista rivi myös
+            koneelta:
           </p>
           <RemoveCommands data={data} os={machine.os} onCopy={actions.copy} />
           <div className="om-btns om-end">
@@ -729,10 +750,13 @@ function CheckNote({
   check,
   user,
   os,
+  dated,
 }: {
   check?: Check;
   user: string;
   os: ReturnType<typeof osFamily>;
+  /** The line has expiry-time=, which needs OpenSSH 8.2. */
+  dated: boolean;
 }) {
   if (!check) return null;
   const mac = os === "mac";
@@ -749,7 +773,7 @@ function CheckNote({
         {mac
           ? ` Jos ajoit sen, tarkista että etäkirjautuminen sallii käyttäjän ${user}.`
           : os === "windows"
-            ? " Jos käyttäjäsi on järjestelmänvalvoja, aja järjestelmänvalvojan komento. Jos ajoit sen, tarkista OpenSSH:n versio (ssh -V): rivi vaatii version 8.2 tai uudemman."
+            ? ` Jos käyttäjäsi on järjestelmänvalvoja, aja järjestelmänvalvojan komento.${dated ? " Jos ajoit sen, tarkista OpenSSH:n versio (ssh -V): rivi vaatii version 8.2 tai uudemman." : ""}`
             : ""}
       </>
     ),
@@ -941,18 +965,15 @@ export function AddMachineDialog({
           <Segmented<string>
             data-testid="own-machines-days"
             label="Pääsyn kesto"
-            options={[
-              { id: "7", label: "7 pv" },
-              { id: "30", label: "30 pv" },
-              { id: "90", label: "90 pv" },
-            ]}
+            options={dayOptions}
             value={String(wizard.days)}
             onChange={(v) => actions.choose({ days: Number(v) as GrantDays })}
           />
         </div>
-        <p className="s-desc">
-          Kone lakkaa hyväksymästä avainta itsestään. Pääsyä voi jatkaa
-          korvaamalla rivin.
+        <p className="s-desc" data-testid="own-machines-days-note">
+          {wizard.days
+            ? "Kone lakkaa hyväksymästä avainta itsestään. Pääsyä voi jatkaa korvaamalla rivin."
+            : "Pääsy on voimassa, kunnes perut sen koneellasi."}
         </p>
       </>
     );
@@ -984,9 +1005,15 @@ export function AddMachineDialog({
         <CopyBox text={windowsSSHServerCommand} onCopy={copy} />
         <p className="s-desc">
           Saman saa Asetuksista: Järjestelmä › Valinnaiset ominaisuudet ›
-          OpenSSH-palvelin. Habitatin rivi vaatii OpenSSH:n version 8.2 tai
-          uudemman; <span className="om-mono">ssh -V</span> kertoo sen. Windows
-          10:n mukana tullut versio voi olla vanhempi.
+          OpenSSH-palvelin.
+          {wizard.days ? (
+            <>
+              {" "}
+              Päivätty rivi vaatii OpenSSH:n version 8.2 tai uudemman;{" "}
+              <span className="om-mono">ssh -V</span> kertoo sen. Windows 10:n
+              mukana tullut versio voi olla vanhempi.
+            </>
+          ) : null}
         </p>
       </>
     ) : (
@@ -1011,11 +1038,7 @@ export function AddMachineDialog({
         <Segmented<string>
           data-testid="own-machines-days"
           label="Pääsyn kesto"
-          options={[
-            { id: "7", label: "7 pv" },
-            { id: "30", label: "30 pv" },
-            { id: "90", label: "90 pv" },
-          ]}
+          options={dayOptions}
           value={String(wizard.days)}
           isDisabled={Boolean(wizard.busy)}
           onChange={(v) => actions.choose({ days: Number(v) as GrantDays })}
@@ -1105,8 +1128,12 @@ export function AddMachineDialog({
               Kelpaa vain Habitatin osoitteesta {ts.node?.address}{" "}
               Tailscale-verkossasi.
             </dd>
-            <dt>expiry-time</dt>
-            <dd>Kone lakkaa hyväksymästä avainta {fiDate(g.expires)}.</dd>
+            {g.expires && (
+              <>
+                <dt>expiry-time</dt>
+                <dd>Kone lakkaa hyväksymästä avainta {fiDate(g.expires)}.</dd>
+              </>
+            )}
             <dt>ssh-ed25519 …</dt>
             <dd>
               Tilisi avain <span className="om-mono">~/.ssh/id_ed25519</span>,
@@ -1127,7 +1154,12 @@ export function AddMachineDialog({
             Tarkista yhteys
           </ControlButton>
         </div>
-        <CheckNote check={wizard.check} user={g.user} os={os} />
+        <CheckNote
+          check={wizard.check}
+          user={g.user}
+          os={os}
+          dated={Boolean(g.expires)}
+        />
         {renewing && wizard.check?.result === "ok" && (
           <Truths
             machine={g.machine}
@@ -1269,7 +1301,11 @@ export function AddMachineDialog({
                 isPending={wizard.busy === "save"}
                 onPress={actions.save}
               >
-                {renewing ? "Tallenna uusi päivä" : "Täsmää, tallenna"}
+                {renewing
+                  ? wizard.grant?.expires
+                    ? "Tallenna uusi päivä"
+                    : "Tallenna"
+                  : "Täsmää, tallenna"}
               </ControlButton>
             ) : step < 5 && !wizard.mismatch ? (
               <ControlButton
