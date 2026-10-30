@@ -3,11 +3,12 @@ created: 2026-10-30
 updated: 2026-10-30
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-workspace-icon-setting
 lane_seq: 1
 preparation: pending
+closed: 2026-10-30
 ---
 
 # Prototype: setting a workspace icon on the repository front page
@@ -35,3 +36,7 @@ valitaan: emoji, repon logo tai johdettu tunnus, ja mitä tapahtuu konffille
 ### 2026-10-30T09:04:30Z · @jari
 
 Jari 30.10.: Otsikko, ja sen alle myös Ehdotus. Ehdotukset saa generoida mallilla; ehdotus-workflow ja mallin kanssa sparraaminen prototyypataan vielä (kierros 2). Commit tehdään automaattisesti kyselemättä ja siitä mitään sanomatta. Litteä icon-muoto (emoji, kuvan polku tai 1–3 kirjainta) kelpaa myös käsin kirjoitettavaksi.
+
+### 2026-10-30T12:46:02Z · @jari
+
+Jari 30.10.: kierros 2:sta Sirut. Kapellimestari päätti avoimet kaksi kysymystä suositusten mukaan (Jari ei vastannut niihin): icon: auto on pysyvä 'ei ehdotuksia' -arvo (Sirujen 200 px rivi ei saa palata joka käynnillä repoon, joka jätettiin ketjun oletukselle), ja Claude-silta ladataan ehdotusapuriin, jotta pelkällä Claude-tilauksella saa ehdotuksia. Toteutus: workspace-icon-suggestions.
