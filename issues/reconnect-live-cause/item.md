@@ -5,10 +5,10 @@ type: bug
 reporter: jari
 status: open
 priority: high
-lane: unlaned
+lane: reconnect
 collision: [web/src/app/, web/src/components/]
 preparation: ready
-lane_seq: 99
+lane_seq: 1
 ---
 
 # Yhdistä still does nothing live
