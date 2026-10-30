@@ -220,6 +220,7 @@ func (a *Auth) commitAdministration(next serverSettings) error {
 	a.settings = next
 	return nil
 }
+
 // isAdministratorLocked is the role as authority. A subject whose web
 // access a withdrawal is ending holds none, even with a request already past
 // its session check: the deny is set under this lock before the sessions go.

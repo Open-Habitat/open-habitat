@@ -25,7 +25,10 @@ func put(t *testing.T, p, s string) {
 		t.Fatal(e)
 	}
 }
-func testScan(t *testing.T, home string) Discovery { t.Helper(); return scan(home, -1, unix.Openat2, false) }
+func testScan(t *testing.T, home string) Discovery {
+	t.Helper()
+	return scan(home, -1, unix.Openat2, false)
+}
 
 // Discovery is independent of filesystem capacity: a workspace must remain
 // visible even when a source filesystem grows beyond the old clone ceiling.
