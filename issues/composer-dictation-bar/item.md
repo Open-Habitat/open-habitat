@@ -3,11 +3,12 @@ created: 2026-10-30
 updated: 2026-10-30
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: composer-row
 lane_seq: 1
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Composer row: dictation as a listening bar (Palkki)
@@ -28,8 +29,8 @@ aikana. Rivin painikkeet eivät hyppää levon, työn ja sanelun välillä.
 
 ## Acceptance Criteria
 
-- [ ] Palkki prototyypin mukaan työpöydällä ja puhelimella, vaalea ja tumma,
+- [x] Palkki prototyypin mukaan työpöydällä ja puhelimella, vaalea ja tumma,
       × peruu sanelun (kenttä palaa ennalleen); kierroksen 1 puhelinviat
       (28 px korkeus, Sanele Lähetä-painikkeen alla, Valmis Ohjaa-sirun päällä)
       korjattu.
-- [ ] Kokeellisen ominaisuuden takana; selainspec; KOKEILTAVAA-rivi.
+- [x] Kokeellisen ominaisuuden takana; selainspec; KOKEILTAVAA-rivi.

@@ -15,7 +15,11 @@ test.use({
 
 const evidence = "../issues/experimental-features-section/evidence";
 const capture = !!process.env.OH_VISUAL_CAPTURE;
-const features = ["next-waiting-row", "worker-row-sentence"];
+const features = [
+  "next-waiting-row",
+  "worker-row-sentence",
+  "composer-dictation-bar",
+];
 
 async function signIn(page: Page) {
   await page.goto("/workspaces");

@@ -106,7 +106,12 @@ export type DictationNotice = {
 };
 
 function noticeFor(view: DictationView): DictationNotice | null {
-  if (view.phase !== "idle" || !view.ended || view.ended === "stopped")
+  if (
+    view.phase !== "idle" ||
+    !view.ended ||
+    view.ended === "stopped" ||
+    view.ended === "cancelled"
+  )
     return null;
   if (view.ended === "ceiling")
     return {
@@ -240,6 +245,8 @@ export function useDictation(
     const final = await d.stop();
     return final ? dictatedInto(around.current, final).text : null;
   }, []);
+  /** Ends the dictation and keeps nothing of it: the field stays as it was. */
+  const cancel = useCallback(() => engine.current?.cancel(), []);
   useEffect(() => {
     if (!active) return;
     const onKey = (event: KeyboardEvent) => {
@@ -317,10 +324,95 @@ export function useDictation(
     start,
     press,
     stop,
+    cancel,
   };
 }
 
 export type DictationState = ReturnType<typeof useDictation>;
+
+/** Sanele at rest: a tap starts, a hold talks until it is let go. */
+function MicButton({
+  dictation,
+  text,
+  caret,
+  disabled,
+  shortcut,
+}: {
+  dictation: DictationState;
+  text: string;
+  caret: () => Caret;
+  disabled: boolean;
+  shortcut: DictationShortcut;
+}) {
+  const pressed = useRef(false);
+  return (
+    <button
+      type="button"
+      data-testid="dictation-mic"
+      className="ah-crow-btn ah-dictation-mic"
+      aria-label="Sanele"
+      aria-keyshortcuts={shortcut.aria}
+      title={`Sanele (${either(shortcut.labels)}) · napauta aloittaaksesi, pidä pohjassa puhuaksesi`}
+      disabled={disabled}
+      onPointerDown={(event) => {
+        if (event.button !== 0 || disabled) return;
+        pressed.current = true;
+        dictation.press(text, caret());
+      }}
+      onClick={() => {
+        // A pointer press already started it; Enter and Space arrive here.
+        if (pressed.current) {
+          pressed.current = false;
+          return;
+        }
+        dictation.start(text, caret());
+      }}
+    >
+      <Icon name="mic" />
+      <span className="ah-crow-lbl">Sanele</span>
+    </button>
+  );
+}
+
+/** The control that replaces the mic is a new element in its place, so the
+ * click that ends a tap on the mic never lands on it; a keyboard start moves
+ * focus to it, also from the field the dictation hides. */
+function useFocusOnStart(
+  active: boolean,
+  target: RefObject<HTMLButtonElement | null>,
+) {
+  useEffect(() => {
+    const at = document.activeElement;
+    if (
+      active &&
+      (at === document.body ||
+        (at instanceof HTMLElement &&
+          at.hidden &&
+          !!target.current?.closest(".ah-cbox")?.contains(at)))
+    )
+      target.current?.focus();
+  }, [active, target]);
+}
+
+/** What the dictation is doing, in the words of its pill or bar. */
+function stateLabel(
+  view: DictationView,
+  holding: boolean,
+  connecting = "kuuntelee",
+) {
+  const paused = view.phase === "live" && view.quietMs >= 2000;
+  return view.phase === "reconnecting"
+    ? "Yhdistetään uudelleen…"
+    : view.phase === "finishing"
+      ? "Viimeistellään…"
+      : holding
+        ? "päästä irti, niin sanelu loppuu"
+        : paused
+          ? `tauko ${mmss(view.quietMs)}`
+          : view.phase === "connecting"
+            ? connecting
+            : "kuuntelee";
+}
 
 /** The mic at rest, or the recording pill in its place while dictating. */
 export function DictationControl({
@@ -336,67 +428,24 @@ export function DictationControl({
   disabled: boolean;
 }) {
   const shortcut = useDictationShortcut();
-  const pressed = useRef(false);
   const pill = useRef<HTMLButtonElement>(null);
   const { view, active, holding } = dictation;
-  // The pill is a new element in the mic's place, so the click that ends a
-  // tap on the mic never lands on it; a keyboard start moves focus to it,
-  // also from the field the dictation hides.
-  useEffect(() => {
-    const at = document.activeElement;
-    if (
-      active &&
-      (at === document.body ||
-        (at instanceof HTMLElement &&
-          at.hidden &&
-          !!pill.current?.closest(".ah-cbox")?.contains(at)))
-    )
-      pill.current?.focus();
-  }, [active]);
-  if (!active || !view) {
+  useFocusOnStart(active, pill);
+  if (!active || !view)
     return (
-      <button
-        key="mic"
-        type="button"
-        data-testid="dictation-mic"
-        className="ah-crow-btn ah-dictation-mic"
-        aria-label="Sanele"
-        aria-keyshortcuts={shortcut.aria}
-        title={`Sanele (${either(shortcut.labels)}) · napauta aloittaaksesi, pidä pohjassa puhuaksesi`}
+      <MicButton
+        dictation={dictation}
+        text={text}
+        caret={caret}
         disabled={disabled}
-        onPointerDown={(event) => {
-          if (event.button !== 0 || disabled) return;
-          pressed.current = true;
-          dictation.press(text, caret());
-        }}
-        onClick={() => {
-          // A pointer press already started it; Enter and Space arrive here.
-          if (pressed.current) {
-            pressed.current = false;
-            return;
-          }
-          dictation.start(text, caret());
-        }}
-      >
-        <Icon name="mic" />
-        <span className="ah-crow-lbl">Sanele</span>
-      </button>
+        shortcut={shortcut}
+      />
     );
-  }
   // The microphone opens at the press and keeps what is said while the
   // stream to Soniox opens, so the dictation listens from the start.
   const listening = view.phase === "live" || view.phase === "connecting";
   const paused = view.phase === "live" && view.quietMs >= 2000;
-  const label =
-    view.phase === "reconnecting"
-      ? "Yhdistetään uudelleen…"
-      : view.phase === "finishing"
-        ? "Viimeistellään…"
-        : holding
-          ? "päästä irti, niin sanelu loppuu"
-          : paused
-            ? `tauko ${mmss(view.quietMs)}`
-            : "kuuntelee";
+  const label = stateLabel(view, holding);
   const bars = [0.55, 0.85, 1, 0.75, 0.6];
   return (
     <button
@@ -429,6 +478,133 @@ export function DictationControl({
         <Icon name="check" />
         <span>Valmis</span>
       </span>
+    </button>
+  );
+}
+
+/** Bars in the bar's waveform, newest at the right; a narrow bar shows only
+ * the newest. */
+const waveBars = 90;
+const waveMs = 90;
+
+/** Palkki (proto-composer-actions, round 2): while dictating, the row's
+ * left part is one listening bar over the aids, which are not for use
+ * meanwhile. Its controls sit at its anchored left end, so when the work
+ * controls appear beside it only the waveform shortens. */
+export function DictationBar({
+  dictation,
+  onCancel,
+}: {
+  dictation: DictationState;
+  onCancel: () => void;
+}) {
+  const { view, holding } = dictation;
+  const listening = view?.phase === "live" || view?.phase === "connecting";
+  const level = useRef(0);
+  level.current = listening ? (view?.level ?? 0) : 0;
+  const [wave, setWave] = useState<number[]>(() => Array(waveBars).fill(0));
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => setWave((w) => [...w.slice(1), level.current]),
+      waveMs,
+    );
+    return () => window.clearInterval(timer);
+  }, []);
+  if (!view) return null;
+  const finishing = view.phase === "finishing";
+  const paused = view.phase === "live" && view.quietMs >= 2000;
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: a fieldset would put a form group's border and legend inside the composer's row.
+    <div
+      data-testid="dictation-bar"
+      data-phase={view.phase}
+      className={`ah-dictation-bar${listening ? "" : " busy"}${paused ? " paused" : ""}`}
+      role="group"
+      aria-label={`Sanelu, ${mmss(view.elapsedMs)}`}
+    >
+      <button
+        type="button"
+        data-testid="dictation-cancel"
+        className="ah-dictation-cancel"
+        aria-label="Peru sanelu: sanottu ei jää kenttään"
+        title="Peru sanelu: sanottu ei jää kenttään"
+        disabled={finishing}
+        onClick={onCancel}
+      >
+        <Icon name="cross" />
+      </button>
+      <span className="ah-dictation-dot" aria-hidden="true" />
+      <span className="ah-dictation-time">{mmss(view.elapsedMs)}</span>
+      <span className="ah-dictation-state">
+        {stateLabel(view, holding, "kuuntelee · yhdistää…")}
+      </span>
+      <span className="ah-dictation-wave" aria-hidden="true">
+        {wave.map((h, i) => (
+          <i
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed bars.
+            key={i}
+            style={{
+              transform: `scaleY(${Math.max(0.1, Math.min(1, h * 1.4)).toFixed(2)})`,
+            }}
+          />
+        ))}
+      </span>
+      <span className="ah-dictation-hint" aria-hidden="true">
+        <kbd>Enter</kbd>valmis
+      </span>
+    </div>
+  );
+}
+
+/** Palkki's slot beside Send: Sanele at rest and Valmis while dictating,
+ * one width, so the finger that started the dictation finishes it in the
+ * same place. */
+export function DictationSlotControl({
+  dictation,
+  text,
+  caret,
+  disabled,
+}: {
+  dictation: DictationState;
+  text: string;
+  /** The field's caret or selection, where the dictation writes. */
+  caret: () => Caret;
+  disabled: boolean;
+}) {
+  const shortcut = useDictationShortcut();
+  const done = useRef<HTMLButtonElement>(null);
+  const { view, active } = dictation;
+  useFocusOnStart(active, done);
+  if (!active || !view)
+    return (
+      <MicButton
+        dictation={dictation}
+        text={text}
+        caret={caret}
+        disabled={disabled}
+        shortcut={shortcut}
+      />
+    );
+  const finishing = view.phase === "finishing";
+  return (
+    <button
+      ref={done}
+      type="button"
+      data-testid="dictation-stop"
+      data-phase={view.phase}
+      className="ah-dictation-finish"
+      aria-label="Valmis: lopeta sanelu, teksti jää kenttään"
+      aria-keyshortcuts={`Enter Escape ${shortcut.aria}`}
+      aria-busy={finishing || undefined}
+      title={`Valmis: teksti jää kenttään (${either(["Enter", "Esc", ...shortcut.labels])})`}
+      onClick={() => void dictation.stop()}
+    >
+      {finishing ? (
+        <span className="ah-dictation-spin" aria-hidden="true" />
+      ) : (
+        <Icon name="check" />
+      )}
+      <span className="ah-crow-lbl">Valmis</span>
     </button>
   );
 }

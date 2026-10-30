@@ -41,6 +41,18 @@ export const experimentalFeatures = [
     caption: "Workerit-paneeli",
     landed: true,
   },
+  {
+    id: "composer-dictation-bar",
+    name: "Sanelupalkki",
+    desc: "Sanele ja Lähetä pysyvät kirjoituskentän oikeassa reunassa, eivätkä rivin painikkeet hyppää, kun agentti aloittaa työn. Sanellessa rivi muuttuu kuuntelupalkiksi.",
+    where:
+      "Kirjoituskentän alarivillä. Ohjaa ja Stop tulevat Saneleen vasemmalle puolelle; puhelimessa apupainikkeet ovat kuvakkeita.",
+    shows:
+      "Sanellessa ✕ (peru, kenttä palaa ennalleen), aika, ääniaalto ja ”Enter valmis”. Saneleen paikalla on Valmis.",
+    needs: "Sanelu käytössä (Soniox-avain, Asetukset › Sanelu).",
+    caption: "Kirjoituskentän rivi sanellessa",
+    landed: true,
+  },
 ] as const satisfies readonly ExperimentalFeature[];
 
 /** A small drawing of what the feature adds, grey while it is off. It is
@@ -60,6 +72,27 @@ function Picture({ id, on }: { id: string; on: boolean }) {
           <span className="ex-open">Käy läpi</span>
         </span>
         <span className="ex-composer">Kirjoita agentille…</span>
+      </>
+    );
+  else if (id === "composer-dictation-bar")
+    body = (
+      <>
+        <span className="ex-ghost" style={{ width: "70%" }} />
+        <span className="ex-ghost" style={{ width: "45%" }} />
+        <span className="ex-cbox">
+          <span className="ex-ctext">Tarkista vielä puhelimen rivi</span>
+          <span className="ex-crow">
+            <span className="ex-dbar">
+              <span className="ex-dx">✕</span>
+              <span className="ex-ddot" />
+              <b>0:06</b>
+              <span className="ex-dwave" />
+              <span className="ex-dhint">Enter valmis</span>
+            </span>
+            <span className="ex-ddone">✓ Valmis</span>
+            <span className="ex-dsend" />
+          </span>
+        </span>
       </>
     );
   else

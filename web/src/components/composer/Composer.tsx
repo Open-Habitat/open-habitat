@@ -43,10 +43,12 @@ import {
 } from "./completion";
 import {
   type ComposerSpeech,
+  DictationBar,
   DictationCeiling,
   DictationControl,
   DictationLive,
   DictationNoticeView,
+  DictationSlotControl,
   useDictation,
   useDictationShortcut,
 } from "./Dictation";
@@ -407,6 +409,7 @@ export function Composer({
   goals,
   speech,
   onDictating,
+  dictationBar = false,
 }: {
   value: string;
   csrf?: string;
@@ -449,6 +452,10 @@ export function Composer({
   /** A dictation is under way, or ending into a send: its text is not yet
    * in the draft or not yet sent. */
   onDictating?: (active: boolean) => void;
+  /** Kokeellinen Palkki (proto-composer-actions): Sanele and Send anchored
+   * at the right, the work controls born left of them, and dictation as a
+   * listening bar over the row's left part with Valmis in Sanele's place. */
+  dictationBar?: boolean;
 }) {
   // The draft is what the agent receives: the person's text with one
   // attachment reference per line after it. The field edits only the text;
@@ -1297,6 +1304,118 @@ export function Composer({
       ? idlePlaceholder
       : `${selectedWorkingMode === "steer" ? "Ohjaa agenttia" : "Kirjoita, mitä agentti tekee työn jälkeen"}… · ${ALT}+Enter: ${MODE[other(selectedWorkingMode)].label.toLowerCase()}`;
 
+  const rowAids = (
+    <>
+      {csrf ? (
+        <AttachmentMenu
+          anchorRef={box}
+          disabled={uploading || availability.state !== "enabled" || dictating}
+          onAttach={() => picker.current?.click()}
+        />
+      ) : null}
+      {sources ? (
+        <>
+          {shellOn ? shellLabel : listButton("cmd")}
+          {listButton("file")}
+        </>
+      ) : (
+        shellLabel
+      )}
+    </>
+  );
+  const rowModel = modelPicker ? (
+    <div className="ah-composer-model">{modelPicker}</div>
+  ) : null;
+  const rowChip =
+    working && !shellOn ? (
+      <button
+        data-testid="composer-mode"
+        data-mode={selectedWorkingMode}
+        type="button"
+        className={`ah-crow-chip ah-crow-chip-${selectedWorkingMode}`}
+        aria-label={`Viestin tapa: ${MODE[selectedWorkingMode].label}. Vaihda: ${MODE[other(selectedWorkingMode)].label}`}
+        title={`${MODE[selectedWorkingMode].label}: ${MODE[selectedWorkingMode].long}. Vaihda: ${ALT}+Enter lähettää kerran toisella tavalla.`}
+        onClick={() => onModeChange(other(selectedWorkingMode))}
+      >
+        <Icon name={MODE[selectedWorkingMode].icon} />
+        <span>{MODE[selectedWorkingMode].label}</span>
+        {dictationBar && selectedWorkingMode === "follow_up" ? (
+          // A phone's row has room for the short label only.
+          <span className="ah-crow-chip-short">Jälkeen</span>
+        ) : null}
+        <Icon name="swap" className="ah-crow-swap" />
+      </button>
+    ) : null;
+  const rowRun =
+    running && !working ? (
+      <span
+        className="ah-crow-run"
+        title={
+          running.state === "held"
+            ? "Odottaa agentin käynnistymistä"
+            : "Komento ajossa"
+        }
+      >
+        <span className="ah-crow-bang" aria-hidden="true">
+          {running.excludeFromContext ? "!!" : "!"}
+        </span>
+        <code>{running.command}</code>
+        <span className="ah-crow-clock">
+          {running.state === "held" || running.startedAt === undefined
+            ? "odottaa"
+            : mmss(now - running.startedAt)}
+        </span>
+      </span>
+    ) : null;
+  const rowStop = stopTarget ? (
+    <button
+      data-testid="composer-stop"
+      data-stop-target={
+        working && onInterrupt
+          ? "agent"
+          : running && shell
+            ? "command"
+            : "unsent"
+      }
+      type="button"
+      className="ah-crow-stop"
+      aria-label={stopTarget.label}
+      aria-busy={agentStopping || undefined}
+      title={stopTarget.tip}
+      disabled={stopping === "pending" || stopping === "uncertain"}
+      onClick={stopTarget.run}
+    >
+      {agentStopping ? (
+        <span className="ah-command-spinner" aria-hidden="true" />
+      ) : (
+        <Icon name="stop" />
+      )}
+    </button>
+  ) : null;
+  const rowSend = (
+    <button
+      data-mode={shellOn ? "shell" : working ? selectedWorkingMode : "send"}
+      data-testid="send"
+      type="button"
+      className="ah-crow-send"
+      aria-label={sendLabel}
+      title={sendTip}
+      aria-disabled={!sendReady || undefined}
+      aria-busy={resolving || sendState === "pending" || undefined}
+      onClick={() => {
+        if (sendReady) send();
+        else if (shellOn && running) send();
+      }}
+    >
+      <Icon name={shellOn ? "run" : "up"} />
+    </button>
+  );
+  const mic = !!speech && !!csrf && !shellOn;
+  const cancelDictation = () => {
+    dictation.cancel();
+    window.requestAnimationFrame(() => field.current?.focus());
+  };
+
   return (
     <section
       className={`ah-composer${!draftValue.trim() && availability.state === "enabled" ? " ah-composer-empty" : ""}${suppressAvailabilityReason ? " ah-composer-notice-explains-block" : ""}`}
@@ -1416,117 +1535,60 @@ export function Composer({
           }}
         />
         <div
-          className={`ah-crow${busy ? " ah-crow-busy" : ""}${dictating ? " ah-crow-dictating" : ""}`}
+          className={`ah-crow${busy ? " ah-crow-busy" : ""}${dictating ? " ah-crow-dictating" : ""}${dictationBar ? " ah-crow-bar" : ""}`}
         >
-          {csrf ? (
-            <AttachmentMenu
-              anchorRef={box}
-              disabled={
-                uploading || availability.state !== "enabled" || dictating
-              }
-              onAttach={() => picker.current?.click()}
-            />
-          ) : null}
-          {sources ? (
+          {dictationBar ? (
             <>
-              {shellOn ? shellLabel : listButton("cmd")}
-              {listButton("file")}
+              <span className="ah-crow-lz">
+                {rowAids}
+                <span className="ah-crow-grow" />
+                {rowModel}
+                {dictating ? (
+                  <DictationBar
+                    dictation={dictation}
+                    onCancel={cancelDictation}
+                  />
+                ) : null}
+              </span>
+              {rowChip}
+              {rowRun}
+              {rowStop}
+              {rowChip || rowRun || rowStop ? (
+                <span className="ah-crow-sep" aria-hidden="true" />
+              ) : null}
+              {mic ? (
+                <span className="ah-crow-mslot">
+                  <DictationSlotControl
+                    dictation={dictation}
+                    text={value}
+                    caret={dictationCaret}
+                    disabled={fieldDisabled || !!fieldReason}
+                  />
+                </span>
+              ) : null}
+              {rowSend}
             </>
           ) : (
-            shellLabel
+            <>
+              {rowAids}
+              <span className="ah-crow-grow" />
+              {rowModel}
+              {mic ? (
+                <span className="ah-dictation-slot">
+                  <DictationControl
+                    dictation={dictation}
+                    text={value}
+                    caret={dictationCaret}
+                    disabled={fieldDisabled || !!fieldReason}
+                  />
+                </span>
+              ) : null}
+              {rowChip}
+              {rowRun}
+              {rowStop}
+              {rowSend}
+            </>
           )}
-          <span className="ah-crow-grow" />
-          {modelPicker ? (
-            <div className="ah-composer-model">{modelPicker}</div>
-          ) : null}
-          {speech && csrf && !shellOn ? (
-            <span className="ah-dictation-slot">
-              <DictationControl
-                dictation={dictation}
-                text={value}
-                caret={dictationCaret}
-                disabled={fieldDisabled || !!fieldReason}
-              />
-            </span>
-          ) : null}
-          {working && !shellOn ? (
-            <button
-              data-testid="composer-mode"
-              data-mode={selectedWorkingMode}
-              type="button"
-              className={`ah-crow-chip ah-crow-chip-${selectedWorkingMode}`}
-              aria-label={`Viestin tapa: ${MODE[selectedWorkingMode].label}. Vaihda: ${MODE[other(selectedWorkingMode)].label}`}
-              title={`${MODE[selectedWorkingMode].label}: ${MODE[selectedWorkingMode].long}. Vaihda: ${ALT}+Enter lähettää kerran toisella tavalla.`}
-              onClick={() => onModeChange(other(selectedWorkingMode))}
-            >
-              <Icon name={MODE[selectedWorkingMode].icon} />
-              <span>{MODE[selectedWorkingMode].label}</span>
-              <Icon name="swap" className="ah-crow-swap" />
-            </button>
-          ) : null}
-          {running && !working ? (
-            <span
-              className="ah-crow-run"
-              title={
-                running.state === "held"
-                  ? "Odottaa agentin käynnistymistä"
-                  : "Komento ajossa"
-              }
-            >
-              <span className="ah-crow-bang" aria-hidden="true">
-                {running.excludeFromContext ? "!!" : "!"}
-              </span>
-              <code>{running.command}</code>
-              <span className="ah-crow-clock">
-                {running.state === "held" || running.startedAt === undefined
-                  ? "odottaa"
-                  : mmss(now - running.startedAt)}
-              </span>
-            </span>
-          ) : null}
-          {stopTarget ? (
-            <button
-              data-testid="composer-stop"
-              data-stop-target={
-                working && onInterrupt
-                  ? "agent"
-                  : running && shell
-                    ? "command"
-                    : "unsent"
-              }
-              type="button"
-              className="ah-crow-stop"
-              aria-label={stopTarget.label}
-              aria-busy={agentStopping || undefined}
-              title={stopTarget.tip}
-              disabled={stopping === "pending" || stopping === "uncertain"}
-              onClick={stopTarget.run}
-            >
-              {agentStopping ? (
-                <span className="ah-command-spinner" aria-hidden="true" />
-              ) : (
-                <Icon name="stop" />
-              )}
-            </button>
-          ) : null}
-          <button
-            data-mode={
-              shellOn ? "shell" : working ? selectedWorkingMode : "send"
-            }
-            data-testid="send"
-            type="button"
-            className="ah-crow-send"
-            aria-label={sendLabel}
-            title={sendTip}
-            aria-disabled={!sendReady || undefined}
-            aria-busy={resolving || sendState === "pending" || undefined}
-            onClick={() => {
-              if (sendReady) send();
-              else if (shellOn && running) send();
-            }}
-          >
-            <Icon name={shellOn ? "run" : "up"} />
-          </button>
         </div>
         {pop}
       </div>

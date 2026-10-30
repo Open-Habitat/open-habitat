@@ -714,6 +714,7 @@ describe("composer speech input", () => {
     deps: ReturnType<typeof fakeSpeech>["deps"];
     onSendNow: (text?: string) => void;
     initial?: string;
+    dictationBar?: boolean;
   }) {
     const [value, setValue] = useState(props.initial ?? "Alku");
     return (
@@ -724,7 +725,18 @@ describe("composer speech input", () => {
         onChange={setValue}
         onSendNow={props.onSendNow}
         speech={{ onOpenSettings: noop, deps: props.deps }}
+        dictationBar={props.dictationBar}
       />
+    );
+  }
+  async function dictate(view: ReturnType<typeof render>, sockets: Socket[]) {
+    fireEvent.click(view.getByTestId("dictation-mic"));
+    await waitFor(() => expect(sockets).toHaveLength(1));
+    await act(async () => sockets[0]?.onopen?.());
+    await act(async () =>
+      sockets[0]?.onmessage?.({
+        data: JSON.stringify({ tokens: [{ text: " sanelu", is_final: true }] }),
+      }),
     );
   }
 
@@ -820,5 +832,37 @@ describe("composer speech input", () => {
       expect(field(view).selectionEnd).toBe(caret);
       view.unmount();
     }
+  });
+
+  it("Palkki: the bar's cancel ends the dictation and leaves the field as it was", async () => {
+    const { deps, sockets } = fakeSpeech();
+    const view = render(<Stateful deps={deps} onSendNow={noop} dictationBar />);
+    await dictate(view, sockets);
+    expect(view.getByTestId("dictation-bar")).toBeTruthy();
+    // Valmis takes Sanele's place in the same slot.
+    expect(
+      view.getByTestId("dictation-stop").closest(".ah-crow-mslot"),
+    ).toBeTruthy();
+    fireEvent.click(view.getByTestId("dictation-cancel"));
+    await waitFor(() => expect(view.queryByTestId("dictation-bar")).toBeNull());
+    expect(field(view).value).toBe("Alku");
+    // Soniox is not asked for its last words, and no notice explains it.
+    expect(sockets[0]?.sent).not.toContain("");
+    expect(view.queryByTestId("dictation-notice")).toBeNull();
+    expect(view.getByTestId("dictation-mic")).toBeTruthy();
+  });
+
+  it("Palkki: Valmis keeps what was said in the field", async () => {
+    const { deps, sockets } = fakeSpeech();
+    const view = render(<Stateful deps={deps} onSendNow={noop} dictationBar />);
+    await dictate(view, sockets);
+    fireEvent.click(view.getByTestId("dictation-stop"));
+    await waitFor(() => expect(sockets[0]?.sent.at(-1)).toBe(""));
+    await act(async () =>
+      sockets[0]?.onmessage?.({
+        data: JSON.stringify({ tokens: [], finished: true }),
+      }),
+    );
+    await waitFor(() => expect(field(view).value).toBe("Alku sanelu"));
   });
 });

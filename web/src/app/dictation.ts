@@ -16,7 +16,12 @@ export type DictationPhase =
   | "finishing";
 
 /** How the last dictation ended, for the notice under the field. */
-export type DictationEnd = "stopped" | "ceiling" | "dropped" | "failed";
+export type DictationEnd =
+  | "stopped"
+  | "cancelled"
+  | "ceiling"
+  | "dropped"
+  | "failed";
 
 export type DictationView = {
   phase: DictationPhase;
@@ -473,6 +478,16 @@ export class Dictation {
       ended: why,
       failure,
     });
+  }
+
+  /** Ends the dictation at once and drops what was heard, so nothing of it
+   * reaches the field. A stop waiting for Soniox's last words resolves with
+   * nothing. */
+  cancel() {
+    if (!this.active) return;
+    this.run++;
+    this.release();
+    this.set({ ...idle, ended: "cancelled" });
   }
 
   /** Ends everything at once, as the composer leaves. */

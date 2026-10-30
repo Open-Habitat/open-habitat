@@ -85,6 +85,19 @@ function Frame({
   );
 }
 
+const pending = () => new Promise<never>(() => {});
+const pendingSpeech = {
+  mint: pending,
+  microphone: pending,
+  capture: pending,
+  socket: () => {
+    throw new Error("no stream in a story");
+  },
+  now: () => Date.now(),
+  setInterval: (run: () => void, ms: number) => window.setInterval(run, ms),
+  clearInterval: (id: number) => window.clearInterval(id),
+};
+
 function Live({
   initial = "",
   activity = "idle",
@@ -93,6 +106,7 @@ function Live({
   running,
   model,
   stopState,
+  bar,
 }: {
   initial?: string;
   activity?: "idle" | "working";
@@ -101,6 +115,9 @@ function Live({
   queue?: { steering: string[]; followUp: string[] };
   running?: boolean;
   model?: boolean;
+  /** Kokeellinen Sanelupalkki with a mic whose stream never opens, so a
+   * press shows the bar listening. */
+  bar?: boolean;
 }) {
   const [value, setValue] = useState(initial);
   const [working, setWorking] = useState(mode);
@@ -119,6 +136,9 @@ function Live({
       queue={queue}
       onRestoreQueue={noop}
       sources={sources}
+      csrf={bar ? "story" : undefined}
+      speech={bar ? { onOpenSettings: noop, deps: pendingSpeech } : undefined}
+      dictationBar={bar}
       modelPicker={
         model ? (
           <button type="button" className="md-pill">
@@ -454,5 +474,31 @@ export const PalettePickingTwoFiles: Story = {
       onKeyDown={noop}
       onClose={noop}
     />
+  ),
+};
+
+/** Kokeellinen Sanelupalkki (composer-dictation-bar): Sanele and Send at the
+ * right in fixed slots, Ohjaa and Stop born left of them. Press Sanele to
+ * see the listening bar and Valmis in Sanele's place; × cancels. */
+export const DictationBar: Story = {
+  render: () => (
+    <>
+      {(["light", "dark"] as const).map((theme) => (
+        <div
+          key={theme}
+          data-theme={theme}
+          style={{ background: "var(--ah-bg)", padding: 16 }}
+        >
+          <Frame>
+            <Live bar />
+            <Live bar activity="working" initial="Päivitä myös README" />
+          </Frame>
+          <Frame narrow>
+            <Live bar />
+            <Live bar activity="working" mode="follow_up" />
+          </Frame>
+        </div>
+      ))}
+    </>
   ),
 };

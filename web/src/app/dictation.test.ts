@@ -247,6 +247,32 @@ describe("Dictation", () => {
     expect(h.mintCount()).toBe(1);
   });
 
+  it("cancel ends at once with nothing heard and closes the stream", async () => {
+    const h = harness([session(1)]);
+    await h.d.start();
+    const ws = h.sockets[0];
+    ws?.open();
+    ws?.reply({
+      tokens: [
+        { text: "Hei", is_final: true },
+        { text: " maa", is_final: false },
+      ],
+    });
+    h.d.cancel();
+    expect(h.d.view).toMatchObject({
+      phase: "idle",
+      final: "",
+      interim: "",
+      ended: "cancelled",
+    });
+    expect(ws?.readyState).toBe(3);
+    // No end-of-stream frame: Soniox is not asked to finish.
+    expect(ws?.texts()).not.toContain("");
+    // Words that arrive after the cancel land nowhere.
+    ws?.reply({ tokens: [{ text: " myöhässä", is_final: true }] });
+    expect(h.d.view.final).toBe("");
+  });
+
   it("a second stop while Soniox finishes waits for the same final text", async () => {
     const h = harness([session(1)]);
     await h.d.start();
