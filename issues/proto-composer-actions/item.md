@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-composer-actions
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: composer action row order and look
