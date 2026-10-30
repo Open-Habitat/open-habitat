@@ -2,7 +2,7 @@
 created: 2026-10-29
 updated: 2026-10-30
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: taskfleet run 01m64kr0dj2mqbxncdtde7vkb1 (observed in harness smoke)
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: claude-workers
 lane_seq: 2
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Claude Code worker stops at Claude Code's first-run theme picker on an account signed in only through Habitat
@@ -39,3 +40,9 @@ A Claude Code worker started on an account that signed in through Habitat begins
 ### 2026-10-30T07:11:20Z · @jari
 
 Jari 30.10.: Jos ongelma esiintyy edelleen, korjataan.
+
+## Resolution
+
+### 2026-10-30T07:27:27Z · @issuectl
+
+A completed Habitat Claude sign-in now marks Claude Code's onboarding done under Claude's own config lock; see result.md.

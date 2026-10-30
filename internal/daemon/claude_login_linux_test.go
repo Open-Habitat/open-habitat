@@ -34,6 +34,7 @@ read -r code
 mkdir -m 700 -p "$HOME/.claude"
 umask 077
 printf '%s' '{"claudeAiOauth":{"accessToken":"SYNTHETIC-ONLY"}}' > "$HOME/.claude/.credentials.json"
+printf '%s' '{"userID":"synthetic","hasCompletedOnboarding":false}' > "$HOME/.claude.json"
 ;;
 esac
 `
@@ -148,6 +149,11 @@ esac
 	}
 	if strings.Contains(w.Body.String(), "SYNTHETIC-ONLY") {
 		t.Fatal("credential exposed")
+	}
+	// A Claude Code started after this sign-in skips its first-run screen.
+	var config map[string]any
+	if raw, err := os.ReadFile(filepath.Join(home, ".claude.json")); err != nil || json.Unmarshal(raw, &config) != nil || config["hasCompletedOnboarding"] != true || config["userID"] != "synthetic" {
+		t.Fatalf("onboarding not recorded: %v %v", config, err)
 	}
 	settings, err := p.catalog(t.Context(), "")
 	if err != nil || settings.DefaultProvider == nil || *settings.DefaultProvider != "claude-bridge" || settings.DefaultModel == nil || *settings.DefaultModel != "claude-opus-5-5" || settings.DefaultThinking != "medium" {

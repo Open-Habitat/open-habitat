@@ -20,6 +20,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
@@ -231,6 +232,11 @@ func (a *claudeLogin) start(owner string) error {
 			if state == "completed" {
 				if _, err := a.device.modelSettings(ctx, "initialize-claude", ""); err != nil {
 					state = "unknown"
+				}
+				// The sign-in itself succeeded; a person who later meets the
+				// first-run screen can still finish it in Claude Code.
+				if err := markClaudeOnboarded(a.device.Home); err != nil {
+					diagnostic.New(os.Stderr, "daemon").Warn("claude_onboarding", "outcome", "failed", "reason", err.Error())
 				}
 			}
 		}
