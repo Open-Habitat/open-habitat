@@ -881,8 +881,16 @@ for (const width of [1366, 390])
         .evaluate((el) => {
           el.scrollTop = el.scrollHeight / 2;
         });
-      await expect.poll(() => firstLine(page)).toBeGreaterThan(20);
-      const before = await firstLine(page);
+      // A jump lands on estimated line heights that the editor corrects in a
+      // later frame, so its line counts once two reads agree.
+      let before = 0;
+      await expect
+        .poll(async () => {
+          const last = before;
+          before = await firstLine(page);
+          return before > 20 && before === last;
+        })
+        .toBe(true);
       await doc.press("Control+Alt+KeyP");
       const table = preview.getByTestId("editor-preview-table");
       await expect(table).toBeVisible();
@@ -900,7 +908,9 @@ for (const width of [1366, 390])
           ).find((r) => r.getBoundingClientRect().bottom > edge + 2);
           return Number(row?.dataset.line) + 1;
         });
-      expect(Math.abs((await topRow()) - before)).toBeLessThanOrEqual(1);
+      await expect
+        .poll(async () => Math.abs((await topRow()) - before))
+        .toBeLessThanOrEqual(1);
       await capture(page, `csv-taulukko-${width}`);
       await preview.evaluate((el) => {
         el.scrollTop += 300;

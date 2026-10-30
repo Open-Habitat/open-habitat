@@ -2,7 +2,7 @@
 created: 2026-10-29
 updated: 2026-10-30
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed in a worker's focused browser run
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: browser-tests
 lane_seq: 1
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Phone CSV preview scroll check in browser-editor.spec.ts is flaky under load
