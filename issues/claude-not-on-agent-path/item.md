@@ -2,7 +2,7 @@
 created: 2026-10-29
 updated: 2026-10-30
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: taskfleet run 01m64kr0dj2mqbxncdtde7vkb1 (fleetrepo test-server env gaps)
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: claude-workers
 lane_seq: 1
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Claude Code workers need claude on the agent PATH; the runtime's bundled Claude Code is not exposed
@@ -37,3 +38,9 @@ An agent on any installation that has a Claude sign-in finds `claude` on its PAT
 ### 2026-10-30T07:11:20Z · @jari
 
 Jari 30.10.: Jos ongelma esiintyy edelleen, korjataan.
+
+## Resolution
+
+### 2026-10-30T07:18:45Z · @issuectl
+
+Agent PATH now ends with the release's shipped Claude Code directory, the binary the Claude sign-in runs; see result.md.

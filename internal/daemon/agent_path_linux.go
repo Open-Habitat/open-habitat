@@ -12,13 +12,25 @@ import (
 // Host-managed commands keep their separate, absolute executable paths and
 // restricted environments.
 func agentPath(home string) string {
+	// The CLI is not necessarily installed in a system PATH directory. No
+	// per-user wrapper or profile edit is needed to reach the shipped binary.
+	release := ""
+	if executable, err := os.Executable(); err == nil {
+		release = agentReleaseBin(executable, os.Args[0])
+	}
+	return agentPathWith(home, release)
+}
+
+func agentPathWith(home, release string) string {
 	// Keep directories even before installation so tools installed during a
 	// conversation are immediately available to subsequent child processes.
 	path := "PATH=" + filepath.Join(home, ".local", "bin") + ":" + filepath.Join(home, ".cargo", "bin") + ":/usr/local/bin:/usr/bin:/bin"
-	// The CLI is not necessarily installed in a system PATH directory. No
-	// per-user wrapper or profile edit is needed to reach the shipped binary.
-	if executable, err := os.Executable(); err == nil {
-		path += ":" + agentReleaseBin(executable, os.Args[0])
+	if release != "" {
+		// Claude Code workers and a person's own `claude` run the binary the
+		// Claude sign-in runs, so they share its version and native store.
+		// Its package directory holds no other executable. It comes last: a
+		// Claude Code the person installed themselves keeps precedence.
+		path += ":" + release + ":" + claudeCodeDir(filepath.Join(release, "payloads", "core", "runtime"))
 	}
 	return path
 }

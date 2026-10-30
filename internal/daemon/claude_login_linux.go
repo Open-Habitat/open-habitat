@@ -56,7 +56,12 @@ func (a *claudeLogin) binary() string {
 	if a.executable != "" && a.device.FixtureHome {
 		return a.executable
 	}
-	return filepath.Join(filepath.Dir(filepath.Dir(a.device.Node)), "node_modules/@anthropic-ai/claude-agent-sdk-linux-"+claudeCPU()+"/claude")
+	return filepath.Join(claudeCodeDir(filepath.Dir(filepath.Dir(a.device.Node))), "claude")
+}
+
+// claudeCodeDir is where a core runtime ships Claude Code.
+func claudeCodeDir(runtimeRoot string) string {
+	return filepath.Join(runtimeRoot, "node_modules/@anthropic-ai/claude-agent-sdk-linux-"+claudeCPU())
 }
 
 // npm installs only the SDK binary package for the runtime's own CPU, named

@@ -68,7 +68,8 @@ func TestAgentCommandPathIsPerHomeAndInherited(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := filepath.Join(home, ".local", "bin") + ":" + filepath.Join(home, ".cargo", "bin") + ":/usr/local/bin:/usr/bin:/bin:" + filepath.Dir(executable) + "\n"
+		release := filepath.Dir(executable)
+		want := filepath.Join(home, ".local", "bin") + ":" + filepath.Join(home, ".cargo", "bin") + ":/usr/local/bin:/usr/bin:/bin:" + release + ":" + claudeCodeDir(filepath.Join(release, "payloads", "core", "runtime")) + "\n"
 		if string(path) != want {
 			t.Fatalf("PATH = %q, want %q", path, want)
 		}
@@ -180,5 +181,39 @@ func TestAgentReleasePathFollowsLaunchSelector(t *testing.T) {
 		if got := agentReleaseBin(executable, bad); got != generation {
 			t.Fatalf("unverified launch %q redirected PATH to %q", bad, got)
 		}
+	}
+}
+
+// A release's agent PATH reaches the Claude Code its Claude sign-in runs, so a
+// worker shares the sign-in's version and native store. A person's own
+// installation keeps precedence.
+func TestAgentPathFindsSignInClaudeCode(t *testing.T) {
+	release := t.TempDir()
+	login := &claudeLogin{device: &PiDevice{Node: filepath.Join(release, "payloads", "core", "runtime", "bin", "node")}}
+	if err := os.MkdirAll(filepath.Dir(login.binary()), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(login.binary(), []byte("#!/bin/sh\nprintf shipped\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	home := t.TempDir()
+	run := func() string {
+		cmd := exec.Command("/bin/sh", "-c", "command -v claude && claude")
+		cmd.Env = []string{"HOME=" + home, agentPathWith(home, release)}
+		out, _ := cmd.CombinedOutput()
+		return string(out)
+	}
+	if got := run(); got != login.binary()+"\nshipped" {
+		t.Fatalf("claude = %q, want sign-in binary %s", got, login.binary())
+	}
+	own := filepath.Join(home, ".local", "bin")
+	if err := os.MkdirAll(own, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(own, "claude"), []byte("#!/bin/sh\nprintf own\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if got := run(); got != filepath.Join(own, "claude")+"\nown" {
+		t.Fatalf("person's own Claude Code lost precedence: %q", got)
 	}
 }
