@@ -29,6 +29,6 @@ passed.
 
 ## Acceptance Criteria
 
-- [ ] The spec asserts the 29.10. behaviour (the rail shows its compact strip
+- [x] The spec asserts the 29.10. behaviour (the rail shows its compact strip
       beside the editor, column width as before) instead of a hidden rail, and
       passes; the rest of `workspace-editor.spec.ts` stays green.

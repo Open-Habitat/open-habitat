@@ -93,8 +93,13 @@ test("@workspace-editor @a11y opens beside the conversation with a remembered di
     "yhteys: pong",
   );
   await expect(editorFrame(page).locator("body")).toContainText("git-project");
-  // The app sidebar steps aside; the column defaults to 440 px on a laptop.
-  await expect(page.getByRole("navigation")).toBeHidden();
+  // The app rail narrows to its compact strip, keeping the account menu in
+  // reach; the column defaults to 440 px on a laptop.
+  const rail = page
+    .getByRole("navigation")
+    .and(page.getByTestId("workspace-navigation"));
+  await expect(rail).toBeVisible();
+  await expect(rail).toHaveClass(/\bah-rail-collapsed\b/);
   expect(await columnWidth(page)).toBe(440);
   // The app's own controls around the editor; VS Code's frame is its own.
   expect(
@@ -137,7 +142,9 @@ test("@workspace-editor @a11y opens beside the conversation with a remembered di
     .click();
   expect(await columnWidth(page)).toBe(572);
   await page.getByRole("button").and(page.getByTestId("toggle-editor")).click();
-  await expect(page.getByRole("navigation")).toBeVisible();
+  // Closing the editor returns the rail to the person's own, wide choice.
+  await expect(rail).toBeVisible();
+  await expect(rail).not.toHaveClass(/\bah-rail-collapsed\b/);
 });
 
 test("@workspace-editor file links open path:line and Ctrl+Alt+K moves between editor and conversation", async ({
