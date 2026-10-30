@@ -3,11 +3,12 @@ created: 2026-10-30
 updated: 2026-10-30
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-workspace-icons
 lane_seq: 1
 preparation: pending
+closed: 2026-10-30
 ---
 
 # Prototype: an icon for every workspace in the rail
@@ -42,3 +43,9 @@ kapea kaistale), jossa ikoni korvaa toistuvan työtilan nimen.
       johdettu oletus), miten sen vaihtaa ja missä nimi silti näkyy.
 - [ ] Host-puolen faktat ja ehdotus siitä, mistä ikoni luetaan, result.md:ssä;
       tuotantokoodi ennallaan.
+
+## Decisions
+
+### 2026-10-30T08:40:08Z · @jari
+
+Jari 30.10.: Lähdeketju. Ei integroida tässä vaiheessa workmux-konffiin: repossa on Open Habitatin oma konffi, ja kuvake on siellä. Kuvakkeen voi asettaa ja muokata repon etusivulla; asettaminen prototyypataan (proto-workspace-icon-setting). Toteutus: workspace-icon-chain.

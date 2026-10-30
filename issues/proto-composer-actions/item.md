@@ -3,11 +3,12 @@ created: 2026-10-30
 updated: 2026-10-30
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-composer-actions
 lane_seq: 1
 preparation: pending
+closed: 2026-10-30
 ---
 
 # Prototype: composer action row order and look
@@ -36,3 +37,9 @@ työn aikana (työpöytä ja puhelin, vaalea ja tumma).
 
 - [ ] 2–3 suuntaa, joissa rivin painikkeet eivät hyppää tilasta toiseen.
 - [ ] NOTES.md Jarille ja result.md suosituksineen; tuotantokoodi ennallaan.
+
+## Decisions
+
+### 2026-10-30T08:40:08Z · @jari
+
+Jari 30.10.: kierros 2:sta Palkki. Hyvä, että palkki peittää muut painikkeet, joita ei pidä käyttää sanelun aikana. Toteutus: composer-dictation-bar.
