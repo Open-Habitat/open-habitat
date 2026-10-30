@@ -15,6 +15,7 @@ import {
 } from "../../app/dictation";
 import { mintSpeechSession, type SpeechFailure } from "../../app/speech";
 import { Icon } from "../Icon";
+import { dictationShortcutFor } from "./dictationShortcut";
 
 /** What the composer needs for speech input. Without it there is no mic. */
 export type ComposerSpeech = {
@@ -29,20 +30,7 @@ const holdMs = 500;
 const isMac =
   typeof navigator !== "undefined" &&
   /Mac|iPhone|iPad/.test(navigator.platform);
-/** Starts and ends a dictation from anywhere in the conversation view:
- * ⌘⇧Space on a Mac, Ctrl+Shift+Space elsewhere. Neither browsers nor the
- * operating systems take it, and VS Code's own use of it stays inside the
- * editor's frame. */
-export const dictationShortcut = {
-  label: isMac ? "⌘⇧välilyönti" : "Ctrl+Shift+välilyönti",
-  aria: isMac ? "Meta+Shift+Space" : "Control+Shift+Space",
-  matches: (event: KeyboardEvent) =>
-    (isMac ? event.metaKey : event.ctrlKey) &&
-    (isMac ? !event.ctrlKey : !event.metaKey) &&
-    event.shiftKey &&
-    !event.altKey &&
-    event.code === "Space",
-};
+export const dictationShortcut = dictationShortcutFor(isMac);
 
 function mmss(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));

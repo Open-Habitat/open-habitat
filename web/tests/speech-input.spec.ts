@@ -183,15 +183,13 @@ test("@speech Enter ends a dictation as Valmis does and sends nothing; the short
   );
   await openConversation(page);
   const field = page.getByTestId("message-input");
-  // The browser host runs on Linux, where the shortcut is Ctrl+Shift+Space.
-  await expect(mic(page)).toHaveAttribute(
-    "aria-keyshortcuts",
-    "Control+Shift+Space",
-  );
-  await expect(mic(page)).toHaveAttribute("title", /Ctrl\+Shift\+välilyönti/);
+  // The browser host runs on Linux, where the shortcut is Ctrl+§. Its US
+  // layout has no §, so the key left of 1 (Backquote) stands in for it.
+  await expect(mic(page)).toHaveAttribute("aria-keyshortcuts", "Control+§");
+  await expect(mic(page)).toHaveAttribute("title", /Ctrl\+§/);
 
   await field.fill("Alku");
-  await page.keyboard.press("Control+Shift+Space");
+  await page.keyboard.press("Control+Backquote");
   await expect(pill(page)).toHaveAttribute("data-phase", "live");
   await expect(pill(page)).toBeFocused();
   await say(page, [
@@ -205,11 +203,22 @@ test("@speech Enter ends a dictation as Valmis does and sends nothing; the short
   await expect.poll(async () => (await soniox(page)).ended).toBe(1);
   await expect(page.locator("main")).not.toContainText("Kysyit:");
 
-  // The shortcut from the field starts a dictation and ends it as Valmis.
-  await page.keyboard.press("Control+Shift+Space");
+  // The shortcut from the field starts a dictation and ends it as Valmis,
+  // also as a Nordic keyboard's § whose code is not Backquote.
+  await page.keyboard.press("Control+Backquote");
   await expect(pill(page)).toHaveAttribute("data-phase", "live");
   await expect.poll(async () => (await soniox(page)).open).toBe(1);
-  await page.keyboard.press("Control+Shift+Space");
+  await pill(page).evaluate((el) =>
+    el.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "§",
+        code: "IntlBackslash",
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    ),
+  );
   await expect(pill(page)).toHaveCount(0);
   await expect.poll(async () => (await soniox(page)).ended).toBe(2);
   await expect(field).toHaveValue("Alku sanelu");

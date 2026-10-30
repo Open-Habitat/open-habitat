@@ -3,11 +3,12 @@ created: 2026-10-30
 updated: 2026-10-30
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: speech-input
 lane_seq: 21
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Dictation shortcut ⌘+§ instead of ⌘⇧Space
@@ -23,11 +24,11 @@ hankala." `dictation-fast-start-keys` valitsi sanelun pikanäppäimeksi
 
 ## Acceptance Criteria
 
-- [ ] ⌘+§ (Mac) käynnistää ja lopettaa sanelun samoin kuin nykyinen
+- [x] ⌘+§ (Mac) käynnistää ja lopettaa sanelun samoin kuin nykyinen
       pikanäppäin; muilla järjestelmillä vastaava (Ctrl+§ tai paras
       perusteltu vaihtoehto, kun §-näppäintä ei ole).
-- [ ] Tunnistus toimii suomalaisella ISO-näppäimistöllä Macissa ja PC:llä
+- [x] Tunnistus toimii suomalaisella ISO-näppäimistöllä Macissa ja PC:llä
       (`event.key` ja `event.code`, Chromen Mac-ISO-vaihto
       `Backquote`/`IntlBackslash` huomioiden), ei törmää macOS:n
       ikkunanvaihtoon (⌘+< / ⌘+`).
-- [ ] Vihje ja `aria-keyshortcuts` päivitetty; selainspec.
+- [x] Vihje ja `aria-keyshortcuts` päivitetty; selainspec.
