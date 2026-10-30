@@ -47,8 +47,8 @@ import {
   DictationControl,
   DictationLive,
   DictationNoticeView,
-  dictationShortcut,
   useDictation,
+  useDictationShortcut,
 } from "./Dictation";
 import {
   type ComposerGoal,
@@ -635,19 +635,21 @@ export function Composer({
     !shellText ||
     !!running ||
     (shell.runAvailability && shell.runAvailability.state !== "enabled");
-  // A dictation that ends puts its text in the field, with the caret after
-  // it, and the field is ordinary text again.
+  // A dictation that ends puts its text in the field where the caret was,
+  // with the caret after it, and the field is ordinary text again.
   const dictation = useDictation(
     speech,
     csrf,
-    (text) => {
+    (text, caret) => {
       onChange(text);
+      lastCaret.current = [caret, caret];
+      caretText.current = text;
       window.requestAnimationFrame(() => {
         const el = field.current;
         if (!el || el.hidden) return;
         el.focus();
-        el.setSelectionRange(el.value.length, el.value.length);
-        el.scrollTop = el.scrollHeight;
+        el.setSelectionRange(caret, caret);
+        if (caret === el.value.length) el.scrollTop = el.scrollHeight;
       });
     },
     box,
@@ -663,7 +665,7 @@ export function Composer({
   }, [dictationBusy]);
   useEffect(() => () => reportDictating.current?.(false), []);
   const dictatedText = dictating
-    ? `${dictation.base}${dictation.view?.final ?? ""}`
+    ? `${dictation.before}${dictation.view?.final ?? ""}${dictation.after}`
     : "";
   const sendReady = shellOn
     ? !runBlocked
@@ -774,6 +776,15 @@ export function Composer({
     if (el && document.activeElement === el)
       return [el.selectionStart, el.selectionEnd];
     return lastCaret.current ?? [value.length, value.length];
+  };
+  // A dictation writes at the caret the field last had, as long as the text
+  // is still the one it had then; a draft changed since gets it at the end.
+  const caretText = useRef<string | null>(null);
+  const dictationCaret = (): [number, number] => {
+    const el = field.current;
+    if ((el && document.activeElement === el) || caretText.current === value)
+      return fieldCaret();
+    return [value.length, value.length];
   };
   const fromButton = (kind: "cmd" | "file") => {
     if (open?.place === "button" && open.kind === kind) return close(true);
@@ -1009,12 +1020,15 @@ export function Composer({
       ? () => {
           if (sendingDictation) return;
           if (dictating) void dictation.stop();
-          else dictation.start(value);
+          else dictation.start(value, dictationCaret());
         }
       : null;
+  const dictationShortcut = useDictationShortcut();
+  const shortcutMatches = useRef(dictationShortcut.matches);
+  shortcutMatches.current = dictationShortcut.matches;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!dictationShortcut.matches(e) || e.defaultPrevented) return;
+      if (!shortcutMatches.current(e) || e.defaultPrevented) return;
       const run = dictationKey.current;
       const target = e.target as HTMLElement | null;
       // A dialog or list over the conversation keeps its own keys.
@@ -1390,6 +1404,7 @@ export function Composer({
               e.currentTarget.selectionStart,
               e.currentTarget.selectionEnd,
             ];
+            caretText.current = e.currentTarget.value;
             window.setTimeout(() => {
               setOpen((o) =>
                 o?.place === "caret" &&
@@ -1429,6 +1444,7 @@ export function Composer({
               <DictationControl
                 dictation={dictation}
                 text={value}
+                caret={dictationCaret}
                 disabled={fieldDisabled || !!fieldReason}
               />
             </span>
@@ -1551,6 +1567,7 @@ export function Composer({
         <DictationNoticeView
           dictation={dictation}
           text={value}
+          caret={dictationCaret}
           onOpenSettings={speech.onOpenSettings}
         />
       ) : null}

@@ -2,6 +2,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -15,7 +16,12 @@ import {
 } from "../../app/dictation";
 import { mintSpeechSession, type SpeechFailure } from "../../app/speech";
 import { Icon } from "../Icon";
-import { dictationShortcutFor } from "./dictationShortcut";
+import {
+  type DictationShortcut,
+  dictationShortcutFor,
+  type KeyboardLayout,
+  readKeyboardLayout,
+} from "./dictationShortcut";
 
 /** What the composer needs for speech input. Without it there is no mic. */
 export type ComposerSpeech = {
@@ -30,7 +36,60 @@ const holdMs = 500;
 const isMac =
   typeof navigator !== "undefined" &&
   /Mac|iPhone|iPad/.test(navigator.platform);
-export const dictationShortcut = dictationShortcutFor(isMac);
+
+/** The dictation shortcut, named after the key the layout has left of 1
+ * once the browser has said what that is. */
+export function useDictationShortcut(): DictationShortcut {
+  const [layout, setLayout] = useState<KeyboardLayout | null>(null);
+  useEffect(() => {
+    let live = true;
+    void readKeyboardLayout().then((read) => {
+      if (live) setLayout(read);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  return useMemo(() => dictationShortcutFor({ mac: isMac, layout }), [layout]);
+}
+
+/** "Enter, Esc tai ⌘§": a list of keys the way the hint reads it. */
+function either(keys: string[]) {
+  return keys.length < 2
+    ? (keys[0] ?? "")
+    : `${keys.slice(0, -1).join(", ")} tai ${keys.at(-1)}`;
+}
+
+/** Where a dictation writes: the selection it replaces or the caret. */
+export type Caret = [start: number, end: number];
+
+/** The field split at the caret; the dictated text goes between. */
+function aroundCaret(text: string, caret: Caret | undefined) {
+  const end = Math.min(caret?.[1] ?? text.length, text.length);
+  const start = Math.min(caret?.[0] ?? end, end);
+  const before = text.slice(0, start);
+  return {
+    // A word said after one written is a word of its own.
+    before: before && !/\s$/.test(before) ? `${before} ` : before,
+    after: text.slice(end),
+  };
+}
+
+/** What follows is apart from what was said, unless it is punctuation. */
+function gap(said: string, after: string) {
+  return said && after && !/\s$/.test(said) && !/^[\s.,;:!?)\]}»”]/.test(after)
+    ? " "
+    : "";
+}
+
+/** The field once the dictated text is in, and the caret right after it. */
+function dictatedInto(around: { before: string; after: string }, said: string) {
+  const { before, after } = around;
+  return {
+    text: `${before}${said}${gap(said, after)}${after}`,
+    caret: before.length + said.length,
+  };
+}
 
 function mmss(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -121,13 +180,14 @@ function noticeFor(view: DictationView): DictationNotice | null {
   }
 }
 
-/** One dictation for the composer: the engine, the text it started from,
- * and the press that may be a hold. onEnd receives the field's new text
- * once a dictation that heard something ends. */
+/** One dictation for the composer: the engine, the text around the caret it
+ * started from, and the press that may be a hold. onEnd receives the
+ * field's new text and the caret after the dictated words once a dictation
+ * that heard something ends. */
 export function useDictation(
   speech: ComposerSpeech | undefined,
   csrf: string | undefined,
-  onEnd: (text: string) => void,
+  onEnd: (text: string, caret: number) => void,
   /** The field's box: Enter there, or on nothing in particular, ends the
    * dictation as Valmis does. */
   scope: RefObject<HTMLElement | null>,
@@ -136,7 +196,7 @@ export function useDictation(
   const [notice, setNotice] = useState<DictationNotice | null>(null);
   const [holding, setHolding] = useState(false);
   const engine = useRef<Dictation | null>(null);
-  const base = useRef("");
+  const around = useRef({ before: "", after: "" });
   const ending = useRef(onEnd);
   ending.current = onEnd;
   const hold = useRef<{ at: number; timer: number } | null>(null);
@@ -150,8 +210,8 @@ export function useDictation(
         setView(next);
         if (next.phase === "idle" && next.ended) {
           if (next.final) {
-            const joined = `${base.current}${next.final}`;
-            ending.current(joined);
+            const done = dictatedInto(around.current, next.final);
+            ending.current(done.text, done.caret);
           }
           setNotice(noticeFor(next));
         }
@@ -165,11 +225,11 @@ export function useDictation(
     };
   }, [csrf, deps, !!speech]);
   const active = !!view && view.phase !== "idle";
-  const start = useCallback((text: string) => {
+  const start = useCallback((text: string, caret?: Caret) => {
     const d = engine.current;
     if (!d || d.active) return;
-    // Dictation goes on after what is already written.
-    base.current = text && !/\s$/.test(text) ? `${text} ` : text;
+    // Dictation writes at the caret, or in place of the selection.
+    around.current = aroundCaret(text, caret);
     setNotice(null);
     void d.start();
   }, []);
@@ -178,7 +238,7 @@ export function useDictation(
     const d = engine.current;
     if (!d?.active) return null;
     const final = await d.stop();
-    return final ? `${base.current}${final}` : null;
+    return final ? dictatedInto(around.current, final).text : null;
   }, []);
   useEffect(() => {
     if (!active) return;
@@ -226,8 +286,8 @@ export function useDictation(
   /** The mic's press: a tap starts, a hold of over half a second ends the
    * dictation when it is let go. */
   const press = useCallback(
-    (text: string) => {
-      start(text);
+    (text: string, caret?: Caret) => {
+      start(text, caret);
       const at = Date.now();
       const timer = window.setTimeout(() => setHolding(true), holdMs);
       hold.current = { at, timer };
@@ -250,7 +310,8 @@ export function useDictation(
     view,
     active,
     holding,
-    base: base.current,
+    before: around.current.before,
+    after: around.current.after,
     notice,
     dismiss: () => setNotice(null),
     start,
@@ -265,12 +326,16 @@ export type DictationState = ReturnType<typeof useDictation>;
 export function DictationControl({
   dictation,
   text,
+  caret,
   disabled,
 }: {
   dictation: DictationState;
   text: string;
+  /** The field's caret or selection, where the dictation writes. */
+  caret: () => Caret;
   disabled: boolean;
 }) {
+  const shortcut = useDictationShortcut();
   const pressed = useRef(false);
   const pill = useRef<HTMLButtonElement>(null);
   const { view, active, holding } = dictation;
@@ -296,13 +361,13 @@ export function DictationControl({
         data-testid="dictation-mic"
         className="ah-crow-btn ah-dictation-mic"
         aria-label="Sanele"
-        aria-keyshortcuts={dictationShortcut.aria}
-        title={`Sanele (${dictationShortcut.label}) · napauta aloittaaksesi, pidä pohjassa puhuaksesi`}
+        aria-keyshortcuts={shortcut.aria}
+        title={`Sanele (${either(shortcut.labels)}) · napauta aloittaaksesi, pidä pohjassa puhuaksesi`}
         disabled={disabled}
         onPointerDown={(event) => {
           if (event.button !== 0 || disabled) return;
           pressed.current = true;
-          dictation.press(text);
+          dictation.press(text, caret());
         }}
         onClick={() => {
           // A pointer press already started it; Enter and Space arrive here.
@@ -310,7 +375,7 @@ export function DictationControl({
             pressed.current = false;
             return;
           }
-          dictation.start(text);
+          dictation.start(text, caret());
         }}
       >
         <Icon name="mic" />
@@ -342,8 +407,8 @@ export function DictationControl({
       data-phase={view.phase}
       className={`ah-dictation-pill${listening ? "" : " busy"}${paused ? " paused" : ""}${holding ? " hold" : ""}`}
       aria-label={`Lopeta sanelu, ${mmss(view.elapsedMs)}`}
-      aria-keyshortcuts={`Enter Escape ${dictationShortcut.aria}`}
-      title={`Lopeta sanelu (Enter, Esc tai ${dictationShortcut.label}). Teksti jää kenttään.`}
+      aria-keyshortcuts={`Enter Escape ${shortcut.aria}`}
+      title={`Lopeta sanelu (${either(["Enter", "Esc", ...shortcut.labels])}). Teksti jää kenttään.`}
       onClick={() => void dictation.stop()}
     >
       <span className="ah-dictation-dot" aria-hidden="true" />
@@ -368,22 +433,21 @@ export function DictationControl({
   );
 }
 
-/** The field while dictating: what was written, the confirmed text and the
- * still-changing guess dimmed after it. */
+/** The field while dictating: what was written, with the confirmed text and
+ * the still-changing guess dimmed after it at the caret. */
 export function DictationLive({ dictation }: { dictation: DictationState }) {
-  const box = useRef<HTMLDivElement>(null);
+  const caret = useRef<HTMLSpanElement>(null);
   const view = dictation.view;
   // biome-ignore lint/correctness/useExhaustiveDependencies: follow new words.
   useEffect(() => {
-    const el = box.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    caret.current?.scrollIntoView?.({ block: "nearest" });
   }, [view?.final, view?.interim]);
   if (!view) return null;
-  const empty = !dictation.base && !view.final && !view.interim;
+  const empty =
+    !dictation.before && !dictation.after && !view.final && !view.interim;
   return (
     // biome-ignore lint/a11y/useSemanticElements: a read-only text box whose guess is styled apart, which a textarea cannot show.
     <div
-      ref={box}
       data-testid="dictation-live"
       className={`ah-cbox-field ah-dictation-live${empty ? " empty" : ""}`}
       role="textbox"
@@ -393,14 +457,16 @@ export function DictationLive({ dictation }: { dictation: DictationState }) {
       aria-label="Sanelu"
       data-placeholder="Puhu, teksti tulee tähän…"
     >
-      {dictation.base}
+      {dictation.before}
       <span data-testid="dictation-final">{view.final}</span>
       {view.phase !== "finishing" ? (
         <span data-testid="dictation-interim" className="ah-dictation-interim">
           {view.interim}
         </span>
       ) : null}
-      <span className="ah-dictation-caret" aria-hidden="true" />
+      <span ref={caret} className="ah-dictation-caret" aria-hidden="true" />
+      {gap(`${view.final}${view.interim}`, dictation.after)}
+      {dictation.after}
     </div>
   );
 }
@@ -433,10 +499,12 @@ export function DictationCeiling({ view }: { view: DictationView | null }) {
 export function DictationNoticeView({
   dictation,
   text,
+  caret,
   onOpenSettings,
 }: {
   dictation: DictationState;
   text: string;
+  caret: () => Caret;
   onOpenSettings: () => void;
 }) {
   const n = dictation.notice;
@@ -469,7 +537,7 @@ export function DictationNoticeView({
                   if (action === "settings") {
                     dictation.dismiss();
                     onOpenSettings();
-                  } else dictation.start(text);
+                  } else dictation.start(text, caret());
                 }}
               >
                 {labels[action]}

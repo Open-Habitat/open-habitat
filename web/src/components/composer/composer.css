@@ -924,8 +924,8 @@
 }
 
 /* ---- speech input (proto-speech-input) ---- */
-/* While dictating, the field shows what was written, the confirmed text and
-   Soniox's changing guess dimmed after it; the box's edge turns the
+/* While dictating, the field shows what was written with the confirmed text
+   and Soniox's changing guess dimmed at the caret; the box's edge turns the
    recording colour. */
 .ah-cbox-dictating {
   border-color: color-mix(in srgb, var(--ah-err) 55%, var(--ah-line-strong));

@@ -95,6 +95,37 @@ async function control(page: Page, query: string) {
   ).toBe(204);
 }
 
+/** The layout Chromium's layout map reports, and a Mac's platform when the
+ * case wants one, so the hint and the key's place do not hang on the host. */
+async function keyboard(
+  page: Page,
+  layout: Record<string, string>,
+  platform?: string,
+) {
+  await page.addInitScript(
+    ({ layout, platform }) => {
+      Object.defineProperty(navigator, "keyboard", {
+        value: {
+          getLayoutMap: async () => new Map(Object.entries(layout)),
+        },
+      });
+      if (platform)
+        Object.defineProperty(navigator, "platform", { get: () => platform });
+    },
+    { layout, platform },
+  );
+}
+
+async function saveOwnKey(page: Page) {
+  await page.goto("/settings/speech");
+  await page.getByTestId("speech-key-input").fill(ownKey);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
+    "data-source",
+    "own",
+  );
+}
+
 const mic = (page: Page) =>
   page.getByRole("button").and(page.getByTestId("dictation-mic"));
 const pill = (page: Page) => page.getByTestId("dictation-stop");
@@ -173,20 +204,15 @@ test("@speech Enter ends a dictation as Valmis does and sends nothing; the short
   page,
 }) => {
   test.setTimeout(90_000);
+  await keyboard(page, { Backquote: "`", IntlBackslash: "\\", KeyA: "a" });
   await signIn(page);
-  await page.goto("/settings/speech");
-  await page.getByTestId("speech-key-input").fill(ownKey);
-  await page.getByTestId("speech-key-save").click();
-  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
-    "data-source",
-    "own",
-  );
+  await saveOwnKey(page);
   await openConversation(page);
   const field = page.getByTestId("message-input");
-  // The browser host runs on Linux, where the shortcut is Ctrl+§. Its US
-  // layout has no §, so the key left of 1 (Backquote) stands in for it.
-  await expect(mic(page)).toHaveAttribute("aria-keyshortcuts", "Control+§");
-  await expect(mic(page)).toHaveAttribute("title", /Ctrl\+§/);
+  // Off the Mac the shortcut is Ctrl and the key left of 1, named after
+  // what the layout types there: ` on this US layout.
+  await expect(mic(page)).toHaveAttribute("aria-keyshortcuts", "Control+`");
+  await expect(mic(page)).toHaveAttribute("title", /Sanele \(Ctrl\+`\)/);
 
   await field.fill("Alku");
   await page.keyboard.press("Control+Backquote");
@@ -204,21 +230,28 @@ test("@speech Enter ends a dictation as Valmis does and sends nothing; the short
   await expect(page.locator("main")).not.toContainText("Kysyit:");
 
   // The shortcut from the field starts a dictation and ends it as Valmis,
-  // also as a Nordic keyboard's § whose code is not Backquote.
+  // whatever the key types; Ctrl and the key beside the left Shift does
+  // nothing.
   await page.keyboard.press("Control+Backquote");
   await expect(pill(page)).toHaveAttribute("data-phase", "live");
   await expect.poll(async () => (await soniox(page)).open).toBe(1);
-  await pill(page).evaluate((el) =>
-    el.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "§",
-        code: "IntlBackslash",
-        ctrlKey: true,
-        bubbles: true,
-        cancelable: true,
-      }),
-    ),
-  );
+  const ctrl = (key: string, code: string) =>
+    pill(page).evaluate(
+      (el, { key, code }) =>
+        el.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key,
+            code,
+            ctrlKey: true,
+            bubbles: true,
+            cancelable: true,
+          }),
+        ),
+      { key, code },
+    );
+  await ctrl("<", "IntlBackslash");
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  await ctrl("§", "Backquote");
   await expect(pill(page)).toHaveCount(0);
   await expect.poll(async () => (await soniox(page)).ended).toBe(2);
   await expect(field).toHaveValue("Alku sanelu");
@@ -229,6 +262,87 @@ test("@speech Enter ends a dictation as Valmis does and sends nothing; the short
   await expect(page.locator("main")).toContainText('Kysyit: "Alku sanelu"', {
     timeout: 20_000,
   });
+});
+
+test("@speech on a Mac ISO board ⌘ and the key left of 1 dictates at the caret, never ⌘<", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  // Chromium on a Finnish Mac ISO board: the key left of 1 (§) reports
+  // IntlBackslash and the key beside the left Shift (<) Backquote.
+  await keyboard(page, { IntlBackslash: "§", Backquote: "<" }, "MacIntel");
+  await signIn(page);
+  await saveOwnKey(page);
+  await openConversation(page);
+  const field = page.getByTestId("message-input");
+  await expect(mic(page)).toHaveAttribute(
+    "aria-keyshortcuts",
+    "Meta+§ Meta+Shift+Space",
+  );
+  await expect(mic(page)).toHaveAttribute("title", /Sanele \(⌘§\)/);
+
+  const press = (key: string, code: string) =>
+    field.evaluate(
+      (el, { key, code }) =>
+        el.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key,
+            code,
+            metaKey: true,
+            bubbles: true,
+            cancelable: true,
+          }),
+        ),
+      { key, code },
+    );
+  await field.fill("Alku loppu");
+  // The caret after "Alku ".
+  await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(5, 5));
+  // ⌘<, macOS's window cycling here, whose code is Backquote, does nothing.
+  await press("<", "Backquote");
+  await expect(mic(page)).toBeVisible();
+  await press("§", "IntlBackslash");
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  await say(page, [
+    { text: " keskellä", start_ms: 0, end_ms: 400, is_final: true },
+    { text: " vielä", is_final: false },
+  ]);
+  // What is said, and the guess, show where the caret was.
+  await expect(page.getByTestId("dictation-live")).toHaveText(
+    "Alku keskellä vielä loppu",
+  );
+  await say(page, [
+    { text: " vielä", start_ms: 400, end_ms: 800, is_final: true },
+  ]);
+  await expect(page.getByTestId("dictation-final")).toHaveText(
+    "keskellä vielä",
+  );
+  await page.keyboard.press("Enter");
+  await expect(pill(page)).toHaveCount(0);
+  await expect(field).toHaveValue("Alku keskellä vielä loppu");
+  await expect(field).toBeFocused();
+  // The caret is right after what was said, so typing goes on from there.
+  expect(
+    await field.evaluate((el: HTMLTextAreaElement) => [
+      el.selectionStart,
+      el.selectionEnd,
+    ]),
+  ).toEqual([19, 19]);
+
+  // A selection is replaced.
+  await field.evaluate((el: HTMLTextAreaElement) =>
+    el.setSelectionRange(5, 19),
+  );
+  await press("§", "IntlBackslash");
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  await expect.poll(async () => (await soniox(page)).open).toBe(1);
+  await say(page, [
+    { text: " tässä", start_ms: 0, end_ms: 400, is_final: true },
+  ]);
+  await expect(page.getByTestId("dictation-final")).toHaveText("tässä");
+  await press("§", "IntlBackslash");
+  await expect(pill(page)).toHaveCount(0);
+  await expect(field).toHaveValue("Alku tässä loppu");
 });
 
 test("@speech the microphone listens from the press: what is said while a slow key and stream open reaches Soniox, even after Valmis", async ({
@@ -483,16 +597,6 @@ test("@speech the dictation warns a minute before the ten-minute ceiling and end
   await expect(page.getByTestId("message-input")).toHaveValue("Pitkä sanelu");
   await expect.poll(async () => (await soniox(page)).ended).toBe(1);
 });
-
-async function saveOwnKey(page: Page) {
-  await page.goto("/settings/speech");
-  await page.getByTestId("speech-key-input").fill(ownKey);
-  await page.getByTestId("speech-key-save").click();
-  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
-    "data-source",
-    "own",
-  );
-}
 
 test("@speech a new conversation dictates before it exists and keeps what was said once created", async ({
   page,

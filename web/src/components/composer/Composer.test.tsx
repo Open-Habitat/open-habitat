@@ -713,8 +713,9 @@ describe("composer speech input", () => {
   function Stateful(props: {
     deps: ReturnType<typeof fakeSpeech>["deps"];
     onSendNow: (text?: string) => void;
+    initial?: string;
   }) {
-    const [value, setValue] = useState("Alku");
+    const [value, setValue] = useState(props.initial ?? "Alku");
     return (
       <Composer
         {...base}
@@ -765,5 +766,59 @@ describe("composer speech input", () => {
       expect(sent).toHaveBeenCalledWith("Alku sanelu jatkuu."),
     );
     expect(field(view).value).toBe("Alku sanelu jatkuu.");
+  });
+
+  it("dictates at the caret or over the selection, shows the guess there and leaves the caret after it", async () => {
+    // "Alku POIS loppu" with a caret, a selection, a caret before a space
+    // and one at the start; a word follows what was said with a space.
+    for (const [at, live, done, caret] of [
+      [[5, 5], "Alku sanelu jatkuu| POIS loppu", "Alku sanelu POIS loppu", 11],
+      [[5, 9], "Alku sanelu jatkuu| loppu", "Alku sanelu loppu", 11],
+      [[4, 4], "Alku sanelu jatkuu| POIS loppu", "Alku sanelu POIS loppu", 11],
+      [[0, 0], "sanelu jatkuu| Alku POIS loppu", "sanelu Alku POIS loppu", 6],
+    ] as const) {
+      const { deps, sockets } = fakeSpeech();
+      const view = render(
+        <Stateful deps={deps} onSendNow={noop} initial="Alku POIS loppu" />,
+      );
+      const input = field(view);
+      input.focus();
+      input.setSelectionRange(at[0], at[1]);
+      const mic = view.getByTestId("dictation-mic");
+      fireEvent.pointerDown(mic, { button: 0 });
+      fireEvent.pointerUp(window);
+      fireEvent.click(mic);
+      await waitFor(() => expect(sockets).toHaveLength(1));
+      await act(async () => sockets[0]?.onopen?.());
+      await act(async () =>
+        sockets[0]?.onmessage?.({
+          data: JSON.stringify({
+            tokens: [
+              { text: " sanelu", is_final: true },
+              { text: " jatkuu", is_final: false },
+            ],
+          }),
+        }),
+      );
+      const shown = view.getByTestId("dictation-live");
+      const caretMark = shown.querySelector(".ah-dictation-caret");
+      expect(
+        Array.from(shown.childNodes)
+          .map((n) => (n === caretMark ? "|" : n.textContent))
+          .join(""),
+      ).toBe(live);
+      fireEvent.click(view.getByTestId("dictation-stop"));
+      await waitFor(() => expect(sockets[0]?.sent.at(-1)).toBe(""));
+      await act(async () =>
+        sockets[0]?.onmessage?.({
+          data: JSON.stringify({ tokens: [], finished: true }),
+        }),
+      );
+      await waitFor(() => expect(field(view).value).toBe(done));
+      await waitFor(() => expect(document.activeElement).toBe(field(view)));
+      expect(field(view).selectionStart).toBe(caret);
+      expect(field(view).selectionEnd).toBe(caret);
+      view.unmount();
+    }
   });
 });

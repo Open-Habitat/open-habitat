@@ -3,11 +3,12 @@ created: 2026-10-30
 updated: 2026-10-30
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: speech-input
 lane_seq: 22
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Dictation writes at the cursor; shortcut is ⌘ + the key below Esc on any layout
@@ -30,10 +31,10 @@ Jari 30.10. (pilot.522–523):
 
 ## Acceptance Criteria
 
-- [ ] Sanelu lisää tekstin kursorin kohdalle tai korvaa valinnan, ja kursori
+- [x] Sanelu lisää tekstin kursorin kohdalle tai korvaa valinnan, ja kursori
       jää lisätyn tekstin perään; väliaikainen teksti näkyy samassa kohdassa.
-- [ ] Pikanäppäin tunnistetaan fyysisestä paikasta (Escin alla) kaikilla
+- [x] Pikanäppäin tunnistetaan fyysisestä paikasta (Escin alla) kaikilla
       asetteluilla, Chromen Mac-ISO-koodivaihto huomioiden; jos käyttöjärjestelmä
       vie yhdistelmän jollain asettelulla (macOS ⌘+` ikkunanvaihto ANSI:lla), se
       kerrotaan result.md:ssä ja vihje näyttää toimivan vaihtoehdon.
-- [ ] Yksikkötestit ja speech-input.spec.
+- [x] Yksikkötestit ja speech-input.spec.
