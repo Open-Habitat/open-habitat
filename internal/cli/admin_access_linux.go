@@ -20,6 +20,14 @@ type controlAccessEntry struct {
 	Denied        bool            `json:"denied"`
 	Onboarding    *controlReceipt `json:"onboarding,omitempty"`
 	SiteKeyCopy   *controlCopy    `json:"site_key_copy,omitempty"`
+	// AdministratorRole is root's or a browser administrator's role,
+	// granted or waiting for the sign-in that binds the id.
+	AdministratorRole *struct {
+		Source string `json:"source"`
+		State  string `json:"state"`
+		Actor  string `json:"actor,omitempty"`
+		At     string `json:"at,omitempty"`
+	} `json:"administrator_role,omitempty"`
 }
 type controlAccess struct {
 	SchemaVersion    int                  `json:"schema_version"`

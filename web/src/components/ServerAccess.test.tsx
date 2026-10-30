@@ -349,6 +349,79 @@ it("confirms a removal before sending it", () => {
   );
 });
 
+it("names an admitted person administrator after confirming, and revokes only a designation", () => {
+  const onRole = vi.fn();
+  setup({
+    onRole,
+    view: {
+      ...base,
+      entries: [
+        {
+          ...entries[0],
+          administrator_role: { source: "operator", state: "granted" },
+        },
+        ...entries.slice(1, 3),
+        {
+          ...entries[3],
+          administrator: true,
+          administrator_role: {
+            source: "site_admin",
+            state: "granted",
+            actor: "42",
+            at: "2026-10-30T08:00:00Z",
+          },
+        },
+        entries[4],
+      ],
+    },
+  });
+  // site.json's administrator has no role control; a withdrawal still in
+  // doubt is no time to change a role.
+  expect(within(row("42")).queryByRole("button")).toBeNull();
+  expect(button("access-role-46")).toBeNull();
+  // Carol has not signed in: she can be named all the same.
+  fireEvent.click(screen.getByTestId("access-role-44"));
+  expect(onRole).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByTestId("access-grant-confirm"));
+  expect(onRole).toHaveBeenCalledWith(
+    expect.objectContaining({ id: "44" }),
+    true,
+  );
+  // A designated role is revocable even after the person's access ended.
+  fireEvent.click(screen.getByTestId("access-role-45"));
+  expect(onRole).toHaveBeenLastCalledWith(
+    expect.objectContaining({ id: "45" }),
+    false,
+  );
+});
+
+it("shows a pending designation, and one whose admission is gone", () => {
+  setup({
+    onRole: vi.fn(),
+    view: {
+      ...base,
+      entries: [
+        {
+          ...entries[2],
+          administrator_role: { source: "site_admin", state: "pending" },
+        },
+        {
+          id: "48",
+          source: "none",
+          state: "unlisted",
+          administrator: false,
+          denied: false,
+          administrator_role: { source: "site_admin", state: "pending" },
+        },
+      ],
+    },
+  });
+  expect(row("44").dataset.admin).toBe("pending");
+  expect(row("48").dataset.state).toBe("withdrawn");
+  expect(button("access-role-48")).toBeTruthy();
+  expect(button("access-remove-48")).toBeNull();
+});
+
 it("marks a waiting change and an uncertain one, and shows a new id before the broker lists it", () => {
   const calls = setup({
     pending: {

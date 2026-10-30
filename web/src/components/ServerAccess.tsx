@@ -23,7 +23,7 @@ import "./ServerAccess.css";
 /** A change the browser sent and the host has not settled. login and name
  * come from the lookup, for a row the list does not have yet. */
 export type PendingChange = {
-  kind: "add" | "restore" | "remove" | "uncertain";
+  kind: "add" | "restore" | "remove" | "grant" | "revoke" | "uncertain";
   login?: string;
   name?: string;
 };
@@ -39,10 +39,11 @@ const day = (iso?: string) => {
   return `${d.getDate()}.${d.getMonth() + 1}.${year ? "" : d.getFullYear()}`;
 };
 
-/** Withdrawn, or a deny with no admission behind it: either way the person
- * cannot sign in and the row is no longer an open admission. */
+/** Withdrawn, a deny with no admission behind it, or a designation whose
+ * admission is gone: the person cannot sign in and the row is no longer an
+ * open admission. */
 const closed = (e: AccessEntry) =>
-  e.state === "withdrawn" || e.state === "denied";
+  e.state === "withdrawn" || e.state === "denied" || e.state === "unlisted";
 /** A deny on a row that still admits means a withdrawal was not confirmed. */
 const unfinished = (e: AccessEntry) => e.denied && !closed(e);
 
@@ -87,16 +88,20 @@ function StateMark({ r }: { r: Row }) {
         tone="info"
         animated="running"
         label={
-          r.pending.kind === "remove"
-            ? "Poistetaan · odottaa palvelinta"
-            : r.pending.kind === "restore"
-              ? "Palautetaan · odottaa palvelinta"
-              : "Lisätään · odottaa palvelinta"
+          {
+            remove: "Poistetaan · odottaa palvelinta",
+            restore: "Palautetaan · odottaa palvelinta",
+            add: "Lisätään · odottaa palvelinta",
+            grant: "Nimetään ylläpitäjäksi · odottaa palvelinta",
+            revoke: "Poistetaan ylläpitäjyys · odottaa palvelinta",
+          }[r.pending.kind]
         }
       />
     );
   if (unfinished(r))
     return <StatusMark data-testid={id} tone="warning" label="Poisto kesken" />;
+  if (r.state === "unlisted")
+    return <StatusMark data-testid={id} tone="warning" label="Ei pääsyä" />;
   if (closed(r))
     return (
       <StatusMark data-testid={id} tone="warning" label="Pääsy poistettu" />
@@ -106,7 +111,11 @@ function StateMark({ r }: { r: Row }) {
       <StatusMark
         data-testid={id}
         tone="neutral"
-        label="Ei vielä kirjautunut"
+        label={
+          r.administrator_role
+            ? "Ylläpitäjä ensimmäisestä kirjautumisesta"
+            : "Ei vielä kirjautunut"
+        }
       />
     );
   return (
@@ -130,6 +139,16 @@ function Facts({ r }: { r: Row }) {
   if (r.state === "allowed" && r.at)
     items.push(<span key="a">Sallittu {day(r.at)}</span>);
   if (r.last_seen) items.push(<span key="s">Viimeksi {day(r.last_seen)}</span>);
+  const role = r.administrator_role;
+  if (role?.source === "operator")
+    items.push(<span key="r">Ylläpitäjä palvelimen asetuksista</span>);
+  else if (role)
+    items.push(
+      <span key="r">
+        {role.state === "pending" ? "Nimetty ylläpitäjäksi" : "Ylläpitäjä"}
+        {role.at && ` ${day(role.at)}`}
+      </span>,
+    );
   if (r.state === "withdrawn" && r.at)
     items.push(<span key="w">Poistettu {day(r.at)}</span>);
   return items.length ? <span className="sa-facts">{items}</span> : null;
@@ -256,6 +275,57 @@ function RowAction({
     >
       <Icon name="cross" />
       {r.state === "joined" ? "Poista pääsy" : "Poista"}
+    </ControlButton>
+  );
+}
+
+// The role control: an administrator names an admitted person, signed in or
+// not, and revokes only a role named here. site.json's roles have none.
+function RoleAction({
+  r,
+  locked,
+  onGrant,
+  onRevoke,
+}: {
+  r: Row;
+  locked: boolean;
+  onGrant: (r: Row) => void;
+  onRevoke: (r: Row) => void;
+}) {
+  if (r.pending) return null;
+  const role = r.administrator_role;
+  if (role?.source === "site_admin")
+    return (
+      <ControlButton
+        data-testid={`access-role-${r.id}`}
+        size="row"
+        variant="quiet"
+        isDisabled={locked}
+        aria-label={`Poista ${who(r)} ylläpitäjyys`}
+        onPress={() => onRevoke(r)}
+      >
+        Poista ylläpitäjyys
+      </ControlButton>
+    );
+  // Naming needs an open admission; revoking only subtracts, so it is
+  // offered whatever the row's state.
+  if (
+    role ||
+    r.administrator ||
+    r.denied ||
+    (r.state !== "allowed" && r.state !== "joined")
+  )
+    return null;
+  return (
+    <ControlButton
+      data-testid={`access-role-${r.id}`}
+      size="row"
+      variant="quiet"
+      isDisabled={locked}
+      aria-label={`Tee ${who(r)} ylläpitäjäksi`}
+      onPress={() => onGrant(r)}
+    >
+      Tee ylläpitäjäksi
     </ControlButton>
   );
 }
@@ -688,6 +758,69 @@ function RemoveDialog({
   );
 }
 
+function GrantDialog({
+  r,
+  onConfirm,
+  onClose,
+}: {
+  r: Row;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const waiting = r.state === "allowed";
+  return (
+    <ModalOverlay
+      className="ah-overlay"
+      isOpen
+      isDismissable
+      onOpenChange={(open) => !open && onClose()}
+    >
+      <Modal className="ah-modal">
+        <Dialog
+          className="ah-dialog sa-dialog"
+          data-testid="access-grant-dialog"
+        >
+          <Heading slot="title">Tee {who(r)} ylläpitäjäksi?</Heading>
+          <ul className="sa-consequences">
+            <li>
+              <Icon name="shield" />
+              <span>
+                Voi hallita palvelimen asetuksia, pääsyä ja muita ylläpitäjiä.
+              </span>
+            </li>
+            {waiting && (
+              <li>
+                <Icon name="info" />
+                <span>
+                  Rooli tulee voimaan, kun GitHub-tili {r.id} kirjautuu
+                  ensimmäisen kerran. Se kuuluu tilille, ei nimelle: jos tunnus
+                  vaihtuu, rooli ei siirry.
+                </span>
+              </li>
+            )}
+          </ul>
+          <div className="ah-dialog-actions">
+            <ControlButton size="page" variant="secondary" onPress={onClose}>
+              Peruuta
+            </ControlButton>
+            <ControlButton
+              data-testid="access-grant-confirm"
+              size="page"
+              variant="primary"
+              onPress={() => {
+                onConfirm();
+                onClose();
+              }}
+            >
+              Tee ylläpitäjäksi
+            </ControlButton>
+          </div>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+}
+
 export function ServerAccess({
   view,
   pending = {},
@@ -696,6 +829,7 @@ export function ServerAccess({
   lookup,
   onAdd,
   onRemove,
+  onRole,
   onRefresh,
 }: {
   view: AccessView;
@@ -706,10 +840,13 @@ export function ServerAccess({
   lookup: (login: string) => Promise<LookupResult>;
   onAdd: (user: GitHubAccount, restore: boolean) => Promise<AddOutcome>;
   onRemove: (entry: AccessEntry) => void;
+  /** Designate the person as administrator, or revoke that designation. */
+  onRole?: (entry: AccessEntry, administrator: boolean) => void;
   onRefresh: () => void;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [removing, setRemoving] = useState<Row>();
+  const [granting, setGranting] = useState<Row>();
   const open = view.mode === "any";
   const rows: Row[] = view.entries.map((e) => ({
     ...e,
@@ -793,6 +930,7 @@ export function ServerAccess({
             data-testid={`access-row-${r.id}`}
             data-state={unfinished(r) ? "unfinished" : stage(r)}
             data-pending={r.pending?.kind}
+            data-admin={r.administrator_role?.state}
           >
             <span className="sa-main">
               <span className="sa-who">
@@ -824,6 +962,14 @@ export function ServerAccess({
               )}
             </span>
             <span className="sa-act">
+              {onRole && (
+                <RoleAction
+                  r={r}
+                  locked={!canWrite}
+                  onGrant={setGranting}
+                  onRevoke={(x) => onRole(x, false)}
+                />
+              )}
               <RowAction
                 r={r}
                 locked={open || !canWrite}
@@ -853,6 +999,13 @@ export function ServerAccess({
           r={removing}
           onConfirm={() => onRemove(removing)}
           onClose={() => setRemoving(undefined)}
+        />
+      )}
+      {granting && onRole && (
+        <GrantDialog
+          r={granting}
+          onConfirm={() => onRole(granting, true)}
+          onClose={() => setGranting(undefined)}
         />
       )}
     </div>

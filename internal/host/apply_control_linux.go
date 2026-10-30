@@ -22,6 +22,17 @@ type applySettings struct {
 	// Pending are declared administrators the gateway grants at the
 	// sign-in that binds them.
 	Pending []string `json:"pending_administrators"`
+	// Designated are roles a browser administrator gave. They are the
+	// gateway's own administration, not site.json's, so apply neither
+	// removes nor requires them.
+	Designated []applyDesignation `json:"designated_administrators"`
+}
+type applyDesignation struct {
+	ID string `json:"id"`
+}
+
+func (s applySettings) designated(id string) bool {
+	return slices.Contains(s.Designated, applyDesignation{id})
 }
 
 func control(ctx context.Context, request any, reply any) error {
@@ -171,8 +182,9 @@ func (n *nativeApply) converge(ctx context.Context) error {
 }
 
 // administrationCheck says how much of the gateway's administration must
-// equal site.json. Administrators come only from site.json, so every check
-// that requires them requires exactly the declared ones. The quota default is
+// equal site.json. Root's administrators come only from site.json, so every
+// check that requires them requires exactly the declared ones; a browser
+// administrator's designations are the gateway's own and never required. The quota default is
 // different: site.json declares it and apply converges it, but a current
 // administrator may change it in the browser afterwards, so between applies
 // the gateway's value is the live one.
@@ -243,7 +255,9 @@ func administrationMatches(s Site, settings applySettings, bound []string, check
 			roles = append(roles, AdministratorOutcome{id, "deferred_until_bound"})
 		}
 	}
-	got := slices.Clone(settings.Administrators)
+	got := slices.DeleteFunc(slices.Clone(settings.Administrators), func(id string) bool {
+		return settings.designated(id) && !slices.Contains(want, id)
+	})
 	slices.Sort(got)
 	slices.Sort(want)
 	if !slices.Equal(got, want) {
@@ -261,10 +275,13 @@ func administrationMatches(s Site, settings applySettings, bound []string, check
 	return roles, ""
 }
 
-// convergeRoles makes the gateway's administrators exactly site.json's
-// declared ones that are bound, and records each declared but unbound one as
-// pending, which the gateway grants at the sign-in that creates its binding.
-// Roles and pending declarations site.json no longer makes are removed.
+// convergeRoles makes the gateway's root-given administrators exactly
+// site.json's declared ones that are bound, and records each declared but
+// unbound one as pending, which the gateway grants at the sign-in that
+// creates its binding. Roles and pending declarations site.json no longer
+// makes are removed. A role a browser administrator designated is left as it
+// is, unless site.json declares the same id: then root's operation takes it
+// over, so the browser can no longer revoke a role site.json gives.
 func convergeRoles(ctx context.Context, exchange func(context.Context, any, any) error, declared, bound []string, settings applySettings) ([]AdministratorOutcome, error) {
 	var ack struct {
 		OK bool `json:"ok"`
@@ -277,7 +294,7 @@ func convergeRoles(ctx context.Context, exchange func(context.Context, any, any)
 		return nil
 	}
 	for _, id := range settings.Administrators {
-		if !slices.Contains(declared, id) {
+		if !slices.Contains(declared, id) && !settings.designated(id) {
 			if e := set("role", id, false); e != nil {
 				return nil, e
 			}
@@ -301,7 +318,7 @@ func convergeRoles(ctx context.Context, exchange func(context.Context, any, any)
 			roles = append(roles, AdministratorOutcome{id, "deferred_until_bound"})
 			continue
 		}
-		if !slices.Contains(settings.Administrators, id) {
+		if !slices.Contains(settings.Administrators, id) || settings.designated(id) {
 			if e := set("role", id, true); e != nil {
 				return nil, e
 			}

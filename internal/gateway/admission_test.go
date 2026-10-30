@@ -47,11 +47,16 @@ func (b *accessFake) ListBound(context.Context) ([]BoundUser, error) {
 	return []BoundUser{{ID: "42", Username: "alice"}, {ID: "43", Username: "bob"}}, nil
 }
 func (b *accessFake) LookupBound(_ context.Context, id string) (bool, error) {
+	b.fakeBroker.mu.Lock()
+	defer b.fakeBroker.mu.Unlock()
 	_, ok := b.routes[id]
-	return ok, nil
+	return ok && !b.unbound[id], nil
 }
 func (b *accessFake) row(id string) []AccessRow {
+	b.fakeBroker.mu.Lock()
 	route, bound := b.routes[id]
+	bound = bound && !b.unbound[id]
+	b.fakeBroker.mu.Unlock()
 	state := "allowed"
 	if bound {
 		state = "joined"
@@ -121,7 +126,7 @@ func (b *accessFake) Withdraw(_ context.Context, id, _ string) (AccessRow, error
 	if b.runtime[id] == "" {
 		return AccessRow{ID: id, Source: "site_admin", State: "removed"}, nil
 	}
-	if _, bound := b.routes[id]; !bound {
+	if bound, _ := b.LookupBound(context.Background(), id); !bound {
 		delete(b.runtime, id)
 		return AccessRow{ID: id, Source: "site_admin", State: "removed"}, nil
 	}

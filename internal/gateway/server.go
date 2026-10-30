@@ -54,6 +54,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(accessPath+"/lookup", s.auth.accessHTTP)
 		mux.HandleFunc(accessPath+"/add", s.auth.accessHTTP)
 		mux.HandleFunc(accessPath+"/remove", s.auth.accessHTTP)
+		mux.HandleFunc(accessPath+"/role", s.auth.accessHTTP)
 		mux.HandleFunc(integrationAppsPath, s.auth.integrationAppsHTTP)
 		mux.HandleFunc(integrationAppsPath+"/set", s.auth.integrationAppsHTTP)
 		mux.HandleFunc(integrationAppsPath+"/clear", s.auth.integrationAppsHTTP)

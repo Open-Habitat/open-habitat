@@ -200,7 +200,11 @@ Use the installed unit's explicit ExecStart configuration path for component
 inspection, not an assumed global default. Unbound requested
 administrators return `deferred_until_bound`: apply records them as pending
 (`admin settings show` lists `pending_administrators`), and the gateway grants
-the role at the sign-in that creates the binding, without another apply. Per-user quota overrides, committed
+the role at the sign-in that creates the binding, without another apply. A
+browser administrator can also name an admitted person administrator in
+Käyttäjät ja pääsy, before or after their first sign-in; apply leaves such
+designations (`designated_administrators`) alone, and declaring the same id in
+site.json makes the role site.json's. Per-user quota overrides, committed
 bindings, native credentials and personal files are never reseeded or reset.
 
 ### Rotating the TLS certificate and key

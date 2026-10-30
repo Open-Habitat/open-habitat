@@ -367,16 +367,18 @@ func TestApplyDeclaresUnboundAdministratorsForSignIn(t *testing.T) {
 		return json.Unmarshal([]byte(`{"ok":true}`), reply)
 	}
 	// 1 is declared and bound, 2 declared and unbound; 3 holds a role and 4 a
-	// pending declaration that site.json no longer makes.
-	settings := applySettings{Version: 1, Administrators: []string{"1", "3"}, Pending: []string{"2", "4"}}
-	roles, e := convergeRoles(context.Background(), exchange, []string{"1", "2"}, []string{"1", "3", "4"}, settings)
+	// pending declaration that site.json no longer makes. 5 holds a role a
+	// browser administrator designated, which apply leaves alone; 6 one that
+	// site.json now declares too, which root's grant takes over.
+	settings := applySettings{Version: 1, Administrators: []string{"1", "3", "5", "6"}, Pending: []string{"2", "4"}, Designated: []applyDesignation{{"5"}, {"6"}}}
+	roles, e := convergeRoles(context.Background(), exchange, []string{"1", "2", "6"}, []string{"1", "3", "4", "5", "6"}, settings)
 	if e != nil {
 		t.Fatal(e)
 	}
-	if !slices.Equal(calls, []string{"role 3 false", "role 4 false", "role_declared 2 true"}) {
+	if !slices.Equal(calls, []string{"role 3 false", "role 4 false", "role_declared 2 true", "role 6 true"}) {
 		t.Fatal(calls)
 	}
-	if !slices.Equal(roles, []AdministratorOutcome{{"1", "granted"}, {"2", "deferred_until_bound"}}) {
+	if !slices.Equal(roles, []AdministratorOutcome{{"1", "granted"}, {"2", "deferred_until_bound"}, {"6", "granted"}}) {
 		t.Fatal(roles)
 	}
 	refused := func(context.Context, any, any) error { return nil }

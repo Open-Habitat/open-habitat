@@ -92,6 +92,7 @@ checks = {
     "server-access-change.json": "server-access.schema.json",
     "server-access-changed.json": "server-access.schema.json",
     "server-access-lookup.json": "server-access.schema.json",
+    "server-access-role.json": "server-access.schema.json",
     "server-integrations.json": "server-integrations.schema.json",
     "server-integrations-set.json": "server-integrations.schema.json",
     "server-integrations-clear.json": "server-integrations.schema.json",
@@ -370,6 +371,7 @@ must_reject("first-route.schema.json", {"schema_version": 1, "web_identity_id": 
 must_reject("server-access.schema.json", {"id": "43", "login": "example-person"})
 must_reject("server-access.schema.json", {"login": "-bad"})
 must_reject("server-access.schema.json", {"subject": "43", "administrator": True})
+must_reject("server-access.schema.json", {"id": "43", "administrator": "yes"})
 # A secret never comes back in a list, and a set names only its provider's fields.
 must_reject("server-integrations.schema.json", {"schema_version": 1, "browser_setup": True, "apps": [{"provider": "google", "client_id": "1-a.apps.googleusercontent.com", "client_secret": "x", "usable": True, "source": "operator"}]})
 must_reject("server-integrations.schema.json", {"provider": "google", "fields": {"client_id": "a", "client_secret": "b", "tenant_id": "c"}})

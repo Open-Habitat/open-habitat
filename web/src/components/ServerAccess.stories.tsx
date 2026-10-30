@@ -19,6 +19,7 @@ const entries: AccessEntry[] = [
     last_seen: "2026-10-24T08:00:00Z",
     administrator: true,
     denied: false,
+    administrator_role: { source: "operator", state: "granted" },
   },
   {
     id: "51234001",
@@ -101,6 +102,7 @@ function Tab(props: Partial<Parameters<typeof ServerAccess>[0]>) {
         lookup={lookup}
         onAdd={async () => ({ kind: "changed" })}
         onRemove={() => {}}
+        onRole={() => {}}
         onRefresh={() => {}}
         {...props}
       />
@@ -181,6 +183,40 @@ export const ReceiptProblems: Story = {
           : e,
       ),
     },
+  },
+};
+/** An administrator named someone who has not signed in yet, and someone
+ * who has; both roles are revocable here, site.json's is not. */
+export const DesignatedAdministrators: Story = {
+  args: {
+    view: {
+      ...view,
+      entries: entries.map((e) =>
+        e.id === "51234003"
+          ? {
+              ...e,
+              administrator_role: {
+                source: "site_admin",
+                state: "pending",
+                actor: "51234000",
+                at: "2026-10-30T08:00:00Z",
+              },
+            }
+          : e.id === "51234001"
+            ? {
+                ...e,
+                administrator: true,
+                administrator_role: {
+                  source: "site_admin",
+                  state: "granted",
+                  actor: "51234000",
+                  at: "2026-10-29T08:00:00Z",
+                },
+              }
+            : e,
+      ),
+    },
+    pending: { "51234002": { kind: "grant" } },
   },
 };
 export const Phone: Story = {

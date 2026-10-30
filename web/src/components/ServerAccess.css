@@ -108,6 +108,8 @@
 .sa-act {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
 }
 .sa-consequences {
   list-style: none;

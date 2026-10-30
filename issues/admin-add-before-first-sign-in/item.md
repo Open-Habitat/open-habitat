@@ -3,12 +3,13 @@ created: 2026-10-28
 updated: 2026-10-30
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 provenance: chat
 source_ref: chat:2026-10-28/admin-add-before-first-sign-in
 lane: admission-ui
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Cannot make someone an administrator before they have signed in
@@ -19,7 +20,7 @@ Jari 2026-10-28 (Birch ja Contoso, pilot.13): Ylläpitäjiä ei saa lisättyä, 
 
 ## Acceptance Criteria
 
-- [ ] Selaimen ylläpitäjä voi nimetä vielä kirjautumattoman ylläpitäjäksi; rooli sitoutuu ensimmäisellä kirjautumisella; testi
+- [x] Selaimen ylläpitäjä voi nimetä vielä kirjautumattoman ylläpitäjäksi; rooli sitoutuu ensimmäisellä kirjautumisella; testi
 
 ## Comments
 

@@ -163,3 +163,64 @@ test("@server-access @a11y a lost broker reply leaves the row uncertain until re
   await expect(page.getByTestId("access-login-input")).toHaveCount(0);
   await expect(page.getByTestId("access-restore-43")).toBeDisabled();
 });
+
+test("@server-access an administrator names a person before their first sign-in; the role binds then and is revocable", async ({
+  page,
+  browser,
+}) => {
+  // Bob is admitted but has never signed in: no binding exists yet.
+  expect((await page.request.get("/fixture/access?unbound=43")).status()).toBe(
+    204,
+  );
+  await signIn(page, 0);
+  await page.goto("/settings/users");
+  const row = page.getByTestId("access-row-43");
+  const role = page.getByRole("button").and(page.getByTestId("access-role-43"));
+  const name = async () => {
+    await role.click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button")
+      .and(page.getByTestId("access-grant-confirm"))
+      .click();
+  };
+  await expect(row).toHaveAttribute("data-state", "allowed");
+  await name();
+  await expect(row).toHaveAttribute("data-admin", "pending");
+  await page.reload();
+  await expect(row).toHaveAttribute("data-admin", "pending");
+  // Revocable while it waits.
+  await role.click();
+  await expect(row).not.toHaveAttribute("data-admin", /./);
+  await page.reload();
+  await expect(row).not.toHaveAttribute("data-admin", /./);
+  await name();
+  await expect(row).toHaveAttribute("data-admin", "pending");
+
+  // Bob's first sign-in creates his binding and he is administrator from
+  // its first request.
+  const bobContext = await browser.newContext({
+    baseURL: hostOrigin,
+    ignoreHTTPSErrors: true,
+  });
+  const bob = await bobContext.newPage();
+  await signIn(bob, 1);
+  const server = async () =>
+    (await (await bob.request.get("/api/v1/server")).json()).administrator;
+  expect(await server()).toBe(true);
+  expect(
+    (await bob.request.get("/api/v1/server/administration")).status(),
+  ).toBe(200);
+  await page.reload();
+  await expect(row).toHaveAttribute("data-state", "joined");
+  await expect(row).toHaveAttribute("data-admin", "granted");
+
+  // Revoking a granted designation ends the role at once.
+  await role.click();
+  await expect(row).not.toHaveAttribute("data-admin", /./);
+  expect(await server()).toBe(false);
+  expect(
+    (await bob.request.get("/api/v1/server/administration")).status(),
+  ).toBe(403);
+  await bobContext.close();
+});

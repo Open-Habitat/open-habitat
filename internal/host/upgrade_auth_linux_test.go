@@ -103,6 +103,9 @@ func TestUpgradeAcceptsBrowserChangedQuotaDefault(t *testing.T) {
 		"undeclared role":    {func(a *applySettings, _ *Site) { a.Administrators = []string{"42", "44"} }, "administrators_not_applied"},
 		"missing role":       {func(a *applySettings, _ *Site) { a.Administrators = nil }, "administrators_not_applied"},
 		"undeclared pending": {func(a *applySettings, _ *Site) { a.Pending = []string{"45"} }, "administrators_not_applied"},
+		"browser designation": {func(a *applySettings, _ *Site) {
+			a.Administrators, a.Designated = []string{"42", "44"}, []applyDesignation{{"44"}, {"46"}}
+		}, ""},
 		"no quotas": {func(a *applySettings, s *Site) {
 			s.Storage.EnforceUserQuota, s.Storage.DefaultLimitBytes, a.DefaultLimitBytes = false, nil, 0
 		}, ""},

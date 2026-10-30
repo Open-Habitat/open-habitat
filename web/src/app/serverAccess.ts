@@ -38,10 +38,20 @@ export type OnboardingReceipt = {
   ai_key: "seeded" | "already_present" | "failed" | "unknown" | "not_offered";
 };
 
+/** An id's administrator role: root's from site.json (operator) or an
+ * administrator's designation here (site_admin), held now or from the sign-in
+ * that binds the id. */
+export type AdministratorRole = {
+  source: "operator" | "site_admin";
+  state: "pending" | "granted";
+  actor?: string;
+  at?: string;
+};
+
 export type AccessEntry = {
   id: string;
   source: "operator" | "site_admin" | "none";
-  state: "allowed" | "joined" | "withdrawn" | "removed" | "denied";
+  state: "allowed" | "joined" | "withdrawn" | "removed" | "denied" | "unlisted";
   username?: string;
   login_hint?: string;
   actor?: string;
@@ -57,6 +67,7 @@ export type AccessEntry = {
     at: string;
     current: boolean;
   };
+  administrator_role?: AdministratorRole;
 };
 export type AccessView = {
   schema_version: 1;
@@ -102,7 +113,7 @@ const post = (url: string, body: unknown, csrf: string, change: boolean) => {
     },
     body: JSON.stringify(body),
   };
-  // A lookup reads GitHub and changes nothing; only add and remove are writes.
+  // A lookup reads GitHub and changes nothing; every other post is a write.
   return change ? mutationFetch("server.access", url, init) : fetch(url, init);
 };
 
@@ -131,15 +142,24 @@ export async function lookupLogin(
 }
 
 /** add admits a new id or restores a withdrawn one; remove withdraws web
- * access. Nothing is retried: a lost reply is reported as uncertain. */
+ * access; grant and revoke designate an administrator or undo that
+ * designation. Nothing is retried: a lost reply is reported as uncertain. */
 export async function changeAccess(
   csrf: string,
-  action: "add" | "remove",
+  action: "add" | "remove" | "grant" | "revoke",
   id: string,
 ): Promise<ChangeResult> {
   let response: Response | undefined;
   try {
-    response = await post(`${path}/${action}`, { id }, csrf, true);
+    response =
+      action === "grant" || action === "revoke"
+        ? await post(
+            `${path}/role`,
+            { id, administrator: action === "grant" },
+            csrf,
+            true,
+          )
+        : await post(`${path}/${action}`, { id }, csrf, true);
   } catch {
     return { kind: "uncertain" };
   }
@@ -197,7 +217,9 @@ export function accessRefusal(code: string): string {
     case "admission_open":
       return "Pääsy on avoin kaikille.";
     case "operator_owned":
-      return "Tämä pääsy tulee palvelimen asetuksista.";
+      return "Tämä tulee palvelimen asetuksista.";
+    case "not_admitted":
+      return "Henkilöllä ei ole pääsyä, joten häntä ei voi nimetä ylläpitäjäksi.";
     case "binding_drift":
       return "Palvelin ei voinut vahvistaa käyttäjätiliä. Tarkista se komentorivillä.";
     case "admin_required":

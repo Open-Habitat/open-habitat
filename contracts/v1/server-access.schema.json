@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/server-access.schema.json",
   "title": "Who may sign in, and an administrator's admission changes",
-  "description": "GET /api/v1/server/access lists both admission sources: operator (root's site.json, never removable here) and site_admin (runtime entries the broker keeps). A row whose account was created at a sign-in under a site onboarding configuration carries onboarding, that sign-in's receipt. POST /api/v1/server/access/lookup {login} resolves a GitHub login to its numeric id through GitHub's public users API; organisations and bots are refused (github_not_user), unknown names are github_user_not_found. POST /api/v1/server/access/add {id} admits the id, or restores a withdrawn one to its same account; POST /api/v1/server/access/remove {id} withdraws web access only. A change is in effect only when the reply arrives; 503 outcome_uncertain means it may or may not have been committed, and nothing is retried. Refusals are fixed codes shared with root's admin access CLI: runtime_admission_disabled, runtime_admission_full, admission_open, operator_owned, binding_drift, github_user_not_found, github_not_user, github_lookup_unavailable, broker_unavailable. Administrator, session and CSRF are required.",
-  "oneOf": [{"$ref": "#/$defs/list"}, {"$ref": "#/$defs/lookup_request"}, {"$ref": "#/$defs/change_request"}, {"$ref": "#/$defs/lookup"}, {"$ref": "#/$defs/changed"}],
+  "description": "GET /api/v1/server/access lists both admission sources: operator (root's site.json, never removable here) and site_admin (runtime entries the broker keeps). A row whose account was created at a sign-in under a site onboarding configuration carries onboarding, that sign-in's receipt. POST /api/v1/server/access/lookup {login} resolves a GitHub login to its numeric id through GitHub's public users API; organisations and bots are refused (github_not_user), unknown names are github_user_not_found. POST /api/v1/server/access/add {id} admits the id, or restores a withdrawn one to its same account; POST /api/v1/server/access/remove {id} withdraws web access only. POST /api/v1/server/access/role {id, administrator} designates an admitted id as administrator (true) or revokes such a designation (false): the role is recorded by the numeric id, held at once by a bound id and otherwise from the sign-in that binds it, so a renamed or reused login never receives it; a role site.json gives is operator_owned here. A change is in effect only when the reply arrives; 503 outcome_uncertain means it may or may not have been committed, and nothing is retried. Refusals are fixed codes shared with root's admin access CLI: runtime_admission_disabled, runtime_admission_full, admission_open, operator_owned, binding_drift, github_user_not_found, github_not_user, github_lookup_unavailable, broker_unavailable, and not_admitted for a designation of an id that cannot sign in. Administrator, session and CSRF are required.",
+  "oneOf": [{"$ref": "#/$defs/list"}, {"$ref": "#/$defs/lookup_request"}, {"$ref": "#/$defs/change_request"}, {"$ref": "#/$defs/role_request"}, {"$ref": "#/$defs/lookup"}, {"$ref": "#/$defs/changed"}],
   "$defs": {
     "id": {"type": "string", "pattern": "^[1-9][0-9]{0,19}$"},
     "login": {"type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$"},
@@ -12,8 +12,8 @@
       "required": ["id", "source", "state", "administrator", "denied"],
       "properties": {
         "id": {"$ref": "#/$defs/id"},
-        "source": {"description": "operator: site.json; site_admin: a runtime entry; none: only the gateway's deny remains.", "enum": ["operator", "site_admin", "none"]},
-        "state": {"description": "allowed: admitted, not yet signed in; joined: admitted with an account; withdrawn: web access removed, the account stays; removed: a never-used admission was deleted (change reply only); denied: an unconfirmed withdrawal or leftover deny with no admission row.", "enum": ["allowed", "joined", "withdrawn", "removed", "denied"]},
+        "source": {"description": "operator: site.json; site_admin: a runtime entry; none: only the gateway's deny or an administrator designation remains.", "enum": ["operator", "site_admin", "none"]},
+        "state": {"description": "allowed: admitted, not yet signed in; joined: admitted with an account; withdrawn: web access removed, the account stays; removed: a never-used admission was deleted (change reply only); denied: an unconfirmed withdrawal or leftover deny with no admission row; unlisted: an administrator designation whose admission root has since removed.", "enum": ["allowed", "joined", "withdrawn", "removed", "denied", "unlisted"]},
         "username": {"type": "string", "maxLength": 32},
         "login_hint": {"$ref": "#/$defs/login"},
         "actor": {"description": "The administrator's GitHub id or root, as the gateway reported it; provenance, not proof.", "type": "string", "pattern": "^(?:root|[1-9][0-9]{0,19})$"},
@@ -22,7 +22,19 @@
         "administrator": {"type": "boolean"},
         "denied": {"description": "The gateway refuses this subject. True on a row that is not withdrawn means a withdrawal was not confirmed.", "type": "boolean"},
         "onboarding": {"$ref": "#/$defs/receipt"},
-        "site_key_copy": {"$ref": "#/$defs/site_key_copy"}
+        "site_key_copy": {"$ref": "#/$defs/site_key_copy"},
+        "administrator_role": {"$ref": "#/$defs/administrator_role"}
+      }
+    },
+    "administrator_role": {
+      "description": "The id's administrator role. operator: site.json declares it, and only root changes it; site_admin: an administrator designated it here and may revoke it. pending: granted at the sign-in that binds the id; granted: held now (administrator is true).",
+      "type": "object", "additionalProperties": false,
+      "required": ["source", "state"],
+      "properties": {
+        "source": {"enum": ["operator", "site_admin"]},
+        "state": {"enum": ["pending", "granted"]},
+        "actor": {"description": "The designating administrator's GitHub id; provenance, not proof. Only a designation carries it.", "$ref": "#/$defs/id"},
+        "at": {"description": "When it was designated.", "type": "string", "format": "date-time"}
       }
     },
     "site_key_copy": {
@@ -65,6 +77,7 @@
     },
     "lookup_request": {"type": "object", "additionalProperties": false, "required": ["login"], "properties": {"login": {"$ref": "#/$defs/login"}}},
     "change_request": {"type": "object", "additionalProperties": false, "required": ["id"], "properties": {"id": {"$ref": "#/$defs/id"}}},
+    "role_request": {"type": "object", "additionalProperties": false, "required": ["id", "administrator"], "properties": {"id": {"$ref": "#/$defs/id"}, "administrator": {"type": "boolean"}}},
     "lookup": {
       "type": "object", "additionalProperties": false,
       "required": ["schema_version", "id", "login", "name"],

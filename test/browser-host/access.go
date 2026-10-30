@@ -16,7 +16,9 @@ import (
 // operator entry and the administrator, Bob (43) a runtime entry who has
 // joined. /fixture/access switches the installation's mode and root's
 // runtime switch, delays the broker's writes so the browser's waiting state
-// can be seen, or loses the next write's reply after committing it.
+// can be seen, loses the next write's reply after committing it, or
+// (unbound=43) makes Bob a person who has not signed in yet: his binding
+// appears at his first sign-in.
 type fixtureAccess struct {
 	mu      sync.Mutex
 	any     bool
@@ -26,10 +28,11 @@ type fixtureAccess struct {
 	runtime map[string]string // id -> "admitted" or "withdrawn"
 	hints   map[string]string
 	at      map[string]string
+	unbound map[string]bool
 }
 
 func newFixtureAccess() *fixtureAccess {
-	return &fixtureAccess{runtime: map[string]string{"43": "admitted"}, hints: map[string]string{"43": "bob"}, at: map[string]string{"43": "2026-10-20T08:00:00Z"}}
+	return &fixtureAccess{runtime: map[string]string{"43": "admitted"}, hints: map[string]string{"43": "bob"}, at: map[string]string{"43": "2026-10-20T08:00:00Z"}, unbound: map[string]bool{}}
 }
 
 // fixture applies /fixture/access query values; unknown values are refused.
@@ -51,6 +54,8 @@ func (b *fixtureBroker) fixture(q url.Values) error {
 			b.access.delay = time.Duration(ms) * time.Millisecond
 		case key == "lose" && v == "1":
 			b.access.lose = true
+		case key == "unbound" && v == "43":
+			b.access.unbound[v] = true
 		default:
 			return errors.New("unknown access fixture")
 		}
@@ -58,7 +63,11 @@ func (b *fixtureBroker) fixture(q url.Values) error {
 	return nil
 }
 
+// bound is called under access.mu.
 func (b *fixtureBroker) bound(id string) (string, bool) {
+	if b.access.unbound[id] {
+		return "", false
+	}
 	for _, m := range b.identities {
 		if m.Subject == id {
 			return m.Username, true

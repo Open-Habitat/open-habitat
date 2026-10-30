@@ -1453,6 +1453,12 @@ func (b *fixtureBroker) Exchange(_ context.Context, r gateway.BrokerRequest) (ga
 	if !b.admitted(r.ID) {
 		return gateway.BrokerReply{}, errors.New("not allowlisted")
 	}
+	if r.Operation == "ensure" {
+		// The first sign-in of a person who had none creates the binding.
+		b.access.mu.Lock()
+		delete(b.access.unbound, r.ID)
+		b.access.mu.Unlock()
+	}
 	for _, m := range b.identities {
 		if m.Subject == r.ID {
 			b.mu.Lock()
@@ -1468,19 +1474,21 @@ func (b *fixtureBroker) Exchange(_ context.Context, r gateway.BrokerRequest) (ga
 }
 
 func (b *fixtureBroker) ListBound(context.Context) ([]gateway.BoundUser, error) {
+	b.access.mu.Lock()
+	defer b.access.mu.Unlock()
 	users := []gateway.BoundUser{}
 	for _, m := range b.identities {
-		users = append(users, gateway.BoundUser{ID: m.Subject, Username: m.Username})
+		if _, ok := b.bound(m.Subject); ok {
+			users = append(users, gateway.BoundUser{ID: m.Subject, Username: m.Username})
+		}
 	}
 	return users, nil
 }
 func (b *fixtureBroker) LookupBound(_ context.Context, id string) (bool, error) {
-	for _, m := range b.identities {
-		if m.Subject == id {
-			return true, nil
-		}
-	}
-	return false, nil
+	b.access.mu.Lock()
+	defer b.access.mu.Unlock()
+	_, ok := b.bound(id)
+	return ok, nil
 }
 func (b *fixtureBroker) ReadQuota(_ context.Context, id string) (gateway.Quota, gateway.QuotaFilesystem, error) {
 	limit := uint64(8 << 30)

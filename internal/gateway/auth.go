@@ -823,9 +823,9 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.callbackFailure(w, r, 403, "authentication_required")
 		return
 	}
-	// The broker has just confirmed the binding, so a subject root declared
-	// as administrator before it existed holds the role from this session's
-	// first request. A failed grant leaves the declaration pending for the
+	// The broker has just confirmed the binding, so a subject root declared,
+	// or an administrator designated, before it existed holds the role from
+	// this session's first request. A failed grant leaves the declaration pending for the
 	// next sign-in or host apply; it does not refuse the login.
 	if a.grantPendingLocked(id) != nil {
 		a.authEvent(attempt, "degraded", "administrator_grant_failed")

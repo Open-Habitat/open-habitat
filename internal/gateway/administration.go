@@ -52,6 +52,11 @@ type serverSettings struct {
 	// bound moves it to Administrators, so the declaration takes effect at
 	// first sign-in without the gateway reading root's site file.
 	PendingAdministrators []string `json:"pending_administrators,omitempty"`
+	// Designated are administrator roles a browser administrator gave
+	// (designation.go). Each is pending until its subject is in
+	// Administrators; root's own role operations take a designated subject
+	// over, so a role is always either root's or a designation, never both.
+	Designated []designation `json:"designated_administrators,omitempty"`
 }
 
 // The record is read whole at startup and rewritten whole on each change;
@@ -94,6 +99,9 @@ func validSettings(s serverSettings) bool {
 			return false
 		}
 		seen[id] = true
+	}
+	if !validDesignations(s) {
+		return false
 	}
 	if len(s.Denied) > maxDenied {
 		return false
@@ -212,8 +220,11 @@ func (a *Auth) commitAdministration(next serverSettings) error {
 	a.settings = next
 	return nil
 }
+// isAdministratorLocked is the role as authority. A subject whose web
+// access a withdrawal is ending holds none, even with a request already past
+// its session check: the deny is set under this lock before the sessions go.
 func (a *Auth) isAdministratorLocked(id string) bool {
-	if !a.administrationHealthy() {
+	if !a.administrationHealthy() || a.deniedLocked(id) {
 		return false
 	}
 	for _, admin := range a.settings.Administrators {
@@ -273,7 +284,8 @@ func (a *Auth) changeNameFor(caller, name string) error {
 }
 
 // changeRole is root's role operation, used by host apply to converge the
-// administrators to site.json. No browser path reaches it.
+// administrators to site.json. No browser path reaches it; the browser's
+// own role write is a designation (designation.go).
 func (a *Auth) changeRole(ctx context.Context, id string, administrator bool) error {
 	if !canonicalSubject(id) {
 		return errors.New("invalid subject")
@@ -305,9 +317,11 @@ func (a *Auth) changeRole(ctx context.Context, id string, administrator bool) er
 		next.Administrators = append(next.Administrators, id)
 	}
 	// Either way the subject's declaration is no longer waiting: a grant
-	// fulfils it, and a removal withdraws it.
+	// fulfils it, and a removal withdraws it. Root's grant also takes over a
+	// browser designation, so a site.json role is never revocable as one.
 	next.PendingAdministrators = withoutSubject(next.PendingAdministrators, id)
-	pending := len(next.PendingAdministrators) != len(a.settings.PendingAdministrators)
+	next.Designated = withoutDesignation(next.Designated, id)
+	pending := len(next.PendingAdministrators) != len(a.settings.PendingAdministrators) || len(next.Designated) != len(a.settings.Designated)
 	if found == administrator && !pending {
 		return nil
 	}
@@ -330,9 +344,16 @@ func (a *Auth) declareRole(ctx context.Context, id string) error {
 		return ErrAdministrationState
 	}
 	var e error
-	if !slices.Contains(a.settings.PendingAdministrators, id) && !slices.Contains(a.settings.Administrators, id) {
+	// A browser designation of the same subject becomes root's: granted
+	// stays granted, pending stays pending, and neither is revocable from
+	// the browser any more.
+	granted := slices.Contains(a.settings.Administrators, id)
+	if a.designatedLocked(id) || !slices.Contains(a.settings.PendingAdministrators, id) && !granted {
 		next := a.settings
-		next.PendingAdministrators = append(append([]string{}, next.PendingAdministrators...), id)
+		next.Designated = withoutDesignation(next.Designated, id)
+		if !granted && !slices.Contains(next.PendingAdministrators, id) {
+			next.PendingAdministrators = append(append([]string{}, next.PendingAdministrators...), id)
+		}
 		e = a.commitAdministration(next)
 	}
 	pending := slices.Contains(a.settings.PendingAdministrators, id)
@@ -353,11 +374,17 @@ func (a *Auth) declareRole(ctx context.Context, id string) error {
 	return a.grantPendingLocked(id)
 }
 
-// grantPendingLocked moves a declared subject, now known to be bound, from
-// PendingAdministrators to Administrators. A subject root never declared is
-// never granted here.
+// grantPendingLocked grants a subject, now known to be bound, the role root
+// declared or a browser administrator designated for it. A subject nobody
+// named is never granted here. The id is the GitHub account's numeric id
+// from the sign-in, never a login, so a renamed or reused login cannot
+// receive someone else's role.
 func (a *Auth) grantPendingLocked(id string) error {
-	if !a.administrationHealthy() || !slices.Contains(a.settings.PendingAdministrators, id) {
+	if !a.administrationHealthy() {
+		return nil
+	}
+	declared := slices.Contains(a.settings.PendingAdministrators, id)
+	if !declared && (!a.designatedLocked(id) || slices.Contains(a.settings.Administrators, id)) {
 		return nil
 	}
 	next := a.settings
@@ -458,8 +485,9 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 		safe(w, 400, "invalid_request")
 		return
 	}
-	// Administrators come only from site.json (ADR 0030): the browser has no
-	// role write, and host apply converges roles over the control socket.
+	// Roles are not settings: root's come from site.json over the control
+	// socket, and a browser administrator's designations go through the
+	// access list (designation.go).
 	var request struct {
 		Name              *string `json:"name"`
 		DefaultLimitBytes *uint64 `json:"default_limit_bytes"`

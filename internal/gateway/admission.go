@@ -199,6 +199,15 @@ func (a *Auth) withdrawAccess(ctx context.Context, caller, subject string) (Acce
 		// Withdrawn, but the deny the operation promised to drop remains.
 		return AccessRow{}, ErrAccessUncertain
 	}
+	if row.State == "removed" {
+		a.mu.Lock()
+		err = a.dropDesignationLocked(subject)
+		a.mu.Unlock()
+		if err != nil {
+			// The admission is gone; the designation stays listed, unlisted.
+			return AccessRow{}, ErrAccessUncertain
+		}
+	}
 	a.log.Info("access_withdrawal", "outcome", "accepted", "reason", "withdrawn", "subject", subject)
 	return row, nil
 }
@@ -303,6 +312,9 @@ type accessEntry struct {
 	Onboarding *onboardingReceipt `json:"onboarding,omitempty"`
 	// SiteKeyCopy is the site key copy the site gave this person.
 	SiteKeyCopy *copyView `json:"site_key_copy,omitempty"`
+	// AdministratorRole is the role root or an administrator gave, granted
+	// or waiting for the sign-in that binds the id.
+	AdministratorRole *roleEntry `json:"administrator_role,omitempty"`
 }
 type accessView struct {
 	SchemaVersion    int           `json:"schema_version"`
@@ -326,15 +338,24 @@ func (a *Auth) accessList(ctx context.Context) (accessView, error) {
 	listed := map[string]bool{}
 	for _, r := range page.Rows {
 		listed[r.ID] = true
-		view.Entries = append(view.Entries, accessEntry{r.ID, r.Source, r.State, r.Username, r.LoginHint, r.Actor, r.At, seen[r.ID], slices.Contains(v.Administrators, r.ID), slices.Contains(v.Denied, r.ID), receiptView(v.OnboardingReceipts, r.ID), nil})
+		view.Entries = append(view.Entries, accessEntry{r.ID, r.Source, r.State, r.Username, r.LoginHint, r.Actor, r.At, seen[r.ID], slices.Contains(v.Administrators, r.ID), slices.Contains(v.Denied, r.ID), receiptView(v.OnboardingReceipts, r.ID), nil, nil})
 	}
 	for _, id := range v.Denied {
 		if !listed[id] {
+			listed[id] = true
 			view.Entries = append(view.Entries, accessEntry{ID: id, Source: "none", State: "denied", Denied: true, Onboarding: receiptView(v.OnboardingReceipts, id)})
+		}
+	}
+	// A designation whose admission root has since removed is still a role
+	// someone could be granted, so it stays visible and revocable here.
+	for _, d := range v.Designated {
+		if !listed[d.ID] {
+			view.Entries = append(view.Entries, accessEntry{ID: d.ID, Source: "none", State: "unlisted", Administrator: slices.Contains(v.Administrators, d.ID), Onboarding: receiptView(v.OnboardingReceipts, d.ID)})
 		}
 	}
 	for i := range view.Entries {
 		view.Entries[i].SiteKeyCopy = a.copyView(view.Entries[i].ID)
+		view.Entries[i].AdministratorRole = roleFor(v, view.Entries[i].ID)
 	}
 	a.resolveLogins(ctx, view.Entries)
 	return view, nil
@@ -375,7 +396,7 @@ func (a *Auth) resolveLogins(ctx context.Context, entries []accessEntry) {
 
 func entryFor(ctx context.Context, row AccessRow, a *Auth) accessEntry {
 	v := a.settingsView()
-	e := []accessEntry{{row.ID, row.Source, row.State, row.Username, row.LoginHint, row.Actor, row.At, a.lastSeen()[row.ID], slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID), receiptView(v.OnboardingReceipts, row.ID), a.copyView(row.ID)}}
+	e := []accessEntry{{row.ID, row.Source, row.State, row.Username, row.LoginHint, row.Actor, row.At, a.lastSeen()[row.ID], slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID), receiptView(v.OnboardingReceipts, row.ID), a.copyView(row.ID), roleFor(v, row.ID)}}
 	a.resolveLogins(ctx, e)
 	return e[0]
 }
@@ -444,11 +465,14 @@ func accessReason(err error) (int, string) {
 		return 503, "administration_unavailable"
 	case errors.Is(err, ErrAccessRefused):
 		return 409, "access_refused"
+	case errors.Is(err, errNotAdmitted):
+		return 409, "not_admitted"
 	}
 	return 503, "access_unavailable"
 }
 
-// accessHTTP serves the administrator's access list and its three actions.
+// accessHTTP serves the administrator's access list, its lookup, admission
+// changes and administrator designations.
 // Every write checks the session, CSRF and the administrator role as current.
 func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 	s, ok := a.authenticated(r)
@@ -458,7 +482,7 @@ func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	path := r.URL.Path
-	if !a.exact(r, path) || path != accessPath && path != accessPath+"/lookup" && path != accessPath+"/add" && path != accessPath+"/remove" {
+	if !a.exact(r, path) || path != accessPath && path != accessPath+"/lookup" && path != accessPath+"/add" && path != accessPath+"/remove" && path != accessPath+"/role" {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -494,12 +518,13 @@ func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Login string `json:"login"`
-		ID    string `json:"id"`
+		Login         string `json:"login"`
+		ID            string `json:"id"`
+		Administrator *bool  `json:"administrator"`
 	}
 	dec := json.NewDecoder(io.LimitReader(r.Body, 257))
 	dec.DisallowUnknownFields()
-	if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF || path == accessPath+"/lookup" && (body.ID != "" || !githubLoginName(body.Login)) || path != accessPath+"/lookup" && (body.Login != "" || !canonicalSubject(body.ID)) {
+	if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF || path == accessPath+"/lookup" && (body.ID != "" || !githubLoginName(body.Login)) || path != accessPath+"/lookup" && (body.Login != "" || !canonicalSubject(body.ID)) || (path == accessPath+"/role") != (body.Administrator != nil) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -513,13 +538,18 @@ func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "id": user.ID, "login": user.Login, "name": user.Name})
-	case accessPath + "/add", accessPath + "/remove":
+	case accessPath + "/add", accessPath + "/remove", accessPath + "/role":
 		var row AccessRow
 		var err error
-		if path == accessPath+"/add" {
+		switch {
+		case path == accessPath+"/add":
 			row, err = a.admitAccess(r.Context(), s.identity.Subject, body.ID)
-		} else {
+		case path == accessPath+"/remove":
 			row, err = a.withdrawAccess(r.Context(), s.identity.Subject, body.ID)
+		case *body.Administrator:
+			row, err = a.designateAdministrator(r.Context(), s.identity.Subject, body.ID)
+		default:
+			row, err = a.revokeDesignation(r.Context(), s.identity.Subject, body.ID)
 		}
 		if err != nil {
 			status, code := accessReason(err)

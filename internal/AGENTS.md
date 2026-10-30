@@ -256,11 +256,15 @@ Identity and authority:
   their union. The gateway may only `admit` and `withdraw` runtime entries,
   never an operator id, and `admit` only while root's `runtime_admission`
   switch is on. Host apply converges only the operator source and the
-  switch, never runtime entries. Administrators come only from site.json;
-  the browser has no role write. A declared administrator not yet bound is
-  recorded by host apply as pending through root's control socket, and the
-  gateway grants exactly that subject at the sign-in whose broker recheck
-  confirms the binding; the gateway never reads site.json itself. Withdrawal first records a durable deny in
+  switch, never runtime entries. Roles have the same two sources (Jari,
+  2026-10-30): root's site.json administrators, and a current
+  administrator's browser designation of an admitted GitHub id. Host apply
+  converges only root's roles and leaves designations alone, and a root
+  declaration of a designated id takes it over; the browser may revoke only
+  a designation, never a site.json role. A role not yet held, declared or
+  designated, is recorded by numeric id and granted only to that subject at
+  the sign-in whose broker recheck confirms the binding, never through a
+  login name; the gateway never reads site.json itself. Withdrawal first records a durable deny in
   the gateway and removes the subject's sessions, then asks the broker;
   restore removes leftover sessions, asks the broker, and lifts the deny only
   on its confirmed reply. The deny only refuses. Withdrawal ends web access,

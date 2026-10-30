@@ -59,8 +59,10 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
       (v) =>
         v && {
           ...v,
+          // A revoked designation with no admission leaves nothing to list.
           entries:
-            entry.state === "removed"
+            entry.state === "removed" ||
+            (entry.state === "unlisted" && !entry.administrator_role)
               ? v.entries.filter((e) => e.id !== id)
               : v.entries.some((e) => e.id === id)
                 ? v.entries.map((e) => (e.id === id ? entry : e))
@@ -69,7 +71,7 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
     );
   };
   const change = async (
-    action: "add" | "remove",
+    action: "add" | "remove" | "grant" | "revoke",
     id: string,
     mark: PendingChange,
   ): Promise<AddOutcome> => {
@@ -135,6 +137,12 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
         onRemove={(entry) =>
           void change("remove", entry.id, {
             kind: "remove",
+            login: entry.login_hint,
+          })
+        }
+        onRole={(entry, administrator) =>
+          void change(administrator ? "grant" : "revoke", entry.id, {
+            kind: administrator ? "grant" : "revoke",
             login: entry.login_hint,
           })
         }
