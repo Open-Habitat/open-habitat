@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-workspace-icons
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: an icon for every workspace in the rail
