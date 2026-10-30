@@ -455,12 +455,7 @@ export class ConversationJournal {
       "Palvelimen tilaa ei saatu tarkistettua. Yritä uudelleen.",
     );
   }
-  /** Explicit reconnect bypasses transport backoff without rewinding the cursor. */
-  retry() {
-    if (this.stopped) {
-      reconnectDiagnostic({ event: "retry-stopped" });
-      return;
-    }
+  private drop() {
     this.source?.close();
     this.source = undefined;
     clearTimeout(this.connectTimer);
@@ -468,6 +463,28 @@ export class ConversationJournal {
     this.probe?.abort();
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = undefined;
+  }
+  /**
+   * The network returned or the machine woke: a stream that looks open may be
+   * dead without an error. Reopen it now at the validated cursor.
+   */
+  revive() {
+    if (this.stopped) return;
+    reconnectDiagnostic({ event: "revive" });
+    if (this.recovering) {
+      this.callbacks.onSnapshotNeeded();
+      return;
+    }
+    this.drop();
+    this.connect();
+  }
+  /** Explicit reconnect bypasses transport backoff without rewinding the cursor. */
+  retry() {
+    if (this.stopped) {
+      reconnectDiagnostic({ event: "retry-stopped" });
+      return;
+    }
+    this.drop();
     if (this.recovering) {
       // The person asked now: the unchanged cursor needs no more waiting.
       this.recoverAt = Math.min(this.recoverAt, this.sequence);

@@ -373,6 +373,25 @@ describe("one tab-wide journal", () => {
       vi.useRealTimers();
     }
   });
+  it("revives a silent stream at its cursor, but a recovery only by a snapshot", () => {
+    vi.stubGlobal("EventSource", FakeSource);
+    const { journal, onSnapshotNeeded } = setup();
+    journal.start(snapshot(0));
+    FakeSource.all[0].onopen?.();
+    journal.route(event(1) as never);
+    journal.revive();
+    expect(FakeSource.all[0].closed).toBe(true);
+    expect(FakeSource.all[1].url).toContain(encodeURIComponent(cursor(1)));
+    // A gap: no stream may open past it before a snapshot proves it passed.
+    journal.route(event(3) as never);
+    expect(onSnapshotNeeded).toHaveBeenCalledTimes(1);
+    journal.revive();
+    expect(FakeSource.all).toHaveLength(2);
+    expect(onSnapshotNeeded).toHaveBeenCalledTimes(2);
+    journal.stop();
+    journal.revive();
+    expect(FakeSource.all).toHaveLength(2);
+  });
   it("reconnects a dropped stream silently when the probe answers, and goes offline only when it fails", async () => {
     vi.useFakeTimers();
     try {

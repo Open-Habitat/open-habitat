@@ -673,11 +673,26 @@ esac
 	// TLS is real at the gateway. Browser trusts only this ephemeral local certificate.
 	ts := httptest.NewUnstartedServer(nil)
 	_ = ts.Listener.Close()
+	// BROWSER_HOST_EDGE puts a relay that a test can break (/fixture/edge)
+	// on the public port, between the browser and the TLS gateway.
+	var edge *edgeRelay
+	public := listen
+	if os.Getenv("BROWSER_HOST_EDGE") == "1" {
+		listen = "127.0.0.1:0"
+	}
 	ts.Listener, e = net.Listen("tcp", listen)
 	if e != nil {
 		log.Fatal(e)
 	}
 	origin := "https://" + ts.Listener.Addr().String()
+	if listen != public {
+		ln, err := net.Listen("tcp", public)
+		if err != nil {
+			log.Fatal(err)
+		}
+		edge = newEdgeRelay(ln, ts.Listener.Addr().String())
+		origin = "https://" + ln.Addr().String()
+	}
 	editorOrigin, viewOrigin := "", ""
 	if editorMode || viewsMode {
 		// Same-site sibling hosts, as the installation's app and editor
@@ -754,6 +769,20 @@ esac
 				w.WriteHeader(http.StatusNoContent)
 				w.(http.Flusher).Flush()
 				gatewayRestart <- struct{}{}
+				return
+			case "/fixture/edge":
+				// freeze: existing connections go silent (a laptop's sleep, a
+				// proxy that drops an idle stream without telling anyone);
+				// cut: they are reset; down&ms=N: no route for N ms.
+				mode := r.URL.Query().Get("mode")
+				ms, _ := strconv.Atoi(r.URL.Query().Get("ms"))
+				if edge == nil || (mode != "freeze" && mode != "cut" && mode != "down") || ms < 0 || ms > 120000 {
+					http.Error(w, "invalid fixture", 400)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+				w.(http.Flusher).Flush()
+				edge.apply(mode, r.RemoteAddr, time.Duration(ms)*time.Millisecond)
 				return
 			case "/fixture/edge-hold-head":
 				edgeHoldHead.Store(true)

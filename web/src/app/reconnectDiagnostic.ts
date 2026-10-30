@@ -1,7 +1,7 @@
 // Closed fields only: never log URLs with query strings, cursors, identities,
 // response bodies or exception text. Console lifetime follows the browser tab.
 type Diagnostic =
-  | { event: "manual-retry" | "retry-stopped" | "recover" }
+  | { event: "manual-retry" | "retry-stopped" | "recover" | "revive" }
   | {
       event: "stream";
       outcome: "connecting" | "open" | "error" | "timeout";
@@ -16,7 +16,13 @@ type Diagnostic =
       // A failed snapshot refresh: which step failed, and whether the event
       // stream was open, so the banner it did or did not cause is explained.
       event: "snapshot-failed";
-      outcome: "network" | "status" | "invalid" | "session" | "other";
+      outcome:
+        | "network"
+        | "status"
+        | "invalid"
+        | "session"
+        | "timeout"
+        | "other";
       status?: number;
       live: boolean;
     }

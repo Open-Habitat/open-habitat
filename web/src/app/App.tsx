@@ -165,7 +165,18 @@ function safeRoute(path: string) {
 }
 // Two reads that run side by side. A 401 from either wins over the other's
 // failure; otherwise either failure fails both.
-type SnapshotFailure = "network" | "status" | "invalid" | "session" | "other";
+type SnapshotFailure =
+  | "network"
+  | "status"
+  | "invalid"
+  | "session"
+  | "timeout"
+  | "other";
+// A snapshot read that has not finished by then is on a dead connection;
+// with one read at a time it would hold back every later one. The first load
+// also waits for Pi's status, so it gets the gateway's own finite ceiling.
+const snapshotReadTimeout = 20000;
+const firstLoadTimeout = 60000;
 /** A closed class for the diagnostic; the error text itself is never logged. */
 function snapshotFailure(error: unknown): SnapshotFailure {
   if (!(error instanceof Error)) return "other";
@@ -455,8 +466,21 @@ export function App() {
     import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
       ? new URLSearchParams(route.search).get("fixture")
       : null;
+  // One snapshot read at a time. Through the live route a read takes seconds
+  // (Birch: about 3 s), longer than a running turn's invalidations are apart.
+  // When every request aborted the read before it, no read finished during a
+  // turn, so a page waiting for one (stale, or a recovering journal) waited
+  // out the whole turn, and Yhdistä's own read was aborted the same way. A
+  // request during a read is answered by one more read right after it.
+  const snapshotRead = useRef({ busy: false, again: false });
   const refresh = useCallback(() => {
-    setRefreshKey((n) => n + 1);
+    const read = snapshotRead.current;
+    if (read.busy) read.again = true;
+    else {
+      // Busy from now: the read starts only after the next render.
+      read.busy = true;
+      setRefreshKey((n) => n + 1);
+    }
   }, []);
   // A clone that finishes during onboarding must not reload the app: with
   // no snapshot yet, a reload would unmount the AI sign-in.
@@ -624,6 +648,29 @@ export function App() {
     }
     refresh();
   };
+  // A laptop's sleep or a changed network can leave the event stream looking
+  // open but dead for good: no error arrives until the browser writes to that
+  // connection. Reopen it at the validated cursor when the network returns or
+  // the page wakes; a healthy stream loses nothing by it.
+  useEffect(() => {
+    if (!journal) return;
+    const revive = () => journal.revive();
+    let last = Date.now();
+    const tick = window.setInterval(() => {
+      const now = Date.now();
+      // A hidden tab runs timers at most once a minute; a longer gap means
+      // the machine slept or the tab was frozen.
+      if (now - last > 90000) revive();
+      last = now;
+    }, 15000);
+    window.addEventListener("online", revive);
+    document.addEventListener("resume", revive);
+    return () => {
+      window.clearInterval(tick);
+      window.removeEventListener("online", revive);
+      document.removeEventListener("resume", revive);
+    };
+  }, [journal]);
   // A disconnected tab can recover without a page reload when the browser
   // announces a restored network. Do not retry writes or repeat on a timer.
   useEffect(() => {
@@ -636,6 +683,15 @@ export function App() {
     if (fixtureName?.startsWith("design") && CatalogPreview) return;
     const controller = new AbortController();
     let active = true;
+    snapshotRead.current = { busy: true, again: false };
+    let timedOut = false;
+    const deadline = window.setTimeout(
+      () => {
+        timedOut = true;
+        controller.abort();
+      },
+      piChecked.current ? snapshotReadTimeout : firstLoadTimeout,
+    );
     const generation = identityGeneration.current;
     // Every page's normal read can reconcile a persisted creation marker.
     // Capture before reading: neither an in-flight write nor a newer attempt
@@ -677,7 +733,7 @@ export function App() {
           // later; a newer invalidation reads sooner and cancels this retry.
           const retry = quietRetry.current;
           retry.timer = window.setTimeout(
-            () => setRefreshKey((n) => n + 1),
+            refresh,
             Math.min(2000 * ++retry.failures, 15000),
           );
           return;
@@ -895,18 +951,33 @@ export function App() {
           }
         }
       } catch (error) {
-        if (ready() && !controller.signal.aborted)
-          fail("unavailable", { outcome: snapshotFailure(error) });
+        if (ready() && (timedOut || !controller.signal.aborted))
+          fail("unavailable", {
+            outcome: timedOut ? "timeout" : snapshotFailure(error),
+          });
       }
     };
-    void load();
+    void load().finally(() => {
+      window.clearTimeout(deadline);
+      if (!active) return;
+      const read = snapshotRead.current;
+      // A request made during this read gets one more, still busy until then.
+      read.busy = read.again;
+      if (read.again) {
+        read.again = false;
+        setRefreshKey((n) => n + 1);
+      }
+    });
     return () => {
       active = false;
       controller.abort();
+      window.clearTimeout(deadline);
       window.clearTimeout(quietRetry.current.timer);
+      snapshotRead.current.busy = false;
     };
   }, [
     dispatch,
+    refresh,
     refreshKey,
     fixtureName,
     syntheticDemo,

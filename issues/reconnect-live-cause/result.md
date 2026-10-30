@@ -1,4 +1,136 @@
-# Reconnect investigation — incomplete live attribution
+# Reconnect: the live cause
+
+Run `01m65tezkxjke05yjhnxfjt2je` (2026-10-30). The sections after "Earlier
+investigation" are the previous runs' record, kept as they were.
+
+## The named cause: snapshot reads cancelled by the next refresh
+
+The page re-read the host snapshot by bumping one React key; the effect's cleanup
+aborted the read in flight. Every refresh request therefore **cancelled the read
+before it**. Through the live route a snapshot read takes seconds, and a running
+agent turn asks for a refresh far more often than that, so **no read finished
+while a turn ran**. In the build Jari used on 2026-10-16 (`651b2f92`) the page left
+the stale phase ("Yhteys katkesi · tiedot voivat olla vanhoja", with Yhdistä) only
+on a finished snapshot read, and every `snapshot.invalidated` asked for one at
+once. After the 14:59:37 restart the event stream recovered, but the banner stayed,
+and Yhdistä's own read was cancelled by the next invalidation in the same way:
+"Yhdistä ei tee mitään". It recovered by itself once the turn stopped writing.
+
+Evidence (metadata only, in [live-evidence-20261030.json](live-evidence-20261030.json)):
+
+- cloudflared on Alder logs a cancelled request's path. After the 14:59:37 gateway
+  restart, the page's stream to the new daemon instance was open at sequence 0
+  (closed by the browser at 15:02:26, together with an `/auth/session` read: a
+  Yhdistä click). Between **15:02:48 and 15:08:57 the browser cancelled 35
+  `/api/v1/snapshot` reads**, often 1–2 s apart, while the daemon journal advanced
+  from sequence 0 to **416 by 15:09:52**, i.e. a turn was writing throughout.
+  The series ends at 15:08:57; at 15:09:52 the stream was at 416. The SSH forward
+  (`omega-forward`, same PID all day) and cloudflared stayed up; the gaps of
+  "origin unreachable" are only the release restarts themselves.
+- The same starvation is still present on main, now behind the 1 s pacing that
+  later work added: on **Birch (2026-10-23..30) Jari's snapshot read takes
+  p50 2.9 s at the gateway and 36 of 62 reads were cancelled by the page**. On the
+  test server today (about 0.9 s) it is rarer (3 of 99).
+- Reproduced in the lab with fake Pi's tool-heavy run (`pitkä ajo`, a session
+  write every ~60 ms) and a 2.5 s snapshot: main's `App.tsx` **answered 0 reads
+  and cancelled 26** during the run; with the fix every read is answered (2–4) and
+  none is cancelled (`lab-snapshot-single-flight.spec.ts`, 4/4 runs; counterfactual
+  rerun against main fails).
+
+Since 2026-10-27 (`09c6d518`) an opening stream also ends the stale phase, so on
+main the banner itself no longer waits for the read; what remained was the
+starvation: during a long turn the sidebar, process states, titles and the
+confirmation of one's own commands (archive, rename) waited for the turn to end,
+and a recovering journal waiting for a snapshot could be held off by repeated
+Yhdistä clicks.
+
+**Fix:** one snapshot read at a time (`App.tsx`). A refresh requested during a
+read is answered by one more read right after it, which therefore starts after
+every request so far; identity, session and login changes still abort at once.
+Every read is bounded (20 s for a refresh, 60 s for the first load, which also
+waits for Pi's status: the gateway's own finite ceiling) so a read stuck on a dead
+connection cannot hold the slot. A timed-out read is reported as failed
+(`[reconnect] snapshot-failed outcome: timeout`).
+
+## A second, silent cause: a dead stream after sleep or a network change
+
+Paths exercised on the host-backed synthetic setup, with a new opt-in edge relay
+in the browser host (`BROWSER_HOST_EDGE=1`, `/fixture/edge?mode=freeze|cut|down`)
+between the browser and the real TLS gateway, no route mocks:
+
+| Path | Lab behaviour on main |
+|---|---|
+| daemon restart (`/fixture/daemon-restart`) | stream error → 409 → snapshot → new instance → open in ~50 ms, no banner |
+| gateway restart (TLS server and auth replaced) | stream error → probe 200 → reopened in ~20 ms |
+| test-server release (`/fixture/upgrade`: bundle + gateway restart) | as gateway restart |
+| proxy idle reset (`cut`: RST on every connection) | reopened in ~3 ms |
+| network loss (`setOffline` 15 s) | **no error, no banner, no record at all** |
+| sleep / silent drop (`freeze`: connections stay open, no bytes pass) | **no error, no banner; the page stops following the host** |
+| no route for 15 s (`down`) | **same as freeze** |
+
+The live restarts take seconds, not milliseconds (Cloudflare answers 502 in
+between), which the existing `reconnect-recovery` cases cover with a 503 probe.
+
+The silent paths give the browser nothing to react to: the EventSource stays
+"open", there is no Yhdistä because there is no banner, and the page simply stops
+updating. The fix reopens the stream at the validated cursor (`journal.revive()`)
+when the browser reports `online`, on the Page Lifecycle `resume` event, and when
+a 15 s timer finds a gap over 90 s (the machine slept or the tab was frozen).
+While recovering it asks for a snapshot instead. `reconnect-paths.spec.ts` freezes
+the real connections, then wakes the page with `clock.fastForward` or returns the
+network, and requires the page to follow a later daemon restart; both cases fail
+on main (the restart never reaches the page) and pass with the fix.
+
+Not covered: a stall that happens while the laptop stays awake and online (a
+proxy that silently stops forwarding). The daemon's 20 s heartbeat is an SSE
+comment, which EventSource never shows to the page. On the live route Cloudflare
+ends a response that is silent for 100 s, and the SSH forward detects a dead link
+in 90 s, so this case is bounded there.
+
+## Validation
+
+- `./scripts/test-focused.sh --area web`: format, lint, typecheck, 986 unit and
+  component cases passed (one new journal case: `revive` reopens at the cursor,
+  and while recovering only asks for a snapshot).
+- Browser (`OH_PORT_BASE=12300`, 2 workers, umask 077): `reconnect-paths` 2/2,
+  `reconnect-recovery` 10/10, `lab-snapshot-single-flight` 1/1 (and 4/4 repeated),
+  `lab-snapshot-refresh-live` 1/1, `lab-long-stream`, `lab-live-turn`,
+  `lab-outage-account` 5/5, `queued-send` 13/13, `process-tray` 6/6,
+  `long-pause-composer` 2/2, `recap-resting` 2/2, `browser-conversation` tags
+  409/reconnect/restart 6/6. In a full `browser-conversation` run one layout case
+  (`own message shows every line it fits`) failed once under load and passed alone.
+- `go test ./test/browser-host/` passed; `go vet` clean.
+- Review: independent `/llm-review` (finder gpt-6-astra, verifier
+  claude-fable-5-1) found one must-fix in the first version of this change: the
+  first load had no deadline and could hold the single-flight slot forever. The
+  verifier confirmed it; fixed by bounding every load. `/assess-findings`: 1 FIX,
+  applied. Model-performance logging was skipped: that helper commits and pushes
+  Fleetrepo, and this worker does not push.
+- Exploration on the live hosts read only journal metadata (cloudflared and
+  omega-forward on Alder, gateway/daemon `http_request` records on the test guest
+  and on Birch); no bodies, cursors beyond the sequence, cookies or conversation
+  content.
+
+## Decisions for later review
+
+- **Yhdistä joins a running read instead of restarting it.** Alternative: a click
+  aborts the read in flight (the verifier's second suggestion). Chosen because
+  restarting is exactly what cancelled every read when Jari clicked repeatedly;
+  the 20 s bound covers a read that is really stuck.
+- **Read bounds 20 s / 60 s.** A refresh over 20 s is on a dead connection
+  (Birch's slowest is ~3 s); the first load waits for Pi's status too and gets the
+  gateway's finite ceiling of 60 s, after which the gateway would have failed it
+  anyway. A first load that times out now shows "Yhteyttä ei saatu" instead of
+  loading forever.
+- **Revive on wake/online/resume, no heartbeat event.** Alternative: make the
+  daemon's heartbeat a named SSE event and watch it in the page, which would also
+  catch a silent stall while awake. Not done: it changes the event contract and
+  the daemon for a case that Cloudflare already bounds at 100 s.
+- **The lab edge relay stays as test infrastructure** (opt-in per spec), so the
+  silent-drop paths remain reproducible without mocks.
+
+# Earlier investigation
+
 
 Run: `01m52m9nh5x6c66h2t3wsh0817`.
 
