@@ -17,21 +17,19 @@ import (
 	"unicode/utf8"
 )
 
-// Signatures cover these exact bytes, not a reserialized JSON object. The domain
-// prevents an otherwise valid signature for a different product document from
-// authorizing a release. Public keys come from operator trust, never the bundle.
+// The release cut still signs these exact bytes (ADR 0034 step 1); no installer
+// verifies the signature. Trust is the site's pinned manifest digest alone.
 const releaseSignatureDomain = "open-habitat.release.v1\x00"
 
 // Complete non-Ubuntu file/license inventories (including integrations) need
-// more than 8 MiB even without any Ubuntu archives. Keep a bounded signed input.
+// more than 8 MiB even without any Ubuntu archives. Keep a bounded pinned input.
 const MaxReleaseManifestBytes = 16 << 20
 
 var (
-	ErrRelease          = errors.New("invalid_release: expected authenticated release manifest version 2")
-	ErrReleaseSignature = errors.New("release_signature_invalid: verify the independently trusted release key")
-	ErrReleaseTarget    = errors.New("release_target_mismatch: manifest does not match the declared release")
-	ErrReleaseProfile   = errors.New("release_profile_unavailable: selected profile or dependency is absent or conflicting")
-	ErrReleasePlatform  = errors.New("release_platform_mismatch: release targets a different Ubuntu architecture than this host")
+	ErrRelease         = errors.New("invalid_release: expected authenticated release manifest version 2")
+	ErrReleaseTarget   = errors.New("release_target_mismatch: manifest does not match the declared release")
+	ErrReleaseProfile  = errors.New("release_profile_unavailable: selected profile or dependency is absent or conflicting")
+	ErrReleasePlatform = errors.New("release_platform_mismatch: release targets a different Ubuntu architecture than this host")
 )
 
 // ReleaseManifest is build input, not an installation readiness certificate.
@@ -102,9 +100,24 @@ func EncodeRelease(m ReleaseManifest, key ed25519.PrivateKey) ([]byte, []byte, e
 	return b, ed25519.Sign(key, append([]byte(releaseSignatureDomain), b...)), nil
 }
 
-func AuthenticateRelease(b, signature []byte, key ed25519.PublicKey, target Release) (AuthenticatedRelease, error) {
-	if len(b) == 0 || len(b) > MaxReleaseManifestBytes || len(key) != ed25519.PublicKeySize || len(signature) != ed25519.SignatureSize || !ed25519.Verify(key, append([]byte(releaseSignatureDomain), b...), signature) {
-		return AuthenticatedRelease{}, ErrReleaseSignature
+// ReleaseSignatureValid checks a release.sig for the build tool's optional
+// --key-file. Installation never calls it; it goes with the signing step.
+func ReleaseSignatureValid(b, signature []byte, key ed25519.PublicKey) bool {
+	return len(key) == ed25519.PublicKeySize && len(signature) == ed25519.SignatureSize && ed25519.Verify(key, append([]byte(releaseSignatureDomain), b...), signature)
+}
+
+// AuthenticateRelease accepts exactly the manifest bytes whose SHA-256 the
+// operator pinned, taken from the digest GitHub states for the release asset.
+// The pin is compared before the bytes are parsed: nothing else in the bundle,
+// including any leftover release.sig, can make a release acceptable.
+func AuthenticateRelease(b []byte, target Release) (AuthenticatedRelease, error) {
+	if len(b) == 0 || len(b) > MaxReleaseManifestBytes || !digestRE.MatchString(target.ManifestSHA256) {
+		return AuthenticatedRelease{}, ErrReleaseTarget
+	}
+	sum := sha256.Sum256(b)
+	digest := hex.EncodeToString(sum[:])
+	if digest != target.ManifestSHA256 {
+		return AuthenticatedRelease{}, ErrReleaseTarget
 	}
 	if !utf8.Valid(b) || strictJSON(b) != nil {
 		return AuthenticatedRelease{}, ErrRelease
@@ -115,9 +128,7 @@ func AuthenticateRelease(b, signature []byte, key ed25519.PublicKey, target Rele
 	if d.Decode(&m) != nil || d.Decode(new(any)) != io.EOF || !validRelease(m) || !exactReleaseFields(b) {
 		return AuthenticatedRelease{}, ErrRelease
 	}
-	sum := sha256.Sum256(b)
-	digest := hex.EncodeToString(sum[:])
-	if m.Version != target.Version || digest != target.ManifestSHA256 {
+	if m.Version != target.Version {
 		return AuthenticatedRelease{}, ErrReleaseTarget
 	}
 	return AuthenticatedRelease{m, digest}, nil
@@ -203,7 +214,7 @@ func validRelease(m ReleaseManifest) bool {
 // its explicit core) or optional profiles alone. Unknown/duplicate selectors fail.
 func (r AuthenticatedRelease) Select(profiles []string) ([]ReleaseArtifact, error) {
 	if r.digest == "" {
-		return nil, ErrReleaseSignature
+		return nil, ErrRelease
 	}
 	selected := map[string]bool{"core": true}
 	requested := map[string]bool{}
@@ -279,7 +290,7 @@ func (r AuthenticatedRelease) CheckRuntimePackages(profiles []string, observed m
 }
 
 // encoding/json accepts case-insensitive aliases, including two differently
-// cased spellings of a field. The signed wire format does not.
+// cased spellings of a field. The pinned wire format does not.
 func exactReleaseFields(b []byte) bool {
 	var keys func([]byte, []string) (map[string]json.RawMessage, bool)
 	keys = func(b []byte, allowed []string) (map[string]json.RawMessage, bool) {

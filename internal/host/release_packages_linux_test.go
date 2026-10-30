@@ -60,7 +60,7 @@ func TestReleasePackageObservation(t *testing.T) {
 	}
 	calls := 0
 	query := func(context.Context) ([]byte, error) { calls++; return []byte(good), nil }
-	if _, err := (AuthenticatedRelease{}).observeRuntimePackages(context.Background(), nil, query); !errors.Is(err, ErrReleaseSignature) {
+	if _, err := (AuthenticatedRelease{}).observeRuntimePackages(context.Background(), nil, query); !errors.Is(err, ErrRelease) {
 		t.Fatal(err)
 	}
 	if _, err := r.observeRuntimePackages(context.Background(), []string{"absent"}, query); !errors.Is(err, ErrReleaseProfile) {

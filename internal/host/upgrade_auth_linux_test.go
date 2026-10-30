@@ -8,30 +8,29 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"os"
 	"slices"
 	"strings"
 	"testing"
 )
 
 func TestUpgradeReleaseAuthentication(t *testing.T) {
-	pub, key, e := ed25519.GenerateKey(rand.Reader)
+	_, key, e := ed25519.GenerateKey(rand.Reader)
 	if e != nil {
 		t.Fatal(e)
 	}
 	m := ReleaseManifest{SchemaVersion: 2, Version: "2.0.0", Commit: strings.Repeat("a", 40), Platform: "ubuntu-24.04-amd64", Artifacts: []ReleaseArtifact{{Profile: "core", Archive: "core.tar.gz", SHA256: strings.Repeat("a", 64), Size: 1, ExpandedSize: 1024, Entries: 1, Requires: []string{}, Packages: []RuntimePackage{}}}, Upgrade: &ReleaseUpgrade{Protocol: 1, PredecessorBinarySHA256: strings.Repeat("e", 64), Predecessor: Release{"1.0.0", strings.Repeat("b", 64)}, Product: []ProductFile{{"open-habitat", strings.Repeat("c", 64), 0755}, {"web/index.html", strings.Repeat("d", 64), 0644}}}}
-	authenticate := func(b, sig []byte) error {
-		h := sha256.Sum256(b)
-		_, e := AuthenticateRelease(b, sig, pub, Release{m.Version, hex.EncodeToString(h[:])})
-		return e
-	}
-	b, sig, e := EncodeRelease(m, key)
+	b, _, e := EncodeRelease(m, key)
 	if e != nil {
 		t.Fatal(e)
 	}
-	if e = authenticate(b, sig); e != nil {
+	h := sha256.Sum256(b)
+	pin := Release{m.Version, hex.EncodeToString(h[:])}
+	if _, e = AuthenticateRelease(b, pin); e != nil {
 		t.Fatal(e)
 	}
-	// The predecessor and product bytes are both covered by the release signature.
+	// The predecessor and product bytes are both covered by the pinned digest.
 	for _, change := range []func(*ReleaseManifest){func(m *ReleaseManifest) { m.Upgrade.Predecessor.ManifestSHA256 = strings.Repeat("e", 64) }, func(m *ReleaseManifest) { m.Upgrade.Product[0].SHA256 = strings.Repeat("f", 64) }} {
 		var altered ReleaseManifest
 		if e = json.Unmarshal(b, &altered); e != nil {
@@ -39,7 +38,7 @@ func TestUpgradeReleaseAuthentication(t *testing.T) {
 		}
 		change(&altered)
 		data, _ := json.Marshal(altered)
-		if authenticate(data, sig) == nil {
+		if _, e := AuthenticateRelease(data, pin); e == nil {
 			t.Fatal("tampered transition authenticated")
 		}
 	}
@@ -112,6 +111,80 @@ func TestUpgradeAcceptsBrowserChangedQuotaDefault(t *testing.T) {
 		c.change(&a, &site)
 		if _, reason := administrationMatches(site, a, bound, administrationDeclared); reason != c.reason {
 			t.Fatalf("%s: got %q, want %q", name, reason, c.reason)
+		}
+	}
+}
+
+// Apply (the incoming release directory) and upgrade (an installed generation)
+// both authenticate release.json by the site's pin alone. A generation installed
+// while releases were signed still holds release.sig; no key is on the host.
+func TestReleaseFileAuthenticatesByPinAlone(t *testing.T) {
+	if os.Geteuid() != 0 || os.Getenv("HOST_INIT_UID_CONTAINER") != "1" {
+		t.Skip("root-owned trusted release directory requires disposable root container")
+	}
+	if HostPlatform() == "" {
+		t.Skip("unsupported build architecture")
+	}
+	if _, e := os.Stat("/etc/open-habitat/release-key.pub"); !os.IsNotExist(e) {
+		t.Fatalf("container already holds a release key: %v", e)
+	}
+	a, _ := releaseFixture(t)
+	m := releaseManifest(a)
+	m.Platform = HostPlatform()
+	b, sig, e := EncodeRelease(m, releaseKey())
+	if e != nil {
+		t.Fatal(e)
+	}
+	pin := Release{m.Version, releaseDigest(b)}
+	for _, layout := range []struct {
+		name string
+		sig  bool
+	}{{"incoming", false}, {"signed generation", true}} {
+		dir, e := os.MkdirTemp("/opt", "release-pin-")
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer os.RemoveAll(dir)
+		if e = os.Chmod(dir, 0755); e != nil {
+			t.Fatal(e)
+		}
+		if e = os.WriteFile(dir+"/release.json", b, 0644); e != nil {
+			t.Fatal(e)
+		}
+		if layout.sig {
+			if e = os.WriteFile(dir+"/release.sig", sig, 0644); e != nil {
+				t.Fatal(e)
+			}
+		}
+		if r, e := authenticateReleaseFile(dir, pin); e != nil || r.Platform() != m.Platform {
+			t.Fatalf("%s refused by its pin: %v", layout.name, e)
+		}
+		for name, wrong := range map[string]Release{
+			"other digest":  {m.Version, strings.Repeat("0", 64)},
+			"other version": {"1.2.4", pin.ManifestSHA256},
+			"unpinned":      {m.Version, ""},
+		} {
+			if _, e := authenticateReleaseFile(dir, wrong); !errors.Is(e, ErrReleaseTarget) {
+				t.Fatalf("%s accepted with %s: %v", layout.name, name, e)
+			}
+		}
+		// Bytes swapped after the pin was taken, even validly re-signed, refuse.
+		m2 := m
+		m2.Commit = strings.Repeat("b", 40)
+		other, otherSig, e := EncodeRelease(m2, releaseKey())
+		if e != nil {
+			t.Fatal(e)
+		}
+		if e = os.WriteFile(dir+"/release.json", other, 0644); e != nil {
+			t.Fatal(e)
+		}
+		if layout.sig {
+			if e = os.WriteFile(dir+"/release.sig", otherSig, 0644); e != nil {
+				t.Fatal(e)
+			}
+		}
+		if _, e := authenticateReleaseFile(dir, pin); !errors.Is(e, ErrReleaseTarget) {
+			t.Fatalf("%s accepted swapped manifest: %v", layout.name, e)
 		}
 	}
 }

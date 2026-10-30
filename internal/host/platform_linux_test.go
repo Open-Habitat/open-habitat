@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/ed25519"
 	"encoding/binary"
 	"errors"
 	"os"
@@ -55,17 +54,16 @@ func TestHostReleasePlatform(t *testing.T) {
 	for _, platform := range []string{HostPlatform(), otherPlatform()} {
 		m := releaseManifest(a)
 		m.Platform = platform
-		b, sig, e := EncodeRelease(m, releaseKey())
+		b, _, e := EncodeRelease(m, releaseKey())
 		if e != nil {
 			t.Fatal(e)
 		}
 		target := Release{m.Version, releaseDigest(b)}
-		pub := releaseKey().Public().(ed25519.PublicKey)
 		// Build tooling verifies a release for any supported platform.
-		if _, e = AuthenticateRelease(b, sig, pub, target); e != nil {
+		if _, e = AuthenticateRelease(b, target); e != nil {
 			t.Fatal(e)
 		}
-		r, e := authenticateHostRelease(b, sig, pub, target)
+		r, e := authenticateHostRelease(b, target)
 		if platform == HostPlatform() && (e != nil || r.Platform() != platform) {
 			t.Fatalf("own platform refused: %v", e)
 		}

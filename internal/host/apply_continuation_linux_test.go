@@ -137,7 +137,7 @@ func mustOperationBytes(t *testing.T, o Operation) []byte {
 
 func TestApplyBindingPreservesBootstrapRepairButNotSecretReplacement(t *testing.T) {
 	if os.Geteuid() != 0 || os.Getenv("HOST_INIT_UID_CONTAINER") != "1" {
-		t.Skip("fixed root trust-key path requires disposable root container")
+		t.Skip("fixed root /etc/open-habitat path requires disposable root container")
 	}
 	site, _, s := inspectionFixture(t)
 	const base = "/etc/open-habitat"
@@ -145,9 +145,6 @@ func TestApplyBindingPreservesBootstrapRepairButNotSecretReplacement(t *testing.
 		t.Fatal(e)
 	}
 	defer os.RemoveAll(base)
-	if e := os.WriteFile(releaseTrustKey, []byte(strings.Repeat("k", 32)), 0600); e != nil {
-		t.Fatal(e)
-	}
 	s.Gateway.OAuthSecretFile = base + "/oauth"
 	s.Gateway.TLSCertFile = base + "/cert"
 	s.Gateway.TLSKeyFile = base + "/key"

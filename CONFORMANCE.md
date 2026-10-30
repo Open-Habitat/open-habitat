@@ -273,9 +273,9 @@ always-refusing slice. Existing whole-surface partial rows remain unchanged.
 
 | Sections | Scoped judgment and evidence |
 | --- | --- |
-| 1–4 | Strict flag/site parsing precedes observation; rejected protected values are omitted. Root-only trusted file ancestry, exact target/signature/profile and native collision checks fail closed. Typed stale/busy/recovery/immutable/domain failures remain distinct from native-action/system failures. |
+| 1–4 | Strict flag/site parsing precedes observation; rejected protected values are omitted. Root-only trusted file ancestry, exact pinned-target/profile and native collision checks fail closed. Typed stale/busy/recovery/immutable/domain failures remain distinct from native-action/system failures. |
 | 5–7,9–10 | Site and explicit approved observation, no prompts, versioned data/error envelopes and explicit JSONL output. Live `--json` is rejected, not silently converted. |
-| 8 | `host config path/show [--site PATH]` reports the selector/provenance, effective declaration and fixed trusted runtime/key/operation paths. Secret values never enter these documents. Privileged site inputs deliberately ignore environment overlays/includes; inherited operator component config gaps remain **partial**. |
+| 8 | `host config path/show [--site PATH]` reports the selector/provenance, effective declaration and fixed trusted runtime/operation paths. Secret values never enter these documents. Privileged site inputs deliberately ignore environment overlays/includes; inherited operator component config gaps remain **partial**. |
 | 11 | No-write dry-run; shared-lock approval revalidation, protected-binding checks around actions, exact-input continuation, verified no-op repeats. `TestApplyLockedRevalidationAndResume`, `TestApplyResumeReceiptFirstPublication`, `TestApplyRefusesProtectedInputDriftDuringActions`, broker exact-unpublished completion/refusal tests and the production VM fixture distinguish these from replaying journal phases or reseeding occupied state. Named ACL readers, shared gateway identities and foreign unit policy are refused, not repaired. |
 | 12 | Explicit progress with monotonic seq and one terminal result/error/cancelled record; operation show remains inspectable intent. SIGINT/SIGTERM retain 130/143; a crash lacks a terminal and leaves an unknown outcome. `TestApplyFailureRefencesBeforeUnlock` proves returned failure/cancellation restores closure under the lock using an independent context, or honestly reports `entry_closure=unavailable`. VM SIGKILL boundaries are not graceful signal-delivery evidence. |
 | 13–14 | Bounded plans and operation/config documents; table-driven drill-down help names approval/output/continuation rules. |
@@ -283,9 +283,9 @@ always-refusing slice. Existing whole-surface partial rows remain unchanged.
 | 18–21 | Inherited doctor/clock completeness remains **partial**. The library injects the operation clock; there is no frozen-time CLI override. No native user-state registry or editable host record store is added. |
 | 22–24 | CLI delegates to the host library and fixed native adapters. Runtime authorities gain no installer capability. Neutral paths/examples; actual VM and final-review evidence belongs in the implementation result rather than inferred from a library test or signed inventory alone. |
 
-The unsigned product archive still requires an independently trusted release
-channel before root execution. The runtime's separate signature authenticates
-its exact closure, not the product binary's provenance. Neither checksum-only
+The product archive must match GitHub's stated digest before root execution.
+The runtime manifest, pinned by its digest in the site, authenticates its exact
+closure and, for an upgrade, the successor's product files. Neither checksum-only
 packaging nor a dpkg version read alone proves installation or mapped-user
 startup. Canon mechanical reports remain advisory with the probe limitations
 listed above; no staged issue-creation command is executed.
@@ -467,8 +467,9 @@ existing host authentication/staging library; **no installed host command,
 daemon authority or readiness claim is added**. Earlier whole-product matrix
 and its eight partial sections remain unchanged.
 
-- §§1–4,9–10,22: authenticated version/digest/key are explicit and separate from
-  the bundle. Strict signed wire fields, complete file/component/lock/licence
+- §§1–4,9–10,22: the pinned version/digest are explicit and separate from the
+  bundle; an optional `--key-file` on verify/stage additionally checks the
+  still-published signature. Strict pinned wire fields, complete file/component/lock/licence
   references, bounded manifests/archives and safe modes precede extraction.
   Signature/target/digest failures remain fixed library errors. The helper emits
   versioned JSON data/errors without prompting; it does not inherit native

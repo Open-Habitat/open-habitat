@@ -1,6 +1,11 @@
 // runtime-release is build tooling, not a daemon or installed host operator.
-// It deliberately receives trust and the approved target separately from the
-// bundle. A public key inside a release can never authorize that release.
+// verify and stage receive the approved target (version and the manifest digest
+// GitHub states for the release asset) separately from the bundle; nothing in
+// the bundle can authorize it. sign still writes release.sig until the release
+// cut stops signing (ADR 0034). Until then a caller that passes --key-file to
+// verify or stage, such as Fleetrepo's upgrade tool, which derives the digest
+// from the downloaded bytes, still gets the signature checked; without it the
+// pinned digest alone authenticates.
 package main
 
 import (
@@ -35,7 +40,7 @@ func run() error {
 	command := os.Args[1]
 	fs := flag.NewFlagSet(command, flag.ContinueOnError)
 	dir := fs.String("directory", "", "release directory (required)")
-	key := fs.String("key-file", "", "independently trusted raw public key; sign uses private key")
+	key := fs.String("key-file", "", "raw Ed25519 private key (sign), new key path (key-create), or optional public key whose release.sig verify/stage then require")
 	version := fs.String("version", "", "exact approved release version")
 	commit := fs.String("commit", "", "full source commit (sign only)")
 	artifactsFile := fs.String("artifacts-file", "", "JSON artifact descriptor array (sign only; default artifact.json is one core descriptor)")
@@ -49,8 +54,11 @@ func run() error {
 		}
 		return errors.New("invalid arguments")
 	}
-	if fs.NArg() != 0 || *key == "" {
-		return errors.New("key-file required; no positional arguments")
+	if fs.NArg() != 0 {
+		return errors.New("no positional arguments")
+	}
+	if (command == "key-create" || command == "sign") && *key == "" {
+		return errors.New("key-file required by key-create and sign")
 	}
 	if command == "key-create" {
 		pub, priv, e := ed25519.GenerateKey(rand.Reader)
@@ -69,11 +77,11 @@ func run() error {
 	if *dir == "" || *version == "" {
 		return errors.New("directory and exact version required")
 	}
-	keyBytes, e := readInput(*key, ed25519.PrivateKeySize)
-	if e != nil {
-		return errors.New("key file unavailable")
-	}
 	if command == "sign" {
+		keyBytes, e := readInput(*key, ed25519.PrivateKeySize)
+		if e != nil {
+			return errors.New("key file unavailable")
+		}
 		if *commit == "" || *platform == "" || len(keyBytes) != ed25519.PrivateKeySize {
 			return errors.New("commit, platform and raw private key required")
 		}
@@ -105,7 +113,7 @@ func run() error {
 		}
 		sum := sha256.Sum256(manifest)
 		// Verify the produced closure independently before publishing signed metadata.
-		r, e := host.AuthenticateRelease(manifest, sig, ed25519.PrivateKey(keyBytes).Public().(ed25519.PublicKey), host.Release{Version: *version, ManifestSHA256: hex.EncodeToString(sum[:])})
+		r, e := host.AuthenticateRelease(manifest, host.Release{Version: *version, ManifestSHA256: hex.EncodeToString(sum[:])})
 		if e != nil {
 			return e
 		}
@@ -133,11 +141,17 @@ func run() error {
 	if e != nil {
 		return e
 	}
-	sig, e := readInput(filepath.Join(*dir, "release.sig"), ed25519.SignatureSize)
-	if e != nil {
-		return e
+	if *key != "" {
+		pub, e := readInput(*key, ed25519.PublicKeySize)
+		if e != nil || len(pub) != ed25519.PublicKeySize {
+			return errors.New("public key file unavailable")
+		}
+		sig, e := readInput(filepath.Join(*dir, "release.sig"), ed25519.SignatureSize)
+		if e != nil || !host.ReleaseSignatureValid(b, sig, pub) {
+			return errors.New("release_signature_invalid: release.sig does not verify with --key-file")
+		}
 	}
-	r, e := host.AuthenticateRelease(b, sig, keyBytes, host.Release{Version: *version, ManifestSHA256: *digest})
+	r, e := host.AuthenticateRelease(b, host.Release{Version: *version, ManifestSHA256: *digest})
 	if e != nil {
 		return e
 	}

@@ -4,7 +4,6 @@ package host
 
 import (
 	"context"
-	"crypto/ed25519"
 	"encoding/json"
 	"errors"
 	"github.com/Open-Habitat/open-habitat/internal/bootguard"
@@ -90,19 +89,9 @@ func installedRelease(ctx context.Context) (Site, AuthenticatedRelease, error) {
 	if gen != generationPath(s) {
 		return s, AuthenticatedRelease{}, ErrUpgradeTarget
 	}
-	b, e := trustedBytes(gen+"/release.json", MaxReleaseManifestBytes)
-	if e != nil {
-		return s, AuthenticatedRelease{}, e
-	}
-	sig, e := trustedBytes(gen+"/release.sig", 64)
-	if e != nil {
-		return s, AuthenticatedRelease{}, e
-	}
-	key, e := trustedBytes(releaseTrustKey, ed25519.PublicKeySize)
-	if e != nil {
-		return s, AuthenticatedRelease{}, e
-	}
-	r, e := authenticateHostRelease(b, sig, key, s.Release)
+	// A generation installed before ADR 0034 may still hold release.sig; it
+	// is neither read nor required.
+	r, e := authenticateReleaseFile(gen, s.Release)
 	if e != nil {
 		return s, r, e
 	}

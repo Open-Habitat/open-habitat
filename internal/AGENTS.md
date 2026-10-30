@@ -85,10 +85,12 @@ The packages divide the work as follows.
   profiles declare qualified minimum versions, never exact Ubuntu pins or shipped
   deb closures. Newer security updates must not block convergence. Deliberate
   maintenance installs unmet requirements through the host's apt, with no removals,
-  downgrades or holds. Non-Ubuntu components alone remain exact signed archives.
-  Release trust comes from an independently approved Ed25519 key and the site's
-  exact manifest digest/version, never a key or checksum supplied by that same
-  bundle.
+  downgrades or holds. Non-Ubuntu components alone remain exact pinned archives.
+  Release trust is the site's exact manifest digest/version, which the operator
+  takes from the SHA-256 GitHub states for the release's manifest asset. The
+  digest is compared before the manifest is parsed, and nothing supplied by the
+  same bundle (a checksum file, a key, a signature) can authorize it. Host
+  apply and upgrade read no signature or key.
   `AuthenticateRelease`/`AuthenticatedRelease.StageRelease` are the executor's
   authentication and private staging seam, not activation approval. The executor
   owns the operation lock, trusted staging-parent ancestry and cleanup; it must
@@ -325,7 +327,7 @@ Identity and authority:
   while the person has a syncing account; it is the one thing the root broker
   may look at in a home, and only for whether it exists.
 - Host apply owns only the `tools` section of
-  `/opt/open-habitat/integrations.json`, derived from the signed integrations
+  `/opt/open-habitat/integrations.json`, derived from the pinned integrations
   profile. The application sections beside it (Google, Microsoft, Dropbox)
   are root's, and the broker writes one of them on the gateway's request
   (Jari, 2026-10-24, the ADR 0030 pattern): only after the gateway's current

@@ -51,11 +51,11 @@ func releaseManifest(a ...ReleaseArtifact) ReleaseManifest {
 }
 func authenticatedFixture(t *testing.T, m ReleaseManifest) AuthenticatedRelease {
 	t.Helper()
-	b, sig, e := EncodeRelease(m, releaseKey())
+	b, _, e := EncodeRelease(m, releaseKey())
 	if e != nil {
 		t.Fatal(e)
 	}
-	r, e := AuthenticateRelease(b, sig, releaseKey().Public().(ed25519.PublicKey), Release{m.Version, releaseDigest(b)})
+	r, e := AuthenticateRelease(b, Release{m.Version, releaseDigest(b)})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -68,36 +68,42 @@ func TestReleaseAuthenticationAndStrictWire(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	pub := releaseKey().Public().(ed25519.PublicKey)
 	target := Release{m.Version, releaseDigest(b)}
-	if _, e := AuthenticateRelease(b, sig, pub, target); e != nil {
+	// The pinned digest alone authenticates: no signature or key is consulted.
+	if _, e := AuthenticateRelease(b, target); e != nil {
 		t.Fatal(e)
 	}
-	for name, change := range map[string]func() ([]byte, []byte, ed25519.PublicKey, Release){
-		"tamper": func() ([]byte, []byte, ed25519.PublicKey, Release) {
-			return append(append([]byte{}, b...), ' '), sig, pub, target
-		},
-		"wrong key": func() ([]byte, []byte, ed25519.PublicKey, Release) {
-			k := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{18}, 32))
-			return b, sig, k.Public().(ed25519.PublicKey), target
-		},
-		"unsigned": func() ([]byte, []byte, ed25519.PublicKey, Release) { return b, nil, pub, target },
-		"wrong domain": func() ([]byte, []byte, ed25519.PublicKey, Release) {
-			return b, ed25519.Sign(releaseKey(), b), pub, target
-		},
-		"wrong target": func() ([]byte, []byte, ed25519.PublicKey, Release) {
-			return b, sig, pub, Release{"1.2.4", target.ManifestSHA256}
-		},
-		"wrong digest": func() ([]byte, []byte, ed25519.PublicKey, Release) {
-			return b, sig, pub, Release{m.Version, strings.Repeat("0", 64)}
-		},
+	for name, change := range map[string]func() ([]byte, Release){
+		"tamper":         func() ([]byte, Release) { return append(append([]byte{}, b...), ' '), target },
+		"wrong target":   func() ([]byte, Release) { return b, Release{"1.2.4", target.ManifestSHA256} },
+		"wrong digest":   func() ([]byte, Release) { return b, Release{m.Version, strings.Repeat("0", 64)} },
+		"unpinned":       func() ([]byte, Release) { return b, Release{m.Version, ""} },
+		"uppercase pin":  func() ([]byte, Release) { return b, Release{m.Version, strings.ToUpper(target.ManifestSHA256)} },
+		"empty manifest": func() ([]byte, Release) { return nil, Release{m.Version, releaseDigest(nil)} },
+		// Unparseable bytes are refused on the pin before they are parsed.
+		"garbage": func() ([]byte, Release) { return []byte("{"), target },
 	} {
 		t.Run(name, func(t *testing.T) {
-			b, sig, key, target := change()
-			if _, e := AuthenticateRelease(b, sig, key, target); e == nil {
-				t.Fatal("accepted unauthenticated/mismatched target")
+			b, target := change()
+			if _, e := AuthenticateRelease(b, target); !errors.Is(e, ErrReleaseTarget) {
+				t.Fatalf("accepted or misreported unpinned/mismatched target: %v", e)
 			}
 		})
+	}
+	pub := releaseKey().Public().(ed25519.PublicKey)
+	if !ReleaseSignatureValid(b, sig, pub) {
+		t.Fatal("release cut signature does not verify")
+	}
+	other := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{18}, 32)).Public().(ed25519.PublicKey)
+	for name, ok := range map[string]bool{
+		"wrong key":    ReleaseSignatureValid(b, sig, other),
+		"unsigned":     ReleaseSignatureValid(b, nil, pub),
+		"wrong domain": ReleaseSignatureValid(b, ed25519.Sign(releaseKey(), b), pub),
+		"tamper":       ReleaseSignatureValid(append(append([]byte{}, b...), ' '), sig, pub),
+	} {
+		if ok {
+			t.Fatalf("%s signature verified", name)
+		}
 	}
 	for name, bad := range map[string]string{
 		"duplicate":      strings.Replace(string(b), `"version":"1.2.3"`, `"version":"9.9.9","version":"1.2.3"`, 1),
@@ -110,8 +116,7 @@ func TestReleaseAuthenticationAndStrictWire(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			raw := []byte(bad)
-			sig := ed25519.Sign(releaseKey(), append([]byte(releaseSignatureDomain), raw...))
-			_, e := AuthenticateRelease(raw, sig, pub, Release{m.Version, releaseDigest(raw)})
+			_, e := AuthenticateRelease(raw, Release{m.Version, releaseDigest(raw)})
 			if !errors.Is(e, ErrRelease) || strings.Contains(e.Error(), "do-not-echo") {
 				t.Fatalf("strict parse: %v", e)
 			}

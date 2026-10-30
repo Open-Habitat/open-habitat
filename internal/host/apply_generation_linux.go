@@ -269,14 +269,17 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 			return e
 		}
 	}
-	for _, name := range []string{"release.json", "release.sig"} {
-		data, err := trustedBytes(releaseDirectory+"/"+name, MaxReleaseManifestBytes)
-		if err != nil {
-			return err
-		}
-		if e = os.WriteFile(stage+"/"+name, data, 0644); e != nil {
-			return e
-		}
+	// Only the manifest is retained, and only the bytes the site pins: the
+	// release directory may have changed since loadRelease authenticated it.
+	manifest, e := trustedBytes(releaseDirectory+"/release.json", MaxReleaseManifestBytes)
+	if e != nil {
+		return e
+	}
+	if sum := sha256.Sum256(manifest); hex.EncodeToString(sum[:]) != s.Release.ManifestSHA256 {
+		return ErrReleaseTarget
+	}
+	if e = os.WriteFile(stage+"/release.json", manifest, 0644); e != nil {
+		return e
 	}
 	// Make only the authenticated immutable generation public, never its secret,
 	// broker or staging parents. Fsync payload and directories before publication.

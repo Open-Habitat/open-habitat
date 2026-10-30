@@ -24,7 +24,6 @@ import (
 )
 
 const releaseDirectory = "/var/lib/open-habitat/release"
-const releaseTrustKey = "/etc/open-habitat/release-key.pub"
 const generationParent = "/opt/open-habitat/generations"
 const immutableFile = "/var/lib/open-habitat/host/installation.json"
 const maintenanceFile = "/etc/open-habitat/maintenance"
@@ -94,20 +93,18 @@ func installedImmutable() (Immutable, bool, error) {
 	}
 	return im, true, nil
 }
+
+// authenticateReleaseFile authenticates dir/release.json by the site's pin
+// alone. A release.sig beside it, or a release key on the host, is ignored.
+func authenticateReleaseFile(dir string, target Release) (AuthenticatedRelease, error) {
+	b, e := trustedBytes(dir+"/release.json", MaxReleaseManifestBytes)
+	if e != nil {
+		return AuthenticatedRelease{}, e
+	}
+	return authenticateHostRelease(b, target)
+}
 func loadRelease(s Site) (AuthenticatedRelease, error) {
-	b, e := trustedBytes(releaseDirectory+"/release.json", MaxReleaseManifestBytes)
-	if e != nil {
-		return AuthenticatedRelease{}, e
-	}
-	sig, e := trustedBytes(releaseDirectory+"/release.sig", 64)
-	if e != nil {
-		return AuthenticatedRelease{}, e
-	}
-	key, e := trustedBytes(releaseTrustKey, 32)
-	if e != nil {
-		return AuthenticatedRelease{}, e
-	}
-	r, e := authenticateHostRelease(b, sig, key, s.Release)
+	r, e := authenticateReleaseFile(releaseDirectory, s.Release)
 	if e != nil {
 		return r, e
 	}
@@ -143,16 +140,11 @@ func inputBindingProduct(ctx context.Context, path, product string) (string, err
 		}
 		refs[ref.code] = id
 	}
-	key, e := trustedBytes(releaseTrustKey, 32)
-	if e != nil {
-		return "", e
-	}
 	b, _ := json.Marshal(struct {
 		Site    Site
 		Refs    map[string]fileIdentity
-		Key     []byte
 		Product string
-	}{s, refs, key, product})
+	}{s, refs, product})
 	h := sha256.Sum256(b)
 	return hex.EncodeToString(h[:]), ctx.Err()
 }

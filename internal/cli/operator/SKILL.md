@@ -61,53 +61,37 @@ Inspect before mutation:
     open-habitat host config show --site /etc/open-habitat/site.json --json
     open-habitat host check --site /etc/open-habitat/site.json --json
 
-The fixed incoming runtime directory is /var/lib/open-habitat/release; place the
-signed manifest, signature and selected archives there as trusted root-owned
-files. The raw 32-byte independently approved Ed25519 public key belongs at
-/etc/open-habitat/release-key.pub, never taken on trust from that same bundle.
-Site release.version and release.manifest_sha256 must match exactly. Verify
-runtime bytes with an independently trusted verifier before root execution.
-The product archive's checksums alone are integrity, not authenticity.
+The fixed incoming runtime directory is /var/lib/open-habitat/release; place
+the release's `release-linux-<arch>.json` there as `release.json`, with the
+selected archives, as trusted root-owned files. The trust pin is
+site.release.manifest_sha256: the SHA-256 GitHub states for that manifest asset
+(`assets[].digest` from `gh api repos/Open-Habitat/open-habitat/releases/tags/<tag>`),
+never a checksum file from the same download. site.release.version is the
+manifest's version. The operator accepts exactly the manifest bytes that hash
+to the pin and checks every archive and product file against that manifest; it
+reads no signature or key, and a leftover release.sig or
+/etc/open-habitat/release-key.pub is ignored. Check the product package's bytes
+against GitHub's stated digest too before running it as root; its own checksums
+are integrity, not authenticity.
 
-
-The authenticated product package includes `bin/runtime-release`. Use that
-verifier from an independently authenticated product package (not an executable
-supplied by an untrusted runtime). It runs unprivileged and always emits JSON;
-it takes no `--json` flag:
+The product package includes `bin/runtime-release`, which checks a runtime
+release unprivileged before installation and always emits JSON (it takes no
+`--json` flag):
 
 ```sh
-/path/to/authenticated-product/bin/runtime-release verify \
+/path/to/product/bin/runtime-release verify \
   --directory /srv/incoming/runtime \
-  --key-file /path/to/independently-approved-release-key.pub \
   --version <exact-runtime-version> \
-  --manifest-sha256 <independently-approved-64-hex-manifest-digest>
+  --manifest-sha256 <GitHub-stated 64-hex manifest digest>
 ```
 
-The directory must contain `release.json`, `release.sig` and **every** archive
-named by the manifest. The version is the signed **runtime** version, which may
-differ from the product version when a newer product reuses unchanged runtime
-bytes. Exit 0 with `data.status=verified` authenticates the manifest and verifies
-the complete archive closure; it is not installed-host qualification.
-
-For an independent Ed25519 implementation, the signed payload is the ASCII
-bytes `open-habitat.release.v1` followed by one NUL byte (`0x00`), followed by the
-**exact file bytes** of `release.json`, including any trailing newline. Do not
-parse/reserialize the JSON or sign/verify a hex digest instead. `release.sig`
-is the raw 64-byte signature; the approved public key is raw 32-byte Ed25519,
-not PEM or base64. For example, with Python's cryptography package:
-
-```python
-from pathlib import Path
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-key = Ed25519PublicKey.from_public_bytes(Path("approved-release-key.pub").read_bytes())
-key.verify(Path("release.sig").read_bytes(),
-           b"open-habitat.release.v1\x00" + Path("release.json").read_bytes())
-```
-
-That primitive signature check alone does not verify the target version,
-manifest digest, archive membership, sizes or hashes. The supported verifier
-above also checks those. A key downloaded beside a bundle is not trusted until
-its bytes match an independently approved pin.
+The directory must contain `release.json` and **every** archive named by the
+manifest. The version is the **runtime** version, which may differ from the
+product version when a newer product reuses unchanged runtime bytes. Exit 0
+with `data.status=verified` means the manifest matches the digest and the
+complete archive closure matches the manifest; it is not installed-host
+qualification. While releases are still signed, an added `--key-file` also
+requires `release.sig` to verify against that raw 32-byte key.
 
 Prepare explicitly in a maintenance window:
 
@@ -127,7 +111,7 @@ Ubuntu versions satisfy checks. Plans list unmet `ubuntu.package.<name>` actions
 and simulate apt; unavailable or too-old candidates refuse. Refresh customer
 repositories or resolve holds/pins, then obtain a fresh approval. The operator
 does not update indexes, impose holds or ship Ubuntu debs. Non-Ubuntu archives
-remain exact and signed; Ubuntu installation needs repository/network access.
+remain exact and pinned by the manifest; Ubuntu installation needs repository/network access.
 
 Then inspect and approve apply separately:
 
@@ -245,15 +229,15 @@ provider entitlement.
 
 ## Explicit named successor upgrade
 
-A product-only replacement still requires a distinct signed release version and
+A product-only replacement still requires a distinct release version and
 manifest digest, naming the exact predecessor and every successor binary/web
 file. Reuse unchanged runtime archives/descriptors; leaving site.release on the
-old runtime manifest cannot install new product bytes. Publish the new signed
-metadata with the product, keep the approved public key and never deliver its
-private signing key to the host.
+old runtime manifest cannot install new product bytes. Publish the new manifest
+with the product.
 
 Change only the declared release; converge other desired state separately.
-Deliver the signed successor naming its exact predecessor and complete product
+Pin the successor's manifest by its GitHub-stated digest in
+site.release.manifest_sha256. Deliver the successor naming its exact predecessor and complete product
 inventory, with its runtime archives and root-owned verified package. Preview
 using that successor's `host upgrade --site /etc/open-habitat/site.json --dry-run
 --json`. A real invocation requires `--approved-plan ID --approve-maintenance
@@ -341,7 +325,7 @@ If a running apply stopped at `converging` because `/etc/open-habitat` was
 root:root 0700 without ACLs, keep ingress closed and use the independently
 verified corrected product package. Inspect `stat`/`getfacl` first, then as
 root run only `chmod 0711 /etc/open-habitat`. Keep site, secret source files,
-release key, runtime pins and installed generation unchanged. This is a
+runtime pins and installed generation unchanged. This is a
 customer bootstrap-permission repair, not permission to rewrite generated
 files, reset journals or reseed identities.
 
@@ -430,6 +414,6 @@ in its actual kernel status, and logind must be running. Failed, masked or
 misconfigured services still block. Do not add a customer boot unit or manually
 start polkit merely to obtain a passing read-only check.
 
-After a maintenance-only apply repair, a later signed upgrade must pin the
+After a maintenance-only apply repair, a later upgrade must pin the
 installed generation's release and executable digest as its predecessor, not
 the repairing operator's version.

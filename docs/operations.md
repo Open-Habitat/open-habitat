@@ -40,33 +40,33 @@ it. Otherwise maintenance stops with `generation_staging_cross_device` before
 anything is published, and the same approved input continues once the mount
 is gone.
 
-Obtain the product package from an **independently trusted release channel**.
-Its checksum inventory detects corruption, not a malicious replacement. Verify
-that channel's source/version approval before executing `bin/open-habitat` as
-root. Extract the package into a root-owned, non-writable directory, retaining
+Obtain the product package and the runtime release from the GitHub release.
+The release trust is the SHA-256 that GitHub states for each asset
+(`assets[].digest` in `gh api repos/Open-Habitat/open-habitat/releases/tags/<tag>`,
+also shown on the release page). The downloaded package and manifest must hash
+to those figures before anything is extracted or run as root; the package's own
+checksum inventory detects corruption, not a replacement. Extract the package into a root-owned, non-writable directory, retaining
 its `bin/` and `web/` layout. No source checkout, Fleetrepo, npm or Go is needed
 on the installation host.
 
 Each architecture has its own product package (`open-habitat-VERSION-linux-amd64`
-or `-linux-arm64`) and its own signed runtime release, whose manifest names its
+or `-linux-arm64`) and its own runtime release, whose manifest names its
 platform (`ubuntu-24.04-amd64` or `ubuntu-24.04-arm64`); the operator refuses a
 release for another architecture with `release_platform_mismatch`.
 A published release that carries both architectures names every
-architecture-specific asset after its architecture: the manifest and
-signature are `release-linux-<arch>.json` and `release-linux-<arch>.sig`, and
-the archives are `<profile>-linux-<arch>.tar.gz`. Save the manifest and
-signature as `release.json` and `release.sig`, the names the operator reads;
-keep the archives' names, because the signed manifest names them.
-Separately obtain the signed runtime release (`release.json`, `release.sig`,
-selected `.tar.gz` archives) and its independently approved Ed25519 public key.
-A key delivered by the same untrusted bundle is not a trust root. Before root
-execution, use the independently trusted runtime verifier shown below. Copy
-the authenticated runtime files into `/var/lib/open-habitat/release/`, as
-root-owned, non-writable regular files, and the raw 32-byte public key to
-`/etc/open-habitat/release-key.pub`. Parents must be root-owned and not writable
-by other users. The runtime manifest version and SHA-256 go in the site file.
-Development-signed runtime releases are for disposable testing only, not a
-production signing-key custody claim.
+architecture-specific asset after its architecture: the manifest is
+`release-linux-<arch>.json` and the archives are `<profile>-linux-<arch>.tar.gz`.
+Save the manifest as `release.json`, the name the operator reads; keep the
+archives' names, because the manifest names them. Copy `release.json` and every
+selected archive into `/var/lib/open-habitat/release/` as root-owned,
+non-writable regular files; parents must be root-owned and not writable by other
+users. The manifest's version goes in `site.release.version` and GitHub's stated
+digest of `release-linux-<arch>.json` in `site.release.manifest_sha256`. That
+pin is the whole runtime trust: the operator accepts exactly the manifest bytes
+that hash to it and checks every archive and product file against the manifest.
+It reads no signature or key. Releases still carry `.sig` and `.pub` assets
+for older tooling, and a `release.sig` or `/etc/open-habitat/release-key.pub`
+left on a host is ignored.
 
 Register the GitHub OAuth app with its callback at
 `https://<origin>/auth/github/callback`, and under the app's **Optional
@@ -284,8 +284,8 @@ records authenticated release/site/unit generation evidence. Earlier experimenta
 generations without it are not adopted or migrated; use this contract for the
 first installation, before admitting pilot users.
 
-Deliver the independently signed successor runtime manifest/archives to the same
-incoming release directory, and its verified product package to a root-owned
+Deliver the successor runtime manifest/archives to the same incoming release
+directory, and its product package, checked against GitHub's stated digests, to a root-owned
 non-writable directory. Change only `site.release`; converge admission, roles,
 profiles or quota changes separately before planning the release transition.
 
@@ -303,17 +303,17 @@ predecessor names the failing observation in `upgrade.predecessor`'s reason
 `predecessor_runtime_packages_not_ready`, `predecessor_service_inactive`, and
 so on); diagnose that observation on the running predecessor rather than
 editing the successor's inputs.
-The signed successor must name this exact predecessor, its executable digest,
-the compatibility protocol and every successor binary/web file. A package checksum supplied by the package itself
-is not independent release authentication.
+The successor's manifest, pinned by its GitHub-stated digest in
+`site.release.manifest_sha256`, must name this exact predecessor, its executable
+digest, the compatibility protocol and every successor binary/web file. A
+package checksum supplied by the package itself is not release authentication.
 
-A product-only replacement still needs a new signed release manifest: the
+A product-only replacement still needs a new release manifest: the
 transition authenticates the successor executable and web assets, not only the
 runtime archives. Reuse unchanged runtime archive bytes and descriptors, but
 issue a distinct release version/digest with the exact predecessor and successor
 product inventory. Leaving `site.release` on the old runtime manifest cannot
-install a new product. Keep the approved trust key; never copy its private key
-to the host. Publish the new manifest/signature together with the product and
+install a new product. Publish the new manifest together with the product and
 identify unchanged archive hashes in the handoff.
 
 ```sh
@@ -458,7 +458,7 @@ state. For an incomplete operation, retain its original approval and inspect
 its phase, native dpkg state and entry closure before deliberate continuation.
 No index update, repair, removal, downgrade or hold change is implicit.
 
-Only non-Ubuntu archive verification and staging are offline. The signed manifest
+Only non-Ubuntu archive verification and staging are offline. The manifest
 retains complete component/file digests and upstream licence records for those
 archives, including Node third-party notices and npm package notices/licences.
 These records do not grant
@@ -499,63 +499,33 @@ that offer. The uv profile carries its locked source graph; Ubuntu source
 provision and any provider entitlement remain release/operator obligations,
 not a blanket licence grant from this development signature.
 
-Provision an **independently trusted verifier binary**, approved public key,
-exact version and manifest digest through the operator's trusted channel.
-Neither a key nor an executable taken from the untrusted runtime bundle can
-bootstrap trust. The `key-create` command makes a disposable **development**
-key only; no production key or production trust root is supplied by this project.
-With those approved inputs, verification can run unprivileged:
+Before installing, the runtime release can be checked unprivileged with the
+`bin/runtime-release` of a product package whose own bytes matched GitHub's
+stated digest. Take the version and the manifest digest from the GitHub
+release, never from a checksum file beside the download:
 
 ```sh
-runtime-release verify --directory /srv/incoming/core \
-  --key-file /etc/release-trust/core.pub --version 0.0.0-runtime-test \
-  --manifest-sha256 <approved-64-hex-digest>
-```
-
-
-The authenticated product package includes `bin/runtime-release`. Use that
-verifier from an independently authenticated product package (not an executable
-supplied by an untrusted runtime). It runs unprivileged and always emits JSON;
-it takes no `--json` flag:
-
-```sh
-/path/to/authenticated-product/bin/runtime-release verify \
+gh api repos/Open-Habitat/open-habitat/releases/tags/<tag> \
+  --jq '.assets[] | select(.name == "release-linux-<arch>.json") | .digest'
+/path/to/product/bin/runtime-release verify \
   --directory /srv/incoming/runtime \
-  --key-file /path/to/independently-approved-release-key.pub \
   --version <exact-runtime-version> \
-  --manifest-sha256 <independently-approved-64-hex-manifest-digest>
+  --manifest-sha256 <64-hex digest after "sha256:">
 ```
 
-The directory must contain `release.json`, `release.sig` and **every** archive
-named by the manifest. The version is the signed **runtime** version, which may
-differ from the product version when a newer product reuses unchanged runtime
-bytes. Exit 0 with `data.status=verified` authenticates the manifest and verifies
-the complete archive closure; it is not installed-host qualification.
-
-For an independent Ed25519 implementation, the signed payload is the ASCII
-bytes `open-habitat.release.v1` followed by one NUL byte (`0x00`), followed by the
-**exact file bytes** of `release.json`, including any trailing newline. Do not
-parse/reserialize the JSON or sign/verify a hex digest instead. `release.sig`
-is the raw 64-byte signature; the approved public key is raw 32-byte Ed25519,
-not PEM or base64. For example, with Python's cryptography package:
-
-```python
-from pathlib import Path
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-key = Ed25519PublicKey.from_public_bytes(Path("approved-release-key.pub").read_bytes())
-key.verify(Path("release.sig").read_bytes(),
-           b"open-habitat.release.v1\x00" + Path("release.json").read_bytes())
-```
-
-That primitive signature check alone does not verify the target version,
-manifest digest, archive membership, sizes or hashes. The supported verifier
-above also checks those. A key downloaded beside a bundle is not trusted until
-its bytes match an independently approved pin.
+It always emits JSON and takes no `--json` flag. The directory must contain
+`release.json` and **every** archive named by the manifest. The version is the
+**runtime** version, which may differ from the product version when a newer
+product reuses unchanged runtime bytes. Exit 0 with `data.status=verified`
+means the manifest hashes to the given digest and the complete archive closure
+matches it; it is not installed-host qualification. Until releases stop being
+signed, `--key-file <raw 32-byte public key>` additionally requires
+`release.sig` to verify against that key; without it no signature is read.
 
 For private staging, root may use `runtime-release stage` with the same inputs
 and `--stage-parent <existing-root-owned-0700-directory>`. The caller must
 establish trusted parent ancestry; this build tool is not an installation
-executor. It verifies signatures, target, complete inventory, file bytes,
+executor. It verifies the pinned target, complete inventory, file bytes,
 licence references and npm locks before extracting into a new private child;
 it never activates that child, starts a service or installs/downgrades a package.
 No installation readiness follows from staging alone. Newer Ubuntu security
@@ -628,7 +598,7 @@ Agent file offers need no configuration. An agent offers workspace files to the 
 
 Every installation ships the integration tools in the required `integrations`
 profile, so a site's `profiles` always lists `core` and `integrations`. The
-signed profile carries **himalaya 2.2.1** (IMAP), **rclone 1.71.2**, **gog
+profile carries **himalaya 2.2.1** (IMAP), **rclone 1.71.2**, **gog
 0.39.1**, **tea 0.16.0** (Gitea), **glab 1.124.0** (GitLab), **sops 3.13.3**
 (the person's own SOPS, at `/opt/open-habitat/profiles/integrations/bin/sops`), **tailscale/tailscaled 1.104.4** (each person's own Tailscale node, below), **@softeria/ms-365-mcp-server 0.170.1** with the `microsoft-native`
 adapter, **MSAL 5.6.0** and their own **Node 22.21.1**, and a Pi wrapper that
@@ -1211,7 +1181,7 @@ If a running apply stopped at `converging` because `/etc/open-habitat` was
 root:root 0700 without ACLs, keep ingress closed and use the independently
 verified corrected product package. Inspect `stat`/`getfacl` first, then as
 root run only `chmod 0711 /etc/open-habitat`. Keep site, secret source files,
-release key, runtime pins and installed generation unchanged. This is a
+runtime pins and installed generation unchanged. This is a
 customer bootstrap-permission repair, not permission to rewrite generated
 files, reset journals or reseed identities.
 
@@ -1229,8 +1199,9 @@ a new plan ID over that fence. Invoke:
 The successor may finish only late apply phases (`converging`, `verifying`,
 `verified`) with matching durable receipt/fence and original approval. It
 reconstructs the original protected-input binding using the trusted installed
-executable's digest; changed site values, trust-key bytes or protected
-secret-file identity still refuse.
+executable's digest; changed site values or protected secret-file
+identity still refuse. An apply interrupted under a product that still bound
+the release key cannot be continued by one that does not.
 It does not publish the successor binary or rerun apt/initialization/activation:
 it verifies installed config/generation, closes HTTP entry, applies only the
 bounded gateway unit policy repair described below, verifies units, clears

@@ -55,6 +55,7 @@ def release(root, version, binary, predecessor=None, arch='amd64'):
     if predecessor:
         manifest['upgrade'] = {'protocol': 1, 'predecessor': predecessor}
     (root / 'release.json').write_text(json.dumps(manifest))
+    # Releases are still cut signed; the qualification neither needs nor ships it.
     (root / 'release.sig').write_bytes(b's' * 64)
     for name, data in archives.items():
         (root / name).write_bytes(data)
@@ -294,9 +295,7 @@ class Harness(unittest.TestCase):
         root = Path(self.tmp.name)
         self.pred_top, pred = release(root / 'pred', '0.1.0-q.1', b'old-binary')
         self.succ_top, _ = release(root / 'succ', '0.1.0-q.2', b'new-binary', predecessor=pred)
-        self.key = root / 'release-key.pub'
-        self.key.write_bytes(b'k' * 32)
-        self.args = ['--predecessor', str(root / 'pred'), '--successor', str(root / 'succ'), '--release-key', str(self.key)]
+        self.args = ['--predecessor', str(root / 'pred'), '--successor', str(root / 'succ')]
         self.root = root
 
     def tearDown(self):
@@ -353,6 +352,9 @@ class Harness(unittest.TestCase):
         self.assertEqual(site['editor'], {'origin_template': 'https://*.code.qualification.invalid'})
         for path in (cq.SITE, cq.SECRETS + '/tls.key', cq.SECRETS + '/github'):
             self.assertEqual(fake.files[path][1], '0600')
+        # The site's manifest pin is the whole release trust: no key or signature reaches the host.
+        self.assertNotIn(cq.INCOMING + '/release.sig', fake.files)
+        self.assertFalse(any('release-key' in path for path in fake.files))
         self.assertIn(['install', '-d', '-o', 'root', '-g', 'root', '-m', '0711', '/etc/open-habitat'], fake.calls)
         upgrade = next(s for s in doc['stages'] if s['name'] == 'upgrade')['observations']
         self.assertEqual(upgrade['fenced_public_statuses'], [503, None])
@@ -406,7 +408,7 @@ class Harness(unittest.TestCase):
         root.mkdir()
         self.pred_top, pred = release(root / 'pred', '0.1.0-q.1', b'old-binary', arch='arm64')
         self.succ_top, _ = release(root / 'succ', '0.1.0-q.2', b'new-binary', predecessor=pred, arch='arm64')
-        self.args = ['--predecessor', str(root / 'pred'), '--successor', str(root / 'succ'), '--release-key', str(self.key)]
+        self.args = ['--predecessor', str(root / 'pred'), '--successor', str(root / 'succ')]
         fake, q, failure, doc = self.journey(machine='aarch64')
         self.assertIsNone(failure, doc)
         fake, q, failure, doc = self.journey()
@@ -515,11 +517,11 @@ class Commands(unittest.TestCase):
 
     def test_plan_rejects_mixed_architectures(self):
         release(self.h.root / 'arm-succ', '0.1.0-q.3', b'arm', predecessor={'version': '0.1.0-q.1', 'manifest_sha256': hashlib.sha256((self.h.root / 'pred' / 'release.json').read_bytes()).hexdigest()}, arch='arm64')
-        code, out, err = self.main('plan', '--predecessor', str(self.h.root / 'pred'), '--successor', str(self.h.root / 'arm-succ'), '--release-key', str(self.h.key), '--json')
+        code, out, err = self.main('plan', '--predecessor', str(self.h.root / 'pred'), '--successor', str(self.h.root / 'arm-succ'), '--json')
         self.assertEqual((code, json.loads(err)['error']['code']), (2, 'release_platform_mismatch'))
         manifest = self.h.root / 'pred' / 'release.json'
         manifest.write_text(manifest.read_text().replace('ubuntu-24.04-amd64', 'ubuntu-24.04-arm64'))
-        code, out, err = self.main('plan', '--predecessor', str(self.h.root / 'pred'), '--release-key', str(self.h.key), '--json')
+        code, out, err = self.main('plan', '--predecessor', str(self.h.root / 'pred'), '--json')
         self.assertEqual((code, json.loads(err)['error']['code']), (2, 'release_platform_mismatch'))
 
     def test_usage_errors_are_json(self):

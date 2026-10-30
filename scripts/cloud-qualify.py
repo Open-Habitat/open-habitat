@@ -97,16 +97,18 @@ def now():
 # ---------------------------------------------------------------- inputs
 
 def release_bundle(directory):
-    """One published release: product package, signed runtime manifest, archives."""
+    """One published release: product package, runtime manifest, archives.
+
+    The manifest's own SHA-256 becomes the site pin; a release.sig beside it is
+    neither required nor delivered (ADR 0034)."""
     root = Path(directory)
     if not root.is_dir():
         raise Usage('release_directory_missing', f'{directory} is not a directory')
     packages = sorted(p.name for p in root.iterdir() if PACKAGE_RE.match(p.name))
     if len(packages) != 1:
         raise Usage('release_package_ambiguous', f'{directory} must hold exactly one open-habitat-*-linux-<amd64|arm64>.tar.gz package, found {len(packages)}')
-    for name in ('release.json', 'release.sig'):
-        if not (root / name).is_file():
-            raise Usage('release_manifest_missing', f'{directory} lacks {name}')
+    if not (root / 'release.json').is_file():
+        raise Usage('release_manifest_missing', f'{directory} lacks release.json')
     try:
         manifest = json.loads((root / 'release.json').read_text())
         artifacts = manifest['artifacts']
@@ -144,7 +146,7 @@ def release_bundle(directory):
         'package_top': top,
         'arch': arch,
         'binary_sha256': binary,
-        'files': ['release.json', 'release.sig', *archives],
+        'files': ['release.json', *archives],
         'archive_sha256': {a['archive']: a.get('sha256') for a in artifacts},
         'profiles': profiles,
         'upgrade': manifest.get('upgrade'),
@@ -152,9 +154,6 @@ def release_bundle(directory):
 
 
 def inputs(args):
-    key = Path(args.release_key)
-    if not key.is_file() or key.stat().st_size != 32:
-        raise Usage('release_key_invalid', 'release key must be the raw 32-byte Ed25519 public key file')
     pred = release_bundle(args.predecessor)
     succ = release_bundle(args.successor) if args.successor else None
     if succ and succ['arch'] != pred['arch']:
@@ -169,8 +168,7 @@ def inputs(args):
             raise Usage('profile_not_released', f'profile {p} is not in every supplied release')
     if not {'core', 'integrations'} <= set(profiles):
         raise Usage('profile_required', 'every installation selects the core and integrations profiles')
-    return {'predecessor': pred, 'successor': succ, 'release_key': str(key.resolve()),
-            'release_key_sha256': sha256(key), 'profiles': profiles}
+    return {'predecessor': pred, 'successor': succ, 'profiles': profiles}
 
 
 def stages(spec):
@@ -668,7 +666,6 @@ class Qualification:
         self.r.run(['install', '-d', '-o', 'root', '-g', 'root', '-m', '0755', '/var/lib/open-habitat', INCOMING])
         self.bin = self.put_package(pred)
         self.put_release(pred)
-        self.r.put(self.spec['release_key'], '/etc/open-habitat/release-key.pub', '0644')
         self.r.put(self.tls['cert'], f'{SECRETS}/tls.crt', '0600')
         self.r.put(self.tls['key'], f'{SECRETS}/tls.key', '0600')
         self.r.put(('synthetic-' + secrets.token_hex(16)).encode(), f'{SECRETS}/github', '0600')
@@ -878,7 +875,6 @@ def receipt(spec, target, q, failure, extra=None):
         'target': {k: target[k] for k in ('host', 'port', 'user', 'home_device')},
         'inputs': {k: ({f: v[f] for f in ('version', 'manifest_sha256', 'package', 'package_sha256', 'binary_sha256', 'profiles')} if v else None)
                    for k, v in (('predecessor', spec['predecessor']), ('successor', spec['successor']))},
-        'release_key_sha256': spec['release_key_sha256'],
         'profiles': spec['profiles'],
         'stages': q.stages,
         'not_covered': NOT_COVERED + ([] if spec['successor'] else ['upgrade (no successor release supplied)']),
@@ -995,9 +991,8 @@ def parser():
                             ('target', 'qualify on an existing freshly booted stock VM'),
                             ('run', 'provision a short-lived VM through Fleetrepo, qualify, destroy')):
         s = sub.add_parser(name, help=help_text)
-        s.add_argument('--predecessor', required=True, help='directory with one published release: product package, release.json, release.sig, archives')
+        s.add_argument('--predecessor', required=True, help='directory with one published release: product package, release.json, archives')
         s.add_argument('--successor', help='directory with the next release whose manifest names the predecessor; enables upgrade stages')
-        s.add_argument('--release-key', required=True, help='independently trusted raw 32-byte Ed25519 release public key')
         s.add_argument('--profiles', help='comma-separated profiles to install (default: every profile the predecessor ships)')
         s.add_argument('--json', action='store_true', help='print the result document as JSON')
         if name != 'plan':

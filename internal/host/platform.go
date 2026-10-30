@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// Each supported platform is one Ubuntu release on one architecture. A signed
+// Each supported platform is one Ubuntu release on one architecture. A release
 // manifest names exactly one; its archives carry that architecture's binaries
 // and its Ubuntu requirements name that architecture (or "all"). Debian and Go
 // happen to spell both supported architectures the same way.
@@ -63,8 +63,8 @@ func entryPoint(name string) bool {
 }
 
 // elfMatches reports whether an entry point that begins with an ELF header is
-// a 64-bit little-endian binary for the platform. A signature binds bytes, not
-// their architecture: without this a correctly signed archive of the other
+// a 64-bit little-endian binary for the platform. A manifest digest binds bytes, not
+// their architecture: without this a correctly pinned archive of the other
 // architecture would stage and fail only when a person's daemon first
 // executes it.
 func elfMatches(head []byte, platform string) bool {
@@ -74,14 +74,14 @@ func elfMatches(head []byte, platform string) bool {
 	return len(head) >= 20 && head[4] == 2 && head[5] == 1 && binary.LittleEndian.Uint16(head[18:20]) == releasePlatforms[platform]
 }
 
-// AuthenticatedRelease.Platform names the platform the signature covers.
+// AuthenticatedRelease.Platform names the platform the pinned manifest declares.
 func (r AuthenticatedRelease) Platform() string { return r.manifest.Platform }
 
 // authenticateHostRelease is AuthenticateRelease for an installation on this
 // host. Build tooling authenticates releases of any supported platform; the
 // host operator only installs its own.
-func authenticateHostRelease(b, signature []byte, key []byte, target Release) (AuthenticatedRelease, error) {
-	r, e := AuthenticateRelease(b, signature, key, target)
+func authenticateHostRelease(b []byte, target Release) (AuthenticatedRelease, error) {
+	r, e := AuthenticateRelease(b, target)
 	if e != nil {
 		return r, e
 	}

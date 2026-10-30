@@ -26,7 +26,7 @@ const maxIntegrationsConfig = 16384
 var ErrIntegrationsConfig = errors.New("integrations_config_invalid: inspect /opt/open-habitat/integrations.json; it must be one JSON object")
 
 // integrationProfileTools are the executables the integrations profile ships,
-// relative to its runtime. Every one is required in the signed closure, so a
+// relative to its runtime. Every one is required in the pinned closure, so a
 // release cannot leave a catalog entry silently unavailable.
 var integrationProfileTools = map[string]string{
 	"gog":               "bin/gog",
@@ -170,7 +170,7 @@ func (r AuthenticatedRelease) RequireIntegrationTools() error {
 }
 
 // validIntegrationsClosure binds the published tool names to executables the
-// signed integrations archive actually carries, with their pinned versions.
+// pinned integrations archive actually carries, with their pinned versions.
 func validIntegrationsClosure(a ReleaseArtifact, files map[string]RuntimeFile, components map[string]RuntimeComponent) bool {
 	for _, rel := range integrationProfileTools {
 		if f, ok := files["runtime/"+rel]; !ok || f.Mode != 0755 {

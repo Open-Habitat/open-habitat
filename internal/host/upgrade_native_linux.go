@@ -178,7 +178,7 @@ func (n *nativeUpgrade) activate(ctx context.Context, l *Lock, o Operation) erro
 	if e = installRuntimePackages(ctx, n.site, r, generationPath(n.site)); e != nil {
 		return errors.Join(ErrRuntimePackages, e)
 	}
-	// Selector replacement is restricted to this signed predecessor/successor.
+	// Selector replacement is restricted to this pinned predecessor/successor.
 	if e = switchUpgradeSelectors(n.site, n.predecessorDigest()); e != nil {
 		return e
 	}

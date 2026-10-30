@@ -26,7 +26,7 @@ func hostCommand(args []string) (any, error) {
 		} else if len(args) != 2 {
 			return nil, usage("expected host config path|show [--site /absolute/site.json]")
 		}
-		result := map[string]any{"path": path, "source": source, "environment": "ignored", "release_directory": "/var/lib/open-habitat/release", "release_key": "/etc/open-habitat/release-key.pub", "data_root": "/var/lib/open-habitat/host"}
+		result := map[string]any{"path": path, "source": source, "environment": "ignored", "release_directory": "/var/lib/open-habitat/release", "data_root": "/var/lib/open-habitat/host"}
 		if args[1] == "show" {
 			if os.Geteuid() != 0 {
 				return nil, hostError(host.ErrTrust)
@@ -130,9 +130,9 @@ func hostErrorBase(e error) *cliError {
 	case errors.Is(e, host.ErrReleaseArchive):
 		return &cliError{code: "release_archive_invalid", message: "release archive or non-Ubuntu lock bytes do not match the authenticated release; identify the mismatching bytes before continuing", exit: 1}
 	case errors.Is(e, host.ErrReleasePlatform):
-		return &cliError{code: "release_platform_mismatch", message: "the signed release is for another Ubuntu architecture; obtain the release built for this host's platform", exit: 1}
+		return &cliError{code: "release_platform_mismatch", message: "the pinned release is for another Ubuntu architecture; obtain the release built for this host's platform", exit: 1}
 	case errors.Is(e, host.ErrReleaseTarget):
-		return &cliError{code: "release_target_mismatch", message: "installed generation, packages or selectors do not match the declared release; inspect the mismatch before continuing", exit: 1}
+		return &cliError{code: "release_target_mismatch", message: "release.json does not hash to site.release.manifest_sha256 or carry site.release.version, or the installed generation, packages or selectors do not match the declared release; inspect the mismatch before continuing", exit: 1}
 	case errors.Is(e, context.DeadlineExceeded):
 		code := "host_deadline_exceeded"
 		if errors.Is(e, host.ErrRuntimeStage) {
