@@ -810,8 +810,9 @@ type brokenEntry struct{ *scriptEntry }
 
 func (brokenEntry) Accounts(Env) ([]string, error) { return nil, errors.New("unreadable") }
 
-// An unreadable inventory is not an empty one: the page gets no false "no
-// accounts", and the skill keeps the accounts the other tools still hold.
+// An unreadable inventory is not an empty one: the page marks that provider
+// unreadable instead of saying "no accounts", still lists the other tools'
+// accounts, and the skill keeps the accounts the other tools still hold.
 func TestUnreadableInventoryChangesNothing(t *testing.T) {
 	home := newHome(t)
 	// Seed the native account and skill without starting background work.
@@ -827,8 +828,12 @@ func TestUnreadableInventoryChangesNothing(t *testing.T) {
 	// Entries stay fixed after construction, including while Start reconciles.
 	c := testCatalog(t, home, []Entry{&himalaya{}, brokenEntry{&scriptEntry{provider: Google, kind: PastedRedirect}}})
 	h := c.Handler(allow)
-	if code, out, _ := call(t, h, "GET", ListPath, "", nil); code != 503 {
+	code, out, _ := call(t, h, "GET", ListPath, "", nil)
+	if code != 200 || out["skill"] != "failed" || !unreadable(out, "google") || unreadable(out, "imap") {
 		t.Fatalf("list with an unreadable tool: %d %v", code, out)
+	}
+	if accounts, _ := out["accounts"].([]any); len(accounts) != 1 || accounts[0].(map[string]any)["address"] != "person@example.test" {
+		t.Fatalf("readable tool's account missing: %v", out["accounts"])
 	}
 	c.write.Lock()
 	state := c.reconcile()
@@ -836,6 +841,45 @@ func TestUnreadableInventoryChangesNothing(t *testing.T) {
 	after, err := os.ReadFile(filepath.Join(home, SkillDir, "SKILL.md"))
 	if err != nil || state != SkillFailed || !bytes.Equal(before, after) {
 		t.Fatalf("reconcile from a partial inventory: %s, skill read: %v", state, err)
+	}
+}
+
+func unreadable(list map[string]any, provider string) bool {
+	providers, _ := list["providers"].([]any)
+	for _, p := range providers {
+		if p := p.(map[string]any); p["id"] == provider {
+			return p["accounts_unreadable"] == true
+		}
+	}
+	return false
+}
+
+// A tool that created its parent directory under a umask of 002 leaves it
+// writable by the person's group. The daemon still refuses to read through
+// it, but only that tool's providers say so; the rest of the page answers.
+func TestGroupWritableToolDirectoryMarksOnlyItsProviders(t *testing.T) {
+	home := newHome(t)
+	if err := os.MkdirAll(filepath.Join(home, ".config", "rclone"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(home, ".config", "rclone"), 0o775); err != nil {
+		t.Fatal(err)
+	}
+	c := testCatalog(t, home, []Entry{&himalaya{}, &google{}, &dropbox{}})
+	h := c.Handler(allow)
+	if code, _, _ := call(t, h, "POST", AccountsPath, "", imapAccount("person@example.test", "x-secret")); code != 200 {
+		t.Fatal("connect beside an unsafe rclone directory failed", code)
+	}
+	code, out, _ := call(t, h, "GET", ListPath, "", nil)
+	if code != 200 || !unreadable(out, "google") || !unreadable(out, "dropbox") || unreadable(out, "imap") {
+		t.Fatalf("list beside an unsafe rclone directory: %d %v", code, out)
+	}
+	if accounts, _ := out["accounts"].([]any); len(accounts) != 1 {
+		t.Fatalf("readable account missing: %v", out["accounts"])
+	}
+	st, err := os.Stat(filepath.Join(home, ".config", "rclone"))
+	if err != nil || st.Mode().Perm() != 0o775 {
+		t.Fatal("a read changed the person's directory", st, err)
 	}
 }
 

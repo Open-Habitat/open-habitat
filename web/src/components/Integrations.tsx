@@ -1033,6 +1033,16 @@ export function AppleCard({
   );
 }
 
+/** Where each tool keeps the files the daemon lists its accounts from. */
+const unreadableDirectory: Partial<Record<ProviderId, string>> = {
+  google: "~/.config/rclone",
+  microsoft: "~/.config/rclone",
+  dropbox: "~/.config/rclone",
+  imap: "~/.config/himalaya",
+  caldav: "~/.config/curl",
+  carddav: "~/.config/curl",
+};
+
 const skillNotice: Partial<Record<IntegrationList["skill"], string>> = {
   blocked:
     "Kotihakemistossasi on oma taito ~/.agents/skills/personal-data, joten agenttien tietokarttaa ei kirjoitettu sen päälle. Agentit eivät näe yhdistettyjä tilejä ennen kuin siirrät oman taitosi muualle.",
@@ -1117,11 +1127,13 @@ export function IntegrationsOverview({
   const giteaConnections = list.gitea?.connections ?? [];
   const gitlabConnections = list.gitlab?.connections ?? [];
   const shown = (p: Provider) =>
-    p.id === "gitea"
+    p.accounts_unreadable ||
+    (p.id === "gitea"
       ? giteaConnections.length > 0 || list.gitea?.state === "unavailable"
       : p.id === "gitlab"
         ? gitlabConnections.length > 0 || list.gitlab?.state === "unavailable"
-        : list.accounts.some((a) => listedProvider(a) === p.id);
+        : list.accounts.some((a) => listedProvider(a) === p.id));
+  const unreadable = list.providers.some((p) => p.accounts_unreadable);
   const connected = list.providers.filter(shown);
   // Gitea and GitLab are offered only where the installation ships the
   // qualified tea and glab; until then their tiles are not shown at all.
@@ -1180,7 +1192,11 @@ export function IntegrationsOverview({
       list.providers.some((p) => p.id !== "gitea") ? (
         <p className="ig-notice" role="status">
           <Icon name="warning" />
-          <span>{skillNotice[list.skill]}</span>
+          <span>
+            {unreadable
+              ? "Agenttien tietokarttaa (~/.agents/skills/personal-data) ei päivitetä, ennen kuin kaikkien palvelujen tilit voidaan lukea."
+              : skillNotice[list.skill]}
+          </span>
         </p>
       ) : null}
       {connected.length > 0 && (
@@ -1202,8 +1218,10 @@ export function IntegrationsOverview({
                       accounts={g.accounts}
                       checking={g.accounts.some(isChecking)}
                       onCheck={() => onCheck(g.accounts[0])}
+                      // A partial inventory cannot say which services are
+                      // missing, and the daemon refuses Apple writes then.
                       onRenew={
-                        p.available && onApple
+                        p.available && !p.accounts_unreadable && onApple
                           ? () =>
                               onApple({
                                 kind: "renew",
@@ -1213,7 +1231,7 @@ export function IntegrationsOverview({
                           : undefined
                       }
                       onAdd={
-                        p.available && onApple
+                        p.available && !p.accounts_unreadable && onApple
                           ? (missing) =>
                               onApple({
                                 kind: "add",
@@ -1232,6 +1250,24 @@ export function IntegrationsOverview({
                     />
                   ))
                 : null}
+              {p.accounts_unreadable ? (
+                <p
+                  className="ig-notice"
+                  role="status"
+                  data-testid={`integration-unreadable-${p.id}`}
+                >
+                  <Icon name="warning" />
+                  <span>
+                    {providerCopy[p.id].gen} tilejä ei voitu lukea
+                    turvallisesti, joten niitä ei näytetä. Tilit eivät
+                    kadonneet. Tarkista, ettei
+                    {unreadableDirectory[p.id]
+                      ? ` kansio ${unreadableDirectory[p.id]} tai mikään sen alla`
+                      : " mikään työkalun asetuskansio"}{" "}
+                    ole muiden kirjoitettavissa tai linkki.
+                  </span>
+                </p>
+              ) : null}
               {p.id === "gitea" ? (
                 <>
                   {list.gitea?.state === "unavailable" ? (

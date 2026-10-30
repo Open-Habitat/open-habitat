@@ -607,6 +607,16 @@ must_reject("spinoff-work.schema.json", {"schema_version": 1, "parent_id": "pi:1
 must_reject("spinoff-work.schema.json", {"schema_version": 1, "parent_id": "pi:11111111-1111-4111-8111-111111111111", "availability": "available", "runs": [{k: v for k, v in work_run.items() if k != "pull_request"}]})
 must_reject("spinoff-work.schema.json", {"schema_version": 1, "parent_id": "pi:11111111-1111-4111-8111-111111111111", "availability": "available", "runs": [{**work_run, "pull_request": {**work_run["pull_request"], "url": "https://evil.example/o/r/pull/4"}}]})
 
+# A provider whose own files cannot be read says so on its tile; the rest of
+# the list still travels.
+unread_integrations = json.loads((BASE / "examples" / "integrations.json").read_text())
+unread_integrations["providers"][3]["accounts_unreadable"] = True
+unread_integrations["accounts"] = [a for a in unread_integrations["accounts"] if a["provider"] != "dropbox"]
+unread_integrations["skill"] = "failed"
+must_accept("integrations.schema.json", unread_integrations)
+unread_integrations["providers"][3]["accounts_unreadable"] = False
+must_reject("integrations.schema.json", unread_integrations)
+
 # A preferences write names exactly one change: the engine or one switch.
 preferences_write = Draft202012Validator({"$ref": schemas["account-preferences.schema.json"]["$id"] + "#/$defs/write"}, registry=registry)
 for ok in ({"engine": "vscode"}, {"experimental": {"worker-row-sentence": True}}, {"experimental": {"next-waiting-row": False}}):

@@ -63,6 +63,9 @@ export type Provider = {
   unavailable_reason?: "app_credentials_required" | "tool_unavailable";
   /** With tool_unavailable: the catalog's tools the installation lacks. */
   missing_tools?: string[];
+  /** The tool's own account files could not be read safely, so its
+   * accounts are missing from the list rather than absent. */
+  accounts_unreadable?: true;
   login: LoginKind;
   services: ServiceId[];
   /** The account levels a sign-in chooses from, broadest first; only for

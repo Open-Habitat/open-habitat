@@ -101,12 +101,15 @@ func (c *Catalog) AgentHandler(authorized func(*http.Request) bool, listPath, ac
 }
 
 type providerView struct {
-	ID                Provider  `json:"id"`
-	Available         bool      `json:"available"`
-	UnavailableReason string    `json:"unavailable_reason,omitempty"`
-	MissingTools      []string  `json:"missing_tools,omitempty"`
-	Login             LoginKind `json:"login"`
-	Services          []string  `json:"services"`
+	ID                Provider `json:"id"`
+	Available         bool     `json:"available"`
+	UnavailableReason string   `json:"unavailable_reason,omitempty"`
+	MissingTools      []string `json:"missing_tools,omitempty"`
+	// AccountsUnreadable marks a provider whose own files could not be read:
+	// its accounts are missing from the list, not absent.
+	AccountsUnreadable bool      `json:"accounts_unreadable,omitempty"`
+	Login              LoginKind `json:"login"`
+	Services           []string  `json:"services"`
 	// Levels are the account levels a sign-in chooses from, for a
 	// LevelEntry only.
 	Levels []LevelOption `json:"levels,omitempty"`
@@ -125,9 +128,14 @@ type listView struct {
 // read writes nothing of the host's in the home, not even a stale skill; the
 // one native write is an account's config following the operator's current
 // application (AlignEntry), since its state is only true after that.
+//
+// Each tool's files are read on their own: one that cannot be read marks its
+// provider unreadable and the rest of the page, including the forms that add
+// a connection, still answers.
 func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(30 * time.Second))
 	view := listView{SchemaVersion: 1, Providers: []providerView{}, Accounts: []Account{}}
+	accounts, unread := c.accounts()
 	for _, p := range providerOrder {
 		if e := c.entry(p); e != nil {
 			reason := UnavailableReason(e, c.env)
@@ -139,11 +147,13 @@ func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 			if le, ok := e.(LevelEntry); ok {
 				levels = le.Levels(c.env)
 			}
-			view.Providers = append(view.Providers, providerView{p, reason == "", reason, missing, e.Login(), e.Services(), levels})
+			view.Providers = append(view.Providers, providerView{ID: p, Available: reason == "", UnavailableReason: reason, MissingTools: missing, AccountsUnreadable: unread[p], Login: e.Login(), Services: e.Services(), Levels: levels})
 		}
 		// The Apple tile follows Microsoft's, before the generic forms.
 		if p == Microsoft {
 			if apple, ok := c.appleView(); ok {
+				// Apple's services are the generic tools' accounts.
+				apple.AccountsUnreadable = unread[IMAP] || unread[CalDAV] || unread[CardDAV]
 				view.Providers = append(view.Providers, apple)
 			}
 		}
@@ -168,11 +178,6 @@ func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 		gitlab := c.gitlab.list(r.Context())
 		view.GitLab = &gitlab
 	}
-	accounts, unread := c.accounts()
-	if len(unread) > 0 {
-		fail(w, 503, "native_unavailable")
-		return
-	}
 	if len(accounts) > 64 {
 		accounts = accounts[:64]
 	}
@@ -189,7 +194,12 @@ func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	wg.Wait()
-	view.Skill = skillState(c.env.Home, skillAccounts(c.env, accounts))
+	// A partial inventory cannot tell a current skill from a stale one, and
+	// reconcile does not rewrite it then either.
+	view.Skill = SkillFailed
+	if len(unread) == 0 {
+		view.Skill = skillState(c.env.Home, skillAccounts(c.env, accounts))
+	}
 	reply(w, view)
 }
 

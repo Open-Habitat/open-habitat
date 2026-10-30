@@ -855,6 +855,41 @@ describe("Gitea in the overview", () => {
     expect(view.getByTestId("integration-tile-gitea")).toBeTruthy();
   });
 
+  it("still offers Gitea while another tool's accounts cannot be read", async () => {
+    const onConnect = vi.fn();
+    const view = render(
+      <IntegrationsOverview
+        list={{
+          ...list,
+          skill: "failed",
+          providers: [
+            { ...google, accounts_unreadable: true },
+            imap,
+            { ...gitea, available: true },
+          ],
+          gitea: { state: "ok", connections: [] },
+        }}
+        checking={new Set()}
+        onCheck={noop}
+        onConnect={onConnect}
+        onSignInAgain={noop}
+        onRemove={noop}
+      />,
+    );
+    const notice = view.getByTestId("integration-unreadable-google");
+    expect(notice.textContent).toContain("Googlen tilejä ei voitu lukea");
+    expect(notice.textContent).toContain("~/.config/rclone");
+    expect(view.queryByTestId("integration-tile-google")).toBeNull();
+    expect(view.queryByTestId("integration-unreadable-imap")).toBeNull();
+    expect(view.getByText(/ennen kuin kaikkien palvelujen tilit/)).toBeTruthy();
+    await userEvent.click(
+      within(view.getByTestId("integration-tile-gitea")).getByRole("button"),
+    );
+    expect(onConnect).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "gitea" }),
+    );
+  });
+
   it("shows tea's connections, and an unsupported one without actions", async () => {
     const onGitea = vi.fn();
     const view = render(

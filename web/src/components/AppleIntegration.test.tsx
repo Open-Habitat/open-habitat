@@ -86,6 +86,39 @@ describe("Apple (iCloud) card", () => {
   });
 });
 
+describe("Apple card beside an unreadable tool", () => {
+  it("claims no service is missing and offers no add or renewal", () => {
+    const view = render(
+      <IntegrationsOverview
+        list={{
+          ...list,
+          skill: "failed",
+          providers: [
+            {
+              ...provider("apple", ["mail", "calendar", "contacts"]),
+              accounts_unreadable: true,
+            },
+            provider("imap", ["mail"]),
+            { ...provider("caldav", ["calendar"]), accounts_unreadable: true },
+            provider("carddav", ["contacts"]),
+          ],
+        }}
+        checking={new Set()}
+        onCheck={noop}
+        onConnect={noop}
+        onSignInAgain={noop}
+        onRemove={noop}
+        onApple={vi.fn()}
+      />,
+    );
+    const card = view.getByTestId("integration-apple-card");
+    expect(within(card).getByTestId("integration-service-mail")).toBeTruthy();
+    expect(within(card).queryByTestId("integration-apple-missing")).toBeNull();
+    expect(within(card).queryByTestId("integration-apple-renew")).toBeNull();
+    expect(view.getByTestId("integration-unreadable-apple")).toBeTruthy();
+  });
+});
+
 describe("Apple guide", () => {
   it("adds services with the stored password, never asking for or sending one", async () => {
     const onSubmit = vi.fn();
