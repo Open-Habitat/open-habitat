@@ -210,18 +210,27 @@ async function expectOneRow(page: Page, header: Locator, width: number) {
     ])
       await expect(header.getByTestId(id)).toBeInViewport({ ratio: 1 });
     if (!steps.includes("1")) return;
-    // The menu holds only the workspace, which the row no longer shows.
+    // The menu holds the workspace, which the row no longer shows, and
+    // renaming, which the menu always offers.
     await menu.click();
     const items = page.getByRole("menu").getByRole("menuitem");
-    await expect(items).toHaveCount(1);
+    await expect(items).toHaveCount(2);
     await expect(items.and(page.getByTestId("menu-workspace"))).toBeVisible();
+    await expect(items.and(page.getByTestId("menu-rename"))).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(items).toHaveCount(0);
     return;
   }
   await menu.click();
   const items = page.getByRole("menu");
-  const expected = ["workspace", "recap", "retitle", "archive", "details"];
+  const expected = [
+    "workspace",
+    "rename",
+    "recap",
+    "retitle",
+    "archive",
+    "details",
+  ];
   if (steps.includes("6")) expected.push("git");
   if (steps.includes("7")) expected.push("model");
   else
