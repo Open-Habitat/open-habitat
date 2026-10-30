@@ -47,6 +47,7 @@ import {
   DictationControl,
   DictationLive,
   DictationNoticeView,
+  dictationShortcut,
   useDictation,
 } from "./Dictation";
 import {
@@ -636,16 +637,21 @@ export function Composer({
     (shell.runAvailability && shell.runAvailability.state !== "enabled");
   // A dictation that ends puts its text in the field, with the caret after
   // it, and the field is ordinary text again.
-  const dictation = useDictation(speech, csrf, (text) => {
-    onChange(text);
-    window.requestAnimationFrame(() => {
-      const el = field.current;
-      if (!el || el.hidden) return;
-      el.focus();
-      el.setSelectionRange(el.value.length, el.value.length);
-      el.scrollTop = el.scrollHeight;
-    });
-  });
+  const dictation = useDictation(
+    speech,
+    csrf,
+    (text) => {
+      onChange(text);
+      window.requestAnimationFrame(() => {
+        const el = field.current;
+        if (!el || el.hidden) return;
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+        el.scrollTop = el.scrollHeight;
+      });
+    },
+    box,
+  );
   const dictating = dictation.active;
   const endingToSend = useRef(false);
   const [sendingDictation, setSendingDictation] = useState(false);
@@ -995,6 +1001,40 @@ export function Composer({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [sources]);
+  // The dictation shortcut from anywhere in the page that is not another
+  // text input or a dialog: it starts as the mic does and ends as Valmis.
+  const dictationKey = useRef<(() => void) | null>(null);
+  dictationKey.current =
+    speech && csrf && !shellOn && !fieldDisabled && !fieldReason
+      ? () => {
+          if (sendingDictation) return;
+          if (dictating) void dictation.stop();
+          else dictation.start(value);
+        }
+      : null;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!dictationShortcut.matches(e) || e.defaultPrevented) return;
+      const run = dictationKey.current;
+      const target = e.target as HTMLElement | null;
+      // A dialog or list over the conversation keeps its own keys.
+      const over = target?.closest?.(
+        'dialog, [role="dialog"], .ah-choice-pop, .ah-palette',
+      );
+      if (!run || (over && !over.contains(box.current))) return;
+      if (
+        target &&
+        target !== field.current &&
+        (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) ||
+          target.isContentEditable)
+      )
+        return;
+      e.preventDefault();
+      if (!e.repeat) run();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   // A button's list closes on a press outside the composer.
   useEffect(() => {
     if (open?.place !== "button") return;

@@ -24,7 +24,7 @@ export type DictationView = {
   final: string;
   /** Soniox's current guess after it; it may still change. */
   interim: string;
-  /** Since the stream first opened. */
+  /** Since the microphone started listening. */
   elapsedMs: number;
   /** Microphone level, 0–1. */
   level: number;
@@ -49,6 +49,12 @@ const keepaliveMs = 20_000;
 const bufferedSeconds = 30;
 /** How long a stop waits for Soniox's last words. */
 const finishWaitMs = 4_000;
+/** How long a stop before the stream has opened waits for it, so what was
+ * said while it opened still reaches Soniox. */
+const openWaitMs = 5_000;
+/** A temporary key lives a minute (the daemon's lifetime); one older than
+ * this when the microphone is finally open is replaced before it is used. */
+const keyFreshMs = 30_000;
 const quietLevel = 0.02;
 
 export type AudioCapture = { sampleRate: number; close: () => void };
@@ -90,8 +96,14 @@ export class Dictation {
   private abort: AbortController | null = null;
   private stream: MediaStream | null = null;
   private capture: AudioCapture | null = null;
+  private sampleRate = 0;
   private ws: WebSocket | null = null;
   private wsReady = false;
+  /** A stream is on its way: its key is being minted or its socket is
+   * opening. */
+  private connecting = false;
+  private whenOpen: (() => void) | null = null;
+  private startedAt: number | null = null;
   private pending: ArrayBuffer[] = [];
   private pendingBytes = 0;
   private openedAt: number | null = null;
@@ -120,20 +132,32 @@ export class Dictation {
     this.onChange(this.view);
   }
 
-  /** Starts a dictation; the result shows in the view. */
+  /** Starts a dictation; the result shows in the view. The key is minted
+   * while the microphone opens, and the microphone listens from the moment
+   * it is open: what is said before the stream to Soniox is ready is kept
+   * and sent once it is. */
   async start() {
     if (this.active) return;
     const run = ++this.run;
-    this.abort = new AbortController();
+    const abort = new AbortController();
+    this.abort = abort;
     this.reconnected = false;
     this.openedAt = null;
+    this.startedAt = null;
     this.lastFinalEnd = null;
     this.pending = [];
     this.pendingBytes = 0;
+    this.connecting = true;
     this.set({ ...idle, phase: "connecting" });
+    const minted = this.deps.mint(abort.signal).then((session) => ({
+      session,
+      at: this.deps.now(),
+    }));
+    // A missing or refused key need not wait for the microphone's prompt.
+    minted.catch((error) => {
+      if (this.view.phase === "connecting") this.fail(run, error);
+    });
     try {
-      // The microphone first: its prompt may take longer than the key's
-      // one minute to open a stream.
       let stream: MediaStream;
       try {
         stream = await this.deps.microphone();
@@ -157,21 +181,39 @@ export class Dictation {
         return;
       }
       this.capture = capture;
-      const session = await this.deps.mint(this.abort.signal);
-      if (run !== this.run) return;
-      this.lastVoice = this.deps.now();
-      this.open(run, session);
+      this.sampleRate = capture.sampleRate;
+      this.startedAt = this.lastVoice = this.deps.now();
+      this.set({ phase: "live" });
       this.tick = this.deps.setInterval(() => this.onTick(run), 250);
-    } catch (error) {
+      let { session, at } = await minted;
+      // A long microphone prompt can outlast the key's minute.
+      if (run === this.run && this.deps.now() - at > keyFreshMs)
+        session = await this.deps.mint(abort.signal);
       if (run !== this.run) return;
-      this.release();
-      this.set({
-        ...idle,
-        ended: "failed",
-        failure:
-          error instanceof SpeechError ? error.code : "speech_unavailable",
-      });
+      this.open(run, session);
+    } catch (error) {
+      this.fail(run, error);
     }
+  }
+
+  /** The dictation could not start. */
+  private fail(run: number, error: unknown) {
+    if (run !== this.run) return;
+    this.run++;
+    this.release();
+    this.set({
+      ...idle,
+      ended: "failed",
+      failure: error instanceof SpeechError ? error.code : "speech_unavailable",
+    });
+  }
+
+  /** The stream being opened has opened or will not. */
+  private settled() {
+    this.connecting = false;
+    const done = this.whenOpen;
+    this.whenOpen = null;
+    done?.();
   }
 
   private open(run: number, session: SpeechSession) {
@@ -184,12 +226,12 @@ export class Dictation {
     this.wsReady = false;
     this.accepted = false;
     ws.onopen = () => {
-      if (run !== this.run || this.ws !== ws || !this.capture) return;
+      if (run !== this.run || this.ws !== ws) return;
       ws.send(
         JSON.stringify({
           model: "stt-rt-v5",
           audio_format: "pcm_s16le",
-          sample_rate: this.capture.sampleRate,
+          sample_rate: this.sampleRate,
           num_channels: 1,
           language_hints: ["fi", "en"],
         }),
@@ -201,6 +243,7 @@ export class Dictation {
       this.pending = [];
       this.pendingBytes = 0;
       if (this.view.phase !== "finishing") this.set({ phase: "live" });
+      this.settled();
     };
     ws.onmessage = (event) => {
       if (run !== this.run || this.ws !== ws) return;
@@ -210,6 +253,7 @@ export class Dictation {
       if (run !== this.run || this.ws !== ws) return;
       this.ws = null;
       this.wsReady = false;
+      this.settled();
       if (this.finished) {
         this.finished();
         return;
@@ -237,14 +281,8 @@ export class Dictation {
             ? "speech_limit_reached"
             : null;
       if (!this.accepted && !this.reconnected) {
-        // Refused at the start: nothing was dictated yet.
-        this.run++;
-        this.release();
-        this.set({
-          ...idle,
-          ended: "failed",
-          failure: definite ?? "speech_unavailable",
-        });
+        // Refused at the start: Soniox heard nothing yet.
+        this.fail(run, new SpeechError(definite ?? "speech_unavailable"));
       } else if (definite) this.end(run, "dropped", definite);
       // Anything else closes the stream next, and the close reconnects.
       return;
@@ -305,16 +343,18 @@ export class Dictation {
       this.lastSent = now;
     }
     this.set({
-      elapsedMs: this.openedAt === null ? 0 : now - this.openedAt,
+      elapsedMs: this.startedAt === null ? 0 : now - this.startedAt,
       quietMs: now - this.lastVoice,
     });
     this.checkCeiling(run, now);
   }
 
+  // Counted from the first sound kept, which is never later than Soniox's
+  // own clock starts, so the browser still ends first.
   private checkCeiling(run: number, now: number) {
     if (
-      this.openedAt !== null &&
-      now - this.openedAt >= stopAtMs &&
+      this.startedAt !== null &&
+      now - this.startedAt >= stopAtMs &&
       (this.view.phase === "live" || this.view.phase === "reconnecting")
     )
       void this.finish(run, "ceiling");
@@ -325,9 +365,7 @@ export class Dictation {
   private async reconnect(run: number) {
     if (this.openedAt === null) {
       // The stream never opened: a failed start, not a drop.
-      this.run++;
-      this.release();
-      this.set({ ...idle, ended: "failed", failure: "speech_unavailable" });
+      this.fail(run, new SpeechError("speech_unavailable"));
       return;
     }
     if (this.reconnected || this.view.phase !== "live") {
@@ -340,18 +378,23 @@ export class Dictation {
     this.commitInterim();
     this.lastFinalEnd = null;
     this.set({ phase: "reconnecting" });
+    this.connecting = true;
     try {
       const session = await this.deps.mint(
         this.abort?.signal ?? new AbortController().signal,
       );
+      // A stop while the key was minted still sends what was kept meanwhile.
+      const phase = this.view.phase as DictationPhase;
       if (
         run !== this.run ||
-        (this.view.phase as DictationPhase) !== "reconnecting"
+        (phase !== "reconnecting" && phase !== "finishing")
       )
         return;
       this.open(run, session);
     } catch {
-      if (run === this.run) this.end(run, "dropped");
+      if (run !== this.run) return;
+      this.settled();
+      this.end(run, "dropped");
     }
   }
 
@@ -393,6 +436,15 @@ export class Dictation {
     this.capture = null;
     for (const track of this.stream?.getTracks() ?? []) track.stop();
     this.stream = null;
+    if (!this.wsReady && this.connecting && this.pending.length)
+      await new Promise<void>((done) => {
+        const timer = window.setTimeout(done, openWaitMs);
+        this.whenOpen = () => {
+          window.clearTimeout(timer);
+          done();
+        };
+      });
+    if (run !== this.run) return;
     const ws = this.ws;
     if (ws && this.wsReady) {
       await new Promise<void>((done) => {
@@ -431,6 +483,7 @@ export class Dictation {
 
   private release() {
     this.finished = null;
+    this.settled();
     this.abort?.abort();
     this.abort = null;
     if (this.tick !== null) this.deps.clearInterval(this.tick);

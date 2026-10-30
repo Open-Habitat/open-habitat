@@ -3,11 +3,12 @@ created: 2026-10-30
 updated: 2026-10-30
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: speech-input
 lane_seq: 20
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Dictation starts at once, Enter finishes it, and a shortcut starts it
@@ -33,13 +34,13 @@ kierroksella 2, joten tämä työ ei muuta ulkoasua.
 
 ## Acceptance Criteria
 
-- [ ] Mitattu, mistä käynnistysviive koostuu (mikrofonilupa ja
+- [x] Mitattu, mistä käynnistysviive koostuu (mikrofonilupa ja
       `getUserMedia`, avaimen tai istunnon haku, yhteys puhepalveluun,
       äänimoottorin käynnistys), ja puhe tallentuu heti painalluksesta,
       vaikka yhteys valmistuisi myöhemmin; ensimmäiset sanat eivät katoa.
-- [ ] Enter sanelun aikana = *Valmis* (sanelu loppuu ja teksti jää
+- [x] Enter sanelun aikana = *Valmis* (sanelu loppuu ja teksti jää
       kenttään; ei lähetä). Esc toimii kuten ennen.
-- [ ] Pikanäppäin käynnistää ja lopettaa sanelun, näkyy painikkeen
+- [x] Pikanäppäin käynnistää ja lopettaa sanelun, näkyy painikkeen
       vihjeessä, ei törmää selaimen, käyttöjärjestelmän tai kentän olemassa
       oleviin näppäimiin; työpöytä (Mac ja muut).
-- [ ] Selainspec Enterille ja pikanäppäimelle.
+- [x] Selainspec Enterille ja pikanäppäimelle.

@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   browserDictationDeps,
   Dictation,
@@ -19,6 +25,24 @@ export type ComposerSpeech = {
 };
 
 const holdMs = 500;
+
+const isMac =
+  typeof navigator !== "undefined" &&
+  /Mac|iPhone|iPad/.test(navigator.platform);
+/** Starts and ends a dictation from anywhere in the conversation view:
+ * ⌘⇧Space on a Mac, Ctrl+Shift+Space elsewhere. Neither browsers nor the
+ * operating systems take it, and VS Code's own use of it stays inside the
+ * editor's frame. */
+export const dictationShortcut = {
+  label: isMac ? "⌘⇧välilyönti" : "Ctrl+Shift+välilyönti",
+  aria: isMac ? "Meta+Shift+Space" : "Control+Shift+Space",
+  matches: (event: KeyboardEvent) =>
+    (isMac ? event.metaKey : event.ctrlKey) &&
+    (isMac ? !event.ctrlKey : !event.metaKey) &&
+    event.shiftKey &&
+    !event.altKey &&
+    event.code === "Space",
+};
 
 function mmss(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -116,6 +140,9 @@ export function useDictation(
   speech: ComposerSpeech | undefined,
   csrf: string | undefined,
   onEnd: (text: string) => void,
+  /** The field's box: Enter there, or on nothing in particular, ends the
+   * dictation as Valmis does. */
+  scope: RefObject<HTMLElement | null>,
 ) {
   const [view, setView] = useState<DictationView | null>(null);
   const [notice, setNotice] = useState<DictationNotice | null>(null);
@@ -172,9 +199,42 @@ export function useDictation(
       event.preventDefault();
       void engine.current?.stop();
     };
+    // Enter is Valmis: the text stays in the field and nothing is sent. It
+    // is taken before the field's own keys, which would send, even from the
+    // field the dictation hides, which Safari can leave focused.
+    const onEnter = (event: KeyboardEvent) => {
+      if (
+        event.key !== "Enter" ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.isComposing ||
+        event.defaultPrevented
+      )
+        return;
+      // On another of the row's buttons, such as Send, Enter is that
+      // button's own.
+      const target = event.target as Element | null;
+      const control = target?.closest?.(
+        'button, a[href], input, select, [role="button"], [role="menuitem"]',
+      );
+      if (
+        target !== document.body &&
+        (!scope.current?.contains(target) ||
+          (control && !control.classList.contains("ah-dictation-pill")))
+      )
+        return;
+      event.preventDefault();
+      event.stopPropagation();
+      void engine.current?.stop();
+    };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [active]);
+    document.addEventListener("keydown", onEnter, true);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onEnter, true);
+    };
+  }, [active, scope]);
   /** The mic's press: a tap starts, a hold of over half a second ends the
    * dictation when it is let go. */
   const press = useCallback(
@@ -227,9 +287,17 @@ export function DictationControl({
   const pill = useRef<HTMLButtonElement>(null);
   const { view, active, holding } = dictation;
   // The pill is a new element in the mic's place, so the click that ends a
-  // tap on the mic never lands on it; a keyboard start moves focus to it.
+  // tap on the mic never lands on it; a keyboard start moves focus to it,
+  // also from the field the dictation hides.
   useEffect(() => {
-    if (active && document.activeElement === document.body)
+    const at = document.activeElement;
+    if (
+      active &&
+      (at === document.body ||
+        (at instanceof HTMLElement &&
+          at.hidden &&
+          !!pill.current?.closest(".ah-cbox")?.contains(at)))
+    )
       pill.current?.focus();
   }, [active]);
   if (!active || !view) {
@@ -240,7 +308,8 @@ export function DictationControl({
         data-testid="dictation-mic"
         className="ah-crow-btn ah-dictation-mic"
         aria-label="Sanele"
-        title="Sanele · napauta aloittaaksesi, pidä pohjassa puhuaksesi"
+        aria-keyshortcuts={dictationShortcut.aria}
+        title={`Sanele (${dictationShortcut.label}) · napauta aloittaaksesi, pidä pohjassa puhuaksesi`}
         disabled={disabled}
         onPointerDown={(event) => {
           if (event.button !== 0 || disabled) return;
@@ -261,19 +330,20 @@ export function DictationControl({
       </button>
     );
   }
+  // The microphone opens at the press and keeps what is said while the
+  // stream to Soniox opens, so the dictation listens from the start.
+  const listening = view.phase === "live" || view.phase === "connecting";
   const paused = view.phase === "live" && view.quietMs >= 2000;
   const label =
-    view.phase === "connecting"
-      ? "Yhdistetään…"
-      : view.phase === "reconnecting"
-        ? "Yhdistetään uudelleen…"
-        : view.phase === "finishing"
-          ? "Viimeistellään…"
-          : holding
-            ? "päästä irti, niin sanelu loppuu"
-            : paused
-              ? `tauko ${mmss(view.quietMs)}`
-              : "kuuntelee";
+    view.phase === "reconnecting"
+      ? "Yhdistetään uudelleen…"
+      : view.phase === "finishing"
+        ? "Viimeistellään…"
+        : holding
+          ? "päästä irti, niin sanelu loppuu"
+          : paused
+            ? `tauko ${mmss(view.quietMs)}`
+            : "kuuntelee";
   const bars = [0.55, 0.85, 1, 0.75, 0.6];
   return (
     <button
@@ -282,9 +352,10 @@ export function DictationControl({
       type="button"
       data-testid="dictation-stop"
       data-phase={view.phase}
-      className={`ah-dictation-pill${view.phase !== "live" ? " busy" : ""}${paused ? " paused" : ""}${holding ? " hold" : ""}`}
+      className={`ah-dictation-pill${listening ? "" : " busy"}${paused ? " paused" : ""}${holding ? " hold" : ""}`}
       aria-label={`Lopeta sanelu, ${mmss(view.elapsedMs)}`}
-      title="Lopeta sanelu (Esc). Teksti jää kenttään."
+      aria-keyshortcuts={`Enter Escape ${dictationShortcut.aria}`}
+      title={`Lopeta sanelu (Enter, Esc tai ${dictationShortcut.label}). Teksti jää kenttään.`}
       onClick={() => void dictation.stop()}
     >
       <span className="ah-dictation-dot" aria-hidden="true" />
@@ -332,11 +403,7 @@ export function DictationLive({ dictation }: { dictation: DictationState }) {
       aria-readonly="true"
       aria-multiline="true"
       aria-label="Sanelu"
-      data-placeholder={
-        view.phase === "connecting"
-          ? "Yhdistetään Sonioxiin…"
-          : "Puhu, teksti tulee tähän…"
-      }
+      data-placeholder="Puhu, teksti tulee tähän…"
     >
       {dictation.base}
       <span data-testid="dictation-final">{view.final}</span>

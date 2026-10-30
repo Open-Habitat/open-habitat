@@ -132,6 +132,8 @@ test("@speech without a key the mic leads to Sanelu; with one the dictation stre
   await mic(page).click();
   await expect(pill(page)).toHaveAttribute("data-phase", "live");
   // The daemon minted with the person's own key; the browser streams PCM.
+  // The microphone listens before the stream has opened.
+  await expect.poll(async () => (await soniox(page)).open).toBe(1);
   const state = await soniox(page);
   expect(state.authorization).toBe(`Bearer ${ownKey}`);
   expect(state.configs[0]).toMatchObject({
@@ -167,6 +169,96 @@ test("@speech without a key the mic leads to Sanelu; with one the dictation stre
   await expect(mic(page)).toBeVisible();
 });
 
+test("@speech Enter ends a dictation as Valmis does and sends nothing; the shortcut starts and ends one; Enter then sends", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  await page.goto("/settings/speech");
+  await page.getByTestId("speech-key-input").fill(ownKey);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
+    "data-source",
+    "own",
+  );
+  await openConversation(page);
+  const field = page.getByTestId("message-input");
+  // The browser host runs on Linux, where the shortcut is Ctrl+Shift+Space.
+  await expect(mic(page)).toHaveAttribute(
+    "aria-keyshortcuts",
+    "Control+Shift+Space",
+  );
+  await expect(mic(page)).toHaveAttribute("title", /Ctrl\+Shift\+välilyönti/);
+
+  await field.fill("Alku");
+  await page.keyboard.press("Control+Shift+Space");
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  await expect(pill(page)).toBeFocused();
+  await say(page, [
+    { text: " sanelu", start_ms: 0, end_ms: 400, is_final: true },
+  ]);
+  await expect(page.getByTestId("dictation-final")).toHaveText("sanelu");
+  await page.keyboard.press("Enter");
+  await expect(pill(page)).toHaveCount(0);
+  await expect(field).toHaveValue("Alku sanelu");
+  await expect(field).toBeFocused();
+  await expect.poll(async () => (await soniox(page)).ended).toBe(1);
+  await expect(page.locator("main")).not.toContainText("Kysyit:");
+
+  // The shortcut from the field starts a dictation and ends it as Valmis.
+  await page.keyboard.press("Control+Shift+Space");
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  await expect.poll(async () => (await soniox(page)).open).toBe(1);
+  await page.keyboard.press("Control+Shift+Space");
+  await expect(pill(page)).toHaveCount(0);
+  await expect.poll(async () => (await soniox(page)).ended).toBe(2);
+  await expect(field).toHaveValue("Alku sanelu");
+
+  // Outside a dictation Enter sends, as before.
+  await field.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("main")).toContainText('Kysyit: "Alku sanelu"', {
+    timeout: 20_000,
+  });
+});
+
+test("@speech the microphone listens from the press: what is said while a slow key and stream open reaches Soniox, even after Valmis", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  await page.goto("/settings/speech");
+  await page.getByTestId("speech-key-input").fill(ownKey);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
+    "data-source",
+    "own",
+  );
+  await openConversation(page);
+  const before = await soniox(page);
+  await control(page, "mint-delay&value=2000");
+  await mic(page).click();
+  // Listening at once, while the key is still on its way.
+  await expect(pill(page)).toHaveAttribute("data-phase", "live");
+  await expect(pill(page)).toContainText("kuuntelee");
+  expect((await soniox(page)).minted).toBe(before.minted);
+  await page.waitForTimeout(1_200);
+  // Valmis before the stream has opened: the microphone stops, and what
+  // it kept still goes to Soniox before the stream ends.
+  await pill(page).click();
+  await expect(pill(page)).toHaveAttribute("data-phase", "finishing");
+  await expect
+    .poll(async () => (await soniox(page)).ended, { timeout: 10_000 })
+    .toBe(before.ended + 1);
+  const after = await soniox(page);
+  expect(after.minted).toBe(before.minted + 1);
+  // At least a second of 16-bit mono audio at the browser's rate.
+  const rate = await page.evaluate(() => new AudioContext().sampleRate);
+  expect(after.audio - before.audio).toBeGreaterThanOrEqual(rate * 2);
+  await expect(pill(page)).toHaveCount(0);
+  await control(page, "mint-delay&value=0");
+});
+
 test("@speech the administrator's key reaches the person; a dropped stream reconnects once, then ends keeping the text", async ({
   page,
 }) => {
@@ -186,7 +278,9 @@ test("@speech the administrator's key reaches the person; a dropped stream recon
   await openConversation(page);
   await mic(page).click();
   await expect(pill(page)).toHaveAttribute("data-phase", "live");
-  expect((await soniox(page)).authorization).toBe(`Bearer ${siteKey}`);
+  await expect
+    .poll(async () => (await soniox(page)).authorization)
+    .toBe(`Bearer ${siteKey}`);
   await say(page, [
     { text: "Ensimmäinen", start_ms: 0, end_ms: 500, is_final: true },
     { text: " osa", is_final: false },

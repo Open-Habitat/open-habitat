@@ -284,4 +284,131 @@ describe("Dictation", () => {
     expect(d.view.phase).toBe("idle");
     expect(h.sockets).toHaveLength(0);
   });
+
+  describe("from the press", () => {
+    // A dictation whose microphone and key arrive when the case says.
+    function gated(mints: (SpeechSession | SpeechError)[]) {
+      const h = harness(mints);
+      const base = (h.d as unknown as { deps: DictationDeps }).deps;
+      let grant: () => void = () => {};
+      const keys: ((ok: boolean) => void)[] = [];
+      let tracksStopped = 0;
+      const d = new Dictation(
+        {
+          ...base,
+          microphone: () =>
+            new Promise<MediaStream>((r) => {
+              grant = () =>
+                r({
+                  getTracks: () => [{ stop: () => tracksStopped++ }],
+                } as unknown as MediaStream);
+            }),
+          mint: (signal) =>
+            new Promise<void>((r) => keys.push(() => r())).then(() =>
+              base.mint(signal),
+            ),
+        },
+        () => {},
+      );
+      return {
+        ...h,
+        d,
+        grant: async () => {
+          grant();
+          await flush();
+        },
+        key: async () => {
+          keys.shift()?.(true);
+          await flush();
+        },
+        keysAsked: () => keys.length,
+        tracksStopped: () => tracksStopped,
+      };
+    }
+
+    it("asks for the key while the microphone opens and listens before the stream is ready", async () => {
+      const h = gated([session(1)]);
+      void h.d.start();
+      await flush();
+      // The key is on its way before the microphone has answered.
+      expect(h.keysAsked()).toBe(1);
+      expect(h.d.view.phase).toBe("connecting");
+      await h.grant();
+      expect(h.d.view.phase).toBe("live");
+      expect(h.sockets).toHaveLength(0);
+      h.audio();
+      h.audio();
+      await h.key();
+      const ws = h.sockets[0];
+      ws?.open();
+      expect(ws?.texts()[0]).toContain("pcm_s16le");
+      expect(ws?.sent.filter((x) => x instanceof ArrayBuffer)).toHaveLength(2);
+    });
+
+    it("a stop before the stream opens still sends what was said and waits for its words", async () => {
+      const h = gated([session(1)]);
+      void h.d.start();
+      await h.grant();
+      h.audio();
+      const stopped = h.d.stop();
+      expect(h.d.view.phase).toBe("finishing");
+      expect(h.tracksStopped()).toBe(1);
+      await h.key();
+      const ws = h.sockets[0];
+      ws?.open();
+      await flush();
+      expect(ws?.sent.map((x) => typeof x)).toEqual([
+        "string",
+        "object",
+        "string",
+      ]);
+      expect(ws?.texts().at(-1)).toBe("");
+      ws?.reply({
+        tokens: [{ text: "Ensimmäiset sanat", is_final: true }],
+        finished: true,
+      });
+      expect(await stopped).toBe("Ensimmäiset sanat");
+      expect(h.d.view).toMatchObject({ phase: "idle", ended: "stopped" });
+    });
+
+    it("replaces a key that a long microphone prompt left old", async () => {
+      const h = gated([session(1), session(2)]);
+      void h.d.start();
+      await h.key();
+      h.advance(31_000);
+      await h.grant();
+      expect(h.sockets).toHaveLength(0);
+      await h.key();
+      expect(h.sockets[0]?.protocols).toEqual(["soniox-api-key", "snx_temp_2"]);
+    });
+
+    it("a missing key ends the start without waiting for the microphone, which is let go when it comes", async () => {
+      const h = gated([new SpeechError("speech_key_missing")]);
+      void h.d.start();
+      await h.key();
+      expect(h.d.view).toMatchObject({
+        phase: "idle",
+        ended: "failed",
+        failure: "speech_key_missing",
+      });
+      await h.grant();
+      expect(h.tracksStopped()).toBe(1);
+      expect(h.sockets).toHaveLength(0);
+    });
+
+    it("a stream refused before it opened fails the start even after a stop", async () => {
+      const h = gated([session(1)]);
+      void h.d.start();
+      await h.grant();
+      h.audio();
+      const stopped = h.d.stop();
+      await h.key();
+      h.sockets[0]?.drop();
+      await stopped;
+      expect(h.d.view).toMatchObject({
+        ended: "failed",
+        failure: "speech_unavailable",
+      });
+    });
+  });
 });

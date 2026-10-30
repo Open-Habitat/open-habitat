@@ -32,11 +32,13 @@ type sonioxFake struct {
 	keyRegions map[string]string
 	asked      []string
 	// refuse makes the next stream answer its start with error 401.
-	refuse  bool
-	issued  map[string]bool
-	minted  int
-	conns   map[*sonioxConn]bool
-	configs []json.RawMessage
+	refuse bool
+	// mintDelay holds every temporary key that long, as a slow Soniox.
+	mintDelay time.Duration
+	issued    map[string]bool
+	minted    int
+	conns     map[*sonioxConn]bool
+	configs   []json.RawMessage
 	// keepalives, audio bytes and ended streams as the fake saw them.
 	keepalives, audio, ended int
 	authHeader               string
@@ -102,6 +104,10 @@ func (f *sonioxFake) mintKey(w http.ResponseWriter, r *http.Request, region stri
 		http.Error(w, `{"error_type":"invalid_request"}`, 400)
 		return
 	}
+	f.mu.Lock()
+	delay := f.mintDelay
+	f.mu.Unlock()
+	time.Sleep(delay)
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.authHeader = r.Header.Get("Authorization")
@@ -218,8 +224,8 @@ func (f *sonioxFake) stream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// control serves /fixture/soniox?action=…: mint=<answer>, key-region=<us,
-// eu or none> for the key in the body, refuse, say
+// control serves /fixture/soniox?action=…: mint=<answer>, mint-delay=<ms>,
+// key-region=<us, eu or none> for the key in the body, refuse, say
 // (a JSON body of tokens sent to every open stream), drop (close every
 // open stream at once) and state.
 func (f *sonioxFake) control(w http.ResponseWriter, r *http.Request) {
@@ -228,6 +234,15 @@ func (f *sonioxFake) control(w http.ResponseWriter, r *http.Request) {
 	case "mint":
 		f.mu.Lock()
 		f.mint = q.Get("value")
+		f.mu.Unlock()
+	case "mint-delay":
+		ms, err := strconv.Atoi(q.Get("value"))
+		if err != nil || ms < 0 || ms > 10_000 {
+			http.Error(w, "delay", 400)
+			return
+		}
+		f.mu.Lock()
+		f.mintDelay = time.Duration(ms) * time.Millisecond
 		f.mu.Unlock()
 	case "key-region":
 		key, err := io.ReadAll(io.LimitReader(r.Body, 512))
