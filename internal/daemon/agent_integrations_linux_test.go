@@ -70,7 +70,7 @@ func TestAgentCredentialsAndIntegrationRoutes(t *testing.T) {
 		}
 		return raw
 	}
-	for _, path := range []string{AgentIntegrationLoginPath, AgentPiLoginPath, AgentClaudeLoginPath, AgentIntegrationsPath, AgentIntegrationAccountsPath, AgentCredentialsPath, AgentCredentialsPath + "/openai", AgentCredentialsPath + "/anthropic", AgentCredentialsPath + "/deepseek"} {
+	for _, path := range []string{AgentIntegrationLoginPath, AgentPiLoginPath, AgentClaudeLoginPath, AgentIntegrationsPath, AgentIntegrationAccountsPath, AgentGiteaPath, AgentGitLabPath, AgentCredentialsPath, AgentCredentialsPath + "/openai", AgentCredentialsPath + "/anthropic", AgentCredentialsPath + "/deepseek"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
 		if w.Code != 403 {

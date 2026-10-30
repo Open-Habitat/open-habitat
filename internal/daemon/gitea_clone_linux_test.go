@@ -74,6 +74,7 @@ type giteaWalk struct {
 	srv     *giteafake.Server
 	adapter *integrations.GiteaAdapter
 	routes  *httptest.Server
+	agent   *httptest.Server
 	clones  *cloneJobsFixture
 	tools   map[string]string
 	exe     string
@@ -122,6 +123,8 @@ func newGiteaWalkAt(t *testing.T, exe string) *giteaWalk {
 	catalog := integrations.New(env, nil, nil, integrations.WithGitea(w.adapter))
 	w.routes = httptest.NewServer(catalog.Handler(func(*http.Request) bool { return true }))
 	t.Cleanup(w.routes.Close)
+	w.agent = httptest.NewServer(catalog.AgentHandler(func(*http.Request) bool { return true }, AgentIntegrationsPath, AgentIntegrationAccountsPath, AgentIntegrationLoginPath, AgentGiteaPath, AgentGitLabPath))
+	t.Cleanup(w.agent.Close)
 	w.clones = newCloneJobsFixture(t, home, "/usr/bin/git")
 	w.clones.jobs.gitea, w.clones.jobs.forgeGit = w.adapter, "/usr/bin/git"
 	return w
@@ -129,11 +132,16 @@ func newGiteaWalkAt(t *testing.T, exe string) *giteaWalk {
 
 func (w *giteaWalk) request(method, path, body string) (int, map[string]any, string) {
 	w.t.Helper()
+	return w.requestAt(w.routes, method, path, body)
+}
+
+func (w *giteaWalk) requestAt(srv *httptest.Server, method, path, body string) (int, map[string]any, string) {
+	w.t.Helper()
 	var r *http.Request
 	if body == "" {
-		r, _ = http.NewRequest(method, w.routes.URL+path, nil)
+		r, _ = http.NewRequest(method, srv.URL+path, nil)
 	} else {
-		r, _ = http.NewRequest(method, w.routes.URL+path, strings.NewReader(body))
+		r, _ = http.NewRequest(method, srv.URL+path, strings.NewReader(body))
 		r.Header.Set("Content-Type", "application/json")
 	}
 	resp, err := http.DefaultClient.Do(r)

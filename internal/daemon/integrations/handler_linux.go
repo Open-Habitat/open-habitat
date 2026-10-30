@@ -73,7 +73,9 @@ func (c *Catalog) Handler(authorized func(*http.Request) bool) http.Handler {
 
 // AgentHandler shares native account operations, not browser login leases.
 // Callers supply kernel own-UID authorization; no session header is accepted as authority.
-func (c *Catalog) AgentHandler(authorized func(*http.Request) bool, listPath, accountsPath, loginPath string) http.Handler {
+// The code-host routes are the browser's own connection writes: tea's and
+// glab's files stay the only stores, and the write lock is shared.
+func (c *Catalog) AgentHandler(authorized func(*http.Request) bool, listPath, accountsPath, loginPath, giteaPath, gitlabPath string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !authorized(r) {
 			fail(w, 403, "cross_user_denied")
@@ -94,6 +96,18 @@ func (c *Catalog) AgentHandler(authorized func(*http.Request) bool, listPath, ac
 			c.accountsRequest(w, r)
 		case loginPath:
 			c.loginRequestOwned(w, r, "agent-own-uid")
+		case giteaPath:
+			if c.gitea == nil {
+				fail(w, 409, "provider_unavailable")
+				return
+			}
+			c.giteaRequest(w, r)
+		case gitlabPath:
+			if c.gitlab == nil {
+				fail(w, 409, "provider_unavailable")
+				return
+			}
+			c.gitlabRequest(w, r)
 		default:
 			fail(w, 404, "not_found")
 		}

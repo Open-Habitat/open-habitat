@@ -134,15 +134,24 @@ Gitea clones authenticate with the person's own Gitea token through the
 registered native Git credential helper; `git push` there works only when that
 token has `write:repository`. A Gitea push refused with HTTP 403 while fetch
 works is most often a read-only token (an archived or mirror repository also
-refuses every push): ask the person to check the connection in
-`<origin>/settings/code-hosts`, which says when the token is read-only, and to
-replace it with one that has `read:user` and `write:repository`. Never put a
-token in a remote URL or Git configuration. Protected branches and the
-account's repository rights stay Gitea's to enforce.
-Connection and interactive sign-in steps belong to the person; never ask them
-to paste passwords or tokens into the conversation. Do not infer a connection
-from this guide. Model-provider credentials are configured in the browser's Pi
-settings and stored in Pi's own authentication file; never display them.
+refuses every push): check it with `open-habitat agent code-host check`, or
+ask the person to look in `<origin>/settings/code-hosts`, which says when the
+token is read-only, and replace it with one that has `read:user` and
+`write:repository`. Never put a token in a remote URL or Git configuration.
+Protected branches and the account's repository rights stay Gitea's to enforce.
+
+Many browser settings have an agent command that writes the same native file:
+Gitea and GitLab tokens (`agent code-host`), model-provider API keys
+(`agent credential`), the dictation key (`agent speech-key`), default models
+(`agent model`), recap settings (`agent recap-settings`) and mail/calendar
+accounts (`agent integration-account`); see the agent skill for each. A
+secret goes to them only through `--secret-file -` or `--input-file -` piped
+from where it already is (a secret manager, a 0600 file, a command that
+creates the token), never on the command line or in your reply. Never ask the
+person to paste a password or token into the conversation: it would stay in
+the history and reach the model provider. OAuth and subscription sign-ins
+still need the person in the browser. Do not infer a connection from this
+guide; read `open-habitat agent integration list --json`.
 
 ## Trash and storage
 

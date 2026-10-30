@@ -52,6 +52,16 @@ var helpSpecs = []helpSpec{
 	{"agent credential list", "Read Pi credential presence, never keys or references", "agent credential list --json", nil},
 	{"agent credential update", "Save a literal OpenAI, Anthropic or DeepSeek API key from protected raw input; not argv or environment", "agent credential update --provider anthropic --secret-file - --json", []string{"--provider", "--secret-file", "--dry-run"}},
 	{"agent credential delete", "Remove one provider's API key from native Pi auth; subscriptions unchanged", "agent credential delete --provider openai --json", []string{"--provider", "--dry-run"}},
+	{"agent code-host create", "Connect a Gitea or GitLab account with the person's personal access token from protected raw input, exactly as Settings → code hosts does; the token goes only into tea's or glab's own file", "agent code-host create --provider gitea --base-url https://gitea.example.test --secret-file - --json", []string{"--provider", "--base-url", "--secret-file", "--dry-run"}},
+	{"agent code-host update", "Replace the token of one connection from integration list with a new token of the same account", "agent code-host update --connection gitea_0123456789abcdef01234567 --secret-file - --json", []string{"--connection", "--secret-file", "--dry-run"}},
+	{"agent code-host check", "Ask the server whether the stored token still works and may push; writes nothing", "agent code-host check --connection gitea_0123456789abcdef01234567 --json", []string{"--connection"}},
+	{"agent code-host repair", "Register Git's credential helper again for a connection whose git state is not registered", "agent code-host repair --connection gitea_0123456789abcdef01234567 --json", []string{"--connection", "--dry-run"}},
+	{"agent code-host delete", "Remove one connection's local tea or glab login; the token is not revoked on the server", "agent code-host delete --connection gitlab_0123456789abcdef01234567 --json", []string{"--connection", "--dry-run"}},
+	{"agent speech-key show", "Read whether the person has a dictation (Soniox) key: presence, region, source (own or site) and at most its last four characters", "agent speech-key show --json", nil},
+	{"agent speech-key update", "Save the person's own Soniox key from protected raw input, as Settings → dictation does; stored only after Soniox takes it, under the region it answered in", "agent speech-key update --secret-file - --json", []string{"--secret-file", "--dry-run"}},
+	{"agent speech-key delete", "Remove the dictation key file; dictation stops until a key is saved again", "agent speech-key delete --json", []string{"--dry-run"}},
+	{"agent recap-settings show", "Read the conversation recap settings Pi keeps in its settings.json", "agent recap-settings show --json", nil},
+	{"agent recap-settings update", "Replace the recap settings with a complete document (every field of show's settings)", "agent recap-settings update --input-file - --json", []string{"--input-file", "--dry-run"}},
 	{"agent conversation list", "List live daemon handles without starting Pi", "agent conversation list --output conversations.jsonl --json", []string{"--output"}},
 	{"agent conversation create", "Start a conversation; lost replies are uncertain, inspect list before acting", "agent conversation create --workspace ws_example123 --json", []string{"--workspace", "--provider", "--model", "--thinking", "--worktree", "--dry-run"}},
 	{"agent conversation resume", "Resume after the existing native ownership and one-writer proof", "agent conversation resume --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--dry-run"}},
@@ -181,6 +191,19 @@ func commandHelp(args []string) (any, error) {
 			if f == "--provider" && strings.HasPrefix(key, "agent credential ") {
 				flag["description"] = "Required provider whose API key Pi stores; subscriptions are separate"
 				flag["possible_values"] = []string{"openai", "anthropic", "deepseek"}
+			}
+			if f == "--provider" && key == "agent code-host create" {
+				flag["description"] = "Required code host; later commands take it from the connection ID"
+				flag["possible_values"] = []string{"gitea", "gitlab"}
+			}
+			if f == "--secret-file" && strings.HasPrefix(key, "agent code-host ") {
+				flag["description"] = "The person's personal access token (Gitea: read:user and write:repository; GitLab: read_api and write_repository), maximum 1024 printable ASCII bytes and one trailing newline; regular own-UID mode 0600 file or - for redirected stdin; never argv/environment"
+			}
+			if f == "--secret-file" && key == "agent speech-key update" {
+				flag["description"] = "The person's own Soniox API key, 16–256 bytes and one trailing newline; regular own-UID mode 0600 file or - for redirected stdin; never argv/environment"
+			}
+			if f == "--input-file" && key == "agent recap-settings update" {
+				flag["description"] = "Complete recap settings JSON (level short|standard|thorough|custom, delay_seconds 60–540, model provider/id or null for automatic, words 10–80, next_words 4–25, messages 4–128, history_tokens 2000–32000, message_tokens 250–4000, response_tokens 128–2048, first_after_turns 1–10), at most 1024 bytes; own-UID mode 0600 file or - for stdin"
 			}
 			if f == "--provider" && strings.HasPrefix(key, "admin integrations ") {
 				flag["description"] = "Required provider whose app credentials change; microsoft_drafts, microsoft_read and dropbox_app_folder are the applications of a narrower account level"
@@ -327,6 +350,10 @@ func helpFlag(name string) map[string]any {
 		v["description"] = "Explicit own pi:UUID target; mutually exclusive with --current"
 	case "--text":
 		v["description"] = "Plain agent text, 1–4096 UTF-8 bytes; mutually exclusive with --text-file"
+	case "--base-url":
+		v["description"] = "Required HTTPS address of the Gitea or GitLab server (with a path when it is served below one), at most 2048 bytes"
+	case "--connection":
+		v["description"] = "Exact gitea_ or gitlab_ connection id from integration list (gitea.connections or gitlab.connections)"
 	case "--attempt":
 		v["description"] = "Exact 32-lowercase-hex Pi attempt_id returned by create; stale IDs never select a successor"
 	case "--input-file":

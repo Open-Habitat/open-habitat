@@ -34,10 +34,10 @@ func agentHandler(cfg transport.Config, controller *ConversationController, vers
 }
 
 func agentHandlerWithIntegrations(cfg transport.Config, controller *ConversationController, version, commit string, pi *PiDevice, catalog *integrations.Catalog, cloneSets ...*CloneJobs) http.Handler {
-	return agentHandlerWithLogins(cfg, controller, version, commit, pi, catalog, &claudeLogin{device: pi}, cloneSets...)
+	return agentHandlerWithLogins(cfg, controller, version, commit, pi, catalog, &claudeLogin{device: pi}, nil, cloneSets...)
 }
 
-func agentHandlerWithLogins(cfg transport.Config, controller *ConversationController, version, commit string, pi *PiDevice, catalog *integrations.Catalog, claude *claudeLogin, cloneSets ...*CloneJobs) http.Handler {
+func agentHandlerWithLogins(cfg transport.Config, controller *ConversationController, version, commit string, pi *PiDevice, catalog *integrations.Catalog, claude *claudeLogin, speech *Speech, cloneSets ...*CloneJobs) http.Handler {
 	var clones *CloneJobs
 	if len(cloneSets) > 0 {
 		clones = cloneSets[0]
@@ -47,7 +47,7 @@ func agentHandlerWithLogins(cfg transport.Config, controller *ConversationContro
 	if controller != nil {
 		onAuthenticated = controller.ClearPiAuthFailures
 	}
-	for path, handler := range agentIntegrationRoutes(cfg, pi, catalog, claude, onAuthenticated) {
+	for path, handler := range agentIntegrationRoutes(cfg, pi, catalog, claude, speech, onAuthenticated) {
 		routes[path] = handler
 	}
 	native := cfg

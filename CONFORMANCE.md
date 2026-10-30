@@ -848,3 +848,27 @@ warnings say the offer was published, never that anyone saw it, and name a
 nonpersistent conversation card (§§10, 12). Lists export to a new JSONL file
 (§13); help and the agent skill carry the workflow (§§14, 16). Daemon
 `TestViewOffer*`/`TestViewExport*` and gateway `TestView*` cover the boundary.
+
+## Agent settings batch — code hosts, dictation key, recap settings
+
+`agent code-host create --provider gitea|gitlab --base-url URL --secret-file
+FILE|-`, `code-host update|check|repair|delete --connection ID`, `agent
+speech-key show|update|delete` and `agent recap-settings show|update
+--input-file FILE|-` go to the own-UID agent listener, which serves the
+browser's own daemon handlers at agent paths (§§6, 22): tea's, glab's,
+Soniox's key file and Pi's settings stay the only stores, and the browser and
+agent share one write lock per store. The connection ID names its provider,
+so no second flag can disagree with it (§1). Tokens and keys are read only
+from a protected file or redirected stdin, bounded, refused rather than
+trimmed beyond one line ending, and never echoed in errors or replies
+(§§1, 4, 8). `check` is a verb of its own because it asks the server and
+writes nothing; `repair` re-registers Git's helper; both are native
+operations, not status patches (§7). Writes refuse `--dry-run` as
+`dry_run_unsupported` before reading input (§11, partial as above: a lost
+reply is inspected with `integration list`, never replayed). The dictation
+session mint stays browser-only. Help and the agent skill describe all ten
+leaves (§§14, 16). `TestCodeHostProtectedToken`, `TestSettingCommands`,
+`TestAgentGiteaConnectionIsTheBrowsers` and `TestAgentSpeechKeyIsTheBrowsers`
+cover the parser and the shared-handler boundary. `project-canon review
+--profile cli --run` (0.9.4, networkless container, fictional user) reported
+only the inherited advisory rows above.

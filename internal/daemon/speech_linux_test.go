@@ -400,3 +400,37 @@ func TestSpeechMintHealsAWrongRegion(t *testing.T) {
 		t.Fatalf("refused key's file changed: %+v", k)
 	}
 }
+
+// The agent's speech-key commands are the browser's key handler at the
+// agent path: one key file, the same Soniox check. The agent listener never
+// mints a dictation's temporary key.
+func TestAgentSpeechKeyIsTheBrowsers(t *testing.T) {
+	home := t.TempDir()
+	soniox := newRegionalSoniox(t, map[string]string{ownSpeechKey: "eu"})
+	s := soniox.speech(home)
+	routes := agentIntegrationRoutes(transport.Config{Home: home}, &PiDevice{Home: home}, nil, nil, s, nil)
+	agent, ok := routes[AgentSpeechKeyPath]
+	if !ok || routes[AgentRecapSettingsPath] == nil {
+		t.Fatal("settings routes missing")
+	}
+	for path := range routes {
+		if strings.Contains(path, "session") {
+			t.Fatalf("agent route %s", path)
+		}
+	}
+	trusted := s.keyHandlerAt(AgentSpeechKeyPath, func(*http.Request) bool { return true })
+	if w := speechRequest(t, trusted, "POST", SpeechKeyPath, `{"key":"`+ownSpeechKey+`"}`); w.Code != 400 {
+		t.Fatalf("agent handler served the browser path: %d", w.Code)
+	}
+	if w := speechRequest(t, trusted, "POST", AgentSpeechKeyPath, `{"key":"`+ownSpeechKey+`"}`); w.Code != 200 || strings.Contains(w.Body.String(), ownSpeechKey[:20]) {
+		t.Fatalf("agent save: %d %s", w.Code, w.Body)
+	}
+	var state speechKeyState
+	if w := speechRequest(t, s.KeyHandler(), "GET", SpeechKeyPath, ""); json.Unmarshal(w.Body.Bytes(), &state) != nil || !state.Present || *state.Source != "own" || *state.Region != "eu" {
+		t.Fatalf("browser does not read the agent's key: %s", w.Body)
+	}
+	// Outside a real agent socket the kernel peer check refuses.
+	if w := speechRequest(t, agent, "DELETE", AgentSpeechKeyPath, ""); w.Code != 403 {
+		t.Fatalf("unverified peer: %d", w.Code)
+	}
+}

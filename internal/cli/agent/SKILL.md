@@ -1,6 +1,6 @@
 ---
 name: agent
-description: Observe and operate your own Open Habitat daemon (workspaces, conversations, history, tools, attachments, models and integrations). Use for personal host operations, not gateway sessions or administration.
+description: Observe and operate your own Open Habitat daemon (workspaces, conversations, history, tools, attachments, models, integrations and personal settings such as Gitea/GitLab tokens). Use for personal host operations, not gateway sessions or administration.
 cli_version: "0.0.0-dev"
 schema_version: 1
 ---
@@ -134,6 +134,13 @@ updates are repeatable, but never automatically retry an uncertain response:
 read `model list` to observe what actually persisted. `--dry-run` fails with
 `dry_run_unsupported` because native settings/catalog can change before apply.
 Credential availability is reported through the catalog, never raw secrets.
+
+Conversation recap settings (Settings → Tilannekatsaus) live in Pi's own
+`settings.json`. `agent recap-settings show --json` returns them under
+`data.result.settings`; `agent recap-settings update --input-file - --json`
+replaces them with a complete document of the same fields (edit the shown
+object and pipe it back). `model` is `provider/id` or `null` for automatic,
+and never a Fable or Opus model; out-of-range values are refused, not clamped.
 
 Git identity remains native: use `git config --global user.name` and
 `git config --global user.email` to read it, adding an explicit value to update.
@@ -316,6 +323,38 @@ the CLI; dispose of temporary secret input yourself.
   the existing no-symlink/no-cross-filesystem operation. This removes local native
   login/configuration, **not** the provider's grant. Permanent Trash deletion is
   still the separate typed/token-bound Trash workflow.
+
+- `agent code-host create --provider gitea|gitlab --base-url URL --secret-file - --json`:
+  connect the person's Gitea or GitLab account with their personal access
+  token, exactly as Settings → Koodipalvelut does. The token (Gitea:
+  `read:user` and `write:repository`; GitLab: `read_api` and
+  `write_repository`) is checked against the server, then stored only in tea's
+  or glab's own config file, and Git's credential helper is registered for
+  that server. The reply names the connection (`connection.id`), the account,
+  `api` and `push` (Gitea `allowed`, `read_only` or `unknown`; GitLab `yes`,
+  `no` or `unknown`): a read-only token still clones and fetches. Repeating the same grant answers `unchanged`.
+- `agent code-host update --connection ID --secret-file - --json`: replace one
+  connection's token with a new token of the same account (`account_mismatch`
+  otherwise). Take `ID` from `integration list` (`gitea.connections[].id`,
+  `gitlab.connections[].id`); the prefix names the provider.
+- `agent code-host check --connection ID --json`: ask the server whether the
+  stored token still works (`api`: `ok`, `token_rejected`, `insufficient_scope`,
+  `unreachable`, …) and may push. Writes nothing.
+- `agent code-host repair --connection ID --json`: register Git's helper again
+  when the connection's `git` state is not `registered`.
+- `agent code-host delete --connection ID --json`: remove the local tea/glab
+  login (and the helper when no other account of that server remains). A
+  running clone refuses with `clone_running`. The token is **not** revoked on
+  the server; tell the person to revoke it there if it should stop working.
+- `agent speech-key show|update|delete --json`: the person's own Soniox key
+  for dictation (Settings → Sanelu). `update --secret-file -` saves it only
+  after Soniox takes it, under the region it answered in
+  (`speech_key_rejected` otherwise); `show` returns presence, region, source
+  (`own` or the administrator's `site` copy) and the last four characters.
+
+A token the agent creates itself (for example with an API call on a server the
+person administers) is piped straight from that command into
+`--secret-file -`; do not print it, store it in a workspace or pass it in argv.
 
 All writes reject `--dry-run` explicitly as `dry_run_unsupported` before reading
 secret input or contacting the daemon. A lost response or 503 can follow a

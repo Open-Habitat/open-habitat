@@ -14,7 +14,7 @@ import (
 func TestAgentPasswordAccountsNoBrowserLease(t *testing.T) {
 	home := newHome(t)
 	c := testCatalog(t, home, Production())
-	h := c.AgentHandler(allow, "/agent/v1/integrations", "/agent/v1/integrations/accounts", "/agent/v1/integrations/login")
+	h := c.AgentHandler(allow, "/agent/v1/integrations", "/agent/v1/integrations/accounts", "/agent/v1/integrations/login", "/agent/v1/integrations/gitea", "/agent/v1/integrations/gitlab")
 	secret := "sentinel-agent-password"
 	input := imapAccount("a@example.test", secret)
 	code, _, raw := call(t, h, "POST", "/agent/v1/integrations/accounts", ownerA, input)
@@ -52,7 +52,7 @@ func TestAgentPasswordAccountsNoBrowserLease(t *testing.T) {
 			t.Fatal(path, code)
 		}
 	}
-	denied := c.AgentHandler(func(*http.Request) bool { return false }, "/agent/v1/integrations", "/agent/v1/integrations/accounts", "/agent/v1/integrations/login")
+	denied := c.AgentHandler(func(*http.Request) bool { return false }, "/agent/v1/integrations", "/agent/v1/integrations/accounts", "/agent/v1/integrations/login", "/agent/v1/integrations/gitea", "/agent/v1/integrations/gitlab")
 	code, _, _ = call(t, denied, "DELETE", "/agent/v1/integrations/accounts", ownerA, map[string]any{"action": "remove", "provider": "imap", "address": "a@example.test", "delete_directories": false})
 	if code != 403 {
 		t.Fatal("session bypassed peer guard")
@@ -68,7 +68,7 @@ func TestAgentOAuthUsesOwnLeaseAndNativeFolderChecks(t *testing.T) {
 	e := &syncScriptEntry{&scriptEntry{provider: Google, kind: PastedRedirect, signsIn: "person@example.test", folders: []Folder{{ID: "drive", Name: "Drive", Bytes: 1}}}}
 	c := testCatalog(t, home, []Entry{e})
 	const path = "/agent/v1/integrations/login"
-	agent := c.AgentHandler(allow, "/agent/v1/integrations", "/agent/v1/integrations/accounts", path)
+	agent := c.AgentHandler(allow, "/agent/v1/integrations", "/agent/v1/integrations/accounts", path, "/agent/v1/integrations/gitea", "/agent/v1/integrations/gitlab")
 	browser := c.Handler(allow)
 	code, out, raw := call(t, agent, "POST", path, ownerA, map[string]any{"action": "start", "provider": "google"})
 	if code != 200 || out["state"] != "open_url" {

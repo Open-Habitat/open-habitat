@@ -46,7 +46,7 @@ func agentCommand(args []string) (any, error) {
 	if len(args) > 0 && strings.Contains(" history history-block receipt process attachment ", " "+args[0]+" ") {
 		return agentResourceCommand(args)
 	}
-	if len(args) > 0 && (args[0] == "integration" || args[0] == "integration-account" || args[0] == "credential") {
+	if len(args) > 0 && (args[0] == "integration" || args[0] == "integration-account" || args[0] == "credential" || args[0] == "code-host" || args[0] == "speech-key" || args[0] == "recap-settings") {
 		return agentIntegrationCommand(args)
 	}
 	if len(args) > 0 && (args[0] == "workspace" || args[0] == "worktree" || args[0] == "trash" || args[0] == "repository" || args[0] == "clone") && !(args[0] == "workspace" && len(args) > 1 && args[1] == "list") {
@@ -214,8 +214,14 @@ func agentRequestTimeout(path string) time.Duration {
 	if path == daemon.AgentCredentialsPath || strings.HasPrefix(path, daemon.AgentCredentialsPath+"/") {
 		timeout = 16 * time.Second
 	}
-	if path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || path == daemon.AgentIntegrationLoginPath {
+	if path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || path == daemon.AgentIntegrationLoginPath || path == daemon.AgentGiteaPath || path == daemon.AgentGitLabPath {
 		timeout = 55 * time.Second // Includes native login replacement cleanup (up to 15s).
+	}
+	if path == daemon.AgentRecapSettingsPath {
+		timeout = 16 * time.Second // Pi's settings helper has a 10-second deadline.
+	}
+	if path == daemon.AgentSpeechKeyPath {
+		timeout = 25 * time.Second // Soniox is asked in up to two regions, 10s each.
 	}
 	if path == daemon.AgentPiLoginPath {
 		timeout = 25 * time.Second // Pi terminal refresh (15s) plus optional Claude presence (5s).
@@ -237,7 +243,7 @@ func agentResponseError(method, path string, status int, code string) error {
 	if path == daemon.AgentViewsPath && code == "views_unavailable" {
 		return &cliError{code: code, message: "this Open Habitat has no view origin, so the person's browser would show no view card; nothing was published; tell the person the page cannot be shown here and offer the files instead with agent file offer (they preview and download them)", exit: 1}
 	}
-	if (strings.HasPrefix(path, daemon.AgentHistoryPath) || path == daemon.AgentViewsPath || path == daemon.AgentViewRemovePath || path == daemon.AgentFileOffersPath || path == daemon.AgentFileOfferRemovePath || strings.HasPrefix(path, daemon.AgentAttachmentsPath) || path == daemon.AgentCredentialsPath || strings.HasPrefix(path, daemon.AgentCredentialsPath+"/") || path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || path == daemon.AgentIntegrationLoginPath || path == daemon.AgentPiLoginPath || path == daemon.AgentClaudeLoginPath || strings.HasPrefix(path, daemon.AgentConversationsPath) || path == daemon.AgentWorkspaceOperationsPath || path == daemon.AgentClonesPath || strings.HasPrefix(path, daemon.AgentRepositoryPath) || strings.HasPrefix(path, daemon.AgentRepositoriesPath) || strings.HasPrefix(path, daemon.AgentCheckoutPath)) && status >= 400 && status < 500 && code != "" {
+	if (strings.HasPrefix(path, daemon.AgentHistoryPath) || path == daemon.AgentViewsPath || path == daemon.AgentViewRemovePath || path == daemon.AgentFileOffersPath || path == daemon.AgentFileOfferRemovePath || strings.HasPrefix(path, daemon.AgentAttachmentsPath) || path == daemon.AgentCredentialsPath || strings.HasPrefix(path, daemon.AgentCredentialsPath+"/") || path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || path == daemon.AgentIntegrationLoginPath || path == daemon.AgentGiteaPath || path == daemon.AgentGitLabPath || path == daemon.AgentSpeechKeyPath || path == daemon.AgentRecapSettingsPath || path == daemon.AgentPiLoginPath || path == daemon.AgentClaudeLoginPath || strings.HasPrefix(path, daemon.AgentConversationsPath) || path == daemon.AgentWorkspaceOperationsPath || path == daemon.AgentClonesPath || strings.HasPrefix(path, daemon.AgentRepositoryPath) || strings.HasPrefix(path, daemon.AgentRepositoriesPath) || strings.HasPrefix(path, daemon.AgentCheckoutPath)) && status >= 400 && status < 500 && code != "" {
 		return &cliError{code: code, message: "daemon refused personal operation; inspect input and native state; do not replay uncertain work", exit: 1}
 	}
 	switch code {

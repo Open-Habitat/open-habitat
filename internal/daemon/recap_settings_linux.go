@@ -211,8 +211,14 @@ func (p *PiDevice) saveRecapSettings(ctx context.Context, value recapSettings) e
 }
 
 func RecapSettingsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi *PiDevice) http.Handler {
+	return recapSettingsHandlerAt(cfg, trusted, pi, RecapSettingsPath)
+}
+
+// recapSettingsHandlerAt serves the same read and write at path, for the
+// browser's route or the agent listener's.
+func recapSettingsHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, pi *PiDevice, path string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != RecapSettingsPath || r.URL.EscapedPath() != RecapSettingsPath || r.URL.RawQuery != "" || !historyAuthorized(cfg, trusted, r) {
+		if r.URL.Path != path || r.URL.EscapedPath() != path || r.URL.RawQuery != "" || !historyAuthorized(cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}

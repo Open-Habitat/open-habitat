@@ -477,13 +477,17 @@ func (s *Speech) fail(w http.ResponseWriter, err error) {
 // speech_key_rejected, and a Soniox that cannot be asked saves nothing.
 // Replies carry presence, region, source and at most the key's last four
 // characters.
-func (s *Speech) KeyHandler() http.Handler {
+func (s *Speech) KeyHandler() http.Handler { return s.keyHandlerAt(SpeechKeyPath, s.trusted) }
+
+// keyHandlerAt serves the same key reads and writes at path for another
+// trusted peer (the agent listener); s.mu still orders every write.
+func (s *Speech) keyHandlerAt(path string, trusted func(*http.Request) bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !historyAuthorized(s.cfg, s.trusted, r) {
+		if !historyAuthorized(s.cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		if r.URL.Path != SpeechKeyPath || r.URL.RawQuery != "" || len(r.TransferEncoding) != 0 {
+		if r.URL.Path != path || r.URL.RawQuery != "" || len(r.TransferEncoding) != 0 {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

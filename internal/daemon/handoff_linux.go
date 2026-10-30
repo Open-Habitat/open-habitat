@@ -68,7 +68,8 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		mux.Handle(path, PiCredentialsHandler(cfg, server.TrustedPeer, pi))
 	}
 	mux.Handle(SiteKeyPath, SiteKeyHandler(cfg, server.TrustedPeer, pi))
-	NewSpeech(cfg, server.TrustedPeer).Mount(mux)
+	speech := NewSpeech(cfg, server.TrustedPeer)
+	speech.Mount(mux)
 	mux.Handle("/api/v1/pi/models", PiModelsHandler(cfg, server.TrustedPeer, pi))
 	mux.Handle(RecapSettingsPath, RecapSettingsHandler(cfg, server.TrustedPeer, pi))
 	claude := &claudeLogin{device: pi}
@@ -161,7 +162,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		defer cancel()
 		results := make(chan error, 2)
 		go func() {
-			results <- transport.ServeAgent(child, agent.Listener, cfg, agentHandlerWithLogins(cfg, controller, agent.Version, agent.Commit, pi, catalog, claude, clones))
+			results <- transport.ServeAgent(child, agent.Listener, cfg, agentHandlerWithLogins(cfg, controller, agent.Version, agent.Commit, pi, catalog, claude, speech, clones))
 		}()
 		go func() { results <- server.ServeMux(child, listener, outer) }()
 		err := <-results
