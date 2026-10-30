@@ -413,4 +413,72 @@ describe("Ryhmät rows", () => {
       view.getByTestId("agent-item-k1").querySelector("time")?.textContent,
     ).toBe("1 pv");
   });
+  // workspace-icons (Lähdeketju): each row leads with its workspace's icon
+  // button, Käynnissä drops its repeated heading, and the card names the
+  // workspace and where its icon came from.
+  it("leads rows with the workspace icon and drops the group heading", () => {
+    const icon = {
+      name: "kasvimaa",
+      glyph: { letters: "KA", hue: 3 },
+      show: { kind: "emoji" as const, value: "🥕" },
+      source: "Repon asetus",
+      where: ".open-habitat.yaml",
+    };
+    const started: string[] = [];
+    const view = render(
+      <MemoryRouter>
+        <NowSections
+          yours={[]}
+          running={[
+            agent("w1", { workspaceIcon: icon, changedAt: Date.now() }),
+            agent("w2", { workspaceIcon: icon, changedAt: Date.now() }),
+          ]}
+          card={{ onNew: (id) => started.push(id) }}
+        />
+      </MemoryRouter>,
+    );
+    const group = view.getByTestId("rail-group-kasvimaa");
+    expect(group.querySelector("h3")).toBeNull();
+    expect(group.getAttribute("aria-label")).toBe("kasvimaa");
+    const buttons = view.getAllByTestId("workspace-icon-button");
+    expect(buttons).toHaveLength(2);
+    // The icon is its own button beside the row's link, never inside it.
+    expect(buttons[0].closest("a")).toBeNull();
+    expect(buttons[0].getAttribute("aria-label")).toBe("Työtila kasvimaa");
+    expect(buttons[0].textContent).toBe("🥕");
+    fireEvent.click(buttons[0]);
+    const card = view.getByTestId("workspace-card");
+    expect(card.textContent).toContain("kasvimaa");
+    expect(view.getByTestId("workspace-card-source").textContent).toBe(
+      "Repon asetus · .open-habitat.yaml",
+    );
+    fireEvent.click(view.getByTestId("workspace-card-new"));
+    expect(started).toEqual(["ws_kasvimaa0"]);
+  });
+  it("shows the derived glyph when an image does not load", () => {
+    const view = render(
+      <MemoryRouter>
+        <NowSections
+          yours={[]}
+          collapsed
+          running={[
+            agent("w1", {
+              workspaceIcon: {
+                name: "kasvimaa",
+                glyph: { letters: "KA", hue: 3 },
+                show: { kind: "image", src: "/api/v1/workspaces/icon?x" },
+                source: "Repon logo",
+                where: "logo.svg",
+              },
+            }),
+          ]}
+        />
+      </MemoryRouter>,
+    );
+    const icon = view.getByTestId("workspace-icon");
+    expect(icon.getAttribute("data-size")).toBe("m");
+    fireEvent.error(icon.querySelector("img") as HTMLImageElement);
+    expect(icon.getAttribute("data-kind")).toBe("glyph");
+    expect(icon.textContent).toBe("KA");
+  });
 });

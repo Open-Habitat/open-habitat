@@ -3,11 +3,12 @@ created: 2026-10-30
 updated: 2026-10-30
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: workspace-icons
 lane_seq: 1
 preparation: ready
+closed: 2026-10-30
 ---
 
 # Workspace icons in the rail from the repo's own Open Habitat config (Lähdeketju)
@@ -29,7 +30,7 @@ lukemisen ja näyttämisen.
 
 ## Acceptance Criteria
 
-- [ ] Repon juureen commitoitava Open Habitat -konffi (oletus `.open-habitat.yaml`,
+- [x] Repon juureen commitoitava Open Habitat -konffi (oletus `.open-habitat.yaml`,
       kenttä `icon`), luetaan daemonin työtilalistaukseen; ei uutta tietovarastoa.
-- [ ] Sivupalkki, kapea kaistale ja puhelin prototyypin Lähdeketjun mukaan,
+- [x] Sivupalkki, kapea kaistale ja puhelin prototyypin Lähdeketjun mukaan,
       kokeellisen ominaisuuden takana; selainspec; KOKEILTAVAA-rivi.

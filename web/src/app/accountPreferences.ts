@@ -20,6 +20,7 @@ export const experimentalFeatureIds = [
   "next-waiting-row",
   "worker-row-sentence",
   "composer-dictation-bar",
+  "workspace-icons",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

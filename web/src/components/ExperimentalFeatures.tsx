@@ -53,6 +53,19 @@ export const experimentalFeatures = [
     caption: "Kirjoituskentän rivi sanellessa",
     landed: true,
   },
+  {
+    id: "workspace-icons",
+    name: "Työtilan kuvake",
+    desc: "Sivupalkin keskustelujen edessä on niiden työtilan kuvake, joten Käynnissä ei enää toista työtilan nimeä otsikkona.",
+    where:
+      "Sivupalkin Sinun vuorosi-, Käynnissä- ja Työtilat-riveillä sekä kapeassa kaistaleessa editorin vieressä. Kuvakkeesta aukeaa kortti: koko nimi, kuvakkeen lähde, työtilasivu ja uusi keskustelu.",
+    shows:
+      "Repon .open-habitat.yaml-tiedoston icon-kentän hymiön tai kuvan, muuten repon logon (esimerkiksi favicon.svg), muuten nimestä johdetun kirjaintunnuksen.",
+    needs:
+      'Kuvake asetetaan toistaiseksi repossa: juuren .open-habitat.yaml, rivi icon: "🦊" tai icon: polku/kuvaan.svg, ja commit.',
+    caption: "Sivupalkki",
+    landed: true,
+  },
 ] as const satisfies readonly ExperimentalFeature[];
 
 /** A small drawing of what the feature adds, grey while it is off. It is
@@ -95,6 +108,21 @@ function Picture({ id, on }: { id: string; on: boolean }) {
         </span>
       </>
     );
+  else if (id === "workspace-icons")
+    body = [
+      ["🦊", "Ikoniprototyypin suunnat", "nyt"],
+      ["🦊", "Rail-ikonit", "3 min"],
+      ["OH", "pilot.16 testipalvelimelle", "22 min"],
+    ].map(([icon, title, age], i) => (
+      <span key={title} className="ex-irow" data-gap={i === 2 || undefined}>
+        <span className="ex-icon" data-glyph={icon === "OH" || undefined}>
+          {icon}
+        </span>
+        <span className="ex-dot" />
+        <b>{title}</b>
+        <span>{age}</span>
+      </span>
+    ));
   else
     body = (
       <>

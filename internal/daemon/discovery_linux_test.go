@@ -25,7 +25,7 @@ func put(t *testing.T, p, s string) {
 		t.Fatal(e)
 	}
 }
-func testScan(t *testing.T, home string) Discovery { t.Helper(); return scan(home, -1, unix.Openat2) }
+func testScan(t *testing.T, home string) Discovery { t.Helper(); return scan(home, -1, unix.Openat2, false) }
 
 // Discovery is independent of filesystem capacity: a workspace must remain
 // visible even when a source filesystem grows beyond the old clone ceiling.
@@ -156,7 +156,7 @@ func TestDiscoveryUnsafeAndStrict(t *testing.T) {
 	if r := testScan(t, h); len(r.Entries) != 1 {
 		t.Fatalf("symlink child followed: %+v", r)
 	}
-	if r := scan(h, os.Geteuid()+1, unix.Openat2); r.Error != "invalid_identity" {
+	if r := scan(h, os.Geteuid()+1, unix.Openat2, false); r.Error != "invalid_identity" {
 		t.Fatalf("wrong owner: %+v", r)
 	}
 }
@@ -199,7 +199,7 @@ func TestDiscoveryBoundsMountAndRace(t *testing.T) {
 		}
 		return unix.Openat2(fd, name, how)
 	}
-	if r := scan(h, -1, inject); r.State != "error" || r.Error != "unsafe_path" {
+	if r := scan(h, -1, inject, false); r.State != "error" || r.Error != "unsafe_path" {
 		t.Fatalf("mount: %+v", r)
 	}
 	inject = func(fd int, name string, how *unix.OpenHow) (int, error) {
@@ -208,7 +208,7 @@ func TestDiscoveryBoundsMountAndRace(t *testing.T) {
 		}
 		return unix.Openat2(fd, name, how)
 	}
-	if r := scan(h, -1, inject); r.State != "error" || r.Error != "inaccessible" {
+	if r := scan(h, -1, inject, false); r.State != "error" || r.Error != "inaccessible" {
 		t.Fatalf("source denial: %+v", r)
 	}
 	inject = func(fd int, name string, how *unix.OpenHow) (int, error) {
@@ -217,7 +217,7 @@ func TestDiscoveryBoundsMountAndRace(t *testing.T) {
 		}
 		return unix.Openat2(fd, name, how)
 	}
-	if r := scan(h, -1, inject); r.State != "partial" || r.Entries[0].Error != "inaccessible" {
+	if r := scan(h, -1, inject, false); r.State != "partial" || r.Entries[0].Error != "inaccessible" {
 		t.Fatalf("child denial: %+v", r)
 	}
 	replaced := false
@@ -229,7 +229,7 @@ func TestDiscoveryBoundsMountAndRace(t *testing.T) {
 		}
 		return unix.Openat2(fd, name, how)
 	}
-	if r := scan(h, -1, inject); r.State != "partial" || r.Entries[0].Error != "raced_entry" {
+	if r := scan(h, -1, inject, false); r.State != "partial" || r.Entries[0].Error != "raced_entry" {
 		t.Fatalf("replacement: %+v", r)
 	}
 	if _, _, ok := parseMetadata([]byte(strings.Repeat("x", maxMetadata+1))); ok {
@@ -249,7 +249,7 @@ func TestDiscoveryBoundsMountAndRace(t *testing.T) {
 		}
 		return unix.Openat2(fd, name, how)
 	}
-	if r := scan(h, -1, inject); r.State != "partial" || r.Error != "raced_source" {
+	if r := scan(h, -1, inject, false); r.State != "partial" || r.Error != "raced_source" {
 		t.Fatalf("source replacement: %+v", r)
 	}
 	if _, e := unix.Openat2(unix.AT_FDCWD, "../escape", &unix.OpenHow{Flags: unix.O_RDONLY, Resolve: resolve}); e == nil {

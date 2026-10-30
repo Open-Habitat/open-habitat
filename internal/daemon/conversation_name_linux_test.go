@@ -70,7 +70,7 @@ func (h *heldHarness) nativeName(id string) string {
 func (h *heldHarness) snapshotTitle(c *ConversationController, id string) (string, string) {
 	h.t.Helper()
 	handler := snapshotHandlerWithController(h.cfg, func(*http.Request) bool { return true },
-		func(transport.Config) Discovery { return scan(h.root, h.cfg.UID, unix.Openat2) },
+		func(transport.Config) Discovery { return scan(h.root, h.cfg.UID, unix.Openat2, false) },
 		nativeSessions, h.root, unknownGitHub, c.journal, c)
 	r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
 	r.RequestURI = SnapshotPath

@@ -11,6 +11,7 @@ import {
 import { RailClones } from "../components/ClonePage";
 import type { Tone } from "../components/types";
 import { WorkspaceActions } from "../components/WorkspaceActions";
+import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
 import { type CloneJobs, cloneLabel, useCloneView } from "./cloneJobs";
 import {
   type ConversationStore,
@@ -131,9 +132,12 @@ export function WorkspaceRailView({
   bell,
   archiveConversation,
   renameConversation,
+  icons,
 }: {
   /** The conversation rows' rename; absent where none is offered. */
   renameConversation?: RailRename;
+  /** Workspace icons by workspace_id while the experimental feature is on. */
+  icons?: ReadonlyMap<string, WorkspaceIconModel>;
   /** The conversation rows' archive button; absent where none is offered. */
   archiveConversation?: RailArchive;
   /** The status bell, where no top bar carries it. */
@@ -211,6 +215,11 @@ export function WorkspaceRailView({
           collapsed={collapsed}
           archive={archiveConversation}
           rename={renameConversation}
+          card={
+            icons
+              ? { onNew: onNewConversation, newReason: (id) => newReason?.(id) }
+              : undefined
+          }
         />
       }
       filterValue={filter}
@@ -300,6 +309,7 @@ export function WorkspaceRailView({
           name={w.display_name ?? w.name}
           href={`/workspaces/${w.workspace_id}`}
           selected={selectedId === w.workspace_id}
+          icon={icons?.get(w.workspace_id)}
           hint={now.hints.get(w.workspace_id)}
           summary={`${w.kind === "git_main_worktree" ? "Git" : "Hakemisto"} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
           mutationState={

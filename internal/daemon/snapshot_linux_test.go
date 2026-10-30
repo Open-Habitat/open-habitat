@@ -117,7 +117,7 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "42"}
 	cfg.Socket = "/run/open-habitat/users/" + u.Username + "/daemon.sock"
 	// The discovery seam uses a disposable root; production always calls Discover(cfg).
-	state := func(_ transport.Config) Discovery { return scan(home, uid, unix.Openat2) }
+	state := func(_ transport.Config) Discovery { return scan(home, uid, unix.Openat2, false) }
 	h := SnapshotHandlerWithNativeRoot(cfg, func(*http.Request) bool { return true }, state, home)
 	request := func() *httptest.ResponseRecorder {
 		r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
@@ -186,7 +186,7 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 	if partial["sources"].([]any)[0].(map[string]any)["state"] != "unknown" || partial["workspaces"].([]any)[0].(map[string]any)["kind"] != "unknown" {
 		t.Fatal(partial)
 	}
-	state = func(_ transport.Config) Discovery { return scan(home, uid, unix.Openat2) }
+	state = func(_ transport.Config) Discovery { return scan(home, uid, unix.Openat2, false) }
 	h = SnapshotHandlerWithNativeRoot(cfg, func(*http.Request) bool { return true }, state, home)
 	for _, name := range []string{"ordinary", "repository", "annotated"} {
 		if err := os.RemoveAll(filepath.Join(src, name)); err != nil {

@@ -210,7 +210,7 @@ func newConversationController(ctx context.Context, cfg transport.Config, runtim
 func ConversationHandlerWithFixtureRuntime(ctx context.Context, cfg transport.Config, trusted func(*http.Request) bool, status func(context.Context) string, root string, runtime *core.PiRuntimeConfig) *ConversationController {
 	c := newConversationController(ctx, cfg, runtime, trusted, status)
 	c.home = root
-	c.discover = func(transport.Config) Discovery { return scan(root, cfg.UID, unix.Openat2) }
+	c.discover = func(transport.Config) Discovery { return scan(root, cfg.UID, unix.Openat2, true) }
 	c.fixture = true
 	// The browser-host exercises the controller's real event publisher. Without
 	// its journal the fake Pi RPC stream can never reach /api/v1/events.

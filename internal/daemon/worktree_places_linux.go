@@ -83,7 +83,11 @@ func readWorktreePlaces(home string, entry Workspace, workspaceID string) ([]wor
 	}
 	sort.Strings(names)
 	wsPath := filepath.Join(home, "src", entry.Name)
-	mainBranch := headBranch(fd, ".git/HEAD")
+	mainBranch := ""
+	if gitDir, err := dir(unix.Openat2, fd, ".git", true); err == nil {
+		mainBranch = headBranch(gitDir, "HEAD")
+		unix.Close(gitDir)
+	}
 	out := []worktreePlace{}
 	for _, name := range names {
 		if len(out) >= worktreeListLimit {

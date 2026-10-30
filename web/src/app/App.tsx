@@ -144,6 +144,7 @@ import type { DeletionOutcome } from "./WorkspaceDeletion";
 import { WorkspaceEditor } from "./WorkspaceEditor";
 import { WorkspacePage } from "./WorkspacePage";
 import { useRailNow, WorkspaceRailView } from "./WorkspaceRailView";
+import { workspaceIcons } from "./workspaceIcons";
 import {
   readWorkspaceResult,
   sendWorkspace,
@@ -1218,6 +1219,17 @@ export function App() {
     identity,
     csrf,
   });
+  const workspaceIconsOn = useExperimentalFeature("workspace-icons", {
+    identity,
+    csrf,
+  });
+  const icons = useMemo(
+    () =>
+      workspaceIconsOn && snapshot
+        ? workspaceIcons(snapshot.workspaces)
+        : undefined,
+    [workspaceIconsOn, snapshot],
+  );
   const now = useRailNow({
     store: conversationStore,
     snapshot,
@@ -1230,6 +1242,7 @@ export function App() {
     search: location.search,
     // App is above AccountPreferencesProvider: it names the session.
     workFacts: workerRowSentence,
+    icons,
   });
   // Every conversation opened, by any route, moves the experimental
   // next-waiting round (view state of this tab) to it when it is a step.
@@ -3038,6 +3051,7 @@ export function App() {
                   clones={cloneJobs}
                   archiveConversation={railArchive}
                   renameConversation={railRename}
+                  icons={icons}
                 />
               ) : undefined
             }

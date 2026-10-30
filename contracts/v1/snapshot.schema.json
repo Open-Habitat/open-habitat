@@ -271,6 +271,9 @@
           "minLength": 1,
           "maxLength": 255
         },
+        "icon": {
+          "$ref": "#/$defs/workspaceIcon"
+        },
         "kind": {
           "enum": [
             "directory",
@@ -757,6 +760,65 @@
           "const": "unique_first_four_last_four_user_messages"
         }
       }
+    },
+    "workspaceIcon": {
+      "description": "The workspace's icon as the daemon found it in the repository: the icon field of the committed .open-habitat.yaml at its root, else the first logo file on the daemon's fixed list. Absent when neither gives one; the browser then derives a glyph from the name. An image is fetched from /api/v1/workspaces/icon by workspace_id; the path is for showing where the icon comes from, never a path the browser may ask for.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "source",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "emoji"
+            },
+            "source": {
+              "const": "config"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "source",
+            "path",
+            "version"
+          ],
+          "properties": {
+            "kind": {
+              "const": "image"
+            },
+            "source": {
+              "enum": [
+                "config",
+                "logo"
+              ]
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[^/\\\\]+(/[^/\\\\]+)*\\.([Ss][Vv][Gg]|[Pp][Nn][Gg]|[Ww][Ee][Bb][Pp]|[Jj][Pp][Ee]?[Gg])$"
+            },
+            "version": {
+              "description": "Changes when the image file does; a cache key for the image address, not an identity.",
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            }
+          }
+        }
+      ]
     }
   }
 }

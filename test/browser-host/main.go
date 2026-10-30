@@ -592,6 +592,7 @@ esac
 		}))
 		mux.Handle(daemon.WorkspaceFilesPath, daemon.WorkspaceFilesHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspaceFilePreviewPath, daemon.WorkspaceFilePreviewHandler(fixtureWorkspaceCfg, trusted))
+		mux.Handle(daemon.WorkspaceIconPath, daemon.WorkspaceIconHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspaceStartPagePath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			current.Load().(*daemon.ConversationController).WorkspaceStartPage().ServeHTTP(w, r)
 		}))

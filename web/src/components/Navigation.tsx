@@ -19,6 +19,12 @@ import type { StatusKind } from "./Status";
 import { Badge, StatusMark } from "./Status";
 import { StatusBell } from "./StatusBell";
 import type { AsyncState, Availability, Tone } from "./types";
+import {
+  type WorkspaceCardActions,
+  WorkspaceIcon,
+  WorkspaceIconButton,
+  type WorkspaceIconModel,
+} from "./WorkspaceIcon";
 
 type AppShellProps = Parameters<typeof Shell>[0];
 
@@ -488,6 +494,9 @@ export interface AgentNavModel {
   workspaceId?: string;
   /** The workspace's name, for the group heading and the narrow rail. */
   workspaceName?: string;
+  /** The workspace's icon (workspace-icons, experimental): with it the row
+   * leads with the icon's button and Käynnissä drops its group headings. */
+  workspaceIcon?: WorkspaceIconModel;
 }
 /** Naming a conversation by hand. `onSave` resolves once the host has the
  * name and rejects when that is not known. */
@@ -598,13 +607,17 @@ export function AgentNavItem({
   worktree,
   question = false,
   detail,
+  workspaceId,
+  workspaceIcon,
   now = Date.now(),
   archive,
   rename,
+  card,
 }: AgentNavModel & {
   now?: number;
   archive?: RailArchive;
   rename?: RailRename;
+  card?: WorkspaceCardActions;
 }) {
   const archiveReasonId = useId();
   const archiveReason = archive?.reason(agentId);
@@ -654,6 +667,15 @@ export function AgentNavItem({
     >
       <ListRow
         className="ah-sidebar-agent-row ah-now-row"
+        indicator={
+          workspaceIcon && workspaceId ? (
+            <WorkspaceIconButton
+              icon={workspaceIcon}
+              workspaceId={workspaceId}
+              actions={card}
+            />
+          ) : undefined
+        }
         trailing={
           !editing && (spinoffWorking || archive || rename) ? (
             <>
@@ -829,9 +851,12 @@ export function WorkspaceNavRow({
   hint,
   mutationState,
   workspaceMenu,
+  icon,
 }: {
   name: string;
   href: string;
+  /** The workspace's icon in place of the folder (workspace-icons). */
+  icon?: WorkspaceIconModel;
   selected?: boolean;
   summary?: string;
   hint?: WorkspaceHint;
@@ -855,7 +880,15 @@ export function WorkspaceNavRow({
         className="ah-workspace-link"
         href={href}
       >
-        <Icon name="folder" className="ah-workspace-icon" aria-hidden="true" />
+        {icon ? (
+          <WorkspaceIcon icon={icon} />
+        ) : (
+          <Icon
+            name="folder"
+            className="ah-workspace-icon"
+            aria-hidden="true"
+          />
+        )}
         <span className="ah-nav-label">{name}</span>
         {hint ? <HintMark hint={hint} /> : null}
       </LinkRow>
@@ -896,9 +929,13 @@ function NowDot(agent: AgentNavModel) {
         data-testid="agent-link"
         className="ah-now-dot"
       >
-        <span className="ah-now-dot-letters" aria-hidden="true">
-          {initials(agent.workspaceName ?? agent.title)}
-        </span>
+        {agent.workspaceIcon ? (
+          <WorkspaceIcon icon={agent.workspaceIcon} size="m" />
+        ) : (
+          <span className="ah-now-dot-letters" aria-hidden="true">
+            {initials(agent.workspaceName ?? agent.title)}
+          </span>
+        )}
         <Ball kind={ball} />
         <span className="ah-visually-hidden">
           {agent.title}: {status}
@@ -916,6 +953,7 @@ function FoldToggle({
   label,
   count,
   workspace = false,
+  icon,
 }: {
   testId: string;
   open: boolean;
@@ -923,6 +961,7 @@ function FoldToggle({
   label: string;
   count?: number;
   workspace?: boolean;
+  icon?: WorkspaceIconModel;
 }) {
   return (
     <li>
@@ -935,6 +974,7 @@ function FoldToggle({
         onPress={onToggle}
       >
         <span aria-hidden="true" className="ah-disclosure-chevron" />
+        {icon ? <WorkspaceIcon icon={icon} /> : null}
         <span className="ah-now-fold-label">{label}</span>
         {count !== undefined ? (
           <span className="ah-rail-count">{count}</span>
@@ -951,19 +991,25 @@ function RunningGroups({
   now,
   archive,
   rename,
+  card,
 }: {
   running: AgentNavModel[];
   now: number;
   archive?: RailArchive;
   rename?: RailRename;
+  card?: WorkspaceCardActions;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const toggle = (key: string) => setOpen((o) => ({ ...o, [key]: !o[key] }));
-  const groups = new Map<string, { name: string; rows: AgentNavModel[] }>();
+  const groups = new Map<
+    string,
+    { name: string; icon?: WorkspaceIconModel; rows: AgentNavModel[] }
+  >();
   for (const agent of running) {
     const key = agent.workspaceId ?? agent.workspaceName ?? "";
     const group = groups.get(key) ?? {
       name: agent.workspaceName ?? "",
+      icon: agent.workspaceIcon,
       rows: [],
     };
     group.rows.push(agent);
@@ -981,6 +1027,7 @@ function RunningGroups({
       now={now}
       archive={archive}
       rename={rename}
+      card={card}
     />
   );
   return (
@@ -990,15 +1037,22 @@ function RunningGroups({
         const hidden = g.rows.filter((a) => quiet(a, now));
         const fold = `q:${key}`;
         return (
+          // With icons each row names its workspace, so the group needs no
+          // heading of its own; the gap between groups stays.
+          // biome-ignore lint/a11y/useSemanticElements: a list group, not a form fieldset.
           <div
             key={key}
             className="ah-now-group"
             data-testid={`rail-group-${g.name}`}
+            role="group"
+            aria-label={g.icon ? g.name : undefined}
           >
-            <h3 className="ah-now-group-head">
-              <span className="ah-now-group-name">{g.name}</span>
-              <span className="ah-rail-count">{g.rows.length}</span>
-            </h3>
+            {g.icon ? null : (
+              <h3 className="ah-now-group-head">
+                <span className="ah-now-group-name">{g.name}</span>
+                <span className="ah-rail-count">{g.rows.length}</span>
+              </h3>
+            )}
             <ul>
               {shown.map(row)}
               {hidden.length ? (
@@ -1032,6 +1086,7 @@ function RunningGroups({
                       label={g.name}
                       count={g.rows.length}
                       workspace
+                      icon={g.icon}
                     />
                     {open[fold] ? g.rows.map(row) : null}
                   </ul>
@@ -1052,6 +1107,7 @@ export function NowSections({
   collapsed = false,
   archive,
   rename,
+  card,
 }: {
   yours: AgentNavModel[];
   running: AgentNavModel[];
@@ -1060,10 +1116,13 @@ export function NowSections({
   archive?: RailArchive;
   /** Absent where the rail offers no renaming (a story). */
   rename?: RailRename;
+  /** The workspace icon card's actions, where rows carry icons. */
+  card?: WorkspaceCardActions;
 }) {
   const yoursId = useId();
   const runningId = useId();
   const now = useMinuteNow();
+  const iconed = [...yours, ...running].some((a) => a.workspaceIcon);
   if (collapsed)
     return (
       <div className="ah-now-dots">
@@ -1084,7 +1143,7 @@ export function NowSections({
   return (
     <>
       <section
-        className="ah-now"
+        className={iconed ? "ah-now ah-now-iconed" : "ah-now"}
         data-testid="rail-yours"
         aria-labelledby={yoursId}
       >
@@ -1105,6 +1164,7 @@ export function NowSections({
                 now={now}
                 archive={archive}
                 rename={rename}
+                card={card}
               />
             ))}
           </ul>
@@ -1113,7 +1173,7 @@ export function NowSections({
         )}
       </section>
       <section
-        className="ah-now"
+        className={iconed ? "ah-now ah-now-iconed" : "ah-now"}
         data-testid="rail-running"
         aria-labelledby={runningId}
       >
@@ -1129,6 +1189,7 @@ export function NowSections({
             now={now}
             archive={archive}
             rename={rename}
+            card={card}
           />
         ) : (
           <p className="ah-now-empty">Mikään ei ole käynnissä.</p>

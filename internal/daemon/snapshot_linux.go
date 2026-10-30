@@ -294,6 +294,9 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 				mutation = "blocked_unknown"
 			}
 			ws := map[string]any{"path": nativeHome + "/src/" + entry.Name, "workspace_id": id, "observation_token": workspaceToken(cfg, entry), "presence": "present", "name": entry.Name, "display_name": displayName, "kind": kind, "visibility": visible, "mutation_state": mutation, "facts": []any{fact("filesystem", fs), fact("annotation", annotation), fact("git", git)}, "capabilities": map[string]any{"agent_start": map[string]string{"state": "unknown", "reason_code": "adapter_not_verified"}, "workspace_delete": map[string]string{"state": "unsupported", "reason_code": "unsafe_cleanup_not_verified"}}}
+			if entry.Icon.Kind != "" {
+				ws["icon"] = iconView(entry.Icon)
+			}
 			if found := placesOf[id]; len(found) > 0 {
 				list := make([]any, 0, len(found))
 				for _, p := range found {

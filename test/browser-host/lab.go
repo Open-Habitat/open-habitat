@@ -67,6 +67,19 @@ func seedLab(home string) error {
 				return e
 			}
 		}
+		// Workspace icons come from the repository: reseptikirja names one in
+		// its committed Open Habitat config, kotisivu has a logo, and the
+		// others fall back to a glyph derived from the name.
+		if name == "reseptikirja" {
+			if e := os.WriteFile(filepath.Join(dir, ".open-habitat.yaml"), []byte("# Open Habitat\nicon: \"🍳\"\n"), 0600); e != nil {
+				return e
+			}
+		}
+		if name == "kotisivu" {
+			if e := os.WriteFile(filepath.Join(dir, "favicon.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#185e87"/><path d="M8 17l8-7 8 7v7H8z" fill="#fff"/></svg>`+"\n"), 0600); e != nil {
+				return e
+			}
+		}
 		if name == "aurinkokello" {
 			// Editor link targets belong to the committed baseline, not the
 			// four intentional dirty files installed by labGitStatus.

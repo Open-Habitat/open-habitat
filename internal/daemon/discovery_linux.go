@@ -30,8 +30,9 @@ type Workspace struct {
 	Metadata    string // absent, valid, error
 	WorkspaceID string
 	DisplayName string
-	Error       string // generic reason only
-	dev, ino    uint64 // private observation, never serialized as a browser identity
+	Icon        workspaceIcon // from the repository's own files, if any
+	Error       string        // generic reason only
+	dev, ino    uint64        // private observation, never serialized as a browser identity
 }
 
 const maxMetadata = 4096
@@ -41,12 +42,20 @@ var idPattern = regexp.MustCompile(`^ws_[A-Za-z0-9_-]{8,64}$`)
 
 // Discover accepts only trusted local daemon configuration, never an HTTP field.
 func Discover(cfg transport.Config) Discovery {
-	return scan(cfg.Home, cfg.UID, unix.Openat2)
+	return scan(cfg.Home, cfg.UID, unix.Openat2, false)
+}
+
+// DiscoverListing is Discover plus each workspace's icon, for the snapshot
+// alone: the many handlers that only resolve a workspace do not pay for it.
+func DiscoverListing(cfg transport.Config) Discovery {
+	return scan(cfg.Home, cfg.UID, unix.Openat2, true)
 }
 
 // DiscoverFixtureRoot is only for test/browser-host: it scans a synthetic
 // native root that is not the account's passwd home.
-func DiscoverFixtureRoot(root string, uid int) Discovery { return scan(root, uid, unix.Openat2) }
+func DiscoverFixtureRoot(root string, uid int) Discovery {
+	return scan(root, uid, unix.Openat2, true)
+}
 
 type openFunction func(int, string, *unix.OpenHow) (int, error)
 
@@ -78,7 +87,7 @@ func stat(fd int) (unix.Stat_t, error) { var s unix.Stat_t; e := unix.Fstat(fd, 
 func same(a, b unix.Stat_t) bool {
 	return a.Dev == b.Dev && a.Ino == b.Ino && a.Mode&unix.S_IFMT == b.Mode&unix.S_IFMT
 }
-func scan(home string, uid int, op openFunction) Discovery {
+func scan(home string, uid int, op openFunction, icons bool) Discovery {
 	result := Discovery{State: "error", Entries: []Workspace{}}
 	// Home is trusted configuration. Open from / without crossing symlinks; home
 	// itself may legitimately be on a separate filesystem. Below home, no mounts.
@@ -162,6 +171,9 @@ func scan(home string, uid int, op openFunction) Discovery {
 		}
 		w.dev, w.ino = uint64(initial.Dev), initial.Ino
 		w.Metadata, w.WorkspaceID, w.DisplayName = metadata(op, child)
+		if icons {
+			w.Icon = readWorkspaceIcon(op, child)
+		}
 		w.Kind = gitKind(op, src, child, home, name)
 		// A clone that is running or was interrupted is not a workspace yet;
 		// the clone page shows it and offers its explicit actions.
@@ -208,7 +220,12 @@ func scan(home string, uid int, op openFunction) Discovery {
 	return result
 }
 
+// readSmall reads one bounded regular file named directly in parent; a name
+// with a slash is refused, as fstatat would follow its directory symlinks.
 func readSmall(op openFunction, parent int, name string, limit int) ([]byte, string) {
+	if name == "" || strings.ContainsRune(name, '/') {
+		return nil, "invalid_file"
+	}
 	var before unix.Stat_t
 	firstErr := unix.Fstatat(parent, name, &before, unix.AT_SYMLINK_NOFOLLOW)
 	fd, e := open(op, parent, name, unix.O_RDONLY|unix.O_NONBLOCK, true)

@@ -14,8 +14,18 @@
   --ah-source-1: var(--ah-syntax-title);
   --ah-source-2: var(--ah-syntax-string);
   --ah-source-3: var(--ah-syntax-keyword);
+  /* A workspace's name-derived glyph (workspace icons): eight hues the name's
+     hash picks from, the syntax hues and three more of the same weight. */
+  --ah-glyph-0: var(--ah-accent);
+  --ah-glyph-1: var(--ah-syntax-title);
+  --ah-glyph-2: var(--ah-syntax-keyword);
+  --ah-glyph-3: var(--ah-syntax-string);
+  --ah-glyph-4: var(--ah-syntax-number);
+  --ah-glyph-5: #9b3d73;
+  --ah-glyph-6: #4a5a6b;
+  --ah-glyph-7: #5c6a1a;
   --ah-sunken: #f3f5f7;
-  --ah-hover: rgba(16, 24, 40, .06);
+  --ah-hover: rgba(16, 24, 40, 0.06);
   --ah-bg: #f6f7f8;
   --ah-surface: #ffffff;
   --ah-surface-2: #fbfcfd;
@@ -60,11 +70,11 @@
   --ah-disabled-fg: #61676f;
   --ah-focus: #2b7f8c;
   --ah-composer-focus: #086bc1;
-  --ah-scrim: rgba(16, 24, 40, .32);
+  --ah-scrim: rgba(16, 24, 40, 0.32);
   /* Text buttons: a tint of the ink, so the button reads on the page and on a card alike. */
-  --ah-control: rgba(16, 24, 40, .06);
-  --ah-control-hover: rgba(16, 24, 40, .1);
-  --ah-control-press: rgba(16, 24, 40, .14);
+  --ah-control: rgba(16, 24, 40, 0.06);
+  --ah-control-hover: rgba(16, 24, 40, 0.1);
+  --ah-control-press: rgba(16, 24, 40, 0.14);
   --ah-control-line: #b7c0c8;
 }
 
@@ -75,8 +85,18 @@
   --ah-syntax-title: #9acced;
   --ah-syntax-comment: #a3abb3;
   --ah-syntax-deletion: #e8a08a;
+  /* Restated so they resolve against this theme's values where the theme is
+     set below the root. */
+  --ah-glyph-0: var(--ah-accent);
+  --ah-glyph-1: var(--ah-syntax-title);
+  --ah-glyph-2: var(--ah-syntax-keyword);
+  --ah-glyph-3: var(--ah-syntax-string);
+  --ah-glyph-4: var(--ah-syntax-number);
+  --ah-glyph-5: #e7a3c8;
+  --ah-glyph-6: #aab6c3;
+  --ah-glyph-7: #c3cf7e;
   --ah-sunken: #14171a;
-  --ah-hover: rgba(255, 255, 255, .07);
+  --ah-hover: rgba(255, 255, 255, 0.07);
   --ah-bg: #14171a;
   --ah-surface: #1b1f23;
   --ah-surface-2: #171a1e;
@@ -117,9 +137,9 @@
   --ah-disabled-fg: #98a0a8;
   --ah-focus: #4fa6b4;
   --ah-composer-focus: #79c0ff;
-  --ah-scrim: rgba(0, 0, 0, .5);
-  --ah-control: rgba(255, 255, 255, .09);
-  --ah-control-hover: rgba(255, 255, 255, .13);
-  --ah-control-press: rgba(255, 255, 255, .17);
+  --ah-scrim: rgba(0, 0, 0, 0.5);
+  --ah-control: rgba(255, 255, 255, 0.09);
+  --ah-control-hover: rgba(255, 255, 255, 0.13);
+  --ah-control-press: rgba(255, 255, 255, 0.17);
   --ah-control-line: #4b545d;
 }

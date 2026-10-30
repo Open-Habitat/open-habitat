@@ -547,6 +547,21 @@ export const settingsSections = [
         ],
         desc: "Workerin rivi kertoo commitit, muutokset ja pull requestin tarkistukset.",
       },
+      {
+        id: "workspace-icons",
+        label: "Työtilan kuvake",
+        kw: [
+          "kuvake",
+          "ikoni",
+          "icon",
+          "hymiö",
+          "emoji",
+          "logo",
+          "sivupalkki",
+          ".open-habitat.yaml",
+        ],
+        desc: "Sivupalkin keskustelujen edessä on työtilan kuvake repon asetuksesta, logosta tai nimestä.",
+      },
     ],
   },
   {

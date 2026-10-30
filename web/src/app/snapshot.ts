@@ -47,6 +47,16 @@ export interface Workspace {
   observation_token?: string;
   name: string;
   display_name?: string;
+  /** The icon the daemon found in the repository: its .open-habitat.yaml
+   * `icon`, else its logo. Absent: the browser derives a glyph. */
+  icon?:
+    | { kind: "emoji"; source: "config"; value: string }
+    | {
+        kind: "image";
+        source: "config" | "logo";
+        path: string;
+        version: string;
+      };
   kind: string;
   git_remote?: "github" | "other" | "none" | "unknown";
   git_summary?: GitSummaryFacts & { github_repo?: string };

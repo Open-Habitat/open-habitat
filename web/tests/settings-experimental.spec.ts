@@ -19,6 +19,7 @@ const features = [
   "next-waiting-row",
   "worker-row-sentence",
   "composer-dictation-bar",
+  "workspace-icons",
 ];
 
 async function signIn(page: Page) {

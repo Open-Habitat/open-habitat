@@ -327,7 +327,7 @@ func TestProcessSnapshotKeepsPendingQuestionDuringNativeRun(t *testing.T) {
 	id := ownershipTestID
 	workspace := opaque("ws_", "github:42:workspace")
 	question := map[string]any{"request_id": "q", "question_kind": "input", "prompt": "Choose", "choices": []string{}}
-	c := &ConversationController{cfg: cfg, home: home, fixture: true, trusted: func(*http.Request) bool { return true }, discover: func(cfg transport.Config) Discovery { return scan(home, cfg.UID, unix.Openat2) }, sessions: map[string]*conversation{id: {id: id, workspace: workspace, rpc: &piRPC{exited: make(chan struct{})}, runActive: true, questionID: "q", question: question}}, journal: newEventJournal()}
+	c := &ConversationController{cfg: cfg, home: home, fixture: true, trusted: func(*http.Request) bool { return true }, discover: func(cfg transport.Config) Discovery { return scan(home, cfg.UID, unix.Openat2, false) }, sessions: map[string]*conversation{id: {id: id, workspace: workspace, rpc: &piRPC{exited: make(chan struct{})}, runActive: true, questionID: "q", question: question}}, journal: newEventJournal()}
 	request := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
 	request.RequestURI = SnapshotPath
 	w := httptest.NewRecorder()

@@ -4,6 +4,7 @@ import {
   waitsOnWorker,
 } from "../components/agentPresentation";
 import type { AgentNavModel, WorkspaceHint } from "../components/Navigation";
+import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
 import {
   type ConversationMetadata,
   unreadableHistory,
@@ -46,6 +47,7 @@ export function railNow({
   selectedId,
   search = "",
   workFacts = false,
+  icons,
 }: {
   agents: Agent[];
   snapshot: Snapshot;
@@ -59,6 +61,8 @@ export function railNow({
   search?: string;
   /** The worker-row sentence is on: worktree rows say their work. */
   workFacts?: boolean;
+  /** Workspace icons by workspace_id (workspace-icons, experimental). */
+  icons?: ReadonlyMap<string, WorkspaceIconModel>;
 }): RailNow {
   const yours: AgentNavModel[] = [];
   const running: AgentNavModel[] = [];
@@ -171,6 +175,7 @@ export function railNow({
       title: a.title.display,
       workspaceId: w.workspace_id,
       workspaceName: name,
+      workspaceIcon: icons?.get(w.workspace_id),
       changedAt: Number.isFinite(changedAt) ? changedAt : undefined,
       failed: failed || undefined,
       detail: [name, state, waits, presentation.operationLabel]

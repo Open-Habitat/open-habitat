@@ -109,6 +109,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(FirstRoutePath, FirstRouteHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilesPath, WorkspaceFilesHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilePreviewPath, WorkspaceFilePreviewHandler(cfg, server.TrustedPeer))
+	mux.Handle(WorkspaceIconPath, WorkspaceIconHandler(cfg, server.TrustedPeer))
 	mux.Handle(ViewsPath, ViewsHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceCommandsPath, controller.WorkspaceCommands())
 	mux.Handle(WorkspaceStartPagePath, controller.WorkspaceStartPage())
@@ -121,7 +122,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	attachments := AttachmentsHandler(cfg, server.TrustedPeer)
 	mux.Handle(AttachmentsPath, attachments)
 	mux.Handle(AttachmentsPath+"/", attachments)
-	mux.Handle(SnapshotPath, snapshotHandlerWithForges(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, adapter.ObservedConnection, journal, controller, forges))
+	mux.Handle(SnapshotPath, snapshotHandlerWithForges(cfg, server.TrustedPeer, DiscoverListing, nativeSessions, cfg.Home, adapter.ObservedConnection, journal, controller, forges))
 	mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		journal.stream(w, r, func() bool {
 			return server.TrustedPeer(r)
