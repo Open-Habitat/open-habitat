@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-workspace-icon-setting
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: setting a workspace icon on the repository front page
