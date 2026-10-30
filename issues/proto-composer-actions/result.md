@@ -169,3 +169,185 @@ button's left edge at rest and working, desktop and phone at 360 and 390 px,
 empty and typed field) were run in headless Chromium against the committed
 file; console clean, interactions clicked (menus, mode chip, Send with text,
 Stop, picker keys).
+
+# Kierros 2: dictation states of the row (riff)
+
+Prototype: `issues/proto-composer-actions/prototypes/toimintorivi-riff/index.html`
+(one offline file, production tokens and fonts embedded, round 1's frame and
+the verbatim picker; Jari's guide in `NOTES.md` beside it). Brief: Jari's
+response of 30.10. He wants to riff rather than pick, likes today's Sanele
+button and listening state (the control grows, with *Valmis*), and asks what
+the row looks like when Sanele is pressed and while it listens, plus a
+shortcut to start dictation and Enter as *Valmis*.
+
+**Axis:** where and how the listening state grows. Shared rule, carried over
+from round 1: a control that exists in two neighbouring states keeps its
+position (rest ↔ pressed ↔ listening ↔ finishing, and listening ↔
+listening while the agent works). Picker: *Nyt* (production, the baseline)
+and three directions. Toolbar states: Levossa, Työssä, Painettu, Kuuntelee,
+Kuuntelee + työ, Viimeistely, plus *▶ Kulku*, which plays rest → press →
+listening → Valmis → finishing → text in the field. *Haamut* draws the
+counterpart state's controls (listening ↔ rest, pressed ↔ listening) as
+dashed outlines.
+
+## Host facts (production code on main)
+
+- **The pill replaces the mic in its slot.** `DictationControl`
+  (`web/src/components/composer/Dictation.tsx:217`) renders either the mic
+  (`.ah-crow-btn`) or the recording pill `.ah-dictation-pill` (dot, five
+  level bars, time, state label, and a *Valmis* chip inside; the whole pill
+  is the stop button). Styles: `composer.css:930–1045`. The slot
+  `.ah-dictation-slot` (`:960`) sits right of the spacer, so the pill grows
+  leftwards into the empty middle. Sanele still jumps when the agent starts
+  or stops working mid-dictation, for round 1's reason.
+- **While dictating** the field is replaced by a read-only live box
+  (`DictationLive`, min-height 66 px, confirmed text plus the dimmed guess,
+  a red caret), and the box edge turns the recording colour
+  (`.ah-cbox-dictating`, `composer.css:930`). Liitä, Komennot and Tiedosto
+  are disabled (`Composer.tsx:1226`, `:1370`). On a phone
+  (`composer.css:1165`, max-width 440 px) the aids and spacer are hidden and
+  the pill takes the row (`flex: 1`).
+- **Speech is captured before the connection is open, but the UI says
+  "connecting".** `Dictation.start` (`web/src/app/dictation.ts:124`) opens
+  the microphone and the audio capture first, then mints the Soniox session.
+  From the moment the capture runs, frames are buffered (`frame`, `:278`,
+  `pending.push` at `:291`, up to `bufferedSeconds = 30`, `:49`) and sent
+  when the socket opens; the level meter also moves during this time. The
+  pill nonetheless shows grey bars and "Yhdistetään…"
+  (`Dictation.tsx:267`, `.busy` at `:285`) and the field "Yhdistetään
+  Sonioxiin…", which tells the person to wait. Nothing is captured before
+  the browser grants the microphone (the first-time permission prompt).
+- **Stopping during `connecting` drops what was buffered**
+  (`dictation.ts:377`: release and end with the empty `final`). Today that
+  is harmless because the UI says to wait; once the pressed state invites
+  speech, Valmis during connecting must wait for the socket and flush the
+  buffer instead. That belongs to the parallel `dictation-fast-start-keys`
+  work, which measures and shortens this phase.
+- **Esc and Valmis both finish and keep the text** (`Dictation.tsx:171`,
+  pill title "Lopeta sanelu (Esc). Teksti jää kenttään."). There is no
+  cancel. Send during dictation finishes first and then sends what was said
+  (`Composer.tsx:815`). Enter currently adds a newline in the live box; the
+  parallel worker makes Enter = Valmis. Its shortcut choice was not known
+  when this round was built, so the prototype uses the placeholder
+  `Ctrl+Shift+Space` / `⌘⇧Space`.
+- **Phone overflow in production (prototype reproduction, not confirmed
+  live):** at 360–390 px with the agent working, the pill's min-content
+  (dot, bars, time and the *Valmis* chip, with `min-width: 0` and no
+  overflow handling) exceeds the space left by the mode chip, Stop and Send,
+  so *Valmis* is drawn over the Ohjaa chip (`r2-nyt-puhelin-tumma.avif`,
+  bottom right).
+
+## Directions
+
+Common to all three: the pressed state immediately shows the red, moving
+level meter and "kuuntelee · yhdistää…", and the field says "Puhu vain, ääni
+tallentuu jo. Sanat tulevat, kun yhteys aukeaa." Every direction adds a
+cancel × that returns the field to what it was. *Valmis* carries an Enter hint
+on desktop, and the Sanele tooltip names the shortcut. Ohjaa stays its own chip
+(accent-soft as in round 1's *Roolit*, or ringed as in *Ankkuroitu*).
+Measured in headless Chromium for every pair of neighbouring states, desktop
+and phone at 390 and 360 px: no clickable control that exists in both
+states moves in any direction (only *Palkki*'s bar changes its own length),
+and nothing overflows the row.
+
+1. **Paikallaan: the control grows in place.** Row order: round 1's
+   *Roolit*, with **Sanele moved to the first place of the left group**
+   (Sanele, Liitä, Komennot, Tiedosto | spacer | Ohjaa, Stop, Send). The
+   pill is today's pill (same colours, dot, bars, time, label, *Valmis*
+   chip) plus × and an Enter hint. It grows rightwards from Sanele's left
+   edge as a layer over the aids, which keep their places underneath
+   (they are disabled while dictating anyway). Its width is fixed (384 px
+   desktop, 156 px phone), so *Valmis* and × stay put whatever the label
+   says and whether or not the agent works. On a phone the pill is bars,
+   ×, *Valmis*. *Decides:* the leftmost slot is the only place that can
+   grow on desktop and on a 360 px phone without pushing anything. *Cost:*
+   Sanele moves from the right edge (next to Send) to the left edge, and the
+   aids are hidden while dictating.
+2. **Palkki: the row turns into a listening bar.** Row order: round 1's
+   *Ankkuroitu* (aids | spacer | Ohjaa, Stop, divider | Sanele, Send). On
+   press the whole left part becomes one wide bar (×, dot, time, label, a
+   scrolling waveform, "Enter valmis"). Sanele's slot, fixed at the same
+   width, becomes *Valmis*, so the finger that started dictation finishes
+   it in the same spot. Send stays anchored. *Decides:* dictation is a
+   sending-side control next to Send, as today. *Cost:* when Ohjaa and Stop
+   appear mid-dictation the bar's right end shortens (its controls are at
+   the anchored left, so nothing clickable moves). On a phone *Valmis* is an
+   icon-only ✓, because the slot is one icon wide.
+3. **Kenttä: the field is the listening surface.** Row order: round 1's
+   *Roolit* unchanged (Liitä, Komennot, Tiedosto, Sanele | spacer | Ohjaa,
+   Stop, Send). The row does not change at all except that Sanele becomes a
+   same-width *Valmis*. A strip appears inside the top of the field box
+   (dot, time, label, waveform, "Enter valmis", ×), and the live text
+   follows below. *Decides:* the row is only for actions; listening is a
+   state of the field. *Cost:* the grown control Jari likes becomes a strip
+   in the field, which also grows one strip taller. On a phone *Valmis* is
+   an icon-only ✓.
+
+## Recommendation
+
+**Paikallaan.** It keeps the listening look Jari likes almost as it is,
+fixes both of today's defects (the jump when the agent starts working and the
+phone overlap), and makes the pressed state invite speech. It builds directly
+on round 1's *Roolit* recommendation: Sanele is an input aid and leads that
+group, so the one growing control has the whole empty middle to grow into on
+every width. *Palkki* is the choice if Sanele should stay next to Send
+(start and finish in the same spot is its strength). *Kenttä* has the
+calmest row but trades away the grown control.
+
+For implementation: the pill's width becomes fixed and its slot moves left
+of the aids (as a positioned layer over them), the pressed state uses the
+live colours and the "kuuntelee · yhdistää" label, Valmis during
+`connecting` must keep the buffered audio (see host facts), and a cancel
+action is added to the engine (stop without putting `final` into the field).
+Per the 30.10. rule, this ships as an experimental feature behind
+Kokeelliset ominaisuudet unless Jari asks to see it at once.
+
+## Decisions for later review (round 2)
+
+- **A cancel ×** in every direction (sanottu ei jää kenttään). Alternatives:
+  no cancel (today; Esc and Valmis keep the text, and the person deletes by
+  hand), or Esc = cancel. Chosen as a separate × because the brief asks for
+  cancel and the parallel worker keeps Esc as it is ("Esc toimii kuten
+  ennen"). Cancel has no key.
+- **Pressed state wording "kuuntelee · yhdistää…" with red, live bars**
+  instead of grey "Yhdistetään…". Alternative: keep the grey connecting
+  look until the socket opens. Chosen because audio is already captured
+  (host facts), and the honest message is "speak now". It depends on Valmis
+  during connecting flushing the buffer.
+- **Shortcut placeholder `Ctrl+Shift+Space` / `⌘⇧Space`**, shown in the
+  Sanele tooltip and the *Valmis* title; it toggles start and finish in the
+  prototype. The real key comes from `dictation-fast-start-keys`.
+  Alternative: no shortcut hint until that lands.
+- **Paikallaan: Sanele first in the left group**, which changes round 1's
+  *Roolit* (Sanele last). Alternative: Sanele last and the pill growing from
+  there, which on a 360 px phone with the agent working leaves too little
+  room (measured).
+- **Paikallaan: fixed pill width** (384 px desktop, 156 px phone; the phone
+  pill drops the dot, time and label). Alternative: width by content, which
+  moves *Valmis* whenever the label changes or the agent starts working
+  (measured in the first build).
+- **Palkki and Kenttä: *Valmis* icon-only on a phone.** Alternative: a
+  wider Sanele slot at rest on a phone, so the label fits, at the cost of
+  row room at rest.
+- **Hints only on desktop** (Enter kbd in *Valmis*, "Enter valmis", the
+  shortcut tooltip). A phone has no keyboard hints.
+- **Not prototyped:** the first-time microphone permission prompt, the
+  hold-to-talk variant (pill label "päästä irti…"), the 10-minute ceiling
+  note and the error notices; they live above or below the field and
+  don't change the axis.
+
+## Evidence (round 2)
+
+`evidence/r2-*.avif` (DSF 2): `*-tyopoyta-vaalea` stacks rest (with the
+Sanele tooltip hovered where the direction has one), pressed, listening,
+listening while working and finishing for one direction; `*-puhelin-tumma`
+shows rest, pressed, listening and listening while working at 360 px;
+`*-haamut-tyopoyta-tumma` shows listening and listening-while-working with
+the rest-state ghosts. Checks run in headless Chromium against the committed
+file. Positions of every row control in six states × three widths
+(desktop, 390 px, 360 px) were compared across seven state pairs. In
+*Paikallaan* and *Kenttä* nothing moves; in *Palkki* only the bar's own
+length changes; *Nyt* reproduces production's jumps. A click-through per
+direction covered: Sanele → Enter leaves the dictated text in the field, ×
+restores the field (*Nyt* has no cancel; Esc keeps the text), the shortcut
+starts dictation, and Send during dictation finishes and sends. The console was clean.
