@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-rail-recent
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: recent inactive conversations in the rail
