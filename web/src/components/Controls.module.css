@@ -161,7 +161,9 @@ span.button {
 .segment {
   --i-fg: var(--ah-muted);
   --i-hover: var(--ah-control-hover);
+  --i-hover-fg: var(--ah-ink);
   --i-pressed: var(--ah-control-press);
+  --i-pressed-fg: var(--ah-ink);
   border: 0;
   border-radius: calc(var(--ah-r-md) - 2px);
   font-weight: 500;

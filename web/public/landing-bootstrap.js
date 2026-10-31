@@ -13,12 +13,15 @@
   } catch {
     /* Storage may be disabled. */
   }
-  if (language !== "fi" && language !== "en")
-    language = /^fi(-|$)/i.test(
-      navigator.languages?.[0] || navigator.language || "",
-    )
+  if (language === "en") language = "en-GB";
+  if (!["fi", "en-US", "en-GB"].includes(language)) {
+    const first = navigator.languages?.[0] || navigator.language || "";
+    language = /^fi(-|$)/i.test(first)
       ? "fi"
-      : "en";
+      : /^en-GB(-|$)/i.test(first)
+        ? "en-GB"
+        : "en-US";
+  }
   const text = {
     fi: {
       connecting: "Yhdistetään palvelimeen…",
@@ -28,7 +31,7 @@
       connecting: "Connecting to the server…",
       slow: "The server is answering more slowly than usual. Still waiting; you can leave the page open.",
     },
-  }[language];
+  }[language === "fi" ? "fi" : "en"];
   document.documentElement.lang = language;
   const say = document.querySelector(
     '.ah-landing[data-landing="static"] .ah-landing-say',

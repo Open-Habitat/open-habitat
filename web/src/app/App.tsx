@@ -2237,7 +2237,7 @@ export function App() {
           syntheticDemo
             ? // Demo-only text stays out of the catalog, so the production
               // bundle never carries the demo's markers.
-              language === "en"
+              language !== "fi"
               ? "Workspaces cannot be created in the synthetic demo."
               : "Synteettisessä demossa ei voi luoda työtiloja."
             : phase !== "authenticated" || !csrf
@@ -2793,7 +2793,7 @@ export function App() {
               <>
                 {syntheticDemo ? (
                   <div className="ah-demo-banner" role="status">
-                    {language === "en"
+                    {language !== "fi"
                       ? "SYNTHETIC DEMO · Simulated identity and workspace data · No real sign-in, agents or host connection"
                       : "SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data · Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä"}
                   </div>

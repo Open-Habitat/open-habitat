@@ -575,555 +575,598 @@ const fi = {
   removeConfirm: "Poista",
 };
 
-export const integrationsText = catalog(fi, {
-  providers: {
-    google: { name: "Google", site: "Google", gen: "Google", ill: "Google" },
-    microsoft: {
-      name: "Microsoft 365",
-      site: "Microsoft",
-      gen: "Microsoft",
-      ill: "Microsoft 365",
+export const integrationsText = catalog(
+  fi,
+  {
+    providers: {
+      google: { name: "Google", site: "Google", gen: "Google", ill: "Google" },
+      microsoft: {
+        name: "Microsoft 365",
+        site: "Microsoft",
+        gen: "Microsoft",
+        ill: "Microsoft 365",
+      },
+      imap: {
+        name: "Email (IMAP)",
+        site: "Mail server",
+        gen: "mail server",
+        ill: "the mail server",
+      },
+      caldav: {
+        name: "Calendar (CalDAV)",
+        site: "DAV server",
+        gen: "DAV server",
+        ill: "the DAV server",
+      },
+      carddav: {
+        name: "Contacts (CardDAV)",
+        site: "DAV server",
+        gen: "DAV server",
+        ill: "the DAV server",
+      },
+      dropbox: {
+        name: "Dropbox",
+        site: "Dropbox",
+        gen: "Dropbox",
+        ill: "Dropbox",
+      },
+      apple: {
+        name: "Apple (iCloud)",
+        site: "Apple",
+        gen: "Apple",
+        ill: "iCloud",
+      },
+      gitea: { name: "Gitea", site: "Gitea", gen: "Gitea", ill: "Gitea" },
+      gitlab: { name: "GitLab", site: "GitLab", gen: "GitLab", ill: "GitLab" },
     },
-    imap: {
-      name: "Email (IMAP)",
-      site: "Mail server",
-      gen: "mail server",
-      ill: "the mail server",
+    services: {
+      google: {
+        mail: "Gmail",
+        calendar: "Google Calendar",
+        contacts: "Google Contacts",
+        drive: "Google Drive",
+      },
+      microsoft: {
+        mail: "Outlook mail",
+        calendar: "Outlook calendar",
+        contacts: "Contacts",
+        onedrive: "OneDrive and SharePoint",
+        sharepoint: "SharePoint",
+      },
+      imap: {
+        mail: "Mail",
+        calendar: "Calendar (CalDAV)",
+        contacts: "Contacts (CardDAV)",
+      },
+      caldav: { calendar: "Calendar (CalDAV)" },
+      carddav: { contacts: "Contacts (CardDAV)" },
+      dropbox: { dropbox: "Dropbox" },
+      apple: {
+        mail: "iCloud Mail",
+        calendar: "iCloud Calendar",
+        contacts: "iCloud Contacts",
+      },
+      gitea: { git: "Git repositories as workspaces" },
+      gitlab: { git: "gitlab.com or a company's own GitLab" },
     },
-    caldav: {
-      name: "Calendar (CalDAV)",
-      site: "DAV server",
-      gen: "DAV server",
-      ill: "the DAV server",
+    cloudFolder:
+      "A synchronized OneDrive or Dropbox folder passes files between your own computer and the agent. Share screenshots there, for example, or ask the agent to save email attachments you want on your own computer there. Synchronize the same folder on your own computer too.",
+    notGranted: "Not granted. Agents cannot reach this.",
+    drafts: "Reads, organizes and writes drafts. Cannot send.",
+    readFiles:
+      "Read only. The folder is a mirror: changes do not go back to the service, and the next synchronization writes over them.",
+    readMail: "Read only. Cannot change or send anything.",
+    readCalendar: "Read only. Cannot create events or send invitations.",
+    readOnly: "Read only.",
+    levels: {
+      microsoft: {
+        full: {
+          name: "Full",
+          sum: "Agents can read, edit and send in your name.",
+        },
+        drafts: {
+          name: "Drafts, no sending",
+          sum: "Agents read and write mail drafts. Nothing leaves the account: no mail, calendar invitations or sharing links.",
+        },
+        read: {
+          name: "Read only",
+          sum: "Agents read mail, calendar, contacts and files, but change nothing.",
+        },
+      },
+      google: {
+        full: {
+          name: "Full",
+          sum: "Agents can read, edit and send in your name.",
+        },
+        drafts: { name: "Drafts, no sending", sum: "" },
+        read: {
+          name: "Read only",
+          sum: "Agents read Gmail, calendar, contacts and Drive, but change nothing.",
+        },
+      },
+      dropbox: {
+        full: {
+          name: "All of Dropbox",
+          sum: "Agents can read, edit, delete and share all your files.",
+        },
+        app_folder: {
+          name: "App folder only",
+          sum: "Agents see only the app's own folder in Dropbox's Apps folder. The rest of your Dropbox is not visible to them at all.",
+        },
+        read: {
+          name: "Read only",
+          sum: "Agents read all your files, but do not change, delete or share them.",
+        },
+      },
     },
-    carddav: {
-      name: "Contacts (CardDAV)",
-      site: "DAV server",
-      gen: "DAV server",
-      ill: "the DAV server",
+    appFolder:
+      "The app's folder only, synchronized both ways. The rest of Dropbox is not visible.",
+    syncBoth:
+      "Synchronized to your home directory both ways. Agents can edit, delete and share.",
+    mirror:
+      "Mirror: files are copied to your home directory, but changes do not go back. A change made in the folder is written over on the next round.",
+    mailFull: "Reads, organizes, writes drafts and sends.",
+    calendarFull: "Reads and edits. An event with attendees sends invitations.",
+    full: "Reads and edits.",
+    custom: "Custom",
+    without: (level, services) => `${level}, without: ${services}`,
+    missingSend: (name) => `${name}: sending`,
+    missingEdit: (name) => `${name}: editing`,
+    readFolder: (folder) => (
+      <>
+        Read only. The folder {folder} is a mirror: changes do not go back to
+        the service, and the next synchronization writes over them.
+      </>
+    ),
+    folder: (folder) => (
+      <>The folder {folder}, which agents use with ordinary file tools</>
+    ),
+    himalaya: (command) => (
+      <>Agents fetch and read mail and write drafts with {command}</>
+    ),
+    skill: "Agents use this through the personal-data skill",
+    codeHosts: "Code hosts",
+    dataForAgents: "Data for agents",
+    limitsLead:
+      "Agents can use everything the service granted for the accounts you connect here.",
+    limitsBody:
+      "They can send mail, change the calendar and edit or delete files in your name if the grant allows it, and a connected message or file can contain instructions the agent tries to follow. The granted permission is the service's own limit: it holds even if the agent errs or someone tries to steer it. It does not prevent this:",
+    limitHome:
+      "Agents run as your user, so they can also read the sign-in details in your home directory. If the information ends up elsewhere, it can do the same as the agent, no more.",
+    limitTell:
+      "An agent can pass on everything it may read. Read only does not prevent reading.",
+    limitModes:
+      "The agent tools' own “safe modes” are instructions, not limits. The limit is what the service granted.",
+    narrowedOrg: (missing) => (
+      <>
+        <strong>Your organization has limited Habitat's permissions.</strong>{" "}
+        Missing: {missing}. The connection works with the granted permissions.
+        The limit is changed in the organization's Microsoft Entra
+        administration, not here.
+      </>
+    ),
+    narrowedSelf: (missing) => (
+      <>
+        <strong>Not granted when signing in:</strong> {missing}. Agents cannot
+        reach them. Sign in again and grant them if you want. A Google Workspace
+        administrator can also limit permissions.
+      </>
+    ),
+    granted: (n) => `Granted permissions (${n})`,
+    askedNotGranted: "asked, not granted",
+    warnLead: "Agents can read and use everything you connect here.",
+    warnBody:
+      "They can send mail, change the calendar and edit or delete files in your name. A connected message or file can also contain instructions the agent tries to follow. Connect only what you want agents to use.",
+    state: {
+      ok: "Works",
+      syncing: "Synchronizing",
+      sync_failed: "Synchronization failed",
+      credentials_rejected: "Username or password not valid",
+      login_expired: "Sign-in expired",
+      unreachable: "The server cannot be reached",
+      sync_restarting: "Synchronization stopped, restarting",
+      quota_full: "Quota full, synchronization stopped",
+      unknown: "The state could not be found out",
     },
-    dropbox: {
-      name: "Dropbox",
-      site: "Dropbox",
-      gen: "Dropbox",
-      ill: "Dropbox",
+    failure: {
+      quota_insufficient: "The chosen files do not fit in the quota",
+      quota_unavailable: "Free space could not be checked",
+      initial_sync_incomplete: "The first synchronization was left unfinished",
+      not_chosen: "Not synchronized",
+      initial_sync_resume_failed: "Continuing the first synchronization failed",
+      delete_limit: "Stopped: too many deletions at once",
+      needs_resync: "Stopped and does not continue by itself",
+      remote_unreachable: "The service cannot be reached, trying again",
+      pass_failed: "The latest synchronization failed, trying again",
+      app_changed: "Sign in again",
+      tenant_changed: "Sign in again",
+      outside_tenant: "Not in the server's organization",
     },
-    apple: {
-      name: "Apple (iCloud)",
-      site: "Apple",
-      gen: "Apple",
-      ill: "iCloud",
-    },
-    gitea: { name: "Gitea", site: "Gitea", gen: "Gitea", ill: "Gitea" },
-    gitlab: { name: "GitLab", site: "GitLab", gen: "GitLab", ill: "GitLab" },
+    appChanged: (name) =>
+      `The server's ${name} app has changed, and your earlier sign-in is not valid for the new app. Sign in again; the synchronized folders stay.`,
+    tenantChanged: (name) =>
+      `The server's ${name} settings now have an organization that did not accept your earlier sign-in (it may have expired or need a new approval). Sign in again; the synchronized folders stay.`,
+    outsideTenant: (name) =>
+      `This account does not belong to the organization whose ${name} app the server uses, so signing in again does not help either. Use the organization's account or ask the server's administrator.`,
+    notChosenHelp:
+      "No folders are chosen, so no files were copied. You can choose them by signing in again.",
+    deleteLimitHelp:
+      "The synchronization would have deleted over half of the files, so it was stopped and nothing was deleted. If you deleted the files on purpose, ask the administrator to approve the deletions.",
+    resyncHelp:
+      "The previous synchronization's records are missing, so the synchronization does not continue on its own. The files stay in both places. Ask the administrator to check the situation.",
+    batch: "Current batch:",
+    inventory: "Counting the size of the chosen files and checking the space",
+    preparing: "Reading the file list",
+    copying: "Copying files",
+    elapsed: (time) => `${time} elapsed`,
+    files: (done, total) => `${done} / ${total} files`,
+    checking: "Checking…",
+    notInUse: "Not in use",
+    syncingNow: "Synchronizing now",
+    syncingAlways: "Synchronizes continuously",
+
+    signInAgain: "Sign in again",
+    changeLevel: "Change level…",
+    check: "Check",
+    remove: "Remove…",
+    appCredentialsMissing: (name) =>
+      `The server's ${name} app settings are missing or no longer valid, so agents cannot reach this account now and synchronization does not proceed. Your sign-in is kept. Ask the server's administrator to set the credentials (Settings › Server administration › Server integrations); after that the account continues.`,
+    toolMissing: (name) =>
+      `${name} is not available on this server because the tool is missing. Your sign-in is kept; the account continues once the administrator has fixed the installation.`,
+    stopSync: "Stop synchronization",
+    initialHelp:
+      "Sign in again and choose synchronization, and the first synchronization is completed. Files already copied stay.",
+    quotaHelp:
+      "Free some space or ask the administrator for more and try again. Nothing was copied.",
+    retryHelp:
+      "Sign in again and try the synchronization again. Files already copied stay.",
+    synced: "Synchronized",
+    notSynced: "Not synchronized yet",
+    checkedAt: (time) => `Checked at ${time}`,
+    newPassword: "Give a new password",
+    appleWhy:
+      "Apple invalidates app-specific passwords when the Apple account's password is changed. One new password fixes all services.",
+    notConnected: (services) => `${services} not connected.`,
+    addService: "Add service…",
+    skillBlocked:
+      "Your home directory has its own skill ~/.agents/skills/personal-data, so the agents' data map was not written over it. Agents do not see the connected accounts until you move your own skill elsewhere.",
+    skillFailed:
+      "The agents' data map (~/.agents/skills/personal-data) could not be brought up to date. It is fixed when you add or remove an account.",
+
+    waitingAdmin: "Waiting for the server administrator's app settings",
+    unavailableHere: "Not available on this server",
+    connect: "Connect…",
+    intro:
+      "Connect your accounts on other services, and your agents can use their files, mail and calendars.",
+    skillWaits:
+      "The agents' data map (~/.agents/skills/personal-data) is not updated until the accounts of every service can be read.",
+    connected: "Connected accounts",
+    unreadable: (gen, directory) =>
+      `${gen} accounts could not be read safely, so they are not shown. The accounts are not lost. Check that ${directory ? `the folder ${directory} and nothing under it` : "no settings folder of the tool"} is writable by others or a link.`,
+    teaUnreadable:
+      "tea's settings could not be read safely, so Gitea connections are not shown. Check the permissions and format of the file ~/.config/tea/config.yml.",
+    glabUnreadable:
+      "glab's settings could not be read safely, so GitLab connections are not shown. Check the permissions and format of the file ~/.config/glab-cli/config.yml.",
+    addAnother: (provider, name) =>
+      `Add another ${
+        provider === "imap"
+          ? "email account"
+          : provider === "apple"
+            ? "Apple ID"
+            : provider === "gitea"
+              ? "Gitea account"
+              : provider === "gitlab"
+                ? "GitLab server"
+                : `${name} account`
+      }`,
+    addAccount: "Add account",
+    otherServices: "Other services",
+    othersNote:
+      "Mail, calendar or contacts from elsewhere, for example Fastmail or Nextcloud.",
+    foot: "The state is read straight from the tools as your user. The sign-in details are only in your home directory; the server does not store them or list your connections anywhere else. New conversations see a connection at once; a running conversation sees it when you reload it.",
+
+    stepLogin: (name) => `Sign in: ${name}`,
+    stepFolders: (service) => `Choose folders: ${service}`,
+    steps: "Steps",
+    copyNamed: (label) => `Copy ${label}`,
+    copied: "Copied",
+    copy: "Copy",
+    badLoginAddress: "The sign-in address is not valid. Cancel and try again.",
+    signInWithCode: (ill) => `Sign in to ${ill} with this code`,
+    oneCode:
+      "One code connects OneDrive, SharePoint and Outlook to this server's tools.",
+    codeTool: "The code signs only this server's tool in to your account.",
+    codeSpelled: (code) => `Code ${code}`,
+    codeLabel: "code",
+    open: (host) => `Open ${host}`,
+    waitingCode: "Waiting for you to approve the sign-in. The code expires in",
+    onlyHere: (gen) =>
+      `Enter the code only on the ${gen} page you opened from here. If someone else asks you to enter the code, do not do it.`,
+    cancel: "Cancel",
+    signInAt: (site) => `Sign in: ${site}`,
+    siteAsks: (site) =>
+      `${site} asks which account and which permissions you give.`,
+    pasteFirst: "First paste the address you ended up at after approving.",
+    notThatAddress: (prefix) =>
+      `This is not that address. Paste the address you ended up at after approving; it starts ${prefix}.`,
+    pasteWhere: (site) => `Paste the address ${site} finally sent you to`,
+    approveTab: "Approve the permissions in the tab that opened.",
+    copyAddress:
+      "Copy the whole address from the error page's address bar and paste it here.",
+    returnAddress: "Return address",
+    validFor: "The sign-in is valid for",
+    openAgain: (site) => `Open ${site} again`,
+    connectSubmit: "Connect",
+    errorPageLead:
+      "Finally the browser shows an error page that cannot be opened. That is expected.",
+    errorPageBody: (site, prefix) => (
+      <>
+        Once you have approved the permissions, {site} sends you to an address
+        that starts {prefix}. Do not close that tab: its address holds the
+        sign-in. Copy the address from the address bar and come back here.
+      </>
+    ),
+    about: (size) => `about ${size}`,
+    measuring: "Measuring the size…",
+    sizeLater: "The size is measured before copying",
+
+    whichFolders: (directory) => (
+      <>Which folders are synchronized into the folder {directory}?</>
+    ),
+    foldersStay:
+      "The folders stay up to date continuously, also while the browser is closed. They take space from your home directory's quota.",
+    wholeOver: (name, estimated, size, free, choose, skip) => (
+      <>
+        <b>
+          {name} does not fit in your home directory
+          {estimated ? " (estimate)" : ""}.
+        </b>{" "}
+        It takes {estimated ? "about " : ""}
+        {size}, and {free} is free.{" "}
+        {choose
+          ? "Choose below only the folders the agents need"
+          : "Ask the administrator for more space"}
+        {skip ? ", or continue without files." : "."}
+      </>
+    ),
+    folders: "Folders",
+    nothingChosen: "Nothing is chosen.",
+    free: (free) => `${free} free.`,
+    measuringChosen:
+      "The size of the chosen folders is being measured, and whether the space is enough is checked before anything is copied.",
+    freeUnknown: "The free space is not known yet.",
+    over: (estimated, total, free) => (
+      <>
+        <b>Does not fit{estimated ? " by the estimate" : ""}.</b> Chosen{" "}
+        {estimated ? "about " : ""}
+        {total}, free {free}.{" "}
+        {estimated
+          ? "The size is measured exactly before copying, but rather choose only the folders you need."
+          : "Leave a folder out or ask the administrator for more space."}
+      </>
+    ),
+    chosen: (estimated, total, free, quota) =>
+      `Chosen ${estimated ? "about " : ""}${total}. The home directory has ${free}${quota ? ` / ${quota}` : ""} free.`,
+    skipFiles: "Continue without files",
+    startSync: "Start synchronization",
+    close: "Close",
+    restart: "Start over",
+    quotaInsufficient:
+      "The chosen files do not fit in your home directory's quota.",
+    quotaUnknown: "The home directory's free space could not be checked.",
+    nothingCopied: "Nothing was copied.",
+    keptOthers:
+      "The sign-in was kept, so the account's other services already work. You can close this and continue without files, or start over and choose fewer folders.",
+    kept: "The sign-in was kept. Free some space, or start over and choose fewer folders.",
+    moreSpace: "The administrator can give you more space.",
+    consentLead: "Your organization requires an administrator's consent.",
+    consentBody:
+      "Users cannot themselves allow apps access to mail, calendar or files. An administrator has to approve this server's app once for the whole organization.",
+    sendLink:
+      "Send this link to your organization's administrator. They see what the app asks for before approving.",
+    consentLink: "the administrator's approval link",
+    afterConsent: "Once consent is given, sign in again. Nothing was saved.",
+    nothingGrantedLead: "The sign-in granted no usable permission.",
+    nothingGrantedBody: (site) =>
+      `${site} granted Habitat nothing the agents could use, so the account was not connected. Nothing was saved.`,
+    grantOne:
+      "Sign in again and grant at least one service, or ask your organization's administrator to allow the app's permissions.",
+    levelNotChanged: "The level was not changed.",
+    finalSyncFailed: (google) =>
+      `Before the change the files had to be synchronized once more both ways, but that did not succeed. The account works at its previous level${google ? ", and the old sign-in was not revoked." : ", and the new sign-in was revoked."}`,
+
+    checkFiles:
+      "See the files' state on the Data for agents page and try again once synchronization works.",
+    alreadyConnected: () => (
+      <>
+        <b>The account is already connected at another level.</b> Nothing was
+        changed. Change its level from the account card's Change level…, so the
+        old sign-in is revoked first.
+      </>
+    ),
+    revokeFailed: (gen) => (
+      <>
+        <b>The level was not changed.</b> The old sign-in could not be revoked
+        at {gen}, so its permissions would have stayed valid. The account works
+        at its previous level, and no new sign-in was started.
+      </>
+    ),
+    tryLater: "Try again in a moment.",
+    deviceBlocked: (site) => (
+      <>
+        <b>Your organization blocks signing in with a device code.</b> {site}{" "}
+        stopped the sign-in because of the organization's access rule. There is
+        no other route from this server.
+      </>
+    ),
+    allowDevice:
+      "Your organization's administrator can allow device code sign-in for this app.",
+    expired: "The sign-in expired before it finished. Nothing was connected.",
+    redirectRejected: (site) =>
+      `${site} did not accept the pasted address. It may be an old sign-in's address. Nothing was connected.`,
+    accountMismatch: (address) => (
+      <>
+        You signed in to a different account than <b>{address}</b>. The account
+        was not changed. Choose the same account when signing in.
+      </>
+    ),
+    cancelled: "The sign-in was canceled. Nothing was connected.",
+    failed: "The sign-in did not succeed. Nothing was connected.",
+    newAppPassword: (address) => (
+      <>
+        Give a new app-specific password for the account <b>{address}</b>. The
+        old one stays valid if the server does not accept the new one.
+      </>
+    ),
+
+    passwordIntro: (dav) =>
+      `Create an app-specific password for this server in your mail service's settings and enter it here with the server's details. The password is saved only in your home directory's ${dav ? "curl settings" : "himalaya settings"}.${dav ? " Give the provider's CalDAV or CardDAV address, in iCloud https://caldav.icloud.com or https://contacts.icloud.com. Connect the calendar and contacts separately." : " SMTP uses the same username and app-specific password as IMAP. Leave SMTP empty if you want drafts only."}`,
+    email: "Email address",
+    davAddress: "DAV address (HTTPS)",
+    imapServer: "IMAP server",
+    port: "Port",
+    security: "Security",
+    smtpServer: "SMTP server (optional)",
+    smtpPort: "SMTP port",
+    smtpSecurity: "SMTP security",
+    username: "Username",
+    changePassword: "Change password",
+    appPassword: "App-specific password",
+    googleNoDrafts:
+      "Google does not offer this level. Gmail's drafts permission always gives the sending permission too, so drafts alone cannot be granted.",
+    notOffered: (site) => `${site} does not offer this level.`,
+    level: "Level",
+    levelNeedsApp: (name) =>
+      `Not in use on this server. The level needs the server's own ${name} app, which the server's administrator adds (Settings › Server administration › Server integrations).`,
+    signInAgainAt: (gen) =>
+      `You sign in again on the ${gen} page. The new sign-in replaces the old one.`,
+    dropboxRevokes:
+      "Habitat revokes the old sign-in at Dropbox, so wider permissions do not stay valid.",
+    googleRevokes:
+      "Habitat revokes the old sign-in at Google before you sign in again, because Google revokes all of Habitat's sign-ins at once. If you stop the sign-in, the account stays signed out until you sign in again.",
+    oldRemoved: (site, gen) =>
+      `The old sign-in is removed from your home directory. ${site} does not allow revoking a single sign-in, so if you suspect it ended up elsewhere, sign out of all sessions in your ${gen} account settings.`,
+    finalSync: (name) =>
+      `Before the change Habitat synchronizes the ${name} folder once more both ways, so changes already made reach the service. If that does not succeed, nothing is changed.`,
+    toAppFolder:
+      "The app folder synchronizes into its own folder in your home directory. The current Dropbox folder stays in place, but it no longer synchronizes.",
+    fromAppFolder:
+      "Dropbox synchronizes into its own folder in your home directory. The app folder's folder stays in place, but it no longer synchronizes.",
+    becomesMirror: (name) =>
+      `${name} becomes a mirror: changes no longer go back to the service. You choose the folders again after signing in.`,
+    syncsAgain: (name) =>
+      `${name} synchronizes both ways again. You choose the folders again after signing in.`,
+
+    canSendMail: "send mail",
+    canCalendar: "change the calendar and send invitations",
+    canAppFolder: "edit and delete the app folder's files",
+    canFiles: "edit, delete and share files",
+    agentsCan: (can) =>
+      `Agents can ${can.length > 1 ? `${can.slice(0, -1).join(", ")} and ${can[can.length - 1]}` : can[0]} in your name.`,
+    draftsWarning:
+      "Agents can organize mail and write drafts, but cannot send anything. They can still pass on everything they read.",
+    readWarning:
+      "Agents cannot send or change anything, but they can read everything this level opens and pass it on.",
+    levelWarningRest: (site) =>
+      `A connected message or file can contain instructions the agent tries to follow. Agents also see the sign-in details, but those let them do only what ${site} granted.`,
+    howDevice: (gen) =>
+      `You sign in on the ${gen} page with a short code. With a work account, the organization's administrator may have to approve the app first.`,
+    howPaste: (site) =>
+      `${site} opens in a new tab. After approving, you copy the address you ended up at back here.`,
+    howPassword:
+      "You need your mail service's app-specific password and the server's name. They are written only to your home directory's settings.",
+    continueTo: (site) => (site ? `Continue: ${site}` : "Continue"),
+    whatMay: "What may agents do with this account?",
+    levelAsked: (gen, site) =>
+      `The level is asked for in the ${gen} sign-in, so ${site} itself enforces it.`,
+    agentsGet: "Agents get to use",
+    pickFiles:
+      "Reading, editing and deleting; the files are synchronized to your home directory.",
+    pickMail: "Reading mail and drafts.",
+    pickOther: "Reading and editing.",
+    titleLevel: (name) => `Change level: ${name}`,
+    titleRelogin: (name) => `Sign in again: ${name}`,
+    titleConnect: (provider, name) =>
+      `Connect ${provider === "imap" ? "an email account" : `a ${name} account`}`,
+    uncertain:
+      "The connection to the server broke, and it is not known whether the change was saved. Check the situation on the Integrations page before you try again.",
+    reloggedIn: (address) => `Signed in again. ${address} works again.`,
+    connectedTo: (address) => (
+      <>
+        <b>Connected: {address}.</b> New conversations see it at once.
+      </>
+    ),
+    done: "Done",
+    sitesUnavailable: (sites) =>
+      `The following SharePoint sites could not be opened, so they were left out: ${sites}. If you need them, ask your organization's administrator for access.`,
+    initialSync:
+      "The first synchronization is running. This can take long if there are many files.",
+    filesDiscovery: "Approved. Fetching OneDrive and SharePoint details…",
+    outlookFinishing:
+      "The Outlook sign-in was approved. Finishing the connection…",
+    finishing:
+      "Finishing the sign-in and fetching the cloud folders to choose from…",
+    starting: "Starting the sign-in…",
+    closeAnytime:
+      "You can close this window and keep working. The synchronization continues in the background. You see its progress and result on the Integrations page of Settings.",
+    background: "Continue in the background",
+    foldersContinue:
+      "If you chose cloud folders, their synchronization continues after you close this page too.",
+    lostTools: (services) => `Agents can no longer reach ${services}.`,
+    and: " and ",
+    lostSync: (ill) =>
+      `Synchronization stops, and changes no longer reach ${ill}.`,
+    removeQuestion: (address) => `Remove ${address}?`,
+    removeTitle: (name, address) => `Remove the ${name} account ${address}?`,
+    signInRemoved: "The sign-in is removed from this server.",
+    appPasswordStays: (imap) =>
+      `The app-specific password stays valid in your ${imap ? "mail service" : "DAV service"} until you remove it there.`,
+    grantStays: (name) =>
+      `${name} remembers the permission you gave until you revoke it in your ${name} account settings.`,
+    trashFolders: (dirs) =>
+      `Also move the ${dirs.length > 1 ? "folders" : "folder"} ${dirs.join(", ")} to the Trash.`,
+    trashHint:
+      " You can restore them under Settings › Storage. Otherwise the files stay in your home directory as ordinary files.",
+    removeConfirm: "Remove",
   },
-  services: {
-    google: {
-      mail: "Gmail",
-      calendar: "Google Calendar",
-      contacts: "Google Contacts",
-      drive: "Google Drive",
-    },
-    microsoft: {
-      mail: "Outlook mail",
-      calendar: "Outlook calendar",
-      contacts: "Contacts",
-      onedrive: "OneDrive and SharePoint",
-      sharepoint: "SharePoint",
-    },
-    imap: {
-      mail: "Mail",
-      calendar: "Calendar (CalDAV)",
-      contacts: "Contacts (CardDAV)",
-    },
-    caldav: { calendar: "Calendar (CalDAV)" },
-    carddav: { contacts: "Contacts (CardDAV)" },
-    dropbox: { dropbox: "Dropbox" },
-    apple: {
-      mail: "iCloud Mail",
-      calendar: "iCloud Calendar",
-      contacts: "iCloud Contacts",
-    },
-    gitea: { git: "Git repositories as workspaces" },
-    gitlab: { git: "gitlab.com or a company's own GitLab" },
+  {
+    narrowedOrg: (missing) => (
+      <>
+        <strong>Your organisation has limited Habitat's permissions.</strong>{" "}
+        Missing: {missing}. The connection works with the granted permissions.
+        The limit is changed in the organisation's Microsoft Entra
+        administration, not here.
+      </>
+    ),
+    failure: { outside_tenant: "Not in the server's organisation" },
+    drafts: "Reads, organises and writes drafts. Cannot send.",
+    mailFull: "Reads, organises, writes drafts and sends.",
+    draftsWarning:
+      "Agents can organise mail and write drafts, but cannot send anything. They can still pass on everything they read.",
+    tenantChanged: (name) =>
+      `The server's ${name} settings now have an organisation that did not accept your earlier sign-in (it may have expired or need a new approval). Sign in again; the synchronized folders stay.`,
+    outsideTenant: (name) =>
+      `This account does not belong to the organisation whose ${name} app the server uses, so signing in again does not help either. Use the organisation's account or ask the server's administrator.`,
+    consentLead: "Your organisation requires an administrator's consent.",
+    consentBody:
+      "Users cannot themselves allow apps access to mail, calendar or files. An administrator has to approve this server's app once for the whole organisation.",
+    sendLink:
+      "Send this link to your organisation's administrator. They see what the app asks for before approving.",
+    grantOne:
+      "Sign in again and grant at least one service, or ask your organisation's administrator to allow the app's permissions.",
+    deviceBlocked: (site) => (
+      <>
+        <b>Your organisation blocks signing in with a device code.</b> {site}{" "}
+        stopped the sign-in because of the organisation's access rule. There is
+        no other route from this server.
+      </>
+    ),
+    allowDevice:
+      "Your organisation's administrator can allow device code sign-in for this app.",
+    cancelled: "The sign-in was cancelled. Nothing was connected.",
+    howDevice: (gen) =>
+      `You sign in on the ${gen} page with a short code. With a work account, the organisation's administrator may have to approve the app first.`,
+    sitesUnavailable: (sites) =>
+      `The following SharePoint sites could not be opened, so they were left out: ${sites}. If you need them, ask your organisation's administrator for access.`,
   },
-  cloudFolder:
-    "A synchronized OneDrive or Dropbox folder passes files between your own computer and the agent. Share screenshots there, for example, or ask the agent to save email attachments you want on your own computer there. Synchronize the same folder on your own computer too.",
-  notGranted: "Not granted. Agents cannot reach this.",
-  drafts: "Reads, organises and writes drafts. Cannot send.",
-  readFiles:
-    "Read only. The folder is a mirror: changes do not go back to the service, and the next synchronization writes over them.",
-  readMail: "Read only. Cannot change or send anything.",
-  readCalendar: "Read only. Cannot create events or send invitations.",
-  readOnly: "Read only.",
-  levels: {
-    microsoft: {
-      full: {
-        name: "Full",
-        sum: "Agents can read, edit and send in your name.",
-      },
-      drafts: {
-        name: "Drafts, no sending",
-        sum: "Agents read and write mail drafts. Nothing leaves the account: no mail, calendar invitations or sharing links.",
-      },
-      read: {
-        name: "Read only",
-        sum: "Agents read mail, calendar, contacts and files, but change nothing.",
-      },
-    },
-    google: {
-      full: {
-        name: "Full",
-        sum: "Agents can read, edit and send in your name.",
-      },
-      drafts: { name: "Drafts, no sending", sum: "" },
-      read: {
-        name: "Read only",
-        sum: "Agents read Gmail, calendar, contacts and Drive, but change nothing.",
-      },
-    },
-    dropbox: {
-      full: {
-        name: "All of Dropbox",
-        sum: "Agents can read, edit, delete and share all your files.",
-      },
-      app_folder: {
-        name: "App folder only",
-        sum: "Agents see only the app's own folder in Dropbox's Apps folder. The rest of your Dropbox is not visible to them at all.",
-      },
-      read: {
-        name: "Read only",
-        sum: "Agents read all your files, but do not change, delete or share them.",
-      },
-    },
-  },
-  appFolder:
-    "The app's folder only, synchronized both ways. The rest of Dropbox is not visible.",
-  syncBoth:
-    "Synchronized to your home directory both ways. Agents can edit, delete and share.",
-  mirror:
-    "Mirror: files are copied to your home directory, but changes do not go back. A change made in the folder is written over on the next round.",
-  mailFull: "Reads, organises, writes drafts and sends.",
-  calendarFull: "Reads and edits. An event with attendees sends invitations.",
-  full: "Reads and edits.",
-  custom: "Custom",
-  without: (level, services) => `${level}, without: ${services}`,
-  missingSend: (name) => `${name}: sending`,
-  missingEdit: (name) => `${name}: editing`,
-  readFolder: (folder) => (
-    <>
-      Read only. The folder {folder} is a mirror: changes do not go back to the
-      service, and the next synchronization writes over them.
-    </>
-  ),
-  folder: (folder) => (
-    <>The folder {folder}, which agents use with ordinary file tools</>
-  ),
-  himalaya: (command) => (
-    <>Agents fetch and read mail and write drafts with {command}</>
-  ),
-  skill: "Agents use this through the personal-data skill",
-  codeHosts: "Code hosts",
-  dataForAgents: "Data for agents",
-  limitsLead:
-    "Agents can use everything the service granted for the accounts you connect here.",
-  limitsBody:
-    "They can send mail, change the calendar and edit or delete files in your name if the grant allows it, and a connected message or file can contain instructions the agent tries to follow. The granted permission is the service's own limit: it holds even if the agent errs or someone tries to steer it. It does not prevent this:",
-  limitHome:
-    "Agents run as your user, so they can also read the sign-in details in your home directory. If the information ends up elsewhere, it can do the same as the agent, no more.",
-  limitTell:
-    "An agent can pass on everything it may read. Read only does not prevent reading.",
-  limitModes:
-    "The agent tools' own “safe modes” are instructions, not limits. The limit is what the service granted.",
-  narrowedOrg: (missing) => (
-    <>
-      <strong>Your organisation has limited Habitat's permissions.</strong>{" "}
-      Missing: {missing}. The connection works with the granted permissions. The
-      limit is changed in the organisation's Microsoft Entra administration, not
-      here.
-    </>
-  ),
-  narrowedSelf: (missing) => (
-    <>
-      <strong>Not granted when signing in:</strong> {missing}. Agents cannot
-      reach them. Sign in again and grant them if you want. A Google Workspace
-      administrator can also limit permissions.
-    </>
-  ),
-  granted: (n) => `Granted permissions (${n})`,
-  askedNotGranted: "asked, not granted",
-  warnLead: "Agents can read and use everything you connect here.",
-  warnBody:
-    "They can send mail, change the calendar and edit or delete files in your name. A connected message or file can also contain instructions the agent tries to follow. Connect only what you want agents to use.",
-  state: {
-    ok: "Works",
-    syncing: "Synchronizing",
-    sync_failed: "Synchronization failed",
-    credentials_rejected: "Username or password not valid",
-    login_expired: "Sign-in expired",
-    unreachable: "The server cannot be reached",
-    sync_restarting: "Synchronization stopped, restarting",
-    quota_full: "Quota full, synchronization stopped",
-    unknown: "The state could not be found out",
-  },
-  failure: {
-    quota_insufficient: "The chosen files do not fit in the quota",
-    quota_unavailable: "Free space could not be checked",
-    initial_sync_incomplete: "The first synchronization was left unfinished",
-    not_chosen: "Not synchronized",
-    initial_sync_resume_failed: "Continuing the first synchronization failed",
-    delete_limit: "Stopped: too many deletions at once",
-    needs_resync: "Stopped and does not continue by itself",
-    remote_unreachable: "The service cannot be reached, trying again",
-    pass_failed: "The latest synchronization failed, trying again",
-    app_changed: "Sign in again",
-    tenant_changed: "Sign in again",
-    outside_tenant: "Not in the server's organisation",
-  },
-  appChanged: (name) =>
-    `The server's ${name} app has changed, and your earlier sign-in is not valid for the new app. Sign in again; the synchronized folders stay.`,
-  tenantChanged: (name) =>
-    `The server's ${name} settings now have an organisation that did not accept your earlier sign-in (it may have expired or need a new approval). Sign in again; the synchronized folders stay.`,
-  outsideTenant: (name) =>
-    `This account does not belong to the organisation whose ${name} app the server uses, so signing in again does not help either. Use the organisation's account or ask the server's administrator.`,
-  notChosenHelp:
-    "No folders are chosen, so no files were copied. You can choose them by signing in again.",
-  deleteLimitHelp:
-    "The synchronization would have deleted over half of the files, so it was stopped and nothing was deleted. If you deleted the files on purpose, ask the administrator to approve the deletions.",
-  resyncHelp:
-    "The previous synchronization's records are missing, so the synchronization does not continue on its own. The files stay in both places. Ask the administrator to check the situation.",
-  batch: "Current batch:",
-  inventory: "Counting the size of the chosen files and checking the space",
-  preparing: "Reading the file list",
-  copying: "Copying files",
-  elapsed: (time) => `${time} elapsed`,
-  files: (done, total) => `${done} / ${total} files`,
-  checking: "Checking…",
-  notInUse: "Not in use",
-  syncingNow: "Synchronizing now",
-  syncingAlways: "Synchronizes continuously",
-
-  signInAgain: "Sign in again",
-  changeLevel: "Change level…",
-  check: "Check",
-  remove: "Remove…",
-  appCredentialsMissing: (name) =>
-    `The server's ${name} app settings are missing or no longer valid, so agents cannot reach this account now and synchronization does not proceed. Your sign-in is kept. Ask the server's administrator to set the credentials (Settings › Server administration › Server integrations); after that the account continues.`,
-  toolMissing: (name) =>
-    `${name} is not available on this server because the tool is missing. Your sign-in is kept; the account continues once the administrator has fixed the installation.`,
-  stopSync: "Stop synchronization",
-  initialHelp:
-    "Sign in again and choose synchronization, and the first synchronization is completed. Files already copied stay.",
-  quotaHelp:
-    "Free some space or ask the administrator for more and try again. Nothing was copied.",
-  retryHelp:
-    "Sign in again and try the synchronization again. Files already copied stay.",
-  synced: "Synchronized",
-  notSynced: "Not synchronized yet",
-  checkedAt: (time) => `Checked at ${time}`,
-  newPassword: "Give a new password",
-  appleWhy:
-    "Apple invalidates app-specific passwords when the Apple account's password is changed. One new password fixes all services.",
-  notConnected: (services) => `${services} not connected.`,
-  addService: "Add service…",
-  skillBlocked:
-    "Your home directory has its own skill ~/.agents/skills/personal-data, so the agents' data map was not written over it. Agents do not see the connected accounts until you move your own skill elsewhere.",
-  skillFailed:
-    "The agents' data map (~/.agents/skills/personal-data) could not be brought up to date. It is fixed when you add or remove an account.",
-
-  waitingAdmin: "Waiting for the server administrator's app settings",
-  unavailableHere: "Not available on this server",
-  connect: "Connect…",
-  intro:
-    "Connect your accounts on other services, and your agents can use their files, mail and calendars.",
-  skillWaits:
-    "The agents' data map (~/.agents/skills/personal-data) is not updated until the accounts of every service can be read.",
-  connected: "Connected accounts",
-  unreadable: (gen, directory) =>
-    `${gen} accounts could not be read safely, so they are not shown. The accounts are not lost. Check that ${directory ? `the folder ${directory} and nothing under it` : "no settings folder of the tool"} is writable by others or a link.`,
-  teaUnreadable:
-    "tea's settings could not be read safely, so Gitea connections are not shown. Check the permissions and format of the file ~/.config/tea/config.yml.",
-  glabUnreadable:
-    "glab's settings could not be read safely, so GitLab connections are not shown. Check the permissions and format of the file ~/.config/glab-cli/config.yml.",
-  addAnother: (provider, name) =>
-    `Add another ${
-      provider === "imap"
-        ? "email account"
-        : provider === "apple"
-          ? "Apple ID"
-          : provider === "gitea"
-            ? "Gitea account"
-            : provider === "gitlab"
-              ? "GitLab server"
-              : `${name} account`
-    }`,
-  addAccount: "Add account",
-  otherServices: "Other services",
-  othersNote:
-    "Mail, calendar or contacts from elsewhere, for example Fastmail or Nextcloud.",
-  foot: "The state is read straight from the tools as your user. The sign-in details are only in your home directory; the server does not store them or list your connections anywhere else. New conversations see a connection at once; a running conversation sees it when you reload it.",
-
-  stepLogin: (name) => `Sign in: ${name}`,
-  stepFolders: (service) => `Choose folders: ${service}`,
-  steps: "Steps",
-  copyNamed: (label) => `Copy ${label}`,
-  copied: "Copied",
-  copy: "Copy",
-  badLoginAddress: "The sign-in address is not valid. Cancel and try again.",
-  signInWithCode: (ill) => `Sign in to ${ill} with this code`,
-  oneCode:
-    "One code connects OneDrive, SharePoint and Outlook to this server's tools.",
-  codeTool: "The code signs only this server's tool in to your account.",
-  codeSpelled: (code) => `Code ${code}`,
-  codeLabel: "code",
-  open: (host) => `Open ${host}`,
-  waitingCode: "Waiting for you to approve the sign-in. The code expires in",
-  onlyHere: (gen) =>
-    `Enter the code only on the ${gen} page you opened from here. If someone else asks you to enter the code, do not do it.`,
-  cancel: "Cancel",
-  signInAt: (site) => `Sign in: ${site}`,
-  siteAsks: (site) =>
-    `${site} asks which account and which permissions you give.`,
-  pasteFirst: "First paste the address you ended up at after approving.",
-  notThatAddress: (prefix) =>
-    `This is not that address. Paste the address you ended up at after approving; it starts ${prefix}.`,
-  pasteWhere: (site) => `Paste the address ${site} finally sent you to`,
-  approveTab: "Approve the permissions in the tab that opened.",
-  copyAddress:
-    "Copy the whole address from the error page's address bar and paste it here.",
-  returnAddress: "Return address",
-  validFor: "The sign-in is valid for",
-  openAgain: (site) => `Open ${site} again`,
-  connectSubmit: "Connect",
-  errorPageLead:
-    "Finally the browser shows an error page that cannot be opened. That is expected.",
-  errorPageBody: (site, prefix) => (
-    <>
-      Once you have approved the permissions, {site} sends you to an address
-      that starts {prefix}. Do not close that tab: its address holds the
-      sign-in. Copy the address from the address bar and come back here.
-    </>
-  ),
-  about: (size) => `about ${size}`,
-  measuring: "Measuring the size…",
-  sizeLater: "The size is measured before copying",
-
-  whichFolders: (directory) => (
-    <>Which folders are synchronized into the folder {directory}?</>
-  ),
-  foldersStay:
-    "The folders stay up to date continuously, also while the browser is closed. They take space from your home directory's quota.",
-  wholeOver: (name, estimated, size, free, choose, skip) => (
-    <>
-      <b>
-        {name} does not fit in your home directory
-        {estimated ? " (estimate)" : ""}.
-      </b>{" "}
-      It takes {estimated ? "about " : ""}
-      {size}, and {free} is free.{" "}
-      {choose
-        ? "Choose below only the folders the agents need"
-        : "Ask the administrator for more space"}
-      {skip ? ", or continue without files." : "."}
-    </>
-  ),
-  folders: "Folders",
-  nothingChosen: "Nothing is chosen.",
-  free: (free) => `${free} free.`,
-  measuringChosen:
-    "The size of the chosen folders is being measured, and whether the space is enough is checked before anything is copied.",
-  freeUnknown: "The free space is not known yet.",
-  over: (estimated, total, free) => (
-    <>
-      <b>Does not fit{estimated ? " by the estimate" : ""}.</b> Chosen{" "}
-      {estimated ? "about " : ""}
-      {total}, free {free}.{" "}
-      {estimated
-        ? "The size is measured exactly before copying, but rather choose only the folders you need."
-        : "Leave a folder out or ask the administrator for more space."}
-    </>
-  ),
-  chosen: (estimated, total, free, quota) =>
-    `Chosen ${estimated ? "about " : ""}${total}. The home directory has ${free}${quota ? ` / ${quota}` : ""} free.`,
-  skipFiles: "Continue without files",
-  startSync: "Start synchronization",
-  close: "Close",
-  restart: "Start over",
-  quotaInsufficient:
-    "The chosen files do not fit in your home directory's quota.",
-  quotaUnknown: "The home directory's free space could not be checked.",
-  nothingCopied: "Nothing was copied.",
-  keptOthers:
-    "The sign-in was kept, so the account's other services already work. You can close this and continue without files, or start over and choose fewer folders.",
-  kept: "The sign-in was kept. Free some space, or start over and choose fewer folders.",
-  moreSpace: "The administrator can give you more space.",
-  consentLead: "Your organisation requires an administrator's consent.",
-  consentBody:
-    "Users cannot themselves allow apps access to mail, calendar or files. An administrator has to approve this server's app once for the whole organisation.",
-  sendLink:
-    "Send this link to your organisation's administrator. They see what the app asks for before approving.",
-  consentLink: "the administrator's approval link",
-  afterConsent: "Once consent is given, sign in again. Nothing was saved.",
-  nothingGrantedLead: "The sign-in granted no usable permission.",
-  nothingGrantedBody: (site) =>
-    `${site} granted Habitat nothing the agents could use, so the account was not connected. Nothing was saved.`,
-  grantOne:
-    "Sign in again and grant at least one service, or ask your organisation's administrator to allow the app's permissions.",
-  levelNotChanged: "The level was not changed.",
-  finalSyncFailed: (google) =>
-    `Before the change the files had to be synchronized once more both ways, but that did not succeed. The account works at its previous level${google ? ", and the old sign-in was not revoked." : ", and the new sign-in was revoked."}`,
-
-  checkFiles:
-    "See the files' state on the Data for agents page and try again once synchronization works.",
-  alreadyConnected: () => (
-    <>
-      <b>The account is already connected at another level.</b> Nothing was
-      changed. Change its level from the account card's Change level…, so the
-      old sign-in is revoked first.
-    </>
-  ),
-  revokeFailed: (gen) => (
-    <>
-      <b>The level was not changed.</b> The old sign-in could not be revoked at{" "}
-      {gen}, so its permissions would have stayed valid. The account works at
-      its previous level, and no new sign-in was started.
-    </>
-  ),
-  tryLater: "Try again in a moment.",
-  deviceBlocked: (site) => (
-    <>
-      <b>Your organisation blocks signing in with a device code.</b> {site}{" "}
-      stopped the sign-in because of the organisation's access rule. There is no
-      other route from this server.
-    </>
-  ),
-  allowDevice:
-    "Your organisation's administrator can allow device code sign-in for this app.",
-  expired: "The sign-in expired before it finished. Nothing was connected.",
-  redirectRejected: (site) =>
-    `${site} did not accept the pasted address. It may be an old sign-in's address. Nothing was connected.`,
-  accountMismatch: (address) => (
-    <>
-      You signed in to a different account than <b>{address}</b>. The account
-      was not changed. Choose the same account when signing in.
-    </>
-  ),
-  cancelled: "The sign-in was cancelled. Nothing was connected.",
-  failed: "The sign-in did not succeed. Nothing was connected.",
-  newAppPassword: (address) => (
-    <>
-      Give a new app-specific password for the account <b>{address}</b>. The old
-      one stays valid if the server does not accept the new one.
-    </>
-  ),
-
-  passwordIntro: (dav) =>
-    `Create an app-specific password for this server in your mail service's settings and enter it here with the server's details. The password is saved only in your home directory's ${dav ? "curl settings" : "himalaya settings"}.${dav ? " Give the provider's CalDAV or CardDAV address, in iCloud https://caldav.icloud.com or https://contacts.icloud.com. Connect the calendar and contacts separately." : " SMTP uses the same username and app-specific password as IMAP. Leave SMTP empty if you want drafts only."}`,
-  email: "Email address",
-  davAddress: "DAV address (HTTPS)",
-  imapServer: "IMAP server",
-  port: "Port",
-  security: "Security",
-  smtpServer: "SMTP server (optional)",
-  smtpPort: "SMTP port",
-  smtpSecurity: "SMTP security",
-  username: "Username",
-  changePassword: "Change password",
-  appPassword: "App-specific password",
-  googleNoDrafts:
-    "Google does not offer this level. Gmail's drafts permission always gives the sending permission too, so drafts alone cannot be granted.",
-  notOffered: (site) => `${site} does not offer this level.`,
-  level: "Level",
-  levelNeedsApp: (name) =>
-    `Not in use on this server. The level needs the server's own ${name} app, which the server's administrator adds (Settings › Server administration › Server integrations).`,
-  signInAgainAt: (gen) =>
-    `You sign in again on the ${gen} page. The new sign-in replaces the old one.`,
-  dropboxRevokes:
-    "Habitat revokes the old sign-in at Dropbox, so wider permissions do not stay valid.",
-  googleRevokes:
-    "Habitat revokes the old sign-in at Google before you sign in again, because Google revokes all of Habitat's sign-ins at once. If you stop the sign-in, the account stays signed out until you sign in again.",
-  oldRemoved: (site, gen) =>
-    `The old sign-in is removed from your home directory. ${site} does not allow revoking a single sign-in, so if you suspect it ended up elsewhere, sign out of all sessions in your ${gen} account settings.`,
-  finalSync: (name) =>
-    `Before the change Habitat synchronizes the ${name} folder once more both ways, so changes already made reach the service. If that does not succeed, nothing is changed.`,
-  toAppFolder:
-    "The app folder synchronizes into its own folder in your home directory. The current Dropbox folder stays in place, but it no longer synchronizes.",
-  fromAppFolder:
-    "Dropbox synchronizes into its own folder in your home directory. The app folder's folder stays in place, but it no longer synchronizes.",
-  becomesMirror: (name) =>
-    `${name} becomes a mirror: changes no longer go back to the service. You choose the folders again after signing in.`,
-  syncsAgain: (name) =>
-    `${name} synchronizes both ways again. You choose the folders again after signing in.`,
-
-  canSendMail: "send mail",
-  canCalendar: "change the calendar and send invitations",
-  canAppFolder: "edit and delete the app folder's files",
-  canFiles: "edit, delete and share files",
-  agentsCan: (can) =>
-    `Agents can ${can.length > 1 ? `${can.slice(0, -1).join(", ")} and ${can[can.length - 1]}` : can[0]} in your name.`,
-  draftsWarning:
-    "Agents can organise mail and write drafts, but cannot send anything. They can still pass on everything they read.",
-  readWarning:
-    "Agents cannot send or change anything, but they can read everything this level opens and pass it on.",
-  levelWarningRest: (site) =>
-    `A connected message or file can contain instructions the agent tries to follow. Agents also see the sign-in details, but those let them do only what ${site} granted.`,
-  howDevice: (gen) =>
-    `You sign in on the ${gen} page with a short code. With a work account, the organisation's administrator may have to approve the app first.`,
-  howPaste: (site) =>
-    `${site} opens in a new tab. After approving, you copy the address you ended up at back here.`,
-  howPassword:
-    "You need your mail service's app-specific password and the server's name. They are written only to your home directory's settings.",
-  continueTo: (site) => (site ? `Continue: ${site}` : "Continue"),
-  whatMay: "What may agents do with this account?",
-  levelAsked: (gen, site) =>
-    `The level is asked for in the ${gen} sign-in, so ${site} itself enforces it.`,
-  agentsGet: "Agents get to use",
-  pickFiles:
-    "Reading, editing and deleting; the files are synchronized to your home directory.",
-  pickMail: "Reading mail and drafts.",
-  pickOther: "Reading and editing.",
-  titleLevel: (name) => `Change level: ${name}`,
-  titleRelogin: (name) => `Sign in again: ${name}`,
-  titleConnect: (provider, name) =>
-    `Connect ${provider === "imap" ? "an email account" : `a ${name} account`}`,
-  uncertain:
-    "The connection to the server broke, and it is not known whether the change was saved. Check the situation on the Integrations page before you try again.",
-  reloggedIn: (address) => `Signed in again. ${address} works again.`,
-  connectedTo: (address) => (
-    <>
-      <b>Connected: {address}.</b> New conversations see it at once.
-    </>
-  ),
-  done: "Done",
-  sitesUnavailable: (sites) =>
-    `The following SharePoint sites could not be opened, so they were left out: ${sites}. If you need them, ask your organisation's administrator for access.`,
-  initialSync:
-    "The first synchronization is running. This can take long if there are many files.",
-  filesDiscovery: "Approved. Fetching OneDrive and SharePoint details…",
-  outlookFinishing:
-    "The Outlook sign-in was approved. Finishing the connection…",
-  finishing:
-    "Finishing the sign-in and fetching the cloud folders to choose from…",
-  starting: "Starting the sign-in…",
-  closeAnytime:
-    "You can close this window and keep working. The synchronization continues in the background. You see its progress and result on the Integrations page of Settings.",
-  background: "Continue in the background",
-  foldersContinue:
-    "If you chose cloud folders, their synchronization continues after you close this page too.",
-  lostTools: (services) => `Agents can no longer reach ${services}.`,
-  and: " and ",
-  lostSync: (ill) =>
-    `Synchronization stops, and changes no longer reach ${ill}.`,
-  removeQuestion: (address) => `Remove ${address}?`,
-  removeTitle: (name, address) => `Remove the ${name} account ${address}?`,
-  signInRemoved: "The sign-in is removed from this server.",
-  appPasswordStays: (imap) =>
-    `The app-specific password stays valid in your ${imap ? "mail service" : "DAV service"} until you remove it there.`,
-  grantStays: (name) =>
-    `${name} remembers the permission you gave until you revoke it in your ${name} account settings.`,
-  trashFolders: (dirs) =>
-    `Also move the ${dirs.length > 1 ? "folders" : "folder"} ${dirs.join(", ")} to the Trash.`,
-  trashHint:
-    " You can restore them under Settings › Storage. Otherwise the files stay in your home directory as ordinary files.",
-  removeConfirm: "Remove",
-});
+);

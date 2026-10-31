@@ -36,7 +36,7 @@ export function LoginCard({
                   // Demo-only text stays out of the catalog, so the
                   // production bundle never carries the demo's markers.
                   reason:
-                    language === "en"
+                    language !== "fi"
                       ? "Signing in is not possible in the simulated demo."
                       : "Simuloidussa demossa ei voi kirjautua.",
                 }
@@ -51,7 +51,7 @@ export function LoginCard({
         />
         {demo ? (
           <p className="muted">
-            {language === "en"
+            {language !== "fi"
               ? "This view is a simulation."
               : "Tämä näkymä on simulaatio."}
           </p>

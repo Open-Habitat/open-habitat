@@ -2,13 +2,14 @@ import { type LanguageChoice, useText } from "../i18n";
 import { languageSettingsText } from "../text/languageSettings";
 import { ControlButton, Segmented } from "./ControlElements";
 
-/** The three language choices; Suomi and English name themselves. */
+/** Language names stay recognisable in every interface language. */
 function useLanguageOptions() {
   const t = useText(languageSettingsText);
   return [
     { id: "system", label: t.system },
     { id: "fi", label: "Suomi" },
-    { id: "en", label: "English" },
+    { id: "en-US", label: "English (US)" },
+    { id: "en-GB", label: "English (UK)" },
   ] as const satisfies readonly { id: LanguageChoice; label: string }[];
 }
 
@@ -40,7 +41,7 @@ export function LanguageSettingsRow({
             data-testid="language-choice"
             label={t.label}
             options={options}
-            value={choice}
+            value={choice === "en" ? "en-GB" : choice}
             isDisabled={disabled}
             onChange={onChange}
           />
@@ -92,7 +93,7 @@ export function ServerLanguageRow({
           data-testid="server-language-choice"
           label={t.serverLabel}
           options={options}
-          value={choice}
+          value={choice === "en" ? "en-GB" : choice}
           isDisabled={disabled}
           onChange={onChange}
         />

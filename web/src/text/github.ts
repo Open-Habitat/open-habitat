@@ -46,46 +46,76 @@ const fi = {
   reconnect: "Yhdistä uudelleen",
 };
 
-export const githubText = catalog(fi, {
-  expired: {
-    title: "The GitHub connection has expired or been revoked",
-    text: "GitHub no longer accepts the server's authorization, and the server cannot renew it itself. Reconnect: GitHub brings you back here, usually without asking anything.",
-    short:
-      "Push and gh do not work. The server cannot renew the authorization itself.",
-    place:
-      "GitHub no longer accepts the authorization saved on the server: it has expired or been revoked. The repository list cannot be fetched and repositories cannot be cloned.",
-    fix: "Reconnect",
+export const githubText = catalog(
+  fi,
+  {
+    expired: {
+      title: "The GitHub connection has expired or been revoked",
+      text: "GitHub no longer accepts the server's authorization, and the server cannot renew it itself. Reconnect: GitHub brings you back here, usually without asking anything.",
+      short:
+        "Push and gh do not work. The server cannot renew the authorization itself.",
+      place:
+        "GitHub no longer accepts the authorization saved on the server: it has expired or been revoked. The repository list cannot be fetched and repositories cannot be cloned.",
+      fix: "Reconnect",
+    },
+    disconnected: {
+      title: "GitHub is not connected",
+      text: "The server has no GitHub sign-in of yours, so push, cloning and gh do not work. Local work and conversations work.",
+      short: "Push and gh do not work until connected.",
+      place:
+        "The repository list cannot be fetched because the server has no GitHub sign-in of yours.",
+      fix: "Connect GitHub",
+    },
+    unreachable: {
+      title: "GitHub does not answer",
+      text: "The server has not reached GitHub. Your authorization is kept, and you need not do anything: the server tries every half minute, and the notice goes away by itself. Push, cloning and gh wait; local work works.",
+      short: "Push and gh wait. The server tries again by itself.",
+      place:
+        "GitHub does not answer the server just now. The server tries again by itself; the repository list comes when the connection returns.",
+    },
+    oauthTitle: (owner) =>
+      `The organization ${owner} has not approved the server's GitHub app`,
+    oauthText: (owner) =>
+      `The organization ${owner} restricts third-party apps' access, so push, cloning and gh do not work in its repositories. Request approval in GitHub's settings (Authorized OAuth Apps): the owner is notified of the request, and the warning goes away by itself after approval.`,
+    oauthShort: (owner) =>
+      `An owner of the organization ${owner} has to approve the app.`,
+    oauthPlace: (owner) =>
+      `The organization ${owner} restricts third-party apps' access, so the server does not see its repositories. Request approval in GitHub's settings; an owner of the organization is notified of the request.`,
+    oauthFix: "Request approval in GitHub",
+    samlTitle: (owner) => `The organization ${owner} requires single sign-on`,
+    samlText: (owner) =>
+      `The organization ${owner} uses SAML single sign-on, and the server's GitHub authorization has not been approved for it, so push, cloning and gh do not work in its repositories. Sign in to the organization's single sign-on on GitHub and then reconnect.`,
+    samlShort: (owner) =>
+      `Sign in to the single sign-on of the organization ${owner} and reconnect.`,
+    samlPlace: (owner) =>
+      `The organization ${owner} requires SAML single sign-on, which has not been done for the server's GitHub authorization. Sign in to the organization's single sign-on on GitHub and then reconnect.`,
+    reconnect: "Reconnect",
   },
-  disconnected: {
-    title: "GitHub is not connected",
-    text: "The server has no GitHub sign-in of yours, so push, cloning and gh do not work. Local work and conversations work.",
-    short: "Push and gh do not work until connected.",
-    place:
-      "The repository list cannot be fetched because the server has no GitHub sign-in of yours.",
-    fix: "Connect GitHub",
+  {
+    expired: {
+      text: "GitHub no longer accepts the server's authorisation, and the server cannot renew it itself. Reconnect: GitHub brings you back here, usually without asking anything.",
+      short:
+        "Push and gh do not work. The server cannot renew the authorisation itself.",
+      place:
+        "GitHub no longer accepts the authorisation saved on the server: it has expired or been revoked. The repository list cannot be fetched and repositories cannot be cloned.",
+    },
+    unreachable: {
+      text: "The server has not reached GitHub. Your authorisation is kept, and you need not do anything: the server tries every half minute, and the notice goes away by itself. Push, cloning and gh wait; local work works.",
+    },
+    oauthTitle: (owner) =>
+      `The organisation ${owner} has not approved the server's GitHub app`,
+    oauthText: (owner) =>
+      `The organisation ${owner} restricts third-party apps' access, so push, cloning and gh do not work in its repositories. Request approval in GitHub's settings (Authorized OAuth Apps): the owner is notified of the request, and the warning goes away by itself after approval.`,
+    oauthShort: (owner) =>
+      `An owner of the organisation ${owner} has to approve the app.`,
+    oauthPlace: (owner) =>
+      `The organisation ${owner} restricts third-party apps' access, so the server does not see its repositories. Request approval in GitHub's settings; an owner of the organisation is notified of the request.`,
+    samlTitle: (owner) => `The organisation ${owner} requires single sign-on`,
+    samlText: (owner) =>
+      `The organisation ${owner} uses SAML single sign-on, and the server's GitHub authorisation has not been approved for it, so push, cloning and gh do not work in its repositories. Sign in to the organisation's single sign-on on GitHub and then reconnect.`,
+    samlShort: (owner) =>
+      `Sign in to the single sign-on of the organisation ${owner} and reconnect.`,
+    samlPlace: (owner) =>
+      `The organisation ${owner} requires SAML single sign-on, which has not been done for the server's GitHub authorisation. Sign in to the organisation's single sign-on on GitHub and then reconnect.`,
   },
-  unreachable: {
-    title: "GitHub does not answer",
-    text: "The server has not reached GitHub. Your authorization is kept, and you need not do anything: the server tries every half minute, and the notice goes away by itself. Push, cloning and gh wait; local work works.",
-    short: "Push and gh wait. The server tries again by itself.",
-    place:
-      "GitHub does not answer the server just now. The server tries again by itself; the repository list comes when the connection returns.",
-  },
-  oauthTitle: (owner) =>
-    `The organisation ${owner} has not approved the server's GitHub app`,
-  oauthText: (owner) =>
-    `The organisation ${owner} restricts third-party apps' access, so push, cloning and gh do not work in its repositories. Request approval in GitHub's settings (Authorized OAuth Apps): the owner is notified of the request, and the warning goes away by itself after approval.`,
-  oauthShort: (owner) =>
-    `An owner of the organisation ${owner} has to approve the app.`,
-  oauthPlace: (owner) =>
-    `The organisation ${owner} restricts third-party apps' access, so the server does not see its repositories. Request approval in GitHub's settings; an owner of the organisation is notified of the request.`,
-  oauthFix: "Request approval in GitHub",
-  samlTitle: (owner) => `The organisation ${owner} requires single sign-on`,
-  samlText: (owner) =>
-    `The organisation ${owner} uses SAML single sign-on, and the server's GitHub authorization has not been approved for it, so push, cloning and gh do not work in its repositories. Sign in to the organisation's single sign-on on GitHub and then reconnect.`,
-  samlShort: (owner) =>
-    `Sign in to the single sign-on of the organisation ${owner} and reconnect.`,
-  samlPlace: (owner) =>
-    `The organisation ${owner} requires SAML single sign-on, which has not been done for the server's GitHub authorization. Sign in to the organisation's single sign-on on GitHub and then reconnect.`,
-  reconnect: "Reconnect",
-});
+);

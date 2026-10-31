@@ -15,14 +15,18 @@ const fi = {
     "Palvelin ei juuri nyt saanut GitHubista vastausta tunnuksillasi. Se tarkistaa yhteyden uudelleen itse; yritä hetken päästä.",
 };
 
-export const githubConnectionNoticeText = catalog(fi, {
-  reconnected: (login) =>
-    `GitHub connected${login ? ` as ${login}` : ""}. Ask the agent to try again.`,
-  returned: "The GitHub connection is back.",
-  verifying: "GitHub rejected the authorization · checking again…",
-  retrying: (attempt, attempts) =>
-    `GitHub did not answer · trying again… (${attempt}/${attempts})`,
-  placeTitle: "The GitHub connection could not be used",
-  placeText:
-    "The server did not get an answer from GitHub with your credentials just now. It checks the connection again by itself; try again in a moment.",
-});
+export const githubConnectionNoticeText = catalog(
+  fi,
+  {
+    reconnected: (login) =>
+      `GitHub connected${login ? ` as ${login}` : ""}. Ask the agent to try again.`,
+    returned: "The GitHub connection is back.",
+    verifying: "GitHub rejected the authorization · checking again…",
+    retrying: (attempt, attempts) =>
+      `GitHub did not answer · trying again… (${attempt}/${attempts})`,
+    placeTitle: "The GitHub connection could not be used",
+    placeText:
+      "The server did not get an answer from GitHub with your credentials just now. It checks the connection again by itself; try again in a moment.",
+  },
+  { verifying: "GitHub rejected the authorisation · checking again…" },
+);

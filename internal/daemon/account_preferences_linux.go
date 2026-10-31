@@ -52,7 +52,7 @@ var preferencesLock sync.Mutex
 func validEditorEngine(engine string) bool { return engine == "codemirror6" || engine == "vscode" }
 
 func validLanguage(language string) bool {
-	return language == "system" || language == "fi" || language == "en"
+	return language == "system" || language == "fi" || language == "en" || language == "en-US" || language == "en-GB"
 }
 
 // validFeatureID: lower-case words joined by single hyphens, as the

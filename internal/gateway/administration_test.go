@@ -419,8 +419,16 @@ func TestDefaultLanguage(t *testing.T) {
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `"default_language":"en"`) {
 		t.Fatalf("administration view: %d %s", w.Code, w.Body.String())
 	}
-	fresh := &Auth{}
-	if e := fresh.loadAdministration(path); e != nil || fresh.settings.DefaultLanguage != "en" {
-		t.Fatalf("restart lost the choice: %+v %v", fresh.settings, e)
+	for _, language := range []string{"en", "en-US", "en-GB"} {
+		if code := adminPut(h, cookie, session.CSRF, `{"default_language":"`+language+`"}`); code != 204 {
+			t.Fatalf("%s administrator write: %d", language, code)
+		}
+		if got := read(); got != language {
+			t.Fatalf("public language = %q, want %q", got, language)
+		}
+		fresh := &Auth{}
+		if e := fresh.loadAdministration(path); e != nil || fresh.settings.DefaultLanguage != language {
+			t.Fatalf("restart lost the choice: %+v %v", fresh.settings, e)
+		}
 	}
 }

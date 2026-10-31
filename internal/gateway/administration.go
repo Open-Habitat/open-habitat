@@ -83,7 +83,7 @@ func validName(name string) bool {
 	return true
 }
 func validLanguage(language string) bool {
-	return language == "system" || language == "fi" || language == "en"
+	return language == "system" || language == "fi" || language == "en" || language == "en-US" || language == "en-GB"
 }
 
 // defaultLanguage is the server's default interface language: the

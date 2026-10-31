@@ -99,95 +99,112 @@ const fi = {
   today: (time: string) => `tänään klo ${time}`,
 };
 
-export const accountKeysText = catalog(fi, {
-  sshTitle: "SSH key",
-  sshGive:
-    "Give this line to an administrator when you need access to your organisation's servers. The line is the key's public part and may be shared.",
-  sshCreate: "Create SSH key",
-  sshMakes: (file, tool) => (
-    <>
-      Makes the file {file} (ed25519) with {tool}.
-    </>
-  ),
-  ageTitle: "age key (SOPS)",
-  ageGive:
-    "Give this to an administrator when they need to add the account as a recipient of secrets. After that your agent can open the secrets you are entitled to.",
-  ageCreate: "Create age key",
-  ageMakes: (file, tool) => (
-    <>
-      Makes the file {file} with {tool}. SOPS finds it without further settings.
-    </>
-  ),
-  forAdmin: "For the administrator",
-  sshCheck: (command, fingerprint) => (
-    <>
-      Once they have the line, {command} shows them the fingerprint{" "}
-      {fingerprint}. It must be the same as here.
-    </>
-  ),
-  sshChannel:
-    "Read the fingerprint to them over a different channel than the one you sent the key on, for example by phone.",
-  ageCheck: (file) => (
-    <>
-      An age key has no separate fingerprint. The administrator compares the
-      line they added to {file} with this one, in groups of four characters:
-    </>
-  ),
-  fingerprint: "Fingerprint",
-  algorithm: "Type",
-  comment: "Comment",
-  privatePart: (file) => (
-    <>
-      The private part is on the account in the file {file}. It is not shown or
-      downloaded, and it does not leave the account.
-    </>
-  ),
-  intro: (strong) => (
-    <>
-      This account's public keys. Your organisation's administrator needs them
-      when they give your agent access to servers or secrets.{" "}
-      {strong("Copy a key from this page, not from the agent's reply:")} the
-      page reads it straight from the account's file.
-    </>
-  ),
-  key: "Key",
-  fingerprintChanged: "Fingerprint · changed",
-  accountKeys: "Account public keys",
-  toggle: (title, file, expanded) =>
-    `${title} ${file}: ${expanded ? "close" : "show the whole key"}`,
-  unseenBadge: "New, not seen by you",
-  createdBadge: "Just created",
-  copied: "Copied",
-  copy: "Copy",
-  sendSsh: "Send it to the administrator, and tell the fingerprint separately.",
-  sendAge: "Send it to the administrator, and compare the line together.",
-  copyFailed: "Copying failed. Open the row and select the key by hand.",
-  unseen: (when) =>
-    `This key appeared on the account ${when} and was not created on this page. If you asked an agent to make it, all is well. If you did not, give it to nobody and ask the agent what it needs it for.`,
-  recognize: "I recognise this",
-  none: "The account has no public keys yet.",
-  missing: (title) => `${title} missing`,
-  privateStays:
-    "The private part stays on the account and is not shown. An existing key is never replaced.",
-  noTool: (tool) => (
-    <>
-      This server has no {tool} program, so the key cannot be created here. Tell
-      the server's administrator.
-    </>
-  ),
-  creating: "Creating…",
-  openHint:
-    "Open a row to see the whole key and how an administrator checks it.",
-  exists:
-    "The account already had this key, and it was not replaced. The keys were read again.",
-  toolUnavailable: "This server has no program that makes this key.",
-  creationRunning: "Another key is being created. Wait a moment.",
-  uncertain:
-    "The result of creating the key could not be confirmed. The keys were read again.",
-  readFailed: "The keys could not be read. Try again.",
-  retry: "Try again",
-  reading: "Reading the keys…",
-  rereadFailed:
-    "The keys could not be read again. The previous reading is shown.",
-  today: (time) => `today at ${time}`,
-});
+export const accountKeysText = catalog(
+  fi,
+  {
+    sshTitle: "SSH key",
+    sshGive:
+      "Give this line to an administrator when you need access to your organization's servers. The line is the key's public part and may be shared.",
+    sshCreate: "Create SSH key",
+    sshMakes: (file, tool) => (
+      <>
+        Makes the file {file} (ed25519) with {tool}.
+      </>
+    ),
+    ageTitle: "age key (SOPS)",
+    ageGive:
+      "Give this to an administrator when they need to add the account as a recipient of secrets. After that your agent can open the secrets you are entitled to.",
+    ageCreate: "Create age key",
+    ageMakes: (file, tool) => (
+      <>
+        Makes the file {file} with {tool}. SOPS finds it without further
+        settings.
+      </>
+    ),
+    forAdmin: "For the administrator",
+    sshCheck: (command, fingerprint) => (
+      <>
+        Once they have the line, {command} shows them the fingerprint{" "}
+        {fingerprint}. It must be the same as here.
+      </>
+    ),
+    sshChannel:
+      "Read the fingerprint to them over a different channel than the one you sent the key on, for example by phone.",
+    ageCheck: (file) => (
+      <>
+        An age key has no separate fingerprint. The administrator compares the
+        line they added to {file} with this one, in groups of four characters:
+      </>
+    ),
+    fingerprint: "Fingerprint",
+    algorithm: "Type",
+    comment: "Comment",
+    privatePart: (file) => (
+      <>
+        The private part is on the account in the file {file}. It is not shown
+        or downloaded, and it does not leave the account.
+      </>
+    ),
+    intro: (strong) => (
+      <>
+        This account's public keys. Your organization's administrator needs them
+        when they give your agent access to servers or secrets.{" "}
+        {strong("Copy a key from this page, not from the agent's reply:")} the
+        page reads it straight from the account's file.
+      </>
+    ),
+    key: "Key",
+    fingerprintChanged: "Fingerprint · changed",
+    accountKeys: "Account public keys",
+    toggle: (title, file, expanded) =>
+      `${title} ${file}: ${expanded ? "close" : "show the whole key"}`,
+    unseenBadge: "New, not seen by you",
+    createdBadge: "Just created",
+    copied: "Copied",
+    copy: "Copy",
+    sendSsh:
+      "Send it to the administrator, and tell the fingerprint separately.",
+    sendAge: "Send it to the administrator, and compare the line together.",
+    copyFailed: "Copying failed. Open the row and select the key by hand.",
+    unseen: (when) =>
+      `This key appeared on the account ${when} and was not created on this page. If you asked an agent to make it, all is well. If you did not, give it to nobody and ask the agent what it needs it for.`,
+    recognize: "I recognise this",
+    none: "The account has no public keys yet.",
+    missing: (title) => `${title} missing`,
+    privateStays:
+      "The private part stays on the account and is not shown. An existing key is never replaced.",
+    noTool: (tool) => (
+      <>
+        This server has no {tool} program, so the key cannot be created here.
+        Tell the server's administrator.
+      </>
+    ),
+    creating: "Creating…",
+    openHint:
+      "Open a row to see the whole key and how an administrator checks it.",
+    exists:
+      "The account already had this key, and it was not replaced. The keys were read again.",
+    toolUnavailable: "This server has no program that makes this key.",
+    creationRunning: "Another key is being created. Wait a moment.",
+    uncertain:
+      "The result of creating the key could not be confirmed. The keys were read again.",
+    readFailed: "The keys could not be read. Try again.",
+    retry: "Try again",
+    reading: "Reading the keys…",
+    rereadFailed:
+      "The keys could not be read again. The previous reading is shown.",
+    today: (time) => `today at ${time}`,
+  },
+  {
+    sshGive:
+      "Give this line to an administrator when you need access to your organisation's servers. The line is the key's public part and may be shared.",
+    intro: (strong) => (
+      <>
+        This account's public keys. Your organisation's administrator needs them
+        when they give your agent access to servers or secrets.{" "}
+        {strong("Copy a key from this page, not from the agent's reply:")} the
+        page reads it straight from the account's file.
+      </>
+    ),
+  },
+);

@@ -1,24 +1,29 @@
 import { useSyncExternalStore } from "react";
 
 /** The languages the interface is written in. */
-export type Language = "fi" | "en";
+export type Language = "fi" | "en" | "en-US" | "en-GB";
 /** What a person or the server chooses: a language, or the browser's. */
 export type LanguageChoice = "system" | Language;
 
 export const languageChoices: readonly LanguageChoice[] = [
   "system",
   "fi",
-  "en",
+  "en-US",
+  "en-GB",
 ];
 
 export function isLanguageChoice(value: unknown): value is LanguageChoice {
-  return value === "system" || value === "fi" || value === "en";
+  return (
+    value === "system" ||
+    value === "fi" ||
+    value === "en" ||
+    value === "en-US" ||
+    value === "en-GB"
+  );
 }
 
-/** The browser's language: Finnish for any `fi*` first preference, English
- * for everything else, since English is the language a non-Finnish
- * speaker is likelier to read. Only the first preference counts, so a
- * Swede with Finnish as a fallback gets English. */
+/** Only the first browser preference counts: fi → Finnish, en-GB → UK,
+ * everything else → US English. A later Finnish fallback does not win. */
 export function browserLanguage(
   languages: readonly string[] = typeof navigator === "undefined"
     ? []
@@ -26,7 +31,9 @@ export function browserLanguage(
       ? navigator.languages
       : [navigator.language],
 ): Language {
-  return /^fi(-|$)/i.test(languages[0] ?? "") ? "fi" : "en";
+  const first = languages[0] ?? "";
+  if (/^fi(-|$)/i.test(first)) return "fi";
+  return /^en-GB(-|$)/i.test(first) ? "en-GB" : "en-US";
 }
 
 /** The person's choice, then the server default, then the browser. */
@@ -40,10 +47,9 @@ export function resolveLanguage(
   return browser;
 }
 
-/** The locale dates and numbers are formatted in. English uses British
- * conventions (day before month, 24-hour clock), closest to Finnish ones. */
+/** Bare en preserves the earlier British formatting as an input alias. */
 export function localeOf(language: Language) {
-  return language === "fi" ? "fi-FI" : "en-GB";
+  return language === "fi" ? "fi-FI" : language === "en" ? "en-GB" : language;
 }
 
 // The resolved language is a browser observation. Only the language itself
@@ -61,7 +67,7 @@ let current: Language = initialLanguage();
 function initialLanguage(): Language {
   try {
     const saved = window.localStorage.getItem(storageKey);
-    if (saved === "fi" || saved === "en") return saved;
+    if (isLanguageChoice(saved) && saved !== "system") return saved;
   } catch {
     // Storage may be disabled; the browser's language still applies.
   }
@@ -126,8 +132,36 @@ export type Messages<T> = {
 /** One module's messages in both languages. Finnish defines the keys. */
 export type Catalog<T> = Readonly<Record<Language, T>>;
 
-export function catalog<T extends object>(fi: T, en: Messages<T>): Catalog<T> {
-  return { fi, en: en as unknown as T };
+type Overlay<T> = {
+  [K in keyof T]?: T[K] extends (...args: infer A) => infer R
+    ? (...args: A) => R
+    : T[K] extends object
+      ? Overlay<T[K]>
+      : T[K];
+};
+
+function overlay<T extends object>(base: T, changes: Overlay<T>): T {
+  const result = { ...base };
+  for (const key of Object.keys(changes) as (keyof T)[]) {
+    const value = changes[key];
+    result[key] = (
+      value && typeof value === "object"
+        ? overlay(base[key] as object, value)
+        : value
+    ) as T[keyof T];
+  }
+  return result;
+}
+
+/** US English is complete; UK overrides contain only differing messages. */
+export function catalog<T extends object>(
+  fi: T,
+  en: Messages<T>,
+  gb: Overlay<Messages<T>> = {},
+): Catalog<T> {
+  const us = en as unknown as T;
+  const uk = overlay(en, gb) as unknown as T;
+  return { fi, en: uk, "en-US": us, "en-GB": uk };
 }
 
 /** The catalog in the current language, rerendering on a change. */

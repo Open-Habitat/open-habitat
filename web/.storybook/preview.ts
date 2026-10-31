@@ -3,14 +3,14 @@ import React from "react";
 import { MemoryRouter } from "react-router";
 import "../../design-system/styles.css";
 import "../src/app.css";
-import { setPersonalLanguage } from "../src/i18n";
+import { isLanguageChoice, setPersonalLanguage } from "../src/i18n";
 
 const preview: Preview = {
   globalTypes: {
     language: {
       description: "Käyttöliittymän kieli / Interface language",
       defaultValue: "fi",
-      toolbar: { icon: "globe", items: ["fi", "en"] },
+      toolbar: { icon: "globe", items: ["fi", "en-US", "en-GB"] },
     },
     theme: {
       description: "Tuotantoteema",
@@ -22,7 +22,11 @@ const preview: Preview = {
     (Story, context) => {
       // A story renders in the toolbar's language; the key remounts it on
       // a change, since a story has no app frame that would rerender it.
-      setPersonalLanguage(context.globals.language === "en" ? "en" : "fi");
+      setPersonalLanguage(
+        isLanguageChoice(context.globals.language)
+          ? context.globals.language
+          : "fi",
+      );
       return React.createElement(
         React.Fragment,
         { key: context.globals.language },

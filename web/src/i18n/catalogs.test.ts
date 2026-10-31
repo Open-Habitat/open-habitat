@@ -35,9 +35,19 @@ it.each(catalogs)("%s has an English message for every Finnish one", (_, c) => {
           typeof x === "function" ? [`${path}.${k}`] : keys(x, `${path}.${k}`),
         )
       : [path];
-  expect(keys(c.en).sort()).toEqual(keys(c.fi).sort());
-  // A pinned exception: a language's own name and the console names that
-  // stay in English contain no Finnish letters either.
-  const finnish = strings(c.en, "en", []).filter(([, s]) => /[äöÄÖ]/.test(s));
-  expect(finnish).toEqual([]);
+  for (const language of ["en-US", "en-GB"] as const) {
+    expect(keys(c[language]).sort()).toEqual(keys(c.fi).sort());
+    const finnish = strings(c[language], language, []).filter(([, s]) =>
+      /[äöÄÖ]/.test(s),
+    );
+    expect(finnish).toEqual([]);
+    // Regional spelling is the language-choice contract, not fixed UI copy.
+    const otherRegion =
+      language === "en-US"
+        ? /\b(organisations?|organis(?:e|es|ed|ing)|cancelled|cancelling|authorisations?)\b/i
+        : /\b(organizations?|canceled|canceling|authorizations?)\b/i;
+    expect(
+      strings(c[language], language, []).filter(([, s]) => otherRegion.test(s)),
+    ).toEqual([]);
+  }
 });

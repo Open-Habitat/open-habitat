@@ -110,7 +110,7 @@ func TestSiteSchemaDrift(t *testing.T) {
 	for _, v := range []int{0, 1, 365, 366, -1} {
 		change("views.link_max_days", v)
 	}
-	for _, v := range []string{"system", "fi", "en", "sv", "EN", "fi-FI"} {
+	for _, v := range []string{"system", "fi", "en", "en-US", "en-GB", "en-AU", "sv", "EN", "fi-FI"} {
 		change("ui.default_language", v)
 	}
 	for _, v := range []string{"/bin/bash", "/usr/bin/zsh", "/opt/fish-3.7/bin/fish", "bin/bash", "/bin/bash/", "//bin/bash", "/bin/../bin/bash", "/bin/./bash", "/usr/sbin/nologin", "/sbin/nologin", "/bin/false", "/usr/bin/false", "/bin/nologin.sh", "/bin/ba sh", "/bin/ba:sh", "/bin/bash\n", "/" + strings.Repeat("a", 127), "/" + strings.Repeat("a", 128)} {

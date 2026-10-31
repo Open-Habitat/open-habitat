@@ -16,7 +16,7 @@ const actionsFi: Record<Action, string> = {
 const actionsEn: Record<Action, string> = {
   start: "Starting the clone",
   retry: "The new attempt",
-  cancel: "Cancelling",
+  cancel: "Canceling",
   dismiss: "Dismissing the notice",
   remove: "Removing",
 };
@@ -135,119 +135,127 @@ const fi = {
   create: "Luo työtila",
 };
 
-export const newWorkspacePageText = catalog(fi, {
-  partial: "Part of the unfinished directory was not removed. Try again.",
-  refusals: {
-    busy: "Another clone is already running. Wait for it to finish.",
-    conflict:
-      "The destination directory already exists. Check the workspace list.",
-    empty:
-      "The repository is empty, so it cannot be cloned as a workspace yet.",
-    gitea:
-      "The Gitea connection is not available now. Check it in Settings › Code hosts.",
-    gitlab:
-      "The GitLab connection is not available now: the token may have expired or the Git setup may be unfinished. Check it in Settings › Code hosts.",
-    rewritten:
-      "Your Git settings (url.insteadOf) redirect this repository's address elsewhere, so the clone was not started. Remove the redirect from the server's address and try again.",
-    auth: "GitHub credentials are not available. Connect GitHub in Settings › Code hosts.",
-    login: "Sign in again and then try again.",
+export const newWorkspacePageText = catalog(
+  fi,
+  {
+    partial: "Part of the unfinished directory was not removed. Try again.",
+    refusals: {
+      busy: "Another clone is already running. Wait for it to finish.",
+      conflict:
+        "The destination directory already exists. Check the workspace list.",
+      empty:
+        "The repository is empty, so it cannot be cloned as a workspace yet.",
+      gitea:
+        "The Gitea connection is not available now. Check it in Settings › Code hosts.",
+      gitlab:
+        "The GitLab connection is not available now: the token may have expired or the Git setup may be unfinished. Check it in Settings › Code hosts.",
+      rewritten:
+        "Your Git settings (url.insteadOf) redirect this repository's address elsewhere, so the clone was not started. Remove the redirect from the server's address and try again.",
+      auth: "GitHub credentials are not available. Connect GitHub in Settings › Code hosts.",
+      login: "Sign in again and then try again.",
+    },
+    failed: (action) =>
+      `${actionsEn[action]} did not succeed. Check the situation above before trying again.`,
+    giteaFailure: {
+      token_rejected: "Gitea rejected the token",
+      insufficient_scope: "the token lacks read access to repositories",
+      unreachable: "the server does not answer",
+      tls_untrusted: "the server's certificate could not be verified",
+      redirect_refused: "the server redirected to another address",
+      forbidden_destination: "the address cannot be connected to",
+      not_gitea: "the server did not answer as expected",
+      native_unavailable: "the tea settings could not be read",
+      account_mismatch: "the token now belongs to another Gitea account",
+    },
+    gitlabFailure: {
+      token_rejected: "GitLab rejected the token",
+      token_expired: "the token has expired, so no projects are shown",
+      insufficient_scope: "the token lacks read_api",
+      unreachable: "the server does not answer",
+      tls_untrusted: "the server's certificate could not be verified",
+      redirect_refused: "the server redirected to another address",
+      forbidden_destination: "the address cannot be connected to",
+      not_gitlab: "the server did not answer as expected",
+      native_unavailable: "the glab settings could not be read",
+      account_mismatch: "the token now belongs to another GitLab account",
+    },
+    incomplete: {
+      limit: "there are more repositories than are read at once",
+      interrupted: "reading was interrupted",
+      inconsistent: "the list changed while it was read",
+    },
+    lookupAuth:
+      "The repository cannot be looked up or cloned until the GitHub connection works.",
+    asWorkspace: "workspace",
+    cannotStart: "A clone cannot be started just now.",
+    oneAtATime: (name) =>
+      `The clone of ${name} is running. One clone at a time.`,
+    gitlabExpired:
+      "The GitLab token has expired. Replace it in Code hosts before cloning.",
+    checkConnection: "Check the connection",
+    codeHosts: "Code hosts",
+    giteaFailed:
+      "The Gitea repositories could not be fetched just now. The other repositories still show.",
+    giteaSourceFailed: (host, user, why) =>
+      `The repositories of Gitea ${host} (${user}) could not be fetched: ${why ?? "unknown reason"}.`,
+    giteaIncomplete: (host, user, why) =>
+      `The list of Gitea ${host} (${user}) is incomplete: ${why ?? "not every repository could be read"}.`,
+    gitlabFailed:
+      "The GitLab projects could not be fetched just now. The other repositories still show.",
+    gitlabSourceFailed: (host, why) =>
+      `GitLab ${host}: ${why ?? "the projects could not be fetched"}. Check the connection:`,
+    gitlabElsewhere: (host, count, origin) =>
+      `GitLab ${host}: ${count} ${plural("en", count, { one: "project was", other: "projects were" })} left out, because the server gives ${origin ?? "another address"} as their address, and Habitat does not send the token there. The GitLab administrator needs to fix external_url.`,
+    gitlabIncomplete: (host, why) =>
+      `The list of GitLab ${host} is incomplete: ${why ?? "not every project could be read"}.`,
+    title: "New workspace",
+    intro: (sources, src) => (
+      <>
+        {sources === "all"
+          ? "Clone a repository from GitHub, Gitea or GitLab"
+          : sources === "gitlab"
+            ? "Clone a repository from GitHub or GitLab"
+            : sources === "gitea"
+              ? "Clone a repository from GitHub or Gitea"
+              : "Clone a GitHub repository"}{" "}
+        or create an empty directory in the {src} folder of your home directory.
+      </>
+    ),
+    clones: "Clones",
+    clonesFailed:
+      "The state of the clones could not be fetched just now. What is shown may be old.",
+    source: "Workspace source",
+    cloneRepo: "Clone a repository",
+    cloneGitHub: "Clone from GitHub",
+    newDirectory: "New directory",
+    details: "Repository details",
+    gitlabLoading: "Fetching the project from GitLab…",
+    gitlabMissing:
+      "The project was not found among this GitLab connection's projects.",
+    giteaLoading: "Fetching the repository from Gitea…",
+    giteaMissing:
+      "The repository was not found among this Gitea connection's repositories.",
+    searching: (name) => `Looking up ${name}…`,
+    notFound: (name) =>
+      `The repository ${name} does not exist, or you have no access to it.`,
+    needsGitHub: (fix) =>
+      `Cloning needs the GitHub connection. Use ${fix} in the notice.`,
+    unreachable: "GitHub could not be reached. Try again in a moment.",
+    invalidName: "Check the name: lowercase letters, digits and . _ -",
+    workspacesUnknown: "The workspaces could not be checked. Refresh the view.",
+    createUncertain:
+      "Creating could not be confirmed. Check the workspace list before trying again.",
+    name: "Name",
+    namePlaceholder: "new-project",
+    nameSlot: "name",
+    createHint: (path) => (
+      <>Creates {path} and initializes it as a Git repository.</>
+    ),
+    creating: "Creating…",
+    create: "Create workspace",
   },
-  failed: (action) =>
-    `${actionsEn[action]} did not succeed. Check the situation above before trying again.`,
-  giteaFailure: {
-    token_rejected: "Gitea rejected the token",
-    insufficient_scope: "the token lacks read access to repositories",
-    unreachable: "the server does not answer",
-    tls_untrusted: "the server's certificate could not be verified",
-    redirect_refused: "the server redirected to another address",
-    forbidden_destination: "the address cannot be connected to",
-    not_gitea: "the server did not answer as expected",
-    native_unavailable: "the tea settings could not be read",
-    account_mismatch: "the token now belongs to another Gitea account",
+  {
+    failed: (action) =>
+      `${action === "cancel" ? "Cancelling" : actionsEn[action]} did not succeed. Check the situation above before trying again.`,
   },
-  gitlabFailure: {
-    token_rejected: "GitLab rejected the token",
-    token_expired: "the token has expired, so no projects are shown",
-    insufficient_scope: "the token lacks read_api",
-    unreachable: "the server does not answer",
-    tls_untrusted: "the server's certificate could not be verified",
-    redirect_refused: "the server redirected to another address",
-    forbidden_destination: "the address cannot be connected to",
-    not_gitlab: "the server did not answer as expected",
-    native_unavailable: "the glab settings could not be read",
-    account_mismatch: "the token now belongs to another GitLab account",
-  },
-  incomplete: {
-    limit: "there are more repositories than are read at once",
-    interrupted: "reading was interrupted",
-    inconsistent: "the list changed while it was read",
-  },
-  lookupAuth:
-    "The repository cannot be looked up or cloned until the GitHub connection works.",
-  asWorkspace: "workspace",
-  cannotStart: "A clone cannot be started just now.",
-  oneAtATime: (name) => `The clone of ${name} is running. One clone at a time.`,
-  gitlabExpired:
-    "The GitLab token has expired. Replace it in Code hosts before cloning.",
-  checkConnection: "Check the connection",
-  codeHosts: "Code hosts",
-  giteaFailed:
-    "The Gitea repositories could not be fetched just now. The other repositories still show.",
-  giteaSourceFailed: (host, user, why) =>
-    `The repositories of Gitea ${host} (${user}) could not be fetched: ${why ?? "unknown reason"}.`,
-  giteaIncomplete: (host, user, why) =>
-    `The list of Gitea ${host} (${user}) is incomplete: ${why ?? "not every repository could be read"}.`,
-  gitlabFailed:
-    "The GitLab projects could not be fetched just now. The other repositories still show.",
-  gitlabSourceFailed: (host, why) =>
-    `GitLab ${host}: ${why ?? "the projects could not be fetched"}. Check the connection:`,
-  gitlabElsewhere: (host, count, origin) =>
-    `GitLab ${host}: ${count} ${plural("en", count, { one: "project was", other: "projects were" })} left out, because the server gives ${origin ?? "another address"} as their address, and Habitat does not send the token there. The GitLab administrator needs to fix external_url.`,
-  gitlabIncomplete: (host, why) =>
-    `The list of GitLab ${host} is incomplete: ${why ?? "not every project could be read"}.`,
-  title: "New workspace",
-  intro: (sources, src) => (
-    <>
-      {sources === "all"
-        ? "Clone a repository from GitHub, Gitea or GitLab"
-        : sources === "gitlab"
-          ? "Clone a repository from GitHub or GitLab"
-          : sources === "gitea"
-            ? "Clone a repository from GitHub or Gitea"
-            : "Clone a GitHub repository"}{" "}
-      or create an empty directory in the {src} folder of your home directory.
-    </>
-  ),
-  clones: "Clones",
-  clonesFailed:
-    "The state of the clones could not be fetched just now. What is shown may be old.",
-  source: "Workspace source",
-  cloneRepo: "Clone a repository",
-  cloneGitHub: "Clone from GitHub",
-  newDirectory: "New directory",
-  details: "Repository details",
-  gitlabLoading: "Fetching the project from GitLab…",
-  gitlabMissing:
-    "The project was not found among this GitLab connection's projects.",
-  giteaLoading: "Fetching the repository from Gitea…",
-  giteaMissing:
-    "The repository was not found among this Gitea connection's repositories.",
-  searching: (name) => `Looking up ${name}…`,
-  notFound: (name) =>
-    `The repository ${name} does not exist, or you have no access to it.`,
-  needsGitHub: (fix) =>
-    `Cloning needs the GitHub connection. Use ${fix} in the notice.`,
-  unreachable: "GitHub could not be reached. Try again in a moment.",
-  invalidName: "Check the name: lowercase letters, digits and . _ -",
-  workspacesUnknown: "The workspaces could not be checked. Refresh the view.",
-  createUncertain:
-    "Creating could not be confirmed. Check the workspace list before trying again.",
-  name: "Name",
-  namePlaceholder: "new-project",
-  nameSlot: "name",
-  createHint: (path) => (
-    <>Creates {path} and initializes it as a Git repository.</>
-  ),
-  creating: "Creating…",
-  create: "Create workspace",
-});
+);

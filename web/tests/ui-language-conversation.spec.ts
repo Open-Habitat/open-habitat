@@ -30,7 +30,7 @@ test("@ui-language-conversation a conversation, its turn and details read in Eng
     .getByTestId("workspace-ordinary-dir")
     .click();
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en-GB");
   await page.getByTestId("message-input").fill("Check the files");
   await page
     .getByTestId("send")

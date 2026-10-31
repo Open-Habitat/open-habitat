@@ -13,7 +13,9 @@
       "enum": [
         "system",
         "fi",
-        "en"
+        "en",
+        "en-US",
+        "en-GB"
       ]
     },
     "recent_count": {

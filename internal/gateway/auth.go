@@ -49,7 +49,7 @@ type OAuthConfig struct {
 	// longest expiry in days; 0 offers none. It needs a view origin.
 	ViewLinkMaxDays int `json:"view_link_max_days,omitempty"`
 	// DefaultLanguage is the installation's default interface language
-	// (system, fi or en; empty is system). An administrator's choice in
+	// (system, fi, en-US, en-GB or legacy en; empty is system). An administrator's choice in
 	// Settings takes its place.
 	DefaultLanguage string        `json:"default_language,omitempty"`
 	Identities      []Identity    `json:"identities"`

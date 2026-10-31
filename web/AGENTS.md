@@ -24,8 +24,11 @@ The interface speaks Finnish and English through typed catalogs, without an
 i18n library. Each view or module owns one catalog file in `src/text/`, named
 after it (`src/text/ownMachines.tsx` for `components/OwnMachines.tsx`): a
 `const fi = {...}` that defines the messages and
-`export const xText = catalog(fi, {...English...})`, whose type makes a
-missing, extra or differently shaped English message a compile error. A
+`export const xText = catalog(fi, {...US English...}, {...UK overrides...})`,
+whose type makes a missing, extra or differently shaped English message a
+compile error. The optional UK overlay contains only messages that differ,
+including nested messages or whole functions; never rewrite interpolated user
+content to change spelling. Named external controls keep their original names. A
 module gets its own file so that several people can translate different
 views at once without touching a shared one. Messages are strings or small
 functions of their parameters; a sentence with a link or `<code>` inside is a
@@ -49,11 +52,13 @@ host sends and the browser words, goes in that test's allowlist with its
 reason. Text the daemon or gateway would show is better sent as a code or an
 empty value the browser words, as the title of an unnamed conversation is.
 
-The language resolves as the person's choice (System, Suomi, English, kept in
+The language resolves as the person's choice (System, Suomi, English (US),
+English (UK), kept in
 their daemon's account preferences so it follows them), then the server's
 default (the administrator's choice in Settings › Palvelin, else the
 installation's `ui.default_language`), then the browser: a first preference of
-`fi*` is Finnish, anything else English. Before sign-in only the server
+`fi`/`fi-*` is Finnish, `en-GB` is UK English, anything else US English.
+The legacy `en` choice is a UK alias, preserving its earlier formatting. Before sign-in only the server
 default and the browser are known; `public/landing-bootstrap.js` paints the
 static landing in the last load's language, remembered as `nah:language`.
 `<html lang>` follows. Unit tests and the Playwright suites run in Finnish

@@ -834,7 +834,7 @@ const finnish: readonly ShownSection[] = settingsSections.map((section) => {
 export function shownSettingsSections(
   language: Language = currentLanguage(),
 ): readonly ShownSection[] {
-  return language === "en" ? english : finnish;
+  return language !== "fi" ? english : finnish;
 }
 
 const rowOf = new Map<string, { row: RowEntry; section: SectionEntry }>(
@@ -904,7 +904,7 @@ export function searchSettings(
   const ts = terms(query);
   if (!ts.length) return [];
   const hits: SettingsHit[] = [];
-  const en = language === "en";
+  const en = language !== "fi";
   for (const section of shownSettingsSections(language)) {
     if (section.admin && !admin) continue;
     const entries = [

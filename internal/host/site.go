@@ -121,8 +121,7 @@ type IntegrationSettings struct {
 	BrowserSetup *bool `json:"browser_setup,omitempty"`
 }
 
-// UI is the installation's interface defaults. DefaultLanguage is system, fi
-// or en; omitted is system.
+// UI is the installation's interface defaults; omitted means system.
 type UI struct {
 	DefaultLanguage *string `json:"default_language,omitempty"`
 }
@@ -465,8 +464,8 @@ func (s Site) Validate() error {
 	if s.Views != nil && s.Views.LinkMaxDays != nil && (*s.Views.LinkMaxDays < 1 || *s.Views.LinkMaxDays > 365) {
 		return siteError("$.views.link_max_days", "require 1 to 365 days")
 	}
-	if s.UI != nil && s.UI.DefaultLanguage != nil && !slices.Contains([]string{"system", "fi", "en"}, *s.UI.DefaultLanguage) {
-		return siteError("$.ui.default_language", "require system, fi or en")
+	if s.UI != nil && s.UI.DefaultLanguage != nil && !slices.Contains([]string{"system", "fi", "en", "en-US", "en-GB"}, *s.UI.DefaultLanguage) {
+		return siteError("$.ui.default_language", "require system, fi, en-US, en-GB or en")
 	}
 	return nil
 }

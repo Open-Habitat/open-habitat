@@ -23,7 +23,7 @@ function Offer({ offer }: { offer: AIOffer }) {
             size="row"
             variant="secondary"
             label={
-              currentLanguage() === "en"
+              currentLanguage() !== "fi"
                 ? o.key
                   ? "Save key"
                   : "Sign in…"

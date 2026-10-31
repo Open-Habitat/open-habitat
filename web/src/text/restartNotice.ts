@@ -61,59 +61,63 @@ const fi = {
   stillRunningCut: (names: string) => `Yhä käynnissä, odotus katkesi: ${names}`,
 };
 
-export const restartNoticeText = catalog(fi, {
-  runState: {
-    merged: "done and merged",
-    not_merged: "done, not merged",
-    failed: "failed",
-    cancelled: "cancelled",
-    awaiting: "waiting for you",
-    stalled: "stalled, according to Taskfleet",
+export const restartNoticeText = catalog(
+  fi,
+  {
+    runState: {
+      merged: "done and merged",
+      not_merged: "done, not merged",
+      failed: "failed",
+      cancelled: "canceled",
+      awaiting: "waiting for you",
+      stalled: "stalled, according to Taskfleet",
+    },
+    turnCut: " The work the agent had under way was cut off.",
+    cutOff: (n) =>
+      ` ${n === 1 ? "One background job was" : `${n} background jobs were`} cut off at the same time.`,
+    nothingCut: " No work was cut off.",
+    stop: {
+      idle: (at, cut) =>
+        `Pi stopped ${at} after it had been idle for 10 minutes.${cut}`,
+      room: (at, cut) =>
+        `Pi stopped ${at} to make room for another conversation.${cut}`,
+      person: (at, cut) => `You stopped the agent ${at}.${cut}`,
+      crash: (at, cut) => `Pi crashed ${at}.${cut}`,
+      restart: (at, cut) =>
+        `Habitat restarted ${at}, for example for an update, and Pi stopped then at the latest.${cut}`,
+    },
+    wokeBecause: {
+      settled: ", because the runs it was waiting for ended",
+      cut_off:
+        ", because the background job it was waiting for was cut off and will no longer report its end",
+    },
+    wake: {
+      asleep:
+        "Write, and the agent wakes up. It gets this same account with your message.",
+      waking: "The agent is starting…",
+      awake: "The agent is awake. Send, and it answers.",
+      refused:
+        "The agent could not be started now. It starts when you send a message.",
+    },
+    refusedBecause: (why) => `The agent could not be started. ${why}`,
+    markerLabel: "The agent's rest",
+    cardLabel: "The agent is resting",
+    rested: (range) => `The agent rested ${range}`,
+    resting: "The agent is resting",
+    cutList: "Background work cut off: ",
+    endedMeanwhile: "Ended in the meantime",
+    branchKept: "branch kept",
+    stillRunning: "Still running",
+    // "at 14:05" reads "since 14:05"; an earlier day keeps its date.
+    runningSince: (at) => `running since ${at.replace(/^at /, "")}`,
+    running: "running",
+    waitCut: "wait cut off",
+    nobodyWaits: "nobody is waiting for it",
+    unavailable: "Not all background work could be read just now.",
+    woke: (byHabitat, at, because) =>
+      `${byHabitat ? "Habitat woke the agent" : "Your message woke the agent"}${at}${because}. The agent got this account.`,
+    restarted: "The agent was restarted",
+    stillRunningCut: (names) => `Still running, wait cut off: ${names}`,
   },
-  turnCut: " The work the agent had under way was cut off.",
-  cutOff: (n) =>
-    ` ${n === 1 ? "One background job was" : `${n} background jobs were`} cut off at the same time.`,
-  nothingCut: " No work was cut off.",
-  stop: {
-    idle: (at, cut) =>
-      `Pi stopped ${at} after it had been idle for 10 minutes.${cut}`,
-    room: (at, cut) =>
-      `Pi stopped ${at} to make room for another conversation.${cut}`,
-    person: (at, cut) => `You stopped the agent ${at}.${cut}`,
-    crash: (at, cut) => `Pi crashed ${at}.${cut}`,
-    restart: (at, cut) =>
-      `Habitat restarted ${at}, for example for an update, and Pi stopped then at the latest.${cut}`,
-  },
-  wokeBecause: {
-    settled: ", because the runs it was waiting for ended",
-    cut_off:
-      ", because the background job it was waiting for was cut off and will no longer report its end",
-  },
-  wake: {
-    asleep:
-      "Write, and the agent wakes up. It gets this same account with your message.",
-    waking: "The agent is starting…",
-    awake: "The agent is awake. Send, and it answers.",
-    refused:
-      "The agent could not be started now. It starts when you send a message.",
-  },
-  refusedBecause: (why) => `The agent could not be started. ${why}`,
-  markerLabel: "The agent's rest",
-  cardLabel: "The agent is resting",
-  rested: (range) => `The agent rested ${range}`,
-  resting: "The agent is resting",
-  cutList: "Background work cut off: ",
-  endedMeanwhile: "Ended in the meantime",
-  branchKept: "branch kept",
-  stillRunning: "Still running",
-  // "at 14:05" reads "since 14:05"; an earlier day keeps its date.
-  runningSince: (at) => `running since ${at.replace(/^at /, "")}`,
-  running: "running",
-  waitCut: "wait cut off",
-  nobodyWaits: "nobody is waiting for it",
-  unavailable: "Not all background work could be read just now.",
-  woke: (byHabitat, at, because) =>
-    `${byHabitat ? "Habitat woke the agent" : "Your message woke the agent"}${at}${because}. The agent got this account.`,
-  restarted: "The agent was restarted",
-  stillRunningCut: (names) => `Still running, wait cut off: ${names}`,
-});
+  { runState: { cancelled: "cancelled" } },
+);

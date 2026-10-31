@@ -221,202 +221,229 @@ const fi = {
   catalogFailed: "Palvelujen tilaa ei voitu lukea.",
 };
 
-export const serverIntegrationsText = catalog(fi, {
-  dropboxLimit:
-    "Development mode: once 50 people have connected, apply for production within two weeks.",
-  offered: "Offered",
-  notOffered: "Not offered",
-  toolMissing: (tools) =>
-    tools ? `Not offered · ${tools} missing` : "Not offered · tool missing",
-  waiting: "Waiting for the server",
-  uncertain: "State uncertain",
-  unknown: "State unknown",
-  invalidAudience: (tenant) =>
-    `the sign-in audience is set to ${tenant}, but the app is now single-organisation. Give the organisation's Directory (tenant) ID.`,
-  invalidTenant: "the Directory (tenant) ID is missing or malformed.",
-  invalidClient: "the client id is missing or malformed.",
-  invalidValues: "the values written on the server are malformed.",
-  setOnServer: "set on the server",
-  setOnServerOn: (day) => `set on the server ${day}`,
-  githubId: (id) => `GitHub id ${id}`,
-  copy: (label) => `Copy ${label}`,
-  openPage: "Open the page",
-  apis: "APIs",
-  chooseProject: "Choose the organisation's Google Cloud project and enable:",
-  enableInGoogle: "Enable in Google Cloud",
-  audience: "Audience",
-  internal:
-    "Internal requires Google Workspace. Only the organisation's accounts can connect, and no verification by Google is needed.",
-  scopes: "Permissions",
-  scopesLabel: "permissions",
-  client: "Client and credentials",
-  inGoogle: "In Google Cloud",
-  selected: "selected",
-  agentClient:
-    "Only agents use this client. The choice gives no extra permissions, but some of Google's MCP services accept only a client marked as an agent.",
-  noRedirect: (address) => (
-    <>No redirect address. The server uses the address {address}.</>
-  ),
-  chooseFinally: (button) => <>Finally choose {em(button)}.</>,
-  googleShows: (window) => <>Google shows the window {em(window)}:</>,
-  appDrafts: "Open Habitat – drafts",
-  appRead: "Open Habitat – read only",
-  chooseApp: (app) => <>Choose the app {em(app)}.</>,
-  register: "Register the app",
-  entraSearch: (page) => (
-    <>
-      The search field at the top of Entra takes you to the right page: search
-      for {em(page)} and later for the app's name.
-    </>
-  ),
-  levelApp:
-    "A separate app for this level: Microsoft gives every token of an app all the permissions approved for the app, so a level is a limit only as an app of its own.",
-  singleTenant: "Single tenant only - <organisation>",
-  workAccounts:
-    "Only the organisation's work accounts. Personal Microsoft accounts cannot connect.",
-  leaveRedirect: (button) => (
-    <>Leave Redirect URI empty and choose {em(button)}.</>
-  ),
-  roleDeveloper: "Needs at least the Application Developer role.",
-  publicClient: "Public client",
-  deviceCode: (button) => (
-    <>
-      Choose {em(button)}. People sign in with a device code, so no client
-      secret is created.
-    </>
-  ),
-  userRead: (button) => (
-    <>User.Read is there already. Finally choose {em(button)}.</>
-  ),
-  consent: "Consent and credentials",
-  inEntra: "In Microsoft Entra",
-  grantForOrg: "API permissions › Grant admin consent for <organisation> › Yes",
-  noPrompt: (status) => (
-    <>People are not asked for consent. The Status column reads {em(status)}.</>
-  ),
-  grantedFor: "Granted for <organisation>",
-  roleAdmin:
-    "Needs the Cloud Application Administrator, Application Administrator or Privileged Role Administrator role.",
-  overviewPage: "On the app's Overview page:",
-  chooseAppTab: (tab) => <>Choose the app and the tab {em(tab)}.</>,
-  create: "Create the app",
-  openDropbox: "Open the Dropbox App Console",
-  appFolder:
-    "At this level people synchronize only the app's own folder (Apps/<app name>). The rest of Dropbox is not visible to agents.",
-  fullDropbox:
-    "People synchronize their whole Dropbox, so App folder is not enough.",
-  dropboxNameFolder: "Open Habitat <organisation> app folder",
-  dropboxName: "Open Habitat <organisation>",
-  uniqueName: (button) => (
-    <>
-      The name must be unique and must not contain the word Dropbox. Choose{" "}
-      {em(button)}.
-    </>
-  ),
-  dropboxOwner:
-    "The app belongs to the account you create it with. Use the organisation's shared Dropbox account.",
-  dropboxScopes: (button) => (
-    <>
-      account_info.read is there already. Find the others with the browser's
-      search (Ctrl+F or ⌘F). Finally choose {em(button)}.
-    </>
-  ),
-  laterChange: "A later change does not apply to accounts already connected.",
-  settingsStep: "Settings and credentials",
-  inDropbox: "In the Dropbox App Console",
-  exactAddress: (button) => (
-    <>Choose {em(button)}. The address must be exactly this, slash included.</>
-  ),
-  additionalUsers:
-    "A new app is in development mode (Development), and without this only the app's owner can connect.",
-  sameSettings: "Higher up on the same Settings page:",
-  chooseClient: (client) => <>Choose the client {em(client)}.</>,
-  newSecret:
-    "Google does not show the old secret again. Add a new one to the client and copy it from the window.",
-  levelOf: (provider, level) => `${provider}, level ${level}`,
-  haveClient: "I already have a client",
-  haveApp: "I already have an app",
-  ifNoRole: "If you lack the role, send the link to someone who has it.",
-  linkFills: " The link fills in once the values are pasted.",
-  consentLink: "consent link",
-  newSecretTitle: "New secret",
-  credentials: "Credentials",
-  replaceEffect:
-    "Connected accounts use the old secret until you delete it in Google. After that they have to sign in again.",
-  secretOnce:
-    "Google shows the secret only in this window. Paste it before you close the window.",
-  noSecret: "No secret is needed.",
-  setupTitle: (section, replace) =>
-    `${section}: ${replace ? "change credentials" : "set credentials"}`,
-  stepOf: (n, total) => `Step ${n}/${total}`,
-  here: "Here",
-  back: "Back",
-  cancel: "Cancel",
-  savingWait: "Waiting for the server…",
-  save: "Save",
-  next: "Next",
-  removeLevelTitle: (section) => `Remove the level's credentials (${section})?`,
-  levelGone: "The level can no longer be chosen when connecting.",
-  levelRelogin: "Accounts connected at this level cannot sign in again.",
-  removeCredentials: "Remove credentials",
-  removeTitle: (provider) => `Remove the ${provider} credentials?`,
-  noNew: "No new accounts can be connected.",
-  noRelogin: "Connected accounts cannot sign in again.",
-  syncStops: "Synchronization of connected accounts stops.",
-  stepHidden: "The onboarding step is hidden.",
-  otherLater: "Another app can be set after the removal.",
-  fixTitle: (provider, tools) => `${provider}: ${tools || "tool"} missing`,
-  runOnServer: "Run on the server:",
-  command: "command",
-  close: "Close",
-  connectNote:
-    "Everyone connects the offered services themselves under Settings › Data for agents.",
-  setupOff:
-    "Setting credentials from the browser is turned off in the server's settings.",
-  onboardingStep: (provider, hidden) =>
-    `Onboarding: ${provider} step${hidden ? ", hidden" : ""}`,
-  inOnboardingHidden: "In onboarding · hidden",
-  inOnboarding: "In onboarding",
-  invalid: "The credentials are not valid:",
-  refresh: "Refresh",
-  fix: "Fix…",
-  setCredentials: "Set credentials…",
-  credentialsOf: (name) => `${name}: credentials`,
-  credentialsMenu: "Credentials",
-  enableApis: "Enable the APIs in Google Cloud",
-  replaceCredentials: "Change credentials…",
-  setupDisabled: "Setting from the browser is turned off",
-  removeCredentialsMenu: "Remove credentials…",
-  level: (level) => `Level: ${level}`,
-  notInUse: "Not in use",
-  errors: {
-    googleId: "Check the Client ID: it ends in .apps.googleusercontent.com.",
-    googleSecret: "Check the Client secret.",
-    dropboxKey: "Check the App key.",
-    dropboxSecret: "Check the App secret.",
-    microsoftClient: "Check the Application (client) ID: the form 8-4-4-4-12.",
-    microsoftTenant: "Check the Directory (tenant) ID: the form 8-4-4-4-12.",
-    sameGoogle: "This is the same as the Client ID.",
-    sameMicrosoft: "This is the same as the client id.",
-    sameDropbox: "This is the same as the App key.",
-  },
-  refusals: {
-    browser_setup_disabled:
+export const serverIntegrationsText = catalog(
+  fi,
+  {
+    dropboxLimit:
+      "Development mode: once 50 people have connected, apply for production within two weeks.",
+    offered: "Offered",
+    notOffered: "Not offered",
+    toolMissing: (tools) =>
+      tools ? `Not offered · ${tools} missing` : "Not offered · tool missing",
+    waiting: "Waiting for the server",
+    uncertain: "State uncertain",
+    unknown: "State unknown",
+    invalidAudience: (tenant) =>
+      `the sign-in audience is set to ${tenant}, but the app is now single-organization. Give the organization's Directory (tenant) ID.`,
+    invalidTenant: "the Directory (tenant) ID is missing or malformed.",
+    invalidClient: "the client id is missing or malformed.",
+    invalidValues: "the values written on the server are malformed.",
+    setOnServer: "set on the server",
+    setOnServerOn: (day) => `set on the server ${day}`,
+    githubId: (id) => `GitHub id ${id}`,
+    copy: (label) => `Copy ${label}`,
+    openPage: "Open the page",
+    apis: "APIs",
+    chooseProject: "Choose the organization's Google Cloud project and enable:",
+    enableInGoogle: "Enable in Google Cloud",
+    audience: "Audience",
+    internal:
+      "Internal requires Google Workspace. Only the organization's accounts can connect, and no verification by Google is needed.",
+    scopes: "Permissions",
+    scopesLabel: "permissions",
+    client: "Client and credentials",
+    inGoogle: "In Google Cloud",
+    selected: "selected",
+    agentClient:
+      "Only agents use this client. The choice gives no extra permissions, but some of Google's MCP services accept only a client marked as an agent.",
+    noRedirect: (address) => (
+      <>No redirect address. The server uses the address {address}.</>
+    ),
+    chooseFinally: (button) => <>Finally choose {em(button)}.</>,
+    googleShows: (window) => <>Google shows the window {em(window)}:</>,
+    appDrafts: "Open Habitat – drafts",
+    appRead: "Open Habitat – read only",
+    chooseApp: (app) => <>Choose the app {em(app)}.</>,
+    register: "Register the app",
+    entraSearch: (page) => (
+      <>
+        The search field at the top of Entra takes you to the right page: search
+        for {em(page)} and later for the app's name.
+      </>
+    ),
+    levelApp:
+      "A separate app for this level: Microsoft gives every token of an app all the permissions approved for the app, so a level is a limit only as an app of its own.",
+    singleTenant: "Single tenant only - <organization>",
+    workAccounts:
+      "Only the organization's work accounts. Personal Microsoft accounts cannot connect.",
+    leaveRedirect: (button) => (
+      <>Leave Redirect URI empty and choose {em(button)}.</>
+    ),
+    roleDeveloper: "Needs at least the Application Developer role.",
+    publicClient: "Public client",
+    deviceCode: (button) => (
+      <>
+        Choose {em(button)}. People sign in with a device code, so no client
+        secret is created.
+      </>
+    ),
+    userRead: (button) => (
+      <>User.Read is there already. Finally choose {em(button)}.</>
+    ),
+    consent: "Consent and credentials",
+    inEntra: "In Microsoft Entra",
+    grantForOrg:
+      "API permissions › Grant admin consent for <organization> › Yes",
+    noPrompt: (status) => (
+      <>
+        People are not asked for consent. The Status column reads {em(status)}.
+      </>
+    ),
+    grantedFor: "Granted for <organization>",
+    roleAdmin:
+      "Needs the Cloud Application Administrator, Application Administrator or Privileged Role Administrator role.",
+    overviewPage: "On the app's Overview page:",
+    chooseAppTab: (tab) => <>Choose the app and the tab {em(tab)}.</>,
+    create: "Create the app",
+    openDropbox: "Open the Dropbox App Console",
+    appFolder:
+      "At this level people synchronize only the app's own folder (Apps/<app name>). The rest of Dropbox is not visible to agents.",
+    fullDropbox:
+      "People synchronize their whole Dropbox, so App folder is not enough.",
+    dropboxNameFolder: "Open Habitat <organization> app folder",
+    dropboxName: "Open Habitat <organization>",
+    uniqueName: (button) => (
+      <>
+        The name must be unique and must not contain the word Dropbox. Choose{" "}
+        {em(button)}.
+      </>
+    ),
+    dropboxOwner:
+      "The app belongs to the account you create it with. Use the organization's shared Dropbox account.",
+    dropboxScopes: (button) => (
+      <>
+        account_info.read is there already. Find the others with the browser's
+        search (Ctrl+F or ⌘F). Finally choose {em(button)}.
+      </>
+    ),
+    laterChange: "A later change does not apply to accounts already connected.",
+    settingsStep: "Settings and credentials",
+    inDropbox: "In the Dropbox App Console",
+    exactAddress: (button) => (
+      <>
+        Choose {em(button)}. The address must be exactly this, slash included.
+      </>
+    ),
+    additionalUsers:
+      "A new app is in development mode (Development), and without this only the app's owner can connect.",
+    sameSettings: "Higher up on the same Settings page:",
+    chooseClient: (client) => <>Choose the client {em(client)}.</>,
+    newSecret:
+      "Google does not show the old secret again. Add a new one to the client and copy it from the window.",
+    levelOf: (provider, level) => `${provider}, level ${level}`,
+    haveClient: "I already have a client",
+    haveApp: "I already have an app",
+    ifNoRole: "If you lack the role, send the link to someone who has it.",
+    linkFills: " The link fills in once the values are pasted.",
+    consentLink: "consent link",
+    newSecretTitle: "New secret",
+    credentials: "Credentials",
+    replaceEffect:
+      "Connected accounts use the old secret until you delete it in Google. After that they have to sign in again.",
+    secretOnce:
+      "Google shows the secret only in this window. Paste it before you close the window.",
+    noSecret: "No secret is needed.",
+    setupTitle: (section, replace) =>
+      `${section}: ${replace ? "change credentials" : "set credentials"}`,
+    stepOf: (n, total) => `Step ${n}/${total}`,
+    here: "Here",
+    back: "Back",
+    cancel: "Cancel",
+    savingWait: "Waiting for the server…",
+    save: "Save",
+    next: "Next",
+    removeLevelTitle: (section) =>
+      `Remove the level's credentials (${section})?`,
+    levelGone: "The level can no longer be chosen when connecting.",
+    levelRelogin: "Accounts connected at this level cannot sign in again.",
+    removeCredentials: "Remove credentials",
+    removeTitle: (provider) => `Remove the ${provider} credentials?`,
+    noNew: "No new accounts can be connected.",
+    noRelogin: "Connected accounts cannot sign in again.",
+    syncStops: "Synchronization of connected accounts stops.",
+    stepHidden: "The onboarding step is hidden.",
+    otherLater: "Another app can be set after the removal.",
+    fixTitle: (provider, tools) => `${provider}: ${tools || "tool"} missing`,
+    runOnServer: "Run on the server:",
+    command: "command",
+    close: "Close",
+    connectNote:
+      "Everyone connects the offered services themselves under Settings › Data for agents.",
+    setupOff:
       "Setting credentials from the browser is turned off in the server's settings.",
-    host_busy:
-      "The server is under maintenance just now. Nothing was changed; try again in a moment.",
-    integrations_file_invalid:
-      "The server's integrations file needs maintenance from the command line. Nothing was changed.",
-    login: "The session has ended. Sign in again.",
-    admin_required: "Only an administrator can set credentials.",
-    invalid_request:
-      "The server did not accept the credentials. Check the fields.",
+    onboardingStep: (provider, hidden) =>
+      `Onboarding: ${provider} step${hidden ? ", hidden" : ""}`,
+    inOnboardingHidden: "In onboarding · hidden",
+    inOnboarding: "In onboarding",
+    invalid: "The credentials are not valid:",
+    refresh: "Refresh",
+    fix: "Fix…",
+    setCredentials: "Set credentials…",
+    credentialsOf: (name) => `${name}: credentials`,
+    credentialsMenu: "Credentials",
+    enableApis: "Enable the APIs in Google Cloud",
+    replaceCredentials: "Change credentials…",
+    setupDisabled: "Setting from the browser is turned off",
+    removeCredentialsMenu: "Remove credentials…",
+    level: (level) => `Level: ${level}`,
+    notInUse: "Not in use",
+    errors: {
+      googleId: "Check the Client ID: it ends in .apps.googleusercontent.com.",
+      googleSecret: "Check the Client secret.",
+      dropboxKey: "Check the App key.",
+      dropboxSecret: "Check the App secret.",
+      microsoftClient:
+        "Check the Application (client) ID: the form 8-4-4-4-12.",
+      microsoftTenant: "Check the Directory (tenant) ID: the form 8-4-4-4-12.",
+      sameGoogle: "This is the same as the Client ID.",
+      sameMicrosoft: "This is the same as the client id.",
+      sameDropbox: "This is the same as the App key.",
+    },
+    refusals: {
+      browser_setup_disabled:
+        "Setting credentials from the browser is turned off in the server's settings.",
+      host_busy:
+        "The server is under maintenance just now. Nothing was changed; try again in a moment.",
+      integrations_file_invalid:
+        "The server's integrations file needs maintenance from the command line. Nothing was changed.",
+      login: "The session has ended. Sign in again.",
+      admin_required: "Only an administrator can set credentials.",
+      invalid_request:
+        "The server did not accept the credentials. Check the fields.",
+    },
+    refused: "The server made no change.",
+    sessionEnded: "The session has ended. Sign in again.",
+    loadFailed: "The integrations' settings could not be loaded.",
+    reload: "Reload",
+    loading: "Loading integrations…",
+    refreshFailed: "The information could not be refreshed.",
+    catalogFailed: "The services' state could not be read.",
   },
-  refused: "The server made no change.",
-  sessionEnded: "The session has ended. Sign in again.",
-  loadFailed: "The integrations' settings could not be loaded.",
-  reload: "Reload",
-  loading: "Loading integrations…",
-  refreshFailed: "The information could not be refreshed.",
-  catalogFailed: "The services' state could not be read.",
-});
+  {
+    invalidAudience: (tenant) =>
+      `the sign-in audience is set to ${tenant}, but the app is now single-organisation. Give the organisation's Directory (tenant) ID.`,
+    chooseProject: "Choose the organisation's Google Cloud project and enable:",
+    internal:
+      "Internal requires Google Workspace. Only the organisation's accounts can connect, and no verification by Google is needed.",
+    singleTenant: "Single tenant only - <organisation>",
+    workAccounts:
+      "Only the organisation's work accounts. Personal Microsoft accounts cannot connect.",
+    grantForOrg:
+      "API permissions › Grant admin consent for <organisation> › Yes",
+    grantedFor: "Granted for <organisation>",
+    dropboxNameFolder: "Open Habitat <organisation> app folder",
+    dropboxName: "Open Habitat <organisation>",
+    dropboxOwner:
+      "The app belongs to the account you create it with. Use the organisation's shared Dropbox account.",
+  },
+);

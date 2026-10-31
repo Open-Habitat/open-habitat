@@ -58,59 +58,75 @@ const fi = {
   newWorkspace: "Uusi työtila…",
 };
 
-export const codeHostsText = catalog(fi, {
-  connected: "Connected",
-  connectedDesc: "Git and gh work in the workspaces.",
-  disconnected: "Not connected",
-  disconnectedDesc:
-    "No GitHub connection was found, so git push and gh do not work. Connect by signing in with GitHub.",
-  expired: "Expired",
-  expiredDesc:
-    "GitHub no longer accepts the authorization saved on the server, so git push and gh do not work. Reconnect by signing in with GitHub.",
-  pending: "Connecting",
-  pendingDesc:
-    "The GitHub connection is being prepared. Wait before using Git actions.",
-  partial: "Partial connection",
-  partialDesc:
-    "The GitHub connection is not fully ready yet. Git actions may not succeed.",
-  unknown: "State unknown",
-  unknownDesc: "The GitHub connection's state could not be confirmed just now.",
-  checking: "Checking",
-  checkingDesc:
-    "The server is asking GitHub for the connection's state right now. The state updates here by itself.",
-  timeoutDesc:
-    "GitHub or the server's gh did not answer in time, so the connection could not be confirmed. The server asks again soon.",
-  githubErrorDesc:
-    "GitHub answered the check with an error, such as a rate limit, so the connection could not be confirmed. The server asks again soon.",
-  unrecognizedDesc:
-    "The server's gh gave an answer the server does not recognize, so the connection could not be confirmed. gh auth status in a terminal tells more.",
-  unreachable: "GitHub not answering",
-  unreachableDesc:
-    "The server could not reach GitHub. The authorization is kept; the server tries again by itself.",
-  verifying: "Checking",
-  verifyingDesc:
-    "GitHub refused the authorization once. The server checks it again.",
-  pushBroken:
-    "Push does not work until the GitHub connection is fixed. Local work continues.",
-  pushPartial:
-    "Push may not work until the GitHub connection is ready. Local work continues.",
-  pushWaits: "Push waits until GitHub answers again. Local work continues.",
-  giteaTrouble: (host) =>
-    `Pull and push do not work until the ${host} connection is in order. Local work continues.`,
-  gitlabTrouble: (host) =>
-    `Pull and push do not work until the GitLab connection to ${host} is in order. Local work continues.`,
-  intro: "The services workspaces are cloned from and that agents push to.",
-  signedInAs: (login) => `Signed in as ${login}. `,
-  logoutKeeps:
-    "Signing out of the browser does not remove the server's authorization.",
-  connect: "Connect GitHub",
-  reconnect: "Reconnect GitHub",
-  disconnectedNotice:
-    "The local gh authorization was removed. GitHub's OAuth grant was not revoked.",
-  imported: "Imported workspaces",
-  importedNote:
-    "Workspaces are opened and removed from the sidebar. Here you see which service's credentials each synchronizes with.",
-  noneImported:
-    "No workspaces have been imported from these services yet. New workspace lists the repositories of the services above.",
-  newWorkspace: "New workspace…",
-});
+export const codeHostsText = catalog(
+  fi,
+  {
+    connected: "Connected",
+    connectedDesc: "Git and gh work in the workspaces.",
+    disconnected: "Not connected",
+    disconnectedDesc:
+      "No GitHub connection was found, so git push and gh do not work. Connect by signing in with GitHub.",
+    expired: "Expired",
+    expiredDesc:
+      "GitHub no longer accepts the authorization saved on the server, so git push and gh do not work. Reconnect by signing in with GitHub.",
+    pending: "Connecting",
+    pendingDesc:
+      "The GitHub connection is being prepared. Wait before using Git actions.",
+    partial: "Partial connection",
+    partialDesc:
+      "The GitHub connection is not fully ready yet. Git actions may not succeed.",
+    unknown: "State unknown",
+    unknownDesc:
+      "The GitHub connection's state could not be confirmed just now.",
+    checking: "Checking",
+    checkingDesc:
+      "The server is asking GitHub for the connection's state right now. The state updates here by itself.",
+    timeoutDesc:
+      "GitHub or the server's gh did not answer in time, so the connection could not be confirmed. The server asks again soon.",
+    githubErrorDesc:
+      "GitHub answered the check with an error, such as a rate limit, so the connection could not be confirmed. The server asks again soon.",
+    unrecognizedDesc:
+      "The server's gh gave an answer the server does not recognize, so the connection could not be confirmed. gh auth status in a terminal tells more.",
+    unreachable: "GitHub not answering",
+    unreachableDesc:
+      "The server could not reach GitHub. The authorization is kept; the server tries again by itself.",
+    verifying: "Checking",
+    verifyingDesc:
+      "GitHub refused the authorization once. The server checks it again.",
+    pushBroken:
+      "Push does not work until the GitHub connection is fixed. Local work continues.",
+    pushPartial:
+      "Push may not work until the GitHub connection is ready. Local work continues.",
+    pushWaits: "Push waits until GitHub answers again. Local work continues.",
+    giteaTrouble: (host) =>
+      `Pull and push do not work until the ${host} connection is in order. Local work continues.`,
+    gitlabTrouble: (host) =>
+      `Pull and push do not work until the GitLab connection to ${host} is in order. Local work continues.`,
+    intro: "The services workspaces are cloned from and that agents push to.",
+    signedInAs: (login) => `Signed in as ${login}. `,
+    logoutKeeps:
+      "Signing out of the browser does not remove the server's authorization.",
+    connect: "Connect GitHub",
+    reconnect: "Reconnect GitHub",
+    disconnectedNotice:
+      "The local gh authorization was removed. GitHub's OAuth grant was not revoked.",
+    imported: "Imported workspaces",
+    importedNote:
+      "Workspaces are opened and removed from the sidebar. Here you see which service's credentials each synchronizes with.",
+    noneImported:
+      "No workspaces have been imported from these services yet. New workspace lists the repositories of the services above.",
+    newWorkspace: "New workspace…",
+  },
+  {
+    expiredDesc:
+      "GitHub no longer accepts the authorisation saved on the server, so git push and gh do not work. Reconnect by signing in with GitHub.",
+    unreachableDesc:
+      "The server could not reach GitHub. The authorisation is kept; the server tries again by itself.",
+    verifyingDesc:
+      "GitHub refused the authorisation once. The server checks it again.",
+    logoutKeeps:
+      "Signing out of the browser does not remove the server's authorisation.",
+    disconnectedNotice:
+      "The local gh authorisation was removed. GitHub's OAuth grant was not revoked.",
+  },
+);

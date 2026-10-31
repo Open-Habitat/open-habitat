@@ -8,6 +8,6 @@
   "required": ["schema_version", "default_language"],
   "properties": {
     "schema_version": {"const": 1},
-    "default_language": {"enum": ["system", "fi", "en"]}
+    "default_language": {"enum": ["system", "fi", "en", "en-US", "en-GB"]}
   }
 }
