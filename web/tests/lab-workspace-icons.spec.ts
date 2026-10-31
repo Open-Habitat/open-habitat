@@ -31,6 +31,8 @@ async function session(page: Page) {
   };
 }
 const rail = (page: Page) => page.getByRole("navigation");
+// The conversations this test started; see the wire seam below.
+const started = new Set<string>();
 async function start(page: Page, name: string) {
   await rail(page)
     .getByRole("link")
@@ -41,6 +43,7 @@ async function start(page: Page, name: string) {
     .and(page.getByTestId("conversation-start"))
     .click();
   await expect(page).toHaveURL(/conversation=pi/);
+  started.add(new URL(page.url()).searchParams.get("conversation") ?? "");
 }
 const listIcon = (page: Page, name: string) =>
   rail(page).getByTestId(`workspace-${name}`).getByTestId("workspace-icon");
@@ -49,6 +52,21 @@ test("@workspace-icons the rail shows each workspace's icon from its repository 
   page,
 }) => {
   test.setTimeout(120000);
+  // Wire seam: a finished conversation is not in Käynnissä
+  // (rail-running-after-done), so each one this test starts has a worker
+  // waiting at its own prompt, which keeps its row in sight without a host
+  // write.
+  await page.route("**/api/v1/snapshot", async (route) => {
+    try {
+      const response = await route.fetch();
+      const body = await response.json();
+      for (const a of body.agents)
+        if (started.has(a.agent_id)) a.spinoffs_idle = 1;
+      await route.fulfill({ response, json: body });
+    } catch {
+      await route.abort().catch(() => {});
+    }
+  });
   await page.goto("/workspaces");
   await page
     .getByRole("button")

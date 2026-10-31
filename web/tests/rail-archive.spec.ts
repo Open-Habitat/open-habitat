@@ -94,7 +94,9 @@ test.describe("on a touch screen", () => {
     await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
     await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
     const id = new URL(page.url()).searchParams.get("conversation") ?? "";
-    await page.getByTestId("message-input").fill("something to archive");
+    // A turn that ended in an error stays in Käynnissä; a finished one
+    // would leave it (rail-running-after-done).
+    await page.getByTestId("message-input").fill("Tee virhevuoro");
     await page
       .getByTestId("send")
       .and(page.locator('[data-mode="send"]'))

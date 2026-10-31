@@ -1,0 +1,75 @@
+import { hostOrigin } from "../test-ports.mjs";
+import { expect, type Page, test } from "./worker-host";
+
+test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
+
+async function start(page: Page) {
+  const nav = page.getByTestId("workspace-navigation");
+  await nav.getByTestId("workspace-ordinary-dir").click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  return new URL(page.url()).searchParams.get("conversation") ?? "";
+}
+
+// rail-running-after-done: Pi stays open after its turn and waits for a
+// message. The conversation is finished then, with or without what its agent
+// left behind, and Käynnissä shows only work going on.
+test("@rail-running-after-done a finished conversation leaves Käynnissä and returns only when its agent works", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/conversations-reset");
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  const nav = page.getByTestId("workspace-navigation");
+  const running = nav.getByTestId("rail-running");
+  const yours = nav.getByTestId("rail-yours");
+  const send = async (text: string) => {
+    await page.getByTestId("message-input").fill(text);
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+  };
+
+  const id = await start(page);
+  const url = page.url();
+  // A conversation nobody has written to yet is not work either.
+  await expect(running.getByTestId(`agent-item-${id}`)).toHaveCount(0);
+  await send("hidas työ");
+  const row = running.getByTestId(`agent-item-${id}`);
+  await expect(row).toHaveAttribute("data-ball", "work", { timeout: 25000 });
+
+  // The turn ends: read here, so not the person's turn, and not work.
+  await expect(page.getByTestId("message-input")).toBeEnabled({
+    timeout: 25000,
+  });
+  await expect(row).toHaveCount(0, { timeout: 25000 });
+  await expect(yours.getByTestId(`agent-item-${id}`)).toHaveCount(0);
+
+  // The agent leaves a file and its notice after the turn: still finished.
+  expect(
+    (
+      await page.request.get(
+        `/fixture/files?target=${encodeURIComponent(id)}&set=single`,
+      )
+    ).status(),
+  ).toBe(200);
+  await expect(page.getByTestId("file-offer")).toHaveCount(1);
+  await nav.getByTestId("snapshot-refresh").click();
+  await expect(row).toHaveCount(0);
+
+  // Elsewhere, the finished conversation stays out of Käynnissä.
+  const other = await start(page);
+  await expect(running.getByTestId(`agent-item-${other}`)).toHaveCount(0);
+  await nav.getByTestId("snapshot-refresh").click();
+  await expect(row).toHaveCount(0);
+
+  // Written to again, it works and is back until that turn ends.
+  await page.goto(url);
+  await expect(page.getByTestId("message-input")).toBeEnabled();
+  await send("hidas jatko");
+  await expect(row).toHaveAttribute("data-ball", "work", { timeout: 25000 });
+  await expect(row).toHaveCount(0, { timeout: 25000 });
+});

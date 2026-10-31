@@ -28,8 +28,8 @@ const txt = liveText(statusText);
 export interface RailNow {
   /** A new reply or a question: the person's turn. */
   yours: AgentNavModel[];
-  /** Live and not waiting for the person: working, waiting for a message, or
-   * waiting on background work (a process or a worker). */
+  /** Work going on without the person: working, or waiting on background
+   * work (a process or a worker). */
   running: AgentNavModel[];
   hints: ReadonlyMap<string, WorkspaceHint>;
 }
@@ -128,8 +128,13 @@ export function railNow({
     // A worker whose Pi waits at its own prompt (an interactive run left for
     // review) keeps the conversation in sight without pulsing.
     const workerIdle = !workerBusy && (a.spinoffs_idle ?? 0) > 0;
+    // A Pi left open after its turn ended waits for a message: the
+    // conversation is finished until someone writes to it, so it leaves
+    // Käynnissä and returns when its agent works again.
     const live =
-      (observed.running && observed.activity !== "closed") ||
+      (observed.running &&
+        observed.activity !== "closed" &&
+        observed.activity !== "waiting") ||
       workerBusy ||
       workerIdle;
     // Pi ended unasked: the conversation rests until the person writes, and
@@ -159,13 +164,11 @@ export function railNow({
                   ? txt.rail.working
                   : observed.activity === "waiting_background"
                     ? txt.rail.background
-                    : observed.activity === "waiting"
-                      ? txt.rail.waiting
-                      : workerBusy
-                        ? txt.rail.workerWorking
-                        : workerIdle
-                          ? txt.rail.workerWaiting
-                          : observed.activityLabel;
+                    : workerBusy
+                      ? txt.rail.workerWorking
+                      : workerIdle
+                        ? txt.rail.workerWaiting
+                        : observed.activityLabel;
     const waits =
       observed.activity === "waiting_background" && a.waiting_on?.length
         ? a.waiting_on.map(waitingName).join(", ")
@@ -242,7 +245,6 @@ export function railNow({
       if (failed) continue;
       if (observed.activity === "working") count.working++;
       else if (observed.activity === "waiting_background") count.background++;
-      else if (observed.activity === "waiting") count.waiting++;
       else if (workerBusy) count.background++;
       else if (workerIdle) count.waiting++;
     }

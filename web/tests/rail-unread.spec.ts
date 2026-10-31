@@ -58,11 +58,12 @@ test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it
     .poll(() => new URL(page.url()).searchParams.get("conversation"))
     .toBe(new URL(urls[0], hostOrigin).searchParams.get("conversation"));
   // Opened, the reply is no longer the person's turn; the other one still is.
+  // Its turn has ended, so it is not in Käynnissä either.
   await expect(yours).toHaveCount(1);
   await expect(yours.first()).toHaveAttribute("href", urls[1]);
   await expect(
     page.getByTestId("rail-running").locator(`a[href="${urls[0]}"]`),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(page.getByTestId("message-input")).toBeFocused();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByTestId("navigation-badge")).toBeVisible();

@@ -89,16 +89,39 @@ describe("rail Nyt groups", () => {
     );
     expect(ids(now.yours)).toEqual(["asks", "replied"]);
     // Catalog order, not activity order: rows do not jump between turns.
-    expect(ids(now.running)).toEqual([
-      "working",
-      "idle",
-      "background",
-      "worker-busy",
-    ]);
+    expect(ids(now.running)).toEqual(["working", "background", "worker-busy"]);
     expect(now.yours[0].question).toBe(true);
     expect(now.yours[1].question).toBe(false);
     // Background work says what it waits for.
-    expect(now.running[2].detail).toContain("npm test");
+    expect(now.running[1].detail).toContain("npm test");
+  });
+
+  it("drops a conversation whose turn ended and brings it back when its agent works", () => {
+    // rail-running-after-done: Pi stays open after its turn, waiting for a
+    // message. That is not work, read or not.
+    const ended = agent("ended", {
+      process: "daemon_managed_live",
+      run_active: false,
+    });
+    const sessions: Session[] = [
+      { agent_id: "ended", workspace_id: "ws_example00", state: "live" },
+    ];
+    const done = run([ended], { sessions });
+    expect(ids(done.running)).toEqual([]);
+    expect(ids(done.yours)).toEqual([]);
+    expect(done.hints.size).toBe(0);
+    // Unread, the reply is the person's turn.
+    expect(
+      ids(run([ended], { sessions, attention: [["ended", "new"]] }).yours),
+    ).toEqual(["ended"]);
+    // Written to again, it works.
+    const again = run([{ ...ended, run_active: true }], { sessions });
+    expect(ids(again.running)).toEqual(["ended"]);
+    expect(again.running[0].activityLabel).toBe("Työskentelee");
+    // Its worker works on after the turn: in sight, and saying so.
+    const worker = run([{ ...ended, spinoffs_working: 1 }], { sessions });
+    expect(ids(worker.running)).toEqual(["ended"]);
+    expect(worker.running[0].activityLabel).toBe("Worker työskentelee");
   });
 
   it("keeps a worker waiting at its own prompt in sight without pulsing", () => {
@@ -119,8 +142,8 @@ describe("rail Nyt groups", () => {
 
   it("carries the host's last change and keeps a crashed Pi in sight as failed", () => {
     const now = run([
-      agent("idle", {
-        run_active: false,
+      agent("working", {
+        run_active: true,
         changed_at: "2026-10-29T10:00:00.000Z",
       }),
       agent("crashed", {
@@ -132,7 +155,7 @@ describe("rail Nyt groups", () => {
         rest: { cause: "idle", at: "2026-10-29T10:05:00Z" },
       }),
     ]);
-    expect(ids(now.running)).toEqual(["idle", "crashed"]);
+    expect(ids(now.running)).toEqual(["working", "crashed"]);
     expect(now.running[0].changedAt).toBe(Date.parse("2026-10-29T10:00:00Z"));
     expect(now.running[0].workspaceName).toBe("kotisivu");
     expect(now.running[0].failed).toBeUndefined();
@@ -151,8 +174,8 @@ describe("rail Nyt groups", () => {
       },
       rest: { cause: "crash", at: "2026-10-29T10:05:00Z" },
     });
-    const listed = (rest: Agent["rest"]) =>
-      run([{ ...crashed, rest }], {
+    const listed = (rest: Agent["rest"], runActive = false) =>
+      run([{ ...crashed, rest, run_active: runActive }], {
         sessions: [
           {
             agent_id: "browser",
@@ -162,11 +185,15 @@ describe("rail Nyt groups", () => {
         ],
       }).running;
     expect(listed(crashed.rest)[0].failed).toBe(true);
-    // Woken by the person's typing, Pi is up again: not failed any more.
-    expect(
-      listed({ cause: "crash", at: "2026-10-29T10:05:00Z", awake: true })[0]
-        .failed,
-    ).toBeUndefined();
+    // Woken by the person's typing, Pi is up again: not failed any more,
+    // and in Käynnissä only once it works.
+    const awake: Agent["rest"] = {
+      cause: "crash",
+      at: "2026-10-29T10:05:00Z",
+      awake: true,
+    };
+    expect(listed(awake)).toEqual([]);
+    expect(listed(awake, true)[0].failed).toBeUndefined();
   });
 
   it("shows an error turn and a failed worker as failed, and work that runs again as working", () => {
@@ -277,9 +304,10 @@ describe("rail Nyt groups", () => {
       kind: "attention",
       count: 1,
     });
+    // A conversation that only waits for a message is not counted.
     expect(now.hints.get("ws_example01")).toMatchObject({
       kind: "background",
-      count: 2,
+      count: 1,
     });
   });
 });

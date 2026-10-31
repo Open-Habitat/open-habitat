@@ -2360,11 +2360,10 @@ test("@browser-conversation a send that arrives twice is delivered once and neve
   await expectNativeContent(page, 'Selvä. Kysyit: "ensimmäinen vuoro".', {
     timeout: 20000,
   });
-  const agent = new URL(page.url()).searchParams.get("conversation") ?? "";
-  const row = page.getByTestId(`agent-item-${agent}`);
-  await row.hover();
-  await row.getByTestId("rail-rename-conversation").click();
-  const name = row.getByTestId("conversation-name-field");
+  // The finished conversation is no longer in the rail
+  // (rail-running-after-done); the header renames it the same way.
+  await page.getByTestId("conversation-rename").click();
+  const name = page.getByTestId("conversation-name-field");
   await name.fill("Testinimi 2");
   await name.press("Enter");
   await expect(name).toHaveCount(0);

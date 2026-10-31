@@ -60,9 +60,11 @@ Palaava käyttäjä, jonka Pi-tunnukset ovat kunnossa, pääsee suoraan työtilo
 
 Sivupalkin yläosa kertoo, mikä on nyt kesken kaikissa työtiloissa.
 **Sinun vuorosi** listaa keskustelut, joissa agentti kysyy jotain tai on
-vastannut ja vastaus on lukematta. **Käynnissä** listaa muut elävät
-keskustelut: työskentelevät, viestiä odottavat ja ne, jotka odottavat
-taustatyötä (prosessia tai workeria), ja kertoo, mitä ne odottavat. Rivillä
+vastannut ja vastaus on lukematta. **Käynnissä** listaa keskustelut, joissa
+on työ kesken: työskentelevät ja ne, jotka odottavat taustatyötä (prosessia
+tai workeria), ja kertoo, mitä ne odottavat. Keskustelu, jonka vuoro on
+päättynyt, on valmis, vaikka Pi olisi yhä auki odottamassa viestiä, ja
+palaa Käynnissä-listaan vasta, kun sen agentti työskentelee taas. Rivillä
 näkyy keskustelun otsikko, työtila ja tila. Worker näkyy omana rivinään eikä
 vanhempansa alla; vanhemman rivin merkki kertoo, että sen worker työskentelee.
 

@@ -51,11 +51,17 @@ test("@rail-now @a11y workspaces stay alphabetical, the filter finds archived on
   await expect(nav.getByTestId("filter-empty")).toHaveCount(0);
   await nav.getByTestId("clear-filter").click();
 
-  // A started conversation is live work: it shows in Käynnissä, not under
-  // its workspace, and stays reachable from the narrow rail.
+  // A conversation at work is live work: it shows in Käynnissä, not under
+  // its workspace, and stays reachable from the narrow rail. The slow turn
+  // lasts long enough for these checks.
   await nav.getByTestId("workspace-ordinary-dir").click();
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  await page.getByTestId("message-input").fill("hidas työ");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   const url = new URL(page.url());
   const href = url.pathname + url.search;
   await expect(

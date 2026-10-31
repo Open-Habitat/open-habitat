@@ -423,8 +423,8 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
   const row = page
     .getByRole("navigation")
     .getByTestId(`agent-item-pi:${parent}`);
-  await expect(row).toBeVisible();
-  await expect(row).not.toHaveClass(/ah-waiting-spinoff/);
+  // Its turn ended and nothing works for it yet: not in Käynnissä.
+  await expect(row).toHaveCount(0);
   expect(
     (
       await page.request.get(

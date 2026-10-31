@@ -288,13 +288,14 @@ test("@next-waiting-row a round whose waiting ones are archived ends itself, and
     .and(page.getByTestId("agent-link"));
   const writer = await context.newPage();
   const replies: string[] = [];
+  const hrefs: string[] = [];
   for (const [i, message] of ["ensimmäinen", "toinen"].entries()) {
     await writer.goto(`${hostOrigin}/workspaces`);
-    replies.push(conversationOf(await startAndSend(writer, message)) ?? "");
+    hrefs.push(await startAndSend(writer, message));
+    replies.push(conversationOf(hrefs[i]) ?? "");
     await expect(writer.getByTestId("message-input")).toBeEnabled();
     await expect(yours).toHaveCount(i + 1, { timeout: 25000 });
   }
-  await writer.close();
   await page.bringToFront();
   const here = conversationOf(await startAndSend(page, "lähtö"));
   await expect(page.getByTestId("message-input")).toBeEnabled();
@@ -320,17 +321,30 @@ test("@next-waiting-row a round whose waiting ones are archived ends itself, and
   await expect.poll(() => conversationNow(page)).toBe(here);
   await expect(queue).toBeVisible();
 
-  // Both waiting ones archived from the rail: the round has nothing left to
-  // walk and ends into its summary instead of lingering until ✕.
-  for (const id of replies) {
-    const row = rail.getByTestId(`agent-item-${id}`);
-    await row.hover();
-    await row
-      .getByRole("button")
-      .and(page.getByTestId("rail-archive-conversation"))
-      .click();
-    await expect(row).toHaveCount(0);
-  }
+  // Both waiting ones archived: the round has nothing left to walk and ends
+  // into its summary instead of lingering until ✕. The round opened the
+  // first, so it is read and finished and not in the rail any more
+  // (rail-running-after-done); it is archived from its own header elsewhere.
+  await expect(rail.getByTestId(`agent-item-${replies[0]}`)).toHaveCount(0);
+  await writer.goto(new URL(hrefs[0], hostOrigin).href);
+  await writer
+    .locator(".ah-agent-header")
+    .getByTestId("archive-conversation")
+    .click();
+  await expect(writer.getByTestId("archive-notice")).toBeVisible();
+  await writer.close();
+  await page.bringToFront();
+  await page
+    .getByTestId("workspace-navigation")
+    .getByTestId("snapshot-refresh")
+    .click();
+  const row = rail.getByTestId(`agent-item-${replies[1]}`);
+  await row.hover();
+  await row
+    .getByRole("button")
+    .and(page.getByTestId("rail-archive-conversation"))
+    .click();
+  await expect(row).toHaveCount(0);
   await expect(queue).toHaveCount(0);
   await expect(page.getByTestId("next-note")).toBeVisible();
   expect(conversationNow(page)).toBe(here);

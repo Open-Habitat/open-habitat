@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: rail-running-after-done
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Finished conversation stays under Käynnissä in the rail (Birch)
@@ -35,8 +36,8 @@ work, or a status read that never settled after the turn.
 
 ## Acceptance Criteria
 
-- [ ] Cause named from code and live state.
-- [ ] A conversation whose turn has ended leaves *Käynnissä* (with its
+- [x] Cause named from code and live state.
+- [x] A conversation whose turn has ended leaves *Käynnissä* (with its
       recap, file offer or notice), and returns only when its agent works;
       browser spec reproducing the situation.
 

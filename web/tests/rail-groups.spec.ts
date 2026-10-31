@@ -20,16 +20,22 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   // Wire seam: age chosen conversations' changed_at, as if they had been
   // quiet for two and a half hours, without waiting or touching the
   // host's files. The rail's clock moves once a minute, so not exactly two.
+  // A finished conversation is not in Käynnissä (rail-running-after-done);
+  // one whose worker waits at its own prompt is, as a done row, so chosen
+  // conversations get such a worker.
   const aged = new Set<string>();
+  const parked = new Set<string>();
   await page.route("**/api/v1/snapshot", async (route) => {
     try {
       const response = await route.fetch();
       const body = await response.json();
-      for (const a of body.agents)
+      for (const a of body.agents) {
+        if (parked.has(a.agent_id)) a.spinoffs_idle = 1;
         if (aged.has(a.agent_id) && a.changed_at)
           a.changed_at = new Date(
             Date.parse(a.changed_at) - 2.5 * 3600000,
           ).toISOString();
+      }
       await route.fulfill({ response, json: body });
     } catch {
       await route.abort().catch(() => {});
@@ -42,6 +48,7 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   const running = nav.getByTestId("rail-running");
 
   const first = await start(page);
+  parked.add(first);
   await page.getByTestId("message-input").fill("Ensimmäinen viesti");
   await page
     .getByTestId("send")
@@ -58,7 +65,10 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   expect(box?.height).toBeLessThanOrEqual(26);
   // The line keeps only the title and the time; the rest is said.
   await expect(row.locator(".ah-nav-detail")).toHaveCount(0);
-  await expect(row).toHaveAttribute("title", /ordinary-dir · Odottaa viestiä/);
+  await expect(row).toHaveAttribute(
+    "title",
+    /ordinary-dir · Worker odottaa sinua/,
+  );
 
   // Two hours quiet: the open conversation never folds away.
   aged.add(first);
@@ -68,6 +78,8 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
 
   // Opened elsewhere, the quiet row folds to the end of its group.
   const second = await start(page);
+  parked.add(second);
+  await nav.getByTestId("snapshot-refresh").click();
   await expect(running.getByTestId(`agent-item-${second}`)).toBeVisible();
   await expect(row).toHaveCount(0);
   const fold = group.getByTestId("rail-fold-quiet-ordinary-dir");
@@ -130,7 +142,8 @@ test("@rail-groups A turn that ended in an error is a failed row until the perso
     "title",
     /ordinary-dir · Vuoro päättyi virheeseen/,
   );
-  // Writing again starts a new turn; its answer is done, not failed.
+  // Writing again starts a new turn; its answer is not failed, and the
+  // finished conversation leaves Käynnissä.
   await send("Yritä uudestaan");
-  await expect(row).toHaveAttribute("data-ball", "done", { timeout: 25000 });
+  await expect(row).toHaveCount(0, { timeout: 25000 });
 });

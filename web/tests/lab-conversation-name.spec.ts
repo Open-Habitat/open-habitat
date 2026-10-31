@@ -48,6 +48,19 @@ test("@lab @a11y a goal names its conversation and the person renames it in the 
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  // Wire seam: a finished conversation is not in Käynnissä
+  // (rail-running-after-done), so each one here has a worker waiting at its
+  // own prompt, which keeps its row in sight without a host write.
+  await page.route("**/api/v1/snapshot", async (route) => {
+    try {
+      const response = await route.fetch();
+      const body = await response.json();
+      for (const a of body.agents) a.spinoffs_idle = 1;
+      await route.fulfill({ response, json: body });
+    } catch {
+      await route.abort().catch(() => {});
+    }
+  });
   await signIn(page);
   const { goalTitle, agent } = await startFromGoal(page);
   const title = page.getByTestId("workspace-title");
