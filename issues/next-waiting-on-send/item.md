@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: next-waiting-on-send
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Next-waiting row appears on the person's send (direction Vuoron loppuun)
@@ -18,7 +19,7 @@ Jari 31.10. chose direction **Vuoron loppuun** from `proto-next-waiting-states` 
 
 ## Acceptance Criteria
 
-- [ ] Behaviour as the round-2 Vuoron loppuun graph; browser specs for appear-on-send, live update, each close event, (a) and (b).
-- [ ] KOKEILTAVAA line.
+- [x] Behaviour as the round-2 Vuoron loppuun graph; browser specs for appear-on-send, live update, each close event, (a) and (b).
+- [x] KOKEILTAVAA line.
 
 ## Comments

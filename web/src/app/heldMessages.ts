@@ -119,6 +119,7 @@ export function useHeldMessages({
   changeDraft,
   refresh,
   onLogin,
+  onSendOutcome,
 }: {
   id?: string;
   identity: string;
@@ -130,12 +131,16 @@ export function useHeldMessages({
   changeDraft: (value: string) => void;
   refresh: () => Promise<void>;
   onLogin: () => void;
+  onSendOutcome?: (event: import("./nextWaiting").SendWindowEvent) => void;
 }) {
   const key = `nah:${identity}:held:${id ?? ""}`;
   const [local, setLocalState] = useState<LocalHeld[]>(() => readHeld(key));
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const chain = useRef<Promise<void>>(Promise.resolve());
+  const ownSends = useRef(
+    new Map<string, (event: import("./nextWaiting").SendWindowEvent) => void>(),
+  );
   // Command IDs whose POST has not answered; only their reply resolves them.
   const inFlight = useRef(new Set<string>());
   const latest = useRef({
@@ -184,7 +189,10 @@ export function useHeldMessages({
         inFlight.current.add(next.command_id);
         try {
           await send(agent, next.text, next.command_id, token, next.choice);
+          ownSends.current.get(next.command_id)?.("accepted");
         } catch (error) {
+          ownSends.current.get(next.command_id)?.("failed");
+          ownSends.current.delete(next.command_id);
           if ((error as Error).message === "identity_lost") {
             onLogin();
             return;
@@ -221,12 +229,16 @@ export function useHeldMessages({
           .map((e) => e.entry_key),
         ...(choice && !readHeld(key).length ? { choice } : {}),
       };
+      if (onSendOutcome) {
+        onSendOutcome("pending");
+        ownSends.current.set(entry.command_id, onSendOutcome);
+      }
       update(key, (old) => [...old, entry]);
       if (!keepDraft) changeDraft("");
       setNotice("");
       void flush();
     },
-    [id, key, update, changeDraft, flush],
+    [id, key, update, changeDraft, flush, onSendOutcome],
   );
   // Adopt messages written before this conversation existed (or before a
   // reload) that were never posted.
@@ -269,6 +281,7 @@ export function useHeldMessages({
             ),
           );
         else if (outcome === "rejected" || outcome === "cancelled") {
+          ownSends.current.get(entry.command_id)?.("failed");
           // Never delivered: the text goes back to the field. A cancel whose
           // reply was lost is only learnt here, so this is its one restore.
           update(key, (old) =>
@@ -282,6 +295,7 @@ export function useHeldMessages({
               l.command_id === entry.command_id ? { ...l, uncertain: true } : l,
             ),
           );
+        ownSends.current.delete(entry.command_id);
       }
     })();
     return () => {
@@ -339,6 +353,10 @@ export function useHeldMessages({
       await chain.current;
       const returned = await cancelHeld(id, crypto.randomUUID(), csrf);
       const ids = new Set(returned.map((r) => r.command_id));
+      for (const command of ids) {
+        ownSends.current.get(command)?.("failed");
+        ownSends.current.delete(command);
+      }
       update(forKey, (old) => old.filter((l) => !ids.has(l.command_id)));
       if (forKey === latest.current.key) {
         giveBack(returned.map((r) => r.text));

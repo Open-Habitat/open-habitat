@@ -103,7 +103,6 @@ import {
 } from "./mutations";
 import { NewConversationModelDialog } from "./NewConversationModelDialog";
 import { NewWorkspacePage } from "./NewWorkspacePage";
-import { useWaitingRound } from "./nextWaiting";
 import { CreatingConversation } from "./PendingConversation";
 import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
 import { PiModelsProvider } from "./PiModels";
@@ -1284,20 +1283,6 @@ export function App() {
     workFacts: workerRowSentence,
     icons,
   });
-  // Every conversation opened, by any route, moves the experimental
-  // next-waiting round (view state of this tab) to it when it is a step.
-  const walkConversation =
-    selectedId && /^pi:[0-9a-fA-F-]{36}$/.test(openConversation ?? "")
-      ? openConversation
-      : null;
-  const round = useWaitingRound(
-    identity,
-    walkConversation ?? selectedAgentId ?? undefined,
-    now.yours,
-    // Archived or vanished conversations leave the round, judged only from
-    // a confirmed listing so a partial one removes nothing.
-    source === "confirmed" ? snapshot?.agents : undefined,
-  );
   // With one visible workspace the rail names it instead of listing it
   // (Jari 31.10.2026); hidden workspaces do not count, and an
   // unconfirmed listing keeps the list, which says what is missing.
@@ -2534,11 +2519,7 @@ export function App() {
                   );
                   return open && agentTitle(open.title);
                 })()}
-                nextWaiting={
-                  walkConversation
-                    ? { yours: now.yours, running: now.running, round }
-                    : undefined
-                }
+                nextWaiting={{ yours: now.yours }}
                 onSessionCreated={(session) => {
                   setDaemonSessions((old) => [...old, session]);
                   refresh(); // The new agent must be in the snapshot before its live turn is seeded.

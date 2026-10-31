@@ -7,10 +7,10 @@ const fi = {
   features: {
     "next-waiting-row": {
       name: "Seuraava odottava keskustelu",
-      desc: "Sillä aikaa kun agentti työskentelee, voit käydä sinua odottavat keskustelut läpi yhtenä kierroksena.",
+      desc: "Kun viestisi on otettu vastaan, voit avata seuraavan sinua odottavan keskustelun agentin vuoron ajaksi.",
       where:
-        "Keskustelun alareunassa, kirjoituskentän yläpuolella. Kierroksen ajan jono näkyy jokaisessa keskustelussa.",
-      shows: `Montako odottaa ja Käy läpi (${altKey("↓")}). Kierroksella koko jonon: Seuraava (${altKey("↓")}), Edellinen (${altKey("↑")}) ja ✕ (Esc). Viimeisen jälkeen Valmis päättää kierroksen siihen keskusteluun.`,
+        "Keskustelun alareunassa, kirjoituskentän yläpuolella. Rivi katoaa, kun agentti valmistuu tai kysyy tai poistut keskustelusta.",
+      shows: `Montako odottaa ja Avaa seuraava (${altKey("↓")}). Lista seuraa sivupalkkia. Seuraavassa keskustelussa rivi tulee vasta omasta lähetyksestäsi.`,
       needs: "Ei muuta. Järjestys seuraa toistaiseksi sivupalkkia.",
       caption: "Keskustelun alareuna",
     },
@@ -50,7 +50,7 @@ const fi = {
   picture: {
     waiting: "3 odottaa sinua",
     waitingWhy: "Kuvien pakkaus, …",
-    goThrough: "Käy läpi",
+    goThrough: "Avaa seuraava",
     composer: "Kirjoita agentille…",
     iconRows: "Ikoniprototyypin suunnat",
     railIcons: "Rail-ikonit",
@@ -87,10 +87,10 @@ export const experimentalFeaturesText = catalog(fi, {
   features: {
     "next-waiting-row": {
       name: "Next waiting conversation",
-      desc: "While the agent works, you can go through the conversations waiting for you in one round.",
+      desc: "Once your message is accepted, you can open the next conversation waiting for you during the agent's turn.",
       where:
-        "At the bottom of the conversation, above the message field. During the round the queue shows in every conversation.",
-      shows: `How many are waiting and Go through (${altKey("↓")}). During the round, the whole queue: Next (${altKey("↓")}), Previous (${altKey("↑")}) and ✕ (Esc). After the last one, Done ends the round in that conversation.`,
+        "At the bottom of the conversation, above the message field. The row disappears when the agent finishes or asks, or you leave the conversation.",
+      shows: `How many are waiting and Open next (${altKey("↓")}). The list follows the sidebar. In the next conversation the row appears only after you send there.`,
       needs: "Nothing else. For now the order follows the sidebar.",
       caption: "Bottom of the conversation",
     },
@@ -130,7 +130,7 @@ export const experimentalFeaturesText = catalog(fi, {
   picture: {
     waiting: "3 waiting for you",
     waitingWhy: "Image compression, …",
-    goThrough: "Go through",
+    goThrough: "Open next",
     composer: "Write to the agent…",
     iconRows: "Directions for the icon prototype",
     railIcons: "Rail icons",

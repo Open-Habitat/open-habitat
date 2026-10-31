@@ -2,350 +2,302 @@ import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
-// Seuraava odottava, Jono (next-waiting-queue, next-waiting-no-return):
-// behind its Kokeelliset ominaisuudet switch, the conversations waiting for
-// the person are offered above the composer while the host confirms that
-// this conversation's agent works, and walked forward as one round whose bar
-// shows in every step and never leads back to where it started.
 test.use({
   baseURL: hostOrigin,
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 900 },
-  deviceScaleFactor: 2,
 });
-
-const evidence = "../issues/next-waiting-no-return/evidence";
-const capture = !!process.env.OH_VISUAL_CAPTURE;
-
-const conversationOf = (href: string) =>
-  new URL(href, hostOrigin).searchParams.get("conversation");
-
-async function startAndSend(page: Page, message: string) {
+const conversationNow = (page: Page) =>
+  new URL(page.url()).searchParams.get("conversation");
+const line = (page: Page) => page.getByTestId("next-waiting");
+async function send(page: Page, text: string) {
+  await page.getByTestId("message-input").fill(text);
+  await page.getByTestId("send").click();
+}
+async function create(page: Page) {
   await page
     .getByRole("navigation")
     .getByTestId("workspace-ordinary-dir")
     .click();
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
-  await expect(
-    page
-      .locator(".ah-agent-header")
-      .getByTestId(/^(archive-conversation|dialog-close)$/),
-  ).toBeVisible();
-  const url = new URL(page.url());
-  await send(page, message);
-  return url.pathname + url.search;
+  await expect(page.getByTestId("message-input")).toBeEnabled();
+  return page.url();
 }
-
-async function send(page: Page, message: string) {
-  await page.getByTestId("message-input").fill(message);
-  await expect(page.getByTestId("message-input")).toHaveValue(message);
-  await page
-    .getByTestId("send")
-    .and(page.locator('[data-mode="send"]'))
-    .click();
-}
-
-const conversationNow = (page: Page) =>
-  new URL(page.url()).searchParams.get("conversation");
-
 async function switchOn(page: Page) {
+  await page.getByTestId("account-menu-trigger").click();
+  await page.getByTestId("menu-settings").click();
   await page
-    .getByRole("button")
-    .and(page.getByTestId("account-menu-trigger"))
+    .getByTestId("settings-navigation")
+    .getByTestId("settings-kokeelliset")
     .click();
-  await page
-    .getByRole("menuitem")
-    .and(page.getByTestId("menu-settings"))
-    .click();
-  await page
-    .getByRole("navigation")
-    .and(page.getByTestId("settings-navigation"))
-    .getByRole("link")
-    .and(page.getByTestId("settings-kokeelliset"))
-    .click();
-  const card = page
-    .getByRole("region")
-    .and(page.getByTestId("experimental-next-waiting-row"));
-  await expect(card).toBeVisible();
-  const on = card
-    .getByRole("group")
-    .and(page.getByTestId("experimental-next-waiting-row-choice"))
-    .getByRole("button")
-    .and(page.getByTestId("segment-on"));
+  const on = page
+    .getByTestId("experimental-next-waiting-row-choice")
+    .getByTestId("segment-on");
   await on.click();
   await expect(on).toHaveAttribute("aria-pressed", "true");
   await page.getByTestId("settings-close").click();
 }
-
-async function capture2(page: Page, name: string) {
-  if (!capture) return;
-  for (const colorScheme of ["light", "dark"] as const) {
-    await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
-    await page.screenshot({ path: `${evidence}/${name}-${colorScheme}.png` });
-  }
-  await page.emulateMedia({ colorScheme: "light", reducedMotion: null });
-}
-
-test("@next-waiting-row the waiting ones are offered only while the agent here works and walked forward as one round, only when switched on", async ({
-  page,
-  context,
-}) => {
-  test.setTimeout(240000);
+async function setup(page: Page, writer: Page, count = 2, enabled = true) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
-  const rail = page.getByRole("navigation");
-  const yours = rail
-    .getByTestId("rail-yours")
-    .getByRole("link")
-    .and(page.getByTestId("agent-link"));
-  // Four replies the person has not read, written from another tab.
-  const writer = await context.newPage();
-  const replies: string[] = [];
-  for (const [i, message] of [
-    "ensimmäinen vastaus",
-    "toinen vastaus",
-    "kolmas vastaus",
-    "neljäs vastaus",
-  ].entries()) {
+  const hrefs: string[] = [];
+  for (let i = 0; i < count; i++) {
     await writer.goto(`${hostOrigin}/workspaces`);
-    replies.push(conversationOf(await startAndSend(writer, message)) ?? "");
-    await expect(writer.getByTestId("message-input")).toBeEnabled();
-    await expect(yours).toHaveCount(i + 1, { timeout: 25000 });
+    hrefs.push(await create(writer));
+    await send(writer, `reply ${i}`);
+    await expect(
+      page.getByTestId("rail-yours").getByTestId("agent-link"),
+    ).toHaveCount(i + 1, { timeout: 25000 });
   }
-  await writer.close();
   await page.bringToFront();
-  // The rail's order is the round's order. Read once the rail holds all
-  // four, polled: a rail re-render under load can briefly hold none.
-  let order: (string | null)[] = [];
-  await expect
-    .poll(async () => {
-      order = (
-        await yours.evaluateAll((links) =>
-          links.map((a) => a.getAttribute("href") ?? ""),
-        )
-      ).map(conversationOf);
-      return [...order].sort();
-    })
-    .toEqual([...replies].sort());
+  const here = await create(page);
+  if (enabled) await switchOn(page);
+  return { here, hrefs };
+}
+async function hold(page: Page) {
+  await page.request.get("/fixture/scenario?value=pi-visual-hold");
+}
+async function archiveOther(page: Page, href: string) {
+  const id = new URL(href).searchParams.get("conversation");
+  const row = page.getByRole("navigation").getByTestId(`agent-item-${id}`);
+  await row.hover();
+  await row.getByTestId("rail-archive-conversation").click();
+  await expect(row).toHaveCount(0);
+}
 
-  const line = page.getByTestId("next-waiting");
-  const queue = page
-    .getByRole("navigation")
-    .and(page.getByTestId("next-queue"));
-  const stop = page
-    .getByTestId("composer-stop")
-    .and(page.locator('[data-stop-target="agent"]'));
-  // Off (the default): the agent works and nothing of the feature shows.
-  const here = conversationOf(
-    await startAndSend(page, "hidas ensimmäinen vuoro"),
-  );
-  await expect(stop).toBeVisible();
-  await expect(line).toHaveCount(0);
-  await expect(stop).toHaveCount(0, { timeout: 30000 });
-  await expect(line).toHaveCount(0);
-
-  // On: switched in Kokeelliset ominaisuudet, confirmed by the daemon. The
-  // unread replies are this tab's memory, so the settings open in the app,
-  // not by a page load.
-  await switchOn(page);
-  await expect.poll(() => conversationNow(page)).toBe(here);
-  await expect(page.getByTestId("message-input")).toBeEnabled();
-  // Not while it is the person's turn here.
-  await expect(line).toHaveCount(0);
-  await send(page, "hidas toinen vuoro");
-  await expect(stop).toBeVisible();
-  await expect(line).toBeVisible();
-  // The four others, never this conversation itself.
-  await expect(line).toHaveAttribute("data-waiting", "4");
-  await expect(line.locator(".ah-next-det")).not.toContainText("hidas");
-  // Not a Mac: the key is named Alt.
-  await expect(line.locator("kbd")).toHaveText(/^Alt\+/);
-  // Gone when the agent's turn ends and the person has something to write
-  // here (Jari 31.10.: it stayed for the rest of the visit), back when the
-  // agent works again.
-  await expect(stop).toHaveCount(0, { timeout: 30000 });
-  await expect(line).toHaveCount(0);
-  await send(page, "hidas kolmas vuoro");
-  await expect(stop).toBeVisible();
-  await expect(line).toHaveAttribute("data-waiting", "4");
-  expect(
-    (
-      await new AxeBuilder({ page })
-        .include('[data-testid="next-waiting"]')
-        .analyze()
-    ).violations,
-  ).toEqual([]);
-  await capture2(page, "lahto-desktop");
-
-  // Alt+↓ starts the round, also from the composer, while the agent here
-  // still works. The round is the four waiting ones, not this one.
-  const steps = queue.getByTestId("next-queue-step");
-  const prev = queue
-    .getByRole("button")
-    .and(page.getByTestId("next-queue-prev"));
-  const next = queue
-    .getByRole("button")
-    .and(page.getByTestId("next-queue-next"));
-  await page.getByTestId("message-input").focus();
-  await page.keyboard.press("Alt+ArrowDown");
-  await expect.poll(() => conversationNow(page)).toBe(order[0]);
-  await expect(queue).toBeVisible();
-  // Polled: while a step's history loads the conversation shows no
-  // composer and so no bar, and under load a single read can fall there.
-  const agents = () =>
-    steps.evaluateAll((s) => s.map((b) => b.getAttribute("data-agent")));
-  await expect.poll(agents).toEqual(order);
-  await expect(steps.nth(0)).toHaveAttribute("aria-current", "step");
-  // The reply here is now read and its agent does not work, yet the round
-  // goes on; there is nothing before the first step.
-  await expect(steps.nth(0)).toHaveAttribute("data-state", "handled");
-  await expect(prev).toBeDisabled();
-  // The start joins at the end only once its agent finished unseen and so
-  // waits for the person, like any other.
-  await expect.poll(agents, { timeout: 40000 }).toEqual([...order, here]);
-  expect(
-    (
-      await new AxeBuilder({ page })
-        .include('[data-testid="next-waiting"]')
-        .analyze()
-    ).violations,
-  ).toEqual([]);
-  await capture2(page, "kierros-desktop");
-  await page.getByTestId("message-input").focus();
-  await page.keyboard.press("Alt+ArrowDown");
-  await expect.poll(() => conversationNow(page)).toBe(order[1]);
-  await expect(steps.nth(1)).toHaveAttribute("aria-current", "step");
-  await expect(prev).toBeEnabled();
-  // Alt+↑ steps back one, and from the first step nowhere.
-  await page.keyboard.press("Alt+ArrowUp");
-  await expect.poll(() => conversationNow(page)).toBe(order[0]);
-  await expect(prev).toBeDisabled();
-  // Esc ends the round. The agent here waits: no line either.
-  await page.getByTestId("message-input").focus();
-  await page.keyboard.press("Escape");
-  await expect(queue).toHaveCount(0);
-  await expect(line).toHaveCount(0);
-
-  // The phone: a new round over the three still waiting (the start among
-  // them), walked by tapping; after the last one Valmis ends it there.
-  await page.setViewportSize({ width: 390, height: 844 });
-  await send(page, "hidas neljäs vuoro");
-  await expect(stop).toBeVisible();
-  await expect(line).toHaveAttribute("data-waiting", "3");
-  await page.getByRole("button").and(page.getByTestId("next-open")).click();
-  await expect(queue).toBeVisible();
-  let round: (string | null)[] = [];
-  await expect
-    .poll(async () => {
-      round = await agents();
-      return [...round].sort();
-    })
-    .toEqual([order[2], order[3], here].sort());
-  await expect.poll(() => conversationNow(page)).toBe(round[0]);
-  await expect(steps.first()).toBeHidden();
-  await expect(prev).toBeVisible();
-  await expect(next).toBeVisible();
-  const box = await queue.boundingBox();
-  expect(box?.width ?? 0).toBeLessThanOrEqual(390);
-  await capture2(page, "kierros-phone");
-  await next.click();
-  await expect.poll(() => conversationNow(page)).toBe(round[1]);
-  await prev.click();
-  await expect.poll(() => conversationNow(page)).toBe(round[0]);
-  await next.click();
-  await expect.poll(() => conversationNow(page)).toBe(round[1]);
-  await next.click();
-  await expect.poll(() => conversationNow(page)).toBe(round[2]);
-  await expect(next).toHaveAttribute("data-last", "true");
-  await capture2(page, "kierros-viimeinen-phone");
-  await next.click();
-  await expect(queue).toHaveCount(0);
-  await expect(page.getByTestId("next-note")).toBeVisible();
-  // It ends where the person is, not back where the round started.
-  expect(conversationNow(page)).toBe(round[2]);
-  await capture2(page, "kierros-kayty-phone");
-});
-
-test("@next-waiting-row a round whose waiting ones are archived ends itself, and a Mac names the keys ⌥", async ({
+test("@next-waiting-row acceptance opens, live list empties and reopens, finish closes permanently", async ({
   page,
   context,
 }) => {
   test.setTimeout(180000);
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "platform", { get: () => "MacIntel" });
-  });
-  await page.request.get("/fixture/scenario?value=ready");
-  await page.goto("/workspaces");
-  await page.getByTestId("github-sign-in").click();
-  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
-  const rail = page.getByRole("navigation");
-  const yours = rail
-    .getByTestId("rail-yours")
-    .getByRole("link")
-    .and(page.getByTestId("agent-link"));
   const writer = await context.newPage();
-  const replies: string[] = [];
-  const hrefs: string[] = [];
-  for (const [i, message] of ["ensimmäinen", "toinen"].entries()) {
-    await writer.goto(`${hostOrigin}/workspaces`);
-    hrefs.push(await startAndSend(writer, message));
-    replies.push(conversationOf(hrefs[i]) ?? "");
-    await expect(writer.getByTestId("message-input")).toBeEnabled();
-    await expect(yours).toHaveCount(i + 1, { timeout: 25000 });
-  }
-  await page.bringToFront();
-  const here = conversationOf(await startAndSend(page, "lähtö"));
-  await expect(page.getByTestId("message-input")).toBeEnabled();
+  const { hrefs } = await setup(page, writer, 2, false);
+  await hold(page);
+  await send(page, "feature off");
+  await expect(page.getByTestId("composer-stop")).toBeVisible();
+  await expect(line(page)).toHaveCount(0);
+  await page.request.get("/fixture/scenario?value=ready");
+  await expect(page.getByTestId("composer-stop")).toHaveCount(0, {
+    timeout: 30000,
+  });
   await switchOn(page);
-  await expect.poll(() => conversationNow(page)).toBe(here);
-  await expect(page.getByTestId("message-input")).toBeEnabled();
-  const line = page.getByTestId("next-waiting");
-  await send(page, "hidas toinen vuoro");
-  await expect(line).toHaveAttribute("data-waiting", "2");
-  await expect(line.locator("kbd")).toHaveText(/^⌥/);
+  await hold(page);
+  // Delay only the POST reply: running alone must not open the window.
+  let accept!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    accept = resolve;
+  });
+  await page.route("**/api/v1/conversations/*/send", async (route) => {
+    const response = await route.fetch();
+    await gate;
+    await route.fulfill({ response });
+  });
+  await send(page, "held turn");
+  await expect(page.getByTestId("composer-stop")).toBeVisible();
+  await expect(line(page)).toHaveCount(0);
+  accept();
+  await expect(line(page)).toHaveAttribute("data-waiting", "2");
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[data-testid="next-waiting"]')
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await archiveOther(page, hrefs[0]);
+  await expect(line(page)).toHaveAttribute("data-waiting", "1");
+  await archiveOther(page, hrefs[1]);
+  await expect(line(page)).toHaveCount(0);
+  // Keep this turn active in its validated status while the fixture releases
+  // the writer. This tests the UI transition, not a second native Pi mode.
+  let keepWorking = true;
+  await page.route("**/api/v1/conversations/*/status", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    if (keepWorking) {
+      body.run_active = true;
+      body.turn_settled = null;
+    }
+    await route.fulfill({ response, json: body });
+  });
+  await writer.goto(`${hostOrigin}/workspaces`);
+  const another = await create(writer);
+  await page.request.get("/fixture/scenario?value=ready");
+  await send(writer, "new reply");
+  await expect(line(page)).toHaveAttribute("data-waiting", "1", {
+    timeout: 25000,
+  });
+  keepWorking = false;
+  await page.getByTestId("workspace-details").click();
+  await page.getByTestId("conversation-recheck").click();
+  await page.getByTestId("workspace-details").click();
+  await expect(page.getByTestId("composer-stop")).toHaveCount(0, {
+    timeout: 30000,
+  });
+  await expect(line(page)).toHaveCount(0);
+  await hold(page);
+  await send(page, "next turn");
+  await expect(line(page)).toHaveAttribute("data-waiting", "1");
+  await page.setViewportSize({ width: 390, height: 844 });
+  const box = await line(page).boundingBox();
+  expect(box?.width ?? 1000).toBeLessThanOrEqual(390);
+  await page.getByTestId("next-open").click();
+  await expect
+    .poll(() => conversationNow(page))
+    .toBe(new URL(another).searchParams.get("conversation"));
+  await expect(line(page)).toHaveCount(0);
+  await expect(page.getByTestId("next-queue")).toHaveCount(0);
+  await writer.close();
+});
 
-  const queue = page
-    .getByRole("navigation")
-    .and(page.getByTestId("next-queue"));
+test("@next-waiting-row next and rail departure do not carry a window, nor does reload or an external send", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(180000);
+  const writer = await context.newPage();
+  const { here } = await setup(page, writer);
+  await hold(page);
+  await send(page, "own turn");
+  await expect(line(page)).toHaveAttribute("data-waiting", "2");
+  const firstHref = await page
+    .getByTestId("rail-yours")
+    .getByTestId("agent-link")
+    .first()
+    .getAttribute("href");
+  const firstId = new URL(firstHref ?? "", hostOrigin).searchParams.get(
+    "conversation",
+  );
   await page.getByTestId("message-input").focus();
   await page.keyboard.press("Alt+ArrowDown");
-  await expect(queue).toBeVisible();
-  for (const kbd of await queue.locator("kbd").all())
-    await expect(kbd).toHaveText(/^⌥/);
-  // The bar has no way back to the start: the person goes there through
-  // the rail like anywhere else, and the bar stays with its place.
-  await rail.getByTestId(`agent-item-${here}`).getByRole("link").click();
-  await expect.poll(() => conversationNow(page)).toBe(here);
-  await expect(queue).toBeVisible();
+  await expect.poll(() => conversationNow(page)).toBe(firstId);
+  await expect(line(page)).toHaveCount(0);
+  await send(page, "answer here");
+  await expect(line(page)).toHaveAttribute("data-waiting", "1");
+  const hereId = new URL(here).searchParams.get("conversation");
+  await page
+    .getByRole("navigation")
+    .getByTestId(`agent-item-${hereId}`)
+    .getByTestId("agent-link")
+    .click();
+  await expect.poll(() => page.url()).toBe(here);
+  await expect(line(page)).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId("message-input")).toBeVisible();
+  await expect(line(page)).toHaveCount(0);
+  await page.request.get("/fixture/scenario?value=ready");
+  await expect(page.getByTestId("composer-stop")).toHaveCount(0, {
+    timeout: 30000,
+  });
+  // A fresh unread reply after reload makes the no-window assertion
+  // independent of how the rail restores its attention memory.
+  await writer.goto(`${hostOrigin}/workspaces`);
+  await create(writer);
+  await send(writer, "waiting after reload");
+  await expect(
+    page.getByTestId("rail-yours").getByTestId("agent-link").first(),
+  ).toBeVisible({ timeout: 25000 });
+  await writer.goto(here);
+  await expect(writer.getByTestId("message-input")).toBeEnabled();
+  await hold(page);
+  await send(writer, "external turn");
+  await expect(page.getByTestId("composer-stop")).toBeVisible();
+  await expect(line(page)).toHaveCount(0);
+  await writer.close();
+});
 
-  // Both waiting ones archived: the round has nothing left to walk and ends
-  // into its summary instead of lingering until ✕. The round opened the
-  // first, so it is read and finished and not in the rail any more
-  // (rail-running-after-done); it is archived from its own header elsewhere.
-  await expect(rail.getByTestId(`agent-item-${replies[0]}`)).toHaveCount(0);
-  await writer.goto(new URL(hrefs[0], hostOrigin).href);
-  await writer
+test("@next-waiting-row question, failed send and archive close the window", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(180000);
+  const writer = await context.newPage();
+  await setup(page, writer);
+  await hold(page);
+  await send(page, "own turn");
+  await expect(line(page)).toHaveAttribute("data-waiting", "2");
+  let asks = true;
+  await page.route("**/api/v1/conversations/*/status", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    if (asks)
+      body.pending_question = {
+        request_id: "q",
+        question_kind: "unknown",
+        prompt: "question",
+        choices: [],
+      };
+    await route.fulfill({ response, json: body });
+  });
+  await expect(page.getByTestId("agent-question")).toBeVisible();
+  await expect(line(page)).toHaveCount(0);
+  asks = false;
+  await expect(page.getByTestId("agent-question")).toHaveCount(0);
+  await expect(line(page)).toHaveCount(0);
+  // A queued message is also a person's send; a refusal closes that window.
+  await send(page, "queued");
+  await expect(line(page)).toBeVisible();
+  await page.route("**/api/v1/conversations/*/steer", (route) =>
+    route.fulfill({ status: 409, body: "" }),
+  );
+  await send(page, "fails");
+  await expect(line(page)).toHaveCount(0);
+  await page.unrouteAll({ behavior: "wait" });
+  await page.request.get("/fixture/scenario?value=ready");
+  await expect(page.getByTestId("composer-stop")).toHaveCount(0, {
+    timeout: 30000,
+  });
+  await hold(page);
+  await send(page, "archive this");
+  await expect(line(page)).toBeVisible();
+  await page
     .locator(".ah-agent-header")
     .getByTestId("archive-conversation")
     .click();
-  await expect(writer.getByTestId("archive-notice")).toBeVisible();
+  await expect(page.getByTestId("archive-notice")).toBeVisible();
+  await expect(line(page)).toHaveCount(0);
   await writer.close();
-  await page.bringToFront();
-  await page
-    .getByTestId("workspace-navigation")
-    .getByTestId("snapshot-refresh")
-    .click();
-  const row = rail.getByTestId(`agent-item-${replies[1]}`);
-  await row.hover();
-  await row
-    .getByRole("button")
-    .and(page.getByTestId("rail-archive-conversation"))
-    .click();
-  await expect(row).toHaveCount(0);
-  await expect(queue).toHaveCount(0);
-  await expect(page.getByTestId("next-note")).toBeVisible();
-  expect(conversationNow(page)).toBe(here);
+});
+
+test("@next-waiting-row off by default; a send with nobody waiting opens an empty window, reload forgets it", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(180000);
+  const writer = await context.newPage();
+  await setup(page, writer, 0, false);
+  await hold(page);
+  await send(page, "off by default");
+  await expect(page.getByTestId("composer-stop")).toBeVisible();
+  await expect(line(page)).toHaveCount(0);
+  await switchOn(page);
+  await send(page, "empty window");
+  await expect(line(page)).toHaveCount(0);
+  await page.route("**/api/v1/conversations/*/status", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.run_active = true;
+    body.turn_settled = null;
+    await route.fulfill({ response, json: body });
+  });
+  await page.request.get("/fixture/scenario?value=ready");
+  await writer.goto(`${hostOrigin}/workspaces`);
+  await create(writer);
+  await send(writer, "first waiting reply");
+  await expect(line(page)).toHaveAttribute("data-waiting", "1", {
+    timeout: 25000,
+  });
+  await page.reload();
+  await expect(page.getByTestId("message-input")).toBeVisible();
+  await writer.goto(`${hostOrigin}/workspaces`);
+  await create(writer);
+  await send(writer, "another waiting reply after reload");
+  await expect(
+    page.getByTestId("rail-yours").getByTestId("agent-link").first(),
+  ).toBeVisible({ timeout: 25000 });
+  await expect(line(page)).toHaveCount(0);
+  await writer.close();
 });

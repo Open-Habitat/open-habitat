@@ -98,6 +98,7 @@ export function useConversationActions({
   changeDraft,
   onSent,
   onQueued,
+  onSendOutcome,
   refresh,
   onLogin,
   onSessionCreated,
@@ -132,6 +133,8 @@ export function useConversationActions({
   onSent: (message: OwnSend) => void;
   /** Draws a steering or follow-up message, or with `clear` drops them all. */
   onQueued: (message: QueuedSend | "clear") => void;
+  /** This visit's send window; never inferred from restored receipts. */
+  onSendOutcome?: (event: import("./nextWaiting").SendWindowEvent) => void;
   refresh: (proof?: boolean, history?: boolean) => Promise<void>;
   onLogin: () => void;
   onSessionCreated: (session: Session) => void;
@@ -232,12 +235,15 @@ export function useConversationActions({
       onSent({ command, text, before: userKeys(entries) });
       if (!keepDraft) changeDraft("");
       setReceipt(txt.awaitingAck);
+      onSendOutcome?.("pending");
       await send(current.agent_id, text, command, token, firstChoice);
+      onSendOutcome?.("accepted");
       inFlightSend.current = undefined;
       if (!alive.current) return;
       setReceipt(txt.awaitingNative);
       await refresh();
     } catch (error) {
+      onSendOutcome?.("failed");
       if (inFlightSend.current === command) inFlightSend.current = undefined;
       if ((error as Error).message === "identity_lost") onLogin();
       else if (alive.current && error instanceof NotAdmitted) {
@@ -292,9 +298,12 @@ export function useConversationActions({
       });
       if (!keepDraft) changeDraft("");
       setReceipt(txt.awaitingAck);
+      onSendOutcome?.("pending");
       await queueMessage(current.agent_id, text, command, token, kind);
+      onSendOutcome?.("accepted");
       if (alive.current) await refresh();
     } catch (error) {
+      onSendOutcome?.("failed");
       if ((error as Error).message === "identity_lost") onLogin();
       if (alive.current && error instanceof NotAdmitted) {
         sessionStorage.removeItem(sendKey);

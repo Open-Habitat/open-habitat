@@ -102,6 +102,7 @@ import { type LiveTurnInput, TurnText, timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { startProblemReason } from "./mutations";
 import { type NextWaiting, NextWaitingDock } from "./NextWaitingDock";
+import { useNextWaitingWindow } from "./nextWaiting";
 import { sshTarget } from "./ownMachines";
 import {
   OwnMachineUseProvider,
@@ -790,6 +791,12 @@ function BrowserConversationContent({
         }
       : undefined;
 
+  const waitingWindow = useNextWaitingWindow(
+    id,
+    current,
+    statusStale,
+    archive?.archive === "archived",
+  );
   const {
     start,
     submit,
@@ -827,6 +834,7 @@ function BrowserConversationContent({
     changeDraft,
     onSent,
     onQueued,
+    onSendOutcome: waitingWindow.outcome,
     refresh,
     onLogin,
     onSessionCreated,
@@ -843,6 +851,7 @@ function BrowserConversationContent({
     changeDraft,
     refresh: () => refresh(false, true),
     onLogin,
+    onSendOutcome: waitingWindow.outcome,
   });
   // Pi is not running: a send is held by the daemon and starts Pi. A previous
   // uncertain send does not block a new message then; it is never resent.
@@ -2468,7 +2477,7 @@ function BrowserConversationContent({
                 <NextWaitingDock
                   next={nextWaiting}
                   agentId={id}
-                  working={presentation.activity === "working"}
+                  open={waitingWindow.open}
                 />
               ) : null}
               <Composer
