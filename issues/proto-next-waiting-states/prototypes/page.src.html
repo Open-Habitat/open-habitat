@@ -137,7 +137,7 @@ svg.graph { display: block; width: 100%; height: auto; }
 .app.phone .composer { padding-inline: 10px; }
 
 /* ---------- the row and bar, as production (NextWaitingRow.css) ---------- */
-.ah-next-waiting { flex: none; display: grid; gap: 2px; padding: 0 var(--ah-column-pad-inline) 6px; }
+.ah-next-waiting { flex: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 0 var(--ah-column-pad-inline) 6px; }
 .app.phone .ah-next-waiting { padding-inline: 10px; }
 .ah-next-waiting > * { width: min(100%, calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline))); margin-inline: auto; }
 .ah-next-note { margin: 0; color: var(--ah-muted); font-size: 12px; font-style: italic; }
@@ -216,10 +216,7 @@ svg.graph { display: block; width: 100%; height: auto; }
 <body>
 <nav class="proto-picker" aria-label="Prototype variants" data-position="top">
   <span class="proto-picker-highlight" aria-hidden="true"></span>
-  <button class="proto-picker-item" data-active aria-current="true">Nykyinen</button>
-  <button class="proto-picker-item">Työn ajan</button>
-  <button class="proto-picker-item">Saapuminen</button>
-  <button class="proto-picker-item">Kierros eteenpäin</button>
+<!--PICKER-->
 </nav>
 <div id="stage"></div>
 <script>
@@ -251,6 +248,7 @@ const BASE = [
     agent: 'Käyn postilaatikon läpi ja tallennan liitteet.' },
 ];
 let W;
+const ROUND = /*ROUND*/1;
 const fresh = () => ({ convs: BASE.map((c) => ({ ...c })), open: 'a', railOpen: false });
 const conv = (id) => W.convs.find((c) => c.id === id);
 const here = () => (W.open ? conv(W.open) : null);
@@ -355,6 +353,7 @@ const V = [];
 // ---- Nykyinen: read from NextWaitingDock.tsx and nextWaiting.ts ----
 V.push({
   key: 'nykyinen',
+  rounds: [1, 2],
   name: 'Nykyinen',
   axis: 'Tuotanto nyt (main 31.10.): lukitus + Jono-kierros paluineen',
   lead: 'Koodista luettu nykytila. Rivi syttyy, kun host vahvistaa tämän keskustelun agentin työskentelevän, ja lukitus (<code>engaged</code>) jää sen jälkeen päälle koko käynnin ajaksi, myös kun agentti on valmis. Kierros jäädyttää odottavat, kulkee molempiin suuntiin ja vie lopuksi takaisin lähtöön. Punaiset katkoviivat ovat virheitä; numerot viittaavat listaan graafin alla.',
@@ -686,6 +685,158 @@ V.push({
   },
 });
 
+// ==================================================================
+// Round 2 (Jari 31.10.): the row appears when the person sends a message
+// here, and updates live while shown. The window is this tab's memory of
+// that send (t.win = the conversation). The axis: what ends the window and
+// what the row shows when the situation changes behind it.
+// ==================================================================
+const sendNodes = (eLabel = 'Piilossa', eSub = 'lähetit, mutta muita\nei odota') => [
+  { id: 'P', x: 10, y: 100, w: 150, h: 56, label: 'Piilossa', sub: 'et ole lähettänyt tässä' },
+  { id: 'R', x: 245, y: 96, w: 160, h: 64, label: 'Rivi näkyy', sub: 'N odottaa sinua · Avaa\nseuraava · päivittyy' },
+  { id: 'E', x: 480, y: 96, w: 150, h: 64, label: eLabel, sub: eSub },
+];
+const sendEdges = (closeLabel) => [
+  { from: 'P', to: 'R', on: ['send'], c: [203, 112], l: [203, 92], label: 'lähetät' },
+  { from: 'R', to: 'P', on: ['finish', 'ask', 'sendFail', 'open', 'openRail', 'reload', 'archiveThis', 'row'], c: [203, 144], l: [203, 178], label: closeLabel },
+  { from: 'R', to: 'E', on: ['otherStop', 'archiveOther'], c: [442, 112], l: [442, 92], label: 'muut lakkaavat' },
+  { from: 'E', to: 'R', on: ['otherWait'], c: [442, 144], l: [442, 178], label: 'toinen alkaa odottaa' },
+  { from: 'P', to: 'E', on: ['send'], c2: [[110, 30], [530, 30]], p0: [85, 100], p1: [555, 96], l: [320, 50], label: 'lähetät, muita ei odota' },
+  { from: 'P', to: 'P', on: ['start', 'finish', 'ask', 'otherWait', 'otherStop', 'archiveOther', 'reload'], loop: 'bottom', r: 30, l: [85, 214], label: '' },
+  { from: 'R', to: 'R', on: ['otherWait', 'otherStop', 'archiveOther', 'start'], loop: 'bottom', off: 40, r: 28, l: [372, 206], align: 'start', label: '' },
+  { from: 'E', to: 'P', on: ['finish', 'ask', 'sendFail', 'open', 'openRail', 'reload', 'archiveThis'], c2: [[530, 30], [110, 30]], p0: [555, 96], p1: [85, 100], l: [0, 0], label: '' },
+];
+const sendRow = () => {
+  const o = others();
+  return o.length ? rowHTML({ title: `${o.length} odottaa sinua`, det: o.map((c) => c.title).join(', '), go: 'Avaa seuraava', act: 'row' }) : '';
+};
+const quietLine = (label, text) => `<div class="ah-next-open quietrow" role="status" style="cursor:default"><span class="ah-next-label">${esc(label)}</span><span class="ah-next-det" style="color:var(--ah-ink-2)">${esc(text)}</span></div>`;
+// Common behaviour: the send opens the window here; leaving closes it; the
+// row's button opens the first waiting one (the window does not follow).
+const sendBase = {
+  rounds: [2],
+  init() { return { win: null, done: null }; },
+  classify(kind) { return kind; },
+  onSend() { this.t.win = W.open; this.t.done = null; },
+  onSendFail() { if (this.t.win === W.open) this.t.win = null; },
+  onNavigate() { this.t.win = null; this.t.done = null; },
+  act(a) {
+    if ((a === 'row' || a === 'altDown') && this.t.win === W.open && others().length && this.showsRow()) {
+      return { kind: 'row', go: others()[0].id };
+    }
+    return null;
+  },
+};
+
+V.push({
+  ...sendBase,
+  key: 'vuoron-loppuun',
+  name: 'Vuoron loppuun',
+  axis: 'Akseli: mikä sulkee lähetyksen avaaman ikkunan ja miltä muutos näyttää → vuoron loppu, rivi vain katoaa',
+  lead: 'Rivi tulee, kun lähetät viestin tähän keskusteluun ja host ottaa sen vastaan. Se elää tämän agentin vuoron loppuun: kun agentti valmistuu, kysyy tai lähetys epäonnistuu, rivi katoaa. Näkyessään se päivittyy: määrä ja nimet vaihtuvat, ja kun kukaan muu ei odota, rivi katoaa ja palaa, jos joku alkaa taas odottaa. Agentti, joka aloittaa ilman lähetystäsi, ei tuo riviä.',
+  graph: { w: 640, h: 250, nodes: sendNodes(), edges: sendEdges('valmistuu / kysyy / epäonnistuu\n/ avaat muun / lataat') },
+  defects: [
+    ['✓', 'ok', 'Yksinkertaisin.', 'Ikkuna = lähetyksestä vuoron loppuun. Riviä ei koskaan näy, kun tämä keskustelu odottaa sinua. Uutta host-tietoa ei tarvita: lähetyksen hyväksyntä ja vuoron loppu ovat jo olemassa.'],
+    ['D', 'cost', 'Rivi hyppää.', 'Kun kukaan ei enää odota, rivi katoaa, ja kun joku alkaa odottaa, se ilmestyy taas. Kentän yläpuoli liikkuu kesken työn.'],
+  ],
+  showsRow() { return true; },
+  effect() { const t = this.t; if (t.win && (t.win !== W.open || !working())) t.win = null; },
+  node() { if (this.t.win !== W.open || !W.open) return 'P'; return others().length ? 'R' : 'E'; },
+  dock() { return this.node() === 'R' ? sendRow() : ''; },
+});
+
+V.push({
+  ...sendBase,
+  key: 'paikka-pysyy',
+  name: 'Paikka pysyy',
+  axis: 'Akseli: mikä sulkee lähetyksen avaaman ikkunan ja miltä muutos näyttää → vuoron loppu, rivi vaihtaa sisältöä',
+  lead: 'Sama ikkuna kuin Vuoron loppuun, mutta rivi pitää paikkansa koko ikkunan ajan, ja muutos näkyy sisältönä. Kun kukaan ei odota, rivillä lukee hiljaa "Kukaan muu ei odota sinua". Kun agentti valmistuu tai kysyy, rivi sanoo sen hetken ("Vastaus valmis tässä", "Agentti kysyy sinulta") ja häviää neljässä sekunnissa. Kenttä ei hypi kesken työn.',
+  init() { return { win: null, done: null }; },
+  graph: {
+    w: 640, h: 400,
+    nodes: [...sendNodes('Hiljainen rivi', 'Kukaan muu ei\nodota sinua'),
+      { id: 'D', x: 245, y: 300, w: 160, h: 64, label: 'Valmis tässä', sub: 'Vastaus valmis tässä /\nAgentti kysyy · 4 s' }],
+    edges: [...sendEdges('epäonnistuu / avaat\nmuun / lataat'),
+      { from: 'R', to: 'D', on: ['finish', 'ask'], c: [300, 230], l: [292, 236], align: 'end', label: 'valmistuu / kysyy' },
+      { from: 'E', to: 'D', on: ['finish', 'ask'], c: [470, 250], l: [478, 262], align: 'start', label: 'valmistuu / kysyy' },
+      { from: 'D', to: 'P', on: ['fade', 'open', 'openRail', 'reload', 'archiveThis', 'send', 'otherWait', 'otherStop', 'archiveOther'], c: [150, 280], l: [140, 262], align: 'end', label: '4 s kuluu /\navaat muun' },
+      { from: 'D', to: 'R', on: ['send'], c: [355, 230], l: [362, 236], align: 'start', label: 'lähetät uudelleen' },
+    ],
+  },
+  defects: [
+    ['✓', 'ok', 'Kenttä ei hypi.', 'Rivin paikka pysyy lähetyksestä vuoron loppuun, ja vain teksti vaihtuu. Loppu sanotaan, eikä rivi vain katoa.'],
+    ['E', 'cost', 'Rivi näkyy myös silloin, kun sillä ei ole tarjottavaa.', 'Hiljainen "Kukaan muu ei odota sinua" vie rivin korkeuden. Lisäksi tarvitaan ajastin ilmoitukselle, joka häviää itsestään.'],
+  ],
+  showsRow() { return this.node() === 'R'; },
+  effect() {
+    const t = this.t;
+    if (t.win && t.win !== W.open) t.win = null;
+    if (t.win === W.open && !working()) {
+      t.done = { id: W.open, text: here().st === 'ask' ? 'Agentti kysyy sinulta.' : 'Vastaus valmis tässä.', token: Math.random() };
+      t.win = null;
+      const tok = t.done.token;
+      setTimeout(() => { if (v === this && this.t.done && this.t.done.token === tok) fire('fade'); }, 4000);
+    }
+    if (t.done && t.done.id !== W.open) t.done = null;
+  },
+  onFade() { this.t.done = null; },
+  node() {
+    if (this.t.done && this.t.done.id === W.open) return 'D';
+    if (this.t.win !== W.open || !W.open) return 'P';
+    return others().length ? 'R' : 'E';
+  },
+  dock() {
+    const n = this.node();
+    if (n === 'R') return sendRow();
+    if (n === 'E') return quietLine('Sillä aikaa', 'Kukaan muu ei odota sinua.');
+    if (n === 'D') return quietLine('Valmis', this.t.done.text) ;
+    return '';
+  },
+});
+
+V.push({
+  ...sendBase,
+  key: 'lahtoon-asti',
+  name: 'Lähtöön asti',
+  axis: 'Akseli: mikä sulkee lähetyksen avaaman ikkunan ja miltä muutos näyttää → lähtö, rivi kertoo tämän tilan',
+  lead: 'Ikkuna aukeaa lähetyksestä ja pysyy, kunnes lähdet keskustelusta tai lataat sivun. Agentin valmistuminen ei sulje sitä vaan muuttaa sisältöä: "Täällä valmis · N odottaa yhä" tai "Kysyy täällä · N odottaa myös". Rivi katoaa vain, kun kukaan muu ei odota. Tämä kokeilee, pitääkö kierroksen 1 sääntö "piilossa kun tämä odottaa sinua" yhä.',
+  graph: {
+    w: 640, h: 470,
+    nodes: [...sendNodes('Piilossa', 'ikkuna auki,\nmuita ei odota'),
+      { id: 'RD', x: 245, y: 300, w: 160, h: 64, label: 'Täällä valmis', sub: 'Täällä valmis · N odottaa\nyhä · Avaa seuraava' },
+      { id: 'RQ', x: 480, y: 300, w: 150, h: 64, label: 'Täällä kysyy', sub: 'Kysyy täällä · N\nodottaa myös' }],
+    edges: [...sendEdges('epäonnistuu / avaat\nmuun / lataat'),
+      { from: 'R', to: 'RD', on: ['finish'], c: [300, 230], l: [292, 236], align: 'end', label: 'valmistuu' },
+      { from: 'RD', to: 'R', on: ['send', 'start'], c: [350, 230], l: [356, 236], align: 'start', label: 'lähetät' },
+      { from: 'R', to: 'RQ', on: ['ask'], c: [500, 200], l: [506, 214], align: 'start', label: 'kysyy' },
+      { from: 'RQ', to: 'R', on: ['send', 'start'], c: [440, 250], l: [446, 262], align: 'start', label: 'vastaat' },
+      { from: 'RD', to: 'P', on: ['open', 'openRail', 'reload', 'archiveThis', 'row'], c2: [[325, 470], [30, 470]], p0: [300, 364], p1: [40, 159], l: [170, 446], label: 'avaat muun / lataat' },
+      { from: 'RQ', to: 'P', on: ['open', 'openRail', 'reload', 'archiveThis', 'row'], c2: [[555, 470], [30, 470]], p0: [555, 364], p1: [40, 159], l: [0, 0], label: '' },
+      { from: 'RD', to: 'E', on: ['otherStop', 'archiveOther'], c: [470, 230], l: [0, 0], label: '' },
+      { from: 'RQ', to: 'E', on: ['otherStop', 'archiveOther'], c: [555, 230], l: [563, 230], align: 'start', label: 'muut\nlakkaavat' },
+    ],
+  },
+  defects: [
+    ['✓', 'ok', 'Ei hyppimistä vuoron lopussa.', 'Rivi kertoo, mitä täällä tapahtui, ja tarjoaa silti seuraavan. Yksi sulkeva tapahtuma: lähtö.'],
+    ['F', 'cost', 'Rivi houkuttelee pois keskustelusta, joka odottaa sinua.', 'Juuri tätä Jari moitti kuvassaan (kierros 1, virhe 1). Jos se oli vika, tämä suunta toistaa sen, mutta nyt rivi sanoo tilan ääneen.'],
+  ],
+  showsRow() { return ['R', 'RD', 'RQ'].includes(this.node()); },
+  effect() { const t = this.t; if (t.win && t.win !== W.open) t.win = null; },
+  node() {
+    if (this.t.win !== W.open || !W.open) return 'P';
+    if (!others().length) return 'E';
+    const st = here().st;
+    return st === 'work' ? 'R' : st === 'ask' ? 'RQ' : 'RD';
+  },
+  dock() {
+    const n = this.node(), o = others();
+    if (n === 'R') return sendRow();
+    if (n === 'RD') return rowHTML({ label: 'Täällä valmis', title: `${o.length} odottaa yhä`, det: o.map((c) => c.title).join(', '), go: 'Avaa seuraava', act: 'row', quiet: true });
+    if (n === 'RQ') return rowHTML({ label: 'Kysyy täällä', title: `${o.length} odottaa myös`, det: o.map((c) => c.title).join(', '), go: 'Avaa seuraava', act: 'row', quiet: true });
+    return '';
+  },
+});
+
 // ------------------------------------------------------------------
 // The page: graph + events + app, re-rendered after every event.
 // ------------------------------------------------------------------
@@ -698,7 +849,7 @@ function setParam(k, val) { const u = new URL(location); u.searchParams.set(k, v
 
 const EVENTS = [
   ['Tämä keskustelu', [
-    ['send', 'Lähetä viesti'], ['start', 'Agentti aloittaa'], ['finish', 'Agentti valmistuu'], ['ask', 'Agentti kysyy'], ['archiveThis', 'Arkistoi tämä'],
+    ['send', 'Lähetä viesti'], ['sendFail', 'Lähetys epäonnistuu'], ['start', 'Agentti aloittaa'], ['finish', 'Agentti valmistuu'], ['ask', 'Agentti kysyy'], ['archiveThis', 'Arkistoi tämä'],
   ]],
   ['Muut keskustelut', [
     ['otherWait', 'Toinen alkaa odottaa'], ['otherStop', 'Toinen lakkaa odottamasta'], ['archiveOther', 'Arkistoi odottava'],
@@ -714,6 +865,7 @@ function enabled(ev) {
   const h = here();
   switch (ev) {
     case 'send': return !!h;
+    case 'sendFail': return !!h && W.justSent === W.open && h.st === 'work';
     case 'start': return !!h && h.st !== 'work';
     case 'finish': return !!h && h.st === 'work';
     case 'ask': return !!h && h.st === 'work';
@@ -736,9 +888,12 @@ function fire(ev, arg) {
   let kind = ev, label = EVNAME[ev] || ev;
   if (ev === 'resetAll') return mount(cur);
   if (v.t.note && ev !== 'noop') v.t.note = '';
+  W.justSent = ev === 'send' ? W.open : null;
   const h = here();
   switch (ev) {
     case 'send': if (h) { h.st = 'work'; v.onSend?.(); } break;
+    case 'sendFail': if (h) { h.st = 'idle'; v.onSendFail?.(); } break;
+    case 'fade': v.onFade?.(); label = '4 s kului'; break;
     case 'start': if (h) h.st = 'work'; break;
     case 'finish': if (h) h.st = 'idle'; break; // visible: the reply is seen at once
     case 'ask': if (h) h.st = 'ask'; break;
@@ -818,7 +973,7 @@ function render() {
 }
 
 function mount(i) {
-  cur = i; v = V[i]; W = fresh(); v.t = v.init(); hit = null;
+  cur = i; v = VR[i]; W = fresh(); v.t = v.init(); hit = null;
   logLine = 'Alku: tämä keskustelu (Rivin tilakone) on valmis ja luettu; kaksi odottaa sinua (yksi kysyy), kaksi työskentelee. Aloita esimerkiksi Lähetä viesti.';
   v.effect();
   render();
@@ -842,7 +997,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ---------- picker (PICKER.md reference wiring) ----------
-const variants = V.map((_, i) => () => i);
+const VR = V.filter((x) => (x.rounds || [1]).includes(ROUND));
+const variants = VR.map((_, i) => () => i);
 const stage = document.getElementById('stage');
 const picker = document.querySelector('.proto-picker');
 const highlight = picker.querySelector('.proto-picker-highlight');
