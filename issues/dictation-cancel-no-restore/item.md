@@ -3,12 +3,13 @@ created: 2026-10-31
 updated: 2026-10-31
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: dictation-cancel-no-restore
 lane_seq: 1
 related: ['@dictation-bar-default']
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Cancelled dictation needs no restore

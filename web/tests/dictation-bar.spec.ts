@@ -8,7 +8,7 @@ import { expect, test } from "./worker-host";
 // at the row's right end, the work controls born left of them, and dictation
 // as a listening bar over the row's left part with Valmis in Sanele's slot.
 // Against the browser host's synthetic Soniox and fake Pi; the microphone is
-// an oscillator. It proves the row's geometry, the cancel and its restore in
+// an oscillator. It proves the row's geometry and silent cancellation in
 // a real browser, not Soniox itself.
 
 test.use({
@@ -101,12 +101,6 @@ function mic(page: Page) {
 const done = (page: Page) =>
   page.getByRole("button").and(page.getByTestId("dictation-stop"));
 const bar = (page: Page) => page.getByTestId("dictation-bar");
-const restore = (page: Page) =>
-  page
-    .getByTestId("dictation-notice")
-    .and(page.locator('[data-notice="cancelled"]'))
-    .getByRole("button")
-    .and(page.getByTestId("dictation-restore"));
 const send = (page: Page) =>
   page.getByRole("button").and(page.getByTestId("send"));
 const stop = (page: Page) =>
@@ -170,8 +164,8 @@ test("@dictation-bar the bar covers the aids, Valmis takes Sanele's place, and n
     ).violations,
   ).toEqual([]);
 
-  // × cancels: the field is as it was and Soniox was not asked to finish;
-  // Palauta puts the words back.
+  // × silently discards dictation: the field is as it was and Soniox
+  // was not asked to finish.
   await page
     .getByRole("button")
     .and(page.getByTestId("dictation-cancel"))
@@ -182,10 +176,7 @@ test("@dictation-bar the bar covers the aids, Valmis takes Sanele's place, and n
   expect((await soniox(page)).ended).toBe(0);
   for (const aid of aids) await expect(aid).toBeVisible();
   await shot(page, "tyopoyta-peruttu");
-  await restore(page).click();
-  await expect(field(page)).toHaveValue("Alku sanelu");
   await expect(page.getByTestId("dictation-notice")).toHaveCount(0);
-  await field(page).fill("Alku");
 
   // The shortcut starts one with Valmis focused; Enter is Valmis: the text
   // stays and nothing is sent.
@@ -280,7 +271,7 @@ for (const width of [390, 360])
     await expect(bar(page)).toHaveCount(0);
   });
 
-test("@dictation-bar Esc while dictating cancels like ×, and a stray Esc loses nothing", async ({
+test("@dictation-bar Esc while dictating silently discards the words like ×", async ({
   page,
 }) => {
   test.setTimeout(90_000);
@@ -296,8 +287,7 @@ test("@dictation-bar Esc while dictating cancels like ×, and a stray Esc loses 
   await expect(field(page)).toHaveValue("Alku");
   await expect(field(page)).toBeFocused();
   expect((await soniox(page)).ended).toBe(0);
-  await restore(page).click();
-  await expect(field(page)).toHaveValue("Alku pitkä sanelu");
+  await expect(page.getByTestId("dictation-notice")).toHaveCount(0);
 });
 
 test("@dictation-bar Sanele's shortcut is in the app's own tooltip, shown at once on hover and on keyboard focus", async ({

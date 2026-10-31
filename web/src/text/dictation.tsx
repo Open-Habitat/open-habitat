@@ -7,7 +7,6 @@ import { catalog } from "../i18n";
 const fi = {
   /** "Enter, Esc tai ⌘§": a list of keys the way a hint reads it. */
   or: (first: string, last: string) => `${first} tai ${last}`,
-  cancelled: "Sanelu peruttu",
   ceilingTitle: "Sanelu päättyi 10 minuutin kattoon",
   ceilingText: "Kaikki sanottu on kentässä.",
   droppedKey: "Sanelu katkesi: Soniox ei enää hyväksy avainta",
@@ -57,14 +56,12 @@ const fi = {
     settings: "Avaa asetukset",
     retry: "Yritä uudelleen",
     resume: "Jatka sanelua",
-    restore: "Palauta",
   },
   closeNotice: "Sulje ilmoitus",
 };
 
 export const dictationText = catalog(fi, {
   or: (first, last) => `${first} or ${last}`,
-  cancelled: "Dictation cancelled",
   ceilingTitle: "Dictation stopped at the 10-minute limit",
   ceilingText: "Everything you said is in the field.",
   droppedKey: "Dictation cut off: Soniox no longer accepts the key",
@@ -112,7 +109,6 @@ export const dictationText = catalog(fi, {
     settings: "Open Settings",
     retry: "Try again",
     resume: "Continue dictating",
-    restore: "Restore",
   },
   closeNotice: "Close notice",
 });

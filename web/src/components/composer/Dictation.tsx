@@ -110,21 +110,13 @@ function mmss(ms: number) {
 
 /** Its words are read when it shows, in the language of that moment. */
 export type DictationNotice = {
-  id: SpeechFailure | "ceiling" | "dropped" | "cancelled";
+  id: SpeechFailure | "ceiling" | "dropped";
   tone: "info" | "danger";
   /** Why a dropped dictation was cut off. */
   failure?: SpeechFailure;
   /** How far a dropped dictation got. */
   elapsedMs?: number;
-  actions: ("settings" | "retry" | "resume" | "restore")[];
-};
-
-/** A cancelled dictation that heard something: ✕ or Esc keeps the field as
- * it was, and Palauta puts the words back, so a stray Esc loses nothing. */
-const cancelledNotice: DictationNotice = {
-  id: "cancelled",
-  tone: "info",
-  actions: ["restore"],
+  actions: ("settings" | "retry" | "resume")[];
 };
 
 /** A notice's title and its text, which is omitted when the title and the
@@ -134,8 +126,6 @@ function noticeWords(
   t: Text,
 ): { title: string; text?: string } {
   switch (n.id) {
-    case "cancelled":
-      return { title: t.cancelled };
     case "ceiling":
       return { title: t.ceilingTitle, text: t.ceilingText };
     case "dropped":
@@ -242,9 +232,6 @@ export function useDictation(
   const [holding, setHolding] = useState(false);
   const engine = useRef<Dictation | null>(null);
   const around = useRef({ before: "", after: "" });
-  /** The field a dictation started from, and what a cancel dropped. */
-  const started = useRef("");
-  const dropped = useRef<{ around: typeof around.current; said: string }>(null);
   const ending = useRef(onEnd);
   ending.current = onEnd;
   const hold = useRef<{ at: number; timer: number } | null>(null);
@@ -261,11 +248,7 @@ export function useDictation(
             const done = dictatedInto(around.current, next.final);
             ending.current(done.text, done.caret);
           }
-          setNotice(
-            next.ended === "cancelled" && dropped.current
-              ? cancelledNotice
-              : noticeFor(next),
-          );
+          setNotice(noticeFor(next));
         }
       },
     );
@@ -282,8 +265,6 @@ export function useDictation(
     if (!d || d.active) return;
     // Dictation writes at the caret, or in place of the selection.
     around.current = aroundCaret(text, caret);
-    started.current = text;
-    dropped.current = null;
     setNotice(null);
     void d.start();
   }, []);
@@ -295,12 +276,10 @@ export function useDictation(
     return final ? dictatedInto(around.current, final).text : null;
   }, []);
   /** Ends the dictation and keeps nothing of it in the field, which stays
-   * as it was; what was heard waits for restore. */
+   * as it was. */
   const cancel = useCallback(() => {
     const d = engine.current;
     if (!d?.active) return;
-    const said = `${d.view.final}${d.view.interim}`.trim();
-    dropped.current = said ? { around: around.current, said } : null;
     d.cancel();
     // Back to the field, which the dictation hid or left read-only.
     window.requestAnimationFrame(() =>
@@ -310,26 +289,11 @@ export function useDictation(
       )?.focus(),
     );
   }, [scope]);
-  /** Puts a cancelled dictation's words back where it was said, or after
-   * the text when the field has changed since. */
-  const restore = useCallback((text: string) => {
-    const was = dropped.current;
-    dropped.current = null;
-    setNotice(null);
-    if (!was) return;
-    const done = dictatedInto(
-      text === started.current
-        ? was.around
-        : aroundCaret(text, [text.length, text.length]),
-      was.said,
-    );
-    ending.current(done.text, done.caret);
-  }, []);
   const cancelling = useRef(cancel);
   cancelling.current = cancel;
   useEffect(() => {
     if (!active) return;
-    // Esc is ✕: Enter is done, Esc cancels, and the notice can restore.
+    // Esc is ✕: Enter is done, Esc discards the dictation.
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
@@ -406,7 +370,6 @@ export function useDictation(
     press,
     stop,
     cancel,
-    restore,
   };
 }
 
@@ -812,8 +775,7 @@ export function DictationNoticeView({
                   if (action === "settings") {
                     dictation.dismiss();
                     onOpenSettings();
-                  } else if (action === "restore") dictation.restore(text);
-                  else dictation.start(text, caret());
+                  } else dictation.start(text, caret());
                 }}
               >
                 {labels[action]}
