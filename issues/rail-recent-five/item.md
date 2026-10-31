@@ -3,13 +3,14 @@ created: 2026-10-31
 updated: 2026-10-31
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: rail-recent-five
 lane_seq: 1
 related: ['@proto-rail-recent']
 blocked_by: ['@single-workspace-normal-rail']
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Rail: the five most recent conversations, count configurable
@@ -37,3 +38,9 @@ record them under "Decisions for later review"): section name
 *Viimeisimmät* / *Recent*; terminal-run conversations are listed;
 finished worker conversations are not; the narrow dot rail beside the
 editor does not show the section.
+
+## Acceptance Criteria
+
+- [x] Recent replaces quiet folds, retaining eligible conversations independently of Pi lifetime.
+- [x] Per-person count defaults to five and is validated, persisted and searchable in both languages.
+- [x] Focused web, daemon, contracts and browser checks; independent review and assessment; 2× lab captures and decisions in result.md.

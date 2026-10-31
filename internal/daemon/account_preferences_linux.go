@@ -22,11 +22,12 @@ const AccountPreferencesPath = "/api/v1/account/preferences"
 
 // accountPreferences is the person's small account-wide settings in one
 // document, ~/.config/open-habitat/preferences.json: the desktop editor, the
-// interface language and the experimental features they turned on. Only
+// interface language, recent rail count and experimental features they turned on. Only
 // enabled features are kept, so a feature that graduates or is removed leaves
 // at most one stale key. A language never chosen is absent and reads as
 // "system", which leaves the choice to the server default and the browser.
 type accountPreferences struct {
+	RecentCount  *int            `json:"recent_count,omitempty"`
 	Engine       string          `json:"engine"`
 	Language     string          `json:"language,omitempty"`
 	Experimental map[string]bool `json:"experimental"`
@@ -35,6 +36,7 @@ type accountPreferences struct {
 // preferencesWrite names one change. The gateway caps a write at 128 bytes,
 // so a write never carries the whole document; the daemon merges it.
 type preferencesWrite struct {
+	RecentCount  *int
 	Engine       *string
 	Language     *string
 	Experimental map[string]bool
@@ -67,7 +69,17 @@ func validFeatureID(id string) bool {
 	return true
 }
 
+func (p accountPreferences) recentCount() int {
+	if p.RecentCount == nil {
+		return 5
+	}
+	return *p.RecentCount
+}
+
 func (p accountPreferences) valid() bool {
+	if p.recentCount() < 1 || p.recentCount() > 20 {
+		return false
+	}
 	if !validEditorEngine(p.Engine) || p.Language != "" && !validLanguage(p.Language) || len(p.Experimental) > maxExperimentalFeatures {
 		return false
 	}
@@ -80,7 +92,7 @@ func (p accountPreferences) valid() bool {
 }
 
 // decodePreferencesWrite accepts exactly what the contract's write allows:
-// one object with exactly one key: "engine", "language", or "experimental" naming
+// one object with exactly one key: "engine", "language", "recent_count", or "experimental" naming
 // one feature with a boolean. encoding/json alone would match keys without
 // regard to case and read null as false, so each part is decoded on its own.
 func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
@@ -89,6 +101,14 @@ func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
 	dec := json.NewDecoder(body)
 	if dec.Decode(&outer) != nil || dec.Decode(new(any)) != io.EOF || len(outer) != 1 {
 		return change, false
+	}
+	if raw, ok := outer["recent_count"]; ok {
+		var count *int
+		if json.Unmarshal(raw, &count) != nil || count == nil || *count < 1 || *count > 20 {
+			return change, false
+		}
+		change.RecentCount = count
+		return change, true
 	}
 	if raw, ok := outer["engine"]; ok {
 		var engine string
@@ -245,6 +265,9 @@ func applyPreferences(home string, change preferencesWrite) (accountPreferences,
 	if err != nil {
 		return value, err
 	}
+	if change.RecentCount != nil {
+		value.RecentCount = change.RecentCount
+	}
 	if change.Engine != nil {
 		value.Engine = *change.Engine
 	}
@@ -309,6 +332,6 @@ func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request)
 		if language == "" {
 			language = "system"
 		}
-		historyJSON(w, map[string]any{"schema_version": 1, "web_identity_id": opaque("wid_", cfg.Provider+":"+cfg.Subject), "engine": value.Engine, "language": language, "experimental": value.Experimental})
+		historyJSON(w, map[string]any{"schema_version": 1, "web_identity_id": opaque("wid_", cfg.Provider+":"+cfg.Subject), "engine": value.Engine, "language": language, "recent_count": value.recentCount(), "experimental": value.Experimental})
 	})
 }

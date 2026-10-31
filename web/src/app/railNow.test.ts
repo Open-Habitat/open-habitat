@@ -38,11 +38,15 @@ function run(
     sessions = [],
     phase = "authenticated",
     catalog = agents,
+    recentCount = 5,
+    selectedAgentId,
   }: {
     attention?: [string, "new" | "seen"][];
     sessions?: Session[];
     phase?: "authenticated" | "stale";
     catalog?: Agent[];
+    recentCount?: number;
+    selectedAgentId?: string;
   } = {},
 ) {
   const metadata: ConversationMetadata = {
@@ -58,12 +62,63 @@ function run(
     workspaces: visible,
     metadata,
     daemonSessions: sessions,
+    recentCount,
+    selectedAgentId,
     phase,
   });
 }
 const ids = (rows: { agentId: string }[]) => rows.map((r) => r.agentId);
 
 describe("rail Nyt groups", () => {
+  it("keeps the newest eligible conversations plus the open older one across process stops", () => {
+    const finished = Array.from({ length: 7 }, (_, n) =>
+      agent(`recent-${n}`, {
+        run_active: false,
+        changed_at: new Date((n + 1) * 86400000).toISOString(),
+      }),
+    );
+    const excluded = [
+      agent("archived", { archive: "archived", process: "confirmed_exited" }),
+      agent("worker", {
+        worktree_id: "wt_worker",
+        process: "confirmed_exited",
+      }),
+      agent("working", { run_active: true }),
+      agent("unread", { process: "confirmed_exited" }),
+    ];
+    const options = {
+      selectedAgentId: "recent-0",
+      attention: [["unread", "new"]] as [string, "new"][],
+    };
+    const before = run([...excluded, ...finished], options);
+    expect(ids(before.recent)).toEqual([
+      "recent-6",
+      "recent-5",
+      "recent-4",
+      "recent-3",
+      "recent-2",
+      "recent-0",
+    ]);
+    expect(before.recent.at(-1)?.kept).toBe(true);
+    for (const cause of ["idle", "restart"] as const) {
+      const stopped = finished.map((a) => ({
+        ...a,
+        process: "confirmed_exited",
+        rest: { cause, awake: false, at: "2026-10-31T00:00:00Z" },
+      }));
+      expect(ids(run([...excluded, ...stopped], options).recent)).toEqual(
+        ids(before.recent),
+      );
+    }
+    expect(ids(run(finished, { recentCount: 1 }).recent)).toEqual(["recent-6"]);
+    expect(ids(run(finished, { recentCount: 20 }).recent)).toHaveLength(7);
+    expect(
+      run(excluded, {
+        selectedAgentId: "archived",
+        ...{ attention: options.attention },
+      }).recent,
+    ).toEqual([]);
+  });
   it("puts the person's turn first and keeps only live work below it", () => {
     const now = run(
       [

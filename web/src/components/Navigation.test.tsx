@@ -368,7 +368,7 @@ describe("Ryhmät rows", () => {
       view.getByTestId("agent-item-w1").querySelector("a"),
     );
   });
-  it("groups Käynnissä, folds quiet rows, and sinks an all-quiet workspace", () => {
+  it("keeps old running rows visible in their workspace groups", () => {
     const view = render(
       <MemoryRouter>
         <NowSections
@@ -395,20 +395,9 @@ describe("Ryhmät rows", () => {
     );
     const group = view.getByTestId("rail-group-kasvimaa");
     expect(group.querySelector("h3")?.textContent).toBe("kasvimaa4");
-    // The open conversation and the failed one never fold away.
-    for (const id of ["w1", "w3", "w4"])
+    for (const id of ["w1", "w2", "w3", "w4", "k1"])
       expect(view.queryByTestId(`agent-item-${id}`)).not.toBeNull();
-    expect(view.queryByTestId("agent-item-w2")).toBeNull();
-    const fold = view.getByTestId("rail-fold-quiet-kasvimaa");
-    expect(fold.textContent).toBe("1 hiljainen");
-    fireEvent.click(fold);
-    expect(view.queryByTestId("agent-item-w2")).not.toBeNull();
-    expect(view.queryByTestId("rail-group-kotisivu")).toBeNull();
-    expect(view.getByTestId("rail-quiet-rule").textContent).toBe(
-      "Hiljaiset · yli tunnin",
-    );
-    expect(view.queryByTestId("agent-item-k1")).toBeNull();
-    fireEvent.click(view.getByTestId("rail-fold-dormant-kotisivu"));
+    expect(view.queryByTestId(/^rail-fold-/)).toBeNull();
     expect(
       view.getByTestId("agent-item-k1").querySelector("time")?.textContent,
     ).toBe("1 pv");
@@ -437,9 +426,7 @@ describe("Ryhmät rows", () => {
         />
       </MemoryRouter>,
     );
-    const group = view.getByTestId("rail-group-kasvimaa");
-    expect(group.querySelector("h3")).toBeNull();
-    expect(group.getAttribute("aria-label")).toBe("kasvimaa");
+    expect(view.queryByTestId("rail-group-kasvimaa")).toBeNull();
     const buttons = view.getAllByTestId("workspace-icon-button");
     expect(buttons).toHaveLength(2);
     // The icon is its own button beside the row's link, never inside it.
@@ -455,7 +442,7 @@ describe("Ryhmät rows", () => {
     fireEvent.click(view.getByTestId("workspace-card-new"));
     expect(started).toEqual(["ws_kasvimaa0"]);
   });
-  it("lists quiet rows unfolded under Hiljaiset when rows carry icons", () => {
+  it("keeps iconed rows flat regardless of their age", () => {
     const icon = (name: string) => ({
       name,
       glyph: { letters: name.slice(0, 2).toUpperCase(), hue: 3 },
@@ -488,21 +475,16 @@ describe("Ryhmät rows", () => {
     );
     expect(view.queryByTestId(/^rail-fold-/)).toBeNull();
     expect(view.queryByTestId("rail-group-kotisivu")).toBeNull();
-    const group = view.getByTestId("rail-group-kasvimaa");
-    expect(group.querySelector('[data-testid="agent-item-w2"]')).toBeNull();
-    expect(view.getByTestId("rail-quiet-rule").textContent).toBe(
-      "Hiljaiset · yli tunnin",
-    );
-    // The most recently changed first, each with its own icon.
-    const quiet = view.getByTestId("rail-quiet");
+    expect(view.queryByTestId("rail-group-kasvimaa")).toBeNull();
+    const quiet = view.getByTestId("rail-running");
     expect(
       [...quiet.querySelectorAll('[data-testid^="agent-item-"]')].map((li) =>
         li.getAttribute("data-testid"),
       ),
-    ).toEqual(["agent-item-w2", "agent-item-k1"]);
+    ).toEqual(["agent-item-w1", "agent-item-w2", "agent-item-k1"]);
     expect(
       quiet.querySelectorAll('[data-testid="workspace-icon-button"]'),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
   });
   it("shows the derived glyph when an image does not load", () => {
     const view = render(

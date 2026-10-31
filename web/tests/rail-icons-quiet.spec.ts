@@ -1,183 +1,218 @@
-import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
+import { snapshot } from "../lab/session.mjs";
 import { hostOrigin } from "../test-ports.mjs";
-import { expect, type Page, test } from "./worker-host";
+import { createHostTest, expect, type Page } from "./worker-host";
 
-// Hiljaiset with workspace icons (experimental): each row already names its
-// workspace with its icon, so quiet conversations stand under the rule as
-// ordinary rows; without icons they stay folded per workspace.
+const capture = process.env.OH_VISUAL_CAPTURE === "1";
+const firstWorkspace = capture ? "aurinkokello" : "ordinary-dir";
+const secondWorkspace = capture ? "kotisivu" : "git-project";
+const test = createHostTest(false, capture ? { BROWSER_HOST_LAB: "1" } : {});
+
 test.use({
   baseURL: hostOrigin,
   ignoreHTTPSErrors: true,
-  viewport: { width: 1280, height: 800 },
-  // Jari reviews the screenshots; 1x evidence was blurry.
+  viewport: { width: 1280, height: 900 },
   deviceScaleFactor: 2,
 });
 
-// Review material for Jari, never a passing visual comparison:
-// OH_RAIL_ICONS_CAPTURE=before|after names the shots.
-const capture = process.env.OH_RAIL_ICONS_CAPTURE;
-async function shot(page: Page, name: string) {
-  if (!capture) return;
-  const dir = resolve("../issues/rail-icons-no-grouping/evidence");
-  mkdirSync(dir, { recursive: true });
-  for (const scheme of ["light", "dark"] as const) {
-    await page.emulateMedia({ colorScheme: scheme });
-    await page.waitForTimeout(300);
-    await page
-      .getByTestId("workspace-navigation")
-      .screenshot({ path: resolve(dir, `${capture}-${name}-${scheme}.png`) });
-  }
-  await page.emulateMedia({ colorScheme: "light" });
+async function login(page: Page) {
+  await page.request.get("/fixture/conversations-reset");
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
 }
-
-async function session(page: Page) {
+async function headers(page: Page) {
   const s = await (await page.request.get("/auth/session")).json();
-  return {
-    Origin: new URL(page.url()).origin,
-    "X-Agent-Host-CSRF": s.csrf as string,
-  };
+  return { Origin: new URL(page.url()).origin, "X-Agent-Host-CSRF": s.csrf };
 }
 
-test("@rail-groups @workspace-icons quiet conversations fold per workspace without icons and stand as rows under Hiljaiset with them", async ({
+// Wire seam: seven old terminal histories plus archived and worktree histories.
+// Their timestamps are fixed, not tied to the browser clock or Pi liveness.
+test("@rail-recent recent count, exclusions, grouping, phone and icon layouts", async ({
   page,
 }) => {
   test.setTimeout(120000);
-  await page.request.get("/fixture/conversations-reset");
-  await page.request.get("/fixture/scenario?value=ready");
-  // Wire seam as in rail-groups: chosen conversations look quiet for hours
-  // and keep a worker waiting at its own prompt, so they stay in Käynnissä
-  // as done rows.
-  const aged = new Map<string, number>();
-  const parked = new Set<string>();
   await page.route("**/api/v1/snapshot", async (route) => {
-    try {
-      const response = await route.fetch();
-      const body = await response.json();
-      for (const a of body.agents) {
-        if (parked.has(a.agent_id)) a.spinoffs_idle = 1;
-        const hours = aged.get(a.agent_id);
-        if (hours && a.changed_at)
-          a.changed_at = new Date(
-            Date.parse(a.changed_at) - hours * 3600000,
-          ).toISOString();
-      }
-      await route.fulfill({ response, json: body });
-    } catch {
-      await route.abort().catch(() => {});
-    }
-  });
-  await page.goto("/workspaces");
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("github-sign-in"))
-    .click();
-  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
-  const nav = page.getByTestId("workspace-navigation");
-  const running = nav.getByTestId("rail-running");
-  const start = async (workspace: string) => {
-    await nav
-      .getByRole("link")
-      .and(page.getByTestId(`workspace-${workspace}`))
-      .click();
-    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-    // A new one, not the conversation the workspace page may reopen.
-    const opened = () =>
-      new URL(page.url()).searchParams.get("conversation") ?? "";
-    await expect
-      .poll(() => {
-        const id = opened();
-        return id.startsWith("pi:") && !parked.has(id);
-      })
-      .toBe(true);
-    const id = opened();
-    parked.add(id);
-    // The host's last-change time comes with the first turn.
-    await page.getByTestId("message-input").fill("Ensimmäinen viesti");
-    await page
-      .getByTestId("send")
-      .and(page.locator('[data-mode="send"]'))
-      .click();
-    await expect(running.getByTestId(`agent-item-${id}`)).toHaveAttribute(
-      "data-ball",
-      "done",
-      { timeout: 25000 },
+    const response = await route.fetch();
+    const body = await response.json();
+    const workspace = body.workspaces.find(
+      (w: { name: string }) => w.name === firstWorkspace,
     );
-    return id;
-  };
-
-  // Quiet in a workspace that still has a live row, quiet in one where
-  // everything is quiet, and the open conversation that never folds.
-  const ordinaryQuiet = await start("ordinary-dir");
-  const projectQuiet = await start("git-project");
-  aged.set(ordinaryQuiet, 3);
-  aged.set(projectQuiet, 26);
-  const open = await start("ordinary-dir");
-  await nav.getByTestId("snapshot-refresh").click();
-  await expect(running.getByTestId(`agent-item-${open}`)).toBeVisible();
-
-  // Icons off: the folds stay as they are.
-  const quietFold = running.getByTestId("rail-fold-quiet-ordinary-dir");
-  const dormantFold = running.getByTestId("rail-fold-dormant-git-project");
-  await expect(quietFold).toHaveText("1 hiljainen");
-  await expect(dormantFold).toContainText("git-project");
-  await expect(running.getByTestId("rail-quiet-rule")).toBeVisible();
-  await expect(running.getByTestId(`agent-item-${ordinaryQuiet}`)).toHaveCount(
-    0,
+    const other = body.workspaces.find(
+      (w: { name: string }) => w.name === secondWorkspace,
+    );
+    if (workspace && other) {
+      const base = {
+        workspace_id: workspace.workspace_id,
+        observation_token: "fixture-recent-token",
+        presence: "present",
+        activity: "idle",
+        capabilities: {
+          history: { state: "supported", reason_code: "available" },
+        },
+        queue: { revision: "fixture-revision", steering: [], follow_up: [] },
+        history: "readable",
+        process: "confirmed_exited",
+        control: "read_only",
+        live_tail: [],
+        run_active: false,
+        archive: "active",
+      };
+      body.agents = Array.from({ length: 9 }, (_, n) => ({
+        ...base,
+        agent_id: `pi:00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+        title: {
+          display: `Recent conversation ${n}`,
+          source: "native_session",
+          generation_state: "not_requested",
+          replaceable: true,
+        },
+        workspace_id: n % 2 ? other.workspace_id : workspace.workspace_id,
+        changed_at: new Date(Date.UTC(2026, 0, n + 1)).toISOString(),
+        ...(n === 7 ? { archive: "archived" } : {}),
+        ...(n === 8 ? { worktree_id: "ws_example123" } : {}),
+      }));
+    }
+    await route.fulfill({ response, json: body });
+  });
+  await login(page);
+  const nav = page.getByTestId("workspace-navigation");
+  const recent = nav.getByTestId("rail-recent");
+  const rows = recent.getByTestId(/^agent-item-/);
+  await expect(rows).toHaveCount(5);
+  await page.goto("/agents/pi:00000000-0000-4000-8000-000000000000");
+  await expect(rows).toHaveCount(6);
+  await expect(recent.locator("[data-kept]")).toHaveCount(1);
+  await page.goto("/workspaces");
+  await expect(rows).toHaveCount(5);
+  await nav.getByTestId("close-navigation").click();
+  await expect(recent).toHaveCount(0);
+  await nav.getByTestId("navigation-open").click();
+  await expect(rows).toHaveCount(5);
+  for (const n of [7, 8])
+    await expect(
+      recent.getByTestId(
+        `agent-item-pi:00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+      ),
+    ).toHaveCount(0);
+  await expect(recent.getByTestId(/^rail-group-/).first()).toHaveAttribute(
+    "data-testid",
+    `rail-group-${firstWorkspace}`,
   );
-  await expect(running.getByTestId(`agent-item-${projectQuiet}`)).toHaveCount(
-    0,
-  );
-  await shot(page, "icons-off");
-
-  expect(
-    (
-      await page.request.put("/api/v1/account/preferences", {
-        headers: await session(page),
-        data: { experimental: { "workspace-icons": true } },
-      })
-    ).ok(),
-  ).toBeTruthy();
+  for (const icons of [false, true]) {
+    expect(
+      (
+        await page.request.put("/api/v1/account/preferences", {
+          headers: await headers(page),
+          data: { experimental: { "workspace-icons": icons } },
+        })
+      ).ok(),
+    ).toBe(true);
+    await page.reload();
+    await expect(rows).toHaveCount(5);
+    await expect(recent.getByTestId("workspace-icon-button")).toHaveCount(
+      icons ? 5 : 0,
+    );
+    await expect(recent.getByTestId(/^rail-group-/)).toHaveCount(icons ? 0 : 2);
+    for (const phone of [false, true]) {
+      await page.setViewportSize(
+        phone ? { width: 390, height: 844 } : { width: 1280, height: 900 },
+      );
+      if (phone) await page.getByTestId("navigation-open").click();
+      for (const theme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme: theme });
+        await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+        await expect(recent).toBeVisible();
+        // Review images must show the settled theme, not a colour transition.
+        if (capture) await page.waitForTimeout(300);
+        if (process.env.OH_VISUAL_CAPTURE === "1")
+          await snapshot(
+            page,
+            resolve(
+              `../issues/rail-recent-five/evidence/${phone ? "phone" : "desktop"}-${theme}-icons-${icons ? "on" : "off"}`,
+            ),
+            { labOrigin: new URL(page.url()).origin },
+          );
+      }
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .include('[data-testid="workspace-navigation"]')
+            .analyze()
+        ).violations,
+      ).toEqual([]);
+      if (phone) await page.keyboard.press("Escape");
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/settings/appearance");
+  const input = page.getByTestId("recent-count-input");
+  await expect(input).toHaveValue("5");
+  await input.fill("2");
+  await input.press("Enter");
+  await expect
+    .poll(
+      async () =>
+        (await (await page.request.get("/api/v1/account/preferences")).json())
+          .recent_count,
+    )
+    .toBe(2);
   await page.reload();
+  await expect(input).toHaveValue("2");
+  await expect(rows).toHaveCount(2);
+  const otherPage = await page.context().newPage();
+  try {
+    await otherPage.goto("/settings/appearance");
+    await expect(otherPage.getByTestId("recent-count-input")).toHaveValue("2");
+  } finally {
+    await otherPage.close();
+  }
+  // Search reaches the actual row, not a second setting.
+  await page.getByTestId("settings-search").fill("recent");
+  await page.getByTestId("settings-search").press("Enter");
   await expect(
-    running
-      .getByTestId(`agent-item-${open}`)
-      .getByTestId("workspace-icon-button"),
-  ).toBeVisible();
-  await shot(page, "icons-on");
+    page.locator('[data-settings-row="recent-count"]'),
+  ).toBeFocused();
+});
 
-  // Icons on: no folds; under the rule, ordinary rows with their icons, the
-  // most recently changed first.
-  await expect(running.getByTestId(/^rail-fold-/)).toHaveCount(0);
-  await expect(running.getByTestId("rail-quiet-rule")).toHaveText(
-    "Hiljaiset · yli tunnin",
+test("@rail-recent a finished native conversation remains after idle stop and daemon restart, then leaves on archive", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  await login(page);
+  const nav = page.getByTestId("workspace-navigation");
+  await nav.getByTestId(`workspace-${firstWorkspace}`).click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  const id = new URL(page.url()).searchParams.get("conversation") ?? "";
+  await page.getByTestId("message-input").fill("Ensimmäinen viesti");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  const row = nav.getByTestId("rail-recent").getByTestId(`agent-item-${id}`);
+  await expect(row).toBeVisible({ timeout: 25000 });
+  await page.request.get("/fixture/taskfleet?status=empty");
+  await page.goto("/workspaces");
+  await expect
+    .poll(async () => {
+      await page.request.get("/fixture/idle-stop");
+      return (
+        await (
+          await page.request.get(`/api/v1/conversations/${id.slice(3)}/status`)
+        ).json()
+      ).state;
+    })
+    .toBe("stopped");
+  await page.reload();
+  await expect(row).toBeVisible();
+  expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
+    204,
   );
-  const quiet = running.getByTestId("rail-quiet");
-  await expect(quiet.getByTestId(/^agent-item-/)).toHaveCount(2);
-  await expect(quiet.getByTestId(/^agent-item-/).nth(0)).toHaveAttribute(
-    "data-testid",
-    `agent-item-${ordinaryQuiet}`,
-  );
-  await expect(quiet.getByTestId(/^agent-item-/).nth(1)).toHaveAttribute(
-    "data-testid",
-    `agent-item-${projectQuiet}`,
-  );
-  await expect(quiet.getByTestId("workspace-icon-button")).toHaveCount(2);
-  await expect(
-    quiet.getByTestId(`agent-item-${projectQuiet}`).locator("time"),
-  ).toHaveText("1 pv");
-  await expect(running.getByTestId("rail-group-git-project")).toHaveCount(0);
-  await expect(
-    running
-      .getByTestId("rail-group-ordinary-dir")
-      .getByTestId(`agent-item-${ordinaryQuiet}`),
-  ).toHaveCount(0);
-  expect(
-    (
-      await new AxeBuilder({ page })
-        .include('[data-testid="workspace-navigation"]')
-        .analyze()
-    ).violations,
-  ).toEqual([]);
+  await page.reload();
+  await expect(row).toBeVisible();
+  await row.getByTestId("rail-archive-conversation").click();
+  await expect(row).toHaveCount(0);
 });

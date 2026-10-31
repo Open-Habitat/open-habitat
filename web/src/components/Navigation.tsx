@@ -484,6 +484,8 @@ export interface AgentNavModel {
    * turn ended in an error, or a worker run failed. */
   failed?: boolean;
   selected?: boolean;
+  /** Kept beyond the recent limit because it is open. */
+  kept?: boolean;
   priority?: number; // caller ranks native state; navigation only presents it
   finished?: boolean;
   depth?: number;
@@ -584,16 +586,6 @@ export function changeAge(at: number, now: number): string {
   if (hours < 24) return t.ageHours(hours);
   return t.ageDays(Math.floor(hours / 24));
 }
-/** Done and untouched for over an hour: nobody is on it right now. */
-const quietAfter = 60 * 60 * 1000;
-function quiet(agent: AgentNavModel, now: number) {
-  return (
-    ballOf(agent) === "done" &&
-    agent.changedAt !== undefined &&
-    now - agent.changedAt >= quietAfter &&
-    !agent.selected
-  );
-}
 /** One line: the state ball, the title and the time since the last change.
  * Everything else about the row is in its description and tooltip. */
 export function AgentNavItem({
@@ -609,6 +601,7 @@ export function AgentNavItem({
   changedAt,
   failed,
   selected = false,
+  kept = false,
   depth = 0,
   presence = "present",
   stale = false,
@@ -666,6 +659,7 @@ export function AgentNavItem({
     <li
       data-testid={`agent-item-${agentId}`}
       data-ball={ball}
+      data-kept={kept || undefined}
       title={`${shownTitle} · ${said}`}
       data-waiting={activity === "waiting_background"}
       data-has-history-warning={Boolean(historyLabel)}
@@ -951,54 +945,12 @@ function NowDot(agent: AgentNavModel) {
     </li>
   );
 }
-const quietWord = (n: number) => textNow(navigationText).quiet(n);
-/** Opens and closes a folded part of Käynnissä; the fold is the tab's view. */
-function FoldToggle({
-  testId,
-  open,
-  onToggle,
-  label,
-  count,
-  workspace = false,
-  icon,
-}: {
-  testId: string;
-  open: boolean;
-  onToggle: () => void;
-  label: string;
-  count?: number;
-  workspace?: boolean;
-  icon?: WorkspaceIconModel;
-}) {
-  return (
-    <li>
-      <ControlButton
-        data-testid={testId}
-        size="inline"
-        variant="quiet"
-        className={`ah-now-fold${workspace ? " ah-now-fold-workspace" : ""}`}
-        aria-expanded={open}
-        onPress={onToggle}
-      >
-        <span aria-hidden="true" className="ah-disclosure-chevron" />
-        {icon ? <WorkspaceIcon icon={icon} /> : null}
-        <span className="ah-now-fold-label">{label}</span>
-        {count !== undefined ? (
-          <span className="ah-rail-count">{count}</span>
-        ) : null}
-      </ControlButton>
-    </li>
-  );
-}
-/** Käynnissä grouped by workspace (Ryhmät): done rows quiet for over an hour
- * fold to the end of their group, and a workspace where everything is quiet
- * sinks under Hiljaiset. The open conversation and a failed one never fold.
- * With workspace icons each row names its workspace, so nothing folds: the
- * quiet rows leave their groups and stand under Hiljaiset as ordinary rows,
- * the most recently changed first. */
+/** Flat with icons; otherwise grouped by workspace. Recent groups keep
+ * their input order, so the workspace with the newest row comes first. */
 function RunningGroups({
   running,
   iconed,
+  recent = false,
   now,
   archive,
   rename,
@@ -1006,42 +958,25 @@ function RunningGroups({
 }: {
   running: AgentNavModel[];
   iconed: boolean;
+  recent?: boolean;
   now: number;
   archive?: RailArchive;
   rename?: RailRename;
   card?: WorkspaceCardActions;
 }) {
-  const [open, setOpen] = useState<Record<string, boolean>>({});
-  const toggle = (key: string) => setOpen((o) => ({ ...o, [key]: !o[key] }));
-  const groups = new Map<
-    string,
-    { name: string; icon?: WorkspaceIconModel; rows: AgentNavModel[] }
-  >();
+  const groups = new Map<string, { name: string; rows: AgentNavModel[] }>();
   for (const agent of running) {
     const key = agent.workspaceId ?? agent.workspaceName ?? "";
     const group = groups.get(key) ?? {
       name: agent.workspaceName ?? "",
-      icon: agent.workspaceIcon,
       rows: [],
     };
     group.rows.push(agent);
     groups.set(key, group);
   }
-  const ordered = [...groups.entries()].sort(([, a], [, b]) =>
-    a.name.localeCompare(b.name, "fi"),
-  );
-  const live = ordered.filter(([, g]) => g.rows.some((a) => !quiet(a, now)));
-  const dormant = ordered.filter(([, g]) => g.rows.every((a) => quiet(a, now)));
-  const quietRows = iconed
-    ? running
-        .filter((a) => quiet(a, now))
-        .sort((a, b) => (b.changedAt ?? 0) - (a.changedAt ?? 0))
-    : [];
-  const rule = (
-    <p className="ah-now-rule" data-testid="rail-quiet-rule">
-      <span>{textNow(navigationText).quietRule}</span>
-    </p>
-  );
+  const ordered = [...groups.entries()];
+  if (!recent)
+    ordered.sort(([, a], [, b]) => a.name.localeCompare(b.name, "fi"));
   const row = (agent: AgentNavModel) => (
     <AgentNavItem
       key={agent.agentId}
@@ -1052,76 +987,26 @@ function RunningGroups({
       card={card}
     />
   );
+  if (iconed) return <ul>{running.map(row)}</ul>;
   return (
     <>
-      {live.map(([key, g]) => {
-        const shown = g.rows.filter((a) => !quiet(a, now));
-        const hidden = g.rows.filter((a) => quiet(a, now));
-        const fold = `q:${key}`;
+      {ordered.map(([key, g]) => {
         return (
-          // With icons each row names its workspace, so the group needs no
-          // heading of its own; the gap between groups stays.
           // biome-ignore lint/a11y/useSemanticElements: a list group, not a form fieldset.
           <div
             key={key}
             className="ah-now-group"
             data-testid={`rail-group-${g.name}`}
             role="group"
-            aria-label={g.icon ? g.name : undefined}
           >
-            {g.icon ? null : (
-              <h3 className="ah-now-group-head">
-                <span className="ah-now-group-name">{g.name}</span>
-                <span className="ah-rail-count">{g.rows.length}</span>
-              </h3>
-            )}
-            <ul>
-              {shown.map(row)}
-              {hidden.length && !iconed ? (
-                <FoldToggle
-                  testId={`rail-fold-quiet-${g.name}`}
-                  open={!!open[fold]}
-                  onToggle={() => toggle(fold)}
-                  label={quietWord(hidden.length)}
-                />
-              ) : null}
-              {hidden.length && !iconed && open[fold] ? hidden.map(row) : null}
-            </ul>
+            <h3 className="ah-now-group-head">
+              <span className="ah-now-group-name">{g.name}</span>
+              <span className="ah-rail-count">{g.rows.length}</span>
+            </h3>
+            <ul>{g.rows.map(row)}</ul>
           </div>
         );
       })}
-      {iconed && quietRows.length ? (
-        <>
-          {rule}
-          <ul data-testid="rail-quiet">{quietRows.map(row)}</ul>
-        </>
-      ) : null}
-      {!iconed && dormant.length ? (
-        <>
-          {rule}
-          <ul data-testid="rail-quiet">
-            {dormant.map(([key, g]) => {
-              const fold = `d:${key}`;
-              return (
-                <li key={key} className="ah-now-dormant">
-                  <ul>
-                    <FoldToggle
-                      testId={`rail-fold-dormant-${g.name}`}
-                      open={!!open[fold]}
-                      onToggle={() => toggle(fold)}
-                      label={g.name}
-                      count={g.rows.length}
-                      workspace
-                      icon={g.icon}
-                    />
-                    {open[fold] ? g.rows.map(row) : null}
-                  </ul>
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      ) : null}
     </>
   );
 }
@@ -1130,6 +1015,7 @@ function RunningGroups({
 export function NowSections({
   yours,
   running,
+  recent = [],
   collapsed = false,
   archive,
   rename,
@@ -1137,6 +1023,7 @@ export function NowSections({
 }: {
   yours: AgentNavModel[];
   running: AgentNavModel[];
+  recent?: AgentNavModel[];
   collapsed?: boolean;
   /** Absent where the rail offers no archive (a story). */
   archive?: RailArchive;
@@ -1148,8 +1035,9 @@ export function NowSections({
   const t = useText(navigationText);
   const yoursId = useId();
   const runningId = useId();
+  const recentId = useId();
   const now = useMinuteNow();
-  const iconed = [...yours, ...running].some((a) => a.workspaceIcon);
+  const iconed = [...yours, ...running, ...recent].some((a) => a.workspaceIcon);
   if (collapsed)
     return (
       <div className="ah-now-dots">
@@ -1221,6 +1109,29 @@ export function NowSections({
           />
         ) : (
           <p className="ah-now-empty">{t.nothingRuns}</p>
+        )}
+      </section>
+      <section
+        className={iconed ? "ah-now ah-now-iconed" : "ah-now"}
+        data-testid="rail-recent"
+        aria-labelledby={recentId}
+      >
+        <h2 className="ah-rail-section-head" id={recentId}>
+          {t.recent}
+          <span className="ah-rail-count">{recent.length || null}</span>
+        </h2>
+        {recent.length ? (
+          <RunningGroups
+            running={recent}
+            iconed={iconed}
+            recent
+            now={now}
+            archive={archive}
+            rename={rename}
+            card={card}
+          />
+        ) : (
+          <p className="ah-now-empty">{t.noRecent}</p>
         )}
       </section>
     </>

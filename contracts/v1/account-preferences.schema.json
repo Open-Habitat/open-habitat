@@ -16,14 +16,26 @@
         "en"
       ]
     },
+    "recent_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20,
+      "default": 5
+    },
     "feature_id": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
       "maxLength": 48
     },
     "write": {
-      "description": "One change: the editor, the language, or one experimental feature's switch. The daemon merges it into the stored document.",
+      "description": "One change: the editor, the language, the recent conversation count, or one experimental feature's switch. The daemon merges it into the stored document.",
       "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["recent_count"],
+          "properties": {"recent_count": {"$ref": "#/$defs/recent_count"}}
+        },
         {
           "type": "object",
           "additionalProperties": false,
@@ -78,9 +90,11 @@
         "web_identity_id",
         "engine",
         "language",
+        "recent_count",
         "experimental"
       ],
       "properties": {
+        "recent_count": {"$ref": "#/$defs/recent_count"},
         "schema_version": {
           "const": 1
         },

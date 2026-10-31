@@ -28,6 +28,7 @@ const reply = (
       web_identity_id: identity,
       engine,
       language,
+      recent_count: 5,
       experimental,
     }),
     { headers: { "Content-Type": "application/json" } },

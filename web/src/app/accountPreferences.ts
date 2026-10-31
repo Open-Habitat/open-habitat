@@ -30,6 +30,7 @@ type Reply = {
   web_identity_id: string;
   engine: EditorEngine;
   language: LanguageChoice;
+  recent_count: number;
   experimental: Record<string, true>;
 };
 const validate = new Ajv({ strict: false }).compile<Reply>({
@@ -44,6 +45,7 @@ const url = "/api/v1/account/preferences";
 export type Preferences = {
   engine: EditorEngine;
   language: LanguageChoice;
+  recent_count: number;
   experimental: Readonly<Record<string, true>>;
   loaded: boolean;
   busy?: string;
@@ -52,6 +54,7 @@ export type Preferences = {
 const initial: Preferences = {
   engine: "codemirror6",
   language: "system",
+  recent_count: 5,
   experimental: {},
   loaded: false,
 };
@@ -109,6 +112,7 @@ async function readReply(response: Response, identity: string) {
   return {
     engine: result.engine,
     language: result.language,
+    recent_count: result.recent_count,
     experimental: result.experimental,
   };
 }
@@ -173,6 +177,14 @@ export function chooseEditor(
   csrf: string,
 ) {
   return write(identity, csrf, "engine", { engine });
+}
+
+export function chooseRecentCount(
+  identity: string,
+  count: number,
+  csrf: string,
+) {
+  return write(identity, csrf, "recent_count", { recent_count: count });
 }
 
 export function chooseLanguage(

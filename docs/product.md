@@ -71,6 +71,18 @@ jatkaa tai arkistoi keskustelun. Rivillä
 näkyy keskustelun otsikko, työtila ja tila. Worker näkyy omana rivinään eikä
 vanhempansa alla; vanhemman rivin merkki kertoo, että sen worker työskentelee.
 
+**Viimeisimmät** pitää päättyneet keskustelut käden ulottuvilla myös tauon,
+Pi:n levon ja palvelimen uudelleenkäynnistyksen jälkeen. Listassa ovat
+viisi viimeksi muuttunutta keskustelua, uusin ensin, sekä lisäksi avoin
+keskustelu, jos se jäisi muuten ulkopuolelle. Määrän voi valita Asetukset ›
+Ulkoasu -sivulta (1–20); valinta seuraa käyttäjää laitteelta toiselle.
+Terminaalissa käydyt keskustelut ovat mukana, arkistoidut ja päättyneet
+worktree-keskustelut eivät. Sinun vuorosi- ja Käynnissä-rivejä ei toisteta.
+Kuvakkeiden kanssa rivit ovat yhtenä listana, ilman kuvakkeita työtiloittain;
+uusimman keskustelun työtila on ensimmäinen. Vanha keskustelu ei taitu
+piiloon ajan kulumisen vuoksi. Editorin kapeassa pistepalkissa Viimeisimmät
+-osiota ei näytetä.
+
 Näiden alla ovat käyttäjän `~/src`-hakemistosta löydetyt työtilat
 aakkosjärjestyksessä, jotta työtila löytyy joka kerta samasta kohdasta.
 Tavallinen hakemisto kelpaa työtilaksi ilman Gitiä tai asetustiedostoa.

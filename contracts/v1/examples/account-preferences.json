@@ -3,6 +3,7 @@
   "web_identity_id": "wid_example-a",
   "engine": "vscode",
   "language": "en",
+  "recent_count": 5,
   "experimental": {
     "worker-row-sentence": true
   }

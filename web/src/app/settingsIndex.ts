@@ -469,6 +469,20 @@ export const settingsSections = [
         desc: "Järjestelmä seuraa laitteen asetusta. Koskee tätä selainta.",
       },
       {
+        id: "recent-count",
+        label: "Viimeisimmät keskustelut",
+        kw: [
+          "sivupalkki",
+          "viimeisimmät",
+          "määrä",
+          "recent",
+          "rail",
+          "sidebar",
+          "count",
+        ],
+        desc: "Sivupalkin viimeisimpien keskustelujen määrä. Koskee kaikkia laitteitasi.",
+      },
+      {
         id: "language",
         label: "Kieli",
         kw: [

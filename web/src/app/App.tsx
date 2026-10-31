@@ -1279,6 +1279,7 @@ export function App() {
     selectedAgentId,
     selectedId,
     search: location.search,
+    recentCount: confirmedPreferences.recent_count,
     // App is above AccountPreferencesProvider: it names the session.
     workFacts: workerRowSentence,
     icons,

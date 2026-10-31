@@ -256,14 +256,13 @@ push_write = json.loads((BASE / "examples" / "push-notifications-device.json").r
 must_reject("push-notifications.schema.json", {**push_write, "endpoint": "http://web.push.apple.com/x"})
 must_reject("push-notifications.schema.json", {**push_write, "uid": 1000})
 
-# Account preferences carry only a supported engine and language, enabled
-# feature ids and the mapped web identity; a write names exactly one change.
-must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "monaco", "language": "system", "experimental": {}})
-must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "language": "system", "experimental": {}, "uid": 123})
-must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "language": "system", "experimental": {"worker-row-sentence": False}})
-must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "language": "system", "experimental": {"../x": True}})
-must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "language": "sv", "experimental": {}})
-must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "experimental": {}})
+# Change exactly one field of a valid reply, so a newly required field
+# cannot make every negative check pass for the wrong reason.
+preferences_reply = json.loads((BASE / "examples/account-preferences.json").read_text())
+for change in ({"engine": "monaco"}, {"uid": 123}, {"experimental": {"worker-row-sentence": False}}, {"experimental": {"../x": True}}, {"language": "sv"}, {"recent_count": 0}, {"recent_count": 21}):
+    must_reject("account-preferences.schema.json", {**preferences_reply, **change})
+for missing in ("language", "recent_count"):
+    must_reject("account-preferences.schema.json", {k: v for k, v in preferences_reply.items() if k != missing})
 # The pre-sign-in language names only the server's default.
 must_reject("site-language.schema.json", {"schema_version": 1, "default_language": "sv"})
 must_reject("site-language.schema.json", {"schema_version": 1, "default_language": "fi", "name": "Example"})
@@ -649,11 +648,11 @@ must_accept("integrations.schema.json", unread_integrations)
 unread_integrations["providers"][3]["accounts_unreadable"] = False
 must_reject("integrations.schema.json", unread_integrations)
 
-# A preferences write names exactly one change: the engine or one switch.
+# A preferences write names exactly one change.
 preferences_write = Draft202012Validator({"$ref": schemas["account-preferences.schema.json"]["$id"] + "#/$defs/write"}, registry=registry)
-for ok in ({"engine": "vscode"}, {"language": "en"}, {"language": "system"}, {"experimental": {"worker-row-sentence": True}}, {"experimental": {"next-waiting-row": False}}):
+for ok in ({"recent_count": 1}, {"recent_count": 5}, {"recent_count": 20}, {"engine": "vscode"}, {"language": "en"}, {"language": "system"}, {"experimental": {"worker-row-sentence": True}}, {"experimental": {"next-waiting-row": False}}):
     preferences_write.validate(ok)
-for bad in ({}, {"engine": "vscode", "experimental": {"worker-row-sentence": True}}, {"language": "sv"}, {"language": "en", "engine": "vscode"}, {"experimental": {}}, {"experimental": {"a": True, "b": True}}, {"experimental": {"Terminal": True}}):
+for bad in ({"recent_count": 0}, {"recent_count": 21}, {"recent_count": 1.5}, {"recent_count": "5"}, {"recent_count": True}, {"recent_count": None}, {"recent_count": 5, "engine": "vscode"}, {}, {"engine": "vscode", "experimental": {"worker-row-sentence": True}}, {"language": "sv"}, {"language": "en", "engine": "vscode"}, {"experimental": {}}, {"experimental": {"a": True, "b": True}}, {"experimental": {"Terminal": True}}):
     assert not preferences_write.is_valid(bad), f"preferences write accepted {bad!r}"
 
 # GitLab: the token travels only in connect and replace and never in a

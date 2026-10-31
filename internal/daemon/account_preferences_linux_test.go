@@ -105,6 +105,11 @@ func TestAccountPreferencesHTTPBoundary(t *testing.T) {
 		method, suffix, body string
 		status               int
 	}{
+		{"PUT", "", `{"recent_count":1}`, 200}, {"PUT", "", `{"recent_count":20}`, 200},
+		{"PUT", "", `{"recent_count":0}`, 400}, {"PUT", "", `{"recent_count":21}`, 400},
+		{"PUT", "", `{"recent_count":null}`, 400}, {"PUT", "", `{"recent_count":1.5}`, 400},
+		{"PUT", "", `{"recent_count":"5"}`, 400}, {"PUT", "", `{"Recent_Count":5}`, 400},
+		{"PUT", "", `{"recent_count":5,"language":"en"}`, 400},
 		{"GET", "", "", 200}, {"PUT", "", `{"engine":"vscode"}`, 200},
 		{"GET", "?uid=123", "", 400}, {"POST", "", `{"engine":"vscode"}`, 400},
 		{"PUT", "", `{"engine":"monaco"}`, 400}, {"PUT", "", `{"engine":"vscode","uid":123}`, 400},
@@ -158,13 +163,16 @@ func TestAccountPreferencesMergeOneChange(t *testing.T) {
 		}
 		return reply
 	}
-	if reply := put(`{"engine":"vscode"}`); reply["language"] != "system" {
+	if reply := put(`{"engine":"vscode"}`); reply["recent_count"] != float64(5) || reply["language"] != "system" {
 		t.Fatalf("an unchosen language is not system: %v", reply)
+	}
+	if reply := put(`{"recent_count":8}`); reply["recent_count"] != float64(8) {
+		t.Fatalf("recent count: %v", reply)
 	}
 	put(`{"language":"en"}`)
 	put(`{"experimental":{"next-waiting-row":true}}`)
 	reply := put(`{"experimental":{"worker-row-sentence":true}}`)
-	if reply["engine"] != "vscode" || reply["language"] != "en" || !reflect.DeepEqual(reply["experimental"], map[string]any{"next-waiting-row": true, "worker-row-sentence": true}) {
+	if reply["recent_count"] != float64(8) || reply["engine"] != "vscode" || reply["language"] != "en" || !reflect.DeepEqual(reply["experimental"], map[string]any{"next-waiting-row": true, "worker-row-sentence": true}) {
 		t.Fatalf("merge lost a change: %v", reply)
 	}
 	reply = put(`{"experimental":{"next-waiting-row":false}}`)

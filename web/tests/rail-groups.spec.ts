@@ -12,7 +12,7 @@ async function start(page: Page) {
   return new URL(page.url()).searchParams.get("conversation") ?? "";
 }
 
-test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the host's last-change time, quiet ones fold", async ({
+test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the host's last-change time, old rows stay visible", async ({
   page,
 }) => {
   await page.request.get("/fixture/conversations-reset");
@@ -76,17 +76,13 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   await expect(row.locator("time")).toHaveText("2 t");
   await expect(row).toBeVisible();
 
-  // Opened elsewhere, the quiet row folds to the end of its group.
+  // Opening another conversation never hides the older row.
   const second = await start(page);
   parked.add(second);
   await nav.getByTestId("snapshot-refresh").click();
   await expect(running.getByTestId(`agent-item-${second}`)).toBeVisible();
-  await expect(row).toHaveCount(0);
-  const fold = group.getByTestId("rail-fold-quiet-ordinary-dir");
-  await expect(fold).toHaveText("1 hiljainen");
-  await expect(fold).toHaveAttribute("aria-expanded", "false");
-  await fold.click();
-  await expect(fold).toHaveAttribute("aria-expanded", "true");
+  await expect(row).toBeVisible();
+  await expect(running.getByTestId(/^rail-fold-/)).toHaveCount(0);
   await expect(row.locator("time")).toHaveText("2 t");
   expect(
     (
@@ -102,7 +98,7 @@ test("@rail-groups @a11y Käynnissä rows are one line with a state ball and the
   // The time follows the host: a fresh snapshot brings the row back.
   aged.delete(first);
   await nav.getByTestId("snapshot-refresh").click();
-  await expect(fold).toHaveCount(0);
+  await expect(row).toBeVisible();
   await expect(row.locator("time")).toHaveText("nyt");
 
   // On the phone the one-line row is a thumb's height.

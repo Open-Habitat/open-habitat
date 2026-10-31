@@ -85,7 +85,8 @@ export function useRailNow({
   snapshot?: Snapshot;
 }): RailNow {
   const metadata = useConversationMetadata(store);
-  if (!snapshot) return { yours: [], running: [], hints: new Map() };
+  if (!snapshot)
+    return { yours: [], running: [], recent: [], hints: new Map() };
   return railNow({
     ...rest,
     snapshot,
@@ -212,6 +213,7 @@ export function WorkspaceRailView({
         <NowSections
           yours={now.yours}
           running={now.running}
+          recent={now.recent}
           collapsed={collapsed}
           archive={archiveConversation}
           rename={renameConversation}
