@@ -3,11 +3,13 @@
 <!-- confirm: draft kept in issues/; at the repository root, turn `LICENSE`, `SECURITY.md` and `docs/operations.md` back into relative links and point the badge at LICENSE. -->
 
 <!-- shipshape-readme:badges-start -->
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/license/mit)
 <!-- shipshape-readme:badges-end -->
 
 **Your team's AI agents on one Linux server, each person as their own Unix
 user, reachable from any browser.**
+
+[open-habitat.ai](https://open-habitat.ai)
 
 Sign in from a laptop or phone, talk to your [Pi](https://github.com/earendil-works/pi)
 agent, close the tab, and it keeps working. The conversation is Pi's own
@@ -118,6 +120,6 @@ settings, is `docs/operations.md`. In short:
 ## License
 
 <!-- shipshape-readme:license-start -->
-Open Habitat is licensed under the Apache License 2.0 (`LICENSE`).
-<!-- confirm: licence is Jari's decision; LICENSE file not yet written. -->
+Open Habitat is licensed under the MIT License (`LICENSE`).
+<!-- confirm: LICENSE file not yet written; its copyright holder (Jari Mustonen or a company) is still open. -->
 <!-- shipshape-readme:license-end -->

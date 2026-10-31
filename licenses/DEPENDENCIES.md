@@ -6,8 +6,9 @@ runtime and build dependencies are exact pins in `web/package-lock.json`.
 metadata and rejects AGPL/GPL dependencies. Transitive notices remain available
 from the lockfile/package artifacts; adding a dependency requires review of its
 source, authority boundary, maintenance status and license before lockfile
-commit. This repository has not yet selected a public distribution license, so
-no script may imply permission beyond dependency licenses.
+commit. The chosen public distribution license is MIT, but until the root
+`LICENSE` file exists no script may imply permission beyond dependency
+licenses.
 
 The optional native Pi process owner is `@aliou/pi-processes` 0.10.9 (MIT),
 pinned and installed through Fleetrepo's guest runtime, not bundled JavaScript

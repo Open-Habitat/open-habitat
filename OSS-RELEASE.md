@@ -18,7 +18,7 @@ contribution_provenance: dco
 provenance_level: none
 dependency_bot: none
 health_badges: [license]
-license: Apache-2.0
+license: MIT
 docs_site: none
 ---
 
@@ -32,32 +32,28 @@ docs_site: none
 These are recommendations, not inferences. The contract stays a draft until
 each one is settled.
 
-1. **License: `Apache-2.0` (recommended).** As permissive as MIT, with the
-   patent grant company and school lawyers ask about; HumanLayer uses the same.
-   AGPL would stop a competing hosted service but deter exactly the schools and
-   companies the self-hosted server is for, and no hosted product is planned.
-   `licenses/DEPENDENCIES.md` still says no public licence has been selected;
-   it changes together with the `LICENSE` file. Alternative: `MIT`.
-2. **Copyright holder.** Apache-2.0's text has no holder line, but a `NOTICE`
-   file and source headers would name one: Jari Mustonen personally, or a
-   company. Not inferred from git authorship.
-3. **Maturity: `mvp`.** Real multi-person pilot installations run named
+1. **Copyright holder.** The MIT licence text names one in its copyright
+   line: Jari Mustonen personally, or a company. Not inferred from git
+   authorship. The `LICENSE` file is written once this is settled and the
+   contract is approved; `licenses/DEPENDENCIES.md` changes with it.
+2. **Maturity: `mvp`.** Real multi-person pilot installations run named
    releases, but every release is still `v0.1.0-pilot.N`, the installation
    path for a stranger is not finished, and formats change without
    compatibility code. `spike` would undersell it, `production` is not true.
-4. **Distribution: immutable GitHub Releases, no registry.** Each release
+3. **Distribution: immutable GitHub Releases, no registry.** Each release
    carries a product package and a runtime release per architecture
    (`linux-amd64`, `linux-arm64`) for Ubuntu 24.04. Nothing goes to
    proxy.golang.org: the Go module is not a library and is not meant to be
    `go install`ed. Whether "signed" stays in the public wording is a decision:
    the operator today trusts GitHub's stated asset digests and reads no
    signature; the `.sig`/`.pub` assets are kept only for older tooling.
-5. **Launch timing.** The launch research recommends going public when the
+4. **Launch timing.** The launch research recommends going public when the
    independent customer installation works on a stranger's VPS. Visibility is
    a separate, irreversible step Jari approves on its own.
 
 ## Rationale
 
+- **license: MIT** — Jari's decision (2026-10-31), chosen over Apache-2.0.
 - **maturity: mvp** — `shipshape facts` infers `mvp`: SemVer pre-release tags
   (`v0.1.0-pilot.1` … `.16`), no `>=1.0` release, no hosted CI
   (`has_ci: false`; the gate is `scripts/ci-local.sh` on the maintainer's

@@ -51,32 +51,37 @@ kymmenen minuutin asennusta, koska sitä ei vielä ole.
    `customer-install`-kaistan valmistuttua tilalle tulee lyhyt VPS-ohje.
 5. **CONTRIBUTING.md** ja se, miten GitHubin julkiset issuet liittyvät
    issuectl-seurantaan (`/shipshape-contributing`).
-6. **Lisenssi**: README sanoo Apache-2.0, mutta `LICENSE`-tiedostoa ei ole.
+6. **Lisenssi**: README sanoo MIT, mutta `LICENSE`-tiedostoa ei ole, koska
+   sen tekijänoikeusrivin haltija on vielä auki.
 7. **Linkit**: luonnos on `issues/`-hakemistossa, joten `LICENSE`,
    `SECURITY.md` ja `docs/operations.md` ovat siinä pelkkinä polkuina (repon
    linkkitarkistus hylkää puuttuvat kohteet). Juureen siirrettäessä niistä
    tehdään taas linkit.
 
+## Päätetty
+
+- **Lisenssi: MIT** (Jari 31.10.). Sopimuksessa `license: MIT`, README:n
+  badge ja License-osio sanovat MIT.
+- **Verkkosivusto: `https://open-habitat.ai`** on kanoninen; `open-habitat.dev`,
+  `openhabitat.ai` ja `openhabitat.dev` ohjaavat siihen. README linkittää
+  sen otsikon alla.
+
 ## Päätökset, joita sopimus odottaa
 
-1. **Lisenssi.** Suositus Apache-2.0: yhtä salliva kuin MIT, mutta mukana
-   patenttilauseke, jota yritysten ja koulujen juristit kysyvät; HumanLayer
-   käyttää samaa. AGPL karkottaisi juuri itse ylläpitävät koulut ja
-   yritykset. Vaihtoehto MIT. Samalla muuttuu
-   `licenses/DEPENDENCIES.md`:n lause "ei julkista lisenssiä".
-2. **Tekijänoikeuden haltija** (NOTICE ja mahdolliset otsakkeet): sinä
-   henkilönä vai yhtiö.
-3. **Kypsyys: `mvp`.** Pilottiasennukset ovat todellisia, mutta versiot ovat
+1. **Tekijänoikeuden haltija** (MIT-lisenssin copyright-rivi): sinä
+   henkilönä vai yhtiö. `LICENSE` kirjoitetaan, kun tämä on päätetty ja
+   sopimus hyväksytty; samalla muuttuu `licenses/DEPENDENCIES.md`.
+2. **Kypsyys: `mvp`.** Pilottiasennukset ovat todellisia, mutta versiot ovat
    `v0.1.0-pilot.N`, ulkopuolisen asennus on kesken ja formaatit muuttuvat
    ilman yhteensopivuuskoodia.
-4. **Jakelu: GitHub Releases, ei rekisteriä.** Linux amd64 ja arm64.
+3. **Jakelu: GitHub Releases, ei rekisteriä.** Linux amd64 ja arm64.
    Huomaa: tehtävänannossa luki "allekirjoitetut julkaisut", mutta nykyinen
    operaattori luottaa GitHubin ilmoittamiin SHA-256-digesteihin eikä lue
    allekirjoitusta (`.sig`/`.pub` ovat vain vanhoja työkaluja varten).
    Siksi README puhuu muuttumattomista julkaisuista ja digesteistä, ei
    allekirjoituksista. Jos haluat sanan "signed" takaisin, allekirjoituksen
    pitää ensin olla taas osa luottamusketjua.
-5. **Julkistuksen ajankohta.** Suositus: kun itsenäinen asennus toimii
+4. **Julkistuksen ajankohta.** Suositus: kun itsenäinen asennus toimii
    vieraalla VPS:llä. Repon näkyvyyden vaihto on erillinen, peruuttamaton
    päätös, ja sitä ennen historia ja työmuistiot käydään läpi
    asiakasnimien ja infraviitteiden varalta.

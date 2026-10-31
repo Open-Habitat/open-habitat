@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: readme-first-draft
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # First README draft and OSS release contract
