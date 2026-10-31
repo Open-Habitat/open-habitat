@@ -5,8 +5,8 @@ type: improvement
 reporter: jari
 status: open
 priority: normal
-lane: composer
-lane_seq: 2
+lane: dictation
+lane_seq: 1
 preparation: ready
 ---
 
