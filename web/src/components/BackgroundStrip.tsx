@@ -9,6 +9,8 @@ import {
 import type { Spinoff } from "../app/spinoffs";
 import { askable, type RequestPhase, unfinished } from "../app/workerRequests";
 import { checksWord, prName, workClause } from "../app/workSentence";
+import { formatDate, textNow, useText } from "../i18n";
+import { backgroundStripText } from "../text/backgroundStrip";
 import { ControlButton, LinkRow } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 import {
@@ -75,12 +77,7 @@ const duration = (ms: number) => {
       : `${Math.floor(s / 3600)} h ${Math.floor(s / 60) % 60} min`;
 };
 const clock = (ms: number) =>
-  new Date(ms).toLocaleTimeString("fi-FI", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-const count = (n: number, one: string, many: string) =>
-  `${n} ${n === 1 ? one : many}`;
+  formatDate(ms, { hour: "2-digit", minute: "2-digit" });
 
 export interface SpinoffItem {
   run: Spinoff;
@@ -214,6 +211,7 @@ export function BackgroundStrip({
   /** Absent: this view cannot send the workers' requests anywhere. */
   ask?: WorkerAsk;
 }) {
+  const txt = useText(backgroundStripText);
   const view = useProcessView();
   const spinoffs = useContext(SpinoffContext);
   const [pressed, setPressed] = useState<Record<string, number>>({});
@@ -289,11 +287,12 @@ export function BackgroundStrip({
         const runs = gone
           .map((l) => l.run)
           .filter((r) => !listed.current?.some((n) => n.run_id === r.run_id));
+        const t = textNow(backgroundStripText);
         if (panelOpen.current && runs.length)
           setAskNotice(
             runs.length === 1
-              ? `${runs[0].title || runs[0].run_id} poistui Workerit-listasta: haaraa ja worktreetä ei enää ole.`
-              : `${runs.length} workeria poistui Workerit-listasta: haaroja ja worktreitä ei enää ole.`,
+              ? t.leftOne(runs[0].title || runs[0].run_id)
+              : t.leftMany(runs.length),
           );
       },
       Math.max(0, due - Date.now()),
@@ -323,11 +322,7 @@ export function BackgroundStrip({
       ...p,
       ...Object.fromEntries(runs.map((r) => [r.run_id, at])),
     }));
-    setAskNotice(
-      ask.target === "new"
-        ? "Tähän keskusteluun ei voi kirjoittaa selaimesta, joten pyyntö lähti uuteen keskusteluun."
-        : "",
-    );
+    setAskNotice(ask.target === "new" ? txt.wentToNew : "");
   };
   const requestRef = useRef(request);
   requestRef.current = request;
@@ -377,44 +372,39 @@ export function BackgroundStrip({
       setEndedOpen((o) => (o.spin ? o : { ...o, spin: true }));
   }, [panel, facts.spin.attention]);
   if (!view || !kinds.length) return null;
-  const unavailable = view.failed
-    ? "Prosessitietoja ei saatu"
-    : ({
-        pi_not_running: "Agentti ei ole käynnissä",
-        terminal_control: "Agenttia ohjataan terminaalista",
-        extension_missing: "Prosessilaajennusta ei ole",
-        bridge_unavailable: "Prosessiyhteys ei ole saatavilla",
-        error: "Prosessitietoja ei saatu",
-      }[inventory?.unavailable_reason ?? "error"] ??
-      "Prosessitietoja ei saatu");
+  const reason = inventory?.unavailable_reason;
+  const unavailable =
+    view.failed || !reason || reason === "error"
+      ? txt.unavailable.failed
+      : (txt.unavailable[reason] ?? txt.unavailable.failed);
   const sentence = (kind: BackgroundKind) => {
     if (kind === "spin") {
       const f = facts.spin;
       return [
-        `Workerit: ${f.working ? `${f.working} työskentelee` : "ei työskentele"}`,
+        txt.spin.head(f.working),
         f.live.length > f.working
-          ? `${f.live.length - f.working} muussa tilassa`
+          ? txt.spin.other(f.live.length - f.working)
           : "",
         f.marks.length
           ? [
               f.marks.some((i) => i.waited)
-                ? `odotetaan: ${f.marks
-                    .filter((i) => i.waited)
-                    .map((i) => i.run.title || i.run.run_id)
-                    .join(", ")}`
+                ? txt.spin.waited(
+                    f.marks
+                      .filter((i) => i.waited)
+                      .map((i) => i.run.title || i.run.run_id)
+                      .join(", "),
+                  )
                 : "",
               unwaited(f.marks).length
-                ? `${unwaited(f.marks).length} ilman odotusta`
+                ? txt.spin.unwaited(unwaited(f.marks).length)
                 : "",
             ]
               .filter(Boolean)
               .join(", ")
           : "",
-        f.attention
-          ? `${count(f.attention, "keskeneräinen", "keskeneräistä")}, työ tallessa`
-          : "",
-        handled.length ? `${handled.length} agentin käsittelyssä` : "",
-        f.ended.length ? count(f.ended.length, "päättynyt", "päättynyttä") : "",
+        f.attention ? txt.spin.unfinished(f.attention) : "",
+        handled.length ? txt.spin.handled(handled.length) : "",
+        f.ended.length ? txt.ended(f.ended.length) : "",
       ]
         .filter(Boolean)
         .join(", ");
@@ -422,18 +412,20 @@ export function BackgroundStrip({
     const f = facts.proc;
     if (!f.known)
       return interrupted.length
-        ? `Prosessit: ${interrupted.length} katkesi`
-        : `Prosessit: ei tiedossa (${unavailable})`;
+        ? txt.proc.cutOff(interrupted.length)
+        : txt.proc.unknown(unavailable);
     return [
-      `Prosessit: ${f.live.length ? `${f.live.length} käynnissä` : "ei käynnissä"}`,
+      txt.proc.head(f.live.length),
       f.waited
-        ? `agentti odottaa: ${f.live
-            .filter((p) => p.wakes_agent)
-            .map((p) => p.name)
-            .join(", ")}`
+        ? txt.proc.agentWaits(
+            f.live
+              .filter((p) => p.wakes_agent)
+              .map((p) => p.name)
+              .join(", "),
+          )
         : "",
-      f.ended.length ? count(f.ended.length, "päättynyt", "päättynyttä") : "",
-      interrupted.length ? `${interrupted.length} katkesi` : "",
+      f.ended.length ? txt.ended(f.ended.length) : "",
+      interrupted.length ? txt.proc.cut(interrupted.length) : "",
     ]
       .filter(Boolean)
       .join(", ");
@@ -443,8 +435,8 @@ export function BackgroundStrip({
     proc: "terminal",
   };
   const label: Record<BackgroundKind, string> = {
-    spin: "Workerit",
-    proc: "Prosessit",
+    spin: txt.workers,
+    proc: txt.processes,
   };
   const number = (kind: BackgroundKind) =>
     kind === "proc" && !facts.proc.known
@@ -468,8 +460,8 @@ export function BackgroundStrip({
         title={
           ask.blocked ??
           (runs.length > 1
-            ? `Lähettää yhden pyynnön ${ask.target === "new" ? "uuteen keskusteluun" : "tähän keskusteluun"}: agentti tarkistaa ${runs.length} workeria ja suosittelee.`
-            : `Lähettää pyynnön ${ask.target === "new" ? "uuteen keskusteluun" : "tähän keskusteluun"}: agentti tarkistaa worktreen ja suosittelee.`)
+            ? txt.askMany(runs.length, ask.target === "new")
+            : txt.askOne(ask.target === "new"))
         }
         onPress={() => request(runs)}
       >
@@ -490,12 +482,12 @@ export function BackgroundStrip({
             onPress={() => setEndedOpen((o) => ({ ...o, [kind]: !o[kind] }))}
           >
             <Icon name="forward" className="ah-bg-chev" />
-            <span>{count(n, "päättynyt", "päättynyttä")}</span>
+            <span>{txt.ended(n)}</span>
             {kind === "spin" && free.length && !endedOpen.spin ? (
               <span
                 className="ah-bg-attn-dot"
                 role="img"
-                aria-label="Vaatii huomiota"
+                aria-label={txt.attention}
               />
             ) : null}
           </ControlButton>
@@ -507,16 +499,16 @@ export function BackgroundStrip({
               className="ah-bg-clear"
               isDisabled={!view.canControl || view.pending}
               onPress={() => void view.control()}
-              title="Poistaa päättyneet prosessit ja niiden lokit. Päättyneet workerit jäävät: ne ovat Taskfleetin ajoja."
+              title={txt.clearTitle}
             >
               <Icon name="trash" />
-              <span>Poista päättyneet</span>
+              <span>{txt.clear}</span>
             </ControlButton>
           ) : null}
           {kind === "spin" && free.length > 1
             ? askButton(
                 free.map((i) => i.run),
-                `Käsittele kaikki (${free.length})`,
+                txt.handleAll(free.length),
                 "ask-all",
               )
             : null}
@@ -526,7 +518,7 @@ export function BackgroundStrip({
           <div
             className="ah-bg-group"
             role="group"
-            aria-label={`${label[kind]}: päättyneet`}
+            aria-label={txt.endedGroup(label[kind])}
           >
             {rows}
           </div>
@@ -542,7 +534,7 @@ export function BackgroundStrip({
     const r = i.run;
     const phase = !gone && askable(r) ? phaseOf(r) : undefined;
     const word = gone
-      ? { text: "haara ja worktree poistettu", tone: "ok" as const }
+      ? { text: txt.gone, tone: "ok" as const }
       : phase
         ? phaseWord(phase, ask?.target ?? "here")
         : stateWord(i);
@@ -582,7 +574,7 @@ export function BackgroundStrip({
           type="button"
           className="ah-bg-main"
           onClick={() => spinoffs?.open(r)}
-          title="Avaa workerin näkymä"
+          title={txt.openWorker}
         >
           <span className="ah-bg-mark" aria-hidden="true">
             {gone ? (
@@ -662,7 +654,7 @@ export function BackgroundStrip({
                   <span
                     className="ah-bg-repo"
                     data-testid="spinoff-repository"
-                    title="Eri repositorio kuin tämä keskustelu"
+                    title={txt.otherRepository}
                   >
                     {r.other_repository}
                   </span>
@@ -677,8 +669,8 @@ export function BackgroundStrip({
             className="ah-bg-stop"
             size="inline"
             variant="quiet"
-            aria-label={`Lopeta odotus: ${r.title || r.run_id}`}
-            title="Lopettaa agentin odotuksen. Worker jatkaa työtään, eikä agentti herää sen valmistuessa."
+            aria-label={txt.stopWait(r.title || r.run_id)}
+            title={txt.stopWaitTitle}
             isDisabled={!view.canControl || view.pending}
             onPress={() => i.wait && void view.control(i.wait)}
           >
@@ -694,11 +686,11 @@ export function BackgroundStrip({
               ask.target === "new" && ask.open ? ask.open(r) : close()
             }
           >
-            <span>{ask.target === "new" ? "Avaa" : "Näytä"}</span>
-            <span className="ah-bg-wide">keskustelu</span>
+            <span>{ask.target === "new" ? txt.open : txt.show}</span>
+            <span className="ah-bg-wide">{txt.conversation}</span>
           </ControlButton>
         ) : ask && !gone && askable(r) ? (
-          askButton([r], "Kerro agentille", "ask-agent")
+          askButton([r], txt.tell, "ask-agent")
         ) : (
           <span className="ah-bg-gap" aria-hidden="true" />
         )}
@@ -714,7 +706,7 @@ export function BackgroundStrip({
         : [
             processLabel(p),
             exit?.tone !== "ok" && p.exit_code !== null
-              ? `koodi ${p.exit_code}`
+              ? txt.code(p.exit_code)
               : "",
             exit?.tone === "err" && p.signal ? p.signal : "",
           ]
@@ -748,8 +740,8 @@ export function BackgroundStrip({
           <span
             className="ah-bg-wake"
             role="img"
-            aria-label="Agentti odottaa tätä"
-            title="Agentti jatkaa, kun tämä päättyy"
+            aria-label={txt.waitsThis}
+            title={txt.waitsThisTitle}
           >
             <Icon name="bell" />
           </span>
@@ -760,8 +752,8 @@ export function BackgroundStrip({
             className="ah-bg-stop"
             size="inline"
             variant="quiet"
-            aria-label={`Pysäytä ${p.name}`}
-            title={`Pysäytä prosessi ${p.name}. Agentti ei saa tästä ilmoitusta.`}
+            aria-label={txt.stop(p.name)}
+            title={txt.stopTitle(p.name)}
             isDisabled={
               !view.canControl || view.pending || p.status === "terminating"
             }
@@ -787,7 +779,7 @@ export function BackgroundStrip({
           <span>{spinoffs.workNote.text}</span>
           {spinoffs.workNote.href ? (
             <LinkRow kind="inline" href={spinoffs.workNote.href}>
-              Yhdistä GitHub
+              {txt.connectGitHub}
             </LinkRow>
           ) : null}
         </p>
@@ -798,7 +790,7 @@ export function BackgroundStrip({
           className="ah-bg-unavail"
           role="status"
         >
-          Tila voi olla vanhentunut.
+          {txt.stale}
         </p>
       ) : null}
       {facts.spin.live.length ? (
@@ -806,12 +798,12 @@ export function BackgroundStrip({
         <div
           className="ah-bg-group"
           role="group"
-          aria-label="Workerit: käynnissä"
+          aria-label={txt.workersRunning}
         >
           {facts.spin.live.map((i) => spinRow(i))}
         </div>
       ) : (
-        <p className="ah-bg-empty">Ei työskenteleviä workereita.</p>
+        <p className="ah-bg-empty">{txt.noWorkers}</p>
       )}
       {ended("spin", facts.spin.ended.length + shownLeaving.length, [
         ...[...facts.spin.ended]
@@ -829,7 +821,7 @@ export function BackgroundStrip({
       {!facts.proc.known &&
       inventory?.unavailable_reason !== "pi_not_running" ? (
         <p data-testid="process-unavailable" className="ah-bg-unavail">
-          {unavailable}. Puuttuva tieto ei tarkoita, ettei prosesseja ole.
+          {txt.unavailableNote(unavailable)}
         </p>
       ) : null}
       {interrupted.length ? (
@@ -840,13 +832,13 @@ export function BackgroundStrip({
         <div
           className="ah-bg-group"
           role="group"
-          aria-label="Prosessit: käynnissä"
+          aria-label={txt.processesRunning}
         >
           {facts.proc.live.map(procRow)}
         </div>
       ) : facts.proc.known ? (
         <p data-testid="process-empty" className="ah-bg-empty">
-          Ei käynnissä olevia prosesseja.
+          {txt.noProcesses}
         </p>
       ) : null}
       {ended("proc", facts.proc.ended.length, facts.proc.ended.map(procRow))}
@@ -856,7 +848,7 @@ export function BackgroundStrip({
     <section
       data-testid="background-work"
       className="ah-bg-strip"
-      aria-label="Taustatyö"
+      aria-label={txt.background}
     >
       <div className="ah-bg-wrap">
         {panel ? (
@@ -868,7 +860,7 @@ export function BackgroundStrip({
               }
             >
               <div className="ah-bg-tabs">
-                <TabList aria-label="Taustatyö" className="ah-bg-tablist">
+                <TabList aria-label={txt.background} className="ah-bg-tablist">
                   {kinds.map((kind) => (
                     <Tab
                       data-testid={`background-tab-${kind === "proc" ? "process" : "spinoff"}`}
@@ -887,7 +879,7 @@ export function BackgroundStrip({
                   className="ah-bg-x"
                   size="inline"
                   variant="quiet"
-                  aria-label="Sulje"
+                  aria-label={txt.close}
                   onPress={close}
                 >
                   <Icon name="cross" />
@@ -906,7 +898,7 @@ export function BackgroundStrip({
           data-testid="background-badges"
           className="ah-bg-badges"
           role="group"
-          aria-label="Taustatyö"
+          aria-label={txt.background}
         >
           {kinds.map((kind) => {
             const f = facts[kind];
@@ -971,9 +963,7 @@ export function BackgroundStrip({
           {kinds.includes("spin") && free.length
             ? askButton(
                 free.map((i) => i.run),
-                free.length > 1
-                  ? `Käsittele kaikki (${free.length})`
-                  : "Käsittele",
+                free.length > 1 ? txt.handleAll(free.length) : txt.handle,
                 "ask-all-pill",
                 "ah-bg-tell ah-bg-pill-tell",
               )
@@ -999,35 +989,36 @@ export function stateWord(i: SpinoffItem): {
   text: string;
   tone: "wait" | "ok" | "err" | "muted";
 } {
+  const txt = textNow(backgroundStripText).state;
   const r = i.run;
-  const kept = r.preserved ? " · työ tallessa" : "";
+  const kept = r.preserved ? txt.kept : "";
   if (r.state === "merged")
     return r.preserved
-      ? { text: "mergetty · worktree jäljellä", tone: "ok" }
-      : { text: "laskeutui", tone: "ok" };
-  if (r.state === "failed") return { text: `epäonnistui${kept}`, tone: "err" };
+      ? { text: txt.mergedKept, tone: "ok" }
+      : { text: txt.landed, tone: "ok" };
+  if (r.state === "failed") return { text: txt.failed(kept), tone: "err" };
   if (r.state === "unmerged")
     return {
-      text: `ei mergetty${kept}`,
+      text: txt.unmerged(kept),
       tone: r.preserved ? "err" : "muted",
     };
   const state =
     r.state === "waiting_parent"
-      ? "odottaa pääagenttia"
+      ? txt.waitingParent
       : r.state === "idle"
         ? r.awaiting_input
-          ? "odottaa vastausta päätteessä"
-          : "odottaa sinua"
+          ? txt.awaitingInput
+          : txt.idle
         : r.state === "unknown"
-          ? "tila ei tiedossa"
+          ? txt.unknown
           : "";
   if (i.waited)
     return {
-      text: state ? `agentti odottaa · ${state}` : "agentti odottaa",
+      text: state ? txt.waitedWith(state) : txt.waited,
       tone: "wait",
     };
   return {
-    text: state || "agentti ei odota",
+    text: state || txt.notWaited,
     tone: r.state === "idle" ? "wait" : "muted",
   };
 }
@@ -1037,26 +1028,17 @@ export function phaseWord(
   phase: RequestPhase,
   target: WorkerAsk["target"],
 ): { text: string; tone: "busy" | "wait" } {
-  const where =
-    target === "new" ? "uudessa keskustelussa" : "tässä keskustelussa";
-  if (phase === "queued")
-    return { text: "pyyntö jonossa · lähtee, kun vuoro päättyy", tone: "busy" };
+  const txt = textNow(backgroundStripText).phase;
+  const where = target === "new" ? txt.inNew : txt.inHere;
+  if (phase === "queued") return { text: txt.queued, tone: "busy" };
   if (phase === "sent")
     return {
-      text:
-        target === "new"
-          ? "pyyntö lähetetty · uudessa keskustelussa"
-          : "pyyntö lähetetty",
+      text: target === "new" ? txt.sentNew : txt.sent,
       tone: "busy",
     };
-  if (phase === "answer")
-    return { text: `odottaa vastaustasi · ${where}`, tone: "wait" };
-  if (phase === "acting")
-    return {
-      text: `agentti toimii vastauksesi mukaan · ${where}`,
-      tone: "busy",
-    };
-  return { text: `agentti tarkistaa · ${where}`, tone: "busy" };
+  if (phase === "answer") return { text: txt.answer(where), tone: "wait" };
+  if (phase === "acting") return { text: txt.acting(where), tone: "busy" };
+  return { text: txt.checking(where), tone: "busy" };
 }
 
 /** A turning ring while the agent has the request, a still one while it

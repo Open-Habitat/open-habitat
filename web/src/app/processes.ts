@@ -1,7 +1,11 @@
 import Ajv from "ajv/dist/2020.js";
 import schema from "../../../contracts/v1/process.schema.json";
 import eventSchema from "../../../contracts/v1/process-event.schema.json";
+import { liveText } from "../i18n";
+import { processesText } from "../text/processes";
 import { mutationFetch } from "./mutations";
+
+const txt = liveText(processesText);
 
 export interface ProcessSpinoff {
   state?: import("./spinoffs").Spinoff["state"];
@@ -13,23 +17,24 @@ export interface ProcessSpinoff {
   commit: string | null;
 }
 export function spinoffLabel(run: ProcessSpinoff): string {
+  const t = txt.run;
   if (run.state)
     return {
-      working: "Työskentelee",
-      idle: "Odottaa sinua",
-      waiting_parent: "Odottaa pääagenttia",
-      merged: "Mergetty",
-      unmerged: run.preserved ? "Ei mergetty · työ tallessa" : "Ei mergetty",
-      failed: run.preserved ? "Epäonnistui · työ tallessa" : "Epäonnistui",
-      unknown: "Tila ei tiedossa",
+      working: t.working,
+      idle: t.idle,
+      waiting_parent: t.waiting_parent,
+      merged: t.merged,
+      unmerged: run.preserved ? t.unmergedKept : t.unmerged,
+      failed: run.preserved ? t.failedKept : t.failed,
+      unknown: t.unknown,
     }[run.state];
   return run.status === "pending" || run.status === "running"
-    ? "Työskentelee"
+    ? t.working
     : run.landed
-      ? "Mergetty"
+      ? t.merged
       : run.status === "cancelled"
-        ? "Peruttu · työ tallessa"
-        : "Ei mergetty · työ tallessa";
+        ? t.cancelledKept
+        : t.unmergedKept;
 }
 export interface ProcessRecord {
   spinoff?: ProcessSpinoff[];
@@ -246,8 +251,8 @@ export const processLive = (p: ProcessRecord) =>
   ["running", "terminating", "terminate_timeout"].includes(p.status);
 export const interruptedLabel = (p: InterruptedProcess) =>
   p.reason === "server_restart"
-    ? "Katkesi palvelimen uudelleenkäynnistyksessä"
-    : "Katkesi, kun agentti pysähtyi";
+    ? txt.interruptedRestart
+    : txt.interruptedStopped;
 /** How an ended process reads. */
 export interface ExitReading {
   /** ok: exit 0; neutral: ended as the agent may have expected; err: failed. */
@@ -269,35 +274,35 @@ export function exitReading(p: {
   end_reason: string | null;
   run_ids: string[];
 }): ExitReading {
-  if (p.killed) return { tone: "neutral", label: "pysäytetty" };
+  if (p.killed) return { tone: "neutral", label: txt.exit.killed };
   if (p.end_reason === "spawn_error" || p.end_reason === "missing_pid")
-    return { tone: "err", label: "ei käynnistynyt" };
-  if (p.end_reason === "lost") return { tone: "err", label: "katosi" };
-  if (p.exit_code === 0) return { tone: "ok", label: "valmis" };
-  if (p.signal) return { tone: "err", label: "kaatui" };
-  if (p.exit_code === null) return { tone: "err", label: "epäonnistui" };
+    return { tone: "err", label: txt.exit.notStarted };
+  if (p.end_reason === "lost") return { tone: "err", label: txt.exit.lost };
+  if (p.exit_code === 0) return { tone: "ok", label: txt.exit.done };
+  if (p.signal) return { tone: "err", label: txt.exit.crashed };
+  if (p.exit_code === null) return { tone: "err", label: txt.exit.failed };
   if (p.run_ids.length) {
     // `taskfleet run wait`: 2 timeout, 3 a settled run failed
     // (--fail-on-error), 4 check-in snapshot. The run's own failure shows on
     // the worker; the wait did what it was asked.
     const wait = {
-      2: "odotus aikakatkaistiin",
-      3: "ajo epäonnistui",
-      4: "välitarkistus",
+      2: txt.exit.waitTimeout,
+      3: txt.exit.runFailed,
+      4: txt.exit.checkIn,
     }[p.exit_code];
     if (wait) return { tone: "neutral", label: wait };
   }
-  return { tone: "neutral", label: "päättyi" };
+  return { tone: "neutral", label: txt.exit.ended };
 }
 export const recordExit = (p: ProcessRecord) =>
   exitReading({ ...p, killed: p.status === "killed" });
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export function processLabel(p: ProcessRecord) {
   return {
-    running: "Käynnissä",
-    terminating: "Pysäytetään…",
-    terminate_timeout: "Ei pysähtynyt",
-    killed: "Pysäytetty",
+    running: txt.status.running,
+    terminating: txt.status.terminating,
+    terminate_timeout: txt.status.terminate_timeout,
+    killed: txt.status.killed,
     exited: capital(recordExit(p).label),
   }[p.status];
 }

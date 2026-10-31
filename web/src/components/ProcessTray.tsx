@@ -31,6 +31,8 @@ import {
   recordExit,
   spinoffLabel,
 } from "../app/processes";
+import { formatDate, textNow, useText } from "../i18n";
+import { processTrayText } from "../text/processTray";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { PiToolUse } from "./PiBlocks";
@@ -163,28 +165,27 @@ export function ProcessProvider({
     if (!id || !owner || !csrf || pending) return;
     setPending(true);
     setNotice("");
+    const txt = textNow(processTrayText).notice;
     try {
       const result = await controlProcess(id, owner, csrf, p, force);
       if (!alive.current) return;
       setNotice(
         result === "error"
-          ? "Toiminto epäonnistui."
+          ? txt.error
           : result === "terminate_timeout"
-            ? "Prosessi ei pysähtynyt. Voit pakottaa lopetuksen."
+            ? txt.timeout
             : p?.run_ids.length
-              ? "Odotus lopetettiin. Worker jatkaa työtään, eikä agentti saa ilmoitusta."
+              ? txt.waitStopped
               : p
-                ? "Prosessi pysäytettiin. Agentti ei saa tästä ilmoitusta."
-                : "Päättyneet prosessit ja niiden lokit poistettiin. Historia säilyy.",
+                ? txt.stopped
+                : txt.cleared,
       );
     } catch (error) {
       if (!alive.current) return;
       if ((error as Error).message === "identity_lost") onLogin();
       else
         setNotice(
-          (error as Error).message === "stale_process"
-            ? "Prosessin omistaja vaihtui. Tiedot päivitetään; toimintoa ei toistettu."
-            : "Toiminto epäonnistui. Tarkista tila.",
+          (error as Error).message === "stale_process" ? txt.stale : txt.failed,
         );
     } finally {
       if (alive.current) {
@@ -256,6 +257,7 @@ function ProcessWindow({
   onLogin: () => void;
   onClose: () => void;
 }) {
+  const txt = useText(processTrayText);
   const live = process ? processLive(process) : false;
   return (
     <ModalOverlay
@@ -270,12 +272,12 @@ function ProcessWindow({
         <AriaDialog
           data-testid="process-dialog"
           className="ah-dialog"
-          aria-label={process ? `Prosessi ${process.name}` : "Prosessi"}
+          aria-label={process ? txt.processNamed(process.name) : txt.process}
         >
           <div className="ah-process-window-head">
             {process ? <ProcessMark process={process} /> : null}
             <Heading slot="title" className="ah-process-window-title">
-              {process?.name ?? "Prosessi"}
+              {process?.name ?? txt.process}
             </Heading>
             {process ? (
               <span
@@ -284,7 +286,7 @@ function ProcessWindow({
               >
                 {processLabel(process)}
                 {!live && process.exit_code !== null
-                  ? ` · koodi ${process.exit_code}`
+                  ? txt.code(process.exit_code)
                   : ""}
                 {process.signal ? ` · ${process.signal}` : ""}
               </span>
@@ -295,7 +297,7 @@ function ProcessWindow({
               size="inline"
               variant="quiet"
               slot="close"
-              aria-label="Sulje"
+              aria-label={txt.close}
             >
               <Icon name="cross" />
             </ControlButton>
@@ -336,12 +338,12 @@ function ProcessWindow({
                         process.status === "terminate_timeout",
                       )
                     }
-                    title="Pysäyttää prosessin. Agentti ei saa tästä ilmoitusta."
+                    title={txt.stopTitle}
                   >
                     <Icon name="stop" />
                     {process.status === "terminate_timeout"
-                      ? "Pakota lopetus"
-                      : "Pysäytä"}
+                      ? txt.force
+                      : txt.stop}
                   </ControlButton>
                 ) : (
                   <ControlButton
@@ -350,10 +352,10 @@ function ProcessWindow({
                     variant="secondary"
                     isDisabled={!view.canControl || view.pending}
                     onPress={() => void view.control().then(onClose)}
-                    title="pi-processes poistaa päättyneet yhdessä. Keskustelun historia säilyy."
+                    title={txt.clearTitle}
                   >
                     <Icon name="trash" />
-                    Poista päättyneet
+                    {txt.clear}
                   </ControlButton>
                 )}
                 {live && process.status !== "terminate_timeout" ? (
@@ -363,19 +365,16 @@ function ProcessWindow({
                     variant="quiet"
                     isDisabled={!view.canControl || view.pending}
                     onPress={() => void view.control(process, true)}
-                    title="Lopettaa prosessin heti (SIGKILL)."
+                    title={txt.forceTitle}
                   >
-                    Pakota lopetus
+                    {txt.force}
                   </ControlButton>
                 ) : null}
               </div>
               {view.notice ? <p role="status">{view.notice}</p> : null}
             </>
           ) : (
-            <p data-testid="process-output-unavailable">
-              Tulostetta ei ole enää saatavilla. Prosessi on voitu poistaa tai
-              agentti on käynnistetty uudelleen.
-            </p>
+            <p data-testid="process-output-unavailable">{txt.outputGone}</p>
           )}
         </AriaDialog>
       </Modal>
@@ -388,11 +387,15 @@ export function InterruptedProcesses({
 }: {
   processes: InterruptedProcess[];
 }) {
+  const txt = useText(processTrayText);
   return (
     <>
-      <section data-testid="disconnected-processes" aria-label="Katkenneet">
+      <section
+        data-testid="disconnected-processes"
+        aria-label={txt.interrupted}
+      >
         <div className="ah-process-group-heading">
-          <h2>Katkenneet</h2>
+          <h2>{txt.interrupted}</h2>
         </div>
         {processes.map((p) => (
           <div
@@ -409,11 +412,12 @@ export function InterruptedProcesses({
                 {interruptedLabel(p)}
                 {" · "}
                 <time dateTime={new Date(p.started_at).toISOString()}>
-                  aloitettu{" "}
-                  {new Date(p.started_at).toLocaleTimeString("fi-FI", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {txt.started(
+                    formatDate(p.started_at, {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                  )}
                 </time>
               </span>
               <code className="ah-process-command">{p.command_preview}</code>
@@ -421,9 +425,7 @@ export function InterruptedProcesses({
           </div>
         ))}
       </section>
-      <p>
-        Agentti kuulee katkenneista prosesseista seuraavan viestisi yhteydessä.
-      </p>
+      <p>{txt.interruptedNote}</p>
     </>
   );
 }
@@ -473,6 +475,7 @@ function ProcessOutputView({
   refresh: () => void;
   onLogin: () => void;
 }) {
+  const txt = useText(processTrayText);
   const [follow, setFollow] = useState(true);
   const [output, setOutput] = useState<ProcessOutput>();
   const [failed, setFailed] = useState(false);
@@ -533,10 +536,7 @@ function ProcessOutputView({
     <div className="ah-process-output">
       <div className="ah-process-output-head">
         {process.run_ids.length ? (
-          <p>
-            Worker-ajot: {process.run_ids.join(", ")}. Odotuksen lopettaminen ei
-            pysäytä ajoja.
-          </p>
+          <p>{txt.workerRuns(process.run_ids.join(", "))}</p>
         ) : null}
         <ControlButton
           size="inline"
@@ -545,39 +545,30 @@ function ProcessOutputView({
           data-testid="process-follow"
           onPress={() => setFollow(!follow)}
         >
-          {follow ? "Pysäytä seuraaminen" : "Seuraa loppua"}
+          {follow ? txt.pauseFollow : txt.follow}
         </ControlButton>
       </div>
-      {!follow ? (
-        <p>
-          Seuraaminen tauolla. Prosessi jatkaa; jatkaminen hakee uuden
-          loppuosan.
-        </p>
-      ) : null}
-      {failed ? (
-        <p role="status">
-          Tulostetta ei saatu. Aiempi tuloste ei ole ajantasainen.
-        </p>
-      ) : null}
+      {!follow ? <p>{txt.paused}</p> : null}
+      {failed ? <p role="status">{txt.outputFailed}</p> : null}
       {output ? (
         <>
           <p>
             {output.omitted_before === null
-              ? "Näytetään säilytetty loppuosa; aiempien rivien määrä ei ole tiedossa."
+              ? txt.tailUnknown
               : output.omitted_before
-                ? `${output.omitted_before} aiempaa riviä ei näytetä.`
-                : "Säilytetty loppuosa."}{" "}
+                ? txt.omitted(output.omitted_before)
+                : txt.tail}{" "}
             {output.retention_restarted === true
-              ? "Lokin säilytys on alkanut uudelleen."
+              ? txt.retentionRestarted
               : output.retention_restarted === null
-                ? "Lokin aiempi säilytys ei ole tiedossa."
+                ? txt.retentionUnknown
                 : ""}
           </p>
           {/* biome-ignore lint/a11y/useSemanticElements: Named scroll region for preformatted native output. */}
           <pre
             data-testid="process-output"
             role="region"
-            aria-label="Prosessin tuloste"
+            aria-label={txt.output}
             ref={body}
             // biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable native output must be keyboard focusable.
             tabIndex={0}
@@ -598,12 +589,13 @@ function ProcessOutputView({
           </pre>
         </>
       ) : !failed ? (
-        <p>Ladataan tulostetta…</p>
+        <p>{txt.loading}</p>
       ) : null}
     </div>
   );
 }
 export function ProcessCompletion({ event }: { event: ProcessEvent }) {
+  const txt = useText(processTrayText);
   const context = useContext(Context);
   const [expanded, setExpanded] = useState(false);
   const delivery = context?.deliveryFor(event) ?? event.delivery;
@@ -612,9 +604,7 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
       ? {
           tone: "neutral" as const,
           label:
-            event.kind === "log_match"
-              ? "lokiosuma"
-              : "lokiosumien ilmoituksia jätettiin pois",
+            event.kind === "log_match" ? txt.logMatch : txt.logMatchSuppressed,
         }
       : exitReading({ ...event, killed: event.kind === "killed" });
   return (
@@ -643,13 +633,13 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
       >
         <span className="ah-process-completion-name">{event.process_name}</span>{" "}
         · <span className="ah-process-completion-label">{reading.label}</span>
-        {event.exit_code !== null ? ` · koodi ${event.exit_code}` : ""}
+        {event.exit_code !== null ? txt.code(event.exit_code) : ""}
         {delivery === "wake"
-          ? " · herätti agentin"
+          ? txt.woke
           : delivery === "steer"
-            ? " · agentille työn aikana"
+            ? txt.steer
             : delivery === "context"
-              ? " · agentin kontekstiin"
+              ? txt.context
               : ""}
       </ControlButton>
       {expanded ? (
@@ -666,27 +656,21 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
                 <li key={run.run_id}>
                   {run.title || run.run_id} · {spinoffLabel(run)}
                   {run.commit ? ` · ${run.commit.slice(0, 8)}` : ""}{" "}
-                  <small>(nykytila)</small>
+                  <small>{txt.now}</small>
                 </li>
               ))}
             </ul>
           ) : event.run_ids.length ? (
-            <p>Worker-ajot: nykytilaa ei saatu.</p>
+            <p>{txt.runsUnknown}</p>
           ) : null}
           {event.run_ids.length && event.exit_code === 2 ? (
-            <p>Odotus aikakatkaistiin. Workerit voivat yhä työskennellä.</p>
+            <p>{txt.waitTimedOut}</p>
           ) : event.run_ids.length && event.exit_code === 3 ? (
-            <p>Odotusehto päättyi epäonnistuneeseen ajoon.</p>
+            <p>{txt.waitFailed}</p>
           ) : event.run_ids.length && event.exit_code === 4 ? (
-            <p>
-              Taskfleet palautti tilannekuvan sovitun ajan jälkeen. Workerit
-              työskentelevät yhä, ja agentti voi jatkaa odotusta.
-            </p>
+            <p>{txt.checkIn}</p>
           ) : reading.tone === "neutral" && event.exit_code ? (
-            <p>
-              Habitat ei tiedä, mitä koodi tälle komennolle tarkoittaa. Agentti
-              kertoo sen yleensä seuraavassa viestissään.
-            </p>
+            <p>{txt.codeUnknown}</p>
           ) : null}
           {context ? (
             <ControlButton
@@ -695,13 +679,10 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
               data-testid="process-inventory"
               onPress={context.showInventory}
             >
-              Avaa nykyiset prosessit
+              {txt.openInventory}
             </ControlButton>
           ) : null}
-          <p>
-            Merkintä säilyy historiassa. Aiemman prosessin tulosteen saatavuutta
-            ei voida varmistaa.
-          </p>
+          <p>{txt.kept}</p>
         </div>
       ) : null}
     </div>
@@ -714,6 +695,7 @@ export function ProcessStartCard({
   argumentsText: string;
   result?: string;
 }) {
+  const txt = useText(processTrayText);
   const context = useContext(Context);
   let args: Record<string, unknown> = {};
   try {
@@ -727,7 +709,7 @@ export function ProcessStartCard({
   return (
     <div className="ah-process-start">
       <p>
-        process · {typeof args.action === "string" ? args.action : "kutsu"}
+        process · {typeof args.action === "string" ? args.action : txt.call}
         {typeof args.name === "string" ? ` · ${args.name}` : ""}
       </p>
       {record ? (
@@ -741,17 +723,14 @@ export function ProcessStartCard({
             data-testid="process-receipt-open"
             onPress={() => context?.select(record)}
           >
-            Näytä prosessi ja tuloste
+            {txt.showProcess}
           </ControlButton>
         </>
       ) : (
-        <p>
-          Nykyistä prosessia ei voitu yhdistää tähän kutsuun. Tarkista prosessit
-          kentän yllä.
-        </p>
+        <p>{txt.notJoined}</p>
       )}
       <details>
-        <summary>Kutsun tiedot</summary>
+        <summary>{txt.callDetails}</summary>
         <pre>{argumentsText}</pre>
         {result ? <pre>{result}</pre> : null}
       </details>
@@ -769,6 +748,7 @@ export function ProcessAwareToolUse({
   argumentsText?: string;
   result?: string;
 }) {
+  const txt = useText(processTrayText);
   const context = useContext(Context);
   const record =
     props.name === "process"
@@ -781,7 +761,7 @@ export function ProcessAwareToolUse({
       const args = JSON.parse(argumentsText ?? "{}");
       if (args?.action === "start") {
         started = true;
-        target = `start · ${typeof args.name === "string" ? args.name : "prosessi"}`;
+        target = `start · ${typeof args.name === "string" ? args.name : txt.processFallback}`;
       }
     } catch {
       /* Partial arguments are not a process identity. */
@@ -795,7 +775,7 @@ export function ProcessAwareToolUse({
         record
           ? processLabel(record)
           : started && props.state === "succeeded"
-            ? "Käynnistetty"
+            ? txt.started_
             : undefined
       }
       state={
@@ -836,6 +816,7 @@ function joinProcess(
 }
 
 export function ProcessWaitingChip({ label }: { label: string }) {
+  const txt = useText(processTrayText);
   const openSpinoff = useOpenSpinoff();
   const context = useContext(Context);
   const awaited = context?.inventory?.processes.filter(
@@ -862,7 +843,7 @@ export function ProcessWaitingChip({ label }: { label: string }) {
       title={
         name
           ? `${name}${awaited && awaited.length > 1 ? ` +${awaited.length - 1}` : ""}`
-          : "Näytä mitä agentti odottaa"
+          : txt.showWaited
       }
       onPress={() =>
         first

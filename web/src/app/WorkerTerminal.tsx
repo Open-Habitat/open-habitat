@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type TerminalHandle, TerminalSurface } from "../components/Terminal";
+import { useText } from "../i18n";
+import { workerTerminalText } from "../text/workerTerminal";
 import {
   type TerminalReady,
   TerminalSocket,
@@ -25,12 +27,16 @@ export function WorkerTerminal({
   csrf: string;
   onLogin?: () => void;
 }) {
+  const txt = useText(workerTerminalText);
   const terminal = useRef<TerminalHandle>(null);
   const held = useRef<Uint8Array[] | undefined>([]);
   const size = useRef({ cols: 80, rows: 24 });
   const [ready, setReady] = useState<TerminalReady>();
   const [surface, setSurface] = useState(0);
-  const [problem, setProblem] = useState<string>();
+  // Kept as what happened, so a language change rewords it.
+  const [problem, setProblem] = useState<
+    { closed: true } | { code: number; reason: string }
+  >();
   const [offline, setOffline] = useState(false);
   useEffect(() => {
     let socket: TerminalSocket | undefined;
@@ -56,7 +62,7 @@ export function WorkerTerminal({
             else terminal.current?.write(bytes);
           },
           exit: () => {
-            if (alive) setProblem("Workerin pääte sulkeutui.");
+            if (alive) setProblem({ closed: true });
           },
           closed: (code, reason) => {
             if (!alive) return;
@@ -65,11 +71,7 @@ export function WorkerTerminal({
               return;
             }
             if (code >= 4000 && code < 5000) {
-              setProblem(
-                reason === "shell_ended"
-                  ? "Workerin päätettä ei löytynyt tästä työtilasta."
-                  : terminalRefusal(code, reason),
-              );
+              setProblem({ code, reason });
               return;
             }
             setOffline(true);
@@ -93,14 +95,18 @@ export function WorkerTerminal({
         data-testid="worker-terminal-problem"
         role="status"
       >
-        {problem}
+        {"closed" in problem
+          ? txt.closed
+          : problem.reason === "shell_ended"
+            ? txt.notFound
+            : terminalRefusal(problem.code, problem.reason)}
       </p>
     );
   return (
     <TerminalSurface
       key={surface}
       ref={terminal}
-      label="Workerin pääte (vain luku)"
+      label={txt.label}
       readOnly
       offline={offline}
       fixedSize={

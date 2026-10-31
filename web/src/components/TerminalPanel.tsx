@@ -6,6 +6,8 @@ import {
   useId,
   useRef,
 } from "react";
+import { textNow, useText } from "../i18n";
+import { terminalPanelText } from "../text/terminalPanel";
 import { ControlButton, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { Menu } from "./Overlays";
@@ -49,15 +51,19 @@ export type TerminalKey =
   | "/"
   | "~";
 
-const keyRow: { key: TerminalKey; label: string; name?: string }[] = [
+const keyRow: {
+  key: TerminalKey;
+  label: string;
+  name?: keyof (typeof terminalPanelText)["fi"]["keys"];
+}[] = [
   { key: "Escape", label: "Esc" },
   { key: "Tab", label: "Tab" },
   { key: "ctrl", label: "Ctrl" },
   { key: "alt", label: "Alt" },
-  { key: "ArrowLeft", label: "←", name: "Vasen" },
-  { key: "ArrowUp", label: "↑", name: "Ylös" },
-  { key: "ArrowDown", label: "↓", name: "Alas" },
-  { key: "ArrowRight", label: "→", name: "Oikea" },
+  { key: "ArrowLeft", label: "←", name: "left" },
+  { key: "ArrowUp", label: "↑", name: "up" },
+  { key: "ArrowDown", label: "↓", name: "down" },
+  { key: "ArrowRight", label: "→", name: "right" },
   { key: "|", label: "|" },
   { key: "-", label: "-" },
   { key: "/", label: "/" },
@@ -74,14 +80,15 @@ export function TerminalToggle({
   count: number;
   onPress: () => void;
 }) {
+  const txt = useText(terminalPanelText);
   return (
     <ControlButton
       data-testid="toggle-terminal"
       size="row"
       variant="quiet"
       className="ah-topbar-icon ah-terminal-toggle"
-      aria-label={count ? `Pääte (${count})` : "Pääte"}
-      title="Pääte (Ctrl+Alt+T / ⌃⌥T)"
+      aria-label={txt.toggle(count)}
+      title={txt.toggleTitle}
       aria-pressed={open}
       onPress={onPress}
     >
@@ -95,12 +102,14 @@ export function TerminalToggle({
   );
 }
 
-const tip = (tab: TerminalTab) =>
-  tab.busy
-    ? `Ajossa: ${tab.command ?? "ohjelma"}`
+const tip = (tab: TerminalTab) => {
+  const txt = textNow(terminalPanelText);
+  return tab.busy
+    ? txt.running(tab.command)
     : tab.readOnly
-      ? `Taskfleet ${tab.session ?? ""} · vain luku`
-      : "Kehotteessa";
+      ? txt.taskfleetTip(tab.session ?? "")
+      : txt.atPrompt;
+};
 
 export function TerminalPanel({
   workspaceLabel,
@@ -164,6 +173,7 @@ export function TerminalPanel({
   onSendSelection?: () => void;
   onFocusTerminal: () => void;
 }) {
+  const txt = useText(terminalPanelText);
   const hostId = useId();
   const tabsRef = useRef<HTMLDivElement | null>(null);
   const setTabs = (node: HTMLDivElement | null) => {
@@ -204,7 +214,7 @@ export function TerminalPanel({
     <section
       data-testid="terminal-panel"
       className="ah-terminal-dock"
-      aria-label="Päätepaneeli"
+      aria-label={txt.panel}
       data-max={maximized || undefined}
       style={{ "--ah-terminal-height": `${height}px` } as CSSProperties}
     >
@@ -214,7 +224,7 @@ export function TerminalPanel({
         className="ah-terminal-grip"
         role="separator"
         aria-orientation="horizontal"
-        aria-label="Paneelin korkeus"
+        aria-label={txt.height}
         aria-valuenow={height}
         aria-valuemin={160}
         aria-valuemax={640}
@@ -245,11 +255,11 @@ export function TerminalPanel({
           data-testid="terminal-back"
           type="button"
           className="ah-terminal-back"
-          aria-label="Takaisin keskusteluun"
+          aria-label={txt.back}
           onClick={onHide}
         >
           <Icon name="back" />
-          <span>Keskustelu</span>
+          <span>{txt.conversation}</span>
         </button>
         <span className="ah-terminal-ws ah-mono" title={workspaceLabel}>
           {workspaceLabel}
@@ -259,7 +269,7 @@ export function TerminalPanel({
               separate buttons, not children of a tablist (or of a tab). */}
           <div
             role="tablist"
-            aria-label={`Päätteet: ${workspaceLabel}`}
+            aria-label={txt.tabs(workspaceLabel)}
             aria-owns={
               tabs.length
                 ? tabs.map((tab) => `${hostId}-tab-${tab.key}`).join(" ")
@@ -294,14 +304,14 @@ export function TerminalPanel({
                         data-testid="terminal-busy"
                         className="ah-terminal-busy"
                         role="img"
-                        aria-label={`Ajossa: ${tab.command ?? "ohjelma"}`}
+                        aria-label={txt.running(tab.command)}
                       />
                     ) : (
                       <span
                         data-testid="terminal-prompt"
                         className="ah-terminal-prompt"
                         role="img"
-                        aria-label="Kehotteessa"
+                        aria-label={txt.atPrompt}
                       >
                         $
                       </span>
@@ -309,7 +319,7 @@ export function TerminalPanel({
                   </span>
                   <span className="ah-mono">{tab.name}</span>
                   {tab.readOnly ? (
-                    <span className="ah-terminal-ro">vain luku</span>
+                    <span className="ah-terminal-ro">{txt.readOnly}</span>
                   ) : null}
                 </button>
                 <button
@@ -319,13 +329,9 @@ export function TerminalPanel({
                   className="ah-terminal-x"
                   tabIndex={-1}
                   aria-label={
-                    tab.readOnly ? `Irrota ${tab.name}` : `Lopeta ${tab.name}`
+                    tab.readOnly ? txt.detach(tab.name) : txt.end(tab.name)
                   }
-                  title={
-                    tab.readOnly
-                      ? "Irrota: Taskfleetin ikkuna jatkaa"
-                      : "Lopeta pääte"
-                  }
+                  title={tab.readOnly ? txt.detachTitle : txt.endTitle}
                   onClick={() => onCloseTab(tab.key)}
                 >
                   <Icon name={tab.readOnly ? "external" : "cross"} />
@@ -340,8 +346,8 @@ export function TerminalPanel({
               data-testid="new-terminal"
               size="row"
               variant="quiet"
-              aria-label={`Uusi pääte työtilaan ${workspaceLabel}`}
-              title="Uusi pääte"
+              aria-label={txt.newIn(workspaceLabel)}
+              title={txt.new}
               onPress={onNew}
             >
               <Icon name="plus" />
@@ -349,8 +355,8 @@ export function TerminalPanel({
           ) : null}
           {attachable.length ? (
             <Menu
-              label="Taskfleetin tmux-ikkunat"
-              triggerLabel={`Liity Taskfleetin ikkunaan (${attachable.length})`}
+              label={txt.windows}
+              triggerLabel={txt.attach(attachable.length)}
               triggerClassName="ah-terminal-attach"
               trigger={
                 <>
@@ -359,12 +365,12 @@ export function TerminalPanel({
                   <span className="ah-terminal-n">{attachable.length}</span>
                 </>
               }
-              heading="Taskfleetin ikkunat (vain luku)"
+              heading={txt.windowsHeading}
               placement="bottom end"
               items={attachable.map((a) => ({
                 id: a.token,
                 label: a.name,
-                description: `${a.session}${a.busy && a.command ? ` · ajaa ${a.command}` : ""}`,
+                description: `${a.session}${a.busy && a.command ? txt.runs(a.command) : ""}`,
               }))}
               onAction={onAttach}
             />
@@ -374,8 +380,8 @@ export function TerminalPanel({
             size="row"
             variant="quiet"
             className="ah-terminal-maxbtn"
-            aria-label={maximized ? "Palauta koko" : "Suurenna"}
-            title={maximized ? "Palauta koko" : "Suurenna"}
+            aria-label={maximized ? txt.restore : txt.maximize}
+            title={maximized ? txt.restore : txt.maximize}
             aria-pressed={maximized}
             onPress={onToggleMax}
           >
@@ -385,8 +391,8 @@ export function TerminalPanel({
             data-testid="hide-terminal"
             size="row"
             variant="quiet"
-            aria-label="Piilota paneeli (päätteet jatkavat)"
-            title="Piilota paneeli (päätteet jatkavat)"
+            aria-label={txt.hide}
+            title={txt.hide}
             onPress={onHide}
           >
             <Icon name="down" />
@@ -406,25 +412,18 @@ export function TerminalPanel({
           <div className="ah-terminal-empty">
             <Icon name="terminal" />
             <p data-testid="terminal-empty">
-              Työtilassa <span className="ah-mono">{workspaceLabel}</span> ei
-              ole päätettä.
+              {txt.empty(<span className="ah-mono">{workspaceLabel}</span>)}
             </p>
-            <p className="ah-terminal-sub">
-              Pääte on tavallinen bash työtilan hakemistossa. Se jatkaa
-              palvelimella, kun suljet selaimen
-              {volatile
-                ? ", mutta päättyy, jos palvelin käynnistetään uudelleen."
-                : "."}
-            </p>
+            <p className="ah-terminal-sub">{txt.emptySub(volatile)}</p>
             <ControlButton size="row" variant="primary" onPress={onNew}>
               <Icon name="terminal" />
-              Avaa pääte
+              {txt.open}
             </ControlButton>
           </div>
         )}
         {offline ? (
           <p data-testid="terminal-offline" className="ah-terminal-offline">
-            Vain luku, kunnes yhteys palaa
+            {txt.offline}
           </p>
         ) : null}
         {notice ? (
@@ -451,7 +450,7 @@ export function TerminalPanel({
               onClick={onCopySelection}
             >
               <Icon name="copy" />
-              <span>Kopioi</span>
+              <span>{txt.copy}</span>
             </button>
             {onSendSelection ? (
               <button
@@ -461,7 +460,7 @@ export function TerminalPanel({
                 onClick={onSendSelection}
               >
                 <Icon name="message" />
-                <span>Vie keskusteluun</span>
+                <span>{txt.toConversation}</span>
               </button>
             ) : null}
           </div>
@@ -472,7 +471,7 @@ export function TerminalPanel({
             data-testid="terminal-paste"
             data-lines={paste.length}
             className="ah-terminal-paste"
-            aria-label="Monirivinen liitos"
+            aria-label={txt.paste}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
                 event.preventDefault();
@@ -484,13 +483,13 @@ export function TerminalPanel({
             <p>
               <Icon name="copy" />
               <span>
-                <strong>Liitetäänkö {paste.length} riviä?</strong> Pääte saa ne
-                kuin kirjoitettuina, ja komentotulkki voi ajaa ne heti.
+                <strong>{txt.pasteQuestion(paste.length)}</strong>{" "}
+                {txt.pasteWhy}
               </span>
             </p>
             <pre className="ah-mono">
               {paste.slice(0, 4).join("\n")}
-              {paste.length > 4 ? `\n… ja ${paste.length - 4} riviä lisää` : ""}
+              {paste.length > 4 ? `\n${txt.pasteMore(paste.length - 4)}` : ""}
             </pre>
             <div className="ah-terminal-paste-actions">
               <ControlButton
@@ -499,7 +498,7 @@ export function TerminalPanel({
                 variant="secondary"
                 onPress={() => onPasteAnswer(false)}
               >
-                Peruuta
+                {txt.cancel}
               </ControlButton>
               <ControlButton
                 data-testid="confirm-paste"
@@ -508,7 +507,7 @@ export function TerminalPanel({
                 autoFocus
                 onPress={() => onPasteAnswer(true)}
               >
-                Liitä
+                {txt.pasteConfirm}
               </ControlButton>
             </div>
           </fieldset>
@@ -520,7 +519,7 @@ export function TerminalPanel({
             data-testid="terminal-keys"
             className="ah-terminal-keys"
             role="toolbar"
-            aria-label="Päätteen näppäimet"
+            aria-label={txt.keyRow}
           >
             {keyRow.map((k) => (
               <button
@@ -529,7 +528,7 @@ export function TerminalPanel({
                 key={k.key}
                 className="ah-terminal-key"
                 data-wide={k.key.length > 3 || undefined}
-                aria-label={k.name ?? k.label}
+                aria-label={k.name ? txt.keys[k.name] : k.label}
                 aria-pressed={
                   k.key === "ctrl"
                     ? sticky.ctrl
@@ -548,23 +547,15 @@ export function TerminalPanel({
               type="button"
               className="ah-terminal-key"
               data-wide
-              aria-label="Liitä leikepöydältä"
+              aria-label={txt.pasteClipboard}
               onPointerDown={(e) => e.preventDefault()}
               onClick={onClipboardPaste}
             >
               <Icon name="copy" />
-              <span>Liitä</span>
+              <span>{txt.pasteConfirm}</span>
             </button>
           </div>
-          <p className="ah-terminal-hint">
-            <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> vie fokuksen välilehtiin
-            ja takaisin · <kbd>Tab</kbd> ja <kbd>Esc</kbd> kuuluvat päätteelle ·
-            valitse <kbd>Shift</kbd>+vetämällä · <kbd>Ctrl</kbd>+<kbd>C</kbd>{" "}
-            kopioi, <kbd>Ctrl</kbd>+<kbd>V</kbd> liittää
-            {volatile
-              ? " · päätteet päättyvät, jos palvelin käynnistetään uudelleen"
-              : ""}
-          </p>
+          <p className="ah-terminal-hint">{txt.hint(volatile)}</p>
         </>
       ) : null}
     </section>

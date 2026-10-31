@@ -15,6 +15,8 @@ import {
 } from "../app/spinoffs";
 import type { WorkerWork } from "../app/spinoffWork";
 import { workSentence } from "../app/workSentence";
+import { useText } from "../i18n";
+import { spinoffsText } from "../text/spinoffs";
 import { ControlButton, ExternalLink } from "./ControlElements";
 import {
   ConversationTimeline,
@@ -45,7 +47,7 @@ export const SpinoffContext = createContext<{
   workNote?: { text: string; href?: string };
 } | null>(null);
 
-const harnessName = { pi: "Pi", claude: "Claude Code", unknown: "Agentti" };
+const harnessName = { pi: "Pi", claude: "Claude Code" };
 
 /** Whether the worker can still be at work: its window may exist. */
 export function workerLive(run?: Spinoff) {
@@ -79,6 +81,7 @@ function stateKind(run: Spinoff): StatusKind {
  * only action led back there was clumsy).
  */
 function WorkerAsk({ run, onParent }: { run?: Spinoff; onParent: () => void }) {
+  const txt = useText(spinoffsText);
   const live = workerLive(run);
   return (
     <ControlButton
@@ -91,17 +94,16 @@ function WorkerAsk({ run, onParent }: { run?: Spinoff; onParent: () => void }) {
     >
       <Icon name={live ? "message" : "info"} />
       <span className="ah-worker-ask-long">
-        {live
-          ? "Vain luku · kysy pääagentin kautta"
-          : "Päättynyt · kysy jatkosta pääagentilta"}
+        {live ? txt.askLive : txt.askEnded}
       </span>
-      <span className="ah-worker-ask-short">Kysy</span>
+      <span className="ah-worker-ask-short">{txt.ask}</span>
     </ControlButton>
   );
 }
 
 /** What the worker's run ended in, from Taskfleet's own report. */
 function WorkerResult({ run, onTell }: { run: Spinoff; onTell?: () => void }) {
+  const txt = useText(spinoffsText);
   if (!workerEnded(run)) return null;
   const merged = run.state === "merged";
   return (
@@ -109,30 +111,26 @@ function WorkerResult({ run, onTell }: { run: Spinoff; onTell?: () => void }) {
       className="ah-worker-result"
       data-tone={merged ? "ok" : "err"}
       data-testid="spinoff-result"
-      aria-label="Tulos"
+      aria-label={txt.result}
     >
       <header>
         <Icon name={merged ? "merge" : "warning"} />
         <strong>
-          {merged
-            ? `Laskeutui ${run.source_branch || "lähtöhaaraan"}`
-            : spinoffStateLabel(run)}
+          {merged ? txt.landed(run.source_branch) : spinoffStateLabel(run)}
         </strong>
         {!merged && run.branch ? <code>{run.branch}</code> : null}
       </header>
       {run.summary ? <Markdown text={run.summary} /> : null}
       {!merged ? (
         <p className="ah-worker-recover">
-          Palautus pääagentin kautta:{" "}
-          <code>taskfleet run show {run.run_id}</code> ·{" "}
+          {txt.recover} <code>taskfleet run show {run.run_id}</code> ·{" "}
           <code>taskfleet run salvage {run.run_id}</code>
         </p>
       ) : null}
       {onTell ? (
         <div className="ah-worker-decide" data-testid="worker-decide">
           <p>
-            <strong>Mitä tälle työlle tehdään?</strong> Agentti tarkistaa sen ja
-            suosittelee; sinä päätät vastaamalla pääkeskustelussa.
+            <strong>{txt.decideQuestion}</strong> {txt.decide}
           </p>
           <ControlButton
             data-testid="worker-tell"
@@ -141,7 +139,7 @@ function WorkerResult({ run, onTell }: { run: Spinoff; onTell?: () => void }) {
             onPress={onTell}
           >
             <Icon name="message" />
-            Kerro agentille
+            {txt.tell}
           </ControlButton>
         </div>
       ) : null}
@@ -191,6 +189,7 @@ export function WorkerView({
   /** Sends the parent conversation a request about this worker's work. */
   onTell?: () => void;
 }) {
+  const txt = useText(spinoffsText);
   const [full, setFull] = useState(false);
   const [details, setDetails] = useState(false);
   // Follow the worker's newest work, unless the reader scrolled up.
@@ -198,12 +197,15 @@ export function WorkerView({
   const follow = useRef(true);
   const live = workerLive(run);
   const readable = transcript?.availability === "available";
-  const harness = harnessName[run?.harness ?? "unknown"];
+  const harness =
+    run?.harness === "pi" || run?.harness === "claude"
+      ? harnessName[run.harness]
+      : txt.agent;
   const why = !transcript
-    ? "Workerin historiaa ei saatu luettua."
+    ? txt.historyUnread
     : transcript.availability === "unsupported"
-      ? `Habitat ei lue ${harness}-workerin keskustelua, joten sen työ näkyy päätteenä.`
-      : "Workerin vastaukset ja työkalut korvaavat päätteen tässä, kun sen istunto löytyy.";
+      ? txt.unsupported(harness)
+      : txt.replaces;
   const feed: (TimelineItem & { kind?: string })[] = [];
   // The brief opens the conversation whenever the history does not show it
   // itself: before it can be read, or when only its newest part is read.
@@ -217,9 +219,7 @@ export function WorkerView({
     feed.push({
       id: "worker-truncated",
       kind: "marker",
-      content: (
-        <PiBoundary>Näytetään workerin historian viimeisin osa.</PiBoundary>
-      ),
+      content: <PiBoundary>{txt.truncated}</PiBoundary>,
     });
   if (readable) feed.push(...items);
   if (run?.awaiting_input && live)
@@ -230,21 +230,19 @@ export function WorkerView({
         <div className="ah-worker-prompt" role="status">
           <span>
             <Icon name="warning" />
-            <strong>Worker odottaa vastausta päätteessä</strong>
+            <strong>{txt.promptTitle}</strong>
           </span>
           {terminal ? (
             <Button
               data-testid="worker-prompt-terminal"
               size="inline"
               variant="secondary"
-              label="Näytä pääte"
+              label={txt.showTerminal}
               onPress={() => setFull(true)}
             />
           ) : null}
           <small>
-            Kehotteeseen vastataan workerin natiivissa päätteessä (
-            <code>taskfleet run attach {run.run_id}</code>). Selaimen pääte on
-            vain luku, eikä pääagentin viesti vastaa kehotteeseen.
+            {txt.promptHow(<code>taskfleet run attach {run.run_id}</code>)}
           </small>
         </div>
       ),
@@ -262,9 +260,9 @@ export function WorkerView({
           onPress={() => setFull(true)}
         >
           <Icon name="terminal" />
-          <span>Pääte · vain luku</span>
+          <span>{txt.terminalRow}</span>
           <span className="ah-worker-termrow-tail">
-            {run?.awaiting_input ? "odottaa syötettä" : "avaa koko näkymään"}
+            {run?.awaiting_input ? txt.awaitsInput : txt.openFull}
           </span>
           <Icon name="expand" />
         </ControlButton>
@@ -278,12 +276,12 @@ export function WorkerView({
         <section
           className="ah-worker-termcard"
           data-testid="worker-terminal-card"
-          aria-label="Workerin pääte"
+          aria-label={txt.terminalLabel}
         >
           <header>
             <Icon name="terminal" />
-            <strong>Pääte</strong>
-            <span className="ah-terminal-ro">vain luku</span>
+            <strong>{txt.terminal}</strong>
+            <span className="ah-terminal-ro">{txt.readOnly}</span>
             <span className="ah-worker-grow" />
             {terminal ? (
               <Button
@@ -291,8 +289,8 @@ export function WorkerView({
                 size="row"
                 variant="quiet"
                 icon="expand"
-                label="Avaa pääte koko näkymään"
-                ariaLabel="Avaa pääte koko näkymään"
+                label={txt.expand}
+                ariaLabel={txt.expand}
                 onPress={() => setFull(true)}
               />
             ) : null}
@@ -300,9 +298,7 @@ export function WorkerView({
           {terminal && !full ? (
             <div className="ah-worker-termcard-body">{terminal}</div>
           ) : !terminal ? (
-            <p className="ah-worker-termcard-none">
-              Workerin päätettä ei löytynyt.
-            </p>
+            <p className="ah-worker-termcard-none">{txt.terminalMissing}</p>
           ) : null}
           <p className="ah-worker-termcard-why">
             {transcript?.availability === "unavailable" ? (
@@ -321,11 +317,10 @@ export function WorkerView({
         <p className="ah-worker-closed" data-testid="worker-closed">
           <Icon name="terminal" />
           <span>
-            <strong>Workerin pääte on suljettu.</strong> Worker on päättynyt
-            {transcript?.availability === "unsupported"
-              ? `, eikä Habitat lue ${harness}-workerin keskustelua`
-              : ", eikä sen keskustelua saatu luettua"}
-            . Jäljellä on raportti.
+            <strong>{txt.closedTitle}</strong>{" "}
+            {txt.closed(
+              transcript?.availability === "unsupported" ? harness : undefined,
+            )}
           </span>
         </p>
       ),
@@ -337,7 +332,7 @@ export function WorkerView({
       content: (
         <p className="ah-worker-arrived" role="status">
           <Icon name="restore" />
-          Historia tuli luettavaksi: pääte on nyt keskustelun lopussa.
+          {txt.arrived}
         </p>
       ),
     });
@@ -362,18 +357,18 @@ export function WorkerView({
       >
         <span className="ah-worker-kind">
           <Icon name="branch" />
-          Worker
+          {txt.worker}
         </span>
         <ControlButton
           data-testid="parent-top"
           size="inline"
           variant="quiet"
           className="ah-worker-parent"
-          aria-label={`Pääkeskusteluun: ${parentTitle ?? "pääagentti"}`}
+          aria-label={txt.toParent(parentTitle ?? txt.mainAgent)}
           onPress={onParent}
         >
           <Icon name="back" />
-          <span>{parentTitle || "Pääkeskustelu"}</span>
+          <span>{parentTitle || txt.mainConversation}</span>
         </ControlButton>
         {run ? (
           <span className="ah-worker-meta">
@@ -394,7 +389,7 @@ export function WorkerView({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Avaa PR #{work.pull_request.number}
+                {txt.openPr(work.pull_request.number)}
                 <Icon name="external" />
               </ExternalLink>
             ) : null}
@@ -402,11 +397,11 @@ export function WorkerView({
         ) : null}
       </div>
       <AgentHeader
-        title={run?.title || "Worker"}
+        title={run?.title || txt.worker}
         activityLabel={run ? spinoffStateLabel(run) : ""}
         activityKind={run ? stateKind(run) : "neutral"}
         activityAnimated={run?.state === "working"}
-        controlLabel="Vain luku"
+        controlLabel={txt.readOnlyControl}
         workspaceLabel={workspaceLabel}
         workspaceHref={workspaceHref}
         detailsExpanded={details}
@@ -414,35 +409,38 @@ export function WorkerView({
         detailsFacts={
           run
             ? [
-                { label: "Pääkeskustelu", value: parentTitle || "Ei tiedossa" },
                 {
-                  label: "Agentti",
-                  value: `${harness}${run.profile ? ` · profiili ${run.profile}` : ""}`,
+                  label: txt.facts.parent,
+                  value: parentTitle || txt.facts.unknown,
                 },
                 {
-                  label: "Historia",
+                  label: txt.facts.agent,
+                  value: `${harness}${run.profile ? txt.facts.profile(run.profile) : ""}`,
+                },
+                {
+                  label: txt.facts.history,
                   value: readable
-                    ? "Luettavissa"
+                    ? txt.facts.readable
                     : transcript?.availability === "unsupported"
-                      ? "Habitat ei lue tämän agentin historiaa"
-                      : "Istuntoa ei ole vielä löytynyt",
+                      ? txt.facts.unsupported
+                      : txt.facts.notFound,
                 },
-                { label: "Tila", value: spinoffStateLabel(run) },
+                { label: txt.facts.state, value: spinoffStateLabel(run) },
                 {
-                  label: "Lähtöhaara",
-                  value: run.source_branch || "Ei tiedossa",
+                  label: txt.facts.source,
+                  value: run.source_branch || txt.facts.unknown,
                 },
                 {
-                  label: "Tallessa oleva haara",
-                  value: run.branch || "Ei tiedossa",
+                  label: txt.facts.branch,
+                  value: run.branch || txt.facts.unknown,
                   copy: !!run.branch,
                 },
                 {
-                  label: "Työpuu",
-                  value: run.worktree || "Ei tiedossa",
+                  label: txt.facts.worktree,
+                  value: run.worktree || txt.facts.unknown,
                   copy: !!run.worktree,
                 },
-                { label: "Run", value: run.run_id, copy: true },
+                { label: txt.facts.run, value: run.run_id, copy: true },
               ]
             : undefined
         }
@@ -451,27 +449,27 @@ export function WorkerView({
         <InlineNotice
           data-testid="worker-stale"
           tone="warning"
-          title="Workerin ajantasaista tilaa ei saada."
+          title={txt.stale}
         />
       ) : null}
       {full && terminal ? (
         <section
           className="ah-worker-termview"
           data-testid="worker-terminal-full"
-          aria-label="Workerin pääte"
+          aria-label={txt.terminalLabel}
         >
           <header>
             <Icon name="terminal" />
-            <strong>Pääte</strong>
-            <span className="ah-terminal-ro">vain luku</span>
+            <strong>{txt.terminal}</strong>
+            <span className="ah-terminal-ro">{txt.readOnly}</span>
             <span className="ah-worker-grow" />
             <Button
               data-testid="worker-terminal-close"
               size="row"
               variant="quiet"
               icon="cross"
-              label="Takaisin keskusteluun"
-              ariaLabel="Takaisin keskusteluun"
+              label={txt.back}
+              ariaLabel={txt.back}
               onPress={() => setFull(false)}
             />
           </header>
@@ -479,7 +477,7 @@ export function WorkerView({
         </section>
       ) : (
         <ConversationStream
-          label="Workerin keskustelu"
+          label={txt.conversation}
           streamRef={stream}
           onScroll={() => {
             const el = stream.current;
@@ -501,11 +499,11 @@ export function WorkerView({
               }
               items={feed}
               historyMode="pagedAccessible"
-              emptyLabel="Workerin tietoja ei ole vielä."
+              emptyLabel={txt.empty}
               onJumpToLatest={() => {}}
               problem={{
-                title: "Workeria ei saada",
-                description: "Taskfleet ei vastannut. Yritetään uudelleen.",
+                title: txt.problemTitle,
+                description: txt.problem,
               }}
             />
           </WorkerVoice>
@@ -518,6 +516,7 @@ export function WorkerView({
 /** The task the main agent gave, first; Taskfleet's run context that opens
  * every worker's prompt only on request (Jari 28.10.2026). */
 export function WorkerBrief({ text }: { text: string }) {
+  const txt = useText(spinoffsText);
   const { task, context } = splitBrief(text);
   return (
     <WorkerVoice voice="brief">
@@ -527,7 +526,7 @@ export function WorkerBrief({ text }: { text: string }) {
       />
       {context ? (
         <details className="ah-worker-runcontext" data-testid="run-context">
-          <summary>Taskfleetin ajo-ohje workerille</summary>
+          <summary>{txt.runContext}</summary>
           <Markdown text={context} />
         </details>
       ) : null}

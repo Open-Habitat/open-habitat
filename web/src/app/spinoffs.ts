@@ -8,7 +8,11 @@ import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/spinoffs.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
+import { liveText } from "../i18n";
+import { spinoffStateText } from "../text/spinoffState";
 import type { HistoryEntry } from "./history";
+
+const txt = liveText(spinoffStateText);
 export type WorkerHarness = "pi" | "claude" | "unknown";
 export interface Spinoff {
   harness?: WorkerHarness;
@@ -143,13 +147,12 @@ export function splitBrief(text: string): { task: string; context?: string } {
 }
 export function spinoffStateLabel(run: Spinoff) {
   return {
-    working: "Työskentelee",
-    // Pi's own word: its turn ended and it waits at its prompt.
-    idle: run.awaiting_input ? "Odottaa vastausta päätteessä" : "Odottaa sinua",
-    waiting_parent: "Odottaa pääagenttia",
-    merged: "Mergetty",
-    unmerged: run.preserved ? "Ei mergetty · työ tallessa" : "Ei mergetty",
-    failed: run.preserved ? "Epäonnistui · työ tallessa" : "Epäonnistui",
-    unknown: "Tila ei tiedossa",
+    working: txt.working,
+    idle: run.awaiting_input ? txt.awaitingInput : txt.idle,
+    waiting_parent: txt.waiting_parent,
+    merged: txt.merged,
+    unmerged: run.preserved ? txt.unmergedKept : txt.unmerged,
+    failed: run.preserved ? txt.failedKept : txt.failed,
+    unknown: txt.unknown,
   }[run.state];
 }

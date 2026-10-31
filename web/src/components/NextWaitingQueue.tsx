@@ -1,3 +1,5 @@
+import { useText } from "../i18n";
+import { nextWaitingQueueText } from "../text/nextWaitingQueue";
 import { altKey } from "./altKey";
 import { Icon } from "./Icon";
 import type { BallKind } from "./Navigation";
@@ -40,6 +42,7 @@ export function NextWaitingQueue({
   onNext: () => void;
   onEnd: () => void;
 }) {
+  const txt = useText(nextWaitingQueueText);
   const last = !steps
     .slice(pos + 1)
     .some((s) => s.state !== "elsewhere" && s.state !== "origin");
@@ -56,20 +59,20 @@ export function NextWaitingQueue({
       ) : null}
       <nav
         className="ah-next-queue"
-        aria-label="Odottavat keskustelut"
+        aria-label={txt.label}
         data-testid="next-queue"
         data-pos={pos}
       >
         <span className="ah-next-q-head">
-          {done}/{steps.length - 1} hoidettu
+          {txt.handled(done, steps.length - 1)}
         </span>
         <button
           type="button"
           className="ah-next-q-move prev"
           data-testid="next-queue-prev"
           aria-keyshortcuts="Alt+ArrowUp"
-          aria-label="Edellinen"
-          title={`Edellinen (${altKey("↑")})`}
+          aria-label={txt.previous}
+          title={`${txt.previous} (${altKey("↑")})`}
           disabled={pos === 0}
           onClick={onPrev}
         >
@@ -121,7 +124,7 @@ export function NextWaitingQueue({
             ))}
           </span>
           <span className="ah-next-q-cur">
-            {pos === 0 ? "Lähtö" : `${pos}/${steps.length - 1}`} ·{" "}
+            {pos === 0 ? txt.origin : `${pos}/${steps.length - 1}`} ·{" "}
             {current?.title}
           </span>
         </span>
@@ -131,17 +134,17 @@ export function NextWaitingQueue({
           data-testid="next-queue-next"
           data-last={last || undefined}
           aria-keyshortcuts="Alt+ArrowDown"
-          title={`${last ? "Takaisin lähtöön" : "Seuraava"} (${altKey("↓")})`}
+          title={`${last ? txt.backToOrigin : txt.next} (${altKey("↓")})`}
           onClick={onNext}
         >
-          {last ? "Lähtöön" : "Seuraava"} <kbd>{altKey("↓")}</kbd>
+          {last ? txt.toOrigin : txt.next} <kbd>{altKey("↓")}</kbd>
         </button>
         <button
           type="button"
           className="ah-next-q-end"
           data-testid="next-queue-end"
-          aria-label="Lopeta kierros"
-          title="Lopeta kierros (Esc)"
+          aria-label={txt.end}
+          title={`${txt.end} (Esc)`}
           onClick={onEnd}
         >
           <Icon name="cross" width={14} height={14} />

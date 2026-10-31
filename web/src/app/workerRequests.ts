@@ -1,3 +1,5 @@
+import { formatDate, liveText } from "../i18n";
+import { workerRequestsText } from "../text/workerRequests";
 import type { HistoryEntry } from "./history";
 import type { Spinoff } from "./spinoffs";
 
@@ -29,53 +31,59 @@ export function unfinished(run: Spinoff) {
   return askable(run) && run.state !== "merged";
 }
 
-const marker = (run: Spinoff) => `Taskfleet-ajo ${run.run_id}`;
+const txt = liveText(workerRequestsText);
+
+const marker = (run: Spinoff) => txt.marker(run.run_id);
+// A request written in the other language still names the same run.
+const markers = (run: Spinoff) =>
+  [workerRequestsText.fi, workerRequestsText.en].map((t) =>
+    t.marker(run.run_id),
+  );
 
 const clock = (iso?: string) => {
   const ms = iso ? Date.parse(iso) : Number.NaN;
   return Number.isFinite(ms)
-    ? new Date(ms)
-        .toLocaleTimeString("fi-FI", { hour: "2-digit", minute: "2-digit" })
-        .replace(":", ".")
+    ? formatDate(new Date(ms), { hour: "2-digit", minute: "2-digit" })
     : "";
 };
 
 function oneLine(run: Spinoff) {
   const at = clock(run.ended_at);
-  const when = at ? ` klo ${at}` : "";
+  const when = at ? txt.at(at) : "";
   const what =
     run.state === "merged"
-      ? "mergetty, worktree jäljellä"
+      ? txt.merged
       : run.state === "failed"
-        ? `epäonnistui${when}, työ tallessa`
-        : `päättyi${when}, ei mergetty, työ tallessa`;
+        ? txt.failed(when)
+        : txt.ended(when);
   const facts = [
     marker(run),
-    run.branch ? `haara ${run.branch}` : "",
-    run.worktree ? `worktree ${run.worktree}` : "",
+    run.branch ? txt.branch(run.branch) : "",
+    run.worktree ? txt.worktree(run.worktree) : "",
   ]
     .filter(Boolean)
     .join(", ");
-  return `”${run.title || run.run_id}” (${facts}): ${what}`;
+  return txt.line(run.title || run.run_id, facts, what);
 }
 
 /** The request as the person's message. `parent` names the conversation
  * that started the workers when the request goes elsewhere. */
 export function requestText(runs: Spinoff[], parent?: string) {
-  const tail = "Älä muuta mitään ennen kuin vastaan.";
   if (runs.length === 1) {
     const [run] = runs;
-    const from = parent ? ` Sen käynnisti keskustelu ”${parent}”.` : "";
-    const verbs =
-      run.state === "merged" ? "siivotaanko se" : "mergeä, jatka tai hylkää";
-    return `Käsittele worker ${oneLine(run)}.${from} Tarkista sen tila ja suosittele, mitä sille tehdään: ${verbs}. ${tail}`;
+    return txt.one(
+      oneLine(run),
+      parent ? txt.startedBy(parent) : "",
+      run.state === "merged" ? txt.verbsMerged : txt.verbs,
+      txt.tail,
+    );
   }
-  const from = parent ? `Workerit käynnisti keskustelu ”${parent}”.\n` : "";
-  return `Käsittele nämä ${runs.length} keskeneräistä workeria:\n${runs
-    .map((r, i) => `${i + 1}. ${oneLine(r)}`)
-    .join(
-      "\n",
-    )}\n${from}Tarkista kunkin tila ja suosittele, mitä niille tehdään: mergeä, jatka tai hylkää. ${tail}`;
+  return txt.many(
+    runs.length,
+    runs.map((r, i) => `${i + 1}. ${oneLine(r)}`).join("\n"),
+    parent ? txt.manyStartedBy(parent) : "",
+    txt.tail,
+  );
 }
 
 /**
@@ -111,19 +119,20 @@ export function requestPhases({
   const delivered = new Set(users.map(({ e }) => e.content.text));
   for (const run of runs) {
     if (!askable(run)) continue;
-    const name = marker(run);
-    if (queued.some((t) => t.includes(name))) {
+    const names = markers(run);
+    const named = (text: string) => names.some((n) => text.includes(n));
+    if (queued.some(named)) {
       phases[run.run_id] = "queued";
       continue;
     }
     // A send the history already shows is no longer on its way.
-    if (sent.some((t) => t.includes(name) && !delivered.has(t))) {
+    if (sent.some((t) => named(t) && !delivered.has(t))) {
       phases[run.run_id] = "sent";
       continue;
     }
     const ended = run.ended_at ? Date.parse(run.ended_at) : Number.NaN;
     const request = users.findLast(({ e }) => {
-      if (!e.content.text.includes(name)) return false;
+      if (!named(e.content.text)) return false;
       const at = e.timestamp ? Date.parse(e.timestamp) : Number.NaN;
       // A message from before the run ended is not a request about it.
       return !(Number.isFinite(at) && Number.isFinite(ended) && at < ended);

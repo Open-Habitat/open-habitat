@@ -1,3 +1,5 @@
+import { useText } from "../i18n";
+import { operationsText } from "../text/operations";
 import { ExternalLink } from "./ControlElements";
 import { Button } from "./Primitives";
 import { InlineNotice, StatusMark } from "./Status";
@@ -16,42 +18,19 @@ export function CapabilityNotice({
   observedAt?: string;
   onReobserve?: () => void;
 }) {
-  const label =
-    state === "unsupported"
-      ? "Ei tuettu"
-      : state === "unknown"
-        ? "Ei vielä tiedossa"
-        : "Tilapäisesti poissa käytöstä";
+  const txt = useText(operationsText);
+  const label = txt.capability[state];
   return (
     <InlineNotice
       title={`${actionLabel}: ${label}`}
-      description={`${reason}${observedAt ? ` Havaittu ${observedAt}.` : ""}`}
+      description={`${reason}${observedAt ? txt.observed(observedAt) : ""}`}
       tone="warning"
       actions={
-        onReobserve
-          ? [{ label: "Havaitse uudelleen", onPress: onReobserve }]
-          : []
+        onReobserve ? [{ label: txt.reobserve, onPress: onReobserve }] : []
       }
     />
   );
 }
-const operationStateLabel = {
-  pending: "Odottaa",
-  running: "Käynnissä",
-  succeeded: "Onnistui",
-  failed: "Epäonnistui",
-  partial: "Osittainen",
-  unknown: "Tila ei tiedossa",
-} as const;
-const stageStateLabel = {
-  pending: "Odottaa",
-  running: "Käynnissä",
-  succeeded: "Onnistui",
-  failed: "Epäonnistui",
-  unknown: "Ei tiedossa",
-  skipped: "Ohitettu",
-} as const;
-
 export function OperationProgress({
   operationId,
   kindLabel,
@@ -61,7 +40,7 @@ export function OperationProgress({
   problem,
   observationAge,
   retryAvailability,
-  closeLabel = "Sulje näkymä — operaatio jatkuu",
+  closeLabel,
   onRetryFromFreshObservation,
   onClose,
 }: {
@@ -82,6 +61,7 @@ export function OperationProgress({
   onRetryFromFreshObservation?: () => void;
   onClose: () => void;
 }) {
+  const txt = useText(operationsText);
   return (
     <section
       data-testid="operation-progress"
@@ -91,10 +71,10 @@ export function OperationProgress({
       <header>
         <div>
           <p className="ah-eyebrow">{kindLabel}</p>
-          <h2>Operaation eteneminen</h2>
+          <h2>{txt.title}</h2>
         </div>
         <StatusMark
-          label={operationStateLabel[state]}
+          label={txt.operation[state]}
           tone={
             state === "failed"
               ? "danger"
@@ -108,12 +88,12 @@ export function OperationProgress({
         />
       </header>
       <code>{operationId}</code>
-      {observationAge ? <p>Havainto: {observationAge}</p> : null}
+      {observationAge ? <p>{txt.observation(observationAge)}</p> : null}
       <ol className="ah-stages">
         {stages.map((stage) => (
           <li key={stage.id}>
             <StatusMark
-              label={`${stage.label}: ${stageStateLabel[stage.state]}`}
+              label={`${stage.label}: ${txt.stage[stage.state]}`}
               tone={
                 stage.state === "failed"
                   ? "danger"
@@ -131,7 +111,7 @@ export function OperationProgress({
       </ol>
       {effects.length ? (
         <section>
-          <h3>Vaikutukset</h3>
+          <h3>{txt.effects}</h3>
           <ul>
             {effects.map((effect) => (
               <li key={`${effect.kindLabel}-${effect.description}`}>
@@ -156,7 +136,7 @@ export function OperationProgress({
         {onRetryFromFreshObservation ? (
           <Button
             size="row"
-            label="Yritä tuoreesta havainnosta"
+            label={txt.retry}
             variant="secondary"
             availability={retryAvailability}
             onPress={onRetryFromFreshObservation}
@@ -164,7 +144,7 @@ export function OperationProgress({
         ) : null}
         <Button
           size="row"
-          label={closeLabel}
+          label={closeLabel ?? txt.close}
           variant="secondary"
           onPress={onClose}
         />
@@ -173,19 +153,20 @@ export function OperationProgress({
   );
 }
 export function FormErrorSummary({
-  heading = "Korjaa seuraavat tiedot",
+  heading,
   errors,
 }: {
   heading?: string;
   errors: { fieldId: string; message: string }[];
 }) {
+  const txt = useText(operationsText);
   return (
     <section
       aria-labelledby="form-errors"
       className="ah-error-summary"
       tabIndex={-1}
     >
-      <h2 id="form-errors">{heading}</h2>
+      <h2 id="form-errors">{heading ?? txt.fix}</h2>
       <ul>
         {errors.map((error) => (
           <li key={error.fieldId}>

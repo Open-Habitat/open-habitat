@@ -1,4 +1,6 @@
 import { syncedTime } from "../app/integrations";
+import { textNow, useText } from "../i18n";
+import { restartNoticeText } from "../text/restartNotice";
 import { Icon, type IconName } from "./Icon";
 
 /** When and why the conversation's Pi stopped, as the daemon saw it. */
@@ -38,16 +40,6 @@ export type RestartNotice = {
   }[];
 };
 
-// Each is Taskfleet's own report. A stall is Taskfleet's verdict about a
-// supervisor, which a live worker can contradict, so it is attributed.
-const runState: Record<RestRunState, string> = {
-  merged: "valmis ja yhdistetty",
-  not_merged: "valmis, ei yhdistetty",
-  failed: "epäonnistui",
-  cancelled: "peruttu",
-  awaiting: "odottaa sinua",
-  stalled: "Taskfleetin mukaan pysähtynyt",
-};
 const runIcon: Record<RestRunState, IconName> = {
   merged: "merge",
   not_merged: "warning",
@@ -63,45 +55,17 @@ export function stopSentence(
   cutOff: number,
   turnCut = false,
 ): string {
+  const txt = textNow(restartNoticeText);
   const at = syncedTime(stop.at);
   const cut =
-    [
-      turnCut ? " Agentin kesken ollut työ katkesi." : "",
-      cutOff > 0
-        ? ` ${cutOff === 1 ? "Yksi taustatyö katkesi" : `${cutOff} taustatyötä katkesi`} samalla.`
-        : "",
-    ].join("") || " Mikään työ ei katkennut.";
-  switch (stop.cause) {
-    case "idle":
-      return `Pi pysähtyi ${at}, kun se oli ollut 10 minuuttia jouten.${cut}`;
-    case "room":
-      return `Pi pysähtyi ${at} tehdäkseen tilaa toiselle keskustelulle.${cut}`;
-    case "person":
-      return `Pysäytit agentin ${at}.${cut}`;
-    case "crash":
-      return `Pi kaatui ${at}.${cut}`;
-    case "restart":
-      return `Habitat käynnistyi uudelleen ${at}, esimerkiksi päivityksen vuoksi, ja Pi pysähtyi viimeistään silloin.${cut}`;
-  }
+    [turnCut ? txt.turnCut : "", cutOff > 0 ? txt.cutOff(cutOff) : ""].join(
+      "",
+    ) || txt.nothingCut;
+  return txt.stop[stop.cause](at, cut);
 }
-
-/** Why Habitat woke the agent itself: what it was waiting for ended. */
-const wokeBecause: Record<NonNullable<RestartNotice["woke"]>, string> = {
-  settled: ", koska ajot, joita se odotti, päättyivät",
-  cut_off:
-    ", koska taustatyö, jota se odotti, katkesi eikä enää kerro päättymisestään",
-};
 
 /** Where a resting conversation's wake stands, as the card's last line. */
 export type WakeState = "asleep" | "waking" | "awake" | "refused";
-const wakeLine: Record<WakeState, string> = {
-  asleep:
-    "Kirjoita, niin agentti herää. Se saa tämän saman selostuksen viestisi mukana.",
-  waking: "Agentti käynnistyy…",
-  awake: "Agentti on hereillä. Lähetä, niin se vastaa.",
-  refused:
-    "Agenttia ei voitu käynnistää nyt. Se käynnistyy, kun lähetät viestin.",
-};
 
 /** Habitat's own report of a rest (Kortti): before the wake at the end of the
  * conversation, and afterwards in history as the catch-up the agent got with
@@ -125,24 +89,25 @@ export function RestCard({
   /** Taskfleet could not be fully read: no claim that nothing else settled. */
   unavailable?: boolean;
 }) {
+  const txt = useText(restartNoticeText);
   const marker = !wake;
   const runs = notice?.runs ?? [];
   const working = notice?.still_running ?? [];
   const cut = notice?.processes ?? [];
   const range = wokeAt
-    ? `${syncedTime(stop.at)}–${syncedTime(wokeAt).replace(/^.*klo /, "")}`
+    ? `${syncedTime(stop.at)}–${syncedTime(wokeAt).replace(/^.*\b(klo|at) /, "")}`
     : "";
   return (
     <aside
       className={`ah-rest-card${marker ? " ah-rest-marker" : ""}`}
       data-testid={marker ? "rest-marker" : "rest-card"}
       data-wake={wake}
-      aria-label={marker ? "Agentin lepo" : "Agentti lepää"}
+      aria-label={marker ? txt.markerLabel : txt.cardLabel}
     >
       <header className="ah-rest-head">
         <Icon name="moon" />
         <h2 className="ah-rest-title">
-          {marker ? `Agentti lepäsi ${range}` : "Agentti lepää"}
+          {marker ? txt.rested(range) : txt.resting}
         </h2>
         <span className="ah-rest-author">Habitat</span>
       </header>
@@ -151,13 +116,13 @@ export function RestCard({
       </p>
       {cut.length ? (
         <p className="ah-rest-text">
-          Katkenneet taustatyöt:{" "}
+          {txt.cutList}
           {cut.map((p) => p.name || p.process_id).join(", ")}
         </p>
       ) : null}
       {runs.length ? (
         <section>
-          <h3 className="ah-rest-heading">Päättyi sillä välin</h3>
+          <h3 className="ah-rest-heading">{txt.endedMeanwhile}</h3>
           <ul className="ah-rest-list">
             {runs.map((run) => (
               <li
@@ -170,8 +135,8 @@ export function RestCard({
                   <strong>{run.title || run.run_id}</strong>{" "}
                   <span className="ah-rest-meta">
                     {[
-                      runState[run.state],
-                      run.branch ? "haara tallessa" : "",
+                      txt.runState[run.state],
+                      run.branch ? txt.branchKept : "",
                       run.ended_at ? syncedTime(run.ended_at) : "",
                     ]
                       .filter(Boolean)
@@ -191,7 +156,7 @@ export function RestCard({
       ) : null}
       {working.length ? (
         <section>
-          <h3 className="ah-rest-heading">Yhä käynnissä</h3>
+          <h3 className="ah-rest-heading">{txt.stillRunning}</h3>
           <ul className="ah-rest-list">
             {working.map((run) => (
               <li
@@ -205,11 +170,9 @@ export function RestCard({
                   <span className="ah-rest-meta">
                     {[
                       run.created_at
-                        ? `käynnissä ${syncedTime(run.created_at)} alkaen`
-                        : "käynnissä",
-                      marker || run.waited
-                        ? "odotus katkesi"
-                        : "kukaan ei odota sitä",
+                        ? txt.runningSince(syncedTime(run.created_at))
+                        : txt.running,
+                      marker || run.waited ? txt.waitCut : txt.nobodyWaits,
                     ].join(" · ")}
                   </span>
                 </div>
@@ -220,26 +183,25 @@ export function RestCard({
       ) : null}
       {unavailable ? (
         <p className="ah-rest-text ah-rest-meta" data-testid="rest-unavailable">
-          Kaikkia taustatöiden tietoja ei voitu lukea juuri nyt.
+          {txt.unavailable}
         </p>
       ) : null}
       <p className="ah-rest-wake" role={marker ? undefined : "status"}>
         {marker ? (
           <>
             <Icon name="check" />
-            {notice?.woke
-              ? "Habitat herätti agentin"
-              : "Viestisi herätti agentin"}
-            {wokeAt ? ` ${syncedTime(wokeAt)}` : ""}
-            {notice?.woke ? wokeBecause[notice.woke] : ""}. Agentti sai tämän
-            selostuksen.
+            {txt.woke(
+              !!notice?.woke,
+              wokeAt ? ` ${syncedTime(wokeAt)}` : "",
+              notice?.woke ? txt.wokeBecause[notice.woke] : "",
+            )}
           </>
         ) : (
           <>
             <Icon name="moon" />
             {wake === "refused" && refusal
-              ? `Agenttia ei voitu käynnistää. ${refusal}`
-              : wakeLine[wake]}
+              ? txt.refusedBecause(refusal)
+              : txt.wake[wake]}
           </>
         )}
       </p>
@@ -256,6 +218,7 @@ export function RestartNoticeMarker({
   notice: RestartNotice;
   timestamp?: string;
 }) {
+  const txt = useText(restartNoticeText);
   if (notice.stopped)
     return (
       <RestCard stop={notice.stopped} notice={notice} wokeAt={timestamp} />
@@ -271,21 +234,24 @@ export function RestartNoticeMarker({
       role="note"
       data-testid="restart-notice"
     >
-      <span>Agentti käynnistettiin uudelleen</span>
+      <span>{txt.restarted}</span>
       {notice.processes.length ||
       notice.runs.length ||
       notice.still_running.length ? (
         <ul>
           {notice.processes.length ? (
-            <li>Katkenneet taustatyöt: {cut}</li>
+            <li>
+              {txt.cutList}
+              {cut}
+            </li>
           ) : null}
           {notice.runs.map((run) => (
             <li key={run.run_id}>
-              {run.title || run.run_id}: {runState[run.state]}
+              {run.title || run.run_id}: {txt.runState[run.state]}
             </li>
           ))}
           {notice.still_running.length ? (
-            <li>Yhä käynnissä, odotus katkesi: {running}</li>
+            <li>{txt.stillRunningCut(running)}</li>
           ) : null}
         </ul>
       ) : null}

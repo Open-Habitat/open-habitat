@@ -276,3 +276,170 @@ test("@spinoffs @a11y worker panel rows carry their own meaning: waited, not wai
   await page.getByRole("button").and(page.getByTestId("parent-top")).click();
   await expect(page).not.toHaveURL(/spinoff=/);
 });
+
+// English (en-workers): an English browser with the server default System
+// sees the worker panel, a process window, the worker's own view and the
+// terminal dock in English. The fixture titles are ASCII, so a Finnish
+// letter there can only be interface text left untranslated.
+test.describe("in English", () => {
+  test.use({ locale: "en-GB" });
+  const capture = process.env.OH_EN_WORKERS_CAPTURE;
+  const evidence = async (page: Page, name: string) => {
+    if (!capture) return;
+    mkdirSync(capture, { recursive: true });
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: resolve(capture, `${name}.png`) });
+  };
+  // Text, accessible names and tooltips in a region; `skip` leaves out a
+  // part another view draws (the terminal surface is the browser shell's).
+  const finnish = (region: ReturnType<Page["locator"]>, skip?: string) =>
+    region.evaluate((root, skip) => {
+      const own = (el: Element) => !skip || !el.closest(skip);
+      const copy = root.cloneNode(true) as HTMLElement;
+      if (skip) for (const el of copy.querySelectorAll(skip)) el.remove();
+      // innerText of a detached copy ignores CSS; textContent suffices.
+      return [
+        copy.textContent ?? "",
+        ...[root, ...root.querySelectorAll("*")]
+          .filter(own)
+          .flatMap((el) => [
+            el.getAttribute("aria-label") ?? "",
+            el.getAttribute("title") ?? "",
+          ]),
+      ].filter((s) => /[äöÄÖ]/.test(s));
+    }, skip);
+  const english: Spinoffs["runs"] = [
+    { ...runs[0], title: "Irrigation timer" },
+    { ...runs[2], title: "Form accessibility" },
+    { ...runs[3], title: "Weather station export" },
+    { ...runs[4], title: "Plant species import" },
+    { ...runs[5], title: "Image compression" },
+    { ...runs[6], title: "Old API removal" },
+  ];
+  const ended = {
+    ...wait("c", ""),
+    id: "proc_c",
+    name: "build",
+    command_preview: "npm run build",
+    process_token: "pt_c",
+    status: "exited",
+    ended_at: Date.now() - 60000,
+    exit_code: 1,
+    wakes_agent: false,
+    run_ids: [],
+  };
+
+  test("@spinoffs @ui-language the worker panel, a process, the worker view and the terminal dock speak English", async ({
+    page,
+  }) => {
+    test.setTimeout(90000);
+    await page.route("**/api/v1/agents/pi:*/spinoffs**", (route) => {
+      const url = new URL(route.request().url());
+      const run = url.searchParams.get("run");
+      return route.fulfill({
+        json: {
+          schema_version: 1,
+          parent_id: url.pathname.split("/agents/")[1].split("/spinoffs")[0],
+          availability: "available",
+          runs: run ? english.filter((r) => r.run_id === run) : english,
+          transcripts: [],
+        },
+      });
+    });
+    await page.route("**/api/v1/conversations/*/processes**", (route) => {
+      if (route.request().url().includes("/output?"))
+        return route.fulfill({
+          json: {
+            schema_version: 1,
+            owner_generation: "og_example",
+            process_id: "proc_c",
+            process_token: "pt_c",
+            lines: [
+              { stream: "stdout", text: "vite build" },
+              { stream: "stderr", text: "error: missing module" },
+            ],
+            omitted_before: 0,
+            retention_restarted: false,
+          },
+        });
+      return route.fulfill({
+        json: {
+          schema_version: 1,
+          owner_generation: "og_example",
+          availability: "available",
+          unavailable_reason: null,
+          interrupted: [],
+          processes: [wait("a", id.waited), ended],
+        },
+      });
+    });
+    await page.request.get("/fixture/scenario?value=ready");
+    await page.goto("/workspaces");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page
+      .getByRole("link")
+      .and(page.locator('a[href*="code=42"]'))
+      .click();
+    await page
+      .getByRole("navigation")
+      .getByRole("link")
+      .and(page.getByTestId("workspace-ordinary-dir"))
+      .click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("conversation-start"))
+      .click();
+    const strip = page
+      .getByRole("region")
+      .and(page.getByTestId("background-work"));
+    await expect(strip.getByTestId("background-spinoffs")).toHaveAttribute(
+      "data-waited",
+      "1",
+    );
+    expect(await finnish(strip)).toEqual([]);
+
+    await strip.getByTestId("background-spinoffs").click();
+    await expect(strip.getByRole("tabpanel")).toBeVisible();
+    await expect(strip.getByTestId("ended-runs")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(await finnish(strip)).toEqual([]);
+    await evidence(page, "workers-panel");
+
+    await strip.getByTestId("background-tab-process").click();
+    await strip.getByTestId("ended-runs").click();
+    expect(await finnish(strip)).toEqual([]);
+    await evidence(page, "processes-panel");
+    await strip.getByTestId("process-open").last().click();
+    const dialog = page.getByTestId("process-dialog");
+    await expect(dialog.getByTestId("process-output")).toBeVisible();
+    expect(await finnish(dialog)).toEqual([]);
+    await evidence(page, "process-window");
+    await dialog.getByTestId("process-close").click();
+    await expect(dialog).toHaveCount(0);
+
+    await strip.getByTestId("background-tab-spinoff").click();
+    await page.getByTestId("spinoff-Plant species import").click();
+    const band = page.getByTestId("worker-band");
+    await expect(band).toBeVisible();
+    await expect(page.getByTestId("spinoff-result")).toBeVisible();
+    expect(await finnish(band)).toEqual([]);
+    expect(await finnish(page.getByTestId("spinoff-result"))).toEqual([]);
+    expect(await finnish(page.getByTestId("worker-closed"))).toEqual([]);
+    await evidence(page, "worker-view");
+    await band.getByTestId("parent-top").click();
+    await expect(page).not.toHaveURL(/spinoff=/);
+
+    await page.getByTestId("toggle-terminal").click();
+    const dock = page.getByTestId("terminal-panel");
+    // The first open starts a shell at once.
+    await expect(dock.locator(".xterm-rows")).toContainText("alice@");
+    expect(await finnish(dock, ".ah-terminal-surface")).toEqual([]);
+    await evidence(page, "terminal-dock");
+  });
+});

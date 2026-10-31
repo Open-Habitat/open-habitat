@@ -1,3 +1,5 @@
+import { useText } from "../i18n";
+import { nextWaitingRowText } from "../text/nextWaitingRow";
 import { altKey } from "./altKey";
 import type { AgentNavModel } from "./Navigation";
 import "./NextWaitingRow.css";
@@ -21,6 +23,7 @@ export function NextWaitingRow({
   note?: string;
   onStart: () => void;
 }) {
+  const txt = useText(nextWaitingRowText);
   if (!waiting.length && !note) return null;
   return (
     <div
@@ -39,17 +42,17 @@ export function NextWaitingRow({
           className="ah-next-open"
           data-testid="next-open"
           aria-keyshortcuts="Alt+ArrowDown"
-          title={`Käy läpi sinua odottavat (${altKey("↓")})`}
+          title={`${txt.walk} (${altKey("↓")})`}
           onClick={onStart}
         >
-          <span className="ah-next-label">Sillä aikaa</span>
+          <span className="ah-next-label">{txt.meanwhile}</span>
           <span className="ah-next-ball" aria-hidden="true" />
-          <span className="ah-next-title">{waiting.length} odottaa sinua</span>
+          <span className="ah-next-title">{txt.waiting(waiting.length)}</span>
           <span className="ah-next-det">
             {waiting.map((a) => a.title).join(", ")}
           </span>
           <span className="ah-next-go">
-            Käy läpi <kbd>{altKey("↓")}</kbd>
+            {txt.go} <kbd>{altKey("↓")}</kbd>
           </span>
         </button>
       ) : null}

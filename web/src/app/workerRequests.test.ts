@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { resetLanguageForTests } from "../i18n";
 import type { HistoryEntry } from "./history";
 import type { Spinoff } from "./spinoffs";
 import { requestPhases, requestText } from "./workerRequests";
@@ -72,6 +73,16 @@ describe("an ended worker's request phase is read from the conversation", () => 
       [other.run_id]: "checking",
     });
   });
+  it("recognises a request written while the interface was in the other language", () => {
+    resetLanguageForTests("en");
+    const english = requestText([run()]);
+    expect(english).not.toContain(ask);
+    resetLanguageForTests("fi");
+    expect(phases([entry("user", english)], true)).toEqual({
+      [run().run_id]: "checking",
+    });
+  });
+  afterEach(() => resetLanguageForTests("fi"));
   it("does not take an earlier mention of the run for a request", () => {
     const before = entry("user", ask, "2026-10-28T07:00:00Z");
     expect(phases([before, entry("assistant", "…")])).toEqual({});

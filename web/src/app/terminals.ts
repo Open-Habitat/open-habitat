@@ -1,6 +1,10 @@
 import Ajv from "ajv/dist/2020.js";
 import schema from "../../../contracts/v1/terminal.schema.json";
+import { liveText } from "../i18n";
+import { terminalsText } from "../text/terminals";
 import { jsonWrite, WriteRefused, writeOutcome } from "./mutations";
+
+const txt = liveText(terminalsText);
 
 // The browser shell (implement-browser-shell). A shell is a tmux session the
 // person's daemon runs in the workspace; the browser only lists, attaches and
@@ -60,12 +64,12 @@ export async function listTerminals(
     { signal, credentials: "same-origin", cache: "no-store" },
   );
   if (response.status === 401) throw new TerminalLogin();
-  if (!response.ok) throw new Error("Päätteitä ei voitu lukea.");
+  if (!response.ok) throw new Error(txt.readFailed);
   const text = await response.text();
-  if (text.length > 256 * 1024) throw new Error("Päätteitä ei voitu lukea.");
+  if (text.length > 256 * 1024) throw new Error(txt.readFailed);
   const value: unknown = JSON.parse(text);
   if (!validateList(value) || (value as TerminalList).workspace_id !== id)
-    throw new Error("Päätteiden tietoja ei voitu vahvistaa.");
+    throw new Error(txt.unverified);
   return value as TerminalList;
 }
 
@@ -181,15 +185,11 @@ export class TerminalSocket {
 
 /** Words for a refusal the host gave on the socket (close code 4xxx). */
 export function terminalRefusal(code: number, reason: string): string {
-  if (reason === "shell_ended") return "Pääte on jo päättynyt.";
-  if (reason === "shell_limit")
-    return "Työtilassa on jo 16 päätettä. Lopeta jokin ennen uutta.";
-  if (reason === "terminal_limit")
-    return "Avoimia päätteitä on liikaa. Sulje jokin toisesta välilehdestä.";
-  if (reason === "terminal_unavailable")
-    return "Palvelin ei voi avata päätettä: tmux puuttuu tai ei käynnistynyt.";
-  if (reason === "workspace_unavailable") return "Työtilaa ei löytynyt.";
-  if (reason === "csrf_denied" || code === 4401)
-    return "Istunto ei kelpaa enää. Lataa sivu uudelleen.";
-  return "Pääte ei avautunut.";
+  if (reason === "shell_ended") return txt.shellEnded;
+  if (reason === "shell_limit") return txt.shellLimit;
+  if (reason === "terminal_limit") return txt.terminalLimit;
+  if (reason === "terminal_unavailable") return txt.unavailable;
+  if (reason === "workspace_unavailable") return txt.workspaceMissing;
+  if (reason === "csrf_denied" || code === 4401) return txt.session;
+  return txt.failed;
 }
