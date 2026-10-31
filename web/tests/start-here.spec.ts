@@ -1,6 +1,21 @@
 import AxeBuilder from "@axe-core/playwright";
+import type { Page } from "@playwright/test";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
+
+// axe reads colours as painted, so text under a fade still running (a
+// banner's appear, the frame's entry) fails contrast at partial opacity.
+// The audits are of the settled view: wait for every finite animation and
+// transition first.
+const settled = (page: Page) =>
+  page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 for (const width of [1440, 390]) {
@@ -159,6 +174,7 @@ for (const width of [1440, 390]) {
       ).toBe(true);
       expect(sent).toEqual([]);
       await expect(page.getByTestId("user-content")).toHaveCount(0);
+      await settled(page);
       const audit = await new AxeBuilder({ page })
         .include('[data-testid="start-here"]')
         .analyze();
@@ -215,6 +231,7 @@ for (const width of [1440, 390]) {
       await expect(page.getByTestId("start-page-hint")).toHaveCount(0);
       await expect(page.getByTestId("starting-goal")).toHaveCount(0);
       await expect(field).toHaveValue("Oma keskeneräinen ajatus.");
+      await settled(page);
       const unavailableAudit = await new AxeBuilder({ page })
         .include('[data-testid="start-here"]')
         .analyze();

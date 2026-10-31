@@ -21,14 +21,16 @@ const marks: Record<PiProvider, [string, 1 | 2 | 3]> = {
   deepseek: ["DS", 3],
 };
 /** A provider's route as [name, letter mark, tone], named in the current
- * language. */
-export const routes = new Proxy(
-  {} as Record<PiProvider, [string, string, 1 | 2 | 3]>,
-  {
-    get: (_target, provider: PiProvider) =>
-      marks[provider] && [txt.routes[provider], ...marks[provider]],
-  },
-);
+ * language, or undefined for a provider this client does not know. Only own
+ * keys count: an inherited name such as "constructor" (which React Refresh
+ * reads from every export) must not resolve to an Object.prototype member. */
+export function providerRoute(
+  provider: string,
+): [string, string, 1 | 2 | 3] | undefined {
+  if (!Object.hasOwn(marks, provider)) return undefined;
+  const known = provider as PiProvider;
+  return [txt.routes[known], ...marks[known]];
+}
 
 /** A model setting as a settings row: its select-style value opens the
  * shared model chooser as a popover on desktop and a bottom sheet on phones
@@ -111,7 +113,7 @@ export function ModelField({
       element?.removeEventListener("click", onLink);
     };
   }, [open]);
-  const route = provider && model ? routes[provider] : undefined;
+  const route = provider && model ? providerRoute(provider) : undefined;
   const current = models?.find(
     (m) => m.id === model && (m.provider ?? "openai-codex") === provider,
   );

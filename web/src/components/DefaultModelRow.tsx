@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { liveText } from "../i18n";
 import { modelsText } from "../text/models";
-import { ModelField, routes } from "./ModelField";
+import { ModelField, providerRoute } from "./ModelField";
 import type { ModelChoice, PiProvider } from "./ModelPicker";
 import { modelDisplayName } from "./modelPresentation";
 
@@ -23,7 +23,7 @@ export function DefaultModelRow({
   loading?: boolean;
   children: ReactNode;
 }) {
-  const route = provider ? routes[provider] : undefined;
+  const route = provider ? providerRoute(provider) : undefined;
   return (
     <ModelField
       rowId="default-model"
