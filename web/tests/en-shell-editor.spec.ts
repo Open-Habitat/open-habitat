@@ -18,7 +18,7 @@ async function signIn(page: Page) {
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en-GB");
 }
 
 async function send(page: Page, text: string) {

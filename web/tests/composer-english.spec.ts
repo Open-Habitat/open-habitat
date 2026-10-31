@@ -32,7 +32,7 @@ test("@composer-english the composer speaks English to an English browser", asyn
   page,
 }) => {
   const field = await newConversation(page);
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en-GB");
   await expect(field).toHaveAttribute("aria-label", "Message to the agent");
   await expect(page.getByTestId("attach-file")).toHaveAccessibleName(
     "Add an attachment",

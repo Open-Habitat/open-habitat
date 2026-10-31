@@ -19,7 +19,7 @@ async function signIn(page: Page) {
     .and(page.getByTestId("github-sign-in"))
     .click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en-GB");
 }
 
 test("@lab @ui-language the workspace views speak English to an English browser", async ({

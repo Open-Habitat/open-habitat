@@ -375,7 +375,7 @@ test.describe("in English", () => {
     });
     await page.request.get("/fixture/scenario?value=ready");
     await page.goto("/workspaces");
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en-GB");
     await page
       .getByRole("button")
       .and(page.getByTestId("github-sign-in"))

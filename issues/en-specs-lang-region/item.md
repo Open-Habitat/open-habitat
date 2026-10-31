@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: high
 lane: en-specs-lang-region
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # English browser specs expect lang=en after the en-US/en-GB split
