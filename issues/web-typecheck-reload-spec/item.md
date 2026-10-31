@@ -2,13 +2,15 @@
 created: 2026-10-31
 updated: 2026-10-31
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: worker observation
 source_ref: taskfleet:01m682p6ssrx933anc4ym4ke2y/observation:server-version-reload-ts2698
 originating_run: 01m682p6ssrx933anc4ym4ke2y
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Web typecheck fails on main: server-version-reload spec spreads a non-object
