@@ -3,12 +3,13 @@ created: 2026-10-31
 updated: 2026-10-31
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: benchmark-candidates
 lane_seq: 1
 preparation: ready
 blocked_by: ['@benchmark-humanlayer', '@benchmark-orca']
+closed: 2026-10-31
 ---
 
 # Find further benchmark candidates
