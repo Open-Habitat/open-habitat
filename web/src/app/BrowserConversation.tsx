@@ -50,7 +50,6 @@ import { RestCard } from "../components/RestartNotice";
 import { SpinoffContext } from "../components/Spinoffs";
 import { WarningBanner } from "../components/WarningBanner";
 import { UnpresentedEvents } from "../components/WorkingProgress";
-import { useExperimentalFeature } from "./accountPreferences";
 import { useBrowserShell } from "./BrowserShell";
 import { toolStopped } from "./bashFailure";
 import { useConversationActions } from "./ConversationActions";
@@ -275,7 +274,6 @@ function BrowserConversationContent({
   onNativeHistory?: (history?: string) => void;
 }) {
   const transientNotices = useAgentNotices(store, id ?? "");
-  const dictationBar = useExperimentalFeature("composer-dictation-bar");
   const {
     current,
     statusStale,
@@ -2485,7 +2483,6 @@ function BrowserConversationContent({
               <Composer
                 csrf={csrf}
                 speech={speech}
-                dictationBar={dictationBar}
                 modelPicker={
                   canChooseFirstModel ? (
                     <ComposerModelPicker

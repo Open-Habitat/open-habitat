@@ -2,6 +2,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -97,12 +98,21 @@ function mmss(ms: number) {
 }
 
 export type DictationNotice = {
-  id: SpeechFailure | "ceiling" | "dropped";
+  id: SpeechFailure | "ceiling" | "dropped" | "cancelled";
   tone: "info" | "danger";
   title: string;
   /** Omitted when the title and the action already say it all. */
   text?: string;
-  actions: ("settings" | "retry" | "resume")[];
+  actions: ("settings" | "retry" | "resume" | "restore")[];
+};
+
+/** A cancelled dictation that heard something: ✕ or Esc keeps the field as
+ * it was, and Palauta puts the words back, so a stray Esc loses nothing. */
+const cancelledNotice: DictationNotice = {
+  id: "cancelled",
+  tone: "info",
+  title: "Sanelu peruttu",
+  actions: ["restore"],
 };
 
 function noticeFor(view: DictationView): DictationNotice | null {
@@ -202,6 +212,9 @@ export function useDictation(
   const [holding, setHolding] = useState(false);
   const engine = useRef<Dictation | null>(null);
   const around = useRef({ before: "", after: "" });
+  /** The field a dictation started from, and what a cancel dropped. */
+  const started = useRef("");
+  const dropped = useRef<{ around: typeof around.current; said: string }>(null);
   const ending = useRef(onEnd);
   ending.current = onEnd;
   const hold = useRef<{ at: number; timer: number } | null>(null);
@@ -218,7 +231,11 @@ export function useDictation(
             const done = dictatedInto(around.current, next.final);
             ending.current(done.text, done.caret);
           }
-          setNotice(noticeFor(next));
+          setNotice(
+            next.ended === "cancelled" && dropped.current
+              ? cancelledNotice
+              : noticeFor(next),
+          );
         }
       },
     );
@@ -235,6 +252,8 @@ export function useDictation(
     if (!d || d.active) return;
     // Dictation writes at the caret, or in place of the selection.
     around.current = aroundCaret(text, caret);
+    started.current = text;
+    dropped.current = null;
     setNotice(null);
     void d.start();
   }, []);
@@ -245,14 +264,47 @@ export function useDictation(
     const final = await d.stop();
     return final ? dictatedInto(around.current, final).text : null;
   }, []);
-  /** Ends the dictation and keeps nothing of it: the field stays as it was. */
-  const cancel = useCallback(() => engine.current?.cancel(), []);
+  /** Ends the dictation and keeps nothing of it in the field, which stays
+   * as it was; what was heard waits for restore. */
+  const cancel = useCallback(() => {
+    const d = engine.current;
+    if (!d?.active) return;
+    const said = `${d.view.final}${d.view.interim}`.trim();
+    dropped.current = said ? { around: around.current, said } : null;
+    d.cancel();
+    // Back to the field, which the dictation hid or left read-only.
+    window.requestAnimationFrame(() =>
+      (
+        scope.current?.querySelector("textarea") ??
+        scope.current?.querySelector("input")
+      )?.focus(),
+    );
+  }, [scope]);
+  /** Puts a cancelled dictation's words back where it was said, or after
+   * the text when the field has changed since. */
+  const restore = useCallback((text: string) => {
+    const was = dropped.current;
+    dropped.current = null;
+    setNotice(null);
+    if (!was) return;
+    const done = dictatedInto(
+      text === started.current
+        ? was.around
+        : aroundCaret(text, [text.length, text.length]),
+      was.said,
+    );
+    ending.current(done.text, done.caret);
+  }, []);
+  const cancelling = useRef(cancel);
+  cancelling.current = cancel;
   useEffect(() => {
     if (!active) return;
+    // Esc is ✕: Enter is done, Esc cancels, and the notice can restore.
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
-      void engine.current?.stop();
+      if (engine.current?.view.phase === "finishing") return;
+      cancelling.current();
     };
     // Enter is Valmis: the text stays in the field and nothing is sent. It
     // is taken before the field's own keys, which would send, even from the
@@ -275,8 +327,7 @@ export function useDictation(
       );
       if (
         target !== document.body &&
-        (!scope.current?.contains(target) ||
-          (control && !control.classList.contains("ah-dictation-pill")))
+        (!scope.current?.contains(target) || control)
       )
         return;
       event.preventDefault();
@@ -325,12 +376,15 @@ export function useDictation(
     press,
     stop,
     cancel,
+    restore,
   };
 }
 
 export type DictationState = ReturnType<typeof useDictation>;
 
-/** Sanele at rest: a tap starts, a hold talks until it is let go. */
+/** Sanele at rest: a tap starts, a hold talks until it is let go. Its
+ * shortcut is in the app's own tooltip, which appears at once on hover or
+ * keyboard focus, where the browser's title would wait seconds. */
 function MicButton({
   dictation,
   text,
@@ -345,6 +399,7 @@ function MicButton({
   shortcut: DictationShortcut;
 }) {
   const pressed = useRef(false);
+  const tip = useId();
   return (
     <button
       type="button"
@@ -352,7 +407,7 @@ function MicButton({
       className="ah-crow-btn ah-dictation-mic"
       aria-label="Sanele"
       aria-keyshortcuts={shortcut.aria}
-      title={`Sanele (${either(shortcut.labels)}) · napauta aloittaaksesi, pidä pohjassa puhuaksesi`}
+      aria-describedby={tip}
       disabled={disabled}
       onPointerDown={(event) => {
         if (event.button !== 0 || disabled) return;
@@ -370,6 +425,15 @@ function MicButton({
     >
       <Icon name="mic" />
       <span className="ah-crow-lbl">Sanele</span>
+      <span
+        id={tip}
+        role="tooltip"
+        data-testid="dictation-mic-tip"
+        className="ah-dictation-tip"
+      >
+        <kbd>{either(shortcut.labels)}</kbd> · napauta aloittaaksesi, pidä
+        pohjassa puhuaksesi
+      </span>
     </button>
   );
 }
@@ -398,7 +462,7 @@ function useFocusOnStart(
 function stateLabel(
   view: DictationView,
   holding: boolean,
-  connecting = "kuuntelee",
+  connecting = "kuuntelee · yhdistää…",
 ) {
   const paused = view.phase === "live" && view.quietMs >= 2000;
   return view.phase === "reconnecting"
@@ -414,7 +478,9 @@ function stateLabel(
             : "kuuntelee";
 }
 
-/** The mic at rest, or the recording pill in its place while dictating. */
+/** The mic at rest, or a recording pill in its place while dictating: the
+ * compact control for a one-line field (the workspace icon's wish), where
+ * the composer's bar has no row to cover. */
 export function DictationControl({
   dictation,
   text,
@@ -445,7 +511,7 @@ export function DictationControl({
   // stream to Soniox opens, so the dictation listens from the start.
   const listening = view.phase === "live" || view.phase === "connecting";
   const paused = view.phase === "live" && view.quietMs >= 2000;
-  const label = stateLabel(view, holding);
+  const label = stateLabel(view, holding, "kuuntelee");
   const bars = [0.55, 0.85, 1, 0.75, 0.6];
   return (
     <button
@@ -456,8 +522,8 @@ export function DictationControl({
       data-phase={view.phase}
       className={`ah-dictation-pill${listening ? "" : " busy"}${paused ? " paused" : ""}${holding ? " hold" : ""}`}
       aria-label={`Lopeta sanelu, ${mmss(view.elapsedMs)}`}
-      aria-keyshortcuts={`Enter Escape ${shortcut.aria}`}
-      title={`Lopeta sanelu (${either(["Enter", "Esc", ...shortcut.labels])}). Teksti jää kenttään.`}
+      aria-keyshortcuts={`Enter ${shortcut.aria}`}
+      title={`Lopeta sanelu (${either(["Enter", ...shortcut.labels])}). Teksti jää kenttään; Esc peruu.`}
       onClick={() => void dictation.stop()}
     >
       <span className="ah-dictation-dot" aria-hidden="true" />
@@ -487,7 +553,7 @@ export function DictationControl({
 const waveBars = 90;
 const waveMs = 90;
 
-/** Palkki (proto-composer-actions, round 2): while dictating, the row's
+/** While dictating, the row's
  * left part is one listening bar over the aids, which are not for use
  * meanwhile. Its controls sit at its anchored left end, so when the work
  * controls appear beside it only the waveform shortens. */
@@ -526,8 +592,9 @@ export function DictationBar({
         type="button"
         data-testid="dictation-cancel"
         className="ah-dictation-cancel"
-        aria-label="Peru sanelu: sanottu ei jää kenttään"
-        title="Peru sanelu: sanottu ei jää kenttään"
+        aria-label="Peru sanelu: kenttä palaa ennalleen"
+        aria-keyshortcuts="Escape"
+        title="Peru sanelu (Esc): kenttä palaa ennalleen"
         disabled={finishing}
         onClick={onCancel}
       >
@@ -535,9 +602,7 @@ export function DictationBar({
       </button>
       <span className="ah-dictation-dot" aria-hidden="true" />
       <span className="ah-dictation-time">{mmss(view.elapsedMs)}</span>
-      <span className="ah-dictation-state">
-        {stateLabel(view, holding, "kuuntelee · yhdistää…")}
-      </span>
+      <span className="ah-dictation-state">{stateLabel(view, holding)}</span>
       <span className="ah-dictation-wave" aria-hidden="true">
         {wave.map((h, i) => (
           <i
@@ -556,7 +621,7 @@ export function DictationBar({
   );
 }
 
-/** Palkki's slot beside Send: Sanele at rest and Valmis while dictating,
+/** The slot beside Send: Sanele at rest and Valmis while dictating,
  * one width, so the finger that started the dictation finishes it in the
  * same place. */
 export function DictationSlotControl({
@@ -594,9 +659,9 @@ export function DictationSlotControl({
       data-phase={view.phase}
       className="ah-dictation-finish"
       aria-label="Valmis: lopeta sanelu, teksti jää kenttään"
-      aria-keyshortcuts={`Enter Escape ${shortcut.aria}`}
+      aria-keyshortcuts={`Enter ${shortcut.aria}`}
       aria-busy={finishing || undefined}
-      title={`Valmis: teksti jää kenttään (${either(["Enter", "Esc", ...shortcut.labels])})`}
+      title={`Valmis: teksti jää kenttään (${either(["Enter", ...shortcut.labels])})`}
       onClick={() => void dictation.stop()}
     >
       {finishing ? (
@@ -689,6 +754,7 @@ export function DictationNoticeView({
     settings: "Avaa asetukset",
     retry: "Yritä uudelleen",
     resume: "Jatka sanelua",
+    restore: "Palauta",
   };
   return (
     <div
@@ -713,7 +779,8 @@ export function DictationNoticeView({
                   if (action === "settings") {
                     dictation.dismiss();
                     onOpenSettings();
-                  } else dictation.start(text, caret());
+                  } else if (action === "restore") dictation.restore(text);
+                  else dictation.start(text, caret());
                 }}
               >
                 {labels[action]}

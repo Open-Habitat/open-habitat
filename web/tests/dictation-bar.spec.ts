@@ -3,20 +3,23 @@ import type { Locator, Page } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
 
-// Kokeellinen Sanelupalkki (composer-dictation-bar; proto-composer-actions
-// round 2, Palkki): Sanele and Send anchored at the row's right end, the
-// work controls born left of them, and dictation as a listening bar over the
-// row's left part with Valmis in Sanele's slot. Against the browser host's
-// synthetic Soniox and fake Pi; the microphone is an oscillator. It proves
-// the row's geometry and the cancel in a real browser, not Soniox itself.
+// The composer's row and its dictation bar (proto-composer-actions round 2,
+// Palkki; the default since dictation-bar-default): Sanele and Send anchored
+// at the row's right end, the work controls born left of them, and dictation
+// as a listening bar over the row's left part with Valmis in Sanele's slot.
+// Against the browser host's synthetic Soniox and fake Pi; the microphone is
+// an oscillator. It proves the row's geometry, the cancel and its restore in
+// a real browser, not Soniox itself.
 
 test.use({
   baseURL: hostOrigin,
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 900 },
+  // Jari reviews the screenshots; 1x evidence was blurry.
+  deviceScaleFactor: 2,
 });
 
-const evidence = "../issues/composer-dictation-bar/evidence";
+const evidence = "../issues/dictation-bar-default/evidence";
 const capture = !!process.env.OH_VISUAL_CAPTURE;
 
 /** The composer in light and dark, for Jari's eye. */
@@ -82,16 +85,6 @@ async function setUp(page: Page) {
     "data-source",
     "own",
   );
-  await page.goto("/settings/experimental");
-  const on = page
-    .getByRole("region")
-    .and(page.getByTestId("experimental-composer-dictation-bar"))
-    .getByRole("group")
-    .and(page.getByTestId("experimental-composer-dictation-bar-choice"))
-    .getByRole("button")
-    .and(page.getByTestId("segment-on"));
-  await on.click();
-  await expect(on).toHaveAttribute("aria-pressed", "true");
   await page.goto("/workspaces");
   await page
     .getByRole("navigation")
@@ -99,14 +92,21 @@ async function setUp(page: Page) {
     .click();
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi:/);
-  await expect(page.locator(".ah-crow-bar")).toBeVisible();
+  await expect(mic(page)).toBeVisible();
 }
 
-const mic = (page: Page) =>
-  page.getByRole("button").and(page.getByTestId("dictation-mic"));
+function mic(page: Page) {
+  return page.getByRole("button").and(page.getByTestId("dictation-mic"));
+}
 const done = (page: Page) =>
   page.getByRole("button").and(page.getByTestId("dictation-stop"));
 const bar = (page: Page) => page.getByTestId("dictation-bar");
+const restore = (page: Page) =>
+  page
+    .getByTestId("dictation-notice")
+    .and(page.locator('[data-notice="cancelled"]'))
+    .getByRole("button")
+    .and(page.getByTestId("dictation-restore"));
 const send = (page: Page) =>
   page.getByRole("button").and(page.getByTestId("send"));
 const stop = (page: Page) =>
@@ -151,8 +151,6 @@ test("@dictation-bar the bar covers the aids, Valmis takes Sanele's place, and n
   await field(page).fill("Alku");
   const rest = { mic: await box(mic(page)), send: await box(send(page)) };
   await shot(page, "tyopoyta-levossa");
-  // Sanele's tooltip names the shortcut.
-  await expect(mic(page)).toHaveAttribute("title", /^Sanele \(Ctrl\+.\) ·/);
 
   await mic(page).click();
   await expect(bar(page)).toBeVisible();
@@ -172,7 +170,8 @@ test("@dictation-bar the bar covers the aids, Valmis takes Sanele's place, and n
     ).violations,
   ).toEqual([]);
 
-  // × cancels: the field is as it was and Soniox was not asked to finish.
+  // × cancels: the field is as it was and Soniox was not asked to finish;
+  // Palauta puts the words back.
   await page
     .getByRole("button")
     .and(page.getByTestId("dictation-cancel"))
@@ -180,9 +179,13 @@ test("@dictation-bar the bar covers the aids, Valmis takes Sanele's place, and n
   await expect(bar(page)).toHaveCount(0);
   await expect(field(page)).toHaveValue("Alku");
   await expect(field(page)).toBeFocused();
-  await expect(page.getByTestId("dictation-notice")).toHaveCount(0);
   expect((await soniox(page)).ended).toBe(0);
   for (const aid of aids) await expect(aid).toBeVisible();
+  await shot(page, "tyopoyta-peruttu");
+  await restore(page).click();
+  await expect(field(page)).toHaveValue("Alku sanelu");
+  await expect(page.getByTestId("dictation-notice")).toHaveCount(0);
+  await field(page).fill("Alku");
 
   // The shortcut starts one with Valmis focused; Enter is Valmis: the text
   // stays and nothing is sent.
@@ -242,7 +245,7 @@ for (const width of [390, 360])
     await shot(page, `puhelin-${width}-levossa`);
     for (const c of controls())
       expect((await box(c)).height).toBeGreaterThanOrEqual(36);
-    const row = await box(page.locator(".ah-crow-bar"));
+    const row = await box(page.locator(".ah-crow"));
     expect(rest.send.x + rest.send.width).toBeLessThanOrEqual(
       row.x + row.width,
     );
@@ -277,28 +280,58 @@ for (const width of [390, 360])
     await expect(bar(page)).toHaveCount(0);
   });
 
-test("@dictation-bar with the feature off the row keeps Sanele beside the work controls as before", async ({
+test("@dictation-bar Esc while dictating cancels like ×, and a stray Esc loses nothing", async ({
   page,
 }) => {
-  await page.goto("/workspaces");
-  await page.getByTestId("github-sign-in").click();
-  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
-  await expect(page.getByTestId("account-menu-trigger")).toBeAttached();
-  await page.goto("/settings/speech");
-  await page.getByTestId("speech-key-input").fill(ownKey);
-  await page.getByTestId("speech-key-save").click();
-  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
-    "data-source",
-    "own",
+  test.setTimeout(90_000);
+  await setUp(page);
+  await field(page).fill("Alku");
+  await field(page).focus();
+  await page.keyboard.press("Control+Backquote");
+  await expect(bar(page)).toBeVisible();
+  await say(page, " pitkä sanelu");
+  await expect(page.getByTestId("dictation-final")).toHaveText("pitkä sanelu");
+  await page.keyboard.press("Escape");
+  await expect(bar(page)).toHaveCount(0);
+  await expect(field(page)).toHaveValue("Alku");
+  await expect(field(page)).toBeFocused();
+  expect((await soniox(page)).ended).toBe(0);
+  await restore(page).click();
+  await expect(field(page)).toHaveValue("Alku pitkä sanelu");
+});
+
+test("@dictation-bar Sanele's shortcut is in the app's own tooltip, shown at once on hover and on keyboard focus", async ({
+  page,
+}) => {
+  await setUp(page);
+  // Hidden it is no tooltip to the accessibility tree; shown it is one.
+  const hidden = page.getByTestId("dictation-mic-tip");
+  const tip = page.getByRole("tooltip").and(hidden);
+  // Not the browser's title, whose delay the app does not control.
+  await expect(mic(page)).not.toHaveAttribute("title", /./);
+  await expect(mic(page)).toHaveAttribute(
+    "aria-describedby",
+    (await hidden.getAttribute("id")) ?? "",
   );
-  await page.goto("/workspaces");
-  await page
-    .getByRole("navigation")
-    .getByTestId("workspace-ordinary-dir")
-    .click();
-  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  await expect(page).toHaveURL(/conversation=pi:/);
-  await expect(mic(page)).toBeVisible();
-  await expect(page.locator(".ah-crow-bar")).toHaveCount(0);
-  await expect(page.locator(".ah-dictation-slot")).toHaveCount(1);
+  await expect(hidden).toBeHidden();
+  await mic(page).hover();
+  await expect(tip).toBeVisible({ timeout: 600 });
+  // It names the shortcut the layout has (Ctrl and the key left of 1 here).
+  await expect(tip.locator("kbd")).toHaveText(/^Ctrl\+.$/);
+  // It opens above the mic and stays inside the window.
+  const t = await box(tip);
+  const m = await box(mic(page));
+  expect(t.y + t.height).toBeLessThanOrEqual(m.y);
+  expect(t.x).toBeGreaterThanOrEqual(0);
+  await shot(page, "tyopoyta-vihje");
+  await page.mouse.move(0, 0);
+  await expect(tip).toBeHidden();
+  await field(page).focus();
+  // Tab through the row's aids to Sanele.
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press("Tab");
+    if (await mic(page).evaluate((el) => el === document.activeElement)) break;
+  }
+  await expect(mic(page)).toBeFocused();
+  await expect(tip).toBeVisible({ timeout: 600 });
 });

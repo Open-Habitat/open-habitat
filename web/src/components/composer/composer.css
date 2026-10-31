@@ -957,11 +957,25 @@
   background: var(--ah-err);
   animation: ah-dictation-blink 1s steps(2, start) infinite;
 }
-.ah-dictation-slot {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
+.ah-dictation-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ah-err);
+  animation: ah-dictation-pulse 1.6s ease-in-out infinite;
 }
+.ah-dictation-time {
+  font: 500 12px var(--ah-mono);
+  font-variant-numeric: tabular-nums;
+}
+.ah-dictation-state {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ah-muted);
+}
+/* The recording pill of a one-line field (DictationControl). */
 .ah-crow .ah-dictation-pill {
   display: inline-flex;
   align-items: center;
@@ -975,14 +989,6 @@
   color: var(--ah-ink);
   font: 500 12px var(--ah-font);
   white-space: nowrap;
-}
-.ah-dictation-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--ah-err);
-  animation: ah-dictation-pulse 1.6s ease-in-out infinite;
 }
 .ah-dictation-pill.busy .ah-dictation-dot {
   background: var(--ah-muted);
@@ -1010,16 +1016,6 @@
 .ah-dictation-pill.paused .ah-dictation-bars i,
 .ah-dictation-pill.busy .ah-dictation-bars i {
   background: var(--ah-muted);
-}
-.ah-dictation-time {
-  font: 500 12px var(--ah-mono);
-  font-variant-numeric: tabular-nums;
-}
-.ah-dictation-state {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--ah-muted);
 }
 .ah-dictation-done {
   display: inline-flex;
@@ -1162,27 +1158,7 @@
     opacity: 0.35;
   }
 }
-/* Phone: while dictating the pill takes the row's tools' place. */
-@media (max-width: 440px) {
-  .ah-crow-dictating:not(.ah-crow-bar) .ah-crow-btn:not(.ah-dictation-mic),
-  .ah-crow-dictating:not(.ah-crow-bar) .ah-crow-grow,
-  .ah-crow-dictating:not(.ah-crow-bar) .ah-composer-model {
-    display: none;
-  }
-  .ah-crow-dictating .ah-dictation-slot,
-  .ah-crow-dictating .ah-dictation-pill {
-    flex: 1;
-  }
-  .ah-crow-dictating .ah-dictation-pill {
-    min-height: 36px;
-  }
-  .ah-crow-dictating .ah-dictation-state {
-    flex: 1;
-    text-align: left;
-  }
-}
-
-/* ---- Palkki: the experimental dictation bar (proto-composer-actions) ----
+/* ---- The row and its dictation bar (proto-composer-actions, Palkki) ----
    Order: aids | space | Ohjaa, Stop, divider | Sanele, Send. Sanele and
    Send are anchored at the right in one fixed-width slot each, and the work
    controls are born in the empty middle, so nothing that exists both at
@@ -1202,7 +1178,7 @@
   visibility: hidden;
 }
 /* Liitä is drawn like the other aids, without the primitive's fill. */
-.ah-crow-bar .ah-crow-btn.ah-button {
+.ah-crow .ah-crow-btn.ah-button {
   --i-bg: transparent;
   --i-border: transparent;
   --i-fg: var(--ah-ink-2);
@@ -1217,13 +1193,13 @@
   margin: 0 4px;
   background: var(--ah-line);
 }
-.ah-crow-bar .ah-crow-chip-steer {
+.ah-crow .ah-crow-chip-steer {
   box-shadow: inset 0 0 0 1px var(--ah-accent-line);
 }
 .ah-crow-chip-short {
   display: none;
 }
-.ah-crow.ah-crow-bar .ah-crow-stop {
+.ah-composer .ah-crow .ah-crow-stop {
   width: 28px;
   height: 28px;
   margin-left: 2px;
@@ -1354,6 +1330,45 @@
   font: 500 10.5px var(--ah-mono);
   line-height: 15px;
 }
+/* Sanele's shortcut, at once on hover or keyboard focus (the browser's own
+   title waits seconds). It opens above the mic, toward the row's middle. */
+.ah-crow .ah-dictation-mic {
+  position: relative;
+}
+.ah-dictation-tip {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  bottom: calc(100% + 6px);
+  padding: 5px 9px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-ink);
+  color: var(--ah-bg);
+  font: 500 var(--ah-size-meta) / 1.3 var(--ah-font);
+  width: max-content;
+  max-width: min(360px, calc(100vw - 24px));
+  text-align: left;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 120ms ease-out,
+    visibility 120ms;
+}
+.ah-dictation-tip kbd {
+  font: 600 var(--ah-size-meta) var(--ah-mono);
+}
+.ah-dictation-mic:focus-visible .ah-dictation-tip {
+  visibility: visible;
+  opacity: 1;
+}
+@media (hover: hover) {
+  .ah-dictation-mic:hover:not(:disabled) .ah-dictation-tip {
+    visibility: visible;
+    opacity: 1;
+    transition-delay: 150ms;
+  }
+}
 @keyframes ah-dictation-bar-in {
   from {
     clip-path: inset(0 0 0 calc(100% - 40px) round 999px);
@@ -1372,30 +1387,30 @@
    sizes are set with the row's own specificity, which the general phone
    rules above lack (proto-composer-actions round 1). */
 @media (max-width: 440px) {
-  .ah-crow.ah-crow-bar .ah-crow-btn {
+  .ah-composer .ah-crow .ah-crow-btn {
     justify-content: center;
     width: 36px;
     min-height: 36px;
     padding: 0;
   }
-  .ah-crow-bar .ah-crow-btn .ah-crow-lbl,
-  .ah-crow-bar .ah-dictation-finish .ah-crow-lbl,
-  .ah-crow-bar .ah-crow-swap,
-  .ah-crow-bar .ah-crow-sep,
-  .ah-crow-bar .ah-crow-chip-follow_up > span:not(.ah-crow-chip-short),
+  .ah-crow .ah-crow-btn .ah-crow-lbl,
+  .ah-crow .ah-dictation-finish .ah-crow-lbl,
+  .ah-crow .ah-crow-swap,
+  .ah-crow .ah-crow-sep,
+  .ah-crow .ah-crow-chip-follow_up > span:not(.ah-crow-chip-short),
   .ah-dictation-hint {
     display: none;
   }
-  .ah-crow-bar .ah-crow-chip-short {
+  .ah-crow .ah-crow-chip-short {
     display: inline;
   }
-  .ah-crow.ah-crow-bar .ah-crow-chip {
+  .ah-composer .ah-crow .ah-crow-chip {
     min-height: 36px;
     padding: 0 10px 0 9px;
   }
-  .ah-crow.ah-crow-bar .ah-crow-stop {
-    width: 34px;
-    height: 34px;
+  .ah-composer .ah-crow .ah-crow-stop {
+    width: 36px;
+    height: 36px;
   }
   .ah-crow-mslot {
     width: 36px;
@@ -1405,7 +1420,7 @@
     padding: 0;
     border-radius: 50%;
   }
-  .ah-crow-bar .ah-composer-model {
+  .ah-crow .ah-composer-model {
     min-width: 0;
   }
   .ah-dictation-bar {
@@ -1428,6 +1443,7 @@
   .ah-dictation-spin {
     animation: none;
   }
+  .ah-dictation-tip,
   .ah-dictation-bars i {
     transition: none;
   }

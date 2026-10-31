@@ -1346,8 +1346,9 @@ test("@lab slow turn explains work and stops in one calm step", async ({
   const stop = page
     .getByTestId("composer-stop")
     .and(page.locator('[data-stop-target="agent"]'));
-  // Rivillä: Stop sits beside Send at its size, 32 px on the desktop.
-  await expect(stop).toHaveCSS("width", "32px");
+  // Palkki: Stop sits beside Ohjaa, left of Sanele and Send, 28 px on the
+  // desktop (proto-composer-actions round 2).
+  await expect(stop).toHaveCSS("width", "28px");
   // Stop must be findable at a glance (pilot.231: a bare glyph went unseen):
   // its own surface meets WCAG 1.4.11 non-text contrast against the page.
   const stopContrast = await stop.evaluate((button) => {

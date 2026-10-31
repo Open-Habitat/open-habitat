@@ -106,7 +106,7 @@ function Live({
   running,
   model,
   stopState,
-  bar,
+  mic,
 }: {
   initial?: string;
   activity?: "idle" | "working";
@@ -115,9 +115,9 @@ function Live({
   queue?: { steering: string[]; followUp: string[] };
   running?: boolean;
   model?: boolean;
-  /** Kokeellinen Sanelupalkki with a mic whose stream never opens, so a
-   * press shows the bar listening. */
-  bar?: boolean;
+  /** A mic whose stream never opens, so a press shows the dictation bar
+   * listening. */
+  mic?: boolean;
 }) {
   const [value, setValue] = useState(initial);
   const [working, setWorking] = useState(mode);
@@ -136,9 +136,8 @@ function Live({
       queue={queue}
       onRestoreQueue={noop}
       sources={sources}
-      csrf={bar ? "story" : undefined}
-      speech={bar ? { onOpenSettings: noop, deps: pendingSpeech } : undefined}
-      dictationBar={bar}
+      csrf={mic ? "story" : undefined}
+      speech={mic ? { onOpenSettings: noop, deps: pendingSpeech } : undefined}
       modelPicker={
         model ? (
           <button type="button" className="md-pill">
@@ -477,9 +476,9 @@ export const PalettePickingTwoFiles: Story = {
   ),
 };
 
-/** Kokeellinen Sanelupalkki (composer-dictation-bar): Sanele and Send at the
- * right in fixed slots, Ohjaa and Stop born left of them. Press Sanele to
- * see the listening bar and Valmis in Sanele's place; × cancels. */
+/** Sanele and Send at the right in fixed slots, Ohjaa and Stop born left
+ * of them. Press Sanele to see the listening bar and Valmis in Sanele's
+ * place; × or Esc cancels. */
 export const DictationBar: Story = {
   render: () => (
     <>
@@ -490,12 +489,12 @@ export const DictationBar: Story = {
           style={{ background: "var(--ah-bg)", padding: 16 }}
         >
           <Frame>
-            <Live bar />
-            <Live bar activity="working" initial="Päivitä myös README" />
+            <Live mic />
+            <Live mic activity="working" initial="Päivitä myös README" />
           </Frame>
           <Frame narrow>
-            <Live bar />
-            <Live bar activity="working" mode="follow_up" />
+            <Live mic />
+            <Live mic activity="working" mode="follow_up" />
           </Frame>
         </div>
       ))}

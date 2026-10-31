@@ -714,7 +714,6 @@ describe("composer speech input", () => {
     deps: ReturnType<typeof fakeSpeech>["deps"];
     onSendNow: (text?: string) => void;
     initial?: string;
-    dictationBar?: boolean;
   }) {
     const [value, setValue] = useState(props.initial ?? "Alku");
     return (
@@ -725,7 +724,6 @@ describe("composer speech input", () => {
         onChange={setValue}
         onSendNow={props.onSendNow}
         speech={{ onOpenSettings: noop, deps: props.deps }}
-        dictationBar={props.dictationBar}
       />
     );
   }
@@ -834,30 +832,69 @@ describe("composer speech input", () => {
     }
   });
 
-  it("Palkki: the bar's cancel ends the dictation and leaves the field as it was", async () => {
-    const { deps, sockets } = fakeSpeech();
-    const view = render(<Stateful deps={deps} onSendNow={noop} dictationBar />);
-    await dictate(view, sockets);
-    expect(view.getByTestId("dictation-bar")).toBeTruthy();
-    // Valmis takes Sanele's place in the same slot.
-    expect(
-      view.getByTestId("dictation-stop").closest(".ah-crow-mslot"),
-    ).toBeTruthy();
-    fireEvent.click(view.getByTestId("dictation-cancel"));
-    await waitFor(() => expect(view.queryByTestId("dictation-bar")).toBeNull());
-    expect(field(view).value).toBe("Alku");
-    // Soniox is not asked for its last words, and no notice explains it.
-    expect(sockets[0]?.sent).not.toContain("");
-    expect(view.queryByTestId("dictation-notice")).toBeNull();
-    expect(view.getByTestId("dictation-mic")).toBeTruthy();
+  it("× and Esc cancel: the field stays as it was until Palauta puts the words back", async () => {
+    for (const end of ["cancel", "Escape"] as const) {
+      const { deps, sockets } = fakeSpeech();
+      const view = render(<Stateful deps={deps} onSendNow={noop} />);
+      await dictate(view, sockets);
+      expect(view.getByTestId("dictation-bar")).toBeTruthy();
+      // Valmis takes Sanele's place in the same slot.
+      expect(
+        view.getByTestId("dictation-stop").closest(".ah-crow-mslot"),
+      ).toBeTruthy();
+      if (end === "cancel")
+        fireEvent.click(view.getByTestId("dictation-cancel"));
+      else fireEvent.keyDown(document.body, { key: "Escape" });
+      await waitFor(() =>
+        expect(view.queryByTestId("dictation-bar")).toBeNull(),
+      );
+      expect(field(view).value).toBe("Alku");
+      // Soniox is not asked for its last words.
+      expect(sockets[0]?.sent).not.toContain("");
+      expect(
+        view.getByTestId("dictation-notice").getAttribute("data-notice"),
+      ).toBe("cancelled");
+      fireEvent.click(view.getByTestId("dictation-restore"));
+      expect(field(view).value).toBe("Alku sanelu");
+      expect(view.queryByTestId("dictation-notice")).toBeNull();
+      view.unmount();
+    }
   });
 
-  it("Palkki: Valmis keeps what was said in the field", async () => {
+  it("Palauta after the field has changed adds the words after the new text and keeps it", async () => {
     const { deps, sockets } = fakeSpeech();
-    const view = render(<Stateful deps={deps} onSendNow={noop} dictationBar />);
+    const view = render(
+      <Stateful deps={deps} onSendNow={noop} initial="Alku loppu" />,
+    );
+    field(view).focus();
+    field(view).setSelectionRange(4, 4);
+    await dictate(view, sockets);
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    await waitFor(() => expect(view.queryByTestId("dictation-bar")).toBeNull());
+    fireEvent.change(field(view), { target: { value: "Uusi teksti." } });
+    fireEvent.click(view.getByTestId("dictation-restore"));
+    expect(field(view).value).toBe("Uusi teksti. sanelu");
+  });
+
+  it("a cancel that heard nothing leaves no notice", async () => {
+    const { deps, sockets } = fakeSpeech();
+    const view = render(<Stateful deps={deps} onSendNow={noop} />);
+    fireEvent.click(view.getByTestId("dictation-mic"));
+    await waitFor(() => expect(sockets).toHaveLength(1));
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    await waitFor(() => expect(view.queryByTestId("dictation-bar")).toBeNull());
+    expect(field(view).value).toBe("Alku");
+    expect(view.queryByTestId("dictation-notice")).toBeNull();
+  });
+
+  it("Valmis keeps what was said in the field, even past an Esc while Soniox finishes", async () => {
+    const { deps, sockets } = fakeSpeech();
+    const view = render(<Stateful deps={deps} onSendNow={noop} />);
     await dictate(view, sockets);
     fireEvent.click(view.getByTestId("dictation-stop"));
     await waitFor(() => expect(sockets[0]?.sent.at(-1)).toBe(""));
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(view.getByTestId("dictation-bar")).toBeTruthy();
     await act(async () =>
       sockets[0]?.onmessage?.({
         data: JSON.stringify({ tokens: [], finished: true }),

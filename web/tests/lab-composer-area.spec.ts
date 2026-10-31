@@ -151,12 +151,8 @@ test("@lab composer: Enter steers, Alt+Enter queues, the chip swaps, and the que
   await expect(page.getByTestId("attach-file")).toBeEnabled();
   // The chip is reached by keyboard and swaps the mode; the next Enter goes that way.
   await field.focus();
-  for (const testId of [
-    "attach-file",
-    "command-palette",
-    "file-picker",
-    "dictation-mic",
-  ]) {
+  // Sanele sits right of the work controls, beside Send.
+  for (const testId of ["attach-file", "command-palette", "file-picker"]) {
     await page.keyboard.press("Tab");
     await expect(page.getByTestId(testId)).toBeFocused();
   }

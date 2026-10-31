@@ -548,20 +548,6 @@ export const settingsSections = [
         desc: "Workerin rivi kertoo commitit, muutokset ja pull requestin tarkistukset.",
       },
       {
-        id: "composer-dictation-bar",
-        label: "Sanelupalkki",
-        kw: [
-          "sanelu",
-          "dictation",
-          "puhe",
-          "mikrofoni",
-          "kirjoituskenttä",
-          "composer",
-          "valmis",
-        ],
-        desc: "Sanellessa kirjoituskentän rivi muuttuu kuuntelupalkiksi, eivätkä sen painikkeet hyppää.",
-      },
-      {
         id: "workspace-icons",
         label: "Työtilan kuvake",
         kw: [

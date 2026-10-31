@@ -212,7 +212,9 @@ test("@speech Enter ends a dictation as Valmis does and sends nothing; the short
   // Off the Mac the shortcut is Ctrl and the key left of 1, named after
   // what the layout types there: ` on this US layout.
   await expect(mic(page)).toHaveAttribute("aria-keyshortcuts", "Control+`");
-  await expect(mic(page)).toHaveAttribute("title", /Sanele \(Ctrl\+`\)/);
+  await expect(page.getByTestId("dictation-mic-tip").locator("kbd")).toHaveText(
+    "Ctrl+`",
+  );
 
   await field.fill("Alku");
   await page.keyboard.press("Control+Backquote");
@@ -279,7 +281,9 @@ test("@speech on a Mac ISO board ⌘ and the key left of 1 dictates at the caret
     "aria-keyshortcuts",
     "Meta+§ Meta+Shift+Space",
   );
-  await expect(mic(page)).toHaveAttribute("title", /Sanele \(⌘§\)/);
+  await expect(page.getByTestId("dictation-mic-tip").locator("kbd")).toHaveText(
+    "⌘§",
+  );
 
   const press = (key: string, code: string) =>
     field.evaluate(
@@ -363,7 +367,7 @@ test("@speech the microphone listens from the press: what is said while a slow k
   await mic(page).click();
   // Listening at once, while the key is still on its way.
   await expect(pill(page)).toHaveAttribute("data-phase", "live");
-  await expect(pill(page)).toContainText("kuuntelee");
+  await expect(page.getByTestId("dictation-bar")).toContainText("kuuntelee");
   expect((await soniox(page)).minted).toBe(before.minted);
   await page.waitForTimeout(1_200);
   // Valmis before the stream has opened: the microphone stops, and what

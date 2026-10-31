@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: dictation
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Dictation bar becomes the default; Esc cancels like ×; quick tooltip
@@ -24,6 +25,6 @@ Jarin havainnot 30.10. (testikone pilot.535, Mac):
 
 ## Acceptance Criteria
 
-- [ ] Sanelupalkki on ainoa rivi kaikille; kokeellinen kortti ja vanha rivi koodeineen poistettu; puhelin ja kapea ikkuna, vaalea ja tumma tarkistettu.
-- [ ] Esc sanelun aikana peruu kuten ✕, ja peruttu sanelu on palautettavissa (esim. *Kumoa*-ilmoitus tai ⌘Z); valinta kirjattu Decisions for later review -kohtaan.
-- [ ] Saneluvihje (pikanäppäin) näkyy sovelluksen omana nopeana vihjeenä; selainspec.
+- [x] Sanelupalkki on ainoa rivi kaikille; kokeellinen kortti ja vanha rivi koodeineen poistettu; puhelin ja kapea ikkuna, vaalea ja tumma tarkistettu.
+- [x] Esc sanelun aikana peruu kuten ✕, ja peruttu sanelu on palautettavissa (esim. *Kumoa*-ilmoitus tai ⌘Z); valinta kirjattu Decisions for later review -kohtaan.
+- [x] Saneluvihje (pikanäppäin) näkyy sovelluksen omana nopeana vihjeenä; selainspec.

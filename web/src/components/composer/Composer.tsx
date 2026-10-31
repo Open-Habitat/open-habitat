@@ -45,7 +45,6 @@ import {
   type ComposerSpeech,
   DictationBar,
   DictationCeiling,
-  DictationControl,
   DictationLive,
   DictationNoticeView,
   DictationSlotControl,
@@ -409,7 +408,6 @@ export function Composer({
   goals,
   speech,
   onDictating,
-  dictationBar = false,
 }: {
   value: string;
   csrf?: string;
@@ -452,10 +450,6 @@ export function Composer({
   /** A dictation is under way, or ending into a send: its text is not yet
    * in the draft or not yet sent. */
   onDictating?: (active: boolean) => void;
-  /** Kokeellinen Palkki (proto-composer-actions): Sanele and Send anchored
-   * at the right, the work controls born left of them, and dictation as a
-   * listening bar over the row's left part with Valmis in Sanele's place. */
-  dictationBar?: boolean;
 }) {
   // The draft is what the agent receives: the person's text with one
   // attachment reference per line after it. The field edits only the text;
@@ -1339,7 +1333,7 @@ export function Composer({
       >
         <Icon name={MODE[selectedWorkingMode].icon} />
         <span>{MODE[selectedWorkingMode].label}</span>
-        {dictationBar && selectedWorkingMode === "follow_up" ? (
+        {selectedWorkingMode === "follow_up" ? (
           // A phone's row has room for the short label only.
           <span className="ah-crow-chip-short">Jälkeen</span>
         ) : null}
@@ -1411,10 +1405,6 @@ export function Composer({
     </button>
   );
   const mic = !!speech && !!csrf && !shellOn;
-  const cancelDictation = () => {
-    dictation.cancel();
-    window.requestAnimationFrame(() => field.current?.focus());
-  };
 
   return (
     <section
@@ -1535,60 +1525,33 @@ export function Composer({
           }}
         />
         <div
-          className={`ah-crow${busy ? " ah-crow-busy" : ""}${dictating ? " ah-crow-dictating" : ""}${dictationBar ? " ah-crow-bar" : ""}`}
+          className={`ah-crow${busy ? " ah-crow-busy" : ""}${dictating ? " ah-crow-dictating" : ""}`}
         >
-          {dictationBar ? (
-            <>
-              <span className="ah-crow-lz">
-                {rowAids}
-                <span className="ah-crow-grow" />
-                {rowModel}
-                {dictating ? (
-                  <DictationBar
-                    dictation={dictation}
-                    onCancel={cancelDictation}
-                  />
-                ) : null}
-              </span>
-              {rowChip}
-              {rowRun}
-              {rowStop}
-              {rowChip || rowRun || rowStop ? (
-                <span className="ah-crow-sep" aria-hidden="true" />
-              ) : null}
-              {mic ? (
-                <span className="ah-crow-mslot">
-                  <DictationSlotControl
-                    dictation={dictation}
-                    text={value}
-                    caret={dictationCaret}
-                    disabled={fieldDisabled || !!fieldReason}
-                  />
-                </span>
-              ) : null}
-              {rowSend}
-            </>
-          ) : (
-            <>
-              {rowAids}
-              <span className="ah-crow-grow" />
-              {rowModel}
-              {mic ? (
-                <span className="ah-dictation-slot">
-                  <DictationControl
-                    dictation={dictation}
-                    text={value}
-                    caret={dictationCaret}
-                    disabled={fieldDisabled || !!fieldReason}
-                  />
-                </span>
-              ) : null}
-              {rowChip}
-              {rowRun}
-              {rowStop}
-              {rowSend}
-            </>
-          )}
+          <span className="ah-crow-lz">
+            {rowAids}
+            <span className="ah-crow-grow" />
+            {rowModel}
+            {dictating ? (
+              <DictationBar dictation={dictation} onCancel={dictation.cancel} />
+            ) : null}
+          </span>
+          {rowChip}
+          {rowRun}
+          {rowStop}
+          {rowChip || rowRun || rowStop ? (
+            <span className="ah-crow-sep" aria-hidden="true" />
+          ) : null}
+          {mic ? (
+            <span className="ah-crow-mslot">
+              <DictationSlotControl
+                dictation={dictation}
+                text={value}
+                caret={dictationCaret}
+                disabled={fieldDisabled || !!fieldReason}
+              />
+            </span>
+          ) : null}
+          {rowSend}
         </div>
         {pop}
       </div>

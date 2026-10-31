@@ -11,7 +11,6 @@ import {
 } from "../components";
 import { controlClassName } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
-import { useExperimentalFeature } from "./accountPreferences";
 import {
   readCommands,
   readFiles,
@@ -193,7 +192,6 @@ export function CreatingConversation({
   const displayModel = shortModel(models?.default_model ?? undefined);
   const keys = creationKeys(identity, workspace.workspace_id);
   const [details, setDetails] = useState(false);
-  const dictationBar = useExperimentalFeature("composer-dictation-bar");
   const [draft, setDraftState] = useState(
     () => sessionStorage.getItem(keys.draft) ?? "",
   );
@@ -374,7 +372,6 @@ export function CreatingConversation({
           }
           csrf={csrf}
           speech={speech}
-          dictationBar={dictationBar}
           onDictating={onDictating}
           value={draft}
           goals={goals}
