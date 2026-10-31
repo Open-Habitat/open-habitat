@@ -119,7 +119,8 @@ type conversation struct {
 	naming, automaticFirst, automaticRefined, refinementDue bool
 	recapping                                               bool
 	recapTimer                                              *time.Timer
-	recapActivity                                           uint64 // activity fence, protected by c.mu
+	recapDue                                                time.Time // when recapTimer fires; kept by the idle stop only for a timer it cancelled
+	recapActivity                                           uint64    // activity fence, protected by c.mu
 	recapLastActivity                                       time.Time
 	recapReschedule                                         bool
 	recapAttemptedThrough                                   string        // at most one automatic request per native message

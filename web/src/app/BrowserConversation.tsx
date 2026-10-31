@@ -2456,6 +2456,7 @@ function BrowserConversationContent({
               unavailableReason={recapUnavailableReason}
               onRequest={requestRecapNow}
               settingsHref={settingsHref("tilannekatsaus")}
+              onOpenSettings={() => navigate(settingsHref("tilannekatsaus"))}
             />
           )}
           {controlled ? (

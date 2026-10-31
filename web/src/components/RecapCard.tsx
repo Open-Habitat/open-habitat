@@ -79,6 +79,7 @@ export function RecapCard({
   onRequest,
   onDismiss,
   settingsHref,
+  onOpenSettings,
   now = Date.now(),
 }: {
   recap: Recap | null;
@@ -95,6 +96,9 @@ export function RecapCard({
   onDismiss?: () => void;
   /** Tilannekatsaus settings, where the card's timing and length are set. */
   settingsHref?: string;
+  /** Opens them inside the app, over this conversation, so closing Settings
+   * returns to it; the link still opens in a new tab as itself. */
+  onOpenSettings?: () => void;
   now?: number;
 }) {
   // An invitation to ask beside the failure of the last ask contradicts it.
@@ -136,6 +140,19 @@ export function RecapCard({
             data-testid="recap-settings-link"
             className={`ah-recap-icon ${controlClassName({ variant: "quiet", size: "inline", presentation: "icon" })}`}
             href={settingsHref}
+            onClick={(event) => {
+              if (
+                !onOpenSettings ||
+                event.button ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              )
+                return;
+              event.preventDefault();
+              onOpenSettings();
+            }}
             aria-label="Tilannekatsauksen asetukset"
             title="Tilannekatsauksen asetukset"
           >

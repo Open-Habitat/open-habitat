@@ -34,8 +34,9 @@ type owedRecap struct {
 
 // owedRecaps lists the browser's own active conversations whose latest
 // message is the agent's, has no recap through it, and came after as many
-// completed turns as the person's first automatic recap waits for.
-func (c *ConversationController) owedRecaps(now time.Time, delay time.Duration) []owedRecap {
+// completed turns as the person's first automatic recap waits for. A non-empty
+// only asks about that one conversation.
+func (c *ConversationController) owedRecaps(now time.Time, delay time.Duration, only string) []owedRecap {
 	sessions, err := nativeSessions(c.nativeCfg())
 	if err != nil {
 		return nil
@@ -47,7 +48,7 @@ func (c *ConversationController) owedRecaps(now time.Time, delay time.Duration) 
 	}
 	var owed []owedRecap
 	for _, n := range sessions {
-		if n.state != "readable" || archiveFact(visibility, visibilityErr, "pi:"+n.id) != "active" {
+		if only != "" && n.id != only || n.state != "readable" || archiveFact(visibility, visibilityErr, "pi:"+n.id) != "active" {
 			continue
 		}
 		// A terminal Pi's conversation was never the browser's to recap.
@@ -81,7 +82,7 @@ func (c *ConversationController) recapRestingConversations(ctx context.Context) 
 	if delay == 0 {
 		delay = recapDelay(c.home)
 	}
-	for _, owed := range c.owedRecaps(time.Now(), delay) {
+	for _, owed := range c.owedRecaps(time.Now(), delay, "") {
 		if wait := time.Until(owed.due); wait > 0 {
 			timer := time.NewTimer(wait)
 			select {
@@ -94,7 +95,47 @@ func (c *ConversationController) recapRestingConversations(ctx context.Context) 
 		if ctx.Err() != nil {
 			return
 		}
-		c.recapResting(ctx, owed.id)
+		c.recapResting(ctx, owed.id, nil)
+	}
+}
+
+// recapAfterIdleStop makes the automatic recap whose timer the idle stop
+// cancelled. A quiet time may outlast Pi's ten idle minutes (Jari 30.10.2026:
+// a delay of 15 or 60 minutes is as reasonable as 5), and the timer ends with
+// the Pi. The recap falls due as the timer would have, later if the person
+// still read the rested conversation, and is still made only if native
+// history owes it then.
+func (c *ConversationController) recapAfterIdleStop(ctx context.Context, s *conversation, due time.Time) {
+	c.mu.Lock()
+	delay := c.recapIdleDelay
+	c.mu.Unlock()
+	if delay == 0 {
+		delay = recapDelay(c.home)
+	}
+	for {
+		c.mu.Lock()
+		if seen := s.presentAt.Add(delay); seen.After(due) {
+			due = seen
+		}
+		gone := c.closed || c.sessions[s.id] != s
+		c.mu.Unlock()
+		if gone {
+			return
+		}
+		wait := time.Until(due)
+		if wait <= 0 {
+			break
+		}
+		timer := time.NewTimer(wait)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		}
+	}
+	if len(c.owedRecaps(time.Now(), delay, s.id)) > 0 {
+		c.recapResting(ctx, s.id, s)
 	}
 }
 
@@ -103,15 +144,16 @@ func (c *ConversationController) recapRestingConversations(ctx context.Context) 
 // agent's catch-up still comes with the person's next message. The person
 // comes first: a conversation this daemon already has a handle for follows
 // its own schedule, nobody's Pi is stopped to make room, and a Pi the person
-// wakes, writes to or runs a command in meanwhile stays theirs.
-func (c *ConversationController) recapResting(ctx context.Context, id string) {
+// wakes, writes to or runs a command in meanwhile stays theirs. old is the
+// stopped handle this daemon left, or nil after a restart.
+func (c *ConversationController) recapResting(ctx context.Context, id string, old *conversation) {
 	log := diagnostic.New(os.Stderr, "daemon")
 	c.mu.Lock()
 	skip := ""
 	switch {
 	case c.closed:
 		skip = "closed"
-	case c.sessions[id] != nil:
+	case c.sessions[id] != old, old != nil && (liveChild(old) || old.state != "stopped" || len(old.held) > 0 || old.bash.active()):
 		skip = "controlled"
 	case c.liveCount() >= maxLiveConversations-1:
 		skip = "capacity"
@@ -126,8 +168,14 @@ func (c *ConversationController) recapResting(ctx context.Context, id string) {
 		log.Info("conversation_recap", "outcome", "skipped", "reason", "source_unavailable", "trigger", "resting", "agent_id", "pi:"+id)
 		return
 	}
+	// Archive holds the same permit while it commits: read it under the permit.
+	if visibility, err := loadVisibility(c.home); archiveFact(visibility, err, "pi:"+id) != "active" {
+		release()
+		log.Info("conversation_recap", "outcome", "skipped", "reason", "not_active", "trigger", "resting", "agent_id", "pi:"+id)
+		return
+	}
 	started := time.Now()
-	s, problem := c.resume(id, nil, startRecap)
+	s, problem := c.resume(id, old, startRecap)
 	release()
 	if problem != "" {
 		log.Info("conversation_recap", "outcome", "skipped", "reason", problem, "trigger", "resting", "agent_id", "pi:"+id)

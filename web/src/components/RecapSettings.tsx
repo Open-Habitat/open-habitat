@@ -79,11 +79,14 @@ export function recapLevel(value: RecapSettingsValue): RecapLevel {
     : "custom";
 }
 
-/** The delay's stops, from the browser's presence cadence to Pi's idle stop
+/** The delay's stops, from the browser's presence cadence to an hour
  * (recap_settings_linux.go). Each step is about a fifth longer than the last,
- * so a minute and a half is as easy to choose as seven minutes. */
+ * so a minute and a half is as easy to choose as seven minutes. A delay past
+ * Pi's ten idle minutes is made on a Pi started for the recap (Jari
+ * 30.10.2026: Pi's rest is no reason to cap it). */
 export const recapDelayStops = [
-  60, 75, 90, 105, 120, 150, 180, 210, 240, 300, 360, 420, 480, 540,
+  60, 75, 90, 105, 120, 150, 180, 210, 240, 300, 360, 420, 480, 540, 600, 720,
+  900, 1200, 1500, 1800, 2400, 3600,
 ] as const;
 export function formatDelay(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -289,7 +292,7 @@ export function RecapSettings({
               label="Hiljaisuus ennen katsausta"
               value={value.delay_seconds}
               stops={recapDelayStops}
-              ticks={[60, 120, 180, 300, 540]}
+              ticks={[60, 180, 600, 3600]}
               format={formatDelay}
               tickFormat={(s) => String(s / 60)}
               disabled={loading}
@@ -300,7 +303,7 @@ export function RecapSettings({
         {modelField}
       </div>
       <h3 className="s-h3">Laajuus</h3>
-      <div className="s-card">
+      <div className="s-card ah-recap-levels">
         <div className="s-row" data-settings-row="recap-level" tabIndex={-1}>
           <div className="s-lbl">
             <strong>Katsauksen laajuus</strong>
@@ -309,6 +312,7 @@ export function RecapSettings({
           {value && level ? (
             <Segmented
               data-testid="recap-level"
+              className="ah-recap-level-choice"
               label="Katsauksen laajuus"
               options={(
                 ["short", "standard", "thorough", "custom"] as const

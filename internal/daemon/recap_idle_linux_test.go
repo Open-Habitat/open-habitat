@@ -243,3 +243,65 @@ func TestAutomaticRecapRetriesOneModelTimeout(t *testing.T) {
 		t.Fatalf("model error: reason %q, left %v", reason, outcomes)
 	}
 }
+
+// A delay past Pi's ten idle minutes (Jari 30.10.2026) outlives the timer:
+// the idle stop keeps the due time of a recap it cancelled, and only of one.
+func TestIdleStopHandsOnOnlyACancelledRecap(t *testing.T) {
+	pending := &conversation{id: "11111111-1111-4111-8111-111111111111", state: "idle", settled: true, settlement: map[string]string{}, rpc: &piRPC{}}
+	c := &ConversationController{sessions: map[string]*conversation{pending.id: pending}, recapIdleDelay: time.Hour}
+	c.recapGenerator = func(*conversation, string, uint64) recapOutcome {
+		t.Error("a cancelled recap ran")
+		return recapOutcome{}
+	}
+	c.mu.Lock()
+	c.scheduleAutomaticRecap(pending)
+	marked := c.stopIdleLocked([]*conversation{pending}, "idle")
+	c.mu.Unlock()
+	if len(marked) != 1 || time.Until(pending.recapDue) < 59*time.Minute {
+		t.Fatalf("pending recap not handed on: marked %d, due %v", len(marked), pending.recapDue)
+	}
+
+	made := &conversation{id: "22222222-2222-4222-8222-222222222222", state: "idle", settled: true, settlement: map[string]string{}, rpc: &piRPC{}}
+	c = &ConversationController{sessions: map[string]*conversation{made.id: made}, recapIdleDelay: time.Millisecond}
+	done := make(chan struct{})
+	c.recapGenerator = func(*conversation, string, uint64) recapOutcome {
+		close(done)
+		return recapOutcome{}
+	}
+	c.mu.Lock()
+	c.scheduleAutomaticRecap(made)
+	c.mu.Unlock()
+	<-done
+	c.mu.Lock()
+	for made.recapping {
+		c.mu.Unlock()
+		time.Sleep(time.Millisecond)
+		c.mu.Lock()
+	}
+	c.stopIdleLocked([]*conversation{made}, "idle")
+	c.mu.Unlock()
+	if !made.recapDue.IsZero() {
+		t.Fatal("a recap already made was handed on again")
+	}
+}
+
+// A timer that fired while the idle stop held the lock was never admitted:
+// its recap is handed on rather than lost between the two.
+func TestIdleStopHandsOnARecapWhoseTimerWaitsForTheLock(t *testing.T) {
+	s := &conversation{id: "33333333-3333-4333-8333-333333333333", state: "idle", settled: true, settlement: map[string]string{}, rpc: &piRPC{}}
+	c := &ConversationController{sessions: map[string]*conversation{s.id: s}, recapIdleDelay: time.Millisecond}
+	c.recapGenerator = func(*conversation, string, uint64) recapOutcome {
+		t.Error("the stopped Pi's timer made a recap")
+		return recapOutcome{}
+	}
+	c.mu.Lock()
+	c.scheduleAutomaticRecap(s)
+	time.Sleep(20 * time.Millisecond) // the timer fires and waits for c.mu
+	c.stopIdleLocked([]*conversation{s}, "idle")
+	due := s.recapDue
+	c.mu.Unlock()
+	if due.IsZero() {
+		t.Fatal("a recap whose timer was not admitted was not handed on")
+	}
+	time.Sleep(20 * time.Millisecond)
+}

@@ -113,4 +113,130 @@ test("@recap-settings levels, delay and model reach Pi's settings and survive a 
   await write;
   await expect(trigger).toHaveAttribute("data-auto", "true");
   expect((await stored(page)).model).toBeNull();
+
+  // The delay reaches past Pi's ten idle minutes, to an hour (Jari 30.10.).
+  write = saved(page);
+  await delay.focus();
+  await page.keyboard.press("End");
+  await write;
+  expect((await stored(page)).delay_seconds).toBe(3600);
+  await expect(delay).toHaveAttribute("aria-valuetext", "60 min");
+});
+
+/** The four levels share one row, or two rows of two: never three and Oma
+ * alone (Jari 30.10.2026). */
+async function expectLevelsTidy(page: Page) {
+  const tops = await page
+    .getByTestId("recap-level")
+    .getByRole("button")
+    .evaluateAll((buttons) =>
+      buttons.map((b) => Math.round(b.getBoundingClientRect().top)),
+    );
+  expect(tops).toHaveLength(4);
+  const oneRow = tops.every((top) => top === tops[0]);
+  const twoByTwo =
+    tops[0] === tops[1] && tops[2] === tops[3] && tops[2] > tops[0];
+  expect(oneRow || twoByTwo, `level rows at ${tops}`).toBe(true);
+}
+
+test("@recap-settings the four levels fit on the page and on a phone", async ({
+  page,
+}) => {
+  await open(page);
+  for (const width of [1280, 1024, 900, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expectLevelsTidy(page);
+  }
+});
+
+test("@recap-settings the recap card opens its settings over the conversation and X returns to it", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  expect(
+    (await page.request.get("/fixture/conversations-reset")).status(),
+  ).toBe(204);
+  expect(
+    (await page.request.get("/fixture/scenario?value=pi-recap")).status(),
+  ).toBe(204);
+  try {
+    // Tavallinen recaps after the first turn, whatever a case before left.
+    await open(page);
+    const standard = page
+      .getByTestId("recap-level")
+      .getByRole("button")
+      .and(page.getByTestId("segment-standard"));
+    if ((await standard.getAttribute("aria-pressed")) !== "true") {
+      const write = saved(page);
+      await standard.click();
+      await write;
+    }
+    // The browser holds a card back until the person pauses (recapHold.ts).
+    await page.clock.install();
+    await page.goto("/workspaces");
+    await page
+      .getByRole("navigation")
+      .getByTestId("workspace-ordinary-dir")
+      .click();
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    await expect(page).toHaveURL(/conversation=pi:/);
+    const editor = page.getByTestId("message-input");
+    await editor.fill("katsaus ja asetukset");
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+    const id = new URL(page.url()).searchParams.get("conversation");
+    await expect
+      .poll(
+        async () => {
+          const native = await (
+            await page.request.get(`/api/v1/agents/${id}/recap`)
+          ).json();
+          return native.recap?.through === native.latest_message;
+        },
+        { timeout: 30000 },
+      )
+      .toBe(true);
+    await page.clock.fastForward(61_000);
+    await expect(page.getByTestId("recap-card")).toHaveAttribute(
+      "data-trigger",
+      "automatic",
+      { timeout: 10000 },
+    );
+    const url = page.url();
+    await editor.fill("Luonnos, jota ei lähetetä");
+    // A remount of the conversation would lose this mark.
+    await page
+      .locator(".ah-conversation-frame")
+      .evaluate((frame) => frame.setAttribute("data-before-settings", ""));
+
+    await page.getByTestId("recap-settings-link").click();
+    await expect(page).toHaveURL(/\/settings\/recap$/);
+    await expect(
+      page
+        .getByRole("heading")
+        .and(page.getByTestId("settings-section-tilannekatsaus")),
+    ).toBeVisible();
+    // Opened over the conversation, beside Settings' own navigation.
+    await expect(page.locator("[data-under-settings]")).toBeAttached();
+    await expectLevelsTidy(page);
+    await page.getByTestId("recap-level").scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: "test-results/evidence/recap-settings-over-conversation.png",
+    });
+
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("settings-close"))
+      .click();
+    await expect(page).toHaveURL(url);
+    await expect(
+      page.locator(".ah-conversation-frame[data-before-settings]"),
+    ).toBeVisible();
+    await expect(editor).toHaveValue("Luonnos, jota ei lähetetä");
+  } finally {
+    await page.request.get("/fixture/scenario?value=ready");
+  }
 });

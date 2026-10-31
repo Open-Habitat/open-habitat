@@ -216,6 +216,7 @@ func (c *ConversationController) pauseRecap(s *conversation) {
 		s.recapTimer.Stop()
 		s.recapTimer = nil
 	}
+	s.recapDue = time.Time{}
 }
 
 func (c *ConversationController) noteRecapActivity(s *conversation) {
@@ -250,8 +251,15 @@ func (c *ConversationController) scheduleAutomaticRecap(s *conversation) {
 	if s.recapTimer != nil {
 		s.recapTimer.Stop()
 	}
-	s.recapTimer = time.AfterFunc(delay, func() {
+	s.recapDue = time.Now().Add(delay)
+	var timer *time.Timer
+	timer = time.AfterFunc(delay, func() {
 		c.mu.Lock()
+		// Fired and admitted under the lock: nothing is pending any more for
+		// the idle stop to hand on. A stop that took the lock first kept it.
+		if s.recapTimer == timer {
+			s.recapDue = time.Time{}
+		}
 		if s.recapping && s.recapActivity == epoch {
 			s.recapReschedule = true
 		}
@@ -270,6 +278,7 @@ func (c *ConversationController) scheduleAutomaticRecap(s *conversation) {
 		}
 		c.mu.Unlock()
 	})
+	s.recapTimer = timer
 }
 
 // recapOutcome is why one recap attempt ended. Reason is empty on success.
@@ -472,9 +481,13 @@ func (c *ConversationController) notePresence(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 404, "resource_not_found")
 		return
 	}
-	if !c.closed && !s.dead {
+	if !c.closed {
+		// A stopped handle keeps it too: a recap the idle stop handed on
+		// waits for the person as the timer would have (recapAfterIdleStop).
 		s.recapLastActivity = time.Now()
 		s.presentAt = s.recapLastActivity
+	}
+	if !c.closed && !s.dead {
 		if s.recapTimer != nil && !s.recapping {
 			c.pauseRecap(s)
 			if s.settled && recapIdle(s) {

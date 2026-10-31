@@ -68,7 +68,7 @@ func TestOwedRecapsComeFromNativeHistory(t *testing.T) {
 	browser(old)
 
 	c := &ConversationController{home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}, sessions: map[string]*conversation{}}
-	got := c.owedRecaps(now, 3*time.Minute)
+	got := c.owedRecaps(now, 3*time.Minute, "")
 	ids := map[string]bool{}
 	for _, o := range got {
 		ids[o.id] = true
@@ -85,7 +85,7 @@ func TestOwedRecapsComeFromNativeHistory(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "settings.json"), []byte(`{"openHabitat":{"recap":{"firstAfterTurns":2}}}`), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if got := c.owedRecaps(now, 3*time.Minute); len(got) != 1 || got[0].id != stale {
+	if got := c.owedRecaps(now, 3*time.Minute, ""); len(got) != 1 || got[0].id != stale {
 		t.Fatalf("with two turns first: %+v", got)
 	}
 }

@@ -274,6 +274,12 @@ func (c *ConversationController) resume(id string, old *conversation, kind start
 		c.mu.Unlock()
 		return nil, "unproven"
 	}
+	// A message or command the person sent while history was read starts
+	// their own Pi; a recap start must not take it over.
+	if kind == startRecap && old != nil && (old.state != "stopped" || len(old.held) > 0 || old.bash.active()) {
+		c.mu.Unlock()
+		return nil, "controlled"
+	}
 	if c.liveCount() >= room || (old == nil && len(c.sessions) >= 128) {
 		c.mu.Unlock()
 		return nil, "capacity_exceeded"

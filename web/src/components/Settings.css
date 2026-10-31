@@ -750,6 +750,26 @@
 .ah-recap-preview .ah-recap {
   margin: 0;
 }
+/* Where the four levels do not fit beside their label, they go under it as
+   one row of equal segments, two by two where even that is too narrow (Jari
+   30.10.2026: Oma fell alone onto a second row in the side panel). */
+.ah-recap-levels {
+  container-type: inline-size;
+}
+@container (max-width: 640px) {
+  .ah-recap-levels > .s-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ah-recap-levels .ah-recap-level-choice {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@container (max-width: 380px) {
+  .ah-recap-levels .ah-recap-level-choice {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .ah-recap-scope {
   display: grid;
   grid-template-columns: 1fr 1fr;

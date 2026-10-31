@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: recap-settings
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Recap settings: delay beyond 9 min, Oma on the same row, card link opens the overlay
@@ -24,6 +25,6 @@ Kolme Jarin havaintoa 30.10. (testikone pilot.536, `recap-settings-levels`):
 
 ## Acceptance Criteria
 
-- [ ] Viiveen voi valita myös yli 10 min (esim. 10, 15, 20, 30, 60 min), ja yli joutopysäytyksen menevä katsaus tulee levänneelle Pi:lle oikein.
-- [ ] Kaikki neljä laajuutta mahtuvat yhdelle riville tai asettuvat siististi sivupaneelissa ja puhelimella.
-- [ ] Kortin asetuslinkki avaa asetukset kuten muualta, ja X palauttaa saman keskustelun samaan kohtaan; selainspec.
+- [x] Viiveen voi valita myös yli 10 min (esim. 10, 15, 20, 30, 60 min), ja yli joutopysäytyksen menevä katsaus tulee levänneelle Pi:lle oikein.
+- [x] Kaikki neljä laajuutta mahtuvat yhdelle riville tai asettuvat siististi sivupaneelissa ja puhelimella.
+- [x] Kortin asetuslinkki avaa asetukset kuten muualta, ja X palauttaa saman keskustelun samaan kohtaan; selainspec.

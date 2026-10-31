@@ -62,7 +62,7 @@ func TestRecapSettingsHandlerWritesPiSettings(t *testing.T) {
 		"fable":     strings.Replace(valid, "claude-sonnet-5-5", "claude-fable-5-1", 1),
 		"opus":      strings.Replace(valid, "claude-sonnet-5-5", "claude-opus-5-5", 1),
 		"provider":  strings.Replace(valid, "claude-bridge/", "fixture/", 1),
-		"too long":  strings.Replace(valid, `"delay_seconds":75`, `"delay_seconds":600`, 1),
+		"too long":  strings.Replace(valid, `"delay_seconds":75`, `"delay_seconds":3660`, 1),
 		"too short": strings.Replace(valid, `"delay_seconds":75`, `"delay_seconds":30`, 1),
 		"level":     strings.Replace(valid, `"custom"`, `"manual"`, 1),
 		"missing":   strings.Replace(valid, `"words":25,`, ``, 1),

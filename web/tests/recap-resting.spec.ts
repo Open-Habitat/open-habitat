@@ -167,3 +167,68 @@ test("@recap an automatic recap a daemon restart cut off is made after the resta
     await scenario(page, "ready");
   }
 });
+
+test("@recap an automatic recap whose delay outlasts the idle stop is made on the rested Pi", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  try {
+    // Jari 30.10.2026: a delay of 15 or 60 minutes outlasts Pi's ten idle
+    // minutes. Here the delay outlasts the fixture's immediate idle stop.
+    expect(
+      (
+        await page.request.get(
+          "/fixture/scenario?value=pi-recap&recap_delay_ms=8000",
+        )
+      ).status(),
+    ).toBe(204);
+    // Taskfleet answers with no runs, so no run holds Pi from its idle stop.
+    expect(
+      (await page.request.get("/fixture/taskfleet?status=empty")).status(),
+    ).toBe(204);
+    const id = await answeredConversation(page, "ennen joutopysäytystä");
+    const conversation = page.url();
+    // The person has gone: nothing reports them in the conversation.
+    await page.goto("/workspaces");
+    const wakes = countWakes(page);
+    // The idle stop passes a Pi still publishing its turn's settlement by.
+    await expect
+      .poll(async () => {
+        expect((await page.request.get("/fixture/idle-stop")).status()).toBe(
+          204,
+        );
+        return (await status(page, id)).state;
+      })
+      .toBe("stopped");
+    expect((await nativeRecap(page, id)).recap).toBeNull();
+    await expect
+      .poll(
+        async () => {
+          const native = await nativeRecap(page, id);
+          return native.recap?.through === native.latest_message
+            ? native.recap.trigger
+            : "";
+        },
+        { timeout: 40000 },
+      )
+      .toBe("automatic");
+    await expect
+      .poll(async () => (await status(page, id)).state, { timeout: 20000 })
+      .toBe("stopped");
+    // Pi was started only for the recap: the idle rest still holds and the
+    // agent has not been woken.
+    expect(wakes).toHaveLength(0);
+    const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+    expect(
+      snapshot.agents.find((a: { agent_id: string }) => a.agent_id === id)
+        ?.rest,
+    ).toMatchObject({ cause: "idle", awake: false });
+    await page.goto(conversation);
+    await expect(card(page)).toHaveAttribute("data-trigger", "automatic", {
+      timeout: 20000,
+    });
+  } finally {
+    await page.request.get("/fixture/taskfleet?status=none");
+    await scenario(page, "ready");
+  }
+});

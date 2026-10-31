@@ -159,6 +159,8 @@ func (c *ConversationController) stopIdleLocked(idle []*conversation, cause stri
 		s.startupCancelled = true
 		s.state = "stopping"
 		stopFor(s, cause)
+		// A recapDue still set is a recap this stop cancels before its timer
+		// was admitted: the one the idle stop hands on (recapAfterIdleStop).
 		if s.recapTimer != nil {
 			s.recapTimer.Stop()
 		}
@@ -321,6 +323,10 @@ func (c *ConversationController) stopExpiredIdlePi(ctx context.Context, now time
 		}
 	}
 	marked := c.stopIdleLocked(stop, "idle")
+	owed := map[*conversation]time.Time{}
+	for _, s := range marked {
+		owed[s] = s.recapDue
+	}
 	c.mu.Unlock()
 	c.closeStopping(marked)
 	for _, s := range marked {
@@ -329,6 +335,9 @@ func (c *ConversationController) stopExpiredIdlePi(ctx context.Context, now time
 			outcome = "uncertain"
 		}
 		diagnostic.New(os.Stderr, "daemon").Info("conversation_idle_stop", "outcome", outcome, "reason", "idle_timeout", "agent_id", "pi:"+s.id)
+		if !owed[s].IsZero() && outcome == "stopped" {
+			go c.recapAfterIdleStop(ctx, s, owed[s])
+		}
 	}
 }
 
@@ -365,6 +374,9 @@ func (c *ConversationController) FixtureIdleStop(ctx context.Context) {
 	if !c.fixture {
 		return
 	}
+	// A recap the stop hands on outlives the fixture request that asked
+	// for it; the controller's close still ends it.
+	ctx = context.WithoutCancel(ctx)
 	now := time.Now()
 	c.stopExpiredIdlePi(ctx, now)
 	c.stopExpiredIdlePi(ctx, now.Add(piIdlePeriod))

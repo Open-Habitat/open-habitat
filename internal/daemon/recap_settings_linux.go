@@ -50,11 +50,11 @@ var defaultRecapSettings = recapSettings{Level: "standard", DelaySeconds: 180, W
 
 // recapField is one number: its name in Pi's settings.json
 // (as Pi names its own keys; recap-extension.mjs reads these) and its bounds.
-// The upper delay is Pi's idle stop: after ten quiet minutes the daemon stops
-// Pi, and the pending recap timer with it (pi_activity_linux.go). The lower
-// one is the browser's presence cadence (recapHold.ts): a shorter delay would
-// fire while the person is still reading. The other bounds keep a recap
-// within the extension's 20-second budget.
+// The lower delay is the browser's presence cadence (recapHold.ts): a shorter
+// delay would fire while the person is still reading. The upper one is an
+// hour; a longer delay outlasts Pi's idle stop, which hands the recap to a
+// rested Pi started for it (recapAfterIdleStop). The other bounds keep a
+// recap within the extension's 20-second budget.
 type recapField struct {
 	stored   string
 	min, max int
@@ -62,7 +62,7 @@ type recapField struct {
 }
 
 var recapFields = []recapField{
-	{"delaySeconds", 60, 540, func(s *recapSettings) *int { return &s.DelaySeconds }},
+	{"delaySeconds", 60, 3600, func(s *recapSettings) *int { return &s.DelaySeconds }},
 	{"words", 10, 80, func(s *recapSettings) *int { return &s.Words }},
 	{"nextWords", 4, 25, func(s *recapSettings) *int { return &s.NextWords }},
 	{"messages", 4, 128, func(s *recapSettings) *int { return &s.Messages }},

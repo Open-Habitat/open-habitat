@@ -32,8 +32,8 @@
         "delay_seconds": {
           "type": "integer",
           "minimum": 60,
-          "maximum": 540,
-          "description": "Quiet time before the automatic recap. Pi stops after ten idle minutes, which stops the recap timer too; the browser reports presence every 20 to 30 seconds."
+          "maximum": 3600,
+          "description": "Quiet time before the automatic recap. The browser reports presence every 20 to 30 seconds; a delay beyond Pi's ten idle minutes is made on a Pi started for the recap."
         },
         "model": {
           "type": [

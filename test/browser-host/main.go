@@ -1174,9 +1174,15 @@ esac
 						return
 					}
 					scenario.Store(name)
+					// A recap case may wait longer than its fake Pi takes to
+					// reach the idle stop, as a delay past ten minutes does.
+					recapDelay := 600 * time.Millisecond
+					if ms, err := strconv.Atoi(r.URL.Query().Get("recap_delay_ms")); err == nil && ms > 0 && ms <= 60000 {
+						recapDelay = time.Duration(ms) * time.Millisecond
+					}
 					for _, current := range conversationHandlers {
 						if name == "pi-recap" || name == "pi-recap-unsupported" || name == "pi-recap-failing" {
-							current.Load().(*daemon.ConversationController).FixtureSetRecapIdleDelay(600 * time.Millisecond)
+							current.Load().(*daemon.ConversationController).FixtureSetRecapIdleDelay(recapDelay)
 						} else {
 							current.Load().(*daemon.ConversationController).FixtureSetRecapIdleDelay(0)
 						}

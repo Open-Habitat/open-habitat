@@ -17,7 +17,7 @@ function Controls() {
           label="Hiljaisuus ennen katsausta"
           value={delay}
           stops={recapDelayStops}
-          ticks={[60, 120, 180, 300, 540]}
+          ticks={[60, 180, 600, 3600]}
           format={formatDelay}
           tickFormat={(s) => String(s / 60)}
           onChange={setDelay}
