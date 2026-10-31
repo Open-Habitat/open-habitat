@@ -7,8 +7,7 @@ status: open
 priority: high
 lane: i18n
 lane_seq: 2
-blocked_by:
-  - ui-language-choice
+blocked_by: [ui-language-choice, '@en-conversation', '@en-composer', '@en-workspaces', '@en-workers', '@en-shell-editor']
 preparation: ready
 ---
 
@@ -28,6 +27,12 @@ The work divides naturally by view (conversation, workspaces, editor and
 shell chrome, integrations, storage and trash, administration), so it can
 run as parallel units once the mechanism exists; units share the catalog
 files, so the split must keep each unit's keys in its own catalog module.
+
+Split 31.10. into five parallel units (`en-conversation`, `en-composer`,
+`en-workspaces`, `en-workers`, `en-shell-editor`). This issue is the finisher
+once they land: daemon/gateway texts that reach the screen as Finnish (the
+units list what they met), the Finnish-string scan in the gate, and the
+English screenshot set for Jari.
 
 ## Acceptance Criteria
 
