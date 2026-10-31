@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: send-path
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # A delivered message is shown as rejected after a duplicate send
@@ -20,6 +21,6 @@ Jari 30.10. (testikone pilot.535, työpöytä): Jari lähetti yhden viestin (*KA
 
 ## Acceptance Criteria
 
-- [ ] Nimetty, mikä lähetti toisen `send`-pyynnön (epäilty: nimeämisen Enter tai sen kohdistus kirjoituskenttään), ja korjattu niin, ettei sama viesti lähde kahdesti.
-- [ ] Jo perille mennyttä viestiä ei koskaan näytetä hylättynä eikä palauteta kenttään; aidon hylkäyksen ilmoitus kertoo syyn ja mitä tehdä.
-- [ ] Selainspec: nimeäminen sivupalkissa ja heti perään lähetys.
+- [x] Nimetty, mikä lähetti toisen `send`-pyynnön (epäilty: nimeämisen Enter tai sen kohdistus kirjoituskenttään), ja korjattu niin, ettei sama viesti lähde kahdesti.
+- [x] Jo perille mennyttä viestiä ei koskaan näytetä hylättynä eikä palauteta kenttään; aidon hylkäyksen ilmoitus kertoo syyn ja mitä tehdä.
+- [x] Selainspec: nimeäminen sivupalkissa ja heti perään lähetys.

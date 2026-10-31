@@ -91,7 +91,8 @@ func (c *ConversationController) holdLocked(w http.ResponseWriter, s *conversati
 	for _, h := range s.held {
 		size += len(h.text) + 2
 	}
-	if c.closed || c.runtime == nil || s.state == "stopping" || s.commands[commandID] || len(s.commands) >= maxConversationCommands || len(s.held) >= maxHeldMessages || size > maxHeldBytes {
+	// sendKind has already answered a spent command ID under this lock.
+	if c.closed || c.runtime == nil || s.state == "stopping" || len(s.commands) >= maxConversationCommands || len(s.held) >= maxHeldMessages || size > maxHeldBytes {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
 		return

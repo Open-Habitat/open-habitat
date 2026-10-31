@@ -28,6 +28,17 @@ import {
 } from "./sentMessages";
 import type { Workspace } from "./snapshot";
 
+/** Why the host refused a message and what the person can do. A refusal
+ * means nothing was written: the text is back in the field. (A message the
+ * host already took and is sent again is not refused; the daemon answers
+ * it as the same message.) */
+function messageRefusal(code: string, kind: "send" | "queue") {
+  if (code === "read_only_history")
+    return "Viestiä ei lähetetty, koska tätä keskustelua voi nyt vain lukea. Teksti on kentässä: jatka keskustelua tai aloita uusi.";
+  return kind === "send"
+    ? "Viestiä ei lähetetty, koska keskustelun tila muuttui, esimerkiksi agentti ehti aloittaa työn. Teksti on kentässä: lähetä se uudelleen. Jos agentti työskentelee, viesti menee ohjauksena tai jonoon."
+    : "Viestiä ei lähetetty, koska agentin vuoro ehti päättyä tai keskustelun tila muuttui. Teksti on kentässä: lähetä se uudelleen.";
+}
 /** One Stop press on a running turn. Its outcome is read from status: the
  * turn ending is the success, so success needs no message of its own. */
 export type StopAttempt = {
@@ -216,7 +227,8 @@ export function useConversationActions({
         sessionStorage.removeItem(sendKey);
         sessionStorage.removeItem(uncertainKey);
         setSendObservation({ text, state: "rejected", command });
-        setReceipt("Viesti hylättiin. Tarkista keskustelun tila.");
+        setReceipt(messageRefusal(error.code, "send"));
+        void refresh();
       } else if (alive.current) {
         sessionStorage.setItem(uncertainKey, command);
         setSendObservation({ text, state: "uncertain", command });
@@ -275,9 +287,7 @@ export function useConversationActions({
         sessionStorage.removeItem(submittedKey);
         setSendObservation({ text, state: "rejected", command });
         if (alive.current) {
-          setReceipt(
-            "Tila muuttui. Viestiä ei lähetetty. Tarkista keskustelun tila.",
-          );
+          setReceipt(messageRefusal(error.code, "queue"));
           void refresh();
         }
       } else if (

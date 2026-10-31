@@ -820,6 +820,24 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		}
 		return
 	}
+	// A spent command ID is this message arriving again, as a resend of a
+	// POST whose reply was lost (the browser makes a new ID for every message
+	// it sends, so the text is not compared). It is observed, never replayed,
+	// and never refused either: a refusal says nothing was written, and the
+	// page would put a delivered message back in the field as rejected. The
+	// receipt (or Pi's queue) tells the outcome. The log line names the ID so
+	// a repeat can be told from a second message in the gateway's log.
+	if s.commands[body.CommandID] {
+		state := "pending"
+		receipt := s.receipts[body.CommandID]
+		if kind == "send" && receipt == "held" {
+			state = "held"
+		}
+		c.mu.Unlock()
+		diagnostic.New(os.Stderr, "daemon").Info("conversation_message_repeated", "agent_id", "pi:"+id, "kind", kind, "command_id", body.CommandID, "receipt", receipt, "request_id", diagnostic.RequestID(r.Context()))
+		historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": state})
+		return
+	}
 	archiveState := "active"
 	if c.home != "" {
 		annotations, annotationErr := loadVisibility(c.home)
@@ -849,8 +867,10 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		c.holdLocked(w, s, body.Message, body.CommandID, body.FirstChoice)
 		return
 	}
-	if archiveState != "active" || c.closed || s.aborting || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || s.commands[body.CommandID] || len(s.commands) >= maxConversationCommands {
+	if archiveState != "active" || c.closed || s.aborting || (kind == "send" && s.state != "idle" && s.state != "rejected") || (kind != "send" && s.state != "accepted") || s.rpc.overflow.Load() || len(s.commands) >= maxConversationCommands {
+		state := s.state
 		c.mu.Unlock()
+		diagnostic.New(os.Stderr, "daemon").Info("conversation_message_refused", "agent_id", "pi:"+id, "kind", kind, "command_id", body.CommandID, "state", state, "archive", archiveState, "request_id", diagnostic.RequestID(r.Context()))
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}

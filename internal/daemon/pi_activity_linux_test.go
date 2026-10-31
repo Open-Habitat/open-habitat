@@ -367,8 +367,8 @@ func TestIdleTimeoutResumesOnce(t *testing.T) {
 	}
 	h.converse(c, id, "Jatketaan", activityCommand(2))
 	h.quiescent(c, id)
-	if w := h.send(c, id, "Jatketaan", activityCommand(2)); w.Code != 409 {
-		t.Fatalf("retry: %d", w.Code)
+	if w := h.send(c, id, "Jatketaan", activityCommand(2)); w.Code != 200 || !strings.Contains(w.Body.String(), `"pending"`) {
+		t.Fatalf("retry: %d %s", w.Code, w.Body.String())
 	}
 	prompts := strings.Join(h.prompts(), "\n")
 	if strings.Count(prompts, "Jatketaan") != 1 {

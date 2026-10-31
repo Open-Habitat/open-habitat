@@ -88,8 +88,13 @@ func TestAgentConversationControls(t *testing.T) {
 	request("POST", path+"send", `{"message":"x","command_id":"00000000-0000-4000-8000-000000000001","uid":0}`, 400)
 	request("POST", path+"send", `{"message":"first","command_id":"00000000-0000-4000-8000-000000000001"}`, 200)
 	h.eventually("settled", func() bool { _, s := h.status(c, id); return s.State == "idle" && len(h.prompts()) == 1 })
-	// A repeated command never repeats native work (the controller refuses spent IDs).
-	request("POST", path+"send", `{"message":"first","command_id":"00000000-0000-4000-8000-000000000001"}`, 409)
+	// A repeated command never repeats native work: the controller answers a
+	// spent ID as the same message, without sending it again.
+	request("POST", path+"send", `{"message":"first","command_id":"00000000-0000-4000-8000-000000000001"}`, 200)
+	time.Sleep(100 * time.Millisecond)
+	if n := len(h.prompts()); n != 1 {
+		t.Fatalf("a repeated command reached Pi again: %d prompts", n)
+	}
 	request("POST", path+"close", "", 409) // content is not deletable
 	for i, action := range []string{"steer", "follow_up", "clear_queue", "cancel_held", "abort"} {
 		body := fmt.Sprintf(`{"command_id":"00000000-0000-4000-8000-%012d"`, i+10)

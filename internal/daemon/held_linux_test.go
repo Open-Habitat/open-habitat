@@ -303,8 +303,10 @@ func TestHeldMessagesJoinIntoOnePromptWhileCreating(t *testing.T) {
 			t.Fatalf("held send: %d %s", w.Code, w.Body.String())
 		}
 	}
-	if w := h.send(c, id, "Ensimmäinen", heldA); w.Code != 409 {
-		t.Fatalf("a repeated command ID must not be held twice: %d", w.Code)
+	// A resend of a held message after a lost reply is that message again:
+	// still held, and held once.
+	if w := h.send(c, id, "Ensimmäinen", heldA); w.Code != 200 || !strings.Contains(w.Body.String(), `"held"`) {
+		t.Fatalf("a repeated command ID: %d %s", w.Code, w.Body.String())
 	}
 	if _, view := h.status(c, id); view.State != "starting" || len(view.Held) != 2 || view.Held[0].CommandID != heldA || view.Held[1].Text != "Toinen" {
 		t.Fatalf("status while starting: %+v", view)
@@ -387,8 +389,13 @@ func TestHeldMessagesAcrossDaemonRestart(t *testing.T) {
 	if prompts := h.prompts(); len(prompts) != 2 || prompts[1] != "Jatko" {
 		t.Fatalf("native prompts after resume: %q", prompts)
 	}
-	if w := h.send(second, id, "Jatko", heldD); w.Code != 409 {
-		t.Fatalf("a delivered command ID was accepted again: %d", w.Code)
+	// A delivered message sent again is observed, not delivered again.
+	if w := h.send(second, id, "Jatko", heldD); w.Code != 200 || !strings.Contains(w.Body.String(), `"pending"`) {
+		t.Fatalf("a delivered command ID sent again: %d %s", w.Code, w.Body.String())
+	}
+	time.Sleep(200 * time.Millisecond)
+	if prompts := h.prompts(); len(prompts) != 2 || h.receipt(second, id, heldD) != "accepted" {
+		t.Fatalf("a delivered command ID reached Pi again: %q", prompts)
 	}
 }
 

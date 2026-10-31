@@ -170,7 +170,13 @@ function session(v: unknown): v is Session & Record<string, unknown> {
     (v.startup_choice === undefined || validStartupChoice(v.startup_choice))
   );
 }
-export class NotAdmitted extends Error {}
+/** A definite refusal: nothing was written. `code` is the host's fixed
+ * error code, or "" when the reply did not carry one. */
+export class NotAdmitted extends Error {
+  constructor(readonly code = "") {
+    super("state changed");
+  }
+}
 export class ConversationNotFound extends Error {}
 export type ContinueRefusal =
   | "writer_conflict"
@@ -188,13 +194,23 @@ export class ContinuationRefused extends Error {
 async function json(response: Response): Promise<unknown> {
   if (response.status === 401) throw new Error("identity_lost");
   if (response.status === 404) throw new ConversationNotFound("not found");
-  if (response.status === 409) throw new NotAdmitted("state changed");
+  if (response.status === 409)
+    throw new NotAdmitted(await refusalCode(response));
   if (
     !response.ok ||
     response.headers.get("content-type")?.split(";")[0] !== "application/json"
   )
     throw new Error("unavailable");
   return readBody(response);
+}
+async function refusalCode(response: Response) {
+  try {
+    const v = await readBody(response);
+    const code = object(v) && object(v.error) ? v.error.code : undefined;
+    return typeof code === "string" && /^[a-z_]{1,64}$/.test(code) ? code : "";
+  } catch {
+    return "";
+  }
 }
 async function readBody(response: Response): Promise<unknown> {
   const reader = response.body?.getReader();

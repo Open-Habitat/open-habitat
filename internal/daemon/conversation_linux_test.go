@@ -34,10 +34,15 @@ func TestConversationSendSurvivesDisconnect(t *testing.T) {
 import json,sys,time
 for line in sys.stdin:
  r=json.loads(line)
+ open(sys.argv[0]+".log","a").write(r["type"]+"\n")
  print(json.dumps(dict(type="response",id=r["id"],command=r["type"],success=True)),flush=True)
  time.sleep(.05)
  print(json.dumps(dict(type="agent_settled")),flush=True)
 `
+	prompts := func() int {
+		data, _ := os.ReadFile(script + ".log")
+		return strings.Count(string(data), "prompt\n")
+	}
 	if err := os.WriteFile(script, []byte(code), 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -79,13 +84,22 @@ for line in sys.stdin:
 	if state != "idle" || cursor == 0 || ack != "accepted" {
 		t.Fatalf("disconnected send: state %s events %d", state, cursor)
 	}
-	// Same command ID cannot be replayed after a lost response.
+	// The same command arriving again after a lost response (a browser or
+	// proxy resend) is observed, not replayed and not refused: a refusal
+	// would tell the page its delivered message was rejected.
 	retry := httptest.NewRequest("POST", "http://unix/send", strings.NewReader(body))
 	retry.Header.Set("Content-Type", "application/json")
 	again := httptest.NewRecorder()
 	c.send(again, retry, id)
-	if again.Code != 409 {
-		t.Fatalf("duplicate send: %d", again.Code)
+	if again.Code != 200 || !strings.Contains(again.Body.String(), `"pending"`) {
+		t.Fatalf("duplicate send: %d %s", again.Code, again.Body.String())
+	}
+	time.Sleep(100 * time.Millisecond)
+	c.mu.Lock()
+	receipt, accepted := s.receipts[id], s.acceptedMessages
+	c.mu.Unlock()
+	if n := prompts(); n != 1 || receipt != "accepted" || accepted != 1 {
+		t.Fatalf("duplicate send reached Pi: prompts %d receipt %q accepted %d", n, receipt, accepted)
 	}
 	// A native session can continue beyond the former 128-command ceiling
 	// without forgetting spent IDs. The map is retained across continuation.
@@ -115,8 +129,9 @@ for line in sys.stdin:
 	oldID.Header.Set("Content-Type", "application/json")
 	again = httptest.NewRecorder()
 	c.send(again, oldID, id)
-	if again.Code != 409 {
-		t.Fatalf("old receipt ID replayed after continuation: %d", again.Code)
+	time.Sleep(100 * time.Millisecond)
+	if again.Code != 200 || prompts() != 2 {
+		t.Fatalf("old receipt ID replayed after continuation: %d, %d prompts", again.Code, prompts())
 	}
 }
 

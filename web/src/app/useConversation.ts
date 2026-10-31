@@ -374,7 +374,11 @@ export function useConversation({
                 command,
                 state,
               }));
-              setReceipt(outcome === "rejected" ? "Viesti hylättiin." : "");
+              setReceipt(
+                outcome === "rejected"
+                  ? "Agentti ei ottanut viestiä vastaan. Teksti on kentässä: lähetä se uudelleen."
+                  : "",
+              );
               sessionStorage.removeItem(sendKey);
               sessionStorage.removeItem(uncertainKey);
               sessionStorage.removeItem(submittedKey);

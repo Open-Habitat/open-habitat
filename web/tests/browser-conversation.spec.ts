@@ -2336,6 +2336,59 @@ test("@browser-conversation a lost accepted send resolves on reload without anot
   expect(sends).toBe(1);
 });
 
+// Jari 30.10.: renamed from the rail, then sent at once. The daemon got the
+// send twice, 4.5 s apart, with no input between; the second was refused and
+// the page showed the delivered message as rejected and put it back in the
+// field. The same request arriving again is the case reproduced here.
+test("@browser-conversation a send that arrives twice is delivered once and never refused", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
+  const send = page.getByTestId("send").and(page.locator('[data-mode="send"]'));
+  await editor.fill("ensimmäinen vuoro");
+  await send.click();
+  await expectNativeContent(page, 'Selvä. Kysyit: "ensimmäinen vuoro".', {
+    timeout: 20000,
+  });
+  const agent = new URL(page.url()).searchParams.get("conversation") ?? "";
+  const row = page.getByTestId(`agent-item-${agent}`);
+  await row.hover();
+  await row.getByTestId("rail-rename-conversation").click();
+  const name = row.getByTestId("conversation-name-field");
+  await name.fill("Testinimi 2");
+  await name.press("Enter");
+  await expect(name).toHaveCount(0);
+
+  const statuses: number[] = [];
+  await page.route("**/api/v1/conversations/*/send", async (route) => {
+    // The daemon takes the message; its reply is lost and the same request
+    // arrives again, as a browser or proxy resends it.
+    statuses.push((await route.fetch()).status());
+    const again = await route.fetch();
+    statuses.push(again.status());
+    await route.fulfill({ response: again });
+  });
+  await editor.click();
+  await editor.fill("KAikki noi toimii");
+  await expect(send).toBeEnabled({ timeout: 20000 });
+  await editor.press("Enter");
+  await expectNativeContent(page, 'Selvä. Kysyit: "KAikki noi toimii".', {
+    timeout: 20000,
+  });
+  await expect(
+    page
+      .getByTestId("conversation-timeline")
+      .getByTestId("user-content")
+      .filter({ hasText: "KAikki noi toimii" }),
+  ).toHaveCount(1);
+  await expect(page.getByTestId("message-rejected")).toHaveCount(0);
+  await expect(editor).toHaveValue("");
+  expect(statuses).toEqual([200, 200]);
+});
+
 test("@browser-conversation queue-clear 401 reaches login", async ({
   page,
 }) => {
