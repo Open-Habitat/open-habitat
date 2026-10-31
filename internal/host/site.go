@@ -120,6 +120,7 @@ type IntegrationSettings struct {
 	// makes the broker refuse those writes. Host apply publishes it.
 	BrowserSetup *bool `json:"browser_setup,omitempty"`
 }
+
 // UI is the installation's interface defaults. DefaultLanguage is system, fi
 // or en; omitted is system.
 type UI struct {
@@ -133,6 +134,7 @@ func (s Site) DefaultLanguage() string {
 	}
 	return *s.UI.DefaultLanguage
 }
+
 type Site struct {
 	SchemaVersion int                  `json:"schema_version"`
 	SiteID        string               `json:"site_id"`
