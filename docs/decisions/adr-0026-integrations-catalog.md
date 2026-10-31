@@ -1,7 +1,7 @@
 # ADR 0026: Integrations are a catalog of native tools run by the person's daemon
 
 **Status:** Accepted by Jari on 2026-10-18. His decisions of that day are
-recorded in [agent-integrations](../../issues/agent-integrations/item.md#decisions)
+recorded in `issues/agent-integrations/item.md` (in history)
 and, for the account model, the personal-data skill and the directory layout,
 in the prototype round's result (`issues/proto-integrations/result.md` in history).
 
@@ -11,7 +11,7 @@ People want their agents to use data that lives elsewhere: files in Google
 Drive, OneDrive, SharePoint and Dropbox, and mail, calendars and contacts in
 Google, Microsoft 365 and ordinary IMAP and CalDAV/CardDAV accounts. Two
 research rounds
-([first](../../issues/research-integrations/report.md),
+(first `issues/research-integrations/report.md`,
 Microsoft and Claude (`issues/research-integrations-microsoft/report.md`))
 and a prototype round (`issues/proto-integrations/result.md` in history) that drove
 each tool's login on this host found the following.
