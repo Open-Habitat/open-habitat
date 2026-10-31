@@ -1,6 +1,6 @@
 ---
 created: 2026-10-30
-updated: 2026-10-30
+updated: 2026-10-31
 type: bug
 reporter: jari
 status: open
@@ -36,3 +36,9 @@ kerrallaan, virta herää koneen mukana), joka on pilot.16:ssa.
       säilyvät), ei toimimaton *Yhdistä*.
 - [ ] Syy nimetty: miksi Yhdistä ei tee mitään (mikä pyyntö epäonnistuu
       versioiden välillä); selainspec versionvaihdosta kesken istunnon.
+
+## Comments
+
+### 2026-10-31T04:04:03Z · @jari
+
+Jari 30.10. (testikone pilot.536, toinen tietokone): sama toistui testikoneella. Välilehdellä oli *Yhteys katkesi* ja *Yhdistä*, mutta palvelin oli sillä välin päivitetty, eikä painallus palauttanut yhteyttä. Kun syy on uusi versio, ilmoituksen pitää sanoa se ja tarjota *Lataa uudelleen* (kuten kellon uuden version kohta). Ilmoitus: web/src/components/Status.tsx:196 (reconnect-live-cause, notification-bell-status). Tämän takia 'Yhdistä toimii agentin työskennellessä' jäi kokeilematta.
