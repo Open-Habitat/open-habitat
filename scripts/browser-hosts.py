@@ -24,10 +24,14 @@ def snapshot(pid):
         reasons = []
         if not Path(root).is_dir():
             reasons.append('worktree-missing')
+        # Under hidepid=invisible a process we may not ptrace has no /proc
+        # entry. The launcher of a synthetic host is our own test runner and
+        # stays visible, so an invisible parent is the adopting reaper: init,
+        # or a user manager made non-dumpable (Birch's, since 2026-10-30).
         try:
             parent_name = (Path('/proc') / str(parent) / 'comm').read_text().strip()
         except FileNotFoundError:
-            parent_name = ''
+            parent_name = 'invisible' if parent > 0 else ''
         # lab.sh intentionally detaches from its launcher, but records the
         # caller shell as owner. Do not mistake a live owned lab for a stray.
         env = (proc / 'environ').read_bytes().split(b'\0')
@@ -42,7 +46,7 @@ def snapshot(pid):
                 pass
             if not owner_alive:
                 reasons.append('owner-missing')
-        if (parent == 1 or parent_name in ('systemd', 'init')) and not owner_alive:
+        if (parent == 1 or parent_name in ('systemd', 'init', 'invisible')) and not owner_alive:
             reasons.append('parent-init-or-systemd')
         return dict(pid=pid, parent=parent, worktree=root,
                     starttime=stat[19], reasons=reasons)
