@@ -174,9 +174,13 @@ test("@version a tab whose bundle cannot read the upgraded host offers reload, n
       return route.abort(); // the gateway is between listeners
     }
     if (!response.ok()) return route.fulfill({ response });
+    const snapshot: unknown = await response.json();
+    if (typeof snapshot !== "object" || snapshot === null) {
+      throw new Error(`snapshot is not an object: ${JSON.stringify(snapshot)}`);
+    }
     await route.fulfill({
       response,
-      json: { ...(await response.json()), newer_release_fact: true },
+      json: { ...snapshot, newer_release_fact: true },
     });
   });
   // A release restarts the daemon too, and the new one answers the old

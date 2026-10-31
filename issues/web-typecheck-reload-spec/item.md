@@ -2,7 +2,7 @@
 created: 2026-10-31
 updated: 2026-10-31
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: worker observation
@@ -11,6 +11,7 @@ originating_run: 01m682p6ssrx933anc4ym4ke2y
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Web typecheck fails on main: server-version-reload spec spreads a non-object
