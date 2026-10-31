@@ -149,6 +149,86 @@ test("@recap-settings the four levels fit on the page and on a phone", async ({
   }
 });
 
+test("@recap-settings no row is cut by its card in a desktop window's narrow column", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await open(page);
+  // Oma's steppers and a chosen model are the widest form of the page.
+  const level = page.getByTestId("recap-level");
+  let write = saved(page);
+  await level
+    .getByRole("button")
+    .and(page.getByTestId("segment-custom"))
+    .click();
+  await write;
+  const trigger = page
+    .getByRole("button")
+    .and(page.getByTestId("recap-model-trigger"));
+  await trigger.click();
+  write = saved(page);
+  await page
+    .getByRole("dialog")
+    .and(page.getByTestId("recap-model-menu"))
+    .getByRole("radio")
+    .and(page.getByTestId("model-gpt-6-nova"))
+    .click();
+  await write;
+  try {
+    // Beside the sidebar and Settings' list the column is about a third of
+    // the window at 1280 and as narrow as a phone's just above 760.
+    for (const width of [1280, 1100, 1024, 900, 800]) {
+      await page.setViewportSize({ width, height: 900 });
+      const cut = await page
+        .getByTestId("recap-settings")
+        .locator(".s-card")
+        .evaluateAll((cards) =>
+          cards.flatMap((card) => {
+            const box = card.getBoundingClientRect();
+            return [...card.querySelectorAll("*")]
+              .filter((e) => {
+                const r = e.getBoundingClientRect();
+                return (
+                  r.width > 0 &&
+                  (r.left < box.left - 1 || r.right > box.right + 1)
+                );
+              })
+              .map(
+                (e) =>
+                  e
+                    .closest("[data-settings-row]")
+                    ?.getAttribute("data-settings-row") ?? e.tagName,
+              );
+          }),
+        );
+      expect(cut, `cut at ${width}`).toEqual([]);
+      if (width === 1280 || width === 900) {
+        await page.getByTestId("recap-delay").scrollIntoViewIfNeeded();
+        await page.screenshot({
+          path: `test-results/evidence/recap-settings-column-${width}.png`,
+        });
+      }
+    }
+  } finally {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    write = saved(page);
+    await level
+      .getByRole("button")
+      .and(page.getByTestId("segment-standard"))
+      .click();
+    await write;
+    await trigger.click();
+    write = saved(page);
+    await page
+      .getByRole("dialog")
+      .and(page.getByTestId("recap-model-menu"))
+      .getByRole("radio")
+      .and(page.getByTestId("model-automatic"))
+      .click();
+    await write;
+  }
+});
+
 test("@recap-settings the recap card opens its settings over the conversation and X returns to it", async ({
   page,
 }) => {

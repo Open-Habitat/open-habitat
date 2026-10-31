@@ -43,6 +43,7 @@
   letter-spacing: 0.05em;
 }
 .s-main {
+  container: settings-main / inline-size;
   flex: 1;
   min-width: 0;
   max-width: 720px;
@@ -562,6 +563,23 @@
     grid-column: 2 / -1;
   }
 }
+/* Beside the sidebar and Settings' own list a desktop window can leave the
+   section column (.s-main) as narrow as a phone's, so the column, not the
+   window, also decides when a row's control goes under its label. */
+@container settings-main (max-width: 400px) {
+  .s-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .s-val {
+    justify-content: flex-start;
+  }
+  .s-row.s-marked {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .s-row.s-marked > .s-val {
+    grid-column: 2 / -1;
+  }
+}
 
 /* The default model as a settings row (Asetusrivi): a select-style value at
    the row control's size opens the chooser as a popover below it, or as a
@@ -685,6 +703,13 @@
     background: var(--ah-scrim);
   }
 }
+/* In a phone-narrow column the model's name wraps inside the field. */
+@container settings-main (max-width: 400px) {
+  .dm-model {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+}
 /* Settings closes from its corner. On the desktop the X has a column of
    its own right of the section, where it stays in reach while the page
    scrolls without ever lying over the section's content. */
@@ -763,6 +788,22 @@
   .ah-recap-levels .ah-recap-level-choice {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+/* The delay slider and the model chooser are wider than most controls; they
+   go under their labels before the column is as narrow as a phone's. */
+.ah-recap-timing {
+  container-type: inline-size;
+}
+@container (max-width: 520px) {
+  .ah-recap-timing > .s-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ah-recap-timing .ah-scale {
+    width: 100%;
+  }
+  .ah-recap-timing .s-val {
+    justify-content: flex-start;
   }
 }
 @container (max-width: 380px) {

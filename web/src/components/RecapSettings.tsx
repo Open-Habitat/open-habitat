@@ -277,7 +277,7 @@ export function RecapSettings({
           />
         </div>
       ) : null}
-      <div className="s-card">
+      <div className="s-card ah-recap-timing">
         <div className="s-row" data-settings-row="recap-delay" tabIndex={-1}>
           <div className="s-lbl">
             <strong>Hiljaisuus ennen katsausta</strong>

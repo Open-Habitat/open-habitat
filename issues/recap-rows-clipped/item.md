@@ -2,7 +2,7 @@
 created: 2026-10-31
 updated: 2026-10-31
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: agent
 source_ref: taskfleet:01m682p696vmwq9sbvwy5k41hc/observed:recap-card-clipped
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: recap-settings
 lane_seq: 2
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Tilannekatsaus settings rows are clipped by their card in a narrow desktop column

@@ -5,6 +5,7 @@
   gap: var(--ah-s4);
   flex: none;
   width: 280px;
+  max-width: 100%;
 }
 .ah-scale-track {
   flex: 1;
@@ -86,8 +87,10 @@
   text-align: center;
   white-space: nowrap;
 }
+/* Under its label the stepper keeps its own width. */
 .ah-stepper {
   display: inline-flex;
+  justify-self: start;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -127,8 +130,5 @@
 @media (max-width: 760px) {
   .ah-scale {
     width: 100%;
-  }
-  .ah-stepper {
-    justify-self: start;
   }
 }
