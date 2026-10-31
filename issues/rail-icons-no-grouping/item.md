@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: rail-icons-no-grouping
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Rail with workspace icons: no per-workspace folds under Hiljaiset
@@ -29,11 +30,11 @@ conversations are still folded per workspace, both the dormant section
 
 ## Acceptance Criteria
 
-- [ ] With icons on, quiet conversations appear as ordinary rows (each with
+- [x] With icons on, quiet conversations appear as ordinary rows (each with
       its icon) under the *Hiljaiset · yli tunnin* rule, not inside
       workspace folds; whether the quiet section itself folds as one is
       decided and recorded under Decisions for later review.
-- [ ] Without icons the current grouping stays as it is.
-- [ ] Browser spec for both; KOKEILTAVAA line.
+- [x] Without icons the current grouping stays as it is.
+- [x] Browser spec for both; KOKEILTAVAA line.
 
 ## Comments

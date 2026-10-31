@@ -996,15 +996,20 @@ function FoldToggle({
 }
 /** Käynnissä grouped by workspace (Ryhmät): done rows quiet for over an hour
  * fold to the end of their group, and a workspace where everything is quiet
- * sinks under Hiljaiset. The open conversation and a failed one never fold. */
+ * sinks under Hiljaiset. The open conversation and a failed one never fold.
+ * With workspace icons each row names its workspace, so nothing folds: the
+ * quiet rows leave their groups and stand under Hiljaiset as ordinary rows,
+ * the most recently changed first. */
 function RunningGroups({
   running,
+  iconed,
   now,
   archive,
   rename,
   card,
 }: {
   running: AgentNavModel[];
+  iconed: boolean;
   now: number;
   archive?: RailArchive;
   rename?: RailRename;
@@ -1031,6 +1036,16 @@ function RunningGroups({
   );
   const live = ordered.filter(([, g]) => g.rows.some((a) => !quiet(a, now)));
   const dormant = ordered.filter(([, g]) => g.rows.every((a) => quiet(a, now)));
+  const quietRows = iconed
+    ? running
+        .filter((a) => quiet(a, now))
+        .sort((a, b) => (b.changedAt ?? 0) - (a.changedAt ?? 0))
+    : [];
+  const rule = (
+    <p className="ah-now-rule" data-testid="rail-quiet-rule">
+      <span>{textNow(navigationText).quietRule}</span>
+    </p>
+  );
   const row = (agent: AgentNavModel) => (
     <AgentNavItem
       key={agent.agentId}
@@ -1066,7 +1081,7 @@ function RunningGroups({
             )}
             <ul>
               {shown.map(row)}
-              {hidden.length ? (
+              {hidden.length && !iconed ? (
                 <FoldToggle
                   testId={`rail-fold-quiet-${g.name}`}
                   open={!!open[fold]}
@@ -1074,16 +1089,20 @@ function RunningGroups({
                   label={quietWord(hidden.length)}
                 />
               ) : null}
-              {hidden.length && open[fold] ? hidden.map(row) : null}
+              {hidden.length && !iconed && open[fold] ? hidden.map(row) : null}
             </ul>
           </div>
         );
       })}
-      {dormant.length ? (
+      {iconed && quietRows.length ? (
         <>
-          <p className="ah-now-rule" data-testid="rail-quiet-rule">
-            <span>{textNow(navigationText).quietRule}</span>
-          </p>
+          {rule}
+          <ul data-testid="rail-quiet">{quietRows.map(row)}</ul>
+        </>
+      ) : null}
+      {!iconed && dormant.length ? (
+        <>
+          {rule}
           <ul data-testid="rail-quiet">
             {dormant.map(([key, g]) => {
               const fold = `d:${key}`;
@@ -1198,6 +1217,7 @@ export function NowSections({
         {running.length ? (
           <RunningGroups
             running={running}
+            iconed={iconed}
             now={now}
             archive={archive}
             rename={rename}

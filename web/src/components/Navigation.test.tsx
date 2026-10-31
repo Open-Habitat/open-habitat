@@ -455,6 +455,55 @@ describe("Ryhmät rows", () => {
     fireEvent.click(view.getByTestId("workspace-card-new"));
     expect(started).toEqual(["ws_kasvimaa0"]);
   });
+  it("lists quiet rows unfolded under Hiljaiset when rows carry icons", () => {
+    const icon = (name: string) => ({
+      name,
+      glyph: { letters: name.slice(0, 2).toUpperCase(), hue: 3 },
+      show: { kind: "glyph" as const },
+      source: "Kirjaintunnus · johdettu nimestä",
+    });
+    const view = render(
+      <MemoryRouter>
+        <NowSections
+          yours={[]}
+          running={[
+            agent("w1", {
+              activity: "working",
+              changedAt: Date.now(),
+              workspaceIcon: icon("kasvimaa"),
+            }),
+            agent("w2", {
+              changedAt: Date.now() - 3 * 3600000,
+              workspaceIcon: icon("kasvimaa"),
+            }),
+            agent("k1", {
+              workspaceId: "ws_kotisivu0",
+              workspaceName: "kotisivu",
+              workspaceIcon: icon("kotisivu"),
+              changedAt: Date.now() - 25 * 3600000,
+            }),
+          ]}
+        />
+      </MemoryRouter>,
+    );
+    expect(view.queryByTestId(/^rail-fold-/)).toBeNull();
+    expect(view.queryByTestId("rail-group-kotisivu")).toBeNull();
+    const group = view.getByTestId("rail-group-kasvimaa");
+    expect(group.querySelector('[data-testid="agent-item-w2"]')).toBeNull();
+    expect(view.getByTestId("rail-quiet-rule").textContent).toBe(
+      "Hiljaiset · yli tunnin",
+    );
+    // The most recently changed first, each with its own icon.
+    const quiet = view.getByTestId("rail-quiet");
+    expect(
+      [...quiet.querySelectorAll('[data-testid^="agent-item-"]')].map((li) =>
+        li.getAttribute("data-testid"),
+      ),
+    ).toEqual(["agent-item-w2", "agent-item-k1"]);
+    expect(
+      quiet.querySelectorAll('[data-testid="workspace-icon-button"]'),
+    ).toHaveLength(2);
+  });
   it("shows the derived glyph when an image does not load", () => {
     const view = render(
       <MemoryRouter>

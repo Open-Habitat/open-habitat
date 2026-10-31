@@ -54,6 +54,11 @@ const row = (
   changedAt: Date.now() - 3 * 60000,
   ...over,
 });
+const quietFor = (hours: number): Partial<AgentNavModel> => ({
+  activity: "waiting",
+  activityLabel: "Odottaa viestiä",
+  changedAt: Date.now() - hours * 3600000,
+});
 function Example({
   theme,
   collapsed,
@@ -66,7 +71,7 @@ function Example({
       <div data-theme={theme}>
         <nav
           className={collapsed ? "ah-rail ah-rail-collapsed" : "ah-rail"}
-          style={{ width: collapsed ? 56 : 280, height: 360 }}
+          style={{ width: collapsed ? 56 : 280, height: 440 }}
         >
           <div className="ah-rail-content">
             <NowSections
@@ -83,6 +88,14 @@ function Example({
                 row("r4", "open-habitat", "pilot.16 testipalvelimelle", {
                   activity: "waiting",
                   activityLabel: "Odottaa viestiä",
+                }),
+                // Quiet for over an hour: ordinary rows under Hiljaiset,
+                // not folded under their workspace.
+                row("r5", "open-habitat", "Julkaisumuistiinpanot", {
+                  ...quietFor(3),
+                }),
+                row("r6", "kotisivu", "Yhteystietolomake", {
+                  ...quietFor(26),
                 }),
               ]}
               card={{ onNew: () => {} }}
