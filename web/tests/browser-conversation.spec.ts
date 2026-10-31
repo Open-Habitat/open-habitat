@@ -445,11 +445,18 @@ test("@browser-conversation HTTP fallback permits one send while journal is unav
   page.on("request", (request) => {
     if (request.url().endsWith("/send")) sends++;
   });
+  const sent = page.waitForResponse((response) =>
+    response.url().endsWith("/send"),
+  );
   await page
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
   await expect(editor).toHaveValue("");
+  // The field empties at once, but while the conversation is still being
+  // created the message is held and posted only after creation, so a slow
+  // create leaves no POST yet. Count once the send has been answered.
+  expect((await sent).ok()).toBe(true);
   expect(sends).toBe(1);
 });
 
