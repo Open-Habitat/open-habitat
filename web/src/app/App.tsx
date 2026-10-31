@@ -1254,6 +1254,9 @@ export function App() {
     identity,
     walkConversation ?? selectedAgentId ?? undefined,
     now.yours,
+    // Archived or vanished conversations leave the round, judged only from
+    // a confirmed listing so a partial one removes nothing.
+    source === "confirmed" ? snapshot?.agents : undefined,
   );
   // Single-workspace mode (Yläpalkissa, Jari 18.10.2026) follows the number
   // of visible native workspaces in the snapshot; nothing is stored, and

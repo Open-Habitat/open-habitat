@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: next-waiting
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Next-waiting queue: archiving the waiting ones leaves a stale round; Mac hints say Alt
@@ -23,5 +24,5 @@ Kaksi Jarin havaintoa 30.10. (testikone pilot.536, kokeellinen Jono, `next-waiti
 
 ## Acceptance Criteria
 
-- [ ] Arkistoitu (tai muuten pois kadonnut) keskustelu poistuu kierroksesta; kun hoidettavaa ei jää, kierros päättyy itsestään yhteenvetoon.
-- [ ] Jonon kaikki näppäinvihjeet ovat Macilla ⌥-muodossa ja muualla Alt; selainspec molemmille.
+- [x] Arkistoitu (tai muuten pois kadonnut) keskustelu poistuu kierroksesta; kun hoidettavaa ei jää, kierros päättyy itsestään yhteenvetoon.
+- [x] Jonon kaikki näppäinvihjeet ovat Macilla ⌥-muodossa ja muualla Alt; selainspec molemmille.

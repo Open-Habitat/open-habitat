@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { altKey } from "./altKey";
 import { ControlButton, Segmented } from "./ControlElements";
 import "./ExperimentalFeatures.css";
 
@@ -23,8 +24,7 @@ export const experimentalFeatures = [
     desc: "Kun olet vastannut ja agentti on aloittanut, voit käydä sinua odottavat keskustelut läpi yhtenä kierroksena.",
     where:
       "Keskustelun alareunassa, kirjoituskentän yläpuolella. Kierroksen ajan jono näkyy jokaisessa keskustelussa.",
-    shows:
-      "Montako odottaa ja Käy läpi (Alt+↓). Kierroksella koko jonon: Seuraava (Alt+↓), Edellinen (Alt+↑) ja ✕ (Esc).",
+    shows: `Montako odottaa ja Käy läpi (${altKey("↓")}). Kierroksella koko jonon: Seuraava (${altKey("↓")}), Edellinen (${altKey("↑")}) ja ✕ (Esc).`,
     needs: "Ei muuta. Järjestys seuraa toistaiseksi sivupalkkia.",
     caption: "Keskustelun alareuna",
     landed: true,

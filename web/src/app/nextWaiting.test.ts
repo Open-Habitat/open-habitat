@@ -99,4 +99,44 @@ describe("WaitingRound", () => {
     round.announce((id) => id === "a");
     expect(round.note).toBe("");
   });
+
+  it("drops archived or vanished steps, keeps its place, and ends itself when only the origin is left", () => {
+    vi.useFakeTimers();
+    const round = new WaitingRound();
+    round.start(row("o"), [row("a"), row("b"), row("c")]);
+    round.open("a");
+    round.open("b");
+    const listed = (ids: string[], archived: string[] = []) => [
+      ...ids.map((agent_id) => ({ agent_id })),
+      ...archived.map((agent_id) => ({ agent_id, archive: "archived" })),
+    ];
+    // The origin is too new to be listed yet: that is not gone.
+    round.prune(listed(["a", "b", "c"]));
+    expect(ids(round)).toEqual(["o", "a", "b", "c"]);
+    // b (here) is archived: the place falls back to a, so next is c.
+    round.prune(listed(["o", "a", "c"], ["b"]));
+    expect(ids(round)).toEqual(["o", "a", "c"]);
+    expect(round.pos).toBe(1);
+    expect(round.move(1, () => true)?.agentId).toBe("c");
+    // c drops out of the listing and a is archived: nothing is left to walk.
+    round.prune(listed(["o"], ["a"]));
+    expect(round.steps).toBeNull();
+    expect(round.note).toMatch(/3/);
+  });
+
+  it("ends when its origin is archived and counts the archived as handled", () => {
+    const round = new WaitingRound();
+    round.start(row("o"), [row("a"), row("b")]);
+    round.open("a");
+    round.prune([{ agent_id: "a" }, { agent_id: "b", archive: "archived" }]);
+    expect(ids(round)).toEqual(["o", "a"]);
+    expect(round.move(1, (id) => id === "x")?.agentId).toBe("o");
+    expect(round.note).toMatch(/2/);
+    const again = new WaitingRound();
+    again.start(row("o"), [row("a"), row("b")]);
+    again.open("a");
+    again.prune([{ agent_id: "o", archive: "archived" }, { agent_id: "a" }]);
+    expect(again.steps).toBeNull();
+    expect(again.note).toMatch(/1/);
+  });
 });

@@ -29,7 +29,7 @@ export type NextWaiting = {
  * and not while this conversation asks the person something. During a round
  * the round's bar shows in every conversation, also one that asks or whose
  * reply was only read, so the way on and back is always on screen. Alt+↓
- * moves on, Alt+↑ steps back, Esc ends the round.
+ * (⌥↓ on a Mac) moves on, Alt+↑ steps back, Esc ends the round.
  */
 export function NextWaitingDock({
   next,

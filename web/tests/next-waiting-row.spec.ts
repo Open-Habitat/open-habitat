@@ -48,6 +48,35 @@ async function send(page: Page, message: string) {
 const conversationNow = (page: Page) =>
   new URL(page.url()).searchParams.get("conversation");
 
+async function switchOn(page: Page) {
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("account-menu-trigger"))
+    .click();
+  await page
+    .getByRole("menuitem")
+    .and(page.getByTestId("menu-settings"))
+    .click();
+  await page
+    .getByRole("navigation")
+    .and(page.getByTestId("settings-navigation"))
+    .getByRole("link")
+    .and(page.getByTestId("settings-kokeelliset"))
+    .click();
+  const card = page
+    .getByRole("region")
+    .and(page.getByTestId("experimental-next-waiting-row"));
+  await expect(card).toBeVisible();
+  const on = card
+    .getByRole("group")
+    .and(page.getByTestId("experimental-next-waiting-row-choice"))
+    .getByRole("button")
+    .and(page.getByTestId("segment-on"));
+  await on.click();
+  await expect(on).toHaveAttribute("aria-pressed", "true");
+  await page.getByTestId("settings-close").click();
+}
+
 async function capture2(page: Page, name: string) {
   if (!capture) return;
   for (const colorScheme of ["light", "dark"] as const) {
@@ -120,32 +149,7 @@ test("@next-waiting-row the waiting conversations are walked as one round whose 
   // On: switched in Kokeelliset ominaisuudet, confirmed by the daemon. The
   // unread replies are this tab's memory, so the settings open in the app,
   // not by a page load.
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("account-menu-trigger"))
-    .click();
-  await page
-    .getByRole("menuitem")
-    .and(page.getByTestId("menu-settings"))
-    .click();
-  await page
-    .getByRole("navigation")
-    .and(page.getByTestId("settings-navigation"))
-    .getByRole("link")
-    .and(page.getByTestId("settings-kokeelliset"))
-    .click();
-  const card = page
-    .getByRole("region")
-    .and(page.getByTestId("experimental-next-waiting-row"));
-  await expect(card).toBeVisible();
-  const on = card
-    .getByRole("group")
-    .and(page.getByTestId("experimental-next-waiting-row-choice"))
-    .getByRole("button")
-    .and(page.getByTestId("segment-on"));
-  await on.click();
-  await expect(on).toHaveAttribute("aria-pressed", "true");
-  await page.getByTestId("settings-close").click();
+  await switchOn(page);
   await expect.poll(() => conversationNow(page)).toBe(here);
   await expect(page.getByTestId("message-input")).toBeEnabled();
   // Not before the person has replied and the host confirms the run.
@@ -154,6 +158,8 @@ test("@next-waiting-row the waiting conversations are walked as one round whose 
   await expect(stop).toBeVisible();
   await expect(line).toBeVisible();
   await expect(line).toHaveAttribute("data-waiting", "4");
+  // Not a Mac: the key is named Alt.
+  await expect(line.locator("kbd")).toHaveText(/^Alt\+/);
   expect(
     (
       await new AxeBuilder({ page })
@@ -245,4 +251,72 @@ test("@next-waiting-row the waiting conversations are walked as one round whose 
   await expect(queue).toHaveCount(0);
   await expect(page.getByTestId("next-note")).toBeVisible();
   await capture2(page, "kierros-kayty-phone");
+});
+
+test("@next-waiting-row a round whose waiting ones are archived ends itself, and a Mac names the keys ⌥", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(180000);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "platform", { get: () => "MacIntel" });
+  });
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  const rail = page.getByRole("navigation");
+  const yours = rail
+    .getByTestId("rail-yours")
+    .getByRole("link")
+    .and(page.getByTestId("agent-link"));
+  const writer = await context.newPage();
+  const replies: string[] = [];
+  for (const [i, message] of ["ensimmäinen", "toinen"].entries()) {
+    await writer.goto(`${hostOrigin}/workspaces`);
+    replies.push(conversationOf(await startAndSend(writer, message)) ?? "");
+    await expect(writer.getByTestId("message-input")).toBeEnabled();
+    await expect(yours).toHaveCount(i + 1, { timeout: 25000 });
+  }
+  await writer.close();
+  await page.bringToFront();
+  const here = conversationOf(await startAndSend(page, "lähtö"));
+  await expect(page.getByTestId("message-input")).toBeEnabled();
+  await switchOn(page);
+  await expect.poll(() => conversationNow(page)).toBe(here);
+  await expect(page.getByTestId("message-input")).toBeEnabled();
+  const line = page.getByTestId("next-waiting");
+  await send(page, "hidas toinen vuoro");
+  await expect(line).toHaveAttribute("data-waiting", "2");
+  await expect(line.locator("kbd")).toHaveText(/^⌥/);
+
+  const queue = page
+    .getByRole("navigation")
+    .and(page.getByTestId("next-queue"));
+  await page.getByTestId("message-input").focus();
+  await page.keyboard.press("Alt+ArrowDown");
+  await expect(queue).toBeVisible();
+  for (const kbd of await queue.locator("kbd").all())
+    await expect(kbd).toHaveText(/^⌥/);
+  await queue
+    .getByRole("button")
+    .and(page.getByTestId("next-queue-prev"))
+    .click();
+  await expect.poll(() => conversationNow(page)).toBe(here);
+  await expect(queue).toBeVisible();
+
+  // Both waiting ones archived from the rail: the round has nothing left to
+  // walk and ends into its summary instead of lingering until ✕.
+  for (const id of replies) {
+    const row = rail.getByTestId(`agent-item-${id}`);
+    await row.hover();
+    await row
+      .getByRole("button")
+      .and(page.getByTestId("rail-archive-conversation"))
+      .click();
+    await expect(row).toHaveCount(0);
+  }
+  await expect(queue).toHaveCount(0);
+  await expect(page.getByTestId("next-note")).toBeVisible();
+  expect(conversationNow(page)).toBe(here);
 });

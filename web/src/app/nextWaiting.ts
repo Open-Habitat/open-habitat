@@ -38,6 +38,12 @@ export class WaitingRound {
    * opened here was handled elsewhere. */
   visited = new Set<string>();
   private told = new Set<string>();
+  /** Conversations the host has listed during this round, so one that
+   * later drops out of the listing is known to be gone, while one too new
+   * to be listed yet is not. */
+  private listed = new Set<string>();
+  /** Steps archived or gone during the round; they count as handled. */
+  private dropped = 0;
   /** A one-off line under the bar: the round ended, or a step was handled
    * elsewhere. */
   note = "";
@@ -75,6 +81,8 @@ export class WaitingRound {
     this.steps = [step(origin), ...others.map(step)];
     this.visited = new Set([origin.agentId]);
     this.told = new Set();
+    this.listed = new Set();
+    this.dropped = 0;
     this.pos = 0;
     this.changed();
     return this.steps[1];
@@ -114,6 +122,57 @@ export class WaitingRound {
     return this.visited.has(s.agentId) ? "handled" : "elsewhere";
   }
 
+  /** Archived or vanished conversations leave the round, given the host's
+   * confirmed listing. With only the origin left the round has nothing to
+   * walk and ends into its summary; without the origin there is nothing to
+   * lead back to, so it ends too. */
+  prune(agents: readonly { agent_id: string; archive?: string }[]) {
+    const steps = this.steps;
+    if (!steps) return;
+    const archived = new Set<string>();
+    const present = new Set<string>();
+    for (const a of agents) {
+      if (a.archive === "archived") archived.add(a.agent_id);
+      else present.add(a.agent_id);
+      this.listed.add(a.agent_id);
+    }
+    const gone = (id: string) =>
+      archived.has(id) || (this.listed.has(id) && !present.has(id));
+    if (!steps.some((s) => gone(s.agentId))) return;
+    const kept = steps.filter((s) => !gone(s.agentId));
+    this.dropped += steps.slice(1).filter((s) => gone(s.agentId)).length;
+    if (kept[0] !== steps[0]) {
+      this.finish(kept);
+      return;
+    }
+    // The place stays on the step it was on, or the one before a removed
+    // one, so Seuraava still leads to the next.
+    let pos = 0;
+    for (const [i, s] of steps.entries()) {
+      if (i > this.pos) break;
+      const k = kept.indexOf(s);
+      if (k >= 0) pos = k;
+    }
+    this.pos = pos;
+    if (kept.length < 2) {
+      this.finish([]);
+      return;
+    }
+    this.steps = kept;
+    this.changed();
+  }
+
+  /** Ends the round saying how many were handled: the dropped ones and
+   * those of `left` (steps still in it) visited here. */
+  private finish(left: readonly RoundStep[]) {
+    const n =
+      this.dropped +
+      left.filter((s) => s !== this.steps?.[0] && this.visited.has(s.agentId))
+        .length;
+    this.steps = null;
+    this.say(`Kierros käyty: ${n} hoidettu.`);
+  }
+
   /** Says once of each step handled elsewhere. */
   announce(waits: (agentId: string) => boolean) {
     const steps = this.steps ?? [];
@@ -141,7 +200,7 @@ export class WaitingRound {
       i += d;
     if (i < 0) return undefined;
     if (i >= steps.length) {
-      const n = this.handled(waits);
+      const n = this.handled(waits) + this.dropped;
       this.steps = null;
       this.say(`Kierros käyty: ${n} hoidettu.`);
       return steps[0];
@@ -156,6 +215,9 @@ export function useWaitingRound(
   identity: string | undefined,
   openId: string | undefined,
   yours: readonly AgentNavModel[],
+  /** The host's confirmed listing of the person's conversations, or nothing
+   * while it is not known. */
+  agents?: readonly { agent_id: string; archive?: string }[],
 ) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new person begins without a round.
   const round = useMemo(() => new WaitingRound(), [identity]);
@@ -165,5 +227,8 @@ export function useWaitingRound(
   useEffect(() => {
     round.sync(yours);
   }, [round, yours]);
+  useEffect(() => {
+    if (agents) round.prune(agents);
+  }, [round, agents]);
   return round;
 }

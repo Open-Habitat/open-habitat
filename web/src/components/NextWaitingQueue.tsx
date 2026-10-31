@@ -1,3 +1,4 @@
+import { altKey } from "./altKey";
 import { Icon } from "./Icon";
 import type { BallKind } from "./Navigation";
 import "./NextWaitingRow.css";
@@ -68,12 +69,12 @@ export function NextWaitingQueue({
           data-testid="next-queue-prev"
           aria-keyshortcuts="Alt+ArrowUp"
           aria-label="Edellinen"
-          title="Edellinen (Alt+↑)"
+          title={`Edellinen (${altKey("↑")})`}
           disabled={pos === 0}
           onClick={onPrev}
         >
           <Icon name="up" width={14} height={14} />
-          <kbd>Alt+↑</kbd>
+          <kbd>{altKey("↑")}</kbd>
         </button>
         <ol>
           {steps.map((s, i) => (
@@ -130,10 +131,10 @@ export function NextWaitingQueue({
           data-testid="next-queue-next"
           data-last={last || undefined}
           aria-keyshortcuts="Alt+ArrowDown"
-          title={last ? "Takaisin lähtöön (Alt+↓)" : "Seuraava (Alt+↓)"}
+          title={`${last ? "Takaisin lähtöön" : "Seuraava"} (${altKey("↓")})`}
           onClick={onNext}
         >
-          {last ? "Lähtöön" : "Seuraava"} <kbd>Alt+↓</kbd>
+          {last ? "Lähtöön" : "Seuraava"} <kbd>{altKey("↓")}</kbd>
         </button>
         <button
           type="button"

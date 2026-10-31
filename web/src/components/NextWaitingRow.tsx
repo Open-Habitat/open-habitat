@@ -1,3 +1,4 @@
+import { altKey } from "./altKey";
 import type { AgentNavModel } from "./Navigation";
 import "./NextWaitingRow.css";
 
@@ -38,7 +39,7 @@ export function NextWaitingRow({
           className="ah-next-open"
           data-testid="next-open"
           aria-keyshortcuts="Alt+ArrowDown"
-          title="Käy läpi sinua odottavat (Alt+↓)"
+          title={`Käy läpi sinua odottavat (${altKey("↓")})`}
           onClick={onStart}
         >
           <span className="ah-next-label">Sillä aikaa</span>
@@ -48,7 +49,7 @@ export function NextWaitingRow({
             {waiting.map((a) => a.title).join(", ")}
           </span>
           <span className="ah-next-go">
-            Käy läpi <kbd>Alt+↓</kbd>
+            Käy läpi <kbd>{altKey("↓")}</kbd>
           </span>
         </button>
       ) : null}
