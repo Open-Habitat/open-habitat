@@ -83,21 +83,24 @@ async function servedIndexKey(): Promise<string> {
   return key;
 }
 
-let inFlight: Promise<void> | undefined;
+let inFlight: Promise<"current" | "newer" | undefined> | undefined;
 
-/** Compare the served bundle with this tab's; a failed read changes nothing. */
-export function checkBundle(): Promise<void> {
-  if (!ownKey) return Promise.resolve();
+/**
+ * Compare the served bundle with this tab's; a failed read changes nothing.
+ * Resolves to what this check found, or undefined when it could not read the
+ * served index, so a caller can tell a reachable newer release from an outage.
+ */
+export function checkBundle(): Promise<"current" | "newer" | undefined> {
+  if (!ownKey) return Promise.resolve(undefined);
   inFlight ??= servedIndexKey()
     .then((key) => {
       servedKey = key;
       bundleChecks.dispatchEvent(new Event("checked"));
-      publish({
-        status: key === ownKey ? "current" : "newer",
-        dismissed: key === dismissedKey,
-      });
+      const status = key === ownKey ? "current" : "newer";
+      publish({ status, dismissed: key === dismissedKey });
+      return status;
     })
-    .catch(() => {})
+    .catch(() => undefined)
     .finally(() => {
       inFlight = undefined;
     });

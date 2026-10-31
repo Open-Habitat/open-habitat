@@ -3,11 +3,12 @@ created: 2026-10-30
 updated: 2026-10-31
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: reconnect
 lane_seq: 2
 preparation: ready
+closed: 2026-10-31
 ---
 
 # After a version change Yhdistä does nothing; the banner should lead to reload
@@ -31,10 +32,10 @@ kerrallaan, virta herää koneen mukana), joka on pilot.16:ssa.
 
 ## Acceptance Criteria
 
-- [ ] Kun palvelimen versio on vaihtunut eikä vanha paketti voi yhdistää,
+- [x] Kun palvelimen versio on vaihtunut eikä vanha paketti voi yhdistää,
       banneri sanoo sen ja sen toiminto on *Lataa uudelleen* (luonnokset
       säilyvät), ei toimimaton *Yhdistä*.
-- [ ] Syy nimetty: miksi Yhdistä ei tee mitään (mikä pyyntö epäonnistuu
+- [x] Syy nimetty: miksi Yhdistä ei tee mitään (mikä pyyntö epäonnistuu
       versioiden välillä); selainspec versionvaihdosta kesken istunnon.
 
 ## Comments

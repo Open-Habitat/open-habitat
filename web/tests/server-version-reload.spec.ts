@@ -136,3 +136,83 @@ test("@version an open tab asks to reload after an upgrade, and the draft surviv
     0,
   );
 });
+
+test("@version a tab whose bundle cannot read the upgraded host offers reload, not reconnect", async ({
+  page,
+}) => {
+  await signIn(page);
+  const readsFinished = settingsReads(page);
+  await page
+    .getByRole("navigation")
+    .locator('a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]')
+    .click();
+  await page.getByTestId("conversation-start").click();
+  const editor = page.getByTestId("message-input");
+  await editor.fill("Luonnos versionvaihdon yli");
+  await page.evaluate(() =>
+    sessionStorage.setItem("oh:debug-reconnect", "true"),
+  );
+  const failures: unknown[] = [];
+  page.on("console", (message) => {
+    if (!message.text().startsWith("[reconnect] ")) return;
+    const entry = JSON.parse(message.text().slice("[reconnect] ".length));
+    if (entry.event === "snapshot-failed") failures.push(entry.outcome);
+  });
+
+  // pilot.15 → pilot.16: the new host's snapshot carried fields the old
+  // bundle's schema did not allow, so its every snapshot read, and with it
+  // every reconnect, failed validation. Only the document the new bundle
+  // loads can read the new contract; the fixture assets are one build, so
+  // the newer fields are added for the old document alone.
+  let oldDocument = false;
+  await page.route("**/api/v1/snapshot", async (route) => {
+    if (!oldDocument) return route.continue();
+    let response: Awaited<ReturnType<typeof route.fetch>>;
+    try {
+      response = await route.fetch();
+    } catch {
+      return route.abort(); // the gateway is between listeners
+    }
+    if (!response.ok()) return route.fulfill({ response });
+    await route.fulfill({
+      response,
+      json: { ...(await response.json()), newer_release_fact: true },
+    });
+  });
+  // A release restarts the daemon too, and the new one answers the old
+  // incarnation's cursor with 409 cursor_instance_mismatch. The fixture's
+  // own restart would also discard the unsent conversation, so the old
+  // document's stream gets that answer here instead.
+  await page.route("**/api/v1/events*", (route) =>
+    oldDocument
+      ? route.fulfill({
+          status: 409,
+          json: { error: "cursor_instance_mismatch" },
+        })
+      : route.continue(),
+  );
+  await readsFinished();
+  oldDocument = true;
+  await upgrade(page, 1);
+
+  // The journal re-reads on its recovery backoff until the new index is up.
+  const banner = page.getByTestId("connection-version-changed");
+  await expect(banner).toBeVisible({ timeout: 30_000 });
+  // The cause: the host answered, and the old bundle rejected its snapshot.
+  expect(failures).toContain("invalid");
+  // The retry that could only repeat the same rejected read is not offered.
+  await expect(page.getByTestId("connection-retry")).toHaveCount(0);
+  await expect(editor).toHaveValue("Luonnos versionvaihdon yli");
+
+  page.once("framenavigated", () => {
+    oldDocument = false;
+  });
+  await banner.getByTestId("connection-reload").click();
+  await expect(
+    page.locator("script[type=module][src*='?release=1']"),
+  ).toHaveCount(1);
+  await expect(page.getByTestId("message-input")).toHaveValue(
+    "Luonnos versionvaihdon yli",
+  );
+  await expect(page.locator(".ah-connection")).toHaveCount(0);
+});

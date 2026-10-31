@@ -156,6 +156,7 @@ export type ConnectionState =
   | "reconnecting"
   | "stale"
   | "resnapshot-required"
+  | "version-changed"
   | "authentication-required"
   | "daemon-unavailable"
   | "host-read-only";
@@ -166,6 +167,7 @@ export function ConnectionBanner({
   hostWriteState = "writable",
   problem,
   onRetry,
+  onReload,
 }: {
   state: ConnectionState;
   lastConfirmedAt?: string;
@@ -173,6 +175,8 @@ export function ConnectionBanner({
   hostWriteState?: "writable" | "read_only";
   problem?: ProblemView;
   onRetry?: () => void;
+  /** Loads the bundle the server serves now; "version-changed" offers it. */
+  onReload?: () => void;
 }) {
   // Snapshot write_state describes workspace mutations, not conversation control.
   // It is not a connectivity failure and does not need a page-wide warning.
@@ -207,6 +211,12 @@ export function ConnectionBanner({
       title: "Tiedot on tarkistettava uudelleen",
       detail:
         "Yhteys oli poikki liian pitkään, jotta päivityksiä voisi jatkaa suoraan.",
+      tone: "warning",
+    },
+    "version-changed": {
+      title: "Palvelin on päivitetty",
+      detail:
+        "Tämä välilehti käyttää vanhempaa versiota, joka ei saa yhteyttä uuteen. Lataa sivu uudelleen; luonnokset säilyvät.",
       tone: "warning",
     },
     "authentication-required": {
@@ -253,7 +263,17 @@ export function ConnectionBanner({
         </span>
       ) : null}
       <Problem problem={problem} />
-      {onRetry ? (
+      {visibleState === "version-changed" ? (
+        onReload ? (
+          <Button
+            data-testid="connection-reload"
+            label="Lataa uudelleen"
+            variant="secondary"
+            size="row"
+            onPress={onReload}
+          />
+        ) : null
+      ) : onRetry ? (
         <Button
           data-testid="connection-retry"
           label={

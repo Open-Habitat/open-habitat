@@ -43,7 +43,7 @@ import {
   useExperimentalFeature,
 } from "./accountPreferences";
 import { BrowserConversation } from "./BrowserConversation";
-import { watchBundle } from "./bundleRelease";
+import { checkBundle, reloadForNewBundle, watchBundle } from "./bundleRelease";
 import { CloneJobs } from "./cloneJobs";
 import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
@@ -563,6 +563,10 @@ export function App() {
     [],
   );
   const [journalOffline, setJournalOffline] = useState(false);
+  // The server now serves another bundle and this tab's reads fail: the old
+  // bundle validates against its own contract, so a newer host's snapshot
+  // can be one it rejects, and retrying repeats the same rejection.
+  const [versionChanged, setVersionChanged] = useState(false);
   const [journalConnection, setJournalConnection] = useState<{
     state: "connecting" | "online" | "failed";
     reason?: string;
@@ -733,6 +737,14 @@ export function App() {
           status: failure?.status,
           live,
         });
+        // Every failed read asks whether a release replaced this bundle. Only
+        // a successful index read answers "newer": an unreachable server
+        // keeps the ordinary retry, since reloading would lose the page.
+        // A later read superseding this one does not void the answer.
+        void checkBundle().then((status) => {
+          if (generation === identityGeneration.current)
+            setVersionChanged(status === "newer");
+        });
         if (live) {
           // The open event stream proves the host reachable and keeps the
           // conversation current, so one failed read is not a lost
@@ -892,6 +904,7 @@ export function App() {
         }
         identityMismatches.current = 0;
         quietRetry.current.failures = 0;
+        setVersionChanged(false);
         setPiCheckFailed(false);
         dispatch(authenticated(next));
         mutationsRef.current?.reconcile(receiptMark, (entry) => {
@@ -2972,18 +2985,23 @@ export function App() {
                         ? manualRefresh
                         : undefined
                     }
-                    connectionDetail={journalConnection.reason}
+                    onReload={reloadForNewBundle}
+                    connectionDetail={
+                      versionChanged ? undefined : journalConnection.reason
+                    }
                     state={
-                      (phase === "stale" || journalOffline) &&
-                      journalConnection.state === "connecting"
-                        ? "connecting"
-                        : phase === "stale"
-                          ? "stale"
-                          : phase === "authenticated"
-                            ? journalOffline
-                              ? "reconnecting"
-                              : "online"
-                            : "loading"
+                      (phase === "stale" || journalOffline) && versionChanged
+                        ? "version-changed"
+                        : (phase === "stale" || journalOffline) &&
+                            journalConnection.state === "connecting"
+                          ? "connecting"
+                          : phase === "stale"
+                            ? "stale"
+                            : phase === "authenticated"
+                              ? journalOffline
+                                ? "reconnecting"
+                                : "online"
+                              : "loading"
                     }
                     hostWriteState={
                       snapshot?.write_state === "read_only"

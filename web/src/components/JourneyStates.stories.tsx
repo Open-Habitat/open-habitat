@@ -49,6 +49,7 @@ function Journey({
             state={connection}
             lastConfirmedAt="10.42"
             onRetry={noop}
+            onReload={noop}
           />
         }
         rail={
@@ -165,6 +166,9 @@ export const StaleOutageWithVerifiedContent: Story = {
 export const StaleOutageNarrow: Story = {
   render: () => <Journey narrow listState="stale" connection="stale" />,
   parameters: { viewport: { defaultViewport: "mobile1" } },
+};
+export const ServerUpgradedUnderOldTab: Story = {
+  render: () => <Journey listState="stale" connection="version-changed" />,
 };
 export const SessionExpiredNoOldContent: Story = {
   render: () => (

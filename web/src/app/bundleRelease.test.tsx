@@ -64,8 +64,11 @@ it("keeps the last answer when a check fails, redirects or is not an index", asy
     page("<title>login</title>"),
     "x".repeat(300 * 1024),
   );
-  await m.checkBundle();
-  for (let i = 0; i < 4; i++) await m.checkBundle();
+  expect(await m.checkBundle()).toBe("newer");
+  // The state keeps "newer", but each failed check answers that it could not
+  // tell: the connection banner offers a reload only on a server that served
+  // its index just now, never because an outage left an older answer behind.
+  for (let i = 0; i < 4; i++) expect(await m.checkBundle()).toBeUndefined();
   expect((await stateOf(m)).status).toBe("newer");
 });
 
