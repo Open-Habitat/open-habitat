@@ -52,6 +52,9 @@ type ConversationController struct {
 	// github follows the person's GitHub connection after a failed agent
 	// command (github_restrictions_linux.go); nil in fixtures without one.
 	github *githubWatch
+	// push sends the person's phone notifications (push_turn_linux.go); nil
+	// where the daemon wires none.
+	push *PushNotifier
 	// A short-lived per-daemon gate prevents continuation probes from presenting
 	// each other's temporary flock as an external writer. Never hold mu across I/O.
 	proofGate      chan struct{}
@@ -196,6 +199,7 @@ func (c *ConversationController) showQuestion(s *conversation, q pendingQuestion
 	if c.journal != nil {
 		c.journal.appendEvent("question.requested", "pi:"+s.id, q.view)
 	}
+	c.pushTurn(s, "question", q.id)
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {

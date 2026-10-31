@@ -170,6 +170,10 @@ The packages divide the work as follows.
   like `egress/`, not a provider abstraction: file formats, path rules,
   account models and API reads stay in each adapter, where the providers
   differ.
+- `webpush/` encrypts and signs one Web Push message (RFC 8291/8292) on the
+  standard library. It holds no keys or subscriptions: the person's daemon
+  (`daemon/push_linux.go`) keeps both in the person's own
+  `~/.config/open-habitat/push.json` and is the only sender.
 - `egress/` is the dial-time destination rule shared by the daemon's
   credential-bearing requests (the Gitea and GitLab clients, DAV discovery). It holds no
   authority and is not same-UID egress isolation.
@@ -495,6 +499,14 @@ Native truth:
   (`max_session_duration_seconds` 600) and usable only for
   `transcribe_websocket`. It is returned only to the session that asked,
   never logged or stored, and the long-lived key never leaves the home.
+- Phone notifications (Web Push) are the person's own: the daemon makes
+  their VAPID key pair, keeps it and their devices only in their home, and
+  sends; the gateway serves the service worker and relays the routes but
+  never holds a key or a subscription, and there is no installation-wide
+  push key or third-party notification service of ours. The daemon posts
+  only to the browser vendors' push services, and a notification carries
+  the workspace and conversation names and the kind of turn, never message
+  text. Turning the feature off removes the key and every device.
 - Service diagnostics (JSONL on stderr, one journal per service) carry the
   component, event, outcome and a fixed reason, never raw errors,
   credentials, user content or command output. They are operational

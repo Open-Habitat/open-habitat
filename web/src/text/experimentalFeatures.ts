@@ -35,6 +35,17 @@ const fi = {
         "Valinta kirjoitetaan repon juuren .open-habitat.yaml-tiedostoon ja commitoidaan saman tien, vain se tiedosto eikä pushia. Commit tarvitsee Git-identiteetin. Ehdotukset tekee oma mallisi (API-avain tai tilaus, myös pelkkä Claude-tilaus), ja se näkee vain nimen, README:n alun, aloitussivun, kielet ja logon polun; icon: auto lopettaa ehdotukset.",
       caption: "Sivupalkki",
     },
+    "push-when-your-turn": {
+      name: "Ilmoitus puhelimeen, kun on vuorosi",
+      desc: "Kun keskustelu siirtyy Sinun vuorosi -kohtaan (uusi vastaus tai kysymys) eikä Open Habitat ole edessäsi, puhelimesi tai tietokoneesi näyttää ilmoituksen. Napautus avaa keskustelun.",
+      where:
+        "Laitteen ilmoituksissa, myös lukitusnäytöllä. Yksi ilmoitus keskustelua kohden, kunnes palaat; kun Open Habitat on auki edessäsi, ilmoitusta ei tule.",
+      shows:
+        "Työtilan ja keskustelun nimen sekä sen, odottaako agentti sinua vai kysyykö se jotain. Viestin tekstiä ei lähetetä.",
+      needs:
+        "Luvan ilmoituksiin jokaisella laitteella erikseen. iPhonessa ja iPadissa sivu on ensin lisättävä Koti-valikkoon (Jaa › Lisää Koti-valikkoon) ja avattava sieltä. Palvelimelta tarvitaan yhteys selainvalmistajan push-palveluun (Apple, Google, Mozilla), joka näkee ilmoituksen ajankohdan ja koon mutta ei sisältöä.",
+      caption: "Puhelimen lukitusnäyttö",
+    },
   },
   picture: {
     waiting: "3 odottaa sinua",
@@ -52,6 +63,10 @@ const fi = {
     oldApi: "Vanhan rajapinnan poisto",
     agentNotWaiting: "agentti ei odota",
     noChanges: "ei vielä muutoksia",
+    lockTime: "9.41",
+    lockWorkspace: "Sääasema",
+    lockBody: "CSV-vienti odottaa sinua",
+    lockAge: "nyt",
   },
   reload: "Lue tallennettu valinta",
   intro:
@@ -100,6 +115,17 @@ export const experimentalFeaturesText = catalog(fi, {
         "The choice is written to .open-habitat.yaml at the repository's root and committed at once, only that file and no push. The commit needs a Git identity. Suggestions come from your own model (an API key or a subscription, a Claude subscription alone too), and it sees only the name, the beginning of the README, the start page, the languages and the logo's path; icon: auto stops the suggestions.",
       caption: "Sidebar",
     },
+    "push-when-your-turn": {
+      name: "Phone notification when it is your turn",
+      desc: "When a conversation moves to Your turn (a new reply or a question) and Open Habitat is not in front of you, your phone or computer shows a notification. A tap opens the conversation.",
+      where:
+        "In the device's notifications, also on the lock screen. One notification per conversation until you come back; while Open Habitat is open in front of you, none arrives.",
+      shows:
+        "The workspace's and the conversation's names and whether the agent is waiting for you or asking something. The message text is not sent.",
+      needs:
+        "Permission for notifications on each device separately. On an iPhone or iPad, first add the page to the home screen (Share › Add to Home Screen) and open it from there. The server needs to reach the browser maker's push service (Apple, Google, Mozilla), which sees when a notification is sent and its size but not its content.",
+      caption: "Phone lock screen",
+    },
   },
   picture: {
     waiting: "3 waiting for you",
@@ -117,6 +143,10 @@ export const experimentalFeaturesText = catalog(fi, {
     oldApi: "Removing the old interface",
     agentNotWaiting: "agent not waiting",
     noChanges: "no changes yet",
+    lockTime: "9:41",
+    lockWorkspace: "Weather station",
+    lockBody: "CSV export is waiting for you",
+    lockAge: "now",
   },
   reload: "Read the saved choice",
   intro:

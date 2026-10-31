@@ -100,6 +100,9 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	adapter.OnChange(func() { journal.appendInvalidation("") })
 	githubOrgs.changed = journal.appendSnapshotRaceInvalidation
 	controller.github = &githubWatch{recheck: adapter.Recheck, orgs: githubOrgs}
+	push := NewPushNotifier(cfg)
+	push.Mount(mux, cfg, server.TrustedPeer)
+	controller.push = push
 	go controller.recapRestingConversations(ctx)
 	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi, controller.ClearPiAuthFailures))
 	mux.Handle(WorkspaceGitPath, WorkspaceGitHandler(cfg, server.TrustedPeer))

@@ -472,6 +472,11 @@ func (c *ConversationController) drain(s *conversation) {
 				if c.journal != nil {
 					c.journal.appendEvent("turn.settled", "pi:"+s.id, s.settlement)
 				}
+				// Keyed by the native entry, not the per-handle turn counter,
+				// which starts again when the conversation is resumed.
+				if key != "" {
+					c.pushTurn(s, "turn", key)
+				}
 			}
 			if c.sessions[s.id] == s && !c.closed && s.turnGeneration == turn {
 				if c.journal != nil {

@@ -581,6 +581,22 @@ export const settingsSections = [
         ],
         desc: "Sivupalkin keskustelujen edessä on työtilan kuvake repon asetuksesta, logosta tai nimestä; työtilan sivun otsikosta sen voi vaihtaa.",
       },
+      {
+        id: "push-when-your-turn",
+        label: "Ilmoitus puhelimeen, kun on vuorosi",
+        kw: [
+          "ilmoitus",
+          "notification",
+          "push",
+          "puhelin",
+          "phone",
+          "iphone",
+          "vuoro",
+          "turn",
+          "lukitusnäyttö",
+        ],
+        desc: "Puhelin tai tietokone ilmoittaa, kun keskustelu odottaa sinua eikä Open Habitat ole edessäsi.",
+      },
     ],
   },
   {

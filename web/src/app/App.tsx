@@ -44,6 +44,7 @@ import { signInText } from "../text/signIn";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import {
   AccountPreferencesProvider,
+  useConfirmedPreferences,
   useExperimentalFeature,
 } from "./accountPreferences";
 import { agentTitle } from "./agentTitle";
@@ -114,6 +115,7 @@ import {
   piStatus,
   sessionCSRF,
 } from "./pi";
+import { usePushNotifications } from "./push";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import { SingleWorkspaceBarView } from "./SingleWorkspaceBarView";
 import {
@@ -1256,6 +1258,23 @@ export function App() {
   const workspaceIconsOn = useExperimentalFeature("workspace-icons", {
     identity,
     csrf,
+  });
+  const pushOn = useExperimentalFeature("push-when-your-turn", {
+    identity,
+    csrf,
+  });
+  const confirmedPreferences = useConfirmedPreferences(identity, csrf);
+  usePushNotifications({
+    on: pushOn,
+    // Any error leaves the switch unconfirmed: a failed write after a
+    // failed read would otherwise read as off and drop this device.
+    known:
+      confirmedPreferences.loaded &&
+      !confirmedPreferences.error &&
+      !confirmedPreferences.busy,
+    csrf,
+    viewing: activeId.current,
+    open: navigate,
   });
   const icons = useMemo(
     () =>

@@ -1,0 +1,9 @@
+{
+  "v": 1,
+  "kind": "question",
+  "lang": "fi",
+  "workspace": "Sääasema",
+  "title": "CSV-vienti",
+  "url": "/workspaces/ws_example?conversation=pi:00000000-0000-4000-8000-000000000001",
+  "tag": "pi:00000000-0000-4000-8000-000000000001"
+}

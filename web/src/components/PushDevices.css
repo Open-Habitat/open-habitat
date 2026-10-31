@@ -1,0 +1,70 @@
+/* Phone notifications' device panel, inside the feature's card. */
+.pd {
+  display: grid;
+  gap: var(--ah-s3);
+  padding: 0 var(--ah-s5) var(--ah-s5);
+  font-size: var(--ah-size-meta);
+}
+.pd p {
+  margin: 0;
+  line-height: 1.45;
+}
+.pd-hint {
+  padding: var(--ah-s3) var(--ah-s4);
+  border: 1px solid var(--ah-accent-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-accent-soft);
+}
+.pd-heading {
+  margin: var(--ah-s2) 0 0;
+  font: 600 11px var(--ah-font);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ah-muted);
+}
+.pd-none,
+.pd-meta {
+  color: var(--ah-muted);
+}
+.pd-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-md);
+}
+.pd-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+  padding: var(--ah-s2) var(--ah-s3);
+}
+.pd-list .pd-row + .pd-row {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.pd-name {
+  flex: 1;
+  min-width: 0;
+}
+.pd-name strong {
+  font-weight: 500;
+}
+.pd-this {
+  color: var(--ah-accent-ink);
+}
+.pd-meta {
+  display: block;
+}
+.pd-failed {
+  color: var(--ah-err-ink);
+}
+.pd-actions {
+  display: flex;
+  gap: var(--ah-s2);
+  flex: none;
+}
+@media (max-width: 520px) {
+  .pd-row {
+    flex-wrap: wrap;
+  }
+}

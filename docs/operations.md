@@ -697,6 +697,30 @@ written. A self-hosted GitLab whose `external_url` names another address than
 the one people connect to has its projects left out of the list (the token is
 never sent elsewhere); fix `external_url` on the GitLab server.
 
+### Phone notifications (experimental)
+
+Settings › Kokeelliset ominaisuudet › *Ilmoitus puhelimeen, kun on vuorosi*
+sends a Web Push notification when a conversation becomes the person's turn
+and no Habitat tab of theirs is in front of them. There is nothing to
+configure: each person's daemon makes their own VAPID key pair and keeps it,
+with their devices, in `~/.config/open-habitat/push.json` (0600); the gateway
+holds no key and serves only the service worker (`/push-sw.js`) and the web
+app manifest from the site origin.
+
+What the operator provides is the route. Each person's daemon posts the
+encrypted message over HTTPS (port 443) to the browser vendor's push service,
+and only to these: `fcm.googleapis.com` (Chrome, Edge, Android),
+`*.push.services.mozilla.com` (Firefox), `*.push.apple.com` (Safari, iPhone
+and iPad) and `*.notify.windows.com`. The shipped daemon unit restricts no
+outbound traffic; where a firewall or proxy does, allow these hosts, or the
+card's *Lähetä testi* answers that the server cannot reach the push service.
+The push service sees when a message is sent and its size, never its
+content, which names only the workspace and the conversation.
+
+An iPhone or iPad receives Web Push only for a site added to the home screen
+(iOS 16.4 or later): in Safari, Share › Add to Home Screen, open Open Habitat
+from that icon, and turn notifications on for that device in the card.
+
 ### Dropbox app registration
 
 Create a **Scoped access → Full Dropbox** application in the Dropbox App

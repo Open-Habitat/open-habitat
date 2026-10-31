@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: push-when-your-turn
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Phone notification when an agent waits for you (Web Push, experimental)
@@ -55,15 +56,15 @@ the gateway only serves.
 
 ## Acceptance Criteria
 
-- [ ] Experimental card: turn on → permission asked → this device
+- [x] Experimental card: turn on → permission asked → this device
       subscribed; per-device list with remove; a *Lähetä testi* button.
-- [ ] A conversation entering Sinun vuorosi while no tab is visible sends
+- [x] A conversation entering Sinun vuorosi while no tab is visible sends
       one notification per turn (not per event), with the minimal content;
       tapping opens that conversation.
-- [ ] Keys and subscriptions only in the person's own files; removing the
+- [x] Keys and subscriptions only in the person's own files; removing the
       device or turning the feature off unsubscribes.
-- [ ] Contract, daemon tests (sending, de-duplication, presence), browser
+- [x] Contract, daemon tests (sending, de-duplication, presence), browser
       spec with a fake push endpoint; English and Finnish texts.
-- [ ] Notes for operators: egress needs; iPhone home-screen requirement.
+- [x] Notes for operators: egress needs; iPhone home-screen requirement.
 
 ## Comments

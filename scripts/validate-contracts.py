@@ -44,6 +44,10 @@ for path in SCHEMA_FILES:
 
 checks = {
     "account-preferences.json": "account-preferences.schema.json",
+    "push-notifications.json": "push-notifications.schema.json",
+    "push-notifications-device.json": "push-notifications.schema.json",
+    "push-notifications-test.json": "push-notifications.schema.json",
+    "push-notifications-payload.json": "push-notifications.schema.json",
     "site-language.json": "site-language.schema.json",
     "account-keys.json": "account-keys.schema.json",
     "account-keys-none.json": "account-keys.schema.json",
@@ -239,6 +243,18 @@ def must_reject(schema: str, instance: object) -> None:
     except ValidationError:
         return
     raise AssertionError(f"{schema} unexpectedly accepted negative fixture: {instance!r}")
+
+# Phone notifications: no reply or payload carries an endpoint, a secret or
+# message text, and a device write names only the browser's own subscription.
+push_state = json.loads((BASE / "examples" / "push-notifications.json").read_text())
+must_reject("push-notifications.schema.json", {**push_state, "devices": [{**push_state["devices"][0], "endpoint": "https://web.push.apple.com/x"}]})
+must_reject("push-notifications.schema.json", {**push_state, "private_key": "x"})
+push_payload = json.loads((BASE / "examples" / "push-notifications-payload.json").read_text())
+must_reject("push-notifications.schema.json", {**push_payload, "text": "the reply"})
+must_reject("push-notifications.schema.json", {**push_payload, "kind": "message"})
+push_write = json.loads((BASE / "examples" / "push-notifications-device.json").read_text())
+must_reject("push-notifications.schema.json", {**push_write, "endpoint": "http://web.push.apple.com/x"})
+must_reject("push-notifications.schema.json", {**push_write, "uid": 1000})
 
 # Account preferences carry only a supported engine and language, enabled
 # feature ids and the mapped web identity; a write names exactly one change.

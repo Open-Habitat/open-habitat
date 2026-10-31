@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/push-notifications.schema.json",
+  "title": "Phone notifications (experimental push-when-your-turn)",
+  "$comment": "The person's daemon keeps the VAPID key pair and the device subscriptions in their own home and sends the notifications. Routes: GET /api/v1/notifications/push (state), POST .../push/key (state, making the key pair), POST .../push/devices (device_write -> state with device_id), POST .../push/remove and .../push/test (device_ref -> state, test_result), POST /api/v1/notifications/presence (no body -> noted). No reply carries an endpoint, a subscription secret or the private key.",
+  "$defs": {
+    "device_id": {
+      "description": "pd_ and the base64url of the first 16 bytes of the endpoint's SHA-256, so a browser can find its own device.",
+      "type": "string",
+      "pattern": "^pd_[A-Za-z0-9_-]{22}$"
+    },
+    "language": {"enum": ["fi", "en"]},
+    "outcome": {
+      "description": "How the push service took the last message: delivered (accepted), gone (it forgot the subscription; the device is removed), rejected (another refusal), unreachable (no answer, typically restricted outbound HTTPS).",
+      "enum": ["delivered", "gone", "rejected", "unreachable"]
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device_id", "label", "language", "created_at", "last_delivery"],
+      "properties": {
+        "device_id": {"$ref": "#/$defs/device_id"},
+        "label": {"type": "string", "minLength": 1, "maxLength": 64},
+        "language": {"$ref": "#/$defs/language"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "last_delivery": {
+          "description": "The last send to this device in this daemon's lifetime, or null.",
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["outcome", "at"],
+              "properties": {"outcome": {"$ref": "#/$defs/outcome"}, "at": {"type": "string", "format": "date-time"}}
+            }
+          ]
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "public_key", "devices"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "public_key": {
+          "description": "The person's VAPID public key (uncompressed P-256, base64url), or null before the first subscription.",
+          "oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[A-Za-z0-9_-]{87}$"}]
+        },
+        "devices": {"type": "array", "maxItems": 10, "items": {"$ref": "#/$defs/device"}},
+        "device_id": {"$ref": "#/$defs/device_id", "description": "Only in the reply to a device write: the device it recorded."}
+      }
+    },
+    "device_write": {
+      "description": "This browser's PushSubscription, made with public_key. refresh only updates a device already recorded (a page load), so a device removed elsewhere does not come back.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["endpoint", "keys", "public_key", "label", "language", "refresh"],
+      "properties": {
+        "endpoint": {"type": "string", "format": "uri", "pattern": "^https://", "maxLength": 1024},
+        "keys": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["p256dh", "auth"],
+          "properties": {
+            "p256dh": {"type": "string", "pattern": "^[A-Za-z0-9_-]{87}$"},
+            "auth": {"type": "string", "pattern": "^[A-Za-z0-9_-]{22}$"}
+          }
+        },
+        "public_key": {"type": "string", "pattern": "^[A-Za-z0-9_-]{87}$"},
+        "label": {"type": "string", "minLength": 1, "maxLength": 64},
+        "language": {"$ref": "#/$defs/language"},
+        "refresh": {"type": "boolean"}
+      }
+    },
+    "device_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device_id"],
+      "properties": {"device_id": {"$ref": "#/$defs/device_id"}}
+    },
+    "test_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "device_id", "outcome"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "device_id": {"$ref": "#/$defs/device_id"},
+        "outcome": {"$ref": "#/$defs/outcome"}
+      }
+    },
+    "payload": {
+      "description": "What the service worker decrypts on the device. No message text: the kind, which the worker words in the device's language, the names, and where a tap leads.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v", "kind", "lang", "url", "tag"],
+      "properties": {
+        "v": {"const": 1},
+        "kind": {"enum": ["turn", "question", "test"]},
+        "lang": {"$ref": "#/$defs/language"},
+        "workspace": {"type": "string", "maxLength": 255},
+        "title": {"type": "string", "maxLength": 160},
+        "url": {"type": "string", "pattern": "^/", "maxLength": 512},
+        "tag": {"type": "string", "maxLength": 64}
+      }
+    }
+  },
+  "oneOf": [
+    {"$ref": "#/$defs/state"},
+    {"$ref": "#/$defs/device_write"},
+    {"$ref": "#/$defs/device_ref"},
+    {"$ref": "#/$defs/test_result"},
+    {"$ref": "#/$defs/payload"}
+  ]
+}

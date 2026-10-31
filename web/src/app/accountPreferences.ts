@@ -21,6 +21,7 @@ export const experimentalFeatureIds = [
   "next-waiting-row",
   "worker-row-sentence",
   "workspace-icons",
+  "push-when-your-turn",
 ] as const;
 export type ExperimentalFeatureId = (typeof experimentalFeatureIds)[number];
 

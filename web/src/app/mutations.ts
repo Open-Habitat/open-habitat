@@ -76,6 +76,8 @@ export const mutationClasses = {
   "account.first_route": "confirmed",
   "account.keys": "confirmed",
   "account.own_machines": "confirmed",
+  "account.push": "confirmed",
+  "account.push_presence": "confirmed",
   "editor.stop": "confirmed",
   "view.handoff": "confirmed",
   "view.link": "confirmed",
