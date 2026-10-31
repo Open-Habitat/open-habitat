@@ -207,12 +207,7 @@ export const ExpiredToken: Story = {
   ),
 };
 export const EmptyProject: Story = {
-  render: () => (
-    <Details
-      pick={catalog[5]}
-      cloneReason="Repo on tyhjä, joten sitä ei voi vielä kloonata työtilaksi."
-    />
-  ),
+  render: () => <Details pick={catalog[5]} />,
 };
 
 const source = {

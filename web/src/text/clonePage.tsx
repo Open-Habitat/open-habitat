@@ -115,8 +115,6 @@ const fi = {
   bigTitle: "Suuri repo.",
   big: (size: string, percent?: number) =>
     ` Täysi klooni vie noin ${size}${percent === undefined ? "" : `, ${percent} % vapaasta tilasta`}, ja haku kestää yhteydestä riippuen kymmeniä minuutteja.`,
-  emptyProject:
-    "Projektissa ei ole vielä yhtään committia, joten sitä ei voi vielä kloonata työtilaksi.",
   clone: "Kloonaa työtilaksi",
   viaGitLab:
     "Kloonataan tämän GitLab-yhteyden tunnuksella. Kloonaus jatkuu palvelimella, vaikka poistut sivulta.",
@@ -305,8 +303,6 @@ export const clonePageText = catalog(fi, {
   bigTitle: "Large repository.",
   big: (size, percent) =>
     ` A full clone takes about ${size}${percent === undefined ? "" : `, ${percent}% of the free space`}, and the fetch can take tens of minutes depending on the connection.`,
-  emptyProject:
-    "The project has no commits yet, so it cannot be cloned as a workspace yet.",
   clone: "Clone as workspace",
   viaGitLab:
     "Cloned with this GitLab connection's token. The clone continues on the server even if you leave the page.",

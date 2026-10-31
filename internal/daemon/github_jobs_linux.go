@@ -547,8 +547,8 @@ func (c *CloneJobs) clone(ctx context.Context, job *cloneJob, src, child int, sr
 	if err == nil {
 		job.stage("verifying")
 		// Git finished; what it wrote may be a whole repository that only
-		// fails the checks (an empty repository, a dirty checkout after
-		// line-ending conversion). It is kept for the person to inspect.
+		// fails the checks (a dirty checkout after line-ending conversion).
+		// It is kept for the person to inspect.
 		if (!c.verify(ctx, t.git, src, child, srcInitial, name, t.cloneURL) || t.source != nil && clonedRewritten(ctx, c.run, t.git, c.home, child, t.cloneURL)) && ctx.Err() == nil {
 			return "failed", "verification_failed", "kept"
 		}
@@ -582,7 +582,9 @@ func (c *CloneJobs) finish(job *cloneJob, state, reason, leftover string) {
 }
 
 // verify establishes the checkout natively: the expected repository and
-// origin, a clean work tree and a HEAD commit, still at the reserved name.
+// origin and a clean work tree, still at the reserved name. A successful
+// empty clone gets a native empty index so discovery can distinguish it from
+// an interrupted transfer, without a Habitat completion record.
 func (c *CloneJobs) verify(ctx context.Context, git string, src, child int, srcInitial unix.Stat_t, name, cloneURL string) bool {
 	initial, e := stat(child)
 	if e != nil {
@@ -598,13 +600,18 @@ func (c *CloneJobs) verify(ctx context.Context, git string, src, child int, srcI
 	remote, e2 := c.run(ctx, git, c.home, fd, "remote", "get-url", "origin")
 	status, e3 := c.run(ctx, git, c.home, fd, "status", "--porcelain")
 	head, e5 := c.run(ctx, git, c.home, fd, "rev-parse", "--verify", "HEAD^{commit}")
+	validHead := e5 == nil && validCloneCommit(head)
+	if !validHead && e3 == nil && len(status) == 0 && cloneUnborn(ctx, c.run, git, c.home, fd) {
+		_, err := c.run(ctx, git, c.home, fd, "read-tree", "--empty")
+		validHead = err == nil
+	}
 	named, e4 := dir(unix.Openat2, src, name, true)
 	var now unix.Stat_t
 	if e4 == nil {
 		now, e4 = stat(named)
 		unix.Close(named)
 	}
-	return e1 == nil && e2 == nil && e3 == nil && e4 == nil && e5 == nil && validCloneCommit(head) && cloneSourceStillNamed(c.home, srcInitial) && same(initial, now) && string(top) == "true\n" && string(remote) == cloneURL+"\n" && len(status) == 0 && ctx.Err() == nil
+	return e1 == nil && e2 == nil && e3 == nil && e4 == nil && validHead && cloneSourceStillNamed(c.home, srcInitial) && same(initial, now) && string(top) == "true\n" && string(remote) == cloneURL+"\n" && len(status) == 0 && ctx.Err() == nil
 }
 
 // cancelJob stops a running job and waits briefly for it to settle, so the

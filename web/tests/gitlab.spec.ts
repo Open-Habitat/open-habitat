@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { snapshot } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
@@ -145,6 +146,32 @@ test("@lab a GitLab connection is made from Koodipalvelut, its nested projects a
     "Push toimii",
   );
 
+  // An empty project is selectable and cloneable too, not a disabled action.
+  await page.goto("/workspaces/new");
+  await page
+    .getByTestId("repository-option-konepaja/sisainen/uusi-palvelu")
+    .first()
+    .click();
+  await expect(page.getByTestId("repository-clone")).toBeEnabled();
+  if (process.env.OH_VISUAL_CAPTURE === "1") {
+    await snapshot(page, "../issues/clone-empty-repo/empty-project", {
+      labOrigin,
+    });
+  }
+  await page.getByTestId("repository-clone").click();
+  await expect(
+    page
+      .getByTestId("clone-job")
+      .and(page.locator('[data-repository="konepaja/sisainen/uusi-palvelu"]')),
+  ).toHaveAttribute("data-state", "confirmed", { timeout: 20000 });
+  await page.reload();
+  const afterEmpty = await (await page.request.get("/api/v1/snapshot")).json();
+  expect(
+    afterEmpty.workspaces.some(
+      (workspace: { name: string }) => workspace.name === "uusi-palvelu",
+    ),
+  ).toBe(true);
+
   // Uusi työtila: each namespace is its own section, the row names the
   // project, and the details show the whole group path.
   await page.goto("/workspaces/new");
@@ -207,7 +234,8 @@ test("@lab a GitLab connection is made from Koodipalvelut, its nested projects a
   await page.goto("/settings/code-hosts");
   const imported = page
     .getByTestId("code-host-workspace")
-    .and(page.locator('[data-host="gitlab"]'));
+    .and(page.locator('[data-host="gitlab"]'))
+    .filter({ hasText: "konepaja/verkkokauppa/infra/terraform" });
   await expect(imported).toContainText(
     "konepaja/verkkokauppa/infra/terraform",
     { timeout: 15000 },

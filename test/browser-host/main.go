@@ -335,6 +335,8 @@ if [ "$1" = clone ]; then
     printf 'Receiving objects: 14%% (1/4), 120.00 MiB\r' >&2
     while [ -e "__CTL__/clone-hold" ]; do sleep 1; done
   fi
+  # A successful empty repository has neither refs nor an index.
+  case "$url" in */last.git) exit 0 ;; esac
   sleep 0.2
   printf 'Updating files: 100%% (4/4)\n' >&2
   printf '%s\n' "$url" > .git/origin
@@ -342,6 +344,7 @@ if [ "$1" = clone ]; then
   : > .git/synthetic-head
   exit 0
 fi
+if [ ! -e .git/synthetic-head ]; then exec /usr/bin/git "$@"; fi
 if [ "$1" = -c ]; then shift 2; fi
 case "$1" in
  rev-parse) test -d .git || exit 1; if [ "$2" = --verify ]; then test -e .git/synthetic-head || exit 1; printf '0123456789abcdef0123456789abcdef01234567\n'; else printf 'true\n'; fi ;;
@@ -431,7 +434,7 @@ esac
 			case "partial":
 				return daemon.Discovery{State: "partial", Entries: []daemon.Workspace{{Name: "git-project", Kind: "git_main_worktree", Metadata: "error"}, {Name: "uncertain", Kind: "unknown", Metadata: "error"}}}
 			}
-			if lab {
+			if lab || scenario.Load() == "pi-onboarding" {
 				return daemon.DiscoverFixtureRoot(home, uid)
 			}
 			names := []string{"git-project", "ordinary-dir", "without-metadata"}

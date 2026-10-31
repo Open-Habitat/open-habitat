@@ -505,12 +505,10 @@ export function NewWorkspacePage({
       ? txt.cannotStart
       : running
         ? txt.oneAtATime(running.full_name)
-        : selected?.empty
-          ? txt.emptyRepo
-          : selected?.gitea?.provider === "gitlab" &&
-              pushOf(gitlabPush[selected.gitea.connection_id]) === "expired"
-            ? txt.gitlabExpired
-            : undefined);
+        : selected?.gitea?.provider === "gitlab" &&
+            pushOf(gitlabPush[selected.gitea.connection_id]) === "expired"
+          ? txt.gitlabExpired
+          : undefined);
   const problemKey = (r?: ListedRepo) =>
     r?.gitea ? `gitea:${giteaKey(r.gitea)}` : r?.full_name;
   const giteaFix = {

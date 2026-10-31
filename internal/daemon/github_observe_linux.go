@@ -152,7 +152,7 @@ func observeCheckout(parent context.Context, cfg transport.Config, home, git str
 		}
 		return "conflict", 0
 	}
-	unix.Close(gd)
+	defer unix.Close(gd)
 	ctx, cancel := context.WithTimeout(parent, 8*time.Second)
 	defer cancel()
 	// Git read commands do not acquire optional locks or write index metadata.
@@ -170,7 +170,14 @@ func observeCheckout(parent context.Context, cfg transport.Config, home, git str
 	if ctx.Err() != nil || !cloneSourceStillNamed(home, ss) || e3 != nil || !same(cs, now) {
 		return unavailable, 0
 	}
-	if e1 != nil || e2 != nil || e4 != nil || e5 != nil || !validCloneCommit(head) || len(clean) != 0 || string(top) != "true\n" || string(remote) != "https://github.com/"+name+".git\n" {
+	validHead := e5 == nil && validCloneCommit(head)
+	if !validHead {
+		// A process can make interruptedClone decline an unfinished transfer.
+		// Require the native index written after successful empty clones too.
+		var index unix.Stat_t
+		validHead = unix.Fstatat(gd, "index", &index, unix.AT_SYMLINK_NOFOLLOW) == nil && index.Mode&unix.S_IFMT == unix.S_IFREG && cloneUnborn(ctx, run, git, home, strconv.Itoa(child))
+	}
+	if e1 != nil || e2 != nil || e4 != nil || !validHead || len(clean) != 0 || string(top) != "true\n" || string(remote) != "https://github.com/"+name+".git\n" {
 		return "conflict", 0
 	}
 	return "confirmed", 0

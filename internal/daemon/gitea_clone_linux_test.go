@@ -296,13 +296,16 @@ func TestGiteaConnectListCloneFetch(t *testing.T) {
 		t.Fatalf("each account lists only its own repositories: %v", names)
 	}
 
-	// An empty repository is refused before anything is reserved, and
-	// another account's id is not this connection's repository.
-	if status, out := w.clone(ada, 102); status != 409 || code(out) != "repository_empty" {
-		t.Fatalf("empty repository: %d %v", status, out)
+	// Empty repositories share the successful native-index finalisation.
+	status, empty := w.clone(ada, 102)
+	if status != 200 {
+		t.Fatalf("empty repository: %d %v", status, empty)
 	}
-	if _, err := os.Stat(filepath.Join(w.home, "src", "blank")); !os.IsNotExist(err) {
-		t.Fatal("empty repository reserved a directory")
+	if done := w.waitJob(empty["job"].(map[string]any)["job_id"].(string)); done["state"] != "confirmed" {
+		t.Fatalf("empty clone: %v", done)
+	}
+	if _, err := os.Stat(filepath.Join(w.home, "src", "blank", ".git", "index")); err != nil {
+		t.Fatal(err)
 	}
 	if status, out := w.clone(ada, 103); status != 503 || code(out) != "native_source_unavailable" {
 		t.Fatalf("another account's repository: %d %v", status, out)

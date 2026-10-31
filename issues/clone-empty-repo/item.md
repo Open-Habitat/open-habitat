@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: clone-empty-repo
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Cloning an empty GitHub repository fails during onboarding
@@ -18,8 +19,8 @@ Jari 31.10. evening: Kaisa (the other person on Birch, pilot.17) started using O
 
 ## Acceptance Criteria
 
-- [ ] Reproduced with an empty GitHub repository (no commits, no default branch) through the same onboarding/clone path; cause named.
-- [ ] An empty repository becomes a usable workspace (clone with no commits, ready for a first commit, push sets the default branch), or, if something truly cannot be done, the person is told what happened and what to do, never a silent omission.
-- [ ] Same for Gitea/GitLab clone paths if they share the code; browser spec or daemon test with an empty remote.
+- [x] Reproduced with an empty GitHub repository (no commits, no default branch) through the same onboarding/clone path; cause named.
+- [x] An empty repository becomes a usable workspace (clone with no commits, ready for a first commit, push sets the default branch), or, if something truly cannot be done, the person is told what happened and what to do, never a silent omission.
+- [x] Same for Gitea/GitLab clone paths if they share the code; browser spec or daemon test with an empty remote.
 
 ## Comments

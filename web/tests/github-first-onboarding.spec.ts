@@ -44,6 +44,47 @@ async function login(page: import("@playwright/test").Page) {
     page.getByRole("heading").and(page.getByTestId("repository-chooser-title")),
   ).toBeVisible();
 }
+test("@github-first empty repository survives reload as a workspace", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=pi-onboarding");
+  await page.request.get("/fixture/pi-state?value=missing");
+  await login(page);
+  await page.getByRole("searchbox").fill("fixture/last");
+  await page.getByRole("checkbox").check();
+  await page.getByTestId("repository-proceed").click();
+  await expect(page.getByTestId("pi-sign-in-title")).toBeVisible();
+  await expect
+    .poll(
+      async () =>
+        (
+          await (
+            await page.request.get(
+              "/api/v1/onboarding/github/checkout?full_name=fixture%2Flast",
+            )
+          ).json()
+        ).state,
+    )
+    .toBe("confirmed");
+  await page.reload();
+  await expect
+    .poll(
+      async () =>
+        (
+          await (
+            await page.request.get("/api/v1/onboarding/github/clones")
+          ).json()
+        ).interrupted,
+    )
+    .toEqual([]);
+  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+  expect(
+    snapshot.workspaces.some(
+      (workspace: { name: string }) => workspace.name === "last",
+    ),
+  ).toBe(true);
+});
+
 test("@github-first native synthetic checkout before Pi, complete catalog and existing checkout", async ({
   page,
 }, testInfo) => {

@@ -212,8 +212,15 @@ func TestGitLabConnectListCloneFetch(t *testing.T) {
 	}
 	w.gl.SetHTTPURL(101, "")
 
-	if status, out := w.clone(ada, 103); status != 409 || code(out) != "repository_empty" {
-		t.Fatalf("empty project: %d %v", status, out)
+	status, empty := w.clone(ada, 103)
+	if status != 200 {
+		t.Fatalf("empty project: %d %v", status, empty)
+	}
+	if done := w.waitJob(empty["job"].(map[string]any)["job_id"].(string)); done["state"] != "confirmed" {
+		t.Fatalf("empty clone: %v", done)
+	}
+	if _, err := os.Stat(filepath.Join(w.home, "src", "uusi", ".git", "index")); err != nil {
+		t.Fatal(err)
 	}
 	if status, out := w.clone(ada, 105); status != 503 || code(out) != "native_source_unavailable" {
 		t.Fatalf("another person's project: %d %v", status, out)

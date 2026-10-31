@@ -55,10 +55,6 @@ func (c *CloneJobs) resolveGitLab(ctx context.Context, connection string, id int
 		return cloneTarget{}, 409, "gitlab_auth_unavailable"
 	case err != nil:
 		return cloneTarget{}, 503, "native_source_unavailable"
-	case p.Empty:
-		// Git would succeed with nothing to verify; an empty project is
-		// refused before anything is reserved.
-		return cloneTarget{}, 409, "repository_empty"
 	case !validGitLabFullName(p.FullName):
 		return cloneTarget{}, 409, "checkout_unavailable"
 	}

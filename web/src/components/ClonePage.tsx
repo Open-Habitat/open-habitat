@@ -697,17 +697,6 @@ export function RepoDetails({
               />
             </>
           ) : null}
-          {repo.empty && gitlab ? (
-            <p className="ah-clone-note">
-              <Icon
-                name="info"
-                width={15}
-                height={15}
-                className="ah-clone-ic-muted"
-              />
-              <span>{txt.emptyProject}</span>
-            </p>
-          ) : null}
           {problem ? (
             <p className="ah-clone-problem" role="alert">
               {problem}

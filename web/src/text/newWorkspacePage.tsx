@@ -72,7 +72,6 @@ const fi = {
   cannotStart: "Kloonausta ei voi aloittaa juuri nyt.",
   oneAtATime: (name: string) =>
     `Kloonaus ${name} on käynnissä. Yksi kloonaus kerrallaan.`,
-  emptyRepo: "Repo on tyhjä, joten sitä ei voi vielä kloonata työtilaksi.",
   gitlabExpired:
     "GitLab-tunnus on vanhentunut. Vaihda se Koodipalveluissa ennen kloonausta.",
   checkConnection: "Tarkista yhteys",
@@ -188,8 +187,6 @@ export const newWorkspacePageText = catalog(fi, {
   asWorkspace: "workspace",
   cannotStart: "A clone cannot be started just now.",
   oneAtATime: (name) => `The clone of ${name} is running. One clone at a time.`,
-  emptyRepo:
-    "The repository is empty, so it cannot be cloned as a workspace yet.",
   gitlabExpired:
     "The GitLab token has expired. Replace it in Code hosts before cloning.",
   checkConnection: "Check the connection",

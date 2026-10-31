@@ -148,10 +148,6 @@ func (c *CloneJobs) resolveGitea(ctx context.Context, connection string, id int6
 		return cloneTarget{}, 409, "gitea_auth_unavailable"
 	case err != nil:
 		return cloneTarget{}, 503, "native_source_unavailable"
-	case repo.Empty:
-		// Git would succeed with nothing to verify; an empty repository is
-		// refused before anything is reserved.
-		return cloneTarget{}, 409, "repository_empty"
 	case !validGiteaCloneName(repo.Name):
 		return cloneTarget{}, 409, "checkout_unavailable"
 	}

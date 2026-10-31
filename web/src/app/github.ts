@@ -135,7 +135,6 @@ export class GitHubError extends Error {
       | "conflict"
       | "storage"
       | "busy"
-      | "empty"
       | "gitea"
       | "gitlab"
       | "rewritten"
@@ -204,20 +203,18 @@ async function response(r: Response, max: number): Promise<unknown> {
             ? "conflict"
             : code === "clone_running"
               ? "busy"
-              : code === "repository_empty"
-                ? "empty"
-                : code === "remote_rewritten"
-                  ? "rewritten"
-                  : code === "gitea_connection_unavailable" ||
-                      code === "gitea_git_unavailable" ||
-                      code === "gitea_auth_unavailable" ||
-                      code === "provider_unavailable"
-                    ? "gitea"
-                    : code === "gitlab_connection_unavailable" ||
-                        code === "gitlab_git_unavailable" ||
-                        code === "gitlab_auth_unavailable"
-                      ? "gitlab"
-                      : "unavailable",
+              : code === "remote_rewritten"
+                ? "rewritten"
+                : code === "gitea_connection_unavailable" ||
+                    code === "gitea_git_unavailable" ||
+                    code === "gitea_auth_unavailable" ||
+                    code === "provider_unavailable"
+                  ? "gitea"
+                  : code === "gitlab_connection_unavailable" ||
+                      code === "gitlab_git_unavailable" ||
+                      code === "gitlab_auth_unavailable"
+                    ? "gitlab"
+                    : "unavailable",
     );
   }
   if (!r.ok) throw new GitHubError("unavailable");

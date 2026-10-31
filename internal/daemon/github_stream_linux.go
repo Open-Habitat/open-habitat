@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -214,8 +215,17 @@ func cloneProgressCommand(ctx context.Context, program, home string, child int, 
 // errCloneAuth: the server refused the clone's credential.
 var errCloneAuth = errors.New("authentication refused")
 
-// An unborn HEAD is indistinguishable from an interrupted clone after git
-// init. Require a resolvable commit before native observation confirms it.
+// cloneUnborn accepts only a symbolic branch with no refs or staged entries.
+// It is not proof a transfer finished: only a successful clone may use it to
+// initialise the native index; later observations first exclude interrupted clones.
+func cloneUnborn(ctx context.Context, run cloneRunner, git, home, fd string) bool {
+	branch, e1 := run(ctx, git, home, fd, "symbolic-ref", "--quiet", "HEAD")
+	refs, e2 := run(ctx, git, home, fd, "for-each-ref", "--format=%(refname)")
+	index, e3 := run(ctx, git, home, fd, "ls-files", "--stage")
+	return e1 == nil && strings.HasPrefix(string(branch), "refs/heads/") && e2 == nil && len(refs) == 0 && e3 == nil && len(index) == 0 && ctx.Err() == nil
+}
+
+// validCloneCommit accepts Git's SHA-1 and SHA-256 commit output.
 func validCloneCommit(b []byte) bool {
 	if len(b) != 41 && len(b) != 65 {
 		return false

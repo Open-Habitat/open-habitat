@@ -1,0 +1,29 @@
+//go:build linux
+package daemon
+import (
+ "context"
+ "os"
+ "os/exec"
+ "path/filepath"
+ "testing"
+)
+func TestLiveOwnEmptySmoke(t *testing.T) {
+ config:=os.Getenv("OH_LIVE_GH_CONFIG")
+ if config=="" { t.Skip("explicit own GitHub config required") }
+ home:=t.TempDir()
+ gh:=filepath.Join(home,"gh")
+ git:=filepath.Join(home,"git")
+ for p,s:=range map[string]string{
+ gh:"#!/bin/sh\nexport GH_CONFIG_DIR='"+config+"'\nexec /usr/bin/gh \"$@\"\n",
+ git:"#!/bin/sh\nexport GH_CONFIG_DIR='"+config+"'\nexec /usr/bin/git -c credential.helper= -c 'credential.helper=!/usr/bin/gh auth git-credential' \"$@\"\n",
+ } { if e:=os.WriteFile(p,[]byte(s),0700);e!=nil {t.Fatal(e)} }
+ f:=newCloneJobsFixture(t,home,git)
+ subject,e:=exec.Command("/usr/bin/gh","api","user","--jq",".id").Output();if e!=nil {t.Fatal(e)}
+ f.jobs.cfg.Subject=string(subject[:len(subject)-1]); f.jobs.gh=gh;f.jobs.run=cloneCommand
+ if !cloneWriter.TryLock() {t.Fatal("busy")}
+ job,status,code:=f.jobs.admit(context.Background(),"maintainer/oh-empty-clone-test","full",false)
+ if job==nil {t.Fatalf("admit: %d %s",status,code)}
+ f.settle(); state,_:=job.snapshot()
+ if state.State!="confirmed" {t.Fatalf("clone: %+v",state)}
+ if d:=DiscoverFixtureRoot(home,f.cfg.UID);len(d.Entries)!=1 {t.Fatalf("discovery: %+v",d)}
+}

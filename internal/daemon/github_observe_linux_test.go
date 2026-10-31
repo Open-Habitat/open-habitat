@@ -100,7 +100,7 @@ func TestObserveSeparateMappedHomes(t *testing.T) {
 	}
 }
 func TestObserveWithNativeGit(t *testing.T) {
-	isolateDeletionProcesses(t)
+	proc := isolateDeletionProcesses(t)
 	cfg, home := cloneFixture(t)
 	git, err := exec.LookPath("git")
 	if err != nil {
@@ -124,6 +124,21 @@ func TestObserveWithNativeGit(t *testing.T) {
 	if got, _ := observeCheckout(context.Background(), cfg, home, git, cloneCommand, "bob/repo"); got != "absent" && got != "conflict" {
 		t.Fatalf("another owner's name: %s", got)
 	}
+	// A shell left in a partial clone blocks recovery, but is not evidence
+	// that the empty clone finished. No native index was written yet.
+	busy := exec.Command("/bin/sleep", "30")
+	busy.Dir = path
+	if err := busy.Start(); err != nil {
+		t.Fatal(err)
+	}
+	exposeTestProcess(t, proc, busy.Process.Pid)
+	if got, _ := observeCheckout(context.Background(), cfg, home, git, cloneCommand, "alice/repo"); got != "conflict" {
+		_ = busy.Process.Kill()
+		_ = busy.Wait()
+		t.Fatalf("busy unfinished clone: %s", got)
+	}
+	_ = busy.Process.Kill()
+	_ = busy.Wait()
 	// A file beside .git is someone's work, not an unfinished download.
 	if err := os.WriteFile(filepath.Join(path, "notes.txt"), []byte("draft"), 0600); err != nil {
 		t.Fatal(err)
