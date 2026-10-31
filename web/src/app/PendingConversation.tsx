@@ -11,6 +11,8 @@ import {
 } from "../components";
 import { controlClassName } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
+import { liveText } from "../i18n";
+import { pendingConversationText } from "../text/pendingConversation";
 import {
   readCommands,
   readFiles,
@@ -51,14 +53,16 @@ function useOpeningFocus(section: React.RefObject<HTMLElement | null>) {
   }, [section]);
 }
 
+const txt = liveText(pendingConversationText);
+
 // A route-local presentation, not a speculative native conversation or history.
 // While an existing conversation loads, the field keeps what is typed.
 export function PendingConversation({
   workspace,
-  message = "Ladataan keskustelua…",
+  message = txt.loading,
   problem,
   onRetry,
-  retryLabel = "Yritä uudelleen",
+  retryLabel = txt.retry,
   value = "",
   onChange,
 }: {
@@ -78,13 +82,13 @@ export function PendingConversation({
     <div ref={section} className="ah-pending-conversation">
       <ConversationFrame>
         <AgentHeader
-          title="Uusi keskustelu"
+          title={txt.newConversation}
           workspaceLabel={workspace.display_name ?? workspace.name}
           workspaceHref={`/workspaces/${workspace.workspace_id}`}
-          activityLabel={problem ? "Tilaa ei voitu vahvistaa" : message}
+          activityLabel={problem ? txt.unconfirmed : message}
           activityAnimated={!problem}
           controlLabel=""
-          detailsFacts={[{ label: "Työtila", value: workspace.path ?? "" }]}
+          detailsFacts={[{ label: txt.workspace, value: workspace.path ?? "" }]}
           detailsExpanded={details}
           onToggleDetails={() => setDetails(!details)}
         />
@@ -93,7 +97,7 @@ export function PendingConversation({
             <InlineNotice
               data-state="uncertain"
               data-testid="creation-problem"
-              title="Keskustelun tilaa ei voitu vahvistaa"
+              title={txt.stateUnconfirmed}
               description={problem}
               tone="warning"
               actions={
@@ -112,7 +116,7 @@ export function PendingConversation({
               className={`md-pill ${controlClassName({ size: "inline", presentation: "pill" })}`}
               aria-disabled="true"
             >
-              Agentti
+              {txt.agent}
             </span>
           }
           value={value}
@@ -141,7 +145,7 @@ export function CreatingConversation({
   identity,
   problem,
   onRetry,
-  retryLabel = "Yritä uudelleen",
+  retryLabel = txt.retry,
   refused = false,
   onCreateAgain,
   worktree,
@@ -229,11 +233,7 @@ export function CreatingConversation({
         draft,
       ),
     );
-    setNotice(
-      waiting.length > 1
-        ? "Viestit eivät lähteneet. Ne ovat taas kentässä."
-        : "Viesti ei lähtenyt. Se on taas kentässä.",
-    );
+    setNotice(waiting.length > 1 ? txt.manyReturned : txt.oneReturned);
     setHeld([]);
     section.current?.querySelector("textarea")?.focus();
   };
@@ -247,21 +247,21 @@ export function CreatingConversation({
     <div ref={section} className="ah-pending-conversation">
       <ConversationFrame>
         <AgentHeader
-          title={worktree ? "Uusi worktree-agentti" : "Uusi keskustelu"}
+          title={worktree ? txt.newWorktreeAgent : txt.newConversation}
           workspaceLabel={workspace.display_name ?? workspace.name}
           workspaceHref={`/workspaces/${workspace.workspace_id}`}
           activityLabel={
             refused
-              ? "Ei luotu"
+              ? txt.notCreated
               : problem
-                ? "Tilaa ei voitu vahvistaa"
+                ? txt.unconfirmed
                 : worktree && waiting.length
-                  ? "Luodaan worktreetä"
+                  ? txt.creatingWorktree
                   : ""
           }
           activityAnimated={!!worktree && !!waiting.length && !problem}
           controlLabel=""
-          detailsFacts={[{ label: "Työtila", value: workspace.path ?? "" }]}
+          detailsFacts={[{ label: txt.workspace, value: workspace.path ?? "" }]}
           detailsExpanded={details}
           onToggleDetails={() => setDetails(!details)}
           guideControl={
@@ -317,9 +317,7 @@ export function CreatingConversation({
               data-testid="creation-problem"
               data-state={refused ? "refused" : "uncertain"}
               title={
-                refused
-                  ? "Keskustelua ei luotu"
-                  : "Keskustelun tilaa ei voitu vahvistaa"
+                refused ? txt.conversationNotCreated : txt.stateUnconfirmed
               }
               description={problem}
               tone="warning"
@@ -328,7 +326,7 @@ export function CreatingConversation({
                   ? [
                       {
                         testId: "retry",
-                        label: "Yritä uudelleen",
+                        label: txt.retry,
                         onPress: onCreateAgain,
                       },
                     ]
@@ -343,7 +341,7 @@ export function CreatingConversation({
                     ]
                   : []),
                 ...(waiting.length
-                  ? [{ label: "Muokkaa", onPress: giveBack }]
+                  ? [{ label: txt.edit, onPress: giveBack }]
                   : []),
               ]}
             />
@@ -366,8 +364,8 @@ export function CreatingConversation({
               className={`md-pill ${controlClassName({ size: "inline", presentation: "pill" })}`}
               aria-disabled="true"
             >
-              {displayModel ?? "Malli ei tiedossa"} ·{" "}
-              {models?.default_thinking ?? "Agentti"}
+              {displayModel ?? txt.modelUnknown} ·{" "}
+              {models?.default_thinking ?? txt.agent}
             </span>
           }
           csrf={csrf}
@@ -381,8 +379,8 @@ export function CreatingConversation({
               ? {
                   state: "disabled",
                   reason: refused
-                    ? "Keskustelua ei luotu."
-                    : "Keskustelun luontia ei voitu vahvistaa.",
+                    ? txt.notCreatedReason
+                    : txt.creationUnconfirmed,
                 }
               : worktree?.blocked
                 ? { state: "disabled", reason: worktree.blocked }
@@ -431,34 +429,24 @@ function WorktreeIntro({
     >
       <Icon name="worktreeNew" className="ah-worktree-intro-icon" />
       <p className="ah-worktree-intro-text ah-worktree-intro-lead">
-        Uusi worktree-agentti työtilassa{" "}
-        <code className="ah-worktree-intro-code">
-          {workspace.display_name ?? workspace.name}
-        </code>
+        {txt.worktreeLead(
+          <code className="ah-worktree-intro-code">
+            {workspace.display_name ?? workspace.name}
+          </code>,
+        )}
       </p>
       <p className="ah-worktree-intro-text">
-        Ensimmäinen viesti luo oman worktreen ja haaran{" "}
-        {base ? (
-          <>
-            haarasta <code className="ah-worktree-intro-code">{base}</code>
-          </>
-        ) : (
-          "työtilan nykyisestä haarasta"
-        )}{" "}
-        ja käynnistää siihen agentin. Otsikko syntyy keskustelusta.
+        {txt.worktreeFirst(
+          base ? <code className="ah-worktree-intro-code">{base}</code> : null,
+        )}
       </p>
       {dirty ? (
         <p className="ah-worktree-intro-text ah-worktree-intro-note">
-          Työtilan{" "}
-          {dirty === 1
-            ? "tallentamaton muutos ei tule"
-            : `${dirty} tallentamatonta muutosta eivät tule`}{" "}
-          mukaan.
+          {txt.worktreeDirty(dirty)}
         </p>
       ) : null}
       <p className="ah-worktree-intro-text ah-worktree-intro-note">
-        Yhdistä tai hylkää työ pyytämällä agenttia; yläpalkki näyttää Gitin
-        tilan.
+        {txt.worktreeMerge}
       </p>
     </div>
   );

@@ -6,6 +6,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { formatDate, liveText } from "../i18n";
+import { agentTurnText } from "../text/agentTurn";
 import { getWorkPreference } from "../workPreference";
 import { ControlButton } from "./ControlElements";
 import {
@@ -15,6 +17,8 @@ import {
 } from "./Conversation";
 import { Markdown } from "./Markdown";
 import { StatusMark } from "./Status";
+
+const txt = liveText(agentTurnText);
 
 /**
  * A one-line title for reasoning that brings none (Claude's, for example): the
@@ -45,12 +49,11 @@ export function ThinkingRow({
   live?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  if (redacted)
-    return <div className="ah-think-row">Ajattelu · piilotettu</div>;
+  if (redacted) return <div className="ah-think-row">{txt.thinkingHidden}</div>;
   if (live)
     return (
       <div className="ah-think-row">
-        <span>Ajattelee</span>
+        <span>{txt.thinkingNow}</span>
         <span className="ah-think-live">
           <Markdown text={text.split("\n").filter(Boolean).at(-1) ?? "…"} />
         </span>
@@ -59,7 +62,7 @@ export function ThinkingRow({
   if (!text.includes("\n"))
     return (
       <div className="ah-think-row">
-        <span>Ajattelu</span>
+        <span>{txt.thinking}</span>
         <Markdown text={text} />
       </div>
     );
@@ -80,10 +83,10 @@ export function ThinkingRow({
         variant="quiet"
         size="row"
         aria-expanded={open}
-        aria-label={title ? `Ajattelu · ${title}` : undefined}
+        aria-label={title ? txt.thinkingTitled(title) : undefined}
         onPress={() => setOpen(!open)}
       >
-        <span>Ajattelu</span>
+        <span>{txt.thinking}</span>
         {title ? (
           <span className="ah-think-title" title={title}>
             {`· ${title}`}
@@ -109,7 +112,7 @@ function WorkClock({
 }) {
   return (
     <>
-      <span className="ah-turn-activity">{activity ?? "Ajattelee"}</span>
+      <span className="ah-turn-activity">{activity ?? txt.thinkingNow}</span>
       {duration ? (
         <span className="ah-turn-clock" aria-live="off">
           {duration}
@@ -164,18 +167,15 @@ export function turnStages(steps: TurnStep[]): Stage[] {
   return stages;
 }
 
-const plural = (n: number, one: string, many: string) =>
-  `${n} ${n === 1 ? one : many}`;
-
 /** "1 ajatus · 2 työkalua": a kind the stage has none of is left out. */
 export function stageSummary(work: Stage["work"]): string {
   const thoughts = work.filter((step) => step.kind === "thinking").length;
   const tools = work.filter((step) => step.kind === "tool").length;
   const parts = [
-    thoughts ? plural(thoughts, "ajatus", "ajatusta") : "",
-    tools ? plural(tools, "työkalu", "työkalua") : "",
+    thoughts ? txt.thoughts(thoughts) : "",
+    tools ? txt.tools(tools) : "",
   ].filter(Boolean);
-  return parts.length ? parts.join(" · ") : "Työ";
+  return parts.length ? parts.join(" · ") : txt.work;
 }
 
 /** "14 s", "1 min 05 s", "2 h 03 min": how long a closed stage took. */
@@ -240,7 +240,7 @@ function StageRow({
           <>
             {" · "}
             <span data-testid="turn-failures" className="ah-turn-failures">
-              {failures} epäonnistui
+              {txt.failures(failures)}
             </span>
           </>
         ) : null}
@@ -293,18 +293,18 @@ function StoppedRow({ at }: { at?: number }) {
   return (
     <div data-testid="turn-stopped" className="ah-turn-stopped">
       <span className="ah-turn-stopped-text">
-        Keskeytit
+        {txt.stopped}
         {time ? (
           <>
             {" · "}
             <time
               dateTime={time.toISOString()}
-              title={time.toLocaleString("fi-FI")}
-            >
-              {time.toLocaleTimeString("fi-FI", {
-                hour: "2-digit",
-                minute: "2-digit",
+              title={formatDate(time, {
+                dateStyle: "short",
+                timeStyle: "medium",
               })}
+            >
+              {formatDate(time, { hour: "2-digit", minute: "2-digit" })}
             </time>
           </>
         ) : null}
@@ -427,7 +427,7 @@ export function AgentTurn({
                   onPress={toggleLive}
                 >
                   <span className="ah-work-label">
-                    {live ? "Piilota työ" : "Näytä työ"}
+                    {live ? txt.hideWork : txt.showWork}
                   </span>
                   <span aria-hidden="true" className="ah-disclosure-chevron" />
                 </ControlButton>
@@ -443,8 +443,8 @@ export function AgentTurn({
                       animated="running"
                       label={
                         voice === "person"
-                          ? "Agentti työskentelee"
-                          : "Worker työskentelee"
+                          ? txt.agentWorking
+                          : txt.workerWorking
                       }
                     />
                   </span>

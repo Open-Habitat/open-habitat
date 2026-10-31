@@ -1,6 +1,10 @@
 import "./ViewPanel.css";
+import { formatDate, formatNumber, liveText } from "../i18n";
+import { viewOfferText } from "../text/viewOffer";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
+
+const txt = liveText(viewOfferText);
 
 /** One frozen export an agent offered (contracts/v1/view.schema.json). */
 export type ViewSummary = {
@@ -23,9 +27,11 @@ export type ViewOfferState =
   | "failed";
 
 export function formatViewSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} t`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} kt`;
-  return `${(bytes / 1024 / 1024).toLocaleString("fi-FI", { maximumFractionDigits: 1 })} Mt`;
+  if (bytes < 1024) return txt.bytes(bytes);
+  if (bytes < 1024 * 1024) return txt.kilobytes(Math.round(bytes / 1024));
+  return txt.megabytes(
+    formatNumber(bytes / 1024 / 1024, { maximumFractionDigits: 1 }),
+  );
 }
 
 /** Suora (agent-html-artifacts, round 2): every offer has both places, the
@@ -53,7 +59,7 @@ export function ViewOfferCard({
     <aside
       className="ah-view-offer"
       role="note"
-      aria-label={`Agentin tarjoama näkymä: ${view.title}`}
+      aria-label={txt.label(view.title)}
       data-testid="view-offer"
       data-view-id={view.view_id}
       data-state={state}
@@ -62,21 +68,19 @@ export function ViewOfferCard({
         {"</>"}
       </span>
       <div className="ah-view-offer-body">
-        <span className="ah-view-offer-label">
-          Agentti tarjoaa näytettäväksi:
-        </span>
+        <span className="ah-view-offer-label">{txt.offers}</span>
         <strong className="ah-view-offer-title">{view.title}</strong>
         <span className="ah-view-offer-meta">
-          Jäädytetty HTML ·{" "}
-          {view.files === 1 ? "1 tiedosto" : `${view.files} tiedostoa`} ·{" "}
-          {formatViewSize(view.bytes)} ·{" "}
+          {txt.frozen} · {txt.files(view.files)} · {formatViewSize(view.bytes)}{" "}
+          ·{" "}
           {sharedUntil ? (
             <span data-testid="view-shared">
-              Jaettu linkillä{" "}
-              {new Date(sharedUntil).toLocaleDateString("fi-FI")} asti
+              {txt.sharedUntil(
+                formatDate(new Date(sharedUntil), { dateStyle: "short" }),
+              )}
             </span>
           ) : (
-            "Vain sinulle"
+            txt.onlyYou
           )}
         </span>
         <span className="ah-view-offer-actions">
@@ -89,14 +93,14 @@ export function ViewOfferCard({
               onOpen(event.target instanceof HTMLElement ? event.target : null)
             }
           >
-            Avaa
+            {txt.open}
           </ControlButton>
           <ControlButton
             size="row"
             data-testid="view-open-tab"
             onPress={onOpenTab}
           >
-            Avaa omalle välilehdelle <Icon name="external" />
+            {txt.openTab} <Icon name="external" />
           </ControlButton>
           {onShare && (
             <ControlButton
@@ -104,15 +108,13 @@ export function ViewOfferCard({
               data-testid="view-share"
               onPress={onShare}
             >
-              <Icon name="link" /> Jaa linkillä
+              <Icon name="link" /> {txt.share}
             </ControlButton>
           )}
         </span>
         {state === "tab_requested" || state === "failed" ? (
           <span className="ah-view-offer-status" role="status">
-            {state === "tab_requested"
-              ? "Avaus pyydetty. Jos välilehteä ei näy, selain saattoi estää sen."
-              : "Näkymää ei voitu avata. Se on ehkä poistettu, tai yhteys katkesi."}
+            {state === "tab_requested" ? txt.tabRequested : txt.failed}
           </span>
         ) : null}
       </div>

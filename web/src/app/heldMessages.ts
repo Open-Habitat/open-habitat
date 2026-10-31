@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { liveText } from "../i18n";
+import { heldMessagesText } from "../text/heldMessages";
 import {
   cancelHeld,
   continueConversation,
@@ -12,6 +14,8 @@ import type { HistoryEntry } from "./history";
 
 /** A message this tab sent while Pi was not running. The daemon owns it once
  * posted; the browser keeps the text only to draw it and to recover it. */
+const txt = liveText(heldMessagesText);
+
 export type LocalHeld = {
   command_id: string;
   text: string;
@@ -192,7 +196,7 @@ export function useHeldMessages({
             );
             if (forKey === latest.current.key) {
               giveBack([next.text]);
-              setNotice("Viestiä ei lähetetty. Teksti palautettiin kenttään.");
+              setNotice(txt.notSent);
             }
           }
           // Otherwise the outcome is unknown; the receipt decides it.
@@ -271,11 +275,7 @@ export function useHeldMessages({
             old.filter((l) => l.command_id !== entry.command_id),
           );
           giveBack([entry.text]);
-          setNotice(
-            outcome === "rejected"
-              ? "Agentti hylkäsi viestin. Teksti palautettiin kenttään."
-              : "Viesti ei lähtenyt. Se on taas kentässä.",
-          );
+          setNotice(outcome === "rejected" ? txt.rejected : txt.notDelivered);
         } else
           update(key, (old) =>
             old.map((l) =>
@@ -344,18 +344,15 @@ export function useHeldMessages({
         giveBack(returned.map((r) => r.text));
         setNotice(
           returned.length > 1
-            ? "Viestit eivät lähteneet. Ne ovat taas kentässä."
+            ? txt.manyNotDelivered
             : returned.length
-              ? "Viesti ei lähtenyt. Se on taas kentässä."
-              : "Agentti ehti jo ottaa viestin.",
+              ? txt.notDelivered
+              : txt.alreadyTaken,
         );
       }
     } catch (error) {
       if ((error as Error).message === "identity_lost") onLogin();
-      else
-        setNotice(
-          "Pysäytyksen tulos on epävarma. Viestejä ei palautettu ilman daemonin kuittausta.",
-        );
+      else setNotice(txt.stopUncertain);
     } finally {
       setBusy(false);
       void refresh();
@@ -370,10 +367,7 @@ export function useHeldMessages({
       setNotice("");
     } catch (error) {
       if ((error as Error).message === "identity_lost") onLogin();
-      else
-        setNotice(
-          "Agenttia ei voitu käynnistää uudelleen. Viestit ovat tallessa.",
-        );
+      else setNotice(txt.restartFailed);
     } finally {
       setBusy(false);
       void refresh();

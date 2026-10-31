@@ -1,7 +1,11 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { type BashFailure, failureLabel } from "../app/bashFailure";
 import { useOwnMachine } from "../app/ownMachineUse";
+import { liveText } from "../i18n";
+import { piBlocksText } from "../text/piBlocks";
 import { ToolRow } from "./Conversation";
+
+const txt = liveText(piBlocksText);
 
 /** One visual use, from call formation through the native saved result. */
 export function PiToolUse({
@@ -45,15 +49,7 @@ export function PiToolUse({
     if (userChoice.current || expansion?.get() !== undefined) return;
     setExpanded(streaming);
   }, [streaming, expansion]);
-  const labels = {
-    forming: "muodostaa kutsua…",
-    called: "odottaa ajoa",
-    running: "ajossa",
-    succeeded: "valmis",
-    failed: "epäonnistui",
-    cancelled: "keskeytetty",
-    unknown: "tila ei tiedossa",
-  };
+  const labels = txt.states;
   return (
     <div
       className={`ah-pi-tool-use${state === "running" || state === "forming" || state === "called" ? " ah-live-tool-row" : ""}`}
@@ -69,11 +65,7 @@ export function PiToolUse({
           (state === "failed" ? failureLabel(failureCause) : labels[state])
         }
         statusTitle={failureCause?.status_line}
-        errorSummary={
-          state === "failed"
-            ? "Agentti ilmoitti työkalun virheestä."
-            : undefined
-        }
+        errorSummary={state === "failed" ? txt.failed : undefined}
         expanded={expanded}
         keepMounted={keepMounted}
         onToggle={() => {

@@ -1,10 +1,14 @@
 import { type ReactNode, useState } from "react";
+import { liveText } from "../i18n";
+import { piDeviceSignInText } from "../text/piDeviceSignIn";
 import { ExternalLink, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { OnboardingFrame } from "./OnboardingFrame";
 import styles from "./PiDeviceSignIn.module.css";
 import { Button } from "./Primitives";
 import { InlineNotice, StatusMark } from "./Status";
+
+const txt = liveText(piDeviceSignInText);
 
 /** Display facts only. The caller owns the attempt, session binding, polling and native status. */
 export type PiDeviceSignInView =
@@ -32,50 +36,22 @@ function safeVerificationUri(value: string): string | undefined {
   return value === "https://auth.openai.com/codex/device" ? value : undefined;
 }
 
-const outcomes = {
-  waiting: {
-    label: "Valmistellaan kirjautumista",
-    tone: "info",
-    detail: "Valmistellaan vahvistuskoodia. Odota hetki.",
-  },
-  cancelling: {
-    label: "Peruutetaan kirjautumisyritystä",
-    tone: "info",
-    detail: "Odota hetki.",
-  },
-  start: {
-    label: "ChatGPT-kirjautuminen tarvitaan",
-    tone: "warning",
-    detail: "Kirjaudu ChatGPT-tilillesi, niin voit aloittaa työtiloissa.",
-  },
-  connected: {
-    label: "ChatGPT-kirjautuminen vahvistettu",
-    tone: "success",
-    detail: "Voit nyt siirtyä työtiloihin.",
-  },
-  expired: {
-    label: "Kirjautumisyritys päättyi",
-    tone: "warning",
-    detail:
-      "Tämä koodi ei ole enää käytössä. Kirjautumisen tulosta ei tiedetä. Voit aloittaa uudella koodilla.",
-  },
-  interrupted: {
-    label: "Kirjautuminen keskeytyi",
-    tone: "danger",
-    detail: "Tarkista kirjautumisen tila ennen uutta yritystä.",
-  },
-  failed: {
-    label: "Kirjautuminen epäonnistui",
-    tone: "danger",
-    detail:
-      "Yritä uudelleen uudella koodilla. Jos virhe toistuu, ota yhteyttä ylläpitäjään.",
-  },
-  unavailable: {
-    label: "Kirjautuminen keskeytyi",
-    tone: "danger",
-    detail: "Tilaa ei voitu tarkistaa. Yritä tarkistaa se uudelleen.",
-  },
+const tones = {
+  waiting: "info",
+  cancelling: "info",
+  start: "warning",
+  connected: "success",
+  expired: "warning",
+  interrupted: "danger",
+  failed: "danger",
+  unavailable: "danger",
 } as const;
+
+function outcomeOf(phase: PiDeviceSignInView["phase"]) {
+  if (!(phase in tones)) return undefined;
+  const key = phase as keyof typeof tones;
+  return { ...txt.outcomes[key], tone: tones[key] };
+}
 
 export function PiDeviceSignIn({
   view,
@@ -92,43 +68,36 @@ export function PiDeviceSignIn({
   const cancellable = active || view.phase === "waiting";
   const uri = active ? safeVerificationUri(view.verificationUri) : undefined;
   const usable = active && Boolean(uri && view.userCode);
-  const outcome =
-    view.phase in outcomes
-      ? outcomes[view.phase as keyof typeof outcomes]
-      : undefined;
+  const outcome = outcomeOf(view.phase);
 
   async function copyCode() {
     if (!active || !usable) return;
     const code = view.userCode;
     try {
       await navigator.clipboard.writeText(code);
-      setCopy({ code, message: "Koodi kopioitu leikepöydälle." });
+      setCopy({ code, message: txt.copied });
     } catch {
       setCopy({
         code,
-        message: "Kopiointi ei onnistunut. Valitse ja kopioi koodi käsin.",
+        message: txt.copyFailed,
       });
     }
   }
 
-  const hint = (
-    <p className={styles.hint}>
-      Kirjautuminen tehdään OpenAI:n omalla sivulla. Salasanaa ei syötetä tänne.
-    </p>
-  );
+  const hint = <p className={styles.hint}>{txt.hint}</p>;
   const content = (
     <section
       className={`${styles.card}${embedded ? ` ${styles.embedded}` : ""}`}
       data-testid="pi-sign-in-card"
       data-phase={view.phase}
       aria-labelledby={embedded ? undefined : "pi-device-title"}
-      aria-label={embedded ? "ChatGPT-kirjautuminen" : undefined}
+      aria-label={embedded ? txt.label : undefined}
     >
       {embedded ? null : (
         <header>
-          <p className="ah-eyebrow">Käyttöönotto</p>
+          <p className="ah-eyebrow">{txt.eyebrow}</p>
           <h1 data-testid="pi-sign-in-title" id="pi-device-title" tabIndex={-1}>
-            Kirjaudu OpenAI-tiliisi
+            {txt.title}
           </h1>
         </header>
       )}
@@ -138,11 +107,7 @@ export function PiDeviceSignIn({
           view.phase !== "unavailable" ? (
           <StatusMark label={outcome.label} tone={outcome.tone} />
         ) : checking ? (
-          <StatusMark
-            label="Tarkistetaan tilaa"
-            tone="info"
-            animated="running"
-          />
+          <StatusMark label={txt.checking} tone="info" animated="running" />
         ) : null}
       </div>
       {active ? (
@@ -151,14 +116,14 @@ export function PiDeviceSignIn({
             <div className={styles.instruction}>
               <span className={styles.number}>1</span>
               <div>
-                <strong>Kopioi koodi</strong>
+                <strong>{txt.step1}</strong>
                 <div className={styles.code}>
                   <code data-testid="pi-device-code">{view.userCode}</code>
-                  <span title="Kopioi koodi">
+                  <span title={txt.copyCode}>
                     <IconButton
                       data-testid="pi-code-copy"
                       size="row"
-                      aria-label="Kopioi koodi"
+                      aria-label={txt.copyCode}
                       variant="secondary"
                       onPress={() => {
                         void copyCode();
@@ -178,48 +143,43 @@ export function PiDeviceSignIn({
             <div className={styles.instruction}>
               <span className={styles.number}>2</span>
               <div>
-                <strong>Syötä koodi OpenAI:n sivulla</strong>
+                <strong>{txt.step2}</strong>
                 <ExternalLink
                   href={uri}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Avaa OpenAI:n vahvistussivu (uusi välilehti)
+                  {txt.openPage}
                 </ExternalLink>
               </div>
             </div>
             <div className={styles.instruction} role="status">
               <span className={styles.number}>3</span>
               <div>
-                <strong>Palaa tänne ja odota</strong>
+                <strong>{txt.step3}</strong>
                 <StatusMark
-                  label="Odotetaan vahvistusta OpenAI:lta"
+                  label={txt.waiting}
                   tone="info"
                   animated={view.phase === "pending" ? "running" : false}
                 />
-                <p>Sivu päivittyy automaattisesti, kun kirjaudut sisään.</p>
+                <p>{txt.autoRefresh}</p>
               </div>
             </div>
           </div>
         ) : (
-          <p role="alert">
-            Vahvistussivua tai koodia ei voi näyttää turvallisesti. Pyydä uusi
-            kirjautumisyritys.
-          </p>
+          <p role="alert">{txt.unsafe}</p>
         )
       ) : view.phase === "interrupted" || view.phase === "unavailable" ? (
         <>
-          <h3 data-testid="pi-attempt-interrupted">Kirjautuminen keskeytyi</h3>
+          <h3 data-testid="pi-attempt-interrupted">{txt.interrupted}</h3>
           <InlineNotice
             data-testid="pi-attempt-uncertain"
-            title="Tilaa ei voitu vahvistaa"
-            description={
-              checking ? "Tarkistetaan palvelimen tilaa." : outcome?.detail
-            }
+            title={txt.unconfirmed}
+            description={checking ? txt.checkingServer : outcome?.detail}
             tone="danger"
             actions={
               onRefresh && !checking
-                ? [{ label: "Tarkista tila", onPress: onRefresh }]
+                ? [{ label: txt.check, onPress: onRefresh }]
                 : []
             }
           />
@@ -234,7 +194,7 @@ export function PiDeviceSignIn({
             <Button
               data-testid="pi-attempt-cancel"
               size="row"
-              label="Peruuta kirjautumisyritys"
+              label={txt.cancel}
               variant="quiet"
               onPress={onCancel}
             />
@@ -243,11 +203,7 @@ export function PiDeviceSignIn({
           <Button
             size="page"
             data-testid="pi-attempt-start"
-            label={
-              view.phase === "start"
-                ? "Aloita kirjautuminen"
-                : "Aloita uusi yritys"
-            }
+            label={view.phase === "start" ? txt.start : txt.retry}
             variant="primary"
             onPress={onRetry}
           />
@@ -256,7 +212,7 @@ export function PiDeviceSignIn({
           <Button
             data-testid="pi-attempt-start"
             size="page"
-            label="Aloita uusi yritys"
+            label={txt.retry}
             variant="secondary"
             onPress={onRetry}
           />
@@ -265,7 +221,7 @@ export function PiDeviceSignIn({
           <Button
             data-testid="pi-back-to-repositories"
             size="page"
-            label="Takaisin valitsemaan GitHub-repoja"
+            label={txt.back}
             variant="quiet"
             onPress={onBack}
           />

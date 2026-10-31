@@ -1,4 +1,6 @@
 import eventSchema from "../../../contracts/v1/event.schema.json";
+import { liveText } from "../i18n";
+import { conversationJournalText } from "../text/conversationJournal";
 import {
   type ConversationEvent,
   parseConversationEvent,
@@ -10,6 +12,7 @@ import type { HostChange } from "./store";
 
 // Named SSE events have no onmessage fallback. Subscribe to the contract's
 // complete set so a new type cannot silently create a sequence gap.
+const txt = liveText(conversationJournalText);
 const kinds = eventSchema.properties.kind.enum;
 const statusKinds = new Set([
   "process.changed",
@@ -363,9 +366,7 @@ export class ConversationJournal {
       // trip (on a slow relay, every time a proxy or an HTTP/2 hop ends an
       // idle stream). A stream that never opened is a failure at once: a
       // probe can succeed where the stream itself cannot get through.
-      const unreachable = (
-        reason = "Tapahtumayhteyttä ei saatu. Tarkista verkkoyhteys tai yritä uudelleen.",
-      ) => {
+      const unreachable = (reason = txt.unreachable) => {
         this.setOffline(true);
         this.callbacks.onConnection?.("failed", reason);
       };
@@ -399,12 +400,8 @@ export class ConversationJournal {
             this.connect();
             return;
           }
-          if (response.status === 403)
-            unreachable("Palvelin ei sallinut tapahtumayhteyttä.");
-          else if (response.status >= 500)
-            unreachable(
-              "Palvelimen tapahtumayhteys ei ole käytettävissä. Yritä uudelleen.",
-            );
+          if (response.status === 403) unreachable(txt.forbidden);
+          else if (response.status >= 500) unreachable(txt.serverDown);
           else unreachable();
         } catch {
           // Offline, or the probe's own timeout; retry with the last
@@ -450,10 +447,7 @@ export class ConversationJournal {
   snapshotFailed() {
     if (this.stopped || !this.recovering) return;
     clearTimeout(this.connectTimer);
-    this.callbacks.onConnection?.(
-      "failed",
-      "Palvelimen tilaa ei saatu tarkistettua. Yritä uudelleen.",
-    );
+    this.callbacks.onConnection?.("failed", txt.recoveryFailed);
   }
   private drop() {
     this.source?.close();
@@ -491,10 +485,7 @@ export class ConversationJournal {
       this.callbacks.onConnection?.("connecting");
       this.connectTimer = setTimeout(() => {
         if (!this.stopped)
-          this.callbacks.onConnection?.(
-            "failed",
-            "Palvelimen tilaa ei saatu tarkistettua. Yritä uudelleen.",
-          );
+          this.callbacks.onConnection?.("failed", txt.recoveryFailed);
       }, 8000);
       this.callbacks.onSnapshotNeeded();
     } else this.connect();

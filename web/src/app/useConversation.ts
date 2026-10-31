@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { liveText } from "../i18n";
+import { useConversationText } from "../text/useConversation";
 import {
   type ConversationStore,
   useConversationMetadata,
@@ -15,6 +17,8 @@ import {
 import type { SendObservationValue } from "./sentMessages";
 import type { Snapshot, Workspace } from "./snapshot";
 import { useReadingPosition } from "./useReadingPosition";
+
+const txt = liveText(useConversationText);
 
 // Owns the native read model and journal recovery for one conversation.
 export function useConversation({
@@ -230,7 +234,7 @@ export function useConversation({
                 replace: true,
                 state: { readOnly: true },
               });
-            else setProblem("Keskustelua ei voitu ladata. Yritä uudelleen.");
+            else setProblem(txt.loadFailed);
           }
         }
       })();
@@ -374,11 +378,7 @@ export function useConversation({
                 command,
                 state,
               }));
-              setReceipt(
-                outcome === "rejected"
-                  ? "Agentti ei ottanut viestiä vastaan. Teksti on kentässä: lähetä se uudelleen."
-                  : "",
-              );
+              setReceipt(outcome === "rejected" ? txt.rejected : "");
               sessionStorage.removeItem(sendKey);
               sessionStorage.removeItem(uncertainKey);
               sessionStorage.removeItem(submittedKey);
@@ -391,11 +391,7 @@ export function useConversation({
                 command,
                 state,
               }));
-              setReceipt(
-                outcome === "pending"
-                  ? "Viesti odottaa kuittausta. Tarkistetaan uudelleen."
-                  : "Lähetyksen tulos on yhä epävarma. Viestiä ei lähetetä uudelleen.",
-              );
+              setReceipt(outcome === "pending" ? txt.pending : txt.uncertain);
               if (outcome === "pending") receiptPending = true;
             }
           }
@@ -420,9 +416,7 @@ export function useConversation({
           if (reconcileContinuation) {
             sessionStorage.removeItem(continuationKey);
             setContinuation(undefined);
-            setReceipt(
-              "Jatkaminen kuitattiin. Aiemman vuoron tulos on epävarma; tarkista natiivi historia.",
-            );
+            setReceipt(txt.continued);
           }
           if (pendingNativeEntry.current) {
             if (
@@ -446,16 +440,14 @@ export function useConversation({
               // A restarted daemon no longer knows this controller or its
               // receipt. Keep the readable window and the unknown draft.
               store.markStale(id);
-              setProblem(
-                "Ohjaus ei ole enää käytettävissä. Lähetyksen tulos on epävarma.",
-              );
+              setProblem(txt.controlGone);
             } else
               navigate(`/agents/${id}`, {
                 replace: true,
                 state: { readOnly: true },
               });
           } else {
-            setProblem("Yhteys katkesi. Näytetään viimeisin tunnettu tila.");
+            setProblem(txt.disconnected);
             scheduleRetry(requestContinuation, readHistory);
           }
         }

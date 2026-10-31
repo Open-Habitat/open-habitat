@@ -5,6 +5,10 @@ import {
   thinkingDisplayName,
 } from "./modelPresentation";
 import "./ModelPicker.css";
+import { liveText } from "../i18n";
+import { conversationModelDetailsText } from "../text/conversationModelDetails";
+
+const txt = liveText(conversationModelDetailsText);
 
 /** Presentation of native settings; alternatives are not controls. */
 export function ConversationModelDetails({
@@ -40,15 +44,12 @@ export function ConversationModelDetails({
     ]),
   ];
   return (
-    <section
-      data-testid="conversation-model-info"
-      aria-label="Keskustelun malli ja ajattelutaso"
-    >
-      <h2>Malli</h2>
+    <section data-testid="conversation-model-info" aria-label={txt.label}>
+      <h2>{txt.model}</h2>
       <ul
         data-testid="model-options"
         className="md-info-ribbon md-info-models"
-        aria-label="Malli ja vaihtoehdot"
+        aria-label={txt.options}
       >
         {!current ? (
           <li data-model={id} aria-current="true">
@@ -66,17 +67,17 @@ export function ConversationModelDetails({
               models,
             )}
             {m.id === id ? (
-              <span className="ah-visually-hidden"> (käytössä)</span>
+              <span className="ah-visually-hidden">{txt.current}</span>
             ) : null}
           </li>
         ))}
       </ul>
-      <p className="md-note">{model ?? "Mallia ei tiedetä."}</p>
-      <h2>Ajattelutaso</h2>
+      <p className="md-note">{model ?? txt.unknownModel}</p>
+      <h2>{txt.thinking}</h2>
       <ul
         data-testid="thinking-options"
         className="md-info-ribbon"
-        aria-label="Ajattelutasot"
+        aria-label={txt.thinkingLevels}
       >
         {levels.length ? (
           levels.map((level) => (
@@ -87,12 +88,12 @@ export function ConversationModelDetails({
             >
               {thinkingDisplayName(level)}
               {level === thinking ? (
-                <span className="ah-visually-hidden"> (käytössä)</span>
+                <span className="ah-visually-hidden">{txt.current}</span>
               ) : null}
             </li>
           ))
         ) : (
-          <li>Ei tiedossa</li>
+          <li>{txt.unknown}</li>
         )}
       </ul>
     </section>

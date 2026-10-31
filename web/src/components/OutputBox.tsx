@@ -1,7 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { liveText } from "../i18n";
+import { outputBoxText } from "../text/outputBox";
 import { ControlButton, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { SyntaxCode } from "./SyntaxCode";
+
+const txt = liveText(outputBoxText);
 
 type View = "edges" | "scroll" | "all";
 type Shadow = { left: boolean; right: boolean };
@@ -16,7 +20,7 @@ export function OutputBox({
   running = false,
   complete = !running,
   detect = false,
-  copyLabel = "Kopioi tuloste",
+  copyLabel = txt.copyOutput,
   onCopy,
 }: {
   text: string;
@@ -233,7 +237,7 @@ export function OutputBox({
           <small className="ah-output-meta">
             {language}
             {language && long ? " · " : ""}
-            {long ? `${lines.length} riviä` : ""}
+            {long ? txt.lines(lines.length) : ""}
           </small>
         ) : null}
         {view === "edges" ? (
@@ -246,7 +250,7 @@ export function OutputBox({
               data-testid="output-expand-gap"
               onPress={() => select("all")}
             >
-              {lines.length - 10} riviä välistä · Näytä kaikki
+              {txt.hiddenLines(lines.length - 10)}
             </ControlButton>
             {pre(lines.slice(-7), "ah-bash-tail", tail)}
           </div>
@@ -257,10 +261,10 @@ export function OutputBox({
             view === "scroll" ? viewport : all,
           )
         )}
-        <fieldset className="ah-bash-rail" aria-label="Tulosteen toiminnot">
+        <fieldset className="ah-bash-rail" aria-label={txt.actions}>
           <div className="ah-output-group">
             {button(
-              copied ? "Tuloste kopioitu" : copyLabel,
+              copied ? txt.copied : copyLabel,
               copied ? "check" : "copy",
               () => void copy(),
             )}
@@ -268,39 +272,34 @@ export function OutputBox({
           {long ? (
             <fieldset
               className="ah-output-group ah-output-selector"
-              aria-label="Näkymä"
+              aria-label={txt.view}
             >
               {button(
-                "Alku ja loppu",
+                txt.edges,
                 "edges",
                 () => select("edges"),
                 view === "edges",
               )}
               {button(
-                "Vieritettävä ikkuna",
+                txt.scroll,
                 "scroll",
                 () => select("scroll"),
                 view === "scroll",
               )}
-              {button(
-                "Kaikki rivit",
-                "expand",
-                () => select("all"),
-                view === "all",
-              )}
+              {button(txt.all, "expand", () => select("all"), view === "all")}
             </fieldset>
           ) : null}
           {view === "scroll" ? (
-            <fieldset className="ah-output-group" aria-label="Siirry">
+            <fieldset className="ah-output-group" aria-label={txt.go}>
               {button(
-                "Alkuun",
+                txt.top,
                 "top",
                 () => viewport.current?.scrollTo({ top: 0 }),
                 undefined,
                 position.top,
               )}
               {button(
-                "Loppuun",
+                txt.bottom,
                 "bottom",
                 () =>
                   viewport.current?.scrollTo({
@@ -314,16 +313,14 @@ export function OutputBox({
           <div className="ah-output-group">
             {overflows
               ? button(
-                  wrap ? "Älä rivitä pitkiä rivejä" : "Rivitä pitkät rivit",
+                  wrap ? txt.noWrap : txt.wrap,
                   "wrap",
                   () => setWrap(!wrap),
                   wrap,
                 )
               : null}
             {long
-              ? button("Avaa omassa ikkunassa", "external", () =>
-                  setDialog(true),
-                )
+              ? button(txt.window, "external", () => setDialog(true))
               : null}
           </div>
         </fieldset>
@@ -333,18 +330,18 @@ export function OutputBox({
           data-testid="output-dialog"
           ref={dialogRef}
           className="ah-bash-dialog"
-          aria-label="Tuloste"
+          aria-label={txt.output}
           onClose={() => setDialog(false)}
         >
           <header>
-            <strong>{language || "Tuloste"}</strong>
+            <strong>{language || txt.output}</strong>
             <ControlButton
               data-testid="copy-output"
               variant="quiet"
               size="row"
               onPress={() => void copy()}
             >
-              Kopioi
+              {txt.copy}
             </ControlButton>
             <ControlButton
               variant="quiet"
@@ -354,7 +351,7 @@ export function OutputBox({
                 setDialog(false);
               }}
             >
-              Sulje
+              {txt.close}
             </ControlButton>
           </header>
           <div className="ah-bash-dialog-code">

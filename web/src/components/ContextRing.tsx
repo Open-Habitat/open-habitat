@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { formatNumber, liveText } from "../i18n";
+import { contextRingText } from "../text/contextRing";
 import { ControlButton } from "./ControlElements";
 import "./ContextRing.css";
+
+const txt = liveText(contextRingText);
 
 // How full the model's context window is (Rengas, Jari 26.10.2026, issue
 // proto-context-basic): a ring and percentage in the top bar before the
@@ -57,34 +61,32 @@ export function contextFacts(usage: ContextUsage) {
   return { window, percent, threshold, level };
 }
 
-const full = (n: number) => n.toLocaleString("fi-FI");
+const full = (n: number) => formatNumber(n);
 const short = (n: number) =>
   n >= 1e6
-    ? `${(n / 1e6).toLocaleString("fi-FI", { maximumFractionDigits: 2 })}M`
+    ? `${formatNumber(n / 1e6, { maximumFractionDigits: 2 })}M`
     : n >= 1000
       ? `${Math.round(n / 1000)}k`
       : String(n);
-const pct = (p: number) => `${p > 0 && p < 1 ? "<1" : Math.round(p)} %`;
+const pct = (p: number) =>
+  txt.percent(p > 0 && p < 1 ? "<1" : String(Math.round(p)));
 
 /** One sentence per state: accessible name, tooltip and the details' lead. */
 export function contextSentence(usage: ContextUsage) {
   const { window, percent, threshold, level } = contextFacts(usage);
-  if (level === "compacting")
-    return "Pi tiivistää vanhempaa historiaa yhteenvedoksi. Keskustelu jatkuu, kun tiivistys valmistuu.";
-  if (usage.phase === "edited")
-    return "Pi muokkasi keskustelun kontekstia. Uusi luku tulee Pi:n seuraavasta vastauksesta.";
-  if (level === "after")
-    return "Historia tiivistettiin. Uusi luku tulee Pi:n seuraavasta vastauksesta.";
+  if (level === "compacting") return txt.compacting;
+  if (usage.phase === "edited") return txt.edited;
+  if (level === "after") return txt.after;
   const tokens = usage.tokens ?? 0;
   if (level === "nowindow" || percent === undefined || !window)
-    return `${full(tokens)} tokenia käytössä. Mallin kontekstin kokoa ei tiedetä, joten osuutta ei voi laskea.`;
+    return txt.noWindow(full(tokens));
   const compaction =
     threshold !== undefined
-      ? `Pi tiivistää vanhemman historian, kun noin ${pct((threshold / window) * 100)} täyttyy.`
+      ? txt.compactsAt(pct((threshold / window) * 100))
       : usage.autoCompaction === false
-        ? "Automaattinen tiivistys on pois päältä."
+        ? txt.autoOff
         : "";
-  return `Konteksti ${pct(percent)}: ${full(tokens)} / ${full(window)} tokenia.${compaction ? ` ${compaction}` : ""}`;
+  return `${txt.usage(pct(percent), full(tokens), full(window))}${compaction ? ` ${compaction}` : ""}`;
 }
 
 function Ring({
@@ -168,7 +170,7 @@ export function ContextRing({
   }, [level, sentence]);
   const value =
     level === "compacting"
-      ? "Tiivistää"
+      ? txt.compactingValue
       : level === "after"
         ? "?"
         : percent === undefined
@@ -185,7 +187,7 @@ export function ContextRing({
         presentation="pill"
         variant="quiet"
         className="ah-ctx-chip"
-        aria-label={`${sentence} ${open ? "Palaa keskusteluun." : "Avaa kontekstin erittely."}`}
+        aria-label={`${sentence} ${open ? txt.back : txt.open}`}
         aria-pressed={open}
         title={sentence}
         onPress={onToggle}

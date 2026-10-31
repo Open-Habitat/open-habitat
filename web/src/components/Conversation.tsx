@@ -6,6 +6,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { formatDate, liveText } from "../i18n";
+import { conversationText } from "../text/conversation";
 import { AttachmentChips, attachmentsIn, messageText } from "./AttachmentChips";
 import { DisclosureButton } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
@@ -18,6 +20,8 @@ import { InlineNotice, StatusMark } from "./Status";
 import { SyntaxCode } from "./SyntaxCode";
 import type { Availability, ProblemView, TimelineItem, Tone } from "./types";
 
+const txt = liveText(conversationText);
+
 export function ConversationTimeline({
   state,
   items,
@@ -26,7 +30,7 @@ export function ConversationTimeline({
   latestWorking,
   latestDuration,
   historyMode,
-  emptyLabel = "Aloita keskustelu.",
+  emptyLabel = txt.start,
   problem,
   onJumpToLatest,
   onHistoryModeChange,
@@ -46,7 +50,7 @@ export function ConversationTimeline({
   return (
     <section
       data-testid="conversation-timeline"
-      aria-label="Keskusteluhistoria"
+      aria-label={txt.history}
       className="ah-timeline"
     >
       {onHistoryModeChange ? (
@@ -54,8 +58,8 @@ export function ConversationTimeline({
           <Button
             label={
               historyMode === "virtualized"
-                ? "Näytä saavutettava sivutettu historia"
-                : "Käytä virtuaalista historiaa"
+                ? txt.pagedHistory
+                : txt.virtualHistory
             }
             variant="quiet"
             size="row"
@@ -69,14 +73,14 @@ export function ConversationTimeline({
           />
         </div>
       ) : null}
-      {state === "loading" ? <p>Ladataan keskustelua…</p> : null}
+      {state === "loading" ? <p>{txt.loading}</p> : null}
       {state === "empty" ? (
         <div data-testid="conversation-empty">{emptyLabel}</div>
       ) : null}
       {state === "error" || state === "unavailable" ? (
         <InlineNotice
           data-testid="history-read-error"
-          title={problem?.title ?? "Historiaa ei saada"}
+          title={problem?.title ?? txt.historyUnavailable}
           description={problem?.description}
           tone="danger"
         />
@@ -84,8 +88,8 @@ export function ConversationTimeline({
       {state === "stale" ? (
         <InlineNotice
           data-testid="history-stale"
-          title="Historia on vanhentunut"
-          description="Näkyvää sisältöä voi lukea, mutta sen ajantasaisuutta ei voida vahvistaa."
+          title={txt.stale}
+          description={txt.staleDetail}
           tone="warning"
         />
       ) : null}
@@ -105,18 +109,18 @@ export function ConversationTimeline({
             size="row"
             label={
               latestWorking
-                ? `● Agentti työskentelee${latestDuration ? ` ${latestDuration}` : ""}${newContentCount > 0 ? ` (${newContentCount})` : ""}`
+                ? txt.jumpWorking(latestDuration ?? "", newContentCount)
                 : newContentCount > 0
-                  ? `● Uusi vastaus (${newContentCount})`
-                  : "Viimeisimpään"
+                  ? txt.jumpReply(newContentCount)
+                  : txt.jumpLatest
             }
             variant="secondary"
             ariaLabel={
               latestWorking
-                ? `Viimeisimpään, agentti työskentelee${newContentCount > 0 ? `, ${newContentCount} uutta viestiä` : ""}`
+                ? txt.jumpWorkingLabel(newContentCount)
                 : newContentCount > 0
-                  ? `Viimeisimpään, uusi vastaus (${newContentCount})`
-                  : "Viimeisimpään"
+                  ? txt.jumpReplyLabel(newContentCount)
+                  : txt.jumpLatest
             }
             trailingIcon="down"
             presentation="floating"
@@ -168,9 +172,13 @@ function Message({
   if (voice !== "person")
     speaker = person
       ? voice === "brief"
-        ? "Pääagentti · tehtävä"
-        : "Pääagentti"
-      : `Worker · ${speaker === "Agentti" || speaker === "Vastaus valmis" ? "vastaus" : speaker.toLocaleLowerCase("fi")}`;
+        ? txt.mainAgentTask
+        : txt.mainAgent
+      : txt.worker(
+          speaker === txt.agent || speaker === txt.replyDone
+            ? txt.workerReply
+            : speaker.toLocaleLowerCase(),
+        );
   return (
     <article
       data-testid="message"
@@ -188,8 +196,8 @@ function Message({
         </strong>
         <Button
           data-testid="message-copy"
-          ariaLabel={`Kopioi viesti: ${speaker}`}
-          label="Kopioi"
+          ariaLabel={txt.copyMessage(speaker)}
+          label={txt.copy}
           icon="copy"
           presentation="messageIcon"
           variant="quiet"
@@ -244,7 +252,7 @@ export function UserMessage({
   }, []);
   return (
     <Message
-      speaker="Sinä"
+      speaker={txt.you}
       person
       time={time}
       state={deliveryState}
@@ -270,7 +278,7 @@ export function UserMessage({
       {!skill && (long || expanded) ? (
         <Button
           data-testid="expand-message"
-          label={expanded ? "Supista viesti" : "Näytä koko viesti"}
+          label={expanded ? txt.collapseMessage : txt.showMessage}
           variant="quiet"
           size="row"
           onPress={() => setExpanded(!expanded)}
@@ -291,21 +299,15 @@ export function AssistantMessage({
   streamState?: "streaming" | "complete" | "interrupted" | "failed" | "unknown";
   onCopy: () => void;
 }) {
-  const labels = {
-    streaming: "Vastaa",
-    complete: "Vuoro valmis",
-    interrupted: "Keskeytetty",
-    failed: "Epäonnistui",
-    unknown: "Tila ei tiedossa",
-  };
+  const labels = txt.streamStates;
   return (
     <Message
       speaker={
         streamState === "streaming"
-          ? "Vastaa"
+          ? txt.replying
           : streamState === "complete"
-            ? "Vastaus valmis"
-            : "Agentti"
+            ? txt.replyDone
+            : txt.agent
       }
       replyComplete={streamState === "complete"}
       time={time}
@@ -351,7 +353,7 @@ export function InterimMessage({
   onCopy: () => void;
 }) {
   return (
-    <Message speaker="Välivastaus" interim onCopy={onCopy}>
+    <Message speaker={txt.interim} interim onCopy={onCopy}>
       {children}
     </Message>
   );
@@ -370,10 +372,10 @@ export function WaitingMessage({
 }) {
   const label =
     state === "failed"
-      ? "Ei lähtenyt"
+      ? txt.notSent
       : state === "uncertain"
-        ? "Toimitus epävarma"
-        : "Odottaa agenttia";
+        ? txt.deliveryUncertain
+        : txt.waitingAgent;
   return (
     <article
       data-testid="waiting-message"
@@ -381,11 +383,11 @@ export function WaitingMessage({
       data-waiting={state}
     >
       <header>
-        <strong>Sinä</strong>
+        <strong>{txt.you}</strong>
         <Button
           data-testid="message-copy"
-          ariaLabel="Kopioi viesti: Sinä"
-          label="Kopioi"
+          ariaLabel={txt.copyMessage(txt.you)}
+          label={txt.copy}
           icon="copy"
           presentation="messageIcon"
           variant="quiet"
@@ -442,19 +444,18 @@ export function HeldStartFailure({
     >
       <span className="ah-held-failure-text">
         <Icon name="cross" />
-        Agentti ei käynnistynyt. {reason ? `${reason} ` : ""}
-        {count > 1 ? "Viestit ovat" : "Viesti on"} tallessa.
+        {txt.heldFailed(reason, count)}
       </span>
       <span className="ah-held-failure-actions">
         <Button
           data-testid="retry"
-          label="Yritä uudelleen"
+          label={txt.retry}
           variant="primary"
           size="row"
           onPress={onRetry}
         />
         <Button
-          label="Muokkaa"
+          label={txt.edit}
           variant="secondary"
           size="row"
           onPress={onEdit}
@@ -474,13 +475,7 @@ export function SendObservation({
   showText: boolean;
   onCopy: () => void;
 }) {
-  const labels = {
-    pending: "Lähetetään · odottaa agentin kuittausta",
-    accepted: "Hyväksytty agentin RPC:ssä · vuoro voi jatkua",
-    rejected: "Hylätty · teksti säilytettiin",
-    uncertain:
-      "? Ei tiedossa, vastaanottiko agentti viestin. Viestiä ei lähetetä uudelleen automaattisesti.",
-  };
+  const labels = txt.sendStates;
   if (state === "accepted") return null;
   return (
     <div
@@ -503,7 +498,7 @@ export function SendObservation({
           <Button
             data-testid="message-copy"
             size="row"
-            label="Kopioi teksti"
+            label={txt.copyText}
             variant="quiet"
             onPress={onCopy}
           />
@@ -515,11 +510,13 @@ export function SendObservation({
 export function TurnSettlement({ observedAt }: { observedAt: string }) {
   return (
     <p className="ah-settled" role="status">
-      <Icon name="check" /> Vuoro valmis{" "}
-      {new Date(observedAt).toLocaleTimeString("fi-FI", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })}{" "}
+      <Icon name="check" />{" "}
+      {txt.turnDone(
+        formatDate(new Date(observedAt), {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      )}{" "}
     </p>
   );
 }
@@ -545,16 +542,16 @@ export function NativeQuestion({
     <section
       data-testid="agent-question"
       className="ah-native-question"
-      aria-label="Agentin kysymys"
+      aria-label={txt.question}
     >
-      <h2>Agentin kysymys</h2>
+      <h2>{txt.question}</h2>
       <p>{prompt}</p>
       {kind === "input" && !locked ? (
-        <TextField label="Vastaus" value={value} onChange={onChange} />
+        <TextField label={txt.answer} value={value} onChange={onChange} />
       ) : null}
       {kind === "select" && !locked ? (
         <RadioGroup
-          label="Valitse vastaus"
+          label={txt.chooseAnswer}
           value={value}
           options={choices.map((choice) => ({ value: choice, label: choice }))}
           onChange={onChange}
@@ -564,33 +561,24 @@ export function NativeQuestion({
         <p>{choices.join(" · ")}</p>
       ) : null}
       {state === "uncertain" ? (
-        <p role="status">
-          ? Ei tiedossa, käsitteliko agentti pyynnön. Tarkista tila; älä lähetä
-          uudelleen.
-        </p>
+        <p role="status">{txt.questionUncertain}</p>
       ) : null}
-      {state === "stale" ? (
-        <p role="status">
-          ? Pyyntö voi olla vanhentunut tai toimitus epävarma. Tarkista tila.
-        </p>
-      ) : null}
-      {state === "pending" ? <p role="status">Käsitellään…</p> : null}
-      {state === "unavailable" ? (
-        <p role="status">Ohjaus ei ole käytettävissä.</p>
-      ) : null}
+      {state === "stale" ? <p role="status">{txt.questionStale}</p> : null}
+      {state === "pending" ? <p role="status">{txt.processing}</p> : null}
+      {state === "unavailable" ? <p role="status">{txt.noControl}</p> : null}
       {state === "open" ? (
         <div className="ah-actions">
           {kind === "confirm" ? (
             <>
               <Button
                 size="row"
-                label="Kyllä"
+                label={txt.yes}
                 onPress={() => onRespond("answer", true)}
               />
               <Button
                 data-testid="question-decline"
                 size="row"
-                label="Ei"
+                label={txt.no}
                 variant="quiet"
                 onPress={() => onRespond("answer", false)}
               />
@@ -599,7 +587,7 @@ export function NativeQuestion({
             <Button
               data-testid="question-answer"
               size="row"
-              label="Vastaa"
+              label={txt.respond}
               availability={
                 !value ||
                 (kind === "select" && !choices.includes(value)) ||
@@ -609,10 +597,10 @@ export function NativeQuestion({
                       reason:
                         new TextEncoder().encode(JSON.stringify(value)).length >
                         60000
-                          ? "Vastaus on liian pitkä"
+                          ? txt.answerTooLong
                           : kind === "input"
-                            ? "Kirjoita vastaus"
-                            : "Valitse vastaus",
+                            ? txt.writeAnswer
+                            : txt.chooseAnswer,
                     }
                   : { state: "enabled" }
               }
@@ -622,7 +610,7 @@ export function NativeQuestion({
           <Button
             data-testid="question-cancel"
             size="row"
-            label="Peruuta kysymys"
+            label={txt.cancelQuestion}
             variant="quiet"
             onPress={() => onRespond("cancel")}
           />
@@ -639,13 +627,11 @@ export function ModelChange({
   onCopy: () => void;
 }) {
   return (
-    <aside className="ah-model-change" aria-label="Mallin vaihto">
-      <span>
-        Malli vaihtui · <code>{modelId}</code>
-      </span>
+    <aside className="ah-model-change" aria-label={txt.modelChange}>
+      <span>{txt.modelChanged(<code>{modelId}</code>)}</span>
       <Button
         data-testid="message-copy"
-        label="Kopioi mallin tunniste"
+        label={txt.copyModelId}
         variant="quiet"
         size="row"
         onPress={onCopy}
@@ -662,9 +648,7 @@ export function MarkdownContent({
 }) {
   return (
     <div className="ah-markdown" data-content-state={contentState}>
-      {contentState === "pending" ? (
-        <p>Muotoilua tarkistetaan. Sisältö näytetään tekstinä.</p>
-      ) : null}
+      {contentState === "pending" ? <p>{txt.formatting}</p> : null}
       {children}
     </div>
   );
@@ -691,18 +675,20 @@ export function CodeBlock({
   return (
     <figure className="ah-code">
       <figcaption>
-        {languageLabel ?? "Koodi"} ·{" "}
+        {languageLabel ?? txt.code} ·{" "}
         {sourceState === "continued"
-          ? "Sisältö jatkuu"
+          ? txt.continues
           : sourceState === "livePartial"
-            ? "Keskeneräinen"
-            : "Kokonainen"}
+            ? txt.partial
+            : txt.complete}
         {highlightState !== "ready"
-          ? ` · Korostus ${highlightState === "pending" ? "odottaa" : "epäonnistui"}`
+          ? highlightState === "pending"
+            ? txt.highlightPending
+            : txt.highlightFailed
           : ""}
       </figcaption>
       {collapsed ? (
-        <p>Pitkä sisältö on supistettu.</p>
+        <p>{txt.collapsedContent}</p>
       ) : (
         <pre>
           <SyntaxCode
@@ -716,14 +702,14 @@ export function CodeBlock({
       <div className="ah-actions">
         <Button
           data-testid="message-copy"
-          label="Kopioi koodi"
+          label={txt.copyCode}
           variant="quiet"
           size="row"
           onPress={onCopy}
         />
         {onToggle ? (
           <Button
-            label={collapsed ? "Näytä" : "Supista"}
+            label={collapsed ? txt.show : txt.collapse}
             variant="quiet"
             size="row"
             onPress={onToggle}
@@ -731,7 +717,7 @@ export function CodeBlock({
         ) : null}
         {sourceState === "continued" && onLoadMore ? (
           <Button
-            label="Lataa lisää"
+            label={txt.loadMore}
             variant="secondary"
             size="row"
             onPress={onLoadMore}
@@ -776,16 +762,10 @@ export function DiffView({
     <figure className="ah-diff">
       <figcaption>
         {pathLabel} ·{" "}
-        {parseState === "ready"
-          ? "Jäsennetty muutos"
-          : "Yhdistetty tekstimuutos"}
+        {parseState === "ready" ? txt.parsedDiff : txt.unifiedDiff}
       </figcaption>
       <Button
-        label={
-          view === "splitVisual"
-            ? "Näytä saavutettava yhdistetty diff"
-            : "Näytä visuaalinen diff"
-        }
+        label={view === "splitVisual" ? txt.accessibleDiff : txt.visualDiff}
         variant="quiet"
         size="row"
         onPress={() =>
@@ -809,9 +789,9 @@ export function DiffView({
             >
               <span className="ah-visually-hidden">
                 {diffLineKind(line) === "add"
-                  ? "Lisätty rivi: "
+                  ? txt.addedLine
                   : diffLineKind(line) === "delete"
-                    ? "Poistettu rivi: "
+                    ? txt.removedLine
                     : ""}
               </span>
               {line}
@@ -822,7 +802,7 @@ export function DiffView({
       </pre>
       <Button
         data-testid="message-copy"
-        label="Kopioi diff"
+        label={txt.copyDiff}
         variant="quiet"
         size="row"
         onPress={onCopy}
@@ -838,12 +818,7 @@ export function LiveToolRow({
   name: string;
   state: "running" | "succeeded" | "failed" | "cancelled";
 }) {
-  const labels = {
-    running: "ajossa",
-    succeeded: "valmis",
-    failed: "epäonnistui",
-    cancelled: "keskeytetty",
-  };
+  const labels = txt.liveStates;
   return (
     <div
       className="ah-tool-row ah-live-tool-row"
@@ -921,7 +896,7 @@ export function ToolRow({
               className="ah-machine-chip"
               data-testid="tool-machine"
               data-machine={machine}
-              title={`Ajettiin koneellasi ${machine}`}
+              title={txt.ranOn(machine)}
             >
               <Icon name="laptop" className="ah-machine-chip-icon" />
               {machine}
@@ -980,12 +955,14 @@ export function ToolGroup({
     >
       <Disclosure
         label={title}
-        summary={containsException ? `${summary} · Sisältää virheen` : summary}
+        summary={
+          containsException ? `${summary} · ${txt.containsError}` : summary
+        }
         expanded={expanded}
         onToggle={onToggle}
       >
         {containsException ? (
-          <StatusMark label="Sisältää virheen" tone="danger" />
+          <StatusMark label={txt.containsError} tone="danger" />
         ) : null}
         {children}
       </Disclosure>
@@ -1010,14 +987,14 @@ export function ToolOutput({
       <pre>{text}</pre>
       <Button
         data-testid="message-copy"
-        label="Kopioi näkyvä tuloste"
+        label={txt.copyVisibleOutput}
         variant="quiet"
         size="row"
         onPress={onCopy}
       />
       {sourceState === "continued" && onLoadMore ? (
         <Button
-          label="Lataa lisää"
+          label={txt.loadMore}
           variant="secondary"
           size="row"
           onPress={onLoadMore}
@@ -1041,20 +1018,20 @@ export function UnknownEvent({
     <article className="ah-unknown">
       <StatusMark
         data-testid="unknown-event"
-        label="Tuntematon tapahtuma"
+        label={txt.unknownEvent}
         tone="warning"
       />
       <p>{safeSummary}</p>
       <h3>{kindLabel}</h3>
       {safePayloadText ? (
         <details>
-          <summary>Alkuperäinen sisältö</summary>
+          <summary>{txt.originalContent}</summary>
           <pre>{safePayloadText}</pre>
         </details>
       ) : null}
       <Button
         data-testid="message-copy"
-        label="Kopioi tiedot"
+        label={txt.copyDetails}
         variant="quiet"
         size="row"
         onPress={onCopy}
@@ -1094,12 +1071,7 @@ export function SupportedQuestion({
   onRespond: (value: string | boolean) => void;
   onCancel: () => void;
 }) {
-  const closed: Record<string, string> = {
-    answered: "Vastattu",
-    cancelled: "Peruttu",
-    expired: "Vanhentunut",
-    resolvedElsewhere: "Käsiteltiin toisessa näkymässä",
-  };
+  const closed: Record<string, string> = txt.closed;
   if (closed[state])
     return (
       <InlineNotice title={prompt} description={closed[state]} tone="neutral" />
@@ -1108,7 +1080,7 @@ export function SupportedQuestion({
     return (
       <InlineNotice
         title={prompt}
-        description="Kysymystyyppiä ei tueta. Vastausta ei arvata."
+        description={txt.unsupportedQuestion}
         tone="warning"
       />
     );
@@ -1123,11 +1095,11 @@ export function SupportedQuestion({
         />
       ) : null}
       {kind === "input" ? (
-        <TextField label="Vastaus" value={value} onChange={onChange} />
+        <TextField label={txt.answer} value={value} onChange={onChange} />
       ) : null}
       {kind === "select" ? (
         <RadioGroup
-          label="Valitse vastaus"
+          label={txt.chooseAnswer}
           value={value}
           options={choices.map((choice) => ({ value: choice, label: choice }))}
           onChange={onChange}
@@ -1138,13 +1110,13 @@ export function SupportedQuestion({
           <>
             <Button
               size="row"
-              label="Kyllä"
+              label={txt.yes}
               pending={state === "pending"}
               onPress={() => onRespond(true)}
             />
             <Button
               size="row"
-              label="Ei"
+              label={txt.no}
               variant="secondary"
               pending={state === "pending"}
               onPress={() => onRespond(false)}
@@ -1154,14 +1126,14 @@ export function SupportedQuestion({
           <Button
             data-testid="question-answer"
             size="row"
-            label="Vastaa"
+            label={txt.respond}
             pending={state === "pending"}
             onPress={() => onRespond(value)}
           />
         )}
         <Button
           size="row"
-          label="Peruuta pyyntö"
+          label={txt.cancelRequest}
           variant="quiet"
           availability={cancelAvailability}
           onPress={onCancel}
@@ -1187,11 +1159,11 @@ export function CommandReceipt({
       <h3>{kindLabel}</h3>
       <dl>
         <div>
-          <dt>Hyväksyntä</dt>
+          <dt>{txt.acceptance}</dt>
           <dd>{acceptance}</dd>
         </div>
         <div>
-          <dt>Suoritus</dt>
+          <dt>{txt.execution}</dt>
           <dd>{execution}</dd>
         </div>
       </dl>
@@ -1226,7 +1198,7 @@ export function UncertainCommandCard({
 }) {
   return (
     <section data-testid="uncertain-command" className="ah-uncertain">
-      <StatusMark label="Tulos epävarma" tone="warning" />
+      <StatusMark label={txt.uncertain} tone="warning" />
       <h2>{commandLabel}</h2>
       <p>{explanation}</p>
       {textPreview ? <blockquote>{textPreview}</blockquote> : null}
@@ -1234,20 +1206,20 @@ export function UncertainCommandCard({
       <div className="ah-actions">
         <Button
           size="row"
-          label="Tarkista tila"
+          label={txt.checkStatus}
           availability={availability}
           onPress={onReconcile}
         />
         <Button
           data-testid="message-copy"
           size="row"
-          label="Kopioi teksti"
+          label={txt.copyText}
           variant="secondary"
           onPress={onCopyText}
         />
         <Button
           size="row"
-          label="Lähetä uutena…"
+          label={txt.sendAsNew}
           variant="secondary"
           onPress={onSendAsNew}
         />

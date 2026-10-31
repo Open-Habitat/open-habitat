@@ -2,11 +2,15 @@ import {
   type ConversationStore,
   useConversationMetadata,
 } from "../app/conversationStore";
+import { liveText } from "../i18n";
+import { returnViewText } from "../text/returnView";
 import { agentPresentation } from "./agentPresentation";
 import { LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
 import { ListRow } from "./Primitives";
 import { StatusMark } from "./Status";
+
+const txt = liveText(returnViewText);
 
 export interface ReturnConversation {
   id: string;
@@ -96,8 +100,8 @@ function ConversationGroup({
                       <StatusMark
                         label={
                           conversation.process === "terminal_observed_live"
-                            ? "Käynnissä terminaalissa"
-                            : "Prosessi käynnissä"
+                            ? txt.inTerminal
+                            : txt.processRunning
                         }
                         kind="working"
                         tone="info"
@@ -123,8 +127,8 @@ function ConversationGroup({
                         data-testid="history-check-error"
                         label={
                           conversation.history === "unavailable"
-                            ? "Historiaa ei voitu tarkistaa"
-                            : "Historia ei luettavissa"
+                            ? txt.historyUnchecked
+                            : txt.historyUnreadable
                         }
                         tone="warning"
                         kind={
@@ -135,12 +139,12 @@ function ConversationGroup({
                       />
                     ) : null}
                     {presentation(conversation).attentionLabel ? (
-                      <StatusMark label="Uusi" tone="warning" />
+                      <StatusMark label={txt.new} tone="warning" />
                     ) : null}
                     {!conversation.browserSession ? (
                       <StatusMark
                         data-testid="read-only-indicator"
-                        label="Vain luku"
+                        label={txt.readOnly}
                         kind="read-only"
                       />
                     ) : null}
@@ -210,22 +214,16 @@ export function ReturnView({
         {workspaceName ? (
           <h2 id="continue-heading">{workspaceName}</h2>
         ) : (
-          <h1 id="continue-heading">Jatka siitä, mihin jäit</h1>
+          <h1 id="continue-heading">{txt.heading}</h1>
         )}
-        {!workspaceName ? (
-          <p>
-            Selainikkunan sulkeminen ei pysäytä käynnissä olevaa agenttia.
-            Keskustelun avaaminen näyttää historian käynnistämättä agenttia.
-            Selainistunnon ohjaus riippuu sen nykyisestä tilasta.
-          </p>
-        ) : null}
+        {!workspaceName ? <p>{txt.intro}</p> : null}
       </header>
       {conversations.length ? (
         <div className="ah-return-groups">
           {attention.length ? (
             <ConversationGroup
               kind="attention"
-              title="Odottaa sinua"
+              title={txt.waitingForYou}
               featured
               conversations={attention}
             />
@@ -233,7 +231,7 @@ export function ReturnView({
           {ongoing.length ? (
             <ConversationGroup
               kind="ongoing"
-              title="Käynnissä"
+              title={txt.running}
               conversations={ongoing}
               featured
             />
@@ -241,17 +239,13 @@ export function ReturnView({
           {recent.length ? (
             <ConversationGroup
               kind="recent"
-              title={workspaceName ? "Keskustelut" : "Muut keskustelut"}
+              title={workspaceName ? txt.conversations : txt.otherConversations}
               conversations={recent}
             />
           ) : null}
         </div>
       ) : (
-        <p>
-          {workspaceName
-            ? "Tässä työtilassa ei ole vielä keskusteluja."
-            : "Keskusteluja ei vielä näy. Valitse työtila vasemmalta."}
-        </p>
+        <p>{workspaceName ? txt.emptyWorkspace : txt.empty}</p>
       )}
     </section>
   );

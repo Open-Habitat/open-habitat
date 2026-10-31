@@ -1,4 +1,8 @@
 import { useEffect, useRef } from "react";
+import { liveText } from "../i18n";
+import { workingProgressText } from "../text/workingProgress";
+
+const txt = liveText(workingProgressText);
 
 // Only known event types become UI copy. Never render an RPC payload or tool arguments.
 export function progressLabel(events: unknown[]): string {
@@ -12,13 +16,13 @@ export function progressLabel(events: unknown[]): string {
         /^(bash|read|write|edit|grep|find|ls)$/.test(toolName)
           ? toolName
           : undefined;
-      return tool ? `Käyttää työkalua ${tool}` : "Käyttää työkalua";
+      return tool ? txt.usingTool(tool) : txt.usingAnyTool;
     }
-    if (type === "tool_execution_end") return "Työkalun tulos saapui";
-    if (type === "message_end") return "Valmistelee seuraavaa vaihetta";
-    if (type === "agent_start") return "Aloittaa työtä";
+    if (type === "tool_execution_end") return txt.toolResult;
+    if (type === "message_end") return txt.preparingNext;
+    if (type === "agent_start") return txt.starting;
   }
-  return "Odottaa agentin seuraavaa vaihetta";
+  return txt.waitingNext;
 }
 
 // Native history, typed live progress and supported question controls own the
@@ -94,23 +98,22 @@ export function WorkingProgress({
     state === "accepted" || state === "pending" || state === "stopping";
   const label =
     state === "stopping"
-      ? "Keskeytystä odotetaan"
+      ? txt.stopping
       : activeToolName
-        ? `Käyttää työkalua ${activeToolName}`
+        ? txt.usingTool(activeToolName)
         : progressLabel(events);
   if (!working && state !== "uncertain") return null;
   if (state === "uncertain")
     return (
       <p data-testid="working-uncertain" data-state={state} role="status">
-        Agentin työ keskeytyi tai yhteys siihen katkesi. Historia on
-        luettavissa, mutta työn päättymistä ei voida vahvistaa.
+        {txt.uncertain}
       </p>
     );
   return (
     <section
       data-testid="working-uncertain"
       data-state={state}
-      aria-label="Agentin työn eteneminen"
+      aria-label={txt.progress}
       className="ah-working-progress"
       role="status"
     >

@@ -18,6 +18,8 @@ import {
   zipName,
   zipURL,
 } from "../app/fileOffers";
+import { formatDate, formatNumber, liveText } from "../i18n";
+import { fileOfferText, type KindText } from "../text/fileOffer";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { ControlButton, controlClassName } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
@@ -27,135 +29,68 @@ import { Icon, type IconName } from "./Icon";
 // compact card whose files live in the conversation's file panel. File
 // names, titles and folders are agent data, shown as text, never markup.
 
+const txt = liveText(fileOfferText);
+
 type KindInfo = {
   icon: IconName;
   group: "media" | "document" | "data" | "other";
-  /** What the second button gives; none for a kind the browser cannot show. */
-  action?: string;
-  type: (ext: string) => string;
 };
 
 const kinds: Record<FileKind, KindInfo> = {
-  image: {
-    icon: "image",
-    group: "media",
-    action: "Näytä isona",
-    type: (e) => `${e}-kuva`,
-  },
-  svg: {
-    icon: "image",
-    group: "media",
-    action: "Näytä isona",
-    type: () => "SVG-kuva",
-  },
-  video: {
-    icon: "film",
-    group: "media",
-    action: "Toista",
-    type: (e) => `Video (${e})`,
-  },
-  audio: {
-    icon: "music",
-    group: "media",
-    action: "Kuuntele",
-    type: (e) => `Ääni (${e})`,
-  },
-  markdown: {
-    icon: "file",
-    group: "document",
-    action: "Lue",
-    type: () => "Markdown",
-  },
-  pdf: {
-    icon: "file",
-    group: "document",
-    action: "Esikatsele",
-    type: () => "PDF-asiakirja",
-  },
-  docx: {
-    icon: "file",
-    group: "document",
-    action: "Esikatsele",
-    type: () => "Word-asiakirja",
-  },
-  pptx: {
-    icon: "file",
-    group: "document",
-    action: "Selaa dioja",
-    type: () => "PowerPoint-esitys",
-  },
-  xlsx: {
-    icon: "table",
-    group: "data",
-    action: "Näytä taulukko",
-    type: () => "Excel-taulukko",
-  },
-  csv: {
-    icon: "table",
-    group: "data",
-    action: "Näytä taulukko",
-    type: (e) => `${e}-taulukko`,
-  },
-  code: {
-    icon: "code",
-    group: "data",
-    action: "Näytä koodi",
-    type: (e) => `${e}-koodi`,
-  },
-  text: {
-    icon: "file",
-    group: "data",
-    action: "Lue",
-    type: (e) => `Teksti (${e})`,
-  },
-  zip: {
-    icon: "package",
-    group: "other",
-    action: "Näytä sisältö",
-    type: () => "Zip-paketti",
-  },
-  file: { icon: "file", group: "other", type: () => "Tuntematon tyyppi" },
+  image: { icon: "image", group: "media" },
+  svg: { icon: "image", group: "media" },
+  video: { icon: "film", group: "media" },
+  audio: { icon: "music", group: "media" },
+  markdown: { icon: "file", group: "document" },
+  pdf: { icon: "file", group: "document" },
+  docx: { icon: "file", group: "document" },
+  pptx: { icon: "file", group: "document" },
+  xlsx: { icon: "table", group: "data" },
+  csv: { icon: "table", group: "data" },
+  code: { icon: "code", group: "data" },
+  text: { icon: "file", group: "data" },
+  zip: { icon: "package", group: "other" },
+  file: { icon: "file", group: "other" },
 };
+const kindText = (kind: FileKind): KindText => txt.kinds[kind];
 
 const extension = (path: string) => /\.([^./]{1,12})$/.exec(path)?.[1] ?? "";
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 const folderOf = (path: string) =>
   path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-const number = (n: number) => n.toLocaleString("fi-FI");
+const number = (n: number) => formatNumber(n);
 
 export function formatOfferSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} t`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} kt`;
+  const one = (n: number) => formatNumber(n, { maximumFractionDigits: 1 });
+  if (bytes < 1024) return txt.bytes(bytes);
+  if (bytes < 1024 * 1024) return txt.kilobytes(Math.round(bytes / 1024));
   if (bytes < 1024 * 1024 * 1024)
-    return `${(bytes / 1024 / 1024).toLocaleString("fi-FI", { maximumFractionDigits: 1 })} Mt`;
-  return `${(bytes / 1024 / 1024 / 1024).toLocaleString("fi-FI", { maximumFractionDigits: 1 })} Gt`;
+    return txt.megabytes(one(bytes / 1024 / 1024));
+  return txt.gigabytes(one(bytes / 1024 / 1024 / 1024));
 }
 
 /** The facts line of one file: type, what is known of its content, size. */
 export function fileFacts(item: FileOfferItem): string[] {
   const ext = extension(item.path);
-  const facts = [kinds[item.kind].type(ext.toUpperCase() || "?")];
+  const facts = [kindText(item.kind).type(ext.toUpperCase() || "?")];
   if (item.kind === "file" && ext) facts.push(`.${ext}`);
   if (item.width && item.height)
     facts.push(`${number(item.width)} × ${number(item.height)}`);
   if (item.kind === "csv" && item.lines) {
-    facts.push(`${number(Math.max(item.lines - 1, 0))} riviä`);
-    if (item.columns) facts.push(`${number(item.columns)} saraketta`);
-  } else if (item.lines) facts.push(`${number(item.lines)} riviä`);
+    facts.push(txt.rows(number(Math.max(item.lines - 1, 0))));
+    if (item.columns) facts.push(txt.columns(number(item.columns)));
+  } else if (item.lines) facts.push(txt.rows(number(item.lines)));
   if (item.archive)
     facts.push(
-      `${number(item.archive.entries)} tiedostoa`,
-      `purettuna ${formatOfferSize(item.archive.bytes)}`,
+      txt.files(item.archive.entries, number(item.archive.entries)),
+      txt.unpacked(formatOfferSize(item.archive.bytes)),
     );
   facts.push(formatOfferSize(item.bytes));
   return facts;
 }
 
 const time = (iso: string) =>
-  new Date(iso).toLocaleTimeString("fi-FI", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  formatDate(new Date(iso), { hour: "2-digit", minute: "2-digit" });
 
 function KindMark({ kind }: { kind: FileKind }) {
   return (
@@ -172,7 +107,7 @@ function KindMark({ kind }: { kind: FileKind }) {
 function DownloadLink({
   href,
   name,
-  label = "Lataa",
+  label = txt.download,
   variant = "primary",
   testId,
 }: {
@@ -266,10 +201,10 @@ export function FileOfferCard({
   const single = manifest?.items.length === 1 ? manifest.items[0] : undefined;
   const removed = state.state === "removed";
   const label = removed
-    ? "Agentti tarjosi ladattavaksi:"
+    ? txt.offered
     : offer.folder
-      ? "Agentti tarjoaa ladattavaksi kansion:"
-      : "Agentti tarjoaa ladattavaksi:";
+      ? txt.offersFolder
+      : txt.offers;
   const folders = useMemo(() => {
     const counts = new Map<string, number>();
     for (const item of manifest?.items ?? []) {
@@ -282,12 +217,12 @@ export function FileOfferCard({
     (i) => i.kind === "image" || i.kind === "svg",
   );
   const kind = single?.kind ?? "file";
-  const info = kinds[kind];
+  const info = kindText(kind);
   return (
     <aside
       className="ah-file-offer"
       role="note"
-      aria-label={`Agentin tarjoama tiedosto: ${offer.title}`}
+      aria-label={txt.label(offer.title)}
       data-testid="file-offer"
       data-offer-id={offer.offer_id}
       data-state={state.state}
@@ -314,33 +249,25 @@ export function FileOfferCard({
         </strong>
         {removed ? (
           <span className="ah-file-offer-meta" data-testid="file-offer-removed">
-            Poistettu. Tiedosto ei ole enää ladattavissa.
+            {txt.removed}
           </span>
         ) : single ? (
           <span className="ah-file-offer-meta">
-            {[...fileFacts(single), "Vain sinulle"].join(" · ")}
+            {[...fileFacts(single), txt.onlyYou].join(" · ")}
           </span>
         ) : (
           <span className="ah-file-offer-meta">
             {[
-              offer.files === 1
-                ? "1 tiedosto"
-                : `${number(offer.files)} tiedostoa`,
-              ...(folders.length
-                ? [
-                    folders.length === 1
-                      ? "1 kansio"
-                      : `${folders.length} kansiota`,
-                  ]
-                : []),
+              txt.files(offer.files, number(offer.files)),
+              ...(folders.length ? [txt.folders(folders.length)] : []),
               formatOfferSize(offer.bytes),
-              "Vain sinulle",
+              txt.onlyYou,
             ].join(" · ")}
           </span>
         )}
         {state.state === "unavailable" ? (
           <span className="ah-file-offer-meta" role="status">
-            Tiedoston tietoja ei saatu juuri nyt. Lataa sivu uudelleen.
+            {txt.unavailable}
           </span>
         ) : null}
         {single && (single.kind === "image" || single.kind === "svg") ? (
@@ -348,7 +275,7 @@ export function FileOfferCard({
             type="button"
             className="ah-file-offer-image"
             data-testid="file-offer-image"
-            aria-label={`Näytä isona: ${baseName(single.path)}`}
+            aria-label={txt.showLarge(baseName(single.path))}
             onClick={() => setPreviewing(single)}
           >
             <img
@@ -361,9 +288,7 @@ export function FileOfferCard({
         ) : null}
         {single && single.kind === "file" ? (
           <span className="ah-file-offer-meta">
-            Selain ei osaa näyttää
-            {extension(single.path) ? ` .${extension(single.path)}-` : " tätä "}
-            tiedostoa. Lataa se ja avaa omalla ohjelmallasi.
+            {txt.cannotShow(extension(single.path))}
           </span>
         ) : null}
         {manifest && !single && images.length ? (
@@ -373,7 +298,7 @@ export function FileOfferCard({
                 type="button"
                 key={item.path}
                 data-testid="file-offer-thumb"
-                aria-label={`Näytä isona: ${item.path}`}
+                aria-label={txt.showLarge(item.path)}
                 onClick={() => setPreviewing(item)}
               >
                 <Thumb offerId={offer.offer_id} item={item} />
@@ -419,7 +344,7 @@ export function FileOfferCard({
                   testId="file-offer-zip"
                   href={zipURL(offer.offer_id)}
                   name={zipName(offer)}
-                  label="Lataa kaikki (.zip)"
+                  label={txt.downloadAll}
                 />
                 {onShowFiles ? (
                   <ControlButton
@@ -427,7 +352,7 @@ export function FileOfferCard({
                     data-testid="file-offer-show-files"
                     onPress={() => onShowFiles(offer.offer_id)}
                   >
-                    <Icon name="file" /> Näytä tiedostot
+                    <Icon name="file" /> {txt.showFiles}
                   </ControlButton>
                 ) : null}
               </>
@@ -502,13 +427,13 @@ export function FileShelf({
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape from the panel's own controls closes it, as in the view panel.
     <section
       className="ah-view-pane ah-file-shelf"
-      aria-label="Keskustelun tiedostot"
+      aria-label={txt.shelf}
       data-testid="file-shelf"
       onKeyDown={keyDown}
     >
       <header className="ah-editor-header">
         <h2 ref={titleRef} tabIndex={-1} className="ah-view-title">
-          Tiedostot{" "}
+          {txt.shelfTitle}{" "}
           <span className="ah-file-offer-count" data-testid="file-shelf-count">
             {total}
           </span>
@@ -518,8 +443,8 @@ export function FileShelf({
             data-testid="close-file-shelf"
             size="row"
             variant="quiet"
-            aria-label="Sulje tiedostot"
-            title="Sulje tiedostot"
+            aria-label={txt.closeShelf}
+            title={txt.closeShelf}
             onPress={onClose}
           >
             <Icon name="cross" />
@@ -532,19 +457,19 @@ export function FileShelf({
           <input
             type="search"
             data-testid="file-shelf-search"
-            placeholder="Etsi kaikista tarjouksista"
-            aria-label="Etsi kaikista tarjouksista"
+            placeholder={txt.search}
+            aria-label={txt.search}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
         {unavailable ? (
           <p className="ah-file-offer-meta" role="status">
-            Tiedostoja ei saatu juuri nyt.
+            {txt.shelfUnavailable}
           </p>
         ) : offers.length === 0 ? (
           <p className="ah-file-offer-meta" role="status">
-            Tässä keskustelussa ei ole tarjottuja tiedostoja.
+            {txt.shelfEmpty}
           </p>
         ) : null}
         {offers.map(({ offer, state }) => {
@@ -568,11 +493,11 @@ export function FileShelf({
               className="ah-file-shelf-offer"
               data-testid="file-shelf-offer"
               data-offer-id={offer.offer_id}
-              aria-label={`klo ${time(offer.created_at)} · ${offer.title}`}
+              aria-label={`${txt.at(time(offer.created_at))} · ${offer.title}`}
             >
               <h3>
                 <span>
-                  klo {time(offer.created_at)} · {offer.title}{" "}
+                  {txt.at(time(offer.created_at))} · {offer.title}{" "}
                   <span className="ah-file-offer-count">{offer.files}</span>
                 </span>
                 {offer.files > 1 ? (
@@ -585,19 +510,19 @@ export function FileShelf({
                     href={zipURL(offer.offer_id)}
                     download={zipName(offer)}
                     data-testid="file-shelf-zip"
-                    aria-label={`Lataa kaikki zipinä: ${offer.title}`}
+                    aria-label={txt.zipAll(offer.title)}
                   >
                     <Icon name="package" /> .zip
                   </a>
                 ) : null}
               </h3>
               {state.state === "removed" ? (
-                <p className="ah-file-offer-meta">Poistettu.</p>
+                <p className="ah-file-offer-meta">{txt.removedShort}</p>
               ) : state.state !== "ready" ? (
                 <p className="ah-file-offer-meta" role="status">
                   {state.state === "loading"
-                    ? "Ladataan…"
-                    : "Tietoja ei saatu juuri nyt."}
+                    ? txt.loading
+                    : txt.factsUnavailable}
                 </p>
               ) : null}
               {[...groups].map(([folder, list]) => (
@@ -611,7 +536,7 @@ export function FileShelf({
                   <ul>
                     {list.map((item) => {
                       const name = baseName(item.path);
-                      const action = kinds[item.kind].action;
+                      const action = kindText(item.kind).action;
                       const open = () =>
                         setPreviewing({ offerId: offer.offer_id, item });
                       return (
@@ -659,8 +584,8 @@ export function FileShelf({
                               })}
                               href={downloadURL(offer.offer_id, item.path)}
                               download={name}
-                              aria-label={`Lataa: ${name}`}
-                              title="Lataa"
+                              aria-label={txt.downloadNamed(name)}
+                              title={txt.download}
                             >
                               <Icon name="download" />
                             </a>

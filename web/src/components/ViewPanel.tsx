@@ -6,8 +6,12 @@ import {
   type Ref,
   useRef,
 } from "react";
+import { formatDate, liveText } from "../i18n";
+import { viewPanelText } from "../text/viewPanel";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
+
+const txt = liveText(viewPanelText);
 
 /** A view's content: a sandboxed frame on the view's own host, scripts but
  * nothing else. The panel and the own tab both show a view this way, so the
@@ -21,7 +25,7 @@ export function ViewFrame({ src, title }: { src: string; title: string }) {
       key={src}
       data-testid="view-frame"
       src={src}
-      title={`Agentin näkymä: ${title}`}
+      title={txt.frame(title)}
       sandbox="allow-scripts"
       referrerPolicy="no-referrer"
       allow=""
@@ -59,12 +63,8 @@ export function ViewHeader({
           data-testid="expand-view"
           size="row"
           variant="quiet"
-          aria-label={expanded ? "Palauta rinnakkain" : "Näkymä koko ikkunaan"}
-          title={
-            expanded
-              ? "Palauta keskustelu näkymän viereen"
-              : "Näkymä koko ikkunaan"
-          }
+          aria-label={expanded ? txt.restoreSplit : txt.expand}
+          title={expanded ? txt.restoreSplitHint : txt.expand}
           aria-pressed={expanded}
           onPress={onToggleExpanded}
         >
@@ -74,8 +74,8 @@ export function ViewHeader({
           data-testid="view-panel-open-tab"
           size="row"
           variant="quiet"
-          aria-label="Avaa omalle välilehdelle"
-          title="Avaa omalle välilehdelle; paneeli jää auki"
+          aria-label={txt.openTab}
+          title={txt.openTabHint}
           onPress={onOpenTab}
         >
           <Icon name="external" />
@@ -85,8 +85,8 @@ export function ViewHeader({
             data-testid="view-panel-share"
             size="row"
             variant="quiet"
-            aria-label="Jaa linkillä"
-            title="Jaa linkillä"
+            aria-label={txt.share}
+            title={txt.share}
             onPress={onShare}
           >
             <Icon name="link" />
@@ -96,8 +96,8 @@ export function ViewHeader({
           data-testid="close-view"
           size="row"
           variant="quiet"
-          aria-label="Sulje näkymä"
-          title="Sulje näkymä"
+          aria-label={txt.close}
+          title={txt.close}
           onPress={onClose}
         >
           <Icon name="cross" />
@@ -144,7 +144,7 @@ export function ViewPanel({
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape from the panel's own controls closes it, as in the editor.
     <section
       className="ah-view-pane"
-      aria-label={`Näkymä: ${title}`}
+      aria-label={txt.panel(title)}
       data-testid="view-panel"
       onKeyDown={keyDown}
     >
@@ -162,18 +162,18 @@ export function ViewPanel({
           <ViewFrame key={src} src={src} title={title} />
         ) : (
           <p className="ah-view-frame-status" role="status">
-            {failed
-              ? "Näkymää ei voitu avata. Se on ehkä poistettu, tai yhteys katkesi."
-              : "Avataan näkymää…"}
+            {failed ? txt.failed : txt.opening}
           </p>
         )}
       </div>
       <p className="ah-view-note">
-        Jäädytetty HTML ·{" "}
+        {txt.frozen} ·{" "}
         {sharedUntil
-          ? `Jaettu linkillä ${new Date(sharedUntil).toLocaleDateString("fi-FI")} asti`
-          : "Vain sinulle"}{" "}
-        · Sisältö on erillään Habitatista eikä pääse verkkoon.
+          ? txt.sharedUntil(
+              formatDate(new Date(sharedUntil), { dateStyle: "short" }),
+            )
+          : txt.onlyYou}{" "}
+        · {txt.isolated}
       </p>
     </section>
   );
@@ -250,11 +250,11 @@ export function ViewSplit({
           data-testid="view-show-conversation"
           type="button"
           className="ah-editor-strip"
-          aria-label="Näytä keskustelu"
-          title="Näytä keskustelu näkymän vieressä"
+          aria-label={txt.showConversation}
+          title={txt.showConversationHint}
           onClick={onShowConversation}
         >
-          <span className="ah-editor-strip-label">Keskustelu</span>
+          <span className="ah-editor-strip-label">{txt.conversation}</span>
         </button>
       ) : null}
       {open && !expanded ? (
@@ -264,13 +264,13 @@ export function ViewSplit({
           className="ah-view-divider"
           role="separator"
           aria-orientation="vertical"
-          aria-label="Näkymän leveys"
+          aria-label={txt.width}
           aria-valuemin={min}
           aria-valuemax={max}
           aria-valuenow={width}
-          aria-valuetext={`${width} pikseliä`}
+          aria-valuetext={txt.pixels(width)}
           tabIndex={0}
-          title="Vedä leveyttä. Nuolet muuttavat, kaksoisnapsautus palauttaa."
+          title={txt.dragHint}
           onPointerDown={pointerDown}
           onPointerMove={pointerMove}
           onPointerUp={pointerUp}

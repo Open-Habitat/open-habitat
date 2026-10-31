@@ -1,6 +1,10 @@
+import { liveText } from "../i18n";
+import { agentInteractionControlsText } from "../text/agentInteractionControls";
 import { Button, TextArea } from "./Primitives";
 import { InlineNotice } from "./Status";
 import type { Availability } from "./types";
+
+const txt = liveText(agentInteractionControlsText);
 
 /** Presentation only: the caller owns acknowledgement, draft persistence and native control. */
 export type SendResult =
@@ -16,10 +20,10 @@ export type InterruptResult =
   | "rejected"
   | "uncertain";
 
-const noHandler: Availability = {
+const noHandler = (): Availability => ({
   state: "unsupported",
-  reason: "Ohjausta ei ole kytketty agenttiin.",
-};
+  reason: txt.noHandler,
+});
 
 export function AgentInteractionControls({
   draft,
@@ -44,29 +48,29 @@ export function AgentInteractionControls({
   // infer native availability from an existing history or a nonempty draft.
   const sendBlocked = sendResult === "pending" || sendResult === "uncertain";
   const sendControl: Availability = !onSend
-    ? noHandler
+    ? noHandler()
     : sendBlocked
       ? {
           state: "disabled",
           reason:
             sendResult === "pending"
-              ? "Lähetyksen kuittausta odotetaan."
-              : "Edellisen lähetyksen tulos on epävarma. Tarkista tila ennen uutta lähetystä.",
+              ? txt.sendPending
+              : txt.sendUncertainReason,
         }
       : sendAvailability.state !== "enabled"
         ? sendAvailability
         : !draft.trim()
-          ? { state: "disabled", reason: "Kirjoita viesti ennen lähetystä." }
+          ? { state: "disabled", reason: txt.writeFirst }
           : sendAvailability;
   const interruptControl: Availability = !onInterrupt
-    ? noHandler
+    ? noHandler()
     : interruptResult === "pending" || interruptResult === "uncertain"
       ? {
           state: "disabled",
           reason:
             interruptResult === "pending"
-              ? "Keskeytyksen kuittausta odotetaan."
-              : "Keskeytyksen tulos on epävarma. Tarkista tila ennen uutta yritystä.",
+              ? txt.interruptPending
+              : txt.interruptUncertainReason,
         }
       : interruptAvailability;
 
@@ -78,11 +82,11 @@ export function AgentInteractionControls({
   };
 
   return (
-    <section aria-label="Agentin ohjaus" className="ah-agent-controls">
+    <section aria-label={txt.controls} className="ah-agent-controls">
       <div className="ah-composer-entry">
         <TextArea
           data-testid="composer-input"
-          label="Viesti agentille"
+          label={txt.message}
           value={draft}
           onChange={onDraftChange}
           rows={1}
@@ -91,8 +95,8 @@ export function AgentInteractionControls({
         <Button
           data-testid="composer-send"
           size="page"
-          label="Lähetä"
-          ariaLabel="Lähetä"
+          label={txt.send}
+          ariaLabel={txt.send}
           icon="up"
           availability={sendControl}
           pending={sendResult === "pending"}
@@ -103,7 +107,7 @@ export function AgentInteractionControls({
         <Button
           data-testid="agent-interrupt"
           size="row"
-          label="Keskeytä vuoro"
+          label={txt.interrupt}
           variant="secondary"
           availability={interruptControl}
           pending={interruptResult === "pending"}
@@ -111,41 +115,33 @@ export function AgentInteractionControls({
         />
       </div>
       <div role="status" aria-live="polite">
-        {sendResult === "pending" ? (
-          <p>Viesti odottaa kuittausta. Älä lähetä uudelleen.</p>
-        ) : null}
-        {sendResult === "acknowledged" ? (
-          <p>Viesti hyväksyttiin. Tämä ei vahvista sen suorittamista.</p>
-        ) : null}
+        {sendResult === "pending" ? <p>{txt.messagePending}</p> : null}
+        {sendResult === "acknowledged" ? <p>{txt.messageAccepted}</p> : null}
         {sendResult === "rejected" ? (
           <InlineNotice
-            title="Viesti hylättiin"
-            description="Luonnos säilyy. Korjaa syy ja lähetä uudelleen vain tarkoituksella."
+            title={txt.rejectedTitle}
+            description={txt.rejectedDetail}
             tone="danger"
           />
         ) : null}
         {sendResult === "uncertain" ? (
           <InlineNotice
-            title="Lähetyksen tulos on epävarma"
-            description="Viesti on voitu hyväksyä. Tarkista tila; tätä viestiä ei lähetetä automaattisesti uudelleen. Luonnos säilyy."
+            title={txt.uncertainTitle}
+            description={txt.uncertainDetail}
             tone="warning"
           />
         ) : null}
-        {interruptResult === "pending" ? (
-          <p>Keskeytys odottaa kuittausta.</p>
-        ) : null}
+        {interruptResult === "pending" ? <p>{txt.interruptWaiting}</p> : null}
         {interruptResult === "acknowledged" ? (
-          <p>
-            Keskeytyspyyntö hyväksyttiin. Vuoron päättymistä ei ole vahvistettu.
-          </p>
+          <p>{txt.interruptAccepted}</p>
         ) : null}
         {interruptResult === "rejected" ? (
-          <InlineNotice title="Keskeytys hylättiin" tone="danger" />
+          <InlineNotice title={txt.interruptRejected} tone="danger" />
         ) : null}
         {interruptResult === "uncertain" ? (
           <InlineNotice
-            title="Keskeytyksen tulos on epävarma"
-            description="Tarkista tila ennen uutta yritystä."
+            title={txt.interruptUncertainTitle}
+            description={txt.interruptUncertainDetail}
             tone="warning"
           />
         ) : null}

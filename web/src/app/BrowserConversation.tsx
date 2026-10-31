@@ -50,6 +50,8 @@ import { RestCard } from "../components/RestartNotice";
 import { SpinoffContext } from "../components/Spinoffs";
 import { WarningBanner } from "../components/WarningBanner";
 import { UnpresentedEvents } from "../components/WorkingProgress";
+import { formatDate, liveText } from "../i18n";
+import { browserConversationText } from "../text/browserConversation";
 import { useBrowserShell } from "./BrowserShell";
 import { toolStopped } from "./bashFailure";
 import { useConversationActions } from "./ConversationActions";
@@ -144,6 +146,8 @@ import {
   useReplaceNotes,
 } from "./WorkspaceEditor";
 import { requestPhases, requestText } from "./workerRequests";
+
+const txt = liveText(browserConversationText);
 
 function bashCommand(value: string) {
   try {
@@ -381,7 +385,7 @@ function BrowserConversationContent({
   const displayModel =
     shortModel(
       selectedModel ?? (!id ? (models?.default_model ?? undefined) : undefined),
-    ) ?? "Malli ei tiedossa";
+    ) ?? txt.modelUnknown;
   const contextState = contextUsage({
     entries,
     fragments: live?.fragments,
@@ -485,7 +489,7 @@ function BrowserConversationContent({
   useEffect(() => {
     if (!finishedInBackground) return;
     const old = document.title;
-    document.title = `Agentti tarvitsee huomiota · ${old}`;
+    document.title = txt.attention(old);
     return () => {
       document.title = old;
     };
@@ -708,9 +712,9 @@ function BrowserConversationContent({
     !!recapCurrent?.unavailable;
   const recapUnavailableReason =
     current?.state === "stopped"
-      ? "Agentti lepää. Kirjoittaminen herättää sen."
+      ? txt.resting
       : current?.state !== "idle" && current?.state !== "rejected"
-        ? "Odota agentin vuoron päättymistä."
+        ? txt.waitTurn
         : undefined;
   // Make a recap now: the card's refresh and the header's button.
   const requestRecapNow =
@@ -902,16 +906,16 @@ function BrowserConversationContent({
       notStarted);
   const sendBlocked =
     archive?.archive === "archived"
-      ? "Palauta keskustelu arkistosta ennen viestin lähettämistä."
+      ? txt.archived
       : archive?.archive === "unknown"
-        ? "Arkiston tila on epävarma. Päivitä tiedot."
+        ? txt.archiveUnknown
         : modelBlocked
-          ? "Valitse toinen malli uuden keskustelun kentän valitsimesta."
+          ? txt.chooseOtherModel
           : serverUnavailable
-            ? "Palvelinyhteys katkesi. Luonnos säilyy."
+            ? txt.serverLost
             : statusStale
-              ? "Tila on vanhentunut. Tarkista keskustelun tila ennen lähettämistä."
-              : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.";
+              ? txt.statusStale
+              : txt.waitIdleUncertain;
   // *Kerro agentille* sends at once, the way the composer's send button would
   // now: during a turn in the selected working mode, otherwise directly or
   // held until Pi starts. The person's draft stays as it is.
@@ -920,7 +924,7 @@ function BrowserConversationContent({
   const tellBlocked = !canSend
     ? sendBlocked
     : !notStarted && !tellWorking && current?.state === "accepted"
-      ? "Odota vahvistettua joutotilaa."
+      ? txt.waitIdle
       : undefined;
   const tell = (text: string) => {
     dismissRecapOnSend();
@@ -1001,7 +1005,7 @@ function BrowserConversationContent({
     current.state !== "uncertain" &&
     current.state !== "stopping"
       ? ({ state: "enabled" } as const)
-      : ({ state: "unknown", reason: "Odota vahvistettua tilaa." } as const);
+      : ({ state: "unknown", reason: txt.waitConfirmed } as const);
   const bash = current?.bash ?? undefined;
   const [bashBusy, setBashBusy] = useState(false);
   const runCommand = async (command: string, exclude: boolean) => {
@@ -1017,9 +1021,7 @@ function BrowserConversationContent({
       if ((error as Error).message === "identity_lost") onLogin();
       else if (alive.current)
         setReceipt(
-          error instanceof NotAdmitted
-            ? "Komentoa ei ajettu. Edellinen komento voi olla vielä käynnissä; tarkista tila."
-            : "Komennon tulos epävarma. Tarkista tila; komentoa ei ajeta uudelleen.",
+          error instanceof NotAdmitted ? txt.bashRefused : txt.bashUncertain,
         );
     } finally {
       if (alive.current) {
@@ -1049,9 +1051,7 @@ function BrowserConversationContent({
       if ((error as Error).message === "identity_lost") onLogin();
       else if (alive.current) {
         setBashStop({ id: bash.command_id, state: "uncertain" });
-        setReceipt(
-          "Komennon pysäytyksen tulos epävarma. Tarkista tila; pyyntöä ei lähetetä uudelleen.",
-        );
+        setReceipt(txt.bashStopUncertain);
       }
     } finally {
       if (alive.current) {
@@ -1069,8 +1069,8 @@ function BrowserConversationContent({
       toldBash.current = bash.command_id;
       setReceipt(
         bash.state === "not_started"
-          ? `Komentoa ${bash.command} ei ajettu: agentti ei käynnistynyt tai komento otettiin takaisin.`
-          : `Komennon ${bash.command} tulos ei tiedossa. Komentoa ei ajeta uudelleen.`,
+          ? txt.bashNotStarted(bash.command)
+          : txt.bashUnknown(bash.command),
       );
     }
   }, [bash, setReceipt]);
@@ -1172,7 +1172,7 @@ function BrowserConversationContent({
               ? ({ state: "enabled" } as const)
               : ({
                   state: "unknown",
-                  reason: "Odota vahvistettua tilaa.",
+                  reason: txt.waitConfirmed,
                 } as const),
         }
       : undefined;
@@ -1363,7 +1363,7 @@ function BrowserConversationContent({
           argumentsText={item.arguments}
           result={item.output}
           failureCause={item.failureCause}
-          name={item.name ?? "Työkalu"}
+          name={item.name ?? txt.tool}
           stat={fileStat(
             item.name ?? "",
             item.arguments ?? "",
@@ -1423,17 +1423,17 @@ function BrowserConversationContent({
         </ProcessAwareToolUse>
       ) : item.kind === "bash" ? (
         <details>
-          <summary>Paikallisen komennon tuloste · käynnissä</summary>
+          <summary>{txt.bashRunning}</summary>
           <pre>{item.text}</pre>
         </details>
       ) : storagePressure.full ? null : (
         <InlineNotice
           title={
             item.kind === "bash"
-              ? "Paikallisen komennon tuloste"
+              ? txt.bashOutput
               : item.kind === "extension"
-                ? "Laajennuksen ilmoitus"
-                : "Agentin tila"
+                ? txt.extensionNotice
+                : txt.agentStatus
           }
           description={item.text}
         />
@@ -1445,12 +1445,12 @@ function BrowserConversationContent({
       ? {
           working: liveWorking,
           activity: activeToolName
-            ? `Ajaa ${activeToolName}`
+            ? txt.runs(activeToolName)
             : last?.kind === "tool" && last.name
-              ? `Ajaa ${last.name}`
+              ? txt.runs(last.name)
               : last?.kind === "thinking"
-                ? "Ajattelee"
-                : "Vastaa",
+                ? txt.thinking
+                : txt.replying,
           duration,
           steps: provisional.map(
             (item): TurnStep =>
@@ -1521,12 +1521,12 @@ function BrowserConversationContent({
     <section ref={section} className="ah-reading-view">
       {!id ? (
         <>
-          <h2>Agenttikeskustelut</h2>
+          <h2>{txt.conversations}</h2>
           <details className="md-new">
             <summary
               className={`md-new-toggle ${controlClassName({ size: "row", text: true })}`}
             >
-              {displayModel} · {selectedThinking ?? "Agentti"}
+              {displayModel} · {selectedThinking ?? txt.agent}
             </summary>
             <PiModelSelector
               csrf={csrf}
@@ -1538,38 +1538,35 @@ function BrowserConversationContent({
             />
           </details>
           <fieldset className="ah-actions ah-conversation-actions">
-            <legend className="ah-visually-hidden">
-              Agenttikeskustelun toiminnot
-            </legend>
+            <legend className="ah-visually-hidden">{txt.actions}</legend>
             <Button
               data-testid="new-conversation"
               size="page"
-              label="Aloita uusi agenttikeskustelu"
+              label={txt.startNew}
               availability={
                 modelBlocked
                   ? {
                       state: "disabled",
-                      reason:
-                        "Valitse toinen malli ennen uuden keskustelun aloittamista.",
+                      reason: txt.chooseModelFirst,
                     }
                   : !csrf
                     ? {
                         state: "unknown",
                         reason: problem
-                          ? "Istuntoa ei voitu vahvistaa."
-                          : "Ladataan istuntoa.",
+                          ? txt.sessionUnconfirmed
+                          : txt.sessionLoading,
                       }
                     : ambiguous
                       ? {
                           state: "unknown",
-                          reason: "Edellisen luonnin tulos on epävarma.",
+                          reason: txt.createUncertain,
                         }
                       : busy
-                        ? { state: "unknown", reason: "Luonti on käynnissä." }
+                        ? { state: "unknown", reason: txt.creating }
                         : serverUnavailable
                           ? {
                               state: "unknown",
-                              reason: "Palvelinyhteys katkesi.",
+                              reason: txt.serverLostShort,
                             }
                           : { state: "enabled" }
               }
@@ -1580,7 +1577,7 @@ function BrowserConversationContent({
       ) : !opened ? (
         <PendingConversation
           workspace={workspace}
-          message="Ladataan keskustelua…"
+          message={txt.loading}
           problem={problem}
           onRetry={() => setOpenAttempt((n) => n + 1)}
           value={draft}
@@ -1615,10 +1612,10 @@ function BrowserConversationContent({
                 !!current &&
                 current.native_history !== "unavailable",
               blockedReason: archiveAwaitingSnapshot
-                ? "Odotetaan arkiston tilan vahvistusta."
+                ? txt.awaitingArchive
                 : archive
                   ? undefined
-                  : "Ladataan arkiston tilaa.",
+                  : txt.loadingArchive,
               eligible:
                 !busy &&
                 !statusStale &&
@@ -1654,7 +1651,7 @@ function BrowserConversationContent({
                 if (archive) void onArchive?.(archive, false);
               },
             }}
-            title={title ?? "Uusi keskustelu"}
+            title={title ?? txt.newConversation}
             titlePending={archive?.title.generation_state === "pending"}
             recapAction={
               id
@@ -1662,9 +1659,7 @@ function BrowserConversationContent({
                     availability: recapUnavailable
                       ? {
                           state: "disabled",
-                          reason:
-                            recapUnavailableReason ??
-                            "Ohjaus ei ole käytettävissä.",
+                          reason: recapUnavailableReason ?? txt.noControl,
                         }
                       : { state: "enabled" },
                     pending: !!recapBusy,
@@ -1694,7 +1689,7 @@ function BrowserConversationContent({
                       !controlled || statusStale || serverUnavailable
                         ? {
                             state: "disabled",
-                            reason: "Ohjaus ei ole käytettävissä.",
+                            reason: txt.noControl,
                           }
                         : { state: "enabled" },
                     onSave: async (name) => {
@@ -1709,12 +1704,12 @@ function BrowserConversationContent({
                 : undefined
             }
             titleAction={{
-              label: "Luo uusi otsikko",
+              label: txt.retitle,
               availability:
                 entries.length === 0
                   ? {
                       state: "disabled",
-                      reason: "Keskustelussa ei ole vielä nimettävää sisältöä.",
+                      reason: txt.nothingToName,
                     }
                   : !controlled ||
                       !csrf ||
@@ -1723,7 +1718,7 @@ function BrowserConversationContent({
                       problem
                     ? {
                         state: "disabled",
-                        reason: "Ohjaus ei ole käytettävissä.",
+                        reason: txt.noControl,
                       }
                     : { state: "enabled" },
               pending: titlePending,
@@ -1771,11 +1766,11 @@ function BrowserConversationContent({
                         : "uncertain";
                     const description =
                       reason === "model_unavailable"
-                        ? "Otsikointimalli ei vastannut. Tarkista mallipalvelun kirjautuminen asetuksista ja yritä uudelleen."
+                        ? txt.titleModelUnavailable
                         : reason === "model_timeout" ||
                             reason === "model_invalid_response"
-                          ? "Mallilta ei saatu kelvollista otsikkoa. Voit yrittää uudelleen."
-                          : "Otsikon muutos jäi epävarmaksi. Tarkista nykyinen otsikko ja keskustelun tila ennen uutta yritystä.";
+                          ? txt.titleInvalid
+                          : txt.titleUncertain;
                     setTitleActionState((previous) =>
                       previous?.key === key
                         ? { key, version, pending: false, error: description }
@@ -1790,7 +1785,7 @@ function BrowserConversationContent({
               notStarted && held.waiting.length
                 ? ""
                 : restCard && rest.wake !== "awake"
-                  ? "Lepää"
+                  ? txt.rests
                   : (presentation.operationLabel ?? presentation.activityLabel)
             }
             activityControl={
@@ -1881,7 +1876,7 @@ function BrowserConversationContent({
             }
             detailsExtra={
               <Button
-                label="Oletusmallin asetukset"
+                label={txt.modelSettings}
                 variant="quiet"
                 size="row"
                 onPress={() => navigate("/settings")}
@@ -1891,51 +1886,54 @@ function BrowserConversationContent({
               ...(workspace.place
                 ? [
                     {
-                      label: "Työtila",
-                      value: workspace.place.parent.path ?? "Ei tiedossa",
+                      label: txt.workspace,
+                      value: workspace.place.parent.path ?? txt.unknown,
                       copy: !!workspace.place.parent.path,
                     },
                     {
-                      label: "Worktree",
-                      value: workspace.path || "Ei tiedossa",
+                      label: txt.worktree,
+                      value: workspace.path || txt.unknown,
                       copy: !!workspace.path,
                     },
                     {
-                      label: "Haara",
-                      value: workspace.place.worktree.branch ?? "Ei tiedossa",
+                      label: txt.branch,
+                      value: workspace.place.worktree.branch ?? txt.unknown,
                     },
                   ]
                 : [
                     {
-                      label: "Työtila",
-                      value: workspace.path ?? "Ei tiedossa",
+                      label: txt.workspace,
+                      value: workspace.path ?? txt.unknown,
                       copy: !!workspace.path,
                     },
                   ]),
               {
-                label: "Malli",
-                value: nativeSettings.model ?? "Agentin oletus",
+                label: txt.model,
+                value: nativeSettings.model ?? txt.agentDefault,
                 copy: !!nativeSettings.model,
               },
               {
-                label: "Ajattelutaso",
-                value: nativeSettings.thinking ?? "Agentin oletus",
+                label: txt.thinkingLevel,
+                value: nativeSettings.thinking ?? txt.agentDefault,
               },
               {
-                label: "Ohjaus",
-                value: controlled ? "Selainohjaus" : "Ei käytettävissä",
+                label: txt.control,
+                value: controlled ? txt.browserControl : txt.notAvailable,
               },
               {
-                label: "Aloitettu",
+                label: txt.started,
                 value: archive?.started_at
-                  ? new Date(archive.started_at).toLocaleString("fi-FI")
-                  : "Ei tiedossa",
+                  ? formatDate(new Date(archive.started_at), {
+                      dateStyle: "short",
+                      timeStyle: "medium",
+                    })
+                  : txt.unknown,
               },
-              { label: "Natiivi tunniste", value: id, copy: true },
+              { label: txt.nativeId, value: id, copy: true },
             ]}
             controlKind={controlled ? "neutral" : "read-only"}
             controlLabel={
-              controlled ? "Selainohjaus" : "Ohjaus ei ole käytettävissä"
+              controlled ? txt.browserControl : txt.controlUnavailable
             }
             workspaceLabel={workspace.display_name ?? workspace.name}
             workspaceHref={`/workspaces/${(workspace.place?.parent ?? workspace).workspace_id}`}
@@ -1949,7 +1947,7 @@ function BrowserConversationContent({
             <ContextPage
               detail={contextDetail}
               usage={contextState}
-              title={title ?? "Keskustelu"}
+              title={title ?? txt.conversation}
               onClose={toggleContext}
             />
           ) : null}
@@ -1981,7 +1979,7 @@ function BrowserConversationContent({
                 <Button
                   data-testid="older-history"
                   size="row"
-                  label="Lataa vanhempi historiasivu"
+                  label={txt.loadOlder}
                   onPress={() => {
                     captureAnchor();
                     void store.older(id);
@@ -1999,11 +1997,11 @@ function BrowserConversationContent({
               <InlineNotice
                 data-testid="history-cut-off"
                 tone="warning"
-                title="Keskustelun loppu katkesi"
-                description="Näytetään kokonaan tallentuneet viestit. Alkuperäistä tiedostoa ei ole muutettu. Voit jatkaa uudessa keskustelussa."
+                title={txt.cutOff}
+                description={txt.cutOffDetail}
                 actions={[
                   {
-                    label: "Uusi keskustelu",
+                    label: txt.newConversation,
                     onPress: () =>
                       navigate(`/workspaces/${workspace.workspace_id}`),
                   },
@@ -2083,7 +2081,7 @@ function BrowserConversationContent({
                             }
                             sourceText={ownMessage.text}
                             deliveryState={
-                              ownMessage.pending ? "Lähetetään" : undefined
+                              ownMessage.pending ? txt.sending : undefined
                             }
                             onCopy={() =>
                               void navigator.clipboard?.writeText(
@@ -2238,8 +2236,8 @@ function BrowserConversationContent({
             {(!current?.pending_question || statusStale) && questionOutcome ? (
               <p className="ah-native-question" role="status">
                 {questionOutcome === "stale"
-                  ? "? Pyyntö voi olla vanhentunut tai toimitus epävarma. Tarkista tila."
-                  : "? Ei tiedossa, käsittelikö agentti pyynnön. Älä lähetä uudelleen."}
+                  ? txt.questionStale
+                  : txt.questionUncertain}
               </p>
             ) : null}
             {/* Normal progress belongs to the turn header, not a second row
@@ -2254,12 +2252,12 @@ function BrowserConversationContent({
             {!storagePressure.full && statusStale && !serverUnavailable ? (
               <InlineNotice
                 data-testid="conversation-stale"
-                title="Keskustelun tila vanhentui"
-                description="Näytetään viimeisin tunnettu historia. Tarkista tila ennen ohjaamista."
+                title={txt.stale}
+                description={txt.staleDetail}
                 tone="warning"
                 actions={[
                   {
-                    label: "Tarkista tila",
+                    label: txt.check,
                     onPress: () => {
                       if (
                         continuation &&
@@ -2278,8 +2276,8 @@ function BrowserConversationContent({
             !statusStale &&
             !serverUnavailable ? (
               <InlineNotice
-                title="Tapahtumayhteys katkesi"
-                description="Tila ja natiivi historia tarkistetaan uudelleen. Viestiä ei lähetetä uudelleen."
+                title={txt.journalLost}
+                description={txt.journalLostDetail}
                 tone="warning"
               />
             ) : null}
@@ -2288,15 +2286,13 @@ function BrowserConversationContent({
             showMissedEvents(!!live?.missed, current) ? (
               <InlineNotice
                 data-testid="event-gap"
-                title="Tapahtumia jäi väliin"
-                description="Live-tapahtumien häntä ei ole täydellinen. Tarkista natiivi historia."
+                title={txt.missed}
+                description={txt.missedDetail}
                 tone="warning"
               />
             ) : null}
             {events.length && current?.native_history !== "present" ? (
-              <p role="status">
-                Agentin tapahtumia vastaanotettu; historiaa odotetaan.
-              </p>
+              <p role="status">{txt.eventsBeforeHistory}</p>
             ) : null}
             {replaceNotes.notes.map((note) => (
               <EditorReplaceNote
@@ -2319,7 +2315,7 @@ function BrowserConversationContent({
               <WarningBanner
                 data-testid="provider-auth-error"
                 tone="danger"
-                title="Kielimallikirjautuminen ei ole kunnossa"
+                title={txt.authFailed}
                 actions={
                   <ControlButton
                     data-testid="notice-action"
@@ -2331,19 +2327,18 @@ function BrowserConversationContent({
                       )
                     }
                   >
-                    Kirjaudu uudelleen
+                    {txt.signInAgain}
                   </ControlButton>
                 }
               >
-                Kirjaudu OpenAI-tilillesi uudelleen ja jatka sitten keskustelua.
-                Viestiä ei lähetetä automaattisesti uudelleen; luonnos säilyy.
+                {txt.authFailedDetail}
               </WarningBanner>
             ) : null}
             {!statusStale && current?.auth_error === "pi_model_unsupported" ? (
               <WarningBanner
                 data-testid="model-unavailable"
                 tone="danger"
-                title="Valittu kielimalli ei ole käytettävissä"
+                title={txt.modelUnsupported}
                 actions={
                   <ControlButton
                     data-testid="notice-action"
@@ -2352,13 +2347,11 @@ function BrowserConversationContent({
                       setModelExpanded(!modelExpanded);
                     }}
                   >
-                    Valitse toinen malli
+                    {txt.chooseModel}
                   </ControlButton>
                 }
               >
-                Agentti ilmoitti, ettei valittu malli ole tuettu tällä
-                ChatGPT-tilillä. Valitse toinen malli ja aloita uusi keskustelu.
-                Viestiä ei toisteta; luonnos säilyy.
+                {txt.modelUnsupportedDetail}
               </WarningBanner>
             ) : null}
             {!statusStale &&
@@ -2380,7 +2373,7 @@ function BrowserConversationContent({
               <Button
                 data-testid="conversation-recheck"
                 size="row"
-                label="Tarkista keskustelun tila"
+                label={txt.recheck}
                 variant="quiet"
                 onPress={() => {
                   if (
@@ -2398,7 +2391,7 @@ function BrowserConversationContent({
             {titleError ? (
               <InlineNotice
                 data-testid="title-error"
-                title="Otsikkoa ei voitu luoda"
+                title={txt.titleFailed}
                 description={titleError || undefined}
                 tone="danger"
               />
@@ -2517,7 +2510,7 @@ function BrowserConversationContent({
                 }}
                 idlePlaceholder={
                   restCard && rest.wake !== "awake"
-                    ? "Kirjoita, niin agentti herää…"
+                    ? txt.wakePlaceholder
                     : undefined
                 }
                 onActivity={recapHold.note}

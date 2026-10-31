@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import type { Recap, RecapFailureReason } from "../app/conversations";
-import { textNow } from "../i18n";
+import { liveText, textNow } from "../i18n";
 import { navigationText } from "../text/navigation";
+import { recapCardText } from "../text/recapCard";
 import { ControlButton, controlClassName } from "./ControlElements";
 import { Icon } from "./Icon";
+
+const txt = liveText(recapCardText);
 
 export function relativeRecapAge(timestamp: number, now: number): string {
   const minutes = Math.max(0, Math.floor((now - timestamp) / 60000));
@@ -43,32 +46,6 @@ export function LatestMessageAge({
   );
 }
 
-/** Why no recap was written, in words the person can act on. Every reason
- * the daemon reports has one, so a failure never shows as silence. */
-const failureText: Record<RecapFailureReason, string> = {
-  no_message: "Keskustelussa ei ole vielä viestejä.",
-  no_model: "Katsaukselle ei löytynyt mallia, johon on kirjautuminen.",
-  model_error: "Malli ei vastannut katsauspyyntöön.",
-  model_timeout: "Malli ei vastannut ajoissa.",
-  model_incomplete: "Mallin vastaus jäi kesken.",
-  invalid_response: "Mallin vastauksesta ei saatu katsausta.",
-  superseded: "Keskustelu jatkui ennen kuin katsaus valmistui.",
-  busy: "Edellinen katsaus on vielä tekeillä.",
-  write_failed: "Katsausta ei voitu tallentaa keskusteluun.",
-  history_unavailable: "Keskustelun historiaa ei voitu lukea.",
-  command_unavailable: "Agentti ei tarjonnut katsaustoimintoa.",
-  controller_unavailable: "Yhteys agenttiin katkesi kesken katsauksen.",
-  outcome_unknown: "Katsauksen tulosta ei saatu agentilta.",
-  not_written: "Katsaus ei tallentunut keskusteluun.",
-};
-
-/** What to do instead of a plain retry, where retrying alone may not help.
- * An automatic recap has already been retried once by the daemon. */
-const failureAction: Partial<Record<RecapFailureReason, string>> = {
-  model_timeout:
-    "Yritä hetken päästä uudelleen. Jos tämä toistuu, valitse katsaukselle nopeampi malli asetuksista.",
-};
-
 export function RecapCard({
   recap,
   latestAt,
@@ -107,29 +84,29 @@ export function RecapCard({
   // An invitation to ask beside the failure of the last ask contradicts it.
   const failed = error || uncertain || unverifiable;
   const reason = unavailable
-    ? (unavailableReason ?? "Yhteys tai ohjaus ei ole käytettävissä.")
+    ? (unavailableReason ?? txt.unavailable)
     : pending
-      ? "Katsausta luodaan."
+      ? txt.pending
       : "";
   return (
     <aside
       data-testid="recap-card"
       data-trigger={recap?.trigger}
       className="ah-recap"
-      aria-label="Keskustelun yhteenveto"
+      aria-label={txt.label}
     >
       <div className="ah-recap-heading">
-        <strong data-testid="recap-heading">Tilannekatsaus</strong>
+        <strong data-testid="recap-heading">{txt.heading}</strong>
         {recap ? <LatestMessageAge at={latestAt} now={now} /> : null}
         <span className="ah-recap-grow" />
         {onRequest ? (
-          <span title={reason || (recap ? "Päivitä katsaus" : "Luo katsaus")}>
+          <span title={reason || (recap ? txt.refresh : txt.create)}>
             <ControlButton
               data-testid="recap-refresh"
               className="ah-recap-icon"
               variant="quiet"
               size="inline"
-              aria-label={recap ? "Päivitä katsaus" : "Luo katsaus"}
+              aria-label={recap ? txt.refresh : txt.create}
               aria-description={reason || undefined}
               isDisabled={!!reason}
               onPress={onRequest}
@@ -156,8 +133,8 @@ export function RecapCard({
               event.preventDefault();
               onOpenSettings();
             }}
-            aria-label="Tilannekatsauksen asetukset"
-            title="Tilannekatsauksen asetukset"
+            aria-label={txt.settings}
+            title={txt.settings}
           >
             <Icon name="gear" />
           </a>
@@ -168,7 +145,7 @@ export function RecapCard({
             className="ah-recap-icon"
             variant="quiet"
             size="inline"
-            aria-label="Sulje katsaus"
+            aria-label={txt.dismiss}
             onPress={onDismiss}
           >
             <Icon name="cross" />
@@ -179,7 +156,7 @@ export function RecapCard({
         <div
           className="ah-recap-skeleton"
           role="status"
-          aria-label="Luodaan katsausta"
+          aria-label={txt.creating}
         >
           <span />
           <span />
@@ -190,13 +167,13 @@ export function RecapCard({
           <p>{recap.recap}</p>
           {recap.next ? (
             <p className="ah-recap-next">
-              <strong>Seuraavaksi</strong> {recap.next}
+              <strong>{txt.next}</strong> {recap.next}
             </p>
           ) : null}
         </>
       ) : failed ? null : (
         <p className="ah-recap-empty" data-testid="recap-empty">
-          Pyydä lyhyt katsaus ennen kuin jatkat.
+          {txt.empty}
         </p>
       )}
       {failed ? (
@@ -209,10 +186,10 @@ export function RecapCard({
           }
         >
           {unverifiable
-            ? "Katsausta ei voitu tarkistaa. Lataa sivu uudelleen."
+            ? txt.unverifiable
             : uncertain
-              ? "Luonnin tulos ei ole tiedossa. Tarkista katsaus lataamalla sivu uudelleen."
-              : `Katsausta ei voitu luoda.${failure ? ` ${failureText[failure]}` : ""} ${(failure && failureAction[failure]) ?? "Yritä uudelleen."}`}
+              ? txt.uncertain
+              : `${txt.failed}${failure ? ` ${txt.failures[failure]}` : ""} ${failure === "model_timeout" ? txt.timeoutAction : txt.retry}`}
         </p>
       ) : null}
     </aside>

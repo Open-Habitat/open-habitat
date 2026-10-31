@@ -14,8 +14,12 @@ import snapshotSchema from "../../../contracts/v1/snapshot.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import workspaceChangeSchema from "../../../contracts/v1/workspace-change.schema.json";
 import type { Event as WireEvent } from "../contracts/v1.generated";
+import { liveText } from "../i18n";
+import { conversationEventsText } from "../text/conversationEvents";
 import type { BashFailure } from "./bashFailure";
 import type { HistoryEntry } from "./history";
+
+const txt = liveText(conversationEventsText);
 
 const ajv = new Ajv({ strict: false });
 ajv.addSchema(processEventSchema);
@@ -330,7 +334,7 @@ export function provisionalItems(turn: LiveTurn) {
         items.push({
           id: `live-call-${event.event_id}`,
           kind: "tool",
-          text: "Työkalukutsu",
+          text: txt.toolCall,
           index,
           arguments: argument,
         });
@@ -405,14 +409,9 @@ export function provisionalItems(turn: LiveTurn) {
     } else if (event.kind.startsWith("tool.")) {
       const key = event.payload.tool_call_id as string;
       const label =
-        (
-          {
-            running: "Käynnissä",
-            succeeded: "Valmis",
-            failed: "Epäonnistui",
-            cancelled: "Keskeytetty",
-          } as Record<string, string>
-        )[event.payload.state as string] ?? "Tila ei tiedossa";
+        (txt.toolStates as Record<string, string>)[
+          event.payload.state as string
+        ] ?? txt.toolStateUnknown;
       const text = `${event.payload.tool_name} · ${label}`;
       const position = tools.get(key);
       if (position === undefined) {

@@ -37,6 +37,8 @@ import { RestartNoticeMarker } from "../components/RestartNotice";
 import { SessionSettingsRow } from "../components/SessionSettingsRow";
 import { SkillInvocation } from "../components/SkillInvocation";
 import { WaitReminderMarker } from "../components/WaitReminder";
+import { formatDate, liveText } from "../i18n";
+import { historyViewText } from "../text/historyView";
 import { useBrowserShell } from "./BrowserShell";
 import { type BashFailure, toolStopped } from "./bashFailure";
 import { type ConversationStore, useWindow } from "./conversationStore";
@@ -76,6 +78,8 @@ import { EditorHeaderControls } from "./WorkspaceEditor";
 
 // Only the daemon's explicit fallback marker is interpreted here. Unknown data
 // stays text, including malformed JSON and fields we do not recognize.
+const txt = liveText(historyViewText);
+
 function unfamiliar(text: string): {
   type: string;
   summary: { key: string; text: string }[];
@@ -228,11 +232,7 @@ function ReadableBlock({
         data-testid="history-block-load"
         size="row"
         label={
-          pending
-            ? "Ladataan…"
-            : loaded
-              ? "Lataa lisää lohkoa"
-              : "Lataa lohkon sisältö"
+          pending ? txt.loading : loaded ? txt.loadMoreBlock : txt.loadBlock
         }
         pending={pending}
         onPress={more}
@@ -240,8 +240,8 @@ function ReadableBlock({
     ) : null;
   const warning = failed ? (
     <InlineNotice
-      title="Lohkon sisältöä ei saatu"
-      description="Lähde on voinut muuttua. Päivitä historia."
+      title={txt.blockFailed}
+      description={txt.blockFailedDetail}
       tone="warning"
     />
   ) : null;
@@ -250,7 +250,7 @@ function ReadableBlock({
       return block.process_event ? (
         <ProcessCompletion event={block.process_event} />
       ) : (
-        <PiBoundary>Prosessimerkintää ei saatu.</PiBoundary>
+        <PiBoundary>{txt.processEntryMissing}</PiBoundary>
       );
     case "text": {
       const text = displayedText;
@@ -259,7 +259,7 @@ function ReadableBlock({
         <div className={toolName ? "ah-pi-result" : undefined}>
           {toolName ? (
             <fieldset className="ah-pi-edge">
-              <legend>{toolName} · esikatselun kohta</legend>
+              <legend>{txt.previewEdge(toolName)}</legend>
               {(["head", "tail"] as const).map((option) => (
                 <ControlButton
                   variant="quiet"
@@ -271,7 +271,7 @@ function ReadableBlock({
                     setEdge(option);
                   }}
                 >
-                  {option === "head" ? "Alku" : "Loppu"}
+                  {option === "head" ? txt.head : txt.tail}
                 </ControlButton>
               ))}
             </fieldset>
@@ -287,14 +287,10 @@ function ReadableBlock({
             <Markdown text={text} />
           )}
           {toolName && edge === "tail" && !whole ? (
-            <PiBoundary>
-              Loppu ei ole vielä saatavilla; näkyvissä ladattu alku.
-            </PiBoundary>
+            <PiBoundary>{txt.tailMissing}</PiBoundary>
           ) : null}
           {block.readable && !loaded?.complete ? (
-            <PiBoundary>
-              Esikatselu päättyy tähän · lisää natiivista lohkoluvulla
-            </PiBoundary>
+            <PiBoundary>{txt.previewEnds}</PiBoundary>
           ) : null}
           {control}
           {warning}
@@ -315,7 +311,7 @@ function ReadableBlock({
     case "image":
       return (
         <div>
-          <p>Kuva · {block.mime_type || "tuntematon muoto"}</p>
+          <p>{txt.image(block.mime_type || txt.unknownFormat)}</p>
           {loaded?.complete &&
           loaded.data &&
           ["image/png", "image/jpeg", "image/gif", "image/webp"].includes(
@@ -323,7 +319,7 @@ function ReadableBlock({
           ) ? (
             <img
               className="ah-history-image"
-              alt="Agentin viestin kuva"
+              alt={txt.imageAlt}
               src={`data:${loaded.mediaType};base64,${loaded.data}`}
             />
           ) : null}
@@ -334,14 +330,14 @@ function ReadableBlock({
     case "toolCall":
       return (
         <details>
-          <summary>{block.tool_name || "Työkalu"} · argumentit</summary>
+          <summary>{txt.toolArguments(block.tool_name || txt.tool)}</summary>
           {loaded?.text ? <pre>{loaded.text}</pre> : null}
           {control}
           {warning}
         </details>
       );
     default:
-      return <p>Tuntematon sisältölohko (sisältöä ei näytetä)</p>;
+      return <p>{txt.unknownBlock}</p>;
   }
 }
 function bashCommand(value: string): string {
@@ -441,12 +437,8 @@ function BashCall({
         output={output}
         running={running}
       />
-      {error ? (
-        <PiBoundary>Komennon sisältöä ei saatu. Päivitä historia.</PiBoundary>
-      ) : null}
-      {partial ? (
-        <PiBoundary>Komennon esikatselu päättyy tähän.</PiBoundary>
-      ) : null}
+      {error ? <PiBoundary>{txt.commandFailed}</PiBoundary> : null}
+      {partial ? <PiBoundary>{txt.commandPreviewEnds}</PiBoundary> : null}
     </>
   );
 }
@@ -560,7 +552,7 @@ function FileUse({
     live?.output;
   return (
     <PiToolUse
-      name={block.tool_name ?? "Työkalu"}
+      name={block.tool_name ?? txt.tool}
       targetText={(() => {
         try {
           const a: unknown = JSON.parse(argumentsText);
@@ -595,9 +587,7 @@ function FileUse({
         output={output}
         failed={!!result?.is_error || live?.state === "failed"}
       />
-      {error ? (
-        <PiBoundary>Tiedoston tietoja ei saatu. Päivitä historia.</PiBoundary>
-      ) : null}
+      {error ? <PiBoundary>{txt.fileFailed}</PiBoundary> : null}
     </PiToolUse>
   );
 }
@@ -682,7 +672,7 @@ function OrderedBlocks({
               .map((b) => b.text ?? "")
               .join("\n")}
             key={`${entryKey}:${revision}:${block.tool_call_id}`}
-            name={block.tool_name || "Työkalu"}
+            name={block.tool_name || txt.tool}
             stat={fileStat(
               block.tool_name ?? "",
               block.text ?? "",
@@ -765,13 +755,13 @@ function OrderedBlocks({
                 {liveTools?.get(block.tool_call_id)?.output &&
                 !results?.has(block.tool_call_id) ? (
                   <>
-                    <strong>Viimeisin päivitys</strong>
+                    <strong>{txt.latestUpdate}</strong>
                     <pre>{liveTools.get(block.tool_call_id)?.output}</pre>
                   </>
                 ) : null}
                 {results?.get(block.tool_call_id) ? (
                   <>
-                    <strong>Tulos</strong>
+                    <strong>{txt.result}</strong>
                     <ResultBlocks
                       entry={results.get(block.tool_call_id) as HistoryEntry}
                       agentId={agentId}
@@ -960,14 +950,14 @@ export function Entry({
             />
           ) : fallback ? (
             <section className="ah-unknown">
-              <p>Tuntematon sisältö · {fallback.type}</p>
+              <p>{txt.unknownContent(fallback.type)}</p>
               {fallback.summary.length ? (
                 fallback.summary.map(({ key, text }) => <p key={key}>{text}</p>)
               ) : (
                 <p>{fallback.raw}</p>
               )}
               <details>
-                <summary>Näytä alkuperäinen sisältö</summary>
+                <summary>{txt.showOriginal}</summary>
                 <pre>{fallback.raw}</pre>
               </details>
             </section>
@@ -978,7 +968,7 @@ export function Entry({
       ) : null}
       {entry.kind === "tool" ? (
         <PiToolUse
-          name={entry.content.text.split("\n", 1)[0] || "Työkalu"}
+          name={entry.content.text.split("\n", 1)[0] || txt.tool}
           state={toolOutcome(entry)}
         >
           <ResultBlocks
@@ -991,7 +981,7 @@ export function Entry({
       ) : null}
       {entry.kind === "bash" ? (
         <CommandRun
-          label="Sinä · paikallinen komento"
+          label={txt.localCommand}
           source="history"
           command={entry.blocks?.[0]?.text ?? ""}
           excludeFromContext={entry.exclude_from_context ?? false}
@@ -1007,7 +997,7 @@ export function Entry({
         >
           {entry.blocks?.[0]?.readable ? (
             <div className="ah-cmd-output-block">
-              <strong>Komento</strong>
+              <strong>{txt.command}</strong>
               <ReadableBlock
                 plainText="command"
                 block={entry.blocks[0]}
@@ -1037,13 +1027,10 @@ export function Entry({
             </div>
           ))}
           {!entry.blocks?.slice(1).length ? (
-            <OutputBox text="(ei tulostetta)" />
+            <OutputBox text={txt.noOutput} />
           ) : null}
           {entry.output_truncated ? (
-            <PiBoundary>
-              Agentti katkaisi paikallisen komennon tulosteen · saatavilla oleva
-              osa näkyy
-            </PiBoundary>
+            <PiBoundary>{txt.outputTruncated}</PiBoundary>
           ) : null}
         </CommandRun>
       ) : null}
@@ -1054,25 +1041,20 @@ export function Entry({
             role="note"
           >
             <span>
-              {(
-                {
-                  compaction: "Keskustelu tiivistettiin",
-                  context_edit: "Kontekstia muokattiin",
-                  branch_summary: "Haaran tiivistelmä",
-                  label: "Merkintä",
-                } as Record<string, string>
-              )[entry.entry_type ?? ""] ??
+              {(txt.markers as Record<string, string>)[
+                entry.entry_type ?? ""
+              ] ??
                 (entry.entry_type
-                  ? "Agentin merkintä"
+                  ? txt.agentMarker
                   : notificationSummary
-                    ? "Prosessin ilmoitus"
-                    : "Laajennuksen viesti")}
+                    ? txt.processNotice
+                    : txt.extensionMessage)}
             </span>
             {notificationSummary ? <p>{notificationSummary}</p> : null}
             {entry.blocks?.length ? (
               notificationSummary ? (
                 <details>
-                  <summary>Ilmoituksen sisältö</summary>
+                  <summary>{txt.noticeContent}</summary>
                   <OrderedBlocks
                     plainText
                     blocks={entry.blocks}
@@ -1096,8 +1078,8 @@ export function Entry({
           </aside>
         ) : (
           <UnknownEvent
-            kindLabel="Agentin tapahtuma"
-            safeSummary={`Sisältöä ei tueta · ${entry.entry_type ?? "tuntematon"}`}
+            kindLabel={txt.agentEvent}
+            safeSummary={txt.unsupported(entry.entry_type ?? txt.unknownType)}
             onCopy={copy}
           />
         )
@@ -1121,7 +1103,7 @@ function ResultBlocks({
     return (
       <OrderedBlocks
         blocks={entry.blocks}
-        toolName={entry.content.text.split("\n", 1)[0] || "Työkalu"}
+        toolName={entry.content.text.split("\n", 1)[0] || txt.tool}
         entryKey={entry.entry_key}
         agentId={agentId}
         revision={entry.native_revision ?? revision}
@@ -1134,11 +1116,11 @@ function ResultBlocks({
       <pre>{expanded ? text : text.slice(0, 12000)}</pre>
       {text.length > 12000 ? (
         <>
-          <PiBoundary>Esikatselu päättyy tähän</PiBoundary>
+          <PiBoundary>{txt.previewEndsShort}</PiBoundary>
           <Button
             data-testid="history-output-toggle"
             size="row"
-            label={expanded ? "Supista tuloste" : "Näytä koko ladattu tuloste"}
+            label={expanded ? txt.collapseOutput : txt.showOutput}
             onPress={() => setExpanded(!expanded)}
           />
         </>
@@ -1521,9 +1503,7 @@ function HistoryViewContent({
   const mayWrite =
     process === "not_observed" && !!csrf && agent.history === "readable";
   const blockedReason =
-    process === "writer_present"
-      ? "Kirjoittaja on käynnissä."
-      : "Prosessin tilaa ei voitu vahvistaa.";
+    process === "writer_present" ? txt.writerRunning : txt.processUnconfirmed;
   const [busy, setBusy] = useState(false);
   const [titlePending, setTitlePending] = useState(false);
   const [details, setDetails] = useState(false);
@@ -1683,10 +1663,10 @@ function HistoryViewContent({
         }
         activityLabel={
           process === "not_observed"
-            ? "Ei käynnissä"
+            ? txt.notRunning
             : process === "writer_present"
-              ? "Käynnissä"
-              : "Prosessin tila ei tiedossa"
+              ? txt.running
+              : txt.processUnknown
         }
         activityKind={
           process === "not_observed"
@@ -1696,28 +1676,31 @@ function HistoryViewContent({
               : "unknown"
         }
         controlKind="read-only"
-        controlLabel="Vain luku"
+        controlLabel={txt.readOnly}
         settings={settings}
         detailsFacts={[
           {
-            label: "Työtila",
-            value: workspacePath ?? "Ei tiedossa",
+            label: txt.workspace,
+            value: workspacePath ?? txt.unknown,
             copy: !!workspacePath,
           },
           {
-            label: "Malli",
-            value: settings.model ?? "Ei tiedossa",
+            label: txt.model,
+            value: settings.model ?? txt.unknown,
             copy: !!settings.model,
           },
-          { label: "Ajattelutaso", value: settings.thinking ?? "Ei tiedossa" },
-          { label: "Ohjaus", value: "Vain luku" },
+          { label: txt.thinking, value: settings.thinking ?? txt.unknown },
+          { label: txt.control, value: txt.readOnly },
           {
-            label: "Aloitettu",
+            label: txt.started,
             value: agent.started_at
-              ? new Date(agent.started_at).toLocaleString("fi-FI")
-              : "Ei tiedossa",
+              ? formatDate(new Date(agent.started_at), {
+                  dateStyle: "short",
+                  timeStyle: "medium",
+                })
+              : txt.unknown,
           },
-          { label: "Natiivi tunniste", value: agent.agent_id, copy: true },
+          { label: txt.nativeId, value: agent.agent_id, copy: true },
         ]}
         rename={
           csrf
@@ -1743,16 +1726,14 @@ function HistoryViewContent({
             : undefined
         }
         titleAction={{
-          label: "Luo uusi otsikko",
+          label: txt.retitle,
           availability:
             mayWrite && entries.length > 0
               ? { state: "enabled" }
               : {
                   state: "disabled",
                   reason:
-                    entries.length === 0
-                      ? "Keskustelussa ei ole vielä nimettävää sisältöä."
-                      : blockedReason,
+                    entries.length === 0 ? txt.nothingToName : blockedReason,
                 },
           onPress: () => {
             if (!mayWrite || !csrf || entries.length === 0 || busy) return;
@@ -1768,10 +1749,7 @@ function HistoryViewContent({
               .then(() => onTitleComplete?.())
               .catch((error) => {
                 if ((error as Error).message === "identity_lost") onLogin();
-                else
-                  setActionError(
-                    "Otsikkoa ei voitu luoda. Tarkista tila ennen uutta yritystä.",
-                  );
+                else setActionError(txt.retitleFailed);
               })
               .finally(() => {
                 setBusy(false);
@@ -1795,7 +1773,7 @@ function HistoryViewContent({
           blockedReason:
             agent.archive === "archived"
               ? !restoreAvailable
-                ? "Palautus ei ole käytettävissä ennen historian ja yhteyden vahvistusta."
+                ? txt.restoreUnavailable
                 : undefined
               : mayWrite
                 ? undefined
@@ -1816,7 +1794,7 @@ function HistoryViewContent({
             <Button
               data-testid="older-history"
               size="row"
-              label={busy ? "Ladataan…" : "Lataa vanhempi historiasivu"}
+              label={busy ? txt.loading : txt.loadOlder}
               pending={busy}
               onPress={loadMore}
             />
@@ -1826,8 +1804,8 @@ function HistoryViewContent({
           <InlineNotice
             data-testid="history-cut-off"
             tone="warning"
-            title="Keskustelun loppu katkesi"
-            description="Näytetään kokonaan tallentuneet viestit. Alkuperäistä tiedostoa ei ole muutettu. Voit jatkaa uudessa keskustelussa."
+            title={txt.cutOff}
+            description={txt.cutOffDetail}
           />
         )}
         <ConversationTimeline
@@ -1846,12 +1824,11 @@ function HistoryViewContent({
             window?.revision,
           )}
           historyMode="pagedAccessible"
-          emptyLabel="Natiivissa historiassa ei ole vielä viestejä."
+          emptyLabel={txt.empty}
           onJumpToLatest={() => {}}
           problem={{
-            title: "Historiaa ei saada",
-            description:
-              "Lähde puuttuu, on vioittunut tai muuttui lukemisen aikana. Päivitä tilannekuva.",
+            title: txt.unavailable,
+            description: txt.unavailableDetail,
           }}
         />
       </ConversationStream>
@@ -1870,21 +1847,21 @@ function HistoryViewContent({
           pending={false}
           error={false}
           unavailable
-          unavailableReason="Katsauksen luominen vaatii keskustelun jatkamista."
+          unavailableReason={txt.recapNeedsContinue}
           onDismiss={() => setRecapDismissed(true)}
         />
       ) : null}
       <div className="ah-read-only-footer">
         <div>
-          <strong data-testid="read-only-indicator">Vain luku</strong>
+          <strong data-testid="read-only-indicator">{txt.readOnly}</strong>
           <p>
             {eligibility?.continuation === "writer_present"
-              ? "Jatkaminen estetty: keskustelulla on aktiivinen kirjoittaja."
+              ? txt.writerBlocks
               : eligibility?.continuation === "history_damaged"
                 ? startProblemReason("history_damaged")
                 : eligibility?.continuation === "unproven"
-                  ? "Jatkamisen edellytyksiä ei voitu vahvistaa. Päivitä tiedot."
-                  : "Tätä keskustelua ei voi ohjata selaimesta."}
+                  ? txt.unproven
+                  : txt.notFromBrowser}
           </p>
         </div>
         {/* A browser conversation is never continued from here: once it is
@@ -1894,7 +1871,7 @@ function HistoryViewContent({
           href={`/workspaces/${workspaceId}`}
           kind="inline"
         >
-          Uusi keskustelu
+          {txt.newConversation}
         </LinkRow>
       </div>
       <BackgroundStrip ask={workerAsk} />

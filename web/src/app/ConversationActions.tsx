@@ -7,6 +7,9 @@ import {
 } from "react";
 import type { NavigateFunction } from "react-router";
 import { InlineNotice } from "../components";
+import { type Language, liveText } from "../i18n";
+import { conversationActionsText } from "../text/conversationActions";
+import { useConversationText } from "../text/useConversation";
 import {
   abortTurn,
   clearQueue,
@@ -28,16 +31,33 @@ import {
 } from "./sentMessages";
 import type { Workspace } from "./snapshot";
 
+const txt = liveText(conversationActionsText);
+
+// A receipt or problem stays in the language it was written in, so a check
+// against one accepts both.
+function inEitherLanguage(
+  message: string,
+  messages: (language: Language) => string[],
+) {
+  return (["fi", "en"] as const).some((l) => messages(l).includes(message));
+}
+
+/** Progress receipts that need no notice of their own. */
+const quietReceipt = (receipt: string) =>
+  inEitherLanguage(receipt, (l) => [
+    conversationActionsText[l].awaitingAck,
+    conversationActionsText[l].awaitingNative,
+    conversationActionsText[l].queueEmpty,
+    useConversationText[l].pending,
+  ]);
+
 /** Why the host refused a message and what the person can do. A refusal
  * means nothing was written: the text is back in the field. (A message the
  * host already took and is sent again is not refused; the daemon answers
  * it as the same message.) */
 function messageRefusal(code: string, kind: "send" | "queue") {
-  if (code === "read_only_history")
-    return "Viestiä ei lähetetty, koska tätä keskustelua voi nyt vain lukea. Teksti on kentässä: jatka keskustelua tai aloita uusi.";
-  return kind === "send"
-    ? "Viestiä ei lähetetty, koska keskustelun tila muuttui, esimerkiksi agentti ehti aloittaa työn. Teksti on kentässä: lähetä se uudelleen. Jos agentti työskentelee, viesti menee ohjauksena tai jonoon."
-    : "Viestiä ei lähetetty, koska agentin vuoro ehti päättyä tai keskustelun tila muuttui. Teksti on kentässä: lähetä se uudelleen.";
+  if (code === "read_only_history") return txt.readOnlyRefusal;
+  return kind === "send" ? txt.sendRefusal : txt.queueRefusal;
 }
 /** One Stop press on a running turn. Its outcome is read from status: the
  * turn ending is the success, so success needs no message of its own. */
@@ -137,7 +157,7 @@ export function useConversationActions({
       const token = csrf;
       if (!alive.current) return;
       const version = generation.current;
-      setReceipt("Luodaan · tulos odottaa");
+      setReceipt(txt.creating);
       const result = await createTracked(
         workspace.workspace_id,
         token,
@@ -163,10 +183,7 @@ export function useConversationActions({
         try {
           await closeEmpty(id, token);
         } catch {
-          if (alive.current)
-            setReceipt(
-              "Edellistä tyhjää keskustelua ei voitu sulkea. Sulje se erikseen listasta.",
-            );
+          if (alive.current) setReceipt(txt.closeEmptyFailed);
         }
       }
     } catch (error) {
@@ -174,10 +191,10 @@ export function useConversationActions({
       if (alive.current) {
         setReceipt(
           error instanceof WriteRefused
-            ? `Uutta keskustelua ei luotu: ${refusalReason(error.code, error.status)}`
+            ? txt.createRefused(refusalReason(error.code, error.status))
             : sessionStorage.getItem(uncertainKey)
-              ? "Luonnin tulos epävarma. Päivitä tiedot ennen uutta yritystä; pyyntöä ei lähetetä automaattisesti uudelleen."
-              : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.",
+              ? txt.createUncertain
+              : txt.createUnconfirmed,
         );
       }
     } finally {
@@ -214,11 +231,11 @@ export function useConversationActions({
       setSendObservation({ text, state: "pending", command, kind: "send" });
       onSent({ command, text, before: userKeys(entries) });
       if (!keepDraft) changeDraft("");
-      setReceipt("Viesti odottaa kuittausta");
+      setReceipt(txt.awaitingAck);
       await send(current.agent_id, text, command, token, firstChoice);
       inFlightSend.current = undefined;
       if (!alive.current) return;
-      setReceipt("Viesti odottaa natiivia hyväksyntää");
+      setReceipt(txt.awaitingNative);
       await refresh();
     } catch (error) {
       if (inFlightSend.current === command) inFlightSend.current = undefined;
@@ -232,9 +249,7 @@ export function useConversationActions({
       } else if (alive.current) {
         sessionStorage.setItem(uncertainKey, command);
         setSendObservation({ text, state: "uncertain", command });
-        setReceipt(
-          "Lähetysvirhe. Tarkistetaan alkuperäisen viestin kuittaus automaattisesti.",
-        );
+        setReceipt(txt.sendError);
         void refresh();
       }
     } finally {
@@ -276,7 +291,7 @@ export function useConversationActions({
           .map((e) => e.entry_key),
       });
       if (!keepDraft) changeDraft("");
-      setReceipt("Viesti odottaa kuittausta");
+      setReceipt(txt.awaitingAck);
       await queueMessage(current.agent_id, text, command, token, kind);
       if (alive.current) await refresh();
     } catch (error) {
@@ -296,9 +311,7 @@ export function useConversationActions({
       ) {
         sessionStorage.setItem(uncertainKey, command);
         setSendObservation({ text, state: "uncertain", command });
-        setReceipt(
-          "Lähetysvirhe. Tarkistetaan alkuperäisen viestin kuittaus automaattisesti.",
-        );
+        setReceipt(txt.sendError);
         void refresh();
       }
     } finally {
@@ -351,21 +364,13 @@ export function useConversationActions({
       // Stop reads status after its abort; an earlier read here would only
       // hold that one back.
       if (!stop) {
-        setReceipt(
-          restored
-            ? "Jonosta poistetut viestit palautettiin kirjoituskenttään."
-            : "Jono oli jo tyhjä.",
-        );
+        setReceipt(restored ? txt.queueRestored : txt.queueEmpty);
         void refresh();
       }
     } catch (error) {
       if ((error as Error).message === "identity_lost") onLogin();
       else if (alive.current)
-        setReceipt(
-          sent
-            ? "Jonon tyhjennyksen tulos epävarma. Tarkista tila; viestejä ei palautettu ilman kuittausta."
-            : "Istuntoa ei voitu vahvistaa.",
-        );
+        setReceipt(sent ? txt.clearUncertain : txt.sessionUnconfirmed);
     } finally {
       if (alive.current) setBusy(false);
     }
@@ -413,13 +418,14 @@ export function useConversationActions({
     if (alive.current) void refresh();
   };
   const clearStopAttempt = () => setStopAttempt(undefined);
+  const sendFailed = inEitherLanguage(receipt, (l) => [
+    conversationActionsText[l].sendError,
+  ]);
   const notices = (
     <>
       {receipt &&
       sendObservation?.state !== "uncertain" &&
-      !/^(Viesti hyväksyttiin|Viesti odottaa|Varmistetaan istuntoa|Jono oli jo tyhjä)/.test(
-        receipt,
-      ) ? (
+      !quietReceipt(receipt) ? (
         <InlineNotice
           data-testid="send-receipt"
           title={receipt}
@@ -428,7 +434,9 @@ export function useConversationActions({
       ) : null}
       {problem &&
       (!serverUnavailable ||
-        problem !== "Yhteys katkesi. Näytetään viimeisin tunnettu tila.") ? (
+        !inEitherLanguage(problem, (l) => [
+          useConversationText[l].disconnected,
+        ])) ? (
         <InlineNotice
           data-testid="conversation-problem"
           title={problem}
@@ -438,15 +446,9 @@ export function useConversationActions({
       {ambiguous && sendObservation?.state === "uncertain" ? (
         <InlineNotice
           data-testid="send-error"
-          title={
-            receipt.startsWith("Lähetysvirhe")
-              ? "Lähetysvirhe · tulos epävarma"
-              : "Aiemman pyynnön tulos epävarma"
-          }
+          title={sendFailed ? txt.sendErrorTitle : txt.earlierUncertainTitle}
           description={
-            receipt.startsWith("Lähetysvirhe")
-              ? "Alkuperäisen viestin kuittaus tarkistetaan yhteyden palattua. Viestiä ei lähetetä uudelleen."
-              : "Alkuperäisen viestin kuittaus ei vahvista tulosta. Viestiä ei lähetetä uudelleen."
+            sendFailed ? txt.sendErrorDetail : txt.earlierUncertainDetail
           }
           tone="warning"
         />

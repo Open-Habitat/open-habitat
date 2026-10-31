@@ -1,8 +1,12 @@
 import { useMemo } from "react";
+import { liveText } from "../i18n";
+import { fileToolCardText } from "../text/fileToolCard";
 import { IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { OutputBox } from "./OutputBox";
 import { SyntaxCode } from "./SyntaxCode";
+
+const txt = liveText(fileToolCardText);
 
 type Edit = { oldText: string; newText: string };
 type Args = { path?: string; content?: string; edits?: Edit[] };
@@ -150,7 +154,7 @@ function editOps(
   if (native) return native;
   if (!args?.edits?.length) return null;
   return args.edits.flatMap((edit, i) => [
-    ...(i ? [[" ", `⋯ muutos ${i + 1}`] as [" ", string]] : []),
+    ...(i ? [[" ", txt.change(i + 1)] as [" ", string]] : []),
     ...editLines(edit.oldText, edit.newText),
   ]);
 }
@@ -167,9 +171,7 @@ export function FileToolCard({
 }) {
   const args = useMemo(() => argsOf(argumentsText), [argumentsText]);
   if (failed)
-    return (
-      <pre className="ah-file-error">{output ?? "Työkalu epäonnistui."}</pre>
-    );
+    return <pre className="ah-file-error">{output ?? txt.failed}</pre>;
   if (
     (!args &&
       !(
@@ -191,7 +193,7 @@ export function FileToolCard({
         <OutputBox
           text={text}
           language={language(args?.path)}
-          copyLabel="Kopioi sisältö"
+          copyLabel={txt.copyContent}
         />
         {note ? (
           <p role="note" className="ah-pi-boundary">
@@ -207,7 +209,7 @@ export function FileToolCard({
       <OutputBox
         text={args?.content ?? ""}
         language={language(args?.path)}
-        copyLabel="Kopioi sisältö"
+        copyLabel={txt.copyContent}
       />
     ) : null;
   const ops = editOps(args, output);
@@ -248,11 +250,11 @@ export function FileToolCard({
             <span>
               {type === "-" ? (
                 <span data-testid="diff-deletion-label" className="ah-sr-only">
-                  poistettu:{" "}
+                  {txt.removed}
                 </span>
               ) : type === "+" ? (
                 <span data-testid="diff-addition-label" className="ah-sr-only">
-                  lisätty:{" "}
+                  {txt.added}
                 </span>
               ) : null}
               {pair !== undefined ? (
@@ -277,9 +279,9 @@ export function FileToolCard({
         aria-label={
           replacements?.length
             ? replacements.length === 1
-              ? "Kopioi uusi teksti"
-              : "Kopioi uudet tekstit"
-            : "Kopioi diffi"
+              ? txt.copyNewText
+              : txt.copyNewTexts
+            : txt.copyDiff
         }
         onPress={() =>
           void navigator.clipboard.writeText(
@@ -309,9 +311,9 @@ export function fileStat(
   )
     return undefined;
   if (name === "read" && output !== undefined)
-    return `${lineCount(readContent(output).text)} riviä`;
+    return txt.lines(lineCount(readContent(output).text));
   if (name === "write" && args?.content !== undefined)
-    return `uusi · ${lineCount(args?.content)} riviä`;
+    return txt.newFile(lineCount(args?.content));
   if (name === "edit") {
     const ops = editOps(args, output);
     if (!ops) return undefined;
