@@ -18,7 +18,9 @@ try {
   await page.locator("main").waitFor();
   await page.getByTestId("workspaces-title").waitFor();
   // The icon picker is experimental: turn it on for this person.
-  const session = await (await page.request.get(`${origin}/auth/session`)).json();
+  const session = await (
+    await page.request.get(`${origin}/auth/session`)
+  ).json();
   await page.request.put(`${origin}/api/v1/account/preferences`, {
     headers: { Origin: origin, "X-Agent-Host-CSRF": session.csrf },
     data: { experimental: { "workspace-icons": true } },
