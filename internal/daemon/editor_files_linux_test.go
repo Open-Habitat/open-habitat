@@ -66,6 +66,7 @@ func TestEditorFilesRoundTripAndConflict(t *testing.T) {
 	base := read["version"].(string)
 	// Saving without editing preserves exact bytes, mode, BOM and CRLF. A second
 	// save must accept the post-rename token (rename changes inode ctime).
+	var stale string
 	for i := 0; i < 2; i++ {
 		status, saved := editorCall(h, "PUT", "file", id, "", saveInput(id, "script.sh", base, "echo hi\n", true, "crlf"))
 		if status != 200 {
@@ -75,7 +76,7 @@ func TestEditorFilesRoundTripAndConflict(t *testing.T) {
 		if next == base {
 			t.Fatal("replacement did not change token")
 		}
-		base = next
+		stale, base = base, next
 	}
 	raw, e := os.ReadFile(filepath.Join(p, "script.sh"))
 	if e != nil || string(raw) != "\xef\xbb\xbfecho hi\r\n" {
@@ -85,7 +86,11 @@ func TestEditorFilesRoundTripAndConflict(t *testing.T) {
 	if s.Mode().Perm() != 0751 {
 		t.Fatal("mode changed")
 	}
-	status, _ = editorCall(h, "PUT", "file", id, "", saveInput(id, "script.sh", read["version"].(string), "stale", false, "none"))
+	// The token names the observed state, not its history: the second save can
+	// reuse the original's freed inode within one timestamp tick, restoring the
+	// first read's token for identical bytes. The first save's inode was still
+	// live when the second was created, so its token is always stale.
+	status, _ = editorCall(h, "PUT", "file", id, "", saveInput(id, "script.sh", stale, "stale", false, "none"))
 	if status != 409 {
 		t.Fatal("stale", status)
 	}
