@@ -93,9 +93,11 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	controller := newConversationController(ctx, cfg, runtime, server.TrustedPeer, piStatus)
 	controller.journal = journal
 	// A changed GitHub connection or organisation restriction is news to
-	// every open page: it reads the snapshot again. It is not a native
-	// write, so it does not count as one against snapshots in flight.
-	adapter.OnChange(journal.appendSnapshotRaceInvalidation)
+	// every open page: it reads the snapshot again. A connection check that
+	// ends while a snapshot is being built counts against it like a native
+	// write: that snapshot may carry "checking" under a cursor already past
+	// this news, so it leaves another notice after its cursor.
+	adapter.OnChange(func() { journal.appendInvalidation("") })
 	githubOrgs.changed = journal.appendSnapshotRaceInvalidation
 	controller.github = &githubWatch{recheck: adapter.Recheck, orgs: githubOrgs}
 	go controller.recapRestingConversations(ctx)

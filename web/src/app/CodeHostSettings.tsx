@@ -60,6 +60,38 @@ const states: Record<NativeState, { label: string; description: string }> = {
       "GitHub hylkäsi valtuutuksen kerran. Palvelin tarkistaa sen vielä uudelleen.",
   },
 };
+/** Why the host could not settle the state: the snapshot's
+ * native_github.reason, present only beside "unknown". */
+export type NativeUnknownReason =
+  | "checking"
+  | "timeout"
+  | "github_error"
+  | "unrecognized";
+const unknownReasons: Record<
+  NativeUnknownReason,
+  { label: string; description: string }
+> = {
+  checking: {
+    label: "Tarkistetaan",
+    description:
+      "Palvelin kysyy parhaillaan GitHubilta yhteyden tilaa. Tila päivittyy tähän itsestään.",
+  },
+  timeout: {
+    label: "Tilaa ei tiedetä",
+    description:
+      "GitHub tai palvelimen gh ei vastannut ajoissa, joten yhteyttä ei voitu vahvistaa. Palvelin kysyy pian uudelleen.",
+  },
+  github_error: {
+    label: "Tilaa ei tiedetä",
+    description:
+      "GitHub vastasi tarkistukseen virheellä, esimerkiksi pyyntörajoituksella, joten yhteyttä ei voitu vahvistaa. Palvelin kysyy pian uudelleen.",
+  },
+  unrecognized: {
+    label: "Tilaa ei tiedetä",
+    description:
+      "Palvelimen gh ei antanut vastausta, jonka palvelin tunnistaa, joten yhteyttä ei voitu vahvistaa. Päätteen gh auth status kertoo tarkemmin.",
+  },
+};
 const codeHosts: ProviderId[] = ["gitea", "gitlab"];
 type Hosted = {
   w: Workspace;
@@ -76,6 +108,7 @@ type Hosted = {
 export function CodeHostSettings({
   csrf,
   nativeState,
+  nativeReason,
   nativeLogin,
   onReconnect,
   onDisconnect,
@@ -84,13 +117,17 @@ export function CodeHostSettings({
 }: {
   csrf?: string;
   nativeState?: NativeState;
+  nativeReason?: NativeUnknownReason;
   nativeLogin?: string;
   onReconnect?: () => void;
   onDisconnect?: () => void;
   workspaces?: readonly Workspace[];
   onNewWorkspace?: () => void;
 }) {
-  const state = states[nativeState ?? "unknown"];
+  const state =
+    (nativeState ?? "unknown") === "unknown" && nativeReason
+      ? (unknownReasons[nativeReason] ?? states.unknown)
+      : states[nativeState ?? "unknown"];
   const [disconnectNotice, setDisconnectNotice] = useState(false);
   const [gitea, setGitea] = useState<GiteaConnection[]>();
   const [gitlab, setGitLab] = useState<GitLabConnection[]>();
@@ -196,6 +233,7 @@ export function CodeHostSettings({
             className="s-val"
             data-testid="github-native-state"
             data-state={nativeState ?? "unknown"}
+            data-reason={nativeState === "unknown" ? nativeReason : undefined}
           >
             <StatusMark
               label={state.label}

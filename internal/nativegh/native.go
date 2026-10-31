@@ -42,6 +42,14 @@ var rejected = errors.New("GitHub rejects the active gh token")
 // unreachable is gh's own report that GitHub could not be asked or answered
 // with a server error: an outage, which says nothing about the token.
 var unreachable = errors.New("GitHub did not answer")
+
+// githubError is GitHub's own answer with an error that says nothing certain
+// about the token: a rate limit, or a 401 for a request gh sent without the
+// token it could not read (a locked keyring).
+var githubError = errors.New("GitHub answered the identity check with an error")
+
+// slow is a gh or git command that did not finish within its time.
+var slow = errors.New("gh or git did not answer in time")
 var loginPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}$`)
 
 type Command struct {
@@ -110,6 +118,12 @@ func (e Executor) Run(ctx context.Context, c Command) ([]byte, error) {
 			if userProbe && unreachableDiagnostic(diagnostic.Bytes()) {
 				return nil, unreachable
 			}
+			if userProbe && githubErrorDiagnostic(diagnostic.Bytes()) {
+				return nil, githubError
+			}
+		}
+		if err != nil && ctx.Err() != nil {
+			return nil, slow
 		}
 		return nil, denied
 	}
@@ -159,6 +173,20 @@ func unreachableDiagnostic(b []byte) bool {
 		}
 	}
 	return true
+}
+
+// gh prints GitHub's message before the status of any other answer, such as
+// "gh: API rate limit exceeded for user ID 1. (HTTP 403)". It only names the
+// cause of an unknown state, so any wording with a 4xx status is accepted.
+var githubErrorLine = regexp.MustCompile(`^gh: [^\n]*\(HTTP 4[0-9]{2}\)$`)
+
+func githubErrorDiagnostic(b []byte) bool {
+	for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		if githubErrorLine.MatchString(strings.TrimSpace(line)) {
+			return true
+		}
+	}
+	return false
 }
 
 type bounded struct {
@@ -215,6 +243,7 @@ type Adapter struct {
 	flightMu sync.Mutex
 	flight   *statusFlight
 	observed *observedStatus // guarded by flightMu
+	handed   *observedStatus // the answer of a promised flight; guarded by flightMu
 	// mutations moves at the start and end of Install and Disconnect, so an
 	// observation that overlapped either is never remembered.
 	mutations atomic.Uint64
@@ -234,6 +263,8 @@ type Adapter struct {
 	verifyAfter time.Duration
 	retryDelays []time.Duration
 	early       time.Duration // how early a check may come and still be the scheduled one
+	budget      time.Duration // one whole check
+	pageWait    time.Duration // how long a snapshot waits for a fresh check
 	lastAsked   time.Time
 	home        string
 	subject     string
@@ -249,7 +280,7 @@ func New(home, subject string, run Runner, evidence Evidence) (*Adapter, error) 
 	if run == nil {
 		run = Executor{Home: home}
 	}
-	return &Adapter{home: home, subject: subject, run: run, evidence: evidence, verifyAfter: verifyAfter, retryDelays: retryDelays, early: time.Second}, nil
+	return &Adapter{home: home, subject: subject, run: run, evidence: evidence, verifyAfter: verifyAfter, retryDelays: retryDelays, early: time.Second, budget: statusBudget, pageWait: pageWait}, nil
 }
 
 // OnChange names what to call, outside the adapter's locks, when a check
@@ -316,29 +347,41 @@ const (
 )
 
 func (a *Adapter) identity(ctx context.Context) (string, bool) {
-	login, kind := a.classify(ctx)
+	login, kind, _ := a.classify(ctx)
 	return login, kind == own
+}
+
+// timedOut tells a command that ran out of time from one that failed.
+func timedOut(ctx context.Context, e error) bool {
+	return ctx.Err() != nil || errors.Is(e, slow) || errors.Is(e, context.DeadlineExceeded)
 }
 
 // classify asks gh, then GitHub. gh auth status alone proves only absence: gh
 // 2.45/2.46 exit 0 for an invalid token and print the same "token is invalid"
 // for an unreachable network, and newer gh exit 1 for either. Identity, and
-// whether the token is dead, come from GitHub's answer to gh api user.
-func (a *Adapter) classify(ctx context.Context) (string, account) {
+// whether the token is dead, come from GitHub's answer to gh api user. An
+// unclassified account comes with the Reason it could not be classified.
+func (a *Adapter) classify(ctx context.Context) (string, account, string) {
 	if _, e := a.gh(ctx, false, nil, statusArgs...); errors.Is(e, noAuth) {
-		return "", absent
-	} else if ctx.Err() != nil {
-		return "", unclassified
+		return "", absent, ""
+	} else if timedOut(ctx, e) {
+		return "", unclassified, ReasonTimeout
 	}
 	b, e := a.gh(ctx, true, nil, userArgs...)
 	if errors.Is(e, rejected) {
-		return "", revoked
+		return "", revoked, ""
 	}
 	if errors.Is(e, unreachable) {
-		return "", outage
+		return "", outage, ""
+	}
+	if errors.Is(e, githubError) {
+		return "", unclassified, ReasonGitHubError
+	}
+	if timedOut(ctx, e) {
+		return "", unclassified, ReasonTimeout
 	}
 	if e != nil {
-		return "", unclassified
+		return "", unclassified, ReasonUnrecognized
 	}
 	var v struct {
 		ID    json.Number `json:"id"`
@@ -347,16 +390,16 @@ func (a *Adapter) classify(ctx context.Context) (string, account) {
 	d := json.NewDecoder(strings.NewReader(string(b)))
 	d.UseNumber()
 	if d.Decode(&v) != nil || d.Decode(new(any)) != io.EOF || !loginPattern.MatchString(v.Login) {
-		return "", unclassified
+		return "", unclassified, ReasonUnrecognized
 	}
 	id, e := strconv.ParseUint(string(v.ID), 10, 64)
 	if e != nil || id == 0 || strconv.FormatUint(id, 10) != string(v.ID) {
-		return "", unclassified
+		return "", unclassified, ReasonUnrecognized
 	}
 	if string(v.ID) != a.subject {
-		return v.Login, foreign
+		return v.Login, foreign, ""
 	}
-	return v.Login, own
+	return v.Login, own, ""
 }
 
 // Observation is one status check: the state, and for the person's own
@@ -371,7 +414,35 @@ type Observation struct {
 	Since   time.Time
 	Attempt int
 	NextAt  time.Time
+	// For "unknown": why the check learned nothing, one of the Reason
+	// constants, so the page can say it instead of a bare "unknown".
+	Reason string
 }
+
+// Why a check ended "unknown".
+const (
+	// The check is still under way, or a sign-in or disconnect holds the
+	// adapter; a later read has the answer.
+	ReasonChecking = "checking"
+	// gh, Git or GitHub did not answer within the check's time.
+	ReasonTimeout = "timeout"
+	// GitHub answered with an error that says nothing certain about the
+	// token (a rate limit, a request gh sent without its token).
+	ReasonGitHubError = "github_error"
+	// gh could not be run, or its answer was not one the host recognizes.
+	ReasonUnrecognized = "unrecognized"
+)
+
+// statusBudget bounds one whole check: two GitHub requests and three local
+// commands. On Birch the check takes 1.1-1.3 s when idle, and the earlier
+// 1.5 s budget turned an ordinary slow moment, such as the first check after
+// a reboot, into "unknown" for a working login. Each command still has its
+// own timeout.
+const statusBudget = 2 * timeout
+
+// pageWait is how long a snapshot waits for a fresh check before it answers
+// "checking"; the page is told again when the check ends.
+const pageWait = 2 * time.Second
 
 // The checks of an outage before the host stops calling it a retry, and the
 // waits after each of them: GitHub is asked at 0, 30, 60 and 120 seconds,
@@ -396,16 +467,24 @@ type statusFlight struct {
 	busy  bool // a mutation held the adapter; the answer says nothing
 	stamp string
 	gen   uint64
+	// A page was told "checking" while this flight ran, so its end is told
+	// even when the connection is the one last told. Guarded by flightMu.
+	promised bool
 }
 
 // observedStatus is the last completed observation and the native inputs it
 // was made from. It is never written to disk.
 type observedStatus struct {
-	obs   Observation
-	stamp string
-	gen   uint64
-	at    time.Time
+	obs     Observation
+	stamp   string
+	stamped bool
+	gen     uint64
+	at      time.Time
 }
+
+// handedFresh is how long the answer of a promised flight is given to the
+// pages that re-read for it.
+const handedFresh = 10 * time.Second
 
 // A credential change on this machine is seen through its files. A change only
 // GitHub knows about (a token revoked on github.com) has no local input, so a
@@ -442,8 +521,14 @@ func (a *Adapter) ObservedConnection(ctx context.Context) Observation {
 	stamp, ok := credentialStamp(a.home)
 	gen := a.mutations.Load()
 	a.flightMu.Lock()
-	o := a.observed
+	o, h := a.observed, a.handed
 	a.flightMu.Unlock()
+	// The answer a page was promised is its own, even when it is not one
+	// that may be remembered (a keyring-backed login): asking afresh would
+	// only promise again.
+	if h != nil && h.stamp == stamp && h.stamped == ok && h.gen == gen && time.Since(h.at) < handedFresh {
+		return h.obs
+	}
 	if ok && o != nil && o.stamp == stamp && o.gen == gen {
 		recheck := observedRecheck
 		if o.obs.State == "unknown" || o.obs.State == "unreachable" || o.obs.State == "verifying" {
@@ -457,14 +542,49 @@ func (a *Adapter) ObservedConnection(ctx context.Context) Observation {
 	// A flight already under way may have read the inputs before they
 	// changed; its answer is not this caller's. The next flight starts after
 	// this call began, so it is.
+	page, cancel := context.WithTimeout(ctx, a.pageWait)
+	defer cancel()
 	f := a.start()
-	if !ok || f.stamp != stamp || f.gen != gen {
-		if a.wait(ctx, f); ctx.Err() != nil {
-			return Observation{State: "unknown"}
+	mine := ok && f.stamp == stamp && f.gen == gen
+	if !mine {
+		a.wait(page, f)
+		if page.Err() == nil {
+			f, mine = a.start(), true
+		}
+	}
+	obs := a.wait(page, f)
+	if page.Err() == nil || ctx.Err() != nil {
+		return obs
+	}
+	// A flight ends under flightMu, so under it a flight either has ended,
+	// and its answer can be given now, or is still running and will see
+	// the promise. A stale flight that has ended is followed by a new one.
+	for range 3 {
+		a.flightMu.Lock()
+		ended := closed(f.done)
+		if !ended {
+			f.promised = true
+		}
+		a.flightMu.Unlock()
+		if !ended {
+			break
+		}
+		if mine {
+			return f.obs
 		}
 		f = a.start()
+		mine = ok && f.stamp == stamp && f.gen == gen
 	}
-	return a.wait(ctx, f)
+	return Observation{State: "unknown", Reason: ReasonChecking}
+}
+
+func closed(c chan struct{}) bool {
+	select {
+	case <-c:
+		return true
+	default:
+		return false
+	}
 }
 
 func (a *Adapter) start() *statusFlight {
@@ -479,7 +599,7 @@ func (a *Adapter) start() *statusFlight {
 	// One independent bounded observation serves concurrent callers: a
 	// canceled tab cannot cancel another tab's status check.
 	go func() {
-		budget, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+		budget, cancel := context.WithTimeout(context.Background(), a.budget)
 		defer cancel()
 		var remember bool
 		f.obs, f.busy, remember = a.checkStatus(budget)
@@ -507,6 +627,16 @@ func (a *Adapter) start() *statusFlight {
 			// check: it is not lost, only later. An earlier busy check
 			// leaves the pending timer alone.
 			a.schedule(busyRetry)
+		}
+		// A page that was told "checking" is told the answer, whatever it is,
+		// and its re-read is given that answer. Any later check replaces it:
+		// a page told of that check's news must not re-read the older one.
+		a.handed = nil
+		if f.promised {
+			tell = a.onChange
+			if !f.busy && stamped == still && after == f.stamp && f.gen == a.mutations.Load() {
+				a.handed = &observedStatus{obs: f.obs, stamp: f.stamp, stamped: stamped, gen: f.gen, at: time.Now()}
+			}
 		}
 		// Remember only an observation whose inputs did not move under it.
 		if remember && !f.busy && stamped && still && after == f.stamp && f.gen == a.mutations.Load() {
@@ -727,14 +857,14 @@ func GitConfigStamp(home string) (string, bool) {
 // checkStatus reports the observation, whether a mutation made the answer
 // meaningless, and whether its inputs are all files credentialStamp covers.
 func (a *Adapter) checkStatus(ctx context.Context) (Observation, bool, bool) {
-	unknown := Observation{State: "unknown"}
+	unknown := func(reason string) Observation { return Observation{State: "unknown", Reason: reason} }
 	if !a.mu.TryLock() {
-		return unknown, true, false // mutation in progress; cannot infer its eventual outcome
+		return unknown(ReasonChecking), true, false // mutation in progress; cannot infer its eventual outcome
 	}
 	defer a.mu.Unlock()
-	login, kind := a.classify(ctx)
+	login, kind, reason := a.classify(ctx)
 	if ctx.Err() != nil {
-		return unknown, false, true
+		return unknown(ReasonTimeout), false, true
 	}
 	// A revoked token connects nothing, but it is not an absent login: gh
 	// still offers it to every push. The person sees it as expired, and the
@@ -751,14 +881,14 @@ func (a *Adapter) checkStatus(ctx context.Context) (Observation, bool, bool) {
 		return Observation{State: "disconnected"}, false, true
 	}
 	if kind != own {
-		return unknown, false, true
+		return unknown(reason), false, true
 	}
-	_, _, ok := a.observeWithLogin(ctx, login)
+	_, _, ok, late := a.observeLogin(ctx, login)
 	// Without a token in hosts.yml, gh and the observation consult the
 	// keyring, whose lock state is not a file: such an answer is not kept.
 	remember := fileToken(a.home)
-	if ctx.Err() != nil {
-		return unknown, false, remember
+	if late {
+		return unknown(ReasonTimeout), false, remember
 	}
 	if !ok {
 		return Observation{State: "partial", Login: login}, false, remember
@@ -879,21 +1009,28 @@ func (a *Adapter) observe(ctx context.Context) (string, Storage, bool) {
 	return a.observeWithLogin(ctx, login)
 }
 func (a *Adapter) observeWithLogin(ctx context.Context, login string) (string, Storage, bool) {
+	login, storage, ok, _ := a.observeLogin(ctx, login)
+	return login, storage, ok
+}
+
+// observeLogin is observeWithLogin that also says whether a command ran out
+// of time, which proves nothing about the configuration.
+func (a *Adapter) observeLogin(ctx context.Context, login string) (string, Storage, bool, bool) {
 	protocol, e := a.gh(ctx, true, nil, "config", "get", "git_protocol", "--host", "github.com")
 	if e != nil || strings.TrimSpace(string(protocol)) != "https" {
-		return login, Unknown, false
+		return login, Unknown, false, timedOut(ctx, e)
 	}
 	helper, e := a.git(ctx, true, nil, "config", "--global", "--get", "credential.https://github.com.helper")
 	if e != nil || !trustedGitHelper(helper) {
-		return login, Unknown, false
+		return login, Unknown, false, timedOut(ctx, e)
 	}
 	// Ordinary Git credential protocol; stdout contains a credential and must
 	// be discarded, never captured or reflected into a result.
 	if _, e = a.git(ctx, false, strings.NewReader("protocol=https\nhost=github.com\n\n"), "credential", "fill"); e != nil {
-		return login, Unknown, false
+		return login, Unknown, false, timedOut(ctx, e)
 	}
 	storage, ok := a.storage(ctx, login)
-	return login, storage, ok
+	return login, storage, ok, ctx.Err() != nil
 }
 func (a *Adapter) cleanup(ctx context.Context, login string) bool {
 	if !loginPattern.MatchString(login) {
@@ -940,7 +1077,7 @@ func (a *Adapter) Install(ctx context.Context, token string, replace bool) (Resu
 	// (network, keyring, unknown output) is left alone.
 	stamp, stamped := credentialStamp(a.home)
 	phase := Installed
-	switch login, kind := a.classify(ctx); {
+	switch login, kind, _ := a.classify(ctx); {
 	case ctx.Err() != nil:
 		return result, denied
 	case kind == own:

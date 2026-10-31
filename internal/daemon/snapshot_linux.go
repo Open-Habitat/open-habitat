@@ -635,6 +635,13 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 		if (ghState == "connected" || ghState == "partial") && gh.Login != "" {
 			nativeGitHub["login"] = gh.Login
 		}
+		// Why the state is unknown, so the page can say it.
+		if ghState == "unknown" {
+			switch gh.Reason {
+			case nativegh.ReasonChecking, nativegh.ReasonTimeout, nativegh.ReasonGitHubError, nativegh.ReasonUnrecognized:
+				nativeGitHub["reason"] = gh.Reason
+			}
+		}
 		// The host's own retry of an outage: the page says it is trying,
 		// and warns once the retry is over.
 		if ghState == "unreachable" && gh.Attempt > 0 && !gh.Since.IsZero() && !gh.NextAt.IsZero() {

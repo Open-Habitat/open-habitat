@@ -33,7 +33,7 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 		calls++
 		// The handler, not only the adapter, names a login only beside a
 		// state gh works with.
-		return nativegh.Observation{State: status, Login: "alice"}
+		return nativegh.Observation{State: status, Login: "alice", Reason: nativegh.ReasonTimeout}
 	})
 	request := func(id string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
@@ -67,8 +67,9 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 		var doc struct {
 			Auth struct {
 				NativeGitHub struct {
-					State string `json:"state"`
-					Login string `json:"login"`
+					State  string `json:"state"`
+					Login  string `json:"login"`
+					Reason string `json:"reason"`
 				} `json:"native_github"`
 			} `json:"auth"`
 		}
@@ -80,7 +81,9 @@ func TestSnapshotNativeStatusOnlyAfterTrust(t *testing.T) {
 			want = "unknown"
 		}
 		wantLogin := map[string]string{"connected": "alice", "partial": "alice"}[state]
-		if doc.Auth.NativeGitHub.State != want || doc.Auth.NativeGitHub.Login != wantLogin || bytes.Contains(w.Body.Bytes(), []byte("oauth_token")) {
+		// The cause of an unknown state is named only beside it.
+		wantReason := map[string]string{"unknown": nativegh.ReasonTimeout}[want]
+		if doc.Auth.NativeGitHub.State != want || doc.Auth.NativeGitHub.Login != wantLogin || doc.Auth.NativeGitHub.Reason != wantReason || bytes.Contains(w.Body.Bytes(), []byte("oauth_token")) {
 			t.Fatalf("state=%s body=%s", state, w.Body.String())
 		}
 	}

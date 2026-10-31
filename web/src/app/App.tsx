@@ -2070,6 +2070,7 @@ export function App() {
       }
       onLogout={() => setLogoutPrompt(true)}
       nativeState={snapshot?.auth?.native_github.state}
+      nativeReason={snapshot?.auth?.native_github.reason}
       nativeLogin={snapshot?.auth?.native_github.login}
       onReconnect={reconnectGitHub}
       onPiSignIn={() => navigate(`${route.pathname}?pi_sign_in=1`)}

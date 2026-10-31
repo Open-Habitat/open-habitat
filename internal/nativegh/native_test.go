@@ -266,9 +266,13 @@ func TestStatusTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if a.budget < 4*time.Second {
+		t.Fatalf("a whole check gets %v, less than a slow host needs", a.budget)
+	}
+	a.budget = 100 * time.Millisecond
 	start := time.Now()
-	if got := a.Status(context.Background()); got != "unknown" || time.Since(start) > 3*time.Second {
-		t.Fatalf("timeout: %s (%v)", got, time.Since(start))
+	if got := a.wait(context.Background(), a.start()); got.State != "unknown" || got.Reason != ReasonTimeout || time.Since(start) > 3*time.Second {
+		t.Fatalf("timeout: %+v (%v)", got, time.Since(start))
 	}
 }
 
@@ -328,8 +332,143 @@ func TestStatusTimeoutAfterIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := a.Status(context.Background()); got != "unknown" {
-		t.Fatal(got)
+	a.budget = 100 * time.Millisecond
+	if got := a.wait(context.Background(), a.start()); got.State != "unknown" || got.Reason != ReasonTimeout {
+		t.Fatalf("%+v", got)
+	}
+}
+
+// slowRunner answers like the fake, each command after a delay: a host
+// whose whole check takes longer than the 1.5 s budget it once had (Birch
+// takes 1.1-1.3 s idle, more after a reboot or while GitHub is slow).
+type slowRunner struct {
+	fake  *fake
+	delay time.Duration
+}
+
+func (s slowRunner) Run(ctx context.Context, c Command) ([]byte, error) {
+	select {
+	case <-time.After(s.delay):
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	return s.fake.Run(ctx, c)
+}
+
+func TestSlowWorkingLoginIsConnected(t *testing.T) {
+	a, f, _ := fixture(t, false)
+	f.logged = true
+	a.run = slowRunner{f, 400 * time.Millisecond}
+	start := time.Now()
+	if got := a.wait(context.Background(), a.start()); got.State != "connected" || got.Login != "alice" {
+		t.Fatalf("%+v after %v", got, time.Since(start))
+	}
+	if time.Since(start) < 1500*time.Millisecond {
+		t.Fatal("the runner was not slow enough to prove anything")
+	}
+}
+
+// A page does not wait for a slow check: it hears "checking", and is told
+// again when the check has its answer, which the next read then gives.
+func TestPageHearsCheckingAndIsToldTheAnswer(t *testing.T) {
+	a, f, _ := fixture(t, false)
+	f.logged = true
+	a.run = slowRunner{f, 100 * time.Millisecond}
+	a.pageWait = 50 * time.Millisecond
+	told := make(chan struct{}, 4)
+	a.OnChange(func() { told <- struct{}{} })
+	if got := a.ObservedConnection(context.Background()); got.State != "unknown" || got.Reason != ReasonChecking {
+		t.Fatalf("%+v", got)
+	}
+	select {
+	case <-told:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the page was never told")
+	}
+	if got := a.ObservedConnection(context.Background()); got.State != "connected" {
+		t.Fatalf("%+v", got)
+	}
+}
+
+// A keyring-backed login's answer is never remembered, so a page's re-read
+// for a promised answer would otherwise start another slow check, promise
+// again and be told again, without end.
+func TestPromisedAnswerOfAnUnrememberedLoginEndsTheRound(t *testing.T) {
+	a, f, _ := fixture(t, true)
+	f.logged = true
+	a.run = slowRunner{f, 100 * time.Millisecond}
+	a.pageWait = 50 * time.Millisecond
+	told := make(chan struct{}, 8)
+	a.OnChange(func() { told <- struct{}{} })
+	if got := a.ObservedConnection(context.Background()); got.Reason != ReasonChecking {
+		t.Fatalf("%+v", got)
+	}
+	select {
+	case <-told:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the page was never told")
+	}
+	if got := a.ObservedConnection(context.Background()); got.State != "connected" {
+		t.Fatalf("%+v", got)
+	}
+	a.flightMu.Lock()
+	again := a.flight != nil
+	a.flightMu.Unlock()
+	if again {
+		t.Fatal("the re-read started another check")
+	}
+	select {
+	case <-told:
+		t.Fatal("told again")
+	case <-time.After(300 * time.Millisecond):
+	}
+	// A later check's news is what the next re-read gives, not the answer
+	// handed before it.
+	f.set(func() { f.apiErr = unreachable })
+	a.wait(context.Background(), a.start())
+	a.pageWait = 5 * time.Second
+	if got := a.ObservedConnection(context.Background()); got.State != "unreachable" {
+		t.Fatalf("%+v", got)
+	}
+}
+
+// An unknown state names its cause.
+func TestUnknownNamesItsCause(t *testing.T) {
+	for _, tc := range []struct {
+		err    error
+		reason string
+	}{{githubError, ReasonGitHubError}, {denied, ReasonUnrecognized}, {slow, ReasonTimeout}} {
+		a, f, _ := fixture(t, false)
+		f.logged = true
+		f.apiErr = tc.err
+		if got := a.wait(context.Background(), a.start()); got.State != "unknown" || got.Reason != tc.reason {
+			t.Fatalf("%v: %+v", tc.err, got)
+		}
+	}
+	a, _, _ := fixture(t, false)
+	a.mu.Lock()
+	got := a.wait(context.Background(), a.start())
+	a.mu.Unlock()
+	if got.State != "unknown" || got.Reason != ReasonChecking {
+		t.Fatalf("busy: %+v", got)
+	}
+}
+
+func TestGitHubErrorDiagnostic(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want bool
+	}{
+		{"gh: API rate limit exceeded for user ID 1. (HTTP 403)\n", true},
+		{"gh: Requires authentication (HTTP 401)\n", true},
+		{"gh: Not Found (HTTP 404)\n", true},
+		{"gh: Server Error (HTTP 500)\n", false},
+		{`Get "https://api.github.com/user": x509: certificate signed by unknown authority` + "\n", false},
+		{"", false},
+	} {
+		if got := githubErrorDiagnostic([]byte(tc.text)); got != tc.want {
+			t.Fatalf("githubError(%q) = %v", tc.text, got)
+		}
 	}
 }
 
@@ -820,7 +959,11 @@ func TestExecutorBoundedAndTimeout(t *testing.T) {
 				defer cancel()
 			}
 			_, err := e.Run(ctx, Command{Program: p, Output: true})
-			if err == nil || err.Error() != denied.Error() {
+			want := denied
+			if tc.name == "timeout" {
+				want = slow
+			}
+			if err == nil || err.Error() != want.Error() {
 				t.Fatal(err)
 			}
 		})

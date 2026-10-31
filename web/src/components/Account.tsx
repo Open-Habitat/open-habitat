@@ -12,7 +12,11 @@ import { OwnMachines } from "../app/OwnMachines";
 import "./Settings.css";
 import { bundleChecks } from "../app/bundleRelease";
 import { ClaudeSignIn } from "../app/ClaudeSignIn";
-import { CodeHostSettings, type NativeState } from "../app/CodeHostSettings";
+import {
+  CodeHostSettings,
+  type NativeState,
+  type NativeUnknownReason,
+} from "../app/CodeHostSettings";
 import { Devices } from "../app/Devices";
 import { GitIdentity } from "../app/GitIdentity";
 import { IntegrationsSettings } from "../app/IntegrationsSettings";
@@ -275,6 +279,7 @@ export function AccountSettings({
   profile,
   name,
   nativeState,
+  nativeReason,
   nativeLogin,
   onPiSignIn,
   modelSelector,
@@ -301,6 +306,7 @@ export function AccountSettings({
   /** A workspace came back from the Trash: read the snapshot again. */
   onWorkspacesChanged?: () => void;
   nativeState?: NativeState;
+  nativeReason?: NativeUnknownReason;
   nativeLogin?: string;
   onPiSignIn?: () => void;
   modelSelector?: React.ReactNode;
@@ -810,6 +816,7 @@ export function AccountSettings({
           <CodeHostSettings
             csrf={csrf}
             nativeState={nativeState}
+            nativeReason={nativeReason}
             nativeLogin={nativeLogin}
             onReconnect={onReconnect}
             onDisconnect={onDisconnect}

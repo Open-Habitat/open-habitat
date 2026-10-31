@@ -162,6 +162,15 @@
                 "verifying"
               ]
             },
+            "reason": {
+              "description": "Why the state is unknown, present only with state unknown. checking: the host is still asking GitHub, or a sign-in or disconnect is in progress, and the page is told again when it has the answer. timeout: gh, Git or GitHub did not answer within the check's time. github_error: GitHub answered with an error that says nothing certain about the token, such as a rate limit. unrecognized: gh could not be run or its answer was not one the host recognizes.",
+              "enum": [
+                "checking",
+                "timeout",
+                "github_error",
+                "unrecognized"
+              ]
+            },
             "retry": {
               "description": "The host's own retry of an outage, present only with state unreachable. attempt counts the checks that found GitHub unreachable since the outage began; while it is below attempts the host is still retrying, after that the outage is a warning and checks continue.",
               "type": "object",

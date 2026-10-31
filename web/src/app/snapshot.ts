@@ -202,6 +202,7 @@ export interface Snapshot {
         | "unknown"
         | "unreachable"
         | "verifying";
+      reason?: "checking" | "timeout" | "github_error" | "unrecognized";
       login?: string;
       retry?: {
         attempt: number;

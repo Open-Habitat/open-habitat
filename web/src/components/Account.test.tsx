@@ -262,4 +262,34 @@ describe("account presentation", () => {
     rerender(show("partial"));
     expect(screen.queryByTestId("github-reconnect")).toBeNull();
   });
+  it("says why the GitHub state is unknown", () => {
+    const show = (
+      nativeReason?: "checking" | "timeout" | "github_error" | "unrecognized",
+    ) => (
+      <AccountSettings
+        nativeState="unknown"
+        nativeReason={nativeReason}
+        onClose={() => {}}
+      />
+    );
+    const { rerender } = render(show("checking"));
+    fireEvent.click(screen.getByTestId("settings-koodipalvelut"));
+    const row = () => screen.getByTestId("github-native-state");
+    const card = () =>
+      screen.getByTestId("github-native-state").closest("[data-settings-row]")
+        ?.textContent ?? "";
+    expect(row().dataset.reason).toBe("checking");
+    expect(row().textContent).toContain("Tarkistetaan");
+    expect(card()).toContain("kysyy parhaillaan GitHubilta");
+    rerender(show("timeout"));
+    expect(card()).toContain("ei vastannut ajoissa");
+    rerender(show("github_error"));
+    expect(card()).toContain("GitHub vastasi tarkistukseen virheellä");
+    rerender(show("unrecognized"));
+    expect(card()).toContain("gh auth status");
+    // An older host without a reason keeps the plain wording.
+    rerender(show());
+    expect(row().dataset.reason).toBeUndefined();
+    expect(card()).toContain("ei juuri nyt voitu vahvistaa");
+  });
 });
