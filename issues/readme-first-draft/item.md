@@ -29,3 +29,5 @@ Jari 31.10.: Open Habitat will be published as open source. Produce the first RE
 Licence **MIT** (not Apache-2.0). Domains `open-habitat.ai` (canonical),
 `open-habitat.dev`, `openhabitat.ai`, `openhabitat.dev` (redirect to the
 canonical one).
+
+Copyright holder: left out for now (Jari 31.10.); the LICENSE file and any copyright line wait until he decides.
