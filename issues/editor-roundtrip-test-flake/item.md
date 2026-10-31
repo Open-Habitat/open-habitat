@@ -2,12 +2,14 @@
 created: 2026-10-31
 updated: 2026-10-31
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: agent
 source_ref: taskfleet:01m68jnnf7cv1yj08bdm89v7wy/flake:editor-roundtrip
 originating_run: 01m68jnnf7cv1yj08bdm89v7wy
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # TestEditorFilesRoundTripAndConflict flaked again in a full internal/daemon run
