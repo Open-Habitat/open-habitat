@@ -31,3 +31,7 @@ Licence **MIT** (not Apache-2.0). Domains `open-habitat.ai` (canonical),
 canonical one).
 
 Copyright holder: left out for now (Jari 31.10.); the LICENSE file and any copyright line wait until he decides.
+
+### 2026-10-31 · Jari (decisions round)
+
+Licence MIT. Finnish site version kept.

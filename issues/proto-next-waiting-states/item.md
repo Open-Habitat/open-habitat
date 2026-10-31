@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-next-waiting-states
 lane_seq: 1
 preparation: pending
+closed: 2026-10-31
 ---
 
 # Prototype: next-waiting row as a state machine
@@ -35,3 +36,7 @@ in which situation does it show what.
    conversation's agent works; no automatic way back.
 
 ## Comments
+
+### 2026-10-31 · Jari
+
+Chose round 2 **Vuoron loppuun**; implementation is `next-waiting-on-send`.
