@@ -423,8 +423,14 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
   const row = page
     .getByRole("navigation")
     .getByTestId(`agent-item-pi:${parent}`);
-  // Its turn ended and nothing works for it yet: not in Käynnissä.
-  await expect(row).toHaveCount(0);
+  // Its turn ended: retained in Recent, not Running.
+  const rail = page.getByRole("navigation");
+  await expect(
+    rail.getByTestId("rail-recent").getByTestId(`agent-item-pi:${parent}`),
+  ).toBeVisible();
+  await expect(
+    rail.getByTestId("rail-running").getByTestId(`agent-item-pi:${parent}`),
+  ).toHaveCount(0);
   expect(
     (
       await page.request.get(
@@ -453,7 +459,13 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
     .click();
   // The restart ended the agent's own run, so with its worker done nothing
   // keeps it in Käynnissä.
-  await expect(row).toHaveCount(0);
+  await expect(
+    rail.getByTestId("rail-running").getByTestId(`agent-item-pi:${parent}`),
+  ).toHaveCount(0);
+  await expect(
+    rail.getByTestId("rail-recent").getByTestId(`agent-item-pi:${parent}`),
+  ).toBeVisible();
+  await expect(row).not.toHaveClass(/ah-waiting-spinoff/);
 });
 
 // Merkit (Jari 16.10.2026) and Pisteet (26.10.2026): the spinoff pill marks

@@ -75,8 +75,11 @@ test("@workspace-icons the rail shows each workspace's icon from its repository 
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await start(page, "aurinkokello");
   await start(page, "reseptikirja");
-  const group = rail(page).getByTestId("rail-group-aurinkokello");
-  await expect(group.locator("h3")).toHaveText("aurinkokello1");
+  const running = rail(page).getByTestId("rail-running");
+  await expect(running.getByTestId("rail-group-aurinkokello")).toBeVisible();
+  const aurinkokello = [...started][0];
+  const reseptikirja = [...started][1];
+  const row = running.getByTestId(`agent-item-${aurinkokello}`);
   await expect(rail(page).getByTestId("workspace-icon")).toHaveCount(0);
 
   expect(
@@ -89,13 +92,12 @@ test("@workspace-icons the rail shows each workspace's icon from its repository 
   ).toBeTruthy();
   await page.reload();
 
-  // Käynnissä without its repeated heading; each row leads with its icon.
-  await expect(group.locator("h3")).toHaveCount(0);
-  await expect(group).toHaveAttribute("aria-label", "aurinkokello");
-  await expect(group.getByTestId("workspace-icon-button")).toHaveCount(1);
+  // Iconed rows are flat, without repeated workspace groups/headings.
+  await expect(running.getByTestId("rail-group-aurinkokello")).toHaveCount(0);
+  await expect(row.getByTestId("workspace-icon-button")).toHaveCount(1);
   await expect(
-    rail(page)
-      .getByTestId("rail-group-reseptikirja")
+    running
+      .getByTestId(`agent-item-${reseptikirja}`)
       .getByTestId("workspace-icon-button"),
   ).toHaveText("🍳");
   // The chain: the config's emoji, the logo, the derived glyph.
@@ -130,7 +132,7 @@ test("@workspace-icons the rail shows each workspace's icon from its repository 
   );
 
   // The icon's card names the workspace and where the icon came from.
-  await group.getByTestId("workspace-icon-button").first().click();
+  await row.getByTestId("workspace-icon-button").click();
   const card = page.getByRole("dialog").and(page.getByTestId("workspace-card"));
   await expect(card.getByRole("heading")).toHaveText("aurinkokello");
   await expect(card.getByTestId("workspace-card-source")).toHaveText(
@@ -165,11 +167,7 @@ test("@workspace-icons the rail shows each workspace's icon from its repository 
     .getByRole("button")
     .and(page.getByTestId("navigation-open"))
     .click();
-  await rail(page)
-    .getByTestId("rail-group-aurinkokello")
-    .getByTestId("workspace-icon-button")
-    .first()
-    .click();
+  await row.getByTestId("workspace-icon-button").click();
   await expect(card).toBeVisible();
   const box = await page.locator(".ah-wsi-popover").boundingBox();
   expect(box && Math.round(box.y + box.height)).toBe(844);

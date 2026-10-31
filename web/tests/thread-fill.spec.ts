@@ -131,8 +131,12 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
     )
   ).click();
   await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  // Use reader input: assigning scrollTop alone does not disengage the
+  // follow-latest controller, which can move it back on a later history paint.
+  await stream.hover();
+  await page.mouse.wheel(0, -100000);
+  await expect.poll(() => stream.evaluate((el) => el.scrollTop)).toBe(0);
   const top = await stream.evaluate((el) => {
-    el.scrollTop = 0;
     const first = el.firstElementChild?.getBoundingClientRect().top ?? 0;
     return {
       offset: first - el.getBoundingClientRect().top,

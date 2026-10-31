@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: high
 lane: main-suite-red-r43
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Main browser suite red after the 31.10. evening landings
@@ -31,3 +32,9 @@ Lab suite:
 - `lab-worktree-agent.spec.ts:23` create, converse, ask to merge and see it merged
 
 Gate log: `~/.local/state/oh-conductor/gate-r43/stdout.json` on Birch.
+
+## Acceptance Criteria
+
+- [x] Reproduce all seven reported cases separately and distinguish obsolete expectations from timing susceptibility.
+- [x] Repair the cases against the landed product intent without increasing timeouts.
+- [x] Run fast web checks and all touched specs; record per-case causes, evidence and whole-suite handoff in result.md.

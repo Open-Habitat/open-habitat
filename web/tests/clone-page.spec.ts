@@ -505,7 +505,7 @@ test("@lab a Gitea repository is cloned from the common list into a workspace an
     .and(page.getByTestId("repository-option-fixture/first"));
   await expect(first).toHaveCount(2);
   await expect(first.and(page.locator('[data-source="gitea"]'))).toHaveCount(1);
-  // An empty repository cannot be cloned yet.
+  // Empty repositories are usable workspaces too; no first commit is required.
   await search.fill("fixture/blank");
   await page
     .locator("main")
@@ -514,7 +514,7 @@ test("@lab a Gitea repository is cloned from the common list into a workspace an
     .click();
   await expect(
     page.getByRole("button").and(page.getByTestId("repository-clone")),
-  ).toBeDisabled();
+  ).toBeEnabled();
 
   await search.fill("fixture/notes");
   await page

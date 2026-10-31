@@ -1368,8 +1368,8 @@ test("@browser-conversation a stale working view cannot strand an unsent queued 
   try {
     await editor.press("Alt+Enter");
     await intercepted;
-    // The original turn settles while the browser request is held. The daemon
-    // rejects this new command before native delivery; it is NOT ambiguous.
+    // The original turn settles while the browser request is held. A late
+    // browser follow-up starts the next turn instead of stranding the draft.
     const agentId = new URL(page.url()).searchParams.get("conversation");
     if (!agentId) throw new Error("missing controlled agent");
     await expect
@@ -1383,9 +1383,19 @@ test("@browser-conversation a stale working view cannot strand an unsent queued 
         { timeout: 25000 },
       )
       .toBe("idle");
+    const answered = page.waitForResponse((response) =>
+      response.url().endsWith("/follow_up"),
+    );
     release();
-    await expect(page.getByTestId("send-receipt")).toBeVisible();
-    await expect(editor).toHaveValue("ei jonoon");
+    expect((await answered).ok()).toBeTruthy();
+    await expectNativeContent(
+      page.locator("main"),
+      'Selvä. Kysyit: "ei jonoon".',
+      {
+        timeout: 20000,
+      },
+    );
+    await expect(editor).toHaveValue("");
     await expect(
       page.getByTestId(/^(send-uncertain|uncertain-command)$/),
     ).toHaveCount(0);
