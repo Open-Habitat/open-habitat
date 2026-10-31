@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: benchmark-cockpit
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Benchmark: Cockpit
