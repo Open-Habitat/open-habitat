@@ -5,6 +5,8 @@ import {
 } from "../components/agentPresentation";
 import type { AgentNavModel, WorkspaceHint } from "../components/Navigation";
 import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
+import { liveText } from "../i18n";
+import { statusText } from "../text/status";
 import {
   type ConversationMetadata,
   unreadableHistory,
@@ -19,6 +21,8 @@ import {
 } from "./snapshot";
 import type { RootState } from "./store";
 import { placeWorkClause } from "./workSentence";
+
+const txt = liveText(statusText);
 
 export interface RailNow {
   /** A new reply or a question: the person's turn. */
@@ -141,31 +145,31 @@ export function railNow({
     const name = w.display_name ?? w.name;
     const state =
       failure === "turn_error"
-        ? "Vuoro päättyi virheeseen"
+        ? txt.rail.turnError
         : failure === "worker_failed"
-          ? "Worker epäonnistui"
+          ? txt.rail.workerFailed
           : attention
-            ? "Uusi vastaus"
+            ? txt.rail.newReply
             : facts.pendingQuestion
-              ? "Kysyy sinulta"
+              ? txt.rail.asks
               : crashed
-                ? "Pi kaatui"
+                ? txt.rail.crashed
                 : observed.activity === "working"
-                  ? "Työskentelee"
+                  ? txt.rail.working
                   : observed.activity === "waiting_background"
-                    ? "Odottaa taustatyötä"
+                    ? txt.rail.background
                     : observed.activity === "waiting"
-                      ? "Odottaa viestiä"
+                      ? txt.rail.waiting
                       : workerBusy
-                        ? "Worker työskentelee"
+                        ? txt.rail.workerWorking
                         : workerIdle
-                          ? "Worker odottaa sinua"
+                          ? txt.rail.workerWaiting
                           : observed.activityLabel;
     const waits =
       observed.activity === "waiting_background" && a.waiting_on?.length
         ? a.waiting_on.map(waitingName).join(", ")
         : "";
-    const pendingLabel = closing.has(a.agent_id) ? "Suljetaan…" : undefined;
+    const pendingLabel = closing.has(a.agent_id) ? txt.rail.closing : undefined;
     const changedAt = a.changed_at ? Date.parse(a.changed_at) : Number.NaN;
     const model: AgentNavModel = {
       agentId: a.agent_id,
@@ -204,11 +208,11 @@ export function railNow({
       controlLabel: presentation.controlLabel,
       operationLabel: presentation.operationLabel,
       historyLabel: unreadableHistory(a, managed, status)
-        ? "Historia ei luettavissa"
+        ? txt.rail.historyUnreadable
         : metadata.historyReadFailures.has(a.agent_id) ||
             a.history === "unavailable" ||
             status?.native_history === "unavailable"
-          ? "Historiaa ei voitu tarkistaa"
+          ? txt.rail.historyUnknown
           : undefined,
       attentionLabel: presentation.attentionLabel,
       // A sub-agent at work, whether or not the parent still waits for it:
@@ -252,17 +256,21 @@ export function railNow({
         ? {
             kind: "attention",
             count: c.yours,
-            text: `${c.yours} odottaa sinua`,
+            text: txt.rail.hintYours(c.yours),
           }
         : c.working
-          ? { kind: "working", count: live, text: `${live} käynnissä` }
+          ? { kind: "working", count: live, text: txt.rail.hintWorking(live) }
           : c.background
             ? {
                 kind: "background",
                 count: live,
-                text: `${live} odottaa taustatyötä`,
+                text: txt.rail.hintBackground(live),
               }
-            : { kind: "waiting", count: live, text: `${live} odottaa viestiä` },
+            : {
+                kind: "waiting",
+                count: live,
+                text: txt.rail.hintWaiting(live),
+              },
     );
   }
   return { yours, running, hints };

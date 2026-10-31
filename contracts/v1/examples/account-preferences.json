@@ -2,6 +2,7 @@
   "schema_version": 1,
   "web_identity_id": "wid_example-a",
   "engine": "vscode",
+  "language": "en",
   "experimental": {
     "worker-row-sentence": true
   }

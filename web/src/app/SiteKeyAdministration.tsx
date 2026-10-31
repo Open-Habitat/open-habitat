@@ -15,6 +15,8 @@ import {
   list,
 } from "../components/SiteKeyCopies";
 import { SiteKeyPage } from "../components/SiteKeySettings";
+import { liveText } from "../i18n";
+import { siteKeyText } from "../text/siteKey";
 import {
   deleteSiteKey,
   type KeyProvider,
@@ -33,6 +35,8 @@ import {
   readSiteKeyCopies,
   type SiteKeyCopies,
 } from "./siteKeyCopies";
+
+const txt = liveText(siteKeyText);
 
 /** Palvelimen ylläpito › AI-avain: the site key read from and written to the
  * onboarding configuration, one write at a time, and below it the people
@@ -80,7 +84,7 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
   const people = copies && copies !== "unavailable" ? copies : undefined;
   const nameOf = (subject: string) => {
     const p = people?.people.find((x) => x.id === subject);
-    return p ? at(p) : `GitHub ${subject}`;
+    return p ? at(p) : txt.github(subject);
   };
   const keyWrite = async (
     write: (csrf: string) => Promise<SaveResult>,
@@ -121,13 +125,16 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
     if (rotation.length > 0) {
       setNotice(
         <span data-testid="replaced-notice">
-          Avain vaihdettu.
+          {txt.rotated}
           {replaced.length > 0 &&
-            ` Sivuston aiempi kopio vaihdettiin uuteen ${replaced.length} henkilöltä: ${list(replaced.map((x) => nameOf(x.subject)))}.`}
+            txt.replacedFor(
+              replaced.length,
+              list(replaced.map((x) => nameOf(x.subject))),
+            )}
           {missed.length > 0 &&
-            ` Ei tavoitettu: ${list(missed.map((x) => nameOf(x.subject)))}. Heille ei kirjoitettu nyt mitään; anna uusi avain, kun heidän palvelunsa vastaa.`}
+            txt.missed(list(missed.map((x) => nameOf(x.subject))))}
           {unconfirmed.length > 0 &&
-            ` Tulos ei varmistunut: ${list(unconfirmed.map((x) => nameOf(x.subject)))}. Kopio on voinut vaihtua; tarkista antamalla avain uudelleen.`}
+            txt.unconfirmed(list(unconfirmed.map((x) => nameOf(x.subject))))}
         </span>,
       );
       return;
@@ -135,10 +142,8 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
     const joined = people?.people.length ?? 0;
     setNotice(
       <span data-testid="set-notice">
-        {had ? "Avain vaihdettu." : "Avain otettu käyttöön."} Uudet henkilöt
-        saavat siitä kopion.
-        {joined > 0 &&
-          ` ${joined} jo liittynyttä eivät saa sitä itsestään; anna se heille alta.`}
+        {had ? txt.rotated : txt.taken} {txt.newGet}
+        {joined > 0 && txt.joinedDontGet(joined)}
       </span>,
     );
   };
@@ -148,14 +153,14 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
     return (
       <div className="s-card">
         <div className="s-row" role="alert">
-          AI-avainta ei voitu lukea.
+          {txt.readFailed}
           <ControlButton size="row" onPress={reload}>
-            Lataa uudelleen
+            {txt.reload}
           </ControlButton>
         </div>
       </div>
     );
-  if (!loaded) return <p role="status">Ladataan AI-avainta…</p>;
+  if (!loaded) return <p role="status">{txt.loading}</p>;
   const stopped = problem?.kind === "uncertain";
   const siteKey = loaded.siteKey;
   const old = people && siteKey ? earlierHolders(people) : [];
@@ -170,7 +175,7 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
         setGiving(old);
       }}
     >
-      Anna uusi avain heille…
+      {txt.giveNew}
     </ControlButton>
   );
   return (
@@ -189,10 +194,7 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
                     (c) => deleteSiteKey(c, offer),
                     () =>
                       setNotice(
-                        <span data-testid="removed-notice">
-                          Avain poistettu. Uudet henkilöt valitsevat AI-tilin
-                          itse. Annetut kopiot jäivät.
-                        </span>,
+                        <span data-testid="removed-notice">{txt.removed}</span>,
                       ),
                   ),
               }
@@ -205,9 +207,9 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
           </p>
         ) : stopped ? (
           <p role="alert" className="sk-terms" data-testid="site-key-uncertain">
-            Muutoksen tulos ei varmistunut.{" "}
+            {txt.uncertain}{" "}
             <ControlButton size="row" variant="quiet" onPress={reload}>
-              Lataa uudelleen
+              {txt.reload}
             </ControlButton>
           </p>
         ) : null}
@@ -222,8 +224,7 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
           <p className="sk-notice" data-testid="old-copies">
             <Icon name="warning" />
             <span>
-              Sivuston aiemman avaimen kopio on {old.length} henkilöllä:{" "}
-              {list(old.map(at))}. {giveOld}
+              {txt.oldCopies(old.length, list(old.map(at)))} {giveOld}
             </span>
           </p>
         ) : null}
@@ -231,9 +232,9 @@ export function SiteKeyAdministration({ csrf }: { csrf?: string }) {
       {copies === "unavailable" ? (
         <div className="s-card">
           <div className="s-row" role="alert" data-testid="joined-unavailable">
-            Jo liittyneitä ei voitu lukea.
+            {txt.joinedFailed}
             <ControlButton size="row" onPress={() => void loadCopies()}>
-              Lataa uudelleen
+              {txt.reload}
             </ControlButton>
           </div>
         </div>

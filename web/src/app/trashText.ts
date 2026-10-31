@@ -1,3 +1,5 @@
+import { formatDate, formatNumber, liveText } from "../i18n";
+import { trashText } from "../text/trash";
 import type {
   DeletionBlocker,
   DeletionGit,
@@ -5,7 +7,10 @@ import type {
   refusalCodes,
 } from "./workspaceTrash";
 
-// Finnish text for workspace deletion and the Trash (ADR 0019). Host values
+const txt = liveText(trashText);
+
+// The texts of workspace deletion and the Trash (ADR 0019), from
+// text/trash.ts. Host values
 // (process names, paths, run IDs) are only ever shown as code segments.
 export type Segment = string | { code: string };
 export type BlockerText = {
@@ -14,22 +19,13 @@ export type BlockerText = {
   command?: string;
 };
 
-const unknownChecks: Record<NonNullable<DeletionBlocker["check"]>, string> = {
-  processes: "Prosesseja ei voitu tarkistaa.",
-  taskfleet: "Taskfleetin ajoja ei voitu lukea.",
-  worktrees: "Gitin worktree-luetteloa ei voitu lukea.",
-  mounts: "Liitoksia ei voitu lukea.",
-  trash: "Roskakoria ei voitu tarkistaa.",
-  workspaces: "Muita työtiloja ei voitu laskea.",
-};
-const unknownHow =
-  "Tuntematon estää poiston varmuuden vuoksi. Tarkista uudelleen hetken päästä.";
+const unknownChecks = new Proxy(
+  {} as Record<NonNullable<DeletionBlocker["check"]>, string>,
+  { get: (_target, check: string) => txt.unknownChecks[check] },
+);
 
 /** Why the only visible workspace is never moved to the Trash (Jari 18.10.2026). */
-export const lastWorkspaceReason =
-  "Tämä on ainoa työtilasi, joten sitä ei voi siirtää roskakoriin.";
-export const lastWorkspaceHow =
-  "Lisää ensin toinen työtila, jos haluat poistaa tämän.";
+export const lastWorkspaceReason = () => txt.lastWorkspace;
 
 const process = (b: DeletionBlocker): Segment[] =>
   b.comm
@@ -43,31 +39,29 @@ const process = (b: DeletionBlocker): Segment[] =>
  */
 export function piSessionText(
   activity: PiActivity | undefined,
-  /** Genitive: "tämän työtilan", "tämän worktreen". */
+  /** Genitive: txt.thisWorkspace or txt.thisWorktree. */
   place: string,
 ): BlockerText {
   switch (activity) {
     case "question":
       return {
-        what: [`Agentti odottaa vastaustasi ${place} keskustelussa.`],
-        how: "Vastaa kysymykseen tai pysäytä vuoro keskustelusta.",
+        what: [txt.question(place)],
+        how: txt.questionHow,
       };
     case "processes":
       return {
-        what: [
-          `Agentin käynnistämä taustaprosessi on käynnissä ${place} keskustelussa.`,
-        ],
-        how: "Odota, että se päättyy, tai pysäytä se keskustelun prosesseista.",
+        what: [txt.processes(place)],
+        how: txt.processesHow,
       };
     case "unknown":
       return {
-        what: [`Agentin tilaa ${place} keskustelussa ei voitu tarkistaa.`],
-        how: "Tarkista uudelleen hetken päästä, tai pysäytä keskustelu.",
+        what: [txt.piUnknown(place)],
+        how: txt.piUnknownHow,
       };
     default:
       return {
-        what: [`Agentti työskentelee ${place} keskustelussa.`],
-        how: "Odota, että vuoro päättyy, tai pysäytä se keskustelusta.",
+        what: [txt.working(place)],
+        how: txt.workingHow,
       };
   }
 }
@@ -77,77 +71,79 @@ export function blockerText(b: DeletionBlocker): BlockerText {
   switch (b.kind) {
     case "file_operation":
       return {
-        what: ["Tiedoston käsittely on kesken."],
-        how: "Odota käsittelyn päättymistä.",
+        what: [txt.fileOperation],
+        how: txt.fileOperationHow,
       };
     case "pi_session":
-      return piSessionText(b.activity, "tämän työtilan");
+      return piSessionText(b.activity, txt.thisWorkspace);
     case "process":
       if (b.product === "terminal")
         return {
-          what: ["Pääte on auki tässä työtilassa."],
-          how: "Sulje pääte ja sen käynnissä olevat komennot, sitten tarkista uudelleen.",
+          what: [txt.terminal],
+          how: txt.terminalHow,
         };
       if (b.product === "editor")
         return {
-          what: ["Editori on auki tässä työtilassa."],
-          how: "Tallenna tiedostot ensin. Pysäytys sulkee editorin kaikissa työtiloissasi. Tarkista sitten uudelleen.",
+          what: [txt.editor],
+          how: txt.editorHow,
         };
       return {
-        what: ["Prosessi ", ...process(b), " on työtilan hakemistossa."],
-        how: "Sulje se tai siirry siinä pois hakemistosta.",
+        what: [txt.processBefore, ...process(b), txt.processAfter],
+        how: txt.processHow,
       };
     case "taskfleet_run":
       return {
-        what: ["Taskfleet-ajo ", { code: b.run_id ?? "" }, " käyttää repoa."],
-        how: "Odota, että ajo päättyy, tai peru se:",
+        what: [txt.runBefore, { code: b.run_id ?? "" }, txt.runAfter],
+        how: txt.runHow,
         command: `taskfleet run cancel ${b.run_id ?? ""}`,
       };
     case "linked_worktree":
       return {
-        what: ["Repolla on linkitetty worktree ", { code: path }, "."],
-        how: "Poista se ensin työtilan Worktreet-listasta tai komennolla, muuten se jäisi orvoksi:",
+        what: [txt.linkedBefore, { code: path }, "."],
+        how: txt.linkedHow,
         command: `git worktree remove ${shellWord(path)}`,
       };
     case "locked_worktree":
       return {
-        what: ["Repolla on lukittu worktree ", { code: path }, "."],
-        how: "Avaa lukko ja poista se ensin:",
+        what: [txt.lockedBefore, { code: path }, "."],
+        how: txt.lockedHow,
         command: `git worktree unlock ${shellWord(path)} && git worktree remove ${shellWord(path)}`,
       };
     case "is_linked_worktree":
       return {
-        what: ["Tämä työtila on toisen repon linkitetty worktree."],
-        how: "Poista se komennolla git worktree remove tai työkalulla, joka sen loi.",
+        what: [txt.isLinked],
+        how: txt.isLinkedHow,
       };
     case "contains_linked_worktree":
       return {
-        what: ["Hakemistossa on toisen repon worktree ", { code: path }, "."],
-        how: "Poista se ensin pääkloonista komennolla git worktree remove.",
+        what: [txt.containsBefore, { code: path }, "."],
+        how: txt.containsHow,
       };
     case "mount":
       return {
-        what: ["Hakemiston alla on liitos ", { code: path }, "."],
-        how: "Irrota se ensin.",
+        what: [txt.mountBefore, { code: path }, "."],
+        how: txt.mountHow,
       };
     case "different_filesystem":
       return {
-        what: ["Roskakori on eri levyllä kuin ~/src."],
-        how: "Työtilaa ei kopioida levyltä toiselle. Asennus pitää korjata.",
+        what: [txt.differentFs],
+        how: txt.differentFsHow,
       };
     case "last_workspace":
-      return { what: [lastWorkspaceReason], how: lastWorkspaceHow };
+      return { what: [txt.lastWorkspace], how: txt.lastWorkspaceHow };
     case "unknown":
       if (b.check === "processes" && b.pid)
         return {
-          what: ["Prosessia ", ...process(b), " ei voitu tarkistaa."],
-          how: unknownHow,
+          what: [
+            txt.processUnknownBefore,
+            ...process(b),
+            txt.processUnknownAfter,
+          ],
+          how: txt.unknownHow,
         };
       return {
-        what: [
-          b.check ? unknownChecks[b.check] : "Tarkistusta ei voitu tehdä.",
-        ],
-        how: unknownHow,
+        what: [b.check ? unknownChecks[b.check] : txt.checkFailed],
+        how: txt.unknownHow,
       };
   }
 }
@@ -158,69 +154,29 @@ export function shellWord(s: string): string {
 }
 
 type Refusal = (typeof refusalCodes)[number];
-const refusals: Record<
-  Refusal | "identity_lost" | "invalid_reply" | "unavailable",
-  string
-> = {
-  workspace_busy: "Toinen työtilamuutos on kesken. Yritä hetken päästä.",
-  workspace_changed:
-    "Työtila muuttui tarkistuksen jälkeen. Tarkista uudelleen.",
-  workspace_missing: "Työtilaa ei enää löydy.",
-  workspace_uncertain:
-    "Työtilan tilaa ei voitu vahvistaa. Mitään ei siirretty.",
-  workspace_not_clean:
-    "Työtila ei ole enää puhdas, joten sitä ei poistettu. Tarkista uudelleen.",
-  workspace_exists:
-    "Alkuperäinen nimi on jo käytössä. Nimeä tai poista kohde ensin; palautus ei nimeä mitään uudelleen.",
-  workspace_partial:
-    "Siirron tulosta ei voitu vahvistaa. Tarkista alkuperäinen paikka ja roskakori.",
-  trash_parent_missing:
-    "Palautuskansio puuttuu. Luo alkuperäinen kansio uudelleen ennen palautusta.",
-  trash_destination_unavailable:
-    "Palautuskansiota ei voitu avata turvallisesti. Tarkista polku ja oikeudet.",
-  trash_unavailable: "Roskakoria ei voitu käyttää. Mitään ei siirretty.",
-  trash_entry_missing: "Tätä kohdetta ei ole enää roskakorissa.",
-  confirmation_mismatch: "Nimi ei täsmää.",
-  trash_changed:
-    "Roskakori muuttui sillä välin. Mitään ei poistettu; katso lista ja vahvista uudelleen.",
-  identity_lost: "Istunto päättyi. Kirjaudu uudelleen.",
-  invalid_reply: "Palvelimen vastausta ei voitu vahvistaa.",
-  unavailable: "Palvelin ei vastannut. Yritä hetken päästä.",
-};
+const refusals = new Proxy(
+  {} as Record<
+    Refusal | "identity_lost" | "invalid_reply" | "unavailable",
+    string
+  >,
+  { get: (_target, code: string) => txt.refusals[code] },
+);
 export function refusalText(code: string): string {
   return refusals[code as keyof typeof refusals] ?? refusals.unavailable;
 }
-
-const count = (n: number, one: string, many: string) =>
-  `${n} ${n === 1 ? one : many}`;
 
 // What exists only on this server: the facts the confirmation and the Trash
 // repeat, because a permanent deletion loses exactly these.
 export function onlyHere(git: DeletionGit | undefined): string[] {
   if (!git) return [];
   const out: string[] = [];
-  if (git.state !== "observed")
-    out.push("Gitin tilaa ei voitu lukea kokonaan.");
-  if (!git.remote_refs)
-    out.push("Ei haettua etärepoa: koko Git-historia on vain täällä.");
-  if (git.changed)
-    out.push(
-      `${count(git.changed, "muutettu tiedosto", "muutettua tiedostoa")}, ei commitoitu`,
-    );
-  if (git.untracked)
-    out.push(
-      `${count(git.untracked, "uusi tiedosto", "uutta tiedostoa")}, ei Gitissä`,
-    );
-  if (git.remote_refs && git.unpushed)
-    out.push(
-      `${count(git.unpushed, "commit", "committia")}, joita ei ole etärepossa`,
-    );
-  if (git.stash)
-    out.push(count(git.stash, "stash-merkintä", "stash-merkintää"));
-  if (git.nested_repositories)
-    out.push(
-      `${count(git.nested_repositories, "sisäkkäinen repo", "sisäkkäistä repoa")}, joiden etärepoa ei tarkistettu`,
-    );
+  if (git.state !== "observed") out.push(txt.gitPartial);
+  if (!git.remote_refs) out.push(txt.noRemote);
+  if (git.changed) out.push(txt.changed(git.changed));
+  if (git.untracked) out.push(txt.untracked(git.untracked));
+  if (git.remote_refs && git.unpushed) out.push(txt.unpushed(git.unpushed));
+  if (git.stash) out.push(txt.stash(git.stash));
+  if (git.nested_repositories) out.push(txt.nested(git.nested_repositories));
   return out;
 }
 
@@ -231,42 +187,45 @@ export function gitChips(git: DeletionGit | undefined): {
 }[] {
   if (!git) return [];
   const chips: { text: string; tone: "warn" | "ok" }[] = [];
-  if (!git.remote_refs) chips.push({ text: "ei etärepoa", tone: "warn" });
+  if (!git.remote_refs) chips.push({ text: txt.chipNoRemote, tone: "warn" });
   if (git.remote_refs && git.unpushed)
     chips.push({
-      text: `${count(git.unpushed, "commit", "committia")} vain täällä`,
+      text: txt.chipUnpushed(git.unpushed),
       tone: "warn",
     });
   if (git.changed + git.untracked)
     chips.push({
-      text: count(git.changed + git.untracked, "muutos", "muutosta"),
+      text: txt.chipChanges(git.changed + git.untracked),
       tone: "warn",
     });
   if (git.stash) chips.push({ text: "stash", tone: "warn" });
   if (git.state !== "observed")
-    chips.push({ text: "Git-tila ei tiedossa", tone: "warn" });
-  return chips.length ? chips : [{ text: "kaikki etärepossa", tone: "ok" }];
+    chips.push({ text: txt.chipGitUnknown, tone: "warn" });
+  return chips.length ? chips : [{ text: txt.chipAllRemote, tone: "ok" }];
 }
 
-export const conversationsKept = (n: number) =>
-  `${count(n, "keskustelu säilyy", "keskustelua säilyy")} agentin historiassa.`;
+export const conversationsKept = (n: number) => txt.conversationsKept(n);
 
 export function bytes(n: number): string {
   if (n < 1024 ** 2)
-    return `${Math.max(1, Math.round(n / 1024)).toLocaleString("fi-FI")} KiB`;
+    return `${formatNumber(Math.max(1, Math.round(n / 1024)))} KiB`;
   if (n < 1024 ** 3)
-    return `${(n / 1024 ** 2).toLocaleString("fi-FI", { maximumFractionDigits: n < 10 * 1024 ** 2 ? 1 : 0 })} MiB`;
-  return `${(n / 1024 ** 3).toLocaleString("fi-FI", { maximumFractionDigits: 1 })} GiB`;
+    return `${formatNumber(n / 1024 ** 2, { maximumFractionDigits: n < 10 * 1024 ** 2 ? 1 : 0 })} MiB`;
+  return `${formatNumber(n / 1024 ** 3, { maximumFractionDigits: 1 })} GiB`;
 }
 
 export function deletedAt(iso: string | undefined, now = new Date()): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  const time = d.toLocaleTimeString("fi-FI", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  if (d.toDateString() === now.toDateString()) return `tänään klo ${time}`;
-  return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear() === now.getFullYear() ? "" : d.getFullYear()} klo ${time}`;
+  const time = formatDate(d, { hour: "numeric", minute: "2-digit" });
+  if (d.toDateString() === now.toDateString()) return txt.today(time);
+  return txt.onDay(
+    formatDate(d, {
+      day: "numeric",
+      month: "numeric",
+      ...(d.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+    }),
+    time,
+  );
 }

@@ -4,6 +4,10 @@ import { formatNumber, NumberStepper } from "./NumberStepper";
 import { RecapCard } from "./RecapCard";
 import { ScaleSlider } from "./ScaleSlider";
 import "./Settings.css";
+import { liveText } from "../i18n";
+import { recapSettingsText } from "../text/recapSettings";
+
+const txt = liveText(recapSettingsText);
 
 /** The person's recap settings as the contract carries them
  * (contracts/v1/recap-settings.schema.json). */
@@ -54,18 +58,12 @@ export const recapLevels: Record<Exclude<RecapLevel, "custom">, Numbers> = {
     first_after_turns: 1,
   },
 };
-const levelNames: Record<RecapLevel, string> = {
-  short: "Lyhyt",
-  standard: "Tavallinen",
-  thorough: "Perusteellinen",
-  custom: "Oma",
-};
-const levelNotes: Record<RecapLevel, string> = {
-  short: "Muutama virke tuoreimmista viesteistä.",
-  standard: "Nykyinen katsaus.",
-  thorough: "Pidempi katsaus, joka lukee enemmän historiaa.",
-  custom: "Omat luvut. Muuttamalla lukua lähdet valmiista tasosta.",
-};
+const levelNames = new Proxy({} as Record<RecapLevel, string>, {
+  get: (_target, level: RecapLevel) => txt.levels[level],
+});
+const levelNotes = new Proxy({} as Record<RecapLevel, string>, {
+  get: (_target, level: RecapLevel) => txt.levelNotes[level],
+});
 
 /** The level whose numbers these are. A stored level whose numbers no longer
  * match it (an older release's level, a hand edit) is Oma. */
@@ -110,74 +108,116 @@ const readRows: NumberRow[] = [
   {
     key: "messages",
     row: "recap-messages",
-    label: "Luettavat viestit",
-    note: "Viimeisimmät viestisi ja agentin vastaukset. Työkalujen tulosteita ei lueta.",
+    get label() {
+      return txt.rows.messages.label;
+    },
+    get note() {
+      return txt.rows.messages.note;
+    },
     min: 4,
     max: 128,
     step: 4,
-    unit: "viestiä",
+    get unit() {
+      return txt.rows.messages.unit;
+    },
   },
   {
     key: "history_tokens",
     row: "recap-history",
-    label: "Luettava historia enintään",
-    note: "Vanhimmat viestit jäävät pois, kun raja tulee vastaan.",
+    get label() {
+      return txt.rows.history_tokens.label;
+    },
+    get note() {
+      return txt.rows.history_tokens.note;
+    },
     min: 2000,
     max: 32000,
     step: 1000,
-    unit: "tokenia",
+    get unit() {
+      return txt.rows.history_tokens.unit;
+    },
   },
   {
     key: "message_tokens",
     row: "recap-message",
-    label: "Yhdestä viestistä enintään",
-    note: "Pitkästä viestistä luetaan alku.",
+    get label() {
+      return txt.rows.message_tokens.label;
+    },
+    get note() {
+      return txt.rows.message_tokens.note;
+    },
     min: 250,
     max: 4000,
     step: 250,
-    unit: "tokenia",
+    get unit() {
+      return txt.rows.message_tokens.unit;
+    },
   },
   {
     key: "first_after_turns",
     row: "recap-turns",
-    label: "Ensimmäinen katsaus aikaisintaan",
-    note: "Kun keskustelussa on näin monta kysymystä ja vastausta. Itse pyydetty katsaus tehdään heti.",
+    get label() {
+      return txt.rows.first_after_turns.label;
+    },
+    get note() {
+      return txt.rows.first_after_turns.note;
+    },
     min: 1,
     max: 10,
     step: 1,
-    unit: "vuoroa",
+    get unit() {
+      return txt.rows.first_after_turns.unit;
+    },
   },
 ];
 const writeRows: NumberRow[] = [
   {
     key: "words",
     row: "recap-words",
-    label: "Katsauksen pituus",
-    note: "Yksi tai muutama virke siitä, mitä tehtiin.",
+    get label() {
+      return txt.rows.words.label;
+    },
+    get note() {
+      return txt.rows.words.note;
+    },
     min: 10,
     max: 80,
     step: 5,
-    unit: "sanaa",
+    get unit() {
+      return txt.rows.words.unit;
+    },
   },
   {
     key: "next_words",
     row: "recap-next",
-    label: "Seuraavaksi-rivi",
-    note: "Yksi seuraava askel tai este.",
+    get label() {
+      return txt.rows.next_words.label;
+    },
+    get note() {
+      return txt.rows.next_words.note;
+    },
     min: 4,
     max: 25,
     step: 1,
-    unit: "sanaa",
+    get unit() {
+      return txt.rows.next_words.unit;
+    },
   },
   {
     key: "response_tokens",
     row: "recap-response",
-    label: "Vastauksen yläraja",
-    note: "Mallin vastaus katkaistaan tähän.",
+    get label() {
+      return txt.rows.response_tokens.label;
+    },
+    get note() {
+      return txt.rows.response_tokens.note;
+    },
     min: 128,
     max: 2048,
     step: 64,
-    unit: "tokenia",
+    get unit() {
+      return txt.rows.response_tokens.unit;
+    },
   },
 ];
 
@@ -187,10 +227,8 @@ export const responseFloor = (value: RecapSettingsValue) =>
   (value.words + value.next_words) * 4 + 48;
 
 // Synthetic preview text, cut to the chosen length.
-const sample =
-  "Varjon pituuden laskenta tukee nyt kesä- ja talviaikaa: auringon korkeus lasketaan paikallisesta ajasta UTC:n kautta, joten aikavyöhykkeen vaihto ei enää siirrä varjoa tunnilla. Kaikki 18 testiä menevät läpi, ja README:hen lisättiin esimerkki Helsingin talvipäivänseisauksesta. Laskennan tarkkuus tarkistettiin vielä kolmella leveysasteella, ja tulokset vastasivat taulukkoarvoja alle prosentin erolla. Seuraava vaihe on julkaisu, kun muutosloki on päivitetty ja versio nostettu.";
-const sampleNext =
-  "Julkaise versio 1.4, päivitä muutosloki ja ilmoita käyttäjille muutoksesta kesäajan käsittelyyn sekä uusista esimerkeistä.";
+const sample = () => txt.sample;
+const sampleNext = () => txt.sampleNext;
 const cut = (text: string, words: number) => {
   const all = text.split(" ");
   return all.length > words ? `${all.slice(0, words).join(" ")}…` : text;
@@ -257,17 +295,14 @@ export function RecapSettings({
     ) : null;
   return (
     <div className="s-stack" data-testid="recap-settings">
-      <p className="s-intro">
-        Lyhyt katsaus keskustelun tilanteesta, kun palaat siihen. Se tallentuu
-        keskustelun historiaan, mutta ei mene agentin muistiin.
-      </p>
+      <p className="s-intro">{txt.intro}</p>
       {value ? (
         <div className="s-card ah-recap-preview">
-          <span className="ah-recap-label">Esikatselu</span>
+          <span className="ah-recap-label">{txt.preview}</span>
           <RecapCard
             recap={{
-              recap: cut(sample, value.words),
-              next: cut(sampleNext, value.next_words),
+              recap: cut(sample(), value.words),
+              next: cut(sampleNext(), value.next_words),
               through: "preview",
               generated_at: 0,
             }}
@@ -280,16 +315,13 @@ export function RecapSettings({
       <div className="s-card ah-recap-timing">
         <div className="s-row" data-settings-row="recap-delay" tabIndex={-1}>
           <div className="s-lbl">
-            <strong>Hiljaisuus ennen katsausta</strong>
-            <span className="s-desc">
-              Kortti tulee keskustelun yläpuolelle itsestään, kun keskustelu on
-              ollut näin kauan hiljaa.
-            </span>
+            <strong>{txt.delay}</strong>
+            <span className="s-desc">{txt.delayDesc}</span>
           </div>
           {value ? (
             <ScaleSlider
               testId="recap-delay"
-              label="Hiljaisuus ennen katsausta"
+              label={txt.delay}
               value={value.delay_seconds}
               stops={recapDelayStops}
               ticks={[60, 180, 600, 3600]}
@@ -302,18 +334,18 @@ export function RecapSettings({
         </div>
         {modelField}
       </div>
-      <h3 className="s-h3">Laajuus</h3>
+      <h3 className="s-h3">{txt.scope}</h3>
       <div className="s-card ah-recap-levels">
         <div className="s-row" data-settings-row="recap-level" tabIndex={-1}>
           <div className="s-lbl">
-            <strong>Katsauksen laajuus</strong>
+            <strong>{txt.level}</strong>
             <span className="s-desc">{level ? levelNotes[level] : null}</span>
           </div>
           {value && level ? (
             <Segmented
               data-testid="recap-level"
               className="ah-recap-level-choice"
-              label="Katsauksen laajuus"
+              label={txt.level}
               options={(
                 ["short", "standard", "thorough", "custom"] as const
               ).map((id) => ({ id, label: levelNames[id] }))}
@@ -332,30 +364,28 @@ export function RecapSettings({
         {value ? (
           <div className="ah-recap-scope" data-testid="recap-level-table">
             <div>
-              <span className="ah-recap-label">Lukee</span>
+              <span className="ah-recap-label">{txt.reads}</span>
+              <p>{txt.readsMessages(<strong>{value.messages}</strong>)}</p>
               <p>
-                <strong>{value.messages}</strong> viimeisintä viestiä
+                {txt.readsTokens(
+                  <strong>{formatNumber(value.history_tokens)}</strong>,
+                  formatNumber(value.message_tokens),
+                )}
               </p>
               <p>
-                noin <strong>{formatNumber(value.history_tokens)}</strong>{" "}
-                tokenia, viestistä enintään {formatNumber(value.message_tokens)}
-              </p>
-              <p>
-                aikaisintaan <strong>{value.first_after_turns}.</strong> vuoron
-                jälkeen
+                {txt.readsAfter(
+                  <strong>{txt.turn(value.first_after_turns)}</strong>,
+                )}
               </p>
             </div>
             <div>
-              <span className="ah-recap-label">Kirjoittaa</span>
+              <span className="ah-recap-label">{txt.writes}</span>
+              <p>{txt.writesWords(<strong>{value.words}</strong>)}</p>
+              <p>{txt.writesNext(<strong>{value.next_words}</strong>)}</p>
               <p>
-                katsaus enintään <strong>{value.words}</strong> sanaa
-              </p>
-              <p>
-                seuraavaksi enintään <strong>{value.next_words}</strong> sanaa
-              </p>
-              <p>
-                vastaus enintään{" "}
-                <strong>{formatNumber(value.response_tokens)}</strong> tokenia
+                {txt.writesTokens(
+                  <strong>{formatNumber(value.response_tokens)}</strong>,
+                )}
               </p>
             </div>
           </div>
@@ -371,13 +401,11 @@ export function RecapSettings({
         }
       >
         {failed ? (
-          <span className="s-bad">
-            Muutosta ei tallennettu. Yritä uudelleen.
-          </span>
+          <span className="s-bad">{txt.failed}</span>
         ) : saving ? (
-          "Tallennetaan…"
+          txt.saving
         ) : loading ? (
-          "Ladataan asetuksia…"
+          txt.loading
         ) : null}
       </p>
     </div>

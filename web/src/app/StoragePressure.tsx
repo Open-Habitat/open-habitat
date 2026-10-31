@@ -8,8 +8,12 @@ import {
 } from "react";
 import { useNavigate } from "react-router";
 import type { StatusItem } from "../components/StatusBell";
+import { liveText } from "../i18n";
+import { statusText } from "../text/status";
 import { settingsHref } from "./settingsRoute";
 import { bytes, type OwnStorage, ownStorage } from "./storageQuota";
+
+const txt = liveText(statusText);
 
 // Room left and its bound: the person's quota, or without per-user limits the
 // shared home disk, which anyone's files can fill.
@@ -107,23 +111,17 @@ export function useStorageStatus(): StatusItem | undefined {
   const { used, bound, shared } = room(quota);
   if (used < bound * NEAR) return undefined;
   const critical = !full && used >= bound * CRITICAL;
-  const what = shared ? "Palvelimen levy" : "Tallennustilasi";
+  const what = shared ? txt.serverDisk : txt.yourStorage;
   const percent = Math.floor((used / bound) * 100);
   return {
     key: "storage",
     tone: full || critical ? "danger" : "warning",
     icon: "disk",
     group: "own",
-    short: full
-      ? "Tila täynnä"
-      : critical
-        ? "Tila melkein täynnä"
-        : "Tila lähes täynnä",
-    title: full
-      ? `${what} on täynnä`
-      : `${what} on ${critical ? "melkein" : "lähes"} täynnä (${percent} %)`,
+    short: full ? txt.full : critical ? txt.critical : txt.near,
+    title: full ? txt.fullTitle(what) : txt.nearTitle(what, critical, percent),
     meta: `${bytes(used)} / ${bytes(bound)}`,
-    body: `${shared ? "Levy on kaikkien käyttäjien yhteinen; myös muiden tiedostot täyttävät sitä. " : ""}${critical ? "Kun tila loppuu, tallennukset katkeavat kesken, myös agenttien kirjoittamat keskusteluhistoriat. " : ""}Vapauta tilaa roskakorista tai pyydä agenttia siivoamaan tarpeettomia tiedostoja, esimerkiksi käännösvälimuistit ja vanhat worktreet. Roskakoriin siirtäminen ei vapauta tilaa ennen sen tyhjentämistä.${full ? " Tallennus on voinut epäonnistua. Viestejä ei lähetetä uudelleen automaattisesti." : ""}${unavailable ? " Tallennustilaa ei voitu tarkistaa; tämä on viimeisin tieto." : ""}`,
+    body: txt.storageBody(shared, critical, full, unavailable),
     data: {
       full: String(full),
       critical: String(critical),
@@ -133,13 +131,13 @@ export function useStorageStatus(): StatusItem | undefined {
     actions: [
       {
         testId: "quota-storage-open",
-        label: "Tallennustila ja roskakori",
+        label: txt.storageOpen,
         primary: true,
         onPress: () => navigate(settingsHref("tila")),
       },
       {
         testId: "quota-recheck",
-        label: "Tarkista vapautettu tila",
+        label: txt.recheckStorage,
         keepOpen: true,
         onPress: retry,
       },

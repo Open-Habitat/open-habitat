@@ -6,16 +6,29 @@ import { type ModelChoice, type PiProvider, refused } from "./ModelPicker";
 import { modelDisplayName, thinkingDisplayName } from "./modelPresentation";
 import "./ModelPicker.css";
 import "./Settings.css";
+import { liveText } from "../i18n";
+import { modelsText } from "../text/models";
+
+const txt = liveText(modelsText);
 
 // The route a person recognizes: "Sonnet 5" can come from a subscription or a
 // key, and a broken default is usually broken in its route.
-export const routes: Record<PiProvider, [string, string, 1 | 2 | 3]> = {
-  "openai-codex": ["ChatGPT-tilaus", "Ch", 1],
-  "claude-bridge": ["Claude-tilaus", "Cl", 2],
-  openai: ["OpenAI API", "OA", 1],
-  anthropic: ["Anthropic API", "An", 2],
-  deepseek: ["DeepSeek API", "DS", 3],
+const marks: Record<PiProvider, [string, 1 | 2 | 3]> = {
+  "openai-codex": ["Ch", 1],
+  "claude-bridge": ["Cl", 2],
+  openai: ["OA", 1],
+  anthropic: ["An", 2],
+  deepseek: ["DS", 3],
 };
+/** A provider's route as [name, letter mark, tone], named in the current
+ * language. */
+export const routes = new Proxy(
+  {} as Record<PiProvider, [string, string, 1 | 2 | 3]>,
+  {
+    get: (_target, provider: PiProvider) =>
+      marks[provider] && [txt.routes[provider], ...marks[provider]],
+  },
+);
 
 /** A model setting as a settings row: its select-style value opens the
  * shared model chooser as a popover on desktop and a bottom sheet on phones
@@ -32,7 +45,7 @@ export function ModelField({
   auto = false,
   models,
   loading,
-  emptyLabel = "Ei valittu",
+  emptyLabel = txt.notChosen,
   problem,
   children,
 }: {
@@ -106,7 +119,7 @@ export function ModelField({
   const name = model
     ? modelDisplayName(provider ? `${provider}/${model}` : model, models)
     : loading
-      ? "Ladataan…"
+      ? txt.loading
       : emptyLabel;
   return (
     <div
@@ -133,10 +146,16 @@ export function ModelField({
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={panelId}
-          aria-label={`${label}: ${auto ? "Automaattinen, " : ""}${name}${route ? `, ${route[0]}` : ""}${thinking ? `, ajattelu ${thinkingDisplayName(thinking)}` : ""}`}
+          aria-label={txt.fieldLabel(
+            label,
+            auto,
+            name,
+            route?.[0],
+            thinking ? thinkingDisplayName(thinking) : undefined,
+          )}
           onClick={() => (open ? close(true) : setOpen(true))}
         >
-          {auto ? <span className="dm-auto">Automaattinen</span> : null}
+          {auto ? <span className="dm-auto">{txt.automatic}</span> : null}
           {route && !auto ? (
             <LetterMark mark={route[1]} tone={route[2]} small />
           ) : null}
@@ -183,7 +202,7 @@ export function ModelField({
                 presentation: "icon",
               })}
               data-testid={`${testId}-close`}
-              aria-label="Sulje"
+              aria-label={txt.close}
               onClick={() => close(true)}
             >
               <Icon name="cross" />

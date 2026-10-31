@@ -40,11 +40,15 @@ import {
   selectedBytes,
   syncedTime,
 } from "../app/integrations";
+import { liveText } from "../i18n";
+import { integrationsText } from "../text/integrations";
 import { ControlButton, controlClassName, Segmented } from "./ControlElements";
 import { GiteaCard } from "./GiteaConnection";
 import { GitLabCard, type GitLabTokenView } from "./GitLabConnection";
 import { Icon, type IconName } from "./Icon";
 import { Checkbox, TextField } from "./Primitives";
+
+const txt = liveText(integrationsText);
 
 // Asetukset › Tiedot agenteille (formerly Integraatiot) in the accepted "Tili" direction (ADR 0026,
 // proto-integrations): one card per provider account with its services
@@ -64,111 +68,23 @@ type Copy = {
   ill: string;
 };
 
-export const providerCopy: Record<ProviderId, Copy> = {
-  google: {
-    name: "Google",
-    mark: "G",
-    tone: 1,
-    site: "Google",
-    gen: "Googlen",
-    ill: "Googleen",
-  },
-  microsoft: {
-    name: "Microsoft 365",
-    mark: "M",
-    tone: 2,
-    site: "Microsoft",
-    gen: "Microsoftin",
-    ill: "Microsoft 365:een",
-  },
-  imap: {
-    name: "Sähköposti (IMAP)",
-    mark: "@",
-    tone: 3,
-    site: "Postipalvelin",
-    gen: "postipalvelimen",
-    ill: "postipalvelimelle",
-  },
-  caldav: {
-    name: "Kalenteri (CalDAV)",
-    mark: "C",
-    tone: 3,
-    site: "DAV-palvelin",
-    gen: "DAV-palvelimen",
-    ill: "DAV-palvelimelle",
-  },
-  carddav: {
-    name: "Yhteystiedot (CardDAV)",
-    mark: "C",
-    tone: 3,
-    site: "DAV-palvelin",
-    gen: "DAV-palvelimen",
-    ill: "DAV-palvelimelle",
-  },
-  dropbox: {
-    name: "Dropbox",
-    mark: "D",
-    tone: 3,
-    site: "Dropbox",
-    gen: "Dropboxin",
-    ill: "Dropboxiin",
-  },
-  apple: {
-    name: "Apple (iCloud)",
-    mark: "iC",
-    tone: 3,
-    site: "Apple",
-    gen: "Applen",
-    ill: "iCloudiin",
-  },
-  gitea: {
-    name: "Gitea",
-    mark: "Gt",
-    tone: 3,
-    site: "Gitea",
-    gen: "Gitean",
-    ill: "Giteaan",
-  },
-  gitlab: {
-    name: "GitLab",
-    mark: "GL",
-    tone: 2,
-    site: "GitLab",
-    gen: "GitLabin",
-    ill: "GitLabiin",
-  },
+const providerMarks: Record<ProviderId, Pick<Copy, "mark" | "tone">> = {
+  google: { mark: "G", tone: 1 },
+  microsoft: { mark: "M", tone: 2 },
+  imap: { mark: "@", tone: 3 },
+  caldav: { mark: "C", tone: 3 },
+  carddav: { mark: "C", tone: 3 },
+  dropbox: { mark: "D", tone: 3 },
+  apple: { mark: "iC", tone: 3 },
+  gitea: { mark: "Gt", tone: 3 },
+  gitlab: { mark: "GL", tone: 2 },
 };
 
-const serviceNames: Record<ProviderId, Partial<Record<ServiceId, string>>> = {
-  google: {
-    mail: "Gmail",
-    calendar: "Google-kalenteri",
-    contacts: "Google-yhteystiedot",
-    drive: "Google Drive",
-  },
-  microsoft: {
-    mail: "Outlook-posti",
-    calendar: "Outlook-kalenteri",
-    contacts: "Yhteystiedot",
-    onedrive: "OneDrive ja SharePoint",
-    sharepoint: "SharePoint",
-  },
-  imap: {
-    mail: "Posti",
-    calendar: "Kalenteri (CalDAV)",
-    contacts: "Yhteystiedot (CardDAV)",
-  },
-  caldav: { calendar: "Kalenteri (CalDAV)" },
-  carddav: { contacts: "Yhteystiedot (CardDAV)" },
-  dropbox: { dropbox: "Dropbox" },
-  apple: {
-    mail: "iCloud Mail",
-    calendar: "iCloud-kalenteri",
-    contacts: "iCloud-yhteystiedot",
-  },
-  gitea: { git: "Git-repot työtiloiksi" },
-  gitlab: { git: "gitlab.com tai yrityksen oma GitLab" },
-};
+/** Each provider's names in the current language, with its letter tile. */
+export const providerCopy = new Proxy({} as Record<ProviderId, Copy>, {
+  get: (_target, id: ProviderId) =>
+    providerMarks[id] && { ...providerMarks[id], ...txt.providers[id] },
+});
 
 const serviceIcons: Record<ServiceId, IconName> = {
   mail: "mail",
@@ -189,18 +105,11 @@ const fileServices: ServiceId[] = [
 ];
 
 export function serviceName(provider: ProviderId, id: ServiceId): string {
-  return serviceNames[provider][id] ?? id;
+  return txt.services[provider]?.[id] ?? id;
 }
 
 function CloudFolderHint() {
-  return (
-    <p className="ig-meta">
-      OneDriven tai Dropboxin synkronoitu kansio välittää tiedostoja oman
-      koneesi ja agentin välillä. Jaa siellä esimerkiksi kuvakaappauksia, tai
-      pyydä agenttia tallentamaan sinne sähköpostiliitteet, jotka haluat omalle
-      koneellesi. Synkronoi sama kansio myös omalla koneellasi.
-    </p>
-  );
+  return <p className="ig-meta">{txt.cloudFolder}</p>;
 }
 
 /** What a narrower grant lets agents do with a service, in the person's
@@ -209,17 +118,17 @@ function narrower(service: Service): string | null {
   const file = fileServices.includes(service.id);
   switch (service.access) {
     case "none":
-      return "Ei myönnetty. Agentit eivät pääse tähän.";
+      return txt.notGranted;
     case "drafts":
-      return "Lukee, järjestelee ja kirjoittaa luonnoksia. Ei voi lähettää.";
+      return txt.drafts;
     case "read":
       return file
-        ? "Vain luku. Kansio on peili: muutokset eivät palaa palveluun, ja seuraava synkronointi kirjoittaa ne yli."
+        ? txt.readFiles
         : service.id === "mail"
-          ? "Vain luku. Ei voi muuttaa eikä lähettää mitään."
+          ? txt.readMail
           : service.id === "calendar"
-            ? "Vain luku. Ei voi luoda tapahtumia eikä lähettää kutsuja."
-            : "Vain luku.";
+            ? txt.readCalendar
+            : txt.readOnly;
   }
   return null;
 }
@@ -230,52 +139,17 @@ type LevelCopy = { name: string; sum: string };
 
 /** The levels of the providers that offer a choice, as the person reads
  * them: each is a boundary the provider itself enforces. */
-const levelCopy: Partial<
-  Record<ProviderId, Partial<Record<Level, LevelCopy>>>
-> = {
-  microsoft: {
-    full: {
-      name: "Täysi",
-      sum: "Agentit voivat lukea, muokata ja lähettää sinun nimissäsi.",
-    },
-    drafts: {
-      name: "Luonnokset, ei lähetystä",
-      sum: "Agentit lukevat ja kirjoittavat postiluonnoksia. Tililtä ei lähde mitään: ei postia, kalenterikutsuja eikä jakolinkkejä.",
-    },
-    read: {
-      name: "Vain luku",
-      sum: "Agentit lukevat postia, kalenteria, yhteystietoja ja tiedostoja, mutta eivät muuta mitään.",
-    },
+const levelCopy = new Proxy(
+  {} as Partial<Record<ProviderId, Partial<Record<Level, LevelCopy>>>>,
+  {
+    get: (_target, provider: string) => txt.levels[provider],
+    ownKeys: () => Object.keys(txt.levels),
+    getOwnPropertyDescriptor: (_target, provider: string) =>
+      provider in txt.levels
+        ? { enumerable: true, configurable: true, value: txt.levels[provider] }
+        : undefined,
   },
-  google: {
-    full: {
-      name: "Täysi",
-      sum: "Agentit voivat lukea, muokata ja lähettää sinun nimissäsi.",
-    },
-    drafts: {
-      name: "Luonnokset, ei lähetystä",
-      sum: "",
-    },
-    read: {
-      name: "Vain luku",
-      sum: "Agentit lukevat Gmailia, kalenteria, yhteystietoja ja Drivea, mutta eivät muuta mitään.",
-    },
-  },
-  dropbox: {
-    full: {
-      name: "Koko Dropbox",
-      sum: "Agentit voivat lukea, muokata, poistaa ja jakaa kaikkia tiedostojasi.",
-    },
-    app_folder: {
-      name: "Vain sovelluskansio",
-      sum: "Agentit näkevät vain sovelluksen oman kansion Dropboxin Apps-kansiossa. Muu Dropboxisi ei näy niille lainkaan.",
-    },
-    read: {
-      name: "Vain luku",
-      sum: "Agentit lukevat kaikkia tiedostojasi, mutta eivät muuta, poista tai jaa niitä.",
-    },
-  },
-};
+);
 
 export const levelName = (provider: ProviderId, level: Level) =>
   levelCopy[provider]?.[level]?.name ?? level;
@@ -292,19 +166,16 @@ function levelAccess(level: Level, service: ServiceId): Access {
 function levelAbility(level: Level, service: ServiceId): string {
   const access = levelAccess(level, service);
   if (fileServices.includes(service)) {
-    if (level === "app_folder")
-      return "Vain sovelluksen kansio, synkronoituu molempiin suuntiin. Muu Dropbox ei näy.";
-    return access === "full"
-      ? "Synkronoituu kotihakemistoosi molempiin suuntiin. Agentit voivat muokata, poistaa ja jakaa."
-      : "Peili: tiedostot kopioituvat kotihakemistoosi, mutta muutokset eivät palaa. Kansioon tehty muutos kirjoittuu seuraavalla kierroksella yli.";
+    if (level === "app_folder") return txt.appFolder;
+    return access === "full" ? txt.syncBoth : txt.mirror;
   }
   if (access === "full")
     return service === "mail"
-      ? "Lukee, järjestelee, kirjoittaa luonnoksia ja lähettää."
+      ? txt.mailFull
       : service === "calendar"
-        ? "Lukee ja muokkaa. Tapahtuma osallistujineen lähettää kutsut."
-        : "Lukee ja muokkaa.";
-  return narrower({ id: service, state: "ok", access }) ?? "Vain luku.";
+        ? txt.calendarFull
+        : txt.full;
+  return narrower({ id: service, state: "ok", access }) ?? txt.readOnly;
 }
 
 /** The account card's level: the level the grant amounts to, or the one it
@@ -330,11 +201,14 @@ export function accountLevel(
       rest.length > 0 &&
       rest.every((s) => s.access === levelAccess(l, s.id)),
   );
-  if (!match) return { text: "Mukautettu", full: false };
+  if (!match) return { text: txt.custom, full: false };
   if (!without.length)
     return { text: levelName(account.provider, match), full: match === "full" };
   return {
-    text: `${levelName(account.provider, match)}, ilman: ${without.map((s) => serviceName(account.provider, s.id)).join(", ")}`,
+    text: txt.without(
+      levelName(account.provider, match),
+      without.map((s) => serviceName(account.provider, s.id)).join(", "),
+    ),
     full: false,
   };
 }
@@ -363,9 +237,9 @@ function missingOf(provider: ProviderId, service: Service): string | null {
     case "none":
       return name;
     case "drafts":
-      return `${name}: lähetys`;
+      return txt.missingSend(name);
     case "read":
-      return `${name}: muokkaus`;
+      return txt.missingEdit(name);
   }
   return null;
 }
@@ -378,29 +252,13 @@ const scopeName = (scope: string) =>
 /** What the agent gets from a service, in a sentence. */
 function gets(provider: ProviderId, service: Service): ReactNode {
   if (service.access === "read" && service.directory)
-    return (
-      <>
-        Vain luku. Kansio <code>{service.directory}</code> on peili: muutokset
-        eivät palaa palveluun, ja seuraava synkronointi kirjoittaa ne yli.
-      </>
-    );
+    return txt.readFolder(<code>{service.directory}</code>);
   const limited = narrower(service);
   if (limited) return limited;
-  if (service.directory)
-    return (
-      <>
-        Kansio <code>{service.directory}</code>, jota agentit käyttävät
-        tavallisilla tiedostotyökaluilla
-      </>
-    );
+  if (service.directory) return txt.folder(<code>{service.directory}</code>);
   if (provider === "imap" || (provider === "apple" && service.id === "mail"))
-    return (
-      <>
-        Agentit hakevat ja lukevat postia ja tekevät luonnoksia komennolla{" "}
-        <code>himalaya</code>
-      </>
-    );
-  return <>Agentit käyttävät tätä taidon personal-data kautta</>;
+    return txt.himalaya(<code>himalaya</code>);
+  return txt.skill;
 }
 
 export function ProviderMark({
@@ -418,8 +276,8 @@ export function ProviderMark({
  * (Asetukset › …). */
 export const settingsPlace = (provider: ProviderId) =>
   provider === "gitea" || provider === "gitlab"
-    ? "Koodipalvelut"
-    : "Tiedot agenteille";
+    ? txt.codeHosts
+    : txt.dataForAgents;
 
 /** A service's letter tile, shared by every settings page that lists
  * outside accounts (GitHub, AI subscriptions and keys, data sources). Tone 0
@@ -450,29 +308,11 @@ export function GrantLimits() {
     <div className="ig-warn" role="note" data-testid="integration-limits">
       <Icon name="shield" />
       <div>
-        <strong>
-          Agentit voivat käyttää kaikkea, minkä palvelu myönsi tähän
-          liittämillesi tileille.
-        </strong>{" "}
-        Ne voivat lähettää postia, muuttaa kalenteria ja muokata tai poistaa
-        tiedostoja sinun nimissäsi, jos myöntö sen sallii, ja liitetty viesti
-        tai tiedosto voi sisältää ohjeita, joita agentti yrittää noudattaa.
-        Myönnetty oikeus on palvelun oma raja: se pitää, vaikka agentti
-        erehtyisi tai sitä yritettäisiin ohjata. Se ei estä tätä:
+        <strong>{txt.limitsLead}</strong> {txt.limitsBody}
         <ul>
-          <li>
-            Agentit ajavat sinun käyttäjänäsi, joten ne voivat lukea myös
-            kirjautumistiedot kotihakemistostasi. Jos tieto päätyy muualle,
-            sillä voi tehdä saman kuin agentti, ei enempää.
-          </li>
-          <li>
-            Agentti voi kertoa eteenpäin kaiken, mitä se saa lukea. Vain luku ei
-            estä lukemista.
-          </li>
-          <li>
-            Agentin työkalujen omat ”turvatilat” ovat ohjeita, eivät rajoja.
-            Raja on se, minkä palvelu myönsi.
-          </li>
+          <li>{txt.limitHome}</li>
+          <li>{txt.limitTell}</li>
+          <li>{txt.limitModes}</li>
         </ul>
       </div>
     </div>
@@ -494,20 +334,9 @@ function GrantNotice({ account }: { account: Account }) {
     >
       <Icon name="info" />
       <span>
-        {account.provider === "microsoft" ? (
-          <>
-            <strong>Organisaatiosi on rajannut Habitatin oikeuksia.</strong>{" "}
-            Puuttuu: {missing.join(", ")}. Yhteys toimii myönnetyillä
-            oikeuksilla. Rajaus muutetaan organisaation Microsoft Entra
-            -hallinnassa, ei täällä.
-          </>
-        ) : (
-          <>
-            <strong>Kirjautuessa jäi myöntämättä:</strong> {missing.join(", ")}.
-            Agentit eivät pääse niihin. Kirjaudu uudelleen ja myönnä ne, jos
-            haluat. Google Workspacen ylläpitäjä voi myös rajata oikeuksia.
-          </>
-        )}
+        {account.provider === "microsoft"
+          ? txt.narrowedOrg(missing.join(", "))
+          : txt.narrowedSelf(missing.join(", "))}
       </span>
     </p>
   );
@@ -517,7 +346,7 @@ function GrantNotice({ account }: { account: Account }) {
 function GrantList({ grant }: { grant: Grant }) {
   return (
     <details className="ig-grant" data-testid="integration-grant">
-      <summary>Myönnetyt oikeudet ({grant.granted.length})</summary>
+      <summary>{txt.granted(grant.granted.length)}</summary>
       <ul>
         {grant.granted.map((s) => (
           <li key={s}>
@@ -529,7 +358,7 @@ function GrantList({ grant }: { grant: Grant }) {
           <li key={s} className="miss" data-testid="integration-not-granted">
             <span aria-hidden="true">–</span>
             <code title={s}>{scopeName(s)}</code>
-            <span>pyydettiin, ei myönnetty</span>
+            <span>{txt.askedNotGranted}</span>
           </li>
         ))}
       </ul>
@@ -543,67 +372,38 @@ export function AgentWarning() {
     <div className="ig-warn" role="note">
       <Icon name="shield" />
       <div>
-        <strong>
-          Agentit voivat lukea ja käyttää kaikkea, mitä tähän liität.
-        </strong>{" "}
-        Ne voivat lähettää postia, muuttaa kalenteria ja muokata tai poistaa
-        tiedostoja sinun nimissäsi. Liitetty viesti tai tiedosto voi myös
-        sisältää ohjeita, joita agentti yrittää noudattaa. Liitä vain se, mitä
-        haluat agenttien käyttävän.
+        <strong>{txt.warnLead}</strong> {txt.warnBody}
       </div>
     </div>
   );
 }
 
-const stateText: Record<ServiceState, string> = {
-  ok: "Toimii",
-  syncing: "Synkronoi",
-  sync_failed: "Synkronointi epäonnistui",
-  credentials_rejected: "Tunnus tai salasana ei kelpaa",
-  login_expired: "Kirjautuminen vanhentunut",
-  unreachable: "Palvelimeen ei saada yhteyttä",
-  sync_restarting: "Synkronointi pysähtyi, käynnistetään uudelleen",
-  quota_full: "Kiintiö täynnä, synkronointi pysähtyi",
-  unknown: "Tilaa ei saatu selville",
-};
+const stateText = new Proxy({} as Record<ServiceState, string>, {
+  get: (_target, state: string) => txt.state[state],
+});
 
-const failureText: Record<SyncFailure, string> = {
-  quota_insufficient: "Valitut tiedostot eivät mahdu kiintiöön",
-  quota_unavailable: "Vapaata tilaa ei voitu tarkistaa",
-  initial_sync_incomplete: "Ensimmäinen synkronointi jäi kesken",
-  not_chosen: "Ei synkronoida",
-  initial_sync_resume_failed:
-    "Ensimmäisen synkronoinnin jatkaminen epäonnistui",
-  delete_limit: "Pysäytetty: liian monta poistoa kerralla",
-  needs_resync: "Pysähtyi eikä jatku itsestään",
-  remote_unreachable: "Palveluun ei saada yhteyttä, yritetään uudelleen",
-  pass_failed: "Viimeisin synkronointi epäonnistui, yritetään uudelleen",
-  app_changed: "Kirjaudu uudelleen",
-  tenant_changed: "Kirjaudu uudelleen",
-  outside_tenant: "Ei palvelimen organisaatiossa",
-};
+const failureText = new Proxy({} as Record<SyncFailure, string>, {
+  get: (_target, failure: string) => txt.failure[failure],
+});
 
 // Why an account could not follow the server's current application. Every
 // service carries the same reason; the card says it once.
 const alignmentHelp: Partial<Record<SyncFailure, (name: string) => string>> = {
-  app_changed: (name) =>
-    `Palvelimen ${name}-sovellus on vaihtunut, eikä aiempi kirjautumisesi kelpaa uudelle sovellukselle. Kirjaudu uudelleen; synkronoitavat kansiot säilyvät.`,
-  tenant_changed: (name) =>
-    `Palvelimen ${name}-asetuksissa on nyt organisaatio, joka ei hyväksynyt aiempaa kirjautumistasi (se on voinut vanhentua tai vaatia uuden hyväksynnän). Kirjaudu uudelleen; synkronoitavat kansiot säilyvät.`,
-  outside_tenant: (name) =>
-    `Tämä tili ei kuulu organisaatioon, jonka ${name}-sovellusta palvelin käyttää, joten uusi kirjautuminenkaan ei auta. Käytä organisaation tiliä tai kysy palvelimen ylläpitäjältä.`,
+  app_changed: (name) => txt.appChanged(name),
+  tenant_changed: (name) => txt.tenantChanged(name),
+  outside_tenant: (name) => txt.outsideTenant(name),
 };
 
 // What a failed ordinary pass asks of the person. Retried failures need
 // nothing; the two native safeguards wait for someone to look.
-const failureHelp: Partial<Record<SyncFailure, string>> = {
-  not_chosen:
-    "Kansioita ei ole valittu, joten tiedostoja ei kopioitu. Voit valita ne kirjautumalla uudelleen.",
-  delete_limit:
-    "Synkronointi olisi poistanut yli puolet tiedostoista, joten se pysäytettiin eikä mitään poistettu. Jos poistit tiedostot tarkoituksella, pyydä ylläpitäjää hyväksymään poistot.",
-  needs_resync:
-    "Edellisen synkronoinnin tiedot puuttuvat, joten synkronointi ei jatka omin päin. Tiedostot säilyvät molemmissa paikoissa. Pyydä ylläpitäjää tarkistamaan tilanne.",
-};
+const failureHelp = new Proxy({} as Partial<Record<SyncFailure, string>>, {
+  get: (_target, failure: string) =>
+    ({
+      not_chosen: txt.notChosenHelp,
+      delete_limit: txt.deleteLimitHelp,
+      needs_resync: txt.resyncHelp,
+    })[failure],
+});
 
 function SyncProgressStatus({ progress: p }: { progress: SyncProgress }) {
   return (
@@ -612,26 +412,21 @@ function SyncProgressStatus({ progress: p }: { progress: SyncProgress }) {
       className="ig-sync-progress"
       role="status"
     >
-      Nykyinen erä:{" "}
+      {txt.batch}{" "}
       {p.phase === "inventory"
-        ? "Lasketaan valittujen tiedostojen kokoa ja tarkistetaan tila"
+        ? txt.inventory
         : p.phase === "preparing"
-          ? "Luetaan tiedostoluetteloa"
-          : "Kopioidaan tiedostoja"}
+          ? txt.preparing
+          : txt.copying}
       {" · "}
-      {minutesLeft(p.elapsed_seconds)} kulunut
+      {txt.elapsed(minutesLeft(p.elapsed_seconds))}
       {p.total_bytes > 0 && (
         <>
           {" "}
           · {gigabytes(p.bytes)} / {gigabytes(p.total_bytes)}
         </>
       )}
-      {p.total_files > 0 && (
-        <>
-          {" "}
-          · {p.files} / {p.total_files} tiedostoa
-        </>
-      )}
+      {p.total_files > 0 && <> · {txt.files(p.files, p.total_files)}</>}
       {p.total_bytes > 0 && (
         <span className="ig-bar" aria-hidden="true">
           <span
@@ -656,7 +451,7 @@ function ServiceStatus({
     return (
       <span className="ig-st">
         <span className="ig-spin" aria-hidden="true" />
-        Tarkistetaan…
+        {txt.checking}
       </span>
     );
   if (service.access === "none")
@@ -668,7 +463,7 @@ function ServiceStatus({
         className="ig-st"
       >
         <Icon name="cross" />
-        Ei käytössä
+        {txt.notInUse}
       </span>
     );
   // Files the person left out are a choice, not a fault.
@@ -687,9 +482,9 @@ function ServiceStatus({
   const text = service.failure
     ? failureText[service.failure]
     : passing
-      ? "Synkronoidaan nyt"
+      ? txt.syncingNow
       : service.state === "ok" && service.directory
-        ? "Synkronoi jatkuvasti"
+        ? txt.syncingAlways
         : stateText[service.state];
   return (
     <span
@@ -761,7 +556,7 @@ export function AccountCard({
             variant="primary"
             onPress={onSignInAgain}
           >
-            Kirjaudu uudelleen
+            {txt.signInAgain}
           </ControlButton>
         ) : null}
         {onChangeLevel ? (
@@ -771,7 +566,7 @@ export function AccountCard({
             variant="secondary"
             onPress={onChangeLevel}
           >
-            Vaihda taso…
+            {txt.changeLevel}
           </ControlButton>
         ) : null}
         <ControlButton
@@ -782,7 +577,7 @@ export function AccountCard({
           onPress={onCheck}
         >
           <Icon name="refresh" />
-          Tarkista
+          {txt.check}
         </ControlButton>
         <ControlButton
           data-testid="integration-remove-open"
@@ -790,7 +585,7 @@ export function AccountCard({
           variant="quiet"
           onPress={onRemove}
         >
-          Poista…
+          {txt.remove}
         </ControlButton>
       </div>
       {unavailable ? (
@@ -802,8 +597,8 @@ export function AccountCard({
           <Icon name="warning" />
           <span>
             {unavailable === "app_credentials_required"
-              ? `Palvelimen ${copy.name}-sovellusasetukset puuttuvat tai eivät enää kelpaa, joten agentit eivät nyt pääse tähän tiliin eikä synkronointi etene. Kirjautumisesi on tallessa. Pyydä palvelimen ylläpitäjää asettamaan tunnukset (Asetukset › Palvelimen ylläpito › Palvelinintegraatiot); sen jälkeen tili jatkaa.`
-              : `${copy.name} ei ole käytettävissä tällä palvelimella, koska työkalu puuttuu. Kirjautumisesi on tallessa; tili jatkaa, kun ylläpitäjä on korjannut asennuksen.`}
+              ? txt.appCredentialsMissing(copy.name)
+              : txt.toolMissing(copy.name)}
           </span>
         </p>
       ) : null}
@@ -851,7 +646,7 @@ export function AccountCard({
                 variant="quiet"
                 onPress={onStopSync}
               >
-                Keskeytä synkronointi
+                {txt.stopSync}
               </ControlButton>
             )}
             {(s.state === "sync_restarting" || s.state === "sync_failed") &&
@@ -864,10 +659,10 @@ export function AccountCard({
                 <span className="ig-meta">
                   {s.failure === "initial_sync_incomplete" ||
                   s.failure === "initial_sync_resume_failed"
-                    ? "Kirjaudu uudelleen ja valitse synkronointi, niin ensimmäinen synkronointi tehdään loppuun. Jo kopioidut tiedostot säilyvät."
+                    ? txt.initialHelp
                     : s.failure
-                      ? "Vapauta tilaa tai pyydä ylläpitäjältä lisää tilaa ja yritä uudelleen. Mitään ei kopioitu."
-                      : "Kirjaudu uudelleen ja yritä synkronointia uudelleen. Jo kopioidut tiedostot säilyvät."}
+                      ? txt.quotaHelp
+                      : txt.retryHelp}
                 </span>
               )}
           </div>
@@ -879,18 +674,18 @@ export function AccountCard({
               <span data-testid="integration-last-synced" className="ig-meta">
                 {s.last_synced_at && syncedTime(s.last_synced_at) ? (
                   <>
-                    Synkronoitu{" "}
+                    {txt.synced}{" "}
                     <time dateTime={s.last_synced_at}>
                       {syncedTime(s.last_synced_at)}
                     </time>
                   </>
                 ) : (
-                  "Ei vielä synkronoitu"
+                  txt.notSynced
                 )}
               </span>
             ) : clockTime(account.checked_at) ? (
               <span data-testid="integration-checked-at" className="ig-meta">
-                Tarkistettu klo {clockTime(account.checked_at)}
+                {txt.checkedAt(clockTime(account.checked_at) ?? "")}
               </span>
             ) : null}
           </div>
@@ -944,7 +739,7 @@ export function AppleCard({
             variant="primary"
             onPress={onRenew}
           >
-            Anna uusi salasana
+            {txt.newPassword}
           </ControlButton>
         ) : null}
         <ControlButton
@@ -955,7 +750,7 @@ export function AppleCard({
           onPress={onCheck}
         >
           <Icon name="refresh" />
-          Tarkista
+          {txt.check}
         </ControlButton>
         <ControlButton
           data-testid="integration-remove-open"
@@ -963,13 +758,12 @@ export function AppleCard({
           variant="quiet"
           onPress={onRemove}
         >
-          Poista…
+          {txt.remove}
         </ControlButton>
       </div>
       {rejected && !checking ? (
         <p className="ig-why" data-testid="integration-apple-why">
-          Apple mitätöi sovellussalasanat, kun Apple-tilin salasana vaihdetaan.
-          Yksi uusi salasana korjaa kaikki palvelut.
+          {txt.appleWhy}
         </p>
       ) : null}
       {accounts.map((a) => {
@@ -998,7 +792,7 @@ export function AppleCard({
               <ServiceStatus service={s} checking={checking} />
               {!checking && clockTime(a.checked_at) ? (
                 <span data-testid="integration-checked-at" className="ig-meta">
-                  Tarkistettu klo {clockTime(a.checked_at)}
+                  {txt.checkedAt(clockTime(a.checked_at) ?? "")}
                 </span>
               ) : null}
             </div>
@@ -1015,8 +809,9 @@ export function AppleCard({
           </span>
           <div>
             <span className="ig-meta">
-              {missing.map((m) => serviceName("apple", m)).join(", ")} ei ole
-              yhdistetty.
+              {txt.notConnected(
+                missing.map((m) => serviceName("apple", m)).join(", "),
+              )}
             </span>
           </div>
           <ControlButton
@@ -1025,7 +820,7 @@ export function AppleCard({
             variant="secondary"
             onPress={() => onAdd(missing)}
           >
-            Lisää palvelu…
+            {txt.addService}
           </ControlButton>
         </div>
       ) : null}
@@ -1043,12 +838,17 @@ const unreadableDirectory: Partial<Record<ProviderId, string>> = {
   carddav: "~/.config/curl",
 };
 
-const skillNotice: Partial<Record<IntegrationList["skill"], string>> = {
-  blocked:
-    "Kotihakemistossasi on oma taito ~/.agents/skills/personal-data, joten agenttien tietokarttaa ei kirjoitettu sen päälle. Agentit eivät näe yhdistettyjä tilejä ennen kuin siirrät oman taitosi muualle.",
-  failed:
-    "Agenttien tietokarttaa (~/.agents/skills/personal-data) ei saatu ajan tasalle. Se korjautuu, kun lisäät tai poistat tilin.",
-};
+const skillNotice = new Proxy(
+  {} as Partial<Record<IntegrationList["skill"], string>>,
+  {
+    get: (_target, skill: string) =>
+      skill === "blocked"
+        ? txt.skillBlocked
+        : skill === "failed"
+          ? txt.skillFailed
+          : undefined,
+  },
+);
 
 /** What the Apple card asks of the page: a guide for one Apple ID. */
 export type AppleIntent =
@@ -1160,8 +960,8 @@ export function IntegrationsOverview({
           {p.available
             ? p.services.map((s) => serviceName(p.id, s)).join(" · ")
             : p.unavailable_reason === "app_credentials_required"
-              ? "Odottaa palvelimen ylläpitäjän sovellusasetuksia"
-              : "Ei käytettävissä tällä palvelimella"}
+              ? txt.waitingAdmin
+              : txt.unavailableHere}
         </span>
       </div>
       <ControlButton
@@ -1171,7 +971,7 @@ export function IntegrationsOverview({
         isDisabled={!p.available}
         onPress={() => onConnect(p)}
       >
-        Yhdistä…
+        {txt.connect}
       </ControlButton>
     </div>
   );
@@ -1179,10 +979,7 @@ export function IntegrationsOverview({
     <div className="ig-main">
       {compact ? null : (
         <>
-          <p className="ig-intro">
-            Liitä muiden palvelujen tilisi, niin agenttisi voivat käyttää niiden
-            tiedostoja, postia ja kalentereita.
-          </p>
+          <p className="ig-intro">{txt.intro}</p>
           <CloudFolderHint />
           <GrantLimits />
         </>
@@ -1192,16 +989,12 @@ export function IntegrationsOverview({
       list.providers.some((p) => p.id !== "gitea") ? (
         <p className="ig-notice" role="status">
           <Icon name="warning" />
-          <span>
-            {unreadable
-              ? "Agenttien tietokarttaa (~/.agents/skills/personal-data) ei päivitetä, ennen kuin kaikkien palvelujen tilit voidaan lukea."
-              : skillNotice[list.skill]}
-          </span>
+          <span>{unreadable ? txt.skillWaits : skillNotice[list.skill]}</span>
         </p>
       ) : null}
       {connected.length > 0 && (
         <>
-          {compact ? null : <h3 className="ig-h3">Yhdistetyt tilit</h3>}
+          {compact ? null : <h3 className="ig-h3">{txt.connected}</h3>}
           {connected.map((p) => (
             <section
               className="ig-provider"
@@ -1258,13 +1051,10 @@ export function IntegrationsOverview({
                 >
                   <Icon name="warning" />
                   <span>
-                    {providerCopy[p.id].gen} tilejä ei voitu lukea
-                    turvallisesti, joten niitä ei näytetä. Tilit eivät
-                    kadonneet. Tarkista, ettei
-                    {unreadableDirectory[p.id]
-                      ? ` kansio ${unreadableDirectory[p.id]} tai mikään sen alla`
-                      : " mikään työkalun asetuskansio"}{" "}
-                    ole muiden kirjoitettavissa tai linkki.
+                    {txt.unreadable(
+                      providerCopy[p.id].gen,
+                      unreadableDirectory[p.id],
+                    )}
                   </span>
                 </p>
               ) : null}
@@ -1277,11 +1067,7 @@ export function IntegrationsOverview({
                       data-testid="gitea-unavailable"
                     >
                       <Icon name="warning" />
-                      <span>
-                        tea-asetuksia ei voitu lukea turvallisesti, joten
-                        Gitea-yhteyksiä ei näytetä. Tarkista tiedoston
-                        ~/.config/tea/config.yml oikeudet ja muoto.
-                      </span>
+                      <span>{txt.teaUnreadable}</span>
                     </p>
                   ) : null}
                   {giteaConnections.map((c) => (
@@ -1315,11 +1101,7 @@ export function IntegrationsOverview({
                       data-testid="gitlab-unavailable"
                     >
                       <Icon name="warning" />
-                      <span>
-                        glab-asetuksia ei voitu lukea turvallisesti, joten
-                        GitLab-yhteyksiä ei näytetä. Tarkista tiedoston
-                        ~/.config/glab-cli/config.yml oikeudet ja muoto.
-                      </span>
+                      <span>{txt.glabUnreadable}</span>
                     </p>
                   ) : null}
                   {gitlabConnections.map((c) => (
@@ -1380,16 +1162,7 @@ export function IntegrationsOverview({
                     onPress={() => onConnect(p)}
                   >
                     <Icon name="plus" />
-                    Lisää toinen{" "}
-                    {p.id === "imap"
-                      ? "sähköpostitili"
-                      : p.id === "apple"
-                        ? "Apple ID"
-                        : p.id === "gitea"
-                          ? "Gitea-tili"
-                          : p.id === "gitlab"
-                            ? "GitLab-palvelin"
-                            : `${providerCopy[p.id].name}-tili`}
+                    {txt.addAnother(p.id, providerCopy[p.id].name)}
                   </ControlButton>
                 </div>
               ) : null}
@@ -1399,7 +1172,7 @@ export function IntegrationsOverview({
       )}
       {rest.length > 0 && (
         <>
-          {compact ? null : <h3 className="ig-h3">Lisää tili</h3>}
+          {compact ? null : <h3 className="ig-h3">{txt.addAccount}</h3>}
           {primary.length ? (
             <div className="ig-tiles">{primary.map(tile)}</div>
           ) : null}
@@ -1407,11 +1180,8 @@ export function IntegrationsOverview({
             <>
               {compact || !primary.length ? null : (
                 <>
-                  <h4 className="ig-h4">Muut palvelut</h4>
-                  <p className="ig-meta ig-others">
-                    Posti, kalenteri tai yhteystiedot muualta, esimerkiksi
-                    Fastmail tai Nextcloud.
-                  </p>
+                  <h4 className="ig-h4">{txt.otherServices}</h4>
+                  <p className="ig-meta ig-others">{txt.othersNote}</p>
                 </>
               )}
               <div className="ig-tiles">{others.map(tile)}</div>
@@ -1419,14 +1189,7 @@ export function IntegrationsOverview({
           ) : null}
         </>
       )}
-      {compact ? null : (
-        <p className="ig-foot">
-          Tila luetaan suoraan työkaluilta sinun käyttäjänäsi. Kirjautumistiedot
-          ovat vain kotihakemistossasi; palvelin ei tallenna niitä eikä listaa
-          liitoksiasi muualle. Uudet keskustelut näkevät liitoksen heti;
-          käynnissä oleva keskustelu näkee sen, kun lataat sen uudelleen.
-        </p>
-      )}
+      {compact ? null : <p className="ig-foot">{txt.foot}</p>}
     </div>
   );
 }
@@ -1454,10 +1217,10 @@ function Steps({ provider, view }: { provider: Provider; view: LoginView }) {
   )
     return null;
   const steps = [
-    { id: "login", label: `Kirjaudu: ${providerCopy[provider.id].name}` },
+    { id: "login", label: txt.stepLogin(providerCopy[provider.id].name) },
     {
       id: "folders",
-      label: `Valitse kansiot: ${serviceName(provider.id, files)}`,
+      label: txt.stepFolders(serviceName(provider.id, files)),
     },
   ];
   const at =
@@ -1472,7 +1235,7 @@ function Steps({ provider, view }: { provider: Provider; view: LoginView }) {
     <ol
       data-testid="integration-steps"
       className="ig-steps"
-      aria-label="Vaiheet"
+      aria-label={txt.steps}
     >
       {steps.map((s, i) => (
         <li
@@ -1494,7 +1257,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
     <ControlButton
       size="row"
       variant="secondary"
-      aria-label={`Kopioi ${label}`}
+      aria-label={txt.copyNamed(label)}
       onPress={() => {
         void navigator.clipboard?.writeText(value).then(
           () => setCopied(true),
@@ -1503,7 +1266,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       }}
     >
       <Icon name={copied ? "check" : "copy"} />
-      {copied ? "Kopioitu" : "Kopioi"}
+      {copied ? txt.copied : txt.copy}
     </ControlButton>
   );
 }
@@ -1557,12 +1320,7 @@ function DeviceCodeStep({
   const host = uri
     ? new URL(uri).host + new URL(uri).pathname.replace(/\/$/, "")
     : "";
-  if (!uri)
-    return (
-      <p role="alert">
-        Kirjautumisosoite ei kelpaa. Peruuta ja yritä uudelleen.
-      </p>
-    );
+  if (!uri) return <p role="alert">{txt.badLoginAddress}</p>;
   return (
     <>
       <p
@@ -1570,12 +1328,10 @@ function DeviceCodeStep({
         data-testid="integration-device-stage"
         data-login-phase={view.login_phase}
       >
-        {`Kirjaudu ${providerCopy[view.provider ?? "microsoft"].ill} tällä koodilla`}
+        {txt.signInWithCode(providerCopy[view.provider ?? "microsoft"].ill)}
       </p>
       <p className="ig-p">
-        {view.provider === "microsoft"
-          ? "Yksi koodi yhdistää OneDriven, SharePointin ja Outlookin tämän palvelimen työkaluihin."
-          : "Koodi kirjaa vain tämän palvelimen työkalun sinun tilillesi."}
+        {view.provider === "microsoft" ? txt.oneCode : txt.codeTool}
       </p>
       <div className="ig-code">
         <span
@@ -1585,23 +1341,22 @@ function DeviceCodeStep({
         >
           {code}
         </span>
-        <span className="ig-sr">Koodi {code.split("").join(" ")}</span>
-        <CopyButton value={code} label="koodi" />
+        <span className="ig-sr">
+          {txt.codeSpelled(code.split("").join(" "))}
+        </span>
+        <CopyButton value={code} label={txt.codeLabel} />
       </div>
       <div className="ig-row start">
-        <ExternalButton href={uri}>Avaa {host}</ExternalButton>
+        <ExternalButton href={uri}>{txt.open(host)}</ExternalButton>
       </div>
       <p className="ig-wait" role="status">
         <span className="ig-spin" aria-hidden="true" />
         <span>
-          Odotetaan, että hyväksyt kirjautumisen. Koodi vanhenee{" "}
-          <b>{minutesLeft(left)}</b>
+          {txt.waitingCode} <b>{minutesLeft(left)}</b>
         </span>
       </p>
       <p className="ig-fine">
-        Syötä koodi vain tänne avaamallesi{" "}
-        {providerCopy[view.provider ?? "microsoft"].gen} sivulle. Jos joku muu
-        pyytää sinua syöttämään koodin, älä tee sitä.
+        {txt.onlyHere(providerCopy[view.provider ?? "microsoft"].gen)}
       </p>
       <div className="ig-row">
         <ControlButton
@@ -1610,7 +1365,7 @@ function DeviceCodeStep({
           variant="secondary"
           onPress={onCancel}
         >
-          Peruuta
+          {txt.cancel}
         </ControlButton>
       </div>
     </>
@@ -1637,23 +1392,16 @@ function PasteStep({
   const copy = providerCopy[view.provider ?? "google"];
   const href = safeHttps(view.authorization_url);
   const prefix = view.redirect_prefix ?? "";
-  if (!href)
-    return (
-      <p role="alert">
-        Kirjautumisosoite ei kelpaa. Peruuta ja yritä uudelleen.
-      </p>
-    );
+  if (!href) return <p role="alert">{txt.badLoginAddress}</p>;
   if (!opened)
     return (
       <>
-        <p className="ig-h">Kirjaudu: {copy.site}</p>
-        <p className="ig-p">
-          {copy.site} kysyy, mille tilille ja mitkä luvat annat.
-        </p>
+        <p className="ig-h">{txt.signInAt(copy.site)}</p>
+        <p className="ig-p">{txt.siteAsks(copy.site)}</p>
         <RedirectExpected site={copy.site} prefix={prefix} />
         <div className="ig-row start">
           <ExternalButton href={href} onOpen={() => setOpened(true)}>
-            Avaa {copy.site}
+            {txt.open(copy.site)}
           </ExternalButton>
         </div>
         <div className="ig-row">
@@ -1663,21 +1411,16 @@ function PasteStep({
             variant="secondary"
             onPress={onCancel}
           >
-            Peruuta
+            {txt.cancel}
           </ControlButton>
         </div>
       </>
     );
   const submit = () => {
     const v = value.trim();
-    if (!v)
-      return setLocal(
-        "Liitä ensin osoite, johon päädyit hyväksymisen jälkeen.",
-      );
+    if (!v) return setLocal(txt.pasteFirst);
     if (!redirectMatches(prefix, v))
-      return setLocal(
-        `Tämä ei ole se osoite. Liitä osoite, johon päädyit hyväksymisen jälkeen; se alkaa ${prefix}.`,
-      );
+      return setLocal(txt.notThatAddress(prefix));
     setLocal("");
     setValue("");
     onPaste(v);
@@ -1691,15 +1434,15 @@ function PasteStep({
         submit();
       }}
     >
-      <p className="ig-h">Liitä osoite, johon {copy.site} lopuksi ohjasi</p>
+      <p className="ig-h">{txt.pasteWhere(copy.site)}</p>
       <RedirectExpected site={copy.site} prefix={prefix} />
       <ol className="ig-how">
-        <li>Hyväksy luvat avautuneessa välilehdessä.</li>
-        <li>Kopioi virhesivun osoiteriviltä koko osoite ja liitä se tähän.</li>
+        <li>{txt.approveTab}</li>
+        <li>{txt.copyAddress}</li>
       </ol>
       <TextField
         data-testid="integration-redirect-input"
-        label="Paluuosoite"
+        label={txt.returnAddress}
         value={value}
         onChange={(v) => {
           setValue(v);
@@ -1716,7 +1459,7 @@ function PasteStep({
       <p className="ig-wait quiet">
         <Icon name="clock" />
         <span>
-          Kirjautuminen on voimassa <b>{minutesLeft(left)}</b>.{" "}
+          {txt.validFor} <b>{minutesLeft(left)}</b>.{" "}
           <a
             className="ig-link"
             href={href}
@@ -1724,7 +1467,7 @@ function PasteStep({
             rel="noopener noreferrer"
             referrerPolicy="no-referrer"
           >
-            Avaa {copy.site} uudelleen
+            {txt.openAgain(copy.site)}
           </a>
         </span>
       </p>
@@ -1735,7 +1478,7 @@ function PasteStep({
           variant="secondary"
           onPress={onCancel}
         >
-          Peruuta
+          {txt.cancel}
         </ControlButton>
         <ControlButton
           data-testid="integration-connect"
@@ -1744,7 +1487,7 @@ function PasteStep({
           type="submit"
           isPending={busy}
         >
-          Yhdistä
+          {txt.connectSubmit}
         </ControlButton>
       </div>
     </form>
@@ -1763,13 +1506,8 @@ function RedirectExpected({ site, prefix }: { site: string; prefix: string }) {
     >
       <Icon name="info" />
       <div>
-        <strong>
-          Lopuksi selain näyttää virhesivun, jota ei voi avata. Se kuuluu
-          asiaan.
-        </strong>{" "}
-        Kun olet hyväksynyt luvat, {site} ohjaa osoitteeseen, joka alkaa{" "}
-        <code>{prefix}</code>. Älä sulje sitä välilehteä: sen osoite sisältää
-        kirjautumisen. Kopioi osoite osoiteriviltä ja palaa tänne.
+        <strong>{txt.errorPageLead}</strong>{" "}
+        {txt.errorPageBody(site, <code>{prefix}</code>)}
       </div>
     </div>
   );
@@ -1778,8 +1516,8 @@ function RedirectExpected({ site, prefix }: { site: string; prefix: string }) {
 /** A folder's size as the person reads it before choosing. */
 function folderSize(f: Folder): string {
   if (f.bytes !== undefined)
-    return f.estimated ? `noin ${gigabytes(f.bytes)}` : gigabytes(f.bytes);
-  return f.measuring ? "Lasketaan kokoa…" : "Koko lasketaan ennen kopiointia";
+    return f.estimated ? txt.about(gigabytes(f.bytes)) : gigabytes(f.bytes);
+  return f.measuring ? txt.measuring : txt.sizeLater;
 }
 
 function FolderStep({
@@ -1833,12 +1571,9 @@ function FolderStep({
   return (
     <>
       <p data-testid="integration-folder-choice" className="ig-h">
-        Mitkä kansiot synkronoidaan kansioon <code>{view.directory}</code>?
+        {txt.whichFolders(<code>{view.directory}</code>)}
       </p>
-      <p className="ig-p">
-        Kansiot pysyvät ajan tasalla jatkuvasti, myös kun selain on kiinni. Ne
-        vievät tilaa kotihakemistosi kiintiöstä.
-      </p>
+      <p className="ig-p">{txt.foldersStay}</p>
       {wholeOver && whole?.bytes !== undefined ? (
         <p
           className="ig-notice"
@@ -1847,22 +1582,20 @@ function FolderStep({
         >
           <Icon name="warning" />
           <span>
-            <b>
-              {whole.name} ei mahdu kotihakemistoosi
-              {whole.estimated ? " (arvio)" : ""}.
-            </b>{" "}
-            Se vie {whole.estimated ? "noin " : ""}
-            {gigabytes(whole.bytes)}, vapaana on {gigabytes(free)}.{" "}
-            {folders.length > 1
-              ? "Valitse alta vain kansiot, joita agentit tarvitsevat"
-              : "Pyydä ylläpitäjältä lisää tilaa"}
-            {onSkip ? ", tai jatka ilman tiedostoja." : "."}
+            {txt.wholeOver(
+              whole.name,
+              !!whole.estimated,
+              gigabytes(whole.bytes),
+              gigabytes(free),
+              folders.length > 1,
+              !!onSkip,
+            )}
           </span>
         </p>
       ) : null}
       <fieldset className="ig-folders">
         <legend className="ig-sr">
-          {files ? serviceName(provider.id, files) : "Kansiot"}
+          {files ? serviceName(provider.id, files) : txt.folders}
         </legend>
         {folders.map((f) => (
           <div
@@ -1903,38 +1636,31 @@ function FolderStep({
         <span role="status">
           {selected.length === 0 ? (
             <span>
-              Mitään ei ole valittu.{" "}
-              {view.free_bytes !== undefined ? (
-                <>Vapaana {gigabytes(free)}.</>
-              ) : null}
+              {txt.nothingChosen}{" "}
+              {view.free_bytes !== undefined ? txt.free(gigabytes(free)) : null}
             </span>
           ) : unknown ? (
             <span>
-              Valittujen kansioiden koko lasketaan, ja tilan riittävyys
-              tarkistetaan ennen kuin mitään kopioidaan.{" "}
-              {view.free_bytes !== undefined ? (
-                <>Vapaana {gigabytes(free)}.</>
-              ) : (
-                <>Vapaa tila ei ole vielä tiedossa.</>
-              )}
+              {txt.measuringChosen}{" "}
+              {view.free_bytes !== undefined
+                ? txt.free(gigabytes(free))
+                : txt.freeUnknown}
             </span>
           ) : over ? (
             <>
               <Icon name="warning" />
               <span>
-                <b>Ei mahdu{estimated ? " arvion mukaan" : ""}.</b> Valitut{" "}
-                {estimated ? "noin " : ""}
-                {gigabytes(total)}, vapaana {gigabytes(free)}.{" "}
-                {estimated
-                  ? "Koko lasketaan tarkasti ennen kopiointia, mutta valitse mieluummin vain tarvitsemasi kansiot."
-                  : "Jätä jokin kansio pois tai pyydä ylläpitäjältä lisää tilaa."}
+                {txt.over(estimated, gigabytes(total), gigabytes(free))}
               </span>
             </>
           ) : (
             <span>
-              Valittu {estimated ? "noin " : ""}
-              {gigabytes(total)}. Kotihakemistossa on vapaana {gigabytes(free)}
-              {quota ? ` / ${gigabytes(quota)}` : ""}.
+              {txt.chosen(
+                estimated,
+                gigabytes(total),
+                gigabytes(free),
+                quota ? gigabytes(quota) : undefined,
+              )}
             </span>
           )}
         </span>
@@ -1951,7 +1677,7 @@ function FolderStep({
           variant="secondary"
           onPress={onCancel}
         >
-          Peruuta
+          {txt.cancel}
         </ControlButton>
         {onSkip ? (
           <ControlButton
@@ -1961,7 +1687,7 @@ function FolderStep({
             isDisabled={busy}
             onPress={onSkip}
           >
-            Jatka ilman tiedostoja
+            {txt.skipFiles}
           </ControlButton>
         ) : null}
         <ControlButton
@@ -1973,7 +1699,7 @@ function FolderStep({
           onPress={() => onChoose(selected)}
         >
           <Icon name="refresh" />
-          Aloita synkronointi
+          {txt.startSync}
         </ControlButton>
       </div>
     </>
@@ -2002,10 +1728,10 @@ function FailedStep({
         variant="secondary"
         onPress={onClose}
       >
-        Sulje
+        {txt.close}
       </ControlButton>
       <ControlButton size="page" variant="primary" onPress={onRestart}>
-        Aloita alusta
+        {txt.restart}
       </ControlButton>
     </div>
   );
@@ -2022,16 +1748,13 @@ function FailedStep({
             <Icon name="warning" />
             <span>
               {view.failure === "quota_insufficient"
-                ? "Valitut tiedostot eivät mahdu kotihakemistosi kiintiöön."
-                : "Kotihakemiston vapaata tilaa ei voitu tarkistaa."}{" "}
-              Mitään ei kopioitu.
+                ? txt.quotaInsufficient
+                : txt.quotaUnknown}{" "}
+              {txt.nothingCopied}
             </span>
           </p>
           <p className="ig-p">
-            {others
-              ? "Kirjautuminen säilyi, joten tilin muut palvelut toimivat jo. Voit sulkea tämän ja jatkaa ilman tiedostoja, tai aloittaa alusta ja valita vähemmän kansioita."
-              : "Kirjautuminen säilyi. Vapauta tilaa, tai aloita alusta ja valitse vähemmän kansioita."}{" "}
-            Lisää tilaa saat ylläpitäjältä.
+            {others ? txt.keptOthers : txt.kept} {txt.moreSpace}
           </p>
           {restart}
         </>
@@ -2043,30 +1766,19 @@ function FailedStep({
           <p className="ig-result bad" role="alert">
             <Icon name="warning" />
             <span>
-              <b>Organisaatiosi vaatii ylläpitäjän luvan.</b> Käyttäjät eivät
-              voi itse sallia sovelluksille pääsyä postiin, kalenteriin tai
-              tiedostoihin. Ylläpitäjän pitää hyväksyä tämän palvelimen sovellus
-              kerran koko organisaatiolle.
+              <b>{txt.consentLead}</b> {txt.consentBody}
             </span>
           </p>
           {consent ? (
             <>
-              <p className="ig-p">
-                Lähetä tämä linkki organisaatiosi ylläpitäjälle. Hän näkee, mitä
-                sovellus pyytää, ennen kuin hyväksyy.
-              </p>
+              <p className="ig-p">{txt.sendLink}</p>
               <div className="ig-url">
                 <code data-testid="integration-consent-link">{consent}</code>
-                <CopyButton
-                  value={consent}
-                  label="ylläpitäjän hyväksyntälinkki"
-                />
+                <CopyButton value={consent} label={txt.consentLink} />
               </div>
             </>
           ) : null}
-          <p className="ig-p">
-            Kun lupa on annettu, kirjaudu uudelleen. Mitään ei tallennettu.
-          </p>
+          <p className="ig-p">{txt.afterConsent}</p>
           {restart}
         </>
       );
@@ -2080,15 +1792,11 @@ function FailedStep({
           >
             <Icon name="stop" />
             <span>
-              <b>Kirjautuminen ei myöntänyt yhtään käytettävää oikeutta.</b>{" "}
-              {copy.site} ei myöntänyt Habitatille mitään, mitä agentit voisivat
-              käyttää, joten tiliä ei yhdistetty. Mitään ei tallennettu.
+              <b>{txt.nothingGrantedLead}</b>{" "}
+              {txt.nothingGrantedBody(copy.site)}
             </span>
           </p>
-          <p className="ig-p">
-            Kirjaudu uudelleen ja myönnä vähintään yksi palvelu, tai pyydä
-            organisaatiosi ylläpitäjää sallimaan sovelluksen oikeudet.
-          </p>
+          <p className="ig-p">{txt.grantOne}</p>
           {restart}
         </>
       );
@@ -2102,18 +1810,11 @@ function FailedStep({
           >
             <Icon name="warning" />
             <span>
-              <b>Tasoa ei vaihdettu.</b> Ennen vaihtoa tiedostot piti
-              synkronoida vielä kerran molempiin suuntiin, mutta se ei
-              onnistunut. Tili toimii entisellä tasolla
-              {view.provider === "google"
-                ? ", eikä vanhaa kirjautumista peruttu."
-                : ", ja uusi kirjautuminen peruttiin."}
+              <b>{txt.levelNotChanged}</b>{" "}
+              {txt.finalSyncFailed(view.provider === "google")}
             </span>
           </p>
-          <p className="ig-p">
-            Katso tiedostojen tila Tiedot agenteille -sivulta ja yritä
-            uudelleen, kun synkronointi toimii.
-          </p>
+          <p className="ig-p">{txt.checkFiles}</p>
           {restart}
         </>
       );
@@ -2126,11 +1827,7 @@ function FailedStep({
             data-testid="integration-already-connected"
           >
             <Icon name="warning" />
-            <span>
-              <b>Tili on jo yhdistetty toisella tasolla.</b> Mitään ei muutettu.
-              Vaihda sen taso tilin kortista kohdasta Vaihda taso…, jotta vanha
-              kirjautuminen perutaan ensin.
-            </span>
+            <span>{txt.alreadyConnected()}</span>
           </p>
           {restart}
         </>
@@ -2144,13 +1841,9 @@ function FailedStep({
             data-testid="integration-revoke-failed"
           >
             <Icon name="warning" />
-            <span>
-              <b>Tasoa ei vaihdettu.</b> Vanhaa kirjautumista ei saatu perutuksi{" "}
-              {copy.gen} päässä, joten sen oikeudet olisivat jääneet voimaan.
-              Tili toimii entisellä tasolla, eikä uutta kirjautumista aloitettu.
-            </span>
+            <span>{txt.revokeFailed(copy.gen)}</span>
           </p>
-          <p className="ig-p">Yritä hetken kuluttua uudelleen.</p>
+          <p className="ig-p">{txt.tryLater}</p>
           {restart}
         </>
       );
@@ -2159,16 +1852,9 @@ function FailedStep({
         <>
           <p className="ig-result bad" role="alert">
             <Icon name="stop" />
-            <span>
-              <b>Organisaatiosi estää kirjautumisen laitekoodilla.</b>{" "}
-              {copy.site} pysäytti kirjautumisen organisaation pääsysäännön
-              takia. Tältä palvelimelta ei ole toista reittiä.
-            </span>
+            <span>{txt.deviceBlocked(copy.site)}</span>
           </p>
-          <p className="ig-p">
-            Organisaatiosi ylläpitäjä voi sallia laitekoodikirjautumisen tälle
-            sovellukselle.
-          </p>
+          <p className="ig-p">{txt.allowDevice}</p>
           <div className="ig-row">
             <ControlButton
               data-testid="dialog-close"
@@ -2176,7 +1862,7 @@ function FailedStep({
               variant="primary"
               onPress={onClose}
             >
-              Sulje
+              {txt.close}
             </ControlButton>
           </div>
         </>
@@ -2186,10 +1872,7 @@ function FailedStep({
         <>
           <p className="ig-result" role="alert">
             <Icon name="clock" />
-            <span>
-              Kirjautuminen vanheni ennen kuin se valmistui. Mitään ei
-              yhdistetty.
-            </span>
+            <span>{txt.expired}</span>
           </p>
           {restart}
         </>
@@ -2199,10 +1882,7 @@ function FailedStep({
         <>
           <p className="ig-result bad" role="alert">
             <Icon name="warning" />
-            <span>
-              {copy.site} ei hyväksynyt liitettyä osoitetta. Se voi olla vanhan
-              kirjautumisen osoite. Mitään ei yhdistetty.
-            </span>
+            <span>{txt.redirectRejected(copy.site)}</span>
           </p>
           {restart}
         </>
@@ -2212,10 +1892,7 @@ function FailedStep({
         <>
           <p className="ig-result bad" role="alert">
             <Icon name="warning" />
-            <span>
-              Kirjauduit eri tilille kuin <b>{view.address}</b>. Tiliä ei
-              muutettu. Valitse kirjautuessasi sama tili.
-            </span>
+            <span>{txt.accountMismatch(view.address ?? "")}</span>
           </p>
           {restart}
         </>
@@ -2225,7 +1902,7 @@ function FailedStep({
         <>
           <p className="ig-result">
             <Icon name="cross" />
-            <span>Kirjautuminen peruttiin. Mitään ei yhdistetty.</span>
+            <span>{txt.cancelled}</span>
           </p>
           {restart}
         </>
@@ -2235,7 +1912,7 @@ function FailedStep({
         <>
           <p className="ig-result bad" role="alert">
             <Icon name="warning" />
-            <span>Kirjautuminen ei onnistunut. Mitään ei yhdistetty.</span>
+            <span>{txt.failed}</span>
           </p>
           {restart}
         </>
@@ -2306,26 +1983,15 @@ function PasswordForm({
       }}
     >
       {relogin ? (
-        <p className="ig-p">
-          Anna tilin <b>{relogin}</b> uusi sovellussalasana. Vanha jää voimaan,
-          jos palvelin ei hyväksy uutta.
-        </p>
+        <p className="ig-p">{txt.newAppPassword(relogin)}</p>
       ) : (
-        <p className="ig-p">
-          Luo postipalvelusi asetuksissa sovellussalasana tätä palvelinta varten
-          ja kirjoita se tähän palvelimen tietojen kanssa. Salasana tallentuu
-          vain kotihakemistosi {dav ? "curl-asetuksiin" : "himalaya-asetuksiin"}
-          .
-          {dav
-            ? " Anna palveluntarjoajan CalDAV- tai CardDAV-osoite, iCloudissa https://caldav.icloud.com tai https://contacts.icloud.com. Liitä kalenteri ja yhteystiedot erikseen."
-            : " SMTP käyttää samaa käyttäjätunnusta ja sovellussalasanaa kuin IMAP. Jätä SMTP tyhjäksi, jos haluat vain luonnokset."}
-        </p>
+        <p className="ig-p">{txt.passwordIntro(dav)}</p>
       )}
       {!relogin && (
         <>
           <TextField
             data-testid="integration-address"
-            label="Sähköpostiosoite"
+            label={txt.email}
             autoComplete="email"
             value={a.address}
             onChange={(v) => {
@@ -2343,7 +2009,7 @@ function PasswordForm({
           {dav ? (
             <TextField
               data-testid="integration-dav-url"
-              label="DAV-osoite (HTTPS)"
+              label={txt.davAddress}
               value={a.url ?? ""}
               onChange={(v) => set({ url: v })}
             />
@@ -2352,7 +2018,7 @@ function PasswordForm({
               <div className="ig-pair">
                 <TextField
                   data-testid="integration-imap-host"
-                  label="IMAP-palvelin"
+                  label={txt.imapServer}
                   mono
                   value={a.server}
                   onChange={(v) => {
@@ -2361,7 +2027,7 @@ function PasswordForm({
                   }}
                 />
                 <TextField
-                  label="Portti"
+                  label={txt.port}
                   mono
                   value={String(a.port || "")}
                   onChange={(v) =>
@@ -2370,7 +2036,7 @@ function PasswordForm({
                 />
               </div>
               <Segmented
-                label="Suojaus"
+                label={txt.security}
                 options={[
                   { id: "tls", label: "TLS" },
                   { id: "starttls", label: "STARTTLS" },
@@ -2382,7 +2048,7 @@ function PasswordForm({
               />
               <TextField
                 data-testid="integration-smtp-host"
-                label="SMTP-palvelin (valinnainen)"
+                label={txt.smtpServer}
                 value={a.smtp_server ?? ""}
                 onChange={(v) =>
                   set(
@@ -2404,14 +2070,14 @@ function PasswordForm({
                 <>
                   <TextField
                     data-testid="integration-smtp-port"
-                    label="SMTP-portti"
+                    label={txt.smtpPort}
                     value={String(a.smtp_port ?? "")}
                     onChange={(v) =>
                       set({ smtp_port: Number(v.replace(/\D/g, "")) || 0 })
                     }
                   />
                   <Segmented
-                    label="SMTP-suojaus"
+                    label={txt.smtpSecurity}
                     options={[
                       { id: "tls", label: "TLS" },
                       { id: "starttls", label: "STARTTLS" },
@@ -2430,7 +2096,7 @@ function PasswordForm({
           )}
           <TextField
             data-testid="integration-username"
-            label="Käyttäjätunnus"
+            label={txt.username}
             value={a.username}
             onChange={(v) => {
               setTouchedUser(true);
@@ -2456,7 +2122,7 @@ function PasswordForm({
           variant="secondary"
           onPress={onCancel}
         >
-          Peruuta
+          {txt.cancel}
         </ControlButton>
         <ControlButton
           data-testid={
@@ -2468,7 +2134,7 @@ function PasswordForm({
           isDisabled={!ready}
           isPending={busy}
         >
-          {relogin ? "Vaihda salasana" : "Yhdistä"}
+          {relogin ? txt.changePassword : txt.connectSubmit}
         </ControlButton>
       </div>
     </form>
@@ -2484,7 +2150,7 @@ function PasswordField({
 }) {
   return (
     <label className="s-field ig-password">
-      <span>Sovellussalasana</span>
+      <span>{txt.appPassword}</span>
       <input
         type="password"
         data-testid="integration-password"
@@ -2500,9 +2166,8 @@ function PasswordField({
 /** Why the provider has no boundary for a level, honestly. */
 function notOffered(provider: ProviderId, level: Level): string {
   const copy = providerCopy[provider];
-  if (provider === "google" && level === "drafts")
-    return "Google ei tarjoa tätä tasoa. Gmailin luonnosoikeus antaa aina myös lähetysoikeuden, joten pelkkiä luonnoksia ei voi myöntää.";
-  return `${copy.site} ei tarjoa tätä tasoa.`;
+  if (provider === "google" && level === "drafts") return txt.googleNoDrafts;
+  return txt.notOffered(copy.site);
 }
 
 /** The level cards: each level the provider offers, one chosen. A level
@@ -2521,7 +2186,7 @@ function LevelChoice({
   return (
     <AriaRadioGroup
       className="ig-levels"
-      aria-label="Taso"
+      aria-label={txt.level}
       value={level ?? null}
       onChange={(v) => onChange(v as Level)}
     >
@@ -2543,7 +2208,7 @@ function LevelChoice({
                   ? text?.sum
                   : l.reason === "not_offered"
                     ? notOffered(provider.id, l.id)
-                    : `Ei käytössä tällä palvelimella. Taso vaatii palvelimelle oman ${copy.name}-sovelluksen, jonka palvelimen ylläpitäjä lisää (Asetukset › Palvelimen ylläpito › Palvelinintegraatiot).`}
+                    : txt.levelNeedsApp(copy.name)}
               </span>
               {l.available && level === l.id ? (
                 <ul className="ig-level-svc">
@@ -2585,17 +2250,14 @@ function LevelChange({
   const before = account.services.find((s) => s.id === file)?.access;
   const appFolder = (l?: Level) => l === "app_folder";
   const items: [IconName, string][] = [
-    [
-      "external",
-      `Kirjaudut uudelleen ${copy.gen} sivulla. Uusi kirjautuminen korvaa vanhan.`,
-    ],
+    ["external", txt.signInAgainAt(copy.gen)],
     [
       "lock",
       provider.id === "dropbox"
-        ? "Habitat peruu vanhan kirjautumisen Dropboxin päässä, joten laajemmat oikeudet eivät jää voimaan."
+        ? txt.dropboxRevokes
         : provider.id === "google"
-          ? "Habitat peruu vanhan kirjautumisen Googlessa ennen kuin kirjaudut uudelleen, koska Google peruu kerralla kaikki Habitatin kirjautumiset. Jos keskeytät kirjautumisen, tili jää kirjautumatta, kunnes kirjaudut uudelleen."
-          : `Vanha kirjautuminen poistetaan kotihakemistostasi. ${copy.site} ei anna perua yksittäistä kirjautumista, joten jos epäilet sen päätyneen muualle, kirjaudu ulos kaikista istunnoista ${copy.gen} tiliasetuksista.`,
+          ? txt.googleRevokes
+          : txt.oldRemoved(copy.site, copy.gen),
     ],
   ];
   if (file) {
@@ -2603,27 +2265,16 @@ function LevelChange({
     const after = levelAccess(level, file);
     const rootChanges = appFolder(account.level) !== appFolder(level);
     if (before === "full" && (after !== "full" || rootChanges))
-      items.push([
-        "refresh",
-        `Ennen vaihtoa Habitat synkronoi ${name}-kansion vielä kerran molempiin suuntiin, joten jo tehdyt muutokset ehtivät palveluun. Jos se ei onnistu, mitään ei vaihdeta.`,
-      ]);
+      items.push(["refresh", txt.finalSync(name)]);
     if (rootChanges)
       items.push([
         "folder",
-        appFolder(level)
-          ? "Sovelluskansio synkronoituu omaan kansioonsa kotihakemistossasi. Nykyinen Dropbox-kansio jää paikalleen, mutta se ei enää synkronoidu."
-          : "Dropbox synkronoituu omaan kansioonsa kotihakemistossasi. Sovelluskansion kansio jää paikalleen, mutta se ei enää synkronoidu.",
+        appFolder(level) ? txt.toAppFolder : txt.fromAppFolder,
       ]);
     if (after === "read" && before !== "read")
-      items.push([
-        "folder",
-        `${name} muuttuu peiliksi: muutokset eivät enää palaa palveluun. Valitset kansiot uudelleen kirjautumisen jälkeen.`,
-      ]);
+      items.push(["folder", txt.becomesMirror(name)]);
     if (after === "full" && before === "read" && !rootChanges)
-      items.push([
-        "folder",
-        `${name} synkronoituu taas molempiin suuntiin. Valitset kansiot uudelleen kirjautumisen jälkeen.`,
-      ]);
+      items.push(["folder", txt.syncsAgain(name)]);
   }
   return (
     <>
@@ -2662,22 +2313,20 @@ function LevelWarning({
   const can: string[] = [];
   const services = provider.services;
   if (services.includes("mail") && levelAccess(level, "mail") === "full")
-    can.push("lähettää postia");
+    can.push(txt.canSendMail);
   if (
     services.includes("calendar") &&
     levelAccess(level, "calendar") === "full"
   )
-    can.push("muuttaa kalenteria ja lähettää kutsuja");
+    can.push(txt.canCalendar);
   const file = services.find((s) => fileServices.includes(s));
-  if (file && level === "app_folder")
-    can.push("muokata ja poistaa sovelluskansion tiedostoja");
-  else if (file && levelAccess(level, file) === "full")
-    can.push("muokata, poistaa ja jakaa tiedostoja");
+  if (file && level === "app_folder") can.push(txt.canAppFolder);
+  else if (file && levelAccess(level, file) === "full") can.push(txt.canFiles);
   const first = can.length
-    ? `Agentit voivat ${can.length > 1 ? `${can.slice(0, -1).join(", ")} ja ${can[can.length - 1]}` : can[0]} sinun nimissäsi.`
+    ? txt.agentsCan(can)
     : level === "drafts"
-      ? "Agentit voivat järjestellä postia ja kirjoittaa luonnoksia, mutta eivät lähettää mitään. Ne voivat silti kertoa eteenpäin kaiken, minkä lukevat."
-      : "Agentit eivät voi lähettää tai muuttaa mitään, mutta ne voivat lukea kaiken, minkä tämä taso avaa, ja kertoa sen eteenpäin.";
+      ? txt.draftsWarning
+      : txt.readWarning;
   return (
     <div
       className="ig-warn"
@@ -2686,10 +2335,8 @@ function LevelWarning({
     >
       <Icon name="shield" />
       <div>
-        <strong>{first}</strong> Liitetty viesti tai tiedosto voi sisältää
-        ohjeita, joita agentti yrittää noudattaa. Agentit näkevät myös
-        kirjautumistiedon, mutta sillä voi tehdä vain sen, minkä{" "}
-        {providerCopy[provider.id].site} myönsi.
+        <strong>{first}</strong>{" "}
+        {txt.levelWarningRest(providerCopy[provider.id].site)}
       </div>
     </div>
   );
@@ -2715,10 +2362,10 @@ function Intro({
   );
   const how =
     provider.login === "device_code"
-      ? `Kirjaudut ${copy.gen} sivulla lyhyellä koodilla. Työpaikan tilillä organisaation ylläpitäjän voi joutua hyväksymään sovelluksen ensin.`
+      ? txt.howDevice(copy.gen)
       : provider.login === "pasted_redirect"
-        ? `${copy.site} avautuu uuteen välilehteen. Hyväksymisen jälkeen kopioit sen osoitteen, johon päädyit, takaisin tänne.`
-        : "Tarvitset postipalvelusi sovellussalasanan ja palvelimen nimen. Ne kirjoitetaan vain kotihakemistosi asetuksiin.";
+        ? txt.howPaste(copy.site)
+        : txt.howPassword;
   const continueButton = (
     <ControlButton
       data-testid="integration-continue"
@@ -2731,7 +2378,9 @@ function Intro({
       onPress={() => onContinue(level)}
     >
       {provider.login === "app_password" ? null : <Icon name="external" />}
-      Jatka{provider.login === "app_password" ? "" : `: ${copy.site}`}
+      {txt.continueTo(
+        provider.login === "app_password" ? undefined : copy.site,
+      )}
     </ControlButton>
   );
   const buttons = (
@@ -2742,7 +2391,7 @@ function Intro({
         variant="secondary"
         onPress={onCancel}
       >
-        Peruuta
+        {txt.cancel}
       </ControlButton>
       {continueButton}
     </div>
@@ -2751,14 +2400,13 @@ function Intro({
     return (
       <>
         {account || provider.id === "google" ? null : <CloudFolderHint />}
-        <p className="ig-lead">Mitä agentit saavat tehdä tällä tilillä?</p>
+        <p className="ig-lead">{txt.whatMay}</p>
         <LevelChoice provider={provider} level={level} onChange={setLevel} />
         {account && level ? (
           <LevelChange provider={provider} account={account} level={level} />
         ) : (
           <p className="ig-p">
-            {how} Taso pyydetään {copy.gen} kirjautumisessa, joten {copy.site}{" "}
-            itse valvoo sitä.
+            {how} {txt.levelAsked(copy.gen, copy.site)}
           </p>
         )}
         {level ? <LevelWarning provider={provider} level={level} /> : null}
@@ -2770,7 +2418,7 @@ function Intro({
       {(provider.id === "microsoft" || provider.id === "dropbox") && (
         <CloudFolderHint />
       )}
-      <p className="ig-lead">Agentit saavat käyttöönsä</p>
+      <p className="ig-lead">{txt.agentsGet}</p>
       <ul className="ig-picks">
         {provider.services.map((s) => (
           <li className="ig-pick" key={s}>
@@ -2781,10 +2429,10 @@ function Intro({
               <b>{serviceName(provider.id, s)}</b>
               <span className="ig-meta">
                 {fileServices.includes(s)
-                  ? "Lukeminen, muokkaus ja poistaminen; tiedostot synkronoidaan kotihakemistoosi."
+                  ? txt.pickFiles
                   : s === "mail"
-                    ? "Postin lukeminen ja luonnokset."
-                    : "Lukeminen ja muokkaus."}
+                    ? txt.pickMail
+                    : txt.pickOther}
               </span>
             </span>
           </li>
@@ -2839,10 +2487,10 @@ export function ConnectDialog({
     (stage.stage === "connected" && stage.relogin);
   const title =
     stage.stage === "intro" && stage.account
-      ? `Vaihda taso: ${copy.name}`
+      ? txt.titleLevel(copy.name)
       : relogin
-        ? `Kirjaudu uudelleen: ${copy.name}`
-        : `Yhdistä ${provider.id === "imap" ? "sähköpostitili" : `${copy.name}-tili`}`;
+        ? txt.titleRelogin(copy.name)
+        : txt.titleConnect(provider.id, copy.name);
   let body: ReactNode = null;
   switch (stage.stage) {
     case "intro":
@@ -2872,10 +2520,7 @@ export function ConnectDialog({
         <>
           <p className="ig-result bad" role="alert">
             <Icon name="warning" />
-            <span>
-              Yhteys palvelimeen katkesi, eikä tiedetä, tallentuiko muutos.
-              Tarkista tilanne Integraatiot-sivulta ennen kuin yrität uudelleen.
-            </span>
+            <span>{txt.uncertain}</span>
           </p>
           <div className="ig-row">
             <ControlButton
@@ -2884,7 +2529,7 @@ export function ConnectDialog({
               variant="primary"
               onPress={onClose}
             >
-              Sulje
+              {txt.close}
             </ControlButton>
           </div>
         </>
@@ -2900,14 +2545,9 @@ export function ConnectDialog({
           >
             <Icon name="check" />
             <span>
-              {stage.relogin ? (
-                <>Kirjauduttu uudelleen. {stage.address} toimii taas.</>
-              ) : (
-                <>
-                  <b>Yhdistetty: {stage.address}.</b> Uudet keskustelut näkevät
-                  sen heti.
-                </>
-              )}
+              {stage.relogin
+                ? txt.reloggedIn(stage.address)
+                : txt.connectedTo(stage.address)}
             </span>
           </p>
           <div className="ig-row">
@@ -2917,7 +2557,7 @@ export function ConnectDialog({
               variant="primary"
               onPress={onClose}
             >
-              Valmis
+              {txt.done}
             </ControlButton>
           </div>
         </>
@@ -2934,11 +2574,7 @@ export function ConnectDialog({
           data-testid="integration-unavailable-sites"
         >
           <Icon name="warning" />
-          <span>
-            Seuraavia SharePoint-sivustoja ei voitu avata, joten ne jätettiin
-            pois: {v.unavailable_sites.join(", ")}. Jos tarvitset niitä, pyydä
-            käyttöoikeus organisaatiosi ylläpitäjältä.
-          </span>
+          <span>{txt.sitesUnavailable(v.unavailable_sites.join(", "))}</span>
         </p>
       ) : null;
       if (
@@ -2960,30 +2596,26 @@ export function ConnectDialog({
             >
               <span className="ig-spin" aria-hidden="true" />
               {v.state === "completing" && v.address
-                ? "Ensimmäinen synkronointi on käynnissä. Tämä voi kestää kauan, jos tiedostoja on paljon."
+                ? txt.initialSync
                 : v.state === "completing"
                   ? v.login_phase === "files_discovery"
-                    ? "Hyväksytty. Haetaan OneDrive- ja SharePoint-tietoja…"
+                    ? txt.filesDiscovery
                     : v.login_phase === "outlook_finishing"
-                      ? "Outlookin kirjautuminen hyväksyttiin. Viimeistellään yhteyttä…"
-                      : "Viimeistellään kirjautumista ja haetaan valittavat pilvikansiot…"
-                  : "Käynnistetään kirjautumista…"}
+                      ? txt.outlookFinishing
+                      : txt.finishing
+                  : txt.starting}
             </p>
             {v.state === "completing" && v.address && (
               <>
                 {v.progress && <SyncProgressStatus progress={v.progress} />}
-                <p className="ig-p">
-                  Voit sulkea tämän ikkunan ja jatkaa työskentelyä. Synkronointi
-                  jatkuu taustalla. Näet etenemisen ja lopputuloksen asetusten
-                  Integraatiot-sivulla.
-                </p>
+                <p className="ig-p">{txt.closeAnytime}</p>
                 <ControlButton
                   data-testid="integration-sync-background"
                   size="page"
                   variant="secondary"
                   onPress={onClose}
                 >
-                  Jatka taustalla
+                  {txt.background}
                 </ControlButton>
               </>
             )}
@@ -3058,23 +2690,13 @@ export function ConnectDialog({
             >
               <Icon name="check" />
               <span>
-                {v.relogin ? (
-                  <>Kirjauduttu uudelleen. {v.address} toimii taas.</>
-                ) : (
-                  <>
-                    <b>Yhdistetty: {v.address}.</b> Uudet keskustelut näkevät
-                    sen heti.
-                  </>
-                )}
+                {v.relogin
+                  ? txt.reloggedIn(v.address ?? "")
+                  : txt.connectedTo(v.address ?? "")}
               </span>
             </p>
             {unavailableSites}
-            {dir ? (
-              <p className="ig-p">
-                Jos valitsit pilvikansioita, niiden synkronointi jatkuu myös
-                tämän sivun sulkemisen jälkeen.
-              </p>
-            ) : null}
+            {dir ? <p className="ig-p">{txt.foldersContinue}</p> : null}
             <div className="ig-row">
               <ControlButton
                 data-testid="integration-done"
@@ -3082,7 +2704,7 @@ export function ConnectDialog({
                 variant="primary"
                 onPress={onClose}
               >
-                Valmis
+                {txt.done}
               </ControlButton>
             </div>
           </>
@@ -3130,7 +2752,7 @@ export function ConnectDialog({
               size="row"
               variant="quiet"
               presentation="icon"
-              aria-label="Sulje"
+              aria-label={txt.close}
               onPress={onClose}
             >
               <Icon name="cross" />
@@ -3165,11 +2787,11 @@ export function RemoveDialog({
   const tools = account.services.filter((s) => !s.directory);
   const lost = [
     tools.length
-      ? `Agentit eivät enää pääse palveluihin ${tools.map((s) => serviceName(account.provider, s.id)).join(" ja ")}.`
+      ? txt.lostTools(
+          tools.map((s) => serviceName(account.provider, s.id)).join(txt.and),
+        )
       : "",
-    dirs.length
-      ? `Synkronointi pysähtyy, eivätkä muutokset enää kulje ${copy.ill}.`
-      : "",
+    dirs.length ? txt.lostSync(copy.ill) : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -3184,22 +2806,22 @@ export function RemoveDialog({
         <AriaDialog
           className="ah-dialog"
           role="alertdialog"
-          aria-label={`Poistetaanko ${account.address}?`}
+          aria-label={txt.removeQuestion(account.address)}
         >
           <Heading slot="title">
-            Poistetaanko {copy.name}-tili {account.address}?
+            {txt.removeTitle(copy.name, account.address)}
           </Heading>
           <p>
-            {lost} Kirjautuminen poistetaan tältä palvelimelta.{" "}
+            {lost} {txt.signInRemoved}{" "}
             {["imap", "caldav", "carddav"].includes(account.provider)
-              ? `Sovellussalasana pysyy voimassa ${account.provider === "imap" ? "postipalvelussasi" : "DAV-palvelussasi"}, kunnes poistat sen sieltä.`
-              : `${copy.name} muistaa antamasi luvan, kunnes perut sen ${copy.name}-tilisi asetuksista.`}
+              ? txt.appPasswordStays(account.provider === "imap")
+              : txt.grantStays(copy.name)}
           </p>
           {dirs.length ? (
             <Checkbox
               data-testid="integration-remove-files"
-              label={`Siirrä myös ${dirs.length > 1 ? "kansiot" : "kansio"} ${dirs.map((d) => d.directory).join(", ")} roskakoriin.`}
-              hint=" Voit palauttaa ne kohdasta Asetukset › Tallennustila. Muuten tiedostot jäävät kotihakemistoosi tavallisiksi tiedostoiksi."
+              label={txt.trashFolders(dirs.map((d) => d.directory ?? ""))}
+              hint={txt.trashHint}
               checked={trash}
               onChange={setTrash}
             />
@@ -3213,7 +2835,7 @@ export function RemoveDialog({
               autoFocus
               onPress={onClose}
             >
-              Peruuta
+              {txt.cancel}
             </ControlButton>
             <ControlButton
               data-testid="integration-remove-confirm"
@@ -3222,7 +2844,7 @@ export function RemoveDialog({
               isPending={busy}
               onPress={() => onConfirm(trash)}
             >
-              Poista
+              {txt.removeConfirm}
             </ControlButton>
           </div>
         </AriaDialog>

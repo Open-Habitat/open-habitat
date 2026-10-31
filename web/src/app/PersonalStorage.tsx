@@ -7,6 +7,8 @@ import {
   TrashPurgeDialog,
   type TrashRow,
 } from "../components/WorkspaceTrash";
+import { liveText } from "../i18n";
+import { trashText } from "../text/trash";
 import { type OwnStorage, ownStorage } from "./storageQuota";
 import { blockerText, bytes, refusalText } from "./trashText";
 import { WorktreeCleanup } from "./WorktreeCleanup";
@@ -21,6 +23,8 @@ import {
   restoreTrashEntry,
   WorkspaceTrashError,
 } from "./workspaceTrash";
+
+const txt = liveText(trashText);
 
 const problemOf = (e: unknown) =>
   refusalText(e instanceof WorkspaceTrashError ? e.code : "unavailable");
@@ -60,7 +64,7 @@ export function PersonalStorage({
   return (
     <>
       <div className="s-card">
-        <section aria-label="Käyttö" data-settings-row="usage" tabIndex={-1}>
+        <section aria-label={txt.usage} data-settings-row="usage" tabIndex={-1}>
           {quota?.limits === "not_in_use" ? (
             <SharedDisk
               capacity={quota.filesystem.capacity_bytes}
@@ -73,9 +77,9 @@ export function PersonalStorage({
               trash={trashBytes}
             />
           ) : error ? (
-            <p>Tallennustietoa ei voitu hakea.</p>
+            <p>{txt.usageFailed}</p>
           ) : (
-            <p>Haetaan tallennustietoa…</p>
+            <p>{txt.usageLoading}</p>
           )}
         </section>
       </div>
@@ -104,15 +108,8 @@ export function PersonalStorage({
 function SharedDisk({ capacity, free }: { capacity: number; free: number }) {
   return (
     <div data-testid="storage-limits-not-in-use">
-      <p>
-        <strong>{bytes(free)}</strong> vapaana palvelimen levyllä (
-        {bytes(capacity)}).
-      </p>
-      <p className="ah-trash-intro">
-        Tällä palvelimella ei ole käyttäjäkohtaisia tallennusrajoja. Kaikkien
-        kotihakemistot ovat samalla levyllä, joten kenen tahansa tiedostot
-        voivat täyttää sen.
-      </p>
+      <p>{txt.sharedFree(<strong>{bytes(free)}</strong>, bytes(capacity))}</p>
+      <p className="ah-trash-intro">{txt.sharedNote}</p>
     </div>
   );
 }
@@ -183,8 +180,14 @@ function TrashSettings({
         (restored) => {
           setStatus(
             restored.state === "restored"
-              ? `${restored.name} palautettu: ${row.original_path ?? `~/src/${restored.name}`}.`
-              : `${restored.name} palautettiin, mutta nimen takana on nyt jotain muuta. Tarkista ${row.original_path ?? `~/src/${restored.name}`}.`,
+              ? txt.restored(
+                  restored.name,
+                  row.original_path ?? `~/src/${restored.name}`,
+                )
+              : txt.restoredOther(
+                  restored.name,
+                  row.original_path ?? `~/src/${restored.name}`,
+                ),
           );
           onRestored?.();
         },
@@ -222,17 +225,18 @@ function TrashSettings({
           if (result.state === "deleted") {
             setPurge(undefined);
             setStatus(
-              `${rowName(row)} poistettu pysyvästi.${row.size_bytes ? ` ${bytes(row.size_bytes)} vapautui.` : ""}`,
+              txt.purged(
+                rowName(row),
+                row.size_bytes ? bytes(row.size_bytes) : undefined,
+              ),
             );
             onFreed();
           } else if (result.state === "blocked") {
             setPurgeProblem(
-              `Ei poistettu: ${(result.blockers ?? []).map(plain).join(" ")}`,
+              txt.notPurged((result.blockers ?? []).map(plain).join(" ")),
             );
           } else {
-            setPurgeProblem(
-              `Osa jäi poistamatta (${result.remaining ?? 1}). Yritä uudelleen.`,
-            );
+            setPurgeProblem(txt.partlyPurged(result.remaining ?? 1));
             onFreed();
           }
         },
@@ -252,7 +256,7 @@ function TrashSettings({
           setEmptyOpen(false);
           onFreed();
           if (!result.kept.length) {
-            setStatus("Roskakori tyhjennetty.");
+            setStatus(txt.emptied);
             return;
           }
           const names = new Map(
@@ -263,12 +267,12 @@ function TrashSettings({
               k.state === "blocked"
                 ? (k.blockers ?? []).map(plain).join(" ")
                 : k.state === "partial"
-                  ? "osa jäi poistamatta."
-                  : "se ei ollut enää sama kohde.";
+                  ? txt.keptPartial
+                  : txt.keptChanged;
             return `${names.get(k.entry) ?? k.entry}: ${why}`;
           });
           setStatus(
-            `${result.deleted} poistettiin, ${result.kept.length} jäi. ${kept.join(" ")}`,
+            txt.emptiedSome(result.deleted, result.kept.length, kept.join(" ")),
           );
         },
         (e) => {
@@ -292,7 +296,7 @@ function TrashSettings({
       aria-labelledby="trash-heading"
     >
       <div className="ah-trash-head">
-        <h3 id="trash-heading">Roskakori</h3>
+        <h3 id="trash-heading">{txt.trash}</h3>
         <ControlButton
           data-testid="open-empty-trash"
           variant="danger-subtle"
@@ -302,25 +306,25 @@ function TrashSettings({
             setEmptyOpen(true);
           }}
         >
-          Tyhjennä roskakori…
+          {txt.emptyOpen}
         </ControlButton>
       </div>
       <p className="ah-trash-intro">
-        Poistetut kansiot säilyvät täällä kokonaisina, kunnes poistat ne
-        pysyvästi. Tämä on kotihakemistosi roskakori (
-        <code>~/.local/share/Trash</code>), jonka myös <code>gio trash</code>{" "}
-        näkee.
+        {txt.trashIntro(
+          <code>~/.local/share/Trash</code>,
+          <code>gio trash</code>,
+        )}
       </p>
       {status ? <p role="status">{status}</p> : null}
       {loadProblem ? (
         <p role="alert">
-          Roskakoria ei voitu lukea. {loadProblem}{" "}
+          {txt.trashReadFailed} {loadProblem}{" "}
           <ControlButton variant="quiet" size="row" onPress={reload}>
-            Yritä uudelleen
+            {txt.retry}
           </ControlButton>
         </p>
       ) : !listing ? (
-        <p>Luetaan roskakoria…</p>
+        <p>{txt.trashReading}</p>
       ) : (
         <TrashList
           rows={rows}

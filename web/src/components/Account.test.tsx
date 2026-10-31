@@ -97,7 +97,9 @@ describe("account presentation", () => {
     expect(screen.getByTestId("logout-open")).toBeTruthy();
     expect(screen.queryByRole("group")).toBeNull();
     fireEvent.click(screen.getByTestId("settings-ulkoasu"));
-    expect(screen.getByRole("group").querySelectorAll("svg")).toHaveLength(3);
+    expect(
+      screen.getByRole("group", { name: "Teema" }).querySelectorAll("svg"),
+    ).toHaveLength(3);
     expect(screen.queryByTestId("logout-open")).toBeNull();
   });
   it("keeps the account popover actions and selected theme", async () => {

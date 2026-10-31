@@ -29,13 +29,17 @@ import { ControlButton, LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
 import { relativeRecapAge } from "./RecapCard";
 import "./WorkspaceTrash.css";
+import { liveText } from "../i18n";
+import { trashText } from "../text/trash";
+
+const txt = liveText(trashText);
 
 // Workspace deletion and the Trash, direction Tallennustila of the
 // 2026-10-17 round with Jari's decisions: one confirmation that checks
 // first, the Trash under Asetukset › Tallennustila, no "move to Trash anyway"
 // for a clean clone, and emptying the Trash behind a confirmation.
 
-export const trashPlace = "Asetukset › Tallennustila";
+export const trashPlace = () => txt.trashPlace;
 export const trashHref = settingsHref("tila");
 
 function Segments({ parts }: { parts: Segment[] }) {
@@ -63,8 +67,8 @@ function CopyCommand({ command }: { command: string }) {
         variant="quiet"
         presentation="icon"
         size="row"
-        aria-label="Kopioi komento"
-        title={done ? "Kopioitu" : "Kopioi komento"}
+        aria-label={txt.copyCommand}
+        title={done ? txt.copied : txt.copyCommand}
         isDisabled={!navigator.clipboard}
         onPress={() => {
           void navigator.clipboard.writeText(command).then(() => {
@@ -115,7 +119,9 @@ export function BlockerList<B extends { agent_id?: string } = DeletionBlocker>({
                   href={link.href}
                   kind="inline"
                 >
-                  {link.title ? `Avaa ${link.title}` : "Avaa keskustelu"}
+                  {link.title
+                    ? txt.openNamed(link.title)
+                    : txt.openConversation}
                 </LinkRow>
               ) : null}
             </div>
@@ -218,11 +224,11 @@ export function WorkspaceDeleteDialog({
   const label =
     view.state === "checked" || view.state === "working"
       ? view.check.outcome === "blocked"
-        ? `Työtilaa ${name} ei voi poistaa nyt`
+        ? txt.labelBlocked(name)
         : view.check.outcome === "permanent"
-          ? `Poistetaanko ${name}?`
-          : `Siirretäänkö ${name} roskakoriin?`
-      : `Poista ${name}`;
+          ? txt.labelPermanent(name)
+          : txt.labelTrash(name)
+      : txt.labelDelete(name);
   return (
     <TrashModal
       label={label}
@@ -233,19 +239,17 @@ export function WorkspaceDeleteDialog({
       {view.state === "checking" ? (
         <p className="ah-trash-checking" role="status">
           <span className="ah-trash-spin" aria-hidden="true" />
-          <span>
-            Tarkistetaan, käyttääkö jokin työtilaa <code>{name}</code>…
-          </span>
+          <span>{txt.checking(<code>{name}</code>)}</span>
         </p>
       ) : view.state === "failed" ? (
         <>
           <Heading slot="title">
-            Työtilaa <code>{name}</code> ei voitu tarkistaa
+            {txt.checkFailedTitle(<code>{name}</code>)}
           </Heading>
           <p role="alert">{view.problem}</p>
           <div className="ah-dialog-actions">
             <ControlButton size="page" variant="secondary" onPress={onClose}>
-              Sulje
+              {txt.close}
             </ControlButton>
             <ControlButton
               data-testid="recheck"
@@ -253,7 +257,7 @@ export function WorkspaceDeleteDialog({
               variant="primary"
               onPress={onRecheck}
             >
-              Tarkista uudelleen
+              {txt.recheck}
             </ControlButton>
           </div>
         </>
@@ -315,7 +319,7 @@ function DeletionBody({
   const recheck = (
     <div className="ah-dialog-actions">
       <ControlButton size="page" variant="secondary" onPress={onClose}>
-        Sulje
+        {txt.close}
       </ControlButton>
       <ControlButton
         data-testid="recheck"
@@ -323,25 +327,21 @@ function DeletionBody({
         variant="primary"
         onPress={onRecheck}
       >
-        Tarkista uudelleen
+        {txt.recheck}
       </ControlButton>
     </div>
   );
   if (check.outcome === "blocked")
     return (
       <>
-        <Heading slot="title">
-          Työtilaa <code>{name}</code> ei voi poistaa nyt
-        </Heading>
-        <p>Nämä käyttävät työtilaa. Mitään ei ole siirretty.</p>
+        <Heading slot="title">{txt.blockedTitle(<code>{name}</code>)}</Heading>
+        <p>{txt.inUse}</p>
         <BlockerList
           blockers={check.blockers}
           conversation={conversation}
           action={blockerAction}
         />
-        <p className="ah-trash-sub">
-          Keskustelut ja Gitin muutokset eivät estä poistoa.
-        </p>
+        <p className="ah-trash-sub">{txt.notBlocking}</p>
         {alert}
         {recheck}
       </>
@@ -352,45 +352,46 @@ function DeletionBody({
     return (
       <>
         <Heading slot="title">
-          Poistetaanko <code>{name}</code>?
+          {txt.permanentTitle(<code>{name}</code>)}
         </Heading>
         <p>
-          Kaikki on tallessa etärepossa
-          {remote ? (
-            <>
-              {" "}
-              <code>{remote}</code>
-            </>
-          ) : null}
-          , joten työtila poistetaan pysyvästi. Sen saa takaisin kloonaamalla.
+          {txt.allRemote(
+            remote ? (
+              <>
+                {" "}
+                <code>{remote}</code>
+              </>
+            ) : null,
+          )}
         </p>
         <Facts
           tone="ok"
           items={[
-            "Ei muutoksia eikä uusia tiedostoja",
-            `Kaikki commitit ovat etärepossa${git.fetched_at ? ` (haettu ${relativeRecapAge(git.fetched_at * 1000, now)})` : ""}`,
-            "Ei stash-merkintöjä",
+            txt.noChanges,
+            txt.allCommits(
+              git.fetched_at
+                ? relativeRecapAge(git.fetched_at * 1000, now)
+                : undefined,
+            ),
+            txt.noStash,
           ]}
         />
         <p className="ah-trash-note">
           <Icon name="refresh" />
-          <span>
-            Etärepo haetaan vielä ennen poistoa. Jos jotain puuttuu, työtila
-            menee roskakoriin.
-          </span>
+          <span>{txt.fetchFirst}</span>
         </p>
         {git.ignored ? (
           <p className="ah-trash-note warn">
             <Icon name="warning" />
             <span>
-              Gitin ohittamat tiedostot häviävät:{" "}
+              {txt.ignoredLost}{" "}
               {ignored.map((p, i) => (
                 <span key={p}>
                   {i ? ", " : ""}
                   <code>{p}</code>
                 </span>
               ))}
-              {more > 0 ? ` ja ${more} muuta` : ""}.
+              {more > 0 ? txt.andMore(more) : ""}.
             </span>
           </p>
         ) : null}
@@ -407,7 +408,7 @@ function DeletionBody({
               isDisabled={!!working}
               autoFocus
             >
-              Peruuta
+              {txt.cancel}
             </ControlButton>
             <ControlButton
               data-testid="purge-workspace"
@@ -417,34 +418,27 @@ function DeletionBody({
               isDisabled={!!working}
               onPress={() => onConfirm("permanent")}
             >
-              Poista pysyvästi
+              {txt.deletePermanently}
             </ControlButton>
           </div>
         )}
       </>
     );
   }
-  const only =
-    facts.kind === "git"
-      ? onlyHere(git)
-      : ["Hakemisto ei ole Git-repo, joten sen sisältö on vain täällä."];
+  const only = facts.kind === "git" ? onlyHere(git) : [txt.notGit];
   return (
     <>
-      <Heading slot="title">
-        Siirretäänkö <code>{name}</code> roskakoriin?
-      </Heading>
+      <Heading slot="title">{txt.trashTitle(<code>{name}</code>)}</Heading>
       <p>
-        Sen voi palauttaa kohdasta {trashPlace}
-        {facts.size_bytes
-          ? ` (${facts.size_complete ? "" : "yli "}${bytes(facts.size_bytes)})`
-          : ""}
-        .
+        {txt.restoreFrom(
+          txt.trashPlace,
+          facts.size_bytes ? bytes(facts.size_bytes) : undefined,
+          !facts.size_complete,
+        )}
       </p>
       {only.length ? (
         <>
-          <p className="ah-trash-lead">
-            Roskakoriin eikä suoraan pois, koska tämä on vain täällä:
-          </p>
+          <p className="ah-trash-lead">{txt.onlyHereLead}</p>
           <Facts tone="warn" items={only} />
         </>
       ) : null}
@@ -461,7 +455,7 @@ function DeletionBody({
             isDisabled={!!working}
             autoFocus
           >
-            Peruuta
+            {txt.cancel}
           </ControlButton>
           <ControlButton
             data-testid="trash-workspace"
@@ -471,7 +465,7 @@ function DeletionBody({
             isDisabled={!!working}
             onPress={() => onConfirm("trash")}
           >
-            Siirrä roskakoriin
+            {txt.moveToTrash}
           </ControlButton>
         </div>
       )}
@@ -506,7 +500,11 @@ export function StorageUsage({
         data-testid="storage-usage"
         className="ah-trash-bar"
         role="img"
-        aria-label={`Käytössä ${bytes(usage)} / ${bytes(limit)}${trash !== undefined ? `, roskakorissa ${bytes(inTrash)}` : ""}`}
+        aria-label={txt.usageLabel(
+          bytes(usage),
+          bytes(limit),
+          trash !== undefined ? bytes(inTrash) : undefined,
+        )}
       >
         <span className="other" style={{ width: pct(usage - inTrash) }} />
         <span className="trash" style={{ width: pct(inTrash) }} />
@@ -514,13 +512,13 @@ export function StorageUsage({
       <ul className="ah-trash-legend">
         <li>
           <span className="ah-trash-swatch other" />
-          <span>Työtilat, agentin historia ja välimuistit</span>
+          <span>{txt.usageOther}</span>
           <code>{bytes(usage - inTrash)}</code>
         </li>
         {trash !== undefined ? (
           <li>
             <span className="ah-trash-swatch trash" />
-            <span>Roskakori</span>
+            <span>{txt.trash}</span>
             <code>{bytes(inTrash)}</code>
           </li>
         ) : null}
@@ -547,35 +545,33 @@ export function TrashList({
     return (
       <p className="ah-trash-empty">
         <Icon name="trash" />
-        <span data-testid="trash-empty">Roskakori on tyhjä.</span>
+        <span data-testid="trash-empty">{txt.empty}</span>
       </p>
     );
   return (
     <ul
       data-testid="trash-list"
       className="ah-trash-list"
-      aria-label="Roskakori"
+      aria-label={txt.trash}
     >
       {rows.map((row) => {
         const name = rowName(row);
         const why =
           row.restore === "name_taken"
-            ? `${row.original_path ?? `~/src/${name}`} on jo käytössä. Nimeä tai poista se ensin.`
+            ? txt.nameTaken(row.original_path ?? `~/src/${name}`)
             : row.restore === "parent_missing"
-              ? "Palautuskansio puuttuu. Luo alkuperäinen kansio uudelleen ennen palautusta."
+              ? txt.parentMissing
               : row.restore === "unavailable"
                 ? row.kind === "unlabelled"
-                  ? "Alkuperäistä paikkaa ei tiedetä, joten tämän voi vain poistaa."
-                  : "Palautusta ei voitu tarkistaa juuri nyt."
+                  ? txt.unknownPlace
+                  : txt.restoreUnknown
                 : "";
         const meta = [
-          row.deleted_at ? `Poistettu ${deletedAt(row.deleted_at, now)}` : "",
+          row.deleted_at ? txt.deleted(deletedAt(row.deleted_at, now)) : "",
           row.size_bytes !== undefined
-            ? `${row.size_complete ? "" : "yli "}${bytes(row.size_bytes)}`
+            ? txt.size(bytes(row.size_bytes), !row.size_complete)
             : "",
-          row.conversations
-            ? `${row.conversations} ${row.conversations === 1 ? "keskustelu" : "keskustelua"}`
-            : "",
+          row.conversations ? txt.conversations(row.conversations) : "",
         ].filter(Boolean);
         return (
           <li
@@ -598,7 +594,7 @@ export function TrashList({
                 <span className="ah-trash-chips">
                   {(row.facts.git
                     ? gitChips(row.facts.git)
-                    : [{ text: "vain täällä", tone: "warn" as const }]
+                    : [{ text: txt.onlyHereChip, tone: "warn" as const }]
                   ).map((c) => (
                     <span key={c.text} className={`ah-trash-chip ${c.tone}`}>
                       {c.text}
@@ -615,20 +611,20 @@ export function TrashList({
                 size="row"
                 isDisabled={row.restore !== "available" || !!busy}
                 isPending={busy === row.entry}
-                aria-label={`Palauta ${name}`}
+                aria-label={txt.restoreNamed(name)}
                 onPress={() => onRestore(row)}
               >
-                Palauta
+                {txt.restore}
               </ControlButton>
               <ControlButton
                 data-testid="purge-trash"
                 variant="danger-subtle"
                 size="row"
                 isDisabled={!!busy}
-                aria-label={`Poista ${name} pysyvästi…`}
+                aria-label={txt.purgeNamed(name)}
                 onPress={() => onPurge(row)}
               >
-                Poista pysyvästi…
+                {txt.purge}
               </ControlButton>
             </span>
           </li>
@@ -658,15 +654,11 @@ export function TrashPurgeDialog({
   const name = row ? rowName(row) : "";
   const facts = row?.facts;
   const only =
-    facts?.kind === "git"
-      ? onlyHere(facts.git)
-      : facts
-        ? ["Hakemisto ei ole Git-repo, joten sen sisältö on vain täällä."]
-        : [];
+    facts?.kind === "git" ? onlyHere(facts.git) : facts ? [txt.notGit] : [];
   const size = facts?.size_bytes ?? row?.size_bytes;
   return (
     <TrashModal
-      label={`Poistetaanko ${name} pysyvästi?`}
+      label={txt.purgeLabel(name)}
       isOpen={!!row}
       onClose={() => {
         setTyped("");
@@ -674,38 +666,29 @@ export function TrashPurgeDialog({
       }}
       dismissable={!busy}
     >
-      <Heading slot="title">
-        Poistetaanko <code>{name}</code> pysyvästi?
-      </Heading>
-      <p>
-        Tätä ei voi perua.
-        {size ? ` ${bytes(size)} vapautuu.` : ""}
-      </p>
+      <Heading slot="title">{txt.purgeTitle(<code>{name}</code>)}</Heading>
+      <p>{txt.cannotUndo(size ? bytes(size) : undefined)}</p>
       {!facts ? (
-        <p className="ah-trash-sub">Luetaan, mitä siinä on…</p>
+        <p className="ah-trash-sub">{txt.reading}</p>
       ) : row?.kind !== "workspace" ? (
-        <p className="ah-trash-sub">
-          Kansio ja sen sisältö poistetaan tältä palvelimelta.
-        </p>
+        <p className="ah-trash-sub">{txt.folderRemoved}</p>
       ) : only.length ? (
         <>
-          <p className="ah-trash-lead">
-            Häviää lopullisesti, koska se on vain täällä:
-          </p>
+          <p className="ah-trash-lead">{txt.lostForever}</p>
           <Facts tone="warn" items={only} />
         </>
       ) : (
         <p className="ah-trash-note">
           <Icon name="check" />
           <span>
-            Kaikki on etärepossa
-            {remote ? (
-              <>
-                {" "}
-                <code>{remote}</code>
-              </>
-            ) : null}
-            .
+            {txt.everythingRemote(
+              remote ? (
+                <>
+                  {" "}
+                  <code>{remote}</code>
+                </>
+              ) : null,
+            )}
           </span>
         </p>
       )}
@@ -727,9 +710,7 @@ export function TrashPurgeDialog({
           onChange={setTyped}
           autoFocus
         >
-          <Label>
-            Kirjoita <code>{name}</code> vahvistukseksi
-          </Label>
+          <Label>{txt.typeToConfirm(<code>{name}</code>)}</Label>
           <Input autoComplete="off" spellCheck={false} />
         </TextField>
         {problem ? <p role="alert">{problem}</p> : null}
@@ -743,7 +724,7 @@ export function TrashPurgeDialog({
               onClose();
             }}
           >
-            Peruuta
+            {txt.cancel}
           </ControlButton>
           <ControlButton
             data-testid="purge-workspace"
@@ -753,7 +734,7 @@ export function TrashPurgeDialog({
             isPending={busy}
             isDisabled={typed !== name || busy}
           >
-            Poista pysyvästi
+            {txt.deletePermanently}
           </ControlButton>
         </div>
       </form>
@@ -781,16 +762,13 @@ export function TrashEmptyDialog({
 }) {
   return (
     <TrashModal
-      label="Tyhjennetäänkö roskakori?"
+      label={txt.emptyQuestion}
       isOpen={isOpen}
       onClose={onClose}
       dismissable={!busy}
     >
-      <Heading slot="title">Tyhjennetäänkö roskakori?</Heading>
-      <p>
-        {count === 1 ? "1 kohde" : `${count} kohdetta`} poistetaan pysyvästi
-        {size ? `, ja ${bytes(size)} vapautuu` : ""}. Tätä ei voi perua.
-      </p>
+      <Heading slot="title">{txt.emptyQuestion}</Heading>
+      <p>{txt.emptyBody(count, size ? bytes(size) : undefined)}</p>
       {problem ? <p role="alert">{problem}</p> : null}
       <div className="ah-dialog-actions">
         <ControlButton
@@ -800,7 +778,7 @@ export function TrashEmptyDialog({
           onPress={onClose}
           autoFocus
         >
-          Peruuta
+          {txt.cancel}
         </ControlButton>
         <ControlButton
           data-testid="empty-trash"
@@ -810,7 +788,7 @@ export function TrashEmptyDialog({
           isDisabled={busy}
           onPress={onConfirm}
         >
-          Tyhjennä roskakori
+          {txt.emptyTrash}
         </ControlButton>
       </div>
     </TrashModal>

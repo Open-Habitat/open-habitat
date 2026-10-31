@@ -9,9 +9,13 @@ import {
   refused,
 } from "../components/ModelPicker";
 import { modelDisplayName } from "../components/modelPresentation";
+import { liveText } from "../i18n";
+import { modelsText } from "../text/models";
 import { read as readClaudeLogin } from "./ClaudeSignIn";
 import { usePiModels } from "./PiModels";
 import { settingsHref } from "./settingsRoute";
+
+const txt = liveText(modelsText);
 
 export { loadPiModels, type Models } from "./PiModels";
 export type Choice = {
@@ -19,13 +23,7 @@ export type Choice = {
   model: string;
   thinking?: string;
 };
-const providerLabels: Record<PiProvider, string> = {
-  "openai-codex": "ChatGPT-tilaus",
-  openai: "OpenAI API",
-  anthropic: "Anthropic API",
-  deepseek: "DeepSeek API",
-  "claude-bridge": "Claude-tilaus",
-};
+const providerLabel = (provider: PiProvider) => txt.routes[provider];
 /** A selection is Pi's global default, an explicit new-session intent, or
  * (scope background) the model the recap prefers, where current undefined is
  * the automatic choice and onAutomatic chooses it again. */
@@ -225,14 +223,14 @@ export function PiModelSelector({
         <>
           {data.catalog_status === "unavailable" ? (
             <p role="alert" data-testid="model-catalog-unavailable">
-              Agentin malliluetteloa ei saatu. Alla ovat vain keskusteluista
-              tutut mallit. Tarkista kirjautumiset kohdassa{" "}
-              <a href={settingsHref("tekoaly")}>Tekoäly</a>.
+              {txt.catalogUnavailable(
+                <a href={settingsHref("tekoaly")}>{txt.ai}</a>,
+              )}
             </p>
           ) : null}
           <div className="s-row">
             <Segmented
-              label="Palveluntarjoaja"
+              label={txt.provider}
               // Anthropic and DeepSeek appear once their key has models.
               options={(
                 [
@@ -251,7 +249,7 @@ export function PiModelSelector({
                 )
                 .map((p) => ({
                   id: p,
-                  label: providerLabels[p],
+                  label: providerLabel(p),
                   isDisabled:
                     busy ||
                     (p === "claude-bridge" && !claudeReady) ||
@@ -269,13 +267,12 @@ export function PiModelSelector({
           </div>
           {!claudeReady ? (
             <p className="md-note" data-testid="claude-provider-unavailable">
-              Claude-tilaus ei ole käytettävissä: kirjautumista ei ole
-              vahvistettu.{" "}
+              {txt.claudeUnavailable}{" "}
               <a
                 data-testid="settings-claude"
                 href={settingsHref("tekoaly", "claude")}
               >
-                Tekoäly-asetukset
+                {txt.aiSettings}
               </a>
             </p>
           ) : null}
@@ -286,8 +283,9 @@ export function PiModelSelector({
               (m.provider ?? "openai-codex") === data.default_provider,
           ) ? (
             <p className="md-note">
-              Nykyinen agentin oletus: {data.default_provider}/
-              {data.default_model}. Sitä ei muuteta automaattisesti.
+              {txt.currentDefault(
+                `${data.default_provider}/${data.default_model}`,
+              )}
             </p>
           ) : null}
           <ModelPicker
@@ -312,15 +310,21 @@ export function PiModelSelector({
             }
             unavailable={
               scope === "background"
-                ? (m) => (backgroundExcluded(m) ? "Ei taustatöihin" : undefined)
+                ? (m) =>
+                    backgroundExcluded(m) ? txt.notForBackground : undefined
                 : undefined
             }
             auto={
               scope === "background"
                 ? {
                     detail: data.background_models?.[provider]
-                      ? `Nyt ${modelDisplayName(`${provider}/${data.background_models[provider]}`, data.models)}`
-                      : "Keskustelun oma malli",
+                      ? txt.now(
+                          modelDisplayName(
+                            `${provider}/${data.background_models[provider]}`,
+                            data.models,
+                          ),
+                        )
+                      : txt.conversationOwn,
                     selected: !current,
                     onSelect: () => void commit("automatic"),
                   }
@@ -334,7 +338,7 @@ export function PiModelSelector({
                 checked={also}
                 onChange={(e) => setAlso(e.target.checked)}
               />
-              Tee siitä myös uusien keskustelujen oletus
+              {txt.alsoDefault}
             </label>
           ) : null}
           {scope === "conversation" ||
@@ -344,17 +348,14 @@ export function PiModelSelector({
               className={scope === "empty" ? "md-picker-actions" : undefined}
             >
               {scope !== "empty" ? (
-                <p className="md-note">
-                  Tämän keskustelun mallia ei vaihdeta. Aiemmin lähetettyä
-                  viestiä ei toisteta. Luonnos säilyy.
-                </p>
+                <p className="md-note">{txt.notChanged}</p>
               ) : (
                 <a
                   className="md-note"
                   data-testid="model-default-settings"
                   href={settingsHref("tekoaly", "default-model")}
                 >
-                  Muuta oletusmallia
+                  {txt.changeDefault}
                 </a>
               )}
               <ControlButton
@@ -376,18 +377,14 @@ export function PiModelSelector({
                 }}
               >
                 {scope === "empty"
-                  ? "Valitse"
-                  : `Aloita uusi keskustelu mallilla ${selected ?? "…"}`}
+                  ? txt.choose
+                  : txt.startWith(selected ?? "…")}
               </ControlButton>
             </div>
           ) : null}
           {scope === "default" ? (
             <div>
-              <p className="md-note">
-                Tallentuu Pi:n omaan oletukseen (~/.pi/agent/settings.json),
-                joten sama malli on käytössä myös SSH:lla. Avoimet keskustelut
-                eivät vaihdu.
-              </p>
+              <p className="md-note">{txt.savedToPi}</p>
             </div>
           ) : scope === "new" ? (
             <a
@@ -395,15 +392,13 @@ export function PiModelSelector({
               data-testid="model-default-settings"
               href={settingsHref("tekoaly", "default-model")}
             >
-              Muuta oletusmallia
+              {txt.changeDefault}
             </a>
           ) : null}
         </>
       ) : (
         <p className="md-note">
-          {error || loadError
-            ? "Agentin malleja ei saada. Tarkista kirjautuminen."
-            : "Ladataan agentin malleja…"}
+          {error || loadError ? txt.noModels : txt.loadingModels}
         </p>
       )}
       <p
@@ -413,23 +408,19 @@ export function PiModelSelector({
         data-pending={scope === "default" && defaultSlow}
       >
         {busy
-          ? "Tallennetaan valintaa…"
+          ? txt.saving
           : scope === "default" && defaultSlow
-            ? "Agentti vahvistaa valintaa…"
+            ? txt.confirming
             : confirmed
-              ? "Valinta vahvistettu."
+              ? txt.confirmed
               : ""}
       </p>
       {scope === "default" && defaultRefusal ? (
         <p role="alert" data-testid="model-save-refused">
-          Oletusta ei vaihdettu: {defaultRefusal} Aiempi valinta palautettiin.
+          {txt.defaultRefused(defaultRefusal)}
         </p>
       ) : null}
-      {error && data ? (
-        <p role="alert">
-          Mallin tallennusta ei voitu vahvistaa. Yritä uudelleen.
-        </p>
-      ) : null}
+      {error && data ? <p role="alert">{txt.saveUncertain}</p> : null}
     </div>
   );
 }

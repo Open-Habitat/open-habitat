@@ -1,3 +1,5 @@
+import { useText } from "../i18n";
+import { landingText } from "../text/landing";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import "./Landing.css";
@@ -25,9 +27,6 @@ export function LandingMark() {
   );
 }
 
-export const landingSlowText =
-  "Palvelin vastaa tavallista hitaammin. Odotetaan yhä; voit jättää sivun auki.";
-
 /**
  * The loading landing (Merkki): the product's own moment before the app.
  * The caller owns timing: `revealed` turns on 300 ms after the load began,
@@ -49,6 +48,7 @@ export function Landing({
   onRetry?: () => void;
 }) {
   const failed = state === "failed";
+  const t = useText(landingText);
   return (
     <div
       className="ah-landing"
@@ -70,13 +70,10 @@ export function Landing({
               data-testid="workspaces-unavailable-title"
               className="ah-landing-say"
             >
-              Työtiloja ei saatu näkyviin
+              {t.failedTitle}
             </h2>
             <div className="ah-landing-more">
-              <p data-testid="landing-failure-detail">
-                Palvelin ei vastannut. Tämä ei tarkoita, että työtilasi olisivat
-                kadonneet.
-              </p>
+              <p data-testid="landing-failure-detail">{t.failedDetail}</p>
               {onRetry ? (
                 <ControlButton
                   data-testid="retry"
@@ -85,7 +82,7 @@ export function Landing({
                   onPress={onRetry}
                 >
                   <Icon name="refresh" />
-                  Yritä uudelleen
+                  {t.retry}
                 </ControlButton>
               ) : null}
             </div>
@@ -93,14 +90,10 @@ export function Landing({
         ) : (
           <>
             <p className="ah-landing-say" role="status">
-              {name
-                ? `Hei ${name}. Haetaan työtilojasi…`
-                : "Yhdistetään palvelimeen…"}
+              {name ? t.greeting(name) : t.connecting}
             </p>
             <div className="ah-landing-more">
-              {slow ? (
-                <p data-testid="landing-slow">{landingSlowText}</p>
-              ) : null}
+              {slow ? <p data-testid="landing-slow">{t.slow}</p> : null}
             </div>
           </>
         )}

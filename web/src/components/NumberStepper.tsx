@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { controlClassName } from "./ControlElements";
 import "./NumberControls.css";
+import { formatNumber as formatLocal, liveText } from "../i18n";
+import { recapSettingsText } from "../text/recapSettings";
 
-const grouped = new Intl.NumberFormat("fi-FI");
-/** A number as Finnish text: 16 000. */
-export const formatNumber = (value: number) => grouped.format(value);
+const txt = liveText(recapSettingsText);
+
+/** A number as the interface's language writes it: 16 000, 16,000. */
+export const formatNumber = (value: number) => formatLocal(value);
 
 /** A bounded whole number with − and + buttons and its unit. A typed value
  * commits on Enter or leaving the field and is held within the bounds. */
@@ -33,7 +36,7 @@ export function NumberStepper({
   useEffect(() => setDraft(String(value)), [value]);
   const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v)));
   const commit = () => {
-    const parsed = Number(draft.replace(/\s/g, ""));
+    const parsed = Number(draft.replace(/[\s,]/g, ""));
     const next =
       Number.isFinite(parsed) && draft.trim() ? clamp(parsed) : value;
     setDraft(String(next));
@@ -50,7 +53,7 @@ export function NumberStepper({
         type="button"
         className={button}
         data-testid={testId && `${testId}-less`}
-        aria-label={`${label}: vähemmän`}
+        aria-label={txt.less(label)}
         disabled={disabled || value <= min}
         onClick={() => onChange(clamp(value - step))}
       >
@@ -78,7 +81,7 @@ export function NumberStepper({
         type="button"
         className={button}
         data-testid={testId && `${testId}-more`}
-        aria-label={`${label}: enemmän`}
+        aria-label={txt.more(label)}
         disabled={disabled || value >= max}
         onClick={() => onChange(clamp(value + step))}
       >

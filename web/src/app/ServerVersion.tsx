@@ -1,14 +1,18 @@
 import { useEffect } from "react";
 import { ControlButton } from "../components/ControlElements";
+import { liveText } from "../i18n";
+import { serverVersionText } from "../text/serverVersion";
 import {
   checkBundle,
   reloadForNewBundle,
   useBundleState,
 } from "./bundleRelease";
 
+const txt = liveText(serverVersionText);
+
 /** Release version and short commit, as the gateway reports them. */
 export function versionLabel(version?: string, commit?: string) {
-  if (!version) return "ei saatu";
+  if (!version) return txt.missing;
   return commit ? `${version} (${commit.slice(0, 7)})` : version;
 }
 
@@ -20,22 +24,20 @@ function TabState() {
     return (
       <>
         <span data-testid="bundle-state" data-state={bundle.status}>
-          Tämä välilehti käyttää vanhempaa versiota.
+          {txt.older}
         </span>
         <ControlButton
           data-testid="version-reload"
           size="row"
           onPress={reloadForNewBundle}
         >
-          Lataa uudelleen
+          {txt.reload}
         </ControlButton>
       </>
     );
   return (
     <span data-testid="bundle-state" data-state={bundle.status}>
-      {bundle.status === "current"
-        ? "Tämä välilehti on ajan tasalla."
-        : "Välilehden versiota ei ole vielä tarkistettu."}
+      {bundle.status === "current" ? txt.current : txt.unchecked}
     </span>
   );
 }
@@ -56,8 +58,8 @@ export function ServerVersionRow({
       tabIndex={-1}
     >
       <div className="s-lbl">
-        <strong>Versio</strong>
-        <span className="s-desc">Palvelimella nyt käynnissä oleva versio.</span>
+        <strong>{txt.version}</strong>
+        <span className="s-desc">{txt.desc}</span>
       </div>
       <div className="s-val s-version">
         <code data-testid="version-value">{versionLabel(version, commit)}</code>
@@ -77,7 +79,7 @@ export function ServerVersionLine({
 }) {
   return (
     <p className="md-note s-version-line">
-      Palvelimen versio:{" "}
+      {txt.line}{" "}
       <code data-testid="version-value">{versionLabel(version, commit)}</code>{" "}
       <TabState />
     </p>

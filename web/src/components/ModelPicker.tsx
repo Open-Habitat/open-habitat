@@ -1,7 +1,11 @@
 import "./ModelPicker.css";
 import { useId } from "react";
+import { liveText } from "../i18n";
+import { modelsText } from "../text/models";
 import { Segmented } from "./ControlElements";
 import { modelCapabilityRank, modelDisplayName } from "./modelPresentation";
+
+const txt = liveText(modelsText);
 /** Pi's provider ids: the subscriptions, the API keys and the Claude bridge. */
 export type PiProvider =
   | "openai-codex"
@@ -62,16 +66,12 @@ export function ModelPicker({
   const group = useId();
   const older = models.filter((m) => m.older);
   const reason = (m: ModelChoice) =>
-    refused(m) ? "Ei käytettävissä" : unavailable?.(m);
+    refused(m) ? txt.unavailable : unavailable?.(m);
   const row = (m: ModelChoice) => (
     <label
       key={m.id}
       className="md-row"
-      title={
-        refused(m)
-          ? "Palveluntarjoaja torjui mallin tällä tunnuksella. Valitse toinen malli."
-          : undefined
-      }
+      title={refused(m) ? txt.refusedTitle : undefined}
     >
       <input
         type="radio"
@@ -100,22 +100,16 @@ export function ModelPicker({
               disabled={busy}
               onChange={auto.onSelect}
             />
-            <span className="md-t">Automaattinen</span>
+            <span className="md-t">{txt.automatic}</span>
             <span className="md-note">{auto.detail}</span>
           </label>
         </div>
       ) : null}
       {refused(models.find((m) => m.id === selected)) ? (
-        <p role="alert">
-          Nykyinen malli ei toimi tililläsi. Valitse toinen ennen uuden
-          keskustelun aloittamista.
-        </p>
+        <p role="alert">{txt.currentBroken}</p>
       ) : null}
       {models.some((m) => m.outcome === "refused" && !refused(m)) ? (
-        <p className="md-note">
-          Yli viikon vanhan torjunnan jälkeen mallin voi valita uudelleen.
-          Tilauksesi on voinut muuttua.
-        </p>
+        <p className="md-note">{txt.oldRefusal}</p>
       ) : null}
       <div className="md-rows">
         {[...models]
@@ -129,7 +123,7 @@ export function ModelPicker({
           open={older.some((m) => m.id === selected) || undefined}
         >
           <summary data-testid="older-models-toggle">
-            Vanhemmat mallit ({older.length})
+            {txt.older(older.length)}
           </summary>
           <div className="md-rows">
             {[...older]
@@ -140,9 +134,9 @@ export function ModelPicker({
       ) : null}
       {onThinking ? (
         <div className="md-think">
-          <span>Ajattelutaso</span>
+          <span>{txt.thinking}</span>
           <Segmented
-            label="Ajattelutaso"
+            label={txt.thinking}
             className="md-seg"
             options={[
               "off",
@@ -155,7 +149,7 @@ export function ModelPicker({
             ].map((level) => ({
               id: level,
               label: level,
-              title: `Mallin tukema taso: ${level}`,
+              title: txt.supportedLevel(level),
               isDisabled:
                 busy ||
                 refused(models.find((m) => m.id === selected)) ||

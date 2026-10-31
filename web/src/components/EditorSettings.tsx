@@ -1,4 +1,8 @@
+import { liveText } from "../i18n";
+import { editorSettingsText } from "../text/editorSettings";
 import { ControlButton, Segmented } from "./ControlElements";
+
+const txt = liveText(editorSettingsText);
 
 export function EditorSettingsControl({
   choice,
@@ -17,13 +21,13 @@ export function EditorSettingsControl({
     <div className="s-card" data-testid="editor-settings">
       <div className="s-row" data-settings-row="editor" tabIndex={-1}>
         <div className="s-lbl">
-          <strong>Työtilan editori</strong>
-          <span className="s-desc">Puhelimessa aina CodeMirror 6.</span>
+          <strong>{txt.label}</strong>
+          <span className="s-desc">{txt.phone}</span>
         </div>
         <div className="s-val">
           <Segmented
             data-testid="editor-choice"
-            label="Työpöydän editori"
+            label={txt.desktop}
             options={[
               { id: "codemirror6", label: "CodeMirror 6" },
               { id: "vscode", label: "VS Code" },
@@ -37,8 +41,7 @@ export function EditorSettingsControl({
       {error && (
         <div className="s-row">
           <p role="alert" data-testid="editor-preference-error">
-            Asetusta ei voitu vahvistaa. Lue tallennettu valinta uudelleen ennen
-            uutta yritystä.
+            {txt.error}
           </p>
           {onReload && (
             <ControlButton
@@ -47,7 +50,7 @@ export function EditorSettingsControl({
               onPress={onReload}
               isDisabled={disabled}
             >
-              Lue tallennettu valinta
+              {txt.reload}
             </ControlButton>
           )}
         </div>

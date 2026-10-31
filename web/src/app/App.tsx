@@ -37,6 +37,9 @@ import { refused } from "../components/ModelPicker";
 import { ArchivedWorkspaces } from "../components/Navigation";
 import type { ReturnConversation } from "../components/ReturnView";
 import { StatusBell } from "../components/StatusBell";
+import { setPersonalLanguage, textNow, useLanguage } from "../i18n";
+import { appText } from "../text/app";
+import { signInText } from "../text/signIn";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import {
   AccountPreferencesProvider,
@@ -238,6 +241,15 @@ export function App() {
     snapshot: hostSnapshot,
     filter,
   } = useSelector((s: RootState) => s.connection);
+  // Every text below follows the language; reading it here rerenders the
+  // frame when it changes.
+  const language = useLanguage();
+  const t = { app: appText[language], signIn: signInText[language] };
+  // Signed out, the language is the server default's and the browser's;
+  // signed in, AccountPreferencesProvider names the person's.
+  useEffect(() => {
+    if (phase === "authentication_required") setPersonalLanguage(undefined);
+  }, [phase]);
   const landing = useLanding(
     phase === "loading"
       ? "loading"
@@ -1320,9 +1332,9 @@ export function App() {
       single: isSingle,
       text: isSingle
         ? previous.count === 0
-          ? `${onlyName} on ainoa työtilasi, joten näkymä keskittyy siihen. Sivupalkki tulee esiin, kun lisäät toisen työtilan.`
-          : "Jäljellä on yksi työtila, joten näkymä keskittyy siihen."
-        : `Työtiloja on nyt ${visibleCount === 2 ? "kaksi" : visibleCount}, joten sivupalkki näyttää ne ryhminä.`,
+          ? textNow(appText).onlyWorkspace(onlyName)
+          : textNow(appText).oneLeft
+        : textNow(appText).manyNow(visibleCount),
     });
     setModeEnter(true);
   }, [identity, visibleCount, phase]);
@@ -2155,12 +2167,12 @@ export function App() {
             {logoutError && (
               <InlineNotice
                 data-testid="logout-uncertain"
-                title="Uloskirjautumista ei voitu vahvistaa"
-                description="Istunto voi olla edelleen voimassa. Kun yhteys toimii, yritä uloskirjautumista uudelleen."
+                title={t.signIn.logoutUncertainTitle}
+                description={t.signIn.logoutUncertainDetail}
                 tone="danger"
                 actions={[
                   {
-                    label: "Yritä uloskirjautumista uudelleen",
+                    label: t.signIn.logoutRetry,
                     onPress: logout,
                   },
                 ]}
@@ -2265,26 +2277,20 @@ export function App() {
           data-testid="conversation-observation"
           data-state={uncertain ? "unknown" : "missing"}
         >
-          {uncertain
-            ? "Keskustelun tilaa ei voitu tarkistaa"
-            : "Keskustelua ei löydy"}
+          {uncertain ? t.app.conversationUncertain : t.app.conversationMissing}
         </h1>
         <InlineNotice
-          title={
-            uncertain
-              ? "Tarkista tiedot uudelleen"
-              : "Valitse toinen keskustelu"
-          }
+          title={uncertain ? t.app.checkAgain : t.app.chooseAnother}
           description={
             uncertain
-              ? "Kaikkia tietoja ei saatu. Keskustelua ei voi vielä todeta poistuneeksi."
-              : "Se ei näy työtiloissasi. Palaa työtiloihin tai tarkista tiedot uudelleen."
+              ? t.app.conversationUncertainDetail
+              : t.app.conversationMissingDetail
           }
           tone="warning"
-          actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
+          actions={[{ label: t.app.retry, onPress: refresh }]}
         />
         <LinkRow href="/workspaces" kind="inline">
-          Kaikki työtilat
+          {t.app.allWorkspaces}
         </LinkRow>
       </>
     ) : location.pathname === "/workspaces/new" ? (
@@ -2691,8 +2697,8 @@ export function App() {
         {source !== "confirmed" ? (
           <InlineNotice
             data-testid="catalog-partial"
-            title="Kaikkia työtiloja ei voitu tarkistaa"
-            description="Kaikkia työtiloja ei voitu tarkistaa. Näet vain löytyneet työtilat; kokeile päivittää tiedot myöhemmin."
+            title={t.app.catalogPartialTitle}
+            description={t.app.catalogPartialDetail}
             tone="warning"
           />
         ) : null}
@@ -2703,21 +2709,17 @@ export function App() {
           data-testid="conversation-observation"
           data-state={uncertain ? "unknown" : "missing"}
         >
-          {uncertain
-            ? "Kohteen tilaa ei voida vahvistaa"
-            : "Kohdetta ei enää löydy"}
+          {uncertain ? t.app.targetUncertain : t.app.targetMissing}
         </h1>
         <p>
-          {uncertain
-            ? "Kaikkia työtiloja ei voitu tarkistaa. Tätä työtilaa ei löytynyt saaduista tiedoista. Yritä uudelleen."
-            : "Tätä työtilaa ei enää löydy. Voit valita toisen työtilan."}
+          {uncertain ? t.app.targetUncertainDetail : t.app.targetMissingDetail}
         </p>
         <InlineNotice
-          title="Mitä voit tehdä?"
-          actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
+          title={t.app.whatNow}
+          actions={[{ label: t.app.retry, onPress: refresh }]}
         />
         <LinkRow href="/workspaces" kind="inline">
-          Kaikki työtilat
+          {t.app.allWorkspaces}
         </LinkRow>
       </>
     ) : (
@@ -2738,17 +2740,17 @@ export function App() {
           >
             <InlineNotice
               data-testid="archive-incomplete"
-              title="Arkistoa ei voitu kokonaan tarkistaa"
+              title={t.app.archiveIncompleteTitle}
               description={[
                 snapshot.sources.find((f) => f.source === "annotation")
                   ?.state !== "confirmed"
-                  ? "Keskustelujen arkistomerkintöjä ei voitu lukea. Emme voi näyttää, mitkä keskustelut on arkistoitu."
+                  ? t.app.archiveMarksUnread
                   : "",
                 snapshot.sources.find((f) => f.source === "pi_history")
                   ?.state !== "confirmed"
-                  ? "Keskustelujen agenttihistoriaa puuttuu tai sitä ei voitu lukea. Osa keskusteluista voi puuttua arkistosta."
+                  ? t.app.archiveHistoryUnread
                   : "",
-                "Päivitä tiedot.",
+                t.app.refreshData,
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -2821,25 +2823,25 @@ export function App() {
         {source === "absent" ? (
           <InlineNotice
             data-testid="catalog-missing"
-            title="Työtilakansiota ei löydy"
-            description="Työtilakansiota ei löydy. Jos loit sen juuri, kokeile päivittää tiedot."
-            actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
+            title={t.app.catalogMissingTitle}
+            description={t.app.catalogMissingDetail}
+            actions={[{ label: t.app.retry, onPress: refresh }]}
             tone="warning"
           />
         ) : source !== "confirmed" ? (
           <InlineNotice
             data-testid="workspaces-partial"
-            title="Työtiloja ei voitu vahvistaa"
-            description="Kaikkia työtiloja ei voitu tarkistaa. Näet vain löytyneet työtilat."
-            actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
+            title={t.app.workspacesPartialTitle}
+            description={t.app.workspacesPartialDetail}
+            actions={[{ label: t.app.retry, onPress: refresh }]}
             tone="warning"
           />
         ) : visible.length === 0 ? (
           <InlineNotice
             data-testid="workspaces-empty"
-            title="Työtiloja ei vielä ole"
-            description="Työtilakansiossa ei ole vielä näkyviä työtiloja. Jos loit sellaisen juuri, päivitä tiedot."
-            actions={[{ label: "Päivitä tiedot", onPress: refresh }]}
+            title={t.app.workspacesEmptyTitle}
+            description={t.app.workspacesEmptyDetail}
+            actions={[{ label: t.app.refreshAction, onPress: refresh }]}
           />
         ) : null}
       </>
@@ -2952,10 +2954,10 @@ export function App() {
                 ? (selected.display_name ?? selected.name)
                 : undefined) ??
               (isSettingsRoute(location.pathname)
-                ? "Asetukset"
+                ? t.app.settings
                 : location.pathname === "/workspaces/new"
-                  ? "Uusi työtila"
-                  : "Etusivu")
+                  ? t.app.newWorkspace
+                  : t.app.home)
             }
             fallbackAccount={
               profile &&

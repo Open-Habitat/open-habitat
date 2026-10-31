@@ -8,9 +8,13 @@ import { LetterMark } from "../components/Integrations";
 import { type ModelChoice, refused } from "../components/ModelPicker";
 import { modelDisplayName } from "../components/modelPresentation";
 import { Badge, StatusMark } from "../components/Status";
+import { formatDate, liveText } from "../i18n";
+import { piCredentialsText } from "../text/piCredentials";
 import { mutationFetch } from "./mutations";
 import { readSiteOnboarding, type SiteOnboarding } from "./onboardingConfig";
 import { usePiModels } from "./PiModels";
+
+const txt = liveText(piCredentialsText);
 
 const valid = new Ajv({ strict: false }).compile(schema);
 /** Pi's providers whose API key a person manages here. */
@@ -32,7 +36,9 @@ const keyFits = (provider: KeyProvider, key: string) =>
     : !key.startsWith("sk-ant-"));
 const givenDay = (iso: string) => {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : `${d.getDate()}.${d.getMonth() + 1}.`;
+  return Number.isNaN(d.getTime())
+    ? ""
+    : formatDate(d, { day: "numeric", month: "numeric" });
 };
 /** The letter tiles of round 2 of proto-integration-grouping; the
  * subscriptions' tiles (Ch, Cl) are in Account. */
@@ -41,11 +47,8 @@ const marks: Record<KeyProvider, [string, 1 | 2 | 3]> = {
   anthropic: ["An", 2],
   deepseek: ["DS", 3],
 };
-const keyHint: Record<KeyProvider, string> = {
-  openai: "alkaa sk-",
-  anthropic: "alkaa sk-ant-",
-  deepseek: "alkaa sk-",
-};
+const keyHint = (provider: KeyProvider) =>
+  txt.startsWith(provider === "anthropic" ? "sk-ant-" : "sk-");
 /** OpenAI's own credential in Pi, never another provider's (subscription is
  * Pi's openai-codex sign-in). */
 export type OpenAIState =
@@ -143,8 +146,7 @@ export function PiCredentials({
         if (!controller.signal.aborted) setData(value);
       })
       .catch(() => {
-        if (!controller.signal.aborted)
-          setError("Tunnuksia ei voitu tarkistaa.");
+        if (!controller.signal.aborted) setError(txt.readFailed);
       });
     return () => controller.abort();
   }, [revision]);
@@ -185,9 +187,7 @@ export function PiCredentials({
       onSaved?.();
     } catch {
       setData(undefined);
-      setError(
-        "Muutoksen tulosta ei voitu vahvistaa. Tarkista tunnukset ennen uutta yritystä.",
-      );
+      setError(txt.uncertain);
     } finally {
       setBusy(false);
     }
@@ -216,18 +216,16 @@ export function PiCredentials({
                 {stored?.present ? (
                   <StatusMark
                     tone="success"
-                    label={
-                      stored.suffix
-                        ? `${names[provider]}-avain tallennettu · sk-…${stored.suffix}`
-                        : `${names[provider]}-avain tallennettu`
-                    }
+                    label={txt.stored(
+                      names[provider],
+                      stored.suffix ?? undefined,
+                    )}
                   />
                 ) : null}
               </div>
               <label className="ah-key-embedded-field">
                 <strong>
-                  {stored?.present ? "Uusi " : ""}
-                  {names[provider]} API-avain
+                  {txt.apiKey(names[provider], !!stored?.present)}
                 </strong>
                 <span className="ah-inline-field">
                   <input
@@ -247,18 +245,17 @@ export function PiCredentials({
                     type="submit"
                     isDisabled={busy || !csrf || !keyFits(provider, key)}
                   >
-                    Tallenna
+                    {txt.save}
                   </ControlButton>
                 </span>
               </label>
               <p className="ah-sign-in-hint">
                 {wrong ? (
                   <span role="alert">
-                    Tämä ei näytä {names[provider]}-avaimelta (
-                    {keyHint[provider]}).
+                    {txt.notThisKey(names[provider], keyHint(provider))}
                   </span>
                 ) : (
-                  `Avain tallentuu vain omalle käyttäjällesi eikä sitä näytetä uudelleen. ${names[provider]} laskuttaa käytöstä.`
+                  txt.ownOnly(names[provider])
                 )}
               </p>
               {error && (
@@ -271,7 +268,7 @@ export function PiCredentials({
                       setRevision((r) => r + 1);
                     }}
                   >
-                    Tarkista tunnukset
+                    {txt.checkCredentials}
                   </ControlButton>
                 </div>
               )}
@@ -298,7 +295,7 @@ export function PiCredentials({
     const stored = data?.[provider];
     return stored?.suffix
       ? `${provider === "anthropic" ? "sk-ant-" : "sk-"}…${stored.suffix}`
-      : "ei kirjaimellinen avain";
+      : txt.notLiteral;
   };
   const close = () => {
     setKey("");
@@ -314,7 +311,7 @@ export function PiCredentials({
       aria-labelledby="api-keys-heading"
     >
       <h3 className="s-h3" id="api-keys-heading">
-        API-avaimet
+        {txt.apiKeys}
         {present.length ? (
           <span className="s-count">{present.length}</span>
         ) : null}
@@ -348,24 +345,22 @@ export function PiCredentials({
                       data-testid="api-key-site"
                       kind="pill"
                       tone={site.current ? "info" : "warning"}
-                      label="Ylläpitäjän antama"
+                      label={txt.fromAdmin}
                     />
                   ) : (
-                    <Badge label="Oma" />
+                    <Badge label={txt.own} />
                   )}
                 </strong>
                 <span
                   className={`s-desc${refusedAll ? " s-bad" : ""}`}
                   data-testid="api-key-desc"
                 >
-                  {refusedAll
-                    ? `${names[provider]} torjui tämän avaimen mallit viimeksi kokeiltaessa. Avain on ehkä peruttu, väärin kirjoitettu tai sen kiintiö on täynnä. `
-                    : null}
+                  {refusedAll ? txt.refusedAll(names[provider]) : null}
                   {site
                     ? site.current
-                      ? `Ylläpitäjä antoi avaimen ${givenDay(site.at)} Käyttö laskutetaan palvelimen tililtä.`
-                      : `Ylläpitäjä antoi avaimen ${givenDay(site.at)} Palvelin on sittemmin vaihtanut avaimensa, joten tämä kopio voi lakata toimimasta.`
-                    : `Oma avain. ${names[provider]} laskuttaa käytöstä.`}
+                      ? txt.givenCurrent(givenDay(site.at))
+                      : txt.givenEarlier(givenDay(site.at))
+                    : txt.ownKey(names[provider])}
                 </span>
               </div>
               <div
@@ -374,7 +369,11 @@ export function PiCredentials({
                 data-present="true"
               >
                 {refusedAll ? (
-                  <StatusMark tone="danger" kind="error" label="Ei vastaa" />
+                  <StatusMark
+                    tone="danger"
+                    kind="error"
+                    label={txt.notAnswering}
+                  />
                 ) : null}
                 <ControlButton
                   size="row"
@@ -386,7 +385,7 @@ export function PiCredentials({
                   }}
                   data-testid="api-key-add"
                 >
-                  {site ? "Vaihda omaan…" : "Vaihda…"}
+                  {site ? txt.changeToOwn : txt.change}
                 </ControlButton>
                 <ControlButton
                   data-testid="api-key-remove-open"
@@ -395,12 +394,12 @@ export function PiCredentials({
                   variant="quiet"
                   onPress={() => setConfirm(provider)}
                 >
-                  Poista…
+                  {txt.remove}
                 </ControlButton>
               </div>
               {offered.length ? (
                 <div className="s-key-models">
-                  <span className="s-desc">Avaa:</span>
+                  <span className="s-desc">{txt.opens}</span>
                   <ModelChips models={offered} />
                 </div>
               ) : null}
@@ -412,12 +411,12 @@ export function PiCredentials({
             {!data
               ? error
                 ? ""
-                : "Tarkistetaan avaimia…"
+                : txt.checking
               : present.length
                 ? missing.length
-                  ? `Ei avainta: ${missing.map((p) => names[p]).join(", ")}.`
-                  : "Jokaisella palvelulla on avain."
-                : "Ei API-avaimia. Avaimella voi käyttää palveluntarjoajan malleja ilman tilausta; palveluntarjoaja laskuttaa käytöstä."}
+                  ? txt.missing(missing.map((p) => names[p]).join(", "))
+                  : txt.allHave
+                : txt.none}
           </p>
           <div className="s-val">
             <ControlButton
@@ -430,7 +429,7 @@ export function PiCredentials({
               }}
             >
               <Icon name="plus" />
-              Lisää API-avain
+              {txt.add}
             </ControlButton>
           </div>
         </div>
@@ -445,7 +444,7 @@ export function PiCredentials({
                   setRevision((r) => r + 1);
                 }}
               >
-                Tarkista tunnukset
+                {txt.checkCredentials}
               </ControlButton>
             </div>
           </div>
@@ -465,21 +464,18 @@ export function PiCredentials({
             data-testid="api-key-dialog"
             aria-label={
               chosen && data?.[chosen].present
-                ? `Vaihda ${names[chosen]} API-avain`
-                : "Lisää API-avain"
+                ? txt.replaceTitle(names[chosen])
+                : txt.add
             }
           >
             <Heading slot="title">
               {chosen && data?.[chosen].present
-                ? `Vaihda ${names[chosen]} API-avain`
-                : "Lisää API-avain"}
+                ? txt.replaceTitle(names[chosen])
+                : txt.add}
             </Heading>
-            <p className="s-desc">
-              Avaimella voi käyttää palveluntarjoajan malleja ilman tilausta.
-              Kullekin palvelulle tallentuu yksi avain.
-            </p>
+            <p className="s-desc">{txt.dialogIntro}</p>
             <fieldset className="s-prov-opts">
-              <legend className="ah-visually-hidden">Palveluntarjoaja</legend>
+              <legend className="ah-visually-hidden">{txt.provider}</legend>
               {providers.map((provider) => {
                 const stored = data?.[provider];
                 const count = models.filter(
@@ -506,11 +502,11 @@ export function PiCredentials({
                       <span className="s-desc">
                         {stored?.present
                           ? siteOf(provider)
-                            ? `Korvaa ylläpitäjän antaman avaimen ${keyText(provider)}`
-                            : `Korvaa avaimen ${keyText(provider)}`
+                            ? txt.replacesAdmin(keyText(provider))
+                            : txt.replaces(keyText(provider))
                           : count
-                            ? `${count} mallia`
-                            : "Ei avainta"}
+                            ? txt.models(count)
+                            : txt.noKey}
                       </span>
                     </span>
                   </button>
@@ -526,7 +522,7 @@ export function PiCredentials({
                 }}
               >
                 <label className="s-field">
-                  {names[chosen]} API-avain
+                  {txt.apiKey(names[chosen], false)}
                   <input
                     data-testid="api-key-input"
                     type="password"
@@ -542,17 +538,16 @@ export function PiCredentials({
                 <p className={`s-desc${wrong ? " s-bad" : ""}`}>
                   {wrong ? (
                     <span role="alert">
-                      Tämä ei näytä {names[chosen]}-avaimelta ({keyHint[chosen]}
-                      ).
+                      {txt.notThisKey(names[chosen], keyHint(chosen))}
                     </span>
                   ) : data?.[chosen].present ? (
                     siteOf(chosen) ? (
-                      `Oma avaimesi korvaa ylläpitäjän antaman kopion. Käyttö laskutetaan sen jälkeen sinulta. Avain lähetetään kerran eikä sitä näytetä uudelleen.`
+                      txt.ownReplacesAdmin
                     ) : (
-                      `Uusi avain korvaa nykyisen (${keyText(chosen)}). Avain lähetetään kerran eikä sitä näytetä uudelleen.`
+                      txt.newReplaces(keyText(chosen))
                     )
                   ) : (
-                    `Avain lähetetään kerran eikä sitä näytetä uudelleen. Palvelun ensimmäinen avain vaihtaa uusien keskustelujen oletukseksi sen mallin; avoimet keskustelut eivät muutu.`
+                    txt.firstKey
                   )}
                 </p>
                 <div className="ah-dialog-actions">
@@ -561,7 +556,7 @@ export function PiCredentials({
                     size="row"
                     onPress={close}
                   >
-                    Peruuta
+                    {txt.cancel}
                   </ControlButton>
                   <ControlButton
                     data-testid="api-key-save"
@@ -570,14 +565,14 @@ export function PiCredentials({
                     type="submit"
                     isDisabled={busy || !csrf || !keyFits(chosen, key)}
                   >
-                    Tallenna avain
+                    {txt.saveKey}
                   </ControlButton>
                 </div>
               </form>
             ) : (
               <div className="ah-dialog-actions">
                 <ControlButton data-testid="cancel" size="row" onPress={close}>
-                  Peruuta
+                  {txt.cancel}
                 </ControlButton>
               </div>
             )}
@@ -593,16 +588,13 @@ export function PiCredentials({
         isDismissable
       >
         <Modal className="ah-modal">
-          <Dialog className="ah-dialog" aria-label="Poistetaanko API-avain?">
-            <Heading slot="title">Poistetaanko API-avain?</Heading>
+          <Dialog className="ah-dialog" aria-label={txt.removeQuestion}>
+            <Heading slot="title">{txt.removeQuestion}</Heading>
             <p>
-              Avain poistuu vain Pi:n tunnuksista tällä palvelimella. Avainta ei
-              peruta palvelussa {confirm && names[confirm]}. Avainta käyttävät
-              keskustelut eivät voi jatkaa ennen uuden avaimen lisäämistä.
-              Tilauskirjautumiset säilyvät.
-              {confirm && defaultProvider === confirm
-                ? " Uusien keskustelujen oletusmalli käyttää tätä avainta, joten valitse sen jälkeen toinen oletus."
-                : ""}
+              {txt.removeEffect(
+                confirm ? names[confirm] : "",
+                !!confirm && defaultProvider === confirm,
+              )}
             </p>
             <div className="ah-dialog-actions">
               <ControlButton
@@ -610,7 +602,7 @@ export function PiCredentials({
                 size="row"
                 onPress={() => setConfirm(undefined)}
               >
-                Peruuta
+                {txt.cancel}
               </ControlButton>
               <ControlButton
                 data-testid="api-key-remove-confirm"
@@ -620,7 +612,7 @@ export function PiCredentials({
                   if (confirm) void change(confirm, true);
                 }}
               >
-                Poista avain
+                {txt.removeKey}
               </ControlButton>
             </div>
           </Dialog>
@@ -653,8 +645,11 @@ export function modelsLine(
     (m) => (m.provider ?? "openai-codex") === provider && !m.older,
   );
   return offered.length
-    ? `${offered.length} ${offered.length === 1 ? "malli" : "mallia"}: ${offered
-        .map((m) => modelDisplayName(`${provider}/${m.id}`, [m]))
-        .join(", ")}.`
+    ? txt.modelsLine(
+        offered.length,
+        offered
+          .map((m) => modelDisplayName(`${provider}/${m.id}`, [m]))
+          .join(", "),
+      )
     : "";
 }

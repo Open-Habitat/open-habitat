@@ -120,6 +120,19 @@ type IntegrationSettings struct {
 	// makes the broker refuse those writes. Host apply publishes it.
 	BrowserSetup *bool `json:"browser_setup,omitempty"`
 }
+// UI is the installation's interface defaults. DefaultLanguage is system, fi
+// or en; omitted is system.
+type UI struct {
+	DefaultLanguage *string `json:"default_language,omitempty"`
+}
+
+// DefaultLanguage is the site's ui.default_language, empty when omitted.
+func (s Site) DefaultLanguage() string {
+	if s.UI == nil || s.UI.DefaultLanguage == nil {
+		return ""
+	}
+	return *s.UI.DefaultLanguage
+}
 type Site struct {
 	SchemaVersion int                  `json:"schema_version"`
 	SiteID        string               `json:"site_id"`
@@ -131,6 +144,7 @@ type Site struct {
 	Editor        *Editor              `json:"editor,omitempty"`
 	Views         *Views               `json:"views,omitempty"`
 	Integrations  *IntegrationSettings `json:"integrations,omitempty"`
+	UI            *UI                  `json:"ui,omitempty"`
 }
 
 // BrowserSetup is the site's integrations.browser_setup, on by default.
@@ -448,6 +462,9 @@ func (s Site) Validate() error {
 	}
 	if s.Views != nil && s.Views.LinkMaxDays != nil && (*s.Views.LinkMaxDays < 1 || *s.Views.LinkMaxDays > 365) {
 		return siteError("$.views.link_max_days", "require 1 to 365 days")
+	}
+	if s.UI != nil && s.UI.DefaultLanguage != nil && !slices.Contains([]string{"system", "fi", "en"}, *s.UI.DefaultLanguage) {
+		return siteError("$.ui.default_language", "require system, fi or en")
 	}
 	return nil
 }

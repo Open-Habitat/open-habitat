@@ -1,3 +1,7 @@
+import { liveText } from "../i18n";
+import { statusText } from "../text/status";
+
+const txt = liveText(statusText);
 /** Derive UI channels only from observed host facts, never from translated labels. */
 export interface WaitingOn {
   spinoff?: import("../app/processes").ProcessSpinoff[];
@@ -55,7 +59,7 @@ export function agentPresentation(facts: AgentFacts): AgentPresentation {
     !facts.connectionLost &&
     facts.runActive !== true &&
     !!facts.waitingOn?.length;
-  const backgroundLabel = "Odottaa taustatyötä";
+  const backgroundLabel = txt.activity.background;
   const activity = facts.intentionallyClosed
     ? "closed"
     : working
@@ -66,46 +70,46 @@ export function agentPresentation(facts: AgentFacts): AgentPresentation {
           ? "waiting"
           : "unknown";
   const activityLabel = facts.intentionallyClosed
-    ? "Valmis"
+    ? txt.activity.done
     : working
-      ? "Työskentelee"
+      ? txt.activity.working
       : background
         ? backgroundLabel
         : waiting
-          ? "Odottaa sinua"
-          : "Tila ei tiedossa";
+          ? txt.activity.waiting
+          : txt.activity.unknown;
   const operationLabel = facts.connectionLost
-    ? "Yhteys poikki"
+    ? txt.operation.disconnected
     : facts.command === "uncertain"
-      ? "Lähetys epävarma"
+      ? txt.operation.uncertain
       : facts.command === "rejected"
-        ? "Viesti hylättiin"
+        ? txt.operation.rejected
         : facts.command === "pending"
-          ? "Odottaa kuittausta"
+          ? txt.operation.pending
           : facts.command === "stopping"
-            ? "Pysäytetään"
+            ? txt.operation.stopping
             : undefined;
   return {
     activity,
     activityLabel,
     activityShortLabel: facts.intentionallyClosed
-      ? "valmis"
+      ? txt.activity.doneShort
       : working
-        ? "työssä"
+        ? txt.activity.workingShort
         : background
           ? backgroundLabel
           : waiting
-            ? "odottaa"
-            : "Tila ei tiedossa",
+            ? txt.activity.waitingShort
+            : txt.activity.unknown,
     controlLabel:
       facts.control === "read_only"
-        ? "Vain luku"
+        ? txt.control.readOnly
         : facts.control === "unavailable"
-          ? "Ohjaus ei saatavilla"
+          ? txt.control.unavailable
           : facts.control === "unknown"
-            ? "Ohjaus ei tiedossa"
+            ? txt.control.unknown
             : "",
-    attentionLabel: facts.attention === "new" ? "Uusi" : undefined,
+    attentionLabel: facts.attention === "new" ? txt.newAttention : undefined,
     operationLabel,
     running,
   };

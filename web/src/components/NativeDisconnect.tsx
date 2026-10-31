@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { mutationFetch } from "../app/mutations";
+import { liveText } from "../i18n";
+import { inlineSettingsText } from "../text/inlineSettings";
 import { ControlButton } from "./ControlElements";
+
+const txt = liveText(inlineSettingsText);
 
 const path = "/api/v1/account/github/disconnect";
 export function NativeDisconnect({
@@ -25,9 +29,7 @@ export function NativeDisconnect({
         cache: "no-store",
       });
       if (r.status === 403) {
-        setNotice(
-          "Kirjaudu ulos ja uudelleen GitHubilla ennen katkaisua (5 minuutin sisällä).",
-        );
+        setNotice(txt.reauth);
         return;
       }
       if (!r.ok) throw new Error();
@@ -42,7 +44,7 @@ export function NativeDisconnect({
         throw new Error();
       setToken((v as { observation_token: string }).observation_token);
     } catch {
-      setNotice("Paikallisen valtuutuksen tilaa ei voitu vahvistaa.");
+      setNotice(txt.stateUnknown);
     } finally {
       setBusy(false);
     }
@@ -76,31 +78,24 @@ export function NativeDisconnect({
         (v as Record<string, unknown>).revokes_oauth_token !== false
       )
         throw new Error();
-      setNotice(
-        "Paikallinen gh-valtuutus poistettu. GitHubin OAuth-lupaa ei peruttu.",
-      );
+      setNotice(txt.disconnected);
       onDisconnected?.();
     } catch {
-      setNotice(
-        "Katkaisun tulos on epävarma tai osittainen. Tarkista tilanne uudelleen; älä toista automaattisesti.",
-      );
+      setNotice(txt.uncertain);
     } finally {
       setBusy(false);
     }
   };
   return (
     <div>
-      <p>
-        Katkaisu poistaa tämän käyttäjän paikallisen gh-valtuutuksen, ei
-        GitHubin OAuth-lupaa. Vaatii uuden kirjautumisen.
-      </p>
+      <p>{txt.note}</p>
       <ControlButton
         size="row"
         isDisabled={busy}
         onPress={() => void inspect()}
         data-testid="github-disconnect-inspect"
       >
-        Tarkista katkaisu
+        {txt.check}
       </ControlButton>
       <ModalOverlay
         className="ah-overlay"
@@ -111,23 +106,16 @@ export function NativeDisconnect({
         isDismissable
       >
         <Modal className="ah-modal">
-          <Dialog
-            className="ah-dialog"
-            aria-label="Irrotetaanko GitHub-yhteys?"
-          >
-            <Heading slot="title">Irrotetaanko GitHub-yhteys?</Heading>
-            <p>
-              Paikallinen gh-valtuutus poistuu. Työtilat ja keskustelut
-              säilyvät. GitHubin OAuth-lupaa ei peruta; uudelleen kirjautuminen
-              palauttaa yhteyden.
-            </p>
+          <Dialog className="ah-dialog" aria-label={txt.question}>
+            <Heading slot="title">{txt.question}</Heading>
+            <p>{txt.effect}</p>
             <div className="ah-dialog-actions">
               <ControlButton
                 data-testid="cancel"
                 size="page"
                 onPress={() => setToken("")}
               >
-                Peruuta
+                {txt.cancel}
               </ControlButton>
               <ControlButton
                 size="page"
@@ -136,7 +124,7 @@ export function NativeDisconnect({
                 onPress={() => void disconnect()}
                 data-testid="github-disconnect-confirm"
               >
-                Katkaise paikallinen GitHub-yhteys
+                {txt.confirm}
               </ControlButton>
             </div>
           </Dialog>

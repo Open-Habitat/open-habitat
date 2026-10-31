@@ -1,6 +1,9 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { Input, Label, TextField } from "react-aria-components";
 import { useLocation, useNavigate } from "react-router";
+import { textNow, useText } from "../i18n";
+import { navigationText } from "../text/navigation";
+import { statusText } from "../text/status";
 import {
   ArchiveControls,
   type ArchiveControlsProps,
@@ -158,6 +161,7 @@ function Shell({
     if (drawerActive)
       mobileNav.current?.querySelector<HTMLElement>("nav")?.focus();
   }, [drawerActive]);
+  const t = useText(navigationText);
   const closeMobile = () => {
     setMobileOpen(false);
     requestAnimationFrame(() => mobileTrigger.current?.focus());
@@ -173,7 +177,7 @@ function Shell({
         href="#main"
         onClick={() => document.getElementById("main")?.focus()}
       >
-        Siirry sisältöön
+        {t.skip}
       </ExternalLink>
       {connection}
       {rail ? null : topBar}
@@ -185,7 +189,7 @@ function Shell({
             size="row"
             variant="quiet"
             className="ah-mobile-scrim"
-            aria-label="Sulje valikko"
+            aria-label={t.closeMenu}
             onPress={closeMobile}
           />
         ) : null}
@@ -198,7 +202,7 @@ function Shell({
                 size="row"
                 variant="quiet"
                 className="ah-mobile-close"
-                aria-label="Sulje navigaatio"
+                aria-label={t.closeNavigation}
                 onPress={closeMobile}
               >
                 <Icon name="back" />
@@ -207,7 +211,7 @@ function Shell({
           </div>
         ) : null}
         {fallbackAccount && !rail ? (
-          <aside className="ah-fallback-account" aria-label="Tili">
+          <aside className="ah-fallback-account" aria-label={t.account}>
             {bell}
             {fallbackAccount}
           </aside>
@@ -223,8 +227,8 @@ function Shell({
                   ref={mobileTrigger}
                   aria-label={
                     navigationBadge
-                      ? `Avaa navigaatio, ${navigationBadge} odottaa sinua`
-                      : "Avaa navigaatio"
+                      ? t.openNavigationWaiting(navigationBadge)
+                      : t.openNavigation
                   }
                   aria-expanded={drawerActive}
                   className="ah-navigation-open"
@@ -246,7 +250,7 @@ function Shell({
                 </ControlButton>
               ) : null}
               <span className="ah-mobile-title" title={mobileTitle}>
-                {mobileTitle ?? "Etusivu"}
+                {mobileTitle ?? t.home}
               </span>
               {bell}
               {rail &&
@@ -256,7 +260,7 @@ function Shell({
                 <LinkRow
                   data-testid="home-link"
                   href="/workspaces"
-                  aria-label="Etusivu"
+                  aria-label={t.home}
                 >
                   <Icon name="home" />
                 </LinkRow>
@@ -272,6 +276,19 @@ function Shell({
     </div>
   );
 }
+/** Whether a status word, produced in either language, is one of these. */
+const inLanguages = (
+  text: string,
+  words: (t: (typeof statusText)["fi"]) => string[],
+) => [statusText.fi, statusText.en].some((t) => words(t).includes(text));
+const uncertainStatus = (text: string) =>
+  inLanguages(text, (t) => [t.control.unknown]) ||
+  [navigationText.fi.stale, navigationText.en.stale].includes(text);
+const readOnlyStatus = (text: string) =>
+  inLanguages(text, (t) => [t.control.readOnly, t.readOnly]) ||
+  text.toLowerCase() === statusText.fi.readOnly.toLowerCase() ||
+  text.toLowerCase() === statusText.en.readOnly.toLowerCase();
+
 export function NavLink({
   label,
   href,
@@ -363,16 +380,14 @@ export function NavLink({
                     <StatusMark
                       label={displayStatusText}
                       tone={
-                        displayStatusText === "Tieto vanhentunut" ||
-                        displayStatusText === "Ohjaus ei tiedossa"
+                        uncertainStatus(displayStatusText)
                           ? "warning"
                           : "neutral"
                       }
                       kind={
-                        displayStatusText === "vain luku"
+                        readOnlyStatus(displayStatusText)
                           ? "read-only"
-                          : displayStatusText === "Tieto vanhentunut" ||
-                              displayStatusText === "Ohjaus ei tiedossa"
+                          : uncertainStatus(displayStatusText)
                             ? "unknown"
                             : "neutral"
                       }
@@ -394,14 +409,17 @@ export function NavLink({
               key={text}
               label={text}
               tone={
-                text === "Yhteys poikki" || text === "Historia ei luettavissa"
+                inLanguages(text, (t) => [
+                  t.operation.disconnected,
+                  t.rail.historyUnreadable,
+                ])
                   ? "warning"
                   : "neutral"
               }
               kind={
-                text === "Vain luku"
+                readOnlyStatus(text)
                   ? "read-only"
-                  : text === "Historia ei luettavissa"
+                  : inLanguages(text, (t) => [t.rail.historyUnreadable])
                     ? "error"
                     : "neutral"
               }
@@ -437,18 +455,19 @@ function NavMark({ mark }: { mark: string }) {
   );
 }
 function activityLabelForMark(mark: string) {
+  const t = textNow(navigationText).marks;
   return (
     (
       {
-        "●": "Uusi vastaus",
-        "?": "Kysyy sinulta",
-        "◌": "Agentti työskentelee",
-        "○": "Odottaa",
-        "◉": "Odottaa taustatyötä",
-        "✓": "Valmis",
-        "–": "Tila ei tiedossa",
+        "●": t.reply,
+        "?": t.asks,
+        "◌": t.working,
+        "○": t.waiting,
+        "◉": t.background,
+        "✓": t.done,
+        "–": t.unknown,
       } as Record<string, string>
-    )[mark] ?? "Tila ei tiedossa"
+    )[mark] ?? t.unknown
   );
 }
 export interface AgentNavModel {
@@ -520,13 +539,7 @@ export interface RailArchive {
  * working includes waiting on background work, your turn is a question or an
  * unread reply, done waits for a message, failed needs a look. */
 export type BallKind = "work" | "you" | "done" | "fail" | "unknown";
-const ballLabels: Record<BallKind, string> = {
-  work: "Työskentelee",
-  you: "Sinun vuorosi",
-  done: "Valmis",
-  fail: "Epäonnistui",
-  unknown: "Tila ei tiedossa",
-};
+const ballLabel = (kind: BallKind) => textNow(navigationText).balls[kind];
 export function ballOf(
   agent: Pick<
     AgentNavModel,
@@ -561,18 +574,19 @@ function Ball({ kind }: { kind: BallKind }) {
     <span
       className={`ah-nav-mark ah-ball ah-ball-${kind}`}
       aria-hidden="true"
-      title={ballLabels[kind]}
+      title={ballLabel(kind)}
     />
   );
 }
 /** The row's short age of its last change: nyt, 4 min, 2 t, 3 pv. */
 export function changeAge(at: number, now: number): string {
+  const t = textNow(navigationText);
   const minutes = Math.max(0, Math.floor((now - at) / 60000));
-  if (minutes < 1) return "nyt";
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 1) return t.ageNow;
+  if (minutes < 60) return t.ageMinutes(minutes);
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} t`;
-  return `${Math.floor(hours / 24)} pv`;
+  if (hours < 24) return t.ageHours(hours);
+  return t.ageDays(Math.floor(hours / 24));
 }
 /** Done and untouched for over an hour: nobody is on it right now. */
 const quietAfter = 60 * 60 * 1000;
@@ -619,6 +633,7 @@ export function AgentNavItem({
   rename?: RailRename;
   card?: WorkspaceCardActions;
 }) {
+  const t = useText(navigationText);
   const archiveReasonId = useId();
   const archiveReason = archive?.reason(agentId);
   const renameReason = rename?.reason(agentId);
@@ -639,18 +654,14 @@ export function AgentNavItem({
   const said = [
     pendingLabel,
     detail ?? activityLabel,
-    worktree
-      ? worktree.merged
-        ? "Worktree-agentti, työ yhdistetty"
-        : "Worktree-agentti"
-      : null,
+    worktree ? (worktree.merged ? t.worktreeMerged : t.worktree) : null,
     worktree?.work?.text,
-    spinoffWorking ? "Worker työskentelee" : null,
+    spinoffWorking ? t.workerWorking : null,
     controlLabel,
     detail ? null : operationLabel,
     historyLabel,
-    stale ? "Tieto vanhentunut" : null,
-    presence === "absent" ? "Ei enää löydy" : null,
+    stale ? t.stale : null,
+    presence === "absent" ? t.gone : null,
     changedAt !== undefined ? relativeRecapAge(changedAt, now) : null,
   ]
     .filter(Boolean)
@@ -686,12 +697,12 @@ export function AgentNavItem({
                   data-actions={archive && rename ? 2 : 1}
                 >
                   {rename ? (
-                    <span title={renameReason || "Nimeä uudelleen"}>
+                    <span title={renameReason || t.rename}>
                       <ControlButton
                         data-testid="rail-rename-conversation"
                         variant="quiet"
                         size="inline"
-                        aria-label={`Nimeä uudelleen ${shownTitle}`}
+                        aria-label={t.renameNamed(shownTitle)}
                         isDisabled={!!renameReason}
                         onPress={() => setEditing(true)}
                       >
@@ -700,12 +711,12 @@ export function AgentNavItem({
                     </span>
                   ) : null}
                   {archive ? (
-                    <span title={archiveReason || "Arkistoi"}>
+                    <span title={archiveReason || t.archive}>
                       <ControlButton
                         data-testid="rail-archive-conversation"
                         variant="quiet"
                         size="inline"
-                        aria-label={`Arkistoi ${shownTitle}`}
+                        aria-label={t.archiveNamed(shownTitle)}
                         aria-describedby={
                           archiveReason ? archiveReasonId : undefined
                         }
@@ -747,7 +758,7 @@ export function AgentNavItem({
         {editing && rename ? (
           <NameEditor
             value={shownTitle}
-            label="Keskustelun nimi"
+            label={t.conversationName}
             onSave={(name) => rename.save(agentId, name)}
             onClose={(name) => {
               setEditing(false);
@@ -915,7 +926,7 @@ function NowDot(agent: AgentNavModel) {
   const ball = ballOf(agent);
   const status = [
     agent.pendingLabel,
-    agent.detail ?? agent.activityLabel ?? ballLabels[ball],
+    agent.detail ?? agent.activityLabel ?? ballLabel(ball),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -944,7 +955,7 @@ function NowDot(agent: AgentNavModel) {
     </li>
   );
 }
-const quietWord = (n: number) => `${n} ${n === 1 ? "hiljainen" : "hiljaista"}`;
+const quietWord = (n: number) => textNow(navigationText).quiet(n);
 /** Opens and closes a folded part of Käynnissä; the fold is the tab's view. */
 function FoldToggle({
   testId,
@@ -1071,7 +1082,7 @@ function RunningGroups({
       {dormant.length ? (
         <>
           <p className="ah-now-rule" data-testid="rail-quiet-rule">
-            <span>Hiljaiset · yli tunnin</span>
+            <span>{textNow(navigationText).quietRule}</span>
           </p>
           <ul data-testid="rail-quiet">
             {dormant.map(([key, g]) => {
@@ -1119,6 +1130,7 @@ export function NowSections({
   /** The workspace icon card's actions, where rows carry icons. */
   card?: WorkspaceCardActions;
 }) {
+  const t = useText(navigationText);
   const yoursId = useId();
   const runningId = useId();
   const now = useMinuteNow();
@@ -1126,13 +1138,13 @@ export function NowSections({
   if (collapsed)
     return (
       <div className="ah-now-dots">
-        <ul data-testid="rail-yours" aria-label="Sinun vuorosi">
+        <ul data-testid="rail-yours" aria-label={t.yourTurn}>
           {yours.map((agent) => (
             <NowDot key={agent.agentId} {...agent} />
           ))}
         </ul>
         {yours.length ? <hr /> : null}
-        <ul data-testid="rail-running" aria-label="Käynnissä">
+        <ul data-testid="rail-running" aria-label={t.running}>
           {running.map((agent) => (
             <NowDot key={agent.agentId} {...agent} />
           ))}
@@ -1148,7 +1160,7 @@ export function NowSections({
         aria-labelledby={yoursId}
       >
         <h2 className="ah-rail-section-head" id={yoursId}>
-          Sinun vuorosi
+          {t.yourTurn}
           {yours.length ? (
             <span className="ah-rail-count ah-rail-count-attention">
               {yours.length}
@@ -1169,7 +1181,7 @@ export function NowSections({
             ))}
           </ul>
         ) : (
-          <p className="ah-now-empty">Mikään ei odota sinua.</p>
+          <p className="ah-now-empty">{t.nothingWaits}</p>
         )}
       </section>
       <section
@@ -1178,7 +1190,7 @@ export function NowSections({
         aria-labelledby={runningId}
       >
         <h2 className="ah-rail-section-head" id={runningId}>
-          Käynnissä
+          {t.running}
           {running.length ? (
             <span className="ah-rail-count">{running.length}</span>
           ) : null}
@@ -1192,7 +1204,7 @@ export function NowSections({
             card={card}
           />
         ) : (
-          <p className="ah-now-empty">Mikään ei ole käynnissä.</p>
+          <p className="ah-now-empty">{t.nothingRuns}</p>
         )}
       </section>
     </>
@@ -1242,17 +1254,18 @@ export function WorkspaceRail({
   /** The status bell on a page without a top bar of its own. */
   bell?: ReactNode;
 }) {
+  const t = useText(navigationText);
   return (
     <nav
       data-testid="workspace-navigation"
-      aria-label="Työtilat ja keskustelut"
+      aria-label={t.railLabel}
       tabIndex={-1}
       className={collapsed ? "ah-rail ah-rail-collapsed" : "ah-rail"}
     >
       <header className="ah-rail-head">
         <div className="ah-rail-title">
           {/* The server name is the way home, like Etusivu below it. */}
-          <strong title={`${serverLabel} · Etusivu`}>
+          <strong title={`${serverLabel} · ${t.home}`}>
             <LinkRow
               href="/workspaces"
               kind="header"
@@ -1276,8 +1289,8 @@ export function WorkspaceRail({
           </span>
           <Button
             data-testid={collapsed ? "navigation-open" : "close-navigation"}
-            ariaLabel={collapsed ? "Avaa navigaatio" : "Sulje navigaatio"}
-            label={collapsed ? "Avaa navigaatio" : "Sulje navigaatio"}
+            ariaLabel={collapsed ? t.openNavigation : t.closeNavigation}
+            label={collapsed ? t.openNavigation : t.closeNavigation}
             icon={collapsed ? "forward" : "back"}
             variant="secondary"
             size="row"
@@ -1291,10 +1304,10 @@ export function WorkspaceRail({
             kind="home"
             current={homeCurrent}
             className="ah-rail-home"
-            aria-label={collapsed ? "Etusivu" : undefined}
+            aria-label={collapsed ? t.home : undefined}
           >
             <Icon name="home" />
-            <span className="ah-rail-home-label">Etusivu</span>
+            <span className="ah-rail-home-label">{t.home}</span>
           </LinkRow>
           {bell}
         </div>
@@ -1307,8 +1320,8 @@ export function WorkspaceRail({
             size="row"
             variant="quiet"
             className="ah-now-expand"
-            aria-label="Kaikki työtilat"
-            title="Kaikki työtilat"
+            aria-label={t.allWorkspaces}
+            title={t.allWorkspaces}
             onPress={onToggle}
           >
             <Icon name="folder" />
@@ -1317,7 +1330,7 @@ export function WorkspaceRail({
           <section className="ah-rail-workspaces" aria-labelledby="rail-ws">
             <div className="ah-rail-section-head">
               <h2 id="rail-ws">
-                Työtilat
+                {t.workspaces}
                 <span
                   data-testid="workspace-summary"
                   className="ah-rail-count"
@@ -1331,8 +1344,8 @@ export function WorkspaceRail({
                   data-testid="workspace-create"
                   size="row"
                   variant="quiet"
-                  aria-label="Uusi työtila"
-                  title="Uusi työtila"
+                  aria-label={t.newWorkspace}
+                  title={t.newWorkspace}
                   onPress={onCreateWorkspace}
                 >
                   <Icon name="folderPlus" />
@@ -1345,10 +1358,12 @@ export function WorkspaceRail({
                 value={filterValue}
                 onChange={onFilter}
               >
-                <Label className="ah-visually-hidden">Suodata työtiloja</Label>
+                <Label className="ah-visually-hidden">
+                  {t.filterWorkspaces}
+                </Label>
                 <Input
                   data-testid="workspace-filter"
-                  placeholder="Suodata työtiloja"
+                  placeholder={t.filterWorkspaces}
                   autoComplete="off"
                 />
               </TextField>
@@ -1356,7 +1371,7 @@ export function WorkspaceRail({
                 <Button
                   data-testid="clear-filter"
                   label="×"
-                  ariaLabel="Tyhjennä haku"
+                  ariaLabel={t.clearSearch}
                   variant="quiet"
                   size="row"
                   onPress={() => onFilter("")}
@@ -1367,16 +1382,14 @@ export function WorkspaceRail({
               </span>
             </div>
             {clones}
-            {listState === "loading" ? <p>Ladataan työtiloja…</p> : null}
-            {listState === "empty" ? <p>Työtiloja ei ole.</p> : null}
+            {listState === "loading" ? <p>{t.loadingWorkspaces}</p> : null}
+            {listState === "empty" ? <p>{t.noWorkspaces}</p> : null}
             {listState === "filtered-empty" ? (
-              <p data-testid="filter-empty">Hakua vastaavia kohteita ei ole.</p>
+              <p data-testid="filter-empty">{t.filterEmpty}</p>
             ) : null}
-            {listState === "source-absent" ? (
-              <p>Työtilakansiota ei löydy.</p>
-            ) : null}
+            {listState === "source-absent" ? <p>{t.folderMissing}</p> : null}
             {listState === "error" || listState === "unknown" ? (
-              <p>Työtiloja ei voitu näyttää.</p>
+              <p>{t.workspacesUnavailable}</p>
             ) : (
               <ul className="ah-workspace-list">{children}</ul>
             )}
@@ -1412,13 +1425,14 @@ export function ArchivedWorkspaces({
   forceOpen?: boolean;
 }) {
   const [show, setShow] = useState(false);
+  const t = useText(navigationText);
   if (!workspaces.length && !problem) return null;
   const open = show || forceOpen || workspaces.some((w) => w.selected);
   return (
     <section
       data-testid="archived-workspaces"
       className="ah-rail-archived"
-      aria-label="Arkistoidut työtilat"
+      aria-label={t.archivedWorkspaces}
     >
       {workspaces.length ? (
         <ControlButton
@@ -1430,7 +1444,7 @@ export function ArchivedWorkspaces({
           onPress={() => setShow(!open)}
         >
           <span aria-hidden="true" className="ah-disclosure-chevron" />
-          Arkistoidut
+          {t.archived}
           <span className="ah-rail-count">{workspaces.length}</span>
         </ControlButton>
       ) : null}
@@ -1452,12 +1466,12 @@ export function ArchivedWorkspaces({
                 data-testid={`restore-workspace-${w.name}`}
                 variant="quiet"
                 size="inline"
-                aria-label={`Palauta ${w.name}`}
-                title={restoreReason || "Palauta työtilaksi sivupalkkiin"}
+                aria-label={t.restoreNamed(w.name)}
+                title={restoreReason || t.restoreHint}
                 isDisabled={!onRestore || !!restoreReason || w.pending}
                 onPress={() => onRestore?.(w.id)}
               >
-                {w.pending ? "Palautetaan…" : "Palauta"}
+                {w.pending ? t.restoring : t.restore}
               </ControlButton>
             </li>
           ))}
@@ -1555,6 +1569,7 @@ export function AgentHeader({
     onPress: () => void;
   };
 }) {
+  const t = useText(navigationText);
   const titleReasonId = useId();
   const naming = titlePending || !!titleAction?.pending;
   const [editing, setEditing] = useState(false);
@@ -1578,7 +1593,10 @@ export function AgentHeader({
   const hidden = useHeaderShortening(topline);
   const fallbackModel =
     settings?.model || settings?.thinking
-      ? `${settings.model ?? "Malli ei tiedossa"} · ajattelutaso ${settings.thinking ?? "Agentti"}`
+      ? t.modelSummary(
+          settings.model ?? t.modelUnknown,
+          settings.thinking ?? t.thinkingFallback,
+        )
       : undefined;
   // On a phone the secondary actions leave the top bar for this menu, so the
   // header stays two rows; on a desktop it appears once the row has had to
@@ -1591,7 +1609,7 @@ export function AgentHeader({
           {
             id: "workspace",
             label: workspaceLabel,
-            description: "Avaa työtila",
+            description: t.openWorkspace,
             run: () => navigate(workspaceHref),
           },
         ]
@@ -1600,11 +1618,11 @@ export function AgentHeader({
       ? [
           {
             id: "rename",
-            label: "Nimeä uudelleen",
+            label: t.rename,
             availability: naming
               ? {
                   state: "disabled" as const,
-                  reason: "Otsikkoa luodaan…",
+                  reason: t.titling,
                 }
               : (rename.availability ?? { state: "enabled" as const }),
             // After the menu has closed and handed focus back to its
@@ -1621,7 +1639,7 @@ export function AgentHeader({
             availability: naming
               ? {
                   state: "disabled" as const,
-                  reason: "Otsikkoa luodaan…",
+                  reason: t.titling,
                 }
               : (titleAction.availability ?? { state: "enabled" as const }),
             run: titleAction.onPress,
@@ -1632,11 +1650,11 @@ export function AgentHeader({
       ? [
           {
             id: "recap",
-            label: "Tee tilannekatsaus nyt",
+            label: t.recapNow,
             availability: recapAction.pending
               ? {
                   state: "disabled" as const,
-                  reason: "Katsausta luodaan…",
+                  reason: t.recapping,
                 }
               : (recapAction.availability ?? { state: "enabled" as const }),
             run: recapAction.onPress,
@@ -1656,7 +1674,7 @@ export function AgentHeader({
         ]
       : []),
     ...(menuActions
-      ? [{ id: "details", label: "Tiedot", run: onToggleDetails }]
+      ? [{ id: "details", label: t.details, run: onToggleDetails }]
       : []),
     // What the shortened row no longer shows: the Git counts (the chip's
     // icon still opens its layer) and the model, whose level is in Tiedot.
@@ -1677,7 +1695,7 @@ export function AgentHeader({
       ? [
           {
             id: "model",
-            label: "Malli",
+            label: t.model,
             description: hidden.model,
             run: onToggleDetails,
           },
@@ -1699,7 +1717,7 @@ export function AgentHeader({
           {editing && rename ? (
             <NameEditor
               value={shownTitle}
-              label="Keskustelun nimi"
+              label={t.conversationName}
               onSave={rename.onSave}
               onClose={(name) => {
                 setEditing(false);
@@ -1713,7 +1731,7 @@ export function AgentHeader({
                   type="button"
                   className="ah-title-rename"
                   data-testid="conversation-rename"
-                  title="Nimeä uudelleen"
+                  title={t.rename}
                   onClick={() => setEditing(true)}
                 >
                   {shownTitle}
@@ -1739,7 +1757,7 @@ export function AgentHeader({
           role="status"
           data-testid="title-status"
         >
-          {naming ? "Otsikkoa luodaan…" : ""}
+          {naming ? t.titling : ""}
         </span>
         <LinkRow
           kind="header"
@@ -1762,7 +1780,7 @@ export function AgentHeader({
         {visibleControl ? (
           <StatusMark
             data-testid="read-only-indicator"
-            label="Vain luku"
+            label={t.readOnly}
             tone="neutral"
             kind="read-only"
           />
@@ -1771,10 +1789,10 @@ export function AgentHeader({
           <span
             className="ah-machine-open"
             data-testid="machine-open"
-            title={`Agentilla on yhteys auki: ${openMachines.join(", ")}`}
+            title={t.machineOpen(openMachines.join(", "))}
           >
             <i className="ah-machine-open-dot" aria-hidden="true" />
-            <span className="ah-visually-hidden">Yhteys auki: </span>
+            <span className="ah-visually-hidden">{t.machineOpenPrefix}</span>
             <span className="ah-machine-open-name">
               {openMachines.join(", ")}
             </span>
@@ -1792,13 +1810,13 @@ export function AgentHeader({
               size="inline"
               presentation="pill"
               className="ah-set-chip ah-set-compact"
-              aria-label={`${fallbackModel} · avaa tiedot`}
+              aria-label={t.openDetails(fallbackModel ?? "")}
               title={fallbackModel}
               aria-expanded={detailsExpanded}
               onPress={onToggleDetails}
             >
               <span className="ah-set-model">
-                {settings.model ?? "Malli ei tiedossa"}
+                {settings.model ?? t.modelUnknown}
               </span>
             </ControlButton>
           ) : null)}
@@ -1814,11 +1832,11 @@ export function AgentHeader({
             className="ah-topbar-icon ah-header-recap"
             data-busy={recapAction.pending || undefined}
             variant="quiet"
-            aria-label="Tee tilannekatsaus nyt"
+            aria-label={t.recapNow}
             title={
               recapAction.availability && "reason" in recapAction.availability
                 ? recapAction.availability.reason
-                : "Tee tilannekatsaus nyt"
+                : t.recapNow
             }
             aria-description={
               recapAction.availability && "reason" in recapAction.availability
@@ -1891,8 +1909,8 @@ export function AgentHeader({
           data-testid="workspace-details"
           size="row"
           className="ah-details-toggle ah-topbar-icon"
-          aria-label="Tiedot"
-          title="Tiedot"
+          aria-label={t.details}
+          title={t.details}
           aria-expanded={detailsExpanded}
           variant="quiet"
           onPress={onToggleDetails}
@@ -1900,7 +1918,7 @@ export function AgentHeader({
           <Icon name="info" />
         </ControlButton>
         <Menu
-          label="Keskustelun toiminnot"
+          label={t.conversationActions}
           trigger={<Icon name="more" />}
           triggerPresentation="icon"
           triggerClassName="ah-header-more"
@@ -1917,21 +1935,21 @@ export function AgentHeader({
         <section
           data-testid="conversation-details"
           className="ah-details-popover"
-          aria-label="Tiedot"
+          aria-label={t.details}
         >
-          <h2>Tiedot</h2>
+          <h2>{t.details}</h2>
           {detailsExtra}
           <dl className="ah-facts">
             {(
               detailsFacts ?? [
-                { label: "Työtila", value: workspaceLabel },
-                { label: "Malli", value: settings?.model ?? "Ei tiedossa" },
+                { label: t.factWorkspace, value: workspaceLabel },
+                { label: t.factModel, value: settings?.model ?? t.unknown },
                 {
-                  label: "Ajattelutaso",
-                  value: settings?.thinking ?? "Ei tiedossa",
+                  label: t.factThinking,
+                  value: settings?.thinking ?? t.unknown,
                 },
-                { label: "Ohjaus", value: controlLabel },
-                { label: "Aloitettu", value: "Ei tiedossa" },
+                { label: t.factControl, value: controlLabel },
+                { label: t.factStarted, value: t.unknown },
               ]
             ).map((fact) => (
               <div key={fact.label}>
@@ -1942,8 +1960,8 @@ export function AgentHeader({
                     <ControlButton
                       variant="quiet"
                       size="inline"
-                      aria-label={`Kopioi ${fact.label.toLowerCase()}`}
-                      title={`Kopioi ${fact.label.toLowerCase()}`}
+                      aria-label={t.copy(fact.label)}
+                      title={t.copy(fact.label)}
                       onPress={() =>
                         void navigator.clipboard?.writeText(fact.value)
                       }
@@ -1971,6 +1989,7 @@ export function AgentFacts({
     source?: string;
   }[];
 }) {
+  const t = useText(navigationText);
   return (
     <dl className="ah-facts">
       {facts.map((fact) => (
@@ -1982,10 +2001,10 @@ export function AgentFacts({
               <StatusMark
                 label={
                   fact.state === "unknown"
-                    ? "Ei tiedossa"
+                    ? t.unknown
                     : fact.state === "unavailable"
-                      ? "Ei saatavilla"
-                      : "Ristiriita"
+                      ? t.unavailable
+                      : t.conflicting
                 }
                 tone="warning"
               />

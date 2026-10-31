@@ -34,7 +34,7 @@ export function TrashNotice({
   const { result, name } = outcome;
   const entry = result.entry;
   const place = {
-    label: trashPlace,
+    label: trashPlace(),
     onPress: () => {
       onClose();
       navigate(trashHref);

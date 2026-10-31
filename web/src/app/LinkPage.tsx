@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { PhoneLink, type PhoneLinkState } from "../components/DeviceLink";
+import { setPersonalLanguage, useLanguage } from "../i18n";
 import { describeLink, redeemLink } from "./deviceLink";
 
 /**
@@ -17,6 +18,10 @@ export function LinkPage({ token }: { token: string }) {
   const [state, setState] = useState<PhoneLinkState>(
     token ? { kind: "checking" } : { kind: "dead" },
   );
+  // Nobody is signed in on this phone yet: the server default and the
+  // browser choose the language, and the page follows it.
+  useLanguage();
+  useEffect(() => setPersonalLanguage(undefined), []);
   useEffect(() => {
     if (!token) return;
     let live = true;

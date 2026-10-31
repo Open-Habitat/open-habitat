@@ -10,6 +10,8 @@ import {
   Radio,
   Text,
 } from "react-aria-components";
+import { liveText } from "../i18n";
+import { statusText } from "../text/status";
 import {
   ControlButton,
   type ControlSize,
@@ -19,6 +21,8 @@ import {
 import { Icon, type IconName } from "./Icon";
 import type { Availability, Option } from "./types";
 import { enabled, unavailableReason } from "./types";
+
+const txt = liveText(statusText);
 
 export interface ButtonProps {
   "data-testid"?: string;
@@ -128,7 +132,7 @@ export function RefreshIconButton({ onPress }: { onPress: () => void }) {
   return (
     <IconButton
       data-testid="snapshot-refresh"
-      aria-label="Päivitä"
+      aria-label={txt.refresh}
       variant="secondary"
       size="row"
       onPress={onPress}
@@ -275,7 +279,7 @@ export function SearchField(
       {props.value ? (
         <Button
           data-testid="search-clear"
-          label="Tyhjennä haku"
+          label={txt.clearSearch}
           variant="quiet"
           size="row"
           onPress={props.onClear}
@@ -402,7 +406,7 @@ export function ControlReason({
 }) {
   return (
     <div className="ah-control-reason">
-      <strong>Toiminto ei ole käytettävissä.</strong> {reason}
+      <strong>{txt.unavailableAction}</strong> {reason}
       {relatedAction}
     </div>
   );

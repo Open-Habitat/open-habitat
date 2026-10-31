@@ -8,6 +8,10 @@ import {
 } from "../app/onboardingConfig";
 import { ControlButton, Segmented } from "./ControlElements";
 import "./SiteKeySettings.css";
+import { liveText } from "../i18n";
+import { siteKeyText } from "../text/siteKey";
+
+const txt = liveText(siteKeyText);
 
 // Palvelimen ylläpito › AI-avain, the site key that Käyttöönotto's AI step
 // offers (proto-admin-server-onboarding r3 "Kolme tapaa", r4; its own tab,
@@ -100,7 +104,7 @@ export function SiteKeyEditor({
       {siteKey && !editing ? (
         <div className="ob-sitekey-row" data-testid="site-key-present">
           <span>
-            <strong>{keyNames[siteKey.provider]} API-avain</strong>{" "}
+            <strong>{txt.apiKey(keyNames[siteKey.provider], false)}</strong>{" "}
             <code data-testid="site-key-suffix">
               {keyPrefix(siteKey.provider)}
               {siteKey.suffix}
@@ -117,7 +121,7 @@ export function SiteKeyEditor({
                 setEditing(true);
               }}
             >
-              Vaihda avain…
+              {txt.replace}
             </ControlButton>
             {onRemove ? (
               <ControlButton
@@ -127,7 +131,7 @@ export function SiteKeyEditor({
                 isDisabled={disabled || !actions}
                 onPress={onRemove}
               >
-                Poista avain…
+                {txt.remove}
               </ControlButton>
             ) : null}
           </span>
@@ -143,7 +147,7 @@ export function SiteKeyEditor({
         >
           <Segmented
             data-testid="site-key-provider"
-            label="Avaimen palvelu"
+            label={txt.provider}
             size="row"
             isDisabled={disabled || busy}
             options={(Object.keys(keyNames) as KeyProvider[]).map((p) => ({
@@ -154,10 +158,7 @@ export function SiteKeyEditor({
             onChange={setProvider}
           />
           <label className="ah-key-embedded-field">
-            <strong>
-              {siteKey ? "Uusi " : ""}
-              {keyNames[provider]} API-avain
-            </strong>
+            <strong>{txt.apiKey(keyNames[provider], !!siteKey)}</strong>
             <span className="ah-inline-field">
               <input
                 data-testid="site-key-input"
@@ -177,7 +178,7 @@ export function SiteKeyEditor({
                 type="submit"
                 isDisabled={disabled || busy || !fits || !actions}
               >
-                {siteKey ? "Vaihda avain" : "Ota avain käyttöön"}
+                {siteKey ? txt.replaceKey : txt.useKey}
               </ControlButton>
               <ControlButton
                 data-testid="site-key-cancel"
@@ -190,18 +191,17 @@ export function SiteKeyEditor({
                   else onCancel();
                 }}
               >
-                Peruuta
+                {txt.cancel}
               </ControlButton>
             </span>
           </label>
           <p className="ob-muted">
             {wrong ? (
               <span role="alert" data-testid="site-key-error">
-                Tämä ei näytä {keyNames[provider]}-avaimelta (
-                {keyPrefix(provider)}).
+                {txt.notKey(keyNames[provider], keyPrefix(provider))}
               </span>
             ) : (
-              "Avain lähetetään kerran eikä sitä näytetä uudelleen."
+              txt.sentOnce
             )}
           </p>
         </form>
@@ -240,17 +240,23 @@ export function SiteKeyRemoval({
       <Modal className="ah-modal">
         <Dialog
           className="ah-dialog"
-          aria-label="Poistetaanko sivuston avain?"
+          aria-label={txt.removeQuestion}
           data-testid="site-key-remove-dialog"
         >
-          <Heading slot="title">Poistetaanko sivuston avain?</Heading>
-          <p>Uudet henkilöt valitsevat AI-tilin taas itse.</p>
+          <Heading slot="title">{txt.removeQuestion}</Heading>
+          <p>{txt.removeEffect}</p>
           <p data-testid="remove-holders">
             {holders === undefined
-              ? `Jo jaetut kopiot jäävät. Niiden käytön estää vain avaimen mitätöinti palvelussa${name}.`
+              ? txt.copiesStay(name)
               : holders.length > 0
-                ? `Sivusto on antanut avaimen ${holders.length} henkilölle: ${holders.length < 2 ? holders.join("") : `${holders.slice(0, -1).join(", ")} ja ${holders[holders.length - 1]}`}. Kopiot jäävät heille. Niiden käytön estää vain avaimen mitätöinti palvelussa${name}. Seuraava avain vaihtaa ne.`
-                : "Avainta ei ole annettu kenellekään jo liittyneelle."}
+                ? txt.holders(
+                    holders.length,
+                    holders.length < 2
+                      ? holders.join("")
+                      : `${holders.slice(0, -1).join(", ")}${txt.and}${holders[holders.length - 1]}`,
+                    name,
+                  )
+                : txt.noHolders}
           </p>
           <div className="ah-dialog-actions">
             <ControlButton
@@ -258,7 +264,7 @@ export function SiteKeyRemoval({
               size="row"
               onPress={onCancel}
             >
-              Peruuta
+              {txt.cancel}
             </ControlButton>
             <ControlButton
               data-testid="site-key-remove-confirm"
@@ -267,7 +273,7 @@ export function SiteKeyRemoval({
               isDisabled={disabled}
               onPress={onConfirm}
             >
-              Poista avain
+              {txt.removeKey}
             </ControlButton>
           </div>
         </Dialog>
@@ -302,10 +308,7 @@ export function SiteKeyPage({
       tabIndex={-1}
     >
       <p className="sk-terms" data-testid="site-key-terms">
-        Uusi henkilö saa avaimesta kopion omiin tunnuksiinsa, jos hänellä ei ole
-        omaa, eikä näe AI-vaihetta. Käyttö laskutetaan avaimen tililtä. Jo
-        liittyneille annat avaimen alta. Kun vaihdat avaimen, sivuston antamat
-        kopiot vaihtuvat uuteen. Jaettua kopiota ei voi perua.
+        {txt.terms}
       </p>
       <SiteKeyEditor
         key={siteKey ? `${siteKey.provider}${siteKey.suffix}` : "new"}

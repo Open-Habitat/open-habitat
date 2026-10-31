@@ -12,12 +12,16 @@ import {
 } from "react";
 import schema from "../../../contracts/v1/pi-models.schema.json";
 import type { ModelChoice, PiProvider } from "../components/ModelPicker";
+import { liveText } from "../i18n";
+import { modelsText } from "../text/models";
 import {
   refusalReason as hostRefusal,
   mutationFetch,
   slowConfirmationMs,
   writeOutcome,
 } from "./mutations";
+
+const txt = liveText(modelsText);
 
 const validator = new Ajv({ strict: false });
 addFormats(validator);
@@ -95,9 +99,9 @@ const confirms = (value: Models, choice: DefaultChoice) =>
 // The layer's reading of a refusal (ADR 0023), with this command's wording.
 const refusalReason = (status: number, code: string) =>
   status === 401 || status === 403
-    ? "Istunto ei sallinut tallennusta. Kirjaudu uudelleen."
+    ? txt.session
     : status === 409 || status === 429
-      ? "Agentin asetukset olivat varattuina. Yritä hetken päästä uudelleen."
+      ? txt.busy
       : hostRefusal(code, status);
 
 const Context = createContext<{
@@ -232,12 +236,7 @@ export function PiModelsProvider({
           reread.current();
         } else if (confirms(value, command.choice))
           settle(command, "confirmed");
-        else
-          settle(
-            command,
-            "refused",
-            "Agentti ei tallentanut valintaa oletukseksi.",
-          );
+        else settle(command, "refused", txt.notSaved);
       }
     } finally {
       sending.current = false;
@@ -275,12 +274,7 @@ export function PiModelsProvider({
         if (command) {
           update(value);
           if (confirms(value, command.choice)) settle(command, "confirmed");
-          else
-            settle(
-              command,
-              "refused",
-              "Agentti ei tallentanut valintaa oletukseksi.",
-            );
+          else settle(command, "refused", txt.notSaved);
         } else if (epoch === version.current) {
           setData(value);
           setError(false);

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/site-language.schema.json",
+  "title": "The server's default interface language, readable before sign-in",
+  "description": "Sign-in and the landing page know no person yet, so they follow this default and then the browser's language. It names nothing about any person.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "default_language"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "default_language": {"enum": ["system", "fi", "en"]}
+  }
+}

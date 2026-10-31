@@ -3,7 +3,11 @@ import { useEffect, useState } from "react";
 import schema from "../../../contracts/v1/git-identity.schema.json";
 import { ControlButton } from "../components/ControlElements";
 import { Button } from "../components/Primitives";
+import { liveText } from "../i18n";
+import { gitIdentityText } from "../text/gitIdentity";
 import { mutationFetch, refusalReason, writeOutcome } from "./mutations";
+
+const txt = liveText(gitIdentityText);
 
 const valid = new Ajv({ strict: false }).compile(schema);
 type Identity = {
@@ -69,8 +73,7 @@ export function GitIdentity({
         setEmail(data.email || preferredEmail || data.suggested_email);
       })
       .catch(() => {
-        if (!controller.signal.aborted)
-          setError("Git-identiteettiä ei voitu tarkistaa. Yritä uudelleen.");
+        if (!controller.signal.aborted) setError(txt.readError);
       });
     return () => controller.abort();
   }, [csrf, refresh, preferredName, preferredEmail]);
@@ -113,10 +116,7 @@ export function GitIdentity({
       const outcome = await writeOutcome(r?.ok ? undefined : r);
       if (outcome.kind === "refused" && outcome.code !== "identity_exists")
         setNotice(refusalReason(outcome.code, outcome.status));
-      else if (outcome.kind !== "refused")
-        setNotice(
-          "Tallennuksen tulosta ei saatu varmistettua. Git-asetukset luettiin uudelleen.",
-        );
+      else if (outcome.kind !== "refused") setNotice(txt.uncertain);
       setRefresh((old) => old + 1);
     } finally {
       setBusy(false);
@@ -126,7 +126,7 @@ export function GitIdentity({
     <Button
       data-testid="git-identity-retry"
       size="row"
-      label="Yritä uudelleen"
+      label={txt.retry}
       onPress={() => setRefresh((old) => old + 1)}
     />
   );
@@ -137,13 +137,13 @@ export function GitIdentity({
         className="s-row"
         data-settings-row="git-identity"
         tabIndex={-1}
-        aria-label="Git-identiteetti"
+        aria-label={txt.label}
       >
         <div className="s-lbl">
-          <strong>Git-identiteetti</strong>
+          <strong>{txt.label}</strong>
           <span className="s-desc">
-            Commitien tekijä. Tallentuu globaaliin <code>~/.gitconfig</code>
-            -tiedostoon.
+            {txt.descBefore} <code>~/.gitconfig</code>
+            {txt.descAfter}
           </span>
         </div>
         <div className="s-val">
@@ -151,10 +151,10 @@ export function GitIdentity({
             <>
               <span className="s-lbl">
                 <strong data-testid="git-identity-name">
-                  {identity.name || "Nimi puuttuu"}
+                  {identity.name || txt.nameMissing}
                 </strong>
                 <span className="s-desc">
-                  {identity.email || "Sähköposti puuttuu"}
+                  {identity.email || txt.emailMissing}
                 </span>
               </span>
               <ControlButton
@@ -162,13 +162,13 @@ export function GitIdentity({
                 size="row"
                 onPress={() => setEditing(true)}
               >
-                Muokkaa Git-identiteettiä
+                {txt.edit}
               </ControlButton>
             </>
           ) : error ? (
             retry
           ) : (
-            "Tarkistetaan Git-asetukset…"
+            txt.checking
           )}
         </div>
         {(error || notice) && (
@@ -185,7 +185,7 @@ export function GitIdentity({
             }}
           >
             <label className="s-field">
-              Gitissä näkyvä nimi
+              {txt.nameField}
               <input
                 data-testid="git-name-input"
                 autoComplete="name"
@@ -195,7 +195,7 @@ export function GitIdentity({
               />
             </label>
             <label className="s-field">
-              Gitissä näkyvä sähköposti
+              {txt.emailField}
               <input
                 data-testid="git-email-input"
                 type="email"
@@ -215,7 +215,7 @@ export function GitIdentity({
                   setEditing(false);
                 }}
               >
-                Peruuta
+                {txt.cancel}
               </ControlButton>
               <ControlButton
                 data-testid="git-identity-save"
@@ -223,7 +223,7 @@ export function GitIdentity({
                 type="submit"
                 isDisabled={busy || !csrf || !name.trim() || !email}
               >
-                Tallenna Git-identiteetti
+                {txt.save}
               </ControlButton>
             </div>
           </form>
@@ -234,35 +234,40 @@ export function GitIdentity({
     <section
       data-testid="git-identity"
       className="ah-account-panel"
-      aria-label="Git-identiteetti"
+      aria-label={txt.label}
     >
-      <h3>Git-identiteetti</h3>
+      <h3>{txt.label}</h3>
       {(error || notice) && (
         <p role="alert" data-testid="git-identity-error">
           {error || notice}
         </p>
       )}
       {!identity ? (
-        <p>{error ? retry : "Tarkistetaan Git-asetukset…"}</p>
+        <p>{error ? retry : txt.checking}</p>
       ) : !existing && identity.emails.length === 0 ? (
         <>
-          <p role="alert">GitHub-ehdotuksia ei saatu. Yritä uudelleen.</p>
+          <p role="alert">{txt.noSuggestions}</p>
           {retry}
         </>
       ) : existing ? (
         <>
           <p>
             <strong data-testid="git-identity-name">
-              {identity.name || "Nimi puuttuu"}
+              {identity.name || txt.nameMissing}
             </strong>{" "}
-            · {identity.email || "Sähköposti puuttuu"}
+            · {identity.email || txt.emailMissing}
             <br />
-            Lähde: <code>{identity.source}</code>
+            {txt.source}{" "}
+            <code>
+              {identity.source === "Gitin globaali asetus"
+                ? txt.globalSetting
+                : identity.source}
+            </code>
           </p>
           <Button
             data-testid="git-identity-continue"
             size="page"
-            label="Jatka repoihin"
+            label={txt.continue}
             onPress={() => onContinue?.()}
           />
         </>
@@ -299,7 +304,7 @@ export function GitIdentity({
           </label>
           <Button
             size="page"
-            label={busy ? "Tallennetaan…" : "Vahvista Git-identiteetti"}
+            label={busy ? txt.saving : txt.confirm}
             data-testid="git-identity-confirm"
             availability={
               busy || !name.trim() || !email

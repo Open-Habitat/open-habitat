@@ -15,6 +15,10 @@ import { keyNames } from "./SiteKeySettings";
 import { StatusMark } from "./Status";
 import "./ServerAccess.css";
 import "./SiteKeySettings.css";
+import { formatDate, liveText } from "../i18n";
+import { siteKeyText } from "../text/siteKey";
+
+const txt = liveText(siteKeyText);
 
 // Palvelimen ylläpito › AI-avain › Jo liittyneet (proto-admin-ai-key-seed,
 // "AI-avain-sivulla"; Jari 24.10.2026): the site's own record of the copies
@@ -27,15 +31,17 @@ import "./SiteKeySettings.css";
 const prefix = (k: SiteKey) =>
   k.provider === "anthropic" ? "sk-ant-…" : "sk-…";
 export const at = (p: JoinedPerson) =>
-  p.login_hint ? `@${p.login_hint}` : `GitHub ${p.id}`;
+  p.login_hint ? `@${p.login_hint}` : txt.github(p.id);
 export const day = (iso: string) => {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : `${d.getDate()}.${d.getMonth() + 1}.`;
+  return Number.isNaN(d.getTime())
+    ? ""
+    : formatDate(d, { day: "numeric", month: "numeric" });
 };
 export const list = (xs: string[]) =>
   xs.length < 2
     ? xs.join("")
-    : `${xs.slice(0, -1).join(", ")} ja ${xs[xs.length - 1]}`;
+    : `${xs.slice(0, -1).join(", ")}${txt.and}${xs[xs.length - 1]}`;
 
 /** People whose recorded copy is of an earlier key. */
 export const earlierHolders = (c: SiteKeyCopies) =>
@@ -43,46 +49,26 @@ export const earlierHolders = (c: SiteKeyCopies) =>
 
 function checkText(c: CopyCheck, key: SiteKey) {
   const name = keyNames[key.provider];
+  const tones = {
+    absent: "info",
+    earlier: "info",
+    current: "success",
+    own: "neutral",
+    unknown: "warning",
+  } as const;
   return {
-    absent: {
-      label: `Ei ${name}-tunnusta`,
-      tone: "info",
-      effect: "Saa avaimen",
-    },
-    earlier: {
-      label: "Sivuston aiempi avain",
-      tone: "info",
-      effect: "Kopio vaihtuu uuteen",
-    },
-    current: {
-      label: "On jo tämä avain",
-      tone: "success",
-      effect: "Ei muutosta",
-    },
-    own: {
-      label: `Oma ${name}-tunnus`,
-      tone: "neutral",
-      effect: "Ei koskaan korvata",
-    },
-    unknown: {
-      label: "Ei vastausta",
-      tone: "warning",
-      effect: "Ei tarkistettu",
-    },
-  }[c] as {
+    label: txt.check[c].label(name),
+    tone: tones[c],
+    effect: txt.check[c].effect,
+  } as {
     label: string;
     tone: "neutral" | "info" | "success" | "warning";
     effect: string;
   };
 }
-export const outcomeText: Record<GiveOutcome, string> = {
-  seeded: "Avain kirjoitettu",
-  replaced: "Kopio vaihdettu uuteen",
-  already_current: "Oli jo tämä avain",
-  kept: "Oma tunnus, ei muutettu",
-  not_reached: "Ei tavoitettu, ei kirjoitettu",
-  unknown: "Ei vastausta, tulos ei varmistunut",
-};
+export const outcomeText = new Proxy({} as Record<GiveOutcome, string>, {
+  get: (_target, outcome: string) => txt.outcome[outcome],
+});
 const outcomeTone = (o: GiveOutcome) =>
   o === "seeded" || o === "replaced"
     ? "success"
@@ -110,12 +96,8 @@ export function JoinedCard({
     >
       <div className="s-row">
         <div className="s-lbl">
-          <strong>Jo liittyneet</strong>
-          <span className="s-desc">
-            Henkilöt, jotka liittyivät ennen avainta tai saivat aiemman avaimen.
-            Lista kertoo, mitä sivusto on antanut. Mitä heidän Pi:llään nyt on,
-            tarkistetaan vasta antaessa.
-          </span>
+          <strong>{txt.joined}</strong>
+          <span className="s-desc">{txt.joinedDesc}</span>
         </div>
         <div className="s-val">
           <ControlButton
@@ -125,7 +107,7 @@ export function JoinedCard({
             isDisabled={disabled || !key || copies.people.length === 0}
             onPress={() => onGive(copies.people)}
           >
-            Anna avain liittyneille…
+            {txt.giveAll}
           </ControlButton>
         </div>
       </div>
@@ -141,28 +123,27 @@ export function JoinedCard({
             <span className="sk-muted">
               {p.copy ? (
                 <>
-                  Annettu {day(p.copy.at)}
+                  {txt.given(day(p.copy.at))}
                   {!p.copy.current && (
                     <>
                       {" "}
                       <span className="sk-old">
-                        (aiempi avain …{p.copy.suffix})
+                        {txt.earlierKey(p.copy.suffix)}
                       </span>
                     </>
                   )}
                 </>
               ) : (
-                "Ei annettu"
+                txt.notGiven
               )}
             </span>
           </li>
         ))}
       </ul>
       <p className="s-row sk-muted" data-testid="joined-waiting">
-        {copies.waiting > 0
-          ? `${copies.waiting} sallittua ei ole vielä kirjautunut; he saavat avaimen ensimmäisellä kirjautumisella. `
-          : ""}
-        Poistetut eivät ole mukana.{!key && " Aseta avain ensin."}
+        {copies.waiting > 0 ? txt.waiting(copies.waiting) : ""}
+        {txt.removedNotListed}
+        {!key && txt.setFirst}
       </p>
     </div>
   );
@@ -226,9 +207,7 @@ export function GiveDialog({
     setPhase("done");
   };
   const name = keyNames[siteKey.provider];
-  const title = one
-    ? `Anna sivuston AI-avain ${first ? at(first) : ""}:lle`
-    : "Anna sivuston AI-avain liittyneille";
+  const title = one ? txt.giveOne(first ? at(first) : "") : txt.giveMany;
   return (
     <ModalOverlay
       className="ah-overlay"
@@ -247,17 +226,17 @@ export function GiveDialog({
         >
           <Heading slot="title">{title}</Heading>
           <p className="sk-terms">
-            <strong>{name} API-avain</strong>{" "}
+            <strong>{txt.apiKey(name, false)}</strong>{" "}
             <code>
               {prefix(siteKey)}
               {siteKey.suffix}
             </code>
             .{" "}
             {phase === "checking"
-              ? "Tarkistetaan henkilön omasta palvelusta, mitä hänen Pi:llään on…"
+              ? txt.checking
               : phase === "done"
-                ? "Valmis."
-                : "Tarkistettu henkilön omasta palvelusta juuri nyt. Kirjoitushetkellä tarkistus tehdään uudelleen."}
+                ? txt.done
+                : txt.checked}
           </p>
           <ul className="sk-targets" data-testid="give-targets">
             {targets.map((p) => {
@@ -319,13 +298,13 @@ export function GiveDialog({
                       <StatusMark
                         tone="info"
                         animated="running"
-                        label="Kirjoitetaan…"
+                        label={txt.writing}
                       />
                     ) : (
                       <StatusMark
                         tone="info"
                         animated="running"
-                        label="Tarkistetaan…"
+                        label={txt.checkingShort}
                       />
                     )}
                   </span>
@@ -337,36 +316,19 @@ export function GiveDialog({
             <ul className="sa-consequences" data-testid="give-consequences">
               <li>
                 <Icon name="key" />
-                <span>
-                  Kirjoitat toisen henkilön omiin tunnuksiin. Avain menee{" "}
-                  {one ? "hänen" : "heidän"} Pi:hinsä,{" "}
-                  {one ? "hänen" : "heidän"} agenttinsa käyttävät sitä, ja{" "}
-                  {name} laskuttaa sivuston tiliä.
-                </span>
+                <span>{txt.writesOwn(one, name)}</span>
               </li>
               <li>
                 <Icon name="lock" />
-                <span>
-                  Kopio on {one ? "hänen" : "heidän"}.{" "}
-                  {one ? "Hän ja hänen" : "He ja heidän"} agenttinsa voivat
-                  lukea avaimen. Kopiota ei voi perua täältä; käytön estää vain
-                  avaimen mitätöinti palvelussa {name}.
-                </span>
+                <span>{txt.copyTheirs(one, name)}</span>
               </li>
               <li>
                 <Icon name="shield" />
-                <span>
-                  Oma avain tai tilaus ei koskaan korvaudu. Aiemmin annettu
-                  sivuston kopio vaihtuu uuteen.
-                </span>
+                <span>{txt.neverReplaced}</span>
               </li>
               <li>
                 <Icon name="info" />
-                <span>
-                  {one ? "Hän näkee" : "He näkevät"} kohdassa Asetukset ›
-                  Tekoäly, että avain on ylläpitäjän antama, ja{" "}
-                  {one ? "voi" : "voivat"} vaihtaa sen omaansa.
-                </span>
+                <span>{txt.theySee(one)}</span>
               </li>
             </ul>
           )}
@@ -378,7 +340,7 @@ export function GiveDialog({
               isDisabled={phase === "writing"}
               onPress={() => onClose(phase === "done")}
             >
-              {phase === "done" ? "Sulje" : "Peruuta"}
+              {phase === "done" ? txt.close : txt.cancel}
             </ControlButton>
             {phase !== "done" && (
               <ControlButton
@@ -389,10 +351,10 @@ export function GiveDialog({
                 onPress={() => void confirm()}
               >
                 {phase === "writing"
-                  ? "Kirjoitetaan…"
+                  ? txt.writing
                   : one
-                    ? `Kirjoita avain ${first ? at(first) : ""}:n tunnuksiin`
-                    : `Kirjoita avain ${picked.length} henkilölle`}
+                    ? txt.writeOne(first ? at(first) : "")
+                    : txt.writeMany(picked.length)}
               </ControlButton>
             )}
           </div>

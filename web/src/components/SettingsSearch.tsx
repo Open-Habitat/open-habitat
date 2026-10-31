@@ -1,6 +1,10 @@
 import type { KeyboardEvent, RefObject } from "react";
 import { highlight, type SettingsHit } from "../app/settingsIndex";
+import { liveText } from "../i18n";
+import { settingsSearchText } from "../text/settingsSearch";
 import { Icon } from "./Icon";
+
+const txt = liveText(settingsSearchText);
 
 function Marked({ text, query }: { text: string; query: string }) {
   return highlight(text, query).map((part, i) =>
@@ -26,8 +30,7 @@ function snippet(text: string, query: string) {
 // Settings has one results list: the field and the list find each other by it.
 const listId = "settings-search-results";
 
-const summary = (n: number) =>
-  n === 0 ? "Ei osumia" : n === 1 ? "1 osuma" : `${n} osumaa`;
+const summary = (n: number) => txt.summary(n);
 
 export const settingsHitKey = (hit: SettingsHit) =>
   `${hit.kind}-${hit.row ?? hit.section}`;
@@ -60,8 +63,8 @@ export function SettingsSearchField({
           type="search"
           role="combobox"
           data-testid="settings-search"
-          placeholder="Hae asetuksista"
-          aria-label="Hae asetuksista"
+          placeholder={txt.search}
+          aria-label={txt.search}
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
@@ -79,7 +82,7 @@ export function SettingsSearchField({
             type="button"
             className="s-search-clear"
             data-testid="settings-search-clear"
-            aria-label="Tyhjennä haku"
+            aria-label={txt.clear}
             onClick={() => {
               onQuery("");
               inputRef.current?.focus();
@@ -118,7 +121,8 @@ export function SettingsSearchResults({
   if (!hits.length)
     return (
       <p className="s-results-none" data-testid="settings-search-none">
-        Ei osumia haulle <b>”{query.trim()}”</b>. Kokeile toista sanaa.
+        {txt.noneBefore} <b>”{query.trim()}”</b>
+        {txt.noneAfter}
       </p>
     );
   return (
@@ -126,7 +130,7 @@ export function SettingsSearchResults({
       className="s-results"
       role="listbox"
       id={listId}
-      aria-label="Hakutulokset"
+      aria-label={txt.results}
       data-testid="settings-search-results"
     >
       {hits.map((hit, i) => (
@@ -151,7 +155,7 @@ export function SettingsSearchResults({
             <span className="s-result-path">{hit.path}</span>
             {hit.synonym ? (
               <span className="s-result-why">
-                osui: <Marked text={hit.synonym} query={query} />
+                {txt.matched} <Marked text={hit.synonym} query={query} />
               </span>
             ) : hit.desc ? (
               <span className="s-result-path">

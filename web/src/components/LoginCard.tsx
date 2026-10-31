@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { useLanguage, useText } from "../i18n";
+import { signInText } from "../text/signIn";
 import { OnboardingFrame } from "./OnboardingFrame";
 import { Button } from "./Primitives";
 import { InlineNotice } from "./Status";
@@ -11,29 +13,32 @@ export function LoginCard({
   notice?: ReactNode;
 }) {
   const demo = import.meta.env.VITE_SYNTHETIC_DEMO === "true";
+  const language = useLanguage();
+  const t = signInText[language];
   return (
     <OnboardingFrame step="github" notice={notice}>
       <section className="ah-login-card" aria-labelledby="login-title">
         <header>
           <p className="eyebrow">Open Habitat</p>
           <h1 data-testid="login-heading" id="login-title">
-            Tervetuloa Open Habitatiin
+            {t.welcome}
           </h1>
         </header>
-        <p>
-          Kirjaudu GitHub-tililläsi. Pääset omiin työtiloihisi ja voit
-          työskennellä niissä agenttien kanssa. Kirjautumisen jälkeen voit
-          valita työtilasi ja yhdistää OpenAI-tilisi.
-        </p>
+        <p>{t.intro}</p>
         <Button
           data-testid="github-sign-in"
           size="page"
-          label="Kirjaudu GitHubilla"
+          label={t.signIn}
           availability={
             demo
               ? {
                   state: "unsupported",
-                  reason: "Simuloidussa demossa ei voi kirjautua.",
+                  // Demo-only text stays out of the catalog, so the
+                  // production bundle never carries the demo's markers.
+                  reason:
+                    language === "en"
+                      ? "Signing in is not possible in the simulated demo."
+                      : "Simuloidussa demossa ei voi kirjautua.",
                 }
               : undefined
           }
@@ -44,7 +49,13 @@ export function LoginCard({
             })
           }
         />
-        {demo ? <p className="muted">Tämä näkymä on simulaatio.</p> : null}
+        {demo ? (
+          <p className="muted">
+            {language === "en"
+              ? "This view is a simulation."
+              : "Tämä näkymä on simulaatio."}
+          </p>
+        ) : null}
       </section>
     </OnboardingFrame>
   );
@@ -53,11 +64,12 @@ export function LoginCard({
 // The callback currently supplies only a URL error code, not an authenticated,
 // user-safe support reference. Never echo that query value as a diagnostic.
 export function LoginErrorNotice() {
+  const t = useText(signInText);
   return (
     <InlineNotice
       data-testid="login-error"
-      title="Kirjautumisessa tapahtui virhe"
-      description="Yritä kirjautua uudelleen. Jos virhe toistuu, ota yhteyttä palvelun ylläpitäjään. Älä lähetä tunnuksia tai kirjautumislinkkejä."
+      title={t.errorTitle}
+      description={t.errorDetail}
       tone="danger"
     />
   );

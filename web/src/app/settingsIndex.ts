@@ -1,4 +1,6 @@
 import type { IconName } from "../components/Icon";
+import { currentLanguage, type Language } from "../i18n";
+import { settingsIndexEnglish } from "../text/settingsIndex";
 
 /** One setting row as the search knows it: its name, the words a person
  * might type for it, and a short description. This is a list of the rows'
@@ -466,6 +468,20 @@ export const settingsSections = [
         ],
         desc: "Järjestelmä seuraa laitteen asetusta. Koskee tätä selainta.",
       },
+      {
+        id: "language",
+        label: "Kieli",
+        kw: [
+          "language",
+          "kieli",
+          "suomi",
+          "finnish",
+          "englanti",
+          "english",
+          "lang",
+        ],
+        desc: "Käyttöliittymän kieli. Koskee kaikkia laitteitasi.",
+      },
     ],
   },
   {
@@ -579,6 +595,19 @@ export const settingsSections = [
         label: "Palvelimen nimi",
         kw: ["nimi", "name", "otsikko"],
         desc: "Näkyy kaikille sivupalkissa.",
+      },
+      {
+        id: "server-language",
+        label: "Oletuskieli",
+        kw: [
+          "language",
+          "kieli",
+          "suomi",
+          "english",
+          "englanti",
+          "default language",
+        ],
+        desc: "Kieli niille, jotka eivät ole valinneet omaansa.",
       },
       {
         id: "server-version",
@@ -741,6 +770,59 @@ export const settingsSections = [
 export type SettingsSection = (typeof settingsSections)[number];
 export type SettingsRowId = SettingsSection["rows"][number]["id"];
 
+/** A section as the page shows it: its names in the interface's language.
+ * The ids, icon and synonyms are the same in every language; a search
+ * also finds a section or row by its name in the other language. */
+export type ShownSection = {
+  readonly id: SettingsSection["id"];
+  readonly label: string;
+  readonly icon: IconName;
+  readonly admin?: boolean;
+  readonly kw: readonly string[];
+  readonly intro?: string;
+  readonly rows: readonly RowEntry[];
+};
+
+const english: readonly ShownSection[] = settingsSections.map((section) => {
+  const en = settingsIndexEnglish[section.id] as {
+    label: string;
+    intro?: string;
+    rows: Record<string, { label: string; desc: string; group?: string }>;
+  };
+  return {
+    ...section,
+    label: en.label,
+    intro: en.intro,
+    kw: [...section.kw, section.label],
+    rows: section.rows.map((row) => ({
+      ...row,
+      ...en.rows[row.id],
+      kw: [...row.kw, row.label],
+    })),
+  };
+});
+const finnish: readonly ShownSection[] = settingsSections.map((section) => {
+  const en = settingsIndexEnglish[section.id] as {
+    label: string;
+    rows: Record<string, { label: string }>;
+  };
+  return {
+    ...section,
+    kw: [...section.kw, en.label],
+    rows: section.rows.map((row) => ({
+      ...row,
+      kw: [...row.kw, en.rows[row.id].label],
+    })),
+  };
+});
+
+/** Every section in the sidebar's order, named in `language`. */
+export function shownSettingsSections(
+  language: Language = currentLanguage(),
+): readonly ShownSection[] {
+  return language === "en" ? english : finnish;
+}
+
 const rowOf = new Map<string, { row: RowEntry; section: SectionEntry }>(
   settingsSections.flatMap((section) =>
     section.rows.map((row) => [row.id, { row, section }] as const),
@@ -800,18 +882,28 @@ export type SettingsHit = {
  * word, best first. Server sections are left out unless `admin`. */
 export function searchSettings(
   query: string,
-  { admin }: { admin: boolean },
+  {
+    admin,
+    language = currentLanguage(),
+  }: { admin: boolean; language?: Language },
 ): SettingsHit[] {
   const ts = terms(query);
   if (!ts.length) return [];
   const hits: SettingsHit[] = [];
-  for (const section of settingsSections as readonly SectionEntry[]) {
+  const en = language === "en";
+  for (const section of shownSettingsSections(language)) {
     if (section.admin && !admin) continue;
     const entries = [
       {
         kind: "section" as const,
         label: section.label,
-        path: section.admin ? "Palvelimen ylläpito" : "Asetukset",
+        path: section.admin
+          ? en
+            ? "Server administration"
+            : "Palvelimen ylläpito"
+          : en
+            ? "Settings"
+            : "Asetukset",
         kw: section.kw,
         desc: section.intro ?? "",
         row: undefined,
@@ -819,7 +911,11 @@ export function searchSettings(
       ...section.rows.map((row) => ({
         kind: "row" as const,
         label: row.label,
-        path: [section.admin ? "Ylläpito" : "", section.label, row.group]
+        path: [
+          section.admin ? (en ? "Administration" : "Ylläpito") : "",
+          section.label,
+          row.group,
+        ]
           .filter(Boolean)
           .join(" › "),
         kw: row.kw,

@@ -36,6 +36,10 @@ import {
   SiteKeyRemoval,
 } from "./SiteKeySettings";
 import "./OnboardingSettings.css";
+import { liveText } from "../i18n";
+import { onboardingSettingsText } from "../text/onboardingSettings";
+
+const txt = liveText(onboardingSettingsText);
 
 // Asetukset › Käyttöönotto, as agreed in proto-admin-server-onboarding: the
 // route as a list ("Lista reittinä", r2) beside the selected step's settings,
@@ -59,90 +63,73 @@ export type ProviderAvailability = ProviderReadiness;
 /** What the admin's own GitHub catalog says about a default, when it knows. */
 export type RepositoryFacts = { private: boolean; description: string };
 
-const modeNames: Record<RepositoryMode, string> = {
-  preselected: "Esivalitse",
-  auto: "Hae automaattisesti",
-  skip: "Ohita vaihe",
-};
-const listLabel: Record<RepositoryMode, string> = {
-  preselected: "Esivalitut repot",
-  auto: "Automaattisesti haettavat repot",
-  skip: "Taustalla tuotavat repot",
-};
-const listHint: Record<RepositoryMode, string> = {
-  preselected: "Valmiiksi valittuina henkilön repovalitsimessa.",
-  auto: "Haetaan heti GitHub-kirjautumisen jälkeen. Henkilö voi valita lisää.",
-  skip: "Valinnaisia. Tuodaan taustalla ilman repovaihetta.",
-};
-const repoWord = (n: number) =>
-  `${n} ${n === 1 ? "oletusrepo" : "oletusrepoa"}`;
+const modeNames = new Proxy({} as Record<RepositoryMode, string>, {
+  get: (_target, mode: RepositoryMode) => txt.modes[mode],
+  ownKeys: () => ["preselected", "auto", "skip"],
+  getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
+});
+const listLabel = new Proxy({} as Record<RepositoryMode, string>, {
+  get: (_target, mode: RepositoryMode) => txt.listLabel[mode],
+});
+const listHint = new Proxy({} as Record<RepositoryMode, string>, {
+  get: (_target, mode: RepositoryMode) => txt.listHint[mode],
+});
+const repoWord = (n: number) => txt.repos(n);
 
 export function repositoryEffect(d: OnboardingDocument): string {
   const n = d.repositories.defaults.length;
   const w = repoWord(n);
   switch (d.repositories.mode) {
     case "preselected":
-      return n
-        ? `Repovalitsin avautuu, ja ${w} on valmiiksi valittuna. Henkilö voi poistaa valinnan ja valita muita.`
-        : "Repovalitsin avautuu ilman esivalintoja.";
+      return n ? txt.effectPreselected(w) : txt.effectPreselectedNone;
     case "auto":
-      return n
-        ? `${w} haetaan heti GitHub-kirjautumisen jälkeen. Repovalitsimessa henkilö voi valita lisää.`
-        : "Mitään ei haeta automaattisesti. Lisää ainakin yksi repo, tai repovalitsin avautuu ilman haettavia.";
+      return n ? txt.effectAuto(w) : txt.effectAutoNone;
     case "skip":
-      return n
-        ? `Repovaihetta ei näytetä. ${w} tuodaan taustalla, ja reitin Repot-rivi kertoo sen.`
-        : "Repovaihetta ei näytetä eikä mitään haeta. Repoja voi hakea myöhemmin työtilanäkymästä.";
+      return n ? txt.effectSkip(w) : txt.effectSkipNone;
   }
 }
 function repositoryHint(d: OnboardingDocument): string {
   const n = d.repositories.defaults.length;
   switch (d.repositories.mode) {
     case "preselected":
-      return n ? `${n} esivalittuna` : "Henkilö valitsee";
+      return n ? txt.hintPreselected(n) : txt.personChooses;
     case "auto":
-      return n ? `${n} haetaan automaattisesti` : "Ei mitään haettavaa";
+      return n ? txt.hintAuto(n) : txt.nothingToFetch;
     case "skip":
-      return n ? `Ohitetaan · ${n} tuodaan` : "Ohitetaan";
+      return n ? txt.hintSkip(n) : txt.skipped;
   }
 }
 
 // The administrator reads each option as what the person will do.
-const adminHow: Record<AIOption, string> = {
-  chatgpt:
-    "Kirjautuminen OpenAI:n sivulla lyhyellä koodilla. Käyttö kuuluu tilaukseen.",
-  claude:
-    "Kirjautuminen Clauden sivulla ja koodi takaisin tänne. Käyttö kuuluu tilaukseen.",
-  openai_key: "Henkilö liittää oman avaimensa. OpenAI laskuttaa käytöstä.",
-  anthropic_key:
-    "Henkilö liittää oman avaimensa. Anthropic laskuttaa käytöstä.",
-  deepseek_key: "Henkilö liittää oman avaimensa. DeepSeek laskuttaa käytöstä.",
-};
-const aiOptions = aiOptionCatalog.map((o) => ({ ...o, how: adminHow[o.id] }));
+const adminHow = new Proxy({} as Record<AIOption, string>, {
+  get: (_target, option: string) => txt.how[option],
+});
+const aiOptions = () =>
+  aiOptionCatalog.map((o) => ({ ...o, how: adminHow[o.id] }));
 const optionName = (id: AIOffer) =>
-  aiOptions.find((o) => o.id === id)?.name ?? "";
+  aiOptions().find((o) => o.id === id)?.name ?? "";
 function aiHint(offer: AIOffer, siteKey?: SiteKey) {
   return offer === "all"
-    ? "Henkilö valitsee"
+    ? txt.personChooses
     : offer === "site_key"
-      ? `Ohitetaan · sivuston ${siteKey ? `${keyNames[siteKey.provider]}-` : ""}avain`
-      : `Oletus: ${optionName(offer)}`;
+      ? txt.aiSiteKey(siteKey ? keyNames[siteKey.provider] : "")
+      : txt.aiDefault(optionName(offer));
 }
 
 function integrationHint(i: OnboardingIntegration, available?: boolean) {
-  if (available !== true) return "Piilotettu · ei tarjolla";
-  return i.required ? "Pakollinen" : "Voi ohittaa";
+  if (available !== true) return txt.hiddenUnoffered;
+  return i.required ? txt.required : txt.optional;
 }
 
 const stepName = (step: OnboardingStep) =>
   step === "github"
     ? "GitHub"
     : step === "repositories"
-      ? "Repot"
+      ? txt.repositories
       : step === "ai"
-        ? "AI-tili"
+        ? txt.ai
         : step === "add-integration"
-          ? "Lisää integraatio"
+          ? txt.addIntegration
           : providerCopy[step.slice("integration:".length) as ProviderId].name;
 
 /** The administrator's list of the route: fixed order, one row per step. */
@@ -196,12 +183,9 @@ function RouteList({
   };
   return (
     <div className="s-card ob-listcol">
-      <p className="ob-eyebrow">Uuden henkilön reitti</p>
-      <ol
-        className="ob-steplist"
-        aria-label="Käyttöönoton vaiheet, kiinteä järjestys"
-      >
-        {row("github", "Kirjautuminen", true)}
+      <p className="ob-eyebrow">{txt.route}</p>
+      <ol className="ob-steplist" aria-label={txt.routeSteps}>
+        {row("github", txt.signIn, true)}
         {row(
           "repositories",
           repositoryHint(doc),
@@ -217,7 +201,7 @@ function RouteList({
           ),
         )}
         {doc.integrations.length < providerOrder.length &&
-          row("add-integration", "Uusi vaihe ennen AI-tiliä", false, "ob-add")}
+          row("add-integration", txt.newStep, false, "ob-add")}
         {row(
           "ai",
           aiHint(doc.ai_account.offer, siteKey),
@@ -231,7 +215,7 @@ function RouteList({
 function Effect({ children }: { children: ReactNode }) {
   return (
     <p className="ob-effect" data-testid="onboarding-effect">
-      <strong>Henkilö näkee:</strong> {children}
+      <strong>{txt.personSees}</strong> {children}
     </p>
   );
 }
@@ -254,21 +238,23 @@ function RepositorySettings({
     onChange({ ...doc, repositories: { ...doc.repositories, ...patch } });
   return (
     <>
-      <p className="ob-lbl">Repojen aloitustapa</p>
+      <p className="ob-lbl">{txt.repoMode}</p>
       <Segmented
         data-testid="onboarding-repository-mode"
-        label="Repojen aloitustapa"
+        label={txt.repoMode}
         size="row"
         isDisabled={disabled}
-        options={(Object.keys(modeNames) as RepositoryMode[]).map((m) => ({
-          id: m,
-          label: modeNames[m],
-        }))}
+        options={(["preselected", "auto", "skip"] as RepositoryMode[]).map(
+          (m) => ({
+            id: m,
+            label: modeNames[m],
+          }),
+        )}
         value={mode}
         onChange={(m) => set({ mode: m })}
       />
       <p className="ob-lbl ob-list-lbl">
-        Oletusrepot:&nbsp;
+        {txt.defaultRepos}&nbsp;
         <span data-testid="onboarding-list-label">{listLabel[mode]}</span>
       </p>
       <p className="ob-muted">{listHint[mode]}</p>
@@ -286,9 +272,11 @@ function RepositorySettings({
                       <b>{repo}</b>
                     </span>
                     {f?.private ? (
-                      <span title="Yksityinen">
+                      <span title={txt.private}>
                         <Icon name="lock" width={12} height={12} />
-                        <span className="ah-visually-hidden">Yksityinen</span>
+                        <span className="ah-visually-hidden">
+                          {txt.private}
+                        </span>
                       </span>
                     ) : null}
                     {f?.description ? (
@@ -302,13 +290,13 @@ function RepositorySettings({
                     size="row"
                     variant="quiet"
                     isDisabled={disabled}
-                    aria-label={`Poista ${name} oletusrepoista`}
+                    aria-label={txt.removeRepo(name)}
                     onPress={() =>
                       set({ defaults: defaults.filter((d) => d !== name) })
                     }
                   >
                     <Icon name="cross" width={14} height={14} />
-                    Poista
+                    {txt.remove}
                   </ControlButton>
                 </li>
               );
@@ -316,7 +304,7 @@ function RepositorySettings({
           </ul>
         ) : (
           <p className="ob-muted" data-testid="onboarding-no-defaults">
-            Ei oletusrepoja.
+            {txt.noDefaults}
           </p>
         )}
         <div>
@@ -327,19 +315,18 @@ function RepositorySettings({
             isDisabled={disabled || defaults.length >= maxDefaults}
             title={
               defaults.length >= maxDefaults
-                ? `Oletusrepoja voi olla enintään ${maxDefaults}.`
+                ? txt.maxDefaults(maxDefaults)
                 : undefined
             }
             onPress={onAddRepository}
           >
             <Icon name="plus" width={14} height={14} />
-            Lisää oletusrepo…
+            {txt.addRepo}
           </ControlButton>
         </div>
       </div>
       <p className="ob-muted ob-access" data-testid="onboarding-access-rule">
-        Repo haetaan vain, jos henkilöllä on siihen pääsy omalla
-        GitHub-tilillään. Muuten se jätetään pois näyttämättä nimeä henkilölle.
+        {txt.accessRule}
       </p>
       <Effect>{repositoryEffect(doc)}</Effect>
     </>
@@ -372,18 +359,18 @@ function IntegrationSettings({
           <span className="ig-rn">{copy.name}</span>
           {available !== true ? (
             <span className="ig-meta" data-testid="onboarding-step-hidden">
-              {available === false ? "Ei tarjolla" : "Tila ei tiedossa"}
+              {available === false ? txt.notOffered : txt.unknown}
             </span>
           ) : null}
         </div>
         <Segmented
           data-testid="onboarding-integration-required"
-          label={`${copy.name}: pakollisuus`}
+          label={txt.requiredOf(copy.name)}
           size="row"
           isDisabled={disabled}
           options={[
-            { id: "optional", label: "Voi ohittaa" },
-            { id: "required", label: "Pakollinen" },
+            { id: "optional", label: txt.optional },
+            { id: "required", label: txt.required },
           ]}
           value={item.required ? "required" : "optional"}
           onChange={(v) =>
@@ -402,7 +389,7 @@ function IntegrationSettings({
           size="row"
           variant="quiet"
           isDisabled={disabled}
-          aria-label={`Poista ${copy.name} käyttöönotosta`}
+          aria-label={txt.removeIntegration(copy.name)}
           onPress={() => {
             onChange({
               ...doc,
@@ -414,22 +401,20 @@ function IntegrationSettings({
           }}
         >
           <Icon name="cross" width={14} height={14} />
-          Poista
+          {txt.remove}
         </ControlButton>
       </div>
       {available !== true ? (
         <p className="ob-muted ob-access">
-          {available === false
-            ? "Integraatiota ei tarjota tällä palvelimella, joten vaihe on piilotettu uusilta henkilöiltä. Se näkyy taas, kun integraatio on tarjolla."
-            : "Integraatioiden tilaa ei voitu lukea. Vaihe näkyy uusille henkilöille vain, kun integraatio on valmis käyttöön."}
+          {available === false ? txt.hiddenNotOffered : txt.hiddenUnknown}
         </p>
       ) : null}
       <Effect>
         {available !== true
-          ? "Ei mitään. Vaihetta ei näytetä."
+          ? txt.nothingShown
           : item.required
-            ? `${copy.name} on oma vaiheensa, eikä sitä voi ohittaa. Vaihe ei estä työtilojen käyttöä.`
-            : `${copy.name} ehdotetaan omana vaiheenaan; sen voi ohittaa.`}
+            ? txt.requiredEffect(copy.name)
+            : txt.optionalEffect(copy.name)}
       </Effect>
     </>
   );
@@ -457,15 +442,11 @@ function AddIntegration({
   const unready = left.filter((p) => availability[p] !== true);
   return (
     <>
-      <p className="ob-muted">
-        Jokainen lisätty integraatio on oma vaiheensa ennen AI-tiliä.
-        Integraatiot ovat reitillä samassa järjestyksessä kuin Integraatiot-
-        sivulla. Vain käyttöön valmiin integraation voi lisätä.
-      </p>
+      <p className="ob-muted">{txt.addIntro}</p>
       <div className="ob-tiles" data-testid="onboarding-integration-choices">
         {ready.length === 0 ? (
           <p className="ob-muted" data-testid="onboarding-no-ready">
-            Yksikään lisäämätön integraatio ei ole valmis käyttöön.
+            {txt.noneReady}
           </p>
         ) : null}
         {ready.map((p) => (
@@ -491,7 +472,7 @@ function AddIntegration({
                 onAdded(p);
               }}
             >
-              Lisää
+              {txt.add}
             </ControlButton>
           </div>
         ))}
@@ -508,9 +489,7 @@ function AddIntegration({
               <div>
                 <span className="ig-rn">{providerCopy[p].name}</span>
                 <span className="ig-meta">
-                  {availability[p] === false
-                    ? "Ei tarjolla"
-                    : "Tila ei tiedossa"}
+                  {availability[p] === false ? txt.notOffered : txt.unknown}
                 </span>
               </div>
             </div>
@@ -561,16 +540,16 @@ function AISettings({
   };
   return (
     <>
-      <p className="ob-lbl">Tapa</p>
+      <p className="ob-lbl">{txt.way}</p>
       <Segmented
         data-testid="onboarding-ai-way"
-        label="AI-tilin tapa"
+        label={txt.aiWay}
         size="row"
         isDisabled={disabled}
         options={[
-          { id: "all", label: "Henkilö valitsee" },
-          { id: "default", label: "Oletus" },
-          { id: "key", label: "Sivuston avain" },
+          { id: "all", label: txt.personChooses },
+          { id: "default", label: txt.wayDefault },
+          { id: "key", label: txt.waySiteKey },
         ]}
         value={way}
         onChange={pick}
@@ -578,11 +557,11 @@ function AISettings({
       {way === "default" ? (
         <fieldset
           className="ob-choices"
-          aria-label="Oletus uudelle henkilölle"
+          aria-label={txt.defaultFor}
           data-testid="onboarding-ai-default"
           disabled={disabled}
         >
-          {aiOptions.map((o) => (
+          {aiOptions().map((o) => (
             <label key={o.id} className="ob-choice">
               <input
                 type="radio"
@@ -603,33 +582,27 @@ function AISettings({
       ) : null}
       {way === "key" ? (
         <p className="ob-muted" data-testid="site-key-terms">
-          {siteKey ? (
-            <>
-              {keyNames[siteKey.provider]}-avain{" "}
-              <code data-testid="site-key-suffix">…{siteKey.suffix}</code> on
-              asetettu.{" "}
-            </>
-          ) : (
-            "Avainta ei ole asetettu. "
-          )}
+          {siteKey
+            ? txt.keySet(
+                keyNames[siteKey.provider],
+                <code data-testid="site-key-suffix">…{siteKey.suffix}</code>,
+              )
+            : txt.keyNotSet}
           <SiteKeyPageLink link={keyLink}>
-            {siteKey ? "Vaihda tai poista AI-avain" : "Aseta AI-avain"}
+            {siteKey ? txt.changeKey : txt.setKey}
           </SiteKeyPageLink>
         </p>
       ) : null}
       <Effect>
         {offer === "site_key"
-          ? `Ei AI-vaihetta: agentit käyttävät sivuston ${siteKey ? keyNames[siteKey.provider] : ""}-avainta.`
+          ? txt.noAiStep(siteKey ? keyNames[siteKey.provider] : "")
           : keyWay
-            ? "Kunnes avain on tallennettu, henkilö näkee vaiheen kuten ennen."
+            ? txt.untilStored
             : offer === "all"
-              ? "Kaikki AI-vaihtoehdot rinnakkain, ja henkilö valitsee niistä."
-              : `Vain ${optionName(offer)}. Muut vaihtoehdot ovat linkin › Käytä muuta AI-palvelua takana.`}
+              ? txt.allOptions
+              : txt.onlyOption(optionName(offer))}
       </Effect>
-      <p className="ob-muted">
-        Henkilö voi lisätä muita tilejä myöhemmin kohdassa Asetukset › Tekoäly.
-        AI-vaihe ohitetaan, jos henkilöllä on jo toimivat tunnukset.
-      </p>
+      <p className="ob-muted">{txt.addLater}</p>
       <SiteKeyRemoval
         siteKey={siteKey}
         open={leaving !== undefined}
@@ -682,16 +655,12 @@ export function OnboardingStepSettings({
     <section
       className="ob-config"
       data-step={step}
-      aria-label={`${stepName(step)}: asetukset`}
+      aria-label={txt.stepSettings(stepName(step))}
     >
-      <p className="ob-eyebrow">Sinun asetuksesi</p>
+      <p className="ob-eyebrow">{txt.yourSettings}</p>
       <h3>{stepName(step)}</h3>
       {step === "github" ? (
-        <p className="ob-muted">
-          Jokainen aloittaa kirjautumalla GitHub-tilillään. Kirjautuminen
-          tunnistaa henkilön ja antaa hänen omille työkaluilleen pääsyn hänen
-          repoihinsa. Vaihetta ei voi muuttaa.
-        </p>
+        <p className="ob-muted">{txt.githubStep}</p>
       ) : step === "repositories" ? (
         <RepositorySettings
           doc={doc}
@@ -727,7 +696,7 @@ export function OnboardingStepSettings({
           disabled={disabled}
         />
       ) : (
-        <p className="ob-muted">Integraatiota ei ole enää käyttöönotossa.</p>
+        <p className="ob-muted">{txt.integrationGone}</p>
       )}
     </section>
   );
@@ -761,21 +730,21 @@ function SaveStatus({
         data-state={save.kind}
       >
         {save.kind === "saving" ? (
-          "Tallennetaan…"
+          txt.saving
         ) : save.kind === "saved" ? (
           <>
             <Icon name="check" width={14} height={14} />
-            Tallennettu
+            {txt.saved}
           </>
         ) : save.kind === "idle" ? (
-          "Muutokset tallentuvat heti."
+          txt.savesAtOnce
         ) : (
-          "Ei tallennettu"
+          txt.notSaved
         )}
       </p>
       {save.kind === "refused" ? (
         <p role="alert" className="ob-notice ob-notice-error">
-          Muutosta ei tallennettu. {save.text}
+          {txt.refused(save.text)}
         </p>
       ) : save.kind === "uncertain" || save.kind === "conflict" ? (
         <div
@@ -784,17 +753,13 @@ function SaveStatus({
           data-testid="onboarding-save-failure"
           data-state={save.kind}
         >
-          <p>
-            {save.kind === "conflict"
-              ? "Käyttöönottoa on muutettu toisaalla sen jälkeen, kun avasit sen. Viimeisintä muutostasi ei tallennettu. Lataa nykyinen versio ja tee muutos uudelleen."
-              : "Tallennusta ei voitu vahvistaa. Muutos on voinut tallentua. Lataa nykyinen versio ennen kuin jatkat."}
-          </p>
+          <p>{save.kind === "conflict" ? txt.conflict : txt.uncertain}</p>
           <ControlButton
             size="row"
             data-testid="onboarding-reload"
             onPress={onReload}
           >
-            Lataa nykyinen versio
+            {txt.reloadCurrent}
           </ControlButton>
         </div>
       ) : null}
@@ -863,11 +828,7 @@ export function OnboardingSettings({
         data-settings-row="onboarding-preview"
         tabIndex={-1}
       >
-        <p className="ob-lede">
-          Mitä uusi henkilö käy läpi ensimmäisellä kirjautumisella. Vaiheiden
-          järjestys on kiinteä. Muutos tallentuu heti ja koskee seuraavaa uutta
-          käyttöönottoa; jo liittyneet eivät muutu.
-        </p>
+        <p className="ob-lede">{txt.lede}</p>
         <ControlButton
           data-testid="onboarding-preview-open"
           size="page"
@@ -875,7 +836,7 @@ export function OnboardingSettings({
           onPress={() => onPreview(true)}
         >
           <Icon name="eye" width={16} height={16} />
-          Näytä henkilön näkymä
+          {txt.showPreview}
         </ControlButton>
       </div>
       {preview ? null : status}
@@ -892,13 +853,7 @@ export function OnboardingSettings({
           siteKey={siteKey}
         />
         <div className="s-card ob-cfg-card">
-          {preview ? (
-            <p className="ob-muted">
-              Asetukset ovat esikatselun sivupaneelissa.
-            </p>
-          ) : (
-            settings
-          )}
+          {preview ? <p className="ob-muted">{txt.inPanel}</p> : settings}
         </div>
       </div>
       <OnboardingPreview
@@ -910,10 +865,7 @@ export function OnboardingSettings({
       >
         {status}
         {settings}
-        <p className="ob-muted">
-          Muutos näkyy esikatselussa heti ja aloittaa sen alusta. Se myös
-          tallentuu heti.
-        </p>
+        <p className="ob-muted">{txt.previewNote}</p>
       </OnboardingPreview>
     </div>
   );
@@ -958,15 +910,12 @@ function previewRoute(
   const { mode, defaults } = doc.repositories;
   const n = defaults.length;
   return [
-    { id: "github", note: "Kirjautunut" },
+    { id: "github", note: txt.signedIn },
     ...(hasRepositoryStep(mode, n)
       ? [
           {
             id: "repositories" as const,
-            note:
-              mode === "skip"
-                ? `Sivusto hakee ${n} ${n === 1 ? "repon" : "repoa"}`
-                : undefined,
+            note: mode === "skip" ? txt.siteFetches(n) : undefined,
           },
         ]
       : []),
@@ -995,11 +944,8 @@ function PreviewStepCard({
   if (step.id === "repositories")
     return (
       <div className="ob-pv-card" data-testid="onboarding-preview-card">
-        <h1>Valitse GitHub-repot haettaviksi</h1>
-        <p>
-          Valitse repot, joita haluat käyttää täällä. Ne haetaan työtiloiksi
-          taustalla.
-        </p>
+        <h1>{txt.chooseRepos}</h1>
+        <p>{txt.chooseReposLead}</p>
         {defaults.length ? (
           <>
             <p className="ob-pv-note" data-testid="onboarding-preview-note">
@@ -1010,8 +956,8 @@ function PreviewStepCard({
               />
               <span>
                 {mode === "auto"
-                  ? `Sivusto hakee sinulle jo ${defaults.length} ${defaults.length === 1 ? "repon" : "repoa"}. Valitse tästä vain lisää.`
-                  : `Sivusto on valinnut valmiiksi ${defaults.length} ${defaults.length === 1 ? "repon" : "repoa"}. Voit poistaa valinnan.`}
+                  ? txt.alreadyFetches(defaults.length)
+                  : txt.preselectedFor(defaults.length)}
               </span>
             </p>
             <ul className="ob-pv-repos">
@@ -1025,17 +971,14 @@ function PreviewStepCard({
                   />
                   <span className="ah-mono">{name}</span>
                   {mode === "auto" ? (
-                    <span className="ob-muted">Sivusto hakee</span>
+                    <span className="ob-muted">{txt.siteFetchesShort}</span>
                   ) : null}
                 </li>
               ))}
             </ul>
           </>
         ) : null}
-        <p className="ob-muted">
-          Esikatselu näyttää vain sivuston oletusrepot. Henkilö näkee myös omat
-          repojensa, eikä hän näe oletusrepoa, johon hänellä ei ole pääsyä.
-        </p>
+        <p className="ob-muted">{txt.previewOnlyDefaults}</p>
         <div className="ob-pv-actions">
           <ControlButton
             data-testid="onboarding-preview-next"
@@ -1043,7 +986,7 @@ function PreviewStepCard({
             variant="primary"
             onPress={() => onNext()}
           >
-            Jatka
+            {txt.continue}
           </ControlButton>
         </div>
       </div>
@@ -1054,11 +997,8 @@ function PreviewStepCard({
       <div className="ob-pv-card" data-testid="onboarding-preview-card">
         <h1>{copy.name}</h1>
         <p>
-          Yhdistä oma {copy.name}-tilisi, jos agenttisi pitää käyttää sen
-          tietoja.
-          {step.required
-            ? ""
-            : ` Voit tehdä tämän myöhemmin kohdassa Asetukset › ${settingsPlace(step.provider)}.`}
+          {txt.connectOwn(copy.name)}
+          {step.required ? "" : txt.later(settingsPlace(step.provider))}
         </p>
         <div className="ig-tile ob-tile">
           <ProviderMark provider={step.provider} />
@@ -1066,7 +1006,7 @@ function PreviewStepCard({
             <span className="ig-rn">{copy.name}</span>
           </div>
           <ControlButton size="row" variant="secondary" isDisabled>
-            Yhdistä…
+            {txt.connect}
           </ControlButton>
         </div>
         <div className="ob-pv-actions">
@@ -1077,7 +1017,7 @@ function PreviewStepCard({
               variant="primary"
               onPress={() => onNext()}
             >
-              Jatka (esikatselu)
+              {txt.continuePreview}
             </ControlButton>
           ) : (
             <ControlButton
@@ -1086,7 +1026,7 @@ function PreviewStepCard({
               variant="secondary"
               onPress={() => onNext(true)}
             >
-              Jatka ilman tiliä
+              {txt.continueWithout}
             </ControlButton>
           )}
         </div>
@@ -1099,7 +1039,7 @@ function PreviewStepCard({
     // preview signs nobody in.
     return (
       <div className="ob-pv-card" data-testid="onboarding-preview-card">
-        <h1>Kirjaudu AI-palveluun</h1>
+        <h1>{txt.signInAi}</h1>
         <p>{aiStepLead(suggestionOf(offer))}</p>
         <AIOfferList
           offer={offer}
@@ -1107,7 +1047,7 @@ function PreviewStepCard({
           onChoose={setChoice}
           body={(o) => (
             <ControlButton size="row" variant="secondary" isDisabled>
-              {o.key ? "Tallenna avain" : "Kirjaudu…"}
+              {o.key ? txt.saveKey : txt.signInEllipsis}
             </ControlButton>
           )}
         />
@@ -1118,7 +1058,7 @@ function PreviewStepCard({
             variant="secondary"
             onPress={() => onNext()}
           >
-            Jatka (esikatselu)
+            {txt.continuePreview}
           </ControlButton>
         </div>
       </div>
@@ -1126,8 +1066,8 @@ function PreviewStepCard({
   }
   return (
     <div className="ob-pv-card" data-testid="onboarding-preview-card">
-      <h1>Valmista</h1>
-      <p>Seuraavaksi avautuvat henkilön työtilat.</p>
+      <h1>{txt.ready}</h1>
+      <p>{txt.workspacesNext}</p>
     </div>
   );
 }
@@ -1202,25 +1142,22 @@ export function OnboardingPreview({
       <Modal className="ob-pm-modal">
         <Dialog
           className="ob-pm"
-          aria-label="Esikatselu: uuden henkilön näkymä"
+          aria-label={txt.previewTitle}
           data-testid="onboarding-preview"
         >
           <header className="ob-pm-bar">
             <span className="ob-pm-title">
               <Icon name="eye" width={16} height={16} />
-              <strong className="ob-pm-name">Esikatselu</strong>
-              <span>
-                Näin uusi henkilö näkee käyttöönoton. Esikatselussa painetut
-                eivät tallennu.
-              </span>
+              <strong className="ob-pm-name">{txt.preview}</strong>
+              <span>{txt.previewLead}</span>
             </span>
             <Segmented
               data-testid="onboarding-preview-device"
-              label="Esikatselun laite"
+              label={txt.device}
               size="row"
               options={[
-                { id: "desktop", label: "Tietokone" },
-                { id: "phone", label: "Puhelin" },
+                { id: "desktop", label: txt.desktop },
+                { id: "phone", label: txt.phone },
               ]}
               value={device}
               onChange={setDevice}
@@ -1231,7 +1168,7 @@ export function OnboardingPreview({
               variant="quiet"
               onPress={() => setRun((n) => n + 1)}
             >
-              Aloita alusta
+              {txt.restart}
             </ControlButton>
             <ControlButton
               data-testid="onboarding-preview-close"
@@ -1239,7 +1176,7 @@ export function OnboardingPreview({
               variant="secondary"
               onPress={onClose}
             >
-              Sulje esikatselu
+              {txt.closePreview}
             </ControlButton>
           </header>
           <div className="ob-pm-body">
@@ -1270,7 +1207,7 @@ export function OnboardingPreview({
                 </div>
               </div>
             </div>
-            <aside className="ob-pm-drawer" aria-label="Asetuksesi">
+            <aside className="ob-pm-drawer" aria-label={txt.yourSettingsPanel}>
               {children}
             </aside>
           </div>

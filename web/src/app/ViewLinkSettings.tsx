@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { CopyButton, viewLinkTerms } from "../components/ViewLink";
+import { liveText } from "../i18n";
+import { viewLinksText } from "../text/viewLinks";
 import {
   type AdminViewLink,
   adminRevokeViewLink,
@@ -10,6 +12,8 @@ import {
   revokeViewLink,
   useViewLinks,
 } from "./viewLinks";
+
+const txt = liveText(viewLinksText);
 
 /** Tili › Jaetut linkit: every link the person has, to copy again or revoke,
  * also those whose view card is in a conversation long gone. Absent where
@@ -30,18 +34,15 @@ export function ViewLinkSettings({ csrf }: { csrf?: string }) {
       className="s-row"
       data-settings-row="view-links"
       tabIndex={-1}
-      aria-label="Jaetut linkit"
+      aria-label={txt.shared}
     >
       <div className="s-lbl">
-        <strong>Jaetut linkit</strong>
-        <span className="s-desc">{viewLinkTerms}</span>
+        <strong>{txt.shared}</strong>
+        <span className="s-desc">{viewLinkTerms()}</span>
       </div>
       <div className="s-val">
         {links.links.length === 0 ? (
-          <span className="s-desc">
-            Et ole jakanut näkymiä. Jaa näkymä sen kortin painikkeella Jaa
-            linkillä.
-          </span>
+          <span className="s-desc">{txt.none}</span>
         ) : (
           <ul className="ah-view-links">
             {links.links.map((l) => (
@@ -49,7 +50,7 @@ export function ViewLinkSettings({ csrf }: { csrf?: string }) {
                 <span>
                   <strong>{l.title}</strong>
                   <span className="s-desc">
-                    Voimassa {formatExpiry(l.expires_at)} asti
+                    {txt.validUntil(formatExpiry(l.expires_at))}
                   </span>
                 </span>
                 <CopyButton text={l.url} data-testid="view-link-row-copy" />
@@ -71,7 +72,7 @@ export function ViewLinkSettings({ csrf }: { csrf?: string }) {
                     );
                   }}
                 >
-                  Poista
+                  {txt.removeShort}
                 </ControlButton>
               </li>
             ))}
@@ -102,7 +103,7 @@ export function ViewLinkAdministration({ csrf }: { csrf?: string }) {
   useEffect(() => {
     const abort = new AbortController();
     void load(abort.signal).catch(() => {
-      if (!abort.signal.aborted) setError("Jaettuja linkkejä ei voitu ladata.");
+      if (!abort.signal.aborted) setError(txt.adminUnavailable);
     });
     return () => abort.abort();
   }, [load]);
@@ -114,21 +115,18 @@ export function ViewLinkAdministration({ csrf }: { csrf?: string }) {
       className="s-row"
       data-settings-row="view-links-admin"
       tabIndex={-1}
-      aria-label="Jaetut linkit"
+      aria-label={txt.shared}
     >
       <div className="s-lbl">
-        <strong>Jaetut linkit</strong>
+        <strong>{txt.shared}</strong>
         <span className="s-desc">
-          Henkilöiden jakamat näkymät. Kuka tahansa linkin saanut voi avata ne.
-          Poista linkki, jota käytetään väärin.
-          {data && !data.enabled
-            ? " Linkit eivät nyt ole käytössä tällä palvelimella."
-            : ""}
+          {txt.adminDesc}
+          {data && !data.enabled ? txt.adminOff : ""}
         </span>
       </div>
       <div className="s-val">
         {data && data.links.length === 0 ? (
-          <span className="s-desc">Kukaan ei ole jakanut näkymiä.</span>
+          <span className="s-desc">{txt.adminNone}</span>
         ) : data ? (
           <ul className="ah-view-links">
             {data.links.map((l) => (
@@ -136,8 +134,11 @@ export function ViewLinkAdministration({ csrf }: { csrf?: string }) {
                 <span>
                   <strong>{l.title}</strong>
                   <span className="s-desc">
-                    {l.username} · jaettu {formatExpiry(l.created_at)} ·
-                    voimassa {formatExpiry(l.expires_at)} asti
+                    {txt.adminRow(
+                      l.username,
+                      formatExpiry(l.created_at),
+                      formatExpiry(l.expires_at),
+                    )}
                   </span>
                 </span>
                 <ControlButton
@@ -155,7 +156,7 @@ export function ViewLinkAdministration({ csrf }: { csrf?: string }) {
                       .finally(() => setBusy(undefined));
                   }}
                 >
-                  Poista
+                  {txt.removeShort}
                 </ControlButton>
               </li>
             ))}

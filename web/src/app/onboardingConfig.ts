@@ -6,8 +6,12 @@ import integrationsSchema from "../../../contracts/v1/integrations.schema.json";
 import accessSchema from "../../../contracts/v1/server-access.schema.json";
 import serverSchema from "../../../contracts/v1/server-onboarding.schema.json";
 import siteSchema from "../../../contracts/v1/site-onboarding.schema.json";
+import { liveText } from "../i18n";
+import { onboardingSettingsText } from "../text/onboardingSettings";
 import { bounded, type IntegrationList, type ProviderId } from "./integrations";
 import { mutationFetch, writeOutcome } from "./mutations";
+
+const txt = liveText(onboardingSettingsText);
 
 // The site onboarding configuration (ADR 0030) lives in the gateway's
 // administration state. An administrator reads and replaces it whole under a
@@ -256,32 +260,6 @@ export const deleteSiteKey = (
 
 /** A refusal in words the administrator can act on. */
 export function refusalText(code: string): string {
-  switch (code) {
-    case "version_conflict":
-      return "Käyttöönottoa on muutettu toisaalla sen jälkeen, kun avasit sen. Lataa nykyinen versio ja tee muutoksesi uudelleen.";
-    case "too_many_defaults":
-      return `Oletusrepoja voi olla enintään ${maxDefaults}.`;
-    case "invalid_repository_name":
-      return "Jokin oletusrepo ei ole muotoa omistaja/repo.";
-    case "duplicate_default":
-      return "Sama oletusrepo on listassa kahdesti.";
-    case "duplicate_destination":
-      return "Kahdella oletusrepolla on sama nimi eri omistajilla. Henkilölle voi hakea niistä vain yhden.";
-    case "unknown_provider":
-    case "duplicate_provider":
-      return "Integraatioiden lista ei kelpaa palvelimelle.";
-    case "site_key_unavailable":
-      return "Sivuston avainta ei ole tallennettu.";
-    case "site_key_stored":
-      return "Sivuston avain on käytössä. Poista avain ennen kuin vaihdat tapaa.";
-    case "invalid_key":
-      return "Avain ei kelpaa valitulle palvelulle.";
-    case "admin_required":
-      return "Ylläpito-oikeutesi on poistettu.";
-    case "csrf_denied":
-    case "origin_denied":
-      return "Istunto ei kelpaa enää. Lataa sivu uudelleen.";
-    default:
-      return "Palvelin ei hyväksynyt muutosta.";
-  }
+  if (code === "too_many_defaults") return txt.tooManyDefaults(maxDefaults);
+  return txt.refusals[code] ?? txt.refusedDefault;
 }

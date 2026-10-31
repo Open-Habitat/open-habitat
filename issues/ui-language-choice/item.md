@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 lane: i18n
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # UI language choice: System, Suomi, English with a server default
@@ -47,16 +48,16 @@ sign-in are static Finnish). This issue builds the foundation and the choice;
 
 ## Acceptance Criteria
 
-- [ ] Settings has the language choice (System · Suomi · English); changing it
+- [x] Settings has the language choice (System · Suomi · English); changing it
       switches the interface without a reload and persists across devices.
-- [ ] The administrator sets the server's default language in Settings; the
+- [x] The administrator sets the server's default language in Settings; the
       installation can also set it in configuration.
-- [ ] A browser in a language other than fi/en gets English when the choice
+- [x] A browser in a language other than fi/en gets English when the choice
       resolves to System.
-- [ ] The catalog mechanism is in place with compile-time completeness, and
+- [x] The catalog mechanism is in place with compile-time completeness, and
       at least the shell, Settings, sign-in and landing page are translated;
       the remaining views are `ui-english-coverage`.
-- [ ] Browser spec: switch language, reload, other device sees the choice;
+- [x] Browser spec: switch language, reload, other device sees the choice;
       System with a non-fi/en browser locale gives English.
 
 ## Comments

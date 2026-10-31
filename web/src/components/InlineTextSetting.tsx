@@ -1,4 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { liveText } from "../i18n";
+import { inlineSettingsText } from "../text/inlineSettings";
+
+const txt = liveText(inlineSettingsText);
 
 /**
  * A single-value setting edited in place: it saves when focus leaves the field
@@ -69,7 +73,7 @@ export function InlineTextSetting({
       await onSave(next);
       setStatus("saved");
     } catch {
-      setReason("muutosta ei voitu vahvistaa.");
+      setReason(txt.unconfirmed);
       setStatus("failed");
     } finally {
       saving.current = false;
@@ -135,13 +139,13 @@ export function InlineTextSetting({
           }
         >
           {status === "saving"
-            ? "Tallennetaan…"
+            ? txt.saving
             : status === "saved"
-              ? "Tallennettu"
+              ? txt.saved
               : status === "failed"
-                ? `Ei tallennettu: ${reason} Teksti säilyi; yritä uudelleen Enterillä.`
+                ? txt.failed(reason)
                 : status === "invalid"
-                  ? `Ei tallennettu: ${reason}`
+                  ? txt.invalid(reason)
                   : ""}
         </span>
       </div>

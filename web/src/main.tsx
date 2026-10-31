@@ -9,7 +9,9 @@ import { App } from "./app/App";
 import { LinkPage, takeLinkToken } from "./app/LinkPage";
 import { store } from "./app/store";
 import { ViewOpenPage } from "./app/ViewOpenPage";
+import { loadSiteLanguage } from "./i18n/siteLanguage";
 
+void loadSiteLanguage();
 const standalone =
   window.location.pathname === "/link" || window.location.pathname === "/view";
 const router = standalone

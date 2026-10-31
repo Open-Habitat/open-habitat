@@ -22,16 +22,20 @@ export async function openLab({
   width = 1440,
   height = 900,
   deviceScaleFactor = 1,
+  locale = "fi-FI",
 } = {}) {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
     viewport: { width, height },
     deviceScaleFactor,
+    locale,
   });
   const page = await context.newPage();
   await page.goto(`${origin}/workspaces`);
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page
+    .getByRole("button", { name: /^(Kirjaudu GitHubilla|Sign in with GitHub)$/ })
+    .click();
   await page
     .getByRole("link", {
       name: identity === "bob" ? "Bob" : "Alice",

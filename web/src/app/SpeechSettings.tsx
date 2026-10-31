@@ -1,6 +1,8 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
+import { formatDate, liveText } from "../i18n";
+import { speechSettingsText } from "../text/speechSettings";
 import {
   deleteSiteSpeechKey,
   readSiteSpeechKey,
@@ -14,42 +16,38 @@ import {
   validSonioxKey,
 } from "./speech";
 
+const txt = liveText(speechSettingsText);
+
 const regionNames: Record<SpeechRegion, string> = { eu: "EU", us: "USA" };
 
 /** The region a save found, said once after it. The EU is the default
  * here, so a US key says it was found elsewhere. */
 const savedIn = (region: SpeechRegion | null | undefined) =>
-  region === "eu"
-    ? "Avain tallennettu. Soniox hyväksyi sen EU-alueella."
-    : region === "us"
-      ? "Avain tallennettu. Soniox hyväksyi sen USA-alueella, ei oletuksena olevalla EU-alueella."
-      : "";
+  region === "eu" ? txt.savedEu : region === "us" ? txt.savedUs : "";
 
-const sonioxConsole = (
+const sonioxConsole = () => (
   <a
     href="https://console.soniox.com"
     target="_blank"
     rel="noopener noreferrer"
     referrerPolicy="no-referrer"
   >
-    Soniox-konsolista
+    {txt.fromConsole}
   </a>
 );
 
 /** Why a key was not saved, by the code its save answered. Nothing was
  * stored, so the form stays as it was. */
-const refusals: Record<string, ReactNode> = {
-  speech_key_rejected: (
-    <>
-      Avainta ei tallennettu: Soniox ei tunne sitä EU- eikä USA-alueella, joten
-      se on väärä tai peruttu. Hae uusi avain {sonioxConsole}.
-    </>
-  ),
-  speech_unavailable:
-    "Avainta ei tallennettu, koska Sonioxiin ei saatu yhteyttä. Yritä hetken päästä uudelleen.",
-  speech_limit_reached:
-    "Avainta ei tallennettu, koska Sonioxin käyttöraja tuli vastaan. Yritä hetken päästä uudelleen.",
-};
+const refusals = new Proxy({} as Record<string, ReactNode>, {
+  get: (_target, code: string) =>
+    code === "speech_key_rejected"
+      ? txt.rejected(sonioxConsole())
+      : code === "speech_unavailable"
+        ? txt.unavailable
+        : code === "speech_limit_reached"
+          ? txt.limit
+          : undefined,
+});
 
 const refusal = (error: unknown): ReactNode =>
   error instanceof Error ? refusals[error.message] : undefined;
@@ -79,7 +77,7 @@ function SpeechKeyForm({
       }}
     >
       <label className="s-field">
-        Soniox API-avain
+        {txt.apiKey}
         <input
           data-testid="speech-key-input"
           type="password"
@@ -92,11 +90,7 @@ function SpeechKeyForm({
         />
       </label>
       <p className={`s-desc${wrong ? " s-bad" : ""}`}>
-        {wrong ? (
-          <span role="alert">Tämä ei näytä Soniox-avaimelta.</span>
-        ) : (
-          note
-        )}
+        {wrong ? <span role="alert">{txt.notKey}</span> : note}
       </p>
       <div className="s-actions">
         {onCancel ? (
@@ -106,7 +100,7 @@ function SpeechKeyForm({
             variant="quiet"
             onPress={onCancel}
           >
-            Peruuta
+            {txt.cancel}
           </ControlButton>
         ) : null}
         <ControlButton
@@ -116,7 +110,7 @@ function SpeechKeyForm({
           type="submit"
           isDisabled={busy || !validSonioxKey(key.trim())}
         >
-          Tallenna
+          {txt.save}
         </ControlButton>
       </div>
     </form>
@@ -128,12 +122,9 @@ function SpeechKeyMore({ children }: { children: ReactNode }) {
   return (
     <div className="s-editor">
       <details className="s-more" data-testid="speech-key-more">
-        <summary>Oikeudet ja säilytys</summary>
+        <summary>{txt.more}</summary>
         <ul>
-          <li>
-            Soniox-konsolissa avaimelle riittävät oikeudet Temporary API keys ja
-            Speech-to-text, real-time.
-          </li>
+          <li>{txt.permissions}</li>
           {children}
         </ul>
       </details>
@@ -186,7 +177,7 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
       setBusy(false);
     }
   };
-  if (state === undefined) return <p role="status">Luetaan Soniox-avainta…</p>;
+  if (state === undefined) return <p role="status">{txt.reading}</p>;
   if (state === "unavailable")
     return (
       <div className="s-card">
@@ -195,9 +186,9 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
           role="alert"
           data-testid="speech-key-unavailable"
         >
-          Soniox-avainta ei voitu lukea.
+          {txt.readFailed}
           <ControlButton size="row" onPress={() => load()}>
-            Lataa uudelleen
+            {txt.reload}
           </ControlButton>
         </div>
       </div>
@@ -214,17 +205,23 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
         >
           <Icon name="mic" />
           <div className="s-lbl">
-            <strong>Soniox-avain</strong>
+            <strong>{txt.key}</strong>
             <span
               className="s-desc"
               data-testid="speech-key-source"
               data-source={state.source ?? "none"}
             >
               {!state.present
-                ? "Ei avainta. Sanelu tarvitsee sen."
+                ? txt.none
                 : site
-                  ? `Ylläpitäjän avain …${state.suffix} (${regionNames[state.region ?? "eu"]}).`
-                  : `Oma avain …${state.suffix} (${regionNames[state.region ?? "eu"]}).`}
+                  ? txt.admins(
+                      state.suffix ?? "",
+                      regionNames[state.region ?? "eu"],
+                    )
+                  : txt.own(
+                      state.suffix ?? "",
+                      regionNames[state.region ?? "eu"],
+                    )}
             </span>
           </div>
           <div className="s-val">
@@ -236,7 +233,7 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
                   isDisabled={!csrf || busy}
                   onPress={() => setEditing(true)}
                 >
-                  {site ? "Lisää oma avain" : "Vaihda avain"}
+                  {site ? txt.addOwn : txt.replace}
                 </ControlButton>
                 <ControlButton
                   data-testid="speech-key-remove"
@@ -247,7 +244,7 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
                     csrf && void write(() => removeSpeechKey(csrf))
                   }
                 >
-                  Poista
+                  {txt.remove}
                 </ControlButton>
               </>
             ) : null}
@@ -257,7 +254,7 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
               busy={busy}
               onSave={(key) => void write(() => saveSpeechKey(csrf, key), true)}
               onCancel={editing ? () => setEditing(false) : undefined}
-              note="Tallennus tarkistaa avaimen Sonioxilta ja tunnistaa sen alueen. Tallennettua avainta ei näytetä uudelleen."
+              note={txt.saveNote}
             />
           ) : null}
           {saved ? (
@@ -284,14 +281,11 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
               role="alert"
               data-testid="speech-key-failed"
             >
-              Muutoksen tulos ei varmistunut. Tila luettiin uudelleen.
+              {txt.uncertain}
             </p>
           ) : null}
           <SpeechKeyMore>
-            <li>
-              Avain tallentuu tiedostoon <code>~/.config/soniox/key.json</code>,
-              ja agenttisi voivat käyttää sitä.
-            </li>
+            <li>{txt.stored(<code>~/.config/soniox/key.json</code>)}</li>
           </SpeechKeyMore>
         </div>
       </div>
@@ -299,14 +293,9 @@ export function SpeechSettings({ csrf }: { csrf?: string }) {
   );
 }
 
-const givenWords: Record<string, string> = {
-  seeded: "sai avaimen",
-  replaced: "sai uuden avaimen aiemman tilalle",
-  already_current: "oli jo saanut sen",
-  kept: "käyttää omaa avaintaan",
-  not_reached: "ei tavoitettu",
-  unknown: "tulos ei varmistunut",
-};
+const givenWords = new Proxy({} as Record<string, string>, {
+  get: (_target, word: string) => txt.given[word],
+});
 
 /** Palvelimen ylläpito › Saneluavain: the site's Soniox key, which every
  * person's own daemon copies into their home unless they have their own. */
@@ -343,21 +332,21 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
       const why = refusal(error);
       if (why) setProblem(why);
       else {
-        setProblem("Muutoksen tulos ei varmistunut. Tila luettiin uudelleen.");
+        setProblem(txt.uncertain);
         load();
       }
     } finally {
       setBusy(false);
     }
   };
-  if (state === undefined) return <p role="status">Luetaan saneluavainta…</p>;
+  if (state === undefined) return <p role="status">{txt.siteReading}</p>;
   if (state === "unavailable")
     return (
       <div className="s-card">
         <div className="s-row" role="alert">
-          Saneluavainta ei voitu lukea.
+          {txt.siteReadFailed}
           <ControlButton size="row" onPress={() => load()}>
-            Lataa uudelleen
+            {txt.reload}
           </ControlButton>
         </div>
       </div>
@@ -367,10 +356,7 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
   const missed = !!(state.given?.not_reached || state.given?.unknown);
   return (
     <div className="s-stack">
-      <p className="s-intro">
-        Kaikki, joilla ei ole omaa avainta, sanelevat tällä. Käyttö laskutetaan
-        sinulta.
-      </p>
+      <p className="s-intro">{txt.siteIntro}</p>
       <div className="s-card">
         <div
           className="s-row s-marked"
@@ -380,11 +366,19 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
         >
           <Icon name="mic" />
           <div className="s-lbl">
-            <strong>Yhteinen Soniox-avain</strong>
+            <strong>{txt.siteKey}</strong>
             <span className="s-desc">
               {key
-                ? `…${key.suffix} (${regionNames[key.region]}), otettu käyttöön ${new Date(key.set_at).toLocaleDateString("fi-FI")}.`
-                : "Ei yhteistä avainta."}
+                ? txt.siteKeyState(
+                    key.suffix,
+                    regionNames[key.region],
+                    formatDate(new Date(key.set_at), {
+                      day: "numeric",
+                      month: "numeric",
+                      year: "numeric",
+                    }),
+                  )
+                : txt.siteNone}
             </span>
           </div>
           <div className="s-val">
@@ -396,7 +390,7 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
                   isDisabled={!csrf || busy}
                   onPress={() => setEditing(true)}
                 >
-                  Vaihda avain
+                  {txt.replace}
                 </ControlButton>
                 <ControlButton
                   data-testid="site-speech-key-remove"
@@ -407,7 +401,7 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
                     csrf && void write(() => deleteSiteSpeechKey(csrf))
                   }
                 >
-                  Poista
+                  {txt.remove}
                 </ControlButton>
               </>
             ) : null}
@@ -417,12 +411,12 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
               busy={busy}
               onSave={(k) => void write(() => setSiteSpeechKey(csrf, k), true)}
               onCancel={editing ? () => setEditing(false) : undefined}
-              note="Tallennus tarkistaa avaimen Sonioxilta ja tunnistaa sen alueen. Tallennettua avainta ei näytetä uudelleen."
+              note={txt.saveNote}
             />
           ) : null}
           {busy ? (
             <p role="status" className="s-editor s-desc">
-              Tarkistetaan avainta ja annetaan sitä jo liittyneille…
+              {txt.giving}
             </p>
           ) : null}
           {saved ? (
@@ -443,10 +437,7 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
               {given
                 .map(([word, n]) => `${n} ${givenWords[word] ?? word}`)
                 .join(", ")}
-              .
-              {missed
-                ? " Tavoittamattomat saavat avaimen, kun tallennat sen uudelleen."
-                : ""}
+              .{missed ? txt.missed : ""}
             </p>
           ) : null}
           {problem ? (
@@ -459,16 +450,9 @@ export function SpeechKeyAdministration({ csrf }: { csrf?: string }) {
             </p>
           ) : null}
           <SpeechKeyMore>
-            <li>
-              Jokainen saa avaimesta kopion kotihakemistoonsa, ja hänen
-              agenttinsa voivat käyttää sitä. Kopiota ei voi perua kuin
-              vaihtamalla avain Soniox-konsolissa.
-            </li>
-            <li>
-              Jo liittyneet saavat avaimen heti, uudet ensimmäisellä
-              kirjautumisellaan.
-            </li>
-            <li>Kaikki jakavat avaimen samanaikaisten sanelujen rajan.</li>
+            <li>{txt.siteCopy}</li>
+            <li>{txt.siteJoined}</li>
+            <li>{txt.siteLimit}</li>
           </SpeechKeyMore>
         </div>
       </div>

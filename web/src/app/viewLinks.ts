@@ -8,7 +8,11 @@ import addFormats from "ajv-formats";
 import { useSyncExternalStore } from "react";
 import common from "../../../contracts/v1/common.schema.json";
 import linkSchema from "../../../contracts/v1/view-link.schema.json";
+import { formatDate, liveText } from "../i18n";
+import { viewLinksText } from "../text/viewLinks";
 import { jsonWrite, writeOutcome } from "./mutations";
+
+const txt = liveText(viewLinksText);
 
 const ajv = new Ajv({ strict: false });
 addFormats(ajv);
@@ -126,15 +130,15 @@ function forget(linkId: string, at: number) {
 export function linkFailure(code: string | undefined): string {
   switch (code) {
     case "view_not_found":
-      return "Näkymää ei enää ole. Agentti on ehkä poistanut sen.";
+      return txt.viewGone;
     case "view_link_not_found":
-      return "Linkkiä ei enää ole: se on vanhentunut tai poistettu.";
+      return txt.linkGone;
     case "view_links_limited":
-      return "Sinulla on jo enimmäismäärä linkkejä. Poista jokin vanha ensin.";
+      return txt.tooMany;
     case "view_links_unavailable":
-      return "Tällä palvelimella ei voi jakaa linkkejä.";
+      return txt.unavailable;
     default:
-      return "Linkkiä ei voitu tallentaa. Yritä uudelleen.";
+      return txt.saveFailed;
   }
 }
 
@@ -243,7 +247,7 @@ export async function adminRevokeViewLink(
   if (outcome.kind === "ok") return;
   if (outcome.kind === "refused" && outcome.code === "view_link_not_found")
     return;
-  throw new Error("Linkkiä ei voitu poistaa. Yritä uudelleen.");
+  throw new Error(txt.removeFailed);
 }
 
 /** The expiry choices: 1, 7 and 30 days within the operator's maximum, and
@@ -259,7 +263,7 @@ export function defaultExpiry(maxDays: number): number {
 }
 
 export function formatExpiry(iso: string): string {
-  return new Date(iso).toLocaleDateString("fi-FI", {
+  return formatDate(new Date(iso), {
     day: "numeric",
     month: "numeric",
     year: "numeric",
@@ -267,5 +271,5 @@ export function formatExpiry(iso: string): string {
 }
 
 export function daysLabel(days: number): string {
-  return days === 1 ? "1 päivä" : `${days} päivää`;
+  return txt.days(days);
 }

@@ -41,6 +41,7 @@ func (s *Server) routes() http.Handler {
 		s.auth.routes(mux)
 		mux.HandleFunc("/api/v1/server", s.auth.adminHTTP)
 		mux.HandleFunc("/api/v1/server/administration", s.auth.adminHTTP)
+		mux.HandleFunc("/api/v1/site/language", s.auth.siteLanguageHTTP)
 		mux.HandleFunc("/api/v1/server/onboarding", s.auth.serverOnboardingHTTP)
 		mux.HandleFunc(siteKeyPath+"/set", s.auth.siteKeyHTTP)
 		mux.HandleFunc(siteKeyPath+"/delete", s.auth.siteKeyHTTP)

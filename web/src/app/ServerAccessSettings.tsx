@@ -5,6 +5,8 @@ import {
   type PendingChange,
   ServerAccess,
 } from "../components/ServerAccess";
+import { liveText } from "../i18n";
+import { serverAccessText } from "../text/serverAccess";
 import {
   type AccessEntry,
   type AccessView,
@@ -14,6 +16,8 @@ import {
   lookupLogin,
   readAccess,
 } from "./serverAccess";
+
+const txt = liveText(serverAccessText);
 
 // The host side of Käyttäjät ja pääsy: one request per change, its row marked
 // until the reply settles it. An uncertain reply stays uncertain until the
@@ -75,7 +79,7 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
     id: string,
     mark: PendingChange,
   ): Promise<AddOutcome> => {
-    const ended = "Istunto on päättynyt. Kirjaudu uudelleen.";
+    const ended = txt.sessionEnded;
     if (!csrf) return { kind: "refused", text: ended };
     setProblem(undefined);
     setPending((p) => ({ ...p, [id]: mark }));
@@ -99,21 +103,21 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
   if (!view)
     return failed ? (
       <div className="s-row" role="alert">
-        Käyttäjälistaa ei voitu ladata.
+        {txt.listFailed}
         <ControlButton size="row" onPress={() => void reload()}>
-          Lataa uudelleen
+          {txt.reload}
         </ControlButton>
       </div>
     ) : (
-      <p className="s-row">Ladataan käyttäjiä…</p>
+      <p className="s-row">{txt.loading}</p>
     );
   return (
     <>
       {failed && (
         <div className="s-row" role="alert">
-          Listaa ei voitu päivittää.
+          {txt.refreshFailed}
           <ControlButton size="row" onPress={() => void reload()}>
-            Lataa uudelleen
+            {txt.reload}
           </ControlButton>
         </div>
       )}

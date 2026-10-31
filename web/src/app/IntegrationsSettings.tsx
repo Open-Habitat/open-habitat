@@ -20,6 +20,8 @@ import {
   IntegrationsOverview,
   RemoveDialog,
 } from "../components/Integrations";
+import { liveText } from "../i18n";
+import { integrationsSettingsText } from "../text/integrationsSettings";
 import {
   connectGitea,
   type GiteaCheck,
@@ -51,122 +53,52 @@ import {
   removeAccount,
 } from "./integrations";
 
-const refusals: Record<string, string> = {
-  credentials_rejected:
-    "Palvelin ei hyväksynyt tunnusta tai salasanaa. Mitään ei tallennettu.",
-  server_unreachable:
-    "Palvelimeen ei saatu yhteyttä. Tarkista palvelimen nimi, portti ja suojaus. Mitään ei tallennettu.",
-  endpoint_rejected:
-    "DAV-osoitteesta ei löytynyt kalentereita tai yhteystietoja, tai palvelin ohjasi toiseen verkkotunnukseen. Tarkista osoite. Mitään ei tallennettu.",
-  account_exists: "Tämä tili on jo yhdistetty.",
-  account_missing: "Tiliä ei enää ole. Sivu päivitetään.",
-  provider_unavailable:
-    "Tämä integraatio ei ole käytettävissä tällä palvelimella.",
-  level_unavailable:
-    "Tämä taso ei ole käytettävissä tällä palvelimella. Valitse toinen taso tai pyydä ylläpitäjää ottamaan se käyttöön.",
-  redirect_invalid:
-    "Tämä ei ole se osoite, johon kirjautuminen päättyi. Liitä osoiteriviltä koko osoite.",
-  quota_insufficient:
-    "Valitut kansiot eivät enää mahdu kotihakemistoosi. Jätä jokin pois.",
-  attempt_active:
-    "Kirjautuminen tai ensimmäinen synkronointi on kesken. Odota, että se päättyy.",
-  attempt_not_found: "Kirjautuminen ei ole enää voimassa. Aloita alusta.",
-};
+const txt = liveText(integrationsSettingsText);
+
+const refusals = new Proxy({} as Record<string, string>, {
+  get: (_target, code: string) => txt.refusals[code],
+});
 /** A refused Gitea write wrote nothing; the field says where to look. */
-const giteaRefusals: Record<string, [GiteaField, string]> = {
-  invalid_address: [
-    "server",
-    "Anna palvelimen HTTPS-osoite, esimerkiksi https://git.example.org.",
-  ],
-  forbidden_destination: [
-    "server",
-    "Tähän osoitteeseen ei voi yhdistää. Anna Gitea-palvelimen oma osoite.",
-  ],
-  unreachable: [
-    "server",
-    "Palvelin ei vastaa. Tarkista osoite ja Habitatin verkkoyhteys palvelimeen.",
-  ],
-  tls_untrusted: [
-    "server",
-    "Palvelimen varmennetta ei voitu tarkistaa. Ylläpitäjän pitää lisätä sen varmentaja luotettuihin.",
-  ],
-  redirect_refused: [
-    "server",
-    "Palvelin ohjasi toiseen osoitteeseen. Anna Gitean lopullinen osoite.",
-  ],
-  not_gitea: [
-    "server",
-    "Osoitteesta ei vastannut Gitea. Tarkista osoite ja sen mahdollinen polku.",
-  ],
-  invalid_token: [
-    "token",
-    "Tunnuksessa on merkkejä, joita pääsytunnuksessa ei ole. Kopioi se uudelleen.",
-  ],
-  token_rejected: [
-    "token",
-    "Tunnus hylättiin. Tarkista tunnus ja sen lukuoikeudet Giteassa.",
-  ],
-  insufficient_scope: [
-    "token",
-    "Tunnukselta puuttuu lukuoikeus käyttäjätietoihin tai repoihin. Anna sille read:user ja write:repository.",
-  ],
-  account_mismatch: [
-    "token",
-    "Tunnus kuuluu toiselle Gitea-tilille kuin tämä yhteys.",
-  ],
-  connection_exists: ["form", "Tämä Gitea-tili tai tunnus on jo yhdistetty."],
-  native_conflict: [
-    "form",
-    "tea-asetuksissa on jo samanniminen tai kahdentunut kirjautuminen. Selvitä se tealla.",
-  ],
-  connection_changed: ["form", "Yhteys on muuttunut. Sivu päivitetään."],
-  native_busy: [
-    "form",
-    "Toinen muutos on kesken. Yritä hetken päästä uudelleen.",
-  ],
-  write_failed: ["form", "Asetusta ei voitu tallentaa. Mitään ei muutettu."],
-  provider_unavailable: [
-    "form",
-    "Gitea ei ole käytettävissä tällä palvelimella.",
-  ],
+const giteaFields: Record<string, GiteaField> = {
+  invalid_address: "server",
+  forbidden_destination: "server",
+  unreachable: "server",
+  tls_untrusted: "server",
+  redirect_refused: "server",
+  not_gitea: "server",
+  invalid_token: "token",
+  token_rejected: "token",
+  insufficient_scope: "token",
+  account_mismatch: "token",
+  connection_exists: "form",
+  native_conflict: "form",
+  connection_changed: "form",
+  native_busy: "form",
+  write_failed: "form",
+  provider_unavailable: "form",
 };
+const giteaRefusals = new Proxy({} as Record<string, [GiteaField, string]>, {
+  get: (_target, code: string) =>
+    giteaFields[code] && [giteaFields[code], txt.gitea[code]],
+});
 const giteaRefusal = (code: string): { field: GiteaField; text: string } => {
-  const [field, text] = giteaRefusals[code] ?? [
-    "form",
-    "Pyyntöä ei hyväksytty. Mitään ei muutettu.",
-  ];
+  const [field, text] = giteaRefusals[code] ?? ["form", txt.refused];
   return { field, text };
 };
-const giteaActionRefusals: Record<string, string> = {
-  clone_running:
-    "Tämän yhteyden kloonaus on käynnissä. Keskeytä se tai odota sen valmistumista ja yritä sitten uudelleen.",
-  helper_conflict:
-    "Git-asetuksissasi on tälle palvelimelle jo toinen tunnusapuri. Habitat ei kirjoita sen päälle.",
-  connection_changed: "Yhteys on muuttunut. Sivu päivitetään.",
-  native_busy: "Toinen muutos on kesken. Yritä hetken päästä uudelleen.",
-  unsupported_entry: "Tätä tea-kirjautumista ei voi muuttaa täältä.",
-};
+const giteaActionRefusals = new Proxy({} as Record<string, string>, {
+  get: (_target, code: string) => txt.giteaAction[code],
+});
 
 const refusalText = (e: unknown) =>
-  e instanceof Refused
-    ? (refusals[e.code] ?? "Pyyntöä ei hyväksytty. Mitään ei muutettu.")
-    : undefined;
+  e instanceof Refused ? (refusals[e.code] ?? txt.refused) : undefined;
 
-const appleRefusals: Record<string, string> = {
-  credentials_rejected:
-    "Apple ei hyväksynyt Apple ID:tä ja salasanaa. Tarkista, että annoit sovellussalasanan etkä Apple-tilin omaa salasanaa. Mitään ei tallennettu.",
-  server_unreachable:
-    "Appleen ei saatu yhteyttä. Yritä hetken päästä uudelleen. Mitään ei tallennettu.",
-  endpoint_rejected:
-    "iCloud ei kertonut kalenterin tai yhteystietojen osoitetta. Mitään ei tallennettu.",
-  account_exists: "Valittu palvelu on jo yhdistetty.",
-};
+const appleRefusals = new Proxy({} as Record<string, string>, {
+  get: (_target, code: string) => txt.apple[code],
+});
 /** Adding services with the stored password: what failed, and so ask. */
-const reuseRefusals: Record<string, string> = {
-  credentials_rejected:
-    "Tallennettu sovellussalasana ei enää kelpaa. Luo uusi ja anna se tähän. Mitään ei tallennettu.",
-  account_missing: "Tallennettua sovellussalasanaa ei löytynyt. Anna se tähän.",
-};
+const reuseRefusals = new Proxy({} as Record<string, string>, {
+  get: (_target, code: string) => txt.reuse[code],
+});
 
 /** The states in which the daemon is waiting on the tool or the person. */
 const live = (v?: LoginView) =>
@@ -654,7 +586,7 @@ export function IntegrationsSettings({
           : l,
       );
       setAppleRemoving(undefined);
-      setNotice("Apple-tili poistettu.");
+      setNotice(txt.appleRemoved);
     } catch (e) {
       const text = refusalText(e);
       if (text) {
@@ -662,9 +594,7 @@ export function IntegrationsSettings({
         if (e instanceof Refused && e.code === "account_missing") void load();
       } else {
         setAppleRemoving(undefined);
-        setNotice(
-          "Poiston tulosta ei saatu. Sivu päivitetään; tarkista tila ennen kuin yrität uudelleen.",
-        );
+        setNotice(txt.removeUncertain);
         void load();
       }
     }
@@ -711,9 +641,7 @@ export function IntegrationsSettings({
       void controlLogin(csrf, { action: "cancel", attempt_id: v.attempt_id })
         .catch((e) => {
           if (!(e instanceof Refused) && alive.current)
-            setNotice(
-              "Kirjautumisen peruminen ei varmistunut. Se voi vielä valmistua; tarkista tilanne tältä sivulta.",
-            );
+            setNotice(txt.cancelUncertain);
         })
         .finally(() => void load());
       return;
@@ -731,22 +659,16 @@ export function IntegrationsSettings({
         current.state !== "completing" ||
         !current.attempt_id
       ) {
-        setNotice(
-          "Keskeytä synkronointi siinä selainistunnossa, jossa aloitit sen. Palvelimen itse jatkaman ensimmäisen synkronoinnin voi pysäyttää vain poistamalla tilin.",
-        );
+        setNotice(txt.stopElsewhere);
         return;
       }
       await controlLogin(csrf, {
         action: "cancel",
         attempt_id: current.attempt_id,
       });
-      setNotice(
-        "Synkronointi keskeytetään. Jo kopioidut tiedostot ja kirjautuminen säilyvät.",
-      );
+      setNotice(txt.stopping);
     } catch {
-      setNotice(
-        "Keskeyttämisen tulos ei varmistunut. Tarkista tila ennen uutta yritystä.",
-      );
+      setNotice(txt.stopUncertain);
     }
     void load();
   };
@@ -780,10 +702,10 @@ export function IntegrationsSettings({
       setRemoving(undefined);
       setNotice(
         change.kept_directories?.length
-          ? `Poistettu. ${change.kept_directories.join(" ja ")} jäi kotihakemistoosi.`
+          ? txt.removedKept(change.kept_directories)
           : change.trashed_directories?.length
-            ? `Poistettu. ${change.trashed_directories.join(" ja ")} siirrettiin roskakoriin.`
-            : "Poistettu.",
+            ? txt.removedTrashed(change.trashed_directories)
+            : txt.removed,
       );
     } catch (e) {
       const text = refusalText(e);
@@ -792,9 +714,7 @@ export function IntegrationsSettings({
         if (e instanceof Refused && e.code === "account_missing") void load();
       } else {
         setRemoving(undefined);
-        setNotice(
-          "Poiston tulosta ei saatu. Sivu päivitetään; tarkista tila ennen kuin yrität uudelleen.",
-        );
+        setNotice(txt.removeUncertain);
         void load();
       }
     }
@@ -887,9 +807,8 @@ export function IntegrationsSettings({
       if (!current(sent)) return;
       setNotice(
         e instanceof Refused
-          ? (giteaActionRefusals[e.code] ??
-              "Pyyntöä ei hyväksytty. Mitään ei muutettu.")
-          : "Vastausta ei saatu. Sivu päivitetään; tarkista tila ennen kuin yrität uudelleen.",
+          ? (giteaActionRefusals[e.code] ?? txt.refused)
+          : txt.noReply,
       );
     } finally {
       if (alive.current) setGiteaBusy(false);
@@ -906,23 +825,17 @@ export function IntegrationsSettings({
       await giteaOwn(() => giteaAction(sent, "disconnect", target.id));
       if (!current(sent)) return;
       setGiteaRemoving(undefined);
-      setNotice(
-        "Gitea-tili irrotettu. Kloonatut työtilat jäivät; poista tunnus tarvittaessa myös Giteasta.",
-      );
+      setNotice(txt.giteaDisconnected);
     } catch (e) {
       if (!current(sent)) return;
       if (e instanceof Refused)
         setGiteaRemoving({
           connection: target,
-          error:
-            giteaActionRefusals[e.code] ??
-            "Pyyntöä ei hyväksytty. Mitään ei muutettu.",
+          error: giteaActionRefusals[e.code] ?? txt.refused,
         });
       else {
         setGiteaRemoving(undefined);
-        setNotice(
-          "Irrotuksen tulosta ei saatu. Sivu päivitetään; tarkista tila ennen kuin yrität uudelleen.",
-        );
+        setNotice(txt.disconnectUncertain);
       }
     } finally {
       void load();
@@ -933,13 +846,11 @@ export function IntegrationsSettings({
     (!only || only.includes(id)) && !except?.includes(id);
   if (!list)
     return failed ? (
-      <p role="alert">
-        Integraatioita ei voitu hakea. Yritä hetken päästä uudelleen.
-      </p>
+      <p role="alert">{txt.listFailed}</p>
     ) : (
       <p data-testid="integrations-loading" className="ig-wait" role="status">
         <span className="ig-spin" aria-hidden="true" />
-        Luetaan integraatioita työkaluilta…
+        {txt.reading}
       </p>
     );
   return (
@@ -949,9 +860,7 @@ export function IntegrationsSettings({
           {notice}
         </p>
       ) : null}
-      {failed ? (
-        <p role="alert">Tilaa ei voitu tarkistaa. Näytetään edellinen tieto.</p>
-      ) : null}
+      {failed ? <p role="alert">{txt.stale}</p> : null}
       <IntegrationsOverview
         compact={compact}
         list={

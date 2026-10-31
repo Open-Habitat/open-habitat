@@ -5,11 +5,15 @@ import { LetterMark } from "../components/Integrations";
 import { NativeDisconnect } from "../components/NativeDisconnect";
 import { Button } from "../components/Primitives";
 import { StatusMark } from "../components/Status";
+import { liveText } from "../i18n";
+import { codeHostsText } from "../text/codeHosts";
 import { type GiteaConnection, host, usable } from "./gitea";
 import { type GitLabConnection, usableGitLab } from "./gitlab";
 import { IntegrationsSettings } from "./IntegrationsSettings";
 import type { IntegrationList, ProviderId } from "./integrations";
 import type { Workspace } from "./snapshot";
+
+const txt = liveText(codeHostsText);
 
 export type NativeState =
   | "connected"
@@ -20,46 +24,43 @@ export type NativeState =
   | "unknown"
   | "unreachable"
   | "verifying";
-const states: Record<NativeState, { label: string; description: string }> = {
+const states = (): Record<
+  NativeState,
+  { label: string; description: string }
+> => ({
   connected: {
-    label: "Yhdistetty",
-    description: "Git ja gh toimivat työtiloissa.",
+    label: txt.connected,
+    description: txt.connectedDesc,
   },
   disconnected: {
-    label: "Ei yhdistetty",
-    description:
-      "GitHub-yhteyttä ei löytynyt, joten git push ja gh eivät toimi. Yhdistä kirjautumalla GitHubilla.",
+    label: txt.disconnected,
+    description: txt.disconnectedDesc,
   },
   expired: {
-    label: "Vanhentunut",
-    description:
-      "GitHub ei enää hyväksy palvelimelle tallennettua valtuutusta, joten git push ja gh eivät toimi. Yhdistä uudelleen kirjautumalla GitHubilla.",
+    label: txt.expired,
+    description: txt.expiredDesc,
   },
   pending: {
-    label: "Yhdistäminen kesken",
-    description:
-      "GitHub-yhteyttä valmistellaan. Odota ennen Git-toimintojen käyttöä.",
+    label: txt.pending,
+    description: txt.pendingDesc,
   },
   partial: {
-    label: "Osittainen yhteys",
-    description:
-      "GitHub-yhteys ei ole vielä kokonaan valmis. Git-toiminnot eivät välttämättä onnistu.",
+    label: txt.partial,
+    description: txt.partialDesc,
   },
   unknown: {
-    label: "Tilaa ei tiedetä",
-    description: "GitHub-yhteyden tilaa ei juuri nyt voitu vahvistaa.",
+    label: txt.unknown,
+    description: txt.unknownDesc,
   },
   unreachable: {
-    label: "GitHub ei vastaa",
-    description:
-      "Palvelin ei saanut GitHubiin yhteyttä. Valtuutus on tallessa; palvelin yrittää itse uudelleen.",
+    label: txt.unreachable,
+    description: txt.unreachableDesc,
   },
   verifying: {
-    label: "Tarkistetaan",
-    description:
-      "GitHub hylkäsi valtuutuksen kerran. Palvelin tarkistaa sen vielä uudelleen.",
+    label: txt.verifying,
+    description: txt.verifyingDesc,
   },
-};
+});
 /** Why the host could not settle the state: the snapshot's
  * native_github.reason, present only beside "unknown". */
 export type NativeUnknownReason =
@@ -67,31 +68,15 @@ export type NativeUnknownReason =
   | "timeout"
   | "github_error"
   | "unrecognized";
-const unknownReasons: Record<
+const unknownReasons = (): Record<
   NativeUnknownReason,
   { label: string; description: string }
-> = {
-  checking: {
-    label: "Tarkistetaan",
-    description:
-      "Palvelin kysyy parhaillaan GitHubilta yhteyden tilaa. Tila päivittyy tähän itsestään.",
-  },
-  timeout: {
-    label: "Tilaa ei tiedetä",
-    description:
-      "GitHub tai palvelimen gh ei vastannut ajoissa, joten yhteyttä ei voitu vahvistaa. Palvelin kysyy pian uudelleen.",
-  },
-  github_error: {
-    label: "Tilaa ei tiedetä",
-    description:
-      "GitHub vastasi tarkistukseen virheellä, esimerkiksi pyyntörajoituksella, joten yhteyttä ei voitu vahvistaa. Palvelin kysyy pian uudelleen.",
-  },
-  unrecognized: {
-    label: "Tilaa ei tiedetä",
-    description:
-      "Palvelimen gh ei antanut vastausta, jonka palvelin tunnistaa, joten yhteyttä ei voitu vahvistaa. Päätteen gh auth status kertoo tarkemmin.",
-  },
-};
+> => ({
+  checking: { label: txt.checking, description: txt.checkingDesc },
+  timeout: { label: txt.unknown, description: txt.timeoutDesc },
+  github_error: { label: txt.unknown, description: txt.githubErrorDesc },
+  unrecognized: { label: txt.unknown, description: txt.unrecognizedDesc },
+});
 const codeHosts: ProviderId[] = ["gitea", "gitlab"];
 type Hosted = {
   w: Workspace;
@@ -126,8 +111,8 @@ export function CodeHostSettings({
 }) {
   const state =
     (nativeState ?? "unknown") === "unknown" && nativeReason
-      ? (unknownReasons[nativeReason] ?? states.unknown)
-      : states[nativeState ?? "unknown"];
+      ? (unknownReasons()[nativeReason] ?? states().unknown)
+      : states()[nativeState ?? "unknown"];
   const [disconnectNotice, setDisconnectNotice] = useState(false);
   const [gitea, setGitea] = useState<GiteaConnection[]>();
   const [gitlab, setGitLab] = useState<GitLabConnection[]>();
@@ -184,11 +169,11 @@ export function CodeHostSettings({
   );
   const githubTrouble =
     nativeState === "expired" || nativeState === "disconnected"
-      ? "Push ei onnistu ennen kuin GitHub-yhteys on korjattu. Paikallinen työ jatkuu."
+      ? txt.pushBroken
       : nativeState === "partial"
-        ? "Push ei välttämättä onnistu ennen kuin GitHub-yhteys on valmis. Paikallinen työ jatkuu."
+        ? txt.pushPartial
         : nativeState === "unreachable"
-          ? "Push odottaa, kunnes GitHub vastaa taas. Paikallinen työ jatkuu."
+          ? txt.pushWaits
           : "";
   // A clone names a repository on a server, not an account: it is in trouble
   // only when none of the person's logins to that server is usable.
@@ -196,20 +181,18 @@ export function CodeHostSettings({
     gitea?.some((c) => c.base_url === base && usable(c))
       ? ""
       : gitea
-        ? `Pull ja push eivät onnistu ennen kuin ${host(base)}-yhteys on kunnossa. Paikallinen työ jatkuu.`
+        ? txt.giteaTrouble(host(base))
         : "";
   // glab holds one login per server; the server's clones need it usable.
   const gitlabTrouble = (base: string) =>
     gitlab?.some((c) => c.base_url === base && usableGitLab(c))
       ? ""
       : gitlab
-        ? `Pull ja push eivät onnistu ennen kuin GitLab-yhteys palvelimelle ${host(base)} on kunnossa. Paikallinen työ jatkuu.`
+        ? txt.gitlabTrouble(host(base))
         : "";
   return (
     <div className="s-stack">
-      <p className="s-intro">
-        Palvelut, joista työtilat kloonataan ja joihin agentit pushaavat.
-      </p>
+      <p className="s-intro">{txt.intro}</p>
       <div className="s-card">
         <div
           className="s-row s-marked"
@@ -223,10 +206,9 @@ export function CodeHostSettings({
               className={`s-desc${nativeState === "expired" ? " s-bad" : ""}`}
             >
               {nativeState === "connected" && nativeLogin
-                ? `Kirjautunut käyttäjänä ${nativeLogin}. `
+                ? txt.signedInAs(nativeLogin)
                 : ""}
-              {state.description} Selaimesta uloskirjautuminen ei poista
-              palvelimen valtuutusta.
+              {state.description} {txt.logoutKeeps}
             </span>
           </div>
           <div
@@ -267,9 +249,7 @@ export function CodeHostSettings({
                   }
                   data-testid="github-reconnect"
                   label={
-                    nativeState === "disconnected"
-                      ? "Yhdistä GitHub"
-                      : "Yhdistä GitHub uudelleen"
+                    nativeState === "disconnected" ? txt.connect : txt.reconnect
                   }
                   onPress={onReconnect}
                 />
@@ -288,8 +268,7 @@ export function CodeHostSettings({
           )}
           {disconnectNotice && (
             <p className="s-editor" role="status">
-              Paikallinen gh-valtuutus poistettu. GitHubin OAuth-lupaa ei
-              peruttu.
+              {txt.disconnectedNotice}
             </p>
           )}
         </div>
@@ -311,7 +290,7 @@ export function CodeHostSettings({
         aria-labelledby="code-host-workspaces"
       >
         <h3 className="s-h3" id="code-host-workspaces">
-          Tuodut työtilat
+          {txt.imported}
           {hosted.length ? (
             <span className="s-count">{hosted.length}</span>
           ) : null}
@@ -354,9 +333,7 @@ export function CodeHostSettings({
           })}
           <div className="s-row">
             <p className="s-desc">
-              {hosted.length
-                ? "Työtilat avataan ja poistetaan sivupalkista. Täällä näkyy, minkä palvelun tunnuksella kukin synkronoi."
-                : "Näistä palveluista ei ole vielä tuotu työtiloja. Uusi työtila listaa yllä olevien palvelujen repot."}
+              {hosted.length ? txt.importedNote : txt.noneImported}
             </p>
             {onNewWorkspace ? (
               <div className="s-val">
@@ -365,7 +342,7 @@ export function CodeHostSettings({
                   size="row"
                   onPress={onNewWorkspace}
                 >
-                  Uusi työtila…
+                  {txt.newWorkspace}
                 </ControlButton>
               </div>
             ) : null}

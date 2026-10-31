@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
+import { liveText } from "../i18n";
+import { statusText } from "../text/status";
 import { Icon } from "./Icon";
 import { Button } from "./Primitives";
 import type { Action, ProblemView, Tone } from "./types";
+
+const txt = liveText(statusText);
 
 export type StatusKind =
   | "working"
@@ -186,55 +190,31 @@ export function ConnectionBanner({
     Exclude<ConnectionState, "online">,
     { title: string; detail: string; tone: Tone }
   > = {
-    loading: {
-      title: "Ladataan palvelimen tilaa",
-      detail: "Haetaan tuoreita tietoja…",
-      tone: "neutral",
-    },
-    connecting: {
-      title: "Yhdistetään…",
-      detail: "Tarkistetaan palvelimen tila ja avataan tapahtumayhteys.",
-      tone: "neutral",
-    },
-    reconnecting: {
-      title: "Yhteys katkesi",
-      detail:
-        "Yritetään yhdistää uudelleen. Viimeisintä viestiä ei lähetetä toistamiseen.",
-      tone: "warning",
-    },
+    loading: { ...txt.connection.loading, tone: "neutral" },
+    connecting: { ...txt.connection.connecting, tone: "neutral" },
+    reconnecting: { ...txt.connection.reconnecting, tone: "warning" },
     stale: {
-      title: "Yhteys katkesi · tiedot voivat olla vanhoja",
-      detail: `${lastConfirmedAt ? `Näet klo ${lastConfirmedAt} vahvistetut tiedot.` : "Näet viimeksi vahvistetut tiedot."} Kirjoittavat toiminnot odottavat yhteyttä; luonnos ja lukukohta säilyvät.`,
+      title: txt.connection.stale.title,
+      detail: txt.staleDetail(lastConfirmedAt || undefined),
       tone: "warning",
     },
     "resnapshot-required": {
-      title: "Tiedot on tarkistettava uudelleen",
-      detail:
-        "Yhteys oli poikki liian pitkään, jotta päivityksiä voisi jatkaa suoraan.",
+      ...txt.connection["resnapshot-required"],
       tone: "warning",
     },
     "version-changed": {
-      title: "Palvelin on päivitetty",
-      detail:
-        "Tämä välilehti käyttää vanhempaa versiota, joka ei saa yhteyttä uuteen. Lataa sivu uudelleen; luonnokset säilyvät.",
+      ...txt.connection["version-changed"],
       tone: "warning",
     },
     "authentication-required": {
-      title: "Istunto puuttuu tai on vanhentunut",
-      detail: "Kirjaudu uudelleen jatkaaksesi.",
+      ...txt.connection["authentication-required"],
       tone: "danger",
     },
     "daemon-unavailable": {
-      title: "Yhteyttä ei saatu",
-      detail:
-        "Tietoja ei voitu tarkistaa. Tämä ei tarkoita, että työsi olisi kadonnut.",
+      ...txt.connection["daemon-unavailable"],
       tone: "danger",
     },
-    "host-read-only": {
-      title: "Työtiloja ei voi nyt muuttaa",
-      detail: "Yhteys toimii, mutta työtilojen muokkaus ei ole käytettävissä.",
-      tone: "warning",
-    },
+    "host-read-only": { ...txt.connection["host-read-only"], tone: "warning" },
   };
   const value = copy[visibleState as Exclude<ConnectionState, "online">];
   const urgent =
@@ -254,20 +234,18 @@ export function ConnectionBanner({
         {hostWriteState === "read_only" &&
         visibleState !== "host-read-only" &&
         visibleState !== "stale"
-          ? " Työtilojen muokkaus ei myöskään ole käytettävissä."
+          ? txt.alsoReadOnly
           : ""}
       </span>
       {visibleState === "stale" ? (
-        <span className="ah-connection-mobile-detail">
-          Näet viimeksi vahvistetut tiedot.
-        </span>
+        <span className="ah-connection-mobile-detail">{txt.lastConfirmed}</span>
       ) : null}
       <Problem problem={problem} />
       {visibleState === "version-changed" ? (
         onReload ? (
           <Button
             data-testid="connection-reload"
-            label="Lataa uudelleen"
+            label={txt.reload}
             variant="secondary"
             size="row"
             onPress={onReload}
@@ -280,8 +258,8 @@ export function ConnectionBanner({
             state === "stale" ||
             state === "reconnecting" ||
             state === "connecting"
-              ? "Yhdistä"
-              : "Yritä uudelleen"
+              ? txt.connect
+              : txt.retry
           }
           variant="secondary"
           size="row"

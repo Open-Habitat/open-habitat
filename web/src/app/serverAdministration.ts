@@ -1,3 +1,8 @@
+import {
+  isLanguageChoice,
+  type LanguageChoice,
+  setServerLanguage,
+} from "../i18n";
 import { mutationFetch } from "./mutations";
 export type ServerInfo = {
   version?: string;
@@ -14,6 +19,7 @@ export type BoundUser = {
 export type Administration = {
   schema_version: 1;
   name: string;
+  default_language: LanguageChoice;
   users: BoundUser[];
   default_limit_bytes: number;
 };
@@ -64,6 +70,8 @@ export async function administration(
     v.schema_version !== 1 ||
     !("name" in v) ||
     typeof v.name !== "string" ||
+    !("default_language" in v) ||
+    !isLanguageChoice(v.default_language) ||
     !("users" in v) ||
     !Array.isArray(v.users) ||
     !("default_limit_bytes" in v) ||
@@ -87,7 +95,10 @@ export async function administration(
 export async function changeAdministration(
   csrf: string,
   // Administrators come only from site.json; the browser has no role write.
-  change: { name: string } | { default_limit_bytes: number },
+  change:
+    | { name: string }
+    | { default_limit_bytes: number }
+    | { default_language: LanguageChoice },
 ): Promise<void> {
   const r = await mutationFetch(
     "server.administration",
@@ -104,5 +115,8 @@ export async function changeAdministration(
     },
   );
   if (!r.ok) throw new Error("Change could not be saved");
+  // This browser follows a new server default at once; others on their
+  // next load.
+  if ("default_language" in change) setServerLanguage(change.default_language);
   serverInformationChanges.dispatchEvent(new Event("change"));
 }

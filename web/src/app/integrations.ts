@@ -4,6 +4,7 @@ import accountSchema from "../../../contracts/v1/integration-account.schema.json
 import changeSchema from "../../../contracts/v1/integration-change.schema.json";
 import loginSchema from "../../../contracts/v1/integration-login.schema.json";
 import listSchema from "../../../contracts/v1/integrations.schema.json";
+import { currentLanguage, formatDate, formatNumber } from "../i18n";
 import type { GiteaConnections } from "./gitea";
 import type { GitLabConnections } from "./gitlab";
 import { mutationFetch } from "./mutations";
@@ -498,10 +499,13 @@ export function redirectMatches(prefix: string, raw: string): boolean {
   }
 }
 
-/** Gigabytes as the person reads them: "4,3 Gt". */
+/** Gigabytes as the person reads them: "4,3 Gt", "4.3 GB". */
 export function gigabytes(bytes: number): string {
-  const gb = bytes / 1024 ** 3;
-  return `${gb.toLocaleString("fi-FI", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Gt`;
+  const gb = formatNumber(bytes / 1024 ** 3, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  return `${gb} ${currentLanguage() === "fi" ? "Gt" : "GB"}`;
 }
 
 export function selectedBytes(folders: Folder[], selected: string[]): number {
@@ -510,14 +514,15 @@ export function selectedBytes(folders: Folder[], selected: string[]): number {
     .reduce((sum, f) => sum + (f.bytes ?? 0), 0);
 }
 
-/** "9.38", the Finnish clock time of a status check. */
+/** The clock time of a status check: "9.38" in Finnish, "09:38" in English. */
 export function clockTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return `${d.getHours()}.${String(d.getMinutes()).padStart(2, "0")}`;
+  return formatDate(d, { hour: "numeric", minute: "2-digit" });
 }
 
-/** "klo 9.38" today, "23.10. klo 4.20" on an earlier day. */
+/** "klo 9.38" today, "23.10. klo 4.20" on an earlier day (in English
+ * "at 09:38", "23/10 at 04:20"). */
 export function syncedTime(iso: string, now: Date = new Date()): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -525,13 +530,17 @@ export function syncedTime(iso: string, now: Date = new Date()): string {
     d.getFullYear() === now.getFullYear() &&
     d.getMonth() === now.getMonth() &&
     d.getDate() === now.getDate();
-  return `${today ? "" : `${d.getDate()}.${d.getMonth() + 1}. `}klo ${clockTime(iso)}`;
+  const at = `${currentLanguage() === "fi" ? "klo" : "at"} ${clockTime(iso)}`;
+  return today
+    ? at
+    : `${formatDate(d, { day: "numeric", month: "numeric" })} ${at}`;
 }
 
-/** Minutes and seconds left, "14.59". */
+/** Minutes and seconds left, "14.59" ("14:59" in English). */
 export function minutesLeft(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
-  return `${Math.floor(s / 60)}.${String(s % 60).padStart(2, "0")}`;
+  const separator = currentLanguage() === "fi" ? "." : ":";
+  return `${Math.floor(s / 60)}${separator}${String(s % 60).padStart(2, "0")}`;
 }
 
 /** Services whose tool says the sign-in no longer works. */

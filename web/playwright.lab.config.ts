@@ -10,6 +10,9 @@ export default defineConfig({
   globalTeardown: "./tests/host-teardown.ts",
   reporter: [["line"]],
   use: {
+    // The suite reads the interface in Finnish; a spec that tests English
+    // opens its own context in another locale.
+    locale: "fi-FI",
     baseURL: labOrigin,
     ignoreHTTPSErrors: true,
     ...devices["Desktop Chrome"],

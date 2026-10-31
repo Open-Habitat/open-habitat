@@ -1,3 +1,6 @@
+import { liveText, textNow } from "../i18n";
+import { trashText } from "../text/trash";
+import { worktreesText } from "../text/worktrees";
 import {
   type BlockerText,
   blockerText,
@@ -10,96 +13,75 @@ import type {
   WorktreeRemoveResult,
 } from "./workspaceWorktrees";
 
-// Finnish text for worktree cleanup (ADR 0025). Host values (branch names,
-// paths, process names) are only ever shown as code segments.
+// Text for worktree cleanup (ADR 0025), from text/worktrees.tsx. Host
+// values (branch names, paths, process names) are only ever shown as code
+// segments.
 
-const count = (n: number, one: string, many: string) =>
-  `${n} ${n === 1 ? one : many}`;
+const txt = liveText(worktreesText);
 
-export const stateLabel: Record<
-  Worktree["state"],
-  { text: string; tone: "ok" | "warn" | "plain" }
-> = {
-  merged: { text: "yhdistetty", tone: "ok" },
-  unmerged: { text: "ei yhdistetty", tone: "plain" },
-  dirty: { text: "muutoksia", tone: "warn" },
-  missing: { text: "hakemisto puuttuu", tone: "plain" },
-  locked: { text: "lukittu", tone: "plain" },
-  unknown: { text: "tila ei tiedossa", tone: "warn" },
+const tones: Record<Worktree["state"], "ok" | "warn" | "plain"> = {
+  merged: "ok",
+  unmerged: "plain",
+  dirty: "warn",
+  missing: "plain",
+  locked: "plain",
+  unknown: "warn",
 };
+
+/** A state's label in the current language and its tone. */
+export const stateLabel = (state: Worktree["state"]) => ({
+  text: txt.state[state],
+  tone: tones[state],
+});
 
 export function worktreeBlockerText(b: WorktreeBlocker): BlockerText {
   switch (b.kind) {
     case "file_operation":
-      return {
-        what: ["Tiedoston käsittely on kesken."],
-        how: "Odota käsittelyn päättymistä.",
-      };
+      return { what: [txt.fileOperation], how: txt.fileOperationHow };
     case "pi_session":
-      return piSessionText(b.activity, "tämän worktreen");
+      return piSessionText(b.activity, textNow(trashText).thisWorktree);
     case "process":
       return {
         what: [
-          "Prosessi ",
+          txt.process,
           ...(b.comm
             ? [{ code: b.comm }, ` (PID ${b.pid ?? "?"})`]
             : [`PID ${b.pid ?? "?"}`]),
-          " on worktreen hakemistossa.",
+          txt.processEnd,
         ],
-        how: "Sulje se tai siirry siinä pois hakemistosta.",
+        how: txt.processHow,
       };
     case "taskfleet_run":
       return {
-        what: [
-          "Taskfleet-ajo ",
-          { code: b.run_id ?? "" },
-          " omistaa tämän worktreen.",
-        ],
-        how: "Ajo päättää itse, mitä worktreelle tapahtuu. Odota, että se päättyy, tai peru se:",
+        what: [txt.run, { code: b.run_id ?? "" }, txt.runEnd],
+        how: txt.runHow,
         command: `taskfleet run cancel ${b.run_id ?? ""}`,
       };
     case "contains_linked_worktree":
       return {
-        what: [
-          "Worktreen sisällä on toinen worktree ",
-          { code: b.path ?? "" },
-          ".",
-        ],
-        how: "Poista sisempi ensin.",
+        what: [txt.nestedWorktree, { code: b.path ?? "" }, "."],
+        how: txt.nestedWorktreeHow,
       };
     case "nested_repository":
       return {
-        what: [
-          "Worktreen sisällä on toinen Git-repo ",
-          { code: b.path ?? "" },
-          ".",
-        ],
-        how: "Sen historiaa tai muutoksia ei tallenneta haaraan. Siirrä tai poista se ensin.",
+        what: [txt.nestedRepo, { code: b.path ?? "" }, "."],
+        how: txt.nestedRepoHow,
       };
     case "outside_home":
       return {
-        what: [
-          "Worktree on kotihakemiston ulkopuolella: ",
-          { code: b.path ?? "" },
-          ".",
-        ],
-        how: "Selain poistaa vain kotihakemistossa olevia worktreitä. Poista tämä komennolla git worktree remove.",
+        what: [txt.outsideHome, { code: b.path ?? "" }, "."],
+        how: txt.outsideHomeHow,
       };
     case "last_workspace":
       return blockerText({ kind: "last_workspace" });
     case "mount":
       return {
-        what: ["Worktreen alla on liitos ", { code: b.path ?? "" }, "."],
-        how: "Irrota se ensin.",
+        what: [txt.mount, { code: b.path ?? "" }, "."],
+        how: txt.mountHow,
       };
     case "unknown":
       if (b.check === "worktrees")
-        return {
-          what: [
-            "Worktreetä ei voitu lukea, tai hakemisto ei ole enää tämän worktreen.",
-          ],
-          how: "Tarkista tilanne komennolla git worktree list.",
-        };
+        return { what: [txt.unknown], how: txt.unknownHow };
       return blockerText({ ...b, kind: "unknown" });
   }
 }
@@ -111,49 +93,31 @@ export const plainBlocker = (b: WorktreeBlocker) =>
 
 export function worktreeFacts(w: Worktree): string[] {
   const out: string[] = [];
-  if (w.changed)
-    out.push(count(w.changed, "muutettu tiedosto", "muutettua tiedostoa"));
-  if (w.untracked)
-    out.push(count(w.untracked, "uusi tiedosto", "uutta tiedostoa"));
+  if (w.changed) out.push(txt.changed(w.changed));
+  if (w.untracked) out.push(txt.untracked(w.untracked));
   if (w.state !== "dirty" && w.ahead)
-    out.push(
-      `${count(w.ahead, "commit", "committia")}, joita ei ole haarassa ${w.base ?? "?"}`,
-    );
-  if (w.unreachable_head)
-    out.push("Irrallinen HEAD, jonka committeja mikään haara ei sisällä");
+    out.push(txt.ahead(w.ahead, w.base ?? "?"));
+  if (w.unreachable_head) out.push(txt.unreachable);
   return out;
 }
 
-const worktreeRefusals: Record<string, string> = {
-  worktree_missing: "Tätä worktreetä ei enää löydy. Lista päivitettiin.",
-  worktree_changed:
-    "Worktree muuttui sen jälkeen, kun lista luettiin. Mitään ei poistettu; katso lista ja yritä uudelleen.",
-  worktrees_changed:
-    "Yhdistettyjen worktreiden joukko muuttui. Mitään ei poistettu; katso lista ja vahvista uudelleen.",
-  commit_failed:
-    "Muutoksia ei voitu tallentaa haaraan, joten mitään ei poistettu. Tarkista Gitin nimi ja sähköposti tai commitoi itse.",
-};
 export function worktreeRefusalText(code: string): string {
-  return worktreeRefusals[code] ?? refusalText(code);
+  return txt.refusals[code] ?? refusalText(code);
 }
 
 /** What happened, for the status line after a removal. */
 export function removedText(w: Worktree, r: WorktreeRemoveResult): string {
-  if (r.state === "pruned")
-    return `${w.name}: vanhentunut merkintä poistettu Gitin luettelosta.`;
+  if (r.state === "pruned") return txt.pruned(w.name);
   if (r.state === "blocked")
-    return `${w.name} ei poistettu: ${(r.blockers ?? []).map(plainBlocker).join(" ")}`;
-  if (r.state === "partial")
-    return `${w.name}: osa jäi poistamatta (${r.remaining ?? 1}). Se näkyy listassa, ja sen voi poistaa uudelleen.`;
-  const saved = r.committed
-    ? ` Muutokset tallennettiin haaraan commitiksi ${r.committed.slice(0, 7)}.`
-    : "";
+    return txt.blocked(w.name, (r.blockers ?? []).map(plainBlocker).join(" "));
+  if (r.state === "partial") return txt.partial(w.name, r.remaining ?? 1);
+  const saved = r.committed ? txt.committed(r.committed.slice(0, 7)) : "";
   const branch = !r.branch
     ? ""
     : r.branch_deleted
-      ? ` Haara ${r.branch} poistettiin.`
+      ? txt.branchDeleted(r.branch)
       : r.branch_kept === "not_merged"
-        ? ` Haara ${r.branch} säilyy.`
-        : ` Haara ${r.branch} säilyi, koska ${r.branch_kept === "moved" ? "se oli muuttunut" : "se on käytössä toisessa checkoutissa"}.`;
-  return `${w.name} poistettu.${saved}${branch}`;
+        ? txt.branchStays(r.branch)
+        : txt.branchStayed(r.branch, r.branch_kept === "moved");
+  return `${txt.removed(w.name)}${saved}${branch}`;
 }

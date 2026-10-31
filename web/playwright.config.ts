@@ -9,7 +9,13 @@ export default defineConfig({
   globalSetup: "./tests/host-build.ts",
   globalTeardown: "./tests/host-teardown.ts",
   reporter: [["line"]],
-  use: { baseURL: viteOrigin, trace: "retain-on-failure" },
+  use: {
+    // The suite reads the interface in Finnish; a spec that tests English
+    // opens its own context in another locale.
+    locale: "fi-FI",
+    baseURL: viteOrigin,
+    trace: "retain-on-failure",
+  },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {

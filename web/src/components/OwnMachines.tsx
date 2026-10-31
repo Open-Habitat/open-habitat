@@ -25,6 +25,10 @@ import { TextField } from "./Primitives";
 import { Badge } from "./Status";
 import type { Tone } from "./types";
 import "./OwnMachines.css";
+import { liveText } from "../i18n";
+import { ownMachinesText } from "../text/ownMachines";
+
+const txt = liveText(ownMachinesText);
 
 // Asetukset › Omat koneet, prototype direction 1 Ohjattu (Jari 29.10.2026):
 // the page summarises; a five-step dialog does the setup, and renewal opens
@@ -33,13 +37,7 @@ import "./OwnMachines.css";
 // an agent running as the same user. The three plain sentences are said
 // before anything is saved.
 
-export const wizardSteps = [
-  "Tailscale",
-  "Kone",
-  "Etäkirjautuminen",
-  "Avainrivi",
-  "Vahvistus",
-] as const;
+export const wizardSteps = () => txt.steps;
 export type WizardStep = 1 | 2 | 3 | 4 | 5;
 
 /** The dialog's own state; the page's container owns it. */
@@ -82,20 +80,20 @@ export type WizardActions = {
 // Toistaiseksi first and preselected (Jari 30.10.2026): the person revokes
 // the line on the machine at any time, and a forced renewal would lose the
 // machine unexpectedly.
-const dayOptions = [
-  { id: "0", label: "Toistaiseksi" },
-  { id: "7", label: "7 pv" },
-  { id: "30", label: "30 pv" },
-  { id: "90", label: "90 pv" },
+const dayOptions = () => [
+  { id: "0", label: txt.forever },
+  { id: "7", label: txt.days(7) },
+  { id: "30", label: txt.days(30) },
+  { id: "90", label: txt.days(90) },
 ];
 
-const machinePill: Record<MachineState, [string, Tone]> = {
-  active: ["Yhdistetty", "success"],
-  asleep: ["Ei vastaa", "neutral"],
-  gone: ["Ei Tailscalessa", "warning"],
-  expired: ["Vanhentunut", "danger"],
-  revoked: ["Kone hylkää avaimen", "danger"],
-  changed: ["Tunniste muuttui", "danger"],
+const machineTone: Record<MachineState, Tone> = {
+  active: "success",
+  asleep: "neutral",
+  gone: "warning",
+  expired: "danger",
+  revoked: "danger",
+  changed: "danger",
 };
 
 function CopyBox({
@@ -123,7 +121,7 @@ function CopyBox({
         onPress={() => void onCopy(text).then(setDone)}
       >
         <Icon name={done ? "check" : "copy"} />
-        {done ? "Kopioitu" : done === false ? "Ei onnistunut" : "Kopioi"}
+        {done ? txt.copied : done === false ? txt.copyFailed : txt.copy}
       </ControlButton>
     </div>
   );
@@ -150,35 +148,16 @@ export function Truths({
       <li>
         <Icon name="user" />
         <span>
-          <b>Agentti saa koneella kaiken, mitä käyttäjäsi {user} saa</b>, eikä
-          se kysy lupaa jokaiseen komentoon. Pääsy koskee vain{" "}
-          {machine ? `konetta ${machine}` : "valitsemaasi konetta"} ja{" "}
-          {until ? `päättyy ${fiDate(until)}` : "on voimassa, kunnes perut sen"}
-          .
-          {mac
-            ? " Täysi levyn käyttöoikeus pysyy pois, joten macOS suojaa yhä Työpöytää, Dokumentteja ja Mailia."
-            : ""}
+          {txt.truthEverything(user, machine, until ? fiDate(until) : "", mac)}
         </span>
       </li>
       <li>
         <Icon name="shield" />
-        <span>
-          <b>Palvelimen ylläpitäjä pääsee samaa reittiä koneellesi.</b> Avain on
-          tilisi kotihakemistossa, ja palvelimen ylläpitäjä (root) voi lukea
-          sen. Habitat ei voi estää tätä.
-        </span>
+        <span>{txt.truthRoot()}</span>
       </li>
       <li>
         <Icon name="slash" />
-        <span>
-          <b>Varma katkaisu tehdään koneellasi:</b> poista rivi, sammuta
-          etäkirjautuminen tai poista {node} Tailscale-verkostasi.
-          {until
-            ? ` Rivi lakkaa myös itsestään toimimasta ${fiDate(until)}.`
-            : ""}{" "}
-          Poisto Habitatista ei yksin riitä, koska agentti toimii samana
-          käyttäjänä ja on voinut kopioida avaimen.
-        </span>
+        <span>{txt.truthCut(node, until ? fiDate(until) : "")}</span>
       </li>
     </ul>
   );
@@ -200,14 +179,9 @@ function RemoveCommands({
     return <CopyBox text={data.remove_command} onCopy={onCopy} />;
   return (
     <>
-      <p className="s-desc">
-        PowerShellissä, jos käyttäjäsi on tavallinen käyttäjä:
-      </p>
+      <p className="s-desc">{txt.removeAsUser}</p>
       <CopyBox text={data.windows_remove_command} onCopy={onCopy} />
-      <p className="s-desc">
-        Jos käyttäjäsi on järjestelmänvalvoja, PowerShellissä, joka on avattu
-        järjestelmänvalvojana:
-      </p>
+      <p className="s-desc">{txt.removeAsAdmin}</p>
       <CopyBox text={data.windows_admin_remove_command} onCopy={onCopy} />
     </>
   );
@@ -227,16 +201,17 @@ function TailscaleCard({
   busy: boolean;
 }) {
   const ts = data.tailscale;
-  const pill: Record<string, [string, Tone]> = {
-    unavailable: ["Ei saatavilla", "neutral"],
-    off: ["Ei yhdistetty", "neutral"],
-    stopped: ["Pysähtynyt", "warning"],
-    login: ["Odottaa kirjautumista", "info"],
-    approval: ["Odottaa hyväksyntää", "info"],
-    starting: ["Käynnistyy", "info"],
-    on: ["Yhdistetty", "success"],
+  const pill: Record<string, Tone> = {
+    unavailable: "neutral",
+    off: "neutral",
+    stopped: "warning",
+    login: "info",
+    approval: "info",
+    starting: "info",
+    on: "success",
   };
-  const [label, tone] = pill[ts.state] ?? ["", "neutral"];
+  const label = txt.tsPill[ts.state as keyof typeof txt.tsPill] ?? "";
+  const tone = pill[ts.state] ?? "neutral";
   return (
     <div
       className="s-card om-card"
@@ -250,8 +225,8 @@ function TailscaleCard({
           <strong>Tailscale</strong>
           <span className="s-desc">
             {ts.node
-              ? `${ts.node.name} verkossa ${ts.node.tailnet ?? ""}`
-              : "Habitatin yhteys omaan verkkoosi"}
+              ? txt.nodeIn(ts.node.name, ts.node.tailnet ?? "")
+              : txt.tsDesc}
           </span>
         </span>
         <span className="s-val">
@@ -260,15 +235,12 @@ function TailscaleCard({
       </div>
       {ts.state === "unavailable" && (
         <p className="om-blk om-note" data-testid="own-machines-unavailable">
-          Tämä palvelin ei vielä tarjoa Tailscalea. Palvelimen ylläpitäjä ottaa
-          sen käyttöön; sinun ei tarvitse asentaa mitään.
+          {txt.tsUnavailable}
         </p>
       )}
       {ts.state === "stopped" && (
         <div className="om-blk">
-          <p>
-            Habitatin Tailscale-laite on tililläsi, mutta se ei ole käynnissä.
-          </p>
+          <p>{txt.tsStopped}</p>
           <ControlButton
             data-testid="own-machines-start"
             size="row"
@@ -276,7 +248,7 @@ function TailscaleCard({
             isPending={busy}
             onPress={actions.connect}
           >
-            Käynnistä
+            {txt.start}
           </ControlButton>
         </div>
       )}
@@ -284,37 +256,35 @@ function TailscaleCard({
         ts.state === "approval" ||
         ts.state === "starting") && (
         <div className="om-blk om-btns">
-          <span className="s-desc">Kirjautuminen Tailscaleen on kesken.</span>
+          <span className="s-desc">{txt.tsPending}</span>
           <ControlButton
             data-testid="own-machines-continue"
             size="row"
             variant="primary"
             onPress={actions.addMachine}
           >
-            Jatka
+            {txt.continue}
           </ControlButton>
         </div>
       )}
       {ts.node && (
         <div className="om-blk">
           <dl className="om-facts" data-testid="own-machines-node">
-            <dt>Laite</dt>
+            <dt>{txt.device}</dt>
             <dd className="om-mono">
               {ts.node.name} · {ts.node.address}
             </dd>
-            <dt>Verkko</dt>
+            <dt>{txt.network}</dt>
             <dd>
               {ts.node.tailnet}
               {ts.node.login ? (
                 <span className="om-muted"> ({ts.node.login})</span>
               ) : null}
             </dd>
-            <dt>Saapuvat yhteydet</dt>
+            <dt>{txt.incoming}</dt>
             <dd data-testid="own-machines-shields" data-up={ts.node.shields_up}>
               <Icon name="shield" />{" "}
-              {ts.node.shields_up
-                ? "Estetty: verkkosi laitteet eivät pääse tähän palvelimeen"
-                : "Sallittu! Joku on muuttanut asetusta Habitatin ohi. Irrota Habitat verkostasi ja yhdistä uudelleen."}
+              {ts.node.shields_up ? txt.shieldsUp : txt.shieldsDown}
             </dd>
           </dl>
           {confirming === "disconnect" ? (
@@ -322,20 +292,14 @@ function TailscaleCard({
               className="om-confirm"
               data-testid="own-machines-disconnect-confirm"
             >
-              <p>
-                <b>Irrotetaanko Habitat verkostasi?</b> Habitat pysäyttää
-                laitteensa ja poistaa sen avaimen tältä tililtä sekä kaikki
-                koneesi täältä. Laite {ts.node.name} jää Tailscalen
-                laitelistaan, kunnes poistat sen sieltä. Koneidesi rivit jäävät
-                koneille, kunnes poistat ne tai ne vanhenevat.
-              </p>
+              <p>{txt.disconnectQuestion(ts.node.name)}</p>
               <div className="om-btns om-end">
                 <ControlButton
                   size="row"
                   variant="quiet"
                   onPress={() => setConfirming("")}
                 >
-                  Peru
+                  {txt.cancel}
                 </ControlButton>
                 <ControlButton
                   data-testid="own-machines-disconnect-yes"
@@ -344,7 +308,7 @@ function TailscaleCard({
                   isPending={busy}
                   onPress={actions.disconnect}
                 >
-                  Irrota
+                  {txt.disconnect}
                 </ControlButton>
               </div>
             </div>
@@ -356,7 +320,7 @@ function TailscaleCard({
                 variant="quiet"
                 onPress={() => setConfirming("disconnect")}
               >
-                Irrota Habitat verkostasi
+                {txt.disconnectHabitat}
               </ControlButton>
             </div>
           )}
@@ -386,10 +350,11 @@ function MachineCard({
   busy: boolean;
 }) {
   const state = machineState(machine, check?.result);
-  const [label, tone] = machinePill[state];
+  const label = txt.pill[state];
+  const tone = machineTone[state];
   const os = osFamily(machine.os);
   const mac = os === "mac";
-  const node = data.tailscale.node?.name ?? "Habitatin laite";
+  const node = data.tailscale.node?.name ?? txt.habitatDevice;
   return (
     <div
       className="s-card om-card om-machine"
@@ -410,7 +375,7 @@ function MachineCard({
         </span>
         {machine.connection_open && (
           <span data-testid="own-machine-open">
-            <Badge label="Yhteys auki" tone="info" />
+            <Badge label={txt.connectionOpen} tone="info" />
           </span>
         )}
         <span data-testid="own-machine-state">
@@ -420,70 +385,60 @@ function MachineCard({
       <div className="om-blk">
         {state === "expired" && (
           <p className="om-note om-err" data-testid="own-machine-expired">
-            <b>Pääsy päättyi {fiDate(machine.expires)}.</b> Kone ei enää hyväksy
-            avainta. Uusi pääsy antaa uuden rivin, joka korvaa vanhan.
+            {txt.expired(fiDate(machine.expires))}
           </p>
         )}
         {state === "revoked" && (
           <p className="om-note om-err" data-testid="own-machine-revoked">
-            <b>Kone hylkäsi avaimen</b>, vaikka pääsy olisi ollut voimassa
-            {machine.expires ? ` ${fiDate(machine.expires)} asti` : ""}. Rivi on
-            luultavasti poistettu koneelta tai etäkirjautuminen on pois päältä.
-            Jos teit sen itse, poista kone myös täältä.
+            {txt.revoked(machine.expires ? fiDate(machine.expires) : "")}
           </p>
         )}
         {state === "changed" && (
           <p className="om-note om-err" data-testid="own-machine-changed">
-            <b>Koneen tunniste on eri kuin tallennettu.</b> Habitat ei ota
-            yhteyttä siihen. Jos asensit koneen uudelleen, poista se täältä ja
-            lisää uudelleen. Muuten osoitteessa vastaa jokin muu kuin koneesi.
+            {txt.changed()}
           </p>
         )}
         {state === "asleep" && (
           <p className="om-note" data-testid="own-machine-asleep">
-            <b>{machine.name} ei vastaa.</b> Kone on luultavasti unessa tai
-            Tailscale on suljettu. Agentti yrittää uudelleen, kun pyydät.
+            {txt.asleep(machine.name)}
           </p>
         )}
         {state === "gone" && (
           <p className="om-note" data-testid="own-machine-gone">
-            <b>{machine.name} ei ole enää Tailscale-verkossasi.</b> Agentti ei
-            pääse siihen, ennen kuin se on taas verkossa.
+            {txt.gone(machine.name)}
           </p>
         )}
         <dl className="om-facts">
-          <dt>{machine.expires ? "Pääsy päättyy" : "Pääsy"}</dt>
+          <dt>{machine.expires ? txt.accessEnds : txt.access}</dt>
           <dd data-testid="own-machine-expires">
-            {machine.expires
-              ? fiDate(machine.expires)
-              : "voimassa, kunnes perut"}
+            {machine.expires ? fiDate(machine.expires) : txt.untilRevoked}
           </dd>
-          <dt>Agentti koneella</dt>
-          <dd>
-            käyttäjänä {machine.user}, kaikki mitä {machine.user} saa
+          <dt>{txt.agentOnMachine}</dt>
+          <dd>{txt.asUser(machine.user)}</dd>
+          <dt>{txt.hostKey}</dt>
+          <dd className="om-mono om-wrap">
+            {machine.host_key || txt.missingValue}
           </dd>
-          <dt>Koneen tunniste</dt>
-          <dd className="om-mono om-wrap">{machine.host_key || "puuttuu"}</dd>
-          <dt>Habitatin avain</dt>
+          <dt>{txt.habitatKey}</dt>
           <dd>
             <span className="om-mono">~/.ssh/id_ed25519</span>{" "}
             <span className="om-muted om-wrap">
               {data.account_key?.fingerprint}
             </span>
           </dd>
-          <dt>Tailscalessa</dt>
+          <dt>{txt.inTailscale}</dt>
           <dd>
             {machine.online
-              ? "paikalla"
+              ? txt.present
               : machine.in_tailnet
-                ? `viimeksi paikalla ${seenAgo(machine.last_seen)}`
-                : "ei verkossa"}
+                ? txt.lastSeen(seenAgo(machine.last_seen))
+                : txt.offline}
           </dd>
-          <dt>Agentille</dt>
+          <dt>{txt.forAgent}</dt>
           <dd className="om-mono">ssh {machine.name}</dd>
         </dl>
         <details className="om-more">
-          <summary>Mitä yhteys antaa</summary>
+          <summary>{txt.whatItGives}</summary>
           <Truths
             machine={machine.name}
             user={machine.user}
@@ -493,18 +448,10 @@ function MachineCard({
           />
         </details>
         <details className="om-more" data-testid="own-machine-cut">
-          <summary>Näin katkaiset pääsyn koneelta</summary>
-          <p className="s-desc">Poista Habitatin rivi koneen päätteessä:</p>
+          <summary>{txt.howToCut}</summary>
+          <p className="s-desc">{txt.removeLine}</p>
           <RemoveCommands data={data} os={machine.os} onCopy={actions.copy} />
-          <p className="s-desc">
-            Tai{" "}
-            {mac
-              ? "sammuta Etäkirjautuminen (Järjestelmäasetukset › Yleiset › Jakaminen)"
-              : os === "windows"
-                ? "pysäytä OpenSSH-palvelin (järjestelmänvalvojan PowerShellissä: Stop-Service sshd; Set-Service sshd -StartupType Disabled)"
-                : "pysäytä SSH-palvelin (sudo systemctl disable --now ssh)"}
-            , tai poista laite {node} Tailscalen hallintasivulta.
-          </p>
+          <p className="s-desc">{txt.orStop(os, node)}</p>
         </details>
       </div>
       {confirming === `remove:${machine.name}` ? (
@@ -513,13 +460,10 @@ function MachineCard({
           data-testid="own-machine-remove-confirm"
         >
           <p>
-            <b>Poistetaanko {machine.name}?</b> Habitat poistaa koneen
-            yhteysasetuksen ja tunnisteen tililtäsi. Koneesi hyväksyy riviä yhä
-            {machine.expires
-              ? ` ${fiDate(machine.expires)} asti`
-              : ", kunnes poistat sen"}
-            , jos joku on ehtinyt kopioida avaimen, joten poista rivi myös
-            koneelta:
+            {txt.removeQuestion(
+              machine.name,
+              machine.expires ? fiDate(machine.expires) : "",
+            )}
           </p>
           <RemoveCommands data={data} os={machine.os} onCopy={actions.copy} />
           <div className="om-btns om-end">
@@ -528,7 +472,7 @@ function MachineCard({
               variant="quiet"
               onPress={() => setConfirming("")}
             >
-              Peru
+              {txt.cancel}
             </ControlButton>
             <ControlButton
               data-testid="own-machine-remove-yes"
@@ -537,7 +481,7 @@ function MachineCard({
               isPending={busy}
               onPress={() => actions.remove(machine.name)}
             >
-              Poista kone
+              {txt.removeMachine}
             </ControlButton>
           </div>
         </div>
@@ -552,7 +496,7 @@ function MachineCard({
             onPress={() => actions.recheck(machine.name)}
           >
             <Icon name="refresh" />
-            Tarkista yhteys
+            {txt.check}
           </ControlButton>
           <ControlButton
             data-testid="own-machine-renew"
@@ -565,7 +509,7 @@ function MachineCard({
             isDisabled={data.tailscale.state !== "on" || state === "changed"}
             onPress={() => actions.renew(machine.name)}
           >
-            {state === "revoked" ? "Yhdistä uudelleen" : "Uusi pääsy"}
+            {state === "revoked" ? txt.reconnect : txt.renew}
           </ControlButton>
           <ControlButton
             data-testid="own-machine-remove"
@@ -573,7 +517,7 @@ function MachineCard({
             variant="quiet"
             onPress={() => setConfirming(`remove:${machine.name}`)}
           >
-            Poista
+            {txt.remove}
           </ControlButton>
         </div>
       )}
@@ -608,11 +552,7 @@ export function OwnMachinesPage({
   const ts = data.tailscale.state;
   return (
     <div className="s-stack om" data-testid="own-machines">
-      <p className="s-intro">
-        Agentti voi käyttää omaa tietokonettasi SSH:lla oman Tailscale-verkkosi
-        kautta, esimerkiksi tarkistaakseen asetuksia tai avatakseen tiedoston.
-        Koneellesi ei asenneta mitään Habitatin omaa.
-      </p>
+      <p className="s-intro">{txt.intro}</p>
       {notice && (
         <p
           className="om-notice"
@@ -629,7 +569,7 @@ export function OwnMachinesPage({
         setConfirming={setConfirming}
         busy={Boolean(busy)}
       />
-      <div className="s-sub om-sub">Koneet</div>
+      <div className="s-sub om-sub">{txt.machines}</div>
       <div data-settings-row="own-machines" tabIndex={-1} className="s-stack">
         {data.machines.map((m) => (
           <MachineCard
@@ -646,27 +586,20 @@ export function OwnMachinesPage({
         ))}
         {removed && (
           <div className="om-note om-removed" data-testid="own-machine-removed">
-            <p>
-              <b>{removed.name} poistettu Habitatista.</b> Poista vielä rivi
-              koneelta, niin pääsy loppuu varmasti:
-            </p>
+            <p>{txt.removed(removed.name)}</p>
             <RemoveCommands data={data} os={removed.os} onCopy={actions.copy} />
           </div>
         )}
         {data.machines.length > 0 && !data.ssh_include && (
           <div className="om-note om-err" data-testid="own-machines-include">
-            <p>
-              Tiedostoa <code>~/.ssh/config</code> ei voitu muuttaa (se on
-              luultavasti linkki). Lisää sen alkuun tämä rivi, jotta agentti
-              löytää koneet nimellä:
-            </p>
+            <p>{txt.includeFailed(<code>~/.ssh/config</code>)}</p>
             <CopyBox text={sshInclude} onCopy={actions.copy} />
           </div>
         )}
         <div className="s-card om-card">
           <div className="om-blk om-btns">
             {data.machines.length === 0 && (
-              <span className="om-muted">Ei yhdistettyjä koneita.</span>
+              <span className="om-muted">{txt.none}</span>
             )}
             <ControlButton
               data-testid="own-machines-add"
@@ -676,12 +609,10 @@ export function OwnMachinesPage({
               onPress={actions.addMachine}
             >
               <Icon name="plus" />
-              {data.machines.length === 0 ? "Lisää kone" : "Lisää toinen kone"}
+              {data.machines.length === 0 ? txt.add : txt.addAnother}
             </ControlButton>
             {data.machines.length === 0 && (
-              <span className="s-desc">
-                Noin viisi minuuttia. Tarvitset koneen viereesi.
-              </span>
+              <span className="s-desc">{txt.addTime}</span>
             )}
           </div>
         </div>
@@ -704,16 +635,16 @@ function PeerChoices({
   return (
     <div>
       <fieldset className="om-choices" data-testid="own-machines-peers">
-        <legend className="om-legend">Kone Tailscale-verkossasi</legend>
+        <legend className="om-legend">{txt.peerLegend}</legend>
         {peers.map((p) => {
           const disabled = p.ssh !== "possible" || saved.has(p.name);
           const tag = saved.has(p.name)
-            ? "lisätty jo"
+            ? txt.peerSaved
             : p.ssh === "no"
-              ? "ei SSH-palvelinta"
+              ? txt.peerNoSsh
               : p.online
-                ? "paikalla"
-                : `viimeksi paikalla ${seenAgo(p.last_seen)}`;
+                ? txt.present
+                : txt.lastSeen(seenAgo(p.last_seen));
           return (
             <label
               key={p.name}
@@ -738,10 +669,7 @@ function PeerChoices({
           );
         })}
       </fieldset>
-      <p className="s-desc">
-        Lista on Tailscale-verkostasi. Jos konettasi ei näy, se ei ole vielä
-        kirjautunut samaan verkkoon.
-      </p>
+      <p className="s-desc">{txt.peersNote}</p>
     </div>
   );
 }
@@ -759,51 +687,13 @@ function CheckNote({
   dated: boolean;
 }) {
   if (!check) return null;
-  const mac = os === "mac";
   const notes: Record<string, ReactNode> = {
-    ok: (
-      <>
-        <b>Kone hyväksyi avaimen.</b> Vielä yksi tarkistus: koneen tunniste.
-      </>
-    ),
-    key_rejected: (
-      <>
-        <b>Kone ei hyväksy avainta vielä.</b> Kone vastaa, mutta hylkää avaimen.
-        Aja komento koneella käyttäjänä {user} ja tarkista uudelleen.
-        {mac
-          ? ` Jos ajoit sen, tarkista että etäkirjautuminen sallii käyttäjän ${user}.`
-          : os === "windows"
-            ? ` Jos käyttäjäsi on järjestelmänvalvoja, aja järjestelmänvalvojan komento.${dated ? " Jos ajoit sen, tarkista OpenSSH:n versio (ssh -V): rivi vaatii version 8.2 tai uudemman." : ""}`
-            : ""}
-      </>
-    ),
-    offline: (
-      <>
-        <b>Tailscale ei näe konetta.</b> Kone on luultavasti unessa tai sen
-        Tailscale on suljettu.
-      </>
-    ),
-    no_ssh: (
-      <>
-        <b>Kone on verkossa, mutta SSH ei vastaa.</b>{" "}
-        {mac
-          ? "Laita etäkirjautuminen päälle (edellinen vaihe)."
-          : os === "windows"
-            ? "Käynnistä OpenSSH-palvelin (edellinen vaihe). Jos se on käynnissä, Windowsin palomuuri voi estää yhteyden."
-            : "Käynnistä SSH-palvelin (edellinen vaihe)."}
-      </>
-    ),
-    host_key_changed: (
-      <>
-        <b>Koneen tunniste on eri kuin tallennettu.</b> Habitat ei jatka.
-      </>
-    ),
-    failed: (
-      <>
-        <b>Yhteys ei onnistunut.</b> Tarkista, että kone on hereillä, ja yritä
-        uudelleen.
-      </>
-    ),
+    ok: txt.checkOk(),
+    key_rejected: txt.checkRejected(user, os, dated),
+    offline: txt.checkOffline(),
+    no_ssh: txt.checkNoSsh(os),
+    host_key_changed: txt.checkChanged(),
+    failed: txt.checkFailed(),
   };
   return (
     <p
@@ -853,8 +743,10 @@ export function AddMachineDialog({
     body =
       ts.state === "on" && ts.node ? (
         <p className="om-note om-ok" data-testid="own-machines-wizard-joined">
-          <b>Habitat on verkossasi</b> laitteena{" "}
-          <span className="om-mono">{ts.node.name}</span> ({ts.node.address}).
+          {txt.joined(
+            <span className="om-mono">{ts.node.name}</span>,
+            ts.node.address,
+          )}
         </p>
       ) : ts.state === "login" ? (
         <div className="om-login" data-testid="own-machines-login">
@@ -864,10 +756,7 @@ export function AddMachineDialog({
             </div>
           )}
           <div>
-            <p>
-              Kirjaudu omalla Tailscale-tunnuksellasi ja hyväksy laite.
-              {phone ? "" : " Voit myös skannata koodin puhelimella."}
-            </p>
+            <p>{txt.signInTailscale(Boolean(phone))}</p>
             {ts.auth_url ? (
               <>
                 <div className="om-btns">
@@ -879,12 +768,10 @@ export function AddMachineDialog({
                     rel="noopener noreferrer"
                   >
                     <Icon name="external" />
-                    Avaa kirjautumissivu
+                    {txt.openLogin}
                   </a>
                 </div>
-                <p className="s-desc">
-                  Odotetaan, että hyväksyt laitteen Tailscalessa…
-                </p>
+                <p className="s-desc">{txt.waitingApproval}</p>
               </>
             ) : (
               <div className="om-btns">
@@ -895,29 +782,22 @@ export function AddMachineDialog({
                   isPending={wizard.busy === "connect"}
                   onPress={actions.connect}
                 >
-                  Hae kirjautumislinkki
+                  {txt.fetchLogin}
                 </ControlButton>
-                <span className="s-desc">
-                  Linkki tulee Tailscalelta hetkessä.
-                </span>
+                <span className="s-desc">{txt.loginSoon}</span>
               </div>
             )}
           </div>
         </div>
       ) : ts.state === "approval" ? (
         <p className="om-note" data-testid="own-machines-approval">
-          Tailscale-verkkosi ylläpitäjän pitää vielä hyväksyä laite. Hyväksy se
-          Tailscalen hallintasivulla, niin tämä jatkuu.
+          {txt.approval}
         </p>
       ) : ts.state === "starting" ? (
-        <p className="s-desc">Habitatin laite käynnistyy…</p>
+        <p className="s-desc">{txt.starting}</p>
       ) : (
         <>
-          <p>
-            Habitat liittyy <b>omaan</b> Tailscale-verkkoosi yhtenä laitteena,
-            ja agentti ottaa sen kautta yhteyden koneeseesi. Habitatilla ei ole
-            omaa verkkoa eikä pääsyä verkkosi hallintaan.
-          </p>
+          <p>{txt.joins()}</p>
           <div className="om-btns">
             <ControlButton
               data-testid="own-machines-connect"
@@ -926,12 +806,9 @@ export function AddMachineDialog({
               isPending={wizard.busy === "connect"}
               onPress={actions.connect}
             >
-              Yhdistä Tailscaleen
+              {txt.connectTailscale}
             </ControlButton>
-            <span className="s-desc">
-              Ei vielä Tailscale-tiliä? Henkilökohtainen tili on maksuton:
-              tailscale.com
-            </span>
+            <span className="s-desc">{txt.noAccount}</span>
           </div>
         </>
       );
@@ -939,10 +816,7 @@ export function AddMachineDialog({
   } else if (step === 2) {
     body = (
       <>
-        <p>
-          Asenna koneelle Tailscale ja kirjaudu samalla tunnuksella
-          {ts.node?.login ? ` (${ts.node.login})` : ""}. Valitse sitten kone:
-        </p>
+        <p>{txt.installTailscale(ts.node?.login)}</p>
         <PeerChoices
           peers={data.peers}
           saved={saved}
@@ -951,29 +825,27 @@ export function AddMachineDialog({
         />
         <TextField
           data-testid="own-machines-user"
-          label="Käyttäjätunnuksesi koneella"
+          label={txt.userField}
           value={wizard.user}
           onChange={(user) => actions.choose({ user: user.trim() })}
-          hint="Agentti toimii koneella tällä käyttäjällä ja saa sen oikeudet."
-          error={wizard.user && !userOk ? "Tunnus ei kelpaa." : undefined}
+          hint={txt.userHint}
+          error={wizard.user && !userOk ? txt.userInvalid : undefined}
           mono
           name="remote-user"
           autoComplete="username"
         />
         <div className="om-row">
-          <span>Pääsyn kesto</span>
+          <span>{txt.duration}</span>
           <Segmented<string>
             data-testid="own-machines-days"
-            label="Pääsyn kesto"
-            options={dayOptions}
+            label={txt.duration}
+            options={dayOptions()}
             value={String(wizard.days)}
             onChange={(v) => actions.choose({ days: Number(v) as GrantDays })}
           />
         </div>
         <p className="s-desc" data-testid="own-machines-days-note">
-          {wizard.days
-            ? "Kone lakkaa hyväksymästä avainta itsestään. Pääsyä voi jatkaa korvaamalla rivin."
-            : "Pääsy on voimassa, kunnes perut sen koneellasi."}
+          {wizard.days ? txt.dated : txt.undated}
         </p>
       </>
     );
@@ -981,50 +853,31 @@ export function AddMachineDialog({
   } else if (step === 3) {
     body = mac ? (
       <ol className="om-steps">
-        <li>
-          Avaa Macissa <b>Järjestelmäasetukset › Yleiset › Jakaminen</b>.
-        </li>
-        <li>
-          Laita <b>Etäkirjautuminen</b> päälle ja avaa sen ⓘ-painike.
-        </li>
-        <li>
-          Valitse <b>Salli pääsy: Vain nämä käyttäjät</b> ja jätä listaan vain{" "}
-          {wizard.user}.
-        </li>
-        <li>
-          Jätä <b>Salli etäkäyttäjille täysi levyn käyttöoikeus</b> pois päältä.
-        </li>
+        {txt.macSteps(wizard.user).map((item, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: the fixed steps of one instruction.
+          <li key={i}>{item}</li>
+        ))}
       </ol>
     ) : os === "windows" ? (
       <>
-        <p>
-          Asenna Windowsin oma OpenSSH-palvelin ja käynnistä se. Avaa PowerShell
-          järjestelmänvalvojana (Käynnistä-valikossa hiiren oikea › Suorita
-          järjestelmänvalvojana) ja aja:
-        </p>
+        <p>{txt.windowsInstall}</p>
         <CopyBox text={windowsSSHServerCommand} onCopy={copy} />
         <p className="s-desc">
-          Saman saa Asetuksista: Järjestelmä › Valinnaiset ominaisuudet ›
-          OpenSSH-palvelin.
-          {wizard.days ? (
-            <>
-              {" "}
-              Päivätty rivi vaatii OpenSSH:n version 8.2 tai uudemman;{" "}
-              <span className="om-mono">ssh -V</span> kertoo sen. Windows 10:n
-              mukana tullut versio voi olla vanhempi.
-            </>
-          ) : null}
+          {txt.windowsSettings}
+          {wizard.days
+            ? txt.windowsVersion(<span className="om-mono">ssh -V</span>)
+            : null}
         </p>
       </>
     ) : (
       <>
-        <p>Asenna SSH-palvelin ja käynnistä se (Ubuntu ja Debian):</p>
+        <p>{txt.linuxInstall}</p>
         <CopyBox
           text="sudo apt install openssh-server && sudo systemctl enable --now ssh"
           onCopy={copy}
         />
         <p className="s-desc">
-          Fedorassa:{" "}
+          {txt.fedora}{" "}
           <span className="om-mono">sudo dnf install openssh-server</span>.
         </p>
       </>
@@ -1034,11 +887,11 @@ export function AddMachineDialog({
     const g = wizard.grant;
     const days = (
       <div className="om-row">
-        <span>Pääsyn kesto</span>
+        <span>{txt.duration}</span>
         <Segmented<string>
           data-testid="own-machines-days"
-          label="Pääsyn kesto"
-          options={dayOptions}
+          label={txt.duration}
+          options={dayOptions()}
           value={String(wizard.days)}
           isDisabled={Boolean(wizard.busy)}
           onChange={(v) => actions.choose({ days: Number(v) as GrantDays })}
@@ -1049,7 +902,7 @@ export function AddMachineDialog({
       <>
         {renewing && days}
         <p className="s-desc">
-          {wizard.busy === "grant" ? "Tehdään riviä…" : ""}
+          {wizard.busy === "grant" ? txt.makingLine : ""}
         </p>
       </>
     ) : (
@@ -1058,40 +911,29 @@ export function AddMachineDialog({
         {g.shell === "powershell" && g.admin_command ? (
           <>
             <div className="om-row">
-              <span>Käyttäjä {g.user} koneella</span>
+              <span>{txt.userOnMachine(g.user)}</span>
               <Segmented<string>
                 data-testid="own-machines-windows-admin"
-                label={`Käyttäjä ${g.user} koneella`}
+                label={txt.userOnMachine(g.user)}
                 options={[
-                  { id: "admin", label: "Järjestelmänvalvoja" },
-                  { id: "user", label: "Tavallinen käyttäjä" },
+                  { id: "admin", label: txt.administrator },
+                  { id: "user", label: txt.ordinaryUser },
                 ]}
                 value={admin ? "admin" : "user"}
                 onChange={(v) => setAdmin(v === "admin")}
               />
             </div>
             <p>
-              {admin ? (
-                <>
-                  Windows lukee järjestelmänvalvojien avaimet yhteisestä
-                  tiedostosta{" "}
-                  <span className="om-mono">
-                    C:\ProgramData\ssh\administrators_authorized_keys
-                  </span>
-                  . Aja tämä komento PowerShellissä, joka on avattu
-                  järjestelmänvalvojana. Se lisää yhden rivin, korvaa tämän
-                  tilin aiemman rivin ja rajaa tiedoston oikeudet niin kuin
-                  OpenSSH vaatii.
-                </>
-              ) : (
-                <>
-                  Aja tämä komento PowerShellissä käyttäjänä {g.user}. Se lisää
-                  yhden rivin tiedostoon{" "}
-                  <span className="om-mono">.ssh\authorized_keys</span>{" "}
-                  kotikansiossasi ja korvaa aiemman Habitat-rivin, jos sellainen
-                  on.
-                </>
-              )}
+              {admin
+                ? txt.windowsAdmin(
+                    <span className="om-mono">
+                      C:\ProgramData\ssh\administrators_authorized_keys
+                    </span>,
+                  )
+                : txt.windowsUser(
+                    g.user,
+                    <span className="om-mono">.ssh\authorized_keys</span>,
+                  )}
             </p>
             <CopyBox
               text={admin ? g.admin_command : g.command}
@@ -1102,10 +944,11 @@ export function AddMachineDialog({
         ) : (
           <>
             <p>
-              Aja tämä komento koneen {mac ? "Päätteessä" : "päätteessä"}{" "}
-              käyttäjänä {g.user}. Se lisää yhden rivin tiedostoon{" "}
-              <span className="om-mono">~/.ssh/authorized_keys</span> ja korvaa
-              aiemman Habitat-rivin, jos sellainen on.
+              {txt.unixCommand(
+                mac,
+                g.user,
+                <span className="om-mono">~/.ssh/authorized_keys</span>,
+              )}
             </p>
             <CopyBox
               text={g.command}
@@ -1115,30 +958,25 @@ export function AddMachineDialog({
           </>
         )}
         <details className="om-more">
-          <summary>Pelkkä rivi ja mitä sen osat tarkoittavat</summary>
+          <summary>{txt.lineParts}</summary>
           <CopyBox text={g.line} testId="own-machines-line" onCopy={copy} />
           <dl className="om-facts">
             <dt>restrict</dt>
-            <dd>
-              Ei porttien, agentin tai näytön välitystä eikä päätettä. Komennot
-              toimivat.
-            </dd>
+            <dd>{txt.restrict}</dd>
             <dt>from</dt>
-            <dd>
-              Kelpaa vain Habitatin osoitteesta {ts.node?.address}{" "}
-              Tailscale-verkossasi.
-            </dd>
+            <dd>{txt.from(ts.node?.address ?? "")}</dd>
             {g.expires && (
               <>
                 <dt>expiry-time</dt>
-                <dd>Kone lakkaa hyväksymästä avainta {fiDate(g.expires)}.</dd>
+                <dd>{txt.expiry(fiDate(g.expires))}</dd>
               </>
             )}
             <dt>ssh-ed25519 …</dt>
             <dd>
-              Tilisi avain <span className="om-mono">~/.ssh/id_ed25519</span>,
-              sormenjälki{" "}
-              <span className="om-mono om-wrap">{g.key_fingerprint}</span>.
+              {txt.keyPart(
+                <span className="om-mono">~/.ssh/id_ed25519</span>,
+                <span className="om-mono om-wrap">{g.key_fingerprint}</span>,
+              )}
             </dd>
           </dl>
         </details>
@@ -1151,7 +989,7 @@ export function AddMachineDialog({
             onPress={actions.check}
           >
             <Icon name="refresh" />
-            Tarkista yhteys
+            {txt.check}
           </ControlButton>
         </div>
         <CheckNote
@@ -1180,9 +1018,7 @@ export function AddMachineDialog({
     body = wizard.mismatch ? (
       <>
         <p className="om-note om-err" data-testid="own-machines-mismatch">
-          <b>Älä jatka.</b> Habitat ei tallentanut mitään. Osoitteessa vastaa
-          jokin muu kuin koneesi. Tarkista, että valitsit oikean koneen ja että
-          verkkosi laitteet ovat sinun.
+          {txt.mismatch()}
         </p>
         <div className="om-btns">
           <ControlButton
@@ -1190,21 +1026,18 @@ export function AddMachineDialog({
             variant="secondary"
             onPress={actions.restart}
           >
-            Aloita alusta
+            {txt.restart}
           </ControlButton>
         </div>
       </>
     ) : (
       <>
-        <p>
-          Varmista, että Habitat puhuu oikean koneen kanssa. Aja koneella
-          {os === "windows" ? " PowerShellissä" : ""}:
-        </p>
+        <p>{txt.verify(os === "windows")}</p>
         <CopyBox
           text={os === "windows" ? windowsHostKeyCommand : hostKeyCommand}
           onCopy={copy}
         />
-        <p>Tuloksessa pitää olla sama sormenjälki kuin tässä:</p>
+        <p>{txt.sameFingerprint}</p>
         <p className="om-fp" data-testid="own-machines-host-key">
           {wizard.check?.host_key}
         </p>
@@ -1235,15 +1068,15 @@ export function AddMachineDialog({
       <Modal className="ah-modal om-modal">
         <Dialog
           className="ah-dialog om-wizard"
-          aria-label={renewing ? "Uusi pääsy" : "Lisää kone"}
+          aria-label={renewing ? txt.renew : txt.add}
           data-testid="own-machines-wizard"
           data-step={step}
         >
           <Heading slot="title">
-            {renewing ? `Uusi pääsy: ${wizard.peer}` : "Lisää kone"}
+            {renewing ? txt.renewTitle(wizard.peer ?? "") : txt.add}
           </Heading>
-          <ol className="om-wz-steps" aria-label="Vaiheet">
-            {wizardSteps.map((label, i) => (
+          <ol className="om-wz-steps" aria-label={txt.stepsLabel}>
+            {wizardSteps().map((label, i) => (
               <li
                 key={label}
                 aria-current={i + 1 === step ? "step" : undefined}
@@ -1272,7 +1105,7 @@ export function AddMachineDialog({
                 isDisabled={Boolean(wizard.busy)}
                 onPress={() => actions.setStep((step - 1) as WizardStep)}
               >
-                Takaisin
+                {txt.back}
               </ControlButton>
             )}
             <ControlButton
@@ -1281,7 +1114,7 @@ export function AddMachineDialog({
               variant="secondary"
               onPress={actions.close}
             >
-              {finish ? "Peru" : "Sulje"}
+              {finish ? txt.cancel : txt.close}
             </ControlButton>
             {step === 5 && !wizard.mismatch && (
               <ControlButton
@@ -1290,7 +1123,7 @@ export function AddMachineDialog({
                 variant="secondary"
                 onPress={actions.mismatch}
               >
-                Ei täsmää
+                {txt.noMatch}
               </ControlButton>
             )}
             {finish ? (
@@ -1303,9 +1136,9 @@ export function AddMachineDialog({
               >
                 {renewing
                   ? wizard.grant?.expires
-                    ? "Tallenna uusi päivä"
-                    : "Tallenna"
-                  : "Täsmää, tallenna"}
+                    ? txt.saveDate
+                    : txt.save
+                  : txt.matches}
               </ControlButton>
             ) : step < 5 && !wizard.mismatch ? (
               <ControlButton
@@ -1317,7 +1150,7 @@ export function AddMachineDialog({
                   next !== null && actions.setStep(next as WizardStep)
                 }
               >
-                Seuraava
+                {txt.next}
               </ControlButton>
             ) : null}
           </div>

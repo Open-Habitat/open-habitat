@@ -1,8 +1,12 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import accessSchema from "../../../contracts/v1/server-access.schema.json";
+import { liveText } from "../i18n";
+import { serverAccessText } from "../text/serverAccess";
 import { bounded } from "./integrations";
 import { mutationFetch, writeOutcome } from "./mutations";
+
+const txt = liveText(serverAccessText);
 
 // Who may sign in (ADR 0030). The broker owns admission; the gateway joins
 // administrators, denies and last use. The browser only asks, and shows a
@@ -205,26 +209,5 @@ export function splitLogins(raw: string): string[] {
 
 /** A refusal in words the administrator can act on. */
 export function accessRefusal(code: string): string {
-  switch (code) {
-    case "github_user_not_found":
-      return "GitHub-käyttäjää ei löydy.";
-    case "github_not_user":
-      return "Tunnus ei ole henkilön GitHub-tili.";
-    case "runtime_admission_disabled":
-      return "Lisäys selaimesta on poissa käytöstä.";
-    case "runtime_admission_full":
-      return "Sallittujen lista on täynnä.";
-    case "admission_open":
-      return "Pääsy on avoin kaikille.";
-    case "operator_owned":
-      return "Tämä tulee palvelimen asetuksista.";
-    case "not_admitted":
-      return "Henkilöllä ei ole pääsyä, joten häntä ei voi nimetä ylläpitäjäksi.";
-    case "binding_drift":
-      return "Palvelin ei voinut vahvistaa käyttäjätiliä. Tarkista se komentorivillä.";
-    case "admin_required":
-      return "Vain ylläpitäjä voi muuttaa pääsyä.";
-    default:
-      return "Palvelin ei tehnyt muutosta.";
-  }
+  return txt.refusals[code] ?? txt.refused;
 }

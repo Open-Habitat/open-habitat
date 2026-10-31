@@ -1,4 +1,8 @@
+import { liveText } from "../i18n";
+import { modelsText } from "../text/models";
 import type { ModelChoice } from "./ModelPicker";
+
+const txt = liveText(modelsText);
 
 // Product capability order, not provider response order or lexical model ids.
 const claudeRank = ["fable", "opus", "sonnet", "haiku"];
@@ -25,9 +29,9 @@ export function modelDisplayName(model?: string, models: ModelChoice[] = []) {
   if (claude)
     return `${claude[1][0].toUpperCase()}${claude[1].slice(1)} ${claude[2]}${claude[3] ? `.${claude[3]}` : ""}`;
   if (id && /^gpt-/i.test(id)) return id.replace(/^gpt-/i, "GPT ");
-  return "Malli ei tiedossa";
+  return txt.modelUnknown;
 }
 
 export function thinkingDisplayName(level?: string) {
-  return level ? level[0].toUpperCase() + level.slice(1) : "Ei tiedossa";
+  return level ? level[0].toUpperCase() + level.slice(1) : txt.unknown;
 }

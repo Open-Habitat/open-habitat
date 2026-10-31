@@ -357,3 +357,70 @@ func TestDeclaredAdministratorGrantedAtBindingSignIn(t *testing.T) {
 		}
 	}
 }
+
+// The server's default language: the installation's, until an administrator
+// chooses in Settings. Sign-in reads it with no session; only an
+// administrator writes it.
+func TestDefaultLanguage(t *testing.T) {
+	h, a, _, _, _ := fixture(t)
+	path := filepath.Join(t.TempDir(), "administration.json")
+	if e := a.loadAdministration(path); e != nil {
+		t.Fatal(e)
+	}
+	a.broker = &adminBroker{Broker: a.broker}
+	read := func() string {
+		t.Helper()
+		w := request(h, "GET", "/api/v1/site/language")
+		var reply struct {
+			Version         int    `json:"schema_version"`
+			DefaultLanguage string `json:"default_language"`
+		}
+		if w.Code != 200 || w.Header().Get("Cache-Control") != "no-store" || json.Unmarshal(w.Body.Bytes(), &reply) != nil || reply.Version != 1 {
+			t.Fatalf("site language: %d %s", w.Code, w.Body.String())
+		}
+		return reply.DefaultLanguage
+	}
+	if got := read(); got != "system" {
+		t.Fatalf("unconfigured default: %q", got)
+	}
+	a.cfg.DefaultLanguage = "fi"
+	if got := read(); got != "fi" {
+		t.Fatalf("installation default: %q", got)
+	}
+	if w := request(h, "GET", "/api/v1/site/language?x=1"); w.Code != 400 {
+		t.Fatalf("query accepted: %d", w.Code)
+	}
+	state, flow := start(t, h)
+	cookie := callback(h, state, flow).Result().Cookies()[1]
+	var session struct {
+		CSRF string `json:"csrf"`
+	}
+	if e := json.Unmarshal(request(h, "GET", "/auth/session", cookie).Body.Bytes(), &session); e != nil {
+		t.Fatal(e)
+	}
+	if code := adminPut(h, cookie, session.CSRF, `{"default_language":"en"}`); code != 403 {
+		t.Fatalf("ordinary person set the default: %d", code)
+	}
+	if e := a.changeRole(context.Background(), "42", true); e != nil {
+		t.Fatal(e)
+	}
+	for _, bad := range []string{`{"default_language":"sv"}`, `{"default_language":null}`, `{"default_language":"en","name":"x"}`} {
+		if code := adminPut(h, cookie, session.CSRF, bad); code != 400 {
+			t.Fatalf("%s: %d", bad, code)
+		}
+	}
+	if code := adminPut(h, cookie, session.CSRF, `{"default_language":"en"}`); code != 204 {
+		t.Fatalf("administrator write: %d", code)
+	}
+	if got := read(); got != "en" {
+		t.Fatalf("administrator's choice did not replace the installation's: %q", got)
+	}
+	w := request(h, "GET", "/api/v1/server/administration", cookie)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"default_language":"en"`) {
+		t.Fatalf("administration view: %d %s", w.Code, w.Body.String())
+	}
+	fresh := &Auth{}
+	if e := fresh.loadAdministration(path); e != nil || fresh.settings.DefaultLanguage != "en" {
+		t.Fatalf("restart lost the choice: %+v %v", fresh.settings, e)
+	}
+}

@@ -1,5 +1,7 @@
 import { createContext, type ReactNode, useContext } from "react";
 import type { ProviderId } from "../app/integrations";
+import { textNow, useText } from "../i18n";
+import { onboardingFrameText } from "../text/onboardingFrame";
 import { Icon } from "./Icon";
 import { providerCopy } from "./Integrations";
 import styles from "./OnboardingFrame.module.css";
@@ -25,9 +27,9 @@ const label = (id: OnboardingStepId) =>
   id === "github"
     ? "GitHub"
     : id === "repositories"
-      ? "Repot"
+      ? textNow(onboardingFrameText).repositories
       : id === "ai"
-        ? "AI-tili"
+        ? textNow(onboardingFrameText).ai
         : providerCopy[id].name;
 const plainRoute: OnboardingRouteStep[] = [
   { id: "github" },
@@ -67,6 +69,7 @@ export function OnboardingFrame({
   notice?: ReactNode;
 }) {
   const route = useContext(RouteContext) ?? plainRoute;
+  const t = useText(onboardingFrameText);
   const at =
     step === "done" ? route.length : route.findIndex((s) => s.id === step);
   return (
@@ -77,8 +80,8 @@ export function OnboardingFrame({
         <span className={styles.host}>{window.location.host}</span>
       </div>
       <div className={styles.map}>
-        <nav className={styles.route} aria-label="Käyttöönoton vaiheet">
-          <p className={styles.kicker}>Oma reittisi</p>
+        <nav className={styles.route} aria-label={t.steps}>
+          <p className={styles.kicker}>{t.route}</p>
           <ol data-testid="onboarding-steps">
             {route.map((s, i) => {
               const state =
@@ -104,12 +107,12 @@ export function OnboardingFrame({
                     <strong>{label(s.id)}</strong>
                     <small>
                       {state === "current"
-                        ? "Nyt"
+                        ? t.now
                         : state === "next"
                           ? s.required
-                            ? "Pakollinen"
-                            : "Seuraavaksi"
-                          : (s.note ?? (s.skipped ? "Ohitettu" : "Valmis"))}
+                            ? t.required
+                            : t.next
+                          : (s.note ?? (s.skipped ? t.skipped : t.done))}
                     </small>
                     {s.detail}
                   </span>

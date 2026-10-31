@@ -7,11 +7,15 @@ import {
   type SingleWorkspaceAction,
   SingleWorkspaceBar,
 } from "../components/SingleWorkspaceBar";
+import { liveText } from "../i18n";
+import { statusText } from "../text/status";
 import type { AccountProfile } from "./pi";
 import type { Workspace } from "./snapshot";
 import type { RootState } from "./store";
 import { lastWorkspaceReason } from "./trashText";
 import { connectionStatus, serverLabel, useServer } from "./WorkspaceRailView";
+
+const txt = liveText(statusText);
 
 /** Single-workspace mode's frame: the loader and the writes stay in App. */
 export function SingleWorkspaceBarView({
@@ -65,8 +69,8 @@ export function SingleWorkspaceBarView({
   const act = (action: SingleWorkspaceAction) => {
     if (action === "copy" && workspace.path)
       void navigator.clipboard?.writeText(workspace.path).then(
-        () => setStatus("Polku kopioitu"),
-        () => setStatus("Polkua ei voitu kopioida"),
+        () => setStatus(txt.pathCopied),
+        () => setStatus(txt.pathNotCopied),
       );
     if (action === "github" && github)
       window.open(
@@ -94,17 +98,15 @@ export function SingleWorkspaceBarView({
         connectionTone={connection.tone}
         onNew={onNew}
         newReason={newReason}
-        renameReason={
-          onRename ? undefined : "Näyttönimeä ei voi muuttaa juuri nyt."
-        }
+        renameReason={onRename ? undefined : txt.renameUnavailable}
         onAdd={onAdd}
         worktree={
           workspace.kind === "git_main_worktree"
             ? newWorktreeReason ||
-              (onNewWorktree ? "" : "Worktree-agenttia ei voi luoda juuri nyt.")
+              (onNewWorktree ? "" : txt.worktreeUnavailable)
             : undefined
         }
-        trashReason={lastWorkspaceReason}
+        trashReason={lastWorkspaceReason()}
         onAction={act}
         status={status}
         bell={bell}
@@ -130,8 +132,8 @@ export function SingleWorkspaceBarView({
       />
       <div className="ah-workspace-rename">
         <Dialog
-          triggerLabel="Muuta näyttönimeä…"
-          title="Muuta näyttönimeä"
+          triggerLabel={txt.rename}
+          title={txt.renameTitle}
           returnFocusRef={renameReturn}
           isOpen={renameOpen}
           onOpenChange={setRenameOpen}
@@ -146,7 +148,7 @@ export function SingleWorkspaceBarView({
           >
             <TextField
               data-testid="workspace-display-name"
-              label="Näyttönimi"
+              label={txt.displayName}
               value={display}
               onChange={setDisplay}
             />

@@ -1,9 +1,13 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import schema from "../../../contracts/v1/server-integrations.schema.json";
+import { liveText } from "../i18n";
+import { serverIntegrationsText } from "../text/serverIntegrations";
 import type { Level, ProviderId } from "./integrations";
 import { bounded } from "./integrations";
 import { mutationFetch, writeOutcome } from "./mutations";
+
+const txt = liveText(serverIntegrationsText);
 
 // The providers' app credentials (server-integrations-admin). The root broker
 // writes them into the installation's integrations file on the gateway's
@@ -165,49 +169,31 @@ export function appErrors(
   const a = f[first] ?? "";
   const b = f[second] ?? "";
   if (provider === "google") {
-    if (!googleID.test(a))
-      e[first] = "Tarkista Client ID: se päättyy .apps.googleusercontent.com.";
-    if (!googleValue.test(b)) e[second] = "Tarkista Client secret.";
+    if (!googleID.test(a)) e[first] = txt.errors.googleId;
+    if (!googleValue.test(b)) e[second] = txt.errors.googleSecret;
   } else if (provider === "dropbox") {
-    if (!dropboxValue.test(a)) e[first] = "Tarkista App key.";
-    if (!dropboxValue.test(b)) e[second] = "Tarkista App secret.";
+    if (!dropboxValue.test(a)) e[first] = txt.errors.dropboxKey;
+    if (!dropboxValue.test(b)) e[second] = txt.errors.dropboxSecret;
   } else {
     // A single-tenant app: the tenant is the organisation's GUID, never an
     // audience such as common.
-    if (!guid.test(a))
-      e[first] = "Tarkista Application (client) ID: muoto 8-4-4-4-12.";
-    if (!guid.test(b))
-      e[second] = "Tarkista Directory (tenant) ID: muoto 8-4-4-4-12.";
+    if (!guid.test(a)) e[first] = txt.errors.microsoftClient;
+    if (!guid.test(b)) e[second] = txt.errors.microsoftTenant;
   }
   // Both values sit on the same console page, so the same one pasted twice
   // is the likeliest mistake; the broker compares them without case.
   if (!e[first] && !e[second] && a.toLowerCase() === b.toLowerCase())
     e[second] = {
-      google: "Tämä on sama kuin Client ID.",
-      microsoft: "Tämä on sama kuin client id.",
-      dropbox: "Tämä on sama kuin App key.",
+      google: txt.errors.sameGoogle,
+      microsoft: txt.errors.sameMicrosoft,
+      dropbox: txt.errors.sameDropbox,
     }[provider];
   return e;
 }
 
 /** A refusal in words the administrator can act on. */
 export function appRefusal(code: string): string {
-  switch (code) {
-    case "browser_setup_disabled":
-      return "Tunnusten asetus selaimesta on poissa käytöstä palvelimen asetuksissa.";
-    case "host_busy":
-      return "Palvelinta huolletaan juuri nyt. Mitään ei muutettu; yritä hetken päästä uudelleen.";
-    case "integrations_file_invalid":
-      return "Palvelimen integraatiotiedosto vaatii ylläpitoa komentoriviltä. Mitään ei muutettu.";
-    case "login":
-      return "Istunto on päättynyt. Kirjaudu uudelleen.";
-    case "admin_required":
-      return "Vain ylläpitäjä voi asettaa tunnuksia.";
-    case "invalid_request":
-      return "Palvelin ei hyväksynyt tunnuksia. Tarkista kentät.";
-    default:
-      return "Palvelin ei tehnyt muutosta.";
-  }
+  return txt.refusals[code] ?? txt.refused;
 }
 
 /** The Google Cloud project number a Google client id starts with, or

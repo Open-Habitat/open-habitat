@@ -3,6 +3,10 @@ import { Icon } from "./Icon";
 import type { ModelChoice } from "./ModelPicker";
 import { modelDisplayName, thinkingDisplayName } from "./modelPresentation";
 import "./ModelPicker.css";
+import { liveText } from "../i18n";
+import { modelsText } from "../text/models";
+
+const txt = liveText(modelsText);
 
 /** "Opus 5.5 · ajattelutaso Medium": the header chip's tooltip and the
  * words its accessible name and the ⋯ menu use for the hidden level. */
@@ -11,7 +15,10 @@ export function modelSummary(
   thinking?: string,
   models?: ModelChoice[],
 ) {
-  return `${modelDisplayName(model, models)} · ajattelutaso ${thinkingDisplayName(thinking)}`;
+  return txt.summary(
+    modelDisplayName(model, models),
+    thinkingDisplayName(thinking),
+  );
 }
 
 /** The same native-setting readout, inert in an empty header or a disclosure

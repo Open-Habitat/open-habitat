@@ -11,10 +11,14 @@ import {
   appleServices,
   iCloudMail,
 } from "../app/integrations";
+import { liveText } from "../i18n";
+import { appleText } from "../text/apple";
 import { ControlButton, ExternalLink } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 import { AgentWarning, ProviderMark, serviceName } from "./Integrations";
 import { Checkbox, TextField } from "./Primitives";
+
+const txt = liveText(appleText);
 
 // The Apple (iCloud) guide, in the "Valitse palvelut" direction Jari chose
 // (proto-apple-icloud-integration, 2026-10-24): the person chooses the
@@ -61,31 +65,26 @@ const icons: Record<AppleService, IconName> = {
   calendar: "calendar",
   contacts: "contacts",
 };
-const short: Record<AppleService, string> = {
-  mail: "posti",
-  calendar: "kalenteri",
-  contacts: "yhteystiedot",
-};
+const short = new Proxy({} as Record<AppleService, string>, {
+  get: (_target, service: AppleService) => txt.short[service],
+});
 const front: Record<AppleService, string> = {
   mail: "imap.mail.me.com",
   calendar: "caldav.icloud.com",
   contacts: "contacts.icloud.com",
 };
-const failureText: Record<string, string> = {
-  credentials_rejected: "Apple ei hyväksynyt tunnusta ja salasanaa.",
-  server_unreachable: "Appleen ei saatu yhteyttä.",
-  endpoint_rejected: "iCloud ei kertonut palvelun osoitetta.",
-  account_exists: "Oli jo yhdistetty.",
-};
+const failureText = new Proxy({} as Record<string, string>, {
+  get: (_target, failure: string) => txt.failure[failure],
+});
 const and = (xs: string[]) =>
-  xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} ja ${xs.at(-1)}`;
+  xs.length < 2
+    ? xs.join("")
+    : `${xs.slice(0, -1).join(", ")}${txt.and}${xs.at(-1)}`;
 
 type StepId = "choose" | "password" | "enter";
-const stepTitle: Record<StepId, string> = {
-  choose: "Palvelut",
-  password: "Sovellussalasana",
-  enter: "Tunnukset",
-};
+const stepTitle = new Proxy({} as Record<StepId, string>, {
+  get: (_target, step: StepId) => txt.steps[step],
+});
 
 function CopyValue({ value }: { value: string }) {
   const [done, setDone] = useState(false);
@@ -94,7 +93,7 @@ function CopyValue({ value }: { value: string }) {
       size="row"
       variant="quiet"
       presentation="icon"
-      aria-label={`Kopioi ${value}`}
+      aria-label={txt.copy(value)}
       data-testid="apple-copy"
       onPress={() => {
         void navigator.clipboard?.writeText(value).catch(() => {});
@@ -113,17 +112,17 @@ function HowTo({ renew }: { renew?: AppleService[] }) {
     <>
       {renew ? (
         <p data-testid="apple-renew-why">
-          Apple mitätöi sovellussalasanat, kun Apple-tilin salasana vaihdetaan.
-          Luo uusi; se vaihtuu{" "}
-          {renew.length > 1
-            ? `kaikkiin: ${and(renew.map((s) => short[s]))}`
-            : `palveluun ${short[renew[0] ?? "contacts"]}`}
-          .
+          {txt.renewWhy(
+            renew.length > 1,
+            renew.length > 1
+              ? and(renew.map((s) => short[s]))
+              : short[renew[0] ?? "contacts"],
+          )}
         </p>
       ) : null}
       <ol className="ap-how" data-testid="apple-how">
         <li>
-          Kirjaudu:{" "}
+          {txt.signIn}{" "}
           <ExternalLink
             href="https://account.apple.com"
             target="_blank"
@@ -139,22 +138,19 @@ function HowTo({ renew }: { renew?: AppleService[] }) {
           </span>
         </li>
         <li>
-          Generate an app-specific password. Nimeksi{" "}
+          {txt.generate}{" "}
           <span className="ap-val">
             <code>Open Habitat</code>
             <CopyValue value="Open Habitat" />
           </span>
         </li>
         <li>
-          Kopioi salasana, joka näyttää tältä: <code>abcd-efgh-ijkl-mnop</code>
+          {txt.copyLooks} <code>abcd-efgh-ijkl-mnop</code>
         </li>
       </ol>
       <p className="ap-warn" data-testid="apple-twofa">
         <Icon name="warning" width={16} height={16} />
-        <span>
-          Vaatii kaksivaiheisen tunnistuksen. Jos vaihdat myöhemmin Apple-tilin
-          salasanan, tämä salasana lakkaa toimimasta.
-        </span>
+        <span>{txt.twoFactor}</span>
       </p>
     </>
   );
@@ -213,10 +209,10 @@ export function AppleGuide({
     password.trim() !== "" && !appPassword.test(password.trim().toLowerCase());
   const services = renew ? mode.services : wanted;
   const title = renew
-    ? "Apple: uusi sovellussalasana"
+    ? txt.titleRenew
     : add
-      ? `Apple: lisää ${and(wanted.map((s) => short[s]))}`
-      : "Yhdistä Apple (iCloud)";
+      ? txt.titleAdd(and(wanted.map((s) => short[s])))
+      : txt.titleConnect;
   const submit = () => {
     if (!ready || busy) return;
     onSubmit({
@@ -229,18 +225,14 @@ export function AppleGuide({
   const body: Record<StepId, () => ReactNode> = {
     choose: () => (
       <>
-        <p>Mitä agentit saavat käyttöönsä?</p>
+        <p>{txt.whatGet}</p>
         <div className="ap-choose" data-testid="apple-choose">
           {(add ? mode.missing : appleServices).map((s) => (
             <Checkbox
               key={s}
               data-testid={`apple-want-${s}`}
               label={serviceName("apple", s)}
-              hint={
-                s === "mail"
-                  ? " Lukeminen ja luonnokset."
-                  : " Lukeminen ja muokkaus."
-              }
+              hint={s === "mail" ? txt.mailHint : txt.otherHint}
               checked={wanted.includes(s)}
               onChange={(on) =>
                 setWanted((w) =>
@@ -274,27 +266,26 @@ export function AppleGuide({
             autoComplete="email"
             value={appleId}
             onChange={setAppleId}
-            hint="Sähköpostiosoite, jolla kirjaudut Appleen."
+            hint={txt.appleIdHint}
           />
         )}
         {needsMail ? (
           <TextField
             data-testid="apple-mail-address"
-            label="iCloud Mail -osoite"
+            label={txt.mailAddress}
             autoComplete="email"
             value={mailAddress}
             onChange={setMailAddress}
-            hint="…@icloud.com, @me.com tai @mac.com. Posti tarvitsee sen."
+            hint={txt.mailAddressHint}
           />
         ) : null}
         {reuse ? (
           <p className="ap-quiet" data-testid="apple-reuse">
-            Käyttää samaa sovellussalasanaa kuin{" "}
-            {and(mode.have.map((s) => short[s]))}.
+            {txt.reuse(and(mode.have.map((s) => short[s])))}
           </p>
         ) : (
           <label className="s-field ig-password">
-            <span>Sovellussalasana</span>
+            <span>{txt.appPassword}</span>
             <input
               type="password"
               data-testid="apple-password"
@@ -308,16 +299,14 @@ export function AppleGuide({
         {looksWrong ? (
           <p className="ap-quiet ap-soft" data-testid="apple-looks-wrong">
             <Icon name="info" width={14} height={14} />
-            Ei näytä sovellussalasanalta. Älä anna Apple-tilin omaa salasanaa.
+            {txt.looksWrong}
           </p>
         ) : null}
         <p className="ap-quiet" data-testid="apple-saved-where">
-          Yhdistää {and(services.map((s) => front[s]))}. Salasana tallentuu vain
-          kotihakemistosi{" "}
-          {services.includes("mail")
-            ? "himalaya- ja curl-asetuksiin"
-            : "curl-asetuksiin"}
-          .
+          {txt.savedWhere(
+            and(services.map((s) => front[s])),
+            services.includes("mail"),
+          )}
         </p>
         {stage.stage === "steps" && stage.error ? (
           <p className="ig-err" role="alert" data-testid="apple-error">
@@ -335,10 +324,7 @@ export function AppleGuide({
     content = (
       <p className="ig-result bad" role="alert">
         <Icon name="warning" />
-        <span>
-          Yhteys palvelimeen katkesi, eikä tiedetä, tallentuiko muutos. Tarkista
-          tilanne Tiedot agenteille -sivulta ennen kuin yrität uudelleen.
-        </span>
+        <span>{txt.uncertain}</span>
       </p>
     );
     foot = (
@@ -348,7 +334,7 @@ export function AppleGuide({
         variant="primary"
         onPress={onClose}
       >
-        Sulje
+        {txt.close}
       </ControlButton>
     );
   } else if (stage.stage === "done") {
@@ -376,14 +362,13 @@ export function AppleGuide({
                   <b>{serviceName("apple", s)}</b>
                   {ok ? null : (
                     <span className="ig-meta">
-                      {failureText[failure ?? ""] ??
-                        "Ei yhdistetty. Yritä myöhemmin uudelleen."}
+                      {failureText[failure ?? ""] ?? txt.notConnectedRetry}
                     </span>
                   )}
                 </div>
                 <span className={`ig-st ${ok ? "ok" : "warn"}`}>
                   <Icon name={ok ? "check" : "warning"} />
-                  {ok ? "Toimii" : "Ei yhdistetty"}
+                  {ok ? txt.works : txt.notConnected}
                 </span>
               </li>
             );
@@ -397,7 +382,7 @@ export function AppleGuide({
         variant="primary"
         onPress={onClose}
       >
-        Valmis
+        {txt.done}
       </ControlButton>
     );
   } else {
@@ -410,7 +395,7 @@ export function AppleGuide({
             className="ap-progress"
             data-testid="apple-progress"
             role="img"
-            aria-label={`Vaihe ${i + 1}/${steps.length}`}
+            aria-label={txt.stepOf(i + 1, steps.length)}
           >
             {steps.map((x, j) => (
               <span
@@ -445,7 +430,7 @@ export function AppleGuide({
             variant="quiet"
             onPress={() => setAt(steps.indexOf("enter"))}
           >
-            Minulla on jo sovellussalasana
+            {txt.havePassword}
           </ControlButton>
         ) : null}
         <span className="ap-grow" />
@@ -457,7 +442,7 @@ export function AppleGuide({
             isDisabled={busy}
             onPress={() => setAt(i - 1)}
           >
-            Takaisin
+            {txt.back}
           </ControlButton>
         ) : (
           <ControlButton
@@ -466,7 +451,7 @@ export function AppleGuide({
             variant="secondary"
             onPress={onClose}
           >
-            Peruuta
+            {txt.cancel}
           </ControlButton>
         )}
         {last ? (
@@ -477,7 +462,7 @@ export function AppleGuide({
             isDisabled={!ready || busy}
             onPress={submit}
           >
-            {busy ? "Yhdistetään…" : renew ? "Vaihda salasana" : "Yhdistä"}
+            {busy ? txt.connecting : renew ? txt.changePassword : txt.connect}
           </ControlButton>
         ) : (
           <ControlButton
@@ -487,7 +472,7 @@ export function AppleGuide({
             isDisabled={step === "choose" && wanted.length === 0}
             onPress={() => setAt(i + 1)}
           >
-            Seuraava
+            {txt.next}
           </ControlButton>
         )}
       </>
@@ -517,7 +502,7 @@ export function AppleGuide({
               size="row"
               variant="quiet"
               presentation="icon"
-              aria-label="Sulje"
+              aria-label={txt.close}
               isDisabled={busy}
               onPress={onClose}
             >
@@ -561,18 +546,17 @@ export function AppleRemoveDialog({
           className="ah-dialog"
           role="alertdialog"
           data-testid="apple-remove-dialog"
-          aria-label={`Poistetaanko ${appleId}?`}
+          aria-label={txt.removeQuestion(appleId)}
         >
-          <Heading slot="title">Poistetaanko Apple-tili {appleId}?</Heading>
+          <Heading slot="title">{txt.removeTitle(appleId)}</Heading>
           <p>
-            Agentit eivät enää pääse palveluihin{" "}
-            {and(services.map((s) => serviceName("apple", s)))}. Kirjautuminen
-            poistetaan tältä palvelimelta. Sovellussalasana pysyy voimassa
-            Applella, kunnes poistat sen:{" "}
-            <span className="ap-path">
-              account.apple.com › Sign-In and Security › App-Specific Passwords
-            </span>
-            .
+            {txt.removeBody(
+              and(services.map((s) => serviceName("apple", s))),
+              <span className="ap-path">
+                account.apple.com › Sign-In and Security › App-Specific
+                Passwords
+              </span>,
+            )}
           </p>
           {error ? <p role="alert">{error}</p> : null}
           <div className="ah-dialog-actions">
@@ -583,7 +567,7 @@ export function AppleRemoveDialog({
               autoFocus
               onPress={onClose}
             >
-              Peruuta
+              {txt.cancel}
             </ControlButton>
             <ControlButton
               data-testid="integration-remove-confirm"
@@ -592,7 +576,7 @@ export function AppleRemoveDialog({
               isPending={busy}
               onPress={onConfirm}
             >
-              Poista
+              {txt.remove}
             </ControlButton>
           </div>
         </AriaDialog>

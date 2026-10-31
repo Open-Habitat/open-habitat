@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
+import { liveText } from "../i18n";
+import { modelsText } from "../text/models";
 import { ModelField, routes } from "./ModelField";
 import type { ModelChoice, PiProvider } from "./ModelPicker";
 import { modelDisplayName } from "./modelPresentation";
+
+const txt = liveText(modelsText);
 
 /** Pi's default as a settings row (Tekoäly › Oletusmalli). */
 export function DefaultModelRow({
@@ -24,27 +28,24 @@ export function DefaultModelRow({
     <ModelField
       rowId="default-model"
       testId="default-model"
-      label="Oletusmalli"
-      description="Uusille keskusteluille"
+      label={txt.defaultModel}
+      description={txt.forNew}
       provider={provider}
       model={model}
       thinking={thinking}
       models={models}
       loading={loading}
       problem={
-        model && route ? (
-          <>
-            {modelDisplayName(
-              provider ? `${provider}/${model}` : model,
-              models,
-            )}{" "}
-            ({route[0]}) ei vastannut viimeksi. Valitse toinen oletus tai korjaa{" "}
-            {provider === "openai-codex" || provider === "claude-bridge"
-              ? "kirjautuminen"
-              : "avain"}{" "}
-            alla.
-          </>
-        ) : null
+        model && route
+          ? txt.defaultBroken(
+              modelDisplayName(
+                provider ? `${provider}/${model}` : model,
+                models,
+              ),
+              route[0],
+              provider === "openai-codex" || provider === "claude-bridge",
+            )
+          : null
       }
     >
       {children}

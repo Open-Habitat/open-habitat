@@ -21,6 +21,10 @@ import { ControlButton, ExternalLink } from "./ControlElements";
 import { Icon } from "./Icon";
 import { StatusMark } from "./Status";
 import "./Integrations.css";
+import { liveText } from "../i18n";
+import { gitlabText } from "../text/gitlab";
+
+const txt = liveText(gitlabText);
 
 // GitLab in Asetukset › Koodipalvelut, as the proto-gitlab-connect round
 // specifies it: the Gitea card's structure with GitLab's facts (whether push
@@ -45,21 +49,10 @@ export type GitLabStage =
     }
   | { stage: "uncertain" };
 
-const apiText: Record<GitLabAPI, string> = {
-  ok: "Tunnus toimii",
-  token_rejected: "GitLab hylkäsi tunnuksen",
-  token_expired: "Tunnus on vanhentunut",
-  insufficient_scope: "Tunnukselta puuttuu read_api",
-  account_mismatch: "Tunnus kuuluu toiselle tilille",
-  unreachable: "Palvelin ei vastaa",
-  tls_untrusted: "Palvelimen varmennetta ei voitu tarkistaa",
-  redirect_refused: "Palvelin ohjasi toiseen osoitteeseen",
-  forbidden_destination: "Osoitteeseen ei voi yhdistää",
-  not_gitlab: "Osoitteesta ei vastannut GitLab",
-};
+const apiText = (api: GitLabAPI): string => txt.api[api];
 
 export function gitlabAPIText(api: GitLabAPI): string {
-  return apiText[api];
+  return apiText(api);
 }
 
 /** What a GitLab card shows about its token, from the latest read. */
@@ -67,13 +60,6 @@ export type GitLabTokenView =
   | { state: "loading" }
   | { state: "failed"; api?: GitLabAPI }
   | { state: "ok"; token: GitLabToken };
-
-const pushText = {
-  yes: "Kloonaus, pull ja push käyttävät tätä tunnusta. Myös agenttisi voivat käyttää sitä.",
-  no: "Kloonaus ja pull käyttävät tätä tunnusta. Push ei onnistu: tunnukselta puuttuu write_repository.",
-  unknown:
-    "Kloonaus ja pull käyttävät tätä tunnusta. GitLab ei kerro, saako tällä tunnuksella pushata; se selviää ensimmäisellä pushilla.",
-};
 
 /** One of glab's host logins: a usable token connection with its Git
  * readiness and what GitLab says about its token, or one the connector
@@ -120,7 +106,7 @@ export function GitLabCard({
       data-state={lapsed ? "expired" : "ok"}
       data-push={known?.push}
       className="ig-card"
-      aria-label={`GitLab · ${name || "glab-kirjautuminen"}`}
+      aria-label={`GitLab · ${name || txt.glabLogin}`}
     >
       <div className="ig-acc">
         <span className="ig-mark ig-tone-2" aria-hidden="true">
@@ -128,9 +114,7 @@ export function GitLabCard({
         </span>
         <div>
           <span className="ig-rn">GitLab</span>
-          <span className="ig-meta ah-mono">
-            {name || "glab-kirjautuminen"}
-          </span>
+          <span className="ig-meta ah-mono">{name || txt.glabLogin}</span>
         </div>
         {ok ? (
           <>
@@ -142,7 +126,7 @@ export function GitLabCard({
               onPress={onCheck}
             >
               <Icon name="refresh" />
-              Tarkista
+              {txt.check}
             </ControlButton>
             <ControlButton
               data-testid="gitlab-replace"
@@ -151,7 +135,7 @@ export function GitLabCard({
               isDisabled={busy}
               onPress={onReplace}
             >
-              Vaihda tunnus…
+              {txt.replace}
             </ControlButton>
             <ControlButton
               data-testid="gitlab-disconnect-open"
@@ -160,7 +144,7 @@ export function GitLabCard({
               isDisabled={busy}
               onPress={onDisconnect}
             >
-              Irrota…
+              {txt.disconnectOpen}
             </ControlButton>
           </>
         ) : null}
@@ -170,14 +154,14 @@ export function GitLabCard({
           <Icon name="warning" />
           <span>
             {c.ambiguous
-              ? "glab-asetuksissa on tälle palvelimelle kaksi merkintää. Kumpaakaan ei käytetä ennen kuin poistat toisen."
+              ? txt.ambiguous
               : c.kind === "keyring"
-                ? "glab säilyttää tämän palvelimen tunnuksen käyttöjärjestelmän avainnipussa, jota Habitat ei lue. Se toimii edelleen glabilla."
+                ? txt.keyring
                 : c.kind === "oauth"
-                  ? "Tämä glab-kirjautuminen on tehty selaimella (OAuth), joten Habitat ei käytä sitä. Se toimii edelleen glabilla."
+                  ? txt.oauth
                   : c.kind === "insecure"
-                    ? "glab on asetettu ohittamaan tämän palvelimen varmenteen tarkistus tai käyttämään välityspalvelinta, joten Habitat ei käytä tätä kirjautumista."
-                    : "Habitat ei osaa käyttää tätä glab-kirjautumista. Se toimii edelleen glabilla."}
+                    ? txt.insecure
+                    : txt.unsupported}
           </span>
         </p>
       ) : (
@@ -187,15 +171,15 @@ export function GitLabCard({
               <Icon name="branch" />
             </span>
             <div>
-              <span className="ig-rn">Git-repot</span>
+              <span className="ig-rn">{txt.repos}</span>
               <span className={`ig-meta${lapsed ? " ig-bad" : ""}`}>
                 {lapsed
-                  ? "GitLab ei enää hyväksy tunnusta, joten pull ja push eivät onnistu ennen kuin vaihdat sen. Paikallinen työ jatkuu."
+                  ? txt.lapsed
                   : !gitReady
                     ? c.git === "foreign"
-                      ? "Git-asetuksissasi on tälle palvelimelle toinen tunnusapuri, joten Habitat ei käytä tunnusta Gitissä."
-                      : "Git ei vielä käytä tätä tunnusta. Kloonaus ei onnistu ennen kuin Git-asetus on kunnossa."
-                    : pushText[known?.push ?? "unknown"]}
+                      ? txt.gitForeign
+                      : txt.gitNotYet
+                    : txt.push[known?.push ?? "unknown"]}
               </span>
               {!gitReady && c.git !== "foreign" ? (
                 <ControlButton
@@ -205,30 +189,30 @@ export function GitLabCard({
                   isDisabled={busy}
                   onPress={onRepair}
                 >
-                  Korjaa Git-asetus
+                  {txt.repair}
                 </ControlButton>
               ) : null}
             </div>
             <div className="ig-sv">
               {lapsed ? (
-                <StatusMark label="Ei toimi" kind="error" tone="danger" />
+                <StatusMark label={txt.broken} kind="error" tone="danger" />
               ) : known?.push === "yes" ? (
                 <StatusMark
                   data-testid="gitlab-push"
-                  label="Push toimii"
+                  label={txt.pushWorks}
                   kind="success"
                   tone="success"
                 />
               ) : known?.push === "no" ? (
                 <StatusMark
                   data-testid="gitlab-push"
-                  label="Vain luku"
+                  label={txt.readOnly}
                   tone="warning"
                 />
               ) : known ? (
                 <StatusMark
                   data-testid="gitlab-push"
-                  label="Push ei tiedossa"
+                  label={txt.pushUnknown}
                   kind="unknown"
                   tone="warning"
                 />
@@ -239,7 +223,7 @@ export function GitLabCard({
                   data-api={check}
                   className={`ig-meta ${check === "ok" ? "" : "ig-bad"}`}
                 >
-                  {apiText[check]}
+                  {apiText(check)}
                 </span>
               ) : null}
             </div>
@@ -253,43 +237,40 @@ export function GitLabCard({
               <Icon name="key" />
             </span>
             <div>
-              <span className="ig-rn">Pääsytunnus</span>
+              <span className="ig-rn">{txt.accessToken}</span>
               <span className="ig-meta">
                 {token?.state === "loading" ? (
-                  "Luetaan GitLabista…"
+                  txt.reading
                 ) : expired ? (
-                  "GitLab ei enää hyväksy tunnusta."
+                  txt.rejected
                 ) : token?.state === "failed" || !token ? (
-                  "Tunnuksen tietoja ei saatu juuri nyt."
+                  txt.noDetails
                 ) : !known?.scopes ? (
-                  "GitLab ei kerro tämän tunnuksen oikeuksia eikä voimassaoloa."
+                  txt.noScopes
                 ) : (
                   <>
                     <span className="ah-mono">
                       {known.fine
-                        ? "Hienojakoinen tunnus"
-                        : known.scopes.join(", ") || "ei oikeuksia"}
+                        ? txt.fine
+                        : known.scopes.join(", ") || txt.noRights}
                     </span>
                     {" · "}
                     {expires
                       ? lapsed
-                        ? `vanheni ${fiDate(expires)}`
-                        : `voimassa ${fiDate(expires)} asti`
-                      : "ei vanhenemispäivää"}
+                        ? txt.expiredOn(fiDate(expires))
+                        : txt.validUntil(fiDate(expires))
+                      : txt.noExpiry}
                   </>
                 )}
               </span>
               {soon && expires && !lapsed ? (
                 <span className="ig-meta gl-soon">
-                  Luo GitLabissa uusi tunnus ja vaihda se tähän ennen{" "}
-                  {fiDate(expires)}, niin kloonit eivät lakkaa toimimasta.
+                  {txt.renewBefore(fiDate(expires))}
                 </span>
               ) : null}
               {known?.scopes?.includes("api") ? (
                 <span className="ig-meta" data-testid="gitlab-api-note">
-                  Tunnuksella on api-oikeus: agenttisi voivat glabilla myös
-                  muuttaa GitLabissa merge requesteja, issueita ja asetuksia
-                  sinun nimissäsi.
+                  {txt.apiNote}
                 </span>
               ) : null}
               {soon || lapsed ? (
@@ -300,20 +281,17 @@ export function GitLabCard({
                   isDisabled={busy}
                   onPress={onReplace}
                 >
-                  Vaihda tunnus…
+                  {txt.replace}
                 </ControlButton>
               ) : null}
             </div>
             <div className="ig-sv">
               {lapsed ? (
-                <StatusMark label="Vanhentunut" kind="error" tone="danger" />
+                <StatusMark label={txt.expired} kind="error" tone="danger" />
               ) : soon && left !== undefined ? (
-                <StatusMark
-                  label={`Vanhenee ${left} pv:n päästä`}
-                  tone="warning"
-                />
+                <StatusMark label={txt.expiresIn(left)} tone="warning" />
               ) : known?.scopes ? (
-                <StatusMark label="Voimassa" kind="success" tone="success" />
+                <StatusMark label={txt.valid} kind="success" tone="success" />
               ) : null}
             </div>
           </div>
@@ -339,12 +317,6 @@ function validAddress(value: string): boolean {
     return false;
   }
 }
-
-const pushDone = {
-  yes: "Toimii",
-  no: "Ei toimi: tunnukselta puuttuu write_repository",
-  unknown: "Ei tiedossa: selviää ensimmäisellä pushilla",
-};
 
 export function GitLabDialog({
   replace,
@@ -395,7 +367,7 @@ export function GitLabDialog({
     if (!replace && !validAddress(base)) {
       setLocal({
         field: "server",
-        text: "Anna GitLabin HTTPS-osoite, esimerkiksi https://gitlab.com tai https://gitlab.yritys.fi.",
+        text: txt.addressHint,
       });
       return;
     }
@@ -408,12 +380,12 @@ export function GitLabDialog({
     if (same) {
       setLocal({
         field: "server",
-        text: `Palvelimella ${server} on jo yhdistetty tili ${same.user ?? ""}. glab pitää yhden tilin palvelinta kohden: vaihda sen tunnus tai irrota se ensin.`,
+        text: txt.taken(server, same.user ?? ""),
       });
       return;
     }
     if (!token.trim()) {
-      setLocal({ field: "token", text: "Anna pääsytunnus." });
+      setLocal({ field: "token", text: txt.tokenMissing });
       return;
     }
     setLocal(undefined);
@@ -426,21 +398,18 @@ export function GitLabDialog({
   const title =
     stage.stage === "done"
       ? stage.replaced
-        ? "Tunnus vaihdettu"
-        : "Tili yhdistetty"
+        ? txt.replaced
+        : txt.connected
       : replace
-        ? "Vaihda GitLabin pääsytunnus"
-        : "Yhdistä GitLab";
+        ? txt.replaceTitle
+        : txt.connectTitle;
   let body: ReactNode;
   let foot: ReactNode;
   if (stage.stage === "uncertain") {
     body = (
       <p className="ig-result bad" role="alert" data-testid="gitlab-uncertain">
         <Icon name="warning" />
-        <span>
-          Yhteys palvelimeen katkesi, eikä tiedetä, tallentuiko muutos. Sivu
-          lukee tilanteen uudelleen; tarkista se ennen kuin yrität uudelleen.
-        </span>
+        <span>{txt.uncertain}</span>
       </p>
     );
     foot = (
@@ -450,7 +419,7 @@ export function GitLabDialog({
         variant="primary"
         onPress={onClose}
       >
-        Sulje
+        {txt.close}
       </ControlButton>
     );
   } else if (stage.stage === "done") {
@@ -473,14 +442,14 @@ export function GitLabDialog({
         </p>
         <dl className="gl-done" data-testid="gitlab-done-facts">
           <dt>Push</dt>
-          <dd>{pushDone[t?.push ?? "unknown"]}</dd>
-          <dt>Tunnus</dt>
+          <dd>{txt.pushDone[t?.push ?? "unknown"]}</dd>
+          <dt>{txt.token}</dt>
           <dd>
             {t?.expires_at
-              ? `Voimassa ${fiDate(t.expires_at)} asti`
+              ? txt.validUntilCap(fiDate(t.expires_at))
               : t?.scopes
-                ? "Ei vanhenemispäivää"
-                : "GitLab ei kertonut voimassaoloa"}
+                ? txt.noExpiryCap
+                : txt.noValidity}
           </dd>
         </dl>
         {t?.push === "no" ? (
@@ -490,34 +459,23 @@ export function GitLabDialog({
             data-testid="gitlab-readonly"
           >
             <Icon name="warning" />
-            <span>
-              Voit kloonata ja hakea muutoksia, mutta agentit eivät voi pushata.
-              Jos haluat pushata, luo tunnus oikeuksilla read_api ja
-              write_repository ja vaihda se.
-            </span>
+            <span>{txt.cannotPush}</span>
           </p>
         ) : null}
         {t?.scopes?.includes("api") ? (
           <p className="ig-p" data-testid="gitlab-api-done">
-            Tunnuksella on api-oikeus. Se toimii, mutta antaa agenteillesi
-            oikeuden muuttaa GitLabissa kaikkea, mitä sinä voit. Suppeampi
-            tunnus riittää kloonaukseen ja pushiin.
+            {txt.apiDone}
           </p>
         ) : null}
         {c.git === "registered" ? (
           stage.replaced ? null : (
-            <p className="ig-p">
-              GitLabin projektit näkyvät nyt Uusi työtila -sivun listassa.
-            </p>
+            <p className="ig-p">{txt.projectsListed}</p>
           )
         ) : (
           <>
             <p className="ig-result bad" role="alert">
               <Icon name="warning" />
-              <span>
-                Tunnus tallentui, mutta Git ei vielä käytä sitä, joten
-                projekteja ei voi kloonata ennen kuin Git-asetus on kunnossa.
-              </span>
+              <span>{txt.savedNotGit}</span>
             </p>
             {c.git !== "foreign" ? (
               <div className="ig-row start">
@@ -527,7 +485,7 @@ export function GitLabDialog({
                   variant="secondary"
                   onPress={() => onRepair(c)}
                 >
-                  Korjaa Git-asetus
+                  {txt.repair}
                 </ControlButton>
               </div>
             ) : null}
@@ -544,7 +502,7 @@ export function GitLabDialog({
             variant="secondary"
             onPress={onNewWorkspace}
           >
-            Uusi työtila…
+            {txt.newWorkspace}
           </ControlButton>
         )}
         <ControlButton
@@ -553,7 +511,7 @@ export function GitLabDialog({
           variant="primary"
           onPress={onClose}
         >
-          Valmis
+          {txt.done}
         </ControlButton>
       </>
     );
@@ -565,11 +523,11 @@ export function GitLabDialog({
         target="_blank"
         rel="noreferrer"
       >
-        Luo tunnus GitLabissa <Icon name="external" width={13} height={13} />
+        {txt.createToken} <Icon name="external" width={13} height={13} />
       </ExternalLink>
     ) : (
       <span className="ig-meta" data-testid="gitlab-token-link-missing">
-        Anna ensin osoite, niin linkki avaa sen GitLabin tunnussivun.
+        {txt.addressFirst}
       </span>
     );
     body = (
@@ -583,16 +541,16 @@ export function GitLabDialog({
       >
         {replace ? (
           <p className="ig-p">
-            Anna tilin <b className="ah-mono">{replace.user}</b> uusi tunnus
-            palvelimelle{" "}
-            <span className="ah-mono">
-              {replace.base_url && host(replace.base_url)}
-            </span>
-            . Vanha jää voimaan, jos GitLab ei hyväksy uutta.
+            {txt.replaceFor(
+              <b className="ah-mono">{replace.user}</b>,
+              <span className="ah-mono">
+                {replace.base_url && host(replace.base_url)}
+              </span>,
+            )}
           </p>
         ) : (
           <label className="s-field" data-field="server">
-            <span>GitLab-palvelimen osoite</span>
+            <span>{txt.address}</span>
             <input
               data-testid="gitlab-address"
               className="ah-mono"
@@ -611,7 +569,7 @@ export function GitLabDialog({
           </label>
         )}
         <label className="s-field" data-field="token">
-          <span>Henkilökohtainen pääsytunnus</span>
+          <span>{txt.personalToken}</span>
           <span className="ig-gitea-line">
             <input
               data-testid="gitlab-token-input"
@@ -629,10 +587,10 @@ export function GitLabDialog({
             <ControlButton
               size="row"
               variant="quiet"
-              aria-label={reveal ? "Piilota tunnus" : "Näytä tunnus"}
+              aria-label={reveal ? txt.hideToken : txt.showToken}
               onPress={() => setReveal((r) => !r)}
             >
-              {reveal ? "Piilota" : "Näytä"}
+              {reveal ? txt.hide : txt.show}
             </ControlButton>
           </span>
         </label>
@@ -644,34 +602,29 @@ export function GitLabDialog({
           aria-expanded={help}
           onPress={() => setHelp((h) => !h)}
         >
-          Mistä saan tunnuksen? {help ? "−" : "+"}
+          {txt.whereToken(help)}
         </ControlButton>
         {help ? (
           <div className="ig-p" data-testid="gitlab-token-instructions">
-            <strong>GitLabissa: Edit profile → Access tokens</strong>
+            <strong>{txt.inGitLab}</strong>
             <p>
-              Linkki avaa sivun valmiiksi täytettynä: nimi Open Habitat ja
-              oikeudet <code>read_api</code> ja <code>write_repository</code>.
-              Valitse vanhenemispäivä (GitLab sallii yleensä enintään vuoden) ja
-              luo tunnus.
+              {txt.prefilled((text) => (
+                <code>{text}</code>
+              ))}
             </p>
             <p>
-              <code>read_api</code> näyttää projektisi,{" "}
-              <code>write_repository</code> sallii kloonauksen ja pushin. Myös{" "}
-              <code>api</code> kelpaa, mutta sillä agentit voivat muuttaa
-              GitLabissa kaikkea, mitä sinä voit.
+              {txt.scopesExplained((text) => (
+                <code>{text}</code>
+              ))}
             </p>
-            <p>
-              Ryhmän tai projektin tunnus ja hienojakoinen tunnus käyvät samaan
-              kenttään.
-            </p>
+            <p>{txt.groupTokens}</p>
           </div>
         ) : null}
         <p className="ig-p" data-testid="gitlab-agent-note">
-          Myös agenttisi voivat käyttää yhdistämääsi GitLab-tiliä.
+          {txt.agentNote}
         </p>
         <button type="submit" hidden>
-          Yhdistä
+          {txt.connect}
         </button>
       </form>
     );
@@ -683,7 +636,7 @@ export function GitLabDialog({
           onPress={onClose}
           isDisabled={busy}
         >
-          Peruuta
+          {txt.cancel}
         </ControlButton>
         <ControlButton
           data-testid="gitlab-submit"
@@ -692,7 +645,11 @@ export function GitLabDialog({
           isDisabled={busy}
           onPress={submit}
         >
-          {busy ? "Tarkistetaan…" : replace ? "Vaihda tunnus" : "Yhdistä tili"}
+          {busy
+            ? txt.checking
+            : replace
+              ? txt.replaceToken
+              : txt.connectAccount}
         </ControlButton>
       </>
     );
@@ -727,7 +684,7 @@ export function GitLabDialog({
                 size="row"
                 variant="quiet"
                 presentation="icon"
-                aria-label="Sulje"
+                aria-label={txt.close}
                 isDisabled={busy}
                 onPress={onClose}
               >
@@ -786,23 +743,17 @@ export function GitLabDisconnectDialog({
           data-testid="gitlab-disconnect-dialog"
           role="alertdialog"
           className="ah-dialog"
-          aria-label="Irrota GitLab-tili"
+          aria-label={txt.disconnectTitle}
         >
           <div className="ig-dh">
-            <Heading slot="title">Irrota GitLab-tili</Heading>
+            <Heading slot="title">{txt.disconnectTitle}</Heading>
           </div>
           <div className="ig-flow">
             <p>
               <b className="ah-mono">{c.user}</b>{" "}
               <span className="ah-mono">{c.base_url && host(c.base_url)}</span>
             </p>
-            <p className="ig-p">
-              Tunnus poistetaan glab-asetuksistasi tällä palvelimella. Kloonatut
-              työtilat jäävät, mutta niiden pull ja push eivät enää käytä tätä
-              tunnusta. Tunnus ei peruunnu GitLabissa: peru se GitLabin Access
-              tokens -sivulla, jos et enää tarvitse sitä. Agentti, joka jo ehti
-              saada tunnuksen, voi käyttää sitä, kunnes perut sen.
-            </p>
+            <p className="ig-p">{txt.disconnectEffect}</p>
             {error ? (
               <p className="ig-result bad" role="alert">
                 <Icon name="warning" />
@@ -816,7 +767,7 @@ export function GitLabDisconnectDialog({
                 isDisabled={busy}
                 onPress={onClose}
               >
-                Peruuta
+                {txt.cancel}
               </ControlButton>
               <ControlButton
                 data-testid="gitlab-disconnect-confirm"
@@ -825,7 +776,7 @@ export function GitLabDisconnectDialog({
                 isDisabled={busy}
                 onPress={onConfirm}
               >
-                Irrota
+                {txt.disconnect}
               </ControlButton>
             </div>
           </div>

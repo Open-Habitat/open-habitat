@@ -9,6 +9,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import schema from "../../../contracts/v1/account-preferences.schema.json";
+import { type LanguageChoice, setPersonalLanguage } from "../i18n";
 import { jsonWrite } from "./mutations";
 
 export type EditorEngine = "codemirror6" | "vscode";
@@ -27,6 +28,7 @@ type Reply = {
   schema_version: 1;
   web_identity_id: string;
   engine: EditorEngine;
+  language: LanguageChoice;
   experimental: Record<string, true>;
 };
 const validate = new Ajv({ strict: false }).compile<Reply>({
@@ -37,9 +39,10 @@ const url = "/api/v1/account/preferences";
 
 /** What the daemon last confirmed, and the one write in flight. `loaded`
  * says the first read has finished, either way. `busy` and `error` name what
- * they concern: "engine", a feature id, or "read". */
+ * they concern: "engine", "language", a feature id, or "read". */
 export type Preferences = {
   engine: EditorEngine;
+  language: LanguageChoice;
   experimental: Readonly<Record<string, true>>;
   loaded: boolean;
   busy?: string;
@@ -47,6 +50,7 @@ export type Preferences = {
 };
 const initial: Preferences = {
   engine: "codemirror6",
+  language: "system",
   experimental: {},
   loaded: false,
 };
@@ -101,7 +105,11 @@ async function readReply(response: Response, identity: string) {
   );
   if (!validate(result) || result.web_identity_id !== identity)
     throw new Error("preferences unavailable");
-  return { engine: result.engine, experimental: result.experimental };
+  return {
+    engine: result.engine,
+    language: result.language,
+    experimental: result.experimental,
+  };
 }
 
 export async function loadAccountPreferences(identity: string, csrf: string) {
@@ -166,6 +174,14 @@ export function chooseEditor(
   return write(identity, csrf, "engine", { engine });
 }
 
+export function chooseLanguage(
+  identity: string,
+  language: LanguageChoice,
+  csrf: string,
+) {
+  return write(identity, csrf, "language", { language });
+}
+
 export function setExperimentalFeature(
   identity: string,
   id: ExperimentalFeatureId,
@@ -197,6 +213,18 @@ export function useAccountPreferences(
   return state;
 }
 
+/** The confirmed preferences as AccountPreferencesProvider keeps them, read
+ * again only when it does (on focus), not when this component mounts. */
+export function useConfirmedPreferences(
+  identity?: string,
+  csrf?: string,
+): Preferences {
+  const k = identity && csrf ? key(identity, csrf) : undefined;
+  return useSyncExternalStore(subscribe, () =>
+    k ? (states.get(k) ?? initial) : initial,
+  );
+}
+
 export function useEditorChoice(identity?: string, csrf?: string) {
   const state = useAccountPreferences(identity, csrf);
   return {
@@ -219,7 +247,15 @@ export function AccountPreferencesProvider({
   csrf?: string;
   children?: ReactNode;
 }) {
-  useAccountPreferences(identity, csrf);
+  const state = useAccountPreferences(identity, csrf);
+  // The interface follows the person's confirmed choice. Until it is read,
+  // the language of the last load stays. Without a session the app says
+  // so itself (signed out: the server default and the browser decide).
+  const confirmed = state.loaded && state.error !== "read";
+  const language = confirmed ? state.language : "pending";
+  useEffect(() => {
+    if (identity) setPersonalLanguage(language);
+  }, [identity, language]);
   const value = useMemo(() => ({ identity, csrf }), [identity, csrf]);
   return createElement(Session.Provider, { value }, children);
 }

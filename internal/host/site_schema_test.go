@@ -22,6 +22,7 @@ func TestSiteSchemaDrift(t *testing.T) {
 	base["profiles"] = []any{"core", "editor", "integrations"}
 	base["editor"] = map[string]any{"origin_template": "https://oh-code-*.example.org"}
 	base["views"] = map[string]any{"origin_template": "https://oh-view-*.example.org", "link_max_days": 90}
+	base["ui"] = map[string]any{"default_language": "en"}
 	var cases []json.RawMessage
 	add := func(v any) {
 		b, e := json.Marshal(v)
@@ -108,6 +109,9 @@ func TestSiteSchemaDrift(t *testing.T) {
 	}
 	for _, v := range []int{0, 1, 365, 366, -1} {
 		change("views.link_max_days", v)
+	}
+	for _, v := range []string{"system", "fi", "en", "sv", "EN", "fi-FI"} {
+		change("ui.default_language", v)
 	}
 	for _, v := range []string{"/bin/bash", "/usr/bin/zsh", "/opt/fish-3.7/bin/fish", "bin/bash", "/bin/bash/", "//bin/bash", "/bin/../bin/bash", "/bin/./bash", "/usr/sbin/nologin", "/sbin/nologin", "/bin/false", "/usr/bin/false", "/bin/nologin.sh", "/bin/ba sh", "/bin/ba:sh", "/bin/bash\n", "/" + strings.Repeat("a", 127), "/" + strings.Repeat("a", 128)} {
 		change("identities.login_shell.shell", v)

@@ -13,12 +13,46 @@ so a streaming answer rerenders only its own view; session storage keeps
 per-tab drafts and outstanding command markers; ephemeral things such as focus
 and open menus stay in the owning component. History is never persisted in
 browser storage, and no database library is added. The UI is in Finnish and
-desktop-first. Keyboard shortcuts must work on a Finnish keyboard, the one its
+English (below) and desktop-first. Keyboard shortcuts must work on a Finnish keyboard, the one its
 users type on: match `event.code`, and never require a dead-key character
 such as `` ` ``, `´` or `~` (Ctrl+` could not be typed there). `design-system/AGENTS.md` holds the visual decisions and the
 token source, and `src/components/` holds the production components that both
 the app and Storybook import, so a story shows states of the real component
 rather than a copy of it.
+
+The interface speaks Finnish and English through typed catalogs, without an
+i18n library. Each view or module owns one catalog file in `src/text/`, named
+after it (`src/text/ownMachines.tsx` for `components/OwnMachines.tsx`): a
+`const fi = {...}` that defines the messages and
+`export const xText = catalog(fi, {...English...})`, whose type makes a
+missing, extra or differently shaped English message a compile error. A
+module gets its own file so that several people can translate different
+views at once without touching a shared one. Messages are strings or small
+functions of their parameters; a sentence with a link or `<code>` inside is a
+function taking those nodes (the file is then `.tsx`), never a sentence
+glued from fragments, because word order differs between the languages.
+Plurals go through `plural()` and numbers and dates through `formatNumber()`
+and `formatDate()` in `src/i18n`, never a hard-coded `fi-FI`. A component reads
+a catalog with `useText(xText)`; a module that names its messages once at the
+top uses `const txt = liveText(xText)`, which reads the current language at
+the moment a message is read, so a module-level constant must stay a function
+or getter rather than a string fixed at import. Identifiers are not
+translated: route slugs (`/settings/tili`), test ids, settings row ids and
+anything another program compares stay as they are, and a comparison against
+a displayed word (a status in the rail) accepts both languages.
+`src/i18n/catalogs.test.ts` checks every catalog for parity and Finnish
+letters in English.
+
+The language resolves as the person's choice (System, Suomi, English, kept in
+their daemon's account preferences so it follows them), then the server's
+default (the administrator's choice in Settings › Palvelin, else the
+installation's `ui.default_language`), then the browser: a first preference of
+`fi*` is Finnish, anything else English. Before sign-in only the server
+default and the browser are known; `public/landing-bootstrap.js` paints the
+static landing in the last load's language, remembered as `nah:language`.
+`<html lang>` follows. Unit tests and the Playwright suites run in Finnish
+(`src/test/setupLanguage.ts`, `locale: "fi-FI"`); a test of English sets the
+language or the browser locale itself, and Storybook has a language toolbar.
 
 The browser is a viewer of native state, not an owner. It never chooses a Unix
 user; the gateway does that from the authenticated identity. It never keeps

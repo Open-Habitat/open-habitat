@@ -2,7 +2,11 @@ import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import session from "../../../contracts/v1/account-session.schema.json";
 import schema from "../../../contracts/v1/device-link.schema.json";
+import { liveText } from "../i18n";
+import { devicesText } from "../text/devices";
 import type { AccountProfile } from "./pi";
+
+const txt = liveText(devicesText);
 
 // Phone sign-in by QR and the session list (ADR 0018). The gateway owns the
 // code's life; the browser only shows what it reports.
@@ -119,11 +123,11 @@ export const countdown = (seconds: number) =>
 
 export function signedInAt(iso: string, now = new Date()): string {
   const at = new Date(iso);
-  const time = `klo ${at.getHours()}.${String(at.getMinutes()).padStart(2, "0")}`;
-  if (at.toDateString() === now.toDateString()) return `tänään ${time}`;
+  const time = txt.at(at.getHours(), String(at.getMinutes()).padStart(2, "0"));
+  if (at.toDateString() === now.toDateString()) return txt.today(time);
   const year =
     at.getFullYear() === now.getFullYear() ? "" : String(at.getFullYear());
   return `${at.getDate()}.${at.getMonth() + 1}.${year} ${time}`;
 }
 export const deviceName = (s: Pick<BrowserSession, "device">) =>
-  s.device || "Tuntematon selain";
+  s.device || txt.unknownBrowser;

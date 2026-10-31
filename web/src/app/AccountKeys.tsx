@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { AccountKeysTable } from "../components/AccountKeys";
 import { Button } from "../components/Primitives";
+import { liveText } from "../i18n";
+import { accountKeysText } from "../text/accountKeys";
 import {
   type AccountKey,
   accountKeysPath,
@@ -12,6 +14,8 @@ import {
   seenKeys,
 } from "./accountKeys";
 import { jsonWrite, refusalReason, writeOutcome } from "./mutations";
+
+const txt = liveText(accountKeysText);
 
 /** Settings › Avaimet: the account's public keys from the person's daemon,
  * and creation of a missing default key there. */
@@ -85,17 +89,14 @@ export function AccountKeys({ csrf }: { csrf?: string }) {
       if (outcome.kind === "refused")
         setNotice(
           outcome.code === "key_exists"
-            ? "Tilillä oli jo tämä avain, eikä sitä korvattu. Avaimet luettiin uudelleen."
+            ? txt.exists
             : outcome.code === "key_tool_unavailable"
-              ? "Tällä palvelimella ei ole ohjelmaa, joka tekee tämän avaimen."
+              ? txt.toolUnavailable
               : outcome.code === "key_creation_running"
-                ? "Toinen avaimen luonti on kesken. Odota hetki."
+                ? txt.creationRunning
                 : refusalReason(outcome.code, outcome.status),
         );
-      else if (outcome.kind !== "login")
-        setNotice(
-          "Avaimen luonnin tulosta ei saatu varmistettua. Avaimet luettiin uudelleen.",
-        );
+      else if (outcome.kind !== "login") setNotice(txt.uncertain);
       setRefresh((n) => n + 1);
     } finally {
       setCreating(undefined);
@@ -115,13 +116,13 @@ export function AccountKeys({ csrf }: { csrf?: string }) {
     return error ? (
       <div className="s-stack">
         <p role="alert" data-testid="account-keys-error">
-          Avaimia ei voitu lukea. Yritä uudelleen.
+          {txt.readFailed}
         </p>
         <span>
           <Button
             data-testid="account-keys-retry"
             size="row"
-            label="Yritä uudelleen"
+            label={txt.retry}
             variant="secondary"
             onPress={() => setRefresh((n) => n + 1)}
           />
@@ -129,7 +130,7 @@ export function AccountKeys({ csrf }: { csrf?: string }) {
       </div>
     ) : (
       <p className="s-desc" data-testid="account-keys-loading">
-        Luetaan avaimia…
+        {txt.reading}
       </p>
     );
   const unseen = new Set(
@@ -142,12 +143,7 @@ export function AccountKeys({ csrf }: { csrf?: string }) {
       unseen={unseen}
       created={created}
       creating={creating}
-      notice={
-        notice ||
-        (error
-          ? "Avaimia ei voitu lukea uudelleen. Näkyvissä on edellinen luku."
-          : "")
-      }
+      notice={notice || (error ? txt.rereadFailed : "")}
       onCopy={copy}
       onCreate={(kind) => void create(kind)}
       onSeen={(id) => setSeen(markSeen(keys.web_identity_id, [id]))}

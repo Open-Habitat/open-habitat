@@ -13,19 +13,22 @@ import {
   formatExpiry,
   type ViewLink,
 } from "../app/viewLinks";
+import { liveText } from "../i18n";
+import { viewLinksText } from "../text/viewLinks";
 import { ControlButton, Segmented } from "./ControlElements";
 import { Icon } from "./Icon";
 import { formatViewSize, type ViewSummary } from "./ViewOffer";
 
+const txt = liveText(viewLinksText);
+
 /** What a link means, said before it exists and whenever it is shown. */
-export const viewLinkTerms =
-  "Kuka tahansa, jolla on linkki, voi avata näkymän kirjautumatta. Linkin poistaminen ei peru sitä, mitä on jo avattu tai kopioitu.";
+export const viewLinkTerms = () => txt.terms;
 
 /** Copies text and says so for a moment. */
 export function CopyButton({
   text,
   "data-testid": testId,
-  label = "Kopioi linkki",
+  label = txt.copyLink,
 }: {
   text: string;
   "data-testid"?: string;
@@ -50,9 +53,9 @@ export function CopyButton({
     >
       <Icon name={copied === "yes" ? "check" : "copy"} />{" "}
       {copied === "yes"
-        ? "Kopioitu"
+        ? txt.copied
         : copied === "failed"
-          ? "Kopiointi estetty: valitse osoite"
+          ? txt.copyBlocked
           : label}
     </ControlButton>
   );
@@ -113,19 +116,18 @@ export function ViewLinkDialog({
       },
       (e: Error) => {
         setBusy(undefined);
-        setError(e.message || "Linkkiä ei voitu tallentaa.");
+        setError(e.message || txt.saveFailedShort);
       },
     );
   };
   const choices = expiryChoices(maxDays).map((d) => ({
     id: String(d),
-    label:
-      d === maxDays && d > 30 ? `${daysLabel(d)} (enintään)` : daysLabel(d),
+    label: d === maxDays && d > 30 ? txt.atMost(daysLabel(d)) : daysLabel(d),
   }));
   const daysChoice = (testId: string) => (
     <Segmented
       data-testid={testId}
-      label="Voimassa"
+      label={txt.valid}
       options={choices}
       value={String(days)}
       isDisabled={!!busy}
@@ -147,20 +149,19 @@ export function ViewLinkDialog({
         <AriaDialog
           className="ah-dialog ah-view-link"
           data-testid="view-link-dialog"
-          aria-label="Jaa linkillä"
+          aria-label={txt.share}
         >
-          <Heading slot="title">Jaa linkillä</Heading>
+          <Heading slot="title">{txt.share}</Heading>
           <p className="ah-view-link-what">
             <strong data-testid="view-link-title">{view.title}</strong>
             <span className="ah-view-offer-meta">
-              {view.files === 1 ? "1 tiedosto" : `${view.files} tiedostoa`} ·{" "}
-              {formatViewSize(view.bytes)}
+              {txt.files(view.files)} · {formatViewSize(view.bytes)}
             </span>
           </p>
-          <p className="ah-view-link-terms">{viewLinkTerms}</p>
+          <p className="ah-view-link-terms">{viewLinkTerms()}</p>
           {revoked ? (
             <p role="status" data-testid="view-link-revoked">
-              Linkki on poistettu. Kukaan ei voi enää avata näkymää sillä.
+              {txt.revoked}
             </p>
           ) : !link ? (
             <div className="ah-view-link-step">
@@ -172,7 +173,7 @@ export function ViewLinkDialog({
                 isDisabled={!!busy}
                 onPress={() => run("create", () => onCreate(days))}
               >
-                {busy === "create" ? "Luodaan…" : "Luo linkki"}
+                {busy === "create" ? txt.creating : txt.create}
               </ControlButton>
             </div>
           ) : (
@@ -180,7 +181,7 @@ export function ViewLinkDialog({
               <div className="ah-view-link-url">
                 <input
                   data-testid="view-link-url"
-                  aria-label="Linkki"
+                  aria-label={txt.link}
                   readOnly
                   value={link.url}
                   onFocus={(e) => e.currentTarget.select()}
@@ -188,11 +189,11 @@ export function ViewLinkDialog({
                 <CopyButton text={link.url} />
               </div>
               <p className="ah-view-offer-meta" data-testid="view-link-expiry">
-                Voimassa {formatExpiry(link.expires_at)} asti.
+                {txt.validUntil(formatExpiry(link.expires_at))}.
               </p>
-              <section className="ah-view-link-step" aria-label="Jatka">
+              <section className="ah-view-link-step" aria-label={txt.extend}>
                 <span className="ah-view-link-step-label">
-                  Jatka voimassaoloa tästä päivästä
+                  {txt.extendHint}
                 </span>
                 {daysChoice("view-link-extend-days")}
                 <ControlButton
@@ -201,23 +202,20 @@ export function ViewLinkDialog({
                   isDisabled={!!busy}
                   onPress={() => run("extend", () => onExtend(days))}
                 >
-                  Jatka
+                  {txt.extend}
                 </ControlButton>
               </section>
               {others.length > 0 && (
-                <section
-                  className="ah-view-link-step"
-                  aria-label="Vaihda sisältö"
-                >
+                <section className="ah-view-link-step" aria-label={txt.repoint}>
                   <label className="ah-view-link-step-label">
-                    Vaihda sisältö: sama osoite näyttää toisen näkymäsi
+                    {txt.repointHint}
                     <select
                       data-testid="view-link-target"
                       value={target}
                       disabled={!!busy}
                       onChange={(e) => setTarget(e.target.value)}
                     >
-                      <option value="">Valitse näkymä…</option>
+                      <option value="">{txt.chooseView}</option>
                       {others.map((v) => (
                         <option key={v.view_id} value={v.view_id}>
                           {v.title} ({formatExpiry(v.created_at)})
@@ -231,13 +229,13 @@ export function ViewLinkDialog({
                     isDisabled={!!busy || !target}
                     onPress={() => run("repoint", () => onRepoint(target))}
                   >
-                    Vaihda sisältö
+                    {txt.repoint}
                   </ControlButton>
                 </section>
               )}
-              <section className="ah-view-link-step" aria-label="Uusi osoite">
+              <section className="ah-view-link-step" aria-label={txt.readdress}>
                 <span className="ah-view-link-step-label">
-                  Uusi osoite: vanha linkki lakkaa toimimasta, sisältö pysyy.
+                  {txt.readdressHint}
                 </span>
                 <ControlButton
                   data-testid="view-link-new-address"
@@ -245,7 +243,7 @@ export function ViewLinkDialog({
                   isDisabled={!!busy}
                   onPress={() => run("address", onNewAddress)}
                 >
-                  Uusi osoite
+                  {txt.readdress}
                 </ControlButton>
               </section>
             </>
@@ -264,7 +262,7 @@ export function ViewLinkDialog({
                 isDisabled={!!busy}
                 onPress={() => run("revoke", onRevoke)}
               >
-                Poista linkki
+                {txt.remove}
               </ControlButton>
             )}
             <ControlButton
@@ -274,7 +272,7 @@ export function ViewLinkDialog({
               slot="close"
               isDisabled={!!busy}
             >
-              Sulje
+              {txt.close}
             </ControlButton>
           </div>
         </AriaDialog>

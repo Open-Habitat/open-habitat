@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { InlineTextSetting } from "../components/InlineTextSetting";
+import { ServerLanguageRow } from "../components/LanguageSettings";
+import { type LanguageChoice, textNow, useText } from "../i18n";
+import { serverAdministrationText } from "../text/serverAdministration";
 import { ServerAccessSettings } from "./ServerAccessSettings";
 import { ServerVersionRow } from "./ServerVersion";
 import {
@@ -35,6 +38,9 @@ export function ServerAdministration({
   const [storageError, setStorageError] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [languageSaving, setLanguageSaving] = useState(false);
+  const [languageError, setLanguageError] = useState(false);
+  const t = useText(serverAdministrationText);
   const reload = useCallback(async (signal?: AbortSignal) => {
     setData(await administration(signal));
   }, []);
@@ -52,11 +58,11 @@ export function ServerAdministration({
     const controller = new AbortController();
     void reloadStorage(controller.signal).catch(() => {
       if (!controller.signal.aborted)
-        setStorageError("Tallennustietoja ei voitu ladata.");
+        setStorageError(textNow(serverAdministrationText).storageUnavailable);
     });
     void reload(controller.signal).catch(() => {
       if (!controller.signal.aborted)
-        setError("Ylläpitoasetuksia ei voitu ladata.");
+        setError(textNow(serverAdministrationText).settingsUnavailable);
     });
     return () => controller.abort();
   }, [reload, reloadStorage]);
@@ -68,6 +74,19 @@ export function ServerAdministration({
     if (!csrf) throw new Error("unavailable");
     await changeAdministration(csrf, change);
     await reload().catch(() => {});
+  };
+  const saveLanguage = async (language: LanguageChoice) => {
+    if (!csrf || languageSaving) return;
+    setLanguageSaving(true);
+    setLanguageError(false);
+    try {
+      await changeAdministration(csrf, { default_language: language });
+      await reload().catch(() => {});
+    } catch {
+      setLanguageError(true);
+    } finally {
+      setLanguageSaving(false);
+    }
   };
   const gigabytes = (raw: string): number | undefined => {
     const number = Number(raw);
@@ -90,9 +109,7 @@ export function ServerAdministration({
       await reloadStorage();
     } catch {
       setStorage(undefined);
-      setStorageError(
-        "Muutosta ei voitu vahvistaa. Lataa tiedot uudelleen ennen uutta yritystä.",
-      );
+      setStorageError(t.limitUncertain);
     } finally {
       setSaving(false);
     }
@@ -124,12 +141,10 @@ export function ServerAdministration({
             size="row"
             onPress={() => {
               setError("");
-              void reload().catch(() =>
-                setError("Ylläpitoasetuksia ei voitu ladata."),
-              );
+              void reload().catch(() => setError(t.settingsUnavailable));
             }}
           >
-            Lataa tiedot uudelleen
+            {t.reloadData}
           </ControlButton>
         </div>
       )}
@@ -140,11 +155,11 @@ export function ServerAdministration({
             size="row"
             onPress={() =>
               void reloadStorage().catch(() =>
-                setStorageError("Tallennustietoja ei voitu ladata."),
+                setStorageError(t.storageUnavailable),
               )
             }
           >
-            Lataa uudelleen
+            {t.reload}
           </ControlButton>
         </div>
       )}
@@ -154,15 +169,21 @@ export function ServerAdministration({
             <InlineTextSetting
               row="server-name"
               data-testid="server-name-input"
-              label="Palvelimen nimi"
-              description="Näkyy kaikille sivupalkissa. Tallentuu, kun poistut kentästä."
+              label={t.serverName}
+              description={t.serverNameDesc}
               value={data.name}
               maxLength={80}
               disabled={!csrf}
-              invalid={(draft) =>
-                draft.trim() ? undefined : "nimi ei voi olla tyhjä."
-              }
+              invalid={(draft) => (draft.trim() ? undefined : t.nameEmpty)}
               onSave={(next) => saveField({ name: next })}
+            />
+          )}
+          {section === "palvelin" && (
+            <ServerLanguageRow
+              choice={data.default_language}
+              disabled={!csrf || languageSaving}
+              error={languageError}
+              onChange={(language) => void saveLanguage(language)}
             />
           )}
           {section === "palvelin" && (
@@ -173,15 +194,15 @@ export function ServerAdministration({
               {storage && (
                 <div className="s-row" data-settings-row="disk" tabIndex={-1}>
                   <div className="s-lbl">
-                    <strong>Levy</strong>
+                    <strong>{t.disk}</strong>
                     <span className="s-desc">
                       {storage.limits === "not_in_use"
-                        ? "Käyttäjäkohtaisia rajoja ei ole käytössä. Kotihakemistot jakavat tämän levyn, ja kuka tahansa voi täyttää sen."
+                        ? t.noLimits
                         : storage.overcommitted === null
-                          ? "Kaikkia rajoja ei tiedetä. Levyn ylivarausta ei voida arvioida."
+                          ? t.limitsUnknown
                           : storage.overcommitted
-                            ? "Rajojen summa ylittää levyn koon. Se on sallittua, mutta levy voi täyttyä."
-                            : "Kotihakemistojen levy."}
+                            ? t.overcommitted
+                            : t.homeDisk}
                     </span>
                   </div>
                   <div
@@ -193,8 +214,10 @@ export function ServerAdministration({
                         : String(storage.overcommitted)
                     }
                   >
-                    {bytes(storage.filesystem.capacity_bytes)} yhteensä ·{" "}
-                    {bytes(storage.filesystem.free_bytes)} vapaana
+                    {t.capacity(
+                      bytes(storage.filesystem.capacity_bytes),
+                      bytes(storage.filesystem.free_bytes),
+                    )}
                     {bar(
                       storage.filesystem.capacity_bytes -
                         storage.filesystem.free_bytes,
@@ -206,8 +229,8 @@ export function ServerAdministration({
               {storage?.limits !== "not_in_use" && (
                 <InlineTextSetting
                   row="default-limit"
-                  label="Oletusraja"
-                  description="Uusien käyttäjien raja. Ei muuta nykyisiä."
+                  label={t.defaultLimit}
+                  description={t.defaultLimitDesc}
                   value={String(data.default_limit_bytes / 1024 ** 3)}
                   unit="GiB"
                   inputMode="decimal"
@@ -221,7 +244,7 @@ export function ServerAdministration({
                   }}
                   invalid={(draft) =>
                     gigabytes(draft.trim().replace(",", ".")) === undefined
-                      ? "anna raja gigatavuina, esim. 8."
+                      ? t.limitInvalid
                       : undefined
                   }
                   onSave={(next) =>
@@ -239,9 +262,9 @@ export function ServerAdministration({
             >
               <thead>
                 <tr>
-                  <th>Käyttäjä</th>
-                  <th>Tallennustila</th>
-                  <th>Toiminnot</th>
+                  <th>{t.user}</th>
+                  <th>{t.storage}</th>
+                  <th>{t.actions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -268,7 +291,7 @@ export function ServerAdministration({
                         }
                       >
                         {storage?.limits === "not_in_use" ? (
-                          "Ei rajaa"
+                          t.noLimit
                         ) : quota ? (
                           <>
                             <span className="s-storage-value">
@@ -278,7 +301,7 @@ export function ServerAdministration({
                             {bar(quota.usage_bytes, quota.limit_bytes)}
                           </>
                         ) : (
-                          "Tilaa ei tiedetä"
+                          t.unknownUsage
                         )}
                       </td>
                       <td>
@@ -289,7 +312,7 @@ export function ServerAdministration({
                               size="row"
                               onPress={() => setEditing(user.id)}
                             >
-                              Raja…
+                              {t.limitEdit}
                             </ControlButton>
                             {editing === user.id && (
                               <form
@@ -301,7 +324,7 @@ export function ServerAdministration({
                                 }}
                               >
                                 <label className="s-field">
-                                  {user.username}: raja (GiB)
+                                  {t.limitField(user.username)}
                                   <input
                                     inputMode="decimal"
                                     data-testid="storage-limit-input"
@@ -327,14 +350,14 @@ export function ServerAdministration({
                                       quota.limit_bytes
                                   }
                                 >
-                                  Tallenna raja
+                                  {t.saveLimit}
                                 </ControlButton>
                                 <ControlButton
                                   data-testid="cancel"
                                   size="row"
                                   onPress={() => setEditing("")}
                                 >
-                                  Peruuta
+                                  {t.cancel}
                                 </ControlButton>
                               </form>
                             )}
@@ -349,7 +372,7 @@ export function ServerAdministration({
           )}
         </>
       ) : (
-        !error && <p className="s-row">Ladataan ylläpitoasetuksia…</p>
+        !error && <p className="s-row">{t.loading}</p>
       )}
     </div>
   );

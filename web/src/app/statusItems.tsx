@@ -1,6 +1,8 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { StatusBellProvider, type StatusItem } from "../components/StatusBell";
+import { liveText } from "../i18n";
+import { statusText } from "../text/status";
 import {
   dismissBundlePrompt,
   reloadForNewBundle,
@@ -16,6 +18,8 @@ import {
   storageAdministration,
   storageAdministrationChanges,
 } from "./storageQuota";
+
+const txt = liveText(statusText);
 
 // What the bell says, each from a fact the browser already reads: the own
 // storage poll, the served bundle, the snapshot's native_github, and for an
@@ -105,14 +109,17 @@ function overcommitItem(
     tone: "warning",
     icon: "server",
     group: "server",
-    short: "Kiintiöt yli levyn",
-    title: "Kiintiöt ylittävät palvelimen levyn",
-    meta: `${bytes(limits)} kiintiöitä · ${bytes(storage.filesystem.capacity_bytes)} levyä`,
-    body: "Jos kaikki käyttävät kiintiönsä, levy täyttyy ennen kiintiöitä. Silloin kenenkään tallennus ei onnistu.",
+    short: txt.quotasShort,
+    title: txt.quotasTitle,
+    meta: txt.quotasMeta(
+      bytes(limits),
+      bytes(storage.filesystem.capacity_bytes),
+    ),
+    body: txt.quotasBody,
     actions: [
       {
         testId: "status-server-storage",
-        label: "Palvelin › Levytila",
+        label: txt.diskPlace,
         primary: true,
         onPress: open,
       },
@@ -143,7 +150,7 @@ function githubItem(
     tone: warning.tone === "danger" ? "danger" : "warning",
     icon: "github",
     group: "own",
-    short: warning.tone === "danger" ? "GitHub poikki" : "GitHub",
+    short: warning.tone === "danger" ? txt.githubDown : "GitHub",
     title: warning.title,
     meta: warning.short,
     body: warning.text,
@@ -177,20 +184,20 @@ export function useStatusItems({
           tone: "info",
           icon: "refresh",
           group: "own",
-          short: "Uusi versio",
-          title: "Uusi versio on saatavilla",
-          meta: "Luonnokset säilyvät",
-          body: "Lataa sivu uudelleen, niin saat uusimmat korjaukset. Luonnokset säilyvät.",
+          short: txt.versionShort,
+          title: txt.versionTitle,
+          meta: txt.versionMeta,
+          body: txt.versionBody,
           actions: [
             {
               testId: "version-reload",
-              label: "Lataa uudelleen",
+              label: txt.reload,
               primary: true,
               onPress: reloadForNewBundle,
             },
             {
               testId: "version-later",
-              label: "Myöhemmin",
+              label: txt.later,
               keepOpen: true,
               onPress: dismissBundlePrompt,
             },

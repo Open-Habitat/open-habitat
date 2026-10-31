@@ -6,6 +6,8 @@ import {
   type WizardStep,
 } from "../components/OwnMachines";
 import { Button } from "../components/Primitives";
+import { liveText } from "../i18n";
+import { ownMachinesText } from "../text/ownMachines";
 import { jsonWrite, writeOutcome } from "./mutations";
 import {
   type Check,
@@ -15,6 +17,8 @@ import {
   ownMachinesRefusal,
   readOwnMachines,
 } from "./ownMachines";
+
+const txt = liveText(ownMachinesText);
 
 const freshWizard = (): Wizard => ({
   mode: "add",
@@ -77,7 +81,7 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
    * sent again: the page reads what is on the account instead. */
   const send = useCallback(
     async (body: OwnMachinesRequest) => {
-      if (!csrf) return { ok: false as const, message: "Kirjaudu uudelleen." };
+      if (!csrf) return { ok: false as const, message: txt.signInAgain };
       let response: Response | undefined;
       try {
         response = await jsonWrite(
@@ -98,10 +102,10 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
             message: ownMachinesRefusal(outcome.code),
           };
         if (outcome.kind === "login")
-          return { ok: false as const, message: "Kirjaudu uudelleen." };
+          return { ok: false as const, message: txt.signInAgain };
         return {
           ok: false as const,
-          message: "Tulosta ei saatu varmistettua. Tiedot luettiin uudelleen.",
+          message: txt.uncertain,
         };
       }
     },
@@ -285,13 +289,13 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
     return error ? (
       <div className="s-stack">
         <p role="alert" data-testid="own-machines-error">
-          Koneiden tietoja ei voitu lukea. Yritä uudelleen.
+          {txt.readFailed}
         </p>
         <span>
           <Button
             data-testid="own-machines-retry"
             size="row"
-            label="Yritä uudelleen"
+            label={txt.retry}
             variant="secondary"
             onPress={() => setRefresh((n) => n + 1)}
           />
@@ -299,7 +303,7 @@ export function OwnMachines({ csrf }: { csrf?: string }) {
       </div>
     ) : (
       <p className="s-desc" data-testid="own-machines-loading">
-        Luetaan koneita…
+        {txt.reading}
       </p>
     );
   return (

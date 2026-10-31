@@ -9,9 +9,13 @@ import {
   shortKey,
 } from "../app/accountKeys";
 import "./AccountKeys.css";
+import { liveText } from "../i18n";
+import { accountKeysText } from "../text/accountKeys";
 import { ControlButton, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { Badge } from "./Status";
+
+const txt = liveText(accountKeysText);
 
 const kinds: Record<
   KeyKind,
@@ -26,31 +30,43 @@ const kinds: Record<
   }
 > = {
   ssh: {
-    title: "SSH-avain",
+    get title() {
+      return txt.sshTitle;
+    },
     short: "SSH",
     mark: "terminal",
-    give: "Anna tämä rivi ylläpitäjälle, kun tarvitset pääsyn organisaation palvelimille. Rivi on avaimen julkinen osa, ja sen saa jakaa.",
-    create: "Luo SSH-avain",
-    makes: (
-      <>
-        Tekee tiedoston <code>~/.ssh/id_ed25519</code> (ed25519) komennolla{" "}
-        <code>ssh-keygen</code>.
-      </>
-    ),
+    get give() {
+      return txt.sshGive;
+    },
+    get create() {
+      return txt.sshCreate;
+    },
+    get makes() {
+      return txt.sshMakes(
+        <code>~/.ssh/id_ed25519</code>,
+        <code>ssh-keygen</code>,
+      );
+    },
     tool: "ssh-keygen",
   },
   age: {
-    title: "age-avain (SOPS)",
+    get title() {
+      return txt.ageTitle;
+    },
     short: "age",
     mark: "lock",
-    give: "Anna tämä ylläpitäjälle, kun hänen pitää lisätä tili salaisuuksien vastaanottajaksi. Sen jälkeen agenttisi voi avata ne salaisuudet, joihin sinulla on oikeus.",
-    create: "Luo age-avain",
-    makes: (
-      <>
-        Tekee tiedoston <code>~/.config/sops/age/keys.txt</code> komennolla{" "}
-        <code>age-keygen</code>. SOPS löytää sen ilman lisäasetuksia.
-      </>
-    ),
+    get give() {
+      return txt.ageGive;
+    },
+    get create() {
+      return txt.ageCreate;
+    },
+    get makes() {
+      return txt.ageMakes(
+        <code>~/.config/sops/age/keys.txt</code>,
+        <code>age-keygen</code>,
+      );
+    },
     tool: "age-keygen",
   },
 };
@@ -58,26 +74,20 @@ const kinds: Record<
 function AdminCheck({ entry }: { entry: AccountKey }) {
   return (
     <div className="ak-admin">
-      <h4>Ylläpitäjälle</h4>
+      <h4>{txt.forAdmin}</h4>
       {entry.kind === "ssh" ? (
         <>
           <p>
-            Kun hän on saanut rivin, <code>ssh-keygen -lf</code> näyttää sille
-            sormenjäljen <code className="ak-fp">{entry.fingerprint}</code>. Sen
-            pitää olla sama kuin tässä.
+            {txt.sshCheck(
+              <code>ssh-keygen -lf</code>,
+              <code className="ak-fp">{entry.fingerprint}</code>,
+            )}
           </p>
-          <p>
-            Lue sormenjälki hänelle eri kanavaa pitkin kuin lähetit avaimen,
-            esimerkiksi puhelimessa.
-          </p>
+          <p>{txt.sshChannel}</p>
         </>
       ) : (
         <>
-          <p>
-            age-avaimella ei ole erillistä sormenjälkeä. Ylläpitäjä vertaa
-            tiedostoon <code>.sops.yaml</code> lisäämäänsä riviä tähän, neljän
-            merkin ryhmissä:
-          </p>
+          <p>{txt.ageCheck(<code>.sops.yaml</code>)}</p>
           <p className="ak-groups">{recipientGroups(entry.public_key)}</p>
         </>
       )}
@@ -94,13 +104,13 @@ function Detail({ entry, id }: { entry: AccountKey; id: string }) {
         </pre>
         {entry.kind === "ssh" && (
           <dl className="ak-facts">
-            <dt>Sormenjälki</dt>
+            <dt>{txt.fingerprint}</dt>
             <dd className="ak-fp">{entry.fingerprint}</dd>
-            <dt>Laji</dt>
+            <dt>{txt.algorithm}</dt>
             <dd className="ak-mono">{entry.algorithm}</dd>
             {entry.comment && (
               <>
-                <dt>Kommentti</dt>
+                <dt>{txt.comment}</dt>
                 <dd className="ak-mono">{entry.comment}</dd>
               </>
             )}
@@ -108,9 +118,7 @@ function Detail({ entry, id }: { entry: AccountKey; id: string }) {
         )}
         <p className="ak-note">{kinds[entry.kind].give}</p>
         <p className="ak-note">
-          <Icon name="lock" /> Yksityinen osa on tilillä tiedostossa{" "}
-          <code>{entry.file}</code>. Sitä ei näytetä eikä ladata, eikä se lähde
-          tililtä.
+          <Icon name="lock" /> {txt.privatePart(<code>{entry.file}</code>)}
         </p>
       </div>
       <AdminCheck entry={entry} />
@@ -165,10 +173,9 @@ export function AccountKeysTable({
   return (
     <div className="s-stack ak" data-testid="account-keys">
       <p className="s-intro">
-        Tämän tilin julkiset avaimet. Organisaatiosi ylläpitäjä tarvitsee niitä,
-        kun hän antaa agentillesi pääsyn palvelimille tai salaisuuksiin.{" "}
-        <strong>Kopioi avain tältä sivulta, älä agentin vastauksesta:</strong>{" "}
-        sivu lukee sen suoraan tilin tiedostosta.
+        {txt.intro((text) => (
+          <strong>{text}</strong>
+        ))}
       </p>
       {notice && (
         <p
@@ -186,13 +193,13 @@ export function AccountKeysTable({
       >
         {keys.length > 0 && (
           <div className="ak-head" aria-hidden="true">
-            <span>Avain</span>
-            <span>Sormenjälki · muutettu</span>
+            <span>{txt.key}</span>
+            <span>{txt.fingerprintChanged}</span>
             <span />
           </div>
         )}
         {keys.length > 0 ? (
-          <ul className="ak-list" aria-label="Tilin julkiset avaimet">
+          <ul className="ak-list" aria-label={txt.accountKeys}>
             {keys.map((entry) => {
               const id = keyId(entry);
               const expanded = open.has(id);
@@ -213,7 +220,11 @@ export function AccountKeysTable({
                       size="row"
                       variant="quiet"
                       className="ak-chev"
-                      aria-label={`${kinds[entry.kind].title} ${entry.file}: ${expanded ? "sulje" : "näytä koko avain"}`}
+                      aria-label={txt.toggle(
+                        kinds[entry.kind].title,
+                        entry.file,
+                        expanded,
+                      )}
                       aria-expanded={expanded}
                       aria-controls={expanded ? detailId : undefined}
                       onPress={() => toggle(id)}
@@ -228,10 +239,10 @@ export function AccountKeysTable({
                         {kinds[entry.kind].short}
                         {unseen.has(id) ? (
                           <span data-testid="account-key-unseen-mark">
-                            <Badge label="Uusi, et ole nähnyt" tone="info" />
+                            <Badge label={txt.unseenBadge} tone="info" />
                           </span>
                         ) : created.has(id) ? (
-                          <Badge label="Luotu juuri" tone="success" />
+                          <Badge label={txt.createdBadge} tone="success" />
                         ) : null}
                       </strong>
                       <span className="ak-path">{entry.file}</span>
@@ -260,7 +271,7 @@ export function AccountKeysTable({
                         onPress={() => void copy(entry)}
                       >
                         <Icon name={done && copied?.ok ? "check" : "copy"} />
-                        {done && copied?.ok ? "Kopioitu" : "Kopioi"}
+                        {done && copied?.ok ? txt.copied : txt.copy}
                       </ControlButton>
                     </span>
                   </div>
@@ -272,21 +283,15 @@ export function AccountKeysTable({
                     >
                       {copied?.ok
                         ? entry.kind === "ssh"
-                          ? "Lähetä se ylläpitäjälle, ja kerro sormenjälki erikseen."
-                          : "Lähetä se ylläpitäjälle, ja vertailkaa rivi yhdessä."
-                        : "Kopiointi ei onnistunut. Avaa rivi ja valitse avain käsin."}
+                          ? txt.sendSsh
+                          : txt.sendAge
+                        : txt.copyFailed}
                     </p>
                   )}
                   {unseen.has(id) && (
                     <div className="ak-unseen" data-testid="account-key-unseen">
                       <Icon name="info" />
-                      <p>
-                        Tämä avain ilmestyi tilille {keyDate(entry.modified_at)}
-                        , eikä sitä luotu tällä sivulla. Jos pyysit agenttia
-                        tekemään sen, kaikki on kunnossa. Jos et pyytänyt, älä
-                        anna sitä kenellekään ja kysy agentilta, mihin se
-                        tarvitsee sitä.
-                      </p>
+                      <p>{txt.unseen(keyDate(entry.modified_at))}</p>
                       <ControlButton
                         data-testid="account-key-seen"
                         size="row"
@@ -294,7 +299,7 @@ export function AccountKeysTable({
                         onPress={() => onSeen(id)}
                       >
                         <Icon name="check" />
-                        Tunnistan tämän
+                        {txt.recognize}
                       </ControlButton>
                     </div>
                   )}
@@ -304,7 +309,7 @@ export function AccountKeysTable({
             })}
           </ul>
         ) : (
-          <p className="ak-empty">Tilillä ei ole vielä julkisia avaimia.</p>
+          <p className="ak-empty">{txt.none}</p>
         )}
         {missing.map((m) => (
           <div
@@ -317,19 +322,14 @@ export function AccountKeysTable({
               <Icon name={kinds[m.kind].mark} />
             </span>
             <div className="s-lbl">
-              <strong>{kinds[m.kind].title} puuttuu</strong>
+              <strong>{txt.missing(kinds[m.kind].title)}</strong>
               <span className="s-desc">
                 {m.can_create ? (
                   <>
-                    {kinds[m.kind].makes} Yksityinen osa jää tilille, eikä sitä
-                    näytetä. Olemassa olevaa avainta ei koskaan korvata.
+                    {kinds[m.kind].makes} {txt.privateStays}
                   </>
                 ) : (
-                  <>
-                    Tällä palvelimella ei ole ohjelmaa{" "}
-                    <code>{kinds[m.kind].tool}</code>, joten avainta ei voi
-                    luoda täältä. Kerro asiasta palvelimen ylläpitäjälle.
-                  </>
+                  txt.noTool(<code>{kinds[m.kind].tool}</code>)
                 )}
               </span>
             </div>
@@ -343,17 +343,13 @@ export function AccountKeysTable({
                 onPress={() => onCreate(m.kind)}
               >
                 <Icon name="plus" />
-                {creating === m.kind ? "Luodaan…" : kinds[m.kind].create}
+                {creating === m.kind ? txt.creating : kinds[m.kind].create}
               </ControlButton>
             )}
           </div>
         ))}
       </div>
-      {keys.length > 0 && (
-        <p className="s-desc">
-          Avaa rivi nähdäksesi koko avaimen ja miten ylläpitäjä tarkistaa sen.
-        </p>
-      )}
+      {keys.length > 0 && <p className="s-desc">{txt.openHint}</p>}
     </div>
   );
 }

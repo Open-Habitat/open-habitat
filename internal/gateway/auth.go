@@ -47,7 +47,11 @@ type OAuthConfig struct {
 	ViewOrigin string `json:"view_origin,omitempty"`
 	// ViewLinkMaxDays enables shared view links (ADR 0033) and is their
 	// longest expiry in days; 0 offers none. It needs a view origin.
-	ViewLinkMaxDays int           `json:"view_link_max_days,omitempty"`
+	ViewLinkMaxDays int `json:"view_link_max_days,omitempty"`
+	// DefaultLanguage is the installation's default interface language
+	// (system, fi or en; empty is system). An administrator's choice in
+	// Settings takes its place.
+	DefaultLanguage string        `json:"default_language,omitempty"`
 	Identities      []Identity    `json:"identities"`
 	Access          *AccessConfig `json:"access,omitempty"`
 }
@@ -300,6 +304,9 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	}
 	if cfg.ViewLinkMaxDays < 0 || cfg.ViewLinkMaxDays > viewLinkMaxDays || cfg.ViewLinkMaxDays > 0 && cfg.ViewOrigin == "" {
 		return nil, errors.New("invalid view link expiry")
+	}
+	if cfg.DefaultLanguage != "" && !validLanguage(cfg.DefaultLanguage) {
+		return nil, errors.New("invalid default language")
 	}
 	if len(cfg.Identities) != 0 {
 		return nil, errors.New("fixed identity mappings are not supported")

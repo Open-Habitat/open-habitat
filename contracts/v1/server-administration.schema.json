@@ -3,10 +3,11 @@
   "$id": "https://open-habitat.invalid/contracts/v1/server-administration.schema.json",
   "title": "Bound users and their browser roles",
   "type": "object", "additionalProperties": false,
-  "required": ["schema_version", "name", "users"],
+  "required": ["schema_version", "name", "default_language", "users"],
   "properties": {
     "schema_version": {"const": 1},
     "name": {"type": "string", "maxLength": 80},
+    "default_language": {"description": "The server's default interface language for people who have not chosen: the administrator's choice, else the installation's.", "enum": ["system", "fi", "en"]},
     "default_limit_bytes": {"type": "integer", "minimum": 0, "maximum": 1125899906842624, "multipleOf": 1024},
     "users": {"type": "array", "maxItems": 1024, "items": {"type": "object", "additionalProperties": false, "required": ["id", "username", "administrator"], "properties": {"id": {"type": "string", "pattern": "^[1-9][0-9]*$"}, "username": {"type": "string"}, "administrator": {"type": "boolean"}}}}
   }

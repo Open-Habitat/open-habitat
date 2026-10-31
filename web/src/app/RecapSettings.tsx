@@ -7,9 +7,13 @@ import {
   RecapSettings,
   type RecapSettingsValue,
 } from "../components/RecapSettings";
+import { liveText } from "../i18n";
+import { recapSettingsText } from "../text/recapSettings";
 import { jsonWrite } from "./mutations";
 import { PiModelSelector } from "./PiModelSelector";
 import { usePiModels } from "./PiModels";
+
+const txt = liveText(recapSettingsText);
 
 const ajv = new Ajv({ strict: false });
 ajv.addSchema(schema);
@@ -146,7 +150,7 @@ export function RecapSettingsSection({ csrf }: { csrf?: string }) {
     <>
       {loadFailed ? (
         <p role="alert" data-testid="recap-settings-unavailable">
-          Tilannekatsauksen asetuksia ei saatu luettua. Lataa sivu uudelleen.
+          {txt.readFailed}
         </p>
       ) : null}
       <RecapSettings
@@ -159,14 +163,14 @@ export function RecapSettingsSection({ csrf }: { csrf?: string }) {
           <ModelField
             rowId="recap-model"
             testId="recap-model"
-            label="Malli"
-            description="Fablea ja Opusta ei käytetä taustatöihin."
+            label={txt.model}
+            description={txt.modelDesc}
             provider={provider}
             model={model}
             auto={!!value && !value.model}
             models={models?.models}
             loading={!value || !models}
-            emptyLabel="Keskustelun oma malli"
+            emptyLabel={txt.conversationModel}
           >
             {(close) =>
               value ? (

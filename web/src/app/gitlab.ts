@@ -4,6 +4,7 @@ import changeSchema from "../../../contracts/v1/gitlab-connection-change.schema.
 import reposSchema from "../../../contracts/v1/gitlab-repos.schema.json";
 import tokensSchema from "../../../contracts/v1/gitlab-tokens.schema.json";
 import listSchema from "../../../contracts/v1/integrations.schema.json";
+import { formatDate } from "../i18n";
 import type { GiteaGit } from "./gitea";
 import { bounded, Refused } from "./integrations";
 import { mutationFetch } from "./mutations";
@@ -118,7 +119,11 @@ export const expirySoonDays = 30;
 /** 27.10.2027 for 2027-10-27. */
 export function fiDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
-  return `${d}.${m}.${y}`;
+  return formatDate(new Date(y, m - 1, d), {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+  });
 }
 
 async function write(

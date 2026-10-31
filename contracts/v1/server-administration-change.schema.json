@@ -4,6 +4,7 @@
   "title": "Update one shared server setting; roles are not settings (site.json, or a designation through server-access)",
   "oneOf": [
     {"type": "object", "additionalProperties": false, "required": ["name"], "properties": {"name": {"type": "string", "maxLength": 80}}},
+    {"type": "object", "additionalProperties": false, "required": ["default_language"], "properties": {"default_language": {"enum": ["system", "fi", "en"]}}},
     {"type": "object", "additionalProperties": false, "required": ["default_limit_bytes"], "properties": {"default_limit_bytes": {"type": "integer", "minimum": 1048576, "maximum": 1125899906842624, "multipleOf": 1024}}}
   ]
 }

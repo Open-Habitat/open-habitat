@@ -24,6 +24,7 @@ export default defineConfig(({ command }) => {
       globals: true,
       maxWorkers: Number(process.env.OH_WEB_WORKERS ?? 8),
       include: ["src/**/*.test.tsx", "src/**/*.test.ts"],
+      setupFiles: ["src/test/setupLanguage.ts"],
     },
   };
 });

@@ -36,6 +36,9 @@ type serverSettings struct {
 	Name              string   `json:"name"`
 	Administrators    []string `json:"administrators"`
 	DefaultLimitBytes uint64   `json:"default_limit_bytes,omitempty"`
+	// DefaultLanguage is the administrator's choice of the server's default
+	// interface language. Absent, the installation's configuration decides.
+	DefaultLanguage string `json:"default_language,omitempty"`
 	// Onboarding is absent until the first write; defaultOnboarding stands in.
 	Onboarding *onboardingConfig `json:"onboarding,omitempty"`
 	// Denied holds the subjects whose web access a runtime withdrawal is
@@ -79,8 +82,24 @@ func validName(name string) bool {
 	}
 	return true
 }
+func validLanguage(language string) bool {
+	return language == "system" || language == "fi" || language == "en"
+}
+
+// defaultLanguage is the server's default interface language: the
+// administrator's choice, else the installation's, else system (the browser).
+func (a *Auth) defaultLanguage() string {
+	if v := a.settingsView().DefaultLanguage; v != "" {
+		return v
+	}
+	if a.cfg.DefaultLanguage != "" {
+		return a.cfg.DefaultLanguage
+	}
+	return "system"
+}
+
 func validSettings(s serverSettings) bool {
-	if s.Version != 1 || !validName(s.Name) || s.Administrators == nil || len(s.Administrators) > 1024 || (s.DefaultLimitBytes != 0 && !validQuotaLimit(s.DefaultLimitBytes)) || !validStoredOnboarding(s.Onboarding) {
+	if s.Version != 1 || !validName(s.Name) || s.DefaultLanguage != "" && !validLanguage(s.DefaultLanguage) || s.Administrators == nil || len(s.Administrators) > 1024 || (s.DefaultLimitBytes != 0 && !validQuotaLimit(s.DefaultLimitBytes)) || !validStoredOnboarding(s.Onboarding) {
 		return false
 	}
 	seen := map[string]bool{}
@@ -267,6 +286,22 @@ func (a *Auth) changeDefaultLimitFor(caller string, limit uint64) error {
 	}
 	next := a.settings
 	next.DefaultLimitBytes = limit
+	return a.commitAdministration(next)
+}
+func (a *Auth) changeDefaultLanguageFor(caller, language string) error {
+	if !validLanguage(language) {
+		return errors.New("invalid language")
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if !a.administrationHealthy() {
+		return ErrAdministrationState
+	}
+	if !a.isAdministratorLocked(caller) {
+		return errAdminDenied
+	}
+	next := a.settings
+	next.DefaultLanguage = language
 	return a.commitAdministration(next)
 }
 func (a *Auth) changeName(name string) error { return a.changeNameFor("", name) }
@@ -469,9 +504,10 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(struct {
 			Version           int    `json:"schema_version"`
 			Name              string `json:"name"`
+			DefaultLanguage   string `json:"default_language"`
 			Users             []row  `json:"users"`
 			DefaultLimitBytes uint64 `json:"default_limit_bytes"`
-		}{1, v.Name, rows, v.DefaultLimitBytes})
+		}{1, v.Name, a.defaultLanguage(), rows, v.DefaultLimitBytes})
 		return
 	}
 	if r.URL.Path != "/api/v1/server/administration" || r.Method != http.MethodPut {
@@ -492,10 +528,11 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Name              *string `json:"name"`
 		DefaultLimitBytes *uint64 `json:"default_limit_bytes"`
+		DefaultLanguage   *string `json:"default_language"`
 	}
 	dec := json.NewDecoder(io.LimitReader(r.Body, 1025))
 	dec.DisallowUnknownFields()
-	if dec.Decode(&request) != nil || dec.Decode(new(any)) != io.EOF || (boolInt(request.Name != nil)+boolInt(request.DefaultLimitBytes != nil) != 1) || request.DefaultLimitBytes != nil && !validQuotaLimit(*request.DefaultLimitBytes) {
+	if dec.Decode(&request) != nil || dec.Decode(new(any)) != io.EOF || (boolInt(request.Name != nil)+boolInt(request.DefaultLimitBytes != nil)+boolInt(request.DefaultLanguage != nil) != 1) || request.DefaultLimitBytes != nil && !validQuotaLimit(*request.DefaultLimitBytes) || request.DefaultLanguage != nil && !validLanguage(*request.DefaultLanguage) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -506,6 +543,8 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		e = a.changeNameFor(s.identity.Subject, *request.Name)
+	} else if request.DefaultLanguage != nil {
+		e = a.changeDefaultLanguageFor(s.identity.Subject, *request.DefaultLanguage)
 	} else {
 		e = a.changeDefaultLimitFor(s.identity.Subject, *request.DefaultLimitBytes)
 	}
@@ -518,6 +557,26 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// siteLanguageHTTP tells sign-in and the landing page, which know no person
+// yet, the server's default language. It is public: the value names nothing
+// about anyone, and a page before sign-in has no session to show.
+func (a *Auth) siteLanguageHTTP(w http.ResponseWriter, r *http.Request) {
+	if !a.exact(r, "/api/v1/site/language") {
+		safe(w, 400, "invalid_request")
+		return
+	}
+	if r.Method != http.MethodGet {
+		safe(w, 405, "method_not_allowed")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(struct {
+		Version         int    `json:"schema_version"`
+		DefaultLanguage string `json:"default_language"`
+	}{1, a.defaultLanguage()})
 }
 
 // maxControlPayload bounds one root control request; an onboarding document

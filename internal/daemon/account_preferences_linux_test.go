@@ -42,7 +42,7 @@ func TestAccountPreferencesNativeConfiguration(t *testing.T) {
 	if err != nil || st.Mode().Perm() != 0600 {
 		t.Fatalf("permissions: %v %v", st, err)
 	}
-	for _, invalid := range []string{`{"engine":"monaco"}`, `{"engine":"vscode","experimental":{"Bad_ID":true}}`, `{"engine":"vscode","experimental":{"next-waiting-row":false}}`, `{"engine":"vscode","path":"secret"}`, `null`, `{}`, `{"engine":"vscode"} {}`, strings.Repeat(" ", 4097)} {
+	for _, invalid := range []string{`{"engine":"monaco"}`, `{"engine":"vscode","experimental":{"Bad_ID":true}}`, `{"engine":"vscode","experimental":{"next-waiting-row":false}}`, `{"engine":"vscode","path":"secret"}`, `{"engine":"vscode","language":"sv"}`, `null`, `{}`, `{"engine":"vscode"} {}`, strings.Repeat(" ", 4097)} {
 		if err := os.WriteFile(file, []byte(invalid), 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -115,6 +115,9 @@ func TestAccountPreferencesHTTPBoundary(t *testing.T) {
 		{"PUT", "", `{"experimental":{"../x":true}}`, 400}, {"PUT", "", `{"experimental":{"x-":true}}`, 400},
 		{"PUT", "", `{"experimental":{"x":"yes"}}`, 400}, {"PUT", "", `{"experimental":null}`, 400},
 		{"PUT", "", `{"experimental":{"worker-row-sentence":null}}`, 400}, {"PUT", "", `{"engine":"vscode","experimental":null}`, 400},
+		{"PUT", "", `{"language":"en"}`, 200}, {"PUT", "", `{"language":"system"}`, 200},
+		{"PUT", "", `{"language":"sv"}`, 400}, {"PUT", "", `{"language":""}`, 400}, {"PUT", "", `{"language":null}`, 400},
+		{"PUT", "", `{"language":"en","engine":"vscode"}`, 400}, {"PUT", "", `{"Language":"en"}`, 400},
 		{"PUT", "", `{"Engine":"vscode"}`, 400}, {"PUT", "", `{"engine":null}`, 400}, {"PUT", "", `[]`, 400},
 	} {
 		r := httptest.NewRequest(tc.method, "http://unix"+AccountPreferencesPath+tc.suffix, strings.NewReader(tc.body))
@@ -155,10 +158,13 @@ func TestAccountPreferencesMergeOneChange(t *testing.T) {
 		}
 		return reply
 	}
-	put(`{"engine":"vscode"}`)
+	if reply := put(`{"engine":"vscode"}`); reply["language"] != "system" {
+		t.Fatalf("an unchosen language is not system: %v", reply)
+	}
+	put(`{"language":"en"}`)
 	put(`{"experimental":{"next-waiting-row":true}}`)
 	reply := put(`{"experimental":{"worker-row-sentence":true}}`)
-	if reply["engine"] != "vscode" || !reflect.DeepEqual(reply["experimental"], map[string]any{"next-waiting-row": true, "worker-row-sentence": true}) {
+	if reply["engine"] != "vscode" || reply["language"] != "en" || !reflect.DeepEqual(reply["experimental"], map[string]any{"next-waiting-row": true, "worker-row-sentence": true}) {
 		t.Fatalf("merge lost a change: %v", reply)
 	}
 	reply = put(`{"experimental":{"next-waiting-row":false}}`)
@@ -168,6 +174,13 @@ func TestAccountPreferencesMergeOneChange(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join(home, ".config/open-habitat/preferences.json"))
 	if err != nil || strings.Contains(string(raw), "next-waiting-row") {
 		t.Fatalf("stored: %s %v", raw, err)
+	}
+	// System is stored as no choice, so the file keeps only what was chosen.
+	if reply = put(`{"language":"system"}`); reply["language"] != "system" {
+		t.Fatalf("system: %v", reply)
+	}
+	if raw, _ = os.ReadFile(filepath.Join(home, ".config/open-habitat/preferences.json")); strings.Contains(string(raw), "language") {
+		t.Fatalf("system stored a key: %s", raw)
 	}
 	// The document has a bound; one past it is refused and changes nothing.
 	for i := 1; i < maxExperimentalFeatures; i++ {

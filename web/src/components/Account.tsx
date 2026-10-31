@@ -21,6 +21,7 @@ import { Devices } from "../app/Devices";
 import { GitIdentity } from "../app/GitIdentity";
 import { IntegrationsSettings } from "../app/IntegrationsSettings";
 import type { ProviderId } from "../app/integrations";
+import { LanguageSettings } from "../app/LanguageSettings";
 import { OnboardingAdministration } from "../app/OnboardingAdministration";
 import { PersonalStorage } from "../app/PersonalStorage";
 import {
@@ -42,11 +43,13 @@ import {
   type SettingsRowId,
   searchSettings,
   settingsRowWithin,
-  settingsSections,
+  shownSettingsSections,
 } from "../app/settingsIndex";
 import { settingsHref } from "../app/settingsRoute";
 import type { Workspace } from "../app/snapshot";
 import { ViewLinkSettings } from "../app/ViewLinkSettings";
+import { textNow, useLanguage, useText } from "../i18n";
+import { accountText } from "../text/account";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
 import { ControlButton, Segmented } from "./ControlElements";
@@ -71,7 +74,7 @@ export function accountLabel(displayName: string): string {
   const name = displayName.trim();
   return name && !/^GitHub user\s+\d+$/i.test(name) && !/^\d+$/.test(name)
     ? name
-    : "Oma tili";
+    : textNow(accountText).ownAccount;
 }
 
 export function AccountIdentity({
@@ -82,8 +85,9 @@ export function AccountIdentity({
   compact?: boolean;
 }) {
   const [failedURL, setFailedURL] = useState("");
+  const t = useText(accountText);
   const name = accountLabel(profile.name);
-  const shown = compact && name !== "Oma tili" ? name.split(/\s+/)[0] : name;
+  const shown = compact && name !== t.ownAccount ? name.split(/\s+/)[0] : name;
   const avatar =
     profile.avatar_url &&
     profile.avatar_url !== failedURL &&
@@ -99,7 +103,7 @@ export function AccountIdentity({
             referrerPolicy="no-referrer"
             onError={() => setFailedURL(profile.avatar_url)}
           />
-        ) : shown === "Oma tili" ? (
+        ) : shown === t.ownAccount ? (
           "?"
         ) : (
           shown.slice(0, 1).toLocaleUpperCase()
@@ -155,25 +159,26 @@ export function AccountShelf({
     window.addEventListener("nah:work-change", sync);
     return () => window.removeEventListener("nah:work-change", sync);
   }, []);
+  const t = useText(accountText);
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const compactName =
-    accountLabel(person.name) === "Oma tili"
-      ? "Oma tili"
+    accountLabel(person.name) === t.ownAccount
+      ? t.ownAccount
       : accountLabel(person.name).split(/\s+/)[0];
   const themes: {
     id: ThemeChoice;
     label: string;
     icon: "system" | "sun" | "moon";
   }[] = [
-    { id: "system", label: "Järjestelmä", icon: "system" },
-    { id: "light", label: "Vaalea", icon: "sun" },
-    { id: "dark", label: "Tumma", icon: "moon" },
+    { id: "system", label: t.themeSystem, icon: "system" },
+    { id: "light", label: t.themeLight, icon: "sun" },
+    { id: "dark", label: t.themeDark, icon: "moon" },
   ];
   return (
     <div className="ah-account-shelf" data-account-controls>
       <Menu
-        label="Tilivalikko"
-        triggerLabel={`${compactName}, Tilivalikko`}
+        label={t.accountMenu}
+        triggerLabel={t.accountMenuOf(compactName)}
         triggerPresentation="account"
         trigger={
           <span className="ah-account-trigger">
@@ -202,10 +207,10 @@ export function AccountShelf({
         betweenItems={
           <>
             <div className="ah-account-menu-theme-row">
-              <span>Teema</span>
+              <span>{t.theme}</span>
               <Segmented
                 data-testid="theme-choice"
-                label="Teema"
+                label={t.theme}
                 className="ah-account-menu-theme"
                 options={themes.map(({ id, label, icon }) => ({
                   id,
@@ -218,13 +223,13 @@ export function AccountShelf({
               />
             </div>
             <div className="ah-account-menu-theme-row">
-              <span>Agentin työ</span>
+              <span>{t.agentWork}</span>
               <Segmented
-                label="Agentin työ"
+                label={t.agentWork}
                 className="ah-account-menu-theme"
                 options={[
-                  { id: "hidden", label: "Piilossa" },
-                  { id: "visible", label: "Näkyvissä" },
+                  { id: "hidden", label: t.hidden },
+                  { id: "visible", label: t.visible },
                 ]}
                 value={workChoice}
                 onChange={setWorkPreference}
@@ -235,11 +240,11 @@ export function AccountShelf({
         popoverClassName="ah-account-menu"
         placement={placement}
         items={[
-          { id: "settings", label: "Asetukset" },
+          { id: "settings", label: t.settings },
           ...(onAdministration
-            ? [{ id: "administration", label: "Palvelimen ylläpito" }]
+            ? [{ id: "administration", label: t.administration }]
             : []),
-          { id: "logout", label: "Kirjaudu ulos…", danger: true },
+          { id: "logout", label: t.logout, danger: true },
         ]}
         onAction={(id) => {
           if (id === "settings") onSettings();
@@ -323,6 +328,9 @@ export function AccountSettings({
   onNewWorkspace?: () => void;
 }) {
   const theme = useThemeChoice();
+  const language = useLanguage();
+  const t = accountText[language];
+  const settingsSections = shownSettingsSections(language);
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const { data: piModels, refresh: refreshModels } = usePiModels();
   const [localSection, setLocalSection] = useState(
@@ -576,7 +584,7 @@ export function AccountSettings({
   const sections = settingsSections.filter((entry) => !("admin" in entry));
   const adminSections = settingsSections.filter((entry) => "admin" in entry);
   const title = settingsSections.find(({ id }) => id === section)?.label;
-  const nav = (items: readonly (typeof settingsSections)[number][]) =>
+  const nav = (items: typeof settingsSections) =>
     items.map(({ id, label, icon }) => {
       const content = (
         <>
@@ -632,7 +640,7 @@ export function AccountSettings({
         size="row"
         variant="quiet"
         presentation="icon"
-        aria-label="Sulje asetukset"
+        aria-label={t.closeSettings}
         onPress={onClose}
       >
         <Icon name="cross" />
@@ -640,10 +648,10 @@ export function AccountSettings({
       <nav
         data-testid="settings-navigation"
         className="s-nav"
-        aria-label="Asetusten osiot"
+        aria-label={t.sections}
       >
         <h1 data-testid="settings-title" ref={navHeading} tabIndex={-1}>
-          Asetukset
+          {t.settings}
         </h1>
         <SettingsSearchField
           inputRef={field}
@@ -665,7 +673,7 @@ export function AccountSettings({
             {nav(sections)}
             {admin && (
               <>
-                <span className="s-nav-h">Palvelimen ylläpito</span>
+                <span className="s-nav-h">{t.administration}</span>
                 {nav(adminSections)}
               </>
             )}
@@ -681,7 +689,7 @@ export function AccountSettings({
           presentation="back"
           onPress={toList}
         >
-          {searching ? "← Hakutulokset" : "← Asetukset"}
+          {searching ? t.backToResults : t.backToSettings}
         </ControlButton>
         <h2
           ref={heading}
@@ -699,7 +707,7 @@ export function AccountSettings({
                   <Button
                     data-testid="logout-open"
                     size="row"
-                    label="Kirjaudu ulos…"
+                    label={t.logout}
                     variant="secondary"
                     onPress={onLogout}
                   />
@@ -715,10 +723,7 @@ export function AccountSettings({
         {section === "omatkoneet" && <OwnMachines csrf={csrf} />}
         {section === "tekoaly" && (
           <div className="s-stack">
-            <p className="s-intro">
-              Mallit, joita agentit käyttävät, ja tilaukset tai avaimet, joilla
-              ne saadaan.
-            </p>
+            <p className="s-intro">{t.aiIntro}</p>
             <div className="s-card">
               <DefaultModelRow
                 provider={piModels?.default_provider}
@@ -735,16 +740,14 @@ export function AccountSettings({
                 tabIndex={-1}
               >
                 <div className="s-lbl">
-                  <strong>Agentin työ</strong>
-                  <span className="s-desc">
-                    Ajattelu ja työkalut keskustelussa oletuksena.
-                  </span>
+                  <strong>{t.agentWork}</strong>
+                  <span className="s-desc">{t.agentWorkDesc}</span>
                 </div>
                 <Segmented
-                  label="Agentin työ"
+                  label={t.agentWork}
                   options={[
-                    { id: "hidden", label: "Piilossa" },
-                    { id: "visible", label: "Näkyvissä" },
+                    { id: "hidden", label: t.hidden },
+                    { id: "visible", label: t.visible },
                   ]}
                   value={work}
                   onChange={(value) => {
@@ -754,7 +757,7 @@ export function AccountSettings({
                 />
               </div>
             </div>
-            <h3 className="s-h3">Tilaukset</h3>
+            <h3 className="s-h3">{t.subscriptions}</h3>
             <div className="s-card">
               <div
                 className="s-row s-marked"
@@ -763,19 +766,21 @@ export function AccountSettings({
               >
                 <LetterMark mark="Ch" tone={1} />
                 <div className="s-lbl">
-                  <strong>ChatGPT-tilaus</strong>
+                  <strong>{t.chatgpt}</strong>
                   <span
                     className="s-desc"
                     data-testid="openai-credential-state"
                     data-state={openAI}
                   >
                     {openAI === "signed_in"
-                      ? `Kirjautunut. ${modelsLine(piModels?.models, "openai-codex")}`
+                      ? t.chatgptSignedIn(
+                          modelsLine(piModels?.models, "openai-codex"),
+                        )
                       : openAI === "checking"
-                        ? "Tarkistetaan ChatGPT-kirjautumista…"
+                        ? t.chatgptChecking
                         : openAI === "unknown"
-                          ? "ChatGPT-kirjautumista ei voitu vahvistaa."
-                          : "Kirjaudu ChatGPT-tilauksella (Codex), niin sen mallit tulevat mallivalitsimeen. Kirjautuminen tallentuu vain omalle käyttäjällesi tällä palvelimella."}
+                          ? t.chatgptUnknown
+                          : t.chatgptSignedOut}
                   </span>
                 </div>
                 <div className="s-val">
@@ -783,7 +788,7 @@ export function AccountSettings({
                     <StatusMark
                       kind="success"
                       tone="success"
-                      label="Kirjautunut"
+                      label={t.signedIn}
                     />
                   ) : null}
                   {onPiSignIn && (
@@ -791,9 +796,7 @@ export function AccountSettings({
                       size="row"
                       data-testid="pi-sign-in"
                       label={
-                        openAI === "signed_in"
-                          ? "Kirjaudu uudelleen"
-                          : "Kirjaudu ChatGPT:hen"
+                        openAI === "signed_in" ? t.signInAgain : t.signInChatgpt
                       }
                       variant="secondary"
                       onPress={onPiSignIn}
@@ -843,25 +846,24 @@ export function AccountSettings({
               tabIndex={-1}
             >
               <div className="s-lbl">
-                <strong>Teema</strong>
-                <span className="s-desc">
-                  Järjestelmä seuraa laitteen asetusta. Koskee tätä selainta.
-                </span>
+                <strong>{t.theme}</strong>
+                <span className="s-desc">{t.themeDesc}</span>
               </div>
               <Segmented
                 data-testid="theme-choice"
-                label="Teema"
+                label={t.theme}
                 options={(
                   [
-                    { id: "system", label: "Järjestelmä", icon: "system" },
-                    { id: "light", label: "Vaalea", icon: "sun" },
-                    { id: "dark", label: "Tumma", icon: "moon" },
+                    { id: "system", label: t.themeSystem, icon: "system" },
+                    { id: "light", label: t.themeLight, icon: "sun" },
+                    { id: "dark", label: t.themeDark, icon: "moon" },
                   ] as const
-                ).map((t) => ({ ...t, icon: <Icon name={t.icon} /> }))}
+                ).map((o) => ({ ...o, icon: <Icon name={o.icon} /> }))}
                 value={theme}
                 onChange={setThemeChoice}
               />
             </div>
+            <LanguageSettings identity={editorIdentity} csrf={csrf} />
           </div>
         )}
         {section === "tila" && (
@@ -894,13 +896,11 @@ export function AccountSettings({
             />
           ) : admin === undefined ? (
             <p role="status" data-testid="administration-checking">
-              Tarkistetaan ylläpito-oikeutta…
+              {t.checkingAdmin}
             </p>
           ) : (
             <p role="alert" data-testid="administration-denied">
-              {admin === false
-                ? "Ylläpito on vain ylläpitäjille."
-                : "Ylläpito-oikeutta ei voitu vahvistaa."}
+              {admin === false ? t.adminOnly : t.adminUnknown}
             </p>
           ))}
         {section === "palvelin" && admin ? null : (
@@ -924,6 +924,7 @@ export function AccountLogoutDialog({
   onClose: () => void;
   onConfirm: () => void;
 }) {
+  const t = useText(accountText);
   return (
     <ModalOverlay
       isOpen={open}
@@ -937,28 +938,28 @@ export function AccountLogoutDialog({
         <AriaDialog
           data-testid="logout-dialog"
           className="ah-dialog"
-          aria-label="Kirjaudutaanko ulos tästä selaimesta?"
+          aria-label={t.logoutQuestion}
         >
-          <Heading slot="title">Kirjaudutaanko ulos tästä selaimesta?</Heading>
+          <Heading slot="title">{t.logoutQuestion}</Heading>
           <div className="ah-logout-effects">
             <div>
-              <h3>Poistuu selaimesta</h3>
+              <h3>{t.leavesBrowser}</h3>
               <p>
-                Selainistunto
+                {t.browserSession}
                 <br />
-                Luonnokset
+                {t.drafts}
                 <br />
-                Luettu sisältö
+                {t.readContent}
               </p>
             </div>
             <div>
-              <h3>Säilyy palvelimella</h3>
+              <h3>{t.staysOnServer}</h3>
               <p>
-                Työtilat
+                {t.workspaces}
                 <br />
-                Palvelimen tunnukset
+                {t.serverCredentials}
                 <br />
-                Agenttien käynnissä oleva työ
+                {t.runningWork}
               </p>
             </div>
           </div>
@@ -966,14 +967,14 @@ export function AccountLogoutDialog({
             <Button
               data-testid="cancel"
               size="page"
-              label="Peruuta"
+              label={t.cancel}
               variant="secondary"
               onPress={onClose}
             />
             <Button
               data-testid="logout-confirm"
               size="page"
-              label="Kirjaudu ulos"
+              label={t.logoutConfirm}
               variant="danger"
               onPress={onConfirm}
             />

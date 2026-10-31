@@ -4,6 +4,10 @@ import { useNavigate } from "react-router";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import "./WorkspaceIcon.css";
+import { liveText } from "../i18n";
+import { statusText } from "../text/status";
+
+const txt = liveText(statusText);
 
 /** A workspace's icon as the app resolved it (workspace-icons,
  * experimental): what to show, the name-derived glyph that stands in when
@@ -97,7 +101,7 @@ export function WorkspaceIconButton({
         size="inline"
         variant="quiet"
         className="ah-wsi-button"
-        aria-label={`Työtila ${icon.name}`}
+        aria-label={txt.workspaceIcon(icon.name)}
         title={icon.name}
       >
         <WorkspaceIcon icon={icon} />
@@ -142,7 +146,7 @@ export function WorkspaceIconButton({
                   navigate(`/workspaces/${workspaceId}`);
                 }}
               >
-                <Icon name="folder" /> Avaa työtilasivu
+                <Icon name="folder" /> {txt.openWorkspacePage}
               </ControlButton>
               {actions?.onNew ? (
                 <ControlButton
@@ -157,7 +161,7 @@ export function WorkspaceIconButton({
                     actions.onNew?.(workspaceId);
                   }}
                 >
-                  <Icon name="plus" /> Uusi keskustelu
+                  <Icon name="plus" /> {txt.newConversation}
                 </ControlButton>
               ) : null}
             </>

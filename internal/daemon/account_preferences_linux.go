@@ -21,11 +21,14 @@ import (
 const AccountPreferencesPath = "/api/v1/account/preferences"
 
 // accountPreferences is the person's small account-wide settings in one
-// document, ~/.config/open-habitat/preferences.json: the desktop editor and
-// the experimental features they turned on. Only enabled features are kept,
-// so a feature that graduates or is removed leaves at most one stale key.
+// document, ~/.config/open-habitat/preferences.json: the desktop editor, the
+// interface language and the experimental features they turned on. Only
+// enabled features are kept, so a feature that graduates or is removed leaves
+// at most one stale key. A language never chosen is absent and reads as
+// "system", which leaves the choice to the server default and the browser.
 type accountPreferences struct {
 	Engine       string          `json:"engine"`
+	Language     string          `json:"language,omitempty"`
 	Experimental map[string]bool `json:"experimental"`
 }
 
@@ -33,6 +36,7 @@ type accountPreferences struct {
 // so a write never carries the whole document; the daemon merges it.
 type preferencesWrite struct {
 	Engine       *string
+	Language     *string
 	Experimental map[string]bool
 }
 
@@ -44,6 +48,10 @@ const maxExperimentalFeatures = 32
 var preferencesLock sync.Mutex
 
 func validEditorEngine(engine string) bool { return engine == "codemirror6" || engine == "vscode" }
+
+func validLanguage(language string) bool {
+	return language == "system" || language == "fi" || language == "en"
+}
 
 // validFeatureID: lower-case words joined by single hyphens, as the
 // contract's pattern says.
@@ -60,7 +68,7 @@ func validFeatureID(id string) bool {
 }
 
 func (p accountPreferences) valid() bool {
-	if !validEditorEngine(p.Engine) || len(p.Experimental) > maxExperimentalFeatures {
+	if !validEditorEngine(p.Engine) || p.Language != "" && !validLanguage(p.Language) || len(p.Experimental) > maxExperimentalFeatures {
 		return false
 	}
 	for id, on := range p.Experimental {
@@ -72,7 +80,7 @@ func (p accountPreferences) valid() bool {
 }
 
 // decodePreferencesWrite accepts exactly what the contract's write allows:
-// one object with exactly one key, either "engine" or "experimental" naming
+// one object with exactly one key: "engine", "language", or "experimental" naming
 // one feature with a boolean. encoding/json alone would match keys without
 // regard to case and read null as false, so each part is decoded on its own.
 func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
@@ -88,6 +96,14 @@ func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
 			return change, false
 		}
 		change.Engine = &engine
+		return change, true
+	}
+	if raw, ok := outer["language"]; ok {
+		var language string
+		if json.Unmarshal(raw, &language) != nil || !validLanguage(language) {
+			return change, false
+		}
+		change.Language = &language
 		return change, true
 	}
 	var switches map[string]*bool
@@ -172,6 +188,9 @@ func readPreferences(home string) (accountPreferences, error) {
 	if result.Experimental == nil {
 		result.Experimental = map[string]bool{}
 	}
+	if result.Language == "system" {
+		result.Language = ""
+	}
 	if !result.valid() || dec.Decode(new(any)) != io.EOF {
 		return result, errors.New("invalid preferences")
 	}
@@ -229,6 +248,12 @@ func applyPreferences(home string, change preferencesWrite) (accountPreferences,
 	if change.Engine != nil {
 		value.Engine = *change.Engine
 	}
+	if change.Language != nil {
+		value.Language = *change.Language
+		if value.Language == "system" {
+			value.Language = ""
+		}
+	}
 	for id, on := range change.Experimental {
 		if on {
 			value.Experimental[id] = true
@@ -270,6 +295,10 @@ func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request)
 			snapshotError(w, 503, "preferences_unavailable")
 			return
 		}
-		historyJSON(w, map[string]any{"schema_version": 1, "web_identity_id": opaque("wid_", cfg.Provider+":"+cfg.Subject), "engine": value.Engine, "experimental": value.Experimental})
+		language := value.Language
+		if language == "" {
+			language = "system"
+		}
+		historyJSON(w, map[string]any{"schema_version": 1, "web_identity_id": opaque("wid_", cfg.Provider+":"+cfg.Subject), "engine": value.Engine, "language": language, "experimental": value.Experimental})
 	})
 }

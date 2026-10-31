@@ -5,7 +5,13 @@ export default defineConfig({
   testMatch: "synthetic-demo.spec.ts",
   workers: 1,
   reporter: [["line"]],
-  use: { ...devices["Desktop Chrome"], baseURL: demoOrigin },
+  use: {
+    // The suite reads the interface in Finnish; a spec that tests English
+    // opens its own context in another locale.
+    ...devices["Desktop Chrome"],
+    locale: "fi-FI",
+    baseURL: demoOrigin,
+  },
   webServer: {
     command: "npm run demo",
     url: `${demoOrigin}/workspaces`,

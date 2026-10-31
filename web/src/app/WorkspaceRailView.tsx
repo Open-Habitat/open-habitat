@@ -12,6 +12,8 @@ import { RailClones } from "../components/ClonePage";
 import type { Tone } from "../components/types";
 import { WorkspaceActions } from "../components/WorkspaceActions";
 import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
+import { liveText } from "../i18n";
+import { statusText } from "../text/status";
 import { type CloneJobs, cloneLabel, useCloneView } from "./cloneJobs";
 import {
   type ConversationStore,
@@ -23,18 +25,10 @@ import { serverInfo, serverInformationChanges } from "./serverAdministration";
 import type { Snapshot, Workspace } from "./snapshot";
 import type { RootState } from "./store";
 
+const txt = liveText(statusText);
+
 export function sourceLabel(state: string) {
-  return (
-    (
-      {
-        confirmed: "Vahvistettu",
-        absent: "Lähde puuttuu",
-        unavailable: "Lähde ei ole saatavilla",
-        unknown: "Tieto ei ole tiedossa",
-        conflicting: "Ristiriitainen tieto",
-      } as Record<string, string>
-    )[state] ?? "Tieto ei ole tiedossa"
-  );
+  return txt.sources[state] ?? txt.sources.unknown;
 }
 /** The server's name and the person's role on it, read again on navigation. */
 export function useServer(pathname: string) {
@@ -66,17 +60,17 @@ export function useServer(pathname: string) {
   return server;
 }
 export function serverLabel(server?: { name: string }) {
-  return server?.name || window.location.hostname.split(".")[0] || "Palvelin";
+  return server?.name || window.location.hostname.split(".")[0] || txt.server;
 }
 export function connectionStatus(
   phase: RootState["connection"]["phase"],
   source: string,
 ): { label: string; tone: Tone } {
   return phase === "stale"
-    ? { label: "Yhteys poikki", tone: "danger" }
+    ? { label: txt.operation.disconnected, tone: "danger" }
     : source === "confirmed"
-      ? { label: "Yhdistetty", tone: "success" }
-      : { label: "Tietoja puuttuu", tone: "warning" };
+      ? { label: txt.connected, tone: "success" }
+      : { label: txt.incomplete, tone: "warning" };
 }
 /** The rail's Sinun vuorosi and Käynnissä; the app also badges the phone's
  * menu button with the first. */
@@ -224,9 +218,7 @@ export function WorkspaceRailView({
       }
       filterValue={filter}
       resultSummary={
-        source === "confirmed"
-          ? `${matches.length}`
-          : `${matches.length} löydettyä`
+        source === "confirmed" ? `${matches.length}` : txt.found(matches.length)
       }
       onCreateWorkspace={onCreateWorkspace}
       listState={railState}
@@ -294,9 +286,9 @@ export function WorkspaceRailView({
           }
           restoreReason={
             phase === "stale"
-              ? "Yhteys poikki."
+              ? txt.disconnectedReason
               : snapshot.write_state === "read_only"
-                ? "Vain luku."
+                ? txt.readOnlyReason
                 : undefined
           }
           problem={visibilityProblem}
@@ -311,12 +303,12 @@ export function WorkspaceRailView({
           selected={selectedId === w.workspace_id}
           icon={icons?.get(w.workspace_id)}
           hint={now.hints.get(w.workspace_id)}
-          summary={`${w.kind === "git_main_worktree" ? "Git" : "Hakemisto"} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
+          summary={`${w.kind === "git_main_worktree" ? "Git" : txt.directory} · ${sourceLabel(w.facts.find((f) => f.source === "filesystem")?.state ?? "unknown")}`}
           mutationState={
             snapshot.write_state === "read_only"
               ? undefined
               : w.mutation_state === "read_only"
-                ? "Vain luku"
+                ? txt.readOnly
                 : undefined
           }
           workspaceMenu={

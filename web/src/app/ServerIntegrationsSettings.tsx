@@ -5,6 +5,8 @@ import {
   type PendingApp,
   ServerIntegrations,
 } from "../components/ServerIntegrations";
+import { liveText } from "../i18n";
+import { serverIntegrationsText } from "../text/serverIntegrations";
 import {
   type Provider,
   type ProviderId,
@@ -22,6 +24,8 @@ import {
   readIntegrationApps,
 } from "./serverIntegrations";
 import { settingsHref } from "./settingsRoute";
+
+const txt = liveText(serverIntegrationsText);
 
 // The host side of Palvelimen ylläpito › Palvelinintegraatiot. The broker's reply
 // settles a change; the administrator's own catalog, read again after it,
@@ -128,9 +132,7 @@ export function ServerIntegrationsSettings({ csrf }: { csrf?: string }) {
       setProblem({
         provider,
         text:
-          result.kind === "login"
-            ? "Istunto on päättynyt. Kirjaudu uudelleen."
-            : appRefusal(result.code),
+          result.kind === "login" ? txt.sessionEnded : appRefusal(result.code),
       });
     setPending(({ [provider]: _, ...rest }) => rest);
     return result.kind === "login"
@@ -140,27 +142,27 @@ export function ServerIntegrationsSettings({ csrf }: { csrf?: string }) {
   if (!apps)
     return failed ? (
       <div className="s-row" role="alert">
-        Integraatioiden asetuksia ei voitu ladata.
+        {txt.loadFailed}
         <ControlButton size="row" onPress={() => void reload()}>
-          Lataa uudelleen
+          {txt.reload}
         </ControlButton>
       </div>
     ) : (
-      <p className="s-row">Ladataan integraatioita…</p>
+      <p className="s-row">{txt.loading}</p>
     );
   return (
     <>
       {failed && (
         <div className="s-row" role="alert">
-          Tietoja ei voitu päivittää.
+          {txt.refreshFailed}
           <ControlButton size="row" onPress={() => void reload()}>
-            Lataa uudelleen
+            {txt.reload}
           </ControlButton>
         </div>
       )}
       {catalogFailed && (
         <p className="s-row" role="status" data-testid="si-catalog-unknown">
-          Palvelujen tilaa ei voitu lukea.
+          {txt.catalogFailed}
         </p>
       )}
       <ServerIntegrations

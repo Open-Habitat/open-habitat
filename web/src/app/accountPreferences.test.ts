@@ -2,8 +2,14 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import {
+  currentLanguage,
+  resetLanguageForTests,
+  setServerLanguage,
+} from "../i18n";
+import {
   AccountPreferencesProvider,
   chooseEditor,
+  chooseLanguage,
   loadAccountPreferences,
   setExperimentalFeature,
   useEditorChoice,
@@ -14,12 +20,14 @@ const reply = (
   identity: string,
   engine = "vscode",
   experimental: Record<string, true> = {},
+  language = "system",
 ) =>
   new Response(
     JSON.stringify({
       schema_version: 1,
       web_identity_id: identity,
       engine,
+      language,
       experimental,
     }),
     { headers: { "Content-Type": "application/json" } },
@@ -174,4 +182,30 @@ it("keeps a feature off without a session, and ignores ids the browser does not 
   render(feature("wid_unknown", "u"));
   await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
   expect(screen.getByTestId("feature").textContent).toBe("false");
+});
+
+it("puts the interface in the person's confirmed language and back to the server default on System", async () => {
+  resetLanguageForTests("fi");
+  setServerLanguage("fi");
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(reply("wid_language", "codemirror6", {}, "en"))
+    .mockResolvedValueOnce(reply("wid_language", "codemirror6", {}, "system"));
+  vi.stubGlobal("fetch", fetch);
+  render(
+    createElement(AccountPreferencesProvider, {
+      identity: "wid_language",
+      csrf: "language",
+    }),
+  );
+  await waitFor(() => expect(currentLanguage()).toBe("en"));
+  expect(document.documentElement.lang).toBe("en");
+  await act(() => chooseLanguage("wid_language", "system", "language"));
+  expect(fetch.mock.calls[1][1]).toMatchObject({
+    method: "PUT",
+    body: JSON.stringify({ language: "system" }),
+  });
+  expect(currentLanguage()).toBe("fi");
+  expect(document.documentElement.lang).toBe("fi");
+  resetLanguageForTests("fi");
 });

@@ -295,6 +295,20 @@
           "type": "boolean"
         }
       }
+    },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default_language": {
+          "description": "The interface language for people who have not chosen one: system follows each browser (Finnish for a Finnish browser, else English). Omitted means system. An administrator's choice in Settings takes its place; host apply publishes it as oauth.default_language.",
+          "enum": [
+            "system",
+            "fi",
+            "en"
+          ]
+        }
+      }
     }
   },
   "allOf": [

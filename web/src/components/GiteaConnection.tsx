@@ -18,6 +18,10 @@ import {
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import "./Integrations.css";
+import { liveText } from "../i18n";
+import { giteaText } from "../text/gitea";
+
+const txt = liveText(giteaText);
 
 // Gitea in Asetukset › Koodipalvelut (ADR 0031). The connect form is the
 // approved "Lomake" with its error at the top (connect-riff round 2): the
@@ -43,25 +47,14 @@ export type GiteaStage =
     }
   | { stage: "uncertain" };
 
-const apiText: Record<GiteaAPI, string> = {
-  ok: "Tunnus toimii",
-  token_rejected: "Gitea hylkäsi tunnuksen",
-  insufficient_scope: "Tunnukselta puuttuu lukuoikeus",
-  account_mismatch: "Tunnus kuuluu toiselle tilille",
-  unreachable: "Palvelin ei vastaa",
-  tls_untrusted: "Palvelimen varmennetta ei voitu tarkistaa",
-  redirect_refused: "Palvelin ohjasi toiseen osoitteeseen",
-  forbidden_destination: "Osoitteeseen ei voi yhdistää",
-  not_gitea: "Osoitteesta ei vastannut Gitea",
-};
+const apiText = (api: GiteaAPI): string => txt.api[api];
 
 export function giteaAPIText(api: GiteaAPI): string {
-  return apiText[api];
+  return apiText(api);
 }
 
 /** What a read-only token means, wherever the page names one. */
-const readOnlyText =
-  "Vain luku: tunnukselta puuttuu repojen kirjoitusoikeus (write:repository), joten push ei onnistu. Vaihda tilalle tunnus, jolla se on.";
+const readOnlyText = () => txt.readOnly;
 
 /** One tea login: a usable PAT connection with its Git readiness, or one
  * the connector shows but does not use. */
@@ -92,7 +85,7 @@ export function GiteaCard({
       data-git={c.git}
       data-push={check?.api === "ok" ? check.push : undefined}
       className="ig-card"
-      aria-label={`Gitea · ${name || "tea-kirjautuminen"}`}
+      aria-label={`Gitea · ${name || txt.teaLogin}`}
     >
       <div className="ig-acc">
         <span className="ig-mark ig-tone-3" aria-hidden="true">
@@ -100,7 +93,7 @@ export function GiteaCard({
         </span>
         <div>
           <span className="ig-rn">Gitea</span>
-          <span className="ig-meta ah-mono">{name || "tea-kirjautuminen"}</span>
+          <span className="ig-meta ah-mono">{name || txt.teaLogin}</span>
         </div>
         {ok ? (
           <>
@@ -112,7 +105,7 @@ export function GiteaCard({
               onPress={onCheck}
             >
               <Icon name="refresh" />
-              Tarkista
+              {txt.check}
             </ControlButton>
             <ControlButton
               data-testid="gitea-replace"
@@ -121,7 +114,7 @@ export function GiteaCard({
               isDisabled={busy}
               onPress={onReplace}
             >
-              Vaihda tunnus…
+              {txt.replace}
             </ControlButton>
             <ControlButton
               data-testid="gitea-disconnect-open"
@@ -130,7 +123,7 @@ export function GiteaCard({
               isDisabled={busy}
               onPress={onDisconnect}
             >
-              Irrota…
+              {txt.disconnectOpen}
             </ControlButton>
           </>
         ) : null}
@@ -138,11 +131,7 @@ export function GiteaCard({
       {!ok ? (
         <p className="ig-notice" role="status" data-testid="gitea-unsupported">
           <Icon name="warning" />
-          <span>
-            {c.ambiguous
-              ? "tea-asetuksissa on tälle tilille kaksi kirjautumista. Kumpaakaan ei käytetä ennen kuin poistat toisen tealla."
-              : "Tämä tea-kirjautuminen ei käytä pääsytunnusta, joten Habitat ei käytä sitä. Se toimii edelleen tealla."}
-          </span>
+          <span>{c.ambiguous ? txt.ambiguous : txt.noToken}</span>
         </p>
       ) : (
         <div className="ig-svc" data-testid="gitea-git">
@@ -150,15 +139,15 @@ export function GiteaCard({
             <Icon name="branch" />
           </span>
           <div>
-            <span className="ig-rn">Git-repot</span>
+            <span className="ig-rn">{txt.repos}</span>
             <span className="ig-meta">
               {gitReady(c)
                 ? check?.api === "ok" && check.push === "allowed"
-                  ? "Kloonaus, haku ja push käyttävät tätä tunnusta. Myös agenttisi voivat käyttää sitä."
-                  : "Kloonaus ja haku käyttävät tätä tunnusta. Myös agenttisi voivat käyttää sitä."
+                  ? txt.gitPush
+                  : txt.gitFetch
                 : c.git === "foreign"
-                  ? "Git-asetuksissasi on tälle palvelimelle toinen tunnusapuri, joten Habitat ei käytä tunnusta Gitissä."
-                  : "Git ei vielä käytä tätä tunnusta. Kloonaus ei onnistu ennen kuin Git-asetus on kunnossa."}
+                  ? txt.gitForeign
+                  : txt.gitNotYet}
             </span>
             {!gitReady(c) && c.git !== "foreign" ? (
               <ControlButton
@@ -168,7 +157,7 @@ export function GiteaCard({
                 isDisabled={busy}
                 onPress={onRepair}
               >
-                Korjaa Git-asetus
+                {txt.repair}
               </ControlButton>
             ) : null}
           </div>
@@ -179,7 +168,7 @@ export function GiteaCard({
                 data-api={check.api}
                 className={`ig-meta ${check.api === "ok" ? "" : "ig-bad"}`}
               >
-                {apiText[check.api]}
+                {apiText(check.api)}
               </span>
             ) : null}
           </div>
@@ -188,13 +177,12 @@ export function GiteaCard({
       {ok && check?.api === "ok" && check.push === "read_only" ? (
         <p className="ig-notice" role="status" data-testid="gitea-push">
           <Icon name="warning" />
-          <span>{readOnlyText}</span>
+          <span>{readOnlyText()}</span>
         </p>
       ) : null}
       {ok && check?.api === "ok" && check.push === "unknown" ? (
         <p className="ig-p" data-testid="gitea-push">
-          Pushin toimivuutta ei voitu tarkistaa: tililtä ei löytynyt repoa,
-          johon se saa pushata, tai Gitea ei vastannut.
+          {txt.pushUnknown}
         </p>
       ) : null}
     </article>
@@ -262,12 +250,12 @@ export function GiteaDialog({
     if (!replace && !validAddress(normalized)) {
       setLocal({
         field: "server",
-        text: "Anna palvelimen HTTPS-osoite, esimerkiksi https://git.example.org.",
+        text: txt.addressHint,
       });
       return;
     }
     if (!token.trim()) {
-      setLocal({ field: "token", text: "Anna pääsytunnus." });
+      setLocal({ field: "token", text: txt.tokenMissing });
       return;
     }
     setLocal(undefined);
@@ -280,21 +268,18 @@ export function GiteaDialog({
   const title =
     stage.stage === "done"
       ? stage.replaced
-        ? "Tunnus vaihdettu"
-        : "Tili yhdistetty"
+        ? txt.replaced
+        : txt.connected
       : replace
-        ? "Vaihda Gitean pääsytunnus"
-        : "Yhdistä Gitea";
+        ? txt.replaceTitle
+        : txt.connectTitle;
   let body: ReactNode;
   let foot: ReactNode;
   if (stage.stage === "uncertain") {
     body = (
       <p className="ig-result bad" role="alert" data-testid="gitea-uncertain">
         <Icon name="warning" />
-        <span>
-          Yhteys palvelimeen katkesi, eikä tiedetä, tallentuiko muutos. Sivu
-          lukee tilanteen uudelleen; tarkista se ennen kuin yrität uudelleen.
-        </span>
+        <span>{txt.uncertain}</span>
       </p>
     );
     foot = (
@@ -304,7 +289,7 @@ export function GiteaDialog({
         variant="primary"
         onPress={onClose}
       >
-        Sulje
+        {txt.close}
       </ControlButton>
     );
   } else if (stage.stage === "done") {
@@ -332,25 +317,20 @@ export function GiteaDialog({
           >
             <Icon name="warning" />
             <span>
-              {readOnlyText} Kloonaus ja haku toimivat tälläkin tunnuksella.
+              {readOnlyText()} {txt.readOnlyClone}
             </span>
           </p>
         ) : null}
         {gitReady(c) ? (
           <p className="ig-p">
-            Voit nyt valita Giteasta repon uudeksi työtilaksi.
-            {stage.push === "allowed"
-              ? " Push toimii samalla tunnuksella Gitillä."
-              : ""}
+            {txt.canChoose}
+            {stage.push === "allowed" ? txt.pushWorks : ""}
           </p>
         ) : (
           <>
             <p className="ig-result bad" role="alert">
               <Icon name="warning" />
-              <span>
-                Tunnus tallentui, mutta Git ei vielä käytä sitä, joten repoja ei
-                voi kloonata ennen kuin Git-asetus on kunnossa.
-              </span>
+              <span>{txt.savedNotGit}</span>
             </p>
             {c.git !== "foreign" ? (
               <div className="ig-row start">
@@ -360,7 +340,7 @@ export function GiteaDialog({
                   variant="secondary"
                   onPress={() => onRepair(c)}
                 >
-                  Korjaa Git-asetus
+                  {txt.repair}
                 </ControlButton>
               </div>
             ) : null}
@@ -375,7 +355,7 @@ export function GiteaDialog({
         variant="primary"
         onPress={onClose}
       >
-        Valmis
+        {txt.done}
       </ControlButton>
     );
   } else {
@@ -390,16 +370,16 @@ export function GiteaDialog({
       >
         {replace ? (
           <p className="ig-p">
-            Anna tilin <b className="ah-mono">{replace.user}</b> uusi tunnus
-            palvelimelle{" "}
-            <span className="ah-mono">
-              {replace.base_url && host(replace.base_url)}
-            </span>
-            . Vanha jää voimaan, jos Gitea ei hyväksy uutta.
+            {txt.replaceFor(
+              <b className="ah-mono">{replace.user}</b>,
+              <span className="ah-mono">
+                {replace.base_url && host(replace.base_url)}
+              </span>,
+            )}
           </p>
         ) : (
           <label className="s-field" data-field="server">
-            <span>Gitea-palvelimen osoite</span>
+            <span>{txt.address}</span>
             <input
               data-testid="gitea-address"
               className="ah-mono"
@@ -418,7 +398,7 @@ export function GiteaDialog({
           </label>
         )}
         <label className="s-field" data-field="token">
-          <span>Henkilökohtainen pääsytunnus</span>
+          <span>{txt.token}</span>
           <span className="ig-gitea-line">
             <input
               data-testid="gitea-token"
@@ -426,7 +406,7 @@ export function GiteaDialog({
               type={reveal ? "text" : "password"}
               autoComplete="off"
               spellCheck={false}
-              placeholder="Liitä Giteassa luotu tunnus"
+              placeholder={txt.tokenPlaceholder}
               value={token}
               readOnly={busy}
               maxLength={1024}
@@ -436,10 +416,10 @@ export function GiteaDialog({
             <ControlButton
               size="row"
               variant="quiet"
-              aria-label={reveal ? "Piilota tunnus" : "Näytä tunnus"}
+              aria-label={reveal ? txt.hideToken : txt.showToken}
               onPress={() => setReveal((r) => !r)}
             >
-              {reveal ? "Piilota" : "Näytä"}
+              {reveal ? txt.hide : txt.show}
             </ControlButton>
           </span>
         </label>
@@ -450,31 +430,24 @@ export function GiteaDialog({
           aria-expanded={help}
           onPress={() => setHelp((h) => !h)}
         >
-          Mistä saan tunnuksen? {help ? "−" : "+"}
+          {txt.whereToken(help)}
         </ControlButton>
         {help ? (
           <div className="ig-p" data-testid="gitea-token-instructions">
-            <strong>Giteassa: Asetukset → Sovellukset</strong>
+            <strong>{txt.inGitea}</strong>
             <p>
-              Luo uusi pääsytunnus ja anna sille käyttäjätietojen lukuoikeus ja
-              repojen kirjoitusoikeus (<code>read:user</code>,{" "}
-              <code>write:repository</code>). Kirjoitusoikeudella sinä ja
-              agenttisi voitte pushata Gitillä; suojatut haarat ja tilisi
-              oikeudet rajaavat sitä Giteassa kuten ennenkin. Pelkällä
-              lukuoikeudella (<code>read:repository</code>) kloonaus ja haku
-              toimivat, mutta push ei.
+              {txt.scopes((text) => (
+                <code>{text}</code>
+              ))}
             </p>
-            <p>
-              Kopioi tunnus tähän. Sen tarkat oikeusvalinnat riippuvat Gitean
-              versiosta.
-            </p>
+            <p>{txt.copyHere}</p>
           </div>
         ) : null}
         <p className="ig-p" data-testid="gitea-agent-note">
-          Myös agenttisi voivat käyttää yhdistämääsi Gitea-tiliä.
+          {txt.agentNote}
         </p>
         <button type="submit" hidden>
-          Yhdistä
+          {txt.connect}
         </button>
       </form>
     );
@@ -486,7 +459,7 @@ export function GiteaDialog({
           onPress={onClose}
           isDisabled={busy}
         >
-          Peruuta
+          {txt.cancel}
         </ControlButton>
         <ControlButton
           data-testid="gitea-submit"
@@ -495,7 +468,11 @@ export function GiteaDialog({
           isDisabled={busy}
           onPress={submit}
         >
-          {busy ? "Tarkistetaan…" : replace ? "Vaihda tunnus" : "Yhdistä tili"}
+          {busy
+            ? txt.checking
+            : replace
+              ? txt.replaceToken
+              : txt.connectAccount}
         </ControlButton>
       </>
     );
@@ -530,7 +507,7 @@ export function GiteaDialog({
                 size="row"
                 variant="quiet"
                 presentation="icon"
-                aria-label="Sulje"
+                aria-label={txt.close}
                 isDisabled={busy}
                 onPress={onClose}
               >
@@ -589,23 +566,17 @@ export function GiteaDisconnectDialog({
           data-testid="gitea-disconnect-dialog"
           role="alertdialog"
           className="ah-dialog"
-          aria-label="Irrota Gitea-tili"
+          aria-label={txt.disconnectTitle}
         >
           <div className="ig-dh">
-            <Heading slot="title">Irrota Gitea-tili</Heading>
+            <Heading slot="title">{txt.disconnectTitle}</Heading>
           </div>
           <div className="ig-flow">
             <p>
               <b className="ah-mono">{c.user}</b>{" "}
               <span className="ah-mono">{c.base_url && host(c.base_url)}</span>
             </p>
-            <p className="ig-p">
-              Tunnus poistetaan tea-asetuksistasi tällä palvelimella. Kloonatut
-              työtilat jäävät, mutta niiden haku ei enää käytä tätä tunnusta.
-              Tunnus ei peruunnu Giteassa: poista se Gitean asetuksista, jos et
-              enää tarvitse sitä. Agentti, joka jo ehti saada tunnuksen, voi
-              käyttää sitä kunnes poistat sen Giteassa.
-            </p>
+            <p className="ig-p">{txt.disconnectEffect}</p>
             {error ? (
               <p className="ig-result bad" role="alert">
                 <Icon name="warning" />
@@ -619,7 +590,7 @@ export function GiteaDisconnectDialog({
                 isDisabled={busy}
                 onPress={onClose}
               >
-                Peruuta
+                {txt.cancel}
               </ControlButton>
               <ControlButton
                 data-testid="gitea-disconnect-confirm"
@@ -628,7 +599,7 @@ export function GiteaDisconnectDialog({
                 isDisabled={busy}
                 onPress={onConfirm}
               >
-                Irrota
+                {txt.disconnect}
               </ControlButton>
             </div>
           </div>

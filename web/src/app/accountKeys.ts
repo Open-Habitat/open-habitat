@@ -1,6 +1,8 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import schema from "../../../contracts/v1/account-keys.schema.json";
+import { formatDate, textNow } from "../i18n";
+import { accountKeysText } from "../text/accountKeys";
 
 /** The account's public keys as the person's daemon read them from the
  * private files on the account. Nothing here is ever a private key. */
@@ -130,6 +132,8 @@ export function keyDate(iso: string, now = new Date()) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   if (d.toDateString() === now.toDateString())
-    return `tänään klo ${d.toLocaleTimeString("fi-FI", { hour: "numeric", minute: "2-digit" })}`;
+    return textNow(accountKeysText).today(
+      formatDate(d, { hour: "numeric", minute: "2-digit" }),
+    );
   return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
 }

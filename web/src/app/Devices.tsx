@@ -11,6 +11,8 @@ import {
   SessionList,
 } from "../components/DeviceLink";
 import { Button } from "../components/Primitives";
+import { liveText } from "../i18n";
+import { devicesText } from "../text/devices";
 import {
   type BrowserSession,
   cancelLink,
@@ -21,6 +23,8 @@ import {
   listSessions,
   mintLink,
 } from "./deviceLink";
+
+const txt = liveText(devicesText);
 
 /** Settings › Laitteet: show a phone sign-in code, list and end sessions. */
 export function Devices({
@@ -47,8 +51,7 @@ export function Devices({
         }
       })
       .catch(() => {
-        if (!signal?.aborted)
-          setError("Laitteita ei voitu hakea. Yritä uudelleen.");
+        if (!signal?.aborted) setError(txt.listFailed);
       });
   }, []);
   useEffect(() => {
@@ -132,7 +135,7 @@ export function Devices({
       if (phase.kind === "used" && phase.session?.id === target.id)
         setPhase({ kind: "idle" });
     } catch {
-      setError("Uloskirjaus epäonnistui. Yritä uudelleen.");
+      setError(txt.endFailed);
     }
     refresh();
   };
@@ -169,20 +172,20 @@ export function Devices({
         <Modal className="ah-modal ah-logout-modal">
           <AriaDialog className="ah-dialog">
             <Heading slot="title">
-              Kirjataanko {ending ? deviceName(ending) : ""} ulos?
+              {txt.endQuestion(ending ? deviceName(ending) : "")}
             </Heading>
             <div className="ah-dialog-actions">
               <Button
                 data-testid="cancel"
                 size="page"
-                label="Peruuta"
+                label={txt.cancel}
                 variant="secondary"
                 onPress={() => setEnding(undefined)}
               />
               <Button
                 data-testid="device-session-end-confirm"
                 size="page"
-                label="Kirjaa ulos"
+                label={txt.endConfirm}
                 variant="danger"
                 onPress={() => void confirmEnd()}
               />

@@ -1,4 +1,8 @@
 import { useSyncExternalStore } from "react";
+import { liveText } from "../i18n";
+import { refusalsText } from "../text/refusals";
+
+const txt = liveText(refusalsText);
 // The browser's one mutation layer (ADR 0023). Every write names its command
 // here and goes through `mutationFetch`, so its class, its client command id
 // and the reading of its outcome are decided in one place. `MutationLayer`
@@ -195,31 +199,30 @@ export async function writeOutcome(
 
 /** The per-person limit counts only conversations that are doing something;
  * idle ones give their place up (host pi_activity_linux.go). */
-export const capacityReason =
-  "Neljä keskustelua työskentelee jo — odota, että jokin vuoro päättyy, tai pysäytä se.";
+export const capacityReason = () => txt.capacity;
 
 /** Why Pi did not start, from the host's fixed start problem, in words the
  * person can act on; an unknown code still says something true. */
 export function startProblemReason(code: string | undefined): string {
   switch (code) {
     case "capacity_exceeded":
-      return capacityReason;
+      return capacityReason();
     case "history_damaged":
-      return "Keskustelun historiatiedostossa on vioittunut rivi, joten Habitat ei näytä historiaa eikä käynnistä agenttia sen päälle. Tiedosto on tallella muuttamattomana kotihakemistosi .pi/agent/sessions-kansiossa; jatka uudessa keskustelussa tai pyydä agenttia tarkistamaan tiedosto toisessa keskustelussa.";
+      return txt.historyDamaged;
     case "quota_full":
-      return "Tallennustilasi on täynnä, eikä keskeneräistä historiariviä voitu siirtää talteen. Vapauta tilaa ja yritä uudelleen.";
+      return txt.quotaFull;
     case "storage_full":
-      return "Palvelimen levy on täynnä, eikä keskeneräistä historiariviä voitu siirtää talteen. Vapauta tilaa ja yritä uudelleen.";
+      return txt.storageFull;
     case "writer_present":
-      return "Keskustelua kirjoittaa toinen Pi, esimerkiksi päätteessä.";
+      return txt.writerPresent;
     case "read_only_history":
-      return "Keskustelua ei aloitettu selaimesta, joten se on vain luettavissa.";
+      return txt.readOnlyStart;
     case "source_unavailable":
-      return "Pi:n asennusta tai historiaa ei voitu lukea juuri nyt.";
+      return txt.sourceUnavailable;
     case "pi_start_failed":
-      return "Pi pysähtyi käynnistyessään.";
+      return txt.startFailed;
     default:
-      return "Habitat ei voinut varmistaa, ettei keskustelua kirjoiteta muualla.";
+      return txt.startUnknown;
   }
 }
 
@@ -227,59 +230,59 @@ export function startProblemReason(code: string | undefined): string {
 export function refusalReason(code: string, status = 409): string {
   switch (code) {
     case "invalid_attachments":
-      return "Liitteitä ei voitu lukea. Viestiin voi liittää enintään kahdeksan tiedostoa, yhteensä 20 MiB.";
+      return txt.attachments;
     case "capacity_exceeded":
-      return capacityReason;
+      return capacityReason();
     case "workspace_clone_running":
-      return "GitHub-repositorion tuonti tai sen valmistelu on kesken. Odota sen valmistumista ja yritä uudelleen.";
+      return txt.cloneRunning;
     case "workspace_checkout_check_running":
-      return "GitHub-työkopion tarkistus on kesken. Odota hetki ja yritä uudelleen.";
+      return txt.checkoutCheck;
     case "workspace_worktree_create_running":
-      return "Toisen worktree-agentin luonti on kesken. Odota sen valmistumista ja yritä uudelleen.";
+      return txt.worktreeCreate;
     case "workspace_worktree_cleanup_running":
-      return "Worktree-siivous on kesken. Odota sen valmistumista ja yritä uudelleen.";
+      return txt.worktreeCleanup;
     case "workspace_deletion_running":
-      return "Työtilan poisto tai palautus on kesken. Odota sen valmistumista ja yritä uudelleen.";
+      return txt.deletionRunning;
     case "workspace_archive_running":
-      return "Keskustelun arkistointi tai palautus on kesken. Odota hetki ja yritä uudelleen.";
+      return txt.archiveRunning;
     case "workspace_settings_running":
-      return "Työtilan luonti tai asetusten muutos on kesken. Odota hetki ja yritä uudelleen.";
+      return txt.settingsRunning;
     case "workspace_identity_running":
-      return "Git-tekijätietojen tallennus on kesken. Odota hetki ja yritä uudelleen.";
+      return txt.identityRunning;
     case "workspace_publish_running":
-      return "Työtilan julkaisu GitHubiin on kesken. Odota sen valmistumista ja yritä uudelleen.";
+      return txt.publishRunning;
     case "workspace_disconnect_running":
-      return "GitHub-yhteyden katkaisun käsittely on kesken. Odota hetki ja yritä uudelleen.";
+      return txt.disconnectRunning;
     case "workspace_busy":
-      return "Toinen muutos oli juuri kesken. Yritä uudelleen.";
+      return txt.busy;
     case "writer_conflict":
-      return "Agentti kirjoittaa keskustelua toisaalla, esimerkiksi päätteessä.";
+      return txt.writerConflict;
     case "workspace_changed":
     case "control_uncertain":
-      return "Tila muuttui toisaalla. Päivitä tiedot ennen uutta yritystä.";
+      return txt.changed;
     case "workspace_missing":
-      return "Työtilaa ei enää löytynyt.";
+      return txt.workspaceMissing;
     case "workspace_exists":
-      return "Samanniminen työtila on jo olemassa.";
+      return txt.workspaceExists;
     case "workspace_uncertain":
     case "native_source_unavailable":
-      return "Työtilojen tilaa ei voitu lukea varmasti.";
+      return txt.workspaceUncertain;
     case "read_only_history":
-      return "Historia on vain luettavissa.";
+      return txt.readOnly;
     case "history_damaged":
     case "quota_full":
     case "storage_full":
       return startProblemReason(code);
     case "worktree_base_unavailable":
-      return "Työtilassa ei ole haaraa, josta worktree tehtäisiin (irrotettu HEAD tai ei vielä committeja).";
+      return txt.worktreeBase;
     case "worktree_unavailable":
-      return "Worktreetä ja haaraa ei voitu luoda. Tarkista työtilan Git-tila.";
+      return txt.worktreeUnavailable;
     default:
       return status === 403
-        ? "Istunto ei sallinut muutosta. Päivitä sivu tai kirjaudu uudelleen."
+        ? txt.session
         : status === 429
-          ? "Palvelin pyysi odottamaan hetken."
-          : "Palvelin ei hyväksynyt muutosta.";
+          ? txt.wait
+          : txt.refused;
   }
 }
 
@@ -540,11 +543,7 @@ export class MutationLayer {
     if (verdict === "unknown") return false;
     this.uncertain.delete(live.spec.key);
     if (verdict === "reverted")
-      this.problems.set(
-        live.spec.key,
-        live.spec.reverted ??
-          "Muutos ei tallentunut. Aiempi tila palautettiin.",
-      );
+      this.problems.set(live.spec.key, live.spec.reverted ?? txt.reverted);
     return true;
   }
 

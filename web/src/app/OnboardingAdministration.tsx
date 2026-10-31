@@ -19,6 +19,8 @@ import {
   exactName,
   type Since,
 } from "../components/repoCatalog";
+import { liveText } from "../i18n";
+import { onboardingSettingsText } from "../text/onboardingSettings";
 import type { NativeState } from "./CodeHostSettings";
 import { GitHubPlaceNotice } from "./GitHubConnectionNotice";
 import { catalog, GitHubError, lookup, type Repo } from "./github";
@@ -39,6 +41,8 @@ import {
   saveServerOnboarding,
 } from "./onboardingConfig";
 import { settingsHref } from "./settingsRoute";
+
+const txt = liveText(onboardingSettingsText);
 
 // The finder's rows are links (production RepoFinder): picking one routes here
 // with ?lisaa=owner/repo, picking a chosen one again with ?pois=owner/repo.
@@ -151,9 +155,7 @@ function DefaultRepositoryFinder({
   const unchecked = (name: string): LookupView => ({
     state: "unchecked",
     name,
-    reason: fault
-      ? "GitHub-yhteys ei toimi, joten nimeä ei voi tarkistaa."
-      : "GitHub ei vastannut, joten nimeä ei voi tarkistaa.",
+    reason: fault ? txt.githubFault : txt.githubSilent,
     href: `${settingsHref("kayttoonotto")}?${isAdded(name) ? removeParam : addParam}=${encodeURIComponent(name)}`,
     selected: isAdded(name),
   });
@@ -178,16 +180,12 @@ function DefaultRepositoryFinder({
       <Modal className="ah-modal ob-finder-modal">
         <Dialog
           className="ah-dialog ob-finder"
-          aria-label="Lisää oletusrepo"
+          aria-label={txt.addDefault}
           data-testid="onboarding-repository-finder"
         >
           <div className="ob-finder-body">
-            <Heading slot="title">Lisää oletusrepo</Heading>
-            <p className="ob-muted">
-              Näet omat GitHub-repojesi. Uuden henkilön pääsy tarkistetaan hänen
-              omalla tilillään. Valitun repon voi poistaa valitsemalla sen
-              uudelleen.
-            </p>
+            <Heading slot="title">{txt.addDefault}</Heading>
+            <p className="ob-muted">{txt.finderLead}</p>
             <RepoFinder
               arrangement={arrange(repos.list.map(choice), {
                 login: repos.login,
@@ -209,7 +207,7 @@ function DefaultRepositoryFinder({
                   <GitHubPlaceNotice
                     warning={fault}
                     onReconnect={onReconnect}
-                    also="Voit silti lisätä oletusrepon kirjoittamalla sen nimen muodossa omistaja/repo; pääsy tarkistetaan jokaisen uuden henkilön omalla tilillä."
+                    also={txt.typeName}
                   />
                 ) : undefined
               }
@@ -425,17 +423,17 @@ export function OnboardingAdministration({
     return (
       <div className="s-card">
         <div className="s-row" role="alert">
-          Käyttöönoton asetuksia ei voitu ladata.
+          {txt.loadFailed}
           <ControlButton
             size="row"
             onPress={() => void load().catch(() => setLoadError(true))}
           >
-            Lataa uudelleen
+            {txt.reload}
           </ControlButton>
         </div>
       </div>
     );
-  if (!doc) return <p role="status">Ladataan käyttöönoton asetuksia…</p>;
+  if (!doc) return <p role="status">{txt.loading}</p>;
   return (
     <>
       <OnboardingSettings

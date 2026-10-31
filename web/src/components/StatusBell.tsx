@@ -10,6 +10,10 @@ import { Dialog, DialogTrigger, Heading, Popover } from "react-aria-components";
 import { ControlButton, controlClassName } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 import "./StatusBell.css";
+import { liveText } from "../i18n";
+import { statusText } from "../text/status";
+
+const txt = liveText(statusText);
 
 // The top bar's bell (proto-notification-bell, direction Tila): it is there
 // only while an account- or server-wide condition holds, and it says what
@@ -235,7 +239,7 @@ export function StatusBell({ items: given }: { items?: StatusItem[] }) {
             ))
           ) : (
             <p className="ah-bell-empty" data-testid="status-empty">
-              Kaikki kunnossa. Kello katoaa, kun suljet tämän.
+              {txt.allGood}
             </p>
           )}
         </Dialog>

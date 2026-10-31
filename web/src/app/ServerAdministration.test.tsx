@@ -30,6 +30,7 @@ it("renders quota usage, capacity and the bound user's limit", async () => {
               }
             : {
                 schema_version: 1,
+                default_language: "system",
                 default_limit_bytes: 8 * 2 ** 30,
                 name: "Example",
                 users: [{ id: "42", username: "alice", administrator: true }],
@@ -74,6 +75,7 @@ it("saves a trimmed name on blur and keeps the typed text when the save fails", 
     return new Response(
       JSON.stringify({
         schema_version: 1,
+        default_language: "system",
         default_limit_bytes: 1073741824,
         name: writes.length && !fail ? "Example" : "Initial",
         users: [],
@@ -87,7 +89,8 @@ it("saves a trimmed name on blur and keeps the typed text when the save fails", 
     </MemoryRouter>,
   );
   const input = (await screen.findByRole("textbox")) as HTMLInputElement;
-  expect(screen.queryByRole("button")).toBeNull();
+  // The name saves on blur: no save button beside it.
+  expect(screen.queryByRole("button", { name: /tallenna/i })).toBeNull();
   // Leaving the field unchanged writes nothing.
   fireEvent.focus(input);
   fireEvent.blur(input);
@@ -141,6 +144,7 @@ it("does not let typing during a save be overwritten by its reply", async () => 
     return new Response(
       JSON.stringify({
         schema_version: 1,
+        default_language: "system",
         default_limit_bytes: 8 * 1024 ** 3,
         name: writes.length ? "B" : "A",
         users: [],
@@ -180,6 +184,7 @@ it("treats an equivalent default limit as unchanged", async () => {
     return new Response(
       JSON.stringify({
         schema_version: 1,
+        default_language: "system",
         default_limit_bytes: 8 * 1024 ** 3,
         name: "A",
         users: [],
@@ -240,6 +245,7 @@ it("shows healthy storage beside an unavailable account without claiming capacit
               }
             : {
                 schema_version: 1,
+                default_language: "system",
                 default_limit_bytes: 8 * 2 ** 30,
                 name: "Example",
                 users: [
@@ -283,6 +289,7 @@ it("says limits are not in use and offers no limit editing without quotas", asyn
               }
             : {
                 schema_version: 1,
+                default_language: "system",
                 default_limit_bytes: 0,
                 name: "Example",
                 users: [{ id: "42", username: "alice", administrator: true }],

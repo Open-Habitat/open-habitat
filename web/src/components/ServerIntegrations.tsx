@@ -26,6 +26,10 @@ import { Menu } from "./Overlays";
 import { TextField } from "./Primitives";
 import { Badge, StatusMark } from "./Status";
 import "./ServerIntegrations.css";
+import { formatDate, liveText } from "../i18n";
+import { serverIntegrationsText } from "../text/serverIntegrations";
+
+const txt = liveText(serverIntegrationsText);
 
 // Asetukset › Palvelimen ylläpito › Palvelinintegraatiot (proto-server-integrations-
 // setup, round 2 direction 2 "Käytössä vai ei", Google's round 3 direction 2
@@ -149,8 +153,7 @@ const dropboxCreate = "https://www.dropbox.com/developers/apps/create";
 const dropboxApps = "https://www.dropbox.com/developers/apps";
 // The server cannot see how many people have connected nor the app's status,
 // so the rule stays where an administrator returns to: the row's menu.
-const dropboxLimit =
-  "Kehitystila: kun 50 henkilöä on yhdistänyt, hae tuotantotilaa kahden viikon kuluessa.";
+const dropboxLimit = () => txt.dropboxLimit;
 export const fixCommand =
   "sudo open-habitat host apply --site /etc/open-habitat/site.json";
 
@@ -203,22 +206,20 @@ function Mark({ p, s }: { p: ProviderId | AppSection; s: Status }) {
           tone="success"
           // Offered to people, not the administrator's own account
           // (Jari 24.10.2026).
-          label="Tarjolla"
+          label={txt.offered}
         />
       );
     case "needs_app":
-      return <StatusMark data-testid={id} tone="warning" label="Ei tarjolla" />;
+      return (
+        <StatusMark data-testid={id} tone="warning" label={txt.notOffered} />
+      );
     case "tool_missing":
       return (
         <StatusMark
           data-testid={id}
           kind="error"
           tone="danger"
-          label={
-            s.tools.length
-              ? `Ei tarjolla · ${s.tools.join(", ")} puuttuu`
-              : "Ei tarjolla · työkalu puuttuu"
-          }
+          label={txt.toolMissing(s.tools.join(", "))}
         />
       );
     case "set":
@@ -228,17 +229,15 @@ function Mark({ p, s }: { p: ProviderId | AppSection; s: Status }) {
           data-testid={id}
           tone="info"
           animated="running"
-          label="Odottaa palvelinta"
+          label={txt.waiting}
         />
       );
     case "uncertain":
       return (
-        <StatusMark data-testid={id} tone="warning" label="Tila epävarma" />
+        <StatusMark data-testid={id} tone="warning" label={txt.uncertain} />
       );
     default:
-      return (
-        <StatusMark data-testid={id} kind="unknown" label="Tila ei tiedossa" />
-      );
+      return <StatusMark data-testid={id} kind="unknown" label={txt.unknown} />;
   }
 }
 
@@ -247,13 +246,13 @@ function Mark({ p, s }: { p: ProviderId | AppSection; s: Status }) {
 function invalidText(app: IntegrationApp): string {
   switch (invalidApp(app)) {
     case "audience":
-      return `kirjautujiksi on asetettu ${app.tenant_id}, mutta sovellus on nyt yhden organisaation. Anna organisaation Directory (tenant) ID.`;
+      return txt.invalidAudience(app.tenant_id ?? "");
     case "tenant":
-      return "Directory (tenant) ID puuttuu tai on väärän muotoinen.";
+      return txt.invalidTenant;
     case "client":
-      return "client id puuttuu tai on väärän muotoinen.";
+      return txt.invalidClient;
     default:
-      return "palvelimelle kirjoitetut arvot ovat väärän muotoiset.";
+      return txt.invalidValues;
   }
 }
 
@@ -262,7 +261,7 @@ const day = (iso?: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? ""
-    : `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+    : formatDate(d, { day: "numeric", month: "numeric", year: "numeric" });
 };
 
 /** Who set the credentials and when, as the broker recorded it. */
@@ -275,10 +274,10 @@ function AppLine({
 }) {
   const by =
     app.source === "operator"
-      ? "asetettu palvelimella"
+      ? txt.setOnServer
       : app.actor === "root"
-        ? `asetettu palvelimella ${day(app.at)}`
-        : `${day(app.at)} · ${names[app.actor ?? ""] ? `@${names[app.actor ?? ""]}` : `GitHub-id ${app.actor}`}`;
+        ? txt.setOnServerOn(day(app.at))
+        : `${day(app.at)} · ${names[app.actor ?? ""] ? `@${names[app.actor ?? ""]}` : txt.githubId(app.actor ?? "")}`;
   return (
     <span className="si-app" data-testid={`si-app-${app.provider}`}>
       {where[sectionProvider(app.provider)]}
@@ -292,7 +291,7 @@ function AppLine({
       {by}
       {app.provider === "dropbox" && (
         <span className="si-menunote" data-testid="si-limit-note">
-          {dropboxLimit}
+          {dropboxLimit()}
         </span>
       )}
     </span>
@@ -306,7 +305,7 @@ function Copy({ value, label }: { value: string; label: string }) {
       data-testid="si-copy"
       size="row"
       variant="quiet"
-      aria-label={`Kopioi ${label}`}
+      aria-label={txt.copy(label)}
       onPress={() => {
         void navigator.clipboard?.writeText(value).catch(() => {});
         setDone(true);
@@ -359,7 +358,7 @@ const Path = ({
           rel="noreferrer"
           data-testid="si-console-link"
         >
-          Avaa sivu <Icon name="external" />
+          {txt.openPage} <Icon name="external" />
         </ExternalLink>
         {pick && <span className="si-quiet">{pick}</span>}
       </p>
@@ -423,13 +422,13 @@ type Step = {
   values?: ReactNode;
 };
 
-const googleSteps: Step[] = [
+const googleSteps = (): Step[] => [
   {
     id: "apis",
-    title: "API:t",
+    title: txt.apis,
     body: (
       <>
-        <p>Valitse organisaation Google Cloud -projekti ja ota käyttöön:</p>
+        <p>{txt.chooseProject}</p>
         <ul className="si-list">
           {googleAPIs.map(([n]) => (
             <li key={n}>{n}</li>
@@ -441,14 +440,14 @@ const googleSteps: Step[] = [
           rel="noreferrer"
           data-testid="si-console-link"
         >
-          Ota käyttöön Google Cloudissa <Icon name="external" />
+          {txt.enableInGoogle} <Icon name="external" />
         </ExternalLink>
       </>
     ),
   },
   {
     id: "audience",
-    title: "Kohdeyleisö",
+    title: txt.audience,
     body: (
       <>
         <Path
@@ -458,15 +457,14 @@ const googleSteps: Step[] = [
         <Val k="App name" v="Open Habitat" />
         <Val k="Audience" v="Internal" copy={false} />
         <p className="si-effect" data-testid="si-audience">
-          Internal edellyttää Google Workspacea. Vain organisaation tilit voivat
-          yhdistää, eikä Googlen vahvistusta tarvita.
+          {txt.internal}
         </p>
       </>
     ),
   },
   {
     id: "scopes",
-    title: "Käyttöoikeudet",
+    title: txt.scopes,
     body: (
       <>
         <Path
@@ -475,15 +473,15 @@ const googleSteps: Step[] = [
         />
         <div className="si-block" data-testid="si-scopes">
           <pre className="si-cmd">{googleScopes.join("\n")}</pre>
-          <Copy value={googleScopes.join(",")} label="käyttöoikeudet" />
+          <Copy value={googleScopes.join(",")} label={txt.scopesLabel} />
         </div>
       </>
     ),
   },
   {
     id: "client",
-    title: "Asiakas ja tunnukset",
-    console: "Google Cloudissa",
+    title: txt.client,
+    console: txt.inGoogle,
     body: (
       <>
         <Path
@@ -494,54 +492,47 @@ const googleSteps: Step[] = [
         <Val k="Name" v="Open Habitat" />
         <Val
           k="Use this client for an AI-powered agent"
-          v="valittu"
+          v={txt.selected}
           copy={false}
         />
         <p className="si-effect" data-testid="si-agent-client">
-          Tätä asiakasta käyttävät vain agentit. Valinta ei anna lisäoikeuksia,
-          mutta osa Googlen MCP-palveluista hyväksyy vain agentiksi merkityn
-          asiakkaan.
+          {txt.agentClient}
         </p>
         <p className="si-quiet">
-          Ei uudelleenohjausosoitetta. Palvelin käyttää osoitetta{" "}
-          <code>{googleRedirect}</code>.
+          {txt.noRedirect(<code>{googleRedirect}</code>)}
         </p>
-        <p className="si-quiet">
-          Valitse lopuksi <em>Create</em>.
-        </p>
+        <p className="si-quiet">{txt.chooseFinally("Create")}</p>
       </>
     ),
     values: (
-      <p className="si-quiet">
-        Google näyttää ikkunan <em>OAuth client created</em>:
-      </p>
+      <p className="si-quiet">{txt.googleShows("OAuth client created")}</p>
     ),
   },
 ];
 
-const microsoftAppName: Record<keyof typeof microsoftPermissions, string> = {
-  microsoft: "Open Habitat",
-  microsoft_drafts: "Open Habitat – luonnokset",
-  microsoft_read: "Open Habitat – vain luku",
-};
+const microsoftAppName = new Proxy(
+  {} as Record<keyof typeof microsoftPermissions, string>,
+  {
+    get: (_target, section: string) =>
+      section === "microsoft"
+        ? "Open Habitat"
+        : section === "microsoft_drafts"
+          ? txt.appDrafts
+          : section === "microsoft_read"
+            ? txt.appRead
+            : undefined,
+  },
+);
 
 /** An Entra page of the app registered on the first step. */
 const EntraPath = ({ p, app }: { p: string; app: string }) => (
-  <Path
-    p={p}
-    href={entraAppRegistrations}
-    pick={
-      <>
-        Valitse sovellus <em>{app}</em>.
-      </>
-    }
-  />
+  <Path p={p} href={entraAppRegistrations} pick={txt.chooseApp(app)} />
 );
 
 const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
   {
     id: "register",
-    title: "Rekisteröi sovellus",
+    title: txt.register,
     body: (
       <>
         <Path
@@ -549,36 +540,26 @@ const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
           href={entraNewRegistration}
         />
         <p className="si-quiet" data-testid="si-entra-search">
-          Entran yläreunan hakukenttä vie oikealle sivulle: hae{" "}
-          <em>App registrations</em> ja myöhemmin sovelluksen nimellä.
+          {txt.entraSearch("App registrations")}
         </p>
         <Val k="Name" v={microsoftAppName[section]} />
         {section !== "microsoft" && (
           <p className="si-effect" data-testid="si-level-app">
-            Oma sovellus tälle tasolle: Microsoft antaa jokaiselle sovelluksen
-            tunnukselle kaikki sovellukselle hyväksytyt oikeudet, joten taso on
-            raja vain omana sovelluksenaan.
+            {txt.levelApp}
           </p>
         )}
-        <Val
-          k="Supported account types"
-          v="Single tenant only - <organisaatio>"
-          copy={false}
-        />
+        <Val k="Supported account types" v={txt.singleTenant} copy={false} />
         <p className="si-effect" data-testid="si-single-tenant">
-          Vain organisaation työtilit. Henkilökohtaiset Microsoft-tilit eivät
-          voi yhdistää.
+          {txt.workAccounts}
         </p>
-        <p className="si-quiet">
-          Jätä Redirect URI tyhjäksi ja valitse <em>Register</em>.
-        </p>
-        <Role>Vaatii vähintään roolin Application Developer.</Role>
+        <p className="si-quiet">{txt.leaveRedirect("Register")}</p>
+        <Role>{txt.roleDeveloper}</Role>
       </>
     ),
   },
   {
     id: "public",
-    title: "Julkinen asiakas",
+    title: txt.publicClient,
     body: (
       <>
         <EntraPath
@@ -586,10 +567,7 @@ const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
           app={microsoftAppName[section]}
         />
         <Val k="Allow public client flows" v="Enabled" copy={false} />
-        <p className="si-quiet">
-          Valitse <em>Save</em>. Henkilöt kirjautuvat laitekoodilla, joten
-          client secretiä ei luoda.
-        </p>
+        <p className="si-quiet">{txt.deviceCode("Save")}</p>
         <Path p="Authentication › Redirect URI configuration › Add Redirect URI › Mobile and desktop applications" />
         <Val k="Redirect URI" v={microsoftRedirect} />
       </>
@@ -597,7 +575,7 @@ const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
   },
   {
     id: "permissions",
-    title: "Käyttöoikeudet",
+    title: txt.scopes,
     body: (
       <>
         <EntraPath
@@ -610,38 +588,29 @@ const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
           </pre>
           <Copy
             value={microsoftPermissions[section].join(" ")}
-            label="käyttöoikeudet"
+            label={txt.scopesLabel}
           />
         </div>
-        <p className="si-quiet">
-          User.Read on valmiina. Valitse lopuksi <em>Add permissions</em>.
-        </p>
+        <p className="si-quiet">{txt.userRead("Add permissions")}</p>
       </>
     ),
   },
   {
     id: "consent",
-    title: "Hyväksyntä ja tunnukset",
-    console: "Microsoft Entrassa",
+    title: txt.consent,
+    console: txt.inEntra,
     body: (
       <>
-        <EntraPath
-          p="API permissions › Grant admin consent for <organisaatio> › Yes"
-          app={microsoftAppName[section]}
-        />
+        <EntraPath p={txt.grantForOrg} app={microsoftAppName[section]} />
         <p className="si-effect" data-testid="si-consent">
-          Henkilöiltä ei kysytä hyväksyntää. Status-sarakkeessa lukee{" "}
-          <em>Granted for &lt;organisaatio&gt;</em>.
+          {txt.noPrompt(txt.grantedFor)}
         </p>
-        <Role>
-          Vaatii roolin Cloud Application Administrator, Application
-          Administrator tai Privileged Role Administrator.
-        </Role>
+        <Role>{txt.roleAdmin}</Role>
       </>
     ),
     values: (
       <>
-        <p className="si-quiet">Sovelluksen Overview-sivulla:</p>
+        <p className="si-quiet">{txt.overviewPage}</p>
         <Path p="Overview" />
       </>
     ),
@@ -650,15 +619,7 @@ const microsoftSteps = (section: keyof typeof microsoftPermissions): Step[] => [
 
 /** A page of the app created on the first step. */
 const dropboxPath = (p: string, tab: string) => (
-  <Path
-    p={p}
-    href={dropboxApps}
-    pick={
-      <>
-        Valitse sovellus ja välilehti <em>{tab}</em>.
-      </>
-    }
-  />
+  <Path p={p} href={dropboxApps} pick={txt.chooseAppTab(tab)} />
 );
 
 // One App Console page per step. Käyttöoikeudet comes before Asetukset so
@@ -667,7 +628,7 @@ const dropboxPath = (p: string, tab: string) => (
 const dropboxSteps = (appFolder: boolean): Step[] => [
   {
     id: "create",
-    title: "Luo sovellus",
+    title: txt.create,
     body: (
       <>
         <ExternalLink
@@ -676,7 +637,7 @@ const dropboxSteps = (appFolder: boolean): Step[] => [
           rel="noreferrer"
           data-testid="si-console-link"
         >
-          Avaa Dropbox App Console <Icon name="external" />
+          {txt.openDropbox} <Icon name="external" />
         </ExternalLink>
         <Val k="Choose an API" v="Scoped access" copy={false} />
         <Val
@@ -686,76 +647,56 @@ const dropboxSteps = (appFolder: boolean): Step[] => [
         />
         {appFolder ? (
           <p className="si-effect" data-testid="si-app-folder">
-            Tällä tasolla henkilöt synkronoivat vain sovelluksen oman kansion
-            (Apps/&lt;sovelluksen nimi&gt;). Muu Dropbox ei näy agenteille.
+            {txt.appFolder}
           </p>
         ) : (
           <p className="si-effect" data-testid="si-full-dropbox">
-            Henkilöt synkronoivat koko Dropboxinsa, joten App folder ei riitä.
+            {txt.fullDropbox}
           </p>
         )}
         <Val
           k="Name your app"
-          v={
-            appFolder
-              ? "Open Habitat <organisaatio> sovelluskansio"
-              : "Open Habitat <organisaatio>"
-          }
+          v={appFolder ? txt.dropboxNameFolder : txt.dropboxName}
           copy={false}
         />
-        <p className="si-quiet">
-          Nimen on oltava yksilöllinen, eikä siinä saa olla sanaa Dropbox.
-          Valitse <em>Create app</em>.
-        </p>
-        <Role>
-          Sovellus kuuluu tilille, jolla luot sen. Käytä organisaation yhteistä
-          Dropbox-tiliä.
-        </Role>
+        <p className="si-quiet">{txt.uniqueName("Create app")}</p>
+        <Role>{txt.dropboxOwner}</Role>
       </>
     ),
   },
   {
     id: "permissions",
-    title: "Käyttöoikeudet",
+    title: txt.scopes,
     body: (
       <>
         {dropboxPath("Permissions", "Permissions")}
         <div className="si-block" data-testid="si-permissions">
           <pre className="si-cmd">{dropboxScopes.join("\n")}</pre>
-          <Copy value={dropboxScopes.join(" ")} label="käyttöoikeudet" />
+          <Copy value={dropboxScopes.join(" ")} label={txt.scopesLabel} />
         </div>
-        <p className="si-quiet">
-          account_info.read on valmiina. Löydät muut selaimen haulla (Ctrl+F tai
-          ⌘F). Valitse lopuksi <em>Submit</em>.
-        </p>
-        <p className="si-quiet">
-          Myöhempi muutos ei koske jo yhdistettyjä tilejä.
-        </p>
+        <p className="si-quiet">{txt.dropboxScopes("Submit")}</p>
+        <p className="si-quiet">{txt.laterChange}</p>
       </>
     ),
   },
   {
     id: "settings",
-    title: "Asetukset ja tunnukset",
-    console: "Dropbox App Consolessa",
+    title: txt.settingsStep,
+    console: txt.inDropbox,
     body: (
       <>
         {dropboxPath("Settings › OAuth 2 › Redirect URIs", "Settings")}
         <Val k="Redirect URI" v={dropboxRedirect} />
-        <p className="si-quiet">
-          Valitse <em>Add</em>. Osoitteen on oltava täsmälleen tämä, kauttaviiva
-          mukaan.
-        </p>
+        <p className="si-quiet">{txt.exactAddress("Add")}</p>
         <Path p="Settings › Development users › Enable additional users" />
         <p className="si-effect" data-testid="si-additional-users">
-          Uusi sovellus on kehitystilassa (Development), ja ilman tätä vain
-          sovelluksen omistaja voi yhdistää.
+          {txt.additionalUsers}
         </p>
       </>
     ),
     values: (
       <>
-        <p className="si-quiet">Samalla Settings-sivulla ylempänä:</p>
+        <p className="si-quiet">{txt.sameSettings}</p>
         <Path p="Settings › App key, App secret (Show)" />
       </>
     ),
@@ -772,15 +713,10 @@ function existing(section: AppSection): ReactNode {
           <Path
             p="Google Auth platform › Clients › Open Habitat › Add secret"
             href={`${googleAuth}/clients`}
-            pick={
-              <>
-                Valitse asiakas <em>Open Habitat</em>.
-              </>
-            }
+            pick={txt.chooseClient("Open Habitat")}
           />
           <p className="si-quiet" data-testid="si-new-secret">
-            Google ei näytä vanhaa salaisuutta uudelleen. Lisää asiakkaalle uusi
-            ja kopioi se ikkunasta.
+            {txt.newSecret}
           </p>
         </>
       );
@@ -803,7 +739,7 @@ function existing(section: AppSection): ReactNode {
 function guide(section: AppSection): Step[] {
   switch (section) {
     case "google":
-      return googleSteps;
+      return googleSteps();
     case "dropbox":
     case "dropbox_app_folder":
       return dropboxSteps(section === "dropbox_app_folder");
@@ -818,14 +754,13 @@ const sectionName = (section: AppSection) => {
     (l) => l.section === section,
   )?.level;
   return level
-    ? `${name(provider)}, taso ${levelName(provider, level)}`
+    ? txt.levelOf(name(provider), levelName(provider, level))
     : name(provider);
 };
-const skipLabel: Record<AppProvider, string> = {
-  google: "Minulla on jo asiakas",
-  microsoft: "Minulla on jo sovellus",
-  dropbox: "Minulla on jo sovellus",
-};
+const skipLabel = new Proxy({} as Record<AppProvider, string>, {
+  get: (_target, provider: string) =>
+    provider === "google" ? txt.haveClient : txt.haveApp,
+});
 
 /** The provider's two fields; a replace keeps the client id and asks only
  * for the new secret. */
@@ -917,14 +852,14 @@ function ConsentLink({
       data-filled={ok || undefined}
     >
       <span className="si-quiet">
-        Jos rooli puuttuu, lähetä linkki sille, jolla se on.
-        {!ok && " Linkki täyttyy, kun arvot on liitetty."}
+        {txt.ifNoRole}
+        {!ok && txt.linkFills}
       </span>
       <div className="si-block">
         <pre className="si-cmd" data-template={!ok || undefined}>
           {url}
         </pre>
-        {ok && <Copy value={url} label="hyväksyntälinkki" />}
+        {ok && <Copy value={url} label={txt.consentLink} />}
       </div>
     </div>
   );
@@ -961,7 +896,7 @@ export function AppSetupDialog({
   const provider = sectionProvider(section);
   const enter: Step = {
     id: "enter",
-    title: replace ? "Uusi salaisuus" : "Tunnukset",
+    title: replace ? txt.newSecretTitle : txt.credentials,
     body: null,
     values: replace ? (
       <>
@@ -970,8 +905,7 @@ export function AppSetupDialog({
           href={`${googleAuth}/clients/${encodeURIComponent(replace.client_id ?? "")}`}
         />
         <p className="si-quiet" data-testid="si-replace-effect">
-          Yhdistetyt tilit käyttävät vanhaa salaisuutta, kunnes poistat sen
-          Googlessa. Sen jälkeen niiden täytyy kirjautua uudelleen.
+          {txt.replaceEffect}
         </p>
       </>
     ) : (
@@ -1015,15 +949,12 @@ export function AppSetupDialog({
       {provider === "google" && (
         <p className="si-warn" data-testid="si-secret-once">
           <Icon name="warning" />
-          <span>
-            Google näyttää salaisuuden vain tässä ikkunassa. Liitä se ennen kuin
-            suljet ikkunan.
-          </span>
+          <span>{txt.secretOnce}</span>
         </p>
       )}
       {provider === "microsoft" && (
         <p className="si-quiet" data-testid="si-no-secret">
-          Salaisuutta ei tarvita.
+          {txt.noSecret}
         </p>
       )}
       {split && provider === "microsoft" && (
@@ -1037,7 +968,7 @@ export function AppSetupDialog({
       )}
     </>
   );
-  const title = `${sectionName(section)}: ${replace ? "vaihda tunnukset" : "aseta tunnukset"}`;
+  const title = txt.setupTitle(sectionName(section), !!replace);
   return (
     <Modalish
       testId="si-setup-dialog"
@@ -1052,7 +983,7 @@ export function AppSetupDialog({
             className="si-progress"
             data-testid="si-progress"
             role="img"
-            aria-label={`Vaihe ${i + 1}/${steps.length}`}
+            aria-label={txt.stepOf(i + 1, steps.length)}
           >
             {steps.map((s, j) => (
               <span
@@ -1082,7 +1013,7 @@ export function AppSetupDialog({
               {step.body}
             </div>
             <div className="si-col si-get" data-testid="si-get">
-              <p className="si-side">Tähän</p>
+              <p className="si-side">{txt.here}</p>
               {entry}
             </div>
           </div>
@@ -1122,7 +1053,7 @@ export function AppSetupDialog({
               } else setAt(i - 1);
             }}
           >
-            Takaisin
+            {txt.back}
           </ControlButton>
         ) : (
           <ControlButton
@@ -1131,7 +1062,7 @@ export function AppSetupDialog({
             isDisabled={saving}
             onPress={onClose}
           >
-            Peruuta
+            {txt.cancel}
           </ControlButton>
         )}
         {last ? (
@@ -1142,7 +1073,7 @@ export function AppSetupDialog({
             isDisabled={saving}
             onPress={() => void submit()}
           >
-            {saving ? "Odottaa palvelinta…" : "Tallenna"}
+            {saving ? txt.savingWait : txt.save}
           </ControlButton>
         ) : (
           <ControlButton
@@ -1151,7 +1082,7 @@ export function AppSetupDialog({
             variant="primary"
             onPress={() => setAt(i + 1)}
           >
-            Seuraava
+            {txt.next}
           </ControlButton>
         )}
       </div>
@@ -1175,17 +1106,17 @@ function RemoveDialog({
     return (
       <Modalish
         testId="si-remove-dialog"
-        title={`Poistetaanko tason tunnukset (${sectionName(section)})?`}
+        title={txt.removeLevelTitle(sectionName(section))}
         onClose={onClose}
       >
         <ul className="si-consequences">
-          <li>Tasoa ei voi enää valita yhdistettäessä.</li>
-          <li>Tällä tasolla yhdistetyt tilit eivät voi kirjautua uudelleen.</li>
+          <li>{txt.levelGone}</li>
+          <li>{txt.levelRelogin}</li>
         </ul>
         <div className="si-foot">
           <span className="si-grow" />
           <ControlButton size="row" variant="secondary" onPress={onClose}>
-            Peruuta
+            {txt.cancel}
           </ControlButton>
           <ControlButton
             data-testid="si-remove-confirm"
@@ -1196,7 +1127,7 @@ function RemoveDialog({
               onClose();
             }}
           >
-            Poista tunnukset
+            {txt.removeCredentials}
           </ControlButton>
         </div>
       </Modalish>
@@ -1204,29 +1135,27 @@ function RemoveDialog({
   return (
     <Modalish
       testId="si-remove-dialog"
-      title={`Poistetaanko ${name(provider)}-tunnukset?`}
+      title={txt.removeTitle(name(provider))}
       onClose={onClose}
     >
       <ul className="si-consequences">
-        <li>Uusia tilejä ei voi yhdistää.</li>
-        <li>Yhdistetyt tilit eivät voi kirjautua uudelleen.</li>
+        <li>{txt.noNew}</li>
+        <li>{txt.noRelogin}</li>
         {/* The daemon supervises sync only while the integration is usable. */}
         {provider === "dropbox" && (
-          <li data-testid="si-sync-stops">
-            Yhdistettyjen tilien synkronointi pysähtyy.
-          </li>
+          <li data-testid="si-sync-stops">{txt.syncStops}</li>
         )}
-        {step && <li>Käyttöönoton vaihe piilotetaan.</li>}
+        {step && <li>{txt.stepHidden}</li>}
       </ul>
       {provider !== "google" && (
         <p className="si-quiet" data-testid="si-remove-other">
-          Toisen sovelluksen voi asettaa poiston jälkeen.
+          {txt.otherLater}
         </p>
       )}
       <div className="si-foot">
         <span className="si-grow" />
         <ControlButton size="row" variant="secondary" onPress={onClose}>
-          Peruuta
+          {txt.cancel}
         </ControlButton>
         <ControlButton
           data-testid="si-remove-confirm"
@@ -1237,7 +1166,7 @@ function RemoveDialog({
             onClose();
           }}
         >
-          Poista tunnukset
+          {txt.removeCredentials}
         </ControlButton>
       </div>
     </Modalish>
@@ -1256,18 +1185,18 @@ function FixDialog({
   return (
     <Modalish
       testId="si-fix-dialog"
-      title={`${name(provider)}: ${tools.length ? tools.join(", ") : "työkalu"} puuttuu`}
+      title={txt.fixTitle(name(provider), tools.join(", "))}
       onClose={onClose}
     >
-      <p>Aja palvelimella:</p>
+      <p>{txt.runOnServer}</p>
       <div className="si-block" data-testid="si-fix-command">
         <pre className="si-cmd">{fixCommand}</pre>
-        <Copy value={fixCommand} label="komento" />
+        <Copy value={fixCommand} label={txt.command} />
       </div>
       <div className="si-foot">
         <span className="si-grow" />
         <ControlButton size="page" variant="primary" onPress={onClose}>
-          Sulje
+          {txt.close}
         </ControlButton>
       </div>
     </Modalish>
@@ -1319,13 +1248,12 @@ export function ServerIntegrations({
       data-browser-setup={apps.browser_setup}
     >
       <p className="s-row s-desc" data-testid="si-connect-note">
-        Tarjolla olevat palvelut jokainen yhdistää itse kohdassa Asetukset ›
-        Tiedot agenteille.
+        {txt.connectNote}
       </p>
       {!apps.browser_setup && (
         <p className="s-row si-note" data-testid="si-setup-off">
           <Icon name="info" />
-          Tunnusten asetus selaimesta on poissa käytöstä palvelimen asetuksissa.
+          {txt.setupOff}
         </p>
       )}
       <ul className="si-rows" data-testid="si-rows">
@@ -1361,7 +1289,7 @@ export function ServerIntegrations({
                       data-testid={`si-step-${p}`}
                       data-hidden={hidden || undefined}
                       href={onboardingHref}
-                      aria-label={`Käyttöönotto: ${name(p)}-vaihe${hidden ? ", piilossa" : ""}`}
+                      aria-label={txt.onboardingStep(name(p), hidden)}
                       onClick={(e) => {
                         if (
                           !onOpenOnboarding ||
@@ -1378,9 +1306,7 @@ export function ServerIntegrations({
                     >
                       <Badge
                         label={
-                          hidden
-                            ? "Käyttöönotossa · piilossa"
-                            : "Käyttöönotossa"
+                          hidden ? txt.inOnboardingHidden : txt.inOnboarding
                         }
                         tone={hidden ? "warning" : "neutral"}
                       />
@@ -1389,7 +1315,7 @@ export function ServerIntegrations({
                   {app && !pending[p] && invalidApp(app) && (
                     <span className="si-bad" data-testid={`si-invalid-${p}`}>
                       <Icon name="warning" />
-                      Tunnukset eivät kelpaa: {invalidText(app)}
+                      {txt.invalid} {invalidText(app)}
                     </span>
                   )}
                   {problem?.provider === p && !pending[p] && (
@@ -1411,7 +1337,7 @@ export function ServerIntegrations({
                       onPress={onRefresh}
                     >
                       <Icon name="refresh" />
-                      Päivitä
+                      {txt.refresh}
                     </ControlButton>
                   ) : s.kind === "tool_missing" ? (
                     <ControlButton
@@ -1422,7 +1348,7 @@ export function ServerIntegrations({
                         setOpen({ kind: "fix", provider: p, tools: s.tools })
                       }
                     >
-                      Korjaa…
+                      {txt.fix}
                     </ControlButton>
                   ) : s.kind === "needs_app" && isAppProvider(p) ? (
                     <ControlButton
@@ -1432,13 +1358,13 @@ export function ServerIntegrations({
                       isDisabled={locked}
                       onPress={() => setOpen({ kind: "setup", provider: p })}
                     >
-                      Aseta tunnukset…
+                      {txt.setCredentials}
                     </ControlButton>
                   ) : s.kind === "ready" && app && isAppProvider(p) ? (
                     <span data-testid={`si-menu-${p}`}>
                       <Menu
-                        label={`${name(p)}: tunnukset`}
-                        trigger={<span>Tunnukset</span>}
+                        label={txt.credentialsOf(name(p))}
+                        trigger={<span>{txt.credentialsMenu}</span>}
                         placement="bottom end"
                         heading={<AppLine app={app} names={names} />}
                         items={[
@@ -1446,7 +1372,7 @@ export function ServerIntegrations({
                             ? [
                                 {
                                   id: "apis",
-                                  label: "Ota API:t käyttöön Google Cloudissa",
+                                  label: txt.enableApis,
                                 },
                               ]
                             : []),
@@ -1454,12 +1380,11 @@ export function ServerIntegrations({
                             ? [
                                 {
                                   id: "replace",
-                                  label: "Vaihda tunnukset…",
+                                  label: txt.replaceCredentials,
                                   availability: locked
                                     ? {
                                         state: "disabled" as const,
-                                        reason:
-                                          "Asetus selaimesta pois käytöstä",
+                                        reason: txt.setupDisabled,
                                       }
                                     : undefined,
                                 },
@@ -1467,12 +1392,12 @@ export function ServerIntegrations({
                             : []),
                           {
                             id: "remove",
-                            label: "Poista tunnukset…",
+                            label: txt.removeCredentialsMenu,
                             danger: true,
                             availability: locked
                               ? {
                                   state: "disabled" as const,
-                                  reason: "Asetus selaimesta pois käytöstä",
+                                  reason: txt.setupDisabled,
                                 }
                               : undefined,
                           },
@@ -1512,7 +1437,7 @@ export function ServerIntegrations({
                     <span className="si-level-indent" aria-hidden="true" />
                     <span className="si-main">
                       <span className="si-name">
-                        Taso: {levelName(p, level)}
+                        {txt.level(levelName(p, level))}
                       </span>
                       {levelApp &&
                         !pending[section] &&
@@ -1522,7 +1447,7 @@ export function ServerIntegrations({
                             data-testid={`si-invalid-${section}`}
                           >
                             <Icon name="warning" />
-                            Tunnukset eivät kelpaa: {invalidText(levelApp)}
+                            {txt.invalid} {invalidText(levelApp)}
                           </span>
                         )}
                       {problem?.provider === section && !pending[section] && (
@@ -1538,7 +1463,7 @@ export function ServerIntegrations({
                         // people see it greyed out, not the provider gone.
                         <StatusMark
                           data-testid={`si-status-${section}`}
-                          label="Ei käytössä"
+                          label={txt.notInUse}
                         />
                       ) : (
                         <Mark p={section} s={ls} />
@@ -1553,24 +1478,24 @@ export function ServerIntegrations({
                           onPress={onRefresh}
                         >
                           <Icon name="refresh" />
-                          Päivitä
+                          {txt.refresh}
                         </ControlButton>
                       ) : levelApp ? (
                         <span data-testid={`si-menu-${section}`}>
                           <Menu
-                            label={`${sectionName(section)}: tunnukset`}
+                            label={txt.credentialsOf(sectionName(section))}
                             trigger={<span>Tunnukset</span>}
                             placement="bottom end"
                             heading={<AppLine app={levelApp} names={names} />}
                             items={[
                               {
                                 id: "remove",
-                                label: "Poista tunnukset…",
+                                label: txt.removeCredentialsMenu,
                                 danger: true,
                                 availability: locked
                                   ? {
                                       state: "disabled" as const,
-                                      reason: "Asetus selaimesta pois käytöstä",
+                                      reason: txt.setupDisabled,
                                     }
                                   : undefined,
                               },
@@ -1590,7 +1515,7 @@ export function ServerIntegrations({
                             setOpen({ kind: "setup", provider: section })
                           }
                         >
-                          Aseta tunnukset…
+                          {txt.setCredentials}
                         </ControlButton>
                       ) : null}
                     </span>

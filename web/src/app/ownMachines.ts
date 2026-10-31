@@ -1,6 +1,10 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import schema from "../../../contracts/v1/own-machines.schema.json";
+import { formatDate, liveText } from "../i18n";
+import { ownMachinesText } from "../text/ownMachines";
+
+const txt = liveText(ownMachinesText);
 
 /** Omat koneet as the person's daemon reads it: their own Tailscale node,
  * the devices Tailscale lists, and the machines in their SSH configuration.
@@ -174,47 +178,53 @@ export function osLabel(os?: string) {
 /** "28.11.2026" from "2026-11-28". */
 export function fiDate(date: string) {
   const [y, m, d] = date.split("-").map(Number);
-  return y && m && d ? `${d}.${m}.${y}` : date;
+  return y && m && d
+    ? formatDate(new Date(y, m - 1, d), {
+        day: "numeric",
+        month: "numeric",
+        year: "numeric",
+      })
+    : date;
 }
 
 /** A last-seen time as "3 pv sitten", "2 h sitten" or "juuri". */
 export function seenAgo(iso: string | undefined, now = new Date()) {
-  if (!iso) return "ei tiedossa";
+  if (!iso) return txt.unknown;
   const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return "ei tiedossa";
+  if (Number.isNaN(t)) return txt.unknown;
   const minutes = Math.max(0, Math.round((now.getTime() - t) / 60000));
-  if (minutes < 2) return "juuri";
-  if (minutes < 120) return `${minutes} min sitten`;
+  if (minutes < 2) return txt.justNow;
+  if (minutes < 120) return txt.minutesAgo(minutes);
   const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours} h sitten`;
-  return `${Math.round(hours / 24)} pv sitten`;
+  if (hours < 48) return txt.hoursAgo(hours);
+  return txt.daysAgo(Math.round(hours / 24));
 }
 
 /** The person's own computers: what an action refused means for them. */
 export function ownMachinesRefusal(code: string) {
   switch (code) {
     case "tailscale_unavailable":
-      return "Tämä palvelin ei tarjoa Tailscalea.";
+      return txt.errors.tailscale_unavailable;
     case "user_manager_unavailable":
-      return "Tilisi palveluita ei voitu käynnistää tällä palvelimella. Palvelimen ylläpitäjä voi korjata sen.";
+      return txt.errors.services_unavailable;
     case "tailscale_not_connected":
-      return "Habitat ei ole yhdistetty Tailscale-verkkoosi.";
+      return txt.errors.tailscale_off;
     case "unknown_peer":
-      return "Konetta ei enää ole Tailscale-verkossasi.";
+      return txt.errors.peer_missing;
     case "unknown_machine":
-      return "Konetta ei enää ole Habitatissa.";
+      return txt.errors.machine_missing;
     case "machine_exists":
-      return "Kone on jo lisätty.";
+      return txt.errors.machine_exists;
     case "too_many_machines":
-      return "Koneita on jo enimmäismäärä.";
+      return txt.errors.too_many;
     case "account_key_unusable":
-      return "Tilin SSH-avainta ~/.ssh/id_ed25519 ei voitu käyttää. Jos se on suojattu salasanalla, Habitat ei voi käyttää sitä.";
+      return txt.errors.key_unusable;
     case "host_key_mismatch":
-      return "Kone näytti nyt eri tunnisteen kuin vertasit. Mitään ei tallennettu.";
+      return txt.errors.host_key_mismatch;
     case "own_machines_busy":
-      return "Toinen muutos on kesken. Odota hetki.";
+      return txt.errors.busy;
     default:
-      return "Pyyntö ei onnistunut. Yritä uudelleen.";
+      return txt.errors.failed;
   }
 }
 

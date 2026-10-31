@@ -7,6 +7,8 @@ import {
   type GitLabTokenView,
 } from "../components/GitLabConnection";
 import type { GitLabIntent } from "../components/Integrations";
+import { liveText } from "../i18n";
+import { gitlabText } from "../text/gitlab";
 import {
   connectGitLab,
   type GitLabAPI,
@@ -18,99 +20,45 @@ import {
 } from "./gitlab";
 import { type IntegrationList, Refused } from "./integrations";
 
+const txt = liveText(gitlabText);
+
 // The GitLab part of the integrations page: the connect dialog, the cards'
 // actions and what GitLab says about each token now, for the page that
 // shows the GitLab tile (Asetukset › Koodipalvelut). Kept beside the page
 // rather than in it so the Gitea flow and this one stay readable apart.
 
 /** A refused GitLab write wrote nothing; the field says where to look. */
-const refusals: Record<string, [GitLabField, string]> = {
-  invalid_address: [
-    "server",
-    "Anna GitLabin HTTPS-osoite, esimerkiksi https://gitlab.com tai https://gitlab.yritys.fi.",
-  ],
-  forbidden_destination: [
-    "server",
-    "Tähän osoitteeseen ei voi yhdistää. Anna GitLab-palvelimen oma osoite.",
-  ],
-  unreachable: [
-    "server",
-    "Palvelin ei vastaa. Tarkista osoite. Jos GitLab on yrityksen sisäverkossa, tämän palvelimen ylläpitäjän pitää sallia yhteys sinne.",
-  ],
-  tls_untrusted: [
-    "server",
-    "Palvelimen varmennetta ei voitu tarkistaa, eikä Habitat ohita tarkistusta. Jos GitLab käyttää yrityksen omaa varmentajaa, tämän palvelimen ylläpitäjä voi lisätä sen luotettaviin.",
-  ],
-  redirect_refused: [
-    "server",
-    "Palvelin ohjasi toiseen osoitteeseen. Anna GitLabin lopullinen osoite.",
-  ],
-  not_gitlab: [
-    "server",
-    "Osoitteesta ei vastannut GitLab. Anna sama osoite, jolla avaat GitLabin selaimessa, esimerkiksi https://gitlab.yritys.fi.",
-  ],
-  invalid_token: [
-    "token",
-    "Tunnus ei kelpaa. Liitä GitLabissa luotu tunnus sellaisenaan.",
-  ],
-  token_rejected: [
-    "token",
-    "GitLab hylkäsi tunnuksen. Se voi olla peruttu tai kopioitu vajaana.",
-  ],
-  token_expired: [
-    "token",
-    "Tunnus on vanhentunut. Luo GitLabissa uusi tunnus ja liitä se tähän.",
-  ],
-  insufficient_scope: [
-    "token",
-    "Tunnukselta puuttuu read_api-oikeus, joten Habitat ei näe projektejasi. Luo tunnus oikeuksilla read_api ja write_repository.",
-  ],
-  account_mismatch: [
-    "token",
-    "Tunnus kuuluu toiselle GitLab-tilille kuin tämä yhteys.",
-  ],
-  connection_exists: [
-    "server",
-    "Tällä palvelimella on jo yhdistetty tili, tai sama tunnus on jo käytössä. glab pitää yhden tilin palvelinta kohden: vaihda sen tunnus tai irrota se ensin.",
-  ],
-  unsupported_entry: [
-    "server",
-    "glab-asetuksissasi on tälle palvelimelle asetuksia, joita Habitat ei käytä (esimerkiksi varmenteen tarkistuksen ohitus tai välityspalvelin). Poista ne glabin asetuksista ja yritä uudelleen.",
-  ],
-  native_conflict: [
-    "form",
-    "glab-asetuksissa on tälle palvelimelle kaksi merkintää. Poista toinen ja yritä uudelleen.",
-  ],
-  native_busy: [
-    "form",
-    "glab muuttaa asetuksiaan juuri nyt. Yritä hetken päästä uudelleen.",
-  ],
-  write_failed: [
-    "form",
-    "glab-asetuksia ei voitu tallentaa. Mitään ei muutettu.",
-  ],
-  connection_changed: ["form", "Yhteys on muuttunut. Sivu päivitetään."],
-  provider_unavailable: [
-    "form",
-    "GitLab ei ole käytettävissä tällä palvelimella.",
-  ],
-};
+const refusals = (): Record<string, [GitLabField, string]> => ({
+  invalid_address: ["server", txt.addressHint],
+  forbidden_destination: ["server", txt.e_forbidden],
+  unreachable: ["server", txt.e_unreachable],
+  tls_untrusted: ["server", txt.e_tls],
+  redirect_refused: ["server", txt.e_redirect],
+  not_gitlab: ["server", txt.e_notGitlab],
+  invalid_token: ["token", txt.e_token],
+  token_rejected: ["token", txt.e_rejected],
+  token_expired: ["token", txt.e_expired],
+  insufficient_scope: ["token", txt.e_scope],
+  account_mismatch: ["token", txt.e_account],
+  connection_exists: ["server", txt.e_exists],
+  unsupported_entry: ["server", txt.e_insecure],
+  native_conflict: ["form", txt.e_ambiguous],
+  native_busy: ["form", txt.e_busyGlab],
+  write_failed: ["form", txt.e_write],
+  connection_changed: ["form", txt.e_changed],
+  provider_unavailable: ["form", txt.e_unavailable],
+});
 const refusal = (code: string): { field: GitLabField; text: string } => {
-  const [field, text] = refusals[code] ?? [
-    "form",
-    "Pyyntöä ei hyväksytty. Mitään ei muutettu.",
-  ];
+  const [field, text] = refusals()[code] ?? ["form", txt.e_refused];
   return { field, text };
 };
-const actionRefusals: Record<string, string> = {
-  clone_running:
-    "Tämän yhteyden kloonaus on käynnissä. Keskeytä se tai odota sen valmistumista ja yritä sitten uudelleen.",
-  helper_conflict:
-    "Git-asetuksissasi on tälle palvelimelle jo toinen tunnusapuri. Habitat ei kirjoita sen päälle.",
-  connection_changed: "Yhteys on muuttunut. Sivu päivitetään.",
-  native_busy: "Toinen muutos on kesken. Yritä hetken päästä uudelleen.",
-  unsupported_entry: "Tätä glab-kirjautumista ei voi muuttaa täältä.",
-};
+const actionRefusals = (): Record<string, string> => ({
+  clone_running: txt.e_cloning,
+  helper_conflict: txt.e_foreign,
+  connection_changed: txt.e_changed,
+  native_busy: txt.e_busy,
+  unsupported_entry: txt.e_glabOnly,
+});
 
 export type GitLabSettings = {
   /** The overview's GitLab props. */
@@ -305,9 +253,8 @@ export function useGitLabSettings({
       if (!current(sent)) return;
       setNotice(
         e instanceof Refused
-          ? (actionRefusals[e.code] ??
-              "Pyyntöä ei hyväksytty. Mitään ei muutettu.")
-          : "Vastausta ei saatu. Sivu päivitetään; tarkista tila ennen kuin yrität uudelleen.",
+          ? (actionRefusals()[e.code] ?? txt.e_refused)
+          : txt.e_noReply,
       );
     } finally {
       if (alive.current) setBusy(false);
@@ -332,15 +279,11 @@ export function useGitLabSettings({
       if (e instanceof Refused)
         setRemoving({
           connection: target,
-          error:
-            actionRefusals[e.code] ??
-            "Pyyntöä ei hyväksytty. Mitään ei muutettu.",
+          error: actionRefusals()[e.code] ?? txt.e_refused,
         });
       else {
         setRemoving(undefined);
-        setNotice(
-          "Irrotuksen tulosta ei saatu. Sivu päivitetään; tarkista tila ennen kuin yrität uudelleen.",
-        );
+        setNotice(txt.e_noDisconnectReply);
       }
     } finally {
       void load();

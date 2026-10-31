@@ -44,6 +44,7 @@ for path in SCHEMA_FILES:
 
 checks = {
     "account-preferences.json": "account-preferences.schema.json",
+    "site-language.json": "site-language.schema.json",
     "account-keys.json": "account-keys.schema.json",
     "account-keys-none.json": "account-keys.schema.json",
     "own-machines.json": "own-machines.schema.json",
@@ -239,12 +240,17 @@ def must_reject(schema: str, instance: object) -> None:
         return
     raise AssertionError(f"{schema} unexpectedly accepted negative fixture: {instance!r}")
 
-# Account preferences carry only a supported engine, enabled feature ids and
-# the mapped web identity; a write names exactly one change.
-must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "monaco", "experimental": {}})
-must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "experimental": {}, "uid": 123})
-must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "experimental": {"worker-row-sentence": False}})
-must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "experimental": {"../x": True}})
+# Account preferences carry only a supported engine and language, enabled
+# feature ids and the mapped web identity; a write names exactly one change.
+must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "monaco", "language": "system", "experimental": {}})
+must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "language": "system", "experimental": {}, "uid": 123})
+must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "language": "system", "experimental": {"worker-row-sentence": False}})
+must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "language": "system", "experimental": {"../x": True}})
+must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "language": "sv", "experimental": {}})
+must_reject("account-preferences.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "experimental": {}})
+# The pre-sign-in language names only the server's default.
+must_reject("site-language.schema.json", {"schema_version": 1, "default_language": "sv"})
+must_reject("site-language.schema.json", {"schema_version": 1, "default_language": "fi", "name": "Example"})
 
 # Account keys carry public halves only: no field a private key could fill,
 # no age identity in a recipient's place, and a creation names one kind.
@@ -379,6 +385,8 @@ must_reject("server-integrations.schema.json", {"schema_version": 1, "browser_se
 must_reject("server-integrations.schema.json", {"provider": "google", "fields": {"client_id": "a", "client_secret": "b", "tenant_id": "c"}})
 must_reject("server-integrations.schema.json", {"provider": "imap"})
 must_reject("server-administration-change.schema.json", {"subject": "43", "administrator": True})
+must_reject("server-administration-change.schema.json", {"default_language": "sv"})
+must_reject("server-administration-change.schema.json", {"default_language": "fi", "name": "Example"})
 must_reject("site-onboarding.schema.json", {**site_onboarding, "repositories": {"mode": "auto", "imports": [f"example-org/r{i}" for i in range(21)]}})
 onboarding_change = json.loads((BASE / "examples" / "server-onboarding-change.json").read_text())
 must_reject("server-onboarding.schema.json", {**onboarding_change, "repositories": {"mode": "skip", "defaults": [f"example-org/r{i}" for i in range(21)]}})
@@ -627,9 +635,9 @@ must_reject("integrations.schema.json", unread_integrations)
 
 # A preferences write names exactly one change: the engine or one switch.
 preferences_write = Draft202012Validator({"$ref": schemas["account-preferences.schema.json"]["$id"] + "#/$defs/write"}, registry=registry)
-for ok in ({"engine": "vscode"}, {"experimental": {"worker-row-sentence": True}}, {"experimental": {"next-waiting-row": False}}):
+for ok in ({"engine": "vscode"}, {"language": "en"}, {"language": "system"}, {"experimental": {"worker-row-sentence": True}}, {"experimental": {"next-waiting-row": False}}):
     preferences_write.validate(ok)
-for bad in ({}, {"engine": "vscode", "experimental": {"worker-row-sentence": True}}, {"experimental": {}}, {"experimental": {"a": True, "b": True}}, {"experimental": {"Terminal": True}}):
+for bad in ({}, {"engine": "vscode", "experimental": {"worker-row-sentence": True}}, {"language": "sv"}, {"language": "en", "engine": "vscode"}, {"experimental": {}}, {"experimental": {"a": True, "b": True}}, {"experimental": {"Terminal": True}}):
     assert not preferences_write.is_valid(bad), f"preferences write accepted {bad!r}"
 
 # GitLab: the token travels only in connect and replace and never in a

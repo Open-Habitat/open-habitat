@@ -6,6 +6,8 @@ import {
   WorktreeRemoveDialog,
   worktreeKey,
 } from "../components/WorktreeList";
+import { liveText } from "../i18n";
+import { worktreeCleanupText } from "../text/worktreeCleanup";
 import { WorkspaceTrashError } from "./workspaceTrash";
 import {
   cleanMergedWorktrees,
@@ -17,6 +19,8 @@ import {
   type WorktreeDisposal,
 } from "./workspaceWorktrees";
 import { plainBlocker, removedText, worktreeRefusalText } from "./worktreeText";
+
+const txt = liveText(worktreeCleanupText);
 
 const problemOf = (e: unknown) =>
   worktreeRefusalText(
@@ -125,20 +129,15 @@ export function WorktreeCleanup({
               k.state === "blocked"
                 ? (k.blockers ?? []).map(plainBlocker).join(" ")
                 : k.state === "partial"
-                  ? "osa jäi poistamatta."
-                  : "se oli muuttunut.";
+                  ? txt.keptPartial
+                  : txt.keptChanged;
             return `${names.get(worktreeKey(k)) ?? k.entry}: ${why}`;
           });
-          const branches = result.branches_kept.map(
-            (b) =>
-              `haara ${b.branch} säilyi, koska ${b.reason === "moved" ? "se oli muuttunut" : "se on käytössä"}.`,
+          const branches = result.branches_kept.map((b) =>
+            txt.branchKept(b.branch, b.reason === "moved"),
           );
           setStatus(
-            [
-              `${result.removed} ${result.removed === 1 ? "worktree siivottiin" : "worktreetä siivottiin"}.`,
-              ...kept,
-              ...branches,
-            ].join(" "),
+            [txt.removed(result.removed), ...kept, ...branches].join(" "),
           );
           if (result.removed) onChanged?.();
         },
@@ -158,7 +157,7 @@ export function WorktreeCleanup({
       aria-labelledby="worktrees-heading"
     >
       <div className="ah-trash-head">
-        <h3 id="worktrees-heading">Worktreet</h3>
+        <h3 id="worktrees-heading">{txt.title}</h3>
         <ControlButton
           data-testid="cleanup-worktrees"
           variant="secondary"
@@ -166,25 +165,20 @@ export function WorktreeCleanup({
           isDisabled={!merged.length || !!busy}
           onPress={() => setCleanOpen(true)}
         >
-          Siivoa kaikki yhdistetyt{merged.length ? ` (${merged.length})` : ""}…
+          {txt.cleanAll(merged.length)}
         </ControlButton>
       </div>
-      <p className="ah-trash-intro">
-        Gitin linkitetyt worktreet{workspaceId ? "" : " kaikista työtiloista"}{" "}
-        sellaisina kuin Git ne nyt näkee. Yhdistämisen ja muut Git-työt tekee
-        agentti keskustelussa; täällä worktreen voi poistaa. Taskfleetin
-        käynnissä olevan ajon worktreetä ei poisteta.
-      </p>
+      <p className="ah-trash-intro">{txt.intro(!workspaceId)}</p>
       {status ? <p role="status">{status}</p> : null}
       {loadProblem ? (
         <p role="alert">
-          Worktreitä ei voitu lukea. {loadProblem}{" "}
+          {txt.readFailed} {loadProblem}{" "}
           <ControlButton variant="quiet" size="row" onPress={reload}>
-            Yritä uudelleen
+            {txt.retry}
           </ControlButton>
         </p>
       ) : !listing ? (
-        <p>Luetaan worktreitä…</p>
+        <p>{txt.reading}</p>
       ) : (
         <WorktreeList
           worktrees={worktrees}
@@ -194,15 +188,10 @@ export function WorktreeCleanup({
         />
       )}
       {listing?.truncated ? (
-        <p className="ah-trash-intro">
-          Näytetään {worktrees.length} ensimmäistä.
-        </p>
+        <p className="ah-trash-intro">{txt.first(worktrees.length)}</p>
       ) : null}
       {listing && !listing.complete ? (
-        <p className="ah-trash-intro">
-          Joidenkin työtilojen worktreitä ei voitu lukea, joten lista voi olla
-          vajaa.
-        </p>
+        <p className="ah-trash-intro">{txt.incomplete}</p>
       ) : null}
       <WorktreeRemoveDialog
         key={open ? `${worktreeKey(open.worktree)}:${open.disposal}` : ""}

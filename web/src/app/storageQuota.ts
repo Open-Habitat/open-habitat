@@ -1,3 +1,4 @@
+import { formatNumber } from "../i18n";
 import { mutationFetch } from "./mutations";
 export type Quota = { usage_bytes: number; limit_bytes: number };
 export type Disk = { capacity_bytes: number; free_bytes: number };
@@ -39,8 +40,8 @@ const disk = (v: unknown): v is Disk =>
   v.free_bytes <= v.capacity_bytes;
 export const bytes = (n: number) =>
   n < 1024 ** 3
-    ? `${(n / 1024 ** 2).toLocaleString("fi-FI", { maximumFractionDigits: 2 })} MiB`
-    : `${(n / 1024 ** 3).toLocaleString("fi-FI", { maximumFractionDigits: 2 })} GiB`;
+    ? `${formatNumber(n / 1024 ** 2, { maximumFractionDigits: 2 })} MiB`
+    : `${formatNumber(n / 1024 ** 3, { maximumFractionDigits: 2 })} GiB`;
 export async function ownStorage(signal?: AbortSignal): Promise<OwnStorage> {
   const r = await fetch("/api/v1/account/storage", {
     credentials: "same-origin",

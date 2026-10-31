@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import type { Recap, RecapFailureReason } from "../app/conversations";
+import { textNow } from "../i18n";
+import { navigationText } from "../text/navigation";
 import { ControlButton, controlClassName } from "./ControlElements";
 import { Icon } from "./Icon";
 
 export function relativeRecapAge(timestamp: number, now: number): string {
   const minutes = Math.max(0, Math.floor((now - timestamp) / 60000));
-  if (minutes < 1) return "juuri nyt";
-  if (minutes < 60) return `${minutes} min sitten`;
+  const t = textNow(navigationText);
+  if (minutes < 1) return t.agoJustNow;
+  if (minutes < 60) return t.agoMinutes(minutes);
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} t sitten`;
-  return `${Math.floor(hours / 24)} pv sitten`;
+  if (hours < 24) return t.agoHours(hours);
+  return t.agoDays(Math.floor(hours / 24));
 }
 
 /** A clock for relative ages that moves on once a minute. */

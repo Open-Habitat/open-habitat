@@ -12,6 +12,8 @@ import {
   worktreeBlockerText,
   worktreeFacts,
 } from "../app/worktreeText";
+import { liveText } from "../i18n";
+import { worktreesText } from "../text/worktrees";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { BlockerList, Facts, TrashModal } from "./WorkspaceTrash";
@@ -22,13 +24,7 @@ import "./WorkspaceTrash.css";
 // accept for exactly that observation. The browser offers no merge or
 // settlement; agents do that in conversation.
 
-const actionLabel: Record<WorktreeDisposal, string> = {
-  remove: "Poista…",
-  // The dialog says in full that the changes are committed to the branch.
-  commit: "Tallenna ja poista…",
-  force: "Poista pakolla…",
-  prune: "Siivoa merkintä",
-};
+const txt = liveText(worktreesText);
 
 export function WorktreeList({
   worktrees,
@@ -47,27 +43,25 @@ export function WorktreeList({
     return (
       <p className="ah-trash-empty">
         <Icon name="branch" />
-        <span>Ei linkitettyjä worktreitä.</span>
+        <span>{txt.none}</span>
       </p>
     );
   return (
-    <ul className="ah-trash-list" aria-label="Worktreet">
+    <ul className="ah-trash-list" aria-label={txt.list}>
       {worktrees.map((w) => {
         const key = worktreeKey(w);
-        const state = stateLabel[w.state];
+        const state = stateLabel(w.state);
         const meta = [
           showWorkspace ? w.workspace_name : "",
           w.branch
             ? `${w.branch}${w.base ? ` → ${w.base}` : ""}`
             : w.state === "missing" || w.state === "locked"
               ? ""
-              : "irrallinen HEAD",
+              : txt.detached,
           w.size_bytes !== undefined
-            ? `${w.size_complete ? "" : "yli "}${bytes(w.size_bytes)}`
+            ? `${w.size_complete ? "" : txt.over}${bytes(w.size_bytes)}`
             : "",
-          w.conversations
-            ? `${w.conversations} ${w.conversations === 1 ? "keskustelu" : "keskustelua"}`
-            : "",
+          w.conversations ? txt.conversations(w.conversations) : "",
         ].filter(Boolean);
         const facts = worktreeFacts(w);
         return (
@@ -103,13 +97,13 @@ export function WorktreeList({
               </span>
               {w.state === "locked" ? (
                 <span className="ah-trash-why">
-                  Git on lukinnut tämän worktreen
+                  {txt.locked}
                   {w.locked_reason ? (
                     <>
                       : <q>{w.locked_reason}</q>
                     </>
                   ) : null}
-                  . Lukittua ei poisteta.
+                  {txt.lockedEnd}
                 </span>
               ) : null}
               {w.blockers.length ? (
@@ -127,10 +121,10 @@ export function WorktreeList({
                   size="row"
                   isDisabled={!!busy}
                   isPending={busy === key}
-                  aria-label={`${actionLabel[a].replace("…", "")} ${w.name}${a === "prune" ? "" : "…"}`}
+                  aria-label={`${txt.action[a].replace("…", "")} ${w.name}${a === "prune" ? "" : "…"}`}
                   onPress={() => onAction(w, a)}
                 >
-                  {actionLabel[a]}
+                  {txt.action[a]}
                 </ControlButton>
               ))}
             </span>
@@ -152,14 +146,14 @@ function IgnoredNote({ worktree }: { worktree: Worktree }) {
     <p className="ah-trash-note warn">
       <Icon name="warning" />
       <span>
-        Gitin ohittamat tiedostot häviävät:{" "}
+        {txt.ignoredLost}{" "}
         {shown.map((p, i) => (
           <span key={p}>
             {i ? ", " : ""}
             <code>{p}</code>
           </span>
         ))}
-        {more > 0 ? ` ja ${more} muuta` : ""}.
+        {more > 0 ? txt.ignoredMore(more) : ""}.
       </span>
     </p>
   );
@@ -194,44 +188,29 @@ export function WorktreeRemoveDialog({
   const branch = w?.branch ? <code>{w.branch}</code> : null;
   const title =
     disposal === "commit"
-      ? `Tallennetaanko muutokset ja poistetaan ${name}?`
+      ? txt.titleCommit(name)
       : disposal === "force"
-        ? `Poistetaanko ${name} pakolla?`
-        : `Poistetaanko ${name}?`;
+        ? txt.titleForce(name)
+        : txt.titleRemove(name);
   const lead =
     !w || !disposal ? null : disposal === "commit" ? (
       <>
-        <p>
-          Kaikki muutokset ja uudet tiedostot commitoidaan haaraan {branch}, ja
-          worktreen hakemisto poistetaan. Haara säilyy, joten työn saa takaisin
-          komennolla <code>git worktree add</code>.
-        </p>
+        <p>{txt.leadCommit(branch)}</p>
         <Facts tone="warn" items={worktreeFacts(w)} />
       </>
     ) : disposal === "force" ? (
       <>
-        <p>
-          Hakemisto poistetaan, ja nämä häviävät lopullisesti. Tätä ei voi
-          perua.
-        </p>
+        <p>{txt.leadForce}</p>
         <Facts tone="warn" items={worktreeFacts(w)} />
         {w.branch ? (
-          <p className="ah-trash-sub">
-            Haara {branch} ja sen commitit säilyvät.
-          </p>
+          <p className="ah-trash-sub">{txt.forceBranchKept(branch)}</p>
         ) : null}
       </>
     ) : w.state === "merged" ? (
-      <p>
-        Haara {branch} on yhdistetty haaraan <code>{w.base}</code>, joten
-        worktreen hakemisto ja haara poistetaan. Mitään commitoitua ei häviä.
-      </p>
+      <p>{txt.leadMerged(branch, <code>{w.base}</code>)}</p>
     ) : (
       <p>
-        Worktreen hakemisto poistetaan.{" "}
-        {w.branch ? (
-          <>Haara {branch} säilyy, joten sen commitit eivät häviä.</>
-        ) : null}
+        {txt.leadRemove} {w.branch ? txt.branchKept(branch) : null}
       </p>
     );
   return (
@@ -242,11 +221,9 @@ export function WorktreeRemoveDialog({
       dismissable={!busy}
     >
       <Heading slot="title">
-        {disposal === "commit"
-          ? "Tallennetaanko muutokset ja poistetaan "
-          : "Poistetaanko "}
+        {disposal === "commit" ? txt.headingCommit : txt.headingRemove}
         <code>{name}</code>
-        {disposal === "force" ? " pakolla" : ""}?
+        {disposal === "force" ? txt.headingForce : ""}?
       </Heading>
       {lead}
       {w ? <IgnoredNote worktree={w} /> : null}
@@ -271,15 +248,13 @@ export function WorktreeRemoveDialog({
             onChange={setTyped}
             autoFocus
           >
-            <Label>
-              Kirjoita <code>{name}</code> vahvistukseksi
-            </Label>
+            <Label>{txt.typeName(<code>{name}</code>)}</Label>
             <Input autoComplete="off" spellCheck={false} />
           </TextField>
         ) : null}
         {blockers?.length ? (
           <>
-            <p role="alert">Ei poistettu, koska nämä käyttävät worktreetä:</p>
+            <p role="alert">{txt.inUse}</p>
             <BlockerList blockers={blockers} describe={worktreeBlockerText} />
           </>
         ) : null}
@@ -292,7 +267,7 @@ export function WorktreeRemoveDialog({
             onPress={close}
             autoFocus={disposal !== "force"}
           >
-            Peruuta
+            {txt.cancel}
           </ControlButton>
           <ControlButton
             data-testid="confirm-worktree"
@@ -303,10 +278,10 @@ export function WorktreeRemoveDialog({
             isDisabled={busy || (disposal === "force" && typed !== name)}
           >
             {disposal === "commit"
-              ? "Tallenna ja poista"
+              ? txt.confirmCommit
               : disposal === "force"
-                ? "Poista pakolla"
-                : "Poista"}
+                ? txt.confirmForce
+                : txt.confirmRemove}
           </ControlButton>
         </div>
       </form>
@@ -331,17 +306,14 @@ export function WorktreeCleanDialog({
   const ignored = merged.filter((w) => w.ignored).map((w) => w.name);
   return (
     <TrashModal
-      label="Siivotaanko yhdistetyt worktreet?"
+      label={txt.cleanTitle}
       isOpen={isOpen}
       onClose={onClose}
       dismissable={!busy}
     >
-      <Heading slot="title">Siivotaanko yhdistetyt worktreet?</Heading>
+      <Heading slot="title">{txt.cleanTitle}</Heading>
       <p>
-        {merged.length === 1
-          ? "Tämän worktreen hakemisto ja haara poistetaan."
-          : `Näiden ${merged.length} worktreen hakemistot ja haarat poistetaan.`}{" "}
-        Haarat on yhdistetty, joten mitään commitoitua ei häviä.
+        {txt.cleanLead(merged.length)} {txt.cleanSafe}
       </p>
       <ul className="ah-trash-facts">
         {merged.map((w) => (
@@ -358,7 +330,7 @@ export function WorktreeCleanDialog({
         <p className="ah-trash-note warn">
           <Icon name="warning" />
           <span>
-            Gitin ohittamat tiedostot häviävät näistä:{" "}
+            {txt.ignoredLostFrom}{" "}
             {ignored.map((n, i) => (
               <span key={n}>
                 {i ? ", " : ""}
@@ -377,7 +349,7 @@ export function WorktreeCleanDialog({
           onPress={onClose}
           autoFocus
         >
-          Peruuta
+          {txt.cancel}
         </ControlButton>
         <ControlButton
           data-testid="confirm-cleanup"
@@ -387,8 +359,7 @@ export function WorktreeCleanDialog({
           isDisabled={busy}
           onPress={onConfirm}
         >
-          Siivoa{" "}
-          {merged.length === 1 ? "1 worktree" : `${merged.length} worktreetä`}
+          {txt.cleanConfirm(merged.length)}
         </ControlButton>
       </div>
     </TrashModal>

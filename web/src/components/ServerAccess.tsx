@@ -14,6 +14,10 @@ import { ControlButton, Segmented } from "./ControlElements";
 import { Icon } from "./Icon";
 import { StatusMark } from "./Status";
 import "./ServerAccess.css";
+import { formatDate, liveText } from "../i18n";
+import { serverAccessText } from "../text/serverAccess";
+
+const txt = liveText(serverAccessText);
 
 // Asetukset › Käyttäjät ja pääsy (proto-admin-server-onboarding round 6, Yksi
 // lista): one row per GitHub account whose state is its stage. The broker
@@ -36,7 +40,11 @@ const day = (iso?: string) => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const year = d.getFullYear() === new Date().getFullYear();
-  return `${d.getDate()}.${d.getMonth() + 1}.${year ? "" : d.getFullYear()}`;
+  return formatDate(d, {
+    day: "numeric",
+    month: "numeric",
+    ...(year ? {} : { year: "numeric" }),
+  });
 };
 
 /** Withdrawn, a deny with no admission behind it, or a designation whose
@@ -52,7 +60,7 @@ const stage = (e: AccessEntry): Exclude<Filter, "all"> =>
 
 /** The person as one phrase, for a dialog or an action's name. */
 const who = (r: Row) =>
-  r.login_hint ? `@${r.login_hint}` : `GitHub-id ${r.id}`;
+  r.login_hint ? `@${r.login_hint}` : txt.githubId(r.id);
 
 // The login names the person. The numeric id only tells two rows apart:
 // a tooltip on a named row, and a fact beside an unnamed one (a login the
@@ -62,7 +70,7 @@ function Who({ r }: { r: Row }) {
     <span
       className="sa-login"
       data-testid={`access-login-${r.id}`}
-      title={`GitHub-id ${r.id}`}
+      title={txt.githubId(r.id)}
     >
       @{r.login_hint}
     </span>
@@ -72,7 +80,7 @@ function Who({ r }: { r: Row }) {
       data-testid={`access-login-${r.id}`}
       data-unnamed=""
     >
-      GitHub-käyttäjätunnus ei saatavilla
+      {txt.noLogin}
     </span>
   );
 }
@@ -80,94 +88,82 @@ function Who({ r }: { r: Row }) {
 function StateMark({ r }: { r: Row }) {
   const id = `access-state-${r.id}`;
   if (r.pending?.kind === "uncertain")
-    return <StatusMark data-testid={id} tone="warning" label="Tila epävarma" />;
+    return <StatusMark data-testid={id} tone="warning" label={txt.uncertain} />;
   if (r.pending)
     return (
       <StatusMark
         data-testid={id}
         tone="info"
         animated="running"
-        label={
-          {
-            remove: "Poistetaan · odottaa palvelinta",
-            restore: "Palautetaan · odottaa palvelinta",
-            add: "Lisätään · odottaa palvelinta",
-            grant: "Nimetään ylläpitäjäksi · odottaa palvelinta",
-            revoke: "Poistetaan ylläpitäjyys · odottaa palvelinta",
-          }[r.pending.kind]
-        }
+        label={txt.pending[r.pending.kind]}
       />
     );
   if (unfinished(r))
-    return <StatusMark data-testid={id} tone="warning" label="Poisto kesken" />;
+    return <StatusMark data-testid={id} tone="warning" label={txt.removing} />;
   if (r.state === "unlisted")
-    return <StatusMark data-testid={id} tone="warning" label="Ei pääsyä" />;
+    return <StatusMark data-testid={id} tone="warning" label={txt.noAccess} />;
   if (closed(r))
-    return (
-      <StatusMark data-testid={id} tone="warning" label="Pääsy poistettu" />
-    );
+    return <StatusMark data-testid={id} tone="warning" label={txt.removed} />;
   if (r.state === "allowed")
     return (
       <StatusMark
         data-testid={id}
         tone="neutral"
-        label={
-          r.administrator_role
-            ? "Ylläpitäjä ensimmäisestä kirjautumisesta"
-            : "Ei vielä kirjautunut"
-        }
+        label={r.administrator_role ? txt.adminFromFirst : txt.notSignedIn}
       />
     );
   return (
     <StatusMark
       data-testid={id}
       tone="success"
-      label={r.administrator ? "Ylläpitäjä" : "Käyttäjä"}
+      label={r.administrator ? txt.admin : txt.user}
     />
   );
 }
 
 function Facts({ r }: { r: Row }) {
   const items = [];
-  if (!r.login_hint) items.push(<span key="i">GitHub-id {r.id}</span>);
+  if (!r.login_hint) items.push(<span key="i">{txt.githubId(r.id)}</span>);
   if (r.username)
     items.push(
       <span key="u">
-        Unix: <code>{r.username}</code>
+        {txt.unix} <code>{r.username}</code>
       </span>,
     );
   if (r.state === "allowed" && r.at)
-    items.push(<span key="a">Sallittu {day(r.at)}</span>);
-  if (r.last_seen) items.push(<span key="s">Viimeksi {day(r.last_seen)}</span>);
+    items.push(<span key="a">{txt.allowedOn(day(r.at))}</span>);
+  if (r.last_seen)
+    items.push(<span key="s">{txt.lastSeen(day(r.last_seen))}</span>);
   const role = r.administrator_role;
   if (role?.source === "operator")
-    items.push(<span key="r">Ylläpitäjä palvelimen asetuksista</span>);
+    items.push(<span key="r">{txt.adminFromServer}</span>);
   else if (role)
     items.push(
       <span key="r">
-        {role.state === "pending" ? "Nimetty ylläpitäjäksi" : "Ylläpitäjä"}
+        {role.state === "pending" ? txt.named : txt.admin}
         {role.at && ` ${day(role.at)}`}
       </span>,
     );
   if (r.state === "withdrawn" && r.at)
-    items.push(<span key="w">Poistettu {day(r.at)}</span>);
+    items.push(<span key="w">{txt.removedOn(day(r.at))}</span>);
   return items.length ? <span className="sa-facts">{items}</span> : null;
 }
 
 // The sign-in receipt (ADR 0030), short: how many defaults went to the
 // person's daemon, and by name only those that did not. A clone was handed
 // over, not finished, so the words never say fetched.
-const left: [OnboardingReceipt["defaults"][number]["outcome"], string][] = [
-  ["no_access", "ei pääsyä"],
-  ["check_failed", "ei tarkistettu"],
-  ["unknown", "ei vastausta"],
+const left = (): [
+  OnboardingReceipt["defaults"][number]["outcome"],
+  string,
+][] => [
+  ["no_access", txt.left.no_access],
+  ["check_failed", txt.left.check_failed],
+  ["unknown", txt.left.unknown],
 ];
-const aiKey: Partial<Record<OnboardingReceipt["ai_key"], string>> = {
-  seeded: "AI-avain annettu",
-  already_present: "oma AI-avain",
-  failed: "AI-avain epäonnistui",
-  unknown: "AI-avain: ei vastausta",
-};
+const aiKey = new Proxy(
+  {} as Partial<Record<OnboardingReceipt["ai_key"], string>>,
+  { get: (_target, key: string) => txt.aiKey[key] },
+);
 
 function Receipt({ id, r }: { id: string; r: OnboardingReceipt }) {
   const parts = [];
@@ -179,13 +175,9 @@ function Receipt({ id, r }: { id: string; r: OnboardingReceipt }) {
         ? d.outcome === "preselected"
         : d.outcome === "queued" || d.outcome === "already_present",
     ).length;
-    parts.push(
-      <span key="n">
-        {done}/{total} oletusrepoa{preselected ? " tarjolla" : ""}
-      </span>,
-    );
+    parts.push(<span key="n">{txt.defaults(done, total, preselected)}</span>);
   }
-  for (const [outcome, words] of left) {
+  for (const [outcome, words] of left()) {
     const names = r.defaults.filter((d) => d.outcome === outcome);
     if (names.length)
       parts.push(
@@ -209,7 +201,7 @@ function Receipt({ id, r }: { id: string; r: OnboardingReceipt }) {
     );
   return (
     <span className="sa-receipt" data-testid={`access-onboarding-${id}`}>
-      Käyttöönotto {day(r.at)}
+      {txt.onboarding(day(r.at))}
       {parts.length > 0 && ": "}
       {parts.map((p, i) => (
         <span key={p.key}>
@@ -245,11 +237,11 @@ function RowAction({
         onPress={onRefresh}
       >
         <Icon name="refresh" />
-        Päivitä
+        {txt.refresh}
       </ControlButton>
     );
   if (r.source === "operator")
-    return <span className="sa-note">Palvelimen asetuksista</span>;
+    return <span className="sa-note">{txt.fromServer}</span>;
   if (r.state === "withdrawn")
     return (
       <ControlButton
@@ -259,7 +251,7 @@ function RowAction({
         isDisabled={!!r.pending || locked || addLocked}
         onPress={() => onRestore(r)}
       >
-        Palauta pääsy
+        {txt.restore}
       </ControlButton>
     );
   // A deny with no admission row: there is nothing here to remove or restore.
@@ -270,11 +262,11 @@ function RowAction({
       size="row"
       variant="quiet"
       isDisabled={!!r.pending || locked}
-      aria-label={`Poista ${who(r)}`}
+      aria-label={txt.removeNamed(who(r))}
       onPress={() => onRemove(r)}
     >
       <Icon name="cross" />
-      {r.state === "joined" ? "Poista pääsy" : "Poista"}
+      {r.state === "joined" ? txt.removeAccess : txt.remove}
     </ControlButton>
   );
 }
@@ -301,10 +293,10 @@ function RoleAction({
         size="row"
         variant="quiet"
         isDisabled={locked}
-        aria-label={`Poista ${who(r)} ylläpitäjyys`}
+        aria-label={txt.revokeNamed(who(r))}
         onPress={() => onRevoke(r)}
       >
-        Poista ylläpitäjyys
+        {txt.revoke}
       </ControlButton>
     );
   // Naming needs an open admission; revoking only subtracts, so it is
@@ -322,10 +314,10 @@ function RoleAction({
       size="row"
       variant="quiet"
       isDisabled={locked}
-      aria-label={`Tee ${who(r)} ylläpitäjäksi`}
+      aria-label={txt.grantNamed(who(r))}
       onPress={() => onGrant(r)}
     >
-      Tee ylläpitäjäksi
+      {txt.grant}
     </ControlButton>
   );
 }
@@ -372,28 +364,15 @@ type BatchItem = { login: string } & (
 // paste is bounded by what one administrator could reasonably mean.
 const maxBatch = 100;
 
-const shapeHint =
-  "Kirjaimia, numeroita ja yksittäisiä yhdysmerkkejä, enintään 39.";
+const shapeHint = () => txt.shapeHint;
 const lookupProblem = (result: Exclude<LookupResult, { kind: "found" }>) =>
   result.kind === "refused"
     ? accessRefusal(result.code)
-    : "GitHubiin ei saatu yhteyttä.";
+    : txt.githubUnreachable;
 
 function BatchLine({ item }: { item: BatchItem }) {
   const user = "user" in item ? item.user : undefined;
-  const words: Record<BatchItem["kind"], string> = {
-    checking: "Tarkistetaan…",
-    invalid: "Ei kelpaa GitHub-tunnukseksi.",
-    problem: "",
-    found: "Sallitaan",
-    restore: "Pääsy palautetaan",
-    duplicate: "",
-    sending: "Lisätään…",
-    added: "Lisätty",
-    restored: "Palautettu",
-    refused: "",
-    uncertain: "Tila epävarma: päivitä lista.",
-  };
+  const words = txt.batch;
   const bad =
     item.kind === "invalid" ||
     item.kind === "problem" ||
@@ -411,7 +390,8 @@ function BatchLine({ item }: { item: BatchItem }) {
         {user && (
           <span className="sa-muted">
             {" "}
-            {user.name && `${user.name} · `}GitHub-id {user.id}
+            {user.name && `${user.name} · `}
+            {txt.githubId(user.id)}
           </span>
         )}
       </span>
@@ -452,19 +432,17 @@ function AddLogin({
     const r = existing(user.id);
     if (!r) return { kind: "found", user };
     if (r.pending)
-      return { kind: "duplicate", user, text: "Edellinen muutos on kesken." };
+      return { kind: "duplicate", user, text: txt.previousPending };
     if (r.state === "withdrawn") return { kind: "restore", user };
     if (r.state === "joined")
       return {
         kind: "duplicate",
         user,
-        text: r.username
-          ? `On jo käyttäjä (Unix: ${r.username}).`
-          : "On jo käyttäjä.",
+        text: r.username ? txt.alreadyUserUnix(r.username) : txt.alreadyUser,
       };
     if (r.state === "allowed")
-      return { kind: "duplicate", user, text: "On jo sallittu." };
-    return { kind: "duplicate", user, text: "Pääsy on suljettu palvelimella." };
+      return { kind: "duplicate", user, text: txt.alreadyAllowed };
+    return { kind: "duplicate", user, text: txt.closedOnServer };
   };
   const batchReady =
     check.kind === "batch" &&
@@ -478,7 +456,7 @@ function AddLogin({
     if (logins.length > maxBatch) {
       setCheck({
         kind: "invalid",
-        text: `Enintään ${maxBatch} nimeä kerralla.`,
+        text: txt.maxBatch(maxBatch),
       });
       return;
     }
@@ -509,7 +487,7 @@ function AddLogin({
               login: item.login,
               kind: "duplicate",
               user: result.user,
-              text: `Sama tili kuin @${earlier.login}.`,
+              text: txt.sameAccount(earlier.login),
             }
           : judged.kind === "found" ||
               judged.kind === "restore" ||
@@ -556,7 +534,7 @@ function AddLogin({
     }
     if (logins.length > 1) return checkMany();
     if (!loginShape.test(login)) {
-      setCheck({ kind: "invalid", text: shapeHint });
+      setCheck({ kind: "invalid", text: shapeHint() });
       return;
     }
     const n = ++asked.current;
@@ -587,7 +565,7 @@ function AddLogin({
       }}
     >
       <label className="sa-field">
-        <strong>Salli GitHub-tunnus</strong>
+        <strong>{txt.allowTitle}</strong>
         <span className="sa-inline">
           <textarea
             data-testid="access-login-input"
@@ -596,7 +574,7 @@ function AddLogin({
             disabled={disabled || sending}
             autoComplete="off"
             spellCheck={false}
-            placeholder="github-tunnus, toinen-tunnus"
+            placeholder={txt.placeholder}
             aria-describedby="access-check access-hint"
             onKeyDown={(e) => {
               // Enter checks and allows as in a one-line field; Shift+Enter
@@ -630,16 +608,16 @@ function AddLogin({
             }
           >
             {check.kind === "restore"
-              ? "Palauta pääsy"
+              ? txt.restore
               : check.kind === "batch" && allowable
-                ? `Salli ${allowable}`
+                ? txt.allowN(allowable)
                 : ready
-                  ? "Salli"
-                  : "Tarkista"}
+                  ? txt.allow
+                  : txt.check}
           </ControlButton>
         </span>
         <span id="access-hint" className="sa-muted">
-          Useita nimiä voi erottaa pilkulla, välilyönnillä tai rivinvaihdolla.
+          {txt.separators}
         </span>
       </label>
       <div
@@ -658,7 +636,7 @@ function AddLogin({
             ))}
           </ul>
         ) : check.kind === "checking" ? (
-          <span className="sa-muted">Tarkistetaan GitHubista…</span>
+          <span className="sa-muted">{txt.checkingGithub}</span>
         ) : check.kind === "invalid" || check.kind === "problem" ? (
           <span className="sa-bad">
             <Icon name="warning" />
@@ -669,7 +647,7 @@ function AddLogin({
             <span>
               <strong>{check.user.name || `@${check.user.login}`}</strong>{" "}
               <span className="sa-muted">
-                @{check.user.login} · GitHub-id {check.user.id}
+                @{check.user.login} · {txt.githubId(check.user.id)}
               </span>
             </span>
             {check.kind === "duplicate" ? (
@@ -678,7 +656,7 @@ function AddLogin({
                 {check.text}
               </span>
             ) : check.kind === "restore" ? (
-              <span className="sa-muted">Palaa samalle Unix-tilille.</span>
+              <span className="sa-muted">{txt.sameUnix}</span>
             ) : null}
           </span>
         )}
@@ -710,35 +688,37 @@ function RemoveDialog({
           data-testid="access-remove-dialog"
         >
           <Heading slot="title">
-            {joined ? `Poista ${who(r)} pääsy?` : `Poista ${who(r)}?`}
+            {joined
+              ? txt.removeAccessQuestion(who(r))
+              : txt.removeQuestion(who(r))}
           </Heading>
           <ul className="sa-consequences">
             <li>
               <Icon name="cross" />
               <span>
-                Ei voi enää kirjautua.
-                {joined && " Avoimet istunnot päättyvät."}
+                {txt.cannotSignIn}
+                {joined && txt.sessionsEnd}
               </span>
             </li>
             {joined && (
               <li>
                 <Icon name="terminal" />
                 <span>
-                  Unix-tili
-                  {r.username && (
-                    <>
-                      {" "}
-                      <code>{r.username}</code>
-                    </>
-                  )}{" "}
-                  ja tiedostot jäävät. Tilin voi poistaa komentorivillä.
+                  {txt.unixStays(
+                    r.username && (
+                      <>
+                        {" "}
+                        <code>{r.username}</code>
+                      </>
+                    ),
+                  )}
                 </span>
               </li>
             )}
           </ul>
           <div className="ah-dialog-actions">
             <ControlButton size="page" variant="secondary" onPress={onClose}>
-              Peruuta
+              {txt.cancel}
             </ControlButton>
             <ControlButton
               data-testid="access-remove-confirm"
@@ -749,7 +729,7 @@ function RemoveDialog({
                 onClose();
               }}
             >
-              {joined ? "Poista pääsy" : "Poista"}
+              {joined ? txt.removeAccess : txt.remove}
             </ControlButton>
           </div>
         </Dialog>
@@ -780,28 +760,22 @@ function GrantDialog({
           className="ah-dialog sa-dialog"
           data-testid="access-grant-dialog"
         >
-          <Heading slot="title">Tee {who(r)} ylläpitäjäksi?</Heading>
+          <Heading slot="title">{txt.grantQuestion(who(r))}</Heading>
           <ul className="sa-consequences">
             <li>
               <Icon name="shield" />
-              <span>
-                Voi hallita palvelimen asetuksia, pääsyä ja muita ylläpitäjiä.
-              </span>
+              <span>{txt.grantEffect}</span>
             </li>
             {waiting && (
               <li>
                 <Icon name="info" />
-                <span>
-                  Rooli tulee voimaan, kun GitHub-tili {r.id} kirjautuu
-                  ensimmäisen kerran. Se kuuluu tilille, ei nimelle: jos tunnus
-                  vaihtuu, rooli ei siirry.
-                </span>
+                <span>{txt.grantWaiting(r.id)}</span>
               </li>
             )}
           </ul>
           <div className="ah-dialog-actions">
             <ControlButton size="page" variant="secondary" onPress={onClose}>
-              Peruuta
+              {txt.cancel}
             </ControlButton>
             <ControlButton
               data-testid="access-grant-confirm"
@@ -812,7 +786,7 @@ function GrantDialog({
                 onClose();
               }}
             >
-              Tee ylläpitäjäksi
+              {txt.grant}
             </ControlButton>
           </div>
         </Dialog>
@@ -875,7 +849,7 @@ export function ServerAccess({
   const addReason = open
     ? undefined
     : !view.runtime_admission
-      ? "Lisäys selaimesta on poissa käytöstä palvelimen asetuksissa."
+      ? txt.addDisabled
       : undefined;
   return (
     <div className="sa" data-testid="server-access" data-mode={view.mode}>
@@ -887,7 +861,7 @@ export function ServerAccess({
           tabIndex={-1}
         >
           <Icon name="info" />
-          Pääsy on avoin: kuka tahansa GitHub-käyttäjä voi kirjautua.
+          {txt.open}
         </p>
       ) : (
         <div className="s-row" data-settings-row="access-add" tabIndex={-1}>
@@ -906,19 +880,19 @@ export function ServerAccess({
         tabIndex={-1}
       >
         <strong>
-          Henkilöt <span className="sa-muted">{rows.length}</span>
+          {txt.people} <span className="sa-muted">{rows.length}</span>
         </strong>
         <Segmented
           data-testid="access-filter"
-          label="Näytä"
+          label={txt.show}
           size="row"
           value={filter}
           onChange={setFilter}
           options={[
-            { id: "all", label: "Kaikki" },
-            { id: "joined", label: `Liittyneet ${count("joined")}` },
-            { id: "allowed", label: `Ei kirjautuneet ${count("allowed")}` },
-            { id: "withdrawn", label: `Poistetut ${count("withdrawn")}` },
+            { id: "all", label: txt.all },
+            { id: "joined", label: txt.joined(count("joined")) },
+            { id: "allowed", label: txt.allowed(count("allowed")) },
+            { id: "withdrawn", label: txt.withdrawn(count("withdrawn")) },
           ]}
         />
       </div>
@@ -945,13 +919,13 @@ export function ServerAccess({
                   className="sa-receipt"
                   data-testid={`access-ai-given-${r.id}`}
                 >
-                  AI-avain annettu {day(r.site_key_copy.at)}
-                  {!r.site_key_copy.current && " (aiempi avain)"}
+                  {txt.aiGiven(day(r.site_key_copy.at))}
+                  {!r.site_key_copy.current && txt.earlierKey}
                 </span>
               )}
               {r.state === "withdrawn" && r.username && !r.pending && (
                 <span className="sa-muted">
-                  Unix-tili <code>{r.username}</code> jää palvelimelle.
+                  {txt.unixRemains(<code>{r.username}</code>)}
                 </span>
               )}
               {problem?.id === r.id && !r.pending && (
@@ -986,7 +960,7 @@ export function ServerAccess({
             </span>
           </li>
         ))}
-        {!shown.length && <li className="sa-row sa-muted">Ei henkilöitä.</li>}
+        {!shown.length && <li className="sa-row sa-muted">{txt.nobody}</li>}
       </ul>
       {problem && !rows.some((r) => r.id === problem.id) && (
         <p className="s-row sa-bad" role="alert" data-testid="access-problem">

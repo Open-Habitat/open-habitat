@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { LookupView } from "../components/ClonePage";
+import { liveText } from "../i18n";
+import { githubText } from "../text/github";
 import type { NativeState } from "./CodeHostSettings";
 import type { Lookup } from "./github";
+
+const txt = liveText(githubText);
 
 // What the browser says about the person's own GitHub connection, read from
 // the snapshot's native_github (proto-github-connection-warning, round 2,
@@ -54,40 +58,19 @@ export type GitHubProgress =
   | { kind: "verifying" }
   | { kind: "retrying"; attempt: number; attempts: number };
 
-const warnings: Record<
-  "expired" | "disconnected" | "unreachable",
-  GitHubWarning
-> = {
-  expired: {
-    fault: "expired",
-    tone: "danger",
-    title: "GitHub-yhteys on vanhentunut tai peruttu",
-    text: "GitHub ei enää hyväksy palvelimen valtuutusta, eikä palvelin voi uusia sitä itse. Yhdistä uudelleen: GitHub palauttaa sinut tänne, yleensä kysymättä mitään.",
-    short: "Push ja gh eivät toimi. Palvelin ei voi uusia valtuutusta itse.",
-    place:
-      "GitHub ei enää hyväksy palvelimelle tallennettua valtuutusta: se on vanhentunut tai peruttu. Repolistaa ei voi hakea eikä repoja kloonata.",
-    fix: "Yhdistä uudelleen",
+const warnings = new Proxy(
+  {} as Record<"expired" | "disconnected" | "unreachable", GitHubWarning>,
+  {
+    get: (_target, fault: "expired" | "disconnected" | "unreachable") =>
+      fault === "expired"
+        ? { fault, tone: "danger", ...txt.expired }
+        : fault === "disconnected"
+          ? { fault, tone: "neutral", ...txt.disconnected }
+          : fault === "unreachable"
+            ? { fault, tone: "neutral", ...txt.unreachable }
+            : undefined,
   },
-  disconnected: {
-    fault: "disconnected",
-    tone: "neutral",
-    title: "GitHubia ei ole yhdistetty",
-    text: "Palvelimella ei ole GitHub-kirjautumistasi, joten push, kloonaus ja gh eivät toimi. Paikallinen työ ja keskustelut toimivat.",
-    short: "Push ja gh eivät toimi ennen yhdistämistä.",
-    place:
-      "Repolistaa ei voi hakea, koska palvelimella ei ole GitHub-kirjautumistasi.",
-    fix: "Yhdistä GitHub",
-  },
-  unreachable: {
-    fault: "unreachable",
-    tone: "neutral",
-    title: "GitHub ei vastaa",
-    text: "Palvelin ei ole saanut GitHubiin yhteyttä. Valtuutuksesi on tallessa, eikä sinun tarvitse tehdä mitään: palvelin yrittää puolen minuutin välein, ja ilmoitus poistuu itsestään. Push, kloonaus ja gh odottavat; paikallinen työ toimii.",
-    short: "Push ja gh odottavat. Palvelin yrittää itse uudelleen.",
-    place:
-      "GitHub ei juuri nyt vastaa palvelimelle. Palvelin yrittää itse uudelleen; repolista tulee, kun yhteys palaa.",
-  },
-};
+);
 
 /** The settled fault behind a state, if there is one to tell. An outage
  * is one only once the host's own retry is over. */
@@ -151,21 +134,21 @@ export function orgWarning(
     ? {
         fault: "org_oauth_app",
         tone: "neutral",
-        title: `Organisaatio ${owner} ei ole hyväksynyt palvelimen GitHub-sovellusta`,
-        text: `Organisaatio ${owner} rajoittaa ulkopuolisten sovellusten pääsyä, joten push, kloonaus ja gh eivät toimi sen repoissa. Pyydä hyväksyntää GitHubin asetuksista (Authorized OAuth Apps): omistaja saa pyynnöstä ilmoituksen, ja varoitus poistuu itsestään hyväksynnän jälkeen.`,
-        short: `Organisaation ${owner} omistajan pitää hyväksyä sovellus.`,
-        place: `Organisaatio ${owner} rajoittaa ulkopuolisten sovellusten pääsyä, joten palvelin ei näe sen repoja. Pyydä hyväksyntää GitHubin asetuksista; organisaation omistaja saa pyynnöstä ilmoituksen.`,
-        fix: "Pyydä hyväksyntää GitHubissa",
+        title: txt.oauthTitle(owner),
+        text: txt.oauthText(owner),
+        short: txt.oauthShort(owner),
+        place: txt.oauthPlace(owner),
+        fix: txt.oauthFix,
         href: "https://github.com/settings/applications",
       }
     : {
         fault: "org_saml",
         tone: "neutral",
-        title: `Organisaatio ${owner} vaatii kertakirjautumisen`,
-        text: `Organisaatio ${owner} käyttää SAML-kertakirjautumista, eikä palvelimen GitHub-valtuutusta ole hyväksytty sille, joten push, kloonaus ja gh eivät toimi sen repoissa. Kirjaudu organisaation kertakirjautumiseen GitHubissa ja yhdistä sitten uudelleen.`,
-        short: `Kirjaudu organisaation ${owner} kertakirjautumiseen ja yhdistä uudelleen.`,
-        place: `Organisaatio ${owner} vaatii SAML-kertakirjautumisen, jota palvelimen GitHub-valtuutukselle ei ole tehty. Kirjaudu organisaation kertakirjautumiseen GitHubissa ja yhdistä sitten uudelleen.`,
-        fix: "Yhdistä uudelleen",
+        title: txt.samlTitle(owner),
+        text: txt.samlText(owner),
+        short: txt.samlShort(owner),
+        place: txt.samlPlace(owner),
+        fix: txt.reconnect,
       };
 }
 

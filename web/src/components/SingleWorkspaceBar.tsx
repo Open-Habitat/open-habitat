@@ -4,6 +4,10 @@ import { Icon } from "./Icon";
 import { Menu } from "./Overlays";
 import type { Tone } from "./types";
 import "./SingleWorkspaceBar.css";
+import { liveText } from "../i18n";
+import { statusText } from "../text/status";
+
+const txt = liveText(statusText);
 
 export type SingleWorkspaceAction =
   | "copy"
@@ -74,13 +78,13 @@ export function SingleWorkspaceBar({
         kind="header"
         current={homeCurrent}
         className="ah-single-name"
-        title={`${name} · Etusivu`}
+        title={txt.homeOf(name)}
       >
         <Icon name="repo" />
         <span>{name}</span>
       </LinkRow>
       <Menu
-        label={`Työtilan ${name} toiminnot`}
+        label={txt.actionsOf(name)}
         trigger={<span aria-hidden="true" />}
         triggerPresentation="icon"
         triggerClassName="ah-single-more"
@@ -96,21 +100,21 @@ export function SingleWorkspaceBar({
           </span>
         }
         items={[
-          { id: "copy", label: "Kopioi polku" },
+          { id: "copy", label: txt.copyPath },
           {
             id: "github",
-            label: "Avaa GitHubissa",
+            label: txt.openGitHub,
             description: github,
             availability: github
               ? undefined
               : {
                   state: "disabled",
-                  reason: "Työtilalla ei ole GitHub-originia.",
+                  reason: txt.noOrigin,
                 },
           },
           {
             id: "rename",
-            label: "Muuta näyttönimeä…",
+            label: txt.rename,
             availability: renameReason
               ? { state: "disabled", reason: renameReason }
               : undefined,
@@ -120,8 +124,8 @@ export function SingleWorkspaceBar({
             : [
                 {
                   id: "worktree",
-                  label: "Uusi worktree-agentti…",
-                  description: "Oma worktree ja haara nykyisestä haarasta",
+                  label: txt.newWorktree,
+                  description: txt.newWorktreeDesc,
                   availability: worktree
                     ? { state: "disabled" as const, reason: worktree }
                     : undefined,
@@ -129,18 +133,18 @@ export function SingleWorkspaceBar({
               ]),
           {
             id: "add",
-            label: "Lisää työtila…",
+            label: txt.addWorkspace,
             group: "add",
             availability: onAdd
               ? undefined
               : {
                   state: "disabled",
-                  reason: "Työtilan lisääminen ei ole nyt mahdollista.",
+                  reason: txt.addUnavailable,
                 },
           },
           {
             id: "trash",
-            label: "Siirrä roskakoriin…",
+            label: txt.toTrash,
             group: "trash",
             danger: true,
             availability: { state: "disabled", reason: trashReason },
@@ -159,8 +163,8 @@ export function SingleWorkspaceBar({
         size="row"
         variant="primary"
         className="ah-single-new"
-        aria-label="Uusi keskustelu"
-        title={newReason || "Uusi keskustelu"}
+        aria-label={txt.newConversation}
+        title={newReason || txt.newConversation}
         isDisabled={!onNew || !!newReason}
         onPress={onNew}
       >
