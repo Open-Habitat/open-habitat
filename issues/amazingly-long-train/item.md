@@ -2,10 +2,11 @@
 created: 2026-10-31
 updated: 2026-10-31
 type: bug
-status: untriaged
+status: cannot-reproduce
 priority: low
 provenance: agent
 source_ref: r42-send-rejected
+closed: 2026-10-31
 ---
 
 # TestEditorFilesRoundTripAndConflict flaked once in a full internal/daemon run
