@@ -66,7 +66,7 @@ describe("NoticeArea", () => {
       <Harness
         initial={[
           { id: "hidden", kind: "workspace-archive" },
-          { id: "mode", kind: "mode", undo: false },
+          { id: "icon", kind: "workspace-icon", undo: false },
         ]}
       />,
     );
@@ -74,7 +74,7 @@ describe("NoticeArea", () => {
     const more = screen.getByTestId("notice-more");
     expect(more.getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(more);
-    expect(visible()).toEqual(["hidden", "mode"]);
+    expect(visible()).toEqual(["hidden", "icon"]);
   });
 
   it("stops a folded notice's clock until it comes to the front", () => {

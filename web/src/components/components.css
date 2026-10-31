@@ -45,7 +45,7 @@
   margin: 0 auto;
   padding: clamp(var(--ah-s7), 4vw, 64px);
 }
-.ah-app-shell:has(.ah-rail, .ah-single-bar) {
+.ah-app-shell:has(.ah-rail) {
   /* A viewport-height box can still move with the document. Anchor the
      authenticated frame itself, not only its conversation scroll surface. */
   position: fixed;
@@ -58,20 +58,19 @@
   min-height: 0;
   overflow: clip;
 }
-.ah-app-shell:has(.ah-rail, .ah-single-bar) > .ah-shell-body {
+.ah-app-shell:has(.ah-rail) > .ah-shell-body {
   flex: 1;
   min-height: 0;
 }
-.ah-app-shell:has(.ah-rail, .ah-single-bar) > .ah-shell-body > main {
+.ah-app-shell:has(.ah-rail) > .ah-shell-body > main {
   max-width: none;
   min-height: 0;
   overflow: auto;
 }
-.ah-app-shell:has(.ah-rail, .ah-single-bar) .ah-state {
+.ah-app-shell:has(.ah-rail) .ah-state {
   max-width: 720px;
 }
-.ah-app-shell:has(.ah-rail, .ah-single-bar)
-  .ah-state:has(.ah-conversation-frame) {
+.ah-app-shell:has(.ah-rail) .ah-state:has(.ah-conversation-frame) {
   max-width: none;
 }
 /* Onboarding keeps its route beside the step (Kartta), wider than a page. */
@@ -1230,7 +1229,7 @@ details[open] > summary:not([class])::before {
 /* Shared conversation template: header, a single scrolling stream and footer controls. */
 /* The stream spans the reading column AND its empty margins. Its ancestors
    must not become a second scroll surface when a gesture reaches either end. */
-.ah-app-shell:has(.ah-rail, .ah-single-bar)
+.ah-app-shell:has(.ah-rail)
   > .ah-shell-body
   > main:has(.ah-conversation-frame) {
   height: 100%;
@@ -1516,7 +1515,7 @@ details[open] > summary:not([class])::before {
   display: none;
 }
 @media (max-width: 800px) {
-  .ah-app-shell:has(.ah-rail, .ah-single-bar) {
+  .ah-app-shell:has(.ah-rail) {
     height: 100dvh;
   }
   .ah-shell-body:has(.ah-conversation-frame) {
@@ -1568,16 +1567,15 @@ details[open] > summary:not([class])::before {
   .ah-fallback-account .ah-menu-chevron {
     display: none;
   }
-  .ah-app-shell:has(.ah-rail, .ah-single-bar) {
+  .ah-app-shell:has(.ah-rail) {
     height: 100dvh;
   }
-  .ah-shell-body:has(.ah-rail),
-  .ah-app-shell:has(.ah-single-bar) > .ah-shell-body {
+  .ah-shell-body:has(.ah-rail) {
     display: flex;
     min-height: 0;
     position: relative;
   }
-  .ah-app-shell:has(.ah-rail, .ah-single-bar) > .ah-shell-body > main {
+  .ah-app-shell:has(.ah-rail) > .ah-shell-body > main {
     flex: 1;
     min-width: 0;
     min-height: 0;
@@ -1665,8 +1663,7 @@ details[open] > summary:not([class])::before {
     border-radius: var(--ah-r-md);
     color: var(--ah-ink);
   }
-  .ah-app-shell:has(.ah-rail, .ah-single-bar)
-    .ah-state:has(.ah-conversation-frame) {
+  .ah-app-shell:has(.ah-rail) .ah-state:has(.ah-conversation-frame) {
     height: calc(100% - var(--ah-touch));
   }
   .ah-conversation-frame {
@@ -2376,20 +2373,12 @@ details[open] > summary:not([class])::before {
     border: 0;
     background: transparent;
   }
-  .ah-app-shell:has(.ah-rail, .ah-single-bar)
-    .ah-state:has(.ah-conversation-frame) {
+  .ah-app-shell:has(.ah-rail) .ah-state:has(.ah-conversation-frame) {
     height: 100%;
   }
   /* Only the first row sits beside the floating menu and home buttons. */
   .ah-conversation-frame > .ah-agent-header .ah-title-row {
     margin-inline-start: calc(100px - var(--ah-topbar-pad-inline));
-  }
-  /* Single-workspace mode has no menu button over the header to leave room for. */
-  .ah-app-shell:has(.ah-single-bar)
-    .ah-conversation-frame
-    > .ah-agent-header
-    .ah-title-row {
-    margin-inline-start: 0;
   }
   .ah-conversation-frame .ah-composer {
     padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline);
@@ -4534,7 +4523,7 @@ details[open] > summary:not([class])::before {
   /* dvh alone does not shrink for Safari's keyboard. Drop the desktop minimum
      too: otherwise an asynchronously loaded recap can push the editor below
      the visible screen even though the transcript itself follows its tail. */
-  .ah-app-shell:has(.ah-rail, .ah-single-bar) {
+  .ah-app-shell:has(.ah-rail) {
     top: var(--ah-visible-top, 0px);
     height: var(--ah-visible-height, 100dvh);
     min-height: 0;
@@ -5104,6 +5093,44 @@ h2.ah-rail-section-head {
 }
 .ah-rail-workspaces .ah-rail-filter {
   margin-bottom: 4px;
+}
+/* One workspace (Jari 31.10.2026): no list of one, but a quiet
+   mention at the foot of the rail that names it and offers more. */
+.ah-rail-only {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  margin-top: auto;
+  padding-top: var(--ah-s3);
+}
+.ah-rail-only .ah-rail-only-link,
+.ah-rail-only .ah-rail-only-add {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--ah-s2);
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: var(--ah-r-nav);
+  color: var(--ah-muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.ah-rail-only .ah-rail-only-link > span {
+  font-family: var(--ah-mono);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-rail-only .ah-rail-only-link > svg,
+.ah-rail-only .ah-rail-only-add > svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ah-faint);
 }
 .ah-rail .ah-workspace-link {
   display: flex;

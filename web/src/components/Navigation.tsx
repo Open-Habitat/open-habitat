@@ -50,7 +50,6 @@ function Shell({
   toast,
   mobileTitle,
   fallbackAccount,
-  topBar,
   bell,
   navigationBadge = 0,
 }: {
@@ -62,8 +61,6 @@ function Shell({
    * phone's menu button while the rail is out of sight. */
   navigationBadge?: number;
   connection?: ReactNode;
-  /** Single-workspace mode's top bar, in place of the sidebar. */
-  topBar?: ReactNode;
   mobileTitle?: string;
   fallbackAccount?: ReactNode;
   rail?: ReactNode;
@@ -180,7 +177,6 @@ function Shell({
         {t.skip}
       </ExternalLink>
       {connection}
-      {rail ? null : topBar}
       <div
         className={`ah-shell-body${rail ? "" : " ah-shell-no-rail"}${drawerActive ? " ah-mobile-open" : ""}`}
       >
@@ -1243,6 +1239,7 @@ export function WorkspaceRail({
   onCreateWorkspace,
   listState,
   children,
+  only,
   archived,
   clones,
   sessionActions,
@@ -1264,6 +1261,13 @@ export function WorkspaceRail({
   listState: AsyncState | "source-absent" | "filtered-empty";
   /** WorkspaceNavRow items, alphabetically. */
   children?: ReactNode;
+  /**
+   * The person's only visible workspace (Jari 31.10.2026): a
+   * list of one says nothing, so the rail names it quietly at its foot,
+   * with the way to add more, instead of the Työtilat section. Adding is
+   * offered while onCreateWorkspace is.
+   */
+  only?: { name: string; href: string; current: boolean; adding: boolean };
   archived?: ReactNode;
   /** Running and unfinished clones, above the workspaces. */
   clones?: ReactNode;
@@ -1334,7 +1338,36 @@ export function WorkspaceRail({
       </header>
       <div className="ah-rail-content">
         {now}
-        {collapsed ? (
+        {only && !collapsed ? (
+          <section
+            data-testid="rail-only-workspace"
+            className="ah-rail-only"
+            aria-label={t.yourWorkspace}
+          >
+            {clones}
+            <LinkRow
+              href={only.href}
+              data-testid="rail-only-workspace-link"
+              current={only.current}
+              className="ah-rail-only-link"
+            >
+              <Icon name="folder" aria-hidden="true" />
+              <span>{only.name}</span>
+            </LinkRow>
+            {onCreateWorkspace ? (
+              <LinkRow
+                href="/workspaces/new"
+                data-testid="workspace-create"
+                current={only.adding}
+                className="ah-rail-only-add"
+              >
+                <Icon name="plus" aria-hidden="true" />
+                <span>{t.addWorkspaces}</span>
+              </LinkRow>
+            ) : null}
+            {archived}
+          </section>
+        ) : only ? null : collapsed ? (
           <ControlButton
             data-testid="rail-all-workspaces"
             size="row"

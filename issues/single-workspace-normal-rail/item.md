@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: high
 lane: single-workspace-normal-rail
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # One workspace: drop the single-workspace view, use the normal rail
@@ -18,8 +19,8 @@ Jari 31.10. evening (seeing Kaisa use it): the special view for a person with on
 
 ## Acceptance Criteria
 
-- [ ] A person with one workspace sees the normal layout and rail; no single-workspace bar or view remains in the code.
-- [ ] The rail shows no one-item workspace list; a way to add workspaces stays one click away; how the single workspace is named is decided and recorded under Decisions for later review, with screenshots (desktop and phone, light and dark, fi and en, DSF 2).
-- [ ] With two or more workspaces nothing changes; browser specs for one and two workspaces.
+- [x] A person with one workspace sees the normal layout and rail; no single-workspace bar or view remains in the code.
+- [x] The rail shows no one-item workspace list; a way to add workspaces stays one click away; how the single workspace is named is decided and recorded under Decisions for later review, with screenshots (desktop and phone, light and dark, fi and en, DSF 2).
+- [x] With two or more workspaces nothing changes; browser specs for one and two workspaces.
 
 ## Comments

@@ -216,7 +216,7 @@ test("@status-bell nothing holds, no bell; a person who is not an administrator 
   expect(serverReads).toBe(0);
 });
 
-test("@status-bell single-workspace mode carries the bell in its top bar, on a phone too", async ({
+test("@status-bell one workspace keeps the rail's bell, and the toolbar's on a phone", async ({
   page,
 }) => {
   await conditions(page, { value: false });
@@ -229,12 +229,16 @@ test("@status-bell single-workspace mode carries the bell in its top bar, on a p
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
+  await expect(page.getByTestId("rail-only-workspace")).toBeVisible();
   await expect(
-    page.locator('.ah-single-bar [data-testid="status-bell"]'),
+    page.locator('.ah-rail-home-row [data-testid="status-bell"]'),
   ).toBeVisible();
   await expect(bell(page)).toHaveCount(1);
-  await openAndClose(page, "single");
+  await openAndClose(page, "one-workspace");
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    page.locator('.ah-mobile-toolbar [data-testid="status-bell"]'),
+  ).toBeVisible();
   await expect(bell(page)).toHaveCount(1);
-  await openAndClose(page, "single-phone");
+  await openAndClose(page, "one-workspace-phone");
 });

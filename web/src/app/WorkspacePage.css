@@ -1,8 +1,3 @@
-.ah-workspace-home-notice {
-  width: 100%;
-  max-width: 860px;
-  margin: 0 auto var(--ah-s4);
-}
 .ah-workspace-page {
   display: flex;
   flex-direction: column;
@@ -234,7 +229,7 @@
   font-size: var(--ah-size-meta);
 }
 /* Workspace pages are wider than generic error/onboarding states. */
-.ah-app-shell:has(.ah-rail, .ah-single-bar) .ah-state:has(.ah-workspace-page) {
+.ah-app-shell:has(.ah-rail) .ah-state:has(.ah-workspace-page) {
   max-width: none;
 }
 .ah-shell-body > main:has(.ah-workspace-page) {
@@ -247,27 +242,4 @@
   border-color: transparent;
   background: transparent;
   opacity: 0.45;
-}
-/* Single-workspace mode's home: the page is the work, the name is in the top bar. */
-.ah-workspace-page-single .ah-workspace-page-head {
-  align-items: flex-start;
-  gap: var(--ah-s4);
-  padding-top: var(--ah-s2);
-}
-.ah-workspace-page-single .ah-workspace-page-title h1 {
-  margin-bottom: 3px;
-  font-family: var(--ah-font);
-}
-.ah-workspace-page-single .ah-workspace-page-head .ah-git-note {
-  margin: 0;
-  flex: none;
-}
-@media (max-width: 700px) {
-  .ah-workspace-page-single .ah-workspace-page-head {
-    flex-wrap: wrap;
-    padding-top: 0;
-  }
-  .ah-workspace-page-single .ah-workspace-page-title h1 {
-    font-size: 18px;
-  }
 }

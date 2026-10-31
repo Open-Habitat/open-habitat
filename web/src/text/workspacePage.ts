@@ -23,15 +23,11 @@ const fi = {
   background: (n: number) => `${n} odottaa taustatyötä`,
   gitUnreadable: "Git-tilaa ei voitu lukea. Näkyvä tila ei ole vahvistettu.",
   directory: "Hakemisto · ei Git-työtilaa",
-  conversations: "Keskustelut",
-  nothingWaits: "Mikään ei odota sinua",
   iconUnavailable: "Kuvaketta voi vaihtaa, kun työtilan tila on vahvistettu.",
   askModel: "Ehdotuksia mallilta…",
   iconSource: "Kuvake:",
   archived: "Arkistoitu · tiedostot ja keskustelut säilyvät ·",
   restore: "Palauta",
-  archivedHome:
-    "Tiedostot ja keskustelut säilyvät. Löydät sen etusivun lopusta, Arkistoidut-ryhmästä.",
   archivedRail:
     "Tiedostot ja keskustelut säilyvät. Löydät sen sivupalkin lopusta, Arkistoidut-ryhmästä.",
   repoLogo: "Repon logo",
@@ -47,8 +43,6 @@ const fi = {
   save: "Tallenna",
   openConversations: "Avoimet keskustelut",
   open: "Avoimet",
-  emptySingle:
-    "Ei avoimia keskusteluja. Aloita uusi yläpalkin Uusi keskustelu -painikkeesta.",
   empty: "Ei avoimia keskusteluja. Aloita uusi keskustelu +:sta.",
   done: (n: number) => `Valmiit · ${n}`,
   // What the icon model is shown.
@@ -82,16 +76,12 @@ export const workspacePageText = catalog(fi, {
   gitUnreadable:
     "The Git state could not be read. The state shown is not confirmed.",
   directory: "Directory · not a Git workspace",
-  conversations: "Conversations",
-  nothingWaits: "Nothing is waiting for you",
   iconUnavailable:
     "The icon can be changed once the workspace's state is confirmed.",
   askModel: "Suggestions from a model…",
   iconSource: "Icon:",
   archived: "Archived · files and conversations are kept ·",
   restore: "Restore",
-  archivedHome:
-    "Files and conversations are kept. You find it at the end of the home page, in the Archived group.",
   archivedRail:
     "Files and conversations are kept. You find it at the end of the sidebar, in the Archived group.",
   repoLogo: "Repository logo",
@@ -107,8 +97,6 @@ export const workspacePageText = catalog(fi, {
   save: "Save",
   openConversations: "Open conversations",
   open: "Open",
-  emptySingle:
-    "No open conversations. Start one with New conversation in the top bar.",
   empty: "No open conversations. Start a new conversation with +.",
   done: (n) => `Done · ${n}`,
   seenAll:

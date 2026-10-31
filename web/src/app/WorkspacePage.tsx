@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { ArchiveNotice } from "../components/ArchiveNotice";
 import { agentPresentation } from "../components/agentPresentation";
@@ -131,9 +131,6 @@ export function WorkspacePage({
   onDismissProblem,
   refresh,
   onDeleted,
-  single = false,
-  archived,
-  archivedPlace = "rail",
   icon,
   onLogin,
 }: {
@@ -167,16 +164,6 @@ export function WorkspacePage({
   refresh: () => void;
   /** The workspace left ~/src: the app shows the outcome and leaves the page. */
   onDeleted?: (outcome: DeletionOutcome) => void;
-  /**
-   * Single-workspace mode's home (Yläpalkissa): the page is the person's
-   * conversations and Git; the workspace's name and actions are in the top
-   * bar, and the last workspace is never offered for the Trash.
-   */
-  single?: boolean;
-  /** Hidden workspaces, which single-workspace mode has no sidebar for. */
-  archived?: ReactNode;
-  /** Where hidden workspaces are listed: home in single-workspace mode. */
-  archivedPlace?: "rail" | "home";
   /** The workspace's icon, while the experimental workspace icons are on:
    * the heading shows it and it opens the icon picker. */
   icon?: WorkspaceIconModel;
@@ -321,104 +308,90 @@ export function WorkspacePage({
     </p>
   );
   return (
-    <div
-      className={`ah-workspace-page${single ? " ah-workspace-page-single" : ""}`}
-    >
-      {single ? (
-        <header className="ah-workspace-page-head">
-          <div className="ah-workspace-page-title">
-            <h1 tabIndex={-1}>{txt.conversations}</h1>
-            <p className="ah-workspace-summary">
-              {summaryText || txt.nothingWaits}
-            </p>
-          </div>
-          {gitControl}
-        </header>
-      ) : (
-        <header className="ah-workspace-page-head">
-          {icon ? (
-            <WorkspaceIconPicker
-              model={iconPicker(icon, workspace, iconWrite.pending)}
-              onChoose={acceptIcon}
-              isDisabled={!iconWrite.available}
-              disabledReason={txt.iconUnavailable}
-              footer={(close) => (
-                <ControlButton
-                  data-testid="workspace-icon-ask-model"
-                  size="row"
-                  variant="quiet"
-                  onPress={() => {
-                    close();
-                    setSuggestDismissed(false);
-                    setSuggestAgain(true);
-                  }}
-                >
-                  <Icon name="spark" /> {txt.askModel}
-                </ControlButton>
-              )}
-            />
-          ) : null}
-          <div className="ah-workspace-page-title">
-            <h1 data-testid="workspace-title" tabIndex={-1}>
-              {workspace.display_name ?? workspace.name}
-            </h1>
-            <p>
-              <code title={workspace.path}>{displayPath}</code>
-            </p>
-            {icon ? (
-              <p
-                className="ah-workspace-icon-source"
-                data-testid="workspace-icon-source"
+    <div className="ah-workspace-page">
+      <header className="ah-workspace-page-head">
+        {icon ? (
+          <WorkspaceIconPicker
+            model={iconPicker(icon, workspace, iconWrite.pending)}
+            onChoose={acceptIcon}
+            isDisabled={!iconWrite.available}
+            disabledReason={txt.iconUnavailable}
+            footer={(close) => (
+              <ControlButton
+                data-testid="workspace-icon-ask-model"
+                size="row"
+                variant="quiet"
+                onPress={() => {
+                  close();
+                  setSuggestDismissed(false);
+                  setSuggestAgain(true);
+                }}
               >
-                {txt.iconSource} {source.source}
-                {source.where ? (
-                  <>
-                    {" · "}
-                    <code>{source.where}</code>
-                  </>
-                ) : null}
-              </p>
-            ) : null}
-            {hidden ? (
-              <span className="ah-workspace-hidden">
-                {txt.archived}{" "}
-                <ControlButton
-                  variant="quiet"
-                  size="inline"
-                  isDisabled={
-                    !onVisibility ||
-                    !csrf ||
-                    workspace.mutation_state !== "allowed"
-                  }
-                  onPress={() => archive(false)}
-                >
-                  {txt.restore}
-                </ControlButton>
-              </span>
-            ) : null}
-          </div>
-          <WorkspaceActions
-            page
-            workspace={workspace}
-            renameRef={actionButton}
-            onNew={onNew}
-            onNewWorktree={onNewWorktree}
-            newReason={startReason}
-            onRename={() => {
-              setDisplay(workspace.display_name ?? workspace.name);
-              setRenameOpen(true);
-            }}
-            onHide={onVisibility ? () => archive(!hidden) : undefined}
-            settingsAvailable={!!csrf && workspace.mutation_state === "allowed"}
-            deleteRef={deleteButton}
-            onDelete={
-              csrf && onDeleted && workspace.observation_token
-                ? () => setDeleteOpen(true)
-                : undefined
-            }
+                <Icon name="spark" /> {txt.askModel}
+              </ControlButton>
+            )}
           />
-        </header>
-      )}
+        ) : null}
+        <div className="ah-workspace-page-title">
+          <h1 data-testid="workspace-title" tabIndex={-1}>
+            {workspace.display_name ?? workspace.name}
+          </h1>
+          <p>
+            <code title={workspace.path}>{displayPath}</code>
+          </p>
+          {icon ? (
+            <p
+              className="ah-workspace-icon-source"
+              data-testid="workspace-icon-source"
+            >
+              {txt.iconSource} {source.source}
+              {source.where ? (
+                <>
+                  {" · "}
+                  <code>{source.where}</code>
+                </>
+              ) : null}
+            </p>
+          ) : null}
+          {hidden ? (
+            <span className="ah-workspace-hidden">
+              {txt.archived}{" "}
+              <ControlButton
+                variant="quiet"
+                size="inline"
+                isDisabled={
+                  !onVisibility ||
+                  !csrf ||
+                  workspace.mutation_state !== "allowed"
+                }
+                onPress={() => archive(false)}
+              >
+                {txt.restore}
+              </ControlButton>
+            </span>
+          ) : null}
+        </div>
+        <WorkspaceActions
+          page
+          workspace={workspace}
+          renameRef={actionButton}
+          onNew={onNew}
+          onNewWorktree={onNewWorktree}
+          newReason={startReason}
+          onRename={() => {
+            setDisplay(workspace.display_name ?? workspace.name);
+            setRenameOpen(true);
+          }}
+          onHide={onVisibility ? () => archive(!hidden) : undefined}
+          settingsAvailable={!!csrf && workspace.mutation_state === "allowed"}
+          deleteRef={deleteButton}
+          onDelete={
+            csrf && onDeleted && workspace.observation_token
+              ? () => setDeleteOpen(true)
+              : undefined
+          }
+        />
+      </header>
       {csrf && onDeleted && deleteOpen ? (
         <WorkspaceDeletion
           workspace={workspace}
@@ -440,9 +413,7 @@ export function WorkspacePage({
         <ArchiveNotice
           kind="workspace-archive"
           title={workspace.display_name ?? workspace.name}
-          detail={
-            archivedPlace === "home" ? txt.archivedHome : txt.archivedRail
-          }
+          detail={txt.archivedRail}
           restoreLabel={txt.undo}
           busy={false}
           onRestore={() => archive(false)}
@@ -579,15 +550,12 @@ export function WorkspacePage({
           identity={identity}
           onNew={onNew}
           startReason={startReason}
-          single={single}
         />
       ) : null}
-      {single ? null : (
-        <div className="ah-workspace-git">
-          {gitControl}
-          <span className="ah-workspace-summary">{summaryText}</span>
-        </div>
-      )}
+      <div className="ah-workspace-git">
+        {gitControl}
+        <span className="ah-workspace-summary">{summaryText}</span>
+      </div>
       {csrf && workspace.kind === "git_main_worktree" ? (
         <WorktreeCleanup
           csrf={csrf}
@@ -641,9 +609,7 @@ export function WorkspacePage({
             archiveReason={archiveReason}
           />
         ) : (
-          <p data-testid="workspace-conversations-empty">
-            {single ? txt.emptySingle : txt.empty}
-          </p>
+          <p data-testid="workspace-conversations-empty">{txt.empty}</p>
         )}
       </section>
       <details className="ah-workspace-done">
@@ -656,7 +622,6 @@ export function WorkspacePage({
           ))}
         </ul>
       </details>
-      {archived}
     </div>
   );
 }

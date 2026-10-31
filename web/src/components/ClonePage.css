@@ -1,6 +1,6 @@
 /* Uusi työtila as a page (Kloonaussivulla, Jari 17.10.2026; prototype
    design-system/prototypes/rounds/2026-10-17-repon-valinta). */
-.ah-app-shell:has(.ah-rail, .ah-single-bar) .ah-state:has(> .ah-clone-page) {
+.ah-app-shell:has(.ah-rail) .ah-state:has(> .ah-clone-page) {
   max-width: 1000px;
 }
 .ah-clone-page {

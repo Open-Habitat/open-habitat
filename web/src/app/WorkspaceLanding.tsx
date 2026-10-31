@@ -15,13 +15,11 @@ export function WorkspaceLanding({
   identity,
   onNew,
   startReason,
-  single = false,
 }: {
   workspaceId: string;
   identity?: string;
   onNew?: (id: string) => void;
   startReason?: string;
-  single?: boolean;
 }) {
   const t = useText(workspaceLandingText);
   const [page, setPage] = useState<StartPage | null>();
@@ -59,7 +57,6 @@ export function WorkspaceLanding({
         onRetry={() => retry((v) => v + 1)}
         preparing={preparing}
         disabled={disabled}
-        newHint={single ? t.emptyHint : undefined}
         onCreatePage={() => {
           if (!identity || disabled) return;
           prepareInvocation(identity, workspaceId, "/open-habitat-start-page ");

@@ -14,7 +14,6 @@ export const NOTICE_LIFETIME_MS = 8_000;
 const icons: Record<NoticeKind, IconName> = {
   archive: "archive",
   trash: "trash",
-  mode: "info",
   "workspace-archive": "eyeOff",
   "workspace-icon": "check",
 };

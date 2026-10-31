@@ -81,6 +81,11 @@ voi suodattaa, ja arkistoidut työtilat ovat taitettuna listan lopussa, josta
 ne voi palauttaa; suodatin löytää myös ne. Tyhjä lista, lataus ja hakemiston
 lukemisen epäonnistuminen erottuvat toisistaan.
 
+Yhden työtilan käyttäjällä on sama näkymä ja sivupalkki kuin muillakin.
+Yhden rivin listaa, suodatinta ja Työtilat-otsikkoa ei näytetä, vaan
+sivupalkin alareunassa on hiljaisesti työtilan nimi, joka vie sen sivulle,
+ja *Lisää työtiloja*. Toinen työtila tuo listan takaisin.
+
 **Etusivu** vie paluunäkymään, josta käyttäjä löytää käynnissä olevat ja
 äskettäin avatut keskustelunsa. Työpöydällä sivupalkin voi kaventaa kaistaksi,
 jossa Sinun vuorosi- ja Käynnissä-keskustelut näkyvät työtilan kirjaimina ja

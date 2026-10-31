@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import {
   AccountShelf,
   ArchivedWorkspaces,
@@ -99,6 +100,7 @@ const alphabetical = (a: Workspace, b: Workspace) =>
   (a.display_name ?? a.name).localeCompare(b.display_name ?? b.name, "fi");
 // Navigation and catalog presentation live here; the loader and route switch stay in App.
 export function WorkspaceRailView({
+  only,
   phase,
   snapshot,
   profile,
@@ -136,6 +138,8 @@ export function WorkspaceRailView({
   archiveConversation?: RailArchive;
   /** The status bell, where no top bar carries it. */
   bell?: ReactNode;
+  /** The only visible workspace in a confirmed listing: named, not listed. */
+  only?: Workspace;
   phase: RootState["connection"]["phase"];
   snapshot: Snapshot;
   profile?: AccountProfile;
@@ -172,7 +176,9 @@ export function WorkspaceRailView({
   const cloneView = useCloneView(clones);
   const queued = cloneView.queue.filter((q) => q.state !== "present");
   const server = useServer(pathname);
-  const term = filter.toLocaleLowerCase();
+  const { search } = useLocation();
+  // With one workspace there is no filter field, so nothing filters.
+  const term = only ? "" : filter.toLocaleLowerCase();
   const archivedMatches = archived
     .filter((w) =>
       (w.display_name ?? w.name).toLocaleLowerCase().includes(term),
@@ -221,6 +227,16 @@ export function WorkspaceRailView({
         source === "confirmed" ? `${matches.length}` : txt.found(matches.length)
       }
       onCreateWorkspace={onCreateWorkspace}
+      only={
+        only && {
+          name: only.display_name ?? only.name,
+          href: `/workspaces/${only.workspace_id}`,
+          current:
+            pathname === `/workspaces/${only.workspace_id}` &&
+            !new URLSearchParams(search).has("conversation"),
+          adding: pathname === "/workspaces/new",
+        }
+      }
       listState={railState}
       onToggle={onToggle}
       onFilter={onFilter}
@@ -269,7 +285,7 @@ export function WorkspaceRailView({
       }
       archived={
         <ArchivedWorkspaces
-          forceOpen={!!filter}
+          forceOpen={!!term}
           workspaces={archivedMatches.map((w) => ({
             id: w.workspace_id,
             name: w.display_name ?? w.name,

@@ -5,15 +5,15 @@ import { expect, test } from "./lab-host";
 test.use({ reducedMotion: "reduce" });
 
 for (const width of [1440, 390]) {
-  for (const singleWorkspace of [false, true]) {
-    test(`@a11y shell header survives navigation and scrolling at ${width}px ${singleWorkspace ? "top bar" : "sidebar"}`, async ({
+  for (const oneWorkspace of [false, true]) {
+    test(`@a11y shell header survives navigation and scrolling at ${width}px ${oneWorkspace ? "one workspace" : "many workspaces"}`, async ({
       page,
     }, info) => {
       await page.setViewportSize({ width, height: 600 });
       expect((await page.request.get("/fixture/open-at-end")).status()).toBe(
         204,
       );
-      if (singleWorkspace) {
+      if (oneWorkspace) {
         expect(
           (
             await page.request.get(
@@ -40,11 +40,7 @@ for (const width of [1440, 390]) {
       ]) {
         await page.goto(path);
         const header = page.locator(
-          singleWorkspace
-            ? ".ah-single-bar"
-            : width === 390
-              ? ".ah-mobile-toolbar"
-              : ".ah-rail-head",
+          width === 390 ? ".ah-mobile-toolbar" : ".ah-rail-head",
         );
         await expect(header).toBeInViewport({ ratio: 1 });
         const conversationHeader = page.locator(
@@ -75,7 +71,7 @@ for (const width of [1440, 390]) {
             (await new AxeBuilder({ page }).exclude(".ah-feed").analyze())
               .violations,
           ).toEqual([]);
-          if (singleWorkspace || !path.includes("?conversation=")) continue;
+          if (oneWorkspace || !path.includes("?conversation=")) continue;
           await snapshot(
             page,
             info.outputPath(`conversation-${width}-${colorScheme}`),

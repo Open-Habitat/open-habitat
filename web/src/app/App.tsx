@@ -1,6 +1,5 @@
 import {
   lazy,
-  type ReactNode,
   Suspense,
   useCallback,
   useEffect,
@@ -34,7 +33,6 @@ import { HomeWorkspaces } from "../components/HomeWorkspaces";
 import { Landing } from "../components/Landing";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { refused } from "../components/ModelPicker";
-import { ArchivedWorkspaces } from "../components/Navigation";
 import type { ReturnConversation } from "../components/ReturnView";
 import { StatusBell } from "../components/StatusBell";
 import { setPersonalLanguage, textNow, useLanguage } from "../i18n";
@@ -117,7 +115,6 @@ import {
 } from "./pi";
 import { usePushNotifications } from "./push";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
-import { SingleWorkspaceBarView } from "./SingleWorkspaceBarView";
 import {
   isSettingsRoute,
   settingsHref,
@@ -325,14 +322,6 @@ export function App() {
     route: string;
   }>();
   const [trashOutcome, setTrashOutcome] = useState<DeletionOutcome>();
-  const [modeNotice, setModeNotice] = useState<{
-    key: number;
-    single: boolean;
-    text: string;
-  }>();
-  const [modeEnter, setModeEnter] = useState(false);
-  // The visible count last seen for this person: a change across 1 is a mode change.
-  const modeSeen = useRef<{ identity: string; count: number }>(undefined);
   const [railStartError, setRailStartError] = useState("");
   const [creationViews, setCreationViews] = useState<
     Record<
@@ -458,8 +447,6 @@ export function App() {
     owned.current.mutations?.dispose();
     setArchiveNotice(undefined);
     setTrashOutcome(undefined);
-    setModeNotice(undefined);
-    modeSeen.current = undefined;
     archiveFocusPending.current = undefined;
     // After a reload at the login boundary we no longer know which person
     // owned this tab. Clear only identity-scoped keys, not global onboarding.
@@ -1311,66 +1298,31 @@ export function App() {
     // a confirmed listing so a partial one removes nothing.
     source === "confirmed" ? snapshot?.agents : undefined,
   );
-  // Single-workspace mode (Yläpalkissa, Jari 18.10.2026) follows the number
-  // of visible native workspaces in the snapshot; nothing is stored, and
-  // hidden workspaces do not count. An unconfirmed listing keeps the sidebar,
-  // which says what is missing.
+  // With one visible workspace the rail names it instead of listing it
+  // (Jari 31.10.2026); hidden workspaces do not count, and an
+  // unconfirmed listing keeps the list, which says what is missing.
   const onlyWorkspace =
     (phase === "authenticated" || phase === "stale") &&
     source === "confirmed" &&
     visible.length === 1
       ? visible[0]
       : undefined;
-  // Canonical home in single-workspace mode; replace aliases, never add a
-  // history entry. Conversation deep links keep their workspace and query.
+  // The home page is /workspaces; replace the alias, never add a history
+  // entry.
   useEffect(() => {
     if (!snapshot || phase !== "authenticated" || source !== "confirmed")
       return;
-    const home = onlyWorkspace ? "/" : "/workspaces";
-    if (route.pathname === (onlyWorkspace ? "/workspaces" : "/"))
-      navigate(`${home}${route.search}${route.hash}`, { replace: true });
+    if (route.pathname === "/")
+      navigate(`/workspaces${route.search}${route.hash}`, { replace: true });
   }, [
     snapshot,
     phase,
     source,
-    onlyWorkspace,
     route.pathname,
     route.search,
     route.hash,
     navigate,
   ]);
-  const visibleCount = source === "confirmed" ? visible.length : undefined;
-  const onlyName = onlyWorkspace
-    ? (onlyWorkspace.display_name ?? onlyWorkspace.name)
-    : "";
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only a change of the count or the person is a mode change; the name is read at that moment.
-  useEffect(() => {
-    if (!identity || visibleCount === undefined || phase !== "authenticated")
-      return;
-    const previous = modeSeen.current;
-    modeSeen.current = { identity, count: visibleCount };
-    if (!previous || previous.identity !== identity) return;
-    const wasSingle = previous.count === 1;
-    const isSingle = visibleCount === 1;
-    // No workspaces is the start view, not a mode of its own to announce.
-    if (wasSingle === isSingle || visibleCount === 0) return;
-    // A notice on every mode change: it is rare and changes the whole frame.
-    setModeNotice({
-      key: Date.now(),
-      single: isSingle,
-      text: isSingle
-        ? previous.count === 0
-          ? textNow(appText).onlyWorkspace(onlyName)
-          : textNow(appText).oneLeft
-        : textNow(appText).manyNow(visibleCount),
-    });
-    setModeEnter(true);
-  }, [identity, visibleCount, phase]);
-  useEffect(() => {
-    if (!modeEnter) return;
-    const timer = window.setTimeout(() => setModeEnter(false), 400);
-    return () => window.clearTimeout(timer);
-  }, [modeEnter]);
   type Agent = NonNullable<typeof snapshot>["agents"][number];
   type WorkspaceRecord = NonNullable<typeof snapshot>["workspaces"][number];
   // Closing an empty conversation is a pending command: the conversation
@@ -1946,8 +1898,7 @@ export function App() {
       refresh();
     },
   };
-  // An empty worktree agent (ADR 0025): the workspace page's icon row, or
-  // the top bar's menu in single-workspace mode.
+  // An empty worktree agent (ADR 0025), from the workspace page's icon row.
   const newWorktree = (ws: WorkspaceRecord) =>
     !createReason(ws.workspace_id) &&
     !syntheticDemo &&
@@ -1969,11 +1920,7 @@ export function App() {
           navigate(`/workspaces/${id}?conversation=new-worktree`);
         }
       : undefined;
-  const workspacePage = (
-    ws: WorkspaceRecord,
-    single = false,
-    archived?: ReactNode,
-  ) =>
+  const workspacePage = (ws: WorkspaceRecord) =>
     conversationStore ? (
       <WorkspacePage
         key={ws.workspace_id}
@@ -2040,9 +1987,6 @@ export function App() {
         icon={icons?.get(ws.workspace_id)}
         onLogin={requireLogin}
         refresh={refresh}
-        single={single}
-        archived={archived}
-        archivedPlace={onlyWorkspace ? "home" : "rail"}
         onDeleted={(outcome) => {
           setTrashOutcome(outcome);
           navigate("/workspaces");
@@ -2084,7 +2028,7 @@ export function App() {
       navigate(`${back.pathname}${back.search}${back.hash}`, {
         state: back.state,
       });
-    else navigate(onlyWorkspace ? "/" : "/workspaces");
+    else navigate("/workspaces");
   };
   const settingsView = (
     <AccountSettings
@@ -2358,14 +2302,9 @@ export function App() {
       />
     ) : selected ? (
       <>
-        {!new URLSearchParams(location.search).has("conversation") ? (
-          onlyWorkspace?.workspace_id === selected.workspace_id ? (
-            // The only workspace's page is the home page.
-            <Redirect held={!!settingsOver} to="/" replace />
-          ) : conversationStore ? (
-            workspacePage(selected)
-          ) : null
-        ) : null}
+        {!new URLSearchParams(location.search).has("conversation")
+          ? workspacePage(selected)
+          : null}
         {new URLSearchParams(location.search).has("conversation") &&
           archiveProblem && (
             <InlineNotice
@@ -2744,7 +2683,6 @@ export function App() {
             data-annotation-state={
               snapshot?.sources.find((f) => f.source === "annotation")?.state
             }
-            className={onlyWorkspace ? "ah-workspace-home-notice" : undefined}
           >
             <InlineNotice
               data-testid="archive-incomplete"
@@ -2766,68 +2704,33 @@ export function App() {
             />
           </div>
         )}
-        {onlyWorkspace ? (
-          workspacePage(
-            onlyWorkspace,
-            true,
-            <ArchivedWorkspaces
-              workspaces={archivedWorkspaces.map((w) => ({
-                id: w.workspace_id,
-                name: w.display_name ?? w.name,
-                href: `/workspaces/${w.workspace_id}`,
-                selected: false,
-              }))}
-              onRestore={
-                csrf &&
-                phase === "authenticated" &&
-                snapshot?.write_state !== "read_only"
-                  ? (id) => {
-                      const w = archivedWorkspaces.find(
-                        (a) => a.workspace_id === id,
-                      );
-                      if (w) void changeVisibility(w, false);
-                    }
-                  : undefined
-              }
-              restoreReason={
-                phase === "stale"
-                  ? t.app.disconnected
-                  : snapshot?.write_state === "read_only"
-                    ? t.app.readOnly
-                    : undefined
-              }
-              problem={visibilityProblem?.text}
-            />,
-          )
-        ) : (
-          <HomeWorkspaces
-            key={identity}
-            workspaces={visible}
-            conversations={returnConversations.filter((c) =>
-              visible.some((w) => w.workspace_id === c.workspaceId),
-            )}
-            newReason={createReason}
-            store={conversationStore}
-            archiveReason={cardArchiveReason}
-            onArchive={archiveFromCard}
-            onNew={
-              phase === "authenticated" &&
-              csrf &&
-              snapshot?.write_state !== "read_only"
-                ? startFromHome
-                : undefined
-            }
-            onCreate={
-              !syntheticDemo &&
-              phase === "authenticated" &&
-              csrf &&
-              source === "confirmed" &&
-              snapshot?.write_state !== "read_only"
-                ? () => navigate("/workspaces/new")
-                : undefined
-            }
-          />
-        )}
+        <HomeWorkspaces
+          key={identity}
+          workspaces={visible}
+          conversations={returnConversations.filter((c) =>
+            visible.some((w) => w.workspace_id === c.workspaceId),
+          )}
+          newReason={createReason}
+          store={conversationStore}
+          archiveReason={cardArchiveReason}
+          onArchive={archiveFromCard}
+          onNew={
+            phase === "authenticated" &&
+            csrf &&
+            snapshot?.write_state !== "read_only"
+              ? startFromHome
+              : undefined
+          }
+          onCreate={
+            !syntheticDemo &&
+            phase === "authenticated" &&
+            csrf &&
+            source === "confirmed" &&
+            snapshot?.write_state !== "read_only"
+              ? () => navigate("/workspaces/new")
+              : undefined
+          }
+        />
         {source === "absent" ? (
           <InlineNotice
             data-testid="catalog-missing"
@@ -2874,8 +2777,8 @@ export function App() {
   // is there on every conversation route, so opening it remounts nothing.
   const editorRoute = !!(selectedId && openConversation) || !!selectedAgentId;
   // A conversation's top bar carries the bell; elsewhere, and while Settings
-  // lies over the conversation, the rail, the phone's toolbar or the single
-  // workspace bar does. One bell per screen.
+  // lies over the conversation, the rail or the phone's toolbar does. One
+  // bell per screen.
   const conversationBell = editorRoute && !settingsLayer;
   const editorWorkspaceId = selectedAgentId
     ? agentWorkspace &&
@@ -2898,64 +2801,7 @@ export function App() {
           <AppShell
             bell={conversationBell ? undefined : <StatusBell />}
             navigationBadge={now.yours.length}
-            className={
-              [
-                landing.entering ? "ah-landing-enter" : "",
-                modeEnter ? "ah-mode-enter" : "",
-              ]
-                .filter(Boolean)
-                .join(" ") || undefined
-            }
-            topBar={
-              onlyWorkspace &&
-              snapshot &&
-              conversationStore &&
-              !landing.show ? (
-                <SingleWorkspaceBarView
-                  bell={conversationBell ? undefined : <StatusBell />}
-                  workspace={onlyWorkspace}
-                  phase={phase}
-                  source={source}
-                  profile={profile}
-                  identityName={snapshot.identity.display_name}
-                  pathname={location.pathname}
-                  newReason={createReason(onlyWorkspace.workspace_id)}
-                  onNew={
-                    csrf &&
-                    phase === "authenticated" &&
-                    snapshot.write_state !== "read_only"
-                      ? () => startFromHome(onlyWorkspace.workspace_id)
-                      : undefined
-                  }
-                  onAdd={
-                    !syntheticDemo &&
-                    phase === "authenticated" &&
-                    csrf &&
-                    snapshot.write_state !== "read_only"
-                      ? () => navigate("/workspaces/new")
-                      : undefined
-                  }
-                  onRename={
-                    csrf &&
-                    phase === "authenticated" &&
-                    snapshot.write_state !== "read_only" &&
-                    onlyWorkspace.mutation_state === "allowed"
-                      ? (display) =>
-                          void renameWorkspace(onlyWorkspace, display)
-                      : undefined
-                  }
-                  onNewWorktree={
-                    onlyWorkspace.kind === "git_main_worktree"
-                      ? newWorktree(onlyWorkspace)
-                      : undefined
-                  }
-                  newWorktreeReason={createReason(onlyWorkspace.workspace_id)}
-                  onSettings={openSettings}
-                  onLogout={() => setLogoutPrompt(true)}
-                  onAdministration={() => navigate(settingsHref("palvelin"))}
-                />
-              ) : undefined
-            }
+            className={landing.entering ? "ah-landing-enter" : undefined}
             mobileTitle={
               (selectedAgent && agentTitle(selectedAgent.title)) ??
               (selected
@@ -3028,9 +2874,9 @@ export function App() {
               (phase === "authenticated" || phase === "stale") &&
               snapshot &&
               conversationStore &&
-              !onlyWorkspace &&
               !landing.show ? (
                 <WorkspaceRailView
+                  only={onlyWorkspace}
                   bell={conversationBell ? undefined : <StatusBell />}
                   phase={phase}
                   snapshot={snapshot}
@@ -3096,23 +2942,9 @@ export function App() {
                   <TrashNotice
                     key={`${trashOutcome.result.workspace_id}:${trashOutcome.result.entry ?? ""}`}
                     outcome={trashOutcome}
-                    note={modeNotice?.single ? modeNotice.text : undefined}
                     csrf={csrf}
                     refresh={refresh}
-                    onClose={() => {
-                      setTrashOutcome(undefined);
-                      if (modeNotice?.single) setModeNotice(undefined);
-                    }}
-                  />
-                ) : null}
-                {modeNotice && !(trashOutcome && modeNotice.single) ? (
-                  <ArchiveNotice
-                    kind="mode"
-                    key={modeNotice.key}
-                    message={modeNotice.text}
-                    wrap
-                    busy={false}
-                    onClose={() => setModeNotice(undefined)}
+                    onClose={() => setTrashOutcome(undefined)}
                   />
                 ) : null}
                 {archiveNotice ? (

@@ -24,9 +24,6 @@ const unknownChecks = new Proxy(
   { get: (_target, check: string) => txt.unknownChecks[check] },
 );
 
-/** Why the only visible workspace is never moved to the Trash (Jari 18.10.2026). */
-export const lastWorkspaceReason = () => txt.lastWorkspace;
-
 const process = (b: DeletionBlocker): Segment[] =>
   b.comm
     ? [{ code: b.comm }, ` (PID ${b.pid ?? "?"})`]

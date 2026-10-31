@@ -386,9 +386,9 @@ func catalogID(cfg transport.Config, entry Workspace) string {
 }
 
 // lastWorkspaceBlockers refuses the person's only visible workspace (Jari
-// 18.10.2026: for many it is the only place they work). The browser's
-// single-workspace mode never offers it; this holds for a stale tab or any
-// other client too. Visible is counted as the snapshot counts it: readable
+// 18.10.2026: for many it is the only place they work). The deletion
+// dialog shows this blocker; it holds for a stale tab or any other client
+// too. Visible is counted as the snapshot counts it: readable
 // entries that are not hidden, without Taskfleet's worktree containers. A
 // hidden target is never the last, because hiding already left the count.
 func lastWorkspaceBlockers(ctx context.Context, cfg transport.Config, obs Discovery, target Workspace) []deletionBlocker {

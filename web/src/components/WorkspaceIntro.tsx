@@ -38,7 +38,6 @@ export function WorkspaceIntro({
   preparing,
   disabled,
   onCreatePage,
-  newHint,
 }: {
   page?: StartPage | null;
   state: "loading" | "ready" | "error";
@@ -50,7 +49,6 @@ export function WorkspaceIntro({
   disabled?: string;
   /** Starts a conversation that writes or updates the start page. */
   onCreatePage: () => void;
-  newHint?: string;
 }) {
   const t = useText(startHereText);
   const [open, setOpen] = useState(false);
@@ -117,9 +115,7 @@ export function WorkspaceIntro({
             preparing={preparing}
             disabled={disabled}
           />
-          <p className="ah-start-hint">
-            {t.introGoalHint(newHint ?? t.newHint)}
-          </p>
+          <p className="ah-start-hint">{t.introGoalHint(t.newHint)}</p>
         </>
       ) : null}
     </section>

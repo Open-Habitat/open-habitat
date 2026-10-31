@@ -5,15 +5,15 @@ import { expect, test } from "./lab-host";
 test.use({ reducedMotion: "reduce" });
 
 for (const width of [1440, 390]) {
-  for (const singleWorkspace of [false, true]) {
-    test(`@a11y @page-scroll-header ${width}px ${singleWorkspace ? "top bar" : "sidebar"}: margins scroll the thread, never the shell`, async ({
+  for (const oneWorkspace of [false, true]) {
+    test(`@a11y @page-scroll-header ${width}px ${oneWorkspace ? "one workspace" : "many workspaces"}: margins scroll the thread, never the shell`, async ({
       page,
     }, info) => {
       await page.setViewportSize({ width, height: 900 });
       expect((await page.request.get("/fixture/open-at-end")).status()).toBe(
         204,
       );
-      if (singleWorkspace) {
+      if (oneWorkspace) {
         expect(
           (
             await page.request.get(
@@ -40,8 +40,8 @@ for (const width of [1440, 390]) {
       const header = page.locator(".ah-conversation-frame > .ah-agent-header");
       await expect(stream).toBeVisible();
       await expect(page.getByTestId("stage-reply").last()).toBeInViewport();
-      await expect(page.locator(".ah-single-bar")).toHaveCount(
-        singleWorkspace ? 1 : 0,
+      await expect(page.getByTestId("rail-only-workspace")).toHaveCount(
+        oneWorkspace ? 1 : 0,
       );
       for (const height of [900, 600]) {
         await page.setViewportSize({ width, height });
@@ -109,7 +109,7 @@ for (const width of [1440, 390]) {
           (await new AxeBuilder({ page }).exclude(".ah-feed").analyze())
             .violations,
         ).toEqual([]);
-        if (!singleWorkspace) {
+        if (!oneWorkspace) {
           await stream.evaluate((el) => {
             el.scrollTop = el.scrollHeight - el.clientHeight - 400;
           });

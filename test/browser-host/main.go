@@ -1277,7 +1277,7 @@ esac
 				w.WriteHeader(http.StatusNoContent)
 				return
 			case "/fixture/keep-workspaces":
-				// Single-workspace mode: only the named workspaces stay in
+				// One- and two-workspace homes: only the named workspaces stay in
 				// Alice's disposable ~/src; the others are removed outright.
 				var keep []string
 				for _, n := range strings.Split(r.URL.Query().Get("names"), ",") {

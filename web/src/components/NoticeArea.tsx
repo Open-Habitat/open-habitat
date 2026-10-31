@@ -16,7 +16,6 @@ import {
 export type NoticeKind =
   | "archive"
   | "trash"
-  | "mode"
   | "workspace-archive"
   | "workspace-icon";
 
@@ -53,8 +52,8 @@ export function useNoticeArea() {
   return useContext(NoticeContext);
 }
 
-/** One notice area for the app: archiving, the Trash, a mode change and a
- * workspace's archiving all show here, as quiet rows inside the page's top
+/** One notice area for the app: archiving, the Trash, a workspace's archiving
+ * and its icon all show here, as quiet rows inside the page's top
  * bar (proto-archive-notice-placement, round 2, Otsakerivi). AppShell holds
  * it. The notices
  * stay where their owners render them; each registers here and its row is

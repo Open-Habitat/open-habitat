@@ -3,11 +3,6 @@ import { catalog } from "../i18n";
 // The application frame's own states (app/App.tsx): page titles, the home
 // page's catalog states and the views for a missing target.
 const fi = {
-  onlyWorkspace: (name: string) =>
-    `${name} on ainoa työtilasi, joten näkymä keskittyy siihen. Sivupalkki tulee esiin, kun lisäät toisen työtilan.`,
-  oneLeft: "Jäljellä on yksi työtila, joten näkymä keskittyy siihen.",
-  manyNow: (count: number) =>
-    `Työtiloja on nyt ${count === 2 ? "kaksi" : count}, joten sivupalkki näyttää ne ryhminä.`,
   conversationUncertain: "Keskustelun tilaa ei voitu tarkistaa",
   conversationMissing: "Keskustelua ei löydy",
   checkAgain: "Tarkista tiedot uudelleen",
@@ -114,11 +109,6 @@ const fi = {
 };
 
 export const appText = catalog(fi, {
-  onlyWorkspace: (name) =>
-    `${name} is your only workspace, so the view centres on it. The sidebar appears when you add a second workspace.`,
-  oneLeft: "One workspace is left, so the view centres on it.",
-  manyNow: (count) =>
-    `You now have ${count === 2 ? "two" : count} workspaces, so the sidebar shows them in groups.`,
   conversationUncertain: "The conversation's state could not be checked",
   conversationMissing: "Conversation not found",
   checkAgain: "Check again",
