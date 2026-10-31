@@ -685,8 +685,9 @@
     background: var(--ah-scrim);
   }
 }
-/* Settings closes from its corner, which stays in reach while the page
-   scrolls. */
+/* Settings closes from its corner. On the desktop the X has a column of
+   its own right of the section, where it stays in reach while the page
+   scrolls without ever lying over the section's content. */
 .ah-account-settings.s-page {
   position: relative;
 }
@@ -697,13 +698,14 @@
   z-index: 1;
   order: 3;
   flex: none;
-  /* Over the section's heading row: the section keeps its whole width. */
-  margin-left: calc(-1 * (var(--ah-s8) + var(--ah-control-row)));
+  margin-left: calc(var(--ah-s2) - var(--ah-s8));
 }
 @media (max-width: 760px) {
   /* Above the section list or the section's own back row, at their right
-     end, without a row of its own. */
+     end, without a row of its own. A phone has no room for a column, so
+     the X scrolls away with that row instead of floating over the text. */
   .s-close {
+    position: relative;
     order: -1;
     align-self: flex-end;
     margin-left: 0;

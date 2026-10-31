@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: settings-shell
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Settings close X floats over scrolled content on long pages
@@ -20,4 +21,4 @@ Jari 30.10. (testikone pilot.536, työpöytä): Kokeellisten ominaisuuksien sivu
 
 ## Acceptance Criteria
 
-- [ ] Sulkemisen X ei koskaan peitä sisältöä millään asetussivulla (esim. oma otsakealue tai varattu tila), työpöytä ja puhelin; selainspec pitkällä sivulla.
+- [x] Sulkemisen X ei koskaan peitä sisältöä millään asetussivulla (esim. oma otsakealue tai varattu tila), työpöytä ja puhelin; selainspec pitkällä sivulla.

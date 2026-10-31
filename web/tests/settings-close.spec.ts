@@ -219,3 +219,129 @@ test("@settings-close the page under Settings keeps its scroll position", async 
   await expect(page.locator(".ah-account-settings")).toHaveCount(0);
   expect(await main.evaluate((m) => m.scrollTop)).toBe(40);
 });
+
+/** Scrolls Settings from its top to its bottom and returns, for each step
+ * where the X lies over any text or control of the section, what it
+ * covered. Text is measured by its own glyph boxes, not its block's. */
+async function coveredWhileScrolling(page: Page) {
+  return page.evaluate(async () => {
+    const close = document.querySelector('[data-testid="settings-close"]');
+    const main = document.querySelector(".s-main");
+    if (!close || !main) return ["no X or section"];
+    let scroller: Element | null = close.parentElement;
+    while (
+      scroller &&
+      !(
+        /(auto|scroll)/.test(getComputedStyle(scroller).overflowY) &&
+        scroller.scrollHeight > scroller.clientHeight
+      )
+    )
+      scroller = scroller.parentElement;
+    const target = scroller ?? document.scrollingElement ?? document.body;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    const hits: string[] = [];
+    // What of a box shows: an ancestor that clips its overflow cuts it.
+    const shown = (r: DOMRect, from: Element | null) => {
+      let { left, top, right, bottom } = r;
+      for (let a = from; a && a !== main.parentElement; a = a.parentElement)
+        if (getComputedStyle(a).overflow !== "visible") {
+          const c = a.getBoundingClientRect();
+          left = Math.max(left, c.left);
+          top = Math.max(top, c.top);
+          right = Math.min(right, c.right);
+          bottom = Math.min(bottom, c.bottom);
+        }
+      return { left, top, right, bottom };
+    };
+    const overlap = (
+      a: { left: number; top: number; right: number; bottom: number },
+      b: DOMRect,
+    ) =>
+      a.left < a.right &&
+      a.top < a.bottom &&
+      a.left < b.right &&
+      b.left < a.right &&
+      a.top < b.bottom &&
+      b.top < a.bottom;
+    const max = target.scrollHeight - target.clientHeight;
+    for (let top = 0; ; top = Math.min(max, top + 120)) {
+      target.scrollTop = top;
+      await frame();
+      const x = close.getBoundingClientRect();
+      const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (!n.textContent?.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        if (
+          [...range.getClientRects()].some((r) =>
+            overlap(shown(r, n.parentElement), x),
+          )
+        )
+          hits.push(`${top}: "${n.textContent.trim().slice(0, 40)}"`);
+      }
+      for (const c of main.querySelectorAll(
+        "button, input, select, textarea, a[href], svg, img, [role]",
+      ))
+        if (
+          c.checkVisibility() &&
+          overlap(shown(c.getBoundingClientRect(), c.parentElement), x) &&
+          !c.contains(close)
+        )
+          hits.push(`${top}: <${c.tagName.toLowerCase()}>`);
+      if (top >= max) break;
+    }
+    return hits;
+  });
+}
+
+for (const [device, viewport] of [
+  ["desktop", { width: 1280, height: 600 }],
+  ["phone", { width: 390, height: 700 }],
+] as const)
+  test(`@settings-close ${device}: the X never lies over a settings page's content, scrolled anywhere`, async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize(viewport);
+    await signIn(page);
+    // The section list, which a phone shows only before a section opens.
+    await page.goto("/settings");
+    const close = page
+      .getByRole("button")
+      .and(page.getByTestId("settings-close"));
+    await expect(close).toBeVisible();
+    const pages = await page
+      .getByTestId("settings-navigation")
+      .getByRole("link")
+      .evaluateAll((links) =>
+        links.map((l) => (l as HTMLAnchorElement).pathname),
+      );
+    expect(pages.length).toBeGreaterThan(3);
+    for (const path of pages) {
+      await page.goto(path);
+      await expect(page.locator(".s-main > h2")).toBeVisible();
+      // Let the section's own reads settle into their final length.
+      await page.waitForLoadState("networkidle");
+      expect({ path, covered: await coveredWhileScrolling(page) }).toEqual({
+        path,
+        covered: [],
+      });
+    }
+    // The long page scrolled halfway, for Jari's eye; on the desktop the X
+    // stays in reach there.
+    await page.goto("/settings/experimental");
+    await page
+      .getByTestId("experimental-features")
+      .getByRole("region")
+      .last()
+      .scrollIntoViewIfNeeded();
+    if (device === "desktop") await expect(close).toBeInViewport();
+    if (process.env.OH_VISUAL_CAPTURE)
+      for (const colorScheme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+        await page.screenshot({
+          path: `../issues/settings-close-x-overlaps-content/evidence/${device}-vieritetty-${colorScheme}.png`,
+        });
+      }
+  });
