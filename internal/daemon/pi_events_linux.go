@@ -298,7 +298,7 @@ func (c *ConversationController) drain(s *conversation) {
 					s.queueSteering, s.queueFollowUp = q.Steering, q.FollowUp
 					s.queueRevision++
 					if c.journal != nil {
-						c.journal.appendEvent("queue.changed", "pi:"+s.id, map[string]any{"revision": fmt.Sprintf("queue_%08d", s.queueRevision), "steering": q.Steering, "follow_up": q.FollowUp})
+						c.journal.appendEvent("queue.changed", "pi:"+s.id, map[string]any{"revision": fmt.Sprintf("queue_%08d", s.queueRevision), "steering": writtenTexts(c.home, q.Steering), "follow_up": writtenTexts(c.home, q.FollowUp)})
 					}
 				} else {
 					s.rpc.overflow.Store(true)

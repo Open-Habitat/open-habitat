@@ -1165,6 +1165,141 @@ test("@browser-conversation a steering message stays in view until Pi's record s
   expect(seen.filter((s) => s.shown > 1)).toEqual([]);
   expect(seen.at(-1)).toEqual({ field: false, queue: false, shown: 1 });
 });
+// Jari 31.10.: one Enter on a steer that carried a screenshot showed it twice
+// under Odottaa agenttia. Pi queues the text with the host's attachment path
+// line, so the page did not recognise its own message in Pi's queue.
+test("@browser-conversation one Enter queues a steer with an attachment once", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
+  await editor.fill("hidas päätyö");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(
+    page.getByTestId("send").and(page.locator('[data-mode="steer"]')),
+  ).toBeVisible();
+  await editor.evaluate((element) => {
+    const data = new DataTransfer();
+    data.items.add(
+      new File(
+        [
+          Uint8Array.from(
+            atob(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aYioAAAAASUVORK5CYII=",
+            ),
+            (c) => c.charCodeAt(0),
+          ),
+        ],
+        "kuva.png",
+        { type: "image/png" },
+      ),
+    );
+    element.dispatchEvent(
+      new ClipboardEvent("paste", {
+        clipboardData: data,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  });
+  await expect(
+    page.locator(".ah-composer").getByTestId("attachment-chip"),
+  ).toHaveCount(1);
+  await editor.fill("ohjaus liitteellä");
+  const posts: string[] = [];
+  page.on("request", (r) => {
+    const route = new URL(r.url()).pathname.split("/").at(-1) ?? "";
+    if (r.method() === "POST" && ["send", "steer", "follow_up"].includes(route))
+      posts.push(route);
+  });
+  await page.evaluate(() => {
+    const w = window as unknown as { rows: number[] };
+    w.rows = [];
+    const tick = () => {
+      w.rows.push(
+        [
+          ...document.querySelectorAll('[data-testid="composer-queue"] li'),
+        ].filter((e) => e.textContent?.includes("ohjaus liitteellä")).length,
+      );
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+  await editor.press("Enter");
+  await expect(editor).toHaveValue("");
+  await expectNativeContent(page, /Kysyit: ".*ohjaus liitteellä/, {
+    timeout: 30000,
+  });
+  const rows = await page.evaluate(
+    () => (window as unknown as { rows: number[] }).rows,
+  );
+  expect(rows).toContain(1);
+  expect(Math.max(...rows)).toBe(1);
+  expect(posts).toEqual(["steer"]);
+});
+// Jari 31.10.: a steer pressed as the turn ended was refused (Tila muuttui)
+// and the text came back to the field. A steer that finds the agent idle
+// starts the next turn instead.
+test("@browser-conversation a steer that arrives after the turn ended is sent, not refused", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
+  await editor.fill("hidas päätyö");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(
+    page.getByTestId("send").and(page.locator('[data-mode="steer"]')),
+  ).toBeVisible();
+  const id = new URL(page.url()).searchParams.get("conversation") ?? "";
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/conversations/*/steer", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await editor.fill("myöhäinen ohjaus");
+  await editor.press("Enter");
+  await expect(editor).toHaveValue("");
+  // The steer reaches the host only after Pi's turn has ended.
+  await expect
+    .poll(
+      async () => {
+        const r = await page.request.get(
+          `/api/v1/conversations/${id.slice(3)}/status`,
+        );
+        const status = r.ok() ? await r.json() : {};
+        return `${status.state}/${status.run_active}`;
+      },
+      { timeout: 30000 },
+    )
+    .toBe("idle/false");
+  release();
+  await expectNativeContent(page, 'Selvä. Kysyit: "myöhäinen ohjaus".', {
+    timeout: 20000,
+  });
+  await expect(
+    page
+      .getByTestId("conversation-timeline")
+      .getByTestId("user-content")
+      .filter({ hasText: "myöhäinen ohjaus" }),
+  ).toHaveCount(1);
+  await expect(page.getByTestId("message-rejected")).toHaveCount(0);
+  await expect(page.getByTestId("send-receipt")).toHaveCount(0);
+  await expect(page.getByTestId("composer-queue")).toHaveCount(0);
+  await expect(editor).toHaveValue("");
+});
 
 test("@browser-conversation a refused or unknown stop says so once and Stop works again", async ({
   page,

@@ -947,3 +947,74 @@ for line in sys.stdin:
 		t.Fatalf("post-settlement answer: %d", code)
 	}
 }
+
+// The page steers while it sees the agent working. A steer that reaches a
+// live, idle Pi after the turn ended starts the next turn when the browser
+// sent it; an agent that asked for steering explicitly is told it is late.
+func TestBrowserSteerAfterTurnEndStartsTurn(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("requires nonroot")
+	}
+	home := t.TempDir()
+	script := filepath.Join(home, "pi")
+	code := `#!/usr/bin/env python3
+import json,sys
+for line in sys.stdin:
+ r=json.loads(line)
+ open(sys.argv[0]+".log","a").write(r["type"]+" "+r.get("message","")+"\n")
+ print(json.dumps(dict(type="response",id=r["id"],command=r["type"],success=True)),flush=True)
+`
+	if err := os.WriteFile(script, []byte(code), 0700); err != nil {
+		t.Fatal(err)
+	}
+	p, err := launchPiRPC(script, home, home, "", []string{"PATH=/usr/bin:/bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.close()
+	id := ownershipTestID
+	s := &conversation{id: id, rpc: p, state: "idle", settled: true, commands: map[string]bool{}}
+	c := &ConversationController{sessions: map[string]*conversation{id: s}}
+	go c.drain(s)
+	post := func(cid string, browser bool) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("POST", "http://unix/steer", strings.NewReader(fmt.Sprintf(`{"message":"myöhässä","command_id":%q}`, cid)))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		c.admitMessage(w, req, id, "steer", browser)
+		return w
+	}
+	if w := post("12345678-1234-4123-8123-000000000001", false); w.Code != 409 {
+		t.Fatalf("explicit idle steer: %d %s", w.Code, w.Body.String())
+	}
+	if w := post("12345678-1234-4123-8123-000000000002", true); w.Code != 200 || !strings.Contains(w.Body.String(), `"pending"`) {
+		t.Fatalf("browser idle steer: %d %s", w.Code, w.Body.String())
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		c.mu.Lock()
+		receipt := s.receipts["12345678-1234-4123-8123-000000000002"]
+		c.mu.Unlock()
+		if receipt == "accepted" {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	// A refused browser prompt leaves "rejected" while a native run goes on;
+	// that run is no idle Pi to prompt.
+	c.mu.Lock()
+	s.state, s.runActive = "rejected", true
+	c.mu.Unlock()
+	if w := post("12345678-1234-4123-8123-000000000003", true); w.Code != 409 {
+		t.Fatalf("steer into a running native turn: %d %s", w.Code, w.Body.String())
+	}
+	log, _ := os.ReadFile(script + ".log")
+	if string(log) != "prompt myöhässä\n" {
+		t.Fatalf("Pi got %q", log)
+	}
+	c.mu.Lock()
+	receipt := s.receipts["12345678-1234-4123-8123-000000000002"]
+	c.mu.Unlock()
+	if receipt != "accepted" {
+		t.Fatalf("receipt %q", receipt)
+	}
+}

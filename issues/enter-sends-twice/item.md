@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: send-path
 lane_seq: 2
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Enter sends twice: duplicate steer queued, and a delivered send shown as 'Tila muuttui' (Birch pilot.16)
@@ -36,9 +37,9 @@ double submission from one keypress on the steer path.
 
 ## Acceptance Criteria
 
-- [ ] Cause of each named against main (and whether pilot.16 alone explains
+- [x] Cause of each named against main (and whether pilot.16 alone explains
       it); a browser spec for each that fails without the fix.
-- [ ] One Enter never queues or sends twice; a delivered message is never
+- [x] One Enter never queues or sends twice; a delivered message is never
       shown as refused, on the send and the steer paths.
 
 ## Comments

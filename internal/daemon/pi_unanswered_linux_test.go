@@ -216,6 +216,13 @@ func TestWrittenTextUndoesAttachmentPaths(t *testing.T) {
 	if got := writtenText(home, "pelkkä teksti"); got != "pelkkä teksti" {
 		t.Fatalf("plain: %q", got)
 	}
+	// Pi's queue as the page matches it against its own messages.
+	if got := writtenTexts(home, []string{expanded, "pelkkä teksti"}); len(got) != 2 || got[0] != written || got[1] != "pelkkä teksti" {
+		t.Fatalf("queue: %q", got)
+	}
+	if got := writtenTexts(home, nil); got == nil || len(got) != 0 {
+		t.Fatalf("empty queue: %#v", got)
+	}
 }
 
 // The clear's reply and Pi's later delivery of a pulled message reach the

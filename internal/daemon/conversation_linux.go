@@ -437,7 +437,7 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		if parts[1] == "clear_queue" {
 			c.clearQueue(w, r, parts[0])
 		} else {
-			c.sendKind(w, r, parts[0], parts[1])
+			c.admitMessage(w, r, parts[0], parts[1], true)
 		}
 	case r.Method == http.MethodPost && parts[1] == "regenerate_title":
 		c.regenerateTitle(w, r, parts[0])
@@ -780,6 +780,15 @@ func (c *ConversationController) send(w http.ResponseWriter, r *http.Request, id
 	c.sendKind(w, r, id, "send")
 }
 func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request, id, kind string) {
+	c.admitMessage(w, r, id, kind, false)
+}
+
+// admitMessage takes one send, steer or follow-up. idleStarts is the
+// browser's: its page steers while it sees the agent working, so the kind is
+// a guess at Pi's state made for the person, not their choice. An agent
+// asking for steering explicitly (agent message create) is told the turn
+// has ended instead.
+func (c *ConversationController) admitMessage(w http.ResponseWriter, r *http.Request, id, kind string, idleStarts bool) {
 	var body struct {
 		Message     string           `json:"message"`
 		CommandID   string           `json:"command_id"`
@@ -859,6 +868,15 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		c.mu.Unlock()
 		snapshotError(w, 400, "invalid_attachments")
 		return
+	}
+	// A turn that ended after the page last looked would refuse the message
+	// and give it back as if the person had done something wrong (Jari
+	// 31.10.). A browser steer or follow-up that finds Pi live and idle
+	// starts the next turn instead, as Pi's own prompt would. Pi's queue
+	// never shows it; native history does.
+	if idleStarts && kind != "send" && !notRunning(s) && !s.waking && !s.runActive && (s.state == "idle" || s.state == "rejected") {
+		diagnostic.New(os.Stderr, "daemon").Info("conversation_message_started", "agent_id", "pi:"+id, "kind", kind, "command_id", body.CommandID, "request_id", diagnostic.RequestID(r.Context()))
+		kind = "send"
 	}
 	// A plain send to a conversation whose Pi is not running (yet) is held by
 	// the daemon and starts Pi if nothing is starting it already.
@@ -1111,7 +1129,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	if s.receipts != nil {
 		receipt = s.receipts[s.command]
 	}
-	queueSteering, queueFollowUp, queueRevision := append([]string{}, s.queueSteering...), append([]string{}, s.queueFollowUp...), s.queueRevision
+	queueSteering, queueFollowUp, queueRevision := writtenTexts(c.home, s.queueSteering), writtenTexts(c.home, s.queueFollowUp), s.queueRevision
 	bash := s.bash.view()
 	events := append([]json.RawMessage{}, s.events...)
 	cwd, path := s.cwd, s.historyPath
@@ -1359,13 +1377,7 @@ func (c *ConversationController) clearQueue(w http.ResponseWriter, r *http.Reque
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	written := func(texts []string) []string {
-		out := make([]string, len(texts))
-		for i, text := range texts {
-			out[i] = writtenText(c.home, text)
-		}
-		return out
-	}
+	written := func(texts []string) []string { return writtenTexts(c.home, texts) }
 	result := map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "accepted", "removed_queue": map[string]any{"steering": written(reply.Steering), "follow_up": written(reply.FollowUp)}}
 	if body.Unanswered {
 		result["unanswered"] = written(unanswered)

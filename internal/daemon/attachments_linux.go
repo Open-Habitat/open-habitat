@@ -213,6 +213,17 @@ func writtenText(home, text string) string {
 	return strings.TrimSuffix(text, suffix)
 }
 
+// writtenTexts is writtenText over Pi's queue. Pi queues the expanded text; the
+// page matches its own queued messages to the queue by the text the person
+// wrote, and an attachment's path line would make one message look like two.
+func writtenTexts(home string, texts []string) []string {
+	out := make([]string, len(texts))
+	for i, text := range texts {
+		out[i] = writtenText(home, text)
+	}
+	return out
+}
+
 func promptAttachments(home, message string, includeImages bool) (string, []piAttachmentImage, error) {
 	matches := attachmentRef.FindAllStringSubmatch(message, -1)
 	refs := make([]string, 0, len(matches))
