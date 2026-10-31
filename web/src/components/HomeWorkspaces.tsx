@@ -6,6 +6,8 @@ import {
 import type { RecapRead } from "../app/conversations";
 import { currentRecap, readRecap } from "../app/conversations";
 import type { Workspace } from "../app/snapshot";
+import { liveText } from "../i18n";
+import { homeWorkspacesText } from "../text/homeWorkspaces";
 import { agentPresentation, waitingName } from "./agentPresentation";
 import { ControlButton, LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
@@ -14,6 +16,8 @@ import type { ReturnConversation } from "./ReturnView";
 import { StatusMark } from "./Status";
 import { WorkspaceActions } from "./WorkspaceActions";
 import "./HomeWorkspaces.css";
+
+const txt = liveText(homeWorkspacesText);
 
 export type HomeConversation = ReturnConversation & {
   workspaceId: string;
@@ -99,10 +103,10 @@ export function HomeCard({
     : null;
   const label =
     conversation.attention === "new"
-      ? "Lue vastaus"
+      ? txt.readReply
       : activity === "waiting"
-        ? "Vastaa"
-        : "Avaa";
+        ? txt.reply
+        : txt.open;
   return (
     <article
       data-testid={`conversation-card-${conversation.id}`}
@@ -127,15 +131,15 @@ export function HomeCard({
           <span>
             {conversation.pendingLabel ??
               (conversation.attention === "new"
-                ? "Uusi vastaus"
+                ? txt.newReply
                 : unwritten && activity === "unknown"
-                  ? "Ei vielä viestejä"
+                  ? txt.noMessages
                   : agentPresentation(conversation).activityLabel)}
           </span>
           {!conversation.browserSession && (
             <StatusMark
               data-testid="card-read-only"
-              label="Vain luku"
+              label={txt.readOnly}
               kind="read-only"
             />
           )}
@@ -145,14 +149,14 @@ export function HomeCard({
         </div>
         <span
           className="ah-home-archive-slot"
-          title={archiveReason || "Arkistoi"}
+          title={archiveReason || txt.archive}
         >
           <ControlButton
             data-testid="archive-conversation"
             className="ah-home-archive"
             variant="quiet"
             size="inline"
-            aria-label="Arkistoi"
+            aria-label={txt.archive}
             aria-describedby={archiveReason ? archiveReasonId : undefined}
             isDisabled={!onArchive || !!archiveReason}
             onPress={onArchive}
@@ -171,19 +175,19 @@ export function HomeCard({
       ) : null}
       {activity === "waiting_background" ? (
         <p className="ah-home-live">
-          Odotan taustatyötä{conversation.waitingOn?.length ? ":" : ""}
+          {txt.waitingBackground}
           {conversation.waitingOn?.length
-            ? ` ${conversation.waitingOn.map(waitingName).join(", ")} · jatkan itse, kun odotus päättyy.`
+            ? txt.waitingOn(conversation.waitingOn.map(waitingName).join(", "))
             : ""}
         </p>
       ) : null}
       {activity === "working" && (
         <p className="ah-home-live">
-          Agentti työskentelee
+          {txt.working}
           {conversation.liveActivity === "tool.started"
-            ? " · käyttää työkalua"
+            ? txt.usingTool
             : conversation.liveActivity === "assistant.delta"
-              ? " · kirjoittaa vastausta"
+              ? txt.writing
               : ""}
         </p>
       )}
@@ -191,18 +195,18 @@ export function HomeCard({
         <>
           <p className="ah-home-recap">{recap.recap}</p>
           <p className="ah-home-next">
-            <strong>Seuraavaksi</strong>
+            <strong>{txt.next}</strong>
             <span>{recap.next}</span>
           </p>
         </>
       ) : error ? (
-        <p>Katsausta ei voitu lukea</p>
+        <p>{txt.recapUnreadable}</p>
       ) : state && conversation.attention === "new" ? (
-        <p className="ah-home-pending">valmistui juuri · katsaus syntyy pian</p>
+        <p className="ah-home-pending">{txt.recapSoon}</p>
       ) : null}
       {archiveError && (
         <p className="ah-inline-error" role="alert">
-          Arkistointia ei tehty. Keskustelu palautettiin listaan.
+          {txt.archiveFailed}
         </p>
       )}
       {(recap || !state || error || conversation.attention !== "new") && (
@@ -227,7 +231,7 @@ function GitLine({ workspace }: { workspace: Workspace }) {
             ` +${workspace.git_summary.dirty_count}`}
         </>
       ) : (
-        "Git-tila ei tiedossa"
+        txt.gitUnknown
       )}
     </span>
   );
@@ -260,20 +264,16 @@ function WorktreeCardLine({
   worktree: NonNullable<HomeConversation["worktree"]>;
 }) {
   const facts = [
-    worktree.merged && worktree.base
-      ? `yhdistetty ${worktree.base}-haaraan`
-      : "",
+    worktree.merged && worktree.base ? txt.merged(worktree.base) : "",
     !worktree.merged && worktree.ahead !== undefined
-      ? `${worktree.ahead} edellä`
+      ? txt.ahead(worktree.ahead)
       : "",
-    !worktree.merged && worktree.behind ? `${worktree.behind} jäljessä` : "",
-    worktree.dirty
-      ? `${worktree.dirty} ${worktree.dirty === 1 ? "muutos" : "muutosta"}`
-      : "",
+    !worktree.merged && worktree.behind ? txt.behind(worktree.behind) : "",
+    worktree.dirty ? txt.changes(worktree.dirty) : "",
   ].filter(Boolean);
   return (
     <p className={`ah-home-card-worktree${worktree.merged ? " merged" : ""}`}>
-      <span className="ah-visually-hidden">Worktree-agentti, haara </span>
+      <span className="ah-visually-hidden">{txt.worktreeBranch}</span>
       <Icon name={worktree.merged ? "merge" : "worktree"} aria-hidden="true" />
       <code>{worktree.branch ?? "worktree"}</code>
       {worktree.base ? (
@@ -305,9 +305,9 @@ export function HomeConversationGrid({
           archiveError={archiveAction.errorId === c.id}
           archiveReason={
             archiveAction.pendingId === c.id
-              ? "Arkistointi kesken."
+              ? txt.archiving
               : (archiveReason?.(c) ??
-                (archiveAction.run ? "" : "Arkistointi ei ole käytettävissä."))
+                (archiveAction.run ? "" : txt.archiveUnavailable))
           }
           onArchive={
             archiveAction.run ? () => archiveAction.run?.(c.id) : undefined
@@ -366,11 +366,10 @@ export function HomeWorkspaces({
     <div className="ah-home">
       <header className="ah-home-head">
         <div>
-          <h1 data-testid="workspaces-title">Työtilat</h1>
+          <h1 data-testid="workspaces-title">{txt.title}</h1>
           <p>
-            {workspaces.length} työtilaa · {waiting} odottaa sinua · {working}{" "}
-            käynnissä
-            {background ? ` · ${background} odottaa taustatyötä` : ""}
+            {txt.summary(workspaces.length, waiting, working)}
+            {background ? txt.summaryBackground(background) : ""}
           </p>
         </div>
         <ControlButton
@@ -382,7 +381,7 @@ export function HomeWorkspaces({
           onClick={onCreate}
           isDisabled={!onCreate}
         >
-          Uusi työtila
+          {txt.newWorkspace}
         </ControlButton>
       </header>
       {sections
@@ -403,7 +402,7 @@ export function HomeWorkspaces({
               </LinkRow>
               <GitLine workspace={workspace} />
               <span className="ah-home-grow" />
-              {done > 0 && <span>{done} valmista</span>}
+              {done > 0 && <span>{txt.done(done)}</span>}
               <WorkspaceActions
                 workspace={workspace}
                 newReason={newReason?.(workspace.workspace_id)}
@@ -418,8 +417,8 @@ export function HomeWorkspaces({
           </section>
         ))}
       {sections.some((s) => !s.open.length) && (
-        <section data-testid="empty-workspaces" aria-label="Ei avointa työtä">
-          <h2>Ei avointa työtä</h2>
+        <section data-testid="empty-workspaces" aria-label={txt.noOpenWork}>
+          <h2>{txt.noOpenWork}</h2>
           <div className="ah-home-quiet">
             {sections
               .filter((s) => !s.open.length)
@@ -434,7 +433,7 @@ export function HomeWorkspaces({
                   </LinkRow>
                   <GitLine workspace={workspace} />
                   <span className="ah-home-grow" />
-                  {done ? `${done} valmista` : "ei keskusteluja"}
+                  {done ? txt.done(done) : txt.noConversations}
                   <WorkspaceActions
                     workspace={workspace}
                     newReason={newReason?.(workspace.workspace_id)}

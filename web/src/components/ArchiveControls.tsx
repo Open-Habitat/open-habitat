@@ -1,7 +1,11 @@
 import { useId } from "react";
+import { liveText } from "../i18n";
+import { archiveControlsText } from "../text/archiveControls";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { InlineNotice } from "./Status";
+
+const txt = liveText(archiveControlsText);
 
 export type ArchiveControlsProps = {
   blockedReason?: string;
@@ -35,26 +39,22 @@ export function archiveAction({
   const reason =
     blockedReason ??
     (busy
-      ? "Pyyntö kesken."
+      ? txt.busy
       : state === "unknown"
-        ? "Arkiston tila ei ole tiedossa."
+        ? txt.unknown
         : !eligible
-          ? "Odota agentin vuoron päättymistä."
+          ? txt.waitTurn
           : "");
   if (empty && state !== "archived")
     return {
       id: "close",
-      label: "Sulje",
-      reason:
-        blockedReason ??
-        (!onClose
-          ? "Vain selaimessa aloitettu tyhjä keskustelu voidaan sulkea."
-          : reason),
+      label: txt.close,
+      reason: blockedReason ?? (!onClose ? txt.closeOnlyEmpty : reason),
       run: () => onClose?.(),
     };
   return state === "archived"
-    ? { id: "restore", label: "Palauta näkyviin", reason, run: onRestore }
-    : { id: "archive", label: "Arkistoi", reason, run: onArchive };
+    ? { id: "restore", label: txt.restore, reason, run: onRestore }
+    : { id: "archive", label: txt.archive, reason, run: onArchive };
 }
 
 export function ArchiveControls(props: ArchiveControlsProps) {
@@ -118,7 +118,7 @@ export function ArchiveControls(props: ArchiveControlsProps) {
       {state === "unknown" && !blockedReason ? (
         <InlineNotice
           data-testid="archive-state-error"
-          title="Arkiston tilaa ei voitu tarkistaa"
+          title={txt.checkFailed}
           tone="warning"
         />
       ) : null}

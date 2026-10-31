@@ -17,6 +17,8 @@ import {
 } from "../components/OnboardingFrame";
 import { Button } from "../components/Primitives";
 import { InlineNotice } from "../components/Status";
+import { liveText } from "../i18n";
+import { githubOnboardingText } from "../text/githubOnboarding";
 import { type CloneJobs, cloneRows, useCloneView } from "./cloneJobs";
 import { finishFirstRoute } from "./firstRoute";
 import { GitIdentity } from "./GitIdentity";
@@ -37,6 +39,7 @@ import {
 import { PiOnboarding } from "./PiOnboarding";
 import { piStatus, sessionCSRF } from "./pi";
 
+const txt = liveText(githubOnboardingText);
 const marker = "nah:github-step";
 // The integration steps passed, connected or not, in this session.
 const integrationMarker = "nah:integration-steps";
@@ -47,30 +50,13 @@ function passedIn(key: string): ProviderId[] {
   } catch {}
   return [];
 }
+// Gitea and GitLab refusals never come from GitHub onboarding's own starts:
+// they, like an unavailable host, read as an unconfirmed state.
 const message = (e: unknown) =>
-  e instanceof GitHubError
-    ? {
-        login: "Istunto päättyi. Kirjaudu uudelleen.",
-        auth: "GitHub-valtuutusta ei voitu vahvistaa.",
-        denied: "Haku estettiin. Tarkista istunto ja oikeudet.",
-        conflict: "Kohteessa on eri repo. Tarkista se koneella.",
-        storage:
-          "Tallennustila on täynnä. Pyydä ylläpitäjää nostamaan tallennusrajaa.",
-        busy: "Toinen kloonaus on käynnissä. Odota, että se valmistuu.",
-        // Gitea and GitLab refusals never come from GitHub onboarding's own
-        // starts.
-        empty:
-          "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
-        gitea:
-          "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
-        gitlab:
-          "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
-        rewritten:
-          "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
-        unavailable:
-          "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
-      }[e.code]
-    : "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.";
+  (e instanceof GitHubError &&
+    Object.hasOwn(txt.errors, e.code) &&
+    txt.errors[e.code]) ||
+  txt.unconfirmed;
 async function sessionKey(csrf: string) {
   const bytes = await crypto.subtle.digest(
     "SHA-256",
@@ -324,7 +310,7 @@ export function GitHubOnboarding({
       } catch {
         if (alive) {
           reset();
-          setError("Istuntoa ei voitu vahvistaa. Lataa sivu uudelleen.");
+          setError(txt.sessionFailed);
         }
       }
     };
@@ -391,9 +377,7 @@ export function GitHubOnboarding({
     if (locked.current || !bound.current) return;
     if (names.length && view.phase !== "catalog") return;
     if (names.length && !clones) {
-      setError(
-        "Repojen hakua ei voi aloittaa juuri nyt. Jatka ilman repoja tai lataa sivu uudelleen.",
-      );
+      setError(txt.cannotStart);
       return;
     }
     locked.current = true;
@@ -569,22 +553,21 @@ export function GitHubOnboarding({
       status:
         r?.state === "running"
           ? r.percent !== undefined
-            ? `Sivusto hakee · ${r.percent} %`
-            : "Sivusto hakee"
+            ? txt.siteFetchingPercent(r.percent)
+            : txt.siteFetching
           : r?.state === "waiting" || (!r && !cloneView.loaded)
-            ? "Sivusto hakee · jonossa"
+            ? txt.siteQueued
             : r?.state === "failed"
-              ? "Sivuston haku epäonnistui"
+              ? txt.siteFailed
               : r
-                ? "Haettu"
+                ? txt.fetched
                 : observed[name.toLowerCase()] === "unavailable"
-                  ? "Tila ei varmistunut"
-                  : "Tilaa tarkistetaan",
+                  ? txt.notConfirmed
+                  : txt.checking,
     };
   });
-  const repoWord = (n: number) => (n === 1 ? "repo" : "repoa");
   const route: OnboardingRouteStep[] = [
-    { id: "github", note: "Kirjautunut" },
+    { id: "github", note: txt.signedIn },
     ...(site && !hasRepositoryStep(site.repositories.mode, imports.length)
       ? []
       : [
@@ -593,22 +576,22 @@ export function GitHubOnboarding({
             skipped: repoOutcome === 0,
             note: skipRepos
               ? fetching || !cloneView.loaded
-                ? `Sivusto hakee ${imports.length} ${repoWord(imports.length)}`
+                ? txt.siteFetchingN(imports.length)
                 : routeRows.some((r) => r.state === "failed")
-                  ? "Haku epäonnistui"
+                  ? txt.fetchFailed
                   : importsKnown
-                    ? "Haettu"
+                    ? txt.fetched
                     : unobserved.length
-                      ? "Tilaa tarkistetaan"
-                      : "Tila ei varmistunut"
+                      ? txt.checking
+                      : txt.notConfirmed
               : repoOutcome === 0
-                ? "Ei repoja"
+                ? txt.noRepos
                 : routeRows.length && !fetching
                   ? routeRows.some((r) => r.state === "failed")
-                    ? "Haku epäonnistui"
-                    : "Haettu"
+                    ? txt.fetchFailed
+                    : txt.fetched
                   : repoOutcome
-                    ? `${repoOutcome} ${repoWord(repoOutcome)} haussa`
+                    ? txt.inProgress(repoOutcome)
                     : undefined,
             // The clones run on while the person goes on; their progress
             // stays on the route rather than in the step card.
@@ -623,7 +606,7 @@ export function GitHubOnboarding({
         id: i.provider,
         required: i.required,
         skipped: !connected,
-        note: connected ? "Yhdistetty" : "Ohitettu",
+        note: connected ? txt.connected : txt.skipped,
       };
     }),
     ...(seeded && !aiNeeded ? [] : [{ id: "ai" as const }]),
@@ -634,7 +617,7 @@ export function GitHubOnboarding({
         <Button
           data-testid="onboarding-abort"
           size="row"
-          label="Keskeytä käyttöönotto ja kirjaudu ulos"
+          label={txt.abort}
           variant="quiet"
           onPress={() => setExitOpen(true)}
         />
@@ -651,7 +634,7 @@ export function GitHubOnboarding({
   );
   const content =
     step === "pi" && seeded && !aiNeeded ? (
-      <p role="status">Viimeistellään käyttöönottoa…</p>
+      <p role="status">{txt.finishing}</p>
     ) : step === "pi" ? (
       <PiOnboarding
         notice={
@@ -660,9 +643,7 @@ export function GitHubOnboarding({
             onRetry={(name) => {
               if (bound.current) clones?.retryClone(name, bound.current);
             }}
-            retryReason={
-              bound.current ? undefined : "Istuntoa ei ole vahvistettu."
-            }
+            retryReason={bound.current ? undefined : txt.sessionUnconfirmed}
           />
         }
         forceSignIn={forceSignIn}
@@ -693,12 +674,9 @@ export function GitHubOnboarding({
               id="git-identity-title"
               tabIndex={-1}
             >
-              Git-identiteetti
+              {txt.identityTitle}
             </h1>
-            <p>
-              Vahvista nimi ja sähköposti ennen repoja. Olemassa olevia
-              Git-asetuksia ei muuteta.
-            </p>
+            <p>{txt.identityText}</p>
             <GitIdentity
               csrf={bound.current}
               preferredName={preferredName}
@@ -726,8 +704,8 @@ export function GitHubOnboarding({
             onList={setIntegrations}
             backLabel={
               integrationSteps[0] === nextIntegration
-                ? "Takaisin repoihin"
-                : "Takaisin"
+                ? txt.backToRepos
+                : txt.back
             }
             onBack={() => {
               // One step back: the previous integration, or the repositories.
@@ -739,12 +717,12 @@ export function GitHubOnboarding({
             onContinue={() => pass([...passed, nextIntegration.provider])}
           />
         ) : (
-          <p role="status">Tarkistetaan integraatioita…</p>
+          <p role="status">{txt.checkingIntegrations}</p>
         )}
         {exit}
       </>
     ) : step === "loading" && !error ? (
-      <p role="status">Varmistetaan istunto…</p>
+      <p role="status">{txt.confirmingSession}</p>
     ) : (
       <>
         <GitHubRepoChooser
@@ -765,14 +743,12 @@ export function GitHubOnboarding({
             error ? (
               <InlineNotice
                 data-testid="repository-notice"
-                title="Haun tila vaatii tarkistusta"
+                title={txt.noticeTitle}
                 description={error}
                 tone="warning"
                 actions={[
                   {
-                    label: bound.current
-                      ? "Tarkista repot uudelleen"
-                      : "Lataa sivu uudelleen",
+                    label: bound.current ? txt.recheckRepos : txt.reload,
                     onPress: () => {
                       if (bound.current) void load(generation.current);
                       else window.location.reload();

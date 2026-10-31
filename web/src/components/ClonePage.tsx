@@ -1,4 +1,6 @@
 import { type ReactNode, useId, useState } from "react";
+import { liveText } from "../i18n";
+import { clonePageText } from "../text/clonePage";
 import { ControlButton, LinkRow, Segmented } from "./ControlElements";
 import { cloneProgressText } from "./cloneProgress";
 import { Icon } from "./Icon";
@@ -14,6 +16,8 @@ import {
   when,
 } from "./repoCatalog";
 import "./ClonePage.css";
+
+const txt = liveText(clonePageText);
 
 // Display only. The app owns the catalog, the route that selects a repo, the
 // clone jobs and every write; these components say what they are given.
@@ -96,9 +100,9 @@ function RepoRow({
             <b>{name}</b>
           </span>
           {repo.private ? (
-            <span className="ah-clone-lock" title="Yksityinen">
+            <span className="ah-clone-lock" title={txt.private}>
               <Icon name="lock" width={12} height={12} />
-              <span className="ah-visually-hidden">Yksityinen</span>
+              <span className="ah-visually-hidden">{txt.private}</span>
             </span>
           ) : null}
           {origin ? (
@@ -112,9 +116,11 @@ function RepoRow({
             </span>
           ) : null}
           {repo.archived ? (
-            <span className="ah-clone-chip">arkistoitu</span>
+            <span className="ah-clone-chip">{txt.archived}</span>
           ) : null}
-          {repo.empty ? <span className="ah-clone-chip">tyhjä</span> : null}
+          {repo.empty ? (
+            <span className="ah-clone-chip">{txt.empty}</span>
+          ) : null}
         </span>
         {repo.description ? (
           <span className="ah-clone-row-desc">{repo.description}</span>
@@ -122,10 +128,10 @@ function RepoRow({
         <span className="ah-clone-row-meta">
           <span>{when(repo.pushed_at, now)}</span>
           <span>
-            {repo.size_kib === null ? "koko ei tiedossa" : kib(repo.size_kib)}
+            {repo.size_kib === null ? txt.sizeUnknown : kib(repo.size_kib)}
           </span>
           {(repo.size_kib ?? 0) >= largeKiB ? (
-            <span className="ah-clone-big">suuri</span>
+            <span className="ah-clone-big">{txt.large}</span>
           ) : null}
         </span>
       </LinkRow>
@@ -177,26 +183,26 @@ export function RepoFinder({
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const searchId = useId();
   const hiddenNote = (n: number) =>
-    n ? <span>{n} ei päivitetty valitulla aikavälillä</span> : null;
+    n ? <span>{txt.hiddenByTime(n)}</span> : null;
   return (
     <div className="ah-clone-finder">
       <div className="ah-clone-find">
         <label className="ah-clone-search" htmlFor={searchId}>
           <Icon name="search" width={15} height={15} />
-          <span className="ah-visually-hidden">Hae repoa</span>
+          <span className="ah-visually-hidden">{txt.searchLabel}</span>
           <input
             data-testid="repository-search"
             id={searchId}
             type="search"
             value={query}
             onChange={(e) => onQuery(e.target.value)}
-            placeholder="Hae nimellä tai kirjoita omistaja/repo"
+            placeholder={txt.searchPlaceholder}
             autoComplete="off"
             spellCheck={false}
           />
         </label>
         <Segmented
-          label="Päivitetty"
+          label={txt.updated}
           className="ah-clone-since"
           options={sinceChoices}
           value={since}
@@ -205,14 +211,13 @@ export function RepoFinder({
       </div>
       {state === "loading" ? (
         <p className="ah-clone-empty" role="status">
-          Haetaan repoja GitHubista…
+          {txt.loading}
         </p>
       ) : state === "failed" && failure ? (
         failure
       ) : state === "failed" ? (
         <p className="ah-clone-empty" role="alert">
-          Repolistaa ei saatu GitHubista. Voit silti kirjoittaa repon nimen
-          muodossa omistaja/repo.
+          {txt.listFailed}
         </p>
       ) : null}
       {sourceNotes.map((n) => (
@@ -239,11 +244,11 @@ export function RepoFinder({
           data-testid="repository-lookup"
           data-state={lookup.state}
           className="ah-clone-sec"
-          aria-label="GitHub-haku"
+          aria-label={txt.lookupLabel}
         >
           <h3>
             <span className="ah-mono ah-clone-sec-owner">{lookup.name}</span>
-            <span className="ah-clone-kind">GitHubista</span>
+            <span className="ah-clone-kind">{txt.fromGitHub}</span>
           </h3>
           {lookup.state === "found" ? (
             <ul>
@@ -268,13 +273,13 @@ export function RepoFinder({
                     </span>
                     {lookup.selected ? (
                       <span className="ah-clone-chip ah-clone-chip-ok">
-                        ✓ valittu
+                        {txt.selected}
                       </span>
                     ) : null}
                     <span
                       className={`ah-clone-chip ah-clone-chip-unchecked${lookup.selected ? " ah-clone-chip-after" : ""}`}
                     >
-                      ei tarkistettu
+                      {txt.unchecked}
                     </span>
                   </span>
                   <span className="ah-clone-row-desc">{lookup.reason}</span>
@@ -289,11 +294,10 @@ export function RepoFinder({
               role={lookup.state === "searching" ? "status" : undefined}
             >
               {lookup.state === "searching"
-                ? "Haetaan GitHubista…"
+                ? txt.searching
                 : lookup.state === "not_found"
-                  ? "Repoa ei ole, tai sinulla ei ole siihen pääsyä."
-                  : (lookup.reason ??
-                    "GitHubiin ei saatu yhteyttä. Yritä hetken päästä uudelleen.")}
+                  ? txt.notFound
+                  : (lookup.reason ?? txt.lookupFailed)}
             </p>
           )}
         </section>
@@ -302,7 +306,7 @@ export function RepoFinder({
         arrangement.hits.length ? (
           <section className="ah-clone-sec">
             <h3>
-              Hakutulokset{" "}
+              {txt.results}{" "}
               <span className="ah-clone-n">{arrangement.hits.length}</span>
             </h3>
             <ul>
@@ -314,18 +318,14 @@ export function RepoFinder({
           </section>
         ) : state === "ready" && !lookup ? (
           <p className="ah-clone-empty">
-            Ei osumia haulle <b>{query.trim()}</b>
-            {arrangement.hidden
-              ? ` valitulla aikavälillä. ${arrangement.hidden} vanhempaa osumaa piilossa.`
-              : "."}{" "}
-            Kirjoita omistaja/repo, niin haemme sen GitHubista.
+            {txt.noHits(<b>{query.trim()}</b>, arrangement.hidden)}
           </p>
         ) : null
       ) : (
         <>
           {arrangement.recent.length ? (
             <section className="ah-clone-sec">
-              <h3>Viimeksi päivitetyt</h3>
+              <h3>{txt.recent}</h3>
               <ul>
                 {arrangement.recent.map((r) => (
                   <RepoRow key={repoKey(r)} repo={r} now={now} mixed={mixed} />
@@ -348,7 +348,7 @@ export function RepoFinder({
                       {originLabel(s.source, mixed)}
                     </span>
                   ) : null}
-                  <span className="ah-clone-kind">{s.kind}</span>
+                  <span className="ah-clone-kind">{txt.kinds[s.kind]}</span>
                   <span className="ah-clone-n">{s.total}</span>
                 </h3>
                 {shown.length ? (
@@ -373,9 +373,7 @@ export function RepoFinder({
                       aria-expanded={!!all}
                       onPress={() => setOpen({ ...open, [s.key]: !all })}
                     >
-                      {all
-                        ? "Näytä vähemmän"
-                        : `Näytä kaikki ${s.fresh.length}`}
+                      {all ? txt.showLess : txt.showAll(s.fresh.length)}
                     </ControlButton>
                   ) : null}
                   {hiddenNote(s.hidden)}
@@ -385,12 +383,7 @@ export function RepoFinder({
           })}
         </>
       )}
-      {incomplete ? (
-        <p className="ah-clone-hint">
-          Lista on katkaistu tuhanteen repoon. Kirjoita muun repon nimi muodossa
-          omistaja/repo.
-        </p>
-      ) : null}
+      {incomplete ? <p className="ah-clone-hint">{txt.truncated}</p> : null}
     </div>
   );
 }
@@ -408,7 +401,7 @@ export function CloneMode({
   repo,
   mode,
   onMode,
-  legend = "Kloonataan",
+  legend,
 }: {
   name: string;
   repo?: Pick<CatalogRepo, "size_kib">;
@@ -418,7 +411,7 @@ export function CloneMode({
 }) {
   return (
     <fieldset className="ah-clone-mode">
-      <legend>{legend}</legend>
+      <legend>{legend ?? txt.cloning}</legend>
       <label>
         <input
           type="radio"
@@ -427,9 +420,9 @@ export function CloneMode({
           onChange={() => onMode("full")}
         />
         <span>
-          <b>Koko historia</b>
-          {repo?.size_kib != null ? `noin ${kib(repo.size_kib)}. ` : ""}Kaikki
-          tiedostoversiot heti levylle.
+          <b>{txt.full}</b>
+          {repo?.size_kib != null ? txt.fullAbout(kib(repo.size_kib)) : ""}
+          {txt.fullText}
         </span>
       </label>
       <label>
@@ -441,11 +434,12 @@ export function CloneMode({
           onChange={() => onMode("blobless")}
         />
         <span>
-          <b>Kevyt klooni</b>
-          Kaikki commitit, mutta vanhat tiedostoversiot haetaan GitHubista
-          vasta, kun niitä tarvitaan (<code>--filter=blob:none</code>). Nopeampi
-          ja pienempi; <code>git log -p</code> ja <code>blame</code> vaativat
-          yhteyden.
+          <b>{txt.blobless}</b>
+          {txt.bloblessText(
+            <code>--filter=blob:none</code>,
+            <code>git log -p</code>,
+            <code>blame</code>,
+          )}
         </span>
       </label>
     </fieldset>
@@ -453,12 +447,6 @@ export function CloneMode({
 }
 
 export type PushState = "yes" | "no" | "unknown" | "expired";
-const pushText: Record<PushState, string> = {
-  yes: "Toimii",
-  no: "Ei toimi: tunnukselta puuttuu write_repository",
-  unknown: "Ei tiedossa",
-  expired: "Ei toimi: tunnus vanhentunut",
-};
 
 export function RepoDetails({
   repo,
@@ -494,9 +482,9 @@ export function RepoDetails({
       <aside
         data-testid="repo-details"
         className="ah-clone-detail ah-clone-none"
-        aria-label="Repon tiedot"
+        aria-label={txt.details}
       >
-        <p>Valitse repo nähdäksesi sen tiedot ennen kloonausta.</p>
+        <p>{txt.choose}</p>
       </aside>
     );
   const [owner, name] = split(repo.full_name);
@@ -513,7 +501,7 @@ export function RepoDetails({
         state.kind === "taken" && state.unknown ? "unknown" : state.kind
       }
       className="ah-clone-detail"
-      aria-label="Repon tiedot"
+      aria-label={txt.details}
     >
       {back ? (
         <LinkRow
@@ -523,7 +511,7 @@ export function RepoDetails({
           className="ah-clone-back"
         >
           <Icon name="back" width={15} height={15} />
-          Kaikki repot
+          {txt.allRepos}
         </LinkRow>
       ) : null}
       <h2 className="ah-mono ah-clone-path">
@@ -536,7 +524,7 @@ export function RepoDetails({
       <dl className="ah-clone-facts">
         {gitea ? (
           <>
-            <dt>Lähde</dt>
+            <dt>{txt.source}</dt>
             <dd>
               <span className="ah-mono" data-testid="repo-details-source">
                 {gitea.login} · {gitlab ? `GitLab ${gitea.label}` : gitea.label}
@@ -546,16 +534,16 @@ export function RepoDetails({
         ) : null}
         {gitlab && owner.includes("/") ? (
           <>
-            <dt>Ryhmä</dt>
+            <dt>{txt.group}</dt>
             <dd data-testid="repo-details-group">
               {owner.split("/").join(" › ")}
             </dd>
           </>
         ) : null}
-        <dt>Näkyvyys</dt>
+        <dt>{txt.visibility}</dt>
         <dd>
           {repo.visibility === "internal" ? (
-            "Sisäinen: kaikki palvelimen kirjautuneet"
+            txt.internal
           ) : repo.private ? (
             <>
               <Icon
@@ -564,65 +552,63 @@ export function RepoDetails({
                 height={12}
                 className="ah-clone-ic-muted"
               />
-              Yksityinen
+              {txt.private}
             </>
           ) : (
-            "Julkinen"
+            txt.public
           )}
         </dd>
         {repo.archived ? (
           <>
-            <dt>Tila</dt>
-            <dd>Arkistoitu: vain luku {gitlab ? "GitLabissa" : "Giteassa"}</dd>
+            <dt>{txt.state}</dt>
+            <dd>{txt.archivedIn(gitlab)}</dd>
           </>
         ) : null}
-        <dt>Oletushaara</dt>
+        <dt>{txt.defaultBranch}</dt>
         <dd>
-          <span className="ah-mono">{repo.default_branch ?? "ei haaraa"}</span>
+          <span className="ah-mono">{repo.default_branch ?? txt.noBranch}</span>
         </dd>
-        <dt>{gitlab ? "Viimeisin toiminta" : "Viimeisin push"}</dt>
+        <dt>{gitlab ? txt.lastActivity : txt.lastPush}</dt>
         <dd>{when(repo.pushed_at, now)}</dd>
-        <dt>Koko</dt>
+        <dt>{txt.size}</dt>
         <dd>
           {repo.size_kib === null ? (
             <>
-              Ei tiedossa{" "}
-              <span className="ah-clone-sub">
-                GitLab kertoo koon vain Reporter-roolille tai ylemmälle
-              </span>
+              {txt.unknown}{" "}
+              <span className="ah-clone-sub">{txt.gitlabSizeRole}</span>
             </>
           ) : (
             <>
               {kib(repo.size_kib)}{" "}
               <span className="ah-clone-sub">
                 {gitlab
-                  ? "GitLabin ilmoittama koko"
+                  ? txt.gitlabSize
                   : gitea
-                    ? "Gitean ilmoittama koko"
-                    : "GitHubin arvio pakatusta historiasta"}
+                    ? txt.giteaSize
+                    : txt.githubSize}
               </span>
             </>
           )}
         </dd>
         {push ? (
           <>
-            <dt>Push</dt>
-            <dd data-testid="repo-details-push">{pushText[push]}</dd>
+            <dt>{txt.pushLabel}</dt>
+            <dd data-testid="repo-details-push">{txt.push[push]}</dd>
           </>
         ) : null}
-        <dt>Kohde</dt>
+        <dt>{txt.target}</dt>
         <dd>
           <span className="ah-mono">~/src/{name}</span>
         </dd>
         {free ? (
           <>
-            <dt>Vapaata</dt>
+            <dt>{txt.free}</dt>
             <dd>
               {size(free.free_bytes)}{" "}
               <span className="ah-clone-sub">
                 {free.limit_bytes === undefined
-                  ? "palvelimen yhteisellä levyllä"
-                  : `kiintiöstä ${size(free.limit_bytes)}`}
+                  ? txt.sharedDisk
+                  : txt.ofQuota(size(free.limit_bytes))}
               </span>
             </dd>
           </>
@@ -638,8 +624,9 @@ export function RepoDetails({
               className="ah-clone-ic-ok"
             />
             <span>
-              Repo on jo työtilana <span className="ah-mono">{state.path}</span>
-              .
+              {txt.alreadyWorkspace(
+                <span className="ah-mono">{state.path}</span>,
+              )}
             </span>
           </p>
           <div className="ah-clone-actions">
@@ -649,7 +636,7 @@ export function RepoDetails({
               variant="primary"
               onPress={state.onOpen}
             >
-              Avaa työtila
+              {txt.openWorkspace}
             </ControlButton>
           </div>
         </>
@@ -663,16 +650,11 @@ export function RepoDetails({
           />
           {state.unknown ? (
             <span>
-              Hakemisto <span className="ah-mono">{state.path}</span> on jo
-              olemassa, eikä sen originista voi todeta, onko se tämä repo
-              (esimerkiksi SSH-osoite). Sinne ei kloonata. Avaa se
-              työtilalistasta, tai nimeä tai poista se ensin.
+              {txt.takenUnknown(<span className="ah-mono">{state.path}</span>)}
             </span>
           ) : (
             <span>
-              Hakemisto <span className="ah-mono">{state.path}</span> on jo
-              olemassa, joten tätä repoa ei voi kloonata sinne. Nimeä tai poista
-              nykyinen työtila ensin.
+              {txt.taken(<span className="ah-mono">{state.path}</span>)}
             </span>
           )}
         </p>
@@ -684,7 +666,7 @@ export function RepoDetails({
             height={15}
             className="ah-clone-ic-muted"
           />
-          <span>Tämän repon kloonaus näkyy sivun yläosassa.</span>
+          <span>{txt.jobShown}</span>
         </p>
       ) : (
         <>
@@ -698,11 +680,13 @@ export function RepoDetails({
                   className="ah-clone-ic-warn"
                 />
                 <span>
-                  <b>Suuri repo.</b> Täysi klooni vie noin {kib(sizeKiB)}
-                  {free && free.free_bytes > 0
-                    ? `, ${Math.round((100 * sizeKiB * 1024) / free.free_bytes)} % vapaasta tilasta`
-                    : ""}
-                  , ja haku kestää yhteydestä riippuen kymmeniä minuutteja.
+                  <b>{txt.bigTitle}</b>
+                  {txt.big(
+                    kib(sizeKiB),
+                    free && free.free_bytes > 0
+                      ? Math.round((100 * sizeKiB * 1024) / free.free_bytes)
+                      : undefined,
+                  )}
                 </span>
               </p>
               <CloneMode
@@ -721,10 +705,7 @@ export function RepoDetails({
                 height={15}
                 className="ah-clone-ic-muted"
               />
-              <span>
-                Projektissa ei ole vielä yhtään committia, joten sitä ei voi
-                vielä kloonata työtilaksi.
-              </span>
+              <span>{txt.emptyProject}</span>
             </p>
           ) : null}
           {problem ? (
@@ -742,16 +723,12 @@ export function RepoDetails({
               onPress={onClone}
             >
               <Icon name={gitea ? "branch" : "github"} />
-              Kloonaa työtilaksi
+              {txt.clone}
             </ControlButton>
           </div>
           <p className="ah-clone-hint" id={reasonId}>
             {cloneReason ??
-              (gitlab
-                ? "Kloonataan tämän GitLab-yhteyden tunnuksella. Kloonaus jatkuu palvelimella, vaikka poistut sivulta."
-                : gitea
-                  ? "Kloonataan tämän Gitea-yhteyden tunnuksella. Kloonaus jatkuu palvelimella, vaikka poistut sivulta."
-                  : "Kloonataan sinun GitHub-tunnuksillasi. Kloonaus jatkuu palvelimella, vaikka poistut sivulta.")}
+              (gitlab ? txt.viaGitLab : gitea ? txt.viaGitea : txt.viaGitHub)}
           </p>
         </>
       )}
@@ -759,28 +736,16 @@ export function RepoDetails({
   );
 }
 
-const stages = {
-  reserving: "Varataan kohdetta",
-  connecting: "Yhdistetään GitHubiin",
-  receiving: "Vastaanotetaan objekteja",
-  checkout: "Kirjoitetaan tiedostoja",
-  verifying: "Tarkistetaan",
-} as const;
-const reasons: Record<string, string> = {
-  native_failure:
-    "Git keskeytti kloonauksen, esimerkiksi koska palvelin katkaisi yhteyden.",
-  auth_refused:
-    "Palvelin ei hyväksynyt Gitin kirjautumista. Tunnus voi olla vanhentunut tai peruttu, tai ryhmä voi vaatia voimassa olevan SSO-istunnon: kirjaudu selaimessa ryhmän kertakirjautumisella ja yritä uudelleen.",
-  deadline_exceeded: "Kloonaus ei valmistunut 45 minuutissa.",
-  verification_failed:
-    "Git valmistui, mutta kloonia ei voitu vahvistaa (esimerkiksi tyhjä repo).",
-  destination_exists: "Kohdehakemisto ilmestyi kloonauksen aikana.",
-  source_unavailable: "Repoa ei saatu luettua GitHubista.",
-  daemon_stopping: "Palvelin pysähtyi kesken kloonauksen.",
-  cancelled: "Kloonaus keskeytettiin.",
-};
+type Stage =
+  | "reserving"
+  | "connecting"
+  | "receiving"
+  | "checkout"
+  | "verifying";
+const reasonText = (code: string | undefined) =>
+  code && Object.hasOwn(txt.reasons, code) ? txt.reasons[code] : undefined;
 // Bar position by stage: receiving is most of the work.
-const bar = (stage: keyof typeof stages | undefined, percent = 0) =>
+const bar = (stage: Stage | undefined, percent = 0) =>
   stage === "receiving"
     ? percent * 0.85
     : stage === "checkout"
@@ -801,7 +766,7 @@ export type CloneCardView =
       };
       mode: "full" | "blobless";
       state: "running" | "confirmed" | "failed" | "cancelled";
-      stage?: keyof typeof stages;
+      stage?: Stage;
       percent?: number;
       received_bytes?: number;
       reason?: string;
@@ -882,7 +847,7 @@ export function CloneCard({
         <div
           className="ah-clone-bar"
           role="progressbar"
-          aria-label={`Kloonauksen ${view.full_name} edistyminen`}
+          aria-label={txt.progressOf(view.full_name)}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={view.stage === "receiving" ? view.percent : undefined}
@@ -892,27 +857,18 @@ export function CloneCard({
         <p className="ah-clone-line" role="status">
           {cloneProgressText(view.stage, view.percent, received)}
         </p>
-        <p className="ah-clone-hint">
-          Kloonaus jatkuu palvelimella, vaikka poistut sivulta tai suljet
-          selaimen.
-        </p>
+        <p className="ah-clone-hint">{txt.continuesOnServer}</p>
       </>
     );
     actions = confirm ? (
       <div className="ah-clone-confirm">
-        <span>
-          Keskeytetäänkö?{" "}
-          {received
-            ? `Vastaanotetut ${size(received)} poistetaan`
-            : "Mitään ei ole vielä vastaanotettu"}
-          , eikä keskeneräistä jää levylle.
-        </span>
+        <span>{txt.cancelQuestion(received ? size(received) : undefined)}</span>
         <ControlButton
           data-testid="continue-clone"
           size="row"
           onPress={() => setConfirm(false)}
         >
-          Jatka kloonausta
+          {txt.continueClone}
         </ControlButton>
         <ControlButton
           data-testid="cancel-clone"
@@ -924,7 +880,7 @@ export function CloneCard({
             onCancel?.();
           }}
         >
-          Keskeytä
+          {txt.cancel}
         </ControlButton>
       </div>
     ) : (
@@ -936,17 +892,12 @@ export function CloneCard({
           title={writeReason}
           onPress={() => setConfirm(true)}
         >
-          Keskeytä
+          {txt.cancel}
         </ControlButton>
       </div>
     );
   } else if (view.kind === "job" && view.state === "confirmed") {
-    body = (
-      <p>
-        Valmis. Repo on kloonattu hakemistoon{" "}
-        <span className="ah-mono">{dest}</span>.
-      </p>
-    );
+    body = <p>{txt.done(<span className="ah-mono">{dest}</span>)}</p>;
     actions = (
       <div className="ah-clone-actions">
         <ControlButton
@@ -956,7 +907,7 @@ export function CloneCard({
           title={writeReason}
           onPress={onDismiss}
         >
-          Sulje
+          {txt.close}
         </ControlButton>
         {onOpen ? (
           <ControlButton
@@ -965,11 +916,11 @@ export function CloneCard({
             variant="primary"
             onPress={onOpen}
           >
-            Avaa työtila
+            {txt.openWorkspace}
           </ControlButton>
         ) : (
           <span className="ah-clone-hint" role="status">
-            Odotetaan työtilalistaa…
+            {txt.waitingList}
           </span>
         )}
       </div>
@@ -979,17 +930,13 @@ export function CloneCard({
     body = (
       <>
         <p data-testid="clone-failed" className="ah-clone-title">
-          {view.state === "cancelled"
-            ? "Kloonaus keskeytettiin"
-            : "Kloonaus epäonnistui"}
+          {view.state === "cancelled" ? txt.cancelled : txt.failed}
         </p>
         <p>
           {view.state === "cancelled"
             ? ""
-            : `${reasons[view.reason ?? ""] ?? ""} `}
-          {kept
-            ? `Hakemisto ${dest} jäi levylle.`
-            : "Keskeneräinen hakemisto poistettiin, joten levylle ei jäänyt mitään ja uusi yritys alkaa puhtaalta pöydältä."}
+            : `${reasonText(view.reason) ?? ""} `}
+          {kept ? txt.kept(dest) : txt.removed}
         </p>
       </>
     );
@@ -1001,7 +948,7 @@ export function CloneCard({
           title={writeReason}
           onPress={onDismiss}
         >
-          Poista ilmoitus
+          {txt.dismiss}
         </ControlButton>
         {kept ? null : (
           <ControlButton
@@ -1013,7 +960,7 @@ export function CloneCard({
             onPress={() => onRetry?.(view.mode)}
           >
             <Icon name="refresh" />
-            Yritä uudelleen
+            {txt.retry}
           </ControlButton>
         )}
       </div>
@@ -1022,16 +969,16 @@ export function CloneCard({
     body =
       view.state === "waiting" ? (
         <p className="ah-clone-line" role="status">
-          Jonossa. Alkaa, kun edellinen kloonaus valmistuu.
+          {txt.queued}
         </p>
       ) : (
         <>
           <p data-testid="clone-failed" className="ah-clone-title">
-            Kloonaus ei alkanut
+            {txt.notStarted}
           </p>
           <p>
             {view.refusal}
-            {view.unsettled ? "" : " Levylle ei kirjoitettu mitään."}
+            {view.unsettled ? "" : txt.nothingWritten}
           </p>
         </>
       );
@@ -1043,7 +990,7 @@ export function CloneCard({
           isDisabled={busy}
           onPress={onDismiss}
         >
-          {view.state === "waiting" ? "Poista jonosta" : "Poista ilmoitus"}
+          {view.state === "waiting" ? txt.unqueue : txt.dismiss}
         </ControlButton>
         {view.state === "refused" ? (
           <ControlButton
@@ -1055,7 +1002,7 @@ export function CloneCard({
             onPress={() => onRetry?.(view.mode)}
           >
             <Icon name="refresh" />
-            Yritä uudelleen
+            {txt.retry}
           </ControlButton>
         ) : null}
       </div>
@@ -1064,21 +1011,21 @@ export function CloneCard({
     body = (
       <>
         <p data-testid="clone-interrupted" className="ah-clone-title">
-          Kloonaus keskeytyi
+          {txt.interrupted}
         </p>
         <p>
-          Hakemistossa <span className="ah-mono">{dest}</span> on keskeneräinen{" "}
-          <span className="ah-mono">.git</span> ({size(view.size_bytes)}) ilman
-          yhtään committia tai tiedostoa, esimerkiksi koska palvelin käynnistyi
-          uudelleen kesken kloonauksen. Git ei osaa jatkaa keskeytynyttä
-          kloonausta, joten uusi yritys alkaa alusta.
+          {txt.interruptedText(
+            <span className="ah-mono">{dest}</span>,
+            <span className="ah-mono">.git</span>,
+            size(view.size_bytes),
+          )}
         </p>
         {large && !view.source ? (
           <CloneMode
             name={`restart-${view.full_name}`}
             mode={mode}
             onMode={setMode}
-            legend="Uusi yritys"
+            legend={txt.newAttempt}
           />
         ) : null}
       </>
@@ -1092,7 +1039,7 @@ export function CloneCard({
           title={writeReason}
           onPress={onRemove}
         >
-          Poista keskeneräinen ({size(view.size_bytes)})
+          {txt.removePartial(size(view.size_bytes))}
         </ControlButton>
         {onRestart ? (
           <ControlButton
@@ -1104,7 +1051,7 @@ export function CloneCard({
             onPress={() => onRestart(mode)}
           >
             <Icon name="refresh" />
-            Aloita alusta
+            {txt.restart}
           </ControlButton>
         ) : null}
       </div>
@@ -1116,7 +1063,7 @@ export function CloneCard({
       data-state={state}
       data-repository={view.full_name}
       className={`ah-clone-job ah-clone-job-${state}`}
-      aria-label={`Kloonaus ${view.full_name}`}
+      aria-label={txt.cloneOf(view.full_name)}
     >
       <header className="ah-clone-jhead">
         <span className={`ah-clone-jic ah-clone-jic-${state}`}>
@@ -1135,9 +1082,9 @@ export function CloneCard({
           <span className="ah-clone-sub">
             {view.kind !== "interrupted"
               ? view.mode === "blobless"
-                ? "kevyt klooni"
-                : "koko historia"
-              : "keskeneräinen"}{" "}
+                ? txt.modeBlobless
+                : txt.modeFull
+              : txt.modePartial}{" "}
             → <span className="ah-mono">{dest}</span>
           </span>
         </div>
@@ -1172,7 +1119,9 @@ export function RailClones({
       kind="nav"
       current={current}
       className="ah-rail-clones"
-      aria-label={`Kloonaukset: ${items.map((i) => `${i.name} ${i.label}`).join(", ")}`}
+      aria-label={txt.railLabel(
+        items.map((i) => `${i.name} ${i.label}`).join(", "),
+      )}
     >
       {items.map((i) => (
         <span className="ah-rail-clone" key={i.name}>
@@ -1197,7 +1146,7 @@ export function RailClones({
 export type CloneRowView = {
   full_name: string;
   state: "waiting" | "running" | "present" | "confirmed" | "failed";
-  stage?: keyof typeof stages;
+  stage?: Stage;
   percent?: number;
   received_bytes?: number;
   /** The job's reason code, when the daemon gave one. */
@@ -1212,12 +1161,12 @@ function routeState(r: CloneRowView): string {
   return r.state === "running"
     ? cloneProgressText(r.stage, r.percent, r.received_bytes)
     : r.state === "waiting"
-      ? "jonossa"
+      ? txt.routeQueued
       : r.state === "present"
-        ? "oli jo haettu"
+        ? txt.routePresent
         : r.state === "confirmed"
-          ? "valmis"
-          : "epäonnistui";
+          ? txt.routeDone
+          : txt.routeFailed;
 }
 
 /** The clones of onboarding on the route's Repot row: one short line per
@@ -1229,7 +1178,7 @@ export function OnboardingClones({ rows }: { rows: readonly CloneRowView[] }) {
     <ul
       className="ah-onboarding-clones"
       data-testid="onboarding-clones"
-      aria-label="Repojen haku"
+      aria-label={txt.onboardingLabel}
     >
       {rows.map((r) => (
         <li
@@ -1260,7 +1209,7 @@ export function OnboardingClones({ rows }: { rows: readonly CloneRowView[] }) {
             <div
               className="ah-clone-bar"
               role="progressbar"
-              aria-label={`Repon ${r.full_name} haku`}
+              aria-label={txt.fetchOf(r.full_name)}
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={r.stage === "receiving" ? r.percent : undefined}
@@ -1295,9 +1244,7 @@ export function OnboardingCloneProblems({
       aria-labelledby="onboarding-clone-problems-title"
     >
       <h3 id="onboarding-clone-problems-title">
-        {failed.length === 1
-          ? "Repon haku epäonnistui"
-          : `${failed.length} repon haku epäonnistui`}
+        {txt.problemsTitle(failed.length)}
       </h3>
       <ul>
         {failed.map((r) => (
@@ -1311,11 +1258,9 @@ export function OnboardingCloneProblems({
               <span>
                 {r.problem ??
                   (r.reason === "interrupted"
-                    ? "Haku keskeytyi, ja keskeneräinen hakemisto jäi levylle. Jatka tai poista se myöhemmin kloonaussivulla."
-                    : `${reasons[r.reason ?? ""] ?? "Haku ei onnistunut."}${
-                        r.retryable
-                          ? " Levylle ei jäänyt mitään."
-                          : " Hakemisto jäi levylle; tarkista se myöhemmin kloonaussivulla."
+                    ? txt.fetchInterrupted
+                    : `${reasonText(r.reason) ?? txt.fetchFailed}${
+                        r.retryable ? txt.leftNothing : txt.leftDirectory
                       }`)}
               </span>
               {r.retryable && onRetry ? (
@@ -1327,16 +1272,14 @@ export function OnboardingCloneProblems({
                   onPress={() => onRetry(r.full_name)}
                 >
                   <Icon name="refresh" />
-                  Yritä uudelleen
+                  {txt.retry}
                 </ControlButton>
               ) : null}
             </span>
           </li>
         ))}
       </ul>
-      <p className="ah-clone-hint">
-        Muut repot haetaan taustalla. Valmiit repot näkyvät työtiloina.
-      </p>
+      <p className="ah-clone-hint">{txt.othersBackground}</p>
     </section>
   );
 }

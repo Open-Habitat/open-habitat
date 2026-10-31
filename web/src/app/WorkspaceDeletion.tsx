@@ -4,6 +4,8 @@ import {
   type DeletionView,
   WorkspaceDeleteDialog,
 } from "../components/WorkspaceTrash";
+import { liveText } from "../i18n";
+import { workspaceDeletionText } from "../text/workspaceDeletion";
 import { stopEditor } from "./editor";
 import { WriteRefused } from "./mutations";
 import type { Workspace } from "./snapshot";
@@ -24,6 +26,8 @@ export type DeletionOutcome = {
   remote?: string;
   result: Exclude<DeletionResult, DeletionCheck>;
 };
+
+const txt = liveText(workspaceDeletionText);
 
 const problemOf = (e: unknown) =>
   refusalText(e instanceof WorkspaceTrashError ? e.code : "unavailable");
@@ -174,9 +178,7 @@ function ProductBlockerAction({
               }
               onResolved();
             } catch {
-              setProblem(
-                "Sulkemista ei voitu vahvistaa. Tarkista tilanne uudelleen ennen uutta yritystä.",
-              );
+              setProblem(txt.closeUncertain);
             } finally {
               setPending(false);
             }
@@ -184,10 +186,10 @@ function ProductBlockerAction({
         }}
       >
         {pending
-          ? "Suljetaan…"
+          ? txt.closing
           : blocker.product === "terminal"
-            ? "Sulje pääte"
-            : "Pysäytä editori (kaikki ikkunat)"}
+            ? txt.closeTerminal
+            : txt.stopEditor}
       </ControlButton>
       {problem && <p role="alert">{problem}</p>}
     </>

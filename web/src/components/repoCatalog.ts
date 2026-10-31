@@ -5,6 +5,11 @@
 // group/subgroup/... (proto-gitlab-connect, Koko polku). Pure functions so
 // the arrangement is tested without a browser.
 
+import { formatDate, formatNumber, liveText } from "../i18n";
+import { repoCatalogText } from "../text/repoCatalog";
+
+const txt = liveText(repoCatalogText);
+
 /** A Gitea or GitLab connection a repository comes from; absent for GitHub.
  * Two accounts on one server are two sources, and the same path on two
  * servers are two repositories. */
@@ -50,13 +55,14 @@ export const repoKey = (r: Pick<CatalogRepo, "full_name" | "source">) =>
 export const largeKiB = 500 * 1024;
 /** Each section shows this many before "Näytä kaikki N". */
 export const sectionLimit = 5;
-export const sinceChoices = [
-  { id: "0", label: "Kaikki" },
-  { id: "30", label: "30 pv" },
-  { id: "90", label: "3 kk" },
-  { id: "365", label: "Vuosi" },
-] as const;
-export type Since = (typeof sinceChoices)[number]["id"];
+const sinceIds = ["0", "30", "90", "365"] as const;
+export type Since = (typeof sinceIds)[number];
+export const sinceChoices = sinceIds.map((id) => ({
+  id,
+  get label() {
+    return txt.since[id];
+  },
+}));
 
 const day = 86400000;
 const pushed = (r: CatalogRepo) =>
@@ -190,30 +196,30 @@ export function exactName(query: string): string | undefined {
     : undefined;
 }
 
-const fi = (n: number, digits: number) =>
-  n.toLocaleString("fi-FI", {
+const fixed = (n: number, digits: number) =>
+  formatNumber(n, {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
 /** Bytes as MiB or GiB, the way the clone page and its cards say them. */
 export function size(bytes: number): string {
   const mib = bytes / 1048576;
-  if (mib >= 1024) return `${fi(mib / 1024, 1)} GiB`;
-  if (mib >= 10) return `${fi(Math.round(mib), 0)} MiB`;
-  return `${fi(Math.max(mib, 0.1), 1)} MiB`;
+  if (mib >= 1024) return `${fixed(mib / 1024, 1)} GiB`;
+  if (mib >= 10) return `${fixed(Math.round(mib), 0)} MiB`;
+  return `${fixed(Math.max(mib, 0.1), 1)} MiB`;
 }
 
 /** A push time relative to now, in the person's local time. */
 export function when(iso: string | null, now: number): string {
-  if (!iso) return "ei pushia";
+  if (!iso) return txt.noPush;
   const t = new Date(iso);
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   const start = today.getTime();
   if (t.getTime() >= start)
-    return `tänään klo ${t.getHours()}.${String(t.getMinutes()).padStart(2, "0")}`;
-  if (t.getTime() >= start - day) return "eilen";
+    return txt.today(formatDate(t, { hour: "numeric", minute: "2-digit" }));
+  if (t.getTime() >= start - day) return txt.yesterday;
   const days = Math.round((start - t.getTime()) / day);
-  if (days < 30) return `${days} pv sitten`;
-  return `${t.getDate()}.${t.getMonth() + 1}.${t.getFullYear()}`;
+  if (days < 30) return txt.daysAgo(days);
+  return formatDate(t, { day: "numeric", month: "numeric", year: "numeric" });
 }

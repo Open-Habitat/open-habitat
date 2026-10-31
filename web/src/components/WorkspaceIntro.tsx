@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { StartGoal, StartPage } from "../app/composerReads";
+import { useText } from "../i18n";
+import { startHereText } from "../text/startHere";
 import { ControlButton } from "./ControlElements";
 import { Markdown } from "./Markdown";
 import { StartGoals } from "./StartHere";
@@ -36,7 +38,7 @@ export function WorkspaceIntro({
   preparing,
   disabled,
   onCreatePage,
-  newHint = "Tyhjän keskustelun saat +:sta.",
+  newHint,
 }: {
   page?: StartPage | null;
   state: "loading" | "ready" | "error";
@@ -50,14 +52,15 @@ export function WorkspaceIntro({
   onCreatePage: () => void;
   newHint?: string;
 }) {
+  const t = useText(startHereText);
   const [open, setOpen] = useState(false);
   if (state === "loading") return null;
   if (state === "error")
     return (
       <div className="ah-workspace-intro-line" role="status">
-        <p>Aloitussivua ei saatu luettua.</p>
+        <p>{t.unreadable}</p>
         <ControlButton size="row" variant="quiet" onPress={onRetry}>
-          Yritä uudelleen
+          {t.retry}
         </ControlButton>
       </div>
     );
@@ -68,19 +71,9 @@ export function WorkspaceIntro({
         data-testid={page ? "landing-needs-update" : "landing-absent"}
       >
         <p>
-          {page ? (
-            <>
-              Aloitussivu tarvitsee päivityksen. Agentti päivittää{" "}
-              <code>.agents/start-page.md</code>:n, ja esittely näkyy sitten
-              täällä ja uuden keskustelun alussa.
-            </>
-          ) : (
-            <>
-              Tällä työtilalla ei ole aloitussivua. Agentti kirjoittaa sen{" "}
-              <code>.agents/start-page.md</code>:hen, ja sama esittely näkyy
-              sitten täällä ja uuden keskustelun alussa.
-            </>
-          )}
+          {page
+            ? t.introNeedsUpdate(<code>.agents/start-page.md</code>)
+            : t.introAbsent(<code>.agents/start-page.md</code>)}
         </p>
         <ControlButton
           size="row"
@@ -89,7 +82,7 @@ export function WorkspaceIntro({
           isDisabled={!!disabled}
           onPress={onCreatePage}
         >
-          {page ? "Päivitä aloitussivu" : "Luo aloitussivu"}
+          {page ? t.updatePage : t.createPage}
         </ControlButton>
       </div>
     );
@@ -97,7 +90,7 @@ export function WorkspaceIntro({
   return (
     <section
       className="ah-start ah-workspace-intro"
-      aria-label="Aloitussivu"
+      aria-label={t.pageLabel}
       data-testid="landing"
     >
       <h2 data-testid="landing-title">{page.title}</h2>
@@ -112,12 +105,12 @@ export function WorkspaceIntro({
           aria-expanded={open}
           onPress={() => setOpen(!open)}
         >
-          {open ? "Näytä vähemmän" : "Näytä koko esittely"}
+          {open ? t.showLess : t.showAll}
         </ControlButton>
       ) : null}
       {page.goals.length > 0 ? (
         <>
-          <h3 className="ah-start-heading">Mitä haluat tehdä?</h3>
+          <h3 className="ah-start-heading">{t.whatToDo}</h3>
           <StartGoals
             goals={page.goals}
             onGoal={onGoal}
@@ -125,7 +118,7 @@ export function WorkspaceIntro({
             disabled={disabled}
           />
           <p className="ah-start-hint">
-            Tavoite aloittaa uuden keskustelun pyyntö valmiina. {newHint}
+            {t.introGoalHint(newHint ?? t.newHint)}
           </p>
         </>
       ) : null}

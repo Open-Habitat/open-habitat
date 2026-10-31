@@ -7,6 +7,8 @@ import {
   useDictation,
 } from "./composer/Dictation";
 import "./composer/composer.css";
+import { useText } from "../i18n";
+import { workspaceIconPickerText } from "../text/workspaceIconPicker";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { WorkspaceIcon, type WorkspaceIconModel } from "./WorkspaceIcon";
@@ -43,26 +45,6 @@ export type WorkspaceIconSuggestionsModel = {
   seen: string;
   model?: string;
 };
-
-const quick = [
-  ["leikkisämpi", "Leikkisämpi"],
-  ["asiallisempi", "Asiallisempi"],
-  ["kirjaimet", "Kirjaimet"],
-  ["toisia", "Toisia"],
-] as const;
-
-const failure = {
-  model_unavailable: [
-    "Ehdotuksiin ei löytynyt mallia, johon on kirjautuminen.",
-    "Kirjaudu mallipalveluun asetuksista.",
-  ],
-  model_timeout: ["Malli ei vastannut ajoissa.", "Voit yrittää uudelleen."],
-  model_invalid_response: [
-    "Mallin vastauksesta ei saatu kuvaketta.",
-    "Voit yrittää uudelleen.",
-  ],
-  request_failed: ["Ehdotuksia ei saatu.", "Voit yrittää uudelleen."],
-} as const;
 
 /** A wish is one line: a dictation pause makes a paragraph break. */
 const oneLine = (text: string) =>
@@ -105,6 +87,7 @@ export function WorkspaceIconSuggestions({
   /** The composer's dictation; without it there is no mic. */
   speech?: ComposerSpeech;
 }) {
+  const t = useText(workspaceIconPickerText);
   const [wish, setWish] = useState("");
   const form = useRef<HTMLFormElement>(null);
   const field = useRef<HTMLInputElement>(null);
@@ -143,19 +126,19 @@ export function WorkspaceIconSuggestions({
     model.status === "failed" && model.reason === "model_unavailable";
   const problem =
     model.status === "failed"
-      ? failure[model.reason ?? "request_failed"]
+      ? t.failure[model.reason ?? "request_failed"]
       : null;
   return (
     <section
       className="ah-wsis"
       data-testid="workspace-icon-suggestions"
       data-state={model.status}
-      aria-label="Kuvake-ehdotus"
+      aria-label={t.rowLabel}
     >
       <div className="ah-wsis-top">
         <span className="ah-wsis-label">
           <Icon name="spark" />
-          Ehdotus
+          {t.suggestion}
         </span>
         {loading ? (
           <span className="ah-wsis-cap" role="status">
@@ -164,22 +147,20 @@ export function WorkspaceIconSuggestions({
               <i />
               <i />
             </span>{" "}
-            {model.wishing ? "Malli miettii…" : "Malli lukee työtilan tietoja…"}{" "}
+            {model.wishing ? t.thinking : t.reading}{" "}
             <Elapsed since={model.startedAt} />
           </span>
         ) : problem ? (
           <span className="ah-wsis-cap ah-wsis-problem" role="status">
             <b>{problem[0]}</b> {problem[1]}{" "}
-            {model.round.count
-              ? "Edelliset ehdotukset ovat yhä tässä."
-              : "Alla vaihtoehdot ilman mallia."}{" "}
+            {model.round.count ? t.earlierKept : t.withoutModel}{" "}
             {noModel ? (
               <AriaButton
                 className="ah-wsis-link"
                 data-testid="workspace-icon-suggestions-settings"
                 onPress={onOpenSettings}
               >
-                Avaa asetukset
+                {t.openSettings}
               </AriaButton>
             ) : (
               <AriaButton
@@ -187,12 +168,12 @@ export function WorkspaceIconSuggestions({
                 data-testid="workspace-icon-suggestions-retry"
                 onPress={() => onAsk("")}
               >
-                Yritä uudelleen
+                {t.retry}
               </AriaButton>
             )}
           </span>
         ) : (
-          <span className="ah-wsis-cap">{model.reply ?? "Ehdotuksia:"}</span>
+          <span className="ah-wsis-cap">{model.reply ?? t.suggestions}</span>
         )}
         <ControlButton
           data-testid="workspace-icon-suggestions-dismiss"
@@ -200,7 +181,7 @@ export function WorkspaceIconSuggestions({
           variant="quiet"
           onPress={onDismiss}
         >
-          Ei nyt
+          {t.notNow}
         </ControlButton>
       </div>
       {model.items ? (
@@ -262,8 +243,8 @@ export function WorkspaceIconSuggestions({
             <Input
               ref={field}
               data-testid="workspace-icon-wish"
-              aria-label="Toive mallille"
-              placeholder="Toive, esim. kettu, sininen, kirjaimet"
+              aria-label={t.wishLabel}
+              placeholder={t.wishPlaceholder}
               maxLength={200}
               autoComplete="off"
               readOnly={!!heard}
@@ -286,7 +267,7 @@ export function WorkspaceIconSuggestions({
               type="submit"
               isDisabled={busy}
             >
-              Ehdota
+              {t.suggest}
             </ControlButton>
           </form>
           {speech ? (
@@ -298,7 +279,7 @@ export function WorkspaceIconSuggestions({
             />
           ) : null}
           <div className="ah-wsis-quick">
-            {quick.map(([value, label]) => (
+            {t.quick.map(([value, label]) => (
               <AriaButton
                 key={value}
                 className="ah-wsis-pill"
@@ -315,7 +296,7 @@ export function WorkspaceIconSuggestions({
                 data-testid="workspace-icon-rounds"
               >
                 <AriaButton
-                  aria-label="Edelliset ehdotukset"
+                  aria-label={t.previous}
                   data-testid="workspace-icon-round-back"
                   isDisabled={model.round.at <= 0}
                   onPress={() => onRound(-1)}
@@ -324,7 +305,7 @@ export function WorkspaceIconSuggestions({
                 </AriaButton>
                 {model.round.at + 1}/{model.round.count}
                 <AriaButton
-                  aria-label="Seuraavat ehdotukset"
+                  aria-label={t.next}
                   data-testid="workspace-icon-round-forward"
                   isDisabled={model.round.at >= model.round.count - 1}
                   onPress={() => onRound(1)}
@@ -337,7 +318,7 @@ export function WorkspaceIconSuggestions({
         </>
       )}
       <p className="ah-wsis-foot">
-        Malli näkee: {model.seen}.
+        {t.seen(model.seen)}
         {model.model ? (
           <>
             {" "}

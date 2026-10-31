@@ -3,11 +3,14 @@ import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/workspace-git.schema.json";
 import type { GitDetailFacts } from "../components/GitStatus";
+import { liveText } from "../i18n";
+import { workspaceGitText } from "../text/workspaceGit";
 import { jsonWrite, WriteRefused, writeOutcome } from "./mutations";
 
 const ajv = addFormats(new Ajv({ strict: false }));
 ajv.addSchema(common);
 const validate = ajv.compile(schema);
+const txt = liveText(workspaceGitText);
 export type WorkspaceGit = GitDetailFacts & {
   schema_version: 1;
   workspace_id: string;
@@ -20,7 +23,7 @@ export async function workspaceGit(
     `/api/v1/workspaces/git?${new URLSearchParams({ workspace_id: id })}`,
     { signal, credentials: "same-origin", cache: "no-store" },
   );
-  if (!response.ok) throw new Error("Git-tilaa ei voitu lukea.");
+  if (!response.ok) throw new Error(txt.unreadable);
   return readGit(response, id);
 }
 
@@ -46,40 +49,23 @@ export async function fetchWorkspaceGit(
 /** Why Päivitä tila did not fetch, in words the person can act on. */
 export function fetchFailureReason(error: unknown): string {
   const code = error instanceof WriteRefused ? error.code : "";
-  switch (code) {
-    case "remote_ssh_unavailable":
-      return "Haku epäonnistui: etärepo käyttää SSH:ta, eikä palvelimella ole SSH-agenttia tai avainta, jolla yhteys aukeaisi. Hae päätteessä tai vaihda etärepo HTTPS-osoitteeseen.";
-    case "remote_auth_unavailable":
-      return "Haku epäonnistui: etärepo vaati kirjautumisen, eikä Git löytänyt tunnuksia palvelimelta.";
-    case "remote_unreachable":
-      return "Haku epäonnistui: etärepoon ei saatu yhteyttä.";
-    case "remote_rewritten":
-      return "Hakua ei tehty: Git-asetuksesi (url.insteadOf tai pushInsteadOf) ohjaisivat Gitea-etärepon osoitteen muualle, tai etärepolla on useampi osoite. Tarkista asetukset päätteessä.";
-    case "remote_not_found":
-      return "Haku epäonnistui: etärepoa ei löytynyt tai siihen ei ole pääsyä.";
-    case "fetch_timeout":
-      return "Haku keskeytettiin, koska se kesti yli 45 sekuntia. Hae päätteessä.";
-    case "no_remote":
-      return "Työtilalla ei ole etärepoa, josta hakea.";
-    case "fetch_in_progress":
-      return "Haku on jo käynnissä.";
-    case "workspace_changed":
-    case "workspace_unavailable":
-      return "Työtila muuttui. Lue tila uudelleen.";
-    case "fetch_failed":
-      return "Haku epäonnistui. Git ei kertonut syytä, jonka voisi näyttää.";
-    default:
-      return error instanceof WriteRefused
-        ? "Palvelin ei hyväksynyt hakua."
-        : error instanceof Error && error.message === "login"
-          ? "Istunto päättyi. Kirjaudu uudelleen."
-          : "Haun tulos jäi epävarmaksi. Lue tila uudelleen.";
-  }
+  const known =
+    code === "workspace_unavailable"
+      ? txt.fetch.workspace_changed
+      : Object.hasOwn(txt.fetch, code)
+        ? txt.fetch[code]
+        : undefined;
+  if (known) return known;
+  return error instanceof WriteRefused
+    ? txt.refused
+    : error instanceof Error && error.message === "login"
+      ? txt.login
+      : txt.uncertain;
 }
 
 async function readGit(response: Response, id: string): Promise<WorkspaceGit> {
   const reader = response.body?.getReader();
-  if (!reader) throw new Error("Git-tilaa ei voitu lukea.");
+  if (!reader) throw new Error(txt.unreadable);
   const chunks: Uint8Array[] = [];
   let size = 0;
   try {
@@ -89,7 +75,7 @@ async function readGit(response: Response, id: string): Promise<WorkspaceGit> {
       size += value.byteLength;
       if (size > 2 * 1024 * 1024) {
         await reader.cancel();
-        throw new Error("Git-vastaus ylitti lukurajan.");
+        throw new Error(txt.tooLarge);
       }
       chunks.push(value);
     }
@@ -106,6 +92,6 @@ async function readGit(response: Response, id: string): Promise<WorkspaceGit> {
     new TextDecoder("utf-8", { fatal: true }).decode(bytes),
   );
   if (!validate(value) || (value as WorkspaceGit).workspace_id !== id)
-    throw new Error("Git-tilaa ei voitu vahvistaa.");
+    throw new Error(txt.unconfirmed);
   return value as WorkspaceGit;
 }

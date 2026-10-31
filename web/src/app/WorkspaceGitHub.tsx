@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ControlButton, controlStyles } from "../components/ControlElements";
 import { TextField } from "../components/Primitives";
+import { useText } from "../i18n";
+import { workspaceGitHubText } from "../text/workspaceGitHub";
 import { catalog, cloneStream, observe, type Repo } from "./github";
 import { mutationFetch } from "./mutations";
 import type { Workspace } from "./snapshot";
@@ -43,6 +45,7 @@ export function WorkspaceGitHub({
   workspace?: Workspace;
   refresh: () => void;
 }) {
+  const t = useText(workspaceGitHubText);
   const [repos, setRepos] = useState<Repo[]>([]);
   const [choice, setChoice] = useState("");
   const [owner, setOwner] = useState("");
@@ -84,24 +87,16 @@ export function WorkspaceGitHub({
         error && typeof error === "object" && "code" in error
           ? error.code
           : null;
-      const reasons: Record<string, string> = {
-        origin_conflict:
-          "Origin osoittaa toiseen repoon. Tarkista paikallinen Git ennen julkaisemista.",
-        remote_conflict:
-          "GitHub-repo on jo käytössä, väärällä näkyvyydellä tai sitä ei voitu varmistaa tyhjäksi.",
-        github_auth_unavailable:
-          "Paikallinen GitHub-valtuutus ei vastaa tätä käyttäjää.",
-        workspace_changed:
-          "Työtila muuttui havainnon jälkeen. Päivitä työtilat.",
-      };
       throw new Error(
-        (typeof code === "string" && reasons[code]) ||
-          "GitHubin tai Gitin tilaa ei voitu vahvistaa.",
+        (typeof code === "string" &&
+          Object.hasOwn(t.reasons, code) &&
+          t.reasons[code]) ||
+          t.unconfirmed,
       );
     }
     const value: unknown = await r.json();
     if (!validChallenge(value, name, id, vis))
-      throw new Error("Havainto ei kelpaa.");
+      throw new Error(t.invalidObservation);
     return value;
   };
   const load = async () => {
@@ -111,7 +106,7 @@ export function WorkspaceGitHub({
     try {
       setRepos((await catalog()).repositories);
     } catch {
-      setNotice("Repojen hakua ei voitu vahvistaa. Yritä myöhemmin uudelleen.");
+      setNotice(t.catalogFailed);
     } finally {
       setBusy(false);
     }
@@ -119,39 +114,31 @@ export function WorkspaceGitHub({
   const importRepo = async () => {
     if (!csrf || !choice || busy) return;
     setBusy(true);
-    setNotice("Tuonti käynnissä…");
+    setNotice(t.importing);
     const controller = new AbortController();
     importAbort.current = controller;
     try {
       const before = await observe(choice, controller.signal);
-      if (before.state !== "absent")
-        throw new Error("Kohde ei ole vahvistetusti vapaa. Tarkista työtilat.");
+      if (before.state !== "absent") throw new Error(t.notFree);
       await cloneStream(
         choice,
         csrf,
         (frame) => {
           if (mounted.current && frame.kind === "progress")
             setNotice(
-              `Tuonti: ${frame.stage}${frame.percent === undefined ? "" : ` ${frame.percent} %`}${frame.received_bytes === undefined ? "" : ` · ${frame.received_bytes} tavua`}`,
+              t.progress(frame.stage, frame.percent, frame.received_bytes),
             );
         },
         controller.signal,
       );
       const after = await observe(choice, controller.signal);
-      if (after.state !== "confirmed")
-        throw new Error(
-          "Tuonnin tulos on epävarma. Tarkista paikallinen Git ennen uutta yritystä.",
-        );
+      if (after.state !== "confirmed") throw new Error(t.importUncertain);
       if (!mounted.current) return;
-      setNotice("Repo tuotu työtilaksi.");
+      setNotice(t.imported);
       refresh();
     } catch (e) {
       if (!mounted.current) return;
-      setNotice(
-        e instanceof Error
-          ? e.message
-          : "Tuonnin tulos on epävarma. Tarkista paikallinen Git ennen uutta yritystä.",
-      );
+      setNotice(e instanceof Error ? e.message : t.importUncertain);
       refresh();
     } finally {
       if (importAbort.current === controller) importAbort.current = null;
@@ -174,11 +161,7 @@ export function WorkspaceGitHub({
       if (revision === selectionRevision.current) setChallenge(observed);
     } catch (e) {
       if (revision === selectionRevision.current)
-        setNotice(
-          e instanceof Error
-            ? e.message
-            : "Havainto epäonnistui. Mitään ei muutettu.",
-        );
+        setNotice(e instanceof Error ? e.message : t.observationFailed);
     } finally {
       setBusy(false);
     }
@@ -195,7 +178,7 @@ export function WorkspaceGitHub({
     const current = challenge;
     setChallenge(undefined);
     setBusy(true);
-    setNotice("Vaihe käynnissä…");
+    setNotice(t.stageRunning);
     try {
       const r = await mutationFetch("workspace.github_publish", endpoint, {
         method: "POST",
@@ -215,10 +198,7 @@ export function WorkspaceGitHub({
           observation_token: current.observation_token,
         }),
       });
-      if (!r.ok)
-        throw new Error(
-          "Vaiheen tulos on epävarma. Älä toista kirjoitusta; tarkista GitHub ja Git uudella havainnolla.",
-        );
+      if (!r.ok) throw new Error(t.stageUncertain);
       const reply: unknown = await r.json();
       if (
         !reply ||
@@ -226,25 +206,21 @@ export function WorkspaceGitHub({
         (reply as Record<string, unknown>).state !== "confirmed" ||
         (reply as Record<string, unknown>).stage !== current.stage
       )
-        throw new Error(
-          "Vastausta ei voitu vahvistaa. Tarkista tila ennen jatkamista.",
-        );
-      setNotice(
-        `${current.stage === "create" ? "GitHub-repo luotu" : current.stage === "origin" ? "Origin asetettu" : "Push vahvistettu"}. Tarkista seuraava vaihe uudella havainnolla.`,
-      );
+        throw new Error(t.replyUnconfirmed);
+      setNotice(t.stageDone[current.stage]);
       refresh();
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : "Tulos on epävarma.");
+      setNotice(e instanceof Error ? e.message : t.uncertain);
       refresh();
     } finally {
       setBusy(false);
     }
   };
   return (
-    <section aria-label="GitHub-työtilat">
+    <section aria-label={t.label}>
       {!workspace ? (
         <>
-          <h2>Tuo GitHub-repo</h2>
+          <h2>{t.importTitle}</h2>
           <ControlButton
             data-testid="repository-load"
             size="row"
@@ -252,23 +228,23 @@ export function WorkspaceGitHub({
             isDisabled={busy}
             onClick={() => void load()}
           >
-            Näytä repot
+            {t.showRepos}
           </ControlButton>
           {repos.length > 0 && (
             <>
               <TextField
-                label="Hae repoja"
+                label={t.searchRepos}
                 value={filter}
                 onChange={setFilter}
               />
               <label className={controlStyles.field}>
-                Repo
+                {t.repo}
                 <select
                   className={controlStyles.fieldInput}
                   value={choice}
                   onChange={(e) => setChoice(e.target.value)}
                 >
-                  <option value="">Valitse repo</option>
+                  <option value="">{t.chooseRepo}</option>
                   {repos
                     .filter((r) =>
                       r.full_name.toLowerCase().includes(filter.toLowerCase()),
@@ -287,7 +263,7 @@ export function WorkspaceGitHub({
                 isDisabled={!csrf || busy || !choice}
                 onClick={() => void importRepo()}
               >
-                Tuo työtilaksi
+                {t.import}
               </ControlButton>
             </>
           )}
@@ -299,18 +275,14 @@ export function WorkspaceGitHub({
             data-continuation={!!workspace.publish_continuation}
             data-testid="publish-title"
           >
-            {workspace.publish_continuation
-              ? "Jatka GitHub-julkaisua"
-              : "Julkaise GitHubiin"}
+            {workspace.publish_continuation ? t.continueTitle : t.publishTitle}
           </h2>
           <p>
-            {workspace.publish_continuation
-              ? "GitHub-originilla ei näy haettuja haaroja. Tarkista omistaja, repo ja näkyvyys ennen mahdollista push-vaihetta."
-              : "Jokainen vaihe (luonti, origin, push) vaatii uuden havainnon. Epävarmaa vaihetta ei toisteta automaattisesti."}
+            {workspace.publish_continuation ? t.continueText : t.publishText}
           </p>
           <TextField
             data-testid="publish-owner"
-            label="Omistaja"
+            label={t.owner}
             value={owner}
             onChange={(value) => {
               ++selectionRevision.current;
@@ -320,7 +292,7 @@ export function WorkspaceGitHub({
           />
           <TextField
             data-testid="publish-repository"
-            label="Repo"
+            label={t.repo}
             value={repository}
             onChange={(value) => {
               ++selectionRevision.current;
@@ -329,7 +301,7 @@ export function WorkspaceGitHub({
             }}
           />
           <label className={controlStyles.field}>
-            Näkyvyys
+            {t.visibility}
             <select
               className={controlStyles.fieldInput}
               value={visibility}
@@ -339,8 +311,8 @@ export function WorkspaceGitHub({
                 setChallenge(undefined);
               }}
             >
-              <option value="private">Yksityinen</option>
-              <option value="public">Julkinen</option>
+              <option value="private">{t.private}</option>
+              <option value="public">{t.public}</option>
             </select>
           </label>
           <ControlButton
@@ -350,26 +322,29 @@ export function WorkspaceGitHub({
             isDisabled={!csrf || busy || !owner || !repository}
             onClick={() => void inspectPublish()}
           >
-            Tarkista GitHub ja Git
+            {t.inspect}
           </ControlButton>
           {challenge && (
             <>
               <p>
-                Seuraava vaihe: {challenge.stage}. Kohde: {challenge.full_name}{" "}
-                ({challenge.visibility}). Kirjoita tarkka nimi vahvistaaksesi.
+                {t.next(
+                  challenge.stage,
+                  challenge.full_name,
+                  challenge.visibility,
+                )}
               </p>
               <p>
-                Paikallinen Git:{" "}
+                {t.localGit}{" "}
                 {challenge.working_tree === "clean"
-                  ? "puhdas"
+                  ? t.clean
                   : challenge.working_tree === "changes"
-                    ? "muutoksia"
-                    : "tila tuntematon"}
-                ; HEAD {challenge.local_head ?? "tuntematon"}.
+                    ? t.changes
+                    : t.stateUnknown}
+                {t.head(challenge.local_head)}
               </p>
               <TextField
                 data-testid="publish-confirmation"
-                label="Vahvista owner/repository"
+                label={t.confirm}
                 value={confirmation}
                 onChange={setConfirmation}
               />
@@ -381,7 +356,7 @@ export function WorkspaceGitHub({
                 isDisabled={busy || confirmation !== challenge.full_name}
                 onClick={() => void publish()}
               >
-                Suorita {challenge.stage}
+                {t.run(challenge.stage)}
               </ControlButton>
             </>
           )}
@@ -389,9 +364,7 @@ export function WorkspaceGitHub({
       ) : workspace.kind === "git_main_worktree" &&
         workspace.git_remote !== "github" ? (
         <p role="status">
-          {workspace.git_remote === "other"
-            ? "Työtilalla on toinen etärepo. Julkaiseminen vaatii työtilan ilman etärepoa."
-            : "Gitin etärepoa ei voitu tarkistaa. Päivitä tiedot ennen julkaisemista."}
+          {workspace.git_remote === "other" ? t.otherRemote : t.remoteUnknown}
         </p>
       ) : null}
       {notice && <p role="status">{notice}</p>}

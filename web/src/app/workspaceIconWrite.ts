@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { liveText } from "../i18n";
+import { workspaceIconWriteText } from "../text/workspaceIconWrite";
 import { writeOutcome } from "./mutations";
 import type { Workspace } from "./snapshot";
 import { iconSetting } from "./workspaceIcons";
@@ -24,21 +26,10 @@ export type IconWritten = {
   undo: boolean;
 };
 
-const refusals: Record<string, string> = {
-  icon_invalid: "Kuvaketta ei tallennettu: arvo ei kelpaa kuvakkeeksi.",
-  icon_config_unsupported:
-    "Kuvaketta ei tallennettu: .open-habitat.yaml on muodossa, jota sivu ei osaa muokata rivi riviltä. Muokkaa icon-riviä itse.",
-  workspace_busy:
-    "Kuvaketta ei tallennettu: työtilassa on juuri toinen muutos kesken. Yritä hetken päästä uudelleen.",
-  workspace_changed:
-    "Kuvaketta ei tallennettu: työtila muuttui. Päivitä sivu ja yritä uudelleen.",
-};
-export const commitNotes: Record<string, string> = {
-  uncommitted:
-    "Kuvake tallentui .open-habitat.yaml-tiedostoon, mutta sitä ei commitoitu, koska tiedostossa oli jo omia muutoksia.",
-  commit_failed:
-    "Kuvake tallentui .open-habitat.yaml-tiedostoon, mutta Git ei ottanut committia vastaan. Tiedosto odottaa commitia.",
-};
+const txt = liveText(workspaceIconWriteText);
+/** Why a confirmed icon write did not end in a commit, if it did not. */
+export const commitNote = (code: string): string | undefined =>
+  Object.hasOwn(txt.commitNotes, code) ? txt.commitNotes[code] : undefined;
 
 export function useWorkspaceIconWrite({
   workspace,
@@ -103,21 +94,21 @@ export function useWorkspaceIconWrite({
           undo,
         });
       } catch {
-        setNote(
-          "Kuvakkeen tallennusta ei voitu vahvistaa. Sivu lukee tilan uudelleen.",
-        );
+        setNote(txt.uncertain);
       }
     } else if (outcome.kind === "refused") {
       setChoice(undefined);
-      setNote(refusals[outcome.code] ?? "Kuvaketta ei tallennettu.");
+      setNote(
+        Object.hasOwn(txt.refusals, outcome.code)
+          ? txt.refusals[outcome.code]
+          : txt.refused,
+      );
     } else if (outcome.kind === "login") {
       setChoice(undefined);
       onLogin?.();
     } else {
       setChoice(undefined);
-      setNote(
-        "Kuvakkeen tallennusta ei voitu vahvistaa. Sivu lukee tilan uudelleen.",
-      );
+      setNote(txt.uncertain);
     }
     refresh();
     reread();

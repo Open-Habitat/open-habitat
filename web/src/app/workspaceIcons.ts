@@ -1,6 +1,10 @@
 import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
 import type { WorkspaceIconPickerModel } from "../components/WorkspaceIconPicker";
+import { liveText } from "../i18n";
+import { workspaceIconsText } from "../text/workspaceIcons";
 import type { Workspace } from "./snapshot";
+
+const txt = liveText(workspaceIconsText);
 
 // The rail's workspace icons (workspace-icons, experimental), the chain of
 // proto-workspace-icons' Lähdeketju: the icon the repository's committed
@@ -94,12 +98,18 @@ export function nameEmojis(name: string, n = 3) {
 export function localSuggestions(icon: WorkspaceIconModel, w: Workspace) {
   return [
     ...(w.icon_logo
-      ? [{ value: w.icon_logo.path, why: "repon logo", label: "Repon logo" }]
+      ? [
+          {
+            value: w.icon_logo.path,
+            why: txt.whyLogo,
+            label: txt.repoLogo,
+          },
+        ]
       : []),
-    { value: glyphLetters(icon.name), why: "nimestä" },
+    { value: glyphLetters(icon.name), why: txt.whyName },
     ...nameEmojis(icon.name).map((value) => ({
       value,
-      why: "nimestä arvottu",
+      why: txt.whyDrawn,
     })),
   ].map((s) => ({ ...s, icon: previewIcon(icon, w, s.value), local: true }));
 }
@@ -126,16 +136,14 @@ export function iconPicker(
 export function iconSourceLine(w: Workspace) {
   const icon = w.icon;
   if (icon?.source === "config")
-    return { source: "Repon asetus", where: ".open-habitat.yaml" };
+    return { source: txt.repoSetting, where: ".open-habitat.yaml" };
   if (icon?.kind === "image")
     return {
-      source: w.icon_auto ? "Automaattinen · repon logo" : "Repon logo",
+      source: w.icon_auto ? txt.autoLogo : txt.repoLogo,
       where: icon.path,
     };
   return {
-    source: w.icon_auto
-      ? "Automaattinen · nimestä johdettu tunnus"
-      : "Nimestä johdettu tunnus",
+    source: w.icon_auto ? txt.autoDerived : txt.derived,
   };
 }
 
@@ -164,7 +172,7 @@ export function workspaceIcons(
             name,
             glyph,
             show: { kind: "emoji", value: icon.value },
-            source: "Repon asetus",
+            source: txt.repoSetting,
             where: ".open-habitat.yaml",
           }
         : icon?.kind === "letters"
@@ -172,7 +180,7 @@ export function workspaceIcons(
               name,
               glyph,
               show: { kind: "glyph" },
-              source: "Repon asetus · kirjaimet",
+              source: txt.repoSettingLetters,
               where: ".open-habitat.yaml",
             }
           : icon?.kind === "image"
@@ -184,7 +192,7 @@ export function workspaceIcons(
                   src: iconSrc(w.workspace_id, icon.version),
                 },
                 source:
-                  icon.source === "config" ? "Repon asetus" : "Repon logo",
+                  icon.source === "config" ? txt.repoSetting : txt.repoLogo,
                 where:
                   icon.source === "config"
                     ? `.open-habitat.yaml · ${icon.path}`
@@ -194,7 +202,7 @@ export function workspaceIcons(
                 name,
                 glyph,
                 show: { kind: "glyph" },
-                source: "Kirjaintunnus · johdettu nimestä",
+                source: txt.lettersDerived,
               },
     );
   }

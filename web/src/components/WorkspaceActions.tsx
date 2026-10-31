@@ -1,5 +1,7 @@
 import { type RefObject, useState } from "react";
 import type { Workspace } from "../app/snapshot";
+import { useText } from "../i18n";
+import { workspaceActionsText } from "../text/workspaceActions";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 
@@ -36,7 +38,14 @@ export function WorkspaceActions({
   onDelete?: () => void;
   page?: boolean;
 }) {
-  const [copyState, setCopyState] = useState("");
+  const t = useText(workspaceActionsText);
+  const [copyState, setCopyState] = useState<"" | "copied" | "failed">("");
+  const copyNote =
+    copyState === "copied"
+      ? t.pathCopied
+      : copyState === "failed"
+        ? t.pathNotCopied
+        : "";
   const hidden = workspace.visibility === "hidden";
   const github = workspace.git_summary?.github_repo;
   return (
@@ -51,7 +60,7 @@ export function WorkspaceActions({
             : "ah-home-actions"
       }
       role="group"
-      aria-label={page ? "Työtilan toiminnot" : undefined}
+      aria-label={page ? t.group : undefined}
     >
       {page ? (
         <>
@@ -60,30 +69,26 @@ export function WorkspaceActions({
             size="row"
             variant="quiet"
             presentation="icon"
-            aria-label="Kopioi polku"
-            title={copyState || "Kopioi polku"}
+            aria-label={t.copyPath}
+            title={copyNote || t.copyPath}
             isDisabled={!workspace.path || !navigator.clipboard}
             onPress={() => {
               if (workspace.path)
                 void navigator.clipboard.writeText(workspace.path).then(
-                  () => setCopyState("Polku kopioitu"),
-                  () => setCopyState("Polkua ei voitu kopioida"),
+                  () => setCopyState("copied"),
+                  () => setCopyState("failed"),
                 );
             }}
           >
-            <Icon name={copyState === "Polku kopioitu" ? "check" : "copy"} />
+            <Icon name={copyState === "copied" ? "check" : "copy"} />
           </ControlButton>
           <ControlButton
             data-testid="open-github"
             size="row"
             variant="quiet"
             presentation="icon"
-            aria-label="Avaa GitHubissa"
-            title={
-              github
-                ? `Avaa GitHubissa · ${github}`
-                : "Työtilalla ei ole GitHub-originia."
-            }
+            aria-label={t.openGitHub}
+            title={github ? t.openGitHubRepo(github) : t.noOrigin}
             isDisabled={!github}
             onPress={() => {
               if (github)
@@ -102,8 +107,8 @@ export function WorkspaceActions({
             ref={renameRef}
             variant="quiet"
             presentation="icon"
-            aria-label="Muuta näyttönimeä…"
-            title="Muuta näyttönimeä…"
+            aria-label={t.rename}
+            title={t.rename}
             isDisabled={!settingsAvailable || !onRename}
             onPress={onRename}
           >
@@ -114,12 +119,8 @@ export function WorkspaceActions({
             variant="quiet"
             presentation="icon"
             data-testid={hidden ? "workspace-restore" : "workspace-archive"}
-            aria-label={hidden ? "Palauta työtila" : "Arkistoi työtila"}
-            title={
-              hidden
-                ? "Palauta työtila sivupalkkiin"
-                : "Arkistoi: siirtää työtilan sivupalkin Arkistoidut-ryhmään. Tiedostot ja keskustelut säilyvät."
-            }
+            aria-label={hidden ? t.restore : t.archive}
+            title={hidden ? t.restoreHint : t.archiveHint}
             aria-pressed={hidden}
             isDisabled={!settingsAvailable || !onHide || hidePending}
             onPress={onHide}
@@ -132,12 +133,8 @@ export function WorkspaceActions({
             ref={deleteRef}
             variant="danger-subtle"
             presentation="icon"
-            aria-label="Poista työtila…"
-            title={
-              onDelete
-                ? "Poista työtila…"
-                : "Työtilaa ei voi poistaa juuri nyt: muutokset eivät ole sallittuja."
-            }
+            aria-label={t.delete}
+            title={onDelete ? t.delete : t.deleteUnavailable}
             isDisabled={!settingsAvailable || !onDelete}
             onPress={onDelete}
           >
@@ -150,20 +147,19 @@ export function WorkspaceActions({
               size="row"
               variant="quiet"
               presentation="icon"
-              aria-label={`Uusi worktree-agentti työtilassa ${workspace.display_name ?? workspace.name}`}
-              title={
-                newReason ||
-                "Uusi worktree-agentti: oma worktree ja haara nykyisestä haarasta"
-              }
+              aria-label={t.newWorktreeIn(
+                workspace.display_name ?? workspace.name,
+              )}
+              title={newReason || t.newWorktreeHint}
               isDisabled={!onNewWorktree || !!newReason}
               onPress={() => onNewWorktree?.(workspace.workspace_id)}
             >
               <Icon name="worktreeNew" />
             </ControlButton>
           ) : null}
-          {copyState ? (
+          {copyNote ? (
             <span className="ah-visually-hidden" role="status">
-              {copyState}
+              {copyNote}
             </span>
           ) : null}
         </>
@@ -185,11 +181,11 @@ export function WorkspaceActions({
         }
         aria-label={
           page
-            ? "Aloita uusi agenttikeskustelu"
-            : `Uusi keskustelu työtilassa ${workspace.display_name ?? workspace.name}`
+            ? t.startConversation
+            : t.newConversationIn(workspace.display_name ?? workspace.name)
         }
         isDisabled={!onNew || !!newReason}
-        title={newReason || "Uusi keskustelu"}
+        title={newReason || t.newConversation}
         onPress={() => onNew?.(workspace.workspace_id)}
       >
         <Icon name="plus" />

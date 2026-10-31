@@ -1,4 +1,8 @@
+import { liveText } from "../i18n";
+import { cloneProgressCopy } from "../text/cloneProgress";
 import { size } from "./repoCatalog";
+
+const txt = liveText(cloneProgressCopy);
 
 // Percentages refer to Git stages, not to a byte total or the whole clone.
 export function cloneProgressText(
@@ -9,12 +13,12 @@ export function cloneProgressText(
 ): string {
   const label =
     stage === "receiving"
-      ? "Haetaan"
+      ? txt.receiving
       : stage === "checkout" || stage === "verifying"
-        ? "Viimeistellään"
-        : "Yhdistetään";
+        ? txt.finishing
+        : txt.connecting;
   const progress =
-    stage === "receiving" && percent !== undefined ? ` ${percent} %` : "…";
+    stage === "receiving" && percent !== undefined ? txt.percent(percent) : "…";
   const bytes =
     received === undefined
       ? ""

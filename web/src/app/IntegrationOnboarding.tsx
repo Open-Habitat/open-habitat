@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { providerCopy, settingsPlace } from "../components/Integrations";
 import { OnboardingFrame } from "../components/OnboardingFrame";
+import { useText } from "../i18n";
+import { integrationOnboardingText } from "../text/integrationOnboarding";
 import { IntegrationsSettings } from "./IntegrationsSettings";
 import {
   type IntegrationList,
@@ -36,6 +38,7 @@ export function IntegrationOnboarding({
   onBack: () => void;
   backLabel: string;
 }) {
+  const t = useText(integrationOnboardingText);
   const [connected, setConnected] = useState(connectedTo(initial, provider));
   const name = providerCopy[provider].name;
   // A stable list: the settings view resumes its sign-in when it changes.
@@ -50,18 +53,22 @@ export function IntegrationOnboarding({
         aria-labelledby="integration-onboarding-title"
       >
         <header>
-          <p className="ah-eyebrow">Käyttöönotto</p>
+          <p className="ah-eyebrow">{t.eyebrow}</p>
           <h1
             data-testid="integration-onboarding-title"
             id="integration-onboarding-title"
             tabIndex={-1}
           >
-            Yhdistä {name}
+            {t.title(name)}
           </h1>
           <p>
             {required
-              ? `Ylläpitäjä pyytää yhdistämään ${providerCopy[provider].gen} tilin ennen jatkamista, jotta agenttisi voivat käyttää sen tietoja.`
-              : `Agenttisi voivat käyttää ${providerCopy[provider].gen} tietoja. Voit myös jatkaa ilman ja yhdistää tilin myöhemmin kohdassa Asetukset › ${settingsPlace(provider)}.`}
+              ? t.required(name, providerCopy[provider].gen)
+              : t.optional(
+                  name,
+                  providerCopy[provider].gen,
+                  settingsPlace(provider),
+                )}
           </p>
         </header>
         <IntegrationsSettings
@@ -91,7 +98,7 @@ export function IntegrationOnboarding({
               variant={connected ? "primary" : "secondary"}
               onPress={onContinue}
             >
-              {connected ? "Jatka" : "Jatka ilman tiliä"}
+              {connected ? t.continue : t.continueWithout}
             </ControlButton>
           ) : null}
         </div>

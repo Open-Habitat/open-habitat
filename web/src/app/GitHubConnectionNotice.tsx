@@ -1,11 +1,15 @@
 import { ControlButton, controlClassName } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
 import { WarningBanner } from "../components/WarningBanner";
+import { liveText } from "../i18n";
+import { githubConnectionNoticeText } from "../text/githubConnectionNotice";
 import type {
   GitHubProgress,
   GitHubRecovery,
   GitHubWarning,
 } from "./githubConnection";
+
+const txt = liveText(githubConnectionNoticeText);
 
 function repairable(warning: GitHubWarning, onReconnect?: () => void) {
   return !!warning.fix && (!!warning.href || !!onReconnect);
@@ -78,8 +82,8 @@ export function GitHubConnectionNotice({
         tone="success"
       >
         {recovery.kind === "reconnected"
-          ? `GitHub yhdistetty${recovery.login ? ` käyttäjänä ${recovery.login}` : ""}. Pyydä agenttia yrittämään uudelleen.`
-          : "GitHub-yhteys palasi."}
+          ? txt.reconnected(recovery.login)
+          : txt.returned}
       </WarningBanner>
     );
   if (!warning && progress)
@@ -90,8 +94,8 @@ export function GitHubConnectionNotice({
         tone="progress"
       >
         {progress.kind === "verifying"
-          ? "GitHub hylkäsi valtuutuksen · tarkistetaan uudelleen…"
-          : `GitHub ei vastannut · yritetään uudelleen… (${progress.attempt}/${progress.attempts})`}
+          ? txt.verifying
+          : txt.retrying(progress.attempt, progress.attempts)}
       </WarningBanner>
     );
   if (!warning) return null;
@@ -137,7 +141,7 @@ export function GitHubPlaceNotice({
       data-state={warning?.fault ?? "unavailable"}
       tone={warning?.tone ?? "neutral"}
       icon={warning ? "warning" : "info"}
-      title={warning?.title ?? "GitHub-yhteyttä ei voitu käyttää"}
+      title={warning?.title ?? txt.placeTitle}
       actions={
         warning && repairable(warning, onReconnect) ? (
           <Repair
@@ -148,8 +152,7 @@ export function GitHubPlaceNotice({
         ) : null
       }
     >
-      {warning?.place ??
-        "Palvelin ei juuri nyt saanut GitHubista vastausta tunnuksillasi. Se tarkistaa yhteyden uudelleen itse; yritä hetken päästä."}
+      {warning?.place ?? txt.placeText}
       {also ? ` ${also}` : ""}
     </WarningBanner>
   );

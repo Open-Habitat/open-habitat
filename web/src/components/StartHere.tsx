@@ -1,5 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import type { StartGoal, StartPage } from "../app/composerReads";
+import { useText } from "../i18n";
+import { startHereText } from "../text/startHere";
 import { ControlButton } from "./ControlElements";
 import { Markdown } from "./Markdown";
 import "./StartHere.css";
@@ -98,6 +100,7 @@ export function StartHere({
   onRetry: () => void;
   onGoal: (goal: StartGoal) => void;
 }) {
+  const t = useText(startHereText);
   const authored = page && !("state" in page) ? page : null;
   const root = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -110,19 +113,15 @@ export function StartHere({
         <div className="ah-start-placeholder" aria-busy="true" />
       ) : state === "error" ? (
         <div role="status">
-          <p>Aloitussivua ei saatu luettua.</p>
+          <p>{t.unreadable}</p>
           <ControlButton size="row" onPress={onRetry}>
-            Yritä uudelleen
+            {t.retry}
           </ControlButton>
         </div>
       ) : page && "state" in page ? (
         <div role="status" data-testid="start-page-needs-update">
-          <h2>Aloitussivu tarvitsee päivityksen</h2>
-          <p>
-            Päivitä aloitussivu kirjoittamalla viestikenttään{" "}
-            <code>/open-habitat-start-page</code>. Voit myös jatkaa
-            kirjoittamalla agentille omin sanoin.
-          </p>
+          <h2>{t.needsUpdateTitle}</h2>
+          <p>{t.needsUpdate(<code>/open-habitat-start-page</code>)}</p>
         </div>
       ) : authored ? (
         <>
@@ -132,23 +131,19 @@ export function StartHere({
           </div>
           {authored.goals.length > 0 && (
             <>
-              <h3 className="ah-start-heading">Mitä haluat tehdä?</h3>
+              <h3 className="ah-start-heading">{t.whatToDo}</h3>
               <StartGoals
                 goals={authored.goals}
                 onGoal={onGoal}
                 preparing={preparing}
               />
-              <p className="ah-start-hint">
-                Tavoite kirjoittaa pyynnön valmiiksi viestikenttään. Voit myös
-                kirjoittaa suoraan agentille.
-              </p>
+              <p className="ah-start-hint">{t.goalHint}</p>
             </>
           )}
         </>
       ) : (
         <p className="ah-start-hint" data-testid="start-page-hint">
-          Luo aloitussivu kirjoittamalla viestikenttään{" "}
-          <code>/open-habitat-start-page</code>.
+          {t.create(<code>/open-habitat-start-page</code>)}
         </p>
       )}
     </section>

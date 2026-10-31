@@ -22,6 +22,8 @@ import { WorkspaceGitLayer } from "../components/WorkspaceGitLayer";
 import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
 import { WorkspaceIconPicker } from "../components/WorkspaceIconPicker";
 import { WorkspaceIconSuggestions } from "../components/WorkspaceIconSuggestions";
+import { liveText } from "../i18n";
+import { workspacePageText } from "../text/workspacePage";
 import { useGitStatus } from "./ConversationGitStatus";
 import {
   type ConversationStore,
@@ -43,8 +45,10 @@ import {
   localSuggestions,
   previewIcon,
 } from "./workspaceIcons";
-import { commitNotes, useWorkspaceIconWrite } from "./workspaceIconWrite";
+import { commitNote, useWorkspaceIconWrite } from "./workspaceIconWrite";
 import "./WorkspacePage.css";
+
+const txt = liveText(workspacePageText);
 
 /** After an icon choice: what was written to which file and whether it was
  * committed, Kumoa when there was an icon line to return to, and the way
@@ -64,32 +68,30 @@ function IconWrittenNotice({
 }) {
   const name =
     written.value === "auto"
-      ? "automaattinen"
+      ? txt.iconAuto
       : written.value === logo
-        ? "repon logo"
+        ? txt.iconLogo
         : written.value;
-  const problem = commitNotes[written.commit];
+  const problem = commitNote(written.commit);
   const detail =
     written.commit === "unchanged"
-      ? ".open-habitat.yaml sanoi jo tämän, joten mitään ei muutettu."
+      ? txt.unchanged
       : written.commit === "not_git"
-        ? "Kirjoitettu .open-habitat.yaml-tiedostoon."
+        ? txt.written
         : written.commit === "committed"
-          ? "Kirjoitettu .open-habitat.yaml-tiedostoon ja commitoitu, ei pushattu."
+          ? txt.committed
           : undefined;
   const previous = written.previous;
   return (
     <ArchiveNotice
       kind="workspace-icon"
       wrap
-      message={written.undo ? "Kuvake palautettu:" : "Kuvake:"}
+      message={written.undo ? txt.iconRestored : txt.icon}
       title={name}
-      detail={
-        detail ? `${detail} Ehdotukset saa takaisin kuvakkeesta.` : undefined
-      }
+      detail={detail ? txt.suggestionsBack(detail) : undefined}
       problem={problem}
       busy={false}
-      restoreLabel="Kumoa"
+      restoreLabel={txt.undo}
       onRestore={
         !written.undo &&
         previous !== undefined &&
@@ -97,7 +99,7 @@ function IconWrittenNotice({
           ? () => onUndo(previous)
           : undefined
       }
-      link={{ label: "Ehdotukset", onPress: onSuggestions }}
+      link={{ label: txt.suggestions, onPress: onSuggestions }}
       onClose={onClose}
     />
   );
@@ -276,12 +278,12 @@ export function WorkspacePage({
   ).length;
   const summary = !gitStatus.readError ? gitStatus.facts : undefined;
   const label = summary
-    ? `${summary.branch} · ${summary.dirty_count} ${summary.dirty_count === 1 ? "muutos" : "muutosta"}${summary.ahead ? ` ↑${summary.ahead}` : ""}${summary.behind ? ` ↓${summary.behind}` : ""}`
-    : "Git-tila ei tiedossa";
+    ? `${txt.gitLabel(summary.branch, summary.dirty_count)}${summary.ahead ? ` ↑${summary.ahead}` : ""}${summary.behind ? ` ↓${summary.behind}` : ""}`
+    : txt.gitUnknown;
   const summaryText = [
-    waiting ? `${waiting} odottaa sinua` : "",
-    working ? `${working} työskentelee` : "",
-    background ? `${background} odottaa taustatyötä` : "",
+    waiting ? txt.waiting(waiting) : "",
+    working ? txt.working(working) : "",
+    background ? txt.background(background) : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -299,9 +301,7 @@ export function WorkspacePage({
           {...gitStatus.details}
         />
       ) : (
-        <p role="status">
-          Git-tilaa ei voitu lukea. Näkyvä tila ei ole vahvistettu.
-        </p>
+        <p role="status">{txt.gitUnreadable}</p>
       )}
       {workspace.kind === "git_main_worktree" &&
       (workspace.git_remote === "none" || workspace.publish_continuation) ? (
@@ -317,9 +317,7 @@ export function WorkspacePage({
     </WorkspaceGitLayer>
   ) : (
     <p className="ah-git-note">
-      {workspace.kind === "directory"
-        ? "Hakemisto · ei Git-työtilaa"
-        : "Git-tila ei tiedossa"}
+      {workspace.kind === "directory" ? txt.directory : txt.gitUnknown}
     </p>
   );
   return (
@@ -329,9 +327,9 @@ export function WorkspacePage({
       {single ? (
         <header className="ah-workspace-page-head">
           <div className="ah-workspace-page-title">
-            <h1 tabIndex={-1}>Keskustelut</h1>
+            <h1 tabIndex={-1}>{txt.conversations}</h1>
             <p className="ah-workspace-summary">
-              {summaryText || "Mikään ei odota sinua"}
+              {summaryText || txt.nothingWaits}
             </p>
           </div>
           {gitControl}
@@ -343,7 +341,7 @@ export function WorkspacePage({
               model={iconPicker(icon, workspace, iconWrite.pending)}
               onChoose={acceptIcon}
               isDisabled={!iconWrite.available}
-              disabledReason="Kuvaketta voi vaihtaa, kun työtilan tila on vahvistettu."
+              disabledReason={txt.iconUnavailable}
               footer={(close) => (
                 <ControlButton
                   data-testid="workspace-icon-ask-model"
@@ -355,7 +353,7 @@ export function WorkspacePage({
                     setSuggestAgain(true);
                   }}
                 >
-                  <Icon name="spark" /> Ehdotuksia mallilta…
+                  <Icon name="spark" /> {txt.askModel}
                 </ControlButton>
               )}
             />
@@ -372,7 +370,7 @@ export function WorkspacePage({
                 className="ah-workspace-icon-source"
                 data-testid="workspace-icon-source"
               >
-                Kuvake: {source.source}
+                {txt.iconSource} {source.source}
                 {source.where ? (
                   <>
                     {" · "}
@@ -383,7 +381,7 @@ export function WorkspacePage({
             ) : null}
             {hidden ? (
               <span className="ah-workspace-hidden">
-                Arkistoitu · tiedostot ja keskustelut säilyvät ·{" "}
+                {txt.archived}{" "}
                 <ControlButton
                   variant="quiet"
                   size="inline"
@@ -394,7 +392,7 @@ export function WorkspacePage({
                   }
                   onPress={() => archive(false)}
                 >
-                  Palauta
+                  {txt.restore}
                 </ControlButton>
               </span>
             ) : null}
@@ -442,8 +440,10 @@ export function WorkspacePage({
         <ArchiveNotice
           kind="workspace-archive"
           title={workspace.display_name ?? workspace.name}
-          detail={`Tiedostot ja keskustelut säilyvät. Löydät sen ${archivedPlace === "home" ? "etusivun" : "sivupalkin"} lopusta, Arkistoidut-ryhmästä.`}
-          restoreLabel="Kumoa"
+          detail={
+            archivedPlace === "home" ? txt.archivedHome : txt.archivedRail
+          }
+          restoreLabel={txt.undo}
           busy={false}
           onRestore={() => archive(false)}
           onClose={() => setHideNotice(false)}
@@ -483,7 +483,7 @@ export function WorkspacePage({
                     icon: previewIcon(icon, workspace, s.icon),
                     label:
                       s.icon === workspace.icon_logo?.path
-                        ? "Repon logo"
+                        ? txt.repoLogo
                         : undefined,
                   }))
                 : state.status === "failed"
@@ -521,7 +521,7 @@ export function WorkspacePage({
               size="inline"
               onPress={onDismissProblem}
             >
-              Sulje
+              {txt.close}
             </ControlButton>
           ) : null}
         </p>
@@ -534,19 +534,19 @@ export function WorkspacePage({
           variant="secondary"
           onPress={onRecheckCreation}
         >
-          Tarkista luonnin tulos
+          {txt.recheckCreation}
         </ControlButton>
       ) : null}
       {defaultUnavailable && onRefreshDefault ? (
         <ControlButton size="row" variant="quiet" onPress={onRefreshDefault}>
-          Päivitä oletusagentin tiedot
+          {txt.refreshDefault}
         </ControlButton>
       ) : null}
       {defaultRefused && onNewChoice ? (
         <Dialog
           data-testid="model-picker-open"
-          triggerLabel="Valitse toinen malli"
-          title="Malli uudelle keskustelulle"
+          triggerLabel={txt.chooseModel}
+          title={txt.modelTitle}
           isOpen={recoveryOpen}
           onOpenChange={setRecoveryOpen}
         >
@@ -566,7 +566,7 @@ export function WorkspacePage({
               }
             }}
           >
-            Aloita keskustelu valitulla mallilla
+            {txt.startWithModel}
           </ControlButton>
         </Dialog>
       ) : null}
@@ -598,8 +598,8 @@ export function WorkspacePage({
       ) : null}
       <div className="ah-workspace-rename">
         <Dialog
-          triggerLabel="Muuta näyttönimeä…"
-          title="Muuta näyttönimeä"
+          triggerLabel={txt.rename}
+          title={txt.renameTitle}
           returnFocusRef={actionButton}
           isOpen={renameOpen}
           onOpenChange={setRenameOpen}
@@ -612,7 +612,7 @@ export function WorkspacePage({
           >
             <TextField
               data-testid="workspace-name"
-              label="Näyttönimi"
+              label={txt.displayName}
               value={display}
               onChange={setDisplay}
             />
@@ -622,17 +622,17 @@ export function WorkspacePage({
               type="submit"
               isDisabled={!csrf || !onRename}
             >
-              Tallenna
+              {txt.save}
             </ControlButton>
           </form>
         </Dialog>
       </div>
       <section
         data-testid="open-conversations"
-        aria-label="Avoimet keskustelut"
+        aria-label={txt.openConversations}
       >
         <h2>
-          Avoimet <span>{section.open.length}</span>
+          {txt.open} <span>{section.open.length}</span>
         </h2>
         {section.open.length ? (
           <HomeConversationGrid
@@ -642,14 +642,12 @@ export function WorkspacePage({
           />
         ) : (
           <p data-testid="workspace-conversations-empty">
-            {single
-              ? "Ei avoimia keskusteluja. Aloita uusi yläpalkin Uusi keskustelu -painikkeesta."
-              : "Ei avoimia keskusteluja. Aloita uusi keskustelu +:sta."}
+            {single ? txt.emptySingle : txt.empty}
           </p>
         )}
       </section>
       <details className="ah-workspace-done">
-        <summary>Valmiit · {done.length}</summary>
+        <summary>{txt.done(done.length)}</summary>
         <ul>
           {done.map((c) => (
             <li key={c.id}>
@@ -665,16 +663,16 @@ export function WorkspacePage({
 
 /** What the model was shown, in the words the row's footer uses. */
 function seenText(seen: IconSeen | undefined) {
-  if (!seen) return "nimi, README:n alku, aloitussivu, kielet ja logon polku";
+  if (!seen) return txt.seenAll;
   const languages = seen.languages
-    ?.map((l) => `${l.name} ${l.percent} %`)
+    ?.map((l) => txt.languagePercent(l.name, l.percent))
     .join(", ");
   return [
-    "nimi",
-    seen.readme ? "README:n alku" : "",
-    seen.start_page ? "aloitussivu" : "",
-    languages ? `kielet (${languages})` : "",
-    seen.logo ? "logon polku" : "",
+    txt.seenName,
+    seen.readme ? txt.seenReadme : "",
+    seen.start_page ? txt.seenStart : "",
+    languages ? txt.seenLanguages(languages) : "",
+    seen.logo ? txt.seenLogo : "",
   ]
     .filter(Boolean)
     .join(", ");

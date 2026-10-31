@@ -7,6 +7,8 @@ import {
   ModalOverlay,
   Popover,
 } from "react-aria-components";
+import { formatDate, liveText } from "../i18n";
+import { gitStatusText } from "../text/gitStatus";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import "./GitStatus.css";
@@ -53,8 +55,7 @@ export type GitDetailFacts = GitSummaryFacts & {
   base_behind_commits?: GitCommit[];
 };
 
-const count = (n: number, one: string, many: string) =>
-  `${n} ${n === 1 ? one : many}`;
+const txt = liveText(gitStatusText);
 
 /** The arrows the chip shows: against the upstream, or against the base
  * branch when there is no upstream (a fresh worktree branch). */
@@ -72,23 +73,21 @@ export function gitArrows(f: GitSummaryFacts) {
 }
 
 /** The chip's accessible name says in words what the marks say. */
-export function gitSentence(f: GitSummaryFacts): string {
-  const parts = [`Haara ${f.branch}`];
+export function gitSentence(f: GitSummaryFacts, inner = false): string {
+  const parts = [inner ? txt.branchLower(f.branch) : txt.branch(f.branch)];
   if (f.upstream)
     parts.push(
       f.ahead !== undefined && f.behind !== undefined
-        ? `${f.ahead} lähettämättä ja ${f.behind} tulossa ${f.upstream}-haarasta`
-        : `seurantahaaran ${f.upstream} tila ei tiedossa`,
+        ? txt.upstream(f.ahead, f.behind, f.upstream)
+        : txt.upstreamUnknown(f.upstream),
     );
   if (f.base)
     parts.push(
       f.base.merged
-        ? `yhdistetty ${f.base.name}-haaraan, ${f.base.behind} jäljessä`
-        : `${f.base.ahead} edellä ja ${f.base.behind} jäljessä ${f.base.name}-haaraa`,
+        ? txt.baseMerged(f.base.name, f.base.behind)
+        : txt.baseCounts(f.base.ahead, f.base.behind, f.base.name),
     );
-  parts.push(
-    count(f.dirty_count, "muuttunut tiedosto", "muuttunutta tiedostoa"),
-  );
+  parts.push(txt.changedFiles(f.dirty_count));
   return `${parts.join(", ")}.`;
 }
 
@@ -160,23 +159,26 @@ export function GitStatusChip({
   const phone = usePhone();
   const arrows = gitArrows(facts);
   const merged = !!worktree?.merged && !!facts.base;
-  const sentence = `${worktree ? "Worktree-agentin " : ""}${
+  const sentence = `${worktree ? txt.worktreeOf : ""}${
     merged && facts.base
-      ? `haara ${facts.branch}, yhdistetty ${facts.base.name}-haaraan.`
+      ? txt.worktreeMerged(facts.branch, facts.base.name)
       : worktree
         ? // A fresh branch is also "in the base"; until its work is merged
           // the chip counts commits instead of saying so.
-          gitSentence({
-            ...facts,
-            base: facts.base && { ...facts.base, merged: false },
-          }).replace(/^Haara/, "haara")
+          gitSentence(
+            {
+              ...facts,
+              base: facts.base && { ...facts.base, merged: false },
+            },
+            true,
+          )
         : gitSentence(facts)
   }`;
   // What the header's ⋯ menu shows when the counts no longer fit beside
   // the title: "main ↑3 ●2".
   const summary = [
     facts.branch,
-    merged ? "yhdistetty" : "",
+    merged ? txt.merged : "",
     !merged && arrows?.up ? `↑${arrows.up}` : "",
     !merged && arrows?.down ? `↓${arrows.down}` : "",
     !merged && facts.dirty_count ? `●${facts.dirty_count}` : "",
@@ -187,7 +189,7 @@ export function GitStatusChip({
     <Dialog
       data-testid="git-dialog"
       className="ah-dialog ah-gs-dialog"
-      aria-label="Git-tila"
+      aria-label={txt.dialog}
     >
       {children}
     </Dialog>
@@ -213,9 +215,9 @@ export function GitStatusChip({
         presentation="pill"
         ref={trigger}
         className={`ah-gs-chip${worktree ? " ah-gs-worktree" : ""}${merged ? " merged" : ""}`}
-        aria-label={`${sentence} Avaa Git-tiedot.`}
+        aria-label={txt.chipLabel(sentence)}
         data-menu-summary={summary}
-        title={worktree ? "Worktree · avaa tiedot" : "Git-tila · avaa tiedot"}
+        title={worktree ? txt.chipTitleWorktree : txt.chipTitle}
       >
         <Icon name={merged ? "merge" : worktree ? "worktree" : "branch"} />
         {/* The branch is named in the layer's heading and the chip's name,
@@ -223,7 +225,7 @@ export function GitStatusChip({
         {merged || arrows?.up || arrows?.down || facts.dirty_count ? (
           <span className="ah-gs-counts">
             {merged ? (
-              <span className="ah-gs-chip-merged">yhdistetty</span>
+              <span className="ah-gs-chip-merged">{txt.merged}</span>
             ) : arrows ? (
               <Arrows
                 up={arrows.up}
@@ -231,12 +233,12 @@ export function GitStatusChip({
                 title={
                   arrows.base
                     ? [
-                        `${count(arrows.up, "commit", "committia")} edellä ${arrows.against}-haaraa`,
-                        `${count(arrows.down, "commit", "committia")} jäljessä ${arrows.against}-haarasta`,
+                        txt.aheadOf(txt.commits(arrows.up), arrows.against),
+                        txt.behindOf(txt.commits(arrows.down), arrows.against),
                       ]
                     : [
-                        `${count(arrows.up, "commit", "committia")} lähettämättä`,
-                        `${count(arrows.down, "commit", "committia")} tulossa`,
+                        txt.unpushedN(txt.commits(arrows.up)),
+                        txt.incomingN(txt.commits(arrows.down)),
                       ]
                 }
               />
@@ -244,11 +246,7 @@ export function GitStatusChip({
             {!merged && facts.dirty_count ? (
               <span
                 className="ah-gs-dirty"
-                title={count(
-                  facts.dirty_count,
-                  "muuttunut tiedosto",
-                  "muuttunutta tiedostoa",
-                )}
+                title={txt.changedFiles(facts.dirty_count)}
               >
                 <span className="ah-gs-dot" aria-hidden="true" />
                 {facts.dirty_count}
@@ -272,37 +270,35 @@ export function GitStatusChip({
 
 const statusLetter = (status: string) => {
   if (status === "??")
-    return { letter: "U", kind: "u", word: "Uusi, ei seurannassa" };
+    return { letter: "U", kind: "u", word: txt.status.untracked };
   // Unmerged pairs (porcelain "u" records) are conflicts whatever the letters.
   if (["DD", "AU", "UD", "UA", "DU", "AA", "UU"].includes(status))
-    return { letter: "U", kind: "d", word: "Ristiriita" };
+    return { letter: "U", kind: "d", word: txt.status.conflict };
   const x = status[0] !== " " ? status[0] : status[1];
   const staged = status[0] !== " " && status[1] === " ";
   const word =
     x === "D"
-      ? "Poistettu"
+      ? txt.status.deleted
       : x === "A"
-        ? "Lisätty"
+        ? txt.status.added
         : x === "R"
-          ? "Nimetty uudelleen"
+          ? txt.status.renamed
           : x === "C"
-            ? "Kopioitu"
-            : "Muutettu";
+            ? txt.status.copied
+            : txt.status.modified;
   const kind = x === "D" ? "d" : x === "A" ? "a" : "m";
-  return { letter: x, kind, word: staged ? `${word} · indeksissä` : word };
+  return { letter: x, kind, word: staged ? txt.status.staged(word) : word };
 };
 
-const clock = (seconds: number) => {
-  const d = new Date(seconds * 1000);
-  return `${d.getHours()}.${String(d.getMinutes()).padStart(2, "0")}`;
-};
+const clock = (seconds: number) =>
+  formatDate(seconds * 1000, { hour: "numeric", minute: "2-digit" });
 const age = (seconds: number, now: number) => {
   const minutes = Math.max(0, Math.floor((now - seconds * 1000) / 60000));
-  if (minutes < 1) return "juuri nyt";
-  if (minutes < 60) return `${minutes} min sitten`;
+  if (minutes < 1) return txt.justNow;
+  if (minutes < 60) return txt.minutesAgo(minutes);
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} t sitten`;
-  return `${Math.floor(hours / 24)} pv sitten`;
+  if (hours < 24) return txt.hoursAgo(hours);
+  return txt.daysAgo(Math.floor(hours / 24));
 };
 
 function Commits({ list, kind }: { list: GitCommit[]; kind: "in" | "out" }) {
@@ -337,7 +333,7 @@ function Fold({
     return (
       <div className="ah-gs-fold empty">
         <span>{label}</span>
-        <span className="ah-gs-none">ei yhtään</span>
+        <span className="ah-gs-none">{txt.none}</span>
       </div>
     );
   return (
@@ -351,12 +347,12 @@ function Fold({
           <Commits list={list} kind={kind} />
           {list.length < total ? (
             <p className="ah-gs-note">
-              Näytetään {list.length} uusinta {total}:stä.
+              {txt.showingNewest(list.length, total)}
             </p>
           ) : null}
         </>
       ) : (
-        <p className="ah-gs-note">Committeja ei voitu lukea.</p>
+        <p className="ah-gs-note">{txt.commitsUnreadable}</p>
       )}
     </details>
   );
@@ -393,7 +389,7 @@ function Comparison({
           </span>
         </div>
       ) : (
-        <span className="ah-gs-sub">ei löydy paikallisesti</span>
+        <span className="ah-gs-sub">{txt.notLocal}</span>
       )}
     </div>
   );
@@ -456,32 +452,32 @@ export function GitStatusDetails({
             size="inline"
             variant="quiet"
             slot="close"
-            aria-label="Sulje"
-            title="Sulje"
+            aria-label={txt.close}
+            title={txt.close}
           >
             <Icon name="cross" />
           </ControlButton>
         </div>
       )}
       {facts.upstream ? (
-        <section className="ah-gs-sec" aria-label="Seurantahaara">
+        <section className="ah-gs-sec" aria-label={txt.upstreamLabel}>
           <Comparison
             name={facts.upstream}
-            sub="seurantahaara"
+            sub={txt.upstreamSub}
             up={facts.ahead}
             down={facts.behind}
-            words={["lähettämättä", "tulossa"]}
+            words={[txt.unpushed, txt.incoming]}
           />
           {facts.ahead !== undefined && facts.behind !== undefined ? (
             <>
               <Fold
-                label="Lähettämättä"
+                label={txt.unpushedTitle}
                 total={facts.ahead}
                 list={detail?.unpushed_commits}
                 kind="out"
               />
               <Fold
-                label="Tulossa"
+                label={txt.incomingTitle}
                 total={facts.behind}
                 list={detail?.incoming_commits}
                 kind="in"
@@ -490,32 +486,32 @@ export function GitStatusDetails({
           ) : null}
         </section>
       ) : (
-        <p className="ah-gs-note">Haaralla ei ole seurantahaaraa.</p>
+        <p className="ah-gs-note">{txt.noUpstream}</p>
       )}
       {base ? (
-        <section className="ah-gs-sec" aria-label="Pohjahaara">
+        <section className="ah-gs-sec" aria-label={txt.baseLabel}>
           <Comparison
             name={base.name}
-            sub={`pohjahaara · ${base.ref}${base.source === "recorded" ? " · haara tehty siitä" : ""}`}
+            sub={txt.baseSub(base.ref, base.source === "recorded")}
             up={base.ahead}
             down={base.behind}
-            words={["edellä", "jäljessä"]}
+            words={[txt.ahead, txt.behind]}
           />
           {base.merged ? (
             <p className="ah-gs-merged">
               <Icon name="check" />
-              Kaikki commitit ovat {base.name}-haarassa.
+              {txt.allInBase(base.name)}
             </p>
           ) : (
             <Fold
-              label={`Edellä ${base.name}-haaraa`}
+              label={txt.aheadTitle(base.name)}
               total={base.ahead}
               list={detail?.base_ahead_commits}
               kind="out"
             />
           )}
           <Fold
-            label={`Jäljessä ${base.name}-haarasta`}
+            label={txt.behindTitle(base.name)}
             total={base.behind}
             list={detail?.base_behind_commits}
             kind="in"
@@ -523,23 +519,23 @@ export function GitStatusDetails({
         </section>
       ) : null}
       {!facts.upstream && !base && detail?.commits.length ? (
-        <section className="ah-gs-sec" aria-label="Viimeisimmät commitit">
-          <h4>Viimeisimmät commitit</h4>
+        <section className="ah-gs-sec" aria-label={txt.recentCommits}>
+          <h4>{txt.recentCommits}</h4>
           <Commits list={detail.commits} kind="out" />
         </section>
       ) : null}
-      <section className="ah-gs-sec" aria-label="Muutokset">
+      <section className="ah-gs-sec" aria-label={txt.changes}>
         <h4>
-          Muutokset <span className="ah-gs-count">{facts.dirty_count}</span>
+          {txt.changes} <span className="ah-gs-count">{facts.dirty_count}</span>
         </h4>
         {readError ? (
           <p className="ah-gs-note" role="status">
-            Git-tilaa ei voitu lukea. Näkyvä tila ei ole vahvistettu.
+            {txt.readError}
           </p>
         ) : !detail ? (
-          <p className="ah-gs-note">{loading ? "Luetaan Git-tilaa…" : ""}</p>
+          <p className="ah-gs-note">{loading ? txt.reading : ""}</p>
         ) : !files.length ? (
-          <p className="ah-gs-note">Ei muutoksia viimeisimpään committiin.</p>
+          <p className="ah-gs-note">{txt.noChanges}</p>
         ) : (
           <ul className="ah-gs-files">
             {files.map((file) => {
@@ -577,22 +573,21 @@ export function GitStatusDetails({
         )}
         {detail?.files_truncated ? (
           <p className="ah-gs-note">
-            Näytetään {files.length} ensimmäistä {facts.dirty_count}:stä.
+            {txt.showingFirst(files.length, facts.dirty_count)}
           </p>
         ) : null}
       </section>
       <div className="ah-gs-foot">
         <p className="ah-gs-note">
-          {detail?.fetched_at !== undefined ? (
-            <>
-              Etärepo haettu <strong>{age(detail.fetched_at, now)}</strong> (
-              {clock(detail.fetched_at)}).{" "}
-            </>
-          ) : detail ? (
-            "Viimeisintä hakua ei tiedetä. "
-          ) : null}
-          Tulossa olevat commitit ovat viimeisimmän haun tietoa
-          {readAt ? `; tila on luettu ${clock(readAt / 1000)}` : ""}.
+          {detail?.fetched_at !== undefined
+            ? txt.fetchedAt(
+                <strong>{age(detail.fetched_at, now)}</strong>,
+                clock(detail.fetched_at),
+              )
+            : detail
+              ? txt.fetchUnknown
+              : null}
+          {txt.incomingNote(readAt ? clock(readAt / 1000) : undefined)}
         </p>
         {fetchMessage ? (
           <p
@@ -612,23 +607,16 @@ export function GitStatusDetails({
             // focus out of the layer (and Escape with it).
             isDisabled={!!fetchUnavailable}
             aria-busy={fetching || undefined}
-            title={
-              fetchUnavailable ??
-              "Ajaa git fetch -komennon omana käyttäjänäsi. Ei muuta haaraa eikä tiedostoja."
-            }
+            title={fetchUnavailable ?? txt.fetchTitle}
             onPress={() => {
               if (!fetching) onFetch();
             }}
           >
             <Icon name="refresh" />
-            {fetching ? "Päivitetään…" : "Päivitä tila"}
+            {fetching ? txt.fetching : txt.fetch}
           </ControlButton>
         </div>
-        <p className="ah-gs-note">
-          Päivitys hakee etätiedot (git fetch) ja lukee paikallisen tilan. Se ei
-          muuta työhaaraa tai tiedostoja. Pyydä agenttia tuomaan muutokset
-          työhaaraan (pull --rebase).
-        </p>
+        <p className="ah-gs-note">{txt.fetchNote}</p>
       </div>
     </div>
   );

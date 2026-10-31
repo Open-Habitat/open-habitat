@@ -2,16 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { ArchiveNotice } from "../components/ArchiveNotice";
 import { trashHref, trashPlace } from "../components/WorkspaceTrash";
+import { liveText } from "../i18n";
+import { trashNoticeText } from "../text/trashNotice";
 import { refusalText } from "./trashText";
 import type { DeletionOutcome } from "./WorkspaceDeletion";
 import { restoreTrashEntry, WorkspaceTrashError } from "./workspaceTrash";
 
-const kept = {
-  changed_after_check:
-    "se muuttui tarkistuksen jälkeen, joten se jäi roskakoriin",
-  process_inside: "prosessi käytti sitä, joten se jäi roskakoriin",
-  fetch_failed: "etärepoa ei voitu hakea, joten se jäi roskakoriin",
-} as const;
+const txt = liveText(trashNoticeText);
 
 /** After a deletion: undo from the Trash, or say where it went. */
 export function TrashNotice({
@@ -67,15 +64,10 @@ export function TrashNotice({
     return (
       <ArchiveNotice
         kind="trash"
-        message="Poistettu pysyvästi"
+        message={txt.deleted}
         title={name}
         detail={
-          [
-            outcome.remote
-              ? `Sen saa takaisin kloonaamalla ${outcome.remote}.`
-              : undefined,
-            note,
-          ]
+          [outcome.remote ? txt.cloneBack(outcome.remote) : undefined, note]
             .filter(Boolean)
             .join(" · ") || undefined
         }
@@ -87,24 +79,20 @@ export function TrashNotice({
   const inside = result.processes_inside?.[0];
   const detail =
     result.state === "partial"
-      ? "osa jäi roskakoriin; poista se sieltä uudelleen"
+      ? txt.partial
       : result.state === "replaced"
-        ? `roskakoriin siirtyi eri hakemisto (${entry}); palauta se sieltä`
+        ? txt.replaced(entry ?? "")
         : result.kept_reason
-          ? kept[result.kept_reason]
+          ? txt.kept[result.kept_reason]
           : inside
-            ? `${inside.comm ?? `PID ${inside.pid}`} on yhä sen hakemistossa`
+            ? txt.stillInside(inside.comm ?? `PID ${inside.pid}`)
             : undefined;
   // Something did not go as asked: the notice stays until closed.
   const sticky = result.state !== "trashed" || !!result.kept_reason;
   return (
     <ArchiveNotice
       kind="trash"
-      message={
-        result.state === "trashed"
-          ? "Siirretty roskakoriin"
-          : "Ei poistettu kokonaan:"
-      }
+      message={result.state === "trashed" ? txt.trashed : txt.notDeleted}
       title={name}
       busy={busy}
       problem={problem || (sticky ? detail : undefined)}

@@ -19,6 +19,8 @@ import {
   largeKiB,
   type Since,
 } from "../components/repoCatalog";
+import { liveText } from "../i18n";
+import { newWorkspacePageText } from "../text/newWorkspacePage";
 import { type CloneJobs, cloneLabel, useCloneView } from "./cloneJobs";
 import { GitHubPlaceNotice } from "./GitHubConnectionNotice";
 import { type GiteaSource, giteaRepos, host } from "./gitea";
@@ -51,30 +53,20 @@ import { workspaceFor } from "./workspaceMatch";
 // (?repo=owner/name), so a phone's back button returns from the details to
 // the list. Leaving the page never cancels a clone: the daemon owns the job.
 
-const refusal = (e: unknown, what: string) =>
+const txt = liveText(newWorkspacePageText);
+
+type Action = Parameters<typeof txt.failed>[0];
+const refusal = (e: unknown, what: Action) =>
   e instanceof Error && e.message === "partial"
-    ? "Osa keskeneräisestä hakemistosta jäi poistamatta. Yritä uudelleen."
-    : e instanceof GitHubError
-      ? e.code === "storage"
-        ? e.message
-        : e.code === "busy"
-          ? "Toinen kloonaus on jo käynnissä. Odota, että se valmistuu."
-          : e.code === "conflict"
-            ? "Kohdehakemisto on jo olemassa. Tarkista työtilalista."
-            : e.code === "empty"
-              ? "Repo on tyhjä, joten sitä ei voi vielä kloonata työtilaksi."
-              : e.code === "gitea"
-                ? "Gitea-yhteys ei ole nyt käytettävissä. Tarkista se kohdassa Asetukset › Koodipalvelut."
-                : e.code === "gitlab"
-                  ? "GitLab-yhteys ei ole nyt käytettävissä: tunnus voi olla vanhentunut tai Git-asetus kesken. Tarkista se kohdassa Asetukset › Koodipalvelut."
-                  : e.code === "rewritten"
-                    ? "Git-asetuksesi (url.insteadOf) ohjaavat tämän repon osoitteen muualle, joten kloonausta ei aloitettu. Poista ohjaus palvelimen osoitteelta ja yritä uudelleen."
-                    : e.code === "auth"
-                      ? "GitHub-tunnukset eivät ole käytettävissä. Yhdistä GitHub kohdassa Asetukset › Koodipalvelut."
-                      : e.code === "login"
-                        ? "Kirjaudu uudelleen ja yritä sitten."
-                        : `${what} ei onnistunut. Tarkista tilanne yltä ennen uutta yritystä.`
-      : `${what} ei onnistunut. Tarkista tilanne yltä ennen uutta yritystä.`;
+    ? txt.partial
+    : e instanceof GitHubError && e.code === "storage"
+      ? e.message
+      : (e instanceof GitHubError &&
+          Object.hasOwn(txt.refusals, e.code) &&
+          txt.refusals[e.code]) ||
+        txt.failed(what);
+const reason = (table: Record<string, string>, code?: string) =>
+  code && Object.hasOwn(table, code) ? table[code] : undefined;
 
 /** A repository from a Gitea or GitLab connection, as the common list
  * holds it. */
@@ -94,35 +86,6 @@ const jobKey = (j: Pick<CloneJob, "full_name" | "source">) =>
   j.source ? `gitea:${giteaKey(j.source)}` : j.full_name.toLocaleLowerCase();
 const dirName = (fullName: string) =>
   fullName.slice(fullName.lastIndexOf("/") + 1);
-
-const giteaFailure: Record<string, string> = {
-  token_rejected: "Gitea hylkäsi tunnuksen",
-  insufficient_scope: "tunnukselta puuttuu repojen lukuoikeus",
-  unreachable: "palvelin ei vastaa",
-  tls_untrusted: "palvelimen varmennetta ei voitu tarkistaa",
-  redirect_refused: "palvelin ohjasi toiseen osoitteeseen",
-  forbidden_destination: "osoitteeseen ei voi yhdistää",
-  not_gitea: "palvelin ei vastannut odotetusti",
-  native_unavailable: "tea-asetuksia ei voitu lukea",
-  account_mismatch: "tunnus kuuluu nyt toiselle Gitea-tilille",
-};
-const gitlabFailure: Record<string, string> = {
-  token_rejected: "GitLab hylkäsi tunnuksen",
-  token_expired: "tunnus on vanhentunut, joten projekteja ei näytetä",
-  insufficient_scope: "tunnukselta puuttuu read_api",
-  unreachable: "palvelin ei vastaa",
-  tls_untrusted: "palvelimen varmennetta ei voitu tarkistaa",
-  redirect_refused: "palvelin ohjasi toiseen osoitteeseen",
-  forbidden_destination: "osoitteeseen ei voi yhdistää",
-  not_gitlab: "palvelin ei vastannut odotetusti",
-  native_unavailable: "glab-asetuksia ei voitu lukea",
-  account_mismatch: "tunnus kuuluu nyt toiselle GitLab-tilille",
-};
-const giteaIncomplete: Record<string, string> = {
-  limit: "repoja on enemmän kuin kerralla luetaan",
-  interrupted: "lukeminen keskeytyi",
-  inconsistent: "lista muuttui kesken lukemisen",
-};
 
 /** A GitLab connection's push readiness as GitLab said it on this visit. */
 function pushOf(t?: GitLabTokenState): PushState | undefined {
@@ -304,7 +267,7 @@ export function NewWorkspacePage({
                     name,
                     reason:
                       e instanceof GitHubError && e.code === "auth"
-                        ? "Repoa ei voi hakea eikä kloonata ennen kuin GitHub-yhteys toimii."
+                        ? txt.lookupAuth
                         : undefined,
                   },
                 };
@@ -437,7 +400,7 @@ export function NewWorkspacePage({
           : job && job.state === "failed"
             ? { label: cloneLabel(job), tone: "warn" }
             : present?.kind === "same"
-              ? { label: "työtilana", tone: "ok" }
+              ? { label: txt.asWorkspace, tone: "ok" }
               : undefined,
     };
   }
@@ -473,7 +436,7 @@ export function NewWorkspacePage({
 
   const act = async (
     key: string,
-    what: string,
+    what: Action,
     write: () => Promise<unknown>,
   ): Promise<boolean> => {
     if (!csrf || busy) return false;
@@ -496,7 +459,7 @@ export function NewWorkspacePage({
     source?: ForgeCloneSource,
     key = source ? `gitea:${giteaKey(source)}` : name,
   ) =>
-    act(key, restart ? "Uusi yritys" : "Kloonauksen aloitus", async () => {
+    act(key, restart ? "retry" : "start", async () => {
       if (!csrf || !store) return;
       if (source) await store.startForge(source, csrf, restart);
       else await store.start(name, mode, csrf, restart);
@@ -539,31 +502,35 @@ export function NewWorkspacePage({
   const cloneReason =
     writeReason ??
     (!store || !csrf
-      ? "Kloonausta ei voi aloittaa juuri nyt."
+      ? txt.cannotStart
       : running
-        ? `Kloonaus ${running.full_name} on käynnissä. Yksi kloonaus kerrallaan.`
+        ? txt.oneAtATime(running.full_name)
         : selected?.empty
-          ? "Repo on tyhjä, joten sitä ei voi vielä kloonata työtilaksi."
+          ? txt.emptyRepo
           : selected?.gitea?.provider === "gitlab" &&
               pushOf(gitlabPush[selected.gitea.connection_id]) === "expired"
-            ? "GitLab-tunnus on vanhentunut. Vaihda se Koodipalveluissa ennen kloonausta."
+            ? txt.gitlabExpired
             : undefined);
   const problemKey = (r?: ListedRepo) =>
     r?.gitea ? `gitea:${giteaKey(r.gitea)}` : r?.full_name;
   const giteaFix = {
     href: settingsHref("koodipalvelut", "gitea"),
-    label: "Tarkista yhteys",
+    get label() {
+      return txt.checkConnection;
+    },
   };
   const gitlabFix = {
     href: settingsHref("koodipalvelut", "gitea"),
-    label: "Koodipalvelut",
+    get label() {
+      return txt.codeHosts;
+    },
   };
   const sourceNotes =
     gitea.state === "failed"
       ? [
           {
             key: "gitea",
-            text: "Gitea-repoja ei saatu juuri nyt. Muut repot näkyvät silti.",
+            text: txt.giteaFailed,
             failed: true,
             fix: giteaFix,
           },
@@ -574,7 +541,11 @@ export function NewWorkspacePage({
               ? [
                   {
                     key: s.connection_id,
-                    text: `Gitean ${host(s.base_url)} (${s.user}) repoja ei saatu: ${giteaFailure[s.failure ?? ""] ?? "tuntematon syy"}.`,
+                    text: txt.giteaSourceFailed(
+                      host(s.base_url),
+                      s.user,
+                      reason(txt.giteaFailure, s.failure),
+                    ),
                     failed: true,
                     fix: giteaFix,
                   },
@@ -584,7 +555,11 @@ export function NewWorkspacePage({
                 : [
                     {
                       key: s.connection_id,
-                      text: `Gitean ${host(s.base_url)} (${s.user}) lista on vajaa: ${giteaIncomplete[s.incomplete ?? ""] ?? "kaikkia repoja ei saatu luettua"}.`,
+                      text: txt.giteaIncomplete(
+                        host(s.base_url),
+                        s.user,
+                        reason(txt.incomplete, s.incomplete),
+                      ),
                       failed: false,
                     },
                   ],
@@ -594,7 +569,7 @@ export function NewWorkspacePage({
               ? [
                   {
                     key: "gitlab",
-                    text: "GitLab-projekteja ei saatu juuri nyt. Muut repot näkyvät silti.",
+                    text: txt.gitlabFailed,
                     failed: true,
                     fix: gitlabFix,
                   },
@@ -604,7 +579,10 @@ export function NewWorkspacePage({
                     ? [
                         {
                           key: s.connection_id,
-                          text: `GitLab ${host(s.base_url)}: ${gitlabFailure[s.failure ?? ""] ?? "projekteja ei saatu"}. Tarkista yhteys:`,
+                          text: txt.gitlabSourceFailed(
+                            host(s.base_url),
+                            reason(txt.gitlabFailure, s.failure),
+                          ),
                           failed: true,
                           fix: gitlabFix,
                         },
@@ -614,7 +592,11 @@ export function NewWorkspacePage({
                     ? [
                         {
                           key: `${s.connection_id}:elsewhere`,
-                          text: `GitLab ${host(s.base_url)}: ${s.elsewhere.count} projektia jäi pois, koska palvelin ilmoittaa niiden osoitteeksi ${s.elsewhere.origin ?? "toisen osoitteen"}, eikä Habitat lähetä tunnusta sinne. GitLabin ylläpitäjän pitää korjata external_url.`,
+                          text: txt.gitlabElsewhere(
+                            host(s.base_url),
+                            s.elsewhere.count,
+                            s.elsewhere.origin,
+                          ),
                           failed: false,
                         },
                       ]
@@ -623,7 +605,10 @@ export function NewWorkspacePage({
                     ? [
                         {
                           key: `${s.connection_id}:incomplete`,
-                          text: `GitLabin ${host(s.base_url)} lista on vajaa: ${giteaIncomplete[s.incomplete ?? ""] ?? "kaikkia projekteja ei saatu luettua"}.`,
+                          text: txt.gitlabIncomplete(
+                            host(s.base_url),
+                            reason(txt.incomplete, s.incomplete),
+                          ),
                           failed: false,
                         },
                       ]
@@ -691,10 +676,7 @@ export function NewWorkspacePage({
           q.state === "refused" ? ("refused" as const) : ("waiting" as const),
         refusal:
           q.state === "refused"
-            ? refusal(
-                new GitHubError(q.problem ?? "unavailable"),
-                "Kloonauksen aloitus",
-              )
+            ? refusal(new GitHubError(q.problem ?? "unavailable"), "start")
             : undefined,
         unsettled: !!q.before,
         key: `queued:${q.full_name}`,
@@ -704,23 +686,24 @@ export function NewWorkspacePage({
   return (
     <div className="ah-clone-page">
       <header className="ah-clone-head">
-        <h1>Uusi työtila</h1>
+        <h1>{txt.title}</h1>
         <p>
-          {gitea.sources.length && gitlab.sources.length
-            ? "Kloonaa repo GitHubista, Giteasta tai GitLabista"
-            : gitlab.sources.length
-              ? "Kloonaa repo GitHubista tai GitLabista"
-              : gitea.sources.length
-                ? "Kloonaa repo GitHubista tai Giteasta"
-                : "Kloonaa GitHub-repo"}{" "}
-          tai luo tyhjä hakemisto kotihakemistosi{" "}
-          <span className="ah-mono">~/src</span>-kansioon.
+          {txt.intro(
+            gitea.sources.length && gitlab.sources.length
+              ? "all"
+              : gitlab.sources.length
+                ? "gitlab"
+                : gitea.sources.length
+                  ? "gitea"
+                  : "github",
+            <span className="ah-mono">~/src</span>,
+          )}
         </p>
       </header>
       {cards.length ? (
         <section className="ah-clone-jobs" aria-labelledby="clone-jobs-title">
           <h2 className="ah-clone-h2" id="clone-jobs-title">
-            Kloonaukset
+            {txt.clones}
           </h2>
           {cards.map((card) => {
             const gitea = card.kind === "job" ? card.source : undefined;
@@ -771,7 +754,7 @@ export function NewWorkspacePage({
                 }
                 onCancel={() =>
                   card.jobId &&
-                  act(cardKey, "Keskeytys", async () => {
+                  act(cardKey, "cancel", async () => {
                     if (csrf && store && card.jobId)
                       await store.cancel(card.jobId, csrf);
                   })
@@ -779,7 +762,7 @@ export function NewWorkspacePage({
                 onDismiss={() =>
                   card.kind === "queued"
                     ? store?.unqueue(card.full_name)
-                    : act(cardKey, "Ilmoituksen poisto", async () => {
+                    : act(cardKey, "dismiss", async () => {
                         if (csrf && store && card.jobId)
                           await store.dismiss(card.jobId, csrf);
                       })
@@ -815,7 +798,7 @@ export function NewWorkspacePage({
                     : (mode) => void startClone(card.full_name, mode, true)
                 }
                 onRemove={() =>
-                  act(cardKey, "Poisto", async () => {
+                  act(cardKey, "remove", async () => {
                     if (!csrf || !store) return;
                     const state = await store.remove(
                       card.full_name,
@@ -833,14 +816,14 @@ export function NewWorkspacePage({
           })}
           {clones.failed ? (
             <p className="ah-clone-hint" role="status">
-              Kloonausten tilaa ei juuri nyt saatu. Näkyvä tila voi olla vanha.
+              {txt.clonesFailed}
             </p>
           ) : null}
         </section>
       ) : null}
-      <section className="ah-clone-card" aria-label="Työtilan lähde">
+      <section className="ah-clone-card" aria-label={txt.source}>
         <Segmented
-          label="Työtilan lähde"
+          label={txt.source}
           size="row"
           options={[
             {
@@ -848,13 +831,13 @@ export function NewWorkspacePage({
               // With a Gitea or GitLab connected the list holds every source.
               label:
                 gitea.sources.length || gitlab.sources.length
-                  ? "Kloonaa repo"
-                  : "Kloonaa GitHubista",
+                  ? txt.cloneRepo
+                  : txt.cloneGitHub,
               icon: <Icon name="github" />,
             },
             {
               id: "directory",
-              label: "Uusi hakemisto",
+              label: txt.newDirectory,
               icon: <Icon name="folderPlus" />,
             },
           ]}
@@ -907,31 +890,31 @@ export function NewWorkspacePage({
               mixed={gitea.sources.length + gitlab.sources.length > 0}
             />
             {selectedGitea && !selected ? (
-              <aside className="ah-clone-detail" aria-label="Repon tiedot">
+              <aside className="ah-clone-detail" aria-label={txt.details}>
                 <p className="ah-clone-empty" role="status">
                   {params.get("gitlab")
                     ? gitlab.state === "loading"
-                      ? "Haetaan projektia GitLabista…"
-                      : "Projektia ei löytynyt tämän GitLab-yhteyden projekteista."
+                      ? txt.gitlabLoading
+                      : txt.gitlabMissing
                     : gitea.state === "loading"
-                      ? "Haetaan repoa Giteasta…"
-                      : "Repoa ei löytynyt tämän Gitea-yhteyden repoista."}
+                      ? txt.giteaLoading
+                      : txt.giteaMissing}
                 </p>
               </aside>
             ) : selectedName && !selected ? (
-              <aside className="ah-clone-detail" aria-label="Repon tiedot">
+              <aside className="ah-clone-detail" aria-label={txt.details}>
                 <p className="ah-clone-empty" role="status">
                   {repos.state === "loading" ||
                   !looked[selectedName] ||
                   looked[selectedName].state === "searching"
-                    ? `Haetaan ${selectedName}…`
+                    ? txt.searching(selectedName)
                     : looked[selectedName].state === "not_found"
-                      ? `Repoa ${selectedName} ei ole, tai sinulla ei ole siihen pääsyä.`
+                      ? txt.notFound(selectedName)
                       : looked[selectedName].state === "restricted"
                         ? looked[selectedName].reason
                         : github?.fix
-                          ? `Kloonaus tarvitsee GitHub-yhteyden. ${github.fix} ilmoituksesta.`
-                          : "GitHubiin ei saatu yhteyttä. Yritä hetken päästä uudelleen."}
+                          ? txt.needsGitHub(github.fix)
+                          : txt.unreachable}
                 </p>
               </aside>
             ) : (
@@ -998,11 +981,11 @@ function NewDirectory({
     const name = value.trim();
     if (phase !== "form" || writeReason || !csrf) return;
     if (!valid) {
-      setError("Tarkista nimi: pienet kirjaimet, numerot sekä . _ -");
+      setError(txt.invalidName);
       return;
     }
     if (!token) {
-      setError("Työtiloja ei voitu tarkistaa. Päivitä näkymä.");
+      setError(txt.workspacesUnknown);
       return;
     }
     setPhase("working");
@@ -1031,9 +1014,7 @@ function NewDirectory({
       if (!response.ok) throw new Error();
       onCreated(name);
     } catch {
-      setError(
-        "Luontia ei voitu vahvistaa. Tarkista työtilalista ennen uutta yritystä.",
-      );
+      setError(txt.createUncertain);
     } finally {
       setPhase("form");
     }
@@ -1046,19 +1027,20 @@ function NewDirectory({
         void submit();
       }}
     >
-      <label htmlFor="workspace-name">Nimi</label>
+      <label htmlFor="workspace-name">{txt.name}</label>
       <input
         data-testid="directory-name"
         id="workspace-name"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="uusi-projekti"
+        placeholder={txt.namePlaceholder}
         autoComplete="off"
         spellCheck={false}
       />
       <p className="ah-clone-hint">
-        Luodaan <span className="ah-mono">~/src/&lt;nimi&gt;</span> ja
-        alustetaan Git-repoksi.
+        {txt.createHint(
+          <span className="ah-mono">~/src/&lt;{txt.nameSlot}&gt;</span>,
+        )}
       </p>
       {writeReason ? <p className="ah-clone-hint">{writeReason}</p> : null}
       {error ? (
@@ -1074,7 +1056,7 @@ function NewDirectory({
           type="submit"
           isDisabled={!!writeReason || !value.trim() || phase === "working"}
         >
-          {phase === "working" ? "Luodaan…" : "Luo työtila"}
+          {phase === "working" ? txt.creating : txt.create}
         </ControlButton>
       </div>
     </form>

@@ -1,4 +1,6 @@
 import { type ReactNode, useState } from "react";
+import { formatDate, useText } from "../i18n";
+import { githubRepoChooserText } from "../text/githubRepoChooser";
 import styles from "./GitHubRepoChooser.module.css";
 import { Icon } from "./Icon";
 import { OnboardingFrame } from "./OnboardingFrame";
@@ -53,6 +55,7 @@ export function GitHubRepoChooser({
   onRefresh,
   notice,
 }: GitHubRepoChooserProps) {
+  const t = useText(githubRepoChooserText);
   const [filter, setFilter] = useState("");
   const [days, setDays] = useState(0);
   const selection = new Set(selectedNames);
@@ -89,48 +92,40 @@ export function GitHubRepoChooser({
         aria-labelledby="github-chooser-title"
       >
         <header className={styles.header}>
-          <p className="ah-eyebrow">Käyttöönotto</p>
+          <p className="ah-eyebrow">{t.eyebrow}</p>
           <h1
             data-testid="repository-chooser-title"
             id="github-chooser-title"
             tabIndex={-1}
           >
-            Valitse GitHub-repot haettaviksi
+            {t.title}
           </h1>
-          <p id="github-chooser-instructions">
-            Valitse repot, joita haluat käyttää täällä. Ne haetaan työtiloiksi
-            taustalla, kun jatkat AI-tilin kirjautumiseen. Voit myös jatkaa
-            ilman repoja ja hakea niitä myöhemmin työtilanäkymästä.
-          </p>
+          <p id="github-chooser-instructions">{t.instructions}</p>
         </header>
 
-        {view.phase === "loading" ? (
-          <p role="status">Haetaan GitHub-repoja…</p>
-        ) : null}
+        {view.phase === "loading" ? <p role="status">{t.loading}</p> : null}
         {view.phase === "no-auth" ? (
           <InlineNotice
-            title="GitHub-kirjautuminen puuttuu"
-            description="Repoja ei voi näyttää ennen GitHub-kirjautumista. Voit jatkaa ilman repoja."
+            title={t.noAuthTitle}
+            description={t.noAuth}
             tone="warning"
           />
         ) : null}
         {view.phase === "unavailable" ? (
           <InlineNotice
             data-testid="repository-unavailable"
-            title="Repoja ei voitu hakea"
-            description="Tarkista yhteys ja yritä uudelleen, tai jatka ilman repoja ja hae ne myöhemmin."
+            title={t.unavailableTitle}
+            description={t.unavailable}
             tone="danger"
             actions={
-              onRefresh
-                ? [{ label: "Tarkista uudelleen", onPress: onRefresh }]
-                : []
+              onRefresh ? [{ label: t.recheck, onPress: onRefresh }] : []
             }
           />
         ) : null}
         {view.phase === "catalog" ? (
           <>
             <label className={styles.filter}>
-              Etsi repoa nimellä
+              {t.filter}
               <input
                 type="search"
                 data-testid="repository-search"
@@ -140,23 +135,23 @@ export function GitHubRepoChooser({
               />
             </label>
             <div className={styles.recent}>
-              <label htmlFor="repo-time-range">Päivitetty</label>
+              <label htmlFor="repo-time-range">{t.updated}</label>
               <select
                 data-testid="repository-time-range"
                 id="repo-time-range"
-                aria-label="Aikaväli"
+                aria-label={t.range}
                 value={days}
                 onChange={(event) => setDays(Number(event.target.value))}
               >
-                <option value={0}>Milloin tahansa</option>
-                <option value={7}>Viimeisen viikon aikana</option>
-                <option value={30}>Viimeisen kuukauden aikana</option>
-                <option value={90}>Viimeisen kolmen kuukauden aikana</option>
-                <option value={365}>Viimeisen vuoden aikana</option>
+                <option value={0}>{t.anyTime}</option>
+                <option value={7}>{t.week}</option>
+                <option value={30}>{t.month}</option>
+                <option value={90}>{t.quarter}</option>
+                <option value={365}>{t.year}</option>
               </select>
               {days > 0 && matches.length !== visible.length ? (
                 <span className={styles.hidden}>
-                  Piilotettu {matches.length - visible.length}
+                  {t.hidden(matches.length - visible.length)}
                 </span>
               ) : null}
             </div>
@@ -167,13 +162,11 @@ export function GitHubRepoChooser({
                 data-testid="repository-toggle-visible"
                 label={
                   visible.every((repo) => selection.has(repo.full_name))
-                    ? "Poista näkyvien valinnat"
-                    : "Valitse kaikki näkyvät"
+                    ? t.unselectVisible
+                    : t.selectVisible
                 }
                 availability={
-                  busy
-                    ? { state: "disabled", reason: "Siirrytään eteenpäin." }
-                    : undefined
+                  busy ? { state: "disabled", reason: t.movingOn } : undefined
                 }
                 onPress={() => {
                   const select = !visible.every((repo) =>
@@ -187,14 +180,14 @@ export function GitHubRepoChooser({
               />
             ) : null}
             {view.repositories.length === 0 ? (
-              <p role="status">Repoja ei löytynyt. Voit jatkaa ilman repoja.</p>
+              <p role="status">{t.none}</p>
             ) : visible.length === 0 && lockedRows.length === 0 ? (
-              <p role="status">Hakua vastaavia repoja ei löytynyt.</p>
+              <p role="status">{t.noMatches}</p>
             ) : (
               <ul
                 data-testid="repository-list"
                 className={styles.list}
-                aria-label="GitHub-repot"
+                aria-label={t.listLabel}
               >
                 {lockedRows.map((repo) => (
                   <li
@@ -218,7 +211,7 @@ export function GitHubRepoChooser({
                           >
                             {repo.full_name}
                           </code>
-                          {repo.private ? <Badge label="Yksityinen" /> : null}
+                          {repo.private ? <Badge label={t.private} /> : null}
                         </span>
                         <span
                           id={`locked-${repo.full_name}`}
@@ -234,9 +227,7 @@ export function GitHubRepoChooser({
                 ))}
                 {visible.length === 0 ? (
                   <li className={styles.row} role="status">
-                    <span className={styles.choice}>
-                      Hakua vastaavia muita repoja ei löytynyt.
-                    </span>
+                    <span className={styles.choice}>{t.noOtherMatches}</span>
                   </li>
                 ) : null}
                 {visible.map((repo) => (
@@ -259,22 +250,22 @@ export function GitHubRepoChooser({
                           >
                             {repo.full_name}
                           </code>
-                          {repo.private ? <Badge label="Yksityinen" /> : null}
+                          {repo.private ? <Badge label={t.private} /> : null}
                         </span>
                         <span
                           data-testid="repository-updated"
                           data-known={!!repo.pushed_at}
                           className={styles.description}
                         >
-                          Viimeksi päivitetty:{" "}
+                          {t.lastUpdated}{" "}
                           {repo.pushed_at
-                            ? new Intl.DateTimeFormat("fi-FI", {
+                            ? formatDate(new Date(repo.pushed_at), {
                                 timeZone: "UTC",
                                 year: "numeric",
                                 month: "numeric",
                                 day: "numeric",
-                              }).format(new Date(repo.pushed_at))
-                            : "Ei tiedossa"}
+                              })
+                            : t.unknown}
                         </span>
                         {repo.description ? (
                           <span className={styles.description}>
@@ -299,11 +290,8 @@ export function GitHubRepoChooser({
               data-testid="repository-selection"
               data-count={selectedNames.length}
             >
-              Valittu {selectedNames.length}{" "}
-              {selectedNames.length === 1 ? "repo" : "repoa"}.
-              {lockedRows.length
-                ? ` Sivusto hakee lisäksi ${lockedRows.length}.`
-                : null}
+              {t.selected(selectedNames.length)}
+              {lockedRows.length ? t.alsoSite(lockedRows.length) : null}
             </p>
           ) : null}
           <div className={styles.actions}>
@@ -316,16 +304,14 @@ export function GitHubRepoChooser({
               label={
                 view.phase === "catalog" && selectedNames.length
                   ? lockedRows.length
-                    ? `Hae ${selectedNames.length} ${selectedNames.length === 1 ? "repo" : "repoa"} lisää ja jatka`
-                    : `Hae ${selectedNames.length} ${selectedNames.length === 1 ? "repo" : "repoa"} taustalla ja jatka`
+                    ? t.fetchMore(selectedNames.length)
+                    : t.fetchBackground(selectedNames.length)
                   : lockedRows.length
-                    ? "Jatka"
-                    : "Jatka ilman repoja"
+                    ? t.continue
+                    : t.continueWithout
               }
               availability={
-                busy
-                  ? { state: "disabled", reason: "Siirrytään eteenpäin." }
-                  : undefined
+                busy ? { state: "disabled", reason: t.movingOn } : undefined
               }
               onPress={() =>
                 onProceed(view.phase === "catalog" ? [...selectedNames] : [])

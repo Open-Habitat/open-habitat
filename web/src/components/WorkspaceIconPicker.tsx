@@ -7,6 +7,8 @@ import {
   Input,
   Popover,
 } from "react-aria-components";
+import { useText } from "../i18n";
+import { workspaceIconPickerText } from "../text/workspaceIconPicker";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { WorkspaceIcon, type WorkspaceIconModel } from "./WorkspaceIcon";
@@ -117,6 +119,7 @@ export function WorkspaceIconPicker({
   /** Below the choices, e.g. asking a model for suggestions. */
   footer?: (close: () => void) => React.ReactNode;
 }) {
+  const t = useText(workspaceIconPickerText);
   const [open, setOpen] = useState(false);
   const [letters, setLetters] = useState(model.letters);
   const [own, setOwn] = useState("");
@@ -162,8 +165,8 @@ export function WorkspaceIconPicker({
         size="inline"
         variant="quiet"
         className="ah-wsip-head"
-        aria-label="Vaihda kuvake"
-        title={isDisabled ? disabledReason : "Vaihda kuvake"}
+        aria-label={t.change}
+        title={isDisabled ? disabledReason : t.change}
         isDisabled={isDisabled}
       >
         <WorkspaceIcon icon={model.icon} size="l" />
@@ -181,18 +184,18 @@ export function WorkspaceIconPicker({
         <Dialog
           className="ah-wsip"
           data-testid="workspace-icon-dialog"
-          aria-label="Työtilan kuvake"
+          aria-label={t.title}
         >
           {({ close }) => (
             <>
               <header className="ah-wsip-top">
                 <Heading slot="title" level={2}>
-                  Työtilan kuvake
+                  {t.title}
                 </Heading>
                 <ControlButton
                   size="inline"
                   variant="quiet"
-                  aria-label="Sulje"
+                  aria-label={t.close}
                   onPress={close}
                 >
                   <Icon name="cross" />
@@ -202,15 +205,11 @@ export function WorkspaceIconPicker({
                 <Option
                   testId="workspace-icon-auto"
                   icon={model.auto}
-                  label="Automaattinen"
+                  label={t.auto}
                   detail={
-                    model.logo ? (
-                      <>
-                        repon logo <code>{model.logo.path}</code>
-                      </>
-                    ) : (
-                      "nimestä johdettu tunnus"
-                    )
+                    model.logo
+                      ? t.autoLogo(<code>{model.logo.path}</code>)
+                      : t.autoDerived
                   }
                   pressed={setting === "auto"}
                   onPress={() => choose("auto")}
@@ -219,7 +218,7 @@ export function WorkspaceIconPicker({
                   <Option
                     testId="workspace-icon-logo"
                     icon={model.logo.icon}
-                    label="Repon logo"
+                    label={t.logo}
                     detail={<code>{model.logo.path}</code>}
                     pressed={setting === model.logo.path}
                     onPress={() => choose(model.logo?.path)}
@@ -233,15 +232,15 @@ export function WorkspaceIconPicker({
                     className="ah-wsip-letters-tile"
                     data-testid="workspace-icon-letters"
                     aria-pressed={isLetters}
-                    aria-label={`Kirjaintunnus ${typed ?? model.letters}`}
+                    aria-label={t.lettersNamed(typed ?? model.letters)}
                     isDisabled={!typed}
                     onPress={() => choose(typed)}
                   >
                     <WorkspaceIcon icon={lettersIcon} size="m" />
                   </AriaButton>
                   <span className="ah-wsip-opt-text">
-                    <b>Kirjaintunnus</b>
-                    <small>1–3 kirjainta</small>
+                    <b>{t.letters}</b>
+                    <small>{t.lettersHint}</small>
                   </span>
                   <form
                     onSubmit={(e) => {
@@ -252,7 +251,7 @@ export function WorkspaceIconPicker({
                     <Input
                       className="ah-wsip-letters-input"
                       data-testid="workspace-icon-letters-input"
-                      aria-label="Kirjaimet"
+                      aria-label={t.lettersField}
                       maxLength={3}
                       value={letters}
                       onChange={(e) => setLetters(e.target.value)}
@@ -260,7 +259,7 @@ export function WorkspaceIconPicker({
                   </form>
                 </div>
               </div>
-              <p className="ah-wsip-h">Emoji</p>
+              <p className="ah-wsip-h">{t.emoji}</p>
               <div className="ah-wsip-grid">
                 {grid.map((e) => (
                   <AriaButton
@@ -286,9 +285,9 @@ export function WorkspaceIconPicker({
               >
                 <Input
                   data-testid="workspace-icon-own"
-                  aria-label="Oma emoji"
+                  aria-label={t.own}
                   aria-invalid={ownInvalid || undefined}
-                  placeholder="Oma emoji, esim. 🧮"
+                  placeholder={t.ownPlaceholder}
                   maxLength={16}
                   value={own}
                   onChange={(e) => {
@@ -301,12 +300,12 @@ export function WorkspaceIconPicker({
                   size="row"
                   type="submit"
                 >
-                  Käytä
+                  {t.use}
                 </ControlButton>
               </form>
               {ownInvalid ? (
                 <p className="ah-wsip-invalid" role="status">
-                  Kelpaa yksi emoji.
+                  {t.oneEmoji}
                 </p>
               ) : null}
               {footer ? (
