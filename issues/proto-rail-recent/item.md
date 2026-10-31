@@ -3,11 +3,13 @@ created: 2026-10-31
 updated: 2026-10-31
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-rail-recent
 lane_seq: 1
 preparation: pending
+closed: 2026-10-31
+closed_by: conductor
 ---
 
 # Prototype: recent inactive conversations in the rail
@@ -37,3 +39,9 @@ graph and a clickable rail in production context, desktop and phone,
 icons on and off.
 
 ## Comments
+
+## Resolution
+
+### 2026-10-31T17:55:02Z · @conductor
+
+Jari 31.10.: Viisi viimeisintä, count configurable; implementation is rail-recent-five.
