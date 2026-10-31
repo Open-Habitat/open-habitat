@@ -1,11 +1,11 @@
 # Linux-tilin lukitus ja Open Habitat
 
-**Yhteenveto:** Linuxissa ei ole yhtä kaikkialle vaikuttavaa tililukkoa. Testipalvelimella lukittu salasana salli SSH-avainkirjautumisen (`UsePAM yes`), tilin vanheneminen esti uuden kirjautumisen, ja `nologin` esti komentotulkin mutta ei PAMin account-tarkistusta. Mikään näistä muutoksista ei pysäyttänyt jo käynnissä olevaa koetilin prosessia tai user manageria. Habitatin koodi ei tarkista shadow-vanhenemista; salasanalukko ja oletuksena oleva `nologin` ovat sen normaali lähtötila, eivät pääsynpoisto. Suosittelen erottamaan salasanan, palvelukohtaisen pääsyn ja koko tilin vanhenemisen: vain viimeisestä olisi perusteltua tehdä Habitatin uusi pääsyeste. **Tutkimus on osittainen:** natiivikokeet ja koodianalyysi tehtiin, mutta oikean kertakäyttöisen GitHub-käyttäjän selainkirjautuminen, selainistunnon jatkuminen sekä Pi/tmux/editori-kokeet ovat vielä tekemättä. Niitä ei tässä esitetä mitattuina eikä issuea suljeta.
+**Yhteenveto:** Linuxissa ei ole yhtä kaikkialle vaikuttavaa tililukkoa. Testipalvelimella lukittu salasana salli SSH-avainkirjautumisen (`UsePAM yes`), tilin vanheneminen esti uuden kirjautumisen, ja `nologin` esti komentotulkin mutta ei PAMin account-tarkistusta. Mikään näistä muutoksista ei pysäyttänyt jo käynnissä olevaa koetilin prosessia tai user manageria. Habitatin koodi ei tarkista shadow-vanhenemista; salasanalukko ja oletuksena oleva `nologin` ovat sen normaali lähtötila, eivät pääsynpoisto. Suosittelen erottamaan salasanan, palvelukohtaisen pääsyn ja koko tilin vanhenemisen: vain viimeisestä olisi perusteltua tehdä Habitatin uusi pääsyeste. Selainkirjautumisen, nykyisen istunnon ja daemonin, Pi:n, tmuxin sekä editorin tulokset on päätelty lähdekoodista, ei mitattu selaimessa. Tämä täyttää Jarin 31.10. hyväksymän tutkimusrajauksen; mahdollinen uusi estopolitiikka ja sen vastuunjako jäävät ADR:ssä päätettäviksi.
 
 ## Rajaus ja näytön laatu
 
 - **Koe:** testipalvelin Fleetrepon dokumentoidun Alder → pinnattu root-SSH -reitin kautta, 31.10.2026. Ei muutoksia Birchn tai pilotin oikeisiin käyttäjiin.
-- **Koodi:** tämän worktreen lähtötila `6f81ff22`; testipalvelimen tuote `0.0.0-pilot.561`, commit `da18101644e37aaff5e8e9b1e6ffe345a5118064`.
+- **Koodi:** viimeistelty analyysi ja alla olevat riviviitteet revision `57c59e75b06c2d6a9bf3f70f22c9ae747e6b491f` tiedostoihin. Aiempi osaraportti ja muuttamattomat natiivikokeet on tuotu commitista `5e5fc69b`; niiden testipalvelimen tuote oli `0.0.0-pilot.561`, commit `da18101644e37aaff5e8e9b1e6ffe345a5118064`.
 - **Lähde:** alla nimetty upstream-versio tai dokumentti. Palvelimen todellinen PAM-pino voi poiketa upstreamista.
 - **Päättely:** lähteestä tai koodista johdettu odotus, jota ei todistettu kyseisen tuotepolun kokeella.
 
@@ -50,14 +50,22 @@ Havaitut SSH-viestit olivat vastaavasti tyhjä onnistuminen, `Your account has e
 
 ## Mitä Habitat tekee nykyään
 
-**Koodihavainnot:**
+### Polut ja niiden todisteet
 
-- `internal/provision/executor_linux.go`: `account` käyttää `useradd` ilman salasanaa. `accountRecord` lukee NSS:n passwd/group-tietueet, UID:n, GID:n, kodin ja lisäryhmät; `identity` vertaa shelliä rootin julistukseen. Shadow-tietuetta ei lueta tässä tarkistuksessa.
-- `internal/gateway/auth.go`: callback tekee brokerin `ensure`- ja `authorize`-kutsut ennen istunnon antamista. Ei paikallista PAM-todennusta.
-- `internal/gateway/session.go`: `authenticated` tarkistaa evästeen, oman estotilan, istunnon iät ja access-email-sidonnan. Ei joka pyynnön shadow- tai PAM-tarkistusta.
-- `systemd/open-habitat-daemon@.service`: daemon käyttää `User=%i`, ei `PAMName`-asetusta.
-- `internal/daemon/terminal_linux.go`: selaimen shell on nimenomaisesti `/bin/bash`; tmux käynnistetään käyttäjän manageriin, kun se on käytettävissä. Passwd-shellin nologin ei siis ole selainterminaalin kielto.
-- `internal/daemon/editor_linux.go` sekä asennusoppaan editorikuvaus: code-server käyttäjän managerissa tai daemonin lapsena. Tällä ei tehdä uutta paikallista salasanakirjautumista.
+**Jokainen tämän taulukon rivi on lähdekoodista päätelty, ei mitattu.** Oletus on jo sidottu, edelleen admitted-käyttäjä, toimiva asennus ja vain kyseisen lukitusmekanismin muutos. ”Jatkuu” tarkoittaa ettei lukitus käynnistä lopetusta; tavalliset idle-, virhe-, OOM- ja palvelun elinkaarisäännöt jäävät voimaan.
+
+| Polku | Lähdekoodista päätelty tulos ja peruste |
+|---|---|
+| Gatewayn uusi kirjautuminen | `internal/gateway/auth.go:746–866`: `ensure`, natiivin gh-tokenin handoff, lopuksi `authorize` ja istunnon tallennus. Unix-salasanaa tai PAMia ei kysytä. `internal/provision/writer_linux.go:578–605` tarkistaa admissionin ja sidotun tilin `Verify`-kutsulla. `executor_linux.go:914–953` johtaa `identity`-tarkistukseen; saman tiedoston `362–409` lukee passwd/group/UID/GID/kodin/lisäryhmät ja vertaa shelliä julistukseen, ei shadow-kenttiä. Siten password lock/expiry ei itsessään estä callbackia; shell-drift estää. Muu handoff- tai reittivirhe voi silti estää kirjautumisen. |
+| Nykyinen selainistunto | `internal/gateway/session.go:16–60` tarkistaa evästeen, gatewayn denied-tilan, idle-/absolute-ajat ja access-emailin paikallisesti. `internal/gateway/proxy_linux.go:53–77` yhdistää sidottuun Unix-socketiin, ei uuteen Unix-kirjautumiseen. Lukitus ei muuta istuntoa eikä itsessään peruuta sen HTTP-käyttöä. |
+| Käynnissä oleva daemon | `systemd/open-habitat-daemon@.service:1–21`: suora `User=%i`/`Group=%i` ja `ExecStart`, ei `PAMName`-vaihetta tai shadow-valvontaa. Lukitus ei pysäytä daemonia. Uusi socket-aktivointi riippuu erikseen binding-gatesta (`systemd/open-habitat-daemon@.socket:1–14`), joten shell-drift voi estää kylmäkäynnistyksen vaikka lämmin daemon jatkaa. |
+| Daemonin Pi | `internal/daemon/pi_rpc_linux.go:117–232`: suora `exec.Command` ja `cmd.Start` daemonin UID:llä, ei su/SSH/PAM-vaihetta eikä passwd-shelliä. Käynnissä oleva Pi ja uudet Pi-käynnistykset eivät saa näistä lukoista omaa estettä. `Pdeathsig` ja daemonin `KillMode=mixed` sitovat Pi:n daemonin elinkaareen, eivät shadow-tietueeseen. |
+| Selaimen tmux ja shell | `internal/daemon/terminal_linux.go:52,100–135,240–263`: `/bin/bash` valitaan nimenomaisesti; linger + user bus valitsevat `systemd-run --user` -polun, muuten tmux jää daemonin yhteyteen. Jo ajava tmux jatkaa; uuden shellin käynnistys ei suorita passwdin nologinia. Gateway tarkistaa istunnon ja sitoo relayn sen elinkaareen (`internal/gateway/terminal_linux.go:117–158,241–249`), ei tilin expiryyn. User managerin **uusi käynnistys** on eri PAM-polku kuin uuden yksikön käynnistys jo ajavassa managerissa. |
+| Editori | `internal/daemon/editor_linux.go:350–403`: elossa oleva code-server käytetään uudelleen; uusi käynnistyy `systemd-run --user` -yksikkönä tai suorana lapsena. Ei paikallista salasanaa tai account-tarkistusta. Selainkäyttö riippuu editori-istunnosta ja sen parent-istunnosta (`internal/gateway/editor_linux.go:160–165,225–239`), relay suljetaan parentin päättyessä (`395–429`). Unix-lukitus ei päätä kumpaakaan istuntoa tai editoriprosessia. |
+
+`internal/provision/executor_linux.go:340–356` luo tilin ilman salasanaa. Tarkastettujen gateway-, daemon- ja provision-pakettien tuotantokoodissa ei ole `pam_*`-, `/etc/shadow`- tai `sp_expire`-tarkistusta. Tämä negatiivinen havainto yhdessä yllä olevien toteutuspolkujen kanssa on päätelmän peruste, ei väite ettei käyttöjärjestelmän palvelupino voisi aiheuttaa muuta käynnistysvirhettä.
+
+### Lukituksen vaikutus Habitatissa (kaikki rivit lähdekoodista päätelty)
 
 | Muutos | Uusi Habitat-kirjautuminen (koodista päätelty) | Nykyinen selainistunto (koodista päätelty) | Daemon, Pi, tmux ja editori |
 |---|---|---|---|
@@ -70,9 +78,7 @@ Havaitut SSH-viestit olivat vastaavasti tyhjä onnistuminen, `Your account has e
 
 **Kaikki tämän taulukon Habitat-tulokset ovat päättelyä, eivät selaimessa mitattuja tuloksia.** Tavallisen `sleep`-palvelun jatkuminen osoittaa Linuxin käyttäytymistä, ei tuotteen Pi-, tmux- tai editoripolun hyväksyntää.
 
-Täysi koe tarvitsee kertakäyttöisen, oikeasti OAuthilla sidotun testihenkilön ja hänen luvallisen selainistuntonsa. Pelkkä `useradd` ei kelpaa: broker ei adoptoi olemassa olevaa tiliä. Tutkimukselle ei ollut annettu tällaista GitHub-identiteettiä/istuntoa, eikä oikeiden käyttäjien istuntoja tai tokeneita lainattu. Broker-ledgeriä tai gatewayn istuntotiedostoa ei kirjoitettu testitodisteen valmistamiseksi. Siksi tehtävän ”establish by experiment” -osa on kesken.
-
-Jatkokokeessa tarvitaan per mekanismi sekä uusi callback että jo avoimen selainistunnon HTTP, tapahtumavirta, Pi:n uusi viesti, tmux-input ja editorin HTTP/WebSocket. Ensin säilytetään käynnissä olevat prosessit, sitten kokeillaan uudet käynnistykset erikseen. Kaikki tilimuutokset palautetaan myös epäonnistumisessa. Faillock- ja access-kokeet on rajattava koetiliin/palveluun; koko testipalvelimen PAM- tai SSH-kieltoa ei tarvita.
+Jarin Decisions-merkintä 31.10. korvaa alkuperäisen selainkoevaatimuksen lähdekoodiin perustuvalla rajauksella. OAuth-koetiliä ei hankittu eikä oikeiden käyttäjien istuntoja, tokeneita tai broker-ledgeriä käytetty testitodisteen valmistamiseen. Tutkimus ei lupaa palveluntarjoajan kirjautumisen tai uuden user managerin käynnistyksen hyväksyntää.
 
 ## Vertailu: Cockpit ja JupyterHub
 
@@ -84,8 +90,8 @@ Jatkokokeessa tarvitaan per mekanismi sekä uusi callback että jo avoimen selai
 
 ## Suositus (ei päätös eikä toteutus)
 
-1. **Älä estä Habitatia salasanalukon, salasanan iän tai julistetun nologin-shellin vuoksi.** Ne koskevat eri todennuskanavaa ja kaksi ensimmäisistä normaaleista tiloista on nykyisen selainkäytön lähtökohta. Salasanaton OAuth-tili ei tarvitse paikallista salasananvaihtodialogia.
-2. **Suosittele koko tilin vanhenemista natiiviksi yhteiseksi pääsyesteeksi.** Uusi Habitat-kirjautuminen pitäisi torjua, ja nykyisen selainvaltuuden pitäisi päättyä määritellyssä ajassa. Epäselvä tilan luku ei saa avata uutta pääsyä. Tämä tarvitsee ADR:n ja täyden kokeen ennen toteutusta.
+1. **Älä estä Habitatia salasanalukon, salasanan iän tai julistetun nologin-shellin vuoksi.** Ne koskevat eri todennuskanavaa; salasanalukko ja julistettu nologin ovat nykyisen selainkäytön normaaleja lähtötiloja. Salasanaton OAuth-tili ei tarvitse paikallista salasananvaihtodialogia.
+2. **Suosittele koko tilin vanhenemista natiiviksi yhteiseksi pääsyesteeksi.** Uusi Habitat-kirjautuminen pitäisi torjua, ja nykyisen selainvaltuuden pitäisi päättyä määritellyssä ajassa. Epäselvä tilan luku ei saa avata uutta pääsyä. Tämä tarvitsee ADR:n ennen toteutusta ja valitun eston sekä olemassa olevien yhteyksien katkaisun testit toteutuksen yhteydessä.
 3. **Älä lainaa sshd:n sääntöjä.** `DenyUsers` voi tarkoituksella sulkea SSH:n mutta sallia selaimen. Älä myöskään tulkitse faillock-laskuria yleiseksi käyttäjän sulkemiseksi. Jos operaattori tarvitsee PAM-palvelukohtaisia sääntöjä myös selaimelle, määrittele erillinen Habitat account -palvelu ja sen konteksti; älä kutsu sshd:n pinoa tekaistulla etäosoitteella.
 4. **Erota pääsyn sulku työn tappamisesta.** Expiry tai Habitatin withdraw ei saa hiljaisesti luvata tai tehdä kaikkien Pi-, SSH-, tmux-, editori- ja user-palveluiden lopettamista. Turvallisuuspoikkeaman täydellinen tilin eristäminen on rootin erillinen operaatio. Selaimen relay-yhteydet pitää sen sijaan sulkea, jos niiden valtuus perutaan.
 
@@ -100,7 +106,7 @@ Jatkokokeessa tarvitaan per mekanismi sekä uusi callback että jo avoimen selai
 
 ## Lähteet
 
-Suorat HTTPS-haut onnistuivat; yleistä verkkohakua ei tarvittu. Versiopinnatut lähteet ovat vertailua, eivät väite palvelimen Ubuntu-patchien täydellisestä vastaavuudesta.
+Aiemman osatutkimuksen suorat HTTPS-haut onnistuivat; niitä ei haettu uudelleen tässä viimeistelyssä. Natiivikokeen raakadata ja koekoodi säilytettiin muuttamattomina (`native-probe.jsonl`, `native-probe.py`). Viimeistely tarkisti Habitat-polut paikallisesta lähdekoodista. Versiopinnatut lähteet ovat vertailua, eivät väite palvelimen Ubuntu-patchien täydellisestä vastaavuudesta.
 
 - [shadow(5)](https://man7.org/linux/man-pages/man5/shadow.5.html): salasanakenttä ja erilliset ikä-/expiry-kentät.
 - [passwd(1)](https://man7.org/linux/man-pages/man1/passwd.1.html): `--lock` lukitsee salasanan, ei välttämättä tiliä; SSH-avain mainitaan erikseen.
