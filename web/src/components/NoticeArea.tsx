@@ -13,7 +13,12 @@ import {
 
 /** What a notice is about. A newer notice of the same kind replaces the
  * older; different kinds stack under one +N. */
-export type NoticeKind = "archive" | "trash" | "mode" | "workspace-archive";
+export type NoticeKind =
+  | "archive"
+  | "trash"
+  | "mode"
+  | "workspace-archive"
+  | "workspace-icon";
 
 type Entry = {
   id: string;

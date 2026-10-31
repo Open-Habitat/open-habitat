@@ -1,4 +1,4 @@
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { ArchiveNotice } from "../components/ArchiveNotice";
 import { agentPresentation } from "../components/agentPresentation";
@@ -43,8 +43,65 @@ import {
   localSuggestions,
   previewIcon,
 } from "./workspaceIcons";
-import { useWorkspaceIconWrite } from "./workspaceIconWrite";
+import { commitNotes, useWorkspaceIconWrite } from "./workspaceIconWrite";
 import "./WorkspacePage.css";
+
+/** After an icon choice: what was written to which file and whether it was
+ * committed, Kumoa when there was an icon line to return to, and the way
+ * back to the suggestions. */
+function IconWrittenNotice({
+  written,
+  logo,
+  onUndo,
+  onSuggestions,
+  onClose,
+}: {
+  written: NonNullable<ReturnType<typeof useWorkspaceIconWrite>["written"]>;
+  logo?: string;
+  onUndo: (previous: string) => void;
+  onSuggestions: () => void;
+  onClose: () => void;
+}) {
+  const name =
+    written.value === "auto"
+      ? "automaattinen"
+      : written.value === logo
+        ? "repon logo"
+        : written.value;
+  const problem = commitNotes[written.commit];
+  const detail =
+    written.commit === "unchanged"
+      ? ".open-habitat.yaml sanoi jo tämän, joten mitään ei muutettu."
+      : written.commit === "not_git"
+        ? "Kirjoitettu .open-habitat.yaml-tiedostoon."
+        : written.commit === "committed"
+          ? "Kirjoitettu .open-habitat.yaml-tiedostoon ja commitoitu, ei pushattu."
+          : undefined;
+  const previous = written.previous;
+  return (
+    <ArchiveNotice
+      kind="workspace-icon"
+      wrap
+      message={written.undo ? "Kuvake palautettu:" : "Kuvake:"}
+      title={name}
+      detail={
+        detail ? `${detail} Ehdotukset saa takaisin kuvakkeesta.` : undefined
+      }
+      problem={problem}
+      busy={false}
+      restoreLabel="Kumoa"
+      onRestore={
+        !written.undo &&
+        previous !== undefined &&
+        (written.commit === "committed" || written.commit === "not_git")
+          ? () => onUndo(previous)
+          : undefined
+      }
+      link={{ label: "Ehdotukset", onPress: onSuggestions }}
+      onClose={onClose}
+    />
+  );
+}
 
 export function WorkspacePage({
   workspace,
@@ -182,6 +239,12 @@ export function WorkspacePage({
     workspace.workspace_id,
     csrf,
     suggestWanted,
+    identity,
+  );
+  // One object per page, so the wish field keeps its dictation engine.
+  const speech = useMemo(
+    () => ({ onOpenSettings: () => navigate(settingsHref("sanelu")) }),
+    [navigate],
   );
   const acceptIcon = (value: string) => {
     setSuggestAgain(false);
@@ -387,6 +450,19 @@ export function WorkspacePage({
         />
       ) : null}
       <PendingNote phase={visibilityPhase ?? renamePhase} />
+      {icon && iconWrite.written ? (
+        <IconWrittenNotice
+          written={iconWrite.written}
+          logo={workspace.icon_logo?.path}
+          onUndo={(previous) => void iconWrite.choose(previous, true)}
+          onSuggestions={() => {
+            iconWrite.dismissWritten();
+            setSuggestDismissed(false);
+            setSuggestAgain(true);
+          }}
+          onClose={iconWrite.dismissWritten}
+        />
+      ) : null}
       {icon && iconWrite.note ? (
         <p role="status" data-testid="workspace-icon-note">
           {iconWrite.note}
@@ -425,6 +501,8 @@ export function WorkspacePage({
           onAsk={(wish) => void suggestions.ask(wish)}
           onRound={suggestions.move}
           onOpenSettings={() => navigate(settingsHref("tekoaly"))}
+          csrf={csrf}
+          speech={speech}
           onDismiss={() => {
             setSuggestDismissed(true);
             setSuggestAgain(false);

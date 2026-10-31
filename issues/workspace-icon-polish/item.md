@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: workspace-icons
 lane_seq: 4
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Workspace icons: keep suggestions, dictate the wish, longer model time, say what a choice did
@@ -25,7 +26,7 @@ Jarin havainnot 30.10. (testikone pilot.536, kokeellinen Työtilan kuvake). Jari
 
 ## Acceptance Criteria
 
-- [ ] Ehdotukset säilyvät työtilakohtaisesti käyntien yli (selaimessa tai natiivissa tiedostossa, ei uutta palvelinvarastoa) ja uusitaan vain pyynnöstä.
-- [ ] Toivekentässä on *Sanele*, joka käyttää samaa sanelua kuin kirjoituskenttä.
-- [ ] Aikakatkaisu mitoitettu oikeilla mallien ajoilla (journal kirjaa myös onnistumisen keston), ja hidas malli ei katkea turhaan.
-- [ ] Valinnan jälkeen näkyy lyhyt ilmoitus siitä, mitä kirjoitettiin ja commitoitiin (ja *Kumoa*, jos se on helppo), sekä mistä ehdotukset saa takaisin; selainspec.
+- [x] Ehdotukset säilyvät työtilakohtaisesti käyntien yli (selaimessa tai natiivissa tiedostossa, ei uutta palvelinvarastoa) ja uusitaan vain pyynnöstä.
+- [x] Toivekentässä on *Sanele*, joka käyttää samaa sanelua kuin kirjoituskenttä.
+- [x] Aikakatkaisu mitoitettu oikeilla mallien ajoilla (journal kirjaa myös onnistumisen keston), ja hidas malli ei katkea turhaan.
+- [x] Valinnan jälkeen näkyy lyhyt ilmoitus siitä, mitä kirjoitettiin ja commitoitiin (ja *Kumoa*, jos se on helppo), sekä mistä ehdotukset saa takaisin; selainspec.

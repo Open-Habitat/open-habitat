@@ -1,5 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button as AriaButton, Input } from "react-aria-components";
+import {
+  type ComposerSpeech,
+  DictationControl,
+  DictationNoticeView,
+  useDictation,
+} from "./composer/Dictation";
+import "./composer/composer.css";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { WorkspaceIcon, type WorkspaceIconModel } from "./WorkspaceIcon";
@@ -49,16 +56,17 @@ const failure = {
     "Ehdotuksiin ei löytynyt mallia, johon on kirjautuminen.",
     "Kirjaudu mallipalveluun asetuksista.",
   ],
-  model_timeout: [
-    "Malli ei vastannut 15 sekunnissa.",
-    "Voit yrittää uudelleen.",
-  ],
+  model_timeout: ["Malli ei vastannut ajoissa.", "Voit yrittää uudelleen."],
   model_invalid_response: [
     "Mallin vastauksesta ei saatu kuvaketta.",
     "Voit yrittää uudelleen.",
   ],
   request_failed: ["Ehdotuksia ei saatu.", "Voit yrittää uudelleen."],
 } as const;
+
+/** A wish is one line: a dictation pause makes a paragraph break. */
+const oneLine = (text: string) =>
+  text.replace(/\s+/gu, " ").trim().slice(0, 200);
 
 function Elapsed({ since }: { since: number }) {
   const [now, setNow] = useState(() => Date.now());
@@ -72,9 +80,10 @@ function Elapsed({ since }: { since: number }) {
   ) : null;
 }
 
-/** Five suggested icons with their reasons, a wish field, quick wishes and
- * earlier rounds; one click accepts. The page writes and commits the choice
- * and the row goes away; nothing is announced. */
+/** Five suggested icons with their reasons, a wish field that can be
+ * dictated as the composer's is, quick wishes and earlier rounds; one click
+ * accepts. The page writes and commits the choice, the row goes away and
+ * the page's notice says what was done. */
 export function WorkspaceIconSuggestions({
   model,
   onAccept,
@@ -82,6 +91,8 @@ export function WorkspaceIconSuggestions({
   onRound,
   onDismiss,
   onOpenSettings,
+  csrf,
+  speech,
 }: {
   model: WorkspaceIconSuggestionsModel;
   onAccept: (value: string) => void;
@@ -90,9 +101,44 @@ export function WorkspaceIconSuggestions({
   onDismiss: () => void;
   /** To the model sign-in settings, when no model has credentials. */
   onOpenSettings: () => void;
+  csrf?: string;
+  /** The composer's dictation; without it there is no mic. */
+  speech?: ComposerSpeech;
 }) {
   const [wish, setWish] = useState("");
+  const form = useRef<HTMLFormElement>(null);
+  const field = useRef<HTMLInputElement>(null);
+  // A dictation ended by Ehdota is asked at once; its text does not come
+  // back into the emptied field, and nothing else is asked meanwhile.
+  const asking = useRef(false);
+  const [finishing, setFinishing] = useState(false);
+  const live = useRef(true);
+  useEffect(
+    () => () => {
+      live.current = false;
+    },
+    [],
+  );
+  const dictation = useDictation(
+    speech,
+    csrf,
+    (text) => {
+      if (asking.current) return;
+      setWish(oneLine(text));
+      window.requestAnimationFrame(() => field.current?.focus());
+    },
+    form,
+  );
+  const caret = (): [number, number] => {
+    const el = field.current;
+    return [el?.selectionStart ?? wish.length, el?.selectionEnd ?? wish.length];
+  };
+  const heard = dictation.active && dictation.view;
+  const shown = heard
+    ? `${dictation.before}${heard.final}${heard.interim}${dictation.after}`
+    : wish;
   const loading = model.status === "loading";
+  const busy = loading || finishing;
   const noModel =
     model.status === "failed" && model.reason === "model_unavailable";
   const problem =
@@ -166,7 +212,7 @@ export function WorkspaceIconSuggestions({
                 data-testid="workspace-icon-suggestion"
                 data-local={item.local || undefined}
                 aria-label={`${item.label ?? item.value}: ${item.why}`}
-                isDisabled={loading}
+                isDisabled={busy}
                 onPress={() => onAccept(item.value)}
               >
                 <WorkspaceIcon icon={item.icon} size="m" />
@@ -188,39 +234,76 @@ export function WorkspaceIconSuggestions({
       {noModel ? null : (
         <>
           <form
+            ref={form}
             className="ah-wsis-wish"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              if (loading || !wish.trim()) return;
-              onAsk(wish);
+              if (busy || asking.current) return;
+              // Ehdota while dictating asks with what was said.
+              let said: string | null = null;
+              if (dictation.active) {
+                asking.current = true;
+                setFinishing(true);
+                try {
+                  said = await dictation.stop();
+                } finally {
+                  asking.current = false;
+                  if (live.current) setFinishing(false);
+                }
+                // The row went away while Soniox finished: nothing to ask.
+                if (!live.current) return;
+              }
+              const text = oneLine(said ?? wish);
+              if (!text) return;
+              onAsk(text);
               setWish("");
             }}
           >
             <Input
+              ref={field}
               data-testid="workspace-icon-wish"
               aria-label="Toive mallille"
               placeholder="Toive, esim. kettu, sininen, kirjaimet"
               maxLength={200}
               autoComplete="off"
-              value={wish}
+              readOnly={!!heard}
+              value={shown}
               onChange={(e) => setWish(e.target.value)}
             />
+            {speech && csrf ? (
+              <span className="ah-crow ah-wsis-mic">
+                <DictationControl
+                  dictation={dictation}
+                  text={wish}
+                  caret={caret}
+                  disabled={busy}
+                />
+              </span>
+            ) : null}
             <ControlButton
               data-testid="workspace-icon-wish-send"
               size="row"
               type="submit"
-              isDisabled={loading}
+              isDisabled={busy}
             >
               Ehdota
             </ControlButton>
           </form>
+          {speech ? (
+            <DictationNoticeView
+              dictation={dictation}
+              text={wish}
+              caret={caret}
+              onOpenSettings={speech.onOpenSettings}
+            />
+          ) : null}
           <div className="ah-wsis-quick">
             {quick.map(([value, label]) => (
               <AriaButton
                 key={value}
                 className="ah-wsis-pill"
                 data-testid="workspace-icon-quick"
-                isDisabled={loading}
+                isDisabled={busy}
                 onPress={() => onAsk(value)}
               >
                 {label}

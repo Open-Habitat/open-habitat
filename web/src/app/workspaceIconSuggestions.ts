@@ -3,9 +3,11 @@ import { jsonWrite, writeOutcome } from "./mutations";
 import { validIconSuggestions } from "./snapshot";
 
 // Model-suggested workspace icons (workspace-icons, experimental; Sirut,
-// Jari 2026-10-30). The exchange is this page's state only: the daemon
-// keeps nothing, and leaving the page drops it. Each new wish sends the
-// earlier rounds along, so a refinement ("tummempi") has its context.
+// Jari 2026-10-30). The daemon keeps nothing; this browser keeps the rounds
+// per person and workspace, so a return to the page shows the suggestions
+// already made and the model is asked again only on request (Jari
+// 2026-10-31). Each new wish sends the earlier rounds along, so a
+// refinement ("tummempi") has its context.
 
 export type IconSuggestionFailure =
   | "model_unavailable"
@@ -48,12 +50,105 @@ type Reply = {
 };
 const maxRounds = 3;
 
-/** Asks the person's model for icon suggestions once the row shows, and
- * again for each wish; `active` false stops and forgets the exchange. */
+/** Kept rounds, per web identity and workspace, newest last. */
+const storePrefix = "oh.icon-suggestions.";
+const maxStoredRounds = 8;
+type Stored = { rounds: IconRound[]; seen?: IconSeen };
+
+function storageOf(storage?: Storage) {
+  try {
+    return storage ?? window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+const text = (v: unknown, max: number): v is string =>
+  typeof v === "string" && v.length <= max;
+
+function validRound(v: unknown): v is IconRound {
+  const r = v as IconRound;
+  return (
+    !!r &&
+    typeof r === "object" &&
+    text(r.wish, 200) &&
+    (r.reply === undefined || text(r.reply, 400)) &&
+    text(r.model, 160) &&
+    Array.isArray(r.suggestions) &&
+    r.suggestions.length > 0 &&
+    r.suggestions.length <= 8 &&
+    r.suggestions.every(
+      (s) => !!s && text(s.icon, 300) && !!s.icon && text(s.why, 120),
+    )
+  );
+}
+
+function validSeen(v: unknown): v is IconSeen {
+  const s = v as IconSeen;
+  return (
+    !!s &&
+    typeof s === "object" &&
+    typeof s.readme === "boolean" &&
+    typeof s.start_page === "boolean" &&
+    (s.logo === undefined || text(s.logo, 300)) &&
+    (s.languages === undefined ||
+      (Array.isArray(s.languages) &&
+        s.languages.every(
+          (l) => !!l && text(l.name, 40) && typeof l.percent === "number",
+        )))
+  );
+}
+
+/** The rounds this browser kept for the workspace; anything it cannot read
+ * counts as none. */
+export function readStoredRounds(
+  identity: string,
+  workspaceId: string,
+  storage?: Storage,
+): Stored | undefined {
+  try {
+    const raw = storageOf(storage)?.getItem(
+      `${storePrefix}${identity}.${workspaceId}`,
+    );
+    if (!raw) return undefined;
+    const value = JSON.parse(raw) as Stored;
+    if (!Array.isArray(value?.rounds)) return undefined;
+    const rounds = value.rounds.filter(validRound).slice(-maxStoredRounds);
+    if (!rounds.length) return undefined;
+    return validSeen(value.seen) ? { rounds, seen: value.seen } : { rounds };
+  } catch {
+    return undefined;
+  }
+}
+
+export function storeRounds(
+  identity: string,
+  workspaceId: string,
+  value: Stored,
+  storage?: Storage,
+) {
+  try {
+    storageOf(storage)?.setItem(
+      `${storePrefix}${identity}.${workspaceId}`,
+      JSON.stringify({
+        rounds: value.rounds.slice(-maxStoredRounds),
+        seen: value.seen,
+      }),
+    );
+  } catch {
+    // Storage may be full or refused; the next visit asks the model again.
+  }
+}
+
+/** Shows the kept rounds once the row shows, or asks the person's model
+ * when there are none, and asks again for each wish; `active` false stops
+ * a request on its way. */
 export function useIconSuggestions(
   workspaceId: string,
   csrf: string | undefined,
   active: boolean,
+  /** The web identity the kept rounds belong to; none keeps nothing. */
+  identity?: string,
 ) {
   const [state, setState] = useState<IconSuggestionState>();
   const current = useRef<AbortController | null>(null);
@@ -64,7 +159,9 @@ export function useIconSuggestions(
       current.current?.abort();
       const controller = new AbortController();
       current.current = controller;
-      const trimmed = wish.trim().slice(0, 200);
+      // One line: a dictation pause makes a paragraph break, which the
+      // daemon refuses in a wish.
+      const trimmed = wish.replace(/\s+/gu, " ").trim().slice(0, 200);
       setState((old) => ({
         status: "loading",
         rounds: old?.rounds ?? [],
@@ -108,8 +205,10 @@ export function useIconSuggestions(
           model: reply.model,
           suggestions: reply.suggestions,
         };
-        rounds.current = [...rounds.current, round];
+        rounds.current = [...rounds.current, round].slice(-maxStoredRounds);
         const seen = reply.seen;
+        if (identity)
+          storeRounds(identity, workspaceId, { rounds: rounds.current, seen });
         setState((old) => ({
           status: "done",
           rounds: rounds.current,
@@ -132,20 +231,34 @@ export function useIconSuggestions(
         }));
       }
     },
-    [csrf, workspaceId],
+    [csrf, workspaceId, identity],
   );
-  // One automatic request per visit while the row shows (round 2's
-  // decision); leaving the row or the page forgets the exchange.
+  // The kept rounds, else one automatic request while the row shows; the
+  // next activation reads the kept rounds again, which another tab may
+  // have added to.
   useEffect(() => {
     if (!active || !csrf) return;
-    void ask("");
+    const stored = identity
+      ? readStoredRounds(identity, workspaceId)
+      : undefined;
+    if (stored) {
+      rounds.current = stored.rounds;
+      setState({
+        status: "done",
+        rounds: stored.rounds,
+        at: stored.rounds.length - 1,
+        wish: "",
+        seen: stored.seen,
+        startedAt: Date.now(),
+      });
+    } else void ask("");
     return () => {
       current.current?.abort();
       current.current = null;
       rounds.current = [];
       setState(undefined);
     };
-  }, [active, csrf, ask]);
+  }, [active, csrf, ask, identity, workspaceId]);
   const move = (delta: number) =>
     setState((old) =>
       old

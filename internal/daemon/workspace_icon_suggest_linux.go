@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -33,11 +34,17 @@ var iconHelper string
 // budget and fixed failure codes. The model sees only a bounded set of facts
 // the daemon reads from the workspace; repository text can try to steer it,
 // so every answer is validated here against the icon's flat format, and the
-// worst a hostile README achieves is a poor emoji. Nothing is stored: the
-// exchange lives in the page and ends with it.
+// worst a hostile README achieves is a poor emoji. Nothing is stored here:
+// the page keeps the rounds in the browser.
+//
+// The budget leaves room for a slow provider: gpt-6-luna answers in about
+// three seconds on a good day, but timed out at 15 s on the test server, and
+// a person waits with the elapsed seconds on show rather than being cut off.
+// The journal records every outcome with its duration, so the bound can be
+// revisited from real calls.
 const (
 	WorkspaceIconSuggestionsPath = "/api/v1/workspaces/icon/suggestions"
-	iconSuggestionLimit          = 15 * time.Second
+	iconSuggestionLimit          = 45 * time.Second
 	maxIconSuggestions           = 5
 	maxIconReadme                = 2048
 	maxIconWish                  = 200
@@ -118,9 +125,14 @@ func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 		if suggest == nil {
 			suggest = c.suggestIcons
 		}
+		// The socket server's write timeout is a few seconds; an answer
+		// slower than that would be lost on the way back.
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(iconSuggestionLimit + 5*time.Second))
 		ctx, cancel := context.WithTimeout(r.Context(), iconSuggestionLimit)
 		defer cancel()
+		started := time.Now()
 		model, text, raw, err := suggest(ctx, input)
+		elapsed := time.Since(started).Milliseconds()
 		var suggestions []iconSuggestion
 		if err == nil {
 			suggestions = validIconSuggestions(raw, facts.Logo, append(avoid, current))
@@ -130,11 +142,12 @@ func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 		}
 		if err != nil {
 			reason := titleReason(err)
-			diagnostic.New(os.Stderr, "daemon").Warn("workspace_icon_suggestions", "outcome", "failed", "reason", string(reason))
+			diagnostic.New(os.Stderr, "daemon").Warn("workspace_icon_suggestions", "outcome", "failed", "reason", string(reason), "duration_ms", elapsed)
 			reply["state"], reply["reason"] = "failed", string(reason)
 			historyJSON(w, reply)
 			return
 		}
+		diagnostic.New(os.Stderr, "daemon").Info("workspace_icon_suggestions", "outcome", "done", "model", model, "duration_ms", elapsed)
 		reply["state"], reply["model"], reply["suggestions"] = "done", model, suggestions
 		if text = cleanIconText(text, maxIconReply); text != "" {
 			reply["reply"] = text
@@ -373,7 +386,8 @@ func iconLanguages(root int) []iconLanguage {
 
 // suggestIcons runs the helper as the person with the selected Pi
 // installation: HOME, PATH and USER only, the facts on stdin, stderr
-// swallowed, at most 4 KiB of answer, the request's budget as the deadline.
+// swallowed, at most 4 KiB of answer, the request's budget as the deadline;
+// the helper stops asking two seconds earlier, so it can still say why.
 func (c *ConversationController) suggestIcons(ctx context.Context, input []byte) (string, string, []iconSuggestion, error) {
 	if c.runtime == nil {
 		return "", "", nil, titleModelUnavailable
@@ -382,7 +396,11 @@ func (c *ConversationController) suggestIcons(ctx context.Context, input []byte)
 	if info, err := os.Stat(bridge); err != nil || !info.Mode().IsRegular() {
 		bridge = ""
 	}
-	cmd := exec.CommandContext(ctx, c.runtime.Node, "--input-type=module", "-e", iconHelper, c.runtime.Entry, backgroundModelURL, bridge)
+	budget := 2 * time.Second
+	if deadline, ok := ctx.Deadline(); ok {
+		budget = max(time.Until(deadline)-2*time.Second, time.Second)
+	}
+	cmd := exec.CommandContext(ctx, c.runtime.Node, "--input-type=module", "-e", iconHelper, c.runtime.Entry, backgroundModelURL, bridge, strconv.FormatInt(budget.Milliseconds(), 10))
 	cmd.Env = []string{"HOME=" + c.home, "PATH=/usr/bin:/bin", "USER=" + c.cfg.Username}
 	// The person's home, not a workspace: no project settings of a
 	// repository apply to the model call.

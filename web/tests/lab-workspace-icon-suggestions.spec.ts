@@ -101,7 +101,8 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
   await row.getByTestId("workspace-icon-round-back").click();
   await expect.poll(() => icons(page)).toEqual(["🧭", "🦉", "☀️", "🌿"]);
 
-  // One click accepts: written and committed, the row goes, nothing said.
+  // One click accepts: written and committed, the row goes, and a notice
+  // says so. The first icon line has nothing to go back to: no Kumoa.
   const before = await (
     await page.request.get(`/api/v1/workspaces/git?workspace_id=${id}`)
   ).json();
@@ -119,22 +120,66 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
       .getByTestId("workspace-aurinkokello")
       .getByTestId("workspace-icon"),
   ).toHaveText("🦉");
+  const notice = page.locator(
+    "[data-testid=archive-notice][data-kind=workspace-icon]",
+  );
+  await expect(notice).toBeVisible();
+  await expect(notice.getByTestId("restore-notice")).toHaveCount(0);
   await expect(page.getByTestId("workspace-icon-note")).toHaveCount(0);
-  await expect
-    .poll(async () => {
-      const g = await (
+  const latest = async () =>
+    (
+      await (
         await page.request.get(`/api/v1/workspaces/git?workspace_id=${id}`)
-      ).json();
-      return g.commits[0]?.hash;
-    })
-    .not.toBe(before.commits[0]?.hash);
-  // A set icon has no row; the picker asks the model again on request.
+      ).json()
+    ).commits[0]?.hash as string | undefined;
+  await expect.poll(latest).not.toBe(before.commits[0]?.hash);
+  await shot(page, "valittu");
+
+  // The notice brings the suggestions back: the rounds already made, the
+  // newest on show, without asking the model again.
+  let asked = 0;
+  page.on("request", (r) => {
+    if (r.url().endsWith("/api/v1/workspaces/icon/suggestions")) asked++;
+  });
+  await notice.getByTestId("notice-link").click();
+  await expect(row).toHaveAttribute("data-state", "done");
+  expect(await icons(page)).toEqual(["AK", "A", "AKL"]);
+  await row.getByTestId("workspace-icon-round-back").click();
+  await expect.poll(() => icons(page)).toEqual(["🧭", "🦉", "☀️", "🌿"]);
+  await row.getByTestId("workspace-icon-suggestions-dismiss").click();
+  // A set icon has no row; the picker brings the kept rounds back, also
+  // after a reload, and still without a model call.
   await page.reload();
   await expect(page.getByTestId("workspace-icon-picker")).toBeVisible();
   await expect(row).toHaveCount(0);
   await page.getByTestId("workspace-icon-picker").click();
   await page.getByTestId("workspace-icon-ask-model").click();
   await expect(row).toHaveAttribute("data-state", "done");
+  expect(await icons(page)).toEqual(["AK", "A", "AKL"]);
+  expect(asked).toBe(0);
+  // Toisia is a request: only then is the model asked.
+  await row.getByTestId("workspace-icon-quick").nth(3).click();
+  await expect.poll(() => asked).toBe(1);
+  await expect(row).toHaveAttribute("data-state", "done");
+  await row.getByTestId("workspace-icon-suggestions-dismiss").click();
+
+  // Over an icon line, Kumoa writes the earlier icon back and commits it.
+  const owl = await latest();
+  await page.getByTestId("workspace-icon-picker").click();
+  const dialog = page
+    .getByRole("dialog")
+    .and(page.getByTestId("workspace-icon-dialog"));
+  await dialog.getByTestId("workspace-icon-own").fill("🧮");
+  await dialog.getByTestId("workspace-icon-own-use").click();
+  await expect(head).toHaveText("🧮");
+  await expect(notice.getByTestId("restore-notice")).toBeVisible();
+  await expect.poll(latest).not.toBe(owl);
+  const abacus = await latest();
+  await notice.getByTestId("restore-notice").click();
+  await expect(head).toHaveText("🦉");
+  await expect.poll(latest).not.toBe(abacus);
+  await expect(notice.getByTestId("restore-notice")).toHaveCount(0);
+  page.removeAllListeners("request");
 
   // While the model thinks: placeholders and the reading line; then a
   // timeout keeps the page honest and offers the choices without a model.
@@ -220,4 +265,91 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
   const box = await row.boundingBox();
   expect(box && box.x + box.width).toBeLessThanOrEqual(390);
   await shot(page, "puhelin-sirut");
+});
+
+test("@workspace-icons the wish is dictated with the composer's dictation and asked with what was said", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  // The microphone is a tone and Soniox the host's synthetic one.
+  await page.addInitScript(() => {
+    const devices = navigator.mediaDevices ?? ({} as MediaDevices);
+    Object.defineProperty(navigator, "mediaDevices", { value: devices });
+    devices.getUserMedia = async () => {
+      const context = new AudioContext();
+      const tone = context.createOscillator();
+      const out = context.createMediaStreamDestination();
+      tone.connect(out);
+      tone.start();
+      return out.stream;
+    };
+  });
+  await page.goto("/workspaces");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await page.waitForURL(/\/workspaces/);
+  const headers = await session(page);
+  expect(
+    (
+      await page.request.put("/api/v1/account/preferences", {
+        headers,
+        data: { experimental: { "workspace-icons": true } },
+      })
+    ).ok(),
+  ).toBeTruthy();
+  await page.goto("/settings/speech");
+  await page
+    .getByTestId("speech-key-input")
+    .fill(`snx_proj_${"0".repeat(43)}.${"0".repeat(86)}.00Ab12`);
+  await page.getByTestId("speech-key-save").click();
+  await expect(page.getByTestId("speech-key-source")).toHaveAttribute(
+    "data-source",
+    "own",
+  );
+  await page.goto("/workspaces");
+  await openWorkspace(page, "tilastoharjoitus");
+  const row = page.getByTestId("workspace-icon-suggestions");
+  await expect(row).toHaveAttribute("data-state", "done");
+  await row.getByTestId("workspace-icon-wish").fill("kettu");
+  await row.getByRole("button").and(row.getByTestId("dictation-mic")).click();
+  await expect(row.getByTestId("dictation-stop")).toHaveAttribute(
+    "data-phase",
+    "live",
+  );
+  await expect
+    .poll(
+      async () =>
+        (await (await page.request.get("/fixture/soniox?action=state")).json())
+          .open,
+    )
+    .toBe(1);
+  expect(
+    (
+      await page.request.post("/fixture/soniox?action=say", {
+        // A pause long enough to make a paragraph break in the composer.
+        data: [
+          { text: " sininen", start_ms: 0, end_ms: 400, is_final: true },
+          { text: " pieni", start_ms: 6000, end_ms: 6400, is_final: true },
+        ],
+      })
+    ).status(),
+  ).toBe(204);
+  // What was said shows in the field, after what was written.
+  await expect(row.getByTestId("workspace-icon-wish")).toHaveValue(
+    /^kettu sininen\s*pieni$/,
+  );
+  // Ehdota ends the dictation and asks with the whole wish, on one line.
+  const asked = page.waitForRequest(
+    (r) =>
+      r.url().endsWith("/api/v1/workspaces/icon/suggestions") &&
+      r.method() === "POST",
+  );
+  await row.getByTestId("workspace-icon-wish-send").click();
+  expect((await asked).postDataJSON().wish).toBe("kettu sininen pieni");
+  await expect(row).toHaveAttribute("data-state", "done");
+  await expect(row.getByTestId("workspace-icon-wish")).toHaveValue("");
+  await expect(row.getByTestId("dictation-mic")).toBeVisible();
 });

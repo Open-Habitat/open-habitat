@@ -7,8 +7,8 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-// Leave time to report before the daemon kills this process at 15 s.
-const deadline = Date.now() + 13000;
+// The daemon's budget less the time to report before it kills this process.
+const deadline = Date.now() + (Number(process.argv[4]) || 13000);
 const entry = process.argv[1];
 const runtimePath = join(dirname(entry), 'core', 'model-runtime.js');
 const { ModelRuntime } = await import(pathToFileURL(runtimePath).href);

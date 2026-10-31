@@ -1,0 +1,18 @@
+# Result
+
+All four points are implemented behind the existing *Työtilan kuvake* experimental card.
+
+1. **Suggestions persist.** The browser keeps up to eight rounds per web identity and workspace in localStorage (`oh.icon-suggestions.<identity>.<workspace>`). A return to the page, a reload, the picker's *Ehdotuksia mallilta…* and the notice's *Ehdotukset* show the kept rounds without a model call. The model is asked only when nothing is kept, or for a wish, a quick wish or *Toisia*.
+2. **Sanele in the wish field.** The field uses the composer's `useDictation`/`DictationControl` and its notices (no key → Asetukset › Sanelu). *Ehdota* while dictating ends the dictation and asks with what was said. Paragraph breaks from pauses are folded onto one line, because the daemon refuses a multi-line wish.
+3. **Timeout.** The budget is now 45 s (previously 15 s), and the helper gets the budget minus 2 s. The journal logs every outcome as `workspace_icon_suggestions` with `duration_ms`, plus the model on success. Root cause found along the way: the daemon's socket server has a 5 s `WriteTimeout` and this handler never extended it, so any answer slower than about 5 s was lost and the page showed *Ehdotuksia ei saatu*. That is what Jari saw, rather than the timeout text. The handler now sets its own write deadline, and a real-connection test fails without it. Measured on Birch through the shipped helper with Jari's own credentials: `openai-codex/gpt-6-luna` answered in 2.4–3.1 s (4 runs). The 15 s timeout on the test server was therefore a provider stall, not ordinary latency.
+4. **Notice after a choice.** A top-bar notice (same component as archive) shows the icon and says it was written to `.open-habitat.yaml` and committed (not pushed), or only written (plain directory), or already set. *uncommitted* and *commit_failed* show as a problem and stay until closed. *Ehdotukset* brings the row back. *Kumoa* writes the previous icon back as a new commit.
+
+Review: `/llm-review` (finder gpt-6-astra, verifier claude-fable-5-1) + `/assess-findings`. Three findings were confirmed and fixed: dictation newlines, re-entrant submit while dictation finishes, and an ask after the row was dismissed. One was dropped: a stale undo value under a concurrent write.
+
+## Decisions for later review
+
+- **Where suggestions persist: browser localStorage, keyed by web identity and workspace.** Alternatives: sessionStorage (lost with the tab, which defeats "across visits") or a native file under the workspace or home (a new on-disk format, and per-machine anyway). localStorage follows the account-keys "seen" precedent. Kept rounds survive logout in that browser profile, as those marks do.
+- **Kumoa only when the config already had an icon line.** The suggestion row's usual case has no line yet, and undoing it would mean removing the line or deleting a file the write created. That needs a new daemon "remove icon" write and a contract change. In that case the notice offers *Ehdotukset* and points to the icon instead. Writing `icon: auto` as an undo was rejected because it is not the earlier state: it hides the row for good.
+- **45 s budget.** Measured answers take about 3 s. The bound is wide so that a stalled provider or the Claude-bridge fallback can still answer while the elapsed seconds show. It stays under the gateway's 60 s proxy ceiling. The journal now records durations, so the bound can be revisited from data.
+- **The picker's *Ehdotuksia mallilta…* shows kept rounds rather than asking anew.** The quick *Toisia* and a wish are the explicit refresh.
+- **Timeout text** is now "Malli ei vastannut ajoissa." rather than naming the seconds.

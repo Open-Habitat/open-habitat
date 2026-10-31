@@ -232,3 +232,12 @@
     animation: none;
   }
 }
+/* Sanele beside the wish, as in the composer's row. */
+.ah-wsis-mic.ah-crow {
+  flex: none;
+  padding: 0;
+}
+.ah-wsis-mic.ah-crow .ah-crow-btn,
+.ah-wsis-mic.ah-crow .ah-dictation-pill {
+  min-height: var(--ah-control-row);
+}

@@ -222,3 +222,39 @@ func TestIconHelperUsesPinnedPiRuntime(t *testing.T) {
 	}
 	t.Logf("helper answered in %s", time.Since(started))
 }
+
+// A model slower than the socket server's ordinary write timeout still gets
+// its answer to the page (Jari saw only "Ehdotuksia ei saatu" on 30.10.).
+// A real connection: ResponseRecorder cannot expose a lost response.
+func TestIconSuggestionsSurviveOrdinaryWriteDeadline(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	iconTree(t, filepath.Join(h.root, "src", "project"), map[string]string{"README.md": "# Projekti\n"})
+	c.iconSuggester = func(ctx context.Context, _ []byte) (string, string, []iconSuggestion, error) {
+		if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) < 40*time.Second {
+			t.Errorf("budget too short for a slow model: %v", deadline)
+		}
+		time.Sleep(120 * time.Millisecond)
+		return "synthetic/fixture", "", []iconSuggestion{{"🦉", "viisas"}}, nil
+	}
+	srv := httptest.NewUnstartedServer(c.WorkspaceIconSuggestions())
+	srv.Config.WriteTimeout = 50 * time.Millisecond
+	srv.Start()
+	defer srv.Close()
+	r, err := http.NewRequest("POST", srv.URL+WorkspaceIconSuggestionsPath, strings.NewReader(fmt.Sprintf(`{"schema_version":1,"workspace_id":%q,"wish":"","history":[]}`, h.workspace)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Host = "unix"
+	r.Header.Set("Content-Type", "application/json")
+	response, err := srv.Client().Do(r)
+	if err != nil {
+		t.Fatalf("lost suggestions after the model answered: %v", err)
+	}
+	defer response.Body.Close()
+	var out iconReply
+	if err := json.NewDecoder(response.Body).Decode(&out); err != nil || response.StatusCode != 200 || out.State != "done" || len(out.Suggestions) != 1 {
+		t.Fatalf("%d %+v %v", response.StatusCode, out, err)
+	}
+}
