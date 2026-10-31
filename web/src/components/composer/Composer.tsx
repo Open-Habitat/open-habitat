@@ -14,6 +14,8 @@ import type {
   FilePreview,
 } from "../../app/composerReads";
 import { resolveSkillAlias } from "../../app/composerReads";
+import { useText } from "../../i18n";
+import { composerText } from "../../text/composer";
 import {
   AttachmentChips,
   joinAttachments,
@@ -68,23 +70,11 @@ export const MOD = isMac ? "⌘" : "Ctrl";
 const ALT = isMac ? "⌥" : "Alt";
 
 type Mode = "steer" | "follow_up";
-const MODE: Record<
-  Mode,
-  { label: string; queued: string; long: string; icon: "steer" | "queue" }
-> = {
-  steer: {
-    label: "Ohjaa",
-    queued: "Ohjaus",
-    long: "Agentti saa viestin työn välivaiheessa",
-    icon: "steer",
-  },
-  follow_up: {
-    label: "Työn jälkeen",
-    queued: "Työn jälkeen",
-    long: "viesti lähtee, kun agentin vuoro päättyy",
-    icon: "queue",
-  },
+const modeIcon: Record<Mode, "steer" | "queue"> = {
+  steer: "steer",
+  follow_up: "queue",
 };
+type Text = typeof composerText.fi;
 const other = (m: Mode): Mode => (m === "steer" ? "follow_up" : "steer");
 
 /** A browser action listed with Pi's commands; it runs at once. */
@@ -251,19 +241,8 @@ function useSources(sources: ComposerSources | undefined, open: Open | null) {
   return { commands, files };
 }
 
-const SOURCE: Record<string, string> = {
-  skill: "Taito",
-  prompt: "Pohja",
-  extension: "Laajennus",
-};
-const SCOPE: Record<string, string> = {
-  user: "oma",
-  project: "projekti",
-  builtin: "Agentti",
-  temporary: "istunto",
-};
-
 function commandGroups(
+  t: Text,
   sources: ComposerSources | undefined,
   state: ReturnType<typeof useSources>["commands"],
   query: string,
@@ -273,7 +252,7 @@ function commandGroups(
   const by = <T extends { s: number }>(a: T, b: T) => b.s - a.s;
   if (runsAtStart && sources?.browserActions?.length)
     groups.push({
-      label: "Selain · ajetaan heti",
+      label: t.browserGroup,
       choices: sources.browserActions
         .map((a) => ({ a, s: fuzzyScore(a.name, query) }))
         .filter((x) => x.s > 0)
@@ -283,27 +262,25 @@ function commandGroups(
             type: "command",
             name: a.name,
             description: a.description,
-            tag: "Selain",
+            tag: t.browserTag,
             tone: "browser",
             run: a.run,
           }),
         ),
     });
-  const label = runsAtStart
-    ? "Agentti · lisätään viestin alkuun, ajetaan lähetettäessä"
-    : "Agentti · mainitaan tekstinä";
+  const label = runsAtStart ? t.agentAtStart : t.agentMention;
   if (!state.list) {
     groups.push({
-      label: "Agentti",
+      label: t.agent,
       choices: [
         state.state === "failed"
           ? {
               type: "status",
-              text: "Agentin komentoja ei saatu. Kirjoita komento itse.",
+              text: t.commandsFailed,
             }
           : {
               type: "status",
-              text: "Haetaan agentin komennot ja taidot työtilasta…",
+              text: t.commandsLoading,
               loading: true,
             },
       ],
@@ -331,7 +308,7 @@ function commandGroups(
           type: "command",
           name: c.name,
           description: c.description,
-          tag: `${SOURCE[c.source]} · ${SCOPE[c.scope]}`,
+          tag: `${t.sources[c.source]} · ${t.scopes[c.scope]}`,
           tone: c.source,
           terminalOnly: c.terminal_only,
         }),
@@ -341,6 +318,7 @@ function commandGroups(
 }
 
 function fileGroups(
+  t: Text,
   state: ReturnType<typeof useSources>["files"],
   query: string,
   changedOnly: boolean,
@@ -349,19 +327,15 @@ function fileGroups(
     if (state.state === "failed")
       return [
         {
-          label: "Tiedostot",
-          choices: [
-            { type: "status", text: "Tiedostolistaa ei saatu juuri nyt." },
-          ],
+          label: t.files,
+          choices: [{ type: "status", text: t.filesFailed }],
         },
       ];
     if (!state.list)
       return [
         {
-          label: "Tiedostot",
-          choices: [
-            { type: "status", text: "Haetaan tiedostoja…", loading: true },
-          ],
+          label: t.files,
+          choices: [{ type: "status", text: t.filesLoading, loading: true }],
         },
       ];
   }
@@ -373,7 +347,7 @@ function fileGroups(
   });
   return [
     {
-      label: query ? "Osumat" : changedOnly ? "Muutetut" : "Tiedostot",
+      label: query ? t.matches : changedOnly ? t.changed : t.files,
       choices: files.map(choice),
     },
   ];
@@ -404,7 +378,7 @@ export function Composer({
   shell,
   sources,
   onActivity,
-  idlePlaceholder = "Kirjoita agentille…",
+  idlePlaceholder,
   goals,
   speech,
   onDictating,
@@ -451,6 +425,8 @@ export function Composer({
    * in the draft or not yet sent. */
   onDictating?: (active: boolean) => void;
 }) {
+  const t = useText(composerText);
+  const MODE = t.modes;
   // The draft is what the agent receives: the person's text with one
   // attachment reference per line after it. The field edits only the text;
   // the attachments show as chips (Jari 24.10.2026).
@@ -512,7 +488,7 @@ export function Composer({
           files.length >
           8
       ) {
-        setUploadError("Viestiin voi liittää enintään kahdeksan tiedostoa.");
+        setUploadError(t.tooManyFiles);
         return;
       }
       const controller = new AbortController();
@@ -535,9 +511,7 @@ export function Composer({
       } catch (error) {
         if (!controller.signal.aborted)
           setUploadError(
-            error instanceof Error
-              ? error.message
-              : "Liitteen tallennus epäonnistui.",
+            error instanceof Error ? error.message : t.uploadFailed,
           );
       } finally {
         if (uploadController.current === controller) {
@@ -546,7 +520,7 @@ export function Composer({
         }
       }
     },
-    [csrf, availability.state],
+    [csrf, availability.state, t],
   );
   useEffect(() => {
     if (csrf) setUploading(false);
@@ -589,10 +563,7 @@ export function Composer({
   // An agent stop shows its progress on Stop itself: a row that appears for
   // the fraction of a second a stop takes moves the whole composer twice.
   const agentStopping = stopping === "pending" && working && !!onInterrupt;
-  const commandNotice =
-    shellOn && running
-      ? "Edellinen komento on vielä käynnissä. Pysäytä se ensin."
-      : "";
+  const commandNotice = shellOn && running ? t.previousRunning : "";
   useEffect(() => {
     if (!notice) return;
     const timer = window.setTimeout(() => setNotice(""), 6000);
@@ -603,17 +574,19 @@ export function Composer({
     if (!open) return [];
     if (kindOf(open) === "cmd")
       return commandGroups(
+        t,
         sources,
         commands,
         open.query,
         open.place !== "caret" || open.atStart,
       );
     return fileGroups(
+      t,
       files,
       open.query,
       open.place === "palette" && open.tab === "changed",
     );
-  }, [open, sources, commands, files]);
+  }, [t, open, sources, commands, files]);
   const flat = useMemo(() => flatChoices(groups), [groups]);
   // A selection past the end, or on a status row, moves to the first pickable.
   const sel =
@@ -718,9 +691,7 @@ export function Composer({
     const first = marked[0];
     if (!first || first.type === "status") return;
     if (first.type === "command" && first.terminalOnly) {
-      setNotice(
-        `/${first.name} käyttää agentin päätteen valikkoja, joten sitä ei voi ajaa selaimesta.`,
-      );
+      setNotice(t.terminalOnly(first.name));
       return;
     }
     const o = open;
@@ -812,20 +783,20 @@ export function Composer({
   const stopTarget: { label: string; tip: string; run: () => void } | null =
     working && onInterrupt
       ? {
-          label: "Pysäytä agentti",
-          tip: "Pysäytä agentin työ heti (Esc kentässä)",
+          label: t.stopAgent,
+          tip: t.stopAgentTip,
           run: onInterrupt,
         }
       : running && shell
         ? {
-            label: `Pysäytä komento ${running.command}`,
-            tip: `Pysäytä komento ${running.command} (Esc kentässä)`,
+            label: t.stopCommand(running.command),
+            tip: t.stopCommandTip(running.command),
             run: shell.onStop,
           }
         : onStopWaiting && !working
           ? {
-              label: "Pysäytä: viesti ei lähde",
-              tip: "Pysäytä: viesti ei lähde",
+              label: t.stopUnsent,
+              tip: t.stopUnsent,
               run: onStopWaiting,
             }
           : null;
@@ -867,10 +838,7 @@ export function Composer({
         if (controller.signal.aborted) return;
         text = resolveSkillAlias(content, list.commands);
       } catch {
-        if (!controller.signal.aborted)
-          setNotice(
-            "Taitoja ei saatu tarkistettua. Viestiä ei lähetetty; yritä uudelleen.",
-          );
+        if (!controller.signal.aborted) setNotice(t.skillsUnchecked);
         return;
       } finally {
         resolution.current = null;
@@ -884,19 +852,24 @@ export function Composer({
     } else onSendNow(text);
   };
   const sendLabel = shellOn
-    ? "Aja"
+    ? t.run
     : working
       ? MODE[selectedWorkingMode].label
-      : "Lähetä";
+      : t.send;
   const sendTip = shellOn
     ? running
-      ? "Edellinen komento on vielä käynnissä"
-      : `Aja komento työtilassa ${shell?.workspaceLabel ?? ""} (Enter)`
+      ? t.stillRunning
+      : t.runIn(shell?.workspaceLabel ?? "")
     : working
-      ? `${MODE[selectedWorkingMode].label}: ${MODE[selectedWorkingMode].long} (Enter). ${ALT}+Enter: ${MODE[other(selectedWorkingMode)].label.toLowerCase()}.`
+      ? t.workingTip(
+          MODE[selectedWorkingMode].label,
+          MODE[selectedWorkingMode].long,
+          ALT,
+          MODE[other(selectedWorkingMode)].label.toLowerCase(),
+        )
       : dictating
-        ? "Lopeta sanelu ja lähetä"
-        : "Lähetä (Enter)";
+        ? t.dictateAndSend
+        : t.sendTip;
 
   // ---- keys ----
   const onFieldKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1066,11 +1039,11 @@ export function Composer({
     ? ""
     : kindOf(open) === "cmd"
       ? open.place !== "caret" || open.atStart
-        ? "Komennot ja taidot"
-        : "Mainitse komento: agentti ajaa komennon vain viestin alussa"
+        ? t.commandsAndSkills
+        : t.mentionCommand
       : shellOn
-        ? "Tiedostot · lisätään komentoon polkuna"
-        : `Tiedostot · ${sources?.workspaceName ?? ""}`;
+        ? t.filesToCommand
+        : t.filesIn(sources?.workspaceName ?? "");
   const [popLeft, setPopLeft] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: placement follows the open token.
   useEffect(() => {
@@ -1122,16 +1095,8 @@ export function Composer({
               aria-activedescendant={
                 sel >= 0 ? optionId(listId, sel) : undefined
               }
-              aria-label={
-                open.kind === "cmd"
-                  ? "Hae komentoa tai taitoa"
-                  : "Hae tiedostoa"
-              }
-              placeholder={
-                open.kind === "cmd"
-                  ? "Hae komentoa tai taitoa"
-                  : "Hae tiedostoa"
-              }
+              aria-label={open.kind === "cmd" ? t.searchCommand : t.searchFile}
+              placeholder={open.kind === "cmd" ? t.searchCommand : t.searchFile}
               value={open.query}
               onChange={(e) =>
                 setOpen({ ...open, query: e.target.value, sel: 0 })
@@ -1145,27 +1110,26 @@ export function Composer({
           label={headText}
           groups={groups}
           selected={sel}
-          emptyText={`Ei osumia${open.query ? ` haulle “${open.query}”` : ""}.`}
+          emptyText={t.noMatches(open.query)}
           onPick={accept}
           onHover={(i) => setOpen({ ...open, sel: i })}
         />
         <div className="ah-choice-keys">
           {open.place === "caret" && sel < 0 ? (
             <>
-              <kbd>Tab</kbd> lisää ylimmän · <kbd>↓</kbd> valitsee ·{" "}
-              <kbd>Enter</kbd> lähettää tekstin sellaisenaan · <kbd>Esc</kbd>{" "}
-              sulje
+              <kbd>Tab</kbd> {t.keyAddTop} · <kbd>↓</kbd> {t.keySelects} ·{" "}
+              <kbd>Enter</kbd> {t.keySendsAsIs} · <kbd>Esc</kbd> {t.keyClose}
             </>
           ) : (
             <>
               <kbd>↑</kbd>
-              <kbd>↓</kbd> valitse · <kbd>Enter</kbd> lisää · <kbd>Esc</kbd>{" "}
-              sulje
+              <kbd>↓</kbd> {t.keySelect} · <kbd>Enter</kbd> {t.keyInsert} ·{" "}
+              <kbd>Esc</kbd> {t.keyClose}
               {open.kind === "file" ? (
                 <>
                   {" "}
                   · <kbd>{MOD}</kbd>
-                  <kbd>P</kbd> valitsin
+                  <kbd>P</kbd> {t.keyPicker}
                 </>
               ) : null}
             </>
@@ -1194,11 +1158,11 @@ export function Composer({
       <section
         data-testid="composer-queue"
         className="ah-cq"
-        aria-label="Odottaa agenttia"
+        aria-label={t.waitingForAgent}
       >
         <div className="ah-cq-head">
           <span>
-            Odottaa agenttia{" "}
+            {t.waitingForAgent}{" "}
             {queueKnown ? (
               <span className="ah-cq-n">{queued.length}</span>
             ) : null}
@@ -1208,12 +1172,12 @@ export function Composer({
               data-testid="composer-restore-queue"
               type="button"
               className="ah-cq-restore"
-              title="Ottaa viestit pois agentin jonosta ja palauttaa ne kenttään muokattavaksi. Jo toimitettua ohjausta ei voi ottaa takaisin."
+              title={t.restoreTip}
               disabled={restoreAvailability.state !== "enabled"}
               onClick={onRestoreQueue}
             >
               <Icon name="restore" />
-              <span>Palauta kenttään</span>
+              <span>{t.restore}</span>
             </button>
           ) : null}
         </div>
@@ -1222,7 +1186,7 @@ export function Composer({
             {queued.map((q) => (
               <li key={q.key} className={`ah-cq-row ah-cq-${q.kind}`}>
                 <span className="ah-cq-kind">
-                  <Icon name={MODE[q.kind].icon} />
+                  <Icon name={modeIcon[q.kind]} />
                   {MODE[q.kind].queued}
                 </span>
                 <span className="ah-cq-text">{q.text}</span>
@@ -1230,17 +1194,17 @@ export function Composer({
                   {q.kind === "steer" ? (
                     <>
                       <span className="ah-choice-dot" aria-hidden="true" />
-                      seuraavassa välivaiheessa
+                      {t.atNextStep}
                     </>
                   ) : (
-                    "kun vuoro päättyy"
+                    t.whenTurnEnds
                   )}
                 </span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="ah-cq-unknown">Jonon tila ei tiedossa</p>
+          <p className="ah-cq-unknown">{t.queueUnknown}</p>
         )}
       </section>
     ) : null;
@@ -1255,12 +1219,10 @@ export function Composer({
         {shellExcluded(value) ? "!!" : "!"}
       </span>
       <span className="ah-crow-shelltext">
-        Komento työtilassa <code>{shell?.workspaceLabel}</code>
+        {t.commandIn(<code>{shell?.workspaceLabel}</code>)}
       </span>
       <span data-testid="command-context" className="ah-crow-ctx">
-        {shellExcluded(value)
-          ? "vain sinulle, ei agentille"
-          : "Agentti näkee tulosteen"}
+        {shellExcluded(value) ? t.onlyForYou : t.agentSeesOutput}
       </span>
     </span>
   ) : null;
@@ -1272,12 +1234,8 @@ export function Composer({
       data-composer-list={kind}
       aria-haspopup="listbox"
       aria-expanded={open?.place === "button" && open.kind === kind}
-      aria-label={kind === "cmd" ? "Komennot" : "Tiedosto"}
-      title={
-        kind === "cmd"
-          ? "Komennot ja taidot · kirjoita myös / kentässä"
-          : `Tiedosto · kirjoita myös @ kentässä, ${MOD}+P avaa valitsimen`
-      }
+      aria-label={kind === "cmd" ? t.commands : t.file}
+      title={kind === "cmd" ? t.commandsTip : t.fileTip(MOD)}
       disabled={fieldDisabled || dictating}
       onMouseDown={(e) => {
         lastCaret.current = fieldCaret();
@@ -1287,7 +1245,7 @@ export function Composer({
     >
       <Icon name={kind === "cmd" ? "slash" : "at"} />
       <span className="ah-crow-lbl">
-        {kind === "cmd" ? "Komennot" : "Tiedosto"}
+        {kind === "cmd" ? t.commands : t.file}
       </span>
     </button>
   );
@@ -1295,8 +1253,8 @@ export function Composer({
   const placeholder = shellOn
     ? ""
     : !working
-      ? idlePlaceholder
-      : `${selectedWorkingMode === "steer" ? "Ohjaa agenttia" : "Kirjoita, mitä agentti tekee työn jälkeen"}… · ${ALT}+Enter: ${MODE[other(selectedWorkingMode)].label.toLowerCase()}`;
+      ? (idlePlaceholder ?? t.idlePlaceholder)
+      : `${selectedWorkingMode === "steer" ? t.steerPlaceholder : t.followUpPlaceholder}… · ${ALT}+Enter: ${MODE[other(selectedWorkingMode)].label.toLowerCase()}`;
 
   const rowAids = (
     <>
@@ -1327,15 +1285,22 @@ export function Composer({
         data-mode={selectedWorkingMode}
         type="button"
         className={`ah-crow-chip ah-crow-chip-${selectedWorkingMode}`}
-        aria-label={`Viestin tapa: ${MODE[selectedWorkingMode].label}. Vaihda: ${MODE[other(selectedWorkingMode)].label}`}
-        title={`${MODE[selectedWorkingMode].label}: ${MODE[selectedWorkingMode].long}. Vaihda: ${ALT}+Enter lähettää kerran toisella tavalla.`}
+        aria-label={t.modeLabel(
+          MODE[selectedWorkingMode].label,
+          MODE[other(selectedWorkingMode)].label,
+        )}
+        title={t.modeTip(
+          MODE[selectedWorkingMode].label,
+          MODE[selectedWorkingMode].long,
+          ALT,
+        )}
         onClick={() => onModeChange(other(selectedWorkingMode))}
       >
-        <Icon name={MODE[selectedWorkingMode].icon} />
+        <Icon name={modeIcon[selectedWorkingMode]} />
         <span>{MODE[selectedWorkingMode].label}</span>
         {selectedWorkingMode === "follow_up" ? (
           // A phone's row has room for the short label only.
-          <span className="ah-crow-chip-short">Jälkeen</span>
+          <span className="ah-crow-chip-short">{t.followUpShort}</span>
         ) : null}
         <Icon name="swap" className="ah-crow-swap" />
       </button>
@@ -1344,11 +1309,7 @@ export function Composer({
     running && !working ? (
       <span
         className="ah-crow-run"
-        title={
-          running.state === "held"
-            ? "Odottaa agentin käynnistymistä"
-            : "Komento ajossa"
-        }
+        title={running.state === "held" ? t.waitingForStart : t.commandRunning}
       >
         <span className="ah-crow-bang" aria-hidden="true">
           {running.excludeFromContext ? "!!" : "!"}
@@ -1356,7 +1317,7 @@ export function Composer({
         <code>{running.command}</code>
         <span className="ah-crow-clock">
           {running.state === "held" || running.startedAt === undefined
-            ? "odottaa"
+            ? t.waiting
             : mmss(now - running.startedAt)}
         </span>
       </span>
@@ -1409,7 +1370,7 @@ export function Composer({
   return (
     <section
       className={`ah-composer${!draftValue.trim() && availability.state === "enabled" ? " ah-composer-empty" : ""}${suppressAvailabilityReason ? " ah-composer-notice-explains-block" : ""}`}
-      aria-label="Kirjoita viesti"
+      aria-label={t.writeMessage}
     >
       {queueCard}
       {goal ? (
@@ -1454,7 +1415,7 @@ export function Composer({
               event.target.value = "";
             }}
           />
-          {uploading ? <p role="status">Tallennetaan liitettä…</p> : null}
+          {uploading ? <p role="status">{t.savingAttachment}</p> : null}
           {uploadError ? <p role="alert">{uploadError}</p> : null}
         </>
       ) : null}
@@ -1470,7 +1431,7 @@ export function Composer({
           data-working={working}
           ref={field}
           className="ah-cbox-field"
-          aria-label="Viesti agentille"
+          aria-label={t.messageToAgent}
           aria-describedby={shellOn ? shellLabelId : undefined}
           aria-autocomplete={sources ? "list" : undefined}
           aria-controls={open && open.place === "caret" ? listId : undefined}
@@ -1565,7 +1526,7 @@ export function Composer({
           className="ah-visually-hidden"
           role="status"
         >
-          Keskeytetään…
+          {t.stopping}
         </p>
       ) : stopping || commandNotice || notice ? (
         <p
@@ -1577,12 +1538,12 @@ export function Composer({
           {stopping === "pending" ? (
             <>
               <span className="ah-command-spinner" aria-hidden="true" />{" "}
-              Keskeytetään…
+              {t.stopping}
             </>
           ) : stopping === "uncertain" ? (
-            "Työn päättymistä ei tiedetä. Tarkista tila."
+            t.stopUncertain
           ) : stopping === "rejected" ? (
-            "Pysäytystä ei hyväksytty. Agentti jatkaa työtä."
+            t.stopRejected
           ) : (
             commandNotice || notice
           )}
@@ -1598,8 +1559,8 @@ export function Composer({
       ) : null}
       {sendState === "rejected" ? (
         <InlineNotice
-          title="Viesti hylättiin"
-          description="Teksti säilytettiin. Korjaa syy ja lähetä tarkoituksella uudelleen."
+          title={t.rejectedTitle}
+          description={t.rejectedDetail}
           tone="danger"
         />
       ) : null}

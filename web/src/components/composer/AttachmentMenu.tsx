@@ -1,5 +1,7 @@
 import { type RefObject, useState } from "react";
 import { Dialog, DialogTrigger, Popover } from "react-aria-components";
+import { useText } from "../../i18n";
+import { attachmentMenuText } from "../../text/attachmentMenu";
 import { ControlButton } from "../ControlElements";
 import { Icon } from "../Icon";
 import "./AttachmentMenu.css";
@@ -14,6 +16,7 @@ export function AttachmentMenu({
   onAttach: () => void;
   anchorRef?: RefObject<HTMLDivElement | null>;
 }) {
+  const t = useText(attachmentMenuText);
   const [open, setOpen] = useState(false);
   const attach = () => {
     setOpen(false);
@@ -25,11 +28,11 @@ export function AttachmentMenu({
         size="inline"
         data-testid="attach-file"
         className="ah-crow-btn"
-        aria-label="Lisää liite"
+        aria-label={t.add}
         isDisabled={disabled}
       >
         <Icon name="paperclip" />
-        <span className="ah-crow-lbl">Liitä</span>
+        <span className="ah-crow-lbl">{t.attach}</span>
       </ControlButton>
       <Popover
         triggerRef={anchorRef}
@@ -39,7 +42,7 @@ export function AttachmentMenu({
       >
         <Dialog
           aria-modal="true"
-          aria-label="Lisää keskusteluun"
+          aria-label={t.dialog}
           className="ah-attachment-dialog"
           data-testid="attachment-panel"
         >
@@ -48,7 +51,7 @@ export function AttachmentMenu({
             presentation="icon"
             className="ah-attachment-close"
             data-testid="attachment-close"
-            aria-label="Sulje liitevalikko"
+            aria-label={t.close}
             onPress={() => setOpen(false)}
           >
             ×
@@ -59,9 +62,9 @@ export function AttachmentMenu({
               data-testid="attachment-single"
               onPress={attach}
             >
-              Tiedosto liitteenä…
+              {t.file}
             </ControlButton>
-            <p>Liite lähettää valitsemasi tiedoston.</p>
+            <p>{t.fileNote}</p>
           </div>
         </Dialog>
       </Popover>

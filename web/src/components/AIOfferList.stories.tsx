@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import type { AIOffer } from "../app/onboardingConfig";
+import { currentLanguage } from "../i18n";
 import { AIOfferList, type AIOption, suggestionOf } from "./AIOfferList";
 import { Button } from "./Primitives";
 
@@ -21,7 +22,15 @@ function Offer({ offer }: { offer: AIOffer }) {
           <Button
             size="row"
             variant="secondary"
-            label={o.key ? "Tallenna avain" : "Kirjaudu…"}
+            label={
+              currentLanguage() === "en"
+                ? o.key
+                  ? "Save key"
+                  : "Sign in…"
+                : o.key
+                  ? "Tallenna avain"
+                  : "Kirjaudu…"
+            }
             onPress={() => {}}
           />
         )}

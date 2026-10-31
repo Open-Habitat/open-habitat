@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { type ReactNode, useState } from "react";
 import type { FilePreview } from "../../app/composerReads";
+import { textNow } from "../../i18n";
+import { composerText } from "../../text/composer";
 import { type ChoiceGroup, ChoiceList } from "./ChoiceList";
 import { CommandRun } from "./CommandRun";
 import { Composer, type ComposerSources } from "./Composer";
@@ -329,45 +331,47 @@ export const PhoneWhilePiWorks: Story = {
   ),
 };
 
-const commandGroups: ChoiceGroup[] = [
+// The lists in the toolbar's language; a language change remounts the story.
+const t = () => textNow(composerText);
+const commandGroups = (): ChoiceGroup[] => [
   {
-    label: "Agentti · lisätään viestin alkuun, ajetaan lähetettäessä",
+    label: t().agentAtStart,
     choices: [
       {
         type: "command",
         name: "review",
         description: "Review the working-tree diff before committing",
-        tag: "Pohja · oma",
+        tag: `${t().sources.prompt} · ${t().scopes.user}`,
         tone: "prompt",
       },
       {
         type: "command",
         name: "skill:git-commit",
         description: "Stage and commit working-tree changes.",
-        tag: "Taito · oma",
+        tag: `${t().sources.skill} · ${t().scopes.user}`,
         tone: "skill",
       },
       {
         type: "command",
         name: "mcp",
         description: "Manage MCP servers",
-        tag: "Laajennus · Pi",
+        tag: `${t().sources.extension} · ${t().scopes.builtin}`,
         tone: "extension",
         terminalOnly: true,
       },
     ],
   },
 ];
-const fileGroups: ChoiceGroup[] = [
+const fileGroups = (): ChoiceGroup[] => [
   {
-    label: "Muutetut",
+    label: t().changed,
     choices: [
       { type: "file", path: "scripts/status_rows.py", git: "modified" },
       { type: "file", path: "notes/2026-10-13-status.md", git: "untracked" },
     ],
   },
   {
-    label: "Tiedostot",
+    label: t().files,
     choices: [
       { type: "file", path: "README.md" },
       { type: "file", path: "pyproject.toml" },
@@ -389,13 +393,13 @@ export const CaretCommandList: Story = {
   render: () => (
     <Frame>
       <Pop>
-        <div className="ah-choice-head">Komennot ja taidot</div>
+        <div className="ah-choice-head">{t().commandsAndSkills}</div>
         <ChoiceList
           id="story-cmds"
-          label="Komennot ja taidot"
-          groups={commandGroups}
+          label={t().commandsAndSkills}
+          groups={commandGroups()}
           selected={0}
-          emptyText="Ei osumia."
+          emptyText={t().noMatches("")}
           onPick={noop}
         />
       </Pop>
@@ -406,24 +410,24 @@ export const CommandListWhileHelperLoads: Story = {
   render: () => (
     <Frame>
       <Pop>
-        <div className="ah-choice-head">Komennot ja taidot</div>
+        <div className="ah-choice-head">{t().commandsAndSkills}</div>
         <ChoiceList
           id="story-loading"
-          label="Komennot ja taidot"
+          label={t().commandsAndSkills}
           groups={[
             {
-              label: "Pi",
+              label: t().agent,
               choices: [
                 {
                   type: "status",
-                  text: "Haetaan agentin komennot ja taidot työtilasta…",
+                  text: t().commandsLoading,
                   loading: true,
                 },
               ],
             },
           ]}
           selected={-1}
-          emptyText="Ei osumia."
+          emptyText={t().noMatches("")}
           onPick={noop}
         />
       </Pop>
@@ -434,13 +438,13 @@ export const CaretFileList: Story = {
   render: () => (
     <Frame>
       <Pop>
-        <div className="ah-choice-head">Tiedostot · aurinkokello</div>
+        <div className="ah-choice-head">{t().filesIn("aurinkokello")}</div>
         <ChoiceList
           id="story-files"
-          label="Tiedostot"
-          groups={fileGroups}
+          label={t().files}
+          groups={fileGroups()}
           selected={0}
-          emptyText="Ei osumia."
+          emptyText={t().noMatches("")}
           onPick={noop}
         />
       </Pop>
@@ -460,7 +464,7 @@ export const PalettePickingTwoFiles: Story = {
       listId="story-palette"
       tab="changed"
       query=""
-      groups={[fileGroups[0]]}
+      groups={[fileGroups()[0]]}
       selected={0}
       marks={new Set(["scripts/status_rows.py", "notes/2026-10-13-status.md"])}
       shell={false}

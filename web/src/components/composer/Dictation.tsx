@@ -16,6 +16,8 @@ import {
   warnAtMs,
 } from "../../app/dictation";
 import { mintSpeechSession, type SpeechFailure } from "../../app/speech";
+import { liveText, useLanguage, useText } from "../../i18n";
+import { dictationText } from "../../text/dictation";
 import { Icon } from "../Icon";
 import {
   type DictationShortcut,
@@ -34,6 +36,9 @@ export type ComposerSpeech = {
 
 const holdMs = 500;
 
+const txt = liveText(dictationText);
+type Text = typeof dictationText.fi;
+
 const isMac =
   typeof navigator !== "undefined" &&
   /Mac|iPhone|iPad/.test(navigator.platform);
@@ -51,14 +56,20 @@ export function useDictationShortcut(): DictationShortcut {
       live = false;
     };
   }, []);
-  return useMemo(() => dictationShortcutFor({ mac: isMac, layout }), [layout]);
+  // The Mac's alternative is named in the interface's language.
+  const language = useLanguage();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the language renames the alternative.
+  return useMemo(
+    () => dictationShortcutFor({ mac: isMac, layout }),
+    [layout, language],
+  );
 }
 
 /** "Enter, Esc tai ⌘§": a list of keys the way the hint reads it. */
 function either(keys: string[]) {
   return keys.length < 2
     ? (keys[0] ?? "")
-    : `${keys.slice(0, -1).join(", ")} tai ${keys.at(-1)}`;
+    : txt.or(keys.slice(0, -1).join(", "), keys.at(-1) ?? "");
 }
 
 /** Where a dictation writes: the selection it replaces or the caret. */
@@ -97,12 +108,14 @@ function mmss(ms: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+/** Its words are read when it shows, in the language of that moment. */
 export type DictationNotice = {
   id: SpeechFailure | "ceiling" | "dropped" | "cancelled";
   tone: "info" | "danger";
-  title: string;
-  /** Omitted when the title and the action already say it all. */
-  text?: string;
+  /** Why a dropped dictation was cut off. */
+  failure?: SpeechFailure;
+  /** How far a dropped dictation got. */
+  elapsedMs?: number;
   actions: ("settings" | "retry" | "resume" | "restore")[];
 };
 
@@ -111,9 +124,44 @@ export type DictationNotice = {
 const cancelledNotice: DictationNotice = {
   id: "cancelled",
   tone: "info",
-  title: "Sanelu peruttu",
   actions: ["restore"],
 };
+
+/** A notice's title and its text, which is omitted when the title and the
+ * action already say it all. */
+function noticeWords(
+  n: DictationNotice,
+  t: Text,
+): { title: string; text?: string } {
+  switch (n.id) {
+    case "cancelled":
+      return { title: t.cancelled };
+    case "ceiling":
+      return { title: t.ceilingTitle, text: t.ceilingText };
+    case "dropped":
+      return {
+        title:
+          n.failure === "speech_key_rejected"
+            ? t.droppedKey
+            : n.failure === "speech_limit_reached"
+              ? t.droppedLimit
+              : t.droppedConnection,
+        text: t.droppedText(mmss(n.elapsedMs ?? 0)),
+      };
+    case "speech_key_missing":
+      return { title: t.keyMissing };
+    case "microphone_denied":
+      return { title: t.micDenied, text: t.micDeniedText };
+    case "speech_key_rejected":
+      return { title: t.keyRejected, text: t.keyRejectedText };
+    case "speech_limit_reached":
+      return { title: t.limitReached, text: t.limitReachedText };
+    case "unsupported":
+      return { title: t.unsupported, text: t.unsupportedText };
+    default:
+      return { title: t.unavailable, text: t.unavailableText };
+  }
+}
 
 function noticeFor(view: DictationView): DictationNotice | null {
   if (
@@ -127,21 +175,14 @@ function noticeFor(view: DictationView): DictationNotice | null {
     return {
       id: "ceiling",
       tone: "info",
-      title: "Sanelu päättyi 10 minuutin kattoon",
-      text: "Kaikki sanottu on kentässä.",
       actions: ["resume"],
     };
   if (view.ended === "dropped")
     return {
       id: "dropped",
       tone: "danger",
-      title:
-        view.failure === "speech_key_rejected"
-          ? "Sanelu katkesi: Soniox ei enää hyväksy avainta"
-          : view.failure === "speech_limit_reached"
-            ? "Sanelu katkesi: Soniox-avaimen käyttöraja täyttyi"
-            : "Sanelu katkesi: yhteys Sonioxiin ei palannut",
-      text: `Teksti ${mmss(view.elapsedMs)} asti on kentässä. Viimeiset sanat voivat olla epätarkkoja.`,
+      failure: view.failure,
+      elapsedMs: view.elapsedMs,
       actions: ["resume"],
     };
   switch (view.failure) {
@@ -149,47 +190,36 @@ function noticeFor(view: DictationView): DictationNotice | null {
       return {
         id: view.failure,
         tone: "info",
-        title: "Sanelu tarvitsee Soniox-avaimen",
         actions: ["settings"],
       };
     case "microphone_denied":
       return {
         id: view.failure,
         tone: "danger",
-        title: "Selain ei antanut mikrofonia",
-        text: "Salli mikrofoni osoiterivin lukkokuvakkeesta ja yritä uudelleen.",
         actions: ["retry"],
       };
     case "speech_key_rejected":
       return {
         id: view.failure,
         tone: "danger",
-        title: "Soniox ei hyväksy avainta",
-        text: "Avain on väärä tai peruttu. Tallenna uusi avain asetuksissa.",
         actions: ["settings"],
       };
     case "speech_limit_reached":
       return {
         id: view.failure,
         tone: "danger",
-        title: "Soniox-avaimen käyttöraja on täynnä",
-        text: "Yritä hetken päästä uudelleen tai lisää oma avain asetuksissa.",
         actions: ["retry", "settings"],
       };
     case "unsupported":
       return {
         id: view.failure,
         tone: "danger",
-        title: "Tämä selain ei pysty saneluun",
-        text: "Kokeile toista selainta.",
         actions: [],
       };
     default:
       return {
         id: "speech_unavailable",
         tone: "danger",
-        title: "Soniox ei vastaa",
-        text: "Sanelu ei alkanut. Yritä hetken päästä uudelleen.",
         actions: ["retry"],
       };
   }
@@ -398,6 +428,7 @@ function MicButton({
   disabled: boolean;
   shortcut: DictationShortcut;
 }) {
+  const t = useText(dictationText);
   const pressed = useRef(false);
   const tip = useId();
   return (
@@ -405,7 +436,7 @@ function MicButton({
       type="button"
       data-testid="dictation-mic"
       className="ah-crow-btn ah-dictation-mic"
-      aria-label="Sanele"
+      aria-label={t.dictate}
       aria-keyshortcuts={shortcut.aria}
       aria-describedby={tip}
       disabled={disabled}
@@ -424,15 +455,14 @@ function MicButton({
       }}
     >
       <Icon name="mic" />
-      <span className="ah-crow-lbl">Sanele</span>
+      <span className="ah-crow-lbl">{t.dictate}</span>
       <span
         id={tip}
         role="tooltip"
         data-testid="dictation-mic-tip"
         className="ah-dictation-tip"
       >
-        <kbd>{either(shortcut.labels)}</kbd> · napauta aloittaaksesi, pidä
-        pohjassa puhuaksesi
+        {t.micTip(<kbd>{either(shortcut.labels)}</kbd>)}
       </span>
     </button>
   );
@@ -462,20 +492,20 @@ function useFocusOnStart(
 function stateLabel(
   view: DictationView,
   holding: boolean,
-  connecting = "kuuntelee · yhdistää…",
+  connecting = txt.listeningConnecting,
 ) {
   const paused = view.phase === "live" && view.quietMs >= 2000;
   return view.phase === "reconnecting"
-    ? "Yhdistetään uudelleen…"
+    ? txt.reconnecting
     : view.phase === "finishing"
-      ? "Viimeistellään…"
+      ? txt.finishing
       : holding
-        ? "päästä irti, niin sanelu loppuu"
+        ? txt.letGo
         : paused
-          ? `tauko ${mmss(view.quietMs)}`
+          ? txt.pause(mmss(view.quietMs))
           : view.phase === "connecting"
             ? connecting
-            : "kuuntelee";
+            : txt.listening;
 }
 
 /** The mic at rest, or a recording pill in its place while dictating: the
@@ -493,6 +523,7 @@ export function DictationControl({
   caret: () => Caret;
   disabled: boolean;
 }) {
+  const t = useText(dictationText);
   const shortcut = useDictationShortcut();
   const pill = useRef<HTMLButtonElement>(null);
   const { view, active, holding } = dictation;
@@ -511,7 +542,7 @@ export function DictationControl({
   // stream to Soniox opens, so the dictation listens from the start.
   const listening = view.phase === "live" || view.phase === "connecting";
   const paused = view.phase === "live" && view.quietMs >= 2000;
-  const label = stateLabel(view, holding, "kuuntelee");
+  const label = stateLabel(view, holding, t.listening);
   const bars = [0.55, 0.85, 1, 0.75, 0.6];
   return (
     <button
@@ -521,9 +552,9 @@ export function DictationControl({
       data-testid="dictation-stop"
       data-phase={view.phase}
       className={`ah-dictation-pill${listening ? "" : " busy"}${paused ? " paused" : ""}${holding ? " hold" : ""}`}
-      aria-label={`Lopeta sanelu, ${mmss(view.elapsedMs)}`}
+      aria-label={t.stopAt(mmss(view.elapsedMs))}
       aria-keyshortcuts={`Enter ${shortcut.aria}`}
-      title={`Lopeta sanelu (${either(["Enter", ...shortcut.labels])}). Teksti jää kenttään; Esc peruu.`}
+      title={t.stopTip(either(["Enter", ...shortcut.labels]))}
       onClick={() => void dictation.stop()}
     >
       <span className="ah-dictation-dot" aria-hidden="true" />
@@ -542,7 +573,7 @@ export function DictationControl({
       <span className="ah-dictation-state">{label}</span>
       <span className="ah-dictation-done">
         <Icon name="check" />
-        <span>Valmis</span>
+        <span>{t.done}</span>
       </span>
     </button>
   );
@@ -564,6 +595,7 @@ export function DictationBar({
   dictation: DictationState;
   onCancel: () => void;
 }) {
+  const t = useText(dictationText);
   const { view, holding } = dictation;
   const listening = view?.phase === "live" || view?.phase === "connecting";
   const level = useRef(0);
@@ -586,15 +618,15 @@ export function DictationBar({
       data-phase={view.phase}
       className={`ah-dictation-bar${listening ? "" : " busy"}${paused ? " paused" : ""}`}
       role="group"
-      aria-label={`Sanelu, ${mmss(view.elapsedMs)}`}
+      aria-label={t.dictationAt(mmss(view.elapsedMs))}
     >
       <button
         type="button"
         data-testid="dictation-cancel"
         className="ah-dictation-cancel"
-        aria-label="Peru sanelu: kenttä palaa ennalleen"
+        aria-label={t.cancel}
         aria-keyshortcuts="Escape"
-        title="Peru sanelu (Esc): kenttä palaa ennalleen"
+        title={t.cancelTip}
         disabled={finishing}
         onClick={onCancel}
       >
@@ -615,7 +647,8 @@ export function DictationBar({
         ))}
       </span>
       <span className="ah-dictation-hint" aria-hidden="true">
-        <kbd>Enter</kbd>valmis
+        <kbd>Enter</kbd>
+        {t.doneKey}
       </span>
     </div>
   );
@@ -636,6 +669,7 @@ export function DictationSlotControl({
   caret: () => Caret;
   disabled: boolean;
 }) {
+  const t = useText(dictationText);
   const shortcut = useDictationShortcut();
   const done = useRef<HTMLButtonElement>(null);
   const { view, active } = dictation;
@@ -658,10 +692,10 @@ export function DictationSlotControl({
       data-testid="dictation-stop"
       data-phase={view.phase}
       className="ah-dictation-finish"
-      aria-label="Valmis: lopeta sanelu, teksti jää kenttään"
+      aria-label={t.finish}
       aria-keyshortcuts={`Enter ${shortcut.aria}`}
       aria-busy={finishing || undefined}
-      title={`Valmis: teksti jää kenttään (${either(["Enter", ...shortcut.labels])})`}
+      title={t.finishTip(either(["Enter", ...shortcut.labels]))}
       onClick={() => void dictation.stop()}
     >
       {finishing ? (
@@ -669,7 +703,7 @@ export function DictationSlotControl({
       ) : (
         <Icon name="check" />
       )}
-      <span className="ah-crow-lbl">Valmis</span>
+      <span className="ah-crow-lbl">{t.done}</span>
     </button>
   );
 }
@@ -677,6 +711,7 @@ export function DictationSlotControl({
 /** The field while dictating: what was written, with the confirmed text and
  * the still-changing guess dimmed after it at the caret. */
 export function DictationLive({ dictation }: { dictation: DictationState }) {
+  const t = useText(dictationText);
   const caret = useRef<HTMLSpanElement>(null);
   const view = dictation.view;
   // biome-ignore lint/correctness/useExhaustiveDependencies: follow new words.
@@ -695,8 +730,8 @@ export function DictationLive({ dictation }: { dictation: DictationState }) {
       tabIndex={0}
       aria-readonly="true"
       aria-multiline="true"
-      aria-label="Sanelu"
-      data-placeholder="Puhu, teksti tulee tähän…"
+      aria-label={t.dictation}
+      data-placeholder={t.speak}
     >
       {dictation.before}
       <span data-testid="dictation-final">{view.final}</span>
@@ -714,6 +749,7 @@ export function DictationLive({ dictation }: { dictation: DictationState }) {
 
 /** Above the field: the ceiling approaching. */
 export function DictationCeiling({ view }: { view: DictationView | null }) {
+  const t = useText(dictationText);
   if (
     !view ||
     (view.phase !== "live" && view.phase !== "reconnecting") ||
@@ -729,8 +765,8 @@ export function DictationCeiling({ view }: { view: DictationView | null }) {
     >
       <Icon name="clock" />
       <span>
-        <strong>Sanelu päättyy {mmss(left)} kuluttua</strong>{" "}
-        <span className="ah-dictation-sub">Kaikki sanottu jää kenttään.</span>
+        <strong>{t.endsIn(mmss(left))}</strong>{" "}
+        <span className="ah-dictation-sub">{t.allStays}</span>
       </span>
     </div>
   );
@@ -748,14 +784,11 @@ export function DictationNoticeView({
   caret: () => Caret;
   onOpenSettings: () => void;
 }) {
+  const t = useText(dictationText);
   const n = dictation.notice;
   if (!n) return null;
-  const labels = {
-    settings: "Avaa asetukset",
-    retry: "Yritä uudelleen",
-    resume: "Jatka sanelua",
-    restore: "Palauta",
-  };
+  const labels = t.actions;
+  const words = noticeWords(n, t);
   return (
     <div
       data-testid="dictation-notice"
@@ -765,8 +798,8 @@ export function DictationNoticeView({
     >
       <Icon name={n.tone === "danger" ? "warning" : "info"} />
       <div className="ah-dictation-notice-body">
-        <strong>{n.title}</strong>
-        {n.text ? <p>{n.text}</p> : null}
+        <strong>{words.title}</strong>
+        {words.text ? <p>{words.text}</p> : null}
         {n.actions.length ? (
           <div className="ah-dictation-notice-acts">
             {n.actions.map((action, i) => (
@@ -793,7 +826,7 @@ export function DictationNoticeView({
         type="button"
         data-testid="dictation-dismiss"
         className="ah-dictation-x"
-        aria-label="Sulje ilmoitus"
+        aria-label={t.closeNotice}
         onClick={dictation.dismiss}
       >
         <Icon name="cross" />

@@ -1,7 +1,11 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import schema from "../../../contracts/v1/attachments.schema.json";
+import { liveText } from "../i18n";
+import { attachmentsText } from "../text/attachments";
 import { mutationFetch, writeOutcome } from "./mutations";
+
+const txt = liveText(attachmentsText);
 
 type UploadedAttachment = {
   schema_version: 1;
@@ -25,8 +29,7 @@ export async function uploadAttachment(
   csrf: string,
   signal: AbortSignal,
 ) {
-  if (!file.size || file.size > attachmentLimit)
-    throw new Error("Valitse 1 tavun – 20 MiB:n tiedosto.");
+  if (!file.size || file.size > attachmentLimit) throw new Error(txt.size);
   const response = await mutationFetch(
     "attachment.upload",
     "/api/v1/attachments",
@@ -44,17 +47,13 @@ export async function uploadAttachment(
   );
   const outcome = await writeOutcome(response);
   if (outcome.kind !== "ok")
-    throw new Error(
-      outcome.kind === "refused"
-        ? "Liitettä ei tallennettu. Tarkista koko ja vapaa tila."
-        : "Liitteen tallennusta ei voitu vahvistaa. Älä lähetä viestiä ennen tarkistusta.",
-    );
+    throw new Error(outcome.kind === "refused" ? txt.refused : txt.uncertain);
   if (
     response.headers.get("content-type")?.split(";")[0] !== "application/json"
   )
-    throw new Error("Liitteen vastaus ei kelpaa.");
+    throw new Error(txt.badReply);
   const reader = response.body?.getReader();
-  if (!reader) throw new Error("Liitteen vastaus ei kelpaa.");
+  if (!reader) throw new Error(txt.badReply);
   const bytes = new Uint8Array(4096);
   let size = 0;
   try {
@@ -63,7 +62,7 @@ export async function uploadAttachment(
       if (done) break;
       if (size + value.byteLength > bytes.length) {
         await reader.cancel();
-        throw new Error("Liitteen vastaus ei kelpaa.");
+        throw new Error(txt.badReply);
       }
       bytes.set(value, size);
       size += value.byteLength;
@@ -77,7 +76,7 @@ export async function uploadAttachment(
       new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, size)),
     );
   } catch {
-    throw new Error("Liitteen vastaus ei kelpaa.");
+    throw new Error(txt.badReply);
   }
   if (
     !valid(data) ||
@@ -85,8 +84,8 @@ export async function uploadAttachment(
     !data.path.startsWith("/") ||
     data.size !== file.size
   )
-    throw new Error("Liitteen vastaus ei kelpaa.");
-  const name = file.name.replace(/[[\]\\\r\n]/g, "_") || "Liite";
+    throw new Error(txt.badReply);
+  const name = file.name.replace(/[[\]\\\r\n]/g, "_") || txt.unnamed;
   const image = ["image/png", "image/jpeg", "image/gif", "image/webp"].includes(
     data.content_type,
   );
@@ -102,14 +101,14 @@ export async function uploadAttachment(
  * a length it promises, so the body is read under the upload cap.
  */
 export async function readAttachment(url: string, signal: AbortSignal) {
-  if (!attachmentURL.test(url)) throw new Error("Liite ei kelpaa.");
+  if (!attachmentURL.test(url)) throw new Error(txt.invalid);
   const response = await fetch(url, {
     credentials: "same-origin",
     cache: "no-store",
     signal,
   });
   const reader = response.ok ? response.body?.getReader() : undefined;
-  if (!reader) throw new Error("Liitettä ei saatu.");
+  if (!reader) throw new Error(txt.unread);
   const chunks: Uint8Array[] = [];
   let size = 0;
   for (;;) {
@@ -118,7 +117,7 @@ export async function readAttachment(url: string, signal: AbortSignal) {
     size += value.byteLength;
     if (size > attachmentLimit) {
       await reader.cancel();
-      throw new Error("Liite on liian suuri.");
+      throw new Error(txt.tooLarge);
     }
     chunks.push(value);
   }

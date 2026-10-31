@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { FilePreview } from "../../app/composerReads";
+import { useText } from "../../i18n";
+import { paletteText } from "../../text/palette";
 import { Icon } from "../Icon";
 import {
   type Choice,
@@ -18,11 +20,7 @@ const isMac =
   /Mac|iPhone|iPad/.test(navigator.platform);
 const MOD = isMac ? "⌘" : "Ctrl";
 
-const TABS: [PaletteTab, string][] = [
-  ["all", "Tiedostot"],
-  ["changed", "Muutetut"],
-  ["cmd", "Komennot"],
-];
+const TABS: PaletteTab[] = ["all", "changed", "cmd"];
 
 /** The selected file's preview: Git's diff of a changed file, otherwise the
  * file's first lines, read when the selection rests on it. */
@@ -62,8 +60,9 @@ function PreviewPane({
   choice: Choice | undefined;
   read?: (path: string, signal: AbortSignal) => Promise<FilePreview>;
 }) {
+  const t = useText(paletteText);
   const state = usePreview(choice, read);
-  if (!choice) return <p className="ah-pal-none">Ei valittua.</p>;
+  if (!choice) return <p className="ah-pal-none">{t.nothingSelected}</p>;
   if (choice.type === "status")
     return <p className="ah-pal-none">{choice.text}</p>;
   if (choice.type === "command")
@@ -72,15 +71,19 @@ function PreviewPane({
         <h2>/{choice.name}</h2>
         <p>{choice.description}</p>
         <dl>
-          <dt>Lähde</dt>
+          <dt>{t.source}</dt>
           <dd>{choice.tag}</dd>
         </dl>
         <p className="ah-pal-explain">
           {choice.run
-            ? "Ajetaan heti, kun valitset sen. Ei lähetä mitään agentille."
+            ? t.runsAtOnce
             : choice.terminalOnly
-              ? "Tämä laajennuksen komento avaa agentin päätteen valikon, joten selain ei voi ajaa sitä."
-              : `Lisätään viestin alkuun. Kun lähetät viestin, agentti ${choice.tone === "skill" ? "lataa taidon" : choice.tone === "prompt" ? "laajentaa pohjan" : "ajaa komennon"}.`}
+              ? t.terminalOnly
+              : choice.tone === "skill"
+                ? t.addsSkill
+                : choice.tone === "prompt"
+                  ? t.addsPrompt
+                  : t.addsCommand}
         </p>
       </>
     );
@@ -91,11 +94,11 @@ function PreviewPane({
         {choice.path} {choice.git ? <GitBadge mark={choice.git} /> : null}
       </h2>
       {state.failed ? (
-        <p className="ah-pal-none">Esikatselua ei saatu.</p>
+        <p className="ah-pal-none">{t.previewFailed}</p>
       ) : !p ? (
-        <p className="ah-pal-none">Luetaan…</p>
+        <p className="ah-pal-none">{t.reading}</p>
       ) : p.kind === "binary" ? (
-        <p className="ah-pal-none">Binääritiedosto: ei esikatselua.</p>
+        <p className="ah-pal-none">{t.binary}</p>
       ) : (
         <pre className={p.kind === "diff" ? "ah-pal-diff" : undefined}>
           {p.kind === "diff"
@@ -159,6 +162,7 @@ export function Palette({
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onClose: () => void;
 }) {
+  const t = useText(paletteText);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     input.current?.focus();
@@ -173,7 +177,7 @@ export function Palette({
         type="button"
         className="ah-palette-scrim"
         tabIndex={-1}
-        aria-label="Sulje valitsin"
+        aria-label={t.close}
         onClick={onClose}
       />
       <div
@@ -181,10 +185,10 @@ export function Palette({
         className="ah-palette"
         role="dialog"
         aria-modal="true"
-        aria-label="Valitse tiedostot tai komento"
+        aria-label={t.dialog}
       >
         <div className="ah-pal-tabs" role="tablist">
-          {TABS.map(([key, label]) => (
+          {TABS.map((key) => (
             <button
               key={key}
               data-testid={`palette-tab-${key}`}
@@ -198,7 +202,7 @@ export function Palette({
                 input.current?.focus();
               }}
             >
-              {label}
+              {t.tabs[key]}
               {key === "changed" && changedCount !== undefined ? (
                 <span className="ah-pal-n">{changedCount}</span>
               ) : null}
@@ -222,12 +226,8 @@ export function Palette({
                 ? optionId(listId, selected)
                 : undefined
             }
-            aria-label="Hae"
-            placeholder={
-              tab === "cmd"
-                ? "Hae komentoa tai taitoa"
-                : "Hae tiedostoa · Tab merkitsee useamman"
-            }
+            aria-label={t.search}
+            placeholder={tab === "cmd" ? t.searchCommand : t.searchFile}
             value={query}
             onChange={(e) => onQuery(e.target.value)}
             onKeyDown={onKeyDown}
@@ -236,17 +236,17 @@ export function Palette({
         <div className="ah-pal-body">
           <ChoiceList
             id={listId}
-            label={tab === "cmd" ? "Komennot" : "Tiedostot"}
+            label={tab === "cmd" ? t.commands : t.files}
             groups={groups}
             selected={selected}
             marks={tab === "cmd" ? undefined : marks}
-            emptyText={`Ei osumia${query ? ` haulle “${query}”` : ""}.`}
+            emptyText={t.noMatches(query)}
             onPick={onPick}
             onHover={onHover}
           />
           <section
             className="ah-pal-prev"
-            aria-label="Esikatselu"
+            aria-label={t.preview}
             aria-live="polite"
             // biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable previews must be keyboard focusable.
             tabIndex={0}
@@ -262,26 +262,20 @@ export function Palette({
           {tab === "cmd" ? (
             <>
               <kbd>↑</kbd>
-              <kbd>↓</kbd> valitse · <kbd>Enter</kbd> lisää viestin alkuun
+              <kbd>↓</kbd> {t.select} · <kbd>Enter</kbd> {t.addToStart}
             </>
           ) : (
             <>
-              <kbd>Tab</kbd> merkitse · <kbd>Enter</kbd>{" "}
-              {n > 1 ? `lisää ${n} polkua` : "lisää polku"}
+              <kbd>Tab</kbd> {t.mark} · <kbd>Enter</kbd> {t.addPaths(n)}
             </>
           )}{" "}
           · <kbd>{MOD}</kbd>
-          <kbd>P</kbd> seuraava välilehti · <kbd>Esc</kbd> takaisin kenttään
+          <kbd>P</kbd> {t.nextTab} · <kbd>Esc</kbd> {t.backToField}
           {tab === "cmd" ? null : (
             <span className="ah-pal-where">
-              lisätään muodossa{" "}
-              {shell ? (
-                <>
-                  <code>polku</code> komentoon
-                </>
-              ) : (
-                <code>@polku</code>
-              )}
+              {shell
+                ? t.insertedInCommand(<code>{t.path}</code>)
+                : t.insertedAs(<code>@{t.path}</code>)}
             </span>
           )}
         </div>

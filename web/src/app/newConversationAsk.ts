@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import type { WorkerAsk } from "../components/BackgroundStrip";
+import { useText } from "../i18n";
+import { newConversationAskText } from "../text/newConversationAsk";
 import { create, send } from "./conversations";
 import { refusalReason, WriteRefused } from "./mutations";
 import type { Spinoff } from "./spinoffs";
@@ -30,6 +32,7 @@ export function useNewConversationAsk({
   csrf?: string;
   onLogin: () => void;
 }): WorkerAsk | undefined {
+  const t = useText(newConversationAskText);
   const navigate = useNavigate();
   const key = `nah:${identity}:worker-requests:${parentId}`;
   const [asked, setAsked] = useState<Record<string, string>>(() => {
@@ -74,8 +77,8 @@ export function useNewConversationAsk({
       if ((error as Error).message === "identity_lost") onLogin();
       setProblem(
         error instanceof WriteRefused
-          ? `Pyyntöä ei lähetetty: ${refusalReason(error.code, error.status)}`
-          : "Pyynnön tulos epävarma. Tarkista keskustelulista; pyyntöä ei lähetetä uudelleen automaattisesti.",
+          ? t.refused(refusalReason(error.code, error.status))
+          : t.uncertain,
       );
     } finally {
       inFlight.current = false;
@@ -84,7 +87,7 @@ export function useNewConversationAsk({
   };
   return {
     target: "new",
-    blocked: busy ? "Pyyntö on lähdössä." : undefined,
+    blocked: busy ? t.sending : undefined,
     phases: Object.fromEntries(Object.keys(asked).map((id) => [id, "sent"])),
     problem,
     send: (runs) => void ask(runs),

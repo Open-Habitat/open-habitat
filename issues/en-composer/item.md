@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: en-composer
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # English: composer
@@ -29,10 +30,10 @@ text are not this unit's; list any you meet in `result.md`.
 
 ## Acceptance Criteria
 
-- [ ] With English chosen, no Finnish text in these views; catalogs complete
+- [x] With English chosen, no Finnish text in these views; catalogs complete
       (`src/i18n/catalogs.test.ts` passes).
-- [ ] Their stories render in both languages; touched specs pass in Finnish.
-- [ ] English screenshots of the views at device scale factor 2 in the issue
+- [x] Their stories render in both languages; touched specs pass in Finnish.
+- [x] English screenshots of the views at device scale factor 2 in the issue
       directory.
 
 ## Comments

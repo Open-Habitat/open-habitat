@@ -1,5 +1,7 @@
 import { type ReactNode, useId, useState } from "react";
 import type { AIOffer } from "../app/onboardingConfig";
+import { liveText, useText } from "../i18n";
+import { aiOfferListText } from "../text/aiOfferList";
 import "./AIOfferList.css";
 
 // The onboarding AI step's options, "Ehdotus ja lista" (proto-admin-server-
@@ -18,18 +20,30 @@ export type AIOptionInfo = {
   key: boolean;
 };
 
+const txt = liveText(aiOfferListText);
+
+// The names and descriptions are getters, read in the language of the
+// moment, so the options keep one identity across a language change.
 export const aiOptionCatalog: AIOptionInfo[] = [
   {
     id: "chatgpt",
-    name: "ChatGPT-tilaus",
-    how: "Kirjaudu OpenAI-tililläsi. Käyttö kuuluu tilaukseesi.",
+    get name() {
+      return txt.chatgpt;
+    },
+    get how() {
+      return txt.chatgptHow;
+    },
     mark: "Ch",
     key: false,
   },
   {
     id: "claude",
-    name: "Claude-tilaus",
-    how: "Kirjaudu Claude-tililläsi. Käyttö kuuluu tilaukseesi.",
+    get name() {
+      return txt.claude;
+    },
+    get how() {
+      return txt.claudeHow;
+    },
     mark: "Cl",
     key: false,
   },
@@ -39,10 +53,14 @@ export const aiOptionCatalog: AIOptionInfo[] = [
       ["anthropic_key", "Anthropic", "An"],
       ["deepseek_key", "DeepSeek", "DS"],
     ] as const
-  ).map(([id, name, mark]) => ({
+  ).map(([id, provider, mark]) => ({
     id,
-    name: `${name} API-avain`,
-    how: `${name} laskuttaa käytöstä.`,
+    get name() {
+      return txt.apiKey(provider);
+    },
+    get how() {
+      return txt.bills(provider);
+    },
     mark,
     key: true,
   })),
@@ -61,9 +79,7 @@ export function suggestionOf(
 
 /** The step's lead under its heading. */
 export const aiStepLead = (suggested?: AIOptionInfo) =>
-  suggested
-    ? `Sivusto ehdottaa: ${suggested.name}. Voit lisätä muita tilejä myöhemmin kohdassa Asetukset › Tekoäly.`
-    : "Valitse yksi tapa. Voit lisätä muita tilejä myöhemmin kohdassa Asetukset › Tekoäly.";
+  suggested ? txt.suggests(suggested.name) : txt.chooseOne;
 
 export function AIOfferList({
   offer,
@@ -82,6 +98,7 @@ export function AIOfferList({
   keep?: (o: AIOptionInfo) => boolean;
   subscriptionsOnly?: boolean;
 }) {
+  const t = useText(aiOfferListText);
   const id = useId();
   const options = aiOptionCatalog.filter((o) => !subscriptionsOnly || !o.key);
   const suggested = suggestionOf(offer, options);
@@ -115,7 +132,7 @@ export function AIOfferList({
           </span>
           {o === suggested ? (
             <span className="ah-ai-badge" data-testid="ai-suggestion">
-              Ehdotus
+              {t.suggestion}
             </span>
           ) : (
             <span className="ah-ai-radio" aria-hidden="true" />
@@ -137,7 +154,7 @@ export function AIOfferList({
         {subscriptions.length ? (
           <>
             <p className="ah-ai-group" id={`${id}-subscription`}>
-              Tilaus
+              {t.subscription}
             </p>
             <ul
               className="ah-ai-options"
@@ -150,7 +167,7 @@ export function AIOfferList({
         {keys.length ? (
           <>
             <p className="ah-ai-group" id={`${id}-key`}>
-              API-avain · maksu käytön mukaan
+              {t.keys}
             </p>
             <ul className="ah-ai-options" aria-labelledby={`${id}-key`}>
               {keys.map(row)}
@@ -184,7 +201,7 @@ export function AIOfferList({
           setOthers(!others);
         }}
       >
-        <span aria-hidden="true">›</span> Käytä muuta AI-palvelua
+        <span aria-hidden="true">›</span> {t.others}
       </button>
       <div
         id={`${id}-others`}

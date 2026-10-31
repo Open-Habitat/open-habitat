@@ -1,4 +1,6 @@
 import { type ReactNode, useEffect, useId, useState } from "react";
+import { useText } from "../../i18n";
+import { commandRunText } from "../../text/commandRun";
 import { DisclosureButton } from "../ControlElements";
 import { Icon } from "../Icon";
 import { OutputBox } from "../OutputBox";
@@ -29,7 +31,7 @@ export function CommandRun({
   output,
   stopping = false,
   children,
-  label = "Sinä · komento",
+  label,
   source = "live",
 }: {
   command: string;
@@ -43,6 +45,7 @@ export function CommandRun({
   label?: string;
   source?: "live" | "history";
 }) {
+  const t = useText(commandRunText);
   const live = state === "running";
   const [now, setNow] = useState(() => Date.now());
   const [open, setOpen] = useState(true);
@@ -57,32 +60,32 @@ export function CommandRun({
     (state === "finished" && exitCode !== undefined && exitCode !== 0);
   const succeeded = state === "finished" && !failed;
   const statusLabel = stopping
-    ? "Keskeytetään…"
+    ? t.stopping
     : state === "held"
-      ? "Odottaa agentin käynnistymistä"
+      ? t.held
       : live
-        ? `Ajossa${startedAt !== undefined ? ` ${mmss(now - startedAt)}` : ""}`
+        ? t.running(startedAt !== undefined ? mmss(now - startedAt) : "")
         : state === "cancelled"
-          ? "Pysäytetty"
+          ? t.cancelled
           : state === "finished"
             ? failed
-              ? `Paluuarvo ${exitCode}`
-              : "Valmis"
+              ? t.exitCode(exitCode)
+              : t.done
             : state === "failed"
-              ? "Epäonnistui"
+              ? t.failed
               : state === "not_started"
-                ? "Ei ajettu"
-                : "Tulos ei tiedossa";
+                ? t.notStarted
+                : t.unknown;
   const note =
     state === "not_started"
-      ? "Komentoa ei ajettu. Sitä ei ajeta myöhemmin."
+      ? t.notStartedNote
       : state === "uncertain"
-        ? "Yhteys katkesi tai agentti päättyi ennen tulosta. Komentoa ei ajeta uudelleen."
+        ? t.uncertainNote
         : undefined;
   return (
     <section
       className="ah-cmd-run"
-      aria-label={label}
+      aria-label={label ?? t.label}
       data-state={state}
       data-exit-code={exitCode}
       data-exclude-from-context={excludeFromContext}
@@ -116,9 +119,7 @@ export function CommandRun({
       <div id={outputId} className="ah-cmd-body ah-bash-card" hidden={!open}>
         {children ?? (
           <OutputBox
-            text={
-              output || (live ? "Odotetaan tulostetta…" : "(ei tulostetta)")
-            }
+            text={output || (live ? t.waitingOutput : t.noOutput)}
             running={live}
           />
         )}

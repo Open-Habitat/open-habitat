@@ -1,3 +1,8 @@
+import { liveText } from "../../i18n";
+import { dictationShortcutText } from "../../text/dictationShortcut";
+
+const txt = liveText(dictationShortcutText);
+
 type Key = {
   key: string;
   code: string;
@@ -72,7 +77,7 @@ function leftOfOneLabel(keyboard: Keyboard) {
 
 export function dictationShortcutFor(keyboard: Keyboard) {
   const typed = leftOfOneLabel(keyboard);
-  const alternative = "⌘⇧välilyönti";
+  const alternative = txt.commandShiftSpace;
   // A Mac with a US or UK layout may be an ANSI board, whose key left of 1
   // macOS keeps for window cycling; ⌘⇧Space works on every board.
   const ansi =

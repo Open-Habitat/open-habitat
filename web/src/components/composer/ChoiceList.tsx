@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import type { GitMark } from "../../app/composerReads";
+import { useText } from "../../i18n";
+import { choiceListText } from "../../text/choiceList";
 import { Icon } from "../Icon";
 
 /** One row of the composer's list. A loading or failed row is not pickable. */
@@ -30,17 +32,18 @@ export function flatChoices(groups: ChoiceGroup[]): Choice[] {
 
 export const optionId = (list: string, i: number) => `${list}-opt-${i}`;
 
-const gitLabel: Record<GitMark, [string, string]> = {
-  modified: ["M", "muutettu"],
-  added: ["A", "lisätty"],
-  deleted: ["D", "poistettu"],
-  renamed: ["R", "nimetty uudelleen"],
-  untracked: ["U", "uusi, ei versionhallinnassa"],
-  conflict: ["!", "ristiriita"],
+const gitLetter: Record<GitMark, string> = {
+  modified: "M",
+  added: "A",
+  deleted: "D",
+  renamed: "R",
+  untracked: "U",
+  conflict: "!",
 };
 
 export function GitBadge({ mark }: { mark: GitMark }) {
-  const [letter, title] = gitLabel[mark];
+  const letter = gitLetter[mark];
+  const title = useText(choiceListText).git[mark];
   return (
     <span
       className={`ah-choice-git ah-choice-git-${mark === "untracked" ? "new" : "changed"}`}
@@ -76,6 +79,7 @@ export function ChoiceList({
   onPick: (index: number) => void;
   onHover?: (index: number) => void;
 }) {
+  const t = useText(choiceListText);
   useEffect(() => {
     if (selected >= 0)
       document
@@ -145,7 +149,7 @@ export function ChoiceList({
               </span>
               {choice.git ? <GitBadge mark={choice.git} /> : null}
               {marks?.has(choice.path) ? (
-                <span className="ah-visually-hidden"> (merkitty)</span>
+                <span className="ah-visually-hidden"> {t.marked}</span>
               ) : null}
             </div>
           );
@@ -165,7 +169,7 @@ export function ChoiceList({
               <span className="ah-choice-desc">{choice.description}</span>
             ) : null}
             {choice.terminalOnly ? (
-              <span className="ah-choice-why">vain agentin päätteessä</span>
+              <span className="ah-choice-why">{t.terminalOnly}</span>
             ) : null}
           </div>
         );

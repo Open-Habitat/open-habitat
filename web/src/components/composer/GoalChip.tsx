@@ -4,6 +4,8 @@ import {
   Modal,
   ModalOverlay,
 } from "react-aria-components";
+import { useText } from "../../i18n";
+import { goalChipText } from "../../text/goalChip";
 import { ControlButton } from "../ControlElements";
 import { GuideArticle } from "../GoalGuide";
 import { Icon } from "../Icon";
@@ -50,6 +52,7 @@ export function GoalChip({
   onRemove?: () => void;
   onUnwrap?: () => void;
 }) {
+  const t = useText(goalChipText);
   return (
     <div className="ah-goal-chip-row">
       <div className="ah-goal-chip" data-testid="goal-chip">
@@ -59,8 +62,8 @@ export function GoalChip({
             variant="quiet"
             className="ah-goal-chip-open"
             data-testid="goal-chip-open"
-            aria-label={`Tavoite: ${goal.title}. Näytä pyyntö`}
-            title="Näytä agentille annettava pyyntö"
+            aria-label={t.open(goal.title)}
+            title={t.openTip}
           >
             <Icon name="run" />
             <span className="ah-goal-chip-title">{goal.title}</span>
@@ -69,18 +72,18 @@ export function GoalChip({
             <Modal className="ah-skill-sheet">
               <Dialog
                 className="ah-skill-reader ah-goal-chip-reader"
-                aria-label={`Tavoite: ${goal.title}`}
+                aria-label={t.card(goal.title)}
                 data-testid="goal-chip-card"
               >
                 {({ close }) => (
                   <GuideArticle
                     title={goal.title}
-                    eyebrow={`TAVOITE · /skill:${goal.skill}`}
+                    eyebrow={t.eyebrow(goal.skill)}
                     onBack={close}
-                    backLabel="← Takaisin keskusteluun"
+                    backLabel={t.back}
                   >
                     <section>
-                      <h3>Pyyntö agentille</h3>
+                      <h3>{t.request}</h3>
                       <pre
                         className="ah-guide-prompt"
                         // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users must scroll the bounded full request.
@@ -89,9 +92,7 @@ export function GoalChip({
                       >
                         {goal.request}
                       </pre>
-                      <p className="ah-goal-chip-note">
-                        Agentti saa taidon ohjeen ja sen perään kentän tekstisi.
-                      </p>
+                      <p className="ah-goal-chip-note">{t.note}</p>
                     </section>
                     <footer className="ah-guide-actions">
                       {onUnwrap ? (
@@ -105,11 +106,11 @@ export function GoalChip({
                           }}
                         >
                           <Icon name="pencil" />
-                          Muokkaa tekstinä
+                          {t.unwrap}
                         </ControlButton>
                       ) : null}
                       <ControlButton size="row" variant="quiet" onPress={close}>
-                        Sulje
+                        {t.close}
                       </ControlButton>
                     </footer>
                   </GuideArticle>
@@ -125,8 +126,8 @@ export function GoalChip({
             presentation="icon"
             className="ah-goal-chip-remove"
             data-testid="goal-chip-remove"
-            aria-label={`Poista tavoite ${goal.title}`}
-            title="Poista tavoite luonnoksesta"
+            aria-label={t.remove(goal.title)}
+            title={t.removeTip}
             onPress={onRemove}
           >
             <Icon name="cross" />
