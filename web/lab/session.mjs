@@ -34,7 +34,9 @@ export async function openLab({
   const page = await context.newPage();
   await page.goto(`${origin}/workspaces`);
   await page
-    .getByRole("button", { name: /^(Kirjaudu GitHubilla|Sign in with GitHub)$/ })
+    .getByRole("button", {
+      name: /^(Kirjaudu GitHubilla|Sign in with GitHub)$/,
+    })
     .click();
   await page
     .getByRole("link", {
