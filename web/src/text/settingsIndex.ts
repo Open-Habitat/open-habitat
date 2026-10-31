@@ -271,10 +271,6 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Workspace icon",
         desc: "Conversations in the sidebar carry the workspace's icon from the repository's setting, a logo or its name; it can be changed from the workspace page's title.",
       },
-      "push-when-your-turn": {
-        label: "Phone notification when it is your turn",
-        desc: "Your phone or computer notifies you when a conversation waits for you and Open Habitat is not in front of you.",
-      },
     },
   },
   palvelin: {

@@ -95,10 +95,6 @@ func (s *Server) routes() http.Handler {
 		}
 		mux.HandleFunc("/api/v1/pi/models", s.auth.piModels)
 		mux.HandleFunc("/api/v1/pi/recap-settings", s.auth.recapSettings)
-		mux.HandleFunc(pushPath, s.auth.push)
-		for path := range pushRoutes {
-			mux.HandleFunc(path, s.auth.push)
-		}
 		mux.HandleFunc(speechKeyPath, s.auth.speechRoute)
 		mux.HandleFunc(speechSessionPath, s.auth.speechRoute)
 		mux.HandleFunc("/api/v1/pi/claude-login", s.auth.claudeLogin)

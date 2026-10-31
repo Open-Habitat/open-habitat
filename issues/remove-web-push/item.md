@@ -3,12 +3,13 @@ created: 2026-10-31
 updated: 2026-10-31
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: remove-web-push
 lane_seq: 1
 related: ['@push-when-your-turn']
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Remove Web Push notifications from the web product

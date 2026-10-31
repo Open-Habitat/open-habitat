@@ -284,17 +284,7 @@ func applyPreferences(home string, change preferencesWrite) (accountPreferences,
 			delete(value.Experimental, id)
 		}
 	}
-	if err = savePreferences(home, value); err != nil {
-		return value, err
-	}
-	// Turning phone notifications off forgets the person's push key and
-	// every device, so nothing of the feature is kept while it is off.
-	if on, ok := change.Experimental[PushFeature]; ok && !on {
-		pushLock.Lock()
-		err = removePushState(home)
-		pushLock.Unlock()
-	}
-	return value, err
+	return value, savePreferences(home, value)
 }
 
 func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {

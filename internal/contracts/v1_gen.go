@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "f666269abff61818403285c7fbf750b2f78119c0246d0a095c3f1ee92c3593a0"
+const V1SchemaFingerprint = "09003828aa0a8ddf2f7543e2a1d48b51b2ebc9100cb93a1a347c7fbe5b7f771d"
 
 var V1SchemaFiles = []string{
 	"account-keys.schema.json",
@@ -66,7 +66,6 @@ var V1SchemaFiles = []string{
 	"process-control.schema.json",
 	"process-event.schema.json",
 	"process.schema.json",
-	"push-notifications.schema.json",
 	"recap-settings.schema.json",
 	"recap.schema.json",
 	"rest.schema.json",
@@ -158,7 +157,6 @@ type PiStatus = json.RawMessage
 type ProcessControl = json.RawMessage
 type ProcessEvent = json.RawMessage
 type Process = json.RawMessage
-type PushNotifications = json.RawMessage
 type RecapSettings = json.RawMessage
 type Recap = json.RawMessage
 type Rest = json.RawMessage

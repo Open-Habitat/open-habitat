@@ -24,7 +24,6 @@ const featureIds = [
   { id: "next-waiting-row", landed: true },
   { id: "worker-row-sentence", landed: true },
   { id: "workspace-icons", landed: true },
-  { id: "push-when-your-turn", landed: true },
 ] as const satisfies readonly {
   id: keyof typeof txt.features;
   landed: boolean;
@@ -43,23 +42,7 @@ export function experimentalFeatureCards(): readonly ExperimentalFeature[] {
  * decoration: the facts beside it say the same in words. */
 function Picture({ id, on }: { id: string; on: boolean }) {
   let body: ReactNode;
-  if (id === "push-when-your-turn")
-    body = (
-      <span className="ex-lock">
-        <span className="ex-lock-time">{txt.picture.lockTime}</span>
-        <span className="ex-note">
-          <span className="ex-note-icon" />
-          <span className="ex-lines">
-            <span className="ex-l1">
-              <b>{txt.picture.lockWorkspace}</b>
-              <span>{txt.picture.lockAge}</span>
-            </span>
-            <span className="ex-l2">{txt.picture.lockBody}</span>
-          </span>
-        </span>
-      </span>
-    );
-  else if (id === "next-waiting-row")
+  if (id === "next-waiting-row")
     body = (
       <>
         <span className="ex-ghost ex-ghost-own" />
@@ -137,7 +120,6 @@ export function ExperimentalFeaturesControl({
   error,
   onChange,
   onReload,
-  details,
   features = experimentalFeatureCards(),
 }: {
   enabled: (id: string) => boolean;
@@ -149,8 +131,6 @@ export function ExperimentalFeaturesControl({
   error?: string;
   onChange: (id: string, on: boolean) => void;
   onReload?: () => void;
-  /** More of a feature's own controls, under its card's facts. */
-  details?: (id: string) => ReactNode;
   features?: readonly ExperimentalFeature[];
 }) {
   const alert = (testId: string, text: string) => (
@@ -233,7 +213,6 @@ export function ExperimentalFeaturesControl({
                 </div>
               </dl>
             </div>
-            {details?.(f.id)}
             {!f.landed && (
               <p
                 className="ex-coming"

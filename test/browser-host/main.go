@@ -38,7 +38,6 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"github.com/Open-Habitat/open-habitat/internal/gateway"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
-	"github.com/Open-Habitat/open-habitat/internal/webpush/webpushtest"
 )
 
 type provider struct {
@@ -358,15 +357,8 @@ esac
 	if e := os.WriteFile(gitProgram, []byte(strings.ReplaceAll(gitScript, "__CTL__", tmp)), 0700); e != nil {
 		log.Fatal(e)
 	}
-	// A fake push service: every person's daemon sends its phone
-	// notifications here, to a fake browser subscription per person whose
-	// keys /fixture/push-subscription hands to the page and with which
-	// /fixture/push decrypts what was sent.
-	pushService := webpushtest.NewService()
-	pushBrowsers := map[string]*webpushtest.Browser{}
 	for _, m := range identities {
 		home := filepath.Join(tmp, m.Username)
-		pushBrowsers[m.Username] = webpushtest.NewBrowser("https://fcm.googleapis.com/fcm/send/fixture-" + m.Username)
 		if e := os.MkdirAll(filepath.Join(home, "src"), 0700); e != nil {
 			log.Fatal(e)
 		}
@@ -420,9 +412,6 @@ esac
 		paths[m.Socket] = path
 		peers[path] = m.UID
 		cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: m.Subject}
-		pushCfg := cfg
-		pushCfg.Home = home
-		pushNotifier := daemon.NewPushNotifierWithFixtureClient(pushCfg, pushService.Client(), 400*time.Millisecond, 25*time.Second)
 		discover := func(transport.Config) daemon.Discovery {
 			switch scenario.Load().(string) {
 			case "empty":
@@ -576,7 +565,6 @@ esac
 		newConversations := func() (http.Handler, context.CancelFunc) {
 			ctx, cancel := context.WithCancel(context.Background())
 			c := daemon.ConversationHandlerWithFixtureRuntime(ctx, cfg, trusted, status, home, &core.PiRuntimeConfig{Node: self, Entry: "/synthetic/pi/dist/index.js", Manifest: "/synthetic/pi/package.json"})
-			c.SetPushNotifier(pushNotifier)
 			// Only the recap scenarios' fake Pi can make a recap; elsewhere a
 			// restarted daemon would only start Pis the cases do not expect.
 			if name, _ := scenario.Load().(string); name == "pi-recap" || name == "pi-recap-unsupported" || name == "pi-recap-failing" {
@@ -598,7 +586,6 @@ esac
 		mux.Handle(daemon.WorkspaceGitPath, daemon.WorkspaceGitHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspaceGitFetchPath, daemon.WorkspaceGitFetchHandler(fixtureWorkspaceCfg, trusted, forges))
 		mux.Handle(daemon.AccountPreferencesPath, daemon.AccountPreferencesHandler(fixtureWorkspaceCfg, trusted))
-		pushNotifier.Mount(mux, fixtureWorkspaceCfg, trusted)
 		// The real handler and the system's own ssh-keygen and age-keygen,
 		// writing only into the disposable home.
 		mux.Handle(daemon.AccountKeysPath, daemon.AccountKeysHandlerWithFixtureTools(fixtureWorkspaceCfg, trusted, "/usr/bin/ssh-keygen", "/usr/bin/age-keygen"))
@@ -773,49 +760,6 @@ esac
 		}
 		if strings.HasPrefix(r.URL.Path, "/fixture/") {
 			switch r.URL.Path {
-			case "/fixture/push-subscription":
-				b := pushBrowsers[r.URL.Query().Get("user")]
-				if b == nil {
-					http.NotFound(w, r)
-					return
-				}
-				w.Header().Set("Content-Type", "application/json")
-				_ = json.NewEncoder(w).Encode(map[string]string{"endpoint": b.Endpoint, "p256dh": b.P256dh(), "auth": b.Auth()})
-				return
-			case "/fixture/push":
-				type sent struct {
-					Endpoint string          `json:"endpoint"`
-					TTL      string          `json:"ttl"`
-					Topic    string          `json:"topic"`
-					Urgency  string          `json:"urgency"`
-					Payload  json.RawMessage `json:"payload"`
-				}
-				out := []sent{}
-				for _, m := range pushService.Messages() {
-					var payload json.RawMessage = []byte("null")
-					for _, b := range pushBrowsers {
-						if b.Endpoint == m.Endpoint {
-							if plain, e := b.Decrypt(m.Body); e == nil {
-								payload = plain
-							}
-						}
-					}
-					out = append(out, sent{Endpoint: m.Endpoint, TTL: m.Header.Get("TTL"), Topic: m.Header.Get("Topic"), Urgency: m.Header.Get("Urgency"), Payload: payload})
-				}
-				w.Header().Set("Content-Type", "application/json")
-				_ = json.NewEncoder(w).Encode(out)
-				return
-			case "/fixture/push-status":
-				status, e := strconv.Atoi(r.URL.Query().Get("status"))
-				if e != nil || status < 200 || status > 599 {
-					http.Error(w, "status", 400)
-					return
-				}
-				for _, b := range pushBrowsers {
-					pushService.SetStatus(b.Endpoint, status)
-				}
-				w.WriteHeader(204)
-				return
 			case "/fixture/lab-marker":
 				if !lab {
 					http.NotFound(w, r)
