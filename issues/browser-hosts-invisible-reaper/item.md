@@ -2,13 +2,14 @@
 created: 2026-10-31
 updated: 2026-10-31
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: pilot.17 clean gate failure
 source_ref: taskfleet:01m68gbvm72txr17m5kz12h0nd/gate-failure:test-browser-hosts-orphan
 originating_run: 01m68gbvm72txr17m5kz12h0nd
 originating_run_kind: spinoff
+closed: 2026-10-31
 ---
 
 # Stray browser host detection misses orphans adopted by an invisible user manager (Birch)
