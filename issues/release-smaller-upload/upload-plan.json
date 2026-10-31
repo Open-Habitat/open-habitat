@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "dry_run": true,
+  "tag": "v0.1.0-pilot.18",
+  "repository": "Open-Habitat/open-habitat",
+  "upload": [
+    {
+      "name": "open-habitat-0.1.0-pilot.18-linux-amd64.tar.gz",
+      "size": 12655753,
+      "sha256": "e2f2a2eb9a8b69deaa2ff2329d17fab65abc05c8893bfce75b998f93dfd52f5b"
+    },
+    {
+      "name": "open-habitat-0.1.0-pilot.18-linux-amd64.tar.gz.sha256",
+      "size": 113,
+      "sha256": "936fea233b81fe5fe34bf4e4c546087ccaf3ba7b77b35a79a871ba3c2b81b8a3"
+    },
+    {
+      "name": "open-habitat-0.1.0-pilot.18-linux-arm64.tar.gz",
+      "size": 11782448,
+      "sha256": "22665b60fcb0cc9fe1cf56457606e5fc4af4ab0bc92644cadf8e71016e95e42f"
+    },
+    {
+      "name": "open-habitat-0.1.0-pilot.18-linux-arm64.tar.gz.sha256",
+      "size": 113,
+      "sha256": "65c2bd6b4fcb4cc7d196ab0cdb6809df49383374a10d67dbbb5854ad22fc656e"
+    },
+    {
+      "name": "release-gate.json",
+      "size": 103,
+      "sha256": "6a58b8d81265a8ceba6477b5acb49bb6fb8c9edd499b8a35f58070cc1a7b00eb"
+    },
+    {
+      "name": "release-linux-amd64.json",
+      "size": 9605525,
+      "sha256": "af67609364b9aa17222cd7e9057729eaf6b12d2e3857b410bae00adb33bd56bb"
+    },
+    {
+      "name": "release-linux-arm64.json",
+      "size": 9541450,
+      "sha256": "ba3ba5d72d4c87571bbd51ffd9e5055c8929b1c4f12dffb61c023603ef73079f"
+    }
+  ],
+  "reuse": [
+    {
+      "name": "core-linux-amd64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "943ad35ec4ffee92fec798d06d8049900cd4100d5a8eade5d1d3485b0e9062c3",
+      "size": 305992116
+    },
+    {
+      "name": "integrations-linux-amd64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "a76de8c47d64fa1a64f85bec953e1683225bf1efb9711158b3ebbcd00958a5c7",
+      "size": 182905253
+    },
+    {
+      "name": "editor-linux-amd64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "acac1458b4397062f2da63275481aeb350bd0fd1d95c37260f67f69d9a2f5422",
+      "size": 237637326
+    },
+    {
+      "name": "uv-linux-amd64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "af9c9333d36a054a2a603116b6cbc43c01b2bb61918d656aee4cd4cbbf609256",
+      "size": 117992698
+    },
+    {
+      "name": "python-linux-amd64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "90d1d5734cb05e4eb083c1fe76599ca6612b255ff86bd41fcb46f49e768e30a3",
+      "size": 236331176
+    },
+    {
+      "name": "browser-linux-amd64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "1c28c8f17df56e5b6b346e5707ba87ca56afb13de9b8be9d9ee29793774550fd",
+      "size": 151317131
+    },
+    {
+      "name": "containers-linux-amd64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "2f592d4832c07bd7ac6c683c356c63b50322e3f7f64ee5ea3e160720fd72f6f1",
+      "size": 94908
+    },
+    {
+      "name": "documents-linux-amd64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "56b4e6728006e27d433554c9df0f979b46bfcc6da8a32c27a69ffa78494d4a9f",
+      "size": 354
+    },
+    {
+      "name": "media-linux-amd64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "b1f3a6e74b04fee29eddce13d0d81095887abb5a69e343d82420eeba747a39f9",
+      "size": 342
+    },
+    {
+      "name": "native-build-linux-amd64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "a9f02d3ab5f576d6ea8ed8289d0ce62c0404b503caefbe92fd699739e1f3c4a0",
+      "size": 266
+    },
+    {
+      "name": "operations-linux-amd64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "97c3727225f322b83ef9fc3dd1d0b167222e80e08e7afd5bab2c90984e506325",
+      "size": 242
+    },
+    {
+      "name": "php-linux-amd64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "40367676d0e2b57b2c58586ff0233a01cd896932b54e12f88491d116d2541d9c",
+      "size": 312
+    },
+    {
+      "name": "core-linux-arm64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "939f59bc257a26ed5f6b1c39c1263f76d80d1d8ff8e5b2c01fa10e65523db0c0",
+      "size": 304988499
+    },
+    {
+      "name": "integrations-linux-arm64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "ebdeccae84d96ab4363831df4a3da644e8eac35d0f078682140737236a92344e",
+      "size": 171307965
+    },
+    {
+      "name": "editor-linux-arm64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "ce6a6fadd7e284d72afaa9ca4eedf22177f794222e3187853301eebc59fe1fe6",
+      "size": 232996662
+    },
+    {
+      "name": "uv-linux-arm64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "b385223b6689de164124140a8756e7652e737df4353b92057c1a7b271d8b0f66",
+      "size": 117273583
+    },
+    {
+      "name": "python-linux-arm64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "7709e431cfdb2856a48c7ad3310a598f717588bfdf0115b1fed9976ac1c10de4",
+      "size": 221666070
+    },
+    {
+      "name": "browser-linux-arm64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "2c3657bef812e0c5efd592eb2cfcd02042e54f38ac01067f93aa9bd3aae86752",
+      "size": 157933042
+    },
+    {
+      "name": "containers-linux-arm64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "2f592d4832c07bd7ac6c683c356c63b50322e3f7f64ee5ea3e160720fd72f6f1",
+      "size": 94908
+    },
+    {
+      "name": "documents-linux-arm64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "56b4e6728006e27d433554c9df0f979b46bfcc6da8a32c27a69ffa78494d4a9f",
+      "size": 354
+    },
+    {
+      "name": "media-linux-arm64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "b1f3a6e74b04fee29eddce13d0d81095887abb5a69e343d82420eeba747a39f9",
+      "size": 342
+    },
+    {
+      "name": "native-build-linux-arm64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "a9f02d3ab5f576d6ea8ed8289d0ce62c0404b503caefbe92fd699739e1f3c4a0",
+      "size": 266
+    },
+    {
+      "name": "operations-linux-arm64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "97c3727225f322b83ef9fc3dd1d0b167222e80e08e7afd5bab2c90984e506325",
+      "size": 242
+    },
+    {
+      "name": "php-linux-arm64.tar.gz",
+      "release": "v0.1.0-pilot.17",
+      "sha256": "40367676d0e2b57b2c58586ff0233a01cd896932b54e12f88491d116d2541d9c",
+      "size": 312
+    }
+  ],
+  "upload_bytes": 43585505,
+  "reused_bytes": 2438534369,
+  "warnings": [
+    "Upload membership only; run package and runtime closure verification before publication."
+  ]
+}

@@ -60,15 +60,18 @@ type ProductFile struct {
 }
 
 type ReleaseArtifact struct {
-	Profile      string           `json:"profile"`
-	Archive      string           `json:"archive"`
-	SHA256       string           `json:"sha256"`
-	Size         int64            `json:"size"`
-	ExpandedSize int64            `json:"expanded_size"` // complete decompressed tar stream, including headers/padding
-	Entries      int              `json:"entries"`
-	Requires     []string         `json:"requires"`
-	Packages     []RuntimePackage `json:"packages"`
-	Closure      *RuntimeClosure  `json:"closure,omitempty"`
+	Profile string `json:"profile"`
+	Archive string `json:"archive"`
+	// ArchiveRelease is a same-repository immutable GitHub release tag, used only
+	// by download tooling. Offline verification still requires all local bytes.
+	ArchiveRelease string           `json:"archive_release,omitempty"`
+	SHA256         string           `json:"sha256"`
+	Size           int64            `json:"size"`
+	ExpandedSize   int64            `json:"expanded_size"` // complete decompressed tar stream, including headers/padding
+	Entries        int              `json:"entries"`
+	Requires       []string         `json:"requires"`
+	Packages       []RuntimePackage `json:"packages"`
+	Closure        *RuntimeClosure  `json:"closure,omitempty"`
 }
 
 // RuntimePackage declares an Ubuntu requirement. Version is the qualified minimum,
@@ -135,6 +138,7 @@ func AuthenticateRelease(b []byte, target Release) (AuthenticatedRelease, error)
 }
 
 var commitRE = regexp.MustCompile(`^[0-9a-f]{40}$`)
+var archiveReleaseRE = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*)?$`)
 var archiveRE = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,199}\.tar\.gz$`)
 var packageRE = regexp.MustCompile(`^[a-z0-9][a-z0-9+.-]{0,127}$`)
 var packageVersionRE = regexp.MustCompile(`^[0-9][a-zA-Z0-9.+:~_-]{0,199}$`)
@@ -149,6 +153,9 @@ func validRelease(m ReleaseManifest) bool {
 	profiles, archives := map[string]bool{}, map[string]bool{}
 	for _, a := range m.Artifacts {
 		if !siteIDRE.MatchString(a.Profile) || profiles[a.Profile] || !archiveRE.MatchString(a.Archive) || archives[a.Archive] || !digestRE.MatchString(a.SHA256) || a.Size <= 0 || a.Size > 16<<30 || a.ExpandedSize < 1024 || a.ExpandedSize > 64<<30 || a.Entries <= 0 || a.Entries > 1000000 || len(a.Requires) > 64 || len(a.Packages) > 10000 || a.Requires == nil || a.Packages == nil {
+			return false
+		}
+		if a.ArchiveRelease != "" && (!archiveReleaseRE.MatchString(a.ArchiveRelease) || a.ArchiveRelease == "v"+m.Version) {
 			return false
 		}
 		if a.Closure != nil && !validRuntimeClosure(a) {
@@ -329,6 +336,13 @@ func exactReleaseFields(b []byte) bool {
 		var raw map[string]json.RawMessage
 		if json.Unmarshal(a, &raw) != nil {
 			return false
+		}
+		if source, present := raw["archive_release"]; present {
+			allowed = append(allowed, "archive_release")
+			var tag string
+			if json.Unmarshal(source, &tag) != nil || !archiveReleaseRE.MatchString(tag) {
+				return false
+			}
 		}
 		if _, present := raw["closure"]; present {
 			allowed = append(allowed, "closure")

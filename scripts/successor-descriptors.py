@@ -5,7 +5,8 @@ A product-only successor reuses every runtime archive of its predecessor but
 still needs its own signed manifest, because the upgrade authenticates the
 exact predecessor and every successor product file. This reads the
 predecessor's release directory and the successor's product package and writes
-`artifacts.json` (the predecessor's descriptors, unchanged) and `upgrade.json`
+`artifacts.json` (the predecessor's descriptors, optionally annotated with
+an immutable archive source tag using --archive-release) and `upgrade.json`
 (protocol 1, the predecessor's version, manifest and executable digests, and
 every successor product file) into OUT, for
 `runtime-release sign --platform PLATFORM --artifacts-file OUT/artifacts.json
@@ -16,6 +17,7 @@ It signs nothing and never sees a key.
 import argparse
 import hashlib
 import json
+import re
 import sys
 import tarfile
 from pathlib import Path
@@ -55,10 +57,19 @@ def main(argv=None):
     p.add_argument('--predecessor', required=True, help='published release directory of the installed release')
     p.add_argument('--package', required=True, help="successor open-habitat-*-linux-<arch>.tar.gz for the predecessor's architecture")
     p.add_argument('--output', required=True, help='existing directory for artifacts.json and upgrade.json')
+    p.add_argument('--archive-release', help='immutable predecessor GitHub tag holding archives without an existing archive_release; validated by release-upload-plan.py before upload')
     args = p.parse_args(argv)
+    if args.archive_release is not None and not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*)?', args.archive_release):
+        p.error('--archive-release must be a named vX.Y.Z[-suffix] tag')
     pred, out = Path(args.predecessor), Path(args.output)
     raw = (pred / 'release.json').read_bytes()
     manifest = json.loads(raw)
+    if args.archive_release:
+        if args.archive_release != 'v' + manifest['version']:
+            p.error('--archive-release must name the predecessor manifest version')
+        for artifact in manifest['artifacts']:
+            # Keep the original location across multiple product-only successors.
+            artifact.setdefault('archive_release', args.archive_release)
     arch = manifest['platform'].removeprefix('ubuntu-24.04-')
     packages = sorted(pred.glob('open-habitat-*-linux-*.tar.gz'))
     if len(packages) != 1 or not packages[0].name.endswith('-linux-' + arch + '.tar.gz'):

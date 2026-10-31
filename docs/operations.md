@@ -57,7 +57,16 @@ A published release that carries both architectures names every
 architecture-specific asset after its architecture: the manifest is
 `release-linux-<arch>.json` and the archives are `<profile>-linux-<arch>.tar.gz`.
 Save the manifest as `release.json`, the name the operator reads; keep the
-archives' names, because the manifest names them. Copy `release.json` and every
+archives' names, because the manifest names them. An artifact's optional
+`archive_release` names the immutable published GitHub tag in this same
+repository that holds that archive; when absent, download it from the chosen
+release itself. Authenticate the chosen manifest against GitHub's stated digest
+**before** following those tags. Require each referenced release to be published
+and immutable and its asset's GitHub digest and size to equal the chosen
+manifest's `sha256` and `size`; verify the downloaded bytes against both.
+Do not follow arbitrary URLs or recursively load another manifest. A source tag
+is a location, never a substitute for the chosen manifest's digest, inventory
+or version. All archives still arrive locally before the offline operator runs. Copy `release.json` and every
 selected archive into `/var/lib/open-habitat/release/` as root-owned,
 non-writable regular files; parents must be root-owned and not writable by other
 users. The manifest's version goes in `site.release.version` and GitHub's stated
@@ -319,6 +328,31 @@ issue a distinct release version/digest with the exact predecessor and successor
 product inventory. Leaving `site.release` on the old runtime manifest cannot
 install a new product. Publish the new manifest together with the product and
 identify unchanged archive hashes in the handoff.
+
+For a product-only cut, `scripts/successor-descriptors.py --archive-release
+vPREDECESSOR` annotates archives without a source tag and preserves an existing
+source tag, so repeated cuts point directly to the original asset. A rebuilt
+profile uses its new descriptor without `archive_release` and is uploaded with
+the new release. Keep the complete local archive closure for signing and
+verification, even when those bytes will not be uploaded.
+
+Before upload, run `python3 scripts/release-upload-plan.py --directory ASSETS
+--tag vVERSION --json`. ASSETS contains only the two architectures' prepared
+packages, manifests, gate receipt and optional checksum/signature assets, plus
+any new archives (reused archives may be present). The planner checks the
+immutable sources with authenticated `gh`, refuses mismatched or unexpected
+files, and reports exact `upload` paths, `upload_bytes` and `reuse` entries.
+Upload only those paths, **not a directory glob**. This is a read-only upload
+plan, not release qualification: package verification, complete runtime
+verification, the release gate and draft verification still apply. In draft
+verification, fetch referenced runtime assets from their source tags too.
+Publish only after the installation downloader supports these references.
+Retain every referenced source release for as long as any supported successor
+needs it: immutability of its bytes does not replace source availability.
+
+The upload itself needs no signing key and may run on a faster connected build
+host. Any signing that the cut still requires stays on the signing host; only
+public prepared assets and their checked digests cross to the uploading host.
 
 ```sh
 /path/to/successor/bin/open-habitat host upgrade --site /etc/open-habitat/site.json --dry-run --json
