@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="fi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'"><title>Päätökset 31.10.2026 — Open Habitat</title>
+<style>
+:root{color-scheme:light dark;--bg:#f5f4f0;--paper:#fff;--ink:#202b2d;--muted:#536265;--line:#ced5d2;--accent:#075d55;--mark:#fff5d9;--markline:#9a6500}*{box-sizing:border-box}html{scroll-padding-top:1rem}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:980px;margin:auto;padding:clamp(16px,4vw,48px)}h1{font-size:clamp(2rem,6vw,3.5rem);line-height:1.1;letter-spacing:-.035em;margin:.3em 0}h2{font-size:1.4rem;line-height:1.35;margin:0 0 .7rem}h2 span{display:block}h2 code{font-size:.78rem;font-weight:500;color:var(--muted);display:block;margin-bottom:.5rem}h3{font-size:1rem;margin:0}p{margin:.45rem 0 .8rem}code{overflow-wrap:anywhere;font-size:.86em}a{color:var(--accent);text-underline-offset:3px}a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.eyebrow{color:var(--accent);font-size:.82rem;font-weight:750;text-transform:uppercase;letter-spacing:.1em}.intro{max-width:760px}.note{border-left:4px solid var(--markline);padding:.7rem 1rem;background:var(--mark)}.status,.tags,small{font-size:.84rem;color:var(--muted)}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:1.5rem 0 .7rem}button,.search{font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);min-height:44px;padding:.5rem .8rem}button{cursor:pointer}button[aria-pressed=true]{background:var(--accent);color:white}.search{width:100%;margin:.3rem 0}.progress{font-variant-numeric:tabular-nums;font-weight:650}.toc{margin:1.5rem 0 2.5rem;border:1px solid var(--line);border-radius:12px;padding:1rem;background:var(--paper)}summary{cursor:pointer;padding:.2rem 0;font-weight:650}.toc ol{columns:2;column-gap:2rem;padding-left:1.5rem}.toc li{break-inside:avoid;margin:0 0 .8rem;padding-left:.1rem}.toc a{font-size:.9rem;text-decoration:none;display:block}.toc small{display:block;font-size:.72rem;overflow-wrap:anywhere}section{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:clamp(16px,3vw,30px);margin:1.5rem 0 2rem}.decisions{list-style:none;margin:0;padding:0}.decision{border-top:1px solid var(--line);padding:1rem 0}.decision.marked{border-left:4px solid var(--markline);background:var(--mark);padding:.9rem;margin:.8rem 0;border-top:0;border-radius:0 8px 8px 0}.decision-title{display:flex;gap:.8rem;align-items:flex-start;cursor:pointer;min-height:36px}input[type=checkbox]{flex:0 0 auto;width:23px;height:23px;margin:3px 0 0;accent-color:var(--accent)}.item-body{padding-left:calc(23px + .8rem)}.decision:has(input:checked) .decision-title strong{text-decoration:line-through;color:var(--muted)}.tags{font-weight:650;font-size:.75rem;margin-top:0}.sources{border-top:1px solid var(--line);padding-top:.8rem;margin-top:.8rem;font-size:.86rem}.sources p{margin:.5rem 0}.top{display:inline-block;font-size:.8rem;margin-top:1rem}[hidden]{display:none!important}footer{font-size:.84rem;color:var(--muted);margin:2rem 0}@media(max-width:620px){.toc ol{columns:1}.item-body{padding-left:0}section{border-radius:9px}.toolbar button{flex:1}.decision-title{gap:.6rem}}@media(prefers-color-scheme:dark){:root{--bg:#141c1e;--paper:#1c2729;--ink:#e5eeeb;--muted:#b1c1bb;--line:#40504b;--accent:#91ddc8;--mark:#352d1b;--markline:#dfb85a}button[aria-pressed=true]{color:#112b24}}@media print{body{background:white;color:black;font-size:10pt}main{max-width:none;padding:0}.toolbar,.search-label,.search,.top,.toc,footer button{display:none}section{break-inside:auto;border:0;padding:0;margin:1.5rem 0}.decision{break-inside:avoid}.sources{font-size:8pt}.note,.marked{background:none!important}h2{break-after:avoid}a{color:black}}
+</style></head><body><main id="alku"><header><p class="eyebrow">Open Habitat · 31.10.2026</p><h1>Mitä tänään valittiin?</h1><div class="intro"><p>239 läpikäytävää kohtaa 49 issuessa. Ihmiselle näkyvät valinnat ensin, sitten sisäinen toteutus ja ylläpito. Tutkimusten ehdotukset on merkitty erikseen: niitä ei ole sillä perusteella hyväksytty tai toteutettu.</p><p class="note"><b>★ Arvioi erityisesti</b> (53 kohtaa) on tämän koonnin tekijän arvio siitä, mihin todennäköisimmin haluat muutoksen — ei lähteen vakavuusluokitus. Katso etenkin ilmoitusten vaimennus ja vanheneminen, raiteesta katoaminen, ensimmäisen kuvakkeen kumous sekä puhelimen sulkemisrasti.</p><p>Rasti tarkoittaa <b>käyty läpi</b>, ei hyväksyntää. Merkinnät pysyvät vain tässä selaimessa ja tämän sivun tallennustilassa. Niitä ei lähetetä agentille eikä niillä muuteta tuotetta. Voit viedä rastitetut kohdat tekstitiedostoksi.</p><p class="status">Rajaus: main-haaran commitit <code>bd63156e..51cb9b83</code>, Fixes-Issue- ja Refs-Issue-trailerien 49 eri issuea. Tämä on koonnin jäädytetty päätepiste; sen jälkeiset rinnakkaiset työt eivät kuulu tähän sivuun. Mukana niiden result.md-, NOTES.md- ja report.md-valinnat sekä commit-viestit. Myös päivän myöhemmät Jarin ratkaisut huomioitu. Koonti ei väitä kaikkea asennetuksi pilot.17:ään.</p></div></header>
+<div class="toolbar"><button id="stars" type="button" aria-pressed="false">Vain ★-kohdat</button><button id="todo" type="button" aria-pressed="false">Vain läpikäymättömät</button><button id="export" type="button">Vie merkinnät</button><button id="print" type="button">Tulosta</button></div><label class="search-label" for="search">Hae otsikosta, valinnasta tai issue-tunnuksesta</label><input class="search" id="search" type="search" placeholder="Esim. push, kieli, raide…"><p class="progress" id="progress" aria-live="polite"></p><p class="status" id="storage">Ilman JavaScriptiä rastit toimivat, mutta eivät tallennu sivun sulkemisen yli.</p><noscript><p>Suodatus ja vienti tarvitsevat JavaScriptin. Kaikki teksti ja sisällysluettelo toimivat ilman sitä.</p></noscript>
+<nav aria-label="Sisällysluettelo" class="toc"><details open><summary>Sisällysluettelo · 49 issuea</summary><ol><li><a href="#push-when-your-turn">Puhelin ilmoittaa, kun keskustelu odottaa sinua.<small>push-when-your-turn</small></a></li><li><a href="#rail-running-after-done">Valmis keskustelu poistuu Käynnissä-listasta.<small>rail-running-after-done</small></a></li><li><a href="#rail-icons-no-grouping">Kuvakkeellisessa raiteessa hiljaiset keskustelut näkyvät ilman työtilakohtaisia taitoksia.<small>rail-icons-no-grouping</small></a></li><li><a href="#proto-rail-recent">Prototyyppi tuo valmiit keskustelut takaisin raiteeseen omana listanaan.<small>proto-rail-recent</small></a></li><li><a href="#next-waiting-no-return">Odottavien keskustelujen kierros ei vie takaisin lähtöön.<small>next-waiting-no-return</small></a></li><li><a href="#proto-next-waiting-states">Prototyyppi määrittelee, milloin seuraavaan odottavaan ohjaava rivi näkyy.<small>proto-next-waiting-states</small></a></li><li><a href="#queue-keeps-archived-steps">Arkistoidut keskustelut poistuvat odottavien kierroksesta.<small>queue-keeps-archived-steps</small></a></li><li><a href="#dictation-bar-default">Sanelupalkki on oletus ja perutun sanelun voi palauttaa.<small>dictation-bar-default</small></a></li><li><a href="#workspace-icon-polish">Kuvake-ehdotukset säilyvät ja valinnan tulos kerrotaan.<small>workspace-icon-polish</small></a></li><li><a href="#recap-settings-polish">Tilannekatsauksen viive ulottuu tuntiin eikä pidä Pi:tä hereillä.<small>recap-settings-polish</small></a></li><li><a href="#settings-close-x-overlaps-content">Asetusten sulkemisrasti ei peitä sisältöä.<small>settings-close-x-overlaps-content</small></a></li><li><a href="#recap-rows-clipped">Asetusrivit pinoutuvat kapeassa sisältöpalstassa.<small>recap-rows-clipped</small></a></li><li><a href="#ui-language-choice">Käyttöliittymän kieleksi voi valita järjestelmän, suomen tai englannin.<small>ui-language-choice</small></a></li><li><a href="#en-composer">Viestikentän apuvälineet toimivat englanniksi.<small>en-composer</small></a></li><li><a href="#en-conversation">Keskustelun historia, tarjoukset ja työkalukortit toimivat englanniksi.<small>en-conversation</small></a></li><li><a href="#en-shell-editor">Editori, kontekstisivu ja käyttöliittymän kehys toimivat englanniksi.<small>en-shell-editor</small></a></li><li><a href="#en-workers">Workerien, prosessien ja terminaalien näkymät toimivat englanniksi.<small>en-workers</small></a></li><li><a href="#en-workspaces">Työtilat, kloonaus ja GitHubin käyttöönotto toimivat englanniksi.<small>en-workspaces</small></a></li><li><a href="#ui-english-coverage">Viimeiset hostin suomenkieliset tekstit eivät vuoda englanninkieliseen näkymään.<small>ui-english-coverage</small></a></li><li><a href="#enter-sends-twice">Yksi Enter ei piirrä kahta viestiä eikä hylkää juuri myöhästynyttä ohjausta.<small>enter-sends-twice</small></a></li><li><a href="#send-rejected-after-delivery">Jo toimitetun viestin uusinta saa saman vastauksen eikä näy hylättynä.<small>send-rejected-after-delivery</small></a></li><li><a href="#reconnect-after-version-change">Vanhentunut välilehti tarjoaa uudelleenlatausta toimimattoman yhdistämisen sijaan.<small>reconnect-after-version-change</small></a></li><li><a href="#github-state-unknown-birch">GitHub-yhteyden tarkistus ehtii valmistua ja tuntemattomalle tilalle näytetään syy.<small>github-state-unknown-birch</small></a></li><li><a href="#http-fallback-send-flaky">Uuden keskustelun lähetyksen testi odottaa todellista lähetysvastausta.<small>http-fallback-send-flaky</small></a></li><li><a href="#oom-stops-whole-unit">Yhden prosessin muistikuolema ei pysäytä ihmisen kaikkia keskusteluja.<small>oom-stops-whole-unit</small></a></li><li><a href="#claude-path-missing-payloads">Agentin PATH löytää Claude Coden myös erillisestä runtimesta.<small>claude-path-missing-payloads</small></a></li><li><a href="#readme-first-draft">Julkinen README ja julkaisusopimus ovat luonnoksina arvioitavina.<small>readme-first-draft</small></a></li><li><a href="#research-orca-launch">Tutkimus ehdottaa, miten Open Habitat julkaistaan ulkopuolisille.<small>research-orca-launch</small></a></li><li><a href="#benchmark-humanlayer">Vertailu etsii HumanLayerista hyödyllisiä katselmointitapoja.<small>benchmark-humanlayer</small></a></li><li><a href="#benchmark-orca">Vertailu etsii Orcasta puhelinohjauksen ja resurssienhallinnan oppeja.<small>benchmark-orca</small></a></li><li><a href="#benchmark-pi-web">Kahden Pi Webin vertailu ehdottaa natiivin istunnon parempaa säilyvyyttä.<small>benchmark-pi-web</small></a></li><li><a href="#benchmark-hapi">HAPI-vertailu tarkentaa ilmoituksia ja selaimen suhdetta natiiviin agenttiin.<small>benchmark-hapi</small></a></li><li><a href="#benchmark-coder">Coder-vertailu puoltaa natiivia rajapintaa oman agenttisilmukan sijaan.<small>benchmark-coder</small></a></li><li><a href="#benchmark-herdr">Herdr-vertailu etsii luotettavaa terminaaliagentin tilaa.<small>benchmark-herdr</small></a></li><li><a href="#benchmark-harness-remote">Natiivien etäkäyttömallien vertailu ehdottaa Pi:lle lukkoa ja paikallista liittymistä.<small>benchmark-harness-remote</small></a></li><li><a href="#benchmark-cockpit">Cockpit-vertailu ehdottaa pienempää yhteistä verkkovaltaa.<small>benchmark-cockpit</small></a></li><li><a href="#benchmark-jupyterhub">JupyterHub-vertailu löysi resurssirajan aukon ja ehdottaa selainturvan lisäsuojia.<small>benchmark-jupyterhub</small></a></li><li><a href="#rail-interrupted-turn-hidden">Päivityksessä kesken jäänyt vuoro pysyy näkyvissä raiteessa.<small>rail-interrupted-turn-hidden</small></a></li><li><a href="#research-per-person-gateway">Jatkotutkimus suosittelee ihmiselle omaa gateway-identiteettiä ja selainoriginia.<small>research-per-person-gateway</small></a></li><li><a href="#research-user-slice-limits">Jatkotutkimus suosittelee yhtä resurssikattoa ihmisen kaikelle työlle.<small>research-user-slice-limits</small></a></li><li><a href="#bell-panel-header-trim">Ilmoituspaneelin otsikko on pelkkä Ilmoitukset.<small>bell-panel-header-trim</small></a></li><li><a href="#editor-roundtrip-test-flake">Editorin konfliktitesti käyttää varmasti vanhaa versiotunnusta.<small>editor-roundtrip-test-flake</small></a></li><li><a href="#gate-r42-browser">Kehityssivun kaatuminen korjattiin ja kontrasti tarkistetaan animaation jälkeen.<small>gate-r42-browser</small></a></li><li><a href="#terminal-old-server-path-test-cleanup-flake">Tmux-testin siivous odottaa paneelien poistumista.<small>terminal-old-server-path-test-cleanup-flake</small></a></li><li><a href="#web-typecheck-reload-spec">Uudelleenlatauksen testin JSON-tyyppi rajattiin ennen objektin levitystä.<small>web-typecheck-reload-spec</small></a></li><li><a href="#browser-hosts-invisible-reaper">Testiselainhostien siivous tunnistaa näkymättömälle vanhemmalle jääneet prosessit.<small>browser-hosts-invisible-reaper</small></a></li><li><a href="#release-pilot-17">Pilot.17 koottiin, tarkistettiin ja annettiin asennusoperaattorille.<small>release-pilot-17</small></a></li><li><a href="#daemon-pi-outside-user-slice">Selaimen Pi:t jäävät nykyisen käyttäjäkohtaisen resurssibudjetin ulkopuolelle.<small>daemon-pi-outside-user-slice</small></a></li><li><a href="#benchmark-candidates">Lyhytlista rajasi seuraavat seitsemän vertailuajoa.<small>benchmark-candidates</small></a></li></ol></details></nav><p id="empty" hidden>Ei hakua vastaavia kohtia. Tyhjennä haku tai poista suodatin.</p><section id="push-when-your-turn" data-section><h2><code>push-when-your-turn</code><span>Puhelin ilmoittaa, kun keskustelu odottaa sinua.</span></h2><p class="status">Toteutettu, kokeellinen</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="push-when-your-turn-1"><input type="checkbox" id="push-when-your-turn-1"><strong>Läsnäolon aikarajat</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Ilmoitusta vaimennetaan, jos näkyvää välilehteä on käytetty kahden minuutin sisällä; läsnäolo kerrotaan 20 s välein, lähetys odottaa 30 s ja peruuntuu tuoreesta (60 s) ilmoituksesta.</p><p><b>Vaihtoehto:</b> Pelkkä välilehden näkyvyys.</p><p><b>Miksi:</b> Pöydälle auki jäänyt selain ei saa vaientaa puhelinta loputtomasti.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="push-when-your-turn-2"><input type="checkbox" id="push-when-your-turn-2"><strong>Yksi ilmoitus keskustelua kohti</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Uutta ilmoitusta ei tule ennen paluutasi, vaikka agentti tekisi monta vuoroa tai kysyisi myöhemmin samassa keskustelussa.</p><p><b>Vaihtoehto:</b> Ilmoitus joka vuorosta tai erikseen kysymyksestä.</p><p><b>Miksi:</b> Estää jatkuvan puhelimen piippauksen; myöhempi tärkeä kysymys voi kuitenkin jäädä ilmoittamatta.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="push-when-your-turn-3"><input type="checkbox" id="push-when-your-turn-3"><strong>Pois päältä unohtaa kaikki laitteet</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Kytkimen poiskytkentä poistaa avainparin ja kaikki laitetilaukset; laitteita saa olla enintään kymmenen.</p><p><b>Vaihtoehto:</b> Pelkkä ilmoitusten tauotus ja tilausten säilyttäminen.</p><p><b>Miksi:</b> Poistettu laite ei palaudu sivun latauksella; kytkin on siis myös nollaus, ei vain tauko.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="push-when-your-turn-4"><input type="checkbox" id="push-when-your-turn-4"><strong>Vanhaa ilmoitusta ei peruta toiselta laitteelta</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Laite sulkee ilmoituksen avatessaan keskustelun; muualta ei lähetetä hiljaista peruutusta. Toimittamatta jäänyt ilmoitus vanhenee 12 tunnissa.</p><p><b>Vaihtoehto:</b> Peruutuspush tai lyhyempi voimassaolo.</p><p><b>Miksi:</b> Safari voi perua tilauksen hiljaisesta pushista. Hinta: puhelimessa voi näkyä jo hoidettu asia tai tuntien takainen ilmoitus.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="push-when-your-turn-5"><input type="checkbox" id="push-when-your-turn-5"><strong>Ilmoituksen kieli</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Service worker käyttää laitteen tilaushetken kieltä, joka päivitetään sivun latauksessa.</p><p><b>Vaihtoehto:</b> Selaimen hetkellinen kieli tai palvelimella käännetty teksti.</p><p><b>Miksi:</b> Sovellus ei välttämättä ole käynnissä, kun ilmoitus saapuu.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="push-when-your-turn-6"><input type="checkbox" id="push-when-your-turn-6"><strong>Mistä ilmoitetaan</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Pelkkä tilannekatsauksen teko ei ilmoita; Habitatin omat herätysvuorot ilmoittavat.</p><p><b>Vaihtoehto:</b> Kaikki Pi-käynnistykset tai vain ihmisen aloittamat.</p><p><b>Miksi:</b> Katsaus ei ole uusi vastaus; herätysvuoro kuuluu raiteenkin Sinun vuorosi -tilaan.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="push-when-your-turn-7"><input type="checkbox" id="push-when-your-turn-7"><strong>Asennettava verkkosovellus</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Koko sovellus sai manifestin ja kotinäytön kuvakkeen.</p><p><b>Vaihtoehto:</b> Pelkkä selaimen välilehti.</p><p><b>Miksi:</b> iPhonen Web Push edellyttää kotinäytölle lisättyä verkkosovellusta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="push-when-your-turn-8"><input type="checkbox" id="push-when-your-turn-8"><strong>Push-salaus ilman uutta kirjastoa</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>RFC 8291/8292 toteutettiin Go-vakiokirjastolla ja tarkistettiin RFC-testivektorilla.</p><p><b>Vaihtoehto:</b> webpush-go sekä sen JWT- ja x/crypto-riippuvuudet.</p><p><b>Miksi:</b> Go 1.27 sisältää tarvittavat primitiivit; toteutus on noin 150 riviä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="push-when-your-turn-9"><input type="checkbox" id="push-when-your-turn-9"><strong>Vain tunnettujen selaintoimittajien push-osoitteet</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Sallitaan FCM, Mozilla, Apple ja WNS sekä yhteinen ulosmenon tarkistus.</p><p><b>Vaihtoehto:</b> Vapaasti annettu HTTPS-osoite.</p><p><b>Miksi:</b> Selain ei saa käskeä daemonia lähettämään mielivaltaiseen kohteeseen; uusi toimittaja tarvitsee koodimuutoksen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="push-when-your-turn-10"><input type="checkbox" id="push-when-your-turn-10"><strong>Ihmisen daemon lähettää</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Avaimet ja tilaukset ovat ihmisen omassa push.json-tiedostossa (0600); gateway välittää reitit.</p><p><b>Vaihtoehto:</b> Yhteinen lähetyspalvelu ja avainvarasto.</p><p><b>Miksi:</b> Unix-käyttäjän raja säilyy. Tämä on commitissa kirjattu toteutus, ei tämän koonnin uusi arkkitehtuurivalinta.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/push-when-your-turn/result.md</code> <small>(main)</small></p>
+<p>Commitit: 89e30d2f push-when-your-turn: phone notification when a conversation waits for you (experimental)</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="rail-running-after-done" data-section><h2><code>rail-running-after-done</code><span>Valmis keskustelu poistuu Käynnissä-listasta.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="rail-running-after-done-1"><input type="checkbox" id="rail-running-after-done-1"><strong>Myös avoin keskustelu poistuu</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Valmis keskustelu katoaa Käynnissä-listasta, vaikka katsot sitä parhaillaan.</p><p><b>Vaihtoehto:</b> Pidetään valittu keskustelu näkyvissä.</p><p><b>Miksi:</b> Lista kuvaa työtä, ei nykyistä näkymää. Viimeisimmät-prototyyppi ehdottaa tähän myöhemmin toista listaa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="rail-running-after-done-2"><input type="checkbox" id="rail-running-after-done-2"><strong>Tyhjä uusi keskustelu ei näy</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Keskustelu tulee Käynnissä-listaan vasta, kun siellä tehdään työtä.</p><p><b>Vaihtoehto:</b> Näytetään luomisesta ensimmäiseen vuoroon.</p><p><b>Miksi:</b> Tyhjässä keskustelussa mikään ei vielä työskentele; se löytyy työtilasta.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="rail-running-after-done-3"><input type="checkbox" id="rail-running-after-done-3"><strong>Vastausta odottava worker pitää pääkeskustelun listalla</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Workerin oma odotus säilyttää pääkeskustelun Käynnissä-listalla; hiljainen rivi taittuu tunnin jälkeen.</p><p><b>Vaihtoehto:</b> Käsitellään workerkin valmiina.</p><p><b>Miksi:</b> Ihmisen odotetaan toimivan workerin kanssa. Työtilan vihje pysyy muodossa ”odottaa viestiä”.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="rail-running-after-done-4"><input type="checkbox" id="rail-running-after-done-4"><strong>Tuntematon terminaali-Pi jää listalle</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Jos vuoron tilaa ei tunneta, käynnissä oleva terminaali-Pi pysyy näkyvissä.</p><p><b>Vaihtoehto:</b> Oletetaan sen lopettaneen.</p><p><b>Miksi:</b> Hostilla ei ole näyttöä valmistumisesta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="rail-running-after-done-5"><input type="checkbox" id="rail-running-after-done-5"><strong>Valmiin keskustelun arkistointi siirtyy pois raiteesta</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Arkistointi onnistuu otsakkeesta tai työtilasivulta, ei poistuneelta raideriviltä.</p><p><b>Vaihtoehto:</b> Säilytetään valmis rivi arkistointia varten.</p><p><b>Miksi:</b> Seuraa listan uudesta rajauksesta; ei erillistä korvaavaa raidekontrollia.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/rail-running-after-done/result.md</code> <small>(main)</small></p>
+<p>Commitit: c119bc5f Rail: a finished conversation leaves Käynnissä</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="rail-icons-no-grouping" data-section><h2><code>rail-icons-no-grouping</code><span>Kuvakkeellisessa raiteessa hiljaiset keskustelut näkyvät ilman työtilakohtaisia taitoksia.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="rail-icons-no-grouping-1"><input type="checkbox" id="rail-icons-no-grouping-1"><strong>Hiljaisille ei yhteistä taitosta</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Hiljaiset rivit ovat suoraan näkyvissä, eivät edes yhden ”N hiljaista” -painikkeen takana.</p><p><b>Vaihtoehto:</b> Yhteinen taitos tai taittuva väliotsikko.</p><p><b>Miksi:</b> Jarin pyyntö oli poistaa ylimääräinen avaamisklikkaus; pitkä lista voi silti myöhemmin vaatia toisen ratkaisun.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="rail-icons-no-grouping-2"><input type="checkbox" id="rail-icons-no-grouping-2"><strong>Hiljaiset uusimmasta vanhimpaan</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Rivit järjestetään viime muutoksen mukaan työtilarajojen yli.</p><p><b>Vaihtoehto:</b> Työtilan nimi tai hostin järjestys.</p><p><b>Miksi:</b> Järjestys vastaa rivin ikämerkintää eikä palauta ryhmittelyä toisella nimellä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="rail-icons-no-grouping-3"><input type="checkbox" id="rail-icons-no-grouping-3"><strong>Elävien ryhmien välit ennallaan</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Avoimet ja epäonnistuneet jäävät vanhoihin ryhmiinsä; vain hiljaiset irrotetaan.</p><p><b>Vaihtoehto:</b> Koko raiteen tasoittaminen.</p><p><b>Miksi:</b> Rajattu muutos pyydettyyn hiljaisten ryhmittelyyn; ilman kuvakkeita vanhat ryhmät säilyvät.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/rail-icons-no-grouping/result.md</code> <small>(main)</small></p>
+<p>Commitit: da181016 Rail with workspace icons: quiet conversations as rows, not folds</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="proto-rail-recent" data-section><h2><code>proto-rail-recent</code><span>Prototyyppi tuo valmiit keskustelut takaisin raiteeseen omana listanaan.</span></h2><p class="status">Ehdotus, ei toteutettu</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="proto-rail-recent-1"><input type="checkbox" id="proto-rail-recent-1"><strong>Viisi viimeksi muuttunutta</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Worker suosittelee viittä viimeksi muuttunutta keskustelua iästä riippumatta.</p><p><b>Vaihtoehto:</b> Viimeisen vuorokauden kaikki keskustelut tai tämän selaimen viisi viime käyntiä.</p><p><b>Miksi:</b> Lista ei tyhjene viikonlopun jälkeen eikä tarvitse uutta käyntivarastoa. Viisi uutta valmistumista syrjäyttää aiemman; myös automaattinen katsaus muuttaa järjestystä.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="proto-rail-recent-2"><input type="checkbox" id="proto-rail-recent-2"><strong>Avoin keskustelu aina mukaan</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Valittu keskustelu näkyy, vaikka ei mahtuisi viiteen.</p><p><b>Vaihtoehto:</b> Tiukka viiden raja.</p><p><b>Miksi:</b> Säilyttää näkyvän paikan keskustelulle, jossa ihminen jo on; lista voi siksi olla kuusi riviä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="proto-rail-recent-3"><input type="checkbox" id="proto-rail-recent-3"><strong>Hiljaiset korvataan Viimeisimmillä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Kaikki ehdotussuunnat poistavat Hiljaiset-taitokset ja erottavat valmiit omaksi osiokseen.</p><p><b>Vaihtoehto:</b> Säilytetään Hiljaiset entisellään.</p><p><b>Miksi:</b> Prosessin lepo ei enää määrää keskustelun paikkaa.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="proto-rail-recent-4"><input type="checkbox" id="proto-rail-recent-4"><strong>Worker-keskustelut jätetään pois</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Valmiita worker-keskusteluja ei näytetä viimeisimmissä; myös yhdistämättömän valmiin workerin kohtalo kysytään Jarilta.</p><p><b>Vaihtoehto:</b> Näytetään kaikki tai vain yhdistämättömät workerit.</p><p><b>Miksi:</b> Pääkeskustelu raportoi työn; workerit eivät veisi viittä paikkaa. Rajaus on vielä arvioitava.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="proto-rail-recent-5"><input type="checkbox" id="proto-rail-recent-5"><strong>Terminaalikeskustelut mukaan</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Terminaalissa tehdyt keskustelut ovat samanarvoisia viimeisimmissä.</p><p><b>Vaihtoehto:</b> Vain selaimessa aloitetut.</p><p><b>Miksi:</b> Nekin ovat ihmisen omaa työtä; valinta odottaa Jarin arviota.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="proto-rail-recent-6"><input type="checkbox" id="proto-rail-recent-6"><strong>Pisteraidasta viimeisimmät pois</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Editorin kapeassa pisteraidassa säilyvät vain Sinun vuorosi ja Käynnissä.</p><p><b>Vaihtoehto:</b> Myös viimeisimmät pisteiksi.</p><p><b>Miksi:</b> Prototyypin rajaus; raportti kysyy tämän erikseen, eikä perustele valintaa pidemmälle.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="proto-rail-recent-7"><input type="checkbox" id="proto-rail-recent-7"><strong>Kuvakkeet määräävät ryhmittelyn</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Kuvakkeilla suora lista, ilman niitä työtilaryhmät uusimman rivinsä järjestyksessä.</p><p><b>Vaihtoehto:</b> Aina suora tai aina ryhmitelty lista.</p><p><b>Miksi:</b> Noudattaa nykyisen raiteen suuntaa; ei uutta host-tietoa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="proto-rail-recent-8"><input type="checkbox" id="proto-rail-recent-8"><strong>Keskeytynyt vuoro Käynnissä-listaan</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Kaikki suunnat olettavat ◆ Keskeytyi -rivin, kunnes ihminen jatkaa.</p><p><b>Vaihtoehto:</b> Nykyinen katoaminen listalta.</p><p><b>Miksi:</b> Tekemätön työ ei saa näyttää valmiilta; tämä on toisen työn hyväksymisehto, ei tämän prototyypin toteutus.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="proto-rail-recent-9"><input type="checkbox" id="proto-rail-recent-9"><strong>Lähteenä istuntotiedoston muutoshetki</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Suositus käyttää jo olemassa olevaa changed_at-tietoa, ei käyntihistoriaa.</p><p><b>Vaihtoehto:</b> localStorage-käynnit tai uusi hostin varasto.</p><p><b>Miksi:</b> Ei toista totuutta; lukemattomuus jää silti nykyiseen välilehtimuistiin eikä korjaannu tällä.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/proto-rail-recent/prototypes/NOTES.md</code> <small>(main)</small></p>
+<p><code>issues/proto-rail-recent/result.md</code> <small>(main)</small></p>
+<p>Commitit: 0d883348 proto-rail-recent: rail state graphs and three recent-section directions</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="next-waiting-no-return" data-section><h2><code>next-waiting-no-return</code><span>Odottavien keskustelujen kierros ei vie takaisin lähtöön.</span></h2><p class="status">Toteutettu; myöhempi suunta korvaa osan</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="next-waiting-no-return-1"><input type="checkbox" id="next-waiting-no-return-1"><strong>Valmis lopettaa siihen missä olet</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Viimeisen jälkeen Valmis/Alt+↓ näyttää ”Kierros käyty: N hoidettu”; ✕ ja Esc lopettavat ilman yhteenvetoa.</p><p><b>Vaihtoehto:</b> Hiljainen lopetus tai siirtyminen kierroksen ulkopuoliseen odottavaan.</p><p><b>Miksi:</b> Kertoo kierroksen päättyneen lupaamatta uutta määränpäätä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="next-waiting-no-return-2"><input type="checkbox" id="next-waiting-no-return-2"><strong>Lähtö voi liittyä mukaan uutena odottavana</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Alkuperäinen keskustelu lisätään loppuun, jos se alkaa odottaa sinua.</p><p><b>Vaihtoehto:</b> Suljetaan lähtö pysyvästi pois.</p><p><b>Miksi:</b> Sama sääntö kuin muille myöhään odottaviksi muuttuville.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="next-waiting-no-return-3"><input type="checkbox" id="next-waiting-no-return-3"><strong>Kierrospalkki näkyy myös kierroksen ulkopuolella</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Kierroksen aikana palkki pysyy kaikissa keskusteluissa, myös ihmistä odottavissa.</p><p><b>Vaihtoehto:</b> Palkki vain kierroksen askelissa.</p><p><b>Miksi:</b> Worker tulkitsi piilotussäännön koskevan aloitusriviä, koska odottavissa askelissa tarvitaan etenemistä. Uusi Vuoron loppuun -suunta poistaa tarpeettoman kierrosmallin.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="next-waiting-no-return-4"><input type="checkbox" id="next-waiting-no-return-4"><strong>Kokeen päällekytkentä näyttää rivin heti</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Jos agentti jo työskentelee, rivi ilmestyy ilman uutta lähetystä.</p><p><b>Vaihtoehto:</b> Odotetaan seuraavaa lähetystä.</p><p><b>Miksi:</b> Vanha lukitus poistettiin; tämä valinta vaihtuu sovitussa lähetyksestä alkavassa mallissa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="next-waiting-no-return-5"><input type="checkbox" id="next-waiting-no-return-5"><strong>Ensimmäisen askeleen arkistointi</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Jos nykyinen ensimmäinen askel poistuu, paikka siirtyy ennen uutta ensimmäistä: ylös ei tee mitään, Seuraava avaa ensimmäisen.</p><p><b>Vaihtoehto:</b> Hypätään automaattisesti uuteen ensimmäiseen.</p><p><b>Miksi:</b> Kierroksen sijainti pysyy määriteltynä ilman automaattista navigointia.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/next-waiting-no-return/result.md</code> <small>(main)</small></p>
+<p>Commitit: b136c1c9 Next waiting: only while the agent here works, and a round without the way back</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="proto-next-waiting-states" data-section><h2><code>proto-next-waiting-states</code><span>Prototyyppi määrittelee, milloin seuraavaan odottavaan ohjaava rivi näkyy.</span></h2><p class="status">Vuoron loppuun valittu; toteutus erillisessä työssä</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="proto-next-waiting-states-1"><input type="checkbox" id="proto-next-waiting-states-1"><strong>Kierroksen 1 suositus oli Saapuminen</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Worker ehdotti jatkoriviä myös saapumisen jälkeen, kunnes lähetät, poistut tai lataat sivun.</p><p><b>Vaihtoehto:</b> Vain työskentelyn ajan näkyvä rivi tai erillinen eteenpäin kulkeva kierros.</p><p><b>Miksi:</b> Pelkkää vastausta lukiessa eteneminen ei pysähtyisi. Tämä suositus on korvattu kierroksella 2.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="proto-next-waiting-states-2"><input type="checkbox" id="proto-next-waiting-states-2"><strong>Kysymys ei estäisi Saapumisen ohittamista</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Ensimmäisen suunnan Seuraava olisi sallinut ohittaa kysyvänkin keskustelun.</p><p><b>Vaihtoehto:</b> Kysymys pysäyttäisi etenemisen.</p><p><b>Miksi:</b> Sama saapumispoikkeus kaikille; jäi kysymykseksi ja kuuluu nyt vanhaan suunnitelmaan.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="proto-next-waiting-states-3"><input type="checkbox" id="proto-next-waiting-states-3"><strong>Taustatyön odotus ei ole työskentelyä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Prototyypin working-ehto ei sisällä waiting_background-tilaa.</p><p><b>Vaihtoehto:</b> Näytetään rivi myös workeria odottaessa.</p><p><b>Miksi:</b> Noudattaa nykyistä tilatietoa; raportti jättää laajennuksen harkittavaksi.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="proto-next-waiting-states-4"><input type="checkbox" id="proto-next-waiting-states-4"><strong>Vuoron loppuun valittiin</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Rivi alkaa hostin hyväksymästä omasta lähetyksestä ja loppuu vuoron päättyessä, kysymyksessä, virheessä, poistuttaessa tai uudelleenlatauksessa.</p><p><b>Vaihtoehto:</b> Paikka pysyy: tyhjä paikka ja 4 s loppuilmoitus; Lähtöön asti: rivi säilyy vuoron jälkeen.</p><p><b>Miksi:</b> Vähiten ylimääräistä tilaa ja lopetus, kun täällä on oma vuorosi. Jari valitsi tämän 31.10.; ei enää avoin suunnanvalinta.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="proto-next-waiting-states-5"><input type="checkbox" id="proto-next-waiting-states-5"><strong>Tyhjäksi mennyt rivi saa palata samalla vuorolla</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Jos joku alkaa uudelleen odottaa, rivi palaa ilman uutta lähetystä.</p><p><b>Vaihtoehto:</b> Pysyy suljettuna seuraavaan lähetykseen.</p><p><b>Miksi:</b> Seuraa taustatilaa elävästi. Jari ei vastannut erikseen; conductorin suositus kirjattiin toteutuksen oletukseksi.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="proto-next-waiting-states-6"><input type="checkbox" id="proto-next-waiting-states-6"><strong>Seuraavaan siirtyminen ei kuljeta riviä mukana</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Uudessa keskustelussa rivi syntyy vasta omasta lähetyksestä, ei pelkästä lukemisesta.</p><p><b>Vaihtoehto:</b> Kierroksen 1 Saapuminen-poikkeus.</p><p><b>Miksi:</b> Yksi lähetykseen sidottu sääntö. Tämäkin on erikseen vastaamatta jäänyt, toteutusbriefiin kirjattu oletus.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="proto-next-waiting-states-7"><input type="checkbox" id="proto-next-waiting-states-7"><strong>Uudelleenlataus unohtaa lähetysikkunan</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Taustalta käynnistynyt ajo tai sivun lataus ei synnytä riviä.</p><p><b>Vaihtoehto:</b> Palautetaan rivi hostin run_active-tilasta.</p><p><b>Miksi:</b> Muuten näkyisi myös ajoja, joita ihminen ei käynnistänyt tässä välilehdessä.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/proto-next-waiting-states/prototypes/NOTES.md</code> <small>(main)</small></p>
+<p><code>issues/proto-next-waiting-states/result.md</code> <small>(main)</small></p>
+<p>Myöhempi päätös: commit <code>6f81ff22</code>, <code>issues/next-waiting-on-send/item.md</code>.</p>
+<p>Commitit: f9fd247b Prototype round 2: the next-waiting row appears on the person&#x27;s send; f62baba4 Prototype: the next-waiting row as a state machine (Nykyinen + three directions)</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="queue-keeps-archived-steps" data-section><h2><code>queue-keeps-archived-steps</code><span>Arkistoidut keskustelut poistuvat odottavien kierroksesta.</span></h2><p class="status">Osa valinnoista korvattu saman päivän aikana</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="queue-keeps-archived-steps-1"><input type="checkbox" id="queue-keeps-archived-steps-1"><strong>Vanha kierros loppui vasta kun vain lähtö jäi</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Kierrosta ei lopetettu heti, kun yksikään askel ei enää odottanut.</p><p><b>Vaihtoehto:</b> Lopetus heti odottavien loppuessa.</p><p><b>Miksi:</b> Avaaminen merkitsee luetuksi; muuten kierros katoaisi kesken lukemisen. Lähtöön sidottu sääntö korvattiin next-waiting-no-return-työssä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="queue-keeps-archived-steps-2"><input type="checkbox" id="queue-keeps-archived-steps-2"><strong>Lähdön arkistointi lopetti vanhan kierroksen</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Lähtöpaikan katoaminen lopetti koko kierroksen.</p><p><b>Vaihtoehto:</b> Jatketaan ilman lähtöä.</p><p><b>Miksi:</b> Vanha loppu vei lähtöön; perustelu poistui päivän myöhemmässä mallissa.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="queue-keeps-archived-steps-3"><input type="checkbox" id="queue-keeps-archived-steps-3"><strong>Arkistoitu lasketaan hoidetuksi</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Poistettu askel kasvattaa hoidettujen lukua eikä palaa, vaikka palvelin myöhemmin hylkäisi arkistoinnin.</p><p><b>Vaihtoehto:</b> Lasketaan vain vahvistetut arkistoinnit tai palautetaan askel.</p><p><b>Miksi:</b> Arkistointi tulkittiin hoitamiseksi; raportti jättää hylkäyksen poikkeuksen tietoisesti voimaan.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="queue-keeps-archived-steps-4"><input type="checkbox" id="queue-keeps-archived-steps-4"><strong>Macissa ⌥, muualla Alt</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Myös kokeellisen kortin pikanäppäinkuvaus seuraa alustaa.</p><p><b>Vaihtoehto:</b> Alt kaikille.</p><p><b>Miksi:</b> Sama vihje kaikkialla, samasta jonon näppäimestä.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/queue-keeps-archived-steps/result.md</code> <small>(main)</small></p>
+<p>Commitit: e7a32ff9 Next-waiting round drops archived steps and names ⌥ on a Mac</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="dictation-bar-default" data-section><h2><code>dictation-bar-default</code><span>Sanelupalkki on oletus ja perutun sanelun voi palauttaa.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="dictation-bar-default-1"><input type="checkbox" id="dictation-bar-default-1"><strong>Perutun sanelun Palauta jää kentän alle</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Talteen jää myös keskeneräinen tunnistus; palautus menee alkuperäiseen kohtaan tai muokatun tekstin loppuun.</p><p><b>Vaihtoehto:</b> Kentän ⌘Z tai katoava ilmoitus.</p><p><b>Miksi:</b> Natiivi kumous ei tunne sanelutekstiä, ja pysyvä ilmoitus ehtii tulla huomatuksi. Poistuu sulkemisella, uudella sanelulla tai palautuksella.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="dictation-bar-default-2"><input type="checkbox" id="dictation-bar-default-2"><strong>Myös ✕ tarjoaa palautuksen</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Esc ja ✕ peruuttavat samalla säännöllä; tyhjästä sanelusta ei ilmoitusta.</p><p><b>Vaihtoehto:</b> Vain Esc palautettavaksi.</p><p><b>Miksi:</b> Perumisen tapa ei muuta tietojen säilymistä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="dictation-bar-default-3"><input type="checkbox" id="dictation-bar-default-3"><strong>Viimeistelyä ei voi perua Escillä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Valmis/Enterin jälkeen Esc ei tee mitään, kuten käytöstä poistettu ✕.</p><p><b>Vaihtoehto:</b> Perutaan vielä viimeistelyvaiheessa.</p><p><b>Miksi:</b> Ihminen on jo vahvistanut sanelun valmiiksi.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="dictation-bar-default-4"><input type="checkbox" id="dictation-bar-default-4"><strong>Nopea vihje</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Hover-viive on 150 ms, näppäimistöfokuksessa ei viivettä.</p><p><b>Vaihtoehto:</b> Selaimen oma title tai välitön hover.</p><p><b>Miksi:</b> Sama malli kuin otsakkeen vihjeessä, ei välähdystä osoittimen kulkiessa yli.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="dictation-bar-default-5"><input type="checkbox" id="dictation-bar-default-5"><strong>Kuvaketoiveessa säilyy pieni sanelunappi</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>DictationControl jää vain työtilakuvakkeen yksiriviseen kenttään, myös siellä Esc ja Palauta.</p><p><b>Vaihtoehto:</b> Pelkkä Valmis Sanele-painikkeen paikalla tai iso palkki.</p><p><b>Miksi:</b> Yksirivisessä kentässä ei ole palkin peittämää apuriviä; oma ulkoasu voi myöhemmin muuttaa tämän.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="dictation-bar-default-6"><input type="checkbox" id="dictation-bar-default-6"><strong>Työpöydän Stop on 28 px</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Työpöydän Stop pysyy suunnitellussa koossa; puhelimessa 36 px.</p><p><b>Vaihtoehto:</b> Vanhan testin 32 px.</p><p><b>Miksi:</b> Säilyttää hyväksytyn palkin mitoituksen; testi muutettiin sen mukaiseksi.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/dictation-bar-default/result.md</code> <small>(main)</small></p>
+<p>Commitit: 53b453aa Dictation bar is the default; Esc cancels like ✕ with Palauta; quick tooltip</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="workspace-icon-polish" data-section><h2><code>workspace-icon-polish</code><span>Kuvake-ehdotukset säilyvät ja valinnan tulos kerrotaan.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="workspace-icon-polish-1"><input type="checkbox" id="workspace-icon-polish-1"><strong>Ehdotushistoria selaimeen</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Kierrokset tallennetaan localStorageen käyttäjä- ja työtilakohtaisesti, myös uloskirjautumisen yli.</p><p><b>Vaihtoehto:</b> Välilehtimuisti tai tiedosto kotona/työtilassa.</p><p><b>Miksi:</b> Säilyy käyntien välillä ilman uutta host-tiedostomuotoa, mutta ei seuraa toiselle laitteelle.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="workspace-icon-polish-2"><input type="checkbox" id="workspace-icon-polish-2"><strong>Ensimmäistä kuvaketta ei voi kumota ilmoituksesta</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Kumoa tarjotaan vain, jos asetuksessa oli jo icon-rivi.</p><p><b>Vaihtoehto:</b> Poistetaan juuri lisätty rivi/tiedosto tai kirjoitetaan icon: auto.</p><p><b>Miksi:</b> Poisto vaatisi uuden kirjoitusrajapinnan; auto ei palauta vanhaa tilaa ja piilottaa ehdotusrivin.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="workspace-icon-polish-3"><input type="checkbox" id="workspace-icon-polish-3"><strong>Mallille 45 sekuntia</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Avustajalle jää kokonaisbudjetti miinus 2 s; kesto näkyy ja kirjataan lokiin.</p><p><b>Vaihtoehto:</b> Lyhyempi raja mitatun noin 3 s mukaan.</p><p><b>Miksi:</b> Hidas tarjoaja tai Claude-varareitti voi vielä vastata; raja alittaa gatewayn 60 s.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="workspace-icon-polish-4"><input type="checkbox" id="workspace-icon-polish-4"><strong>Ehdotuksia mallilta avaa vanhat kierrokset</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Uusia haetaan vain toiveella, pikatoiveella tai Toisia-painikkeella.</p><p><b>Vaihtoehto:</b> Mallikutsu joka avauksella.</p><p><b>Miksi:</b> Aiempi työ säilyy eikä avaus kuluta uutta mallikutsua.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="workspace-icon-polish-5"><input type="checkbox" id="workspace-icon-polish-5"><strong>Aikakatkaisu ilman sekuntilukua</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Teksti on ”Malli ei vastannut ajoissa.”</p><p><b>Vaihtoehto:</b> Ilmoitetaan tarkka sekuntiraja.</p><p><b>Miksi:</b> Raportti kirjaa sanavalinnan, ei erillistä perustelua; raja ei kuulu viestin lupaukseen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="workspace-icon-polish-6"><input type="checkbox" id="workspace-icon-polish-6"><strong>Saneltu toive yhdelle riville</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Toivekenttä käyttää viestikentän sanelua, mutta taittaa rivinvaihdot pois.</p><p><b>Vaihtoehto:</b> Monirivinen toive tai uusi sanelutoteutus.</p><p><b>Miksi:</b> Daemon hyväksyy vain yksirivisen toiveen.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/workspace-icon-polish/result.md</code> <small>(main)</small></p>
+<p>Commitit: 72c9d6d0 Workspace icons: keep suggestions, dictate the wish, 45 s budget, say what a choice did</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="recap-settings-polish" data-section><h2><code>recap-settings-polish</code><span>Tilannekatsauksen viive ulottuu tuntiin eikä pidä Pi:tä hereillä.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="recap-settings-polish-1"><input type="checkbox" id="recap-settings-polish-1"><strong>Viiveen yläraja tunti</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Valittavana enintään 60 minuuttia.</p><p><b>Vaihtoehto:</b> 30 minuuttia tai rajaton viive.</p><p><b>Miksi:</b> Kattaa Jarin esimerkit; pidempi tauko on käytännössä uusi käynti.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="recap-settings-polish-2"><input type="checkbox" id="recap-settings-polish-2"><strong>Katsaus herättää levänneen Pi:n hetkeksi</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ajastin säilyy joutopysäytyksen yli; Pi käynnistetään katsausta varten ja pysäytetään taas.</p><p><b>Vaihtoehto:</b> Pidetään Pi elossa koko viive.</p><p><b>Miksi:</b> Jopa tunnin muistinkulutus joka keskustelulle olisi turha.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="recap-settings-polish-3"><input type="checkbox" id="recap-settings-polish-3"><strong>Tilapulan vuoksi pysäytetty menettää katsauksen</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>makeRoom-pysäytys ei säilytä odottavaa katsausta; seuraava tulee uuden vuoron jälkeen.</p><p><b>Vaihtoehto:</b> Säilytetään ajastin myös tilapulassa.</p><p><b>Miksi:</b> Pysäytys tehtiin juuri, koska vapaita paikkoja ei ollut. Tämä poikkeus näkyy katsauksen puuttumisena.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="recap-settings-polish-4"><input type="checkbox" id="recap-settings-polish-4"><strong>Puhelimessa tasot 2 × 2</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Neljä tasavalintaa jakautuu kahdelle riville.</p><p><b>Vaihtoehto:</b> Neljä saraketta kaikilla leveyksillä.</p><p><b>Miksi:</b> Pitkä ”Perusteellinen” ei mahdu noin 350 px korttiin.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/recap-settings-polish/result.md</code> <small>(main)</small></p>
+<p>Commitit: aec635ec Recap delay up to an hour, made on a rested Pi after the idle stop</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="settings-close-x-overlaps-content" data-section><h2><code>settings-close-x-overlaps-content</code><span>Asetusten sulkemisrasti ei peitä sisältöä.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="settings-close-x-overlaps-content-1"><input type="checkbox" id="settings-close-x-overlaps-content-1"><strong>Työpöydän rastille oma sivukaista</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Rasti pysyy näkyvissä noin 38 px kaistassa oikealla.</p><p><b>Vaihtoehto:</b> Koko osion levyinen kiinteä otsake.</p><p><b>Miksi:</b> Leveys on yleensä vapaana; otsake veisi korkeutta ja toisi uuden pinnan.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="settings-close-x-overlaps-content-2"><input type="checkbox" id="settings-close-x-overlaps-content-2"><strong>Puhelimen rasti vierii pois</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Rasti kulkee ylärivin mukana, ei pysy ruudussa.</p><p><b>Vaihtoehto:</b> Kiinteä sulkemispalkki.</p><p><b>Miksi:</b> Säästää pienen ruudun korkeutta; sulkeminen vaatii paluun ylös, Escin tai selaimen Takaisin-toiminnon.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/settings-close-x-overlaps-content/result.md</code> <small>(main)</small></p>
+<p>Commitit: 6435e9f1 Settings close X gets its own column and never covers content</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="recap-rows-clipped" data-section><h2><code>recap-rows-clipped</code><span>Asetusrivit pinoutuvat kapeassa sisältöpalstassa.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="recap-rows-clipped-1"><input type="checkbox" id="recap-rows-clipped-1"><strong>Yleinen pinoutumisraja 400 px</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Tilannekatsauksen leveät säätimet pinoutuvat jo 520 px:ssä, muut asetusrivit 400 px:ssä.</p><p><b>Vaihtoehto:</b> Yksi yhteinen korkeampi raja.</p><p><b>Miksi:</b> 436 px palstassa tavalliset rivit mahtuvat, joten kaikkia kytkimiä ei tarvitse siirtää otsikon alle.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/recap-rows-clipped/result.md</code> <small>(main)</small></p>
+<p>Commitit: b7d4428d Settings rows stack when the section column, not only the window, is narrow</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="ui-language-choice" data-section><h2><code>ui-language-choice</code><span>Käyttöliittymän kieleksi voi valita järjestelmän, suomen tai englannin.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="ui-language-choice-1"><input type="checkbox" id="ui-language-choice-1"><strong>Palvelimen oletus on Järjestelmä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ilman asetusta fi-alkuinen selain saa suomen, muut englannin; henkilön valinta ohittaa palvelimen.</p><p><b>Vaihtoehto:</b> Englanti tai suomi kaikille oletuksena.</p><p><b>Miksi:</b> Toimii valmiiksi eri kielisillä selaimilla; asiakas voi määrätä palvelimelle englannin.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="ui-language-choice-2"><input type="checkbox" id="ui-language-choice-2"><strong>Vain selaimen ensimmäinen kieli ratkaisee</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>en, fi antaa englannin ja fi-FI, en suomen.</p><p><b>Vaihtoehto:</b> Etsitään suomi myös alempaa listalta.</p><p><b>Miksi:</b> Kunnioittaa ensisijaista toivetta eikä nosta suomea sen ohi.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="ui-language-choice-3"><input type="checkbox" id="ui-language-choice-3"><strong>Englanti käyttää brittiläistä muotoilua</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Päivä ennen kuukautta ja 24 tunnin kello (en-GB).</p><p><b>Vaihtoehto:</b> en-US tai selaimen englannin alue.</p><p><b>Miksi:</b> Lähellä suomalaisia käytäntöjä; tämä on workerin aluevalinta, ei automaattinen maantunnistus.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="ui-language-choice-4"><input type="checkbox" id="ui-language-choice-4"><strong>Asetuksista annettu oletus ohittaa asennustiedoston pysyvästi</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Myös Järjestelmä-arvo ohittaa ui.default_language-asetuksen; paluuta tiedoston oletukseen ei ole käyttöliittymässä.</p><p><b>Vaihtoehto:</b> Erillinen ”käytä asennuksen asetusta”.</p><p><b>Miksi:</b> Toteutuksessa ylläpitäjän valinta on ensisijainen; erillistä palautusta ei rakennettu.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="ui-language-choice-5"><input type="checkbox" id="ui-language-choice-5"><strong>Viime kieli muistetaan tässä selaimessa</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>localStorage nopeuttaa aloitussivun ja ensimmäisen piirron kielen valintaa.</p><p><b>Vaihtoehto:</b> Odotetaan asetusten lataus tai väläytetään oletuskieli.</p><p><b>Miksi:</b> Vältetään vääränkielinen ensimmäinen näkymä; tallennetaan vain kieli.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="ui-language-choice-6"><input type="checkbox" id="ui-language-choice-6"><strong>Sisäiset reittitunnisteet ennallaan</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>palvelin ja kayttajat säilyvät sisäisinä tunnisteina.</p><p><b>Vaihtoehto:</b> Nimetään ne englanniksi.</p><p><b>Miksi:</b> Näkyvät URL:t ovat jo englanniksi; tunnisteen vaihto ei paranna käännöstä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="ui-language-choice-7"><input type="checkbox" id="ui-language-choice-7"><strong>Palvelimen kielireitti julkinen</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Kieliolettaman saa ennen kirjautumista.</p><p><b>Vaihtoehto:</b> Vain tunnistetulle käyttäjälle.</p><p><b>Miksi:</b> Aloitus tarvitsee tiedon; vastauksessa on vain system/fi/en.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="ui-language-choice-8"><input type="checkbox" id="ui-language-choice-8"><strong>Demon tekstit omassa haarassaan</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Demo-only-kirjautumistekstit jäävät inline-käännöksiksi.</p><p><b>Vaihtoehto:</b> Siirretään ne tuotannon katalogeihin.</p><p><b>Miksi:</b> Demomerkit eivät päädy tuotantopakettiin.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="ui-language-choice-9"><input type="checkbox" id="ui-language-choice-9"><strong>Kielirivi käyttää yhteistä asetustilausta</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Rivi ei lue asetuksia itse mountissa.</p><p><b>Vaihtoehto:</b> Oma erillinen luku.</p><p><b>Miksi:</b> Erillinen luku piirsi haun esikatselut uudelleen ja teki testistä epävakaan.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/ui-language-choice/result.md</code> <small>(main)</small></p>
+<p>Commitit: 24ffe172 web/lab: biome-format session.mjs sign-in getByRole call; 1b904fbd UI language: System · Suomi · English per person, server default, catalogs</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="en-composer" data-section><h2><code>en-composer</code><span>Viestikentän apuvälineet toimivat englanniksi.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="en-composer-1"><input type="checkbox" id="en-composer-1"><strong>Steer, Follow-up ja puhelimessa Later</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Pi:n ohjaus- ja jonokäsitteet näkyvät näillä nimillä.</p><p><b>Vaihtoehto:</b> After work tai Queue.</p><p><b>Miksi:</b> Samat termit kuin Pi:n terminaalissa ja ohjeissa; Later on lyhyt mobiiliteksti.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-composer-2"><input type="checkbox" id="en-composer-2"><strong>Komentojen nimet</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Lähteet ovat Skill, Template, Extension; laajuudet personal, project, Agent, session.</p><p><b>Vaihtoehto:</b> Prompt sanan Template sijaan tai vapaampi käännös.</p><p><b>Miksi:</b> Template erottaa valmiin pohjan itse viestistä ja seuraa Pi:n käsitteitä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-composer-3"><input type="checkbox" id="en-composer-3"><strong>Tavoite on Goal</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Tavoitesiru käyttää sanaa Goal.</p><p><b>Vaihtoehto:</b> Objective tai muu käännös.</p><p><b>Miksi:</b> Sama käsite kuin aloitussivulla.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-composer-4"><input type="checkbox" id="en-composer-4"><strong>Näppäinvihjeet lyhyinä paloina</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Tabin ja Escin toiminnot ovat erillisiä sanomia, samassa järjestyksessä molemmilla kielillä.</p><p><b>Vaihtoehto:</b> Yksi kokonainen lause.</p><p><b>Miksi:</b> Jokainen näppäin ja sen toiminto muodostaa oman vihjeensä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-composer-5"><input type="checkbox" id="en-composer-5"><strong>Nolla tai yksi polku yksikössä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Vihjeessä ”add the path”.</p><p><b>Vaihtoehto:</b> Nollan kohdalla monikko.</p><p><b>Miksi:</b> Vastaa suomen lisää polku -toimintaa; raportin tietoinen sanavalinta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-composer-6"><input type="checkbox" id="en-composer-6"><strong>Jo näkyvä latausvirhe ei vaihda kieltä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Virhe päivittyy uuteen kieleen seuraavalla yrityksellä.</p><p><b>Vaihtoehto:</b> Käännetään myös vanha ilmoitus heti.</p><p><b>Miksi:</b> Se on päättyneen toiminnon tulos, ei elävä tilateksti.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/en-composer/result.md</code> <small>(main)</small></p>
+<p>Commitit: a2072a2e Composer in English: catalogs for the composer, dictation, picker and AI offers</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="en-conversation" data-section><h2><code>en-conversation</code><span>Keskustelun historia, tarjoukset ja työkalukortit toimivat englanniksi.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-conversation-1"><input type="checkbox" id="en-conversation-1"><strong>Yhteinen keskustelusanasto</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Tilannekatsaus = Recap, vain luku = Read only, Agent working, Worker working ja Thinking level.</p><p><b>Vaihtoehto:</b> Uudet paikalliset käännökset.</p><p><b>Miksi:</b> Samat nimet aiempien katalogien kanssa.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="en-conversation-2"><input type="checkbox" id="en-conversation-2"><strong>Kilobyte on KB mutta laskenta 1024</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>B / KB / MB / GB englannissa.</p><p><b>Vaihtoehto:</b> Täsmälliset KiB / MiB / GiB.</p><p><b>Miksi:</b> Asiakkaille tuttu sanasto; teknisesti yksikkö jää epätarkaksi.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-conversation-3"><input type="checkbox" id="en-conversation-3"><strong>Kirjautumisen väliotsikko Getting started</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Laitekoodikirjautuminen käyttää samaa otsikkoa kuin käyttöönotto.</p><p><b>Vaihtoehto:</b> Erillinen Sign in -otsikko.</p><p><b>Miksi:</b> Yhtenäinen kehys.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-conversation-4"><input type="checkbox" id="en-conversation-4"><strong>Pääagentti on Main agent</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Worker säilyy Workerina.</p><p><b>Vaihtoehto:</b> Parent agent tai käännetty worker-käsite.</p><p><b>Miksi:</b> Sama nimi kuin raiteessa; raportti kirjaa tämän sanastovalinnan.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-conversation-5"><input type="checkbox" id="en-conversation-5"><strong>Tekniikan sijasta ymmärrettävä kuittaus</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>”Accepted by the agent” ja ”until the server confirms” korvaavat englannissa RPC/daemon-ilmaisut.</p><p><b>Vaihtoehto:</b> Teknisten termien suora käännös.</p><p><b>Miksi:</b> Asiakkaan ei tarvitse tuntea toteutuskerroksia; suomi jäi ennalleen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-conversation-6"><input type="checkbox" id="en-conversation-6"><strong>Todistekuvat vain PNG:nä</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>HTML-vastineet jätetään generoimatta talteen; kuvausskripti voi tuottaa ne uudelleen.</p><p><b>Vaihtoehto:</b> PNG ja noin 600 KB HTML jokaisesta.</p><p><b>Miksi:</b> Vähentää talletettavaa, kuten kielivalinnan työssä.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/en-conversation/result.md</code> <small>(main)</small></p>
+<p>Commitit: 13d78a9d English for the conversation view</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="en-shell-editor" data-section><h2><code>en-shell-editor</code><span>Editori, kontekstisivu ja käyttöliittymän kehys toimivat englanniksi.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="en-shell-editor-1"><input type="checkbox" id="en-shell-editor-1"><strong>Avoimen editorin vihjeiden kieli ei vaihdu heti</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>CodeMirror saa kielen tiedoston avautuessa; taittovihje vaihtuu vasta uudelleen avattaessa.</p><p><b>Vaihtoehto:</b> Elävä päivitys kesken editoinnin.</p><p><b>Miksi:</b> Tämä on valittu päivitysraja; raportti ei perustele sitä tarkemmin.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-shell-editor-2"><input type="checkbox" id="en-shell-editor-2"><strong>Editorin sanasto</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Terminal, guide, goal, skill, compaction; levymuutosten tuonti = bring in, Peru tuonti = Undo.</p><p><b>Vaihtoehto:</b> Sanatarkat tai teknisemmät vastineet.</p><p><b>Miksi:</b> Yhteinen englanninkielinen pinta; ”bring in” on tietoinen sanavalinta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-shell-editor-3"><input type="checkbox" id="en-shell-editor-3"><strong>Testiasiakirjat suomeksi</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Word-, taulukko- ja diafixtureiden sisältöjä ei käännetty.</p><p><b>Vaihtoehto:</b> Englanninkieliset fixturet muilla erikoismerkeillä.</p><p><b>Miksi:</b> ä/ö ja katkennut Läm+pötila testaavat Unicodea ja tekstin yhdistämistä; dokumentin kieli ei ole käyttöliittymän kieli.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-shell-editor-4"><input type="checkbox" id="en-shell-editor-4"><strong>Demo-only-tekstit inline-muodossa</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Demobanneri ja luomisperuste käännetään paikallisesti.</p><p><b>Vaihtoehto:</b> Tuotannon katalogi.</p><p><b>Miksi:</b> Demomerkkejä ei haluta tuotantopakettiin.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-shell-editor-5"><input type="checkbox" id="en-shell-editor-5"><strong>Haaran varanimi agentti ennallaan</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Worktreen tunniste ei käänny.</p><p><b>Vaihtoehto:</b> Englanninkielinen fallback.</p><p><b>Miksi:</b> Haaran nimi on tunniste, ei käyttöliittymän teksti.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-shell-editor-6"><input type="checkbox" id="en-shell-editor-6"><strong>Yksi katalogi yhdelle pinnalle</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Guide, overlays, markdownRenderer, conversationFrame ja appMessages palvelevat useita läheisiä moduuleja.</p><p><b>Vaihtoehto:</b> Katalogi jokaiselle tiedostolle.</p><p><b>Miksi:</b> Sama pinta ja yksi omistava worker; ei rinnakkaisia ristiriitoja.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/en-shell-editor/result.md</code> <small>(main)</small></p>
+<p>Commitit: 79605dfe English for the conversation&#x27;s Git fetch notes; 94063230 English for the context page, the editor and the remaining shell</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="en-workers" data-section><h2><code>en-workers</code><span>Workerien, prosessien ja terminaalien näkymät toimivat englanniksi.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-workers-1"><input type="checkbox" id="en-workers-1"><strong>Pyyntö agentille käyttöliittymän kielellä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Tell the agent lähettää englanniksi; tunnistus hyväksyy sekä Taskfleet-ajo- että Taskfleet run -merkin.</p><p><b>Vaihtoehto:</b> Aina suomenkielinen pyyntö.</p><p><b>Miksi:</b> Ihminen pystyy lukemaan oman viestinsä; kielen vaihto ei riko pyynnön vaihetta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-workers-2"><input type="checkbox" id="en-workers-2"><strong>Git-sanat tiloissa</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Merged, not merged, landed, work kept.</p><p><b>Vaihtoehto:</b> Arkisemmat vastineet.</p><p><b>Miksi:</b> Sama Git-sanasto kuin suomenkin näkymässä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-workers-3"><input type="checkbox" id="en-workers-3"><strong>Toimintojen nimet</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Käsittele = Handle, Kerro agentille = Tell the agent; Look at avaa pyyntötekstin.</p><p><b>Vaihtoehto:</b> Handle the worker ja muut suorat käännökset.</p><p><b>Miksi:</b> Teksti kohdistuu pyyntöön, ei ihmismäisesti workeriin.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-workers-4"><input type="checkbox" id="en-workers-4"><strong>Kierroksen vanha loppu oli Back</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Lähtöön = Back, vihje Back to where you started, laskurissa Start.</p><p><b>Vaihtoehto:</b> Return tai Origin.</p><p><b>Miksi:</b> Lyhyt navigointitermi. Paluu lähtöön poistettiin myöhemmin samana päivänä; ei nykyisen suunnan päätös.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-workers-5"><input type="checkbox" id="en-workers-5"><strong>Lepokortin kellonajat</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Pi stopped at / The agent rested at, mutta running since ilman at-sanaa.</p><p><b>Vaihtoehto:</b> Yksi yhteinen aikafraasi.</p><p><b>Miksi:</b> Säilyttää syncedTime-muodon ja englannin luontevan since-rakenteen.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/en-workers/result.md</code> <small>(main)</small></p>
+<p>Commitit: b57bf48a English for workers, processes and terminals</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="en-workspaces" data-section><h2><code>en-workspaces</code><span>Työtilat, kloonaus ja GitHubin käyttöönotto toimivat englanniksi.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-workspaces-1"><input type="checkbox" id="en-workspaces-1"><strong>Pikatoive menee mallille valitulla kielellä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Esimerkiksi more playful ja more businesslike.</p><p><b>Vaihtoehto:</b> Aina suomenkielinen toive.</p><p><b>Miksi:</b> Se on käyttäjän lähettämä toive; daemon välittää sen muuttamatta ja malli ymmärtää kumpaakin.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-workspaces-2"><input type="checkbox" id="en-workspaces-2"><strong>Repository, remote ja lyhyet sirut</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Juoksevassa tekstissä repository, etärepo = remote; lyhyissä siruissa no push ja size unknown.</p><p><b>Vaihtoehto:</b> Repo kaikkialla tai pitkät selitykset myös siruihin.</p><p><b>Miksi:</b> Seuraa Trash-katalogia ja säilyttää pienet kontrollit lyhyinä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-workspaces-3"><input type="checkbox" id="en-workspaces-3"><strong>Git-komennot ennallaan</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Push ja pull --rebase näkyvät Git-termeinä.</p><p><b>Vaihtoehto:</b> Vapaat toimintojen käännökset.</p><p><b>Miksi:</b> Samat sanat kuin natiivissa työkalussa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-workspaces-4"><input type="checkbox" id="en-workspaces-4"><strong>GitLabin tunnus on token</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Teksti ”with this GitLab connection’s token”; asetussivu Code hosts.</p><p><b>Vaihtoehto:</b> Credentials tai sananmukainen account.</p><p><b>Miksi:</b> Nimeää käytetyn yhteyden tunnuksen ja yhtenäistää asetusten nimen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-workspaces-5"><input type="checkbox" id="en-workspaces-5"><strong>Käyttöönotto on Getting started</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Keskeytys: Stop getting started and sign out.</p><p><b>Vaihtoehto:</b> Onboarding tai lyhyempi Cancel.</p><p><b>Miksi:</b> Raportissa valittu sanamuoto; erillistä käytettävyysperustelua ei kirjattu.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="en-workspaces-6"><input type="checkbox" id="en-workspaces-6"><strong>Ryhmätyypit jäävät suomenkielisiksi tunnisteiksi</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Omat, Organisaatio ym. mapataan näkyviin englanninkielisiin nimiin.</p><p><b>Vaihtoehto:</b> Tunnisteet englanniksi.</p><p><b>Miksi:</b> Näkyvä teksti voidaan kääntää ilman lajittelun ja testien tunnistevaihtoa.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/en-workspaces/result.md</code> <small>(main)</small></p>
+<p>Commitit: b33291ab Workspaces in English: catalogs for home, the workspace page and cloning</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="ui-english-coverage" data-section><h2><code>ui-english-coverage</code><span>Viimeiset hostin suomenkieliset tekstit eivät vuoda englanninkieliseen näkymään.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="ui-english-coverage-1"><input type="checkbox" id="ui-english-coverage-1"><strong>Näkymähostin virhesivu käyttää selaimen kieltä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Accept-Language ratkaisee, ei henkilön asetuksista valitsema kieli.</p><p><b>Vaihtoehto:</b> Välitetään henkilökohtainen kielivalinta erilliseen originiin.</p><p><b>Miksi:</b> Jaettua linkkiä voi lukea muukin eikä näkymähostilla ole asetuksen sisältävää istuntoa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="ui-english-coverage-2"><input type="checkbox" id="ui-english-coverage-2"><strong>Historiasta kopioitu teksti sisältää vain viestin</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Työkalu- ja tukematon sisältö -paikkamerkit poistuvat tekstistä; kuvan jälkeen otsikko tulee seuraavasta tekstiviestistä.</p><p><b>Vaihtoehto:</b> Paikkamerkkikoodit tai käännetyt paikkamerkit.</p><p><b>Miksi:</b> Selaimella on jo rakenteiset tyypit; kopioitava vastaus ei tarvitse hostin lisätekstiä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="ui-english-coverage-3"><input type="checkbox" id="ui-english-coverage-3"><strong>[arguments] englanniksi myös suomessa</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Natiivin taidon merkkitekstiä ei käännetä.</p><p><b>Vaihtoehto:</b> Kielikohtainen merkki.</p><p><b>Miksi:</b> Selain ei kirjoita uudelleen näyttämäänsä natiivisisältöä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="ui-english-coverage-4"><input type="checkbox" id="ui-english-coverage-4"><strong>Daemonin otsikkopaikkamerkki yhä suomeksi</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>title.display on ”Uusi keskustelu”, mutta selain kääntää source-kentän perusteella.</p><p><b>Vaihtoehto:</b> Tyhjä tai englanninkielinen host-otsikko.</p><p><b>Miksi:</b> Tyhjä rikkoisi sopimuksen; lähdekoodi riittää selaimelle. Tuleva muu asiakas näkee edelleen suomen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="ui-english-coverage-5"><input type="checkbox" id="ui-english-coverage-5"><strong>Suomiskannerin sanasto katalogeista</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ei käsin ylläpidettävää sanalistaa; alle nelimerkkiset ja englannissakin esiintyvät sanat voivat jäädä löytymättä.</p><p><b>Vaihtoehto:</b> Käsin laadittu sanasto tai kaikkien pienten tunnisteiden ohitus.</p><p><b>Miksi:</b> Vähentää ajautumista; kokonaisia tunnisteryhmiä ei vapauteta tarkistuksesta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="ui-english-coverage-6"><input type="checkbox" id="ui-english-coverage-6"><strong>Skanneri ei lue storyja eikä fixtureitä</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Stories, fixtures ja src/test jäävät pois.</p><p><b>Vaihtoehto:</b> Kaikkien tiedostojen kielen valvonta.</p><p><b>Miksi:</b> Niissä on tarkoituksellista synteettistä sisältöä; Storybookin kieli tarkistetaan erikseen.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/ui-english-coverage/result.md</code> <small>(main)</small></p>
+<p>Commitit: e6270104 English for the last host texts, and a Finnish scan in the gate</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="enter-sends-twice" data-section><h2><code>enter-sends-twice</code><span>Yksi Enter ei piirrä kahta viestiä eikä hylkää juuri myöhästynyttä ohjausta.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="enter-sends-twice-1"><input type="checkbox" id="enter-sends-twice-1"><strong>Myöhäinen selaimen ohjaus aloittaa uuden vuoron</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Jos Pi ehti joutilaaksi, steer/follow-up toimitetaan seuraavana vuorona.</p><p><b>Vaihtoehto:</b> 409 ja selaimen uusi send-yritys tai ennakoiva muutos selaimessa.</p><p><b>Miksi:</b> Tarkoitus on toimittaa viesti; vain daemon näkee Pi:n ajantasaisen tilan.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="enter-sends-twice-2"><input type="checkbox" id="enter-sends-twice-2"><strong>Agentin CLI saa edelleen hylkäyksen</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Eksplisiittinen steer ei muutu automaattisesti sendiksi.</p><p><b>Vaihtoehto:</b> Sama sääntö kaikille asiakkaille.</p><p><b>Miksi:</b> CLI-kutsuja valitsi toimitustavan itse ja voi käsitellä 409:n; selain arvaa ihmisen puolesta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="enter-sends-twice-3"><input type="checkbox" id="enter-sends-twice-3"><strong>Jonoteksti siistitään ulostulossa</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Pi:n Attachment-polkurivit poistetaan selaimelle näkyvästä jonotekstistä, ei sisäisestä seurannasta.</p><p><b>Vaihtoehto:</b> Tallennetaan sisäisestikin vain kirjoitettu teksti.</p><p><b>Miksi:</b> Jonon seuranta vertaa Pi:n tekstejä Pi:n tapahtumiin.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/enter-sends-twice/result.md</code> <small>(main)</small></p>
+<p>Commitit: 8a18cc64 One Enter steers once: queue texts as written, late steer starts the turn</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="send-rejected-after-delivery" data-section><h2><code>send-rejected-after-delivery</code><span>Jo toimitetun viestin uusinta saa saman vastauksen eikä näy hylättynä.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="send-rejected-after-delivery-1"><input type="checkbox" id="send-rejected-after-delivery-1"><strong>Sama komentotunnus tarkoittaa samaa viestiä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Tekstisisältöä ei verrata; aiemmin käytetty ID ei suorita viestiä uudelleen.</p><p><b>Vaihtoehto:</b> Sisällön sormenjälki ja eri sisällön virhe tai aina 409.</p><p><b>Miksi:</b> Selain tekee uuden UUID:n joka viestille; erisisältöinen uusinta olisi asiakasvirhe. Lisätilaa ei rakennettu sitä varten.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="send-rejected-after-delivery-2"><input type="checkbox" id="send-rejected-after-delivery-2"><strong>Vain viestikomennot toistettavia</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>send, steer, follow-up ja held; bash, abort, clear-queue ja cancel-held palauttavat uusinnasta edelleen 409.</p><p><b>Vaihtoehto:</b> Kaikkien komentojen idempotenssi.</p><p><b>Miksi:</b> Korjaus koskee viestejä ja niiden kenttään palautumista; muissa näkymissä hylkäystä käsitellään eri tavalla.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="send-rejected-after-delivery-3"><input type="checkbox" id="send-rejected-after-delivery-3"><strong>Uusintavastaus pysyy pending/held-muodossa</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Vaikka kuitti olisi accepted, send-vastauksen tiloja ei laajenneta.</p><p><b>Vaihtoehto:</b> Kaikki kuittitilat myös send-vastaukseen.</p><p><b>Miksi:</b> Selain lukee kuitin joka tapauksessa; ei tarpeetonta sopimusmuutosta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="send-rejected-after-delivery-4"><input type="checkbox" id="send-rejected-after-delivery-4"><strong>Uusinnat ja hylkäykset Info-lokiin</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Kirjataan komento- ja pyyntötunnisteet, ei viestisisältöä.</p><p><b>Vaihtoehto:</b> Vain debug tai ei lokia.</p><p><b>Miksi:</b> Seuraavan toistuman syy voidaan jäljittää.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/send-rejected-after-delivery/result.md</code> <small>(main)</small></p>
+<p>Commitit: 1140b5b4 Answer a repeated message command as itself, not as a refusal</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="reconnect-after-version-change" data-section><h2><code>reconnect-after-version-change</code><span>Vanhentunut välilehti tarjoaa uudelleenlatausta toimimattoman yhdistämisen sijaan.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="reconnect-after-version-change-1"><input type="checkbox" id="reconnect-after-version-change-1"><strong>Uusi paketti ja mikä tahansa lukuhäiriö riittävät</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Tarjotaan latausta, ei vain skeemavirheen jälkeen.</p><p><b>Vaihtoehto:</b> Vain invalid-vastaus tai sopimusversioiden vertailu.</p><p><b>Miksi:</b> Päivityksen 5xx voi johtaa samaan yhteensopimattomuuteen; sopimuksessa ei ole joka lisäyksestä vaihtuvaa versiota.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="reconnect-after-version-change-2"><input type="checkbox" id="reconnect-after-version-change-2"><strong>Katkennut palvelin näyttää Yhdistä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Aiempi havainto uudemmasta paketista ei riitä; tämän tarkistuksen pitää saada index luettua.</p><p><b>Vaihtoehto:</b> Lataa uudelleen vanhan tiedon perusteella.</p><p><b>Miksi:</b> Muuten sivu voisi vaihtua selaimen yhteysvirheeksi ja luonnoksen käyttö katketa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="reconnect-after-version-change-3"><input type="checkbox" id="reconnect-after-version-change-3"><strong>Myöhemmin ei piilota pakollista päivityspalkkia</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Kellon lykkäys koskee vain valinnaista päivitystä.</p><p><b>Vaihtoehto:</b> Yksi lykkäys kaikille päivitysviesteille.</p><p><b>Miksi:</b> Tässä vanha välilehti ei enää kykene yhdistämään.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/reconnect-after-version-change/result.md</code> <small>(main)</small></p>
+<p>Commitit: 5e9162e8 web: after a version change the banner offers reload, not a dead Yhdistä</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="github-state-unknown-birch" data-section><h2><code>github-state-unknown-birch</code><span>GitHub-yhteyden tarkistus ehtii valmistua ja tuntemattomalle tilalle näytetään syy.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="github-state-unknown-birch-1"><input type="checkbox" id="github-state-unknown-birch-1"><strong>8 sekunnin tarkistus, 2 sekunnin sivuodotus</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Sivu näyttää tarvittaessa checking ja saa tuloksen myöhemmin.</p><p><b>Vaihtoehto:</b> Pelkkä budjetin nosto tai aikakatkaisu yhteyskatkokseksi.</p><p><b>Miksi:</b> Sivu ei odota koko hidasta credential-tarkistusta mutta tulos ehtii valmistua.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="github-state-unknown-birch-2"><input type="checkbox" id="github-state-unknown-birch-2"><strong>Aikakatkaisu ei ole verkkokatko</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>unknown/timeout ei käynnistä varsinaisen verkkohäiriön uusintaa.</p><p><b>Vaihtoehto:</b> unreachable ja retry.</p><p><b>Miksi:</b> Jumiutunut avainnippu näyttää samalta; verkkoretry varataan tunnistetuille verkko- ja 5xx-virheille.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="github-state-unknown-birch-3"><input type="checkbox" id="github-state-unknown-birch-3"><strong>Rajattu reason-kenttä</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Lisättiin valinnainen enum eikä käytetty vapaamuotoista last_error_codea.</p><p><b>Vaihtoehto:</b> Vapaa virhekoodi.</p><p><b>Miksi:</b> Selaimelle suljettu joukko käännettäviä syitä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="github-state-unknown-birch-4"><input type="checkbox" id="github-state-unknown-birch-4"><strong>GitHub-muutos mitätöi myös keskeneräisen tilannekuvan</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Adapteri kasvattaa native generation -arvoa.</p><p><b>Vaihtoehto:</b> Muutos ei vaikuttaisi lennossa olevaan snapshotiin.</p><p><b>Miksi:</b> Tila päivittyy oikein; toiselle välilehdelle voi tulla yksi ylimääräinen luku.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/github-state-unknown-birch/result.md</code> <small>(main)</small></p>
+<p>Commitit: 33b44579 GitHub state: give the check time and name the cause of unknown</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="http-fallback-send-flaky" data-section><h2><code>http-fallback-send-flaky</code><span>Uuden keskustelun lähetyksen testi odottaa todellista lähetysvastausta.</span></h2><p class="status">Testikorjaus; käyttäytyminen säilytettiin</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="http-fallback-send-flaky-1"><input type="checkbox" id="http-fallback-send-flaky-1"><strong>Kenttä tyhjenee ennen POSTia tarkoituksella</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Teksti näkyy pidettynä viestinä ja palautuu Muokkaa-toiminnolla tai hylkäyksessä; lähetys odottaa keskustelun luontia.</p><p><b>Vaihtoehto:</b> Teksti pysyy editorissa POSTiin asti.</p><p><b>Miksi:</b> Sama välitön siirtymä kuin valmiissa keskustelussa. Worker korjasi testin eikä muuttanut tätä käyttäytymistä.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/http-fallback-send-flaky/result.md</code> <small>(main)</small></p>
+<p>Commitit: 62687989 HTTP fallback send spec: count sends once the send is answered</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="oom-stops-whole-unit" data-section><h2><code>oom-stops-whole-unit</code><span>Yhden prosessin muistikuolema ei pysäytä ihmisen kaikkia keskusteluja.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="oom-stops-whole-unit-1"><input type="checkbox" id="oom-stops-whole-unit-1"><strong>Korjaus myös editoriin</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Daemonin ja tmuxin lisäksi editoriyksikkö saa OOMPolicy=continue.</p><p><b>Vaihtoehto:</b> Editori jätetään stop-oletukseen.</p><p><b>Miksi:</b> Senkin lapset ovat laajennuksia ja terminaaleja; yhden kuoleman ei pidä kaataa kaikkea.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="oom-stops-whole-unit-2"><input type="checkbox" id="oom-stops-whole-unit-2"><strong>continue eikä kill</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Muut prosessit jatkavat; pääprosessin kuolema jää restart-/reconnect-mallille.</p><p><b>Vaihtoehto:</b> Koko yksikön kill tai stop.</p><p><b>Miksi:</b> kill katkaisisi yhä kaikki sisarukset, eli ei korjaisi ongelmaa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="oom-stops-whole-unit-3"><input type="checkbox" id="oom-stops-whole-unit-3"><strong>Tmuxin paneelien scopeihin ei omaa asetusta</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Tuote ei muuta tmuxin luomia paneelikohtaisia yksiköitä.</p><p><b>Vaihtoehto:</b> Asetetaan sama politiikka myös niihin.</p><p><b>Miksi:</b> Tuote ei omista niiden ominaisuuksia, ja yksi scope kattaa vain yhden paneelin.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/oom-stops-whole-unit/result.md</code> <small>(main)</small></p>
+<p>Commitit: 4735064e Keep a person&#x27;s units running when one process is OOM-killed</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="claude-path-missing-payloads" data-section><h2><code>claude-path-missing-payloads</code><span>Agentin PATH löytää Claude Coden myös erillisestä runtimesta.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="claude-path-missing-payloads-1"><input type="checkbox" id="claude-path-missing-payloads-1"><strong>Julkaisun payload ensisijainen</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Jos molemmat löytyvät, valitaan current-polun kautta tuleva payload ennen valittua runtimea.</p><p><b>Vaihtoehto:</b> Aina valitun runtimen vieressä oleva Claude.</p><p><b>Miksi:</b> Pitkäikäinen tmux-shell ei jää osoittamaan myöhemmin poistettavaan generation-hakemistoon.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="claude-path-missing-payloads-2"><input type="checkbox" id="claude-path-missing-payloads-2"><strong>Olemassaolo tarkistetaan ympäristöä tehtäessä</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Puuttuvaa Claude-hakemistoa ei lisätä PATHiin.</p><p><b>Vaihtoehto:</b> Nimetään se valmiiksi kuten ~/.local/bin.</p><p><b>Miksi:</b> Claude tulee runtime-vaihdon mukana, jolloin oikea polkukin muuttuu; tyhjästä polusta ei ole hyötyä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="claude-path-missing-payloads-3"><input type="checkbox" id="claude-path-missing-payloads-3"><strong>Fleetrepon wrapper jätetään</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>/usr/local/bin/claude pysyy, vaikka tuotteen PATH tekee saman.</p><p><b>Vaihtoehto:</b> Poistetaan ylimääräinen wrapper.</p><p><b>Miksi:</b> Haitaton ja sama binääri; poistaminen kuuluu Fleetrepolle.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/claude-path-missing-payloads/result.md</code> <small>(main)</small></p>
+<p>Commitit: 695a18e2 daemon: name only an existing Claude Code directory on the agent PATH</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="readme-first-draft" data-section><h2><code>readme-first-draft</code><span>Julkinen README ja julkaisusopimus ovat luonnoksina arvioitavina.</span></h2><p class="status">Luonnos, osa Jarin valinnoista jo tehty</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="readme-first-draft-1"><input type="checkbox" id="readme-first-draft-1"><strong>Lisenssi MIT ja sivusto open-habitat.ai</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Jari valitsi MIT:n Apache-2.0:n sijaan ja .ai-osoitteen kanoniseksi; muut kolme domainia ohjaavat siihen.</p><p><b>Vaihtoehto:</b> Workerin Apache-2.0-suositus ja muut domainit pääosoitteena.</p><p><b>Miksi:</b> Jarin päätös, ei enää avoin worker-valinta. Copyright-haltija jätettiin myöhemmäksi, joten LICENSE odottaa.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="readme-first-draft-2"><input type="checkbox" id="readme-first-draft-2"><strong>MVP, ei production</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Sopimuksen ehdotettu kypsyys on mvp.</p><p><b>Vaihtoehto:</b> spike tai production.</p><p><b>Miksi:</b> Todelliset pilotit, mutta ulkopuolisen asennus ja yhteensopivuus eivät ole valmiita.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="readme-first-draft-3"><input type="checkbox" id="readme-first-draft-3"><strong>README ei lupaa allekirjoitustarkistusta</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Puhutaan muuttumattomista julkaisuista ja GitHubin digesteistä.</p><p><b>Vaihtoehto:</b> ”Signed releases” julkisena asennuslupauksena.</p><p><b>Miksi:</b> Nykyinen operaattori tarkistaa digestejä, ei allekirjoitusta. Assetin allekirjoittaminen ja asentajan luottamusketju ovat eri asiat.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="readme-first-draft-4"><input type="checkbox" id="readme-first-draft-4"><strong>GitHub-jakelu kahdelle Linux-arkkitehtuurille</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ubuntu 24.04, amd64/arm64, tuotepaketti ja runtime; ei go installia tai npm-julkaisua.</p><p><b>Vaihtoehto:</b> Rekisteri, macOS tai shell-asennin.</p><p><b>Miksi:</b> Palvelintuote tarvitsee runtimeja ja host prepare/apply -vaiheet; selain sisältyy samaan julkaisuun.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="readme-first-draft-5"><input type="checkbox" id="readme-first-draft-5"><strong>README pysyy issuehakemistossa</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ei korvata juuren README:tä ennen sopimuksen hyväksyntää.</p><p><b>Vaihtoehto:</b> Julkaistaan luonnos heti etusivuksi.</p><p><b>Miksi:</b> Shipshape edellyttää hyväksyttyä sopimusta; puuttuvat kuvat, turvallisuusohjeet ja ulkopuolisen asennus merkitään paikkamerkeiksi.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="readme-first-draft-6"><input type="checkbox" id="readme-first-draft-6"><strong>Julkistus vasta toimivasta ulkopuolisesta asennuksesta</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Luonnoksen suositus on odottaa VPS-koetta ja historian yksityisyystarkistusta.</p><p><b>Vaihtoehto:</b> Aikainen avoin repo ennen asennuspolkua.</p><p><b>Miksi:</b> Ensimmäisen kokeilijan epäonnistumista on vaikea korjata jälkikäteen; näkyvyyden vaihto odottaa Jaria.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="readme-first-draft-7"><input type="checkbox" id="readme-first-draft-7"><strong>Rehellinen rajaus ja vain varmennetut väitteet</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>README sanoo yksi palvelin, Pi, ei agentin ja omistajan välistä eristystä, root näkee kaiken; vain ChatGPT mainittu esimerkkikirjautumisena.</p><p><b>Vaihtoehto:</b> Laajemmat turvallisuus- tai tarjoajalupaukset.</p><p><b>Miksi:</b> Väitteiden pitää kestää ulkopuolinen tarkistus; muut tarjoajat odottavat vahvistusta.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="readme-first-draft-8"><input type="checkbox" id="readme-first-draft-8"><strong>DCO-sign-off ehdotuksena</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito · ★ Arvioi erityisesti</p><p>Ulkopuolisen kontribuution alkuperä vahvistetaan kevyellä sign-offilla.</p><p><b>Vaihtoehto:</b> Ei vaatimusta tai CLA.</p><p><b>Miksi:</b> Sopii yhden ylläpitäjän malliin; CLA:ta pidettiin tarpeellisena vain mahdolliseen lisenssin vaihtoon.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="readme-first-draft-9"><input type="checkbox" id="readme-first-draft-9"><strong>Ei vielä dependency-bottia, CI-badgea tai keyless-alkuperätodistusta</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Katalogiin vain lisenssimerkki; lisätään automaatio hosted CI:n mukana.</p><p><b>Vaihtoehto:</b> Botit ja merkit heti.</p><p><b>Miksi:</b> GitHub Actions -CI:tä ei ole ajamassa PR:iä tai tuottamassa todistusta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="readme-first-draft-10"><input type="checkbox" id="readme-first-draft-10"><strong>Käsin kuratoitu muutosloki</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Lähteenä issuectl-trailerit, ei conventional commits -pakkoa; SemVer ja yksi gated-tuotejulkaisu säilyvät.</p><p><b>Vaihtoehto:</b> Automaattinen loki tai erilliset pakettiversiot.</p><p><b>Miksi:</b> Nykyinen historia ja yhden ylläpitäjän työskentely; CHANGELOGia ei vielä luotu.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="readme-first-draft-11"><input type="checkbox" id="readme-first-draft-11"><strong>Ei erillistä dokumentaatiosivustoa</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ohjeet pysyvät repossa.</p><p><b>Vaihtoehto:</b> Docs-site-generaattori.</p><p><b>Miksi:</b> Vastaa nykyistä dokumentaation paikkaa; sivuston suomenkielinen versio säilytetään Jarin erillisen päätöksen mukaan.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/readme-first-draft/NOTES.md</code> <small>(main)</small></p>
+<p><code>OSS-RELEASE.md</code>, Rationale; item.md:n Jarin päätökset.</p>
+<p>Commitit: 1cc179a9 readme draft: MIT licence and open-habitat.ai website; d3242df6 readme-first-draft: OSS-RELEASE.md draft and first README draft</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="research-orca-launch" data-section><h2><code>research-orca-launch</code><span>Tutkimus ehdottaa, miten Open Habitat julkaistaan ulkopuolisille.</span></h2><p class="status">Suositukset; raportti siirretty open-habitat-site-repoon</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="research-orca-launch-1"><input type="checkbox" id="research-orca-launch-1"><strong>Pilottien nimet vain luvalla</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>READMEen tai julkistukseen ehdotetaan asiakasreferenssiä, jos pilotit hyväksyvät sen.</p><p><b>Vaihtoehto:</b> Ei asiakasnimiä tai nimet ilman erillistä lupaa.</p><p><b>Miksi:</b> Todellinen käyttö vahvistaa viestiä; raportti jättää luvan avoimeksi Jarille.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="research-orca-launch-2"><input type="checkbox" id="research-orca-launch-2"><strong>Kuka puhuu julkisesti</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Avoin valinta Jarin ja projektitilin välillä; tutkimus kallistuu henkilökohtaiseen perustajaääneen.</p><p><b>Vaihtoehto:</b> Projektin oma X-/Bluesky-tili.</p><p><b>Miksi:</b> Orcan perustajatili toimi yhtiötiliä paremmin; ei julkaisuvaltuutusta tässä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-orca-launch-3"><input type="checkbox" id="research-orca-launch-3"><strong>Rajattu yleisö ja viesti</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Pi-käyttäjät, itse ylläpitävät ja pienet tiimit/perheet: monta ihmistä yhdellä Linux-palvelimella, omilla Unix-tunnuksilla.</p><p><b>Vaihtoehto:</b> Orcan kaltainen kymmenien agenttien yksilötyöpöytä.</p><p><b>Miksi:</b> Tämä on tuotteen todellinen erottaja, ei yleinen AI-agenttimainos.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-orca-launch-4"><input type="checkbox" id="research-orca-launch-4"><strong>Pieni koekäyttö ennen isoa julkistusta</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>2–3 ulkopuolista asentajaa, sitten Pi-yhteisö, Show HN, selfhosted/homelab ja myöhemmin suomalaiset kanavat.</p><p><b>Vaihtoehto:</b> Kaikki kanavat samaan aikaan.</p><p><b>Miksi:</b> Kitka korjataan pienellä yleisöllä ennen kallista ensivaikutelmaa; näkyvyysmuutos tarvitsee Jarin luvan.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-orca-launch-5"><input type="checkbox" id="research-orca-launch-5"><strong>Ei maksettua mainontaa eikä Product Huntia oletuksena</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotetaan ominaisuusdemoja ja muutamaa orgaanista tekijäkontaktia.</p><p><b>Vaihtoehto:</b> Mainosbudjetti tai laaja alustalanseeraus.</p><p><b>Miksi:</b> Orcan kasvu ei tullut Product Huntista; yleisö sopii huonosti itse ylläpidettävään palvelimeen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-orca-launch-6"><input type="checkbox" id="research-orca-launch-6"><strong>Demo ja asennus ennen lupausta</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>20–30 s GIF, 90 s tekstitetty video ja tavoite noin 10 min Ubuntu-asennuksesta.</p><p><b>Vaihtoehto:</b> Pitkä esittelyteksti tai välitön julkistus.</p><p><b>Miksi:</b> Toiminta pitää näyttää ja päästä kokeilemaan. Aikaraja on tutkimuksen tavoite, ei nykyisen README:n lupaus.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-orca-launch-7"><input type="checkbox" id="research-orca-launch-7"><strong>Turvarajat ja osallistumisohjeet ennen avausta</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>SECURITY, yksityinen raportointikanava, rajapintakatselmointi, CONTRIBUTING, issue-pohjat ja historian yksityisyystarkistus.</p><p><b>Vaihtoehto:</b> Julkistus ilman näitä.</p><p><b>Miksi:</b> Monikäyttäjäturvaväite tuo tarkastelun; repo sisältää työmuistioita ja infrastruktuuriviitteitä.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="research-orca-launch-8"><input type="checkbox" id="research-orca-launch-8"><strong>Ylläpidettävä julkinen rytmi</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Viikkojulkaisu, julkistusviikolla vastaus vuorokaudessa, sitten käsittely kahdesti viikossa; yksi demo kuukaudessa.</p><p><b>Vaihtoehto:</b> Päivittäinen julkaisutahti ja jatkuva monikanavainen läsnäolo.</p><p><b>Miksi:</b> Pieni tiimi ei ole Orcan 25 hengen organisaatio; tämä on resurssisuositus, ei sovittu palvelulupaus.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-orca-launch-9"><input type="checkbox" id="research-orca-launch-9"><strong>Yksi yhteisökanava ja englanninkieliset ohjeet</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Aluksi GitHub Discussions; muut käännökset ylläpitäjän löytyessä.</p><p><b>Vaihtoehto:</b> Discord ja useita kieliä heti.</p><p><b>Miksi:</b> Rajaa ylläpitokuormaa. Raportin suomen UI -painotus ei kumoa tänään toteutettua englantia eikä Jarin säilyttämää suomen sivustoa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-orca-launch-10"><input type="checkbox" id="research-orca-launch-10"><strong>Mittariksi onnistunut asennus, ei tähdet</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Seurataan toimivia ulkopuolisia asennuksia, toisia käyttäjiä, kontribuutioita ja vastausaikaa.</p><p><b>Vaihtoehto:</b> GitHub-tähtien maksimointi.</p><p><b>Miksi:</b> Asentava ja palaava kapea yleisö on arvokkaampi kuin suuri kertakäynti.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-orca-launch-11"><input type="checkbox" id="research-orca-launch-11"><strong>Apache-suositus on jo korvattu</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Tutkimus ehdotti Apache-2.0:aa patenttilausekkeen vuoksi; Jari valitsi myöhemmin MIT:n.</p><p><b>Vaihtoehto:</b> Apache-2.0 tai AGPL.</p><p><b>Miksi:</b> Ei enää avoin päätös; AGPL:n katsottiin karkottavan kohdeyrityksiä ja kouluja.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/research-orca-launch/report.md</code> <small>(2bf44a1499d85bf5f4712d5d43f8ade1a74d1b87^)</small></p>
+<p>Commitit: 409c253c issues: research how Orca grew and plan Open Habitat&#x27;s open-source launch</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="benchmark-humanlayer" data-section><h2><code>benchmark-humanlayer</code><span>Vertailu etsii HumanLayerista hyödyllisiä katselmointitapoja.</span></h2><p class="status">Tutkimuksen ehdotukset, ei toteutuspäätöksiä</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-humanlayer-1"><input type="checkbox" id="benchmark-humanlayer-1"><strong>Rivikommentit yhtenä agenttiviestinä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus: valitaan tiedoston/diffin rivejä ja lähetetään huomautukset yhtenä Ohjaa/Lähetä-viestinä.</p><p><b>Vaihtoehto:</b> Erillinen kommenttitietokanta ja agentin kommenttityökalut.</p><p><b>Miksi:</b> Täsmällinen palaute ilman toista totuutta; lähetetty sisältö jää Pi:n historiaan.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-humanlayer-2"><input type="checkbox" id="benchmark-humanlayer-2"><strong>Keskustelun kokonaisdiffi Gitistä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus: verrataan aloituscommittiin tai worktreen haarautumiskohtaan pyynnöstä.</p><p><b>Vaihtoehto:</b> Vain yksittäisten edit-kutsujen diff tai oma tallennettu muutoshistoria.</p><p><b>Miksi:</b> Palatessa näkyisi koko työn tulos; vertailukohta on vielä varmistettava.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-humanlayer-3"><input type="checkbox" id="benchmark-humanlayer-3"><strong>Worktreen valmistelu ensisijaisesti Taskfleetistä</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Tarkistetaan sen kopiointi-/asennustuki ennen omaa työtilareseptiä.</p><p><b>Vaihtoehto:</b> Rakennetaan heti .open-habitat.yaml-valmistelu.</p><p><b>Miksi:</b> Ei päällekkäistä koneistoa; .env:n ja riippuvuuksien puuttuminen hidastaa työn alkua.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-humanlayer-4"><input type="checkbox" id="benchmark-humanlayer-4"><strong>Agentin ympäristön salaisuustesti</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Varmistetaan testillä, ettei Pi peri tarpeettomia hostin tunnuksia.</p><p><b>Vaihtoehto:</b> Oletetaan ympäristö turvalliseksi.</p><p><b>Miksi:</b> Periaate on hyödyllinen, mutta raportti ei osoita nykyistä vuotoa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-humanlayer-5"><input type="checkbox" id="benchmark-humanlayer-5"><strong>Ohjeet lukijan tavoitteen mukaan</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Kasvaessa erotetaan ensiasennus, tehtäväohje, selitys ja viite.</p><p><b>Vaihtoehto:</b> Yksi kasvava operations.md.</p><p><b>Miksi:</b> Lukija löytää tehtävänsä; matalan prioriteetin ehdotus, ei päätetty dokumenttiuudistus.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/benchmark-humanlayer/report.md</code> <small>(main)</small></p>
+<p>Commitit: </p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="benchmark-orca" data-section><h2><code>benchmark-orca</code><span>Vertailu etsii Orcasta puhelinohjauksen ja resurssienhallinnan oppeja.</span></h2><p class="status">Tutkimuksen ehdotukset; osa oli jo olemassa</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-orca-1"><input type="checkbox" id="benchmark-orca-1"><strong>Diffikommentit eränä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Selaimen luonnoksista yksi viesti tiedosto- ja riviviittein.</p><p><b>Vaihtoehto:</b> Oma worktree-kommenttivarasto.</p><p><b>Miksi:</b> Yksi johdonmukainen korjauskierros ja Pi:n oma historia, kuten HumanLayer-ehdotuksessa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-orca-2"><input type="checkbox" id="benchmark-orca-2"><strong>Push Sinun vuorosi -siirtymästä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotettiin puhelinilmoitusta natiivin mobiilisovelluksen sijaan.</p><p><b>Vaihtoehto:</b> Tieto vain avoimessa välilehdessä.</p><p><b>Miksi:</b> Ihminen voi lähteä koneelta. Tänään hyväksytty ja toteutettu kokeellisena push-when-your-turn-työssä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-orca-3"><input type="checkbox" id="benchmark-orca-3"><strong>Käyttäjäkohtaiset muistirajat</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotettiin user-slice-rajoja ja Pi-kohtaisia scopeja.</p><p><b>Vaihtoehto:</b> Vain agenttimäärän raja.</p><p><b>Miksi:</b> Yhden buildin ei pidä viedä muistia muilta. JupyterHub-vertailu tarkensi myöhemmin, etteivät daemonin Pi:t kuulu user-sliceen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-orca-4"><input type="checkbox" id="benchmark-orca-4"><strong>Joutilaiden Pi:den lepotila</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Natiivista istuntotiedostosta jatkaminen, ei keskeneräistä työtä pysäyttäen.</p><p><b>Vaihtoehto:</b> Kaikki valmiit prosessit elossa.</p><p><b>Miksi:</b> Säästää muistia. Raportti on tältä osin jäljessä: tuotteessa on jo lepotila, joten ei uusi hyväksyttävä ominaisuus sellaisenaan.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-orca-5"><input type="checkbox" id="benchmark-orca-5"><strong>Natiivit skillit ja pohjat /-valikkoon</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Käytetään Pi:n omia lähteitä.</p><p><b>Vaihtoehto:</b> Oma synkronoitu pikakomentovarasto.</p><p><b>Miksi:</b> Puhelimen syöttö helpottuu ilman toista varastoa. Tämäkin kuvaa osin jo olemassa olevaa toimintaa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-orca-6"><input type="checkbox" id="benchmark-orca-6"><strong>Agentin oma tilarivi raiteeseen</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus natiivista tilaviestistä tai nykyisestä yhteenvedosta.</p><p><b>Vaihtoehto:</b> Pelkkä working/odottaa tai uusi worktree-tietue.</p><p><b>Miksi:</b> Ihminen näkisi työn vaiheen avaamatta keskustelua; Pi:n rajapinnan tuki jäi tarkistamatta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-orca-7"><input type="checkbox" id="benchmark-orca-7"><strong>Sanelu ja kuvat puhelimen vastauskenttään</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Hyödynnetään alustan syöttöä ja Pi:n kuvatukea.</p><p><b>Vaihtoehto:</b> Pelkkä näppäily tai erillinen mobiilisovellus.</p><p><b>Miksi:</b> Puhelinohjaus helpottuu; tuotteessa on jo sanelu ja liitteet, joten suositus ei tarkoita puuttuvaa toteutusta.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/benchmark-orca/report.md</code> <small>(main)</small></p>
+<p>Commitit: 1487ef39 issues: Orca benchmark report</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="benchmark-pi-web" data-section><h2><code>benchmark-pi-web</code><span>Kahden Pi Webin vertailu ehdottaa natiivin istunnon parempaa säilyvyyttä.</span></h2><p class="status">Tutkimuksen ehdotukset</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="benchmark-pi-web-1"><input type="checkbox" id="benchmark-pi-web-1"><strong>Pi irti daemonin päivityksistä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Ehdotus: käyttäjämanagerin Pi ja pieni stdio-välittäjä; vaihtoehtoisesti erilliset istunto- ja API-osat.</p><p><b>Vaihtoehto:</b> Nykyinen daemonin lapsi.</p><p><b>Miksi:</b> Päivitys katkaisee nyt keskustelut. Ensin katkosten mittaus, sitten Jarin arkkitehtuuripäätös; välittäjää ei ole päätetty rakentaa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-pi-web-2"><input type="checkbox" id="benchmark-pi-web-2"><strong>Web Push iOS:n ehdoilla</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Lupa ihmisen eleestä, aina näkyvä ilmoitus, kelvollinen VAPID, 404/410-siivoaminen ja keskustelutagi.</p><p><b>Vaihtoehto:</b> Hiljainen push, automaattinen lupapyyntö tai workerien kaikki ilmoitukset.</p><p><b>Miksi:</b> Pi Webin käyttökokemukset; nykyiset toteutusvalinnat löytyvät push-when-your-turn-kohdasta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-pi-web-3"><input type="checkbox" id="benchmark-pi-web-3"><strong>Joutopurku sivun uusiman läsnäolon perusteella</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus avoimen sivun vuokrasta ja työn pidosta.</p><p><b>Vaihtoehto:</b> Pelkkä kiinteä aikaraja.</p><p><b>Miksi:</b> Ei pysäytetä luettavaa tai taustatyötä odottavaa istuntoa; osa raportin lähtötilasta oli jo vanhentunut.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="benchmark-pi-web-4"><input type="checkbox" id="benchmark-pi-web-4"><strong>Pi:n natiivi haarautus selaimeen</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Ehdotus uudesta istunnosta aiemmasta viestistä tai saman istunnon puuhaarasta.</p><p><b>Vaihtoehto:</b> Uusi tyhjä keskustelu ja kontekstin kopiointi.</p><p><b>Miksi:</b> Väärältä polulta paluu helpottuu ilman uutta historiamuotoa; uusi käyttökulku odottaa päätöstä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-pi-web-5"><input type="checkbox" id="benchmark-pi-web-5"><strong>Kysy ensin sopiiko Pi-laajennukseksi</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus ohjesäännöksi ennen selainkohtaista ominaisuutta.</p><p><b>Vaihtoehto:</b> Toteutetaan kaikki Habitatissa.</p><p><b>Miksi:</b> Natiivi ominaisuus näkyy myös SSH:ssa; ohjetta ei tässä raportissa muutettu.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-pi-web-6"><input type="checkbox" id="benchmark-pi-web-6"><strong>Agentin ”tarvitsen ihmistä” -merkintä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus Pi-laajennuksen pysyvästä avuntarpeesta, jota pelkkä lukeminen ei poista.</p><p><b>Vaihtoehto:</b> Vain kysymys ja lukematon vastaus.</p><p><b>Miksi:</b> Tunnistaisi ulkoisen hyväksynnän tai kirjautumisen tarpeen; alempi prioriteetti.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/benchmark-pi-web/report.md</code> <small>(main)</small></p>
+<p>Commitit: 2870957e Benchmark PI WEB and Pi Web against Open Habitat</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="benchmark-hapi" data-section><h2><code>benchmark-hapi</code><span>HAPI-vertailu tarkentaa ilmoituksia ja selaimen suhdetta natiiviin agenttiin.</span></h2><p class="status">Tutkimuksen ehdotukset</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-hapi-1"><input type="checkbox" id="benchmark-hapi-1"><strong>Käytetty välilehti, ei pelkkä näkyvyys</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus ilmoituksen vaimentamisesta vain tuoreen toiminnan perusteella.</p><p><b>Vaihtoehto:</b> Mikä tahansa näkyvä välilehti vaimentaa kaiken.</p><p><b>Miksi:</b> Auki jätetty työpöytä ei saa estää puhelinta; toteutuksen aikarajat ovat push-kohdassa.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="benchmark-hapi-2"><input type="checkbox" id="benchmark-hapi-2"><strong>Lyhyt ilmoituksen elinaika</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Raportti ehdotti tunnista muutamaan ja Urgency normal/high.</p><p><b>Vaihtoehto:</b> Kirjaston neljän viikon oletus.</p><p><b>Miksi:</b> Vanha ilmoitus ei auta. Toteutus valitsi 12 h, joten suositus ja toteutus eroavat.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-hapi-3"><input type="checkbox" id="benchmark-hapi-3"><strong>Ilmoituksen poisto kun asia hoidetaan</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotettiin tagia ja sulkemista avatessa; hiljainen peruutus jätettiin epävarmaksi.</p><p><b>Vaihtoehto:</b> Vanha ilmoitus pysyy aina.</p><p><b>Miksi:</b> Väärä odotus heikentää luottamusta; Safari-rajoitus ratkaistiin toteutuksessa ilman etäperuutusta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-hapi-4"><input type="checkbox" id="benchmark-hapi-4"><strong>Klikkaus käyttää olemassa olevaa ikkunaa</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus focus + navigointi ennen uuden ikkunan avausta.</p><p><b>Vaihtoehto:</b> Aina openWindow.</p><p><b>Miksi:</b> Estää ikkunoiden kertymisen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-hapi-5"><input type="checkbox" id="benchmark-hapi-5"><strong>Avainten vaihto ja kuolleet tilaukset huomioidaan</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus uudelleentilauksesta avaimen vaihtuessa sekä 404:n ja 410:n poistosta.</p><p><b>Vaihtoehto:</b> Vain 410 tai vanha avain ikuisesti.</p><p><b>Miksi:</b> Muuten ilmoitukset voivat loppua hiljaa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-hapi-6"><input type="checkbox" id="benchmark-hapi-6"><strong>Lupa vasta kytkimen painalluksesta</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Kokeellinen kortti käynnistää lupakyselyn.</p><p><b>Vaihtoehto:</b> Kysytään heti kirjautumisessa.</p><p><b>Miksi:</b> Ihmisen ele on sekä ymmärrettävä että iOS:n vaatimus.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-hapi-7"><input type="checkbox" id="benchmark-hapi-7"><strong>Natiivi ratkaisee kilpailevat vastaukset</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus tulevaan monen asiakkaan malliin: selain lähettää ehdokkaan, ei julista voittajaa.</p><p><b>Vaihtoehto:</b> Selain omistaa vastauksen.</p><p><b>Miksi:</b> Vain harness tuntee terminaalissa ja selaimessa tehdyt toimet; ei nykyinen monikirjoittajatoteutus.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-hapi-8"><input type="checkbox" id="benchmark-hapi-8"><strong>Omistaja määrää elinkaaren</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus: lisäasiakas liittyy, ei omista, eikä viimeisen asiakkaan poistuminen lopeta työtä.</p><p><b>Vaihtoehto:</b> Asiakasmäärään sidottu prosessi.</p><p><b>Miksi:</b> Daemon on jo jatkuva omistaja; liitettävässä mallissa sääntö pitää silti päättää erikseen.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/benchmark-hapi/report.md</code> <small>(main)</small></p>
+<p>Commitit: b0d26543 research: benchmark HAPI (Web Push, terminal/browser handoff, own SQLite store)</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="benchmark-coder" data-section><h2><code>benchmark-coder</code><span>Coder-vertailu puoltaa natiivia rajapintaa oman agenttisilmukan sijaan.</span></h2><p class="status">Tutkimuksen ehdotukset</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-coder-1"><input type="checkbox" id="benchmark-coder-1"><strong>Keskustelu säilyisi daemonin restartissa</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus Pi:stä omassa käyttäjäyksikössä ja uudelleenkytkeytymisestä.</p><p><b>Vaihtoehto:</b> Nykyinen lapsiprosessi tai Coderin tietokantaomistajuus.</p><p><b>Miksi:</b> Päivitys ei katkaisisi työtä; stdio-yhteyden säilyminen on suunnittelukysymys.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-coder-2"><input type="checkbox" id="benchmark-coder-2"><strong>Daemonin rajapinta omille automaatioille</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus cronin/skriptin aloittamista natiiveista keskusteluista.</p><p><b>Vaihtoehto:</b> Vain selain tai uusi automaatiopalvelu.</p><p><b>Miksi:</b> Oma Unix-socket säilyttää käyttäjärajan; julkaistava CLI-sopimus tarvitsee oman päätöksensä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-coder-3"><input type="checkbox" id="benchmark-coder-3"><strong>Keskeytyksen välitila näkyviin</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus ”Keskeytetään…”-tilasta.</p><p><b>Vaihtoehto:</b> Näytetään pysähtynyt ennen vahvistusta.</p><p><b>Miksi:</b> Erotetaan pyynnön lähetys todellisesta pysähtymisestä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-coder-4"><input type="checkbox" id="benchmark-coder-4"><strong>Jonoviestin muokkaus pysäyttäisi jonon</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Coderin mallia ehdotettiin mahdolliseen tulevaan muokkaukseen.</p><p><b>Vaihtoehto:</b> Muokkaus jonon jatkaessa tai ei muokkausta.</p><p><b>Miksi:</b> Viestin sisältö ei muutu lennossa; Pi:n tuki jäi tarkistamatta ja ominaisuus on sovitun toiminnan ulkopuolella.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-coder-5"><input type="checkbox" id="benchmark-coder-5"><strong>Muut harnessit vain omalla RPC:llä tai ACP:llä</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ei terminaalin tekstin raapimista.</p><p><b>Vaihtoehto:</b> Universaali TUI-adapteri.</p><p><b>Miksi:</b> Coder ylläpiti sellaista pitkään ja poisti sen; Pi:n rakenteinen RPC on eri lähtökohta.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/benchmark-coder/report.md</code> <small>(main)</small></p>
+<p>Commitit: dc12699a research: benchmark Open Habitat against Coder Agents</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="benchmark-herdr" data-section><h2><code>benchmark-herdr</code><span>Herdr-vertailu etsii luotettavaa terminaaliagentin tilaa.</span></h2><p class="status">Tutkimuksen ehdotukset</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-herdr-1"><input type="checkbox" id="benchmark-herdr-1"><strong>Odota tmuxin OSC 7501 -tukea</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus Pi:n oman tilan lukemisesta tmuxista, kun julkaistu versio tukee sitä.</p><p><b>Vaihtoehto:</b> Oma PTY-kääre tai pelkkä historian lopun arvailu.</p><p><b>Miksi:</b> Natiivi tila ilman uutta varastoa; kaikki blocked-tilanteet eivät ole vielä varmennettuja.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-herdr-2"><input type="checkbox" id="benchmark-herdr-2"><strong>OOMPolicy=continue</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotettiin daemonin ja tmuxin yksiköihin.</p><p><b>Vaihtoehto:</b> Oletus stop.</p><p><b>Miksi:</b> Yhden muistikuoleman ei pidä tappaa kaikkia. Toteutui tänään oom-stops-whole-unit-työssä, myös editoriin.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-herdr-3"><input type="checkbox" id="benchmark-herdr-3"><strong>Tuntematon ei ole idle</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus: päätelty tila erotetaan Pi:n omasta tiedosta tai jätetään näyttämättä.</p><p><b>Vaihtoehto:</b> Arvaus esitetään varmana tilana.</p><p><b>Miksi:</b> Väärä idle ohjaa huomiota väärin ja voi saada automaation syöttämään dialogiin.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-herdr-4"><input type="checkbox" id="benchmark-herdr-4"><strong>Mahdollinen monikoneisuus konekohtaisilla totuuksilla</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Jos rajaus joskus avataan, asiakas kokoaisi koneet ja katkennut olisi vain himmeää välimuistitietoa; tunnistus SSH:lla.</p><p><b>Vaihtoehto:</b> Yhteinen keskusrekisteri ja syöttö katkenneelle koneelle.</p><p><b>Miksi:</b> Säilyttää natiivit omistajat. Monikoneisuutta ei ole tässä hyväksytty tuotteeseen.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/benchmark-herdr/report.md</code> <small>(main)</small></p>
+<p>Commitit: d6c67bc2 benchmark-herdr: compare herdr&#x27;s SSH path and agent state inference</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="benchmark-harness-remote" data-section><h2><code>benchmark-harness-remote</code><span>Natiivien etäkäyttömallien vertailu ehdottaa Pi:lle lukkoa ja paikallista liittymistä.</span></h2><p class="status">Tutkimuksen ehdotukset</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="benchmark-harness-remote-1"><input type="checkbox" id="benchmark-harness-remote-1"><strong>Pi:n oma kirjoittajalukko ensin</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito · ★ Arvioi erityisesti</p><p>Ehdotus pyytää lukko istuntotiedostolle upstreamista.</p><p><b>Vaihtoehto:</b> Habitatin oma prosessiseuranta ja lisälukot.</p><p><b>Miksi:</b> Vain Pi tietää myös terminaalin kirjoittajasta; pienin todellisen rinnakkaiskirjoitusaukon sulkeva muutos.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="benchmark-harness-remote-2"><input type="checkbox" id="benchmark-harness-remote-2"><strong>Paikallinen attach-socket Pi:lle</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Ehdotus yksi omistaja, monta asiakasta, nykyinen RPC yksityisessä Unix-socketissa ja pi attach.</p><p><b>Vaihtoehto:</b> Habitatin oma välityskerros tai Pi:n uusi palvelinpino.</p><p><b>Miksi:</b> Elävä terminaali- ja selainkäyttö säilyttäisi tilan Pi:ssä. Jos upstream ei tue, raportti suosittaa nykyistä vain luku -rajaa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-harness-remote-3"><input type="checkbox" id="benchmark-harness-remote-3"><strong>Pi:lle idempotentti requestId</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus saman promptin tunnistamisesta natiivisti.</p><p><b>Vaihtoehto:</b> Habitatin oma kuittikirjanpito tai epävarman lähetyksen uusinta.</p><p><b>Miksi:</b> Yksinkertaistaisi epävarmasta lähetyksestä toipumista; nykyistä tukea ei varmistettu.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-harness-remote-4"><input type="checkbox" id="benchmark-harness-remote-4"><strong>Monen asiakkaan vastaus neutraalisti näkyviin</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus ”vastattu toisaalla” eikä selaimen oma voittajapäätös.</p><p><b>Vaihtoehto:</b> Selaimen hyväksyntä lopullisena totuutena.</p><p><b>Miksi:</b> Natiivi harness ratkaisee; attachin pitää ilmoittaa ratkaisu kaikille.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-harness-remote-5"><input type="checkbox" id="benchmark-harness-remote-5"><strong>Omistajan elinkaari ja joutilaisuuden armonaika</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Asiakkaan sulkeminen ei lopeta aktiivista työtä; joutilaana ilman tilaajia voidaan purkaa.</p><p><b>Vaihtoehto:</b> Viimeinen asiakas omistaa prosessin tai ikuinen käynnissäolo.</p><p><b>Miksi:</b> Säilyvyys ja muistibudjetti yhdistyvät. Codexin 30 min oli esimerkki, ei Habitatille valittu uusi raja.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-harness-remote-6"><input type="checkbox" id="benchmark-harness-remote-6"><strong>Push vaimenee läsnä ollessa</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Raportti ehdotti näkyvää samaa keskustelua riittäväksi tiedoksi.</p><p><b>Vaihtoehto:</b> Ilmoitus aina.</p><p><b>Miksi:</b> Vältetään turha puhelinviesti; päivän toteutus on tätä tarkempi ja vaatii tuoretta käyttöä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-harness-remote-7"><input type="checkbox" id="benchmark-harness-remote-7"><strong>Ei pi-durablea eikä omaa attach-käärettä nyt</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Pidetään kokeellisen kirjaston mallit tutkimuksena.</p><p><b>Vaihtoehto:</b> Otetaan kirjasto heti käyttöön.</p><p><b>Miksi:</b> Tallennus ei ole terminaalin Pi:n käyttämä ja kääre olisi toinen ohjauskerros.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-harness-remote-8"><input type="checkbox" id="benchmark-harness-remote-8"><strong>Julkinen Pi-pyyntö odottaa Jaria</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus järjestykseksi lukko, requestId ja attach; suppea pyyntö viittauksin aiempiin keskusteluihin.</p><p><b>Vaihtoehto:</b> Automaattinen julkinen issue tai laaja palvelinvaatimus.</p><p><b>Miksi:</b> Upstream pitää ytimen pienenä; julkinen osallistuminen on Jarin valinta.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/benchmark-harness-remote/report.md</code> <small>(main)</small></p>
+<p>Commitit: 3132dbb4 Benchmark harness-native remote access against Open Habitat</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="benchmark-cockpit" data-section><h2><code>benchmark-cockpit</code><span>Cockpit-vertailu ehdottaa pienempää yhteistä verkkovaltaa.</span></h2><p class="status">Tutkimuksen ehdotukset</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="benchmark-cockpit-1"><input type="checkbox" id="benchmark-cockpit-1"><strong>Gatewayn hiekkalaatikkoa tiukemmaksi</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito · ★ Arvioi erityisesti</p><p>Ehdotus syscall-, namespace-, capability- ja kernel-rajoista sekä sallituista osoiteperheistä.</p><p><b>Vaihtoehto:</b> Nykyinen kevyempi systemd-rajaus.</p><p><b>Miksi:</b> Internet-pinta pääsee kaikkien daemonien socketteihin; yhteensopivuus on vielä testattava.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-cockpit-2"><input type="checkbox" id="benchmark-cockpit-2"><strong>Gateway ei käynnistä prosesseja</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus kirjata nykyinen käytäntö pysyväksi säännöksi.</p><p><b>Vaihtoehto:</b> Uusia käteviä gh-/SSH-kutsuja gatewayssa.</p><p><b>Miksi:</b> Cockpitin haavoittuvuus syntyi natiiviprosessin käynnistyksestä ennen tunnistusta.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="benchmark-cockpit-3"><input type="checkbox" id="benchmark-cockpit-3"><strong>Natiivin tilin sulun merkitys selvitetään</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Raportti suositteli tilin vanhenemisen/login-shellin tai PAM-accountin huomioimista.</p><p><b>Vaihtoehto:</b> Vain Habitatin oma pääsynpoisto.</p><p><b>Miksi:</b> SSH:n ja selaimen pääsyn ei pitäisi ajautua erilleen. Vaikutus oli testaamaton; Jari tilasi tutkimuksen, ei toteutusta.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="benchmark-cockpit-4"><input type="checkbox" id="benchmark-cockpit-4"><strong>Gateway-instanssi ihmiselle</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito · ★ Arvioi erityisesti</p><p>Ehdotus pienestä TLS-etupäästä ja ihmiskohtaisista gatewayista, jotka pääsevät vain omaan daemoniin.</p><p><b>Vaihtoehto:</b> Yksi yhteinen gateway tai sen halvempi kovennus.</p><p><b>Miksi:</b> Yhden verkkovirheen vaikutus rajautuisi; hostit, OAuth, TLS ja asennus tekisivät tästä ison muutoksen. Jari tilasi erillisen tutkimuksen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-cockpit-5"><input type="checkbox" id="benchmark-cockpit-5"><strong>Selainkirjautumiset natiivisti näkyviin</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Matala prioriteetti: last/who/loginctl-tyyppinen näkyvyys harkittavaksi.</p><p><b>Vaihtoehto:</b> Vain gatewayn istuntotila.</p><p><b>Miksi:</b> Ylläpitäjän natiivit työkalut auttaisivat, mutta pitkä selainistunto ei vastaa login-istuntoa eikä diagnostiikka ole audit trail.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/benchmark-cockpit/report.md</code> <small>(main)</small></p>
+<p>Jarin jatkopäätökset: commit <code>6f81ff22</code> (tutkimukset ja pienempi julkaisu).</p>
+<p>Commitit: bcdf585b Benchmark Open Habitat against Cockpit</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="benchmark-jupyterhub" data-section><h2><code>benchmark-jupyterhub</code><span>JupyterHub-vertailu löysi resurssirajan aukon ja ehdottaa selainturvan lisäsuojia.</span></h2><p class="status">Havainto ja tutkimuksen ehdotukset</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="benchmark-jupyterhub-1"><input type="checkbox" id="benchmark-jupyterhub-1"><strong>Pi:n ja työkalujen muistiraja oikeaan cgroupiin</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito · ★ Arvioi erityisesti</p><p>Vaihtoehdoiksi ehdotettiin Pi:t user-sliceen tai daemon-instanssille omat MemoryMax/TasksMax-rajat.</p><p><b>Vaihtoehto:</b> Nykyinen user-slice-ohje yksin.</p><p><b>Miksi:</b> Havaittu daemonin Pi ei kuulu siihen. Jari tilasi tutkimuksen; vaihtoehtoa ei ole valittu.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-jupyterhub-2"><input type="checkbox" id="benchmark-jupyterhub-2"><strong>Tiukka script-src sovellusoriginille</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus self-skripteistä, object-src none ja base-uri none.</p><p><b>Vaihtoehto:</b> Nykyinen lähinnä kehyksiä rajaava CSP.</p><p><b>Miksi:</b> Lisäsuoja XSS:ää vastaan; tyylien ja kehityspalvelimen yhteensopivuus jäi testaamatta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-jupyterhub-3"><input type="checkbox" id="benchmark-jupyterhub-3"><strong>Gatewayn Content-Type-sallittujen lista</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus JSONille, event-streamille ja nimetyille kuville; muut latauksiksi.</p><p><b>Vaihtoehto:</b> Luotetaan jokaisen daemonireitin otsakkeisiin.</p><p><b>Miksi:</b> Tuleva daemonivirhe ei saisi ajaa HTML:ää sovellusoriginissa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-jupyterhub-4"><input type="checkbox" id="benchmark-jupyterhub-4"><strong>Käyttäjäkohtainen tmp myös user managerille</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Selvitetään Fleetrepon keino eristää terminaalien/editorin väliaikaistiedostot.</p><p><b>Vaihtoehto:</b> Yhteinen /tmp kuten havainnossa.</p><p><b>Miksi:</b> Vähentää nimi- ja symlink-kilpailuja; toteutuskeinoa ei vielä valittu.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="benchmark-jupyterhub-5"><input type="checkbox" id="benchmark-jupyterhub-5"><strong>Luonnoksen hereilläpitämiselle katto</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Ehdotus esimerkiksi tunnista tai näkyvään välilehteen sitomisesta.</p><p><b>Vaihtoehto:</b> Luonnos pitää Pi:n elossa loputtomiin.</p><p><b>Miksi:</b> Unohtunut luonnos kuluttaa muistia; taustatyön odotus olisi eri asia. Tunti ei ole päätetty raja.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-jupyterhub-6"><input type="checkbox" id="benchmark-jupyterhub-6"><strong>Muokattava ajettava sisältö pois sovellusoriginista</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus yleissäännöksi ohjeisiin.</p><p><b>Vaihtoehto:</b> Vain yksittäisten editori- ja näkymäreittien säännöt.</p><p><b>Miksi:</b> Uusi ominaisuus arvioitaisiin samaa turvarajaa vasten ennen koodia.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-jupyterhub-7"><input type="checkbox" id="benchmark-jupyterhub-7"><strong>Tarvittaessa nimenomainen Pidä hereillä</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Ehdotus aikarajatusta ihmisen teosta, jos nykyiset työnpidot eivät riitä.</p><p><b>Vaihtoehto:</b> Pidempi yleinen joutoaikaraja tai keinotekoinen aktiivisuus.</p><p><b>Miksi:</b> Ihmisen tarkoitus näkyisi suoraan ilman kaikkien istuntojen pitkittämistä.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/benchmark-jupyterhub/report.md</code> <small>(main)</small></p>
+<p>Jarin jatkopäätökset: commit <code>6f81ff22</code> (tutkimukset ja pienempi julkaisu).</p>
+<p>Commitit: 4bada319 Benchmark JupyterHub against Open Habitat</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="rail-interrupted-turn-hidden" data-section><h2><code>rail-interrupted-turn-hidden</code><span>Päivityksessä kesken jäänyt vuoro pysyy näkyvissä raiteessa.</span></h2><p class="status">Toteutettu koonnin valmistuessa</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="rail-interrupted-turn-hidden-1"><input type="checkbox" id="rail-interrupted-turn-hidden-1"><strong>Kuittaus on arkistointi</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Keskeytyneen rivin saa pois arkistoimalla tai jatkamalla keskustelua.</p><p><b>Vaihtoehto:</b> Erillinen Kuittaa-painike.</p><p><b>Miksi:</b> Erillinen kuittaus vaatisi uuden tallennuksen tai Pi:n käynnistämisen natiivikirjoitusta varten; arkistointi on jo olemassa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="rail-interrupted-turn-hidden-2"><input type="checkbox" id="rail-interrupted-turn-hidden-2"><strong>Oma pysäytys ei näytä keskeytymisvaroitusta</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>person-syystä pysäytettyä ei näytetä katkenneena, vaikka daemon raportoi faktan.</p><p><b>Vaihtoehto:</b> Jokainen kesken päättynyt haara varoitukseksi.</p><p><b>Miksi:</b> Ihmisen tarkoituksellinen pysäytys ei ole uutinen; selaimen Stop tuottaa abort-vastauksen eikä katkennutta haaraa.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="rail-interrupted-turn-hidden-3"><input type="checkbox" id="rail-interrupted-turn-hidden-3"><strong>Myös vanhat keskeytykset näkyvät</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Minkä tahansa aiemman restartin katkaisema, jatkamaton keskustelu nostetaan listaan.</p><p><b>Vaihtoehto:</b> Vain viimeisimmässä restartissa katkenneet.</p><p><b>Miksi:</b> Host ei tiedä, mikä restart katkaisi työn; Birchlla havaittiin yksi tällainen 132 keskustelusta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="rail-interrupted-turn-hidden-4"><input type="checkbox" id="rail-interrupted-turn-hidden-4"><strong>Käynnissä, ei Sinun vuorosi</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Rivi on epäonnistuneen tapaan punainen ”Työ katkesi kesken”, ei taitoksen alla.</p><p><b>Vaihtoehto:</b> Odottavien lista.</p><p><b>Miksi:</b> Asia vaatii katsomista mutta agentin vastausta ei ole odottamassa.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="rail-interrupted-turn-hidden-5"><input type="checkbox" id="rail-interrupted-turn-hidden-5"><strong>32 MiB:n lukuraja säilyy</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito · ★ Arvioi erityisesti</p><p>Suuremman istuntotiedoston katkennutta vuoroa ei raportoida.</p><p><b>Vaihtoehto:</b> Rajaton tai erikseen laajennettu skannaus.</p><p><b>Miksi:</b> Peritty haaraskannauksen raja; suurin Birchn istunto oli 5,6 MB. Tunnettu rajoitus, ei ratkaistu tässä.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/rail-interrupted-turn-hidden/result.md</code> <small>(51cb9b83)</small></p>
+<p>Commitit: 46a59d45 Show a turn cut by a daemon restart as cut off in the rail</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="research-per-person-gateway" data-section><h2><code>research-per-person-gateway</code><span>Jatkotutkimus suosittelee ihmiselle omaa gateway-identiteettiä ja selainoriginia.</span></h2><p class="status">ADR-suositus, ei toteutuslupa</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="research-per-person-gateway-1"><input type="checkbox" id="research-per-person-gateway-1"><strong>Oma app-host ihmiselle</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle · ★ Arvioi erityisesti</p><p>Suositus henkilökohtaisesta, läpinäkymättömällä tunnisteella nimetystä hostista ja host-only-evästeestä; editori ja näkymät pysyvät erillisinä.</p><p><b>Vaihtoehto:</b> Polkureititys yhteisellä originilla.</p><p><b>Miksi:</b> Prosessierottelu ei estä kaapatun JavaScriptin yhteisen originin valtaa. URL-, PWA-, push-lupa- ja kirjautumisvaikutukset vaativat Jarin päätöksen.</p></div></li>
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="research-per-person-gateway-2"><input type="checkbox" id="research-per-person-gateway-2"><strong>Vakaa erillinen palvelu-UID</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito · ★ Arvioi erityisesti</p><p>Suositus gatewaylle omasta pysyvästä UID:stä per ihminen, ei ihmisen omasta UID:stä.</p><p><b>Vaihtoehto:</b> Sama yhteinen gateway-UID, ihmisen UID tai DynamicUser.</p><p><b>Miksi:</b> Peer-UID ja tiedosto-oikeudet voivat rajata pääsyn yhteen daemoniin; DynamicUser vaatisi kierrättyvän identiteetin lisätodennuksen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-per-person-gateway-3"><input type="checkbox" id="research-per-person-gateway-3"><strong>Tunnistus ja ylläpito erilliseksi yhteiseksi vallaksi</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus pienestä TLS-reitittimestä, yhteisestä login/admin-palvelusta ja rajatuista henkilö-gatewayista.</p><p><b>Vaihtoehto:</b> Nykyinen kaikkivaltainen instanssi monistettuna.</p><p><b>Miksi:</b> Henkilö-gateway ei saisi yhteisiä OAuth-, istunto- tai ylläpitosalaisuuksia. Yhteinen tunnistus ja root jäisivät silti koko sivuston luotetuksi osaksi.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-per-person-gateway-4"><input type="checkbox" id="research-per-person-gateway-4"><strong>Yksi OAuth-callback ja rajattu kertaluovutus</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus selain- ja vastaanottajasidonnaisesta kertakoodista henkilöhostin istuntoon.</p><p><b>Vaihtoehto:</b> Token URL:iin tai yhteinen kaikkien luettava istuntovarasto.</p><p><b>Miksi:</b> Kirjautuminen säilyisi keskitettynä ilman henkilöiden istuntovallan sekoittamista; tarkka protokolla odottaa suunnittelua.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-per-person-gateway-5"><input type="checkbox" id="research-per-person-gateway-5"><strong>Henkilökohtaiset istuntovarastot ensisijaisina</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Tutkija suosii erillistä varastoa per henkilö ja yhtä revokaatiovaltaa.</p><p><b>Vaihtoehto:</b> Yhteinen tarkistusrajapinta tai kaikkien luettava keskuskanta.</p><p><b>Miksi:</b> Yksi istuntototuus, säilyminen restartissa ja välitön revokaatio. Vanhojen istuntojen siirto vai uusi kirjautuminen jäi avoimeksi.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-per-person-gateway-6"><input type="checkbox" id="research-per-person-gateway-6"><strong>Socket-aktivointi Accept=no</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Ehdotus henkilökohtaisesta socket/service-parista; joutopysäytys ei katkaise aktiivisia SSE/WS-yhteyksiä tai kertaluovutusta.</p><p><b>Vaihtoehto:</b> Instanssi per TCP-yhteys tai aina käynnissä oleva gateway.</p><p><b>Miksi:</b> Yhteys ei ole henkilö. Pitkät virrat voivat silti pitää prosessin elossa; kustannus on mittaamatta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-per-person-gateway-7"><input type="checkbox" id="research-per-person-gateway-7"><strong>Ei proc-erottelun heikennystä</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Cgroup-todennusta ei helpoteta antamalla vieraisiin /proc-tietoihin pääsyä.</p><p><b>Vaihtoehto:</b> Cockpitin root-sessionin tarkistuksen suora kopio.</p><p><b>Miksi:</b> Habitatin henkilödaemonilla ei ole rootin näkyvyyttä; vakaa peer-UID on selkeämpi raja.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-per-person-gateway-8"><input type="checkbox" id="research-per-person-gateway-8"><strong>TLS-ratkaisu jätetään avoimeksi</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Yhteinen TLS-terminointi tai hostikohtaiset sertifikaatit passthrough-mallissa; yhteistä wildcard-avainta ei jaettaisi henkilöinstansseille.</p><p><b>Vaihtoehto:</b> Wildcard-avain jokaiselle instanssille.</p><p><b>Miksi:</b> Yhden kaappaus ei saa vuotaa kaikkien hostien identiteettiä; yhteinen TLS-pää taas säilyy yhteisenä riskinä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-per-person-gateway-9"><input type="checkbox" id="research-per-person-gateway-9"><strong>Ei näennäistä monistamista</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Jos rakenteellista erottelua ei tarvita nyt, säilytetään yksi kovennettu gateway.</p><p><b>Vaihtoehto:</b> Monta instanssia samalla vallalla.</p><p><b>Miksi:</b> Muuten maksettaisiin monimutkaisuudesta ilman luvattavaa henkilöturvarajaa; sandbox-kovennus auttaa mutta ei korvaa erottelua.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-per-person-gateway-10"><input type="checkbox" id="research-per-person-gateway-10"><strong>Tuoteoperaattori omistaa uuden politiikan</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>UID:t, socketit, sidonnat ja upgrade-aita kuuluisivat tuotteen asennukseen; Fleetrepo toimittaa deklaroinnin.</p><p><b>Vaihtoehto:</b> Erillinen Fleetrepo-proxy-paikkaus tai toinen käyttäjärekisteri.</p><p><b>Miksi:</b> Valtuusraja pitää varmentaa myös päivityksessä. Ennen hyväksyntää tarvitaan kahden UID:n turvakokeet ja 0/1/10/100 instanssin mittaus, joita tutkimus ei tehnyt.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/research-per-person-gateway/report.md</code> <small>(51cb9b83)</small></p>
+<p><code>issues/research-per-person-gateway/result.md</code> <small>(51cb9b83)</small></p>
+<p>Commitit: 8c078316 docs: research per-person gateway isolation and its trust boundaries</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="research-user-slice-limits" data-section><h2><code>research-user-slice-limits</code><span>Jatkotutkimus suosittelee yhtä resurssikattoa ihmisen kaikelle työlle.</span></h2><p class="status">ADR-suositus, ei toteutuslupa</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="research-user-slice-limits-1"><input type="checkbox" id="research-user-slice-limits-1"><strong>Nykyinen daemon samaan user-sliceen</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito · ★ Arvioi erityisesti</p><p>Suositus sijoittaa järjestelmädaemon olemassa olevaan user-UID.sliceen ja asettaa yksi rootin hallitsema katto.</p><p><b>Vaihtoehto:</b> Pi käyttäjämanageriin, erilliset daemon-rajat tai uusi cgroup-manageri.</p><p><b>Miksi:</b> Korjaa budjetin kattavuuden vähimmällä elinkaarimuutoksella; Pi:n säilymistä restartissa ei luvata.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-user-slice-limits-2"><input type="checkbox" id="research-user-slice-limits-2"><strong>Budjetti sivustomäärittelystä, ei käyttäjän omasta unitista</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Tuote julkaisee ja varmentaa politiikan ennen ensimmäistä työkuormaa; Fleetrepo kutsuu operaattoria.</p><p><b>Vaihtoehto:</b> Fleetrepon rinnakkaiset drop-init tai asiakkaan vapaat systemd-ominaisuudet.</p><p><b>Miksi:</b> Yksi rootin hallitsema, tarkistettava katto. Brokerin mahdollinen uusi rajattu julkaisuvalta jää ADR:n päätettäväksi.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-user-slice-limits-3"><input type="checkbox" id="research-user-slice-limits-3"><strong>Numerot ja OOM-vahinkoalue jätetään päätettäväksi</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>MemoryHigh/Max/SwapMax, TasksMax, CPUWeight, poikkeukset ja palautumisen tila ovat avoimia; koko käyttäjäpuun ryhmätappoa ei suositella oletukseksi.</p><p><b>Vaihtoehto:</b> Rajojen arvaaminen hetkellisestä kulutuksesta.</p><p><b>Miksi:</b> Mittaukset eivät riitä turvallisiin oletuksiin; TasksMaxin täyttyessäkin ohjausreitin pitää toimia.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-user-slice-limits-4"><input type="checkbox" id="research-user-slice-limits-4"><strong>Lepopolitiikka säilytetään</strong></label>
+<div class="item-body"><p class="tags">Näkyy ihmiselle</p><p>Neljä elävää keskustelua ja 10 min joutopysäytys eivät korvaa muistikattoa; yhden Pi:n pysäytys ei pysäytä slicea.</p><p><b>Vaihtoehto:</b> Idle-rajoja kiristämällä tehty resurssiturva.</p><p><b>Miksi:</b> Koko slice sisältäisi myös terminaalit, editorin ja workerit; ne eivät saa loppua keskustelun pysäytykseen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-user-slice-limits-5"><input type="checkbox" id="research-user-slice-limits-5"><strong>Pi:n päivityssäilyvyys omaksi päätöksekseen</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Suositus rajata se resurssikorjauksen ulkopuolelle.</p><p><b>Vaihtoehto:</b> Samalla siirto user manageriin ja lupaus säilyvyydestä.</p><p><b>Miksi:</b> Pdeathsig, putket, lukko ja generation-tiedostot eivät säily pelkällä systemd-runilla; tarvitaan erillinen omistajuus-/RPC-prototyyppi.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="research-user-slice-limits-6"><input type="checkbox" id="research-user-slice-limits-6"><strong>Linger säilyy, siirtymä hallitusti</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Testataan boot/logout/restart; vanhan daemonin siirto tarvitsee restartin ja katon laskeminen vaikutusarvion.</p><p><b>Vaihtoehto:</b> Huomaamaton live-siirto ja välitön rajojen pienennys.</p><p><b>Miksi:</b> Rajojen lasku voi käynnistää OOM:n heti. Tutkimuksen lyhyet transienttikokeet eivät todista koko käyttöönottoa.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/research-user-slice-limits/report.md</code> <small>(51cb9b83)</small></p>
+<p><code>issues/research-user-slice-limits/result.md</code> <small>(51cb9b83)</small></p>
+<p>Commitit: 8da0d9a7 docs: research shared per-person resource budgets</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="bell-panel-header-trim" data-section><h2><code>bell-panel-header-trim</code><span>Ilmoituspaneelin otsikko on pelkkä Ilmoitukset.</span></h2><p class="status">Toteutettu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="bell-panel-header-trim-1"><input type="checkbox" id="bell-panel-header-trim-1"><strong>Ei uutta sanamuototestiä</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Alaotsikon poistolle ei lisätty testiä.</p><p><b>Vaihtoehto:</b> Tarkistetaan otsakkeen teksti tai lapsirakenne.</p><p><b>Miksi:</b> TESTING.md rajaa sanamuototestit pois; lapsimäärä testaisi yksityistä rakennetta eikä toimintaa.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/bell-panel-header-trim/result.md</code> <small>(main)</small></p>
+<p>Commitit: </p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="editor-roundtrip-test-flake" data-section><h2><code>editor-roundtrip-test-flake</code><span>Editorin konfliktitesti käyttää varmasti vanhaa versiotunnusta.</span></h2><p class="status">Testikorjaus</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="editor-roundtrip-test-flake-1"><input type="checkbox" id="editor-roundtrip-test-flake-1"><strong>Versiotunnus kuvaa tilaa eikä tallennusten historiaa</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Sama sisältö ja metadata saavat edelleen vastata samaa tunnusta.</p><p><b>Vaihtoehto:</b> Sukupolvilaskuri tai statx-luontiaika.</p><p><b>Miksi:</b> Muuten hylättäisiin vaarattomia tallennuksia, joiden pohja vastaa nykytilaa; natiivitkin editorit käyttävät stat-tarkistuksia.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/editor-roundtrip-test-flake/result.md</code> <small>(main)</small></p>
+<p>Commitit: 3521a4ce test(daemon): use a truly stale token in the editor conflict check</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="gate-r42-browser" data-section><h2><code>gate-r42-browser</code><span>Kehityssivun kaatuminen korjattiin ja kontrasti tarkistetaan animaation jälkeen.</span></h2><p class="status">Toteutettu, pääosin sisäinen</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="gate-r42-browser-1"><input type="checkbox" id="gate-r42-browser-1"><strong>Kontrastivirhe käsiteltiin ajoituksena</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Testi odottaa lopullista piirtoa; väritokeneita ei muutettu.</p><p><b>Vaihtoehto:</b> Uusi väri tai reduced-motion-testit.</p><p><b>Miksi:</b> Havaittu väri vastasi 72 % häivytystä ja lopullinen kontrasti noin 9,6:1. Tarkkaa häivytystä ei pystytty nimeämään; reduced motion testaisi eri tyyliä.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="gate-r42-browser-2"><input type="checkbox" id="gate-r42-browser-2"><strong>React Refresh -virheelle yksikkötason suoja</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Testataan ettei provider-haku palauta perittyjä nimiä.</p><p><b>Vaihtoehto:</b> Kehityspalvelimen selainregressio tai Refreshin yksityinen import.</p><p><b>Miksi:</b> Tuotantobuildin selainkokeissa Refresh ei aja, ja sen runtime ei ole julkinen moduuli.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/gate-r42-browser/result.md</code> <small>(main)</small></p>
+<p>Commitit: a57cd0f4 Gate r42: provider routes resolve only own keys; start page audited settled</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="terminal-old-server-path-test-cleanup-flake" data-section><h2><code>terminal-old-server-path-test-cleanup-flake</code><span>Tmux-testin siivous odottaa paneelien poistumista.</span></h2><p class="status">Testikorjaus</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="terminal-old-server-path-test-cleanup-flake-1"><input type="checkbox" id="terminal-old-server-path-test-cleanup-flake-1"><strong>Ei KOKEILTAVAA-riviä</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Pelkkä testikorjaus jätettiin käyttäjän kokeilulistalta pois.</p><p><b>Vaihtoehto:</b> ”Ei mitään kokeiltavaa” -rivi.</p><p><b>Miksi:</b> Asennuksen toiminta ei muutu; rivi olisi hälyä.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/terminal-old-server-path-test-cleanup-flake/result.md</code> <small>(main)</small></p>
+<p>Commitit: f9b90949 test(daemon): wait for tmux panes to exit before TempDir cleanup</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="web-typecheck-reload-spec" data-section><h2><code>web-typecheck-reload-spec</code><span>Uudelleenlatauksen testin JSON-tyyppi rajattiin ennen objektin levitystä.</span></h2><p class="status">Testikorjaus</p><ul class="decisions">
+<li class="decision " data-star="false">
+<h3>Ei erillisiä jälkiarvioitavia päätöksiä</h3>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>result.md sanoo ”None”; commit korjaa unknown-tyypin.</p><p><b>Vaihtoehto:</b> Ei kirjattua vaihtoehtoa.</p><p><b>Miksi:</b> Tyyppitarkistuksen korjaus, ei uusi käytös.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/web-typecheck-reload-spec/result.md</code> <small>(main)</small></p>
+<p>Commitit: e361c7d1 web: narrow the snapshot body before spreading it in the reload spec</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="browser-hosts-invisible-reaper" data-section><h2><code>browser-hosts-invisible-reaper</code><span>Testiselainhostien siivous tunnistaa näkymättömälle vanhemmalle jääneet prosessit.</span></h2><p class="status">Sisäinen testityökalu</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="browser-hosts-invisible-reaper-1"><input type="checkbox" id="browser-hosts-invisible-reaper-1"><strong>Näkymätön vanhempi tulkitaan adoptoijaksi</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Orpojen tunnistus hyväksyy vanhemman, jota /proc ei näytä; elävän omistajan lab-host on yhä poikkeus.</p><p><b>Vaihtoehto:</b> Vaaditaan luettavissa oleva init/user-manager-prosessin nimi.</p><p><b>Miksi:</b> Birchn hidepid piilotti adoptoivan user managerin. Saman käyttäjän testikäynnistäjän pitäisi näkyä, joten vanha vaatimus jätti orvot siivoamatta. Lähde: commit, ei erillistä result.md:tä.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p>Commitit: eae17cbd browser-hosts: an invisible parent is the adopting reaper</p>
+<p>Erillistä result.md-/NOTES.md-/report.md-päätösosiota ei löytynyt. Kohta perustuu commitiin ja/tai havaintoissueen.</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="release-pilot-17" data-section><h2><code>release-pilot-17</code><span>Pilot.17 koottiin, tarkistettiin ja annettiin asennusoperaattorille.</span></h2><p class="status">Julkaisutulos</p><ul class="decisions">
+<li class="decision marked" data-star="true">
+<label class="decision-title" for="release-pilot-17-1"><input type="checkbox" id="release-pilot-17-1"><strong>Kaikki runtime-arkistot ladattiin uudelleen julkaisuun</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito · ★ Arvioi erityisesti</p><p>35 assetin julkaisu sisältää pilot.16:n kanssa samat runtime-tavut, vaikka mitään ei rakennettu uudelleen.</p><p><b>Vaihtoehto:</b> Viittaukset aiempiin muuttumattomiin runtime-arkistoihin.</p><p><b>Miksi:</b> Käytettiin edellisen julkaisun reseptiä ja samaa asset-joukkoa. Jari on jo torjunut noin 2,3 GB:n uusintasiirron: release-smaller-upload on sovittu jatkotyö.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="release-pilot-17-2"><input type="checkbox" id="release-pilot-17-2"><strong>Kehitysavain säilyi</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Manifestit allekirjoitettiin Alderlla kehitysavaimella ja tarkistettiin myös digestein.</p><p><b>Vaihtoehto:</b> Uusi avain-/julkaisumalli.</p><p><b>Miksi:</b> ADR 0034:n kolmas askel ei ollut tehty; avainta ei siirretty koneelta.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="release-pilot-17-3"><input type="checkbox" id="release-pilot-17-3"><strong>Ensin tarkistettu draft, sitten muuttumaton julkaisu</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Molemmat arkkitehtuurit ladattiin tuoreesti ja tarkistettiin ennen julkaisua; arm64 myös natiivisti Birchlla.</p><p><b>Vaihtoehto:</b> Julkaistaan ensin ja korjataan assetteja perässä.</p><p><b>Miksi:</b> Muuttumattoman julkaisun tavut eivät ole jälkikäteen vaihdettavissa.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="release-pilot-17-4"><input type="checkbox" id="release-pilot-17-4"><strong>Runtime uudelleenkäytettiin ilman pilvikvalifiointia</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Build-syötteet olivat muuttumattomat, arkistot varmennettiin edellisistä pinneistä; pilvikvalifiointia ei tehty.</p><p><b>Vaihtoehto:</b> Uudelleenrakennus ja pilvikoe.</p><p><b>Miksi:</b> Samat tavut, ei syytä rakentaa uudelleen; raportti ilmoittaa testauksen rajan.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="release-pilot-17-5"><input type="checkbox" id="release-pilot-17-5"><strong>Asennus delegoitiin eikä odotettu tässä ajossa</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Fleetrepon operaattori käynnistettiin kolmelle pilotille callbackilla; worker ei asentanut käsin eikä rebootannut.</p><p><b>Vaihtoehto:</b> Työntekijä odottaa ja raportoi kaikki asennukset itse.</p><p><b>Miksi:</b> Erillinen kestävä ajo omistaa asennuksen. Tämä raportti todistaa aloituksen, ei asennusten valmistumista.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/release-pilot-17/result.md</code> <small>(main)</small></p>
+<p>Jarin jatkopäätökset: commit <code>6f81ff22</code> (tutkimukset ja pienempi julkaisu).</p>
+<p>Commitit: </p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="daemon-pi-outside-user-slice" data-section><h2><code>daemon-pi-outside-user-slice</code><span>Selaimen Pi:t jäävät nykyisen käyttäjäkohtaisen resurssibudjetin ulkopuolelle.</span></h2><p class="status">Havaittu avoin ongelma, ei toteutuspäätöstä</p><ul class="decisions">
+<li class="decision " data-star="false">
+<h3>Ratkaisua ei vielä valittu</h3>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Havainto kirjattiin intakeen; Jari on tilannut research-user-slice-limits-tutkimuksen.</p><p><b>Vaihtoehto:</b> Pi user manageriin, rajat daemonille tai yhteinen ihmiskohtainen slice.</p><p><b>Miksi:</b> Pelkkä Unix-UID ei sijoita daemonin lapsia user-sliceen. Tämä kohta ei väitä muistirajan jo korjaantuneen.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p>Jarin jatkopäätökset: commit <code>6f81ff22</code> (tutkimukset ja pienempi julkaisu).</p>
+<p>Commitit: 4bada319 Benchmark JupyterHub against Open Habitat</p>
+<p>Erillistä result.md-/NOTES.md-/report.md-päätösosiota ei löytynyt. Kohta perustuu commitiin ja/tai havaintoissueen.</p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<section id="benchmark-candidates" data-section><h2><code>benchmark-candidates</code><span>Lyhytlista rajasi seuraavat seitsemän vertailuajoa.</span></h2><p class="status">Tutkimustyön rajaus, vertailut jo tehty</p><ul class="decisions">
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-candidates-1"><input type="checkbox" id="benchmark-candidates-1"><strong>Lähimmät ensin</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Pi:n kaksi web-käyttöliittymää samaan vertailuun, sitten JupyterHub, Cockpit/HAPI ja kevyemmät harness-, Coder- ja herdr-muistiot.</p><p><b>Vaihtoehto:</b> Kaikki saman syvyisinä tai tähdillä järjestettynä.</p><p><b>Miksi:</b> Ensin suora Pi/push-hyöty ja monikäyttäjäturva; jo tuttuja malleja ei tutkita uudelleen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-candidates-2"><input type="checkbox" id="benchmark-candidates-2"><strong>Samankaltaiset tai väärään tuotteeseen suuntautuneet pois</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Conductor, Paseo, Happy, CloudCLI, Vibe Kanban, Omnara, yhden kehittäjän työpöytätyökalut, code-server ja pienet OpenClaw-laivastot jäivät listan ulkopuolelle.</p><p><b>Vaihtoehto:</b> Lisävertailu jokaisesta.</p><p><b>Miksi:</b> Raportin perusteet: päällekkäinen oppi, ei Pi-tukea, alasajo, eri agenttimalli tai liian kapea lisäarvo. pi-durable kuuluu harness-muistioon, ei omaksi tuotteekseen.</p></div></li>
+<li class="decision " data-star="false">
+<label class="decision-title" for="benchmark-candidates-3"><input type="checkbox" id="benchmark-candidates-3"><strong>Push-toteutus odotti tuotepäätöstä</strong></label>
+<div class="item-body"><p class="tags">Sisäinen / ylläpito</p><p>Vertailusta ei suoraan toteutukseen ennen ilmoitusrajauksen avaamista.</p><p><b>Vaihtoehto:</b> Automaattinen toteutus tutkimuksen perusteella.</p><p><b>Miksi:</b> Tuotepäätös kuului Jarille; se tehtiin myöhemmin tänään, ja kokeellinen toteutus on nyt mukana.</p></div></li>
+</ul><details class="sources"><summary>Lähteet ja ajallinen rajaus</summary>
+<p><code>issues/benchmark-candidates/report.md</code> <small>(main)</small></p>
+<p>Commitit: </p>
+</details><a class="top" href="#alku">Takaisin alkuun ↑</a></section>
+<footer><p>Lähdeviitteet ovat kunkin issuen lopussa. Poistettu launch-raportti on luettu git-historiasta, ei arvattu. Jos vaihtoehtoa tai perustelua ei lähde kirjannut, se on sanottu; vertailujen vaihtoehdot ovat raporttien vastakkainasettelujen tiivistelmiä. Tämä offline-sivu ei lataa mitään verkosta.</p><button type="button" id="reset">Tyhjennä tämän sivun rastit</button></footer></main>
+<script>
+(()=>{'use strict';const key='oh-decisions-review-2026-10-31-v1',boxes=[...document.querySelectorAll('input[type=checkbox]')],sections=[...document.querySelectorAll('[data-section]')],search=document.getElementById('search'),stars=document.getElementById('stars'),todo=document.getElementById('todo'),storage=document.getElementById('storage');let saved={};try{const x=JSON.parse(localStorage.getItem(key)||'{}');if(x&&typeof x==='object'&&!Array.isArray(x))saved=x;localStorage.setItem(key,JSON.stringify(saved));storage.textContent='Rastit tallennetaan tämän selaimen paikalliseen muistiin. Sivun kopio tai toinen laite ei välttämättä jaa niitä.'}catch{storage.textContent='Selain estää paikallisen tallennuksen. Rastit säilyvät vain tämän avaamisen ajan; käytä Vie merkinnät -painiketta.'}boxes.forEach(b=>{b.checked=saved[b.id]===true;b.addEventListener('change',()=>{saved[b.id]=b.checked;try{localStorage.setItem(key,JSON.stringify(saved))}catch{storage.textContent='Tallennus ei onnistunut. Vie merkinnät ennen sivun sulkemista.'}update()})});function update(){const q=search.value.toLocaleLowerCase('fi').trim();let shown=0;sections.forEach(s=>{let n=0;s.querySelectorAll('.decision').forEach(d=>{const b=d.querySelector('input'),pass=(!q||(s.querySelector('h2').textContent+' '+d.textContent).toLocaleLowerCase('fi').includes(q))&&(stars.getAttribute('aria-pressed')!=='true'||d.dataset.star==='true')&&(todo.getAttribute('aria-pressed')!=='true'||(b&&!b.checked));d.hidden=!pass;if(pass)n++});s.hidden=n===0;shown+=n;const link=document.querySelector('.toc a[href="#'+s.id+'"]');if(link)link.parentElement.hidden=n===0});document.getElementById('empty').hidden=shown!==0;document.getElementById('progress').textContent=boxes.filter(b=>b.checked).length+' / '+boxes.length+' käyty läpi · '+shown+' kohtaa näkyvissä'}[stars,todo].forEach(b=>b.addEventListener('click',()=>{b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');update()}));search.addEventListener('input',update);document.getElementById('print').addEventListener('click',()=>window.print());document.getElementById('reset').addEventListener('click',()=>{if(!confirm('Tyhjennetäänkö kaikki tämän sivun rastit?'))return;boxes.forEach(b=>{b.checked=false});saved={};try{localStorage.removeItem(key)}catch{}update()});document.getElementById('export').addEventListener('click',()=>{const lines=['Open Habitat — päätösten läpikäynti 31.10.2026','Rasti = käyty läpi, ei hyväksytty.',''];sections.forEach(s=>{const chosen=[...s.querySelectorAll('input:checked')];if(!chosen.length)return;lines.push(s.id);chosen.forEach(b=>lines.push('[x] '+b.closest('label').textContent.trim()));lines.push('')});const url=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='paatokset-31-10-merkinnat.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});update()})();
+</script></body></html>
