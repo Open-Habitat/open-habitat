@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"context"
+	"github.com/Open-Habitat/open-habitat/internal/core"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"os"
 	"os/exec"
@@ -69,7 +70,17 @@ func TestAgentCommandPathIsPerHomeAndInherited(t *testing.T) {
 			t.Fatal(err)
 		}
 		release := filepath.Dir(executable)
-		want := filepath.Join(home, ".local", "bin") + ":" + filepath.Join(home, ".cargo", "bin") + ":/usr/local/bin:/usr/bin:/bin:" + release + ":" + claudeCodeDir(filepath.Join(release, "payloads", "core", "runtime")) + "\n"
+		// The test binary's directory ships no Claude Code; a host selector's
+		// runtime may (as on an installed developer host).
+		selected := ""
+		if runtime, err := core.LoadSharedPiRuntime(); err == nil {
+			selected = filepath.Dir(filepath.Dir(runtime.Node))
+		}
+		want := filepath.Join(home, ".local", "bin") + ":" + filepath.Join(home, ".cargo", "bin") + ":/usr/local/bin:/usr/bin:/bin:" + release
+		if dir := agentClaudeCodeDir(release, selected); dir != "" {
+			want += ":" + dir
+		}
+		want += "\n"
 		if string(path) != want {
 			t.Fatalf("PATH = %q, want %q", path, want)
 		}
@@ -199,7 +210,7 @@ func TestAgentPathFindsSignInClaudeCode(t *testing.T) {
 	home := t.TempDir()
 	run := func() string {
 		cmd := exec.Command("/bin/sh", "-c", "command -v claude && claude")
-		cmd.Env = []string{"HOME=" + home, agentPathWith(home, release)}
+		cmd.Env = []string{"HOME=" + home, agentPathWith(home, release, "")}
 		out, _ := cmd.CombinedOutput()
 		return string(out)
 	}
@@ -215,5 +226,56 @@ func TestAgentPathFindsSignInClaudeCode(t *testing.T) {
 	}
 	if got := run(); got != filepath.Join(own, "claude")+"\nown" {
 		t.Fatalf("person's own Claude Code lost precedence: %q", got)
+	}
+}
+
+// An installation whose operator selects the core runtime outside the release
+// (pi-runtime.json naming another tree, as Fleetrepo's test server does) has no
+// payloads in its release. The agent PATH then names the selected runtime's
+// Claude Code, the one its sign-in runs, and never a directory that is absent.
+// A host-applied generation's own payload wins, as it follows upgrades.
+func TestAgentPathNamesOnlyExistingClaudeCode(t *testing.T) {
+	home := t.TempDir()
+	release := t.TempDir()
+	selected := t.TempDir()
+	shipped := claudeCodeDir(filepath.Join(release, "payloads", "core", "runtime"))
+	beside := claudeCodeDir(selected)
+	path := func() []string {
+		return filepath.SplitList(strings.TrimPrefix(agentPathWith(home, release, selected), "PATH="))
+	}
+	install := func(dir string) {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "claude"), []byte("#!/bin/sh\n"), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A directory without the binary is not Claude Code either.
+	if err := os.MkdirAll(shipped, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range path() {
+		if dir == shipped || dir == beside {
+			t.Fatalf("absent Claude Code on PATH: %s", dir)
+		}
+	}
+	install(beside)
+	if got := path(); got[len(got)-1] != beside || got[len(got)-2] != release {
+		t.Fatalf("selected runtime's Claude Code not last: %q", got)
+	}
+	login := &claudeLogin{device: &PiDevice{Node: filepath.Join(selected, "bin", "node")}}
+	if filepath.Dir(login.binary()) != beside {
+		t.Fatalf("PATH %s differs from sign-in %s", beside, login.binary())
+	}
+	install(shipped)
+	got := path()
+	if got[len(got)-1] != shipped {
+		t.Fatalf("release payload not preferred: %q", got)
+	}
+	for _, dir := range got {
+		if dir == beside {
+			t.Fatal("two Claude Code directories on PATH")
+		}
 	}
 }

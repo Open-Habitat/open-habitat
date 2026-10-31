@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: claude-workers
 lane_seq: 3
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Agent PATH names a payloads directory the test server's release does not have
@@ -20,5 +21,5 @@ Agentin havainto 30.10. (testikone pilot.535): `command -v claude` on `/usr/loca
 
 ## Acceptance Criteria
 
-- [ ] Selvitetty, mistä julkaisun Claude Code löytyy kummallakin asennustavalla (testikoneen julkaisuvahti, `host apply/upgrade`-generaatio), ja agentin PATH osoittaa olemassa olevaan hakemistoon molemmissa.
-- [ ] Jos testikoneen asennus on poikkeava, korjaus tai issue Fleetrepoen; olematon PATH-merkintä ei jää.
+- [x] Selvitetty, mistä julkaisun Claude Code löytyy kummallakin asennustavalla (testikoneen julkaisuvahti, `host apply/upgrade`-generaatio), ja agentin PATH osoittaa olemassa olevaan hakemistoon molemmissa.
+- [x] Jos testikoneen asennus on poikkeava, korjaus tai issue Fleetrepoen; olematon PATH-merkintä ei jää.
