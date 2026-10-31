@@ -13,6 +13,8 @@ import {
   TabList,
   TabPanel,
 } from "react-aria-components";
+import { liveText } from "../i18n";
+import { overlaysText } from "../text/overlays";
 import {
   ControlButton,
   ControlMenuItem,
@@ -23,6 +25,8 @@ import { Icon } from "./Icon";
 import { Button } from "./Primitives";
 import type { Availability } from "./types";
 import { enabled, unavailableReason } from "./types";
+
+const txt = liveText(overlaysText);
 
 export function Dialog({
   "data-testid": testId,
@@ -94,7 +98,7 @@ export function Dialog({
                 slot="close"
                 isDisabled={Boolean(reason)}
               >
-                Sulje
+                {txt.close}
               </ControlButton>
             </div>
             {reason ? <p className="ah-control-reason">{reason}</p> : null}
@@ -154,7 +158,7 @@ export function AlertDialog({
                 isDisabled={Boolean(closeReason)}
                 slot="close"
               >
-                Peruuta
+                {txt.cancel}
               </ControlButton>
               <Button
                 size="page"

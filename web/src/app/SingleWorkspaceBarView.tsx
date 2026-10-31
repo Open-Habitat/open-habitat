@@ -153,7 +153,7 @@ export function SingleWorkspaceBarView({
               onChange={setDisplay}
             />
             <ControlButton size="page" type="submit" isDisabled={!onRename}>
-              Tallenna
+              {txt.save}
             </ControlButton>
           </form>
         </Dialog>

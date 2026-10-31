@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { goalDraft, StartHere } from "../components/StartHere";
+import { useText } from "../i18n";
+import { workspaceLandingText } from "../text/workspaceLanding";
 import { readStartPage, type StartGoal, type StartPage } from "./composerReads";
 import type { ConversationStore } from "./conversationStore";
 import { resolveGoal } from "./goalGuide";
@@ -29,6 +31,7 @@ export function StartPageRead({
 }) {
   const latest = useRef({ draft, onChange, onPage, onStarted });
   latest.current = { draft, onChange, onPage, onStarted };
+  const t = useText(workspaceLandingText);
   const [page, setPage] = useState<StartPage | null>();
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [attempt, retry] = useState(0);
@@ -123,11 +126,7 @@ export function StartPageRead({
             latest.current.onStarted?.(effective, page.title, prepared);
         }}
       />
-      {prepareError && (
-        <p role="status">
-          Taitoa ei saatu tarkistettua. Valitse tavoite uudelleen.
-        </p>
-      )}
+      {prepareError && <p role="status">{t.skillUnchecked}</p>}
     </div>
   );
 }

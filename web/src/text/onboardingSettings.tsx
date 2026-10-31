@@ -197,6 +197,9 @@ const fi = {
   } as Record<string, string>,
   tooManyDefaults: (n: number) => `Oletusrepoja voi olla enintään ${n}.`,
   refusedDefault: "Palvelin ei hyväksynyt muutosta.",
+  chosen: "✓ valittu",
+  defaultReposCount: (n: number, max: number) => `${n} / ${max} oletusrepoa`,
+  done: "Valmis",
 };
 
 export const onboardingSettingsText = catalog(fi, {
@@ -390,4 +393,7 @@ export const onboardingSettingsText = catalog(fi, {
   },
   tooManyDefaults: (n) => `There can be at most ${n} default repositories.`,
   refusedDefault: "The server did not accept the change.",
+  chosen: "✓ chosen",
+  defaultReposCount: (n, max) => `${n} / ${max} default repositories`,
+  done: "Done",
 });

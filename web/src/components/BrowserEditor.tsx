@@ -8,6 +8,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { useText } from "../i18n";
+import { browserEditorText } from "../text/browserEditor";
 import type { EditorPlaceApi } from "./CodeMirrorEditor";
 import { ControlButton, controlStyles } from "./ControlElements";
 import { EditorFileTree } from "./EditorFileTree";
@@ -69,8 +71,6 @@ export type DiskChanges =
       latest: boolean;
     }
   | { kind: "undone"; source: MergeSource };
-const count = (n: number, one: string, many: string) =>
-  `${n} ${n === 1 ? one : many}`;
 export interface BrowserEditorProps {
   engine?: "codemirror6";
   document?: {
@@ -173,6 +173,7 @@ function previewLine(
   return row ? Number(row.dataset.line) : 0;
 }
 export function BrowserEditor(p: BrowserEditorProps) {
+  const t = useText(browserEditorText);
   const Engine = CodeMirror;
   const pickerButton = useRef<HTMLButtonElement>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -278,17 +279,17 @@ export function BrowserEditor(p: BrowserEditorProps) {
   const agent = c?.source === "agent";
   const conflicts = c?.kind === "imported" ? c.conflicts : 0;
   const state = p.saving
-    ? "Tallennetaan"
+    ? t.saving
     : c?.kind === "pending"
-      ? `${agent ? "Agentin" : "Levyn"} ${count(c.count, "muutos odottaa", "muutosta odottaa")}`
+      ? t.pending(agent, c.count)
       : c?.kind === "imported" && conflicts
-        ? `Muokattu · ${count(conflicts, "ristiriita", "ristiriitaa")}`
+        ? t.conflicts(conflicts)
         : c?.kind === "imported"
-          ? `Muokattu · ${count(c.count, `${agent ? "agentin" : "levyn"} muutos tuotu`, `${agent ? "agentin" : "levyn"} muutosta tuotu`)}`
+          ? t.imported(agent, c.count)
           : c?.kind === "undone"
-            ? `Muokattu · ilman ${agent ? "agentin" : "levyn"} muutoksia`
+            ? t.undone(agent)
             : p.dirty
-              ? "Muokattu"
+              ? t.modified
               : "";
   const action =
     p.saving || !c ? undefined : c.kind === "pending" ? (
@@ -297,9 +298,9 @@ export function BrowserEditor(p: BrowserEditorProps) {
         size="row"
         variant="quiet"
         onPress={p.onImportNow}
-        aria-label="Tuo nyt; muuten muutokset tuodaan, kun lopetat kirjoittamisen"
+        aria-label={t.importNowHint}
       >
-        Tuo nyt
+        {t.importNow}
       </ControlButton>
     ) : c.kind === "imported" && c.latest ? (
       <ControlButton
@@ -308,7 +309,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
         variant="quiet"
         onPress={p.onUndoImport}
       >
-        Peru tuonti
+        {t.undoImport}
       </ControlButton>
     ) : c.kind === "undone" ? (
       <ControlButton
@@ -316,7 +317,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
         size="row"
         onPress={p.onReimport}
       >
-        Tuo uudelleen
+        {t.reimport}
       </ControlButton>
     ) : undefined;
   const replacing = c?.kind === "undone" && p.dirty;
@@ -344,10 +345,10 @@ export function BrowserEditor(p: BrowserEditorProps) {
           onPress={p.onPicker}
           aria-expanded={p.picker}
         >
-          Tiedostot
+          {t.files}
         </ControlButton>
         <code className="ah-browser-filename">
-          {p.document?.path ?? "Valitse tiedosto"}
+          {p.document?.path ?? t.chooseFile}
         </code>
         <span
           className="ah-browser-state"
@@ -367,7 +368,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
         {view ? (
           // One choice of two: the text or the file's own preview.
           <fieldset
-            aria-label="Näkymä"
+            aria-label={t.view}
             className={`${controlStyles.segmented} ah-browser-views`}
             data-testid="editor-view"
           >
@@ -376,10 +377,10 @@ export function BrowserEditor(p: BrowserEditorProps) {
               size="row"
               variant="quiet"
               presentation="segment"
-              aria-label="Teksti"
+              aria-label={t.text}
               aria-pressed={!shown}
               aria-keyshortcuts={shown ? "Escape" : undefined}
-              title={shown ? "Takaisin tekstiin · Esc" : "Teksti"}
+              title={shown ? t.backToText : t.text}
               onPress={() => show(false)}
             >
               <Icon name="pencil" />
@@ -389,10 +390,10 @@ export function BrowserEditor(p: BrowserEditorProps) {
               size="row"
               variant="quiet"
               presentation="segment"
-              aria-label={view.label}
+              aria-label={t.views[view.kind]}
               aria-pressed={shown}
               aria-keyshortcuts="Control+Alt+P Meta+Alt+P Control+Shift+V Meta+Shift+V"
-              title={`${view.label} · ${apple() ? "⌥⌘P" : "Ctrl+Alt+P"}`}
+              title={`${t.views[view.kind]} · ${apple() ? "⌥⌘P" : "Ctrl+Alt+P"}`}
               onPress={() => show(true)}
             >
               <Icon name={view.icon} />
@@ -407,9 +408,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
             onPress={p.onSave}
             isDisabled={saveDisabled}
           >
-            {agent
-              ? "Tallenna ja korvaa agentin versio"
-              : "Tallenna ja korvaa levyn versio"}
+            {agent ? t.saveReplaceAgent : t.saveReplaceDisk}
           </ControlButton>
         ) : (
           // Unsaved changes show beside the path and fill the icon, so the
@@ -420,8 +419,8 @@ export function BrowserEditor(p: BrowserEditorProps) {
             variant={p.dirty && !saveDisabled ? "primary" : "secondary"}
             onPress={p.onSave}
             isDisabled={saveDisabled}
-            aria-label="Tallenna"
-            title={`Tallenna · ${apple() ? "⌘S" : "Ctrl+S"}`}
+            aria-label={t.save}
+            title={t.saveWith(apple() ? "⌘S" : "Ctrl+S")}
             aria-describedby={conflicts ? "ah-editor-save-reason" : undefined}
           >
             <Icon name="save" />
@@ -434,13 +433,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
           id="ah-editor-save-reason"
           data-testid="editor-save-reason"
         >
-          Tallennus odottaa: valitse{" "}
-          {count(
-            conflicts,
-            "ristiriitaiselle riville",
-            "ristiriitaiselle riville",
-          )}{" "}
-          Sinun, {agent ? "Agentin" : "Levyn"} tai Molemmat.
+          {t.saveWaits(conflicts, agent)}
         </p>
       ) : p.notice ? (
         <p
@@ -472,9 +465,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
           {p.document ? (
             <>
               <div className="ah-browser-source">
-                <Suspense
-                  fallback={<p role="status">Ladataan tekstieditoria</p>}
-                >
+                <Suspense fallback={<p role="status">{t.loadingEditor}</p>}>
                   <Engine
                     key={`${p.engine}:${p.document.revision}`}
                     path={p.document.path}
@@ -501,13 +492,11 @@ export function BrowserEditor(p: BrowserEditorProps) {
                   className="ah-browser-preview"
                   data-testid="editor-preview"
                   data-kind={view.kind}
-                  aria-label={view.label}
+                  aria-label={t.views[view.kind]}
                   // biome-ignore lint/a11y/noNoninteractiveTabindex: the region scrolls.
                   tabIndex={0}
                 >
-                  <Suspense
-                    fallback={<p role="status">Ladataan esikatselua</p>}
-                  >
+                  <Suspense fallback={<p role="status">{t.loadingPreview}</p>}>
                     <Mounted then={arrive}>
                       {view.kind === "markdown" ? (
                         <Markdown text={rendered} />
@@ -524,9 +513,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
               ) : null}
             </>
           ) : (
-            <p role="status">
-              Avaa tekstitiedosto valitsimesta tai keskustelun linkistä.
-            </p>
+            <p role="status">{t.openHint}</p>
           )}
         </div>
       </div>
@@ -543,7 +530,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
             onPress={p.onReload}
             isDisabled={p.loading || p.saving}
           >
-            Hylkää muutokset ja lataa
+            {t.discardReload}
           </ControlButton>
         </div>
       )}

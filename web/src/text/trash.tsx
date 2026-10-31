@@ -234,6 +234,7 @@ const fi = {
   trashReadFailed: "Roskakoria ei voitu lukea.",
   retry: "Yritä uudelleen",
   trashReading: "Luetaan roskakoria…",
+  showingFirst: (n: number) => `Näytetään ${n} ensimmäistä.`,
 };
 
 export const trashText = catalog(fi, {
@@ -452,4 +453,5 @@ export const trashText = catalog(fi, {
   trashReadFailed: "The Trash could not be read.",
   retry: "Try again",
   trashReading: "Reading the Trash…",
+  showingFirst: (n) => `Showing the first ${n}.`,
 });

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { type BashFailure, bashOutput } from "../app/bashFailure";
+import { useText } from "../i18n";
+import { bashToolCardText } from "../text/bashToolCard";
 import { ControlButton, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { OutputBox } from "./OutputBox";
@@ -17,6 +19,7 @@ export function BashToolCard({
   running?: boolean;
   onCopy?: () => void;
 }) {
+  const t = useText(bashToolCardText);
   const [commandOpen, setCommandOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const commandLines = command.split("\n");
@@ -41,7 +44,7 @@ export function BashToolCard({
           </pre>
           {commandLines.length > 1 ? (
             <div className="ah-bash-command-toggle">
-              {commandLines.length} riviä ·{" "}
+              {t.lines(commandLines.length)} ·{" "}
               <ControlButton
                 variant="quiet"
                 size="row"
@@ -49,7 +52,7 @@ export function BashToolCard({
                 aria-expanded={commandOpen}
                 onPress={() => setCommandOpen(!commandOpen)}
               >
-                {commandOpen ? "Vain ensimmäinen rivi" : "Näytä koko komento"}
+                {commandOpen ? t.firstLineOnly : t.showAll}
               </ControlButton>
             </div>
           ) : null}
@@ -58,7 +61,7 @@ export function BashToolCard({
           size="inline"
           variant="quiet"
           data-testid="command-copy"
-          aria-label={copied ? "Komento kopioitu" : "Kopioi komento"}
+          aria-label={copied ? t.copied : t.copy}
           onPress={() => void copy()}
         >
           <Icon name={copied ? "check" : "copy"} />

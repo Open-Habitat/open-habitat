@@ -14,6 +14,8 @@ import ReactMarkdown, {
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { attachmentURL } from "../app/attachments";
+import { liveText } from "../i18n";
+import { markdownRendererText } from "../text/markdownRenderer";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { ControlButton, ExternalLink } from "./ControlElements";
 import { FileLinkContext, parseFileRef } from "./fileRefs";
@@ -22,6 +24,8 @@ import { OutputBox } from "./OutputBox";
 import rehypeStableText from "./rehypeStableText";
 import remarkBreaks from "./remarkBreaks";
 import remarkFileRefs from "./remarkFileRefs";
+
+const txt = liveText(markdownRendererText);
 
 // Do not broaden this with the sanitizer's default schema: host content is untrusted.
 const schema = {
@@ -116,7 +120,7 @@ function MarkdownCode({
               ? "python"
               : language
         }
-        copyLabel="Kopioi koodi"
+        copyLabel={txt.copyCode}
         complete={complete}
         detect={!language}
       />
@@ -147,7 +151,7 @@ function InlineCode({
       <a
         className={`ah-file-link${links.opened === text ? " ah-file-link-opened" : ""}`}
         href={`#${encodeURIComponent(text)}`}
-        title={`Avaa editorissa: ${ref.path}${where}`}
+        title={txt.openInEditor(`${ref.path}${where}`)}
         onClick={(event) => {
           event.preventDefault();
           links.open(ref, text);
@@ -178,7 +182,7 @@ function MarkdownLink({
       <a
         href={`#${encodeURIComponent(href ?? "")}`}
         className={`ah-file-link${links.opened === href ? " ah-file-link-opened" : ""}`}
-        title={`Avaa editorissa: ${href}`}
+        title={txt.openInEditor(href ?? "")}
         onClick={(event) => {
           event.preventDefault();
           links.open(ref, href ?? "");
@@ -219,7 +223,7 @@ function AttachmentImage({ src, alt }: { src: string; alt: string }) {
         className="ah-markdown-attachment"
         variant="quiet"
         size="inline"
-        aria-label={`Avaa liite ${alt}`}
+        aria-label={txt.openAttachment(alt)}
         onPress={() => setOpen(true)}
       >
         <img
@@ -277,7 +281,7 @@ function MarkdownPre({
 const components: Components = {
   img: ({ src, alt }) =>
     typeof src === "string" && attachmentURL.test(src) ? (
-      <AttachmentImage src={src} alt={alt || "Liite"} />
+      <AttachmentImage src={src} alt={alt || txt.attachment} />
     ) : (
       <span>{alt}</span>
     ),

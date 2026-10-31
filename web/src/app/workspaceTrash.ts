@@ -2,6 +2,8 @@ import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/workspace-deletion.schema.json";
+import { liveText } from "../i18n";
+import { appMessagesText } from "../text/appMessages";
 import { mutationFetch } from "./mutations";
 import type { Workspace } from "./snapshot";
 
@@ -157,7 +159,7 @@ export const refusalCodes = [
 const refusals = new Set<string>(refusalCodes);
 export class WorkspaceTrashError extends Error {
   constructor(readonly code: string) {
-    super("Työtilan poistoa ei voitu vahvistaa.");
+    super(liveText(appMessagesText).deletionUnconfirmed);
   }
 }
 

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { ViewFrame } from "../components/ViewPanel";
+import { useText } from "../i18n";
+import { viewOpenPageText } from "../text/viewOpenPage";
 import { accountSession } from "./pi";
 import { listViews, mintViewURL, viewIdPattern } from "./views";
 
@@ -10,6 +12,7 @@ import { listViews, mintViewURL, viewIdPattern } from "./views";
  * stays the tab's top-level document (see ViewFrame), and a reload mints a
  * fresh URL. */
 export function ViewOpenPage() {
+  const t = useText(viewOpenPageText);
   const [failed, setFailed] = useState(false);
   const [src, setSrc] = useState<string>();
   const [title, setTitle] = useState("");
@@ -54,11 +57,7 @@ export function ViewOpenPage() {
     );
   return (
     <main className="ah-state" data-testid="view-open-page">
-      <p role="status">
-        {failed
-          ? "Näkymää ei voitu avata. Se on ehkä poistettu, tai olet kirjautunut ulos. Avaa se uudelleen Habitatista."
-          : "Avataan näkymää…"}
-      </p>
+      <p role="status">{failed ? t.failed : t.opening}</p>
     </main>
   );
 }

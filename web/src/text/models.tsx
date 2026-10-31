@@ -78,6 +78,7 @@ const fi = {
   forNew: "Uusille keskusteluille",
   defaultBroken: (name: string, route: string, signIn: boolean) =>
     `${name} (${route}) ei vastannut viimeksi. Valitse toinen oletus tai korjaa ${signIn ? "kirjautuminen" : "avain"} alla.`,
+  thinkingLevelHidden: "· ajattelutaso",
 };
 
 export const modelsText = catalog(fi, {
@@ -146,4 +147,5 @@ export const modelsText = catalog(fi, {
   forNew: "For new conversations",
   defaultBroken: (name, route, signIn) =>
     `${name} (${route}) did not answer last time. Choose another default or fix the ${signIn ? "sign-in" : "key"} below.`,
+  thinkingLevelHidden: "· thinking level",
 });

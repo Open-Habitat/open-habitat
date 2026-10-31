@@ -169,7 +169,7 @@ export function SingleWorkspaceBar({
         onPress={onNew}
       >
         <Icon name="plus" />
-        <span className="ah-single-new-label">Uusi keskustelu</span>
+        <span className="ah-single-new-label">{txt.newConversation}</span>
       </ControlButton>
       {account}
       <span className="ah-visually-hidden" role="status">

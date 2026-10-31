@@ -1,5 +1,9 @@
 import { useEffect, useMemo } from "react";
 import type { AgentNavModel } from "../components/Navigation";
+import { liveText } from "../i18n";
+import { nextWaitingText } from "../text/nextWaiting";
+
+const txt = liveText(nextWaitingText);
 
 /** A conversation in the round as it was when it joined: its name and where
  * it opens. Its live state comes from the rail, which drops a conversation
@@ -170,7 +174,7 @@ export class WaitingRound {
       left.filter((s) => s !== this.steps?.[0] && this.visited.has(s.agentId))
         .length;
     this.steps = null;
-    this.say(`Kierros käyty: ${n} hoidettu.`);
+    this.say(txt.roundDone(n));
   }
 
   /** Says once of each step handled elsewhere. */
@@ -180,7 +184,7 @@ export class WaitingRound {
       if (this.told.has(s.agentId) || this.stateOf(i, waits) !== "elsewhere")
         continue;
       this.told.add(s.agentId);
-      this.say(`${s.title} hoidettiin toisaalla.`);
+      this.say(txt.handledElsewhere(s.title));
     }
   }
 
@@ -202,7 +206,7 @@ export class WaitingRound {
     if (i >= steps.length) {
       const n = this.handled(waits) + this.dropped;
       this.steps = null;
-      this.say(`Kierros käyty: ${n} hoidettu.`);
+      this.say(txt.roundDone(n));
       return steps[0];
     }
     return steps[i];

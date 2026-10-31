@@ -2,6 +2,8 @@ import { type FormEvent, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { OnboardingFrame } from "../components/OnboardingFrame";
 import { Button } from "../components/Primitives";
+import { useText } from "../i18n";
+import { accountProfileOnboardingText } from "../text/accountProfileOnboarding";
 import { mutationFetch } from "./mutations";
 import { type AccountProfile, accountSession } from "./pi";
 
@@ -18,6 +20,7 @@ export function AccountProfileOnboarding({
   onLogin: () => void;
   onSkip?: () => void;
 }) {
+  const t = useText(accountProfileOnboardingText);
   const [name, setName] = useState(profile.name);
   const [email, setEmail] = useState(profile.email);
   const [pending, setPending] = useState(false);
@@ -58,11 +61,8 @@ export function AccountProfileOnboarding({
   return (
     <OnboardingFrame step="github">
       <main className="ah-account-onboarding">
-        <h1>Täydennä tilisi tiedot</h1>
-        <p>
-          GitHub ei antanut kaikkia tietoja. Sähköpostia ehdotetaan myös
-          Git-commitien tekijätietoihin.
-        </p>
+        <h1>{t.title}</h1>
+        <p>{t.intro}</p>
         <form
           onSubmit={(event) => {
             void submit(event);
@@ -70,7 +70,7 @@ export function AccountProfileOnboarding({
         >
           {!profile.name && (
             <label>
-              Nimi{" "}
+              {t.name}{" "}
               <input
                 required
                 maxLength={200}
@@ -83,7 +83,7 @@ export function AccountProfileOnboarding({
           )}
           {!profile.email && (
             <label>
-              Sähköposti{" "}
+              {t.email}{" "}
               <input
                 required
                 type="email"
@@ -95,11 +95,7 @@ export function AccountProfileOnboarding({
               />
             </label>
           )}
-          {error && (
-            <p role="alert">
-              Tietoja ei voitu tallentaa. Tarkista tiedot ja yritä uudelleen.
-            </p>
-          )}
+          {error && <p role="alert">{t.saveFailed}</p>}
           <ControlButton
             size="page"
             type="submit"
@@ -107,13 +103,13 @@ export function AccountProfileOnboarding({
             variant="primary"
             isDisabled={pending || !csrf}
           >
-            {pending ? "Tallennetaan…" : "Jatka"}
+            {pending ? t.saving : t.continue}
           </ControlButton>
           {onSkip && (
             <Button
               size="page"
               data-testid="profile-skip"
-              label="Jatka ilman tietoja"
+              label={t.skip}
               variant="secondary"
               onPress={onSkip}
             />

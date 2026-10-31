@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { ControlButton } from "../components/ControlElements";
+import { useText } from "../i18n";
+import { newConversationModelDialogText } from "../text/newConversationModelDialog";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
 
 /** A refused native default needs an explicit choice, not a dead + button. */
@@ -13,6 +15,7 @@ export function NewConversationModelDialog({
   onClose: () => void;
   onCreate: (choice: Choice) => void;
 }) {
+  const t = useText(newConversationModelDialogText);
   const [choice, setChoice] = useState<Choice>();
   return (
     <ModalOverlay
@@ -27,13 +30,10 @@ export function NewConversationModelDialog({
         <Dialog
           data-testid="new-conversation-model"
           className="ah-dialog"
-          aria-label="Malli uudelle keskustelulle"
+          aria-label={t.title}
         >
-          <Heading slot="title">Malli uudelle keskustelulle</Heading>
-          <p>
-            Agentin oletusmalli ei ole käytettävissä. Valitse toinen malli.
-            Oletusta ei muuteta.
-          </p>
+          <Heading slot="title">{t.title}</Heading>
+          <p>{t.defaultUnavailable}</p>
           <PiModelSelector csrf={csrf} scope="new" onChoice={setChoice} />
           <div className="ah-dialog-actions">
             <ControlButton
@@ -42,7 +42,7 @@ export function NewConversationModelDialog({
               variant="secondary"
               onPress={onClose}
             >
-              Peruuta
+              {t.cancel}
             </ControlButton>
             <ControlButton
               data-testid="conversation-model-start"
@@ -53,7 +53,7 @@ export function NewConversationModelDialog({
                 if (choice) onCreate(choice);
               }}
             >
-              Aloita keskustelu valitulla mallilla
+              {t.start}
             </ControlButton>
           </div>
         </Dialog>

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { textNow, useText } from "../i18n";
+import { attachmentChipsText } from "../text/attachmentChips";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
@@ -17,7 +19,7 @@ export type Attachment = {
 
 const attachment = (match: RegExpMatchArray): Attachment => ({
   image: match[1] === "!",
-  name: match[2] || "Liite",
+  name: match[2] || textNow(attachmentChipsText).attachment,
   url: match[3],
   source: match[0],
 });
@@ -84,6 +86,7 @@ export function AttachmentChips({
   /** Given for a draft: removes the attachment at this index. */
   onRemove?: (index: number) => void;
 }) {
+  const t = useText(attachmentChipsText);
   const [open, setOpen] = useState<Attachment | null>(null);
   if (!attachments.length) return null;
   const draft = !!onRemove;
@@ -92,7 +95,7 @@ export function AttachmentChips({
       <ul
         data-testid="attachment-chips"
         className={`ah-attachment-chips${draft ? " ah-attachment-chips-draft" : ""}`}
-        aria-label="Liitteet"
+        aria-label={t.attachments}
       >
         {attachments.map((item, index) => (
           <li
@@ -108,7 +111,7 @@ export function AttachmentChips({
               className="ah-attachment-open"
               variant="quiet"
               size="inline"
-              aria-label={`Avaa liite ${item.name}`}
+              aria-label={t.open(item.name)}
               onPress={() => setOpen(item)}
             >
               {item.image ? (
@@ -127,7 +130,7 @@ export function AttachmentChips({
                 variant="quiet"
                 size="inline"
                 presentation="icon"
-                aria-label={`Poista liite ${item.name}`}
+                aria-label={t.remove(item.name)}
                 onPress={() => onRemove(index)}
               >
                 <Icon name="cross" />

@@ -272,8 +272,7 @@ export function RecapSettings({
             {r.key === "response_tokens" &&
             value.response_tokens < responseFloor(value) ? (
               <span className="s-bad" data-testid="recap-response-warning">
-                Raja voi katkaista katsauksen kesken. Nosta se vähintään{" "}
-                {responseFloor(value)} tokeniin.
+                {txt.responseTooLow(responseFloor(value))}
               </span>
             ) : (
               r.note

@@ -1,3 +1,5 @@
+import { useText } from "../i18n";
+import { editorSplitText } from "../text/editorSplit";
 import "./EditorSplit.css";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -44,6 +46,7 @@ export function EditorSplit({
   onReset: () => void;
   onShowConversation: () => void;
 }) {
+  const t = useText(editorSplitText);
   const root = useRef<HTMLDivElement>(null);
   const column = useRef<HTMLDivElement>(null);
   useKeepReadingPlace(column);
@@ -99,7 +102,11 @@ export function EditorSplit({
     >
       {editor ? (
         // A closed editor keeps its frame loaded, so reopening is instant.
-        <section className="ah-editor-pane" aria-label="Editori" hidden={!open}>
+        <section
+          className="ah-editor-pane"
+          aria-label={t.editor}
+          hidden={!open}
+        >
           {editor}
         </section>
       ) : null}
@@ -110,16 +117,14 @@ export function EditorSplit({
           className="ah-editor-divider"
           role="separator"
           aria-orientation="vertical"
-          aria-label="Keskustelun leveys"
+          aria-label={t.conversationWidth}
           aria-controls="ah-editor-conversation"
           aria-valuemin={min}
           aria-valuemax={max}
           aria-valuenow={collapsed ? 0 : width}
-          aria-valuetext={
-            collapsed ? "Keskustelu piilotettu" : `${width} pikseliä`
-          }
+          aria-valuetext={collapsed ? t.conversationHidden : t.pixels(width)}
           tabIndex={0}
-          title="Vedä leveyttä. Nuolet muuttavat, Enter piilottaa tai näyttää keskustelun, kaksoisnapsautus palauttaa."
+          title={t.dividerHint}
           onPointerDown={pointerDown}
           onPointerMove={pointerMove}
           onPointerUp={pointerUp}
@@ -133,15 +138,17 @@ export function EditorSplit({
           data-testid="show-conversation"
           type="button"
           className="ah-editor-strip"
-          aria-label={`Näytä keskustelu (${strip.unread ? "Uusi vastaus" : strip.label})`}
-          title="Näytä keskustelu (Ctrl+Alt+K)"
+          aria-label={t.showConversationState(
+            strip.unread ? t.newReply : strip.label,
+          )}
+          title={t.showConversation}
           onClick={onShowConversation}
         >
           <span
             aria-hidden="true"
             className={`ah-status-dot${strip.working ? " ah-running" : ""}${strip.unread ? " ah-editor-unread" : ""}`}
           />
-          <span className="ah-editor-strip-label">Keskustelu</span>
+          <span className="ah-editor-strip-label">{t.conversation}</span>
         </button>
       ) : null}
       <div

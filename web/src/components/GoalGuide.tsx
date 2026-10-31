@@ -1,15 +1,17 @@
 import { type ReactNode, useId, useLayoutEffect, useRef } from "react";
 import { ControlButton } from "./ControlElements";
 import "./GoalGuide.css";
+import { useText } from "../i18n";
+import { guideText } from "../text/guide";
 
 /** Shared reading surface for authored guides and recorded skill instructions. */
 export function GuideArticle({
   title: heading,
-  eyebrow = "OPAS",
+  eyebrow,
   action,
   children,
   onBack,
-  backLabel = "← Kaikki tavoitteet",
+  backLabel,
 }: {
   title: string;
   eyebrow?: string;
@@ -18,6 +20,7 @@ export function GuideArticle({
   onBack?: () => void;
   backLabel?: string;
 }) {
+  const t = useText(guideText);
   const article = useRef<HTMLElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const id = useId();
@@ -39,10 +42,10 @@ export function GuideArticle({
           data-testid="guide-back"
           onPress={onBack}
         >
-          {backLabel}
+          {backLabel ?? t.allGoals}
         </ControlButton>
       )}
-      <p className="ah-guide-eyebrow">{eyebrow}</p>
+      <p className="ah-guide-eyebrow">{eyebrow ?? t.guideEyebrow}</p>
       <header className="ah-guide-heading">
         <h2 id={id} ref={title} tabIndex={-1} data-testid="guide-title">
           {heading}

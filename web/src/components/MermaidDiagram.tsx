@@ -1,4 +1,8 @@
 import { type ReactNode, useEffect, useId, useState } from "react";
+import { liveText } from "../i18n";
+import { markdownRendererText } from "../text/markdownRenderer";
+
+const txt = liveText(markdownRendererText);
 
 type Diagram = { url: string; width?: number; height?: number };
 
@@ -93,12 +97,12 @@ export function MermaidDiagram({
     <figure className="ah-mermaid" data-testid="mermaid-diagram">
       <img
         src={diagram.url}
-        alt="Kaavio"
+        alt={txt.diagram}
         width={diagram.width}
         height={diagram.height}
       />
       <details className="ah-mermaid-source">
-        <summary>Kaavion lähde</summary>
+        <summary>{txt.diagramSource}</summary>
         {fallback}
       </details>
     </figure>

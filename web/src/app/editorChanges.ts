@@ -3,6 +3,8 @@
 // the agent's changes. Both are view state of this tab: nothing is written to
 // Pi's history or any new store, so a note is gone after a reload.
 import type { ReplacedChange } from "../components/editorMerge";
+import { liveText } from "../i18n";
+import { appMessagesText } from "../text/appMessages";
 
 /** A finished agent tool call, as the conversation saw it. */
 export interface ToolReport {
@@ -68,4 +70,4 @@ export function attribution(
 /** What *Kerro agentille* sends: short, since the agent reads the file again
  * itself rather than trusting a quote of it. */
 export const messageFor = (note: ReplaceNote) =>
-  `Tallensin tiedoston ${note.path} ja korvasin samalla muutoksesi. Lue tiedosto uudelleen ennen kuin jatkat.`;
+  liveText(appMessagesText).replacedMessage(note.path);

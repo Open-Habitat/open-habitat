@@ -23,6 +23,8 @@ import {
 } from "../components/editorMerge";
 import type { TreeDirectories } from "../components/editorTree";
 import type { FileRef } from "../components/fileRefs";
+import { formatDate, liveText } from "../i18n";
+import { browserDocumentText } from "../text/browserDocument";
 import {
   attribution,
   type ReplaceNote,
@@ -65,8 +67,7 @@ interface Claim {
   source: MergeSource;
   conversation?: string;
 }
-const count = (n: number, one: string, many: string) =>
-  `${n} ${n === 1 ? one : many}`;
+const txt = liveText(browserDocumentText);
 
 export interface BrowserDocumentHandle {
   open: (ref: FileRef) => Promise<boolean>;
@@ -152,12 +153,7 @@ export default function BrowserDocument({
   }, []);
   const leave = useCallback(() => {
     if (current.current.saving) return false;
-    return (
-      !current.current.dirty ||
-      window.confirm(
-        "Hylätäänkö tallentamattomat muutokset? Peruuta ja tallenna ensin, jos haluat säilyttää ne.",
-      )
-    );
+    return !current.current.dirty || window.confirm(txt.discardQuestion);
   }, []);
   const location = useLocation();
   const approvedRoute = useRef<string | undefined>(undefined);
@@ -273,10 +269,10 @@ export default function BrowserDocument({
         if (!abort.current.signal.aborted && token === generation.current)
           setProblem(
             error instanceof EditorReadError && error.code === "unsupported"
-              ? "Tiedoston tyyppiä, merkistöä tai suojausmetadataa ei tueta."
+              ? txt.unsupported
               : error instanceof EditorReadError && error.code === "too_large"
-                ? "Tiedosto on liian suuri. Enimmäiskoko on 1 MiB."
-                : "Tiedostoa ei voitu lukea työtilasta.",
+                ? txt.tooLarge
+                : txt.unreadable,
           );
         return false;
       } finally {
@@ -481,18 +477,15 @@ export default function BrowserDocument({
         workspace,
         conversation: write.conversation,
         path: next.path,
-        at: new Date().toLocaleTimeString("fi-FI", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+        at: formatDate(new Date(), { hour: "2-digit", minute: "2-digit" }),
         changes: lost,
       });
     setNotice(
       !lost.length
-        ? `Tallennettu. Tiedostossa ovat nyt sekä sinun että ${agent ? "agentin" : "levyllä tehdyt"} muutokset.`
+        ? txt.savedMerged(agent)
         : agent
-          ? `Tallennettu. ${count(lost.length, "agentin muutos korvattiin", "agentin muutosta korvattiin")} sinun tekstilläsi${noted ? "; keskustelussa on siitä merkintä" : ""}.`
-          : `Tallennettu. ${count(lost.length, "levyllä tehty muutos korvattiin", "levyllä tehtyä muutosta korvattiin")} sinun tekstilläsi.`,
+          ? txt.savedReplacedAgent(lost.length, !!noted)
+          : txt.savedReplacedDisk(lost.length),
     );
   };
   const save = async () => {
@@ -556,28 +549,20 @@ export default function BrowserDocument({
               return;
             }
             detect(after);
-            setProblem(
-              "Tallennuksen tulosta ei saatu. Levyllä ei ole tekstiäsi; oma teksti säilyy editorissa.",
-            );
+            setProblem(txt.noSaveReply);
           } catch {
             if (gone()) return;
             setSaveBlocked(true);
-            setProblem(
-              "Tallennuksen tulos ei ole tiedossa. Oma teksti säilyy. Tiedosto tarkistetaan uudelleen, kun palaat ikkunaan.",
-            );
+            setProblem(txt.saveUnknown);
           }
           return;
         }
         setProblem(
-          result.kind === "invalid"
-            ? "Teksti sisältää merkkejä, joita ei voida tallentaa."
-            : "Tallennus ei onnistunut. Oma teksti säilyy.",
+          result.kind === "invalid" ? txt.invalidText : txt.saveFailed,
         );
         return;
       }
-      setProblem(
-        "Tiedosto muuttui levyllä tallennuksen aikana useita kertoja. Oma teksti säilyy; yritä hetken päästä uudelleen.",
-      );
+      setProblem(txt.keptChanging);
     } finally {
       if (!gone()) {
         current.current.saving = false;

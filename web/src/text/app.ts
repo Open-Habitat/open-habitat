@@ -47,6 +47,70 @@ const fi = {
   settings: "Asetukset",
   newWorkspace: "Uusi työtila",
   home: "Etusivu",
+  closeRefused: (reason: string) =>
+    `Sulkemista ei tehty: ${reason} Keskustelussa voi olla sisältöä.`,
+  closeReverted: "Sulkeminen ei tallentunut. Keskustelu on yhä listassa.",
+  archiveWorkspaceRefused: (reason: string) =>
+    `Arkistointia ei tehty: ${reason} Työtila näkyy taas.`,
+  restoreRefused: (reason: string) => `Palautusta ei tehty: ${reason}`,
+  archiveWorkspaceReverted: "Arkistointi ei tallentunut. Työtila näkyy taas.",
+  restoreWorkspaceReverted:
+    "Palautus ei tallentunut. Työtila on yhä arkistossa.",
+  renameRefused: (reason: string) => `Nimeä ei vaihdettu: ${reason}`,
+  renameReverted: "Uusi nimi ei tallentunut. Aiempi nimi palautettiin.",
+  archiveConversationRefused: (reason: string) =>
+    `Arkistointia ei tehty: ${reason} Keskustelu palautettiin listaan.`,
+  archiveConversationReverted:
+    "Arkistointi ei tallentunut. Keskustelu on yhä listassa.",
+  restoreConversationReverted:
+    "Palautus ei tallentunut. Keskustelu on yhä arkistossa.",
+  createNeedsConnection: "Päivitä yhteys ennen uuden keskustelun luontia.",
+  createPending: "Luonti on käynnissä.",
+  createUncertain:
+    "Luonnin tulos epävarma. Tarkista keskustelulista ja natiivi historia ennen uutta yritystä.",
+  loadingDefaultAgent: "Ladataan oletusagentin tietoja.",
+  modelsUnconfirmed:
+    "Agentin malliluetteloa ei voitu vahvistaa. Tarkista kirjautuminen.",
+  createRefused: (reason: string) => `Uutta keskustelua ei luotu: ${reason}`,
+  createUncertainNoResend:
+    "Luonnin tulos epävarma. Tarkista tiedot ennen uutta yritystä; pyyntöä ei lähetetä automaattisesti uudelleen.",
+  createSessionUnconfirmed:
+    "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.",
+  closing: "Suljetaan…",
+  archiveUnavailable: "Arkistointi ei ole käytettävissä.",
+  closingInProgress: "Sulkeminen kesken.",
+  archiveStateUnconfirmed: "Arkiston tilaa ei voida vahvistaa.",
+  writerRunning: "Kirjoittaja on käynnissä.",
+  waitBackgroundAndTurn:
+    "Odota taustatyön valmistumista ja agentin vuoron päättymistä.",
+  waitTurn: "Odota agentin vuoron päättymistä.",
+  processUnconfirmed: "Prosessin tilaa ei voitu vahvistaa.",
+  renameUnavailable: "Nimeäminen ei ole käytettävissä.",
+  conversationNotFound: "Keskustelua ei löydy.",
+  closeFailed: "Sulkeminen epäonnistui",
+  archiveChangeFailed: "Arkiston muutosta ei tehty",
+  workspaceNeedsConnection: "Yhteys pitää vahvistaa ennen työtilan luontia.",
+  serverReadOnly: "Palvelin on vain luku -tilassa.",
+  workspacesUnchecked:
+    "Työtiloja ei voitu tarkistaa. Päivitä tiedot ennen työtilan luontia.",
+  checkCreation: "Tarkista luonnin tulos",
+  creationUnconfirmed:
+    "Luonnin tilaa ei voida vahvistaa. Tarkista keskustelulista ja natiivi historia.",
+  dismissNotice: "Sulje ilmoitus",
+  archive: "Arkisto",
+  workspaceArchive: "Työtilan arkisto",
+  archiveMarksUnreadRefresh:
+    "Keskustelujen arkistomerkintöjä ei voitu lukea. Emme voi näyttää, mitkä keskustelut on arkistoitu. Päivitä tiedot.",
+  archiveMaybeIncomplete:
+    "Arkisto voi olla puutteellinen: keskustelujen agenttihistoriaa puuttuu tai sitä ei voitu lukea. Osa keskusteluista voi puuttua arkistosta. Päivitä tiedot.",
+  historyUnreadable: "Historia ei ole luettavissa.",
+  restoreVisible: "Palauta näkyviin",
+  historyUnconfirmed: "Historiaa ei voitu vahvistaa",
+  restoreNeedsConnection: "Päivitä yhteys ennen palautusta",
+  loadingCatalog: "Ladataan katalogia",
+  railCreateUncertain: "Keskustelun luonnin tulos epävarma",
+  disconnected: "Yhteys poikki.",
+  readOnly: "Vain luku.",
 };
 
 export const appText = catalog(fi, {
@@ -94,4 +158,71 @@ export const appText = catalog(fi, {
   settings: "Settings",
   newWorkspace: "New workspace",
   home: "Home",
+  closeRefused: (reason) =>
+    `Not closed: ${reason} The conversation may have content.`,
+  closeReverted: "Closing was not saved. The conversation is still listed.",
+  archiveWorkspaceRefused: (reason) =>
+    `Not archived: ${reason} The workspace is shown again.`,
+  restoreRefused: (reason) => `Not restored: ${reason}`,
+  archiveWorkspaceReverted:
+    "Archiving was not saved. The workspace is shown again.",
+  restoreWorkspaceReverted:
+    "Restoring was not saved. The workspace is still in the archive.",
+  renameRefused: (reason) => `Not renamed: ${reason}`,
+  renameReverted: "The new name was not saved. The previous name is back.",
+  archiveConversationRefused: (reason) =>
+    `Not archived: ${reason} The conversation is back in the list.`,
+  archiveConversationReverted:
+    "Archiving was not saved. The conversation is still listed.",
+  restoreConversationReverted:
+    "Restoring was not saved. The conversation is still in the archive.",
+  createNeedsConnection:
+    "Refresh the connection before starting a new conversation.",
+  createPending: "A conversation is being started.",
+  createUncertain:
+    "Whether the conversation started is uncertain. Check the conversation list and the native history before trying again.",
+  loadingDefaultAgent: "Loading the default agent.",
+  modelsUnconfirmed:
+    "The agent's model list could not be confirmed. Check the sign-in.",
+  createRefused: (reason) => `No new conversation was started: ${reason}`,
+  createUncertainNoResend:
+    "Whether the conversation started is uncertain. Check before trying again; the request is not resent automatically.",
+  createSessionUnconfirmed:
+    "The session could not be confirmed. Nothing was sent.",
+  closing: "Closing…",
+  archiveUnavailable: "Archiving is not available.",
+  closingInProgress: "Closing in progress.",
+  archiveStateUnconfirmed: "The archive state cannot be confirmed.",
+  writerRunning: "A writer is running.",
+  waitBackgroundAndTurn:
+    "Wait for the background work to finish and the agent's turn to end.",
+  waitTurn: "Wait for the agent's turn to end.",
+  processUnconfirmed: "The process state could not be confirmed.",
+  renameUnavailable: "Renaming is not available.",
+  conversationNotFound: "Conversation not found.",
+  closeFailed: "Closing failed",
+  archiveChangeFailed: "The archive was not changed",
+  workspaceNeedsConnection:
+    "The connection must be confirmed before creating a workspace.",
+  serverReadOnly: "The server is read-only.",
+  workspacesUnchecked:
+    "Workspaces could not be checked. Refresh before creating a workspace.",
+  checkCreation: "Check whether it started",
+  creationUnconfirmed:
+    "Whether the conversation started cannot be confirmed. Check the conversation list and the native history.",
+  dismissNotice: "Dismiss notice",
+  archive: "Archive",
+  workspaceArchive: "Workspace archive",
+  archiveMarksUnreadRefresh:
+    "The conversations' archive marks could not be read. We cannot show which conversations are archived. Refresh.",
+  archiveMaybeIncomplete:
+    "The archive may be incomplete: some of the conversations' agent history is missing or could not be read. Some conversations may be missing from it. Refresh.",
+  historyUnreadable: "History is not readable.",
+  restoreVisible: "Restore",
+  historyUnconfirmed: "The history could not be confirmed",
+  restoreNeedsConnection: "Refresh the connection before restoring",
+  loadingCatalog: "Loading the catalog",
+  railCreateUncertain: "Whether the conversation started is uncertain",
+  disconnected: "Disconnected.",
+  readOnly: "Read-only.",
 });

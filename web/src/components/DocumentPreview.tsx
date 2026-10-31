@@ -13,11 +13,15 @@ import {
   type SlideBlock,
   zipWithinLimits,
 } from "../app/documentPreview";
+import { liveText } from "../i18n";
+import { documentPreviewText } from "../text/documentPreview";
 import { Markdown } from "./Markdown";
 import { Tabs } from "./Overlays";
 
 /** Pages beyond this are left out of the preview; the file has them all. */
 export const pdfPageLimit = 200;
+
+const txt = liveText(documentPreviewText);
 
 function Unavailable() {
   return (
@@ -26,7 +30,7 @@ function Unavailable() {
       data-testid="attachment-preview-unavailable"
       role="status"
     >
-      Esikatselu ei onnistunut. Lataa tiedosto ja avaa se omalla ohjelmalla.
+      {txt.failed}
     </p>
   );
 }
@@ -34,7 +38,7 @@ function Unavailable() {
 function Loading() {
   return (
     <p className="ah-attachment-preview-note" role="status">
-      Avataan esikatselua…
+      {txt.opening}
     </p>
   );
 }
@@ -125,7 +129,7 @@ function PdfPages({ bytes }: { bytes: Uint8Array }) {
       </ol>
       {doc.numPages > pages ? (
         <p className="ah-attachment-preview-note">
-          Esikatselussa on {pages} ensimmäistä sivua {doc.numPages} sivusta.
+          {txt.pages(pages, doc.numPages)}
         </p>
       ) : null}
     </>
@@ -323,7 +327,7 @@ function Workbook({ bytes }: { bytes: Uint8Array }) {
   if (sheets.length === 1) return <SheetTable sheet={sheets[0]} />;
   return (
     <Tabs
-      label="Taulukot"
+      label={txt.sheets}
       selected={selected}
       tabs={sheets.map((sheet, index) => ({
         id: String(index),
@@ -366,9 +370,7 @@ function SheetTable({ sheet }: { sheet: Sheet }) {
         </table>
       </div>
       {sheet.truncated ? (
-        <p className="ah-attachment-preview-note">
-          Taulukossa on enemmän rivejä tai sarakkeita kuin esikatselu näyttää.
-        </p>
+        <p className="ah-attachment-preview-note">{txt.truncated}</p>
       ) : null}
     </>
   );

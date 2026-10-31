@@ -1,3 +1,5 @@
+import { useText } from "../i18n";
+import { editorConflictText } from "../text/editorConflict";
 import { ControlButton } from "./ControlElements";
 import type { MergeSource } from "./editorMerge";
 import { Icon } from "./Icon";
@@ -16,20 +18,18 @@ export function EditorConflict({
   source: MergeSource;
   onPick: (pick: ConflictPick) => void;
 }) {
-  const title =
-    source === "agent"
-      ? "Agentti muutti saman rivin"
-      : "Sama rivi muuttui levyllä";
-  const them = source === "agent" ? "Agentin" : "Levyn";
+  const t = useText(editorConflictText);
+  const title = source === "agent" ? t.agentChanged : t.diskChanged;
+  const them = source === "agent" ? t.agents : t.disks;
   return (
     <fieldset className="ah-merge-conflict" aria-label={title}>
       <p className="ah-merge-conflict-head">
         <strong>{title}</strong>
-        <span>Sinun rivisi on alla punaisella. Valitse, mikä jää.</span>
+        <span>{t.yoursBelow}</span>
       </p>
       <pre className="ah-merge-theirs" data-testid="conflict-theirs">
         <small>{them}</small>
-        {theirs.join("\n") || "(rivi poistettu)"}
+        {theirs.join("\n") || t.lineDeleted}
       </pre>
       <div className="ah-merge-actions">
         <ControlButton
@@ -38,7 +38,7 @@ export function EditorConflict({
           onPress={() => onPick("mine")}
         >
           <Icon name="user" />
-          Sinun
+          {t.yours}
         </ControlButton>
         <ControlButton
           data-testid="pick-theirs"
@@ -53,7 +53,7 @@ export function EditorConflict({
           size="row"
           onPress={() => onPick("both")}
         >
-          Molemmat
+          {t.both}
         </ControlButton>
       </div>
     </fieldset>

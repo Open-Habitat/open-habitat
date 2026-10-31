@@ -179,6 +179,8 @@ const fi = {
     "Vastausta ei saatu. Sivu päivitetään; tarkista tila ennen kuin yrität uudelleen.",
   e_noDisconnectReply:
     "Irrotuksen tulosta ei saatu. Sivu päivitetään; tarkista tila ennen kuin yrität uudelleen.",
+  disconnected: (host: string) =>
+    `GitLab ${host} irrotettu. Kloonatut työtilat jäivät; peru tunnus tarvittaessa myös GitLabissa.`,
 };
 
 export const gitlabText = catalog(fi, {
@@ -356,4 +358,6 @@ export const gitlabText = catalog(fi, {
     "No reply arrived. The page is refreshed; check the state before you try again.",
   e_noDisconnectReply:
     "The result of disconnecting did not arrive. The page is refreshed; check the state before you try again.",
+  disconnected: (host) =>
+    `GitLab ${host} disconnected. Cloned workspaces stay; revoke the token in GitLab too if needed.`,
 });

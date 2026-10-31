@@ -1276,7 +1276,7 @@ export function WorkspaceRail({
             </LinkRow>
           </strong>
           {collapsed ? (
-            <span className="ah-rail-mobile-label">Työtilat</span>
+            <span className="ah-rail-mobile-label">{t.workspaces}</span>
           ) : null}
           <span title={connectionLabel}>
             <StatusMark

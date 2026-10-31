@@ -7,6 +7,8 @@ import {
 } from "react-aria-components";
 import { previewKind, readAttachment, utf8 } from "../app/attachments";
 import type { FileOfferItem } from "../app/fileOffers";
+import { liveText, useLanguage } from "../i18n";
+import { attachmentPreviewText } from "../text/attachmentPreview";
 import type { Attachment } from "./AttachmentChips";
 import { ControlButton, controlClassName } from "./ControlElements";
 import { tableRows } from "./csvTable";
@@ -15,16 +17,12 @@ import { Icon } from "./Icon";
 // The renderers and their libraries load only when a document is opened.
 const DocumentPreview = lazy(() => import("./DocumentPreview"));
 
-const sizeLabel = (bytes: number) =>
-  bytes < 1024
-    ? `${bytes} t`
-    : bytes < 1024 * 1024
-      ? `${(bytes / 1024).toFixed(1).replace(".", ",")} kt`
-      : `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} Mt`;
+const txt = liveText(attachmentPreviewText);
+const sizeLabel = (bytes: number) => txt.size(bytes);
 
 /** The file type a person recognises: the name's extension, if it has one. */
 const typeLabel = (name: string) =>
-  /\.([A-Za-z0-9]{1,8})$/.exec(name)?.[1].toUpperCase() ?? "Tiedosto";
+  /\.([A-Za-z0-9]{1,8})$/.exec(name)?.[1].toUpperCase() ?? txt.file;
 
 /** Text, tables and code are shown up to this many bytes. */
 const textPreviewLimit = 1024 * 1024;
@@ -53,7 +51,7 @@ function OfferedText({
         className="ah-attachment-preview-note"
         data-testid="attachment-preview-unavailable"
       >
-        Tiedosto ei ole UTF-8-tekstiä. Lataa se ja avaa omalla ohjelmalla.
+        {txt.notUtf8}
       </p>
     );
   if (kind === "csv") {
@@ -119,6 +117,7 @@ export function AttachmentPreview({
   /** Set for a file an agent offered (agent file offers). */
   offered?: OfferedFile;
 }) {
+  useLanguage();
   const [bytes, setBytes] = useState<Uint8Array | "unknown">();
   // The bytes are read once per file. A caller's `read` is usually a new
   // function on every render, and reading again on each would empty the
@@ -163,15 +162,15 @@ export function AttachmentPreview({
     !!kind || (!!textKind && !!loaded) || !!archive || offeredKind === "video";
   const facts = (
     <dl className="ah-attachment-preview-facts">
-      <dt>Tyyppi</dt>
+      <dt>{txt.type}</dt>
       <dd>{typeLabel(attachment.name)}</dd>
-      <dt>Koko</dt>
+      <dt>{txt.sizeLabel}</dt>
       <dd data-testid="attachment-size" data-bytes={size}>
         {size !== undefined
           ? sizeLabel(size)
           : bytes === undefined
-            ? "Lasketaan…"
-            : "Ei tiedossa"}
+            ? txt.counting
+            : txt.unknown}
       </dd>
     </dl>
   );
@@ -203,7 +202,7 @@ export function AttachmentPreview({
               variant="quiet"
               presentation="icon"
               slot="close"
-              aria-label="Sulje"
+              aria-label={txt.close}
             >
               <Icon name="cross" />
             </ControlButton>
@@ -250,12 +249,11 @@ export function AttachmentPreview({
               </ul>
               {archive.entries > archive.names.length ? (
                 <p className="ah-attachment-preview-note">
-                  ja {archive.entries - archive.names.length} muuta tiedostoa.
-                  Yksittäistä tiedostoa ei voi avata paketista.
+                  {txt.moreInArchive(archive.entries - archive.names.length)}
                 </p>
               ) : (
                 <p className="ah-attachment-preview-note">
-                  Yksittäistä tiedostoa ei voi avata paketista.
+                  {txt.notFromArchive}
                 </p>
               )}
             </section>
@@ -269,7 +267,7 @@ export function AttachmentPreview({
             <Suspense
               fallback={
                 <p className="ah-attachment-preview-note" role="status">
-                  Avataan esikatselua…
+                  {txt.opening}
                 </p>
               }
             >
@@ -297,7 +295,7 @@ export function AttachmentPreview({
                 href={offered.download}
                 download={attachment.name}
               >
-                <Icon name="download" /> Lataa
+                <Icon name="download" /> {txt.download}
               </a>
             ) : (
               <a
@@ -312,7 +310,7 @@ export function AttachmentPreview({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {attachment.image ? "Avaa alkuperäinen" : "Lataa"}
+                {attachment.image ? txt.openOriginal : txt.download}
               </a>
             )}
           </div>

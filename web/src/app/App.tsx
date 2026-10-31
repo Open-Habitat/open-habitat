@@ -39,6 +39,7 @@ import type { ReturnConversation } from "../components/ReturnView";
 import { StatusBell } from "../components/StatusBell";
 import { setPersonalLanguage, textNow, useLanguage } from "../i18n";
 import { appText } from "../text/app";
+import { navigationText } from "../text/navigation";
 import { signInText } from "../text/signIn";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import {
@@ -161,6 +162,13 @@ const CatalogPreview =
 
 /** A redirect of the view under Settings waits until Settings closes, so
  * work that finishes meanwhile does not take the person out of Settings. */
+// A close refusal in either language: the problem is kept as the text shown
+// when it happened, and the language may have changed since.
+const closeRefusal = (problem: string) =>
+  [appText.fi, appText.en].some((t) =>
+    problem.startsWith(t.closeRefused("").split(":")[0]),
+  );
+
 function Redirect({ held, ...props }: NavigateProps & { held: boolean }) {
   return held ? null : <Navigate {...props} />;
 }
@@ -361,7 +369,7 @@ export function App() {
       requestAnimationFrame(() => {
         (window.matchMedia("(max-width: 800px)").matches
           ? (document.querySelector<HTMLElement>(
-              "[aria-label='Avaa navigaatio']",
+              `[aria-label='${textNow(navigationText).openNavigation}']`,
             ) ??
             document.querySelector<HTMLElement>(
               "[data-account-controls] button",
@@ -1382,9 +1390,8 @@ export function App() {
           }),
         );
       },
-      refused: (reason) =>
-        `Sulkemista ei tehty: ${reason} Keskustelussa voi olla sisältöä.`,
-      reverted: "Sulkeminen ei tallentunut. Keskustelu on yhä listassa.",
+      refused: t.app.closeRefused,
+      reverted: t.app.closeReverted,
     });
     if (result.outcome === "login") requireLogin();
     else if (result.outcome === "uncertain") refresh();
@@ -1441,13 +1448,10 @@ export function App() {
         if (change) dispatch(hostChanged(change));
         else refresh();
       },
-      refused: (reason) =>
-        hidden
-          ? `Arkistointia ei tehty: ${reason} Työtila näkyy taas.`
-          : `Palautusta ei tehty: ${reason}`,
+      refused: hidden ? t.app.archiveWorkspaceRefused : t.app.restoreRefused,
       reverted: hidden
-        ? "Arkistointi ei tallentunut. Työtila näkyy taas."
-        : "Palautus ei tallentunut. Työtila on yhä arkistossa.",
+        ? t.app.archiveWorkspaceReverted
+        : t.app.restoreWorkspaceReverted,
     });
     if (result.outcome === "login") requireLogin();
     // The next read is the receipt of a lost reply.
@@ -1501,8 +1505,8 @@ export function App() {
             { replace: true },
           );
       },
-      refused: (reason) => `Nimeä ei vaihdettu: ${reason}`,
-      reverted: "Uusi nimi ei tallentunut. Aiempi nimi palautettiin.",
+      refused: t.app.renameRefused,
+      reverted: t.app.renameReverted,
     });
     if (result.outcome === "login") requireLogin();
     if (result.outcome === "uncertain") refresh();
@@ -1566,13 +1570,12 @@ export function App() {
             cursor: reply.event_cursor,
           }),
         ),
-      refused: (reason) =>
-        archived
-          ? `Arkistointia ei tehty: ${reason} Keskustelu palautettiin listaan.`
-          : `Palautusta ei tehty: ${reason}`,
+      refused: archived
+        ? t.app.archiveConversationRefused
+        : t.app.restoreRefused,
       reverted: archived
-        ? "Arkistointi ei tallentunut. Keskustelu on yhä listassa."
-        : "Palautus ei tallentunut. Keskustelu on yhä arkistossa.",
+        ? t.app.archiveConversationReverted
+        : t.app.restoreConversationReverted,
     });
     if (result.outcome === "login") requireLogin();
     if (result.outcome === "uncertain") refresh();
@@ -1633,17 +1636,15 @@ export function App() {
       phase !== "authenticated" ||
       snapshot?.write_state === "read_only"
     )
-      return "Päivitä yhteys ennen uuden keskustelun luontia.";
-    if (createPending.has(workspaceId)) return "Luonti on käynnissä.";
+      return t.app.createNeedsConnection;
+    if (createPending.has(workspaceId)) return t.app.createPending;
     if (
       identity &&
       sessionStorage.getItem(`nah:${identity}:uncertain:${workspaceId}`)
     )
-      return "Luonnin tulos epävarma. Tarkista keskustelulista ja natiivi historia ennen uutta yritystä.";
-    if (defaultStart?.identity !== identity)
-      return "Ladataan oletusagentin tietoja.";
-    if (defaultStart?.unavailable)
-      return "Agentin malliluetteloa ei voitu vahvistaa. Tarkista kirjautuminen.";
+      return t.app.createUncertain;
+    if (defaultStart?.identity !== identity) return t.app.loadingDefaultAgent;
+    if (defaultStart?.unavailable) return t.app.modelsUnconfirmed;
     return "";
   };
   // A worktree agent (ADR 0025) starts like any conversation, except that
@@ -1721,10 +1722,10 @@ export function App() {
           // why and leave + usable. Only a lost reply or 5xx is uncertain.
           const refusal = error instanceof WriteRefused;
           const message = refusal
-            ? `Uutta keskustelua ei luotu: ${refusalReason(error.code, error.status)}`
+            ? t.app.createRefused(refusalReason(error.code, error.status))
             : sessionStorage.getItem(uncertainKey)
-              ? "Luonnin tulos epävarma. Tarkista tiedot ennen uutta yritystä; pyyntöä ei lähetetä automaattisesti uudelleen."
-              : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.";
+              ? t.app.createUncertainNoResend
+              : t.app.createSessionUnconfirmed;
           setCreationViews((old) => ({
             ...old,
             [workspaceId]: { problem: message, refused: refusal },
@@ -1818,7 +1819,7 @@ export function App() {
           runActive: phase === "stale" ? undefined : a.run_active,
           waitingOn: phase === "stale" ? undefined : a.waiting_on,
           pendingQuestion: phase !== "stale" && !!a.pending_question,
-          pendingLabel: closing.has(a.agent_id) ? "Suljetaan…" : undefined,
+          pendingLabel: closing.has(a.agent_id) ? t.app.closing : undefined,
           worktree: a.worktree_id
             ? (() => {
                 const place = workspace?.worktrees?.find(
@@ -1844,26 +1845,26 @@ export function App() {
       phase !== "authenticated" ||
       snapshot?.write_state === "read_only"
     )
-      return "Arkistointi ei ole käytettävissä.";
-    if (closing.has(conversation.id)) return "Sulkeminen kesken.";
+      return t.app.archiveUnavailable;
+    if (closing.has(conversation.id)) return t.app.closingInProgress;
     if (!agent?.observation_token || agent.archive !== "active")
-      return "Arkiston tilaa ei voida vahvistaa.";
+      return t.app.archiveStateUnconfirmed;
     if (conversation.process === "terminal_observed_live")
-      return "Kirjoittaja on käynnissä.";
+      return t.app.writerRunning;
     if (conversation.waitingOn?.length || agent.waiting_on?.length)
-      return "Odota taustatyön valmistumista ja agentin vuoron päättymistä.";
+      return t.app.waitBackgroundAndTurn;
     if (
       conversation.runActive ||
       agent.run_active ||
       conversation.command === "accepted" ||
       agent.activity === "running"
     )
-      return "Odota agentin vuoron päättymistä.";
+      return t.app.waitTurn;
     if (
       conversation.process === "daemon_managed_live" &&
       conversation.command !== "idle"
     )
-      return "Prosessin tilaa ei voitu vahvistaa.";
+      return t.app.processUnconfirmed;
     return "";
   };
   // A conversation whose Pi has written no history yet has nothing to keep
@@ -1885,7 +1886,7 @@ export function App() {
       const conversation = returnConversations.find((c) => c.id === id);
       return conversation
         ? cardArchiveReason(conversation)
-        : "Arkistointi ei ole käytettävissä.";
+        : t.app.archiveUnavailable;
     },
     run: (id: string) => {
       const open = selectedAgentId === id || openConversation === id;
@@ -1902,10 +1903,10 @@ export function App() {
         phase !== "authenticated" ||
         snapshot?.write_state === "read_only"
       )
-        return "Nimeäminen ei ole käytettävissä.";
-      if (!agent) return "Keskustelua ei löydy.";
+        return t.app.renameUnavailable;
+      if (!agent) return t.app.conversationNotFound;
       if (agent.process === "terminal_observed_live")
-        return "Kirjoittaja on käynnissä.";
+        return t.app.writerRunning;
       return "";
     },
     save: async (id: string, name: string) => {
@@ -2244,9 +2245,9 @@ export function App() {
           <InlineNotice
             data-testid="archive-error"
             title={
-              archiveProblem.startsWith("Sulkemista")
-                ? "Sulkeminen epäonnistui"
-                : "Arkiston muutosta ei tehty"
+              closeRefusal(archiveProblem)
+                ? t.app.closeFailed
+                : t.app.archiveChangeFailed
             }
             description={archiveProblem}
             tone="warning"
@@ -2301,13 +2302,17 @@ export function App() {
         token={snapshot?.user_observation_token}
         writeReason={
           syntheticDemo
-            ? "Synteettisessä demossa ei voi luoda työtiloja."
+            ? // Demo-only text stays out of the catalog, so the production
+              // bundle never carries the demo's markers.
+              language === "en"
+              ? "Workspaces cannot be created in the synthetic demo."
+              : "Synteettisessä demossa ei voi luoda työtiloja."
             : phase !== "authenticated" || !csrf
-              ? "Yhteys pitää vahvistaa ennen työtilan luontia."
+              ? t.app.workspaceNeedsConnection
               : snapshot?.write_state === "read_only"
-                ? "Palvelin on vain luku -tilassa."
+                ? t.app.serverReadOnly
                 : source !== "confirmed"
-                  ? "Työtiloja ei voitu tarkistaa. Päivitä tiedot ennen työtilan luontia."
+                  ? t.app.workspacesUnchecked
                   : undefined
         }
         workspaces={workspaces}
@@ -2346,9 +2351,9 @@ export function App() {
             <InlineNotice
               data-testid="archive-error"
               title={
-                archiveProblem.startsWith("Sulkemista")
-                  ? "Sulkeminen epäonnistui"
-                  : "Arkiston muutosta ei tehty"
+                closeRefusal(archiveProblem)
+                  ? t.app.closeFailed
+                  : t.app.archiveChangeFailed
               }
               description={archiveProblem}
               tone="warning"
@@ -2457,7 +2462,7 @@ export function App() {
                         ? manualRefresh
                         : undefined
                     }
-                    retryLabel="Tarkista luonnin tulos"
+                    retryLabel={t.app.checkCreation}
                     refused={creationViews[selected.workspace_id]?.refused}
                     onCreateAgain={
                       creationViews[selected.workspace_id]?.refused &&
@@ -2478,7 +2483,7 @@ export function App() {
                       creationViews[selected.workspace_id]?.problem ??
                       (creationViews[selected.workspace_id] || firstMessage
                         ? undefined
-                        : "Luonnin tilaa ei voida vahvistaa. Tarkista keskustelulista ja natiivi historia.")
+                        : t.app.creationUnconfirmed)
                     }
                   />
                 );
@@ -2493,12 +2498,12 @@ export function App() {
                     "",
                 ) ? (
                 <InlineNotice
-                  title="Sulkeminen epäonnistui"
+                  title={t.app.closeFailed}
                   description={closeProblem[1]}
                   tone="warning"
                   actions={[
                     {
-                      label: "Sulje ilmoitus",
+                      label: t.app.dismissNotice,
                       onPress: () => mutations?.dismiss(closeProblem[0]),
                     },
                   ]}
@@ -2602,9 +2607,9 @@ export function App() {
               <InlineNotice
                 data-testid="archive-error"
                 title={
-                  archiveProblem.startsWith("Sulkemista")
-                    ? "Sulkeminen epäonnistui"
-                    : "Arkiston muutosta ei tehty"
+                  closeRefusal(archiveProblem)
+                    ? t.app.closeFailed
+                    : t.app.archiveChangeFailed
                 }
                 description={archiveProblem}
                 tone="warning"
@@ -2612,7 +2617,7 @@ export function App() {
             )}
             <details className="ah-workspace-archive">
               <summary>
-                Arkisto ·{" "}
+                {t.app.archive} ·{" "}
                 {snapshot?.sources.find((f) => f.source === "annotation")
                   ?.state !== "confirmed" ||
                 snapshot?.sources.find((f) => f.source === "pi_history")
@@ -2626,24 +2631,19 @@ export function App() {
               </summary>
               <section
                 data-testid="workspace-archive-panel"
-                aria-label="Työtilan arkisto"
+                aria-label={t.app.workspaceArchive}
               >
-                <h2 data-testid="archive-title">Arkisto</h2>
+                <h2 data-testid="archive-title">{t.app.archive}</h2>
                 {snapshot?.sources.find((f) => f.source === "annotation")
                   ?.state !== "confirmed" ? (
                   <p data-testid="archive-metadata-unavailable">
-                    Keskustelujen arkistomerkintöjä ei voitu lukea. Emme voi
-                    näyttää, mitkä keskustelut on arkistoitu. Päivitä tiedot.
+                    {t.app.archiveMarksUnreadRefresh}
                   </p>
                 ) : (
                   <>
                     {snapshot.sources.find((f) => f.source === "pi_history")
                       ?.state !== "confirmed" && (
-                      <p role="status">
-                        Arkisto voi olla puutteellinen: keskustelujen
-                        agenttihistoriaa puuttuu tai sitä ei voitu lukea. Osa
-                        keskusteluista voi puuttua arkistosta. Päivitä tiedot.
-                      </p>
+                      <p role="status">{t.app.archiveMaybeIncomplete}</p>
                     )}
                     {snapshot.agents
                       .filter(
@@ -2664,12 +2664,12 @@ export function App() {
                             {a.title.display}
                           </LinkRow>{" "}
                           {a.history !== "readable" && (
-                            <span>Historia ei ole luettavissa. </span>
+                            <span>{t.app.historyUnreadable} </span>
                           )}
                           <Button
                             data-testid="restore-conversation"
                             size="row"
-                            label="Palauta näkyviin"
+                            label={t.app.restoreVisible}
                             variant="quiet"
                             onPress={() => void changeArchive(a, false)}
                             availability={
@@ -2680,8 +2680,8 @@ export function App() {
                                     state: "unknown",
                                     reason:
                                       a.history !== "readable"
-                                        ? "Historiaa ei voitu vahvistaa"
-                                        : "Päivitä yhteys ennen palautusta",
+                                        ? t.app.historyUnconfirmed
+                                        : t.app.restoreNeedsConnection,
                                   }
                                 : { state: "enabled" }
                             }
@@ -2783,9 +2783,9 @@ export function App() {
               }
               restoreReason={
                 phase === "stale"
-                  ? "Yhteys poikki."
+                  ? t.app.disconnected
                   : snapshot?.write_state === "read_only"
-                    ? "Vain luku."
+                    ? t.app.readOnly
                     : undefined
               }
               problem={visibilityProblem?.text}
@@ -2851,7 +2851,7 @@ export function App() {
       <Suspense
         fallback={
           <main id="main">
-            <h1>Ladataan katalogia</h1>
+            <h1>{t.app.loadingCatalog}</h1>
           </main>
         }
       >
@@ -2974,8 +2974,9 @@ export function App() {
               <>
                 {syntheticDemo ? (
                   <div className="ah-demo-banner" role="status">
-                    SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data
-                    · Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä
+                    {language === "en"
+                      ? "SYNTHETIC DEMO · Simulated identity and workspace data · No real sign-in, agents or host connection"
+                      : "SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data · Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä"}
                   </div>
                 ) : null}
                 {phase === "authentication_required" ||
@@ -3177,7 +3178,7 @@ export function App() {
                       >
                         {railStartError ? (
                           <InlineNotice
-                            title="Keskustelun luonnin tulos epävarma"
+                            title={t.app.railCreateUncertain}
                             description={railStartError}
                             tone="warning"
                           />

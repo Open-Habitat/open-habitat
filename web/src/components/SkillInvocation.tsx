@@ -8,6 +8,8 @@ import {
 import { ControlButton } from "./ControlElements";
 import { GuideArticle } from "./GoalGuide";
 import "./SkillInvocation.css";
+import { useText } from "../i18n";
+import { skillInvocationText } from "../text/skillInvocation";
 
 export function SkillInvocation({
   name,
@@ -18,6 +20,7 @@ export function SkillInvocation({
   description?: string;
   children: ReactNode;
 }) {
+  const t = useText(skillInvocationText);
   return (
     <DialogTrigger>
       <ControlButton
@@ -25,7 +28,7 @@ export function SkillInvocation({
         variant="secondary"
         className="ah-skill-chip"
         data-testid="skill-chip"
-        title="Näytä taidon ohje"
+        title={t.show}
       >
         <span className="ah-skill-chip-label">
           <span className="ah-skill-name">{name}</span>
@@ -53,15 +56,15 @@ export function SkillInvocation({
         <Modal className="ah-skill-sheet">
           <Dialog
             className="ah-skill-reader"
-            aria-label={`Taidon ohje: ${name}`}
+            aria-label={t.instructionsOf(name)}
             data-testid="skill-panel"
           >
             {({ close }) => (
               <GuideArticle
                 title={name}
-                eyebrow="TAIDON OHJE"
+                eyebrow={t.eyebrow}
                 onBack={close}
-                backLabel="← Takaisin keskusteluun"
+                backLabel={t.back}
                 action={
                   <ControlButton
                     size="row"
@@ -69,15 +72,12 @@ export function SkillInvocation({
                     data-testid="skill-close"
                     onPress={close}
                   >
-                    Sulje
+                    {t.close}
                   </ControlButton>
                 }
               >
                 <section data-testid="skill-instruction">
-                  <p>
-                    Tämä on kutsuhetken tallennettu ohje, ei nykyinen
-                    taitotiedosto.
-                  </p>
+                  <p>{t.recorded}</p>
                   {children}
                 </section>
               </GuideArticle>

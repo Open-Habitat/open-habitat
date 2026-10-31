@@ -20,6 +20,9 @@ import {
   type ViewSummary,
 } from "../components/ViewOffer";
 import { ViewPanel, ViewSplit } from "../components/ViewPanel";
+import { textNow, useText } from "../i18n";
+import { guideText } from "../text/guide";
+import { viewHostText } from "../text/viewHost";
 import type { StartGoal } from "./composerReads";
 import {
   type FileOfferSummary,
@@ -571,8 +574,8 @@ export function FilesHeaderControl({
       size="row"
       variant="quiet"
       className="ah-files-toggle"
-      aria-label={`Tiedostot: ${count}`}
-      title="Keskustelun tiedostot"
+      aria-label={textNow(viewHostText).files(count)}
+      title={textNow(viewHostText).conversationFiles}
       aria-pressed={open}
       onPress={() => (open ? shelf.close() : shelf.open(conversationId))}
     >
@@ -593,6 +596,7 @@ export function GuideHeaderControl({
   goal?: StartGoal;
   page?: string;
 }) {
+  const t = useText(guideText);
   const host = useContext(GuideContext);
   const guide = useGuide(owner);
   const activate = host?.activate;
@@ -611,14 +615,15 @@ export function GuideHeaderControl({
       size="row"
       variant="quiet"
       className="ah-guide-toggle"
-      aria-label={open ? "Piilota opas" : "Näytä opas"}
-      title={`Opas: ${shown.title}`}
+      aria-label={open ? t.hide : t.show}
+      title={t.guideFor(shown.title)}
       aria-pressed={open}
       onPress={() =>
         open ? host.close() : host.open(owner, shown, guide?.page ?? page ?? "")
       }
     >
-      <Icon name="scroll" /> <span className="ah-guide-toggle-label">Opas</span>
+      <Icon name="scroll" />{" "}
+      <span className="ah-guide-toggle-label">{t.guide}</span>
     </ControlButton>
   );
 }

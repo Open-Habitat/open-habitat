@@ -14,6 +14,8 @@ import {
   WorkerVoice,
   workerLive,
 } from "../components/Spinoffs";
+import { textNow } from "../i18n";
+import { spinoffConversationText } from "../text/spinoffConversation";
 import { useExperimentalFeature } from "./accountPreferences";
 import type { timelineItems } from "./HistoryView";
 import { settingsHref } from "./settingsRoute";
@@ -221,10 +223,10 @@ function workNote(work: SpinoffWork, githubState?: string) {
     return undefined;
   return githubState === "disconnected" || githubState === "expired"
     ? {
-        text: "PR-tiedot puuttuvat, koska gh ei ole kirjautunut GitHubiin. Muutokset näkyvät silti.",
+        text: textNow(spinoffConversationText).prSignedOut,
         href: settingsHref("koodipalvelut", "github"),
       }
-    : { text: "PR-tietoja ei saatu gh:lta. Muutokset näkyvät silti." };
+    : { text: textNow(spinoffConversationText).prUnavailable };
 }
 
 function WorkerConversation({

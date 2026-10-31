@@ -4,6 +4,8 @@ import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import "./EditorSplit.css";
 import "./GoalGuide.css";
+import { useText } from "../i18n";
+import { guideText } from "../text/guide";
 
 /** The started goal's guide beside the conversation, in the right-hand panel.
  * The steps are the authored instruction, not the agent's progress: the host
@@ -20,6 +22,7 @@ export function GuidePanel({
   titleRef?: Ref<HTMLHeadingElement>;
   onClose: () => void;
 }) {
+  const t = useText(guideText);
   const keyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -30,21 +33,21 @@ export function GuidePanel({
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape from the panel's own controls closes it, as in the view panel.
     <section
       className="ah-view-pane ah-guide-panel"
-      aria-label={`Opas: ${goal.title}`}
+      aria-label={t.guideFor(goal.title)}
       data-testid="guide-panel"
       onKeyDown={keyDown}
     >
       <header className="ah-editor-header">
         <h2 ref={titleRef} tabIndex={-1} className="ah-view-title">
-          Opas
+          {t.guide}
         </h2>
         <span className="ah-editor-controls">
           <ControlButton
             data-testid="guide-panel-close"
             size="row"
             variant="quiet"
-            aria-label="Sulje opas"
-            title="Sulje opas"
+            aria-label={t.close}
+            title={t.close}
             onPress={onClose}
           >
             <Icon name="cross" />
@@ -52,10 +55,10 @@ export function GuidePanel({
         </span>
       </header>
       <div className="ah-guide-panel-body">
-        <p className="ah-guide-eyebrow">OPAS · {page}</p>
+        <p className="ah-guide-eyebrow">{t.eyebrow(page)}</p>
         <h3 className="ah-guide-panel-title">{goal.title}</h3>
         <section>
-          <h4>Näin etenet</h4>
+          <h4>{t.steps}</h4>
           <ol data-testid="guide-panel-steps">
             {goal.steps.map((step, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: authored ordered steps have no state.
@@ -64,13 +67,10 @@ export function GuidePanel({
           </ol>
         </section>
         <section>
-          <h4>Mitä saat</h4>
+          <h4>{t.outcome}</h4>
           <p>{goal.what}</p>
         </section>
-        <p className="ah-guide-panel-note">
-          Ohje, ei agentin edistyminen: Habitat ei tiedä, missä vaiheessa
-          agentti on.
-        </p>
+        <p className="ah-guide-panel-note">{t.note}</p>
       </div>
     </section>
   );

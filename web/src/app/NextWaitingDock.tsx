@@ -6,6 +6,8 @@ import {
   type QueueStep,
 } from "../components/NextWaitingQueue";
 import { NextWaitingRow } from "../components/NextWaitingRow";
+import { textNow } from "../i18n";
+import { nextWaitingText } from "../text/nextWaiting";
 import { useExperimentalFeature } from "./accountPreferences";
 import type { RoundStep, WaitingRound } from "./nextWaiting";
 
@@ -123,6 +125,7 @@ export function NextWaitingDock({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [on, next, inRound, offered, canBack]);
+  const t = textNow(nextWaitingText);
   if (!on || !next || !round) return null;
   if (round.steps) {
     const models = [...next.yours, ...next.running];
@@ -138,14 +141,14 @@ export function NextWaitingDock({
         detail:
           state === "origin"
             ? ball === "you"
-              ? "lähtö · valmis"
-              : "lähtö"
+              ? t.originDone
+              : t.origin
             : state === "waits"
               ? live?.question
-                ? "kysyy"
-                : "uusi vastaus"
+                ? t.asks
+                : t.newReply
               : state === "elsewhere"
-                ? "toisaalla"
+                ? t.elsewhere
                 : undefined,
       };
     });

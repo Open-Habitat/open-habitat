@@ -1,13 +1,18 @@
+import { liveText } from "../i18n";
+import { appMessagesText } from "../text/appMessages";
+
+const txt = liveText(appMessagesText);
+
 export type BashFailure = {
   kind: "exit" | "timeout" | "aborted";
   amount?: number;
   status_line: string;
 };
 export function failureLabel(cause?: BashFailure) {
-  if (!cause) return "epäonnistui";
-  if (cause.kind === "exit") return `paluuarvo ${cause.amount}`;
-  if (cause.kind === "timeout") return `aikakatkaisu ${cause.amount} s`;
-  return "keskeytetty";
+  if (!cause) return txt.failed;
+  if (cause.kind === "exit") return txt.exitCode(cause.amount);
+  if (cause.kind === "timeout") return txt.timeout(cause.amount);
+  return txt.aborted;
 }
 // Remove only the exact daemon-recognized terminal line, not arbitrary output.
 export function bashOutput(text?: string, cause?: BashFailure) {

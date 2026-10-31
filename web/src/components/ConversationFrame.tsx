@@ -7,6 +7,8 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { textNow } from "../i18n";
+import { conversationFrameText } from "../text/conversationFrame";
 
 const FloatingControls = createContext<HTMLElement | null>(null);
 
@@ -96,7 +98,7 @@ export function ConversationStream({
   children,
   streamRef,
   onScroll,
-  label = "Keskustelu",
+  label,
 }: {
   children: ReactNode;
   label?: string;
@@ -108,7 +110,7 @@ export function ConversationStream({
       data-testid="conversation-stream"
       className="ah-conversation-stream"
       tabIndex={-1}
-      aria-label={label}
+      aria-label={label ?? textNow(conversationFrameText).conversation}
       ref={streamRef}
       onScroll={onScroll}
     >

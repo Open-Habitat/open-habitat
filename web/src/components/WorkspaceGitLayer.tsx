@@ -7,6 +7,8 @@ import {
   ModalOverlay,
   Popover,
 } from "react-aria-components";
+import { textNow } from "../i18n";
+import { overlaysText } from "../text/overlays";
 import { ControlButton } from "./ControlElements";
 
 /** The chosen workspace layer: anchored on desktop, a modal sheet on phones. */
@@ -54,7 +56,7 @@ export function WorkspaceGitLayer({
           variant="secondary"
           slot="close"
         >
-          Sulje
+          {textNow(overlaysText).close}
         </ControlButton>
       </div>
     </Dialog>

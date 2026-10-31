@@ -149,7 +149,7 @@ export function Devices({
         onDone={() => setPhase({ kind: "idle" })}
       />
       <h3 className="dl-h3">
-        Kirjautuneet laitteet
+        {txt.signedInDevices}
         {sessions && <span className="dl-count">{sessions.length}</span>}
       </h3>
       {error && <p role="alert">{error}</p>}

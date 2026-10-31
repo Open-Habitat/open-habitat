@@ -1,4 +1,8 @@
 import type { PendingPhase } from "../app/mutations";
+import { liveText } from "../i18n";
+import { overlaysText } from "../text/overlays";
+
+const txt = liveText(overlaysText);
 
 /** What an unconfirmed command says after the first moments (ADR 0023):
  * nothing while the host normally answers, then that confirmation is slow,
@@ -19,9 +23,7 @@ export function PendingNote({
       className={className}
       role="status"
     >
-      {phase === "slow"
-        ? "Vahvistus palvelimelta viipyy…"
-        : "Vastaus katosi matkalla. Tarkistetaan, tallentuiko muutos."}
+      {phase === "slow" ? txt.slow : txt.uncertain}
     </p>
   );
 }

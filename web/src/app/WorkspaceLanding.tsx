@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { WorkspaceIntro } from "../components/WorkspaceIntro";
+import { useText } from "../i18n";
+import { workspaceLandingText } from "../text/workspaceLanding";
 import { readStartPage, type StartGoal, type StartPage } from "./composerReads";
 import { prepareGoalConversation, prepareInvocation } from "./goalGuide";
 
@@ -21,6 +23,7 @@ export function WorkspaceLanding({
   startReason?: string;
   single?: boolean;
 }) {
+  const t = useText(workspaceLandingText);
   const [page, setPage] = useState<StartPage | null>();
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [attempt, retry] = useState(0);
@@ -46,9 +49,7 @@ export function WorkspaceLanding({
     return () => controller.abort();
   }, [workspaceId, attempt]);
   const disabled =
-    !identity || !onNew
-      ? startReason || "Uutta keskustelua ei voi aloittaa nyt."
-      : undefined;
+    !identity || !onNew ? startReason || t.cannotStart : undefined;
   const start = () => latest.current?.(workspaceId);
   return (
     <>
@@ -58,11 +59,7 @@ export function WorkspaceLanding({
         onRetry={() => retry((v) => v + 1)}
         preparing={preparing}
         disabled={disabled}
-        newHint={
-          single
-            ? "Tyhjän keskustelun saat yläpalkin Uusi keskustelu -painikkeesta."
-            : undefined
-        }
+        newHint={single ? t.emptyHint : undefined}
         onCreatePage={() => {
           if (!identity || disabled) return;
           prepareInvocation(identity, workspaceId, "/open-habitat-start-page ");
@@ -95,7 +92,7 @@ export function WorkspaceLanding({
       />
       {problem ? (
         <p role="status" data-testid="landing-problem">
-          Tavoitteen taitoa ei saatu tarkistettua. Valitse tavoite uudelleen.
+          {t.goalSkillUnchecked}
         </p>
       ) : null}
     </>

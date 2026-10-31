@@ -274,7 +274,7 @@ export function GitIdentity({
       ) : (
         <>
           <label>
-            Gitissä näkyvä nimi{" "}
+            {txt.nameInGit}{" "}
             <input
               data-testid="git-name-input"
               autoComplete="name"
@@ -284,7 +284,7 @@ export function GitIdentity({
             />
           </label>
           <label htmlFor="git-identity-email">
-            Gitissä näkyvä sähköposti{" "}
+            {txt.emailInGit}{" "}
             <select
               id="git-identity-email"
               data-testid="git-email-input"

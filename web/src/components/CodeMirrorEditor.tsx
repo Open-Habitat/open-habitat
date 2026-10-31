@@ -64,6 +64,8 @@ export interface EditorPlaceApi {
   showLine: (line: number) => void;
 }
 
+import { textNow } from "../i18n";
+import { codeMirrorEditorText } from "../text/codeMirrorEditor";
 import type { FileRef } from "./fileRefs";
 
 const mapState = (s: MergeState, ch: ChangeSet): MergeState => ({
@@ -296,16 +298,10 @@ const theme = EditorView.theme({
     color: "var(--ah-ink-2)",
   },
 });
-// CodeMirror's own words for fold markers, which screen readers and tooltips use.
-const phrases = EditorState.phrases.of({
-  "Fold line": "Kokoa",
-  "Unfold line": "Avaa",
-  "folded code": "koottu osa",
-  unfold: "avaa",
-  "Folded lines": "Koottu rivit",
-  "Unfolded lines": "Avattu rivit",
-  to: "–",
-});
+// CodeMirror's own words for fold markers, in the language of the moment
+// the document opens.
+const phrases = () =>
+  EditorState.phrases.of(textNow(codeMirrorEditorText).phrases);
 const syntax = syntaxHighlighting(
   HighlightStyle.define([
     { tag: tags.keyword, color: "var(--ah-syntax-keyword)" },
@@ -374,7 +370,7 @@ export default function CodeMirrorEditor({
           mergeField,
           mergeDecorations,
           lockConflicts,
-          phrases,
+          phrases(),
           lineNumbers(),
           // A grammar supplies the ranges: Markdown folds a heading's
           // section, code folds its blocks; plain text has none.
@@ -386,7 +382,7 @@ export default function CodeMirrorEditor({
           editable.current.of(EditorState.readOnly.of(disabled)),
           EditorView.contentAttributes.of({
             tabindex: "0",
-            "aria-label": "Tiedoston teksti",
+            "aria-label": textNow(codeMirrorEditorText).documentLabel,
             "data-testid": "editor-document",
             spellcheck: "false",
           }),

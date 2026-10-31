@@ -7,6 +7,8 @@ import addFormats from "ajv-formats";
 import { useEffect, useSyncExternalStore } from "react";
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/file-offer.schema.json";
+import { liveText } from "../i18n";
+import { appMessagesText } from "../text/appMessages";
 
 const ajv = new Ajv({ strict: false });
 addFormats(ajv);
@@ -107,7 +109,7 @@ export function zipName(offer: FileOfferSummary): string {
   const name = (offer.folder ?? offer.title)
     .replace(/[/\\:*?"<>|\p{Cc}]/gu, "_")
     .trim();
-  return `${name || "tiedostot"}.zip`;
+  return `${name || liveText(appMessagesText).files}.zip`;
 }
 
 // One fetch per offer per page: every card and the panel share it. A

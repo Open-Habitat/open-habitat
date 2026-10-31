@@ -24,6 +24,8 @@ const fi = {
   saving: "Tallennetaan…",
   confirm: "Vahvista Git-identiteetti",
   globalSetting: "Gitin globaali asetus",
+  nameInGit: "Gitissä näkyvä nimi",
+  emailInGit: "Gitissä näkyvä sähköposti",
 };
 
 export const gitIdentityText = catalog(fi, {
@@ -48,4 +50,6 @@ export const gitIdentityText = catalog(fi, {
   saving: "Saving…",
   confirm: "Confirm Git identity",
   globalSetting: "Git's global setting",
+  nameInGit: "Name shown in Git",
+  emailInGit: "Email shown in Git",
 });

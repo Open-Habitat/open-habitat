@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from "react";
+import { liveText } from "../i18n";
+import { appMessagesText } from "../text/appMessages";
 import {
   type CloneJob,
   type CloneMode,
@@ -15,6 +17,8 @@ import {
   startForgeClone,
   subscribeClone,
 } from "./github";
+
+const txt = liveText(appMessagesText);
 
 // The clone jobs of the daemon, as the clone page and the rail block show
 // them. The daemon owns each job and keeps it in memory only; this is a view
@@ -490,16 +494,17 @@ export function cloneLabel(
     | "queued"
     | "refused",
 ): string {
-  if (job === "interrupted") return "keskeytyi";
-  if (job === "queued") return "jonossa";
-  if (job === "refused") return "ei alkanut";
+  const t = txt.clone;
+  if (job === "interrupted") return t.interrupted;
+  if (job === "queued") return t.queued;
+  if (job === "refused") return t.refused;
   if (job.state === "running")
     return job.stage === "receiving" && job.percent !== undefined
-      ? `${job.percent} %`
-      : "kloonataan";
-  if (job.state === "failed") return "epäonnistui";
-  if (job.state === "confirmed") return "valmis";
-  return "keskeytetty";
+      ? t.percent(job.percent)
+      : t.cloning;
+  if (job.state === "failed") return t.failed;
+  if (job.state === "confirmed") return t.done;
+  return t.stopped;
 }
 
 /** One repository's clone as a compact list shows it. */

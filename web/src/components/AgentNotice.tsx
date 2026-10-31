@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { FileOfferSummary } from "../app/fileOffers";
+import { formatDate, useText } from "../i18n";
+import { agentNoticeText } from "../text/agentNotice";
 import { ControlButton } from "./ControlElements";
 import type { ViewSummary } from "./ViewOffer";
 
@@ -18,6 +20,7 @@ export type AgentNotice = {
 // Agent text is data, not markup, a link, or a system instruction.
 export function AgentNoticeCard({ notice }: { notice: AgentNotice }) {
   // Dismiss this presentation, not the person's native history entry.
+  const t = useText(agentNoticeText);
   const [dismissed, setDismissed] = useState<string | null>(null);
   if (dismissed === notice.notice_id) return null;
   return (
@@ -29,15 +32,18 @@ export function AgentNoticeCard({ notice }: { notice: AgentNotice }) {
     >
       <header className="ah-agent-notice-header">
         <span className="ah-agent-notice-label">
-          Agentin ilmoitus ·{" "}
+          {t.label} ·{" "}
           <time dateTime={notice.timestamp}>
-            {new Date(notice.timestamp).toLocaleString("fi-FI")}
+            {formatDate(new Date(notice.timestamp), {
+              dateStyle: "short",
+              timeStyle: "medium",
+            })}
           </time>
         </span>
         <ControlButton
           size="row"
           variant="quiet"
-          aria-label="Sulje ilmoitus"
+          aria-label={t.close}
           data-testid="agent-notice-dismiss"
           onPress={() => setDismissed(notice.notice_id)}
         >
@@ -50,9 +56,9 @@ export function AgentNoticeCard({ notice }: { notice: AgentNotice }) {
       {notice.persistence !== "persisted" ? (
         <p>
           {notice.persistence === "not_persisted"
-            ? "Ilmoitusta ei tallennettu historiaan."
-            : "Tallennusta historiaan ei voitu varmistaa."}{" "}
-          Tämä ilmoitus on väliaikainen.
+            ? t.notPersisted
+            : t.persistenceUnknown}{" "}
+          {t.temporary}
         </p>
       ) : null}
     </aside>

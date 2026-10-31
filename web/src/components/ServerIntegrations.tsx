@@ -1484,7 +1484,7 @@ export function ServerIntegrations({
                         <span data-testid={`si-menu-${section}`}>
                           <Menu
                             label={txt.credentialsOf(sectionName(section))}
-                            trigger={<span>Tunnukset</span>}
+                            trigger={<span>{txt.credentials}</span>}
                             placement="bottom end"
                             heading={<AppLine app={levelApp} names={names} />}
                             items={[

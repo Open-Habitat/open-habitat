@@ -335,7 +335,7 @@ function TrashSettings({
       )}
       {listing?.truncated ? (
         <p className="ah-trash-intro">
-          Näytetään {listing.entries.length} ensimmäistä.
+          {txt.showingFirst(listing.entries.length)}
         </p>
       ) : null}
       <TrashPurgeDialog

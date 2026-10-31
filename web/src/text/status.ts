@@ -163,6 +163,12 @@ const fi = {
   refresh: "Päivitä",
   clearSearch: "Tyhjennä haku",
   unavailableAction: "Toiminto ei ole käytettävissä.",
+  save: "Tallenna",
+  bellLabel: (n: number, danger?: string) =>
+    `Ilmoitukset: ${n ? `${n} voimassa` : "ei voimassa olevia"}${danger ? `, ${danger}` : ""}`,
+  notices: "Ilmoitukset",
+  ownGroup: "Sinun",
+  serverGroup: "Palvelin",
 };
 
 export const statusText = catalog(fi, {
@@ -320,4 +326,10 @@ export const statusText = catalog(fi, {
   refresh: "Refresh",
   clearSearch: "Clear search",
   unavailableAction: "The action is not available.",
+  save: "Save",
+  bellLabel: (n, danger) =>
+    `Notices: ${n ? `${n} active` : "none active"}${danger ? `, ${danger}` : ""}`,
+  notices: "Notices",
+  ownGroup: "Yours",
+  serverGroup: "Server",
 });

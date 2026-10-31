@@ -1,5 +1,7 @@
 import { type KeyboardEvent, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useText } from "../i18n";
+import { archiveNoticeText } from "../text/archiveNotice";
 import { ControlButton } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 import { type NoticeKind, returnFocusToWork, useNotice } from "./NoticeArea";
@@ -28,9 +30,9 @@ export function ArchiveNotice({
   problem,
   onRestore,
   onClose,
-  message = "Arkistoitu",
+  message,
   detail,
-  restoreLabel = "Palauta",
+  restoreLabel,
   link,
   wrap = false,
 }: {
@@ -52,6 +54,7 @@ export function ArchiveNotice({
   /** Where the thing can be found later. */
   link?: { label: string; onPress: () => void };
 }) {
+  const t = useText(archiveNoticeText);
   const notice = useNotice(kind, !!onRestore, onClose);
   const row = useRef<HTMLElement>(null);
   const remaining = useRef(NOTICE_LIFETIME_MS);
@@ -92,7 +95,7 @@ export function ArchiveNotice({
         <Icon name={problem ? "warning" : icons[kind]} />
       </span>
       <span className="ah-archive-notice-text">
-        {message}
+        {message ?? t.archived}
         {title ? (
           <>
             {" "}
@@ -114,14 +117,10 @@ export function ArchiveNotice({
           variant="quiet"
           className="ah-archive-notice-more"
           aria-expanded={notice.open}
-          aria-label={
-            notice.open
-              ? "Piilota muut ilmoitukset"
-              : `Näytä muut ilmoitukset (${more})`
-          }
+          aria-label={notice.open ? t.hideOthers : t.showOthers(more)}
           onPress={() => notice.setOpen?.(!notice.open)}
         >
-          {notice.open ? "Piilota" : `+${more}`}
+          {notice.open ? t.hide : `+${more}`}
         </ControlButton>
       ) : null}
       {link ? (
@@ -142,7 +141,7 @@ export function ArchiveNotice({
           isDisabled={busy}
           onPress={onRestore}
         >
-          {restoreLabel}
+          {restoreLabel ?? t.restore}
         </ControlButton>
       ) : null}
       <ControlButton
@@ -150,7 +149,7 @@ export function ArchiveNotice({
         size="row"
         variant="quiet"
         className="ah-archive-notice-close"
-        aria-label="Sulje ilmoitus"
+        aria-label={t.close}
         onPress={dismiss}
       >
         ×

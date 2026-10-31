@@ -6,6 +6,8 @@ import cloneProgressSchema from "../../../contracts/v1/github-clone-progress.sch
 import reposSchema from "../../../contracts/v1/github-repos.schema.json";
 import repositorySchema from "../../../contracts/v1/github-repository.schema.json";
 import integrationsSchema from "../../../contracts/v1/integrations.schema.json";
+import { liveText } from "../i18n";
+import { appMessagesText } from "../text/appMessages";
 import { mutationFetch } from "./mutations";
 
 const ajv = new Ajv({ strict: false });
@@ -139,11 +141,7 @@ export class GitHubError extends Error {
       | "rewritten"
       | "unavailable",
   ) {
-    super(
-      code === "storage"
-        ? "Tallennustila on täynnä. Pyydä ylläpitäjää nostamaan tallennusrajaa."
-        : code,
-    );
+    super(code === "storage" ? liveText(appMessagesText).storageFull : code);
   }
 }
 async function bounded(response: Response, max: number): Promise<unknown> {

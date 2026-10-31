@@ -21,6 +21,8 @@ import { EditorHeader } from "../components/EditorHeader";
 import { EditorSplit } from "../components/EditorSplit";
 import { FileLinkContext, type FileRef } from "../components/fileRefs";
 import { Icon } from "../components/Icon";
+import { liveText } from "../i18n";
+import { workspaceEditorText } from "../text/workspaceEditor";
 import { type EditorEngine, useEditorChoice } from "./accountPreferences";
 import type { BrowserDocumentHandle } from "./BrowserDocument";
 import {
@@ -40,6 +42,7 @@ import {
 } from "./editor";
 import type { ReplaceNote, ToolReport } from "./editorChanges";
 
+const txt = liveText(workspaceEditorText);
 const BrowserDocument = lazy(() => import("./BrowserDocument"));
 
 type Phase = "idle" | "starting" | "loading" | "ready" | "failed";
@@ -120,7 +123,7 @@ function WorkspaceEditorInner({
       rememberedConversationWidth() ??
       defaultConversationWidth(window.innerWidth),
   );
-  const [pi, setPi] = useState({ working: false, label: "Odottaa sinua" });
+  const [pi, setPi] = useState({ working: false, label: txt.waitingForYou });
   const [notes, setNotes] = useState<ReplaceNote[]>([]);
   // Not derived from the list: a dismissed note's id must not come back.
   const noteId = useRef(0);
@@ -204,9 +207,7 @@ function WorkspaceEditorInner({
         if (
           engine === "vscode" &&
           frame &&
-          !window.confirm(
-            "Vaihda puhelimen tekstieditoriin? Tallenna VS Coden muutokset ensin tai hylkää ne jatkamalla.",
-          )
+          !window.confirm(txt.switchToPhoneEditor)
         ) {
           compactDeclined.current = true;
           return;
@@ -343,12 +344,12 @@ function WorkspaceEditorInner({
       }
       setNote(
         outcome.kind === "refused" && outcome.code === "file_unavailable"
-          ? `Tiedostoa ${ref.path} ei löydy työtilasta.`
+          ? txt.fileNotFound(ref.path)
           : outcome.kind === "refused" && outcome.code === "editor_not_running"
-            ? "VS Code ei vielä ottanut tiedostoa vastaan. Yritä hetken päästä uudelleen."
+            ? txt.notYetReceived
             : outcome.kind === "login"
-              ? "Istunto on päättynyt. Kirjaudu uudelleen."
-              : "Tiedoston avaamisesta ei saatu vastausta.",
+              ? txt.sessionEnded
+              : txt.noOpenReply,
       );
     },
     [csrf, focusEditor],
@@ -541,10 +542,10 @@ function WorkspaceEditorInner({
     phase === "ready" && frame ? null : phase === "failed" ? (
       <div className="ah-editor-overlay" role="status">
         <div>
-          <strong>VS Codea ei voitu avata</strong>
-          <span>Editori ei käynnistynyt, tai istunto ei siirtynyt sille.</span>
+          <strong>{txt.vscodeFailed}</strong>
+          <span>{txt.vscodeFailedDetail}</span>
           <ControlButton size="row" onPress={retry}>
-            Yritä uudelleen
+            {txt.retry}
           </ControlButton>
         </div>
       </div>
@@ -553,14 +554,9 @@ function WorkspaceEditorInner({
         <div>
           <strong>
             <span aria-hidden="true" className="ah-status-dot ah-running" />{" "}
-            {phase === "loading"
-              ? "Ladataan editorin käyttöliittymää"
-              : "Käynnistetään VS Code"}
+            {phase === "loading" ? txt.loadingInterface : txt.startingVSCode}
           </strong>
-          <span>
-            Ensimmäinen avaus voi kestää puoli minuuttia. Editori pysyy
-            käynnissä, kunnes sitä ei ole käytetty puoleen tuntiin.
-          </span>
+          <span>{txt.firstOpenSlow}</span>
         </div>
       </div>
     );
@@ -577,15 +573,14 @@ function WorkspaceEditorInner({
           onClose={() => show(false)}
         />
         {browser && browserWorkspace && csrf ? (
-          <Suspense fallback={<p role="status">Ladataan editoria</p>}>
+          <Suspense fallback={<p role="status">{txt.loadingEditor}</p>}>
             {browserWorkspace !== workspaceId && (
               <p
                 className="ah-editor-workspace-warning"
                 role="status"
                 data-testid="editor-workspace-changed"
               >
-                Työtila ei ole enää valittuna tai käytettävissä. Tallentamaton
-                teksti säilyy, kunnes suljet sen.
+                {txt.workspaceGone}
               </p>
             )}
             <BrowserDocument
@@ -610,7 +605,7 @@ function WorkspaceEditorInner({
                 ref={iframe}
                 key={frame.src}
                 src={frame.src}
-                title="VS Code: työtilan editori"
+                title={txt.vscodeFrame}
                 allow="clipboard-read; clipboard-write"
               />
             ) : null}
@@ -691,12 +686,8 @@ export function EditorHeaderControls() {
         size="row"
         variant="quiet"
         className={`ah-editor-toggle${editor.open ? " ah-editor-toggle-on" : ""}`}
-        aria-label={editor.open ? "Sulje editori" : "Editori"}
-        title={
-          editor.open
-            ? "Sulje editori"
-            : "Avaa työtilan editori keskustelun viereen (Ctrl+Alt+K)"
-        }
+        aria-label={editor.open ? txt.closeEditor : txt.editor}
+        title={editor.open ? txt.closeEditor : txt.openEditor}
         aria-pressed={editor.open}
         onPress={editor.toggleOpen}
       >

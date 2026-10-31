@@ -1,3 +1,5 @@
+import { useText } from "../i18n";
+import { editorReplaceNoteText } from "../text/editorReplaceNote";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import "./EditorReplaceNote.css";
@@ -21,42 +23,36 @@ export function EditorReplaceNote({
   onTell: () => void;
   onDismiss: () => void;
 }) {
+  const t = useText(editorReplaceNoteText);
   return (
     <aside className="ah-replace-note" data-testid="replace-note">
       <p className="ah-replace-note-head">
         <Icon name="info" />
-        <strong>Korvasit agentin muutoksia</strong>
+        <strong>{t.title}</strong>
         <small>{at}</small>
         <ControlButton
           data-testid="replace-note-dismiss"
           variant="quiet"
           size="inline"
-          aria-label="Sulje merkintä"
+          aria-label={t.dismiss}
           onPress={onDismiss}
         >
           <Icon name="cross" />
         </ControlButton>
       </p>
-      <p>
-        Tallensit tiedoston <code>{path}</code> omalla tekstilläsi.{" "}
-        {changes.length === 1
-          ? "Tämä agentin muutos ei ole enää tiedostossa:"
-          : "Nämä agentin muutokset eivät ole enää tiedostossa:"}
-      </p>
+      <p>{t.savedOwn(<code>{path}</code>, changes.length)}</p>
       <ul>
         {changes.map((change) => (
           <li key={change.line} data-testid="replace-note-line">
-            rivi {change.line}:{" "}
+            {t.line(change.line)}{" "}
             <code>
-              {change.theirs.filter(Boolean).join(" / ") || "(poisto)"}
+              {change.theirs.filter(Boolean).join(" / ") || t.deletion}
             </code>
           </li>
         ))}
       </ul>
       <div className="ah-replace-note-foot">
-        <small>
-          Vain sinä näet tämän. Agentti ei tiedä korvauksesta, ellet kerro.
-        </small>
+        <small>{t.onlyYou}</small>
         <ControlButton
           data-testid="tell-agent"
           size="row"
@@ -65,7 +61,7 @@ export function EditorReplaceNote({
           onPress={onTell}
         >
           <Icon name="message" />
-          Kerro agentille
+          {t.tellAgent}
         </ControlButton>
       </div>
     </aside>

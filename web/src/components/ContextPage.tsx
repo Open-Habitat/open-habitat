@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { ContextDetail, ContextDetailState } from "../app/contextDetail";
+import { formatDate, formatNumber, liveText, useLanguage } from "../i18n";
+import { contextPageText } from "../text/contextPage";
 import { type ContextUsage, contextFacts } from "./ContextRing";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
@@ -20,18 +22,9 @@ type Category = {
   note?: string;
 };
 
-const SECTION_NAMES: Record<string, string> = {
-  preamble: "Pi:n perusohje",
-  tools: "Työkalulista",
-  rules: "Säännöt",
-  docs: "Pi:n dokumentaatio",
-  addendum: "Lisäohje",
-  project_context: "AGENTS.md ja projektin ohjeet",
-  skills: "Skillit",
-  cwd: "Työhakemisto",
-  open_habitat: "Habitatin ohje",
-  prompt: "Kiinteä kehote",
-};
+const txt = liveText(contextPageText);
+const sectionName = (name: string) =>
+  Object.hasOwn(txt.sections, name) ? txt.sections[name] : undefined;
 
 /** What the page shows, derived from Pi's reading and the ring's limits. */
 export function contextView(detail: ContextDetail, usage?: ContextUsage) {
@@ -44,21 +37,19 @@ export function contextView(detail: ContextDetail, usage?: ContextUsage) {
   const categories: Category[] = [
     {
       key: "sys",
-      name: "Ohjeet ja järjestelmäkehote",
+      name: txt.instructions,
       tokens: p.instructions,
       rows: detail.instructions.map((s) => ({
-        name: SECTION_NAMES[s.name] ?? s.name,
-        mono: !SECTION_NAMES[s.name],
+        name: sectionName(s.name) ?? s.name,
+        mono: !sectionName(s.name),
         tokens: s.tokens,
-        note: s.replaced ? "Claude Coden oma kehote korvaa" : undefined,
+        note: s.replaced ? txt.replacedByClaude : undefined,
       })),
-      note: detail.instructions.length
-        ? undefined
-        : "Pi ei kirjannut kehotetta tähän sessioon.",
+      note: detail.instructions.length ? undefined : txt.noPrompt,
     },
     {
       key: "tools",
-      name: "Työkalujen kuvaukset",
+      name: txt.toolDescriptions,
       tokens: p.tools,
       rows: detail.tools.map((t) => ({ ...t, mono: true })),
     },
@@ -66,7 +57,7 @@ export function contextView(detail: ContextDetail, usage?: ContextUsage) {
       ? [
           {
             key: "sum" as const,
-            name: "Tiivistelmä",
+            name: txt.summary,
             tokens: p.summary,
             rows: [],
           },
@@ -74,36 +65,35 @@ export function contextView(detail: ContextDetail, usage?: ContextUsage) {
       : []),
     {
       key: "talk",
-      name: "Keskustelu",
+      name: txt.conversation,
       tokens: p.conversation,
       rows: [
-        { name: "Viestisi", tokens: c.user },
-        { name: "Vastaukset", tokens: c.assistant },
-        { name: "Ajattelu", tokens: c.thinking },
-        { name: "Työkalukutsut", tokens: c.tool_calls },
-        { name: "Laajennusten viestit", tokens: c.other },
+        { name: txt.yourMessages, tokens: c.user },
+        { name: txt.replies, tokens: c.assistant },
+        { name: txt.thinking, tokens: c.thinking },
+        { name: txt.toolCalls, tokens: c.tool_calls },
+        { name: txt.extensionMessages, tokens: c.other },
       ].filter((r) => r.tokens > 0),
     },
     {
       key: "out",
-      name: "Työkalujen tulosteet",
+      name: txt.toolOutputs,
       tokens: p.tool_output,
       rows: detail.largest_outputs.map((o) => ({
-        name: `${o.name} · vuoro ${o.turn}`,
+        name: txt.outputAtTurn(o.name, o.turn),
         tokens: o.tokens,
         mono: true,
       })),
-      note:
-        detail.largest_outputs.length > 1 ? "Suurimmat tulosteet" : undefined,
+      note: detail.largest_outputs.length > 1 ? txt.largestOutputs : undefined,
     },
     ...(p.attachments
       ? [
           {
             key: "att" as const,
-            name: "Liitteet",
+            name: txt.attachments,
             tokens: p.attachments,
             rows: [],
-            note: "Kuvat Pi:n kiinteällä kuva-arviolla",
+            note: txt.attachmentsNote,
           },
         ]
       : []),
@@ -118,13 +108,10 @@ export function contextView(detail: ContextDetail, usage?: ContextUsage) {
   if (rest > 0)
     categories.push({
       key: "rest",
-      name: "Erittelemätön",
+      name: txt.unitemized,
       tokens: rest,
       rows: [],
-      note:
-        harness === "claude_code"
-          ? "Mitatun ja arvioidun ero: Claude Coden oma järjestelmäkehote, jota sessiotiedostoon ei kirjata, ja merkki-arvion virhe."
-          : "Mitatun ja arvioidun ero: merkkimäärästä arvioidut osat eivät vastaa mallin tokenointia tarkasti.",
+      note: harness === "claude_code" ? txt.gapClaude : txt.gapPi,
     });
   const base = Math.max(total, estimated);
   const percent =
@@ -142,24 +129,23 @@ export function contextView(detail: ContextDetail, usage?: ContextUsage) {
   };
 }
 
-const full = (n: number) => Math.round(n).toLocaleString("fi-FI");
+const full = (n: number) => formatNumber(Math.round(n));
 const kt = (n: number) =>
   n >= 1000
-    ? `${(n / 1000).toLocaleString("fi-FI", { maximumFractionDigits: n >= 100000 ? 0 : 1 })}k`
+    ? `${formatNumber(n / 1000, { maximumFractionDigits: n >= 100000 ? 0 : 1 })}k`
     : String(n);
-const pc = (p: number) => `${p > 0 && p < 1 ? "<1" : Math.round(p)} %`;
+const pc = (p: number) =>
+  txt.percent(p > 0 && p < 1 ? "<1" : String(Math.round(p)));
 function clock(at: string) {
   const d = new Date(at);
   if (Number.isNaN(d.getTime())) return "";
   const today = new Date().toDateString() === d.toDateString();
-  return d.toLocaleString("fi-FI", {
+  return formatDate(d, {
     ...(today ? {} : { day: "numeric", month: "numeric" }),
     hour: "2-digit",
     minute: "2-digit",
   });
 }
-const turnRange = (from: number, to: number) =>
-  to <= from ? `vuoro ${from}` : `vuorot ${from}–${to}`;
 
 function Bar({
   view,
@@ -212,12 +198,12 @@ function Composition({ view }: { view: ReturnType<typeof contextView> }) {
     <table className="ah-cd-table" data-testid="context-parts">
       <thead>
         <tr>
-          <th scope="col">Osa</th>
+          <th scope="col">{txt.part}</th>
           <th scope="col" className="num">
-            Tokenia
+            {txt.tokens}
           </th>
           <th scope="col" className="num">
-            Osuus
+            {txt.share}
           </th>
         </tr>
       </thead>
@@ -276,10 +262,10 @@ function NextCompaction({
   const enabled = detail.settings?.enabled;
   const when =
     enabled === false
-      ? "Automaattinen tiivistys on pois päältä; tiivistys tapahtuu vain pyynnöstä."
+      ? txt.autoOff
       : view.threshold !== undefined
-        ? `Pi tiivistää, kun käyttö ylittää ${full(view.threshold)} tokenia.`
-        : "Tiivistyksen hetkeä ei voi laskea ilman mallin ikkunan kokoa.";
+        ? txt.compactsAbove(full(view.threshold))
+        : txt.noWhenWithoutWindow;
   const strip = detail.turns.filter((t) => t.n > 0);
   return (
     <>
@@ -302,15 +288,15 @@ function NextCompaction({
           <p className="ah-cd-keys">
             <span>
               <i data-st="gone" />
-              Jo tiivistelmässä
+              {txt.alreadySummarized}
             </span>
             <span>
               <i data-st="next" />
-              Tiivistyy seuraavaksi
+              {txt.compactsNext}
             </span>
             <span>
               <i data-st="kept" />
-              Säilyy
+              {txt.kept}
             </span>
           </p>
         </>
@@ -318,18 +304,25 @@ function NextCompaction({
       <p className="ah-cd-text" data-testid="context-next">
         {when}{" "}
         {next
-          ? `Silloin ${next.through_turn >= next.from_turn ? turnRange(next.from_turn, next.through_turn) : "keskustelun alku"} (noin ${kt(next.summarized_tokens)} tokenia) korvautuu yhteenvedolla${detail.compactions.length ? ", joka päivittää edellisen tiivistelmän" : ""}. ${next.split_turn ? `Vuoro ${next.kept_from_turn} jakautuu: sen alku tiivistyy ja loppu säilyy.` : `${turnRange(next.kept_from_turn, last)} säilyy sellaisenaan.`}`
+          ? txt.nextCompaction({
+              from: next.from_turn,
+              through: next.through_turn,
+              tokens: kt(next.summarized_tokens),
+              updates: detail.compactions.length > 0,
+              split: next.split_turn ? next.kept_from_turn : undefined,
+              keptFrom: next.kept_from_turn,
+              last,
+            })
           : detail.settings
-            ? "Tiivistettävää ei vielä ole: Pi säilyttäisi koko keskustelun sellaisenaan."
-            : "Pi:n tiivistysasetuksia ei voitu lukea, joten seuraavaa tiivistystä ei voi ennakoida."}
+            ? txt.nothingToCompact
+            : txt.settingsUnread}
       </p>
       <p className="ah-cd-fine">
-        Pi:n oma leikkaussääntö
-        {detail.settings
-          ? `: uusimmat noin ${full(detail.settings.keep_recent_tokens)} tokenia säilyvät vuoron alusta lähtien.`
-          : "."}{" "}
-        Tiivistetyt vuorot jäävät sessiotiedostoon ja keskusteluun, mutta malli
-        ei enää näe niitä sellaisinaan.
+        {txt.cutRule(
+          detail.settings
+            ? full(detail.settings.keep_recent_tokens)
+            : undefined,
+        )}
       </p>
     </>
   );
@@ -337,7 +330,7 @@ function NextCompaction({
 
 function Compactions({ detail }: { detail: ContextDetail }) {
   if (!detail.compactions.length)
-    return <p className="ah-cd-empty">Ei tiivistyksiä tässä keskustelussa.</p>;
+    return <p className="ah-cd-empty">{txt.noCompactions}</p>;
   return (
     <ol className="ah-cd-comps" data-testid="context-compactions">
       {detail.compactions
@@ -347,41 +340,34 @@ function Compactions({ detail }: { detail: ContextDetail }) {
           return (
             <li key={n}>
               <p className="ah-cd-comp-h">
-                <strong>Tiivistys {n}</strong>
+                <strong>{txt.compaction(n)}</strong>
                 <span>
-                  {clock(c.at)} ·{" "}
-                  {c.kept_from_turn > 1
-                    ? `${turnRange(1, c.kept_from_turn - 1)} tiivistelmään`
-                    : "ei kokonaisia vuoroja"}
+                  {clock(c.at)} · {txt.intoSummary(c.kept_from_turn - 1)}
                 </span>
               </p>
               <p className="ah-cd-comp-n num">
                 {full(c.tokens_before)} →{" "}
                 {c.tokens_after !== undefined
-                  ? `${full(c.tokens_after)} seuraavassa vastauksessa`
-                  : "koko seuraavasta vastauksesta"}
+                  ? txt.afterNextReply(full(c.tokens_after))
+                  : txt.sizeFromNextReply}
               </p>
               <p className="ah-cd-fine">
-                Yhteenveto noin {full(c.summary_tokens)} tokenia
+                {txt.summarySize(full(c.summary_tokens))}
               </p>
               <pre className="ah-cd-summary">{c.summary}</pre>
               {c.summary_truncated ? (
-                <p className="ah-cd-fine">
-                  Tiivistelmä on katkaistu; koko teksti on sessiotiedostossa.
-                </p>
+                <p className="ah-cd-fine">{txt.summaryTruncated}</p>
               ) : null}
-              {[
-                ["Luetut", c.read_files],
-                ["Muutetut", c.modified_files],
-              ].map(([label, files]) =>
+              {(
+                [
+                  ["read", txt.readFiles, c.read_files],
+                  ["modified", txt.modifiedFiles, c.modified_files],
+                ] as const
+              ).map(([key, label, files]) =>
                 files.length ? (
-                  <p className="ah-cd-files" key={label as string}>
-                    <span>
-                      {label} {files.length}
-                    </span>{" "}
-                    <span className="mono">
-                      {(files as string[]).join(", ")}
-                    </span>
+                  <p className="ah-cd-files" key={key}>
+                    <span>{label(files.length)}</span>{" "}
+                    <span className="mono">{files.join(", ")}</span>
                   </p>
                 ) : null,
               )}
@@ -461,26 +447,26 @@ function Turns({
               <th scope="col" className="num">
                 #
               </th>
-              <th scope="col">Aika</th>
-              <th scope="col">Pyyntö</th>
+              <th scope="col">{txt.time}</th>
+              <th scope="col">{txt.request}</th>
               <th scope="col" className="num">
-                Konteksti
+                {txt.context}
               </th>
               <th scope="col" className="num">
-                Muutos
+                {txt.change}
               </th>
               <th scope="col" className="num opt">
-                Uusi syöte
+                {txt.newInput}
               </th>
               <th scope="col" className="num opt">
-                Välimuistista
+                {txt.fromCache}
               </th>
               <th scope="col" className="num opt">
-                Tuotos
+                {txt.output}
               </th>
               {priced ? (
                 <th scope="col" className="num opt">
-                  Hinta
+                  {txt.cost}
                 </th>
               ) : null}
             </tr>
@@ -519,7 +505,7 @@ function Turns({
                   <td className="num opt">{full(t.output)}</td>
                   {priced ? (
                     <td className="num opt">
-                      {t.cost.toLocaleString("fi-FI", {
+                      {formatNumber(t.cost, {
                         style: "currency",
                         currency: "USD",
                         maximumFractionDigits: 3,
@@ -530,11 +516,13 @@ function Turns({
                 ...compactions.map(({ c, n }) => (
                   <tr className="cmp" key={`c${n}`}>
                     <td colSpan={priced ? 9 : 8}>
-                      Tiivistys {n}: {full(c.tokens_before)} tokenia →
-                      yhteenveto noin {full(c.summary_tokens)}
-                      {c.kept_from_turn <= c.after_turn
-                        ? `; ${turnRange(c.kept_from_turn, c.after_turn)} ${c.after_turn > c.kept_from_turn ? "säilyivät" : "säilyi"} sellaisenaan`
-                        : ""}
+                      {txt.compactionRow({
+                        n,
+                        before: full(c.tokens_before),
+                        summary: full(c.summary_tokens),
+                        keptFrom: c.kept_from_turn,
+                        after: c.after_turn,
+                      })}
                     </td>
                   </tr>
                 )),
@@ -544,15 +532,7 @@ function Turns({
         </table>
       </div>
       <p className="ah-cd-fine">
-        Konteksti on Pi:n mittaama vuoron viimeisestä vastauksesta. Syöte,
-        välimuisti ja tuotos ovat vuoron kaikkien vastausten summia: jokainen
-        työkalukutsun jälkeinen vastaus lukee koko kontekstin uudelleen.
-        {priced
-          ? " Hinta on Pi:n kirjaama."
-          : " Pi kirjasi hinnaksi 0, mikä on tavallista tilauksen kautta käytetyille malleille."}
-        {detail.turns_omitted
-          ? ` ${detail.turns_omitted} vanhempaa vuoroa ei näytetä.`
-          : ""}
+        {txt.turnsFine(priced, detail.turns_omitted ?? 0)}
       </p>
     </>
   );
@@ -570,6 +550,7 @@ export function ContextPage({
   title: string;
   onClose: () => void;
 }) {
+  useLanguage();
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     heading.current?.focus();
@@ -597,26 +578,24 @@ export function ContextPage({
           size="inline"
           variant="quiet"
           className="ah-cd-back"
-          aria-label={`Takaisin keskusteluun: ${title}`}
+          aria-label={txt.back(title)}
           onPress={onClose}
         >
           <Icon name="back" />
           <span>{title}</span>
         </ControlButton>
         <h2 id="ah-cd-title" tabIndex={-1} ref={heading}>
-          Konteksti
+          {txt.title}
         </h2>
         {!detail ? (
           <p className="ah-cd-text" role="status">
-            {read.state === "loading"
-              ? "Luetaan Pi:n sessiota…"
-              : "Kontekstin erittelyä ei voitu lukea. Keskustelu ja sen historia ovat ennallaan."}
+            {read.state === "loading" ? txt.reading : txt.unreadable}
           </p>
         ) : view ? (
           <>
             {read.state === "unavailable" ? (
               <p className="ah-cd-text" role="status">
-                Uusinta erittelyä ei voitu lukea; näytetään edellinen.
+                {txt.showingPrevious}
               </p>
             ) : null}
             <div className="ah-cd-top" data-level={level}>
@@ -627,79 +606,78 @@ export function ContextPage({
               >
                 {view.measured === undefined ? (
                   <>
-                    ? <span>arvio noin {full(view.total)} tokenia</span>
+                    ? <span>{txt.estimateAbout(full(view.total))}</span>
                   </>
                 ) : view.percent !== undefined && view.window ? (
                   <>
                     {pc(view.percent)}{" "}
                     <span>
-                      {full(view.measured)} / {full(view.window)} tokenia
+                      {txt.ofWindow(full(view.measured), full(view.window))}
                     </span>
                   </>
                 ) : (
                   <>
-                    {full(view.measured)}{" "}
-                    <span>tokenia · ikkuna ei tiedossa</span>
+                    {full(view.measured)} <span>{txt.windowUnknown}</span>
                   </>
                 )}
               </p>
               <Bar view={view} estimate={view.measured === undefined} />
               <p className="ah-cd-text">
                 {view.measured === undefined
-                  ? "Pi mittaa koon seuraavasta vastauksesta; siihen asti kokonaismääräkin on arvio."
+                  ? txt.measuresNext
                   : view.threshold !== undefined && view.window
                     ? view.threshold > view.measured
-                      ? `${full(view.threshold - view.measured)} tokenia tilaa ennen tiivistystä (raja ${full(view.threshold)}).`
-                      : `Käyttö on tiivistysrajan (${full(view.threshold)}) yli; Pi tiivistää seuraavan vuoron jälkeen.`
+                      ? txt.roomBefore(
+                          full(view.threshold - view.measured),
+                          full(view.threshold),
+                        )
+                      : txt.overThreshold(full(view.threshold))
                     : detail.settings?.enabled === false
-                      ? "Automaattinen tiivistys on pois päältä."
-                      : "Tiivistysrajaa ei voi laskea ilman mallin ikkunan kokoa."}
+                      ? txt.autoOffShort
+                      : txt.noThresholdWithoutWindow}
                 {detail.trailing_tokens && view.measured !== undefined
-                  ? ` Viimeisen mittauksen jälkeen on tullut noin ${full(detail.trailing_tokens)} tokenia.`
+                  ? txt.trailing(full(detail.trailing_tokens))
                   : ""}
               </p>
               <p className="ah-cd-meta">
                 <span className="mono">
-                  {usage?.model ?? detail.model ?? "Malli ei tiedossa"}
+                  {usage?.model ?? detail.model ?? txt.modelUnknown}
                 </span>
-                {" · "}ikkuna {view.window ? full(view.window) : "ei tiedossa"}
+                {" · "}
+                {txt.windowMeta(view.window ? full(view.window) : undefined)}
                 {detail.settings
-                  ? ` · vara ${full(detail.settings.reserve_tokens)} · säilytettävä ${full(detail.settings.keep_recent_tokens)}`
+                  ? txt.settingsMeta(
+                      full(detail.settings.reserve_tokens),
+                      full(detail.settings.keep_recent_tokens),
+                    )
                   : ""}
               </p>
               {detail.harness === "claude_code" ? (
                 <p className="ah-cd-fine" data-testid="context-harness">
-                  Keskustelu kulkee Pi:n Claude-sillan kautta. Claude Code
-                  lähettää oman järjestelmäkehotteensa Pi:n perusohjeen tilalle,
-                  eikä sen kokoa kirjata sessiotiedostoon; Pi:stä välittyvät
-                  projektin ohjeet, skillit ja työkalut.
+                  {txt.claudeBridge}
                 </p>
               ) : null}
             </div>
             <div className="ah-cd-grid">
               <section aria-labelledby="ah-cd-parts">
-                <h3 id="ah-cd-parts">Mistä se koostuu</h3>
+                <h3 id="ah-cd-parts">{txt.composedOf}</h3>
                 <Composition view={view} />
                 <p className="ah-cd-fine">
-                  {view.measured === undefined
-                    ? "Tiivistyksen jälkeen kokonaismääräkin on arvio, kunnes Pi mittaa sen seuraavasta vastauksesta."
-                    : "Kokonaismäärä on Pi:n mittaama viimeisestä vastauksesta."}{" "}
-                  Osat ovat Pi:n omaa arviota sessiotiedoston sisällöstä (merkit
-                  / 4).
-                  {view.over
-                    ? ` Arvio ylittää mitatun ${full(view.over)} tokenilla.`
-                    : ""}
+                  {txt.partsFine(
+                    view.measured !== undefined,
+                    view.over ? full(view.over) : undefined,
+                  )}
                 </p>
               </section>
               <section aria-labelledby="ah-cd-next">
-                <h3 id="ah-cd-next">Seuraava tiivistys</h3>
+                <h3 id="ah-cd-next">{txt.nextHeading}</h3>
                 <NextCompaction detail={detail} view={view} />
-                <h3>Tiivistykset</h3>
+                <h3>{txt.compactions}</h3>
                 <Compactions detail={detail} />
               </section>
             </div>
             <section aria-labelledby="ah-cd-turns">
-              <h3 id="ah-cd-turns">Vuorot</h3>
+              <h3 id="ah-cd-turns">{txt.turns}</h3>
               <Turns detail={detail} view={view} />
             </section>
           </>

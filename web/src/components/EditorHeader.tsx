@@ -1,3 +1,5 @@
+import { useText } from "../i18n";
+import { editorHeaderText } from "../text/editorHeader";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 
@@ -13,6 +15,7 @@ export function EditorHeader({
   onToggleCollapsed: () => void;
   onClose: () => void;
 }) {
+  const t = useText(editorHeaderText);
   const Title = collapsed ? "h1" : "h2";
   return (
     <header className="ah-editor-header" data-testid="editor-header">
@@ -22,14 +25,8 @@ export function EditorHeader({
           data-testid="hide-conversation"
           size="row"
           variant="quiet"
-          aria-label={
-            collapsed ? "Palauta rinnakkain" : "Editori koko ikkunaan"
-          }
-          title={
-            collapsed
-              ? "Palauta keskustelu editorin viereen"
-              : "Editori koko ikkunaan"
-          }
+          aria-label={collapsed ? t.sideBySide : t.fullWindow}
+          title={collapsed ? t.sideBySideHint : t.fullWindow}
           aria-pressed={collapsed}
           onPress={onToggleCollapsed}
         >
@@ -39,8 +36,8 @@ export function EditorHeader({
           data-testid="close-editor"
           size="row"
           variant="quiet"
-          aria-label="Sulje editori"
-          title="Sulje editori"
+          aria-label={t.close}
+          title={t.close}
           onPress={onClose}
         >
           <Icon name="cross" />

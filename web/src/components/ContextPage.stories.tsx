@@ -15,7 +15,7 @@ const meta = {
   args: {
     detail: { state: "ready", detail: piReading },
     usage: { phase: "known", tokens: 204220, ...codex },
-    title: "Status-skripti",
+    title: "Status script",
     onClose: () => {},
   },
   decorators: [

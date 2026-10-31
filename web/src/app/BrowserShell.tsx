@@ -21,6 +21,8 @@ import {
   TerminalToggle,
 } from "../components/TerminalPanel";
 import { isTerminalShortcut } from "../components/terminalShortcut";
+import { liveText, useLanguage } from "../i18n";
+import { browserShellText } from "../text/browserShell";
 import { WriteRefused } from "./mutations";
 import {
   closeShell,
@@ -35,6 +37,8 @@ import {
 } from "./terminals";
 
 // Per-viewer conveniences only; a failing storage leaves the defaults.
+const txt = liveText(browserShellText);
+
 function stored(storage: () => Storage, key: string) {
   try {
     return storage().getItem(key);
@@ -165,6 +169,7 @@ export function useBrowserShell({
   const [sticky, setSticky] = useState({ ctrl: false, alt: false });
   const [confirmClose, setConfirmClose] = useState<TerminalTab>();
   const [toast, setToast] = useState<string>();
+  useLanguage();
   const terminal = useRef<TerminalHandle>(null);
   const focusOnOpen = useRef(false);
   const tablist = useRef<HTMLDivElement>(null);
@@ -302,7 +307,7 @@ export function useBrowserShell({
             );
             if (target.kind === "taskfleet") {
               setAttached((a) => a.filter((t) => t !== target.token));
-              if (!last) setToast("Taskfleetin ikkuna sulkeutui.");
+              if (!last) setToast(txt.taskfleetWindowClosed);
             } else {
               setList((current) =>
                 current
@@ -314,8 +319,7 @@ export function useBrowserShell({
                     }
                   : current,
               );
-              if (!last)
-                setToast("Pääte päättyi. Sen tmux-istunto suljettiin.");
+              if (!last) setToast(txt.shellEnded);
             }
             if (last) {
               setOpen(false);
@@ -344,9 +348,7 @@ export function useBrowserShell({
               connection.current = undefined;
               setPending(undefined);
               setActive(undefined);
-              setToast(
-                "Yhteys katkesi ennen kuin pääte avautui. Se saattoi silti avautua; avaa paneeli uudelleen tarkistaaksesi.",
-              );
+              setToast(txt.lostBeforeOpen);
               setOpen(false);
               setMaximized(false);
               void refresh();
@@ -371,7 +373,7 @@ export function useBrowserShell({
                   connection.current = undefined;
                   if (still) setNonce((n) => n + 1);
                   else {
-                    setPhase({ kind: "refused", text: "Pääte on päättynyt." });
+                    setPhase({ kind: "refused", text: txt.ended });
                     setActive(undefined);
                   }
                 },
@@ -432,9 +434,7 @@ export function useBrowserShell({
       }
       setAttached((a) => a.filter((t) => `t:${t}` !== tab.key));
       if (active === tab.key) setActive(undefined);
-      setToast(
-        `Irrotettiin ${tab.name}. Ikkuna jatkaa Taskfleetissä; liity uudelleen tmux-valikosta.`,
-      );
+      setToast(txt.detachedNamed(tab.name));
       return;
     }
     if (tab.key === "new" || !csrf) return;
@@ -462,7 +462,7 @@ export function useBrowserShell({
         setOpen(false);
         setMaximized(false);
         setToast(undefined);
-      } else setToast(`${tab.name} lopetettiin.`);
+      } else setToast(txt.stopped(tab.name));
     };
     try {
       await closeShell(workspaceId, tab.key.slice(2), csrf);
@@ -471,10 +471,7 @@ export function useBrowserShell({
       if (error instanceof TerminalLogin) onLogin?.();
       else if (error instanceof WriteRefused && error.code === "shell_ended")
         closed();
-      else
-        setToast(
-          "Lopetuksen tulos jäi epävarmaksi. Päätteet luetaan uudelleen.",
-        );
+      else setToast(txt.stopUncertain);
       // A refused or uncertain close must not leave a live tab disconnected.
       setNonce((n) => n + 1);
     }
@@ -523,7 +520,7 @@ export function useBrowserShell({
     } catch (error) {
       if (request !== openRequest.current) return;
       if (error instanceof TerminalLogin) onLogin?.();
-      else setToast("Päätteitä ei voitu lukea. Yritä uudelleen.");
+      else setToast(txt.listFailed);
     }
   }, [workspaceId, attached, setOpen, focusTerminal, onLogin]);
 
@@ -555,11 +552,11 @@ export function useBrowserShell({
   const notice =
     phase.kind === "connecting" && activeTab ? (
       <p data-testid="terminal-connecting">
-        {activeKey === "new" ? "Avataan päätettä…" : "Yhdistetään päätteeseen…"}
+        {activeKey === "new" ? txt.opening : txt.connecting}
       </p>
     ) : phase.kind === "detached" ? (
       <>
-        <p>Pääte irrotettiin muualta. Se jatkaa tmuxissa.</p>
+        <p>{txt.detachedElsewhere}</p>
         <ControlButton
           size="row"
           variant="secondary"
@@ -568,7 +565,7 @@ export function useBrowserShell({
             setNonce((n) => n + 1);
           }}
         >
-          Liity uudelleen
+          {txt.rejoin}
         </ControlButton>
       </>
     ) : phase.kind === "refused" ? (
@@ -633,11 +630,7 @@ export function useBrowserShell({
           navigator.clipboard
             ?.readText()
             .then(askPaste)
-            .catch(() =>
-              setToast(
-                "Selain ei antanut leikepöytää. Liitä Ctrl+V:llä tai pitkällä painalluksella.",
-              ),
-            );
+            .catch(() => setToast(txt.noClipboard));
         }}
         onPasteAnswer={(ok) => {
           const lines = paste;
@@ -652,8 +645,8 @@ export function useBrowserShell({
           if (!text) return;
           navigator.clipboard
             ?.writeText(text)
-            .then(() => setToast("Valinta kopioitiin leikepöydälle."))
-            .catch(() => setToast("Selain ei antanut kopioida."));
+            .then(() => setToast(txt.copied))
+            .catch(() => setToast(txt.copyRefused));
           focusTerminal();
         }}
         onSendSelection={
@@ -664,9 +657,7 @@ export function useBrowserShell({
                 terminal.current?.clearSelection();
                 if (!text) return;
                 onSendToConversation(text);
-                setToast(
-                  "Valinta lisättiin keskustelun kenttään. Lähetä, kun olet valmis.",
-                );
+                setToast(txt.sentToComposer);
               }
             : undefined
         }
@@ -676,7 +667,10 @@ export function useBrowserShell({
           <TerminalSurface
             key={surfaceId}
             ref={terminal}
-            label={`Pääte ${activeTab?.name ?? "bash"}${ready?.read_only ? " (vain luku)" : ""}`}
+            label={txt.terminalLabel(
+              activeTab?.name ?? "bash",
+              !!ready?.read_only,
+            )}
             readOnly={ready?.read_only}
             offline={phase.kind === "offline"}
             fixedSize={
@@ -719,20 +713,19 @@ export function useBrowserShell({
               data-testid="close-terminal-dialog"
               className="ah-dialog"
               role="alertdialog"
-              aria-label={`Lopetetaanko ${confirmClose.name}?`}
+              aria-label={txt.stopQuestion(confirmClose.name)}
             >
-              <Heading slot="title">Lopetetaanko {confirmClose.name}?</Heading>
+              <Heading slot="title">
+                {txt.stopQuestion(confirmClose.name)}
+              </Heading>
               <p>
-                Siinä on käynnissä{" "}
-                <span className="ah-mono">
-                  {confirmClose.command ?? "ohjelma"}
-                </span>
-                . Lopetus päättää sen ja sulkee päätteen tmux-istunnon.
+                {txt.running(
+                  <span className="ah-mono">
+                    {confirmClose.command ?? txt.program}
+                  </span>,
+                )}
               </p>
-              <p>
-                Jos haluat vain pois näkyvistä, piilota paneeli: päätteet
-                jatkavat.
-              </p>
+              <p>{txt.hideInstead}</p>
               <div className="ah-dialog-actions">
                 <ControlButton
                   size="page"
@@ -741,7 +734,7 @@ export function useBrowserShell({
                   data-testid="cancel"
                   onPress={() => setConfirmClose(undefined)}
                 >
-                  Peruuta
+                  {txt.cancel}
                 </ControlButton>
                 <ControlButton
                   size="page"
@@ -753,7 +746,7 @@ export function useBrowserShell({
                     void closeTab(tab);
                   }}
                 >
-                  Lopeta pääte
+                  {txt.stop}
                 </ControlButton>
               </div>
             </Dialog>

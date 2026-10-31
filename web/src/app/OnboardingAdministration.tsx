@@ -104,7 +104,7 @@ function DefaultRepositoryFinder({
     ...r,
     href: `${settingsHref("kayttoonotto")}?${isAdded(r.full_name) ? removeParam : addParam}=${encodeURIComponent(r.full_name)}`,
     selected: isAdded(r.full_name),
-    mark: isAdded(r.full_name) ? { label: "✓ valittu", tone: "ok" } : undefined,
+    mark: isAdded(r.full_name) ? { label: txt.chosen, tone: "ok" } : undefined,
   });
   const typed = exactName(query);
   const inCatalog = (name: string) =>
@@ -215,14 +215,14 @@ function DefaultRepositoryFinder({
           </div>
           <div className="ob-finder-foot">
             <span role="status" className="ob-muted">
-              {added.length} / {maxDefaults} oletusrepoa
+              {txt.defaultReposCount(added.length, maxDefaults)}
             </span>
             <ControlButton
               data-testid="onboarding-finder-done"
               size="page"
               onPress={onClose}
             >
-              Valmis
+              {txt.done}
             </ControlButton>
           </div>
         </Dialog>

@@ -90,6 +90,8 @@ const fi = {
   conversationModel: "Keskustelun oma malli",
   less: (label: string) => `${label}: vähemmän`,
   more: (label: string) => `${label}: enemmän`,
+  responseTooLow: (floor: number) =>
+    `Raja voi katkaista katsauksen kesken. Nosta se vähintään ${floor} tokeniin.`,
 };
 
 export const recapSettingsText = catalog(fi, {
@@ -176,4 +178,6 @@ export const recapSettingsText = catalog(fi, {
   conversationModel: "The conversation's own model",
   less: (label) => `${label}: less`,
   more: (label) => `${label}: more`,
+  responseTooLow: (floor) =>
+    `The limit can cut the recap short. Raise it to at least ${floor} tokens.`,
 });

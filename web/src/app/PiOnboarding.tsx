@@ -23,6 +23,8 @@ import type { AIOffer } from "./onboardingConfig";
 import { type KeyProvider, PiCredentials } from "./PiCredentials";
 import { type Attempt, piAttempt, piStatus, sessionCSRF } from "./pi";
 import "./PiOnboarding.css";
+import { useText } from "../i18n";
+import { piOnboardingText } from "../text/piOnboarding";
 
 function viewOf(attempt: Attempt): PiDeviceSignInView {
   if (
@@ -69,6 +71,7 @@ export function PiOnboarding({
   /** Under the step card, such as the background clones that failed. */
   notice?: ReactNode;
 }) {
+  const t = useText(piOnboardingText);
   const [exitOpen, setExitOpen] = useState(false);
   const suggested = offer ? suggestionOf(offer) : undefined;
   // The open row starts at the site's suggestion. A suggestion read after the
@@ -346,18 +349,18 @@ export function PiOnboarding({
           aria-labelledby="pi-sign-in-title"
         >
           <header>
-            <p className="ah-eyebrow">Käyttöönotto</p>
+            <p className="ah-eyebrow">{t.eyebrow}</p>
             <h1
               id="pi-sign-in-title"
               data-testid="pi-sign-in-title"
               tabIndex={-1}
             >
-              Kirjaudu AI-palveluun
+              {t.title}
             </h1>
             <p>{aiStepLead(suggested)}</p>
           </header>
           {offer === null ? (
-            <p role="status">Haetaan vaihtoehtoja…</p>
+            <p role="status">{t.fetching}</p>
           ) : (
             <AIOfferList
               offer={offer}
@@ -435,7 +438,7 @@ export function PiOnboarding({
           <Button
             data-testid="pi-sign-in-return"
             size="row"
-            label="Takaisin"
+            label={t.back}
             variant="quiet"
             onPress={onReturn}
           />
@@ -444,7 +447,7 @@ export function PiOnboarding({
             <Button
               data-testid="pi-back-to-repositories"
               size="row"
-              label="Takaisin repojen valintaan"
+              label={t.backToRepos}
               variant="quiet"
               onPress={onBack}
             />
@@ -453,7 +456,7 @@ export function PiOnboarding({
         <Button
           data-testid="onboarding-abort"
           size="row"
-          label="Keskeytä käyttöönotto ja kirjaudu ulos"
+          label={t.abort}
           variant="quiet"
           onPress={() => setExitOpen(true)}
         />

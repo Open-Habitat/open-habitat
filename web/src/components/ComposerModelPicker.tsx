@@ -2,6 +2,8 @@ import { type ReactNode, useEffect, useRef } from "react";
 import { ModelChip } from "./ModelChip";
 import type { ModelChoice } from "./ModelPicker";
 import "./ModelPicker.css";
+import { textNow } from "../i18n";
+import { conversationFrameText } from "../text/conversationFrame";
 
 /** A native disclosure: outside pointers dismiss without stealing their focus. */
 export function ComposerModelPicker({
@@ -49,7 +51,7 @@ export function ComposerModelPicker({
         thinking={thinking}
         models={models}
         className="md-pill"
-        aria-label="Uuden keskustelun malli"
+        aria-label={textNow(conversationFrameText).newConversationModel}
       />
       <div className="md-pop md-pop-up" data-testid="composer-model-menu">
         {children(close)}

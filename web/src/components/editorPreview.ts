@@ -5,14 +5,12 @@ import type { IconName } from "./Icon";
 export type FileView = {
   kind: "markdown" | "table" | "image" | "page";
   icon: IconName;
-  /** Names what the button shows before it is pressed. */
-  label: string;
 };
 const views: [RegExp, FileView][] = [
-  [/\.(md|markdown)$/i, { kind: "markdown", icon: "eye", label: "Esikatselu" }],
-  [/\.(csv|tsv)$/i, { kind: "table", icon: "table", label: "Taulukko" }],
-  [/\.svg$/i, { kind: "image", icon: "image", label: "Kuva" }],
-  [/\.html?$/i, { kind: "page", icon: "eye", label: "Sivu" }],
+  [/\.(md|markdown)$/i, { kind: "markdown", icon: "eye" }],
+  [/\.(csv|tsv)$/i, { kind: "table", icon: "table" }],
+  [/\.svg$/i, { kind: "image", icon: "image" }],
+  [/\.html?$/i, { kind: "page", icon: "eye" }],
 ];
 export const fileView = (path?: string): FileView | undefined =>
   path ? views.find(([pattern]) => pattern.test(path))?.[1] : undefined;

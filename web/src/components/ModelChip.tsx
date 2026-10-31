@@ -60,7 +60,7 @@ export function ModelChip({
       {compact ? (
         <span className="ah-visually-hidden">
           {" "}
-          · ajattelutaso {thinkingDisplayName(thinking)}
+          {txt.thinkingLevelHidden} {thinkingDisplayName(thinking)}
         </span>
       ) : (
         <>

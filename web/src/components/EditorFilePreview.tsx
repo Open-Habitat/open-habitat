@@ -1,8 +1,11 @@
 // Full-view previews of a CSV/TSV, an SVG and an HTML file in the browser
 // editor, loaded with the first such preview. Each shows the buffer as data:
 // nothing in the file runs, and nothing it names is fetched.
+
 import { useEffect, useMemo, useState } from "react";
 import { frameCSP, inertMarkup } from "../app/documentPreview";
+import { useText } from "../i18n";
+import { editorFilePreviewText } from "../text/editorFilePreview";
 import { readTable } from "./csvTable";
 
 /** Rows past this are left out, and the caption says so: the editor opens
@@ -19,19 +22,20 @@ export function TablePreview({ text, tabs }: { text: string; tabs: boolean }) {
   const [head, ...body] = rows;
   const shown = body.slice(0, tableLimit);
   const width = Math.max(0, ...rows.map((r) => r.cells.length));
-  const named =
-    separator === ";"
-      ? "puolipiste"
-      : separator === "\t"
-        ? "sarkain"
-        : "pilkku";
+  const t = useText(editorFilePreviewText);
   return (
     <>
       <p className="ah-preview-caption">
-        {shown.length} riviä · {width} saraketta · erotin {named}
-        {more || body.length > tableLimit
-          ? ` · näytetään ${tableLimit} ensimmäistä riviä`
-          : ""}
+        {t.tableCaption(
+          shown.length,
+          width,
+          separator === ";"
+            ? "semicolon"
+            : separator === "\t"
+              ? "tab"
+              : "comma",
+          more || body.length > tableLimit ? tableLimit : undefined,
+        )}
       </p>
       {head ? (
         <table className="ah-preview-table" data-testid="editor-preview-table">
@@ -81,6 +85,7 @@ export function ImagePreview({ text, name }: { text: string; name: string }) {
     () => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(text)}`,
     [text],
   );
+  const t = useText(editorFilePreviewText);
   const [size, setSize] = useState<{ url: string; w: number; h: number }>();
   const [failed, setFailed] = useState<string>();
   useEffect(() => {
@@ -93,7 +98,7 @@ export function ImagePreview({ text, name }: { text: string; name: string }) {
   if (failed === url)
     return (
       <p className="ah-preview-caption" data-testid="editor-preview-failed">
-        Kuvaa ei voi piirtää: tiedosto ei ole kelvollinen SVG.
+        {t.notSvg}
       </p>
     );
   return (
@@ -103,7 +108,7 @@ export function ImagePreview({ text, name }: { text: string; name: string }) {
       </div>
       <figcaption className="ah-preview-caption">
         {size?.url === url && size.w ? `${size.w} × ${size.h} · ` : ""}
-        läpinäkyvä tausta ruudukkona
+        {t.checker}
       </figcaption>
     </figure>
   );
@@ -131,13 +136,11 @@ export function inertPage(text: string): string {
 }
 
 export function PagePreview({ text, name }: { text: string; name: string }) {
+  const t = useText(editorFilePreviewText);
   const page = useMemo(() => inertPage(text), [text]);
   return (
     <>
-      <p className="ah-preview-caption ah-preview-page-note">
-        Esikatselu ei suorita skriptejä eikä hae mitään verkosta. Linkit ja
-        suhteelliset kuvat eivät toimi.
-      </p>
+      <p className="ah-preview-caption ah-preview-page-note">{t.inert}</p>
       <iframe
         className="ah-preview-page"
         data-testid="editor-preview-page"

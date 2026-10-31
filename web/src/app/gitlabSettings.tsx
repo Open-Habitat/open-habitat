@@ -272,7 +272,7 @@ export function useGitLabSettings({
       if (!current(sent)) return;
       setRemoving(undefined);
       setNotice(
-        `GitLab ${target.base_url?.replace(/^https:\/\//, "") ?? ""} irrotettu. Kloonatut työtilat jäivät; peru tunnus tarvittaessa myös GitLabissa.`,
+        txt.disconnected(target.base_url?.replace(/^https:\/\//, "") ?? ""),
       );
     } catch (e) {
       if (!current(sent)) return;

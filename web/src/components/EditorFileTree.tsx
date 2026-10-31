@@ -1,4 +1,6 @@
 import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { useText } from "../i18n";
+import { editorFileTreeText } from "../text/editorFileTree";
 import { ControlButton } from "./ControlElements";
 import { type TreeDirectories, type TreeRow, treeRows } from "./editorTree";
 import type { FileRef } from "./fileRefs";
@@ -23,6 +25,7 @@ export function EditorFileTree({
   onOpen: (path: string) => void;
   onClose: () => void;
 }) {
+  const t = useText(editorFileTreeText);
   const [expanded, setExpanded] = useState(new Set<string>());
   const [filter, setFilter] = useState("");
   const [focused, setFocused] = useState<string>();
@@ -83,22 +86,18 @@ export function EditorFileTree({
   return (
     <nav
       hidden={!visible}
-      aria-label="Työtilan tiedostot"
+      aria-label={t.workspaceFiles}
       className="ah-browser-picker"
       data-testid="editor-file-picker"
     >
       <header>
-        <span>Tiedostot</span>
-        <ControlButton
-          size="row"
-          onPress={onClose}
-          aria-label="Sulje tiedostovalitsin"
-        >
-          Sulje
+        <span>{t.files}</span>
+        <ControlButton size="row" onPress={onClose} aria-label={t.closePicker}>
+          {t.close}
         </ControlButton>
       </header>
       <label className="ah-tree-filter">
-        Suodata nimellä
+        {t.filter}
         <input
           data-testid="editor-file-filter"
           autoComplete="off"
@@ -107,10 +106,8 @@ export function EditorFileTree({
           onChange={(event) => setFilter(event.target.value)}
         />
       </label>
-      <p className="ah-tree-scope">
-        Vain avattujen kansioiden ladatut nimet ja polut.
-      </p>
-      <div className="ah-file-tree" role="tree" aria-label="Työtilan tiedostot">
+      <p className="ah-tree-scope">{t.scope}</p>
+      <div className="ah-file-tree" role="tree" aria-label={t.workspaceFiles}>
         {rows.map((row) => {
           const folder = row.kind === "directory";
           const current = row.path === openPath;
@@ -199,14 +196,14 @@ export function EditorFileTree({
                 <Icon name={folder ? "folder" : "file"} />
                 <code>{row.label}</code>
                 {row.kind === "unsupported" && (
-                  <span className="ah-tree-state">Ei tuettu</span>
+                  <span className="ah-tree-state">{t.unsupported}</span>
                 )}
                 {current && (
                   <span
                     className="ah-tree-state"
                     data-testid="editor-file-state"
                   >
-                    {dirty ? "● Muokattu" : "Auki"}
+                    {dirty ? t.modified : t.open}
                   </span>
                 )}
               </button>
@@ -214,31 +211,26 @@ export function EditorFileTree({
           );
         })}
       </div>
-      {filter && rows.length === 0 && (
-        <p role="status">Ei osumia ladatuissa nimissä.</p>
-      )}
+      {filter && rows.length === 0 && <p role="status">{t.noMatches}</p>}
       {Object.entries(directories)
         .filter(([path]) => !path || filter.trim() || expanded.has(path))
         .map(([path, directory]) => (
           <div key={path} className="ah-tree-note">
-            {directory.loading && <p role="status">Ladataan {path || "/"}</p>}
+            {directory.loading && <p role="status">{t.loading(path || "/")}</p>}
             {directory.error && (
               <>
-                <p role="status">Kansiota {path || "/"} ei voitu lukea.</p>
+                <p role="status">{t.unreadable(path || "/")}</p>
                 <ControlButton
                   data-testid="editor-directory-retry"
                   size="row"
                   onPress={() => onLoad(path)}
                 >
-                  Yritä uudelleen
+                  {t.retry}
                 </ControlButton>
               </>
             )}
             {directory.truncated && (
-              <p role="status">
-                {path || "/"}: Vain osa tiedostoista näkyy. Käytä suurille
-                kansioille natiivityökaluja.
-              </p>
+              <p role="status">{t.truncated(path || "/")}</p>
             )}
           </div>
         ))}

@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { conversationName } from "../app/conversationName";
 import "./NameEditor.css";
+import { liveText } from "../i18n";
+import { overlaysText } from "../text/overlays";
+
+const txt = liveText(overlaysText);
 
 /**
  * A conversation's name edited in place of its title. Enter or leaving the
@@ -93,7 +97,7 @@ export function NameEditor({
           role="status"
           data-testid="conversation-name-problem"
         >
-          Nimeä ei voitu tallentaa. Yritä uudelleen tai paina Esc.
+          {txt.nameNotSaved}
         </span>
       ) : null}
     </span>

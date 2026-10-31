@@ -171,7 +171,7 @@ export function StatusBell({ items: given }: { items?: StatusItem[] }) {
   if (!items.length && !open) return null;
   const danger = items.find((i) => i.tone === "danger");
   const n = items.length;
-  const label = `Ilmoitukset: ${n ? `${n} voimassa` : "ei voimassa olevia"}${danger ? `, ${danger.short}` : ""}`;
+  const label = txt.bellLabel(n, danger?.short);
   const groups = [...new Set(items.map((i) => i.group))];
   const close = () => setOpen(false);
   return (
@@ -212,22 +212,22 @@ export function StatusBell({ items: given }: { items?: StatusItem[] }) {
         <Dialog
           className="ah-bell-panel"
           data-testid="status-panel"
-          aria-label="Ilmoitukset"
+          aria-label={txt.notices}
         >
           <header className="ah-bell-head">
             <Heading slot="title" level={2}>
-              Ilmoitukset
+              {txt.notices}
             </Heading>
           </header>
           {n ? (
             groups.map((group) => (
               <section
                 key={group}
-                aria-label={group === "own" ? "Sinun" : "Palvelin"}
+                aria-label={group === "own" ? txt.ownGroup : txt.serverGroup}
               >
                 {groups.length > 1 ? (
                   <h3 className="ah-bell-group">
-                    {group === "own" ? "Sinun" : "Palvelin"}
+                    {group === "own" ? txt.ownGroup : txt.serverGroup}
                   </h3>
                 ) : null}
                 {items
