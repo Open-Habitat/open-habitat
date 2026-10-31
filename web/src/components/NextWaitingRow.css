@@ -95,7 +95,7 @@
 .ah-next-go kbd {
   font: 600 11px var(--ah-mono);
 }
-/* The round: the origin, then the waiting ones, the current one raised. */
+/* The round: the waiting ones, the current one raised. */
 .ah-next-queue {
   display: flex;
   align-items: center;

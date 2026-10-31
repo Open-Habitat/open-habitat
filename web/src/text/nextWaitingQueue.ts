@@ -6,9 +6,8 @@ const fi = {
   handled: (done: number, total: number) => `${done}/${total} hoidettu`,
   previous: "Edellinen",
   next: "Seuraava",
-  backToOrigin: "Takaisin lähtöön",
-  toOrigin: "Lähtöön",
-  origin: "Lähtö",
+  finishTitle: "Päätä kierros tähän",
+  finish: "Valmis",
   end: "Lopeta kierros",
 };
 
@@ -17,8 +16,7 @@ export const nextWaitingQueueText = catalog(fi, {
   handled: (done, total) => `${done}/${total} handled`,
   previous: "Previous",
   next: "Next",
-  backToOrigin: "Back to where you started",
-  toOrigin: "Back",
-  origin: "Start",
+  finishTitle: "End the round here",
+  finish: "Done",
   end: "End the round",
 });

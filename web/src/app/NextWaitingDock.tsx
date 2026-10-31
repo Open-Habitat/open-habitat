@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router";
 import { type AgentNavModel, ballOf } from "../components/Navigation";
 import {
@@ -9,42 +9,39 @@ import { NextWaitingRow } from "../components/NextWaitingRow";
 import { textNow } from "../i18n";
 import { nextWaitingText } from "../text/nextWaiting";
 import { useExperimentalFeature } from "./accountPreferences";
-import type { RoundStep, WaitingRound } from "./nextWaiting";
+import type { WaitingRound } from "./nextWaiting";
 
 /** What the app gives a conversation for the round: the rail's Sinun vuorosi
- * and Käynnissä, the round this tab is on, and this conversation as a step
- * of it. */
+ * and Käynnissä, and the round this tab is on. */
 export type NextWaiting = {
   yours: AgentNavModel[];
   running: AgentNavModel[];
   round: WaitingRound;
-  here: RoundStep;
 };
 
 /**
  * The conversations waiting for the person above this conversation's
  * composer, when the person has turned the experiment on (direction Jono).
- * Outside a round, a line offers them as one round once the host confirms
- * the agent works (run active), not when the message is merely sent: until
- * then the message can still fail and the person still has something here.
- * It then stays for the rest of this visit, also after the agent finishes,
- * and not while this conversation asks the person something. During a round
- * the round's bar shows in every conversation, also one that asks or whose
- * reply was only read, so the way on and back is always on screen. Alt+↓
- * (⌥↓ on a Mac) moves on, Alt+↑ steps back, Esc ends the round.
+ * Outside a round, a line offers the others as one round only while the
+ * host confirms that this conversation's agent works (run active): it is
+ * for the time the agent here works, so it goes when the agent's turn ends
+ * or it asks something and comes back when it works again (Jari
+ * 31.10.2026). Not when the message is merely sent, either: until the host
+ * confirms, the message can still fail and the person still has something
+ * here. During a round the round's bar shows in every conversation, also
+ * one that asks or whose reply was only read, because the steps are the
+ * ones waiting for the person and the bar is how the round moves on.
+ * Alt+↓ (⌥↓ on a Mac) moves on, Alt+↑ steps back, Esc ends the round.
  */
 export function NextWaitingDock({
   next,
   agentId,
   working,
-  needsYou,
 }: {
   next?: NextWaiting;
   agentId: string;
   /** The host confirms this conversation's agent works. */
   working: boolean;
-  /** This conversation waits for the person, or its state is not known. */
-  needsYou: boolean;
 }) {
   const on = useExperimentalFeature("next-waiting-row");
   const navigate = useNavigate();
@@ -53,20 +50,15 @@ export function NextWaitingDock({
     round?.subscribe ?? noSubscribe,
     round?.snapshot ?? noSnapshot,
   );
-  const [engaged, setEngaged] = useState(false);
-  // Only work seen while the experiment is on counts, so switching it on
-  // shows nothing until the next confirmed run.
-  useEffect(() => {
-    if (working && on) setEngaged(true);
-  }, [working, on]);
   const yours = next?.yours ?? [];
   const waits = (id: string) => yours.some((a) => a.agentId === id);
   const inRound = on && !!round?.steps;
   useEffect(() => {
     if (inRound) round?.announce(waits);
   });
+  // Never itself, even while the rail counts it as waiting.
   const others = yours.filter((a) => a.agentId !== agentId);
-  const offered = on && !!next && engaged && !needsYou && others.length > 0;
+  const offered = on && !!next && working && others.length > 0;
   const actions = useRef({
     start: () => {},
     move: (_d: 1 | -1) => {},
@@ -76,7 +68,7 @@ export function NextWaitingDock({
   actions.current = {
     start: () => {
       if (!next) return;
-      const first = next.round.start(next.here, next.yours);
+      const first = next.round.start(agentId, next.yours);
       if (first) navigate(first.href);
     },
     move: (d) => {
@@ -89,7 +81,11 @@ export function NextWaitingDock({
     },
     end: () => round?.end(),
   };
-  const canBack = inRound && (round?.pos ?? 0) > 0;
+  const canBack =
+    inRound &&
+    (round?.steps ?? [])
+      .slice(0, Math.max(0, round?.pos ?? 0))
+      .some((_, i) => round?.stateOf(i, waits) !== "elsewhere");
   useEffect(() => {
     if (!on || !next) return;
     const onKey = (e: KeyboardEvent) => {
@@ -139,17 +135,13 @@ export function NextWaitingDock({
         state,
         ball,
         detail:
-          state === "origin"
-            ? ball === "you"
-              ? t.originDone
-              : t.origin
-            : state === "waits"
-              ? live?.question
-                ? t.asks
-                : t.newReply
-              : state === "elsewhere"
-                ? t.elsewhere
-                : undefined,
+          state === "waits"
+            ? live?.question
+              ? t.asks
+              : t.newReply
+            : state === "elsewhere"
+              ? t.elsewhere
+              : undefined,
       };
     });
     return (

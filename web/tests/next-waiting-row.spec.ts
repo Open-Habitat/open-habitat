@@ -2,10 +2,11 @@ import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
-// Seuraava odottava, Jono (next-waiting-queue): behind its Kokeelliset
-// ominaisuudet switch, the conversations waiting for the person are offered
-// above the composer once the host confirms the agent works, and walked as
-// one round whose bar shows in every step.
+// Seuraava odottava, Jono (next-waiting-queue, next-waiting-no-return):
+// behind its Kokeelliset ominaisuudet switch, the conversations waiting for
+// the person are offered above the composer while the host confirms that
+// this conversation's agent works, and walked forward as one round whose bar
+// shows in every step and never leads back to where it started.
 test.use({
   baseURL: hostOrigin,
   ignoreHTTPSErrors: true,
@@ -13,7 +14,7 @@ test.use({
   deviceScaleFactor: 2,
 });
 
-const evidence = "../issues/next-waiting-queue/evidence";
+const evidence = "../issues/next-waiting-no-return/evidence";
 const capture = !!process.env.OH_VISUAL_CAPTURE;
 
 const conversationOf = (href: string) =>
@@ -86,7 +87,7 @@ async function capture2(page: Page, name: string) {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: null });
 }
 
-test("@next-waiting-row the waiting conversations are walked as one round whose bar leads on and back, only when switched on", async ({
+test("@next-waiting-row the waiting ones are offered only while the agent here works and walked forward as one round, only when switched on", async ({
   page,
   context,
 }) => {
@@ -95,8 +96,8 @@ test("@next-waiting-row the waiting conversations are walked as one round whose 
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
-  const yours = page
-    .getByRole("navigation")
+  const rail = page.getByRole("navigation");
+  const yours = rail
     .getByTestId("rail-yours")
     .getByRole("link")
     .and(page.getByTestId("agent-link"));
@@ -152,14 +153,24 @@ test("@next-waiting-row the waiting conversations are walked as one round whose 
   await switchOn(page);
   await expect.poll(() => conversationNow(page)).toBe(here);
   await expect(page.getByTestId("message-input")).toBeEnabled();
-  // Not before the person has replied and the host confirms the run.
+  // Not while it is the person's turn here.
   await expect(line).toHaveCount(0);
   await send(page, "hidas toinen vuoro");
   await expect(stop).toBeVisible();
   await expect(line).toBeVisible();
+  // The four others, never this conversation itself.
   await expect(line).toHaveAttribute("data-waiting", "4");
+  await expect(line.locator(".ah-next-det")).not.toContainText("hidas");
   // Not a Mac: the key is named Alt.
   await expect(line.locator("kbd")).toHaveText(/^Alt\+/);
+  // Gone when the agent's turn ends and the person has something to write
+  // here (Jari 31.10.: it stayed for the rest of the visit), back when the
+  // agent works again.
+  await expect(stop).toHaveCount(0, { timeout: 30000 });
+  await expect(line).toHaveCount(0);
+  await send(page, "hidas kolmas vuoro");
+  await expect(stop).toBeVisible();
+  await expect(line).toHaveAttribute("data-waiting", "4");
   expect(
     (
       await new AxeBuilder({ page })
@@ -168,11 +179,9 @@ test("@next-waiting-row the waiting conversations are walked as one round whose 
     ).violations,
   ).toEqual([]);
   await capture2(page, "lahto-desktop");
-  // It stays when the agent finishes.
-  await expect(stop).toHaveCount(0, { timeout: 30000 });
-  await expect(line).toBeVisible();
 
-  // Alt+↓ starts the round, also from the composer.
+  // Alt+↓ starts the round, also from the composer, while the agent here
+  // still works. The round is the four waiting ones, not this one.
   const steps = queue.getByTestId("next-queue-step");
   const prev = queue
     .getByRole("button")
@@ -186,16 +195,17 @@ test("@next-waiting-row the waiting conversations are walked as one round whose 
   await expect(queue).toBeVisible();
   // Polled: while a step's history loads the conversation shows no
   // composer and so no bar, and under load a single read can fall there.
-  await expect
-    .poll(() =>
-      steps.evaluateAll((s) => s.map((b) => b.getAttribute("data-agent"))),
-    )
-    .toEqual([here, ...order]);
-  await expect(steps.nth(1)).toHaveAttribute("aria-current", "step");
+  const agents = () =>
+    steps.evaluateAll((s) => s.map((b) => b.getAttribute("data-agent")));
+  await expect.poll(agents).toEqual(order);
+  await expect(steps.nth(0)).toHaveAttribute("aria-current", "step");
   // The reply here is now read and its agent does not work, yet the round
-  // goes on (a read reply stalled the old walk).
-  await expect(steps.nth(1)).toHaveAttribute("data-state", "handled");
-  await expect(prev).toBeEnabled();
+  // goes on; there is nothing before the first step.
+  await expect(steps.nth(0)).toHaveAttribute("data-state", "handled");
+  await expect(prev).toBeDisabled();
+  // The start joins at the end only once its agent finished unseen and so
+  // waits for the person, like any other.
+  await expect.poll(agents, { timeout: 40000 }).toEqual([...order, here]);
   expect(
     (
       await new AxeBuilder({ page })
@@ -207,32 +217,34 @@ test("@next-waiting-row the waiting conversations are walked as one round whose 
   await page.getByTestId("message-input").focus();
   await page.keyboard.press("Alt+ArrowDown");
   await expect.poll(() => conversationNow(page)).toBe(order[1]);
-  await expect(steps.nth(2)).toHaveAttribute("aria-current", "step");
-  // Alt+↑ steps back one, shown by the bar's way back.
+  await expect(steps.nth(1)).toHaveAttribute("aria-current", "step");
+  await expect(prev).toBeEnabled();
+  // Alt+↑ steps back one, and from the first step nowhere.
   await page.keyboard.press("Alt+ArrowUp");
   await expect.poll(() => conversationNow(page)).toBe(order[0]);
-  await prev.click();
-  await expect.poll(() => conversationNow(page)).toBe(here);
-  await expect(steps.nth(0)).toHaveAttribute("aria-current", "step");
   await expect(prev).toBeDisabled();
-  // Back in it once its history has loaded, so its draft is restored first.
-  await expect(
-    page.getByText('Selvä. Kysyit: "hidas toinen vuoro".'),
-  ).toBeVisible();
-  // Esc ends the round.
+  // Esc ends the round. The agent here waits: no line either.
   await page.getByTestId("message-input").focus();
   await page.keyboard.press("Escape");
   await expect(queue).toHaveCount(0);
+  await expect(line).toHaveCount(0);
 
-  // The phone: a new round over the two still waiting, walked by tapping,
-  // and past the last one back to the origin.
+  // The phone: a new round over the three still waiting (the start among
+  // them), walked by tapping; after the last one Valmis ends it there.
   await page.setViewportSize({ width: 390, height: 844 });
-  await send(page, "hidas kolmas vuoro");
+  await send(page, "hidas neljäs vuoro");
   await expect(stop).toBeVisible();
-  await expect(line).toHaveAttribute("data-waiting", "2");
+  await expect(line).toHaveAttribute("data-waiting", "3");
   await page.getByRole("button").and(page.getByTestId("next-open")).click();
-  await expect.poll(() => conversationNow(page)).toBe(order[2]);
   await expect(queue).toBeVisible();
+  let round: (string | null)[] = [];
+  await expect
+    .poll(async () => {
+      round = await agents();
+      return [...round].sort();
+    })
+    .toEqual([order[2], order[3], here].sort());
+  await expect.poll(() => conversationNow(page)).toBe(round[0]);
   await expect(steps.first()).toBeHidden();
   await expect(prev).toBeVisible();
   await expect(next).toBeVisible();
@@ -240,16 +252,20 @@ test("@next-waiting-row the waiting conversations are walked as one round whose 
   expect(box?.width ?? 0).toBeLessThanOrEqual(390);
   await capture2(page, "kierros-phone");
   await next.click();
-  await expect.poll(() => conversationNow(page)).toBe(order[3]);
-  await expect(next).toHaveAttribute("data-last", "true");
+  await expect.poll(() => conversationNow(page)).toBe(round[1]);
   await prev.click();
-  await expect.poll(() => conversationNow(page)).toBe(order[2]);
+  await expect.poll(() => conversationNow(page)).toBe(round[0]);
   await next.click();
-  await expect.poll(() => conversationNow(page)).toBe(order[3]);
+  await expect.poll(() => conversationNow(page)).toBe(round[1]);
   await next.click();
-  await expect.poll(() => conversationNow(page)).toBe(here);
+  await expect.poll(() => conversationNow(page)).toBe(round[2]);
+  await expect(next).toHaveAttribute("data-last", "true");
+  await capture2(page, "kierros-viimeinen-phone");
+  await next.click();
   await expect(queue).toHaveCount(0);
   await expect(page.getByTestId("next-note")).toBeVisible();
+  // It ends where the person is, not back where the round started.
+  expect(conversationNow(page)).toBe(round[2]);
   await capture2(page, "kierros-kayty-phone");
 });
 
@@ -298,10 +314,9 @@ test("@next-waiting-row a round whose waiting ones are archived ends itself, and
   await expect(queue).toBeVisible();
   for (const kbd of await queue.locator("kbd").all())
     await expect(kbd).toHaveText(/^⌥/);
-  await queue
-    .getByRole("button")
-    .and(page.getByTestId("next-queue-prev"))
-    .click();
+  // The bar has no way back to the start: the person goes there through
+  // the rail like anywhere else, and the bar stays with its place.
+  await rail.getByTestId(`agent-item-${here}`).getByRole("link").click();
   await expect.poll(() => conversationNow(page)).toBe(here);
   await expect(queue).toBeVisible();
 

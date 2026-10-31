@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: next-waiting
 lane_seq: 2
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Next-waiting: hidden while this conversation awaits you; a round without the way back
@@ -34,10 +35,10 @@ feature.
 
 ## Acceptance Criteria
 
-- [ ] The row is hidden whenever this conversation's agent waits for the
+- [x] The row is hidden whenever this conversation's agent waits for the
       person and appears again when it works; it never lists itself.
-- [ ] A round offers no automatic return to the origin; what the round's end
+- [x] A round offers no automatic return to the origin; what the round's end
       shows instead is recorded under Decisions for later review.
-- [ ] Browser specs for both; KOKEILTAVAA line.
+- [x] Browser specs for both; KOKEILTAVAA line.
 
 ## Comments

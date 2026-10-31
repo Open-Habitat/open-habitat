@@ -7,10 +7,10 @@ const fi = {
   features: {
     "next-waiting-row": {
       name: "Seuraava odottava keskustelu",
-      desc: "Kun olet vastannut ja agentti on aloittanut, voit käydä sinua odottavat keskustelut läpi yhtenä kierroksena.",
+      desc: "Sillä aikaa kun agentti työskentelee, voit käydä sinua odottavat keskustelut läpi yhtenä kierroksena.",
       where:
         "Keskustelun alareunassa, kirjoituskentän yläpuolella. Kierroksen ajan jono näkyy jokaisessa keskustelussa.",
-      shows: `Montako odottaa ja Käy läpi (${altKey("↓")}). Kierroksella koko jonon: Seuraava (${altKey("↓")}), Edellinen (${altKey("↑")}) ja ✕ (Esc).`,
+      shows: `Montako odottaa ja Käy läpi (${altKey("↓")}). Kierroksella koko jonon: Seuraava (${altKey("↓")}), Edellinen (${altKey("↑")}) ja ✕ (Esc). Viimeisen jälkeen Valmis päättää kierroksen siihen keskusteluun.`,
       needs: "Ei muuta. Järjestys seuraa toistaiseksi sivupalkkia.",
       caption: "Keskustelun alareuna",
     },
@@ -72,10 +72,10 @@ export const experimentalFeaturesText = catalog(fi, {
   features: {
     "next-waiting-row": {
       name: "Next waiting conversation",
-      desc: "Once you have replied and the agent has started, you can go through the conversations waiting for you in one round.",
+      desc: "While the agent works, you can go through the conversations waiting for you in one round.",
       where:
         "At the bottom of the conversation, above the message field. During the round the queue shows in every conversation.",
-      shows: `How many are waiting and Go through (${altKey("↓")}). During the round, the whole queue: Next (${altKey("↓")}), Previous (${altKey("↑")}) and ✕ (Esc).`,
+      shows: `How many are waiting and Go through (${altKey("↓")}). During the round, the whole queue: Next (${altKey("↓")}), Previous (${altKey("↑")}) and ✕ (Esc). After the last one, Done ends the round in that conversation.`,
       needs: "Nothing else. For now the order follows the sidebar.",
       caption: "Bottom of the conversation",
     },

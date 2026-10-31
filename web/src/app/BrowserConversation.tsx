@@ -2469,9 +2469,6 @@ function BrowserConversationContent({
                   next={nextWaiting}
                   agentId={id}
                   working={presentation.activity === "working"}
-                  needsYou={
-                    statusStale || !current || !!current.pending_question
-                  }
                 />
               ) : null}
               <Composer

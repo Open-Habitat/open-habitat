@@ -3,8 +3,6 @@ import { catalog, plural } from "../i18n";
 // The round through what waits for the person: the dock's step states
 // (app/NextWaitingDock.tsx) and what the round says (app/nextWaiting.ts).
 const fi = {
-  originDone: "lähtö · valmis",
-  origin: "lähtö",
   asks: "kysyy",
   newReply: "uusi vastaus",
   elsewhere: "toisaalla",
@@ -13,8 +11,6 @@ const fi = {
 };
 
 export const nextWaitingText = catalog(fi, {
-  originDone: "start · done",
-  origin: "start",
   asks: "asks",
   newReply: "new reply",
   elsewhere: "elsewhere",

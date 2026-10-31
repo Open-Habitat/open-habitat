@@ -14,13 +14,6 @@ const waiting = (agentId: string, title: string): AgentNavModel => ({
 
 const round: QueueStep[] = [
   {
-    agentId: "o",
-    title: "Kirjautumisen virheilmoitukset",
-    state: "origin",
-    ball: "work",
-    detail: "lähtö",
-  },
-  {
     agentId: "a",
     title: "Varmuuskopion ajastus",
     state: "handled",
@@ -42,15 +35,16 @@ const round: QueueStep[] = [
   },
 ];
 
-/** The round's bar, walkable: Seuraava, Edellinen, the steps and ✕. */
+/** The round's bar, walkable: Seuraava, Edellinen, the steps and ✕; after
+ * the last step Valmis ends it there. */
 function Walk({ steps, start }: { steps: QueueStep[]; start: number }) {
   const [pos, setPos] = useState<number | null>(start);
   if (pos === null)
     return (
       <NextWaitingRow
-        waiting={steps.slice(1).map((s) => waiting(s.agentId, s.title))}
+        waiting={steps.map((s) => waiting(s.agentId, s.title))}
         note="Kierros käyty: 2 hoidettu."
-        onStart={() => setPos(1)}
+        onStart={() => setPos(0)}
       />
     );
   return (
@@ -68,7 +62,7 @@ function Walk({ steps, start }: { steps: QueueStep[]; start: number }) {
 const meta = {
   title: "Production/Next waiting round",
   component: Walk,
-  args: { steps: round, start: 2 },
+  args: { steps: round, start: 1 },
   decorators: [
     (Story) => (
       <div style={{ maxWidth: 760, margin: "40px auto" }}>
@@ -80,15 +74,15 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** In a step that waits: the origin works, one handled here, one elsewhere. */
+/** In a step that waits: one handled here, one elsewhere after it. */
 export const InRound: Story = {};
-/** At the origin before the first step: nothing to go back to. */
-export const AtOrigin: Story = { args: { start: 0 } };
+/** At the first step: nothing to go back to. */
+export const AtFirst: Story = { args: { start: 0 } };
 /** The line that starts a round. */
 export const Offer: Story = {
   render: () => (
     <NextWaitingRow
-      waiting={round.slice(1).map((s) => waiting(s.agentId, s.title))}
+      waiting={round.map((s) => waiting(s.agentId, s.title))}
       onStart={() => {}}
     />
   ),

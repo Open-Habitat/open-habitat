@@ -2578,22 +2578,7 @@ export function App() {
                 })()}
                 nextWaiting={
                   walkConversation
-                    ? {
-                        yours: now.yours,
-                        running: now.running,
-                        round,
-                        here: {
-                          agentId: walkConversation,
-                          href: `/workspaces/${selected.workspace_id}?conversation=${walkConversation}`,
-                          title: (() => {
-                            const here = snapshot?.agents.find(
-                              (a) => a.agent_id === walkConversation,
-                            );
-                            return here ? agentTitle(here.title) : "";
-                          })(),
-                          workspaceId: selected.workspace_id,
-                        },
-                      }
+                    ? { yours: now.yours, running: now.running, round }
                     : undefined
                 }
                 onSessionCreated={(session) => {

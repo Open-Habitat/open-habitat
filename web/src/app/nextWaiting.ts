@@ -13,10 +13,10 @@ export type RoundStep = Pick<
   "agentId" | "href" | "title" | "workspaceId" | "workspaceName"
 >;
 
-/** What a step is now: the origin, still waiting, handled here (opened in
- * this round and no longer waiting), or handled elsewhere (stopped waiting
- * before this round reached it). */
-export type StepState = "origin" | "waits" | "handled" | "elsewhere";
+/** What a step is now: still waiting, handled here (opened in this round
+ * and no longer waiting), or handled elsewhere (stopped waiting before this
+ * round reached it). */
+export type StepState = "waits" | "handled" | "elsewhere";
 
 const step = (a: RoundStep): RoundStep => ({
   agentId: a.agentId,
@@ -29,14 +29,21 @@ const step = (a: RoundStep): RoundStep => ({
 /**
  * The round through the conversations waiting for the person (Seuraava
  * odottava, direction Jono: Jari 30.10.2026, proto-next-waiting-navigation).
- * It starts from the conversation whose agent works, takes Sinun vuorosi in
- * the rail's order and is walked one step at a time; past the last step it
- * leads back to the origin. The steps are frozen at the start so they never
- * move under the person's cursor, and ones that start waiting later join at
- * the end. It is view state of this tab: nothing is stored.
+ * It starts while the agent of the conversation at hand works, takes the
+ * other Sinun vuorosi in the rail's order and is walked one step at a time.
+ * It only moves forward through what waits: the conversation it started
+ * from is not a step and the round never leads back to it, because this is
+ * not a tracker (Jari 31.10.2026); the person returns through the rail, and
+ * the start joins the round like any other once it waits for them. Past the
+ * last step the round ends where the person is. The steps are frozen at the
+ * start so they never move under the person's cursor, and ones that start
+ * waiting later join at the end. It is view state of this tab: nothing is
+ * stored.
  */
 export class WaitingRound {
   steps: RoundStep[] | null = null;
+  /** The step the person is on; -1 before the first, when the step the
+   * round was on and all before it left the round. */
   pos = 0;
   /** Steps opened in this round; one that stops waiting without being
    * opened here was handled elsewhere. */
@@ -77,19 +84,19 @@ export class WaitingRound {
     this.changed();
   }
 
-  /** Starts a round from `origin` and returns the first step to open, or
-   * nothing when no other conversation waits. */
-  start(origin: RoundStep, yours: readonly AgentNavModel[]) {
-    const others = yours.filter((a) => a.agentId !== origin.agentId);
+  /** Starts a round from the conversation `from` and returns the first
+   * step to open, or nothing when no other conversation waits. */
+  start(from: string, yours: readonly AgentNavModel[]) {
+    const others = yours.filter((a) => a.agentId !== from);
     if (!others.length) return undefined;
-    this.steps = [step(origin), ...others.map(step)];
-    this.visited = new Set([origin.agentId]);
+    this.steps = others.map(step);
+    this.visited = new Set();
     this.told = new Set();
     this.listed = new Set();
     this.dropped = 0;
     this.pos = 0;
     this.changed();
-    return this.steps[1];
+    return this.steps[0];
   }
 
   end() {
@@ -121,15 +128,12 @@ export class WaitingRound {
 
   stateOf(i: number, waits: (agentId: string) => boolean): StepState {
     const s = this.steps?.[i];
-    if (!s || i === 0) return "origin";
-    if (waits(s.agentId)) return "waits";
-    return this.visited.has(s.agentId) ? "handled" : "elsewhere";
+    if (s && waits(s.agentId)) return "waits";
+    return s && this.visited.has(s.agentId) ? "handled" : "elsewhere";
   }
 
   /** Archived or vanished conversations leave the round, given the host's
-   * confirmed listing. With only the origin left the round has nothing to
-   * walk and ends into its summary; without the origin there is nothing to
-   * lead back to, so it ends too. */
+   * confirmed listing. With no step left the round ends into its summary. */
   prune(agents: readonly { agent_id: string; archive?: string }[]) {
     const steps = this.steps;
     if (!steps) return;
@@ -144,24 +148,20 @@ export class WaitingRound {
       archived.has(id) || (this.listed.has(id) && !present.has(id));
     if (!steps.some((s) => gone(s.agentId))) return;
     const kept = steps.filter((s) => !gone(s.agentId));
-    this.dropped += steps.slice(1).filter((s) => gone(s.agentId)).length;
-    if (kept[0] !== steps[0]) {
-      this.finish(kept);
+    this.dropped += steps.length - kept.length;
+    if (!kept.length) {
+      this.finish([]);
       return;
     }
     // The place stays on the step it was on, or the one before a removed
     // one, so Seuraava still leads to the next.
-    let pos = 0;
+    let pos = -1;
     for (const [i, s] of steps.entries()) {
       if (i > this.pos) break;
       const k = kept.indexOf(s);
       if (k >= 0) pos = k;
     }
     this.pos = pos;
-    if (kept.length < 2) {
-      this.finish([]);
-      return;
-    }
     this.steps = kept;
     this.changed();
   }
@@ -170,9 +170,7 @@ export class WaitingRound {
    * those of `left` (steps still in it) visited here. */
   private finish(left: readonly RoundStep[]) {
     const n =
-      this.dropped +
-      left.filter((s) => s !== this.steps?.[0] && this.visited.has(s.agentId))
-        .length;
+      this.dropped + left.filter((s) => this.visited.has(s.agentId)).length;
     this.steps = null;
     this.say(txt.roundDone(n));
   }
@@ -188,26 +186,26 @@ export class WaitingRound {
     }
   }
 
-  /** How many steps after the origin no longer wait. */
+  /** How many steps no longer wait. */
   handled(waits: (agentId: string) => boolean) {
-    return (this.steps ?? []).slice(1).filter((s) => !waits(s.agentId)).length;
+    return (this.steps ?? []).filter((s) => !waits(s.agentId)).length;
   }
 
   /** The step `d` away from here, skipping the ones handled elsewhere.
-   * Past the last step the round ends and leads back to the origin, saying
-   * how many were handled. Before the origin there is nothing. */
+   * Past the last step the round ends where the person is, saying how many
+   * were handled; it leads nowhere. Before the first there is nothing. */
   move(d: 1 | -1, waits: (agentId: string) => boolean) {
     const steps = this.steps;
     if (!steps) return undefined;
     let i = this.pos + d;
-    while (i > 0 && i < steps.length && this.stateOf(i, waits) === "elsewhere")
+    while (i >= 0 && i < steps.length && this.stateOf(i, waits) === "elsewhere")
       i += d;
     if (i < 0) return undefined;
     if (i >= steps.length) {
       const n = this.handled(waits) + this.dropped;
       this.steps = null;
       this.say(txt.roundDone(n));
-      return steps[0];
+      return undefined;
     }
     return steps[i];
   }

@@ -7,20 +7,21 @@ import "./NextWaitingRow.css";
 
 // Seuraava odottava, direction Jono (Jari 30.10.2026,
 // proto-next-waiting-navigation): while a round is on, the whole round is a
-// bar above the composer: the origin, then the waiting ones in the rail's
-// order. The bar is the visible way back (Alt+↑ and its button), it stays
-// while a conversation asks something, and on the phone it shrinks to
-// ‹ ●●○○ 1/3 · name · Seuraava ✕, so the round can be walked by tapping.
+// bar above the composer: the waiting ones in the rail's order. Alt+↑ and
+// its button step back within the round, it stays while a conversation asks
+// something, and on the phone it shrinks to ‹ ●●○○ 1/3 · name · Seuraava ✕,
+// so the round can be walked by tapping. It does not lead back to where the
+// round started (Jari 31.10.2026): after the last step Valmis ends it there.
 
 /** One step of the round as the bar shows it. */
 export type QueueStep = {
   agentId: string;
   title: string;
-  /** The origin, still waiting, handled here or handled elsewhere. */
-  state: "origin" | "waits" | "handled" | "elsewhere";
+  /** Still waiting, handled here or handled elsewhere. */
+  state: "waits" | "handled" | "elsewhere";
   /** The rail's ball for the step's live state. */
   ball: BallKind;
-  /** Why it waits (kysyy, uusi vastaus) or the origin's state. */
+  /** Why it waits (kysyy, uusi vastaus), or that it was handled elsewhere. */
   detail?: string;
 };
 
@@ -34,7 +35,7 @@ export function NextWaitingQueue({
   onEnd,
 }: {
   steps: readonly QueueStep[];
-  /** The step the person is on. */
+  /** The step the person is on; -1 before the first. */
   pos: number;
   note?: string;
   onGo: (i: number) => void;
@@ -43,9 +44,10 @@ export function NextWaitingQueue({
   onEnd: () => void;
 }) {
   const txt = useText(nextWaitingQueueText);
-  const last = !steps
-    .slice(pos + 1)
-    .some((s) => s.state !== "elsewhere" && s.state !== "origin");
+  const last = !steps.slice(pos + 1).some((s) => s.state !== "elsewhere");
+  const first = !steps
+    .slice(0, Math.max(0, pos))
+    .some((s) => s.state !== "elsewhere");
   const done = steps.filter(
     (s) => s.state === "handled" || s.state === "elsewhere",
   ).length;
@@ -64,7 +66,7 @@ export function NextWaitingQueue({
         data-pos={pos}
       >
         <span className="ah-next-q-head">
-          {txt.handled(done, steps.length - 1)}
+          {txt.handled(done, steps.length)}
         </span>
         <button
           type="button"
@@ -73,7 +75,7 @@ export function NextWaitingQueue({
           aria-keyshortcuts="Alt+ArrowUp"
           aria-label={txt.previous}
           title={`${txt.previous} (${altKey("↑")})`}
-          disabled={pos === 0}
+          disabled={first}
           onClick={onPrev}
         >
           <Icon name="up" width={14} height={14} />
@@ -124,8 +126,7 @@ export function NextWaitingQueue({
             ))}
           </span>
           <span className="ah-next-q-cur">
-            {pos === 0 ? txt.origin : `${pos}/${steps.length - 1}`} ·{" "}
-            {current?.title}
+            {Math.max(1, pos + 1)}/{steps.length} · {current?.title}
           </span>
         </span>
         <button
@@ -134,10 +135,10 @@ export function NextWaitingQueue({
           data-testid="next-queue-next"
           data-last={last || undefined}
           aria-keyshortcuts="Alt+ArrowDown"
-          title={`${last ? txt.backToOrigin : txt.next} (${altKey("↓")})`}
+          title={`${last ? txt.finishTitle : txt.next} (${altKey("↓")})`}
           onClick={onNext}
         >
-          {last ? txt.toOrigin : txt.next} <kbd>{altKey("↓")}</kbd>
+          {last ? txt.finish : txt.next} <kbd>{altKey("↓")}</kbd>
         </button>
         <button
           type="button"
