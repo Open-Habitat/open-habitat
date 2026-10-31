@@ -147,3 +147,22 @@ defect 1 unless Jari now wants it.
 - Round 1's arrival exception (Saapuminen) is not part of round 2. After
   *Avaa seuraava*, a conversation with only a reply to read shows no row
   until the person sends there. Is that the intended rhythm?
+
+## Main as of this merge
+
+The page's *Nykyinen* is main at 77bc6dda, where this round started. Since
+then `b136c1c9` (next-waiting-no-return) landed on main:
+
+- defect 1 is fixed: the line shows only while `working`, with no latch;
+- defect 2 is fixed: the round starts from the first waiting one, has no
+  origin step and no return, and ends past the last step;
+- defects 3 (read counts as ✓ handled) and 4 (the bar shows in
+  conversations outside the round until ✕/Esc) remain.
+
+Main is now round 1's *Työn ajan* trigger plus a forward round. The round-2
+directions differ from main in the trigger. Main shows the line whenever
+the host reports `run_active`: also for a run the person did not start, and
+again after a reload. Round 2 shows it only after the person's own send in
+this tab. Implementing *Vuoron loppuun* on main means replacing `working`
+with "sent here, and this turn has not ended", and removing or reshaping
+the round according to Jari's answer.
