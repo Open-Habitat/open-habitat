@@ -14,4 +14,8 @@ ProtectHome=no
 PrivateTmp=yes
 UMask=0077
 KillMode=mixed
+# Pi conversations and what they start are the daemon's children. The
+# default OOMPolicy=stop would end all of them when the kernel OOM-kills one
+# build; an OOM kill of the daemon itself still fails and restarts the unit.
+OOMPolicy=continue
 Restart=on-failure

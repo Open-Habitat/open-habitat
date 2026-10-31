@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: bug
 reporter: agent
-status: open
+status: fixed
 priority: normal
 lane: oom-stops-whole-unit
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # One OOM-killed process may stop a person's whole daemon or tmux unit
@@ -24,9 +25,9 @@ Inferred from systemd.service(5), not reproduced.
 
 ## Acceptance Criteria
 
-- [ ] Reproduced or refuted in a disposable unit (a `timeout`-bounded memory
+- [x] Reproduced or refuted in a disposable unit (a `timeout`-bounded memory
       hog under a small `MemoryMax`, as the person's user, never on Alder).
-- [ ] If real: `OOMPolicy=continue` (or the right choice) in the neutral
+- [x] If real: `OOMPolicy=continue` (or the right choice) in the neutral
       templates and the tmux unit, with a test; the Fleetrepo installation
       change named exactly for the conductor.
 

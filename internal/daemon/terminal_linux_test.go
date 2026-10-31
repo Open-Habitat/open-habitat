@@ -567,7 +567,7 @@ func TestTerminalLingeringStartsServerAsUserService(t *testing.T) {
 		t.Fatalf("ready %+v", w.ready)
 	}
 	args, _ := os.ReadFile(record)
-	for _, want := range []string{"--user", "--unit=" + terminalUnit, "--setenv=SHELL=/bin/bash", "-D", f.host.socket(true)} {
+	for _, want := range []string{"--user", "--unit=" + terminalUnit, "OOMPolicy=continue", "--setenv=SHELL=/bin/bash", "-D", f.host.socket(true)} {
 		if !strings.Contains(string(args), want+"\n") {
 			t.Fatalf("systemd-run args missing %q:\n%s", want, args)
 		}

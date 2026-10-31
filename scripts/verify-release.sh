@@ -185,6 +185,9 @@ daemon_deps = unit('open-habitat-daemon@.service')['[Unit]']
 for socket in ('open-habitat-daemon@%i.socket', 'open-habitat-agent@%i.socket'):
     if socket not in daemon_deps.get('Requires', '').split() or socket not in daemon_deps.get('After', '').split():
         sys.exit('error: daemon requires both ordered sockets')
+# One OOM-killed agent build must not stop every conversation of the person.
+if unit('open-habitat-daemon@.service')['[Service]'].get('OOMPolicy') != 'continue':
+    sys.exit('error: daemon unit must keep running when one of its processes is OOM-killed')
 for name in ('gateway', 'daemon@'):
     deps = unit('open-habitat-' + name + '.service')['[Unit]']
     if 'open-habitat-proc.service' not in deps.get('Requires', '').split() or 'open-habitat-proc.service' not in deps.get('After', '').split():

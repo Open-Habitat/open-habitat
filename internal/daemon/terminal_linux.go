@@ -242,7 +242,10 @@ func (h *terminalHost) ensureServer(ctx context.Context) (string, bool, error) {
 		// daemon's cgroup and private /tmp and ends with the daemon.
 		return socket, false, nil
 	}
-	args := []string{"--user", "--quiet", "--collect", "--unit=" + terminalUnit, "--description=Open Habitat browser shells", "-p", "WorkingDirectory=" + h.cfg.Home}
+	// tmux moves each pane into its own scope when it reaches systemd; when it
+	// cannot, the panes stay in this unit, and the default OOMPolicy=stop would
+	// end every shell when the kernel OOM-kills one build.
+	args := []string{"--user", "--quiet", "--collect", "--unit=" + terminalUnit, "--description=Open Habitat browser shells", "-p", "WorkingDirectory=" + h.cfg.Home, "-p", "OOMPolicy=continue"}
 	for _, kv := range h.env() {
 		if !strings.HasPrefix(kv, "TERM=") {
 			args = append(args, "--setenv="+kv)

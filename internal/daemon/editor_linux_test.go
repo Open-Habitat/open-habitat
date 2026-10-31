@@ -228,7 +228,7 @@ func TestEditorStartsAsUserServiceWhenLingering(t *testing.T) {
 	data, _ := os.ReadFile(argv)
 	args := strings.Split(strings.TrimSpace(string(data)), "\n")
 	joined := strings.Join(args, " ")
-	for _, want := range []string{"--user", "--collect", "--unit=" + editorUnit, "--setenv=OPEN_HABITAT_EDITOR_OPEN_DIR=" + filepath.Join(dir, "open"), "-- " + h.binary + " --auth none --socket " + filepath.Join(dir, "code-server.sock")} {
+	for _, want := range []string{"--user", "--collect", "--unit=" + editorUnit, "-p OOMPolicy=continue", "--setenv=OPEN_HABITAT_EDITOR_OPEN_DIR=" + filepath.Join(dir, "open"), "-- " + h.binary + " --auth none --socket " + filepath.Join(dir, "code-server.sock")} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("systemd-run argument %q missing from %q", want, joined)
 		}

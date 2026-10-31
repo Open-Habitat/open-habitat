@@ -379,7 +379,9 @@ func (h *editorHost) ensure(ctx context.Context) (bool, error) {
 			return false, err
 		}
 	case survives:
-		args := []string{"--user", "--quiet", "--collect", "--unit=" + editorUnit, "--description=Open Habitat workspace editor", "-p", "WorkingDirectory=" + h.cfg.Home}
+		// An OOM-killed extension host or terminal must not stop the whole
+		// editor, which systemd's default OOMPolicy=stop would.
+		args := []string{"--user", "--quiet", "--collect", "--unit=" + editorUnit, "--description=Open Habitat workspace editor", "-p", "WorkingDirectory=" + h.cfg.Home, "-p", "OOMPolicy=continue"}
 		for _, kv := range h.env(dir) {
 			args = append(args, "--setenv="+kv)
 		}
