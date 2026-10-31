@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: readme-first-draft
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # First README draft and OSS release contract
@@ -23,3 +23,9 @@ Jari 31.10.: Open Habitat will be published as open source. Produce the first RE
 - [ ] A short Finnish note for Jari: what the draft claims, every placeholder, the decisions it waits on.
 
 ## Comments
+
+### 2026-10-31 · Jari's decisions
+
+Licence **MIT** (not Apache-2.0). Domains `open-habitat.ai` (canonical),
+`open-habitat.dev`, `openhabitat.ai`, `openhabitat.dev` (redirect to the
+canonical one).
