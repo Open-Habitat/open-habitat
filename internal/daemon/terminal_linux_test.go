@@ -81,10 +81,35 @@ func newTerminalFixture(t *testing.T, trusted bool) *terminalFixture {
 		cancel()
 		srv.Close()
 		for _, s := range []string{h.socket(false), h.socket(true)} {
-			_ = exec.Command(tmux, "-S", s, "kill-server").Run()
+			killTmuxServer(t, tmux, s)
 		}
 	})
 	return &terminalFixture{host: h, cfg: cfg, id: workspaceIDOf(cfg, entries[0]), dir: dir, socket: sock, tmp: tmp}
+}
+
+// killTmuxServer stops a test's tmux server and waits until the server and its
+// pane processes are gone. kill-server only signals them: a hung-up bash still
+// writes .bash_history into the fixture's home, racing t.TempDir's removal.
+func killTmuxServer(t *testing.T, tmux, socket string) {
+	t.Helper()
+	out, _ := exec.Command(tmux, "-S", socket, "list-panes", "-a", "-F", "#{pid} #{pane_pid}").Output()
+	_ = exec.Command(tmux, "-S", socket, "kill-server").Run()
+	pids := strings.Fields(string(out))
+	deadline := time.Now().Add(10 * time.Second)
+	for _, pid := range pids {
+		for {
+			// A zombie has finished; only its reaping is left.
+			stat, err := os.ReadFile("/proc/" + pid + "/stat")
+			if i := bytes.LastIndexByte(stat, ')'); err != nil || i < 0 || bytes.HasPrefix(stat[i+1:], []byte(" Z")) {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Errorf("tmux process %s outlived kill-server", pid)
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
 }
 
 func (f *terminalFixture) client() *http.Client {
@@ -324,7 +349,7 @@ func TestTerminalTaskfleetAttachIsReadOnly(t *testing.T) {
 		}
 		return strings.TrimSpace(string(out))
 	}
-	t.Cleanup(func() { _ = exec.Command(f.host.tmux, "-S", sock, "kill-server").Run() })
+	t.Cleanup(func() { killTmuxServer(t, f.host.tmux, sock) })
 	tmux("new-session", "-d", "-s", "agents", "-x", "100", "-y", "30", "-c", f.host.cfg.Home)
 	worker := filepath.Join(f.dir+"__worktrees", "wt-1")
 	if err := os.MkdirAll(worker, 0o700); err != nil {
@@ -411,7 +436,7 @@ func TestTerminalTaskfleetWatchShowsTheNamedPane(t *testing.T) {
 		}
 		return strings.TrimSpace(string(out))
 	}
-	t.Cleanup(func() { _ = exec.Command(f.host.tmux, "-S", sock, "kill-server").Run() })
+	t.Cleanup(func() { killTmuxServer(t, f.host.tmux, sock) })
 	tmux("new-session", "-d", "-s", "headless", "-x", "80", "-y", "24", "-c", f.host.cfg.Home)
 	worker := filepath.Join(f.dir+"__worktrees", "wt-2")
 	if err := os.MkdirAll(worker, 0o700); err != nil {
@@ -693,7 +718,7 @@ func TestTerminalInventoryIdentityBoundaries(t *testing.T) {
 		}
 		return strings.TrimSuffix(string(out), "\n")
 	}
-	t.Cleanup(func() { _ = exec.Command(f.host.tmux, "-S", socket, "kill-server").Run() })
+	t.Cleanup(func() { killTmuxServer(t, f.host.tmux, socket) })
 	run("-f", "/dev/null", "new-session", "-d", "-s", "agents", "-c", f.cfg.Home)
 	// A literal old delimiter in a name remains text, not another identity.
 	name := `literal\037@999\037not-another-window`

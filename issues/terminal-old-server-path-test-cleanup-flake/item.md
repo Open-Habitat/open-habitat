@@ -2,7 +2,7 @@
 created: 2026-10-31
 updated: 2026-10-31
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed by worker during focused checks
@@ -11,6 +11,7 @@ originating_run: 01m68j8pce6prn3t14y9bvqx9n
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-10-31
 ---
 
 # TestTerminalNewShellFindsInstalledToolWithOldServerPath fails intermittently in TempDir cleanup
