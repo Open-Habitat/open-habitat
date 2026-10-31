@@ -137,6 +137,12 @@ export interface Agent {
   control: string;
   title: {
     display: string;
+    /** Where the title comes from; read the name through agentTitle(). */
+    source?:
+      | "new_conversation"
+      | "first_message_fallback"
+      | "generated"
+      | "native_session";
     generation_state?:
       | "not_requested"
       | "pending"

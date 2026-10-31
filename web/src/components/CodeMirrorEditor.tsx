@@ -178,7 +178,7 @@ class PendingTag extends WidgetType {
     const tag = document.createElement("span");
     tag.className = "ah-merge-pending-tag";
     tag.dataset.testid = "pending-line";
-    tag.textContent = "odottaa";
+    tag.textContent = textNow(codeMirrorEditorText).pendingLine;
     return tag;
   }
 }

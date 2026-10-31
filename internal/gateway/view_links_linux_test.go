@@ -226,7 +226,7 @@ func TestViewLinkLifecycleExpiryAndRevocation(t *testing.T) {
 	}
 	d.mu.Unlock()
 	res = d.open(l.URL, "")
-	if body, _ := io.ReadAll(res.Body); res.StatusCode != 404 || !strings.Contains(string(body), "ei ole enää saatavilla") {
+	if body, _ := io.ReadAll(res.Body); res.StatusCode != 404 || strings.TrimSpace(string(body)) != viewShareGone.en {
 		t.Fatalf("removed view: %d %q", res.StatusCode, body)
 	}
 	// Revocation ends the next read.

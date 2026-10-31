@@ -196,7 +196,7 @@ function PdfPage({ doc, number }: { doc: PDFDocumentProxy; number: number }) {
         ref={canvas}
         data-testid="attachment-pdf-page"
         role="img"
-        aria-label={`Sivu ${number}`}
+        aria-label={txt.page(number)}
       />
     </li>
   );

@@ -39,6 +39,7 @@ import { SkillInvocation } from "../components/SkillInvocation";
 import { WaitReminderMarker } from "../components/WaitReminder";
 import { formatDate, liveText } from "../i18n";
 import { historyViewText } from "../text/historyView";
+import { agentTitle } from "./agentTitle";
 import { useBrowserShell } from "./BrowserShell";
 import { type BashFailure, toolStopped } from "./bashFailure";
 import { type ConversationStore, useWindow } from "./conversationStore";
@@ -76,38 +77,7 @@ import {
 import { FilesHeaderControl, NoticeEntry } from "./ViewHost";
 import { EditorHeaderControls } from "./WorkspaceEditor";
 
-// Only the daemon's explicit fallback marker is interpreted here. Unknown data
-// stays text, including malformed JSON and fields we do not recognize.
 const txt = liveText(historyViewText);
-
-function unfamiliar(text: string): {
-  type: string;
-  summary: { key: string; text: string }[];
-  raw: string;
-} | null {
-  const block = /^\[Sisältöä ei tueta: ([^\n]+?)\] (\{[\s\S]*\})$/.exec(text);
-  const event = /^Tuntematon Pi-tapahtuma: ([^\n]+)\n(\{[\s\S]*\})$/.exec(text);
-  const match = block ?? event;
-  if (!match) return null;
-  let value: unknown;
-  try {
-    value = JSON.parse(match[2]);
-  } catch {
-    return null;
-  }
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const fields = value as Record<string, unknown>;
-  return {
-    type: match[1],
-    summary: ["prompt", "text", "message", "description", "payload"].flatMap(
-      (key) =>
-        typeof fields[key] === "string" && fields[key]
-          ? [{ key, text: fields[key] as string }]
-          : [],
-    ),
-    raw: match[2],
-  };
-}
 
 // A tab-local preference changes presentation only, never the native block.
 const resultEdge = new Map<string, "head" | "tail">();
@@ -860,10 +830,6 @@ export function Entry({
         ? `/skill:${entry.skill.name}${content.text ? ` ${content.text}` : ""}`
         : content.text,
     );
-  const fallback =
-    entry.kind === "assistant" || entry.kind === "unknown"
-      ? unfamiliar(content.text)
-      : null;
   const notificationSummary = processSummary(entry);
   return (
     <>
@@ -948,19 +914,6 @@ export function Entry({
               revision={entry.native_revision ?? revision}
               onLogin={onLogin}
             />
-          ) : fallback ? (
-            <section className="ah-unknown">
-              <p>{txt.unknownContent(fallback.type)}</p>
-              {fallback.summary.length ? (
-                fallback.summary.map(({ key, text }) => <p key={key}>{text}</p>)
-              ) : (
-                <p>{fallback.raw}</p>
-              )}
-              <details>
-                <summary>{txt.showOriginal}</summary>
-                <pre>{fallback.raw}</pre>
-              </details>
-            </section>
           ) : (
             <Markdown text={content.text} />
           )}
@@ -1080,7 +1033,12 @@ export function Entry({
           <UnknownEvent
             kindLabel={txt.agentEvent}
             safeSummary={txt.unsupported(entry.entry_type ?? txt.unknownType)}
-            onCopy={copy}
+            // The host gives an unknown entry no text; copy what is shown.
+            onCopy={() =>
+              void navigator.clipboard?.writeText(
+                txt.unsupported(entry.entry_type ?? txt.unknownType),
+              )
+            }
           />
         )
       ) : null}
@@ -1393,7 +1351,7 @@ export function HistoryView(props: Parameters<typeof HistoryViewContent>[0]) {
       onLogin={props.onLogin}
       timeline={timelineItems}
       place={{
-        parentTitle: props.agent.title.display,
+        parentTitle: agentTitle(props.agent.title),
         workspaceId: props.workspaceId,
         workspaceName: props.workspaceName,
         csrf: props.csrf,
@@ -1463,7 +1421,7 @@ function HistoryViewContent({
     identity: store.identity,
     parentId: agent.agent_id,
     workspaceId,
-    parentTitle: agent.title.display,
+    parentTitle: agentTitle(agent.title),
     csrf,
     onLogin,
   });
@@ -1657,7 +1615,7 @@ function HistoryViewContent({
         terminal={shell.toggle}
         editorControl={<EditorHeaderControls />}
         filesControl={<FilesHeaderControl conversationId={agent.agent_id} />}
-        title={agent.title.display}
+        title={agentTitle(agent.title)}
         titlePending={
           titlePending || agent.title.generation_state === "pending"
         }

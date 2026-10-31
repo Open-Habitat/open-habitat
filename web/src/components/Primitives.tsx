@@ -75,7 +75,7 @@ export function Button({
       {shortcutHint ? <kbd>{shortcutHint}</kbd> : null}
     </ControlButton>
   );
-  return reason && reason !== "Kirjoita viesti." ? (
+  return reason ? (
     <span className="ah-button-stack">
       {control}
       <span data-testid="control-reason" className="ah-control-reason">

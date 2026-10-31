@@ -8,6 +8,7 @@ const fi = {
   opening: "Avataan esikatselua…",
   pages: (shown: number, total: number) =>
     `Esikatselussa on ${shown} ensimmäistä sivua ${total} sivusta.`,
+  page: (n: number) => `Sivu ${n}`,
   sheets: "Taulukot",
   truncated:
     "Taulukossa on enemmän rivejä tai sarakkeita kuin esikatselu näyttää.",
@@ -19,6 +20,7 @@ export const documentPreviewText = catalog(fi, {
   opening: "Opening the preview…",
   pages: (shown, total) =>
     `The preview shows the first ${shown} of ${total} pages.`,
+  page: (n) => `Page ${n}`,
   sheets: "Sheets",
   truncated: "The sheet has more rows or columns than the preview shows.",
 });

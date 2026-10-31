@@ -704,7 +704,7 @@ func (a *Auth) viewLinkServe(w http.ResponseWriter, r *http.Request, id string) 
 		return
 	}
 	token, _, slash := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/")
-	gone := func() { viewFailure(w, 404, "Linkki ei ole voimassa.") }
+	gone := func() { viewFailure(w, r, 404, viewLinkInvalid) }
 	if !validViewLinkToken(token) {
 		gone()
 		return
@@ -727,7 +727,7 @@ func (a *Auth) viewLinkServe(w http.ResponseWriter, r *http.Request, id string) 
 	}
 	release, ok := a.acquireViewLinkRelay(id)
 	if !ok {
-		viewFailure(w, 429, "Linkkiä luetaan juuri nyt liian monesta paikasta. Yritä hetken päästä uudelleen.")
+		viewFailure(w, r, 429, viewLinkBusy)
 		return
 	}
 	defer release()

@@ -31,6 +31,25 @@ func TestUnknownNativeContentDoesNotExposeUncheckedPayload(t *testing.T) {
 	}
 }
 
+// The flattened text is the message's own text only: the browser words tool
+// calls, other blocks and unknown entries in the person's language, so the
+// daemon adds no words of its own.
+func TestNativeTextFlattensOnlyTheMessagesText(t *testing.T) {
+	kind, text := nativeText(nativeEntry{Type: "message", Message: json.RawMessage(`{"role":"assistant","content":[{"type":"text","text":"Ready."},{"type":"toolCall","name":"read"},{"type":"image","mimeType":"image/png"}]}`)})
+	if kind != "assistant" || text != "Ready." {
+		t.Fatalf("assistant: %s %q", kind, text)
+	}
+	for _, entry := range []nativeEntry{
+		{Type: "message", Message: json.RawMessage(`[]`)},
+		{Type: "message", Message: json.RawMessage(`{"role":"assistant","content":{}}`)},
+		{Type: "futureEntry"},
+	} {
+		if kind, text := nativeText(entry); kind != "unknown" || text != "" {
+			t.Fatalf("%s: %s %q", entry.Type, kind, text)
+		}
+	}
+}
+
 func TestPiHistoryNativePagesChunksAndReopen(t *testing.T) {
 	home := t.TempDir()
 	src := filepath.Join(home, "src", "fixture")

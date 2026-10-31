@@ -101,7 +101,7 @@ func projectSkill(text string) (skillProjection, bool) {
 	body = argumentMarker.ReplaceAllString(body, "")
 	// Pi does not substitute this template marker. Keep inline references
 	// intelligible without presenting an unresolved variable as user content.
-	body = strings.ReplaceAll(body, "$ARGUMENTS", "[kutsun lisäteksti]")
+	body = strings.ReplaceAll(body, "$ARGUMENTS", "[arguments]")
 	body = strings.ReplaceAll(body, m[2], "[skill source]")
 	if base != "." && base != "/" {
 		body = strings.ReplaceAll(body, base, "[skill directory]")

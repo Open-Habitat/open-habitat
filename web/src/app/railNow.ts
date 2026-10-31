@@ -7,6 +7,7 @@ import type { AgentNavModel, WorkspaceHint } from "../components/Navigation";
 import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
 import { liveText } from "../i18n";
 import { statusText } from "../text/status";
+import { agentTitle } from "./agentTitle";
 import {
   type ConversationMetadata,
   unreadableHistory,
@@ -176,7 +177,7 @@ export function railNow({
       href: browserOwned(a, daemonSessions)
         ? `/workspaces/${w.workspace_id}?conversation=${a.agent_id}`
         : `/agents/${a.agent_id}`,
-      title: a.title.display,
+      title: agentTitle(a.title),
       workspaceId: w.workspace_id,
       workspaceName: name,
       workspaceIcon: icons?.get(w.workspace_id),

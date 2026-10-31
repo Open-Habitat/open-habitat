@@ -162,46 +162,6 @@ it("renders safely projected visible extension content without raw unknown paylo
   expect(container.textContent).not.toContain("untrusted raw");
 });
 
-it("puts unfamiliar question text ahead of inert, collapsed JSON", () => {
-  const raw =
-    '{"type":"futureQuestion","prompt":"Mitä seuraavaksi?","description":"<img src=x onerror=alert(1)>"}';
-  const view = render(
-    <Entry
-      entry={{
-        ...entry,
-        kind: "assistant",
-        content: {
-          media_type: "text/plain",
-          text: `[Sisältöä ei tueta: futureQuestion] ${raw}`,
-          complete: true,
-        },
-      }}
-    />,
-  );
-  expect(screen.getByText("Mitä seuraavaksi?")).toBeTruthy();
-  expect(screen.getByText("<img src=x onerror=alert(1)>")).toBeTruthy();
-  expect(view.container.querySelector("img")).toBeNull();
-  const details = view.container.querySelector("details");
-  expect(details?.open).toBe(false);
-  expect(details?.textContent).toContain(raw);
-  expect(view.container.querySelector(".ah-question")).toBeNull();
-  const malformed = render(
-    <Entry
-      entry={{
-        ...entry,
-        entry_key: "bad",
-        kind: "assistant",
-        content: {
-          media_type: "text/plain",
-          text: "[Sisältöä ei tueta: future] {broken",
-          complete: true,
-        },
-      }}
-    />,
-  );
-  expect(malformed.container.textContent).toContain("{broken");
-});
-
 it("hides native startup model metadata", () => {
   const model: HistoryEntry = {
     ...entry,

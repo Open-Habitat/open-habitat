@@ -3,12 +3,13 @@ created: 2026-10-31
 updated: 2026-10-31
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 lane: i18n
 lane_seq: 2
 blocked_by: [ui-language-choice, '@en-conversation', '@en-composer', '@en-workspaces', '@en-workers', '@en-shell-editor']
 preparation: ready
+closed: 2026-10-31
 ---
 
 # English translation of the whole browser UI
@@ -36,10 +37,10 @@ English screenshot set for Jari.
 
 ## Acceptance Criteria
 
-- [ ] With English chosen, no Finnish text in any view reachable on the test
+- [x] With English chosen, no Finnish text in any view reachable on the test
       server (a scan for Finnish strings outside the Finnish catalog passes
       and is part of the gate).
-- [ ] Storybook stories render in both languages.
-- [ ] Screenshots of the main views in English for Jari.
+- [x] Storybook stories render in both languages.
+- [x] Screenshots of the main views in English for Jari.
 
 ## Comments

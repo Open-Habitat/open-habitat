@@ -13,6 +13,8 @@ const fi = {
     to: "–",
   },
   documentLabel: "Tiedoston teksti",
+  // A line that waits for the person's choice between two changes.
+  pendingLine: "odottaa",
 };
 
 export const codeMirrorEditorText = catalog(fi, {
@@ -26,4 +28,5 @@ export const codeMirrorEditorText = catalog(fi, {
     to: "to",
   },
   documentLabel: "File text",
+  pendingLine: "waiting",
 });

@@ -46,6 +46,7 @@ import {
   AccountPreferencesProvider,
   useExperimentalFeature,
 } from "./accountPreferences";
+import { agentTitle } from "./agentTitle";
 import { BrowserConversation } from "./BrowserConversation";
 import { checkBundle, reloadForNewBundle, watchBundle } from "./bundleRelease";
 import { CloneJobs } from "./cloneJobs";
@@ -1535,7 +1536,7 @@ export function App() {
     if (archived) {
       setArchiveNotice({
         id: agent.agent_id,
-        title: agent.title.display,
+        title: agentTitle(agent.title),
         route: fromRoute,
       });
       if (origin === "conversation") {
@@ -1797,7 +1798,7 @@ export function App() {
           href: daemonSession
             ? `/workspaces/${a.workspace_id}?conversation=${a.agent_id}`
             : `/agents/${a.agent_id}`,
-          title: a.title.display,
+          title: agentTitle(a.title),
           workspace: workspace?.display_name ?? workspace?.name ?? "",
           browserSession: daemonSession,
           history: a.history,
@@ -2565,15 +2566,16 @@ export function App() {
                 serverUnavailable={phase === "stale"}
                 recoverySnapshot={snapshot}
                 onStatusEvent={onStatusEvent}
-                title={
-                  snapshot?.agents.find(
+                title={(() => {
+                  const open = snapshot?.agents.find(
                     (a) =>
                       a.agent_id ===
                         new URLSearchParams(location.search).get(
                           "conversation",
                         ) && a.workspace_id === selected.workspace_id,
-                  )?.title.display
-                }
+                  );
+                  return open && agentTitle(open.title);
+                })()}
                 nextWaiting={
                   walkConversation
                     ? {
@@ -2583,10 +2585,12 @@ export function App() {
                         here: {
                           agentId: walkConversation,
                           href: `/workspaces/${selected.workspace_id}?conversation=${walkConversation}`,
-                          title:
-                            snapshot?.agents.find(
+                          title: (() => {
+                            const here = snapshot?.agents.find(
                               (a) => a.agent_id === walkConversation,
-                            )?.title.display ?? "",
+                            );
+                            return here ? agentTitle(here.title) : "";
+                          })(),
                           workspaceId: selected.workspace_id,
                         },
                       }
@@ -2661,7 +2665,7 @@ export function App() {
                             }
                             kind="inline"
                           >
-                            {a.title.display}
+                            {agentTitle(a.title)}
                           </LinkRow>{" "}
                           {a.history !== "readable" && (
                             <span>{t.app.historyUnreadable} </span>
@@ -2949,7 +2953,7 @@ export function App() {
               ) : undefined
             }
             mobileTitle={
-              selectedAgent?.title.display ??
+              (selectedAgent && agentTitle(selectedAgent.title)) ??
               (selected
                 ? (selected.display_name ?? selected.name)
                 : undefined) ??

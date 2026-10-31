@@ -143,8 +143,8 @@ function InlineCode({
   if (!links || !ref) return <code className={className}>{children}</code>;
   const where = ref.line
     ? ref.end
-      ? `, rivit ${ref.line}–${ref.end}`
-      : `, rivi ${ref.line}`
+      ? txt.lines(ref.line, ref.end)
+      : txt.line(ref.line)
     : "";
   return (
     <code className="ah-file-link-code">

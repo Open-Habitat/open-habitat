@@ -41,7 +41,13 @@ translated: route slugs (`/settings/tili`), test ids, settings row ids and
 anything another program compares stay as they are, and a comparison against
 a displayed word (a status in the rail) accepts both languages.
 `src/i18n/catalogs.test.ts` checks every catalog for parity and Finnish
-letters in English.
+letters in English, and `src/i18n/finnishScan.test.ts` fails on Finnish (a
+Finnish letter, or a word only the Finnish catalogs use) in a string, template
+or JSX text anywhere in `src` outside the catalogs, tests, stories and
+fixtures. Finnish that stays on purpose, such as an identifier or a value the
+host sends and the browser words, goes in that test's allowlist with its
+reason. Text the daemon or gateway would show is better sent as a code or an
+empty value the browser words, as the title of an unnamed conversation is.
 
 The language resolves as the person's choice (System, Suomi, English, kept in
 their daemon's account preferences so it follows them), then the server's

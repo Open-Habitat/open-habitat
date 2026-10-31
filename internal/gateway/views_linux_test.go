@@ -291,3 +291,27 @@ func TestViewOriginConfigurationAndAbsence(t *testing.T) {
 		t.Fatalf("view host without a view origin: %d", w.Code)
 	}
 }
+
+// A view host's failure page follows the browser's first language, as the
+// app does before sign-in: only a first preference of fi* is Finnish.
+func TestViewFailureFollowsFirstBrowserLanguage(t *testing.T) {
+	for header, want := range map[string]string{
+		"fi-FI,fi;q=0.9,en;q=0.8": "fi",
+		"FI":                      "fi",
+		"fi;q=0.8":                "fi",
+		"fil-PH,fi;q=0.9":         "en",
+		"sv-FI,fi;q=0.9":          "en",
+		"en-GB":                   "en",
+		"":                        "en",
+	} {
+		r := httptest.NewRequest(http.MethodGet, "https://view.example/", nil)
+		r.Header.Set("Accept-Language", header)
+		w := httptest.NewRecorder()
+		viewFailure(w, r, http.StatusNotFound, viewFileMissing)
+		body := strings.TrimSpace(w.Body.String())
+		text := map[string]string{"fi": viewFileMissing.fi, "en": viewFileMissing.en}[want]
+		if w.Code != http.StatusNotFound || w.Header().Get("Content-Language") != want || body != text {
+			t.Errorf("Accept-Language %q: %d %q %q, want %s", header, w.Code, w.Header().Get("Content-Language"), body, want)
+		}
+	}
+}

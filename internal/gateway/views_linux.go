@@ -256,21 +256,47 @@ func (a *Auth) viewHeaders(next http.Handler) http.Handler {
 	})
 }
 
-func viewFailure(w http.ResponseWriter, status int, text string) {
+// A view host's own failure is a short page the person reads in place of
+// the view. The view origin carries no session with their language choice,
+// so it follows the browser's first language as the app does before
+// sign-in: Finnish for fi*, English for everything else.
+type viewText struct{ fi, en string }
+
+var (
+	viewBadRequest     = viewText{"Virheellinen pyyntö.", "Invalid request."}
+	viewHandoffExpired = viewText{"Avauslinkki on vanhentunut. Avaa näkymä uudelleen Habitatista.", "The opening link has expired. Open the view again from Habitat."}
+	viewSessionEnded   = viewText{"Näkymän istunto on päättynyt. Avaa näkymä uudelleen Habitatista.", "The view's session has ended. Open the view again from Habitat."}
+	viewShareGone      = viewText{"Jaettu näkymä ei ole enää saatavilla.", "The shared view is no longer available."}
+	viewLinkInvalid    = viewText{"Linkki ei ole voimassa.", "The link is not valid."}
+	viewFileMissing    = viewText{"Tiedostoa ei löydy tästä näkymästä.", "The file is not in this view."}
+	viewReadOnly       = viewText{"Näkymää voi vain lukea.", "The view can only be read."}
+	viewLinkBusy       = viewText{"Linkkiä luetaan juuri nyt liian monesta paikasta. Yritä hetken päästä uudelleen.", "The link is being read from too many places right now. Try again in a moment."}
+	viewLinkDailyLimit = viewText{"Tämän linkin päivän siirtoraja on täynnä. Yritä huomenna uudelleen.", "This link's transfer limit for today is used up. Try again tomorrow."}
+	viewUnavailable    = viewText{"Näkymä ei ole juuri nyt käytettävissä.", "The view is not available right now."}
+)
+
+func viewFailure(w http.ResponseWriter, r *http.Request, status int, text viewText) {
+	lang, body := "en", text.en
+	first, _, _ := strings.Cut(r.Header.Get("Accept-Language"), ",")
+	first, _, _ = strings.Cut(first, ";")
+	if tag := strings.ToLower(strings.TrimSpace(first)); tag == "fi" || strings.HasPrefix(tag, "fi-") {
+		lang, body = "fi", text.fi
+	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Language", lang)
 	w.WriteHeader(status)
-	_, _ = io.WriteString(w, text+"\n")
+	_, _ = io.WriteString(w, body+"\n")
 }
 
 // viewServe is the whole of a view host. It never serves the app, its API,
 // its static files or the editor, and never reads the app or editor cookie.
 func (a *Auth) viewServe(w http.ResponseWriter, r *http.Request) {
 	if r.TLS == nil || !a.isViewHost(r.Host) {
-		viewFailure(w, 400, "Virheellinen pyyntö.")
+		viewFailure(w, r, 400, viewBadRequest)
 		return
 	}
 	if r.Method != http.MethodGet && r.Method != http.MethodHead || r.Header.Get("Upgrade") != "" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
-		viewFailure(w, 405, "Näkymää voi vain lukea.")
+		viewFailure(w, r, 405, viewReadOnly)
 		return
 	}
 	a.mu.Lock()
@@ -285,18 +311,18 @@ func (a *Auth) viewServe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/_open-habitat/") {
-		viewFailure(w, 404, "Tiedostoa ei löydy tästä näkymästä.")
+		viewFailure(w, r, 404, viewFileMissing)
 		return
 	}
 	v, ok := a.viewAuthenticated(r)
 	if token, _, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/"); !ok && validViewLinkToken(token) {
 		// A revoked link's host is an ordinary view host again; its
 		// recipient has no view session to be told about.
-		viewFailure(w, 404, "Linkki ei ole voimassa.")
+		viewFailure(w, r, 404, viewLinkInvalid)
 		return
 	}
 	if !ok {
-		viewFailure(w, 401, "Näkymän istunto on päättynyt. Avaa näkymä uudelleen Habitatista.")
+		viewFailure(w, r, 401, viewSessionEnded)
 		return
 	}
 	a.viewRelay(w, r, v.identity, v.viewID, "", nil, "user", v.identity.Username)
@@ -306,12 +332,12 @@ func (a *Auth) redeemViewHandoff(w http.ResponseWriter, r *http.Request) {
 	q, err := url.ParseQuery(r.URL.RawQuery)
 	token := q.Get("token")
 	if r.Method != http.MethodGet || err != nil || len(q) != 1 || len(q["token"]) != 1 || len(token) != 43 || strings.ContainsAny(token, "=+/") {
-		viewFailure(w, 400, "Virheellinen pyyntö.")
+		viewFailure(w, r, 400, viewBadRequest)
 		return
 	}
 	secret, err := a.secret()
 	if err != nil {
-		viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
+		viewFailure(w, r, 503, viewUnavailable)
 		return
 	}
 	a.mu.Lock()
@@ -322,7 +348,7 @@ func (a *Auth) redeemViewHandoff(w http.ResponseWriter, r *http.Request) {
 	delete(a.viewGrants, gk)
 	if !ok || "https://"+r.Host != a.viewOrigin(g.identity, g.viewID) || subtle.ConstantTimeCompare([]byte(g.accessEmail), []byte(accessEmail(r))) != 1 {
 		a.mu.Unlock()
-		viewFailure(w, 401, "Avauslinkki on vanhentunut. Avaa näkymä uudelleen Habitatista.")
+		viewFailure(w, r, 401, viewHandoffExpired)
 		return
 	}
 	if a.views == nil {
@@ -346,7 +372,7 @@ func (a *Auth) redeemViewHandoff(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(a.views) >= viewMaxSessions {
 		a.mu.Unlock()
-		viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
+		viewFailure(w, r, 503, viewUnavailable)
 		return
 	}
 	a.views[editorKey("view-session", secret)] = viewSession{parent: g.parent, parentID: g.parentID, identity: g.identity, accessEmail: g.accessEmail, viewID: g.viewID, until: a.now().Add(viewSessionLifetime)}
@@ -433,11 +459,11 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity
 	u.RawPath = strings.TrimPrefix(u.RawPath, base)
 	rel, ok := viewRelPath(&http.Request{URL: &u})
 	if !ok {
-		viewFailure(w, 404, "Tiedostoa ei löydy tästä näkymästä.")
+		viewFailure(w, r, 404, viewFileMissing)
 		return
 	}
 	if a.snapshotDial == nil && udssecure.Mapped(target.Socket, target.UID) != nil {
-		viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
+		viewFailure(w, r, 503, viewUnavailable)
 		return
 	}
 	transport := &http.Transport{
@@ -457,7 +483,7 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, method, out.String(), http.NoBody)
 	if err != nil {
-		viewFailure(w, 404, "Tiedostoa ei löydy tästä näkymästä.")
+		viewFailure(w, r, 404, viewFileMissing)
 		return
 	}
 	res, err := transport.RoundTrip(req)
@@ -465,19 +491,19 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity
 		if a.log != nil && r.Context().Err() == nil {
 			a.log.Warn("view_relay", "outcome", "failed", "reason", "daemon_exchange_failed", logKey, logValue)
 		}
-		viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
+		viewFailure(w, r, 503, viewUnavailable)
 		return
 	}
 	defer res.Body.Close()
 	switch {
 	case res.StatusCode == 404 && rel == "" && base != "":
-		viewFailure(w, 404, "Jaettu näkymä ei ole enää saatavilla.")
+		viewFailure(w, r, 404, viewShareGone)
 		return
 	case res.StatusCode == 404:
-		viewFailure(w, 404, "Tiedostoa ei löydy tästä näkymästä.")
+		viewFailure(w, r, 404, viewFileMissing)
 		return
 	case res.StatusCode != 200:
-		viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
+		viewFailure(w, r, 503, viewUnavailable)
 		return
 	}
 	if rel == "" {
@@ -489,12 +515,12 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity
 			} `json:"view"`
 		}
 		if json.NewDecoder(io.LimitReader(res.Body, 64<<10)).Decode(&body) != nil {
-			viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
+			viewFailure(w, r, 503, viewUnavailable)
 			return
 		}
 		probe := &http.Request{URL: &url.URL{Path: "/" + body.View.Entry}}
 		if entry, ok := viewRelPath(probe); !ok || entry == "" {
-			viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
+			viewFailure(w, r, 503, viewUnavailable)
 			return
 		}
 		w.Header().Set("Location", (&url.URL{Path: base + "/" + body.View.Entry}).EscapedPath())
@@ -503,14 +529,14 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity
 	}
 	size, err := strconv.ParseInt(res.Header.Get("Content-Length"), 10, 64)
 	if err != nil || size < 0 {
-		viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
+		viewFailure(w, r, 503, viewUnavailable)
 		return
 	}
 	if charge != nil && r.Method == http.MethodGet && !charge(size) {
 		if a.log != nil {
 			a.log.Warn("view_relay", "outcome", "rejected", "reason", "daily_budget", logKey, logValue)
 		}
-		viewFailure(w, 429, "Tämän linkin päivän siirtoraja on täynnä. Yritä huomenna uudelleen.")
+		viewFailure(w, r, 429, viewLinkDailyLimit)
 		return
 	}
 	kind, ok := viewContentTypes[strings.ToLower(path.Ext(rel))]
@@ -522,7 +548,7 @@ func (a *Auth) viewRelay(w http.ResponseWriter, r *http.Request, target Identity
 		// past the relay's own bound; the server sets no write timeout.
 		err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(5 * time.Minute))
 		if err != nil && !errors.Is(err, http.ErrNotSupported) {
-			viewFailure(w, 503, "Näkymä ei ole juuri nyt käytettävissä.")
+			viewFailure(w, r, 503, viewUnavailable)
 			return
 		}
 	}

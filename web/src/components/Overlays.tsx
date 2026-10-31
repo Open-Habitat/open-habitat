@@ -277,7 +277,7 @@ export function Menu({
           <>
             {betweenItems}
             <AriaMenu
-              aria-label={`${label}: loppu`}
+              aria-label={txt.menuEnd(label)}
               onAction={(key) => onAction(String(key))}
             >
               <ControlMenuItem

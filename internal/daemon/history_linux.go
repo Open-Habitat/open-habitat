@@ -383,7 +383,7 @@ func nativeText(e nativeEntry) (string, string) {
 			ToolName string          `json:"toolName"`
 		}
 		if json.Unmarshal(e.Message, &m) != nil {
-			return "unknown", "Tuntematon viesti"
+			return "unknown", ""
 		}
 		kind := m.Role
 		if kind == "toolResult" {
@@ -402,25 +402,24 @@ func nativeText(e nativeEntry) (string, string) {
 			Name string `json:"name"`
 		}
 		if json.Unmarshal(m.Content, &blocks) != nil {
-			return "unknown", "Sisältömuotoa ei tueta"
+			return "unknown", ""
 		}
 		parts := []string{}
 		if kind == "tool" && m.ToolName != "" {
 			parts = append(parts, m.ToolName)
 		}
+		// Only text is flattened. Tool calls and other blocks are words the
+		// browser supplies in the person's language from the blocks, and an
+		// unknown field is never shown, even if its type is a string.
 		for _, b := range blocks {
 			if b.Type == "text" {
 				parts = append(parts, b.Text)
-			} else if b.Type == "toolCall" {
-				parts = append(parts, "Työkalu: "+b.Name)
-			} else {
-				// Unknown fields are never shown, even if their type is a string.
-				parts = append(parts, "[Sisältöä ei tueta]")
 			}
 		}
 		return kind, strings.Join(parts, "\n")
 	default:
-		return "unknown", "Tuntematon Pi-tapahtuma"
+		// The browser names an unknown entry itself.
+		return "unknown", ""
 	}
 }
 func inline(_ *nativeSession, e *historyEntry) {
