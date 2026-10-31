@@ -539,8 +539,11 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 			controller.mu.Unlock()
 		}
 		// A turn that ended in an error is read from the branch of a Pi that
-		// runs now, where the person can still act on it. The branch scan reads
-		// the whole file, so a closed conversation's is not read at all.
+		// runs now, where the person can still act on it, and a turn Pi never
+		// finished from the branch of a resting one: its Pi stopped mid-turn,
+		// for example when the daemon restarted for an upgrade. The branch
+		// scan reads the whole file (again only after a change), so a closed
+		// or archived conversation's is not read at all.
 		readable := map[string]nativeSession{}
 		for _, session := range sessions {
 			if session.state == "readable" {
@@ -550,7 +553,10 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 		for _, raw := range agents {
 			agent := raw.(map[string]any)
 			session, ok := readable[agent["agent_id"].(string)]
-			if !ok || agent["process"] != "terminal_observed_live" && agent["process"] != "daemon_managed_live" {
+			live := agent["process"] == "terminal_observed_live" || agent["process"] == "daemon_managed_live"
+			rest, _ := agent["rest"].(map[string]any)
+			asleep := rest != nil && rest["awake"] != true && agent["archive"] == "active"
+			if !ok || !live && !asleep {
 				continue
 			}
 			var scan branchScan
@@ -561,8 +567,11 @@ func snapshotHandlerWithForges(cfg transport.Config, trusted func(*http.Request)
 			} else {
 				ok = false
 			}
-			if ok && scan.turnError {
+			if ok && live && scan.turnError {
 				agent["failure"] = "turn_error"
+			}
+			if ok && asleep && scan.turnCut {
+				agent["interrupted_turn"] = true
 			}
 		}
 		// A place with conversations gets its Git summary, for the top bar's

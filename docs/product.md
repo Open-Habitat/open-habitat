@@ -64,7 +64,10 @@ vastannut ja vastaus on lukematta. **Käynnissä** listaa keskustelut, joissa
 on työ kesken: työskentelevät ja ne, jotka odottavat taustatyötä (prosessia
 tai workeria), ja kertoo, mitä ne odottavat. Keskustelu, jonka vuoro on
 päättynyt, on valmis, vaikka Pi olisi yhä auki odottamassa viestiä, ja
-palaa Käynnissä-listaan vasta, kun sen agentti työskentelee taas. Rivillä
+palaa Käynnissä-listaan vasta, kun sen agentti työskentelee taas. Myös
+työ, joka päättyi virheeseen, kaatui tai katkesi kesken esimerkiksi
+päivityksen vuoksi, pysyy Käynnissä-listassa näkyvissä, kunnes käyttäjä
+jatkaa tai arkistoi keskustelun. Rivillä
 näkyy keskustelun otsikko, työtila ja tila. Worker näkyy omana rivinään eikä
 vanhempansa alla; vanhemman rivin merkki kertoo, että sen worker työskentelee.
 

@@ -142,11 +142,23 @@ export function railNow({
     // rest says so; liveness cannot, because a browser conversation's
     // reaped handle is still listed and so still counts as managed.
     const crashed = !turn && a.rest?.cause === "crash" && !a.rest.awake;
+    // Pi stopped mid-turn, for example when the daemon restarted for an
+    // upgrade: the work was cut off and nobody has continued it. It stays in
+    // sight like a crash until the person writes or archives it; the
+    // conversation's rest card says what was cut and wakes it. A stop the
+    // person (or their agent) asked for cut it by choice and is not news.
+    const cut =
+      !turn &&
+      !crashed &&
+      !!a.rest &&
+      !a.rest.awake &&
+      a.rest.cause !== "person" &&
+      !!a.interrupted_turn;
     // The host's other failures: a turn that ended in an error, and a worker
     // run that failed after the conversation last changed. Both stay in
     // sight like a crash, and work that runs again is not failed any more.
     const failure = observed.activity === "working" ? undefined : a.failure;
-    const failed = crashed || failure !== undefined;
+    const failed = crashed || cut || failure !== undefined;
     if (!turn && !live && !failed) continue;
     const name = w.display_name ?? w.name;
     const state =
@@ -160,15 +172,17 @@ export function railNow({
               ? txt.rail.asks
               : crashed
                 ? txt.rail.crashed
-                : observed.activity === "working"
-                  ? txt.rail.working
-                  : observed.activity === "waiting_background"
-                    ? txt.rail.background
-                    : workerBusy
-                      ? txt.rail.workerWorking
-                      : workerIdle
-                        ? txt.rail.workerWaiting
-                        : observed.activityLabel;
+                : cut
+                  ? txt.rail.turnCut
+                  : observed.activity === "working"
+                    ? txt.rail.working
+                    : observed.activity === "waiting_background"
+                      ? txt.rail.background
+                      : workerBusy
+                        ? txt.rail.workerWorking
+                        : workerIdle
+                          ? txt.rail.workerWaiting
+                          : observed.activityLabel;
     const waits =
       observed.activity === "waiting_background" && a.waiting_on?.length
         ? a.waiting_on.map(waitingName).join(", ")

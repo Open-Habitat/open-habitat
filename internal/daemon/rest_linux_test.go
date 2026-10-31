@@ -5,12 +5,16 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"golang.org/x/sys/unix"
 )
 
 // The person's card and the agent's catch-up (process-extension.mjs
@@ -299,5 +303,141 @@ func TestRestReportReadsTaskfleetWithoutStarting(t *testing.T) {
 	}
 	if h.live(c, id) || len(h.lines("launches.log")) != launches {
 		t.Fatal("reading the report started Pi")
+	}
+}
+
+// snapshotAgent is the conversation's row in a snapshot this controller serves.
+func (h *heldHarness) snapshotAgent(c *ConversationController, id string) map[string]any {
+	h.t.Helper()
+	handler := snapshotHandlerWithController(h.cfg, func(*http.Request) bool { return true },
+		func(transport.Config) Discovery { return scan(h.root, h.cfg.UID, unix.Openat2, false) },
+		nativeSessions, h.root, unknownGitHub, c.journal, c)
+	r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
+	r.RequestURI = SnapshotPath
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	var doc struct {
+		Agents []map[string]any `json:"agents"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &doc) != nil {
+		h.t.Fatalf("snapshot: %d %s", w.Code, w.Body.String())
+	}
+	for _, a := range doc.Agents {
+		if a["agent_id"] == "pi:"+id {
+			return a
+		}
+	}
+	h.t.Fatalf("snapshot lacks %s", id)
+	return nil
+}
+
+// statusField is one field of the conversation's status reply.
+func (h *heldHarness) statusField(c *ConversationController, id, field string) any {
+	h.t.Helper()
+	w := httptest.NewRecorder()
+	c.observe(w, httptest.NewRequest("GET", "http://unix/status", nil), id)
+	var reply map[string]any
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &reply) != nil {
+		h.t.Fatalf("status: %d %s", w.Code, w.Body.String())
+	}
+	return reply[field]
+}
+
+// cutTurn appends what Pi leaves when it is killed mid-turn: a tool call and
+// its result, which the model never answered (the Birch upgrade of 31.10.).
+func (h *heldHarness) cutTurn(c *ConversationController, id string) {
+	h.t.Helper()
+	sessions, err := nativeSessions(c.nativeCfg())
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	for _, n := range sessions {
+		if n.id != id {
+			continue
+		}
+		b, err := os.ReadFile(n.path)
+		if err != nil {
+			h.t.Fatal(err)
+		}
+		lines := strings.Split(strings.TrimSpace(string(b)), "\n")
+		var last struct {
+			ID string `json:"id"`
+		}
+		_ = json.Unmarshal([]byte(lines[len(lines)-1]), &last)
+		at := time.Now().UTC().Format(time.RFC3339Nano)
+		call, _ := json.Marshal(map[string]any{"type": "message", "id": "c0ffee10", "parentId": last.ID, "timestamp": at, "message": map[string]any{"role": "assistant", "stopReason": "toolUse", "content": []any{map[string]any{"type": "toolCall", "id": "call_cut", "name": "bash", "arguments": map[string]string{"command": "ls"}}}}})
+		result, _ := json.Marshal(map[string]any{"type": "message", "id": "c0ffee11", "parentId": "c0ffee10", "timestamp": at, "message": map[string]any{"role": "toolResult", "toolCallId": "call_cut", "toolName": "bash", "content": []any{}}})
+		f, err := os.OpenFile(n.path, os.O_APPEND|os.O_WRONLY, 0)
+		if err != nil {
+			h.t.Fatal(err)
+		}
+		_, _ = f.Write(append(append(append(call, '\n'), result...), '\n'))
+		_ = f.Close()
+		return
+	}
+	h.t.Fatal("native history not found")
+}
+
+// A turn cut when the daemon restarted is read from the native branch, which
+// ends without the model's answer: the status and the snapshot say so while
+// the conversation rests, and the person's message ends it.
+func TestTurnCutByRestartIsReported(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	id := h.create(c)
+	h.converse(c, id, "Ennen päivitystä", activityCommand(1))
+	h.quiescent(c, id)
+	stop()
+	c2, stop2 := h.daemon()
+	defer stop2()
+	h.expectRest(c2, id, "restart", false)
+	// A finished turn was not cut.
+	if got := h.statusField(c2, id, "interrupted_turn"); got != false {
+		t.Fatalf("finished turn: interrupted_turn %v", got)
+	}
+	if got, ok := h.snapshotAgent(c2, id)["interrupted_turn"]; ok {
+		t.Fatalf("finished turn in the snapshot: %v", got)
+	}
+	h.cutTurn(c2, id)
+	if got := h.statusField(c2, id, "interrupted_turn"); got != true {
+		t.Fatalf("cut turn: interrupted_turn %v", got)
+	}
+	agent := h.snapshotAgent(c2, id)
+	if agent["interrupted_turn"] != true || agent["rest"].(map[string]any)["cause"] != "restart" {
+		t.Fatalf("cut turn in the snapshot: %v", agent)
+	}
+	// Archived, it is out of sight and its branch is not read for it.
+	h.archive(c2, id)
+	if got, ok := h.snapshotAgent(c2, id)["interrupted_turn"]; ok {
+		t.Fatalf("archived cut turn in the snapshot: %v", got)
+	}
+	h.unarchive(c2, id)
+	// The person continues: the rest is over and so is the cut.
+	h.converse(c2, id, "Jatka", activityCommand(2))
+	h.quiescent(c2, id)
+	if got := h.statusField(c2, id, "interrupted_turn"); got != false {
+		t.Fatalf("continued: interrupted_turn %v", got)
+	}
+	if got, ok := h.snapshotAgent(c2, id)["interrupted_turn"]; ok {
+		t.Fatalf("continued, in the snapshot: %v", got)
+	}
+}
+
+func (h *heldHarness) unarchive(c *ConversationController, id string) {
+	h.t.Helper()
+	sessions, err := nativeSessions(c.nativeCfg())
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	token := ""
+	for _, n := range sessions {
+		if n.id == id {
+			token = opaque("obs_", id+":"+n.revision)
+		}
+	}
+	w := httptest.NewRecorder()
+	c.archiveInput(context.Background(), w, id, archiveRequest{WorkspaceID: h.workspace, Archived: false, ObservationToken: token, PreviousArchive: "archived"})
+	if w.Code != 200 {
+		h.t.Fatalf("unarchive: %d %s", w.Code, w.Body.String())
 	}
 }

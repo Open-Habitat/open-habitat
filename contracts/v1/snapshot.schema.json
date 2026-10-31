@@ -676,6 +676,10 @@
           "description": "The conversation rests: its browser Pi is not running, or was woken by the person's typing and has not yet been told anything, and the conversation's report card (GET /api/v1/conversations/<id>/rest) speaks for Habitat. awake says the woken Pi is ready for the message. Absent when the agent is running or has been told, and for a conversation the browser cannot start.",
           "$ref": "history.schema.json#/$defs/stop"
         },
+        "interrupted_turn": {
+          "description": "The conversation rests (rest present, not awake) and the turn its Pi was working on never finished: the last message on its native branch is a prompt, a tool call or a tool result the model never answered, so Pi stopped mid-turn, for example when the daemon restarted for an upgrade. The rest report says the same. Absent otherwise, and for an archived conversation; the person's next message ends the rest and with it this fact.",
+          "const": true
+        },
         "failure": {
           "description": "The conversation's work ended in a failure nobody has acted on yet: turn_error when the last message on its branch is a reply that ended in an error, read only while its Pi runs; worker_failed when one of its own Taskfleet runs failed after the conversation last changed. turn_error wins when both hold. Absent otherwise; a Pi crash is rest.cause crash instead.",
           "enum": [

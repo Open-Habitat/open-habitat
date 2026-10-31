@@ -160,6 +160,9 @@ export interface Agent {
   spinoffs_idle?: number;
   /** Pi rests and the agent has not been told what happened meanwhile. */
   rest?: import("../components/RestartNotice").RestStop;
+  /** Resting, and its Pi stopped mid-turn (the native branch ends in work
+   * the model never answered), for example in a daemon restart. */
+  interrupted_turn?: true;
   /** The work ended in a failure nobody has acted on: the last reply ended
    * in an error (read while Pi runs), or an own Taskfleet run failed after
    * the conversation last changed. */

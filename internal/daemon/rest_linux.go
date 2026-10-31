@@ -73,6 +73,20 @@ func (c *ConversationController) restOf(s *conversation) (restFact, bool, bool) 
 	return restFact{cause: s.stopCause, at: s.stoppedAt, detail: s.stopDetail}, false, true
 }
 
+// turnCut says the native branch at path ends in a turn Pi never finished:
+// a prompt, tool call or tool result the model did not answer (scanBranch).
+// Callers ask only for a resting conversation, whose Pi cannot be finishing
+// it, so the turn was cut when Pi stopped. The scan is read again only after
+// Pi wrote to the file.
+func (c *ConversationController) turnCut(path string) bool {
+	if c.facts != nil {
+		scan, ok := c.facts.sessions.branch(path, c.cfg.UID)
+		return ok && scan.turnCut
+	}
+	b, ok := readNativeBytes(path, c.cfg.UID)
+	return ok && scanBranch(b).turnCut
+}
+
 // restView is the snapshot's and the report's projection of a rest.
 func restView(f restFact) map[string]any {
 	return map[string]any{"cause": f.cause, "at": f.at.UTC().Format(time.RFC3339Nano)}

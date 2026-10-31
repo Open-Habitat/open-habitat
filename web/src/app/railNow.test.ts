@@ -196,6 +196,51 @@ describe("rail Nyt groups", () => {
     expect(listed(awake, true)[0].failed).toBeUndefined();
   });
 
+  it("keeps a turn cut by a daemon restart in sight until it is continued", () => {
+    const rest: Agent["rest"] = {
+      cause: "restart",
+      at: "2026-10-31T10:21:00Z",
+    };
+    const now = run([
+      agent("cut", { process: "not_observed", rest, interrupted_turn: true }),
+      agent("rested", { process: "not_observed", rest }),
+    ]);
+    expect(ids(now.running)).toEqual(["cut"]);
+    expect(now.running[0].failed).toBe(true);
+    expect(now.running[0].detail).toContain("Työ katkesi kesken");
+    expect(now.hints.get("ws_example00")).toBeUndefined();
+    // Woken by typing, or told with the person's message, it is not cut any more.
+    expect(
+      run([
+        agent("cut", {
+          process: "not_observed",
+          rest: { ...rest, awake: true },
+          interrupted_turn: true,
+        }),
+      ]).running,
+    ).toEqual([]);
+    // A stop the person asked for cut it by choice.
+    expect(
+      run([
+        agent("stopped", {
+          process: "not_observed",
+          rest: { ...rest, cause: "person" },
+          interrupted_turn: true,
+        }),
+      ]).running,
+    ).toEqual([]);
+    // A crash that cut the turn says it crashed.
+    expect(
+      run([
+        agent("crashed", {
+          process: "not_observed",
+          rest: { ...rest, cause: "crash" },
+          interrupted_turn: true,
+        }),
+      ]).running[0].detail,
+    ).toContain("Pi kaatui");
+  });
+
   it("shows an error turn and a failed worker as failed, and work that runs again as working", () => {
     const now = run(
       [

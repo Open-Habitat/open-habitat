@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: rail-icons-no-grouping
 lane_seq: 2
 preparation: ready
+closed: 2026-10-31
 ---
 
 # A turn cut by an upgrade is folded away under Hiljaiset instead of shown as interrupted
@@ -34,13 +35,13 @@ row inside a workspace fold, with nothing saying its work was cut off.
 
 ## Acceptance Criteria
 
-- [ ] A conversation whose turn was cut by a daemon restart/upgrade is shown
+- [x] A conversation whose turn was cut by a daemon restart/upgrade is shown
       as interrupted (in sight, not folded under Hiljaiset), saying the work
       stopped mid-turn and offering to continue; it leaves that state when
       the person continues or dismisses.
-- [ ] The daemon's status says the turn was interrupted (today
+- [x] The daemon's status says the turn was interrupted (today
       `interrupted: false`, `turn_settled: null`); name where that fact
       comes from (native session ends without a final assistant message).
-- [ ] Browser spec with a turn cut by a daemon restart; KOKEILTAVAA line.
+- [x] Browser spec with a turn cut by a daemon restart; KOKEILTAVAA line.
 
 ## Comments

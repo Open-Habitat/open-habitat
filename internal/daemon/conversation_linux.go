@@ -1117,6 +1117,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	runActive := s.runActive
 	held := heldView(s.held)
 	startProblem, interrupted := s.startProblem, s.interrupted
+	_, awake, resting := c.restOf(s)
 	var recapFailed map[string]string
 	if f := s.recapFailure; f != nil {
 		recapFailed = map[string]string{"reason": f.Reason, "through": f.Through, "trigger": f.Trigger}
@@ -1197,6 +1198,9 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 			}
 		}
 	}
+	// A resting Pi cannot be finishing its turn, so a branch that ends
+	// mid-turn says the turn was cut when Pi stopped.
+	interruptedTurn := resting && !awake && history == "present" && c.turnCut(path)
 	continuation := "unproven"
 	if r.URL.Query().Get("continuation") == "true" {
 		if releasePermit, ok := c.proofPermit(r.Context()); ok {
@@ -1222,7 +1226,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		continuation = "unproven"
 	}
 	c.mu.Unlock()
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem, "interrupted": interrupted, "bash": bash, "recap_failure": recapFailed})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem, "interrupted": interrupted, "interrupted_turn": interruptedTurn, "bash": bash, "recap_failure": recapFailed})
 }
 
 // answerQuestion spends the native request ID before touching Pi. This uncorrelated
