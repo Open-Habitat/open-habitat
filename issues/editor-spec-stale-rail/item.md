@@ -1,13 +1,14 @@
 ---
 created: 2026-10-30
-updated: 2026-10-30
+updated: 2026-10-31
 type: bug
 reporter: agent
-status: open
+status: fixed
 priority: normal
 lane: editor-spec
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # workspace-editor spec still expects the rail hidden beside the editor
