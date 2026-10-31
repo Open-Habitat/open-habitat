@@ -1,16 +1,15 @@
 ---
 created: 2026-10-18
-updated: 2026-10-19
+updated: 2026-10-31
 type: feature
 reporter: jari
 status: done
 priority: high
-epic: agent-integrations
+closed: 2026-10-19
 preparation: ready
 lane: integrations
 lane_seq: 2
 collision: [internal/daemon/integrations]
-closed: 2026-10-19
 ---
 
 # Integrations: catalog core, Integraatiot page, login relay, personal-data skill

@@ -1,17 +1,16 @@
 ---
 created: 2026-10-18
-updated: 2026-10-25
+updated: 2026-10-31
 type: feature
 reporter: jari
 status: done
 priority: high
-epic: agent-integrations
+closed: 2026-10-21
 preparation: ready
 lane: integrations
 lane_seq: 4
 collision: [internal/daemon/integrations]
 blocked_by: ['@integrations-catalog-core']
-closed: 2026-10-21
 ---
 
 # Integration: IMAP/SMTP mail and CalDAV/CardDAV
