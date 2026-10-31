@@ -214,7 +214,6 @@ export function StatusBell({ items: given }: { items?: StatusItem[] }) {
             <Heading slot="title" level={2}>
               Ilmoitukset
             </Heading>
-            <span>voimassa nyt</span>
           </header>
           {n ? (
             groups.map((group) => (

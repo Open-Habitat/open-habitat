@@ -3,11 +3,12 @@ created: 2026-10-31
 updated: 2026-10-31
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: low
 lane: bell
 lane_seq: 1
 preparation: ready
+closed: 2026-10-31
 ---
 
 # Notification bell panel header: drop 'voimassa nyt'
@@ -20,4 +21,4 @@ Jari 30.10. (testikone pilot.518): kellon paneelin otsikon *voimassa nyt* on tar
 
 ## Acceptance Criteria
 
-- [ ] Paneelin otsikko on pelkkä *Ilmoitukset*; storyt ja specit päivitetty.
+- [x] Paneelin otsikko on pelkkä *Ilmoitukset*; storyt ja specit päivitetty.
