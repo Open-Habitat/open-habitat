@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GitStatusChip, GitStatusDetails } from "../components/GitStatus";
+import { textNow } from "../i18n";
+import { conversationGitStatusText } from "../text/conversationGitStatus";
 import type { Workspace } from "./snapshot";
 import {
   fetchFailureReason,
@@ -11,12 +13,12 @@ import {
 /** State after fetch, not a guessed count of newly downloaded commits.
  * Ahead/behind can also change when the local branch moves during the fetch. */
 export function fetchedNews(after: WorkspaceGit) {
+  const t = textNow(conversationGitStatusText);
   const parts: string[] = [];
   if (after.upstream && after.behind !== undefined)
-    parts.push(`${after.upstream}: ${after.behind} tulossa`);
-  if (after.base)
-    parts.push(`${after.base.name}: ${after.base.behind} jäljessä`);
-  return `Etätiedot haettu. ${parts.length ? `${parts.join(". ")}.` : "Vertailutietoja ei ole saatavilla."}`;
+    parts.push(t.incoming(after.upstream, after.behind));
+  if (after.base) parts.push(t.behind(after.base.name, after.base.behind));
+  return t.fetched(parts);
 }
 
 /**
@@ -180,7 +182,9 @@ export function useGitStatus(
       fetching,
       fetchMessage: fetchMessage?.text,
       fetchFailed: fetchMessage?.failed,
-      fetchUnavailable: csrf ? undefined : "Ladataan istuntoa.",
+      fetchUnavailable: csrf
+        ? undefined
+        : textNow(conversationGitStatusText).loadingSession,
       onFetch: fetchRemote,
       onReread: () => {
         setFetchMessage(undefined);

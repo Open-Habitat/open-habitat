@@ -17,6 +17,8 @@
   mutation refusals and archive, status bell, Git identity, Trash, onboarding
   administration, recap, GitLab, models, server integrations) went into those
   catalogs.
+- `app/ConversationGitStatus.tsx`, which no unit listed, found after the
+  sibling units landed: its fetch summary and session wait.
 - Numbers, percentages, prices and times on the context page, the replace
   note and agent notices go through `formatNumber`/`formatDate`; byte sizes
   of attachments are B/KB/MB in English.
