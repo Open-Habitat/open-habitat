@@ -101,6 +101,38 @@ test("@workspace-editor @a11y opens beside the conversation with a remembered di
   await expect(rail).toBeVisible();
   await expect(rail).toHaveClass(/\bah-rail-collapsed\b/);
   expect(await columnWidth(page)).toBe(440);
+  // All compact-rail targets share a square hit area and centred contents,
+  // even though Home is a link and the account content is an avatar.
+  const targets = [
+    rail.getByTestId("navigation-open"),
+    rail.getByTestId("home-link"),
+    rail.getByTestId("rail-all-workspaces"),
+    rail.locator("[data-account-controls] button").first(),
+  ];
+  const boxes = [];
+  const iconSizes = [];
+  for (const target of targets) {
+    const geometry = await target.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const content = element.querySelector(".ah-account-avatar, svg");
+      if (!content) throw new Error("Rail target has no icon or avatar");
+      const inner = content.getBoundingClientRect();
+      return {
+        width: box.width,
+        height: box.height,
+        dx: inner.x + inner.width / 2 - (box.x + box.width / 2),
+        dy: inner.y + inner.height / 2 - (box.y + box.height / 2),
+        icon: content.tagName.toLowerCase() === "svg" ? inner.width : null,
+      };
+    });
+    expect(geometry.width).toBe(geometry.height);
+    expect(Math.abs(geometry.dx)).toBeLessThanOrEqual(1);
+    expect(Math.abs(geometry.dy)).toBeLessThanOrEqual(1);
+    boxes.push(geometry.width);
+    if (geometry.icon !== null) iconSizes.push(geometry.icon);
+  }
+  expect(new Set(boxes).size).toBe(1);
+  expect(new Set(iconSizes).size).toBe(1);
   // The app's own controls around the editor; VS Code's frame is its own.
   expect(
     (await new AxeBuilder({ page }).exclude("iframe").analyze()).violations,

@@ -191,12 +191,6 @@ span.button {
   align-items: center;
   justify-content: space-between;
 }
-:global(.ah-rail-collapsed) .account {
-  width: var(--ah-touch);
-  padding: 0;
-  display: inline-grid;
-  place-items: center;
-}
 .back {
   padding-inline: 0;
   border: 0;
@@ -256,10 +250,26 @@ span.button {
   border-radius: var(--ah-r-nav);
   font-weight: 600;
 }
-:global(.ah-rail-collapsed) .home {
-  flex-direction: column;
+/* Collapsing removes labels, so each remaining target uses the same row
+   square, including links and the account trigger (not just icon buttons). */
+:global(.ah-rail-collapsed) .account,
+:global(.ah-rail-collapsed) .home,
+:global(.ah-rail-collapsed) :global(.ah-now-expand) {
+  box-sizing: border-box;
+  width: var(--ah-control-row);
+  min-width: var(--ah-control-row);
+  height: var(--ah-control-row);
+  min-height: var(--ah-control-row);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 0;
-  padding-inline: 0;
+  flex: none;
+}
+:global(.ah-rail-collapsed) .home > svg {
+  width: var(--ah-control-row-icon);
+  height: var(--ah-control-row-icon);
 }
 @media (max-width: 800px) {
   :global(.ah-mobile-open) .agent {
