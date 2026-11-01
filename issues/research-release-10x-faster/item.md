@@ -3,11 +3,12 @@ created: 2026-11-01
 updated: 2026-11-01
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: research-release-10x-faster
 lane_seq: 1
 preparation: ready
+closed: 2026-11-01
 ---
 
 # Research: a release in about 10 % of today's time
