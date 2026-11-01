@@ -1,9 +1,8 @@
 # ADR 0035: One stable entry address per view
 
-**Status:** Proposed for Jari's review. **Date:** 2026-11-01.
+**Status:** Accepted by Jari 2026-11-01 (both explicit approvals: the public address bar may change after the redirect; a new export is a new view with its own address). **Date:** 2026-11-01.
 **Decision issue:** `decide-view-stable-address`.
-Amends ADR 0033's address, lifecycle and movable-link rules; not yet authority
-for implementation.
+Amends ADR 0033's address, lifecycle and movable-link rules.
 
 ## Context and accepted direction
 

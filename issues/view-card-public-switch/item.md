@@ -6,9 +6,9 @@ reporter: jari
 status: open
 priority: normal
 lane: decide-view-stable-address
-lane_seq: 2
+lane_seq: 4
 blocked_by: ['@decide-view-stable-address', '@view-address-reservations', '@view-address-publication-lifecycle', '@view-address-entry-route']
-preparation: pending
+preparation: ready
 ---
 
 # View card: public switch, Kopioi linkki and duration menu

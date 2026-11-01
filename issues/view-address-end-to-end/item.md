@@ -2,15 +2,17 @@
 created: 2026-11-01
 updated: 2026-11-01
 type: task
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Implementation proposal from ADR 0035 awaiting Jari review
 source_ref: taskfleet:01m6btshefrtxw97thtw5qxjqx/implementation:view-address-end-to-end
 originating_run: 01m6btshefrtxw97thtw5qxjqx
 originating_run_kind: technical-decision
-preparation: pending
+preparation: ready
 blocked_by: ['@decide-view-stable-address', '@view-card-public-switch']
+lane: decide-view-stable-address
+lane_seq: 5
 ---
 
 # Verify stable view addresses through the real ingress
