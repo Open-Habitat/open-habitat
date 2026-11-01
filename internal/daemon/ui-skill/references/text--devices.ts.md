@@ -1,0 +1,82 @@
+# text/devices.ts
+
+Generated from web/src/text/devices.ts; do not edit.
+
+```tsx
+import { catalog } from "../i18n";
+
+// Settings › Laitteet and the phone's /link page (components/DeviceLink.tsx,
+// app/Devices.tsx, app/deviceLink.ts).
+const fi = {
+  qr: "QR-koodi",
+  signInPhone: "Kirjaudu puhelimella",
+  showCode: "Näytä koodi",
+  expires: "Vanhenee",
+  cancel: "Peruuta",
+  device: "Laite",
+  signedIn: "kirjautui.",
+  done: "Valmis",
+  codeExpired: "Koodi vanheni.",
+  codeFailed: "Koodia ei voitu käyttää.",
+  newCode: "Näytä uusi koodi",
+  signedInDevices: "Kirjautuneet laitteet",
+  thisBrowser: "Tämä selain",
+  fresh: "Uusi",
+  viaGitHub: "Kirjautunut GitHubilla",
+  viaQr: "Kirjautunut QR-koodilla",
+  logout: "Kirjaudu ulos…",
+  endNamed: (name: string) => `Kirjaa ${name} ulos`,
+  end: "Kirjaa ulos…",
+  ownAccount: "Oma tili",
+  askName: (name: string) => `Kirjaudutaanko nimellä ${name}?`,
+  signIn: "Kirjaudu",
+  signedInTitle: "Kirjauduttu",
+  dead: "Koodi ei enää toimi",
+  deadHint: "Näytä uusi koodi tietokoneelta.",
+  notSignedIn: "Et kirjautunut",
+  today: (time: string) => `tänään ${time}`,
+  at: (h: number, m: string) => `klo ${h}.${m}`,
+  unknownBrowser: "Tuntematon selain",
+  listFailed: "Laitteita ei voitu hakea. Yritä uudelleen.",
+  endFailed: "Uloskirjaus epäonnistui. Yritä uudelleen.",
+  endQuestion: (name: string) => `Kirjataanko ${name} ulos?`,
+  endConfirm: "Kirjaa ulos",
+};
+
+export const devicesText = catalog(fi, {
+  qr: "QR code",
+  signInPhone: "Sign in on a phone",
+  showCode: "Show code",
+  expires: "Expires in",
+  cancel: "Cancel",
+  device: "Device",
+  signedIn: "signed in.",
+  done: "Done",
+  codeExpired: "The code expired.",
+  codeFailed: "The code could not be used.",
+  newCode: "Show a new code",
+  signedInDevices: "Signed-in devices",
+  thisBrowser: "This browser",
+  fresh: "New",
+  viaGitHub: "Signed in with GitHub",
+  viaQr: "Signed in with a QR code",
+  logout: "Sign out…",
+  endNamed: (name) => `Sign ${name} out`,
+  end: "Sign out…",
+  ownAccount: "Your account",
+  askName: (name) => `Sign in as ${name}?`,
+  signIn: "Sign in",
+  signedInTitle: "Signed in",
+  dead: "The code no longer works",
+  deadHint: "Show a new code from your computer.",
+  notSignedIn: "You did not sign in",
+  today: (time) => `today ${time}`,
+  at: (h, m) => `at ${String(h).padStart(2, "0")}:${m}`,
+  unknownBrowser: "Unknown browser",
+  listFailed: "The devices could not be fetched. Try again.",
+  endFailed: "Signing out failed. Try again.",
+  endQuestion: (name) => `Sign ${name} out?`,
+  endConfirm: "Sign out",
+});
+
+```

@@ -3,12 +3,13 @@ created: 2026-11-01
 updated: 2026-11-01
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: agent-knows-habitat-ui
 lane_seq: 1
 related: ['@proto-conversation-header-actions-r3']
 preparation: ready
+closed: 2026-11-01
 ---
 
 # The agent knows the whole Habitat interface and can help with it

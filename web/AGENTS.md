@@ -52,6 +52,12 @@ host sends and the browser words, goes in that test's allowlist with its
 reason. Text the daemon or gateway would show is better sent as a code or an
 empty value the browser words, as the title of an unnamed conversation is.
 
+The shipped `open-habitat-ui` agent skill derives its references from these
+catalogs, the settings index/routes and keyboard-handler sources. After changing
+those inputs, run `python3 scripts/generate-ui-reference.py` from the repository
+root. The gate and release packager reject stale references, including removed
+modules; edit the browser sources, not the generated copies.
+
 The language resolves as the person's choice (System, Suomi, English (US),
 English (UK), kept in
 their daemon's account preferences so it follows them), then the server's

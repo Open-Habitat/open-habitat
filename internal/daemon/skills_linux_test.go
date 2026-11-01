@@ -36,9 +36,13 @@ func TestSkillDiscoveryNativeEffectivePaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	ui, err := installUISkill(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	script := `
 import {pathToFileURL} from 'node:url';
-const [sdk,cwd,agentDir,shipped]=process.argv.slice(1);
+const [sdk,cwd,agentDir,shipped,ui]=process.argv.slice(1);
 const {DefaultResourceLoader}=await import(pathToFileURL(sdk+'/dist/core/resource-loader.js'));
 const {SettingsManager}=await import(pathToFileURL(sdk+'/dist/core/settings-manager.js'));
 const settingsManager=SettingsManager.create(cwd,agentDir);
@@ -47,10 +51,10 @@ const loader=new DefaultResourceLoader({cwd,agentDir,settingsManager,noExtension
 const view=()=>({commands:loader.getSkills().skills.map(s=>({name:'skill:'+s.name,description:s.description,source:'skill',sourceInfo:s.sourceInfo}))});
 await loader.reload(); console.log(JSON.stringify(view()));
 settingsManager.setProjectTrusted(false); await loader.reload(); console.log(JSON.stringify(view()));
-const hostLoader=new DefaultResourceLoader({cwd,agentDir,settingsManager,noExtensions:true,noThemes:true,noPromptTemplates:true,additionalSkillPaths:[shipped]});
+const hostLoader=new DefaultResourceLoader({cwd,agentDir,settingsManager,noExtensions:true,noThemes:true,noPromptTemplates:true,additionalSkillPaths:[shipped,ui]});
 await hostLoader.reload(); console.log(JSON.stringify({names:hostLoader.getSkills().skills.map(s=>s.name)}));
 `
-	cmd := exec.Command("node", "--input-type=module", "-e", script, sdk, repo, filepath.Join(home, ".pi/agent"), shipped)
+	cmd := exec.Command("node", "--input-type=module", "-e", script, sdk, repo, filepath.Join(home, ".pi/agent"), shipped, ui)
 	cmd.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + home}
 	b, err := cmd.Output()
 	if err != nil {
@@ -69,6 +73,9 @@ await hostLoader.reload(); console.log(JSON.stringify({names:hostLoader.getSkill
 	}
 	if json.Unmarshal([]byte(lines[2]), &shippedNames) != nil || !strings.Contains(strings.Join(shippedNames.Names, ","), "open-habitat-start-page") {
 		t.Fatalf("host skill missing from native loader: %s", lines[2])
+	}
+	if !strings.Contains(strings.Join(shippedNames.Names, ","), "open-habitat-ui") {
+		t.Fatalf("UI skill missing from native loader: %s", lines[2])
 	}
 	untrusted, ok := parsePiCommands(json.RawMessage(lines[1]))
 	if !ok || len(untrusted) != 1 || untrusted[0].Path != filepath.Join(home, ".pi/agent/skills/shared/SKILL.md") {

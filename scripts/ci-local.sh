@@ -95,6 +95,8 @@ if ! $reuse_phases; then
     echo "ci-local phase go-checks: $((SECONDS-step))s"
     go generate ./internal/contracts
     ./scripts/check-generated.sh
+    "$PYTHON" scripts/generate-ui-reference.py --check
+    "$PYTHON" scripts/test-ui-reference.py
     "$PYTHON" scripts/validate-contracts.py
     "$PYTHON" scripts/validate-project-view.py
     "$PYTHON" scripts/check-licenses.py

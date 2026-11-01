@@ -1,0 +1,1600 @@
+# components/composer/Composer.tsx
+
+Generated from web/src/components/composer/Composer.tsx; do not edit.
+
+```tsx
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { uploadAttachment } from "../../app/attachments";
+import type {
+  CommandList,
+  FileList,
+  FilePreview,
+} from "../../app/composerReads";
+import { resolveSkillAlias } from "../../app/composerReads";
+import { useText } from "../../i18n";
+import { composerText } from "../../text/composer";
+import {
+  AttachmentChips,
+  joinAttachments,
+  splitAttachments,
+} from "../AttachmentChips";
+import { Icon } from "../Icon";
+import { TooltipButton } from "../QuickTooltip";
+import { InlineNotice } from "../Status";
+import { type Availability, enabled, unavailableReason } from "../types";
+import { AttachmentMenu } from "./AttachmentMenu";
+import {
+  type Choice,
+  type ChoiceGroup,
+  ChoiceList,
+  flatChoices,
+  optionId,
+  pickable,
+} from "./ChoiceList";
+import {
+  type CaretToken,
+  caretToken,
+  fileInsertion,
+  fuzzyScore,
+  isShell,
+  shellCommand,
+  shellExcluded,
+  withLeadingCommand,
+} from "./completion";
+import {
+  type ComposerSpeech,
+  DictationBar,
+  DictationCeiling,
+  DictationLive,
+  DictationNoticeView,
+  DictationSlotControl,
+  useDictation,
+  useDictationShortcut,
+} from "./Dictation";
+import {
+  type ComposerGoal,
+  GoalChip,
+  joinGoal,
+  splitGoal,
+  unwrapGoal,
+} from "./GoalChip";
+import { Palette, type PaletteTab } from "./Palette";
+import "./composer.css";
+
+const isMac =
+  typeof navigator !== "undefined" &&
+  /Mac|iPhone|iPad/.test(navigator.platform);
+export const MOD = isMac ? "⌘" : "Ctrl";
+const ALT = isMac ? "⌥" : "Alt";
+
+type Mode = "steer" | "follow_up";
+const modeIcon: Record<Mode, "steer" | "queue"> = {
+  steer: "steer",
+  follow_up: "queue",
+};
+type Text = typeof composerText.fi;
+const other = (m: Mode): Mode => (m === "steer" ? "follow_up" : "steer");
+
+/** A browser action listed with Pi's commands; it runs at once. */
+export type BrowserAction = {
+  name: string;
+  description: string;
+  run: () => void;
+};
+
+/** What the field's lists read. The composer asks when a list opens. */
+export type ComposerSources = {
+  commands: (signal: AbortSignal) => Promise<CommandList>;
+  files: (query: string, signal: AbortSignal) => Promise<FileList>;
+  preview?: (path: string, signal: AbortSignal) => Promise<FilePreview>;
+  browserActions?: BrowserAction[];
+  /** For the list titles, e.g. the workspace's name. */
+  workspaceName: string;
+};
+
+/** The conversation's `!` command as the host reports it. */
+export type ComposerCommand = {
+  command: string;
+  excludeFromContext: boolean;
+  state: "held" | "running";
+  /** Epoch milliseconds the command started; absent while held. */
+  startedAt?: number;
+};
+
+export type ComposerShell = {
+  /** Where the command runs, shown in the field's label, e.g. ~/src/x. */
+  workspaceLabel: string;
+  running?: ComposerCommand;
+  onRun: (command: string, excludeFromContext: boolean) => void;
+  onStop: () => void;
+  runAvailability?: Availability;
+  stopState?: "pending" | "uncertain";
+};
+
+type Open =
+  | ({ place: "caret"; sel: number } & CaretToken)
+  | {
+      place: "button";
+      kind: "cmd" | "file";
+      start: number;
+      end: number;
+      query: string;
+      sel: number;
+    }
+  | {
+      place: "palette";
+      tab: PaletteTab;
+      start: number;
+      end: number;
+      /** Accepting replaces start..end (an `@token` carried into it). */
+      replace: boolean;
+      query: string;
+      sel: number;
+      marks: Set<string>;
+    };
+
+const kindOf = (o: Open) =>
+  o.place === "palette" ? (o.tab === "cmd" ? "cmd" : "file") : o.kind;
+
+function mmss(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function useNow(active: boolean) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [active]);
+  return now;
+}
+
+/** The field's caret x within its box, for placing the caret list. */
+function caretX(field: HTMLTextAreaElement, pos: number) {
+  const style = getComputedStyle(field);
+  const mirror = document.createElement("div");
+  for (const k of [
+    "font",
+    "fontKerning",
+    "fontFeatureSettings",
+    "fontVariantLigatures",
+    "letterSpacing",
+    "padding",
+    "border",
+    "boxSizing",
+    "lineHeight",
+  ] as const)
+    mirror.style[k] = style[k];
+  Object.assign(mirror.style, {
+    position: "absolute",
+    visibility: "hidden",
+    whiteSpace: "pre-wrap",
+    overflowWrap: "break-word",
+    width: `${field.offsetWidth}px`,
+    top: "0",
+    left: "0",
+  });
+  mirror.textContent = field.value.slice(0, pos);
+  const mark = document.createElement("span");
+  mark.textContent = "​";
+  mirror.appendChild(mark);
+  field.parentElement?.appendChild(mirror);
+  const x = mark.offsetLeft + field.offsetLeft;
+  mirror.remove();
+  return x;
+}
+
+/** Commands and files, read when a list opens. A command list is reused for
+ * half a minute, then read again in the background while the old one shows. */
+function useSources(sources: ComposerSources | undefined, open: Open | null) {
+  const [commands, setCommands] = useState<{
+    state: "idle" | "loading" | "ready" | "failed";
+    list?: CommandList;
+    at?: number;
+  }>({ state: "idle" });
+  const [files, setFiles] = useState<{
+    state: "idle" | "loading" | "ready" | "failed";
+    query: string;
+    list?: FileList;
+  }>({ state: "idle", query: "" });
+  const kind = open ? kindOf(open) : null;
+  const fileQuery = open && kind === "file" ? open.query : null;
+  const wantCommands = kind === "cmd";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reread only when a command list opens.
+  useEffect(() => {
+    if (!sources || !wantCommands) return;
+    if (commands.at && Date.now() - commands.at < 30000) return;
+    const abort = new AbortController();
+    setCommands((c) => ({ ...c, state: c.list ? c.state : "loading" }));
+    sources.commands(abort.signal).then(
+      (list) => setCommands({ state: "ready", list, at: Date.now() }),
+      () => {
+        if (!abort.signal.aborted)
+          setCommands((c) => (c.list ? c : { state: "failed" }));
+      },
+    );
+    return () => abort.abort();
+  }, [sources, wantCommands]);
+  useEffect(() => {
+    if (!sources || fileQuery === null) return;
+    const abort = new AbortController();
+    setFiles((f) => ({ ...f, state: "loading" }));
+    const timer = window.setTimeout(() => {
+      sources.files(fileQuery, abort.signal).then(
+        (list) => setFiles({ state: "ready", query: fileQuery, list }),
+        () => {
+          if (!abort.signal.aborted)
+            setFiles({ state: "failed", query: fileQuery });
+        },
+      );
+    }, 120);
+    return () => {
+      window.clearTimeout(timer);
+      abort.abort();
+    };
+  }, [sources, fileQuery]);
+  return { commands, files };
+}
+
+function commandGroups(
+  t: Text,
+  sources: ComposerSources | undefined,
+  state: ReturnType<typeof useSources>["commands"],
+  query: string,
+  runsAtStart: boolean,
+): ChoiceGroup[] {
+  const groups: ChoiceGroup[] = [];
+  const by = <T extends { s: number }>(a: T, b: T) => b.s - a.s;
+  if (runsAtStart && sources?.browserActions?.length)
+    groups.push({
+      label: t.browserGroup,
+      choices: sources.browserActions
+        .map((a) => ({ a, s: fuzzyScore(a.name, query) }))
+        .filter((x) => x.s > 0)
+        .sort(by)
+        .map(
+          ({ a }): Choice => ({
+            type: "command",
+            name: a.name,
+            description: a.description,
+            tag: t.browserTag,
+            tone: "browser",
+            run: a.run,
+          }),
+        ),
+    });
+  const label = runsAtStart ? t.agentAtStart : t.agentMention;
+  if (!state.list) {
+    groups.push({
+      label: t.agent,
+      choices: [
+        state.state === "failed"
+          ? {
+              type: "status",
+              text: t.commandsFailed,
+            }
+          : {
+              type: "status",
+              text: t.commandsLoading,
+              loading: true,
+            },
+      ],
+    });
+    return groups;
+  }
+  groups.push({
+    label,
+    // A native command inventory is not a browser capability list. Keep
+    // known terminal dialogs out of every composer entry point (including
+    // search), rather than offering disabled commands among runnable ones.
+    choices: state.list.commands
+      .filter((c) => !c.terminal_only)
+      .map((c) => ({
+        c,
+        s: Math.max(
+          fuzzyScore(c.name, query),
+          fuzzyScore(c.description, query) * 0.4,
+        ),
+      }))
+      .filter((x) => x.s > 0)
+      .sort(by)
+      .map(
+        ({ c }): Choice => ({
+          type: "command",
+          name: c.name,
+          description: c.description,
+          tag: `${t.sources[c.source]} · ${t.scopes[c.scope]}`,
+          tone: c.source,
+          terminalOnly: c.terminal_only,
+        }),
+      ),
+  });
+  return groups;
+}
+
+function fileGroups(
+  t: Text,
+  state: ReturnType<typeof useSources>["files"],
+  query: string,
+  changedOnly: boolean,
+): ChoiceGroup[] {
+  if (!state.list || state.query !== query) {
+    if (state.state === "failed")
+      return [
+        {
+          label: t.files,
+          choices: [{ type: "status", text: t.filesFailed }],
+        },
+      ];
+    if (!state.list)
+      return [
+        {
+          label: t.files,
+          choices: [{ type: "status", text: t.filesLoading, loading: true }],
+        },
+      ];
+  }
+  const files = (state.list?.files ?? []).filter((f) => !changedOnly || f.git);
+  const choice = (f: (typeof files)[number]): Choice => ({
+    type: "file",
+    path: f.path,
+    git: f.git,
+  });
+  return [
+    {
+      label: query ? t.matches : changedOnly ? t.changed : t.files,
+      choices: files.map(choice),
+    },
+  ];
+}
+
+export function Composer({
+  value: draftValue,
+  csrf,
+  availability = enabled,
+  editorAvailability,
+  activity,
+  selectedWorkingMode,
+  sendState,
+  suppressAvailabilityReason = false,
+  queue,
+  queueKnown = true,
+  onChange: onDraftChange,
+  onSendNow,
+  onSteer,
+  onFollowUp,
+  onModeChange,
+  onInterrupt,
+  onStopWaiting,
+  stopState,
+  onRestoreQueue,
+  restoreAvailability = enabled,
+  modelPicker,
+  shell,
+  sources,
+  onActivity,
+  idlePlaceholder,
+  goals,
+  speech,
+  onDictating,
+}: {
+  value: string;
+  csrf?: string;
+  modelPicker?: ReactNode;
+  availability?: Availability;
+  editorAvailability?: Availability;
+  activity: "idle" | "working" | "settling";
+  selectedWorkingMode: Mode;
+  sendState?: "idle" | "pending" | "rejected" | "uncertain";
+  suppressAvailabilityReason?: boolean;
+  /** Pi's queue while it works: shown as a card above the field. */
+  queue?: { steering: string[]; followUp: string[] };
+  queueKnown?: boolean;
+  onChange: (value: string) => void;
+  onSendNow: (text?: string) => void;
+  onSteer: (text?: string) => void;
+  onFollowUp: (text?: string) => void;
+  onModeChange: (mode: Mode) => void;
+  /** Stops Pi's turn (Stop beside Send, and Esc in the field). */
+  onInterrupt?: () => void;
+  /** rejected: the stop was refused and the work goes on; Stop works again. */
+  stopState?: "pending" | "uncertain" | "rejected";
+  /** Messages wait for Pi to start: Stop takes them back before Pi runs. */
+  onStopWaiting?: () => void;
+  /** Takes Pi's queued messages back into the field. */
+  onRestoreQueue?: () => void;
+  restoreAvailability?: Availability;
+  /** `!` commands; without it a leading `!` is ordinary text. */
+  shell?: ComposerShell;
+  /** `/`, `@`, the buttons and Ctrl/⌘+P; without it they are absent. */
+  sources?: ComposerSources;
+  /** The person pressed or typed in the field. */
+  onActivity?: () => void;
+  /** The empty field's invitation while the agent is not working. */
+  idlePlaceholder?: string;
+  /** Start-page goals: a draft beginning with one's skill shows its chip. */
+  goals?: ComposerGoal[];
+  /** Speech input: the mic beside Send. Needs csrf. */
+  speech?: ComposerSpeech;
+  /** A dictation is under way, or ending into a send: its text is not yet
+   * in the draft or not yet sent. */
+  onDictating?: (active: boolean) => void;
+}) {
+  const t = useText(composerText);
+  const MODE = t.modes;
+  // The draft is what the agent receives: the person's text with one
+  // attachment reference per line after it. The field edits only the text;
+  // the attachments show as chips (Jari 24.10.2026).
+  const draft = useRef({ value: draftValue, onChange: onDraftChange, goals });
+  draft.current = { value: draftValue, onChange: onDraftChange, goals };
+  const { text: whole, attachments } = splitAttachments(draftValue);
+  const { goal, text: value } = splitGoal(whole, goals);
+  // The field's text with the draft's goal chip and attachments kept.
+  const setText = useCallback((text: string, keepGoal = true) => {
+    const current = draft.current;
+    const parts = splitAttachments(current.value);
+    const kept = keepGoal
+      ? splitGoal(parts.text, current.goals).goal
+      : undefined;
+    const next = joinAttachments(joinGoal(kept, text), parts.attachments);
+    draft.current = { ...current, value: next };
+    current.onChange(next);
+  }, []);
+  const onChange = useCallback((text: string) => setText(text), [setText]);
+  const removeAttachment = (index: number) => {
+    const current = draft.current;
+    const parts = splitAttachments(current.value);
+    const next = joinAttachments(
+      parts.text,
+      parts.attachments.filter((_, other) => other !== index),
+    );
+    draft.current = { ...current, value: next };
+    current.onChange(next);
+  };
+  const [resolving, setResolving] = useState(false);
+  const resolution = useRef<AbortController | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cancel a lookup when its send context changes.
+  useEffect(
+    () => () => resolution.current?.abort(),
+    [
+      sources,
+      value,
+      csrf,
+      availability.state,
+      sendState,
+      activity,
+      selectedWorkingMode,
+    ],
+  );
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const uploadController = useRef<AbortController | null>(null);
+  const picker = useRef<HTMLInputElement>(null);
+  const addFiles = useCallback(
+    async (files: File[]) => {
+      if (!csrf || uploadController.current || availability.state !== "enabled")
+        return;
+      if (
+        files.length > 8 ||
+        new Set(
+          draft.current.value.match(/\/api\/v1\/attachments\/[a-f0-9-]{36}/g) ??
+            [],
+        ).size +
+          files.length >
+          8
+      ) {
+        setUploadError(t.tooManyFiles);
+        return;
+      }
+      const controller = new AbortController();
+      uploadController.current = controller;
+      setUploading(true);
+      setUploadError("");
+      try {
+        for (const file of files.slice(0, 8)) {
+          const uploaded = await uploadAttachment(
+            file,
+            csrf,
+            controller.signal,
+          );
+          if (controller.signal.aborted) return;
+          const current = draft.current;
+          const next = `${current.value}${current.value ? "\n" : ""}${uploaded.reference}`;
+          draft.current = { ...current, value: next };
+          current.onChange(next);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted)
+          setUploadError(
+            error instanceof Error ? error.message : t.uploadFailed,
+          );
+      } finally {
+        if (uploadController.current === controller) {
+          uploadController.current = null;
+          if (!controller.signal.aborted) setUploading(false);
+        }
+      }
+    },
+    [csrf, availability.state, t],
+  );
+  useEffect(() => {
+    if (csrf) setUploading(false);
+    return () => {
+      uploadController.current?.abort();
+      uploadController.current = null;
+    };
+  }, [csrf]);
+  useEffect(() => {
+    if (!csrf) return;
+    const drag = (event: DragEvent) => {
+      if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
+    };
+    const drop = (event: DragEvent) => {
+      if (!event.dataTransfer?.files.length) return;
+      event.preventDefault();
+      void addFiles(Array.from(event.dataTransfer.files));
+    };
+    document.addEventListener("dragover", drag);
+    document.addEventListener("drop", drop);
+    return () => {
+      document.removeEventListener("dragover", drag);
+      document.removeEventListener("drop", drop);
+    };
+  }, [csrf, addFiles]);
+  const field = useRef<HTMLTextAreaElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const listId = useId().replace(/:/g, "");
+  const shellLabelId = `${listId}-shell`;
+  const [open, setOpen] = useState<Open | null>(null);
+  const [notice, setNotice] = useState("");
+  const lastCaret = useRef<[number, number] | null>(null);
+  const { commands, files } = useSources(sources, open);
+  const working = activity === "working";
+  // A goal chip makes the draft a skill call; its text is never a command.
+  const shellOn = !!shell && !goal && isShell(value);
+  const running = shell?.running;
+  const now = useNow(running?.state === "running");
+  const stopping = stopState ?? shell?.stopState;
+  // An agent stop shows its progress on Stop itself: a row that appears for
+  // the fraction of a second a stop takes moves the whole composer twice.
+  const agentStopping = stopping === "pending" && working && !!onInterrupt;
+  const commandNotice = shellOn && running ? t.previousRunning : "";
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 6000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
+  const groups = useMemo<ChoiceGroup[]>(() => {
+    if (!open) return [];
+    if (kindOf(open) === "cmd")
+      return commandGroups(
+        t,
+        sources,
+        commands,
+        open.query,
+        open.place !== "caret" || open.atStart,
+      );
+    return fileGroups(
+      t,
+      files,
+      open.query,
+      open.place === "palette" && open.tab === "changed",
+    );
+  }, [t, open, sources, commands, files]);
+  const flat = useMemo(() => flatChoices(groups), [groups]);
+  // A selection past the end, or on a status row, moves to the first pickable.
+  const sel =
+    open && open.sel >= 0 && !pickable(flat[open.sel])
+      ? flat.findIndex(pickable)
+      : (open?.sel ?? -1);
+
+  const fieldAvailability = editorAvailability ?? availability;
+  const fieldReason = unavailableReason(fieldAvailability);
+  const fieldDisabled =
+    Boolean(fieldReason) && fieldAvailability.state !== "read_only";
+  const sendBlocked =
+    resolving ||
+    uploading ||
+    sendState === "pending" ||
+    availability.state !== "enabled";
+  const shellText = shellOn ? shellCommand(value) : "";
+  const runBlocked =
+    !shell ||
+    !shellText ||
+    !!running ||
+    (shell.runAvailability && shell.runAvailability.state !== "enabled");
+  // A dictation that ends puts its text in the field where the caret was,
+  // with the caret after it, and the field is ordinary text again.
+  const dictation = useDictation(
+    speech,
+    csrf,
+    (text, caret) => {
+      onChange(text);
+      lastCaret.current = [caret, caret];
+      caretText.current = text;
+      window.requestAnimationFrame(() => {
+        const el = field.current;
+        if (!el || el.hidden) return;
+        el.focus();
+        el.setSelectionRange(caret, caret);
+        if (caret === el.value.length) el.scrollTop = el.scrollHeight;
+      });
+    },
+    box,
+  );
+  const dictating = dictation.active;
+  const endingToSend = useRef(false);
+  const [sendingDictation, setSendingDictation] = useState(false);
+  const dictationBusy = dictating || sendingDictation;
+  const reportDictating = useRef(onDictating);
+  reportDictating.current = onDictating;
+  useEffect(() => {
+    reportDictating.current?.(dictationBusy);
+  }, [dictationBusy]);
+  useEffect(() => () => reportDictating.current?.(false), []);
+  const dictatedText = dictating
+    ? `${dictation.before}${dictation.view?.final ?? ""}${dictation.after}`
+    : "";
+  const sendReady = shellOn
+    ? !runBlocked
+    : !!(dictating ? dictatedText : draftValue).trim() && !sendBlocked;
+
+  // ---- inserting text ----
+  const replaceRange = useCallback(
+    (start: number, end: number, text: string) => {
+      const el = field.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(start, end);
+      // insertText keeps the browser's undo history, as typing does.
+      if (!document.execCommand?.("insertText", false, text)) {
+        const next = el.value.slice(0, start) + text + el.value.slice(end);
+        onChange(next);
+        requestAnimationFrame(() => {
+          field.current?.setSelectionRange(
+            start + text.length,
+            start + text.length,
+          );
+        });
+      }
+    },
+    [onChange],
+  );
+  const close = useCallback(
+    (refocus?: boolean) => {
+      const had = open;
+      setOpen(null);
+      if (refocus && had && field.current) {
+        const el = field.current;
+        el.focus();
+        const at =
+          had.place === "caret" || (had.place === "palette" && had.replace)
+            ? had.end
+            : had.start;
+        el.setSelectionRange(at, had.place === "caret" ? at : had.end);
+      }
+    },
+    [open],
+  );
+  const accept = (index: number) => {
+    if (!open) return;
+    const marked =
+      open.place === "palette" && open.marks.size
+        ? flat.filter((c) => c.type === "file" && open.marks.has(c.path))
+        : [flat[index]].filter(Boolean);
+    const first = marked[0];
+    if (!first || first.type === "status") return;
+    if (first.type === "command" && first.terminalOnly) {
+      setNotice(t.terminalOnly(first.name));
+      return;
+    }
+    const o = open;
+    setOpen(null);
+    if (first.type === "command") {
+      if (first.run) {
+        if (o.place === "caret") replaceRange(o.start, o.end, "");
+        first.run();
+        return;
+      }
+      if (o.place === "caret" && o.atStart)
+        return replaceRange(o.start, o.end, `/${first.name} `);
+      if (o.place === "caret")
+        return replaceRange(o.start, o.end, `/${first.name} `);
+      const lead = withLeadingCommand(value, first.name);
+      return replaceRange(lead.start, lead.end, lead.insert);
+    }
+    const paths = marked.flatMap((c) => (c.type === "file" ? [c.path] : []));
+    const text = fileInsertion(paths, shellOn);
+    if (o.place === "caret" || (o.place === "palette" && o.replace))
+      return replaceRange(o.start, o.end, text);
+    const pad = o.start > 0 && !/\s/.test(value[o.start - 1]) ? " " : "";
+    replaceRange(o.start, o.end, pad + text);
+  };
+  const move = (d: number) => {
+    if (!open || !flat.some((c) => c.type !== "status")) return;
+    const n = flat.length;
+    let i = sel < 0 ? (d > 0 ? -1 : n) : sel;
+    do i = (i + d + n) % n;
+    while (flat[i]?.type === "status");
+    setOpen({ ...open, sel: i });
+  };
+
+  // ---- opening ----
+  const fromText = (text: string, caret: number) => {
+    if (!sources) return;
+    if (open && open.place !== "caret") return;
+    const t = caretToken(text, caret);
+    if (!t) {
+      if (open) setOpen(null);
+      return;
+    }
+    const same =
+      open?.place === "caret" && open.kind === t.kind && open.start === t.start;
+    // A mid-line `/` opens with nothing highlighted, so Enter still sends.
+    setOpen({
+      place: "caret",
+      ...t,
+      sel: same ? open.sel : t.kind === "cmd" && !t.atStart ? -1 : 0,
+    });
+  };
+  const fieldCaret = (): [number, number] => {
+    const el = field.current;
+    if (el && document.activeElement === el)
+      return [el.selectionStart, el.selectionEnd];
+    return lastCaret.current ?? [value.length, value.length];
+  };
+  // A dictation writes at the caret the field last had, as long as the text
+  // is still the one it had then; a draft changed since gets it at the end.
+  const caretText = useRef<string | null>(null);
+  const dictationCaret = (): [number, number] => {
+    const el = field.current;
+    if ((el && document.activeElement === el) || caretText.current === value)
+      return fieldCaret();
+    return [value.length, value.length];
+  };
+  const fromButton = (kind: "cmd" | "file") => {
+    if (open?.place === "button" && open.kind === kind) return close(true);
+    const [start, end] = fieldCaret();
+    setOpen({ place: "button", kind, start, end, query: "", sel: 0 });
+  };
+  const toPalette = () => {
+    if (!sources) return;
+    const fromCaret = open?.place === "caret" && open.kind === "file";
+    const [cs, ce] = fieldCaret();
+    setOpen({
+      place: "palette",
+      tab: "all",
+      start: fromCaret ? open.start : cs,
+      end: fromCaret ? open.end : ce,
+      replace: fromCaret,
+      query: fromCaret ? open.query : "",
+      sel: 0,
+      marks: new Set(),
+    });
+  };
+
+  // ---- what Stop stops, what Send does ----
+  const stopTarget: { label: string; tip: string; run: () => void } | null =
+    working && onInterrupt
+      ? {
+          label: t.stopAgent,
+          tip: t.stopAgentTip,
+          run: onInterrupt,
+        }
+      : running && shell
+        ? {
+            label: t.stopCommand(running.command),
+            tip: t.stopCommandTip(running.command),
+            run: shell.onStop,
+          }
+        : onStopWaiting && !working
+          ? {
+              label: t.stopUnsent,
+              tip: t.stopUnsent,
+              run: onStopWaiting,
+            }
+          : null;
+  const send = async (otherWay = false) => {
+    if (dictating) {
+      // Send during a dictation ends it first and sends what was said;
+      // a second press while it ends sends nothing more.
+      if (endingToSend.current) return;
+      endingToSend.current = true;
+      setSendingDictation(true);
+      try {
+        await dictation.stop().finally(() => {
+          endingToSend.current = false;
+        });
+        // The ended dictation has already put its text in the draft, beside
+        // the goal and the attachments.
+        return await sendDraft(otherWay, draft.current.value);
+      } finally {
+        setSendingDictation(false);
+      }
+    }
+    return sendDraft(otherWay, draftValue);
+  };
+  const sendDraft = async (otherWay: boolean, content: string) => {
+    if (shellOn) {
+      if (running) return;
+      if (!runBlocked && shell) shell.onRun(shellText, shellExcluded(value));
+      return;
+    }
+    if (!content.trim() || sendBlocked || resolution.current) return;
+    let text = content;
+    if (sources && /^\/[A-Za-z0-9][A-Za-z0-9._-]*(?=\s|$)/.test(content)) {
+      const controller = new AbortController();
+      resolution.current = controller;
+      setResolving(true);
+      setNotice("");
+      try {
+        const list = await sources.commands(controller.signal);
+        if (controller.signal.aborted) return;
+        text = resolveSkillAlias(content, list.commands);
+      } catch {
+        if (!controller.signal.aborted) setNotice(t.skillsUnchecked);
+        return;
+      } finally {
+        resolution.current = null;
+        setResolving(false);
+      }
+    }
+    if (working) {
+      const mode = otherWay ? other(selectedWorkingMode) : selectedWorkingMode;
+      if (mode === "steer") onSteer(text);
+      else onFollowUp(text);
+    } else onSendNow(text);
+  };
+  const sendLabel = shellOn
+    ? t.run
+    : working
+      ? MODE[selectedWorkingMode].label
+      : t.send;
+  const sendTip = shellOn
+    ? running
+      ? t.stillRunning
+      : t.runIn(shell?.workspaceLabel ?? "")
+    : working
+      ? t.workingTip(
+          MODE[selectedWorkingMode].label,
+          MODE[selectedWorkingMode].long,
+          ALT,
+          MODE[other(selectedWorkingMode)].label.toLowerCase(),
+        )
+      : dictating
+        ? t.dictateAndSend
+        : t.sendTip;
+
+  // ---- keys ----
+  const onFieldKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    if (
+      mod &&
+      !e.shiftKey &&
+      !e.altKey &&
+      e.key.toLowerCase() === "p" &&
+      sources
+    ) {
+      e.preventDefault();
+      return toPalette();
+    }
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+    if (open?.place === "caret") {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        return move(e.key === "ArrowDown" ? 1 : -1);
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        return setOpen(null);
+      }
+      if (
+        (e.key === "Enter" && !e.shiftKey && !e.altKey && sel >= 0) ||
+        (e.key === "Tab" && !e.shiftKey)
+      ) {
+        e.preventDefault();
+        return accept(sel < 0 ? Math.max(0, flat.findIndex(pickable)) : sel);
+      }
+    }
+    // Esc with nothing open stops what Stop stops, as Esc does in Pi's TUI.
+    if (e.key === "Escape" && !e.defaultPrevented && stopTarget) {
+      e.preventDefault();
+      if (stopping !== "pending" && stopping !== "uncertain") stopTarget.run();
+      return;
+    }
+    if (e.key !== "Enter" || e.shiftKey) return;
+    e.preventDefault();
+    // As in Pi's TUI: Enter sends the chosen way, Alt+Enter once the other way.
+    send(e.altKey && working && !shellOn);
+  };
+  const listKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open || e.nativeEvent.isComposing) return;
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (open.place === "palette") {
+        const tabs: PaletteTab[] = ["all", "changed", "cmd"];
+        const tab = tabs[(tabs.indexOf(open.tab) + 1) % tabs.length];
+        return setOpen({ ...open, tab, sel: 0 });
+      }
+      return toPalette();
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      return move(e.key === "ArrowDown" ? 1 : -1);
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      return close(true);
+    }
+    if (e.key === "Tab" && !e.shiftKey) {
+      e.preventDefault();
+      if (open.place === "palette" && open.tab !== "cmd") {
+        const c = flat[sel];
+        if (c?.type !== "file") return;
+        const marks = new Set(open.marks);
+        if (marks.has(c.path)) marks.delete(c.path);
+        else marks.add(c.path);
+        const n = flat.length;
+        let i = sel;
+        do i = (i + 1) % n;
+        while (flat[i]?.type === "status" && i !== sel);
+        return setOpen({ ...open, marks, sel: i });
+      }
+      return accept(sel < 0 ? 0 : sel);
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      return accept(sel);
+    }
+  };
+  // Ctrl/⌘+P from anywhere in the page that is not another text input.
+  const palette = useRef(toPalette);
+  palette.current = toPalette;
+  useEffect(() => {
+    if (!sources) return;
+    const onKey = (e: KeyboardEvent) => {
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+      if (
+        !mod ||
+        e.shiftKey ||
+        e.altKey ||
+        e.key.toLowerCase() !== "p" ||
+        e.defaultPrevented
+      )
+        return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.(".ah-choice-pop, .ah-palette")) return;
+      if (
+        target &&
+        target !== field.current &&
+        (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) ||
+          target.isContentEditable)
+      )
+        return;
+      e.preventDefault();
+      palette.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [sources]);
+  // The dictation shortcut from anywhere in the page that is not another
+  // text input or a dialog: it starts as the mic does and ends as Valmis.
+  const dictationKey = useRef<(() => void) | null>(null);
+  dictationKey.current =
+    speech && csrf && !shellOn && !fieldDisabled && !fieldReason
+      ? () => {
+          if (sendingDictation) return;
+          if (dictating) void dictation.stop();
+          else dictation.start(value, dictationCaret());
+        }
+      : null;
+  const dictationShortcut = useDictationShortcut();
+  const shortcutMatches = useRef(dictationShortcut.matches);
+  shortcutMatches.current = dictationShortcut.matches;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!shortcutMatches.current(e) || e.defaultPrevented) return;
+      const run = dictationKey.current;
+      const target = e.target as HTMLElement | null;
+      // A dialog or list over the conversation keeps its own keys.
+      const over = target?.closest?.(
+        'dialog, [role="dialog"], .ah-choice-pop, .ah-palette',
+      );
+      if (!run || (over && !over.contains(box.current))) return;
+      if (
+        target &&
+        target !== field.current &&
+        (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) ||
+          target.isContentEditable)
+      )
+        return;
+      e.preventDefault();
+      if (!e.repeat) run();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+  // A button's list closes on a press outside the composer.
+  useEffect(() => {
+    if (open?.place !== "button") return;
+    const down = (e: MouseEvent) => {
+      if (!box.current?.closest(".ah-composer")?.contains(e.target as Node))
+        setOpen(null);
+    };
+    document.addEventListener("mousedown", down);
+    return () => document.removeEventListener("mousedown", down);
+  }, [open?.place]);
+
+  // ---- the list beside the field ----
+  const headText = !open
+    ? ""
+    : kindOf(open) === "cmd"
+      ? open.place !== "caret" || open.atStart
+        ? t.commandsAndSkills
+        : t.mentionCommand
+      : shellOn
+        ? t.filesToCommand
+        : t.filesIn(sources?.workspaceName ?? "");
+  const [popLeft, setPopLeft] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: placement follows the open token.
+  useEffect(() => {
+    if (!open || open.place === "palette" || !box.current || !field.current)
+      return;
+    const width = Math.min(
+      box.current.clientWidth,
+      kindOf(open) === "cmd" ? 460 : 400,
+    );
+    let left = 0;
+    if (open.place === "button") {
+      const b = box.current.querySelector<HTMLElement>(
+        `[data-composer-list="${open.kind}"]`,
+      );
+      left = b ? b.offsetLeft - 4 : 0;
+    } else left = caretX(field.current, open.start) - 14;
+    setPopLeft(Math.max(0, Math.min(left, box.current.clientWidth - width)));
+  }, [
+    open?.place,
+    open && kindOf(open),
+    open?.place === "palette" ? 0 : open?.start,
+  ]);
+  const pop =
+    open && open.place !== "palette" ? (
+      // biome-ignore lint/a11y: a press inside the list keeps focus in the field; the list's keys stay with the field.
+      <div
+        className="ah-choice-pop"
+        data-kind={open.kind}
+        style={{ left: popLeft }}
+        onMouseDown={(e) => {
+          if (!(e.target as HTMLElement).closest("input")) e.preventDefault();
+        }}
+      >
+        <div className="ah-choice-head">{headText}</div>
+        {open.place === "button" ? (
+          <label className="ah-choice-search">
+            <Icon name={open.kind === "cmd" ? "slash" : "at"} />
+            <input
+              data-testid="command-search"
+              // biome-ignore lint/a11y/noAutofocus: the button opened this search; focus goes to it as in the chosen round.
+              autoFocus
+              type="text"
+              className="ah-choice-search-input"
+              autoComplete="off"
+              spellCheck={false}
+              role="combobox"
+              aria-expanded="true"
+              aria-controls={listId}
+              aria-activedescendant={
+                sel >= 0 ? optionId(listId, sel) : undefined
+              }
+              aria-label={open.kind === "cmd" ? t.searchCommand : t.searchFile}
+              placeholder={open.kind === "cmd" ? t.searchCommand : t.searchFile}
+              value={open.query}
+              onChange={(e) =>
+                setOpen({ ...open, query: e.target.value, sel: 0 })
+              }
+              onKeyDown={listKeys}
+            />
+          </label>
+        ) : null}
+        <ChoiceList
+          id={listId}
+          label={headText}
+          groups={groups}
+          selected={sel}
+          emptyText={t.noMatches(open.query)}
+          onPick={accept}
+          onHover={(i) => setOpen({ ...open, sel: i })}
+        />
+        <div className="ah-choice-keys">
+          {open.place === "caret" && sel < 0 ? (
+            <>
+              <kbd>Tab</kbd> {t.keyAddTop} · <kbd>↓</kbd> {t.keySelects} ·{" "}
+              <kbd>Enter</kbd> {t.keySendsAsIs} · <kbd>Esc</kbd> {t.keyClose}
+            </>
+          ) : (
+            <>
+              <kbd>↑</kbd>
+              <kbd>↓</kbd> {t.keySelect} · <kbd>Enter</kbd> {t.keyInsert} ·{" "}
+              <kbd>Esc</kbd> {t.keyClose}
+              {open.kind === "file" ? (
+                <>
+                  {" "}
+                  · <kbd>{MOD}</kbd>
+                  <kbd>P</kbd> {t.keyPicker}
+                </>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
+    ) : null;
+
+  // ---- the area's parts ----
+  // Equal texts may repeat in Pi's queue; the nth occurrence is the key.
+  const seen = new Map<string, number>();
+  const queued = [
+    ...(queue?.steering ?? []).map((text) => ({ kind: "steer" as Mode, text })),
+    ...(queue?.followUp ?? []).map((text) => ({
+      kind: "follow_up" as Mode,
+      text,
+    })),
+  ].map((q) => {
+    const id = `${q.kind}:${q.text}`;
+    const n = (seen.get(id) ?? 0) + 1;
+    seen.set(id, n);
+    return { ...q, key: `${id}:${n}` };
+  });
+  const queueCard =
+    queued.length || (!queueKnown && working) ? (
+      <section
+        data-testid="composer-queue"
+        className="ah-cq"
+        aria-label={t.waitingForAgent}
+      >
+        <div className="ah-cq-head">
+          <span>
+            {t.waitingForAgent}{" "}
+            {queueKnown ? (
+              <span className="ah-cq-n">{queued.length}</span>
+            ) : null}
+          </span>
+          {onRestoreQueue && queued.length ? (
+            <button
+              data-testid="composer-restore-queue"
+              type="button"
+              className="ah-cq-restore"
+              title={t.restoreTip}
+              disabled={restoreAvailability.state !== "enabled"}
+              onClick={onRestoreQueue}
+            >
+              <Icon name="restore" />
+              <span>{t.restore}</span>
+            </button>
+          ) : null}
+        </div>
+        {queueKnown ? (
+          <ul className="ah-cq-list">
+            {queued.map((q) => (
+              <li key={q.key} className={`ah-cq-row ah-cq-${q.kind}`}>
+                <span className="ah-cq-kind">
+                  <Icon name={modeIcon[q.kind]} />
+                  {MODE[q.kind].queued}
+                </span>
+                <span className="ah-cq-text">{q.text}</span>
+                <span className="ah-cq-when">
+                  {q.kind === "steer" ? (
+                    <>
+                      <span className="ah-choice-dot" aria-hidden="true" />
+                      {t.atNextStep}
+                    </>
+                  ) : (
+                    t.whenTurnEnds
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="ah-cq-unknown">{t.queueUnknown}</p>
+        )}
+      </section>
+    ) : null;
+  const shellLabel = shellOn ? (
+    <span
+      data-testid="command-mode"
+      data-excluded={shellExcluded(value)}
+      className="ah-crow-shell"
+      id={shellLabelId}
+    >
+      <span className="ah-crow-bang" aria-hidden="true">
+        {shellExcluded(value) ? "!!" : "!"}
+      </span>
+      <span className="ah-crow-shelltext">
+        {t.commandIn(<code>{shell?.workspaceLabel}</code>)}
+      </span>
+      <span data-testid="command-context" className="ah-crow-ctx">
+        {shellExcluded(value) ? t.onlyForYou : t.agentSeesOutput}
+      </span>
+    </span>
+  ) : null;
+  const listButton = (kind: "cmd" | "file") => (
+    <TooltipButton
+      data-testid={kind === "cmd" ? "command-palette" : "file-picker"}
+      type="button"
+      className="ah-crow-btn"
+      data-composer-list={kind}
+      aria-haspopup="listbox"
+      aria-expanded={open?.place === "button" && open.kind === kind}
+      aria-label={kind === "cmd" ? t.commands : t.file}
+      title={kind === "cmd" ? t.commandsTip : t.fileTip(MOD)}
+      disabled={fieldDisabled || dictating}
+      onMouseDown={(e) => {
+        lastCaret.current = fieldCaret();
+        e.preventDefault();
+      }}
+      onClick={() => fromButton(kind)}
+    >
+      <Icon name={kind === "cmd" ? "slash" : "at"} />
+      <span className="ah-crow-lbl">
+        {kind === "cmd" ? t.commands : t.file}
+      </span>
+    </TooltipButton>
+  );
+  const busy = working || !!running;
+  const placeholder = shellOn
+    ? ""
+    : !working
+      ? (idlePlaceholder ?? t.idlePlaceholder)
+      : `${selectedWorkingMode === "steer" ? t.steerPlaceholder : t.followUpPlaceholder}… · ${ALT}+Enter: ${MODE[other(selectedWorkingMode)].label.toLowerCase()}`;
+
+  const rowAids = (
+    <>
+      {csrf ? (
+        <AttachmentMenu
+          anchorRef={box}
+          disabled={uploading || availability.state !== "enabled" || dictating}
+          onAttach={() => picker.current?.click()}
+        />
+      ) : null}
+      {sources ? (
+        <>
+          {shellOn ? shellLabel : listButton("cmd")}
+          {listButton("file")}
+        </>
+      ) : (
+        shellLabel
+      )}
+    </>
+  );
+  const rowModel = modelPicker ? (
+    <div className="ah-composer-model">{modelPicker}</div>
+  ) : null;
+  const rowChip =
+    working && !shellOn ? (
+      <button
+        data-testid="composer-mode"
+        data-mode={selectedWorkingMode}
+        type="button"
+        className={`ah-crow-chip ah-crow-chip-${selectedWorkingMode}`}
+        aria-label={t.modeLabel(
+          MODE[selectedWorkingMode].label,
+          MODE[other(selectedWorkingMode)].label,
+        )}
+        title={t.modeTip(
+          MODE[selectedWorkingMode].label,
+          MODE[selectedWorkingMode].long,
+          ALT,
+        )}
+        onClick={() => onModeChange(other(selectedWorkingMode))}
+      >
+        <Icon name={modeIcon[selectedWorkingMode]} />
+        <span>{MODE[selectedWorkingMode].label}</span>
+        {selectedWorkingMode === "follow_up" ? (
+          // A phone's row has room for the short label only.
+          <span className="ah-crow-chip-short">{t.followUpShort}</span>
+        ) : null}
+        <Icon name="swap" className="ah-crow-swap" />
+      </button>
+    ) : null;
+  const rowRun =
+    running && !working ? (
+      <span
+        className="ah-crow-run"
+        title={running.state === "held" ? t.waitingForStart : t.commandRunning}
+      >
+        <span className="ah-crow-bang" aria-hidden="true">
+          {running.excludeFromContext ? "!!" : "!"}
+        </span>
+        <code>{running.command}</code>
+        <span className="ah-crow-clock">
+          {running.state === "held" || running.startedAt === undefined
+            ? t.waiting
+            : mmss(now - running.startedAt)}
+        </span>
+      </span>
+    ) : null;
+  const rowStop = stopTarget ? (
+    <TooltipButton
+      data-testid="composer-stop"
+      data-stop-target={
+        working && onInterrupt
+          ? "agent"
+          : running && shell
+            ? "command"
+            : "unsent"
+      }
+      type="button"
+      className="ah-crow-stop"
+      aria-label={stopTarget.label}
+      aria-busy={agentStopping || undefined}
+      title={stopTarget.tip}
+      disabled={stopping === "pending" || stopping === "uncertain"}
+      onClick={stopTarget.run}
+    >
+      {agentStopping ? (
+        <span className="ah-command-spinner" aria-hidden="true" />
+      ) : (
+        <Icon name="stop" />
+      )}
+    </TooltipButton>
+  ) : null;
+  const rowSend = (
+    <TooltipButton
+      data-mode={shellOn ? "shell" : working ? selectedWorkingMode : "send"}
+      data-testid="send"
+      type="button"
+      className="ah-crow-send"
+      aria-label={sendLabel}
+      title={sendTip}
+      aria-disabled={!sendReady || undefined}
+      aria-busy={resolving || sendState === "pending" || undefined}
+      onClick={() => {
+        if (sendReady) send();
+        else if (shellOn && running) send();
+      }}
+    >
+      <Icon name={shellOn ? "run" : "up"} />
+    </TooltipButton>
+  );
+  const mic = !!speech && !!csrf && !shellOn;
+
+  return (
+    <section
+      className={`ah-composer${!draftValue.trim() && availability.state === "enabled" ? " ah-composer-empty" : ""}${suppressAvailabilityReason ? " ah-composer-notice-explains-block" : ""}`}
+      aria-label={t.writeMessage}
+    >
+      {queueCard}
+      {goal ? (
+        <GoalChip
+          goal={goal}
+          onRemove={
+            fieldDisabled
+              ? undefined
+              : () => {
+                  setText(value, false);
+                  field.current?.focus();
+                }
+          }
+          onUnwrap={
+            fieldDisabled
+              ? undefined
+              : () => {
+                  const text = unwrapGoal(goal, value);
+                  setText(text, false);
+                  requestAnimationFrame(() => {
+                    field.current?.focus();
+                    field.current?.setSelectionRange(text.length, text.length);
+                  });
+                }
+          }
+        />
+      ) : null}
+      <DictationCeiling view={dictation.view} />
+      <AttachmentChips
+        attachments={attachments}
+        onRemove={fieldDisabled ? undefined : removeAttachment}
+      />
+      {csrf ? (
+        <>
+          <input
+            ref={picker}
+            type="file"
+            multiple
+            hidden
+            onChange={(event) => {
+              void addFiles(Array.from(event.target.files ?? []));
+              event.target.value = "";
+            }}
+          />
+          {uploading ? <p role="status">{t.savingAttachment}</p> : null}
+          {uploadError ? <p role="alert">{uploadError}</p> : null}
+        </>
+      ) : null}
+      <div
+        ref={box}
+        className={`ah-cbox${shellOn ? " ah-cbox-shell" : ""}${fieldDisabled ? " ah-cbox-disabled" : ""}${dictating ? " ah-cbox-dictating" : ""}`}
+      >
+        {dictating ? <DictationLive dictation={dictation} /> : null}
+        <textarea
+          hidden={dictating}
+          data-testid="message-input"
+          autoComplete="off"
+          data-working={working}
+          ref={field}
+          className="ah-cbox-field"
+          aria-label={t.messageToAgent}
+          aria-describedby={shellOn ? shellLabelId : undefined}
+          aria-autocomplete={sources ? "list" : undefined}
+          aria-controls={open && open.place === "caret" ? listId : undefined}
+          aria-activedescendant={
+            open?.place === "caret" && sel >= 0
+              ? optionId(listId, sel)
+              : undefined
+          }
+          placeholder={placeholder}
+          rows={1}
+          spellCheck={!shellOn}
+          value={value}
+          disabled={fieldDisabled}
+          readOnly={fieldAvailability.state === "read_only"}
+          onPointerDown={onActivity}
+          onChange={(e) => {
+            onActivity?.();
+            onChange(e.target.value);
+            fromText(e.target.value, e.target.selectionStart);
+          }}
+          onPaste={(event) => {
+            const images = Array.from(event.clipboardData.files).filter(
+              (file) => file.type.startsWith("image/"),
+            );
+            if (csrf && images.length) {
+              event.preventDefault();
+              void addFiles(images);
+            }
+          }}
+          onKeyDown={onFieldKey}
+          onKeyUp={(e) => {
+            if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key))
+              fromText(e.currentTarget.value, e.currentTarget.selectionStart);
+          }}
+          onClick={(e) =>
+            fromText(e.currentTarget.value, e.currentTarget.selectionStart)
+          }
+          onBlur={(e) => {
+            lastCaret.current = [
+              e.currentTarget.selectionStart,
+              e.currentTarget.selectionEnd,
+            ];
+            caretText.current = e.currentTarget.value;
+            window.setTimeout(() => {
+              setOpen((o) =>
+                o?.place === "caret" &&
+                !box.current?.contains(document.activeElement)
+                  ? null
+                  : o,
+              );
+            }, 120);
+          }}
+        />
+        <div
+          className={`ah-crow${busy ? " ah-crow-busy" : ""}${dictating ? " ah-crow-dictating" : ""}`}
+        >
+          <span className="ah-crow-lz">
+            {rowAids}
+            <span className="ah-crow-grow" />
+            {rowModel}
+            {dictating ? (
+              <DictationBar dictation={dictation} onCancel={dictation.cancel} />
+            ) : null}
+          </span>
+          {rowChip}
+          {rowRun}
+          {rowStop}
+          {rowChip || rowRun || rowStop ? (
+            <span className="ah-crow-sep" aria-hidden="true" />
+          ) : null}
+          {mic ? (
+            <span className="ah-crow-mslot">
+              <DictationSlotControl
+                dictation={dictation}
+                text={value}
+                caret={dictationCaret}
+                disabled={fieldDisabled || !!fieldReason}
+              />
+            </span>
+          ) : null}
+          {rowSend}
+        </div>
+        {pop}
+      </div>
+      {fieldReason && !suppressAvailabilityReason ? (
+        <p className="ah-control-reason ah-composer-reason">{fieldReason}</p>
+      ) : null}
+      {agentStopping ? (
+        <p
+          data-testid="composer-notice"
+          data-stopping={stopping}
+          className="ah-visually-hidden"
+          role="status"
+        >
+          {t.stopping}
+        </p>
+      ) : stopping || commandNotice || notice ? (
+        <p
+          data-testid="composer-notice"
+          data-stopping={stopping}
+          className="ah-composer-notice"
+          role="status"
+        >
+          {stopping === "pending" ? (
+            <>
+              <span className="ah-command-spinner" aria-hidden="true" />{" "}
+              {t.stopping}
+            </>
+          ) : stopping === "uncertain" ? (
+            t.stopUncertain
+          ) : stopping === "rejected" ? (
+            t.stopRejected
+          ) : (
+            commandNotice || notice
+          )}
+        </p>
+      ) : null}
+      {speech ? (
+        <DictationNoticeView
+          dictation={dictation}
+          text={value}
+          caret={dictationCaret}
+          onOpenSettings={speech.onOpenSettings}
+        />
+      ) : null}
+      {sendState === "rejected" ? (
+        <InlineNotice
+          title={t.rejectedTitle}
+          description={t.rejectedDetail}
+          tone="danger"
+        />
+      ) : null}
+      {open?.place === "palette" && sources ? (
+        <Palette
+          listId={listId}
+          tab={open.tab}
+          query={open.query}
+          groups={groups}
+          selected={sel}
+          marks={open.marks}
+          shell={shellOn}
+          changedCount={
+            files.list && !open.query
+              ? files.list.files.filter((f) => f.git).length
+              : undefined
+          }
+          preview={sources.preview}
+          onQuery={(query) => setOpen({ ...open, query, sel: 0 })}
+          onTab={(tab) => setOpen({ ...open, tab, sel: 0 })}
+          onPick={accept}
+          onHover={(i) => setOpen({ ...open, sel: i })}
+          onKeyDown={listKeys}
+          onClose={() => close(true)}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+```

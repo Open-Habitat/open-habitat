@@ -1,0 +1,33 @@
+# text/documentPreview.ts
+
+Generated from web/src/text/documentPreview.ts; do not edit.
+
+```tsx
+import { catalog } from "../i18n";
+
+// The preview of a PDF, Word, spreadsheet or presentation attachment
+// (components/DocumentPreview.tsx).
+const fi = {
+  failed:
+    "Esikatselu ei onnistunut. Lataa tiedosto ja avaa se omalla ohjelmalla.",
+  opening: "Avataan esikatselua…",
+  pages: (shown: number, total: number) =>
+    `Esikatselussa on ${shown} ensimmäistä sivua ${total} sivusta.`,
+  page: (n: number) => `Sivu ${n}`,
+  sheets: "Taulukot",
+  truncated:
+    "Taulukossa on enemmän rivejä tai sarakkeita kuin esikatselu näyttää.",
+};
+
+export const documentPreviewText = catalog(fi, {
+  failed:
+    "The preview did not work. Download the file and open it in your own program.",
+  opening: "Opening the preview…",
+  pages: (shown, total) =>
+    `The preview shows the first ${shown} of ${total} pages.`,
+  page: (n) => `Page ${n}`,
+  sheets: "Sheets",
+  truncated: "The sheet has more rows or columns than the preview shows.",
+});
+
+```

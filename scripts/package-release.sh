@@ -3,6 +3,8 @@ set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 # A standalone release build also needs disk-backed staging and Go temp files.
 export TMPDIR=${TMPDIR:-/var/tmp}
+# Ungated test releases must not ship agent guidance from another UI revision.
+python3 "$repo/scripts/generate-ui-reference.py" --check
 version= target= web_dir= output=
 while (($#)); do case "$1" in --version) version=$2;shift 2;;--target) target=$2;shift 2;;--web-dir) web_dir=$2;shift 2;;--output) output=$2;shift 2;;*) echo "error: unknown argument $1" >&2;exit 1;;esac;done
 [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || { echo "error: invalid --version '$version'" >&2;exit 1; }

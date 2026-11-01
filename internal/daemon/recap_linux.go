@@ -51,7 +51,11 @@ func (c *ConversationController) piArgs() ([]string, error) {
 			if err != nil {
 				return nil, err
 			}
-			return append(args, "--extension", c.recapPath, "--extension", companion, "--skill", skill), nil
+			ui, err := installUISkill(filepath.Dir(c.recapPath))
+			if err != nil {
+				return nil, err
+			}
+			return append(args, "--extension", c.recapPath, "--extension", companion, "--skill", skill, "--skill", ui), nil
 		}
 	}
 	dir, err := os.MkdirTemp("/var/tmp", "oh-recap-")
@@ -76,7 +80,11 @@ func (c *ConversationController) piArgs() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(args, "--extension", path, "--extension", companion, "--skill", skill), nil
+	ui, err := installUISkill(dir)
+	if err != nil {
+		return nil, err
+	}
+	return append(args, "--extension", path, "--extension", companion, "--skill", skill, "--skill", ui), nil
 }
 
 // nativeRecap reads the current branch of the user's own native history.
