@@ -46,6 +46,9 @@ func (c *ConversationController) owedRecaps(now time.Time, delay time.Duration, 
 	if err != nil {
 		settings = defaultRecapSettings
 	}
+	if settings.Level == "off" {
+		return nil
+	}
 	var owed []owedRecap
 	for _, n := range sessions {
 		if only != "" && n.id != only || n.state != "readable" || archiveFact(visibility, visibilityErr, "pi:"+n.id) != "active" {
@@ -147,6 +150,10 @@ func (c *ConversationController) recapAfterIdleStop(ctx context.Context, s *conv
 // wakes, writes to or runs a command in meanwhile stays theirs. old is the
 // stopped handle this daemon left, or nil after a restart.
 func (c *ConversationController) recapResting(ctx context.Context, id string, old *conversation) {
+	// Recheck after waiting: the person may have disabled recaps meanwhile.
+	if !automaticRecapsEnabled(c.home) {
+		return
+	}
 	log := diagnostic.New(os.Stderr, "daemon")
 	c.mu.Lock()
 	skip := ""

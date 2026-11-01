@@ -240,7 +240,7 @@ func (c *ConversationController) noteRecapActivity(s *conversation) {
 // Called after a verified native settlement, with c.mu held. One timer per
 // controlled session survives tab disconnects; its epoch fences later work.
 func (c *ConversationController) scheduleAutomaticRecap(s *conversation) {
-	if c.closed || s.dead || s.recapping || !recapIdle(s) {
+	if c.closed || s.dead || s.recapping || !recapIdle(s) || !automaticRecapsEnabled(c.home) {
 		return
 	}
 	s.recapReschedule = false
@@ -309,6 +309,7 @@ var recapReasons = map[string]bool{
 	// The conversation has fewer completed turns than the person's first
 	// automatic recap waits for. Not a failure: nothing is shown.
 	"too_early": true,
+	"fenced":    true,
 }
 
 type recapExtensionOutcome struct {
@@ -352,6 +353,9 @@ func (p *piRPC) takeRecapOutcome() *recapExtensionOutcome {
 }
 
 func (c *ConversationController) runRecap(s *conversation, trigger string, epoch uint64) string {
+	if trigger == "automatic" && !automaticRecapsEnabled(c.home) {
+		return ""
+	}
 	generate := c.generateRecap
 	if c.recapGenerator != nil {
 		generate = c.recapGenerator

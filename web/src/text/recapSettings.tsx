@@ -4,17 +4,21 @@ import { catalog } from "../i18n";
 // Settings › Tilannekatsaus (components/RecapSettings.tsx,
 // app/RecapSettings.tsx) and the number stepper it uses.
 const fi = {
+  automatic: "Automaattiset katsaukset",
+  on: "Päällä",
   levels: {
     short: "Lyhyt",
     standard: "Tavallinen",
     thorough: "Perusteellinen",
     custom: "Oma",
+    off: "Pois",
   },
   levelNotes: {
     short: "Muutama virke tuoreimmista viesteistä.",
     standard: "Nykyinen katsaus.",
     thorough: "Pidempi katsaus, joka lukee enemmän historiaa.",
     custom: "Omat luvut. Muuttamalla lukua lähdet valmiista tasosta.",
+    off: "Automaattiset katsaukset ovat pois päältä. Etusivun keskustelukuvaukset eivät enää päivity, sillä ne tulevat katsauksista. Tee tilannekatsaus nyt toimii edelleen.",
   },
   rows: {
     messages: {
@@ -95,17 +99,21 @@ const fi = {
 };
 
 export const recapSettingsText = catalog(fi, {
+  automatic: "Automatic recaps",
+  on: "On",
   levels: {
     short: "Short",
     standard: "Standard",
     thorough: "Thorough",
     custom: "Custom",
+    off: "Off",
   },
   levelNotes: {
     short: "A few sentences from the latest messages.",
     standard: "The current recap.",
     thorough: "A longer recap that reads more history.",
     custom: "Your own numbers. Changing a number leaves the preset level.",
+    off: "Automatic recaps are off. Home-page conversation descriptions will no longer update because they come from recaps. You can still request a recap now.",
   },
   rows: {
     messages: {

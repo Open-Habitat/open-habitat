@@ -14,6 +14,53 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
+func TestRecapOffFencesPendingAutomaticButNotManual(t *testing.T) {
+	home := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(home, ".pi", "agent"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "settings.json"), []byte(`{"openHabitat":{"recap":{"level":"off"}}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	c := &ConversationController{home: home}
+	c.recapGenerator = func(*conversation, string, uint64) recapOutcome {
+		calls++
+		return recapOutcome{Reason: "fenced"}
+	}
+	s := &conversation{state: "idle", settled: true}
+	c.scheduleAutomaticRecap(s)
+	if s.recapTimer != nil {
+		t.Fatal("off armed a timer")
+	}
+	// Also cover a timer admitted before the person switched off.
+	c.runRecap(s, "automatic", 0)
+	if calls != 0 {
+		t.Fatal("pending automatic recap reached generator")
+	}
+	c.runRecap(s, "manual", 0)
+	if calls != 1 {
+		t.Fatal("manual recap did not reach generator")
+	}
+}
+
+func TestRecapDisabledExtensionOutcomeIsSilent(t *testing.T) {
+	p := &piRPC{}
+	frame := json.RawMessage(`{"method":"notify","message":"oh-conversation-recap:{\"outcome\":\"fenced\"}"}`)
+	if !p.noteRecapOutcome(frame) {
+		t.Fatal("recap notification not consumed")
+	}
+	note := p.takeRecapOutcome()
+	if note == nil || note.Outcome != "fenced" {
+		t.Fatalf("off outcome: %+v", note)
+	}
+	c, s := &ConversationController{}, &conversation{}
+	c.recordRecapOutcome(s, "automatic", recapOutcome{Reason: note.Outcome})
+	if s.recapFailure != nil {
+		t.Fatal("off became a visible failure")
+	}
+}
+
 // The section's writes go through the pinned Pi's SettingsManager into the
 // person's own settings.json, keep Pi's other keys, and refuse what the
 // recap could not honour.
@@ -58,6 +105,15 @@ func TestRecapSettingsHandlerWritesPiSettings(t *testing.T) {
 	if recapDelay(home).Seconds() != 75 {
 		t.Fatal("daemon delay does not follow the setting")
 	}
+	code, reply = call("PUT", strings.Replace(valid, `"custom"`, `"off"`, 1))
+	if code != 200 || reply["settings"].(map[string]any)["level"] != "off" || automaticRecapsEnabled(home) {
+		t.Fatalf("off: %d %v", code, reply)
+	}
+	// A fresh reader (including after daemon restart) sees off without losing
+	// the numbers used by an explicitly requested recap.
+	if settings, err := readRecapSettings(home); err != nil || settings.Words != 25 || settings.Level != "off" {
+		t.Fatalf("off readback: %+v %v", settings, err)
+	}
 	for name, body := range map[string]string{
 		"fable":     strings.Replace(valid, "claude-sonnet-5-5", "claude-fable-5-1", 1),
 		"opus":      strings.Replace(valid, "claude-sonnet-5-5", "claude-opus-5-5", 1),
@@ -75,7 +131,7 @@ func TestRecapSettingsHandlerWritesPiSettings(t *testing.T) {
 	}
 	// Automatic is no key at all; a hand-edited bad value is its default.
 	code, reply = call("PUT", strings.Replace(valid, `"claude-bridge/claude-sonnet-5-5"`, `null`, 1))
-	if code != 200 || reply["settings"].(map[string]any)["model"] != nil {
+	if code != 200 || reply["settings"].(map[string]any)["model"] != nil || !automaticRecapsEnabled(home) {
 		t.Fatalf("automatic: %d %v", code, reply)
 	}
 	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "settings.json"), []byte(`{"openHabitat":{"recap":{"level":"short","delaySeconds":5,"words":30,"model":"claude-bridge/claude-opus-5-5"}}}`), 0600); err != nil {

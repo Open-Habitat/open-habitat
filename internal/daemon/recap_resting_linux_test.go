@@ -81,6 +81,13 @@ func TestOwedRecapsComeFromNativeHistory(t *testing.T) {
 		t.Fatalf("owed recaps = %+v", got)
 	}
 
+	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "settings.json"), []byte(`{"openHabitat":{"recap":{"level":"off"}}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := c.owedRecaps(now, 3*time.Minute, ""); len(got) != 0 {
+		t.Fatalf("off still owes recaps: %+v", got)
+	}
+
 	// The person's first automatic recap waits for more completed turns.
 	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "settings.json"), []byte(`{"openHabitat":{"recap":{"firstAfterTurns":2}}}`), 0600); err != nil {
 		t.Fatal(err)

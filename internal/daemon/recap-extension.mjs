@@ -16,7 +16,7 @@ const BOUNDS = { words: [10, 80], nextWords: [4, 25], messages: [4, 128], histor
 export function recapSettings(agentDir = process.env.PI_CODING_AGENT_DIR || join(homedir(), '.pi', 'agent')) {
   let stored;
   try { stored = JSON.parse(readFileSync(join(agentDir, 'settings.json'), 'utf8'))?.openHabitat?.recap; } catch { /* Defaults. */ }
-  const settings = {};
+  const settings = { automatic: stored?.level !== 'off' };
   for (const [key, [min, max]] of Object.entries(BOUNDS)) {
     const value = stored?.[key];
     settings[key] = Number.isSafeInteger(value) && value >= min && value <= max ? value : DEFAULTS[key];
@@ -126,6 +126,7 @@ export default function (pi) {
         const deadline = Date.now() + BUDGET_MS;
         const settings = recapSettings();
         const automatic = args?.trim() === 'automatic';
+        if (automatic && !settings.automatic) return report(ctx, 'fenced');
         const before = ctx.sessionManager.getBranch();
         const lastMessage = [...before].reverse().find(e => e.type === 'message' && ['user', 'assistant'].includes(e.message?.role));
         if (!lastMessage) return report(ctx, 'no_message');

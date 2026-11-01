@@ -5,7 +5,7 @@ import {mkdtemp, mkdir, readFile, writeFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {resolve, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {recapSettings, withinBytes} from '../recap-extension.mjs';
+import recapExtension, {recapSettings, withinBytes} from '../recap-extension.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const helper = resolve(here, '../recap_settings_helper.mjs');
@@ -30,7 +30,7 @@ test("the helper writes only openHabitat.recap under Pi's lock and the extension
     const stored = JSON.parse(await readFile(join(agent, 'settings.json'), 'utf8'));
     assert.equal(stored.defaultModel, 'gpt-6-luna');
     assert.deepEqual(stored.openHabitat, {other: true, recap: value});
-    assert.deepEqual(recapSettings(agent), {words: 25, nextWords: 10, messages: 16, historyTokens: 4000, messageTokens: 500, responseTokens: 256, firstAfterTurns: 2,
+    assert.deepEqual(recapSettings(agent), {automatic: true, words: 25, nextWords: 10, messages: 16, historyTokens: 4000, messageTokens: 500, responseTokens: 256, firstAfterTurns: 2,
       model: {provider: 'claude-bridge', id: 'claude-sonnet-5-5'}});
   } finally { await rm(home, {recursive: true, force: true}); }
 });
@@ -47,6 +47,34 @@ test('a hand-edited value out of bounds is the default, the rest still apply', a
     await writeFile(join(agent, 'settings.json'), '{broken');
     assert.equal(recapSettings(agent).messages, 64);
   } finally { await rm(agent, {recursive: true, force: true}); }
+});
+
+test('off skips automatic model calls but a requested recap still writes', async () => {
+  const agent = await mkdtemp(join(tmpdir(), 'pi-recap-off-'));
+  const previous = process.env.PI_CODING_AGENT_DIR;
+  process.env.PI_CODING_AGENT_DIR = agent;
+  try {
+    await writeFile(join(agent, 'settings.json'), JSON.stringify({openHabitat: {recap: {level: 'off'}}}));
+    let handler, calls = 0;
+    const entries = [];
+    recapExtension({registerCommand: (_, command) => { handler = command.handler; }, appendEntry: (_, data) => entries.push(data)});
+    const model = {provider: 'openai', id: 'gpt-6-mini', input: ['text']};
+    const ctx = {
+      ui: {notify() {}}, model,
+      sessionManager: {getBranch: () => [{type: 'message', id: 'u1', message: {role: 'user', content: 'Task'}}, {type: 'message', id: 'a1', message: {role: 'assistant', content: 'Done'}}]},
+      modelRegistry: {hasConfiguredAuth: () => true, getAvailable: () => [model], complete: async () => { calls++; return {stopReason: 'stop', content: [{type: 'text', text: '{"recap":"Done","next":"Check"}'}]}; }},
+    };
+    await handler('automatic', ctx);
+    assert.equal(calls, 0);
+    assert.equal(entries.length, 0);
+    await handler('', ctx);
+    assert.equal(calls, 1);
+    assert.equal(entries[0].trigger, 'manual');
+  } finally {
+    if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+    else process.env.PI_CODING_AGENT_DIR = previous;
+    await rm(agent, {recursive: true, force: true});
+  }
 });
 
 test("a long recap in a multi-byte script still fits the daemon's native reader", () => {

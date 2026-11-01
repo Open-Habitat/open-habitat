@@ -93,7 +93,7 @@ func validRecapModel(model *string) bool {
 }
 
 func validRecapLevel(level string) bool {
-	return level == "short" || level == "standard" || level == "thorough" || level == "custom"
+	return level == "off" || level == "short" || level == "standard" || level == "thorough" || level == "custom"
 }
 
 func (s recapSettings) valid() bool {
@@ -162,6 +162,11 @@ func readRecapSettings(home string) (recapSettings, error) {
 		result.Model = &model
 	}
 	return result, nil
+}
+
+func automaticRecapsEnabled(home string) bool {
+	settings, _ := readRecapSettings(home)
+	return settings.Level != "off"
 }
 
 // recapDelay is the automatic recap's quiet time. An unreadable settings

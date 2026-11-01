@@ -25,9 +25,10 @@
             "short",
             "standard",
             "thorough",
-            "custom"
+            "custom",
+            "off"
           ],
-          "description": "The scope level the person chose. The browser names the levels and their numbers; custom keeps the numbers below as the person set them."
+          "description": "The scope level the person chose. The browser names the levels and their numbers; custom keeps the numbers below as the person set them. off disables automatic recaps while preserving these numbers for manually requested recaps."
         },
         "delay_seconds": {
           "type": "integer",

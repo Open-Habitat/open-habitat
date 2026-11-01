@@ -23,13 +23,16 @@ export type RecapSettingsValue = {
   response_tokens: number;
   first_after_turns: number;
 };
-export type RecapLevel = "short" | "standard" | "thorough" | "custom";
+export type RecapLevel = "short" | "standard" | "thorough" | "custom" | "off";
 type Numbers = Omit<RecapSettingsValue, "level" | "delay_seconds" | "model">;
 type NumberKey = keyof Numbers;
 
 /** The levels are the browser's names for sets of numbers; the host stores
  * the numbers. Tavallinen is the recap as it was before it had settings. */
-export const recapLevels: Record<Exclude<RecapLevel, "custom">, Numbers> = {
+export const recapLevels: Record<
+  Exclude<RecapLevel, "custom" | "off">,
+  Numbers
+> = {
   short: {
     words: 25,
     next_words: 10,
@@ -68,7 +71,7 @@ const levelNotes = new Proxy({} as Record<RecapLevel, string>, {
 /** The level whose numbers these are. A stored level whose numbers no longer
  * match it (an older release's level, a hand edit) is Oma. */
 export function recapLevel(value: RecapSettingsValue): RecapLevel {
-  if (value.level === "custom") return "custom";
+  if (value.level === "custom" || value.level === "off") return value.level;
   const level = recapLevels[value.level];
   return (Object.keys(level) as NumberKey[]).every(
     (key) => level[key] === value[key],
@@ -312,6 +315,32 @@ export function RecapSettings({
         </div>
       ) : null}
       <div className="s-card ah-recap-timing">
+        <div className="s-row" data-settings-row="recap-automatic">
+          <div className="s-lbl">
+            <strong>{txt.automatic}</strong>
+            {level === "off" ? (
+              <span className="s-desc" data-testid="recap-off-warning">
+                {txt.levelNotes.off}
+              </span>
+            ) : null}
+          </div>
+          {value ? (
+            <Segmented
+              data-testid="recap-automatic"
+              label={txt.automatic}
+              options={[
+                { id: "on", label: txt.on },
+                { id: "off", label: txt.levels.off },
+              ]}
+              value={level === "off" ? "off" : "on"}
+              isDisabled={loading}
+              onChange={(id) => {
+                if (id === (level === "off" ? "off" : "on")) return;
+                change({ level: id === "off" ? "off" : "custom" });
+              }}
+            />
+          ) : null}
+        </div>
         <div className="s-row" data-settings-row="recap-delay" tabIndex={-1}>
           <div className="s-lbl">
             <strong>{txt.delay}</strong>
@@ -326,7 +355,7 @@ export function RecapSettings({
               ticks={[60, 180, 600, 3600]}
               format={formatDelay}
               tickFormat={(s) => String(s / 60)}
-              disabled={loading}
+              disabled={loading || level === "off"}
               onChange={(delay_seconds) => change({ delay_seconds })}
             />
           ) : null}
@@ -338,7 +367,9 @@ export function RecapSettings({
         <div className="s-row" data-settings-row="recap-level" tabIndex={-1}>
           <div className="s-lbl">
             <strong>{txt.level}</strong>
-            <span className="s-desc">{level ? levelNotes[level] : null}</span>
+            <span className="s-desc">
+              {level ? levelNotes[level === "off" ? "custom" : level] : null}
+            </span>
           </div>
           {value && level ? (
             <Segmented
@@ -348,12 +379,12 @@ export function RecapSettings({
               options={(
                 ["short", "standard", "thorough", "custom"] as const
               ).map((id) => ({ id, label: levelNames[id] }))}
-              value={level}
-              isDisabled={loading}
+              value={level === "off" ? "custom" : level}
+              isDisabled={loading || level === "off"}
               onChange={(id) =>
                 change(
                   id === "custom"
-                    ? { level: "custom" }
+                    ? { level: id }
                     : { level: id, ...recapLevels[id] },
                 )
               }

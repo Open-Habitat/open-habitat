@@ -27,6 +27,21 @@ function renderSettings(value: RecapSettingsValue) {
 }
 
 describe("Tilannekatsaus levels", () => {
+  it.each(["short", "standard", "thorough"] as const)(
+    "selected On preserves the %s preset",
+    (level) => {
+      const onChange = renderSettings({
+        ...standard,
+        ...recapLevels[level],
+        level,
+      });
+      fireEvent.click(
+        within(screen.getByTestId("recap-automatic")).getByTestId("segment-on"),
+      );
+      expect(onChange).not.toHaveBeenCalled();
+    },
+  );
+
   it("a level whose numbers no longer match it is Oma", () => {
     expect(recapLevel(standard)).toBe("standard");
     expect(recapLevel({ ...standard, words: 45 })).toBe("custom");

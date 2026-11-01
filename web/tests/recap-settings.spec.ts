@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
@@ -121,6 +122,31 @@ test("@recap-settings levels, delay and model reach Pi's settings and survive a 
   await write;
   expect((await stored(page)).delay_seconds).toBe(3600);
   await expect(delay).toHaveAttribute("aria-valuetext", "60 min");
+
+  const automatic = page.getByTestId("recap-automatic");
+  write = saved(page);
+  await automatic.getByTestId("segment-off").click();
+  await write;
+  await page.reload();
+  await expect(automatic.getByTestId("segment-off")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByTestId("recap-off-warning")).toBeVisible();
+  expect(await stored(page)).toMatchObject({
+    level: "off",
+    words: 30,
+    delay_seconds: 3600,
+  });
+  await expect(delay).toBeDisabled();
+  const accessibility = await new AxeBuilder({ page })
+    .include('[data-testid="recap-settings"]')
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
+  write = saved(page);
+  await automatic.getByTestId("segment-on").click();
+  await write;
+  expect(await stored(page)).toMatchObject({ level: "custom", words: 30 });
 });
 
 /** The four levels share one row, or two rows of two: never three and Oma
