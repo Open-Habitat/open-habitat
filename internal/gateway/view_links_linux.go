@@ -209,6 +209,35 @@ func (a *Auth) servableLocked(v viewAddress) bool {
 	return a.viewAddressStoreUsable() && a.viewSharingEnabled() && v.public(a.now()) && !a.deniedLocked(v.Owner.Subject)
 }
 
+// publicViewAccess serves only the anonymous reads exempt from oauth.access.
+// Dispatch directly, never to the app mux or owner view handler: publication
+// can end between checks, and that must not become private-session access.
+func (a *Auth) publicViewAccess(w http.ResponseWriter, r *http.Request) bool {
+	if r.TLS == nil || (r.Method != http.MethodGet && r.Method != http.MethodHead) || r.Header.Get("Upgrade") != "" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+		return false
+	}
+	if r.Host == strings.TrimPrefix(a.cfg.Origin, "https://") {
+		return strings.HasPrefix(r.URL.Path, viewEntryPrefix) && a.viewEntry(w, r)
+	}
+	if !a.isViewHost(r.Host) {
+		return false
+	}
+	token, _, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/")
+	if !validViewLinkToken(token) {
+		return false
+	}
+	a.mu.Lock()
+	id, linked := a.viewLinkHosts[r.Host]
+	v, ok := a.viewAddresses[id]
+	public := linked && ok && subtle.ConstantTimeCompare([]byte(token), []byte(v.Token)) == 1 && a.servableLocked(v)
+	a.mu.Unlock()
+	if !public {
+		return false
+	}
+	a.viewLinkServe(w, r, id)
+	return true
+}
+
 // viewEntry is the app origin's stable address of a view, /n/<entry>. A
 // public one redirects to its content host, the owner's own open included,
 // so every public read goes through the content host's checks and budgets.

@@ -57,7 +57,7 @@ func accessEmail(r *http.Request) string {
 
 // accessIngress is outside the route mux: it covers OAuth start/callback,
 // session, every daemon-backed API and static UI, including unknown routes.
-// Only unauthenticated health probes are exempt. It never trusts forwarded
+// Health probes and public view reads are exempt. It never trusts forwarded
 // email headers, even if the request came from loopback.
 // Anonymous Access failures share a process-wide diagnostic budget. This
 // affects only the record, never the ingress decision or HTTP response.
@@ -93,6 +93,9 @@ func (a *Auth) accessIngress(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
 			next.ServeHTTP(w, r)
+			return
+		}
+		if a.publicViewAccess(w, r) {
 			return
 		}
 		header := r.Header.Values("Cf-Access-Jwt-Assertion")

@@ -116,12 +116,13 @@ No new service, content copy, home index, socket, DNS or certificate is needed.
 Keep owner per-view origins, public per-link origins, sandbox CSP, opaque origin,
 relative subresources and the owner handoff/frame. Agents still only offer or
 remove frozen exports. A same-UID agent can still rewrite an export's files;
-“frozen” is not protection against its owner. Anonymous ingress must reach both
-the new entry route and content hosts without an upstream login gate. This adds
-an explicit narrow public-resolution exception on the app origin, in gateway
-Access handling and upstream ingress policy; it does not unprotect the whole
-app. Private owner continuation retains the verified Access identity required
-by its session, through a protected continuation when necessary.
+“frozen” is not protection against its owner. Jari decided on 2026-11-01 that Habitat's `oauth.access` pin exempts exactly
+GET/HEAD of currently public `/n/<entry>` addresses on the app origin and their
+public content paths on view hosts. Private entries, owner frames, APIs and
+other paths remain protected. Upstream ingress policy (including Cloudflare
+Access) and network reachability remain the operator's choice and can still
+restrict public links. Private owner continuation retains the verified Access
+identity required by its session.
 
 Keep the accepted r2-B/r3-A card: one-press public switch, copy only while public,
 clickable expiry with duration choices, and phone controls below the title.

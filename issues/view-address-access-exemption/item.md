@@ -3,12 +3,13 @@ created: 2026-11-01
 updated: 2026-11-01
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: view-address-access-exemption
 lane_seq: 1
 related: ['@view-address-entry-route']
 preparation: ready
+closed: 2026-11-01
 ---
 
 # Public view addresses open past the site's own access pin
