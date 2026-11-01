@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-settings-breakpoints
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: settings breakpoints with an adjustable slider
