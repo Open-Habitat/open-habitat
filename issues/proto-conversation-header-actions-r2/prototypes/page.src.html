@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="fi" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yläpalkin ensiopastus: milloin selitys näytetään</title>
+<style>
+/*TOKENS*/
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--ah-bg);
+  color: var(--ah-ink);
+  font: 400 var(--ah-size-ui)/var(--ah-lh-ui) var(--ah-font);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; }
+svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- page chrome around the simulation ---------- */
+.pg { max-width: 1740px; margin: 0 auto; padding: 72px 24px 40px; }
+.pg-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; margin-bottom: 10px; }
+.pg-head h1 { margin: 0; font-size: var(--ah-size-h1); font-weight: 600; letter-spacing: -.01em; }
+.pg-axis { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.pg-toggles { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 12px; align-items: center; }
+.pg-toggles label { color: var(--ah-muted); font-size: 12px; display: inline-flex; gap: 6px; align-items: center; }
+.seg { display: inline-flex; padding: 2px; border-radius: var(--ah-r-md); background: var(--ah-control); }
+.seg button { border: 0; background: transparent; color: var(--ah-ink-2); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+.seg button[aria-pressed="true"] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-line); font-weight: 600; }
+.reset { border: 1px solid var(--ah-line-strong); background: var(--ah-surface); color: var(--ah-ink-2); border-radius: 6px; padding: 4px 10px; font-size: 12.5px; cursor: pointer; }
+.pg-lead { margin: 0 0 16px; max-width: 110ch; color: var(--ah-ink-2); font-size: var(--ah-size-body); line-height: 1.55; }
+.pg-lead b { color: var(--ah-ink); }
+.pg-log { min-height: 20px; margin: 10px 2px 0; color: var(--ah-muted); font-size: 12px; }
+.app-wrap { display: flex; justify-content: center; }
+.legend { margin-top: 26px; max-width: 110ch; }
+.legend h2 { margin: 0 0 8px; font-size: var(--ah-size-h2); font-weight: 600; }
+.legend table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.legend th, .legend td { text-align: left; vertical-align: top; padding: 6px 10px 6px 0; border-top: 1px solid var(--ah-line-soft); }
+.legend th { color: var(--ah-muted); font-weight: 600; font-size: 12px; }
+.legend td:first-child { white-space: nowrap; font-weight: 600; }
+.legend td:first-child svg.i { vertical-align: -4px; margin-right: 6px; color: var(--ah-accent-ink); }
+.legend td.where { color: var(--ah-ink-2); }
+
+/* ---------- the production-looking app ---------- */
+.app { position: relative; display: grid; grid-template-columns: 256px minmax(0, 1fr); width: 1320px; height: 720px; overflow: hidden; border-radius: var(--ah-r-xl); border: 1px solid var(--ah-line); background: var(--ah-bg); box-shadow: var(--ah-shadow-app); color: var(--ah-ink); }
+.app.narrow { width: 1024px; }
+.app.xwide { width: 1680px; }
+.rail { background: var(--ah-rail); border-right: 1px solid var(--ah-line); padding: 10px 8px 16px; overflow: auto; }
+.rail-brand { display: flex; align-items: center; gap: 8px; padding: 2px 8px 10px; font-weight: 600; font-size: 13.5px; }
+.rail-brand i { width: 18px; height: 18px; border-radius: 5px; background: var(--ah-accent); display: inline-block; }
+.rail section + section { margin-top: 8px; }
+.rail h2 { display: flex; align-items: center; gap: 8px; min-height: 26px; margin: 0; padding: 0 8px; color: var(--ah-muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.cnt { color: var(--ah-muted); font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.rail ul { list-style: none; margin: 0; padding: 0; }
+.row { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 8px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); font-size: 13px; }
+.row.cur { background: var(--ah-current); box-shadow: 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); font-weight: 600; }
+.row .tt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row time { flex: none; color: var(--ah-muted); font-size: 11px; font-weight: 400; }
+.ball { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ah-faint); }
+.ball.done { background: var(--ah-ok); }
+.ball.you { background: var(--ah-turn); }
+.grp h3 { margin: 0; padding: 5px 8px 1px; color: var(--ah-ink-2); font: 600 12px var(--ah-mono); }
+
+.main { position: relative; display: flex; min-width: 0; min-height: 0; }
+.conv { position: relative; display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; background: var(--ah-bg); }
+.stream { flex: 1; overflow: auto; padding: 18px var(--ah-column-pad-inline) 10px; }
+.stream > * { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin-inline: auto; }
+.msg-user { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.msg-user p { margin: 0; max-width: 80%; padding: 8px 12px; border-radius: 12px 12px 4px 12px; background: var(--ah-accent-soft); color: var(--ah-ink); font-size: var(--ah-size-body); line-height: 1.5; }
+.msg-agent { margin-bottom: 14px; font-size: var(--ah-size-body); line-height: var(--ah-lh-body); color: var(--ah-ink); }
+.msg-agent p { margin: 0 0 6px; }
+.msg-agent code { font: var(--ah-size-code) var(--ah-mono); background: var(--ah-sunken); padding: 1px 4px; border-radius: 4px; }
+.tool { display: flex; gap: 8px; align-items: center; margin: 0 0 8px; color: var(--ah-muted); font: 12.5px var(--ah-mono); }
+.tool b { color: var(--ah-ok); font-weight: 400; }
+.recap { margin-bottom: 16px; padding: 12px 14px; border: 1px solid var(--ah-accent-line); border-radius: var(--ah-r-lg); background: var(--ah-accent-soft); font-size: 13.5px; line-height: 1.5; }
+.recap h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; color: var(--ah-accent-ink); }
+.recap p { margin: 0; }
+.composer { padding: 0 var(--ah-column-pad-inline) var(--ah-composer-pad-block); }
+.composer-box { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin-inline: auto; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; min-height: 48px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-xl); background: var(--ah-surface); }
+.composer-box span { flex: 1; color: var(--ah-faint); font-size: var(--ah-size-body); }
+.composer-box button { border: 0; border-radius: var(--ah-r-md); padding: 6px 14px; font-weight: 600; font-size: 13px; background: var(--ah-accent); color: var(--ah-on-accent); }
+
+/* ---------- the header (Navigation.tsx AgentHeader, components.css) ---------- */
+.hd { position: relative; z-index: 3; padding: var(--ah-topbar-pad-block) var(--ah-topbar-pad-inline); border-bottom: 1px solid var(--ah-line); background: var(--ah-bg); }
+.tl { display: flex; align-items: center; gap: var(--ah-s3); min-width: 0; }
+.tr { display: flex; align-items: center; gap: var(--ah-s2); flex: 1 1 0; min-width: 0; }
+.tr h1 { margin: 0; min-width: 0; font-size: var(--ah-size-title); font-weight: 600; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tr h1 button { all: unset; cursor: text; }
+.dots { display: none; gap: 3px; }
+.dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--ah-muted); animation: blink 1s infinite; }
+.dots i:nth-child(2) { animation-delay: .2s; } .dots i:nth-child(3) { animation-delay: .4s; }
+.dots.on { display: inline-flex; }
+@keyframes blink { 50% { opacity: .25; } }
+.ws { flex: none; font: 12px var(--ah-mono); color: var(--ah-muted); white-space: nowrap; text-decoration: none; }
+.adot { flex: none; position: relative; display: inline-grid; place-items: center; width: 20px; height: 24px; padding: 0; border: 0; background: transparent; cursor: default; }
+.adot i { width: 8px; height: 8px; border-radius: 50%; background: var(--ah-ok); }
+.chip { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px; border: 0; border-radius: var(--ah-r-pill); background: transparent; color: var(--ah-ink-2); font-size: 12.5px; white-space: nowrap; cursor: pointer; }
+.chip:hover { background: var(--ah-hover); }
+.chip svg.i { width: 15px; height: 15px; }
+.chip.model { color: var(--ah-ink); font-weight: 500; }
+.ring { width: 14px; height: 14px; border-radius: 50%; background: conic-gradient(var(--ah-accent) 0 38%, var(--ah-line) 38% 100%); -webkit-mask: radial-gradient(circle, transparent 3.5px, #000 4px); mask: radial-gradient(circle, transparent 3.5px, #000 4px); }
+.sep { flex: none; width: 1px; height: 18px; background: var(--ah-line); }
+/* Quiet header buttons, production ControlButton variant="quiet" size="row". */
+.hb { flex: none; position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ah-control-row); min-width: var(--ah-control-row); padding: 0; border: 1px solid transparent; border-radius: var(--ah-r-md); background: transparent; color: var(--ah-accent-ink); cursor: pointer; white-space: nowrap; }
+.hb:hover { background: var(--ah-surface-hover); }
+.hb:focus-visible { outline: var(--ah-focus-width) solid var(--ah-focus); outline-offset: 1px; }
+.hb[aria-pressed="true"], .hb[aria-expanded="true"] { background: var(--ah-accent-soft); }
+.hb[disabled] { opacity: .55; cursor: default; }
+.hb .w { font-size: 13px; font-weight: 500; }
+.hb.word { padding: 0 10px 0 8px; }
+.hb.word svg.i { width: 17px; height: 17px; }
+/* direction 1 on a phone: a caption under the icon, as in a tab bar */
+.hb.cap { flex-direction: column; gap: 1px; width: 48px; padding: 2px 0 0; height: 42px; }
+.hb.cap svg.i { width: 18px; height: 18px; }
+.hb.cap .w { font-size: 10.5px; font-weight: 500; line-height: 1.1; }
+/* The quick shared tooltip that icon-tooltips-slow brings: hover after a
+   short delay, keyboard focus at once, never over the button itself. */
+[data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; width: max-content; max-width: 260px; padding: 5px 8px; border-radius: 6px; background: var(--ah-ink); color: var(--ah-bg); font-size: 12px; font-weight: 500; line-height: 1.35; white-space: normal; text-align: left; pointer-events: none; opacity: 0; transition: opacity 80ms ease-out 0ms; }
+[data-tip]:hover::after { opacity: 1; transition-delay: 300ms; }
+[data-tip]:focus-visible::after { opacity: 1; transition-delay: 0ms; }
+.app.phone [data-tip]::after { display: none; }
+/* desktop shortening steps (HeaderShortening.tsx), measured per render */
+.tl[data-s~="1"] > .ws { display: none; }
+.tl[data-s~="2"] .ctx-v { display: none; }
+.tl[data-s~="3"] > .oneoff { display: none; }
+.tl[data-s~="4"] { gap: var(--ah-s1); }
+.tl[data-s~="4"] > .sep { display: none; }
+.tl[data-s~="5"] .gs-n { display: none; }
+.tl[data-s~="6"] > .chip.model { display: none; }
+.more-wrap { position: relative; flex: none; }
+.more-wrap.hide { display: none; }
+
+/* ---------- menus and popovers ---------- */
+.menu-pop { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 230px; max-width: 330px; padding: 4px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-menu); display: grid; text-align: left; }
+.menu-pop .full { margin: 0; padding: 6px 8px 8px; border-bottom: 1px solid var(--ah-line-soft); margin-bottom: 4px; font-weight: 600; font-size: 13px; color: var(--ah-ink); white-space: normal; }
+.menu-pop .mi { display: grid; grid-template-columns: 18px 1fr; gap: 1px 10px; align-items: center; border: 0; background: transparent; color: var(--ah-ink); padding: 7px 8px; border-radius: 6px; cursor: pointer; font-size: 13.5px; text-align: left; white-space: normal; }
+.menu-pop .mi:hover { background: var(--ah-surface-hover); }
+.menu-pop .mi svg.i { width: 17px; height: 17px; color: var(--ah-accent-ink); }
+.menu-pop .mi small { grid-column: 2; color: var(--ah-muted); font-size: 12px; line-height: 1.35; }
+.menu-pop .mi.plain { grid-template-columns: 1fr; }
+.menu-pop .mi.plain small { grid-column: 1; }
+.menu-pop hr { border: 0; border-top: 1px solid var(--ah-line-soft); margin: 4px 2px; }
+.menu-pop .mi.on { color: var(--ah-accent-ink); font-weight: 600; }
+.details { position: absolute; right: 18px; top: calc(100% + 4px); z-index: 25; width: 360px; padding: 14px 16px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-menu); }
+.details h2 { margin: 0 0 8px; font-size: 14px; }
+.details dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12.5px; }
+.details dt { color: var(--ah-muted); }
+.details dd { margin: 0; overflow-wrap: anywhere; font-family: var(--ah-mono); font-size: 12px; }
+/* direction 3: the first-use explanation under the header */
+.coach { position: absolute; right: 14px; top: calc(100% + 8px); z-index: 24; width: 380px; padding: 14px 16px 12px; border: 1px solid var(--ah-accent-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-float); }
+.coach::before { content: ""; position: absolute; top: -7px; right: 40px; width: 12px; height: 12px; transform: rotate(45deg); background: var(--ah-surface); border-left: 1px solid var(--ah-accent-line); border-top: 1px solid var(--ah-accent-line); }
+.coach h2 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.coach ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 7px; }
+.coach li { display: grid; grid-template-columns: 26px 1fr; gap: 0 8px; font-size: 13px; line-height: 1.4; }
+.coach li svg.i { width: 18px; height: 18px; color: var(--ah-accent-ink); margin-top: 1px; }
+.coach li b { font-weight: 600; }
+.coach li span { color: var(--ah-ink-2); }
+.coach .foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--ah-muted); font-size: 12px; }
+.coach .ok { border: 0; border-radius: var(--ah-r-md); padding: 6px 14px; background: var(--ah-accent); color: var(--ah-on-accent); font-weight: 600; font-size: 13px; cursor: pointer; }
+
+/* round 2: the trigger facts, the situation and the matrix */
+.pg-sit { margin: 0 0 6px; color: var(--ah-muted); font-size: 12.5px; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; max-width: 110ch; margin: 0 0 16px; padding: 10px 14px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); font-size: 13px; line-height: 1.45; }
+.facts dt { color: var(--ah-muted); font-weight: 600; }
+.facts dd { margin: 0; color: var(--ah-ink-2); }
+.facts code, .pg-lead code { font: 12px var(--ah-mono); }
+.legend th.cur, .legend td.cur { background: var(--ah-accent-soft); }
+.legend th.cur { color: var(--ah-accent-ink); }
+.legend tr.cur td:first-child { color: var(--ah-accent-ink); }
+.legend td, .legend th { padding-left: 8px; }
+.legend .h2b { margin-top: 22px; }
+/* riff 2: the tooltip carries the name and the meaning line */
+[data-tip]::after { white-space: pre-line; }
+.app.phone .held[data-tip]::after { display: block; opacity: 1; transition: none; }
+/* an open card or note is the explanation; the tooltip would cover it */
+.hd:has(> .note) [data-tip]::after, .hd:has(> .coach) [data-tip]::after { display: none; }
+/* riff 1: a card about one button points at it */
+.coach.one { width: 300px; }
+.coach[data-anchor]::before, .note::before { left: var(--arrow, 40px); right: auto; }
+.app.phone .coach.one { width: 300px; }
+/* riff 3: one line under the button just pressed */
+.note { position: absolute; top: calc(100% + 8px); z-index: 24; width: 300px; padding: 10px 12px; border: 1px solid var(--ah-accent-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-float); font-size: 13px; line-height: 1.45; color: var(--ah-ink-2); }
+.note::before { content: ""; position: absolute; top: -7px; width: 12px; height: 12px; transform: rotate(45deg); background: var(--ah-surface); border-left: 1px solid var(--ah-accent-line); border-top: 1px solid var(--ah-accent-line); }
+.note p { margin: 0; }
+.note b { color: var(--ah-ink); }
+.note-b { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.note .ok { border: 0; border-radius: var(--ah-r-md); padding: 6px 14px; background: var(--ah-accent); color: var(--ah-on-accent); font-weight: 600; font-size: 13px; cursor: pointer; }
+.note .ghost { border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); padding: 6px 12px; background: transparent; color: var(--ah-ink-2); font-size: 13px; cursor: pointer; }
+
+/* ---------- panels the header opens ---------- */
+.pane { display: flex; flex-direction: column; flex: 0 0 48%; min-width: 0; border-left: 1px solid var(--ah-line); background: var(--ah-surface); }
+.pane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--ah-line); color: var(--ah-ink-2); font-size: 12.5px; }
+.pane-head button { border: 0; background: transparent; color: var(--ah-ink-2); cursor: pointer; font-size: 16px; }
+.pane-body { flex: 1; display: grid; grid-template-columns: 150px 1fr; min-height: 0; }
+.tree { border-right: 1px solid var(--ah-line); padding: 8px; font: 12px var(--ah-mono); color: var(--ah-ink-2); display: grid; align-content: start; gap: 3px; }
+.tree .cur { color: var(--ah-ink); background: var(--ah-hover); border-radius: 4px; padding: 0 4px; margin: 0 -4px; }
+.code { padding: 10px 12px; font: 12px/1.6 var(--ah-mono); color: var(--ah-ink); white-space: pre; overflow: auto; background: var(--ah-sunken); }
+.code .k { color: var(--ah-syntax-keyword); } .code .s { color: var(--ah-syntax-string); } .code .c { color: var(--ah-syntax-comment); }
+.term { flex: none; height: 190px; display: flex; flex-direction: column; border-top: 1px solid var(--ah-line); background: var(--ah-surface); }
+.term-body { flex: 1; padding: 8px 12px; font: 12.5px/1.55 var(--ah-mono); color: var(--ah-ink); background: var(--ah-sunken); white-space: pre; overflow: auto; }
+
+/* ---------- phone form: the token file's ≤800 px values ---------- */
+.app.phone { --ah-control-row: 40px; --ah-control-row-font: 14px; --ah-column-pad-inline: 14px; --ah-topbar-pad-block: 6px; --ah-topbar-pad-inline: 12px; width: 390px; height: 800px; grid-template-columns: 1fr; border-radius: 34px; border-width: 8px; border-color: #0b0d0f; }
+.app.phone .rail { display: none; }
+.app.phone .tl { flex-wrap: wrap; gap: var(--ah-s1) var(--ah-s1); }
+.app.phone .tl::after { content: ""; order: 2; flex-basis: 100%; }
+.app.phone .tl > * { order: 3; }
+.app.phone .tl > .navb, .app.phone .tl > .tr, .app.phone .tl > .row1, .app.phone .tl > .more-wrap { order: 1; }
+.app.phone .tl > .ws, .app.phone .tl > .sep, .app.phone .tl > .oneoff, .app.phone .tl > .desk { display: none; }
+.navb { display: none; flex: none; width: 40px; height: 40px; border: 0; border-radius: var(--ah-r-md); background: transparent; color: var(--ah-ink-2); }
+.app.phone .navb { display: inline-grid; place-items: center; }
+.app.phone .pane { position: absolute; inset: 0; z-index: 5; border-left: 0; }
+.app.phone .pane-body { grid-template-columns: 1fr; }
+.app.phone .tree { display: none; }
+.app.phone .menu-pop { min-width: 290px; }
+.app.phone .details { left: 8px; right: 8px; width: auto; }
+.app.phone .coach { left: 8px; right: 8px; width: auto; }
+.app.phone .coach::before { right: 22px; }
+@media (max-width: 700px) {
+  .pg { padding: 64px 10px 30px; }
+  .app.phone { width: 100%; max-width: 390px; }
+}
+
+/* ---------- picker (PICKER.md, verbatim) ---------- */
+.proto-picker { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; background: rgba(10, 10, 10, 0.82); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 8px 24px rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.12); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; line-height: 1; -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none; }
+.proto-picker-highlight { position: absolute; top: 4px; left: 0; height: 28px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); will-change: transform; }
+.proto-picker[data-ready] .proto-picker-highlight { transition: transform 250ms cubic-bezier(0.23, 1, 0.32, 1), width 250ms cubic-bezier(0.23, 1, 0.32, 1); }
+@media (prefers-reduced-motion: reduce) { .proto-picker[data-ready] .proto-picker-highlight { transition: none; } }
+.proto-picker-item { position: relative; display: flex; align-items: center; height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: rgba(255, 255, 255, 0.55); font: inherit; cursor: pointer; transition: color 150ms ease-out; }
+.proto-picker-item:hover { color: rgba(255, 255, 255, 0.85); }
+.proto-picker-item:active { transform: scale(0.97); }
+.proto-picker-item:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.4); outline-offset: 2px; }
+.proto-picker-item[data-active] { color: #fff; }
+.proto-picker-divider { width: 1px; height: 16px; margin: 0 4px; background: rgba(255, 255, 255, 0.12); }
+.proto-picker-replay { padding: 0 10px; font-size: 14px; }
+.proto-picker[data-position="top"] { bottom: auto; top: 24px; }
+</style>
+</head>
+<body>
+<nav class="proto-picker" aria-label="Prototype variants" data-position="top">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Pohja · Kerran tällä laitteella</button>
+  <button class="proto-picker-item">1 · Kerran tilille, uudet erikseen</button>
+  <button class="proto-picker-item">2 · Vasta kun kysytään</button>
+  <button class="proto-picker-item">3 · Ensimmäisellä painalluksella</button>
+</nav>
+<div id="stage"></div>
+<script>
+'use strict';
+// ------------------------------------------------------------------
+// Icons: the production paths from web/src/components/Icon.tsx (editor,
+// terminal, recap, archive, info, more, branch, menu) and the retitle
+// H with arrows from Navigation.tsx, drawn the same way.
+// ------------------------------------------------------------------
+const ICON = {
+  editor: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16m5-11-2 3 2 3m3-6 2 3-2 3"/>',
+  terminal: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 8 4 4-4 4M14 16h3"/>',
+  recap: '<path d="M4 6h16M4 12h9M4 18h6"/><path d="m18 13 .9 2.1 2.1.9-2.1.9L18 19l-.9-2.1L15 16l2.1-.9Z"/>',
+  archive: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v11h14V9M10 13h4"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',
+  more: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+  branch: '<circle cx="7" cy="6" r="2"/><path d="M7 8v10M7 12c0 3 3 4 7 4"/><circle cx="17" cy="16" r="2"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  pencil: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.8 1c0 1.7-2.3 2-2.3 3.5M12 17h.01"/>',
+};
+const RETITLE = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke:none"><path fill="currentColor" d="M0.5 13.5 0.61 12.87 2.12 12.64 3.84 2.86 2.41 2.63 2.52 2H8L7.89 2.63L6.37 2.86L5.63 7.11H9.81L10.56 2.86L9.13 2.63L9.24 2H14.74L14.62 2.63L13.1 2.86L11.37 12.64L12.81 12.87L12.7 13.5H7.21L7.32 12.87L8.84 12.64L9.64 8.05H5.46L4.65 12.64L6.08 12.87L5.97 13.5Z"/><g transform="translate(12.5 12) scale(.5)" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></g></svg>';
+const svg = (n) => (n === 'retitle' ? RETITLE : `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[n]}</svg>`);
+const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+// ------------------------------------------------------------------
+// The header's actions as main has them, with what each one does in words
+// a first-time user understands. `tip` is main's tooltip text; `menu` is
+// main's ⋯-menu label; `name` is the name the explanation uses.
+// `views` is invented for the release situation: a button a later release
+// adds, so the page can show what each trigger does with a new button.
+// ------------------------------------------------------------------
+const A = {
+  editor:  { icon: 'editor',   name: 'Editori',        menu: 'Editori',                 tip: 'Avaa työtilan editori keskustelun viereen (Ctrl+Alt+K)', panel: true,
+             means: 'Avaa työtilan tiedostot muokattaviksi keskustelun viereen.' },
+  terminal:{ icon: 'terminal', name: 'Pääte',          menu: 'Pääte',                   tip: 'Pääte (Ctrl+Alt+T / ⌃⌥T)', panel: true,
+             means: 'Avaa komentorivin tämän työtilan kansiossa keskustelun alle.' },
+  views:   { icon: 'eye',      name: 'Näkymät',        menu: 'Näkymät',                 tip: 'Näkymät',
+             means: 'Näyttää sivut, jotka agentti on tehnyt tässä keskustelussa, ja niiden jakolinkit.' },
+  recap:   { icon: 'recap',    name: 'Tilannekatsaus', menu: 'Tee tilannekatsaus nyt',  tip: 'Tee tilannekatsaus nyt',
+             means: 'Agentti kertoo lyhyesti, mitä keskustelussa on tehty ja missä työ on nyt.' },
+  retitle: { icon: 'retitle',  name: 'Uusi otsikko',   menu: 'Luo uusi otsikko',        tip: 'Luo uusi otsikko',
+             means: 'Agentti nimeää keskustelun uudelleen sen mukaan, mistä on puhuttu.' },
+  archive: { icon: 'archive',  name: 'Arkistoi',       menu: 'Arkistoi',                tip: 'Arkistoi',
+             means: 'Siirtää valmiin keskustelun pois sivupalkista. Sen saa palautettua.' },
+  details: { icon: 'info',     name: 'Tiedot',         menu: 'Tiedot',                  tip: 'Tiedot',
+             means: 'Näyttää keskustelun kansion, mallin, aloitusajan ja tunnisteen.' },
+  rename:  { icon: 'pencil',   name: 'Nimeä uudelleen', menu: 'Nimeä uudelleen',        tip: 'Nimeä uudelleen',
+             means: 'Kirjoita keskustelulle itse uusi nimi.' },
+  more:    { icon: 'more',     name: 'Lisää',          menu: '',                        tip: 'Keskustelun toiminnot',
+             means: 'Avaa loput toiminnot nimineen.' },
+};
+ICON.eye = '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.5"/>';
+const ONEOFF = ['recap', 'retitle', 'archive', 'details'];
+const TITLE0 = 'Mökin varauskalenteri: päällekkäiset varaukset ja muistutusviesti';
+const TITLE1 = 'Varauskalenterin päällekkäisyydet korjattu';
+const SHORT0 = 'Varauskalenterin korjaus';
+const SHORT1 = 'Kalenteri korjattu';
+const WS = 'mokkikalenteri';
+
+// The situations the page can put the person in. Each variant decides what
+// it shows in each one from what it remembers, as production would.
+const SIT = {
+  first:   { label: 'Ensimmäinen keskustelu', long: 'Ihminen avaa ensimmäistä kertaa minkään keskustelun.' },
+  next:    { label: 'Seuraava keskustelu',     long: 'Ihminen on jo käyttänyt Habitatia tällä laitteella.' },
+  other:   { label: 'Toinen laite',            long: 'Sama tili, mutta laite on uusi: työpöydällä aiemmin vain puhelinta käyttänyt, puhelimessa aiemmin vain työpöytää.' },
+  release: { label: 'Julkaisu toi painikkeen', long: 'Ihminen on käyttänyt Habitatia ennenkin; uusi julkaisu lisäsi yläpalkkiin painikkeen Näkymät.' },
+};
+
+const q = new URLSearchParams(location.search);
+let theme = q.get('t') === 'dark' ? 'dark' : 'light';
+let device = q.get('d') === 'phone' ? 'phone' : 'desktop';
+let width = ['narrow', 'xwide'].includes(q.get('w')) ? q.get('w') : 'wide';
+let sit = Object.keys(SIT).includes(q.get('s')) ? q.get('s') : 'first';
+let long = q.get('n') !== 'short';
+let cur = 0;
+let S;
+const phone = () => device === 'phone';
+// What the row shows: main's icons, and in the release situation the new one
+// after the panels. On a phone the one-offs are in ⋯ with their names.
+const rowIds = () => ['editor', 'terminal', ...(sit === 'release' ? ['views'] : []), ...ONEOFF];
+const visibleIcons = () => rowIds().filter((id) => !(ONEOFF.includes(id) && (phone() || S.steps >= 3)));
+
+const fresh = () => ({
+  title: long ? TITLE0 : SHORT0,
+  naming: false,
+  editor: false,
+  terminal: false,
+  recap: 'none',   // none | pending | shown
+  details: false,
+  menu: false,
+  card: V[cur].card(),   // null, or { head, ids, foot, anchor }
+  used: new Set(V[cur].used ? V[cur].used() : []),
+  note: null,      // the riff 3 note: { id, text, confirm }
+  steps: 0,
+  log: '',
+});
+
+// The whole card, as round 1's direction 3 has it.
+const fullCard = (help) => ({
+  head: 'Yläpalkin painikkeet',
+  ids: [...visibleIcons(), 'more'],
+  foot: help ? '' : 'Tämän saa takaisin ⋯-valikosta.',
+});
+
+// ------------------------------------------------------------------
+// The riffs. `card()` is what opens by itself in the current situation;
+// `facts` is the trigger, what stops it and what has to be remembered.
+// ------------------------------------------------------------------
+const V = [
+  { name: 'Pohja · Kerran tällä laitteella',
+    axis: 'Kierroksen 1 suunta 3 sellaisenaan: kortti avautuu itsestään, kun tällä laitteella avataan ensimmäinen keskustelu.',
+    lead: 'Kierroksen 1 suunta 3. Kun tällä selaimella avataan ensimmäinen keskustelu, otsakkeen alle avautuu kortti <b>Yläpalkin painikkeet</b>. <b>Selvä</b> sulkee sen, ja selain muistaa sen. Vaihda <b>Tilanne</b>-valinnasta, niin näet kaksi aukkoa: uudella laitteella kortti tulee uudestaan, ja julkaisun tuoma uusi painike jää selittämättä.',
+    facts: ['Ensimmäinen keskustelu, joka avataan tällä selaimella.', 'Selvä tai Esc. Sen jälkeen kortti ei enää avaudu itsestään tällä selaimella.', 'Yksi merkintä selaimen muistissa (<code>localStorage</code>, kuten tilannekatsauksen ohitus). Uusi laite, toinen selain tai tyhjennetty muisti näyttää kortin uudelleen.'],
+    card() {
+      if (sit === 'first' || sit === 'other') return fullCard();
+      return null;
+    } },
+  { name: '1 · Kerran tilille, uudet erikseen',
+    axis: 'Tili muistaa, mitkä painikkeet on jo selitetty. Kortti kertoo vain sen, mitä ihminen ei vielä ole nähnyt: ensin kaikki, myöhemmin uuden painikkeen tai laitteen.',
+    lead: 'Kortti avautuu itsestään, kun ihmisellä on näkyvissä painike, jota hänelle <b>ei ole vielä selitetty</b>. Ensimmäisellä kerralla kortti kertoo kaikki. Kun julkaisu tuo uuden painikkeen, pieni kortti osoittaa juuri sitä. Jos ihminen siirtyy puhelimesta työpöydälle, kortti kertoo vain ne neljä painiketta, joita puhelimessa ei ollut. <b>Selvä</b>, Esc tai painikkeen painaminen merkitsee painikkeen tutuksi.',
+    facts: ['Rivillä näkyy kuvake, jota tälle tilille ei ole vielä selitetty. Ensimmäisellä kerralla se koskee kaikkia kuvakkeita, myöhemmin uutta painiketta tai kuvaketta, joka näkyy vain toisella laitteella.', 'Selvä tai Esc merkitsee kortin painikkeet tutuiksi, samoin painikkeen painaminen. Julkaisun versiolla ei ole merkitystä: julkaisu, joka ei lisää painiketta, ei näytä mitään.', 'Lista selitetyistä painikkeista tilin asetuksiin (<code>~/.config/open-habitat/preferences.json</code>, uusi kenttä, jonka daemon kirjoittaa). Lista seuraa ihmistä laitteelta toiselle.'],
+    card() {
+      if (sit === 'first') return fullCard();
+      // Seen on the phone: the panels and ⋯. The one-offs had their names there.
+      const unseen = visibleIcons().filter((id) => ONEOFF.includes(id));
+      if (sit === 'other' && !phone() && unseen.length) return { head: 'Tällä näytöllä on lisää painikkeita', ids: unseen, foot: 'Editorin, päätteen ja ⋯:n tunnet jo puhelimesta.' };
+      if (sit === 'release') return { head: 'Uusi painike yläpalkissa', ids: ['views'], foot: '', anchor: 'views' };
+      return null;
+    } },
+  { name: '2 · Vasta kun kysytään',
+    axis: 'Mikään ei avaudu itsestään. Vihje kertoo nimen ja merkityksen, kun osoitin viipyy painikkeen päällä. Puhelimessa sama tieto tulee pitkällä painalluksella. ⋯-valikossa kortti on ylimpänä.',
+    lead: 'Mitään ei avaudu itsestään. Kun hiiri viipyy painikkeen päällä, vihje kertoo <b>nimen ja yhden rivin siitä, mitä painike tekee</b>. Puhelimessa sama tieto tulee <b>pitkällä painalluksella</b>. <b>⋯ › Mitä painikkeet tekevät?</b> on valikon ylin rivi ja avaa koko kortin. Kokeile viedä hiiri kuvakkeen päälle, ja puhelimessa pidä hiiren nappia pohjassa kuvakkeen päällä.',
+    facts: ['Ei koskaan itsestään. Vihje tulee, kun osoitin viipyy painikkeen päällä (noin 0,3 s) tai kun puhelimessa painaa pitkään. Kortti avautuu ⋯-valikosta.', 'Vihje katoaa, kun osoitin siirtyy pois. Kortti sulkeutuu Selvästä tai Escistä.', 'Ei mitään.'],
+    tipMeans: true, helpFirst: true,
+    card() { return null; } },
+  { name: '3 · Ensimmäisellä painalluksella',
+    axis: 'Ei korttia etukäteen. Kun ihminen painaa painiketta ensimmäistä kertaa, toiminto tapahtuu ja sen alle tulee rivi siitä, mitä juuri tapahtui. Arkistoi kysyy ensimmäisellä kerralla ennen kuin tekee mitään.',
+    lead: 'Etukäteen ei avaudu mitään. Kun ihminen painaa painiketta <b>ensimmäistä kertaa</b>, toiminto tapahtuu ja painikkeen alle tulee rivi, joka kertoo, mitä juuri tapahtui ja miten sen saa pois. <b>Arkistoi</b> ei toimi suoraan ensimmäisellä kerralla, vaan kertoo ensin, mitä se tekee. Toisella painalluksella rivi ei enää tule. Kokeile painikkeita tilanteessa <b>Ensimmäinen keskustelu</b>.',
+    facts: ['Painikkeen ensimmäinen painallus tällä tilillä. Uusi painike opetetaan samalla tavalla, kun sitä painetaan ensimmäisen kerran.', 'Rivi katoaa seuraavaan painallukseen tai Esciin. Painike, jota on painettu kerran, ei enää näytä riviä.', 'Lista käytetyistä painikkeista tilin asetuksiin (<code>preferences.json</code>, uusi kenttä). Selaimen muisti riittäisi myös, mutta silloin rivit tulisivat uudelleen jokaisella laitteella.'],
+    used() {
+      return sit === 'first' ? [] : ['editor', 'terminal', 'recap', 'retitle', 'details'];
+    },
+    card() { return null; } },
+];
+
+// What each riff shows in each situation, for the matrix under the app.
+const MATRIX = {
+  first:   ['Koko kortti.', 'Koko kortti.', 'Ei mitään. Vihje ja ⋯-valikon kortti odottavat.', 'Ei mitään. Rivi siitä, mitä tapahtui, kun painiketta painetaan ensimmäisen kerran.'],
+  next:    ['Ei mitään.', 'Ei mitään.', 'Ei mitään.', 'Rivi vain painikkeista, joita ei ole vielä painettu (tässä Arkistoi).'],
+  other:   ['Koko kortti uudelleen, vaikka ihminen tuntee painikkeet.', 'Työpöydällä kortti neljästä painikkeesta, joita puhelimessa ei ollut. Puhelimessa ei mitään.', 'Ei mitään.', 'Kuten seuraavassa keskustelussa: tili muistaa painetut.'],
+  release: ['Ei mitään. Uusi painike jää selittämättä.', 'Pieni kortti, joka osoittaa uutta painiketta.', 'Ei mitään. Vihje kertoo uuden painikkeen merkityksen, jos hiiri viipyy sen päällä.', 'Ei korttia. Rivi tulee, kun uutta painiketta painetaan ensimmäisen kerran.'],
+};
+
+// ------------------------------------------------------------------
+// Header pieces.
+// ------------------------------------------------------------------
+const tipText = (id) => (V[cur].tipMeans ? `${A[id].name}&#10;${esc(A[id].means)}` : esc(A[id].tip));
+// A quiet icon button as on main: the name only in the tooltip and the
+// accessible name. Riff 2's tooltip adds the meaning line.
+const iconBtn = (id, extra = '') => {
+  const a = A[id];
+  const pressed = a.panel ? ` aria-pressed="${!!S[id]}"` : '';
+  const exp = id === 'details' ? ` aria-expanded="${S.details}"` : '';
+  const busy = (id === 'retitle' && S.naming) || (id === 'recap' && S.recap === 'pending') ? ' disabled' : '';
+  return `<button class="hb ${extra}" data-act="${id}" aria-label="${esc(a.menu || a.tip)}" data-tip="${tipText(id)}"${pressed}${exp}${busy}>${svg(a.icon)}</button>`;
+};
+const moreBtn = () => `<button class="hb more" data-more aria-haspopup="menu" aria-expanded="${S.menu}" aria-label="Keskustelun toiminnot" data-tip="${V[cur].tipMeans ? `Lisää&#10;${esc(A.more.means)}` : 'Keskustelun toiminnot'}">${svg('more')}</button>`;
+
+// main's headerMenu, plus the help item every riff keeps.
+function menuHTML() {
+  const help = `<button class="mi" data-act="help">${svg('help')}<span>Mitä painikkeet tekevät?</span></button>`;
+  const items = [];
+  if (V[cur].helpFirst) items.push(help, '<hr>');
+  if (phone() || S.steps >= 1) items.push(`<button class="mi plain" data-act="workspace"><span>${WS}</span><small>Avaa työtila</small></button>`);
+  items.push(`<button class="mi plain" data-act="rename"><span>Nimeä uudelleen</span></button>`);
+  if (phone() || S.steps >= 3) for (const id of ONEOFF) items.push(`<button class="mi plain" data-act="${id}"><span>${esc(A[id].menu)}</span></button>`);
+  if (!V[cur].helpFirst) items.push('<hr>', help);
+  return items.join('');
+}
+
+// ------------------------------------------------------------------
+// The conversation around the header.
+// ------------------------------------------------------------------
+function railHTML() {
+  return `<div class="rail-brand"><i></i>Open Habitat</div>` +
+    `<section><h2>Sinun vuorosi <span class="cnt">1</span></h2><ul><li class="row"><span class="ball you"></span><span class="tt">Lahjalista joulua varten</span><time>5 min</time></li></ul></section>` +
+    `<section><h2>Viimeisimmät <span class="cnt">4</span></h2><div class="grp"><h3>${WS}</h3><ul>` +
+    `<li class="row cur"><span class="ball done"></span><span class="tt">${esc(S.title)}</span><time>nyt</time></li>` +
+    `<li class="row"><span class="ball done"></span><span class="tt">Kalenterin värit</span><time>2 pv</time></li></ul></div>` +
+    `<div class="grp"><h3>kotisivu</h3><ul><li class="row"><span class="ball done"></span><span class="tt">Uudet kuvat galleriaan</span><time>1 t</time></li>` +
+    `<li class="row"><span class="ball done"></span><span class="tt">Yhteystietosivun korjaus</span><time>3 pv</time></li></ul></div></section>`;
+}
+function headerHTML() {
+  const menu = S.menu ? `<div class="menu-pop" role="menu"><p class="full">${esc(S.title)}</p>${menuHTML()}</div>` : '';
+  const details = S.details ? `<section class="details" aria-label="Tiedot"><h2>Tiedot</h2><dl>` +
+    `<dt>Työtila</dt><dd>/home/kaisa/${WS}</dd><dt>Malli</dt><dd>claude-opus-5-5</dd><dt>Ajattelutaso</dt><dd>medium</dd>` +
+    `<dt>Hallinta</dt><dd>Selain</dd><dt>Aloitettu</dt><dd>1.11.2026 klo 10.42</dd><dt>Tunniste</dt><dd>90e52a18-12fa-4f71</dd></dl></section>` : '';
+  const row = rowIds().map((id) => iconBtn(id, ONEOFF.includes(id) ? 'oneoff' : 'row1')).join('');
+  return `<header class="hd"><div class="tl" data-s="${phone() ? '' : Array.from({ length: S.steps }, (_, i) => i + 1).join(' ')}">` +
+    `<button class="navb" aria-label="Avaa navigaatio">${svg('menu')}</button>` +
+    `<div class="tr"><h1><button data-act="rename" title="Nimeä uudelleen">${esc(S.title)}</button></h1><span class="dots${S.naming ? ' on' : ''}"><i></i><i></i><i></i></span></div>` +
+    `<a class="ws" href="#">${WS}</a>` +
+    `<button class="adot" aria-label="Valmis" data-tip="Valmis"><i></i></button>` +
+    `<button class="chip gs" aria-label="Git: main, 2 lähtevää committia">${svg('branch')}<span class="gs-n">↑2</span></button>` +
+    `<button class="chip ctx" aria-label="Konteksti 38 %"><span class="ring"></span><span class="ctx-v">38 %</span></button>` +
+    `<button class="chip model" aria-label="Malli ja ajattelutaso: Opus 5.5, medium">Opus 5.5</button>` +
+    `<i class="sep"></i>` + row +
+    `<span class="more-wrap">${moreBtn()}${menu}</span>` +
+    `</div>${details}${S.card ? cardHTML(S.card) : ''}${S.note ? noteHTML(S.note) : ''}</header>`;
+}
+// The card names exactly the buttons it lists, in row order.
+function cardHTML(c) {
+  const li = c.ids.map((id) => `<li>${svg(A[id].icon)}<div><b>${A[id].name}</b> <span>${esc(A[id].means)}</span></div></li>`).join('');
+  return `<section class="coach${c.anchor ? ' one' : ''}"${c.anchor ? ` data-anchor="${c.anchor}"` : ''} role="dialog" aria-label="${esc(c.head)}"><h2>${esc(c.head)}</h2><ul>${li}</ul>` +
+    `<div class="foot"><span>${esc(c.foot)}</span><button class="ok" data-coach-ok>Selvä</button></div></section>`;
+}
+// Riff 3: one line under the button just pressed.
+function noteHTML(n) {
+  const btns = n.confirm
+    ? `<div class="note-b"><button class="ghost" data-note-cancel>Peru</button><button class="ok" data-note-confirm>Arkistoi</button></div>`
+    : '';
+  return `<section class="note" data-anchor="${n.id}" role="status"><p><b>${esc(A[n.id].name)}.</b> ${esc(n.text)}</p>${btns}</section>`;
+}
+function streamHTML() {
+  const recap = S.recap === 'shown'
+    ? `<div class="recap"><h3>Tilannekatsaus</h3><p>Kalenteri ei enää hyväksy päällekkäisiä varauksia, ja vanhat kaksi päällekkäisyyttä on merkitty sinulle tarkistettaviksi. Muistutusviesti lähtee kolme päivää ennen saapumista. Kesken: viestin teksti odottaa hyväksyntääsi.</p></div>`
+    : S.recap === 'pending' ? `<div class="recap"><h3>Tilannekatsaus</h3><p>Katsausta luodaan…</p></div>` : '';
+  return `<div class="stream">${recap}` +
+    `<div class="msg-user"><p>Kalenteriin pääsi taas kaksi varausta samalle viikonlopulle. Voitko estää sen? Ja lähettäisikö se vieraille muistutuksen ennen tuloa?</p></div>` +
+    `<div class="msg-agent"><div class="tool"><b>✓</b> Luettu <code>varaukset.py</code>, <code>lomake.html</code></div>` +
+    `<p>Syy löytyi: uusi varaus tarkisti vain alkupäivän, ei koko jaksoa. Korjasin tarkistuksen niin, että mikä tahansa yhteinen yö estää varauksen, ja lomake kertoo vieraalle, mitkä päivät ovat varattuja.</p>` +
+    `<p>Kalenterissa on kaksi vanhaa päällekkäistä varausta (12.–14.7. ja 2.–4.8.). En muuttanut niitä; merkitsin ne sinulle tarkistettaviksi.</p></div>` +
+    `<div class="msg-user"><p>Hyvä. Entä se muistutus?</p></div>` +
+    `<div class="msg-agent"><div class="tool"><b>✓</b> Muokattu <code>muistutus.py</code>, <code>viestipohja.txt</code></div>` +
+    `<p>Muistutus lähtee nyt kolme päivää ennen saapumista samaan sähköpostiin, jolla varaus tehtiin. Viestipohjassa on avainlaatikon koodi ja ajo-ohje. Haluatko lukea tekstin ennen kuin otan sen käyttöön?</p></div>` +
+    `</div>` +
+    `<div class="composer"><div class="composer-box"><span>Kirjoita agentille…</span><button type="button">Lähetä</button></div></div>`;
+}
+function termHTML() {
+  if (!S.terminal) return '';
+  return `<section class="term" aria-label="Päätepaneeli"><div class="pane-head"><span>Pääte · ${WS}</span><button data-act="terminal" aria-label="Sulje pääte">×</button></div>` +
+    `<div class="term-body">kaisa@birch:~/${WS}$ git log --oneline -3\n4e1c2a9 Muistutus kolme päivää ennen saapumista\n9b07f3d Estä päällekkäiset varaukset koko jaksolta\n1a5d8e2 Kalenterin värit\nkaisa@birch:~/${WS}$ ▍</div></section>`;
+}
+function editorHTML() {
+  if (!S.editor) return '';
+  return `<section class="pane" aria-label="Editori"><div class="pane-head"><span>Editori · ${WS}</span><button data-act="editor" aria-label="Sulje editori">×</button></div>` +
+    `<div class="pane-body"><div class="tree"><span>lomake.html</span><span>muistutus.py</span><span class="cur">varaukset.py</span><span>viestipohja.txt</span><span>README.md</span></div>` +
+    `<div class="code"><span class="k">def</span> vapaa(alku, loppu, varaukset):\n    <span class="c"># Mikä tahansa yhteinen yö estää varauksen.</span>\n    <span class="k">for</span> v <span class="k">in</span> varaukset:\n        <span class="k">if</span> alku &lt; v.loppu <span class="k">and</span> v.alku &lt; loppu:\n            <span class="k">return</span> False\n    <span class="k">return</span> True</div></div></section>`;
+}
+
+function render() {
+  document.documentElement.dataset.theme = theme;
+  const v = V[cur];
+  const ph = phone();
+  const app = `<div class="app${ph ? ' phone' : ''}${!ph && width !== 'wide' ? ` ${width}` : ''}" data-theme="${theme}"><aside class="rail">${railHTML()}</aside>` +
+    `<div class="main"><section class="conv">${headerHTML()}${streamHTML()}${termHTML()}</section>${editorHTML()}</div></div>`;
+  const seg = (name, key, list) => `<label>${name}<span class="seg" role="group" aria-label="${name}">${list.map(([val, lab, on]) => `<button data-${key}="${val}" aria-pressed="${on}">${lab}</button>`).join('')}</span></label>`;
+  const facts = `<dl class="facts"><dt>Milloin</dt><dd>${v.facts[0]}</dd><dt>Mikä lopettaa</dt><dd>${v.facts[1]}</dd><dt>Mitä muistetaan ja missä</dt><dd>${v.facts[2]}</dd></dl>`;
+  const matrix = `<section class="legend"><h2>Mitä kukin riffi näyttää missäkin tilanteessa</h2><table><thead><tr><th>Tilanne</th>${V.map((x, i) => `<th${i === cur ? ' class="cur"' : ''}>${esc(x.name)}</th>`).join('')}</tr></thead><tbody>` +
+    Object.entries(SIT).map(([k, s]) => `<tr${k === sit ? ' class="cur"' : ''}><td>${esc(s.label)}</td>${MATRIX[k].map((m, i) => `<td${i === cur ? ' class="cur"' : ''}>${esc(m)}</td>`).join('')}</tr>`).join('') +
+    `</tbody></table>` +
+    `<h2 class="h2b">Mitä kukin painike tekee</h2><table><tbody>` +
+    ['editor', 'terminal', 'views', 'recap', 'retitle', 'rename', 'archive', 'details', 'more'].map((id) => `<tr><td>${svg(A[id].icon)}${esc(id === 'more' ? '⋯ (Lisää)' : A[id].name)}</td><td>${esc(A[id].means)}${id === 'views' ? ' <i>(Keksitty esimerkki uudesta painikkeesta.)</i>' : ''}</td></tr>`).join('') +
+    `</tbody></table></section>`;
+  document.getElementById('stage').innerHTML =
+    `<main class="pg" data-device="${device}">` +
+    `<div class="pg-head"><h1>${esc(v.name)}</h1><span class="pg-axis">${esc(v.axis)}</span></div>` +
+    `<div class="pg-toggles">` +
+    seg('Tilanne', 'sit-set', Object.entries(SIT).map(([k, s]) => [k, s.label, sit === k])) +
+    `</div><div class="pg-toggles">` +
+    seg('Teema', 'theme-set', [['light', 'Vaalea', theme === 'light'], ['dark', 'Tumma', theme === 'dark']]) +
+    seg('Laite', 'device-set', [['desktop', 'Työpöytä', !ph], ['phone', 'Puhelin', ph]]) +
+    (ph ? '' : seg('Ikkuna', 'width-set', [['wide', 'Leveä (1320)', width === 'wide'], ['narrow', 'Kapea (1024)', width === 'narrow'], ['xwide', 'Hyvin leveä (1680)', width === 'xwide']])) +
+    seg('Otsikko', 'title-set', [['long', 'Pitkä', long], ['short', 'Lyhyt', !long]]) +
+    `<button class="reset" data-reset>Alkuun</button></div>` +
+    `<p class="pg-sit">${esc(SIT[sit].long)}</p>` +
+    `<p class="pg-lead">${v.lead}</p>${facts}` +
+    `<div class="app-wrap">${app}</div>` +
+    `<p class="pg-log" role="status">${esc(S.log)}</p>${matrix}</main>`;
+  shorten();
+  anchor();
+}
+
+// The desktop row's shortening (HeaderShortening.tsx): the fewest steps
+// that leave the title 40 % of the row or its whole text. A phone takes none.
+// The card computed before shortening is recomputed once the steps are known,
+// so it names exactly what stays on the row.
+function shorten() {
+  const tl = document.querySelector('#stage .tl');
+  if (!tl || phone()) return;
+  const fits = () => {
+    const title = tl.querySelector('h1');
+    const box = tl.getBoundingClientRect();
+    const right = Math.max(box.left, ...[...tl.children].map((c) => { const r = c.getBoundingClientRect(); return r.width ? r.right : box.left; }));
+    if (right > box.right + 1) return false;
+    const need = Math.min(title.scrollWidth, box.width * 0.4);
+    return title.clientWidth >= need - 1;
+  };
+  let steps = 0;
+  for (; steps < 6; steps++) {
+    tl.dataset.s = Array.from({ length: steps }, (_, i) => i + 1).join(' ');
+    if (fits()) break;
+  }
+  if (steps !== S.steps) {
+    S.steps = steps;
+    if (S.card && !S.card.help) S.card = V[cur].card();
+    render();
+  }
+}
+// A card or note about one button points at that button.
+function anchor() {
+  for (const el of document.querySelectorAll('#stage .hd > [data-anchor]')) {
+    const hd = el.parentElement.getBoundingClientRect();
+    const b = document.querySelector(`#stage .tl [data-act="${el.dataset.anchor}"]`);
+    if (!b) continue;
+    const r = b.getBoundingClientRect();
+    const mid = r.left + r.width / 2 - hd.left;
+    const w = el.offsetWidth;
+    const left = Math.max(8, Math.min(hd.width - w - 8, mid - w / 2));
+    el.style.left = `${left}px`;
+    el.style.right = 'auto';
+    el.style.setProperty('--arrow', `${mid - left - 6}px`);
+  }
+}
+function mount(i) { cur = i; S = { steps: 0 }; S = fresh(); render(); }
+function setParam(k, val) { const u = new URL(location); u.searchParams.set(k, val); history.replaceState(null, '', u); }
+
+const LOG = {
+  workspace: `Avaisi työtilan ${WS} sivun.`,
+  rename: 'Otsikko muuttuisi kentäksi, johon voi kirjoittaa oman nimen.',
+  archive: 'Keskustelu arkistoitaisiin: se katoaisi sivupalkista ja löytyisi Arkistoiduista.',
+  views: 'Avaisi listan tämän keskustelun näkymistä.',
+};
+// Riff 3's line for a button's first press: what just happened.
+const FIRST = {
+  editor: 'Avasit työtilan tiedostot keskustelun viereen. Sama painike sulkee editorin.',
+  terminal: `Avasit komentorivin kansiossa ${WS}. Sama painike sulkee päätteen.`,
+  views: 'Tässä ovat sivut, jotka agentti on tehnyt tässä keskustelussa.',
+  recap: 'Agentti kirjoittaa keskustelun yläreunaan, mitä on tehty ja missä työ on nyt.',
+  retitle: 'Agentti keksii keskustelulle uuden nimen. Oman nimen voit kirjoittaa otsikkoa napauttamalla.',
+  details: 'Tässä ovat keskustelun kansio, malli ja tunniste.',
+};
+let timer;
+function act(id) {
+  S.menu = false;
+  if (V[cur].used && !S.used.has(id) && (FIRST[id] || id === 'archive')) {
+    S.used.add(id);
+    if (id === 'archive') { S.note = { id, text: A.archive.means + ' Arkistoidut löytyvät sivupalkin lopusta.', confirm: true }; S.log = ''; return render(); }
+    S.note = { id, text: FIRST[id] };
+  } else S.note = null;
+  if (S.card && S.card.ids.includes(id)) { S.card = null; S.log = 'Painike merkitään tutuksi, joten kortti ei avaudu enää.'; }
+  if (id === 'editor' || id === 'terminal') { S[id] = !S[id]; if (!S.note) S.log = ''; return render(); }
+  if (id === 'details') { S.details = !S.details; return render(); }
+  if (id === 'help') { S.card = { ...fullCard(true), help: true }; return render(); }
+  if (id === 'recap') {
+    S.recap = 'pending'; render();
+    clearTimeout(timer); timer = setTimeout(() => { S.recap = 'shown'; render(); }, 700);
+    return;
+  }
+  if (id === 'retitle') {
+    S.naming = true; render();
+    clearTimeout(timer); timer = setTimeout(() => { S.naming = false; S.title = long ? (S.title === TITLE0 ? TITLE1 : TITLE0) : (S.title === SHORT0 ? SHORT1 : SHORT0); S.log = 'Agentti antoi keskustelulle uuden otsikon.'; render(); }, 900);
+    return;
+  }
+  S.log = LOG[id] || ''; render();
+}
+document.addEventListener('click', (e) => {
+  const stageEl = document.getElementById('stage');
+  if (!stageEl.contains(e.target)) return;
+  if (suppressClick) { suppressClick = false; return; }
+  const t = e.target.closest('[data-sit-set],[data-theme-set],[data-device-set],[data-width-set],[data-title-set],[data-reset],[data-act],[data-more],[data-coach-ok],[data-note-cancel],[data-note-confirm]');
+  // A press outside an open menu or the details closes it, as they do on main.
+  const inside = e.target.closest('.menu-pop, .details, [data-more], [data-act="details"]');
+  if ((S.menu || S.details) && !inside) { S.menu = false; S.details = false; if (!t) return render(); }
+  if (!t || t.disabled) return;
+  const d = t.dataset;
+  if (d.sitSet) { sit = d.sitSet; setParam('s', sit); return mount(cur); }
+  if (d.themeSet) { theme = d.themeSet; setParam('t', theme); return render(); }
+  if (d.deviceSet) { device = d.deviceSet; setParam('d', device); return mount(cur); }
+  if (d.widthSet) { width = d.widthSet; setParam('w', width); return mount(cur); }
+  if (d.titleSet) { long = d.titleSet === 'long'; setParam('n', long ? 'long' : 'short'); return mount(cur); }
+  if (d.reset !== undefined) return mount(cur);
+  if (d.more !== undefined) { S.menu = !S.menu; S.details = false; S.note = null; return render(); }
+  if (d.coachOk !== undefined) { const help = S.card.help; S.card = null; S.log = help ? '' : 'Kortin painikkeet merkitään tutuiksi.'; return render(); }
+  if (d.noteCancel !== undefined) { S.note = null; S.log = 'Mitään ei arkistoitu.'; return render(); }
+  if (d.noteConfirm !== undefined) { S.note = null; S.log = LOG.archive; return render(); }
+  if (d.act) return act(d.act);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && (S.menu || S.details || S.card || S.note)) { S.menu = false; S.details = false; S.card = null; S.note = null; render(); }
+});
+// Riff 2 on a phone: a long press shows the same tooltip, and the release
+// that follows does not press the button.
+let pressTimer;
+let suppressClick = false;
+document.addEventListener('pointerdown', (e) => {
+  const b = e.target.closest('#stage .app.phone .tl [data-tip]');
+  if (!b || !V[cur].tipMeans) return;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => { b.classList.add('held'); suppressClick = true; }, 500);
+});
+document.addEventListener('pointerup', () => {
+  clearTimeout(pressTimer);
+  const held = document.querySelector('#stage .held');
+  if (held) setTimeout(() => held.classList.remove('held'), 1600);
+});
+
+// ---------- picker (PICKER.md reference wiring) ----------
+const variants = V.map((_, i) => () => i);
+const stage = document.getElementById('stage');
+const picker = document.querySelector('.proto-picker');
+const highlight = picker.querySelector('.proto-picker-highlight');
+const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+let current = 0;
+function moveHighlight() {
+  const el = items[current];
+  highlight.style.width = el.offsetWidth + 'px';
+  highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+}
+function setActive(i) {
+  if (i < 0 || i >= variants.length) return;
+  current = i;
+  items.forEach((el, j) => {
+    el.toggleAttribute('data-active', j === i);
+    if (j === i) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
+  });
+  moveHighlight();
+  const url = new URL(location);
+  url.searchParams.set('v', i + 1);
+  history.replaceState(null, '', url);
+  stage.innerHTML = '';
+  requestAnimationFrame(() => mount(variants[i]()));
+}
+items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+window.addEventListener('resize', moveHighlight);
+document.addEventListener('keydown', (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const num = parseInt(e.key, 10);
+  if (num >= 1 && num <= variants.length) setActive(num - 1);
+  else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length);
+  else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length);
+  else if (e.key === 'r' || e.key === 'R') mount(current);
+});
+setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+</script>
+</body>
+</html>

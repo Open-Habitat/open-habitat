@@ -8,7 +8,7 @@ priority: normal
 lane: proto-conversation-header-actions-r2
 lane_seq: 1
 related: ['@proto-conversation-header-actions']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype round 2: when the header's first-use guidance appears
