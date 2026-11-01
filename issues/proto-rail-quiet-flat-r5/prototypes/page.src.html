@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="fi" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hiljaiset: avoimen keskustelun korostus (kierros 5)</title>
+<style>
+/*TOKENS*/
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--ah-bg);
+  color: var(--ah-ink);
+  font: 400 var(--ah-size-ui)/var(--ah-lh-ui) var(--ah-font);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; }
+kbd { font: 600 11px var(--ah-mono); }
+
+/* ---------- page chrome around the simulation ---------- */
+.pg { max-width: 1480px; margin: 0 auto; padding: 72px 24px 40px; }
+.pg-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; margin-bottom: 14px; }
+.pg-head h1 { margin: 0; font-size: var(--ah-size-h1); font-weight: 600; letter-spacing: -.01em; }
+.pg-axis { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.pg-toggles { margin-left: auto; display: flex; gap: 8px; }
+.seg { display: inline-flex; padding: 2px; border-radius: var(--ah-r-md); background: var(--ah-control); }
+.seg button { border: 0; background: transparent; color: var(--ah-ink-2); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+.seg button[aria-pressed="true"] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-line); font-weight: 600; }
+.pg-lead { margin: 0 0 18px; max-width: 92ch; color: var(--ah-ink-2); font-size: var(--ah-size-body); line-height: 1.55; }
+.pg-grid { display: grid; grid-template-columns: minmax(520px, 600px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.pg[data-device="phone"] .pg-grid { grid-template-columns: minmax(520px, 1fr) auto; }
+.card { background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-xl); box-shadow: var(--ah-shadow-app); }
+.card h2 { margin: 0 0 2px; font-size: var(--ah-size-h2); font-weight: 600; }
+.card .sub { margin: 0 0 8px; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.pg-lead code, .notes li code { font: 11.5px var(--ah-mono); }
+/* ---------- the production-looking app ---------- */
+.app { display: grid; grid-template-columns: 256px minmax(0, 1fr); height: 680px; overflow: hidden; border-radius: var(--ah-r-xl); border: 1px solid var(--ah-line); background: var(--ah-bg); box-shadow: var(--ah-shadow-app); color: var(--ah-ink); }
+.rail { background: var(--ah-rail); border-right: 1px solid var(--ah-line); padding: 10px 8px 16px; overflow: auto; }
+.rail-brand { display: flex; align-items: center; gap: 8px; padding: 2px 8px 10px; font-weight: 600; font-size: 13.5px; }
+.rail-brand i { width: 18px; height: 18px; border-radius: 5px; background: var(--ah-accent); display: inline-block; }
+.rail-brand .x { margin-left: auto; display: none; border: 0; background: transparent; color: var(--ah-muted); font-size: 16px; cursor: pointer; }
+.rail section + section { margin-top: 8px; }
+.rail h2 { display: flex; align-items: center; gap: 8px; min-height: 26px; margin: 0; padding: 0 8px; color: var(--ah-muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.cnt { color: var(--ah-muted); font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+.cnt.att { min-width: 18px; padding: 0 6px; border-radius: var(--ah-r-pill); background: var(--ah-accent); color: var(--ah-on-accent); font-weight: 600; text-align: center; }
+.rail ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
+.empty { margin: 0; padding: 2px 8px 4px; color: var(--ah-faint); font-size: 12px; }
+.row { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 8px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); font-size: 13px; cursor: pointer; }
+.row:hover { background: var(--ah-hover); }
+.row.cur { background: var(--ah-current); box-shadow: 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); font-weight: 600; }
+.row .tt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row time { flex: none; color: var(--ah-muted); font-size: 11px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.row .wt { flex: none; color: var(--ah-faint); font: 600 10px var(--ah-mono); }
+.row.kept .tt { font-style: italic; }
+.ball { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ah-faint); }
+.ball.work { background: var(--ah-accent); box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--ah-accent) 28%, transparent); animation: ah-pulse var(--ah-pulse); }
+.ball.you { background: var(--ah-turn); }
+.ball.done { background: var(--ah-ok); }
+.ball.fail { border-radius: 1px; background: var(--ah-err); transform: scale(.9) rotate(45deg); }
+.ball.rest { box-sizing: border-box; background: transparent; border: 1.5px solid var(--ah-ok); }
+.wsi { flex: none; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; font: 600 8px/1 var(--ah-font); letter-spacing: -.02em; color: var(--h); background: color-mix(in srgb, var(--h) 15%, var(--ah-surface)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--h) 32%, transparent) inset; }
+.grp + .grp { margin-top: 4px; }
+.grp h3 { margin: 0; padding: 5px 8px 1px; color: var(--ah-ink-2); font: 600 12px var(--ah-mono); display: flex; gap: 6px; align-items: center; }
+.rule { display: flex; align-items: center; gap: 8px; margin: 8px 8px 2px; color: var(--ah-muted); font-size: 10.5px; }
+.rule::after { content: ""; flex: 1; height: 1px; background: var(--ah-line); }
+.fold { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 24px; padding: 0 8px 0 12px; border: 0; border-radius: var(--ah-r-nav); background: transparent; color: var(--ah-muted); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.fold:hover { background: var(--ah-hover); color: var(--ah-ink-2); }
+.fold .chev { display: inline-block; width: 8px; transition: transform .15s; }
+.fold[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.fold .lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fold.ws .lb { font-family: var(--ah-mono); }
+.rail hr { border: 0; border-top: 1px solid var(--ah-line-soft); margin: 10px 8px 6px; }
+.wsrow { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 8px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); font: 500 12.5px var(--ah-mono); cursor: pointer; }
+.wsrow:hover { background: var(--ah-hover); }
+.wsrow.cur { background: var(--ah-current); color: var(--ah-ink); }
+.wsrow .tt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+.conv { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--ah-bg); }
+.topbar { display: flex; align-items: center; gap: 10px; padding: 11px 18px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.topbar .menu { display: none; position: relative; border: 0; background: transparent; color: var(--ah-ink-2); font-size: 18px; padding: 0 4px; cursor: pointer; }
+.topbar .menu .dot { position: absolute; top: -2px; right: -4px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 8px; background: var(--ah-accent); color: var(--ah-on-accent); font: 700 10px/15px var(--ah-font); }
+.topbar h5 { margin: 0; font-size: var(--ah-size-title); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar .wsn { color: var(--ah-muted); font: 12px var(--ah-mono); white-space: nowrap; }
+.chip { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: var(--ah-r-pill); font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--ah-control); color: var(--ah-ink-2); }
+.chip.work { background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+.chip.you { background: color-mix(in srgb, var(--ah-turn) 16%, transparent); color: var(--ah-ink); }
+.chip.fail { background: var(--ah-err-soft); color: var(--ah-err); }
+.stream { flex: 1; overflow: auto; padding: 18px var(--ah-column-pad-inline) 10px; }
+.stream > * { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin-inline: auto; }
+.msg-user { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.msg-user p { margin: 0; max-width: 80%; padding: 8px 12px; border-radius: 12px 12px 4px 12px; background: var(--ah-accent-soft); color: var(--ah-ink); font-size: var(--ah-size-body); line-height: 1.5; }
+.msg-agent { margin-bottom: 14px; font-size: var(--ah-size-body); line-height: var(--ah-lh-body); color: var(--ah-ink); }
+.msg-agent p { margin: 0 0 6px; }
+.working-line { display: flex; align-items: center; gap: 8px; color: var(--ah-accent-ink); font-size: 13px; margin-bottom: 10px; }
+.card-note { border: 1px solid var(--ah-line); background: var(--ah-surface); border-radius: var(--ah-r-lg); padding: 10px 12px; margin-bottom: 12px; font-size: 13px; color: var(--ah-ink-2); }
+.card-note b { display: block; font-size: 11px; color: var(--ah-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.card-note.ask { border-color: color-mix(in srgb, var(--ah-turn) 45%, var(--ah-line)); background: color-mix(in srgb, var(--ah-turn) 8%, var(--ah-surface)); color: var(--ah-ink); }
+.card-note.cut { border-color: var(--ah-err-line); background: var(--ah-err-soft); color: var(--ah-ink); }
+.empty-view { margin: 80px auto 0; text-align: center; color: var(--ah-muted); max-width: 40ch; }
+.wspage h6 { margin: 0 0 8px; font-size: 11px; color: var(--ah-muted); text-transform: uppercase; letter-spacing: .04em; }
+.wspage ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); }
+.wspage li + li { border-top: 1px solid var(--ah-line-soft); }
+.wspage .row { min-height: 40px; padding: 0 12px; border-radius: 0; }
+.wspage .row small { color: var(--ah-muted); font-size: 11.5px; font-weight: 400; }
+.composer { padding: 0 var(--ah-column-pad-inline) var(--ah-composer-pad-block); }
+.composer-box { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin-inline: auto; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; min-height: 48px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-xl); background: var(--ah-surface); }
+.composer-box span { flex: 1; color: var(--ah-faint); font-size: var(--ah-size-body); }
+.composer-box button { border: 0; border-radius: var(--ah-r-md); padding: 6px 14px; font-weight: 600; font-size: 13px; cursor: pointer; background: var(--ah-accent); color: var(--ah-on-accent); }
+.composer-box button.stop { background: var(--ah-control); color: var(--ah-ink); }
+
+/* phone form */
+.phone-wrap { display: flex; justify-content: center; }
+.app.phone { width: 390px; height: 780px; grid-template-columns: 1fr; border-radius: 34px; border-width: 8px; border-color: #0b0d0f; position: relative; }
+.app.phone .rail { position: absolute; inset: 0 auto 0 0; width: 84%; z-index: 3; transform: translateX(-102%); transition: transform var(--ah-appear); box-shadow: var(--ah-shadow-dialog); padding-top: 18px; }
+.app.phone.rail-open .rail { transform: none; }
+.app.phone .rail-brand .x { display: inline-block; }
+.app.phone .row, .app.phone .wsrow { min-height: 40px; }
+.app.phone .topbar { padding: 10px 12px; }
+.app.phone .topbar .menu { display: inline-block; }
+.app.phone .topbar .wsn { display: none; }
+.app.phone .stream { padding-inline: 14px; }
+.app.phone .composer { padding-inline: 10px; }
+@media (max-width: 1100px) {
+  .pg-grid, .pg[data-device="phone"] .pg-grid { grid-template-columns: 1fr; }
+  .graph-card { position: static; }
+}
+@media (max-width: 700px) {
+  .pg { padding: 64px 10px 30px; }
+  .ev-grid { grid-template-columns: 1fr; }
+  .app.phone { width: 100%; max-width: 390px; }
+}
+
+/* ---------- picker (PICKER.md, verbatim) ---------- */
+.proto-picker { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; background: rgba(10, 10, 10, 0.82); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 8px 24px rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.12); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; line-height: 1; -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none; }
+.proto-picker-highlight { position: absolute; top: 4px; left: 0; height: 28px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); will-change: transform; }
+.proto-picker[data-ready] .proto-picker-highlight { transition: transform 250ms cubic-bezier(0.23, 1, 0.32, 1), width 250ms cubic-bezier(0.23, 1, 0.32, 1); }
+@media (prefers-reduced-motion: reduce) { .proto-picker[data-ready] .proto-picker-highlight { transition: none; } }
+.proto-picker-item { position: relative; display: flex; align-items: center; height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: rgba(255, 255, 255, 0.55); font: inherit; cursor: pointer; transition: color 150ms ease-out; }
+.proto-picker-item:hover { color: rgba(255, 255, 255, 0.85); }
+.proto-picker-item:active { transform: scale(0.97); }
+.proto-picker-item:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.4); outline-offset: 2px; }
+.proto-picker-item[data-active] { color: #fff; }
+.proto-picker-divider { width: 1px; height: 16px; margin: 0 4px; background: rgba(255, 255, 255, 0.12); }
+.proto-picker-replay { padding: 0 10px; font-size: 14px; }
+.proto-picker[data-position="top"] { bottom: auto; top: 24px; }
+
+/* ---------- round 2: the rail as main draws it ---------- */
+.rail { display: flex; flex-direction: column; padding: 10px 8px 0; }
+.rail-scroll { flex: 1; min-height: 0; overflow: auto; }
+.rail-brand { padding: 4px 6px 8px; font-size: 13.5px; }
+.rail-brand .dotok { width: 7px; height: 7px; border-radius: 50%; background: var(--ah-ok); display: inline-block; margin-left: 4px; }
+.rail-brand .conn { color: var(--ah-ok); font-weight: 500; font-size: 12px; }
+.home svg { width: 16px; height: 16px; flex: none; }
+.app:not(.phone) { height: 860px; }
+.home { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 10px; margin: 0 0 8px; border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink); font-weight: 600; font-size: 13px; cursor: pointer; }
+.rail section + section { margin-top: 10px; }
+.row .wtg { flex: none; width: 13px; height: 13px; color: var(--ah-ink-2); }
+.row .wtg.merged { color: var(--ah-ok); }
+.acct { display: flex; align-items: center; gap: 8px; margin: 6px 0 8px; padding: 6px 10px; border-radius: var(--ah-r-md); background: var(--ah-surface); font-weight: 600; font-size: 13px; cursor: pointer; border: 0; color: var(--ah-ink); width: 100%; text-align: left; }
+.acct .av { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--ah-control); font-size: 11px; }
+.acct .chev { margin-left: auto; color: var(--ah-muted); }
+.acct-menu { margin: 0 0 6px; padding: 4px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog); }
+.acct-menu button { display: block; width: 100%; border: 0; background: transparent; color: var(--ah-ink); text-align: left; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.acct-menu button:hover { background: var(--ah-hover); }
+.wsrow svg { width: 14px; height: 14px; color: var(--ah-muted); flex: none; }
+/* the narrow rail beside the editor */
+.app.narrow { grid-template-columns: 56px minmax(0, 1fr); }
+.app.narrow .rail { padding: 10px 4px 0; align-items: center; }
+.dots { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.dots ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dots hr { width: 24px; margin: 4px 0; border: 0; border-top: 1px solid var(--ah-line); }
+.ndot { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--ah-r-md); cursor: pointer; color: var(--ah-ink-2); font-size: 11px; font-weight: 600; }
+.ndot:hover { background: var(--ah-hover); }
+.ndot.cur { background: var(--ah-current); box-shadow: 0 0 0 1px var(--ah-current-line); }
+.ndot .ball { position: absolute; right: 0; bottom: 2px; transform: scale(.85); }
+.ndot .ball.fail { transform: scale(.8) rotate(45deg); }
+.ndot .wsi { width: 22px; height: 22px; font-size: 10px; }
+.editor { flex: 1; display: grid; grid-template-columns: 180px 1fr; min-height: 0; font: 12.5px/1.7 var(--ah-mono); color: var(--ah-ink-2); }
+.editor .tree { border-right: 1px solid var(--ah-line); padding: 10px 12px; background: var(--ah-surface-2); }
+.editor pre { margin: 0; padding: 10px 16px; overflow: hidden; }
+/* settings */
+.settings { padding: 22px 28px; overflow: auto; }
+.settings h4 { margin: 0 0 4px; font-size: var(--ah-size-h2); font-weight: 600; }
+.settings .crumb { color: var(--ah-muted); font-size: 12px; margin-bottom: 14px; }
+.s-card { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); }
+.s-row { display: flex; align-items: center; gap: 16px; padding: 12px 14px; }
+.s-row + .s-row { border-top: 1px solid var(--ah-line-soft); }
+.s-row.lit { background: var(--ah-accent-soft); }
+.s-lbl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.s-desc { color: var(--ah-muted); font-size: 12px; line-height: 1.45; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-surface); }
+.stepper button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--ah-ink); font-size: 16px; cursor: pointer; }
+.stepper button:disabled { opacity: .35; cursor: default; }
+.stepper output { min-width: 28px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.s-val .seg button { font-size: 12px; }
+.app.phone .settings { padding: 16px 14px; }
+.app.phone .s-row { flex-wrap: wrap; }
+.pg-toggles { flex-wrap: wrap; }
+/* ---------- round proto-rail-quiet-flat ---------- */
+/* 1: the workspace's name, quiet, at the end of the title (icons off). */
+.row .wsn { flex: 0 1 auto; max-width: 33%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ah-faint); font: 400 11px var(--ah-font); }
+.row.cur .wsn { color: var(--ah-muted); }
+/* 2: the workspace's initials in the icon's place (the narrow rail's letters). */
+.row .ini { flex: none; display: inline-grid; place-items: center; width: 18px; height: 16px; border-radius: 4px; background: var(--ah-control); color: var(--ah-ink-2); font: 600 8.5px/1 var(--ah-font); letter-spacing: -.02em; }
+.wsfilter { margin: 2px 8px 6px; padding: 5px 8px; border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-faint); font-size: 12px; }
+.rail h2 .add { margin-left: auto; color: var(--ah-muted); font-size: 14px; font-weight: 400; }
+/* ---------- round proto-rail-quiet-flat-r2 ---------- */
+/* What differs, one line per direction, on every view. */
+.pg-diff { margin: 0 0 16px; padding: 10px 14px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); display: grid; gap: 3px; font-size: 12.5px; color: var(--ah-ink-2); }
+.pg-diff b.k { display: inline-block; min-width: 9.5em; color: var(--ah-ink); }
+.pg-diff div.on { color: var(--ah-ink); }
+.pg-diff div.on b.k { color: var(--ah-accent-ink); }
+.pg-diff div.on::before { content: "▸ "; color: var(--ah-accent); }
+/* The fold: the section header is the toggle, as Arkistoidut's is. */
+.rail h2.qh { padding: 0; }
+.qfold { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; min-height: 26px; padding: 0 8px; border: 0; border-radius: var(--ah-r-nav); background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; cursor: pointer; }
+.qfold:hover { background: var(--ah-hover); color: var(--ah-ink-2); }
+.chv { display: inline-block; width: 5px; height: 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); flex: none; }
+[aria-expanded="true"] > .chv { transform: rotate(45deg); }
+/* 1: the sort choice as a quiet button at the header's end, and its menu. */
+.qsort { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 22px; margin-right: 4px; padding: 0 7px; border: 0; border-radius: var(--ah-r-nav); background: transparent; color: var(--ah-muted); font: 500 11px var(--ah-font); letter-spacing: 0; text-transform: none; cursor: pointer; }
+.qsort:hover, .qsort[aria-expanded="true"] { background: var(--ah-hover); color: var(--ah-ink-2); }
+.qsort .chv { width: 4px; height: 4px; transform: rotate(45deg); margin-top: -2px; }
+.rail section[data-sec="quiet"] { position: relative; }
+.qmenu { position: absolute; right: 2px; top: 28px; z-index: 2; width: 168px; padding: 4px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog); }
+.qmenu button { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; color: var(--ah-ink); text-align: left; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+.qmenu button:hover { background: var(--ah-hover); }
+.qmenu button .ck { width: 12px; color: var(--ah-accent-ink); font-weight: 700; }
+.qmenu p { margin: 4px 8px 2px; color: var(--ah-faint); font-size: 11px; }
+.wsgap { height: 1px; margin: 4px 8px; background: var(--ah-line-soft); list-style: none; }
+/* ---------- round proto-rail-quiet-flat-r3 ---------- */
+.ico { width: 13px; height: 13px; flex: none; }
+.qmenu .ck { display: inline-grid; place-items: center; }
+.qmenu .ck .ico { width: 12px; height: 12px; }
+/* The open conversation kept in sight under a fold or a workspace choice. */
+.row.pin { background: var(--ah-current); box-shadow: inset 3px 0 0 var(--ah-accent), 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); font-weight: 600; }
+.row.pin:not(.cur) { background: var(--ah-surface); font-weight: 500; }
+.ini { flex: none; display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding: 0 2px; border-radius: 4px; background: var(--ah-control); color: var(--ah-ink-2); font: 600 8px/1 var(--ah-font); }
+/* 1: the summary button and the long dropdown. */
+.qsum .wsi, .qsum .ini { width: 14px; height: 14px; min-width: 14px; font-size: 7px; }
+.qsum-sep { color: var(--ah-faint); margin: 0 1px; }
+.qsort.on { color: var(--ah-accent-ink); background: var(--ah-accent-soft); }
+.qmenu.wide { width: 224px; max-height: 560px; overflow: auto; }
+.qmenu h4 { margin: 6px 8px 2px; color: var(--ah-muted); font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.qmenu hr { border: 0; border-top: 1px solid var(--ah-line-soft); margin: 4px 6px; }
+.qmenu .lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qmenu button[aria-checked="true"] { font-weight: 600; }
+.qmenu.sheet { position: absolute; left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 72%; z-index: 6; padding: 6px 8px 14px; border-radius: 18px 18px 0 0; }
+.qmenu.sheet::before { content: ""; display: block; width: 36px; height: 4px; margin: 2px auto 6px; border-radius: 2px; background: var(--ah-line-strong); }
+.qmenu.sheet button { min-height: 40px; font-size: 14px; }
+.qback { position: absolute; inset: 0; z-index: 5; background: rgba(0, 0, 0, .28); }
+/* 2: the icon stack and the popover with tiles. */
+.qgridbtn { gap: 4px; }
+.qstack { display: inline-flex; }
+.qstack .wsi, .qstack .ini { width: 15px; height: 15px; min-width: 15px; font-size: 7px; box-shadow: 0 0 0 1.5px var(--ah-rail); }
+.qstack .wsi + .wsi, .qstack .ini + .ini { margin-left: -2px; }
+.qgridbtn.on .qstack .wsi, .qgridbtn.on .qstack .ini { box-shadow: 0 0 0 1.5px var(--ah-accent); }
+.qtag { font-size: 10.5px; }
+.qpop { position: absolute; left: 4px; right: 2px; top: 28px; z-index: 2; padding: 8px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog); }
+.qseg3 { display: flex; padding: 2px; border-radius: var(--ah-r-md); background: var(--ah-control); margin-bottom: 8px; }
+.qseg3 button { flex: 1; border: 0; background: transparent; color: var(--ah-ink-2); padding: 4px 6px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+.qseg3 button[aria-pressed="true"] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-line); font-weight: 600; }
+.qtiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.qtile { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; padding: 7px 3px 5px; border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-md); background: transparent; color: var(--ah-ink-2); cursor: pointer; }
+.qtile:hover { background: var(--ah-hover); }
+.qtile.on { border-color: var(--ah-accent-line); background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+.qtile .wsi, .qtile .ini, .qtile .qall { width: 26px; height: 26px; min-width: 26px; border-radius: 7px; font-size: 11px; }
+.qtile .qall { display: grid; place-items: center; color: var(--ah-muted); background: var(--ah-control); }
+.qtile .qall .ico { width: 15px; height: 15px; }
+.qtile .lb { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 10.5px var(--ah-mono); }
+.qtile .cnt { font-size: 10px; }
+.qpop-foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--ah-faint); font-size: 10.5px; line-height: 1.35; }
+.qpop-foot button { margin-left: auto; flex: none; border: 0; border-radius: 6px; padding: 4px 10px; background: var(--ah-control); color: var(--ah-ink); font-size: 12px; font-weight: 600; cursor: pointer; }
+.qstrip { display: flex; flex-wrap: wrap; gap: 3px; margin: 3px 8px 2px; }
+.qstrip button { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 5px 0 3px; border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-pill); background: transparent; color: var(--ah-muted); font-size: 10.5px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.qstrip button:hover { background: var(--ah-hover); color: var(--ah-ink-2); }
+.app.phone .qstrip button { height: 30px; }
+/* ---------- round proto-rail-quiet-flat-r4: the icon grid, UI only ---------- */
+.pg-grid { grid-template-columns: 300px minmax(0, 1fr); }
+.pg[data-device="phone"] .pg-grid { grid-template-columns: 300px auto; justify-content: start; }
+.snips { display: grid; gap: 14px; }
+.snip { padding: 10px 10px 12px; }
+.snip h2 { margin: 0 2px 2px; font-size: 12.5px; font-weight: 600; }
+.snip .sub { margin: 0 2px 8px; font-size: 11.5px; line-height: 1.4; }
+.snip .rail { display: block; padding: 6px 4px 6px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); overflow: visible; }
+.snip .qpop { position: static; margin: 4px 2px 2px; box-shadow: none; }
+.app-note { margin: 10px 2px 0; color: var(--ah-muted); font-size: 12px; line-height: 1.5; }
+@media (max-width: 1100px) { .pg-grid, .pg[data-device="phone"] .pg-grid { grid-template-columns: 1fr; } }
+
+/* Common: the popover's sort segments shrink to two when one workspace is
+   chosen, so the segment control is laid out by content, not thirds. */
+.qseg3 button { flex: 1 1 0; }
+.qpop .qnote { margin: -2px 2px 8px; color: var(--ah-faint); font-size: 10.5px; }
+.qtile { position: relative; }
+.app.phone .qtile { padding: 9px 3px 7px; }
+.app.phone .qseg3 button { padding: 7px 6px; font-size: 13px; }
+.qstack .wsi, .qstack .ini { box-shadow: 0 0 0 1.5px var(--ah-rail); }
+.qgridbtn.on { color: var(--ah-accent-ink); background: var(--ah-accent-soft); }
+
+/* ---------- round proto-rail-quiet-flat-r5: the open row's emphasis ---------- */
+/* Ruudut is the look; the round varies only how the open conversation's row
+   (and, folded, its workspace's pill) is marked. */
+.qpop-foot { justify-content: flex-end; }
+.qchips { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 8px 2px; }
+.qchips button { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 7px 0 4px; border: 1px solid var(--ah-line-soft); border-radius: var(--ah-r-pill); background: var(--ah-surface); color: var(--ah-muted); font-size: 11px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.qchips button:hover { background: var(--ah-hover); color: var(--ah-ink-2); }
+.app.phone .qchips button { height: 32px; padding: 0 9px 0 6px; }
+.pg-grid { display: block; }
+.app:not(.phone) { max-width: 1180px; }
+.pg-sec { margin: 26px 0 10px; font-size: var(--ah-size-h2); font-weight: 600; }
+.pg-sec small { margin-left: 8px; color: var(--ah-muted); font-size: var(--ah-size-meta); font-weight: 400; }
+
+/* The comparison: riffs as columns, device and theme as rows. */
+.cmp-wrap { overflow-x: auto; }
+.cmp { display: grid; grid-template-columns: 70px repeat(5, minmax(0, 1fr)); gap: 8px; min-width: 1300px; align-items: start; }
+.cmp-h { padding: 0 2px 2px; font-size: 13px; font-weight: 600; }
+.cmp-h.on { color: var(--ah-accent-ink); }
+.cmp-h.on::before { content: "▸ "; color: var(--ah-accent); }
+.cmp-l { padding-top: 8px; color: var(--ah-muted); font-size: 12px; line-height: 1.4; }
+.cmp-l b { display: block; color: var(--ah-ink-2); font-size: 12.5px; }
+.cell { display: flex; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden; background: var(--ah-bg); color: var(--ah-ink); box-shadow: var(--ah-shadow-app); }
+.cell .rail { flex: 1; min-width: 0; display: block; padding: 6px 0 8px 6px; border-right: 0; box-shadow: inset -1px 0 0 var(--ah-line); overflow: visible; }
+.cell .rail > * { margin-right: 6px; }
+/* A slice of the conversation beside the rail, so the edge between them shows. */
+.cell .slice { flex: none; width: 10px; background: var(--ah-bg); }
+.cell .cap { margin: 8px 8px 2px; color: var(--ah-faint); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; }
+.cell .row.hov { background: var(--ah-hover); }
+.cell.ph .row { min-height: 40px; }
+.cell.ph .qchips button { height: 32px; padding: 0 9px 0 6px; }
+
+/* 1 · Viiva: round 4's accent bar on the left. */
+[data-r="1"] .rail .row.cur { background: var(--ah-current); box-shadow: inset 3px 0 0 var(--ah-accent), 0 0 0 1px var(--ah-current-line); }
+[data-r="1"] .qchips button.here { border-color: var(--ah-accent); color: var(--ah-accent-ink); }
+
+/* 2 · Rengas: ringed all round in the accent. */
+[data-r="2"] .rail .row.cur { background: var(--ah-surface); box-shadow: 0 0 0 1.5px var(--ah-accent); color: var(--ah-ink); }
+[data-r="2"] .qchips button.here { border-color: transparent; box-shadow: 0 0 0 1.5px var(--ah-accent); color: var(--ah-ink); }
+
+/* 3 · Työtilan väri: the bar takes the workspace's colour, and so does the
+   folded pill. */
+[data-r="3"] .rail .row.cur { background: var(--ah-current); box-shadow: inset 3px 0 0 var(--hue), 0 0 0 1px var(--ah-current-line); }
+[data-r="3"] .qchips button.here { border-color: var(--h); background: color-mix(in srgb, var(--h) 12%, var(--ah-surface)); color: var(--ah-ink); }
+
+/* 4 · Täyttö: no line, the row is filled with the soft accent. */
+[data-r="4"] .rail .row.cur { background: var(--ah-accent-soft); box-shadow: none; color: var(--ah-accent-ink); }
+[data-r="4"] .rail .row.cur time { color: var(--ah-accent-ink); }
+[data-r="4"] .qchips button.here { border-color: transparent; background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-weight: 600; }
+
+/* 5 · Kieleke: the row reaches the rail's edge in the conversation's own
+   background, so it reads as the tab the open conversation hangs from. The
+   rail's edge is an inset shadow so the row can cover it. */
+.app[data-r="5"]:not(.phone) .rail { padding-right: 0; border-right: 0; box-shadow: inset -1px 0 0 var(--ah-line); }
+.app[data-r="5"]:not(.phone) .rail-scroll { padding-right: 8px; scrollbar-width: none; }
+.app[data-r="5"]:not(.phone) .acct { width: calc(100% - 8px); }
+[data-r="5"] .rail .row.cur { margin-right: -8px; padding-right: 16px; border-radius: var(--ah-r-nav) 0 0 var(--ah-r-nav); background: var(--ah-bg); box-shadow: inset 0 1px 0 var(--ah-line), inset 0 -1px 0 var(--ah-line), inset 1px 0 0 var(--ah-line); }
+.cell[data-r="5"] .rail .row.cur { margin-right: -6px; padding-right: 14px; }
+.app.phone[data-r="5"] .rail .row.cur { margin-right: 0; padding-right: 8px; border-radius: var(--ah-r-nav); box-shadow: 0 0 0 1px var(--ah-line); }
+.cell.ph[data-r="5"] .rail .row.cur { margin-right: 0; padding-right: 8px; border-radius: var(--ah-r-nav); box-shadow: 0 0 0 1px var(--ah-line); }
+[data-r="5"] .qchips button.here { border-color: var(--ah-line-strong); background: var(--ah-bg); color: var(--ah-ink); }
+</style>
+</head>
+<body>
+<nav class="proto-picker" aria-label="Prototype variants" data-position="top">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">1 · Viiva</button>
+  <button class="proto-picker-item">2 · Rengas</button>
+  <button class="proto-picker-item">3 · Työtilan väri</button>
+  <button class="proto-picker-item">4 · Täyttö</button>
+  <button class="proto-picker-item">5 · Kieleke</button>
+</nav>
+<div id="stage"></div>
+<script>
+'use strict';
+// Round 5 of the Hiljaiset rail: UI only, the look is round 4's Ruudut. The
+// round varies how the open conversation's row is emphasised, in the list and
+// folded. The world is round 3's (five workspaces, 22 conversations; Paljon
+// has ten and 50).
+const WS = {
+  'open-habitat': { g: 'oh', h: 'var(--ah-glyph-1)' },
+  fleetrepo: { g: 'hb', h: 'var(--ah-glyph-3)' },
+  deutschpad: { g: 'd', h: 'var(--ah-glyph-5)' },
+  workspace: { g: 'ws', h: 'var(--ah-glyph-6)' },
+  taskfleet: { g: 'tf', h: 'var(--ah-glyph-2)' },
+  // The rest are the many-workspaces person's (Määrä: Paljon).
+  issuectl: { g: 'ic', h: 'var(--ah-glyph-4)', many: true },
+  'tailspin-monorepo': { g: 'im', h: 'var(--ah-glyph-7)', many: true },
+  glasspad: { g: 'gp', h: 'var(--ah-glyph-0)', many: true },
+  dotfiles: { g: 'df', h: 'var(--ah-glyph-3)', many: true },
+  kotitalous: { g: 'kt', h: 'var(--ah-glyph-6)', many: true },
+};
+// Määrä: Viisi (the brief's person: five workspaces, 22 conversations) or
+// Paljon (ten workspaces, 50 conversations from a month).
+let amount = 'five';
+const wsOrder = () => Object.keys(WS).filter((k) => amount === 'many' || !WS[k].many).sort((a, b) => a.localeCompare(b, 'fi'));
+const DAY = 1440;
+const WT = (branch, o = {}) => ({ branch, moved: true, merged: false, dirty: 0, ...o });
+const BASE = [
+  { id: 'd', title: 'Hiljaiset-raiteen prototyyppi', ws: 'open-habitat', st: 'work', pi: true, changed: 0,
+    you: 'Tee prototyyppi raiteesta, jossa Hiljaiset listaa kaikki keskustelut.', agent: 'Luen railNow.ts:n ja Navigation.tsx:n osiot.' },
+  { id: 'b', title: 'Julkaisun muistiinpanot', ws: 'open-habitat', st: 'done', unread: true, pi: true, changed: -4,
+    you: 'Kokoa julkaisumuistiinpanot TODO.md:n tarinasta.', agent: 'Muistiinpanot ovat tiedostossa docs/release-notes.md. Kolme kohtaa jäi auki.' },
+  { id: 'c', title: 'Birch-päivitys', ws: 'fleetrepo', st: 'ask', pi: true, changed: -2,
+    you: 'Päivitä Birch uusimpaan julkaisuun.', agent: 'Lataus ja allekirjoituksen tarkistus menivät läpi.', q: 'Saanko käynnistää palvelun uudelleen nyt? Kaksi istuntoa on auki.' },
+  { id: 'a', title: 'Rupeaman kapellimestari', ws: 'open-habitat', st: 'done', worker: true, pi: true, changed: -8,
+    you: 'Jatketaan TODO.md:stä.', agent: 'Kolme workeria on käynnissä. Raportoin, kun ne laskeutuvat.' },
+  { id: 'w3', title: 'Palomuurin osoitteet', ws: 'fleetrepo', wt: WT('egress-isp', { moved: false, dirty: 2 }), st: 'work', pi: true, changed: -1,
+    you: 'Lisää Aldern uusi julkinen osoite testipalvelimen sallittuihin.', agent: 'Muokkaan infra/open-habitat-test/egress.nix-tiedostoa.' },
+  { id: 'w1', title: 'Asetushaku englanniksi', ws: 'open-habitat', wt: WT('settings-search-en'), st: 'done', pi: false, rest: 'idle', changed: -18,
+    you: 'Tee asetushausta kaksikielinen.', agent: 'Hakuindeksi on nyt kummallakin kielellä, testit menevät läpi. Haara settings-search-en on kolme committia mainin edellä.' },
+  { id: 'e', title: 'Verbien taivutus', ws: 'deutschpad', st: 'done', pi: false, rest: 'idle', changed: -40,
+    you: 'Tee harjoitus vahvoista verbeistä, imperfekti ja perfekti.', agent: '20 verbin harjoitus on tiedostossa vahvat-verbit.md.' },
+  { id: 'g', title: 'Varmuuskopion tarkistus', ws: 'fleetrepo', term: true, st: 'done', pi: false, changed: -70,
+    you: 'Tarkista, että yön varmuuskopio meni BACKUP-EXTille.', agent: 'Varmuuskopio valmistui 03.12, 41 Gt, tarkistussummat täsmäävät.' },
+  { id: 'w2', title: 'Kuvakkeiden välimuisti', ws: 'open-habitat', wt: WT('icon-cache', { merged: true }), st: 'done', pi: false, rest: 'idle', changed: -95,
+    you: 'Lisää työtilojen kuvakkeille välimuisti.', agent: 'Välimuisti on mukana ja haara yhdistetty mainiin.' },
+  { id: 'f', title: 'Kuvakaappaukset AVIFiksi', ws: 'open-habitat', st: 'done', pi: false, rest: 'idle', changed: -180,
+    you: 'Muunna evidence-kuvat AVIFiksi.', agent: '14 kuvaa muunnettu ja tarkistettu.' },
+  { id: 'w4', title: 'B1-sanasto', ws: 'deutschpad', wt: WT('sanasto-b1'), st: 'done', pi: false, rest: 'idle', changed: -DAY - 120,
+    you: 'Kokoa B1-tason sanasto omaan haaraansa.', agent: '312 sanaa, aihepiireittäin. Haara sanasto-b1 odottaa, että katsot sen.' },
+  { id: 'j', title: 'Laskujen arkistointi', ws: 'workspace', st: 'done', pi: false, rest: 'idle', changed: -2 * DAY - 200,
+    you: 'Arkistoi lokakuun laskut Driveen.', agent: 'Seitsemän laskua tallennettu kansioon Laskut/2026-10.' },
+  { id: 'k', title: 'Sanaston kertaus', ws: 'deutschpad', st: 'done', pi: false, rest: 'idle', changed: -5 * DAY,
+    you: 'Kertaa viime viikon sanasto.', agent: '32 sanaa, joista 6 meni väärin.' },
+  { id: 'l', title: 'Lokakuun budjetti', ws: 'workspace', st: 'done', pi: false, rest: 'idle', changed: -6 * DAY,
+    you: 'Kokoa lokakuun menot.', agent: 'Menot ovat taulukossa, kategorioittain.' },
+];
+// Paljon adds a month of a person with ten workspaces: 36 more finished
+// conversations, a few of them worktree agents. Viisi takes the eight marked
+// F, which keeps to the five workspaces: 22 conversations, 18 in Hiljaiset.
+const H = 60;
+const MANY = [
+  ['Taskfleetin merge-lukko', 'taskfleet', -25, WT('merge-lock', { merged: true }), 'F'],
+  ['Fan-outin rinnakkaisuus', 'taskfleet', -3 * H, null, 'F'],
+  ['Intake-komennon ohje', 'issuectl', -4 * H],
+  ['Contosoin OpenClaw-päivitys', 'tailspin-monorepo', -5 * H],
+  ['Glasspadin linkin vanheneminen', 'glasspad', -6 * H, WT('link-expiry')],
+  ['zsh-promptin hitaus', 'dotfiles', -8 * H],
+  ['Sähkösopimusten vertailu', 'kotitalous', -9 * H],
+  ['Raiteen tooltipit', 'open-habitat', -11 * H, null, 'F'],
+  ['Tilastot Contosoille', 'tailspin-monorepo', -20 * H],
+  ['Laskun muistutus', 'workspace', -22 * H, null, 'F'],
+  ['DAG:n validointi', 'issuectl', -DAY - 3 * H],
+  ['Run show --current', 'taskfleet', -DAY - 5 * H, WT('run-show-current', { merged: true }), 'F'],
+  ['Aldern levytila', 'fleetrepo', -DAY - 7 * H, null, 'F'],
+  ['Perfektin apuverbit', 'deutschpad', -2 * DAY - H, null, 'F'],
+  ['Gitean varmuuskopio', 'fleetrepo', -2 * DAY - 4 * H],
+  ['Kirjautumisen virheilmoitus', 'open-habitat', -2 * DAY - 6 * H],
+  ['Lomakkeen saavutettavuus', 'tailspin-monorepo', -3 * DAY],
+  ['Hosted-sivun CSP', 'glasspad', -3 * DAY - 5 * H],
+  ['Ruokalista ensi viikolle', 'kotitalous', -4 * DAY],
+  ['tmux-näppäimet', 'dotfiles', -4 * DAY - 3 * H],
+  ['Suunnittelijan palaute', 'open-habitat', -5 * DAY - 2 * H],
+  ['Prioriteettikenttä', 'issuectl', -6 * DAY, WT('priority-field')],
+  ['Workerin muistiraja', 'taskfleet', -7 * DAY, null, 'F'],
+  ['Asiakaskysely', 'tailspin-monorepo', -8 * DAY],
+  ['Pilotin julkaisu 0.31', 'open-habitat', -9 * DAY],
+  ['Nextcloudin päivitys', 'fleetrepo', -10 * DAY],
+  ['Datiivin prepositiot', 'deutschpad', -11 * DAY],
+  ['Veroilmoituksen liitteet', 'kotitalous', -13 * DAY],
+  ['Kuvien pakkaus', 'glasspad', -14 * DAY],
+  ['ISPin osoite', 'fleetrepo', -16 * DAY],
+  ['Avainten kierrätys', 'dotfiles', -18 * DAY],
+  ['Etusivun tyhjä tila', 'open-habitat', -20 * DAY],
+  ['Labin portit', 'open-habitat', -23 * DAY],
+  ['Lane-järjestys', 'issuectl', -25 * DAY],
+  ['Syyskuun laskut', 'workspace', -27 * DAY],
+  ['Telegram-botin uudelleenyhdistys', 'fleetrepo', -31 * DAY],
+].map(([title, ws, changed, wt, five], i) => ({ id: 'm' + i, title, ws, changed, wt: wt || null, five: !!five, st: 'done', pi: false, rest: 'idle',
+  you: `${title}: katso tämä läpi.`, agent: 'Tehty. Yhteenveto on yllä, eikä mitään jäänyt auki.' }));
+// The open conversation is a quiet one, so that its row shows in Hiljaiset
+// and under the fold from the first view.
+const OPEN0 = 'e';
+let S;
+// acct: the account preferences (follow the person to every device).
+// folded: each device's own browser storage. menu: this tab only.
+const fresh = (prev) => ({
+  acct: prev ? prev.acct : { sort: 'new', ws: null },
+  folded: prev ? prev.folded : { desktop: false, phone: false },
+  menu: false, open: OPEN0, railOpen: true,
+  convs: [...BASE, ...MANY.filter((c) => amount === 'many' || c.five)].map((c) => ({ unread: false, rest: null, worker: false, wt: null, ...c })),
+});
+const conv = (id) => S.convs.find((c) => c.id === id);
+const here = () => conv(S.open);
+const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+function ageText(min) {
+  if (min < 1) return 'nyt';
+  if (min < 60) return `${min} min`;
+  if (min < DAY) return `${Math.floor(min / 60)} t`;
+  return `${Math.floor(min / DAY)} pv`;
+}
+const isYours = (c) => (c.st === 'done' && c.unread) || (c.st === 'ask' && c.pi);
+const isWork = (c) => c.st === 'work' || (c.worker && !isYours(c));
+const merged = (c) => !!c.wt && c.wt.merged && c.wt.moved && !c.wt.dirty;
+const finished = (c) => !isYours(c) && !isWork(c);
+const ballOf = (c) => isYours(c) ? 'you' : isWork(c) ? 'work' : 'done';
+const byChange = (a, b) => b.changed - a.changed || a.id.localeCompare(b.id);
+const byName = (a, b) => a.title.localeCompare(b.title, 'fi') || byChange(a, b);
+const byWs = (a, b) => a.ws.localeCompare(b.ws, 'fi') || byChange(a, b);
+const SORTS = { new: 'Uusin ensin', ws: 'Työtilan mukaan', name: 'Nimen mukaan' };
+const SHORT = { new: 'Uusin', ws: 'Työtila', name: 'Nimi' };
+// With one workspace chosen, "by workspace" orders nothing, so it is not
+// offered. The account keeps the stored order: back on Kaikki it returns.
+const sortsOffered = () => S.acct.ws ? ['new', 'name'] : ['new', 'ws', 'name'];
+const sortNow = () => (S.acct.ws && S.acct.sort === 'ws' ? 'new' : S.acct.sort);
+const dev = () => (device === 'phone' ? 'phone' : 'desktop');
+const folded = () => S.folded[dev()];
+
+// ---------- variants: one axis, how the open conversation's row is emphasised ----------
+const V = [
+  { name: '1 · Viiva', r: 1,
+    diff: 'Kierroksen 4 aksenttiviiva: valkoinen rivi, vasemmassa reunassa turkoosi viiva. Taitettuna avoimen työtilan pilleri saa turkoosin reunan.' },
+  { name: '2 · Rengas', r: 2,
+    diff: 'Turkoosi rengas koko rivin ympäri, ei viivaa. Taitettuna pillerillä on sama rengas.' },
+  { name: '3 · Työtilan väri', r: 3,
+    diff: 'Viiva kuten 1, mutta työtilan kuvakkeen värinen (deutschpadilla luumunpunainen). Taitettuna pilleri saa saman värin reunaksi ja sävyksi.' },
+  { name: '4 · Täyttö', r: 4,
+    diff: 'Ei viivaa eikä rengasta: koko rivi on vaalean turkoosin sävyinen ja teksti turkoosi. Taitettuna pilleri on samalla tavalla täytetty.' },
+  { name: '5 · Kieleke', r: 5,
+    diff: 'Rivi jatkuu raiteen reunaan asti keskustelun taustavärissä, kuin välilehti, josta avoin keskustelu riippuu. Puhelimessa reunaviivainen rivi. Taitettuna pilleri samaa taustaa.' },
+];
+
+// ---------- the rail ----------
+const ICON = {
+  worktree: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M18 10c0 4-6 3-12 7"/>',
+  merge: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 8v8M6 8c0 3 4 4 10 4"/>',
+  home: '<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
+};
+const svg = (name, cls) => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]}</svg>`;
+const wsi = (ws) => `<span class="wsi" style="--h:${WS[ws].h}" aria-hidden="true">${WS[ws].g}</span>`;
+const ICO = {
+  check: '<path d="M5 12l5 5 9-10"/>',
+  grid: '<rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/>',
+};
+const ico = (n, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[n]}</svg>`;
+const allMark = () => `<span class="qall">${ico('grid')}</span>`;
+
+function rowHTML(c) {
+  const cur = S.open === c.id;
+  const tip = [c.title, c.ws, cur ? 'avoinna' : ''].filter(Boolean).join(' · ');
+  return `<li><div class="row${cur ? ' cur' : ''}" data-open="${c.id}" title="${esc(tip)}" style="--hue:${WS[c.ws].h}">` +
+    wsi(c.ws) + `<span class="ball ${ballOf(c)}"></span>` +
+    (c.wt ? svg(merged(c) ? 'merge' : 'worktree', `wtg${merged(c) ? ' merged' : ''}`) : '') +
+    `<span class="tt">${esc(c.title)}</span><time>${esc(ageText(-c.changed))}</time></div></li>`;
+}
+function groupsOf(rows) {
+  const m = new Map();
+  for (const c of rows) { if (!m.has(c.ws)) m.set(c.ws, []); m.get(c.ws).push(c); }
+  return wsOrder().filter((k) => m.has(k)).map((k) => [k, m.get(k)]);
+}
+const yoursRows = () => S.convs.filter(isYours);
+const runningRows = () => S.convs.filter((c) => !isYours(c) && isWork(c));
+const quietAll = () => S.convs.filter(finished);
+const sorter = (k) => ({ new: byChange, ws: byWs, name: byName })[k];
+const quietSorted = () => quietAll().sort(sorter(sortNow()));
+const quietWs = () => groupsOf(quietAll()).map(([ws]) => ws);
+const wsCount = (ws) => quietAll().filter((c) => c.ws === ws).length;
+const openQuiet = () => { const h = here(); return h && finished(h) ? h : null; };
+
+// The control at the header's right end: the icon stack (round 4's Ruudut).
+function headCtl() {
+  const f = S.acct.ws, srt = sortNow();
+  const aria = `aria-haspopup="dialog" aria-expanded="${S.menu}"`;
+  const stack = f ? `<span class="qstack">${wsi(f)}</span>` : `<span class="qstack">${quietWs().slice(0, 3).map(wsi).join('')}</span>`;
+  return `<button class="qsort qgridbtn${f ? ' on' : ''}" data-q="menu" ${aria} title="Rajaa ja järjestä Hiljaiset">${stack}${srt !== 'new' ? `<span class="qtag">${SHORT[srt]}</span>` : ''}<span class="chv"></span></button>`;
+}
+
+// Jari 1.11.: the popover has no explanatory foot text, only Valmis.
+function menuHTML() {
+  const f = S.acct.ws, srt = sortNow(), ws = quietWs();
+  const seg = `<div class="qseg3" role="group" aria-label="Järjestys">${sortsOffered().map((k) => `<button data-q="sort" data-arg="${k}" aria-pressed="${srt === k}">${SHORT[k]}</button>`).join('')}</div>`;
+  const tile = (k, on, label, n, mark) => `<button class="qtile${on ? ' on' : ''}" data-q="${k === '*' ? 'all' : 'ws'}" data-arg="${k}" aria-pressed="${on}">${mark}<span class="lb">${esc(label)}</span><span class="cnt">${n}</span></button>`;
+  return `<div class="qpop" role="dialog" aria-label="Rajaa ja järjestä Hiljaiset">${seg}` +
+    `<div class="qtiles">${tile('*', !f, 'Kaikki', quietAll().length, allMark())}${ws.map((k) => tile(k, f === k, k, wsCount(k), wsi(k))).join('')}</div>` +
+    `<div class="qpop-foot"><button data-q="close">Valmis</button></div></div>`;
+}
+
+const chipsHTML = (h) => `<div class="qchips" aria-label="Avaa yksi työtila">${quietWs().map((k) => `<button class="${h && h.ws === k ? 'here' : ''}" style="--h:${WS[k].h}" data-q="unfold" data-arg="${k}" title="Avaa Hiljaiset: vain ${esc(k)}">${wsi(k)}<span>${wsCount(k)}</span></button>`).join('')}</div>`;
+function quietHTML(opts = {}) {
+  const rows = quietSorted(), n = rows.length, f = S.acct.ws, fd = folded(), h = openQuiet();
+  const seen = f ? rows.filter((c) => c.ws === f).length : n;
+  const cnt = `<span class="cnt">${f ? `${seen}/${n}` : n}</span>`;
+  const head = `<h2 class="qh"><button class="qfold" data-q="fold" aria-expanded="${!fd}" title="${fd ? 'Näytä' : 'Taita'} Hiljaiset"><span class="chv"></span>Hiljaiset${cnt}</button>${fd ? '' : headCtl()}</h2>`;
+  if (fd) return `<section data-sec="quiet" class="folded">${head}${h ? `<ul>${rowHTML(h)}</ul>` : ''}${chipsHTML(h)}</section>`;
+  const menu = S.menu ? menuHTML() : '';
+  // The open conversation stays in sight when the choice would hide it: last,
+  // under the chosen workspace's rows.
+  let shown = f ? rows.filter((c) => c.ws === f) : rows;
+  if (h && !shown.includes(h)) shown.push(h);
+  if (opts.max) shown = shown.slice(0, opts.max);
+  const body = sortNow() === 'ws'
+    ? `<ul>${groupsOf(shown).map(([, rs]) => rs.map(rowHTML).join('')).join('<li class="wsgap" aria-hidden="true"></li>')}</ul>`
+    : `<ul>${shown.map(rowHTML).join('')}</ul>`;
+  return `<section data-sec="quiet">${head}${menu}${body}</section>`;
+}
+function plainSectionHTML(key, title, rows, att) {
+  return `<section data-sec="${key}"><h2>${esc(title)}<span class="cnt${att ? ' att' : ''}">${rows.length}</span></h2><ul>${rows.map(rowHTML).join('')}</ul></section>`;
+}
+function railHTML() {
+  const wsRows = wsOrder().map((ws) => `<li><div class="wsrow">${wsi(ws)}<span class="tt">${esc(ws)}</span></div></li>`).join('');
+  return `<div class="rail-scroll"><div class="rail-brand">Birch <span class="dotok"></span><span class="conn">Yhdistetty</span><button class="x" data-act="rail" aria-label="Sulje navigaatio">✕</button></div>` +
+    `<div class="home">${svg('home', 'wtg')}Etusivu</div>` +
+    plainSectionHTML('yours', 'Sinun vuorosi', yoursRows(), true) + plainSectionHTML('running', 'Käynnissä', runningRows()) + quietHTML() +
+    `<hr><section><h2>Työtilat <span class="cnt">${wsOrder().length}</span><span class="add" aria-hidden="true">+</span></h2><div class="wsfilter">Suodata työtiloja</div><ul>${wsRows}</ul></section></div>` +
+    `<button class="acct"><span class="av">J</span>Jari<span class="chev">⌄</span></button>`;
+}
+function convHTML() {
+  const h = here(), waiting = yoursRows().length;
+  const menu = `<button class="menu" data-act="rail" aria-label="Avaa navigaatio${waiting ? `, ${waiting} odottaa sinua` : ''}">☰${waiting ? `<span class="dot">${waiting}</span>` : ''}</button>`;
+  const chip = h.st === 'work' ? '<span class="chip work"><span class="ball work"></span>Työskentelee</span>'
+    : h.st === 'ask' ? '<span class="chip you"><span class="ball you"></span>Kysyy sinulta</span>'
+    : h.worker ? '<span class="chip work"><span class="ball work"></span>Worker työskentelee</span>' : '<span class="chip"><span class="ball done"></span>Valmis</span>';
+  const done = h.st !== 'work';
+  return `<header class="topbar">${menu}<h5>${esc(h.title)}</h5><span class="wsn">${esc(h.ws)}${h.wt ? ` · ${esc(h.wt.branch)}` : ''}</span>${chip}</header>` +
+    `<div class="stream"><div class="msg-user"><p>${esc(h.you)}</p></div><div class="msg-agent"><p>${esc(h.agent)}</p></div>` +
+    (h.st === 'ask' ? `<div class="card-note ask"><b>Agentti kysyy</b>${esc(h.q)}</div>` : '') +
+    (!done ? '<div class="working-line"><span class="ball work"></span>Työskentelee…</div>' : '') + '</div>' +
+    `<div class="composer"><div class="composer-box"><span>${h.st === 'ask' ? 'Vastaa agentille…' : 'Kirjoita agentille…'}</span><button type="button">Lähetä</button></div></div>`;
+}
+
+// The comparison draws every riff side by side in fixed states (the open row
+// in the list, one row under the pointer, and the folded section), on the
+// desktop and phone row heights, light and dark. It is drawn from a fresh
+// default state, so the controls below do not change it.
+function cellHTML(r, theme, phone) {
+  const save = S;
+  S = fresh(null); S.open = OPEN0;
+  let k = 0;
+  const hov = quietHTML({ max: 6 }).replace(/<div class="row(?! cur)/g, (m) => (++k === 4 ? '<div class="row hov' : m));
+  S.folded = { desktop: true, phone: true };
+  const fold = quietHTML();
+  S = save;
+  return `<div class="cell${phone ? ' ph' : ''}" data-r="${r}" data-theme="${theme}" inert><div class="rail">${hov}<div class="cap">Taitettuna</div>${fold}</div><div class="slice"></div></div>`;
+}
+function cmpHTML() {
+  const rowsDef = [['light', false, 'Työpöytä', 'vaalea'], ['dark', false, 'Työpöytä', 'tumma'], ['light', true, 'Puhelin', 'vaalea, 40 px rivit'], ['dark', true, 'Puhelin', 'tumma, 40 px rivit']];
+  return `<div class="cmp-wrap"><div class="cmp" aria-label="Kaikki suunnat rinnakkain"><div></div>${V.map((x) => `<div class="cmp-h${x === v ? ' on' : ''}">${esc(x.name)}</div>`).join('')}` +
+    rowsDef.map(([t, ph, a, b]) => `<div class="cmp-l"><b>${a}</b>${b}</div>${V.map((x) => cellHTML(x.r, t, ph)).join('')}`).join('') + '</div></div>';
+}
+
+// ---------- the page ----------
+const params = new URLSearchParams(location.search);
+let theme = params.get('t') === 'dark' ? 'dark' : 'light';
+let device = params.get('d') === 'phone' ? 'phone' : 'desktop';
+amount = params.get('m') === 'many' ? 'many' : 'five';
+let cur = 0, v = null;
+function setParam(k, val) { const u = new URL(location); u.searchParams.set(k, val); history.replaceState(null, '', u); }
+
+function render() {
+  document.documentElement.dataset.theme = theme;
+  const phone = device === 'phone';
+  const app = `<div class="app${phone ? ' phone' : ''}${S.railOpen ? ' rail-open' : ''}" data-r="${v.r}" data-theme="${theme}"><aside class="rail" aria-label="Työtilat ja keskustelut">${railHTML()}</aside><section class="conv">${convHTML()}</section></div>`;
+  const seg = (name, key, list) => `<div class="seg" role="group" aria-label="${name}">${list.map(([val, lab, on]) => `<button data-${key}="${val}" aria-pressed="${on}">${lab}</button>`).join('')}</div>`;
+  const oldRail = document.querySelector('.app .rail-scroll');
+  const railTop = oldRail ? oldRail.scrollTop : 0;
+  document.getElementById('stage').innerHTML =
+    `<main class="pg" data-device="${device}">` +
+    `<div class="pg-head"><h1>Avoimen keskustelun korostus</h1><span class="pg-axis">Akseli: miten avoimen keskustelun rivi erottuu Hiljaisissa, listassa ja taitettuna (Ruudut-ulkoasu)</span></div>` +
+    `<div class="pg-diff" aria-label="Mikä eroaa">${V.map((x) => `<div class="${x === v ? 'on' : ''}"><b class="k">${esc(x.name)}</b> ${x.diff}</div>`).join('')}` +
+    `<div><b class="k">Kaikissa</b> Kierroksen 4 Ruudut. Ikkunassa ei ole enää alatekstiä, vain Valmis. Järjestys säilyy, kun rajaat yhteen työtilaan ja palaat Kaikkiin.</div></div>` +
+    `<h2 class="pg-sec">Rinnakkain<small>Avoinna <i>Verbien taivutus</i> (deutschpad). Neljäs muu rivi on hiiren alla, jotta korostusta voi verrata siihen.</small></h2>` +
+    cmpHTML() +
+    `<h2 class="pg-sec">Koko näkymässä: ${esc(v.name)}<small>Valitse suunta ylhäältä (1–5 tai ←/→).</small></h2>` +
+    `<div class="pg-head"><div class="pg-toggles" style="margin-left:0">${seg('Teema', 'theme-set', [['light', 'Vaalea', theme === 'light'], ['dark', 'Tumma', theme === 'dark']])}` +
+    seg('Laite', 'device-set', [['desktop', 'Työpöytä', !phone], ['phone', 'Puhelin', phone]]) +
+    seg('Määrä', 'amount-set', [['five', 'Viisi työtilaa', amount === 'five'], ['many', 'Paljon', amount === 'many']]) + `</div></div>` +
+    `<div class="pg-grid">${phone ? `<div class="phone-wrap">${app}</div>` : app}` +
+    `<p class="app-note">Rivin klikkaus avaa keskustelun, ja korostus siirtyy sille. Hiljaisten otsikko taittaa osion, ja ikkuna aukeaa otsikon oikeasta päästä. Taitettuna pillerin napautus avaa osion rajattuna siihen työtilaan.</p></div></main>`;
+  const newRail = document.querySelector('.app .rail-scroll');
+  if (newRail) newRail.scrollTop = railTop;
+}
+function mount(i) { cur = i; v = V[i]; S = fresh(S); S.menu = false; render(); }
+
+function act(q, arg) {
+  switch (q) {
+    case 'menu': S.menu = !S.menu; break;
+    case 'close': S.menu = false; break;
+    case 'sort': S.acct.sort = arg; break;
+    case 'ws': S.acct.ws = arg; break;
+    case 'all': S.acct.ws = null; break;
+    case 'fold': S.folded[dev()] = !folded(); S.menu = false; break;
+    // A folded pill opens the section narrowed to that workspace.
+    case 'unfold': S.folded[dev()] = false; S.acct.ws = arg; break;
+    default: return;
+  }
+  render();
+}
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-q],[data-act],[data-open],[data-theme-set],[data-device-set],[data-amount-set]');
+  // A click outside the open popover closes it, and still does what it hit.
+  if (S && S.menu && e.target.closest('.app') && !e.target.closest('.qpop,[data-q="menu"]')) {
+    S.menu = false;
+    if (!t) return render();
+  }
+  if (!t || !document.getElementById('stage').contains(t)) return;
+  if (t.dataset.themeSet) { theme = t.dataset.themeSet; setParam('t', theme); return render(); }
+  if (t.dataset.deviceSet) { device = t.dataset.deviceSet; setParam('d', device); S.menu = false; S.railOpen = true; return render(); }
+  if (t.dataset.amountSet) { amount = t.dataset.amountSet; setParam('m', amount); S = null; return mount(cur); }
+  if (t.dataset.q) return act(t.dataset.q, t.dataset.arg);
+  if (t.dataset.open) { S.open = t.dataset.open; if (device === 'phone') S.railOpen = false; return render(); }
+  if (t.dataset.act === 'rail') { S.railOpen = !S.railOpen; return render(); }
+});
+// ---------- picker (PICKER.md reference wiring) ----------
+const variants = V.map((_, i) => () => i);
+const stage = document.getElementById('stage');
+const picker = document.querySelector('.proto-picker');
+const highlight = picker.querySelector('.proto-picker-highlight');
+const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+let current = 0;
+function moveHighlight() {
+  const el = items[current];
+  highlight.style.width = el.offsetWidth + 'px';
+  highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+}
+function setActive(i) {
+  if (i < 0 || i >= variants.length) return;
+  current = i;
+  items.forEach((el, j) => {
+    el.toggleAttribute('data-active', j === i);
+    if (j === i) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
+  });
+  moveHighlight();
+  const url = new URL(location);
+  url.searchParams.set('v', i + 1);
+  history.replaceState(null, '', url);
+  stage.innerHTML = '';
+  requestAnimationFrame(() => mount(variants[i]()));
+}
+items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+window.addEventListener('resize', moveHighlight);
+document.addEventListener('keydown', (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === 'Escape' && S && S.menu) { S.menu = false; return render(); }
+  const num = parseInt(e.key, 10);
+  if (num >= 1 && num <= variants.length) setActive(num - 1);
+  else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length);
+  else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length);
+  else if (e.key === 'r' || e.key === 'R') mount(current);
+});
+setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+</script>
+</body>
+</html>

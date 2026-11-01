@@ -8,7 +8,7 @@ priority: normal
 lane: rail-quiet-all-flat
 lane_seq: 5
 related: ['@proto-rail-quiet-flat-r4']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype round 5: emphasis of the open conversation in Hiljaiset
