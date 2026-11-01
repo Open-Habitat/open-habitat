@@ -8,7 +8,7 @@ priority: normal
 lane: proto-view-offer-card-r2
 lane_seq: 1
 related: ['@proto-view-offer-card']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype round 2: view card with visibility control, one link
