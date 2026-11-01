@@ -97,6 +97,10 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
     intro:
       "A short recap of where a conversation stands when you come back to it. It is saved in the conversation's history but does not enter the agent's memory.",
     rows: {
+      "recap-automatic": {
+        label: "Automatic recap",
+        desc: "Make recaps automatically or turn automatic recaps off.",
+      },
       "recap-delay": {
         label: "Quiet time before a recap",
         desc: "The card appears above the conversation by itself once the conversation has been quiet this long.",

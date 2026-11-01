@@ -218,6 +218,12 @@ export const settingsSections = [
       "Lyhyt katsaus keskustelun tilanteesta, kun palaat siihen. Se tallentuu keskustelun historiaan, mutta ei mene agentin muistiin.",
     rows: [
       {
+        id: "recap-automatic",
+        label: "Automaattinen tilannekatsaus",
+        kw: ["automatic", "automaattinen", "pois", "off", "päälle"],
+        desc: "Tee tilannekatsaus automaattisesti tai poista automaattinen katsaus käytöstä.",
+      },
+      {
         id: "recap-delay",
         label: "Hiljaisuus ennen katsausta",
         kw: ["viive", "delay", "odotus", "minuutit", "aika"],
