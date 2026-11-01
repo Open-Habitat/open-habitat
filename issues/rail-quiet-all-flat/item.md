@@ -6,10 +6,10 @@ reporter: jari
 status: open
 priority: normal
 lane: rail-quiet-all-flat
-lane_seq: 2
+lane_seq: 3
 related: ['@proto-rail-recent-r2', '@rail-recent-five']
 preparation: pending
-blocked_by: ['@proto-rail-quiet-flat']
+blocked_by: ['@proto-rail-quiet-flat', '@proto-rail-quiet-flat-r2']
 ---
 
 # Rail: Sinun vuorosi, Käynnissä, Hiljaiset with every conversation as a flat list
