@@ -3,12 +3,14 @@ created: 2026-11-01
 updated: 2026-11-01
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: rail-quiet-all-flat
 lane_seq: 2
 related: ['@proto-rail-quiet-flat']
 preparation: pending
+closed: 2026-11-01
+closed_by: conductor
 ---
 
 # Prototype round 2: collapsible, sortable Hiljaiset with workspace icons
@@ -34,3 +36,9 @@ the fold or sort need a stored preference, and where).
 
 Related: making workspace icons the default (they are an experimental
 feature today) is its own decision; this round assumes it.
+
+## Resolution
+
+### 2026-11-01T15:13:45Z · @conductor
+
+Jari 1.11.: answered; continued in the issues named in the conductor's commit.
