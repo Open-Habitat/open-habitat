@@ -8,7 +8,7 @@ priority: normal
 lane: rail-quiet-all-flat
 lane_seq: 3
 related: ['@proto-rail-quiet-flat-r2']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype round 3: one Hiljaiset menu that filters by workspace and sorts
