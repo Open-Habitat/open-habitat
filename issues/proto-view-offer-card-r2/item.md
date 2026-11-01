@@ -3,12 +3,14 @@ created: 2026-11-01
 updated: 2026-11-01
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-view-offer-card-r2
 lane_seq: 1
 related: ['@proto-view-offer-card']
 preparation: pending
+closed: 2026-11-01
+closed_by: conductor
 ---
 
 # Prototype round 2: view card with visibility control, one link
@@ -36,3 +38,9 @@ directions, and states the architecture question for Jari separately in
 
 Baseline is round 1's direction 3; 2–3 riffs on one axis, desktop and phone,
 light and dark, site links on and off, Finnish texts.
+
+## Resolution
+
+### 2026-11-01T14:12:55Z · @conductor
+
+Jari 1.11.: riff B, option 1 for now, no revoke sentence; round 3 riffs expiry; option 2 researched separately.
