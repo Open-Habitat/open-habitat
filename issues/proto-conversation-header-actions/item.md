@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-conversation-header-actions
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: conversation header buttons a person understands
