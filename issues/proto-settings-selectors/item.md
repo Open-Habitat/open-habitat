@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-settings-selectors
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: settings selectors (segments, steppers, many-choice)
