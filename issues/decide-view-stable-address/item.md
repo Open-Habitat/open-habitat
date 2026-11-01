@@ -8,7 +8,7 @@ priority: normal
 lane: decide-view-stable-address
 lane_seq: 1
 related: ['@research-view-stable-address', '@proto-view-offer-card-r3']
-preparation: ready
+preparation: pending
 ---
 
 # Decide: one stable address per view (option 2)

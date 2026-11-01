@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: decide-view-stable-address
 lane_seq: 2
-blocked_by: ['@decide-view-stable-address']
+blocked_by: ['@decide-view-stable-address', '@view-address-reservations', '@view-address-publication-lifecycle', '@view-address-entry-route']
 preparation: pending
 ---
 
