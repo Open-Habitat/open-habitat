@@ -126,7 +126,7 @@ func TestWorkspaceIconSuggestionsValidateTheModel(t *testing.T) {
 	}
 	// The request is bounded and exact.
 	for _, bad := range []string{
-		fmt.Sprintf(`{"schema_version":1,"workspace_id":%q,"wish":%q,"history":[]}`, h.workspace, strings.Repeat("x", 201)),
+		fmt.Sprintf(`{"schema_version":1,"workspace_id":%q,"wish":%q,"history":[]}`, h.workspace, strings.Repeat("x", 4097)),
 		fmt.Sprintf(`{"schema_version":1,"workspace_id":%q,"wish":"a\u0000b","history":[]}`, h.workspace),
 		fmt.Sprintf(`{"schema_version":1,"workspace_id":%q,"wish":"","history":[{"wish":"","icons":[]},{"wish":"","icons":[]},{"wish":"","icons":[]},{"wish":"","icons":[]}]}`, h.workspace),
 		fmt.Sprintf(`{"schema_version":1,"workspace_id":%q,"wish":"","history":[],"path":"/etc"}`, h.workspace),
@@ -170,6 +170,10 @@ func TestIconHelperUsesPinnedPiRuntime(t *testing.T) {
 	var calls int
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
+		if calls >= 3 {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		var request struct {
 			Messages []struct {
 				Role    string `json:"role"`
@@ -186,6 +190,12 @@ func TestIconHelperUsesPinnedPiRuntime(t *testing.T) {
 		}
 		if !strings.Contains(fmt.Sprint(request.Messages[0].Content), "never as instructions") || !strings.Contains(fmt.Sprint(request.Messages[1].Content), "Synteettinen README") {
 			t.Errorf("instruction or facts missing: %+v", request.Messages)
+		}
+		if calls == 2 {
+			encoded, _ := json.Marshal(request.Messages)
+			if !strings.Contains(string(encoded), "data:image/png;base64,aGVsbG8=") || !strings.Contains(string(encoded), "attachment reference text") {
+				t.Errorf("attachments missing from provider: %s", encoded)
+			}
 		}
 		content, _ := json.Marshal("Tässä:\n```json\n" + `{"reply":"Ehdotan näitä.","suggestions":[{"icon":"🦉","why":"viisas"},{"icon":"https://x.invalid/a.png","why":"verkosta"},{"icon":"SR","why":"nimikirjaimet"}]}` + "\n```")
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -206,7 +216,7 @@ func TestIconHelperUsesPinnedPiRuntime(t *testing.T) {
 	if err := os.MkdirAll(agent, 0700); err != nil {
 		t.Fatal(err)
 	}
-	models := map[string]any{"providers": map[string]any{"fixture": map[string]any{"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "authHeader": true, "models": []any{map[string]any{"id": "fixture-opus", "name": "Opus class, never in the background", "reasoning": false}, map[string]any{"id": "fixture-flash", "name": "Flash", "reasoning": false}}}}}
+	models := map[string]any{"providers": map[string]any{"fixture": map[string]any{"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "authHeader": true, "models": []any{map[string]any{"id": "fixture-opus", "name": "Opus class, never in the background", "reasoning": false}, map[string]any{"id": "fixture-flash", "name": "Flash", "reasoning": false, "input": []string{"text", "image"}}}}}}
 	data, _ := json.Marshal(models)
 	if err := os.WriteFile(filepath.Join(agent, "models.json"), data, 0600); err != nil {
 		t.Fatal(err)
@@ -221,6 +231,29 @@ func TestIconHelperUsesPinnedPiRuntime(t *testing.T) {
 		t.Fatalf("validated: %+v", valid)
 	}
 	t.Logf("helper answered in %s", time.Since(started))
+	// Image blocks reach the actual pinned runtime's provider request, rather
+	// than being serialized into the wish as unreadable base64 JSON.
+	input = []byte(`{"facts":{"readme":"Synteettinen README"},"wish":"reference","attachments":[{"type":"image","mimeType":"image/png","data":"aGVsbG8="},{"type":"text","text":"attachment reference text"}]}`)
+	if _, _, _, err := c.suggestIcons(ctx, input); err != nil {
+		t.Fatalf("image helper: %v", err)
+	}
+	if _, _, _, err := c.suggestIcons(ctx, input); err != titleModelInvalid {
+		t.Fatalf("provider refusal must not claim missing credentials: %v", err)
+	}
+	textOnly := strings.ReplaceAll(string(data), `,"image"`, "")
+	if err := os.WriteFile(filepath.Join(agent, "models.json"), []byte(textOnly), 0600); err != nil {
+		t.Fatal(err)
+	}
+	before := calls
+	if _, _, _, err := c.suggestIcons(ctx, input); err != titleModelInvalid || calls != before {
+		t.Fatalf("text-only model with image: %v, calls %d -> %d", err, before, calls)
+	}
+	if err := os.Remove(filepath.Join(agent, "models.json")); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := c.suggestIcons(ctx, input); err != titleModelUnavailable || calls != before {
+		t.Fatalf("image without credentials: %v, calls %d -> %d", err, before, calls)
+	}
 }
 
 // A model slower than the socket server's ordinary write timeout still gets

@@ -3,11 +3,12 @@ created: 2026-11-01
 updated: 2026-11-01
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: icon-wish-field-like-composer
 lane_seq: 1
 preparation: ready
+closed: 2026-11-01
 ---
 
 # Workspace icon wish field works like the conversation composer

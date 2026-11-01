@@ -1,15 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { Button as AriaButton, Input } from "react-aria-components";
-import {
-  type ComposerSpeech,
-  DictationControl,
-  DictationNoticeView,
-  useDictation,
-} from "./composer/Dictation";
-import "./composer/composer.css";
+import { useEffect, useState } from "react";
+import { Button as AriaButton } from "react-aria-components";
 import { useText } from "../i18n";
 import { workspaceIconPickerText } from "../text/workspaceIconPicker";
 import { ControlButton } from "./ControlElements";
+import { Composer } from "./composer/Composer";
+import type { ComposerSpeech } from "./composer/Dictation";
 import { Icon } from "./Icon";
 import { WorkspaceIcon, type WorkspaceIconModel } from "./WorkspaceIcon";
 import "./WorkspaceIconSuggestions.css";
@@ -46,10 +41,6 @@ export type WorkspaceIconSuggestionsModel = {
   model?: string;
 };
 
-/** A wish is one line: a dictation pause makes a paragraph break. */
-const oneLine = (text: string) =>
-  text.replace(/\s+/gu, " ").trim().slice(0, 200);
-
 function Elapsed({ since }: { since: number }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -78,7 +69,7 @@ export function WorkspaceIconSuggestions({
 }: {
   model: WorkspaceIconSuggestionsModel;
   onAccept: (value: string) => void;
-  onAsk: (wish: string) => void;
+  onAsk: (wish: string) => Promise<boolean>;
   onRound: (delta: number) => void;
   onDismiss: () => void;
   /** To the model sign-in settings, when no model has credentials. */
@@ -89,39 +80,14 @@ export function WorkspaceIconSuggestions({
 }) {
   const t = useText(workspaceIconPickerText);
   const [wish, setWish] = useState("");
-  const form = useRef<HTMLFormElement>(null);
-  const field = useRef<HTMLInputElement>(null);
-  // A dictation ended by Ehdota is asked at once; its text does not come
-  // back into the emptied field, and nothing else is asked meanwhile.
-  const asking = useRef(false);
-  const [finishing, setFinishing] = useState(false);
-  const live = useRef(true);
-  useEffect(
-    () => () => {
-      live.current = false;
-    },
-    [],
-  );
-  const dictation = useDictation(
-    speech,
-    csrf,
-    (text) => {
-      if (asking.current) return;
-      setWish(oneLine(text));
-      window.requestAnimationFrame(() => field.current?.focus());
-    },
-    form,
-  );
-  const caret = (): [number, number] => {
-    const el = field.current;
-    return [el?.selectionStart ?? wish.length, el?.selectionEnd ?? wish.length];
-  };
-  const heard = dictation.active && dictation.view;
-  const shown = heard
-    ? `${dictation.before}${heard.final}${heard.interim}${dictation.after}`
-    : wish;
+  const [dictating, setDictating] = useState(false);
   const loading = model.status === "loading";
-  const busy = loading || finishing;
+  const busy = loading || dictating;
+  const send = async (text = wish) => {
+    if (!text.trim() || loading) return;
+    if (await onAsk(text))
+      setWish((current) => (current === text ? "" : current));
+  };
   const noModel =
     model.status === "failed" && model.reason === "model_unavailable";
   const problem =
@@ -214,70 +180,28 @@ export function WorkspaceIconSuggestions({
       )}
       {noModel ? null : (
         <>
-          <form
-            ref={form}
-            className="ah-wsis-wish"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (busy || asking.current) return;
-              // Ehdota while dictating asks with what was said.
-              let said: string | null = null;
-              if (dictation.active) {
-                asking.current = true;
-                setFinishing(true);
-                try {
-                  said = await dictation.stop();
-                } finally {
-                  asking.current = false;
-                  if (live.current) setFinishing(false);
-                }
-                // The row went away while Soniox finished: nothing to ask.
-                if (!live.current) return;
+          <div className="ah-wsis-wish">
+            <Composer
+              value={wish}
+              onChange={setWish}
+              csrf={csrf}
+              speech={speech}
+              onDictating={setDictating}
+              activity="idle"
+              selectedWorkingMode="steer"
+              sendState={loading ? "pending" : "idle"}
+              availability={
+                loading ? { state: "disabled", reason: t.thinking } : undefined
               }
-              const text = oneLine(said ?? wish);
-              if (!text) return;
-              onAsk(text);
-              setWish("");
-            }}
-          >
-            <Input
-              ref={field}
-              data-testid="workspace-icon-wish"
-              aria-label={t.wishLabel}
-              placeholder={t.wishPlaceholder}
-              maxLength={200}
-              autoComplete="off"
-              readOnly={!!heard}
-              value={shown}
-              onChange={(e) => setWish(e.target.value)}
+              editorAvailability={{ state: "enabled" }}
+              idlePlaceholder={t.wishPlaceholder}
+              onSendNow={send}
+              onSteer={send}
+              onFollowUp={send}
+              onModeChange={() => {}}
             />
-            {speech && csrf ? (
-              <span className="ah-crow ah-wsis-mic">
-                <DictationControl
-                  dictation={dictation}
-                  text={wish}
-                  caret={caret}
-                  disabled={busy}
-                />
-              </span>
-            ) : null}
-            <ControlButton
-              data-testid="workspace-icon-wish-send"
-              size="row"
-              type="submit"
-              isDisabled={busy}
-            >
-              {t.suggest}
-            </ControlButton>
-          </form>
-          {speech ? (
-            <DictationNoticeView
-              dictation={dictation}
-              text={wish}
-              caret={caret}
-              onOpenSettings={speech.onOpenSettings}
-            />
-          ) : null}
+          </div>
+          <p className="ah-wsis-foot">{t.wishHint}</p>
           <div className="ah-wsis-quick">
             {t.quick.map(([value, label]) => (
               <AriaButton

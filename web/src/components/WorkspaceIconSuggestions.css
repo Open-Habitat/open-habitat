@@ -133,21 +133,10 @@
   animation: ah-pulse var(--ah-pulse);
 }
 .ah-wsis-wish {
-  display: flex;
-  gap: 6px;
   min-width: 0;
-  margin: 0;
 }
-.ah-wsis-wish input {
-  flex: 1;
-  min-width: 0;
-  height: var(--ah-control-row);
-  padding: 0 10px;
-  border: 1px solid var(--ah-control-line);
-  border-radius: var(--ah-r-md);
-  background: var(--ah-surface);
-  color: var(--ah-ink);
-  font: 13px var(--ah-font);
+.ah-wsis-wish .ah-composer {
+  padding: 0;
 }
 .ah-wsis-quick {
   display: flex;
@@ -218,7 +207,6 @@
   .ah-wsis-item {
     min-height: 44px;
   }
-  .ah-wsis-wish input,
   .ah-wsis-pill {
     height: 36px;
   }
@@ -231,13 +219,4 @@
   .ah-wsis-skeleton {
     animation: none;
   }
-}
-/* Sanele beside the wish, as in the composer's row. */
-.ah-wsis-mic.ah-crow {
-  flex: none;
-  padding: 0;
-}
-.ah-wsis-mic.ah-crow .ah-crow-btn,
-.ah-wsis-mic.ah-crow .ah-dictation-pill {
-  min-height: var(--ah-control-row);
 }

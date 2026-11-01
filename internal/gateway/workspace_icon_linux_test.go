@@ -63,7 +63,7 @@ func TestWorkspaceIconRelaysExactShapeAsInertImage(t *testing.T) {
 // them only as a write with the session's CSRF proof and Origin, never as a
 // GET or with a query.
 func TestWorkspaceIconSuggestionsRequireCSRF(t *testing.T) {
-	const body = `{"schema_version":1,"workspace_id":"ws_example123","wish":"","history":[]}`
+	body := `{"schema_version":1,"workspace_id":"ws_example123","wish":"","history":[]}`
 	calls := 0
 	host, _ := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
@@ -100,5 +100,15 @@ func TestWorkspaceIconSuggestionsRequireCSRF(t *testing.T) {
 	}
 	if calls != 1 {
 		t.Fatalf("proxied %d requests", calls)
+	}
+	// The proxy must preserve the entire route budget; the daemon owns JSON
+	// validation. Whitespace pads a valid request without changing its shape.
+	body += strings.Repeat(" ", 98304-len(body))
+	if code := call("POST", workspaceIconSuggestionsPath, true); code != 200 {
+		t.Fatalf("maximum body: %d", code)
+	}
+	body += " "
+	if code := call("POST", workspaceIconSuggestionsPath, true); code != 400 || calls != 2 {
+		t.Fatalf("oversized body: %d, calls %d", code, calls)
 	}
 }

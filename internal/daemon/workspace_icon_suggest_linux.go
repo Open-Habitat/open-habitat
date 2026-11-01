@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -47,7 +48,8 @@ const (
 	iconSuggestionLimit          = 45 * time.Second
 	maxIconSuggestions           = 5
 	maxIconReadme                = 2048
-	maxIconWish                  = 200
+	maxIconWish                  = 4096
+	maxIconRequest               = 98304
 	maxIconRounds                = 3
 	maxIconWhy                   = 60
 	maxIconReply                 = 200
@@ -99,11 +101,11 @@ func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		if r.Method != http.MethodPost || r.URL.Path != WorkspaceIconSuggestionsPath || r.RequestURI != WorkspaceIconSuggestionsPath || r.ContentLength < 2 || r.ContentLength > 4096 || len(r.TransferEncoding) != 0 || r.Header.Get("Content-Type") != "application/json" {
+		if r.Method != http.MethodPost || r.URL.Path != WorkspaceIconSuggestionsPath || r.RequestURI != WorkspaceIconSuggestionsPath || r.ContentLength < 2 || r.ContentLength > maxIconRequest || len(r.TransferEncoding) != 0 || r.Header.Get("Content-Type") != "application/json" {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-		body, err := io.ReadAll(io.LimitReader(r.Body, 4097))
+		body, err := io.ReadAll(io.LimitReader(r.Body, maxIconRequest+1))
 		var in iconSuggestionRequest
 		dec := json.NewDecoder(bytes.NewReader(body))
 		dec.DisallowUnknownFields()
@@ -119,7 +121,12 @@ func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 		facts, current := readIconFacts(in.WorkspaceID, ws, c.cfg.UID, filepath.Base(cwd))
 		ws.Close()
 		avoid := c.otherWorkspaceIcons(in.WorkspaceID)
-		input, _ := json.Marshal(map[string]any{"facts": facts, "avoid": avoid, "history": in.History, "wish": in.Wish})
+		attachments, err := iconWishAttachments(c.home, in.Wish)
+		if err != nil {
+			snapshotError(w, 400, "invalid_attachments")
+			return
+		}
+		input, _ := json.Marshal(map[string]any{"facts": facts, "avoid": avoid, "history": in.History, "wish": in.Wish, "attachments": attachments})
 		reply := map[string]any{"schema_version": 1, "seen": seenFacts(facts)}
 		suggest := c.iconSuggester
 		if suggest == nil {
@@ -157,11 +164,11 @@ func (c *ConversationController) WorkspaceIconSuggestions() http.Handler {
 }
 
 func validIconRequest(in iconSuggestionRequest) bool {
-	if cleanIconText(in.Wish, maxIconWish) != strings.TrimSpace(in.Wish) || len(in.History) > maxIconRounds {
+	if !validIconWish(in.Wish) || len(in.History) > maxIconRounds {
 		return false
 	}
 	for _, round := range in.History {
-		if cleanIconText(round.Wish, maxIconWish) != strings.TrimSpace(round.Wish) || len(round.Icons) > 8 {
+		if !validIconWish(round.Wish) || len(round.Icons) > 8 {
 			return false
 		}
 		for _, icon := range round.Icons {
@@ -171,6 +178,61 @@ func validIconRequest(in iconSuggestionRequest) bool {
 		}
 	}
 	return true
+}
+
+// Wishes use the composer's paragraphs, unlike the single-line model output.
+func validIconWish(s string) bool {
+	line := strings.NewReplacer("\n", " ", "\r", " ", "\t", " ").Replace(s)
+	return utf8.RuneCountInString(s) <= maxIconWish && cleanIconText(line, maxIconWish) == strings.TrimSpace(line)
+}
+
+// Reuse the upload store's own-UID, no-symlink reads. The one-shot model has
+// no tools, so send image bytes and bounded UTF-8 text, never local paths.
+func iconWishAttachments(home, wish string) ([]map[string]string, error) {
+	matches := attachmentRef.FindAllStringSubmatch(wish, -1)
+	if len(matches) == 0 {
+		return nil, nil
+	}
+	root, err := attachmentRoot(home)
+	if err != nil {
+		return nil, err
+	}
+	defer root.Close()
+	seen := make(map[string]bool)
+	var out []map[string]string
+	var total int64
+	var textBytes int
+	for _, match := range matches {
+		id := match[1]
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		if len(seen) > 8 {
+			return nil, errors.New("too many attachments")
+		}
+		f, err := attachmentFile(root, id)
+		if err != nil {
+			return nil, err
+		}
+		data, err := io.ReadAll(io.LimitReader(f, attachmentLimit-total+1))
+		f.Close()
+		total += int64(len(data))
+		if err != nil || total > attachmentLimit {
+			return nil, errors.New("attachments too large")
+		}
+		typ := attachmentType(data)
+		if attachmentImage(typ) {
+			out = append(out, map[string]string{"type": "image", "data": base64.StdEncoding.EncodeToString(data), "mimeType": typ})
+		} else {
+			textBytes += len(data)
+			if textBytes > 65536 || !utf8.Valid(data) || bytes.IndexByte(data, 0) >= 0 {
+				return nil, errors.New("attachment is not bounded text")
+			}
+			out = append(out, map[string]string{"type": "text", "text": string(data)})
+		}
+	}
+	return out, nil
 }
 
 // cleanIconText trims a line of model or person text and admits it only

@@ -34,7 +34,7 @@ const item = (
 });
 const intents = {
   onAccept: () => {},
-  onAsk: () => {},
+  onAsk: async () => true,
   onRound: () => {},
   onDismiss: () => {},
   onOpenSettings: () => {},

@@ -71,7 +71,7 @@ function validRound(v: unknown): v is IconRound {
   return (
     !!r &&
     typeof r === "object" &&
-    text(r.wish, 200) &&
+    text(r.wish, 4096) &&
     (r.reply === undefined || text(r.reply, 400)) &&
     text(r.model, 160) &&
     Array.isArray(r.suggestions) &&
@@ -155,13 +155,11 @@ export function useIconSuggestions(
   const rounds = useRef<IconRound[]>([]);
   const ask = useCallback(
     async (wish: string) => {
-      if (!csrf) return;
+      if (!csrf) return false;
       current.current?.abort();
       const controller = new AbortController();
       current.current = controller;
-      // One line: a dictation pause makes a paragraph break, which the
-      // daemon refuses in a wish.
-      const trimmed = wish.replace(/\s+/gu, " ").trim().slice(0, 200);
+      const trimmed = wish.trim();
       setState((old) => ({
         status: "loading",
         rounds: old?.rounds ?? [],
@@ -196,7 +194,7 @@ export function useIconSuggestions(
       } catch {
         // An aborted or lost request is a failure like an unanswered one.
       }
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) return false;
       current.current = null;
       if (reply?.state === "done" && reply.suggestions && reply.model) {
         const round: IconRound = {
@@ -230,6 +228,7 @@ export function useIconSuggestions(
           startedAt: old?.startedAt ?? Date.now(),
         }));
       }
+      return reply?.state === "done";
     },
     [csrf, workspaceId, identity],
   );

@@ -56,6 +56,8 @@ const fi = {
   suggestions: "Ehdotuksia:",
   notNow: "Ei nyt",
   wishLabel: "Toive mallille",
+  wishHint:
+    "Toive enintään 4096 merkkiä. Liitteeksi kuva tai UTF-8-tekstiä (yhteensä enintään 64 kt tekstiä). Liitteet ovat mallille esimerkkejä, eivät uusia kuvakevaihtoehtoja.",
   wishPlaceholder: "Toive, esim. kettu, sininen, kirjaimet",
   suggest: "Ehdota",
   previous: "Edelliset ehdotukset",
@@ -109,6 +111,8 @@ export const workspaceIconPickerText = catalog(fi, {
   suggestions: "Suggestions:",
   notNow: "Not now",
   wishLabel: "Wish for the model",
+  wishHint:
+    "Wish up to 4096 characters. Attach images or UTF-8 text (up to 64 KB of text in total). Attachments are references for the model, not new icon choices.",
   wishPlaceholder: "A wish, e.g. fox, blue, letters",
   suggest: "Suggest",
   previous: "Previous suggestions",

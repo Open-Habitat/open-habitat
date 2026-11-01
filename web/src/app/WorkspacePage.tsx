@@ -469,7 +469,7 @@ export function WorkspacePage({
             };
           })()}
           onAccept={acceptIcon}
-          onAsk={(wish) => void suggestions.ask(wish)}
+          onAsk={suggestions.ask}
           onRound={suggestions.move}
           onOpenSettings={() => navigate(settingsHref("tekoaly"))}
           csrf={csrf}

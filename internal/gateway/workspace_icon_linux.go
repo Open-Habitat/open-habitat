@@ -15,7 +15,9 @@ import (
 const (
 	workspaceIconPath            = "/api/v1/workspaces/icon"
 	workspaceIconSuggestionsPath = "/api/v1/workspaces/icon/suggestions"
-	workspaceIconCSP             = "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'; frame-ancestors 'none'; form-action 'none'; base-uri 'none'"
+	// Matches the daemon's maxIconRequest (wish plus three history rounds).
+	workspaceIconSuggestionsLimit = 98304
+	workspaceIconCSP              = "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'; frame-ancestors 'none'; form-action 'none'; base-uri 'none'"
 )
 
 func (a *Auth) workspaceIcon(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +43,7 @@ func (a *Auth) workspaceIcon(w http.ResponseWriter, r *http.Request) {
 // runs the model as that person.
 func (a *Auth) workspaceIconSuggestions(w http.ResponseWriter, r *http.Request) {
 	const path = workspaceIconSuggestionsPath
-	if r.Method != http.MethodPost || !a.exact(r, path) || r.URL.EscapedPath() != path || r.RequestURI != path || r.ContentLength < 2 || r.ContentLength > 4096 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 || len(r.TransferEncoding) != 0 || !browserHTTP(r) {
+	if r.Method != http.MethodPost || !a.exact(r, path) || r.URL.EscapedPath() != path || r.RequestURI != path || r.ContentLength < 2 || r.ContentLength > workspaceIconSuggestionsLimit || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 || len(r.TransferEncoding) != 0 || !browserHTTP(r) {
 		safe(w, 400, "invalid_request")
 		return
 	}

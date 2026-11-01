@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
+import { snapshot } from "../lab/session.mjs";
 import { expect, test } from "./lab-host";
 
 // Model-suggested workspace icons (workspace-icons, experimental; Sirut)
@@ -19,7 +20,9 @@ async function shot(page: Page, name: string) {
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     await page.waitForTimeout(300);
-    await page.screenshot({ path: resolve(capture, `${name}-${scheme}.png`) });
+    await snapshot(page, resolve(capture, `${name}-${scheme}`), {
+      labOrigin: new URL(page.url()).origin,
+    });
   }
   await page.emulateMedia({ colorScheme: "light" });
 }
@@ -93,6 +96,66 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
     ).violations,
   ).toEqual([]);
   await shot(page, "sirut");
+
+  const field = row.getByTestId("message-input");
+  const shortHeight = await field.evaluate((el) => el.clientHeight);
+  const wish = Array.from({ length: 6 }, (_, i) => `reference line ${i}`).join(
+    "\n",
+  );
+  await field.fill(wish);
+  await expect
+    .poll(() => field.evaluate((el) => el.clientHeight))
+    .toBeGreaterThan(shortHeight);
+  await row.locator('input[type="file"]').setInputFiles({
+    name: "reference.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jP9sAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+  await expect(row.getByTestId("send")).toBeEnabled();
+  await shot(page, "composer-attachment");
+  const sent = page.waitForRequest(
+    (r) =>
+      r.url().endsWith("/api/v1/workspaces/icon/suggestions") &&
+      r.method() === "POST",
+  );
+  await row.getByTestId("send").click();
+  const payload = (await sent).postDataJSON();
+  expect(payload.wish).toContain(wish);
+  expect(payload.wish).toContain("/api/v1/attachments/");
+  await expect(row).toHaveAttribute("data-state", "done");
+  await expect(field).toHaveValue("");
+  // Full-length non-ASCII wishes and prior rounds reach the daemon through
+  // the gateway; byte limits must not accidentally preserve the old 4 KB cap.
+  await field.fill("ä".repeat(4096));
+  await row.getByTestId("send").click();
+  await expect(row).toHaveAttribute("data-state", "done");
+  await expect(field).toHaveValue("");
+  // A refused oversized wish stays available for correction, not truncated.
+  const longWish = "x".repeat(4097);
+  await field.fill(longWish);
+  await row.getByTestId("send").click();
+  await expect(row).toHaveAttribute("data-state", "failed");
+  await expect(field).toHaveValue(longWish);
+  await field.fill("sent draft");
+  let finishWish!: () => void;
+  const waitWish = new Promise<void>((resolve) => {
+    finishWish = resolve;
+  });
+  await page.route("**/api/v1/workspaces/icon/suggestions", async (route) => {
+    await waitWish;
+    await route.continue();
+  });
+  await row.getByTestId("send").click();
+  await expect(row).toHaveAttribute("data-state", "loading");
+  await field.fill("next draft");
+  finishWish();
+  await expect(row).toHaveAttribute("data-state", "done");
+  await expect(field).toHaveValue("next draft");
+  await page.unroute("**/api/v1/workspaces/icon/suggestions");
+  await field.fill("");
 
   // A quick wish is a new round; the arrows go back to the first.
   await row.getByTestId("workspace-icon-quick").nth(2).click();
@@ -200,8 +263,9 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
   });
   await openWorkspace(page, "tilastoharjoitus");
   await expect(row).toHaveAttribute("data-state", "loading");
-  await expect(row.locator("[aria-busy=true]")).toBeVisible();
-  await expect(row.getByTestId("workspace-icon-wish-send")).toBeDisabled();
+  await expect(row.locator("[aria-busy=true]").first()).toBeVisible();
+  await expect(row.getByTestId("send")).toBeDisabled();
+  await row.getByTestId("message-input").fill("draft during first request");
   await shot(page, "lataa");
   release();
   await expect(row).toHaveAttribute("data-state", "failed");
@@ -211,6 +275,9 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
   await expect(
     row.getByTestId("workspace-icon-suggestion").first(),
   ).toHaveAttribute("data-local", "true");
+  await expect(row.getByTestId("message-input")).toHaveValue(
+    "draft during first request",
+  );
   await shot(page, "aikakatkaisu");
 
   // No model with credentials: the way is the settings, not another wish.
@@ -227,7 +294,7 @@ test("@workspace-icons the model's suggestions under the heading, validated by t
   );
   await openWorkspace(page, "muistiinpanot");
   await expect(row).toHaveAttribute("data-state", "failed");
-  await expect(row.getByTestId("workspace-icon-wish")).toHaveCount(0);
+  await expect(row.getByTestId("message-input")).toHaveCount(0);
   await expect(
     row.getByTestId("workspace-icon-suggestions-settings"),
   ).toBeVisible();
@@ -313,7 +380,7 @@ test("@workspace-icons the wish is dictated with the composer's dictation and as
   await openWorkspace(page, "tilastoharjoitus");
   const row = page.getByTestId("workspace-icon-suggestions");
   await expect(row).toHaveAttribute("data-state", "done");
-  await row.getByTestId("workspace-icon-wish").fill("kettu");
+  await row.getByTestId("message-input").fill("kettu");
   await row.getByRole("button").and(row.getByTestId("dictation-mic")).click();
   await expect(row.getByTestId("dictation-stop")).toHaveAttribute(
     "data-phase",
@@ -338,18 +405,18 @@ test("@workspace-icons the wish is dictated with the composer's dictation and as
     ).status(),
   ).toBe(204);
   // What was said shows in the field, after what was written.
-  await expect(row.getByTestId("workspace-icon-wish")).toHaveValue(
+  await expect(row.getByTestId("dictation-live")).toHaveText(
     /^kettu sininen\s*pieni$/,
   );
-  // Ehdota ends the dictation and asks with the whole wish, on one line.
+  // Send ends dictation and keeps its paragraph breaks.
   const asked = page.waitForRequest(
     (r) =>
       r.url().endsWith("/api/v1/workspaces/icon/suggestions") &&
       r.method() === "POST",
   );
-  await row.getByTestId("workspace-icon-wish-send").click();
-  expect((await asked).postDataJSON().wish).toBe("kettu sininen pieni");
+  await row.getByTestId("send").click();
+  expect((await asked).postDataJSON().wish).toMatch(/^kettu sininen\n+pieni$/);
   await expect(row).toHaveAttribute("data-state", "done");
-  await expect(row.getByTestId("workspace-icon-wish")).toHaveValue("");
+  await expect(row.getByTestId("message-input")).toHaveValue("");
   await expect(row.getByTestId("dictation-mic")).toBeVisible();
 });
