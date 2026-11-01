@@ -7,6 +7,8 @@ status: open
 priority: normal
 related: ['@decisions-review-31-10']
 preparation: ready
+lane: decisions-review-explained
+lane_seq: 1
 ---
 
 # The 31.10. decisions review, explained in product terms

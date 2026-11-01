@@ -6,6 +6,8 @@ reporter: jari
 status: open
 priority: normal
 preparation: ready
+lane: research-decisions-explained
+lane_seq: 1
 ---
 
 # Explain the three research decisions: product owner and architect views
