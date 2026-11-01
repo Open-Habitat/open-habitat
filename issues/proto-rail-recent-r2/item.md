@@ -8,7 +8,7 @@ priority: normal
 lane: proto-rail-recent-r2
 lane_seq: 1
 related: ['@rail-recent-five', '@proto-rail-recent']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: the Viimeisimmät rail section as implemented, and its open choices
