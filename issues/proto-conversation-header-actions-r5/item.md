@@ -8,7 +8,7 @@ priority: normal
 lane: proto-conversation-header-actions-r5
 lane_seq: 1
 related: ['@proto-conversation-header-actions-r4']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype round 5: Selitä opens a hover-to-explain mode
