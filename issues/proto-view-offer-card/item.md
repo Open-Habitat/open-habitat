@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-view-offer-card
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: the view card an agent offers in a conversation
