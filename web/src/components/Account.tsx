@@ -369,8 +369,8 @@ export function AccountSettings({
   const fieldNext = useRef(false);
   // A chosen row that is already open lands again.
   const [landing, setLanding] = useState(0);
-  // The phone shows the list or a section, not both: no preview there.
-  const narrow = () => window.matchMedia("(max-width: 760px)").matches;
+  // Match Settings.css: the folded layout shows list or section, not both.
+  const narrow = () => window.matchMedia("(max-width: 1050px)").matches;
   const preview = (hit: SettingsHit | undefined) => {
     if (!hit || narrow()) return;
     steering.current = true;

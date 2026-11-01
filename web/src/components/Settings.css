@@ -243,7 +243,9 @@
 .s-nav-i:focus-visible {
   z-index: 1;
 }
-@media (max-width: 760px) {
+/* Keep in sync with Account's search preview: folded navigation and the
+   section cannot be shown together. Row and touch sizing stay phone-only. */
+@media (max-width: 1050px) {
   .ah-account-settings.s-page {
     flex-direction: column;
     gap: var(--ah-s5);
@@ -276,6 +278,8 @@
     align-items: center;
     margin-bottom: var(--ah-s3);
   }
+}
+@media (max-width: 760px) {
   .s-row {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -324,7 +328,7 @@
   position: sticky;
   top: 0;
 }
-@media (max-width: 760px) {
+@media (max-width: 1050px) {
   .s-nav {
     position: static;
   }
@@ -758,10 +762,9 @@
   flex: none;
   margin-left: calc(var(--ah-s2) - var(--ah-s8));
 }
-@media (max-width: 760px) {
-  /* Above the section list or the section's own back row, at their right
-     end, without a row of its own. A phone has no room for a column, so
-     the X scrolls away with that row instead of floating over the text. */
+@media (max-width: 1050px) {
+  /* In the folded layout the X shares the list heading or section's back
+     row, and scrolls away with it instead of floating over the text. */
   .s-close {
     position: relative;
     order: -1;

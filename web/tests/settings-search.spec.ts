@@ -190,27 +190,28 @@ test("@settings-search Esc in the field clears then closes; a folded row lands o
   await expect(page.locator(".ah-account-settings")).toHaveCount(0);
 });
 
-test("@settings-search on a phone results replace the list, a result opens its row and the back row returns to the results", async ({
-  page,
-}, testInfo) => {
-  await signIn(page);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/settings");
-  await field(page).fill("gmail");
-  // No preview: the phone shows the list or a section, not both.
-  await expect(page).toHaveURL("/settings");
-  await page.screenshot({
-    path: testInfo.outputPath("evidence/settings-search-phone.png"),
+for (const width of [390, 1040])
+  test(`@settings-search at ${width}px results replace the list, a result opens its row and the back row returns to the results`, async ({
+    page,
+  }, testInfo) => {
+    await signIn(page);
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/settings");
+    await field(page).fill("gmail");
+    // No preview: folded Settings shows the list or a section, not both.
+    await expect(page).toHaveURL("/settings");
+    await page.screenshot({
+      path: testInfo.outputPath("evidence/settings-search-phone.png"),
+    });
+    await option(page, "row-google").click();
+    await expect(page).toHaveURL("/settings/agent-data#google");
+    await expect(row(page, "google")).toBeFocused();
+    await expect(field(page)).toBeHidden();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("settings-list-back"))
+      .click();
+    await expect(page).toHaveURL("/settings");
+    await expect(field(page)).toHaveValue("gmail");
+    await expect(option(page, "row-google")).toBeVisible();
   });
-  await option(page, "row-google").click();
-  await expect(page).toHaveURL("/settings/agent-data#google");
-  await expect(row(page, "google")).toBeFocused();
-  await expect(field(page)).toBeHidden();
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("settings-list-back"))
-    .click();
-  await expect(page).toHaveURL("/settings");
-  await expect(field(page)).toHaveValue("gmail");
-  await expect(option(page, "row-google")).toBeVisible();
-});
