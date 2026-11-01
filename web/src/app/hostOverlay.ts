@@ -8,6 +8,8 @@ export const renameKey = (workspaceId: string) =>
   `workspace:${workspaceId}:name`;
 export const archiveKey = (agentId: string) =>
   `conversation:${agentId}:archive`;
+export const conversationNameKey = (agentId: string) =>
+  `conversation:${agentId}:name`;
 export const closeKey = (agentId: string) => `conversation:${agentId}:close`;
 
 /** The host snapshot as the person should see it now: unconfirmed optimistic
@@ -39,7 +41,16 @@ export function overlaid(
       const archive = layer.get<"active" | "archived">(
         archiveKey(a.agent_id),
       )?.value;
-      return archive ? { ...a, archive } : a;
+      const name = layer.get<string>(conversationNameKey(a.agent_id))?.value;
+      return archive || name !== undefined
+        ? {
+            ...a,
+            ...(archive ? { archive } : {}),
+            ...(name !== undefined
+              ? { title: { display: name, source: "native_session" as const } }
+              : {}),
+          }
+        : a;
     }),
   };
 }

@@ -55,6 +55,7 @@ import {
   canRecheckCreation,
   createTracked,
   list as listConversations,
+  nameReply,
   readArchiveResult,
   readCloseResult,
   renameConversation,
@@ -88,6 +89,7 @@ import { adoptCreation } from "./heldMessages";
 import {
   archiveKey,
   closeKey,
+  conversationNameKey,
   overlaid,
   parseKey,
   renameKey,
@@ -95,6 +97,7 @@ import {
 } from "./hostOverlay";
 import { useLanding } from "./landing";
 import {
+  jsonWrite,
   MutationLayer,
   mutationFetch,
   refusalReason,
@@ -933,6 +936,14 @@ export function App() {
                 ? "confirmed"
                 : "reverted";
           }
+          if (kind === "conversation" && field === "name") {
+            const agent = next.agents.find((a) => a.agent_id === id);
+            return !agent
+              ? "unknown"
+              : agent.title.display === entry.value
+                ? "confirmed"
+                : "reverted";
+          }
           if (kind === "conversation" && field === "archive") {
             const a = next.agents.find((x) => x.agent_id === id);
             return !a
@@ -1253,6 +1264,11 @@ export function App() {
     [workspaceIconsOn, snapshot],
   );
   const now = useRailNow({
+    names: new Map(
+      (mutations?.entries<string>("conversation:") ?? [])
+        .filter((entry) => entry.command === "conversation.name")
+        .map((entry) => [parseKey(entry.key).id, entry.value]),
+    ),
     store: conversationStore,
     snapshot,
     workspaces: visible,
@@ -1852,19 +1868,35 @@ export function App() {
     },
     save: async (id: string, name: string) => {
       const agent = snapshot?.agents.find((a) => a.agent_id === id);
-      if (!agent || !csrf) throw new Error("unavailable");
-      try {
-        await renameConversation(
-          id,
-          agent.worktree_id ?? agent.workspace_id,
-          name,
-          csrf,
-        );
-      } catch (error) {
-        if ((error as Error).message === "identity_lost") requireLogin();
-        throw error;
-      }
-      refresh();
+      if (!agent || !csrf || !mutations) throw new Error("unavailable");
+      const result = await mutations.run({
+        command: "conversation.name",
+        key: conversationNameKey(id),
+        value: name,
+        send: (_commandId, signal) =>
+          jsonWrite(
+            "conversation.name",
+            `/api/v1/conversations/${encodeURIComponent(id.replace(/^pi:/, ""))}/name`,
+            { workspace_id: agent.worktree_id ?? agent.workspace_id, name },
+            csrf,
+            { signal },
+          ),
+        read: async (response) => nameReply(await response.json()),
+        confirmed: (reply) =>
+          dispatch(
+            hostChanged({
+              kind: "name",
+              agent_id: id,
+              name,
+              cursor: reply.event_cursor,
+            }),
+          ),
+        refused: t.app.renameRefused,
+        reverted: t.app.renameReverted,
+      });
+      if (result.outcome === "login") requireLogin();
+      if (result.outcome === "uncertain") refresh();
+      if (result.outcome !== "confirmed") throw new Error("rename_unconfirmed");
     },
   };
   // An empty worktree agent (ADR 0025), from the workspace page's icon row.
@@ -2199,6 +2231,7 @@ export function App() {
           onRestore={() => void changeArchive(selectedAgent, false)}
           onArchive={() => void changeArchive(selectedAgent, true)}
           onTitleComplete={refresh}
+          onRename={railRename.save}
           csrf={phase === "authenticated" ? csrf : undefined}
           workspaceName={agentWorkspace.display_name ?? agentWorkspace.name}
           workspacePath={agentWorkspace.path}
@@ -2473,6 +2506,7 @@ export function App() {
                 )}
                 onArchive={changeArchive}
                 onClose={closeConversation}
+                onRename={railRename.save}
                 closeBusy={closing.has(
                   new URLSearchParams(location.search).get("conversation") ??
                     "",

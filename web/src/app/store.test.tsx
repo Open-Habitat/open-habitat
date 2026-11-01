@@ -94,6 +94,45 @@ describe("host changes from replies and events (ADR 0023)", () => {
     expect(shown()).toBe("visible");
     expect(store.getState().connection.changes).toEqual([]);
   });
+  it("keeps a confirmed conversation name over an older in-flight snapshot", () => {
+    const before = {
+      ...snap(`ev1:${instance}:5`, "visible"),
+      agents: [
+        {
+          agent_id: "pi:example",
+          title: { display: "Before", source: "native_session" },
+        },
+      ],
+    } as Snapshot;
+    store.dispatch(clearIdentity());
+    store.dispatch(authenticated(before));
+    store.dispatch(
+      hostChanged({
+        kind: "name",
+        agent_id: "pi:example",
+        name: "After",
+        cursor: `ev1:${instance}:7`,
+      }),
+    );
+    store.dispatch(
+      authenticated({
+        ...structuredClone(before),
+        event_cursor: `ev1:${instance}:6`,
+      }),
+    );
+    expect(store.getState().connection.snapshot?.agents[0].title.display).toBe(
+      "After",
+    );
+    store.dispatch(
+      authenticated({
+        ...structuredClone(before),
+        event_cursor: `ev1:${instance}:8`,
+      }),
+    );
+    expect(store.getState().connection.snapshot?.agents[0].title.display).toBe(
+      "Before",
+    );
+  });
   it("drops changes from a previous daemon instance and a previous person", () => {
     store.dispatch(clearIdentity());
     store.dispatch(authenticated(snap(`ev1:${instance}:5`, "visible")));

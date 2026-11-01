@@ -3,8 +3,14 @@
 package daemon
 
 import (
+	"bytes"
+	"context"
+	_ "embed"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
@@ -17,8 +23,7 @@ import (
 // (nameConversation); no record says who chose a name.
 //
 // A running Pi is told directly; one still starting writes it the moment it
-// is ready; a settled history is named by a temporary Pi child, as
-// historyTitle does.
+// is ready; a settled history uses Pi's SessionManager without starting an agent.
 func (c *ConversationController) nameByHand(w http.ResponseWriter, r *http.Request, id string) {
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(45 * time.Second))
 	var in struct {
@@ -58,12 +63,13 @@ func (c *ConversationController) nameByHand(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	c.mu.Unlock()
-	if failure := c.nameLive(s, in.Name); failure != "" {
+	failure, cursor := c.nameLive(s, in.Name)
+	if failure != "" {
 		diagnostic.New(os.Stderr, "daemon").Warn("conversation_title", "outcome", "failed", "operation", "given", "reason", string(failure))
 		historyJSON(w, map[string]any{"schema_version": 1, "state": "failed", "reason": failure})
 		return
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "state": "done"})
+	historyJSON(w, map[string]any{"schema_version": 1, "state": "done", "event_cursor": cursor})
 }
 
 // writePendingName gives a just-ready Pi the name held while it started. It
@@ -79,7 +85,7 @@ func (c *ConversationController) writePendingName(s *conversation) {
 	if name == "" {
 		return
 	}
-	if failure := c.writeGivenName(s, name); failure != "" {
+	if failure, _ := c.writeGivenName(s, name); failure != "" {
 		diagnostic.New(os.Stderr, "daemon").Warn("conversation_title", "outcome", "failed", "operation", "given", "reason", string(failure))
 	}
 }
@@ -87,23 +93,23 @@ func (c *ConversationController) writePendingName(s *conversation) {
 // nameLive writes a given name through the handle's running Pi. Before Pi
 // has a session file the name lives in Pi's memory, and Pi writes it with
 // the first message; until then givenName lets the rail and header show it.
-func (c *ConversationController) nameLive(s *conversation, name string) titleFailure {
+func (c *ConversationController) nameLive(s *conversation, name string) (titleFailure, string) {
 	c.nameMu.Lock()
 	defer c.nameMu.Unlock()
 	return c.writeGivenName(s, name)
 }
 
 // The caller holds nameMu.
-func (c *ConversationController) writeGivenName(s *conversation, name string) titleFailure {
+func (c *ConversationController) writeGivenName(s *conversation, name string) (titleFailure, string) {
 	c.mu.Lock()
 	live := !c.closed && c.sessions[s.id] == s && !s.dead && !s.rpc.overflow.Load()
 	c.mu.Unlock()
 	if !live {
-		return titleControllerUnavailable
+		return titleControllerUnavailable, ""
 	}
 	accepted, err := s.rpc.request("set_session_name", name, 4*time.Second)
 	if err != nil || !accepted {
-		return titleNameWriteFailed
+		return titleNameWriteFailed, ""
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -112,8 +118,28 @@ func (c *ConversationController) writeGivenName(s *conversation, name string) ti
 		s.givenName = name
 		s.pendingName = "" // superseded by this one
 	}
+	var cursor string
 	if c.journal != nil {
-		c.journal.appendInvalidation("pi:" + s.id)
+		cursor = c.journal.appendInvalidation("pi:" + s.id)
 	}
-	return ""
+	return "", cursor
+}
+
+//go:embed session_name_helper.mjs
+var sessionNameHelper string
+
+// The owner descriptor survives daemon loss until the native writer exits.
+// Cancellation is deliberately independent of the HTTP connection: a lost
+// response is not permission to repeat a write.
+func (c *ConversationController) nameSettled(path, id, cwd, name string, owner *piOwnership, ws *os.File) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, c.runtime.Node, "--input-type=module", "--eval", sessionNameHelper, c.runtime.Entry, c.runtime.Manifest, path, id, cwd)
+	cmd.Env = []string{"HOME=" + c.home, "PI_OFFLINE=1", agentPath(c.home)}
+	cmd.Dir = fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), ws.Fd())
+	cmd.ExtraFiles = []*os.File{owner.file, ws}
+	b, _ := json.Marshal(name)
+	cmd.Stdin = bytes.NewReader(b)
+	cmd.WaitDelay = time.Second
+	return cmd.Run()
 }

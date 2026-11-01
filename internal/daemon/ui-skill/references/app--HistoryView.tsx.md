@@ -1388,6 +1388,7 @@ function HistoryViewContent({
   onRestore,
   onArchive,
   onTitleComplete,
+  onRename,
   csrf,
   restoreAvailable = false,
   archiveBusy = false,
@@ -1401,6 +1402,7 @@ function HistoryViewContent({
   onRestore?: () => void;
   onArchive?: () => void;
   onTitleComplete?: () => void;
+  onRename?: (id: string, name: string) => Promise<void>;
   csrf?: string;
   restoreAvailable?: boolean;
   archiveBusy?: boolean;
@@ -1673,17 +1675,19 @@ function HistoryViewContent({
                   : { state: "disabled", reason: blockedReason },
                 onSave: async (name) => {
                   try {
-                    await renameConversation(
-                      agent.agent_id,
-                      agent.worktree_id ?? workspaceId,
-                      name,
-                      csrf,
-                    );
+                    if (onRename) await onRename(agent.agent_id, name);
+                    else
+                      await renameConversation(
+                        agent.agent_id,
+                        agent.worktree_id ?? workspaceId,
+                        name,
+                        csrf,
+                      );
                   } catch (error) {
                     if ((error as Error).message === "identity_lost") onLogin();
                     throw error;
                   }
-                  onTitleComplete?.();
+                  if (!onRename) onTitleComplete?.();
                 },
               }
             : undefined

@@ -22,6 +22,7 @@ export type HostChange = { cursor?: string } & (
     }
   | { kind: "archive"; agent_id: string; archive: "active" | "archived" }
   | { kind: "closed"; agent_id: string }
+  | { kind: "name"; agent_id: string; name: string }
 );
 const cursorParts = (cursor?: string) => {
   const m = cursor ? /^ev1:([0-9a-fA-F-]{36}):(\d+)$/.exec(cursor) : null;
@@ -40,6 +41,11 @@ function covers(snapshot: Snapshot, change: HostChange) {
 function apply(snapshot: Snapshot, c: HostChange) {
   if (c.kind === "closed") {
     snapshot.agents = snapshot.agents.filter((a) => a.agent_id !== c.agent_id);
+    return;
+  }
+  if (c.kind === "name") {
+    const agent = snapshot.agents.find((a) => a.agent_id === c.agent_id);
+    if (agent) agent.title = { display: c.name, source: "native_session" };
     return;
   }
   if (c.kind === "archive") {

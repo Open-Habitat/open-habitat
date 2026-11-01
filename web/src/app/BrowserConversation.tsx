@@ -229,6 +229,7 @@ function BrowserConversationContent({
   archive,
   onArchive,
   onClose,
+  onRename,
   archiveBusy,
   closeBusy,
   archiveAwaitingSnapshot,
@@ -256,6 +257,7 @@ function BrowserConversationContent({
   archive?: Agent;
   onArchive?: (agent: Agent, archived: boolean) => Promise<boolean>;
   onClose?: (agent: Agent) => Promise<unknown>;
+  onRename?: (id: string, name: string) => Promise<void>;
   archiveBusy?: boolean;
   closeBusy?: boolean;
   archiveAwaitingSnapshot?: boolean;
@@ -1702,12 +1704,14 @@ function BrowserConversationContent({
                           }
                         : { state: "enabled" },
                     onSave: async (name) => {
-                      await renameConversation(
-                        id,
-                        workspace.workspace_id,
-                        name,
-                        csrf,
-                      );
+                      if (onRename) await onRename(id, name);
+                      else
+                        await renameConversation(
+                          id,
+                          workspace.workspace_id,
+                          name,
+                          csrf,
+                        );
                     },
                   }
                 : undefined

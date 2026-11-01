@@ -246,7 +246,8 @@ const writeCommands: [RegExp, MutationCommand][] = [
   [/\/question$/, "conversation.question"],
   [/\/recap$/, "conversation.recap"],
   [/\/presence$/, "conversation.presence"],
-  [/\/(regenerate_title|history_title|name)$/, "conversation.title"],
+  [/\/(regenerate_title|history_title)$/, "conversation.title"],
+  [/\/name$/, "conversation.name"],
   [/\/send$/, "conversation.send"],
   [/\/(steer|follow_up)$/, "conversation.queue"],
   [/\/cancel_held$/, "conversation.cancel_held"],
@@ -390,7 +391,7 @@ export class TitleGenerationFailed extends Error {
     super("title generation failed");
   }
 }
-function titleReply(reply: unknown): void {
+export function titleReply(reply: unknown): void {
   if (object(reply) && reply.schema_version === 1) {
     if (reply.state === "done") return;
     if (
@@ -455,10 +456,26 @@ export async function renameConversation(
     { workspace_id: workspace, name },
     csrf,
   );
-  if (object(reply) && reply.schema_version === 1 && reply.state === "held")
-    return "held";
-  titleReply(reply);
-  return "done";
+  return nameReply(reply).state;
+}
+
+export function nameReply(reply: unknown): {
+  state: "done" | "held";
+  event_cursor?: string;
+} {
+  if (!object(reply) || reply.schema_version !== 1)
+    throw new Error("invalid name reply");
+  if (reply.state !== "held") titleReply(reply);
+  if (
+    reply.event_cursor !== undefined &&
+    reply.event_cursor !== "" &&
+    !(typeof reply.event_cursor === "string" && cursor.test(reply.event_cursor))
+  )
+    throw new Error("invalid name cursor");
+  return {
+    state: reply.state as "done" | "held",
+    event_cursor: reply.event_cursor as string | undefined,
+  };
 }
 
 export async function list(signal?: AbortSignal): Promise<Session[]> {

@@ -19,6 +19,7 @@ export const mutationClasses = {
   "workspace.visibility": "optimistic",
   "workspace.rename": "optimistic",
   "conversation.archive": "optimistic",
+  "conversation.name": "optimistic",
   "pi.default_model": "optimistic",
   "recap.settings": "optimistic",
   // Pending: the result shows dimmed and marked until the host confirms.

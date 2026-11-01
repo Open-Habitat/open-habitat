@@ -79,10 +79,12 @@ export function useRailNow({
   store,
   snapshot,
   workspaces,
+  names,
   ...rest
 }: Omit<Parameters<typeof railNow>[0], "agents" | "metadata" | "snapshot"> & {
   store?: ConversationStore;
   snapshot?: Snapshot;
+  names?: ReadonlyMap<string, string>;
 }): RailNow {
   const metadata = useConversationMetadata(store);
   if (!snapshot)
@@ -92,9 +94,18 @@ export function useRailNow({
     snapshot,
     workspaces,
     metadata,
-    agents: metadata.agents.size
+    agents: (metadata.agents.size
       ? [...metadata.agents.values()]
-      : snapshot.agents,
+      : snapshot.agents
+    ).map((agent) => {
+      const name = names?.get(agent.agent_id);
+      return name === undefined
+        ? agent
+        : {
+            ...agent,
+            title: { display: name, source: "native_session" as const },
+          };
+    }),
   });
 }
 const alphabetical = (a: Workspace, b: Workspace) =>

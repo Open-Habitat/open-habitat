@@ -27,8 +27,8 @@ func (c *ConversationController) historyTitle(w http.ResponseWriter, r *http.Req
 	c.nameHistory(w, r, id, in.WorkspaceID, "")
 }
 
-// nameHistory writes a settled history's name through a temporary Pi child:
-// the given name, or a generated one when given is empty.
+// nameHistory proves a settled history has no writer before naming it. A
+// manual name needs only Pi's session writer; generation keeps its RPC path.
 func (c *ConversationController) nameHistory(w http.ResponseWriter, r *http.Request, id, workspaceID, given string) {
 	operation := "history"
 	if given != "" {
@@ -175,16 +175,33 @@ func (c *ConversationController) nameHistory(w http.ResponseWriter, r *http.Requ
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	prefix, err := c.piArgs()
-	if err != nil {
-		snapshotError(w, 503, "native_source_unavailable")
-		return
+	var prefix []string
+	if given == "" || c.fixture {
+		prefix, err = c.piArgs()
+		if err != nil {
+			snapshotError(w, 503, "native_source_unavailable")
+			return
+		}
 	}
 	// A deletion may have fenced or moved the workspace during generation.
 	c.mu.Lock()
 	if !c.admits(ws, cwd) {
 		c.mu.Unlock()
 		snapshotError(w, 409, "control_uncertain")
+		return
+	}
+	if given != "" && !c.fixture {
+		c.mu.Unlock()
+		if err := c.nameSettled(path, id, cwd, name, owner, ws); err != nil {
+			diagnostic.New(os.Stderr, "daemon").Warn("conversation_title", "outcome", "failed", "operation", "given", "reason", "name_write_failed")
+			historyJSON(w, map[string]any{"schema_version": 1, "state": "failed", "reason": "name_write_failed"})
+			return
+		}
+		var cursor string
+		if c.journal != nil {
+			cursor = c.journal.appendInvalidation("pi:" + id)
+		}
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "done", "event_cursor": cursor})
 		return
 	}
 	p, err := launchPiRPCSession(c.runtime.Node, prefix, c.home, cwd, []string{agentPath(c.home), "USER=" + c.cfg.Username}, owner, ws, path, "")
@@ -208,8 +225,9 @@ func (c *ConversationController) nameHistory(w http.ResponseWriter, r *http.Requ
 		historyJSON(w, map[string]any{"schema_version": 1, "state": "failed", "reason": "name_write_failed"})
 		return
 	}
+	var cursor string
 	if c.journal != nil {
-		c.journal.appendInvalidation("pi:" + id)
+		cursor = c.journal.appendInvalidation("pi:" + id)
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "state": "done"})
+	historyJSON(w, map[string]any{"schema_version": 1, "state": "done", "event_cursor": cursor})
 }

@@ -1,5 +1,7 @@
+import { fileURLToPath } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
+import { snapshot } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
 
@@ -80,12 +82,36 @@ test("@lab @a11y a goal names its conversation and the person renames it in the 
     .include(".ah-agent-header")
     .analyze();
   expect(audit.violations).toEqual([]);
+  let releaseRename!: () => void;
+  const renameHeld = new Promise<void>((resolve) => {
+    releaseRename = resolve;
+  });
+  await page.route("**/api/v1/conversations/*/name", async (route) => {
+    await renameHeld;
+    await route.continue();
+  });
   await field.fill("Oma nimi");
   await field.press("Enter");
+  const row = page.getByTestId(`agent-item-${agent}`);
+  // The other surface changes before the request even reaches the host.
+  await expect(row.locator("a")).toContainText("Oma nimi");
+  if (process.env.OH_VISUAL_CAPTURE === "1") {
+    await snapshot(
+      page,
+      fileURLToPath(
+        new URL(
+          "../../issues/rename-slow-when-resting/evidence/optimistic-rename",
+          import.meta.url,
+        ),
+      ),
+      { labOrigin: new URL(page.url()).origin },
+    );
+  }
+  releaseRename();
   await expect(field).toHaveCount(0);
   await expect(title).toHaveText("Oma nimi");
-  const row = page.getByTestId(`agent-item-${agent}`);
   await expect(row.locator("a")).toContainText("Oma nimi");
+  await page.unroute("**/api/v1/conversations/*/name");
 
   // Escape keeps the name.
   await page.getByTestId("conversation-rename").click();
@@ -108,6 +134,47 @@ test("@lab @a11y a goal names its conversation and the person renames it in the 
 
   await page.reload();
   await expect(title).toHaveText("Rivistä annettu");
+  await expect(row.locator("a")).toContainText("Rivistä annettu");
+
+  let refuse!: () => void;
+  const refusalHeld = new Promise<void>((resolve) => {
+    refuse = resolve;
+  });
+  await page.route("**/api/v1/conversations/*/name", async (route) => {
+    await refusalHeld;
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "writer_conflict" }),
+    });
+  });
+  await page.getByTestId("conversation-rename").click();
+  await field.fill("Refused name");
+  await field.press("Enter");
+  await expect(row.locator("a")).toContainText("Refused name");
+  refuse();
+  await expect(page.getByTestId("conversation-name-problem")).toBeVisible();
+  await expect(row.locator("a")).toContainText("Rivistä annettu");
+  await page.unroute("**/api/v1/conversations/*/name");
+  await field.press("Escape");
+
+  // A failed/uncertain native write emits no journal event. The browser must
+  // explicitly read its receipt rather than leaving the overlay forever.
+  await page.route("**/api/v1/conversations/*/name", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        schema_version: 1,
+        state: "failed",
+        reason: "name_write_failed",
+      }),
+    }),
+  );
+  await page.getByTestId("conversation-rename").click();
+  await field.fill("Uncertain name");
+  await field.press("Enter");
+  await expect(page.getByTestId("conversation-name-problem")).toBeVisible();
   await expect(row.locator("a")).toContainText("Rivistä annettu");
 });
 
