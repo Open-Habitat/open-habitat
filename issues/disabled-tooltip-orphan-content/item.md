@@ -2,13 +2,17 @@
 created: 2026-11-01
 updated: 2026-11-01
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Observed host-backed browser test failure, reproduced with baseline production source
 source_ref: taskfleet:01m6bwp0tzsev1brh0pddgkpe0/observed:disabled-tooltip-region
 originating_run: 01m6bwp0tzsev1brh0pddgkpe0
 originating_run_kind: spinoff
+lane: disabled-tooltip-orphan-content
+lane_seq: 1
+related: ['@icon-tooltips-slow']
+preparation: ready
 ---
 
 # Disabled control tooltip produces orphan accessibility content
