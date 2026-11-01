@@ -6,7 +6,7 @@
 // write updates it from the gateway's reply.
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import common from "../../../contracts/v1/common.schema.json";
 import addressSchema from "../../../contracts/v1/view-address.schema.json";
 import { formatDate, liveText } from "../i18n";
@@ -419,10 +419,10 @@ export async function deleteViewAddress(
 }
 
 /** One press on a view's address. Every card of the view waits for it,
- * and a second press meanwhile does nothing. A lost outcome is settled by
+ * and a second press meanwhile is refused, never queued. A lost outcome is settled by
  * reading the list again, never by sending the write again. */
 async function pressed(viewId: string, write: () => Promise<unknown>) {
-  if (marks[viewId] === "busy") return;
+  if (marks[viewId] === "busy") throw new Error(txt.busy);
   const at = epoch;
   uncertainAt.delete(viewId);
   mark(viewId, "busy");
@@ -509,6 +509,20 @@ let lastRead = 0;
  * never shows as public. Mounted once, by the view host. */
 export function useViewLinksFreshness(active: boolean) {
   const links = useViewLinks();
+  const unknownNow = useViewLinksUnknown();
+  const [retries, setRetries] = useState(0);
+  // A list that could not be read is read again by itself, sooner first.
+  useEffect(() => {
+    if (!active || !unknownNow) {
+      setRetries(0);
+      return;
+    }
+    const timer = window.setTimeout(
+      () => void refreshViewLinks().catch(() => setRetries((n) => n + 1)),
+      Math.min(5000 * 2 ** retries, 60_000),
+    );
+    return () => window.clearTimeout(timer);
+  }, [active, unknownNow, retries]);
   useEffect(() => {
     if (!active) return;
     const again = () => {

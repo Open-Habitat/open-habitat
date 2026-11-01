@@ -399,12 +399,17 @@ export function ViewHost({
     [enabled, states, open, openTab, maxDays, setPublic, setDuration, problems],
   );
   const unknown = useViewLinksUnknown();
+  const openedMark = useViewAddressMark(opened?.view.view_id ?? "");
   const openedAddress = opened
     ? addressOf(links, opened.view.view_id)
     : undefined;
   // The panel copies only a publication the site serves now.
   const panelLink =
-    maxDays && !unknown && openedAddress && isPublic(openedAddress)
+    maxDays &&
+    !unknown &&
+    !openedMark &&
+    openedAddress &&
+    isPublic(openedAddress)
       ? { url: openedAddress.url, until: openedAddress.public_until ?? "" }
       : undefined;
   const bounds = panelBounds(total);

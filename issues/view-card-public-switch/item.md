@@ -3,12 +3,13 @@ created: 2026-11-01
 updated: 2026-11-01
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: decide-view-stable-address
 lane_seq: 4
 blocked_by: ['@decide-view-stable-address', '@view-address-reservations', '@view-address-publication-lifecycle', '@view-address-entry-route']
 preparation: ready
+closed: 2026-11-01
 ---
 
 # View card: public switch, Kopioi linkki and duration menu

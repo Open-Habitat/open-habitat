@@ -16,6 +16,7 @@ const fi = {
   uncertain:
     "Muutoksen tulos jäi epäselväksi. Tila on luettu uudelleen; tarkista se ennen kuin yrität uudelleen.",
   removeFailed: "Osoitetta ei voitu poistaa. Yritä uudelleen.",
+  busy: "Edellinen muutos on vielä kesken. Odota hetki.",
   days: (days: number) => `${days} ${days === 1 ? "päivä" : "päivää"}`,
   atMost: (days: string) => `${days} (enintään)`,
   copyLink: "Kopioi linkki",
@@ -62,6 +63,7 @@ export const viewLinksText = catalog(fi, {
   uncertain:
     "The change's outcome is unclear. The state has been read again; check it before you try again.",
   removeFailed: "The address could not be removed. Try again.",
+  busy: "The previous change is still on its way. Wait a moment.",
   days: (days) =>
     `${days} ${plural("en", days, { one: "day", other: "days" })}`,
   atMost: (days) => `${days} (at most)`,

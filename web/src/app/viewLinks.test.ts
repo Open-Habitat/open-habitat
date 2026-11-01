@@ -8,6 +8,7 @@ import {
   setViewPublic,
   useViewLinks,
   useViewLinksFreshness,
+  useViewLinksUnknown,
   type ViewLinkState,
 } from "./viewLinks";
 
@@ -153,7 +154,7 @@ describe("view address store", () => {
     expect(publicAddress(await seen(), address("e").view_id)).toBeDefined();
   });
 
-  it("sends one write however often the switch is pressed meanwhile", async () => {
+  it("refuses, never queues, a second change while one is on its way", async () => {
     let finish: (r: Response) => void = () => {};
     const fetch = vi.fn(async (url: string, _init?: RequestInit) => {
       if (url === "/api/v1/view-addresses/publish")
@@ -170,8 +171,8 @@ describe("view address store", () => {
     await refreshViewLinks();
     const viewId = address("f").view_id;
     const pressed = setViewPublic("csrf", viewId, true, 30);
-    await setViewPublic("csrf", viewId, true, 30);
-    await setViewPublic("csrf", viewId, false, 30);
+    await expect(setViewPublic("csrf", viewId, true, 30)).rejects.toThrow();
+    await expect(setViewPublic("csrf", viewId, false, 30)).rejects.toThrow();
     finish(json({ schema_version: 1, address: address("f", "public") }));
     await pressed;
     expect(
@@ -206,6 +207,39 @@ describe("view address store", () => {
       });
       expect(fetch).toHaveBeenCalledTimes(2);
       expect(view.result.current).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reads an unreadable list again by itself, without a focus or a press", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    try {
+      let fail = false;
+      const fetch = vi.fn(async () =>
+        fail
+          ? new Response("", { status: 503 })
+          : json({
+              schema_version: 1,
+              max_days: 90,
+              addresses: [address("h")],
+            }),
+      );
+      vi.stubGlobal("fetch", fetch);
+      await refreshViewLinks();
+      fail = true;
+      await expect(refreshViewLinks()).rejects.toThrow();
+      const { renderHook, act } = await import("@testing-library/react");
+      const view = renderHook(() => {
+        useViewLinksFreshness(true);
+        return useViewLinksUnknown();
+      });
+      expect(view.result.current).toBe(true);
+      fail = false;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(6000);
+      });
+      expect(view.result.current).toBe(false);
     } finally {
       vi.useRealTimers();
     }

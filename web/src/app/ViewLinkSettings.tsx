@@ -18,6 +18,7 @@ import {
   isPublic,
   refreshViewLinks,
   stopViewSharing,
+  useViewAddressMark,
   useViewLinks,
   useViewLinksUnknown,
   type ViewAddress,
@@ -156,6 +157,9 @@ function AddressRow({
   onStop: () => void;
   onRemove: () => void;
 }) {
+  const mark = useViewAddressMark(address.view_id);
+  const busy = mark === "busy";
+  const unsure = unknown || mark === "uncertain";
   const shown = isPublic(address);
   const until = shown ? formatExpiry(address.public_until ?? "") : "";
   return (
@@ -167,7 +171,7 @@ function AddressRow({
       <span>
         <strong>{address.title}</strong>
         <span className="s-desc">
-          {unknown
+          {unsure
             ? txt.checking
             : !shown
               ? txt.isPrivate
@@ -185,14 +189,14 @@ function AddressRow({
       >
         {txt.open}
       </ControlButton>
-      {shown && sharing && (
+      {shown && sharing && !unsure && (
         <CopyButton text={address.url} data-testid="view-address-copy" />
       )}
       {shown && (
         <ControlButton
           data-testid="view-address-private"
           size="row"
-          isDisabled={!csrf}
+          isDisabled={!csrf || busy}
           onPress={onStop}
         >
           {txt.stop}
@@ -202,7 +206,7 @@ function AddressRow({
         data-testid="view-address-remove"
         size="row"
         variant="danger"
-        isDisabled={!csrf}
+        isDisabled={!csrf || busy}
         onPress={onRemove}
       >
         {txt.remove}
