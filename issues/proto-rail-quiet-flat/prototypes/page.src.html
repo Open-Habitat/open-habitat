@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="fi" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raide: Hiljaiset, kaikki keskustelut yhtenä listana</title>
+<style>
+/*TOKENS*/
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--ah-bg);
+  color: var(--ah-ink);
+  font: 400 var(--ah-size-ui)/var(--ah-lh-ui) var(--ah-font);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; }
+kbd { font: 600 11px var(--ah-mono); }
+
+/* ---------- page chrome around the simulation ---------- */
+.pg { max-width: 1480px; margin: 0 auto; padding: 72px 24px 40px; }
+.pg-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; margin-bottom: 14px; }
+.pg-head h1 { margin: 0; font-size: var(--ah-size-h1); font-weight: 600; letter-spacing: -.01em; }
+.pg-axis { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.pg-toggles { margin-left: auto; display: flex; gap: 8px; }
+.seg { display: inline-flex; padding: 2px; border-radius: var(--ah-r-md); background: var(--ah-control); }
+.seg button { border: 0; background: transparent; color: var(--ah-ink-2); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+.seg button[aria-pressed="true"] { background: var(--ah-surface); color: var(--ah-ink); box-shadow: 0 0 0 1px var(--ah-line); font-weight: 600; }
+.pg-lead { margin: 0 0 18px; max-width: 92ch; color: var(--ah-ink-2); font-size: var(--ah-size-body); line-height: 1.55; }
+.pg-grid { display: grid; grid-template-columns: minmax(520px, 600px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.pg[data-device="phone"] .pg-grid { grid-template-columns: minmax(520px, 1fr) auto; }
+.card { background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-xl); box-shadow: var(--ah-shadow-app); }
+.graph-card { padding: 14px 14px 10px; position: sticky; top: 72px; }
+.card h2 { margin: 0 0 2px; font-size: var(--ah-size-h2); font-weight: 600; }
+.card .sub { margin: 0 0 8px; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+svg.graph { display: block; width: 100%; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 2px 0; color: var(--ah-muted); font-size: 11.5px; }
+.legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--ah-ink-2); vertical-align: middle; margin-right: 5px; }
+.legend i.bad { border-top: 2px dashed var(--ah-err); }
+.legend i.cost { border-top: 2px dashed var(--ah-turn); }
+.legend i.hit { border-top: 3px solid var(--ah-accent); }
+.notes { margin: 12px 2px 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.notes li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; font-size: 12.5px; line-height: 1.5; color: var(--ah-ink-2); }
+.notes li b { color: var(--ah-ink); }
+.notes li code { font: 11.5px var(--ah-mono); color: var(--ah-muted); }
+.badge { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font: 700 11px var(--ah-font); color: #fff; background: var(--ah-err); }
+.badge.cost { background: var(--ah-turn); color: #1b1300; }
+.notes li.lit { background: var(--ah-accent-soft); border-radius: 6px; outline: 4px solid var(--ah-accent-soft); }
+
+/* graph */
+.g-node rect { fill: var(--ah-surface-2); stroke: var(--ah-line-strong); stroke-width: 1.2; }
+.g-node .t { fill: var(--ah-ink); font: 600 12.5px var(--ah-font); }
+.g-node .s { fill: var(--ah-muted); font: 400 10.5px var(--ah-font); }
+.g-node.on rect { fill: var(--ah-accent-soft); stroke: var(--ah-accent); stroke-width: 2.5; }
+.g-node.on .t { fill: var(--ah-accent-ink); }
+.g-node.ghost rect { stroke-dasharray: 4 3; }
+.g-edge path { fill: none; stroke: var(--ah-faint); stroke-width: 1.4; }
+.g-edge.bad path { stroke: var(--ah-err); stroke-dasharray: 5 4; }
+.g-edge.cost path { stroke: var(--ah-turn); stroke-dasharray: 5 4; }
+.g-edge.hit path { stroke: var(--ah-accent); stroke-width: 3; stroke-dasharray: none; }
+.g-edge text { font: 400 10.5px var(--ah-font); fill: var(--ah-ink-2); paint-order: stroke; stroke: var(--ah-surface); stroke-width: 4px; stroke-linejoin: round; }
+.g-edge.hit text { fill: var(--ah-accent-ink); font-weight: 700; }
+.g-edge .bd circle { fill: var(--ah-err); }
+.g-edge.cost .bd circle { fill: var(--ah-turn); }
+.g-edge .bd text { fill: #fff; stroke: none; font: 700 10px var(--ah-font); }
+.g-edge.cost .bd text { fill: #1b1300; }
+.g-arrow { fill: var(--ah-faint); }
+.g-arrow.bad { fill: var(--ah-err); }
+.g-arrow.cost { fill: var(--ah-turn); }
+.g-arrow.hit { fill: var(--ah-accent); }
+
+/* events */
+.ev { padding: 12px 14px; margin-bottom: 14px; }
+.ev-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; }
+.ev-group h3 { margin: 0 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--ah-muted); }
+.ev-group .btns { display: flex; flex-wrap: wrap; gap: 5px; }
+.evb { border: 1px solid var(--ah-control-line); background: var(--ah-surface); color: var(--ah-ink); border-radius: 6px; padding: 4px 9px; font-size: 12.5px; cursor: pointer; }
+.evb:hover:not(:disabled) { background: var(--ah-surface-hover); }
+.evb:disabled { opacity: .45; cursor: default; }
+.evb.reset { border-style: dashed; color: var(--ah-muted); }
+.ev-log { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--ah-line-soft); font-size: 12px; color: var(--ah-muted); min-height: 2.6em; }
+.g-edge.good path { stroke: var(--ah-ok); stroke-dasharray: 2 3; }
+.g-arrow.good { fill: var(--ah-ok); }
+.legend i.good { border-top: 2px dotted var(--ah-ok); }
+.badge.ok { background: var(--ah-ok); color: #fff; }
+.pg-lead code, .notes li code { font: 11.5px var(--ah-mono); }
+/* events: the target picker and the clock */
+.ev-target { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 10px; font-size: 12.5px; color: var(--ah-ink-2); }
+.ev-target select { font: inherit; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--ah-control-line); background: var(--ah-surface); color: var(--ah-ink); }
+.ev-clock { margin-left: auto; font: 600 12.5px var(--ah-mono); color: var(--ah-ink); }
+.ev-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.evb.story { border-color: var(--ah-accent-line); color: var(--ah-accent-ink); }
+
+/* ---------- the production-looking app ---------- */
+.app { display: grid; grid-template-columns: 256px minmax(0, 1fr); height: 680px; overflow: hidden; border-radius: var(--ah-r-xl); border: 1px solid var(--ah-line); background: var(--ah-bg); box-shadow: var(--ah-shadow-app); color: var(--ah-ink); }
+.rail { background: var(--ah-rail); border-right: 1px solid var(--ah-line); padding: 10px 8px 16px; overflow: auto; }
+.rail-brand { display: flex; align-items: center; gap: 8px; padding: 2px 8px 10px; font-weight: 600; font-size: 13.5px; }
+.rail-brand i { width: 18px; height: 18px; border-radius: 5px; background: var(--ah-accent); display: inline-block; }
+.rail-brand .x { margin-left: auto; display: none; border: 0; background: transparent; color: var(--ah-muted); font-size: 16px; cursor: pointer; }
+.rail section + section { margin-top: 8px; }
+.rail h2 { display: flex; align-items: center; gap: 8px; min-height: 26px; margin: 0; padding: 0 8px; color: var(--ah-muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.cnt { color: var(--ah-muted); font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+.cnt.att { min-width: 18px; padding: 0 6px; border-radius: var(--ah-r-pill); background: var(--ah-accent); color: var(--ah-on-accent); font-weight: 600; text-align: center; }
+.rail ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
+.empty { margin: 0; padding: 2px 8px 4px; color: var(--ah-faint); font-size: 12px; }
+.row { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 8px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); font-size: 13px; cursor: pointer; }
+.row:hover { background: var(--ah-hover); }
+.row.cur { background: var(--ah-current); box-shadow: 0 0 0 1px var(--ah-current-line); color: var(--ah-ink); font-weight: 600; }
+.row .tt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row time { flex: none; color: var(--ah-muted); font-size: 11px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.row .wt { flex: none; color: var(--ah-faint); font: 600 10px var(--ah-mono); }
+.row.kept .tt { font-style: italic; }
+.ball { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ah-faint); }
+.ball.work { background: var(--ah-accent); box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--ah-accent) 28%, transparent); animation: ah-pulse var(--ah-pulse); }
+.ball.you { background: var(--ah-turn); }
+.ball.done { background: var(--ah-ok); }
+.ball.fail { border-radius: 1px; background: var(--ah-err); transform: scale(.9) rotate(45deg); }
+.ball.rest { box-sizing: border-box; background: transparent; border: 1.5px solid var(--ah-ok); }
+.wsi { flex: none; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; font: 600 8px/1 var(--ah-font); letter-spacing: -.02em; color: var(--h); background: color-mix(in srgb, var(--h) 15%, var(--ah-surface)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--h) 32%, transparent) inset; }
+.grp + .grp { margin-top: 4px; }
+.grp h3 { margin: 0; padding: 5px 8px 1px; color: var(--ah-ink-2); font: 600 12px var(--ah-mono); display: flex; gap: 6px; align-items: center; }
+.rule { display: flex; align-items: center; gap: 8px; margin: 8px 8px 2px; color: var(--ah-muted); font-size: 10.5px; }
+.rule::after { content: ""; flex: 1; height: 1px; background: var(--ah-line); }
+.fold { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 24px; padding: 0 8px 0 12px; border: 0; border-radius: var(--ah-r-nav); background: transparent; color: var(--ah-muted); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.fold:hover { background: var(--ah-hover); color: var(--ah-ink-2); }
+.fold .chev { display: inline-block; width: 8px; transition: transform .15s; }
+.fold[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.fold .lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fold.ws .lb { font-family: var(--ah-mono); }
+.rail hr { border: 0; border-top: 1px solid var(--ah-line-soft); margin: 10px 8px 6px; }
+.wsrow { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 8px; border-radius: var(--ah-r-nav); color: var(--ah-ink-2); font: 500 12.5px var(--ah-mono); cursor: pointer; }
+.wsrow:hover { background: var(--ah-hover); }
+.wsrow.cur { background: var(--ah-current); color: var(--ah-ink); }
+.wsrow .tt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+.conv { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--ah-bg); }
+.topbar { display: flex; align-items: center; gap: 10px; padding: 11px 18px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.topbar .menu { display: none; position: relative; border: 0; background: transparent; color: var(--ah-ink-2); font-size: 18px; padding: 0 4px; cursor: pointer; }
+.topbar .menu .dot { position: absolute; top: -2px; right: -4px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 8px; background: var(--ah-accent); color: var(--ah-on-accent); font: 700 10px/15px var(--ah-font); }
+.topbar h5 { margin: 0; font-size: var(--ah-size-title); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar .wsn { color: var(--ah-muted); font: 12px var(--ah-mono); white-space: nowrap; }
+.chip { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: var(--ah-r-pill); font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--ah-control); color: var(--ah-ink-2); }
+.chip.work { background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+.chip.you { background: color-mix(in srgb, var(--ah-turn) 16%, transparent); color: var(--ah-ink); }
+.chip.fail { background: var(--ah-err-soft); color: var(--ah-err); }
+.stream { flex: 1; overflow: auto; padding: 18px var(--ah-column-pad-inline) 10px; }
+.stream > * { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin-inline: auto; }
+.msg-user { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.msg-user p { margin: 0; max-width: 80%; padding: 8px 12px; border-radius: 12px 12px 4px 12px; background: var(--ah-accent-soft); color: var(--ah-ink); font-size: var(--ah-size-body); line-height: 1.5; }
+.msg-agent { margin-bottom: 14px; font-size: var(--ah-size-body); line-height: var(--ah-lh-body); color: var(--ah-ink); }
+.msg-agent p { margin: 0 0 6px; }
+.working-line { display: flex; align-items: center; gap: 8px; color: var(--ah-accent-ink); font-size: 13px; margin-bottom: 10px; }
+.card-note { border: 1px solid var(--ah-line); background: var(--ah-surface); border-radius: var(--ah-r-lg); padding: 10px 12px; margin-bottom: 12px; font-size: 13px; color: var(--ah-ink-2); }
+.card-note b { display: block; font-size: 11px; color: var(--ah-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.card-note.ask { border-color: color-mix(in srgb, var(--ah-turn) 45%, var(--ah-line)); background: color-mix(in srgb, var(--ah-turn) 8%, var(--ah-surface)); color: var(--ah-ink); }
+.card-note.cut { border-color: var(--ah-err-line); background: var(--ah-err-soft); color: var(--ah-ink); }
+.empty-view { margin: 80px auto 0; text-align: center; color: var(--ah-muted); max-width: 40ch; }
+.wspage h6 { margin: 0 0 8px; font-size: 11px; color: var(--ah-muted); text-transform: uppercase; letter-spacing: .04em; }
+.wspage ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); }
+.wspage li + li { border-top: 1px solid var(--ah-line-soft); }
+.wspage .row { min-height: 40px; padding: 0 12px; border-radius: 0; }
+.wspage .row small { color: var(--ah-muted); font-size: 11.5px; font-weight: 400; }
+.composer { padding: 0 var(--ah-column-pad-inline) var(--ah-composer-pad-block); }
+.composer-box { max-width: calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline)); margin-inline: auto; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; min-height: 48px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-xl); background: var(--ah-surface); }
+.composer-box span { flex: 1; color: var(--ah-faint); font-size: var(--ah-size-body); }
+.composer-box button { border: 0; border-radius: var(--ah-r-md); padding: 6px 14px; font-weight: 600; font-size: 13px; cursor: pointer; background: var(--ah-accent); color: var(--ah-on-accent); }
+.composer-box button.stop { background: var(--ah-control); color: var(--ah-ink); }
+
+/* phone form */
+.phone-wrap { display: flex; justify-content: center; }
+.app.phone { width: 390px; height: 780px; grid-template-columns: 1fr; border-radius: 34px; border-width: 8px; border-color: #0b0d0f; position: relative; }
+.app.phone .rail { position: absolute; inset: 0 auto 0 0; width: 84%; z-index: 3; transform: translateX(-102%); transition: transform var(--ah-appear); box-shadow: var(--ah-shadow-dialog); padding-top: 18px; }
+.app.phone.rail-open .rail { transform: none; }
+.app.phone .rail-brand .x { display: inline-block; }
+.app.phone .row, .app.phone .wsrow { min-height: 40px; }
+.app.phone .topbar { padding: 10px 12px; }
+.app.phone .topbar .menu { display: inline-block; }
+.app.phone .topbar .wsn { display: none; }
+.app.phone .stream { padding-inline: 14px; }
+.app.phone .composer { padding-inline: 10px; }
+@media (max-width: 1100px) {
+  .pg-grid, .pg[data-device="phone"] .pg-grid { grid-template-columns: 1fr; }
+  .graph-card { position: static; }
+}
+@media (max-width: 700px) {
+  .pg { padding: 64px 10px 30px; }
+  .ev-grid { grid-template-columns: 1fr; }
+  .app.phone { width: 100%; max-width: 390px; }
+}
+
+/* ---------- picker (PICKER.md, verbatim) ---------- */
+.proto-picker { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; background: rgba(10, 10, 10, 0.82); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 8px 24px rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.12); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; line-height: 1; -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none; }
+.proto-picker-highlight { position: absolute; top: 4px; left: 0; height: 28px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); will-change: transform; }
+.proto-picker[data-ready] .proto-picker-highlight { transition: transform 250ms cubic-bezier(0.23, 1, 0.32, 1), width 250ms cubic-bezier(0.23, 1, 0.32, 1); }
+@media (prefers-reduced-motion: reduce) { .proto-picker[data-ready] .proto-picker-highlight { transition: none; } }
+.proto-picker-item { position: relative; display: flex; align-items: center; height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: rgba(255, 255, 255, 0.55); font: inherit; cursor: pointer; transition: color 150ms ease-out; }
+.proto-picker-item:hover { color: rgba(255, 255, 255, 0.85); }
+.proto-picker-item:active { transform: scale(0.97); }
+.proto-picker-item:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.4); outline-offset: 2px; }
+.proto-picker-item[data-active] { color: #fff; }
+.proto-picker-divider { width: 1px; height: 16px; margin: 0 4px; background: rgba(255, 255, 255, 0.12); }
+.proto-picker-replay { padding: 0 10px; font-size: 14px; }
+.proto-picker[data-position="top"] { bottom: auto; top: 24px; }
+
+/* ---------- round 2: the rail as main draws it ---------- */
+.rail { display: flex; flex-direction: column; padding: 10px 8px 0; }
+.rail-scroll { flex: 1; min-height: 0; overflow: auto; }
+.rail-brand { padding: 4px 6px 8px; font-size: 13.5px; }
+.rail-brand .dotok { width: 7px; height: 7px; border-radius: 50%; background: var(--ah-ok); display: inline-block; margin-left: 4px; }
+.rail-brand .conn { color: var(--ah-ok); font-weight: 500; font-size: 12px; }
+.home svg { width: 16px; height: 16px; flex: none; }
+.app:not(.phone) { height: 860px; }
+.home { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 10px; margin: 0 0 8px; border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink); font-weight: 600; font-size: 13px; cursor: pointer; }
+.rail section + section { margin-top: 10px; }
+.row .wtg { flex: none; width: 13px; height: 13px; color: var(--ah-ink-2); }
+.row .wtg.merged { color: var(--ah-ok); }
+.acct { display: flex; align-items: center; gap: 8px; margin: 6px 0 8px; padding: 6px 10px; border-radius: var(--ah-r-md); background: var(--ah-surface); font-weight: 600; font-size: 13px; cursor: pointer; border: 0; color: var(--ah-ink); width: 100%; text-align: left; }
+.acct .av { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--ah-control); font-size: 11px; }
+.acct .chev { margin-left: auto; color: var(--ah-muted); }
+.acct-menu { margin: 0 0 6px; padding: 4px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog); }
+.acct-menu button { display: block; width: 100%; border: 0; background: transparent; color: var(--ah-ink); text-align: left; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.acct-menu button:hover { background: var(--ah-hover); }
+.wsrow svg { width: 14px; height: 14px; color: var(--ah-muted); flex: none; }
+/* the narrow rail beside the editor */
+.app.narrow { grid-template-columns: 56px minmax(0, 1fr); }
+.app.narrow .rail { padding: 10px 4px 0; align-items: center; }
+.dots { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.dots ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dots hr { width: 24px; margin: 4px 0; border: 0; border-top: 1px solid var(--ah-line); }
+.ndot { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--ah-r-md); cursor: pointer; color: var(--ah-ink-2); font-size: 11px; font-weight: 600; }
+.ndot:hover { background: var(--ah-hover); }
+.ndot.cur { background: var(--ah-current); box-shadow: 0 0 0 1px var(--ah-current-line); }
+.ndot .ball { position: absolute; right: 0; bottom: 2px; transform: scale(.85); }
+.ndot .ball.fail { transform: scale(.8) rotate(45deg); }
+.ndot .wsi { width: 22px; height: 22px; font-size: 10px; }
+.editor { flex: 1; display: grid; grid-template-columns: 180px 1fr; min-height: 0; font: 12.5px/1.7 var(--ah-mono); color: var(--ah-ink-2); }
+.editor .tree { border-right: 1px solid var(--ah-line); padding: 10px 12px; background: var(--ah-surface-2); }
+.editor pre { margin: 0; padding: 10px 16px; overflow: hidden; }
+/* settings */
+.settings { padding: 22px 28px; overflow: auto; }
+.settings h4 { margin: 0 0 4px; font-size: var(--ah-size-h2); font-weight: 600; }
+.settings .crumb { color: var(--ah-muted); font-size: 12px; margin-bottom: 14px; }
+.s-card { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); }
+.s-row { display: flex; align-items: center; gap: 16px; padding: 12px 14px; }
+.s-row + .s-row { border-top: 1px solid var(--ah-line-soft); }
+.s-row.lit { background: var(--ah-accent-soft); }
+.s-lbl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.s-desc { color: var(--ah-muted); font-size: 12px; line-height: 1.45; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-surface); }
+.stepper button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--ah-ink); font-size: 16px; cursor: pointer; }
+.stepper button:disabled { opacity: .35; cursor: default; }
+.stepper output { min-width: 28px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.s-val .seg button { font-size: 12px; }
+.app.phone .settings { padding: 16px 14px; }
+.app.phone .s-row { flex-wrap: wrap; }
+.pg-toggles { flex-wrap: wrap; }
+/* ---------- round proto-rail-quiet-flat ---------- */
+/* 1: the workspace's name, quiet, at the end of the title (icons off). */
+.row .wsn { flex: 0 1 auto; max-width: 33%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ah-faint); font: 400 11px var(--ah-font); }
+.row.cur .wsn { color: var(--ah-muted); }
+/* 2: the workspace's initials in the icon's place (the narrow rail's letters). */
+.row .ini { flex: none; display: inline-grid; place-items: center; width: 18px; height: 16px; border-radius: 4px; background: var(--ah-control); color: var(--ah-ink-2); font: 600 8.5px/1 var(--ah-font); letter-spacing: -.02em; }
+.wsfilter { margin: 2px 8px 6px; padding: 5px 8px; border: 1px solid var(--ah-control-line); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-faint); font-size: 12px; }
+.rail h2 .add { margin-left: auto; color: var(--ah-muted); font-size: 14px; font-weight: 400; }
+</style>
+</head>
+<body>
+<nav class="proto-picker" aria-label="Prototype variants" data-position="top">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Nykyinen</button>
+  <button class="proto-picker-item">1 · Hiljaiset, nimi rivissä</button>
+  <button class="proto-picker-item">2 · Hiljaiset, nimikirjaimet</button>
+</nav>
+<div id="stage"></div>
+<script>
+'use strict';
+// ------------------------------------------------------------------
+// The world: conversations and the host facts the rail reads.
+// st: work (turn running), ask (question), done (turn ended), cut (a turn
+//     a daemon restart cut off).
+// unread: a settled reply this tab did not show (tab memory).
+// pi / rest: the conversation's Pi is alive, or why not (idle, restart).
+// changed: story-clock minutes of the session file's last write (changed_at).
+// wt: a worktree place the person started from the browser (ADR 0025):
+//     { branch, moved, merged, dirty }. Taskfleet workers' places never
+//     reach the snapshot's agents[]; a worker shows on its parent (worker).
+// term: run from a terminal, never opened in a browser.
+// ------------------------------------------------------------------
+const WS = {
+  'open-habitat': { g: 'oh', h: 'var(--ah-glyph-1)' },
+  fleetrepo: { g: 'hb', h: 'var(--ah-glyph-3)' },
+  deutschpad: { g: 'd', h: 'var(--ah-glyph-5)' },
+  workspace: { g: 'ws', h: 'var(--ah-glyph-6)' },
+  // The rest are the many-workspaces person's (Määrä: Paljon).
+  taskfleet: { g: 'tf', h: 'var(--ah-glyph-2)', many: true },
+  issuectl: { g: 'ic', h: 'var(--ah-glyph-4)', many: true },
+  'tailspin-monorepo': { g: 'im', h: 'var(--ah-glyph-7)', many: true },
+  glasspad: { g: 'gp', h: 'var(--ah-glyph-0)', many: true },
+  dotfiles: { g: 'df', h: 'var(--ah-glyph-3)', many: true },
+  kotitalous: { g: 'kt', h: 'var(--ah-glyph-6)', many: true },
+};
+let amount = 'few';
+const wsOrder = () => Object.keys(WS).filter((k) => amount === 'many' || !WS[k].many).sort((a, b) => a.localeCompare(b, 'fi'));
+const DAY = 1440;
+const WT = (branch, o = {}) => ({ branch, moved: true, merged: false, dirty: 0, ...o });
+const BASE = [
+  { id: 'd', title: 'Hiljaiset-raiteen prototyyppi', ws: 'open-habitat', st: 'work', pi: true, changed: 0,
+    you: 'Tee prototyyppi raiteesta, jossa Hiljaiset listaa kaikki keskustelut.', agent: 'Luen railNow.ts:n ja Navigation.tsx:n osiot.' },
+  { id: 'b', title: 'Julkaisun muistiinpanot', ws: 'open-habitat', st: 'done', unread: true, pi: true, changed: -4,
+    you: 'Kokoa julkaisumuistiinpanot TODO.md:n tarinasta.', agent: 'Muistiinpanot ovat tiedostossa docs/release-notes.md. Kolme kohtaa jäi auki.' },
+  { id: 'c', title: 'Birch-päivitys', ws: 'fleetrepo', st: 'ask', pi: true, changed: -2,
+    you: 'Päivitä Birch uusimpaan julkaisuun.', agent: 'Lataus ja allekirjoituksen tarkistus menivät läpi.', q: 'Saanko käynnistää palvelun uudelleen nyt? Kaksi istuntoa on auki.' },
+  { id: 'a', title: 'Rupeaman kapellimestari', ws: 'open-habitat', st: 'done', worker: true, pi: true, changed: -8,
+    you: 'Jatketaan TODO.md:stä.', agent: 'Kolme workeria on käynnissä. Raportoin, kun ne laskeutuvat.' },
+  { id: 'w3', title: 'Palomuurin osoitteet', ws: 'fleetrepo', wt: WT('egress-isp', { moved: false, dirty: 2 }), st: 'work', pi: true, changed: -1,
+    you: 'Lisää Aldern uusi julkinen osoite testipalvelimen sallittuihin.', agent: 'Muokkaan infra/open-habitat-test/egress.nix-tiedostoa.' },
+  { id: 'w1', title: 'Asetushaku englanniksi', ws: 'open-habitat', wt: WT('settings-search-en'), st: 'done', pi: false, rest: 'idle', changed: -18,
+    you: 'Tee asetushausta kaksikielinen.', agent: 'Hakuindeksi on nyt kummallakin kielellä, testit menevät läpi. Haara settings-search-en on kolme committia mainin edellä.' },
+  { id: 'e', title: 'Verbien taivutus', ws: 'deutschpad', st: 'done', pi: false, rest: 'idle', changed: -40,
+    you: 'Tee harjoitus vahvoista verbeistä, imperfekti ja perfekti.', agent: '20 verbin harjoitus on tiedostossa vahvat-verbit.md.' },
+  { id: 'g', title: 'Varmuuskopion tarkistus', ws: 'fleetrepo', term: true, st: 'done', pi: false, changed: -70,
+    you: 'Tarkista, että yön varmuuskopio meni BACKUP-EXTille.', agent: 'Varmuuskopio valmistui 03.12, 41 Gt, tarkistussummat täsmäävät.' },
+  { id: 'w2', title: 'Kuvakkeiden välimuisti', ws: 'open-habitat', wt: WT('icon-cache', { merged: true }), st: 'done', pi: false, rest: 'idle', changed: -95,
+    you: 'Lisää työtilojen kuvakkeille välimuisti.', agent: 'Välimuisti on mukana ja haara yhdistetty mainiin.' },
+  { id: 'f', title: 'Kuvakaappaukset AVIFiksi', ws: 'open-habitat', st: 'done', pi: false, rest: 'idle', changed: -180,
+    you: 'Muunna evidence-kuvat AVIFiksi.', agent: '14 kuvaa muunnettu ja tarkistettu.' },
+  { id: 'w4', title: 'B1-sanasto', ws: 'deutschpad', wt: WT('sanasto-b1'), st: 'done', pi: false, rest: 'idle', changed: -DAY - 120,
+    you: 'Kokoa B1-tason sanasto omaan haaraansa.', agent: '312 sanaa, aihepiireittäin. Haara sanasto-b1 odottaa, että katsot sen.' },
+  { id: 'j', title: 'Laskujen arkistointi', ws: 'workspace', st: 'done', pi: false, rest: 'idle', changed: -2 * DAY - 200,
+    you: 'Arkistoi lokakuun laskut Driveen.', agent: 'Seitsemän laskua tallennettu kansioon Laskut/2026-10.' },
+  { id: 'k', title: 'Sanaston kertaus', ws: 'deutschpad', st: 'done', pi: false, rest: 'idle', changed: -5 * DAY,
+    you: 'Kertaa viime viikon sanasto.', agent: '32 sanaa, joista 6 meni väärin.' },
+  { id: 'l', title: 'Lokakuun budjetti', ws: 'workspace', st: 'done', pi: false, rest: 'idle', changed: -6 * DAY,
+    you: 'Kokoa lokakuun menot.', agent: 'Menot ovat taulukossa, kategorioittain.' },
+];
+// Määrä: Paljon adds a month of a person with ten workspaces: 36 more
+// finished conversations, a few of them worktree agents.
+const H = 60;
+const MANY = [
+  ['Taskfleetin merge-lukko', 'taskfleet', -25, WT('merge-lock', { merged: true })],
+  ['Fan-outin rinnakkaisuus', 'taskfleet', -3 * H],
+  ['Intake-komennon ohje', 'issuectl', -4 * H],
+  ['Contosoin OpenClaw-päivitys', 'tailspin-monorepo', -5 * H],
+  ['Glasspadin linkin vanheneminen', 'glasspad', -6 * H, WT('link-expiry')],
+  ['zsh-promptin hitaus', 'dotfiles', -8 * H],
+  ['Sähkösopimusten vertailu', 'kotitalous', -9 * H],
+  ['Raiteen tooltipit', 'open-habitat', -11 * H],
+  ['Tilastot Contosoille', 'tailspin-monorepo', -20 * H],
+  ['Laskun muistutus', 'workspace', -22 * H],
+  ['DAG:n validointi', 'issuectl', -DAY - 3 * H],
+  ['Run show --current', 'taskfleet', -DAY - 5 * H, WT('run-show-current', { merged: true })],
+  ['Aldern levytila', 'fleetrepo', -DAY - 7 * H],
+  ['Perfektin apuverbit', 'deutschpad', -2 * DAY - H],
+  ['Gitean varmuuskopio', 'fleetrepo', -2 * DAY - 4 * H],
+  ['Kirjautumisen virheilmoitus', 'open-habitat', -2 * DAY - 6 * H],
+  ['Lomakkeen saavutettavuus', 'tailspin-monorepo', -3 * DAY],
+  ['Hosted-sivun CSP', 'glasspad', -3 * DAY - 5 * H],
+  ['Ruokalista ensi viikolle', 'kotitalous', -4 * DAY],
+  ['tmux-näppäimet', 'dotfiles', -4 * DAY - 3 * H],
+  ['Suunnittelijan palaute', 'open-habitat', -5 * DAY - 2 * H],
+  ['Prioriteettikenttä', 'issuectl', -6 * DAY, WT('priority-field')],
+  ['Workerin muistiraja', 'taskfleet', -7 * DAY],
+  ['Asiakaskysely', 'tailspin-monorepo', -8 * DAY],
+  ['Pilotin julkaisu 0.31', 'open-habitat', -9 * DAY],
+  ['Nextcloudin päivitys', 'fleetrepo', -10 * DAY],
+  ['Datiivin prepositiot', 'deutschpad', -11 * DAY],
+  ['Veroilmoituksen liitteet', 'kotitalous', -13 * DAY],
+  ['Kuvien pakkaus', 'glasspad', -14 * DAY],
+  ['ISPin osoite', 'fleetrepo', -16 * DAY],
+  ['Avainten kierrätys', 'dotfiles', -18 * DAY],
+  ['Etusivun tyhjä tila', 'open-habitat', -20 * DAY],
+  ['Labin portit', 'open-habitat', -23 * DAY],
+  ['Lane-järjestys', 'issuectl', -25 * DAY],
+  ['Syyskuun laskut', 'workspace', -27 * DAY],
+  ['Telegram-botin uudelleenyhdistys', 'fleetrepo', -31 * DAY],
+].map(([title, ws, changed, wt], i) => ({ id: 'm' + i, title, ws, changed, wt: wt || null, st: 'done', pi: false, rest: 'idle',
+  you: `${title}: katso tämä läpi.`, agent: 'Tehty. Yhteenveto on yllä, eikä mitään jäänyt auki.' }));
+// The story clock: minute 0 is Sunday 1.11.2026 15.40.
+const T0 = Date.UTC(2026, 10, 1, 13, 40);
+let W;
+let seq = 0;
+const fresh = () => ({
+  now: 0, base: T0, open: 'd', target: 'd', railOpen: false, menu: false,
+  convs: [...BASE, ...(amount === 'many' ? MANY : [])].map((c) => ({ unread: false, rest: null, archived: false, worker: false, wt: null, ...c, wt: c.wt ? { ...c.wt } : null })),
+});
+const conv = (id) => W.convs.find((c) => c.id === id);
+const live = () => W.convs.filter((c) => !c.archived);
+const here = () => (W.open && !W.open.includes(':') ? conv(W.open) : null);
+const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+const ageOf = (c) => W.now - c.changed;
+function ageText(min) {
+  if (min < 1) return 'nyt';
+  if (min < 60) return `${min} min`;
+  if (min < DAY) return `${Math.floor(min / 60)} t`;
+  return `${Math.floor(min / DAY)} pv`;
+}
+function clockText(min) {
+  const d = new Date(W.base + min * 60000 + 2 * 3600000);
+  const wd = ['su', 'ma', 'ti', 'ke', 'to', 'pe', 'la'][d.getUTCDay()];
+  return `${wd} ${d.getUTCDate()}.${d.getUTCMonth() + 1}. klo ${d.getUTCHours()}.${String(d.getUTCMinutes()).padStart(2, '0')}`;
+}
+// railNow on main: your turn is an unread reply or a question while Pi runs;
+// Käynnissä is a turn at work, a worker at work, and a cut turn.
+const isYours = (c) => (c.st === 'done' && c.unread) || (c.st === 'ask' && c.pi);
+const isWork = (c) => c.st === 'work' || (c.worker && !isYours(c));
+const isCut = (c) => c.st === 'cut';
+const merged = (c) => !!c.wt && c.wt.merged && c.wt.moved && !c.wt.dirty;
+const finished = (c) => !isYours(c) && !isWork(c) && !isCut(c);
+const stateWord = (c) => c.st === 'work' ? 'Työskentelee' : c.worker && !isYours(c) ? 'Worker työskentelee'
+  : c.st === 'ask' ? 'Kysyy sinulta' : isCut(c) ? 'Keskeytyi' : c.unread ? 'Uusi vastaus'
+  : c.pi ? 'Valmis · odottaa viestiä' : c.rest === 'restart' ? 'Valmis · Pi pysähtyi päivityksessä'
+  : c.rest === 'idle' ? 'Valmis · Pi lepää' : 'Valmis';
+const ballOf = (c) => isCut(c) ? 'fail' : isYours(c) ? 'you' : isWork(c) ? 'work' : 'done';
+const wtWord = (c) => !c.wt ? '' : merged(c) ? 'Worktree-agentti, työ yhdistetty' : 'Worktree-agentti';
+
+// The count follows the person to every device (account preferences).
+let recentCount = 5;
+
+// ------------------------------------------------------------------
+// Graph drawing: nodes are boxes, edges quadratic curves or self loops.
+// ------------------------------------------------------------------
+function anchor(n, tx, ty) {
+  const cx = n.x + n.w / 2, cy = n.y + n.h / 2;
+  const dx = tx - cx, dy = ty - cy;
+  if (!dx && !dy) return [cx, cy];
+  const sx = (n.w / 2 + 3) / Math.abs(dx || 1e-9), sy = (n.h / 2 + 3) / Math.abs(dy || 1e-9);
+  const s = Math.min(sx, sy);
+  return [cx + dx * s, cy + dy * s];
+}
+function graphSVG(g, on, hitEdge, lit) {
+  const N = Object.fromEntries(g.nodes.map((n) => [n.id, n]));
+  let edges = '', nodes = '';
+  for (const e of g.edges) {
+    const a = N[e.from], b = N[e.to];
+    // an unlabelled edge is a second route of a drawn one: shown only when taken
+    if (!e.label && hitEdge !== e) continue;
+    const cls = ['g-edge', e.kind || '', hitEdge === e ? 'hit' : ''].join(' ');
+    const ak = hitEdge === e ? 'hit' : e.kind || '';
+    let d, lx, ly, ex, ey, ang;
+    if (e.from === e.to) {
+      const side = e.loop || 'top', off = e.off || 0;
+      const cx = a.x + a.w / 2 + off, cy = a.y + a.h / 2 + off;
+      const r = e.r || 34;
+      if (side === 'top') { const x1 = cx - 22, x2 = cx + 22, y = a.y; d = `M${x1},${y} C${x1 - 14},${y - r} ${x2 + 14},${y - r} ${x2},${y - 3}`; lx = cx; ly = y - r * 0.78 - 4; ex = x2; ey = y - 3; ang = 90; }
+      else if (side === 'bottom') { const x1 = cx - 22, x2 = cx + 22, y = a.y + a.h; d = `M${x1},${y} C${x1 - 14},${y + r} ${x2 + 14},${y + r} ${x2},${y + 3}`; lx = cx; ly = y + r * 0.78 + 12; ex = x2; ey = y + 3; ang = -90; }
+      else if (side === 'right') { const y1 = cy - 12, y2 = cy + 12, x = a.x + a.w; d = `M${x},${y1} C${x + r},${y1 - 12} ${x + r},${y2 + 12} ${x + 3},${y2}`; lx = x + r * 0.8 + 4; ly = cy + 4; ex = x + 3; ey = y2; ang = 180; }
+      else { const y1 = cy - 12, y2 = cy + 12, x = a.x; d = `M${x},${y1} C${x - r},${y1 - 12} ${x - r},${y2 + 12} ${x - 3},${y2}`; lx = x - r * 0.8 - 4; ly = cy + 4; ex = x - 3; ey = y2; ang = 0; }
+    } else if (e.c || e.c2) {
+      const c1 = e.c || e.c2[0], c2 = e.c || e.c2[1];
+      const [x1, y1] = e.p0 || anchor(a, c1[0], c1[1]);
+      const [x2, y2] = e.p1 || anchor(b, c2[0], c2[1]);
+      d = e.c ? `M${x1},${y1} Q${c1[0]},${c1[1]} ${x2},${y2}` : `M${x1},${y1} C${c1[0]},${c1[1]} ${c2[0]},${c2[1]} ${x2},${y2}`;
+      const same = (c2[0] === x2 && c2[1] === y2);
+      ex = x2; ey = y2; ang = Math.atan2(y2 - (same ? y1 : c2[1]), x2 - (same ? x1 : c2[0])) * 180 / Math.PI;
+      [lx, ly] = e.l || [(x1 + x2) / 2, (y1 + y2) / 2];
+    } else {
+      const acx = a.x + a.w / 2, acy = a.y + a.h / 2, bcx = b.x + b.w / 2, bcy = b.y + b.h / 2;
+      const mx = (acx + bcx) / 2, my = (acy + bcy) / 2;
+      const len = Math.hypot(bcx - acx, bcy - acy) || 1;
+      const nx = -(bcy - acy) / len, ny = (bcx - acx) / len;
+      const bend = e.bend || 0;
+      const qx = mx + nx * bend, qy = my + ny * bend;
+      const [x1, y1] = anchor(a, qx, qy);
+      const [x2, y2] = anchor(b, qx, qy);
+      d = `M${x1},${y1} Q${qx},${qy} ${x2},${y2}`;
+      lx = 0.25 * x1 + 0.5 * qx + 0.25 * x2; ly = 0.25 * y1 + 0.5 * qy + 0.25 * y2;
+      ex = x2; ey = y2; ang = Math.atan2(y2 - qy, x2 - qx) * 180 / Math.PI;
+    }
+    if (e.l && e.from === e.to) [lx, ly] = e.l;
+    lx += e.dx || 0; ly += e.dy || 0;
+    const lines = e.label.split('\n');
+    const anchorAttr = e.align || 'middle';
+    const text = lines.map((t, i) => `<tspan x="${lx}" dy="${i ? 12 : 0}">${esc(t)}</tspan>`).join('');
+    const badge = e.badge ? (() => {
+      const bx = anchorAttr === 'start' ? lx - 12 : anchorAttr === 'end' ? lx + 12 : lx - (Math.max(...lines.map((t) => t.length)) * 2.6) - 12;
+      return `<g class="bd"><circle cx="${bx}" cy="${ly - 4}" r="8"/><text x="${bx}" y="${ly - 0.5}" text-anchor="middle">${esc(e.badge)}</text></g>`;
+    })() : '';
+    edges += `<g class="${cls}" data-edge="${esc(e.from + '>' + e.to)}"><path d="${d}"/>` +
+      `<polygon class="g-arrow ${ak}" points="0,0 -8,-4 -8,4" transform="translate(${ex},${ey}) rotate(${ang})"/>` +
+      `<text x="${lx}" y="${ly}" text-anchor="${anchorAttr}">${text}</text>${badge}</g>`;
+  }
+  for (const n of g.nodes) {
+    const cls = ['g-node', n.id === on ? 'on' : '', n.ghost ? 'ghost' : ''].join(' ');
+    const subs = (n.sub || '').split('\n');
+    nodes += `<g class="${cls}" data-node="${n.id}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="9"/>` +
+      `<text class="t" x="${n.x + n.w / 2}" y="${n.y + 18}" text-anchor="middle">${esc(n.label)}</text>` +
+      subs.map((s, i) => `<text class="s" x="${n.x + n.w / 2}" y="${n.y + 33 + i * 12}" text-anchor="middle">${esc(s)}</text>`).join('') + '</g>';
+  }
+  return `<svg class="graph" viewBox="0 0 ${g.w} ${g.h}" role="img" aria-label="Tilakone">${edges}${nodes}</svg>`;
+}
+
+// ------------------------------------------------------------------
+// Variants: one axis, which finished conversations Viimeisimmät lists.
+// Common to all three (as on main): Sinun vuorosi and Käynnissä as railNow
+// sorts them; the newest by changed_at first, cut to the person's count;
+// archived never; terminal-run included; Pi's own life never moves a row;
+// the narrow rail beside the editor has no Viimeisimmät.
+// ------------------------------------------------------------------
+const V = [];
+const N = (id, x, y, label, sub, ghost) => ({ id, x, y, w: 164, h: 58, label, sub, ghost });
+const toArchive = (ids) => ids.map((from) => ({ from, to: 'A', on: ['archive'], label: '' }));
+const byChange = (a, b) => b.changed - a.changed || a.id.localeCompare(b.id);
+// The recent list as railNow builds it: eligible, newest first, cut to the
+// count, and the open conversation appended (italic) when it fell outside.
+function recentOf(variant) {
+  const pool = live().filter((c) => finished(c) && variant.eligible(c)).sort(byChange);
+  const top = pool.slice(0, recentCount);
+  const h = here();
+  const keepable = h && finished(h) && !top.includes(h) && (variant.keepAny || pool.includes(h));
+  return { top, rows: keepable ? [...top, { ...h, kept: true }] : top };
+}
+function nodeOfFor(variant) {
+  if (variant.quiet) return (c) => c.archived ? 'A' : isCut(c) ? 'C' : isYours(c) ? 'Y' : isWork(c) ? 'W' : 'Q';
+  return (c) => {
+    if (c.archived) return 'A';
+    if (isCut(c)) return 'C';
+    if (isYours(c)) return 'Y';
+    if (isWork(c)) return 'W';
+    const { top, rows } = recentOf(variant);
+    if (top.includes(c)) return 'R';
+    if (rows.some((r) => r.kept && r.id === c.id)) return 'K';
+    return 'O';
+  };
+}
+function graphOf({ rSub, extra = [] }) {
+  return {
+    w: 680, h: 530,
+    nodes: [
+      N('W', 20, 40, 'Työskentelee', 'Käynnissä'),
+      N('Y', 496, 40, 'Sinun vuorosi', 'uusi vastaus tai kysyy'),
+      N('R', 270, 180, 'Viimeisimmät', rSub),
+      N('C', 20, 300, 'Keskeytyi', 'Käynnissä · ◆'),
+      N('K', 496, 290, 'Avoinna, rajan alla', 'kursiivirivi\nViimeisimmissä'),
+      N('O', 270, 420, 'Ei raiteessa', 'työtilan sivulla', true),
+      N('A', 496, 430, 'Arkistoitu', 'ei missään listassa'),
+    ],
+    edges: [
+      { from: 'W', to: 'Y', on: ['finish', 'ask'], bend: -22, dy: -4, label: 'valmistuu, et katso · kysyy' },
+      { from: 'Y', to: 'W', on: ['start', 'send'], bend: -22, dy: 10, label: 'vastaat' },
+      { from: 'W', to: 'R', on: ['finish', 'stop'], bend: 14, dx: -30, label: 'valmistuu, katsot' },
+      { from: 'Y', to: 'R', on: ['open', 'openT', 'reload'], bend: 16, dx: 44, dy: 2, label: 'avaat · lataat sivun' },
+      { from: 'R', to: 'W', on: ['start', 'send'], bend: 18, dx: 30, dy: -4, label: 'kirjoitat' },
+      { from: 'R', to: 'R', on: ['idle', 'restart', 'time', 'reload'], loop: 'bottom', r: 34, off: -45, label: 'Pi lepää ·\npäivitys:\nrivi pysyy', kind: 'good' },
+      { from: 'W', to: 'C', on: ['restart'], bend: 0, dx: -8, align: 'end', label: 'päivitys\nkatkaisee' },
+      { from: 'Y', to: 'C', on: ['restart'], label: '' },
+      { from: 'C', to: 'W', on: ['start', 'send'], bend: 18, dx: 12, align: 'start', label: 'jatkat' },
+      { from: 'R', to: 'O', on: ['finish', 'start', 'ask', 'newWt', 'count', 'time', 'open', 'openWs', 'home', 'settings'], bend: 0, dx: 8, align: 'start', label: 'uudemmat\nohittavat', kind: 'cost' },
+      { from: 'O', to: 'K', on: ['openT', 'open'], c: [500, 420], l: [522, 394], align: 'start', label: 'avaat työtilan sivulta' },
+      { from: 'K', to: 'O', on: ['open', 'openWs', 'home', 'settings'], c: [430, 340], l: [404, 372], align: 'end', label: 'avaat muun' },
+      { from: 'K', to: 'W', on: ['start', 'send'], label: '' },
+      { from: 'K', to: 'R', on: ['count', 'finish', 'archive'], label: '' },
+      { from: 'R', to: 'K', on: ['count', 'finish', 'start', 'newWt'], label: '' },
+      { from: 'O', to: 'R', on: ['count', 'archive'], label: '' },
+      { from: 'O', to: 'W', on: ['start', 'send'], label: '' },
+      { from: 'R', to: 'A', on: ['archive'], bend: -10, dx: -8, dy: 14, align: 'end', label: 'arkistoit' },
+      ...extra,
+      ...toArchive(['W', 'Y', 'C', 'K', 'O']),
+    ],
+  };
+}
+const goodNote = ['✓', 'ok', 'Pi:n elämä ei siirrä riviä.', 'Lepo 10 minuutin jälkeen ja päivitys pysäyttävät Pi:n, mutta keskustelu pysyy Viimeisimmissä samalla paikalla. Tämä on mainissa ja säilyy kaikissa suunnissa.'];
+const countNote = ['i', 'cost', 'Määrä asetetaan vain Asetuksissa.', 'Tilivalikko › Asetukset › Ulkoasu › <i>Viimeisimmät keskustelut</i>, 1–20, oletus 5, ja se seuraa sinua kaikille laitteille. Raide kertoo rajasta vain otsikon luvulla (<code>VIIMEISIMMÄT 5</code>), ja avoin vanha keskustelu tulee rajan lisäksi kursiivilla (luku on silloin 6). Sama kaikissa näkymissä.'];
+const narrowNote = ['i', 'cost', 'Kapea raide ei näytä Viimeisimpiä.', 'Editorin vieressä raide on pistenauha: Sinun vuorosi ja Käynnissä, ei Viimeisimpiä. Kokeile oikean yläkulman <b>Kapea</b>. Sama kaikissa näkymissä.'];
+
+// ---- Nykyinen: main as of d2646e25 and later ----
+V.push({
+  key: 'nykyinen',
+  name: 'Nykyinen',
+  axis: 'main nyt: Viimeisimmät ilman worktree-keskusteluja',
+  lead: 'Koodista luettu nykytila (<code>railNow.ts</code>, <code>Navigation.tsx</code>, tilin asetus <code>recent_count</code>). Viimeisimmät on kaikki valmiit keskustelut, joissa ei ole worktree-paikkaa, uusin muutos ensin, viisi kerrallaan. Valmis worktree-keskustelu ei tule osioon koskaan, ei myöskään avattuna. Taskfleetin workereiden paikat eivät edes tule snapshotin keskusteluiksi, joten sääntö osuu vain worktree-agentteihin, jotka <b>sinä</b> aloitit selaimesta (<i>Uusi worktree-agentti</i>). Kokeile oikealta <b>Worktree-agentin ilta</b>.',
+  eligible: (c) => !c.wt,
+  keepAny: false,
+  graph: graphOf({
+    rSub: 'viisi viimeksi muuttunutta\nilman worktree-paikkaa',
+    extra: [
+      { from: 'W', to: 'O', on: ['finish', 'stop'], c2: [[236, 150], [236, 380]], l: [102, 392], label: 'worktree-agentti\nvalmistuu:\nlähtee raiteesta', kind: 'bad', badge: '1' },
+      { from: 'O', to: 'O', on: ['openT', 'open'], loop: 'bottom', r: 26, off: -40, l: [312, 516], label: 'avaat worktree-agentin: ei riviä', kind: 'bad', badge: '2' },
+      { from: 'Y', to: 'O', on: ['open', 'openT', 'reload'], label: '' },
+    ],
+  }),
+  notes: [
+    ['1', 'bad', 'Oma worktree-agentti lähtee raiteesta heti, kun se valmistuu.', 'Rajaus tehtiin, jotta workerit eivät veisi paikkoja (kierros 1). Mainissa Taskfleetin worker-paikat on kuitenkin jo suodatettu snapshotista (<code>taskfleetOwned</code>), joten rajaus koskee vain <code>worktree_id</code>:llä merkittyjä keskusteluja, ja ne ovat selaimesta aloittamiasi. Puolen tunnin takainen worktree-työsi on vain työtilan sivulla.'],
+    ['2', 'bad', 'Avattu worktree-agentti ei näy raiteessa lainkaan.', 'Avoimen keskustelun kursiivirivi tehdään vain osioon kelpaavista. Kun avaat valmiin worktree-agentin työtilan sivulta, raiteessa ei ole riviä, joka olisi valittuna.'],
+    goodNote, countNote, narrowNote,
+  ],
+});
+
+// ---- Jari's direction (rail-quiet-all-flat): no Viimeisimmät; Hiljaiset
+// is every other conversation, newest change first, one flat list. ----
+function quietGraph(qSub) {
+  return {
+    w: 680, h: 530,
+    nodes: [
+      N('W', 20, 40, 'Työskentelee', 'Käynnissä'),
+      N('Y', 496, 40, 'Sinun vuorosi', 'uusi vastaus tai kysyy'),
+      N('Q', 258, 200, 'Hiljaiset', qSub),
+      N('C', 20, 330, 'Keskeytyi', 'Käynnissä · ◆'),
+      N('A', 496, 430, 'Arkistoitu', 'ei missään listassa'),
+    ],
+    edges: [
+      { from: 'W', to: 'Y', on: ['finish', 'ask'], bend: -22, dy: -4, label: 'valmistuu, et katso · kysyy' },
+      { from: 'Y', to: 'W', on: ['start', 'send'], bend: -22, dy: 10, label: 'vastaat' },
+      { from: 'W', to: 'Q', on: ['finish', 'stop'], bend: 14, dx: -30, label: 'valmistuu, katsot' },
+      { from: 'Y', to: 'Q', on: ['open', 'openT', 'reload'], bend: 16, dx: 44, dy: 2, label: 'avaat · lataat sivun' },
+      { from: 'Q', to: 'W', on: ['start', 'send'], bend: 18, dx: 30, dy: -4, label: 'kirjoitat' },
+      { from: 'Q', to: 'Q', on: ['idle', 'restart', 'time', 'reload', 'merge', 'finish', 'start', 'ask', 'newWt', 'open', 'openT', 'openWs', 'home', 'settings', 'archive'], loop: 'bottom', r: 40, off: 0, l: [340, 318],
+        label: 'Pi lepää · päivitys · työ yhdistetään ·\nuudemmat menevät edelle: rivi pysyy listassa', kind: 'good' },
+      { from: 'W', to: 'C', on: ['restart'], bend: 0, dx: -8, align: 'end', label: 'päivitys\nkatkaisee' },
+      { from: 'Y', to: 'C', on: ['restart'], label: '' },
+      { from: 'C', to: 'W', on: ['start', 'send'], bend: 18, dx: 12, align: 'start', label: 'jatkat' },
+      { from: 'Q', to: 'A', on: ['archive'], bend: -14, dx: 4, dy: 18, align: 'start', label: 'arkistoit' },
+      ...toArchive(['W', 'Y', 'C']),
+    ],
+  };
+}
+const quietNotes = (markNote) => [
+  ['A', 'cost', 'Lista on niin pitkä kuin keskusteluja on.', 'Valitse oikealta <b>Paljon</b>: kymmenen työtilaa ja kuukauden työ tekee Hiljaisista noin 45 rivin listan, ja <b>Työtilat</b> suodattimineen on sen alla. Työpöydällä sinne on noin kaksi raiteen korkeutta vieritettävää, puhelimessa yli kolme. Vanha keskustelu lähtee vain arkistoimalla.'],
+  ['B', 'cost', 'Käynnissä ryhmittelee, Hiljaiset ei.', 'Ilman kuvakkeita Käynnissä on yhä ryhmitelty työtilan nimen alle (kuten nyt), Hiljaiset on yhtenäinen lista. Kun Hiljaisissa on vain muutama rivi, ero näkyy samalla ruudulla.'],
+  markNote,
+  ['✓', 'ok', 'Avoin keskustelu on aina listassa.', 'Koska kaikki valmiit keskustelut ovat Hiljaisissa, avaamasi keskustelu on aina valittuna rivinä, myös vanha tai työtilan sivulta avattu. Kursiiviriviä ei tarvita. Selaimesta aloittamasi worktree-agentti on listassa haaramerkillä, ja yhdistetyn työn merkki on vihreä.'],
+  ['✓', 'ok', 'Pi:n elämä ei siirrä riviä.', 'Lepo 10 minuutin jälkeen, päivitys ja haaran yhdistäminen eivät muuta riviä. Uudemmat keskustelut menevät edelle, mutta rivi ei lähde.'],
+  ['i', 'cost', 'Määräasetus poistuu.', 'Asetukset › Ulkoasu ei enää sisällä <i>Viimeisimmät keskustelut</i> -riviä, eikä tilin asetuksissa ole määrää (<code>recent_count</code>).'],
+  narrowNote,
+];
+V.push({
+  key: 'nimi',
+  name: '1 · Hiljaiset, nimi rivissä',
+  axis: 'Jarin suunta. Akseli: miten Hiljaisten rivi kertoo työtilansa ilman kuvakkeita? 1 = nimi rivin lopussa',
+  lead: 'Kolme osiota: <b>Sinun vuorosi</b> ja <b>Käynnissä</b> kuten nyt, ja <b>Hiljaiset</b>, jossa on kaikki muut keskustelut, uusin muutos ensin, yhtenä listana ilman työtilaotsikoita. Mukana ovat myös selaimesta aloittamasi worktree-agentit. Kuvakkeiden kanssa rivin alussa on työtilan kuvake. Ilman kuvakkeita työtilan nimi on rivin lopussa himmeällä, ennen aikaa. Vaihda oikealta <b>Paljon</b> nähdäksesi, miten pitkäksi lista tulee.',
+  quiet: true, mark: 'name',
+  eligible: () => true, keepAny: true,
+  graph: quietGraph('kaikki muut keskustelut,\nuusin muutos ensin'),
+  notes: quietNotes(['1', 'cost', 'Nimi vie tilaa otsikolta.', 'Työtilan nimi saa enintään kolmanneksen rivistä, joten otsikosta näkyy usein vain 15–20 merkkiä, ja pitkä nimi kuten <code>tailspin-monorepo</code> katkeaa itsekin. Koko otsikko ja nimi ovat vihjeessä, puhelimessa vasta avattuna.']),
+});
+V.push({
+  key: 'kirjaimet',
+  name: '2 · Hiljaiset, nimikirjaimet',
+  axis: 'Akseli: miten Hiljaisten rivi kertoo työtilansa ilman kuvakkeita? 2 = nimikirjaimet kuvakkeen paikalla',
+  lead: 'Sama raide kuin suunnassa 1. Ero näkyy vain ilman kuvakkeita: rivin alussa on työtilan nimikirjaimet harmaassa laatassa (samat kuin kapean raiteen pisteissä nyt), ja otsikolla on koko rivi. Työtilan koko nimi on vihjeessä. Kuvakkeiden kanssa suunnat ovat samat.',
+  quiet: true, mark: 'initials',
+  eligible: () => true, keepAny: true,
+  graph: quietGraph('kaikki muut keskustelut,\nuusin muutos ensin'),
+  notes: quietNotes(['2', 'cost', 'Kirjaimet pitää oppia.', 'Laatta kertoo työtilan vain sille, joka tuntee kirjaimet (<code>DE</code> deutschpad, <code>DO</code> dotfiles). Puhelimessa ei ole vihjettä, joten koko nimi löytyy vain avaamalla keskustelun. Laatta näyttää kuvakkeelta, mutta ei ole sellainen.']),
+});
+
+// ------------------------------------------------------------------
+// The page: graph + events + app, re-rendered after every event.
+// ------------------------------------------------------------------
+const params = new URLSearchParams(location.search);
+let theme = params.get('t') === 'dark' ? 'dark' : 'light';
+let device = params.get('d') === 'phone' ? 'phone' : 'desktop';
+let icons = params.get('i') !== 'off';
+let narrow = params.get('n') === 'on';
+amount = params.get('m') === 'many' ? 'many' : 'few';
+let cur = 0, v = null, hit = null, logLine = '';
+const start = () => (amount === 'many' ? 'Paljon: kymmenen työtilaa ja 50 keskustelua kuukauden ajalta. ' : '') + 'Alku: su 1.11. klo 15.40. Avoinna on Hiljaiset-raiteen prototyyppi. Kaksi odottaa sinua, kapellimestarin worker ja palomuurin worktree-agentti työskentelevät, muut ovat valmiita. Asetushaku englanniksi on selaimesta aloitettu worktree-agentti, joka valmistui 18 minuuttia sitten.';
+function setParam(k, val) { const u = new URL(location); u.searchParams.set(k, val); history.replaceState(null, '', u); }
+
+const EVENTS = [
+  ['Kohdekeskustelu', [
+    ['start', 'Agentti aloittaa'], ['finish', 'Agentti valmistuu'], ['ask', 'Agentti kysyy'], ['idle', 'Pi lepää (10 min)'], ['merge', 'Työ yhdistetään'], ['openT', 'Avaa työtilan sivulta'], ['archive', 'Arkistoi'],
+  ]],
+  ['Host ja aika', [
+    ['restart', 'Daemon käynnistyy uudelleen'], ['t10', '+10 min'], ['t60', '+1 t'], ['tday', '+1 vrk'],
+  ]],
+  ['Selain', [
+    ['newWt', 'Uusi worktree-agentti'], ['settings', 'Avaa asetukset'], ['reload', 'Lataa sivu uudelleen'], ['resetAll', 'Alusta tarina'],
+  ]],
+  ['Tarina', [
+    ['story', 'Worktree-agentin ilta'], ['storyOld', 'Kolmen viikon takainen'],
+  ]],
+];
+const EVNAME = Object.fromEntries(EVENTS.flatMap(([, l]) => l));
+Object.assign(EVNAME, { open: 'Avaat', openWs: 'Avaat työtilan sivun', send: 'Kirjoitat ja lähetät', stop: 'Pysäytät', home: 'Etusivu', count: 'Määrä' });
+const TIME = { t10: 10, t60: 60, tday: DAY };
+const target = () => conv(W.target);
+
+function enabled(ev) {
+  const t = target();
+  switch (ev) {
+    case 'start': return !!t && !t.archived && t.st !== 'work';
+    case 'finish': case 'ask': return !!t && !t.archived && t.st === 'work';
+    case 'idle': return !!t && !t.archived && t.pi && t.st === 'done' && !t.worker && !t.term;
+    case 'merge': return !!t && !t.archived && !!t.wt && !merged(t);
+    case 'openT': return !!t && !t.archived && W.open !== t.id;
+    case 'archive': return !!t && !t.archived;
+    default: return true;
+  }
+}
+function startTurn(c) { c.st = 'work'; c.pi = true; c.rest = null; c.unread = false; c.changed = W.now; }
+function idleStops() {
+  let n = 0;
+  for (const c of W.convs) if (c.pi && c.st === 'done' && !c.worker && !c.term && W.now - c.changed >= 10) { c.pi = false; c.rest = 'idle'; n++; }
+  return n;
+}
+function restart() {
+  for (const c of W.convs) {
+    if (!c.pi || c.term) continue;
+    if (c.st === 'work' || c.st === 'ask') c.st = 'cut';
+    c.pi = false; c.rest = 'restart';
+  }
+}
+function newWorktree(title) {
+  const id = 'n' + (++seq);
+  W.convs.push({ id, title: title || `Uusi worktree-agentti ${seq}`, ws: 'open-habitat', wt: WT(`agentti-${seq}`, { moved: false }), st: 'work', pi: true, rest: null, unread: false, archived: false, worker: false, changed: W.now,
+    you: 'Lisää raiteen riville työtilan nimi.', agent: 'Teen muutoksen omaan haaraansa ja ajan testit.' });
+  W.open = id; W.target = id; W.railOpen = false;
+  return conv(id);
+}
+function story() {
+  // 15.10 Jari starts a worktree agent from the browser and watches it.
+  // 15.30 it finishes and commits to its branch; he reads the result,
+  // 15.35 opens Verbien taivutus to continue there; now 15.40.
+  W = fresh(); seq = 0;
+  W.now = -30;
+  const w = newWorktree('Raiteen määräasetus');
+  w.changed = -30;
+  w.st = 'done'; w.wt.moved = true; w.changed = -10; w.agent = 'Määrä on nyt raiteen otsikossa, testit menevät läpi. Haara agentti-1 on kaksi committia mainin edellä.';
+  W.now = 0;
+  W.open = 'e';
+  idleStops();
+}
+function fire(ev, arg) {
+  if (ev === 'resetAll') return mount(cur);
+  if (ev === 'story') {
+    story(); hit = null;
+    logLine = '<b>Worktree-agentin ilta</b> · Klo 15.10 aloitit selaimesta worktree-agentin <i>Raiteen määräasetus</i>. Se valmistui 15.30, luit tuloksen ja siirryit 15.35 Verbien taivutukseen. Kohde on worktree-agentti. Missä se on raiteessa?';
+    return render();
+  }
+  if (ev === 'storyOld') {
+    if (amount !== 'many') { amount = 'many'; setParam('m', amount); }
+    W = fresh(); seq = 0; hit = null;
+    const o = W.convs.find((c) => c.title === 'Labin portit');
+    W.target = o.id;
+    logLine = `<b>Kolmen viikon takainen</b> · Paljon-maailma. Haluat jatkaa 23 päivää sitten käytyä keskustelua <i>Labin portit</i>. Kohde on se${posText(o)}. Klikkaa sitä raiteesta tai avaa open-habitat työtilalistasta.`;
+    return render();
+  }
+  let t = target();
+  const before = t ? v.nodeOf(t) : null;
+  let kind = ev, label = EVNAME[ev] || ev, extra = '';
+  switch (ev) {
+    case 'start': startTurn(t); break;
+    case 'send': t = here(); W.target = t.id; startTurn(t); break;
+    case 'finish': t.st = 'done'; t.changed = W.now; t.unread = W.open !== t.id; if (t.wt) t.wt.moved = true; break;
+    case 'stop': t = here(); W.target = t.id; t.st = 'done'; t.changed = W.now; break;
+    case 'ask': t.st = 'ask'; t.changed = W.now; break;
+    case 'idle': t.pi = false; t.rest = 'idle'; break;
+    case 'merge': Object.assign(t.wt, { merged: true, moved: true, dirty: 0 }); break;
+    case 'archive': t.archived = true; if (W.open === t.id) W.open = null; break;
+    case 'restart': restart(); break;
+    case 't10': case 't60': case 'tday': {
+      W.now += TIME[ev]; kind = 'time';
+      const n = idleStops();
+      if (n) extra = ` · ${n} Pi:tä lepäämään`;
+      break;
+    }
+    case 'reload': for (const c of W.convs) c.unread = false; break;
+    case 'openT': W.open = t.id; t.unread = false; W.railOpen = false; label = `Avaat työtilan sivulta: ${t.title}`; break;
+    case 'open': {
+      const o = conv(arg); W.open = arg; o.unread = false; W.railOpen = false; label = `Avaat: ${o.title}`;
+      if (!t || t.archived) { W.target = arg; t = o; }
+      break;
+    }
+    case 'openWs': W.open = `ws:${arg}`; W.railOpen = false; label = `Avaat työtilan sivun: ${arg}`; break;
+    case 'home': W.open = null; W.railOpen = false; break;
+    case 'settings': W.open = 'set:ulkoasu'; W.menu = false; W.railOpen = false; label = 'Avaat Asetukset › Ulkoasu'; break;
+    case 'newWt': {
+      t = newWorktree(); label = `Uusi worktree-agentti: ${t.title}`;
+      hit = null; logLine = `<b>${esc(label)}</b> · kohteena, ${esc(nodeName(v.nodeOf(t)))}`;
+      return render();
+    }
+    case 'count': {
+      recentCount = Math.max(1, Math.min(20, recentCount + arg)); label = `Viimeisimmät keskustelut: ${recentCount}`; break;
+    }
+    default: return;
+  }
+  const after = t ? v.nodeOf(t) : null;
+  const cand = t ? v.graph.edges.filter((e) => e.from === before && e.to === after) : [];
+  hit = cand.find((e) => e.on.includes(kind) && e.label) || cand.find((e) => e.on.includes(kind)) || (before !== after ? cand[0] : null) || null;
+  logLine = `<b>${esc(label)}</b>${extra}` + (t ? ` · kohde ${esc(t.title)}: ${esc(nodeName(before))} → ${esc(nodeName(after))}${posText(t)}` : '') +
+    (hit && hit.badge ? ` · ${hit.kind === 'bad' ? 'aukko' : hit.kind === 'cost' ? 'hinta' : ''} ${esc(hit.badge)}` : '');
+  render();
+}
+// Where the target is in the rail: "rivi 7/44".
+function posText(c) {
+  for (const sec of railSections()) {
+    const i = sec.rows.findIndex((r) => r.id === c.id);
+    if (i >= 0) return ` (${sec.head}, rivi ${i + 1}/${sec.rows.length})`;
+  }
+  return c.archived ? '' : ' (ei raiteessa)';
+}
+const nodeName = (id) => { const n = v.graph.nodes.find((n) => n.id === id); return n ? n.label : id; };
+
+// ---------- the rail ----------
+const ICON = {
+  worktree: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M18 10c0 4-6 3-12 7"/>',
+  merge: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 8v8M6 8c0 3 4 4 10 4"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  home: '<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
+};
+const svg = (name, cls) => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]}</svg>`;
+const wsi = (ws) => `<span class="wsi" style="--h:${WS[ws].h}" aria-hidden="true">${WS[ws].g}</span>`;
+function rowHTML(c, mark) {
+  const tip = [c.title, c.ws, stateWord(c), wtWord(c), c.term ? 'ajettu terminaalissa' : '', c.kept ? 'avoinna, rajan ulkopuolella' : ''].filter(Boolean).join(' · ');
+  return `<li><div class="row${W.open === c.id ? ' cur' : ''}${c.kept ? ' kept' : ''}" data-open="${c.id}" title="${esc(tip)}">` +
+    (icons ? wsi(c.ws) : mark === 'initials' ? `<span class="ini" aria-hidden="true">${esc(initials(c.ws))}</span>` : '') + `<span class="ball ${ballOf(c)}"></span>` +
+    (c.wt ? svg(merged(c) ? 'merge' : 'worktree', `wtg${merged(c) ? ' merged' : ''}`) : '') +
+    `<span class="tt">${esc(c.title)}</span>` + (!icons && mark === 'name' ? `<span class="wsn">${esc(c.ws)}</span>` : '') + `<time>${esc(ageText(ageOf(c)))}</time></div></li>`;
+}
+function groupsOf(rows, order) {
+  const m = new Map();
+  for (const c of rows) { if (!m.has(c.ws)) m.set(c.ws, []); m.get(c.ws).push(c); }
+  const keys = order === 'recency' ? [...m.keys()] : wsOrder().filter((k) => m.has(k));
+  return keys.map((k) => [k, m.get(k)]);
+}
+function sectionHTML(sec) {
+  const n = sec.rows.length;
+  const head = `<h2>${esc(sec.head)}${n ? `<span class="cnt${sec.att ? ' att' : ''}">${n}</span>` : ''}</h2>`;
+  if (!n) return `<section data-sec="${sec.key}">${head}<p class="empty">${esc(sec.empty)}</p></section>`;
+  if (!sec.grouped || icons) return `<section data-sec="${sec.key}">${head}<ul>${sec.rows.map((c) => rowHTML(c, sec.mark)).join('')}</ul></section>`;
+  return `<section data-sec="${sec.key}">${head}${groupsOf(sec.rows, sec.grouped).map(([ws, rs]) => `<div class="grp"><h3>${esc(ws)} <span class="cnt">${rs.length}</span></h3><ul>${rs.map((c) => rowHTML(c)).join('')}</ul></div>`).join('')}</section>`;
+}
+const yoursRows = () => live().filter(isYours);
+const runningRows = () => live().filter((c) => !isYours(c) && (isWork(c) || isCut(c)));
+const quietRows = () => live().filter(finished).sort(byChange);
+function railSections() {
+  if (v.quiet) return [
+    { key: 'yours', head: 'Sinun vuorosi', att: true, rows: yoursRows(), empty: 'Mikään ei odota sinua.' },
+    { key: 'running', head: 'Käynnissä', rows: runningRows(), empty: 'Mikään ei ole käynnissä.', grouped: 'catalog' },
+    { key: 'quiet', head: 'Hiljaiset', rows: quietRows(), empty: 'Ei muita keskusteluja.', mark: v.mark },
+  ];
+  return [
+    { key: 'yours', head: 'Sinun vuorosi', att: true, rows: yoursRows(), empty: 'Mikään ei odota sinua.' },
+    { key: 'running', head: 'Käynnissä', rows: runningRows(), empty: 'Mikään ei ole käynnissä.', grouped: 'catalog' },
+    { key: 'recent', head: 'Viimeisimmät', rows: recentOf(v).rows, empty: 'Ei valmiita keskusteluja.', grouped: 'recency' },
+  ];
+}
+function initials(ws) { const p = ws.split(/[-_.\s]+/).filter(Boolean); return (p.length > 1 ? p.map((x) => x[0]).join('') : ws).slice(0, 2).toUpperCase(); }
+function dotsHTML() {
+  const dot = (c) => `<li><div class="ndot${W.open === c.id ? ' cur' : ''}" data-open="${c.id}" title="${esc(c.title + ' · ' + stateWord(c))}">${icons ? wsi(c.ws) : esc(initials(c.ws))}<span class="ball ${ballOf(c)}"></span></div></li>`;
+  const y = yoursRows(), r = runningRows();
+  return `<div class="dots"><ul aria-label="Sinun vuorosi">${y.map(dot).join('')}</ul>${y.length ? '<hr>' : ''}<ul aria-label="Käynnissä">${r.map(dot).join('')}</ul>${r.length ? '<hr>' : ''}</div>`;
+}
+function railHTML(isNarrow) {
+  if (isNarrow) return `<div class="rail-scroll">${dotsHTML()}</div>`;
+  const wsRows = wsOrder().map((ws) => `<li><div class="wsrow${W.open === 'ws:' + ws ? ' cur' : ''}" data-ws="${ws}">${icons ? wsi(ws) : svg('folder', '')}<span class="tt">${esc(ws)}</span></div></li>`).join('');
+  return `<div class="rail-scroll"><div class="rail-brand">Birch <span class="dotok"></span><span class="conn">Yhdistetty</span><button class="x" data-act="rail" aria-label="Sulje navigaatio">✕</button></div>` +
+    `<div class="home" data-ev="home">${svg('home', 'wtg')}Etusivu</div>` +
+    railSections().map(sectionHTML).join('') +
+    `<hr><section><h2>Työtilat <span class="cnt">${wsOrder().length}</span><span class="add" aria-hidden="true">+</span></h2><div class="wsfilter">Suodata työtiloja</div><ul>${wsRows}</ul></section></div>` +
+    (W.menu ? `<div class="acct-menu"><button data-ev="settings">Asetukset</button><button>Agentin työ</button><button>Kirjaudu ulos</button></div>` : '') +
+    `<button class="acct" data-act="menu"><span class="av">J</span>Jari<span class="chev">⌄</span></button>`;
+}
+
+// ---------- the main view ----------
+function settingsHTML(menu) {
+  return `<header class="topbar">${menu}<h5>Asetukset</h5></header><div class="settings"><h4>Ulkoasu</h4><p class="crumb">Asetukset › Ulkoasu</p><div class="s-card">` +
+    `<div class="s-row"><div class="s-lbl"><strong>Teema</strong><span class="s-desc">Järjestelmä, vaalea tai tumma.</span></div><div class="s-val"><div class="seg"><button aria-pressed="false">Järjestelmä</button><button aria-pressed="${theme === 'light'}">Vaalea</button><button aria-pressed="${theme === 'dark'}">Tumma</button></div></div></div>` +
+    `<div class="s-row"><div class="s-lbl"><strong>Kieli</strong><span class="s-desc">Käyttöliittymän kieli. Koskee kaikkia laitteitasi.</span></div><div class="s-val"><div class="seg"><button aria-pressed="false">Järjestelmä</button><button aria-pressed="true">Suomi</button><button aria-pressed="false">English</button></div></div></div>` +
+    (v.quiet ? `<div class="s-row"><div class="s-lbl"><strong>Työtilojen kuvakkeet</strong><span class="s-desc">Kokeellinen. Työtilan kuvake raiteen riveillä ja työtilalistassa.</span></div><div class="s-val"><div class="seg"><button aria-pressed="${icons}">Päällä</button><button aria-pressed="${!icons}">Pois</button></div></div></div>` : `<div class="s-row lit"><div class="s-lbl"><strong>Viimeisimmät keskustelut</strong><span class="s-desc">Sivupalkin viimeisimpien keskustelujen määrä, 1–20. Avoin keskustelu pysyy lisäksi näkyvissä. Koskee kaikkia laitteitasi.</span></div>` +
+    `<div class="s-val"><span class="stepper" role="group" aria-label="Viimeisimmät keskustelut"><button data-count="-1" aria-label="Vähemmän" ${recentCount <= 1 ? 'disabled' : ''}>−</button><output>${recentCount}</output><button data-count="1" aria-label="Enemmän" ${recentCount >= 20 ? 'disabled' : ''}>+</button></span></div></div>`) +
+    `</div></div>`;
+}
+function convHTML() {
+  const waiting = yoursRows().length;
+  const menu = `<button class="menu" data-act="rail" aria-label="Avaa navigaatio${waiting ? `, ${waiting} odottaa sinua` : ''}">☰${waiting ? `<span class="dot">${waiting}</span>` : ''}</button>`;
+  if (W.open === 'set:ulkoasu') return settingsHTML(menu);
+  if (W.open && W.open.startsWith('ws:')) {
+    const ws = W.open.slice(3);
+    const rows = live().filter((c) => c.ws === ws).sort(byChange);
+    return `<header class="topbar">${menu}<h5>${esc(ws)}</h5></header><div class="stream wspage"><h6>Keskustelut</h6><ul>` +
+      rows.map((c) => `<li><div class="row" data-open="${c.id}"><span class="ball ${ballOf(c)}"></span>${c.wt ? svg(merged(c) ? 'merge' : 'worktree', `wtg${merged(c) ? ' merged' : ''}`) : ''}<span class="tt">${esc(c.title)} <small>· ${esc(stateWord(c))}${c.wt ? ` · ${esc(c.wt.branch)}` : ''}</small></span><time>${ageText(ageOf(c))}</time></div></li>`).join('') +
+      '</ul></div>';
+  }
+  const h = here();
+  if (!h) return `<header class="topbar">${menu}<h5>Etusivu</h5></header><div class="stream"><p class="empty-view">Valitse keskustelu raiteesta tai työtilan sivulta.</p></div>`;
+  if (narrow && device !== 'phone') {
+    return `<header class="topbar">${menu}<h5>${esc(h.ws)} · editori</h5><span class="wsn">web/src/app/railNow.ts</span></header>` +
+      `<div class="editor"><div class="tree">web/<br>&nbsp;src/<br>&nbsp;&nbsp;app/<br>&nbsp;&nbsp;&nbsp;railNow.ts<br>&nbsp;&nbsp;components/<br>&nbsp;&nbsp;&nbsp;Navigation.tsx</div><pre>${v.quiet ? `  const quiet = !turn &amp;&amp; !live &amp;&amp; !failed;
+  // Hiljaiset: every other conversation,
+  // newest change first, one flat list.
+  if (quiet) { rest.push(model); continue; }` : `  const recent = !turn &amp;&amp; !live &amp;&amp; !failed;
+  // Worktree results stay on the workspace page
+  // rather than taking places from primary
+  // conversations (proto-rail-recent, direction 2).
+  if (recent &amp;&amp; a.worktree_id) continue;`}</pre></div>`;
+  }
+  const chip = h.st === 'work' ? '<span class="chip work"><span class="ball work"></span>Työskentelee</span>'
+    : h.st === 'ask' ? '<span class="chip you"><span class="ball you"></span>Kysyy sinulta</span>'
+    : isCut(h) ? '<span class="chip fail">Keskeytyi</span>'
+    : h.worker ? '<span class="chip work"><span class="ball work"></span>Worker työskentelee</span>'
+    : '<span class="chip">Sinun vuorosi</span>';
+  const done = h.st === 'done' || h.st === 'ask';
+  const body = `<div class="msg-user"><p>${esc(h.you)}</p></div>` +
+    (done ? `<div class="msg-agent"><p>${esc(h.agent)}</p></div>` : '') +
+    (h.st === 'ask' ? `<div class="card-note ask"><b>Agentti kysyy</b>${esc(h.q || 'Jatkanko tästä?')}</div>` : '') +
+    (h.st === 'work' ? `<div class="msg-agent"><p>${esc(h.agent)}</p></div><div class="working-line"><span class="ball work"></span>Työskentelee…</div>` : '') +
+    (isCut(h) ? `<div class="msg-agent"><p>${esc(h.agent)}</p></div><div class="card-note cut"><b>Työ keskeytyi</b>Habitat käynnistyi uudelleen kesken vuoron. Kirjoita, niin agentti jatkaa.</div>` : '') +
+    (h.wt ? `<div class="card-note"><b>Worktree</b>Haara <code>${esc(h.wt.branch)}</code> · ${merged(h) ? 'työ yhdistetty mainiin' : h.wt.dirty ? `${h.wt.dirty} muutosta` : h.wt.moved ? 'mainin edellä' : 'ei vielä committeja'}</div>` : '') +
+    (h.st === 'done' && !h.pi && h.rest ? `<div class="card-note"><b>Agentti lepää</b>${h.rest === 'restart' ? 'Pi pysähtyi päivityksessä.' : 'Pi pysähtyi 10 minuutin joutilaisuuden jälkeen.'} Se herää, kun kirjoitat.</div>` : '');
+  return `<header class="topbar">${menu}<h5>${esc(h.title)}</h5><span class="wsn">${esc(h.ws)}${h.wt ? ` · ${esc(h.wt.branch)}` : ''}</span>${chip}</header>` +
+    `<div class="stream">${body}</div>` +
+    `<div class="composer"><div class="composer-box"><span>${h.st === 'ask' ? 'Vastaa agentille…' : 'Kirjoita agentille…'}</span>` +
+    (h.st === 'work' ? `<button type="button" class="stop" data-ev="stop">Pysäytä</button>` : '') +
+    `<button type="button" data-ev="send">Lähetä</button></div></div>`;
+}
+
+function render() {
+  document.documentElement.dataset.theme = theme;
+  const t = target();
+  const node = t ? v.nodeOf(t) : null;
+  const phone = device === 'phone';
+  const isNarrow = narrow && !phone;
+  const litBadge = hit && hit.badge;
+  const app = `<div class="app${phone ? ' phone' : ''}${isNarrow ? ' narrow' : ''}${W.railOpen ? ' rail-open' : ''}" data-theme="${theme}"><aside class="rail" aria-label="Työtilat ja keskustelut">${railHTML(isNarrow)}</aside><section class="conv">${convHTML()}</section></div>`;
+  const opts = W.convs.filter((c) => !c.archived || c.id === W.target).map((c) => `<option value="${c.id}" ${c.id === W.target ? 'selected' : ''}>${esc(c.title)} · ${esc(c.ws)}${c.wt ? ' · worktree' : ''}${c.term ? ' · terminaali' : ''}${c.archived ? ' (arkistoitu)' : ''}</option>`).join('');
+  const seg = (name, key, list) => `<div class="seg" role="group" aria-label="${name}">${list.map(([val, lab, on]) => `<button data-${key}="${val}" aria-pressed="${on}">${lab}</button>`).join('')}</div>`;
+  // Keep the rail where the reader scrolled it; a row deep in Hiljaiset
+  // must not jump out of sight when it is clicked.
+  const oldRail = document.querySelector('.app .rail-scroll');
+  const railTop = oldRail ? oldRail.scrollTop : 0;
+  document.getElementById('stage').innerHTML =
+    `<main class="pg" data-device="${device}">` +
+    `<div class="pg-head"><h1>${esc(v.name)}</h1><span class="pg-axis">${esc(v.axis)}</span>` +
+    `<div class="pg-toggles">${seg('Teema', 'theme-set', [['light', 'Vaalea', theme === 'light'], ['dark', 'Tumma', theme === 'dark']])}` +
+    seg('Laite', 'device-set', [['desktop', 'Työpöytä', !phone], ['phone', 'Puhelin', phone]]) +
+    seg('Raide', 'narrow-set', [['off', 'Leveä', !narrow], ['on', 'Kapea (editori)', narrow]]) +
+    seg('Määrä', 'amount-set', [['few', 'Muutama', amount === 'few'], ['many', 'Paljon', amount === 'many']]) +
+    seg('Työtilojen kuvakkeet', 'icons-set', [['on', 'Kuvakkeet', icons], ['off', 'Ei kuvakkeita', !icons]]) + `</div></div>` +
+    `<p class="pg-lead">${v.lead}</p>` +
+    `<div class="pg-grid"><section class="card graph-card"><h2>Tilakone: kohdekeskustelu</h2><p class="sub">Korostettu laatikko on kohdekeskustelun tila. Katkoviivainen laatikko ei näy raiteessa. Paksu viiva on viimeisin siirtymä.</p>` +
+    graphSVG(v.graph, node, hit) +
+    `<div class="legend"><span><i></i>siirtymä</span><span><i class="hit"></i>viimeisin</span><span><i class="bad"></i>aukko</span><span><i class="cost"></i>hinta</span><span><i class="good"></i>pysyy</span></div>` +
+    `<ul class="notes">${v.notes.map(([b, k, tt, d]) => `<li class="${litBadge === b ? 'lit' : ''}"><span class="badge ${k}">${esc(b)}</span><span><b>${tt}</b> ${d}</span></li>`).join('')}</ul></section>` +
+    `<section><div class="card ev"><div class="ev-target"><label>Kohde <select data-target>${opts}</select></label><span class="ev-clock">${esc(clockText(W.now))}${v.quiet ? '' : ` · määrä ${recentCount}`}</span></div><div class="ev-grid">` +
+    EVENTS.map(([g, list]) => `<div class="ev-group"><h3>${g}</h3><div class="btns">${list.map(([e, l]) => `<button type="button" class="evb${e === 'resetAll' ? ' reset' : e === 'story' ? ' story' : ''}" data-ev="${e}" ${enabled(e) ? '' : 'disabled'}>${l}</button>`).join('')}</div></div>`).join('') +
+    `</div><div class="ev-log" role="status">${logLine}</div></div>` +
+    (phone ? `<div class="phone-wrap">${app}</div>` : app) +
+    `<p class="sub" style="margin-top:10px;color:var(--ah-muted);font-size:12px">Raiteen rivit, työtilat ja Etusivu avautuvat klikkaamalla (puhelimessa ☰). ${v.quiet ? 'Raide vierii: Työtilat on Hiljaisten alla.' : 'Määrä asetetaan tilivalikosta (Jari ⌄ › Asetukset).'} Kohde pysyy samana, kun avaat muita; vaihda se valikosta. Lähetä ja Pysäytä toimivat avoimessa keskustelussa.</p></section></div></main>`;
+  const newRail = document.querySelector('.app .rail-scroll');
+  if (newRail) newRail.scrollTop = railTop;
+}
+
+function mount(i) {
+  cur = i; v = V[i]; v.nodeOf = nodeOfFor(v); seq = 0; W = fresh(); hit = null; logLine = start();
+  render();
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-ev],[data-act],[data-open],[data-ws],[data-count],[data-theme-set],[data-device-set],[data-icons-set],[data-narrow-set],[data-amount-set]');
+  if (!t || t.disabled || !document.getElementById('stage').contains(t)) return;
+  if (t.dataset.themeSet) { theme = t.dataset.themeSet; setParam('t', theme); return render(); }
+  if (t.dataset.deviceSet) { device = t.dataset.deviceSet; setParam('d', device); W.railOpen = false; return render(); }
+  if (t.dataset.iconsSet) { icons = t.dataset.iconsSet === 'on'; setParam('i', icons ? 'on' : 'off'); return render(); }
+  if (t.dataset.amountSet) { amount = t.dataset.amountSet; setParam('m', amount); return mount(cur); }
+  if (t.dataset.narrowSet) { narrow = t.dataset.narrowSet === 'on'; setParam('n', narrow ? 'on' : 'off'); return render(); }
+  if (t.dataset.count) return fire('count', Number(t.dataset.count));
+  if (t.dataset.ev) return fire(t.dataset.ev);
+  if (t.dataset.open) return fire('open', t.dataset.open);
+  if (t.dataset.ws) return fire('openWs', t.dataset.ws);
+  if (t.dataset.act === 'rail') { W.railOpen = !W.railOpen; return render(); }
+  if (t.dataset.act === 'menu') { W.menu = !W.menu; return render(); }
+});
+document.addEventListener('change', (e) => {
+  if (!e.target.matches('[data-target]')) return;
+  W.target = e.target.value; hit = null; render();
+});
+
+// ---------- picker (PICKER.md reference wiring) ----------
+const variants = V.map((_, i) => () => i);
+const stage = document.getElementById('stage');
+const picker = document.querySelector('.proto-picker');
+const highlight = picker.querySelector('.proto-picker-highlight');
+const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+let current = 0;
+function moveHighlight() {
+  const el = items[current];
+  highlight.style.width = el.offsetWidth + 'px';
+  highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+}
+function setActive(i) {
+  if (i < 0 || i >= variants.length) return;
+  current = i;
+  items.forEach((el, j) => {
+    el.toggleAttribute('data-active', j === i);
+    if (j === i) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
+  });
+  moveHighlight();
+  const url = new URL(location);
+  url.searchParams.set('v', i + 1);
+  history.replaceState(null, '', url);
+  stage.innerHTML = '';
+  requestAnimationFrame(() => mount(variants[i]()));
+}
+items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+window.addEventListener('resize', moveHighlight);
+document.addEventListener('keydown', (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const num = parseInt(e.key, 10);
+  if (num >= 1 && num <= variants.length) setActive(num - 1);
+  else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length);
+  else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length);
+  else if (e.key === 'r' || e.key === 'R') mount(current);
+});
+setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+// For screenshots: ?play=send,finish plays events after mount.
+window.__play = (list) => { for (const x of list) { const [e, a] = x.split(':'); fire(e, a); } };
+</script>
+</body>
+</html>

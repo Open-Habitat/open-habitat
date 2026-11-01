@@ -8,7 +8,7 @@ priority: normal
 lane: rail-quiet-all-flat
 lane_seq: 1
 related: ['@rail-quiet-all-flat']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: rail with a flat Hiljaiset listing every conversation
