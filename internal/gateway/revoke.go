@@ -62,11 +62,12 @@ func (a *Auth) revokeSessionsLocked(subject string) (int, error) {
 	}); err != nil {
 		return 0, errors.New("session store unavailable")
 	}
-	// A revoked or withdrawn person's shared view links end with their
-	// sessions (ADR 0033).
-	if _, err := a.removeViewLinksLocked(subject); err != nil {
-		return 0, errors.New("view link store unavailable")
-	}
 	a.revoked[subject] = a.serial
+	// A revoked or withdrawn person's view addresses are deleted for good
+	// with their sessions (ADR 0035). An unusable address store fails the
+	// revocation, so the operator repairs it and revokes again.
+	if _, err := a.removeViewLinksLocked(subject); err != nil {
+		return 0, errors.New("view address store unavailable")
+	}
 	return removed, nil
 }

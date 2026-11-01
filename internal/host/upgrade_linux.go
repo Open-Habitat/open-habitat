@@ -79,6 +79,9 @@ func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error)
 		return UpgradePlan{}, ErrImmutable
 	}
 	p := UpgradePlan{Protocol: "host.upgrade.v1", Predecessor: old.Release, Target: s.Release, OwnerBinary: generationPath(s) + "/open-habitat", Checks: []Check{}, Approvable: true, Actions: []Action{{"upgrade.stage", "planned", "authenticated_successor"}, {"upgrade.quiesce", "planned", "explicit_maintenance_required"}, {"upgrade.activate", "planned", "restart_native_consumers"}, {"upgrade.verify", "planned", "structural_acceptance_required"}}}
+	if legacyViewLinks(s.Gateway.UID) {
+		p.Actions = append(p.Actions, Action{"upgrade.view_addresses", "planned", "old_share_links_stop_working"})
+	}
 	inspection, e := Inspect(ctx, sitePath)
 	if e != nil {
 		return p, e

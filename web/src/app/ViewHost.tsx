@@ -35,12 +35,14 @@ import {
 } from "./fileOffers";
 import { readGuide, setGuide, useGuide } from "./goalGuide";
 import {
-  changeViewLink,
-  createViewLink,
+  changeViewAddressDuration,
+  ensureViewAddress,
+  makeViewAddressPrivate,
+  publicAddress,
+  publishViewAddress,
   refreshViewLinks,
-  revokeViewLink,
   useViewLinks,
-  type ViewLink,
+  type ViewAddress,
 } from "./viewLinks";
 import { listViews, mintViewURL, viewTabPath } from "./views";
 
@@ -57,10 +59,10 @@ type ViewControls = {
   state: (id: string) => ViewOfferState;
   open: (view: ViewSummary, opener: HTMLElement | null) => void;
   openTab: (view: ViewSummary) => void;
-  /** Jaa linkillä; absent where the site offers no links (ADR 0033). */
+  /** Jaa linkillä; absent where the site shares nothing publicly. */
   share?: (view: ViewSummary) => void;
-  /** The newest link that shows this view now. */
-  linkFor: (id: string) => ViewLink | undefined;
+  /** The view's address while it is public. */
+  linkFor: (id: string) => ViewAddress | undefined;
 };
 
 const ViewContext = createContext<ViewControls | null>(null);
@@ -145,10 +147,7 @@ export function ViewHost({
   const title = useRef<HTMLHeadingElement>(null);
   const mintSeq = useRef(0);
   const links = useViewLinks();
-  const [views, setViews] = useState<ViewSummary[]>([]);
   const [sharing, setSharing] = useState<ViewSummary>();
-  // The dialog follows its link by ID: re-pointing moves it to another view.
-  const [sharingLink, setSharingLink] = useState<string>();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: identity is the trigger, not an input.
   useEffect(() => {
@@ -159,7 +158,6 @@ export function ViewHost({
     setShelf(undefined);
     setExpanded(false);
     setSharing(undefined);
-    setViews([]);
   }, [identity]);
 
   // Another person's offers are forgotten. The first identity is not a
@@ -178,7 +176,6 @@ export function ViewHost({
       .then((views) => {
         if (abort.signal.aborted) return;
         setEnabled(views !== null);
-        setViews(views ?? []);
         if (views !== null)
           void refreshViewLinks(abort.signal).catch(() => {
             // Without the list no card offers a link.
@@ -190,15 +187,7 @@ export function ViewHost({
     return () => abort.abort();
   }, [csrf]);
 
-  const share = useCallback((view: ViewSummary, linkId?: string) => {
-    setSharing(view);
-    setSharingLink(linkId);
-    // The other views to point a link at are read afresh.
-    void listViews().then(
-      (list) => list && setViews(list),
-      () => {},
-    );
-  }, []);
+  const share = useCallback((view: ViewSummary) => setSharing(view), []);
 
   useEffect(() => {
     const resize = () => setTotal(window.innerWidth);
@@ -353,9 +342,11 @@ export function ViewHost({
   );
 
   const linkList = typeof links === "object" ? links : undefined;
+  const sharingOn = !!linkList && linkList.maxDays > 0;
+  // A publication the site has paused is not shared now.
   const linkFor = useCallback(
-    (id: string) => linkList?.links.find((l) => l.view_id === id),
-    [linkList],
+    (id: string) => (sharingOn ? publicAddress(linkList, id) : undefined),
+    [linkList, sharingOn],
   );
   const controls = useMemo<ViewControls | null>(
     () =>
@@ -364,20 +355,13 @@ export function ViewHost({
             state: (id) => states[id] ?? "idle",
             open,
             openTab,
-            share: linkList
-              ? (view) => share(view, linkFor(view.view_id)?.link_id)
-              : undefined,
+            share: sharingOn ? share : undefined,
             linkFor,
           }
         : null,
-    [enabled, states, open, openTab, linkList, share, linkFor],
+    [enabled, states, open, openTab, sharingOn, share, linkFor],
   );
-  const sharedLink = sharingLink
-    ? linkList?.links.find((l) => l.link_id === sharingLink)
-    : undefined;
-  const sharedView =
-    (sharedLink && views.find((v) => v.view_id === sharedLink.view_id)) ||
-    sharing;
+  const sharedLink = sharing ? linkFor(sharing.view_id) : undefined;
   const bounds = panelBounds(total);
   const shown = Math.min(
     Math.max(guideShown ? guideWidth : width, bounds.min),
@@ -415,16 +399,8 @@ export function ViewHost({
                   titleRef={title}
                   onToggleExpanded={() => setExpanded(!expanded)}
                   onOpenTab={() => openTab(opened.view)}
-                  onShare={
-                    linkList
-                      ? () =>
-                          share(
-                            opened.view,
-                            linkFor(opened.view.view_id)?.link_id,
-                          )
-                      : undefined
-                  }
-                  sharedUntil={linkFor(opened.view.view_id)?.expires_at}
+                  onShare={sharingOn ? () => share(opened.view) : undefined}
+                  sharedUntil={linkFor(opened.view.view_id)?.public_until}
                   onClose={close}
                 />
               ) : shelf ? (
@@ -445,41 +421,26 @@ export function ViewHost({
           >
             {children}
           </ViewSplit>
-          {sharing && sharedView && linkList && csrf ? (
+          {sharing && linkList && sharingOn && csrf ? (
             <ViewLinkDialog
               isOpen
               onClose={() => setSharing(undefined)}
-              view={sharedView}
+              view={sharing}
               link={sharedLink}
               maxDays={linkList.maxDays}
-              otherViews={views}
               onCreate={(days) =>
-                createViewLink(csrf, sharing.view_id, days).then((l) =>
-                  setSharingLink(l.link_id),
+                ensureViewAddress(csrf, sharing.view_id).then((a) =>
+                  publishViewAddress(csrf, a.address_id, days),
                 )
               }
               onExtend={(days) =>
                 sharedLink
-                  ? changeViewLink(csrf, sharedLink.link_id, { days })
-                  : Promise.resolve()
-              }
-              onRepoint={(viewId) =>
-                sharedLink
-                  ? changeViewLink(csrf, sharedLink.link_id, {
-                      view_id: viewId,
-                    })
-                  : Promise.resolve()
-              }
-              onNewAddress={() =>
-                sharedLink
-                  ? changeViewLink(csrf, sharedLink.link_id, {
-                      new_address: true,
-                    })
+                  ? changeViewAddressDuration(csrf, sharedLink.address_id, days)
                   : Promise.resolve()
               }
               onRevoke={() =>
                 sharedLink
-                  ? revokeViewLink(csrf, sharedLink.link_id)
+                  ? makeViewAddressPrivate(csrf, sharedLink.address_id)
                   : Promise.resolve()
               }
             />
@@ -506,7 +467,7 @@ export function NoticeEntry({ notice }: { notice: AgentNotice }) {
       onOpen={(opener) => views.open(view, opener)}
       onOpenTab={() => views.openTab(view)}
       onShare={views.share ? () => views.share?.(view) : undefined}
-      sharedUntil={views.linkFor(view.view_id)?.expires_at}
+      sharedUntil={views.linkFor(view.view_id)?.public_until}
     />
   );
 }

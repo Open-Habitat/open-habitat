@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "max_days": 90,
+  "addresses": [
+    {
+      "address_id": "aabcdefghijklmnopqrstuvwxyz",
+      "view_id": "vabcdefghijklmnopqrstuvwxyz",
+      "title": "Myyntiraportti",
+      "url": "https://app.example.invalid/n/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
+      "content_url": "https://oh-view-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example.invalid/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/",
+      "state": "public",
+      "created_at": "2026-10-29T12:00:00Z",
+      "public_until": "2026-11-28T12:00:00Z"
+    },
+    {
+      "address_id": "abbcdefghijklmnopqrstuvwxyz",
+      "view_id": "vbbcdefghijklmnopqrstuvwxyz",
+      "title": "Luonnos",
+      "url": "https://app.example.invalid/n/FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+      "content_url": "https://oh-view-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.example.invalid/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB/",
+      "state": "private",
+      "created_at": "2026-10-28T12:00:00Z"
+    }
+  ]
+}

@@ -156,11 +156,12 @@ checks = {
     "editor-open.json": "editor.schema.json",
     "views.json": "view.schema.json",
     "view-handoff.json": "view.schema.json",
-    "view-links.json": "view-link.schema.json",
-    "view-link.json": "view-link.schema.json",
-    "view-link-create.json": "view-link.schema.json",
-    "view-link-change.json": "view-link.schema.json",
-    "server-view-links.json": "view-link.schema.json",
+    "view-addresses.json": "view-address.schema.json",
+    "view-address.json": "view-address.schema.json",
+    "view-address-ensure.json": "view-address.schema.json",
+    "view-address-publish.json": "view-address.schema.json",
+    "view-address-delete.json": "view-address.schema.json",
+    "server-view-publications.json": "view-address.schema.json",
     "notice-view.json": "notice.schema.json",
     "file-offers.json": "file-offer.schema.json",
     "file-offer.json": "file-offer.schema.json",
@@ -292,17 +293,27 @@ for entry in ["../index.html", "/index.html", ".hidden/index.html", "site/.x.htm
 must_reject("view.schema.json", {"schema_version": 1, "views": [{**view, "path": "/home/x/report.html"}]})
 must_reject("view.schema.json", {"schema_version": 1, "url": "http://oh-view-a.example.invalid/_open-habitat/handoff?token=" + "A" * 43})
 must_reject("view.schema.json", {"schema_version": 1, "url": "https://oh-view-a.example.invalid/index.html"})
-# A link change is exactly one change, a link URL is only a host and its
-# token, and the administrator's list never carries a URL.
-link_change = json.loads((BASE / "examples" / "view-link-change.json").read_text())
-must_reject("view-link.schema.json", {**link_change, "days": 7})
-must_reject("view-link.schema.json", {"link_id": link_change["link_id"], "new_address": False})
-link_reply = json.loads((BASE / "examples" / "view-link.json").read_text())
-must_reject("view-link.schema.json", {**link_reply, "link": {**link_reply["link"], "url": "http://oh-view-a.example.invalid/" + "A" * 43 + "/"}})
-must_reject("view-link.schema.json", {**link_reply, "link": {**link_reply["link"], "url": "https://oh-view-a.example.invalid/" + "A" * 43 + "/index.html"}})
-admin_links = json.loads((BASE / "examples" / "server-view-links.json").read_text())
-must_reject("view-link.schema.json", {**admin_links, "links": [{**admin_links["links"][0], "url": link_reply["link"]["url"]}]})
-must_reject("view-link.schema.json", {"view_id": "vabcdefghijklmnopqrstuvwxyz", "days": 366})
+# An address is reserved for a view, changed by its ID alone, and never
+# moved to another view or given a new secret. Its entry URL is the app's
+# path under /n/, its content URL only a host and the token, and the
+# administrator's list never carries either.
+must_reject("view-address.schema.json", {"view_id": "vabcdefghijklmnopqrstuvwxyz", "days": 30})
+must_reject("view-address.schema.json", {"address_id": "aabcdefghijklmnopqrstuvwxyz", "view_id": "vabcdefghijklmnopqrstuvwxyz"})
+must_reject("view-address.schema.json", {"address_id": "aabcdefghijklmnopqrstuvwxyz", "new_address": True})
+must_reject("view-address.schema.json", {"address_id": "aabcdefghijklmnopqrstuvwxyz", "days": 366})
+must_reject("view-address.schema.json", {"link_id": "labcdefghijklmnopqrstuvwxyz", "days": 30})
+address_reply = json.loads((BASE / "examples" / "view-address.json").read_text())
+address = address_reply["address"]
+must_reject("view-address.schema.json", {**address_reply, "address": {**address, "url": address["content_url"]}})
+must_reject("view-address.schema.json", {**address_reply, "address": {**address, "url": address["url"] + "/index.html"}})
+must_reject("view-address.schema.json", {**address_reply, "address": {**address, "content_url": "http://oh-view-a.example.invalid/" + "A" * 43 + "/"}})
+must_reject("view-address.schema.json", {**address_reply, "address": {**address, "content_url": "https://oh-view-a.example.invalid/" + "A" * 43 + "/index.html"}})
+must_reject("view-address.schema.json", {**address_reply, "address": {k: v for k, v in address.items() if k != "public_until"}})
+must_reject("view-address.schema.json", {**address_reply, "address": {**address, "state": "private"}})
+must_reject("view-address.schema.json", {**address_reply, "address": {**address, "state": "revoked"}})
+admin_publications = json.loads((BASE / "examples" / "server-view-publications.json").read_text())
+for field in ["url", "content_url", "token"]:
+    must_reject("view-address.schema.json", {**admin_publications, "publications": [{**admin_publications["publications"][0], field: address.get(field, "A" * 43)}]})
 
 # An offered file is named inside its offer, never by a path outside it, a
 # hidden name or a home path, and a notice carries at most one offer.

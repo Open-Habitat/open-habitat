@@ -3,6 +3,7 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -10,12 +11,14 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -24,53 +27,78 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/udssecure"
 )
 
-// Shared view links (ADR 0033) are the one place where the gateway reads a
-// person's daemon for a request with no authenticated person: anyone holding
-// a link's URL reads that one frozen export, through the owner's daemon and
-// its fixed export-read route, while the link is valid. The link host is a
-// host of the view namespace derived from the link ID, and the token is the
-// first path segment of every request, so no cookie is set or read. Only the
-// person's app session creates, changes and revokes a link; the agent
-// listener has no route here and never learns a link's URL. The store is
-// gateway-private state beside the session store; it keeps the token so the
-// person can copy a link again.
+// View addresses (ADR 0035, extending ADR 0033's shared links) are one
+// gateway-private reservation per owner and frozen view: a stable entry
+// secret for the app origin and a content secret for the reservation's own
+// host in the view namespace. A reservation starts private and stays until
+// its owner, an administrator or the person's revocation deletes it;
+// publication, expiry and making private change only its public-until state,
+// never a secret, so publishing again revives earlier copies. A public
+// address is the one place where the gateway reads a person's daemon for a
+// request with no authenticated person: anyone holding the content URL reads
+// that one frozen export through the owner's daemon and its fixed export-read
+// route while the publication is valid. No cookie is set or read on the
+// content host. Only the person's app session reserves, publishes, changes
+// and deletes; the agent listener has no route here and never learns an
+// address.
 
 const (
-	viewLinksPath        = "/api/v1/view-links"
-	viewLinkChangePath   = "/api/v1/view-links/change"
-	viewLinkRevokePath   = "/api/v1/view-links/revoke"
-	adminViewLinksPath   = "/api/v1/server/view-links"
-	adminViewLinksRevoke = "/api/v1/server/view-links/revoke"
-	viewLinkStoreName    = "view-links.json"
-	viewLinkStoreVersion = 1
-	// 4096 links whose titles JSON-escape at six bytes a character stay
-	// below 7 MiB; the writer refuses what the reader would not read.
-	viewLinkStoreBytes = 16 << 20
+	viewAddressesPath       = "/api/v1/view-addresses"
+	viewAddressPublishPath  = "/api/v1/view-addresses/publish"
+	viewAddressDurationPath = "/api/v1/view-addresses/duration"
+	viewAddressPrivatePath  = "/api/v1/view-addresses/private"
+	viewAddressDeletePath   = "/api/v1/view-addresses/delete"
+	adminPublicationsPath   = "/api/v1/server/view-publications"
+	adminPublicationsDelete = "/api/v1/server/view-publications/delete"
+	viewEntryPrefix         = "/n/"
+	viewLinkStoreName       = "view-links.json"
+	// Version 1 held ADR 0033's movable links. It is never read as
+	// addresses: only the upgrade resets it (ResetLegacyViewLinks).
+	viewLinkStoreVersion = 2
+	// 8192 reservations whose titles JSON-escape at six bytes a character
+	// stay below 14 MiB; the writer refuses what the reader would not read.
+	viewLinkStoreBytes = 32 << 20
 	viewLinkMaxDays    = 365
-	viewLinksPerPerson = 50
-	viewLinksMax       = 4096
+	// Reservations and active publications are bounded separately: a
+	// private address is a promise too, so the cap refuses a new
+	// reservation and never evicts an old one.
+	viewAddressesPerPerson    = 1000
+	viewAddressesMax          = 8192
+	viewPublicationsPerPerson = 50
+	viewPublicationsMax       = 4096
 	// Public reads cannot starve the owners' own traffic or exhaust a daemon:
-	// concurrent relays and a day's bytes are bounded per link and per site.
-	// The counters live in memory; a restart resets them.
+	// concurrent relays and a day's bytes are bounded per address and per
+	// site. The counters live in memory; a restart resets them.
 	viewLinkRelaysPerLink = 8
 	viewLinkRelaysSite    = 48
 	viewLinkDailyPerLink  = int64(2) << 30
 	viewLinkDailySite     = int64(20) << 30
 )
 
-var viewLinkIDPattern = regexp.MustCompile(`^l[a-z2-7]{26}$`)
+var viewAddressIDPattern = regexp.MustCompile(`^a[a-z2-7]{26}$`)
 
-type viewLink struct {
+// errViewAddressStore is a store that cannot be used: an unconverted legacy
+// format, an unreadable file, or one an operator removed or loosened.
+var errViewAddressStore = errors.New("view address store unavailable")
+
+type viewAddress struct {
 	ID      string    `json:"id"`
+	Entry   string    `json:"entry"`
 	Token   string    `json:"token"`
 	Owner   Identity  `json:"owner"`
 	ViewID  string    `json:"view_id"`
 	Title   string    `json:"title"`
 	Created time.Time `json:"created"`
-	Expires time.Time `json:"expires"`
+	// PublicUntil is zero while private. Past, the publication has expired:
+	// the address stays and anonymous reads end.
+	PublicUntil time.Time `json:"public_until,omitzero"`
 }
 
-// viewLinkTraffic is the in-memory relay accounting of public link reads.
+func (v viewAddress) public(now time.Time) bool {
+	return !v.PublicUntil.IsZero() && now.Before(v.PublicUntil)
+}
+
+// viewLinkTraffic is the in-memory relay accounting of public reads.
 type viewLinkTraffic struct {
 	day      string
 	bytes    map[string]int64
@@ -95,15 +123,23 @@ func validViewTitle(title string) bool {
 	return true
 }
 
-func validViewLink(l viewLink) bool {
-	if !viewLinkIDPattern.MatchString(l.ID) || !validViewLinkToken(l.Token) || !viewIDPattern.MatchString(l.ViewID) || !validViewTitle(l.Title) || l.Created.IsZero() || !l.Expires.After(l.Created) {
+func validViewAddress(v viewAddress) bool {
+	if !viewAddressIDPattern.MatchString(v.ID) || !validViewLinkToken(v.Entry) || !validViewLinkToken(v.Token) || v.Entry == v.Token || !viewIDPattern.MatchString(v.ViewID) || !validViewTitle(v.Title) || v.Created.IsZero() || !v.PublicUntil.IsZero() && !v.PublicUntil.After(v.Created) {
 		return false
 	}
-	route, ok := brokerIdentity(l.Owner.Subject, BrokerReply{Route: &BrokerRoute{UID: uint32(l.Owner.UID), Username: l.Owner.Username, Socket: l.Owner.Socket}, Epoch: 1, Generation: 1})
-	return ok && l.Owner.Provider == "github" && l.Owner.UID > 0 && route == l.Owner && canonicalSubject(l.Owner.Subject)
+	route, ok := brokerIdentity(v.Owner.Subject, BrokerReply{Route: &BrokerRoute{UID: uint32(v.Owner.UID), Username: v.Owner.Username, Socket: v.Owner.Socket}, Epoch: 1, Generation: 1})
+	return ok && v.Owner.Provider == "github" && v.Owner.UID > 0 && route == v.Owner && canonicalSubject(v.Owner.Subject)
 }
 
-func (a *Auth) viewLinksEnabled() bool {
+// viewAddressesEnabled: reservations need the view namespace for their
+// content host; private opens work whether or not the site shares.
+func (a *Auth) viewAddressesEnabled() bool {
+	return a.cfg.ViewOrigin != ""
+}
+
+// viewSharingEnabled is the operator's switch for public access. Off, it
+// pauses every publication without changing it.
+func (a *Auth) viewSharingEnabled() bool {
 	return a.cfg.ViewOrigin != "" && a.cfg.ViewLinkMaxDays > 0
 }
 
@@ -114,22 +150,28 @@ func (a *Auth) viewLinkFile() string {
 	return filepath.Join(filepath.Dir(a.sessionFile), viewLinkStoreName)
 }
 
-// viewLinkHost is the link's own host in the view namespace. The label is a
-// hash of the link ID, never of the token: hostnames leak through DNS and SNI.
+// viewLinkHost is the address's own content host in the view namespace. The
+// label is a hash of the reservation ID, never of a secret: hostnames leak
+// through DNS and SNI.
 func (a *Auth) viewLinkHost(id string) string {
 	h := sha256.Sum256([]byte("view-link\x00" + id))
 	label := strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(h[:]))
 	return strings.Replace(a.viewTemplate(), "*", label, 1)
 }
 
-func (a *Auth) viewLinkURL(l viewLink) string {
-	return "https://" + a.viewLinkHost(l.ID) + "/" + l.Token + "/"
+func (a *Auth) viewContentURL(v viewAddress) string {
+	return "https://" + a.viewLinkHost(v.ID) + "/" + v.Token + "/"
 }
 
-// publishViewLinks replaces the in-memory store and its host index. Call
-// under mu.
-func (a *Auth) publishViewLinks(next map[string]viewLink) {
-	a.viewLinks = next
+// viewEntryURL is the stable address opened and copied for the view.
+func (a *Auth) viewEntryURL(v viewAddress) string {
+	return a.cfg.Origin + viewEntryPrefix + v.Entry
+}
+
+// publishViewAddresses replaces the in-memory store and its host index.
+// Call under mu.
+func (a *Auth) publishViewAddresses(next map[string]viewAddress) {
+	a.viewAddresses = next
 	a.viewLinkHosts = make(map[string]string, len(next))
 	if a.cfg.ViewOrigin == "" {
 		return
@@ -139,156 +181,229 @@ func (a *Auth) publishViewLinks(next map[string]viewLink) {
 	}
 }
 
-// loadViewLinks reads the store once at startup. An unusable store is
-// discarded: losing it revokes every link, which is the safe direction.
+// viewAddressStoreFailed disables every address read and write until a
+// restart finds a usable store. The file is never replaced, so nothing an
+// operator could still repair is lost. Call under mu.
+func (a *Auth) viewAddressStoreFailed(reason string) {
+	if a.viewAddressFault == "" {
+		a.log.Warn("view_address_store_unavailable", "outcome", "rejected", "reason", reason)
+	}
+	a.viewAddressFault = reason
+	a.publishViewAddresses(map[string]viewAddress{})
+}
+
+type viewAddressState struct {
+	Version   int           `json:"version"`
+	Addresses []viewAddress `json:"addresses"`
+}
+
+// decodeViewAddressStore reads the store's bytes, or names why it is not one.
+func decodeViewAddressStore(data []byte) ([]viewAddress, string) {
+	var head struct {
+		Version int `json:"version"`
+	}
+	if json.Unmarshal(data, &head) == nil && head.Version == 1 {
+		return nil, "legacy_view_link_store"
+	}
+	d := json.NewDecoder(bytes.NewReader(data))
+	d.DisallowUnknownFields()
+	var state viewAddressState
+	if d.Decode(&state) != nil || state.Version != viewLinkStoreVersion || state.Addresses == nil || d.Decode(new(any)) != io.EOF || len(state.Addresses) > viewAddressesMax {
+		return nil, "invalid_view_address_store"
+	}
+	ids, entries, tokens, views := map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}
+	for _, v := range state.Addresses {
+		key := v.Owner.Provider + "\x00" + v.Owner.Subject + "\x00" + v.ViewID
+		if !validViewAddress(v) || ids[v.ID] || entries[v.Entry] || tokens[v.Token] || views[key] {
+			return nil, "invalid_view_address_store"
+		}
+		ids[v.ID], entries[v.Entry], tokens[v.Token], views[key] = true, true, true, true
+	}
+	return state.Addresses, ""
+}
+
+func readViewAddressFile(path string) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !privateSessionFile(info) {
+		return nil, errViewAddressStore
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, viewLinkStoreBytes+1))
+	if err == nil && len(data) > viewLinkStoreBytes {
+		err = errViewAddressStore
+	}
+	return data, err
+}
+
+// loadViewLinks reads the store once at startup. An absent store is empty;
+// an unusable or unconverted one disables addresses, never the rest of the
+// app, and is never silently reset.
 func (a *Auth) loadViewLinks() {
-	a.publishViewLinks(map[string]viewLink{})
+	a.viewAddressFault = ""
+	a.publishViewAddresses(map[string]viewAddress{})
 	path := a.viewLinkFile()
 	if path == "" {
 		return
 	}
-	info, err := os.Lstat(path)
+	data, err := readViewAddressFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return
 	}
-	discard := func() {
-		a.log.Warn("view_link_store_discarded", "outcome", "rejected", "reason", "invalid_view_link_store")
-	}
-	if err != nil || !privateSessionFile(info) {
-		discard()
-		return
-	}
-	f, err := os.Open(path)
 	if err != nil {
-		discard()
+		a.viewAddressStoreFailed("invalid_view_address_store")
 		return
 	}
-	defer f.Close()
-	d := json.NewDecoder(io.LimitReader(f, viewLinkStoreBytes))
-	d.DisallowUnknownFields()
-	var state struct {
-		Version int        `json:"version"`
-		Links   []viewLink `json:"links"`
-	}
-	if d.Decode(&state) != nil || state.Version != viewLinkStoreVersion || state.Links == nil || d.Decode(new(any)) != io.EOF || len(state.Links) > viewLinksMax {
-		discard()
+	list, reason := decodeViewAddressStore(data)
+	if reason != "" {
+		a.viewAddressStoreFailed(reason)
 		return
 	}
-	now := a.now()
-	next := make(map[string]viewLink, len(state.Links))
-	for _, l := range state.Links {
-		if !validViewLink(l) || next[l.ID].ID != "" {
-			discard()
-			return
-		}
-		if now.Before(l.Expires) {
-			next[l.ID] = l
-		}
+	next := make(map[string]viewAddress, len(list))
+	for _, v := range list {
+		next[v.ID] = v
 	}
-	a.publishViewLinks(next)
+	a.publishViewAddresses(next)
 }
 
-// viewLinkStoreHealthy is false once an operator removed or loosened the
-// store: every link then stops, as a removed session store ends sessions.
-func (a *Auth) viewLinkStoreHealthy() bool {
+// viewAddressStoreUsable is false once the store failed, or an operator
+// removed or loosened it while it held reservations. Call under mu.
+func (a *Auth) viewAddressStoreUsable() bool {
+	if a.viewAddressFault != "" {
+		return false
+	}
 	path := a.viewLinkFile()
-	if path == "" || len(a.viewLinks) == 0 {
+	if path == "" || len(a.viewAddresses) == 0 {
 		return true
 	}
 	info, err := os.Lstat(path)
-	return err == nil && privateSessionFile(info)
+	if err != nil || !privateSessionFile(info) {
+		a.viewAddressStoreFailed("invalid_view_address_store")
+		return false
+	}
+	return true
 }
 
-// changeViewLinks applies change to a copy, drops expired links, writes the
-// store durably and publishes it. Call under mu.
-func (a *Auth) changeViewLinks(change func(map[string]viewLink)) error {
-	if !a.viewLinkStoreHealthy() {
-		a.publishViewLinks(map[string]viewLink{})
+func writeViewAddressFile(path string, list []viewAddress) error {
+	// An empty store is an empty list: the reader refuses a null one.
+	if list == nil {
+		list = []viewAddress{}
 	}
-	now := a.now()
-	next := make(map[string]viewLink, len(a.viewLinks))
-	for id, l := range a.viewLinks {
-		if now.Before(l.Expires) {
-			next[id] = l
-		}
-	}
-	change(next)
-	if path := a.viewLinkFile(); path != "" {
-		list := make([]viewLink, 0, len(next))
-		for _, l := range next {
-			list = append(list, l)
-		}
-		sort.Slice(list, func(i, j int) bool { return list[i].ID < list[j].ID })
-		data, err := json.Marshal(struct {
-			Version int        `json:"version"`
-			Links   []viewLink `json:"links"`
-		}{viewLinkStoreVersion, list})
-		if err != nil {
-			return err
-		}
-		if len(data) > viewLinkStoreBytes {
-			return errors.New("view link store capacity exceeded")
-		}
-		f, err := os.CreateTemp(filepath.Dir(path), ".view-links-*")
-		if err != nil {
-			return err
-		}
-		defer os.Remove(f.Name())
-		if err = f.Chmod(0600); err == nil {
-			_, err = f.Write(data)
-		}
-		if err == nil {
-			err = f.Sync()
-		}
-		if closeErr := f.Close(); err == nil {
-			err = closeErr
-		}
-		if err != nil {
-			return err
-		}
-		if err = os.Rename(f.Name(), path); err != nil {
-			return err
-		}
-		a.publishViewLinks(next)
-		dir, err := os.Open(filepath.Dir(path))
-		if err != nil {
-			return err
-		}
-		err = dir.Sync()
-		_ = dir.Close()
+	sort.Slice(list, func(i, j int) bool { return list[i].ID < list[j].ID })
+	data, err := json.Marshal(viewAddressState{viewLinkStoreVersion, list})
+	if err != nil {
 		return err
 	}
-	a.publishViewLinks(next)
+	if len(data) > viewLinkStoreBytes {
+		return errors.New("view address store capacity exceeded")
+	}
+	f, err := os.CreateTemp(filepath.Dir(path), ".view-links-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	if err = f.Chmod(0600); err == nil {
+		_, err = f.Write(data)
+	}
+	if err == nil {
+		err = f.Sync()
+	}
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), path)
+}
+
+// changeViewAddresses applies change to a copy, writes the store durably
+// and publishes it. change returns false to leave the store as it is. Call
+// under mu.
+func (a *Auth) changeViewAddresses(change func(map[string]viewAddress) bool) error {
+	if !a.viewAddressStoreUsable() {
+		return errViewAddressStore
+	}
+	next := maps.Clone(a.viewAddresses)
+	if !change(next) {
+		return nil
+	}
+	if path := a.viewLinkFile(); path != "" {
+		if err := writeViewAddressFile(path, slices.Collect(maps.Values(next))); err != nil {
+			return err
+		}
+		a.publishViewAddresses(next)
+		return syncDir(filepath.Dir(path))
+	}
+	a.publishViewAddresses(next)
 	return nil
 }
 
-// removeViewLinksLocked removes every link of subject. Call under mu.
+// StateDir is the installed gateway's private state directory.
+const StateDir = "/var/lib/open-habitat-gateway"
+
+// ResetLegacyViewLinks is the upgrade's one-time transition from ADR 0033's
+// movable links, run as the gateway's account while the gateway is stopped:
+// a version-1 store becomes the new empty format, so every old shared link
+// stops working. A current store and an absent one stay as they are; an
+// unusable one is left for the operator, since recovering it as empty would
+// silently delete addresses. Ordinary startup never resets anything.
+func ResetLegacyViewLinks(dir string) (string, error) {
+	path := filepath.Join(dir, viewLinkStoreName)
+	data, err := readViewAddressFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return "absent", nil
+	}
+	if err != nil {
+		return "unusable_left_unchanged", nil
+	}
+	switch _, reason := decodeViewAddressStore(data); reason {
+	case "":
+		return "current", nil
+	case "legacy_view_link_store":
+	default:
+		return "unusable_left_unchanged", nil
+	}
+	if err := writeViewAddressFile(path, []viewAddress{}); err != nil {
+		return "", err
+	}
+	if err := syncDir(dir); err != nil {
+		return "", err
+	}
+	return "reset", nil
+}
+
+// removeViewLinksLocked permanently deletes every address of subject: a
+// revoked or withdrawn person's old recipients stay locked out even if the
+// person is admitted again. An unusable store cannot be changed, so the
+// deletion fails rather than leave addresses an operator's repair would
+// revive. Call under mu.
 func (a *Auth) removeViewLinksLocked(subject string) (int, error) {
 	removed := 0
-	for _, l := range a.viewLinks {
-		if l.Owner.Subject == subject {
-			removed++
-		}
-	}
-	if removed == 0 {
-		return 0, nil
-	}
-	err := a.changeViewLinks(func(next map[string]viewLink) {
-		for id, l := range next {
-			if l.Owner.Subject == subject {
+	err := a.changeViewAddresses(func(next map[string]viewAddress) bool {
+		for id, v := range next {
+			if v.Owner.Subject == subject {
 				delete(next, id)
+				removed++
 			}
 		}
+		return removed > 0
 	})
 	return removed, err
 }
 
-func (a *Auth) newViewLinkID() (string, error) {
+func (a *Auth) newViewAddressID() (string, error) {
 	b := make([]byte, 17)
 	if _, err := io.ReadFull(a.random, b); err != nil {
 		return "", err
 	}
-	return "l" + strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b))[:26], nil
+	return "a" + strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b))[:26], nil
 }
 
 // readViewSummary asks the owner's daemon for one export's summary. It
@@ -331,33 +446,50 @@ func (a *Auth) readViewSummary(ctx context.Context, target Identity, viewID stri
 	return body.View.Title, 200
 }
 
-type viewLinkReply struct {
-	LinkID    string `json:"link_id"`
-	ViewID    string `json:"view_id"`
-	Title     string `json:"title"`
-	URL       string `json:"url"`
-	CreatedAt string `json:"created_at"`
-	ExpiresAt string `json:"expires_at"`
+type viewAddressReply struct {
+	AddressID   string `json:"address_id"`
+	ViewID      string `json:"view_id"`
+	Title       string `json:"title"`
+	URL         string `json:"url"`
+	ContentURL  string `json:"content_url"`
+	State       string `json:"state"`
+	CreatedAt   string `json:"created_at"`
+	PublicUntil string `json:"public_until,omitempty"`
 }
 
-func (a *Auth) viewLinkReply(l viewLink) viewLinkReply {
-	return viewLinkReply{l.ID, l.ViewID, l.Title, a.viewLinkURL(l), l.Created.UTC().Format(time.RFC3339), l.Expires.UTC().Format(time.RFC3339)}
+func (a *Auth) viewAddressReply(v viewAddress) viewAddressReply {
+	reply := viewAddressReply{AddressID: v.ID, ViewID: v.ViewID, Title: v.Title, URL: a.viewEntryURL(v), ContentURL: a.viewContentURL(v), State: "private", CreatedAt: v.Created.UTC().Format(time.RFC3339)}
+	if !v.PublicUntil.IsZero() {
+		reply.State, reply.PublicUntil = "expired", v.PublicUntil.UTC().Format(time.RFC3339)
+		if v.public(a.now()) {
+			reply.State = "public"
+		}
+	}
+	return reply
 }
 
-func sameOwner(l viewLink, id Identity) bool {
-	return l.Owner.Provider == id.Provider && l.Owner.Subject == id.Subject
+func sameOwner(v viewAddress, id Identity) bool {
+	return v.Owner.Provider == id.Provider && v.Owner.Subject == id.Subject
 }
 
-// viewLinksHTTP is the person's own link list and its writes on the app
-// origin. Where links are off, the list is an empty 204 and writes are 404.
+func (a *Auth) viewMaxDays() int {
+	if !a.viewSharingEnabled() {
+		return 0
+	}
+	return a.cfg.ViewLinkMaxDays
+}
+
+// viewLinksHTTP is the person's own addresses and their writes on the app
+// origin. Without the view namespace the list is an empty 204 and writes are
+// 404; with sharing off, reserving, making private and deleting still work.
 func (a *Auth) viewLinksHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	path := r.URL.Path
-	if !a.exact(r, path) || path != viewLinksPath && path != viewLinkChangePath && path != viewLinkRevokePath {
+	if !a.exact(r, path) || path != viewAddressesPath && path != viewAddressPublishPath && path != viewAddressDurationPath && path != viewAddressPrivatePath && path != viewAddressDeletePath {
 		safe(w, 400, "invalid_request")
 		return
 	}
-	if path == viewLinksPath && r.Method == http.MethodGet {
+	if path == viewAddressesPath && r.Method == http.MethodGet {
 		if r.ContentLength > 0 {
 			safe(w, 400, "invalid_request")
 			return
@@ -367,28 +499,34 @@ func (a *Auth) viewLinksHTTP(w http.ResponseWriter, r *http.Request) {
 			safe(w, 401, "authentication_required")
 			return
 		}
-		if !a.viewLinksEnabled() {
+		if !a.viewAddressesEnabled() {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		a.mu.Lock()
-		if !a.viewLinkStoreHealthy() {
-			a.publishViewLinks(map[string]viewLink{})
-		}
-		now := a.now()
-		links := []viewLinkReply{}
-		var mine []viewLink
-		for _, l := range a.viewLinks {
-			if sameOwner(l, s.identity) && now.Before(l.Expires) {
-				mine = append(mine, l)
+		usable := a.viewAddressStoreUsable()
+		var mine []viewAddress
+		for _, v := range a.viewAddresses {
+			if sameOwner(v, s.identity) {
+				mine = append(mine, v)
 			}
 		}
 		a.mu.Unlock()
-		sort.Slice(mine, func(i, j int) bool { return mine[i].Created.After(mine[j].Created) })
-		for _, l := range mine {
-			links = append(links, a.viewLinkReply(l))
+		if !usable {
+			safe(w, 503, "view_addresses_unavailable")
+			return
 		}
-		writeJSON(w, map[string]any{"schema_version": 1, "max_days": a.cfg.ViewLinkMaxDays, "links": links})
+		sort.Slice(mine, func(i, j int) bool {
+			if !mine[i].Created.Equal(mine[j].Created) {
+				return mine[i].Created.After(mine[j].Created)
+			}
+			return mine[i].ID < mine[j].ID
+		})
+		list := []viewAddressReply{}
+		for _, v := range mine {
+			list = append(list, a.viewAddressReply(v))
+		}
+		writeJSON(w, map[string]any{"schema_version": 1, "max_days": a.viewMaxDays(), "addresses": list})
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -399,62 +537,81 @@ func (a *Auth) viewLinksHTTP(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !a.viewLinksEnabled() {
-		safe(w, 404, "view_links_unavailable")
+	if !a.viewAddressesEnabled() {
+		safe(w, 404, "view_addresses_unavailable")
+		return
+	}
+	if path == viewAddressesPath {
+		var body struct {
+			ViewID string `json:"view_id"`
+		}
+		if !jsonBody(w, r, &body) || !viewIDPattern.MatchString(body.ViewID) {
+			safe(w, 400, "invalid_request")
+			return
+		}
+		a.ensureViewAddress(w, r, s, body.ViewID)
+		return
+	}
+	var body struct {
+		AddressID string `json:"address_id"`
+		Days      *int   `json:"days"`
+	}
+	withDays := path == viewAddressPublishPath || path == viewAddressDurationPath
+	if !jsonBody(w, r, &body) || !viewAddressIDPattern.MatchString(body.AddressID) || withDays != (body.Days != nil) || withDays && (*body.Days < 1 || *body.Days > viewLinkMaxDays) {
+		safe(w, 400, "invalid_request")
+		return
+	}
+	if withDays && !a.viewSharingEnabled() {
+		safe(w, 409, "view_sharing_off")
+		return
+	}
+	if withDays && *body.Days > a.cfg.ViewLinkMaxDays {
+		safe(w, 400, "invalid_request")
 		return
 	}
 	switch path {
-	case viewLinksPath:
-		var body struct {
-			ViewID string `json:"view_id"`
-			Days   int    `json:"days"`
-		}
-		if !jsonBody(w, r, &body) || !viewIDPattern.MatchString(body.ViewID) || body.Days < 1 || body.Days > a.cfg.ViewLinkMaxDays {
-			safe(w, 400, "invalid_request")
-			return
-		}
-		a.createViewLink(w, r, s, body.ViewID, body.Days)
-	case viewLinkChangePath:
-		var body struct {
-			LinkID     string `json:"link_id"`
-			Days       *int   `json:"days"`
-			ViewID     string `json:"view_id"`
-			NewAddress bool   `json:"new_address"`
-		}
-		if !jsonBody(w, r, &body) || !viewLinkIDPattern.MatchString(body.LinkID) ||
-			boolInt(body.Days != nil)+boolInt(body.ViewID != "")+boolInt(body.NewAddress) != 1 ||
-			body.Days != nil && (*body.Days < 1 || *body.Days > a.cfg.ViewLinkMaxDays) ||
-			body.ViewID != "" && !viewIDPattern.MatchString(body.ViewID) {
-			safe(w, 400, "invalid_request")
-			return
-		}
-		a.changeViewLink(w, r, s, body.LinkID, body.Days, body.ViewID, body.NewAddress)
-	case viewLinkRevokePath:
-		var body struct {
-			LinkID string `json:"link_id"`
-		}
-		if !jsonBody(w, r, &body) || !viewLinkIDPattern.MatchString(body.LinkID) {
-			safe(w, 400, "invalid_request")
-			return
-		}
-		a.revokeViewLink(w, body.LinkID, func(l viewLink) bool { return sameOwner(l, s.identity) }, "owner")
+	case viewAddressPublishPath:
+		a.publishViewAddress(w, r, s, body.AddressID, *body.Days)
+	case viewAddressDurationPath:
+		a.changeViewAddress(w, s, body.AddressID, "duration", func(v *viewAddress, now time.Time) string {
+			if !v.public(now) {
+				return "view_address_not_public"
+			}
+			v.PublicUntil = now.Add(time.Duration(*body.Days) * 24 * time.Hour)
+			return ""
+		})
+	case viewAddressPrivatePath:
+		a.changeViewAddress(w, s, body.AddressID, "private", func(v *viewAddress, _ time.Time) string {
+			v.PublicUntil = time.Time{}
+			return ""
+		})
+	case viewAddressDeletePath:
+		a.deleteViewAddress(w, &s, body.AddressID, func(v viewAddress) bool { return sameOwner(v, s.identity) }, "owner")
 	}
 }
 
-func (a *Auth) createViewLink(w http.ResponseWriter, r *http.Request, s session, viewID string, days int) {
-	a.mu.Lock()
-	mine, total := 0, 0
-	for _, l := range a.viewLinks {
-		if a.now().Before(l.Expires) {
-			total++
-			if sameOwner(l, s.identity) {
-				mine++
-			}
+func (a *Auth) ownedAddressLocked(s session, viewID string) (viewAddress, bool) {
+	for _, v := range a.viewAddresses {
+		if sameOwner(v, s.identity) && v.ViewID == viewID {
+			return v, true
 		}
 	}
+	return viewAddress{}, false
+}
+
+// ensureViewAddress answers the view's one reservation, creating it private
+// on first need. Concurrent first needs agree on one address.
+func (a *Auth) ensureViewAddress(w http.ResponseWriter, r *http.Request, s session, viewID string) {
+	a.mu.Lock()
+	usable := a.viewAddressStoreUsable()
+	existing, found := a.ownedAddressLocked(s, viewID)
 	a.mu.Unlock()
-	if mine >= viewLinksPerPerson || total >= viewLinksMax {
-		safe(w, 429, "view_links_limited")
+	if !usable {
+		safe(w, 503, "view_addresses_unavailable")
+		return
+	}
+	if found {
+		writeJSON(w, map[string]any{"schema_version": 1, "address": a.viewAddressReply(existing)})
 		return
 	}
 	title, status := a.readViewSummary(r.Context(), s.identity, viewID)
@@ -466,14 +623,14 @@ func (a *Auth) createViewLink(w http.ResponseWriter, r *http.Request, s session,
 		safe(w, 503, "view_unavailable")
 		return
 	}
-	id, err := a.newViewLinkID()
+	id, err := a.newViewAddressID()
+	entry, entryErr := a.secret()
 	token, tokenErr := a.secret()
-	if err != nil || tokenErr != nil {
-		safe(w, 503, "view_links_unavailable")
+	if err != nil || entryErr != nil || tokenErr != nil {
+		safe(w, 503, "view_addresses_unavailable")
 		return
 	}
-	now := a.now()
-	l := viewLink{ID: id, Token: token, Owner: s.identity, ViewID: viewID, Title: title, Created: now, Expires: now.Add(time.Duration(days) * 24 * time.Hour)}
+	v := viewAddress{ID: id, Entry: entry, Token: token, Owner: s.identity, ViewID: viewID, Title: title, Created: a.now()}
 	a.mu.Lock()
 	// The person may have been revoked while the daemon answered.
 	if _, ok := a.authenticatedLocked(s); !ok {
@@ -482,30 +639,41 @@ func (a *Auth) createViewLink(w http.ResponseWriter, r *http.Request, s session,
 		return
 	}
 	limited := false
-	err = a.changeViewLinks(func(next map[string]viewLink) {
+	err = a.changeViewAddresses(func(next map[string]viewAddress) bool {
 		mine := 0
 		for _, o := range next {
 			if sameOwner(o, s.identity) {
+				if o.ViewID == viewID {
+					v = o
+					return false
+				}
 				mine++
 			}
 		}
-		if mine >= viewLinksPerPerson || len(next) >= viewLinksMax {
+		if mine >= viewAddressesPerPerson || len(next) >= viewAddressesMax {
 			limited = true
-			return
+			return false
 		}
-		next[id] = l
+		next[id] = v
+		return true
 	})
 	a.mu.Unlock()
-	if limited {
-		safe(w, 429, "view_links_limited")
+	if errors.Is(err, errViewAddressStore) {
+		safe(w, 503, "view_addresses_unavailable")
 		return
 	}
 	if err != nil {
-		safe(w, 503, "view_links_unavailable")
+		safe(w, 503, "view_addresses_unavailable")
 		return
 	}
-	a.log.Info("view_link", "outcome", "accepted", "reason", "created", "link", id, "user", s.identity.Username)
-	writeJSON(w, map[string]any{"schema_version": 1, "link": a.viewLinkReply(l)})
+	if limited {
+		safe(w, 429, "view_addresses_limited")
+		return
+	}
+	if v.ID == id {
+		a.log.Info("view_address", "outcome", "accepted", "reason", "reserved", "address", id, "user", s.identity.Username)
+	}
+	writeJSON(w, map[string]any{"schema_version": 1, "address": a.viewAddressReply(v)})
 }
 
 // authenticatedLocked reports whether s is still a live, unexpired session
@@ -524,104 +692,150 @@ func (a *Auth) authenticatedLocked(s session) (session, bool) {
 	return session{}, false
 }
 
-func (a *Auth) changeViewLink(w http.ResponseWriter, r *http.Request, s session, id string, days *int, viewID string, newAddress bool) {
+// publishViewAddress makes the address public for days from now, whether it
+// was private, expired or public. Its secrets stay: earlier copies revive.
+func (a *Auth) publishViewAddress(w http.ResponseWriter, r *http.Request, s session, id string, days int) {
 	a.mu.Lock()
-	l, ok := a.viewLinks[id]
+	usable := a.viewAddressStoreUsable()
+	v, ok := a.viewAddresses[id]
 	a.mu.Unlock()
-	if !ok || !sameOwner(l, s.identity) || !a.now().Before(l.Expires) {
-		safe(w, 404, "view_link_not_found")
+	if !usable {
+		safe(w, 503, "view_addresses_unavailable")
 		return
 	}
-	title := ""
-	if viewID != "" {
-		var status int
-		title, status = a.readViewSummary(r.Context(), s.identity, viewID)
-		if status == 404 {
-			safe(w, 404, "view_not_found")
-			return
-		}
-		if status != 200 {
-			safe(w, 503, "view_unavailable")
-			return
-		}
+	if !ok || !sameOwner(v, s.identity) {
+		safe(w, 404, "view_address_not_found")
+		return
 	}
-	token := ""
-	if newAddress {
-		var err error
-		if token, err = a.secret(); err != nil {
-			safe(w, 503, "view_links_unavailable")
-			return
-		}
+	// A missing export is never published, nor replaced by another.
+	if _, status := a.readViewSummary(r.Context(), s.identity, v.ViewID); status == 404 {
+		safe(w, 404, "view_not_found")
+		return
+	} else if status != 200 {
+		safe(w, 503, "view_unavailable")
+		return
 	}
-	var changed viewLink
-	found := false
 	a.mu.Lock()
 	if _, live := a.authenticatedLocked(s); !live {
 		a.mu.Unlock()
 		safe(w, 401, "authentication_required")
 		return
 	}
-	err := a.changeViewLinks(func(next map[string]viewLink) {
-		l, ok := next[id]
-		if !ok || !sameOwner(l, s.identity) {
-			return
+	var changed viewAddress
+	refusal := ""
+	err := a.changeViewAddresses(func(next map[string]viewAddress) bool {
+		v, ok := next[id]
+		if !ok || !sameOwner(v, s.identity) {
+			refusal = "view_address_not_found"
+			return false
 		}
-		switch {
-		case days != nil:
-			l.Expires = a.now().Add(time.Duration(*days) * 24 * time.Hour)
-		case viewID != "":
-			l.ViewID, l.Title = viewID, title
-		default:
-			l.Token = token
+		now := a.now()
+		mine, total := 0, 0
+		for _, o := range next {
+			if o.ID != id && o.public(now) {
+				total++
+				if sameOwner(o, s.identity) {
+					mine++
+				}
+			}
 		}
-		next[id], changed, found = l, l, true
+		if mine >= viewPublicationsPerPerson || total >= viewPublicationsMax {
+			refusal = "view_publications_limited"
+			return false
+		}
+		v.PublicUntil = now.Add(time.Duration(days) * 24 * time.Hour)
+		next[id], changed = v, v
+		return true
 	})
 	a.mu.Unlock()
-	if err != nil {
-		safe(w, 503, "view_links_unavailable")
-		return
+	switch {
+	case err != nil:
+		safe(w, 503, "view_addresses_unavailable")
+	case refusal == "view_address_not_found":
+		safe(w, 404, refusal)
+	case refusal != "":
+		safe(w, 429, refusal)
+	default:
+		a.log.Info("view_address", "outcome", "accepted", "reason", "published", "address", id, "user", s.identity.Username)
+		writeJSON(w, map[string]any{"schema_version": 1, "address": a.viewAddressReply(changed)})
 	}
-	if !found {
-		safe(w, 404, "view_link_not_found")
-		return
-	}
-	reason := "extended"
-	if viewID != "" {
-		reason = "repointed"
-	} else if newAddress {
-		reason = "readdressed"
-	}
-	a.log.Info("view_link", "outcome", "accepted", "reason", reason, "link", id, "user", s.identity.Username)
-	writeJSON(w, map[string]any{"schema_version": 1, "link": a.viewLinkReply(changed)})
 }
 
-func (a *Auth) revokeViewLink(w http.ResponseWriter, id string, allowed func(viewLink) bool, actor string) {
+// changeViewAddress applies one owner change that needs no daemon: a new
+// duration for a current publication, or making the address private.
+func (a *Auth) changeViewAddress(w http.ResponseWriter, s session, id, reason string, change func(*viewAddress, time.Time) string) {
+	var changed viewAddress
+	refusal := "view_address_not_found"
+	a.mu.Lock()
+	// The session may have ended while the body was read.
+	if _, live := a.authenticatedLocked(s); !live {
+		a.mu.Unlock()
+		safe(w, 401, "authentication_required")
+		return
+	}
+	err := a.changeViewAddresses(func(next map[string]viewAddress) bool {
+		v, ok := next[id]
+		if !ok || !sameOwner(v, s.identity) {
+			return false
+		}
+		if refusal = change(&v, a.now()); refusal != "" {
+			return false
+		}
+		next[id], changed = v, v
+		return true
+	})
+	a.mu.Unlock()
+	switch {
+	case err != nil:
+		safe(w, 503, "view_addresses_unavailable")
+	case refusal == "view_address_not_found":
+		safe(w, 404, refusal)
+	case refusal != "":
+		safe(w, 409, refusal)
+	default:
+		a.log.Info("view_address", "outcome", "accepted", "reason", reason, "address", id, "user", s.identity.Username)
+		writeJSON(w, map[string]any{"schema_version": 1, "address": a.viewAddressReply(changed)})
+	}
+}
+
+// deleteViewAddress ends both the entry and the content address for good.
+// A later reservation of the same view gets fresh secrets and starts private.
+func (a *Auth) deleteViewAddress(w http.ResponseWriter, owner *session, id string, allowed func(viewAddress) bool, actor string) {
 	found := false
 	a.mu.Lock()
-	err := a.changeViewLinks(func(next map[string]viewLink) {
-		if l, ok := next[id]; ok && allowed(l) {
+	if owner != nil {
+		if _, live := a.authenticatedLocked(*owner); !live {
+			a.mu.Unlock()
+			safe(w, 401, "authentication_required")
+			return
+		}
+	}
+	err := a.changeViewAddresses(func(next map[string]viewAddress) bool {
+		if v, ok := next[id]; ok && allowed(v) {
 			delete(next, id)
 			found = true
 		}
+		return found
 	})
 	a.mu.Unlock()
 	if err != nil {
-		safe(w, 503, "view_links_unavailable")
+		safe(w, 503, "view_addresses_unavailable")
 		return
 	}
 	if !found {
-		safe(w, 404, "view_link_not_found")
+		safe(w, 404, "view_address_not_found")
 		return
 	}
-	a.log.Info("view_link", "outcome", "accepted", "reason", "revoked", "link", id, "actor", actor)
+	a.log.Info("view_address", "outcome", "accepted", "reason", "deleted", "address", id, "actor", actor)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// adminViewLinksHTTP is the administrator's abuse response: link metadata,
-// never a URL or token, and revocation of any link.
+// adminViewLinksHTTP is the administrator's abuse response: current
+// publications' metadata, never an address, secret or private reservation,
+// and permanent deletion of any address.
 func (a *Auth) adminViewLinksHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
-	if !a.exact(r, r.URL.Path) || r.URL.Path != adminViewLinksPath && r.URL.Path != adminViewLinksRevoke {
+	if !a.exact(r, r.URL.Path) || r.URL.Path != adminPublicationsPath && r.URL.Path != adminPublicationsDelete {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -638,37 +852,39 @@ func (a *Auth) adminViewLinksHTTP(w http.ResponseWriter, r *http.Request) {
 		safe(w, 403, "admin_required")
 		return
 	}
-	if r.URL.Path == adminViewLinksPath {
+	if r.URL.Path == adminPublicationsPath {
 		if r.Method != http.MethodGet || r.ContentLength > 0 {
 			safe(w, 405, "method_not_allowed")
 			return
 		}
 		type row struct {
-			LinkID    string `json:"link_id"`
-			OwnerID   string `json:"owner_id"`
-			Username  string `json:"username"`
-			Title     string `json:"title"`
-			CreatedAt string `json:"created_at"`
-			ExpiresAt string `json:"expires_at"`
+			AddressID   string `json:"address_id"`
+			OwnerID     string `json:"owner_id"`
+			Username    string `json:"username"`
+			Title       string `json:"title"`
+			CreatedAt   string `json:"created_at"`
+			PublicUntil string `json:"public_until"`
 		}
 		a.mu.Lock()
-		if !a.viewLinkStoreHealthy() {
-			a.publishViewLinks(map[string]viewLink{})
-		}
+		usable := a.viewAddressStoreUsable()
 		now := a.now()
-		var list []viewLink
-		for _, l := range a.viewLinks {
-			if now.Before(l.Expires) {
-				list = append(list, l)
+		var list []viewAddress
+		for _, v := range a.viewAddresses {
+			if v.public(now) {
+				list = append(list, v)
 			}
 		}
 		a.mu.Unlock()
+		if !usable {
+			safe(w, 503, "view_addresses_unavailable")
+			return
+		}
 		sort.Slice(list, func(i, j int) bool { return list[i].Created.After(list[j].Created) })
 		rows := []row{}
-		for _, l := range list {
-			rows = append(rows, row{l.ID, l.Owner.Subject, l.Owner.Username, l.Title, l.Created.UTC().Format(time.RFC3339), l.Expires.UTC().Format(time.RFC3339)})
+		for _, v := range list {
+			rows = append(rows, row{v.ID, v.Owner.Subject, v.Owner.Username, v.Title, v.Created.UTC().Format(time.RFC3339), v.PublicUntil.UTC().Format(time.RFC3339)})
 		}
-		writeJSON(w, map[string]any{"schema_version": 1, "enabled": a.viewLinksEnabled(), "links": rows})
+		writeJSON(w, map[string]any{"schema_version": 1, "enabled": a.viewSharingEnabled(), "publications": rows})
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -680,9 +896,9 @@ func (a *Auth) adminViewLinksHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		LinkID string `json:"link_id"`
+		AddressID string `json:"address_id"`
 	}
-	if !jsonBody(w, r, &body) || !viewLinkIDPattern.MatchString(body.LinkID) {
+	if !jsonBody(w, r, &body) || !viewAddressIDPattern.MatchString(body.AddressID) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -690,12 +906,15 @@ func (a *Auth) adminViewLinksHTTP(w http.ResponseWriter, r *http.Request) {
 		safe(w, 403, "admin_required")
 		return
 	}
-	a.revokeViewLink(w, body.LinkID, func(viewLink) bool { return true }, "administrator")
+	a.deleteViewAddress(w, nil, body.AddressID, func(viewAddress) bool { return true }, "administrator")
 }
 
-// viewLinkServe is the whole of a link host: robots.txt, and the linked
-// export's files under the link's token. Unknown, expired, revoked and
-// disabled links answer alike.
+// viewLinkServe is the whole of a content host: robots.txt, and the
+// export's files under the content secret while it is public. Publication,
+// expiry, the site's switch and the owner's denial are checked on every
+// request, so a cached redirect or a bookmarked content URL bypasses
+// nothing. Unknown, private, expired, deleted and disabled addresses answer
+// alike.
 func (a *Auth) viewLinkServe(w http.ResponseWriter, r *http.Request, id string) {
 	w.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive")
 	if r.URL.Path == "/robots.txt" {
@@ -710,11 +929,9 @@ func (a *Auth) viewLinkServe(w http.ResponseWriter, r *http.Request, id string) 
 		return
 	}
 	a.mu.Lock()
-	if !a.viewLinkStoreHealthy() {
-		a.publishViewLinks(map[string]viewLink{})
-	}
-	l, ok := a.viewLinks[id]
-	valid := ok && a.viewLinksEnabled() && subtle.ConstantTimeCompare([]byte(token), []byte(l.Token)) == 1 && a.now().Before(l.Expires) && !a.deniedLocked(l.Owner.Subject)
+	usable := a.viewAddressStoreUsable()
+	l, ok := a.viewAddresses[id]
+	valid := usable && ok && a.viewSharingEnabled() && subtle.ConstantTimeCompare([]byte(token), []byte(l.Token)) == 1 && l.public(a.now()) && !a.deniedLocked(l.Owner.Subject)
 	a.mu.Unlock()
 	if !valid {
 		gone()

@@ -11,7 +11,7 @@ import {
   defaultExpiry,
   expiryChoices,
   formatExpiry,
-  type ViewLink,
+  type ViewAddress,
 } from "../app/viewLinks";
 import { liveText } from "../i18n";
 import { viewLinksText } from "../text/viewLinks";
@@ -61,47 +61,39 @@ export function CopyButton({
   );
 }
 
-type Busy = "create" | "extend" | "repoint" | "address" | "revoke";
+type Busy = "create" | "extend" | "revoke";
 
-/** Jaa linkillä (ADR 0033): the person's one place to create a link to a
- * view and to copy, extend, re-point, re-address or revoke it. The view's
- * title is agent text, shown as data. */
+/** Jaa linkillä: the person's one place to share a view publicly and to
+ * copy, extend or stop sharing it. The view keeps one address (ADR 0035):
+ * sharing again revives the same link. The view's title is agent text,
+ * shown as data. */
 export function ViewLinkDialog({
   isOpen,
   onClose,
   view,
   link,
   maxDays,
-  otherViews = [],
   onCreate,
   onExtend,
-  onRepoint,
-  onNewAddress,
   onRevoke,
 }: {
   isOpen: boolean;
   onClose: () => void;
   view: Pick<ViewSummary, "view_id" | "title" | "files" | "bytes">;
-  /** The link that shows this view now, if any. */
-  link?: ViewLink;
+  /** The view's address while it is public. */
+  link?: ViewAddress;
   maxDays: number;
-  /** The person's other views, for pointing the link elsewhere. */
-  otherViews?: readonly ViewSummary[];
   onCreate: (days: number) => Promise<unknown>;
   onExtend: (days: number) => Promise<unknown>;
-  onRepoint: (viewId: string) => Promise<unknown>;
-  onNewAddress: () => Promise<unknown>;
   onRevoke: () => Promise<unknown>;
 }) {
   const [days, setDays] = useState(defaultExpiry(maxDays));
-  const [target, setTarget] = useState("");
   const [busy, setBusy] = useState<Busy>();
   const [error, setError] = useState("");
   const [revoked, setRevoked] = useState(false);
   useEffect(() => {
     if (!isOpen) return;
     setDays(defaultExpiry(maxDays));
-    setTarget("");
     setError("");
     setRevoked(false);
   }, [isOpen, maxDays]);
@@ -112,7 +104,6 @@ export function ViewLinkDialog({
       () => {
         setBusy(undefined);
         if (kind === "revoke") setRevoked(true);
-        if (kind === "repoint") setTarget("");
       },
       (e: Error) => {
         setBusy(undefined);
@@ -134,7 +125,6 @@ export function ViewLinkDialog({
       onChange={(id) => setDays(Number(id))}
     />
   );
-  const others = otherViews.filter((v) => v.view_id !== view.view_id);
   return (
     <ModalOverlay
       isOpen={isOpen}
@@ -183,13 +173,13 @@ export function ViewLinkDialog({
                   data-testid="view-link-url"
                   aria-label={txt.link}
                   readOnly
-                  value={link.url}
+                  value={link.content_url}
                   onFocus={(e) => e.currentTarget.select()}
                 />
-                <CopyButton text={link.url} />
+                <CopyButton text={link.content_url} />
               </div>
               <p className="ah-view-offer-meta" data-testid="view-link-expiry">
-                {txt.validUntil(formatExpiry(link.expires_at))}.
+                {txt.validUntil(formatExpiry(link.public_until ?? ""))}.
               </p>
               <section className="ah-view-link-step" aria-label={txt.extend}>
                 <span className="ah-view-link-step-label">
@@ -203,47 +193,6 @@ export function ViewLinkDialog({
                   onPress={() => run("extend", () => onExtend(days))}
                 >
                   {txt.extend}
-                </ControlButton>
-              </section>
-              {others.length > 0 && (
-                <section className="ah-view-link-step" aria-label={txt.repoint}>
-                  <label className="ah-view-link-step-label">
-                    {txt.repointHint}
-                    <select
-                      data-testid="view-link-target"
-                      value={target}
-                      disabled={!!busy}
-                      onChange={(e) => setTarget(e.target.value)}
-                    >
-                      <option value="">{txt.chooseView}</option>
-                      {others.map((v) => (
-                        <option key={v.view_id} value={v.view_id}>
-                          {v.title} ({formatExpiry(v.created_at)})
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <ControlButton
-                    data-testid="view-link-repoint"
-                    size="row"
-                    isDisabled={!!busy || !target}
-                    onPress={() => run("repoint", () => onRepoint(target))}
-                  >
-                    {txt.repoint}
-                  </ControlButton>
-                </section>
-              )}
-              <section className="ah-view-link-step" aria-label={txt.readdress}>
-                <span className="ah-view-link-step-label">
-                  {txt.readdressHint}
-                </span>
-                <ControlButton
-                  data-testid="view-link-new-address"
-                  size="row"
-                  isDisabled={!!busy}
-                  onPress={() => run("address", onNewAddress)}
-                >
-                  {txt.readdress}
                 </ControlButton>
               </section>
             </>

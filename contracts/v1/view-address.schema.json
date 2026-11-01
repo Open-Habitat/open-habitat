@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/view-address.schema.json",
+  "title": "Stable view addresses (ADR 0035)",
+  "description": "One address per person and frozen view, reserved when the browser first needs it and kept until deleted. It starts private; publishing makes it readable by anyone who has it until the publication expires or is made private, and publishing again revives the same URLs. Only the person's app session reserves, publishes, changes and deletes; the administrator sees current publications' metadata and deletes any address. App-origin messages: GET /api/v1/view-addresses (the person's addresses; an empty 204 when the installation offers no views), POST /api/v1/view-addresses (ensure the view's one reservation), POST /api/v1/view-addresses/publish, /duration and /private (each answers the address), POST /api/v1/view-addresses/delete (204), GET /api/v1/server/view-publications and POST /api/v1/server/view-publications/delete (administrator, 204).",
+  "oneOf": [
+    {"$ref": "#/$defs/list"},
+    {"$ref": "#/$defs/reply"},
+    {"$ref": "#/$defs/ensureRequest"},
+    {"$ref": "#/$defs/daysRequest"},
+    {"$ref": "#/$defs/addressRequest"},
+    {"$ref": "#/$defs/adminList"}
+  ],
+  "$defs": {
+    "addressId": {"type": "string", "pattern": "^a[a-z2-7]{26}$"},
+    "viewId": {"type": "string", "pattern": "^v[a-z2-7]{26}$"},
+    "days": {"type": "integer", "minimum": 1, "maximum": 365},
+    "title": {"description": "The view's title when the address was reserved; agent text, shown as data.", "type": "string", "minLength": 1, "maxLength": 200},
+    "address": {
+      "description": "One of the person's addresses. url is the stable entry address on the app's own origin, the one to open and copy; content_url is the view's content host, which redirects nothing and serves the export only while public. Both stay the same until the address is deleted.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address_id", "view_id", "title", "url", "content_url", "state", "created_at"],
+      "properties": {
+        "address_id": {"$ref": "#/$defs/addressId"},
+        "view_id": {"$ref": "#/$defs/viewId"},
+        "title": {"$ref": "#/$defs/title"},
+        "url": {"type": "string", "maxLength": 400, "pattern": "^https://[a-z0-9.-]+(:[0-9]{1,5})?/n/[A-Za-z0-9_-]{43}$"},
+        "content_url": {"type": "string", "maxLength": 400, "pattern": "^https://[a-z0-9.-]+(:[0-9]{1,5})?/[A-Za-z0-9_-]{43}/$"},
+        "state": {"description": "private: never published or made private; public: anyone with it reads the view until public_until; expired: the publication ended, the address stays.", "enum": ["private", "public", "expired"]},
+        "created_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+        "public_until": {"$ref": "common.schema.json#/$defs/timestamp"}
+      },
+      "if": {"properties": {"state": {"const": "private"}}},
+      "then": {"not": {"required": ["public_until"]}},
+      "else": {"required": ["public_until"]}
+    },
+    "list": {
+      "description": "GET /api/v1/view-addresses: every reservation the person has, newest first, private, public and expired alike, and the operator's longest publication in days. max_days 0: the site shares nothing publicly now; private addresses still work.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "max_days", "addresses"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "max_days": {"type": "integer", "minimum": 0, "maximum": 365},
+        "addresses": {"type": "array", "maxItems": 1000, "items": {"$ref": "#/$defs/address"}}
+      }
+    },
+    "reply": {
+      "description": "The reserved or changed address.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "address"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "address": {"$ref": "#/$defs/address"}
+      }
+    },
+    "ensureRequest": {
+      "description": "POST /api/v1/view-addresses: the view's one address. An existing reservation is answered as it is; otherwise the gateway confirms through the person's daemon that the view exists and reserves a private address. At the cap it refuses with view_addresses_limited and evicts nothing: the person deletes an address first.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["view_id"],
+      "properties": {
+        "view_id": {"$ref": "#/$defs/viewId"}
+      }
+    },
+    "daysRequest": {
+      "description": "POST /api/v1/view-addresses/publish: public for days from now, whether private, expired or public; the gateway confirms the view still exists. POST /api/v1/view-addresses/duration: a new end, days from now, for a current publication only (view_address_not_public otherwise). Both need the operator's sharing (view_sharing_off) and stay within its maximum.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address_id", "days"],
+      "properties": {
+        "address_id": {"$ref": "#/$defs/addressId"},
+        "days": {"$ref": "#/$defs/days"}
+      }
+    },
+    "addressRequest": {
+      "description": "POST /api/v1/view-addresses/private ends the publication and keeps the address. POST /api/v1/view-addresses/delete or /api/v1/server/view-publications/delete ends both URLs for good; a later reservation of the view gets new ones.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address_id"],
+      "properties": {
+        "address_id": {"$ref": "#/$defs/addressId"}
+      }
+    },
+    "adminList": {
+      "description": "GET /api/v1/server/view-publications: every current publication's metadata for the administrator's abuse response, newest first. Never a URL, a secret or a private reservation. enabled says whether the operator currently shares publicly.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "enabled", "publications"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "enabled": {"type": "boolean"},
+        "publications": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["address_id", "owner_id", "username", "title", "created_at", "public_until"],
+            "properties": {
+              "address_id": {"$ref": "#/$defs/addressId"},
+              "owner_id": {"type": "string", "pattern": "^[1-9][0-9]{0,19}$"},
+              "username": {"description": "The owner's account name, as in the server administration list.", "type": "string", "maxLength": 32},
+              "title": {"$ref": "#/$defs/title"},
+              "created_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+              "public_until": {"$ref": "common.schema.json#/$defs/timestamp"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

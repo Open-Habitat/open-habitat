@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Open-Habitat/open-habitat/internal/bootguard"
 	"github.com/Open-Habitat/open-habitat/internal/cli"
+	"github.com/Open-Habitat/open-habitat/internal/gateway"
 	"github.com/Open-Habitat/open-habitat/internal/host"
 	"github.com/Open-Habitat/open-habitat/internal/provision"
 	"github.com/Open-Habitat/open-habitat/internal/storagequota"
@@ -15,6 +16,19 @@ import (
 func main() {
 	if len(os.Args) == 4 && os.Args[1] == "upgrade-listener-probe" {
 		if !host.ProbeUpgradeListener(os.Args[2], os.Args[3]) {
+			os.Exit(1)
+		}
+		return
+	}
+	// The upgrade runs this as the gateway's account while the gateway is
+	// stopped: the one-time reset of ADR 0033's shared links (ADR 0035).
+	if len(os.Args) == 2 && os.Args[1] == "upgrade-view-addresses" {
+		outcome, err := gateway.ResetLegacyViewLinks(gateway.StateDir)
+		if err != nil {
+			outcome = "failed"
+		}
+		fmt.Printf(`{"component":"gateway","event":"view_address_upgrade","outcome":%q}`+"\n", outcome)
+		if err != nil {
 			os.Exit(1)
 		}
 		return

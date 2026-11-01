@@ -74,7 +74,7 @@ export const settingsSections = [
         id: "view-links",
         label: "Jaetut linkit",
         kw: ["linkki", "link", "jaa", "share", "julkinen", "näkymä", "view"],
-        desc: "Näkymät, jotka olet jakanut linkillä: kopioi tai poista.",
+        desc: "Näkymät, jotka jaat linkillä: kopioi tai lopeta jakaminen.",
         when: "the site offers shared view links",
       },
     ],

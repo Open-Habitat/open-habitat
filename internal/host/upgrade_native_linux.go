@@ -191,6 +191,14 @@ func (n *nativeUpgrade) activate(ctx context.Context, l *Lock, o Operation) erro
 			return e
 		}
 	}
+	// Old shared links end here, once, before the gateway starts on the
+	// stable view address format (ADR 0035). The gateway's own code, as its
+	// account, owns that file and its formats; a current or unusable store
+	// is left as it is.
+	gateway := upgradeUser{Name: gatewayAccount, UID: n.site.Gateway.UID, GID: n.site.Gateway.GID}
+	if _, e = userCommand(ctx, gateway, generationPath(n.site)+"/open-habitat", "upgrade-view-addresses"); e != nil {
+		return e
+	}
 	if e = n.n.activate(ctx); e != nil {
 		return e
 	}
@@ -458,6 +466,23 @@ func (n *nativeUpgrade) preserved(ctx context.Context) error {
 	}
 	return nil
 }
+
+// legacyViewLinks says whether the gateway still holds ADR 0033's shared
+// links, which the upgrade resets: the plan announces that their URLs stop
+// working. Only the format version is read, never a link.
+func legacyViewLinks(uid uint32) bool {
+	fd, e := openDir("/var/lib/open-habitat-gateway", uid, true)
+	if e != nil {
+		return false
+	}
+	defer unix.Close(fd)
+	b, e := readPrivateAtLimit(fd, "view-links.json", uid, 32<<20)
+	var head struct {
+		Version int `json:"version"`
+	}
+	return e == nil && json.Unmarshal(b, &head) == nil && head.Version == 1
+}
+
 func gatewayStateDigest(name string, uid uint32) (string, error) {
 	if name != "sessions.json" && name != "administration.json" {
 		return "", ErrTrust

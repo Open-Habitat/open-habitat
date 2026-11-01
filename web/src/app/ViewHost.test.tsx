@@ -113,56 +113,69 @@ describe("agent HTML view offers", () => {
   });
 });
 
-describe("shared view links", () => {
-  const link = {
-    link_id: "labcdefghijklmnopqrstuvwxyz",
+describe("shared view addresses", () => {
+  const reserved = {
+    address_id: "aabcdefghijklmnopqrstuvwxyz",
     view_id: view.view_id,
     title: view.title,
-    url: `https://oh-view-${"b".repeat(52)}.example.invalid/${"K".repeat(43)}/`,
+    url: `https://${window.location.host}/n/${"E".repeat(43)}`,
+    content_url: `https://oh-view-${"b".repeat(52)}.example.invalid/${"K".repeat(43)}/`,
+    state: "private",
     created_at: "2026-10-29T12:00:00Z",
-    expires_at: "2026-11-28T12:00:00Z",
+  };
+  const shared = {
+    ...reserved,
+    state: "public",
+    public_until: "2999-11-28T12:00:00Z",
   };
   afterEach(() => resetViewLinks());
 
-  it("offers no link where the site has none", async () => {
-    const fetch = vi.fn(async (url: string) =>
-      url === "/api/v1/views"
-        ? json({ schema_version: 1, views: [view] })
-        : new Response(null, { status: 204 }),
-    );
-    vi.stubGlobal("fetch", fetch);
-    const page = render(<ViewHost csrf="csrf">{entry(true)}</ViewHost>);
-    await page.findByTestId("view-offer");
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/v1/view-links",
-        expect.anything(),
-      ),
-    );
-    await act(async () => {});
-    expect(page.queryByTestId("view-share")).toBeNull();
+  it("offers no link where the site has no addresses or shares nothing", async () => {
+    for (const reply of [
+      () => new Response(null, { status: 204 }),
+      () => json({ schema_version: 1, max_days: 0, addresses: [shared] }),
+    ]) {
+      resetViewLinks();
+      const fetch = vi.fn(async (url: string) =>
+        url === "/api/v1/views"
+          ? json({ schema_version: 1, views: [view] })
+          : reply(),
+      );
+      vi.stubGlobal("fetch", fetch);
+      const page = render(<ViewHost csrf="csrf">{entry(true)}</ViewHost>);
+      await page.findByTestId("view-offer");
+      await waitFor(() =>
+        expect(fetch).toHaveBeenCalledWith(
+          "/api/v1/view-addresses",
+          expect.anything(),
+        ),
+      );
+      await act(async () => {});
+      expect(page.queryByTestId("view-share")).toBeNull();
+      expect(page.queryByTestId("view-shared")).toBeNull();
+      page.unmount();
+    }
   });
 
-  it("creates a link on the person's press, shows it and revokes it", async () => {
-    const writes: unknown[] = [];
+  it("publishes the view's address on the person's press, shows it and stops sharing", async () => {
+    const writes: [string, unknown][] = [];
     const fetch = vi.fn(async (url: string, init?: RequestInit) => {
       if (url === "/api/v1/views")
         return json({ schema_version: 1, views: [view] });
-      if (url === "/api/v1/view-links" && !init?.method)
-        return json({ schema_version: 1, max_days: 90, links: [] });
-      if (url === "/api/v1/view-links") {
-        writes.push(JSON.parse(String(init?.body)));
-        expect(
-          (init?.headers as Record<string, string> | undefined)?.[
-            "X-Agent-Host-CSRF"
-          ],
-        ).toBe("csrf");
-        return json({ schema_version: 1, link });
-      }
-      if (url === "/api/v1/view-links/revoke") {
-        writes.push(JSON.parse(String(init?.body)));
-        return new Response(null, { status: 204 });
-      }
+      if (url === "/api/v1/view-addresses" && !init?.method)
+        return json({ schema_version: 1, max_days: 90, addresses: [] });
+      writes.push([url, JSON.parse(String(init?.body))]);
+      expect(
+        (init?.headers as Record<string, string> | undefined)?.[
+          "X-Agent-Host-CSRF"
+        ],
+      ).toBe("csrf");
+      if (url === "/api/v1/view-addresses")
+        return json({ schema_version: 1, address: reserved });
+      if (url === "/api/v1/view-addresses/publish")
+        return json({ schema_version: 1, address: shared });
+      if (url === "/api/v1/view-addresses/private")
+        return json({ schema_version: 1, address: reserved });
       throw new Error(`unexpected ${url}`);
     });
     vi.stubGlobal("fetch", fetch);
@@ -172,17 +185,28 @@ describe("shared view links", () => {
     // The agent's title is data, and the terms come before any link exists.
     expect(dialog.querySelector("b")).toBeNull();
     expect(dialog.textContent).toContain("Kuka tahansa, jolla on linkki");
+    expect(page.queryByTestId("view-link-repoint")).toBeNull();
+    expect(page.queryByTestId("view-link-new-address")).toBeNull();
     fireEvent.click(page.getByTestId("segment-7"));
     fireEvent.click(page.getByTestId("view-link-create"));
     const url = (await page.findByTestId("view-link-url")) as HTMLInputElement;
-    expect(url.value).toBe(link.url);
-    expect(writes[0]).toEqual({ view_id: view.view_id, days: 7 });
+    expect(url.value).toBe(shared.content_url);
+    expect(writes.slice(0, 2)).toEqual([
+      ["/api/v1/view-addresses", { view_id: view.view_id }],
+      [
+        "/api/v1/view-addresses/publish",
+        { address_id: shared.address_id, days: 7 },
+      ],
+    ]);
     expect(page.getByTestId("view-shared").textContent).toContain(
       "Jaettu linkillä",
     );
     fireEvent.click(page.getByTestId("view-link-revoke"));
     await page.findByTestId("view-link-revoked");
-    expect(writes[1]).toEqual({ link_id: link.link_id });
+    expect(writes[2]).toEqual([
+      "/api/v1/view-addresses/private",
+      { address_id: shared.address_id },
+    ]);
     expect(page.queryByTestId("view-shared")).toBeNull();
   });
 });

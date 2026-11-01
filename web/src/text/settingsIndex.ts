@@ -29,7 +29,7 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
       },
       "view-links": {
         label: "Shared links",
-        desc: "Views you have shared with a link: copy or remove them.",
+        desc: "Views you share with a link: copy or stop sharing them.",
       },
     },
   },

@@ -21,8 +21,6 @@ const meta = {
     maxDays: 90,
     onCreate: done,
     onExtend: done,
-    onRepoint: done,
-    onNewAddress: done,
     onRevoke: done,
   },
 } satisfies Meta<typeof ViewLinkDialog>;
@@ -32,22 +30,15 @@ export const New: Story = {};
 export const Shared: Story = {
   args: {
     link: {
-      link_id: "labcdefghijklmnopqrstuvwxyz",
+      address_id: "aabcdefghijklmnopqrstuvwxyz",
       view_id: view.view_id,
       title: view.title,
-      url: `https://oh-view-${"a".repeat(52)}.example.org/${"K".repeat(43)}/`,
+      url: `https://app.example.org/n/${"E".repeat(43)}`,
+      content_url: `https://oh-view-${"a".repeat(52)}.example.org/${"K".repeat(43)}/`,
+      state: "public",
       created_at: "2026-10-29T12:00:00Z",
-      expires_at: "2026-11-28T12:00:00Z",
+      public_until: "2026-11-28T12:00:00Z",
     },
-    otherViews: [
-      view,
-      {
-        ...view,
-        view_id: "vbcdefghijklmnopqrstuvwxyza",
-        title: "Kassavirta 2027, versio 2",
-        created_at: "2026-10-30T09:00:00Z",
-      },
-    ],
   },
 };
 export const Failed: Story = {

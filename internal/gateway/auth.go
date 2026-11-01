@@ -45,8 +45,9 @@ type OAuthConfig struct {
 	// ViewOrigin is the per-view DNS template for agent HTML views
 	// (https://oh-view-*.example.org, ADR 0032). Empty offers no views.
 	ViewOrigin string `json:"view_origin,omitempty"`
-	// ViewLinkMaxDays enables shared view links (ADR 0033) and is their
-	// longest expiry in days; 0 offers none. It needs a view origin.
+	// ViewLinkMaxDays enables public sharing of view addresses (ADR 0033,
+	// ADR 0035) and is a publication's longest period in days; 0 shares
+	// none. It needs a view origin.
 	ViewLinkMaxDays int `json:"view_link_max_days,omitempty"`
 	// DefaultLanguage is the installation's default interface language
 	// (system, fi, en-US, en-GB or legacy en; empty is system). An administrator's choice in
@@ -253,8 +254,9 @@ type Auth struct {
 	editors          map[string]editorSession
 	viewGrants       map[string]viewGrant
 	views            map[string]viewSession
-	viewLinks        map[string]viewLink // keyed by link ID
-	viewLinkHosts    map[string]string   // link host -> link ID
+	viewAddresses    map[string]viewAddress // keyed by reservation ID
+	viewLinkHosts    map[string]string      // content host -> reservation ID
+	viewAddressFault string                 // why the address store is unusable
 	viewLinkTraffic  viewLinkTraffic
 	sessionFile      string
 	adminFile        string

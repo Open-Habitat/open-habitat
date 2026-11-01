@@ -1,11 +1,12 @@
 import { workerHostPort } from "../test-ports.mjs";
 import { createHostTest, expect, type Page } from "./worker-host";
 
-// Shared view links (ADR 0033) against the real gateway and daemon handlers:
-// the person creates a link on a view card, and a browser context with no
-// session at all opens it top-level on the link's own host in the view
-// namespace. Same-UID synthetic evidence; it says nothing about separate
-// Unix users or a real ingress.
+// Shared view addresses (ADR 0033, ADR 0035) against the real gateway and
+// daemon handlers: the person shares a view on its card, and a browser
+// context with no session at all opens it top-level on the address's own
+// content host in the view namespace. Sharing again revives the same link;
+// only deletion ends it for good. Same-UID synthetic evidence; it says
+// nothing about separate Unix users or a real ingress.
 const test = createHostTest(false, {
   BROWSER_HOST_VIEWS: "1",
   BROWSER_HOST_VIEW_LINKS: "1",
@@ -43,7 +44,7 @@ async function offer(page: Page, target: string): Promise<string> {
   return (await res.json()).view_id;
 }
 
-test("anyone with the link opens the view without a session, until it is revoked", async ({
+test("anyone with the link opens the view without a session while it is shared", async ({
   page,
   browser,
 }, info) => {
@@ -106,19 +107,25 @@ test("anyone with the link opens the view without a session, until it is revoked
   await reader.goto(`${app}/workspaces`);
   await expect(reader.getByTestId("github-sign-in")).toBeVisible();
 
-  // Pointing the link at a newer view keeps the URL.
+  // Stopping sharing ends anonymous reads; sharing again revives the same
+  // link. A newer export of the view is a view of its own, never moved in.
+  await card.getByTestId("view-share").click();
+  await dialog.getByTestId("view-link-revoke").click();
+  await expect(dialog.getByTestId("view-link-revoked")).toBeVisible();
+  await dialog.getByTestId("view-link-close").click();
+  await expect(card.getByTestId("view-shared")).toHaveCount(0);
+  expect((await reader.goto(link))?.status()).toBe(404);
   const second = await offer(page, id);
   const card2 = page.locator(
     `[data-testid="view-offer"][data-view-id="${second}"]`,
   );
   await expect(card2).toBeVisible();
+  await expect(card2.getByTestId("view-shared")).toHaveCount(0);
   await card.getByTestId("view-share").click();
-  await dialog.getByTestId("view-link-target").selectOption(second);
-  await dialog.getByTestId("view-link-repoint").click();
-  await expect(card2.getByTestId("view-shared")).toBeVisible();
-  await expect(card.getByTestId("view-shared")).toHaveCount(0);
+  await dialog.getByTestId("view-link-create").click();
   await expect(dialog.getByTestId("view-link-url")).toHaveValue(link);
   await dialog.getByTestId("view-link-close").click();
+  await expect(card2.getByTestId("view-shared")).toHaveCount(0);
   await reader.goto(link);
   await expect(body).toHaveAttribute("data-script", "yes");
 
@@ -126,7 +133,8 @@ test("anyone with the link opens the view without a session, until it is revoked
   await page.goto("/settings/account");
   await expect(page.getByTestId("view-link-row")).toHaveCount(1);
 
-  // The administrator sees who shared what, never the address, and revokes.
+  // The administrator sees who shares what, never the address, and deletes
+  // it for good.
   await page.goto("/settings/users");
   const admin = page.getByTestId("view-links-admin");
   await expect(admin.getByTestId("view-link-admin-row")).toHaveCount(1);
