@@ -28,18 +28,14 @@ recovers, the case 800f9458 fixed for the unloaded run. Whether a person
 sees the flash on a loaded host, or only the 25 ms sampler does, is not
 established.
 
-Sample runs from attempt 3:
+Sample runs from attempt 3 (the flash came right as the run started working):
 
 ```
-run states (25 ms samples):
+long-run states (25 ms samples):
 gap=false working=false ×2
 gap=true working=true ×1
 gap=false working=true ×310
 gap=false working=false ×21
-
-  1) [chromium] › tests/live-long-run.spec.ts:12:1 › a long tool-calling run shows no missed-events notice 
-
-    Error: expect(received).toEqual(expected) // deep equality
 ```
 
 This blocked the pilot.18 gate together with
