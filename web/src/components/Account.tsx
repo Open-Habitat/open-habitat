@@ -715,18 +715,21 @@ export function AccountSettings({
                   <strong>{t.agentWork}</strong>
                   <span className="s-desc">{t.agentWorkDesc}</span>
                 </div>
-                <Segmented
-                  label={t.agentWork}
-                  options={[
-                    { id: "hidden", label: t.hidden },
-                    { id: "visible", label: t.visible },
-                  ]}
-                  value={work}
-                  onChange={(value) => {
-                    setWork(value);
-                    setWorkPreference(value);
-                  }}
-                />
+                <div className="s-val">
+                  <Segmented
+                    size="row"
+                    label={t.agentWork}
+                    options={[
+                      { id: "hidden", label: t.hidden },
+                      { id: "visible", label: t.visible },
+                    ]}
+                    value={work}
+                    onChange={(value) => {
+                      setWork(value);
+                      setWorkPreference(value);
+                    }}
+                  />
+                </div>
               </div>
             </div>
             <h3 className="s-h3">{t.subscriptions}</h3>
@@ -821,19 +824,20 @@ export function AccountSettings({
                 <strong>{t.theme}</strong>
                 <span className="s-desc">{t.themeDesc}</span>
               </div>
-              <Segmented
-                data-testid="theme-choice"
-                label={t.theme}
-                options={(
-                  [
-                    { id: "system", label: t.themeSystem, icon: "system" },
-                    { id: "light", label: t.themeLight, icon: "sun" },
-                    { id: "dark", label: t.themeDark, icon: "moon" },
-                  ] as const
-                ).map((o) => ({ ...o, icon: <Icon name={o.icon} /> }))}
-                value={theme}
-                onChange={setThemeChoice}
-              />
+              <div className="s-val">
+                <Segmented
+                  size="row"
+                  data-testid="theme-choice"
+                  label={t.theme}
+                  options={[
+                    { id: "system", label: t.themeSystem },
+                    { id: "light", label: t.themeLight },
+                    { id: "dark", label: t.themeDark },
+                  ]}
+                  value={theme}
+                  onChange={setThemeChoice}
+                />
+              </div>
             </div>
             <LanguageSettings identity={editorIdentity} csrf={csrf} />
             <RecentSettings identity={editorIdentity} csrf={csrf} />

@@ -50,14 +50,11 @@ test("@settings-search every index row is on its section's page and every page r
     const href = (await link.getAttribute("href")) ?? "";
     await link.click();
     await expect(page).toHaveURL(href);
-    if (section.id === "tilannekatsaus")
+    if (section.id === "tilannekatsaus") {
       // Oma opens the folded number rows.
-      await page
-        .getByRole("group")
-        .and(page.getByTestId("recap-level"))
-        .getByRole("button")
-        .and(page.getByTestId("segment-custom"))
-        .click();
+      await page.getByTestId("recap-level").click();
+      await page.getByTestId("choice-custom").click();
+    }
     const ids: string[] = section.rows.map((r) => r.id);
     for (const r of section.rows)
       if (!("when" in r)) await expect(row(page, r.id)).toBeAttached();

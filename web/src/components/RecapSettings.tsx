@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ChoiceMenu } from "./ChoiceMenu";
 import { Segmented } from "./ControlElements";
 import { formatNumber, NumberStepper } from "./NumberStepper";
 import { RecapCard } from "./RecapCard";
@@ -326,6 +327,7 @@ export function RecapSettings({
           </div>
           {value ? (
             <Segmented
+              size="row"
               data-testid="recap-automatic"
               label={txt.automatic}
               options={[
@@ -372,13 +374,16 @@ export function RecapSettings({
             </span>
           </div>
           {value && level ? (
-            <Segmented
+            <ChoiceMenu
               data-testid="recap-level"
-              className="ah-recap-level-choice"
               label={txt.level}
               options={(
                 ["short", "standard", "thorough", "custom"] as const
-              ).map((id) => ({ id, label: levelNames[id] }))}
+              ).map((id) => ({
+                id,
+                label: levelNames[id],
+                description: levelNotes[id],
+              }))}
               value={level === "off" ? "custom" : level}
               isDisabled={loading || level === "off"}
               onChange={(id) =>

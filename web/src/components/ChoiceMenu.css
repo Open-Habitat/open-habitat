@@ -1,0 +1,54 @@
+.ah-choice-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--b-gap);
+  justify-self: end;
+  max-width: 100%;
+}
+.ah-choice-labels {
+  display: grid;
+  text-align: start;
+}
+.ah-choice-labels > span {
+  grid-area: 1 / 1;
+}
+.ah-choice-measure {
+  visibility: hidden;
+}
+.ah-choice-popover {
+  width: min(360px, calc(100vw - 32px));
+}
+.ah-choice-popover [data-ah-primitive="menu-item"] {
+  display: flex;
+  align-items: start;
+  gap: var(--ah-s3);
+}
+.ah-choice-check {
+  width: 1em;
+  flex: none;
+}
+.ah-choice-option {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s1);
+}
+.ah-choice-option [slot="description"] {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  font-weight: 400;
+}
+@media (max-width: 760px) {
+  .ah-choice-popover {
+    /* biome-ignore lint/complexity/noImportantStyles: phone sheet overrides Aria's inline anchor positioning. */
+    position: fixed !important;
+    /* biome-ignore lint/complexity/noImportantStyles: phone sheet overrides Aria's inline anchor positioning. */
+    inset: auto 0 0 !important;
+    width: auto;
+    max-width: none;
+    max-height: min(70dvh, 600px);
+    overflow: auto;
+    border-radius: var(--ah-r-lg) var(--ah-r-lg) 0 0;
+    padding-bottom: max(var(--ah-s3), env(safe-area-inset-bottom));
+  }
+}

@@ -32,14 +32,12 @@ test("@recap-settings levels, delay and model reach Pi's settings and survive a 
   page,
 }) => {
   await open(page);
-  const level = page.getByRole("group").and(page.getByTestId("recap-level"));
-  const segment = (id: string) =>
-    level.getByRole("button").and(page.getByTestId(`segment-${id}`));
-  await expect(segment("standard")).toHaveAttribute("aria-pressed", "true");
+  const level = page.getByTestId("recap-level");
+  await expect(level).toHaveAttribute("data-value", "standard");
   expect(await stored(page)).toMatchObject({ level: "standard", words: 40 });
 
   let write = saved(page);
-  await segment("short").click();
+  await chooseLevel(page, "short");
   await write;
   expect(await stored(page)).toMatchObject({
     level: "short",
@@ -50,7 +48,7 @@ test("@recap-settings levels, delay and model reach Pi's settings and survive a 
   // Numbers open only in Oma, and a changed number keeps it there.
   await expect(page.getByTestId("recap-words")).toHaveCount(0);
   write = saved(page);
-  await segment("custom").click();
+  await chooseLevel(page, "custom");
   await write;
   write = saved(page);
   await page
@@ -92,7 +90,7 @@ test("@recap-settings levels, delay and model reach Pi's settings and survive a 
   expect((await stored(page)).model).toBe("openai-codex/gpt-6-nova");
 
   await page.reload();
-  await expect(segment("custom")).toHaveAttribute("aria-pressed", "true");
+  await expect(level).toHaveAttribute("data-value", "custom");
   await expect(page.getByTestId("recap-words-input")).toHaveValue("30");
   await expect(delay).toHaveAttribute("aria-valuetext", /3 min 30 s/);
   await page.setViewportSize({ width: 1280, height: 1900 });
@@ -149,20 +147,27 @@ test("@recap-settings levels, delay and model reach Pi's settings and survive a 
   expect(await stored(page)).toMatchObject({ level: "custom", words: 30 });
 });
 
-/** The four levels share one row, or two rows of two: never three and Oma
- * alone (Jari 30.10.2026). */
+async function chooseLevel(page: Page, id: string) {
+  await page.getByTestId("recap-level").click();
+  await page.getByTestId(`choice-${id}`).click();
+}
+
+/** All four choices remain reachable without horizontal clipping. */
 async function expectLevelsTidy(page: Page) {
-  const tops = await page
-    .getByTestId("recap-level")
-    .getByRole("button")
-    .evaluateAll((buttons) =>
-      buttons.map((b) => Math.round(b.getBoundingClientRect().top)),
-    );
-  expect(tops).toHaveLength(4);
-  const oneRow = tops.every((top) => top === tops[0]);
-  const twoByTwo =
-    tops[0] === tops[1] && tops[2] === tops[3] && tops[2] > tops[0];
-  expect(oneRow || twoByTwo, `level rows at ${tops}`).toBe(true);
+  const trigger = page.getByTestId("recap-level");
+  await trigger.click();
+  const items = page.getByRole("menuitemradio");
+  await expect(items).toHaveCount(4);
+  for (const item of await items.all()) {
+    await expect(item).toBeVisible();
+    const box = await item.boundingBox();
+    const viewport = page.viewportSize();
+    if (!box || !viewport) throw new Error("Missing menu layout");
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  }
+  await page.keyboard.press("Escape");
+  await expect(trigger).toBeFocused();
 }
 
 test("@recap-settings the four levels fit on the page and on a phone", async ({
@@ -181,12 +186,8 @@ test("@recap-settings no row is cut by its card in a desktop window's narrow col
   await page.setViewportSize({ width: 1280, height: 900 });
   await open(page);
   // Oma's steppers and a chosen model are the widest form of the page.
-  const level = page.getByTestId("recap-level");
   let write = saved(page);
-  await level
-    .getByRole("button")
-    .and(page.getByTestId("segment-custom"))
-    .click();
+  await chooseLevel(page, "custom");
   await write;
   const trigger = page
     .getByRole("button")
@@ -238,10 +239,7 @@ test("@recap-settings no row is cut by its card in a desktop window's narrow col
   } finally {
     await page.setViewportSize({ width: 1280, height: 900 });
     write = saved(page);
-    await level
-      .getByRole("button")
-      .and(page.getByTestId("segment-standard"))
-      .click();
+    await chooseLevel(page, "standard");
     await write;
     await trigger.click();
     write = saved(page);
@@ -269,13 +267,10 @@ test("@recap-settings the recap card opens its settings over the conversation an
   try {
     // Tavallinen recaps after the first turn, whatever a case before left.
     await open(page);
-    const standard = page
-      .getByTestId("recap-level")
-      .getByRole("button")
-      .and(page.getByTestId("segment-standard"));
-    if ((await standard.getAttribute("aria-pressed")) !== "true") {
+    const standard = page.getByTestId("recap-level");
+    if ((await standard.getAttribute("data-value")) !== "standard") {
       const write = saved(page);
-      await standard.click();
+      await chooseLevel(page, "standard");
       await write;
     }
     // The browser holds a card back until the person pauses (recapHold.ts).

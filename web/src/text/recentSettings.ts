@@ -1,4 +1,4 @@
-import { catalog } from "../i18n";
+import { catalog, plural } from "../i18n";
 
 const fi = {
   label: "Viimeisimmät keskustelut",
@@ -6,6 +6,8 @@ const fi = {
   error:
     "Asetusta ei voitu vahvistaa. Tarkista nykyinen arvo ennen uutta muutosta.",
   reload: "Tarkista",
+  unit: (count: number) =>
+    plural("fi", count, { one: "keskustelu", other: "keskustelua" }),
 };
 export const recentSettingsText = catalog(fi, {
   label: "Recent conversations",
@@ -13,4 +15,6 @@ export const recentSettingsText = catalog(fi, {
   error:
     "The setting could not be confirmed. Check its current value before changing it again.",
   reload: "Check",
+  unit: (count: number) =>
+    plural("en-US", count, { one: "conversation", other: "conversations" }),
 });

@@ -158,6 +158,12 @@ span.button {
   border-radius: var(--ah-r-md);
   background: var(--ah-sunken);
 }
+:global(.s-row) > .segmented,
+:global(.s-row) > :global(.s-val) > .segmented {
+  flex-wrap: nowrap;
+  width: max-content;
+  max-width: 100%;
+}
 .segment {
   --i-fg: var(--ah-muted);
   --i-hover: var(--ah-control-hover);
@@ -167,6 +173,10 @@ span.button {
   border: 0;
   border-radius: calc(var(--ah-r-md) - 2px);
   font-weight: 500;
+}
+:global(.s-row) > .segmented > .segment,
+:global(.s-row) > :global(.s-val) > .segmented > .segment {
+  white-space: nowrap;
 }
 .segment[aria-pressed="true"] {
   --i-bg: var(--ah-surface);

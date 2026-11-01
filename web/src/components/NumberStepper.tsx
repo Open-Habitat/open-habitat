@@ -44,49 +44,51 @@ export function NumberStepper({
   };
   const button = controlClassName({
     variant: "quiet",
-    size: "inline",
+    size: "row",
     presentation: "icon",
   });
   return (
     <fieldset className="ah-stepper" data-testid={testId} aria-label={label}>
-      <button
-        type="button"
-        className={button}
-        data-testid={testId && `${testId}-less`}
-        aria-label={txt.less(label)}
-        disabled={disabled || value <= min}
-        onClick={() => onChange(clamp(value - step))}
-      >
-        −
-      </button>
-      <input
-        type="text"
-        inputMode="numeric"
-        data-testid={testId && `${testId}-input`}
-        aria-label={label}
-        value={draft}
-        disabled={disabled}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") commit();
-          else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-            event.preventDefault();
-            onChange(clamp(value + (event.key === "ArrowUp" ? step : -step)));
-          }
-        }}
-      />
+      <span className="ah-stepper-box">
+        <button
+          type="button"
+          className={button}
+          data-testid={testId && `${testId}-less`}
+          aria-label={txt.less(label)}
+          disabled={disabled || value <= min}
+          onClick={() => onChange(clamp(value - step))}
+        >
+          −
+        </button>
+        <input
+          type="text"
+          inputMode="numeric"
+          data-testid={testId && `${testId}-input`}
+          aria-label={label}
+          value={draft}
+          disabled={disabled}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") commit();
+            else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+              event.preventDefault();
+              onChange(clamp(value + (event.key === "ArrowUp" ? step : -step)));
+            }
+          }}
+        />
+        <button
+          type="button"
+          className={button}
+          data-testid={testId && `${testId}-more`}
+          aria-label={txt.more(label)}
+          disabled={disabled || value >= max}
+          onClick={() => onChange(clamp(value + step))}
+        >
+          +
+        </button>
+      </span>
       {unit ? <span className="ah-stepper-unit">{unit}</span> : null}
-      <button
-        type="button"
-        className={button}
-        data-testid={testId && `${testId}-more`}
-        aria-label={txt.more(label)}
-        disabled={disabled || value >= max}
-        onClick={() => onChange(clamp(value + step))}
-      >
-        +
-      </button>
     </fieldset>
   );
 }

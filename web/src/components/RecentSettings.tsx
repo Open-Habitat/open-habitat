@@ -32,6 +32,7 @@ export function RecentSettingsRow({
         <NumberStepper
           label={t.label}
           value={count}
+          unit={t.unit(count)}
           min={1}
           max={20}
           disabled={disabled}

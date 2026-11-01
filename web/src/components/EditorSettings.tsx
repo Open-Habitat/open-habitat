@@ -26,6 +26,7 @@ export function EditorSettingsControl({
         </div>
         <div className="s-val">
           <Segmented
+            size="row"
             data-testid="editor-choice"
             label={txt.desktop}
             options={[

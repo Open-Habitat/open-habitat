@@ -48,15 +48,14 @@ describe("Tilannekatsaus levels", () => {
     expect(recapLevel({ ...standard, level: "custom" })).toBe("custom");
   });
 
-  it("choosing a level writes its numbers, keeping delay and model", () => {
+  it("choosing a level writes its numbers, keeping delay and model", async () => {
     const onChange = renderSettings({
       ...standard,
       delay_seconds: 300,
       model: "claude-bridge/claude-sonnet-5-5",
     });
-    fireEvent.click(
-      within(screen.getByTestId("recap-level")).getByTestId("segment-short"),
-    );
+    fireEvent.click(screen.getByTestId("recap-level"));
+    fireEvent.click(await screen.findByTestId("choice-short"));
     expect(onChange).toHaveBeenCalledWith({
       level: "short",
       delay_seconds: 300,

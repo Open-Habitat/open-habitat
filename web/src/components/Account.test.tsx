@@ -86,7 +86,7 @@ describe("account presentation", () => {
       act(() => setThemeChoice("system"));
     }
   });
-  it("shows only the chosen section and prefixes theme choices with shared icons", () => {
+  it("shows only the chosen section", () => {
     render(
       <AccountSettings
         name="Oma tili"
@@ -97,9 +97,7 @@ describe("account presentation", () => {
     expect(screen.getByTestId("logout-open")).toBeTruthy();
     expect(screen.queryByRole("group")).toBeNull();
     fireEvent.click(screen.getByTestId("settings-ulkoasu"));
-    expect(
-      screen.getByRole("group", { name: "Teema" }).querySelectorAll("svg"),
-    ).toHaveLength(3);
+    expect(screen.getByTestId("theme-choice")).toBeTruthy();
     expect(screen.queryByTestId("logout-open")).toBeNull();
   });
   it("keeps the account popover actions and selected theme", async () => {

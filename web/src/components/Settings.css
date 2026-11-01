@@ -80,6 +80,39 @@
   gap: 2px;
   min-width: 0;
 }
+/* Let the actual control width decide, rather than wrapping its choices.
+   Non-selector rows keep their grid (including marked and editor rows). */
+.s-row:has(
+  > [data-ah-primitive="segmented"],
+  > .s-val > [data-ah-primitive="segmented"],
+  > .ah-choice-trigger,
+  > .s-val > .ah-choice-trigger,
+  > .ah-stepper,
+  > .s-val > .ah-stepper
+) {
+  display: flex;
+  flex-wrap: wrap;
+}
+.s-row:has(
+    > [data-ah-primitive="segmented"],
+    > .s-val > [data-ah-primitive="segmented"],
+    > .ah-choice-trigger,
+    > .s-val > .ah-choice-trigger,
+    > .ah-stepper,
+    > .s-val > .ah-stepper
+  )
+  > .s-lbl {
+  flex: 1 1 160px;
+}
+.s-row
+  > .s-val:has(
+    > [data-ah-primitive="segmented"],
+    > .ah-choice-trigger,
+    > .ah-stepper
+  ) {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
 .s-desc {
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
@@ -775,21 +808,6 @@
 .ah-recap-preview .ah-recap {
   margin: 0;
 }
-/* Where the four levels do not fit beside their label, they go under it as
-   one row of equal segments, two by two where even that is too narrow (Jari
-   30.10.2026: Oma fell alone onto a second row in the side panel). */
-.ah-recap-levels {
-  container-type: inline-size;
-}
-@container (max-width: 640px) {
-  .ah-recap-levels > .s-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .ah-recap-levels .ah-recap-level-choice {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
 /* The delay slider and the model chooser are wider than most controls; they
    go under their labels before the column is as narrow as a phone's. */
 .ah-recap-timing {
@@ -804,11 +822,6 @@
   }
   .ah-recap-timing .s-val {
     justify-content: flex-start;
-  }
-}
-@container (max-width: 380px) {
-  .ah-recap-levels .ah-recap-level-choice {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 .ah-recap-scope {

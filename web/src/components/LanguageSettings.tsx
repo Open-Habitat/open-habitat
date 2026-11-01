@@ -1,16 +1,25 @@
 import { type LanguageChoice, useText } from "../i18n";
 import { languageSettingsText } from "../text/languageSettings";
-import { ControlButton, Segmented } from "./ControlElements";
+import { ChoiceMenu } from "./ChoiceMenu";
+import { ControlButton } from "./ControlElements";
 
 /** Language names stay recognisable in every interface language. */
-function useLanguageOptions() {
+function useLanguageOptions(server = false) {
   const t = useText(languageSettingsText);
   return [
-    { id: "system", label: t.system },
-    { id: "fi", label: "Suomi" },
-    { id: "en-US", label: "English (US)" },
-    { id: "en-GB", label: "English (UK)" },
-  ] as const satisfies readonly { id: LanguageChoice; label: string }[];
+    {
+      id: "system",
+      label: t.system,
+      description: server ? t.serverSystemNote : t.systemNote,
+    },
+    { id: "fi", label: "Suomi", description: t.fiNote },
+    { id: "en-US", label: "English (US)", description: t.usNote },
+    { id: "en-GB", label: "English (UK)", description: t.ukNote },
+  ] as const satisfies readonly {
+    id: LanguageChoice;
+    label: string;
+    description: string;
+  }[];
 }
 
 /** The person's own interface language: a row in Settings › Ulkoasu. */
@@ -37,7 +46,7 @@ export function LanguageSettingsRow({
           <span className="s-desc">{t.desc}</span>
         </div>
         <div className="s-val">
-          <Segmented
+          <ChoiceMenu
             data-testid="language-choice"
             label={t.label}
             options={options}
@@ -76,7 +85,7 @@ export function ServerLanguageRow({
   onChange: (choice: LanguageChoice) => void;
 }) {
   const t = useText(languageSettingsText);
-  const options = useLanguageOptions();
+  const options = useLanguageOptions(true);
   return (
     <div className="s-row" data-settings-row="server-language" tabIndex={-1}>
       <div className="s-lbl">
@@ -89,7 +98,7 @@ export function ServerLanguageRow({
         )}
       </div>
       <div className="s-val">
-        <Segmented
+        <ChoiceMenu
           data-testid="server-language-choice"
           label={t.serverLabel}
           options={options}

@@ -23,8 +23,10 @@ const freshContext = (browser: Browser, locale: string) =>
     viewport: { width: 1280, height: 900 },
     locale,
   });
-const choice = (page: Page, group: string, id: string) =>
-  page.getByTestId(group).getByTestId(`segment-${id}`);
+async function choose(page: Page, group: string, id: string) {
+  await page.getByTestId(group).click();
+  await page.getByTestId(`choice-${id}`).click();
+}
 
 for (const language of ["en-US", "en-GB"]) {
   test(`@ui-language ${language} switches immediately, persists and follows the person`, async ({
@@ -33,18 +35,18 @@ for (const language of ["en-US", "en-GB"]) {
   }) => {
     await signIn(page);
     await page.goto("/settings/appearance");
-    await expect(choice(page, "language-choice", "system")).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    await expect(page.getByTestId("language-choice")).toHaveAttribute(
+      "data-value",
+      "system",
     );
     const write = page.waitForRequest(
       (r) =>
         r.url().endsWith("/api/v1/account/preferences") && r.method() === "PUT",
     );
-    await choice(page, "language-choice", language).click();
+    await choose(page, "language-choice", language);
     expect((await write).postDataJSON()).toEqual({ language });
     await expect(page.locator("html")).toHaveAttribute("lang", language);
-    await choice(page, "language-choice", "system").hover();
+    await page.getByTestId("language-choice").hover();
     expect(
       (
         await new AxeBuilder({ page })
@@ -54,9 +56,9 @@ for (const language of ["en-US", "en-GB"]) {
     ).toEqual([]);
     await expect(page.locator("html")).toHaveAttribute("lang", language);
     await page.reload();
-    await expect(choice(page, "language-choice", language)).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    await expect(page.getByTestId("language-choice")).toHaveAttribute(
+      "data-value",
+      language,
     );
     await expect(page.locator("html")).toHaveAttribute("lang", language);
     const other = await freshContext(browser, "fi-FI");
@@ -65,11 +67,11 @@ for (const language of ["en-US", "en-GB"]) {
       await signIn(second);
       await expect(second.locator("html")).toHaveAttribute("lang", language);
       await second.goto("/settings/appearance");
-      await expect(choice(second, "language-choice", language)).toHaveAttribute(
-        "aria-pressed",
-        "true",
+      await expect(second.getByTestId("language-choice")).toHaveAttribute(
+        "data-value",
+        language,
       );
-      await choice(second, "language-choice", "system").click();
+      await choose(second, "language-choice", "system");
       await expect(second.locator("html")).toHaveAttribute("lang", "fi");
     } finally {
       await other.close();
@@ -87,12 +89,12 @@ for (const language of ["en-US", "en-GB"]) {
         r.url().endsWith("/api/v1/server/administration") &&
         r.method() === "PUT",
     );
-    await choice(page, "server-language-choice", language).click();
+    await choose(page, "server-language-choice", language);
     expect((await write).postDataJSON()).toEqual({
       default_language: language,
     });
     await expect(page.locator("html")).toHaveAttribute("lang", language);
-    await choice(page, "server-language-choice", "system").hover();
+    await page.getByTestId("server-language-choice").hover();
     expect(
       (
         await new AxeBuilder({ page })
@@ -100,9 +102,10 @@ for (const language of ["en-US", "en-GB"]) {
           .analyze()
       ).violations,
     ).toEqual([]);
-    await expect(
-      choice(page, "server-language-choice", language),
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByTestId("server-language-choice")).toHaveAttribute(
+      "data-value",
+      language,
+    );
     await expect(page.locator("html")).toHaveAttribute("lang", language);
     const other = await freshContext(browser, "fi-FI");
     try {
@@ -114,7 +117,7 @@ for (const language of ["en-US", "en-GB"]) {
       await bob.getByRole("link", { name: "Bob", exact: true }).click();
       await bob.goto("/settings/appearance");
       await expect(bob.locator("html")).toHaveAttribute("lang", language);
-      await choice(bob, "language-choice", "fi").click();
+      await choose(bob, "language-choice", "fi");
       await expect(bob.locator("html")).toHaveAttribute("lang", "fi");
     } finally {
       await other.close();
@@ -140,9 +143,9 @@ for (const [locale, language] of [
       await expect(page.locator("html")).toHaveAttribute("lang", language);
       await signIn(page);
       await page.goto("/settings/appearance");
-      await expect(choice(page, "language-choice", "system")).toHaveAttribute(
-        "aria-pressed",
-        "true",
+      await expect(page.getByTestId("language-choice")).toHaveAttribute(
+        "data-value",
+        "system",
       );
       await expect(page.locator("html")).toHaveAttribute("lang", language);
     } finally {

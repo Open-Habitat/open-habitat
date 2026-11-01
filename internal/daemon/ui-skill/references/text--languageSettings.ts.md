@@ -11,6 +11,11 @@ const fi = {
   label: "Kieli",
   desc: "Käyttöliittymän kieli. Koskee kaikkia laitteitasi. Järjestelmä seuraa palvelimen oletusta ja sen jälkeen selaimen kieltä.",
   system: "Järjestelmä",
+  systemNote: "Palvelimen oletus, sitten selaimen kieli.",
+  serverSystemNote: "Seuraa kunkin selaimen kieltä.",
+  fiNote: "Suomenkielinen käyttöliittymä.",
+  usNote: "Amerikanenglannin kirjoitusasu ja lukumuodot.",
+  ukNote: "Brittienglannin kirjoitusasu ja lukumuodot.",
   error:
     "Kielivalintaa ei voitu vahvistaa. Lue tallennettu valinta uudelleen ennen uutta yritystä.",
   reload: "Lue tallennettu valinta",
@@ -24,6 +29,11 @@ export const languageSettingsText = catalog(fi, {
   label: "Language",
   desc: "The interface language. Applies to all your devices. System follows the server's default and then the browser's language.",
   system: "System",
+  systemNote: "Server default, then browser language.",
+  serverSystemNote: "Follow each browser's language.",
+  fiNote: "Finnish interface.",
+  usNote: "US English spelling and number formats.",
+  ukNote: "UK English spelling and number formats.",
   error:
     "The language choice could not be confirmed. Read the saved choice again before trying again.",
   reload: "Read the saved choice",

@@ -177,6 +177,7 @@ export function ExperimentalFeaturesControl({
               </div>
               <div className="s-val">
                 <Segmented
+                  size="row"
                   data-testid={`experimental-${f.id}-choice`}
                   label={f.name}
                   options={[
