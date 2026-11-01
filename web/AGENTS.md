@@ -53,12 +53,12 @@ reason. Text the daemon or gateway would show is better sent as a code or an
 empty value the browser words, as the title of an unnamed conversation is.
 
 The shipped `open-habitat-ui` agent skill derives its references from these
-catalogs, the settings index/routes and keyboard-handler sources. After changing
-those inputs, run `python3 scripts/generate-ui-reference.py` from the repository
-root. UI text changes must regenerate these references. Fast web checks
-(`scripts/test-focused.sh --area web` and `scripts/test-web-fast.sh`), the gate
-and release packager reject stale references, including removed modules; edit
-the browser sources, not the generated copies.
+catalogs, the settings index/routes and keyboard-handler sources. Release
+packaging regenerates them in private build sources so the shipped guide always
+matches the UI without changing the approved checkout. Checked-in references
+support direct Go development builds; refresh them with
+`python3 scripts/generate-ui-reference.py` when testing that guide locally.
+Edit the browser sources, not the generated copies.
 
 The language resolves as the person's choice (System, Suomi, English (US),
 English (UK), kept in

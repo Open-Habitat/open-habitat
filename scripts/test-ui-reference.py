@@ -7,6 +7,7 @@ import shutil
 import subprocess
 from pathlib import Path
 import tempfile
+import tarfile
 import unittest
 
 spec = importlib.util.spec_from_file_location("generator", Path(__file__).with_name("generate-ui-reference.py"))
@@ -15,7 +16,7 @@ spec.loader.exec_module(generator)
 
 
 class ReferenceTest(unittest.TestCase):
-    def test_fast_entrypoints_refuse_drift_before_npm(self):
+    def test_fast_entrypoints_allow_reference_drift(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             scripts = root / "scripts"
@@ -42,12 +43,63 @@ class ReferenceTest(unittest.TestCase):
                     self.assertIn("npm-reached", result.stdout)
                     (src / "settingsIndex.ts").write_text("export const changed = true;")
                     result = subprocess.run(command, env=env, capture_output=True, text=True)
-                    self.assertNotEqual(result.returncode, 0)
-                    self.assertIn("python3 scripts/generate-ui-reference.py", result.stdout)
-                    self.assertNotIn("npm-reached", result.stdout)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn("npm-reached", result.stdout)
+                    self.assertNotIn("changed", (root / generator.OUTPUT / "app--settingsIndex.ts.md").read_text())
                     generator.sync(root)
                     (src / "settingsIndex.ts").write_text("export {};")
                     generator.sync(root)
+
+    def test_package_regenerates_without_changing_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo = Path(__file__).resolve().parents[1]
+            for folder in ("scripts", "cmd", "internal/daemon/ui-skill/references", "web/src/app", "web/dist", "bin"):
+                (root / folder).mkdir(parents=True)
+            for name in ("package-release.sh", "generate-ui-reference.py"):
+                shutil.copy2(repo / "scripts" / name, root / "scripts" / name)
+            for folder in ("systemd", "sysusers.d", "tmpfiles.d", "licenses", "site"):
+                shutil.copytree(repo / folder, root / folder)
+            for name in ("go.mod", "go.sum", "policy.go"):
+                (root / name).write_text("")
+            (root / "web/dist/index.html").write_text("production fixture")
+            for name in ("settingsIndex.ts", "settingsRoute.ts"):
+                (root / "web/src/app" / name).write_text("fresh-source-marker")
+            stale = root / generator.OUTPUT / "app--settingsIndex.ts.md"
+            stale.write_text("stale-marker")
+            obsolete = root / generator.OUTPUT / "removed.ts.md"
+            obsolete.write_text("obsolete-marker")
+            # Observe all three actual package build invocations at the compiler
+            # boundary; the real compiler/archive verification is tested separately.
+            go = root / "bin/go"
+            go.write_text('''#!/usr/bin/env python3
+from pathlib import Path
+import sys
+refs = Path("internal/daemon/ui-skill/references")
+assert "fresh-source-marker" in (refs / "app--settingsIndex.ts.md").read_text()
+assert not (refs / "removed.ts.md").exists()
+out = Path(sys.argv[sys.argv.index("-o") + 1])
+out.write_text("#!/bin/sh\\necho operator-fixture\\n")
+out.chmod(0o755)
+''')
+            go.chmod(0o755)
+            git = root / "bin/git"
+            git.write_text("#!/bin/sh\necho 0123456789012345678901234567890123456789\n")
+            git.chmod(0o755)
+            env = dict(os.environ, PATH=f"{root / 'bin'}:{os.environ['PATH']}", TMPDIR=directory)
+            archives = []
+            for output in ("one", "two"):
+                result = subprocess.run(["bash", str(root / "scripts/package-release.sh"),
+                    "--version", "0.0.0-test", "--target", "linux-arm64", "--web-dir", str(root / "web/dist"),
+                    "--output", str(root / output)], env=env, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                archive = root / output / "open-habitat-0.0.0-test-linux-arm64.tar.gz"
+                archives.append(archive.read_bytes())
+                with tarfile.open(archive) as package:
+                    self.assertFalse(any("/source/" in name for name in package.getnames()))
+            self.assertEqual(archives[0], archives[1])
+            self.assertEqual(stale.read_text(), "stale-marker")
+            self.assertEqual(obsolete.read_text(), "obsolete-marker")
 
     def test_drift_add_change_remove_and_keyboard_discovery(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -3,8 +3,6 @@ set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 # A standalone release build also needs disk-backed staging and Go temp files.
 export TMPDIR=${TMPDIR:-/var/tmp}
-# Ungated test releases must not ship agent guidance from another UI revision.
-python3 "$repo/scripts/generate-ui-reference.py" --check
 version= target= web_dir= output=
 while (($#)); do case "$1" in --version) version=$2;shift 2;;--target) target=$2;shift 2;;--web-dir) web_dir=$2;shift 2;;--output) output=$2;shift 2;;*) echo "error: unknown argument $1" >&2;exit 1;;esac;done
 [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || { echo "error: invalid --version '$version'" >&2;exit 1; }
@@ -18,8 +16,16 @@ mkdir -p "$repo/.cache"
 stage=$(mktemp -d "$repo/.cache/release-package.XXXXXX"); trap 'rm -rf "$stage"' EXIT
 name="open-habitat-$version-$target"; root="$stage/$name"; mkdir -p "$root/bin" "$root/web" "$root/systemd" "$root/sysusers.d" "$root/tmpfiles.d" "$root/licenses" "$root/site" "$root/operator"
 commit=$(git -C "$repo" rev-parse HEAD)
-(cd "$repo" && CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/Open-Habitat/open-habitat/internal/cli.version=$version -X github.com/Open-Habitat/open-habitat/internal/cli.buildCommit=$commit" -o "${root#"$repo/"}/bin/open-habitat" ./cmd/open-habitat)
-(cd "$repo" && CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -buildvcs=false -ldflags "-s -w -buildid=" -o "${root#"$repo/"}/bin/runtime-release" ./cmd/runtime-release)
+# Regenerate in private build sources: the approved checkout stays clean even
+# when parallel UI work left the checked-in development references behind.
+build_repo="$stage/source"
+mkdir -p "$build_repo/scripts" "$build_repo/web"
+(cd "$repo" && tar --exclude=node_modules -cf - cmd internal go.mod go.sum policy.go systemd tmpfiles.d) | tar -xf - -C "$build_repo"
+cp "$repo/scripts/generate-ui-reference.py" "$build_repo/scripts/"
+ln -s "$repo/web/src" "$build_repo/web/src"
+python3 "$build_repo/scripts/generate-ui-reference.py"
+(cd "$build_repo" && CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/Open-Habitat/open-habitat/internal/cli.version=$version -X github.com/Open-Habitat/open-habitat/internal/cli.buildCommit=$commit" -o "$root/bin/open-habitat" ./cmd/open-habitat)
+(cd "$build_repo" && CGO_ENABLED=0 GOOS=linux GOARCH=$goarch go build -trimpath -buildvcs=false -ldflags "-s -w -buildid=" -o "$root/bin/runtime-release" ./cmd/runtime-release)
 cp -a "$web_dir"/. "$root/web/"
 # Vite source maps contain original source (including test-only flag references).
 # They are not required to serve the client and must not ship in a pilot package.
@@ -31,7 +37,7 @@ cp -a "$repo"/systemd/. "$root/systemd/"; cp "$repo"/sysusers.d/* "$root/sysuser
 cp "$repo/site/schema.json" "$repo/site/example.json" "$root/site/"
 # The skill text depends on the version, not the architecture; print it with
 # the same build for this host, so a cross-built package carries the same bytes.
-(cd "$repo" && CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags "-X github.com/Open-Habitat/open-habitat/internal/cli.version=$version -X github.com/Open-Habitat/open-habitat/internal/cli.buildCommit=$commit" -o "${stage#"$repo/"}/skill-printer" ./cmd/open-habitat)
+(cd "$build_repo" && CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags "-X github.com/Open-Habitat/open-habitat/internal/cli.version=$version -X github.com/Open-Habitat/open-habitat/internal/cli.buildCommit=$commit" -o "$stage/skill-printer" ./cmd/open-habitat)
 "$stage/skill-printer" skill print operator > "$root/operator/SKILL.md"
 # Canonical public package modes must not inherit the build shell's umask.
 find "$root" -type d -exec chmod 0755 {} +

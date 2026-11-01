@@ -3,12 +3,13 @@ created: 2026-11-01
 updated: 2026-11-01
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: high
 lane: ui-reference-drift-blocks-release
 lane_seq: 2
 related: ['@agent-knows-habitat-ui']
 preparation: ready
+closed: 2026-11-01
 ---
 
 # UI reference drift blocks test releases again; generate it at build
