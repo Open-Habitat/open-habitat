@@ -2,7 +2,7 @@
 created: 2026-11-01
 updated: 2026-11-01
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: Observed host-backed browser test failure, reproduced with baseline production source
@@ -13,6 +13,7 @@ lane: disabled-tooltip-orphan-content
 lane_seq: 1
 related: ['@icon-tooltips-slow']
 preparation: ready
+closed: 2026-11-01
 ---
 
 # Disabled control tooltip produces orphan accessibility content
@@ -26,3 +27,10 @@ Observed during editor-header-one-row: the shorter toolbar lands Save beneath th
 Confirmed independently on baseline production source 8776b2477fff54f0dcb0f7174ae5cff8e9a8d4b0: temporarily add `await page.getByTestId("editor-save").hover(); await expect(page.getByRole("tooltip")).toBeVisible();` immediately after the final send visibility assertion for phone cases in workspace-editor.spec.ts. Both phone cases fail with the same region finding (7 other cases pass). Without deliberate hover the baseline suite passes, so this is pointer-position-dependent rather than a new header semantic defect. Restore the temporary probe after reproducing.
 
 Expected: hovering disabled controls should expose correctly associated help without orphan accessible content. Check both pointer and keyboard accessibility, with disabled and enabled controls. The header worker parks the pointer away before its final layout audit; it does not disable Axe rules or claim tooltip accessibility coverage.
+
+## Acceptance Criteria
+
+- [x] Disabled Save exposes associated help on hover and keyboard focus; whole-page Axe passes in both phone themes.
+- [x] Native disabled behavior remains intact, with enabled header tooltip and editor journeys passing.
+
+See [result.md](result.md) for checks, decisions and synthetic evidence.

@@ -19,7 +19,7 @@ import {
 } from "react-aria-components";
 import { useNavigate } from "react-router";
 import styles from "./Controls.module.css";
-import { DisabledTooltipHover, QuickTooltip } from "./QuickTooltip";
+import { DisabledTooltipTrigger, QuickTooltip } from "./QuickTooltip";
 
 export type ControlVariant =
   | "primary"
@@ -137,7 +137,9 @@ export function ControlButton({
   return tooltip ? (
     <QuickTooltip label={tooltip}>
       {props.isDisabled ? (
-        <DisabledTooltipHover>{button}</DisabledTooltipHover>
+        <DisabledTooltipTrigger label={props["aria-label"] || tooltip}>
+          {button}
+        </DisabledTooltipTrigger>
       ) : (
         button
       )}

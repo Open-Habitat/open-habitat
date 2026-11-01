@@ -35,18 +35,16 @@ test("@a11y header icons explain themselves promptly without covering controls",
   ).toBe(true);
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme });
-    expect(
-      (
-        await new AxeBuilder({ page })
-          .include('[role="tooltip"]')
-          .include(".ah-agent-header")
-          .analyze()
-      ).violations,
-    ).toEqual([]);
+    await page.locator("html").evaluate((el, theme) => {
+      el.dataset.theme = theme;
+    }, colorScheme);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     if (process.env.OH_VISUAL_CAPTURE === "1")
       await snapshot(
         page,
-        resolve(`../issues/icon-tooltips-slow/header-${colorScheme}`),
+        resolve(
+          `../issues/disabled-tooltip-orphan-content/header-${colorScheme}`,
+        ),
         { labOrigin: new URL(page.url()).origin },
       );
   }
@@ -54,4 +52,15 @@ test("@a11y header icons explain themselves promptly without covering controls",
   await expect(tip).toBeVisible({ timeout: 150 });
   await page.keyboard.press("Escape");
   await expect(tip).toHaveCount(0);
+  await page.mouse.move(0, 0);
+  await page.keyboard.press("Tab");
+  await editor.focus();
+  await expect(tip).toBeVisible();
+  await expect(editor).toHaveAttribute(
+    "aria-describedby",
+    (await tip.getAttribute("id")) ?? "missing-tooltip-id",
+  );
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.keyboard.press("Tab");
+  await expect(editor).not.toBeFocused();
 });

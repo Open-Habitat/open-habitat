@@ -356,9 +356,39 @@ for (const width of [1366, 390]) {
       await expect(composer).toHaveValue(draft);
       await composer.scrollIntoViewIfNeeded();
       await expect(page.getByTestId("send")).toBeInViewport();
-      // Layout shifts can put disabled Save under the old pointer position.
-      // Audit the settled layout, not its incidental hover tooltip.
-      await page.mouse.move(0, 0);
+      if (width === 390) {
+        const save = page.getByTestId("editor-save");
+        await expect(save).toBeDisabled();
+        await save.hover();
+        const tip = page.getByRole("tooltip");
+        await expect(tip).toBeVisible();
+        const helpTrigger = save.locator("..");
+        await expect(helpTrigger).toHaveAttribute(
+          "aria-describedby",
+          (await tip.getAttribute("id")) ?? "missing-tooltip-id",
+        );
+        expect(
+          (await new AxeBuilder({ page }).exclude("iframe").analyze())
+            .violations,
+        ).toEqual([]);
+        await page.keyboard.press("Escape");
+        await expect(tip).toHaveCount(0);
+        await page.mouse.move(0, 0);
+        await local.getByTestId("hide-conversation").focus();
+        await page.keyboard.press("Shift+Tab");
+        await expect(helpTrigger).toBeFocused();
+        await expect(tip).toBeVisible();
+        expect(
+          (await new AxeBuilder({ page }).exclude("iframe").analyze())
+            .violations,
+        ).toEqual([]);
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Space");
+        await expect(save).toBeDisabled();
+        await page.keyboard.press("Escape");
+      } else {
+        await page.mouse.move(0, 0);
+      }
       await expect(page.getByRole("tooltip")).toHaveCount(0);
       expect(
         await page.evaluate(

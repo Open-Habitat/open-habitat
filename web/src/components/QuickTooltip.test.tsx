@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { ControlButton, Segmented } from "./ControlElements";
+import { TooltipButton } from "./QuickTooltip";
 
 const tick = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 afterEach(() => {
@@ -44,32 +45,59 @@ it("warms up briefly, transfers immediately, and dismisses with Escape", () => {
   tick(0);
   expect(screen.queryByRole("tooltip")).toBeNull();
 });
-it("explains a disabled action without enabling it and ignores touch", () => {
-  vi.useFakeTimers();
-  const action = vi.fn();
-  render(
-    <ControlButton
-      size="row"
-      aria-label="Unavailable"
-      title="Blocked"
-      isDisabled
-      onPress={action}
-    >
-      ×
-    </ControlButton>,
-  );
-  const button = screen.getByRole("button");
-  fireEvent.pointerEnter(button, { pointerType: "touch" });
-  tick(500);
-  expect(screen.queryByRole("tooltip")).toBeNull();
-  fireEvent.pointerLeave(button, { pointerType: "touch" });
-  fireEvent.pointerEnter(button, { pointerType: "mouse" });
-  tick(250);
-  expect(screen.getByRole("tooltip")).toBeTruthy();
-  fireEvent.click(button);
-  expect(action).not.toHaveBeenCalled();
-  expect((button as HTMLButtonElement).disabled).toBe(true);
-});
+it.each(["aria", "native"])(
+  "explains a disabled %s action without enabling it and ignores touch",
+  (kind) => {
+    vi.useFakeTimers();
+    const action = vi.fn();
+    render(
+      kind === "aria" ? (
+        <ControlButton
+          size="row"
+          aria-label="Unavailable"
+          title="Blocked"
+          isDisabled
+          onPress={action}
+        >
+          ×
+        </ControlButton>
+      ) : (
+        <TooltipButton
+          title="Blocked"
+          aria-label="Unavailable"
+          disabled
+          onClick={action}
+        >
+          ×
+        </TooltipButton>
+      ),
+    );
+    const button = screen.getByRole("button");
+    fireEvent.pointerEnter(button, { pointerType: "touch" });
+    tick(500);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.pointerLeave(button, { pointerType: "touch" });
+    fireEvent.pointerMove(document.body, { pointerType: "mouse" });
+    fireEvent.pointerEnter(button, { pointerType: "mouse" });
+    tick(250);
+    const trigger = screen.getByRole("group");
+    expect(trigger.getAttribute("aria-describedby")).toBe(
+      screen.getByRole("tooltip").id,
+    );
+    fireEvent.pointerLeave(button, { pointerType: "mouse" });
+    tick(100);
+    fireEvent.keyDown(document, { key: "Tab" });
+    act(() => trigger.focus());
+    expect(trigger.getAttribute("aria-describedby")).toBe(
+      screen.getByRole("tooltip").id,
+    );
+    fireEvent.keyDown(trigger, { key: "Enter" });
+    fireEvent.keyDown(trigger, { key: " " });
+    fireEvent.click(button);
+    expect(action).not.toHaveBeenCalled();
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+  },
+);
 
 it("shows icon-only segment help on keyboard focus without waiting", () => {
   vi.useFakeTimers();
