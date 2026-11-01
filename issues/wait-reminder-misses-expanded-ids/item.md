@@ -3,11 +3,12 @@ created: 2026-11-01
 updated: 2026-11-01
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: wait-reminder-misses-expanded-ids
 lane_seq: 1
 preparation: ready
+closed: 2026-11-01
 ---
 
 # Turn-end reminder ignores a running wait whose run ids the shell expands

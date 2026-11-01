@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import companion, { remindedRuns, uncoveredRuns, waitReminder } from '../process-extension.mjs';
+import { spawn, execFileSync } from 'node:child_process';
+import { once } from 'node:events';
+import companion, { liveWaitRuns, remindedRuns, uncoveredRuns, waitReminder } from '../process-extension.mjs';
 
 const ids = { a: '01m531x6y92ggdqcmb1exzmn10', b: '01m531x6y92ggdqcmb1exzmn11', c: '01m531x6y92ggdqcmb1exzmn12', foreign: '01m531x6y92ggdqcmb1exzmn13', asks: '01m531x6y92ggdqcmb1exzmn14' };
 const run = (id, extra = {}) => ({ run_id: id, kind: 'spinoff', status: 'running', title: `t-${id.slice(-2)}`, created_at: `2026-10-27T10:00:${id.slice(-2)}Z`, source_repo: '/w', created_by_session: { harness: 'pi', session_id: 's1' }, created_by_run_id: null, ...extra });
@@ -19,6 +21,50 @@ test('only own live runs no waking wait covers, and a failed read says nothing',
   assert.deepEqual(one.map(r => r.run_id), [ids.b], 'the shared wait grammar decides coverage');
   assert.deepEqual(await uncoveredRuns({ sessionId: 's1', cwd: '/w', waits: [`taskfleet run wait ${ids.a} ${ids.b} --any --output json`], read }), []);
   assert.equal(await uncoveredRuns({ sessionId: 's1', cwd: '/w', waits: [], read: async () => null }), null);
+  assert.deepEqual(await uncoveredRuns({ sessionId: 's1', cwd: '/w', waits: ['npm test'], read }), all);
+  assert.equal(await uncoveredRuns({ sessionId: 's1', cwd: '/w', waits: ['taskfleet run wait $(cat active.txt)'], read }), null);
+});
+
+test('expanded waits use live argv, with bounded unknown rather than false coverage', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'oh-expanded-wait-'));
+  let child;
+  try {
+    const source = join(directory, 'wait.c'), binary = join(directory, 'taskfleet');
+    await writeFile(source, '#include <unistd.h>\nint main(void) { sleep(30); return 0; }\n');
+    execFileSync('cc', [source, '-o', binary]);
+    await writeFile(join(directory, 'active.txt'), `${ids.a}\n`);
+    const command = `"${binary}" run wait $(tr '\\n' ' ' < active.txt) --any; :`;
+    child = spawn('/bin/sh', ['-c', command], { cwd: directory, detached: true, stdio: 'ignore' });
+    // Wait for the shell to finish expanding and start the native executable.
+    let observed;
+    for (let n = 0; n < 100; n++) {
+      observed = await liveWaitRuns(child.pid);
+      if (observed?.length) break;
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.deepEqual(observed, [ids.a]);
+    const uncovered = await uncoveredRuns({ sessionId: 's1', cwd: directory, waits: [{ command, pid: child.pid }], read: async () => ({ runs }) });
+    assert.deepEqual(uncovered.map(r => r.run_id), [ids.b], 'only the actually expanded id is covered');
+    assert.equal(await liveWaitRuns(child.pid, { uid: process.getuid() + 1 }), null, 'foreign ownership is not read');
+    assert.equal(await liveWaitRuns(-1), null);
+    assert.equal(await uncoveredRuns({ sessionId: 's1', cwd: directory, waits: [{ command, pid: -1 }], read: async () => ({ runs }) }), null, 'unreadable expansion cannot claim nothing waits');
+    // A single argv containing two IDs cannot be interpreted as two arguments.
+    process.kill(-child.pid, 'SIGKILL'); await once(child, 'exit');
+    child = spawn(binary, ['run', 'wait', `${ids.a} ${ids.b}`], { detached: true, stdio: 'ignore' });
+    assert.equal(await liveWaitRuns(child.pid), null);
+    process.kill(-child.pid, 'SIGKILL'); await once(child, 'exit');
+    child = spawn(binary, ['run', 'wait', ids.a, 'x'.repeat(40000)], { detached: true, stdio: 'ignore' });
+    assert.equal(await liveWaitRuns(child.pid), null, 'oversized argv is unknown');
+    process.kill(-child.pid, 'SIGKILL'); await once(child, 'exit');
+    child = spawn('/bin/sleep', ['30'], { detached: true, stdio: 'ignore' });
+    assert.deepEqual(await liveWaitRuns(child.pid), [], 'a complete non-wait tree covers nothing');
+    const notWaiting = await uncoveredRuns({ sessionId: 's1', cwd: directory, waits: [{ command: 'sleep 30', pid: child.pid }], read: async () => ({ runs }) });
+    assert.deepEqual(notWaiting.map(r => r.run_id), [ids.a, ids.b]);
+    assert.equal(await uncoveredRuns({ sessionId: 's1', cwd: directory, waits: [{ command, pid: child.pid }], read: async () => ({ runs }) }), null, 'a wait still expanding is unknown');
+  } finally {
+    if (child?.exitCode === null && child?.signalCode === null) { process.kill(-child.pid, 'SIGKILL'); await once(child, 'exit'); }
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('a reminder once per uncovered set, again after a wait for it has returned', () => {

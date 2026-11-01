@@ -1,5 +1,6 @@
 // Product companion. pi-processes remains the sole registry, log and signal owner.
 import net from 'node:net';
+import { open, opendir } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { chmodSync, readFileSync } from 'node:fs';
 
@@ -41,6 +42,57 @@ export function waitRuns(command) {
     ids.push(w);
   }
   return ids;
+}
+// Inspect only this waking process tree, never a host-wide process inventory.
+// Pin each proc directory before checking its UID: PID reuse must not redirect
+// the subsequent argv read to another person's process. No argv is persisted.
+export async function liveWaitRuns(pid, { procRoot = '/proc', uid = process.getuid?.() } = {}) {
+  if (!Number.isSafeInteger(pid) || pid <= 0 || uid === undefined) return null;
+  const queue = [pid], seen = new Set(), ids = new Set();
+  const deadline = Date.now() + 100;
+  let tasks = 0;
+  const bounded = async (path, limit) => {
+    const file = await open(path, 'r');
+    try {
+      if ((await file.stat()).uid !== uid) throw new Error('foreign_uid');
+      const buffer = Buffer.alloc(limit + 1);
+      const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
+      if (bytesRead > limit) throw new Error('read_limit');
+      return buffer.subarray(0, bytesRead).toString('utf8');
+    } finally { await file.close(); }
+  };
+  try {
+    while (queue.length) {
+      if (Date.now() > deadline || seen.size >= 64) return null;
+      const current = queue.shift();
+      if (seen.has(current)) continue;
+      seen.add(current);
+      const dir = await open(`${procRoot}/${current}`, 'r');
+      try {
+        if ((await dir.stat()).uid !== uid) return null;
+        const base = `/proc/self/fd/${dir.fd}`;
+        const raw = await bounded(`${base}/cmdline`, 32768);
+        if (!raw.endsWith('\0')) return null;
+        const argv = raw.slice(0, -1).split('\0');
+        // Do not join argv into shell text: an argument containing spaces is
+        // still one argument, and must not manufacture a wait or a run id.
+        const found = argv.every(w => !/\s/.test(w)) ? waitRuns(argv.join(' ')) : [];
+        if (found.length) for (const id of found) ids.add(id);
+        else if (argv[0]?.split('/').pop() === 'taskfleet' && argv[1] === 'run' && argv[2] === 'wait') return null;
+        const threads = await opendir(`${base}/task`);
+        for await (const thread of threads) {
+          if (++tasks > 128 || Date.now() > deadline) return null;
+          if (!/^[1-9][0-9]*$/.test(thread.name)) continue;
+          const children = await bounded(`${base}/task/${thread.name}/children`, 8192);
+          for (const child of children.trim().split(/\s+/).filter(Boolean)) {
+            if (!/^[1-9][0-9]*$/.test(child) || queue.length >= 64) return null;
+            queue.push(Number(child));
+          }
+        }
+      } finally { await dir.close(); }
+    }
+    return [...ids];
+  } catch { return null; } // exits, permissions and exhausted bounds are unknown
 }
 // What the branch says about process lifetimes and earlier catch-ups. Same
 // rule as the daemon's tray (process_interrupted_linux.go): a start without an
@@ -237,7 +289,20 @@ export function remindedRuns(branch) {
 export async function uncoveredRuns({ sessionId, cwd, waits, read = taskfleet }) {
   const list = await read(['run', 'list', '--output', 'json'], cwd, 1500);
   if (!Array.isArray(list?.runs)) return null;
-  const covered = new Set(waits.flatMap(command => waitRuns(command)));
+  const covered = new Set();
+  // Unknown coverage cannot justify telling the agent that nothing waits.
+  // A string is useful to static callers; live inventory also supplies the PID.
+  for (const wait of waits) {
+    const command = typeof wait === 'string' ? wait : wait.command;
+    let ids = waitRuns(command);
+    if (!ids.length) {
+      ids = typeof wait === 'string' ? [] : await liveWaitRuns(wait?.pid);
+      // A named wait may still be expanding, before its child exists.
+      if (ids?.length === 0 && /\btaskfleet\b/.test(command ?? '')) ids = null;
+    }
+    if (ids === null) return null;
+    for (const id of ids) covered.add(id);
+  }
   return list.runs.filter(ownRun(sessionId)).filter(liveRun).filter(r => !covered.has(r.run_id))
     .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
     .map(r => ({ run_id: r.run_id, title: String(r.title ?? '').slice(0, 200) }));
@@ -493,7 +558,7 @@ export default function (pi) {
     const branch = ctx.sessionManager.getBranch();
     const records = await ask('request:list');
     if (!Array.isArray(records)) return null;
-    const waits = records.filter(p => p.status === 'running' && wakes(p, branch, wakesOnBoth) === true).map(p => p.command);
+    const waits = records.filter(p => p.status === 'running' && wakes(p, branch, wakesOnBoth) === true);
     const uncovered = await uncoveredRuns({ sessionId, cwd: ctx.cwd, waits });
     return waitReminder(uncovered, remindedRuns(branch));
   }
