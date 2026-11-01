@@ -31,6 +31,7 @@ export type IconName =
   | "edges"
   | "scroll"
   | "wrap"
+  | "grid"
   | "top"
   | "bottom"
   | "expand"
@@ -429,6 +430,14 @@ export function Icon({
       </>
     ),
     check: <path d="m4 12 5 5L20 6" />,
+    grid: (
+      <>
+        <rect x="4" y="4" width="6" height="6" rx="1.5" />
+        <rect x="14" y="4" width="6" height="6" rx="1.5" />
+        <rect x="4" y="14" width="6" height="6" rx="1.5" />
+        <rect x="14" y="14" width="6" height="6" rx="1.5" />
+      </>
+    ),
     message: (
       <path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-4 3v-3H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
     ),

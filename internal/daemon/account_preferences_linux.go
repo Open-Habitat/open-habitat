@@ -22,22 +22,29 @@ const AccountPreferencesPath = "/api/v1/account/preferences"
 
 // accountPreferences is the person's small account-wide settings in one
 // document, ~/.config/open-habitat/preferences.json: the desktop editor, the
-// interface language, recent rail count and experimental features they turned on. Only
-// enabled features are kept, so a feature that graduates or is removed leaves
-// at most one stale key. A language never chosen is absent and reads as
-// "system", which leaves the choice to the server default and the browser.
+// interface language, the order and workspace of the rail's Hiljaiset section,
+// and experimental features they turned on. Only enabled features are kept, so
+// a feature that graduates or is removed leaves at most one stale key. A value
+// never chosen is absent: a language reads as "system", which leaves the
+// choice to the server default and the browser, the order as "newest", and
+// the workspace as every workspace.
 type accountPreferences struct {
-	RecentCount  *int            `json:"recent_count,omitempty"`
-	Engine       string          `json:"engine"`
-	Language     string          `json:"language,omitempty"`
-	Experimental map[string]bool `json:"experimental"`
+	Engine         string          `json:"engine"`
+	Language       string          `json:"language,omitempty"`
+	QuietSort      string          `json:"quiet_sort,omitempty"`
+	QuietWorkspace string          `json:"quiet_workspace,omitempty"`
+	Experimental   map[string]bool `json:"experimental"`
+	// RecentCount is the retired Viimeisimmät count. A file that has it still
+	// reads, so the person's other choices survive; the next save drops it.
+	RecentCount json.RawMessage `json:"recent_count,omitempty"`
 }
 
 // preferencesWrite names one change. The gateway caps a write at 128 bytes,
 // so a write never carries the whole document; the daemon merges it.
 type preferencesWrite struct {
-	RecentCount  *int
-	Engine       *string
+	QuietSort      *string
+	QuietWorkspace *string
+	Engine         *string
 	Language     *string
 	Experimental map[string]bool
 }
@@ -55,6 +62,25 @@ func validLanguage(language string) bool {
 	return language == "system" || language == "fi" || language == "en" || language == "en-US" || language == "en-GB"
 }
 
+func validQuietSort(sort string) bool {
+	return sort == "newest" || sort == "workspace" || sort == "name"
+}
+
+// validWorkspaceID: the contract's workspaceId pattern. The daemon does not
+// require the workspace to exist; the browser reads a stale one as every
+// workspace.
+func validWorkspaceID(id string) bool {
+	if len(id) < 3+8 || len(id) > 3+64 || !strings.HasPrefix(id, "ws_") {
+		return false
+	}
+	for _, c := range id[3:] {
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != '_' && c != '-' {
+			return false
+		}
+	}
+	return true
+}
+
 // validFeatureID: lower-case words joined by single hyphens, as the
 // contract's pattern says.
 func validFeatureID(id string) bool {
@@ -69,15 +95,8 @@ func validFeatureID(id string) bool {
 	return true
 }
 
-func (p accountPreferences) recentCount() int {
-	if p.RecentCount == nil {
-		return 5
-	}
-	return *p.RecentCount
-}
-
 func (p accountPreferences) valid() bool {
-	if p.recentCount() < 1 || p.recentCount() > 20 {
+	if p.QuietSort != "" && !validQuietSort(p.QuietSort) || p.QuietWorkspace != "" && !validWorkspaceID(p.QuietWorkspace) {
 		return false
 	}
 	if !validEditorEngine(p.Engine) || p.Language != "" && !validLanguage(p.Language) || len(p.Experimental) > maxExperimentalFeatures {
@@ -92,8 +111,9 @@ func (p accountPreferences) valid() bool {
 }
 
 // decodePreferencesWrite accepts exactly what the contract's write allows:
-// one object with exactly one key: "engine", "language", "recent_count", or "experimental" naming
-// one feature with a boolean. encoding/json alone would match keys without
+// one object with exactly one key: "engine", "language", "quiet_sort",
+// "quiet_workspace" (a workspace or null), or "experimental" naming one
+// feature with a boolean. encoding/json alone would match keys without
 // regard to case and read null as false, so each part is decoded on its own.
 func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
 	var change preferencesWrite
@@ -102,12 +122,24 @@ func decodePreferencesWrite(body io.Reader) (preferencesWrite, bool) {
 	if dec.Decode(&outer) != nil || dec.Decode(new(any)) != io.EOF || len(outer) != 1 {
 		return change, false
 	}
-	if raw, ok := outer["recent_count"]; ok {
-		var count *int
-		if json.Unmarshal(raw, &count) != nil || count == nil || *count < 1 || *count > 20 {
+	if raw, ok := outer["quiet_sort"]; ok {
+		var sort string
+		if json.Unmarshal(raw, &sort) != nil || !validQuietSort(sort) {
 			return change, false
 		}
-		change.RecentCount = count
+		change.QuietSort = &sort
+		return change, true
+	}
+	if raw, ok := outer["quiet_workspace"]; ok {
+		// null chooses every workspace, stored as absent.
+		var id *string
+		if json.Unmarshal(raw, &id) != nil || id != nil && !validWorkspaceID(*id) {
+			return change, false
+		}
+		if id == nil {
+			id = new(string)
+		}
+		change.QuietWorkspace = id
 		return change, true
 	}
 	if raw, ok := outer["engine"]; ok {
@@ -211,6 +243,7 @@ func readPreferences(home string) (accountPreferences, error) {
 	if result.Language == "system" {
 		result.Language = ""
 	}
+	result.RecentCount = nil
 	if !result.valid() || dec.Decode(new(any)) != io.EOF {
 		return result, errors.New("invalid preferences")
 	}
@@ -265,8 +298,11 @@ func applyPreferences(home string, change preferencesWrite) (accountPreferences,
 	if err != nil {
 		return value, err
 	}
-	if change.RecentCount != nil {
-		value.RecentCount = change.RecentCount
+	if change.QuietSort != nil {
+		value.QuietSort = *change.QuietSort
+	}
+	if change.QuietWorkspace != nil {
+		value.QuietWorkspace = *change.QuietWorkspace
 	}
 	if change.Engine != nil {
 		value.Engine = *change.Engine
@@ -322,6 +358,14 @@ func AccountPreferencesHandler(cfg transport.Config, trusted func(*http.Request)
 		if language == "" {
 			language = "system"
 		}
-		historyJSON(w, map[string]any{"schema_version": 1, "web_identity_id": opaque("wid_", cfg.Provider+":"+cfg.Subject), "engine": value.Engine, "language": language, "recent_count": value.recentCount(), "experimental": value.Experimental})
+		sort := value.QuietSort
+		if sort == "" {
+			sort = "newest"
+		}
+		var workspace any
+		if value.QuietWorkspace != "" {
+			workspace = value.QuietWorkspace
+		}
+		historyJSON(w, map[string]any{"schema_version": 1, "web_identity_id": opaque("wid_", cfg.Provider+":"+cfg.Subject), "engine": value.Engine, "language": language, "quiet_sort": sort, "quiet_workspace": workspace, "experimental": value.Experimental})
 	})
 }

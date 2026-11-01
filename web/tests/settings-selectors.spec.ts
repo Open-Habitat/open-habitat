@@ -71,9 +71,6 @@ for (const locale of ["fi-FI", "en-US"]) {
         "true",
       );
       await page.keyboard.press("Escape");
-      await page.getByTestId("recent-count-input").fill("20");
-      await page.getByTestId("recent-count-input").press("Enter");
-      await expect(page.getByTestId("recent-count-more")).toBeDisabled();
     } finally {
       await context.close();
     }

@@ -42,6 +42,9 @@ import { signInText } from "../text/signIn";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import {
   AccountPreferencesProvider,
+  chooseQuietSort,
+  chooseQuietWorkspace,
+  type QuietSort,
   useConfirmedPreferences,
   useExperimentalFeature,
 } from "./accountPreferences";
@@ -1278,11 +1281,26 @@ export function App() {
     selectedAgentId,
     selectedId,
     search: location.search,
-    recentCount: confirmedPreferences.recent_count,
     // App is above AccountPreferencesProvider: it names the session.
     workFacts: workerRowSentence,
     icons,
   });
+  const quietChoice = {
+    sort: confirmedPreferences.quiet_sort,
+    workspace: confirmedPreferences.quiet_workspace,
+    busy: !confirmedPreferences.loaded || !!confirmedPreferences.busy,
+    error:
+      confirmedPreferences.error === "quiet_sort" ||
+      confirmedPreferences.error === "quiet_workspace",
+    ...(identity && csrf
+      ? {
+          onSort: (sort: QuietSort) =>
+            void chooseQuietSort(identity, sort, csrf),
+          onWorkspace: (id: string | null) =>
+            void chooseQuietWorkspace(identity, id, csrf),
+        }
+      : {}),
+  };
   // With one visible workspace the rail names it instead of listing it
   // (Jari 31.10.2026); hidden workspaces do not count, and an
   // unconfirmed listing keeps the list, which says what is missing.
@@ -2883,6 +2901,7 @@ export function App() {
                   source={source}
                   collapsed={railCompact && !mobileLayout}
                   now={now}
+                  quietChoice={quietChoice}
                   matches={matches}
                   archived={archivedWorkspaces}
                   onRestoreWorkspace={

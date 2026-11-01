@@ -31,12 +31,13 @@ export interface RailNow {
   /** Work going on without the person: working, or waiting on background
    * work (a process or a worker). */
   running: AgentNavModel[];
-  recent: AgentNavModel[];
+  /** Every other listed conversation (Hiljaiset), newest first. */
+  quiet: AgentNavModel[];
   hints: ReadonlyMap<string, WorkspaceHint>;
 }
 
 /**
- * Sorts visible conversations into attention, ongoing work and recent history.
+ * Sorts visible conversations into attention, ongoing work and the rest.
  * Catalog order is kept within the first two lists even though
  * each row carries its last change: a row that jumps on every turn is harder
  * to hit than one that stays.
@@ -54,7 +55,6 @@ export function railNow({
   search = "",
   workFacts = false,
   icons,
-  recentCount = 5,
 }: {
   agents: Agent[];
   snapshot: Snapshot;
@@ -70,11 +70,10 @@ export function railNow({
   workFacts?: boolean;
   /** Workspace icons by workspace_id (workspace-icons, experimental). */
   icons?: ReadonlyMap<string, WorkspaceIconModel>;
-  recentCount?: number;
 }): RailNow {
   const yours: AgentNavModel[] = [];
   const running: AgentNavModel[] = [];
-  const candidates: AgentNavModel[] = [];
+  const quiet: AgentNavModel[] = [];
   const counts = new Map<
     string,
     { yours: number; working: number; background: number; waiting: number }
@@ -163,10 +162,9 @@ export function railNow({
     // sight like a crash, and work that runs again is not failed any more.
     const failure = observed.activity === "working" ? undefined : a.failure;
     const failed = crashed || cut || failure !== undefined;
-    const recent = !turn && !live && !failed;
-    // Worktree results stay on the workspace page rather than taking places
-    // from primary conversations (proto-rail-recent, direction 2).
-    if (recent && a.worktree_id) continue;
+    // Hiljaiset lists every other conversation, finished worktree
+    // conversations included (Jari 1.11.2026).
+    const isQuiet = !turn && !live && !failed;
     const name = w.display_name ?? w.name;
     const state =
       failure === "turn_error"
@@ -251,8 +249,8 @@ export function railNow({
         a.agent_id === selectedAgentId ||
         (selectedId === w.workspace_id && openConversation === a.agent_id),
     };
-    if (recent) {
-      candidates.push(model);
+    if (isQuiet) {
+      quiet.push(model);
       continue;
     }
     const count = counts.get(w.workspace_id) ?? {
@@ -301,14 +299,10 @@ export function railNow({
               },
     );
   }
-  candidates.sort(
+  quiet.sort(
     (a, b) =>
       (b.changedAt ?? 0) - (a.changedAt ?? 0) ||
       a.agentId.localeCompare(b.agentId),
   );
-  const recent = candidates.slice(0, recentCount);
-  const selected = candidates.find((a) => a.selected);
-  if (selected && !recent.includes(selected))
-    recent.push({ ...selected, kept: true });
-  return { yours, running, recent, hints };
+  return { yours, running, quiet, hints };
 }

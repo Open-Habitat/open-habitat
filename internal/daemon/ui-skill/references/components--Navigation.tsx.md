@@ -489,7 +489,7 @@ export interface AgentNavModel {
    * turn ended in an error, or a worker run failed. */
   failed?: boolean;
   selected?: boolean;
-  /** Kept beyond the recent limit because it is open. */
+  /** Shown although Hiljaiset's narrowing hides it, because it is open. */
   kept?: boolean;
   priority?: number; // caller ranks native state; navigation only presents it
   finished?: boolean;
@@ -616,12 +616,17 @@ export function AgentNavItem({
   question = false,
   detail,
   workspaceId,
+  workspaceName,
   workspaceIcon,
+  workspaceTag = false,
   now = Date.now(),
   archive,
   rename,
   card,
 }: AgentNavModel & {
+  /** Say the workspace's name quietly in the row (Hiljaiset without
+   * icons, where no heading names it). */
+  workspaceTag?: boolean;
   now?: number;
   archive?: RailArchive;
   rename?: RailRename;
@@ -793,13 +798,27 @@ export function AgentNavItem({
               </>
             }
             end={
-              age !== undefined && changedAt !== undefined ? (
-                <time
-                  className="ah-nav-time"
-                  dateTime={new Date(changedAt).toISOString()}
-                >
-                  {age}
-                </time>
+              (workspaceTag && workspaceName) ||
+              (age !== undefined && changedAt !== undefined) ? (
+                <>
+                  {workspaceTag && workspaceName ? (
+                    <span
+                      className="ah-nav-workspace"
+                      data-testid="rail-row-workspace"
+                      aria-hidden="true"
+                    >
+                      {workspaceName}
+                    </span>
+                  ) : null}
+                  {age !== undefined && changedAt !== undefined ? (
+                    <time
+                      className="ah-nav-time"
+                      dateTime={new Date(changedAt).toISOString()}
+                    >
+                      {age}
+                    </time>
+                  ) : null}
+                </>
               ) : undefined
             }
           />
@@ -952,12 +971,10 @@ function NowDot(agent: AgentNavModel) {
     </li>
   );
 }
-/** Flat with icons; otherwise grouped by workspace. Recent groups keep
- * their input order, so the workspace with the newest row comes first. */
+/** Flat with icons; otherwise grouped by workspace. */
 function RunningGroups({
   running,
   iconed,
-  recent = false,
   now,
   archive,
   rename,
@@ -965,7 +982,6 @@ function RunningGroups({
 }: {
   running: AgentNavModel[];
   iconed: boolean;
-  recent?: boolean;
   now: number;
   archive?: RailArchive;
   rename?: RailRename;
@@ -981,9 +997,9 @@ function RunningGroups({
     group.rows.push(agent);
     groups.set(key, group);
   }
-  const ordered = [...groups.entries()];
-  if (!recent)
-    ordered.sort(([, a], [, b]) => a.name.localeCompare(b.name, "fi"));
+  const ordered = [...groups.entries()].sort(([, a], [, b]) =>
+    a.name.localeCompare(b.name, "fi"),
+  );
   const row = (agent: AgentNavModel) => (
     <AgentNavItem
       key={agent.agentId}
@@ -1018,11 +1034,12 @@ function RunningGroups({
   );
 }
 /** What needs the person and what runs now, across every workspace (the
- * accepted Nyt sidebar). Workers are listed as themselves, not nested. */
+ * accepted Nyt sidebar), then Hiljaiset. Workers are listed as themselves,
+ * not nested. */
 export function NowSections({
   yours,
   running,
-  recent = [],
+  quiet,
   collapsed = false,
   archive,
   rename,
@@ -1030,7 +1047,9 @@ export function NowSections({
 }: {
   yours: AgentNavModel[];
   running: AgentNavModel[];
-  recent?: AgentNavModel[];
+  /** Hiljaiset (QuietSection), under Käynnissä; the narrow rail leaves it
+   * out. */
+  quiet?: ReactNode;
   collapsed?: boolean;
   /** Absent where the rail offers no archive (a story). */
   archive?: RailArchive;
@@ -1042,9 +1061,8 @@ export function NowSections({
   const t = useText(navigationText);
   const yoursId = useId();
   const runningId = useId();
-  const recentId = useId();
   const now = useMinuteNow();
-  const iconed = [...yours, ...running, ...recent].some((a) => a.workspaceIcon);
+  const iconed = [...yours, ...running].some((a) => a.workspaceIcon);
   if (collapsed)
     return (
       <div className="ah-now-dots">
@@ -1118,29 +1136,7 @@ export function NowSections({
           <p className="ah-now-empty">{t.nothingRuns}</p>
         )}
       </section>
-      <section
-        className={iconed ? "ah-now ah-now-iconed" : "ah-now"}
-        data-testid="rail-recent"
-        aria-labelledby={recentId}
-      >
-        <h2 className="ah-rail-section-head" id={recentId}>
-          {t.recent}
-          <span className="ah-rail-count">{recent.length || null}</span>
-        </h2>
-        {recent.length ? (
-          <RunningGroups
-            running={recent}
-            iconed={iconed}
-            recent
-            now={now}
-            archive={archive}
-            rename={rename}
-            card={card}
-          />
-        ) : (
-          <p className="ah-now-empty">{t.noRecent}</p>
-        )}
-      </section>
+      {quiet}
     </>
   );
 }

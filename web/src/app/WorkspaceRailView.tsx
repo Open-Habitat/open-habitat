@@ -10,6 +10,7 @@ import {
   WorkspaceRail,
 } from "../components";
 import { RailClones } from "../components/ClonePage";
+import { type QuietChoice, QuietSection } from "../components/QuietSection";
 import type { Tone } from "../components/types";
 import { WorkspaceActions } from "../components/WorkspaceActions";
 import type { WorkspaceIconModel } from "../components/WorkspaceIcon";
@@ -21,6 +22,7 @@ import {
   useConversationMetadata,
 } from "./conversationStore";
 import type { AccountProfile } from "./pi";
+import { setQuietFolded, useQuietFolded } from "./quietFold";
 import { type RailNow, railNow } from "./railNow";
 import { serverInfo, serverInformationChanges } from "./serverAdministration";
 import type { Snapshot, Workspace } from "./snapshot";
@@ -73,8 +75,8 @@ export function connectionStatus(
       ? { label: txt.connected, tone: "success" }
       : { label: txt.incomplete, tone: "warning" };
 }
-/** The rail's Sinun vuorosi and Käynnissä; the app also badges the phone's
- * menu button with the first. */
+/** The rail's Sinun vuorosi, Käynnissä and Hiljaiset; the app also badges
+ * the phone's menu button with the first. */
 export function useRailNow({
   store,
   snapshot,
@@ -87,8 +89,7 @@ export function useRailNow({
   names?: ReadonlyMap<string, string>;
 }): RailNow {
   const metadata = useConversationMetadata(store);
-  if (!snapshot)
-    return { yours: [], running: [], recent: [], hints: new Map() };
+  if (!snapshot) return { yours: [], running: [], quiet: [], hints: new Map() };
   return railNow({
     ...rest,
     snapshot,
@@ -141,7 +142,10 @@ export function WorkspaceRailView({
   archiveConversation,
   renameConversation,
   icons,
+  quietChoice,
 }: {
+  /** Hiljaiset's order and workspace from the account preferences. */
+  quietChoice: QuietChoice;
   /** The conversation rows' rename; absent where none is offered. */
   renameConversation?: RailRename;
   /** Workspace icons by workspace_id while the experimental feature is on. */
@@ -188,9 +192,13 @@ export function WorkspaceRailView({
   const cloneView = useCloneView(clones);
   const queued = cloneView.queue.filter((q) => q.state !== "present");
   const server = useServer(pathname);
+  const quietFolded = useQuietFolded();
   const { search } = useLocation();
   // With one workspace there is no filter field, so nothing filters.
   const term = only ? "" : filter.toLocaleLowerCase();
+  const card = icons
+    ? { onNew: onNewConversation, newReason: (id: string) => newReason?.(id) }
+    : undefined;
   const archivedMatches = archived
     .filter((w) =>
       (w.display_name ?? w.name).toLocaleLowerCase().includes(term),
@@ -224,15 +232,30 @@ export function WorkspaceRailView({
         <NowSections
           yours={now.yours}
           running={now.running}
-          recent={now.recent}
+          quiet={
+            <QuietSection
+              rows={now.quiet}
+              workspaces={snapshot.workspaces
+                .filter(
+                  (w) => w.presence === "present" && w.visibility === "visible",
+                )
+                .map((w) => ({
+                  id: w.workspace_id,
+                  name: w.display_name ?? w.name,
+                  icon: icons?.get(w.workspace_id),
+                }))}
+              choice={quietChoice}
+              folded={quietFolded}
+              onFold={setQuietFolded}
+              archive={archiveConversation}
+              rename={renameConversation}
+              card={card}
+            />
+          }
           collapsed={collapsed}
           archive={archiveConversation}
           rename={renameConversation}
-          card={
-            icons
-              ? { onNew: onNewConversation, newReason: (id) => newReason?.(id) }
-              : undefined
-          }
+          card={card}
         />
       }
       filterValue={filter}

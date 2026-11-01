@@ -245,9 +245,9 @@ def must_reject(schema: str, instance: object) -> None:
 # Change exactly one field of a valid reply, so a newly required field
 # cannot make every negative check pass for the wrong reason.
 preferences_reply = json.loads((BASE / "examples/account-preferences.json").read_text())
-for change in ({"engine": "monaco"}, {"uid": 123}, {"experimental": {"worker-row-sentence": False}}, {"experimental": {"../x": True}}, {"language": "sv"}, {"recent_count": 0}, {"recent_count": 21}):
+for change in ({"engine": "monaco"}, {"uid": 123}, {"experimental": {"worker-row-sentence": False}}, {"experimental": {"../x": True}}, {"language": "sv"}, {"quiet_sort": "oldest"}, {"quiet_workspace": "../x"}, {"quiet_workspace": ""}, {"recent_count": 5}):
     must_reject("account-preferences.schema.json", {**preferences_reply, **change})
-for missing in ("language", "recent_count"):
+for missing in ("language", "quiet_sort", "quiet_workspace"):
     must_reject("account-preferences.schema.json", {k: v for k, v in preferences_reply.items() if k != missing})
 # The pre-sign-in language names only the server's default.
 must_reject("site-language.schema.json", {"schema_version": 1, "default_language": "sv"})
@@ -648,9 +648,9 @@ must_reject("integrations.schema.json", unread_integrations)
 
 # A preferences write names exactly one change.
 preferences_write = Draft202012Validator({"$ref": schemas["account-preferences.schema.json"]["$id"] + "#/$defs/write"}, registry=registry)
-for ok in ({"recent_count": 1}, {"recent_count": 5}, {"recent_count": 20}, {"engine": "vscode"}, {"language": "en"}, {"language": "system"}, {"experimental": {"worker-row-sentence": True}}, {"experimental": {"next-waiting-row": False}}):
+for ok in ({"quiet_sort": "newest"}, {"quiet_sort": "workspace"}, {"quiet_sort": "name"}, {"quiet_workspace": "ws_example123"}, {"quiet_workspace": None}, {"engine": "vscode"}, {"language": "en"}, {"language": "system"}, {"experimental": {"worker-row-sentence": True}}, {"experimental": {"next-waiting-row": False}}):
     preferences_write.validate(ok)
-for bad in ({"recent_count": 0}, {"recent_count": 21}, {"recent_count": 1.5}, {"recent_count": "5"}, {"recent_count": True}, {"recent_count": None}, {"recent_count": 5, "engine": "vscode"}, {}, {"engine": "vscode", "experimental": {"worker-row-sentence": True}}, {"language": "sv"}, {"language": "en", "engine": "vscode"}, {"experimental": {}}, {"experimental": {"a": True, "b": True}}, {"experimental": {"Terminal": True}}):
+for bad in ({"recent_count": 5}, {"quiet_sort": "oldest"}, {"quiet_sort": None}, {"quiet_workspace": "../x"}, {"quiet_workspace": "ws_short"}, {"quiet_workspace": 5}, {"quiet_sort": "name", "quiet_workspace": None}, {"quiet_sort": "name", "engine": "vscode"}, {}, {"engine": "vscode", "experimental": {"worker-row-sentence": True}}, {"language": "sv"}, {"language": "en", "engine": "vscode"}, {"experimental": {}}, {"experimental": {"a": True, "b": True}}, {"experimental": {"Terminal": True}}):
     assert not preferences_write.is_valid(bad), f"preferences write accepted {bad!r}"
 
 # GitLab: the token travels only in connect and replace and never in a

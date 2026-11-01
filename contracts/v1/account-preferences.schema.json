@@ -18,11 +18,20 @@
         "en-GB"
       ]
     },
-    "recent_count": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 20,
-      "default": 5
+    "quiet_sort": {
+      "description": "The order of the rail's Hiljaiset section: newest first, grouped by workspace, or by title. The browser lists newest first instead of by workspace while one workspace is chosen, and keeps this value.",
+      "enum": [
+        "newest",
+        "workspace",
+        "name"
+      ]
+    },
+    "quiet_workspace": {
+      "description": "The one workspace the rail's Hiljaiset section is narrowed to, or null for every workspace. A workspace that no longer exists reads as null.",
+      "oneOf": [
+        {"$ref": "common.schema.json#/$defs/workspaceId"},
+        {"type": "null"}
+      ]
     },
     "feature_id": {
       "type": "string",
@@ -30,13 +39,19 @@
       "maxLength": 48
     },
     "write": {
-      "description": "One change: the editor, the language, the recent conversation count, or one experimental feature's switch. The daemon merges it into the stored document.",
+      "description": "One change: the editor, the language, the Hiljaiset order or workspace, or one experimental feature's switch. The daemon merges it into the stored document.",
       "oneOf": [
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["recent_count"],
-          "properties": {"recent_count": {"$ref": "#/$defs/recent_count"}}
+          "required": ["quiet_sort"],
+          "properties": {"quiet_sort": {"$ref": "#/$defs/quiet_sort"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["quiet_workspace"],
+          "properties": {"quiet_workspace": {"$ref": "#/$defs/quiet_workspace"}}
         },
         {
           "type": "object",
@@ -92,11 +107,13 @@
         "web_identity_id",
         "engine",
         "language",
-        "recent_count",
+        "quiet_sort",
+        "quiet_workspace",
         "experimental"
       ],
       "properties": {
-        "recent_count": {"$ref": "#/$defs/recent_count"},
+        "quiet_sort": {"$ref": "#/$defs/quiet_sort"},
+        "quiet_workspace": {"$ref": "#/$defs/quiet_workspace"},
         "schema_version": {
           "const": 1
         },

@@ -38,14 +38,12 @@ function run(
     sessions = [],
     phase = "authenticated",
     catalog = agents,
-    recentCount = 5,
     selectedAgentId,
   }: {
     attention?: [string, "new" | "seen"][];
     sessions?: Session[];
     phase?: "authenticated" | "stale";
     catalog?: Agent[];
-    recentCount?: number;
     selectedAgentId?: string;
   } = {},
 ) {
@@ -62,7 +60,6 @@ function run(
     workspaces: visible,
     metadata,
     daemonSessions: sessions,
-    recentCount,
     selectedAgentId,
     phase,
   });
@@ -70,53 +67,56 @@ function run(
 const ids = (rows: { agentId: string }[]) => rows.map((r) => r.agentId);
 
 describe("rail Nyt groups", () => {
-  it("keeps the newest eligible conversations plus the open older one across process stops", () => {
+  it("lists every other conversation in Hiljaiset, newest first, across process stops", () => {
     const finished = Array.from({ length: 7 }, (_, n) =>
-      agent(`recent-${n}`, {
+      agent(`quiet-${n}`, {
         run_active: false,
         changed_at: new Date((n + 1) * 86400000).toISOString(),
       }),
     );
+    // A finished worktree conversation is quiet too (Jari 1.11.2026).
+    const worktree = agent("worker", {
+      worktree_id: "wt_worker",
+      process: "confirmed_exited",
+      changed_at: new Date(3.5 * 86400000).toISOString(),
+    });
     const excluded = [
       agent("archived", { archive: "archived", process: "confirmed_exited" }),
-      agent("worker", {
-        worktree_id: "wt_worker",
-        process: "confirmed_exited",
-      }),
       agent("working", { run_active: true }),
       agent("unread", { process: "confirmed_exited" }),
     ];
     const options = {
-      selectedAgentId: "recent-0",
+      selectedAgentId: "quiet-0",
       attention: [["unread", "new"]] as [string, "new"][],
     };
-    const before = run([...excluded, ...finished], options);
-    expect(ids(before.recent)).toEqual([
-      "recent-6",
-      "recent-5",
-      "recent-4",
-      "recent-3",
-      "recent-2",
-      "recent-0",
+    const before = run([...excluded, worktree, ...finished], options);
+    expect(ids(before.quiet)).toEqual([
+      "quiet-6",
+      "quiet-5",
+      "quiet-4",
+      "quiet-3",
+      "worker",
+      "quiet-2",
+      "quiet-1",
+      "quiet-0",
     ]);
-    expect(before.recent.at(-1)?.kept).toBe(true);
+    expect(before.quiet.find((a) => a.selected)?.agentId).toBe("quiet-0");
+    expect(before.quiet.some((a) => a.kept)).toBe(false);
     for (const cause of ["idle", "restart"] as const) {
       const stopped = finished.map((a) => ({
         ...a,
         process: "confirmed_exited",
         rest: { cause, awake: false, at: "2026-10-31T00:00:00Z" },
       }));
-      expect(ids(run([...excluded, ...stopped], options).recent)).toEqual(
-        ids(before.recent),
-      );
+      expect(
+        ids(run([...excluded, worktree, ...stopped], options).quiet),
+      ).toEqual(ids(before.quiet));
     }
-    expect(ids(run(finished, { recentCount: 1 }).recent)).toEqual(["recent-6"]);
-    expect(ids(run(finished, { recentCount: 20 }).recent)).toHaveLength(7);
     expect(
       run(excluded, {
         selectedAgentId: "archived",
         ...{ attention: options.attention },
-      }).recent,
+      }).quiet,
     ).toEqual([]);
   });
   it("puts the person's turn first and keeps only live work below it", () => {

@@ -9,10 +9,13 @@ import {
   useSyncExternalStore,
 } from "react";
 import schema from "../../../contracts/v1/account-preferences.schema.json";
+import common from "../../../contracts/v1/common.schema.json";
 import { type LanguageChoice, setPersonalLanguage } from "../i18n";
 import { jsonWrite } from "./mutations";
 
 export type EditorEngine = "codemirror6" | "vscode";
+/** The order of the rail's Hiljaiset section. */
+export type QuietSort = "newest" | "workspace" | "name";
 
 /** The experimental features the settings offer, in the section's order.
  * A feature reads its switch with `useExperimentalFeature(id)`. An id the
@@ -29,10 +32,13 @@ type Reply = {
   web_identity_id: string;
   engine: EditorEngine;
   language: LanguageChoice;
-  recent_count: number;
+  quiet_sort: QuietSort;
+  quiet_workspace: string | null;
   experimental: Record<string, true>;
 };
-const validate = new Ajv({ strict: false }).compile<Reply>({
+const ajv = new Ajv({ strict: false });
+ajv.addSchema(common);
+const validate = ajv.compile<Reply>({
   ...schema,
   $ref: `${schema.$id}#/$defs/result`,
 });
@@ -40,11 +46,14 @@ const url = "/api/v1/account/preferences";
 
 /** What the daemon last confirmed, and the one write in flight. `loaded`
  * says the first read has finished, either way. `busy` and `error` name what
- * they concern: "engine", "language", a feature id, or "read". */
+ * they concern: "engine", "language", "quiet_sort", "quiet_workspace", a
+ * feature id, or "read". */
 export type Preferences = {
   engine: EditorEngine;
   language: LanguageChoice;
-  recent_count: number;
+  quiet_sort: QuietSort;
+  /** The one workspace Hiljaiset is narrowed to; null for every one. */
+  quiet_workspace: string | null;
   experimental: Readonly<Record<string, true>>;
   loaded: boolean;
   busy?: string;
@@ -53,7 +62,8 @@ export type Preferences = {
 const initial: Preferences = {
   engine: "codemirror6",
   language: "system",
-  recent_count: 5,
+  quiet_sort: "newest",
+  quiet_workspace: null,
   experimental: {},
   loaded: false,
 };
@@ -111,7 +121,8 @@ async function readReply(response: Response, identity: string) {
   return {
     engine: result.engine,
     language: result.language,
-    recent_count: result.recent_count,
+    quiet_sort: result.quiet_sort,
+    quiet_workspace: result.quiet_workspace,
     experimental: result.experimental,
   };
 }
@@ -178,12 +189,23 @@ export function chooseEditor(
   return write(identity, csrf, "engine", { engine });
 }
 
-export function chooseRecentCount(
+export function chooseQuietSort(
   identity: string,
-  count: number,
+  sort: QuietSort,
   csrf: string,
 ) {
-  return write(identity, csrf, "recent_count", { recent_count: count });
+  return write(identity, csrf, "quiet_sort", { quiet_sort: sort });
+}
+
+/** Narrows Hiljaiset to one workspace, or with null shows every one. */
+export function chooseQuietWorkspace(
+  identity: string,
+  workspaceId: string | null,
+  csrf: string,
+) {
+  return write(identity, csrf, "quiet_workspace", {
+    quiet_workspace: workspaceId,
+  });
 }
 
 export function chooseLanguage(

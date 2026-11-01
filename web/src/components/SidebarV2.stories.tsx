@@ -7,6 +7,7 @@ import {
   WorkspaceNavRow,
   WorkspaceRail,
 } from "./Navigation";
+import { QuietSection } from "./QuietSection";
 import { ReturnView } from "./ReturnView";
 
 const noop = () => {};
@@ -96,30 +97,36 @@ function Example({
                       detail: "budjetti-2027 · Uusi vastaus",
                     },
                   ]}
-                  recent={[
-                    {
-                      agentId: "pi:recent",
-                      title: "Kirjaston aukioloajat",
-                      href: "/agents/pi:recent",
-                      activity: "closed",
-                      activityLabel: "Valmis",
-                      controlLabel: "",
-                      workspaceName: "kirjasto-api",
-                      changedAt: Date.now() - 86400000,
-                    },
-                    {
-                      agentId: "pi:older",
-                      title: "Vanhempi avoin keskustelu",
-                      href: "/agents/pi:older",
-                      activity: "closed",
-                      activityLabel: "Valmis",
-                      controlLabel: "",
-                      workspaceName: "kotisivu",
-                      changedAt: Date.now() - 7 * 86400000,
-                      selected: true,
-                      kept: true,
-                    },
-                  ]}
+                  quiet={
+                    <QuietSection
+                      choice={{ sort: "newest", workspace: null }}
+                      rows={[
+                        {
+                          agentId: "pi:quiet",
+                          title: "Kirjaston aukioloajat",
+                          href: "/agents/pi:quiet",
+                          activity: "closed",
+                          activityLabel: "Valmis",
+                          controlLabel: "",
+                          workspaceId: "ws_kirjasto",
+                          workspaceName: "kirjasto-api",
+                          changedAt: Date.now() - 86400000,
+                        },
+                        {
+                          agentId: "pi:older",
+                          title: "Vanhempi avoin keskustelu",
+                          href: "/agents/pi:older",
+                          activity: "closed",
+                          activityLabel: "Valmis",
+                          controlLabel: "",
+                          workspaceId: "ws_kotisivu",
+                          workspaceName: "kotisivu",
+                          changedAt: Date.now() - 7 * 86400000,
+                          selected: true,
+                        },
+                      ]}
+                    />
+                  }
                   running={[
                     {
                       agentId: "pi:waits",

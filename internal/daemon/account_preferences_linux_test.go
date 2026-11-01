@@ -105,11 +105,14 @@ func TestAccountPreferencesHTTPBoundary(t *testing.T) {
 		method, suffix, body string
 		status               int
 	}{
-		{"PUT", "", `{"recent_count":1}`, 200}, {"PUT", "", `{"recent_count":20}`, 200},
-		{"PUT", "", `{"recent_count":0}`, 400}, {"PUT", "", `{"recent_count":21}`, 400},
-		{"PUT", "", `{"recent_count":null}`, 400}, {"PUT", "", `{"recent_count":1.5}`, 400},
-		{"PUT", "", `{"recent_count":"5"}`, 400}, {"PUT", "", `{"Recent_Count":5}`, 400},
-		{"PUT", "", `{"recent_count":5,"language":"en"}`, 400},
+		{"PUT", "", `{"quiet_sort":"newest"}`, 200}, {"PUT", "", `{"quiet_sort":"workspace"}`, 200},
+		{"PUT", "", `{"quiet_sort":"name"}`, 200}, {"PUT", "", `{"quiet_sort":"oldest"}`, 400},
+		{"PUT", "", `{"quiet_sort":null}`, 400}, {"PUT", "", `{"quiet_sort":""}`, 400},
+		{"PUT", "", `{"Quiet_Sort":"name"}`, 400}, {"PUT", "", `{"quiet_sort":"name","language":"en"}`, 400},
+		{"PUT", "", `{"quiet_workspace":"ws_example123"}`, 200}, {"PUT", "", `{"quiet_workspace":null}`, 200},
+		{"PUT", "", `{"quiet_workspace":""}`, 400}, {"PUT", "", `{"quiet_workspace":"ws_short"}`, 400},
+		{"PUT", "", `{"quiet_workspace":"ws_../../etc"}`, 400}, {"PUT", "", `{"quiet_workspace":"wx_example123"}`, 400},
+		{"PUT", "", `{"quiet_workspace":5}`, 400}, {"PUT", "", `{"recent_count":5}`, 400},
 		{"GET", "", "", 200}, {"PUT", "", `{"engine":"vscode"}`, 200},
 		{"GET", "?uid=123", "", 400}, {"POST", "", `{"engine":"vscode"}`, 400},
 		{"PUT", "", `{"engine":"monaco"}`, 400}, {"PUT", "", `{"engine":"vscode","uid":123}`, 400},
@@ -165,16 +168,22 @@ func TestAccountPreferencesMergeOneChange(t *testing.T) {
 		}
 		return reply
 	}
-	if reply := put(`{"engine":"vscode"}`); reply["recent_count"] != float64(5) || reply["language"] != "system" {
-		t.Fatalf("an unchosen language is not system: %v", reply)
+	if reply := put(`{"engine":"vscode"}`); reply["quiet_sort"] != "newest" || reply["quiet_workspace"] != nil || reply["language"] != "system" {
+		t.Fatalf("unchosen values are not their defaults: %v", reply)
 	}
-	if reply := put(`{"recent_count":8}`); reply["recent_count"] != float64(8) {
-		t.Fatalf("recent count: %v", reply)
+	if v, ok := put(`{"engine":"vscode"}`)["quiet_workspace"]; !ok || v != nil {
+		t.Fatalf("an unchosen workspace is not null: %v", v)
+	}
+	if reply := put(`{"quiet_sort":"workspace"}`); reply["quiet_sort"] != "workspace" {
+		t.Fatalf("quiet sort: %v", reply)
+	}
+	if reply := put(`{"quiet_workspace":"ws_example123"}`); reply["quiet_workspace"] != "ws_example123" || reply["quiet_sort"] != "workspace" {
+		t.Fatalf("quiet workspace: %v", reply)
 	}
 	put(`{"language":"en"}`)
 	put(`{"experimental":{"next-waiting-row":true}}`)
 	reply := put(`{"experimental":{"worker-row-sentence":true}}`)
-	if reply["recent_count"] != float64(8) || reply["engine"] != "vscode" || reply["language"] != "en" || !reflect.DeepEqual(reply["experimental"], map[string]any{"next-waiting-row": true, "worker-row-sentence": true}) {
+	if reply["quiet_sort"] != "workspace" || reply["quiet_workspace"] != "ws_example123" || reply["engine"] != "vscode" || reply["language"] != "en" || !reflect.DeepEqual(reply["experimental"], map[string]any{"next-waiting-row": true, "worker-row-sentence": true}) {
 		t.Fatalf("merge lost a change: %v", reply)
 	}
 	reply = put(`{"experimental":{"next-waiting-row":false}}`)
@@ -184,6 +193,13 @@ func TestAccountPreferencesMergeOneChange(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join(home, ".config/open-habitat/preferences.json"))
 	if err != nil || strings.Contains(string(raw), "next-waiting-row") {
 		t.Fatalf("stored: %s %v", raw, err)
+	}
+	// Every workspace is stored as no choice.
+	if reply = put(`{"quiet_workspace":null}`); reply["quiet_workspace"] != nil {
+		t.Fatalf("every workspace: %v", reply)
+	}
+	if raw, _ = os.ReadFile(filepath.Join(home, ".config/open-habitat/preferences.json")); strings.Contains(string(raw), "quiet_workspace") {
+		t.Fatalf("every workspace stored a key: %s", raw)
 	}
 	// System is stored as no choice, so the file keeps only what was chosen.
 	if reply = put(`{"language":"system"}`); reply["language"] != "system" {
@@ -209,4 +225,28 @@ func TestAccountPreferencesMergeOneChange(t *testing.T) {
 	}
 	// Turning off a feature never fails on a full document.
 	put(`{"experimental":{"f1":false}}`)
+}
+
+// A file written while the rail had Viimeisimmät still reads, and the next
+// save drops the retired count.
+func TestAccountPreferencesDropRetiredRecentCount(t *testing.T) {
+	home := t.TempDir()
+	dir := filepath.Join(home, ".config/open-habitat")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "preferences.json"), []byte(`{"recent_count":8,"engine":"vscode","language":"en","experimental":{}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	value, err := readPreferences(home)
+	if err != nil || value.Engine != "vscode" || value.Language != "en" {
+		t.Fatalf("read: %+v %v", value, err)
+	}
+	if _, err = applyPreferences(home, preferencesWrite{QuietSort: new("name")}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "preferences.json"))
+	if err != nil || strings.Contains(string(raw), "recent_count") || !strings.Contains(string(raw), `"quiet_sort":"name"`) {
+		t.Fatalf("stored: %s %v", raw, err)
+	}
 }

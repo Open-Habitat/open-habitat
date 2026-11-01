@@ -37,7 +37,6 @@ import {
 import { usePiModels } from "../app/PiModels";
 import type { AccountProfile } from "../app/pi";
 import { RecapSettingsSection } from "../app/RecapSettings";
-import { RecentSettings } from "../app/RecentSettings";
 import { ServerAdministration } from "../app/ServerAdministration";
 import { ServerIntegrationsSettings } from "../app/ServerIntegrationsSettings";
 import { ServerVersionLine } from "../app/ServerVersion";
@@ -845,7 +844,6 @@ export function AccountSettings({
               </div>
             </div>
             <LanguageSettings identity={editorIdentity} csrf={csrf} />
-            <RecentSettings identity={editorIdentity} csrf={csrf} />
           </div>
         )}
         {section === "tila" && (

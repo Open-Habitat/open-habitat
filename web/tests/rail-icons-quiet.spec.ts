@@ -2,12 +2,14 @@ import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { snapshot } from "../lab/session.mjs";
 import { hostOrigin } from "../test-ports.mjs";
-import { createHostTest, expect, type Page } from "./worker-host";
+import { createHostTest, expect, type Locator, type Page } from "./worker-host";
 
 const capture = process.env.OH_VISUAL_CAPTURE === "1";
 const firstWorkspace = capture ? "aurinkokello" : "ordinary-dir";
 const secondWorkspace = capture ? "kotisivu" : "git-project";
 const test = createHostTest(false, capture ? { BROWSER_HOST_LAB: "1" } : {});
+const evidence = (name: string) =>
+  resolve(`../issues/rail-quiet-all-flat/evidence/${name}`);
 
 test.use({
   baseURL: hostOrigin,
@@ -27,16 +29,56 @@ async function headers(page: Page) {
   const s = await (await page.request.get("/auth/session")).json();
   return { Origin: new URL(page.url()).origin, "X-Agent-Host-CSRF": s.csrf };
 }
+async function preferences(page: Page) {
+  return (await page.request.get("/api/v1/account/preferences")).json();
+}
+async function setIcons(page: Page, on: boolean) {
+  expect(
+    (
+      await page.request.put("/api/v1/account/preferences", {
+        headers: await headers(page),
+        data: { experimental: { "workspace-icons": on } },
+      })
+    ).ok(),
+  ).toBe(true);
+}
+// Contrast is judged on the settled theme, not mid-transition.
+const settled = (page: Page) =>
+  page.evaluate(() =>
+    Promise.all(document.getAnimations().map((a) => a.finished)).then(() => {}),
+  );
+const quietId = (n: number) =>
+  `pi:00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+// Newest first is n = 8 down to 0; by name the order differs.
+const titles = [
+  "Verbien taivutus",
+  "Aldern levytila",
+  "Laskujen arkistointi",
+  "B1-sanasto",
+  "Lokakuun budjetti",
+  "Perfektin apuverbit",
+  "Workerin muistiraja",
+  "Sanaston kertaus",
+  "Palomuurin osoitteet",
+];
+const titlesOf = (rows: Locator) =>
+  rows.evaluateAll((els) =>
+    els.map((e) =>
+      e.querySelector("[data-agent-title]")?.getAttribute("data-agent-title"),
+    ),
+  );
 
-// Wire seam: seven old terminal histories plus archived and worktree histories.
-// Their timestamps are fixed, not tied to the browser clock or Pi liveness.
-test("@rail-recent recent count, exclusions, grouping, phone and icon layouts", async ({
-  page,
-}) => {
-  test.setTimeout(120000);
-  await page.route("**/api/v1/snapshot", async (route) => {
-    const response = await route.fetch();
-    const body = await response.json();
+// Wire seam: nine old terminal histories in two workspaces (odd n in the
+// second), one archived and one a finished worktree conversation. Ages are
+// hours before now, so the rows read as a working day.
+async function quietWorld(page: Page) {
+  const ids: { first?: string; second?: string } = {};
+  // On the context, so a second tab of the same person sees the same world.
+  await page.context().route("**/api/v1/snapshot", async (route) => {
+    // A tab closed mid-request has nothing left to answer.
+    const response = await route.fetch().catch(() => undefined);
+    const body = await response?.json().catch(() => undefined);
+    if (!response || !body) return;
     const workspace = body.workspaces.find(
       (w: { name: string }) => w.name === firstWorkspace,
     );
@@ -44,9 +86,10 @@ test("@rail-recent recent count, exclusions, grouping, phone and icon layouts", 
       (w: { name: string }) => w.name === secondWorkspace,
     );
     if (workspace && other) {
+      ids.first = workspace.workspace_id;
+      ids.second = other.workspace_id;
       const base = {
-        workspace_id: workspace.workspace_id,
-        observation_token: "fixture-recent-token",
+        observation_token: "fixture-quiet-token",
         presence: "present",
         activity: "idle",
         capabilities: {
@@ -60,62 +103,68 @@ test("@rail-recent recent count, exclusions, grouping, phone and icon layouts", 
         run_active: false,
         archive: "active",
       };
-      body.agents = Array.from({ length: 9 }, (_, n) => ({
-        ...base,
-        agent_id: `pi:00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
-        title: {
-          display: `Recent conversation ${n}`,
-          source: "native_session",
-          generation_state: "not_requested",
-          replaceable: true,
-        },
-        workspace_id: n % 2 ? other.workspace_id : workspace.workspace_id,
-        changed_at: new Date(Date.UTC(2026, 0, n + 1)).toISOString(),
-        ...(n === 7 ? { archive: "archived" } : {}),
-        ...(n === 8 ? { worktree_id: "ws_example123" } : {}),
-      }));
+      const now = Date.now();
+      body.agents = [
+        ...body.agents,
+        ...titles.map((title, n) => ({
+          ...base,
+          agent_id: quietId(n),
+          title: {
+            display: title,
+            source: "native_session",
+            generation_state: "not_requested",
+            replaceable: true,
+          },
+          workspace_id: n % 2 ? other.workspace_id : workspace.workspace_id,
+          changed_at: new Date(now - (9 - n) * 3 * 3600000).toISOString(),
+          ...(n === 7 ? { archive: "archived" } : {}),
+          ...(n === 8 ? { worktree_id: "ws_example123" } : {}),
+        })),
+      ];
     }
     await route.fulfill({ response, json: body });
   });
+  return ids;
+}
+
+test("@rail-quiet every other conversation as one flat list, in every layout", async ({
+  page,
+}) => {
+  test.setTimeout(180000);
+  await quietWorld(page);
   await login(page);
   const nav = page.getByTestId("workspace-navigation");
-  const recent = nav.getByTestId("rail-recent");
-  const rows = recent.getByTestId(/^agent-item-/);
-  await expect(rows).toHaveCount(5);
-  await page.goto("/agents/pi:00000000-0000-4000-8000-000000000000");
-  await expect(rows).toHaveCount(6);
-  await expect(recent.locator("[data-kept]")).toHaveCount(1);
-  await page.goto("/workspaces");
-  await expect(rows).toHaveCount(5);
-  await nav.getByTestId("close-navigation").click();
-  await expect(recent).toHaveCount(0);
-  await nav.getByTestId("navigation-open").click();
-  await expect(rows).toHaveCount(5);
-  for (const n of [7, 8])
-    await expect(
-      recent.getByTestId(
-        `agent-item-pi:00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
-      ),
-    ).toHaveCount(0);
-  await expect(recent.getByTestId(/^rail-group-/).first()).toHaveAttribute(
-    "data-testid",
-    `rail-group-${firstWorkspace}`,
+  const quiet = nav.getByTestId("rail-quiet");
+  const rows = quiet.getByTestId(/^agent-item-/);
+  // Archived stays out; the finished worktree conversation is in.
+  await expect(quiet.getByTestId(`agent-item-${quietId(7)}`)).toHaveCount(0);
+  await expect(quiet.getByTestId(`agent-item-${quietId(8)}`)).toHaveCount(1);
+  const ours = (await titlesOf(rows)).filter((t) => titles.includes(t ?? ""));
+  expect(ours).toEqual([8, 6, 5, 4, 3, 2, 1, 0].map((n) => titles[n]));
+  // No section of the old rail and no workspace headings in Hiljaiset.
+  await expect(nav.getByTestId("rail-recent")).toHaveCount(0);
+  await expect(quiet.getByTestId(/^rail-group-/)).toHaveCount(0);
+  await expect(quiet.getByTestId("rail-quiet-count")).toHaveText(
+    String(await rows.count()),
   );
+  await page.goto(`/agents/${quietId(0)}`);
+  const open = quiet.getByTestId(`agent-item-${quietId(0)}`);
   for (const icons of [false, true]) {
-    expect(
-      (
-        await page.request.put("/api/v1/account/preferences", {
-          headers: await headers(page),
-          data: { experimental: { "workspace-icons": icons } },
-        })
-      ).ok(),
-    ).toBe(true);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await setIcons(page, icons);
     await page.reload();
-    await expect(rows).toHaveCount(5);
-    await expect(recent.getByTestId("workspace-icon-button")).toHaveCount(
-      icons ? 5 : 0,
+    await expect(open).toBeVisible();
+    await expect(quiet.getByTestId("workspace-icon-button")).toHaveCount(
+      icons ? await rows.count() : 0,
     );
-    await expect(recent.getByTestId(/^rail-group-/)).toHaveCount(icons ? 0 : 2);
+    // Without icons the row names its workspace quietly, not as a heading.
+    await expect(open.getByTestId("rail-row-workspace")).toHaveCount(
+      icons ? 0 : 1,
+    );
+    if (!icons)
+      await expect(open.getByTestId("rail-row-workspace")).toHaveText(
+        firstWorkspace,
+      );
     for (const phone of [false, true]) {
       await page.setViewportSize(
         phone ? { width: 390, height: 844 } : { width: 1280, height: 900 },
@@ -124,18 +173,20 @@ test("@rail-recent recent count, exclusions, grouping, phone and icon layouts", 
       for (const theme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme: theme });
         await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
-        await expect(recent).toBeVisible();
+        await expect(open).toBeVisible();
         // Review images must show the settled theme, not a colour transition.
-        if (capture) await page.waitForTimeout(300);
-        if (process.env.OH_VISUAL_CAPTURE === "1")
+        if (capture) {
+          await page.waitForTimeout(300);
           await snapshot(
             page,
-            resolve(
-              `../issues/rail-recent-five/evidence/${phone ? "phone" : "desktop"}-${theme}-icons-${icons ? "on" : "off"}`,
+            evidence(
+              `${phone ? "phone" : "desktop"}-${theme}-icons-${icons ? "on" : "off"}`,
             ),
             { labOrigin: new URL(page.url()).origin },
           );
+        }
       }
+      await settled(page);
       expect(
         (
           await new AxeBuilder({ page })
@@ -146,38 +197,238 @@ test("@rail-recent recent count, exclusions, grouping, phone and icon layouts", 
       if (phone) await page.keyboard.press("Escape");
     }
   }
+  // The narrow rail beside the editor has no Hiljaiset.
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto("/settings/appearance");
-  const input = page.getByTestId("recent-count-input");
-  await expect(input).toHaveValue("5");
-  await input.fill("2");
-  await input.press("Enter");
-  await expect
-    .poll(
-      async () =>
-        (await (await page.request.get("/api/v1/account/preferences")).json())
-          .recent_count,
-    )
-    .toBe(2);
-  await page.reload();
-  await expect(input).toHaveValue("2");
-  await expect(rows).toHaveCount(2);
+  await page.goto("/workspaces");
+  await expect(quiet).toBeVisible();
+  await nav.getByTestId("close-navigation").click();
+  await expect(quiet).toHaveCount(0);
+});
+
+test("@rail-quiet the icon grid orders and narrows, follows the account and keeps the open row ringed", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  const ids = await quietWorld(page);
+  await login(page);
+  await setIcons(page, true);
+  await page.goto(`/agents/${quietId(0)}`);
+  const nav = page.getByTestId("workspace-navigation");
+  const quiet = nav.getByTestId("rail-quiet");
+  const rows = quiet.getByTestId(/^agent-item-/);
+  const open = quiet.getByTestId(`agent-item-${quietId(0)}`);
+  await expect(open).toBeVisible();
+  // The open row is ringed all round, never an edge stripe.
+  const ring = await open
+    .locator(".ah-now-row")
+    .evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(ring).toMatch(/0px 0px 0px 1\.5px/);
+  expect(ring).not.toMatch(/inset/);
+  expect(
+    await open
+      .locator(".ah-now-row")
+      .evaluate((el) => getComputedStyle(el).borderLeftWidth),
+  ).toBe("0px");
+
+  const menu = quiet.getByTestId("rail-quiet-menu");
+  const dialog = page.getByTestId("rail-quiet-dialog");
+  const sort = dialog.getByTestId("rail-quiet-sort");
+  await menu.click();
+  await expect(dialog).toBeVisible();
+  // No explanatory foot text: only Valmis.
+  await expect(dialog.locator(".ah-quiet-foot")).toHaveText("Valmis");
+  await expect(sort.getByTestId(/^segment-/)).toHaveCount(3);
+  await expect(sort.getByTestId("segment-newest")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  if (capture)
+    await snapshot(page, evidence("desktop-light-menu"), {
+      labOrigin: new URL(page.url()).origin,
+    });
+
+  await sort.getByTestId("segment-name").click();
+  await expect(sort.getByTestId("segment-name")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect((await preferences(page)).quiet_sort).toBe("name");
+  const named = (await titlesOf(rows)).filter((t) => titles.includes(t ?? ""));
+  expect(named).toEqual(
+    [...named].sort((a, b) => (a ?? "").localeCompare(b ?? "", "fi")),
+  );
+
+  await sort.getByTestId("segment-workspace").click();
+  await expect(sort.getByTestId("segment-workspace")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // Grouped without headings: a hairline between workspaces.
+  await expect(quiet.locator(".ah-quiet-gap").first()).toBeAttached();
+  await expect(quiet.getByTestId(/^rail-group-/)).toHaveCount(0);
+
+  // One workspace: by workspace is not offered and the list is newest first,
+  // the stored order is kept for the return to every workspace.
+  await dialog.getByTestId(`rail-quiet-tile-${ids.second}`).click();
+  await expect(
+    dialog.getByTestId(`rail-quiet-tile-${ids.second}`),
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(await preferences(page)).toMatchObject({
+    quiet_sort: "workspace",
+    quiet_workspace: ids.second,
+  });
+  await expect(sort.getByTestId(/^segment-/)).toHaveCount(2);
+  await expect(sort.getByTestId("segment-workspace")).toHaveCount(0);
+  await expect(sort.getByTestId("segment-newest")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // The open conversation is in the other workspace: it stays in sight,
+  // last and marked.
+  await expect(rows.last()).toHaveAttribute(
+    "data-testid",
+    `agent-item-${quietId(0)}`,
+  );
+  await expect(open).toHaveAttribute("data-kept", "true");
+  await expect(quiet.getByTestId("rail-quiet-count")).toContainText("/");
+  for (const n of [1, 3, 5])
+    await expect(quiet.getByTestId(`agent-item-${quietId(n)}`)).toBeVisible();
+  await expect(quiet.getByTestId(`agent-item-${quietId(2)}`)).toHaveCount(0);
+  if (capture)
+    await snapshot(page, evidence("desktop-light-narrowed"), {
+      labOrigin: new URL(page.url()).origin,
+    });
+
+  // The choice follows the person to another device (another tab reads the
+  // same account).
   const otherPage = await page.context().newPage();
   try {
-    await otherPage.goto("/settings/appearance");
-    await expect(otherPage.getByTestId("recent-count-input")).toHaveValue("2");
+    await otherPage.goto("/workspaces");
+    const elsewhere = otherPage
+      .getByTestId("workspace-navigation")
+      .getByTestId("rail-quiet");
+    await expect(elsewhere.getByTestId(`agent-item-${quietId(2)}`)).toHaveCount(
+      0,
+    );
+    await expect(
+      elsewhere.getByTestId(`agent-item-${quietId(1)}`),
+    ).toBeVisible();
   } finally {
     await otherPage.close();
   }
-  // Search reaches the actual row, not a second setting.
-  await page.getByTestId("settings-search").fill("recent");
-  await page.getByTestId("settings-search").press("Enter");
-  await expect(
-    page.locator('[data-settings-row="recent-count"]'),
-  ).toBeFocused();
+
+  await dialog.getByTestId("rail-quiet-tile-all").click();
+  await expect(sort.getByTestId("segment-workspace")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect((await preferences(page)).quiet_workspace).toBeNull();
+  await dialog.getByTestId("rail-quiet-done").click();
+  await expect(dialog).toHaveCount(0);
+  // Esc closes it too.
+  await menu.click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  // The count setting is gone with Viimeisimmät, from the page and search.
+  await page.goto("/settings/appearance");
+  await expect(page.locator('[data-settings-row="recent-count"]')).toHaveCount(
+    0,
+  );
 });
 
-test("@rail-recent a finished native conversation remains after idle stop and daemon restart, then leaves on archive", async ({
+test("@rail-quiet folding is per device and keeps the open row and the workspace pills", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  const ids = await quietWorld(page);
+  await login(page);
+  await page.goto(`/agents/${quietId(0)}`);
+  const nav = page.getByTestId("workspace-navigation");
+  const quiet = nav.getByTestId("rail-quiet");
+  const rows = quiet.getByTestId(/^agent-item-/);
+  for (const icons of [true, false]) {
+    await setIcons(page, icons);
+    await page.reload();
+    await expect(rows.first()).toBeVisible();
+    const fold = quiet.getByTestId("rail-quiet-fold");
+    await expect(fold).toHaveAttribute("aria-expanded", "true");
+    await fold.click();
+    await expect(fold).toHaveAttribute("aria-expanded", "false");
+    // Folded: only the open conversation's row, then the pills.
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toHaveAttribute(
+      "data-testid",
+      `agent-item-${quietId(0)}`,
+    );
+    await expect(quiet.getByTestId("rail-quiet-menu")).toHaveCount(0);
+    await expect(
+      quiet.getByTestId(`rail-quiet-pill-${ids.second}`),
+    ).toBeVisible();
+    await expect(
+      quiet
+        .getByTestId(`rail-quiet-pill-${ids.first}`)
+        .getByTestId("workspace-icon"),
+    ).toHaveCount(icons ? 1 : 0);
+    await page.reload();
+    await expect(fold).toHaveAttribute("aria-expanded", "false");
+    // Per device: the browser keeps it, the account does not.
+    expect(
+      await page.evaluate(() => localStorage.getItem("nah:rail-quiet-folded")),
+    ).toBe("1");
+    expect(Object.keys(await preferences(page))).not.toContain("folded");
+    for (const phone of [false, true]) {
+      await page.setViewportSize(
+        phone ? { width: 390, height: 844 } : { width: 1280, height: 900 },
+      );
+      if (phone) await page.getByTestId("navigation-open").click();
+      for (const theme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme: theme });
+        await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+        await expect(rows.first()).toBeVisible();
+        if (capture) {
+          await page.waitForTimeout(300);
+          await snapshot(
+            page,
+            evidence(
+              `${phone ? "phone" : "desktop"}-${theme}-icons-${icons ? "on" : "off"}-folded`,
+            ),
+            { labOrigin: new URL(page.url()).origin },
+          );
+        }
+      }
+      await settled(page);
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .include('[data-testid="workspace-navigation"]')
+            .analyze()
+        ).violations,
+      ).toEqual([]);
+      if (phone) await page.keyboard.press("Escape");
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.emulateMedia({ colorScheme: "light" });
+    // A pill opens the section narrowed to its workspace.
+    await quiet.getByTestId(`rail-quiet-pill-${ids.second}`).click();
+    await expect(fold).toHaveAttribute("aria-expanded", "true");
+    await expect
+      .poll(async () => (await preferences(page)).quiet_workspace)
+      .toBe(ids.second);
+    await expect(quiet.getByTestId(`agent-item-${quietId(2)}`)).toHaveCount(0);
+    await expect(quiet.getByTestId(`agent-item-${quietId(1)}`)).toBeVisible();
+    expect(
+      (
+        await page.request.put("/api/v1/account/preferences", {
+          headers: await headers(page),
+          data: { quiet_workspace: null },
+        })
+      ).ok(),
+    ).toBe(true);
+  }
+});
+
+test("@rail-quiet a finished native conversation remains after idle stop and daemon restart, then leaves on archive", async ({
   page,
 }) => {
   test.setTimeout(120000);
@@ -192,7 +443,7 @@ test("@rail-recent a finished native conversation remains after idle stop and da
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
-  const row = nav.getByTestId("rail-recent").getByTestId(`agent-item-${id}`);
+  const row = nav.getByTestId("rail-quiet").getByTestId(`agent-item-${id}`);
   await expect(row).toBeVisible({ timeout: 25000 });
   await page.request.get("/fixture/taskfleet?status=empty");
   await page.goto("/workspaces");

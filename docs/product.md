@@ -71,17 +71,20 @@ jatkaa tai arkistoi keskustelun. Rivillä
 näkyy keskustelun otsikko, työtila ja tila. Worker näkyy omana rivinään eikä
 vanhempansa alla; vanhemman rivin merkki kertoo, että sen worker työskentelee.
 
-**Viimeisimmät** pitää päättyneet keskustelut käden ulottuvilla myös tauon,
-Pi:n levon ja palvelimen uudelleenkäynnistyksen jälkeen. Listassa ovat
-viisi viimeksi muuttunutta keskustelua, uusin ensin, sekä lisäksi avoin
-keskustelu, jos se jäisi muuten ulkopuolelle. Määrän voi valita Asetukset ›
-Ulkoasu -sivulta (1–20); valinta seuraa käyttäjää laitteelta toiselle.
-Terminaalissa käydyt keskustelut ovat mukana, arkistoidut ja päättyneet
-worktree-keskustelut eivät. Sinun vuorosi- ja Käynnissä-rivejä ei toisteta.
-Kuvakkeiden kanssa rivit ovat yhtenä listana, ilman kuvakkeita työtiloittain;
-uusimman keskustelun työtila on ensimmäinen. Vanha keskustelu ei taitu
-piiloon ajan kulumisen vuoksi. Editorin kapeassa pistepalkissa Viimeisimmät
--osiota ei näytetä.
+**Hiljaiset** listaa kaikki muut keskustelut, myös päättyneet
+worktree-keskustelut, yhtenä listana ilman työtilaotsikoita, uusin ensin.
+Lista säilyy tauon, Pi:n levon ja palvelimen uudelleenkäynnistyksen yli;
+arkistoidut eivät ole mukana. Kuvakkeiden kanssa rivin alussa on työtilan
+kuvake, ilman niitä rivillä on hiljaisesti työtilan nimi. Otsikon
+kuvakeruudukosta voi järjestää listan uusimman, työtilan tai nimen mukaan ja
+rajata sen yhteen työtilaan; yhtä työtilaa katsottaessa työtilajärjestystä ei
+tarjota, ja valittu järjestys palaa, kun palataan kaikkiin. Järjestys ja
+rajaus seuraavat käyttäjää laitteelta toiselle. Osion voi taittaa, mikä on
+laitekohtainen valinta: taitettuna näkyvät avoimen keskustelun rivi ja
+työtilojen kuvakepillerit, joista pääsee suoraan yhden työtilan listaan. Avoin
+keskustelu erottuu kaikissa osioissa renkaalla, ja se pysyy näkyvissä listan
+lopussa, vaikka rajaus muuten piilottaisi sen. Editorin kapeassa
+pistepalkissa Hiljaisia ei näytetä.
 
 Näiden alla ovat käyttäjän `~/src`-hakemistosta löydetyt työtilat
 aakkosjärjestyksessä, jotta työtila löytyy joka kerta samasta kohdasta.

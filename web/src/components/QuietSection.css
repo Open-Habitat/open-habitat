@@ -1,0 +1,294 @@
+/* Hiljaiset (rail-quiet-all-flat): the prototype rounds' Ruudut menu and
+   Rengas emphasis. */
+
+/* The open conversation's row, in every rail section: a surface with an
+   accent ring all round (round 5's Rengas). No edge stripe. */
+.ah-rail .ah-now-row:has(.ah-nav-link[aria-current="page"]) {
+  border-radius: var(--ah-r-nav);
+  background: var(--ah-current);
+  box-shadow: 0 0 0 1.5px var(--ah-accent);
+}
+.ah-rail .ah-now-row .ah-nav-link[aria-current="page"] {
+  background: transparent;
+  color: var(--ah-ink);
+  font-weight: 600;
+}
+
+h2.ah-rail-section-head.ah-quiet-head {
+  padding-inline: 2px;
+}
+.ah-quiet-fold {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--ah-s2);
+  min-width: 0;
+  min-height: 26px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--ah-r-nav);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.ah-quiet-fold:hover {
+  background: var(--ah-hover);
+}
+.ah-quiet-fold:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: -2px;
+}
+.ah-quiet-chevron {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  transition: transform var(--ah-transition);
+}
+.ah-quiet[data-folded] .ah-quiet-chevron {
+  transform: rotate(-90deg);
+}
+
+/* A workspace's initials where icons are off. */
+.ah-quiet-letters {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 2px;
+  border-radius: 4px;
+  background: var(--ah-control);
+  color: var(--ah-ink-2);
+  font: 600 8px / 1 var(--ah-font);
+}
+.ah-quiet-letters[data-size="m"] {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+/* The menu's button: the workspaces' stack, the order when it is not the
+   default, and a caret. */
+.ah-rail .ah-quiet-menu-button.ah-button {
+  flex: none;
+  flex-wrap: nowrap;
+  width: auto;
+  --i-bg: transparent;
+  --i-hover: var(--ah-control-hover);
+  --i-pressed: var(--ah-control-press);
+  gap: 4px;
+  min-height: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--ah-r-nav);
+  color: var(--ah-muted);
+  font: 500 11px var(--ah-font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ah-rail .ah-quiet-menu-button[data-narrowed] {
+  --i-bg: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-quiet-stack {
+  display: inline-flex;
+}
+.ah-quiet-stack > * + * {
+  margin-inline-start: -2px;
+}
+.ah-quiet-stack > .ah-wsi,
+.ah-quiet-stack > .ah-quiet-letters {
+  width: 15px;
+  height: 15px;
+  box-shadow: 0 0 0 1.5px var(--ah-rail);
+  font-size: 7px;
+}
+.ah-quiet-stack > .ah-wsi[data-kind="glyph"] {
+  box-shadow:
+    0 0 0 1.5px var(--ah-rail),
+    0 0 0 1px color-mix(in srgb, var(--ah-wsi-hue) 32%, transparent) inset;
+}
+.ah-quiet-tag {
+  font-size: 10.5px;
+}
+.ah-quiet-caret {
+  width: 9px;
+  height: 9px;
+}
+
+/* The popover lies under the section's header, as wide as the rail. */
+.ah-popover.ah-quiet-popover {
+  width: var(--trigger-width);
+  min-width: 0;
+  max-width: calc(100vw - 16px);
+  padding: 8px;
+  border-radius: var(--ah-r-lg);
+  box-shadow: var(--ah-shadow-dialog);
+}
+.ah-quiet-menu {
+  display: grid;
+  gap: 8px;
+  outline: 0;
+}
+.ah-quiet-sorts {
+  display: flex;
+  width: 100%;
+}
+.ah-quiet-sorts > * {
+  flex: 1 1 0;
+}
+.ah-quiet-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ah-quiet-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 3px 5px;
+  border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-md);
+  background: transparent;
+  color: var(--ah-ink-2);
+  cursor: pointer;
+}
+.ah-quiet-tile:hover:not(:disabled) {
+  background: var(--ah-hover);
+}
+.ah-quiet-tile:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+.ah-quiet-tile[aria-pressed="true"] {
+  border-color: var(--ah-accent-line);
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-quiet-tile:disabled {
+  cursor: progress;
+}
+.ah-quiet-tile .ah-wsi[data-size="m"] {
+  width: 26px;
+  height: 26px;
+}
+.ah-quiet-all {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--ah-control);
+  color: var(--ah-muted);
+}
+.ah-quiet-all svg {
+  width: 15px;
+  height: 15px;
+}
+.ah-quiet-tile-name {
+  max-width: 100%;
+  overflow: hidden;
+  font: 500 10.5px var(--ah-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-quiet-tile-count {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.ah-quiet-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ah-quiet-foot p {
+  flex: 1;
+  margin: 0;
+  color: var(--ah-err);
+  font-size: 11.5px;
+}
+
+/* Folded: the open row, then the workspaces as pills. */
+.ah-now ul.ah-quiet-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 8px 2px;
+  padding: 0;
+  list-style: none;
+}
+.ah-quiet-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 7px 0 4px;
+  border: 1px solid var(--ah-line-soft);
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-surface);
+  color: var(--ah-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.ah-quiet-pill:disabled {
+  cursor: progress;
+}
+.ah-quiet-pill:hover:not(:disabled) {
+  background: var(--ah-hover);
+  color: var(--ah-ink-2);
+}
+.ah-quiet-pill:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+.ah-quiet > ul + .ah-quiet-pills {
+  margin-top: 6px;
+}
+
+/* Ordered by workspace: no heading, a hairline between workspaces. */
+.ah-quiet-gap {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--ah-line-soft);
+  list-style: none;
+}
+
+/* Without icons, a row says its workspace quietly before its age. */
+.ah-nav-workspace {
+  flex: 0 1 auto;
+  max-width: 40%;
+  overflow: hidden;
+  color: var(--ah-muted);
+  font: 500 10.5px var(--ah-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .ah-agent-item:is(:hover, :focus-within):has(.ah-nav-archive)
+    .ah-nav-workspace {
+    display: none;
+  }
+}
+@media (max-width: 800px) {
+  .ah-quiet-pill {
+    height: 32px;
+    padding: 0 9px 0 6px;
+  }
+  .ah-quiet-tile {
+    padding: 9px 3px 7px;
+  }
+}

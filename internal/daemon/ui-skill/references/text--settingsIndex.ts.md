@@ -230,10 +230,6 @@ export const settingsIndexEnglish: SettingsIndexEnglish = {
         label: "Theme",
         desc: "System follows the device's setting. Applies to this browser.",
       },
-      "recent-count": {
-        label: "Recent conversations",
-        desc: "Number of recent conversations in the sidebar. Applies to all your devices.",
-      },
       language: {
         label: "Language",
         desc: "The interface language. Applies to all your devices.",
