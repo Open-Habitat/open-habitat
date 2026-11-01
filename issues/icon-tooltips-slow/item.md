@@ -3,11 +3,12 @@ created: 2026-11-01
 updated: 2026-11-01
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: icon-tooltips-slow
 lane_seq: 1
 preparation: ready
+closed: 2026-11-01
 ---
 
 # Icon button tooltips appear far too slowly

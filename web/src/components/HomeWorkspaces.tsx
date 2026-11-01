@@ -147,11 +147,9 @@ export function HomeCard({
             <LatestMessageAge at={state?.latest_message_at} now={now} />
           )}
         </div>
-        <span
-          className="ah-home-archive-slot"
-          title={archiveReason || txt.archive}
-        >
+        <span className="ah-home-archive-slot">
           <ControlButton
+            title={archiveReason || txt.archive}
             data-testid="archive-conversation"
             className="ah-home-archive"
             variant="quiet"

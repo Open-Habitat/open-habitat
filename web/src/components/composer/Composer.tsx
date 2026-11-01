@@ -22,6 +22,7 @@ import {
   splitAttachments,
 } from "../AttachmentChips";
 import { Icon } from "../Icon";
+import { TooltipButton } from "../QuickTooltip";
 import { InlineNotice } from "../Status";
 import { type Availability, enabled, unavailableReason } from "../types";
 import { AttachmentMenu } from "./AttachmentMenu";
@@ -1227,7 +1228,7 @@ export function Composer({
     </span>
   ) : null;
   const listButton = (kind: "cmd" | "file") => (
-    <button
+    <TooltipButton
       data-testid={kind === "cmd" ? "command-palette" : "file-picker"}
       type="button"
       className="ah-crow-btn"
@@ -1247,7 +1248,7 @@ export function Composer({
       <span className="ah-crow-lbl">
         {kind === "cmd" ? t.commands : t.file}
       </span>
-    </button>
+    </TooltipButton>
   );
   const busy = working || !!running;
   const placeholder = shellOn
@@ -1323,7 +1324,7 @@ export function Composer({
       </span>
     ) : null;
   const rowStop = stopTarget ? (
-    <button
+    <TooltipButton
       data-testid="composer-stop"
       data-stop-target={
         working && onInterrupt
@@ -1345,10 +1346,10 @@ export function Composer({
       ) : (
         <Icon name="stop" />
       )}
-    </button>
+    </TooltipButton>
   ) : null;
   const rowSend = (
-    <button
+    <TooltipButton
       data-mode={shellOn ? "shell" : working ? selectedWorkingMode : "send"}
       data-testid="send"
       type="button"
@@ -1363,7 +1364,7 @@ export function Composer({
       }}
     >
       <Icon name={shellOn ? "run" : "up"} />
-    </button>
+    </TooltipButton>
   );
   const mic = !!speech && !!csrf && !shellOn;
 

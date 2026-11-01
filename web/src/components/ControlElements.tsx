@@ -19,6 +19,7 @@ import {
 } from "react-aria-components";
 import { useNavigate } from "react-router";
 import styles from "./Controls.module.css";
+import { DisabledTooltipHover, QuickTooltip } from "./QuickTooltip";
 
 export type ControlVariant =
   | "primary"
@@ -100,8 +101,9 @@ export function ControlButton({
   ref?: Ref<HTMLButtonElement>;
 }) {
   const text = hasText(props.children);
-  // React Aria's Button drops `title`, so the tooltip (often the reason a
-  // control is disabled) is set on the element itself.
+  const tooltip = !text ? title || props["aria-label"] : undefined;
+  const nativeTitle = tooltip ? undefined : title;
+  // Text-labelled controls retain native explanatory titles.
   const own = useRef<HTMLButtonElement | null>(null);
   const merged = useCallback(
     (node: HTMLButtonElement | null) => {
@@ -113,10 +115,10 @@ export function ControlButton({
   );
   useLayoutEffect(() => {
     if (!own.current) return;
-    if (title) own.current.title = title;
+    if (nativeTitle) own.current.title = nativeTitle;
     else own.current.removeAttribute("title");
-  }, [title]);
-  return (
+  }, [nativeTitle]);
+  const button = (
     <AriaButton
       {...props}
       ref={merged}
@@ -131,6 +133,17 @@ export function ControlButton({
         text,
       })} ${className ?? ""}`}
     />
+  );
+  return tooltip ? (
+    <QuickTooltip label={tooltip}>
+      {props.isDisabled ? (
+        <DisabledTooltipHover>{button}</DisabledTooltipHover>
+      ) : (
+        button
+      )}
+    </QuickTooltip>
+  ) : (
+    button
   );
 }
 export function IconButton(

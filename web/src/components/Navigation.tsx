@@ -687,8 +687,9 @@ export function AgentNavItem({
                   data-actions={archive && rename ? 2 : 1}
                 >
                   {rename ? (
-                    <span title={renameReason || t.rename}>
+                    <span>
                       <ControlButton
+                        title={renameReason || t.rename}
                         data-testid="rail-rename-conversation"
                         variant="quiet"
                         size="inline"
@@ -701,8 +702,9 @@ export function AgentNavItem({
                     </span>
                   ) : null}
                   {archive ? (
-                    <span title={archiveReason || t.archive}>
+                    <span>
                       <ControlButton
+                        title={archiveReason || t.archive}
                         data-testid="rail-archive-conversation"
                         variant="quiet"
                         size="inline"

@@ -11,6 +11,7 @@ import { terminalPanelText } from "../text/terminalPanel";
 import { ControlButton, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { Menu } from "./Overlays";
+import { TooltipButton } from "./QuickTooltip";
 import "./TerminalPanel.css";
 import type { TerminalSelection } from "./Terminal";
 
@@ -322,7 +323,7 @@ export function TerminalPanel({
                     <span className="ah-terminal-ro">{txt.readOnly}</span>
                   ) : null}
                 </button>
-                <button
+                <TooltipButton
                   data-testid="close-terminal"
                   data-tab={tab.key}
                   type="button"
@@ -335,7 +336,7 @@ export function TerminalPanel({
                   onClick={() => onCloseTab(tab.key)}
                 >
                   <Icon name={tab.readOnly ? "external" : "cross"} />
-                </button>
+                </TooltipButton>
               </div>
             );
           })}

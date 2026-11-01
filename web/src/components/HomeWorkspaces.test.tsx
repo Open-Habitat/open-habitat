@@ -66,7 +66,7 @@ describe("workspace home", () => {
     expect(reasonId).toBeTruthy();
     expect(document.getElementById(reasonId ?? "")).toBeTruthy();
     view.rerender(show(false));
-    fireEvent.click(archive);
+    fireEvent.click(screen.getByTestId("archive-conversation"));
     await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
     expect(screen.getByText("Työ")).toBeTruthy();
     expect(onArchive).toHaveBeenCalledTimes(1);

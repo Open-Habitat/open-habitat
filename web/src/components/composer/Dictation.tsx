@@ -19,6 +19,7 @@ import { mintSpeechSession, type SpeechFailure } from "../../app/speech";
 import { liveText, useLanguage, useText } from "../../i18n";
 import { dictationText } from "../../text/dictation";
 import { Icon } from "../Icon";
+import { TooltipButton } from "../QuickTooltip";
 import {
   type DictationShortcut,
   dictationShortcutFor,
@@ -328,10 +329,11 @@ export function useDictation(
       event.stopPropagation();
       void engine.current?.stop();
     };
-    document.addEventListener("keydown", onKey);
+    // Cancelling dictation takes priority over dismissing a focused tooltip.
+    document.addEventListener("keydown", onKey, true);
     document.addEventListener("keydown", onEnter, true);
     return () => {
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey, true);
       document.removeEventListener("keydown", onEnter, true);
     };
   }, [active, scope]);
@@ -583,7 +585,7 @@ export function DictationBar({
       role="group"
       aria-label={t.dictationAt(mmss(view.elapsedMs))}
     >
-      <button
+      <TooltipButton
         type="button"
         data-testid="dictation-cancel"
         className="ah-dictation-cancel"
@@ -594,7 +596,7 @@ export function DictationBar({
         onClick={onCancel}
       >
         <Icon name="cross" />
-      </button>
+      </TooltipButton>
       <span className="ah-dictation-dot" aria-hidden="true" />
       <span className="ah-dictation-time">{mmss(view.elapsedMs)}</span>
       <span className="ah-dictation-state">{stateLabel(view, holding)}</span>
@@ -649,7 +651,7 @@ export function DictationSlotControl({
     );
   const finishing = view.phase === "finishing";
   return (
-    <button
+    <TooltipButton
       ref={done}
       type="button"
       data-testid="dictation-stop"
@@ -667,7 +669,7 @@ export function DictationSlotControl({
         <Icon name="check" />
       )}
       <span className="ah-crow-lbl">{t.done}</span>
-    </button>
+    </TooltipButton>
   );
 }
 

@@ -64,7 +64,7 @@ export function ArchiveControls(props: ArchiveControlsProps) {
   const reason = action.reason;
   if (action.id === "close") {
     return (
-      <div className="ah-archive-control" title={reason || action.label}>
+      <div className="ah-archive-control">
         <ControlButton
           data-testid="dialog-close"
           size="row"
@@ -82,7 +82,7 @@ export function ArchiveControls(props: ArchiveControlsProps) {
     );
   }
   return (
-    <div className="ah-archive-control" title={reason || action.label}>
+    <div className="ah-archive-control">
       <ControlButton
         data-archive-state={state}
         data-process-state={processState}

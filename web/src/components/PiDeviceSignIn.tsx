@@ -119,7 +119,7 @@ export function PiDeviceSignIn({
                 <strong>{txt.step1}</strong>
                 <div className={styles.code}>
                   <code data-testid="pi-device-code">{view.userCode}</code>
-                  <span title={txt.copyCode}>
+                  <span>
                     <IconButton
                       data-testid="pi-code-copy"
                       size="row"

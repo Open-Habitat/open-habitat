@@ -2879,7 +2879,8 @@ test("@browser-conversation home card blocks archive during Pi work, shows failu
     .and(page.locator(':not([data-archive-state="archived"])'));
   await expect(card).toBeVisible();
   await expect(archive).toBeDisabled();
-  await expect(archive.locator("..")).toHaveAttribute("title", /.+/);
+  await archive.hover();
+  await expect(page.getByRole("tooltip")).toBeVisible();
   await page.unroute("**/api/v1/snapshot");
   await page.reload();
   await expect(archive).toBeEnabled({ timeout: 30000 });

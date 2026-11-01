@@ -23,6 +23,7 @@ import { fileOfferText, type KindText } from "../text/fileOffer";
 import { AttachmentPreview } from "./AttachmentPreview";
 import { ControlButton, controlClassName } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
+import { TooltipLink } from "./QuickTooltip";
 
 // Agent file offers (prototype rounds Kortti, Tunniste and Hylly): one file
 // is a card that says what it is and what the person gets, a package is a
@@ -575,7 +576,7 @@ export function FileShelf({
                             ) : (
                               <span className="ah-file-shelf-gap" />
                             )}
-                            <a
+                            <TooltipLink
                               data-testid="file-shelf-download"
                               className={controlClassName({
                                 variant: "quiet",
@@ -588,7 +589,7 @@ export function FileShelf({
                               title={txt.download}
                             >
                               <Icon name="download" />
-                            </a>
+                            </TooltipLink>
                           </span>
                         </li>
                       );

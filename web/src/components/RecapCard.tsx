@@ -5,6 +5,7 @@ import { navigationText } from "../text/navigation";
 import { recapCardText } from "../text/recapCard";
 import { ControlButton, controlClassName } from "./ControlElements";
 import { Icon } from "./Icon";
+import { TooltipLink } from "./QuickTooltip";
 
 const txt = liveText(recapCardText);
 
@@ -100,8 +101,9 @@ export function RecapCard({
         {recap ? <LatestMessageAge at={latestAt} now={now} /> : null}
         <span className="ah-recap-grow" />
         {onRequest ? (
-          <span title={reason || (recap ? txt.refresh : txt.create)}>
+          <span>
             <ControlButton
+              title={reason || (recap ? txt.refresh : txt.create)}
               data-testid="recap-refresh"
               className="ah-recap-icon"
               variant="quiet"
@@ -116,7 +118,7 @@ export function RecapCard({
           </span>
         ) : null}
         {settingsHref ? (
-          <a
+          <TooltipLink
             data-testid="recap-settings-link"
             className={`ah-recap-icon ${controlClassName({ variant: "quiet", size: "inline", presentation: "icon" })}`}
             href={settingsHref}
@@ -137,7 +139,7 @@ export function RecapCard({
             title={txt.settings}
           >
             <Icon name="gear" />
-          </a>
+          </TooltipLink>
         ) : null}
         {onDismiss ? (
           <ControlButton
