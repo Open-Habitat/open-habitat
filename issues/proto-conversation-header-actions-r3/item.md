@@ -8,7 +8,7 @@ priority: normal
 lane: proto-conversation-header-actions-r3
 lane_seq: 1
 related: ['@proto-conversation-header-actions-r2']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype round 3: ways to learn the header buttons
