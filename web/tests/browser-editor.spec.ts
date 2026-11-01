@@ -789,6 +789,24 @@ for (const width of [1366, 390])
       const previewButton = page.getByTestId("editor-preview-toggle");
       await expect(textButton).toHaveAttribute("aria-pressed", "true");
       await expect(previewButton).toHaveAttribute("aria-pressed", "false");
+      // Document and layout actions share one row, including at phone width.
+      // This catches the former independent header as well as flex wrapping.
+      const actionBoxes = await Promise.all(
+        [
+          "editor-picker",
+          "editor-preview-toggle",
+          "editor-save",
+          "hide-conversation",
+          "close-editor",
+        ].map((id) => page.getByTestId(id).boundingBox()),
+      );
+      const centers = actionBoxes.map((box) => {
+        if (!box) throw new Error("Editor action is not visible");
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(width);
+        return box.y + box.height / 2;
+      });
+      expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(2);
 
       // Gutter folds a heading's section up to the next heading of its level.
       const gutter = async () => {

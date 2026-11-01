@@ -15,34 +15,52 @@ export function EditorHeader({
   onToggleCollapsed: () => void;
   onClose: () => void;
 }) {
-  const t = useText(editorHeaderText);
   const Title = collapsed ? "h1" : "h2";
   return (
     <header className="ah-editor-header" data-testid="editor-header">
       <Title>{title}</Title>
-      <span className="ah-editor-controls">
-        <ControlButton
-          data-testid="hide-conversation"
-          size="row"
-          variant="quiet"
-          aria-label={collapsed ? t.sideBySide : t.fullWindow}
-          title={collapsed ? t.sideBySideHint : t.fullWindow}
-          aria-pressed={collapsed}
-          onPress={onToggleCollapsed}
-        >
-          <Icon name={collapsed ? "back" : "forward"} />
-        </ControlButton>
-        <ControlButton
-          data-testid="close-editor"
-          size="row"
-          variant="quiet"
-          aria-label={t.close}
-          title={t.close}
-          onPress={onClose}
-        >
-          <Icon name="cross" />
-        </ControlButton>
-      </span>
+      <EditorHeaderActions
+        collapsed={collapsed}
+        onToggleCollapsed={onToggleCollapsed}
+        onClose={onClose}
+      />
     </header>
+  );
+}
+
+export function EditorHeaderActions({
+  collapsed,
+  onToggleCollapsed,
+  onClose,
+}: {
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  onClose: () => void;
+}) {
+  const t = useText(editorHeaderText);
+  return (
+    <span className="ah-editor-controls">
+      <ControlButton
+        data-testid="hide-conversation"
+        size="row"
+        variant="quiet"
+        aria-label={collapsed ? t.sideBySide : t.fullWindow}
+        title={collapsed ? t.sideBySideHint : t.fullWindow}
+        aria-pressed={collapsed}
+        onPress={onToggleCollapsed}
+      >
+        <Icon name={collapsed ? "back" : "forward"} />
+      </ControlButton>
+      <ControlButton
+        data-testid="close-editor"
+        size="row"
+        variant="quiet"
+        aria-label={t.close}
+        title={t.close}
+        onPress={onClose}
+      >
+        <Icon name="cross" />
+      </ControlButton>
+    </span>
   );
 }

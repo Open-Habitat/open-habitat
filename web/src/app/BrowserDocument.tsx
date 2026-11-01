@@ -1,4 +1,5 @@
 import {
+  type ReactNode,
   type Ref,
   useCallback,
   useEffect,
@@ -84,7 +85,9 @@ export default function BrowserDocument({
   csrf,
   ref,
   onReplaced,
+  toolbarActions,
 }: {
+  toolbarActions?: ReactNode;
   engine?: "codemirror6";
   workspace: string;
   csrf: string;
@@ -589,6 +592,7 @@ export default function BrowserDocument({
           : undefined;
   return (
     <BrowserEditor
+      toolbarActions={toolbarActions}
       engine={engine}
       document={
         doc

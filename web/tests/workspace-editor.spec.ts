@@ -356,6 +356,10 @@ for (const width of [1366, 390]) {
       await expect(composer).toHaveValue(draft);
       await composer.scrollIntoViewIfNeeded();
       await expect(page.getByTestId("send")).toBeInViewport();
+      // Layout shifts can put disabled Save under the old pointer position.
+      // Audit the settled layout, not its incidental hover tooltip.
+      await page.mouse.move(0, 0);
+      await expect(page.getByRole("tooltip")).toHaveCount(0);
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,

@@ -16,9 +16,14 @@
   flex-wrap: wrap;
 }
 .ah-browser-filename {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-browser-toolbar > :not(.ah-browser-filename) {
+  flex-shrink: 0;
 }
 .ah-browser-body {
   display: flex;
@@ -444,10 +449,6 @@
   .ah-browser-views > button {
     --b-h: 38px;
     min-height: 38px;
-  }
-  /* The path keeps a readable width and pushes buttons to the next row. */
-  .ah-browser-filename {
-    flex-basis: 12ch;
   }
   /* A state longer than one word takes its own row instead of squeezing
      the path to one character per line. */
