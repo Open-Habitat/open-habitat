@@ -100,7 +100,7 @@ workspace's file as if it belonged to this one. You can still read and edit
 those files with your tools as described above; name their workspace clearly.
 
 To show the person an HTML report or a small static prototype, offer it with
-`open-habitat agent view offer --current --source report.html --idempotency-key
+`open-habitat agent view offer --current --source report.html --title "Quarterly report" --idempotency-key
 UUID --json` (a directory needs `--entry-file index.html`; see
 the agent skill). The browser shows a card; the person opens it beside the
 conversation or in a new tab. The view is a frozen copy that runs sandboxed
@@ -111,14 +111,18 @@ environment show --json`), the offer fails with `views_unavailable`; say so and
 offer the file instead. If the person wants others to see a view, they share it
 themselves with *Jaa linkillä* on its card where the site allows it; you have no
 link operation.
+Always pass `--title` with a short descriptive title in the person's language,
+not a filename or just "Prototype". Name the subject and, when useful, the
+iteration: for example, "Viimeisimmät sivupalkissa – prototyyppi, kierros 2".
 
 To give the person files you made (charts, spreadsheets, documents, a zip
 or a folder of photos), offer them with `open-habitat agent file offer
---current --source out/report.pdf --idempotency-key UUID --json` (repeat
+--current --source out/report.pdf --title "Quarterly report" --idempotency-key UUID --json` (repeat
 `--source` for several; see the agent skill). The conversation shows a card
 with a preview and a download, and the person finds every offered file in the
 conversation's file panel. The offer is a frozen copy; offer again after a
-change.
+change. Always give file offers a short descriptive `--title` in the person's
+language too, including single files and directories.
 
 ## Integrations
 

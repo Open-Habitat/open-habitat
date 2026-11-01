@@ -58,10 +58,16 @@ Lists cover the latest 200 notices on the current native branch; use
 To show the person an HTML report or a small static prototype you made (this is
 Habitat's `tw browser-open`; you cannot open their browser or a dev server):
 
-    open-habitat agent view offer --current --source report.html --idempotency-key UUID --json
-    open-habitat agent view offer --current --source site --entry-file index.html --title "Prototype" --idempotency-key UUID --json
+    open-habitat agent view offer --current --source report.html --title "Quarterly report" --idempotency-key UUID --json
+    open-habitat agent view offer --current --source site --entry-file index.html --title "Recent sidebar – prototype, round 2" --idempotency-key UUID --json
     open-habitat agent view list --json
     open-habitat agent view remove --view VIEW_ID --json
+
+Always pass `--title`: a short descriptive plain-text title in the person's
+language (at most 200 UTF-8 bytes), not a filename or just "Prototype". Name
+what the person will see and, when useful, its iteration; for example,
+"Viimeisimmät sivupalkissa – prototyyppi, kierros 2". Without it the card falls
+back to a filename, not the HTML document's `<title>`.
 
 The offer copies the file, or the directory's files, into a frozen view: later
 edits do not change it, so offer again (new key) after a change. The person sees
@@ -91,11 +97,15 @@ link the view's files sit below the link's key, so root-relative URLs
 To hand the person files you produced (a chart, a spreadsheet, a PDF, a zip,
 a folder of photos) so they can preview and download them:
 
-    open-habitat agent file offer --current --source out/report.pdf --idempotency-key UUID --json
+    open-habitat agent file offer --current --source out/report.pdf --title "Quarterly report" --idempotency-key UUID --json
     open-habitat agent file offer --current --source out/chart.png --source out/data.xlsx --title "Q3 package" --idempotency-key UUID --json
-    open-habitat agent file offer --current --source out/partner-package --idempotency-key UUID --json
+    open-habitat agent file offer --current --source out/partner-package --title "Partner briefing materials" --idempotency-key UUID --json
     open-habitat agent file list --json
     open-habitat agent file remove --offer-id OFFER_ID --json
+
+Always pass a short descriptive `--title` in the person's language for file
+offers too, including a single file or directory (plain text, at most 200 UTF-8
+bytes). Describe the contents rather than repeating the filename.
 
 The offer copies the named files into a frozen offer: later edits do not
 change it, so offer again (new key) after a change. Repeat `--source` for
