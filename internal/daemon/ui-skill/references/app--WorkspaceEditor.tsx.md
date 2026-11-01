@@ -22,7 +22,7 @@ import {
   useState,
 } from "react";
 import { ControlButton } from "../components/ControlElements";
-import { EditorHeader } from "../components/EditorHeader";
+import { EditorHeader, EditorHeaderActions } from "../components/EditorHeader";
 import { EditorSplit } from "../components/EditorSplit";
 import { FileLinkContext, type FileRef } from "../components/fileRefs";
 import { Icon } from "../components/Icon";
@@ -565,20 +565,27 @@ function WorkspaceEditorInner({
         </div>
       </div>
     );
+  const headerActions = {
+    collapsed,
+    onToggleCollapsed: () => {
+      if (collapsed) showConversation();
+      else setCollapsed(true);
+    },
+    onClose: () => show(false),
+  };
   const editor =
     available && (frame || editorShown) ? (
       <>
-        <EditorHeader
-          title={browser ? "CodeMirror 6" : "VS Code"}
-          collapsed={collapsed}
-          onToggleCollapsed={() => {
-            if (collapsed) showConversation();
-            else setCollapsed(true);
-          }}
-          onClose={() => show(false)}
-        />
+        {!browser && <EditorHeader title="VS Code" {...headerActions} />}
         {browser && browserWorkspace && csrf ? (
-          <Suspense fallback={<p role="status">{txt.loadingEditor}</p>}>
+          <Suspense
+            fallback={
+              <>
+                <EditorHeader title="CodeMirror 6" {...headerActions} />
+                <p role="status">{txt.loadingEditor}</p>
+              </>
+            }
+          >
             {browserWorkspace !== workspaceId && (
               <p
                 className="ah-editor-workspace-warning"
@@ -591,6 +598,7 @@ function WorkspaceEditorInner({
             <BrowserDocument
               key={browserWorkspace}
               engine="codemirror6"
+              toolbarActions={<EditorHeaderActions {...headerActions} />}
               workspace={browserWorkspace}
               csrf={csrf}
               ref={attachBrowser}

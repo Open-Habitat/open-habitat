@@ -77,6 +77,8 @@ export type DiskChanges =
     }
   | { kind: "undone"; source: MergeSource };
 export interface BrowserEditorProps {
+  /** Workspace layout controls, alongside the document's own actions. */
+  toolbarActions?: ReactNode;
   engine?: "codemirror6";
   document?: {
     path: string;
@@ -342,17 +344,19 @@ export function BrowserEditor(p: BrowserEditorProps) {
       data-testid="browser-editor"
       aria-busy={p.loading || p.saving}
     >
-      <div className="ah-browser-toolbar">
+      <header className="ah-browser-toolbar" data-testid="editor-header">
         <ControlButton
           ref={pickerButton}
           data-testid="editor-picker"
           size="row"
           onPress={p.onPicker}
           aria-expanded={p.picker}
+          aria-label={t.files}
+          title={t.files}
         >
-          {t.files}
+          <Icon name="folder" />
         </ControlButton>
-        <code className="ah-browser-filename">
+        <code className="ah-browser-filename" title={p.document?.path}>
           {p.document?.path ?? t.chooseFile}
         </code>
         <span
@@ -431,7 +435,8 @@ export function BrowserEditor(p: BrowserEditorProps) {
             <Icon name="save" />
           </ControlButton>
         )}
-      </div>
+        {p.toolbarActions}
+      </header>
       {conflicts ? (
         <p
           className="ah-browser-save-reason"
