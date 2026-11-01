@@ -48,6 +48,7 @@ const (
 	viewAddressDurationPath = "/api/v1/view-addresses/duration"
 	viewAddressPrivatePath  = "/api/v1/view-addresses/private"
 	viewAddressDeletePath   = "/api/v1/view-addresses/delete"
+	viewAddressOpenPath     = "/api/v1/view-addresses/open"
 	adminPublicationsPath   = "/api/v1/server/view-publications"
 	adminPublicationsDelete = "/api/v1/server/view-publications/delete"
 	viewEntryPrefix         = "/n/"
@@ -168,17 +169,83 @@ func (a *Auth) viewEntryURL(v viewAddress) string {
 	return a.cfg.Origin + viewEntryPrefix + v.Entry
 }
 
-// publishViewAddresses replaces the in-memory store and its host index.
-// Call under mu.
+// viewEntryKey indexes an entry secret by its hash, so no lookup compares
+// the secret itself byte by byte.
+func viewEntryKey(entry string) string {
+	h := sha256.Sum256([]byte("view-entry\x00" + entry))
+	return string(h[:])
+}
+
+// publishViewAddresses replaces the in-memory store and its host and entry
+// indexes. Call under mu.
 func (a *Auth) publishViewAddresses(next map[string]viewAddress) {
 	a.viewAddresses = next
 	a.viewLinkHosts = make(map[string]string, len(next))
+	a.viewEntries = make(map[string]string, len(next))
+	for id, v := range next {
+		a.viewEntries[viewEntryKey(v.Entry)] = id
+	}
 	if a.cfg.ViewOrigin == "" {
 		return
 	}
 	for id := range next {
 		a.viewLinkHosts[a.viewLinkHost(id)] = id
 	}
+}
+
+// viewEntryLocked finds the reservation an entry secret names. Call under mu.
+func (a *Auth) viewEntryLocked(entry string) (viewAddress, bool) {
+	v, ok := a.viewAddresses[a.viewEntries[viewEntryKey(entry)]]
+	if !ok || subtle.ConstantTimeCompare([]byte(entry), []byte(v.Entry)) != 1 {
+		return viewAddress{}, false
+	}
+	return v, true
+}
+
+// servableLocked is whether anyone may read v's content now: the store is
+// usable, the site shares, the publication is current and its owner is not
+// denied. Entry and content requests both ask it, every time. Call under mu.
+func (a *Auth) servableLocked(v viewAddress) bool {
+	return a.viewAddressStoreUsable() && a.viewSharingEnabled() && v.public(a.now()) && !a.deniedLocked(v.Owner.Subject)
+}
+
+// viewEntry is the app origin's stable address of a view, /n/<entry>. A
+// public one redirects to its content host, the owner's own open included,
+// so every public read goes through the content host's checks and budgets.
+// Anything else (private, expired, paused, deleted, unknown or malformed)
+// reports false and the caller serves the app's own page, the same bytes
+// for everyone: that page asks the gateway, as the signed-in person, whether
+// the address is theirs, and frames the view only for its owner. Never
+// export HTML on the app origin, and never a title or owner before sign-in.
+// The secret is in the path, which request diagnostics record only as
+// "ui"; these responses are neither cached nor indexed and send no referrer
+// onward, so the address does not leak to the assets, the API calls, the
+// view frame or a sign-in provider.
+func (a *Auth) viewEntry(w http.ResponseWriter, r *http.Request) bool {
+	h := w.Header()
+	h.Set("Cache-Control", "no-store")
+	h.Set("Referrer-Policy", "no-referrer")
+	h.Set("X-Robots-Tag", "noindex, nofollow, noarchive")
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		safe(w, 405, "method_not_allowed")
+		return true
+	}
+	// A query is ignored, never forwarded: messaging apps decorate shared
+	// links with tracking parameters, and the address is the path alone.
+	entry := strings.TrimPrefix(r.URL.Path, viewEntryPrefix)
+	if r.TLS == nil || r.Host != strings.TrimPrefix(a.cfg.Origin, "https://") || !validViewLinkToken(entry) {
+		return false
+	}
+	a.mu.Lock()
+	v, ok := a.viewEntryLocked(entry)
+	public := ok && a.servableLocked(v)
+	a.mu.Unlock()
+	if !public {
+		return false
+	}
+	h.Set("Location", a.viewContentURL(v))
+	w.WriteHeader(http.StatusFound)
+	return true
 }
 
 // viewAddressStoreFailed disables every address read and write until a
@@ -485,7 +552,7 @@ func (a *Auth) viewMaxDays() int {
 func (a *Auth) viewLinksHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	path := r.URL.Path
-	if !a.exact(r, path) || path != viewAddressesPath && path != viewAddressPublishPath && path != viewAddressDurationPath && path != viewAddressPrivatePath && path != viewAddressDeletePath {
+	if !a.exact(r, path) || path != viewAddressesPath && path != viewAddressPublishPath && path != viewAddressDurationPath && path != viewAddressPrivatePath && path != viewAddressDeletePath && path != viewAddressOpenPath {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -552,6 +619,17 @@ func (a *Auth) viewLinksHTTP(w http.ResponseWriter, r *http.Request) {
 		a.ensureViewAddress(w, r, s, body.ViewID)
 		return
 	}
+	if path == viewAddressOpenPath {
+		var body struct {
+			Entry string `json:"entry"`
+		}
+		if !jsonBody(w, r, &body) || !validViewLinkToken(body.Entry) {
+			safe(w, 400, "invalid_request")
+			return
+		}
+		a.openViewEntry(w, s, body.Entry)
+		return
+	}
 	var body struct {
 		AddressID string `json:"address_id"`
 		Days      *int   `json:"days"`
@@ -588,6 +666,28 @@ func (a *Auth) viewLinksHTTP(w http.ResponseWriter, r *http.Request) {
 	case viewAddressDeletePath:
 		a.deleteViewAddress(w, &s, body.AddressID, func(v viewAddress) bool { return sameOwner(v, s.identity) }, "owner")
 	}
+}
+
+// openViewEntry answers the signed-in owner which of their addresses an
+// entry secret names, so their page can frame the view privately. The
+// secret travels in the body, never a URL. Another person's address and one
+// that does not exist answer alike: a wrong owner learns no title, owner or
+// state. The answer opens nothing by itself; the frame still needs the
+// session's own view hand-off.
+func (a *Auth) openViewEntry(w http.ResponseWriter, s session, entry string) {
+	a.mu.Lock()
+	usable := a.viewAddressStoreUsable()
+	v, ok := a.viewEntryLocked(entry)
+	a.mu.Unlock()
+	if !usable {
+		safe(w, 503, "view_addresses_unavailable")
+		return
+	}
+	if !ok || !sameOwner(v, s.identity) {
+		safe(w, 404, "view_address_not_found")
+		return
+	}
+	writeJSON(w, map[string]any{"schema_version": 1, "address": a.viewAddressReply(v)})
 }
 
 func (a *Auth) ownedAddressLocked(s session, viewID string) (viewAddress, bool) {
@@ -929,9 +1029,8 @@ func (a *Auth) viewLinkServe(w http.ResponseWriter, r *http.Request, id string) 
 		return
 	}
 	a.mu.Lock()
-	usable := a.viewAddressStoreUsable()
 	l, ok := a.viewAddresses[id]
-	valid := usable && ok && a.viewSharingEnabled() && subtle.ConstantTimeCompare([]byte(token), []byte(l.Token)) == 1 && l.public(a.now()) && !a.deniedLocked(l.Owner.Subject)
+	valid := ok && subtle.ConstantTimeCompare([]byte(token), []byte(l.Token)) == 1 && a.servableLocked(l)
 	a.mu.Unlock()
 	if !valid {
 		gone()

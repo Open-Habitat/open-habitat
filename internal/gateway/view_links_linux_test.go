@@ -766,3 +766,187 @@ func TestViewAddressCommitChecks(t *testing.T) {
 		t.Fatalf("commit check: live %v, expired accepted %v", live, stale)
 	}
 }
+
+// entryDesk serves the app shell from a static directory, so an entry
+// address's page is observable, and records the gateway's diagnostics.
+func entryDesk(t *testing.T) (*viewDesk, *bytes.Buffer) {
+	t.Helper()
+	d := newLinkDesk(t)
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<!doctype html><title>app</title>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	logs := &bytes.Buffer{}
+	d.a.log = CallbackLogger(logs)
+	d.server = httptest.NewTLSServer(NewWithAuth(dir, d.a))
+	t.Cleanup(d.server.Close)
+	d.server.Client().CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return d, logs
+}
+
+func entryPath(a addressReply) string {
+	u, _ := url.Parse(a.URL)
+	return u.Path
+}
+
+// entryOpen reads an entry address and checks the headers every answer
+// carries, whatever it is.
+func (d *viewDesk) entryOpen(path string, edit func(*http.Request)) (*http.Response, string) {
+	d.t.Helper()
+	res := d.do("GET", "host.test", path, "", edit)
+	body, _ := io.ReadAll(res.Body)
+	if res.Header.Get("Cache-Control") != "no-store" || res.Header.Get("Referrer-Policy") != "no-referrer" || res.Header.Get("X-Robots-Tag") != "noindex, nofollow, noarchive" || res.Header.Get("Set-Cookie") != "" {
+		d.t.Fatalf("%s: entry headers %v", path, res.Header)
+	}
+	return res, string(body)
+}
+
+func TestViewEntryAddressOpensPrivatelyOrPublicly(t *testing.T) {
+	d, logs := entryDesk(t)
+	a := d.ensure(viewTestA)
+	entry := entryPath(a)
+	secret := strings.TrimPrefix(entry, viewEntryPrefix)
+	d.a.mu.Lock()
+	d.a.sessions["bob"] = session{identity: Identity{"github", "43", os.Getuid(), "bob", "/run/open-habitat/users/bob/daemon.sock"}, csrf: "bob", idle: d.a.now().Add(time.Hour), absolute: d.a.now().Add(time.Hour)}
+	d.a.mu.Unlock()
+	bob := func(r *http.Request) {
+		r.AddCookie(&http.Cookie{Name: cookieName, Value: "bob"})
+		r.Header.Set("Origin", "https://host.test")
+		r.Header.Set("X-Agent-Host-CSRF", "bob")
+	}
+	// Another valid secret that names no address.
+	unknown := []byte(secret)
+	unknown[0] = map[bool]byte{true: 'B', false: 'A'}[unknown[0] == 'A']
+	// A private address is the app's own page for everyone: the owner,
+	// another person, anyone. So are an unknown and a malformed one. The
+	// page itself never names the view.
+	shell := ""
+	for _, tc := range []struct {
+		path string
+		edit func(*http.Request)
+	}{{entry, appCookie}, {entry, bob}, {entry, nil}, {viewEntryPrefix + string(unknown), nil}, {viewEntryPrefix + secret[:42], appCookie}, {entry + "/x", appCookie}, {entry + "?x=1", appCookie}} {
+		res, body := d.entryOpen(tc.path, tc.edit)
+		if res.StatusCode != 200 || res.Header.Get("Location") != "" || strings.Contains(body, "Kassavirta") || shell != "" && body != shell {
+			t.Fatalf("%s: %d %q", tc.path, res.StatusCode, body)
+		}
+		shell = body
+	}
+	if d.drain() != 0 {
+		t.Fatal("an entry page read a daemon")
+	}
+	if res := d.do("POST", "host.test", entry, "", appWrite); res.StatusCode != 405 {
+		t.Fatalf("entry write: %d", res.StatusCode)
+	}
+	// Only the owner's page learns which view it is; another person's
+	// address, an unknown and a deleted one answer alike.
+	open := func(body string, edit func(*http.Request)) (int, string) {
+		res := d.do("POST", "host.test", viewAddressOpenPath, body, edit)
+		b, _ := io.ReadAll(res.Body)
+		return res.StatusCode, string(b)
+	}
+	if code, body := open(`{"entry":"`+secret+`"}`, appWrite); code != 200 || !strings.Contains(body, `"view_id":"`+viewTestA+`"`) || !strings.Contains(body, `"url":"`+a.URL+`"`) {
+		t.Fatalf("owner's open: %d %s", code, body)
+	}
+	_, refused := open(`{"entry":"`+string(unknown)+`"}`, appWrite)
+	for _, tc := range []struct {
+		body string
+		edit func(*http.Request)
+	}{{`{"entry":"` + secret + `"}`, bob}, {`{"entry":"` + string(unknown) + `"}`, appWrite}} {
+		if code, body := open(tc.body, tc.edit); code != 404 || body != refused || strings.Contains(body, "Kassavirta") || strings.Contains(body, viewTestA) {
+			t.Fatalf("not the owner's: %d %s", code, body)
+		}
+	}
+	for body, want := range map[string]int{
+		`{"entry":"` + secret[:42] + `"}`:                          400,
+		`{"entry":"` + secret + `","view_id":"` + viewTestA + `"}`: 400,
+		`{"entry":"` + a.URL + `"}`:                                400,
+	} {
+		if code, _ := open(body, appWrite); code != want {
+			t.Fatalf("%s: %d", body, code)
+		}
+	}
+	if code, _ := open(`{"entry":"`+secret+`"}`, appCookie); code != 403 {
+		t.Fatalf("open without CSRF: %d", code)
+	}
+	if code, _ := open(`{"entry":"`+secret+`"}`, func(r *http.Request) { r.Header.Set("Origin", "https://host.test") }); code != 401 {
+		t.Fatalf("anonymous open: %d", code)
+	}
+	// Private opens need no public sharing.
+	d.a.cfg.ViewLinkMaxDays = 0
+	if code, _ := open(`{"entry":"`+secret+`"}`, appWrite); code != 200 {
+		t.Fatalf("private open with sharing off: %d", code)
+	}
+	d.a.cfg.ViewLinkMaxDays = 90
+	// Published, the address redirects everyone, the owner too, to the
+	// content host, whose own checks and budgets apply.
+	p := d.publish(a.AddressID, 7)
+	for _, path := range []string{entry, entry + "?fbclid=x"} {
+		for _, edit := range []func(*http.Request){nil, appCookie, bob} {
+			res, _ := d.entryOpen(path, edit)
+			if res.StatusCode != 302 || res.Header.Get("Location") != p.ContentURL {
+				t.Fatalf("public entry %s: %d %q", path, res.StatusCode, res.Header.Get("Location"))
+			}
+		}
+	}
+	if res, _ := d.entryOpen(viewEntryPrefix+string(unknown), nil); res.StatusCode != 200 {
+		t.Fatalf("unknown entry beside a public one: %d", res.StatusCode)
+	}
+	// Every state that ends anonymous reads ends the redirect too.
+	private := func(what string) {
+		t.Helper()
+		if res, body := d.entryOpen(entry, nil); res.StatusCode != 200 || body != shell {
+			t.Fatalf("%s: %d %q", what, res.StatusCode, res.Header.Get("Location"))
+		}
+	}
+	d.a.cfg.ViewLinkMaxDays = 0
+	private("sharing paused")
+	d.a.cfg.ViewLinkMaxDays = 90
+	d.a.mu.Lock()
+	d.a.settings.Denied = []string{"42"}
+	d.a.mu.Unlock()
+	private("owner denied")
+	d.a.mu.Lock()
+	d.a.settings.Denied = nil
+	d.a.mu.Unlock()
+	*d.now = d.now.Add(8 * 24 * time.Hour)
+	private("expired")
+	d.publish(a.AddressID, 1)
+	d.addressCall(viewAddressPrivatePath, `{"address_id":"`+a.AddressID+`"}`, 200)
+	private("made private")
+	d.publish(a.AddressID, 1)
+	d.addressCall(viewAddressDeletePath, `{"address_id":"`+a.AddressID+`"}`, 204)
+	private("deleted")
+	if code, body := open(`{"entry":"`+secret+`"}`, appWrite); code != 404 || body != refused {
+		t.Fatalf("deleted address's open: %d %s", code, body)
+	}
+	// The secret reaches no diagnostic record.
+	if strings.Contains(logs.String(), secret) || strings.Contains(logs.String(), string(unknown)) {
+		t.Fatalf("an entry secret was logged: %s", logs)
+	}
+}
+
+func TestViewEntrySignInReturnsWithoutTellingTheProvider(t *testing.T) {
+	_, a, _, _, _ := fixture(t)
+	logs := &bytes.Buffer{}
+	a.log = CallbackLogger(logs)
+	h := NewWithAuth("", a)
+	secret := strings.Repeat("Ab3_-", 8) + "xyz"
+	entry := viewEntryPrefix + secret
+	w := request(h, "GET", "/auth/github/start?return_to="+url.QueryEscape(entry))
+	loc, _ := url.Parse(w.Header().Get("Location"))
+	if w.Code != 302 || w.Header().Get("Referrer-Policy") != "no-referrer" || strings.Contains(loc.String(), secret) {
+		t.Fatalf("start: %d %v", w.Code, w.Header())
+	}
+	cb := callback(h, loc.Query().Get("state"), w.Result().Cookies()[0])
+	if cb.Code != 303 || cb.Header().Get("Location") != entry {
+		t.Fatalf("return: %d %q", cb.Code, cb.Header().Get("Location"))
+	}
+	for _, bad := range []string{viewEntryPrefix + secret[:42], entry + "/", entry + "?x=1", entry + "#x", entry + "A", "/n/" + strings.Repeat(".", 43), "/n//" + secret[1:]} {
+		if uiReturn(bad) {
+			t.Fatalf("return to %q", bad)
+		}
+	}
+	if strings.Contains(logs.String(), secret) {
+		t.Fatalf("an entry secret was logged: %s", logs)
+	}
+}

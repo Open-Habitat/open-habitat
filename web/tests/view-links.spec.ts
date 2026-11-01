@@ -146,3 +146,93 @@ test("anyone with the link opens the view without a session while it is shared",
   await expect(reader.locator("body")).toContainText("Linkki ei ole voimassa.");
   await recipient.close();
 });
+
+test("the stable address frames the view for its owner and redirects while public", async ({
+  page,
+  context,
+  browser,
+}, info) => {
+  const id = await conversation(page);
+  const viewId = await offer(page, id);
+  const card = page.locator(
+    `[data-testid="view-offer"][data-view-id="${viewId}"]`,
+  );
+  // The own tab reserves the address and opens at it.
+  const opened = context.waitForEvent("page");
+  await card.getByTestId("view-open-tab").click();
+  const tab = await opened;
+  await expect(tab).toHaveURL(/\/n\/[A-Za-z0-9_-]{43}$/);
+  const entry = tab.url();
+  const secret = new URL(entry).pathname.slice(3);
+  const framed = tab.frameLocator('[data-testid="view-frame"]').locator("body");
+  await expect(framed).toHaveAttribute("data-script", "yes");
+  await expect(framed).toHaveAttribute("data-style", "rgb(1, 2, 3)");
+  await tab.close();
+
+  // While private, a visitor without a session is asked to sign in and told
+  // nothing about the view; nothing it loads carries the address onward.
+  const visitor = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    viewport: { width: 1280, height: 800 },
+  });
+  const reader = await visitor.newPage();
+  const leaks: string[] = [];
+  reader.on("request", async (request) => {
+    const headers = await request.allHeaders();
+    if ((headers.referer ?? "").includes(secret)) leaks.push(request.url());
+    if (request.url().includes(secret) && !request.isNavigationRequest())
+      leaks.push(request.url());
+  });
+  const first = await reader.goto(entry);
+  expect(first?.headers()["cache-control"]).toBe("no-store");
+  expect(first?.headers()["referrer-policy"]).toBe("no-referrer");
+  expect(first?.headers()["x-robots-tag"]).toBe("noindex, nofollow, noarchive");
+  await expect(reader.getByTestId("view-sign-in")).toBeVisible();
+  await expect(reader.locator("body")).not.toContainText("Synteettinen");
+  await reader.screenshot({ path: info.outputPath("private-visitor.png") });
+
+  // Published, the same address takes anyone to the content host.
+  await card.getByTestId("view-share").click();
+  const dialog = page.getByTestId("view-link-dialog");
+  await dialog.getByTestId("view-link-create").click();
+  await expect(dialog.getByTestId("view-link-url")).not.toHaveValue("");
+  await dialog.getByTestId("view-link-close").click();
+  await reader.goto(entry);
+  await expect(reader).toHaveURL(
+    /^https:\/\/oh-view-[a-z2-7]{52}\.oh\.localhost\/[A-Za-z0-9_-]{43}\/index\.html$/,
+  );
+  await expect(reader.locator("body")).toHaveAttribute("data-script", "yes");
+  expect(new URL(reader.url()).pathname).not.toContain(secret);
+
+  // Private again, the address is the sign-in page once more; signing in
+  // as the owner returns to the address and frames the view.
+  await card.getByTestId("view-share").click();
+  await dialog.getByTestId("view-link-revoke").click();
+  await expect(dialog.getByTestId("view-link-revoked")).toBeVisible();
+  await dialog.getByTestId("view-link-close").click();
+  // Another person signing in learns only that it is not available.
+  const other = await browser.newContext({ ignoreHTTPSErrors: true });
+  const bob = await other.newPage();
+  await bob.goto(entry);
+  await bob.getByTestId("view-sign-in").click();
+  await bob.getByRole("link").and(bob.locator('a[href*="code=43"]')).click();
+  await expect(bob).toHaveURL(entry);
+  await expect(bob.getByTestId("view-open-page")).toContainText(
+    "Tämä näkymä ei ole saatavilla.",
+  );
+  await expect(bob.getByTestId("view-frame")).toHaveCount(0);
+  await expect(bob.locator("body")).not.toContainText("Synteettinen");
+  await other.close();
+  await reader.goto(entry);
+  await reader.getByTestId("view-sign-in").click();
+  await reader
+    .getByRole("link")
+    .and(reader.locator('a[href*="code=42"]'))
+    .click();
+  await expect(reader).toHaveURL(entry);
+  await expect(
+    reader.frameLocator('[data-testid="view-frame"]').locator("body"),
+  ).toHaveAttribute("data-script", "yes");
+  expect(leaks).toEqual([]);
+  await visitor.close();
+});

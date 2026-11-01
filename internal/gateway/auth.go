@@ -256,6 +256,7 @@ type Auth struct {
 	views            map[string]viewSession
 	viewAddresses    map[string]viewAddress // keyed by reservation ID
 	viewLinkHosts    map[string]string      // content host -> reservation ID
+	viewEntries      map[string]string      // viewEntryKey(entry) -> reservation ID
 	viewAddressFault string                 // why the address store is unusable
 	viewLinkTraffic  viewLinkTraffic
 	sessionFile      string
@@ -505,9 +506,14 @@ func settingsUIRoute(path string) bool {
 }
 
 // uiReturn accepts only known same-origin selection routes; never API/auth/events or external URLs.
+// A view's entry address (/n/<secret>) returns to it: the pending flow keeps
+// it server-side, so the provider never sees it.
 func uiReturn(path string) bool {
 	if path == "/" || path == "/workspaces" || settingsUIRoute(path) || path == "/administration" {
 		return true
+	}
+	if entry, ok := strings.CutPrefix(path, viewEntryPrefix); ok {
+		return validViewLinkToken(entry)
 	}
 	if strings.HasPrefix(path, "/agents/pi:") {
 		id := strings.TrimPrefix(path, "/agents/pi:")
@@ -593,6 +599,8 @@ func (a *Auth) start(w http.ResponseWriter, r *http.Request) {
 	a.pending[state] = pending{verifier: verifier, browser: browser, returnTo: returnTo, attempt: attempt, accessEmail: accessEmail(r), reconnect: reconnect, until: now.Add(5 * time.Minute), serial: a.serial}
 	a.mu.Unlock()
 	a.authEvent(attempt, "started", intent)
+	// return_to may hold a view's entry secret; the provider gets no referrer.
+	w.Header().Set("Referrer-Policy", "no-referrer")
 	http.SetCookie(w, &http.Cookie{Name: flowCookie, Value: browser, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 300})
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, a.provider.AuthorizationURL(state, challenge), http.StatusFound)

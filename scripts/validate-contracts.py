@@ -161,6 +161,7 @@ checks = {
     "view-address-ensure.json": "view-address.schema.json",
     "view-address-publish.json": "view-address.schema.json",
     "view-address-delete.json": "view-address.schema.json",
+    "view-address-open.json": "view-address.schema.json",
     "server-view-publications.json": "view-address.schema.json",
     "notice-view.json": "notice.schema.json",
     "file-offers.json": "file-offer.schema.json",
@@ -301,6 +302,8 @@ must_reject("view-address.schema.json", {"view_id": "vabcdefghijklmnopqrstuvwxyz
 must_reject("view-address.schema.json", {"address_id": "aabcdefghijklmnopqrstuvwxyz", "view_id": "vabcdefghijklmnopqrstuvwxyz"})
 must_reject("view-address.schema.json", {"address_id": "aabcdefghijklmnopqrstuvwxyz", "new_address": True})
 must_reject("view-address.schema.json", {"address_id": "aabcdefghijklmnopqrstuvwxyz", "days": 366})
+must_reject("view-address.schema.json", {"entry": "https://example.invalid/n/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"})
+must_reject("view-address.schema.json", {"entry": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "view_id": "vabcdefghijklmnopqrstuvwxyz"})
 must_reject("view-address.schema.json", {"link_id": "labcdefghijklmnopqrstuvwxyz", "days": 30})
 address_reply = json.loads((BASE / "examples" / "view-address.json").read_text())
 address = address_reply["address"]

@@ -172,7 +172,7 @@ test("the own tab frames the view on the app's page, with no opener", async ({
   context,
 }) => {
   const id = await conversation(page);
-  const viewId = await offer(page, id);
+  await offer(page, id);
   const card = page.getByTestId("view-offer");
   await expect(card).toBeVisible();
 
@@ -182,7 +182,11 @@ test("the own tab frames the view on the app's page, with no opener", async ({
   // The tab's top-level page stays the app's: a sandboxed view as the
   // top-level document loses its view cookie in browsers that block
   // third-party cookies, so its stylesheet and script would not load.
-  await expect(tab).toHaveURL(`${app}/view?id=${viewId}`);
+  // The launcher reserved the view's one address and replaced itself with
+  // it: the tab is at the stable address even though sharing is off here.
+  await expect(tab).toHaveURL(
+    new RegExp(`^${app.replaceAll(".", "\\.")}/n/[A-Za-z0-9_-]{43}$`),
+  );
   const frame = tab.getByTestId("view-frame");
   await expect(frame).toHaveAttribute("sandbox", "allow-scripts");
   const body = tab.frameLocator('[data-testid="view-frame"]').locator("body");

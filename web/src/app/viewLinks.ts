@@ -232,6 +232,31 @@ export async function ensureViewAddress(
   return address;
 }
 
+/** Which of the person's addresses an entry secret names (`/n/<entry>`),
+ * or "not_found" when it is no address of theirs. The secret goes in the
+ * body, never a URL. */
+export async function openViewEntry(
+  csrf: string,
+  entry: string,
+): Promise<ViewAddress | "not_found"> {
+  try {
+    const address = await addressWrite(
+      "/api/v1/view-addresses/open",
+      { entry },
+      csrf,
+    );
+    if (!address) throw new Error(linkFailure(undefined));
+    return address;
+  } catch (error) {
+    if (
+      error instanceof AddressRefusal &&
+      error.code === "view_address_not_found"
+    )
+      return "not_found";
+    throw error;
+  }
+}
+
 /** Public for days from now; earlier copies of the address work again. */
 export async function publishViewAddress(
   csrf: string,

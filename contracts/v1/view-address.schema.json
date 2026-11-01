@@ -2,13 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/view-address.schema.json",
   "title": "Stable view addresses (ADR 0035)",
-  "description": "One address per person and frozen view, reserved when the browser first needs it and kept until deleted. It starts private; publishing makes it readable by anyone who has it until the publication expires or is made private, and publishing again revives the same URLs. Only the person's app session reserves, publishes, changes and deletes; the administrator sees current publications' metadata and deletes any address. App-origin messages: GET /api/v1/view-addresses (the person's addresses; an empty 204 when the installation offers no views), POST /api/v1/view-addresses (ensure the view's one reservation), POST /api/v1/view-addresses/publish, /duration and /private (each answers the address), POST /api/v1/view-addresses/delete (204), GET /api/v1/server/view-publications and POST /api/v1/server/view-publications/delete (administrator, 204).",
+  "description": "One address per person and frozen view, reserved when the browser first needs it and kept until deleted. It starts private; publishing makes it readable by anyone who has it until the publication expires or is made private, and publishing again revives the same URLs. Only the person's app session reserves, publishes, changes and deletes; the administrator sees current publications' metadata and deletes any address. App-origin messages: GET /api/v1/view-addresses (the person's addresses; an empty 204 when the installation offers no views), POST /api/v1/view-addresses (ensure the view's one reservation), POST /api/v1/view-addresses/publish, /duration and /private (each answers the address), POST /api/v1/view-addresses/delete (204), POST /api/v1/view-addresses/open (which of the person's addresses an entry secret names), GET /api/v1/server/view-publications and POST /api/v1/server/view-publications/delete (administrator, 204).",
   "oneOf": [
     {"$ref": "#/$defs/list"},
     {"$ref": "#/$defs/reply"},
     {"$ref": "#/$defs/ensureRequest"},
     {"$ref": "#/$defs/daysRequest"},
     {"$ref": "#/$defs/addressRequest"},
+    {"$ref": "#/$defs/openRequest"},
     {"$ref": "#/$defs/adminList"}
   ],
   "$defs": {
@@ -82,6 +83,15 @@
       "required": ["address_id"],
       "properties": {
         "address_id": {"$ref": "#/$defs/addressId"}
+      }
+    },
+    "openRequest": {
+      "description": "POST /api/v1/view-addresses/open: the secret of an entry address (/n/<entry>) the person's tab is at, sent in the body so it never enters a URL. The gateway answers the address only when it is the person's own; another person's, a deleted and an unknown address all answer view_address_not_found alike. The answer opens nothing by itself: the tab still asks for the view's own hand-off.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry"],
+      "properties": {
+        "entry": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"}
       }
     },
     "adminList": {

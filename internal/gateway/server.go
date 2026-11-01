@@ -117,7 +117,12 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(editorOpenPath, s.auth.editorOpen)
 		mux.HandleFunc(editorStopPath, s.auth.editorStop)
 		mux.HandleFunc(viewsPath, s.auth.viewList)
-		for _, path := range []string{viewAddressesPath, viewAddressPublishPath, viewAddressDurationPath, viewAddressPrivatePath, viewAddressDeletePath} {
+		mux.HandleFunc(viewEntryPrefix, func(w http.ResponseWriter, r *http.Request) {
+			if !s.auth.viewEntry(w, r) {
+				s.index(w, r)
+			}
+		})
+		for _, path := range []string{viewAddressesPath, viewAddressPublishPath, viewAddressDurationPath, viewAddressPrivatePath, viewAddressDeletePath, viewAddressOpenPath} {
 			mux.HandleFunc(path, s.auth.viewLinksHTTP)
 		}
 		mux.HandleFunc(adminPublicationsPath, s.auth.adminViewLinksHTTP)
@@ -218,6 +223,16 @@ func (s *Server) ui(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	s.index(w, r)
+}
+
+// index serves the app's shell for a route the browser resolves itself.
+func (s *Server) index(w http.ResponseWriter, r *http.Request) {
+	if s.staticDir == "" {
+		http.Error(w, "static client unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	w.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive")
 	w.Header().Set("Cache-Control", "no-store")
 	http.ServeFile(w, r, filepath.Join(s.staticDir, "index.html"))
 }
