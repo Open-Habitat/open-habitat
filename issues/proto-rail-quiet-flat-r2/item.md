@@ -8,7 +8,7 @@ priority: normal
 lane: rail-quiet-all-flat
 lane_seq: 2
 related: ['@proto-rail-quiet-flat']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype round 2: collapsible, sortable Hiljaiset with workspace icons
