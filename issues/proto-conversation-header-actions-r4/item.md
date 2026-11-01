@@ -8,7 +8,7 @@ priority: normal
 lane: proto-conversation-header-actions-r4
 lane_seq: 1
 related: ['@proto-conversation-header-actions-r3']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype round 4: start-page strip whose Selitä nämä mulle opens the button guide
