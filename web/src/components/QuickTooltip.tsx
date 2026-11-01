@@ -1,12 +1,19 @@
-import type { ComponentProps, ReactNode } from "react";
+import {
+  type ComponentProps,
+  type ReactNode,
+  useContext,
+  useEffect,
+} from "react";
 import {
   Focusable,
   Tooltip,
   TooltipContext,
   type TooltipProps,
   TooltipTrigger,
+  TooltipTriggerStateContext,
   useContextProps,
 } from "react-aria-components";
+import { flushSync } from "react-dom";
 import styles from "./QuickTooltip.module.css";
 
 /** Native disabled buttons cannot receive focus or tooltip trigger props.
@@ -66,6 +73,29 @@ export function TooltipLink({
 function TooltipContent({ label }: { label: string }) {
   const defaults: TooltipProps = {};
   const [props] = useContextProps(defaults, null, TooltipContext);
+  const state = useContext(TooltipTriggerStateContext);
+  const isOpen = state?.isOpen ?? false;
+  // React Aria's open tooltip takes every Escape in the document, so help
+  // that the resting pointer opened would swallow the key meant for the
+  // focused element, such as the composer's stop. Escape elsewhere closes
+  // it first, synchronously, and then reaches its target; Escape on the
+  // trigger itself still only dismisses the help.
+  useEffect(() => {
+    if (!isOpen || !state) return;
+    const onEscape = (event: KeyboardEvent) => {
+      const trigger = props.triggerRef?.current;
+      if (event.key !== "Escape") return;
+      if (
+        trigger &&
+        event.target instanceof Node &&
+        trigger.contains(event.target)
+      )
+        return;
+      flushSync(() => state.close(true));
+    };
+    window.addEventListener("keydown", onEscape, true);
+    return () => window.removeEventListener("keydown", onEscape, true);
+  }, [isOpen, state, props.triggerRef]);
   // Description linkage alone does not place a body-level portal in a landmark.
   const container =
     props.triggerRef?.current?.closest(

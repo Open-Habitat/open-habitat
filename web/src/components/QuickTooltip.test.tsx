@@ -45,6 +45,33 @@ it("warms up briefly, transfers immediately, and dismisses with Escape", () => {
   tick(0);
   expect(screen.queryByRole("tooltip")).toBeNull();
 });
+it("lets Escape in a focused field through while hover help is open", () => {
+  vi.useFakeTimers();
+  const stop = vi.fn();
+  render(
+    <>
+      <ControlButton size="row" aria-label="Refresh" data-testid="refresh">
+        ↻
+      </ControlButton>
+      <textarea
+        data-testid="field"
+        onKeyDown={(event) => event.key === "Escape" && stop()}
+      />
+    </>,
+  );
+  fireEvent.pointerMove(document.body, { pointerType: "mouse" });
+  fireEvent.pointerEnter(screen.getByTestId("refresh"), {
+    pointerType: "mouse",
+  });
+  tick(250);
+  expect(screen.getByRole("tooltip")).toBeTruthy();
+  const field = screen.getByTestId("field");
+  field.focus();
+  fireEvent.keyDown(field, { key: "Escape" });
+  expect(stop).toHaveBeenCalledTimes(1);
+  tick(0);
+  expect(screen.queryByRole("tooltip")).toBeNull();
+});
 it.each(["aria", "native"])(
   "explains a disabled %s action without enabling it and ignores touch",
   (kind) => {
