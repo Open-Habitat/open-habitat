@@ -5,8 +5,8 @@ type: improvement
 reporter: jari
 status: open
 priority: normal
-lane: decide-view-stable-address
-lane_seq: 5
+lane: view-address-access-exemption
+lane_seq: 1
 related: ['@view-address-entry-route']
 preparation: ready
 ---
