@@ -8,7 +8,7 @@ priority: normal
 lane: proto-view-offer-card-r3
 lane_seq: 1
 related: ['@proto-view-offer-card-r2']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype round 3: view card switch and link expiry
