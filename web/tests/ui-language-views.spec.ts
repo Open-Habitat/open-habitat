@@ -39,13 +39,16 @@ test("@ui-language-conversation a view offer and its panel read in English", asy
   );
   expect(res.status()).toBe(200);
   const card = page.getByTestId("view-offer");
-  await expect(card).toContainText("The agent offers a view:");
+  await expect(card).toHaveAttribute(
+    "aria-label",
+    /^View offered by the agent: /,
+  );
   await expect(card.getByTestId("view-open")).toHaveText("Open");
   if (capture) await page.screenshot({ path: `${evidence}/view-offer.png` });
   await card.getByTestId("view-open").click();
   const panel = page.getByTestId("view-panel");
   await expect(panel).toBeVisible();
-  await expect(panel).toContainText("Frozen HTML");
+  await expect(panel).toContainText("The content is kept apart");
   await expect(panel.getByRole("button", { name: "Close view" })).toBeVisible();
   if (capture) {
     await page.waitForTimeout(800);

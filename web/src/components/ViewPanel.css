@@ -10,6 +10,7 @@
   border: 1px solid var(--ah-line);
   border-radius: var(--ah-r-md);
   background: var(--ah-surface-2);
+  container: view-offer / inline-size;
 }
 .ah-view-offer-mark {
   flex: none;
@@ -29,15 +30,113 @@
   min-width: 0;
   gap: var(--ah-s1);
 }
-.ah-view-offer-label,
-.ah-view-offer-meta,
-.ah-view-offer-status {
+/* The title row: the title, and at its right the publication's end and the
+   Julkinen switch. The switch keeps its place; the date appears to its
+   left while the view is public. */
+.ah-view-offer-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s1) var(--ah-s3);
+  min-height: 32px;
+}
+.ah-view-offer-title {
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ah-view-offer-controls {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  margin-left: auto;
+}
+.ah-view-offer-until {
+  color: var(--ah-muted);
+  font-weight: 500;
+}
+.ah-view-offer-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  min-height: 28px;
+  padding: 0 2px 0 var(--ah-s2);
+  border-radius: var(--ah-r-pill);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ah-view-offer-switch[data-hovered] {
+  background: var(--ah-surface-hover);
+}
+.ah-view-offer-switch[data-focus-visible] {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: 2px;
+}
+.ah-view-offer-switch[data-readonly] {
+  cursor: progress;
+}
+.ah-view-offer-switch[data-unknown] {
+  cursor: default;
+  opacity: 0.6;
+}
+.ah-view-offer-track {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--ah-line-strong);
+  transition: background var(--ah-transition);
+}
+.ah-view-offer-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ah-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 25%);
+  transition: transform var(--ah-transition);
+}
+.ah-view-offer-switch[data-selected] {
+  color: var(--ah-accent-ink);
+}
+.ah-view-offer-switch[data-selected] .ah-view-offer-track {
+  background: var(--ah-accent);
+}
+.ah-view-offer-switch[data-selected] .ah-view-offer-track::after {
+  transform: translateX(12px);
+}
+.ah-view-offer-switch[data-pending] .ah-view-offer-track {
+  opacity: 0.6;
+}
+.ah-view-offer-durations-head {
+  margin: 0;
+  padding: var(--ah-s1) var(--ah-s2) var(--ah-s2);
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
 }
-.ah-view-offer-title {
-  font-weight: 600;
-  overflow-wrap: anywhere;
+.ah-view-offer-durations [data-ah-primitive="menu-item"] {
+  display: grid;
+  grid-template-columns: 1em 1fr auto;
+  gap: var(--ah-s2);
+  align-items: center;
+  min-width: 15rem;
+}
+.ah-view-offer-duration-ends {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  font-variant-numeric: tabular-nums;
+}
+.ah-view-offer-status {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
 }
 .ah-view-offer-actions {
   display: flex;
@@ -45,8 +144,16 @@
   gap: var(--ah-s2);
   margin-top: var(--ah-s2);
 }
-.ah-view-offer > button {
-  flex: none;
+/* On a narrow card the date and the switch take their own line under the
+   title, the switch still at the right, so the title keeps the card's
+   width (r3). */
+@container view-offer (width < 460px) {
+  .ah-view-offer-title {
+    flex-basis: 100%;
+  }
+  .ah-view-offer-actions > * {
+    flex: 1 1 auto;
+  }
 }
 
 /* The split: the conversation keeps the left, the panel takes the right. */

@@ -130,7 +130,7 @@ describe("shared view addresses", () => {
   };
   afterEach(() => resetViewLinks());
 
-  it("offers no link where the site has no addresses or shares nothing", async () => {
+  it("offers no public switch where the site has no addresses or shares nothing", async () => {
     for (const reply of [
       () => new Response(null, { status: 204 }),
       () => json({ schema_version: 1, max_days: 0, addresses: [shared] }),
@@ -151,62 +151,137 @@ describe("shared view addresses", () => {
         ),
       );
       await act(async () => {});
-      expect(page.queryByTestId("view-share")).toBeNull();
-      expect(page.queryByTestId("view-shared")).toBeNull();
+      expect(page.queryByRole("switch")).toBeNull();
+      expect(page.queryByTestId("view-copy-link")).toBeNull();
       page.unmount();
     }
   });
 
-  it("publishes the view's address on the person's press, shows it and stops sharing", async () => {
+  function host(
+    write: (url: string, body: Record<string, unknown>) => Response,
+    list: () => Response = () =>
+      json({ schema_version: 1, max_days: 90, addresses: [] }),
+  ) {
     const writes: [string, unknown][] = [];
     const fetch = vi.fn(async (url: string, init?: RequestInit) => {
       if (url === "/api/v1/views")
         return json({ schema_version: 1, views: [view] });
-      if (url === "/api/v1/view-addresses" && !init?.method)
-        return json({ schema_version: 1, max_days: 90, addresses: [] });
-      writes.push([url, JSON.parse(String(init?.body))]);
+      if (url === "/api/v1/view-addresses" && !init?.method) return list();
+      const body = JSON.parse(String(init?.body));
+      writes.push([url, body]);
       expect(
         (init?.headers as Record<string, string> | undefined)?.[
           "X-Agent-Host-CSRF"
         ],
       ).toBe("csrf");
+      return write(url, body);
+    });
+    vi.stubGlobal("fetch", fetch);
+    return { writes, fetch };
+  }
+
+  it("makes the view public in one press, copies and opens one address, and back", async () => {
+    const { writes } = host((url) => {
       if (url === "/api/v1/view-addresses")
         return json({ schema_version: 1, address: reserved });
       if (url === "/api/v1/view-addresses/publish")
         return json({ schema_version: 1, address: shared });
+      if (url === "/api/v1/view-addresses/duration")
+        return json({
+          schema_version: 1,
+          address: { ...shared, public_until: "2999-12-05T12:00:00Z" },
+        });
       if (url === "/api/v1/view-addresses/private")
         return json({ schema_version: 1, address: reserved });
       throw new Error(`unexpected ${url}`);
     });
-    vi.stubGlobal("fetch", fetch);
-    const page = render(<ViewHost csrf="csrf">{entry(true)}</ViewHost>);
-    fireEvent.click(await page.findByTestId("view-share"));
-    const dialog = await page.findByTestId("view-link-dialog");
-    // The agent's title is data, and the terms come before any link exists.
-    expect(dialog.querySelector("b")).toBeNull();
-    expect(dialog.textContent).toContain("Kuka tahansa, jolla on linkki");
-    expect(page.queryByTestId("view-link-repoint")).toBeNull();
-    expect(page.queryByTestId("view-link-new-address")).toBeNull();
-    fireEvent.click(page.getByTestId("segment-7"));
-    fireEvent.click(page.getByTestId("view-link-create"));
-    const url = (await page.findByTestId("view-link-url")) as HTMLInputElement;
-    expect(url.value).toBe(shared.content_url);
-    expect(writes.slice(0, 2)).toEqual([
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    // The same view offered twice: both cards show one state.
+    const page = render(
+      <ViewHost csrf="csrf">
+        {entry(true)}
+        {entry(true)}
+      </ViewHost>,
+    );
+    const switches = await page.findAllByRole("switch");
+    expect(switches).toHaveLength(2);
+    expect(page.queryByTestId("view-copy-link")).toBeNull();
+    fireEvent.click(switches[0]);
+    await waitFor(() =>
+      expect(page.getAllByTestId("view-copy-link")).toHaveLength(2),
+    );
+    // Public from now for the default length: no dialog, no choice.
+    expect(writes).toEqual([
       ["/api/v1/view-addresses", { view_id: view.view_id }],
       [
         "/api/v1/view-addresses/publish",
-        { address_id: shared.address_id, days: 7 },
+        { address_id: shared.address_id, days: 30 },
       ],
     ]);
-    expect(page.getByTestId("view-shared").textContent).toContain(
-      "Jaettu linkillä",
+    for (const s of page.getAllByRole("switch"))
+      expect((s as HTMLInputElement).checked).toBe(true);
+
+    // The tab opens the address Kopioi linkki copies.
+    fireEvent.click(page.getAllByTestId("view-open-tab")[1]);
+    expect(open).toHaveBeenLastCalledWith(
+      shared.url,
+      "_blank",
+      expect.stringContaining("noopener"),
     );
-    fireEvent.click(page.getByTestId("view-link-revoke"));
-    await page.findByTestId("view-link-revoked");
+    const copy = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: copy },
+      configurable: true,
+    });
+    fireEvent.click(page.getAllByTestId("view-copy-link")[0]);
+    await waitFor(() => expect(copy).toHaveBeenCalledWith(shared.url));
+
+    // The date opens the lengths; a choice changes only the duration.
+    fireEvent.click(page.getAllByTestId("view-public-until")[0]);
+    fireEvent.click(await page.findByTestId("view-duration-7"));
+    await waitFor(() => expect(writes).toHaveLength(3));
     expect(writes[2]).toEqual([
+      "/api/v1/view-addresses/duration",
+      { address_id: shared.address_id, days: 7 },
+    ]);
+
+    fireEvent.click(page.getAllByRole("switch")[1]);
+    await waitFor(() =>
+      expect(page.queryAllByTestId("view-copy-link")).toHaveLength(0),
+    );
+    expect(writes[3]).toEqual([
       "/api/v1/view-addresses/private",
       { address_id: shared.address_id },
     ]);
-    expect(page.queryByTestId("view-shared")).toBeNull();
+  });
+
+  it("settles a lost reply by reading again, never by sending the write again", async () => {
+    let listed: unknown[] = [];
+    const { writes, fetch } = host(
+      (url) => {
+        if (url === "/api/v1/view-addresses/publish") {
+          // The write went through, but its reply was lost.
+          listed = [shared];
+          return new Response("", { status: 502 });
+        }
+        throw new Error(`unexpected ${url}`);
+      },
+      () => json({ schema_version: 1, max_days: 90, addresses: listed }),
+    );
+    listed = [reserved];
+    const page = render(<ViewHost csrf="csrf">{entry(true)}</ViewHost>);
+    fireEvent.click(await page.findByRole("switch"));
+    await waitFor(() =>
+      expect((page.getByRole("switch") as HTMLInputElement).checked).toBe(true),
+    );
+    expect(writes.map(([url]) => url)).toEqual([
+      "/api/v1/view-addresses/publish",
+    ]);
+    const reads = fetch.mock.calls.filter(
+      ([url, init]) => url === "/api/v1/view-addresses" && !init?.method,
+    );
+    expect(reads.length).toBeGreaterThanOrEqual(2);
+    expect(page.getByRole("status")).toBeTruthy();
+    expect(page.getByTestId("view-copy-link")).toBeTruthy();
   });
 });

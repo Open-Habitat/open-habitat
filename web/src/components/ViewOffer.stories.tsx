@@ -31,11 +31,38 @@ export const Prototype: Story = {
   },
 };
 export const Opening: Story = { args: { state: "opening" } };
-export const TabRequested: Story = { args: { state: "tab_requested" } };
 export const Failed: Story = { args: { state: "failed" } };
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
 };
-export const Shared: Story = {
-  args: { onShare: () => {}, sharedUntil: "2026-11-28T12:00:00Z" },
+const visibility = {
+  public: false,
+  maxDays: 90,
+  onPublic: () => {},
+  onDuration: () => {},
+};
+export const Private: Story = { args: { visibility } };
+export const Public: Story = {
+  args: {
+    visibility: {
+      ...visibility,
+      public: true,
+      until: "2026-11-28T12:00:00Z",
+      url: `https://app.example.org/n/${"E".repeat(43)}`,
+    },
+  },
+};
+export const PublicPhone: Story = {
+  ...Public,
+  globals: Phone.globals,
+};
+export const Changing: Story = {
+  args: { visibility: { ...visibility, pending: true } },
+};
+export const Uncertain: Story = {
+  args: {
+    visibility: { ...visibility, unknown: true },
+    problem:
+      "Muutoksen tulos jäi epäselväksi. Tila on luettu uudelleen; tarkista se ennen kuin yrität uudelleen.",
+  },
 };

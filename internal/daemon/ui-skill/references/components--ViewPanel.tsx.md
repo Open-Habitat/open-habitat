@@ -11,10 +11,12 @@ import {
   type Ref,
   useRef,
 } from "react";
-import { formatDate, liveText } from "../i18n";
+import { liveText } from "../i18n";
 import { viewPanelText } from "../text/viewPanel";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
+import { CopyButton } from "./ViewLink";
+import { formatUntil } from "./ViewOffer";
 
 const txt = liveText(viewPanelText);
 
@@ -46,7 +48,7 @@ export function ViewHeader({
   titleRef,
   onToggleExpanded,
   onOpenTab,
-  onShare,
+  link,
   onClose,
 }: {
   title: string;
@@ -54,8 +56,9 @@ export function ViewHeader({
   titleRef?: Ref<HTMLHeadingElement>;
   onToggleExpanded: () => void;
   onOpenTab: () => void;
-  /** Jaa linkillä (ADR 0033); absent where the site offers no links. */
-  onShare?: () => void;
+  /** The view's stable address and the end of its publication, only while
+   * it is public: visibility itself is changed on the card. */
+  link?: { url: string; until: string };
   onClose: () => void;
 }) {
   return (
@@ -85,17 +88,15 @@ export function ViewHeader({
         >
           <Icon name="external" />
         </ControlButton>
-        {onShare && (
-          <ControlButton
-            data-testid="view-panel-share"
-            size="row"
-            variant="quiet"
-            aria-label={txt.share}
-            title={txt.share}
-            onPress={onShare}
-          >
-            <Icon name="link" />
-          </ControlButton>
+        {link && (
+          <CopyButton
+            iconOnly
+            data-testid="view-panel-copy-link"
+            text={link.url}
+            label={txt.copyLink(formatUntil(link.until))}
+            copiedLabel={txt.copied}
+            blockedLabel={txt.copyBlocked}
+          />
         )}
         <ControlButton
           data-testid="close-view"
@@ -122,8 +123,7 @@ export function ViewPanel({
   titleRef,
   onToggleExpanded,
   onOpenTab,
-  onShare,
-  sharedUntil,
+  link,
   onClose,
 }: {
   title: string;
@@ -134,9 +134,7 @@ export function ViewPanel({
   titleRef?: Ref<HTMLHeadingElement>;
   onToggleExpanded: () => void;
   onOpenTab: () => void;
-  onShare?: () => void;
-  /** The expiry of the link that shows this view, when there is one. */
-  sharedUntil?: string;
+  link?: { url: string; until: string };
   onClose: () => void;
 }) {
   const keyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
@@ -159,7 +157,7 @@ export function ViewPanel({
         titleRef={titleRef}
         onToggleExpanded={onToggleExpanded}
         onOpenTab={onOpenTab}
-        onShare={onShare}
+        link={link}
         onClose={onClose}
       />
       <div className="ah-view-frame">
@@ -171,15 +169,7 @@ export function ViewPanel({
           </p>
         )}
       </div>
-      <p className="ah-view-note">
-        {txt.frozen} ·{" "}
-        {sharedUntil
-          ? txt.sharedUntil(
-              formatDate(new Date(sharedUntil), { dateStyle: "short" }),
-            )
-          : txt.onlyYou}{" "}
-        · {txt.isolated}
-      </p>
+      <p className="ah-view-note">{txt.isolated}</p>
     </section>
   );
 }

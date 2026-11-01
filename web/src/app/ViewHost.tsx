@@ -13,11 +13,11 @@ import { ControlButton } from "../components/ControlElements";
 import { FileOfferCard, FileShelf } from "../components/FileOffer";
 import { GuidePanel } from "../components/GuidePanel";
 import { Icon } from "../components/Icon";
-import { ViewLinkDialog } from "../components/ViewLink";
 import {
   ViewOfferCard,
   type ViewOfferState,
   type ViewSummary,
+  type ViewVisibility,
 } from "../components/ViewOffer";
 import { ViewPanel, ViewSplit } from "../components/ViewPanel";
 import { textNow, useText } from "../i18n";
@@ -35,14 +35,16 @@ import {
 } from "./fileOffers";
 import { readGuide, setGuide, useGuide } from "./goalGuide";
 import {
-  changeViewAddressDuration,
-  ensureViewAddress,
-  makeViewAddressPrivate,
-  publicAddress,
-  publishViewAddress,
+  addressOf,
+  defaultExpiry,
+  isPublic,
   refreshViewLinks,
+  setViewDuration,
+  setViewPublic,
+  useViewAddressMark,
   useViewLinks,
-  type ViewAddress,
+  useViewLinksFreshness,
+  useViewLinksUnknown,
 } from "./viewLinks";
 import { listViews, mintViewURL, viewTabPath } from "./views";
 
@@ -59,10 +61,13 @@ type ViewControls = {
   state: (id: string) => ViewOfferState;
   open: (view: ViewSummary, opener: HTMLElement | null) => void;
   openTab: (view: ViewSummary) => void;
-  /** Jaa linkillä; absent where the site shares nothing publicly. */
-  share?: (view: ViewSummary) => void;
-  /** The view's address while it is public. */
-  linkFor: (id: string) => ViewAddress | undefined;
+  /** The site's longest publication; absent where it shares nothing
+   * publicly or the person's addresses are not known. */
+  maxDays?: number;
+  setPublic: (view: ViewSummary, on: boolean) => void;
+  setDuration: (view: ViewSummary, days: number) => void;
+  /** Why the last visibility change of a view did not go through. */
+  problem: (id: string) => string | undefined;
 };
 
 const ViewContext = createContext<ViewControls | null>(null);
@@ -147,17 +152,20 @@ export function ViewHost({
   const title = useRef<HTMLHeadingElement>(null);
   const mintSeq = useRef(0);
   const links = useViewLinks();
-  const [sharing, setSharing] = useState<ViewSummary>();
+  const [problems, setProblems] = useState<Record<string, string>>({});
+  // A refusal that answers after another person signed in is not theirs.
+  const person = useRef(0);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: identity is the trigger, not an input.
   useEffect(() => {
     mintSeq.current++;
+    person.current++;
     setEnabled(false);
     setStates({});
     setOpened(undefined);
     setShelf(undefined);
     setExpanded(false);
-    setSharing(undefined);
+    setProblems({});
   }, [identity]);
 
   // Another person's offers are forgotten. The first identity is not a
@@ -187,7 +195,7 @@ export function ViewHost({
     return () => abort.abort();
   }, [csrf]);
 
-  const share = useCallback((view: ViewSummary) => setSharing(view), []);
+  useViewLinksFreshness(enabled);
 
   useEffect(() => {
     const resize = () => setTotal(window.innerWidth);
@@ -223,14 +231,21 @@ export function ViewHost({
     [csrf, setState, displaceGuide],
   );
 
-  // The tab opens synchronously with noopener on this app's own page, which
-  // mints and replaces itself, so no popup blocker sees an async open.
+  // The tab opens synchronously with noopener, so no popup blocker sees an
+  // async open, at the view's stable address: the one Kopioi linkki copies,
+  // private or public (ADR 0035). A view without one yet opens the app's own
+  // page, which reserves it and replaces itself with it.
   const openTab = useCallback(
     (view: ViewSummary) => {
-      window.open(viewTabPath(view.view_id), "_blank", "noopener,noreferrer");
+      const known = addressOf(links, view.view_id);
+      window.open(
+        known ? known.url : viewTabPath(view.view_id),
+        "_blank",
+        "noopener,noreferrer",
+      );
       setState(view.view_id, "tab_requested");
     },
-    [setState],
+    [links, setState],
   );
 
   const close = useCallback(() => {
@@ -342,11 +357,31 @@ export function ViewHost({
   );
 
   const linkList = typeof links === "object" ? links : undefined;
-  const sharingOn = !!linkList && linkList.maxDays > 0;
-  // A publication the site has paused is not shared now.
-  const linkFor = useCallback(
-    (id: string) => (sharingOn ? publicAddress(linkList, id) : undefined),
-    [linkList, sharingOn],
+  const maxDays = linkList && linkList.maxDays > 0 ? linkList.maxDays : 0;
+  const change = useCallback(
+    (view: ViewSummary, write: (csrf: string) => Promise<void>) => {
+      if (!csrf) return;
+      const id = view.view_id;
+      const at = person.current;
+      setProblems(({ [id]: _, ...rest }) => rest);
+      void write(csrf).catch((error: Error) => {
+        if (at !== person.current) return;
+        setProblems((before) => ({ ...before, [id]: error.message }));
+      });
+    },
+    [csrf],
+  );
+  const setPublic = useCallback(
+    (view: ViewSummary, on: boolean) =>
+      change(view, (csrf) =>
+        setViewPublic(csrf, view.view_id, on, defaultExpiry(maxDays)),
+      ),
+    [change, maxDays],
+  );
+  const setDuration = useCallback(
+    (view: ViewSummary, days: number) =>
+      change(view, (csrf) => setViewDuration(csrf, view.view_id, days)),
+    [change],
   );
   const controls = useMemo<ViewControls | null>(
     () =>
@@ -355,13 +390,23 @@ export function ViewHost({
             state: (id) => states[id] ?? "idle",
             open,
             openTab,
-            share: sharingOn ? share : undefined,
-            linkFor,
+            maxDays: maxDays || undefined,
+            setPublic,
+            setDuration,
+            problem: (id) => problems[id],
           }
         : null,
-    [enabled, states, open, openTab, sharingOn, share, linkFor],
+    [enabled, states, open, openTab, maxDays, setPublic, setDuration, problems],
   );
-  const sharedLink = sharing ? linkFor(sharing.view_id) : undefined;
+  const unknown = useViewLinksUnknown();
+  const openedAddress = opened
+    ? addressOf(links, opened.view.view_id)
+    : undefined;
+  // The panel copies only a publication the site serves now.
+  const panelLink =
+    maxDays && !unknown && openedAddress && isPublic(openedAddress)
+      ? { url: openedAddress.url, until: openedAddress.public_until ?? "" }
+      : undefined;
   const bounds = panelBounds(total);
   const shown = Math.min(
     Math.max(guideShown ? guideWidth : width, bounds.min),
@@ -399,8 +444,7 @@ export function ViewHost({
                   titleRef={title}
                   onToggleExpanded={() => setExpanded(!expanded)}
                   onOpenTab={() => openTab(opened.view)}
-                  onShare={sharingOn ? () => share(opened.view) : undefined}
-                  sharedUntil={linkFor(opened.view.view_id)?.public_until}
+                  link={panelLink}
                   onClose={close}
                 />
               ) : shelf ? (
@@ -421,30 +465,6 @@ export function ViewHost({
           >
             {children}
           </ViewSplit>
-          {sharing && linkList && sharingOn && csrf ? (
-            <ViewLinkDialog
-              isOpen
-              onClose={() => setSharing(undefined)}
-              view={sharing}
-              link={sharedLink}
-              maxDays={linkList.maxDays}
-              onCreate={(days) =>
-                ensureViewAddress(csrf, sharing.view_id).then((a) =>
-                  publishViewAddress(csrf, a.address_id, days),
-                )
-              }
-              onExtend={(days) =>
-                sharedLink
-                  ? changeViewAddressDuration(csrf, sharedLink.address_id, days)
-                  : Promise.resolve()
-              }
-              onRevoke={() =>
-                sharedLink
-                  ? makeViewAddressPrivate(csrf, sharedLink.address_id)
-                  : Promise.resolve()
-              }
-            />
-          ) : null}
         </GuideContext.Provider>
       </ShelfContext.Provider>
     </ViewContext.Provider>
@@ -460,14 +480,44 @@ export function NoticeEntry({ notice }: { notice: AgentNotice }) {
   if (notice.file_offer) return <FileOfferEntry offer={notice.file_offer} />;
   if (!view) return <AgentNoticeCard notice={notice} />;
   if (!views) return null;
+  return <ViewOfferEntry view={view} views={views} />;
+}
+
+/** One offer card. Every card of the same view shows the one address
+ * state the person's store holds, and waits with the others while a change
+ * to it is on its way. */
+function ViewOfferEntry({
+  view,
+  views,
+}: {
+  view: ViewSummary;
+  views: ViewControls;
+}) {
+  const links = useViewLinks();
+  const unknownList = useViewLinksUnknown();
+  const mark = useViewAddressMark(view.view_id);
+  const address = addressOf(links, view.view_id);
+  const shown = !!address && isPublic(address);
+  const visibility: ViewVisibility | undefined = views.maxDays
+    ? {
+        public: shown,
+        until: shown ? address?.public_until : undefined,
+        url: shown ? address?.url : undefined,
+        maxDays: views.maxDays,
+        pending: mark === "busy",
+        unknown: mark === "uncertain" || unknownList,
+        onPublic: (on) => views.setPublic(view, on),
+        onDuration: (days) => views.setDuration(view, days),
+      }
+    : undefined;
   return (
     <ViewOfferCard
       view={view}
       state={views.state(view.view_id)}
       onOpen={(opener) => views.open(view, opener)}
       onOpenTab={() => views.openTab(view)}
-      onShare={views.share ? () => views.share?.(view) : undefined}
-      sharedUntil={views.linkFor(view.view_id)?.public_until}
+      visibility={visibility}
+      problem={views.problem(view.view_id)}
     />
   );
 }

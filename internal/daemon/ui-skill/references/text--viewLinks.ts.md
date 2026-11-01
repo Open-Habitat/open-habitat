@@ -5,44 +5,46 @@ Generated from web/src/text/viewLinks.ts; do not edit.
 ```tsx
 import { catalog, plural } from "../i18n";
 
-// Stable view addresses shared as links: the share dialog
-// (components/ViewLink.tsx), the person's and the administrator's lists in
-// Settings (app/ViewLinkSettings.tsx) and their errors (app/viewLinks.ts).
+// Stable view addresses: the copy button (components/ViewLink.tsx), the
+// person's and the administrator's lists in Settings
+// (app/ViewLinkSettings.tsx) and address errors (app/viewLinks.ts).
 const fi = {
   viewGone: "Näkymää ei enää ole. Agentti on ehkä poistanut sen.",
-  linkGone: "Linkkiä ei enää ole: se on poistettu.",
+  linkGone: "Osoitetta ei enää ole: se on poistettu.",
   tooMany:
-    "Sinulla on jo enimmäismäärä jaettuja näkymiä. Lopeta jonkin jakaminen ensin.",
+    "Sinulla on jo enimmäismäärä julkisia näkymiä. Tee jokin niistä yksityiseksi ensin.",
   tooManyAddresses:
-    "Sinulla on jo enimmäismäärä näkymäosoitteita. Poista jokin vanha ensin.",
-  notPublic: "Näkymää ei enää jaeta. Jaa se uudelleen.",
-  unavailable: "Tällä palvelimella ei voi nyt jakaa linkkejä.",
-  saveFailed: "Linkkiä ei voitu tallentaa. Yritä uudelleen.",
-  removeFailed: "Linkkiä ei voitu poistaa. Yritä uudelleen.",
+    "Sinulla on jo enimmäismäärä näkymäosoitteita. Poista vanhoja asetusten kohdasta Näkymien osoitteet.",
+  notPublic: "Näkymä ei ole enää julkinen.",
+  unavailable: "Tällä palvelimella ei voi nyt jakaa näkymiä.",
+  saveFailed: "Muutosta ei voitu tallentaa. Yritä uudelleen.",
+  uncertain:
+    "Muutoksen tulos jäi epäselväksi. Tila on luettu uudelleen; tarkista se ennen kuin yrität uudelleen.",
+  removeFailed: "Osoitetta ei voitu poistaa. Yritä uudelleen.",
   days: (days: number) => `${days} ${days === 1 ? "päivä" : "päivää"}`,
-  terms:
-    "Kuka tahansa, jolla on linkki, voi avata näkymän kirjautumatta. Jakamisen lopettaminen ei peru sitä, mitä on jo avattu tai kopioitu, ja jos jaat näkymän uudelleen, sama linkki toimii taas.",
+  atMost: (days: string) => `${days} (enintään)`,
   copyLink: "Kopioi linkki",
   copied: "Kopioitu",
-  copyBlocked: "Kopiointi estetty: valitse osoite",
-  saveFailedShort: "Linkkiä ei voitu tallentaa.",
-  atMost: (days: string) => `${days} (enintään)`,
-  valid: "Voimassa",
-  share: "Jaa linkillä",
-  files: (n: number) => (n === 1 ? "1 tiedosto" : `${n} tiedostoa`),
-  revoked:
-    "Jakaminen on lopetettu. Linkki ei avaa näkymää, ennen kuin jaat sen uudelleen.",
-  creating: "Luodaan…",
-  create: "Luo linkki",
-  link: "Linkki",
-  extend: "Jatka",
-  extendHint: "Jatka voimassaoloa tästä päivästä",
-  remove: "Lopeta jakaminen",
-  close: "Sulje",
+  copyBlocked: "Kopiointi estetty",
+  addresses: "Näkymien osoitteet",
+  addressesDesc:
+    "Jokaisella avaamallasi näkymällä on oma osoitteensa. Julkisen näkymän voi avata kuka tahansa, jolla osoite on, kirjautumatta. Poistettu osoite ei toimi enää koskaan; näkymä itse säilyy.",
+  noAddresses: "Näkymilläsi ei ole vielä osoitteita.",
+  addressesUnknown: "Osoitteita ei voitu lukea. Yritä myöhemmin uudelleen.",
+  isPrivate: "Vain sinä",
+  publicUntil: (date: string) => `Julkinen ${date} asti`,
+  paused: (date: string) =>
+    `Julkinen ${date} asti, mutta palvelin ei nyt jaa näkymiä`,
+  checking: "Tilaa tarkistetaan…",
+  open: "Avaa",
+  stop: "Tee yksityiseksi",
+  remove: "Poista",
+  removeTitle: "Poistetaanko osoite pysyvästi?",
+  removeDesc: (title: string) =>
+    `Näkymän ”${title}” osoite lakkaa toimimasta lopullisesti, myös kaikilta, joille olet sen antanut. Itse näkymä säilyy. Jos avaat sen myöhemmin, se saa uuden osoitteen.`,
+  removeConfirm: "Poista pysyvästi",
+  cancel: "Peruuta",
   shared: "Jaetut linkit",
-  none: "Et jaa nyt näkymiä. Jaa näkymä sen kortin painikkeella Jaa linkillä.",
-  validUntil: (date: string) => `Voimassa ${date} asti`,
-  removeShort: "Lopeta",
   deleteShort: "Poista",
   adminUnavailable: "Jaettuja linkkejä ei voitu ladata.",
   adminDesc:
@@ -54,40 +56,42 @@ const fi = {
 
 export const viewLinksText = catalog(fi, {
   viewGone: "The view no longer exists. The agent may have removed it.",
-  linkGone: "The link no longer exists: it has been removed.",
+  linkGone: "The address no longer exists: it has been removed.",
   tooMany:
-    "You already share the maximum number of views. Stop sharing one first.",
+    "You already have the maximum number of public views. Make one of them private first.",
   tooManyAddresses:
-    "You already have the maximum number of view addresses. Remove an old one first.",
-  notPublic: "The view is no longer shared. Share it again.",
-  unavailable: "Links cannot be shared on this server now.",
-  saveFailed: "The link could not be saved. Try again.",
-  removeFailed: "The link could not be removed. Try again.",
+    "You already have the maximum number of view addresses. Remove old ones in the settings under View addresses.",
+  notPublic: "The view is no longer public.",
+  unavailable: "Views cannot be shared on this server now.",
+  saveFailed: "The change could not be saved. Try again.",
+  uncertain:
+    "The change's outcome is unclear. The state has been read again; check it before you try again.",
+  removeFailed: "The address could not be removed. Try again.",
   days: (days) =>
     `${days} ${plural("en", days, { one: "day", other: "days" })}`,
-  terms:
-    "Anyone who has the link can open the view without signing in. Stopping sharing does not undo what has already been opened or copied, and if you share the view again, the same link works again.",
+  atMost: (days) => `${days} (at most)`,
   copyLink: "Copy link",
   copied: "Copied",
-  copyBlocked: "Copying blocked: select the address",
-  saveFailedShort: "The link could not be saved.",
-  atMost: (days) => `${days} (at most)`,
-  valid: "Valid",
-  share: "Share with a link",
-  files: (n) => `${n} ${plural("en", n, { one: "file", other: "files" })}`,
-  revoked:
-    "Sharing has stopped. The link does not open the view until you share it again.",
-  creating: "Creating…",
-  create: "Create link",
-  link: "Link",
-  extend: "Extend",
-  extendHint: "Extend validity from today",
-  remove: "Stop sharing",
-  close: "Close",
+  copyBlocked: "Copying blocked",
+  addresses: "View addresses",
+  addressesDesc:
+    "Every view you have opened has an address of its own. Anyone who has a public view's address can open it without signing in. A removed address never works again; the view itself stays.",
+  noAddresses: "Your views have no addresses yet.",
+  addressesUnknown: "The addresses could not be read. Try again later.",
+  isPrivate: "Only you",
+  publicUntil: (date) => `Public until ${date}`,
+  paused: (date) =>
+    `Public until ${date}, but the server is not sharing views now`,
+  checking: "Checking the state…",
+  open: "Open",
+  stop: "Make private",
+  remove: "Remove",
+  removeTitle: "Remove the address for good?",
+  removeDesc: (title) =>
+    `The address of the view “${title}” stops working for good, also for everyone you gave it to. The view itself stays. If you open it later, it gets a new address.`,
+  removeConfirm: "Remove for good",
+  cancel: "Cancel",
   shared: "Shared links",
-  none: "You are not sharing any views now. Share a view with its card's Share with a link button.",
-  validUntil: (date) => `Valid until ${date}`,
-  removeShort: "Stop",
   deleteShort: "Remove",
   adminUnavailable: "Shared links could not be loaded.",
   adminDesc:

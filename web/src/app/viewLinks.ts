@@ -6,7 +6,7 @@
 // write updates it from the gateway's reply.
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import common from "../../../contracts/v1/common.schema.json";
 import addressSchema from "../../../contracts/v1/view-address.schema.json";
 import { formatDate, liveText } from "../i18n";
@@ -57,25 +57,63 @@ let state: ViewLinkState;
 // A reset (another person) starts a new epoch; a reply from an older one is
 // dropped, so an address never reaches the next person's list.
 let epoch = 0;
+// Every landed write takes the next number; a list read that started before
+// it keeps the written address, not the older one it read (ADR 0035: a stale
+// observation never undoes a newer write).
+let written = 0;
+const writtenAt = new Map<string, number>();
 const listeners = new Set<() => void>();
 function publish(next: ViewLinkState) {
   state = next;
+  notify();
+}
+function notify() {
   for (const listener of listeners) listener();
+}
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
 }
 
 export function useViewLinks(): ViewLinkState {
-  return useSyncExternalStore(
-    (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    () => state,
-  );
+  return useSyncExternalStore(subscribe, () => state);
+}
+
+/** What the person's cards know about one view's address beyond the list:
+ * a write on its way (every card waits for it), or a write whose outcome
+ * was lost, which only a fresh read settles. Nothing is ever resent. */
+export type AddressMark = "busy" | "uncertain";
+let marks: Record<string, AddressMark> = {};
+// Which list read an uncertain mark waits for: only a read started after the
+// write was lost can settle it.
+let reads = 0;
+const uncertainAt = new Map<string, number>();
+// The last list read failed: what the store shows may no longer be true.
+let unknown = false;
+function mark(viewId: string, value: AddressMark | undefined) {
+  const next = { ...marks };
+  if (value) next[viewId] = value;
+  else delete next[viewId];
+  marks = next;
+  notify();
+}
+
+export function useViewAddressMark(viewId: string): AddressMark | undefined {
+  return useSyncExternalStore(subscribe, () => marks[viewId]);
+}
+
+/** Whether the last read of the list failed, so the shown state is unknown. */
+export function useViewLinksUnknown(): boolean {
+  return useSyncExternalStore(subscribe, () => unknown);
 }
 
 /** A new person never sees the previous person's addresses. */
 export function resetViewLinks() {
   epoch++;
+  writtenAt.clear();
+  uncertainAt.clear();
+  marks = {};
+  unknown = false;
   publish(undefined);
 }
 
@@ -101,6 +139,8 @@ function trustedAddress(address: ViewAddress): boolean {
 /** Reads the person's addresses into the store. */
 export async function refreshViewLinks(signal?: AbortSignal): Promise<void> {
   const at = epoch;
+  const since = written;
+  const started = ++reads;
   try {
     const response = await fetch("/api/v1/view-addresses", {
       credentials: "same-origin",
@@ -109,6 +149,8 @@ export async function refreshViewLinks(signal?: AbortSignal): Promise<void> {
     });
     if (at !== epoch) return;
     if (response.status === 204) {
+      unknown = false;
+      settleUncertain(started);
       publish("off");
       return;
     }
@@ -120,16 +162,60 @@ export async function refreshViewLinks(signal?: AbortSignal): Promise<void> {
     if (!list.addresses.every(trustedAddress))
       throw new Error("unexpected address reply");
     if (at !== epoch) return;
-    publish({ maxDays: list.max_days, addresses: list.addresses });
+    unknown = false;
+    settleUncertain(started);
+    publish({
+      maxDays: list.max_days,
+      addresses: newerThan(list.addresses, since),
+    });
   } catch (error) {
     if (signal?.aborted || at !== epoch) return;
     if (state === undefined) publish("unavailable");
+    else if (!unknown) {
+      unknown = true;
+      notify();
+    }
     throw error;
   }
 }
 
+function settleUncertain(started: number) {
+  let changed = false;
+  const next = { ...marks };
+  for (const [viewId, at] of uncertainAt) {
+    if (at >= started) continue;
+    uncertainAt.delete(viewId);
+    if (next[viewId] === "uncertain") {
+      delete next[viewId];
+      changed = true;
+    }
+  }
+  if (changed) marks = next;
+}
+
+/** The list as read, except addresses written since the read started: for
+ * those the store's own copy (or its absence, when deleted) is newer. */
+function newerThan(read: ViewAddress[], since: number): ViewAddress[] {
+  const newer = (id: string) => (writtenAt.get(id) ?? 0) > since;
+  const local = state && typeof state === "object" ? state.addresses : [];
+  const kept = local.filter((a) => newer(a.address_id));
+  const result = read.map(
+    (a) => kept.find((k) => k.address_id === a.address_id) ?? a,
+  );
+  const fresh = result.filter(
+    (a) =>
+      !newer(a.address_id) || kept.some((k) => k.address_id === a.address_id),
+  );
+  const added = kept.filter(
+    (k) => !read.some((a) => a.address_id === k.address_id),
+  );
+  return [...added, ...fresh];
+}
+
 function remember(address: ViewAddress, at: number) {
-  if (at !== epoch || !state || typeof state === "string") return;
+  if (at !== epoch) return;
+  writtenAt.set(address.address_id, ++written);
+  if (!state || typeof state === "string") return;
   const rest = state.addresses.filter(
     (a) => a.address_id !== address.address_id,
   );
@@ -141,7 +227,9 @@ function remember(address: ViewAddress, at: number) {
 }
 
 function forget(addressId: string, at: number) {
-  if (at !== epoch || !state || typeof state === "string") return;
+  if (at !== epoch) return;
+  writtenAt.set(addressId, ++written);
+  if (!state || typeof state === "string") return;
   publish({
     ...state,
     addresses: state.addresses.filter((a) => a.address_id !== addressId),
@@ -175,6 +263,14 @@ class AddressRefusal extends Error {
   }
 }
 
+/** The write may or may not have happened: the reply was lost, a server
+ * error, or unreadable. Only a fresh read tells which. */
+export class AddressUncertain extends Error {
+  constructor() {
+    super(txt.uncertain);
+  }
+}
+
 async function addressWrite(
   path: string,
   body: unknown,
@@ -185,12 +281,15 @@ async function addressWrite(
   );
   const outcome = await writeOutcome(response);
   if (outcome.kind === "refused") throw new AddressRefusal(outcome.code);
+  if (outcome.kind === "uncertain") throw new AddressUncertain();
   if (outcome.kind !== "ok") throw new AddressRefusal(undefined);
   if (outcome.response.status === 204) return undefined;
-  const value = await boundedJSON(outcome.response, 8192);
-  if (!validReply?.(value)) throw new AddressRefusal(undefined);
+  const value = await boundedJSON(outcome.response, 8192).catch(() => {
+    throw new AddressUncertain();
+  });
+  if (!validReply?.(value)) throw new AddressUncertain();
   const address = (value as { address: ViewAddress }).address;
-  if (!trustedAddress(address)) throw new AddressRefusal(undefined);
+  if (!trustedAddress(address)) throw new AddressUncertain();
   return address;
 }
 
@@ -317,6 +416,141 @@ export async function deleteViewAddress(
     )
       throw error;
   });
+}
+
+/** One press on a view's address. Every card of the view waits for it,
+ * and a second press meanwhile does nothing. A lost outcome is settled by
+ * reading the list again, never by sending the write again. */
+async function pressed(viewId: string, write: () => Promise<unknown>) {
+  if (marks[viewId] === "busy") return;
+  const at = epoch;
+  uncertainAt.delete(viewId);
+  mark(viewId, "busy");
+  try {
+    await write();
+    if (at === epoch) mark(viewId, undefined);
+  } catch (error) {
+    if (at !== epoch) throw error;
+    if (error instanceof AddressUncertain) {
+      uncertainAt.set(viewId, reads);
+      mark(viewId, "uncertain");
+      await refreshViewLinks().catch(() => {
+        // The mark stays until a later read settles it.
+      });
+    } else mark(viewId, undefined);
+    throw error;
+  }
+}
+
+/** The view's address in any state, when it has one. */
+export function addressOf(
+  links: ViewLinkState,
+  viewId: string,
+): ViewAddress | undefined {
+  if (!links || typeof links === "string") return undefined;
+  return links.addresses.find((a) => a.view_id === viewId);
+}
+
+/** The card's switch. On publishes the view's address (reserving it first
+ * if needed) for the default length, always counted again from now; off
+ * makes it private. */
+export function setViewPublic(
+  csrf: string,
+  viewId: string,
+  on: boolean,
+  days: number,
+): Promise<void> {
+  return pressed(viewId, async () => {
+    const known = addressOf(state, viewId);
+    if (on) {
+      const address = known ?? (await ensureViewAddress(csrf, viewId));
+      await publishViewAddress(csrf, address.address_id, days);
+    } else if (known) await makeViewAddressPrivate(csrf, known.address_id);
+  });
+}
+
+/** A new length for the view's current publication, from now. */
+export function setViewDuration(
+  csrf: string,
+  viewId: string,
+  days: number,
+): Promise<void> {
+  return pressed(viewId, async () => {
+    const known = addressOf(state, viewId);
+    if (!known) throw new AddressRefusal("view_address_not_public");
+    await changeViewAddressDuration(csrf, known.address_id, days);
+  });
+}
+
+/** Settings' Lopeta: the address stays for the next publication. */
+export function stopViewSharing(
+  csrf: string,
+  address: ViewAddress,
+): Promise<void> {
+  return pressed(address.view_id, () =>
+    makeViewAddressPrivate(csrf, address.address_id),
+  );
+}
+
+/** Settings' permanent deletion of the address, never of the view. */
+export function deleteViewAddressForGood(
+  csrf: string,
+  address: ViewAddress,
+): Promise<void> {
+  return pressed(address.view_id, () =>
+    deleteViewAddress(csrf, address.address_id),
+  );
+}
+
+let lastRead = 0;
+/** Keeps the shown addresses true while cards are on screen: read again
+ * when the person comes back to the tab, and when a publication ends. A
+ * publication ending also redraws when the read fails, so an expired view
+ * never shows as public. Mounted once, by the view host. */
+export function useViewLinksFreshness(active: boolean) {
+  const links = useViewLinks();
+  useEffect(() => {
+    if (!active) return;
+    const again = () => {
+      if (document.visibilityState === "hidden") return;
+      const now = Date.now();
+      if (now - lastRead < 2000) return;
+      lastRead = now;
+      void refreshViewLinks().catch(() => {});
+    };
+    window.addEventListener("focus", again);
+    document.addEventListener("visibilitychange", again);
+    return () => {
+      window.removeEventListener("focus", again);
+      document.removeEventListener("visibilitychange", again);
+    };
+  }, [active]);
+  useEffect(() => {
+    if (!active || !links || typeof links === "string") return;
+    const now = Date.now();
+    let next = Number.POSITIVE_INFINITY;
+    for (const a of links.addresses) {
+      const until = a.public_until ? Date.parse(a.public_until) : Number.NaN;
+      if (a.state === "public" && until > now && until < next) next = until;
+    }
+    if (!Number.isFinite(next)) return;
+    const timer = window.setTimeout(
+      () => {
+        const at = epoch;
+        void refreshViewLinks()
+          .catch(() => {})
+          .finally(() => {
+            // Redraw even when nothing new was read: isPublic looks at the
+            // clock.
+            if (at === epoch && state && typeof state === "object")
+              publish({ ...state });
+          });
+      },
+      // Past the end, and never beyond what a timer can wait.
+      Math.min(next - now + 1000, 2 ** 31 - 1),
+    );
+    return () => window.clearTimeout(timer);
+  }, [active, links]);
 }
 
 /** Whether anyone with the address reads the view now. */

@@ -1,11 +1,11 @@
 import { workerHostPort } from "../test-ports.mjs";
-import { createHostTest, expect, type Page } from "./worker-host";
+import { createHostTest, expect, type Locator, type Page } from "./worker-host";
 
 // Shared view addresses (ADR 0033, ADR 0035) against the real gateway and
-// daemon handlers: the person shares a view on its card, and a browser
-// context with no session at all opens it top-level on the address's own
-// content host in the view namespace. Sharing again revives the same link;
-// only deletion ends it for good. Same-UID synthetic evidence; it says
+// daemon handlers: the person makes a view public with its card's switch,
+// and a browser context with no session at all opens its stable address,
+// which redirects to the address's own content host in the view namespace.
+// Public again revives the same link; only deletion ends it for good. Same-UID synthetic evidence; it says
 // nothing about separate Unix users or a real ingress.
 const test = createHostTest(false, {
   BROWSER_HOST_VIEWS: "1",
@@ -44,30 +44,40 @@ async function offer(page: Page, target: string): Promise<string> {
   return (await res.json()).view_id;
 }
 
-test("anyone with the link opens the view without a session while it is shared", async ({
+async function copied(page: Page, card: Locator): Promise<string> {
+  await card.getByTestId("view-copy-link").click();
+  return page.evaluate(() => navigator.clipboard.readText());
+}
+
+test("anyone with the link opens the view without a session while it is public", async ({
   page,
+  context,
   browser,
 }, info) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const id = await conversation(page);
   const first = await offer(page, id);
   const card = page.locator(
     `[data-testid="view-offer"][data-view-id="${first}"]`,
   );
-  await card.getByTestId("view-share").click();
-  const dialog = page.getByTestId("view-link-dialog");
-  await expect(dialog).toContainText("Kuka tahansa, jolla on linkki");
-  await dialog.getByTestId("segment-7").click();
-  await dialog.getByTestId("view-link-create").click();
-  const field = dialog.getByTestId("view-link-url");
-  await expect(field).toHaveValue(
-    /^https:\/\/oh-view-[a-z2-7]{52}\.oh\.localhost\/[A-Za-z0-9_-]{43}\/$/,
+  // One press makes it public; only then is there a link to copy.
+  await expect(card.getByTestId("view-copy-link")).toHaveCount(0);
+  await card.getByTestId("view-public").click();
+  await expect(card).toHaveAttribute("data-public", "true");
+  const entry = await copied(page, card);
+  expect(entry).toMatch(
+    new RegExp(`^${app.replace(/[.]/g, "\\.")}/n/[A-Za-z0-9_-]{43}$`),
   );
-  const link = await field.inputValue();
-  await page.screenshot({ path: info.outputPath("dialog.png") });
-  await dialog.getByTestId("view-link-close").click();
-  await expect(card.getByTestId("view-shared")).toContainText(
-    "Jaettu linkillä",
+  // The date opens the lengths; a choice applies at once.
+  await card.getByTestId("view-public-until").click();
+  await page.getByTestId("view-duration-7").click();
+  await card.getByTestId("view-public-until").click();
+  await expect(page.getByTestId("view-duration-7")).toHaveAttribute(
+    "aria-checked",
+    "true",
   );
+  await page.keyboard.press("Escape");
+  await page.screenshot({ path: info.outputPath("public.png") });
 
   // A recipient: a fresh browser context, so no cookie of any kind.
   const recipient = await browser.newContext({
@@ -79,7 +89,12 @@ test("anyone with the link opens the view without a session while it is shared",
   reader.on("request", async (request) => {
     sent.push((await request.allHeaders()).cookie ?? "");
   });
-  const response = await reader.goto(link);
+  await reader.goto(entry);
+  await expect(reader).toHaveURL(
+    /^https:\/\/oh-view-[a-z2-7]{52}\.oh\.localhost\/[A-Za-z0-9_-]{43}\/index\.html$/,
+  );
+  const content = reader.url();
+  const response = await reader.goto(content);
   expect(response?.headers()["x-robots-tag"]).toBe(
     "noindex, nofollow, noarchive",
   );
@@ -94,9 +109,6 @@ test("anyone with the link opens the view without a session while it is shared",
   await expect(body).toHaveAttribute("data-image", "loaded");
   await expect(body).toHaveAttribute("data-cookie", "denied");
   await expect(body).toHaveAttribute("data-fetch", "denied");
-  expect(new URL(reader.url()).pathname).toMatch(
-    /^\/[A-Za-z0-9_-]{43}\/index\.html$/,
-  );
   // A relative link stays under the token.
   await reader.locator("#bundle").click();
   await expect(body).toHaveAttribute("data-rendered", "yes");
@@ -107,41 +119,42 @@ test("anyone with the link opens the view without a session while it is shared",
   await reader.goto(`${app}/workspaces`);
   await expect(reader.getByTestId("github-sign-in")).toBeVisible();
 
-  // Stopping sharing ends anonymous reads; sharing again revives the same
-  // link. A newer export of the view is a view of its own, never moved in.
-  await card.getByTestId("view-share").click();
-  await dialog.getByTestId("view-link-revoke").click();
-  await expect(dialog.getByTestId("view-link-revoked")).toBeVisible();
-  await dialog.getByTestId("view-link-close").click();
-  await expect(card.getByTestId("view-shared")).toHaveCount(0);
-  expect((await reader.goto(link))?.status()).toBe(404);
+  // Private again ends anonymous reads, also of the content address; public
+  // again revives the same link. A newer export of the view is a view of its
+  // own, never moved in.
+  await card.getByTestId("view-public").click();
+  await expect(card).toHaveAttribute("data-public", "false");
+  await expect(card.getByTestId("view-copy-link")).toHaveCount(0);
+  expect((await reader.goto(content))?.status()).toBe(404);
   const second = await offer(page, id);
   const card2 = page.locator(
     `[data-testid="view-offer"][data-view-id="${second}"]`,
   );
-  await expect(card2).toBeVisible();
-  await expect(card2.getByTestId("view-shared")).toHaveCount(0);
-  await card.getByTestId("view-share").click();
-  await dialog.getByTestId("view-link-create").click();
-  await expect(dialog.getByTestId("view-link-url")).toHaveValue(link);
-  await dialog.getByTestId("view-link-close").click();
-  await expect(card2.getByTestId("view-shared")).toHaveCount(0);
-  await reader.goto(link);
+  await expect(card2).toHaveAttribute("data-public", "false");
+  await card.getByTestId("view-public").click();
+  await expect(card).toHaveAttribute("data-public", "true");
+  expect(await copied(page, card)).toBe(entry);
+  await expect(card2).toHaveAttribute("data-public", "false");
+  await reader.goto(content);
   await expect(body).toHaveAttribute("data-script", "yes");
 
   // The person's own list in Settings has it too.
   await page.goto("/settings/account");
-  await expect(page.getByTestId("view-link-row")).toHaveCount(1);
+  await expect(page.getByTestId("view-address-row")).toHaveCount(1);
+  await expect(page.getByTestId("view-address-row")).toHaveAttribute(
+    "data-public",
+    "true",
+  );
 
   // The administrator sees who shares what, never the address, and deletes
   // it for good.
   await page.goto("/settings/users");
   const admin = page.getByTestId("view-links-admin");
   await expect(admin.getByTestId("view-link-admin-row")).toHaveCount(1);
-  expect(await admin.textContent()).not.toContain(new URL(link).host);
+  expect(await admin.textContent()).not.toContain(new URL(content).host);
   await admin.getByTestId("view-link-admin-revoke").click();
   await expect(admin.getByTestId("view-link-admin-row")).toHaveCount(0);
-  const gone = await reader.goto(link);
+  const gone = await reader.goto(content);
   expect(gone?.status()).toBe(404);
   await expect(reader.locator("body")).toContainText("Linkki ei ole voimassa.");
   await recipient.close();
@@ -191,12 +204,15 @@ test("the stable address frames the view for its owner and redirects while publi
   await expect(reader.locator("body")).not.toContainText("Synteettinen");
   await reader.screenshot({ path: info.outputPath("private-visitor.png") });
 
-  // Published, the same address takes anyone to the content host.
-  await card.getByTestId("view-share").click();
-  const dialog = page.getByTestId("view-link-dialog");
-  await dialog.getByTestId("view-link-create").click();
-  await expect(dialog.getByTestId("view-link-url")).not.toHaveValue("");
-  await dialog.getByTestId("view-link-close").click();
+  // Published, the same address takes anyone to the content host, and the
+  // card's own tab opens it too.
+  await card.getByTestId("view-public").click();
+  await expect(card).toHaveAttribute("data-public", "true");
+  const again = context.waitForEvent("page");
+  await card.getByTestId("view-open-tab").click();
+  const publicTab = await again;
+  await expect(publicTab).toHaveURL(/^https:\/\/oh-view-/);
+  await publicTab.close();
   await reader.goto(entry);
   await expect(reader).toHaveURL(
     /^https:\/\/oh-view-[a-z2-7]{52}\.oh\.localhost\/[A-Za-z0-9_-]{43}\/index\.html$/,
@@ -206,10 +222,8 @@ test("the stable address frames the view for its owner and redirects while publi
 
   // Private again, the address is the sign-in page once more; signing in
   // as the owner returns to the address and frames the view.
-  await card.getByTestId("view-share").click();
-  await dialog.getByTestId("view-link-revoke").click();
-  await expect(dialog.getByTestId("view-link-revoked")).toBeVisible();
-  await dialog.getByTestId("view-link-close").click();
+  await card.getByTestId("view-public").click();
+  await expect(card).toHaveAttribute("data-public", "false");
   // Another person signing in learns only that it is not available.
   const other = await browser.newContext({ ignoreHTTPSErrors: true });
   const bob = await other.newPage();
@@ -234,5 +248,25 @@ test("the stable address frames the view for its owner and redirects while publi
     reader.frameLocator('[data-testid="view-frame"]').locator("body"),
   ).toHaveAttribute("data-script", "yes");
   expect(leaks).toEqual([]);
+
+  // Deleted for good in Settings, the address never opens the view again,
+  // even for its owner; the view's next own tab gets a new address.
+  const settings = await context.newPage();
+  await settings.goto("/settings/account");
+  await settings.getByTestId("view-address-remove").click();
+  await settings.getByTestId("view-address-remove-confirm").click();
+  await expect(settings.getByTestId("view-address-row")).toHaveCount(0);
+  await settings.close();
+  await reader.goto(entry);
+  await expect(reader.getByTestId("view-open-page")).toBeVisible();
+  await expect(reader.getByTestId("view-frame")).toHaveCount(0);
+  // The conversation's card learns of it when its tab is shown again.
+  await page.bringToFront();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  const fresh = context.waitForEvent("page");
+  await card.getByTestId("view-open-tab").click();
+  const next = await fresh;
+  await expect(next).toHaveURL(/\/n\/[A-Za-z0-9_-]{43}$/);
+  expect(next.url()).not.toBe(entry);
   await visitor.close();
 });

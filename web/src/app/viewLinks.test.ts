@@ -5,7 +5,9 @@ import {
   publishViewAddress,
   refreshViewLinks,
   resetViewLinks,
+  setViewPublic,
   useViewLinks,
+  useViewLinksFreshness,
   type ViewLinkState,
 } from "./viewLinks";
 
@@ -122,5 +124,90 @@ describe("view address store", () => {
       publishViewAddress("csrf", address("d").address_id, 7),
     ).rejects.toThrow();
     expect(await seen()).toEqual({ maxDays: 90, addresses: [] });
+  });
+
+  it("never lets a list read that started before a write undo it", async () => {
+    let answerRead: (r: Response) => void = () => {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url === "/api/v1/view-addresses/publish")
+          return json({ schema_version: 1, address: address("e", "public") });
+        return new Promise<Response>((resolve) => {
+          answerRead = resolve;
+        });
+      }),
+    );
+    const first = refreshViewLinks();
+    answerRead(
+      json({ schema_version: 1, max_days: 90, addresses: [address("e")] }),
+    );
+    await first;
+    // A focus read starts, then the person publishes before it answers.
+    const stale = refreshViewLinks();
+    await setViewPublic("csrf", address("e").view_id, true, 30);
+    answerRead(
+      json({ schema_version: 1, max_days: 90, addresses: [address("e")] }),
+    );
+    await stale;
+    expect(publicAddress(await seen(), address("e").view_id)).toBeDefined();
+  });
+
+  it("sends one write however often the switch is pressed meanwhile", async () => {
+    let finish: (r: Response) => void = () => {};
+    const fetch = vi.fn(async (url: string, _init?: RequestInit) => {
+      if (url === "/api/v1/view-addresses/publish")
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      return json({
+        schema_version: 1,
+        max_days: 90,
+        addresses: [address("f")],
+      });
+    });
+    vi.stubGlobal("fetch", fetch);
+    await refreshViewLinks();
+    const viewId = address("f").view_id;
+    const pressed = setViewPublic("csrf", viewId, true, 30);
+    await setViewPublic("csrf", viewId, true, 30);
+    await setViewPublic("csrf", viewId, false, 30);
+    finish(json({ schema_version: 1, address: address("f", "public") }));
+    await pressed;
+    expect(
+      fetch.mock.calls.filter(([, init]) => init?.method === "POST"),
+    ).toHaveLength(1);
+  });
+
+  it("reads again when a publication ends, and never shows it public after", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-11-01T12:00:00Z"));
+      const ending = {
+        ...address("g", "public"),
+        public_until: "2026-11-01T12:01:00Z",
+      };
+      const fetch = vi.fn(async () =>
+        // The read at the end fails: the view is still not shown public.
+        fetch.mock.calls.length > 1
+          ? new Response("", { status: 503 })
+          : json({ schema_version: 1, max_days: 90, addresses: [ending] }),
+      );
+      vi.stubGlobal("fetch", fetch);
+      await refreshViewLinks();
+      const { renderHook, act } = await import("@testing-library/react");
+      const view = renderHook(() => {
+        useViewLinksFreshness(true);
+        return publicAddress(useViewLinks(), ending.view_id);
+      });
+      expect(view.result.current).toBeDefined();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(62_000);
+      });
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(view.result.current).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
