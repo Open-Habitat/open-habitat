@@ -8,7 +8,7 @@ priority: normal
 lane: rail-quiet-all-flat
 lane_seq: 4
 related: ['@proto-rail-quiet-flat-r3']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype round 4: the Hiljaiset icon grid, UI only
