@@ -8,7 +8,7 @@ priority: normal
 lane: rail-quiet-all-flat
 lane_seq: 6
 related: ['@proto-rail-recent-r2', '@rail-recent-five']
-preparation: pending
+preparation: ready
 blocked_by: ['@proto-rail-quiet-flat', '@proto-rail-quiet-flat-r2', '@proto-rail-quiet-flat-r3', '@proto-rail-quiet-flat-r4', '@proto-rail-quiet-flat-r5']
 ---
 
@@ -39,3 +39,27 @@ review"):
   carries its workspace's name quietly in the row, not as a heading.
 - The narrow dot rail beside the editor is unchanged.
 - Not gated: it replaces the unprototyped Viimeisimmät on main.
+
+## Accepted design (Jari 1.11., prototype rounds 1–5)
+
+This supersedes the defaults above where they differ. The specification is
+`issues/proto-rail-quiet-flat-r4/` riff **1 · Ruudut** and
+`issues/proto-rail-quiet-flat-r5/` riff **2 · Rengas**:
+
+- Sections Sinun vuorosi · Käynnissä · Hiljaiset; Viimeisimmät and its count
+  setting go away. Hiljaiset lists every other non-archived conversation,
+  workspace icons on as the target default.
+- Hiljaiset has the icon-grid menu (round 4 riff 1): sort order and the
+  workspace narrowing in one popover. With one workspace chosen, *by
+  workspace* is not offered as an order. The chosen order is kept when the
+  person returns to all workspaces. No explanatory foot text in the menu.
+- Sort and workspace choice are per-person settings that follow the person
+  to every device (account preferences, replacing `recent_count`); the fold
+  is per device.
+- Folded Hiljaiset still shows the open conversation's row and the
+  workspace icon pills.
+- The open conversation's row is emphasised with a **ring** (round 5 riff
+  2). No coloured edge stripe anywhere (`design-system/design.md`).
+- Conductor's default for round 5's open question: the folded pill of the
+  open conversation's workspace is not marked separately; the ringed row
+  above it is enough (record under Decisions for later review).

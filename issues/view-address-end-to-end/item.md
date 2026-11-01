@@ -10,9 +10,9 @@ source_ref: taskfleet:01m6btshefrtxw97thtw5qxjqx/implementation:view-address-end
 originating_run: 01m6btshefrtxw97thtw5qxjqx
 originating_run_kind: technical-decision
 preparation: ready
-blocked_by: ['@decide-view-stable-address', '@view-card-public-switch']
+blocked_by: ['@decide-view-stable-address', '@view-card-public-switch', '@view-address-access-exemption']
 lane: decide-view-stable-address
-lane_seq: 5
+lane_seq: 6
 ---
 
 # Verify stable view addresses through the real ingress
