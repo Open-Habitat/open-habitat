@@ -89,6 +89,15 @@ test("quota warning, full storage and recovery keep the conversation mounted wit
   await recheck(page);
   await expect(storage(page)).toHaveCount(0);
   await expect(page.getByTestId("status-empty")).toBeVisible();
+  // The recheck button left with its item; Escape closes the panel once
+  // React Aria has moved focus back inside it, which can lag under load.
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Boolean(document.activeElement?.closest(".ah-bell-popover")),
+      ),
+    )
+    .toBe(true);
   await page.keyboard.press("Escape");
   await expect(bell(page)).toHaveCount(0);
   await expect(page.locator(".ah-feed li")).toHaveCount(25);
