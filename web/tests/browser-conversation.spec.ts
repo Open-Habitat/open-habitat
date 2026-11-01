@@ -2879,6 +2879,9 @@ test("@browser-conversation home card blocks archive during Pi work, shows failu
     .and(page.locator(':not([data-archive-state="archived"])'));
   await expect(card).toBeVisible();
   await expect(archive).toBeDisabled();
+  // React Aria opens hover help only after it has seen the pointer move;
+  // after a reload Playwright would otherwise jump straight onto the button.
+  await page.mouse.move(1, 1);
   await archive.hover();
   await expect(page.getByRole("tooltip")).toBeVisible();
   await page.unroute("**/api/v1/snapshot");

@@ -146,9 +146,11 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
     timeout: 20000,
   });
   const rail = page.getByRole("navigation");
-  // Finished worktree conversations are excluded from Recent, even selected.
-  // Their Git state remains available here and on the workspace card.
-  await expect(rail.locator(".ah-nav-worktree")).toHaveCount(0);
+  // A finished worktree conversation rests in Hiljaiset with its worktree
+  // mark; its Git state is also available here and on the workspace card.
+  await expect(
+    rail.getByTestId("rail-quiet").locator(".ah-nav-worktree"),
+  ).toHaveCount(1);
   await chip.click();
   const details = page.getByRole("dialog").and(page.getByTestId("git-dialog"));
   await expect(details).toContainText(
@@ -169,7 +171,9 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
     { timeout: 30000 },
   );
   await expect(chip).toHaveAttribute("data-merged", "true", { timeout: 20000 });
-  await expect(rail.locator(".ah-nav-worktree")).toHaveCount(0);
+  await expect(
+    rail.getByTestId("rail-quiet").locator(".ah-nav-worktree.merged"),
+  ).toHaveCount(1);
   await page.screenshot({
     path: "test-results/evidence/worktree-agent-desktop-3-merged.png",
   });

@@ -47,10 +47,12 @@ test("@worker-row-sentence a worktree conversation in the rail says its work onl
   await expect(main).toContainText("Commitoin muutoksen.", { timeout: 30000 });
   const rail = page.getByRole("navigation");
   const work = rail.getByTestId("worktree-work");
-  // Finished worktrees are deliberately absent from Recent. Keep this
+  // A finished worktree conversation rests in Hiljaiset. Keep this
   // conversation in Running with a synthetic waiting worker to exercise
   // the sentence after native Git has observed the commit.
-  await expect(rail.locator(".ah-nav-worktree")).toHaveCount(0);
+  await expect(
+    rail.getByTestId("rail-quiet").locator(".ah-nav-worktree"),
+  ).toHaveCount(1);
   const agentId = new URL(page.url()).searchParams.get("conversation");
   await page.route("**/api/v1/snapshot", async (route) => {
     const response = await route.fetch();

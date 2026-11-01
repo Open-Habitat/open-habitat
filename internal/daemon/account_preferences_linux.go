@@ -45,8 +45,8 @@ type preferencesWrite struct {
 	QuietSort      *string
 	QuietWorkspace *string
 	Engine         *string
-	Language     *string
-	Experimental map[string]bool
+	Language       *string
+	Experimental   map[string]bool
 }
 
 const maxExperimentalFeatures = 32

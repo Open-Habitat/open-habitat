@@ -52,7 +52,7 @@ test("@en-shell-editor the browser editor speaks English", async ({ page }) => {
   await expect(page.getByTestId("editor-document")).toHaveAccessibleName(
     "File text",
   );
-  await expect(page.getByTestId("editor-picker")).toHaveText("Files");
+  await expect(page.getByTestId("editor-picker")).toHaveAccessibleName("Files");
   await expect(page.getByTestId("editor-save")).toHaveAccessibleName("Save");
   await expect(page.getByTestId("close-editor")).toHaveAccessibleName(
     "Close editor",

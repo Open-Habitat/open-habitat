@@ -423,10 +423,10 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
   const row = page
     .getByRole("navigation")
     .getByTestId(`agent-item-pi:${parent}`);
-  // Its turn ended: retained in Recent, not Running.
+  // Its turn ended: in Hiljaiset, not Running.
   const rail = page.getByRole("navigation");
   await expect(
-    rail.getByTestId("rail-recent").getByTestId(`agent-item-pi:${parent}`),
+    rail.getByTestId("rail-quiet").getByTestId(`agent-item-pi:${parent}`),
   ).toBeVisible();
   await expect(
     rail.getByTestId("rail-running").getByTestId(`agent-item-pi:${parent}`),
@@ -463,7 +463,7 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
     rail.getByTestId("rail-running").getByTestId(`agent-item-pi:${parent}`),
   ).toHaveCount(0);
   await expect(
-    rail.getByTestId("rail-recent").getByTestId(`agent-item-pi:${parent}`),
+    rail.getByTestId("rail-quiet").getByTestId(`agent-item-pi:${parent}`),
   ).toBeVisible();
   await expect(row).not.toHaveClass(/ah-waiting-spinoff/);
 });
