@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Archive extraction can be large even when verification runs outside CI.
-export TMPDIR=/var/tmp
+export TMPDIR=${TMPDIR:-/var/tmp}
 archive= json=false
 while (($#));do case "$1" in --archive)archive=$2;shift 2;;--json)json=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
 [[ -f $archive ]]||{ echo "error: archive '$archive' not found" >&2;exit 1;}; [[ -f $archive.sha256 ]]||{ echo "error: checksum '$archive.sha256' not found" >&2;exit 1;}

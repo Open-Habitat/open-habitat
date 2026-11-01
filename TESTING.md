@@ -138,6 +138,11 @@ the default refuses a missing or different-tree gate receipt and records
 `gate: "clean-gate"` with the tree. A production release still requires the
 clean gate; a test release does not, and neither does landing on `main`.
 
+`python3 scripts/test-release-scratch.py` tests release-input cleanup on success,
+failure and cancellation, safe symlink handling, and the read-only dry run,
+without building or publishing a release. The release recipe's scratch wrapper
+and evidence-retention rule are in `AGENTS-WORKFLOW.md`.
+
 The Fleetrepo `infra/open-habitat-test/release_test.py` one-command operator
 checks the receipt in gated mode, installs web dependencies from the
 committed lockfile, prepares fresh web assets and binary,
