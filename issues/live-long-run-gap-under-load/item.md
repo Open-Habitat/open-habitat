@@ -11,7 +11,7 @@ originating_run: 01m6c2ybczc0gvg629k2gnka93
 originating_run_kind: spinoff
 lane: live-long-run-gap-under-load
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # live-long-run spec reports a missed-events flash that does not happen in real use

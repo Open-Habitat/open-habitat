@@ -40,12 +40,22 @@ test("a long tool-calling run shows no missed-events notice", async ({
     .click();
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await page.getByTestId("message-input").fill("pitkä ajo");
+  // A starved host throttles the page's timers, so the 25 ms samples are only
+  // the log; a mutation observer sees every appearance of the notice, however
+  // short, and the run's span is measured in time rather than in samples.
   await page.evaluate(() => {
-    const samples: { gap: boolean; working: boolean }[] = [];
+    const samples: { at: number; gap: boolean; working: boolean }[] = [];
+    const shown: number[] = [];
+    const gap = () => !!document.querySelector('[data-testid="event-gap"]');
+    const observer = new MutationObserver(() => {
+      if (gap()) shown.push(performance.now());
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
     const timer = setInterval(
       () =>
         samples.push({
-          gap: !!document.querySelector('[data-testid="event-gap"]'),
+          at: performance.now(),
+          gap: gap(),
           working:
             document
               .querySelector('[data-testid="message-input"]')
@@ -55,7 +65,11 @@ test("a long tool-calling run shows no missed-events notice", async ({
     );
     Object.assign(window, {
       runSamples: samples,
-      stopRunSampling: () => clearInterval(timer),
+      gapShown: shown,
+      stopRunSampling: () => {
+        clearInterval(timer);
+        observer.disconnect();
+      },
     });
   });
   await page
@@ -71,13 +85,14 @@ test("a long tool-calling run shows no missed-events notice", async ({
     page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeVisible({ timeout: 30000 });
   await expect(page.getByText("Pitkä ajo valmis.")).toBeVisible();
-  const samples = await page.evaluate(() => {
+  const { samples, shown } = await page.evaluate(() => {
     const capture = window as typeof window & {
-      runSamples: { gap: boolean; working: boolean }[];
+      runSamples: { at: number; gap: boolean; working: boolean }[];
+      gapShown: number[];
       stopRunSampling: () => void;
     };
     capture.stopRunSampling();
-    return capture.runSamples;
+    return { samples: capture.runSamples, shown: capture.gapShown };
   });
   const runs: string[] = [];
   for (const s of samples) {
@@ -88,9 +103,13 @@ test("a long tool-calling run shows no missed-events notice", async ({
     else runs.push(`${key} ×1`);
   }
   console.log(`long-run states (25 ms samples):\n${runs.join("\n")}`);
-  // The run lasts about 130 × 60 ms plus its reads; most samples are mid-run.
-  expect(samples.filter((s) => s.working).length).toBeGreaterThan(130);
-  expect(samples.filter((s) => s.gap)).toEqual([]);
+  // The run lasts at least 130 × 60 ms; the sampler watched it throughout.
+  const working = samples.filter((s) => s.working);
+  expect((working.at(-1)?.at ?? 0) - (working[0]?.at ?? 0)).toBeGreaterThan(
+    7000,
+  );
+  const start = samples[0]?.at ?? 0;
+  expect(shown.map((at) => Math.round(at - start))).toEqual([]);
   expect(
     await page.evaluate(
       () => (window as unknown as { tailGivenUp: number }).tailGivenUp,
