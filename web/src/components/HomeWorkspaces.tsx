@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   type ConversationStore,
   useConversationMetadata,
@@ -240,6 +240,8 @@ export function useCardArchiveAction(
 ) {
   const [errorId, setErrorId] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const archive = useRef(onArchive);
+  archive.current = onArchive;
   return {
     errorId,
     pendingId,
@@ -247,7 +249,12 @@ export function useCardArchiveAction(
       ? (id: string) => {
           setErrorId(null);
           setPendingId(id);
-          void onArchive(id).then((ok) => {
+          const action = archive.current;
+          if (!action) {
+            setPendingId(null);
+            return;
+          }
+          void action(id).then((ok) => {
             setPendingId(null);
             if (!ok) setErrorId(id);
           });

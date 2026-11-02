@@ -24,6 +24,7 @@ const event = (
   cursor: cursor(n, server),
   sequence: n,
   server_instance_id: server,
+  emitted_at: "2026-11-02T12:00:00Z",
   kind,
   resource: { agent_id: "pi:12345678-1234-1234-1234-123456789012" },
   payload,
@@ -44,7 +45,10 @@ class FakeSource {
     this.listeners.push(kind);
   }
 }
-const setup = (activeId?: string) => {
+const setup = (
+  activeId?: string,
+  workspaceForAgent?: (id: string) => string | undefined,
+) => {
   const store = {
     identity: "person",
     routeEvent: vi.fn(),
@@ -59,6 +63,7 @@ const setup = (activeId?: string) => {
   const onOffline = vi.fn();
   const journal = new ConversationJournal(store, {
     activeId: () => activeId,
+    workspaceForAgent,
     onSnapshotNeeded,
     onStatusChange,
     onLogin: vi.fn(),
@@ -79,6 +84,116 @@ afterEach(() => {
   FakeSource.all = [];
 });
 describe("one tab-wide journal", () => {
+  it.each([false, true])(
+    "reports a finished tool before settlement without rendering (newly created=%s)",
+    (newlyCreated) => {
+      vi.stubGlobal("EventSource", FakeSource);
+      const id = event(1).resource.agent_id;
+      const { journal, store } = setup(undefined, (agent) =>
+        agent === id ? "ws_test" : undefined,
+      );
+      store.readMetadata = vi.fn().mockReturnValue({
+        agents: new Map(
+          newlyCreated ? [] : [[id, { agent_id: id, workspace_id: "ws_test" }]],
+        ),
+      });
+      store.read = vi.fn().mockReturnValue({
+        live: {
+          cursor: cursor(1),
+          instance,
+          sequence: 1,
+          truncated: false,
+          fragments: [
+            event(1, "tool.started", instance, {
+              tool_call_id: "edit-1",
+              tool_name: "edit",
+              state: "running",
+              arguments: JSON.stringify({ path: "README.md" }),
+            }),
+          ],
+        },
+      });
+      const observe = vi.fn();
+      const unsubscribe = journal.subscribeTools(observe);
+      journal.start(snapshot(0));
+      const finished = event(1, "tool.finished", instance, {
+        tool_call_id: "edit-1",
+        tool_name: "edit",
+        state: "succeeded",
+      });
+      // Step the transport synchronously: React cannot render the transient
+      // succeeded window before settlement replaces it.
+      journal.route(finished as never);
+      journal.route(finished as never); // replay must not notify twice
+      journal.route(event(2, "turn.settled", instance, {}) as never);
+      expect(observe.mock.calls).toEqual([
+        [
+          {
+            workspace: "ws_test",
+            conversation: id,
+            tool: "edit",
+            path: "README.md",
+          },
+        ],
+      ]);
+      unsubscribe();
+      journal.route({
+        ...finished,
+        ...event(3, "tool.finished", instance, finished.payload),
+      } as never);
+      expect(observe).toHaveBeenCalledTimes(1);
+      journal.stop();
+    },
+  );
+  it.each([false, true])(
+    "reports unseen completions in an accepted snapshot tail (recovery=%s)",
+    (recovering) => {
+      vi.stubGlobal("EventSource", FakeSource);
+      const { journal } = setup();
+      const observe = vi.fn();
+      journal.subscribeTools(observe);
+      journal.start(snapshot(0));
+      if (recovering) journal.route(event(3) as never);
+      const agent = {
+        agent_id: event(1).resource.agent_id,
+        workspace_id: "ws_test",
+        live_tail: [
+          event(1, "tool.started", instance, {
+            tool_call_id: "edit-1",
+            tool_name: "edit",
+            state: "running",
+            arguments: JSON.stringify({ path: "README.md" }),
+          }),
+          event(2, "tool.finished", instance, {
+            tool_call_id: "edit-1",
+            tool_name: "edit",
+            state: "succeeded",
+          }),
+          event(3, "turn.settled", instance, { state: "settled" }),
+        ],
+      };
+      journal.resume({
+        ...snapshot(3),
+        agents: [agent],
+      } as unknown as Snapshot);
+      expect(observe.mock.calls).toEqual([
+        [
+          {
+            workspace: "ws_test",
+            conversation: agent.agent_id,
+            tool: "edit",
+            path: "README.md",
+          },
+        ],
+      ]);
+      journal.resume({
+        ...snapshot(4),
+        agents: [agent],
+      } as unknown as Snapshot);
+      expect(observe).toHaveBeenCalledTimes(1);
+      journal.stop();
+    },
+  );
   it("subscribes to every named event in the wire contract", () => {
     vi.stubGlobal("EventSource", FakeSource);
     const { journal } = setup();

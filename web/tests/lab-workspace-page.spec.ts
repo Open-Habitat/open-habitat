@@ -181,6 +181,13 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
   page,
 }) => {
   await openWorkspace(page);
+  const created = page
+    .waitForResponse(
+      (r) =>
+        r.request().method() === "POST" &&
+        new URL(r.url()).pathname === "/api/v1/conversations",
+    )
+    .then((response) => response.json());
   await page
     .getByRole("navigation")
     .getByRole("button")
@@ -189,6 +196,11 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
   await expect(
     page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toBeVisible();
+  const creation = await created;
+  // The placeholder is visible before creation's route replacement commits.
+  await expect(page).toHaveURL(
+    (url) => url.searchParams.get("conversation") === creation.agent_id,
+  );
   await page
     .getByRole("navigation")
     .getByRole("link")
@@ -223,6 +235,11 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
   const { workspace_id } = await (await renamed).json();
   await expect(page).toHaveURL(new RegExp(`/workspaces/${workspace_id}$`));
   const workspaceURL = page.url();
+  // Creation can outlive the placeholder composer. Include its confirmed
+  // card before taking the list whose persistence this test checks.
+  await expect(
+    page.getByTestId(`conversation-card-${creation.agent_id}`),
+  ).toBeVisible();
   const titles = await page.locator(".ah-home-card-title").allTextContents();
   expect(titles.length).toBeGreaterThan(0);
   await page
@@ -261,10 +278,19 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
       .getByRole("link")
       .and(page.getByTestId("workspace-Uusi nimi")),
   ).toBeVisible();
+  const hidden = page
+    .waitForResponse(
+      (r) =>
+        new URL(r.url()).pathname === "/api/v1/workspaces" &&
+        !!r.request().postData()?.includes('"hidden":true'),
+    )
+    .then((response) => response.json());
   await page
     .getByRole("button")
     .and(page.getByTestId(/^workspace-(archive|restore)$/))
     .click();
+  // Optimistic visibility is not evidence that a queued write reached disk.
+  await hidden;
   await page.reload();
   await expect(page.locator(".ah-workspace-hidden")).toBeVisible();
   await expect(page.locator(".ah-home-card-title")).toHaveText(titles);

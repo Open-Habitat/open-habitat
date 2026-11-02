@@ -25,6 +25,7 @@ import { liveText } from "../i18n";
 import { workspaceEditorText } from "../text/workspaceEditor";
 import { type EditorEngine, useEditorChoice } from "./accountPreferences";
 import type { BrowserDocumentHandle } from "./BrowserDocument";
+import type { ConversationJournal } from "./conversationJournal";
 import {
   clampConversationWidth,
   conversationMin,
@@ -40,7 +41,7 @@ import {
   rememberConversationWidth,
   rememberedConversationWidth,
 } from "./editor";
-import type { ReplaceNote, ToolReport } from "./editorChanges";
+import type { ReplaceNote } from "./editorChanges";
 
 const txt = liveText(workspaceEditorText);
 const BrowserDocument = lazy(() => import("./BrowserDocument"));
@@ -57,10 +58,9 @@ interface EditorControls {
 
 const EditorContext = createContext<EditorControls | null>(null);
 
-/** Between the browser editor and the conversations beside it: finished agent
- * tool calls one way, notes about replaced agent changes the other. */
+/** Notes from the browser editor to the conversations whose changes a save
+ * replaced. Tool completion arrives directly from the authenticated journal. */
 interface EditorChannel {
-  report: (report: ToolReport) => void;
   notes: ReplaceNote[];
   /** A told or closed note is gone for good: a later save makes a new one. */
   dismiss: (id: number) => void;
@@ -86,7 +86,9 @@ function WorkspaceEditorInner({
   identity,
   children,
   onShownChange,
+  journal,
 }: {
+  journal?: ConversationJournal;
   workspaceId?: string;
   csrf?: string;
   identity?: string;
@@ -102,6 +104,13 @@ function WorkspaceEditorInner({
   );
   const browser = engine !== "vscode";
   const browserDocument = useRef<BrowserDocumentHandle>(null);
+  useLayoutEffect(
+    () =>
+      journal?.subscribeTools((report) =>
+        browserDocument.current?.observe(report),
+      ),
+    [journal],
+  );
   // A document's resource binding is not the selected workspace. A native
   // removal/refresh can remove the latter without permission to lose a buffer.
   const [browserWorkspace, setBrowserWorkspace] = useState(workspaceId);
@@ -129,7 +138,6 @@ function WorkspaceEditorInner({
   const noteId = useRef(0);
   const channel = useMemo<EditorChannel>(
     () => ({
-      report: (report) => browserDocument.current?.observe(report),
       notes,
       dismiss: (id) =>
         setNotes((before) => before.filter((note) => note.id !== id)),
@@ -667,6 +675,7 @@ function WorkspaceEditorInner({
 }
 
 export function WorkspaceEditor(props: {
+  journal?: ConversationJournal;
   workspaceId?: string;
   csrf?: string;
   identity?: string;
@@ -713,11 +722,6 @@ export function useEditorActivity(working: boolean, label: string) {
   useEffect(() => {
     report?.(working, label);
   }, [report, working, label]);
-}
-
-/** The browser editor rereads its file when an agent tool call finishes. */
-export function useEditorToolReport() {
-  return useContext(EditorChannelContext)?.report;
 }
 
 /** Notes for one conversation about agent changes a save replaced. */

@@ -221,10 +221,11 @@ describe("shared view addresses", () => {
     for (const s of page.getAllByRole("switch"))
       expect((s as HTMLInputElement).checked).toBe(true);
 
-    // The tab opens the address Kopioi linkki copies.
+    // The host resolves the current address; the rendered one may have
+    // been deleted in another tab while a refresh is still in flight.
     fireEvent.click(page.getAllByTestId("view-open-tab")[1]);
     expect(open).toHaveBeenLastCalledWith(
-      shared.url,
+      `/view?id=${view.view_id}`,
       "_blank",
       expect.stringContaining("noopener"),
     );

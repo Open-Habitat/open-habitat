@@ -190,8 +190,10 @@ test("the stable address frames the view for its owner and redirects while publi
   });
   const reader = await visitor.newPage();
   const leaks: string[] = [];
-  reader.on("request", async (request) => {
-    const headers = await request.allHeaders();
+  reader.on("request", (request) => {
+    // Referer is available in the request event. allHeaders can wait on
+    // Chromium's extra-info event indefinitely for a redirected request.
+    const headers = request.headers();
     if ((headers.referer ?? "").includes(secret)) leaks.push(request.url());
     if (request.url().includes(secret) && !request.isNavigationRequest())
       leaks.push(request.url());
@@ -268,5 +270,6 @@ test("the stable address frames the view for its owner and redirects while publi
   const next = await fresh;
   await expect(next).toHaveURL(/\/n\/[A-Za-z0-9_-]{43}$/);
   expect(next.url()).not.toBe(entry);
+  expect(leaks).toEqual([]);
   await visitor.close();
 });

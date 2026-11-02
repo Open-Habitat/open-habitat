@@ -285,6 +285,8 @@ export function App() {
   // Daemon catalog distinguishes browser-started Pi sessions from read-only
   // terminal history; it is not a cookie-scoped conversation lease.
   const [daemonSessions, setDaemonSessions] = useState<Session[]>([]);
+  const currentSessions = useRef(daemonSessions);
+  currentSessions.current = daemonSessions;
   const [csrf, setCSRF] = useState<string>();
   // First load only. A successful onboarding attempt has already checked Pi.
   const piChecked = useRef(false);
@@ -617,6 +619,10 @@ export function App() {
       conversationStore
         ? new ConversationJournal(conversationStore, {
             activeId: () => activeId.current,
+            // Creation replies precede the snapshot that discovers the agent.
+            workspaceForAgent: (id) =>
+              currentSessions.current.find((session) => session.agent_id === id)
+                ?.workspace_id,
             onSnapshotNeeded: () => journalCallbacks.current.onSnapshotNeeded(),
             onWorkspaceChanged: (change) => dispatch(hostChanged(change)),
             onStatusChange: (id, kind, payload) =>
@@ -1511,7 +1517,7 @@ export function App() {
       return false;
     const writeCSRF = csrf;
     setArchiveProblem("");
-    const fromRoute = `${location.pathname}${location.search}`;
+    const fromRoute = `${currentRoute.current.pathname}${currentRoute.current.search}`;
     if (archived) {
       setArchiveNotice({
         id: agent.agent_id,
@@ -3056,6 +3062,7 @@ export function App() {
                         >
                           {editorRoute ? (
                             <WorkspaceEditor
+                              journal={journal}
                               workspaceId={editorWorkspaceId}
                               identity={identity}
                               onShownChange={showEditor}

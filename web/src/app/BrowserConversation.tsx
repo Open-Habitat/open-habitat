@@ -85,7 +85,7 @@ import {
   TitleGenerationFailed,
   turnUnderway,
 } from "./conversations";
-import { messageFor, toolPath } from "./editorChanges";
+import { messageFor } from "./editorChanges";
 import {
   composerGoals,
   conversationGoal,
@@ -143,7 +143,6 @@ import {
 import {
   EditorHeaderControls,
   useEditorActivity,
-  useEditorToolReport,
   useReplaceNotes,
 } from "./WorkspaceEditor";
 import { requestPhases, requestText } from "./workerRequests";
@@ -1239,26 +1238,6 @@ function BrowserConversationContent({
       truncated: true,
     },
   );
-  // A finished agent tool call may have changed the file open in the browser
-  // editor beside this conversation; the editor reads it again.
-  const reportTool = useEditorToolReport();
-  const reportedTools = useRef(new Set<string>());
-  useEffect(() => {
-    if (!reportTool || !id || !live) return;
-    for (const item of provisionalItems(live)) {
-      if (item.kind !== "tool" || !item.callId || !item.name) continue;
-      if (item.state !== "succeeded" && item.state !== "failed") continue;
-      const key = `${id}:${item.callId}`;
-      if (reportedTools.current.has(key)) continue;
-      reportedTools.current.add(key);
-      reportTool({
-        workspace: workspace.workspace_id,
-        conversation: id,
-        tool: item.name,
-        path: toolPath(item.arguments),
-      });
-    }
-  }, [live, reportTool, id, workspace.workspace_id]);
   const replaceNotes = useReplaceNotes(workspace.workspace_id, id);
   // The note's buttons go with it; focus moves on to the field, not the page.
   const closeReplaceNote = (noteId: number) => {

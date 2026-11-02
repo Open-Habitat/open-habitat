@@ -231,21 +231,15 @@ export function ViewHost({
     [csrf, setState, displaceGuide],
   );
 
-  // The tab opens synchronously with noopener, so no popup blocker sees an
-  // async open, at the view's stable address: the one Kopioi linkki copies,
-  // private or public (ADR 0035). A view without one yet opens the app's own
-  // page, which reserves it and replaces itself with it.
+  // Resolve the address on the host in the new tab. Another tab may have
+  // deleted it while this card was in the background; even a focus refresh
+  // can still be in flight when the person presses Open.
   const openTab = useCallback(
     (view: ViewSummary) => {
-      const known = addressOf(links, view.view_id);
-      window.open(
-        known ? known.url : viewTabPath(view.view_id),
-        "_blank",
-        "noopener,noreferrer",
-      );
+      window.open(viewTabPath(view.view_id), "_blank", "noopener,noreferrer");
       setState(view.view_id, "tab_requested");
     },
-    [links, setState],
+    [setState],
   );
 
   const close = useCallback(() => {

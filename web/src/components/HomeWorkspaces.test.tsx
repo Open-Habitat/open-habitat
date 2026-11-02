@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Workspace } from "../app/snapshot";
@@ -6,7 +13,27 @@ import {
   type HomeConversation,
   HomeWorkspaces,
   homeSections,
+  useCardArchiveAction,
 } from "./HomeWorkspaces";
+
+it("an already rendered card archives using the current page callback", async () => {
+  const undoRoutes: string[] = [];
+  const { result, rerender } = renderHook(
+    ({ route }) =>
+      useCardArchiveAction(async () => {
+        undoRoutes.push(route);
+        return true;
+      }),
+    { initialProps: { route: "/workspaces" } },
+  );
+  const pressed = result.current.run;
+  // Navigation commits before the card's retained press handler runs.
+  rerender({ route: "/workspaces/ws_current" });
+  await act(async () => {
+    pressed?.("conversation");
+  });
+  expect(undoRoutes).toEqual(["/workspaces/ws_current"]);
+});
 
 const workspace = (id: string): Workspace => ({
   workspace_id: id,

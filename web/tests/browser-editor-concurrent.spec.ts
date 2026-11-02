@@ -73,6 +73,9 @@ for (const [width, theme] of [
     }, theme);
     const doc = page.getByTestId("editor-document");
     const changes = page.getByTestId("editor-changes");
+    // The two-second typing pause is product time, not the time axe and
+    // browser automation happen to take on a loaded host.
+    await page.clock.pauseAt(new Date());
     await typeOnPrintln(page, " // minun");
     await send(page, "muokkaa tiedostoa");
     // Noticed at once, marked where it lands, but not yet in the text.
@@ -84,20 +87,14 @@ for (const [width, theme] of [
     await expect(page.getByTestId("editor-import-now")).toBeVisible();
     expect(await disk(page)).toContain(AGENT);
     await expect(doc).not.toContainText(AGENT);
-    expect(
-      (
-        await new AxeBuilder({ page })
-          .include('[data-testid="browser-editor"]')
-          .analyze()
-      ).violations,
-    ).toEqual([]);
     // Typing keeps it waiting: each key restarts the two-second pause.
     for (const key of "abcde") {
       await typeOnPrintln(page, key);
-      await page.waitForTimeout(700);
+      await page.clock.runFor(700);
       await expect(changes).toHaveAttribute("data-changes", "pending");
     }
     await expect(doc).not.toContainText(AGENT);
+    await page.clock.runFor(2000);
     await expect(changes).toHaveAttribute("data-changes", "imported", {
       timeout: 5000,
     });
@@ -105,6 +102,15 @@ for (const [width, theme] of [
     await expect(doc).toContainText('println("hei") // minunabcde');
     await expect(page.getByTestId("conflict")).toHaveCount(0);
     await expect(page.getByTestId("editor-undo-import")).toBeVisible();
+    // axe needs real timers; run the editor audit after the controlled pause.
+    await page.clock.resume();
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .include('[data-testid="browser-editor"]')
+          .analyze()
+      ).violations,
+    ).toEqual([]);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

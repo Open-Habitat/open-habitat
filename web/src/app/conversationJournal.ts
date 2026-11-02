@@ -4,8 +4,10 @@ import { conversationJournalText } from "../text/conversationJournal";
 import {
   type ConversationEvent,
   parseConversationEvent,
+  provisionalItems,
 } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
+import { type ToolReport, toolPath } from "./editorChanges";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import type { Snapshot } from "./snapshot";
 import type { HostChange } from "./store";
@@ -44,6 +46,13 @@ const cursorParts = (cursor: string) => {
 
 /** One journal cursor and transport for one authenticated tab, never a route. */
 export class ConversationJournal {
+  private toolListeners = new Set<(report: ToolReport) => void>();
+  subscribeTools = (listener: (report: ToolReport) => void) => {
+    this.toolListeners.add(listener);
+    return () => {
+      this.toolListeners.delete(listener);
+    };
+  };
   private cursor = "";
   private instance = "";
   private sequence = 0;
@@ -80,6 +89,7 @@ export class ConversationJournal {
         payload?: Record<string, unknown>,
       ) => void;
       activeId: () => string | undefined;
+      workspaceForAgent?: (id: string) => string | undefined;
       onLogin: () => void;
       onOffline: (offline: boolean) => void;
       onConnection?: (
@@ -150,6 +160,7 @@ export class ConversationJournal {
       clearTimeout(this.timer);
       this.timer = undefined;
       this.store.reseed(snapshot);
+      this.reportReseedTools(snapshot);
       this.reset(snapshot);
       this.recovering = false;
       this.connect();
@@ -164,6 +175,7 @@ export class ConversationJournal {
       this.probe?.abort();
       ++this.generation;
       this.store.reseed(snapshot);
+      this.reportReseedTools(snapshot);
       this.reset(snapshot);
       this.connect();
     }
@@ -177,6 +189,39 @@ export class ConversationJournal {
       if (this.invalidation) this.store.reconcileStale();
       this.invalidation = 0;
       this.agentOnlyInvalidation = false;
+    }
+  }
+  private reportReseedTools(snapshot: Snapshot) {
+    if (!this.toolListeners.size) return;
+    // A snapshot can overtake SSE. Its accepted tail replaces those events,
+    // so it owes the same notifications, without replaying the store writes.
+    for (const agent of snapshot.agents) {
+      const argumentsByCall = new Map<string, string>();
+      for (const raw of agent.live_tail) {
+        const event = parseConversationEvent(JSON.stringify(raw));
+        const call = event.payload.tool_call_id as string;
+        const args =
+          event.payload.arguments ??
+          (event.kind === "assistant.toolcall.end"
+            ? event.payload.text
+            : undefined);
+        if (typeof args === "string") argumentsByCall.set(call, args);
+        if (
+          event.kind !== "tool.finished" ||
+          (event.payload.state !== "succeeded" &&
+            event.payload.state !== "failed") ||
+          (event.server_instance_id === this.instance &&
+            event.sequence <= this.sequence)
+        )
+          continue;
+        const report: ToolReport = {
+          workspace: agent.workspace_id,
+          conversation: agent.agent_id,
+          tool: event.payload.tool_name as string,
+          path: toolPath(argumentsByCall.get(call)),
+        };
+        for (const listener of this.toolListeners) listener(report);
+      }
     }
   }
   route(event: ConversationEvent, sseId = event.cursor) {
@@ -207,6 +252,41 @@ export class ConversationJournal {
     if (this.seenIds.size > 1024)
       this.seenIds.delete(this.seenIds.values().next().value as string);
     this.store.routeEvent(event, this.callbacks.activeId());
+    // A render may coalesce tool.finished with turn.settled and never show
+    // the finished tool. Notify the open document from the accepted event.
+    if (
+      event.kind === "tool.finished" &&
+      (event.payload.state === "succeeded" ||
+        event.payload.state === "failed") &&
+      event.resource.agent_id &&
+      this.toolListeners.size
+    ) {
+      const id = event.resource.agent_id;
+      const workspace =
+        this.store.readMetadata().agents.get(id)?.workspace_id ??
+        this.callbacks.workspaceForAgent?.(id);
+      if (workspace) {
+        // Pi sends arguments on tool.started, not necessarily on the end.
+        // Read the event accumulator now, before a later event retires it.
+        const live = this.store.read(id)?.live;
+        const tool =
+          live &&
+          provisionalItems(live).find(
+            (item) =>
+              item.kind === "tool" &&
+              item.callId === event.payload.tool_call_id,
+          );
+        const report: ToolReport = {
+          workspace,
+          conversation: id,
+          tool: event.payload.tool_name as string,
+          path: toolPath(
+            (event.payload.arguments as string | undefined) ?? tool?.arguments,
+          ),
+        };
+        for (const listener of this.toolListeners) listener(report);
+      }
+    }
     if (event.kind === "snapshot.invalidated") {
       if (
         event.payload.reason === "ring_truncated" &&
