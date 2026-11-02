@@ -955,9 +955,16 @@ describe("focus after an attachment", () => {
     const view = render(<Draft />);
     field(view).focus();
     field(view).setSelectionRange(0, 0);
+    const input = view.container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const openPicker = vi.spyOn(input, "click");
     const clip = view.getByTestId("attach-file");
     fireEvent.pointerDown(clip);
     clip.focus();
+    fireEvent.click(clip);
+    expect(openPicker).toHaveBeenCalledTimes(1);
+    expect(view.queryByTestId("attachment-panel")).toBeNull();
     pick(view);
     await answer();
     expect(document.activeElement).toBe(field(view));

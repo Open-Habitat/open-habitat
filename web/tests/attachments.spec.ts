@@ -28,7 +28,7 @@ test("picker, image paste and conversation drop persist authenticated attachment
   const field = page.getByTestId("message-input");
   const choose = page.waitForEvent("filechooser");
   await page.getByTestId("attach-file").click();
-  await page.getByTestId("attachment-single").click();
+  await expect(page.getByTestId("attachment-panel")).toHaveCount(0);
   await (await choose).setFiles({
     name: "screen.png",
     mimeType: "image/png",
@@ -158,7 +158,6 @@ test("picker, image paste and conversation drop persist authenticated attachment
   // hide the attachment below the cut.
   const again = page.waitForEvent("filechooser");
   await page.getByTestId("attach-file").click();
-  await page.getByTestId("attachment-single").click();
   await (await again).setFiles({
     name: "long.png",
     mimeType: "image/png",
@@ -267,14 +266,13 @@ test("a dropped or picked attachment leaves the person writing on from the end o
   await page.keyboard.type(" tätä");
   await expect(field).toHaveValue("Katso tätä");
 
-  // The picker: the paperclip, its menu and the file dialog all take the
+  // The picker: the paperclip and the file dialog take the
   // focus on the way, and the field has it again once the chip shows.
   await field.evaluate((element: HTMLTextAreaElement) =>
     element.setSelectionRange(0, 0),
   );
   const choose = page.waitForEvent("filechooser");
   await page.getByTestId("attach-file").click();
-  await page.getByTestId("attachment-single").click();
   await (await choose).setFiles({
     name: "screen.png",
     mimeType: "image/png",

@@ -1313,8 +1313,7 @@ export function Composer({
         <span
           className="ah-crow-attach"
           // The paperclip takes the focus as it is pressed; whether the
-          // field had it is read just before. The menu's popover is a
-          // portal whose events reach here too; they are not the paperclip.
+          // field had it is read just before the file picker opens.
           onPointerDownCapture={(event) => {
             if (event.currentTarget.contains(event.target as Node))
               pickedFromField.current =
@@ -1326,7 +1325,6 @@ export function Composer({
           }}
         >
           <AttachmentMenu
-            anchorRef={box}
             disabled={
               uploading || availability.state !== "enabled" || dictating
             }

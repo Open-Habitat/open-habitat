@@ -346,7 +346,7 @@ test("@lab composer on a phone: the bottom row fits while Pi works and the list 
 
 for (const width of [1440, 390]) {
   for (const theme of ["light", "dark"] as const) {
-    test(`@lab attachment panel ${width} ${theme}: dismiss, selection and draft retention @a11y`, async ({
+    test(`@lab attachment picker ${width} ${theme}: direct selection and draft retention @a11y`, async ({
       page,
     }, testInfo) => {
       const draft = await newConversation(page, { width, height: 900 });
@@ -356,25 +356,11 @@ for (const width of [1440, 390]) {
       );
       await draft.fill("Katso myös kuvakaappaus.");
       const opener = page.getByTestId("attach-file");
-      await opener.focus();
-      await page.keyboard.press("Enter");
-      const panel = page.getByTestId("attachment-panel");
-      await expect(panel).toBeVisible();
-      const bounds = await panel.boundingBox();
-      if (!bounds) throw new Error("missing attachment panel");
-      expect(bounds.x).toBeGreaterThanOrEqual(0);
-      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
-      expect(bounds.y).toBeGreaterThanOrEqual(0);
-      expect(bounds.y + bounds.height).toBeLessThanOrEqual(900);
-      const fieldBounds = await page.locator(".ah-cbox").boundingBox();
-      if (!fieldBounds) throw new Error("missing composer field");
-      expect(bounds.y + bounds.height).toBeLessThanOrEqual(fieldBounds.y);
-      // The popover makes the underlying page inert. Audit the active dialog,
-      // not the now-inert page heading or React Aria's outer dismiss sentinels.
+      // Audit the remaining control, not the removed one-option dialog.
       expect(
         (
           await new AxeBuilder({ page })
-            .include('[data-testid="attachment-panel"]')
+            .include('[data-testid="attach-file"]')
             .analyze()
         ).violations,
       ).toEqual([]);
@@ -386,16 +372,13 @@ for (const width of [1440, 390]) {
           labOrigin: new URL(page.url()).origin,
         },
       );
-      await page.keyboard.press("Escape");
-      await expect(panel).toHaveCount(0);
-      await expect(opener).toBeFocused();
+      await opener.focus();
+      const cancelled = page.waitForEvent("filechooser");
+      await page.keyboard.press("Enter");
+      await (await cancelled).setFiles([]);
       await expect(draft).toHaveValue("Katso myös kuvakaappaus.");
-      await opener.click();
-      await page.getByTestId("attachment-close").click();
-      await expect(opener).toBeFocused();
-      await opener.click();
       const chooser = page.waitForEvent("filechooser");
-      await page.getByTestId("attachment-single").click();
+      await opener.click();
       await (await chooser).setFiles({
         name: "notes.txt",
         mimeType: "text/plain",
@@ -409,7 +392,7 @@ for (const width of [1440, 390]) {
           .and(page.locator('[data-attachment-kind="file"]')),
       ).toHaveCount(1);
       await expect(draft).toHaveValue("Katso myös kuvakaappaus.");
-      await expect(panel).toHaveCount(0);
+      await expect(page.getByTestId("attachment-panel")).toHaveCount(0);
     });
   }
 }

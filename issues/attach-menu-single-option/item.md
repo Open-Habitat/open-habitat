@@ -3,11 +3,12 @@ created: 2026-11-02
 updated: 2026-11-02
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: attach-focus
 lane_seq: 2
 preparation: ready
+closed: 2026-11-02
 ---
 
 # Paperclip opens a menu with one option instead of the file picker
