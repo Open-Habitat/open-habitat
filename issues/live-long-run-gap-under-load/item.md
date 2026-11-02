@@ -1,14 +1,17 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-02
 type: bug
-status: untriaged
-priority: normal
+status: open
+priority: high
 provenance: other
 provenance_detail: pilot.18 clean gate
 source_ref: taskfleet:01m6c2ybczc0gvg629k2gnka93/gate:live-long-run
 originating_run: 01m6c2ybczc0gvg629k2gnka93
 originating_run_kind: spinoff
+lane: live-long-run-gap-under-load
+lane_seq: 1
+preparation: ready
 ---
 
 # Missed-events notice flashes during a long run under load (live-long-run spec)
@@ -40,3 +43,14 @@ gap=false working=false ×21
 
 This blocked the pilot.18 gate together with
 `TestProcessResumeCatchUpAcrossDaemonRestart` (filed separately).
+
+## Decision (Jari 2.11.)
+
+This is a product defect, not a test to loosen. Even a 25 ms appearance of
+the missed-events notice shifts the conversation's layout, so the whole UI
+jolts visibly although the banner itself is hardly seen. The notice must
+never appear while the page is recovering normally from `ring_truncated`
+under load, and nothing may shift the layout during that recovery. Keep
+the spec's strict "no sample shows the notice" assertion; fix the product so
+it holds on a loaded host (reproduce under load, e.g. with the CPU-load
+helper under `timeout` beside the spec, before and after).

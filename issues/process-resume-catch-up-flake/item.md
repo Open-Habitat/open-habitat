@@ -1,8 +1,8 @@
 ---
 created: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-02
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: pilot.18 clean gate
