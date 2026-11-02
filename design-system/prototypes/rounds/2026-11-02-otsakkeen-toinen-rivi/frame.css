@@ -1,0 +1,215 @@
+/* Directions over the production stylesheet, inside the view's iframe. The
+   iframe is as wide as the device, so production's own max-width: 800px rules
+   decide phone or desktop exactly as in Habitat. <html data-dir> is 0 for
+   today and 1–3 for the directions; <html data-sit> is uusi or kaynnissa. */
+
+/* ---- Shared by every direction ---------------------------------------- */
+
+/* A disabled header action is wrapped in the tooltip's _disabledTrigger
+   span, so production's `.ah-agent-topline > .ah-retitle` rules miss it: on
+   a phone it falls onto the second row (the outlined H↻ box in Jari's
+   screenshot), on a desktop it keeps the disabled button's grey square. */
+html:not([data-dir="0"]) .ah-agent-topline .ah-topbar-icon:disabled {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ah-faint);
+  opacity: 0.55;
+}
+@media (max-width: 800px) {
+  html:not([data-dir="0"])
+    .ah-agent-topline
+    > :has(> :is(.ah-retitle, .ah-header-recap, .ah-archive-control, .ah-details-toggle)) {
+    display: none;
+  }
+}
+/* The composer chip carries the model in a new conversation, so the header
+   does not repeat it. */
+html:not([data-dir="0"]) body:has(.ah-composer-model) .ah-agent-topline > .ah-set-chip {
+  display: none;
+}
+
+/* ---- 1 · Yksi ikonirytmi ---------------------------------------------- */
+/* Every state item is a plain icon with its number, no border or surface,
+   the same 40 px box as the first row's icons and the same gap. */
+@media (max-width: 800px) {
+  html[data-dir="1"] .ah-agent-topline {
+    row-gap: 0;
+  }
+  html[data-dir="1"] .ah-agent-topline > .ah-header-activity {
+    width: 40px;
+    height: 40px;
+    margin-inline-start: -4px;
+  }
+  html[data-dir="1"] .ah-agent-topline :is(.ah-gs-chip, .ah-ctx-chip, .ah-set-chip) {
+    --b-h: 40px;
+    height: 40px;
+    padding-inline: 8px;
+    border-color: transparent;
+    background: transparent;
+    color: var(--ah-ink-2);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  /* The model, where it is still the picker, ends the row under ⋯. */
+  html[data-dir="1"] .ah-agent-topline > .md-chip-picker {
+    margin-inline-start: auto;
+  }
+}
+@media (min-width: 801px) {
+  html[data-dir="1"] .ah-agent-topline :is(.ah-gs-chip, .ah-ctx-chip, .ah-set-chip) {
+    --b-h: 32px;
+    height: 32px;
+    padding-inline: 8px;
+    border-color: transparent;
+    background: transparent;
+    color: var(--ah-ink-2);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  html[data-dir="1"] .ah-agent-topline > .ah-header-activity {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* ---- 2 · Tasakokoiset sirut ------------------------------------------- */
+/* Every state item is the same chip: one height, border, surface and
+   radius. The activity becomes a chip with its word, so the row starts
+   with something readable instead of a lone dot. */
+html[data-dir="2"] .ah-agent-topline > .ah-header-activity {
+  width: auto;
+  height: 32px;
+  padding: 0 10px 0 8px;
+  gap: 6px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--ah-line);
+  border-radius: 999px;
+  background: var(--ah-surface-2);
+}
+html[data-dir="2"] .p-act-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ah-ink-2);
+  white-space: nowrap;
+}
+html[data-dir="2"] .ah-agent-topline :is(.ah-gs-chip, .ah-ctx-chip, .ah-set-chip) {
+  --b-h: 32px;
+  height: 32px;
+  padding-inline: 10px;
+  border: 1px solid var(--ah-line);
+  border-radius: 999px;
+  background: var(--ah-surface-2);
+  color: var(--ah-ink-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+@media (max-width: 800px) {
+  html[data-dir="2"] .ah-agent-topline {
+    row-gap: 6px;
+    column-gap: 6px;
+  }
+  /* The tooltip's word is now on the chip. */
+  html[data-dir="2"] .ah-agent-topline .ah-header-tip {
+    display: none;
+  }
+}
+@media (max-width: 800px) {
+  /* While the model is still on the phone's row (a running conversation),
+     the activity chip keeps only its dot, so the model is not cut. */
+  html[data-dir="2"][data-sit="kaynnissa"] .p-act-label {
+    display: none;
+  }
+  html[data-dir="2"][data-sit="kaynnissa"] .ah-agent-topline > .ah-header-activity {
+    padding-inline: 11px;
+  }
+}
+@media (min-width: 801px) {
+  html[data-dir="2"] .ah-agent-topline .ah-header-tip {
+    display: none;
+  }
+}
+
+/* ---- 3 · Yksi rivi, loput ⋯:n takana ---------------------------------- */
+/* The header keeps only the title, the activity dot in front of it, the
+   panels and ⋯. Git and the context move into ⋯'s Tila section, the model
+   always lives in the composer, and the one-off actions stay in ⋯. */
+@media (max-width: 800px) {
+  html[data-dir="3"] .ah-agent-topline::after {
+    display: none;
+  }
+  html[data-dir="3"] .ah-agent-topline > :is(.ah-gs-chip, .ah-ctx-chip, .md-chip-picker, .ah-set-chip) {
+    display: none;
+  }
+  html[data-dir="3"] .ah-agent-topline > .ah-header-activity {
+    order: 0;
+    width: 20px;
+    height: 40px;
+    margin-inline-start: calc(100px - var(--ah-topbar-pad-inline));
+    margin-inline-end: calc(-1 * var(--ah-control-gap) + 4px);
+  }
+  html[data-dir="3"] .ah-conversation-frame > .ah-agent-header .ah-title-row {
+    margin-inline-start: 0;
+  }
+}
+@media (min-width: 801px) {
+  html[data-dir="3"] .ah-agent-topline > :is(.ah-gs-chip, .ah-ctx-chip, .md-chip-picker, .ah-set-chip, .ah-header-recap, .ah-retitle, .ah-archive-control, .ah-details-toggle),
+  html[data-dir="3"] .ah-agent-topline > :has(> :is(.ah-retitle, .ah-header-recap)) {
+    display: none;
+  }
+  html[data-dir="3"] .ah-agent-topline > .ah-header-activity {
+    order: -1;
+  }
+  html[data-dir="3"] .ah-agent-topline .ah-header-more {
+    display: inline-flex;
+    flex: none;
+  }
+}
+/* ⋯'s Tila section: what the row no longer shows, read-only rows that
+   open the same layers as the chips did. */
+.p-menu-state {
+  display: grid;
+  gap: 2px;
+  padding: 4px 0 6px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--ah-line);
+}
+.p-menu-state-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--ah-r-md);
+  color: var(--ah-ink);
+  font-size: 14px;
+}
+.p-menu-state-row:hover {
+  background: var(--ah-hover);
+}
+.p-menu-state-row > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ah-ink-2);
+}
+.p-menu-state-row > b {
+  font-weight: 500;
+  min-width: 72px;
+}
+.p-menu-state-row > span {
+  color: var(--ah-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- The prototype's own menu placement -------------------------------- */
+.p-menu {
+  position: absolute !important;
+  z-index: 100000;
+}
+/* An inert snapshot: no motion, no stray focus ring from capture time. */
+*,
+*::before,
+*::after {
+  animation-duration: 0s !important;
+  transition: none !important;
+}

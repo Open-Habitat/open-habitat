@@ -7,7 +7,7 @@ status: open
 priority: high
 lane: phone-layout-2
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: phone header second row as one consistent set
