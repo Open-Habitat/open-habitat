@@ -16,7 +16,7 @@ Go tests really ran.
 | — lab suite | 4.9 min, after ordinary | 5.6–5.8 min, side by side |
 | — Go/contracts | beside browser | 5.2 min (go test −race 300 s) |
 | packaging | 95 s, after browser | 105 s, in the background beside the above |
-| **total** | **22 min 24 s** | **6 min 31 s and 6 min 55 s** |
+| **total** | **22 min 24 s** | **6 min 31 s, 6 min 55 s, 6 min 33 s** |
 
 My own baseline on `de44e75a` at the gate's 4 workers, sequential, load 17–21:
 ordinary 16.6 min, lab 8.5 min. Gate run 1 (cold caches, load up to 38, before
@@ -96,6 +96,9 @@ CPU 21 % idle. Summed case time: ordinary 3748 s → 1703 s, lab 1830 s → 794 
   and the click.
 - `lab-conversation:517`: the header swaps its ⋯ menu for the workspace link
   as fonts and chips arrive; the case waits for a settled choice (2/12 → 24/24).
+- `settings-search:70`: rows that depend on a read (recap's model) could join
+  the result list after the case read its second result (gate runs 2 and 5);
+  it now reads a list that has held for two reads.
 - Lab evidence screenshots moved under `test-results-lab` (review finding).
 
 Load-only failures that pass in isolation are filed as

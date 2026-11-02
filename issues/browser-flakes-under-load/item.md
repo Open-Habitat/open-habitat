@@ -22,9 +22,6 @@ with load average 15–38 (other workers' runs beside the gate's own):
 
 - `live-long-run.spec.ts:12`: working span 70 ms < 7000 (see the open
   live-long-run-gap-under-load).
-- `settings-search.spec.ts:70`: Enter landed on `#recap-model` where the second
-  result read a moment earlier was `default-model`; the result order seems to
-  change after the list first settles.
 - `account-settings.spec.ts:704` (credential row not visible within 5 s) and
   `:301` (focus timed out at 30 s).
 - `rail-archive.spec.ts:6`: the archived row did not come back within 25 s.
@@ -36,4 +33,4 @@ hand to tell a regression from load. Fixed in the same work (real test races,
 not load): github-connection-warning re-routing and aborted navigation,
 pi-onboarding-race click after the step advanced, browser-conversation cold
 open status read, lab-conversation's header menu read before the header
-settled. `lab-conversation-scroll.spec.ts:201` (frame-count floor 30 met by 12–24 frames under the gate's load, also on main) now requires more than 5 frames; the follow checks themselves are unchanged.
+settled, settings-search reading its second result before late rows joined the list. `lab-conversation-scroll.spec.ts:201` (frame-count floor 30 met by 12–24 frames under the gate's load, also on main) now requires more than 5 frames; the follow checks themselves are unchanged.
