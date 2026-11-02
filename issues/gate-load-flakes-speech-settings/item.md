@@ -3,11 +3,12 @@ created: 2026-11-02
 updated: 2026-11-02
 type: bug
 reporter: claude
-status: open
+status: fixed
 priority: high
 lane: gate-load-flakes
 lane_seq: 1
 preparation: ready
+closed: 2026-11-02
 ---
 
 # Clean gate on integrated main: speech-input order and account menu fail under load
@@ -33,5 +34,5 @@ Log: Birch `~/.local/state/oh-conductor/gate-r54/stdout.json`.
 
 ## Acceptance Criteria
 
-- [ ] Root cause of each named with evidence; product defects fixed in product code.
-- [ ] Both specs pass repeatedly under gate-like load (`--repeat-each`, CPU-load helper under `timeout`), with before/after counts in result.md.
+- [x] Root cause of each named with evidence; product defects fixed in product code.
+- [x] Both specs pass repeatedly under gate-like load (`--repeat-each`, CPU-load helper under `timeout`), with before/after counts in result.md.
