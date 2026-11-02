@@ -39,3 +39,16 @@ gate).
 
 - [ ] One list of all load-sensitive cases with counts, grouped by mechanism, product vs spec, and a fix per group.
 - [ ] A recommendation for keeping the class caught; no product code changed in this unit.
+
+## Jari 2.11.: why only under load, and find them all at once
+
+The defects exist all the time; load only flips an order that is never
+guaranteed. Two things are wrong: code that acts "on the next frame" or "when
+this effect runs" instead of on state that is certainly ready, and tests
+that only ever run the lucky order (a synthetic host answering in a
+millisecond, an idle machine). So the recommendation must cover
+**prevention while writing**, not only detection in the gate: for example
+the synthetic host delaying replies (configurable, on by default in focused
+runs) and CPU throttling in workers' own spec runs, so a race fails on its
+first run; and a rule for the code (focus and state follow a ready state,
+not a timer or frame), stated where `web/AGENTS.md` would carry it.
