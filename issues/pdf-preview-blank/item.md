@@ -3,11 +3,12 @@ created: 2026-11-02
 updated: 2026-11-02
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: pdf-preview-blank
 lane_seq: 1
 preparation: ready
+closed: 2026-11-02
 ---
 
 # PDF preview is blank although the downloaded file opens

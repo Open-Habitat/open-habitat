@@ -7,7 +7,7 @@ import {
   xlsxFixture,
 } from "../src/app/documentFixtures";
 import { hostOrigin } from "../test-ports.mjs";
-import { expect, test } from "./worker-host";
+import { expect, type Page, test } from "./worker-host";
 
 test.use({
   baseURL: hostOrigin,
@@ -44,34 +44,7 @@ test("documents preview in the app's dialog without running anything they carry"
     dialogs.push(dialog.message());
     void dialog.dismiss();
   });
-  await page.request.get("/fixture/scenario?value=ready");
-  await page.goto("/workspaces");
-  await page.getByTestId("github-sign-in").click();
-  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
-  await page
-    .getByRole("navigation")
-    .getByTestId("workspace-ordinary-dir")
-    .click();
-  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  await expect(page).toHaveURL(/conversation=pi:/);
-  // A drop is taken only once the composer accepts attachments, the same
-  // state that enables its attach button; earlier the files are ignored.
-  await expect(page.getByTestId("attach-file")).toBeEnabled();
-  await page.locator(".ah-conversation-stream").evaluate(
-    (element, list) => {
-      const data = new DataTransfer();
-      for (const file of list)
-        data.items.add(new File([new Uint8Array(file.bytes)], file.name));
-      element.dispatchEvent(
-        new DragEvent("drop", {
-          dataTransfer: data,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-    },
-    files.map((f) => ({ name: f.name, bytes: Array.from(f.bytes) })),
-  );
+  await dropInNewConversation(page, files);
   const chips = page.locator(".ah-composer").getByTestId("attachment-chip");
   // Six files upload one after another, which on a loaded host takes longer
   // than one ordinary wait.
@@ -197,6 +170,109 @@ test("documents preview in the app's dialog without running anything they carry"
 
   expect(dialogs).toEqual([]);
   expect(await ran()).toBeUndefined();
+});
+
+/** Opens a new conversation and drops the files on it. */
+async function dropInNewConversation(
+  page: Page,
+  list: { name: string; bytes: Uint8Array }[],
+) {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-ordinary-dir")
+    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi:/);
+  // A drop is taken only once the composer accepts attachments, the same
+  // state that enables its attach button; earlier the files are ignored.
+  await expect(page.getByTestId("attach-file")).toBeEnabled();
+  await page.locator(".ah-conversation-stream").evaluate(
+    (element, items) => {
+      const data = new DataTransfer();
+      for (const file of items)
+        data.items.add(new File([new Uint8Array(file.bytes)], file.name));
+      element.dispatchEvent(
+        new DragEvent("drop", {
+          dataTransfer: data,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    },
+    list.map((f) => ({ name: f.name, bytes: Array.from(f.bytes) })),
+  );
+}
+
+// Built-ins newer than many browsers people use: pdf.js's modern build calls
+// them unguarded, the page's drawing in the app and font rebuilding in its
+// worker. Deleting them makes this Chromium stand in for such a browser.
+const newestBuiltins = `
+delete Map.prototype.getOrInsert;
+delete Map.prototype.getOrInsertComputed;
+delete WeakMap.prototype.getOrInsert;
+delete WeakMap.prototype.getOrInsertComputed;
+delete Math.sumPrecise;
+`;
+
+test("a PDF with an embedded font draws its pages in a browser without the newest built-ins", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const warnings: string[] = [];
+  page.on("console", (message) => {
+    if (/is not a function/.test(message.text())) warnings.push(message.text());
+  });
+  await page.addInitScript(newestBuiltins);
+  // The worker is a script of its own, out of the init script's reach.
+  await page.route(/pdf\.worker[^/]*\.mjs$/, async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      response,
+      body: newestBuiltins + (await response.text()),
+    });
+  });
+  await dropInNewConversation(page, [
+    {
+      name: "leipa.pdf",
+      bytes: pdfFixture({ pages: ["Leipa", "Juuri"], embeddedFont: true }),
+    },
+  ]);
+  const chip = page.locator(".ah-composer").getByTestId("attachment-chip");
+  await expect(chip).toHaveCount(1, { timeout: 30_000 });
+  await chip.getByTestId("attachment-open").click();
+  const preview = page.getByTestId("attachment-preview");
+  const pages = preview.getByTestId("attachment-pdf-page");
+  await expect(pages).toHaveCount(2);
+  await expect(preview.getByTestId("attachment-pdf-page-failed")).toHaveCount(
+    0,
+  );
+  // The squares of the embedded font sit in a band below the heading, from
+  // 160 to 232 points down a 792-point page; ink there is the font drawn.
+  await expect
+    .poll(() =>
+      pages.first().evaluate((canvas: HTMLCanvasElement) => {
+        const context = canvas.getContext("2d");
+        if (!context || !canvas.width) return 0;
+        const top = Math.floor((canvas.height * 160) / 792);
+        const bottom = Math.ceil((canvas.height * 232) / 792);
+        const { data } = context.getImageData(
+          0,
+          top,
+          canvas.width,
+          bottom - top,
+        );
+        let ink = 0;
+        for (let i = 0; i < data.length; i += 4)
+          if (data[i + 3] > 0 && data[i] < 128) ink += 1;
+        return ink;
+      }),
+    )
+    .toBeGreaterThan(0);
+  expect(warnings).toEqual([]);
 });
 
 // Native content is asserted only as the document's own text.

@@ -4,30 +4,132 @@ import { strToU8, zipSync } from "fflate";
 // built here rather than committed as a binary so a reader sees exactly what
 // it contains, including the active content the preview must not run.
 
-const encoder = new TextEncoder();
+/**
+ * A TrueType font of two glyphs, `.notdef` and a filled square, with only
+ * the tables a PDF reader needs; a reader fills in the rest (`cmap`, `name`,
+ * `OS/2`, `post`) as it does for the subset fonts a typesetter embeds.
+ */
+function squareFont(): Uint8Array {
+  const u16 = (...values: number[]) =>
+    values.flatMap((v) => [(v >> 8) & 0xff, v & 0xff]);
+  const u32 = (v: number) => [...u16(v >>> 16), ...u16(v & 0xffff)];
+  // One contour, clockwise, from (100, 100) to (900, 900), as deltas.
+  const square = [
+    ...u16(1, 100, 100, 900, 900, 3, 0),
+    1,
+    1,
+    1,
+    1,
+    ...u16(100, 0, 800, 0, 100, 800, 0, -800),
+    0,
+    0,
+  ];
+  const tables: [string, number[]][] = [
+    ["glyf", square],
+    [
+      "head",
+      [
+        ...u32(0x10000),
+        ...u32(0x10000),
+        ...u32(0),
+        ...u32(0x5f0f3cf5),
+        ...u16(0x000b, 1000),
+        ...new Array(16).fill(0),
+        ...u16(0, 0, 1000, 1000, 0, 8, 2, 0, 0),
+      ],
+    ],
+    [
+      "hhea",
+      [
+        ...u32(0x10000),
+        ...u16(1000, 0, 0, 1000, 0, 0, 1000, 1, 0, 0),
+        ...u16(0, 0, 0, 0, 0, 2),
+      ],
+    ],
+    ["hmtx", u16(1000, 0, 1000, 100)],
+    ["loca", u16(0, 0, square.length / 2)],
+    [
+      "maxp",
+      [...u32(0x10000), ...u16(2, 4, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0)],
+    ],
+  ];
+  const header = [...u32(0x10000), ...u16(tables.length, 64, 2, 32)];
+  const records: number[] = [];
+  const data: number[] = [];
+  let offset = header.length + tables.length * 16;
+  for (const [tag, bytes] of tables) {
+    const padded = [
+      ...bytes,
+      ...new Array((4 - (bytes.length % 4)) % 4).fill(0),
+    ];
+    let sum = 0;
+    for (let i = 0; i < padded.length; i += 4)
+      sum =
+        (sum +
+          ((padded[i] << 24) |
+            (padded[i + 1] << 16) |
+            (padded[i + 2] << 8) |
+            padded[i + 3])) >>>
+        0;
+    records.push(
+      ...[...tag].map((c) => c.charCodeAt(0)),
+      ...u32(sum),
+      ...u32(offset),
+      ...u32(bytes.length),
+    );
+    data.push(...padded);
+    offset += padded.length;
+  }
+  return Uint8Array.from([...header, ...records, ...data]);
+}
 
-/** A text PDF; with `script`, it also asks a viewer to run JavaScript on open. */
+/**
+ * A text PDF; with `script`, it also asks a viewer to run JavaScript on open.
+ * With `embeddedFont`, each page also draws a row of squares in a TrueType
+ * font embedded the way typesetters such as Typst do (a Type0 font over a
+ * CIDFontType2 with `FontFile2`), which a reader has to rebuild before use.
+ */
 export function pdfFixture({
   pages = ["Synteettinen PDF"],
   script,
+  embeddedFont = false,
 }: {
   pages?: string[];
   script?: string;
+  embeddedFont?: boolean;
 } = {}): Uint8Array {
   const objects: string[] = [];
   const add = (body: string) => objects.push(body) + 1; // 1 is the catalog
   const font = add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  let squares = 0;
+  if (embeddedFont) {
+    // Bytes above 0x7f stay single characters; the file is written in Latin-1.
+    const file = String.fromCharCode(...squareFont());
+    const fontFile = add(
+      `<< /Length ${file.length} /Length1 ${file.length} >>\nstream\n${file}\nendstream`,
+    );
+    const name = "/SQUARE+Synteettinen";
+    const descriptor = add(
+      `<< /Type /FontDescriptor /FontName ${name} /Flags 4 /FontBBox [0 0 1000 1000] /ItalicAngle 0 /Ascent 1000 /Descent 0 /CapHeight 1000 /StemV 80 /FontFile2 ${fontFile} 0 R >>`,
+    );
+    const cidFont = add(
+      `<< /Type /Font /Subtype /CIDFontType2 /BaseFont ${name} /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor ${descriptor} 0 R /DW 1000 /CIDToGIDMap /Identity >>`,
+    );
+    squares = add(
+      `<< /Type /Font /Subtype /Type0 /BaseFont ${name} /Encoding /Identity-H /DescendantFonts [${cidFont} 0 R] >>`,
+    );
+  }
   const action = script
     ? add(`<< /Type /Action /S /JavaScript /JS (${script}) >>`)
     : 0;
   const pageTree = objects.length + 2 + pages.length * 2;
   const kids = pages.map((text) => {
-    const stream = `BT /F1 36 Tf 72 720 Td (${text}) Tj ET`;
+    const stream = `BT /F1 36 Tf 72 720 Td (${text}) Tj ET${squares ? " BT /F2 72 Tf 72 560 Td <00010001000100010001> Tj ET" : ""}`;
     const content = add(
       `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
     );
     return add(
-      `<< /Type /Page /Parent ${pageTree} 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${font} 0 R >> >> /Contents ${content} 0 R${script ? ` /AA << /O ${action} 0 R >>` : ""} >>`,
+      `<< /Type /Page /Parent ${pageTree} 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${font} 0 R${squares ? ` /F2 ${squares} 0 R` : ""} >> >> /Contents ${content} 0 R${script ? ` /AA << /O ${action} 0 R >>` : ""} >>`,
     );
   });
   add(
@@ -45,7 +147,8 @@ export function pdfFixture({
   for (const offset of offsets)
     out += `${String(offset).padStart(10, "0")} 00000 n \n`;
   out += `trailer\n<< /Size ${offsets.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
-  return encoder.encode(out);
+  // Offsets count characters, so each character is one byte.
+  return Uint8Array.from(out, (c) => c.charCodeAt(0));
 }
 
 const relationships = (rels: [string, string, string, string?][]) =>

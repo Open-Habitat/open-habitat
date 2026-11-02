@@ -1,5 +1,9 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+// pdf.js's modern build calls APIs only the newest engines have
+// (`Map.prototype.getOrInsertComputed`, `Math.sumPrecise`); on a slightly
+// older Safari or Chrome every page's drawing throws. The legacy build
+// carries them as polyfills, which a newer engine leaves unused.
+import pdfWorker from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type PreviewKind, utf8 } from "../app/attachments";
 import {
@@ -96,7 +100,7 @@ function PdfPages({ bytes }: { bytes: Uint8Array }) {
     let cancelled = false;
     let destroy = () => {};
     (async () => {
-      const pdfjs = await import("pdfjs-dist");
+      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
       pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
       // The worker takes ownership of the buffer it is given.
       const task = pdfjs.getDocument({
@@ -142,6 +146,7 @@ function PdfPage({ doc, number }: { doc: PDFDocumentProxy; number: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [ratio, setRatio] = useState(Math.SQRT2);
   const [near, setNear] = useState(false);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     const element = holder.current;
     if (!element) return;
@@ -175,7 +180,13 @@ function PdfPage({ doc, number }: { doc: PDFDocumentProxy; number: number }) {
         cancel = () => task.cancel();
         return task.promise;
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        // A page that cannot be drawn says so rather than staying blank;
+        // a draw cancelled by scrolling away is not a failure.
+        const name = (error as { name?: unknown } | null)?.name;
+        if (!cancelled && name !== "RenderingCancelledException")
+          setFailed(true);
+      });
     return () => {
       cancelled = true;
       cancel();
@@ -192,12 +203,22 @@ function PdfPage({ doc, number }: { doc: PDFDocumentProxy; number: number }) {
       className="ah-attachment-page"
       style={{ aspectRatio: `1 / ${ratio}` }}
     >
-      <canvas
-        ref={canvas}
-        data-testid="attachment-pdf-page"
-        role="img"
-        aria-label={txt.page(number)}
-      />
+      {failed ? (
+        <p
+          className="ah-attachment-preview-note"
+          data-testid="attachment-pdf-page-failed"
+          role="status"
+        >
+          {txt.pageFailed(number)}
+        </p>
+      ) : (
+        <canvas
+          ref={canvas}
+          data-testid="attachment-pdf-page"
+          role="img"
+          aria-label={txt.page(number)}
+        />
+      )}
     </li>
   );
 }
