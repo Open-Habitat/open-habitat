@@ -22,7 +22,10 @@ tmp=$(mktemp -d)
 export HOME="$tmp/home" GOCACHE="$repo/.cache/ci-local/go-build" GOMODCACHE="$repo/.cache/ci-local/go-mod" NPM_CONFIG_CACHE="$repo/.cache/ci-local/npm" PLAYWRIGHT_BROWSERS_PATH="$repo/.cache/ms-playwright"
 export CI=1
 # Bound concurrent native phases; respect caller/backend budgets.
-export GOMAXPROCS="${GOMAXPROCS:-4}" OH_BROWSER_WORKERS="${OH_BROWSER_WORKERS:-4}" OH_WEB_WORKERS="${OH_WEB_WORKERS:-4}"
+# The browser suites run side by side, ordinary with OH_BROWSER_WORKERS and lab
+# with OH_LAB_WORKERS; 6 + 3 kept 8-core Birch just short of saturation, where
+# timing-sensitive cases start to fail.
+export GOMAXPROCS="${GOMAXPROCS:-4}" OH_BROWSER_WORKERS="${OH_BROWSER_WORKERS:-6}" OH_LAB_WORKERS="${OH_LAB_WORKERS:-3}" OH_WEB_WORKERS="${OH_WEB_WORKERS:-4}" tmp
 export NPM_CONFIG_CACHE="${npm_config_cache:-${NPM_CONFIG_CACHE:-$tmp/npm}}"
 # Go's default module cache is read-only; worktree teardown must be able to remove it.
 export GOFLAGS="${GOFLAGS:+$GOFLAGS }-modcacherw -p=4"
@@ -155,10 +158,29 @@ PY
     trap 'echo "ci-local phase browser: $((SECONDS-start))s"' EXIT
     # Both suites run under one hold of the host-wide whole-suite lock. Its
     # waiting message goes to the gate's stderr (fd 9), not the buffered log.
+    # The ordinary and lab suites run side by side: each is a few minutes of
+    # mostly Chromium CPU, and one after the other left cores idle. The lab
+    # suite listens 100 ports up, since ordinary specs start lab-mode hosts
+    # too, and writes test-results-lab. The host binary is built once here,
+    # not under the other suite's running hosts. Traces are off: recording
+    # every case cost about a quarter of the suite's CPU; rerun a failed spec
+    # with --trace on (TESTING.md).
+    go build -o .cache/browser-host ./test/browser-host
     python3 scripts/browser-suite-lock.py --label "$repo (ci-local)" --status-fd 9 -- bash -c '
+      export OH_WEB_PREBUILT=1 OH_BROWSER_HOST_PREBUILT=1
+      suite(){
+        local name=$1 start=$SECONDS rc=0; shift
+        (cd web && "$@") >"$tmp/browser-$name.log" 2>&1 || rc=$?
+        echo "ci-local phase browser-$name: $((SECONDS-start))s (exit $rc)" >>"$tmp/browser-$name.log"
+        return "$rc"
+      }
+      suite ordinary npx playwright test --trace off & ordinary=$!
+      OH_PORT_BASE=$((${OH_PORT_BASE:-4174} + 100)) OH_BROWSER_WORKERS=$OH_LAB_WORKERS \
+        suite lab npx playwright test --config playwright.lab.config.ts --trace off & lab=$!
       ordinary_rc=0; lab_rc=0
-      (cd web && OH_WEB_PREBUILT=1 npx playwright test) || ordinary_rc=$?
-      (cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts) || lab_rc=$?
+      wait "$ordinary" || ordinary_rc=$?
+      wait "$lab" || lab_rc=$?
+      cat "$tmp/browser-ordinary.log" "$tmp/browser-lab.log"
       echo "ci-local browser exits: ordinary=$ordinary_rc lab=$lab_rc"
       ((ordinary_rc == 0 && lab_rc == 0))'
   ) 9>&2 >"$tmp/browser.log" 2>&1 & browser_pid=$!
