@@ -592,11 +592,13 @@ test("@speech the dictation warns a minute before the ten-minute ceiling and end
   await expect(pill(page)).toHaveAttribute("data-phase", "live");
   await say(page, [{ text: "Pitkä sanelu", is_final: true }]);
   await expect(page.getByTestId("dictation-final")).toHaveText("Pitkä sanelu");
-  await page.clock.runFor("08:50");
+  // The 250 ms tick reads the clock, so jumping reaches the same states as
+  // replaying the ten minutes tick by tick (which took 50 s).
+  await page.clock.fastForward("08:50");
   await expect(page.getByTestId("dictation-ceiling")).toHaveCount(0);
-  await page.clock.runFor("00:20");
+  await page.clock.fastForward("00:20");
   await expect(page.getByTestId("dictation-ceiling")).toBeVisible();
-  await page.clock.runFor("01:00");
+  await page.clock.fastForward("01:00");
   await expect(notice(page)).toHaveAttribute("data-notice", "ceiling");
   await expect(page.getByTestId("message-input")).toHaveValue("Pitkä sanelu");
   await expect.poll(async () => (await soniox(page)).ended).toBe(1);
