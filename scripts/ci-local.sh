@@ -49,6 +49,10 @@ cleanup(){
     wait "$go_pid" || true
     cat "$tmp/go-and-contracts.log"
   fi
+  if [[ -n ${packaging_pid-} ]]; then
+    wait "$packaging_pid" || true
+    cat "$tmp/packaging.log"
+  fi
   chmod -R u+w "$tmp" 2>/dev/null || true
   rm -rf "$tmp"
 }
@@ -89,6 +93,12 @@ npm ci --prefix internal/daemon/pi-device-test --ignore-scripts --prefer-offline
 node --test internal/daemon/pi-device-test/*.test.mjs
 npm exec --prefix web playwright install chromium
 if ! $reuse_phases; then
+  # The rewriting steps run before anything reads the tree beside them: the
+  # web checks, the build and packaging read these sources, and contractgen
+  # truncates its outputs on every run.
+  go fmt ./...
+  go generate ./internal/contracts
+  ./scripts/check-generated.sh
   (
     start=$SECONDS
     trap 'echo "ci-local phase go-and-contracts: $((SECONDS-start))s"' EXIT
@@ -96,12 +106,9 @@ if ! $reuse_phases; then
     npm run build-storybook --prefix web
     echo "ci-local phase storybook: $((SECONDS-step))s"
     step=$SECONDS
-    go fmt ./...
     go vet ./...
     go test -race ./...
     echo "ci-local phase go-checks: $((SECONDS-step))s"
-    go generate ./internal/contracts
-    ./scripts/check-generated.sh
     "$PYTHON" scripts/test-ui-reference.py
     "$PYTHON" scripts/validate-contracts.py
     "$PYTHON" scripts/validate-project-view.py
@@ -127,9 +134,36 @@ npm run build --prefix web
 if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon' web/dist/assets;then
   echo 'error: test fixture content leaked into production bundle' >&2;exit 1
 fi
+# Packaging reads only the built web assets and the committed Go sources, and
+# its checks are about a minute and a half of one or two cores: it runs beside
+# the browser and Go phase, which leaves a part of the machine idle.
+(
+  set -e
+  step=$SECONDS
+  ./scripts/native-fixture.sh create --output "$tmp/native-fixture"
+  test "$(wc -l < "$tmp/native-fixture/home/.pi/agent/sessions/fixture.jsonl")" -eq 2500
+  echo "ci-local phase native-fixture: $((SECONDS-step))s"; step=$SECONDS
+  rm -rf dist;mkdir -p dist/one dist/two
+  ./scripts/package-release.sh --version 0.0.0-test --target linux-amd64 --web-dir web/dist --output dist/one
+  ./scripts/package-release.sh --version 0.0.0-test --target linux-amd64 --web-dir web/dist --output dist/two
+  cmp dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz dist/two/open-habitat-0.0.0-test-linux-amd64.tar.gz
+  ./scripts/verify-release.sh --archive dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz --json
+  bash scripts/test-package-socket.sh dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz
+  mkdir -p "$tmp/relocated";cp dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz* "$tmp/relocated/"
+  ./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json
+  printf 'tampered' >> "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz"
+  if ./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json >/dev/null 2>&1;then echo 'error: tampered relocated archive verified' >&2;exit 1;fi
+  # The arm64 package is cross-built from the same tree and must be as reproducible.
+  mkdir -p dist/arm64-one dist/arm64-two
+  ./scripts/package-release.sh --version 0.0.0-test --target linux-arm64 --web-dir web/dist --output dist/arm64-one
+  ./scripts/package-release.sh --version 0.0.0-test --target linux-arm64 --web-dir web/dist --output dist/arm64-two
+  cmp dist/arm64-one/open-habitat-0.0.0-test-linux-arm64.tar.gz dist/arm64-two/open-habitat-0.0.0-test-linux-arm64.tar.gz
+  bash scripts/test-package-socket.sh dist/arm64-one/open-habitat-0.0.0-test-linux-arm64.tar.gz
+  echo "ci-local phase packaging: $((SECONDS-step))s"
+) >"$tmp/packaging.log" 2>&1 & packaging_pid=$!
 # Browser and Go/contracts read the same built assets but write separate outputs.
 # Keep separate logs so failures in either child are reported even when both fail.
-phase browser-and-go-contracts
+phase browser-go-contracts-and-packaging
 if ! $reuse_phases;then
   # Same-UID browser hosts, editors and agents share the kernel inotify budget.
   # This snapshot is diagnostic only: /proc can hide FDs, and dup/fork can make
@@ -202,26 +236,11 @@ PY
 else
   echo 'ci-local phase browser and go-and-contracts: reused from passed receipt for identical committed tree' >&2
 fi
-phase native-fixture
-./scripts/native-fixture.sh create --output "$tmp/native-fixture"
-test "$(wc -l < "$tmp/native-fixture/home/.pi/agent/sessions/fixture.jsonl")" -eq 2500
-phase packaging
-rm -rf dist;mkdir -p dist/one dist/two
-./scripts/package-release.sh --version 0.0.0-test --target linux-amd64 --web-dir web/dist --output dist/one
-./scripts/package-release.sh --version 0.0.0-test --target linux-amd64 --web-dir web/dist --output dist/two
-cmp dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz dist/two/open-habitat-0.0.0-test-linux-amd64.tar.gz
-./scripts/verify-release.sh --archive dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz --json
-bash scripts/test-package-socket.sh dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz
-mkdir -p "$tmp/relocated";cp dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz* "$tmp/relocated/"
-./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json
-printf 'tampered' >> "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz"
-if ./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json >/dev/null 2>&1;then echo 'error: tampered relocated archive verified' >&2;exit 1;fi
-# The arm64 package is cross-built from the same tree and must be as reproducible.
-mkdir -p dist/arm64-one dist/arm64-two
-./scripts/package-release.sh --version 0.0.0-test --target linux-arm64 --web-dir web/dist --output dist/arm64-one
-./scripts/package-release.sh --version 0.0.0-test --target linux-arm64 --web-dir web/dist --output dist/arm64-two
-cmp dist/arm64-one/open-habitat-0.0.0-test-linux-arm64.tar.gz dist/arm64-two/open-habitat-0.0.0-test-linux-arm64.tar.gz
-bash scripts/test-package-socket.sh dist/arm64-one/open-habitat-0.0.0-test-linux-arm64.tar.gz
+packaging_rc=0
+wait "$packaging_pid" || packaging_rc=$?
+unset packaging_pid
+cat "$tmp/packaging.log"
+if ((packaging_rc));then echo "error: packaging exit=$packaging_rc" >&2;exit 1;fi
 phase final-checks
 issuectl doctor --json
 git diff --check
