@@ -1,5 +1,11 @@
 import { type HistoryPage, readHistory } from "./history";
 
+/** Messages per page: the person's prompts and the agent's visible replies.
+ * Tool steps between them come along without counting, so even a tool-heavy
+ * conversation opens with a long stretch of readable history. The daemon
+ * still bounds a page by entries and bytes. */
+export const historyPageMessages = 100;
+
 /** Network-only pager. The consumer owns the contiguous window and scroll position. */
 export class ConversationPager {
   private readonly pending = new Set<AbortController>();
@@ -15,7 +21,9 @@ export class ConversationPager {
       ? AbortSignal.any([signal, controller.signal])
       : controller.signal;
     try {
-      const query = new URLSearchParams({ limit: "25" });
+      const query = new URLSearchParams({
+        messages: String(historyPageMessages),
+      });
       if (before !== undefined) query.set("before", before);
       const response = await fetch(
         `/api/v1/agents/${encodeURIComponent(id).replace("%3A", ":")}/history?${query}`,

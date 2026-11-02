@@ -57,7 +57,7 @@ test("quota warning, full storage and recovery keep the conversation mounted wit
     .locator("main")
     .getByTestId("home-conversation-pi:11111111-1111-4111-8111-111111111111")
     .click();
-  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await expect(page.locator(".ah-feed li")).toHaveCount(101);
   const conversationURL = page.url();
   let historyUnavailable = true;
   await page.route("**/api/v1/agents/*/history?*", (route) =>
@@ -69,7 +69,7 @@ test("quota warning, full storage and recovery keep the conversation mounted wit
   // Full is said on the bell itself, without opening anything.
   await expect(bell(page)).toHaveAttribute("data-tone", "danger");
   await expect(page.getByTestId("history-stale")).toHaveCount(0);
-  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await expect(page.locator(".ah-feed li")).toHaveCount(101);
   await storage(page).getByTestId("quota-storage-open").click();
   await expect(page).toHaveURL(/settings\/storage/);
   await expect(
@@ -100,6 +100,6 @@ test("quota warning, full storage and recovery keep the conversation mounted wit
     .toBe(true);
   await page.keyboard.press("Escape");
   await expect(bell(page)).toHaveCount(0);
-  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await expect(page.locator(".ah-feed li")).toHaveCount(101);
   expect(writes).toBe(0);
 });

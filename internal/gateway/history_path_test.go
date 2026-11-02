@@ -27,6 +27,9 @@ func TestHistoryGatewayBackwardQuery(t *testing.T) {
 		{"limit=25", true}, {"limit=25&before=native0226", true},
 		{"limit=25&after=", true}, {"before=a&after=b", false},
 		{"before=a&before=b", false}, {"before=a&limit=25&extra=x", false},
+		{"messages=100", true}, {"messages=100&before=native0226", true},
+		{"messages=100&before=a&limit=1000", true}, {"messages=100&after=", false},
+		{"messages=1&messages=2", false}, {"messages=100&before=a&limit=1&extra=x", false},
 	} {
 		q, err := url.ParseQuery(tc.query)
 		if err != nil {

@@ -54,7 +54,6 @@ import {
   type BlockChunk,
   type HistoryBlock,
   type HistoryEntry,
-  type HistoryPage,
   readHistory,
 } from "./history";
 import { startProblemReason } from "./mutations";
@@ -1840,22 +1839,4 @@ function HistoryViewContent({
       {shell.panel}
     </ConversationFrame>
   );
-}
-export async function readHistoryFetch(
-  agentId: string,
-  after?: string,
-  signal?: AbortSignal,
-): Promise<HistoryPage> {
-  const query = new URLSearchParams({ limit: "25" });
-  query.set("after", after ?? "");
-  const response = await fetch(`/api/v1/agents/${agentId}/history?${query}`, {
-    credentials: "same-origin",
-    cache: "no-store",
-    signal,
-  });
-  if (response.status === 404) throw new Error("history_missing");
-  const result = await readHistory(response);
-  if (!("entries" in result) || result.agent_id !== agentId)
-    throw new Error("invalid page");
-  return result;
 }

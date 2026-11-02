@@ -515,7 +515,9 @@ export class ConversationStore {
       if (record.loading === read) this.finishRead(id, record);
     }
   }
-  async reconnect(id: string, maxPages = 8): Promise<void> {
+  // Two pages reach back 200 messages of missed activity, a few MiB at most;
+  // a gap longer than that reloads the tail instead.
+  async reconnect(id: string, maxPages = 2): Promise<void> {
     const record = this.windows.get(id);
     if (!record || record.loading) return;
     record.loading = ++this.readSeq;

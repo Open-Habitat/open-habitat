@@ -44,6 +44,11 @@ describe("conversation pager", () => {
       ["a", "b", "c"],
     ]);
     expect(fetch.mock.calls[1][0]).toContain("before=c");
+    // Pages count messages, not tool entries (Jari 2.11.2026).
+    for (const [url] of fetch.mock.calls)
+      expect(new URL(url, "https://host").searchParams.get("messages")).toBe(
+        "100",
+      );
   });
   it("bounds recovery and reloads tail when the boundary disappears", async () => {
     const fetch = vi

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -22,6 +23,26 @@ func readNativeWindow(path string, uid int, beforeKey string, limit int) nativeS
 // Content selection follows the same active branch, hash and file stability
 // checks as paging; it retains only the selected native entry for block reads.
 func readNativeWindowFor(path string, uid int, beforeKey string, limit int, contentKey string) nativeSession {
+	return readNativeWindowBounded(path, uid, beforeKey, limit, 0, contentKey)
+}
+
+// conversational is what a person counts as a message when scrolling back: their
+// own prompts and the agent's visible replies. Tool calls, results, thinking-only
+// steps and markers ride along without counting, so a page bounded by messages
+// covers the same stretch of conversation however tool-heavy it is.
+func conversational(e historyEntry) bool {
+	if e.Kind == "user" {
+		return true
+	}
+	// full is the reply's whole text; a block preview can be empty when long
+	// thinking used up the preview budget.
+	return e.Kind == "assistant" && strings.TrimSpace(e.full) != ""
+}
+
+// readNativeWindowBounded stops a page at whichever comes first: limit entries
+// or, when messages > 0, the messages-th conversational entry. The before
+// boundary is a witness and counts toward neither bound.
+func readNativeWindowBounded(path string, uid int, beforeKey string, limit, messages int, contentKey string) nativeSession {
 	var result nativeSession
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > maxHistoryFile {
@@ -64,6 +85,7 @@ func readNativeWindowFor(path string, uid int, beforeKey string, limit int, cont
 	var leaf bool
 	var broken bool
 	var stopped bool
+	counted := 0
 	seen := map[string]bool{}
 	// ReadAt preserves native order independently of the forward hash pass.
 	size := info.Size()
@@ -142,17 +164,23 @@ func readNativeWindowFor(path string, uid int, beforeKey string, limit int, cont
 		entry := nativeBlocks(full)
 		if contentKey != "" {
 			entry.raw = append([]byte(nil), line...)
-		}
-		if entry.Kind != "" {
-			result.entries = append(result.entries, entry)
-		}
-		if contentKey != "" {
+			if entry.Kind != "" {
+				result.entries = append(result.entries, entry)
+			}
 			stopped = true
 			return false
 		}
-		if len(result.entries) > limit+boolInt(beforeKey != "") {
+		if entry.Kind == "" {
+			return true
+		}
+		// A further visible entry proves older history exists; it is not kept.
+		if len(result.entries) >= limit+boolInt(beforeKey != "") || messages > 0 && counted >= messages {
 			stopped = true
 			return false
+		}
+		result.entries = append(result.entries, entry)
+		if e.ID != beforeKey && conversational(entry) {
+			counted++
 		}
 		return true
 	})
@@ -166,9 +194,6 @@ func readNativeWindowFor(path string, uid int, beforeKey string, limit int, cont
 		return result
 	}
 	result.olderComplete = !stopped
-	if stopped && contentKey == "" {
-		result.entries = result.entries[:limit+boolInt(beforeKey != "")]
-	}
 	for i, j := 0, len(result.entries)-1; i < j; i, j = i+1, j-1 {
 		result.entries[i], result.entries[j] = result.entries[j], result.entries[i]
 	}
@@ -240,6 +265,10 @@ func reverseLines(f *os.File, size int64, visit func([]byte) bool) error {
 // policy as native continuation avoids treating a transient append as loss.
 func readNativeWindowSettled(path string, uid int, beforeKey string, limit int, contentKey string) nativeSession {
 	return settleNativeWindow(func() nativeSession { return readNativeWindowFor(path, uid, beforeKey, limit, contentKey) })
+}
+
+func readNativePageSettled(path string, uid int, beforeKey string, limit, messages int) nativeSession {
+	return settleNativeWindow(func() nativeSession { return readNativeWindowBounded(path, uid, beforeKey, limit, messages, "") })
 }
 
 func settleNativeWindow(read func() nativeSession) nativeSession {

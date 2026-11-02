@@ -3,12 +3,13 @@ created: 2026-11-02
 updated: 2026-11-02
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: high
 lane: history-first-page
 lane_seq: 1
 collision: [web/src/app/HistoryView.tsx, internal/daemon/history_linux.go]
 preparation: ready
+closed: 2026-11-02
 ---
 
 # Opening a conversation shows only a couple of messages of history

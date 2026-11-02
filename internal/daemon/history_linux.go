@@ -461,7 +461,16 @@ func HistoryHandlerWithNativeRoot(cfg transport.Config, trusted func(*http.Reque
 	return historyHandlerWithReader(cfg, trusted, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) })
 }
 
-const historyPageBudget = 256 * 1024
+// A browser page is bounded three ways. The browser asks for a number of
+// conversational messages (historyPageMessages caps the ask); the entry and byte
+// bounds stop pathological pages. Measured on long tool-heavy Pi sessions
+// (2026-11): 100 messages were 590–650 entries and 0.87–1.02 MB on the wire, so
+// the message ask is the bound that normally applies and the others leave room
+// for twice heavier tool output. The browser rejects a history body over
+// 2 MiB, so the entry budget leaves room for the envelope and separators.
+const historyPageMessages = 200
+const historyPageEntries = 1000
+const historyPageBudget = 2<<20 - 128<<10
 const historyBlockBudget = 1 << 20
 
 func historyHandlerWithReader(cfg transport.Config, trusted func(*http.Request) bool, sessionsReader func(transport.Config) ([]nativeSession, error)) http.Handler {
@@ -503,19 +512,30 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 			}
 			q := r.URL.Query()
 			for k := range q {
-				if k != "after" && k != "before" && k != "limit" {
+				if k != "after" && k != "before" && k != "limit" && k != "messages" {
 					snapshotError(w, 400, "invalid_request")
 					return
 				}
 			}
-			limit := 200
+			limit := historyPageEntries
 			if q.Has("limit") {
 				v, e := strconv.Atoi(q.Get("limit"))
-				if e != nil || v < 1 || v > 200 || len(q["limit"]) != 1 {
+				if e != nil || v < 1 || v > historyPageEntries || len(q["limit"]) != 1 {
 					snapshotError(w, 400, "invalid_request")
 					return
 				}
 				limit = v
+			}
+			// Forward pages continue a held window entry by entry; only pages
+			// read back from the tail count messages.
+			messages := 0
+			if q.Has("messages") {
+				v, e := strconv.Atoi(q.Get("messages"))
+				if e != nil || v < 1 || v > historyPageMessages || len(q["messages"]) != 1 || q.Has("after") {
+					snapshotError(w, 400, "invalid_request")
+					return
+				}
+				messages = v
 			}
 			var s *nativeSession
 			for i := range sessions {
@@ -548,7 +568,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 					snapshotError(w, 400, "invalid_request")
 					return
 				}
-				loaded := readNativeWindowSettled(s.path, cfg.UID, q.Get("before"), limit, "")
+				loaded := readNativePageSettled(s.path, cfg.UID, q.Get("before"), limit, messages)
 				if loaded.id != s.id || loaded.cwd != s.cwd || loaded.state != "readable" {
 					snapshotError(w, 503, "native_source_unavailable")
 					return

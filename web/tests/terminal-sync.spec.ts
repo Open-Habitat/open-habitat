@@ -28,7 +28,7 @@ test("@native-history terminal append reaches two browser contexts once without 
         .and(view.locator('a[href*="code=42"]'))
         .click();
       await view.goto(`/agents/${agent}`);
-      await expect(view.locator(".ah-feed li")).toHaveCount(25);
+      await expect(view.locator(".ah-feed li")).toHaveCount(101);
     }
     expect(
       (await page.request.get("/fixture/history?mode=append")).status(),
@@ -46,7 +46,7 @@ test("@native-history terminal append reaches two browser contexts once without 
             ),
         )
         .toBe(1);
-      await expect(view.locator(".ah-feed li")).toHaveCount(26);
+      await expect(view.locator(".ah-feed li")).toHaveCount(102);
     }
   } finally {
     await secondContext.close();

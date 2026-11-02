@@ -1125,6 +1125,13 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
       timeout: 30000,
     });
   };
+  // Eight rounds fit one 100-message page; ask the real daemon for small pages
+  // so the older-history boundary is still crossed several times.
+  await page.route("**/api/v1/agents/*/history?*", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.has("messages")) url.searchParams.set("messages", "4");
+    return route.continue({ url: url.toString() });
+  });
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();

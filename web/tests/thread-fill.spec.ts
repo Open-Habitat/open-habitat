@@ -130,7 +130,7 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
       /Synteettinen viesti 0/,
     )
   ).click();
-  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await expect(page.locator(".ah-feed li")).toHaveCount(101);
   // Use reader input: assigning scrollTop alone does not disengage the
   // follow-latest controller, which can move it back on a later history paint.
   await stream.hover();

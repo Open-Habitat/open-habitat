@@ -1071,12 +1071,15 @@ esac
 						http.Error(w, "fixture failed", 500)
 						return
 					}
-				} else if mode == "ready" || mode == "short" || mode == "cut-off" {
-					count := 251
-					if mode == "short" || mode == "cut-off" {
-						count = 51 // Two page transitions still reach the untrusted oldest rows.
+				} else if mode == "tool-heavy" {
+					if e := seedToolHeavyHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir"), 150); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
 					}
-					if e := seedBrowserHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir"), count); e != nil {
+				} else if mode == "ready" || mode == "short" || mode == "cut-off" {
+					// A 100-message tail page and two older pages reach the
+					// untrusted oldest rows.
+					if e := seedBrowserHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir"), 251); e != nil {
 						http.Error(w, "fixture failed", 500)
 						return
 					}

@@ -127,7 +127,7 @@ for (const [width, theme] of [
     if (!phone) {
       // A long conversation's tail no longer holds the first message: the
       // guide comes from the start of the native history instead.
-      await page.route(/\/history\?limit=25$/, async (route) => {
+      await page.route(/\/history\?messages=100$/, async (route) => {
         const response = await route.fetch();
         const tail = await response.json();
         const entries = tail.entries.filter(
@@ -151,7 +151,7 @@ for (const [width, theme] of [
       await head;
       await expect(recorded).toHaveCount(0);
       await expect(toggle).toBeVisible();
-      await page.unroute(/\/history\?limit=25$/);
+      await page.unroute(/\/history\?messages=100$/);
     }
     expect(
       await page.evaluate(

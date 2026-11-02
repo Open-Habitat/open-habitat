@@ -45,7 +45,8 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
   await expect(tool("write").locator(".ah-file-stat")).toHaveText(/\b1\b/);
   await expect(tool("edit")).toContainText("+1 −1");
   const savedHistory = page.waitForResponse(
-    (response) => response.url().includes("/history?limit=25") && response.ok(),
+    (response) =>
+      response.url().includes("/history?messages=100") && response.ok(),
   );
   await page.reload();
   await savedHistory;

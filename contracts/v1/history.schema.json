@@ -37,7 +37,7 @@
         },
         "entries": {
           "type": "array",
-          "maxItems": 201,
+          "maxItems": 1001,
           "items": {
             "$ref": "#/$defs/entry"
           }

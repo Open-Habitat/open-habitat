@@ -45,15 +45,15 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
     )
   ).click();
   await expect(page).toHaveURL(`/agents/${agent}`);
-  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await expect(page.locator(".ah-feed li")).toHaveCount(101);
   await expectNativeContent(
     page.locator(".ah-feed"),
-    "Synteettinen viesti 26",
+    "Synteettinen viesti 151",
     { exact: true },
   );
   await expect(page.locator(".ah-read-only-footer")).toBeVisible();
   for (let i = 0; i < 2; i++) await page.getByTestId("older-history").click();
-  await expect(page.locator(".ah-feed li")).toHaveCount(51);
+  await expect(page.locator(".ah-feed li")).toHaveCount(251);
   const older = page.getByTestId("older-history");
   await expect(older).toHaveCount(0);
   const refresh = page.waitForResponse((response) =>
@@ -61,20 +61,20 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
   );
   await page.getByTestId("snapshot-refresh").click();
   await refresh;
-  await expect(page.locator(".ah-feed li")).toHaveCount(51);
+  await expect(page.locator(".ah-feed li")).toHaveCount(251);
   await expect(older).toHaveCount(0);
   await expect(page.getByTestId("unknown-event")).toBeVisible();
   await page.getByTestId("history-block-load").click();
-  await expect(page.locator(".ah-feed li").nth(48)).not.toContainText(
+  await expect(page.locator(".ah-feed li").nth(248)).not.toContainText(
     "<script>alert('bad')</script>",
   );
   expect(await page.locator(".ah-feed script").count()).toBe(0);
   expect(writes).toHaveLength(0);
   await page.reload();
-  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await expect(page.locator(".ah-feed li")).toHaveCount(101);
   await expectNativeContent(
     page.locator(".ah-feed"),
-    "Synteettinen viesti 26",
+    "Synteettinen viesti 151",
     { exact: true },
   );
 });
@@ -245,7 +245,7 @@ test("@native-history mapped identity isolates native content", async ({
   await page.getByRole("link").and(page.locator('a[href*="code=43"]')).click();
   await page.goto(`/agents/${agent}`);
   await expect(page.locator(".ah-feed li").first()).toContainText(
-    "Bobin synteettinen viesti 226",
+    "Bobin synteettinen viesti 150",
   );
   const spoofed = await page.request.get(
     `/api/v1/agents/${agent}/history?limit=1&after=`,
@@ -272,7 +272,7 @@ test("@native-history missing, corrupt and read-only states", async ({
   await page.goto(`/agents/${agent}`);
   await expectNativeContent(
     page.locator(".ah-feed"),
-    "Synteettinen viesti 226",
+    "Synteettinen viesti 151",
     { exact: true },
   );
   await fixture(page, "corrupt");
@@ -314,7 +314,7 @@ test("@native-history older page keeps the visible native row anchored", async (
   await fixture(page, "ready");
   await login(page);
   await page.goto(`/agents/${agent}`);
-  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await expect(page.locator(".ah-feed li")).toHaveCount(101);
   await page.locator(".ah-conversation-stream").evaluate((el) => {
     el.scrollTop = 0;
   });
@@ -335,10 +335,10 @@ test("@native-history older page keeps the visible native row anchored", async (
   await page
     .getByTestId("older-history")
     .evaluate((button: HTMLElement) => button.click());
-  await expect(page.locator(".ah-feed li")).toHaveCount(50);
+  await expect(page.locator(".ah-feed li")).toHaveCount(201);
   const after = await page
     .locator(".ah-feed li")
-    .nth(25)
+    .nth(100)
     .evaluate((el) => el.getBoundingClientRect().top);
   expect(Math.abs(after - before)).toBeLessThan(3);
 });
@@ -348,7 +348,7 @@ test("@native-history warm return paints from cache while revalidating history",
   await fixture(page, "ready");
   await login(page);
   await page.goto(`/agents/${agent}`);
-  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await expect(page.locator(".ah-feed li")).toHaveCount(101);
   await page.locator("#main").getByTestId("new-conversation-link").click();
   const requests: string[] = [];
   page.on("request", (request) => {
@@ -362,7 +362,7 @@ test("@native-history warm return paints from cache while revalidating history",
       /Synteettinen viesti 0/,
     )
   ).click();
-  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await expect(page.locator(".ah-feed li")).toHaveCount(101);
   const paint = await page.evaluate(
     () =>
       new Promise<number>((resolve) =>
@@ -437,7 +437,7 @@ test("@native-history cut-off tail preserves readable pages and offers a new con
     )
   ).click();
   await expect(page.getByTestId("history-cut-off")).toBeVisible();
-  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await expect(page.locator(".ah-feed li")).toHaveCount(101);
   await expect(page.getByTestId("new-conversation-link")).toBeVisible();
   await page.getByTestId("older-history").click();
   await expect(page.getByTestId("history-cut-off")).toBeVisible();

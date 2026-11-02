@@ -38,11 +38,11 @@ func historyGatewayPath(path string, q url.Values) bool {
 		return len(q) == 0
 	}
 	if m := historyPath.FindStringSubmatch(path); m != nil {
-		if len(q) > 2 || (q.Has("after") && q.Has("before")) {
+		if len(q) > 3 || (q.Has("after") && (q.Has("before") || q.Has("messages"))) {
 			return false
 		}
 		for k, v := range q {
-			if (k != "after" && k != "before" && k != "limit") || len(v) != 1 {
+			if (k != "after" && k != "before" && k != "limit" && k != "messages") || len(v) != 1 {
 				return false
 			}
 		}
