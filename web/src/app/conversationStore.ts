@@ -12,6 +12,12 @@ import {
 import { ConversationPager } from "./conversationPager";
 import { status as readStatus, type Status } from "./conversations";
 import type { HistoryEntry, HistoryPage } from "./history";
+import {
+  type RepliesSeen,
+  readRepliesSeen,
+  repliesSeenKey,
+  writeRepliesSeen,
+} from "./replySeen";
 import type { Agent, Snapshot } from "./snapshot";
 
 export type WindowView = Readonly<{
@@ -104,6 +110,7 @@ export class ConversationStore {
     if (id && document.visibilityState === "visible") this.markSeen(id);
   };
   markSeen = (id: string) => {
+    this.rememberReply(id);
     if (
       !this.metadata.attention.has(id) ||
       this.metadata.attention.get(id) === "seen"
@@ -120,19 +127,122 @@ export class ConversationStore {
   private markAttention(id: string, key: string) {
     if (this.attentionKeys.get(id) === key) return;
     this.attentionKeys.set(id, key);
+    const shown =
+      this.visibleId === id && document.visibilityState === "visible";
+    if (shown) this.rememberReply(id);
+    // Another tab of this browser may have shown the reply before this
+    // tab's own event or snapshot named it.
+    const seen =
+      shown ||
+      (key.startsWith("reply:") &&
+        this.repliesSeen()?.seen.get(id) === key.slice("reply:".length));
     this.metadata = {
       ...this.metadata,
       attention: new Map(this.metadata.attention).set(
         id,
-        this.visibleId === id && document.visibilityState === "visible"
-          ? "seen"
-          : "new",
+        seen ? "seen" : "new",
       ),
     };
     this.metaListeners.forEach((listener) => {
       listener();
     });
   }
+  // A finished turn is the person's until they have seen it in this browser,
+  // whether or not this tab was connected when it settled: the snapshot's
+  // last reply is compared with the replies seen here (replySeen.ts).
+  private replies?: RepliesSeen;
+  /** Each conversation's newest reply this tab knows of, and the event that
+   * named it, so a snapshot taken before that event cannot name an older one. */
+  private latestReplies = new Map<
+    string,
+    { id: string; instance?: string; sequence?: number }
+  >();
+  private repliesSeen(snapshot?: Snapshot) {
+    if (this.replies) return this.replies;
+    const stored = readRepliesSeen(this.identity);
+    if (stored) {
+      this.replies = stored;
+      return stored;
+    }
+    if (!snapshot) return undefined;
+    // This browser's first look: what has already ended is not news here.
+    const captured = Date.parse(snapshot.captured_at ?? "");
+    this.replies = {
+      horizon: Number.isFinite(captured)
+        ? captured
+        : Math.max(
+            0,
+            ...snapshot.agents.map((a) =>
+              a.last_reply ? Date.parse(a.last_reply.at) || 0 : 0,
+            ),
+          ),
+      seen: new Map(),
+    };
+    writeRepliesSeen(this.identity, this.replies);
+    return this.replies;
+  }
+  /** The conversation is shown: its newest reply is seen in this browser. */
+  private rememberReply(id: string) {
+    const reply =
+      this.latestReplies.get(id)?.id ??
+      this.metadata.agents.get(id)?.last_reply?.id;
+    if (!reply) return;
+    // Another tab may have written since this one read.
+    const current = readRepliesSeen(this.identity) ?? this.repliesSeen();
+    if (!current || current.seen.get(id) === reply) return;
+    current.seen.delete(id);
+    current.seen.set(id, reply);
+    this.replies = current;
+    writeRepliesSeen(this.identity, current);
+  }
+  private noticeReplies(snapshot: Snapshot) {
+    const replies = this.repliesSeen(snapshot);
+    if (!replies) return;
+    const [, instance, sequence] = snapshot.event_cursor.split(":");
+    for (const agent of snapshot.agents) {
+      const reply = agent.last_reply;
+      if (!reply) continue;
+      const latest = this.latestReplies.get(agent.agent_id);
+      if (
+        latest?.sequence !== undefined &&
+        latest.instance === instance &&
+        latest.sequence > Number(sequence)
+      )
+        continue;
+      this.latestReplies.set(agent.agent_id, { id: reply.id });
+      if (
+        replies.seen.get(agent.agent_id) === reply.id ||
+        !(Date.parse(reply.at) > replies.horizon)
+      )
+        continue;
+      this.markAttention(agent.agent_id, `reply:${reply.id}`);
+    }
+  }
+  // Seen in another tab of this browser, a reply stops asking here too.
+  private onStorage = (event: StorageEvent) => {
+    if (this.disposed || event.key !== repliesSeenKey(this.identity)) return;
+    const replies = readRepliesSeen(this.identity);
+    if (!replies) return;
+    this.replies = replies;
+    const attention = new Map(this.metadata.attention);
+    for (const [id, state] of attention) {
+      const key = this.attentionKeys.get(id);
+      if (
+        state === "new" &&
+        key?.startsWith("reply:") &&
+        replies.seen.get(id) === key.slice("reply:".length)
+      )
+        attention.set(id, "seen");
+    }
+    if (
+      [...attention].every(([id, s]) => this.metadata.attention.get(id) === s)
+    )
+      return;
+    this.metadata = { ...this.metadata, attention };
+    this.metaListeners.forEach((listener) => {
+      listener();
+    });
+  };
   private listeners = new Map<string, Set<() => void>>();
   private clock = 0;
   private readSeq = 0;
@@ -150,6 +260,7 @@ export class ConversationStore {
   ) {
     this.identity = identity;
     this.pager = pager;
+    window.addEventListener("storage", this.onStorage);
   }
   // The empty view's read belongs to its retained window, not the route's
   // component lifetime: switching away must not abort it and force a reread.
@@ -332,6 +443,7 @@ export class ConversationStore {
       ...this.metadata,
       agents: new Map(snapshot.agents.map((agent) => [agent.agent_id, agent])),
     };
+    this.noticeReplies(snapshot);
     this.metaListeners.forEach((listener) => {
       listener();
     });
@@ -799,8 +911,24 @@ export class ConversationStore {
         event.resource.agent_id,
         `question:${event.payload.request_id}`,
       );
-    else if (event.resource.agent_id && event.kind === "turn.settled")
-      this.markAttention(event.resource.agent_id, event.event_id);
+    else if (event.resource.agent_id && event.kind === "turn.settled") {
+      // Keyed by the reply the snapshot will name, so a later snapshot does
+      // not raise a turn already seen here again.
+      const reply =
+        event.payload.state === "settled" &&
+        typeof event.payload.native_key === "string" &&
+        event.payload.native_key;
+      if (reply)
+        this.latestReplies.set(event.resource.agent_id, {
+          id: reply,
+          instance: event.server_instance_id,
+          sequence: event.sequence,
+        });
+      this.markAttention(
+        event.resource.agent_id,
+        reply ? `reply:${reply}` : event.event_id,
+      );
+    }
     if (event.kind === "snapshot.invalidated" && !event.resource.agent_id)
       for (const id of this.metadata.statuses.keys())
         if (id !== activeId) this.notifyStatus(id);
@@ -1076,6 +1204,9 @@ export class ConversationStore {
   }
   dispose() {
     this.disposed = true;
+    window.removeEventListener("storage", this.onStorage);
+    this.replies = undefined;
+    this.latestReplies.clear();
     ++this.epoch;
     this.pager.cancelAll();
     for (const record of this.windows.values()) record.startPage?.abort.abort();

@@ -680,6 +680,25 @@
           "description": "The conversation rests (rest present, not awake) and the turn its Pi was working on never finished: the last message on its native branch is a prompt, a tool call or a tool result the model never answered, so Pi stopped mid-turn, for example when the daemon restarted for an upgrade. The rest report says the same. Absent otherwise, and for an archived conversation; the person's next message ends the rest and with it this fact.",
           "const": true
         },
+        "last_reply": {
+          "description": "The model's finished answer that ends the conversation's last turn: the last message on its native branch is an assistant reply that neither calls a tool, failed nor was stopped, so the turn waits for the person. id is the native entry ID, at its time. Read only while the conversation's Pi runs or rests unarchived; absent otherwise and while a turn is unfinished. The browser compares it with what the person has seen, so a turn whose live event it missed still asks for the person.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "at"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "at": {
+              "$ref": "common.schema.json#/$defs/timestamp"
+            }
+          }
+        },
         "failure": {
           "description": "The conversation's work ended in a failure nobody has acted on yet: turn_error when the last message on its branch is a reply that ended in an error, read only while its Pi runs; worker_failed when one of its own Taskfleet runs failed after the conversation last changed. turn_error wins when both hold. Absent otherwise; a Pi crash is rest.cause crash instead.",
           "enum": [

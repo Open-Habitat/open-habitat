@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import type { Browser } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
@@ -43,6 +44,12 @@ async function setup(page: Page, writer: Page, count = 2, enabled = true) {
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await writer.goto(`${hostOrigin}/workspaces`);
+  await writer.getByTestId("github-sign-in").click();
+  await writer
+    .getByRole("link")
+    .and(writer.locator('a[href*="code=42"]'))
+    .click();
   const hrefs: string[] = [];
   for (let i = 0; i < count; i++) {
     await writer.goto(`${hostOrigin}/workspaces`);
@@ -57,6 +64,15 @@ async function setup(page: Page, writer: Page, count = 2, enabled = true) {
   if (enabled) await switchOn(page);
   return { here, hrefs };
 }
+// The replies are written on another machine: a tab of this browser that
+// shows a reply as it ends has seen it for the whole browser.
+async function elsewhere(browser: Browser) {
+  const context = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    viewport: { width: 1280, height: 900 },
+  });
+  return context.newPage();
+}
 async function hold(page: Page) {
   await page.request.get("/fixture/scenario?value=pi-visual-hold");
 }
@@ -70,10 +86,10 @@ async function archiveOther(page: Page, href: string) {
 
 test("@next-waiting-row acceptance opens, live list empties and reopens, finish closes permanently", async ({
   page,
-  context,
+  browser,
 }) => {
   test.setTimeout(180000);
-  const writer = await context.newPage();
+  const writer = await elsewhere(browser);
   const { hrefs } = await setup(page, writer, 2, false);
   await hold(page);
   await send(page, "feature off");
@@ -150,15 +166,15 @@ test("@next-waiting-row acceptance opens, live list empties and reopens, finish 
     .toBe(new URL(another).searchParams.get("conversation"));
   await expect(line(page)).toHaveCount(0);
   await expect(page.getByTestId("next-queue")).toHaveCount(0);
-  await writer.close();
+  await writer.context().close();
 });
 
 test("@next-waiting-row next and rail departure do not carry a window, nor does reload or an external send", async ({
   page,
-  context,
+  browser,
 }) => {
   test.setTimeout(180000);
-  const writer = await context.newPage();
+  const writer = await elsewhere(browser);
   const { here } = await setup(page, writer);
   await hold(page);
   await send(page, "own turn");
@@ -206,15 +222,15 @@ test("@next-waiting-row next and rail departure do not carry a window, nor does 
   await send(writer, "external turn");
   await expect(page.getByTestId("composer-stop")).toBeVisible();
   await expect(line(page)).toHaveCount(0);
-  await writer.close();
+  await writer.context().close();
 });
 
 test("@next-waiting-row question, failed send and archive close the window", async ({
   page,
-  context,
+  browser,
 }) => {
   test.setTimeout(180000);
-  const writer = await context.newPage();
+  const writer = await elsewhere(browser);
   await setup(page, writer);
   await hold(page);
   await send(page, "own turn");
@@ -259,15 +275,15 @@ test("@next-waiting-row question, failed send and archive close the window", asy
     .click();
   await expect(page.getByTestId("archive-notice")).toBeVisible();
   await expect(line(page)).toHaveCount(0);
-  await writer.close();
+  await writer.context().close();
 });
 
 test("@next-waiting-row off by default; a send with nobody waiting opens an empty window, reload forgets it", async ({
   page,
-  context,
+  browser,
 }) => {
   test.setTimeout(180000);
-  const writer = await context.newPage();
+  const writer = await elsewhere(browser);
   await setup(page, writer, 0, false);
   await hold(page);
   await send(page, "off by default");
@@ -299,5 +315,5 @@ test("@next-waiting-row off by default; a send with nobody waiting opens an empt
     page.getByTestId("rail-yours").getByTestId("agent-link").first(),
   ).toBeVisible({ timeout: 25000 });
   await expect(line(page)).toHaveCount(0);
-  await writer.close();
+  await writer.context().close();
 });

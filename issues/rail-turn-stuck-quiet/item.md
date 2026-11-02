@@ -3,12 +3,13 @@ created: 2026-11-02
 updated: 2026-11-02
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: rail-turn-stuck-quiet
 lane_seq: 1
 collision: [web/src/app/railNow.ts]
 preparation: ready
+closed: 2026-11-02
 ---
 
 # A conversation that was once quiet never returns to Sinun vuorosi

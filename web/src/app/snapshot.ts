@@ -163,6 +163,9 @@ export interface Agent {
   /** Resting, and its Pi stopped mid-turn (the native branch ends in work
    * the model never answered), for example in a daemon restart. */
   interrupted_turn?: true;
+  /** The model's finished answer that ends the last turn, by native entry
+   * ID; read while Pi runs or rests unarchived. */
+  last_reply?: { id: string; at: string };
   /** The work ended in a failure nobody has acted on: the last reply ended
    * in an error (read while Pi runs), or an own Taskfleet run failed after
    * the conversation last changed. */
@@ -192,6 +195,8 @@ export interface Snapshot {
   schema_version: 1;
   snapshot_id?: string;
   event_cursor: string;
+  /** Host time of the snapshot. */
+  captured_at?: string;
   user_observation_token?: string;
   server_instance_id: string;
   identity: { web_identity_id: string; display_name: string };

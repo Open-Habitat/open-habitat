@@ -59,6 +59,12 @@ type branchScan struct {
 	// turnError says the branch's last message is a reply that ended in an
 	// error: the provider failed the turn and Pi gave up on it.
 	turnError bool
+	// reply is the entry ID of the branch's last message when that message
+	// is the model's finished answer, so the turn ended and waits for the
+	// person; replyAt is its time, Unix ms. Empty after an error, an abort
+	// or unfinished work.
+	reply   string
+	replyAt int64
 }
 
 func scanBranchProcesses(b []byte) []branchProcess {
@@ -80,6 +86,7 @@ func scanBranch(b []byte) branchScan {
 		message      bool // a conversation message, which ends (or not) a turn
 		open         bool // that message leaves its turn unfinished
 		failed       bool // that message is a reply the provider failed
+		answer       bool // that message is the model's finished answer
 	}
 	facts := []fact{}
 	parents := map[string]string{}
@@ -127,7 +134,9 @@ func scanBranch(b []byte) branchScan {
 				f.message, f.open = true, e.Message.StopReason == "toolUse"
 				// A stop while a tool runs is saved as an error; it is the
 				// person's abort, not a failure.
-				f.failed = piStopReason(e.Message.StopReason, e.Message.ErrorMessage) == "error"
+				stop := piStopReason(e.Message.StopReason, e.Message.ErrorMessage)
+				f.failed = stop == "error"
+				f.answer = !f.open && stop != "error" && stop != "aborted"
 			}
 		}
 		switch {
@@ -209,6 +218,10 @@ func scanBranch(b []byte) branchScan {
 		scan.last = max(scan.last, f.at)
 		if f.message {
 			scan.turnCut, scan.turnError = f.open, f.failed
+			scan.reply, scan.replyAt = "", 0
+			if f.answer {
+				scan.reply, scan.replyAt = f.id, f.at
+			}
 		}
 		for _, key := range f.runs {
 			scan.runs[key] = true

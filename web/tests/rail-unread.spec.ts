@@ -6,8 +6,9 @@ test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
 test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it only when opened", async ({
   page,
-  context,
+  browser,
 }) => {
+  test.setTimeout(60000);
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
@@ -17,7 +18,16 @@ test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it
     .getByTestId("rail-yours")
     .getByRole("link")
     .and(page.getByTestId("agent-link"));
-  const writer = await context.newPage();
+  // The replies are written on another machine: a tab of this browser that
+  // shows a reply as it ends has seen it for the whole browser.
+  const elsewhere = await browser.newContext({ ignoreHTTPSErrors: true });
+  const writer = await elsewhere.newPage();
+  await writer.goto(`${hostOrigin}/workspaces`);
+  await writer.getByTestId("github-sign-in").click();
+  await writer
+    .getByRole("link")
+    .and(writer.locator('a[href*="code=42"]'))
+    .click();
   const urls: string[] = [];
   for (const message of ["first unseen reply", "second unseen reply"]) {
     await writer.goto(`${hostOrigin}/workspaces`);
@@ -41,7 +51,7 @@ test("@a11y unread replies wait in Sinun vuorosi, open by keyboard, and leave it
     await expect(writer.getByTestId("message-input")).toBeEnabled();
     await expect(yours).toHaveCount(urls.length, { timeout: 25000 });
   }
-  await writer.close();
+  await elsewhere.close();
   await page.bringToFront();
   await expect(yours.nth(0)).toHaveAttribute("href", urls[0]);
   await expect(yours.nth(1)).toHaveAttribute("href", urls[1]);

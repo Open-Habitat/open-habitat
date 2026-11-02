@@ -441,3 +441,47 @@ func (h *heldHarness) unarchive(c *ConversationController, id string) {
 		h.t.Fatalf("unarchive: %d %s", w.Code, w.Body.String())
 	}
 }
+
+// Every finished turn names its answer in the snapshot, live or resting, so a
+// browser that missed the turn's event still knows a new reply waits; work
+// the model never answered names none.
+func TestSnapshotNamesTheLastFinishedReply(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	id := h.create(c)
+	reply := func(c *ConversationController) (string, bool) {
+		value, ok := h.snapshotAgent(c, id)["last_reply"].(map[string]any)
+		if !ok {
+			return "", false
+		}
+		at, _ := value["at"].(string)
+		if _, err := time.Parse(time.RFC3339Nano, at); err != nil {
+			t.Fatalf("last_reply at %q", at)
+		}
+		reply, _ := value["id"].(string)
+		return reply, reply != ""
+	}
+	h.converse(c, id, "Eka", activityCommand(1))
+	h.quiescent(c, id)
+	first, ok := reply(c)
+	if !ok {
+		t.Fatal("finished turn: no last_reply")
+	}
+	h.converse(c, id, "Toka", activityCommand(2))
+	h.quiescent(c, id)
+	second, ok := reply(c)
+	if !ok || second == first {
+		t.Fatalf("second turn: last_reply %q after %q", second, first)
+	}
+	stop()
+	c2, stop2 := h.daemon()
+	defer stop2()
+	h.expectRest(c2, id, "restart", false)
+	if got, _ := reply(c2); got != second {
+		t.Fatalf("resting: last_reply %q, want %q", got, second)
+	}
+	h.cutTurn(c2, id)
+	if got, ok := reply(c2); ok {
+		t.Fatalf("cut turn: last_reply %q", got)
+	}
+}

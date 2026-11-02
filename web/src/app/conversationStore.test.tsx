@@ -1308,6 +1308,152 @@ describe("attention markers", () => {
   });
 });
 
+describe("finished turns the person has not seen", () => {
+  const agent = id(7);
+  const at = (minute: number) =>
+    `2026-11-02T09:${String(minute).padStart(2, "0")}:00.000Z`;
+  const observation = (
+    reply?: { id: string; minute: number },
+    sequence = 100,
+  ) =>
+    ({
+      identity: { web_identity_id: "replies" },
+      event_cursor: `ev1:11111111-1111-4111-8111-111111111111:${sequence}`,
+      captured_at: at(10),
+      agents: [
+        {
+          agent_id: agent,
+          history: "readable",
+          last_reply: reply && { id: reply.id, at: at(reply.minute) },
+        },
+      ],
+    }) as never;
+  const tab = () => new ConversationStore("replies", setup().store["pager"]);
+  const attention = (store: ConversationStore) =>
+    store.readMetadata().attention.get(agent);
+
+  it("asks again for every new reply however often the conversation was quiet, also after a reload", () => {
+    localStorage.clear();
+    let store = tab();
+    // What had ended before this browser first looked is not news.
+    store.applySnapshot(observation({ id: "r0", minute: 5 }));
+    expect(attention(store)).toBeUndefined();
+    for (const [n, reply] of ["r1", "r2"].entries()) {
+      // The tab missed the turn's event: only the snapshot tells it.
+      store.applySnapshot(observation({ id: reply, minute: 11 + n }));
+      expect(attention(store)).toBe("new");
+      store.setVisible(agent);
+      expect(attention(store)).toBe("seen");
+      store.setVisible(undefined);
+      store.applySnapshot(observation({ id: reply, minute: 11 + n }));
+      expect(attention(store)).toBe("seen");
+      // A reload in this browser remembers what was seen.
+      store.dispose();
+      store = tab();
+      store.applySnapshot(observation({ id: reply, minute: 11 + n }));
+      expect(attention(store)).toBeUndefined();
+    }
+    store.dispose();
+  });
+
+  it("keys a live turn by its reply, so the snapshot naming it later does not ask again", () => {
+    localStorage.clear();
+    const store = tab();
+    store.applySnapshot(observation());
+    store.routeEvent({
+      resource: { agent_id: agent },
+      kind: "turn.settled",
+      payload: { state: "settled", native_key: "r1" },
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:2",
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence: 2,
+      event_id: "evt-2",
+    } as never);
+    expect(attention(store)).toBe("new");
+    store.setVisible(agent);
+    store.setVisible(undefined);
+    store.applySnapshot(observation({ id: "r1", minute: 11 }));
+    expect(attention(store)).toBe("seen");
+    store.applySnapshot(observation({ id: "r2", minute: 12 }));
+    expect(attention(store)).toBe("new");
+    store.dispose();
+  });
+
+  const settled = (reply: string, sequence: number) =>
+    ({
+      resource: { agent_id: agent },
+      kind: "turn.settled",
+      payload: { state: "settled", native_key: reply },
+      cursor: `ev1:11111111-1111-4111-8111-111111111111:${sequence}`,
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence,
+      event_id: `evt-${sequence}`,
+    }) as never;
+  const told = () =>
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "oh.replies.seen.replies" }),
+    );
+
+  it("does not ask for a reply another tab showed before this tab heard of it, nor forget a newer one", () => {
+    localStorage.clear();
+    const shown = tab();
+    const other = tab();
+    shown.applySnapshot(observation());
+    other.applySnapshot(observation());
+    shown.setVisible(agent);
+    shown.routeEvent(settled("r1", 2));
+    told();
+    // This tab's own event arrives after the other tab's write.
+    other.routeEvent(settled("r1", 2));
+    expect(attention(other)).toBe("seen");
+    // The other tab, keyed by r1, learns of r2 only as seen; opening it
+    // there must not mark r1 as the newest seen.
+    shown.routeEvent(settled("r2", 3));
+    told();
+    other.applySnapshot(observation({ id: "r2", minute: 12 }));
+    other.setVisible(agent);
+    other.dispose();
+    const reloaded = tab();
+    reloaded.applySnapshot(observation({ id: "r2", minute: 12 }));
+    expect(attention(reloaded)).toBeUndefined();
+    shown.dispose();
+    reloaded.dispose();
+  });
+
+  it("does not let a snapshot taken before a seen turn name an older reply", () => {
+    localStorage.clear();
+    const store = tab();
+    store.applySnapshot(observation());
+    store.setVisible(agent);
+    store.routeEvent(settled("r1", 2));
+    store.routeEvent(settled("r2", 3));
+    store.setVisible(undefined);
+    // Captured at sequence 1, before both turns settled.
+    store.applySnapshot(observation({ id: "r1", minute: 11 }, 1));
+    expect(attention(store)).toBe("seen");
+    store.dispose();
+  });
+
+  it("stops asking in another tab once the reply is seen in one", () => {
+    localStorage.clear();
+    const shown = tab();
+    const other = tab();
+    shown.applySnapshot(observation());
+    other.applySnapshot(observation({ id: "r1", minute: 11 }));
+    expect(attention(other)).toBe("new");
+    shown.setVisible(agent);
+    shown.applySnapshot(observation({ id: "r1", minute: 11 }));
+    expect(attention(shown)).toBe("seen");
+    // The browser tells other tabs of a storage write; jsdom does not.
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "oh.replies.seen.replies" }),
+    );
+    expect(attention(other)).toBe("seen");
+    shown.dispose();
+    other.dispose();
+  });
+});
+
 it("retains a result anchor when paging joins it into its native call", () => {
   const tool: HistoryEntry = {
     entry_key: "r",
