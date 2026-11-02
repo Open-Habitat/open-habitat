@@ -78,6 +78,6 @@ test("@worker-row-sentence a worktree conversation in the rail says its work onl
   await expect(work).toHaveCount(1, { timeout: 20000 });
   await expect(work).toHaveAttribute("data-tone", "work");
   await page.screenshot({
-    path: "test-results/evidence/worker-row-sentence-rail.png",
+    path: "test-results-lab/evidence/worker-row-sentence-rail.png",
   });
 });

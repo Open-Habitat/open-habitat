@@ -131,7 +131,7 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
       element.scrollTop = 0;
     });
     await page.screenshot({
-      path: `test-results/evidence/sidebar-account-desktop-${theme}.png`,
+      path: `test-results-lab/evidence/sidebar-account-desktop-${theme}.png`,
     });
     await page.keyboard.press("Escape");
     await page.setViewportSize({ width: 390, height: 844 });
@@ -142,7 +142,7 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
     await expect(account).toBeVisible();
     await account.click();
     await page.screenshot({
-      path: `test-results/evidence/sidebar-account-phone-${theme}.png`,
+      path: `test-results-lab/evidence/sidebar-account-phone-${theme}.png`,
     });
     await page.keyboard.press("Escape");
     await page

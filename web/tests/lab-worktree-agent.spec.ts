@@ -160,7 +160,7 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   await page.keyboard.press("Escape");
   await expect(chip).toBeFocused();
   await page.screenshot({
-    path: "test-results/evidence/worktree-agent-desktop-2-working.png",
+    path: "test-results-lab/evidence/worktree-agent-desktop-2-working.png",
   });
 
   // Merging is asked of the agent; the browser only reads Git again.
@@ -175,7 +175,7 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
     rail.getByTestId("rail-quiet").locator(".ah-nav-worktree.merged"),
   ).toHaveCount(1);
   await page.screenshot({
-    path: "test-results/evidence/worktree-agent-desktop-3-merged.png",
+    path: "test-results-lab/evidence/worktree-agent-desktop-3-merged.png",
   });
 
   // The workspace page's card says the same.
@@ -188,7 +188,7 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   });
   await expect(card.locator(".ah-home-card-worktree")).toHaveClass(/merged/);
   await page.screenshot({
-    path: "test-results/evidence/worktree-agent-desktop-4-page.png",
+    path: "test-results-lab/evidence/worktree-agent-desktop-4-page.png",
     fullPage: true,
   });
   await accessible(page, "main");
@@ -210,6 +210,6 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   await page.goBack();
   await expect(chip).toBeVisible();
   await page.screenshot({
-    path: "test-results/evidence/worktree-agent-phone-merged.png",
+    path: "test-results-lab/evidence/worktree-agent-phone-merged.png",
   });
 });

@@ -89,7 +89,7 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
   ).toBeVisible();
   await section(page).scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: "test-results/evidence/worktree-cleanup-workspace-desktop.png",
+    path: "test-results-lab/evidence/worktree-cleanup-workspace-desktop.png",
     fullPage: true,
   });
   await accessible(page);
@@ -124,7 +124,7 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
     .click();
   await expect(dialog(page)).toBeVisible();
   await page.screenshot({
-    path: "test-results/evidence/worktree-cleanup-save-dialog.png",
+    path: "test-results-lab/evidence/worktree-cleanup-save-dialog.png",
   });
   await dialog(page)
     .getByRole("button")
@@ -145,7 +145,7 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
   await expect(force).toBeDisabled();
   await dialog(page).getByRole("textbox").fill("hylatty");
   await page.screenshot({
-    path: "test-results/evidence/worktree-cleanup-force-dialog.png",
+    path: "test-results-lab/evidence/worktree-cleanup-force-dialog.png",
   });
   await accessible(page);
   await force.click();
@@ -164,7 +164,7 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
   await page.setViewportSize({ width: 390, height: 844 });
   await section(page).scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: "test-results/evidence/worktree-cleanup-storage-phone.png",
+    path: "test-results-lab/evidence/worktree-cleanup-storage-phone.png",
     fullPage: true,
   });
   await page.setViewportSize({ width: 1280, height: 720 });
