@@ -3,6 +3,7 @@ import {
   type RefObject,
   type SetStateAction,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import type { NavigateFunction } from "react-router";
@@ -26,6 +27,7 @@ import { refusalReason, WriteRefused } from "./mutations";
 import {
   type SendObservationValue as Observation,
   type OwnSend,
+  ownWrites,
   type QueuedSend,
   userKeys,
 } from "./sentMessages";
@@ -90,7 +92,7 @@ export function useConversationActions({
   submittedKey,
   sendKey,
   uncertainKey,
-  inFlightSend,
+  answeredKey,
   setBusy,
   setReceipt,
   setSendObservation,
@@ -123,7 +125,7 @@ export function useConversationActions({
   submittedKey: string;
   sendKey: string;
   uncertainKey: string;
-  inFlightSend: RefObject<string | undefined>;
+  answeredKey: string;
   setBusy: Dispatch<SetStateAction<boolean>>;
   setReceipt: Dispatch<SetStateAction<string>>;
   setSendObservation: Dispatch<SetStateAction<Observation | undefined>>;
@@ -204,6 +206,13 @@ export function useConversationActions({
       if (alive.current && !handedOff) setBusy(false);
     }
   };
+  // The host answered: it holds the command, whose outcome is now pending
+  // whether or not this view is still there to read it (useConversation).
+  const answered = (command: string) => {
+    ownWrites.end(command);
+    if (sessionStorage.getItem(sendKey) === command)
+      sessionStorage.setItem(answeredKey, command);
+  };
   // The text leaves the field at once and is drawn where it is going; a
   // refused or unknown outcome gives it back (see sentMessages.ts). A message
   // not typed in the field (the editor's note) keeps the draft.
@@ -230,21 +239,21 @@ export function useConversationActions({
       sessionStorage.setItem(submittedKey, text);
       sessionStorage.setItem(sendKey, command);
       sessionStorage.setItem(uncertainKey, command);
-      inFlightSend.current = command;
+      ownWrites.begin(command);
       setSendObservation({ text, state: "pending", command, kind: "send" });
       onSent({ command, text, before: userKeys(entries) });
       if (!keepDraft) changeDraft("");
       setReceipt(txt.awaitingAck);
       onSendOutcome?.("pending");
       await send(current.agent_id, text, command, token, firstChoice);
+      answered(command);
       onSendOutcome?.("accepted");
-      inFlightSend.current = undefined;
       if (!alive.current) return;
       setReceipt(txt.awaitingNative);
       await refresh();
     } catch (error) {
       onSendOutcome?.("failed");
-      if (inFlightSend.current === command) inFlightSend.current = undefined;
+      ownWrites.end(command);
       if ((error as Error).message === "identity_lost") onLogin();
       else if (alive.current && error instanceof NotAdmitted) {
         sessionStorage.removeItem(sendKey);
@@ -286,6 +295,7 @@ export function useConversationActions({
       if (!alive.current) return;
       sessionStorage.setItem(sendKey, command);
       sessionStorage.setItem(uncertainKey, command);
+      ownWrites.begin(command);
       setSendObservation({ text, state: "pending", command, kind: "queue" });
       sessionStorage.setItem(submittedKey, text);
       onQueued({
@@ -300,10 +310,12 @@ export function useConversationActions({
       setReceipt(txt.awaitingAck);
       onSendOutcome?.("pending");
       await queueMessage(current.agent_id, text, command, token, kind);
+      answered(command);
       onSendOutcome?.("accepted");
       if (alive.current) await refresh();
     } catch (error) {
       onSendOutcome?.("failed");
+      ownWrites.end(command);
       if ((error as Error).message === "identity_lost") onLogin();
       if (alive.current && error instanceof NotAdmitted) {
         sessionStorage.removeItem(sendKey);
@@ -393,15 +405,48 @@ export function useConversationActions({
   // shows the stop in progress until status shows the turn ended; only a
   // refused or unknown outcome gets a message, and only while the turn
   // still runs (a turn that ended on its own needs no stop).
-  const stopNow = async () => {
-    if (busy || !current || !csrf) return;
-    const command = crypto.randomUUID();
+  // A press is only recorded here; the effect below, which always sees this
+  // render's state, runs it. A Stop pressed while the person's message is
+  // still on its way, or sent and not yet taken, waits for that instead of
+  // being dropped: the message may be in Pi's queue by then, and Pi refuses
+  // to clear a queue while a command is pending.
+  const stopWanted = useRef<StopAttempt | undefined>(undefined);
+  useEffect(() => {
+    const wanted = stopWanted.current;
+    if (!wanted) return;
+    if (wanted.id !== current?.agent_id) {
+      stopWanted.current = undefined;
+      return;
+    }
+    // A pending observation is read from this render even when the command
+    // was just settled: this render's guards still see it outstanding.
+    const command = sessionStorage.getItem(sendKey);
+    if (
+      busy ||
+      sendObservation?.state === "pending" ||
+      (command && ownWrites.snapshot().has(command))
+    )
+      return;
+    stopWanted.current = undefined;
+    void runStop(wanted.command);
+  });
+  const stopNow = () => {
+    if (!current || !csrf) return;
+    const wanted = {
+      id: current.agent_id,
+      command: crypto.randomUUID(),
+      phase: "pending",
+    } as const;
+    stopWanted.current = wanted;
+    setStopAttempt(wanted);
+  };
+  const runStop = async (command: string) => {
+    if (!current || !csrf) return;
     const id = current.agent_id;
     const settle = (phase: StopAttempt["phase"]) =>
       setStopAttempt((attempt) =>
         attempt?.command === command ? { ...attempt, phase } : attempt,
       );
-    setStopAttempt({ id, command, phase: "pending" });
     await clearNativeQueue(true);
     if (!alive.current) return;
     setBusy(true);

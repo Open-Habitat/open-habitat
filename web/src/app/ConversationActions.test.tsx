@@ -52,7 +52,7 @@ it("fences the previous view before handing off and cannot clear the new view's 
       submittedKey: "submitted",
       sendKey: "send",
       uncertainKey: "create",
-      inFlightSend: { current: undefined },
+      answeredKey: "answered",
       setBusy,
       setReceipt: vi.fn(),
       setSendObservation: vi.fn(),

@@ -22,3 +22,9 @@ The analysis, cases and fix are in `issues/load-race-sweep/item.md` (## Sweep an
 
 - [ ] Every case the sweep listed for this group passes under its detector (reply delay 250 ms, `--repeat-each 2`); counts before/after in result.md.
 - [ ] The mechanism is pinned in Vitest with a controlled order where it is browser state logic.
+
+## Comments
+
+### 2026-11-02T15:09:35Z · @claude
+
+From race-status-merge (2.11.): traced under reply delay 250 ms, these cases listed for group 1 belong here: queued-send :170 (after a reload the person types into the loading view's field, which never wakes a resting Pi, so the wake intent is lost and Pi stays stopped) and queued-send :491. A message sent from the creation view is held, and an uncertain outcome is drawn there as a waiting card, while the opened view draws the uncertain card that gives the text back: the same outcome two ways. browser-conversation specs that sent from the creation view now wait for readyConversation.

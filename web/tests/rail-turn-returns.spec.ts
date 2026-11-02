@@ -47,8 +47,11 @@ test("every finished turn returns a quiet conversation to Sinun vuorosi until se
   await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
   const href = new URL(page.url()).pathname + new URL(page.url()).search;
   const agent = new URL(page.url()).searchParams.get("conversation");
-  // The person's own turn ends in sight: it is not news.
+  // The person's own turn ends in sight: it is not news. A new
+  // conversation's ball is already "done" before the turn starts, so wait
+  // for the answer first; leaving before it is there makes it news.
   await reply(page, "first");
+  await expect(page.locator("main")).toContainText('Selvä. Kysyit: "first".');
   await expect(
     page.getByRole("navigation").getByTestId(`agent-item-${agent}`),
   ).toHaveAttribute("data-ball", "done");

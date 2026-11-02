@@ -14,7 +14,7 @@ import {
   sendReceipt,
   status,
 } from "./conversations";
-import type { SendObservationValue } from "./sentMessages";
+import { ownWrites, type SendObservationValue } from "./sentMessages";
 import type { Snapshot, Workspace } from "./snapshot";
 import { useReadingPosition } from "./useReadingPosition";
 
@@ -64,8 +64,6 @@ export function useConversation({
     useState<SendObservationValue>();
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
-  // The HTTP send may still be held after a status/receipt read returns 404.
-  const inFlightSend = useRef<string | undefined>(undefined);
   const historyError =
     windowView?.state === "stale" || windowView?.state === "error";
   const setHistoryError = (value: boolean) => {
@@ -138,6 +136,9 @@ export function useConversation({
     `nah:${identity}:${kind}:${key}`;
   const submittedKey = storage("submitted");
   const sendKey = storage("last-send");
+  // The last command whose request the host answered: it holds the command,
+  // so its outcome is pending until a receipt or status says otherwise.
+  const answeredKey = storage("answered");
   const continuationKey = storage("continue");
   const draftKey = storage("draft");
   const draft =
@@ -197,6 +198,9 @@ export function useConversation({
         revision: cached.native_revision,
         result: cached.continuation,
       };
+      // A send made before switching away is resumed from its record; its
+      // reply may have come while this view was not there to read it.
+      if (sessionStorage.getItem(sendKey)) void latestRefresh.current();
     } else {
       // Cold status is needed to prove a missing history and control ownership.
       void (async () => {
@@ -271,12 +275,22 @@ export function useConversation({
     );
     const text = sessionStorage.getItem(submittedKey);
     const command = sessionStorage.getItem(uncertainKey);
+    // A command still on its way, or one the host answered, is pending: only
+    // a reload that lost its request makes its outcome unknown.
     setSendObservation(
       text !== null && command
-        ? { text, state: "uncertain", command }
+        ? {
+            text,
+            state:
+              ownWrites.snapshot().has(command) ||
+              sessionStorage.getItem(answeredKey) === command
+                ? "pending"
+                : "uncertain",
+            command,
+          }
         : undefined,
     );
-  }, [draftKey, continuationKey, submittedKey, uncertainKey]);
+  }, [draftKey, continuationKey, submittedKey, uncertainKey, answeredKey]);
   const changeDraft = useCallback(
     (value: string) => {
       setDraftState({ key: draftKey, value });
@@ -284,6 +298,35 @@ export function useConversation({
     },
     [draftKey],
   );
+  // The person's command ends where the record of its command_id says so:
+  // its receipt, or any status naming it, whichever reader applied that
+  // status. A newer command is never settled by an older one's record.
+  const settleCommand = useCallback(
+    (command: string, outcome: "accepted" | "rejected") => {
+      const text = sessionStorage.getItem(submittedKey);
+      if (sessionStorage.getItem(sendKey) !== command || text === null) return;
+      // What the send itself recorded (its kind) stays with its outcome.
+      setSendObservation((old) => ({
+        ...(old?.command === command && old.text === text ? old : undefined),
+        text,
+        command,
+        state: outcome,
+      }));
+      setReceipt(outcome === "rejected" ? txt.rejected : "");
+      sessionStorage.removeItem(sendKey);
+      sessionStorage.removeItem(uncertainKey);
+      sessionStorage.removeItem(submittedKey);
+      sessionStorage.removeItem(answeredKey);
+    },
+    [sendKey, uncertainKey, submittedKey, answeredKey],
+  );
+  useEffect(() => {
+    const command = sessionStorage.getItem(sendKey);
+    if (!localReady || !command || current?.command_id !== command) return;
+    const outcome = current.send_receipt || current.ack;
+    if (outcome === "accepted" || outcome === "rejected")
+      settleCommand(command, outcome);
+  }, [current, localReady, sendKey, settleCommand]);
   // Ref contents are sampled when refresh runs, not part of callback identity.
   // biome-ignore lint/correctness/useExhaustiveDependencies: mutable reading refs do not drive refresh recreation.
   const refresh = useCallback(
@@ -304,6 +347,11 @@ export function useConversation({
       pending.current = true;
       const version = generation.current;
       let receiptPending = false;
+      // A command sent after these reads started, or not yet answered when
+      // they did, may be newer than what they saw: not finding it there
+      // proves nothing.
+      const unanswered = ownWrites.snapshot();
+      const commandBefore = sessionStorage.getItem(sendKey);
       try {
         let nextStatus = await status(id);
         if (requestContinuation && nextStatus.state === "uncertain")
@@ -323,8 +371,13 @@ export function useConversation({
           continuationProof.current.revision === nextStatus.native_revision
         )
           nextStatus.continuation = continuationProof.current.result;
+        // A read older than the status held says nothing new about the
+        // conversation; it can still name this tab's command.
+        const latest = setCurrent(nextStatus)
+          ? nextStatus
+          : (store.status(id) ?? nextStatus);
         const working = ["pending", "accepted", "stopping"].includes(
-          nextStatus.state,
+          latest.state,
         );
         if (
           !working &&
@@ -333,7 +386,6 @@ export function useConversation({
         )
           setFinishedInBackground(true);
         wasWorking.current = working;
-        setCurrent(nextStatus);
         setProblem("");
         const command = sessionStorage.getItem(sendKey);
         if (command) {
@@ -362,7 +414,13 @@ export function useConversation({
             }
           }
           if (!alive.current || version !== generation.current) return;
-          if (!outcome && inFlightSend.current === command) outcome = "pending";
+          if (
+            !outcome &&
+            (command !== commandBefore ||
+              unanswered.has(command) ||
+              ownWrites.snapshot().has(command))
+          )
+            outcome = "pending";
           const text = sessionStorage.getItem(submittedKey);
           // Do not let an older in-flight read settle a newer command.
           if (sessionStorage.getItem(sendKey) === command && text !== null) {
@@ -370,19 +428,9 @@ export function useConversation({
             // command's later outcomes.
             const same = (old?: SendObservationValue) =>
               old?.command === command && old.text === text ? old : undefined;
-            if (outcome === "accepted" || outcome === "rejected") {
-              const state = outcome;
-              setSendObservation((old) => ({
-                ...same(old),
-                text,
-                command,
-                state,
-              }));
-              setReceipt(outcome === "rejected" ? txt.rejected : "");
-              sessionStorage.removeItem(sendKey);
-              sessionStorage.removeItem(uncertainKey);
-              sessionStorage.removeItem(submittedKey);
-            } else {
+            if (outcome === "accepted" || outcome === "rejected")
+              settleCommand(command, outcome);
+            else {
               sessionStorage.setItem(uncertainKey, command);
               const state = outcome === "pending" ? "pending" : "uncertain";
               setSendObservation((old) => ({
@@ -398,11 +446,11 @@ export function useConversation({
         }
         const reconcileContinuation =
           sessionStorage.getItem(continuationKey) === "uncertain" &&
-          nextStatus.state === "idle" &&
-          nextStatus.native_history === "present";
+          latest.state === "idle" &&
+          latest.native_history === "present";
         if (
           (readHistory || reconcileContinuation) &&
-          nextStatus.native_history === "present"
+          latest.native_history === "present"
         ) {
           await store.reconnect(id);
           if (!alive.current || version !== generation.current) return;
@@ -468,9 +516,11 @@ export function useConversation({
       sendKey,
       submittedKey,
       uncertainKey,
+      answeredKey,
       continuationKey,
       captureAnchor,
       store,
+      settleCommand,
       clearRetry,
       scheduleRetry,
       navigate,
@@ -552,7 +602,7 @@ export function useConversation({
     sendKey,
     continuationKey,
     uncertainKey,
-    inFlightSend,
+    answeredKey,
     changeDraft,
     refresh,
     setBusy,

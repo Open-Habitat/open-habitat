@@ -490,9 +490,10 @@ for (const outcome of ["pending", "rejected", "uncertain"] as const) {
   }) => {
     await open(page);
     await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-    await expect(page.getByTestId("message-input")).toBeVisible();
-    // The creation placeholder is visible before the controller is ready.
-    await expect(page.getByTestId("message-input")).toBeEnabled();
+    // The creation view's field is enabled before the controller is ready,
+    // and a message sent there is held for the new conversation instead;
+    // this case is about the opened conversation's own send.
+    await readyConversation(page);
     let lookups = 0;
     await page.route("**/api/v1/conversations/*/status", async (route) => {
       const response = await route.fetch();
@@ -686,7 +687,8 @@ test("@browser-conversation in-flight send remains pending through missing recei
 }) => {
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  await expect(page.getByTestId("message-input")).toBeVisible();
+  // Sent from the creation view the message would be held instead.
+  await readyConversation(page);
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -902,7 +904,8 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
 }) => {
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  await expect(page.getByTestId("message-input")).toBeVisible();
+  // Sent from the creation view the message would be held instead.
+  await readyConversation(page);
   await page.getByTestId("message-input").fill("Älä lähetä toistamiseen");
   let attempts = 0;
   await page.route("**/api/v1/conversations/*/send", async (route) => {
@@ -1426,7 +1429,9 @@ test("@browser-conversation warm controlled return reads neither status nor hist
   // so those creation events cannot be mistaken for route-caused reads.
   allStreams.length = 0;
   await page.goto(firstURL);
-  await expect(page.getByTestId("message-input")).toBeEnabled();
+  // The loading view's field is enabled before the conversation has made
+  // its first reads; leaving then cuts them short and the return reads again.
+  await readyConversation(page);
   await page.getByTestId("workspace-ordinary-dir").last().click();
   // The second window's own first reads (its offers and start page; the
   // workspace list reads neither) can land after its field is enabled. They
@@ -1597,7 +1602,9 @@ test("@browser-conversation logout fences a pending status read and turn even wh
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const editor = page.getByTestId("message-input");
-  await expect(editor).toBeVisible();
+  // Sent from the creation view the message would be held, and the status
+  // read held below would keep the conversation from opening.
+  await readyConversation(page);
   await editor.fill("turn in progress");
   await page
     .getByTestId("send")
@@ -1940,6 +1947,9 @@ test("@browser-conversation restart replaces an in-place running turn with nativ
 }) => {
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  // The reload below must find the created conversation, not the creation
+  // view a slow host still shows.
+  await readyConversation(page);
   const editor = page.getByTestId("message-input");
   await editor.fill("native reply before restart");
   await page
@@ -1951,6 +1961,16 @@ test("@browser-conversation restart replaces an in-place running turn with nativ
     "native reply before restart",
     { exact: true },
   );
+  // The tab must know the send's outcome before the restart: a restart that
+  // takes the only record of it leaves it unknown, and an unknown send keeps
+  // the controlled view (a receipt lost on daemon restart remains unknown).
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(sessionStorage).some((key) => key.includes(":last-send:")),
+      ),
+    )
+    .toBe(false);
   // Reload the controlled view with its native history, but prevent the old
   // stream from issuing a status event when the fixture replaces the daemon.
   await page.route("**/api/v1/events*", (route) => route.abort("failed"));
@@ -2015,10 +2035,17 @@ test("@browser-conversation restart keeps a browser conversation writable and ar
       .getByTestId("archive-conversation")
       .and(page.locator(':not([data-archive-state="archived"])')),
   ).toBeEnabled();
+  // A document load cancels a write still on its way: wait for its answer.
+  const archived = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/workspaces" &&
+      response.request().method() !== "GET",
+  );
   await bar
     .getByTestId("archive-conversation")
     .and(page.locator(':not([data-archive-state="archived"])'))
     .click();
+  expect((await archived).ok()).toBe(true);
   await page.goto(`/agents/${id}`);
   const restore = bar
     .getByTestId("restore-conversation")
@@ -2489,7 +2516,8 @@ test("@browser-conversation a lost accepted send resolves on reload without anot
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const editor = page.getByTestId("message-input");
-  await expect(editor).toBeEnabled();
+  // Sent from the creation view the message would be held instead.
+  await readyConversation(page);
   let sends = 0;
   // Fail observation only after the deliberate write. An earlier background
   // status read must not disable the composer before this test can send.
@@ -2707,7 +2735,7 @@ test("@browser-conversation lost accepted reply recovers on HTTP snapshot withou
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const editor = page.getByTestId("message-input");
-  await expect(editor).toBeEnabled();
+  await readyConversation(page);
   await page.route("**/api/v1/events?after=*", (route) => route.abort());
   await page.clock.pauseAt(new Date());
   let sends = 0;
@@ -2759,7 +2787,8 @@ test("@browser-conversation a receipt lost on daemon restart remains unknown", a
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const editor = page.getByTestId("message-input");
-  await expect(editor).toBeVisible();
+  // Sent from the creation view the message would be held instead.
+  await readyConversation(page);
   let sends = 0;
   await page.route("**/api/v1/conversations/*/send", async (route) => {
     sends++;

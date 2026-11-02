@@ -10,6 +10,22 @@ import type { HistoryEntry } from "./history";
 // again if it was refused or its outcome is unknown, and Pi's native message
 // once history shows it.
 
+// This document's sends and queued messages whose request has not been
+// answered yet. A status or receipt read meanwhile may have been taken before
+// the host had them, so it cannot make their outcome unknown. Kept outside
+// the view: a send outlives switching away from its conversation.
+const unanswered = new Set<string>();
+export const ownWrites = {
+  begin: (command: string) => {
+    unanswered.add(command);
+  },
+  end: (command: string) => {
+    unanswered.delete(command);
+  },
+  /** The commands still on their way now. */
+  snapshot: (): ReadonlySet<string> => new Set(unanswered),
+};
+
 /** What is known of this tab's latest send. `kind` comes from the send
  * itself and is absent after a reload. */
 export type SendObservationValue = {
