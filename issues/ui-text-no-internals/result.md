@@ -66,12 +66,14 @@ These are **not implemented**. Earlier exploratory edits outside the named scope
 Focused self-review: inspected the final diff, Finnish/English parity, generated references and before/after screenshots. No behavior or trust boundary changes. Existing stories import the production components and catalogs unchanged; no story-specific text or props required updating. Existing component tests passed unchanged.
 
 - `npm ci --prefix web`; `npm ci --prefix internal/daemon/pi-device-test --ignore-scripts`: passed.
-- `./scripts/test-focused.sh --area web`: 168 files / 1252 tests passed, plus static/type checks.
+- `./scripts/test-focused.sh --area web`: 168 files / 1252 tests passed initially; after rebasing onto main, 168 files / 1255 tests passed, plus static/type checks. Both named browser specs below were also rerun successfully on implementation commit `2780e7dd` (base `1b33573a`).
 - `./scripts/test-focused.sh --area browser --spec start-here.spec.ts`: 4 passed (desktop/mobile, light/dark, accessibility, missing/update states, draft preservation).
 - `./scripts/test-focused.sh --area browser --spec lab-workspace-icon-suggestions.spec.ts`: 2 passed (suggestions, wishes, attachments, validation, dictation, accessibility).
 - Browser runs used `OH_PORT_BASE=11250`, `OH_BROWSER_WORKERS=2`, private disk-backed TMPDIR and umask 077.
 - Removed three assertions of intentionally removed output: model ID and two slash-command strings. They only guarded displaying those internals. State, draft, suggestion validity, send and accessibility assertions remain.
 - `evidence/before-*` and `after-*`: paired PNG and static HTML, 390×844 viewport at device scale factor **2**, synthetic lab. Read and compared all four PNGs. Capture recipe: `web/lab/ui-text-no-internals.mjs`; it routes only the start-page read to an absent page. No live-user screenshot committed.
+
+`python3 scripts/test-ui-reference.py` (3 tests), `python3 scripts/validate-project-view.py`, `git diff --check` and `issuectl doctor --json` passed. Doctor lists PNG evidence as non-AVIF inventory, with no warnings or metadata faults.
 
 No full gate, whole browser suite, live-provider or distinct-UID claims.
 
@@ -82,3 +84,4 @@ No full gate, whole browser suite, live-provider or distinct-UID claims.
 - First web check found formatting/import order in the new capture recipe and an exploratory catalog edit. Formatted the recipe; exploratory edit was later reverted. Final scoped web check passed.
 - An exploratory lookup for `goalStart.ts` found no file (the owner is `goalGuide.ts`); read the actual source. The subsequently withdrawn button was not implemented.
 - Repeated `--spec` arguments selected only the final spec. Inspected test counts and ran icon suggestions separately; both named suites passed.
+- Rebase onto main conflicted only at the shared “Työn alla” insertion. Retained the other workers' lines and this task's line; range-diff confirmed no implementation change. All focused checks rerun successfully.

@@ -3,11 +3,12 @@ created: 2026-11-02
 updated: 2026-11-02
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: high
 lane: ui-text
 lane_seq: 1
 preparation: ready
+closed: 2026-11-02
 ---
 
 # UI text explains files, limits and models instead of saying what the person can do
@@ -41,8 +42,8 @@ cases in result.md instead of changing them.
 
 ## Acceptance Criteria
 
-- [ ] The icon wish field and the start page card carry no implementation text; the start page card invites in plain words.
-- [ ] The rule is in `web/AGENTS.md`; the catalog sweep is done, with changes and borderline cases listed in result.md; tests/screenshots updated.
+- [x] The icon wish field and the start page card carry no implementation text; the start page card invites in plain words.
+- [x] The rule is in `web/AGENTS.md`; the catalog sweep is done, with changes and borderline cases listed in result.md; tests/screenshots updated.
 
 
 ## Addition (Jari 2.11.)
