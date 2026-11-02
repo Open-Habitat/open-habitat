@@ -11,7 +11,7 @@ originating_run: 01m6c2ybczc0gvg629k2gnka93
 originating_run_kind: spinoff
 lane: live-long-run-gap-under-load
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # live-long-run spec reports a missed-events flash that does not happen in real use
@@ -72,3 +72,10 @@ sampler racing the first render), and change the setup so the spec observes
 real conditions. Keep its purpose: a real missed-events flash during a long
 run must still fail it. Product code changes only if the investigation finds
 a real defect, which then goes to Jari as a finding.
+
+## Decision (Jari 2.11., after the r53 finding)
+
+Jari has never seen the notice in real use. The conductor approved the
+narrow fix recommended in result.md: an empty new conversation (no history,
+no live queue) is not marked as having missed events. Nothing else in the
+missed-events rule changes; the long-run spec keeps failing on a real flash.
