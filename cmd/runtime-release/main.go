@@ -1,18 +1,13 @@
 // runtime-release is build tooling, not a daemon or installed host operator.
 // verify and stage receive the approved target (version and the manifest digest
 // GitHub states for the release asset) separately from the bundle; nothing in
-// the bundle can authorize it. sign still writes release.sig until the release
-// cut stops signing (ADR 0034). Until then a caller that passes --key-file to
-// verify or stage, such as Fleetrepo's upgrade tool, which derives the digest
-// from the downloaded bytes, still gets the signature checked; without it the
-// pinned digest alone authenticates.
+// the bundle can authorize it. manifest writes the release.json whose SHA-256,
+// once GitHub states it for the published asset, is the whole release trust.
 package main
 
 import (
 	"bytes"
 	"context"
-	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -35,17 +30,16 @@ func main() {
 }
 func run() error {
 	if len(os.Args) < 2 {
-		return errors.New("expected key-create|sign|verify|stage; use COMMAND --help")
+		return errors.New("expected manifest|verify|stage; use COMMAND --help")
 	}
 	command := os.Args[1]
 	fs := flag.NewFlagSet(command, flag.ContinueOnError)
 	dir := fs.String("directory", "", "release directory (required)")
-	key := fs.String("key-file", "", "raw Ed25519 private key (sign), new key path (key-create), or optional public key whose release.sig verify/stage then require")
 	version := fs.String("version", "", "exact approved release version")
-	commit := fs.String("commit", "", "full source commit (sign only)")
-	artifactsFile := fs.String("artifacts-file", "", "JSON artifact descriptor array (sign only; default artifact.json is one core descriptor)")
-	upgradeFile := fs.String("upgrade-file", "", "authenticated transition/product descriptor JSON (sign only)")
-	platform := fs.String("platform", "", "ubuntu-24.04-amd64 or ubuntu-24.04-arm64, the architecture every archive was built for (sign only)")
+	commit := fs.String("commit", "", "full source commit (manifest only)")
+	artifactsFile := fs.String("artifacts-file", "", "JSON artifact descriptor array (manifest only; default artifact.json is one core descriptor)")
+	upgradeFile := fs.String("upgrade-file", "", "authenticated transition/product descriptor JSON (manifest only)")
+	platform := fs.String("platform", "", "ubuntu-24.04-amd64 or ubuntu-24.04-arm64, the architecture every archive was built for (manifest only)")
 	digest := fs.String("manifest-sha256", "", "independently approved manifest digest (verify/stage)")
 	parent := fs.String("stage-parent", "", "existing trusted root-owned 0700 directory (stage only)")
 	if err := fs.Parse(os.Args[2:]); err != nil {
@@ -57,33 +51,12 @@ func run() error {
 	if fs.NArg() != 0 {
 		return errors.New("no positional arguments")
 	}
-	if (command == "key-create" || command == "sign") && *key == "" {
-		return errors.New("key-file required by key-create and sign")
-	}
-	if command == "key-create" {
-		pub, priv, e := ed25519.GenerateKey(rand.Reader)
-		if e != nil {
-			return e
-		}
-		if e = writeNew(*key, priv, 0600); e != nil {
-			return e
-		}
-		if e = writeNew(*key+".pub", pub, 0644); e != nil {
-			return e
-		}
-		fmt.Println(`{"schema_version":1,"data":{"status":"development-key-created"},"warnings":["Test key only; not approved production trust"]}`)
-		return nil
-	}
 	if *dir == "" || *version == "" {
 		return errors.New("directory and exact version required")
 	}
-	if command == "sign" {
-		keyBytes, e := readInput(*key, ed25519.PrivateKeySize)
-		if e != nil {
-			return errors.New("key file unavailable")
-		}
-		if *commit == "" || *platform == "" || len(keyBytes) != ed25519.PrivateKeySize {
-			return errors.New("commit, platform and raw private key required")
+	if command == "manifest" {
+		if *commit == "" || *platform == "" {
+			return errors.New("commit and platform required")
 		}
 		input := *artifactsFile
 		if input == "" {
@@ -107,12 +80,12 @@ func run() error {
 			}
 			m.Upgrade = &u
 		}
-		manifest, sig, e := host.EncodeRelease(m, keyBytes)
+		manifest, e := host.EncodeRelease(m)
 		if e != nil {
 			return e
 		}
 		sum := sha256.Sum256(manifest)
-		// Verify the produced closure independently before publishing signed metadata.
+		// Verify the produced closure independently before writing the manifest.
 		r, e := host.AuthenticateRelease(manifest, host.Release{Version: *version, ManifestSHA256: hex.EncodeToString(sum[:])})
 		if e != nil {
 			return e
@@ -128,10 +101,7 @@ func run() error {
 		if e = writeNew(filepath.Join(*dir, "release.json"), manifest, 0644); e != nil {
 			return e
 		}
-		if e = writeNew(filepath.Join(*dir, "release.sig"), sig, 0644); e != nil {
-			return e
-		}
-		fmt.Printf("{\"schema_version\":1,\"data\":{\"manifest_sha256\":\"%x\",\"status\":\"signed\"},\"warnings\":[]}\n", sum)
+		fmt.Printf("{\"schema_version\":1,\"data\":{\"manifest_sha256\":\"%x\",\"status\":\"written\"},\"warnings\":[]}\n", sum)
 		return nil
 	}
 	if command != "verify" && command != "stage" {
@@ -141,22 +111,12 @@ func run() error {
 	if e != nil {
 		return e
 	}
-	if *key != "" {
-		pub, e := readInput(*key, ed25519.PublicKeySize)
-		if e != nil || len(pub) != ed25519.PublicKeySize {
-			return errors.New("public key file unavailable")
-		}
-		sig, e := readInput(filepath.Join(*dir, "release.sig"), ed25519.SignatureSize)
-		if e != nil || !host.ReleaseSignatureValid(b, sig, pub) {
-			return errors.New("release_signature_invalid: release.sig does not verify with --key-file")
-		}
-	}
 	r, e := host.AuthenticateRelease(b, host.Release{Version: *version, ManifestSHA256: *digest})
 	if e != nil {
 		return e
 	}
 	if *artifactsFile != "" || *upgradeFile != "" || *platform != "" {
-		return errors.New("artifacts-file, upgrade-file and platform are sign-only")
+		return errors.New("artifacts-file, upgrade-file and platform are manifest-only")
 	}
 	// Never label a release verified while silently selecting only implicit core.
 	var manifest host.ReleaseManifest

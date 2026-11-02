@@ -362,7 +362,7 @@ callbacks; those are not native EDQUOT or installed-boot-policy evidence.
 
 `TestReleaseNativePackageQuery` (included by the same root-container runner)
 queries its actual dpkg database with a clean fixed native command despite
-poisoned ambient PATH/DPKG variables. Synthetic signed expectations demonstrate
+poisoned ambient PATH/DPKG variables. Synthetic manifest expectations demonstrate
 exact-match and drift classification; no package is installed or downgraded.
 Other package-observer regressions inject missing/broken/partial/error records
 and test the output bound through `io.Copy`. This does not establish complete
@@ -422,7 +422,7 @@ Alder. `TestRelease{PlatformPackages,ExecutableArchitecture,NPMLockCPU}` and
 `TestHostReleasePlatform` cover target selection in the verifier and operator;
 `scripts/test-profile-runtime-build.py` covers the builders' target selection
 and that both targets of every lock pin the same upstream versions. `go build ./cmd/runtime-release`
-builds the separate release signer/verifier; `docs/operations.md` describes
+builds the separate release manifest writer and verifier; `docs/operations.md` describes
 the digest pin it verifies against.
 
 `go test ./internal/host -run 'TestReleaseClosure'` covers file/component/licence
@@ -508,7 +508,7 @@ refusals, and non-mutating simulation. `bash scripts/test-ubuntu-requirements.sh
 runs the actual native host apt adapter as root only inside a disposable rootless
 Ubuntu 24.04 container, installing all declared requirements and checking their
 minimums. It is not systemd, per-user workflow or pilot acceptance evidence.
-`runtime-release sign --artifacts-file FILE` accepts a descriptor array;
+`runtime-release manifest --artifacts-file FILE` accepts a descriptor array;
 verify/stage cover every manifest artifact, not just implicit core.
 
 `python3 scripts/test-python-runtime-build.py` checks the pinned Python 3.14
@@ -543,7 +543,7 @@ python3 scripts/cloud-qualify.py run --predecessor RELEASE_DIR \
 Each release directory holds what a customer downloads for one release: exactly
 one `open-habitat-*-linux-<amd64|arm64>.tar.gz` package, `release.json` and
 every archive the manifest names; the harness pins each manifest's own SHA-256
-in the site and delivers no signature or key, so the predecessor must be a
+in the site and delivers nothing else, so the predecessor must be a
 release whose operator authenticates by that pin alone. The successor's
 manifest must name that exact predecessor; without `--successor` the
 receipt reports the upgrade as not covered. `plan` checks the same inputs
@@ -551,7 +551,7 @@ offline and prints the stages.
 
 The predecessor is normally the published release a customer runs, downloaded
 with `gh release download`. A successor from the current tree is built the way
-a product-only test release is: package it, then sign a manifest that reuses
+a product-only test release is: package it, then write a manifest that reuses
 the predecessor's archives and names it as the predecessor.
 
 ```sh
@@ -561,15 +561,12 @@ for a in $(jq -r '.artifacts[].archive' RELEASE_DIR/release.json); do ln RELEASE
 cp PKG_DIR/open-habitat-NEXT-linux-amd64.tar.gz NEXT_RELEASE_DIR/
 python3 scripts/successor-descriptors.py --predecessor RELEASE_DIR \
   --package NEXT_RELEASE_DIR/open-habitat-NEXT-linux-amd64.tar.gz --output DESCRIPTORS
-runtime-release sign --directory NEXT_RELEASE_DIR --version NEXT --commit "$(git rev-parse HEAD)" \
+runtime-release manifest --directory NEXT_RELEASE_DIR --version NEXT --commit "$(git rev-parse HEAD)" \
   --platform "$(jq -r .platform RELEASE_DIR/release.json)" \
-  --artifacts-file DESCRIPTORS/artifacts.json --upgrade-file DESCRIPTORS/upgrade.json \
-  --key-file DEVELOPMENT_PRIVATE_KEY
+  --artifacts-file DESCRIPTORS/artifacts.json --upgrade-file DESCRIPTORS/upgrade.json
 ```
 
-`runtime-release` is built as in `docs/operations.md`. `sign` still needs a
-private key until the release cut stops signing; any development key will do,
-because no installer checks the signature, and it stays on the build host. When the operator's default location has no capacity for the
+`runtime-release` is built as in `docs/operations.md`. When the operator's default location has no capacity for the
 server type, Hetzner answers `resource_unavailable`; pass `--location fsn1` or
 `hel1`. A run takes about 45 minutes, most of it the first upload of the
 release over the qualification host's uplink; the successor's unchanged

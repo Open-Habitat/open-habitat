@@ -52,9 +52,6 @@ groups:
       - slug: decisions/adr-0033-view-capability-links
         title: ADR 0033 — View capability links
         desc: Proposed — anyone with the link opens a shared view; the person creates links in the browser, the gateway serves the owner's frozen export on one operator-enabled public host inside a script-free frame page; the agent gets no link operation.
-      - slug: decisions/adr-0034-release-digest-verification
-        title: ADR 0034 — Release digest verification
-        desc: Accepted — installation and upgrade check the SHA-256 GitHub states for the release; no product signing key; supersedes ADR 0029's signing.
       - slug: decisions/adr-0035-view-stable-address
         title: ADR 0035 — Stable view addresses
         desc: Proposed — one stable entry address per frozen view; publication revives old copies; implementation awaits Jari's approval.

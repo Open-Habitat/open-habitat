@@ -73,9 +73,8 @@ users. The manifest's version goes in `site.release.version` and GitHub's stated
 digest of `release-linux-<arch>.json` in `site.release.manifest_sha256`. That
 pin is the whole runtime trust: the operator accepts exactly the manifest bytes
 that hash to it and checks every archive and product file against the manifest.
-It reads no signature or key. Releases still carry `.sig` and `.pub` assets
-for older tooling, and a `release.sig` or `/etc/open-habitat/release-key.pub`
-left on a host is ignored.
+Releases are unsigned, and nothing else in the download, such as a checksum
+file, can stand in for that pin.
 
 Register the GitHub OAuth app with its callback at
 `https://<origin>/auth/github/callback`, and under the app's **Optional
@@ -333,13 +332,12 @@ For a product-only cut, `scripts/successor-descriptors.py --archive-release
 vPREDECESSOR` annotates archives without a source tag and preserves an existing
 source tag, so repeated cuts point directly to the original asset. A rebuilt
 profile uses its new descriptor without `archive_release` and is uploaded with
-the new release. Keep the complete local archive closure for signing and
-verification, even when those bytes will not be uploaded.
+the new release. Keep the complete local archive closure for writing and
+verifying the manifest, even when those bytes will not be uploaded.
 
 Before upload, run `python3 scripts/release-upload-plan.py --directory ASSETS
 --tag vVERSION --json`. ASSETS contains only the two architectures' prepared
-packages, manifests, gate receipt and optional checksum/signature assets, plus
-any new archives (reused archives may be present). The planner checks the
+packages, manifests and gate record, plus any new archives (reused archives may be present). The planner checks the
 immutable sources with authenticated `gh`, refuses mismatched or unexpected
 files, and reports exact `upload` paths, `upload_bytes` and `reuse` entries.
 Upload only those paths, **not a directory glob**. This is a read-only upload
@@ -349,10 +347,6 @@ verification, fetch referenced runtime assets from their source tags too.
 Publish only after the installation downloader supports these references.
 Retain every referenced source release for as long as any supported successor
 needs it: immutability of its bytes does not replace source availability.
-
-The upload itself needs no signing key and may run on a faster connected build
-host. Any signing that the cut still requires stays on the signing host; only
-public prepared assets and their checked digests cross to the uploading host.
 
 ```sh
 /path/to/successor/bin/open-habitat host upgrade --site /etc/open-habitat/site.json --dry-run --json
@@ -416,14 +410,14 @@ gateway and admitted per-user listeners healthy before reopening ingress.
 ### Build and verify runtime archives (development releases)
 
 On a trusted Linux build host with Go and rootless Podman, build the core and
-integrations archives every release carries, and sign their descriptors
-together. The scripts build their own multi-architecture builder image
+integrations archives every release carries, and write one manifest for
+them. The scripts build their own multi-architecture builder image
 (`runtime/builder/Containerfile`). Each build targets one architecture
 (`--target linux-amd64|linux-arm64`, default the build host's); core and
 integrations run npm on the locked Node, so they build on a host of the target
 architecture, while the other profiles only fetch and inventory pinned files and
 build for either target anywhere. Every archive in one release is built for the
-same target, and `sign --platform` names it; signing refuses Ubuntu requirements
+same target, and `manifest --platform` names it; it refuses Ubuntu requirements
 or `runtime/bin` executables of another architecture.
 
 ```sh
@@ -440,18 +434,15 @@ artifacts = [json.loads((out / 'artifact.json').read_text()),
              json.loads(Path('/var/tmp/new-integrations-profile/artifact.json').read_text())]
 (out / 'artifacts.json').write_text(json.dumps(artifacts))
 PY_ARTIFACTS
-# Development/test only. Keep this private file outside the release directory.
-/var/tmp/runtime-release key-create --key-file /var/tmp/development-release.key
-/var/tmp/runtime-release sign --directory /var/tmp/new-core-release \
-  --artifacts-file /var/tmp/new-core-release/artifacts.json \
-  --key-file /var/tmp/development-release.key --version 0.0.0-runtime-test \
+/var/tmp/runtime-release manifest --directory /var/tmp/new-core-release \
+  --artifacts-file /var/tmp/new-core-release/artifacts.json --version 0.0.0-runtime-test \
   --platform ubuntu-24.04-amd64 --commit "$(git rev-parse HEAD)"
 ```
 
-The signing result reports the exact manifest SHA-256. Transfer only
-`core.tar.gz`, `integrations.tar.gz`, `release.json` and `release.sig` from that
-directory to the recipient. Build scratch, `artifact.json` and private keys are not installation
-inputs. The checked-in npm/non-Ubuntu artifact locks are exact build inputs; Ubuntu
+It verifies the complete closure, writes `release.json` and reports its exact
+SHA-256. Transfer only `core.tar.gz`, `integrations.tar.gz` and `release.json`
+from that directory to the recipient. Build scratch and `artifact.json` are not
+installation inputs. The checked-in npm/non-Ubuntu artifact locks are exact build inputs; Ubuntu
 requirements declare direct packages and qualified **minimum** versions. Manifest schema version 2's
 `packages[].version` field means minimum version, with Debian version
 ordering, not an exact pin. Ubuntu dependencies come from the customer's apt;
@@ -507,10 +498,10 @@ Optional archives use the same trust boundary and link-free format. Build a
 selected, release-qualified profile from its checked-in lock the same way
 (for example `./scripts/build-profile-runtime.sh editor NEW_OUTPUT`), copy its
 archive beside the others and add its `artifact.json` to the same descriptor
-array before signing, in a fresh unsigned directory.
+array before writing the manifest, in a fresh directory.
 
-Transfer every archive named by the signed manifest, not just `core.tar.gz`.
-The helper signs, verifies and stages **all** manifest profiles; it cannot
+Transfer every archive named by the manifest, not just `core.tar.gz`.
+The helper writes, verifies and stages **all** manifest profiles; it cannot
 silently call core-only verification a complete profile verification. Every
 profile needs a complete file/component/licence inventory. Npm components require their corresponding complete native locks even in optional
 archives; Ubuntu debs are never shipped. The uv archive also carries the exact release source and every crate
@@ -535,7 +526,7 @@ For copyleft redistribution, provide corresponding source or a compliant offer
 as the applicable licences require. A retained copyright inventory alone is not
 that offer. The uv profile carries its locked source graph; Ubuntu source
 provision and any provider entitlement remain release/operator obligations,
-not a blanket licence grant from this development signature.
+not a blanket licence grant from a development release.
 
 Before installing, the runtime release can be checked unprivileged with the
 `bin/runtime-release` of a product package whose own bytes matched GitHub's
@@ -556,9 +547,7 @@ It always emits JSON and takes no `--json` flag. The directory must contain
 **runtime** version, which may differ from the product version when a newer
 product reuses unchanged runtime bytes. Exit 0 with `data.status=verified`
 means the manifest hashes to the given digest and the complete archive closure
-matches it; it is not installed-host qualification. Until releases stop being
-signed, `--key-file <raw 32-byte public key>` additionally requires
-`release.sig` to verify against that key; without it no signature is read.
+matches it; it is not installed-host qualification.
 
 For private staging, root may use `runtime-release stage` with the same inputs
 and `--stage-parent <existing-root-owned-0700-directory>`. The caller must

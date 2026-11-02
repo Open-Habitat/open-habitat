@@ -6,7 +6,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -15,8 +14,7 @@ import (
 	"testing"
 )
 
-func releaseKey() ed25519.PrivateKey { return ed25519.NewKeyFromSeed(bytes.Repeat([]byte{17}, 32)) }
-func releaseDigest(b []byte) string  { s := sha256.Sum256(b); return hex.EncodeToString(s[:]) }
+func releaseDigest(b []byte) string { s := sha256.Sum256(b); return hex.EncodeToString(s[:]) }
 func releaseFixture(t *testing.T, headers ...*tar.Header) (ReleaseArtifact, []byte) {
 	t.Helper()
 	var raw bytes.Buffer
@@ -51,7 +49,7 @@ func releaseManifest(a ...ReleaseArtifact) ReleaseManifest {
 }
 func authenticatedFixture(t *testing.T, m ReleaseManifest) AuthenticatedRelease {
 	t.Helper()
-	b, _, e := EncodeRelease(m, releaseKey())
+	b, e := EncodeRelease(m)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -64,12 +62,12 @@ func authenticatedFixture(t *testing.T, m ReleaseManifest) AuthenticatedRelease 
 func TestReleaseAuthenticationAndStrictWire(t *testing.T) {
 	a, _ := releaseFixture(t)
 	m := releaseManifest(a)
-	b, sig, e := EncodeRelease(m, releaseKey())
+	b, e := EncodeRelease(m)
 	if e != nil {
 		t.Fatal(e)
 	}
 	target := Release{m.Version, releaseDigest(b)}
-	// The pinned digest alone authenticates: no signature or key is consulted.
+	// The pinned digest alone authenticates.
 	if _, e := AuthenticateRelease(b, target); e != nil {
 		t.Fatal(e)
 	}
@@ -90,21 +88,6 @@ func TestReleaseAuthenticationAndStrictWire(t *testing.T) {
 			}
 		})
 	}
-	pub := releaseKey().Public().(ed25519.PublicKey)
-	if !ReleaseSignatureValid(b, sig, pub) {
-		t.Fatal("release cut signature does not verify")
-	}
-	other := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{18}, 32)).Public().(ed25519.PublicKey)
-	for name, ok := range map[string]bool{
-		"wrong key":    ReleaseSignatureValid(b, sig, other),
-		"unsigned":     ReleaseSignatureValid(b, nil, pub),
-		"wrong domain": ReleaseSignatureValid(b, ed25519.Sign(releaseKey(), b), pub),
-		"tamper":       ReleaseSignatureValid(append(append([]byte{}, b...), ' '), sig, pub),
-	} {
-		if ok {
-			t.Fatalf("%s signature verified", name)
-		}
-	}
 	for name, bad := range map[string]string{
 		"duplicate":      strings.Replace(string(b), `"version":"1.2.3"`, `"version":"9.9.9","version":"1.2.3"`, 1),
 		"case alias":     strings.Replace(string(b), `"version"`, `"Version"`, 1),
@@ -121,9 +104,6 @@ func TestReleaseAuthenticationAndStrictWire(t *testing.T) {
 				t.Fatalf("strict parse: %v", e)
 			}
 		})
-	}
-	if _, _, e := EncodeRelease(m, nil); e == nil {
-		t.Fatal("nil signing key")
 	}
 	if _, e := (AuthenticatedRelease{}).Select(nil); e == nil {
 		t.Fatal("zero capability")
@@ -197,7 +177,7 @@ func TestReleaseProfilesAndPackageDrift(t *testing.T) {
 			var copy ReleaseManifest
 			_ = json.Unmarshal(raw, &copy)
 			mutate(&copy)
-			if _, _, e := EncodeRelease(copy, releaseKey()); e == nil {
+			if _, e := EncodeRelease(copy); e == nil {
 				t.Fatal("invalid build input")
 			}
 		})

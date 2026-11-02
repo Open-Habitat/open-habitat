@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""Write the signing inputs for a product-only successor of a published release.
+"""Write the manifest inputs for a product-only successor of a published release.
 
 A product-only successor reuses every runtime archive of its predecessor but
-still needs its own signed manifest, because the upgrade authenticates the
+still needs its own manifest, because the upgrade authenticates the
 exact predecessor and every successor product file. This reads the
 predecessor's release directory and the successor's product package and writes
 `artifacts.json` (the predecessor's descriptors, optionally annotated with
 an immutable archive source tag using --archive-release) and `upgrade.json`
 (protocol 1, the predecessor's version, manifest and executable digests, and
 every successor product file) into OUT, for
-`runtime-release sign --platform PLATFORM --artifacts-file OUT/artifacts.json
+`runtime-release manifest --platform PLATFORM --artifacts-file OUT/artifacts.json
 --upgrade-file OUT/upgrade.json`, where PLATFORM is the predecessor's, printed
 in the result: an upgrade never changes the host's architecture.
-It signs nothing and never sees a key.
 """
 import argparse
 import hashlib

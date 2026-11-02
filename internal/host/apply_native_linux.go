@@ -95,7 +95,7 @@ func installedImmutable() (Immutable, bool, error) {
 }
 
 // authenticateReleaseFile authenticates dir/release.json by the site's pin
-// alone. A release.sig beside it, or a release key on the host, is ignored.
+// alone; nothing else in the directory or on the host is consulted.
 func authenticateReleaseFile(dir string, target Release) (AuthenticatedRelease, error) {
 	b, e := trustedBytes(dir+"/release.json", MaxReleaseManifestBytes)
 	if e != nil {

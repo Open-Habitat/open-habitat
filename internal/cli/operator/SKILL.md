@@ -68,9 +68,8 @@ site.release.manifest_sha256: the SHA-256 GitHub states for that manifest asset
 (`assets[].digest` from `gh api repos/Open-Habitat/open-habitat/releases/tags/<tag>`),
 never a checksum file from the same download. site.release.version is the
 manifest's version. The operator accepts exactly the manifest bytes that hash
-to the pin and checks every archive and product file against that manifest; it
-reads no signature or key, and a leftover release.sig or
-/etc/open-habitat/release-key.pub is ignored. Check the product package's bytes
+to the pin and checks every archive and product file against that manifest;
+releases are unsigned, and the pin is the whole trust. Check the product package's bytes
 against GitHub's stated digest too before running it as root; its own checksums
 are integrity, not authenticity.
 
@@ -90,8 +89,7 @@ manifest. The version is the **runtime** version, which may differ from the
 product version when a newer product reuses unchanged runtime bytes. Exit 0
 with `data.status=verified` means the manifest matches the digest and the
 complete archive closure matches the manifest; it is not installed-host
-qualification. While releases are still signed, an added `--key-file` also
-requires `release.sig` to verify against that raw 32-byte key.
+qualification.
 
 Prepare explicitly in a maintenance window:
 

@@ -1,6 +1,6 @@
 # ADR 0029: One release-contained operator installs and maintains a declared site
 
-**Status:** Accepted 2026-10-22 (Jari). Decision history in `issues/decide-installation-baseline`. The commands named here are work to implement, not commands in today's release. Its release-signing part is superseded by [ADR 0034](adr-0034-release-digest-verification.md): releases are verified by the SHA-256 GitHub states for them, not by a product key.
+**Status:** Accepted 2026-10-22 (Jari). Decision history in `issues/decide-installation-baseline`. The commands named here are work to implement, not commands in today's release. Its release-signing part is superseded by ADR 0034 (`docs/decisions/adr-0034-release-digest-verification.md`, in history): releases are unsigned and verified by the SHA-256 GitHub states for them.
 
 ## Problem
 

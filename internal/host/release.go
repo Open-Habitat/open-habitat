@@ -4,7 +4,6 @@ package host
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -16,10 +15,6 @@ import (
 	"strings"
 	"unicode/utf8"
 )
-
-// The release cut still signs these exact bytes (ADR 0034 step 1); no installer
-// verifies the signature. Trust is the site's pinned manifest digest alone.
-const releaseSignatureDomain = "open-habitat.release.v1\x00"
 
 // Complete non-Ubuntu file/license inventories (including integrations) need
 // more than 8 MiB even without any Ubuntu archives. Keep a bounded pinned input.
@@ -91,28 +86,23 @@ type AuthenticatedRelease struct {
 }
 
 // EncodeRelease is for the release builder, offline after closure resolution.
-// It neither resolves nor downloads anything. Signing key custody is the caller's.
-func EncodeRelease(m ReleaseManifest, key ed25519.PrivateKey) ([]byte, []byte, error) {
-	if !validRelease(m) || len(key) != ed25519.PrivateKeySize {
-		return nil, nil, ErrRelease
+// It neither resolves nor downloads anything. The SHA-256 of the returned bytes
+// is the whole release trust once GitHub states it for the published asset.
+func EncodeRelease(m ReleaseManifest) ([]byte, error) {
+	if !validRelease(m) {
+		return nil, ErrRelease
 	}
 	b, err := json.Marshal(m)
 	if err != nil || len(b) > MaxReleaseManifestBytes {
-		return nil, nil, ErrRelease
+		return nil, ErrRelease
 	}
-	return b, ed25519.Sign(key, append([]byte(releaseSignatureDomain), b...)), nil
-}
-
-// ReleaseSignatureValid checks a release.sig for the build tool's optional
-// --key-file. Installation never calls it; it goes with the signing step.
-func ReleaseSignatureValid(b, signature []byte, key ed25519.PublicKey) bool {
-	return len(key) == ed25519.PublicKeySize && len(signature) == ed25519.SignatureSize && ed25519.Verify(key, append([]byte(releaseSignatureDomain), b...), signature)
+	return b, nil
 }
 
 // AuthenticateRelease accepts exactly the manifest bytes whose SHA-256 the
 // operator pinned, taken from the digest GitHub states for the release asset.
-// The pin is compared before the bytes are parsed: nothing else in the bundle,
-// including any leftover release.sig, can make a release acceptable.
+// The pin is compared before the bytes are parsed: nothing else in the bundle
+// can make a release acceptable.
 func AuthenticateRelease(b []byte, target Release) (AuthenticatedRelease, error) {
 	if len(b) == 0 || len(b) > MaxReleaseManifestBytes || !digestRE.MatchString(target.ManifestSHA256) {
 		return AuthenticatedRelease{}, ErrReleaseTarget

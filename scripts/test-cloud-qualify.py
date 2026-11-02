@@ -55,8 +55,8 @@ def release(root, version, binary, predecessor=None, arch='amd64'):
     if predecessor:
         manifest['upgrade'] = {'protocol': 1, 'predecessor': predecessor}
     (root / 'release.json').write_text(json.dumps(manifest))
-    # Releases are still cut signed; the qualification neither needs nor ships it.
-    (root / 'release.sig').write_bytes(b's' * 64)
+    # A stray file beside the release is neither needed nor shipped.
+    (root / 'notes.txt').write_bytes(b'not part of the release')
     for name, data in archives.items():
         (root / name).write_bytes(data)
     return top, {'version': version, 'manifest_sha256': hashlib.sha256((root / 'release.json').read_bytes()).hexdigest()}
@@ -352,9 +352,8 @@ class Harness(unittest.TestCase):
         self.assertEqual(site['editor'], {'origin_template': 'https://*.code.qualification.invalid'})
         for path in (cq.SITE, cq.SECRETS + '/tls.key', cq.SECRETS + '/github'):
             self.assertEqual(fake.files[path][1], '0600')
-        # The site's manifest pin is the whole release trust: no key or signature reaches the host.
-        self.assertNotIn(cq.INCOMING + '/release.sig', fake.files)
-        self.assertFalse(any('release-key' in path for path in fake.files))
+        # The site's manifest pin is the whole release trust: only the release reaches the host.
+        self.assertNotIn(cq.INCOMING + '/notes.txt', fake.files)
         self.assertIn(['install', '-d', '-o', 'root', '-g', 'root', '-m', '0711', '/etc/open-habitat'], fake.calls)
         upgrade = next(s for s in doc['stages'] if s['name'] == 'upgrade')['observations']
         self.assertEqual(upgrade['fenced_public_statuses'], [503, None])

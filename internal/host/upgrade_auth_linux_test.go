@@ -3,8 +3,6 @@
 package host
 
 import (
-	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -16,12 +14,8 @@ import (
 )
 
 func TestUpgradeReleaseAuthentication(t *testing.T) {
-	_, key, e := ed25519.GenerateKey(rand.Reader)
-	if e != nil {
-		t.Fatal(e)
-	}
 	m := ReleaseManifest{SchemaVersion: 2, Version: "2.0.0", Commit: strings.Repeat("a", 40), Platform: "ubuntu-24.04-amd64", Artifacts: []ReleaseArtifact{{Profile: "core", Archive: "core.tar.gz", SHA256: strings.Repeat("a", 64), Size: 1, ExpandedSize: 1024, Entries: 1, Requires: []string{}, Packages: []RuntimePackage{}}}, Upgrade: &ReleaseUpgrade{Protocol: 1, PredecessorBinarySHA256: strings.Repeat("e", 64), Predecessor: Release{"1.0.0", strings.Repeat("b", 64)}, Product: []ProductFile{{"open-habitat", strings.Repeat("c", 64), 0755}, {"web/index.html", strings.Repeat("d", 64), 0644}}}}
-	b, _, e := EncodeRelease(m, key)
+	b, e := EncodeRelease(m)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -52,8 +46,8 @@ func TestUpgradeReleaseAuthentication(t *testing.T) {
 		var bad ReleaseManifest
 		json.Unmarshal(b, &bad)
 		change(&bad)
-		if _, _, e = EncodeRelease(bad, key); e == nil {
-			t.Fatal("unsafe upgrade metadata signed")
+		if _, e := EncodeRelease(bad); e == nil {
+			t.Fatal("unsafe upgrade metadata encoded")
 		}
 	}
 }
@@ -119,8 +113,8 @@ func TestUpgradeAcceptsBrowserChangedQuotaDefault(t *testing.T) {
 }
 
 // Apply (the incoming release directory) and upgrade (an installed generation)
-// both authenticate release.json by the site's pin alone. A generation installed
-// while releases were signed still holds release.sig; no key is on the host.
+// both authenticate release.json by the site's pin alone; another file beside
+// it, such as one an earlier release cut left in a generation, is not read.
 func TestReleaseFileAuthenticatesByPinAlone(t *testing.T) {
 	if os.Geteuid() != 0 || os.Getenv("HOST_INIT_UID_CONTAINER") != "1" {
 		t.Skip("root-owned trusted release directory requires disposable root container")
@@ -128,21 +122,18 @@ func TestReleaseFileAuthenticatesByPinAlone(t *testing.T) {
 	if HostPlatform() == "" {
 		t.Skip("unsupported build architecture")
 	}
-	if _, e := os.Stat("/etc/open-habitat/release-key.pub"); !os.IsNotExist(e) {
-		t.Fatalf("container already holds a release key: %v", e)
-	}
 	a, _ := releaseFixture(t)
 	m := releaseManifest(a)
 	m.Platform = HostPlatform()
-	b, sig, e := EncodeRelease(m, releaseKey())
+	b, e := EncodeRelease(m)
 	if e != nil {
 		t.Fatal(e)
 	}
 	pin := Release{m.Version, releaseDigest(b)}
 	for _, layout := range []struct {
-		name string
-		sig  bool
-	}{{"incoming", false}, {"signed generation", true}} {
+		name  string
+		stray bool
+	}{{"incoming", false}, {"generation with a stray file", true}} {
 		dir, e := os.MkdirTemp("/opt", "release-pin-")
 		if e != nil {
 			t.Fatal(e)
@@ -154,8 +145,8 @@ func TestReleaseFileAuthenticatesByPinAlone(t *testing.T) {
 		if e = os.WriteFile(dir+"/release.json", b, 0644); e != nil {
 			t.Fatal(e)
 		}
-		if layout.sig {
-			if e = os.WriteFile(dir+"/release.sig", sig, 0644); e != nil {
+		if layout.stray {
+			if e = os.WriteFile(dir+"/release.extra", []byte("not part of the release"), 0644); e != nil {
 				t.Fatal(e)
 			}
 		}
@@ -171,20 +162,15 @@ func TestReleaseFileAuthenticatesByPinAlone(t *testing.T) {
 				t.Fatalf("%s accepted with %s: %v", layout.name, name, e)
 			}
 		}
-		// Bytes swapped after the pin was taken, even validly re-signed, refuse.
+		// Valid bytes swapped in after the pin was taken refuse.
 		m2 := m
 		m2.Commit = strings.Repeat("b", 40)
-		other, otherSig, e := EncodeRelease(m2, releaseKey())
+		other, e := EncodeRelease(m2)
 		if e != nil {
 			t.Fatal(e)
 		}
 		if e = os.WriteFile(dir+"/release.json", other, 0644); e != nil {
 			t.Fatal(e)
-		}
-		if layout.sig {
-			if e = os.WriteFile(dir+"/release.sig", otherSig, 0644); e != nil {
-				t.Fatal(e)
-			}
 		}
 		if _, e := authenticateReleaseFile(dir, pin); !errors.Is(e, ErrReleaseTarget) {
 			t.Fatalf("%s accepted swapped manifest: %v", layout.name, e)

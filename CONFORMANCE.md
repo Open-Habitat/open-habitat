@@ -349,7 +349,7 @@ host installer interface. The eight inherited partial sections **8,11,12,15,
 | Sections | Scoped evidence/limits |
 | --- | --- |
 | 1,4,22 | Strict authenticated input rejects unknown/duplicate/case-aliased/missing/null fields, wrong key/domain/target, invalid profile DAGs and conflicting locks. Errors omit supplied/native text. Root staging cannot accept a parsed-but-unauthenticated or zero capability. `TestReleaseAuthenticationAndStrictWire`, `TestReleaseProfilesAndPackageDrift`, `TestReleaseHostileAuthenticatedArchives` cover these library boundaries, not a new CLI parser. |
-| 2–3,5–10,13–18 | No new command/envelope/format/config/help/skill contract. Existing CLI judgments above remain; signature trust/bootstrap and a real package observer are not exposed by this part. Explicit observation distinguishes exact package drift from unavailable data; it is not host readiness. |
+| 2–3,5–10,13–18 | No new command/envelope/format/config/help/skill contract. Existing CLI judgments above remain; release trust bootstrap and a real package observer are not exposed by this part. Explicit observation distinguishes exact package drift from unavailable data; it is not host readiness. |
 | 11–12 | Existing apply remains blocked. Staging is a root-only private scratch operation with context cancellation/cleanup, not idempotent generation publication, a dry-run, durable retry recovery or a streaming/signalled CLI. `TestReleaseStagingAndFailureBoundaries` and actual-root `TestReleaseRootAndDistinctUID` cover its narrower scope. No promotion to pass. |
 | 19–21 | No wall-clock provenance, human-editable record writer or bootstrap command is introduced. Random scratch names are not persistent operation identity; the existing journal still owns that. |
 | 23–24 | New keys/identities/archives are synthetic. No personal profile, credentials or environment defaults are copied. Remaining closure/profile/bootstrap work is explicitly local unfinished implementation, not an asserted external dependency or permission blocker. |
@@ -363,8 +363,8 @@ The probe still assumes top-level fields instead of this CLI's `data` envelope,
 passes an unsupported positional `.` to doctor, and checks Rust layout; source
 and existing CLI tests, not that mechanical output, determine the judgments
 above. These advisory runs exercise the inherited surface, not the unimplemented
-bootstrap/signing CLI. Package reproducibility/checksums still do not establish
-release authenticity; synthetic Ed25519/staging tests do not qualify real runtime
+bootstrap CLI. Package reproducibility/checksums still do not establish
+release authenticity; synthetic manifest/staging tests do not qualify real runtime
 archives or an independent customer installation.
 
 After additive reconciliation with the parallel storage slice, the runtime
@@ -395,7 +395,7 @@ surface and its eight partial rows (8,11,12,15,17,18,19,23) are unchanged.
   cancellation, invokes no solver and cannot install/hold/downgrade packages.
   It is not an executor, operation lock or install-retry protocol.
 - §§19–21: no clock provenance, editable store or bootstrap. §§23–24: synthetic
-  locks/fixtures and neutral native Ubuntu paths; signing, closure and profile
+  locks/fixtures and neutral native Ubuntu paths; closure and profile
   delivery remain unfinished product work, not an external blocker.
 
 `TestReleaseNativePackageQuery` exercises the real dpkg-query/database with
@@ -460,7 +460,7 @@ runtime-directory declarations. Terminal failures report the operation phase,
 not a no-write implication. Focused/root/race/contract/package and rebuilt canon
 checks were rerun; doctor/review counts and inherited partials are unchanged.
 
-## Signed core-runtime build — development tooling
+## Core-runtime build — development tooling
 
 Canon **v4**, §§1–24, scoped to the build-only `runtime-release` helper and
 existing host authentication/staging library; **no installed host command,
@@ -468,17 +468,16 @@ daemon authority or readiness claim is added**. Earlier whole-product matrix
 and its eight partial sections remain unchanged.
 
 - §§1–4,9–10,22: the pinned version/digest are explicit and separate from the
-  bundle; an optional `--key-file` on verify/stage additionally checks the
-  still-published signature. Strict pinned wire fields, complete file/component/lock/licence
+  bundle; releases are unsigned and the helper takes no key. Strict pinned wire fields, complete file/component/lock/licence
   references, bounded manifests/archives and safe modes precede extraction.
-  Signature/target/digest failures remain fixed library errors. The helper emits
+  Target/digest failures remain fixed library errors. The helper emits
   versioned JSON data/errors without prompting; it does not inherit native
   diagnostics on a privileged service path. Key creation is explicitly test-only.
 - §§5–8,13: file-based build inputs/output, no network solver at verification or
   staging. The checked-in Ubuntu lock separates carried platform library bytes
   from exact tool-package policy; no security downgrade or hold is implemented.
   These are explicit invocation inputs, not a new persistent config subsystem.
-- §§11–12 remain **partial for this build helper**: key/sign outputs refuse
+- §§11–12 remain **partial for this build helper**: manifest output refuses
   overwrite, verification is read-only and stage owns a fresh private scratch
   child with failure cleanup. There is no helper dry-run, durable idempotency,
   signal/event stream or installation/convergence executor. Build/native tool
@@ -490,8 +489,8 @@ and its eight partial sections remain unchanged.
   error/help contract. Independently provision/audit its binary and trust inputs
   before root use. It is not shipped as the product host CLI.
 - §§19–21: no timestamps, human record store or implicit bootstrap. Stable core
-  archives are built from sorted files/zero tar times; the signing key and private
-  stage name are intentionally random. The metadata digest names exact bytes,
+  archives are built from sorted files/zero tar times; the private stage name is
+  intentionally random. The metadata digest names exact bytes,
   not an assertion of production qualification.
 - §§23–24: neutral manifests/paths, retained upstream notices (not a blanket
   licence grant), no private home/config/provider state or asserted external
@@ -504,7 +503,7 @@ staging/UID denials; the fresh offline QEMU check separately traverses productio
 `ServeHTTP` → `pi.validate` as mapped users with minimal HOME/PATH. That is
 runtime startup evidence, not a conversation/provider, quota, boot-gate or
 customer apply/upgrade acceptance. Ordinary product packaging stays checksum-only;
-only the separately signed core archive has the new authentication inventory.
+only the manifest-pinned core archive has the new authentication inventory.
 
 ## Host preparation part 5 — read-only storage boot boundary
 
@@ -610,16 +609,16 @@ provider config writer or host readiness condition is added. The eight inherited
 whole-product partials remain unchanged.
 
 - §§1–4,9–10,22: explicit descriptor-array input; every profile requires a complete
-  closure before signing, and verify/stage cover every advertised archive. Native
+  closure before the manifest is written, and verify/stage cover every advertised archive. Native
   component kind supports the upstream editor/uv trees; optional npm and Debian
   components cannot bypass native-lock cross-checks. Fixed host errors retain
   redaction. Build-time Python/native-tool failures remain developer diagnostics,
   not production service logs or canon-complete classified errors.
 - §§5–8,13: exact source URLs/digests and package versions, no install-time solver,
   no personal settings or source checkout requirement for verification. Large
-  inventories stay in signed files. No persistent product config surface changes.
+  inventories stay in digest-pinned files. No persistent product config surface changes.
 - §§11–12 remain **partial for the developer helpers**: new output directories
-  and existing exclusive signature/key writes refuse clobber; staging remains
+  and the exclusive manifest write refuses clobber; staging remains
   private with cleanup. No dry-run, durable build retry, streaming protocol or
   process-signal contract is claimed. This is not apply/upgrade execution.
 - §§14–18 retain the previously documented helper gaps: ordinary flag help,
@@ -669,7 +668,7 @@ counts/limitations. No generated intake command was executed.
 
 The container profile adds an authenticated service-internal namespace initializer,
 not a new host operator command or delegation authority. It has plain diagnostic
-errors and no help/JSON/dry-run interface; it is not canon-complete. Its signed
+errors and no help/JSON/dry-run interface; it is not canon-complete. Its digest-pinned
 provider and native qualification do not promote these developer/internal helper
 partials or establish optional-profile activation or customer Moodle acceptance.
 

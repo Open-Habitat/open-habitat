@@ -44,9 +44,9 @@ each one is settled.
    carries a product package and a runtime release per architecture
    (`linux-amd64`, `linux-arm64`) for Ubuntu 24.04. Nothing goes to
    proxy.golang.org: the Go module is not a library and is not meant to be
-   `go install`ed. Whether "signed" stays in the public wording is a decision:
-   the operator today trusts GitHub's stated asset digests and reads no
-   signature; the `.sig`/`.pub` assets are kept only for older tooling.
+   `go install`ed. Releases are unsigned: the operator trusts the SHA-256
+   GitHub states for the release's assets, and immutable releases keep those
+   assets from being replaced.
 4. **Launch timing.** The launch research recommends going public when the
    independent customer installation works on a stranger's VPS. Visibility is
    a separate, irreversible step Jari approves on its own.

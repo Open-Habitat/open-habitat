@@ -54,7 +54,7 @@ func TestHostReleasePlatform(t *testing.T) {
 	for _, platform := range []string{HostPlatform(), otherPlatform()} {
 		m := releaseManifest(a)
 		m.Platform = platform
-		b, _, e := EncodeRelease(m, releaseKey())
+		b, e := EncodeRelease(m)
 		if e != nil {
 			t.Fatal(e)
 		}

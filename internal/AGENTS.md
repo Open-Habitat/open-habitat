@@ -91,8 +91,13 @@ The packages divide the work as follows.
   Release trust is the site's exact manifest digest/version, which the operator
   takes from the SHA-256 GitHub states for the release's manifest asset. The
   digest is compared before the manifest is parsed, and nothing supplied by the
-  same bundle (a checksum file, a key, a signature) can authorize it. Host
-  apply and upgrade read no signature or key.
+  same bundle, such as a checksum file, can authorize it. Releases are
+  unsigned: there is no product key to keep, rotate or pin on hosts, and the
+  product never contacts GitHub, so verification stays offline and the site
+  file is the one place that names the release. The accepted gap is someone
+  with write access to the repository replacing an asset of a mutable
+  release; that person could change the source as well, releases are
+  published immutable, and installed hosts' pin records would show a swap.
   `AuthenticateRelease`/`AuthenticatedRelease.StageRelease` are the executor's
   authentication and private staging seam, not activation approval. The executor
   owns the operation lock, trusted staging-parent ancestry and cleanup; it must

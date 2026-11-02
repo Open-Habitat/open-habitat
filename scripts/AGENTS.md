@@ -34,7 +34,7 @@ exactly one `DirectoryMode=0710` in the daemon socket, rejects duplicates and
 whitespace variants that systemd itself would accept, rejects source maps and
 any trace of test fixtures in the web assets, and rejects files it has not been
 told about. `test-package-socket.sh` is the negative side of the same check,
-re-signing deliberately unsafe archives and proving they still fail. Changing a
+repackaging deliberately unsafe archives and proving they still fail. Changing a
 broker unit, or the daemon socket's `DirectoryMode`, therefore means changing
 the verifier's expectations, and usually a negative case, in the same commit.
 
@@ -92,9 +92,9 @@ conditions are the test conditions; a helper that quietly fixed the host would
 reintroduce exactly the gap the emulated guests had. The per-run CA key stays on
 the qualification host. Remote probes observe; the one synthetic action they
 take is a first-login request on the broker socket as the gateway UID, since
-there is no browser. `successor-descriptors.py` only writes the unsigned
-descriptors for a product-only successor of a published release; signing stays
-with `runtime-release` and the key never passes through it.
+there is no browser. `successor-descriptors.py` only writes the
+descriptors for a product-only successor of a published release; `runtime-release
+manifest` turns them into the manifest.
 
 ## Rootless shared-selector proof
 

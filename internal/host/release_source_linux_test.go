@@ -17,7 +17,7 @@ func TestReleaseArchiveSourceDoesNotAuthorizeBytes(t *testing.T) {
 	a, archive := releaseFixture(t)
 	a.ArchiveRelease = "v1.2.2"
 	m := releaseManifest(a)
-	raw, _, err := EncodeRelease(m, releaseKey())
+	raw, err := EncodeRelease(m)
 	if err != nil {
 		t.Fatal(err)
 	}

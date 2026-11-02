@@ -89,8 +89,6 @@ func installedRelease(ctx context.Context) (Site, AuthenticatedRelease, error) {
 	if gen != generationPath(s) {
 		return s, AuthenticatedRelease{}, ErrUpgradeTarget
 	}
-	// A generation installed before ADR 0034 may still hold release.sig; it
-	// is neither read nor required.
 	r, e := authenticateReleaseFile(gen, s.Release)
 	if e != nil {
 		return s, r, e

@@ -99,8 +99,7 @@ def now():
 def release_bundle(directory):
     """One published release: product package, runtime manifest, archives.
 
-    The manifest's own SHA-256 becomes the site pin; a release.sig beside it is
-    neither required nor delivered (ADR 0034)."""
+    The manifest's own SHA-256 becomes the site pin, the whole release trust."""
     root = Path(directory)
     if not root.is_dir():
         raise Usage('release_directory_missing', f'{directory} is not a directory')
