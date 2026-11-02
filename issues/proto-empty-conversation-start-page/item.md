@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-start-page-button
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: a Luo aloitussivu button in the empty new conversation

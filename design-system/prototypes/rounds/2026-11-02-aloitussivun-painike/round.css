@@ -1,0 +1,49 @@
+/* Review chrome above the production shell, and the round's own pieces on
+   production tokens. The shell is anchored below the review bar. */
+html, body { margin: 0; background: var(--ah-bg); }
+.sp-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;
+  padding: 8px 16px; background: var(--ah-surface); color: var(--ah-ink);
+  border-bottom: 1px solid var(--ah-line); font: 13px/1.4 var(--ah-font, system-ui);
+}
+.sp-bar strong { font-weight: 600; }
+.sp-lines { flex-basis: 100%; margin: 0; padding-left: 1.4em; color: var(--ah-ink-2); font-size: 12px; }
+.sp-lines li[aria-current] { color: var(--ah-ink); font-weight: 600; }
+.sp-bar select, .sp-reset { font: inherit; }
+.sp-stage .ah-app-shell:has(.ah-rail) {
+  top: var(--review-h, 0px);
+  /* The picker floats at the bottom; keep the field clear of it. */
+  height: calc(100dvh - var(--review-h, 0px) - 60px);
+}
+.sp-stage .ah-rail { top: var(--review-h, 0px); }
+
+/* The invitation sits where today's hint line sits: at the end of the empty
+   history, just above the field. */
+.sp-empty { padding-block: var(--ah-s5); }
+.sp-line { border-style: dashed; }
+
+.sp-card {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  padding: var(--ah-s5) var(--ah-s6);
+  color: var(--ah-ink);
+}
+.sp-card h2 { font-size: var(--ah-size-h3, 1.1rem); margin: 0 0 var(--ah-s2); }
+.sp-card p, .sp-card li { color: var(--ah-ink-2); font-size: var(--ah-size-ui); line-height: var(--ah-lh-body); }
+.sp-card p { margin: 0 0 var(--ah-s2); }
+.sp-card ul { margin: 0 0 var(--ah-s3); padding-left: 1.2em; }
+.sp-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s4); margin-top: var(--ah-s4); }
+.sp-card-actions span { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+
+.sp-suggest {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-s2) var(--ah-s3);
+  width: 100%; max-width: var(--ah-conversation-width); margin: 0 auto var(--ah-s2);
+  box-sizing: border-box; padding-inline: var(--ah-s1, 4px);
+}
+.sp-suggest span { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+
+/* Proposal: the history chip names the host's own skill by its title, in
+   ordinary type rather than as a native skill name. */
+.sp-stage .ah-skill-name { font-family: inherit; }
