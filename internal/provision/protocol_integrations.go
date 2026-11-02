@@ -70,7 +70,7 @@ func integrationProvider(p string) bool { return slices.Contains(integrationapps
 
 func parseIntegrationRequest(raw map[string]json.RawMessage, r Request) (Request, error) {
 	present := func(k string) bool { _, ok := raw[k]; return ok }
-	for _, k := range []string{"candidate", "default_limit_bytes", "limit_bytes", "login_hint"} {
+	for _, k := range []string{"candidate", "default_limit_bytes", "limit_bytes", "login_hint", "slug", "teams"} {
 		if present(k) {
 			return Request{}, ErrInvalid
 		}

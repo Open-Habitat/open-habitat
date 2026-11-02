@@ -224,3 +224,70 @@ test("@server-access an administrator names a person before their first sign-in;
   ).toBe(403);
   await bobContext.close();
 });
+
+test("@server-access @a11y a team is added in the same field, rows show their reasons, and a leaver is raised as a notice", async ({
+  page,
+}) => {
+  expect((await page.request.get("/fixture/access?leaver=44")).status()).toBe(
+    204,
+  );
+  await signIn(page, 0);
+  await page.goto("/settings/users");
+  // Carol's latest sign-in found her gone from the team: a notice above the
+  // list, and her row's chip says so; Bob's says he is allowed one by one.
+  const notice = page.getByTestId("access-leaver-44");
+  await expect(notice).toContainText("@carol");
+  await expect(notice).toContainText("example-org/habitat");
+  await expect(page.getByTestId("access-reasons-43")).toContainText(
+    "henkilönä",
+  );
+  await expect(page.getByTestId("access-reasons-44")).toContainText(
+    "example-org/habitat – lähti",
+  );
+  await expect(page.getByTestId("access-row-44")).toHaveAttribute(
+    "data-state",
+    "withdrawn",
+  );
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include("[data-testid=server-access]")
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+
+  // A team goes in the same field: checked first, then added on its own.
+  await page.getByTestId("access-login-input").fill("example-org/Ops");
+  await page.getByRole("button").and(page.getByTestId("access-add")).click();
+  await expect(page.getByTestId("access-team-found")).toContainText(
+    "example-org/ops",
+  );
+  await expect(page.getByTestId("access-add")).toHaveText("Lisää tiimi");
+  await page.getByRole("button").and(page.getByTestId("access-add")).click();
+  const ops = page.getByTestId("access-team-61230001-ops");
+  await expect(ops).toContainText("Kukaan tiimin jäsen ei ole vielä");
+  await expect(page.getByTestId("access-login-input")).toHaveValue("");
+
+  // Dismissing the notice forgets the leaver; the account is not touched.
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("access-leaver-dismiss-44"))
+    .click();
+  await expect(notice).toHaveCount(0);
+  await expect(page.getByTestId("access-row-44")).toHaveCount(0);
+
+  // Detaching asks first and says what ends.
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("access-detach-61230001-ops"))
+    .click();
+  await expect(page.getByTestId("access-detach-dialog")).toContainText(
+    "seuraavalla kirjautumisellaan",
+  );
+  await page
+    .getByRole("dialog")
+    .getByRole("button")
+    .and(page.getByTestId("access-detach-confirm"))
+    .click();
+  await expect(ops).toHaveCount(0);
+});

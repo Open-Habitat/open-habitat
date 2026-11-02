@@ -297,6 +297,9 @@ func stateAt(ctx context.Context, fd int, owner uint32) (allowFile, ledgerFile, 
 	if e = validRuntime(ar["runtime"]); e != nil {
 		return a, l, nil, nil, e
 	}
+	if e = validTeams(ar["teams"], ar["members"]); e != nil {
+		return a, l, nil, nil, e
+	}
 	lr, e := object(lb, "version", "generation", "bindings")
 	if e != nil {
 		return a, l, nil, nil, e

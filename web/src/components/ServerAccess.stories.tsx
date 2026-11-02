@@ -84,7 +84,78 @@ const view: AccessView = {
   schema_version: 1,
   mode: "allowlist",
   runtime_admission: true,
+  teams: [],
   entries,
+};
+// A team admits people beside those allowed one by one (proto-org-admission,
+// Syy riveillä): a member, someone with both reasons, a leaver raised as a
+// notice, and one whose membership GitHub could not confirm.
+const team = "northstar-demo/kehitys";
+const teamEntries: AccessEntry[] = [
+  ...entries,
+  {
+    id: "51234010",
+    source: "team",
+    state: "joined",
+    username: "aino",
+    login_hint: "aino-v",
+    at: "2026-11-01T08:00:00Z",
+    last_seen: "2026-11-02T08:00:00Z",
+    administrator: false,
+    denied: false,
+    team_state: "member",
+    teams: [team],
+  },
+  {
+    id: "51234011",
+    source: "site_admin",
+    state: "joined",
+    username: "mikko",
+    login_hint: "mikko-k",
+    at: "2026-10-14T08:00:00Z",
+    administrator: false,
+    denied: false,
+    team_state: "member",
+    teams: [team],
+  },
+  {
+    id: "51234012",
+    source: "team",
+    state: "left",
+    username: "tuuli",
+    login_hint: "tuuli-h",
+    at: "2026-11-02T07:00:00Z",
+    administrator: false,
+    denied: false,
+    team_state: "left",
+    teams: [team],
+  },
+  {
+    id: "51234013",
+    source: "team",
+    state: "unconfirmed",
+    username: "lauri",
+    login_hint: "lauri-p",
+    at: "2026-11-02T06:00:00Z",
+    administrator: false,
+    denied: false,
+    team_state: "unconfirmed",
+    teams: [team],
+  },
+];
+const teamView: AccessView = {
+  ...view,
+  teams: [
+    {
+      org_id: "71234000",
+      org: "northstar-demo",
+      slug: "kehitys",
+      pinned: true,
+      actor: "51234000",
+      at: "2026-10-31T08:00:00Z",
+    },
+  ],
+  entries: teamEntries,
 };
 const lookup = async (login: string): Promise<LookupResult> =>
   login.toLowerCase() === "lauri-k"
@@ -217,6 +288,32 @@ export const DesignatedAdministrators: Story = {
       ),
     },
     pending: { "51234002": { kind: "grant" } },
+  },
+};
+/** A team as an admission source: reasons as chips, a leaver as a notice
+ * above the list. Try `northstar-demo/myynti` in the field. */
+export const Team: Story = {
+  args: { view: teamView, onAddTeam: async () => ({ kind: "changed" }) },
+};
+/** GitHub did not answer the membership question, and a just-added team no
+ * member has signed in through yet. */
+export const TeamUnavailable: Story = {
+  args: {
+    view: {
+      ...teamView,
+      teams: [
+        { ...teamView.teams[0], unavailable_at: "2026-11-02T06:00:00Z" },
+        {
+          org_id: "71234000",
+          org: "northstar-demo",
+          slug: "myynti",
+          pinned: false,
+          actor: "51234000",
+          at: "2026-11-02T08:00:00Z",
+        },
+      ],
+    },
+    onAddTeam: async () => ({ kind: "changed" }),
   },
 };
 export const Phone: Story = {

@@ -2157,7 +2157,9 @@ export function App() {
         notice={
           <>
             {new URLSearchParams(location.search).has("auth_error") && (
-              <LoginErrorNotice />
+              <LoginErrorNotice
+                code={new URLSearchParams(location.search).get("auth_error")}
+              />
             )}
             {logoutError && (
               <InlineNotice

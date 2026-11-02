@@ -165,3 +165,56 @@
   gap: 2px var(--ah-s3);
   min-width: 0;
 }
+/* Reasons as chips and the team line (proto-org-admission, Syy riveillä). */
+.sa-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s1) var(--ah-s2);
+}
+.sa-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px var(--ah-s2);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+  background: var(--ah-surface);
+  overflow-wrap: anywhere;
+}
+.sa-chip svg {
+  width: 12px;
+  height: 12px;
+  color: var(--ah-muted);
+}
+.sa-chip[data-kind="left"],
+.sa-chip[data-kind="removed"] {
+  color: var(--ah-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.sa-chip[data-kind="unconfirmed"] {
+  color: var(--ah-muted);
+}
+.sa-team {
+  display: grid;
+  gap: 2px;
+  margin-top: var(--ah-s3);
+}
+.sa-team-line {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  flex-wrap: wrap;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.sa-team-line > svg {
+  width: 14px;
+  height: 14px;
+}
+.sa-leavers {
+  display: grid;
+  gap: var(--ah-s2);
+}

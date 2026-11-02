@@ -27,6 +27,10 @@ const maxDenied = 512
 // AccessRow and AccessPage mirror the broker's admission list.
 type AccessRow struct {
 	ID, Source, State, Username, LoginHint, Actor, At string
+	// TeamState and Teams are the person's team member record, when one
+	// exists: member, left or unconfirmed, and the pinned team ids.
+	TeamState string
+	Teams     []string
 }
 type AccessPage struct {
 	Mode             string
@@ -315,12 +319,37 @@ type accessEntry struct {
 	// AdministratorRole is the role root or an administrator gave, granted
 	// or waiting for the sign-in that binds the id.
 	AdministratorRole *roleEntry `json:"administrator_role,omitempty"`
+	// TeamState and Teams are the latest sign-in's team answer, the teams
+	// named organisation/slug.
+	TeamState string   `json:"team_state,omitempty"`
+	Teams     []string `json:"teams,omitempty"`
 }
 type accessView struct {
 	SchemaVersion    int           `json:"schema_version"`
 	Mode             string        `json:"mode"`
 	RuntimeAdmission bool          `json:"runtime_admission"`
+	Teams            []teamView    `json:"teams"`
 	Entries          []accessEntry `json:"entries"`
+}
+
+// entryOf is a broker row as the page lists it, before the gateway's own
+// facts are joined.
+func entryOf(r AccessRow, teams []TeamSource) accessEntry {
+	return accessEntry{ID: r.ID, Source: r.Source, State: r.State, Username: r.Username, LoginHint: r.LoginHint, Actor: r.Actor, At: r.At, TeamState: r.TeamState, Teams: teamNames(teams, r.Teams)}
+}
+
+// teamSources reads the team source for the page; an installation whose
+// broker has none lists none.
+func (a *Auth) teamSources(ctx context.Context) ([]TeamSource, error) {
+	broker, ok := a.teamBroker()
+	if !ok {
+		return nil, nil
+	}
+	teams, err := broker.Teams(ctx)
+	if err != nil {
+		return nil, errBrokerRead
+	}
+	return teams, nil
 }
 
 func (a *Auth) accessList(ctx context.Context) (accessView, error) {
@@ -332,13 +361,19 @@ func (a *Auth) accessList(ctx context.Context) (accessView, error) {
 	if err != nil {
 		return accessView{}, errBrokerRead
 	}
+	teams, err := a.teamSources(ctx)
+	if err != nil {
+		return accessView{}, err
+	}
 	v := a.settingsView()
 	seen := a.lastSeen()
-	view := accessView{SchemaVersion: 1, Mode: page.Mode, RuntimeAdmission: page.RuntimeAdmission, Entries: []accessEntry{}}
+	view := accessView{SchemaVersion: 1, Mode: page.Mode, RuntimeAdmission: page.RuntimeAdmission, Teams: teamViews(teams), Entries: []accessEntry{}}
 	listed := map[string]bool{}
 	for _, r := range page.Rows {
 		listed[r.ID] = true
-		view.Entries = append(view.Entries, accessEntry{r.ID, r.Source, r.State, r.Username, r.LoginHint, r.Actor, r.At, seen[r.ID], slices.Contains(v.Administrators, r.ID), slices.Contains(v.Denied, r.ID), receiptView(v.OnboardingReceipts, r.ID), nil, nil})
+		e := entryOf(r, teams)
+		e.LastSeen, e.Administrator, e.Denied, e.Onboarding = seen[r.ID], slices.Contains(v.Administrators, r.ID), slices.Contains(v.Denied, r.ID), receiptView(v.OnboardingReceipts, r.ID)
+		view.Entries = append(view.Entries, e)
 	}
 	for _, id := range v.Denied {
 		if !listed[id] {
@@ -396,7 +431,13 @@ func (a *Auth) resolveLogins(ctx context.Context, entries []accessEntry) {
 
 func entryFor(ctx context.Context, row AccessRow, a *Auth) accessEntry {
 	v := a.settingsView()
-	e := []accessEntry{{row.ID, row.Source, row.State, row.Username, row.LoginHint, row.Actor, row.At, a.lastSeen()[row.ID], slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID), receiptView(v.OnboardingReceipts, row.ID), a.copyView(row.ID), roleFor(v, row.ID)}}
+	// A row naming teams needs their names; a failed read only loses them.
+	var teams []TeamSource
+	if len(row.Teams) > 0 {
+		teams, _ = a.teamSources(ctx)
+	}
+	e := []accessEntry{entryOf(row, teams)}
+	e[0].LastSeen, e[0].Administrator, e[0].Denied, e[0].Onboarding, e[0].SiteKeyCopy, e[0].AdministratorRole = a.lastSeen()[row.ID], slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID), receiptView(v.OnboardingReceipts, row.ID), a.copyView(row.ID), roleFor(v, row.ID)
 	a.resolveLogins(ctx, e)
 	return e[0]
 }
@@ -459,6 +500,10 @@ func accessReason(err error) (int, string) {
 		return 409, "github_not_user"
 	case errors.Is(err, ErrGitHubLookup):
 		return 503, "github_lookup_unavailable"
+	case errors.Is(err, ErrGitHubOrgNotFound):
+		return 404, "github_org_not_found"
+	case errors.Is(err, errInvalidTeam):
+		return 400, "invalid_team"
 	case errors.Is(err, errBrokerRead):
 		return 503, "broker_unavailable"
 	case errors.Is(err, ErrAdministrationState):
@@ -482,7 +527,8 @@ func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	path := r.URL.Path
-	if !a.exact(r, path) || path != accessPath && path != accessPath+"/lookup" && path != accessPath+"/add" && path != accessPath+"/remove" && path != accessPath+"/role" {
+	paths := []string{accessPath, accessPath + "/lookup", accessPath + "/add", accessPath + "/remove", accessPath + "/role", accessPath + "/forget", accessPath + "/teams/add", accessPath + "/teams/remove"}
+	if !a.exact(r, path) || !slices.Contains(paths, path) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -521,10 +567,31 @@ func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 		Login         string `json:"login"`
 		ID            string `json:"id"`
 		Administrator *bool  `json:"administrator"`
+		Team          string `json:"team"`
+		OrgID         string `json:"org_id"`
+		Slug          string `json:"slug"`
 	}
 	dec := json.NewDecoder(io.LimitReader(r.Body, 257))
 	dec.DisallowUnknownFields()
-	if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF || path == accessPath+"/lookup" && (body.ID != "" || !githubLoginName(body.Login)) || path != accessPath+"/lookup" && (body.Login != "" || !canonicalSubject(body.ID)) || (path == accessPath+"/role") != (body.Administrator != nil) {
+	if dec.Decode(&body) != nil || dec.Decode(new(any)) != io.EOF {
+		safe(w, 400, "invalid_request")
+		return
+	}
+	// Each path takes exactly its own fields.
+	var shaped bool
+	switch path {
+	case accessPath + "/lookup":
+		shaped = githubLoginName(body.Login) && body.ID == "" && body.Administrator == nil && body.Team == "" && body.OrgID == "" && body.Slug == ""
+	case accessPath + "/role":
+		shaped = canonicalSubject(body.ID) && body.Administrator != nil && body.Login == "" && body.Team == "" && body.OrgID == "" && body.Slug == ""
+	case accessPath + "/teams/add":
+		shaped = body.Team != "" && body.ID == "" && body.Administrator == nil && body.Login == "" && body.OrgID == "" && body.Slug == ""
+	case accessPath + "/teams/remove":
+		shaped = canonicalSubject(body.OrgID) && teamSlugName(body.Slug) && body.ID == "" && body.Administrator == nil && body.Login == "" && body.Team == ""
+	default:
+		shaped = canonicalSubject(body.ID) && body.Administrator == nil && body.Login == "" && body.Team == "" && body.OrgID == "" && body.Slug == ""
+	}
+	if !shaped {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -538,7 +605,21 @@ func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "id": user.ID, "login": user.Login, "name": user.Name})
-	case accessPath + "/add", accessPath + "/remove", accessPath + "/role":
+	case accessPath + "/teams/add", accessPath + "/teams/remove":
+		var teams []TeamSource
+		var err error
+		if path == accessPath+"/teams/add" {
+			teams, err = a.addTeam(r.Context(), s.identity.Subject, body.Team)
+		} else {
+			teams, err = a.removeTeam(r.Context(), s.identity.Subject, body.OrgID, body.Slug)
+		}
+		if err != nil {
+			status, code := accessReason(err)
+			safe(w, status, code)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "teams": teamViews(teams)})
+	default:
 		var row AccessRow
 		var err error
 		switch {
@@ -546,6 +627,8 @@ func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 			row, err = a.admitAccess(r.Context(), s.identity.Subject, body.ID)
 		case path == accessPath+"/remove":
 			row, err = a.withdrawAccess(r.Context(), s.identity.Subject, body.ID)
+		case path == accessPath+"/forget":
+			row, err = a.forgetMember(r.Context(), s.identity.Subject, body.ID)
 		case *body.Administrator:
 			row, err = a.designateAdministrator(r.Context(), s.identity.Subject, body.ID)
 		default:

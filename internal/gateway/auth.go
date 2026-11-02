@@ -751,6 +751,13 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.callbackFailure(w, r, 503, "identity_mapping_denied")
 		return
 	}
+	// Team membership is asked of GitHub with this sign-in's token and told
+	// to the broker before ensure, which then decides admission from it.
+	teamsUnavailable, teamsRecorded := a.signInTeams(r.Context(), attempt, id, login, token)
+	if !teamsRecorded {
+		a.callbackFailure(w, r, 503, "identity_mapping_denied")
+		return
+	}
 	// The broker owns the storage mode: under user quotas it refuses to create
 	// an account without this default, and without them it sets no limit.
 	ensured, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "ensure", ID: id, Candidate: login, DefaultLimitBytes: defaultLimit})
@@ -763,6 +770,12 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.brokerEvent(attempt, "ensure", brokerReason(err, valid))
+		if teamsUnavailable && errors.Is(err, BrokerDenied) {
+			// Honest about why without naming any team: GitHub did not
+			// answer, so membership could not be confirmed.
+			a.callbackFailure(w, r, 403, "membership_unavailable")
+			return
+		}
 		a.callbackFailure(w, r, 403, "identity_mapping_denied")
 		return
 	}

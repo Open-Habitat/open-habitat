@@ -63,13 +63,22 @@ export function LoginCard({
 
 // The callback currently supplies only a URL error code, not an authenticated,
 // user-safe support reference. Never echo that query value as a diagnostic.
-export function LoginErrorNotice() {
+/** The sign-in's refusal in words: a refusal never names a team, but says
+ * when GitHub could not answer whether the person belongs to one. */
+export function LoginErrorNotice({ code }: { code?: string | null }) {
   const t = useText(signInText);
+  const [title, description] =
+    code === "membership_unavailable"
+      ? [t.membershipTitle, t.membershipDetail]
+      : code === "identity_mapping_denied"
+        ? [t.deniedTitle, t.deniedDetail]
+        : [t.errorTitle, t.errorDetail];
   return (
     <InlineNotice
       data-testid="login-error"
-      title={t.errorTitle}
-      description={t.errorDetail}
+      data-state={code ?? undefined}
+      title={title}
+      description={description}
       tone="danger"
     />
   );

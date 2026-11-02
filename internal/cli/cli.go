@@ -720,6 +720,59 @@ func (b gatewayBroker) Withdraw(ctx context.Context, id, actor string) (gateway.
 	return accessWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: "withdraw", Provider: "github", ID: id, Actor: actor}))
 }
 
+// Team source operations. As with admission, only the broker's fixed
+// refusals are definite; a missing reply or state_unavailable is uncertain.
+func (b gatewayBroker) Teams(ctx context.Context) ([]gateway.TeamSource, error) {
+	r, err := b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpTeamList, Provider: "github", ID: "0"})
+	if err != nil || r.Failure != "" || r.Access == nil {
+		return nil, gateway.ErrBrokerUnavailable
+	}
+	return teamSources(*r.Access), nil
+}
+func (b gatewayBroker) AddTeam(ctx context.Context, orgID, org, slug, actor string) ([]gateway.TeamSource, error) {
+	return teamWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpTeamAdd, Provider: "github", ID: orgID, LoginHint: org, Slug: slug, Actor: actor}))
+}
+func (b gatewayBroker) RemoveTeam(ctx context.Context, orgID, slug, actor string) ([]gateway.TeamSource, error) {
+	return teamWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpTeamRemove, Provider: "github", ID: orgID, Slug: slug, Actor: actor}))
+}
+func (b gatewayBroker) TeamSignIn(ctx context.Context, id, login string, observed []gateway.TeamObservation) error {
+	obs := make([]provision.TeamObservation, 0, len(observed))
+	for _, o := range observed {
+		obs = append(obs, provision.TeamObservation{OrgID: o.OrgID, Slug: o.Slug, TeamID: o.TeamID, State: o.State})
+	}
+	r, err := b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpTeamSignIn, Provider: "github", ID: id, LoginHint: login, Teams: obs})
+	if err == nil && r.Failure == "" && r.Access != nil && len(r.Access.Rows) <= 1 {
+		return nil
+	}
+	_, err = accessWrite(r, err)
+	if err == nil {
+		err = gateway.ErrAccessUncertain
+	}
+	return err
+}
+func (b gatewayBroker) Forget(ctx context.Context, id, actor string) (gateway.AccessRow, error) {
+	return accessWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpForget, Provider: "github", ID: id, Actor: actor}))
+}
+
+func teamWrite(r provision.Reply, err error) ([]gateway.TeamSource, error) {
+	if err == nil && r.Failure == "" {
+		if r.Access == nil {
+			return nil, gateway.ErrAccessUncertain
+		}
+		return teamSources(*r.Access), nil
+	}
+	_, err = accessWrite(r, err)
+	return nil, err
+}
+
+func teamSources(p provision.AccessPage) []gateway.TeamSource {
+	out := make([]gateway.TeamSource, 0, len(p.Teams))
+	for _, t := range p.Teams {
+		out = append(out, gateway.TeamSource{OrgID: t.OrgID, Org: t.Org, Slug: t.Slug, TeamID: t.TeamID, Actor: t.Actor, At: t.At, UnavailableAt: t.UnavailableAt})
+	}
+	return out
+}
+
 func accessWrite(r provision.Reply, err error) (gateway.AccessRow, error) {
 	if err != nil {
 		return gateway.AccessRow{}, gateway.ErrAccessUncertain
@@ -797,7 +850,7 @@ func integrationApps(p provision.IntegrationPage) gateway.IntegrationApps {
 func accessPage(p provision.AccessPage) gateway.AccessPage {
 	out := gateway.AccessPage{Mode: p.Mode, RuntimeAdmission: p.RuntimeAdmission, Rows: make([]gateway.AccessRow, 0, len(p.Rows))}
 	for _, x := range p.Rows {
-		out.Rows = append(out.Rows, gateway.AccessRow{ID: x.ID, Source: x.Source, State: x.State, Username: x.Username, LoginHint: x.LoginHint, Actor: x.Actor, At: x.At})
+		out.Rows = append(out.Rows, gateway.AccessRow{ID: x.ID, Source: x.Source, State: x.State, Username: x.Username, LoginHint: x.LoginHint, Actor: x.Actor, At: x.At, TeamState: x.TeamState, Teams: x.Teams})
 	}
 	return out
 }

@@ -2,9 +2,14 @@
   "schema_version": 1,
   "mode": "allowlist",
   "runtime_admission": true,
+  "teams": [
+    {"org_id": "700", "org": "example-org", "slug": "habitat", "pinned": true, "actor": "42", "at": "2026-10-24T08:30:00Z"}
+  ],
   "entries": [
     {"id": "42", "source": "operator", "state": "joined", "username": "exampleuser", "last_seen": "2026-10-24T11:00:00Z", "administrator": true, "denied": false, "onboarding": {"at": "2026-10-24T08:00:00Z", "mode": "auto", "defaults": [{"repository": "example-org/handbook", "outcome": "queued"}, {"repository": "example-org/infra", "outcome": "no_access"}], "ai_key": "seeded"}, "site_key_copy": {"provider": "anthropic", "suffix": "Xa1b", "at": "2026-10-24T08:00:00Z", "current": true}, "administrator_role": {"source": "operator", "state": "granted"}},
     {"id": "43", "source": "site_admin", "state": "allowed", "login_hint": "example-person", "actor": "42", "at": "2026-10-24T09:30:00Z", "administrator": false, "denied": false, "administrator_role": {"source": "site_admin", "state": "pending", "actor": "42", "at": "2026-10-24T09:40:00Z"}},
-    {"id": "44", "source": "site_admin", "state": "withdrawn", "username": "example-user", "login_hint": "example-user", "actor": "root", "at": "2026-10-24T10:00:00Z", "administrator": false, "denied": true}
+    {"id": "44", "source": "site_admin", "state": "withdrawn", "username": "example-user", "login_hint": "example-user", "actor": "root", "at": "2026-10-24T10:00:00Z", "administrator": false, "denied": true},
+    {"id": "45", "source": "team", "state": "joined", "username": "example-member", "login_hint": "example-member", "at": "2026-10-24T10:30:00Z", "administrator": false, "denied": false, "team_state": "member", "teams": ["example-org/habitat"]},
+    {"id": "46", "source": "team", "state": "left", "username": "example-leaver", "login_hint": "example-leaver", "at": "2026-10-25T08:00:00Z", "administrator": false, "denied": false, "team_state": "left", "teams": ["example-org/habitat"]}
   ]
 }

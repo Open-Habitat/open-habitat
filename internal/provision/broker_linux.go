@@ -244,15 +244,6 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 		return nil, ErrBrokerStartup
 	}
 	bindings := make([]ExecutorIdentity, 0, len(l.Bindings))
-	admitted := make(map[string]bool, len(a.IDs)+len(a.Runtime))
-	for _, entry := range a.IDs {
-		admitted[entry.ID] = true
-	}
-	for _, entry := range a.Runtime {
-		if entry.State == "admitted" {
-			admitted[entry.ID] = true
-		}
-	}
 	for _, b := range l.Bindings {
 		if ctx.Err() != nil || b.UID < w.UIDMin || b.UID > w.UIDMax {
 			return nil, ErrBrokerStartup
@@ -271,7 +262,7 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 		i := ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}
 		var verifyErr error
 		if native, ok := w.Executor.(*LinuxHostExecutor); ok {
-			verifyErr = native.startupIdentity(ctx, i, w.AdmitAny || admitted[b.ID])
+			verifyErr = native.startupIdentity(ctx, i, w.AdmitAny || a.admits(b.ID))
 		} else {
 			verifyErr = w.Executor.Verify(ctx, i)
 		}
@@ -283,7 +274,7 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 		}
 		// Preserve and verify revoked bindings, but never ask the gate to
 		// activate one the broker would deny under current admission.
-		if w.AdmitAny || admitted[b.ID] {
+		if w.AdmitAny || a.admits(b.ID) {
 			bindings = append(bindings, ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID})
 		}
 	}

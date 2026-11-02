@@ -258,12 +258,21 @@ Identity and authority:
   credential access or host-owned state.
 - `admission: "any"` exists for the disposable test installation only (ADR
   0014); it is not a production admission design.
-- The broker owns both admission sources: root's site.json (`operator`,
-  published by host apply) and runtime entries (`site_admin`); admission is
-  their union. The gateway may only `admit` and `withdraw` runtime entries,
-  never an operator id, and `admit` only while root's `runtime_admission`
-  switch is on. Host apply converges only the operator source and the
-  switch, never runtime entries. Roles have the same two sources (Jari,
+- The broker owns every admission source: root's site.json (`operator`,
+  published by host apply), runtime entries (`site_admin`) and listed GitHub
+  teams with their member records; admission is their union, and a
+  withdrawal overrides a team membership. The gateway may only `admit` and
+  `withdraw` runtime entries, never an operator id, add and remove teams,
+  and tell the broker what one sign-in observed about that person's team
+  membership, asked of GitHub with that sign-in's own token and never
+  stored. It never decides admission itself: ensure does, from what the
+  broker recorded. Only a definite answer records leaving; GitHub's silence
+  refuses the sign-in without it, and a sign-in whose observation got no
+  definite broker reply stops, because an older member record could
+  otherwise admit without this sign-in's answer. Adding a person, adding a
+  team and recording a new member all need root's `runtime_admission`
+  switch. Host apply converges only the operator source and the switch,
+  never runtime entries or teams. Roles have the same two sources (Jari,
   2026-10-30): root's site.json administrators, and a current
   administrator's browser designation of an admitted GitHub id. Host apply
   converges only root's roles and leaves designations alone, and a root

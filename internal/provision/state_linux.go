@@ -34,6 +34,41 @@ type allowFile struct {
 	// operator source, so every admission change advances one watermark.
 	RuntimeAdmission bool           `json:"runtime_admission,omitempty"`
 	Runtime          []runtimeEntry `json:"runtime,omitempty"`
+	// Teams is the team source an administrator chose, and Members what the
+	// gateway observed at each member's sign-in. Both belong to the broker
+	// like Runtime: host apply carries them over and never converges them.
+	Teams   []teamSource `json:"teams,omitempty"`
+	Members []teamMember `json:"members,omitempty"`
+}
+
+// teamSource is one GitHub team whose active members may sign in. The org id
+// came from GitHub's public organisation API when it was added; TeamID is
+// pinned from the first member check that resolved the slug inside that
+// organisation, so a later team that takes over the slug never inherits it.
+// UnavailableAt is set while GitHub could not answer the membership question
+// at the latest sign-in that asked it.
+type teamSource struct {
+	OrgID         string `json:"org_id"`
+	Org           string `json:"org"`
+	Slug          string `json:"slug"`
+	TeamID        string `json:"team_id,omitempty"`
+	Actor         string `json:"actor"`
+	At            string `json:"at"`
+	UnavailableAt string `json:"unavailable_at,omitempty"`
+}
+
+// teamMember is the latest sign-in's answer for one person who was, or is,
+// an active member of a listed team. member admits; left (every listed team
+// answered not a member) and unconfirmed (GitHub did not answer for a team
+// the person was in) do not. Teams names the pinned team ids the person was
+// last confirmed in. A record never coexists with a withdrawn runtime entry:
+// withdrawal deletes it, and sign-in records nothing for a withdrawn id.
+type teamMember struct {
+	ID        string   `json:"id"`
+	LoginHint string   `json:"login_hint"`
+	Teams     []string `json:"teams"`
+	State     string   `json:"state"`
+	At        string   `json:"at"`
 }
 
 // runtimeEntry is one site_admin admission. A withdrawn entry is kept only
@@ -47,7 +82,7 @@ type runtimeEntry struct {
 	At        string `json:"at"`
 }
 
-// admits is the effective admission: the union of both sources.
+// admits is the effective admission: the union of every source.
 func (a allowFile) admits(id string) bool {
 	for _, x := range a.IDs {
 		if x.ID == id {
@@ -56,18 +91,54 @@ func (a allowFile) admits(id string) bool {
 	}
 	return a.runtimeAdmits(id)
 }
+
+// runtimeAdmits is what the broker's own sources admit: an admitted
+// site_admin entry, or a member record of a still-listed team.
 func (a allowFile) runtimeAdmits(id string) bool {
 	for _, x := range a.Runtime {
-		if x.ID == id && x.State == "admitted" {
+		if x.ID == id {
+			// A withdrawal overrides team membership too.
+			return x.State == "admitted"
+		}
+	}
+	return a.teamAdmits(id)
+}
+
+func (a allowFile) teamAdmits(id string) bool {
+	m := a.member(id)
+	if m == nil || m.State != "member" {
+		return false
+	}
+	for _, t := range m.Teams {
+		if a.team(t) != nil {
 			return true
 		}
 	}
 	return false
 }
 
-// maxAllowlist bounds the admission file, which holds both sources; every
+func (a allowFile) member(id string) *teamMember {
+	for i := range a.Members {
+		if a.Members[i].ID == id {
+			return &a.Members[i]
+		}
+	}
+	return nil
+}
+
+// team finds a listed team by its pinned id.
+func (a allowFile) team(teamID string) *teamSource {
+	for i := range a.Teams {
+		if a.Teams[i].TeamID != "" && a.Teams[i].TeamID == teamID {
+			return &a.Teams[i]
+		}
+	}
+	return nil
+}
+
+// maxAllowlist bounds the admission file, which holds every source; every
 // other broker file stays within one protocol message.
-const maxAllowlist = 65536
+const maxAllowlist = 1 << 17
 
 func fileLimit(name string) int64 {
 	if strings.HasPrefix(name, "allowlist.json") {
@@ -77,7 +148,7 @@ func fileLimit(name string) int64 {
 }
 
 // allowFields are the admission file's keys, checked before any typed decode.
-var allowFields = []string{"version", "epoch", "ids", "runtime_admission", "runtime"}
+var allowFields = []string{"version", "epoch", "ids", "runtime_admission", "runtime", "teams", "members"}
 
 // validRuntime checks the site_admin source as strictly as the operator ids.
 func validRuntime(raw json.RawMessage) error {
@@ -95,6 +166,55 @@ func validRuntime(raw json.RawMessage) error {
 			return ErrInvalid
 		}
 		seen[x.ID] = true
+	}
+	return nil
+}
+
+// validTeams checks the team source and member records as strictly as the
+// runtime entries: bounded, canonical, no duplicate team or person, every
+// recorded team id unique.
+func validTeams(teamsRaw, membersRaw json.RawMessage) error {
+	if len(teamsRaw) != 0 {
+		entries, err := checkArray(teamsRaw, "teams")
+		if err != nil || len(entries) > MaxTeams {
+			return ErrInvalid
+		}
+		seen := map[string]bool{}
+		for _, entry := range entries {
+			var x teamSource
+			if decode(entry, &x, "org_id", "org", "slug", "team_id", "actor", "at", "unavailable_at") != nil || !numericID(x.OrgID) || !githubLogin(x.Org) || !teamSlug(x.Slug) || x.TeamID != "" && !numericID(x.TeamID) || !validActor(x.Actor) || !validStamp(x.At) || x.UnavailableAt != "" && !validStamp(x.UnavailableAt) {
+				return ErrInvalid
+			}
+			key := x.OrgID + "/" + x.Slug
+			if seen[key] || x.TeamID != "" && seen["#"+x.TeamID] {
+				return ErrInvalid
+			}
+			seen[key] = true
+			if x.TeamID != "" {
+				seen["#"+x.TeamID] = true
+			}
+		}
+	}
+	if len(membersRaw) != 0 {
+		entries, err := checkArray(membersRaw, "members")
+		if err != nil || len(entries) > MaxTeamMembers {
+			return ErrInvalid
+		}
+		seen := map[string]bool{}
+		for _, entry := range entries {
+			var x teamMember
+			if decode(entry, &x, "id", "login_hint", "teams", "state", "at") != nil || !numericID(x.ID) || seen[x.ID] || !githubLogin(x.LoginHint) || !validStamp(x.At) || x.State != "member" && x.State != "left" && x.State != "unconfirmed" || x.Teams == nil || len(x.Teams) > MaxTeams || x.State == "member" && len(x.Teams) == 0 {
+				return ErrInvalid
+			}
+			teams := map[string]bool{}
+			for _, t := range x.Teams {
+				if !numericID(t) || teams[t] {
+					return ErrInvalid
+				}
+				teams[t] = true
+			}
+			seen[x.ID] = true
+		}
 	}
 	return nil
 }
@@ -203,6 +323,9 @@ func readState(dir string, owner uint32) (allowFile, ledgerFile, error) {
 		return a, l, err
 	}
 	if err = validRuntime(ar["runtime"]); err != nil {
+		return a, l, err
+	}
+	if err = validTeams(ar["teams"], ar["members"]); err != nil {
 		return a, l, err
 	}
 	lr, err := object(lb, "version", "generation", "bindings")

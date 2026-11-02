@@ -53,6 +53,7 @@ const base: AccessView = {
   schema_version: 1,
   mode: "allowlist",
   runtime_admission: true,
+  teams: [],
   entries,
 };
 
@@ -525,4 +526,167 @@ it("names a site key copy the site gave, and whether it is an earlier key", () =
     "AI-avain annettu 21.10. (aiempi avain)",
   );
   expect(screen.queryByTestId("access-ai-given-42")).toBeNull();
+});
+
+const teamView: AccessView = {
+  ...base,
+  teams: [
+    {
+      org_id: "700",
+      org: "Contoso-Power",
+      slug: "habitat",
+      pinned: true,
+      actor: "42",
+      at: "2026-11-01T08:00:00Z",
+    },
+  ],
+  entries: [
+    ...entries,
+    {
+      id: "61",
+      source: "team",
+      state: "joined",
+      username: "anna",
+      login_hint: "anna",
+      at: "2026-11-01T09:00:00Z",
+      administrator: false,
+      denied: false,
+      team_state: "member",
+      teams: ["Contoso-Power/habitat"],
+    },
+    {
+      id: "62",
+      source: "team",
+      state: "left",
+      username: "tuuli",
+      login_hint: "tuuli",
+      at: "2026-11-02T07:00:00Z",
+      administrator: false,
+      denied: false,
+      team_state: "left",
+      teams: ["Contoso-Power/habitat"],
+    },
+    {
+      id: "63",
+      source: "team",
+      state: "unconfirmed",
+      username: "lauri",
+      login_hint: "lauri",
+      at: "2026-11-02T07:00:00Z",
+      administrator: false,
+      denied: false,
+      team_state: "unconfirmed",
+      teams: ["Contoso-Power/habitat"],
+    },
+  ],
+};
+// Bob is admitted one by one and through the team: two reasons.
+teamView.entries = teamView.entries.map((e) =>
+  e.id === "43"
+    ? { ...e, team_state: "member", teams: ["Contoso-Power/habitat"] }
+    : e,
+);
+
+it("shows each row's reasons as chips once a team is a source", () => {
+  setup({ view: teamView });
+  const chips = (id: string) =>
+    [...screen.getByTestId(`access-reasons-${id}`).children].map(
+      (c) => `${(c as HTMLElement).dataset.kind}:${c.textContent}`,
+    );
+  expect(chips("42")).toEqual(["server:palvelimen asetukset"]);
+  expect(chips("43")).toEqual([
+    "individual:henkilönä",
+    "team:Contoso-Power/habitat",
+  ]);
+  expect(chips("61")).toEqual(["team:Contoso-Power/habitat"]);
+  expect(chips("62")).toEqual(["left:Contoso-Power/habitat – lähti"]);
+  expect(chips("63")).toEqual([
+    "unconfirmed:Contoso-Power/habitat – ei vahvistettu",
+  ]);
+  // A team member can still be removed at once; a leaver is let back in
+  // one by one.
+  expect(button("access-remove-61")).toBeTruthy();
+  expect(row("62").dataset.state).toBe("withdrawn");
+  expect(button("access-allow-62")).toBeTruthy();
+  expect(button("access-allow-63")).toBeTruthy();
+});
+
+it("lists no chips on a site without teams", () => {
+  setup();
+  expect(screen.queryByTestId("access-reasons-42")).toBeNull();
+});
+
+it("raises a leaver as a notice that allows one by one or dismisses", () => {
+  const onForget = vi.fn();
+  const calls = setup({ view: teamView, onForget });
+  const notice = screen.getByTestId("access-leaver-62");
+  expect(notice.textContent).toContain(
+    "@tuuli lähti tiimistä Contoso-Power/habitat",
+  );
+  // The unconfirmed member is not called a leaver.
+  expect(screen.queryByTestId("access-leaver-63")).toBeNull();
+  fireEvent.click(screen.getByTestId("access-leaver-allow-62"));
+  expect(calls.onAdd).toHaveBeenCalledWith(
+    { id: "62", login: "tuuli", name: "" },
+    false,
+  );
+  fireEvent.click(screen.getByTestId("access-leaver-dismiss-62"));
+  expect(onForget).toHaveBeenCalledWith(expect.objectContaining({ id: "62" }));
+});
+
+it("says why GitHub did not answer, and that a new team waits for a member", () => {
+  setup({
+    view: {
+      ...teamView,
+      teams: [
+        { ...teamView.teams[0], unavailable_at: "2026-11-02T06:00:00Z" },
+        { ...teamView.teams[0], slug: "ops", pinned: false },
+      ],
+    },
+  });
+  const habitat = screen.getByTestId("access-team-700-habitat");
+  expect(habitat.textContent).toContain("2 jäsentä");
+  expect(habitat.textContent).toContain("OAuth-sovelluksen");
+  expect(screen.getByTestId("access-team-700-ops").textContent).toContain(
+    "Kukaan tiimin jäsen ei ole vielä kirjautunut",
+  );
+});
+
+it("adds a team typed in the field after a check, on its own", async () => {
+  const onAddTeam = vi.fn(async () => ({ kind: "changed" as const }));
+  setup({ view: teamView, onAddTeam });
+  const input = screen.getByTestId("access-login-input");
+  fireEvent.change(input, { target: { value: "frank Contoso-Power/ops" } });
+  fireEvent.click(screen.getByTestId("access-add"));
+  expect((await screen.findByTestId("access-check")).textContent).toContain(
+    "Lisää tiimi yksinään",
+  );
+  fireEvent.change(input, { target: { value: "Contoso-Power/Habitat" } });
+  fireEvent.click(screen.getByTestId("access-add"));
+  expect((await screen.findByTestId("access-check")).textContent).toContain(
+    "Tiimi on jo pääsyn lähde",
+  );
+  fireEvent.change(input, {
+    target: { value: "https://github.com/orgs/Contoso-Power/teams/Ops" },
+  });
+  fireEvent.click(screen.getByTestId("access-add"));
+  expect(
+    (await screen.findByTestId("access-team-found")).textContent,
+  ).toContain("Contoso-Power/ops");
+  expect(screen.getByTestId("access-add").textContent).toBe("Lisää tiimi");
+  fireEvent.click(screen.getByTestId("access-add"));
+  await vi.waitFor(() =>
+    expect(onAddTeam).toHaveBeenCalledWith("Contoso-Power/ops"),
+  );
+  await vi.waitFor(() => expect((input as HTMLTextAreaElement).value).toBe(""));
+});
+
+it("detaches a team after confirming what ends", () => {
+  const onRemoveTeam = vi.fn();
+  setup({ view: teamView, onRemoveTeam });
+  fireEvent.click(screen.getByTestId("access-detach-700-habitat"));
+  const dialog = screen.getByTestId("access-detach-dialog");
+  expect(dialog.textContent).toContain("seuraavalla kirjautumisellaan");
+  fireEvent.click(screen.getByTestId("access-detach-confirm"));
+  expect(onRemoveTeam).toHaveBeenCalledWith(teamView.teams[0]);
 });

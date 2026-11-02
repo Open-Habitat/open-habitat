@@ -37,6 +37,9 @@ type InstallationState struct {
 	// source, which host apply reports but never converges.
 	RuntimeAdmission bool           `json:"runtime_admission"`
 	Runtime          []RuntimeEntry `json:"runtime"`
+	// TeamAdmitted are the ids a listed team's member record admits; like
+	// Runtime, the broker's and never converged by host apply.
+	TeamAdmitted []string `json:"team_admitted"`
 }
 
 // RuntimeEntry is a site_admin admission as host plan reports it.
@@ -57,14 +60,15 @@ func (s InstallationState) Admits(id string) bool {
 	return s.RuntimeAdmits(id)
 }
 
-// RuntimeAdmits reports whether the site_admin source admits id.
+// RuntimeAdmits reports whether the broker's own sources admit id: the
+// site_admin entries or a listed team's member record.
 func (s InstallationState) RuntimeAdmits(id string) bool {
 	for _, x := range s.Runtime {
 		if x.ID == id && x.State == "admitted" {
 			return true
 		}
 	}
-	return false
+	return slices.Contains(s.TeamAdmitted, id)
 }
 
 // InspectInstallation is root-local and read-only, including on failure. It
@@ -129,6 +133,12 @@ func installationAt(ctx context.Context, fd int, owner uint32) (InstallationStat
 	s.Runtime = []RuntimeEntry{}
 	for _, x := range a.Runtime {
 		s.Runtime = append(s.Runtime, RuntimeEntry{ID: x.ID, State: x.State, Bound: slices.Contains(s.BoundSubjects, x.ID), LoginHint: x.LoginHint, Actor: x.Actor, At: x.At})
+	}
+	s.TeamAdmitted = []string{}
+	for _, x := range a.Members {
+		if a.teamAdmits(x.ID) {
+			s.TeamAdmitted = append(s.TeamAdmitted, x.ID)
+		}
 	}
 	s.Epoch = a.Epoch
 	s.ObservedEpoch = h.Epoch
@@ -272,11 +282,12 @@ func PublishAdmission(ctx context.Context, expectedToken string, ids []string, r
 }
 
 // operatorPublication is the admission file host apply stages: the given
-// operator ids and switch, with the current site_admin entries and epoch+1.
+// operator ids and switch, with the current site_admin entries, team source
+// and member records, and epoch+1.
 func operatorPublication(current allowFile, ids []string, runtimeAdmission bool) allowFile {
 	want := append([]string{}, ids...)
 	sort.Strings(want)
-	next := allowFile{Version: 1, Epoch: current.Epoch + 1, IDs: []allowed{}, RuntimeAdmission: runtimeAdmission, Runtime: current.Runtime}
+	next := allowFile{Version: 1, Epoch: current.Epoch + 1, IDs: []allowed{}, RuntimeAdmission: runtimeAdmission, Runtime: current.Runtime, Teams: current.Teams, Members: current.Members}
 	for _, id := range want {
 		next.IDs = append(next.IDs, allowed{ID: id})
 	}

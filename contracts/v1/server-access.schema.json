@@ -2,18 +2,20 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/server-access.schema.json",
   "title": "Who may sign in, and an administrator's admission changes",
-  "description": "GET /api/v1/server/access lists both admission sources: operator (root's site.json, never removable here) and site_admin (runtime entries the broker keeps). A row whose account was created at a sign-in under a site onboarding configuration carries onboarding, that sign-in's receipt. POST /api/v1/server/access/lookup {login} resolves a GitHub login to its numeric id through GitHub's public users API; organisations and bots are refused (github_not_user), unknown names are github_user_not_found. POST /api/v1/server/access/add {id} admits the id, or restores a withdrawn one to its same account; POST /api/v1/server/access/remove {id} withdraws web access only. POST /api/v1/server/access/role {id, administrator} designates an admitted id as administrator (true) or revokes such a designation (false): the role is recorded by the numeric id, held at once by a bound id and otherwise from the sign-in that binds it, so a renamed or reused login never receives it; a role site.json gives is operator_owned here. A change is in effect only when the reply arrives; 503 outcome_uncertain means it may or may not have been committed, and nothing is retried. Refusals are fixed codes shared with root's admin access CLI: runtime_admission_disabled, runtime_admission_full, admission_open, operator_owned, binding_drift, github_user_not_found, github_not_user, github_lookup_unavailable, broker_unavailable, and not_admitted for a designation of an id that cannot sign in. Administrator, session and CSRF are required.",
-  "oneOf": [{"$ref": "#/$defs/list"}, {"$ref": "#/$defs/lookup_request"}, {"$ref": "#/$defs/change_request"}, {"$ref": "#/$defs/role_request"}, {"$ref": "#/$defs/lookup"}, {"$ref": "#/$defs/changed"}],
+  "description": "GET /api/v1/server/access lists every admission source: operator (root's site.json, never removable here), site_admin (runtime entries the broker keeps) and team (people a listed GitHub team admitted at a sign-in), with the listed teams. POST /api/v1/server/access/teams/add {team} lists organisation/team (a slug, or the team's github.com/orgs/…/teams/… address) as a source: its organisation is resolved through GitHub's public API (github_org_not_found), a malformed name is invalid_team, and the reply is the teams. POST /api/v1/server/access/teams/remove {org_id, slug} removes one; what it gave ends at each member's next sign-in. POST /api/v1/server/access/forget {id} dismisses a leaver's notice: a team row that no longer admits goes, and rejoining admits again at a sign-in. A row whose account was created at a sign-in under a site onboarding configuration carries onboarding, that sign-in's receipt. POST /api/v1/server/access/lookup {login} resolves a GitHub login to its numeric id through GitHub's public users API; organisations and bots are refused (github_not_user), unknown names are github_user_not_found. POST /api/v1/server/access/add {id} admits the id, or restores a withdrawn one to its same account; POST /api/v1/server/access/remove {id} withdraws web access only. POST /api/v1/server/access/role {id, administrator} designates an admitted id as administrator (true) or revokes such a designation (false): the role is recorded by the numeric id, held at once by a bound id and otherwise from the sign-in that binds it, so a renamed or reused login never receives it; a role site.json gives is operator_owned here. A change is in effect only when the reply arrives; 503 outcome_uncertain means it may or may not have been committed, and nothing is retried. Refusals are fixed codes shared with root's admin access CLI: runtime_admission_disabled, runtime_admission_full, admission_open, operator_owned, binding_drift, github_user_not_found, github_not_user, github_lookup_unavailable, github_org_not_found, invalid_team, broker_unavailable, and not_admitted for a designation of an id that cannot sign in. Administrator, session and CSRF are required.",
+  "oneOf": [{"$ref": "#/$defs/list"}, {"$ref": "#/$defs/lookup_request"}, {"$ref": "#/$defs/change_request"}, {"$ref": "#/$defs/role_request"}, {"$ref": "#/$defs/team_add_request"}, {"$ref": "#/$defs/team_remove_request"}, {"$ref": "#/$defs/lookup"}, {"$ref": "#/$defs/changed"}, {"$ref": "#/$defs/teams_changed"}],
   "$defs": {
     "id": {"type": "string", "pattern": "^[1-9][0-9]{0,19}$"},
     "login": {"type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$"},
+    "slug": {"type": "string", "pattern": "^[a-z0-9_](?:[a-z0-9_-]{0,62}[a-z0-9_])?$"},
+    "team_name": {"description": "organisation/slug.", "type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}/[a-z0-9_](?:[a-z0-9_-]{0,62}[a-z0-9_])?$"},
     "entry": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "source", "state", "administrator", "denied"],
       "properties": {
         "id": {"$ref": "#/$defs/id"},
-        "source": {"description": "operator: site.json; site_admin: a runtime entry; none: only the gateway's deny or an administrator designation remains.", "enum": ["operator", "site_admin", "none"]},
-        "state": {"description": "allowed: admitted, not yet signed in; joined: admitted with an account; withdrawn: web access removed, the account stays; removed: a never-used admission was deleted (change reply only); denied: an unconfirmed withdrawal or leftover deny with no admission row; unlisted: an administrator designation whose admission root has since removed.", "enum": ["allowed", "joined", "withdrawn", "removed", "denied", "unlisted"]},
+        "source": {"description": "operator: site.json; site_admin: a runtime entry; team: only a listed team's member record names the id; none: only the gateway's deny or an administrator designation remains.", "enum": ["operator", "site_admin", "team", "none"]},
+        "state": {"description": "allowed: admitted, not yet signed in; joined: admitted with an account; withdrawn: web access removed, the account stays; removed: a never-used admission was deleted (change reply only); denied: an unconfirmed withdrawal or leftover deny with no admission row; unlisted: an administrator designation whose admission root has since removed; left: a team row whose latest sign-in found the person in no listed team, so that sign-in was refused and the account stays; unconfirmed: a team row whose latest sign-in GitHub could not answer for, refused without being called leaving. removed also answers a dismissed leaver.", "enum": ["allowed", "joined", "withdrawn", "removed", "denied", "unlisted", "left", "unconfirmed"]},
         "username": {"type": "string", "maxLength": 32},
         "login_hint": {"$ref": "#/$defs/login"},
         "actor": {"description": "The administrator's GitHub id or root, as the gateway reported it; provenance, not proof.", "type": "string", "pattern": "^(?:root|[1-9][0-9]{0,19})$"},
@@ -23,7 +25,23 @@
         "denied": {"description": "The gateway refuses this subject. True on a row that is not withdrawn means a withdrawal was not confirmed.", "type": "boolean"},
         "onboarding": {"$ref": "#/$defs/receipt"},
         "site_key_copy": {"$ref": "#/$defs/site_key_copy"},
-        "administrator_role": {"$ref": "#/$defs/administrator_role"}
+        "administrator_role": {"$ref": "#/$defs/administrator_role"},
+        "team_state": {"description": "The latest sign-in's team answer, on any row that has one: member (admitted through a listed team), left or unconfirmed.", "enum": ["member", "left", "unconfirmed"]},
+        "teams": {"description": "The listed teams the person was last confirmed in; for left, the teams left.", "type": "array", "maxItems": 8, "items": {"$ref": "#/$defs/team_name"}}
+      }
+    },
+    "team": {
+      "description": "A listed GitHub team. Its active members may sign in: membership is asked of GitHub with the person's own token at each sign-in, and leaving takes effect at the next one.",
+      "type": "object", "additionalProperties": false,
+      "required": ["org_id", "org", "slug", "pinned", "actor", "at"],
+      "properties": {
+        "org_id": {"$ref": "#/$defs/id"},
+        "org": {"$ref": "#/$defs/login"},
+        "slug": {"$ref": "#/$defs/slug"},
+        "pinned": {"description": "A member check has bound the slug to the team's numeric id, so a later team that takes the slug never inherits it. Nobody is admitted through the team before that.", "type": "boolean"},
+        "actor": {"description": "The administrator's GitHub id or root, as the gateway reported it; provenance, not proof.", "type": "string", "pattern": "^(?:root|[1-9][0-9]{0,19})$"},
+        "at": {"type": "string", "format": "date-time"},
+        "unavailable_at": {"description": "GitHub did not answer the membership question at the latest sign-in that asked it: the organisation may not have approved Open Habitat's OAuth app, or GitHub failed. Cleared by the next answer.", "type": "string", "format": "date-time"}
       }
     },
     "administrator_role": {
@@ -67,21 +85,29 @@
     },
     "list": {
       "type": "object", "additionalProperties": false,
-      "required": ["schema_version", "mode", "runtime_admission", "entries"],
+      "required": ["schema_version", "mode", "runtime_admission", "teams", "entries"],
       "properties": {
         "schema_version": {"const": 1},
         "mode": {"description": "any: the installation admits anyone and the list is read-only.", "enum": ["allowlist", "any"]},
-        "runtime_admission": {"description": "Root's switch; while false, add is refused and remove still works.", "type": "boolean"},
+        "runtime_admission": {"description": "Root's switch; while false, add (of a person or a team) is refused, no new team member is recorded, and remove still works.", "type": "boolean"},
+        "teams": {"type": "array", "maxItems": 8, "items": {"$ref": "#/$defs/team"}},
         "entries": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/entry"}}
       }
     },
     "lookup_request": {"type": "object", "additionalProperties": false, "required": ["login"], "properties": {"login": {"$ref": "#/$defs/login"}}},
     "change_request": {"type": "object", "additionalProperties": false, "required": ["id"], "properties": {"id": {"$ref": "#/$defs/id"}}},
+    "team_add_request": {"type": "object", "additionalProperties": false, "required": ["team"], "properties": {"team": {"type": "string", "minLength": 3, "maxLength": 200}}},
+    "team_remove_request": {"type": "object", "additionalProperties": false, "required": ["org_id", "slug"], "properties": {"org_id": {"$ref": "#/$defs/id"}, "slug": {"$ref": "#/$defs/slug"}}},
     "role_request": {"type": "object", "additionalProperties": false, "required": ["id", "administrator"], "properties": {"id": {"$ref": "#/$defs/id"}, "administrator": {"type": "boolean"}}},
     "lookup": {
       "type": "object", "additionalProperties": false,
       "required": ["schema_version", "id", "login", "name"],
       "properties": {"schema_version": {"const": 1}, "id": {"$ref": "#/$defs/id"}, "login": {"$ref": "#/$defs/login"}, "name": {"type": "string", "maxLength": 255}}
+    },
+    "teams_changed": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "teams"],
+      "properties": {"schema_version": {"const": 1}, "teams": {"type": "array", "maxItems": 8, "items": {"$ref": "#/$defs/team"}}}
     },
     "changed": {
       "type": "object", "additionalProperties": false,

@@ -9,9 +9,11 @@ import { liveText } from "../i18n";
 import { serverAccessText } from "../text/serverAccess";
 import {
   type AccessEntry,
+  type AccessTeam,
   type AccessView,
   accessRefusal,
   changeAccess,
+  changeTeams,
   type GitHubAccount,
   lookupLogin,
   readAccess,
@@ -27,6 +29,9 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
   const [failed, setFailed] = useState(false);
   const [pending, setPending] = useState<Record<string, PendingChange>>({});
   const [problem, setProblem] = useState<{ id: string; text: string }>();
+  const [teamPending, setTeamPending] = useState<
+    Record<string, "remove" | "uncertain">
+  >({});
   // Bumped when a change is sent and when its reply arrives. A list read
   // that a change overtook may predate it, so it is read again rather than
   // shown; an accepted read thus postdates every settled or uncertain change.
@@ -45,6 +50,11 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
       setPending((p) =>
         Object.fromEntries(
           Object.entries(p).filter(([, c]) => c.kind !== "uncertain"),
+        ),
+      );
+      setTeamPending((p) =>
+        Object.fromEntries(
+          Object.entries(p).filter(([, c]) => c !== "uncertain"),
         ),
       );
     } catch {
@@ -74,8 +84,39 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
         },
     );
   };
+  // A team change answers with the teams; members' rows follow from the
+  // broker, so the list is read again once the reply has settled it.
+  const changeTeam = async (
+    change: Parameters<typeof changeTeams>[1],
+  ): Promise<AddOutcome> => {
+    const ended = txt.sessionEnded;
+    if (!csrf) return { kind: "refused", text: ended };
+    changes.current++;
+    const result = await changeTeams(csrf, change);
+    changes.current++;
+    if (result.kind === "changed") {
+      setView((v) => v && { ...v, teams: result.teams });
+      void reload();
+      return { kind: "changed" };
+    }
+    if (result.kind === "refused")
+      return { kind: "refused", text: accessRefusal(result.code) };
+    if (result.kind === "login") return { kind: "refused", text: ended };
+    return { kind: "uncertain" };
+  };
+  const removeTeam = async (team: AccessTeam) => {
+    const key = `${team.org_id}/${team.slug}`;
+    setTeamPending((p) => ({ ...p, [key]: "remove" }));
+    const outcome = await changeTeam({
+      remove: { org_id: team.org_id, slug: team.slug },
+    });
+    setTeamPending(({ [key]: _, ...rest }) =>
+      outcome.kind === "uncertain" ? { ...rest, [key]: "uncertain" } : rest,
+    );
+    if (outcome.kind === "refused") setProblem({ id: key, text: outcome.text });
+  };
   const change = async (
-    action: "add" | "remove" | "grant" | "revoke",
+    action: "add" | "remove" | "forget" | "grant" | "revoke",
     id: string,
     mark: PendingChange,
   ): Promise<AddOutcome> => {
@@ -151,6 +192,15 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
           })
         }
         onRefresh={() => void reload()}
+        onAddTeam={(name) => changeTeam({ add: name })}
+        onRemoveTeam={(team) => void removeTeam(team)}
+        onForget={(entry) =>
+          void change("forget", entry.id, {
+            kind: "forget",
+            login: entry.login_hint,
+          })
+        }
+        teamPending={teamPending}
       />
     </>
   );

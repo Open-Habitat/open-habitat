@@ -28,11 +28,26 @@ type controlAccessEntry struct {
 		Actor  string `json:"actor,omitempty"`
 		At     string `json:"at,omitempty"`
 	} `json:"administrator_role,omitempty"`
+	// TeamState and Teams are the latest sign-in's team answer.
+	TeamState string   `json:"team_state,omitempty"`
+	Teams     []string `json:"teams,omitempty"`
+}
+
+// controlTeam is one listed GitHub team whose active members may sign in.
+type controlTeam struct {
+	OrgID         string `json:"org_id"`
+	Org           string `json:"org"`
+	Slug          string `json:"slug"`
+	Pinned        bool   `json:"pinned"`
+	Actor         string `json:"actor"`
+	At            string `json:"at"`
+	UnavailableAt string `json:"unavailable_at,omitempty"`
 }
 type controlAccess struct {
 	SchemaVersion    int                  `json:"schema_version"`
 	Mode             string               `json:"mode"`
 	RuntimeAdmission bool                 `json:"runtime_admission"`
+	Teams            []controlTeam        `json:"teams"`
 	Entries          []controlAccessEntry `json:"entries"`
 }
 
@@ -115,17 +130,17 @@ func githubIDFlag(args []string, shape string) (string, bool, error) {
 }
 
 func adminAccessCommand(args []string) (any, error) {
-	const shape = "expected admin access list [--state allowed|joined|withdrawn], admin access lookup --login <github-login>, admin access add --github-id <id> [--dry-run] or admin access remove --github-id <id> [--dry-run]"
+	const shape = "expected admin access list [--state allowed|joined|withdrawn|left|unconfirmed], admin access lookup --login <github-login>, admin access add --github-id <id> [--dry-run] or admin access remove --github-id <id> [--dry-run]"
 	if len(args) == 0 {
 		return nil, usage(shape)
 	}
 	switch args[0] {
 	case "list":
 		state := ""
-		if len(args) == 3 && args[1] == "--state" && (args[2] == "allowed" || args[2] == "joined" || args[2] == "withdrawn") {
+		if len(args) == 3 && args[1] == "--state" && (args[2] == "allowed" || args[2] == "joined" || args[2] == "withdrawn" || args[2] == "left" || args[2] == "unconfirmed") {
 			state = args[2]
 		} else if len(args) != 1 {
-			return nil, usage("expected admin access list [--state allowed|joined|withdrawn]")
+			return nil, usage("expected admin access list [--state allowed|joined|withdrawn|left|unconfirmed]")
 		}
 		v, e := readAccess()
 		if e != nil {
@@ -140,7 +155,7 @@ func adminAccessCommand(args []string) (any, error) {
 			}
 			v.Entries = kept
 		}
-		return envelope(map[string]any{"mode": v.Mode, "runtime_admission": v.RuntimeAdmission, "entries": v.Entries, "count": len(v.Entries)}), nil
+		return envelope(map[string]any{"mode": v.Mode, "runtime_admission": v.RuntimeAdmission, "teams": v.Teams, "entries": v.Entries, "count": len(v.Entries)}), nil
 	case "lookup":
 		if len(args) != 3 || args[1] != "--login" {
 			return nil, usage("expected admin access lookup --login <github-login>")

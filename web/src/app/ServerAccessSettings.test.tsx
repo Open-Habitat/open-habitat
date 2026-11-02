@@ -24,6 +24,7 @@ const list = (entries: AccessEntry[]) =>
     schema_version: 1,
     mode: "allowlist",
     runtime_admission: true,
+    teams: [],
     entries,
   });
 

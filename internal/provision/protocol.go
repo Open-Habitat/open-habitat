@@ -46,6 +46,10 @@ type Request struct {
 	Actor             string  `json:"actor,omitempty"`
 	// Fields is an integration app section; only set_integration_app has it.
 	Fields map[string]string `json:"fields,omitempty"`
+	// Slug names a team inside the organisation ID names (team_add,
+	// team_remove); Teams is one sign-in's observations (team_sign_in).
+	Slug  string            `json:"slug,omitempty"`
+	Teams []TeamObservation `json:"teams,omitempty"`
 }
 type Route struct {
 	UID      uint32 `json:"uid"`
@@ -200,7 +204,7 @@ func validLimit(n uint64) bool { return n >= 1<<20 && n <= 1<<50 && n%1024 == 0 
 
 func ParseRequest(b []byte) (Request, error) {
 	var r Request
-	raw, err := object(b, "version", "operation", "provider", "id", "candidate", "default_limit_bytes", "limit_bytes", "login_hint", "actor", "fields")
+	raw, err := object(b, "version", "operation", "provider", "id", "candidate", "default_limit_bytes", "limit_bytes", "login_hint", "actor", "fields", "slug", "teams")
 	if err != nil {
 		return Request{}, err
 	}
@@ -220,6 +224,12 @@ func ParseRequest(b []byte) (Request, error) {
 	}
 	if accessOperation(r.Operation) {
 		return parseAccessRequest(raw, r)
+	}
+	if _, ok := raw["slug"]; ok {
+		return Request{}, ErrInvalid
+	}
+	if _, ok := raw["teams"]; ok {
+		return Request{}, ErrInvalid
 	}
 	if _, ok := raw["login_hint"]; ok {
 		return Request{}, ErrInvalid

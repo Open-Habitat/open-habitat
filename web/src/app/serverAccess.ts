@@ -20,6 +20,7 @@ const def = (name: string) =>
 const validList = def("list");
 const validLookup = def("lookup");
 const validChanged = def("changed");
+const validTeamsChanged = def("teams_changed");
 
 /** What the sign-in that created the account did with the site's own
  * defaults, recorded then and never updated: a clone handed over, not one
@@ -52,8 +53,16 @@ export type AdministratorRole = {
 
 export type AccessEntry = {
   id: string;
-  source: "operator" | "site_admin" | "none";
-  state: "allowed" | "joined" | "withdrawn" | "removed" | "denied" | "unlisted";
+  source: "operator" | "site_admin" | "team" | "none";
+  state:
+    | "allowed"
+    | "joined"
+    | "withdrawn"
+    | "removed"
+    | "denied"
+    | "unlisted"
+    | "left"
+    | "unconfirmed";
   username?: string;
   login_hint?: string;
   actor?: string;
@@ -70,11 +79,30 @@ export type AccessEntry = {
     current: boolean;
   };
   administrator_role?: AdministratorRole;
+  /** The latest sign-in's team answer and the teams (organisation/slug) the
+   * person was last confirmed in; for left, the teams left. */
+  team_state?: "member" | "left" | "unconfirmed";
+  teams?: string[];
+};
+/** A listed GitHub team whose active members may sign in. */
+export type AccessTeam = {
+  org_id: string;
+  org: string;
+  slug: string;
+  /** A member check has bound the slug to the team's own id; nobody is
+   * admitted through it before that. */
+  pinned: boolean;
+  actor: string;
+  at: string;
+  /** GitHub did not answer the membership question at the latest sign-in
+   * that asked it. */
+  unavailable_at?: string;
 };
 export type AccessView = {
   schema_version: 1;
   mode: "allowlist" | "any";
   runtime_admission: boolean;
+  teams: AccessTeam[];
   entries: AccessEntry[];
 };
 export type GitHubAccount = { id: string; login: string; name: string };
@@ -85,6 +113,11 @@ export type LookupResult =
   | { kind: "unavailable" };
 export type ChangeResult =
   | { kind: "changed"; entry: AccessEntry }
+  | { kind: "refused"; code: string }
+  | { kind: "uncertain" }
+  | { kind: "login" };
+export type TeamsResult =
+  | { kind: "changed"; teams: AccessTeam[] }
   | { kind: "refused"; code: string }
   | { kind: "uncertain" }
   | { kind: "login" };
@@ -144,11 +177,12 @@ export async function lookupLogin(
 }
 
 /** add admits a new id or restores a withdrawn one; remove withdraws web
- * access; grant and revoke designate an administrator or undo that
- * designation. Nothing is retried: a lost reply is reported as uncertain. */
+ * access; forget dismisses a leaver's notice; grant and revoke designate an
+ * administrator or undo that designation. Nothing is retried: a lost reply
+ * is reported as uncertain. */
 export async function changeAccess(
   csrf: string,
-  action: "add" | "remove" | "grant" | "revoke",
+  action: "add" | "remove" | "forget" | "grant" | "revoke",
   id: string,
 ): Promise<ChangeResult> {
   let response: Response | undefined;
@@ -178,6 +212,52 @@ export async function changeAccess(
       };
   } catch {}
   return { kind: "uncertain" };
+}
+
+/** Lists organisation/team as an admission source, or removes one. The reply
+ * is the teams as the broker now keeps them. */
+export async function changeTeams(
+  csrf: string,
+  change: { add: string } | { remove: { org_id: string; slug: string } },
+): Promise<TeamsResult> {
+  let response: Response | undefined;
+  try {
+    response =
+      "add" in change
+        ? await post(`${path}/teams/add`, { team: change.add }, csrf, true)
+        : await post(`${path}/teams/remove`, change.remove, csrf, true);
+  } catch {
+    return { kind: "uncertain" };
+  }
+  const outcome = await writeOutcome(response);
+  if (outcome.kind === "refused")
+    return { kind: "refused", code: outcome.code };
+  if (outcome.kind !== "ok") return outcome;
+  try {
+    const value = await bounded(outcome.response, 16384);
+    if (validTeamsChanged(value))
+      return {
+        kind: "changed",
+        teams: (value as { teams: AccessTeam[] }).teams,
+      };
+  } catch {}
+  return { kind: "uncertain" };
+}
+
+/** organisation/team as typed, or the team's GitHub address; the slug is
+ * lowercase on GitHub. Anything else is not a team. */
+export function teamInput(raw: string): string | undefined {
+  let s = raw.trim().replace(/^@/, "");
+  const address = s.match(
+    /^https?:\/\/(?:www\.)?github\.com\/orgs\/([^/]+)\/teams\/([^/]+)\/?$/i,
+  );
+  if (address) s = `${address[1]}/${address[2]}`;
+  const [org, slug, ...rest] = s.split("/");
+  if (rest.length || !org || !slug || !loginShape.test(org)) return undefined;
+  const lower = slug.toLowerCase();
+  return /^[a-z0-9_](?:[a-z0-9_-]{0,62}[a-z0-9_])?$/.test(lower)
+    ? `${org}/${lower}`
+    : undefined;
 }
 
 /** Accepts @name and a pasted profile address as well as the bare login. */

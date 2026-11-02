@@ -3,12 +3,13 @@ created: 2026-11-02
 updated: 2026-11-02
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 lane: org-admission
 lane_seq: 2
 collision: [internal/gateway/admission.go]
 preparation: ready
+closed: 2026-11-02
 ---
 
 # Admit people through a GitHub organisation team
@@ -45,6 +46,6 @@ asks GitHub at sign-in. No credential is stored for this.
 
 ## Acceptance Criteria
 
-- [ ] A team source can be added and removed in the access page; members sign in, non-members are refused, a leaver is refused at the next sign-in, individuals keep access.
-- [ ] Tests for admission decisions (member, non-member, pending membership, leaver, both reasons, GitHub unavailable) and the UI states; independent review of the authority path.
-- [ ] `docs/operations.md` says what the organisation must approve.
+- [x] A team source can be added and removed in the access page; members sign in, non-members are refused, a leaver is refused at the next sign-in, individuals keep access.
+- [x] Tests for admission decisions (member, non-member, pending membership, leaver, both reasons, GitHub unavailable) and the UI states; independent review of the authority path.
+- [x] `docs/operations.md` says what the organisation must approve.

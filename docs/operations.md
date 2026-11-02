@@ -89,6 +89,32 @@ after the opt-out each person reconnects once from Settings › Koodipalvelut
 (GitHub › Yhdistä GitHub uudelleen), which replaces gh's token with a lasting
 one at once.
 
+A GitHub team can admit people beside those allowed one by one. While
+`identities.runtime_admission` is on, an administrator adds
+`organisation/team` in Settings › Käyttäjät ja pääsy; the broker keeps it with
+the other runtime admissions, and `admin access list` shows it. At every
+sign-in the gateway asks GitHub, with that person's own token (the `read:org`
+scope sign-in already requests), whether they are an active member; a pending
+invitation is not membership. Nothing is stored for this but the answer.
+Leaving takes effect at the next sign-in: it is refused, the account and files
+stay, and an open session continues until it ends, so use Poista pääsy to end
+it at once. Someone also allowed one by one keeps access. Before adding a
+team:
+
+- If the organisation restricts OAuth app access, an owner approves Open
+  Habitat's OAuth app in the organisation's Settings › Third-party access ›
+  OAuth app policy (a member can request it from their GitHub
+  Settings › Applications › Authorized OAuth Apps). Without the approval GitHub
+  answers no membership question: members are refused with "membership could
+  not be checked", and the access page says when GitHub last failed to answer.
+  If the organisation enforces SAML single sign-on, each member's
+  authorisation must be granted for it as well.
+- Use a team without child teams: GitHub counts a child team's members as the
+  parent's.
+- The first member's sign-in pins the team to its numeric id; renaming the
+  team keeps it, and a new team that later takes the old name does not inherit
+  it. Until then the access page says the team waits for its first member.
+
 Start from the shipped `site/example.json` and `site/schema.json`. Write a
 private root-owned `/etc/open-habitat/site.json` declaring the home UUID,
 gateway UID/GID, an unoccupied reserved UID/GID pool, numeric GitHub admission

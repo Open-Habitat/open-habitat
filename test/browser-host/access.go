@@ -18,7 +18,8 @@ import (
 // runtime switch, delays the broker's writes so the browser's waiting state
 // can be seen, loses the next write's reply after committing it, or
 // (unbound=43) makes Bob a person who has not signed in yet: his binding
-// appears at his first sign-in.
+// appears at his first sign-in. leaver=44 lists the team example-org/habitat
+// and makes Carol someone whose latest sign-in found her gone from it.
 type fixtureAccess struct {
 	mu      sync.Mutex
 	any     bool
@@ -29,10 +30,14 @@ type fixtureAccess struct {
 	hints   map[string]string
 	at      map[string]string
 	unbound map[string]bool
+	teams   []gateway.TeamSource
+	members map[string]string // id -> "member", "left" or "unconfirmed"
 }
 
+var fixtureTeam = gateway.TeamSource{OrgID: "61230001", Org: "example-org", Slug: "habitat", TeamID: "61239001", Actor: "42", At: "2026-10-30T08:00:00Z"}
+
 func newFixtureAccess() *fixtureAccess {
-	return &fixtureAccess{runtime: map[string]string{"43": "admitted"}, hints: map[string]string{"43": "bob"}, at: map[string]string{"43": "2026-10-20T08:00:00Z"}, unbound: map[string]bool{}}
+	return &fixtureAccess{runtime: map[string]string{"43": "admitted"}, hints: map[string]string{"43": "bob"}, at: map[string]string{"43": "2026-10-20T08:00:00Z"}, unbound: map[string]bool{}, members: map[string]string{}}
 }
 
 // fixture applies /fixture/access query values; unknown values are refused.
@@ -56,6 +61,13 @@ func (b *fixtureBroker) fixture(q url.Values) error {
 			b.access.lose = true
 		case key == "unbound" && v == "43":
 			b.access.unbound[v] = true
+		case key == "leaver" && v == "44":
+			if len(b.access.teams) == 0 {
+				b.access.teams = []gateway.TeamSource{fixtureTeam}
+			}
+			b.access.members[v] = "left"
+			b.access.hints[v] = "carol"
+			b.access.at[v] = "2026-11-02T07:00:00Z"
 		default:
 			return errors.New("unknown access fixture")
 		}
@@ -83,16 +95,26 @@ func (b *fixtureBroker) rowLocked(id string) []gateway.AccessRow {
 	if bound {
 		state = "joined"
 	}
+	var row gateway.AccessRow
+	if member := b.access.members[id]; member != "" {
+		row = gateway.AccessRow{ID: id, Source: "team", State: state, Username: username, LoginHint: b.access.hints[id], At: b.access.at[id], TeamState: member, Teams: []string{fixtureTeam.TeamID}}
+		if member != "member" {
+			row.State = member
+		}
+	}
 	if id == "42" {
 		return []gateway.AccessRow{{ID: id, Source: "operator", State: state, Username: username}}
 	}
 	switch b.access.runtime[id] {
 	case "":
-		return nil
+		if row.ID == "" {
+			return nil
+		}
+		return []gateway.AccessRow{row}
 	case "withdrawn":
 		state = "withdrawn"
 	}
-	return []gateway.AccessRow{{ID: id, Source: "site_admin", State: state, Username: username, LoginHint: b.access.hints[id], Actor: "42", At: b.access.at[id]}}
+	return []gateway.AccessRow{{ID: id, Source: "site_admin", State: state, Username: username, LoginHint: b.access.hints[id], Actor: "42", At: b.access.at[id], TeamState: row.TeamState, Teams: row.Teams}}
 }
 
 func (b *fixtureBroker) pageLocked(ids []string) gateway.AccessPage {
@@ -113,6 +135,11 @@ func (b *fixtureBroker) AccessList(context.Context) (gateway.AccessPage, error) 
 	ids := []string{"42"}
 	for id := range b.access.runtime {
 		ids = append(ids, id)
+	}
+	for id := range b.access.members {
+		if b.access.runtime[id] == "" {
+			ids = append(ids, id)
+		}
 	}
 	return b.pageLocked(ids), nil
 }
@@ -179,6 +206,7 @@ func (b *fixtureBroker) Withdraw(ctx context.Context, id, _ string) (gateway.Acc
 		return gateway.AccessRow{}, gateway.ErrOperatorOwned
 	}
 	row := gateway.AccessRow{ID: id, Source: "site_admin", State: "removed"}
+	delete(b.access.members, id)
 	if _, bound := b.bound(id); bound && b.access.runtime[id] != "" {
 		b.access.runtime[id] = "withdrawn"
 		b.access.at[id] = time.Now().UTC().Format(time.RFC3339)
@@ -196,7 +224,97 @@ func (b *fixtureBroker) Withdraw(ctx context.Context, id, _ string) (gateway.Acc
 func (b *fixtureBroker) admitted(id string) bool {
 	b.access.mu.Lock()
 	defer b.access.mu.Unlock()
-	return b.access.any || id == "42" || b.access.runtime[id] == "admitted"
+	return b.access.any || id == "42" || b.access.runtime[id] == "admitted" || b.access.runtime[id] == "" && b.access.members[id] == "member"
+}
+
+// The team source as the broker keeps it. A sign-in's observation follows
+// the broker's rules in their simplest form; the Go tests own the detail.
+func (b *fixtureBroker) Teams(context.Context) ([]gateway.TeamSource, error) {
+	b.access.mu.Lock()
+	defer b.access.mu.Unlock()
+	return append([]gateway.TeamSource{}, b.access.teams...), nil
+}
+
+func (b *fixtureBroker) AddTeam(ctx context.Context, orgID, org, slug, actor string) ([]gateway.TeamSource, error) {
+	lose, err := b.write(ctx)
+	if err != nil {
+		return nil, err
+	}
+	b.access.mu.Lock()
+	defer b.access.mu.Unlock()
+	if b.access.off {
+		return nil, gateway.ErrAccessDisabled
+	}
+	exists := false
+	for _, t := range b.access.teams {
+		exists = exists || t.OrgID == orgID && t.Slug == slug
+	}
+	if !exists {
+		b.access.teams = append(b.access.teams, gateway.TeamSource{OrgID: orgID, Org: org, Slug: slug, Actor: actor, At: time.Now().UTC().Format(time.RFC3339)})
+	}
+	if lose {
+		return nil, gateway.ErrAccessUncertain
+	}
+	return append([]gateway.TeamSource{}, b.access.teams...), nil
+}
+
+func (b *fixtureBroker) RemoveTeam(ctx context.Context, orgID, slug, _ string) ([]gateway.TeamSource, error) {
+	lose, err := b.write(ctx)
+	if err != nil {
+		return nil, err
+	}
+	b.access.mu.Lock()
+	defer b.access.mu.Unlock()
+	kept := []gateway.TeamSource{}
+	for _, t := range b.access.teams {
+		if t.OrgID != orgID || t.Slug != slug {
+			kept = append(kept, t)
+		} else if t.TeamID == fixtureTeam.TeamID {
+			clear(b.access.members)
+		}
+	}
+	b.access.teams = kept
+	if lose {
+		return nil, gateway.ErrAccessUncertain
+	}
+	return append([]gateway.TeamSource{}, b.access.teams...), nil
+}
+
+func (b *fixtureBroker) TeamSignIn(_ context.Context, id, login string, observed []gateway.TeamObservation) error {
+	b.access.mu.Lock()
+	defer b.access.mu.Unlock()
+	active := false
+	for _, o := range observed {
+		active = active || o.State == "active"
+	}
+	switch {
+	case active && b.access.runtime[id] != "withdrawn":
+		b.access.members[id] = "member"
+		b.access.hints[id] = login
+	case b.access.members[id] == "member":
+		b.access.members[id] = "left"
+	}
+	return nil
+}
+
+func (b *fixtureBroker) Forget(_ context.Context, id, _ string) (gateway.AccessRow, error) {
+	b.access.mu.Lock()
+	defer b.access.mu.Unlock()
+	if b.access.members[id] != "member" {
+		delete(b.access.members, id)
+	}
+	if rows := b.rowLocked(id); len(rows) == 1 {
+		return rows[0], nil
+	}
+	return gateway.AccessRow{ID: id, Source: "team", State: "removed"}, nil
+}
+
+// LookupOrg is the synthetic public organisations API.
+func (p *provider) LookupOrg(_ context.Context, org string) (gateway.GitHubOrg, error) {
+	if strings.EqualFold(org, "example-org") {
+		return gateway.GitHubOrg{ID: "61230001", Login: "example-org"}, nil
+	}
+	return gateway.GitHubOrg{}, gateway.ErrGitHubOrgNotFound
 }
 
 // The synthetic GitHub users API: two people with accounts here, one who has
