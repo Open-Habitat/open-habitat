@@ -25,8 +25,6 @@ with load average 15–38 (other workers' runs beside the gate's own):
   fails on main under load (baseline run, commit de44e75a). Counting frames
   measures the host's load, not the follow; a span check is not enough either,
   since under saturation the sampler saw only 0.4 s of the 11 s turn.
-- `lab-conversation.spec.ts:517` "real controller creates and persists a
-  fake-Pi turn": the conversation-menu click timed out (30 s test budget).
 - `live-long-run.spec.ts:12`: working span 70 ms < 7000 (see the open
   live-long-run-gap-under-load).
 - `settings-search.spec.ts:70`: Enter landed on `#recap-model` where the second
@@ -42,4 +40,5 @@ whole-suite or heavy run shares the host, so its failures must be re-run by
 hand to tell a regression from load. Fixed in the same work (real test races,
 not load): github-connection-warning re-routing and aborted navigation,
 pi-onboarding-race click after the step advanced, browser-conversation cold
-open status read.
+open status read, lab-conversation's header menu read before the header
+settled.
