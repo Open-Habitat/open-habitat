@@ -61,16 +61,15 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
         .isVisible()
     )
       await confirmGitIdentity(b);
-    if (
-      await b
-        .getByRole("button")
-        .and(b.getByTestId("repository-proceed"))
-        .isVisible()
-    )
-      await b
-        .getByRole("button")
-        .and(b.getByTestId("repository-proceed"))
-        .click();
+    const proceed = b
+      .getByRole("button")
+      .and(b.getByTestId("repository-proceed"));
+    // The step can advance on its own between the check and the click; then
+    // the button is gone rather than waiting.
+    if (await proceed.isVisible())
+      await proceed
+        .click({ timeout: 5000 })
+        .catch(() => expect(proceed).toBeHidden());
     await a.bringToFront();
     release();
     await expect(a.getByTestId("pi-device-code")).toHaveCount(0);
