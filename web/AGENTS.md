@@ -98,6 +98,15 @@ snapshot until the next host event or refresh; a new identity must never inherit
 that snapshot or the previous person's draft. A stale response from the old
 identity must not overwrite the new view.
 
+Replies, events and renders have no guaranteed order. Apply a reply only when
+its cursor, revision or command identity makes it current for the same daemon
+instance. Focus, caret and scroll follow a ready, enabled element that will
+remain mounted, not a guessed later frame, timeout or microtask. Take an
+event's side effect where the event is handled, not from rendered state that
+may skip it. Action callbacks read moving values such as the route when they
+run. Keep input until the view can act on it or refuse it visibly; never drop
+it silently. Loading and opened views share elements the person may be using.
+
 Every write goes through `src/app/mutations.ts` (ADR 0023). A new
 write names its command in `mutationClasses`, which also decides what the
 person sees before the host answers: optimistic (the result), pending (the

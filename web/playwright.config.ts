@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 import { ports, viteOrigin } from "./test-ports.mjs";
+import { stressTimeouts } from "./tests/stress-options";
 export default defineConfig({
+  ...stressTimeouts,
   testDir: "./tests",
   testIgnore: ["synthetic-demo.spec.ts", "lab-*.spec.ts"],
   fullyParallel: true,

@@ -43,6 +43,31 @@ record what distinguishing failure they would have caught and where it is
 still covered; do not claim elapsed-time savings without timing the changed
 suite.
 
+Specs wait for the state they assert, hold fixture transitions they depend on,
+and drive product timers with `page.clock` rather than racing wall time. Use
+reduced motion for axe and screenshots unless motion itself is being tested.
+Ordering tests belong in Vitest where possible: `web/src/test/controlledTransport.ts`
+steps replies and events explicitly; its example tests both delivery orders.
+
+### Periodic ordering detector (not a gate)
+
+Run `bash scripts/browser-stress.sh` periodically, not alongside another whole
+suite. It holds the suite lock across both suites, uses CPU 4×, reply jitter
+0–250 ms, default test/expect budgets ×4 and two repeats. Explicit per-spec
+budgets remain explicit. Pass a grep expression to smoke-test a small subset
+in both suites. `OH_PORT_BASE=11000` reserves ordinary ports, with lab at +100.
+`OH_REPLY_SEED` is printed and can be supplied to replay the delay schedule;
+it cannot reproduce OS scheduling or identical browser interleavings.
+
+Focused runs currently default to zero jitter; the marked one-line switch in
+`browser-focused.py` enables 60 ms once the product ordering fixes are ready.
+Opt in with `OH_REPLY_DELAY_MS=250 OH_REPLY_SEED=my-seed`. The synthetic host
+uses a seeded per-method/path sequence before API dispatch, matching the sweep;
+fixture controls and the event stream are not delayed. Independent request
+waits permit overtaking; controlled Vitest delivery covers exact event/reply
+orders without reordering the production journal itself. CPU throttling covers
+the fixture page and pages opened with `context.newPage`, not browser popups.
+
 ## Choose checks for the change
 
 While editing, choose checks from the behavior and boundaries touched, not from a path-only or timestamp-based selector. A change to a shared auth, contract, test fixture or build dependency can affect several packages even if only one file changed. Install web dependencies with `npm ci --prefix web` when needed. `scripts/test-focused.sh` selects one area explicitly; it reports what it skips and **never writes a clean-gate receipt**. Use multiple runs when more than one boundary is touched. For shared fixtures, contracts, auth or build inputs choose the full gate instead. Examples:

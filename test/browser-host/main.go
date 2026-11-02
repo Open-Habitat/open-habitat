@@ -753,6 +753,7 @@ esac
 	// Cloudflare route does: the browser receives the response head only
 	// together with the first body bytes, not on a bare header flush.
 	var edgeHoldHead atomic.Bool
+	delayReply := replyDelayFromEnv()
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/fixture/soniox" || strings.HasPrefix(r.URL.Path, "/fixture/soniox/") {
 			soniox.serve(w, r)
@@ -1394,6 +1395,9 @@ esac
 		}
 		if r.URL.Path == "/api/v1/events" && edgeHoldHead.Load() {
 			w = &headHoldingWriter{ResponseWriter: w}
+		}
+		if !delayReply(w, r) {
+			return
 		}
 		product.ServeHTTP(w, r)
 	})

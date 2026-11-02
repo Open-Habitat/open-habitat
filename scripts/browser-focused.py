@@ -24,6 +24,9 @@ def main():
         parser.error('invalid tag')
     os.environ['TMPDIR'] = '/var/tmp'
     os.umask(0o077)
+    # DEFAULT-ON SWITCH: change 0 to 60 once the product ordering fixes land.
+    if args.spec or args.tag:
+        os.environ.setdefault('OH_REPLY_DELAY_MS', '0')
     command = ['npx', 'playwright', 'test']
     if args.lab or (args.spec and args.spec.startswith('lab-')):
         command += ['--config', 'playwright.lab.config.ts']

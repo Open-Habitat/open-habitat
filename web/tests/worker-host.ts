@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test as base } from "@playwright/test";
@@ -22,9 +22,43 @@ export function createHostTest(
     // Unrouting before the context closes lets late requests through; a
     // handler's error during the case itself still fails it.
     page: async ({ page }, use) => {
+      const rate = Number(process.env.OH_CPU_THROTTLE ?? 1);
+      if (!Number.isFinite(rate) || rate < 1)
+        throw new Error("Invalid OH_CPU_THROTTLE");
+      if (rate > 1) {
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send("Emulation.setCPUThrottlingRate", { rate });
+      }
       await use(page);
       await page.unrouteAll({ behavior: "ignoreErrors" });
     },
+    browser: [
+      async ({ browser }, use) => {
+        const original = browser.newContext.bind(browser);
+        browser.newContext = async (...args) => {
+          const context = await original(...args);
+          const newPage = context.newPage.bind(context);
+          context.newPage = async () => {
+            const page = await newPage();
+            const rate = Number(process.env.OH_CPU_THROTTLE ?? 1);
+            if (!Number.isFinite(rate) || rate < 1)
+              throw new Error("Invalid OH_CPU_THROTTLE");
+            if (rate > 1) {
+              const cdp = await context.newCDPSession(page);
+              await cdp.send("Emulation.setCPUThrottlingRate", { rate });
+            }
+            return page;
+          };
+          return context;
+        };
+        try {
+          await use(browser);
+        } finally {
+          browser.newContext = original;
+        }
+      },
+      { scope: "worker" },
+    ],
     hostProcess: [
       async ({ browserName }, use, testInfo) => {
         if (browserName !== "chromium")
@@ -40,6 +74,8 @@ export function createHostTest(
           testInfo.project.outputDir,
           `browser-host-marker-${createHash("sha256").update(`${testInfo.testId}:${testInfo.retry}`).digest("hex").slice(0, 16)}`,
         );
+        const replySeed =
+          process.env.OH_REPLY_SEED ?? randomBytes(8).toString("hex");
         const child = spawn(
           fileURLToPath(new URL("../../.cache/browser-host", import.meta.url)),
           [fileURLToPath(new URL("../dist", import.meta.url))],
@@ -51,6 +87,7 @@ export function createHostTest(
               BROWSER_HOST_PORT: String(port),
               BROWSER_HOST_MARKER: marker,
               ...extraEnv,
+              OH_REPLY_SEED: replySeed,
             },
             stdio: ["ignore", "pipe", "pipe"],
           },
@@ -83,6 +120,11 @@ export function createHostTest(
           });
           await use(undefined);
         } finally {
+          if (testInfo.status !== testInfo.expectedStatus) {
+            console.error(
+              `Replay jitter: OH_REPLY_SEED=${replySeed} OH_REPLY_DELAY_MS=${process.env.OH_REPLY_DELAY_MS ?? 0}`,
+            );
+          }
           child.kill("SIGTERM");
           if (child.exitCode === null && child.signalCode === null)
             await new Promise<void>((done) => {

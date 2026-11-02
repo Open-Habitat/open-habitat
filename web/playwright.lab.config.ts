@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 import { labOrigin } from "./test-ports.mjs";
 
+import { stressTimeouts } from "./tests/stress-options";
 export default defineConfig({
+  ...stressTimeouts,
   testDir: "./tests",
   testMatch: "lab-*.spec.ts",
   // Separate from the ordinary suite's test-results, which that suite clears

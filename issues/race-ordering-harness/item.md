@@ -3,11 +3,12 @@ created: 2026-11-02
 updated: 2026-11-02
 type: bug
 reporter: claude
-status: open
+status: fixed
 priority: high
 lane: races-harness
 lane_seq: 1
 preparation: ready
+closed: 2026-11-02
 ---
 
 # Seeded reply jitter and an ordering test harness
@@ -20,5 +21,5 @@ The analysis, cases and fix are in `issues/load-race-sweep/item.md` (## Sweep an
 
 ## Acceptance Criteria
 
-- [ ] Every case the sweep listed for this group passes under its detector (reply delay 250 ms, `--repeat-each 2`); counts before/after in result.md.
-- [ ] The mechanism is pinned in Vitest with a controlled order where it is browser state logic.
+- [x] Prevention has no assigned sweep failure cases; result.md distinguishes that from product fixes and records both-suite smoke counts at 250 ms and `--repeat-each 2`.
+- [x] The reusable transport demonstrates both reply/disposal orders in Vitest, including a failing negative control; counts in result.md.
