@@ -1077,6 +1077,17 @@ func (c *ConversationController) regenerateTitle(w http.ResponseWriter, r *http.
 	}
 }
 
+// journalPosition is the journal cursor a status reply carries. Caller holds
+// c.mu: a conversation's state changes and the events that publish them are
+// made under c.mu, so a status read together with this position reflects
+// every event up to it, and a browser can order status replies against each
+// other and against the event stream ("" without a journal).
+func (c *ConversationController) journalPosition() string {
+	if c.journal == nil {
+		return ""
+	}
+	return c.journal.position()
+}
 func (c *ConversationController) readReceipt(w http.ResponseWriter, r *http.Request, id string) {
 	if r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
 		snapshotError(w, 400, "invalid_request")
@@ -1102,14 +1113,16 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	}
 	c.mu.Lock()
 	s := c.sessions[id]
+	position := c.journalPosition()
 	c.mu.Unlock()
 	if s == nil {
 		// No handle in this incarnation. A browser-started conversation is still
 		// readable and resumable on send; opening it never starts Pi.
-		c.stoppedStatus(w, id)
+		c.stoppedStatus(w, id, position)
 		return
 	}
 	c.mu.Lock()
+	position = c.journalPosition()
 	runActive := s.runActive
 	held := heldView(s.held)
 	startProblem, interrupted := s.startProblem, s.interrupted
@@ -1222,7 +1235,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		continuation = "unproven"
 	}
 	c.mu.Unlock()
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem, "interrupted": interrupted, "interrupted_turn": interruptedTurn, "bash": bash, "recap_failure": recapFailed})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": authError, "pending_question": question, "event_cursor": cursor, "journal_cursor": position, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem, "interrupted": interrupted, "interrupted_turn": interruptedTurn, "bash": bash, "recap_failure": recapFailed})
 }
 
 // answerQuestion spends the native request ID before touching Pi. This uncorrelated

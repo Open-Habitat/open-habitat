@@ -1413,6 +1413,52 @@ describe("finished turns the person has not seen", () => {
     store.dispose();
   });
 
+  it("remembers a turn seen ending through a status read, when its event comes too late", () => {
+    localStorage.clear();
+    let store = tab();
+    store.applySnapshot(observation());
+    store.setVisible(agent);
+    // The stream had not brought turn.settled yet when the person left.
+    store.applyStatus(agent, {
+      agent_id: agent,
+      state: "idle",
+      journal_cursor: "ev1:11111111-1111-4111-8111-111111111111:101",
+      turn_settled: { state: "settled", observed_at: at(11), native_key: "r1" },
+    } as never);
+    store.dispose();
+    store = tab();
+    store.applySnapshot(observation({ id: "r1", minute: 11 }, 102));
+    expect(attention(store)).toBeUndefined();
+    store.dispose();
+  });
+
+  it("keeps a reply a status named over an older turn a lagging stream brings later", () => {
+    localStorage.clear();
+    let store = tab();
+    store.applySnapshot(observation());
+    store.setVisible(agent);
+    store.applyStatus(agent, {
+      agent_id: agent,
+      state: "idle",
+      journal_cursor: "ev1:11111111-1111-4111-8111-111111111111:120",
+      turn_settled: { state: "settled", observed_at: at(12), native_key: "r2" },
+    } as never);
+    store.routeEvent({
+      resource: { agent_id: agent },
+      kind: "turn.settled",
+      payload: { state: "settled", native_key: "r1" },
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:110",
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence: 110,
+      event_id: "evt-110",
+    } as never);
+    store.dispose();
+    store = tab();
+    store.applySnapshot(observation({ id: "r2", minute: 12 }, 121));
+    expect(attention(store)).toBeUndefined();
+    store.dispose();
+  });
+
   const settled = (reply: string, sequence: number) =>
     ({
       resource: { agent_id: agent },
@@ -1570,4 +1616,93 @@ it("a native page replaces an uncertain notice and wins over a late uncertain ev
   store.routeEvent({ ...event, sequence: 2, cursor: "c2" } as never);
   expect(store.readNotices(agent)).toEqual([]);
   store.dispose();
+});
+
+describe("status reads that come back in either order", () => {
+  const agent = id(3);
+  const life = "11111111-1111-4111-8111-111111111111";
+  const next = "22222222-2222-4222-8222-222222222222";
+  const read = (state: string, sequence: number, instance = life) =>
+    ({
+      agent_id: agent,
+      state,
+      run_active: state === "accepted",
+      journal_cursor: `ev1:${instance}:${sequence}`,
+    }) as never;
+  // A read taken while the turn ran and one taken after it ended, applied
+  // in each order: the conversation always ends idle.
+  for (const order of [
+    ["working", "ended"],
+    ["ended", "working"],
+  ] as const)
+    it(`keeps the newest read when they land ${order.join(" then ")}`, () => {
+      const { store } = setup();
+      const reads = { working: read("accepted", 5), ended: read("idle", 9) };
+      expect(store.applyStatus(agent, reads[order[0]])).toBe(true);
+      expect(store.applyStatus(agent, reads[order[1]])).toBe(
+        order[1] === "ended",
+      );
+      expect(store.status(agent)?.state).toBe("idle");
+      store.dispose();
+    });
+
+  it("lets the view's own read, taken before the turn ended, not bring back Stop", async () => {
+    // The tab's background read and the view's refresh both read status;
+    // the refresh began while the turn ran and lands after the background
+    // read that saw it end.
+    let finish!: (value: never) => void;
+    const statusReader = vi.fn(
+      () =>
+        new Promise<never>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pager = setup().store["pager"];
+    const store = new ConversationStore("person", pager, 50, statusReader);
+    store.applyStatus(agent, read("accepted", 4));
+    store.routeEvent({
+      resource: { agent_id: agent },
+      kind: "turn.settled",
+      payload: {},
+      cursor: `ev1:${life}:8`,
+      server_instance_id: life,
+      sequence: 8,
+      event_id: "settled",
+    } as never);
+    finish(read("idle", 8));
+    await flush();
+    expect(store.status(agent)?.state).toBe("idle");
+    store.applyStatus(agent, read("accepted", 6)); // the refresh's late read
+    expect(store.status(agent)?.state).toBe("idle");
+    expect(store.statusStale(agent)).toBe(false);
+    store.dispose();
+  });
+
+  it("takes a restarted daemon's first read and, once the stream moved on, drops a late one from before", () => {
+    const { store } = setup();
+    store.applyStatus(agent, read("accepted", 40));
+    // A new life starts its journal again: its first read is newer.
+    expect(store.applyStatus(agent, read("stopped", 0, next))).toBe(true);
+    store.routeEvent({
+      resource: { scope: "user" },
+      kind: "snapshot.invalidated",
+      payload: {},
+      cursor: `ev1:${life}:41`,
+      server_instance_id: life,
+      sequence: 41,
+      event_id: "old",
+    } as never);
+    store.routeEvent({
+      resource: { scope: "user" },
+      kind: "snapshot.invalidated",
+      payload: {},
+      cursor: `ev1:${next}:1`,
+      server_instance_id: next,
+      sequence: 1,
+      event_id: "new",
+    } as never);
+    expect(store.applyStatus(agent, read("accepted", 42))).toBe(false);
+    expect(store.status(agent)?.state).toBe("stopped");
+    store.dispose();
+  });
 });

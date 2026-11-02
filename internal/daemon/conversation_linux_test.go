@@ -1018,3 +1018,39 @@ for line in sys.stdin:
 		t.Fatalf("receipt %q", receipt)
 	}
 }
+
+// A status names the journal position it was read at, so a browser can order
+// status replies against each other and the stream: an event published with
+// a state change is never past the cursor of a status that lacks the change.
+func TestConversationStatusCarriesItsJournalPosition(t *testing.T) {
+	const id = "12345678-1234-4123-8123-123456789abd"
+	home := t.TempDir()
+	s := &conversation{id: id, workspace: "ws_12345678", cwd: home, rpc: &piRPC{}, state: "accepted", events: []json.RawMessage{}}
+	c := &ConversationController{sessions: map[string]*conversation{id: s}, home: home, cfg: transport.Config{Home: home, UID: os.Geteuid()}, journal: newEventJournal()}
+	read := func() map[string]any {
+		t.Helper()
+		w := httptest.NewRecorder()
+		c.observe(w, httptest.NewRequest("GET", "http://unix/status", nil), id)
+		if w.Code != 200 {
+			t.Fatal(w.Code)
+		}
+		var v map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &v); err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+	before := read()
+	if before["journal_cursor"] != c.journal.position() {
+		t.Fatalf("status at %v, journal at %s", before["journal_cursor"], c.journal.position())
+	}
+	const command = "22222222-2222-4222-8222-222222222222"
+	c.mu.Lock()
+	s.command = command
+	c.receipt(s, command, "accepted")
+	c.mu.Unlock()
+	after := read()
+	if after["journal_cursor"] == before["journal_cursor"] || after["journal_cursor"] != c.journal.position() || after["command_id"] != command {
+		t.Fatalf("status after the receipt's event: %v", after)
+	}
+}

@@ -66,6 +66,16 @@ func (j *eventJournal) watermark() (string, string) {
 	return j.cursor(j.seq), j.cursor(oldest)
 }
 
+// position is the newest published cursor, or "" once the journal is closed.
+func (j *eventJournal) position() string {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.instance == "" {
+		return ""
+	}
+	return j.cursor(j.seq)
+}
+
 // A single trailing invalidation covers all deltas in a burst, including the
 // last one. Never merely suppress a delta after publishing: a client may have
 // already resnapshotted at the earlier cursor.

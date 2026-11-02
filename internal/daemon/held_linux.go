@@ -481,7 +481,8 @@ func peekBrowserOrigin(home, id string) (browserOrigin, error) {
 // stoppedStatus describes a browser-started conversation without a Pi child in
 // this daemon incarnation: readable native history and a composer that will
 // start Pi on send. Reading it never starts or reserves anything.
-func (c *ConversationController) stoppedStatus(w http.ResponseWriter, id string) {
+// position is the journal cursor read when no handle was found.
+func (c *ConversationController) stoppedStatus(w http.ResponseWriter, id, position string) {
 	origin, err := peekBrowserOrigin(c.home, id)
 	if err != nil {
 		snapshotError(w, 404, "resource_not_found")
@@ -514,5 +515,5 @@ func (c *ConversationController) stoppedStatus(w http.ResponseWriter, id string)
 			revision = opaque("rev_", fmt.Sprintf("%d:%d:%d", info.Size(), info.ModTime().UnixNano(), info.Mode()))
 		}
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": origin.Workspace, "state": "stopped", "run_active": false, "startup_choice": nil, "continuation": "unproven", "command_id": "", "ack": "", "send_receipt": "", "turn_settled": nil, "auth_error": "", "pending_question": nil, "event_cursor": 0, "events": []json.RawMessage{}, "event_loss": false, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": 0, "steering": []string{}, "follow_up": []string{}}, "held": []map[string]string{}, "start_problem": "", "interrupted_turn": history == "present" && c.turnCut(path), "bash": nil})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": origin.Workspace, "state": "stopped", "run_active": false, "startup_choice": nil, "continuation": "unproven", "command_id": "", "ack": "", "send_receipt": "", "turn_settled": nil, "auth_error": "", "pending_question": nil, "event_cursor": 0, "journal_cursor": position, "events": []json.RawMessage{}, "event_loss": false, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": 0, "steering": []string{}, "follow_up": []string{}}, "held": []map[string]string{}, "start_problem": "", "interrupted_turn": history == "present" && c.turnCut(path), "bash": nil})
 }

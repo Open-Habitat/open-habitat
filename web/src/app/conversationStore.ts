@@ -5,6 +5,7 @@ import {
   applyTurnEvent,
   type ConversationEvent,
   commandOutput,
+  cursorParts,
   initialTurn,
   type LiveTurn,
   parseConversationEvent,
@@ -283,6 +284,7 @@ export class ConversationStore {
   // The next view must read the daemon again, not replay the pre-login error.
   discardStatus(id: string) {
     this.statusVersions.set(id, (this.statusVersions.get(id) ?? 0) + 1);
+    this.statusPositions.delete(id);
     const statuses = new Map(this.metadata.statuses);
     statuses.delete(id);
     this.metadata = { ...this.metadata, statuses };
@@ -385,6 +387,11 @@ export class ConversationStore {
     const restarted =
       !!this.snapshotCursor &&
       this.snapshotCursor.split(":")[1] !== snapshot.event_cursor.split(":")[1];
+    if (restarted)
+      this.retire(
+        this.snapshotCursor?.split(":")[1],
+        snapshot.event_cursor.split(":")[1],
+      );
     this.snapshotCursor = snapshot.event_cursor;
     const cursor = snapshot.event_cursor;
     if (
@@ -484,8 +491,53 @@ export class ConversationStore {
       }
     }
   }
-  applyStatus(id: string, status: Status) {
-    if (this.disposed || status.agent_id !== id) return;
+  // Each conversation's status is the newest read: the journal position it
+  // was read at (journal_cursor). Two reads in flight come back in either
+  // order, and on a slow link the event stream runs ahead of both, so a read
+  // applied in arrival order can bring back a turn that has ended.
+  private statusPositions = new Map<
+    string,
+    { instance: string; sequence: number }
+  >();
+  private statusPosition(status: Status) {
+    try {
+      return status.journal_cursor
+        ? cursorParts(status.journal_cursor)
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  // Daemon lives this tab has seen replaced, by the stream or a snapshot
+  // moving to a new one. A status from any other life is taken: a restart's
+  // first sign may be a status read, and two lives have no order of their
+  // own, so a status never retires one.
+  private retiredInstances = new Set<string>();
+  private retire(previous: string | undefined, next: string) {
+    if (previous && previous !== next) this.retiredInstances.add(previous);
+  }
+  /** Whether a status read is older than the one held: read at an earlier
+   * position of the same daemon life, or in a life since replaced. */
+  private olderStatus(id: string, status: Status) {
+    const at = this.statusPosition(status);
+    if (!at) return false;
+    if (this.retiredInstances.has(at.instance)) return true;
+    const held = this.statusPositions.get(id);
+    return (
+      !!held &&
+      held.instance === at.instance &&
+      at.sequence < held.sequence &&
+      this.metadata.statuses.has(id)
+    );
+  }
+  /** Applies a status unless it is older than the one held (see
+   * statusPositions); returns whether it was applied. */
+  applyStatus(id: string, status: Status): boolean {
+    if (this.disposed || status.agent_id !== id) return false;
+    if (this.olderStatus(id, status)) return false;
+    const at = this.statusPosition(status);
+    if (at) this.statusPositions.set(id, at);
+    else this.statusPositions.delete(id);
     this.statusVersions.set(id, (this.statusVersions.get(id) ?? 0) + 1);
     if (status.pending_question)
       this.markAttention(id, `question:${status.pending_question.request_id}`);
@@ -502,6 +554,39 @@ export class ConversationStore {
     this.listeners.get(id)?.forEach((listener) => {
       listener();
     });
+    this.noticeSettled(id, status, at);
+    return true;
+  }
+  /** Whether this tab knows of a reply named later in the same daemon life. */
+  private newerReply(id: string, instance: string, sequence: number) {
+    const latest = this.latestReplies.get(id);
+    return (
+      latest?.sequence !== undefined &&
+      latest.instance === instance &&
+      latest.sequence > sequence
+    );
+  }
+  /** A turn seen ending in a status read is seen like one seen through its
+   * event: the stream may bring turn.settled only after the person has seen
+   * the answer and left. A status never raises a reply the stream or a
+   * snapshot has not. */
+  private noticeSettled(
+    id: string,
+    status: Status,
+    at?: { instance: string; sequence: number },
+  ) {
+    const settled = status.turn_settled;
+    if (
+      !at ||
+      settled?.state !== "settled" ||
+      !settled.native_key ||
+      this.visibleId !== id ||
+      document.visibilityState !== "visible"
+    )
+      return;
+    if (this.newerReply(id, at.instance, at.sequence)) return;
+    this.latestReplies.set(id, { id: settled.native_key, ...at });
+    this.markAttention(id, `reply:${settled.native_key}`);
   }
   view(id: string, confirmedMissing = false, deferLoad = false): WindowView {
     if (this.disposed) throw new Error("disposed store");
@@ -926,9 +1011,18 @@ export class ConversationStore {
         event.resource.agent_id,
         `question:${event.payload.request_id}`,
       );
-    else if (event.resource.agent_id && event.kind === "turn.settled") {
+    else if (
+      event.resource.agent_id &&
+      event.kind === "turn.settled" &&
+      !this.newerReply(
+        event.resource.agent_id,
+        event.server_instance_id,
+        event.sequence,
+      )
+    ) {
       // Keyed by the reply the snapshot will name, so a later snapshot does
-      // not raise a turn already seen here again.
+      // not raise a turn already seen here again. A lagging stream's older
+      // turn does not replace a newer one a status already named.
       const reply =
         event.payload.state === "settled" &&
         typeof event.payload.native_key === "string" &&
@@ -966,6 +1060,7 @@ export class ConversationStore {
       ].includes(event.kind)
     )
       this.notifyStatus(event.resource.agent_id);
+    this.retire(this.routed?.instance, event.server_instance_id);
     if (
       !this.routed ||
       this.routed.instance !== event.server_instance_id ||
@@ -1141,6 +1236,9 @@ export class ConversationStore {
       return;
     ++this.epoch;
     this.pager.cancelAll();
+    const instance = snapshot.event_cursor.split(":")[1];
+    this.retire(this.snapshotCursor?.split(":")[1], instance);
+    this.retire(this.routed?.instance, instance);
     this.snapshotCursor = snapshot.event_cursor;
     this.routed = undefined;
     for (const id of this.metadata.statuses.keys())
@@ -1244,6 +1342,8 @@ export class ConversationStore {
     this.notices.clear();
     this.statusRequests.clear();
     this.statusVersions.clear();
+    this.statusPositions.clear();
+    this.retiredInstances.clear();
     this.metaListeners.forEach((listener) => {
       listener();
     });

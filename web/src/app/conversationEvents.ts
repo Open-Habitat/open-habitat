@@ -50,7 +50,10 @@ export type ConversationEvent = WireEvent & {
   payload: Record<string, unknown>;
 };
 const cursorPattern = /^ev1:([0-9a-fA-F-]{36}):(0|[1-9][0-9]*)$/;
-function cursorParts(cursor: string): { instance: string; sequence: number } {
+export function cursorParts(cursor: string): {
+  instance: string;
+  sequence: number;
+} {
   const parts = cursorPattern.exec(cursor);
   const sequence = Number(parts?.[2]);
   if (!parts || !Number.isSafeInteger(sequence))

@@ -61,6 +61,9 @@ export type Status = Session & {
   command_id: string;
   ack: string;
   event_cursor: number;
+  /** The journal position the daemon read this status at: it reflects every
+   * event up to that cursor. Absent without a journal. */
+  journal_cursor?: string;
   events: unknown[];
   event_loss: boolean;
   auth_error?: "" | "pi_auth_failed" | "pi_model_unsupported";
@@ -685,6 +688,10 @@ export function parseStatus(v: unknown, id: string): Status {
       "history_damaged",
       "unproven",
     ].includes(String(v.continuation)) ||
+    (v.journal_cursor !== undefined &&
+      v.journal_cursor !== "" &&
+      (typeof v.journal_cursor !== "string" ||
+        !/^ev1:[0-9a-fA-F-]{36}:(0|[1-9][0-9]*)$/.test(v.journal_cursor))) ||
     typeof v.native_revision !== "string" ||
     v.native_revision.length > 256 ||
     (v.queue !== undefined &&

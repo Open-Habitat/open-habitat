@@ -58,3 +58,9 @@ the probe saw six requests in flight at peak, but none long-lived.
 What would settle it: a trace of a failing run (the conductor keeps only
 `error-context.md`), or a probe that records, at the failure, the page's
 in-flight requests and one direct `GET …/status` result.
+
+## Resolution
+
+### 2026-11-02T15:09:51Z · @claude
+
+A mechanism that fits this is fixed in race-status-merge (the status stays cannot-reproduce, Jari 2.11.): the view's refresh applied every status read unconditionally, so a read taken before the turn ended could land after a newer one (for example the store's own read on command.changed) and leave Stop up with no later event to correct it. Status replies now carry the journal position read under c.mu, and the store drops an older one; pinned in conversationStore.test.tsx ('status reads that come back in either order'). The browser case itself was never reproduced.
