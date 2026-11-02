@@ -89,8 +89,10 @@ function ReadableBlock({
   onLogin,
   toolName,
   plainText = false,
+  hasImage = false,
   part,
 }: {
+  hasImage?: boolean;
   part?: "skill_arguments";
   plainText?: boolean | "user" | "command";
   block: HistoryBlock;
@@ -247,7 +249,7 @@ function ReadableBlock({
           ) : null}
           {plainText === "user" && !toolName ? (
             // The message's attachments show as chips below it.
-            <Markdown text={messageText(text)} breaks />
+            <Markdown text={messageText(text, hasImage && whole)} breaks />
           ) : plainText === "command" ? (
             <OutputBox text={text} complete={whole} />
           ) : toolName || plainText ? (
@@ -745,6 +747,7 @@ function OrderedBlocks({
         ) : (
           <ReadableBlock
             plainText={plainText}
+            hasImage={attachedImages || blocks.some((b) => b.type === "image")}
             key={`${entryKey}:${revision}:${index}`}
             block={block}
             toolName={toolName}

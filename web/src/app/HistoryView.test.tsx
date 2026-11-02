@@ -303,9 +303,34 @@ it("shows image-only user prompts and full text when typed blocks were truncated
   expect(container.textContent).not.toContain("full assistant text");
 });
 
-it("shows an attached image only as its chip in the person's own message", () => {
+it.each(["user", "assistant"] as const)(
+  "only hides the dimension suffix for a native image in a %s entry",
+  (kind) => {
+    const text =
+      "Look\n\n[Image: original 1170x2532, displayed at 924x2000. Multiply coordinates by 1.27 to map to original image.]";
+    const { container } = render(
+      <Entry
+        entry={{
+          ...entry,
+          kind,
+          blocks: [
+            { type: "text", text },
+            { type: "image", mime_type: "image/png" },
+          ],
+          content: { media_type: "text/plain", text, complete: true },
+        }}
+      />,
+    );
+    expect(container.textContent).toContain("Look");
+    expect(container.textContent?.includes("Multiply coordinates")).toBe(
+      kind === "assistant",
+    );
+  },
+);
+
+it("shows an attached image as its chip without Pi's dimension note", () => {
   const id = "11111111-1111-4111-8111-111111111111";
-  const text = `Katso\n![shot.png](/api/v1/attachments/${id})\nAttachment path: /home/p/attachments/${id}`;
+  const text = `Katso\n![shot.png](/api/v1/attachments/${id})\nAttachment path: /home/p/attachments/${id}\n\n[Image: original 1170x2532, displayed at 924x2000. Multiply coordinates by 1.27 to map to original image.]`;
   const { container } = render(
     <Entry
       agentId="pi:11111111-1111-4111-8111-111111111111"
@@ -323,6 +348,7 @@ it("shows an attached image only as its chip in the person's own message", () =>
   expect(screen.getAllByTestId("attachment-chip")).toHaveLength(1);
   expect(screen.queryByTestId("history-block-load")).toBeNull();
   expect(container.textContent).not.toContain("image/png");
+  expect(screen.getByTestId("user-content").textContent).toBe("Katso");
 });
 
 it("keeps redacted and unknown blocks inert while loading a result image by its own index", async () => {

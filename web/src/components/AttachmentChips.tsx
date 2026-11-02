@@ -54,7 +54,18 @@ export function splitAttachments(value: string): {
  * host adds an `Attachment path:` line per attachment for the agent; those
  * are the attachments too, shown by the chips.
  */
-export function messageText(value: string): string {
+export function messageText(value: string, hasImage = false): string {
+  // Pi's _prepareRun appends these model-coordinate hints to the same text
+  // block, not a marked metadata block. Keep native bytes; hide only the exact
+  // trailing form in the person's image message, including multiple images.
+  const dimensionNote =
+    "\\[Image: original [1-9][0-9]*x[1-9][0-9]*, displayed at [1-9][0-9]*x[1-9][0-9]*\\. Multiply coordinates by [0-9]+\\.[0-9]{2} to map to original image\\.\\]";
+  if (hasImage || attachmentsIn(value).some((a) => a.image)) {
+    value = value.replace(
+      new RegExp(`\\n\\n${dimensionNote}(?:\\n${dimensionNote})*$`),
+      "",
+    );
+  }
   const { text, attachments } = splitAttachments(value);
   const ids = new Set(attachments.map((a) => a.url.split("/").at(-1)));
   return text

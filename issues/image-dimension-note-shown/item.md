@@ -3,11 +3,12 @@ created: 2026-11-02
 updated: 2026-11-02
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: image-note
 lane_seq: 1
 preparation: ready
+closed: 2026-11-02
 ---
 
 # Pi's image resize note shows in the person's own message
@@ -32,5 +33,5 @@ edited. If Pi has a structured marker for it, prefer that.
 
 ## Acceptance Criteria
 
-- [ ] A message with a resized image shows the person's text and the image, no dimension note, in live view and after reload.
-- [ ] A unit test with Pi's exact note format; a typed look-alike without an image is shown unchanged.
+- [x] A message with a resized image shows the person's text and the image, no dimension note, in live view and after reload.
+- [x] A unit test with Pi's exact note format; a typed look-alike without an image is shown unchanged.

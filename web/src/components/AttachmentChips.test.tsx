@@ -28,6 +28,32 @@ it("leaves a reference inside a sentence as the person's text", () => {
   expect(splitAttachments(value)).toEqual({ text: value, attachments: [] });
 });
 
+const dimensionNote =
+  "[Image: original 1170x2532, displayed at 924x2000. Multiply coordinates by 1.27 to map to original image.]";
+
+it("hides only Pi's exact trailing dimension notes on image messages", () => {
+  expect(messageText(`Look\n${shot}\n\n${dimensionNote}`)).toBe("Look");
+  expect(messageText(`Look\n\n${dimensionNote}`, true)).toBe("Look");
+  expect(messageText(`\n\n${dimensionNote}`, true)).toBe("");
+  expect(messageText(`Look\n\n${dimensionNote}\n${dimensionNote}`, true)).toBe(
+    "Look",
+  );
+  for (const text of [
+    `Look\n\n${dimensionNote}`,
+    `Look\n${notes}\n\n${dimensionNote}`,
+  ]) {
+    expect(messageText(text)).toContain(dimensionNote);
+  }
+  for (const text of [
+    `${dimensionNote}\nLook`,
+    `Look\n${dimensionNote}`,
+    `Look\n\n${dimensionNote}\nMore`,
+    `Look\n\n${dimensionNote.replace("1.27", "1.2")}`,
+  ]) {
+    expect(messageText(text, true)).toBe(text);
+  }
+});
+
 it("hides the host's attachment path lines only for the message's own attachments", () => {
   const sent = [
     "Katso liitteet",
