@@ -14,7 +14,7 @@ lane_seq: 1
 preparation: ready
 ---
 
-# Missed-events notice flashes during a long run under load (live-long-run spec)
+# live-long-run spec reports a missed-events flash that does not happen in real use
 
 ## Description
 
@@ -60,3 +60,15 @@ the gate on a heavily loaded Birch (eight browser hosts plus Go tests on
 eight cores). The fix still matters: the strict spec otherwise fails the
 gate intermittently and blocks releases, and a loaded host must not jolt the
 UI either.
+
+## Decision, revised (Jari 2.11.)
+
+The test is what is broken: it reports a flash in a situation that does not
+happen in real use (false positive under the gate's CPU starvation). Fix the
+test, not the product: find what in the spec or its synthetic host makes the
+page see the notice under load (for example the forced tiny live ring, the
+order in which the synthetic host emits truncation and recovery, or the
+sampler racing the first render), and change the setup so the spec observes
+real conditions. Keep its purpose: a real missed-events flash during a long
+run must still fail it. Product code changes only if the investigation finds
+a real defect, which then goes to Jari as a finding.
