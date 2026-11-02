@@ -1,9 +1,8 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import changeSchema from "../../../contracts/v1/gitea-connection-change.schema.json";
 import reposSchema from "../../../contracts/v1/gitea-repos.schema.json";
 import listSchema from "../../../contracts/v1/integrations.schema.json";
 import { bounded, Refused } from "./integrations";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
 
 // Gitea connections are tea's own logins in the person's home (ADR 0031):
@@ -11,8 +10,7 @@ import { mutationFetch } from "./mutations";
 // person's daemon, and never keeps the token. Every reply is validated
 // against the contract before the page sees it.
 
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(listSchema);
 const validChange = ajv.compile(changeSchema);
 const validRepos = ajv.compile(reposSchema);

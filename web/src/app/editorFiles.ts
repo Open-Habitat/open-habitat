@@ -1,10 +1,9 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/workspace-editor-files.schema.json";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
 
-const ajv = addFormats(new Ajv({ strict: false }));
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(common);
 ajv.addSchema(schema);
 const validates = Object.fromEntries(

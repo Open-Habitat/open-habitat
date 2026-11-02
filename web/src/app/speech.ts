@@ -1,7 +1,6 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import serverSchema from "../../../contracts/v1/server-speech-key.schema.json";
 import schema from "../../../contracts/v1/speech.schema.json";
+import { LazyAjv } from "./lazyAjv";
 import { hostRequest, jsonWrite, mutationFetch } from "./mutations";
 
 /** Soniox's data-residency regions; a key belongs to one. */
@@ -41,8 +40,7 @@ export type SiteSpeechKey = {
   >;
 };
 
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(schema);
 ajv.addSchema(serverSchema);
 const validKeyState = ajv.compile<SpeechKeyState>({

@@ -1,9 +1,9 @@
-import Ajv from "ajv/dist/2020.js";
 import attemptSchema from "../../../contracts/v1/pi-attempt.schema.json";
 import statusSchema from "../../../contracts/v1/pi-status.schema.json";
+import { LazyAjv } from "./lazyAjv";
 import { hostRequest } from "./mutations";
 
-const ajv = new Ajv({ strict: false });
+const ajv = new LazyAjv({ strict: false });
 const statusValid = ajv.compile(statusSchema);
 const attemptValid = ajv.compile(attemptSchema);
 export type PiState = "usable" | "missing" | "unknown";

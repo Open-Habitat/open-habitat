@@ -1,15 +1,14 @@
 // Agent HTML views (ADR 0032): the app reads the person's views and mints the
 // one-time URL that opens one view on its own host. The content itself never
 // runs on this origin; the app only frames or links to the view host.
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+
 import common from "../../../contracts/v1/common.schema.json";
 import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { ViewSummary } from "../components/ViewOffer";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
 
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(common);
 ajv.addSchema(viewSchema);
 const validList = ajv.getSchema(`${viewSchema.$id}#/$defs/list`);
@@ -41,7 +40,7 @@ export async function listViews(
   if (response.status === 204) return null;
   if (!response.ok) throw new Error("views unavailable");
   const value = await boundedJSON(response, limit);
-  if (!validList?.(value)) throw new Error("unexpected view reply");
+  if (!validList(value)) throw new Error("unexpected view reply");
   return (value as { views: ViewSummary[] }).views;
 }
 
@@ -60,7 +59,7 @@ export async function mintViewURL(
   });
   if (!response.ok) throw new Error("view hand-off refused");
   const value = await boundedJSON(response, 4096);
-  if (!validHandoff?.(value)) throw new Error("unexpected view reply");
+  if (!validHandoff(value)) throw new Error("unexpected view reply");
   const url = new URL((value as { url: string }).url);
   // A view never opens on the app's own host.
   if (url.protocol !== "https:" || url.host === window.location.host)

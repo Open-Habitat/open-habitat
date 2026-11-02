@@ -48,7 +48,7 @@ export async function readWorkspaceResult(
   const text = await response.text();
   if (text.length > 8192) throw new Error("unreadable reply");
   const value: unknown = JSON.parse(text);
-  if (!validWorkspaceResult?.(value)) throw new Error("invalid reply");
+  if (!validWorkspaceResult(value)) throw new Error("invalid reply");
   const result = value as WorkspaceResult;
   if (commandId && result.client_command_id !== commandId)
     throw new Error("reply for another command");

@@ -1,5 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import cloneSchema from "../../../contracts/v1/github-clone.schema.json";
 import cloneProgressSchema from "../../../contracts/v1/github-clone-progress.schema.json";
 import integrationsSchema from "../../../contracts/v1/integrations.schema.json";
@@ -9,6 +7,7 @@ import siteSchema from "../../../contracts/v1/site-onboarding.schema.json";
 import { liveText } from "../i18n";
 import { onboardingSettingsText } from "../text/onboardingSettings";
 import { bounded, type IntegrationList, type ProviderId } from "./integrations";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
 
 const txt = liveText(onboardingSettingsText);
@@ -18,8 +17,7 @@ const txt = liveText(onboardingSettingsText);
 // version; a signed-in person reads only the steps and the offer, never the
 // default repositories. Every reply is checked against the contract.
 
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(integrationsSchema);
 ajv.addSchema(cloneSchema);
 ajv.addSchema(cloneProgressSchema);

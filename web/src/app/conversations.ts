@@ -1,5 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import editorSchema from "../../../contracts/v1/editor.schema.json";
 import fileOfferSchema from "../../../contracts/v1/file-offer.schema.json";
@@ -13,6 +11,7 @@ import viewSchema from "../../../contracts/v1/view.schema.json";
 import type { PiProvider } from "../components/ModelPicker";
 import { validBashReply, validBashStatus } from "./composerContract";
 import { conversationName } from "./conversationName";
+import { LazyAjv } from "./lazyAjv";
 import {
   jsonWrite,
   type MutationCommand,
@@ -21,18 +20,19 @@ import {
   writeOutcome,
 } from "./mutations";
 
-const validStartupChoice = addFormats(new Ajv({ strict: false })).compile(
-  startupChoiceSchema,
-);
+const validStartupChoice = new LazyAjv({
+  strict: false,
+  addFormats: true,
+}).compile(startupChoiceSchema);
 
-const heldValidator = addFormats(new Ajv({ strict: false }));
+const heldValidator = new LazyAjv({ strict: false, addFormats: true });
 heldValidator.addSchema(common);
 heldValidator.addSchema(heldSchema);
 const validHeldList = heldValidator.compile({
   $ref: `${heldSchema.$id}#/$defs/heldList`,
 });
 
-const recapValidator = addFormats(new Ajv({ strict: false }));
+const recapValidator = new LazyAjv({ strict: false, addFormats: true });
 recapValidator.addSchema(processEventSchema);
 recapValidator.addSchema(common);
 recapValidator.addSchema(noticeSchema);
@@ -356,7 +356,7 @@ export async function readRecap(id: string): Promise<RecapRead> {
   const reply = await request(
     `/api/v1/agents/${encodeURIComponent(id).replace("%3A", ":")}/recap`,
   );
-  if (!recapValidator.getSchema(recapSchema.$id)?.(reply))
+  if (!recapValidator.getSchema(recapSchema.$id)(reply))
     throw new Error("invalid recap");
   const result = reply as RecapRead;
   return {
@@ -831,7 +831,7 @@ export async function cancelHeld(
     csrf,
   );
   if (
-    !heldValidator.getSchema(heldSchema.$id)?.(v) ||
+    !heldValidator.getSchema(heldSchema.$id)(v) ||
     (v as { command_id: string }).command_id !== commandId
   )
     throw new Error("invalid cancel");

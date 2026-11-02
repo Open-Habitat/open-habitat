@@ -1,8 +1,7 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import schema from "../../../contracts/v1/attachments.schema.json";
 import { liveText } from "../i18n";
 import { attachmentsText } from "../text/attachments";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
 
 const txt = liveText(attachmentsText);
@@ -14,8 +13,7 @@ type UploadedAttachment = {
   content_type: string;
   size: number;
 };
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 const valid = ajv.compile<UploadedAttachment>(schema);
 
 /** The host's upload cap, which also bounds what a preview reads. */

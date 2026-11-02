@@ -189,7 +189,7 @@ export function useIconSuggestions(
         );
         if (outcome.kind === "ok") {
           const value: unknown = await outcome.response.json();
-          if (validIconSuggestions?.(value)) reply = value as Reply;
+          if (validIconSuggestions(value)) reply = value as Reply;
         }
       } catch {
         // An aborted or lost request is a failure like an unanswered one.

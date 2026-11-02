@@ -1,8 +1,7 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import schema from "../../../contracts/v1/account-keys.schema.json";
 import { formatDate, textNow } from "../i18n";
 import { accountKeysText } from "../text/accountKeys";
+import { LazyAjv } from "./lazyAjv";
 
 /** The account's public keys as the person's daemon read them from the
  * private files on the account. Nothing here is ever a private key. */
@@ -34,9 +33,10 @@ export type AccountKeys = {
   created?: AccountKey;
 };
 
-const valid = addFormats(new Ajv({ strict: false })).compile<AccountKeys>(
-  schema,
-);
+const valid = new LazyAjv({
+  strict: false,
+  addFormats: true,
+}).compile<AccountKeys>(schema);
 export const accountKeysPath = "/api/v1/account/keys";
 
 export async function readAccountKeys(response: Response) {

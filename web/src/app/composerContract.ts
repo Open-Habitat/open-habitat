@@ -1,12 +1,10 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import composerSchema from "../../../contracts/v1/composer.schema.json";
+import { LazyAjv } from "./lazyAjv";
 
 // The composer's host messages are checked against the published contract at
 // the boundary; nothing from the host is trusted before that.
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(common);
 ajv.addSchema(composerSchema);
 const def = (name: string) =>

@@ -1,5 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import annotations from "../../../contracts/v1/annotations.schema.json";
 import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
@@ -15,14 +13,14 @@ import viewSchema from "../../../contracts/v1/view.schema.json";
 import workspaceChange from "../../../contracts/v1/workspace-change.schema.json";
 import workspaceIconSuggestions from "../../../contracts/v1/workspace-icon-suggestions.schema.json";
 import type { GitSummaryFacts } from "../components/GitStatus";
+import { LazyAjv } from "./lazyAjv";
 
-const ajv = new Ajv({ strict: false, allErrors: false });
+const ajv = new LazyAjv({ strict: false, allErrors: false, addFormats: true });
 ajv.addSchema(processEventSchema);
 ajv.addSchema(noticeSchema);
 ajv.addSchema(viewSchema);
 ajv.addSchema(fileOfferSchema);
 ajv.addSchema(editorSchema);
-addFormats(ajv);
 for (const definition of [
   common,
   annotations,
@@ -232,7 +230,7 @@ export interface Snapshot {
   };
 }
 export function parseSnapshot(value: unknown): Snapshot {
-  if (!validate?.(value)) throw new Error("invalid snapshot");
+  if (!validate(value)) throw new Error("invalid snapshot");
   return value as Snapshot;
 }
 export async function readSnapshot(response: Response): Promise<Snapshot> {

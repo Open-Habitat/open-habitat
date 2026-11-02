@@ -1,5 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import accountSchema from "../../../contracts/v1/integration-account.schema.json";
 import changeSchema from "../../../contracts/v1/integration-change.schema.json";
 import loginSchema from "../../../contracts/v1/integration-login.schema.json";
@@ -7,6 +5,7 @@ import listSchema from "../../../contracts/v1/integrations.schema.json";
 import { currentLanguage, formatDate, formatNumber } from "../i18n";
 import type { GiteaConnections } from "./gitea";
 import type { GitLabConnections } from "./gitlab";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
 
 // Asetukset › Tiedot agenteille reads and writes through the person's daemon
@@ -14,8 +13,7 @@ import { mutationFetch } from "./mutations";
 // sees it, under a size cap, and any failure is a generic error: native text
 // never reaches the page.
 
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(listSchema);
 ajv.addSchema(accountSchema);
 const validList = ajv.compile(listSchema);

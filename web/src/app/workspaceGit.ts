@@ -1,13 +1,12 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/workspace-git.schema.json";
 import type { GitDetailFacts } from "../components/GitStatus";
 import { liveText } from "../i18n";
 import { workspaceGitText } from "../text/workspaceGit";
+import { LazyAjv } from "./lazyAjv";
 import { jsonWrite, WriteRefused, writeOutcome } from "./mutations";
 
-const ajv = addFormats(new Ajv({ strict: false }));
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(common);
 const validate = ajv.compile(schema);
 const txt = liveText(workspaceGitText);

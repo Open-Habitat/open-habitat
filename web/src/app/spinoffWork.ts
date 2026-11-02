@@ -1,5 +1,5 @@
-import Ajv from "ajv/dist/2020.js";
 import schema from "../../../contracts/v1/spinoff-work.schema.json";
+import { LazyAjv } from "./lazyAjv";
 
 /** What one worker has produced, read against the branch it started from,
  * and its pull request as the person's own gh sees it. */
@@ -26,7 +26,7 @@ export interface SpinoffWork {
   availability: "available" | "unavailable" | "partial";
   runs: WorkerWork[];
 }
-const validate = new Ajv({ strict: false }).compile(schema);
+const validate = new LazyAjv({ strict: false }).compile(schema);
 export function parseSpinoffWork(value: unknown): SpinoffWork {
   if (!validate(value)) throw new Error("spinoff_work_unavailable");
   return value as unknown as SpinoffWork;

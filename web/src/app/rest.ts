@@ -1,5 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import { useCallback, useEffect, useRef, useState } from "react";
 import common from "../../../contracts/v1/common.schema.json";
 import editorSchema from "../../../contracts/v1/editor.schema.json";
@@ -15,6 +13,7 @@ import type {
   WakeState,
 } from "../components/RestartNotice";
 import { ContinuationRefused, continueConversation } from "./conversations";
+import { LazyAjv } from "./lazyAjv";
 import { refusalReason } from "./mutations";
 
 // Refusals a send would meet again: the card says why instead of promising
@@ -34,7 +33,7 @@ export interface RestReport {
   report: RestartNotice;
 }
 
-const ajv = addFormats(new Ajv({ strict: false }));
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 for (const s of [
   processEventSchema,
   noticeSchema,

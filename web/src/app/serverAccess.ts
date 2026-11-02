@@ -1,9 +1,8 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import accessSchema from "../../../contracts/v1/server-access.schema.json";
 import { liveText } from "../i18n";
 import { serverAccessText } from "../text/serverAccess";
 import { bounded } from "./integrations";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
 
 const txt = liveText(serverAccessText);
@@ -12,8 +11,7 @@ const txt = liveText(serverAccessText);
 // administrators, denies and last use. The browser only asks, and shows a
 // change as in force once the reply that confirms it has arrived.
 
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(accessSchema);
 const def = (name: string) =>
   ajv.compile({

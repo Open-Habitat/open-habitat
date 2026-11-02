@@ -1,4 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
 import { useEffect, useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import schema from "../../../contracts/v1/pi-credentials.schema.json";
@@ -10,13 +9,14 @@ import { modelDisplayName } from "../components/modelPresentation";
 import { Badge, StatusMark } from "../components/Status";
 import { formatDate, liveText } from "../i18n";
 import { piCredentialsText } from "../text/piCredentials";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
 import { readSiteOnboarding, type SiteOnboarding } from "./onboardingConfig";
 import { usePiModels } from "./PiModels";
 
 const txt = liveText(piCredentialsText);
 
-const valid = new Ajv({ strict: false }).compile(schema);
+const valid = new LazyAjv({ strict: false }).compile(schema);
 /** Pi's providers whose API key a person manages here. */
 export type KeyProvider = "openai" | "anthropic" | "deepseek";
 const keyProviders: KeyProvider[] = ["openai", "anthropic", "deepseek"];

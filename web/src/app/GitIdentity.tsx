@@ -1,15 +1,15 @@
-import Ajv from "ajv/dist/2020.js";
 import { useEffect, useState } from "react";
 import schema from "../../../contracts/v1/git-identity.schema.json";
 import { ControlButton } from "../components/ControlElements";
 import { Button } from "../components/Primitives";
 import { liveText } from "../i18n";
 import { gitIdentityText } from "../text/gitIdentity";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, refusalReason, writeOutcome } from "./mutations";
 
 const txt = liveText(gitIdentityText);
 
-const valid = new Ajv({ strict: false }).compile(schema);
+const valid = new LazyAjv({ strict: false }).compile(schema);
 type Identity = {
   schema_version: 1;
   name: string;

@@ -1,5 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import {
   createContext,
   type ReactNode,
@@ -14,6 +12,7 @@ import schema from "../../../contracts/v1/pi-models.schema.json";
 import type { ModelChoice, PiProvider } from "../components/ModelPicker";
 import { liveText } from "../i18n";
 import { modelsText } from "../text/models";
+import { LazyAjv } from "./lazyAjv";
 import {
   refusalReason as hostRefusal,
   mutationFetch,
@@ -23,8 +22,7 @@ import {
 
 const txt = liveText(modelsText);
 
-const validator = new Ajv({ strict: false });
-addFormats(validator);
+const validator = new LazyAjv({ strict: false, addFormats: true });
 const valid = validator.compile(schema);
 export type Models = {
   schema_version: 1;

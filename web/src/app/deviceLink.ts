@@ -1,23 +1,18 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import session from "../../../contracts/v1/account-session.schema.json";
 import schema from "../../../contracts/v1/device-link.schema.json";
 import { liveText } from "../i18n";
 import { devicesText } from "../text/devices";
+import { LazyAjv } from "./lazyAjv";
 import type { AccountProfile } from "./pi";
 
 const txt = liveText(devicesText);
 
 // Phone sign-in by QR and the session list (ADR 0018). The gateway owns the
 // code's life; the browser only shows what it reports.
-const ajv = addFormats(new Ajv({ strict: false }));
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(session);
 ajv.addSchema(schema);
-const part = (name: string) => {
-  const v = ajv.getSchema(`${schema.$id}#/$defs/${name}`);
-  if (!v) throw new Error(`missing contract ${name}`);
-  return v;
-};
+const part = (name: string) => ajv.getSchema(`${schema.$id}#/$defs/${name}`);
 const validMint = part("mintReply");
 const validStatus = part("statusReply");
 const validDescribe = part("describeReply");

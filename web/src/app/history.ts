@@ -1,5 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import editorSchema from "../../../contracts/v1/editor.schema.json";
 import fileOfferSchema from "../../../contracts/v1/file-offer.schema.json";
@@ -11,8 +9,9 @@ import type { AgentNotice } from "../components/AgentNotice";
 import type { RestartNotice } from "../components/RestartNotice";
 import type { WaitReminder } from "../components/WaitReminder";
 import type { BashFailure } from "./bashFailure";
+import { LazyAjv } from "./lazyAjv";
 
-const ajv = addFormats(new Ajv({ strict: false }));
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(processEventSchema);
 ajv.addSchema(noticeSchema);
 ajv.addSchema(viewSchema);
@@ -149,6 +148,6 @@ export async function readHistory(
   const value: unknown = JSON.parse(
     new TextDecoder("utf-8", { fatal: true }).decode(bytes),
   );
-  if (!validate?.(value)) throw new Error("invalid history");
+  if (!validate(value)) throw new Error("invalid history");
   return value as HistoryPage | BlockChunk;
 }

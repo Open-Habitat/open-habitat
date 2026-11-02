@@ -1,7 +1,7 @@
-import Ajv from "ajv/dist/2020.js";
 import schema from "../../../contracts/v1/terminal.schema.json";
 import { liveText } from "../i18n";
 import { terminalsText } from "../text/terminals";
+import { LazyAjv } from "./lazyAjv";
 import { jsonWrite, WriteRefused, writeOutcome } from "./mutations";
 
 const txt = liveText(terminalsText);
@@ -10,7 +10,7 @@ const txt = liveText(terminalsText);
 // person's daemon runs in the workspace; the browser only lists, attaches and
 // closes them. Nothing about shells is kept here beyond what is on screen.
 
-const ajv = new Ajv({ strict: false });
+const ajv = new LazyAjv({ strict: false });
 ajv.addSchema(schema);
 const validateList = ajv.compile({
   $ref: "https://open-habitat.invalid/contracts/v1/terminal.schema.json#/$defs/list",

@@ -1,6 +1,6 @@
-import Ajv from "ajv/dist/2020.js";
 import schema from "../../../contracts/v1/first-route.schema.json";
 import { bounded } from "./integrations";
+import { LazyAjv } from "./lazyAjv";
 import { jsonWrite } from "./mutations";
 import { readSiteOnboarding } from "./onboardingConfig";
 
@@ -9,7 +9,7 @@ import { readSiteOnboarding } from "./onboardingConfig";
 // they walked the route. For them the route lasts until their own daemon
 // holds the first-route mark; the host keeps no onboarding record.
 
-const validate = new Ajv({ strict: false }).compile<{
+const validate = new LazyAjv({ strict: false }).compile<{
   schema_version: 1;
   web_identity_id: string;
   finished: boolean;

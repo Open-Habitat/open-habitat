@@ -1,5 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import changeSchema from "../../../contracts/v1/gitlab-connection-change.schema.json";
 import reposSchema from "../../../contracts/v1/gitlab-repos.schema.json";
 import tokensSchema from "../../../contracts/v1/gitlab-tokens.schema.json";
@@ -7,6 +5,7 @@ import listSchema from "../../../contracts/v1/integrations.schema.json";
 import { formatDate } from "../i18n";
 import type { GiteaGit } from "./gitea";
 import { bounded, Refused } from "./integrations";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
 
 // GitLab connections are glab's own host logins in the person's home
@@ -15,8 +14,7 @@ import { mutationFetch } from "./mutations";
 // the token. glab keeps one account per server. Every reply is validated
 // against the contract before the page sees it.
 
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(listSchema);
 ajv.addSchema(changeSchema);
 const validChange = ajv.compile(changeSchema);

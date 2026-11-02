@@ -1,5 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import annotations from "../../../contracts/v1/annotations.schema.json";
 import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
@@ -18,16 +16,16 @@ import { liveText } from "../i18n";
 import { conversationEventsText } from "../text/conversationEvents";
 import type { BashFailure } from "./bashFailure";
 import type { HistoryEntry } from "./history";
+import { LazyAjv } from "./lazyAjv";
 
 const txt = liveText(conversationEventsText);
 
-const ajv = new Ajv({ strict: false });
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(processEventSchema);
 ajv.addSchema(noticeSchema);
 ajv.addSchema(viewSchema);
 ajv.addSchema(fileOfferSchema);
 ajv.addSchema(editorSchema);
-addFormats(ajv);
 for (const schema of [
   common,
   annotations,
@@ -73,7 +71,7 @@ export function parseConversationEvent(raw: string): ConversationEvent {
   )
     throw new Error("oversize event");
   const value: unknown = JSON.parse(raw);
-  if (!validate?.(value)) throw new Error("invalid event");
+  if (!validate(value)) throw new Error("invalid event");
   const frame = value as ConversationEvent;
   const cursor = cursorParts(frame.cursor);
   if (

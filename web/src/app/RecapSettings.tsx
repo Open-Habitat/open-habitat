@@ -1,4 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
 import { useEffect, useState } from "react";
 import schema from "../../../contracts/v1/recap-settings.schema.json";
 import { ModelField } from "../components/ModelField";
@@ -9,13 +8,14 @@ import {
 } from "../components/RecapSettings";
 import { liveText } from "../i18n";
 import { recapSettingsText } from "../text/recapSettings";
+import { LazyAjv } from "./lazyAjv";
 import { jsonWrite } from "./mutations";
 import { PiModelSelector } from "./PiModelSelector";
 import { usePiModels } from "./PiModels";
 
 const txt = liveText(recapSettingsText);
 
-const ajv = new Ajv({ strict: false });
+const ajv = new LazyAjv({ strict: false });
 ajv.addSchema(schema);
 const validResult = ajv.compile<{
   schema_version: 1;

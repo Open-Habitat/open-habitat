@@ -2,16 +2,15 @@
 // facts from the host, and builds the URLs its own elements and download
 // links use. The host decides how the bytes are presented; nothing offered
 // runs on this origin.
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+
 import { useEffect, useSyncExternalStore } from "react";
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/file-offer.schema.json";
 import { liveText } from "../i18n";
 import { appMessagesText } from "../text/appMessages";
+import { LazyAjv } from "./lazyAjv";
 
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(common);
 ajv.addSchema(schema);
 const validList = ajv.getSchema(`${schema.$id}#/$defs/list`);
@@ -147,7 +146,7 @@ async function fetchOffer(id: string) {
     else if (!response.ok) next = { state: "unavailable" };
     else {
       const value = await boundedJSON(response, 4 << 20);
-      if (!validManifest?.(value)) throw new Error("unexpected reply");
+      if (!validManifest(value)) throw new Error("unexpected reply");
       const manifest = value as FileOfferManifest;
       next =
         manifest.offer.offer_id === id
@@ -235,7 +234,7 @@ async function fetchList(conversationId: string) {
     );
     if (!response.ok) throw new Error("file offers unavailable");
     const value = await boundedJSON(response, 1 << 20);
-    if (!validList?.(value)) throw new Error("unexpected reply");
+    if (!validList(value)) throw new Error("unexpected reply");
     next = { offers: (value as { offers: FileOfferSummary[] }).offers };
   } catch {
     next = "unavailable";

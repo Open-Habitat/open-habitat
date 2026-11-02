@@ -1,5 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import editorSchema from "../../../contracts/v1/editor.schema.json";
 import fileOfferSchema from "../../../contracts/v1/file-offer.schema.json";
@@ -11,6 +9,7 @@ import viewSchema from "../../../contracts/v1/view.schema.json";
 import { liveText } from "../i18n";
 import { spinoffStateText } from "../text/spinoffState";
 import type { HistoryEntry } from "./history";
+import { LazyAjv } from "./lazyAjv";
 
 const txt = liveText(spinoffStateText);
 export type WorkerHarness = "pi" | "claude" | "unknown";
@@ -61,7 +60,7 @@ export interface WorkerTranscript {
   truncated: boolean;
   entries: HistoryEntry[];
 }
-const ajv = addFormats(new Ajv({ strict: false }));
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 for (const s of [
   processEventSchema,
   noticeSchema,

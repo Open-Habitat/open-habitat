@@ -1,5 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import checkoutSchema from "../../../contracts/v1/github-checkout.schema.json";
 import cloneSchema from "../../../contracts/v1/github-clone.schema.json";
 import cloneProgressSchema from "../../../contracts/v1/github-clone-progress.schema.json";
@@ -8,10 +6,10 @@ import repositorySchema from "../../../contracts/v1/github-repository.schema.jso
 import integrationsSchema from "../../../contracts/v1/integrations.schema.json";
 import { liveText } from "../i18n";
 import { appMessagesText } from "../text/appMessages";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
 
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 // A Gitea or GitLab job names its connection with the integrations
 // catalog's id.
 ajv.addSchema(integrationsSchema);

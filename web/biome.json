@@ -10,7 +10,10 @@
       "!playwright-report"
     ]
   },
-  "formatter": { "enabled": true, "indentStyle": "space" },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space"
+  },
   "linter": {
     "enabled": true,
     "rules": {
@@ -23,7 +26,30 @@
       "correctness": {
         "useExhaustiveDependencies": "error",
         "useHookAtTopLevel": "error"
+      },
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "ajv": "Use LazyAjv (src/app/lazyAjv.ts): a validator compiled at module load slows every page load.",
+              "ajv/dist/2020.js": "Use LazyAjv (src/app/lazyAjv.ts): a validator compiled at module load slows every page load."
+            }
+          }
+        }
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/app/lazyAjv.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    }
+  ]
 }

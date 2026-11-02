@@ -1,9 +1,8 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import integrationsSchema from "../../../contracts/v1/integrations.schema.json";
 import accessSchema from "../../../contracts/v1/server-access.schema.json";
 import serverSchema from "../../../contracts/v1/server-onboarding.schema.json";
 import { bounded } from "./integrations";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
 import type { KeyProvider, SiteKey } from "./onboardingConfig";
 
@@ -14,8 +13,7 @@ import type { KeyProvider, SiteKey } from "./onboardingConfig";
 // never learns what kind of credential a person has. Every reply is checked
 // against the contract.
 
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(integrationsSchema);
 ajv.addSchema(accessSchema);
 ajv.addSchema(serverSchema);

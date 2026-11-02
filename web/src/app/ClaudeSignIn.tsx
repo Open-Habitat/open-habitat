@@ -1,4 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
 import { useEffect, useRef, useState } from "react";
 import schema from "../../../contracts/v1/claude-login.schema.json";
 import { ControlButton, ExternalLink } from "../components/ControlElements";
@@ -7,13 +6,14 @@ import { SignInStep, SignInSteps } from "../components/PiDeviceSignIn";
 import { StatusMark } from "../components/Status";
 import { liveText } from "../i18n";
 import { claudeSignInText } from "../text/claudeSignIn";
+import { LazyAjv } from "./lazyAjv";
 import { hostRequest } from "./mutations";
 import { modelsLine } from "./PiCredentials";
 import { usePiModels } from "./PiModels";
 
 const txt = liveText(claudeSignInText);
 
-const valid = new Ajv({ strict: false }).compile(schema);
+const valid = new LazyAjv({ strict: false }).compile(schema);
 type Login = {
   schema_version: 1;
   state:

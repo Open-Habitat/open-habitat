@@ -1,8 +1,7 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import { useEffect, useState } from "react";
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/context-detail.schema.json";
+import { LazyAjv } from "./lazyAjv";
 
 type Part = { name: string; tokens: number; replaced?: boolean };
 /** Pi's reading of one session (contracts/v1/context-detail.schema.json). */
@@ -71,7 +70,7 @@ export interface ContextDetail {
   turns_omitted: number;
 }
 
-const ajv = addFormats(new Ajv({ strict: false }));
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(common);
 const validate = ajv.compile(schema);
 

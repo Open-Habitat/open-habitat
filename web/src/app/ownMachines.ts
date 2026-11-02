@@ -1,8 +1,7 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import schema from "../../../contracts/v1/own-machines.schema.json";
 import { formatDate, liveText } from "../i18n";
 import { ownMachinesText } from "../text/ownMachines";
+import { LazyAjv } from "./lazyAjv";
 
 const txt = liveText(ownMachinesText);
 
@@ -104,9 +103,10 @@ export type OwnMachinesRequest =
 /** 0 is a line without an end, the default (Jari 30.10.2026). */
 export type GrantDays = 0 | 7 | 30 | 90;
 
-const valid = addFormats(new Ajv({ strict: false })).compile<OwnMachines>(
-  schema,
-);
+const valid = new LazyAjv({
+  strict: false,
+  addFormats: true,
+}).compile<OwnMachines>(schema);
 export const ownMachinesPath = "/api/v1/own-machines";
 
 export async function readOwnMachines(response: Response) {

@@ -1,10 +1,9 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import schema from "../../../contracts/v1/server-integrations.schema.json";
 import { liveText } from "../i18n";
 import { serverIntegrationsText } from "../text/serverIntegrations";
 import type { Level, ProviderId } from "./integrations";
 import { bounded } from "./integrations";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch, writeOutcome } from "./mutations";
 
 const txt = liveText(serverIntegrationsText);
@@ -14,8 +13,7 @@ const txt = liveText(serverIntegrationsText);
 // request; the browser asks and shows a change as in force once the reply
 // that confirms it has arrived. A secret is sent once and never comes back.
 
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(schema);
 const validList = ajv.compile({
   $ref: "https://open-habitat.invalid/contracts/v1/server-integrations.schema.json#/$defs/list",

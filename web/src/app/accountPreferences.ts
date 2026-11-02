@@ -1,4 +1,3 @@
-import Ajv from "ajv/dist/2020.js";
 import {
   createContext,
   createElement,
@@ -11,6 +10,7 @@ import {
 import schema from "../../../contracts/v1/account-preferences.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
 import { type LanguageChoice, setPersonalLanguage } from "../i18n";
+import { LazyAjv } from "./lazyAjv";
 import { jsonWrite } from "./mutations";
 
 export type EditorEngine = "codemirror6" | "vscode";
@@ -36,7 +36,7 @@ type Reply = {
   quiet_workspace: string | null;
   experimental: Record<string, true>;
 };
-const ajv = new Ajv({ strict: false });
+const ajv = new LazyAjv({ strict: false });
 ajv.addSchema(common);
 const validate = ajv.compile<Reply>({
   ...schema,

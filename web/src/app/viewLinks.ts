@@ -4,19 +4,18 @@
 // the agent has no part in it. The person's addresses are one small store
 // here, so the view card, the panel and Settings show the same state, and a
 // write updates it from the gateway's reply.
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+
 import { useEffect, useState, useSyncExternalStore } from "react";
 import common from "../../../contracts/v1/common.schema.json";
 import addressSchema from "../../../contracts/v1/view-address.schema.json";
 import { formatDate, liveText } from "../i18n";
 import { viewLinksText } from "../text/viewLinks";
+import { LazyAjv } from "./lazyAjv";
 import { jsonWrite, writeOutcome } from "./mutations";
 
 const txt = liveText(viewLinksText);
 
-const ajv = new Ajv({ strict: false });
-addFormats(ajv);
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(common);
 ajv.addSchema(addressSchema);
 const validList = ajv.getSchema(`${addressSchema.$id}#/$defs/list`);
@@ -157,7 +156,7 @@ export async function refreshViewLinks(signal?: AbortSignal): Promise<void> {
     if (!response.ok) throw new Error("addresses unavailable");
     // 1000 addresses with escaped titles stay below 2 MiB.
     const value = await boundedJSON(response, 2 << 20);
-    if (!validList?.(value)) throw new Error("unexpected address reply");
+    if (!validList(value)) throw new Error("unexpected address reply");
     const list = value as { max_days: number; addresses: ViewAddress[] };
     if (!list.addresses.every(trustedAddress))
       throw new Error("unexpected address reply");
@@ -287,7 +286,7 @@ async function addressWrite(
   const value = await boundedJSON(outcome.response, 8192).catch(() => {
     throw new AddressUncertain();
   });
-  if (!validReply?.(value)) throw new AddressUncertain();
+  if (!validReply(value)) throw new AddressUncertain();
   const address = (value as { address: ViewAddress }).address;
   if (!trustedAddress(address)) throw new AddressUncertain();
   return address;
@@ -598,7 +597,7 @@ export async function adminViewPublications(
   if (!response.ok) throw new Error("publications unavailable");
   // 4096 rows of escaped titles stay below 8 MiB.
   const value = await boundedJSON(response, 8 << 20);
-  if (!validAdminList?.(value)) throw new Error("unexpected address reply");
+  if (!validAdminList(value)) throw new Error("unexpected address reply");
   return value as { enabled: boolean; publications: AdminViewPublication[] };
 }
 

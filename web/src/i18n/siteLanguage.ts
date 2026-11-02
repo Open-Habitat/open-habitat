@@ -1,8 +1,8 @@
-import Ajv from "ajv/dist/2020.js";
 import schema from "../../../contracts/v1/site-language.schema.json";
+import { LazyAjv } from "../app/lazyAjv";
 import { type LanguageChoice, setServerLanguage } from ".";
 
-const validate = new Ajv({ strict: false }).compile<{
+const validate = new LazyAjv({ strict: false }).compile<{
   schema_version: 1;
   default_language: LanguageChoice;
 }>(schema);

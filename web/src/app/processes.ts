@@ -1,8 +1,8 @@
-import Ajv from "ajv/dist/2020.js";
 import schema from "../../../contracts/v1/process.schema.json";
 import eventSchema from "../../../contracts/v1/process-event.schema.json";
 import { liveText } from "../i18n";
 import { processesText } from "../text/processes";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
 
 const txt = liveText(processesText);
@@ -104,7 +104,7 @@ export interface ProcessOutput {
   omitted_before: number | null;
   retention_restarted: boolean | null;
 }
-const ajv = new Ajv({ strict: false });
+const ajv = new LazyAjv({ strict: false });
 ajv.addSchema(eventSchema);
 ajv.addSchema(schema);
 const inventoryValidator = ajv.compile({

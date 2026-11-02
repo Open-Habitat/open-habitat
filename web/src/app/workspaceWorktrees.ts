@@ -1,7 +1,6 @@
-import Ajv from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/workspace-worktrees.schema.json";
+import { LazyAjv } from "./lazyAjv";
 import { mutationFetch } from "./mutations";
 import {
   type PiActivity,
@@ -14,7 +13,7 @@ import {
 // Trash's safety rules. Replies are validated against the contract; the
 // browser names a worktree by workspace ID, registry entry and the token of
 // the listing it showed, never by a path.
-const ajv = addFormats(new Ajv({ strict: false }));
+const ajv = new LazyAjv({ strict: false, addFormats: true });
 ajv.addSchema(common);
 const validate = ajv.compile(schema);
 
