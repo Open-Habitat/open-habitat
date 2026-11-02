@@ -3,8 +3,9 @@ created: 2026-10-31
 updated: 2026-11-02
 type: bug
 reporter: conductor
-status: open
+status: cannot-reproduce
 priority: normal
+closed: 2026-11-02
 ---
 
 # Whole-suite flake: workspace-trash undo notice missing after an outright deletion

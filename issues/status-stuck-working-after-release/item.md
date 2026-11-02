@@ -3,13 +3,14 @@ created: 2026-11-02
 updated: 2026-11-02
 type: bug
 reporter: claude
-status: untriaged
+status: cannot-reproduce
 priority: normal
 provenance: other
 provenance_detail: gate r54b failure, investigated in gate-load-flakes-waiting-search
 source_ref: taskfleet:01m6dz07qv6skkqyr2csfgx9p1/gate-r54b:next-waiting-row-266
 originating_run: 01m6dz07qv6skkqyr2csfgx9p1
 originating_run_kind: spinoff
+closed: 2026-11-02
 ---
 
 # Open conversation can keep a finished turn's working status: Stop stays (next-waiting-row :266)
