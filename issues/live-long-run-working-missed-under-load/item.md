@@ -2,13 +2,17 @@
 created: 2026-11-02
 updated: 2026-11-02
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed while verifying live-long-run-gap-under-load under load
 source_ref: taskfleet:01m6dhbj8yv17s2rsye0zkg8bh/gate:live-long-run-working
 originating_run: 01m6dhbj8yv17s2rsye0zkg8bh
 originating_run_kind: spinoff
+lane: live-long-run-working
+lane_seq: 1
+collision: [web/src/app/conversationStore.ts]
+preparation: ready
 ---
 
 # live-long-run spec misses the working state under heavy load
@@ -178,3 +182,9 @@ its working assertions unchanged, so they keep guarding behaviour.
 contract and the daemon (`conversation_linux.go` `receipt`, `held_linux.go`)
 send `acceptance`/`execution`, never `state`, so those branches cannot run.
 Its user-visible effect, if any, is unverified.
+
+## Decision (Jari 2.11.)
+
+Approved: option (d), coalesce the store's window notifications as in the
+fix sketch above. The spec stays unchanged; record before/after pass counts
+under load in result.md.
