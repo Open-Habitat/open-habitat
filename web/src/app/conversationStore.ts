@@ -223,7 +223,11 @@ export class ConversationStore {
       listener();
     });
   }
-  private seedLive(cursor: string, tail: Agent["live_tail"]): LiveTurn {
+  private seedLive(
+    cursor: string,
+    tail: Agent["live_tail"],
+    history?: Agent["history"],
+  ): LiveTurn {
     let live = initialTurn(
       cursor,
       tail.map((e) => parseConversationEvent(JSON.stringify(e))),
@@ -232,13 +236,21 @@ export class ConversationStore {
       this.routed?.instance === live.instance &&
       this.routed.sequence > live.sequence
     )
-      live = {
-        ...live,
-        ...this.routed,
-        fragments: [],
-        truncated: true,
-        missed: true,
-      };
+      // A snapshot behind the stream is normal on a loaded host when a new
+      // conversation opens (its creation invalidates the snapshot). With no
+      // native history and no live tail there is nothing the gap could have
+      // hidden, and its first read finds no history to join, so a missed mark
+      // would stay until the first saved entry and flash the notice.
+      live =
+        history === "missing" && !tail.length
+          ? { ...live, ...this.routed, fragments: [] }
+          : {
+              ...live,
+              ...this.routed,
+              fragments: [],
+              truncated: true,
+              missed: true,
+            };
     return live;
   }
   applySnapshot(snapshot: Snapshot) {
@@ -271,7 +283,11 @@ export class ConversationStore {
       ) {
         try {
           const agent = snapshot.agents.find((a) => a.agent_id === id);
-          const live = this.seedLive(cursor, agent?.live_tail ?? []);
+          const live = this.seedLive(
+            cursor,
+            agent?.live_tail ?? [],
+            agent?.history,
+          );
           if (live.missed) record.missedBefore = this.readSeq;
           this.publish(id, {
             ...record.value,
@@ -325,7 +341,11 @@ export class ConversationStore {
       const record = this.windows.get(agent.agent_id);
       if (record && !record.value.live) {
         try {
-          const live = this.seedLive(snapshot.event_cursor, agent.live_tail);
+          const live = this.seedLive(
+            snapshot.event_cursor,
+            agent.live_tail,
+            agent.history,
+          );
           this.publish(agent.agent_id, { ...record.value, live });
           // A deferred window reads once its status proves the history.
           if (live.missed && record.deferred)
@@ -364,7 +384,11 @@ export class ConversationStore {
       let live: LiveTurn | undefined;
       try {
         if (agent && this.snapshotCursor)
-          live = this.seedLive(this.snapshotCursor, agent.live_tail);
+          live = this.seedLive(
+            this.snapshotCursor,
+            agent.live_tail,
+            agent.history,
+          );
       } catch {
         /* A stale snapshot is recovered by the event router. */
       }

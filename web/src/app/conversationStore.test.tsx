@@ -633,6 +633,45 @@ describe("recent conversation windows", () => {
       "c",
     ]);
   });
+  it("a new conversation opened behind the stream has missed nothing", () => {
+    const instance = "11111111-1111-4111-8111-111111111111";
+    const frame = (sequence: number, agent_id: string) => ({
+      resource: { agent_id },
+      kind: "snapshot.invalidated",
+      payload: { reason: "agent_created" },
+      cursor: `ev1:${instance}:${sequence}`,
+      server_instance_id: instance,
+      sequence,
+      event_id: `evt_abcdefgh${sequence}`,
+    });
+    const { store } = setup();
+    const empty = id(1);
+    const saved = id(2);
+    store.applySnapshot({
+      identity: { web_identity_id: "person" },
+      event_cursor: `ev1:${instance}:2`,
+      agents: [
+        { agent_id: empty, history: "missing", live_tail: [] },
+        { agent_id: saved, history: "readable", live_tail: [] },
+      ],
+    } as never);
+    // The router is ahead of the applied snapshot when the views open.
+    store.routeEvent(frame(3, empty) as never);
+    store.view(empty);
+    store.view(saved);
+    expect(store.read(empty)?.live?.missed).toBeFalsy();
+    expect(store.read(empty)?.live?.truncated).toBe(false);
+    expect(store.read(empty)?.live?.sequence).toBe(3);
+    // A conversation with history may have had entries in the gap.
+    expect(store.read(saved)?.live?.missed).toBe(true);
+    store.routeEvent({
+      ...frame(4, empty),
+      kind: "assistant.delta",
+      payload: { text: "first", content_index: 0 },
+    } as never);
+    expect(store.read(empty)?.live?.missed).toBeFalsy();
+    expect(store.read(empty)?.live?.fragments).toHaveLength(1);
+  });
   it("bounded reconnect finds a shared key through newer pages", async () => {
     const agent = id(1);
     const pager = {

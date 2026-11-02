@@ -2,7 +2,7 @@
 created: 2026-11-01
 updated: 2026-11-02
 type: bug
-status: open
+status: fixed
 priority: high
 provenance: other
 provenance_detail: pilot.18 clean gate
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: live-long-run-gap-under-load
 lane_seq: 1
 preparation: ready
+closed: 2026-11-02
 ---
 
 # live-long-run spec reports a missed-events flash that does not happen in real use

@@ -61,3 +61,29 @@ fails the spec.
   Jari's first decision that no appearance is acceptable.
 - Left the issue open: what remains is the product race, which needs
   Jari's decision before code changes.
+
+## Fix (2.11., after Jari's decision)
+
+`ConversationStore.seedLive` no longer marks a seed missed when the agent's
+native history is `missing` and its live tail is empty. The seed starts at the
+router's cursor without fragments, so the next event applies contiguously and
+no recovery read is needed. A conversation with history, or with a live tail,
+is marked missed exactly as before. The unit test "a new conversation opened
+behind the stream has missed nothing" covers both and fails without the fix.
+
+Under 14 busy loops beside the other workers (load ~25), 13 runs of
+`live-long-run.spec.ts` with the fix showed no notice: 9 passed and 4 failed
+earlier, at the `data-working="true"` wait. That wait reads controller status
+only (`run_active`), not the live seed, and the unfixed tree failed the same
+way (1 of 5) under the same load; it is filed separately as intake.
+
+## Decisions for later review
+
+- "No live queue" was read as the snapshot's `live_tail` being empty, the only
+  per-agent live state the snapshot carries. Alternative: also require an
+  empty status queue; rejected because the status is not known at seed time
+  and the decision names the snapshot condition.
+- Events between the snapshot and the router for such an agent are not
+  replayed. If a run started in that gap, its first fragments are not shown
+  live but arrive with native history once the turn saves; the alternative
+  (keep the missed mark until a saved entry joins) is the flash being fixed.
