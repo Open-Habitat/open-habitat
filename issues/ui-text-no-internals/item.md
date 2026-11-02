@@ -43,3 +43,10 @@ cases in result.md instead of changing them.
 
 - [ ] The icon wish field and the start page card carry no implementation text; the start page card invites in plain words.
 - [ ] The rule is in `web/AGENTS.md`; the catalog sweep is done, with changes and borderline cases listed in result.md; tests/screenshots updated.
+
+## Addition (Jari 2.11.)
+
+The empty new conversation says "Luo aloitussivu kirjoittamalla
+viestikenttään /open-habitat-start-page." Instead it should have a **Luo
+aloitussivu** button that does the same as the workspace landing card's
+button (starts the agent on the start page), with no command name on screen.
