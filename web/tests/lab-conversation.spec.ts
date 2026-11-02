@@ -307,9 +307,28 @@ test("@lab recap is separate, persisted, hidden once outdated and regenerated af
 test("@lab recap waits while the person writes a long message", async ({
   page,
 }) => {
+  // An already displayed recap stays displayed: deliver this one only once
+  // composition has begun, rather than racing the native recap generator.
+  let readInitial!: () => void;
+  const initialRead = new Promise<void>((resolve) => {
+    readInitial = resolve;
+  });
+  let releaseRecap!: () => void;
+  const writing = new Promise<void>((resolve) => {
+    releaseRecap = resolve;
+  });
+  await page.route("**/api/v1/agents/*/recap", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    // Let the initial empty read establish what was present on opening.
+    // Only the newly generated recap belongs to the typing transition.
+    if (body.recap) await writing;
+    await route.fulfill({ response, json: body });
+    if (!body.recap) readInitial();
+  });
   test.setTimeout(90000);
   expect(
-    (await page.request.get("/fixture/scenario?value=pi-recap")).status(),
+    (await page.request.get("/fixture/scenario?value=ready")).status(),
   ).toBe(204);
   try {
     await page.clock.install();
@@ -337,6 +356,18 @@ test("@lab recap waits while the person writes a long message", async ({
     );
     const id = new URL(page.url()).searchParams.get("conversation");
     expect(id).toMatch(/^pi:/);
+    await initialRead;
+    await page.request.get("/fixture/scenario?value=pi-recap");
+    await editor.fill("Toinen vuoro yhteenvetoa varten");
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+    await expectNativeContent(
+      page,
+      'Selvä. Kysyit: "Toinen vuoro yhteenvetoa varten".',
+      { timeout: 20000 },
+    );
     // Typing reports presence through the gateway to the user's daemon.
     const presence = page.waitForResponse(
       (response) =>
@@ -351,6 +382,7 @@ test("@lab recap waits while the person writes a long message", async ({
       { delay: 15 },
     );
     expect((await presence).status()).toBe(200);
+    releaseRecap();
     const card = page.getByTestId("recap-card");
     await expect
       .poll(
@@ -365,7 +397,7 @@ test("@lab recap waits while the person writes a long message", async ({
       .toBe(true);
     // The recap exists natively and the browser has read it after its
     // history changed, but the person is still writing.
-    await page.waitForTimeout(1500);
+    await page.clock.runFor(1500);
     await expect(card).toHaveCount(0);
     await expect(editor).not.toHaveValue("");
     // An unsent draft keeps holding it however long it stays.
@@ -379,6 +411,7 @@ test("@lab recap waits while the person writes a long message", async ({
       timeout: 10000,
     });
   } finally {
+    releaseRecap();
     expect(
       (await page.request.get("/fixture/scenario?value=ready")).status(),
     ).toBe(204);
@@ -837,6 +870,13 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
       constructor(url: string | URL) {
         super();
         this.url = String(url);
+        // Native EventSource announces readiness after listeners are installed.
+        queueMicrotask(() => {
+          if (this.readyState === Native.CLOSED) return;
+          const event = new Event("open");
+          this.dispatchEvent(event);
+          this.onopen?.(event);
+        });
       }
       override addEventListener(
         type: string,
@@ -1191,42 +1231,32 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
   await page.reload();
   await expect(older).toBeVisible();
   for (let i = 0; i < 8 && (await older.count()); i++) {
-    const reply = page.waitForResponse(
-      (response) =>
-        response.url().includes("/history?") &&
-        response.url().includes("before="),
-    );
+    // Four native entries make a turn in this fixture. Wait for the rendered
+    // page, not a reply which recovery may cancel or supersede. Otherwise the
+    // next click can hit the previous page's still-enabled button.
+    const turns = page.getByTestId("agent-turn");
+    const before = await turns.count();
     await older.click();
-    // A read the page superseded (a recovery reseed cancels pending pages)
-    // has no body; the page then shows the outcome on its own.
-    const native = await (await reply).json().catch(() => undefined);
-    if (!native) {
-      // A recovery may exhaust the cursor as well. The settled user message
-      // is native content; `user-content` only identifies a pending message.
-      await expectNativeContent(
-        page.getByTestId("conversation-timeline"),
-        "Kierros 8",
-        { exact: true, visible: false },
-      );
-      continue;
-    }
-    if (native.older_complete) {
-      await expect(older).toHaveCount(0);
-      break;
-    }
-    // Wait for the page to be applied, not merely for its HTTP reply.
-    const firstUser = native.entries.find(
-      (entry: { kind: string }) => entry.kind === "user",
-    );
-    if (firstUser)
-      await expectNativeContent(page, firstUser.content.text, {
+    await expect
+      .poll(
+        async () =>
+          (await older.count()) === 0 || (await turns.count()) > before,
+      )
+      .toBe(true);
+    if (await older.count()) await expect(older).toBeEnabled();
+  }
+  await expect(older).toHaveCount(0);
+  for (let i = 1; i <= 8; i++) {
+    await expectNativeContent(
+      page.getByTestId("conversation-timeline"),
+      `Kierros ${i}`,
+      {
         exact: true,
         count: 1,
         visible: false,
-      });
-    await expect(older).toBeEnabled();
+      },
+    );
   }
-  await expect(older).toHaveCount(0);
   await page
     .getByRole("button")
     .and(page.getByTestId("workspace-details"))
@@ -1292,6 +1322,19 @@ test("@lab fake-Pi crash leaves the turn readable and the next send starts Pi ag
   // conversation is not read-only: there is no explicit continuation.
   await expect(editor).toBeEnabled({ timeout: 20000 });
   await expect(page.getByTestId("continue-conversation")).toHaveCount(0);
+  // The optimistic bubble does not prove that native Pi wrote the prompt
+  // and crashed. Cross that boundary before throwing the current view away.
+  await expect(page).toHaveURL(/conversation=pi:/);
+  const id = new URL(page.url()).searchParams.get("conversation");
+  if (!id) throw new Error("Missing native conversation identity");
+  await expect
+    .poll(async () => {
+      const status = await (
+        await page.request.get(`/api/v1/conversations/${id.slice(3)}/status`)
+      ).json();
+      return status.state === "stopped" && status.native_history === "present";
+    })
+    .toBe(true);
   await page.reload();
   await expect(page.getByTestId("workspace-title")).toHaveText("kaadu nyt");
   await expect(editor).toBeEnabled();

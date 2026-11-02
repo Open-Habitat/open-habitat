@@ -3,11 +3,12 @@ created: 2026-11-02
 updated: 2026-11-02
 type: task
 reporter: claude
-status: open
+status: done
 priority: high
 lane: races-specs
 lane_seq: 1
 preparation: ready
+closed: 2026-11-02
 ---
 
 # Specs wait for the state they assert (race groups 6-9)
@@ -18,4 +19,4 @@ Sweep groups 6-9 (`issues/load-race-sweep/item.md`): specs racing product timers
 
 ## Acceptance Criteria
 
-- [ ] Every case listed for groups 6-9 passes under its detector, counts in result.md; no assertion loosened without a stated reason.
+- [x] Every case listed for groups 6-9 passes under its detector, counts in result.md; no assertion loosened without a stated reason.

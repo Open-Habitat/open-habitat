@@ -1888,6 +1888,7 @@ test("@browser-conversation idle controlled Pi can archive without stopping its 
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const editor = page.getByTestId("message-input");
+  await readyConversation(page);
   await editor.fill("idle archive proof");
   await page
     .getByTestId("send")
@@ -2076,10 +2077,11 @@ test("@browser-conversation a turn stopped in a restored conversation ends calml
   test.setTimeout(90000);
   const id = await stoppedConversation(page);
   const bar = page.locator(".ah-agent-header");
-  await bar
-    .getByTestId("archive-conversation")
-    .and(page.locator(':not([data-archive-state="archived"])'))
-    .click();
+  await archiveFromConfirmedView(page, () =>
+    bar
+      .getByTestId("archive-conversation")
+      .and(page.locator(':not([data-archive-state="archived"])')),
+  );
   await page.goto(`/agents/${id}`);
   await bar
     .getByTestId("restore-conversation")
@@ -2094,6 +2096,7 @@ test("@browser-conversation a turn stopped in a restored conversation ends calml
   // daemon and starts Pi, unlike a stop in a conversation whose Pi runs.
   const editor = page.getByTestId("message-input");
   await expect(editor).toBeEnabled();
+  await page.request.get("/fixture/scenario?value=pi-visual-hold");
   await editor.fill("hidas jatko");
   await page
     .getByTestId("send")

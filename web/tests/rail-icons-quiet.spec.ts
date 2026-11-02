@@ -443,6 +443,13 @@ test("@rail-quiet a finished native conversation remains after idle stop and dae
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
+  // A newly created empty conversation is already quiet. Stay to read the
+  // native reply before leaving, otherwise it correctly becomes unread.
+  await expect(page.getByTestId("conversation-timeline")).toContainText(
+    'Selvä. Kysyit: "Ensimmäinen viesti".',
+    { timeout: 25000 },
+  );
+  await expect(page.getByTestId("send")).toHaveAttribute("data-mode", "send");
   const row = nav.getByTestId("rail-quiet").getByTestId(`agent-item-${id}`);
   await expect(row).toBeVisible({ timeout: 25000 });
   await page.request.get("/fixture/taskfleet?status=empty");

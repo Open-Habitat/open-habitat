@@ -9,13 +9,6 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
     test(`@lab ${situation} account menu ${administrator ? "admin" : "non-admin"} on desktop and phone`, async ({
       page,
     }) => {
-      await page.route("**/api/v1/server", async (route) => {
-        const response = await route.fetch();
-        await route.fulfill({
-          response,
-          json: { ...(await response.json()), administrator },
-        });
-      });
       await page.request.get("/fixture/scenario?value=ready");
       await page.goto("/workspaces");
       await page
@@ -26,6 +19,12 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
       await expect(
         page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
       ).toBeVisible();
+      // Fix the role for this case before navigating. Fetching inside the
+      // handler races reload's cancellation of the old document's request.
+      const server = await (await page.request.get("/api/v1/server")).json();
+      await page.route("**/api/v1/server", (route) =>
+        route.fulfill({ json: { ...server, administrator } }),
+      );
       try {
         if (situation === "outage") {
           await page.request.get("/fixture/scenario?value=error");

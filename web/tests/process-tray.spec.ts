@@ -317,6 +317,7 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
   await expect(header.getByTestId("spinoff-waiting")).toBeVisible();
   const waitingRow = page.locator(".ah-waiting-spinoff");
   await expect(waitingRow).toHaveCount(1);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   // Only the branch and its end dot pulse; the trunk stays (rail-mark-pulse).
   const mark = waitingRow.locator("svg.ah-nav-spinoff");
   await expect(mark).toBeVisible();
@@ -328,6 +329,7 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
   expect(await mark.evaluate((el) => getComputedStyle(el).animationName)).toBe(
     "none",
   );
+  await page.emulateMedia({ reducedMotion: "reduce" });
   const agentUrl = page.url();
   const agentId = new URL(agentUrl).searchParams.get("conversation");
   const homeCard = page

@@ -17,6 +17,7 @@ test("a rail conversation archives from its row on hover or by keyboard, without
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
   const id = new URL(page.url()).searchParams.get("conversation") ?? "";
+  await page.request.get("/fixture/scenario?value=pi-visual-hold");
   await page.getByTestId("message-input").fill("something to archive");
   await page
     .getByTestId("send")
@@ -28,6 +29,8 @@ test("a rail conversation archives from its row on hover or by keyboard, without
     .getByRole("navigation")
     .getByTestId("workspace-ordinary-dir")
     .click();
+  await expect(page).not.toHaveURL(/conversation=/);
+  await page.request.get("/fixture/scenario?value=ready");
   const here = page.url();
   const row = page.getByRole("navigation").getByTestId(`agent-item-${id}`);
   const archive = row

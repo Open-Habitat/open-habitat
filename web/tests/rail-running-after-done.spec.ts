@@ -34,7 +34,6 @@ test("@rail-running-after-done a finished conversation leaves Käynnissä and re
   };
 
   const id = await start(page);
-  const url = page.url();
   // A conversation nobody has written to yet is not work either.
   await expect(running.getByTestId(`agent-item-${id}`)).toHaveCount(0);
   await send("hidas työ");
@@ -57,17 +56,19 @@ test("@rail-running-after-done a finished conversation leaves Käynnissä and re
     ).status(),
   ).toBe(200);
   await expect(page.getByTestId("file-offer")).toHaveCount(1);
-  await nav.getByTestId("snapshot-refresh").click();
+  await nav.getByTestId("snapshot-refresh").press("Enter");
   await expect(row).toHaveCount(0);
 
   // Elsewhere, the finished conversation stays out of Käynnissä.
   const other = await start(page);
   await expect(running.getByTestId(`agent-item-${other}`)).toHaveCount(0);
-  await nav.getByTestId("snapshot-refresh").click();
+  await nav.getByTestId("snapshot-refresh").press("Enter");
   await expect(row).toHaveCount(0);
 
   // Written to again, it works and is back until that turn ends.
-  await page.goto(url);
+  // Return through the app, rather than cancelling its outstanding reads
+  // with a second document navigation (Chromium can exhaust net retries).
+  await nav.getByTestId(`agent-item-${id}`).getByTestId("agent-link").click();
   await expect(page.getByTestId("message-input")).toBeEnabled();
   await send("hidas jatko");
   await expect(row).toHaveAttribute("data-ball", "work", { timeout: 25000 });

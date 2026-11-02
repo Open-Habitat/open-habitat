@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./worker-host";
 
+test.use({ reducedMotion: "no-preference" });
+
 for (const width of [1440, 390]) {
   test(`@a11y activity line stays put through empty blocks and hidden work at ${width}px`, async ({
     page,

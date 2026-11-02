@@ -18,6 +18,7 @@ export default defineConfig({
     // The suite reads the interface in Finnish; a spec that tests English
     // opens its own context in another locale.
     locale: "fi-FI",
+    reducedMotion: "reduce",
     baseURL: labOrigin,
     ignoreHTTPSErrors: true,
     ...devices["Desktop Chrome"],
