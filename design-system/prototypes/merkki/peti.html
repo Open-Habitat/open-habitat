@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Open Habitat · merkkipeti</title>
+<style>
+/*FONTS*/
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body { font: 400 13px/1.4 "Instrument Sans", system-ui, sans-serif; color: #16191d; background: #f6f7f8; -webkit-font-smoothing: antialiased; }
+.app { display: grid; grid-template-columns: 340px 1fr; height: 100vh; }
+aside { overflow-y: auto; border-right: 1px solid #e2e6e9; background: #fff; padding: 14px 14px 40px; }
+aside h1 { font-size: 15px; margin: 0 0 2px; }
+aside > p { margin: 0 0 12px; color: #61676f; font-size: 12px; }
+#presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+button { font: inherit; font-size: 12px; height: 28px; padding: 0 10px; border: 1px solid #c9d0d6; border-radius: 8px; background: #fff; color: #16191d; cursor: pointer; }
+button:hover { background: #f1f3f5; }
+details { border-top: 1px solid #eef0f3; padding: 6px 0; }
+summary { cursor: pointer; font-weight: 600; padding: 4px 0; font-size: 12.5px; }
+.row { display: grid; gap: 2px 8px; margin: 8px 0; }
+.row.rng { grid-template-columns: 1fr 70px 22px; align-items: center; }
+.row.rng label { grid-column: 1 / 2; color: #3d434b; font-size: 12px; }
+.row.rng input[type=number] { grid-column: 2; width: 70px; font: 12px "JetBrains Mono", monospace; padding: 2px 4px; border: 1px solid #e2e6e9; border-radius: 6px; }
+.row.rng input[type=range] { grid-column: 1 / 3; width: 100%; accent-color: #1d4932; }
+.row.rng .reset { grid-column: 3; grid-row: 1 / 3; height: 22px; width: 22px; padding: 0; border: 0; color: #a0a6ad; visibility: hidden; }
+.row.changed .reset { visibility: visible; }
+.row.changed label { color: #1d4932; font-weight: 600; }
+.row.sel, .row.txt, .row.col { grid-template-columns: 110px 1fr auto; align-items: center; font-size: 12px; color: #3d434b; }
+.row select, .row input[type=text] { font: inherit; padding: 4px 6px; border: 1px solid #c9d0d6; border-radius: 6px; min-width: 0; }
+.row.sel select { grid-column: 2 / 4; }
+.row.txt input { grid-column: 2 / 4; }
+.row.col input { width: 40px; height: 24px; padding: 0; border: 1px solid #c9d0d6; border-radius: 4px; }
+.row.col code { font: 11px "JetBrains Mono", monospace; color: #61676f; }
+.row.bool { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+main > * { flex: none; }
+main { overflow-y: auto; padding: 16px 20px 40px; display: flex; flex-direction: column; gap: 16px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; font-size: 12.5px; color: #3d434b; }
+.toolbar label { display: inline-flex; align-items: center; gap: 6px; }
+#stage { border: 1px solid #e2e6e9; border-radius: 14px; display: grid; place-items: center; padding: 24px; min-height: 420px; }
+#stage svg { width: 100%; height: min(72vh, 680px); overflow: visible; }
+.k-circle { fill: none; stroke: #2b7f8c; stroke-width: .5; stroke-dasharray: 2 2; }
+.k-circle.soft { stroke-opacity: .4; }
+.k-seam { fill: none; stroke: #d0347a; stroke-width: .6; }
+.k-ring { fill: none; stroke: #d0347a; stroke-width: .5; stroke-dasharray: 1.5 1.5; }
+.k-handle { stroke: #6a4cc2; stroke-width: .5; fill: none; }
+.k-dot { fill: #6a4cc2; }
+.k-dot.e { fill: #d0347a; }
+.k-dot.h { fill: #fff; stroke: #6a4cc2; stroke-width: .5; }
+.k-label { font: 600 5.5px "Instrument Sans", sans-serif; fill: #d0347a; paint-order: stroke; stroke: #fff; stroke-width: 1.6px; }
+.dark .k-label { stroke: #14171a; }
+.vedos path { fill: #e0457b !important; stroke: none !important; }
+.sizes { display: flex; align-items: flex-end; gap: 22px; padding: 18px 20px; border: 1px solid #e2e6e9; border-radius: 12px; overflow-x: auto; }
+.sizes + .sizes { margin-top: 8px; }
+.sizes figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
+.sizes figure > div svg { display: block; width: 100%; height: 100%; }
+.sizes .lock > div svg { height: 40px; width: auto; }
+.sizes figcaption { font: 10.5px "JetBrains Mono", monospace; color: #8a9097; }
+h2 { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #61676f; margin: 0 0 8px; }
+.code { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+pre { font-variant-ligatures: none; margin: 0; padding: 14px; background: #fff; border: 1px solid #e2e6e9; border-radius: 12px; font: 11.5px/1.5 "JetBrains Mono", monospace; white-space: pre; overflow: auto; max-height: 560px; }
+textarea { width: 100%; height: 260px; font: 11.5px/1.5 "JetBrains Mono", monospace; padding: 10px; border: 1px solid #e2e6e9; border-radius: 12px; resize: vertical; }
+.btns { display: flex; gap: 8px; margin: 0 0 8px; }
+#perr { color: #a3412b; font-size: 12px; }
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; height: auto; }
+  aside { border-right: 0; border-bottom: 1px solid #e2e6e9; max-height: none; }
+  .code { grid-template-columns: 1fr; }
+  #stage { min-height: 0; padding: 12px; }
+  #stage svg { height: auto; max-height: 60vh; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>Merkkipeti</h1>
+    <p>Kaksi lomittuvaa kaarta ja aurinko. Arvot alkavat vedoksesta; ↺ palauttaa vedoksen arvon. Asetukset tallentuvat osoitteeseen.</p>
+    <div id="presets"></div>
+    <div id="controls"></div>
+  </aside>
+  <main>
+    <div class="toolbar">
+      <label>Vedos alle <input type="range" id="vedos" min="0" max="1" step="0.05" value="0"></label>
+      <label><input type="checkbox" id="rakenne"> Rakenneviivat</label>
+      <label><input type="checkbox" id="darkstage"> Tumma tausta</label>
+    </div>
+    <div id="stage"></div>
+    <section><h2>Koot</h2><div id="sizes"></div></section>
+    <section class="code">
+      <div><h2>SVG</h2><div class="btns"><button type="button" id="copy">Kopioi SVG</button><button type="button" id="download">Lataa open-habitat.svg</button></div><pre id="source"></pre></div>
+      <div><h2>Parametrit (muutetut)</h2><div class="btns"><button type="button" id="apply">Ota käyttöön</button></div><textarea id="params" spellcheck="false" aria-label="Parametrit JSONina"></textarea><p id="perr"></p></div>
+    </section>
+  </main>
+</div>
+<script>
+const VEDOS = /*VEDOS*/;
+/*JS*/
+</script>
+</body>
+</html>

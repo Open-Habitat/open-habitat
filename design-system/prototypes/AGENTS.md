@@ -41,6 +41,13 @@ muotoon 12.10.2026, ja rakennettu vedos todettiin kuvavertailussa samaksi.
   kentän yllä, paneeli lajeittain ja prosessin ikkuna. Ne tulevat mukaan vain,
   kun kierros vie `strip = true`; `STRIP.B` on tarinan tila ja
   `STRIP.reset()` palauttaa sen.
+- `merkki/` on Open Habitatin merkin parametrinen peti, ei kierros: `peti.js`
+  piirtää kaksi lomittuvaa kaarta ja auringon nimetyistä parametreista siistiksi
+  SVG:ksi (kaaret ja Bézier-käyrät, sauma maskina), `vedos.svg` on Jarin
+  vedos vertailukuvaksi, ja oletusarvot on sovitettu siihen. `node
+  merkki/build.mjs` rakentaa `dist/merkki-peti.html`:n fontteineen;
+  `merkki/build.mjs`:n alku kertoo, miksi kolme fonttia haetaan eikä niitä
+  commitoida.
 - `lib/vendor/hljs.js` on highlight.js tuotannon kielillä, ja `output.js`
   korostaa laatikoiden koodin `--ah-syntax-*`-tokeneilla kuten tuotanto
   (ADR 0015). `node vendor-hljs.mjs` tekee tiedoston uudelleen, kun tuotannon
