@@ -28,3 +28,12 @@ differs, plus the recommendation.
 ## Acceptance Criteria
 
 - [ ] A prototype round in `prototypes/` with three visibly different directions and a recommendation, both languages' texts in Finnish first.
+
+## Decision (Jari 2.11.)
+
+Direction 3, **Syy riveillä**: the Salli field also takes `organisaatio/tiimi`,
+each row carries its reasons, a leaver is raised as a notice above the list.
+The admission model itself is the simple one discussed 2.11. (membership
+checked at sign-in with the person's own token, individuals kept as their
+own source, a shorter sign-in lifetime, *Poista pääsy* for immediate
+removal); the sign-in lifetime awaits Jari's answer.

@@ -47,3 +47,9 @@ organisation steps, and at most five questions for Jari.
 ## Result
 
 [Selvitys](report.md): Jira ja Confluence virallisella etä-MCP:llä ja henkilön OAuthilla; Trelloon rajattu REST-tokenipilotti, jonka vaihtoehdoksi kokeillaan erillistä virallista Trello MCP:tä. Trellon uusi OAuth 2.0 ja organisaatiorajoitusten erot on huomioitu. Contosoin tilaukset ja päästä päähän -kirjautuminen jäivät varmennettaviksi. Issue pysyy avoinna Jarin käsittelyä ja erillisen UI-prototyypin valmistelua varten.
+
+## Jari 2.11.
+
+The five questions were forwarded to Contoso. Decisions on the UI are in
+`proto-atlassian-trello-connect`: per-person read/write choice, Trello's own
+MCP tried first.
