@@ -31,6 +31,16 @@ test.afterEach(async ({ page }) => {
   await page.unrouteAll({ behavior: "ignoreErrors" });
 });
 
+type NativeGitHub = {
+  state: string;
+  login?: string;
+  more: Record<string, unknown>;
+  repo?: { workspace: string; github_repo: string };
+};
+const nativeGitHubs = new WeakMap<Page, NativeGitHub>();
+/** One snapshot route per page, reading the latest state when a reply comes:
+ * re-routing could unroute a handler still waiting for its fetch, and that
+ * handler's fulfill then failed the case. */
 async function nativeGitHub(
   page: Page,
   state: string,
@@ -38,14 +48,18 @@ async function nativeGitHub(
   more: Record<string, unknown> = {},
   repo?: { workspace: string; github_repo: string },
 ) {
-  await page.unroute("**/api/v1/snapshot");
+  const routed = nativeGitHubs.has(page);
+  nativeGitHubs.set(page, { state, login, more, repo });
+  if (routed) return;
   await page.route("**/api/v1/snapshot", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
-    if (!body.auth) {
+    const current = nativeGitHubs.get(page);
+    if (!body.auth || !current) {
       await route.fulfill({ response });
       return;
     }
+    const { state, login, more, repo } = current;
     body.auth.native_github = { state, ...(login ? { login } : {}), ...more };
     for (const w of body.workspaces ?? [])
       if (repo && w.name === repo.workspace)
