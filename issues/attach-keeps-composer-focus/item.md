@@ -5,8 +5,8 @@ type: bug
 reporter: jari
 status: open
 priority: high
-lane: composer
-lane_seq: 2
+lane: attach-focus
+lane_seq: 1
 preparation: ready
 ---
 
