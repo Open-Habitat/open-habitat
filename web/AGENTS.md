@@ -183,8 +183,9 @@ from the repository root, or pass a test-results directory containing exactly
 one trace. It extracts into a fresh disk-backed temporary directory, prints a
 short error summary and the viewer command, and never deletes files. `--json`
 is available for scripted inspection. Record traces with Playwright's
-`--trace on`; lab runs use `--config web/playwright.lab.config.ts`. Do not clear
-an extraction directory with shell globs; each invocation gets its own directory.
+`--trace on`; lab runs use `--config web/playwright.lab.config.ts` and write
+`web/test-results-lab`. Do not clear an extraction directory with shell globs;
+each invocation gets its own directory.
 
 UI evidence is always a screenshot paired with a static HTML snapshot from the
 synthetic lab, saved side by side in the issue folder. Use `snapshot(page, outBase)`

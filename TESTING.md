@@ -76,9 +76,11 @@ Host-backed browser runs need that Pi SDK fixture package too: the synthetic hos
 Do not reuse an earlier result after changing runnable code, fixtures, dependencies or packaged inputs. The fast command is feedback, not a substitute for the final clean gate.
 
 A whole browser suite runs one at a time per host. Each one starts its own
-Chromes and synthetic hosts; two together held 8-vCPU Birch at full load for
-about 20 minutes, against about 5 minutes for one, and slowed every other worker
-and the live product. `scripts/test-focused.sh --area browser` and `browser-focused.py`
+Chromes and synthetic hosts and is mostly Chromium CPU: the ordinary and lab
+suites side by side take about 5½ minutes on an idle 8-core Birch and leave
+about a fifth of it idle (2026-11-02), so a second whole run would saturate
+it, slow every other worker and the live product, and make timing-sensitive
+cases fail. `scripts/test-focused.sh --area browser` and `browser-focused.py`
 without `--spec` or `--tag` (including `npm run test:browser` and
 `test:browser:lab`), and the gate's browser phase, therefore run under
 `scripts/browser-suite-lock.py`: an flock on
@@ -119,10 +121,17 @@ runs both phases in full. A release uses the receipt rather than rerunning the
 gate: `scripts/release-cut.py` refuses a receipt that does not cover exactly
 the commit's tree, and the packaging step checks it again. Go/contracts
 and Storybook overlap the web checks/build; browser runs after the fresh web
-build. The gate defaults to four workers per phase and respects
-`OH_BROWSER_WORKERS` and other caller-supplied budgets.
-Both browser configurations run even when the ordinary suite fails, and failed
-heavy checks never write a passing receipt.
+build. The ordinary and lab suites run side by side under one hold of the
+suite lock, with `OH_BROWSER_WORKERS` (default 6) and `OH_LAB_WORKERS`
+(default 3) workers; the lab suite listens at `OH_PORT_BASE + 100`, because
+ordinary specs start lab-mode hosts too. The suites run at nice 5 so the Go
+tests beside them, which mostly wait on subprocesses, are not starved, and
+without traces, which cost about a quarter of the suite's CPU; rerun a failed
+spec with `--trace on`. Go and web checks default to four workers. Both
+browser configurations run to the end even when one fails, and failed heavy
+checks never write a passing receipt. On an idle Birch the gate took
+22½ minutes on 2026-11-02 morning and about 8 after these changes; the browser
+and Go phase is about 5½ of it, packaging 1½.
 A different commit with an identical tree can reuse it (the release
 still pins and embeds its own commit SHA). A change to issue evidence, docs,
 code, dependencies or package inputs changes the tree and requires a new clean
@@ -186,7 +195,9 @@ Browser listeners default to lab 4175, Vite 4183 and demo 4184. The
 parallel browser suite starts a fresh synthetic host for each case at its
 worker's `OH_PORT_BASE + 20 + parallelIndex` (4194–4201 by default for eight
 workers). Lab Playwright cases use four fresh lab-mode hosts at
-`OH_PORT_BASE + 40 + parallelIndex`; manual lab remains at base + 1. A slot's
+`OH_PORT_BASE + 40 + parallelIndex`; manual lab remains at base + 1. The lab
+config writes `web/test-results-lab`, so it can run beside the ordinary suite,
+which clears `web/test-results` when it starts. A slot's
 port is reused after its previous case ends. Each host has its own scenario,
 clock, session and fake Pi state; tests in the same file can run concurrently
 on separate hosts. On a shared-UID host near its inotify instance limit, set
@@ -226,7 +237,8 @@ synthetic Pi and require both processes to disappear within five seconds.
 ### Inspect Playwright traces
 
 Record a trace for a focused run with Playwright's `--trace on` (including lab
-runs with `--config web/playwright.lab.config.ts`). From the repository root:
+runs with `--config web/playwright.lab.config.ts`, whose results are in
+`web/test-results-lab`). The gate runs untraced. From the repository root:
 
 ```sh
 ./scripts/inspect-trace.sh web/test-results/<test>/trace.zip
