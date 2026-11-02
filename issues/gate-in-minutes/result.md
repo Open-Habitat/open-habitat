@@ -6,7 +6,7 @@ Go tests really ran.
 
 ## Before and after, per phase
 
-| Phase | Issue (idle, `3c9c6072`) | After (gate runs 3 and 4, this branch) |
+| Phase | Issue (idle, `3c9c6072`) | After (gate runs 3–6, this branch) |
 |---|---|---|
 | setup | 5 s | 2 s (issuectl archive and pip wheels kept by checksum) |
 | dependencies | 50 s | 15 s (warm caches; cold first run was 69 s) |
@@ -16,11 +16,14 @@ Go tests really ran.
 | — lab suite | 4.9 min, after ordinary | 5.6–5.8 min, side by side |
 | — Go/contracts | beside browser | 5.2 min (go test −race 300 s) |
 | packaging | 95 s, after browser | 105 s, in the background beside the above |
-| **total** | **22 min 24 s** | **6 min 31 s, 6 min 55 s, 6 min 33 s** |
+| **total** | **22 min 24 s** | **6 min 31 s, 6 min 55 s, 6 min 33 s, 6 min 33 s** |
 
 My own baseline on `de44e75a` at the gate's 4 workers, sequential, load 17–21:
 ordinary 16.6 min, lab 8.5 min. Gate run 1 (cold caches, load up to 38, before
 the priority change) was 13.2 min; run 2 was 7.9 min.
+
+The last, gate run 6 on `2468f0d0` (the settings-search fix), passed whole: 532
+ordinary and 163 lab cases, Go, contracts and packaging, receipt written.
 
 Both suites alone at 6 + 3 workers, untraced: 5.4 min wall, 2029 core-seconds,
 CPU 21 % idle. Summed case time: ordinary 3748 s → 1703 s, lab 1830 s → 794 s.

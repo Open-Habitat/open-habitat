@@ -3,11 +3,12 @@ created: 2026-11-02
 updated: 2026-11-02
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: high
 lane: gate-in-minutes
 lane_seq: 1
 preparation: ready
+closed: 2026-11-02
 ---
 
 # The clean gate takes 22 minutes; bring it to a few
