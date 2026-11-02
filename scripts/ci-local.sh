@@ -61,14 +61,18 @@ case $(uname -m) in
 x86_64)issue_triple=x86_64-unknown-linux-musl issue_sha=75d5fa1b1c20cae557ab90948788f19af88bf14dfa215a538abc6096673976ef;;
 aarch64)issue_triple=aarch64-unknown-linux-musl issue_sha=b1679f610cde8b6d889bff820627222b0675e0ac57b16566b72aac49695564c1;;
 *)echo "error: unsupported gate host architecture $(uname -m)" >&2;exit 1;;esac
-issue_archive="$tmp/issuectl.tar.xz"
-curl -fsSL --retry 3 --retry-all-errors "https://github.com/jarimustonen/issuectl/releases/download/v0.19.0/issuectl-$issue_triple.tar.xz" -o "$issue_archive"
+# The archive is kept by its checksum and verified on every use.
+issue_archive="$repo/.cache/ci-local/issuectl-$issue_sha.tar.xz"
+if ! echo "$issue_sha  $issue_archive" | sha256sum -c - >/dev/null 2>&1;then
+  curl -fsSL --retry 3 --retry-all-errors "https://github.com/jarimustonen/issuectl/releases/download/v0.19.0/issuectl-$issue_triple.tar.xz" -o "$tmp/issuectl.tar.xz"
+  mv "$tmp/issuectl.tar.xz" "$issue_archive"
+fi
 echo "$issue_sha  $issue_archive" | sha256sum -c -
 tar -xJf "$issue_archive" -C "$tmp"
 cp "$tmp/issuectl-$issue_triple/issuectl" "$tmp/bin/issuectl"
 export PATH="$tmp/bin:$PATH"
 python3 -m venv "$tmp/venv"
-"$tmp/venv/bin/pip" install --disable-pip-version-check --no-input -r requirements-ci.txt
+PIP_CACHE_DIR="$repo/.cache/ci-local/pip" "$tmp/venv/bin/pip" install --disable-pip-version-check --no-input -r requirements-ci.txt
 export PYTHON="$tmp/venv/bin/python"
 # Go fixture subprocesses also invoke python3 directly, not only $PYTHON.
 export PATH="$tmp/venv/bin:$PATH"
@@ -164,9 +168,11 @@ PY
     # too, and writes test-results-lab. The host binary is built once here,
     # not under the other suite's running hosts. Traces are off: recording
     # every case cost about a quarter of the suite's CPU; rerun a failed spec
-    # with --trace on (TESTING.md).
+    # with --trace on (TESTING.md). The suites run at a lower priority than
+    # the Go tests beside them: those mostly wait on subprocesses and use under
+    # a core (249 s alone), but starved behind the browsers took 596 s.
     go build -o .cache/browser-host ./test/browser-host
-    python3 scripts/browser-suite-lock.py --label "$repo (ci-local)" --status-fd 9 -- bash -c '
+    nice -n 5 python3 scripts/browser-suite-lock.py --label "$repo (ci-local)" --status-fd 9 -- bash -c '
       export OH_WEB_PREBUILT=1 OH_BROWSER_HOST_PREBUILT=1
       suite(){
         local name=$1 start=$SECONDS rc=0; shift
