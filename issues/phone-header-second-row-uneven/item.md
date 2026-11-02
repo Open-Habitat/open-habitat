@@ -10,7 +10,7 @@ lane_seq: 1
 preparation: ready
 ---
 
-# Phone header: second-row controls look scattered and mismatched
+# Prototype: phone header second row as one consistent set
 
 ## Description
 
@@ -37,3 +37,11 @@ leave that text to that issue's worker if it has already changed it.
 
 - [ ] The second header row is visually consistent (screenshots at DSF 2, phone 390/360 and desktop, light and dark) and carries no duplicate of the composer's model chip.
 - [ ] Layout specs updated.
+
+## Jari 2.11.: prototype first
+
+Practically every UI change is prototyped first. This issue is now a
+prototype round (one view: the conversation header's second row on phone
+and desktop, three directions and a recommendation); implementation waits
+for Jari's choice. The first run (`01m6eetncqnppee5prgdezk0xp`) was
+cancelled before it changed product code.
