@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ConversationPager } from "./conversationPager";
 import { ConversationStore, unreadableHistory } from "./conversationStore";
 import type { HistoryEntry, HistoryPage } from "./history";
@@ -65,6 +65,9 @@ function setup() {
   return { store, tail, finish: (p: HistoryPage) => resolve(p) };
 }
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+afterEach(() => {
+  vi.useRealTimers();
+});
 describe("recent conversation windows", () => {
   it("drops the pre-login controller status so reopening reads native state", () => {
     const { store } = setup();
@@ -1135,6 +1138,7 @@ describe("recent conversation windows", () => {
     expect(store.read(agent)?.live?.sequence).toBe(5);
   });
   it("background text deltas notify only their window, not sidebar metadata", () => {
+    vi.useFakeTimers();
     const { store } = setup();
     const agent = id(1);
     store.view(agent, true);
@@ -1158,8 +1162,38 @@ describe("recent conversation windows", () => {
       sequence: 1,
       event_id: "delta",
     } as never);
+    vi.advanceTimersByTime(16);
     expect(windowListener).toHaveBeenCalledTimes(1);
     expect(metadata).not.toHaveBeenCalled();
+  });
+  it("many live events in one task render the window once, with the newest value", () => {
+    vi.useFakeTimers();
+    const { store } = setup();
+    const agent = id(1);
+    store.view(agent, true);
+    store.setLive(agent, {
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:0",
+      instance: "11111111-1111-4111-8111-111111111111",
+      sequence: 0,
+      fragments: [],
+      truncated: false,
+    });
+    const seen: (number | undefined)[] = [];
+    store.subscribe(agent, () => seen.push(store.read(agent)?.live?.sequence));
+    for (let sequence = 1; sequence <= 50; sequence++)
+      store.routeEvent({
+        resource: { agent_id: agent },
+        kind: "assistant.delta",
+        payload: { text: "x" },
+        cursor: `ev1:11111111-1111-4111-8111-111111111111:${sequence}`,
+        server_instance_id: "11111111-1111-4111-8111-111111111111",
+        sequence,
+        event_id: `delta${sequence}`,
+      } as never);
+    expect(store.read(agent)?.live?.sequence).toBe(50); // the value is current at once
+    expect(seen).toEqual([]);
+    vi.advanceTimersByTime(16);
+    expect(seen).toEqual([50]);
   });
   it("a daemon restart resets the live cursor and retains stale saved content", async () => {
     const { store, tail, finish } = setup();

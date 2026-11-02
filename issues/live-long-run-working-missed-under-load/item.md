@@ -2,7 +2,7 @@
 created: 2026-11-02
 updated: 2026-11-02
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed while verifying live-long-run-gap-under-load under load
@@ -13,6 +13,7 @@ lane: live-long-run-working
 lane_seq: 1
 collision: [web/src/app/conversationStore.ts]
 preparation: ready
+closed: 2026-11-02
 ---
 
 # live-long-run spec misses the working state under heavy load

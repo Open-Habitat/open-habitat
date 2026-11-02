@@ -326,14 +326,29 @@ export class ConversationStore {
       if (!group.size) this.listeners.delete(id);
     };
   };
+  // The value changes at once, so event order, recovery and read() stay
+  // synchronous; only window renders are coalesced. A dense run delivers
+  // ~160 events/s, and one synchronous render each starved a slow page until
+  // fetch replies (status, receipts, Stop) arrived seconds late. A timer
+  // rather than requestAnimationFrame keeps hidden tabs flushing.
+  private dirty = new Set<string>();
+  private flushTimer?: ReturnType<typeof setTimeout>;
   private publish(id: string, value: WindowView) {
     const record = this.windows.get(id);
     if (!record || this.disposed) return;
     record.value = value;
-    this.listeners.get(id)?.forEach((listener) => {
-      listener();
-    });
+    this.dirty.add(id);
+    this.flushTimer ??= setTimeout(this.flushWindows, 16);
   }
+  private flushWindows = () => {
+    this.flushTimer = undefined;
+    const ids = [...this.dirty];
+    this.dirty.clear();
+    for (const id of ids)
+      this.listeners.get(id)?.forEach((listener) => {
+        listener();
+      });
+  };
   private seedLive(
     cursor: string,
     tail: Agent["live_tail"],
@@ -1204,6 +1219,9 @@ export class ConversationStore {
   }
   dispose() {
     this.disposed = true;
+    clearTimeout(this.flushTimer);
+    this.flushTimer = undefined;
+    this.dirty.clear();
     window.removeEventListener("storage", this.onStorage);
     this.replies = undefined;
     this.latestReplies.clear();
