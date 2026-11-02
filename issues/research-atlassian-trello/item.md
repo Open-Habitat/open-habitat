@@ -7,7 +7,7 @@ status: open
 priority: high
 lane: atlassian
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Research: Jira, Confluence and Trello integration for Contoso
@@ -42,4 +42,8 @@ organisation steps, and at most five questions for Jari.
 
 ## Acceptance Criteria
 
-- [ ] report.md (Finnish): recommended tool and auth per product, organisation approval steps, how it fits Settings › Integrations and the agent, open questions.
+- [x] report.md (Finnish): recommended tool and auth per product, organisation approval steps, how it fits Settings › Integrations and the agent, open questions.
+
+## Result
+
+[Selvitys](report.md): Jira ja Confluence virallisella etä-MCP:llä ja henkilön OAuthilla; Trelloon rajattu REST-tokenipilotti, jonka vaihtoehdoksi kokeillaan erillistä virallista Trello MCP:tä. Trellon uusi OAuth 2.0 ja organisaatiorajoitusten erot on huomioitu. Contosoin tilaukset ja päästä päähän -kirjautuminen jäivät varmennettaviksi. Issue pysyy avoinna Jarin käsittelyä ja erillisen UI-prototyypin valmistelua varten.
