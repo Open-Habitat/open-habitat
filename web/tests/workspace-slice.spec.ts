@@ -199,6 +199,45 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await expect(page.locator("body")).not.toContainText("git-project");
   await expect((await page.request.get("/api/v1/snapshot")).status()).toBe(401);
 });
+test("@workspace-slice signing in at / keeps the focus a person moved once the view showed", async ({
+  page,
+}) => {
+  // A person who reaches for the account menu the moment the signed-in view
+  // shows: the page focuses it as it appears and notes any later move.
+  await page.addInitScript(() => {
+    const seen = window as { focusLeft?: string };
+    new MutationObserver((_, observer) => {
+      const trigger = document.querySelector<HTMLElement>(
+        "[data-testid=account-menu-trigger]",
+      );
+      if (!trigger) return;
+      observer.disconnect();
+      trigger.focus();
+      document.addEventListener("focusin", (event) => {
+        seen.focusLeft ??= (event.target as HTMLElement).tagName;
+      });
+    }).observe(document, { subtree: true, childList: true });
+  });
+  await scenario(page, "ready");
+  await page.goto("/");
+  await login(page);
+  await expect(page).toHaveURL(/\/workspaces$/);
+  // Replacing / with /workspaces is not a navigation, so the heading does not
+  // take the focus back; frames for the router's own render to commit.
+  await page.evaluate(
+    () =>
+      new Promise((done) =>
+        requestAnimationFrame(() => requestAnimationFrame(done)),
+      ),
+  );
+  expect(
+    await page.evaluate(() => (window as { focusLeft?: string }).focusLeft),
+  ).toBeUndefined();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("menuitem").and(page.getByTestId("menu-settings")),
+  ).toBeVisible();
+});
 test("@workspace-slice confirmed empty, missing, failure, partial and deep link truth", async ({
   page,
 }) => {

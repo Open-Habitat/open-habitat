@@ -1178,14 +1178,19 @@ export function App() {
       : phase === "stale"
         ? "authenticated"
         : phase;
-  const previousView = useRef({ path: location.pathname, phase: viewPhase });
+  // "/" is the home page's alias: replacing it with /workspaces shows the
+  // same view, so it is not a navigation that moves the focus. The alias is
+  // replaced only after the signed-in view has rendered, and focusing its
+  // heading again took the focus from what the person had moved to since.
+  const viewPath =
+    location.pathname === "/" ? "/workspaces" : location.pathname;
+  const previousView = useRef({ path: viewPath, phase: viewPhase });
   // Focus only on navigation or a new sign-in state, never on a snapshot refresh.
   // Settings owns its own entry focus and the conversation owns its editor focus.
   useLayoutEffect(() => {
     const previous = previousView.current;
-    previousView.current = { path: location.pathname, phase: viewPhase };
-    if (previous.path === location.pathname && previous.phase === viewPhase)
-      return;
+    previousView.current = { path: viewPath, phase: viewPhase };
+    if (previous.path === viewPath && previous.phase === viewPhase) return;
     if (
       isSettingsRoute(location.pathname) ||
       viewPhase === "loading" ||
@@ -1201,7 +1206,7 @@ export function App() {
       main?.querySelector<HTMLElement>("h1");
     if (heading) heading.tabIndex = -1;
     (heading ?? main)?.focus({ preventScroll: true });
-  }, [location.pathname, viewPhase, selectedAgentId]);
+  }, [viewPath, location.pathname, viewPhase, selectedAgentId]);
   // Archive removes the focused control while changing only the query string.
   // Focus after that route's DOM commit, not in a frame racing its mount.
   useLayoutEffect(() => {

@@ -1562,6 +1562,35 @@ test("@browser-conversation separate streaming drafts survive agent switches and
   });
 });
 
+test("@browser-conversation a draft written while the conversation loads goes on from its end", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi/);
+  const conversation = page.url();
+  // A document load reads the conversation's status cold; holding it keeps
+  // the loading view's field up while the person writes.
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(/\/api\/v1\/conversations\/[^/]+\/status/, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto(conversation);
+  const editor = page.getByTestId("message-input");
+  await editor.fill("Alku");
+  release();
+  await expect(page.getByTestId("conversation-loading")).toHaveCount(0);
+  await expect(editor).toBeFocused();
+  // The opened conversation's field takes the focus; the next words, typed
+  // or dictated at the caret, follow what was written.
+  await page.keyboard.type(" jatkuu");
+  await expect(editor).toHaveValue("Alku jatkuu");
+});
+
 test("@browser-conversation logout fences a pending status read and turn even when server logout fails", async ({
   page,
 }) => {

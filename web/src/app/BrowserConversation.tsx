@@ -1210,10 +1210,14 @@ function BrowserConversationContent({
   useEffect(() => {
     if (!id || !controlled || focusedOnOpen.current) return;
     focusedOnOpen.current = true;
-    if (document.activeElement === document.body)
-      section.current
-        ?.querySelector("textarea")
-        ?.focus({ preventScroll: true });
+    if (document.activeElement !== document.body) return;
+    const field = section.current?.querySelector("textarea");
+    if (!field) return;
+    // The field is new, so its caret is at the start; a draft written while
+    // the conversation loaded, or kept from an earlier visit, goes on from
+    // its end instead of having the next words land in front of it.
+    field.focus({ preventScroll: true });
+    field.setSelectionRange(field.value.length, field.value.length);
   }, [id, controlled]);
   const presentation = agentPresentation({
     process: statusStale ? "stale" : "daemon_managed_live",

@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -276,20 +277,25 @@ export function useDictation(
     const final = await d.stop();
     return final ? dictatedInto(around.current, final).text : null;
   }, []);
+  const refocus = useRef(false);
   /** Ends the dictation and keeps nothing of it in the field, which stays
    * as it was. */
   const cancel = useCallback(() => {
     const d = engine.current;
     if (!d?.active) return;
+    refocus.current = true;
     d.cancel();
-    // Back to the field, which the dictation hid or left read-only.
-    window.requestAnimationFrame(() =>
-      (
-        scope.current?.querySelector("textarea") ??
-        scope.current?.querySelector("input")
-      )?.focus(),
-    );
-  }, [scope]);
+  }, []);
+  // Back to the field, which the dictation hid or left read-only, once it
+  // shows again: a frame could run before that render and find it hidden.
+  useLayoutEffect(() => {
+    if (active || !refocus.current) return;
+    refocus.current = false;
+    (
+      scope.current?.querySelector("textarea") ??
+      scope.current?.querySelector("input")
+    )?.focus();
+  }, [active, scope]);
   const cancelling = useRef(cancel);
   cancelling.current = cancel;
   useEffect(() => {

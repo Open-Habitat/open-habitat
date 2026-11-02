@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -612,6 +613,7 @@ export function Composer({
     (shell.runAvailability && shell.runAvailability.state !== "enabled");
   // A dictation that ends puts its text in the field where the caret was,
   // with the caret after it, and the field is ordinary text again.
+  const dictatedCaret = useRef<number | null>(null);
   const dictation = useDictation(
     speech,
     csrf,
@@ -619,17 +621,24 @@ export function Composer({
       onChange(text);
       lastCaret.current = [caret, caret];
       caretText.current = text;
-      window.requestAnimationFrame(() => {
-        const el = field.current;
-        if (!el || el.hidden) return;
-        el.focus();
-        el.setSelectionRange(caret, caret);
-        if (caret === el.value.length) el.scrollTop = el.scrollHeight;
-      });
+      dictatedCaret.current = caret;
     },
     box,
   );
   const dictating = dictation.active;
+  // Focus once the field shows again with the text in it. A frame scheduled
+  // from the end could run before that render on a busy machine, find the
+  // field still hidden and leave the focus nowhere.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the field shows again or takes the text in these renders.
+  useLayoutEffect(() => {
+    const caret = dictatedCaret.current;
+    const el = field.current;
+    if (caret === null || dictating || !el) return;
+    dictatedCaret.current = null;
+    el.focus();
+    el.setSelectionRange(caret, caret);
+    if (caret === el.value.length) el.scrollTop = el.scrollHeight;
+  }, [dictating, value]);
   const endingToSend = useRef(false);
   const [sendingDictation, setSendingDictation] = useState(false);
   const dictationBusy = dictating || sendingDictation;
