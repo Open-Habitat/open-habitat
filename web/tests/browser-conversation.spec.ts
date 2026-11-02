@@ -2285,7 +2285,9 @@ test("@browser-conversation cold open waits for status before reading history", 
     expect(historyReads).toBe(0);
     releaseStatus();
     await expect(page.getByTestId("message-input")).toBeEnabled();
-    expect(["missing", "present"]).toContain(nativeHistory);
+    // The composer may enable before the released reply has passed this
+    // handler; that reply must still arrive.
+    await expect.poll(() => nativeHistory).toMatch(/^(missing|present)$/);
   } finally {
     releaseStatus();
   }
