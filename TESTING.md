@@ -129,9 +129,11 @@ tests beside them, which mostly wait on subprocesses, are not starved, and
 without traces, which cost about a quarter of the suite's CPU; rerun a failed
 spec with `--trace on`. Go and web checks default to four workers. Both
 browser configurations run to the end even when one fails, and failed heavy
-checks never write a passing receipt. On an idle Birch the gate took
-22½ minutes on 2026-11-02 morning and about 8 after these changes; the browser
-and Go phase is about 5½ of it, packaging 1½.
+checks never write a passing receipt. Packaging and the native fixture run in
+the background beside the browser and Go phase; `go fmt`, `go generate` and the
+generated-contract check run before anything reads the tree beside them. On
+Birch the gate took 22½ minutes on 2026-11-02 morning and 6½–7 after these
+changes, almost all of it the six-minute browser, Go and packaging phase.
 A different commit with an identical tree can reuse it (the release
 still pins and embeds its own commit SHA). A change to issue evidence, docs,
 code, dependencies or package inputs changes the tree and requires a new clean
