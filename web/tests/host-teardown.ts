@@ -1,11 +1,17 @@
 import { readdirSync, readFileSync, rmSync, statSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import type { FullConfig } from "@playwright/test";
 
 // The binary's lifetime watchdog ends hosts/Pi even after worker SIGKILL.
 // Forced host termination skips Go defers; reclaim any private temp trees left.
 // Never follow arbitrary marker contents or remove another user's directory.
-export default function teardown() {
-  const results = fileURLToPath(new URL("../test-results/", import.meta.url));
+// Markers live in each project's output directory (tests/worker-host.ts), so
+// this run never touches the hosts of the other suite running beside it.
+export default function teardown(config: FullConfig) {
+  for (const results of new Set(config.projects.map((p) => p.outputDir)))
+    reclaim(results);
+}
+
+function reclaim(results: string) {
   let names: string[];
   try {
     names = readdirSync(results).filter((name) =>

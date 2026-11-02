@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test as base } from "@playwright/test";
 import { labWorkerHostPort, workerHostPort } from "../test-ports.mjs";
@@ -33,11 +34,11 @@ export function createHostTest(
         );
         if (port > 65535)
           throw new Error(`Worker host port ${port} is out of range`);
-        const marker = fileURLToPath(
-          new URL(
-            `../test-results/browser-host-marker-${createHash("sha256").update(`${testInfo.testId}:${testInfo.retry}`).digest("hex").slice(0, 16)}`,
-            import.meta.url,
-          ),
+        // In this config's own output directory: the ordinary and lab suites
+        // run at the same time, and each teardown reclaims only its markers.
+        const marker = join(
+          testInfo.project.outputDir,
+          `browser-host-marker-${createHash("sha256").update(`${testInfo.testId}:${testInfo.retry}`).digest("hex").slice(0, 16)}`,
         );
         const child = spawn(
           fileURLToPath(new URL("../../.cache/browser-host", import.meta.url)),

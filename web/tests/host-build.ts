@@ -18,6 +18,9 @@ export default function buildHost() {
   if (process.env.OH_WEB_PREBUILT !== "1")
     execFileSync("npm", ["run", "build"], { cwd: web, stdio: "inherit" });
   // Build the lifetime guard into every host (including standalone/remote runs).
+  // The gate builds it once and runs both suites at once; a second build
+  // would replace the binary under the other suite's running hosts.
+  if (process.env.OH_BROWSER_HOST_PREBUILT === "1") return;
   execFileSync(
     "go",
     ["build", "-o", ".cache/browser-host", "./test/browser-host"],

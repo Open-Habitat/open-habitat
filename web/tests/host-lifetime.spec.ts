@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { hostOrigin, workerHostPort } from "../test-ports.mjs";
@@ -66,11 +67,9 @@ for (const target of ["launcher", "host"] as const) {
         env: {
           ...process.env,
           BROWSER_HOST_PORT: String(workerHostPort(info.parallelIndex)),
-          BROWSER_HOST_MARKER: fileURLToPath(
-            new URL(
-              `../test-results/browser-host-marker-${createHash("sha256").update(info.testId).digest("hex").slice(0, 16)}`,
-              import.meta.url,
-            ),
+          BROWSER_HOST_MARKER: join(
+            info.project.outputDir,
+            `browser-host-marker-${createHash("sha256").update(info.testId).digest("hex").slice(0, 16)}`,
           ),
         },
         stdio: ["ignore", "pipe", "pipe"],
