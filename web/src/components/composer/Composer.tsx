@@ -70,6 +70,15 @@ const isMac =
   /Mac|iPhone|iPad/.test(navigator.platform);
 export const MOD = isMac ? "⌘" : "Ctrl";
 const ALT = isMac ? "⌥" : "Alt";
+// A touch screen, where focusing the field opens the keyboard (the same
+// query composer.css uses for the field's size there).
+const touchScreen = () =>
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(pointer: coarse)").matches;
+// After an attachment the person goes on writing or dictating about it. On
+// a touch screen focusing would open the keyboard, so there the field takes
+// the focus only if it had it.
+const focusAfterAttach = (hadFocus: boolean) => !touchScreen() || hadFocus;
 
 type Mode = "steer" | "follow_up";
 const modeIcon: Record<Mode, "steer" | "queue"> = {
@@ -477,8 +486,14 @@ export function Composer({
   const [uploadError, setUploadError] = useState("");
   const uploadController = useRef<AbortController | null>(null);
   const picker = useRef<HTMLInputElement>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
+  // The reference of the attachment whose chip takes the focus to the field
+  // once it shows, and whether the field had the focus when the picker was
+  // opened from the paperclip.
+  const attachFocus = useRef<string | null>(null);
+  const pickedFromField = useRef(false);
   const addFiles = useCallback(
-    async (files: File[]) => {
+    async (files: File[], focus: boolean) => {
       if (!csrf || uploadController.current || availability.state !== "enabled")
         return;
       if (
@@ -508,6 +523,7 @@ export function Composer({
           const current = draft.current;
           const next = `${current.value}${current.value ? "\n" : ""}${uploaded.reference}`;
           draft.current = { ...current, value: next };
+          if (focus) attachFocus.current = uploaded.reference;
           current.onChange(next);
         }
       } catch (error) {
@@ -539,7 +555,10 @@ export function Composer({
     const drop = (event: DragEvent) => {
       if (!event.dataTransfer?.files.length) return;
       event.preventDefault();
-      void addFiles(Array.from(event.dataTransfer.files));
+      void addFiles(
+        Array.from(event.dataTransfer.files),
+        focusAfterAttach(document.activeElement === field.current),
+      );
     };
     document.addEventListener("dragover", drag);
     document.addEventListener("drop", drop);
@@ -548,7 +567,6 @@ export function Composer({
       document.removeEventListener("drop", drop);
     };
   }, [csrf, addFiles]);
-  const field = useRef<HTMLTextAreaElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const listId = useId().replace(/:/g, "");
   const shellLabelId = `${listId}-shell`;
@@ -639,6 +657,29 @@ export function Composer({
     el.setSelectionRange(caret, caret);
     if (caret === el.value.length) el.scrollTop = el.scrollHeight;
   }, [dictating, value]);
+  // Focus once the added attachment shows as a chip, with the caret at the
+  // end of the text. The upload can take a while; a field elsewhere that the
+  // person moved to meanwhile keeps the focus.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the attachment shows in the render that takes it into the draft.
+  useLayoutEffect(() => {
+    const pending = attachFocus.current;
+    const el = field.current;
+    if (!pending || !el || !attachments.some((a) => a.source === pending))
+      return;
+    attachFocus.current = null;
+    const active = document.activeElement;
+    const elsewhere =
+      active instanceof HTMLElement &&
+      active !== el &&
+      (active.isContentEditable ||
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement);
+    if (dictating || el.disabled || elsewhere) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+    el.scrollTop = el.scrollHeight;
+  }, [draftValue]);
   const endingToSend = useRef(false);
   const [sendingDictation, setSendingDictation] = useState(false);
   const dictationBusy = dictating || sendingDictation;
@@ -1269,11 +1310,29 @@ export function Composer({
   const rowAids = (
     <>
       {csrf ? (
-        <AttachmentMenu
-          anchorRef={box}
-          disabled={uploading || availability.state !== "enabled" || dictating}
-          onAttach={() => picker.current?.click()}
-        />
+        <span
+          className="ah-crow-attach"
+          // The paperclip takes the focus as it is pressed; whether the
+          // field had it is read just before. The menu's popover is a
+          // portal whose events reach here too; they are not the paperclip.
+          onPointerDownCapture={(event) => {
+            if (event.currentTarget.contains(event.target as Node))
+              pickedFromField.current =
+                document.activeElement === field.current;
+          }}
+          onKeyDownCapture={(event) => {
+            if (event.currentTarget.contains(event.target as Node))
+              pickedFromField.current = false;
+          }}
+        >
+          <AttachmentMenu
+            anchorRef={box}
+            disabled={
+              uploading || availability.state !== "enabled" || dictating
+            }
+            onAttach={() => picker.current?.click()}
+          />
+        </span>
       ) : null}
       {sources ? (
         <>
@@ -1421,7 +1480,10 @@ export function Composer({
             multiple
             hidden
             onChange={(event) => {
-              void addFiles(Array.from(event.target.files ?? []));
+              void addFiles(
+                Array.from(event.target.files ?? []),
+                focusAfterAttach(pickedFromField.current),
+              );
               event.target.value = "";
             }}
           />
@@ -1468,7 +1530,7 @@ export function Composer({
             );
             if (csrf && images.length) {
               event.preventDefault();
-              void addFiles(images);
+              void addFiles(images, true);
             }
           }}
           onKeyDown={onFieldKey}

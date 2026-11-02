@@ -1,6 +1,7 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { uploadAttachment } from "../../app/attachments";
 import type { CommandList, FileList } from "../../app/composerReads";
 import { Composer, type ComposerSources } from "./Composer";
 import {
@@ -11,6 +12,11 @@ import {
   shellExcluded,
   withLeadingCommand,
 } from "./completion";
+
+vi.mock("../../app/attachments", async (actual) => ({
+  ...(await actual<typeof import("../../app/attachments")>()),
+  uploadAttachment: vi.fn(),
+}));
 
 const noop = () => {};
 const base = {
@@ -881,5 +887,119 @@ describe("composer speech input", () => {
       }),
     );
     await waitFor(() => expect(field(view).value).toBe("Alku sanelu"));
+  });
+});
+
+describe("focus after an attachment", () => {
+  const reference =
+    "[notes.txt](/api/v1/attachments/33333333-3333-4333-8333-333333333333)";
+  // The upload answers only when the test says so, so the focus cannot come
+  // from the drop or the picker itself.
+  function pendingUpload() {
+    let answer = () => {};
+    vi.mocked(uploadAttachment).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = () =>
+            resolve({ reference } as Awaited<
+              ReturnType<typeof uploadAttachment>
+            >);
+        }),
+    );
+    return () => act(async () => answer());
+  }
+  function Draft() {
+    const [value, setValue] = useState("Katso tätä");
+    return (
+      <>
+        <button type="button" data-testid="elsewhere" />
+        <Composer {...base} csrf="csrf" value={value} onChange={setValue} />
+      </>
+    );
+  }
+  const file = new File(["synthetic"], "notes.txt", { type: "text/plain" });
+  const pick = (view: ReturnType<typeof render>) =>
+    fireEvent.change(
+      view.container.querySelector('input[type="file"]') as HTMLInputElement,
+      { target: { files: [file] } },
+    );
+  const touch = (coarse: boolean) =>
+    vi.stubGlobal(
+      "matchMedia",
+      (query: string) =>
+        ({
+          matches: coarse && query === "(pointer: coarse)",
+        }) as MediaQueryList,
+    );
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("a drop puts the focus in the field with the caret after the draft once the chip shows", async () => {
+    const answer = pendingUpload();
+    const view = render(<Draft />);
+    view.getByTestId("elsewhere").focus();
+    fireEvent.drop(document, {
+      dataTransfer: { files: [file], types: ["Files"] },
+    });
+    expect(document.activeElement).not.toBe(field(view));
+    await answer();
+    expect(view.getAllByTestId("attachment-chip")).toHaveLength(1);
+    expect(document.activeElement).toBe(field(view));
+    expect(field(view).selectionStart).toBe("Katso tätä".length);
+    expect(field(view).selectionEnd).toBe("Katso tätä".length);
+  });
+
+  it("the picker returns the focus to the field after the file dialog", async () => {
+    const answer = pendingUpload();
+    const view = render(<Draft />);
+    field(view).focus();
+    field(view).setSelectionRange(0, 0);
+    const clip = view.getByTestId("attach-file");
+    fireEvent.pointerDown(clip);
+    clip.focus();
+    pick(view);
+    await answer();
+    expect(document.activeElement).toBe(field(view));
+    expect(field(view).selectionStart).toBe("Katso tätä".length);
+  });
+
+  it("on a touch screen the picker opens no keyboard unless the field had the focus", async () => {
+    touch(true);
+    let answer = pendingUpload();
+    const view = render(<Draft />);
+    const clip = view.getByTestId("attach-file");
+    fireEvent.pointerDown(clip);
+    clip.focus();
+    pick(view);
+    await answer();
+    expect(view.getAllByTestId("attachment-chip")).toHaveLength(1);
+    expect(document.activeElement).not.toBe(field(view));
+
+    answer = pendingUpload();
+    field(view).focus();
+    fireEvent.pointerDown(clip);
+    clip.focus();
+    pick(view);
+    await answer();
+    expect(document.activeElement).toBe(field(view));
+  });
+
+  it("a field the person moved to during the upload keeps the focus", async () => {
+    const answer = pendingUpload();
+    const view = render(
+      <>
+        <input data-testid="other-field" />
+        <Draft />
+      </>,
+    );
+    fireEvent.drop(document, {
+      dataTransfer: { files: [file], types: ["Files"] },
+    });
+    const other = view.getByTestId("other-field");
+    other.focus();
+    await answer();
+    expect(view.getAllByTestId("attachment-chip")).toHaveLength(1);
+    expect(document.activeElement).toBe(other);
   });
 });

@@ -3,11 +3,12 @@ created: 2026-11-02
 updated: 2026-11-02
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: attach-focus
 lane_seq: 1
 preparation: ready
+closed: 2026-11-02
 ---
 
 # After dropping an attachment the focus leaves the message field
@@ -27,5 +28,5 @@ in today's load defects (`gate-load-flakes-speech-settings` result.md).
 
 ## Acceptance Criteria
 
-- [ ] After drop, paste or picker, the message field is focused with the caret at the end of the draft, on desktop; on a phone the picker does not force the keyboard open unless it was open before.
-- [ ] A test covers drop and picker, and fails without the fix.
+- [x] After drop, paste or picker, the message field is focused with the caret at the end of the draft, on desktop; on a phone the picker does not force the keyboard open unless it was open before.
+- [x] A test covers drop and picker, and fails without the fix.

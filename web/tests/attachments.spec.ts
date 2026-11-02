@@ -229,6 +229,63 @@ test("picker, image paste and conversation drop persist authenticated attachment
   }
 });
 
+test("a dropped or picked attachment leaves the person writing on from the end of the draft", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-ordinary-dir")
+    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page).toHaveURL(/conversation=pi:/);
+  const field = page.getByTestId("message-input");
+  const chips = page.locator(".ah-composer").getByTestId("attachment-chip");
+  await field.fill("Katso");
+  await field.evaluate((element: HTMLTextAreaElement) => {
+    element.setSelectionRange(0, 0);
+    element.blur();
+  });
+  await page.locator(".ah-conversation-stream").evaluate((element) => {
+    const data = new DataTransfer();
+    data.items.add(
+      new File(["synthetic file"], "notes.txt", { type: "text/plain" }),
+    );
+    element.dispatchEvent(
+      new DragEvent("drop", {
+        dataTransfer: data,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  });
+  await expect(chips).toHaveCount(1);
+  await expect(field).toBeFocused();
+  await page.keyboard.type(" tätä");
+  await expect(field).toHaveValue("Katso tätä");
+
+  // The picker: the paperclip, its menu and the file dialog all take the
+  // focus on the way, and the field has it again once the chip shows.
+  await field.evaluate((element: HTMLTextAreaElement) =>
+    element.setSelectionRange(0, 0),
+  );
+  const choose = page.waitForEvent("filechooser");
+  await page.getByTestId("attach-file").click();
+  await page.getByTestId("attachment-single").click();
+  await (await choose).setFiles({
+    name: "screen.png",
+    mimeType: "image/png",
+    buffer: png,
+  });
+  await expect(chips).toHaveCount(2);
+  await expect(field).toBeFocused();
+  await page.keyboard.type(" ja tätä");
+  await expect(field).toHaveValue("Katso tätä ja tätä");
+});
+
 // An element the person can see and press: the point at its centre hits it,
 // rather than whatever lies under a clipping ancestor. Visibility checks alone
 // pass for an element cut off by `overflow: hidden`.

@@ -110,6 +110,10 @@
 .ah-crow-grow {
   flex: 1;
 }
+/* Only watches the paperclip's presses; the paperclip is the row's item. */
+.ah-crow-attach {
+  display: contents;
+}
 /* :where keeps the old .ah-crow button specificity, so a row button's own
    surface (Send, Stop) still wins over this reset. */
 .ah-crow button:where(:not(.ah-button)) {
